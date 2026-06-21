@@ -308,15 +308,105 @@ let queryByPartitionKey = async (
   await queryStream(queryParams)->Stream.runCollect->Effect.runPromise
 }
 
+// --- Cross-partition (secondary-tag) read ---
+//
+// A `@crossPartition` tag is read across ALL partitions carrying it, not just
+// the partition it keys. The per-tag `tag_<key>` GSI indexes the tag across
+// every partition; Phase 3 down-projected it to `KEYS_ONLY`, so the read is a
+// two-phase `Query`(keys: id, position) → per-key `GetItem`(base table) for the
+// full event. GSI reads are eventually consistent (DynamoDB constraint) — the
+// strongly-consistent append fence catches any staleness at commit (analysis
+// Issue 13). The GSI returns keys in ascending `position` order (rangeKey =
+// "position"), and `Stream.mapEffect` preserves order, so the resolved stream
+// stays position-ordered for the k-way merge in `readStream`.
+
+// Resolves a KEYS_ONLY GSI key-item ({id, position}) to its full base-table item.
+let resolveBaseItem = (table: resolvedTable, keyItem: JSON.t): Effect.t<
+  option<JSON.t>,
+  string,
+  unit,
+> =>
+  switch keyItem->JSON.Decode.object {
+  | None => Effect.succeed(None)
+  | Some(obj) =>
+    switch (obj->Dict.get("id"), obj->Dict.get("position")) {
+    | (Some(id), Some(position)) =>
+      let key = Dict.fromArray([("id", id), ("position", position)])
+      Effect.tryPromise(~catch=DynamoDb_Error.classify, () =>
+        GetCommand.send(GetCommand.make({tableName: table.name, key}))
+      )
+      ->Effect.retry(DynamoDb_Error.retrySchedule)
+      ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
+      ->Effect.map(result => result.item)
+    | _ => Effect.succeed(None)
+    }
+  }
+
+let queryBySingleTagCrossPartitionStream = (
+  table: resolvedTable,
+  tag: Reventless.DcbTag.tag,
+  ~after: option<string>=?,
+) => {
+  let indexName = tagToAttributeName(tag.key)
+  let expressionAttributeValues = Dict.fromArray([(":val", tag.value->JSON.Encode.string)])
+  let expressionAttributeNames = Dict.fromArray([("#tag", indexName)])
+  let keyConditionExpression = switch after {
+  | None => "#tag = :val"
+  | Some(afterPos) =>
+    expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
+    expressionAttributeNames->Dict.set("#pos", "position")
+    "#tag = :val AND #pos > :after"
+  }
+  let baseParams: QueryCommand.input = {
+    tableName: table.name,
+    indexName,
+    keyConditionExpression,
+    expressionAttributeValues,
+    expressionAttributeNames,
+  }
+  Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
+    Effect.tryPromise(
+      ~catch=DynamoDb_Error.classify,
+      () => {
+        let params = switch cursor {
+        | None => baseParams
+        | Some(key) => {...baseParams, exclusiveStartKey: key}
+        }
+        QueryCommand.send(params->QueryCommand.make)
+      },
+    )
+    ->Effect.retry(DynamoDb_Error.retrySchedule)
+    ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
+    ->Effect.map(result => (
+      result.items->Option.getOr([]),
+      result.lastEvaluatedKey->Option.map(key => Some(key)),
+    ))
+  )
+  ->Stream.mapEffect(keyItem => resolveBaseItem(table, keyItem))
+  ->Stream.flatMap(opt =>
+    switch opt {
+    | Some(item) => Stream.fromIterable([item])
+    | None => Stream.empty
+    }
+  )
+}
+
 // --- Query Item Execution ---
 
 let executeQueryItem = async (
   table: resolvedTable,
   queryItem: Reventless.DcbTag.queryItem,
   ~after: option<string>=?,
+  ~crossPartitionTagKeys: array<string>=[],
 ) => {
   switch queryItem.tags {
-  // Single tag: direct partition key lookup
+  // Single tag: a `@crossPartition` key reads across partitions via the per-tag
+  // GSI (KEYS_ONLY → per-key GetItem, collected); otherwise a base-table
+  // partition lookup.
+  | Some([tag]) if crossPartitionTagKeys->Array.includes(tag.key) =>
+    await queryBySingleTagCrossPartitionStream(table, tag, ~after?)
+    ->Stream.runCollect
+    ->Effect.runPromise
   | Some([tag]) =>
     await queryByPartitionKey(table, `${tag.key}:${tag.value}`, ~after?)
 
@@ -452,14 +542,14 @@ let mergeSortedEvents = (
 
 // --- Main Operations ---
 
-let read = (table: resolvedTable) =>
+let read = (table: resolvedTable, ~crossPartitionTagKeys: array<string>=[]) =>
   async (
     ~query: Reventless.DcbTag.query,
     ~after=?,
   ) => {
     // Execute queries for each queryItem
     let queryResults = await query
-    ->Array.map(queryItem => executeQueryItem(table, queryItem, ~after?))
+    ->Array.map(queryItem => executeQueryItem(table, queryItem, ~after?, ~crossPartitionTagKeys))
     ->Promise.all
 
     // Merge and deduplicate results
@@ -792,12 +882,23 @@ let buildConditionalTransactItems = (
   cond: Reventless.DcbTag.appendCondition,
   basePosition: string,
   ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>=?,
+  ~crossPartitionTagKeys: array<string>=[],
 ): array<TransactWriteCommand.transactWriteItem> => {
-  // The partitions this append writes into — the only fences it may BUMP.
+  // The partitions this append writes into — the only fences it may BUMP
+  // (partition-scoped tags only; cross-partition tags below override this).
   let partitionTags = collectEventPartitionTags(events, ~partitionTag)
   let partitionKeySet = Set.make()
   partitionTags->Array.forEach(t => partitionKeySet->Set.add(`${t.key}:${t.value}`))
   let isPartition = (t: Reventless.DcbTag.tag) => partitionKeySet->Set.has(`${t.key}:${t.value}`)
+
+  // Cross-partition tags this append must fence regardless of which partition it
+  // writes into. A `@crossPartition` tag is read across ALL partitions (per-tag
+  // GSI), so OCC requires EVERY carrier — primary or secondary — to bump its
+  // fence; else a concurrent secondary-tag writer goes undetected. This reverts
+  // Issue 1's narrowing, but only for tags declared cross-partition (analysis
+  // Issue 13). Partition-scoped tags keep the narrow rule.
+  let isCrossPartition = (t: Reventless.DcbTag.tag) => crossPartitionTagKeys->Array.includes(t.key)
+  let crossPartitionEventTags = collectEventTags(events)->Array.filter(isCrossPartition)
 
   // Distinct tags belonging to multi-tag (composite GSI) query clauses. A composite
   // read can match cross-partition events, so its fences keep the historical
@@ -840,40 +941,55 @@ let buildConditionalTransactItems = (
     }
   }
 
-  switch cond.after {
-  | Some(_) =>
-    cond.query->Array.forEach(qi =>
-      switch qi.tags {
-      // Single-tag clause = partition-scoped read. The read observes only events
-      // in this tag's partition, so its fence may be BUMPED only when this append
-      // writes into that partition (conditional Update); otherwise it is asserted
-      // read-only (ConditionCheck) so later writers sharing the tag value don't
-      // falsely conflict. (Composite-clause tags keep check+bump — see below.)
-      | Some([tag]) =>
-        if isPartition(tag) || isCompositeQueryTag(tag) {
-          pushUpdate(tag)
-        } else {
-          pushCheck(tag)
+  cond.query->Array.forEach(qi =>
+    switch qi.tags {
+    // Single-tag clause. A `@crossPartition` tag is a cross-partition read, so
+    // its fence is BUMPED (conditional Update) by every carrier — at after=Some
+    // gated on `lastPosition <= after`, at after=None on `attribute_not_exists`
+    // (a first-writer guard: the fence exists only if a carrier has written, and
+    // an empty cross-partition read means none has). A partition-scoped tag
+    // keeps the narrow rule: BUMP only when this append writes into that
+    // partition (or it backs a composite read), else read-only ConditionCheck;
+    // and at after=None no check at all (the per-(type,partition) create-guard
+    // handles first-writer races without false-conflicting subset-type slices).
+    | Some([tag]) =>
+      if isCrossPartition(tag) {
+        pushUpdate(tag)
+      } else {
+        switch cond.after {
+        | Some(_) =>
+          if isPartition(tag) || isCompositeQueryTag(tag) {
+            pushUpdate(tag)
+          } else {
+            pushCheck(tag)
+          }
+        | None => ()
         }
-      // Multi-tag clause = composite (GSI) read — keep check+bump on every tag.
-      | Some(tags) if tags->Array.length > 1 => tags->Array.forEach(pushUpdate)
-      | _ => ()
       }
-    )
-  | None => () // idempotent fallback — no conditional checks; bumps only (below).
-  }
+    // Multi-tag clause = composite (GSI) read — keep check+bump on every tag at
+    // after=Some; at after=None the composite tags fall through to bumps below.
+    | Some(tags) if tags->Array.length > 1 =>
+      switch cond.after {
+      | Some(_) => tags->Array.forEach(pushUpdate)
+      | None => ()
+      }
+    | _ => ()
+    }
+  )
 
   // Unconditional bumps. Advance fences for the partitions this append writes into
   // (so future partition-scoped readers detect it) plus composite query tags (so
-  // composite readers detect it), minus anything a conditional Update already
-  // bumps. This NEVER bumps secondary (non-partition) event tags — doing so was
-  // the source of the cross-partition false conflicts.
+  // composite readers detect it) plus every cross-partition tag this event carries
+  // (primary OR secondary — a cross-partition reader of that tag must detect this
+  // write even when this command does not read by it), minus anything a conditional
+  // Update already bumps. Partition-scoped secondary event tags are still NEVER
+  // bumped here — doing so was the source of the cross-partition false conflicts.
   let bumpSeen = Set.make()
   conditionalUpdateTags->Array.forEach(t => bumpSeen->Set.add(`${t.key}:${t.value}`))
   let bumpTags = []
   let candidateBumps = switch cond.after {
-  | Some(_) => partitionTags
-  | None => Array.concat(partitionTags, compositeQueryTags)
+  | Some(_) => Array.concat(partitionTags, crossPartitionEventTags)
+  | None => Array.concat(partitionTags, Array.concat(compositeQueryTags, crossPartitionEventTags))
   }
   candidateBumps->Array.forEach(tag => {
     let k = `${tag.key}:${tag.value}`
@@ -939,6 +1055,7 @@ let appendConditional = async (
   events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
   cond: Reventless.DcbTag.appendCondition,
   ~partitionTag=?,
+  ~crossPartitionTagKeys: array<string>=[],
 ) => {
   let queryTags = collectQueryTags(cond.query)
 
@@ -948,7 +1065,7 @@ let appendConditional = async (
     )
   } else {
     let basePosition = generatePosition()
-    let transactItems = buildConditionalTransactItems(table, events, cond, basePosition, ~partitionTag?)
+    let transactItems = buildConditionalTransactItems(table, events, cond, basePosition, ~partitionTag?, ~crossPartitionTagKeys)
     let totalItems = transactItems->Array.length
     if totalItems > transactWriteItemsLimit {
       Error(
@@ -961,14 +1078,14 @@ let appendConditional = async (
   }
 }
 
-let append = (table: resolvedTable, ~partitionTag=?) =>
+let append = (table: resolvedTable, ~partitionTag=?, ~crossPartitionTagKeys: array<string>=[]) =>
   async (
     events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
     ~condition=?,
   ) => {
     switch condition {
     | None => await appendUnconditional(table, events, ~partitionTag?)
-    | Some(cond) => await appendConditional(table, events, cond, ~partitionTag?)
+    | Some(cond) => await appendConditional(table, events, cond, ~partitionTag?, ~crossPartitionTagKeys)
     }
   }
 
@@ -1102,12 +1219,17 @@ let executeQueryItemStream = (
   queryItem: Reventless.DcbTag.queryItem,
   ~after: option<string>=?,
   ~strongConsistency: bool=false,
+  ~crossPartitionTagKeys: array<string>=[],
 ) => {
   switch queryItem.tags {
-  // Single tag: direct partition key lookup. Base-table reads can opt into
-  // strong consistency; the slice callback defaults to eventual and escalates to
-  // strong on retry. GSI-backed branches (composite, scan) cannot opt in —
+  // Single tag: a `@crossPartition` key reads every partition via the per-tag
+  // GSI (eventually consistent — fence catches staleness); otherwise a direct
+  // base-table partition lookup. Base-table reads can opt into strong
+  // consistency; the slice callback defaults to eventual and escalates on retry.
+  // GSI-backed branches (cross-partition, composite, scan) cannot opt in —
   // fundamental DynamoDB constraint — so they stay eventually consistent.
+  | Some([tag]) if crossPartitionTagKeys->Array.includes(tag.key) =>
+    queryBySingleTagCrossPartitionStream(table, tag, ~after?)
   | Some([tag]) =>
     queryByPartitionKeyStream(
       table,
@@ -1129,10 +1251,12 @@ let executeQueryItemStream = (
   }
 }
 
-let readStream = (table: resolvedTable) =>
+let readStream = (table: resolvedTable, ~crossPartitionTagKeys: array<string>=[]) =>
   (~query: Reventless.DcbTag.query, ~after=?, ~strongConsistency=false) => {
     let streams =
-      query->Array.map(qi => executeQueryItemStream(table, qi, ~after?, ~strongConsistency))
+      query->Array.map(qi =>
+        executeQueryItemStream(table, qi, ~after?, ~strongConsistency, ~crossPartitionTagKeys)
+      )
     switch streams->Array.length {
     | 0 => Stream.empty
     | 1 => (streams->Array.getUnsafe(0))->Stream.map(fromItem)

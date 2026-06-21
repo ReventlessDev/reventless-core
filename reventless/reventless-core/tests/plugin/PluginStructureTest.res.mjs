@@ -18,7 +18,7 @@ let Behavior = {
   moduleUrl: PsPlaceOrder$ReventlessCore.moduleUrl
 };
 
-function make(param, param$1, param$2, param$3) {
+function make(param, param$1, param$2, param$3, param$4) {
   return 0;
 }
 
@@ -30,7 +30,8 @@ let PsPlaceOrderSlice_Spec = {
   errorSchema: PsPlaceOrder$ReventlessCore.errorSchema,
   eventSchema: PsPlaceOrder$ReventlessCore.eventSchema,
   commandSchema: PsPlaceOrder$ReventlessCore.commandSchema,
-  commandAuthorization: PsPlaceOrder$ReventlessCore.commandAuthorization
+  commandAuthorization: PsPlaceOrder$ReventlessCore.commandAuthorization,
+  readConsistency: PsPlaceOrder$ReventlessCore.readConsistency
 };
 
 let PsPlaceOrderSlice = {
@@ -47,7 +48,7 @@ let Behavior$1 = {
   moduleUrl: PsShipOrder$ReventlessCore.moduleUrl
 };
 
-function make$1(param, param$1, param$2, param$3) {
+function make$1(param, param$1, param$2, param$3, param$4) {
   return 0;
 }
 
@@ -59,7 +60,8 @@ let PsShipOrderSlice_Spec = {
   errorSchema: PsShipOrder$ReventlessCore.errorSchema,
   eventSchema: PsShipOrder$ReventlessCore.eventSchema,
   commandSchema: PsShipOrder$ReventlessCore.commandSchema,
-  commandAuthorization: PsShipOrder$ReventlessCore.commandAuthorization
+  commandAuthorization: PsShipOrder$ReventlessCore.commandAuthorization,
+  readConsistency: PsShipOrder$ReventlessCore.readConsistency
 };
 
 let PsShipOrderSlice = {

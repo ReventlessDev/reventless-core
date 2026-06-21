@@ -155,6 +155,39 @@ module Make = (
 
         let partitionTag = Reventless.DcbTag.derivePartitionTag(producedNamed)
 
+        // Tag keys declared `@crossPartition` across the produced event schemas.
+        // Derived once at build time (the scope is a property of the tag key, and
+        // must agree across every producer that carries it). Threaded to both the
+        // decision-model query builder (fan a cross-partition scalar tag into its
+        // own single-tag clause) and the storage adapter (read routing +
+        // fence scope), keeping read-scope = fence-scope per tag.
+        let crossPartitionTagKeys =
+          producedSchemas
+          ->Array.flatMap(schema => Reventless.DcbTag.extractCrossPartitionTagKeys(schema))
+          ->(arr => {
+            let seen = Set.make()
+            arr->Array.filter(f => {
+              if seen->Set.has(f) {
+                false
+              } else {
+                seen->Set.add(f)
+                true
+              }
+            })
+          })
+
+        // A tag key's scope must agree across every producer that carries it,
+        // else the (writer-driven) fence is ambiguous. Non-fatal — surfaces a
+        // mismatch loudly without aborting the deploy.
+        Reventless.DcbValidation.validateCrossPartitionScope(
+          ~producers=produced,
+        )->Array.forEach(err =>
+          log.error(
+            ~comp="Dcb_Builder",
+            `DCB cross-partition scope error (${err.sliceName}): ${err.message}`,
+          )
+        )
+
         // Map each produced event type to its full produced tag-key set. Threaded
         // into each StateChangeSlice so the decision-model query drops vacuous
         // (type, tag) clause combinations (a type that can't carry the clause's
@@ -185,7 +218,7 @@ module Make = (
           DcbEventLogStorage,
           DcbEventTopicPublisher,
         )
-        let dcbEventLog = DcbEventLog.make(~name, ~indexes, ~partitionTag, ~opts)
+        let dcbEventLog = DcbEventLog.make(~name, ~indexes, ~partitionTag, ~crossPartitionTagKeys, ~opts)
 
         // Notify platform hook that DCB EventLog was created (AWS extracts table name)
         HooksConfig.hooks.onDcbEventLogCreated->Option.forEach(hook =>
@@ -237,7 +270,7 @@ module Make = (
         let stateChangeSlicesOutputs =
           syncSlices
           ->Array.map((module(StateChangeSlice: StateChangeSlice.T)) => {
-            let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons, ~tagKeysByEventType, ~opts)
+            let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons, ~tagKeysByEventType, ~crossPartitionTagKeys, ~opts)
             (StateChangeSlice.Spec.name, ch->Component.outputs)
           })
           ->Dict.fromArray
@@ -251,7 +284,7 @@ module Make = (
               asyncDcbCommandTopic->Component.operations->Pulumi.Output.apply(ops => ops.publishJsons)
             asyncSlices
             ->Array.map((module(StateChangeSlice: StateChangeSlice.T)) => {
-              let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons=asyncPublishJsons, ~tagKeysByEventType, ~opts)
+              let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons=asyncPublishJsons, ~tagKeysByEventType, ~crossPartitionTagKeys, ~opts)
               (StateChangeSlice.Spec.name, ch->Component.outputs)
             })
             ->Dict.fromArray

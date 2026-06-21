@@ -13,13 +13,14 @@ module Make = (
 
   type component = ReventlessInfra.DcbEventLog.component
 
-  let construct = (indexes, partitionTag, self, name) => {
+  let construct = (indexes, partitionTag, crossPartitionTagKeys, self, name) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let storage = Storage.make(
       ~name=name->ComponentType.name(DcbEventLog.componentType),
       ~indexes,
       ~partitionTag,
+      ~crossPartitionTagKeys,
       ~opts,
     )
 
@@ -61,11 +62,11 @@ module Make = (
     self->Component.setOutputs(outputs)
   }
 
-  let make = (~name, ~indexes=[], ~partitionTag, ~opts=?): component =>
+  let make = (~name, ~indexes=[], ~partitionTag, ~crossPartitionTagKeys=[], ~opts=?): component =>
     Component.make(
       ~componentType=DcbEventLog.componentType->ComponentType.toString,
       ~name,
-      ~construct=construct(indexes, partitionTag, ...),
+      ~construct=construct(indexes, partitionTag, crossPartitionTagKeys, ...),
       ~opts,
     )
 }

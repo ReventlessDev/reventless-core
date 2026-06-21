@@ -541,7 +541,7 @@ globalThis.describe("DcbTag:", () => {
         TAG: "CreateItem",
         itemId: "item-1",
         name: "Test"
-      }, undefined)).toEqual([{
+      }, undefined, undefined)).toEqual([{
           eventTypes: eventTypes,
           tags: [{
               key: "itemId",
@@ -558,7 +558,7 @@ globalThis.describe("DcbTag:", () => {
           "prod-1",
           "prod-2"
         ]
-      }, undefined)).toEqual([
+      }, undefined, undefined)).toEqual([
         {
           eventTypes: eventTypes,
           tags: [{
@@ -588,7 +588,7 @@ globalThis.describe("DcbTag:", () => {
         orderId: "ord-1",
         customerId: "cust-1",
         productId: ["prod-1"]
-      }, undefined)).toEqual([
+      }, undefined, undefined)).toEqual([
         {
           eventTypes: eventTypes,
           tags: [{
@@ -611,7 +611,7 @@ globalThis.describe("DcbTag:", () => {
         orderId: "ord-1",
         customerId: "cust-1",
         productId: []
-      }, undefined)).toEqual([{
+      }, undefined, undefined)).toEqual([{
           eventTypes: eventTypes,
           tags: [{
               key: "orderId",
@@ -645,7 +645,7 @@ globalThis.describe("DcbTag:", () => {
         orderId: "ord-1",
         customerId: "cust-1",
         productId: ["prod-1"]
-      }, orderTagKeys)).toEqual([
+      }, orderTagKeys, undefined)).toEqual([
         {
           eventTypes: ["OrderPlaced"],
           tags: [{
@@ -673,7 +673,7 @@ globalThis.describe("DcbTag:", () => {
         TAG: "CreateItem",
         itemId: "item-1",
         name: "Test"
-      }, orderTagKeys)).toEqual([{
+      }, orderTagKeys, undefined)).toEqual([{
           eventTypes: [],
           tags: [{
               key: "itemId",
@@ -690,7 +690,7 @@ globalThis.describe("DcbTag:", () => {
         orderId: "ord-1",
         customerId: "cust-1",
         productId: ["prod-1"]
-      }, {})).toEqual([
+      }, {}, undefined)).toEqual([
         {
           eventTypes: [
             "OrderPlaced",
@@ -712,6 +712,53 @@ globalThis.describe("DcbTag:", () => {
             }]
         }
       ]);
+    });
+    globalThis.test("extractCrossPartitionTagKeys returns only the @crossPartition keys", () => {
+      globalThis.expect(DcbTag$Reventless.extractCrossPartitionTagKeys(DcbFixtures$ReventlessCore.subscriptionEventSchema)).toEqual(["studentId"]);
+    });
+    globalThis.test("extractCrossPartitionTagKeys is empty when no field is @crossPartition", () => {
+      globalThis.expect(DcbTag$Reventless.extractCrossPartitionTagKeys(DcbFixtures$ReventlessCore.simplePartitionEventSchema)).toEqual([]);
+    });
+    globalThis.test("a cross-partition tag fans a 2-tag command into two single-tag clauses", () => {
+      globalThis.expect(DcbTag$Reventless.buildQueryFromCommand(["StudentSubscribed"], DcbFixtures$ReventlessCore.subscribeCommandSchema, {
+        TAG: "SubscribeStudent",
+        courseId: "C1",
+        studentId: "S1"
+      }, undefined, ["studentId"])).toEqual([
+        {
+          eventTypes: ["StudentSubscribed"],
+          tags: [{
+              key: "courseId",
+              value: "C1"
+            }]
+        },
+        {
+          eventTypes: ["StudentSubscribed"],
+          tags: [{
+              key: "studentId",
+              value: "S1"
+            }]
+        }
+      ]);
+    });
+    globalThis.test("without crossPartitionTagKeys the same 2-tag command stays one composite clause", () => {
+      globalThis.expect(DcbTag$Reventless.buildQueryFromCommand(["StudentSubscribed"], DcbFixtures$ReventlessCore.subscribeCommandSchema, {
+        TAG: "SubscribeStudent",
+        courseId: "C1",
+        studentId: "S1"
+      }, undefined, undefined)).toEqual([{
+          eventTypes: ["StudentSubscribed"],
+          tags: [
+            {
+              key: "courseId",
+              value: "C1"
+            },
+            {
+              key: "studentId",
+              value: "S1"
+            }
+          ]
+        }]);
     });
     globalThis.test("hasTaggedArrayFields detects tagged arrays", () => {
       globalThis.expect(DcbTag$Reventless.hasTaggedArrayFields(DcbFixtures$ReventlessCore.crossEntityCommandSchema)).toBe(true);
@@ -767,7 +814,7 @@ globalThis.describe("DcbTag:", () => {
           "prod-1",
           "prod-2"
         ]
-      }, undefined)).toEqual([
+      }, undefined, undefined)).toEqual([
         {
           eventTypes: [
             "OrderPlaced",

@@ -52,6 +52,8 @@ let errorSchema = S.unit;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/ProductDemand/StateChangeSlice/RecordProductDemand.res.mjs";
 
+let readConsistency = "EscalateOnRetry";
+
 export {
   name,
   Id,
@@ -61,5 +63,6 @@ export {
   eventSchema,
   moduleUrl,
   commandAuthorization,
+  readConsistency,
 }
 /* consumedEventSchema Not a pure module */

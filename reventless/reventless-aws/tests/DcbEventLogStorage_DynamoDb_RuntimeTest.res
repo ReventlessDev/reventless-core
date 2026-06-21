@@ -353,6 +353,41 @@ describe("Runtime.buildConditionalTransactItems — fence-scope = read-scope", (
       expect(isUpdate(findFence(items, "fence#orderId:o1")))->toBe(true)
     })
   })
+
+  // Cross-partition tag: fence bumped by every carrier (Issue 13 / Phase 7).
+  // StudentSubscribed partitions by courseId; studentId is @crossPartition, so a
+  // single-tag studentId read crosses partitions and its fence must move on every
+  // carrier — even though studentId is a *secondary* tag here. After fan-out the
+  // M:N command yields two single-tag clauses.
+  describe("cross-partition secondary tag (studentId) is check+bump, not read-only", () => {
+    let subscribed = event("StudentSubscribed", [tag("courseId", "C1"), tag("studentId", "S1")])
+    let partitionTag = Some(Reventless.DcbTag.Simple({key: "courseId"}))
+    let cond: Reventless.DcbTag.appendCondition = {
+      query: [{tags: [tag("courseId", "C1")]}, {tags: [tag("studentId", "S1")]}],
+      after: "50",
+    }
+
+    testSync("with studentId cross-partition, its fence is a conditional Update (bump)", () => {
+      let items = Runtime.buildConditionalTransactItems(
+        table,
+        [subscribed],
+        cond,
+        "100",
+        ~partitionTag?,
+        ~crossPartitionTagKeys=["studentId"],
+      )
+      // courseId (partition) bumps as usual; studentId (cross-partition secondary) also bumps.
+      expect(isUpdate(findFence(items, "fence#courseId:C1")))->toBe(true)
+      expect(isUpdate(findFence(items, "fence#studentId:S1")))->toBe(true)
+    })
+
+    testSync("without the cross-partition flag, studentId is only a read-only ConditionCheck", () => {
+      let items = Runtime.buildConditionalTransactItems(table, [subscribed], cond, "100", ~partitionTag?)
+      let it = findFence(items, "fence#studentId:S1")
+      expect(isCheck(it))->toBe(true)
+      expect(isUpdate(it))->toBe(false)
+    })
+  })
 })
 
 describe("Runtime.buildConditionalTransactItems — create guard (after=None)", () => {

@@ -18,6 +18,8 @@ let dcbTagId = S.Metadata.Id.make("dcb", "tag");
 
 let dcbPartitionTagId = S.Metadata.Id.make("dcb", "partitionTag");
 
+let dcbCrossPartitionId = S.Metadata.Id.make("dcb", "crossPartition");
+
 let dcbCompositePartitionMemberId = S.Metadata.Id.make("dcb", "compositePartitionMember");
 
 let dcbTagKeyOverrideId = S.Metadata.Id.make("dcb", "tagKeyOverride");
@@ -31,6 +33,8 @@ function stringForKey(key) {
 let int = S.Metadata.set(S.int, dcbTagId, true);
 
 let partition = S.Metadata.set(S.Metadata.set(S.string, dcbTagId, true), dcbPartitionTagId, true);
+
+let crossPartition = S.Metadata.set(S.Metadata.set(S.string, dcbTagId, true), dcbCrossPartitionId, true);
 
 function compositePartitionMember(position, sepOpt) {
   let sep = sepOpt !== undefined ? sepOpt : "/";
@@ -62,6 +66,22 @@ function isTaggedArray(fieldSchema) {
 
 function isPartitionTag(fieldSchema) {
   return Stdlib_Option.isSome(S.Metadata.get(fieldSchema, dcbPartitionTagId));
+}
+
+function isCrossPartitionTag(fieldSchema) {
+  return Stdlib_Option.isSome(S.Metadata.get(fieldSchema, dcbCrossPartitionId));
+}
+
+function isCrossPartitionTaggedArray(fieldSchema) {
+  if (fieldSchema.type !== "array") {
+    return false;
+  }
+  let itemSchema = fieldSchema.additionalItems;
+  if (itemSchema === "strip" || itemSchema === "strict") {
+    return false;
+  } else {
+    return isCrossPartitionTag(itemSchema);
+  }
 }
 
 function resolveTagKey(fieldName, fieldSchema) {
@@ -452,8 +472,9 @@ function narrowEventTypesForTags(eventTypes, tags, tagKeysByEventType) {
   });
 }
 
-function buildQueryFromCommand(eventTypes, schema, value, tagKeysByEventTypeOpt) {
+function buildQueryFromCommand(eventTypes, schema, value, tagKeysByEventTypeOpt, crossPartitionTagKeysOpt) {
   let tagKeysByEventType = tagKeysByEventTypeOpt !== undefined ? tagKeysByEventTypeOpt : ({});
+  let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
   if (hasTaggedArrayFields(schema)) {
     let tags = extractTagsExpanded(schema, value);
     return tags.map(tag => {
@@ -468,10 +489,24 @@ function buildQueryFromCommand(eventTypes, schema, value, tagKeysByEventTypeOpt)
     });
   }
   let tags$1 = extractTags(schema, value);
-  return [{
-      eventTypes: narrowEventTypesForTags(eventTypes, tags$1, tagKeysByEventType),
-      tags: tags$1
-    }];
+  let hasCrossPartition = tags$1.some(tag => crossPartitionTagKeys.includes(tag.key));
+  if (hasCrossPartition && tags$1.length > 1) {
+    return tags$1.map(tag => {
+      let clauseTags = [{
+          key: tag.key,
+          value: tag.value
+        }];
+      return {
+        eventTypes: narrowEventTypesForTags(eventTypes, clauseTags, tagKeysByEventType),
+        tags: clauseTags
+      };
+    });
+  } else {
+    return [{
+        eventTypes: narrowEventTypesForTags(eventTypes, tags$1, tagKeysByEventType),
+        tags: tags$1
+      }];
+  }
 }
 
 function extractTaggedFields(schema) {
@@ -502,6 +537,45 @@ function extractTaggedFields(schema) {
     default:
       return [];
   }
+}
+
+function crossPartitionKeysOfProperties(properties) {
+  return Stdlib_Array.filterMap(Object.entries(properties), param => {
+    let fieldSchema = param[1];
+    let fieldName = param[0];
+    if (isTagged(fieldSchema) && isCrossPartitionTag(fieldSchema)) {
+      return resolveTagKey(fieldName, fieldSchema);
+    } else if (isCrossPartitionTaggedArray(fieldSchema)) {
+      return resolveArrayTagKey(fieldName, fieldSchema);
+    } else {
+      return;
+    }
+  });
+}
+
+function extractCrossPartitionTagKeys(schema) {
+  let keys;
+  switch (schema.type) {
+    case "object" :
+      keys = crossPartitionKeysOfProperties(schema.properties);
+      break;
+    case "union" :
+      keys = schema.anyOf.flatMap(variantSchema => {
+        if (variantSchema.type === "object") {
+          return crossPartitionKeysOfProperties(variantSchema.properties);
+        } else {
+          return [];
+        }
+      });
+      break;
+    default:
+      keys = [];
+  }
+  let seen = new Set();
+  keys.forEach(k => {
+    seen.add(k);
+  });
+  return Array.from(seen.values()).toSorted(Primitive_string.compare);
 }
 
 function extractPartitionTagFields(schema) {
@@ -747,17 +821,21 @@ export {
   tagSchema,
   dcbTagId,
   dcbPartitionTagId,
+  dcbCrossPartitionId,
   dcbCompositePartitionMemberId,
   dcbTagKeyOverrideId,
   string,
   stringForKey,
   int,
   partition,
+  crossPartition,
   compositePartitionMember,
   isCompositePartitionMember,
   isTagged,
   isTaggedArray,
   isPartitionTag,
+  isCrossPartitionTag,
+  isCrossPartitionTaggedArray,
   resolveTagKey,
   resolveArrayTagKey,
   jsonValueToString,
@@ -777,6 +855,8 @@ export {
   narrowEventTypesForTags,
   buildQueryFromCommand,
   extractTaggedFields,
+  crossPartitionKeysOfProperties,
+  extractCrossPartitionTagKeys,
   extractPartitionTagFields,
   hasMultiTagVariant,
   findMultiTagVariantNames,

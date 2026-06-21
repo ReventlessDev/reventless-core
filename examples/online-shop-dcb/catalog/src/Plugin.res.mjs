@@ -43,7 +43,8 @@ function Make(Platform) {
     errorSchema: AddCategory$CatalogPlugin.errorSchema,
     eventSchema: AddCategory$CatalogPlugin.eventSchema,
     commandSchema: AddCategory$CatalogPlugin.commandSchema,
-    commandAuthorization: AddCategory$CatalogPlugin.commandAuthorization
+    commandAuthorization: AddCategory$CatalogPlugin.commandAuthorization,
+    readConsistency: AddCategory$CatalogPlugin.readConsistency
   })({
     initialState: AddCategory_Behavior$CatalogPlugin.initialState,
     evolve: AddCategory_Behavior$CatalogPlugin.evolve,
@@ -58,7 +59,8 @@ function Make(Platform) {
     errorSchema: AddProduct$CatalogPlugin.errorSchema,
     eventSchema: AddProduct$CatalogPlugin.eventSchema,
     commandSchema: AddProduct$CatalogPlugin.commandSchema,
-    commandAuthorization: AddProduct$CatalogPlugin.commandAuthorization
+    commandAuthorization: AddProduct$CatalogPlugin.commandAuthorization,
+    readConsistency: AddProduct$CatalogPlugin.readConsistency
   })({
     initialState: AddProduct_Behavior$CatalogPlugin.initialState,
     evolve: AddProduct_Behavior$CatalogPlugin.evolve,
@@ -73,7 +75,8 @@ function Make(Platform) {
     errorSchema: ArchiveCategory$CatalogPlugin.errorSchema,
     eventSchema: ArchiveCategory$CatalogPlugin.eventSchema,
     commandSchema: ArchiveCategory$CatalogPlugin.commandSchema,
-    commandAuthorization: ArchiveCategory$CatalogPlugin.commandAuthorization
+    commandAuthorization: ArchiveCategory$CatalogPlugin.commandAuthorization,
+    readConsistency: ArchiveCategory$CatalogPlugin.readConsistency
   })({
     initialState: ArchiveCategory_Behavior$CatalogPlugin.initialState,
     evolve: ArchiveCategory_Behavior$CatalogPlugin.evolve,
@@ -88,7 +91,8 @@ function Make(Platform) {
     errorSchema: ChangeProductDescription$CatalogPlugin.errorSchema,
     eventSchema: ChangeProductDescription$CatalogPlugin.eventSchema,
     commandSchema: ChangeProductDescription$CatalogPlugin.commandSchema,
-    commandAuthorization: ChangeProductDescription$CatalogPlugin.commandAuthorization
+    commandAuthorization: ChangeProductDescription$CatalogPlugin.commandAuthorization,
+    readConsistency: ChangeProductDescription$CatalogPlugin.readConsistency
   })({
     initialState: ChangeProductDescription_Behavior$CatalogPlugin.initialState,
     evolve: ChangeProductDescription_Behavior$CatalogPlugin.evolve,
@@ -103,7 +107,8 @@ function Make(Platform) {
     errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
     eventSchema: ChangeProductName$CatalogPlugin.eventSchema,
     commandSchema: ChangeProductName$CatalogPlugin.commandSchema,
-    commandAuthorization: ChangeProductName$CatalogPlugin.commandAuthorization
+    commandAuthorization: ChangeProductName$CatalogPlugin.commandAuthorization,
+    readConsistency: ChangeProductName$CatalogPlugin.readConsistency
   })({
     initialState: ChangeProductName_Behavior$CatalogPlugin.initialState,
     evolve: ChangeProductName_Behavior$CatalogPlugin.evolve,
@@ -118,7 +123,8 @@ function Make(Platform) {
     errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
     eventSchema: ChangeProductPrice$CatalogPlugin.eventSchema,
     commandSchema: ChangeProductPrice$CatalogPlugin.commandSchema,
-    commandAuthorization: ChangeProductPrice$CatalogPlugin.commandAuthorization
+    commandAuthorization: ChangeProductPrice$CatalogPlugin.commandAuthorization,
+    readConsistency: ChangeProductPrice$CatalogPlugin.readConsistency
   })({
     initialState: ChangeProductPrice_Behavior$CatalogPlugin.initialState,
     evolve: ChangeProductPrice_Behavior$CatalogPlugin.evolve,
@@ -133,7 +139,8 @@ function Make(Platform) {
     errorSchema: RecordProductDemand$CatalogPlugin.errorSchema,
     eventSchema: RecordProductDemand$CatalogPlugin.eventSchema,
     commandSchema: RecordProductDemand$CatalogPlugin.commandSchema,
-    commandAuthorization: RecordProductDemand$CatalogPlugin.commandAuthorization
+    commandAuthorization: RecordProductDemand$CatalogPlugin.commandAuthorization,
+    readConsistency: RecordProductDemand$CatalogPlugin.readConsistency
   })({
     initialState: RecordProductDemand_Behavior$CatalogPlugin.initialState,
     evolve: RecordProductDemand_Behavior$CatalogPlugin.evolve,
@@ -148,7 +155,8 @@ function Make(Platform) {
     errorSchema: RenameCategory$CatalogPlugin.errorSchema,
     eventSchema: RenameCategory$CatalogPlugin.eventSchema,
     commandSchema: RenameCategory$CatalogPlugin.commandSchema,
-    commandAuthorization: RenameCategory$CatalogPlugin.commandAuthorization
+    commandAuthorization: RenameCategory$CatalogPlugin.commandAuthorization,
+    readConsistency: RenameCategory$CatalogPlugin.readConsistency
   })({
     initialState: RenameCategory_Behavior$CatalogPlugin.initialState,
     evolve: RenameCategory_Behavior$CatalogPlugin.evolve,

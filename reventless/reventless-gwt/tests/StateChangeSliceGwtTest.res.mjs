@@ -34,7 +34,8 @@ let AddCategorySlice = {
   commandSchema: commandSchema,
   errorSchema: errorSchema,
   eventSchema: eventSchema,
-  commandAuthorization: commandAuthorization
+  commandAuthorization: commandAuthorization,
+  readConsistency: "EscalateOnRetry"
 };
 
 let initialState = {
@@ -174,7 +175,8 @@ let MissingTagSlice = {
   commandSchema: commandSchema$1,
   errorSchema: errorSchema$1,
   eventSchema: eventSchema$1,
-  commandAuthorization: commandAuthorization$1
+  commandAuthorization: commandAuthorization$1,
+  readConsistency: "EscalateOnRetry"
 };
 
 function evolve$1(state, _event) {

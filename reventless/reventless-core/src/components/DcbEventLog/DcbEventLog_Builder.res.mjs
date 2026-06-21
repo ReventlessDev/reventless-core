@@ -12,14 +12,15 @@ import * as DcbEventLog_Operations$ReventlessCore from "./DcbEventLog_Operations
 
 function Make(Storage) {
   return EventTopicPublisher => {
-    let make = (name, indexesOpt, partitionTag, opts) => {
+    let make = (name, indexesOpt, partitionTag, crossPartitionTagKeysOpt, opts) => {
       let indexes = indexesOpt !== undefined ? indexesOpt : [];
+      let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(DcbEventLog$ReventlessCore.componentType), name, (extra, extra$1) => {
         let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
         let opts = {
           parent: opts_parent
         };
-        let storage = Storage.make(ComponentType$ReventlessCore.name(extra$1, DcbEventLog$ReventlessCore.componentType), indexes, partitionTag, opts);
+        let storage = Storage.make(ComponentType$ReventlessCore.name(extra$1, DcbEventLog$ReventlessCore.componentType), indexes, partitionTag, crossPartitionTagKeys, opts);
         let SpecificEventTopic = EventTopic_Builder$ReventlessCore.Make({
           Id: Id$Reventless.$$String,
           name: "DcbEventLog",

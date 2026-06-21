@@ -52,7 +52,8 @@ let AddProductSpec = {
   consumedEventSchema: consumedEventSchema,
   errorSchema: errorSchema,
   commandSchema: commandSchema,
-  commandAuthorization: commandAuthorization
+  commandAuthorization: commandAuthorization,
+  readConsistency: "EscalateOnRetry"
 };
 
 let moduleUrl$1 = import.meta.url;
@@ -186,7 +187,8 @@ let AddProductMaker = StateChangeSlice_Builder$ReventlessLocal.Make({
   errorSchema: errorSchema,
   eventSchema: eventSchema,
   commandSchema: commandSchema,
-  commandAuthorization: commandAuthorization
+  commandAuthorization: commandAuthorization,
+  readConsistency: "EscalateOnRetry"
 })({
   initialState: false,
   evolve: evolve,
@@ -231,7 +233,7 @@ async function publishJsons(cmdJsons) {
 
 let publishJsonsOutput = Pulumi.output(publishJsons);
 
-let _addProductSlice = AddProductMaker.make(dcbEventLog, publishJsonsOutput, undefined, undefined);
+let _addProductSlice = AddProductMaker.make(dcbEventLog, publishJsonsOutput, undefined, undefined, undefined);
 
 let dcbTopicOutputs = Component$ReventlessInfra.outputs(dcbEventLog).eventTopic;
 

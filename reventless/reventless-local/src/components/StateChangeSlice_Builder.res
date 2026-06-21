@@ -13,6 +13,7 @@ module Make = (
     ~dcbEventLog: ReventlessInfra.DcbEventLog.component,
     ~publishJsons: Pulumi.Output.t<ReventlessInfra.CommandTopic.publishJsons>,
     ~tagKeysByEventType: Dict.t<array<string>>=?,
+    ~crossPartitionTagKeys: array<string>=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component = Inner.make
 }

@@ -37,7 +37,7 @@ globalThis.describe("DcbEventLogStorage_Sqlite", () => {
       _0: {
         key: "k"
       }
-    }, opts);
+    }, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let e1 = stored("ItemAdded", [{
         key: "itemId",
@@ -68,7 +68,7 @@ globalThis.describe("DcbEventLogStorage_Sqlite", () => {
       _0: {
         key: "k"
       }
-    }, opts);
+    }, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let mk = (id, name) => stored("ItemAdded", [{
         key: "itemId",
@@ -96,7 +96,7 @@ globalThis.describe("DcbEventLogStorage_Sqlite", () => {
       _0: {
         key: "k"
       }
-    }, opts);
+    }, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let e = stored("Created", [{
         key: "id",
@@ -130,7 +130,7 @@ globalThis.describe("DcbEventLogStorage_Sqlite", () => {
       _0: {
         key: "k"
       }
-    }, opts);
+    }, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let e = stored("Created", [{
         key: "id",
@@ -148,7 +148,7 @@ globalThis.describe("DcbEventLogStorage_Sqlite", () => {
       _0: {
         key: "k"
       }
-    }, opts);
+    }, undefined, opts);
     let ops2 = await TestRunner$ReventlessLocal.resolve(s2.operations);
     let read = await ops2.read([], undefined);
     globalThis.expect(read.events.length).toBe(1);

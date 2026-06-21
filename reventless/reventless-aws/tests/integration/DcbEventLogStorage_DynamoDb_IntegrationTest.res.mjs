@@ -47,7 +47,7 @@ function isConflict(r) {
 }
 
 async function readAfter(table, query) {
-  return (await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(table)(query, undefined)).headPosition;
+  return (await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(table, undefined)(query, undefined)).headPosition;
 }
 
 function seed(table, ev, partitionTag) {
@@ -90,7 +90,7 @@ globalThis.describe("DCB DynamoDb integration — fence-scope = read-scope (Issu
       _0: {
         key: "orderId"
       }
-    });
+    }, undefined);
   };
   globalThis.test("a second order of the same product (different order + customer) succeeds", async () => {
     let table = await DcbIntegrationHarness$ReventlessAws.freshTable();
@@ -159,7 +159,7 @@ globalThis.describe("DCB DynamoDb integration — fence-scope = read-scope (Issu
       _0: {
         key: "orderId"
       }
-    });
+    }, undefined);
     globalThis.expect(isConflict(r)).toBe(true);
   });
   globalThis.test("placing an order does not poison the customer slice (secondary customerId not fenced)", async () => {
@@ -196,7 +196,7 @@ globalThis.describe("DCB DynamoDb integration — fence-scope = read-scope (Issu
       _0: {
         key: "orderId"
       }
-    });
+    }, undefined);
     let customerQuery = [{
         tags: [customerTag]
       }];
@@ -209,7 +209,7 @@ globalThis.describe("DCB DynamoDb integration — fence-scope = read-scope (Issu
       _0: {
         key: "customerId"
       }
-    });
+    }, undefined);
     globalThis.expect(isOk(r)).toBe(true);
   });
 });
@@ -233,7 +233,7 @@ globalThis.describe("DCB DynamoDb integration — optimistic concurrency primiti
       _0: {
         key: "counterId"
       }
-    });
+    }, undefined);
     globalThis.expect(isOk(r)).toBe(true);
     let after = await readAfter(table, query);
     globalThis.expect(Stdlib_Option.isSome(after)).toBe(true);
@@ -262,7 +262,7 @@ globalThis.describe("DCB DynamoDb integration — optimistic concurrency primiti
       _0: {
         key: "counterId"
       }
-    });
+    }, undefined);
     let results = await Promise.all([
       increment(),
       increment()
@@ -290,7 +290,7 @@ globalThis.describe("DCB DynamoDb integration — optimistic concurrency primiti
       _0: {
         key: "orderId"
       }
-    });
+    }, undefined);
     let results = await Promise.all([
       create(),
       create()
@@ -298,7 +298,7 @@ globalThis.describe("DCB DynamoDb integration — optimistic concurrency primiti
     let oks = results.filter(isOk).length;
     globalThis.expect(oks <= 1).toBe(true);
     globalThis.expect(oks + results.filter(isConflict).length | 0).toBe(2);
-    let readResult = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(table)([{
+    let readResult = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(table, undefined)([{
         tags: [{
             key: "orderId",
             value: "O1"
@@ -321,7 +321,7 @@ globalThis.describe("DCB DynamoDb integration — optimistic concurrency primiti
       _0: {
         key: "productId"
       }
-    });
+    }, undefined);
     globalThis.expect(isOk(r1)).toBe(true);
     let r2 = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event("NameChanged", [productTag])], {
       query: [{
@@ -332,7 +332,7 @@ globalThis.describe("DCB DynamoDb integration — optimistic concurrency primiti
       _0: {
         key: "productId"
       }
-    });
+    }, undefined);
     globalThis.expect(isOk(r2)).toBe(true);
   });
   globalThis.test("a chain of compatible commits all succeed", async () => {
@@ -360,7 +360,7 @@ globalThis.describe("DCB DynamoDb integration — optimistic concurrency primiti
         _0: {
           key: "counterId"
         }
-      });
+      }, undefined);
     };
     let r1 = await step();
     let r2 = await step();
@@ -393,7 +393,7 @@ globalThis.describe("DCB DynamoDb integration — optimistic concurrency primiti
       _0: {
         key: "productId"
       }
-    });
+    }, undefined);
     globalThis.expect(isOk(seedRes)).toBe(true);
     let after = Stdlib_Option.getOr(await readAfter(table, query), "");
     globalThis.expect(after === "").toBe(false);
@@ -409,9 +409,9 @@ globalThis.describe("DCB DynamoDb integration — optimistic concurrency primiti
       _0: {
         key: "productId"
       }
-    });
+    }, undefined);
     globalThis.expect(isConflict(r)).toBe(true);
-    let readResult = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(table)(query, undefined);
+    let readResult = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(table, undefined)(query, undefined);
     globalThis.expect(readResult.events.length).toBe(1);
   });
 });

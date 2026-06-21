@@ -59,6 +59,8 @@ let Id;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateChangeSlice/CancelOrder.res.mjs";
 
+let readConsistency = "EscalateOnRetry";
+
 export {
   name,
   Id,
@@ -68,5 +70,6 @@ export {
   commandSchema$2 as commandSchema,
   moduleUrl,
   commandAuthorization,
+  readConsistency,
 }
 /* consumedEventSchema Not a pure module */

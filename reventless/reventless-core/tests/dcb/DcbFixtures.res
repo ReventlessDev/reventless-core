@@ -401,3 +401,22 @@ type singleCompositeEvent =
       env: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0)) string,
       data: string,
     })
+
+// --- Cross-partition (secondary-tag) read fixtures (Issue 13 / Phase 7) ---
+// The textbook M:N shape: StudentSubscribed ties two entities. It is partitioned
+// by courseId; studentId is declared @crossPartition so a single-tag decision
+// read of studentId returns every one of the student's subscriptions across all
+// course partitions. extractCrossPartitionTagKeys ⇒ ["studentId"].
+@schema
+type subscriptionEvent =
+  | StudentSubscribed({
+      courseId: @s.matches(Reventless.DcbTag.partition) string,
+      studentId: @s.matches(Reventless.DcbTag.crossPartition) string,
+    })
+
+@schema
+type subscribeCommand =
+  | SubscribeStudent({
+      courseId: @s.matches(Reventless.DcbTag.partition) string,
+      studentId: @s.matches(Reventless.DcbTag.crossPartition) string,
+    })

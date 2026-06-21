@@ -280,6 +280,29 @@ type command = Record({
 type error = unit
 EOF
 
+# @crossPartition: marks a tag as a cross-partition (secondary-tag) read, in a
+# slice folder (dcbTags auto-enabled). courseId is the partition; studentId is
+# cross-partition.
+cat > "$DCB/src/StateChangeSlice/SubscribeStudent.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = Subscribe({
+  @partitionTag courseId: string,
+  @crossPartition studentId: string,
+})
+
+@schema
+type event =
+  | StudentSubscribed({
+      @partitionTag courseId: string,
+      @crossPartition studentId: string,
+    })
+
+@schema
+type error = unit
+EOF
+
 # Slice file whose name ends in a top-level-only suffix (Plugin)
 # Entity name must retain the suffix
 cat > "$DCB/src/StateChangeSlice/SyncPlugin.res" <<'EOF'
@@ -1173,6 +1196,15 @@ else
 fi
 # Verify DcbTag.string is NOT present (orderId was suppressed, productId uses partition)
 assert_js_not_contains "$JS" 'DcbTag.string' "@noTag: DcbTag.string absent (orderId suppressed)"
+
+echo ""
+echo "=== Test: @crossPartition injects DcbTag.crossPartition ==="
+JS="$DCB/src/StateChangeSlice/SubscribeStudent.res.mjs"
+assert_js_contains     "$JS" 'crossPartition' "@crossPartition: DcbTag.crossPartition injected"
+assert_js_not_contains "$JS" 'partitionTag'   "@crossPartition: @partitionTag field attr stripped (courseId)"
+# studentId ends in Id but is @crossPartition — must use crossPartition, not plain DcbTag.string
+assert_js_contains     "$JS" '.partition'            "@crossPartition: courseId still DcbTag.partition"
+assert_js_not_contains "$JS" 'DcbTag.string'         "@crossPartition: studentId uses crossPartition, not string"
 
 echo ""
 echo "=== Test: @noDcbTag suppresses auto-tagging on *Id field ==="

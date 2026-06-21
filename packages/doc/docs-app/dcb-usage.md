@@ -795,6 +795,52 @@ Each `@compositePartitionTag` field is still a regular DCB tag — individually 
 - Annotations must be on `string` fields; non-string fields are silently ignored.
 - Placement is **before the field name** (field-level attribute), not after the colon.
 
+### Cross-partition secondary-tag reads (`@crossPartition`)
+
+Because each event lives in exactly one partition (its partition tag), a
+single-tag read of any *other* tag is **partition-scoped** — it returns only
+events partitioned by that tag, so a tag that is *secondary* on the event is not
+seen. That is the right default (it keeps each tag's consistency fence narrow),
+but it blocks the canonical **M:N invariant**: an event ties two entities and can
+be partitioned by only one, so the decision must read by *both* — and one of
+those reads is inherently a secondary-tag read across partitions.
+
+Mark such a tag `@crossPartition` (on the command **and** the produced event,
+like `@partitionTag` — never on `consumedEvent`):
+
+```rescript
+// Course-subscription capacity: partition by courseId, read studentId across
+// every course partition the student appears in.
+@schema
+type command =
+  | SubscribeStudent({
+      @partitionTag courseId: string,      // partition read — "all of the course"
+      @crossPartition studentId: string,   // cross-partition read — "all of the student"
+    })
+
+@schema
+type event =
+  | StudentSubscribed({
+      @partitionTag courseId: string,
+      @crossPartition studentId: string,
+    })
+```
+
+`SubscribeStudent` now builds **two single-tag reads** (one per entity) instead
+of one composite read of the exact `{course, student}` pair. Under the hood the
+`studentId` read routes to the per-tag `tag_studentId` GSI (eventually
+consistent — the append fence catches staleness), and `studentId`'s fence is
+bumped by **every** `StudentSubscribed`, so a concurrent subscribe for the same
+student conflicts at append. See the [PPX `@crossPartition` reference](reventless-ppx.md#crosspartition--cross-partition-secondary-tag-reads)
+for the full read/fence semantics.
+
+**Use it deliberately.** It is opt-in because a cross-partition tag's fence is
+hotter (every writer of that tag contends on one fence) and the read scales with
+the entity's degree. For threshold rules ("≤ N …") prefer a bounded count read
+over folding the whole set. The scope is a property of the tag *key* and must
+agree across every event type that carries it — `Dcb_Builder` reports a mismatch
+at build time.
+
 ## Open Issues
 
 ### No Explicit Lambda Serialization Ordering

@@ -304,6 +304,48 @@ function validateProducedAndConsumed(produced, consumed) {
   }
 }
 
+function validateCrossPartitionScope(producers) {
+  let perProducer = producers.map(param => {
+    let schema = param[1];
+    let cpSet = new Set();
+    DcbTag$Reventless.extractCrossPartitionTagKeys(schema).forEach(k => {
+      cpSet.add(k);
+    });
+    let carried = new Set();
+    Object.values(DcbTag$Reventless.extractTagKeysByEventType(schema)).forEach(ks => {
+      ks.forEach(k => {
+        carried.add(k);
+      });
+    });
+    return [
+      param[0],
+      cpSet,
+      carried
+    ];
+  });
+  let globalCp = new Set();
+  perProducer.forEach(param => {
+    Array.from(param[1].values()).forEach(k => {
+      globalCp.add(k);
+    });
+  });
+  let warnings = [];
+  perProducer.forEach(param => {
+    let cpSet = param[1];
+    let name = param[0];
+    Array.from(param[2].values()).toSorted(Primitive_string.compare).forEach(k => {
+      if (globalCp.has(k) && !cpSet.has(k)) {
+        warnings.push({
+          sliceName: name,
+          message: `tag '` + k + `' is declared @crossPartition by another producer but is partition-scoped here — DCB tag scope must agree across every event type that carries the tag (read-scope and fence-scope follow one global per-key flag). Add @crossPartition to '` + k + `' here, or remove it from the other producer.`
+        });
+        return;
+      }
+    });
+  });
+  return warnings;
+}
+
 export {
   extractVariantInfo,
   extractAllVariants,
@@ -313,5 +355,6 @@ export {
   dedupeKeys,
   validateCompositeReads,
   validateProducedAndConsumed,
+  validateCrossPartitionScope,
 }
 /* DcbTag-Reventless Not a pure module */

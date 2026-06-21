@@ -151,7 +151,7 @@ function CommandStep(Spec) {
     };
     let whenCommand = async (flowP, command) => {
       let s = await flowP;
-      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, undefined);
+      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, undefined, undefined);
       let history = decodeMatching(s.log, consumedDecoder, query);
       let state = Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve);
       let events = Behavior.decide(state, command);

@@ -3,6 +3,7 @@ module type T = {
   module Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec
   let handleCommands: (
     ~tagKeysByEventType: Dict.t<array<string>>=?,
+    ~crossPartitionTagKeys: array<string>=?,
     DcbEventLog.operations,
     Stream.t<
       CommandTopic.topicItem<Message.command'<Reventless.Id.String.t, Spec.command>>,
@@ -134,6 +135,7 @@ module Make = (
   //   5. On conflict, retries from step 1 (up to maxRetries)
   let handleSingleCommand = (
     ~tagKeysByEventType,
+    ~crossPartitionTagKeys,
     dcbEventLog: DcbEventLog.operations,
     command': Message.command'<Reventless.Id.String.t, Spec.command>,
   ) => {
@@ -156,6 +158,7 @@ module Make = (
       ~schema=Spec.commandSchema,
       ~value=command'.command,
       ~tagKeysByEventType,
+      ~crossPartitionTagKeys,
     )
 
     // Log the DCB query parameters — the OR clauses (event types + tags) the
@@ -381,10 +384,10 @@ module Make = (
 
   // CommandTopic handler — processes each command sequentially through handleSingleCommand,
   // returning Ok(reference) or Error(reference) per command.
-  let handleCommands = (~tagKeysByEventType=Dict.make(), dcbEventLog, stream) =>
+  let handleCommands = (~tagKeysByEventType=Dict.make(), ~crossPartitionTagKeys=[], dcbEventLog, stream) =>
     stream
     ->Stream.mapEffect(({ReventlessInfra.CommandTopic.reference: reference, command}) =>
-      handleSingleCommand(~tagKeysByEventType, dcbEventLog, command)->Effect.map(result =>
+      handleSingleCommand(~tagKeysByEventType, ~crossPartitionTagKeys, dcbEventLog, command)->Effect.map(result =>
         switch result {
         | Ok(_) => Ok(reference)
         | Error(_) => Error(reference)

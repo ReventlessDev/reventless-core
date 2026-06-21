@@ -198,7 +198,8 @@ let NotificationSlice = {
   errorSchema: errorSchema$2,
   eventSchema: eventSchema$2,
   decide: decide$2,
-  commandAuthorization: commandAuthorization$2
+  commandAuthorization: commandAuthorization$2,
+  readConsistency: "EscalateOnRetry"
 };
 
 let consumedEventSchema$1 = S.schema(s => ({
@@ -261,7 +262,8 @@ let InventorySlice = {
   errorSchema: errorSchema$3,
   eventSchema: eventSchema$3,
   decide: decide$3,
-  commandAuthorization: commandAuthorization$3
+  commandAuthorization: commandAuthorization$3,
+  readConsistency: "EscalateOnRetry"
 };
 
 let CategorySource = Mapping_GWT$ReventlessGwt.FromBehavior({

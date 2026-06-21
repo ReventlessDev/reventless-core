@@ -36,6 +36,10 @@ module type T = {
     /** Produced event-log type→tag-key map, used to drop vacuous (type, tag)
         clause combinations when building the decision-model query. */
     ~tagKeysByEventType: Dict.t<array<string>>=?,
+    /** Tag keys declared `@crossPartition` across the produced event schemas —
+        a cross-partition scalar command tag fans out into its own single-tag
+        decision-read clause. */
+    ~crossPartitionTagKeys: array<string>=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

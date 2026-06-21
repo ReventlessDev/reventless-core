@@ -174,7 +174,8 @@ let TestCommandSpec = {
   initialState: TestCommandSpec_initialState,
   evolve: evolve,
   decide: decide,
-  commandAuthorization: commandAuthorization
+  commandAuthorization: commandAuthorization,
+  readConsistency: "EscalateOnRetry"
 };
 
 function posToInt(pos) {
@@ -479,6 +480,18 @@ let singleCompositeEventSchema = S.schema(s => ({
   data: s.m(S.string)
 }));
 
+let subscriptionEventSchema = S.schema(s => ({
+  TAG: "StudentSubscribed",
+  courseId: s.m(DcbTag$Reventless.partition),
+  studentId: s.m(DcbTag$Reventless.crossPartition)
+}));
+
+let subscribeCommandSchema = S.schema(s => ({
+  TAG: "SubscribeStudent",
+  courseId: s.m(DcbTag$Reventless.partition),
+  studentId: s.m(DcbTag$Reventless.crossPartition)
+}));
+
 let testMeta = {
   service: "test",
   time: "2024-01-01T00:00:00Z",
@@ -515,5 +528,7 @@ export {
   simplePartitionEventSchema,
   mixedStrategyEventSchema,
   singleCompositeEventSchema,
+  subscriptionEventSchema,
+  subscribeCommandSchema,
 }
 /*  Not a pure module */

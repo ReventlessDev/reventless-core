@@ -38,7 +38,8 @@ let AddProductSlice = {
   commandSchema: commandSchema,
   errorSchema: errorSchema,
   eventSchema: eventSchema,
-  commandAuthorization: commandAuthorization
+  commandAuthorization: commandAuthorization,
+  readConsistency: "EscalateOnRetry"
 };
 
 let initialState = {
@@ -272,7 +273,8 @@ let RecordDemandSlice = {
   errorSchema: errorSchema$3,
   eventSchema: eventSchema$5,
   moduleUrl: moduleUrl$4,
-  commandAuthorization: commandAuthorization$5
+  commandAuthorization: commandAuthorization$5,
+  readConsistency: "EscalateOnRetry"
 };
 
 let initialState$1 = {
@@ -364,7 +366,8 @@ let SyncProductSlice = {
   errorSchema: errorSchema$4,
   eventSchema: eventSchema$6,
   moduleUrl: moduleUrl$6,
-  commandAuthorization: commandAuthorization$6
+  commandAuthorization: commandAuthorization$6,
+  readConsistency: "EscalateOnRetry"
 };
 
 let initialState$2 = {
@@ -462,7 +465,8 @@ let PlaceOrderSlice = {
   commandSchema: commandSchema$7,
   errorSchema: errorSchema$5,
   eventSchema: eventSchema$7,
-  commandAuthorization: commandAuthorization$7
+  commandAuthorization: commandAuthorization$7,
+  readConsistency: "EscalateOnRetry"
 };
 
 let initialState_placed = [];

@@ -35,7 +35,8 @@ let PlaceOrderSlice = {
   commandSchema: commandSchema,
   errorSchema: errorSchema,
   eventSchema: eventSchema,
-  commandAuthorization: commandAuthorization
+  commandAuthorization: commandAuthorization,
+  readConsistency: "EscalateOnRetry"
 };
 
 let initialState = {
@@ -172,7 +173,8 @@ let ShipOrderSlice = {
   commandSchema: commandSchema$2,
   errorSchema: errorSchema$1,
   eventSchema: eventSchema$1,
-  commandAuthorization: commandAuthorization$2
+  commandAuthorization: commandAuthorization$2,
+  readConsistency: "EscalateOnRetry"
 };
 
 let initialState$1 = {

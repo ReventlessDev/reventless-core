@@ -38,6 +38,8 @@ let Id;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateChangeSlice/ChangeProductName.res.mjs";
 
+let readConsistency = "EscalateOnRetry";
+
 export {
   name,
   Id,
@@ -47,5 +49,6 @@ export {
   eventSchema,
   moduleUrl,
   commandAuthorization,
+  readConsistency,
 }
 /* consumedEventSchema Not a pure module */

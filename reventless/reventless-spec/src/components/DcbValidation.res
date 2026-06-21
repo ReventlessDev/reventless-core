@@ -311,3 +311,52 @@ let validateProducedAndConsumed = (
     Ok()
   }
 }
+
+/**
+Validates that DCB tag *scope* (`PartitionScoped` default vs `@crossPartition`)
+agrees across every produced event type that carries a given tag key.
+
+The scope is a property of the tag *key*: read routing and — decisively — the
+consistency fence are driven by one global per-key flag (the fence is bumped by
+*writers*, so a key cannot be cross-partition for one producer and
+partition-scoped for another without making the fence ambiguous). This returns
+one warning per producer that carries a key some *other* producer declared
+`@crossPartition` but this one left partition-scoped.
+
+@param producers `(sliceName, producedEventSchema)` per producing slice.
+*/
+let validateCrossPartitionScope = (
+  ~producers: array<(string, S.t<unknown>)>,
+): array<validationError> => {
+  let perProducer = producers->Array.map(((name, schema)) => {
+    let cpSet = Set.make()
+    DcbTag.extractCrossPartitionTagKeys(schema)->Array.forEach(k => cpSet->Set.add(k))
+    let carried = Set.make()
+    DcbTag.extractTagKeysByEventType(schema)
+    ->Dict.valuesToArray
+    ->Array.forEach(ks => ks->Array.forEach(k => carried->Set.add(k)))
+    (name, cpSet, carried)
+  })
+
+  let globalCp = Set.make()
+  perProducer->Array.forEach(((_, cpSet, _)) =>
+    cpSet->Set.values->Array.fromIterator->Array.forEach(k => globalCp->Set.add(k))
+  )
+
+  let warnings: array<validationError> = []
+  perProducer->Array.forEach(((name, cpSet, carried)) =>
+    carried
+    ->Set.values
+    ->Array.fromIterator
+    ->Array.toSorted((a, b) => String.compare(a, b))
+    ->Array.forEach(k =>
+      if globalCp->Set.has(k) && !(cpSet->Set.has(k)) {
+        let _ = warnings->Array.push({
+          sliceName: name,
+          message: `tag '${k}' is declared @crossPartition by another producer but is partition-scoped here — DCB tag scope must agree across every event type that carries the tag (read-scope and fence-scope follow one global per-key flag). Add @crossPartition to '${k}' here, or remove it from the other producer.`,
+        })
+      }
+    )
+  )
+  warnings
+}

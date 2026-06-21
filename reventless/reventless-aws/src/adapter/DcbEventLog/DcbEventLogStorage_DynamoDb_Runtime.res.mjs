@@ -236,7 +236,82 @@ async function queryByPartitionKey(table, partitionKey, after) {
   return await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
 }
 
-async function executeQueryItem(table, queryItem, after) {
+function resolveBaseItem(table, keyItem) {
+  let obj = Stdlib_JSON.Decode.object(keyItem);
+  if (obj === undefined) {
+    return Effect$1.succeed(undefined);
+  }
+  let match = obj["id"];
+  let match$1 = obj["position"];
+  if (match === undefined) {
+    return Effect$1.succeed(undefined);
+  }
+  if (match$1 === undefined) {
+    return Effect$1.succeed(undefined);
+  }
+  let key = Object.fromEntries([
+    [
+      "id",
+      match
+    ],
+    [
+      "position",
+      match$1
+    ]
+  ]);
+  return Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.GetCommand.send(new LibDynamodb.GetCommand({
+    TableName: table.name,
+    Key: key
+  }))), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), result => result.Item);
+}
+
+function queryBySingleTagCrossPartitionStream(table, tag, after) {
+  let indexName = tagToAttributeName(tag.key);
+  let expressionAttributeValues = Object.fromEntries([[
+      ":val",
+      tag.value
+    ]]);
+  let expressionAttributeNames = Object.fromEntries([[
+      "#tag",
+      indexName
+    ]]);
+  let keyConditionExpression = after !== undefined ? (expressionAttributeValues[":after"] = after, expressionAttributeNames["#pos"] = "position", "#tag = :val AND #pos > :after") : "#tag = :val";
+  let baseParams_TableName = table.name;
+  let baseParams_ExpressionAttributeNames = expressionAttributeNames;
+  let baseParams_ExpressionAttributeValues = expressionAttributeValues;
+  let baseParams_IndexName = indexName;
+  let baseParams_KeyConditionExpression = keyConditionExpression;
+  let baseParams = {
+    TableName: baseParams_TableName,
+    ExpressionAttributeNames: baseParams_ExpressionAttributeNames,
+    ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
+    IndexName: baseParams_IndexName,
+    KeyConditionExpression: baseParams_KeyConditionExpression
+  };
+  return Stream$1.flatMap(Stream$1.mapEffect(Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
+    let params;
+    if (cursor !== undefined) {
+      let newrecord = {...baseParams};
+      newrecord.ExclusiveStartKey = cursor;
+      params = newrecord;
+    } else {
+      params = baseParams;
+    }
+    return DynamoDb_DocumentClient$AwsSdk.QueryCommand.send(new LibDynamodb.QueryCommand(params));
+  }), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), result => [
+    Stdlib_Option.getOr(result.Items, []),
+    Stdlib_Option.map(result.LastEvaluatedKey, key => key)
+  ])), keyItem => resolveBaseItem(table, keyItem)), opt => {
+    if (opt !== undefined) {
+      return Stream$1.fromIterable([opt]);
+    } else {
+      return Stream$1.empty;
+    }
+  });
+}
+
+async function executeQueryItem(table, queryItem, after, crossPartitionTagKeysOpt) {
+  let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
   let tags = queryItem.tags;
   if (tags !== undefined) {
     if (tags.length !== 1) {
@@ -246,7 +321,11 @@ async function executeQueryItem(table, queryItem, after) {
       tags.length !== 0;
     } else {
       let tag = tags[0];
-      return await queryByPartitionKey(table, tag.key + `:` + tag.value, after);
+      if (crossPartitionTagKeys.includes(tag.key)) {
+        return await Effect$1.runPromise(Stream.runCollect(queryBySingleTagCrossPartitionStream(table, tag, after)));
+      } else {
+        return await queryByPartitionKey(table, tag.key + `:` + tag.value, after);
+      }
     }
   }
   let eventTypes = queryItem.eventTypes;
@@ -346,9 +425,10 @@ function mergeSortedEvents(streams) {
   }));
 }
 
-function read(table) {
+function read(table, $staropt$star) {
   return async (query, after) => {
-    let queryResults = await Promise.all(query.map(queryItem => executeQueryItem(table, queryItem, after)));
+    let crossPartitionTagKeys = $staropt$star !== undefined ? $staropt$star : [];
+    let queryResults = await Promise.all(query.map(queryItem => executeQueryItem(table, queryItem, after, crossPartitionTagKeys)));
     let allItems = queryResults.flat();
     let allEvents = allItems.map(fromItem);
     let deduplicatedEvents = deduplicateByPosition(allEvents);
@@ -598,13 +678,16 @@ function collectEventPartitionTags(events, partitionTag) {
   return acc;
 }
 
-function buildConditionalTransactItems(table, events, cond, basePosition, partitionTag) {
+function buildConditionalTransactItems(table, events, cond, basePosition, partitionTag, crossPartitionTagKeysOpt) {
+  let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
   let partitionTags = collectEventPartitionTags(events, partitionTag);
   let partitionKeySet = new Set();
   partitionTags.forEach(t => {
     partitionKeySet.add(t.key + `:` + t.value);
   });
   let isPartition = t => partitionKeySet.has(t.key + `:` + t.value);
+  let isCrossPartition = t => crossPartitionTagKeys.includes(t.key);
+  let crossPartitionEventTags = collectEventTags(events).filter(isCrossPartition);
   let compositeKeySet = new Set();
   let compositeQueryTags = [];
   cond.query.forEach(qi => {
@@ -634,22 +717,29 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
       return;
     }
   };
-  let match = cond.after;
-  if (match !== undefined) {
-    cond.query.forEach(qi => {
-      let tags = qi.tags;
-      if (tags === undefined) {
+  cond.query.forEach(qi => {
+    let tags = qi.tags;
+    if (tags === undefined) {
+      return;
+    }
+    if (tags.length !== 1) {
+      if (tags.length <= 1) {
         return;
       }
-      if (tags.length !== 1) {
-        if (tags.length > 1) {
-          tags.forEach(pushUpdate);
-          return;
-        } else {
-          return;
-        }
+      let match = cond.after;
+      if (match !== undefined) {
+        tags.forEach(pushUpdate);
+        return;
+      } else {
+        return;
       }
-      let tag = tags[0];
+    }
+    let tag = tags[0];
+    if (crossPartitionTagKeys.includes(tag.key)) {
+      return pushUpdate(tag);
+    }
+    let match$1 = cond.after;
+    if (match$1 !== undefined) {
       if (isPartition(tag) || isCompositeQueryTag(tag)) {
         return pushUpdate(tag);
       } else {
@@ -662,15 +752,15 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
           return;
         }
       }
-    });
-  }
+    }
+  });
   let bumpSeen = new Set();
   conditionalUpdateTags.forEach(t => {
     bumpSeen.add(t.key + `:` + t.value);
   });
   let bumpTags = [];
-  let match$1 = cond.after;
-  let candidateBumps = match$1 !== undefined ? partitionTags : partitionTags.concat(compositeQueryTags);
+  let match = cond.after;
+  let candidateBumps = match !== undefined ? partitionTags.concat(crossPartitionEventTags) : partitionTags.concat(compositeQueryTags.concat(crossPartitionEventTags));
   candidateBumps.forEach(tag => {
     let k = tag.key + `:` + tag.value;
     if (!bumpSeen.has(k)) {
@@ -679,9 +769,9 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
       return;
     }
   });
-  let match$2 = cond.after;
+  let match$1 = cond.after;
   let guardTags;
-  if (match$2 !== undefined) {
+  if (match$1 !== undefined) {
     guardTags = [];
   } else {
     let seen = new Set();
@@ -714,7 +804,8 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
   return putItems.concat(updateItems.concat(checkItems.concat(bumpItems.concat(guardItems))));
 }
 
-async function appendConditional(table, events, cond, partitionTag) {
+async function appendConditional(table, events, cond, partitionTag, crossPartitionTagKeysOpt) {
+  let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
   let queryTags = collectQueryTags(cond.query);
   if (queryTags.length === 0) {
     return {
@@ -723,7 +814,7 @@ async function appendConditional(table, events, cond, partitionTag) {
     };
   }
   let basePosition = generatePosition();
-  let transactItems = buildConditionalTransactItems(table, events, cond, basePosition, partitionTag);
+  let transactItems = buildConditionalTransactItems(table, events, cond, basePosition, partitionTag, crossPartitionTagKeys);
   let totalItems = transactItems.length;
   if (totalItems > 100) {
     return {
@@ -737,10 +828,11 @@ async function appendConditional(table, events, cond, partitionTag) {
   return await runTransactWrite(input, basePosition, "DCB append failed");
 }
 
-function append(table, partitionTag) {
+function append(table, partitionTag, $staropt$star) {
   return async (events, condition) => {
+    let crossPartitionTagKeys = $staropt$star !== undefined ? $staropt$star : [];
     if (condition !== undefined) {
-      return await appendConditional(table, events, condition, partitionTag);
+      return await appendConditional(table, events, condition, partitionTag, crossPartitionTagKeys);
     } else {
       return await appendUnconditional(table, events, partitionTag);
     }
@@ -843,8 +935,9 @@ function scanWithFilterStream(table, eventTypes, after) {
   }
 }
 
-function executeQueryItemStream(table, queryItem, after, strongConsistencyOpt) {
+function executeQueryItemStream(table, queryItem, after, strongConsistencyOpt, crossPartitionTagKeysOpt) {
   let strongConsistency = strongConsistencyOpt !== undefined ? strongConsistencyOpt : false;
+  let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
   let tags = queryItem.tags;
   if (tags !== undefined) {
     if (tags.length !== 1) {
@@ -854,7 +947,11 @@ function executeQueryItemStream(table, queryItem, after, strongConsistencyOpt) {
       tags.length !== 0;
     } else {
       let tag = tags[0];
-      return queryByPartitionKeyStream(table, tag.key + `:` + tag.value, after, strongConsistency);
+      if (crossPartitionTagKeys.includes(tag.key)) {
+        return queryBySingleTagCrossPartitionStream(table, tag, after);
+      } else {
+        return queryByPartitionKeyStream(table, tag.key + `:` + tag.value, after, strongConsistency);
+      }
     }
   }
   let eventTypes = queryItem.eventTypes;
@@ -865,10 +962,11 @@ function executeQueryItemStream(table, queryItem, after, strongConsistencyOpt) {
   }
 }
 
-function readStream(table) {
-  return (query, after, strongConsistencyOpt) => {
-    let strongConsistency = strongConsistencyOpt !== undefined ? strongConsistencyOpt : false;
-    let streams = query.map(qi => executeQueryItemStream(table, qi, after, strongConsistency));
+function readStream(table, $staropt$star) {
+  return (query, after, $staropt$star$1) => {
+    let crossPartitionTagKeys = $staropt$star !== undefined ? $staropt$star : [];
+    let strongConsistency = $staropt$star$1 !== undefined ? $staropt$star$1 : false;
+    let streams = query.map(qi => executeQueryItemStream(table, qi, after, strongConsistency, crossPartitionTagKeys));
     let match = streams.length;
     if (match === 0) {
       return Stream$1.empty;
@@ -908,6 +1006,8 @@ export {
   scanWithFilter,
   buildQueryByPartitionKeyInput,
   queryByPartitionKey,
+  resolveBaseItem,
+  queryBySingleTagCrossPartitionStream,
   executeQueryItem,
   deduplicateByPosition,
   initSlot,

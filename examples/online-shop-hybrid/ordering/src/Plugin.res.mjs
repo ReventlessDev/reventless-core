@@ -39,7 +39,8 @@ function Make(Platform) {
     errorSchema: CancelOrder$OrderingPlugin.errorSchema,
     eventSchema: CancelOrder$OrderingPlugin.eventSchema,
     commandSchema: CancelOrder$OrderingPlugin.commandSchema,
-    commandAuthorization: CancelOrder$OrderingPlugin.commandAuthorization
+    commandAuthorization: CancelOrder$OrderingPlugin.commandAuthorization,
+    readConsistency: CancelOrder$OrderingPlugin.readConsistency
   })({
     initialState: CancelOrder_Behavior$OrderingPlugin.initialState,
     evolve: CancelOrder_Behavior$OrderingPlugin.evolve,
@@ -54,7 +55,8 @@ function Make(Platform) {
     errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
     eventSchema: PlaceOrder$OrderingPlugin.eventSchema,
     commandSchema: PlaceOrder$OrderingPlugin.commandSchema,
-    commandAuthorization: PlaceOrder$OrderingPlugin.commandAuthorization
+    commandAuthorization: PlaceOrder$OrderingPlugin.commandAuthorization,
+    readConsistency: PlaceOrder$OrderingPlugin.readConsistency
   })({
     initialState: PlaceOrder_Behavior$OrderingPlugin.initialState,
     evolve: PlaceOrder_Behavior$OrderingPlugin.evolve,
@@ -69,7 +71,8 @@ function Make(Platform) {
     errorSchema: RefundOrder$OrderingPlugin.errorSchema,
     eventSchema: RefundOrder$OrderingPlugin.eventSchema,
     commandSchema: RefundOrder$OrderingPlugin.commandSchema,
-    commandAuthorization: RefundOrder$OrderingPlugin.commandAuthorization
+    commandAuthorization: RefundOrder$OrderingPlugin.commandAuthorization,
+    readConsistency: RefundOrder$OrderingPlugin.readConsistency
   })({
     initialState: RefundOrder_Behavior$OrderingPlugin.initialState,
     evolve: RefundOrder_Behavior$OrderingPlugin.evolve,
@@ -84,7 +87,8 @@ function Make(Platform) {
     errorSchema: ShipOrder$OrderingPlugin.errorSchema,
     eventSchema: ShipOrder$OrderingPlugin.eventSchema,
     commandSchema: ShipOrder$OrderingPlugin.commandSchema,
-    commandAuthorization: ShipOrder$OrderingPlugin.commandAuthorization
+    commandAuthorization: ShipOrder$OrderingPlugin.commandAuthorization,
+    readConsistency: ShipOrder$OrderingPlugin.readConsistency
   })({
     initialState: ShipOrder_Behavior$OrderingPlugin.initialState,
     evolve: ShipOrder_Behavior$OrderingPlugin.evolve,
@@ -99,7 +103,8 @@ function Make(Platform) {
     errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
     eventSchema: SyncCatalogProduct$OrderingPlugin.eventSchema,
     commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema,
-    commandAuthorization: SyncCatalogProduct$OrderingPlugin.commandAuthorization
+    commandAuthorization: SyncCatalogProduct$OrderingPlugin.commandAuthorization,
+    readConsistency: SyncCatalogProduct$OrderingPlugin.readConsistency
   })({
     initialState: SyncCatalogProduct_Behavior$OrderingPlugin.initialState,
     evolve: SyncCatalogProduct_Behavior$OrderingPlugin.evolve,

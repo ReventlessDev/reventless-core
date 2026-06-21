@@ -19,7 +19,7 @@ Order = correctness → verification harness → durable cost wins → robustnes
 | 5 | Opt-in strong reads | Perf/cost lever #3 | Cost | **yes** | — (detailed below) |
 | 6 | Hot-tag sharding / selective bump | Issue 10 | Throughput | no | [dcb-hot-tag-fence-contention](Backlog/dcb-hot-tag-fence-contention.md) |
 | 6 | Monotonic positions | Issue 7 | Cleanup | no | [dcb-monotonic-position-generation](Backlog/dcb-monotonic-position-generation.md) |
-| 7 | Cross-partition secondary-tag reads | Issue 13 | Capability (future) | **yes** | — (detailed below) |
+| 7 | Cross-partition secondary-tag reads | Issue 13 | Capability | **done (source; mjs/CI pending ppx republish)** | [dcb-phase7-cross-partition-reads](done/dcb-phase7-cross-partition-reads.md) |
 
 ---
 
@@ -164,7 +164,9 @@ Already planned, run on evidence:
 - [dcb-hot-tag-fence-contention](Backlog/dcb-hot-tag-fence-contention.md) — selective bumping (§2, cost-saver, can ship early) then sharding (§1, profile-gated).
 - [dcb-monotonic-position-generation](Backlog/dcb-monotonic-position-generation.md) — half-day cleanup, land any time someone is in `Runtime.res`.
 
-## Phase 7 — Cross-partition secondary-tag reads (capability, future) — **net new**
+## Phase 7 — Cross-partition secondary-tag reads (capability) — **IMPLEMENTED (2026-06-21, source; mjs/CI pending ppx republish)**
+
+Shipped per [dcb-phase7-cross-partition-reads](done/dcb-phase7-cross-partition-reads.md) § "What shipped": the `@crossPartition` schema annotation + PPX pass (Part 1), query fan-out + `tag_<key>` GSI read routing (`Query` keys → `GetItem` payloads, Part 2), and cross-partition fence scope (check+bump by every carrier, Part 3), threaded from `Dcb_Builder` (`extractCrossPartitionTagKeys` + `validateCrossPartitionScope`) through the storage maker and the slice callback. Validated via a synthetic course-subscription fixture across `DcbTagTest` / `DcbValidationTest` / the AWS runtime fence test / the PPX harness (all green); no table change (reuses the Phase 3 `KEYS_ONLY` GSIs). Like `readConsistency`, the `.res.mjs` regenerate at the shared reventless-ppx republish. The reference material below is retained for context.
 
 **Goal**: support reading a single tag *across* partitions — i.e. reading an event type by a tag it carries as a *secondary* (non-partition) tag. Today a single-tag read is partition-scoped, so this is impossible; it's the canonical DCB shape for any M:N decision (course-subscription capacity, "≤ N orders per product", reservations). Full motivation, worked example, solution sketch, and cost analysis: [analysis Issue 13](../analysis/dcb-consistency-check-issues.md#issue-13--no-single-tag-cross-partition-secondary-tag-read-capability-gap).
 

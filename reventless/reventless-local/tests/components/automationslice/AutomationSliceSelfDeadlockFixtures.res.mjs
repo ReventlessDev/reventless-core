@@ -48,7 +48,8 @@ let PlaceSpec = {
   consumedEventSchema: consumedEventSchema,
   errorSchema: errorSchema,
   commandSchema: commandSchema,
-  commandAuthorization: commandAuthorization
+  commandAuthorization: commandAuthorization,
+  readConsistency: "EscalateOnRetry"
 };
 
 let moduleUrl$1 = import.meta.url;
@@ -118,7 +119,8 @@ let ShipSpec = {
   consumedEventSchema: consumedEventSchema$1,
   errorSchema: errorSchema$1,
   commandSchema: commandSchema$1,
-  commandAuthorization: commandAuthorization$1
+  commandAuthorization: commandAuthorization$1,
+  readConsistency: "EscalateOnRetry"
 };
 
 let moduleUrl$3 = import.meta.url;
@@ -331,7 +333,8 @@ let PlaceMaker = StateChangeSlice_Builder$ReventlessLocal.Make({
   errorSchema: errorSchema,
   eventSchema: eventSchema,
   commandSchema: commandSchema,
-  commandAuthorization: commandAuthorization
+  commandAuthorization: commandAuthorization,
+  readConsistency: "EscalateOnRetry"
 })({
   initialState: false,
   evolve: evolve,
@@ -339,7 +342,7 @@ let PlaceMaker = StateChangeSlice_Builder$ReventlessLocal.Make({
   moduleUrl: moduleUrl$1
 });
 
-let _placeSlice = PlaceMaker.make(dcbEventLog, publishJsonsOutput, undefined, undefined);
+let _placeSlice = PlaceMaker.make(dcbEventLog, publishJsonsOutput, undefined, undefined, undefined);
 
 let ShipMaker = StateChangeSlice_Builder$ReventlessLocal.Make({
   name: name$1,
@@ -349,7 +352,8 @@ let ShipMaker = StateChangeSlice_Builder$ReventlessLocal.Make({
   errorSchema: errorSchema$1,
   eventSchema: eventSchema$1,
   commandSchema: commandSchema$1,
-  commandAuthorization: commandAuthorization$1
+  commandAuthorization: commandAuthorization$1,
+  readConsistency: "EscalateOnRetry"
 })({
   initialState: initialState,
   evolve: evolve$1,
@@ -357,7 +361,7 @@ let ShipMaker = StateChangeSlice_Builder$ReventlessLocal.Make({
   moduleUrl: moduleUrl$3
 });
 
-let _shipSlice = ShipMaker.make(dcbEventLog, publishJsonsOutput, undefined, undefined);
+let _shipSlice = ShipMaker.make(dcbEventLog, publishJsonsOutput, undefined, undefined, undefined);
 
 let dcbTopicOutputs = Component$ReventlessInfra.outputs(dcbEventLog).eventTopic;
 

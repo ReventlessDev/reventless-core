@@ -42,7 +42,8 @@ function Make(Platform) {
     errorSchema: CancelOrder$OrderingPlugin.errorSchema,
     eventSchema: CancelOrder$OrderingPlugin.eventSchema,
     commandSchema: CancelOrder$OrderingPlugin.commandSchema,
-    commandAuthorization: CancelOrder$OrderingPlugin.commandAuthorization
+    commandAuthorization: CancelOrder$OrderingPlugin.commandAuthorization,
+    readConsistency: CancelOrder$OrderingPlugin.readConsistency
   })({
     initialState: CancelOrder_Behavior$OrderingPlugin.initialState,
     evolve: CancelOrder_Behavior$OrderingPlugin.evolve,
@@ -57,7 +58,8 @@ function Make(Platform) {
     errorSchema: ChangeAddress$OrderingPlugin.errorSchema,
     eventSchema: ChangeAddress$OrderingPlugin.eventSchema,
     commandSchema: ChangeAddress$OrderingPlugin.commandSchema,
-    commandAuthorization: ChangeAddress$OrderingPlugin.commandAuthorization
+    commandAuthorization: ChangeAddress$OrderingPlugin.commandAuthorization,
+    readConsistency: ChangeAddress$OrderingPlugin.readConsistency
   })({
     initialState: ChangeAddress_Behavior$OrderingPlugin.initialState,
     evolve: ChangeAddress_Behavior$OrderingPlugin.evolve,
@@ -72,7 +74,8 @@ function Make(Platform) {
     errorSchema: ChangeEmail$OrderingPlugin.errorSchema,
     eventSchema: ChangeEmail$OrderingPlugin.eventSchema,
     commandSchema: ChangeEmail$OrderingPlugin.commandSchema,
-    commandAuthorization: ChangeEmail$OrderingPlugin.commandAuthorization
+    commandAuthorization: ChangeEmail$OrderingPlugin.commandAuthorization,
+    readConsistency: ChangeEmail$OrderingPlugin.readConsistency
   })({
     initialState: ChangeEmail_Behavior$OrderingPlugin.initialState,
     evolve: ChangeEmail_Behavior$OrderingPlugin.evolve,
@@ -87,7 +90,8 @@ function Make(Platform) {
     errorSchema: DeactivateCustomer$OrderingPlugin.errorSchema,
     eventSchema: DeactivateCustomer$OrderingPlugin.eventSchema,
     commandSchema: DeactivateCustomer$OrderingPlugin.commandSchema,
-    commandAuthorization: DeactivateCustomer$OrderingPlugin.commandAuthorization
+    commandAuthorization: DeactivateCustomer$OrderingPlugin.commandAuthorization,
+    readConsistency: DeactivateCustomer$OrderingPlugin.readConsistency
   })({
     initialState: DeactivateCustomer_Behavior$OrderingPlugin.initialState,
     evolve: DeactivateCustomer_Behavior$OrderingPlugin.evolve,
@@ -102,7 +106,8 @@ function Make(Platform) {
     errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
     eventSchema: PlaceOrder$OrderingPlugin.eventSchema,
     commandSchema: PlaceOrder$OrderingPlugin.commandSchema,
-    commandAuthorization: PlaceOrder$OrderingPlugin.commandAuthorization
+    commandAuthorization: PlaceOrder$OrderingPlugin.commandAuthorization,
+    readConsistency: PlaceOrder$OrderingPlugin.readConsistency
   })({
     initialState: PlaceOrder_Behavior$OrderingPlugin.initialState,
     evolve: PlaceOrder_Behavior$OrderingPlugin.evolve,
@@ -117,7 +122,8 @@ function Make(Platform) {
     errorSchema: RegisterCustomer$OrderingPlugin.errorSchema,
     eventSchema: RegisterCustomer$OrderingPlugin.eventSchema,
     commandSchema: RegisterCustomer$OrderingPlugin.commandSchema,
-    commandAuthorization: RegisterCustomer$OrderingPlugin.commandAuthorization
+    commandAuthorization: RegisterCustomer$OrderingPlugin.commandAuthorization,
+    readConsistency: RegisterCustomer$OrderingPlugin.readConsistency
   })({
     initialState: RegisterCustomer_Behavior$OrderingPlugin.initialState,
     evolve: RegisterCustomer_Behavior$OrderingPlugin.evolve,
@@ -132,7 +138,8 @@ function Make(Platform) {
     errorSchema: ShipOrder$OrderingPlugin.errorSchema,
     eventSchema: ShipOrder$OrderingPlugin.eventSchema,
     commandSchema: ShipOrder$OrderingPlugin.commandSchema,
-    commandAuthorization: ShipOrder$OrderingPlugin.commandAuthorization
+    commandAuthorization: ShipOrder$OrderingPlugin.commandAuthorization,
+    readConsistency: ShipOrder$OrderingPlugin.readConsistency
   })({
     initialState: ShipOrder_Behavior$OrderingPlugin.initialState,
     evolve: ShipOrder_Behavior$OrderingPlugin.evolve,
@@ -147,7 +154,8 @@ function Make(Platform) {
     errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
     eventSchema: SyncCatalogProduct$OrderingPlugin.eventSchema,
     commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema,
-    commandAuthorization: SyncCatalogProduct$OrderingPlugin.commandAuthorization
+    commandAuthorization: SyncCatalogProduct$OrderingPlugin.commandAuthorization,
+    readConsistency: SyncCatalogProduct$OrderingPlugin.readConsistency
   })({
     initialState: SyncCatalogProduct_Behavior$OrderingPlugin.initialState,
     evolve: SyncCatalogProduct_Behavior$OrderingPlugin.evolve,

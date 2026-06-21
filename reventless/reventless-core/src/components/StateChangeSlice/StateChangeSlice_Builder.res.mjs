@@ -18,7 +18,7 @@ let log = Logger$ReventlessCore.fromEnv();
 function Make(Spec) {
   return Behavior => {
     let Callback = StateChangeSlice_Callback$ReventlessCore.Make(Spec)(Behavior);
-    let makeJsonHandler = (tagKeysByEventType, dcbEventLogOps) => (stream => {
+    let makeJsonHandler = (tagKeysByEventType, crossPartitionTagKeys, dcbEventLogOps) => (stream => {
       let decodedStream = Stream.flatMap(Stream.mapEffect(stream, param => {
         let reference = param.reference;
         let json = param.command;
@@ -44,15 +44,16 @@ function Make(Spec) {
           return Stream.empty;
         }
       });
-      return Callback.handleCommands(tagKeysByEventType, dcbEventLogOps, decodedStream);
+      return Callback.handleCommands(tagKeysByEventType, crossPartitionTagKeys, dcbEventLogOps, decodedStream);
     });
-    let make = (dcbEventLog, publishJsons, tagKeysByEventTypeOpt, opts) => {
+    let make = (dcbEventLog, publishJsons, tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, opts) => {
       let tagKeysByEventType = tagKeysByEventTypeOpt !== undefined ? tagKeysByEventTypeOpt : ({});
+      let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(StateChangeSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
         let commandSchema = Spec.commandSchema;
         let commandTypeNames = CommandTopic$ReventlessCore.extractTypeNamesFromSchema(commandSchema);
         Component$ReventlessCore.operations(dcbEventLog).apply(dcbEventLogOps => {
-          let jsonHandler = makeJsonHandler(tagKeysByEventType, dcbEventLogOps);
+          let jsonHandler = makeJsonHandler(tagKeysByEventType, crossPartitionTagKeys, dcbEventLogOps);
           CommandTopic$ReventlessCore.registerHandler(commandSchema, jsonHandler, commandTypeNames);
         });
         Component$ReventlessCore.setOperations(extra, publishJsons.apply(publishJsons => ({

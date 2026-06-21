@@ -44,6 +44,11 @@ type storageMaker = (
   ~name: string,
   ~indexes: array<string>,
   ~partitionTag: Reventless.DcbTag.derivedPartitionTag,
+  /** Tag keys declared `@crossPartition` across the produced event schemas.
+      A single-tag decision read of such a key reads every partition carrying it
+      (per-tag GSI) and its consistency fence is bumped by every carrier. Derived
+      once at build time so read-scope = fence-scope per tag. */
+  ~crossPartitionTagKeys: array<string>=?,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => storage
 

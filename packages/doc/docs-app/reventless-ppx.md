@@ -157,10 +157,11 @@ These field attributes give fine-grained control over DCB tag injection. They wo
 | Annotation | Placed on | Effect |
 |---|---|---|
 | `@partitionTag` | A `*Id: string` field | Injects `@s.matches(DcbTag.partition)` — marks this field as the partition key. Required when a variant has multiple `*Id` fields. |
+| `@crossPartition` | A `string` (or `array<string>` element) field | Injects `@s.matches(DcbTag.crossPartition)` — marks this tag as readable across **all** partitions (a secondary-tag read), not just the one it keys. See [`@crossPartition`](#crosspartition--cross-partition-secondary-tag-reads) below. |
 | `@noDcbTag` | A `*Id: string` field | Suppresses auto-tagging — the field stays as plain `string`. Use when the field is payload data, not a DCB query key. |
 | `@dcbTag` | Any `string` field | Injects `@s.matches(DcbTag.string)` — explicit opt-in for fields that don't follow `*Id` naming (e.g., `sku`, `slug`, `reference`). |
 
-The PPX strips all three attributes from the output AST, so the compiler never sees them as unknown attributes.
+The PPX strips all four attributes from the output AST, so the compiler never sees them as unknown attributes.
 
 **`@partitionTag` — multiple `*Id` fields:**
 ```rescript
@@ -248,6 +249,70 @@ type event =
 // WRONG — annotation on the type, not the field (silently ignored)
 environment: @compositePartitionTag string
 ```
+
+---
+
+### `@crossPartition` — cross-partition (secondary-tag) reads
+
+A DCB event is stored under exactly one **partition** (its `@partitionTag`). A
+single-tag decision read of any *other* tag the event carries is, by default,
+**partition-scoped** — it only sees events whose partition key is that tag, so a
+tag that is secondary on the event is invisible to such a read.
+
+`@crossPartition` opts a tag into a **cross-partition read**: a single-tag read
+of that key returns **every** event carrying it across *all* partitions. This is
+the canonical shape for an **M:N invariant** — an event ties two entities but can
+be partitioned by only one, so the decision must read by *both*, and the
+non-partition side is inherently a secondary-tag read.
+
+```rescript
+// Course subscription: partition by courseId; studentId is read across every
+// course partition the student appears in. The annotation goes on BOTH the
+// command (its tags build the read query) and the produced event (its tags
+// drive partitioning, GSI indexing, and the fence) — never on consumedEvent.
+@schema
+type command =
+  | SubscribeStudent({
+      @partitionTag courseId: string,      // → clause [courseId]  — partition read
+      @crossPartition studentId: string,   // → clause [studentId] — cross-partition read
+    })
+
+@schema
+type event =
+  | StudentSubscribed({
+      @partitionTag courseId: string,
+      @crossPartition studentId: string,
+    })
+```
+
+`SubscribeStudent` then builds **two single-tag reads** — "all of the course"
+(by `courseId`) AND "all of the student" (by `studentId`) — instead of one
+composite read of the exact `{course, student}` pair.
+
+How it works under the hood (no slice-contract change beyond the annotation):
+
+- **Read routing.** A `@crossPartition` clause reads the per-tag `tag_<key>` GSI
+  (a `Query` for keys + a `BatchGet`/`GetItem` for payloads) instead of the
+  base-table partition. GSI reads are eventually consistent — the append fence
+  catches any staleness at commit, costing at most a retry.
+- **Fence scope follows read scope.** A `@crossPartition` tag's consistency fence
+  is bumped by **every** carrier (primary *or* secondary), so optimistic
+  concurrency detects a concurrent secondary-tag writer. Partition-scoped tags
+  keep the narrow "bump only your own partition" rule.
+
+Notes and constraints:
+
+- **Default is partition-scoped.** Leave the annotation off unless you genuinely
+  need the cross-partition fold — it makes the tag's fence hotter (every writer
+  of that tag contends on one fence) and the read O(entity degree). For capacity
+  checks ("≤ N …"), bound the read with a count/limit rather than folding the
+  whole set.
+- **Scope is a property of the tag *key*** and must agree across every event type
+  that carries it — the fence is driven by writers, so a key cannot be
+  cross-partition for one producer and partition-scoped for another. `Dcb_Builder`
+  reports a scope mismatch at build time.
+- **Placement:** before the field name, like `@partitionTag`. Works on a `string`
+  field or the element type of an `array<string>` field.
 
 ---
 

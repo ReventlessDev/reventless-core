@@ -1,4 +1,10 @@
-let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~partitionTag, ~opts) => {
+let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (
+  ~name,
+  ~indexes,
+  ~partitionTag,
+  ~crossPartitionTagKeys=[],
+  ~opts,
+) => {
   // Build attributes array from index names
   let tagAttributes = indexes->Array.map(indexName => {
     {
@@ -60,11 +66,18 @@ let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~p
     operations: table
     ->Util_DynamoDb.toResolvedTableOutput
     ->Pulumi.Output.apply(resolvedTable => {
-      let readFn = DcbEventLogStorage_DynamoDb_Runtime.read(resolvedTable)
+      let readFn = DcbEventLogStorage_DynamoDb_Runtime.read(resolvedTable, ~crossPartitionTagKeys)
       {
         ReventlessCore.DcbEventLog_Adapter.read: readFn,
-        append: DcbEventLogStorage_DynamoDb_Runtime.append(resolvedTable, ~partitionTag),
-        readStream: DcbEventLogStorage_DynamoDb_Runtime.readStream(resolvedTable),
+        append: DcbEventLogStorage_DynamoDb_Runtime.append(
+          resolvedTable,
+          ~partitionTag,
+          ~crossPartitionTagKeys,
+        ),
+        readStream: DcbEventLogStorage_DynamoDb_Runtime.readStream(
+          resolvedTable,
+          ~crossPartitionTagKeys,
+        ),
       }
     }),
   }

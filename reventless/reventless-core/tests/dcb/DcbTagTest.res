@@ -815,6 +815,57 @@ describe("DcbTag:", () => {
         ]),
     )
 
+    // --- Cross-partition fan-out (Issue 13 / Phase 7) ---
+
+    testSync(
+      "extractCrossPartitionTagKeys returns only the @crossPartition keys",
+      () =>
+        expect(
+          Reventless.DcbTag.extractCrossPartitionTagKeys(DcbFixtures.subscriptionEventSchema),
+        )->toEqual(["studentId"]),
+    )
+
+    testSync(
+      "extractCrossPartitionTagKeys is empty when no field is @crossPartition",
+      () =>
+        expect(
+          Reventless.DcbTag.extractCrossPartitionTagKeys(DcbFixtures.simplePartitionEventSchema),
+        )->toEqual([]),
+    )
+
+    testSync(
+      "a cross-partition tag fans a 2-tag command into two single-tag clauses",
+      () =>
+        expect(
+          Reventless.DcbTag.buildQueryFromCommand(
+            ~eventTypes=["StudentSubscribed"],
+            ~schema=DcbFixtures.subscribeCommandSchema,
+            ~value=DcbFixtures.SubscribeStudent({courseId: "C1", studentId: "S1"}),
+            ~crossPartitionTagKeys=["studentId"],
+          ),
+        )->toEqual([
+          {Reventless.DcbTag.eventTypes: ["StudentSubscribed"], tags: [{key: "courseId", value: "C1"}]},
+          {eventTypes: ["StudentSubscribed"], tags: [{key: "studentId", value: "S1"}]},
+        ]),
+    )
+
+    testSync(
+      "without crossPartitionTagKeys the same 2-tag command stays one composite clause",
+      () =>
+        expect(
+          Reventless.DcbTag.buildQueryFromCommand(
+            ~eventTypes=["StudentSubscribed"],
+            ~schema=DcbFixtures.subscribeCommandSchema,
+            ~value=DcbFixtures.SubscribeStudent({courseId: "C1", studentId: "S1"}),
+          ),
+        )->toEqual([
+          {
+            Reventless.DcbTag.eventTypes: ["StudentSubscribed"],
+            tags: [{key: "courseId", value: "C1"}, {key: "studentId", value: "S1"}],
+          },
+        ]),
+    )
+
     testSync(
       "hasTaggedArrayFields detects tagged arrays",
       () => {

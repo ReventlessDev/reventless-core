@@ -40,7 +40,8 @@ function Make(Platform) {
     errorSchema: AddProduct$CatalogPlugin.errorSchema,
     eventSchema: AddProduct$CatalogPlugin.eventSchema,
     commandSchema: AddProduct$CatalogPlugin.commandSchema,
-    commandAuthorization: AddProduct$CatalogPlugin.commandAuthorization
+    commandAuthorization: AddProduct$CatalogPlugin.commandAuthorization,
+    readConsistency: AddProduct$CatalogPlugin.readConsistency
   })({
     initialState: AddProduct_Behavior$CatalogPlugin.initialState,
     evolve: AddProduct_Behavior$CatalogPlugin.evolve,
@@ -55,7 +56,8 @@ function Make(Platform) {
     errorSchema: ChangeProductDescription$CatalogPlugin.errorSchema,
     eventSchema: ChangeProductDescription$CatalogPlugin.eventSchema,
     commandSchema: ChangeProductDescription$CatalogPlugin.commandSchema,
-    commandAuthorization: ChangeProductDescription$CatalogPlugin.commandAuthorization
+    commandAuthorization: ChangeProductDescription$CatalogPlugin.commandAuthorization,
+    readConsistency: ChangeProductDescription$CatalogPlugin.readConsistency
   })({
     initialState: ChangeProductDescription_Behavior$CatalogPlugin.initialState,
     evolve: ChangeProductDescription_Behavior$CatalogPlugin.evolve,
@@ -70,7 +72,8 @@ function Make(Platform) {
     errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
     eventSchema: ChangeProductName$CatalogPlugin.eventSchema,
     commandSchema: ChangeProductName$CatalogPlugin.commandSchema,
-    commandAuthorization: ChangeProductName$CatalogPlugin.commandAuthorization
+    commandAuthorization: ChangeProductName$CatalogPlugin.commandAuthorization,
+    readConsistency: ChangeProductName$CatalogPlugin.readConsistency
   })({
     initialState: ChangeProductName_Behavior$CatalogPlugin.initialState,
     evolve: ChangeProductName_Behavior$CatalogPlugin.evolve,
@@ -85,7 +88,8 @@ function Make(Platform) {
     errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
     eventSchema: ChangeProductPrice$CatalogPlugin.eventSchema,
     commandSchema: ChangeProductPrice$CatalogPlugin.commandSchema,
-    commandAuthorization: ChangeProductPrice$CatalogPlugin.commandAuthorization
+    commandAuthorization: ChangeProductPrice$CatalogPlugin.commandAuthorization,
+    readConsistency: ChangeProductPrice$CatalogPlugin.readConsistency
   })({
     initialState: ChangeProductPrice_Behavior$CatalogPlugin.initialState,
     evolve: ChangeProductPrice_Behavior$CatalogPlugin.evolve,
@@ -100,7 +104,8 @@ function Make(Platform) {
     errorSchema: RecordProductDemand$CatalogPlugin.errorSchema,
     eventSchema: RecordProductDemand$CatalogPlugin.eventSchema,
     commandSchema: RecordProductDemand$CatalogPlugin.commandSchema,
-    commandAuthorization: RecordProductDemand$CatalogPlugin.commandAuthorization
+    commandAuthorization: RecordProductDemand$CatalogPlugin.commandAuthorization,
+    readConsistency: RecordProductDemand$CatalogPlugin.readConsistency
   })({
     initialState: RecordProductDemand_Behavior$CatalogPlugin.initialState,
     evolve: RecordProductDemand_Behavior$CatalogPlugin.evolve,

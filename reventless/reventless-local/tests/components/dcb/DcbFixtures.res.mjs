@@ -57,7 +57,8 @@ let AddItemSpec = {
   consumedEventSchema: consumedEventSchema,
   errorSchema: errorSchema,
   commandSchema: commandSchema,
-  commandAuthorization: commandAuthorization
+  commandAuthorization: commandAuthorization,
+  readConsistency: "EscalateOnRetry"
 };
 
 let moduleUrl$1 = import.meta.url;
@@ -121,7 +122,8 @@ let AddItemMaker = StateChangeSlice_Builder$ReventlessLocal.Make({
   errorSchema: errorSchema,
   eventSchema: eventSchema$1,
   commandSchema: commandSchema,
-  commandAuthorization: commandAuthorization
+  commandAuthorization: commandAuthorization,
+  readConsistency: "EscalateOnRetry"
 })({
   initialState: false,
   evolve: evolve,
@@ -166,7 +168,7 @@ async function publishJsons(cmdJsons) {
 
 let publishJsonsOutput = Pulumi.output(publishJsons);
 
-let _addItemSlice = AddItemMaker.make(eventLog, publishJsonsOutput, undefined, undefined);
+let _addItemSlice = AddItemMaker.make(eventLog, publishJsonsOutput, undefined, undefined, undefined);
 
 async function dispatch(commandJson, id) {
   return await publishJsons([{

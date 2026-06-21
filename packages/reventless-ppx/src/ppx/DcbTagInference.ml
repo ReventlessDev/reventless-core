@@ -22,6 +22,9 @@ let dcb_tag_attr ~loc =
 let dcb_partition_attr ~loc =
   s_matches_attr ~loc (Ldot (Ldot (Lident "Reventless", "DcbTag"), "partition"))
 
+let dcb_cross_partition_attr ~loc =
+  s_matches_attr ~loc (Ldot (Ldot (Lident "Reventless", "DcbTag"), "crossPartition"))
+
 (** Builds @s.matches(Reventless.DcbTag.stringForKey(~key="<key>")) on a type expression. *)
 let dcb_tag_for_key_attr ~loc ~key =
   let dcb_tag_ident =
@@ -68,6 +71,18 @@ let has_partition_tag_field_attr (attrs : attributes) =
 let strip_partition_tag_field_attr (attrs : attributes) =
   List.filter (fun (attr : attribute) ->
     not (String.equal attr.attr_name.txt "partitionTag")
+  ) attrs
+
+(** @crossPartition — marks a field as a DcbTag.crossPartition (secondary-tag
+    read scope). No payload, mirroring @partitionTag. *)
+let has_cross_partition_field_attr (attrs : attributes) =
+  List.exists (fun (attr : attribute) ->
+    String.equal attr.attr_name.txt "crossPartition"
+  ) attrs
+
+let strip_cross_partition_field_attr (attrs : attributes) =
+  List.filter (fun (attr : attribute) ->
+    not (String.equal attr.attr_name.txt "crossPartition")
   ) attrs
 
 (** @noDcbTag — suppresses auto-tagging on *Id fields that are not DCB keys.
@@ -134,6 +149,7 @@ let is_string_type (ct : core_type) =
     Skips fields handled by the explicit annotation passes. *)
 let transform_label_decl ~loc (ld : label_declaration) =
   if has_partition_tag_field_attr ld.pld_attributes
+     || has_cross_partition_field_attr ld.pld_attributes
      || has_no_tag_field_attr ld.pld_attributes
      || has_explicit_dcb_tag_field_attr ld.pld_attributes then ld
   else if Util.ends_with_id ld.pld_name.txt
@@ -228,6 +244,38 @@ let transform_partition_tags ~loc (str : structure) : structure =
                      ptyp_attributes = (dcb_partition_attr ~loc) :: strip_s_matches_attr ld.pld_type.ptyp_attributes };
         pld_attributes = strip_partition_tag_field_attr ld.pld_attributes }
     else ld
+  ) str
+
+(** @crossPartition → @s.matches(Reventless.DcbTag.crossPartition) on string
+    fields, or on the inner element type of [array<string>] fields. No payload
+    (mirrors @partitionTag). Strips any existing @s.matches (e.g. an auto-applied
+    DcbTag.string) before injecting, so it works on *Id fields in slice folders.
+    Runs unconditionally, after transform_partition_tags. *)
+let transform_cross_partition_tags ~loc (str : structure) : structure =
+  map_schema_fields (fun ld ->
+    if not (has_cross_partition_field_attr ld.pld_attributes) then ld
+    else if is_string_type ld.pld_type then
+      { ld with
+        pld_type = { ld.pld_type with
+                     ptyp_attributes =
+                       (dcb_cross_partition_attr ~loc)
+                       :: strip_s_matches_attr ld.pld_type.ptyp_attributes };
+        pld_attributes = strip_cross_partition_field_attr ld.pld_attributes }
+    else
+      match ld.pld_type.ptyp_desc with
+      | Ptyp_constr ({ txt = Lident "array"; _ } as arr_lid, [elem])
+        when (match elem.ptyp_desc with
+              | Ptyp_constr ({ txt = Lident "string"; _ }, []) -> true
+              | _ -> false) ->
+        let new_elem = { elem with
+                         ptyp_attributes =
+                           (dcb_cross_partition_attr ~loc)
+                           :: strip_s_matches_attr elem.ptyp_attributes } in
+        let new_type = { ld.pld_type with ptyp_desc = Ptyp_constr (arr_lid, [new_elem]) } in
+        { ld with
+          pld_type = new_type;
+          pld_attributes = strip_cross_partition_field_attr ld.pld_attributes }
+      | _ -> ld
   ) str
 
 (** Builds the attribute injected by [@dcbTag] / [@dcbTag("explicitKey")]:

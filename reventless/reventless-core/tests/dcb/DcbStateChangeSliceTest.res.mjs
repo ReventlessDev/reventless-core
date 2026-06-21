@@ -60,7 +60,106 @@ let TestHandler = StateChangeSlice_Callback$ReventlessCore.Make({
   errorSchema: DcbFixtures$ReventlessCore.TestCommandSpec.errorSchema,
   eventSchema: DcbFixtures$ReventlessCore.TestCommandSpec.eventSchema,
   commandSchema: DcbFixtures$ReventlessCore.TestCommandSpec.commandSchema,
-  commandAuthorization: DcbFixtures$ReventlessCore.TestCommandSpec.commandAuthorization
+  commandAuthorization: DcbFixtures$ReventlessCore.TestCommandSpec.commandAuthorization,
+  readConsistency: DcbFixtures$ReventlessCore.TestCommandSpec.readConsistency
+})(TestCommandBehavior);
+
+let name = DcbFixtures$ReventlessCore.TestCommandSpec.name;
+
+let moduleUrl$1 = DcbFixtures$ReventlessCore.TestCommandSpec.moduleUrl;
+
+let eventSchema = DcbFixtures$ReventlessCore.TestCommandSpec.eventSchema;
+
+let consumedEventSchema = DcbFixtures$ReventlessCore.TestCommandSpec.consumedEventSchema;
+
+let commandSchema = DcbFixtures$ReventlessCore.TestCommandSpec.commandSchema;
+
+let errorSchema = DcbFixtures$ReventlessCore.TestCommandSpec.errorSchema;
+
+let commandAuthorization = DcbFixtures$ReventlessCore.TestCommandSpec.commandAuthorization;
+
+let StrongSpec_Id = DcbFixtures$ReventlessCore.TestCommandSpec.Id;
+
+let StrongSpec_initialState = DcbFixtures$ReventlessCore.TestCommandSpec.initialState;
+
+let StrongSpec_evolve = DcbFixtures$ReventlessCore.TestCommandSpec.evolve;
+
+let StrongSpec_decide = DcbFixtures$ReventlessCore.TestCommandSpec.decide;
+
+let StrongSpec = {
+  name: name,
+  Id: StrongSpec_Id,
+  moduleUrl: moduleUrl$1,
+  eventSchema: eventSchema,
+  consumedEventSchema: consumedEventSchema,
+  commandSchema: commandSchema,
+  errorSchema: errorSchema,
+  initialState: StrongSpec_initialState,
+  evolve: StrongSpec_evolve,
+  decide: StrongSpec_decide,
+  commandAuthorization: commandAuthorization,
+  readConsistency: "AlwaysStrong"
+};
+
+let name$1 = DcbFixtures$ReventlessCore.TestCommandSpec.name;
+
+let moduleUrl$2 = DcbFixtures$ReventlessCore.TestCommandSpec.moduleUrl;
+
+let eventSchema$1 = DcbFixtures$ReventlessCore.TestCommandSpec.eventSchema;
+
+let consumedEventSchema$1 = DcbFixtures$ReventlessCore.TestCommandSpec.consumedEventSchema;
+
+let commandSchema$1 = DcbFixtures$ReventlessCore.TestCommandSpec.commandSchema;
+
+let errorSchema$1 = DcbFixtures$ReventlessCore.TestCommandSpec.errorSchema;
+
+let commandAuthorization$1 = DcbFixtures$ReventlessCore.TestCommandSpec.commandAuthorization;
+
+let EventualSpec_Id = DcbFixtures$ReventlessCore.TestCommandSpec.Id;
+
+let EventualSpec_initialState = DcbFixtures$ReventlessCore.TestCommandSpec.initialState;
+
+let EventualSpec_evolve = DcbFixtures$ReventlessCore.TestCommandSpec.evolve;
+
+let EventualSpec_decide = DcbFixtures$ReventlessCore.TestCommandSpec.decide;
+
+let EventualSpec = {
+  name: name$1,
+  Id: EventualSpec_Id,
+  moduleUrl: moduleUrl$2,
+  eventSchema: eventSchema$1,
+  consumedEventSchema: consumedEventSchema$1,
+  commandSchema: commandSchema$1,
+  errorSchema: errorSchema$1,
+  initialState: EventualSpec_initialState,
+  evolve: EventualSpec_evolve,
+  decide: EventualSpec_decide,
+  commandAuthorization: commandAuthorization$1,
+  readConsistency: "AlwaysEventual"
+};
+
+let StrongHandler = StateChangeSlice_Callback$ReventlessCore.Make({
+  name: name,
+  moduleUrl: moduleUrl$1,
+  Id: Id$Reventless.$$String,
+  consumedEventSchema: consumedEventSchema,
+  errorSchema: errorSchema,
+  eventSchema: eventSchema,
+  commandSchema: commandSchema,
+  commandAuthorization: commandAuthorization,
+  readConsistency: "AlwaysStrong"
+})(TestCommandBehavior);
+
+let EventualHandler = StateChangeSlice_Callback$ReventlessCore.Make({
+  name: name$1,
+  moduleUrl: moduleUrl$2,
+  Id: Id$Reventless.$$String,
+  consumedEventSchema: consumedEventSchema$1,
+  errorSchema: errorSchema$1,
+  eventSchema: eventSchema$1,
+  commandSchema: commandSchema$1,
+  commandAuthorization: commandAuthorization$1,
+  readConsistency: "AlwaysEventual"
 })(TestCommandBehavior);
 
 function makeTopicItem(reference, command) {
@@ -77,12 +176,14 @@ function makeTopicItem(reference, command) {
 globalThis.beforeEach(() => {
   mock.reset();
   TestHandler.resetCache();
+  StrongHandler.resetCache();
+  EventualHandler.resetCache();
 });
 
 globalThis.describe("StateChangeSlice_Callback:", () => {
   globalThis.describe("handleCommands - happy path", () => {
     globalThis.test("CreateItem on empty log succeeds", async () => {
-      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
@@ -101,7 +202,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
       ]);
     });
     globalThis.test("stored event has correct tags", async () => {
-      await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+      await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
@@ -121,7 +222,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
   });
   globalThis.describe("handleCommands - decide returns Ok([])", () => {
     globalThis.test("NoOp returns Ok without storing events", async () => {
-      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-noop", "NoOp")])));
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-noop", "NoOp")])));
       globalThis.expect([
         results,
         mock.getEvents().length
@@ -136,12 +237,12 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
   });
   globalThis.describe("handleCommands - decide returns Error", () => {
     globalThis.test("CreateItem when item exists returns Ok (business-rule violations ACK, not NACK)", async () => {
-      await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+      await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
         })])));
-      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-2", {
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-2", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Duplicate"
@@ -155,7 +256,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
   globalThis.describe("handleCommands - retry on conflict", () => {
     globalThis.test("retries and succeeds after 1 append failure", async () => {
       mock.failNextAppends.contents = 1;
-      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
@@ -173,7 +274,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
     });
     globalThis.test("returns Error after retries exhausted (4 failures)", async () => {
       mock.failNextAppends.contents = 4;
-      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
@@ -192,7 +293,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
   });
   globalThis.describe("handleCommands - read consistency (eventual-first, strong-on-retry)", () => {
     globalThis.test("a conflict-free command reads eventually-consistent (no strong read)", async () => {
-      await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+      await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
@@ -201,7 +302,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
     });
     globalThis.test("escalates to strong consistency on retry after a conflict", async () => {
       mock.failNextAppends.contents = 1;
-      await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+      await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
@@ -213,7 +314,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
     });
     globalThis.test("every retry after the first is strong (2 failures)", async () => {
       mock.failNextAppends.contents = 2;
-      await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+      await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
@@ -225,14 +326,50 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
       ]);
     });
   });
-  globalThis.describe("handleCommands - conditional append", () => {
-    globalThis.test("RenameItem after CreateItem uses headPosition in condition", async () => {
-      await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+  globalThis.describe("handleCommands - read consistency (per-slice override)", () => {
+    globalThis.test("AlwaysStrong reads strong on the first attempt", async () => {
+      await Effect.runPromise(StrongHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
         })])));
-      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-2", {
+      globalThis.expect(mock.readStrongConsistency.contents).toEqual([true]);
+    });
+    globalThis.test("AlwaysStrong stays strong across retries (2 failures)", async () => {
+      mock.failNextAppends.contents = 2;
+      await Effect.runPromise(StrongHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+          TAG: "CreateItem",
+          itemId: "item-1",
+          name: "Test"
+        })])));
+      globalThis.expect(mock.readStrongConsistency.contents).toEqual([
+        true,
+        true,
+        true
+      ]);
+    });
+    globalThis.test("AlwaysEventual never reads strong, even on retry (2 failures)", async () => {
+      mock.failNextAppends.contents = 2;
+      await Effect.runPromise(EventualHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+          TAG: "CreateItem",
+          itemId: "item-1",
+          name: "Test"
+        })])));
+      globalThis.expect(mock.readStrongConsistency.contents).toEqual([
+        false,
+        false,
+        false
+      ]);
+    });
+  });
+  globalThis.describe("handleCommands - conditional append", () => {
+    globalThis.test("RenameItem after CreateItem uses headPosition in condition", async () => {
+      await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+          TAG: "CreateItem",
+          itemId: "item-1",
+          name: "Test"
+        })])));
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-2", {
           TAG: "RenameItem",
           itemId: "item-1",
           newName: "Updated"
@@ -251,7 +388,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
   });
   globalThis.describe("handleCommands - batch", () => {
     globalThis.test("multiple successful commands", async () => {
-      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([
         makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
@@ -275,12 +412,12 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
       ]);
     });
     globalThis.test("mixed: new item succeeds, duplicate item ACKs as Ok (business-rule violation)", async () => {
-      await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-0", {
+      await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-0", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Existing"
         })])));
-      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([
         makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-2",
@@ -304,13 +441,13 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
       ]);
     });
     globalThis.test("empty batch returns empty array", async () => {
-      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([])));
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([])));
       globalThis.expect(results).toEqual([]);
     });
   });
   globalThis.describe("handleCommands - projection cache", () => {
     globalThis.test("a third same-entity command reads only the delta", async () => {
-      let run = (reference, command) => Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem(reference, command)])));
+      let run = (reference, command) => Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem(reference, command)])));
       await run("ref-1", {
         TAG: "CreateItem",
         itemId: "item-1",
@@ -344,7 +481,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
       ]);
     });
     globalThis.test("a different entity does not hit another entity's cache (full read)", async () => {
-      let run = (reference, command) => Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem(reference, command)])));
+      let run = (reference, command) => Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem(reference, command)])));
       await run("ref-1", {
         TAG: "CreateItem",
         itemId: "item-1",
@@ -361,7 +498,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
       ]);
     });
     globalThis.test("conflict re-seeds the cache so the retry reads the delta", async () => {
-      let run = (reference, command) => Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem(reference, command)])));
+      let run = (reference, command) => Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem(reference, command)])));
       await run("ref-1", {
         TAG: "CreateItem",
         itemId: "item-1",
@@ -400,6 +537,10 @@ export {
   testDcbEventLog,
   TestCommandBehavior,
   TestHandler,
+  StrongSpec,
+  EventualSpec,
+  StrongHandler,
+  EventualHandler,
   makeTopicItem,
 }
 /* mock Not a pure module */

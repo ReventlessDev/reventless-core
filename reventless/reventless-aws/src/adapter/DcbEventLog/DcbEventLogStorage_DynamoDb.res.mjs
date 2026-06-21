@@ -6,7 +6,8 @@ import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";
 import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
 import * as DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws from "./DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
 
-function make(name, indexes, partitionTag, opts) {
+function make(name, indexes, partitionTag, crossPartitionTagKeysOpt, opts) {
+  let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
   let tagAttributes = indexes.map(indexName => ({
     name: indexName,
     type: "S"
@@ -35,11 +36,11 @@ function make(name, indexes, partitionTag, opts) {
   return {
     resources: [Util_DynamoDbStream$ReventlessAws.toResource(tags, table)],
     operations: Util_DynamoDb$ReventlessAws.toResolvedTableOutput(table).apply(resolvedTable => {
-      let readFn = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(resolvedTable);
+      let readFn = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(resolvedTable, crossPartitionTagKeys);
       return {
         read: readFn,
-        append: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.append(resolvedTable, partitionTag),
-        readStream: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readStream(resolvedTable)
+        append: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.append(resolvedTable, partitionTag, crossPartitionTagKeys),
+        readStream: DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.readStream(resolvedTable, crossPartitionTagKeys)
       };
     })
   };

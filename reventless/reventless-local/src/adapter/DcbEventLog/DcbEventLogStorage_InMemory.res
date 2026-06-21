@@ -98,13 +98,17 @@ let makeStorage = (~name as _name, ~indexes as _, ~partitionTag as _, ~opts as _
   )
 }
 
-let make: DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~partitionTag, ~opts) => {
+// Local backends evaluate the DCB condition literally against the event list
+// (true DCB semantics), so a single-tag clause already matches every carrier of
+// the tag regardless of partition — cross-partition reads work without special
+// routing. The flag is accepted for interface parity and ignored.
+let make: DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~partitionTag, ~crossPartitionTagKeys as _=?, ~opts) => {
   let (_, _, storage) = makeStorage(~name, ~indexes, ~partitionTag, ~opts)
   storage
 }
 
 module Make = (Bus: LocalBus.T) => {
-  let make: DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~partitionTag, ~opts) => {
+  let make: DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~partitionTag, ~crossPartitionTagKeys as _=?, ~opts) => {
     switch BackendState.getDb() {
     | Some(db) =>
       let (storageName, read, storage) = DcbEventLogStorage_Sqlite.makeStorage(

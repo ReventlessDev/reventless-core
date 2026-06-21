@@ -389,7 +389,7 @@ globalThis.describe("Runtime.buildConditionalTransactItems — fence-scope = rea
       _0: {
         key: "orderId"
       }
-    });
+    }, undefined);
     globalThis.test("partition tag (orderId) is a conditional Update that bumps the fence", () => {
       globalThis.expect(isUpdate(findFence(items, "fence#orderId:o1"))).toBe(true);
     });
@@ -435,12 +435,60 @@ globalThis.describe("Runtime.buildConditionalTransactItems — fence-scope = rea
       _0: {
         key: "productId"
       }
-    });
+    }, undefined);
     globalThis.test("partition tag (productId) is a conditional Update", () => {
       globalThis.expect(isUpdate(findFence(items, "fence#productId:p1"))).toBe(true);
     });
     globalThis.test("other composite tag (orderId) is also a conditional Update — OCC preserved", () => {
       globalThis.expect(isUpdate(findFence(items, "fence#orderId:o1"))).toBe(true);
+    });
+  });
+  globalThis.describe("cross-partition secondary tag (studentId) is check+bump, not read-only", () => {
+    let subscribed = event("StudentSubscribed", [
+      {
+        key: "courseId",
+        value: "C1"
+      },
+      {
+        key: "studentId",
+        value: "S1"
+      }
+    ]);
+    let partitionTag = {
+      TAG: "Simple",
+      _0: {
+        key: "courseId"
+      }
+    };
+    let cond_query = [
+      {
+        tags: [{
+            key: "courseId",
+            value: "C1"
+          }]
+      },
+      {
+        tags: [{
+            key: "studentId",
+            value: "S1"
+          }]
+      }
+    ];
+    let cond_after = "50";
+    let cond = {
+      query: cond_query,
+      after: cond_after
+    };
+    globalThis.test("with studentId cross-partition, its fence is a conditional Update (bump)", () => {
+      let items = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalTransactItems(table, [subscribed], cond, "100", partitionTag, ["studentId"]);
+      globalThis.expect(isUpdate(findFence(items, "fence#courseId:C1"))).toBe(true);
+      globalThis.expect(isUpdate(findFence(items, "fence#studentId:S1"))).toBe(true);
+    });
+    globalThis.test("without the cross-partition flag, studentId is only a read-only ConditionCheck", () => {
+      let items = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalTransactItems(table, [subscribed], cond, "100", partitionTag, undefined);
+      let it = findFence(items, "fence#studentId:S1");
+      globalThis.expect(isCheck(it)).toBe(true);
+      globalThis.expect(isUpdate(it)).toBe(false);
     });
   });
 });
@@ -480,7 +528,7 @@ globalThis.describe("Runtime.buildConditionalTransactItems — create guard (aft
     let cond = {
       query: cond_query
     };
-    let items = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalTransactItems(table, [orderCreated], cond, "100", partitionTag);
+    let items = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalTransactItems(table, [orderCreated], cond, "100", partitionTag, undefined);
     globalThis.test("emits a create guard keyed by (eventType, partition value)", () => {
       globalThis.expect(Stdlib_Option.isSome(findById(items, "create#OrderCreated#orderId:o1"))).toBe(true);
     });
@@ -493,7 +541,7 @@ globalThis.describe("Runtime.buildConditionalTransactItems — create guard (aft
           key: "orderId",
           value: "o1"
         }]);
-      let items2 = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalTransactItems(table, [note], cond, "100", partitionTag);
+      let items2 = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalTransactItems(table, [note], cond, "100", partitionTag, undefined);
       globalThis.expect(Stdlib_Option.isSome(findById(items2, "create#NoteAdded#orderId:o1"))).toBe(true);
       globalThis.expect(Stdlib_Option.isSome(findById(items2, "create#OrderCreated#orderId:o1"))).toBe(false);
     });
@@ -510,7 +558,7 @@ globalThis.describe("Runtime.buildConditionalTransactItems — create guard (aft
       query: cond_query,
       after: cond_after
     };
-    let items = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalTransactItems(table, [orderCreated], cond, "100", partitionTag);
+    let items = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalTransactItems(table, [orderCreated], cond, "100", partitionTag, undefined);
     globalThis.test("emits no create guard (the partition fence enforces OCC)", () => {
       globalThis.expect(Stdlib_Option.isSome(findById(items, "create#OrderCreated#orderId:o1"))).toBe(false);
     });
@@ -525,7 +573,7 @@ globalThis.describe("Runtime.appendConditional", () => {
     let cond = {
       query: cond_query
     };
-    let result = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [], cond, undefined);
+    let result = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [], cond, undefined, undefined);
     if (result.TAG === "Ok") {
       globalThis.expect("expected Error, got Ok").toBe("");
       return;
@@ -557,7 +605,7 @@ globalThis.describe("Runtime.appendConditional", () => {
       tags: event_tags,
       meta: event_meta
     };
-    let result = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event], cond, undefined);
+    let result = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event], cond, undefined, undefined);
     if (result.TAG === "Ok") {
       globalThis.expect("expected Error, got Ok").toBe("");
       return;

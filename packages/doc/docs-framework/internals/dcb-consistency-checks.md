@@ -46,7 +46,7 @@ A query is an array of **clauses** (`queryItem`s). Within a clause, tags are AND
 | Scalar tags only | one AND clause | `AddProduct` |
 | A tagged `array<string>` field | one OR clause per element | `PlaceOrder` |
 | Two or more scalar tags | one AND clause with multiple tags (composite) | `RecordProductDemand` |
-| A `@crossPartition` scalar tag | its own single-tag OR clause (cross-partition read) | `OrderProduct` *(planned)* |
+| A `@crossPartition` scalar tag | its own single-tag OR clause (cross-partition read) | `OrderProduct` |
 
 ### Single-entity — `AddProduct`
 
@@ -101,16 +101,15 @@ RecordDemand({ productId: "prod-1", orderId: "ord-1" })
       tags: [ productId:prod-1, orderId:ord-1 ] } ]
 ```
 
-### Cross-partition single-tag — `OrderProduct` (planned)
+### Cross-partition single-tag — `OrderProduct`
 
-:::info Planned capability
-`@crossPartition` and this slice are **not yet implemented** (planned — not yet shipped). The example is written *as if* it worked, so you can follow the intended end-to-end flow. None of the slices above use it; today every single-tag read is partition-scoped.
+:::info Capability
+`@crossPartition` is **implemented**. None of the other slices above use it — they read partition-scoped by default; `@crossPartition` opts a tag into a cross-partition (secondary-tag) read. The `OrderProduct` slice below is illustrative (no example plugin ships it yet), but the annotation and the read/fence routing it relies on are live.
 :::
 
 Suppose a customer may order at most *N* units of a given product — **across all their orders, however many they place**. Enforcing that means aggregating one customer's purchases of one product, and a customer's orders are scattered across many `orderId` partitions. So the read keys on **`customerId`**, which a single order carries as a *secondary* tag — a cross-partition read:
 
 ```rescript
-// PLANNED — @crossPartition is not implemented yet
 type command =
   OrderProduct({
     @partitionTag orderId: string,
@@ -176,8 +175,8 @@ Note the `productId` reads here are deliberately **partition-scoped**: `PlaceOrd
 
 ### Reading by a secondary tag — cross-partition reads
 
-:::info Planned capability
-The `@crossPartition` annotation described here is a **planned** capability, not yet shipped. Today every single-tag read is partition-scoped (the default `PartitionScoped` behaviour). This section documents the design and, importantly, *why the opt-in must be explicit*.
+:::info Default is partition-scoped
+Every single-tag read is partition-scoped **by default** (`PartitionScoped`). `@crossPartition` (implemented) opts a specific tag key into a cross-partition read. This section documents how it works and, importantly, *why the opt-in must be explicit*.
 :::
 
 A single-tag read being partition-scoped (above) blocks the **canonical M:N decision**. Take course subscription: a `StudentSubscribed` event ties two entities and must enforce two invariants on subscribe — *course not full* (read by `courseId`) and *student not over-enrolled* (read by `studentId`). The event can be partitioned by only one tag, so the other read is inherently cross-partition.
@@ -236,7 +235,7 @@ The adapter classifies each tag of the condition. The guiding rule is **fence-sc
 |---|---|---|
 | The written event's **partition** tag | conditional `Update` | assert `≤ after` **and** advance the fence |
 | A **single-tag** clause that is *not* the partition tag (a partition-scoped secondary read) | `ConditionCheck` | assert `≤ after` only — never advance |
-| A **single-tag** clause on a `CrossPartition` tag (planned — see [above](#reading-by-a-secondary-tag--cross-partition-reads)) | conditional `Update` | assert `≤ after` **and** advance (read crosses partitions, so OCC needs the bump) |
+| A **single-tag** clause on a `CrossPartition` tag (see [above](#reading-by-a-secondary-tag--cross-partition-reads)) | conditional `Update` | assert `≤ after` **and** advance (read crosses partitions, so OCC needs the bump) |
 | A tag in a **multi-tag (composite)** clause | conditional `Update` | assert `≤ after` and advance (composite reads cross partitions, so OCC needs the bump) |
 | An untagged field (e.g. `@noDcbTag customerId`) | — | no fence at all |
 

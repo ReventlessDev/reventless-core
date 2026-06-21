@@ -44,6 +44,8 @@ let initialState = false;
 
 let moduleUrl = "@reventlessdev/reventless-core/tests/plugin/StateChangeSlice/PsShipOrder.res.mjs";
 
+let readConsistency = "EscalateOnRetry";
+
 export {
   name,
   Id,
@@ -56,5 +58,6 @@ export {
   decide,
   moduleUrl,
   commandAuthorization,
+  readConsistency,
 }
 /* consumedEventSchema Not a pure module */

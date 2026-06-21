@@ -24,7 +24,7 @@ A `StateChangeSlice` reads its decision model via `dcbEventLog.readStream(~query
 | 10 | Hot-tag fence ceiling; 3-retry exhaustion surfaces as `Conflict` | Med (load) | Tracked (`dcb-hot-tag-fence-contention`) |
 | 11 | 100-item `TransactWriteItems` cap is a hard cliff | Low | Known |
 | 12 | Tagless scan read can choke on fence items | Low | Latent / low-confidence |
-| 13 | No single-tag **cross-partition** (secondary-tag) read | Capability gap | Future — design sketched below |
+| 13 | No single-tag **cross-partition** (secondary-tag) read | Capability gap | **Implemented 2026-06-21** ([Phase 7 plan](../plans/done/dcb-phase7-cross-partition-reads.md); source, mjs/CI pending ppx republish) |
 | 14 | Query clauses carry the full consumed-type list (incl. types that can't carry the tag) | Low–Med | Open — drop vacuous (type,tag) combos; residual over-match = Issue 13 |
 
 ---

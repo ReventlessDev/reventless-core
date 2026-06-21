@@ -109,12 +109,12 @@ function makeStorage(_name, param, param$1, param$2) {
   ];
 }
 
-function make(name, indexes, partitionTag, opts) {
+function make(name, indexes, partitionTag, param, opts) {
   return makeStorage(name, indexes, partitionTag, opts)[2];
 }
 
 function Make(Bus) {
-  let make = (name, indexes, partitionTag, opts) => {
+  let make = (name, indexes, partitionTag, param, opts) => {
     let db = BackendState$ReventlessLocal.getDb();
     if (db !== undefined) {
       let match = DcbEventLogStorage_Sqlite$ReventlessLocal.makeStorage(Primitive_option.valFromOption(db), (param, param$1) => {}, (param, param$1) => {}, name, indexes, partitionTag, opts);

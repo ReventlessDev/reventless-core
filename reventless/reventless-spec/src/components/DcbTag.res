@@ -92,6 +92,17 @@ let dcbTagId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(~namespace="dcb", ~name
 /** Internal sury metadata ID used to mark the partition tag field. */
 let dcbPartitionTagId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(~namespace="dcb", ~name="partitionTag")
 
+/**
+Internal sury metadata ID marking a tag field as *cross-partition* — readable
+across every partition that carries it (a secondary-tag read), not just the
+partition it is the partition key of. Opt-in; absence = the default
+partition-scoped behaviour. The scope is a property of the tag *key* and must
+agree across every event type that carries it (the fence-scope half depends on
+it). See `docs/analysis/dcb-consistency-check-issues.md` Issue 13.
+*/
+let dcbCrossPartitionId: S.Metadata.Id.t<bool> =
+  S.Metadata.Id.make(~namespace="dcb", ~name="crossPartition")
+
 /** Metadata value for a composite partition member field. */
 type compositePartitionMemberMeta = {position: int, sep: string}
 
@@ -179,6 +190,32 @@ let partition: S.t<string> =
   S.string->S.Metadata.set(~id=dcbTagId, true)->S.Metadata.set(~id=dcbPartitionTagId, true)
 
 /**
+A sury string schema annotated as a DCB tag field with *cross-partition* read
+scope.
+
+Use via the `@crossPartition` PPX field annotation (mirroring `@partitionTag` —
+no arguments). A single-tag decision read of such a tag routes to the per-tag
+`tag_<key>` GSI so it returns every event carrying the tag across *all*
+partitions (a secondary-tag read), and the tag's consistency fence is bumped by
+*every* carrier (primary or secondary) so optimistic concurrency catches a
+concurrent secondary-tag writer. The default (un-annotated) scope stays
+partition-scoped. The canonical use is an M:N invariant where the event ties two
+entities but can be partitioned by only one (course-subscription capacity,
+"≤ N orders per product", reservations).
+
+@example
+```rescript
+@schema type event =
+  | StudentSubscribed({
+      courseId: @s.matches(DcbTag.partition) string,
+      studentId: @s.matches(DcbTag.crossPartition) string,
+    })
+```
+*/
+let crossPartition: S.t<string> =
+  S.string->S.Metadata.set(~id=dcbTagId, true)->S.Metadata.set(~id=dcbCrossPartitionId, true)
+
+/**
 A sury string schema marking a field as a composite partition key member.
 
 Use via the `@compositePartitionTag` PPX annotation. The annotation injects
@@ -232,6 +269,20 @@ let isTaggedArray = (fieldSchema: S.t<unknown>) =>
 /** Returns `true` if the schema was annotated with `DcbTag.partition`. */
 let isPartitionTag = (fieldSchema: S.t<unknown>) =>
   S.Metadata.get(fieldSchema, ~id=dcbPartitionTagId)->Option.isSome
+
+/** Returns `true` if the schema was annotated with `DcbTag.crossPartition`. */
+let isCrossPartitionTag = (fieldSchema: S.t<unknown>) =>
+  S.Metadata.get(fieldSchema, ~id=dcbCrossPartitionId)->Option.isSome
+
+/**
+Returns `true` if the schema is an array whose item schema is a cross-partition
+DCB tag (`array<@s.matches(DcbTag.crossPartition) string>`).
+*/
+let isCrossPartitionTaggedArray = (fieldSchema: S.t<unknown>) =>
+  switch fieldSchema {
+  | Array({additionalItems: Schema(itemSchema)}) => isCrossPartitionTag(itemSchema)
+  | _ => false
+  }
 
 /**
 Resolves the tag key for a scalar tagged field: the explicit override metadata if
@@ -744,9 +795,13 @@ let buildQueryFromCommand = (
   ~schema: S.t<'a>,
   ~value: 'a,
   ~tagKeysByEventType: dict<array<string>>=Dict.make(),
+  ~crossPartitionTagKeys: array<string>=[],
 ): query => {
   let typesForTags = clauseTags => narrowEventTypesForTags(eventTypes, clauseTags, tagKeysByEventType)
   if hasTaggedArrayFields(schema) {
+    // Array fields already fan out per element into single-tag clauses, so a
+    // cross-partition array tag is already its own clause (the adapter routes it
+    // by `crossPartitionTagKeys`).
     let tags = extractTagsExpanded(schema, value)
     tags->Array.map(tag => {
       let clauseTags = [{key: tag.key, value: tag.value}]
@@ -754,7 +809,22 @@ let buildQueryFromCommand = (
     })
   } else {
     let tags = extractTags(schema, value)
-    [{eventTypes: typesForTags(tags), tags}]
+    // When any command tag is cross-partition, fan every scalar tag out into its
+    // own single-tag clause instead of AND-ing them into one composite
+    // (exact-pair) clause. An M:N command (`SubscribeStudent({courseId, studentId})`)
+    // must read "all of the course" AND "all of the student" as two single-tag
+    // reads — a composite read of the exact `{course, student}` pair is neither.
+    // Without a cross-partition tag the default composite clause is preserved.
+    let hasCrossPartition =
+      tags->Array.some(tag => crossPartitionTagKeys->Array.includes(tag.key))
+    if hasCrossPartition && tags->Array.length > 1 {
+      tags->Array.map(tag => {
+        let clauseTags = [{key: tag.key, value: tag.value}]
+        {eventTypes: typesForTags(clauseTags), tags: clauseTags}
+      })
+    } else {
+      [{eventTypes: typesForTags(tags), tags}]
+    }
   }
 }
 
@@ -806,6 +876,54 @@ let extractTaggedFields = (schema: S.t<'event>): array<string> => {
 
   | _ => []
   }
+}
+
+/**
+Collects the *cross-partition* tag keys of one object-variant's properties: the
+resolved (override-aware) tag key of every scalar field marked
+`DcbTag.crossPartition`, plus that of every array field whose element is.
+*/
+let crossPartitionKeysOfProperties = (properties: dict<S.t<unknown>>): array<string> =>
+  properties
+  ->Dict.toArray
+  ->Array.filterMap(((fieldName, fieldSchema)) =>
+    if isTagged(fieldSchema) && isCrossPartitionTag(fieldSchema) {
+      Some(resolveTagKey(fieldName, fieldSchema))
+    } else if isCrossPartitionTaggedArray(fieldSchema) {
+      Some(resolveArrayTagKey(fieldName, fieldSchema))
+    } else {
+      None
+    }
+  )
+
+/**
+Extracts the set of DCB tag keys declared cross-partition (`@crossPartition`)
+across all variants of an event or command schema.
+
+Returns a sorted, deduplicated list of tag keys. The scope is a property of the
+tag key, so this set is derived once at build time (from the *produced* event
+schemas) and threaded to both the decision-model query builder (to fan a
+cross-partition scalar tag into its own single-tag clause) and the storage
+adapter (read routing + fence scope).
+
+For an event schema `StudentSubscribed({@partitionTag courseId, @crossPartition studentId})`
+returns `["studentId"]`.
+*/
+let extractCrossPartitionTagKeys = (schema: S.t<'event>): array<string> => {
+  let keys = switch schema->toUnknownSchema {
+  | Union({anyOf}) =>
+    anyOf->Array.flatMap(variantSchema =>
+      switch variantSchema {
+      | Object({properties}) => crossPartitionKeysOfProperties(properties)
+      | _ => []
+      }
+    )
+  | Object({properties}) => crossPartitionKeysOfProperties(properties)
+  | _ => []
+  }
+  let seen = Set.make()
+  keys->Array.forEach(k => seen->Set.add(k))
+  Array.fromIterator(seen->Set.values)->Array.toSorted((a, b) => String.compare(a, b))
 }
 
 // --- Partition tag derivation ---

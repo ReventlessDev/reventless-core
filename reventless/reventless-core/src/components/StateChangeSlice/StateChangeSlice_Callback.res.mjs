@@ -59,10 +59,10 @@ function Make(Spec) {
     };
     let projectionCache = Lru$ReventlessCore.make(100);
     let resetCache = () => Lru$ReventlessCore.clear(projectionCache);
-    let handleSingleCommand = (tagKeysByEventType, dcbEventLog, command$p) => {
+    let handleSingleCommand = (tagKeysByEventType, crossPartitionTagKeys, dcbEventLog, command$p) => {
       let cmdJson = Message$ReventlessCore.commandJsonOfCommand$p(Id$Reventless.$$String.toString, Spec.commandSchema, command$p);
       Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `handling command: ` + LogFormat$ReventlessCore.cmdDetailNoId(cmdJson)));
-      let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command, tagKeysByEventType);
+      let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command, tagKeysByEventType, crossPartitionTagKeys);
       let queryDetail = query.map(qi => {
         let ts = qi.eventTypes;
         let types = ts !== undefined ? ts.map(LogFormat$ReventlessCore.bold).join("|") : "*";
@@ -97,7 +97,18 @@ function Make(Spec) {
           ];
         let afterPos = match$1[1];
         let cacheHit = Stdlib_Option.isSome(seed.contents);
-        let strongConsistency = retries < 3;
+        let strongConsistency;
+        switch (Spec.readConsistency) {
+          case "EscalateOnRetry" :
+            strongConsistency = retries < 3;
+            break;
+          case "AlwaysStrong" :
+            strongConsistency = true;
+            break;
+          case "AlwaysEventual" :
+            strongConsistency = false;
+            break;
+        }
         return Effect.flatMap(Effect.tap(Stream$1.runFold(Stream$1.flatMap(Stream$1.map(dcbEventLog.readStream(query, afterPos, strongConsistency), raw => {
           let decoded = decoder.decode(raw.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {}));
           return Stdlib_Option.map(decoded, event => [
@@ -250,11 +261,12 @@ function Make(Spec) {
       };
       return attempt(3);
     };
-    let handleCommands = (tagKeysByEventTypeOpt, dcbEventLog, stream) => {
+    let handleCommands = (tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, dcbEventLog, stream) => {
       let tagKeysByEventType = tagKeysByEventTypeOpt !== undefined ? tagKeysByEventTypeOpt : ({});
+      let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
       return Stream.runCollect(Stream$1.mapEffect(stream, param => {
         let reference = param.reference;
-        return Effect.map(handleSingleCommand(tagKeysByEventType, dcbEventLog, param.command), result => {
+        return Effect.map(handleSingleCommand(tagKeysByEventType, crossPartitionTagKeys, dcbEventLog, param.command), result => {
           if (result.TAG === "Ok") {
             return {
               TAG: "Ok",

@@ -136,6 +136,24 @@ function u(prim) {
 
 let producedTagKeys = DcbTag$Reventless.extractTagKeysByEventType(demandProducedSchema);
 
+let subscribedCrossPartitionSchema = S.schema(s => ({
+  TAG: "StudentSubscribed",
+  courseId: s.m(DcbTag$Reventless.partition),
+  studentId: s.m(DcbTag$Reventless.crossPartition)
+}));
+
+let unsubscribedCrossPartitionSchema = S.schema(s => ({
+  TAG: "StudentUnsubscribed",
+  courseId: s.m(DcbTag$Reventless.partition),
+  studentId: s.m(DcbTag$Reventless.crossPartition)
+}));
+
+let flaggedPartitionScopedSchema = S.schema(s => ({
+  TAG: "StudentFlagged",
+  studentId: s.m(DcbTag$Reventless.partition),
+  courseId: s.m(DcbTag$Reventless.string)
+}));
+
 globalThis.describe("DcbValidation:", () => {
   globalThis.describe("validateProducedAndConsumed", () => {
     globalThis.test("passes when all consumed events match produced events", () => {
@@ -389,6 +407,43 @@ globalThis.describe("DcbValidation:", () => {
       globalThis.expect(DcbValidation$Reventless.validateCompositeReads([], producedTagKeys)).toEqual([]);
     });
   });
+  globalThis.describe("validateCrossPartitionScope (Issue 13)", () => {
+    globalThis.test("no warning when every carrier of a key agrees on cross-partition scope", () => {
+      let warnings = DcbValidation$Reventless.validateCrossPartitionScope([
+        [
+          "Subscribe",
+          subscribedCrossPartitionSchema
+        ],
+        [
+          "Unsubscribe",
+          unsubscribedCrossPartitionSchema
+        ]
+      ]);
+      globalThis.expect(warnings).toEqual([]);
+    });
+    globalThis.test("warns when one producer leaves a cross-partition key partition-scoped", () => {
+      let warnings = DcbValidation$Reventless.validateCrossPartitionScope([
+        [
+          "Subscribe",
+          subscribedCrossPartitionSchema
+        ],
+        [
+          "Flag",
+          flaggedPartitionScopedSchema
+        ]
+      ]);
+      globalThis.expect(warnings.length).toBe(1);
+      let w = warnings[0];
+      globalThis.expect(w.sliceName).toBe("Flag");
+      globalThis.expect(w.message.includes("studentId")).toBe(true);
+    });
+    globalThis.test("no warning when no key is cross-partition anywhere", () => {
+      globalThis.expect(DcbValidation$Reventless.validateCrossPartitionScope([[
+          "Flag",
+          flaggedPartitionScopedSchema
+        ]])).toEqual([]);
+    });
+  });
 });
 
 let validate = DcbValidation$Reventless.validateProducedAndConsumed;
@@ -414,5 +469,8 @@ export {
   validate,
   u,
   producedTagKeys,
+  subscribedCrossPartitionSchema,
+  unsubscribedCrossPartitionSchema,
+  flaggedPartitionScopedSchema,
 }
 /* producedASchema Not a pure module */

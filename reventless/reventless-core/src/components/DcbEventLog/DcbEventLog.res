@@ -37,6 +37,7 @@ module type T = {
     ~name: string,
     ~indexes: array<string>=?,
     ~partitionTag: Reventless.DcbTag.derivedPartitionTag,
+    ~crossPartitionTagKeys: array<string>=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

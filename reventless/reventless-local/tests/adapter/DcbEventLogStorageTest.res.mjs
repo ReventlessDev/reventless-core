@@ -14,7 +14,7 @@ function makeStorage() {
     _0: {
       key: "itemId"
     }
-  }, opts);
+  }, undefined, opts);
 }
 
 function makeEvent(eventType, data, tagsOpt) {

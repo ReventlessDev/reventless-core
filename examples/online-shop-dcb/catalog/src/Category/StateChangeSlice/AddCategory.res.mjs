@@ -32,6 +32,8 @@ let Id;
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Category/StateChangeSlice/AddCategory.res.mjs";
 
+let readConsistency = "EscalateOnRetry";
+
 export {
   name,
   Id,
@@ -41,5 +43,6 @@ export {
   eventSchema,
   moduleUrl,
   commandAuthorization,
+  readConsistency,
 }
 /* consumedEventSchema Not a pure module */

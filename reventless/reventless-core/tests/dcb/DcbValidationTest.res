@@ -109,6 +109,32 @@ let validate = Reventless.DcbValidation.validateProducedAndConsumed
 let u = S.castToUnknown
 let producedTagKeys = Reventless.DcbTag.extractTagKeysByEventType(demandProducedSchema)
 
+// Cross-partition scope fixtures (Issue 13 / Phase 7). studentId is declared
+// @crossPartition on one producer; a second producer that carries studentId
+// must declare the same scope or the (writer-driven) fence is ambiguous.
+@schema
+type subscribedCrossPartition =
+  | StudentSubscribed({
+      courseId: @s.matches(Reventless.DcbTag.partition) string,
+      studentId: @s.matches(Reventless.DcbTag.crossPartition) string,
+    })
+
+// Agreeing producer: also carries studentId as @crossPartition.
+@schema
+type unsubscribedCrossPartition =
+  | StudentUnsubscribed({
+      courseId: @s.matches(Reventless.DcbTag.partition) string,
+      studentId: @s.matches(Reventless.DcbTag.crossPartition) string,
+    })
+
+// Disagreeing producer: carries studentId but partition-scoped (plain tag).
+@schema
+type flaggedPartitionScoped =
+  | StudentFlagged({
+      studentId: @s.matches(Reventless.DcbTag.partition) string,
+      courseId: @s.matches(Reventless.DcbTag.string) string,
+    })
+
 describe("DcbValidation:", () => {
   describe("validateProducedAndConsumed", () => {
     testSync("passes when all consumed events match produced events", () => {
@@ -289,6 +315,35 @@ describe("DcbValidation:", () => {
 
     testSync("no warnings when nothing reads compositely", () => {
       expect(check([]))->toEqual([])
+    })
+  })
+
+  describe("validateCrossPartitionScope (Issue 13)", () => {
+    let check = producers => Reventless.DcbValidation.validateCrossPartitionScope(~producers)
+
+    testSync("no warning when every carrier of a key agrees on cross-partition scope", () => {
+      let warnings = check([
+        ("Subscribe", subscribedCrossPartitionSchema->u),
+        ("Unsubscribe", unsubscribedCrossPartitionSchema->u),
+      ])
+      expect(warnings)->toEqual([])
+    })
+
+    testSync("warns when one producer leaves a cross-partition key partition-scoped", () => {
+      let warnings = check([
+        ("Subscribe", subscribedCrossPartitionSchema->u),
+        ("Flag", flaggedPartitionScopedSchema->u),
+      ])
+      // 'Flag' carries studentId but partition-scoped, while 'Subscribe' declares it
+      // @crossPartition → scope mismatch.
+      expect(warnings->Array.length)->toBe(1)
+      let w = warnings->Array.getUnsafe(0)
+      expect(w.sliceName)->toBe("Flag")
+      expect(w.message->String.includes("studentId"))->toBe(true)
+    })
+
+    testSync("no warning when no key is cross-partition anywhere", () => {
+      expect(check([("Flag", flaggedPartitionScopedSchema->u)]))->toEqual([])
     })
   })
 })

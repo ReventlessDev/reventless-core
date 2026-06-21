@@ -31,6 +31,8 @@ let Id;
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Customer/StateChangeSlice/RegisterCustomer.res.mjs";
 
+let readConsistency = "EscalateOnRetry";
+
 export {
   name,
   Id,
@@ -40,5 +42,6 @@ export {
   eventSchema,
   moduleUrl,
   commandAuthorization,
+  readConsistency,
 }
 /* consumedEventSchema Not a pure module */
