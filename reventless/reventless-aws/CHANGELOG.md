@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.164 (2026-06-21)
+
+### Bug Fixes
+
+* **aws:** plumb tagKeysByEventType/crossPartitionTagKeys + grant ConditionCheckItem ([8d29fc4](https://github.com/ReventlessDev/reventless-core/commit/8d29fc45ccf92c004d7120d34f603716f34803b8))
+
+
 # 3.0.0-alpha.163 (2026-06-21)
 
 ### Features
