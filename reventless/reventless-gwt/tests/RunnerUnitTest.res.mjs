@@ -210,6 +210,31 @@ globalThis.describe("Cli.parseArgv", () => {
     }
     globalThis.expect(opts$2._0.backend).toEqual("sqlite:./db?reset");
   });
+  globalThis.test("platform --ui-ports defaults false; flag sets it true", async () => {
+    let opts = Cli$ReventlessGwt.parseArgv([
+      "/bin/node",
+      "/path/to/bin",
+      "platform",
+      "--format=vscode"
+    ]);
+    if (opts.TAG === "Ok") {
+      globalThis.expect(opts._0.uiPorts).toEqual(false);
+    } else {
+      Stdlib_JsError.throwWithMessage("expected Ok, got: " + opts._0);
+    }
+    let opts$1 = Cli$ReventlessGwt.parseArgv([
+      "/bin/node",
+      "/path/to/bin",
+      "platform",
+      "--ui-ports"
+    ]);
+    if (opts$1.TAG !== "Ok") {
+      return Stdlib_JsError.throwWithMessage("expected Ok, got: " + opts$1._0);
+    }
+    let opts$2 = opts$1._0;
+    globalThis.expect(opts$2.subcommand === "Platform").toEqual(true);
+    globalThis.expect(opts$2.uiPorts).toEqual(true);
+  });
 });
 
 export {

@@ -58,11 +58,19 @@ async function allocFreePorts(n) {
   return ports;
 }
 
-async function run(roots, backend, callbacks) {
+let fixedPlatformPorts = [
+  4000,
+  4001,
+  3001,
+  3002
+];
+
+async function run(roots, backend, fixedPortsOpt, callbacks) {
+  let fixedPorts = fixedPortsOpt !== undefined ? fixedPortsOpt : false;
   let pkgs = await PlatformScan$ReventlessGwt.scan(roots);
   let pkg = pkgs[0];
   if (pkg !== undefined) {
-    let ports = await allocFreePorts(4);
+    let ports = fixedPorts ? fixedPlatformPorts : await allocFreePorts(4);
     let dPort = ports[0];
     let pPort = ports[1];
     let dMcp = ports[2];
@@ -141,6 +149,7 @@ export {
   classifyLine,
   openEphemeral,
   allocFreePorts,
+  fixedPlatformPorts,
   run,
 }
 /* node:net Not a pure module */

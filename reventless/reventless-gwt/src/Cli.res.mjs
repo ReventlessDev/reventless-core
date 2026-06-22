@@ -78,7 +78,7 @@ USAGE:
   reventless-dev run [--format=<fmt>] [--filter=<id>] [--stream] [--watch] [path...]
   reventless-dev discover [--format=vscode] [path...]
   reventless-dev watch [--format=<fmt>] [--filter=<id>] [path...]
-  reventless-dev platform [--format=vscode] [--backend=<b>] [path...]
+  reventless-dev platform [--format=vscode] [--backend=<b>] [--ui-ports] [path...]
   reventless-dev platform --list [path...]
 
 FORMATS:
@@ -96,6 +96,9 @@ FLAGS:
   --schema-version <v>  Pin a JSON schema version for stable AI prompts
   --backend <b>         platform: storage backend for the spawned local platform
                         ("memory" default, or "sqlite:<path>[?reset]")
+  --ui-ports            platform: pin the platform to the fixed default ports
+                        (4000/4001/3001/3002) instead of ephemeral ones, so the
+                        host-shell UI's Vite proxy can reach it
   --list                platform: list launchable platform packages as NDJSON
                         ({name, dir} per line) and exit
   --help                Show this help and exit
@@ -114,6 +117,7 @@ function parseArgv(argv) {
   let schemaVersion;
   let roots = [];
   let backend = "memory";
+  let uiPorts = false;
   let listPlatforms = false;
   let error;
   let showHelp = false;
@@ -186,6 +190,8 @@ function parseArgv(argv) {
     } else if (arg === "--backend" && (i + 1 | 0) < len) {
       backend = slice[i + 1 | 0];
       i = i + 1 | 0;
+    } else if (arg === "--ui-ports") {
+      uiPorts = true;
     } else if (arg === "--list") {
       listPlatforms = true;
     } else if (arg.startsWith("--")) {
@@ -204,7 +210,7 @@ USAGE:
   reventless-dev run [--format=<fmt>] [--filter=<id>] [--stream] [--watch] [path...]
   reventless-dev discover [--format=vscode] [path...]
   reventless-dev watch [--format=<fmt>] [--filter=<id>] [path...]
-  reventless-dev platform [--format=vscode] [--backend=<b>] [path...]
+  reventless-dev platform [--format=vscode] [--backend=<b>] [--ui-ports] [path...]
   reventless-dev platform --list [path...]
 
 FORMATS:
@@ -222,6 +228,9 @@ FLAGS:
   --schema-version <v>  Pin a JSON schema version for stable AI prompts
   --backend <b>         platform: storage backend for the spawned local platform
                         ("memory" default, or "sqlite:<path>[?reset]")
+  --ui-ports            platform: pin the platform to the fixed default ports
+                        (4000/4001/3001/3002) instead of ephemeral ones, so the
+                        host-shell UI's Vite proxy can reach it
   --list                platform: list launchable platform packages as NDJSON
                         ({name, dir} per line) and exit
   --help                Show this help and exit
@@ -240,7 +249,7 @@ USAGE:
   reventless-dev run [--format=<fmt>] [--filter=<id>] [--stream] [--watch] [path...]
   reventless-dev discover [--format=vscode] [path...]
   reventless-dev watch [--format=<fmt>] [--filter=<id>] [path...]
-  reventless-dev platform [--format=vscode] [--backend=<b>] [path...]
+  reventless-dev platform [--format=vscode] [--backend=<b>] [--ui-ports] [path...]
   reventless-dev platform --list [path...]
 
 FORMATS:
@@ -258,6 +267,9 @@ FLAGS:
   --schema-version <v>  Pin a JSON schema version for stable AI prompts
   --backend <b>         platform: storage backend for the spawned local platform
                         ("memory" default, or "sqlite:<path>[?reset]")
+  --ui-ports            platform: pin the platform to the fixed default ports
+                        (4000/4001/3001/3002) instead of ephemeral ones, so the
+                        host-shell UI's Vite proxy can reach it
   --list                platform: list launchable platform packages as NDJSON
                         ({name, dir} per line) and exit
   --help                Show this help and exit
@@ -277,6 +289,7 @@ Exit code is 1 if any test failed, 0 otherwise.
         schemaVersion: schemaVersion,
         roots: roots.length === 0 ? ["."] : roots,
         backend: backend,
+        uiPorts: uiPorts,
         listPlatforms: listPlatforms,
         toolVersion: toolVersion
       }
@@ -660,7 +673,7 @@ async function runPlatform(opts) {
         console.log(`■ platform stopped (code ` + Stdlib_Option.mapOr(code, "?", c => c.toString()) + `)`);
       }
     });
-  return await PlatformRunner$ReventlessGwt.run(opts.roots, opts.backend, callbacks);
+  return await PlatformRunner$ReventlessGwt.run(opts.roots, opts.backend, opts.uiPorts, callbacks);
 }
 
 async function listPlatforms(opts) {

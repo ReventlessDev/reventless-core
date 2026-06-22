@@ -21,6 +21,11 @@ type options = {
   // `platform` only: the REVENTLESS_LOCAL_BACKEND value passed to the spawned
   // platform child ("memory" default, or "sqlite:<path>[?reset]").
   backend: string,
+  // `platform` only: pin the spawned platform to the fixed default ports
+  // (4000/4001/3001/3002) instead of allocating ephemeral ones. The VS Code
+  // extension passes this when it is also launching the host-shell UI, whose
+  // Vite proxy hardcodes localhost:4000/4001.
+  uiPorts: bool,
   // `platform --list` only: enumerate the launchable platform packages (one
   // NDJSON `{name, dir}` line each) and exit, rather than spawning one. Used by
   // the VS Code extension to populate its active-app picker.
@@ -56,7 +61,7 @@ USAGE:
   reventless-dev run [--format=<fmt>] [--filter=<id>] [--stream] [--watch] [path...]
   reventless-dev discover [--format=vscode] [path...]
   reventless-dev watch [--format=<fmt>] [--filter=<id>] [path...]
-  reventless-dev platform [--format=vscode] [--backend=<b>] [path...]
+  reventless-dev platform [--format=vscode] [--backend=<b>] [--ui-ports] [path...]
   reventless-dev platform --list [path...]
 
 FORMATS:
@@ -74,6 +79,9 @@ FLAGS:
   --schema-version <v>  Pin a JSON schema version for stable AI prompts
   --backend <b>         platform: storage backend for the spawned local platform
                         ("memory" default, or "sqlite:<path>[?reset]")
+  --ui-ports            platform: pin the platform to the fixed default ports
+                        (4000/4001/3001/3002) instead of ephemeral ones, so the
+                        host-shell UI's Vite proxy can reach it
   --list                platform: list launchable platform packages as NDJSON
                         ({name, dir} per line) and exit
   --help                Show this help and exit
@@ -91,6 +99,7 @@ let parseArgv = (argv: array<string>): result<options, string> => {
   let schemaVersion: ref<option<string>> = ref(None)
   let roots = ref([])
   let backend = ref("memory")
+  let uiPorts = ref(false)
   let listPlatforms = ref(false)
   let error = ref(None)
   let showHelp = ref(false)
@@ -157,6 +166,8 @@ let parseArgv = (argv: array<string>): result<options, string> => {
     } else if arg == "--backend" && i.contents + 1 < len {
       backend := slice->Array.getUnsafe(i.contents + 1)
       i := i.contents + 1
+    } else if arg == "--ui-ports" {
+      uiPorts := true
     } else if arg == "--list" {
       listPlatforms := true
     } else if String.startsWith(arg, "--") {
@@ -181,6 +192,7 @@ let parseArgv = (argv: array<string>): result<options, string> => {
         schemaVersion: schemaVersion.contents,
         roots: roots.contents->Array.length == 0 ? defaultRoots() : roots.contents,
         backend: backend.contents,
+        uiPorts: uiPorts.contents,
         listPlatforms: listPlatforms.contents,
         toolVersion,
       })
@@ -614,7 +626,12 @@ let runPlatform = async (opts: options): int => {
         Console.log(`■ platform stopped (code ${code->Option.mapOr("?", c => Int.toString(c))})`),
     }
   }
-  await PlatformRunner.run(~roots=opts.roots, ~backend=opts.backend, ~callbacks)
+  await PlatformRunner.run(
+    ~roots=opts.roots,
+    ~backend=opts.backend,
+    ~fixedPorts=opts.uiPorts,
+    ~callbacks,
+  )
 }
 
 // `platform --list`: enumerate the launchable platform packages under the roots

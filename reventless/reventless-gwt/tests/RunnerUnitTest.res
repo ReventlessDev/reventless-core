@@ -202,4 +202,18 @@ describe("Cli.parseArgv", () => {
     | Error(msg) => JsError.throwWithMessage("expected Ok, got: " ++ msg)
     }
   })
+
+  testPromise("platform --ui-ports defaults false; flag sets it true", async () => {
+    switch Cli.parseArgv(["/bin/node", "/path/to/bin", "platform", "--format=vscode"]) {
+    | Ok(opts) => expect(opts.uiPorts)->toEqual(false)
+    | Error(msg) => JsError.throwWithMessage("expected Ok, got: " ++ msg)
+    }
+    switch Cli.parseArgv(["/bin/node", "/path/to/bin", "platform", "--ui-ports"]) {
+    | Ok(opts) => {
+        expect(opts.subcommand == Platform)->toEqual(true)
+        expect(opts.uiPorts)->toEqual(true)
+      }
+    | Error(msg) => JsError.throwWithMessage("expected Ok, got: " ++ msg)
+    }
+  })
 })

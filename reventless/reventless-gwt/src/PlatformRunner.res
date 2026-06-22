@@ -74,10 +74,22 @@ let allocFreePorts = async (n: int): array<int> => {
   ports
 }
 
+// The platform child's default ports (Platform.startServers): domain / platform /
+// domain-MCP / platform-MCP. `~fixedPorts` pins to these instead of allocating
+// ephemeral ones — the VS Code extension uses it when launching the host-shell UI,
+// whose Vite proxy hardcodes localhost:4000/4001. The caller is responsible for
+// ensuring they're free (it pre-checks and toasts on conflict).
+let fixedPlatformPorts = [4000, 4001, 3001, 3002]
+
 // Discover the platform package under `roots`, spawn it with the tap + per-session
 // ports + in-memory backend, stream its events through `callbacks`, and stay alive
 // until cancelled (the child is killed via its process group on SIGTERM/SIGINT).
-let run = async (~roots: array<string>, ~backend: string, ~callbacks: callbacks): int => {
+let run = async (
+  ~roots: array<string>,
+  ~backend: string,
+  ~fixedPorts: bool=false,
+  ~callbacks: callbacks,
+): int => {
   let pkgs = await PlatformScan.scan(roots)
   switch pkgs->Array.get(0) {
   | None =>
@@ -87,7 +99,7 @@ let run = async (~roots: array<string>, ~backend: string, ~callbacks: callbacks)
     )
     1
   | Some(pkg) =>
-    let ports = await allocFreePorts(4)
+    let ports = fixedPorts ? fixedPlatformPorts : await allocFreePorts(4)
     let dPort = ports->Array.getUnsafe(0)
     let pPort = ports->Array.getUnsafe(1)
     let dMcp = ports->Array.getUnsafe(2)
