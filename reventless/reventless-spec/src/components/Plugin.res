@@ -259,12 +259,28 @@ that feed this extension point's published protocol — plugin-qualified to matc
 `writableDef.producedEventTypes`, so the event graph can link a producing
 write-side to the extension point it ultimately feeds. `delegateNames` are the
 connected targets (one per `ExtensionPointMapping`).
+
+`commandTypes` are the EP's *inbound* command protocol (the variants of its
+`command` type). It is empty (None, read as []) when the EP declares
+`command = unit` — a notification-only, events-out boundary that accepts nothing
+inward. The event graph uses this to decide whether the EP routes any command (an
+empty list means no `routesTo` edge: there is nothing for the EP to route).
+
+Optional (None for a `command = unit` EP). Uses the `js_nullable` pattern (T | null).
+A sury field cannot be BOTH absent-tolerant on decode AND JSON-encodable (proven:
+S.option = `T|undefined`, nullableAsOption = `T|undefined|null` both decode an absent
+key but fail jsonableValidation; js_nullable = `T|null` is the only JSON-safe form but
+rejects an absent key). This def is nested in the JSON-encoded lifecycle Message union
+(Connect/Heartbeat), so jsonability wins → js_nullable. It always writes the field
+(None → null), so it is present-required on decode; a plugin definition persisted
+before this field existed must be reset/re-emitted. Read with `->Option.getOr([])`.
 */
 @schema
 type extensionPointDef = {
   name: string,
   delegateNames: array<string>,
   sourceEventTypes: array<string>,
+  commandTypes: @s.matches(stringArrayOptionSchema) option<array<string>>,
 }
 
 // js_nullable creates `array | null` (not `| undefined`), which passes sury's

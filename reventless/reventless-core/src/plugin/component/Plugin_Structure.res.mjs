@@ -385,13 +385,16 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   extensionPoints.forEach(M => {
     let epName = M.ExtensionPoint.name;
     let sourceEvents = qualify(name, DcbTag$Reventless.extractVariantNames(M.Delegate.eventSchema));
+    let commands = qualify(epName, DcbTag$Reventless.extractAllVariantNames(M.ExtensionPoint.commandSchema));
     let match = Stdlib_Option.getOr(epByName[epName], [
+      [],
       [],
       []
     ]);
     epByName[epName] = [
       match[0].concat([M.Delegate.name]),
-      match[1].concat(sourceEvents)
+      match[1].concat(sourceEvents),
+      match[2].concat(commands)
     ];
   });
   let extensionPointDefs = Object.entries(epByName).map(param => {
@@ -399,7 +402,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     return {
       name: param[0],
       delegateNames: Belt_SetString.toArray(Belt_SetString.fromArray(match[0])),
-      sourceEventTypes: Belt_SetString.toArray(Belt_SetString.fromArray(match[1]))
+      sourceEventTypes: Belt_SetString.toArray(Belt_SetString.fromArray(match[1])),
+      commandTypes: Belt_SetString.toArray(Belt_SetString.fromArray(match[2]))
     };
   });
   return {

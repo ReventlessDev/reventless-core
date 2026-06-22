@@ -148,7 +148,8 @@ let extensionDefSchema = S.schema(s => ({
 let extensionPointDefSchema = S.schema(s => ({
   name: s.m(S.string),
   delegateNames: s.m(S.array(S.string)),
-  sourceEventTypes: s.m(S.array(S.string))
+  sourceEventTypes: s.m(S.array(S.string)),
+  commandTypes: s.m(stringArrayOptionSchema)
 }));
 
 let extensionPointDefArrayOptionSchema = SuryResMjs.js_nullable(S.array(extensionPointDefSchema));

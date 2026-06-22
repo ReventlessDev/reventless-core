@@ -507,20 +507,27 @@ let make = (
   let dedupe = (xs: array<string>) =>
     xs->Belt.Set.String.fromArray->Belt.Set.String.toArray
 
-  let epByName: Dict.t<(array<string>, array<string>)> = Dict.make()
+  let epByName: Dict.t<(array<string>, array<string>, array<string>)> = Dict.make()
   extensionPoints->Array.forEach((module(M: ReventlessInfra.ExtensionPointMapping.Mapping)) => {
     let epName = M.ExtensionPoint.name
     let sourceEvents = qualify(~prefix=name, eventVariantNames(M.Delegate.eventSchema->S.castToUnknown))
-    let (dels, evs) = epByName->Dict.get(epName)->Option.getOr(([], []))
-    epByName->Dict.set(epName, (Array.concat(dels, [M.Delegate.name]), Array.concat(evs, sourceEvents)))
+    // The EP's inbound command protocol (variants of its `command` type). Empty
+    // for a `command = unit` EP — an events-out-only boundary that routes nothing.
+    let commands = qualify(~prefix=epName, commandVariantNames(M.ExtensionPoint.commandSchema))
+    let (dels, evs, cmds) = epByName->Dict.get(epName)->Option.getOr(([], [], []))
+    epByName->Dict.set(
+      epName,
+      (Array.concat(dels, [M.Delegate.name]), Array.concat(evs, sourceEvents), Array.concat(cmds, commands)),
+    )
   })
   let extensionPointDefs =
     epByName
     ->Dict.toArray
-    ->Array.map(((epName, (dels, evs))) => ({
+    ->Array.map(((epName, (dels, evs, cmds))) => ({
       Reventless.Plugin.name: epName,
       delegateNames: dedupe(dels),
       sourceEventTypes: dedupe(evs),
+      commandTypes: Some(dedupe(cmds)),
     }: Reventless.Plugin.extensionPointDef))
 
   {

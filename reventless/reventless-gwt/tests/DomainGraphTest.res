@@ -291,6 +291,8 @@ describe("DomainGraph.build", () => {
       name: "Catalog.Products",
       delegateNames: ["CatalogDcbEventLog"],
       sourceEventTypes: ["Catalog.ProductAdded"],
+      // `command = unit`: notification-only, no inbound command protocol.
+      commandTypes: Some([]),
     }
     let catalog = structure(
       ~stateChangeSlices=[
@@ -308,8 +310,32 @@ describe("DomainGraph.build", () => {
     expect(hasEdge(g, "Catalog:AddProduct", "Catalog.ProductAdded", "emits"))->toBe(true)
     // …which feeds the extension point — so EP focus reaches the producer.
     expect(hasEdge(g, "Catalog.ProductAdded", "Catalog:ep:Catalog.Products", "feeds"))->toBe(true)
-    // …and the producer's command is the one the EP routes inward — EP → Command,
-    // the same command node the write-side handles (no Extension required).
+    // …but the EP has NO inbound command protocol (command = unit), so it routes
+    // nothing: no backwards EP → Command edge mislabelling the producer's own command.
+    expect(hasEdge(g, "Catalog:ep:Catalog.Products", "Catalog_AddProduct", "routesTo"))->toBe(false)
+  })
+
+  testPromise("an extension point with an inbound command protocol routes to its delegate's commands", async () => {
+    // The same shape, but the EP declares a non-unit `command` type — so it DOES
+    // accept commands inward and routes them to the write-side that produces its
+    // source events: EP → Command → write-side ("handles").
+    let ep: Reventless.Plugin.extensionPointDef = {
+      name: "Catalog.Products",
+      delegateNames: ["AddProduct"],
+      sourceEventTypes: ["Catalog.ProductAdded"],
+      commandTypes: Some(["Catalog.Products.RequestAddProduct"]),
+    }
+    let catalog = structure(
+      ~stateChangeSlices=[
+        writable(
+          ~name="AddProduct",
+          ~commands=[command(~name="AddProduct", ~mutationField="Catalog_AddProduct")],
+          ~produces=["Catalog.ProductAdded"],
+        ),
+      ],
+      ~extensionPoints=[ep],
+    )
+    let g = DomainGraph.build(~structures=[("Catalog", catalog)])
     expect(hasEdge(g, "Catalog:ep:Catalog.Products", "Catalog_AddProduct", "routesTo"))->toBe(true)
     expect(hasEdge(g, "Catalog_AddProduct", "Catalog:AddProduct", "handles"))->toBe(true)
   })

@@ -376,10 +376,12 @@ globalThis.describe("DomainGraph.build", () => {
   globalThis.test("an owned extension point is fed by the producers of its source events", async () => {
     let ep_delegateNames = ["CatalogDcbEventLog"];
     let ep_sourceEventTypes = ["Catalog.ProductAdded"];
+    let ep_commandTypes = [];
     let ep = {
       name: "Catalog.Products",
       delegateNames: ep_delegateNames,
-      sourceEventTypes: ep_sourceEventTypes
+      sourceEventTypes: ep_sourceEventTypes,
+      commandTypes: ep_commandTypes
     };
     let catalog = structure(undefined, undefined, undefined, [writable("AddProduct", [{
           name: "AddProduct",
@@ -397,6 +399,31 @@ globalThis.describe("DomainGraph.build", () => {
     globalThis.expect(nodeKind(g, "Catalog:ep:Catalog.Products")).toEqual("ExtensionPoint");
     globalThis.expect(hasEdge(g, "Catalog:AddProduct", "Catalog.ProductAdded", "emits")).toBe(true);
     globalThis.expect(hasEdge(g, "Catalog.ProductAdded", "Catalog:ep:Catalog.Products", "feeds")).toBe(true);
+    globalThis.expect(hasEdge(g, "Catalog:ep:Catalog.Products", "Catalog_AddProduct", "routesTo")).toBe(false);
+  });
+  globalThis.test("an extension point with an inbound command protocol routes to its delegate's commands", async () => {
+    let ep_delegateNames = ["AddProduct"];
+    let ep_sourceEventTypes = ["Catalog.ProductAdded"];
+    let ep_commandTypes = ["Catalog.Products.RequestAddProduct"];
+    let ep = {
+      name: "Catalog.Products",
+      delegateNames: ep_delegateNames,
+      sourceEventTypes: ep_sourceEventTypes,
+      commandTypes: ep_commandTypes
+    };
+    let catalog = structure(undefined, undefined, undefined, [writable("AddProduct", [{
+          name: "AddProduct",
+          schema: "",
+          level: "Instance",
+          aggregateIdField: undefined,
+          mutationField: "Catalog_AddProduct",
+          references: [],
+          allowedStates: undefined
+        }], ["Catalog.ProductAdded"], undefined, undefined)], undefined, undefined, undefined, [ep]);
+    let g = DomainGraph$ReventlessGwt.build([[
+        "Catalog",
+        catalog
+      ]]);
     globalThis.expect(hasEdge(g, "Catalog:ep:Catalog.Products", "Catalog_AddProduct", "routesTo")).toBe(true);
     globalThis.expect(hasEdge(g, "Catalog_AddProduct", "Catalog:AddProduct", "handles")).toBe(true);
   });
