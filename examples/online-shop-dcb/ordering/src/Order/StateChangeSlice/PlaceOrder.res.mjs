@@ -19,7 +19,7 @@ let commandSchema = S.schema(s => ({
   TAG: "PlaceOrder",
   orderId: s.m(DcbTag$Reventless.partition),
   customerId: s.m(DcbTag$Reventless.string),
-  productIds: s.m(S.array(Reference$Reventless.to_(undefined, "AvailableProducts")))
+  productIds: s.m(S.array(Reference$Reventless.to_(undefined, "productId", "AvailableProducts")))
 }));
 
 let errorSchema = S.union([

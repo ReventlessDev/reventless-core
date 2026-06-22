@@ -5,11 +5,16 @@ import * as DcbTag$Reventless from "./DcbTag.res.mjs";
 
 let referenceId = S.Metadata.Id.make("reventless", "reference");
 
-function to_(plugin, entity) {
-  return S.Metadata.set(S.Metadata.set(S.string, DcbTag$Reventless.dcbTagId, true), referenceId, {
+function to_(plugin, key, entity) {
+  let base = S.Metadata.set(S.Metadata.set(S.string, DcbTag$Reventless.dcbTagId, true), referenceId, {
     entity: entity,
     plugin: plugin
   });
+  if (key !== undefined) {
+    return S.Metadata.set(base, DcbTag$Reventless.dcbTagKeyOverrideId, key);
+  } else {
+    return base;
+  }
 }
 
 function getTarget(schema) {

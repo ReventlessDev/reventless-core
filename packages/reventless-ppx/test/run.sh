@@ -328,6 +328,29 @@ type event = OrderPlaced({@partitionTag orderId: string, customerId: string})
 type error = unit
 EOF
 
+# @ref: cross-entity reference annotation in a slice folder (dcbTags auto-on).
+# - scalar @ref keeps DCB-tag semantics with the field name as the tag key
+# - plural *Ids array @ref must singularise the tag key (productIds → productId)
+#   so it shares a key with singular-named producers (Reference.to_ ~key)
+# - @ref + @noDcbTag drops the DCB tag (toWithoutDcbTag), so no key is emitted
+cat > "$DCB/src/StateChangeSlice/OrderPicker.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = Pick({
+  @partitionTag orderId: string,
+  @ref("Customer") customerId: string,
+  @ref("AvailableProducts") productIds: array<string>,
+  @ref("Warehouse") @noDcbTag warehouseIds: array<string>,
+})
+
+@schema
+type event = Picked({@partitionTag orderId: string})
+
+@schema
+type error = unit
+EOF
+
 # readConsistency: @@reventless.consistency(AlwaysStrong) build-time override
 cat > "$DCB/src/StateChangeSlice/ConsistencyStrong.res" <<'EOF'
 @@reventless.spec
@@ -1227,6 +1250,21 @@ JS="$DCB/src/StateChangeSlice/TransferItems.res.mjs"
 # itemIds should be tagged via DcbTag.stringForKey(~key="itemId")
 assert_js_contains "$JS" 'stringForKey' "*Ids array: stringForKey constructor emitted"
 assert_js_contains "$JS" '"itemId"'      "*Ids array: singularised key 'itemId' present in output"
+
+echo ""
+echo "=== Test: @ref composes with DCB tag — scalar field-name key, plural *Ids singularised, @noDcbTag drops tag ==="
+JS="$DCB/src/StateChangeSlice/OrderPicker.res.mjs"
+assert_js_contains     "$JS" 'Reference'           "@ref: Reference module referenced in output"
+assert_js_contains     "$JS" '"AvailableProducts"' "@ref: array ref entity 'AvailableProducts' present"
+# productIds is a plural *Ids array — its DCB tag key MUST be singularised to
+# productId so it correlates with singular-named producer events (the bug fix).
+assert_js_contains     "$JS" '"productId"'          "@ref: plural *Ids array singularised to tag key 'productId'"
+assert_js_not_contains "$JS" '"productIds"'         "@ref: plural field name NOT used as tag key"
+assert_js_contains     "$JS" '"Customer"'           "@ref: scalar ref entity 'Customer' present"
+# warehouseIds is @ref + @noDcbTag → toWithoutDcbTag, no DCB tag, no key override
+assert_js_contains     "$JS" 'toWithoutDcbTag'      "@ref + @noDcbTag: toWithoutDcbTag emitted (no DCB tag)"
+assert_js_not_contains "$JS" '"warehouseId"'        "@ref + @noDcbTag: no tag key emitted for warehouseIds"
+assert_js_not_contains "$JS" 'noDcbTag'             "@ref: @noDcbTag field attr stripped"
 
 echo ""
 echo "=== Test: @dcbTag(\"key\") payload form — scalar and array<string> ==="

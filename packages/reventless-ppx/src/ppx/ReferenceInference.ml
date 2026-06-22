@@ -56,23 +56,39 @@ let has_s_matches_attr (attrs : attributes) =
     String.equal attr.attr_name.txt "s.matches"
   ) attrs
 
-(** Builds [@s.matches(Reventless.Reference.to_(~plugin="P", "Entity"))] or
-    [@s.matches(Reventless.Reference.to_("Entity"))], choosing
-    [toWithoutDcbTag] when [@noDcbTag] is also present on the field. *)
-let make_ref_matches_attr ~loc ~entity ~plugin_opt ~no_dcb =
+(** [productIds] / [orderIds] — plural [*Ids] field names whose auto-derived DCB
+    tag key is the singularized stem, so they share a key with singular-named
+    producers. Mirrors [DcbTagInference.ends_with_ids]. *)
+let ends_with_ids name =
+  let len = String.length name in
+  len >= 4
+  && name.[len - 1] = 's'
+  && name.[len - 2] = 'd'
+  && name.[len - 3] = 'I'
+
+(** Builds [@s.matches(Reventless.Reference.to_(~plugin="P", ~key="k", "Entity"))]
+    or [@s.matches(Reventless.Reference.to_("Entity"))], choosing
+    [toWithoutDcbTag] when [@noDcbTag] is also present on the field. [key_opt]
+    overrides the DCB tag key (used for plural [*Ids] array fields so they share
+    a tag key with their singular-named producers); ignored when [no_dcb]. *)
+let make_ref_matches_attr ~loc ~entity ~plugin_opt ~no_dcb ~key_opt =
   let fn_name = if no_dcb then "toWithoutDcbTag" else "to_" in
   let to_expr =
     Ast_builder.Default.pexp_ident ~loc
       { txt = Ldot (Ldot (Lident "Reventless", "Reference"), fn_name); loc }
   in
   let entity_arg = (Nolabel, Ast_builder.Default.estring ~loc entity) in
-  let args =
+  let plugin_args =
     match plugin_opt with
-    | None -> [entity_arg]
-    | Some plugin ->
-      [ (Labelled "plugin", Ast_builder.Default.estring ~loc plugin)
-      ; entity_arg ]
+    | None -> []
+    | Some plugin -> [ (Labelled "plugin", Ast_builder.Default.estring ~loc plugin) ]
   in
+  let key_args =
+    match key_opt with
+    | Some key when not no_dcb -> [ (Labelled "key", Ast_builder.Default.estring ~loc key) ]
+    | _ -> []
+  in
+  let args = plugin_args @ key_args @ [entity_arg] in
   let call_expr = Ast_builder.Default.pexp_apply ~loc to_expr args in
   let payload =
     PStr [{ pstr_desc = Pstr_eval (call_expr, []); pstr_loc = loc }]
@@ -98,9 +114,11 @@ let transform_label_decl (ld : label_declaration) : label_declaration =
     | Some (entity, plugin_opt) ->
       let no_dcb     = has_no_dcb_tag_attr ld.pld_attributes in
       let clean_attrs = strip_ref_field_attr ld.pld_attributes in
-      let attr = make_ref_matches_attr ~loc ~entity ~plugin_opt ~no_dcb in
       if is_string_type ld.pld_type
          && not (has_s_matches_attr ld.pld_type.ptyp_attributes) then
+        (* Scalar ref: the DCB tag key defaults to the field name, which already
+           matches singular-named producers — no key override needed. *)
+        let attr = make_ref_matches_attr ~loc ~entity ~plugin_opt ~no_dcb ~key_opt:None in
         let new_type = { ld.pld_type with
                          ptyp_attributes = attr :: ld.pld_type.ptyp_attributes }
         in
@@ -110,6 +128,15 @@ let transform_label_decl (ld : label_declaration) : label_declaration =
         | Ptyp_constr ({ txt = Lident "array"; _ } as arr_lid, [elem])
           when is_string_type elem
                && not (has_s_matches_attr elem.ptyp_attributes) ->
+          (* Plural [*Ids] array ref: singularize the tag key (productIds →
+             productId) so it shares a key with singular-named producer events,
+             matching the un-reffed DcbTagInference path. *)
+          let key_opt =
+            if ends_with_ids ld.pld_name.txt
+            then Some (Util.drop_trailing_s ld.pld_name.txt)
+            else None
+          in
+          let attr = make_ref_matches_attr ~loc ~entity ~plugin_opt ~no_dcb ~key_opt in
           let new_elem =
             { elem with ptyp_attributes = attr :: elem.ptyp_attributes }
           in
