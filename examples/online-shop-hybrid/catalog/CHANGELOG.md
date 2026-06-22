@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.98 (2026-06-22)
+
+### Features
+
+* **catalog-example:** hide event-driven demand commands from the API via [@no](https://github.com/no)Api ([049e77b](https://github.com/ReventlessDev/reventless-core/commit/049e77b8c3aa1c655aa776d8ca0565e94ca1e64a))
+
+
 # 1.0.0-alpha.97 (2026-06-21)
 
 ### Features

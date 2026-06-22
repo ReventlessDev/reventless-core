@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.94 (2026-06-22)
+
+### Bug Fixes
+
+* **deps:** bump reventless-host-shell to 3.0.0-alpha.31 ([83ceb18](https://github.com/ReventlessDev/reventless-core/commit/83ceb181b5c32f810b4379831ccebd078ab8fc99))
+
+
 # 1.0.0-alpha.93 (2026-06-21)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-platform-local

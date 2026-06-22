@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.60 (2026-06-22)
+
+### Bug Fixes
+
+* **domain-graph:** route EP commands only with a real inbound protocol ([647d1fa](https://github.com/ReventlessDev/reventless-core/commit/647d1fa0194189f4d53cf5fca0f2ef4045b983f9))
+* **ppx:** compose [@ref](https://github.com/ref) with the DCB tag key for plural *Ids fields ([cba2193](https://github.com/ReventlessDev/reventless-core/commit/cba2193d1c377c1bf91dee1f01da2a91a82ab488))
+### Features
+
+* **structure:** mark API-exposed commands for the event-graph badge ([8cd6faa](https://github.com/ReventlessDev/reventless-core/commit/8cd6faa0a66c6cf1b4b5eea26df6f70c540b67a4))
+
+
 # 3.0.0-alpha.59 (2026-06-21)
 
 ### Features

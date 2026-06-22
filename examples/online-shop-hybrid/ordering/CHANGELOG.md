@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.98 (2026-06-22)
+
+### Bug Fixes
+
+* **ppx:** compose [@ref](https://github.com/ref) with the DCB tag key for plural *Ids fields ([cba2193](https://github.com/ReventlessDev/reventless-core/commit/cba2193d1c377c1bf91dee1f01da2a91a82ab488))
+### Features
+
+* **ordering-example:** pin PlaceOrder product picker to same-plugin AvailableProducts ([a1b78d1](https://github.com/ReventlessDev/reventless-core/commit/a1b78d17fe4e65d634429f02cf7c7b7b275a9bf8))
+
+
 # 1.0.0-alpha.97 (2026-06-21)
 
 ### Features

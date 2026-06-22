@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.73 (2026-06-22)
+
+### Bug Fixes
+
+* **domain-graph:** route EP commands only with a real inbound protocol ([647d1fa](https://github.com/ReventlessDev/reventless-core/commit/647d1fa0194189f4d53cf5fca0f2ef4045b983f9))
+* **reflection:** surface payload-less commands & events in the event graph ([71819cf](https://github.com/ReventlessDev/reventless-core/commit/71819cf71fc7b0b0e1fc64fb7dce23f84f69b38d))
+### Features
+
+* **domain-graph:** draw the commands reacting slices raise on their target ([b990be2](https://github.com/ReventlessDev/reventless-core/commit/b990be293305544385abf7c2093161fc9a75c78c))
+* **gwt:** pin local platform to fixed ports via --ui-ports ([ee60259](https://github.com/ReventlessDev/reventless-core/commit/ee602590b37908747f6e41c718861720efac61a0))
+* **structure:** mark API-exposed commands for the event-graph badge ([8cd6faa](https://github.com/ReventlessDev/reventless-core/commit/8cd6faa0a66c6cf1b4b5eea26df6f70c540b67a4))
+
+
 # 1.0.0-alpha.72 (2026-06-21)
 
 ### Features

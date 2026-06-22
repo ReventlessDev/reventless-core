@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.100 (2026-06-22)
+
+### Features
+
+* **ordering-example:** pin PlaceOrder product picker to same-plugin AvailableProducts ([a1b78d1](https://github.com/ReventlessDev/reventless-core/commit/a1b78d17fe4e65d634429f02cf7c7b7b275a9bf8))
+
+
 # 3.0.0-alpha.99 (2026-06-21)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-ordering
