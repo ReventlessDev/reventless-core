@@ -153,6 +153,21 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
         Some("orderId"),
       ))
     })
+
+    testSync("ShipOrder: payload-less command CancelShipment is surfaced in commands", () => {
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      expect(shipOrder.commands->Array.map(c => c.name))->toEqual(["ShipOrder", "CancelShipment"])
+    })
+
+    testSync("ShipOrder: payload-less event ShipmentVoided is surfaced in events", () => {
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      expect(shipOrder.events->Array.map(e => e.name))->toEqual(["OrderShipped", "ShipmentVoided"])
+    })
+
+    testSync("ShipOrder: producedEventTypes still excludes the payload-less ShipmentVoided (DCB filter intact)", () => {
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      expect(shipOrder.producedEventTypes)->toEqual(["TestPlugin.OrderShipped"])
+    })
   })
 
   describe("stateViewSlices", () => {

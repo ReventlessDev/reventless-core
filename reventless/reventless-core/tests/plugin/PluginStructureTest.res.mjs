@@ -244,6 +244,24 @@ globalThis.describe("Plugin_Structure.make — Phase 2 graph fields", () => {
         "orderId"
       ]);
     });
+    globalThis.test("ShipOrder: payload-less command CancelShipment is surfaced in commands", () => {
+      let shipOrder = structure.stateChangeSlices[1];
+      globalThis.expect(shipOrder.commands.map(c => c.name)).toEqual([
+        "ShipOrder",
+        "CancelShipment"
+      ]);
+    });
+    globalThis.test("ShipOrder: payload-less event ShipmentVoided is surfaced in events", () => {
+      let shipOrder = structure.stateChangeSlices[1];
+      globalThis.expect(shipOrder.events.map(e => e.name)).toEqual([
+        "OrderShipped",
+        "ShipmentVoided"
+      ]);
+    });
+    globalThis.test("ShipOrder: producedEventTypes still excludes the payload-less ShipmentVoided (DCB filter intact)", () => {
+      let shipOrder = structure.stateChangeSlices[1];
+      globalThis.expect(shipOrder.producedEventTypes).toEqual(["TestPlugin.OrderShipped"]);
+    });
   });
   globalThis.describe("stateViewSlices", () => {
     globalThis.test("produces four SVS entries in declaration order", () => {

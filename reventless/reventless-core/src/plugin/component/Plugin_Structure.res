@@ -140,58 +140,67 @@ let make = (
     ~mutationFieldFor: string => string,
     ~parentSchema: S.t<unknown>,
     v: S.t<unknown>,
-  ): option<Reventless.Plugin.commandDef> =>
+  ): option<Reventless.Plugin.commandDef> => {
+    // Build a commandDef for one variant. `properties` is the variant's field dict —
+    // empty for a payload-less variant (e.g. `| Archive`), which compiles to a bare
+    // `S.literal("Archive")` string rather than an `{TAG, ...}` object.
+    let mkDef = (~variantName, ~properties) => {
+      let (level, aggregateIdField) = commandLevelAndId(~isAggregate, ~variantName, properties)
+      let references =
+        properties
+        ->Dict.toArray
+        ->Array.filterMap(((fieldName, fieldSchema)) =>
+          Reventless.Reference.getTarget(fieldSchema)->Option.map(target => (
+            {
+              Reventless.Plugin.fieldName,
+              entity: target.entity,
+              plugin: target.plugin,
+            }: Reventless.Plugin.fieldReference
+          ))
+        )
+      // Per-variant `allowedStates` lives on the *parent* command schema
+      // (the PPX attaches a single dict<variantName, [|states|]> via
+      // markAllowedStates). Look it up by variant name; back-compat
+      // None when the variant lacks an @allowedStates annotation.
+      let allowedStates = ApiAllowedStatesHelpers.getAllowedStates(parentSchema, ~variantName)
+      // API-exposed iff the whole command isn't @noApi and this variant
+      // isn't in its @noApi-variants set — mirrors the API-generation filter
+      // (Plugin_Helpers / PluginBaseFragment). Drives the event-graph API badge.
+      let apiExposed =
+        !ApiNoApiHelpers.isNoApi(parentSchema) &&
+        switch ApiNoApiHelpers.getExcludedVariants(parentSchema) {
+        | Some(excluded) => !(excluded->Set.has(variantName))
+        | None => true
+        }
+      ({
+        Reventless.Plugin.name: variantName,
+        schema: (v->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
+        level,
+        aggregateIdField,
+        mutationField: mutationFieldFor(variantName),
+        references,
+        allowedStates,
+        apiExposed: Some(apiExposed),
+      }: Reventless.Plugin.commandDef)
+    }
     switch v {
     | Object({properties}) =>
       properties
       ->Dict.get("TAG")
       ->Option.flatMap(tagSchema =>
         switch tagSchema {
-        | String({const: ?Some(variantName)}) => {
-            let (level, aggregateIdField) = commandLevelAndId(~isAggregate, ~variantName, properties)
-            let references =
-              properties
-              ->Dict.toArray
-              ->Array.filterMap(((fieldName, fieldSchema)) =>
-                Reventless.Reference.getTarget(fieldSchema)->Option.map(target => (
-                  {
-                    Reventless.Plugin.fieldName,
-                    entity: target.entity,
-                    plugin: target.plugin,
-                  }: Reventless.Plugin.fieldReference
-                ))
-              )
-            // Per-variant `allowedStates` lives on the *parent* command schema
-            // (the PPX attaches a single dict<variantName, [|states|]> via
-            // markAllowedStates). Look it up by variant name; back-compat
-            // None when the variant lacks an @allowedStates annotation.
-            let allowedStates =
-              ApiAllowedStatesHelpers.getAllowedStates(parentSchema, ~variantName)
-            // API-exposed iff the whole command isn't @noApi and this variant
-            // isn't in its @noApi-variants set — mirrors the API-generation filter
-            // (Plugin_Helpers / PluginBaseFragment). Drives the event-graph API badge.
-            let apiExposed =
-              !ApiNoApiHelpers.isNoApi(parentSchema) &&
-              switch ApiNoApiHelpers.getExcludedVariants(parentSchema) {
-              | Some(excluded) => !(excluded->Set.has(variantName))
-              | None => true
-              }
-            Some({
-              Reventless.Plugin.name: variantName,
-              schema: (v->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
-              level,
-              aggregateIdField,
-              mutationField: mutationFieldFor(variantName),
-              references,
-              allowedStates,
-              apiExposed: Some(apiExposed),
-            })
-          }
+        | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties))
         | _ => None
         }
       )
+    // Payload-less command variants (`| Archive`) compile to a bare string literal,
+    // not an `{TAG, ...}` object. They still get a generated mutation (API generation
+    // walks the schema via extractAllVariantNames), so surface them here too —
+    // otherwise the event graph hides a command the API actually exposes.
+    | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties=Dict.make()))
     | _ => None
     }
+  }
 
   let extractCommandDefs = (
     ~isAggregate,
@@ -213,37 +222,44 @@ let make = (
   // Mirrors toCommandDef/extractCommandDefs for emitted events: name (TAG const),
   // payload JSON Schema, and cross-entity references.
 
-  let toEventDef = (v: S.t<unknown>): option<Reventless.Plugin.eventDef> =>
+  let toEventDef = (v: S.t<unknown>): option<Reventless.Plugin.eventDef> => {
+    let mkDef = (~variantName, ~properties) => {
+      let references =
+        properties
+        ->Dict.toArray
+        ->Array.filterMap(((fieldName, fieldSchema)) =>
+          Reventless.Reference.getTarget(fieldSchema)->Option.map(target => (
+            {
+              Reventless.Plugin.fieldName,
+              entity: target.entity,
+              plugin: target.plugin,
+            }: Reventless.Plugin.fieldReference
+          ))
+        )
+      ({
+        Reventless.Plugin.name: variantName,
+        schema: (v->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
+        references,
+      }: Reventless.Plugin.eventDef)
+    }
     switch v {
     | Object({properties}) =>
       properties
       ->Dict.get("TAG")
       ->Option.flatMap(tagSchema =>
         switch tagSchema {
-        | String({const: ?Some(variantName)}) => {
-            let references =
-              properties
-              ->Dict.toArray
-              ->Array.filterMap(((fieldName, fieldSchema)) =>
-                Reventless.Reference.getTarget(fieldSchema)->Option.map(target => (
-                  {
-                    Reventless.Plugin.fieldName,
-                    entity: target.entity,
-                    plugin: target.plugin,
-                  }: Reventless.Plugin.fieldReference
-                ))
-              )
-            Some({
-              Reventless.Plugin.name: variantName,
-              schema: (v->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
-              references,
-            })
-          }
+        | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties))
         | _ => None
         }
       )
+    // Payload-less event variants (`| Archived`) compile to a bare string literal.
+    // DCB-projection lookups can't WHERE-clause on them, so they stay out of
+    // producedEventTypes/consumedEventTypes; but the full `events` list carries them
+    // so the event graph can still draw the emitted (orphan) event node.
+    | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties=Dict.make()))
     | _ => None
     }
+  }
 
   let extractEventDefs = (eventSchema: S.t<unknown>): array<Reventless.Plugin.eventDef> =>
     switch eventSchema {

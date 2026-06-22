@@ -13,17 +13,23 @@ function evolve(_state, _event) {
   return true;
 }
 
-let commandSchema = S.schema(s => ({
-  TAG: "ShipOrder",
-  orderId: s.m(DcbTag$Reventless.string)
-}));
+let commandSchema = S.union([
+  S.schema(s => ({
+    TAG: "ShipOrder",
+    orderId: s.m(DcbTag$Reventless.string)
+  })),
+  S.literal("CancelShipment")
+]);
 
 let errorSchema = S.literal("OrderNotFound");
 
-let eventSchema = S.schema(s => ({
-  TAG: "OrderShipped",
-  orderId: s.m(DcbTag$Reventless.string)
-}));
+let eventSchema = S.union([
+  S.schema(s => ({
+    TAG: "OrderShipped",
+    orderId: s.m(DcbTag$Reventless.string)
+  })),
+  S.literal("ShipmentVoided")
+]);
 
 function decide(_state, _command) {
   return {

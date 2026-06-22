@@ -16,14 +16,16 @@ let command = (~name, ~mutationField, ~apiExposed=None): Reventless.Plugin.comma
   apiExposed,
 }
 
-let writable = (~name, ~commands=[], ~produces=[], ~consumes=[], ~linkedViews=[]): Reventless.Plugin.writableDef => {
+let evt = (~name): Reventless.Plugin.eventDef => {name, schema: "", references: []}
+
+let writable = (~name, ~commands=[], ~produces=[], ~consumes=[], ~linkedViews=[], ~events=[]): Reventless.Plugin.writableDef => {
   name,
   commands,
   producedEventTypes: produces,
   consumedEventTypes: consumes,
   linkedViews,
   consistencyRead: None,
-  events: [],
+  events,
 }
 
 let queryable = (~name, ~consumes=[], ~visibility=None): Reventless.Plugin.queryableDef => {
@@ -104,6 +106,26 @@ describe("DomainGraph.build", () => {
     expect(hasEdge(g, "Shop_Order_Place", "Shop:Order", "handles"))->toBe(true)
     expect(hasEdge(g, "Shop:Order", "Shop.Placed", "emits"))->toBe(true)
     expect(hasEdge(g, "Shop.Placed", "Shop:OrderView", "projects"))->toBe(true)
+  })
+
+  testPromise("payload-less events (in `events`, not producedEventTypes) still get an emitted node", async () => {
+    // Mirrors an aggregate whose `| Archived` variant is payload-less: DCB drops it from
+    // producedEventTypes, but the full `events` list carries it so the graph draws the
+    // emitted (orphan) event node. The payloaded `Added` appears in both lists and dedups.
+    let shop = structure(
+      ~aggregates=[
+        writable(
+          ~name="Category",
+          ~produces=["Catalog.Added"],
+          ~events=[evt(~name="Added"), evt(~name="Archived")],
+        ),
+      ],
+    )
+    let g = DomainGraph.build(~structures=[("Catalog", shop)])
+    expect(nodeKind(g, "Catalog.Added"))->toEqual(Some("Event"))
+    expect(nodeKind(g, "Catalog.Archived"))->toEqual(Some("Event"))
+    expect(hasEdge(g, "Catalog:Category", "Catalog.Added", "emits"))->toBe(true)
+    expect(hasEdge(g, "Catalog:Category", "Catalog.Archived", "emits"))->toBe(true)
   })
 
   testPromise("an Internal StateViewSlice still gets a node + projects edge (dev graph shows it)", async () => {

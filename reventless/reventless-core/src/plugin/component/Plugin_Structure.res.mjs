@@ -135,18 +135,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     }
   };
   let toCommandDef = (isAggregate, mutationFieldFor, parentSchema, v) => {
-    if (v.type !== "object") {
-      return;
-    }
-    let properties = v.properties;
-    return Stdlib_Option.flatMap(properties["TAG"], tagSchema => {
-      if (tagSchema.type !== "string") {
-        return;
-      }
-      let variantName = tagSchema.const;
-      if (variantName === undefined) {
-        return;
-      }
+    let mkDef = (variantName, properties) => {
       let match = commandLevelAndId(isAggregate, variantName, properties);
       let references = Stdlib_Array.filterMap(Object.entries(properties), param => {
         let fieldName = param[0];
@@ -172,7 +161,29 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         allowedStates: allowedStates,
         apiExposed: apiExposed
       };
-    });
+    };
+    switch (v.type) {
+      case "string" :
+        let variantName = v.const;
+        if (variantName !== undefined) {
+          return mkDef(variantName, {});
+        } else {
+          return;
+        }
+      case "object" :
+        let properties = v.properties;
+        return Stdlib_Option.flatMap(properties["TAG"], tagSchema => {
+          if (tagSchema.type !== "string") {
+            return;
+          }
+          let variantName = tagSchema.const;
+          if (variantName !== undefined) {
+            return mkDef(variantName, properties);
+          }
+        });
+      default:
+        return;
+    }
   };
   let extractCommandDefs = (isAggregate, mutationFieldFor, commandSchema) => {
     if (commandSchema.type === "union") {
@@ -182,18 +193,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     }
   };
   let toEventDef = v => {
-    if (v.type !== "object") {
-      return;
-    }
-    let properties = v.properties;
-    return Stdlib_Option.flatMap(properties["TAG"], tagSchema => {
-      if (tagSchema.type !== "string") {
-        return;
-      }
-      let variantName = tagSchema.const;
-      if (variantName === undefined) {
-        return;
-      }
+    let mkDef = (variantName, properties) => {
       let references = Stdlib_Array.filterMap(Object.entries(properties), param => {
         let fieldName = param[0];
         return Stdlib_Option.map(Reference$Reventless.getTarget(param[1]), target => ({
@@ -207,7 +207,29 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         schema: JSON.stringify(S.toJSONSchema(v)),
         references: references
       };
-    });
+    };
+    switch (v.type) {
+      case "string" :
+        let variantName = v.const;
+        if (variantName !== undefined) {
+          return mkDef(variantName, {});
+        } else {
+          return;
+        }
+      case "object" :
+        let properties = v.properties;
+        return Stdlib_Option.flatMap(properties["TAG"], tagSchema => {
+          if (tagSchema.type !== "string") {
+            return;
+          }
+          let variantName = tagSchema.const;
+          if (variantName !== undefined) {
+            return mkDef(variantName, properties);
+          }
+        });
+      default:
+        return;
+    }
   };
   let extractEventDefs = eventSchema => {
     if (eventSchema.type === "union") {
