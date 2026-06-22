@@ -37,11 +37,24 @@ let queryable = (~name, ~consumes=[], ~visibility=None): Reventless.Plugin.query
   visibility,
 }
 
-let automation = (~name, ~consumes=[]): Reventless.Plugin.automationSliceDef => {
+let automation = (~name, ~consumes=[], ~produces=[], ~target=""): Reventless.Plugin.automationSliceDef => {
   name,
   consumedEventTypes: consumes,
-  producedCommandTypes: [],
-  targetName: "",
+  producedCommandTypes: produces,
+  targetName: target,
+}
+
+let inbound = (~name, ~produces=[], ~target=""): Reventless.Plugin.inboundTranslationSliceDef => {
+  name,
+  commandTypes: produces,
+  targetName: target,
+}
+
+let outbound = (~name, ~consumes=[], ~produces=[], ~target=None): Reventless.Plugin.outboundTranslationSliceDef => {
+  name,
+  consumedEventTypes: consumes,
+  inboundCommandTypes: produces,
+  targetName: target,
 }
 
 let structure = (
@@ -50,6 +63,8 @@ let structure = (
   ~stateViewSlices=[],
   ~stateChangeSlices=[],
   ~automationSlices=[],
+  ~outboundTranslationSlices=[],
+  ~inboundTranslationSlices=[],
   ~extensionPoints=[],
 ): Reventless.Plugin.pluginStructure => {
   readModels,
@@ -57,8 +72,8 @@ let structure = (
   stateChangeSlices,
   aggregates,
   automationSlices,
-  outboundTranslationSlices: [],
-  inboundTranslationSlices: [],
+  outboundTranslationSlices,
+  inboundTranslationSlices,
   extensions: [],
   extensionPoints: Some(extensionPoints),
 }
@@ -123,6 +138,60 @@ describe("DomainGraph.build", () => {
     let g = DomainGraph.build(~structures=[("Shop", shop)])
     expect(nodeKind(g, "Shop:Notify"))->toEqual(Some("AutomationSlice"))
     expect(hasEdge(g, "Shop.Placed", "Shop:Notify", "triggers"))->toBe(true)
+  })
+
+  testPromise("an automation routes to the specific command it raises on its target", async () => {
+    // AutoShipOrder reacts to OrderPlaced and raises a ShipOrder command on the Ship
+    // write-side. The produce side is drawn slice → command "delegatesTo" (unified with
+    // Command → write-side "handles"); only the named command is linked, not Place too.
+    let shop = structure(
+      ~stateChangeSlices=[
+        writable(
+          ~name="Ship",
+          ~commands=[
+            command(~name="ShipOrder", ~mutationField="Shop_Ship_ShipOrder"),
+            command(~name="Place", ~mutationField="Shop_Ship_Place"),
+          ],
+          ~produces=["Shop.Shipped"],
+        ),
+      ],
+      ~automationSlices=[
+        automation(~name="AutoShip", ~consumes=["Shop.Placed"], ~produces=["AutoShip.ShipOrder"], ~target="Ship"),
+      ],
+    )
+    let g = DomainGraph.build(~structures=[("Shop", shop)])
+    expect(hasEdge(g, "Shop:AutoShip", "Shop_Ship_ShipOrder", "delegatesTo"))->toBe(true)
+    // Matched by name — the target's other command is not linked.
+    expect(hasEdge(g, "Shop:AutoShip", "Shop_Ship_Place", "delegatesTo"))->toBe(false)
+  })
+
+  testPromise("an inbound translation routes to the command it raises on its target", async () => {
+    // ImportProduct (external input → command) was a sink before; it now links to the
+    // Add command on its target write-side.
+    let shop = structure(
+      ~stateChangeSlices=[
+        writable(~name="Product", ~commands=[command(~name="Add", ~mutationField="Shop_Product_Add")]),
+      ],
+      ~inboundTranslationSlices=[
+        inbound(~name="ImportProduct", ~produces=["ImportProduct.Add"], ~target="Product"),
+      ],
+    )
+    let g = DomainGraph.build(~structures=[("Shop", shop)])
+    expect(nodeKind(g, "Shop:ImportProduct"))->toEqual(Some("InboundTranslationSlice"))
+    expect(hasEdge(g, "Shop:ImportProduct", "Shop_Product_Add", "delegatesTo"))->toBe(true)
+  })
+
+  testPromise("an outbound translation with a target routes to the command it raises", async () => {
+    let shop = structure(
+      ~stateChangeSlices=[
+        writable(~name="Product", ~commands=[command(~name="Sync", ~mutationField="Shop_Product_Sync")]),
+      ],
+      ~outboundTranslationSlices=[
+        outbound(~name="ExportProduct", ~consumes=["Shop.Added"], ~produces=["ExportProduct.Sync"], ~target=Some("Product")),
+      ],
+    )
+    let g = DomainGraph.build(~structures=[("Shop", shop)])
+    expect(hasEdge(g, "Shop:ExportProduct", "Shop_Product_Sync", "delegatesTo"))->toBe(true)
   })
 
   testPromise("an event produced by two write-sides is one node with two emit edges", async () => {
