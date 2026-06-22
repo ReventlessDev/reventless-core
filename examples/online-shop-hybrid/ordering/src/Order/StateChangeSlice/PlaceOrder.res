@@ -14,7 +14,7 @@ type command =
   PlaceOrder({
     @partitionTag orderId: string,
     @noDcbTag customerId: string,
-    productIds: array<string>,
+    @ref("AvailableProducts") productIds: array<string>,
   })
 
 @schema

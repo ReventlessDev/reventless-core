@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
 
 let consumedEventSchema = S.union([
   S.schema(s => ({
@@ -18,7 +19,7 @@ let commandSchema = S.schema(s => ({
   TAG: "PlaceOrder",
   orderId: s.m(DcbTag$Reventless.partition),
   customerId: s.m(S.string),
-  productIds: s.m(S.array(DcbTag$Reventless.stringForKey("productId")))
+  productIds: s.m(S.array(Reference$Reventless.to_(undefined, "AvailableProducts")))
 }));
 
 let errorSchema = S.union([

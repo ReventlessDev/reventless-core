@@ -21,7 +21,7 @@ type consumedEvent =
 
 @schema
 type command =
-  PlaceOrder({@partitionTag orderId: string, customerId: string, productIds: array<string>})
+  PlaceOrder({@partitionTag orderId: string, customerId: string, @ref("AvailableProducts") productIds: array<string>})
 
 @schema
 type error =

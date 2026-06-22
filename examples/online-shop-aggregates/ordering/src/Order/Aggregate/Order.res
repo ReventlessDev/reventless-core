@@ -5,7 +5,7 @@
 
 @schema
 type command =
-  | Place({customerId: string, productIds: array<string>})
+  | Place({customerId: string, @ref("AvailableProducts") @noDcbTag productIds: array<string>})
   | @allowedStates([Orders.Placed]) Ship
   | @allowedStates([Orders.Placed]) Cancel
   | @allowedStates([Orders.Cancelled]) Refund({reason: string})

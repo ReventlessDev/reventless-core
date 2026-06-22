@@ -2,12 +2,13 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
+import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
 
 let commandSchema = S.union([
   S.schema(s => ({
     TAG: "Place",
     customerId: s.m(S.string),
-    productIds: s.m(S.array(S.string))
+    productIds: s.m(S.array(Reference$Reventless.toWithoutDcbTag(undefined, "AvailableProducts")))
   })),
   S.literal("Ship"),
   S.literal("Cancel"),
