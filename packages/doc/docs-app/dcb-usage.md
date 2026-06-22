@@ -1,8 +1,12 @@
-# DCB Plugin Support
+---
+title: DCB Usage
+---
+
+# DCB Usage
 
 The Plugin component supports an optional DCB (Dynamic Consistency Boundary) event log shared across multiple slices. All slices in a plugin read from and write to the same event log, with optimistic concurrency control enforced per command.
 
-Each slice declares its own `consumedEvent` and `producedEvent` types independently — there is no shared event union. The framework validates compatibility between producers and consumers at build time via `DcbValidation`.
+Each slice declares its own `consumedEvent` and `event` types independently — there is no shared event union. The framework validates compatibility between producers and consumers at build time via `DcbValidation`.
 
 ## Command Flow
 
@@ -51,12 +55,11 @@ Both variants go in the same `~stateChangeSlices` array. Commands are routed by 
 
 ### `StateChangeSlice.Spec`
 
-Each slice independently declares its `consumedEvent` (what it reads) and `producedEvent` (what it writes). These need not be the same type — a slice can consume a payload-less variant (e.g., `| ProductAdded`) and produce a full variant (e.g., `| ProductAdded({productId, name, ...})`).
+Each slice independently declares its `consumedEvent` (what it reads) and `event` (what it writes). These need not be the same type — a slice can consume a payload-less variant (e.g., `| ProductAdded`) and produce a full variant (e.g., `| ProductAdded({productId, name, ...})`).
 
 ```rescript
 module type Spec = {
-  let name: string
-  let moduleUrl: string
+  // name and moduleUrl are injected by @@reventless.spec — you never write them
 
   type state
   let initialState: state
@@ -73,20 +76,19 @@ module type Spec = {
   type error
 
   @schema
-  type producedEvent
+  type event
 
-  let decide: (state, command) => result<array<producedEvent>, error>
+  let decide: (state, command) => result<array<event>, error>
 }
 ```
 
-The `@schema` annotation auto-generates sury schemas: `consumedEventSchema`, `commandSchema`, `errorSchema`, `producedEventSchema`.
+The `@schema` annotation auto-generates sury schemas: `consumedEventSchema`, `commandSchema`, `errorSchema`, `eventSchema`.
 
 ### `StateViewSlice.Spec`
 
 ```rescript
 module type Spec = {
-  let name: string
-  let moduleUrl: string
+  // name and moduleUrl are injected by @@reventless.spec — you never write them
 
   @schema
   type state
@@ -106,11 +108,7 @@ Automation slices watch events and generate commands — enabling event-driven w
 
 ```rescript
 module type Spec = {
-  let name: string
-  let moduleUrl: string
-
-  @schema
-  type consumedEvent
+  // name and moduleUrl are injected by @@reventless.spec — you never write them
 
   @schema
   type todoItem
@@ -118,13 +116,13 @@ module type Spec = {
   @schema
   type command
 
-  let collect: consumedEvent => array<(string, todoItem)>
-  let resolve: consumedEvent => option<string>
-  let process: (string, todoItem) => option<(string, command)>
   let maxRetries: int
   let heartbeatInterval: int
+  let targetName: string
 }
 ```
+
+`collect`, `resolve`, and `process` live on the per-source `Mapping`, not the Spec — the framework derives the consumed-event set from each mapping's `sourceEventSchema`, so there is no manually-declared `consumedEvent` union. `targetName` names the aggregate or StateChangeSlice that receives the produced command.
 
 ### `OutboundTranslationSlice.Spec`
 
@@ -132,8 +130,7 @@ Translates internal events to external side-effects, producing commands that fee
 
 ```rescript
 module type Spec = {
-  let name: string
-  let moduleUrl: string
+  // name and moduleUrl are injected by @@reventless.spec — you never write them
 
   @schema
   type consumedEvent
@@ -144,12 +141,13 @@ module type Spec = {
   @schema
   type inboundCommand
 
-  let collect: consumedEvent => array<(string, outboundItem)>
-  let translate: (string, outboundItem) => promise<result<option<(string, inboundCommand)>, string>>
   let maxRetries: int
   let heartbeatInterval: int
+  let targetName: option<string>
 }
 ```
+
+`collect` and `translate` live on the `Translation` module, not the Spec. `targetName` names the aggregate or StateChangeSlice that receives the inbound command, or `None` for fire-and-forget.
 
 ### `InboundTranslationSlice.Spec`
 
@@ -157,8 +155,7 @@ Translates external inputs into DCB commands.
 
 ```rescript
 module type Spec = {
-  let name: string
-  let moduleUrl: string
+  // name and moduleUrl are injected by @@reventless.spec — you never write them
 
   @schema
   type externalInput
@@ -166,9 +163,12 @@ module type Spec = {
   @schema
   type command
 
-  let translate: externalInput => result<(string, command), string>
+  let targetName: string
+  // commandAuthorization is injected by @@reventless.spec (default AllowAuthenticated)
 }
 ```
+
+`translate` lives on the `Translation` module, not the Spec. `targetName` names the aggregate or StateChangeSlice that receives the produced command.
 
 ### `StateChangeSlice.T`
 
@@ -456,7 +456,7 @@ When DCB is configured, `Dcb_Builder.Make.construct` (invoked by `Plugin_Builder
 // 1. Validation
 let produced = stateChangeSlices->Array.map(
   (module(Sc: StateChangeSlice.T)) =>
-    (Sc.Spec.name, Sc.Spec.producedEventSchema->S.castToUnknown)
+    (Sc.Spec.name, Sc.Spec.eventSchema->S.castToUnknown)
 )
 let consumed = stateChangeSlices->Array.map(
   (module(Sc: StateChangeSlice.T)) =>
@@ -571,7 +571,7 @@ let filteringHandler: jsonCommandsHandler = async jsonItems => {
 
 The callback uses per-slice encoding/decoding:
 - **Decode**: `DcbDecode.makeDecoder(Spec.consumedEventSchema)` — decodes raw stored events by TAG, handling payload-less, partial, and full shapes
-- **Encode**: `S.reverseConvertToJsonOrThrow(Spec.producedEventSchema)` + `DcbTag.extractTags` — encodes produced events to raw storage format with tags
+- **Encode**: `S.reverseConvertToJsonOrThrow(Spec.eventSchema)` + `DcbTag.extractTags` — encodes produced events to raw storage format with tags
 
 `handleCommands(dcbEventLog, stream)` processes each command:
 
@@ -629,13 +629,13 @@ All four DCB adapters are always required as functor parameters even if a specif
 3. **Field subset**: Consumed event fields must exist in the produced event shape (consumers can consume a subset)
 4. **Type compatibility**: Consumed field types must be compatible with produced field types
 
-This build-time, schema-level validation is what allows the decoupled event types described below: each slice declares its own `consumedEvent` / `producedEvent` rather than sharing a single compile-time `dcbEvent` union.
+This build-time, schema-level validation is what allows the decoupled event types described below: each slice declares its own `consumedEvent` / `event` rather than sharing a single compile-time `dcbEvent` union.
 
 ## Design Decisions
 
 ### Decoupled Event Types (No Shared Union)
 
-Each slice declares its own `consumedEvent` and `producedEvent` types. This is the key architectural decision behind the current design:
+Each slice declares its own `consumedEvent` and `event` types. This is the key architectural decision behind the current design:
 
 - **Producers** declare the full event payload they write (e.g., `| ProductAdded({productId, name, description, price})`)
 - **Consumers** declare only what they need to read — this can be:

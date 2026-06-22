@@ -81,8 +81,7 @@ The spec module type the framework expects:
 
 ```rescript
 module type Spec = {
-  let name: string
-  let moduleUrl: string
+  // name and moduleUrl are injected by @@reventless.spec — you never write them
 
   @schema type consumedEvent
   @schema type outboundItem

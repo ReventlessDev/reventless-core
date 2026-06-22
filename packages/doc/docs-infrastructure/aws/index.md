@@ -170,6 +170,7 @@ The following AWS adapters are available. For how adapters are structured intern
 ### Core Event Sourcing Adapters
 
 - **[EventLog → DynamoDB](./adapters/eventlog)** - Append-only event storage with efficient replay
+- **[DcbEventLog → DynamoDB](./adapters/dcbeventlog)** - Tag-routed shared event store for DCB slices with per-tag consistency fences
 - **[CommandTopic → SQS FIFO](./adapters/commandtopic)** - Reliable command delivery with strict ordering
 - **[EventTopic → SNS](./adapters/eventtopic)** - Event publishing with fan-out to multiple subscribers
 - **[EventCollector → SQS FIFO](./adapters/eventcollector)** - Multi-source event collection from SNS and DynamoDB Streams

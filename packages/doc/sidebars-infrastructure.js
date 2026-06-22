@@ -17,6 +17,7 @@ const sidebars = {
           label: 'Core Event Sourcing',
           items: [
             'local/adapters/eventlog',
+            'local/adapters/dcbeventlog',
             'local/adapters/commandtopic',
             'local/adapters/eventtopic',
             'local/adapters/eventcollector',
@@ -42,13 +43,6 @@ const sidebars = {
             'local/adapters/sideeffecthandler',
           ],
         },
-        {
-          type: 'category',
-          label: 'DCB',
-          items: [
-            'local/adapters/dcbeventlog',
-          ],
-        },
       ],
     },
     {
@@ -63,6 +57,7 @@ const sidebars = {
           label: 'Core Event Sourcing',
           items: [
             'aws/adapters/eventlog',
+            'aws/adapters/dcbeventlog',
             'aws/adapters/commandtopic',
             'aws/adapters/eventtopic',
             'aws/adapters/eventcollector',
