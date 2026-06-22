@@ -10,11 +10,6 @@
           "private": false
         },
         {
-          "name": "@reventlessdev/reventless-codegen",
-          "description": "Forward codegen pipeline: canonical Event Model → Reventless Spec/GWT/Skeleton files",
-          "private": false
-        },
-        {
           "name": "@reventlessdev/reventless-conventional-changelog",
           "description": "Reventless custom conventional-changelog preset with reduced blank lines",
           "private": false
@@ -27,11 +22,6 @@
         {
           "name": "@reventlessdev/reventless-gwt",
           "description": "Given-When-Then DSLs and CLI runner for Reventless slice testing",
-          "private": false
-        },
-        {
-          "name": "@reventlessdev/reventless-local",
-          "description": "Local platform for Reventless (in-memory or SQLite backend, for development and testing without AWS)",
           "private": false
         },
         {
@@ -50,8 +40,18 @@
           "private": true
         },
         {
+          "name": "@reventlessdev/reventless-local",
+          "description": "Local platform for Reventless (in-memory or SQLite backend, for development and testing without AWS)",
+          "private": false
+        },
+        {
           "name": "@reventlessdev/reventless-spec",
           "description": "Specifications for Reventless",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/reventless-vscode-protocol",
+          "description": "Shared NDJSON contract (StreamEvent) between the reventless-gwt CLI (--format=vscode) and the reventless-vscode extension — a single sury @schema both emit and decode.",
           "private": false
         }
       ]
@@ -60,6 +60,11 @@
       "title": "ReScript Bindings",
       "description": "ReScript bindings for the JS/npm libraries used across the framework.",
       "packages": [
+        {
+          "name": "@reventlessdev/rescript-anthropic",
+          "description": "ReScript bindings for @anthropic-ai/sdk and @anthropic-ai/claude-agent-sdk",
+          "private": false
+        },
         {
           "name": "@reventlessdev/rescript-aws-sdk",
           "description": "ReScript bindings for aws-sdk",
@@ -83,6 +88,11 @@
         {
           "name": "@reventlessdev/rescript-hash-object",
           "description": "ReScript bindings for hash-object",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-jest",
+          "description": "Direct ReScript bindings to Jest's global APIs with throwing `expect` and native async test bodies",
           "private": false
         },
         {
@@ -135,11 +145,6 @@
           "name": "@reventlessdev/reventless-ppx",
           "description": "ReScript PPX to eliminate boilerplate from Reventless application code",
           "private": false
-        },
-        {
-          "name": "@reventlessdev/reventless-vscode",
-          "description": "VS Code Test Explorer integration for Reventless Given-When-Then slices",
-          "private": true
         }
       ]
     }
