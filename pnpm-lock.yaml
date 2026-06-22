@@ -300,8 +300,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/reventless-aws
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.31
-        version: 3.0.0-alpha.31(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.32
+        version: 3.0.0-alpha.32(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -363,8 +363,8 @@ importers:
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.31
-        version: 3.0.0-alpha.31(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.32
+        version: 3.0.0-alpha.32(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
 
   examples/online-shop-dcb/catalog:
     dependencies:
@@ -561,8 +561,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/reventless-aws
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.31
-        version: 3.0.0-alpha.31(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.32
+        version: 3.0.0-alpha.32(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -627,8 +627,8 @@ importers:
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.31
-        version: 3.0.0-alpha.31(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.32
+        version: 3.0.0-alpha.32(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
 
   examples/online-shop-hybrid/catalog:
     dependencies:
@@ -825,8 +825,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/reventless-aws
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.31
-        version: 3.0.0-alpha.31(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.32
+        version: 3.0.0-alpha.32(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -888,8 +888,8 @@ importers:
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.31
-        version: 3.0.0-alpha.31(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.32
+        version: 3.0.0-alpha.32(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
 
   packages/doc:
     dependencies:
@@ -946,11 +946,11 @@ importers:
   packages/reventless-ppx:
     optionalDependencies:
       '@reventlessdev/reventless-ppx-darwin-arm64':
-        specifier: ^1.0.0-alpha.43
-        version: 1.0.0-alpha.43
+        specifier: ^1.0.0-alpha.45
+        version: 1.0.0-alpha.45
       '@reventlessdev/reventless-ppx-linux-x64':
-        specifier: ^1.0.0-alpha.43
-        version: 1.0.0-alpha.43
+        specifier: ^1.0.0-alpha.45
+        version: 1.0.0-alpha.45
 
   rescript/rescript-anthropic:
     dependencies:
@@ -5164,17 +5164,17 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@reventlessdev/reventless-host-shell@3.0.0-alpha.31':
-    resolution: {integrity: sha512-p5Rd3zDgI6ngPVzDqCfOsPkOxVTZVAkpTsOyJAAqgvlwihIE2Sw15wHrkw5BIzAW7WHKVgITAbeYgf7lPa24Kg==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-host-shell/3.0.0-alpha.31/4960d6166ac8ecee9a22ded52fb9efc2b9ddcef4}
+  '@reventlessdev/reventless-host-shell@3.0.0-alpha.32':
+    resolution: {integrity: sha512-mOC4KiF1Pz8Qliq2pWcK0P3LnwuQiu/b2RHrX88nBPt0rhelra6t/PoQNBmocwMvE6dbxVkqAvzt0Llzc/Z9jg==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-host-shell/3.0.0-alpha.32/b5cf5d3f37fa92c321d4eb7314798379708be8fc}
     hasBin: true
 
-  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.43':
-    resolution: {integrity: sha512-sAQC2AiVDjzSfQ5wh8MOBkEV4/0GIQzjKfc203J7S70JdNDdAXbhtjAQ/D88ote95dEGlrRI3w3VDdQ+jVJB6A==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-ppx-darwin-arm64/1.0.0-alpha.43/2095e0c04d9387cb8efefe3bf98b16b0feb3cf5a}
+  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.45':
+    resolution: {integrity: sha512-BjiB0FY3bQZbzPteJ0PRBIqF78s6zHmFs2Pblqqx6/Bg8IkRAijdS//biNHjiVEgG9d1WIrJ7nwQe3B0HBG3YA==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-ppx-darwin-arm64/1.0.0-alpha.45/c18227db0de2c10caedc7d66461c619a74b971f4}
     cpu: [arm64]
     os: [darwin]
 
-  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.43':
-    resolution: {integrity: sha512-N6ib2bFzfp6gTymKWSdgSMmPN6ySjTF/Q6nE7d7TQFNqCxtcKoxdoZ8xwlg0RjrVVcJlgyGroFND/S0m6WuwKA==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-ppx-linux-x64/1.0.0-alpha.43/d1e1a357b84a6ebd61d23fc6953f797617da1438}
+  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.45':
+    resolution: {integrity: sha512-IiNWMCD7B4biRaopaNk3HQ/YFq1NN8SfY94Cbi2ZVoQcC8qpPHkjBJrXd1msFA4veHrvCRrF3PL9YsbgraqNWw==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-ppx-linux-x64/1.0.0-alpha.45/eee41ce129ba0950566a6900ee93bc9bcf2a601f}
     cpu: [x64]
     os: [linux]
 
@@ -20017,7 +20017,7 @@ snapshots:
   '@rescript/win32-x64@12.3.0':
     optional: true
 
-  '@reventlessdev/reventless-host-shell@3.0.0-alpha.31(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)':
+  '@reventlessdev/reventless-host-shell@3.0.0-alpha.32(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)':
     dependencies:
       '@aws-sdk/client-cognito-identity-provider': 3.1033.0
       '@module-federation/runtime': 0.18.4
@@ -20070,10 +20070,10 @@ snapshots:
       - vue-tsc
       - yaml
 
-  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.43':
+  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.45':
     optional: true
 
-  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.43':
+  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.45':
     optional: true
 
   '@reventlessdev/reventless-routes@3.0.0-alpha.7(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.0)':
