@@ -107,6 +107,8 @@ let stringOptionSchema = Plugin$Reventless.stringOptionSchema;
 
 let stringArrayOptionSchema = Plugin$Reventless.stringArrayOptionSchema;
 
+let boolOptionSchema = Plugin$Reventless.boolOptionSchema;
+
 let panelManifestEntrySchema = Plugin$Reventless.panelManifestEntrySchema;
 
 let menuEntrySchema = Plugin$Reventless.menuEntrySchema;
@@ -168,6 +170,7 @@ export {
   dcbEventLogOptionSchema,
   stringOptionSchema,
   stringArrayOptionSchema,
+  boolOptionSchema,
   panelManifestEntrySchema,
   menuEntrySchema,
   pageManifestEntrySchema,

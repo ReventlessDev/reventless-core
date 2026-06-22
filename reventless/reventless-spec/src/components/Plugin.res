@@ -84,6 +84,7 @@ let dcbEventLogOptionSchema = _jsNullable(dcbEventLogDefinitionSchema, ())
 // js_nullable creates T | null which passes sury's jsonableValidation inside union variant payloads.
 let stringOptionSchema = _jsNullable(S.string, ())
 let stringArrayOptionSchema = _jsNullable(S.array(S.string), ())
+let boolOptionSchema = _jsNullable(S.bool, ())
 
 // ── UI fragment manifest types ────────────────────────────────────────────────
 
@@ -148,6 +149,14 @@ type commandDef = {
   for how the row's status is located. `Some([])` is the defensive "never show" form.
   */
   allowedStates: @s.matches(stringArrayOptionSchema) option<array<string>>,
+  /**
+  Whether this command variant is exposed in the generated API (a non-`@noApi`
+  variant of a non-`@noApi` command). Dev tooling badges API-exposed commands in
+  the event graph. js_nullable (T | null) so it stays JSON-safe inside the
+  persisted/lifecycle payloads; absent on defs written before this field existed
+  (read as None) — those stores must be reset. See [[sury-optional-field-absent-vs-null]].
+  */
+  apiExposed: @s.matches(boolOptionSchema) option<bool>,
 }
 
 @schema

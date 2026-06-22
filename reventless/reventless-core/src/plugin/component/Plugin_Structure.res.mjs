@@ -11,6 +11,7 @@ import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as Api_Naming$ReventlessCore from "../../components/Api/Api_Naming.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
+import * as ApiNoApiHelpers$ReventlessCore from "../../components/Api/ApiNoApiHelpers.res.mjs";
 import * as SuryToJsonSchema$ReventlessCore from "../../components/Api/SuryToJsonSchema.res.mjs";
 import * as ApiAllowedStatesHelpers$ReventlessCore from "../../components/Api/ApiAllowedStatesHelpers.res.mjs";
 
@@ -156,6 +157,11 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         }));
       });
       let allowedStates = ApiAllowedStatesHelpers$ReventlessCore.getAllowedStates(parentSchema, variantName);
+      let apiExposed = false;
+      if (!ApiNoApiHelpers$ReventlessCore.isNoApi(parentSchema)) {
+        let excluded = ApiNoApiHelpers$ReventlessCore.getExcludedVariants(parentSchema);
+        apiExposed = excluded !== undefined ? !excluded.has(variantName) : true;
+      }
       return {
         name: variantName,
         schema: JSON.stringify(S.toJSONSchema(v)),
@@ -163,7 +169,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         aggregateIdField: match[1],
         mutationField: mutationFieldFor(variantName),
         references: references,
-        allowedStates: allowedStates
+        allowedStates: allowedStates,
+        apiExposed: apiExposed
       };
     });
   };

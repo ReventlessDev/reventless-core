@@ -51,6 +51,8 @@ let activateCommand_references = [];
 
 let activateCommand_allowedStates = ["Inactive"];
 
+let activateCommand_apiExposed = true;
+
 let activateCommand = {
   name: "Activate",
   schema: activateCommand_schema,
@@ -58,7 +60,8 @@ let activateCommand = {
   aggregateIdField: activateCommand_aggregateIdField,
   mutationField: activateCommand_mutationField,
   references: activateCommand_references,
-  allowedStates: activateCommand_allowedStates
+  allowedStates: activateCommand_allowedStates,
+  apiExposed: activateCommand_apiExposed
 };
 
 let deactivateCommand_schema = encodeSchema(idArgsSchema);
@@ -74,6 +77,8 @@ let deactivateCommand_allowedStates = [
   "Disconnected"
 ];
 
+let deactivateCommand_apiExposed = true;
+
 let deactivateCommand = {
   name: "Deactivate",
   schema: deactivateCommand_schema,
@@ -81,7 +86,8 @@ let deactivateCommand = {
   aggregateIdField: deactivateCommand_aggregateIdField,
   mutationField: deactivateCommand_mutationField,
   references: deactivateCommand_references,
-  allowedStates: deactivateCommand_allowedStates
+  allowedStates: deactivateCommand_allowedStates,
+  apiExposed: deactivateCommand_apiExposed
 };
 
 let pluginAggregate_commands = [

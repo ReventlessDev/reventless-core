@@ -15,6 +15,7 @@ let cmd: commandDef = {
     {fieldName: "categoryId", entity: "Category", plugin: Some("Catalog")},
   ],
   allowedStates: None,
+  apiExposed: Some(true),
 }
 
 let qbl: queryableDef = {
@@ -129,6 +130,10 @@ describe("encodePluginStructureEntry", () => {
     expect(json->String.includes("\"allowedStates\":null"))->toEqual(true)
   )
 
+  testSync("encodes the command's apiExposed flag (drives the event-graph API badge)", () =>
+    expect(json->String.includes("\"apiExposed\":true"))->toEqual(true)
+  )
+
   testSync("encodes None statusField as null", () =>
     expect(json->String.includes("\"statusField\":null"))->toEqual(true)
   )
@@ -180,6 +185,7 @@ describe("allowedStates + statusField populated", () => {
     mutationField: "Platform_Plugin_Activate",
     references: [],
     allowedStates: Some(["Inactive"]),
+    apiExposed: Some(true),
   }
 
   let qblWithStatus: queryableDef = {

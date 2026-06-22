@@ -39,6 +39,8 @@ let stringOptionSchema = SuryResMjs.js_nullable(S.string);
 
 let stringArrayOptionSchema = SuryResMjs.js_nullable(S.array(S.string));
 
+let boolOptionSchema = SuryResMjs.js_nullable(S.bool);
+
 let panelManifestEntrySchema = S.schema(s => ({
   fragmentId: s.m(S.string),
   title: s.m(S.string),
@@ -87,7 +89,8 @@ let commandDefSchema = S.schema(s => ({
   aggregateIdField: s.m(stringOptionSchema),
   mutationField: s.m(S.string),
   references: s.m(S.array(fieldReferenceSchema)),
-  allowedStates: s.m(stringArrayOptionSchema)
+  allowedStates: s.m(stringArrayOptionSchema),
+  apiExposed: s.m(boolOptionSchema)
 }));
 
 let queryableDefSchema = S.schema(s => ({
@@ -218,6 +221,7 @@ export {
   dcbEventLogOptionSchema,
   stringOptionSchema,
   stringArrayOptionSchema,
+  boolOptionSchema,
   panelManifestEntrySchema,
   menuEntrySchema,
   pageManifestEntrySchema,

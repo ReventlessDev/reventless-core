@@ -11,6 +11,8 @@ let cmd_references = [{
     plugin: "Catalog"
   }];
 
+let cmd_apiExposed = true;
+
 let cmd = {
   name: "Add",
   schema: "{}",
@@ -18,7 +20,8 @@ let cmd = {
   aggregateIdField: undefined,
   mutationField: "AddProduct",
   references: cmd_references,
-  allowedStates: undefined
+  allowedStates: undefined,
+  apiExposed: cmd_apiExposed
 };
 
 let qbl_consumedEventTypes = ["ProductAdded"];
@@ -154,6 +157,9 @@ globalThis.describe("encodePluginStructureEntry", () => {
   globalThis.test("encodes None allowedStates as null", () => {
     globalThis.expect(json.includes("\"allowedStates\":null")).toEqual(true);
   });
+  globalThis.test("encodes the command's apiExposed flag (drives the event-graph API badge)", () => {
+    globalThis.expect(json.includes("\"apiExposed\":true")).toEqual(true);
+  });
   globalThis.test("encodes None statusField as null", () => {
     globalThis.expect(json.includes("\"statusField\":null")).toEqual(true);
   });
@@ -213,6 +219,7 @@ globalThis.describe("allowedStates + statusField populated", () => {
   let cmdWithStates_aggregateIdField = "id";
   let cmdWithStates_references = [];
   let cmdWithStates_allowedStates = ["Inactive"];
+  let cmdWithStates_apiExposed = true;
   let cmdWithStates = {
     name: "Activate",
     schema: "{}",
@@ -220,7 +227,8 @@ globalThis.describe("allowedStates + statusField populated", () => {
     aggregateIdField: cmdWithStates_aggregateIdField,
     mutationField: "Platform_Plugin_Activate",
     references: cmdWithStates_references,
-    allowedStates: cmdWithStates_allowedStates
+    allowedStates: cmdWithStates_allowedStates,
+    apiExposed: cmdWithStates_apiExposed
   };
   let qblWithStatus_consumedEventTypes = [];
   let qblWithStatus_linkedWriteSide = ["Plugin"];

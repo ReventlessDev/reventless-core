@@ -8,7 +8,7 @@ open Reventless.Plugin
 
 let sdlTypes: array<string> = [
   `type Platform_FieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
-  `type Platform_CommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_FieldReference!]!\n  allowedStates: [String!]\n}`,
+  `type Platform_CommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_FieldReference!]!\n  allowedStates: [String!]\n  apiExposed: Boolean\n}`,
   `type Platform_EventDef {\n  name: String!\n  schema: String!\n  references: [Platform_FieldReference!]!\n}`,
   `type Platform_WriteSideDef {\n  name: String!\n  commands: [Platform_CommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n  events: [Platform_EventDef!]!\n}`,
   `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  statusField: String\n}`,
@@ -54,6 +54,7 @@ let encodeCommandDef = (c: commandDef): JSON.t =>
       "allowedStates",
       c.allowedStates->Option.mapOr(JSON.Encode.null, encodeStrings),
     ),
+    ("apiExposed", c.apiExposed->Option.mapOr(JSON.Encode.null, JSON.Encode.bool)),
   ])->JSON.Encode.object
 
 // Internal ReadModels / StateViewSlices are carried in pluginStructure for developer

@@ -5,7 +5,7 @@
 
 open JestGlobals
 
-let command = (~name, ~mutationField): Reventless.Plugin.commandDef => {
+let command = (~name, ~mutationField, ~apiExposed=None): Reventless.Plugin.commandDef => {
   name,
   schema: "",
   level: Instance,
@@ -13,6 +13,7 @@ let command = (~name, ~mutationField): Reventless.Plugin.commandDef => {
   mutationField,
   references: [],
   allowedStates: None,
+  apiExposed,
 }
 
 let writable = (~name, ~commands=[], ~produces=[], ~consumes=[], ~linkedViews=[]): Reventless.Plugin.writableDef => {

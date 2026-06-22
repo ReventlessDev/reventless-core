@@ -4,7 +4,8 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DomainGraph$ReventlessGwt from "../src/DomainGraph.res.mjs";
 
-function command(name, mutationField) {
+function command(name, mutationField, apiExposedOpt) {
+  let apiExposed = apiExposedOpt !== undefined ? Primitive_option.valFromOption(apiExposedOpt) : undefined;
   return {
     name: name,
     schema: "",
@@ -12,7 +13,8 @@ function command(name, mutationField) {
     aggregateIdField: undefined,
     mutationField: mutationField,
     references: [],
-    allowedStates: undefined
+    allowedStates: undefined,
+    apiExposed: apiExposed
   };
 }
 
@@ -120,15 +122,7 @@ function nodeKind(g, id) {
 
 globalThis.describe("DomainGraph.build", () => {
   globalThis.test("Command → Aggregate → Event → ReadModel (DCB consumedEventTypes)", async () => {
-    let shop = structure([writable("Order", [{
-          name: "Place",
-          schema: "",
-          level: "Instance",
-          aggregateIdField: undefined,
-          mutationField: "Shop_Order_Place",
-          references: [],
-          allowedStates: undefined
-        }], ["Shop.Placed"], undefined, undefined)], undefined, [queryable("OrderView", ["Shop.Placed"], undefined)], undefined, undefined, undefined, undefined, undefined);
+    let shop = structure([writable("Order", [command("Place", "Shop_Order_Place", undefined)], ["Shop.Placed"], undefined, undefined)], undefined, [queryable("OrderView", ["Shop.Placed"], undefined)], undefined, undefined, undefined, undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -173,24 +167,8 @@ globalThis.describe("DomainGraph.build", () => {
   });
   globalThis.test("an automation routes to the specific command it raises on its target", async () => {
     let shop = structure(undefined, undefined, undefined, [writable("Ship", [
-        {
-          name: "ShipOrder",
-          schema: "",
-          level: "Instance",
-          aggregateIdField: undefined,
-          mutationField: "Shop_Ship_ShipOrder",
-          references: [],
-          allowedStates: undefined
-        },
-        {
-          name: "Place",
-          schema: "",
-          level: "Instance",
-          aggregateIdField: undefined,
-          mutationField: "Shop_Ship_Place",
-          references: [],
-          allowedStates: undefined
-        }
+        command("ShipOrder", "Shop_Ship_ShipOrder", undefined),
+        command("Place", "Shop_Ship_Place", undefined)
       ], ["Shop.Shipped"], undefined, undefined)], [automation("AutoShip", ["Shop.Placed"], ["AutoShip.ShipOrder"], "Ship")], undefined, undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
@@ -200,15 +178,7 @@ globalThis.describe("DomainGraph.build", () => {
     globalThis.expect(hasEdge(g, "Shop:AutoShip", "Shop_Ship_Place", "delegatesTo")).toBe(false);
   });
   globalThis.test("an inbound translation routes to the command it raises on its target", async () => {
-    let shop = structure(undefined, undefined, undefined, [writable("Product", [{
-          name: "Add",
-          schema: "",
-          level: "Instance",
-          aggregateIdField: undefined,
-          mutationField: "Shop_Product_Add",
-          references: [],
-          allowedStates: undefined
-        }], undefined, undefined, undefined)], undefined, undefined, [inbound("ImportProduct", ["ImportProduct.Add"], "Product")], undefined);
+    let shop = structure(undefined, undefined, undefined, [writable("Product", [command("Add", "Shop_Product_Add", undefined)], undefined, undefined, undefined)], undefined, undefined, [inbound("ImportProduct", ["ImportProduct.Add"], "Product")], undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -217,15 +187,7 @@ globalThis.describe("DomainGraph.build", () => {
     globalThis.expect(hasEdge(g, "Shop:ImportProduct", "Shop_Product_Add", "delegatesTo")).toBe(true);
   });
   globalThis.test("an outbound translation with a target routes to the command it raises", async () => {
-    let shop = structure(undefined, undefined, undefined, [writable("Product", [{
-          name: "Sync",
-          schema: "",
-          level: "Instance",
-          aggregateIdField: undefined,
-          mutationField: "Shop_Product_Sync",
-          references: [],
-          allowedStates: undefined
-        }], undefined, undefined, undefined)], undefined, [outbound("ExportProduct", ["Shop.Added"], ["ExportProduct.Sync"], "Product")], undefined, undefined);
+    let shop = structure(undefined, undefined, undefined, [writable("Product", [command("Sync", "Shop_Product_Sync", undefined)], undefined, undefined, undefined)], undefined, [outbound("ExportProduct", ["Shop.Added"], ["ExportProduct.Sync"], "Product")], undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -299,15 +261,7 @@ globalThis.describe("DomainGraph.build", () => {
       eventTypes: extension_eventTypes,
       commandTypes: extension_commandTypes
     };
-    let init = structure(undefined, undefined, undefined, [writable("ProductDemand", [{
-          name: "RecordDemand",
-          schema: "",
-          level: "Instance",
-          aggregateIdField: undefined,
-          mutationField: "Catalog_ProductDemand_RecordDemand",
-          references: [],
-          allowedStates: undefined
-        }], ["Catalog.Recorded"], undefined, undefined)], undefined, undefined, undefined, undefined);
+    let init = structure(undefined, undefined, undefined, [writable("ProductDemand", [command("RecordDemand", "Catalog_ProductDemand_RecordDemand", undefined)], ["Catalog.Recorded"], undefined, undefined)], undefined, undefined, undefined, undefined);
     let catalog_readModels = init.readModels;
     let catalog_stateViewSlices = init.stateViewSlices;
     let catalog_stateChangeSlices = init.stateChangeSlices;
@@ -383,15 +337,7 @@ globalThis.describe("DomainGraph.build", () => {
       sourceEventTypes: ep_sourceEventTypes,
       commandTypes: ep_commandTypes
     };
-    let catalog = structure(undefined, undefined, undefined, [writable("AddProduct", [{
-          name: "AddProduct",
-          schema: "",
-          level: "Instance",
-          aggregateIdField: undefined,
-          mutationField: "Catalog_AddProduct",
-          references: [],
-          allowedStates: undefined
-        }], ["Catalog.ProductAdded"], undefined, undefined)], undefined, undefined, undefined, [ep]);
+    let catalog = structure(undefined, undefined, undefined, [writable("AddProduct", [command("AddProduct", "Catalog_AddProduct", undefined)], ["Catalog.ProductAdded"], undefined, undefined)], undefined, undefined, undefined, [ep]);
     let g = DomainGraph$ReventlessGwt.build([[
         "Catalog",
         catalog
@@ -411,15 +357,7 @@ globalThis.describe("DomainGraph.build", () => {
       sourceEventTypes: ep_sourceEventTypes,
       commandTypes: ep_commandTypes
     };
-    let catalog = structure(undefined, undefined, undefined, [writable("AddProduct", [{
-          name: "AddProduct",
-          schema: "",
-          level: "Instance",
-          aggregateIdField: undefined,
-          mutationField: "Catalog_AddProduct",
-          references: [],
-          allowedStates: undefined
-        }], ["Catalog.ProductAdded"], undefined, undefined)], undefined, undefined, undefined, [ep]);
+    let catalog = structure(undefined, undefined, undefined, [writable("AddProduct", [command("AddProduct", "Catalog_AddProduct", undefined)], ["Catalog.ProductAdded"], undefined, undefined)], undefined, undefined, undefined, [ep]);
     let g = DomainGraph$ReventlessGwt.build([[
         "Catalog",
         catalog

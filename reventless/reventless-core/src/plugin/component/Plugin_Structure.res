@@ -167,6 +167,15 @@ let make = (
             // None when the variant lacks an @allowedStates annotation.
             let allowedStates =
               ApiAllowedStatesHelpers.getAllowedStates(parentSchema, ~variantName)
+            // API-exposed iff the whole command isn't @noApi and this variant
+            // isn't in its @noApi-variants set — mirrors the API-generation filter
+            // (Plugin_Helpers / PluginBaseFragment). Drives the event-graph API badge.
+            let apiExposed =
+              !ApiNoApiHelpers.isNoApi(parentSchema) &&
+              switch ApiNoApiHelpers.getExcludedVariants(parentSchema) {
+              | Some(excluded) => !(excluded->Set.has(variantName))
+              | None => true
+              }
             Some({
               Reventless.Plugin.name: variantName,
               schema: (v->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
@@ -175,6 +184,7 @@ let make = (
               mutationField: mutationFieldFor(variantName),
               references,
               allowedStates,
+              apiExposed: Some(apiExposed),
             })
           }
         | _ => None
