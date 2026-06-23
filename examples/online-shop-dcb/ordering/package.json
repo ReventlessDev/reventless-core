@@ -1,6 +1,5 @@
 {
   "name": "@reventlessdev/online-shop-dcb-ordering",
-  "private": true,
   "version": "1.0.0-alpha.102",
   "description": "Online Shop example — Ordering bounded context (Customer & Order) using the DCB pattern",
   "license": "Apache-2.0",
@@ -48,6 +47,6 @@
     "rescript": "^12.3.0"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org"
   }
 }

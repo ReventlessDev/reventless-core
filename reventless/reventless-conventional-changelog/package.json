@@ -4,7 +4,7 @@
   "description": "Reventless custom conventional-changelog preset with reduced blank lines",
   "main": "index.js",
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org"
   },
   "license": "Apache-2.0",
   "repository": {

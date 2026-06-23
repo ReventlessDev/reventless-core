@@ -125,12 +125,9 @@ let config: DependencyBundler_Config.t = {
     "minipass",
     "minizlib",
   ],
+  // @reventlessdev/* are public on npmjs — anonymous install, no auth token.
   registryOpts: Dict.fromArray([
-    ("@reventlessdev:registry", "https://npm.pkg.github.com"),
-    (
-      "//npm.pkg.github.com/:_authToken",
-      env->Dict.get("GITHUB_TOKEN")->Option.getOr(""),
-    ),
+    ("@reventlessdev:registry", "https://registry.npmjs.org"),
   ]),
   rootPostProcess: DependencyBundler_PostProcess.reventlessAwsDeploytime,
   postProcess: Dict.fromArray([

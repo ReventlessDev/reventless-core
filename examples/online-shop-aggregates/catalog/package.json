@@ -1,6 +1,5 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-catalog",
-  "private": true,
   "version": "3.0.0-alpha.100",
   "description": "Online Shop example — Catalog plugin (Product & Category aggregates)",
   "license": "Apache-2.0",
@@ -48,6 +47,6 @@
     "rescript": "^12.3.0"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org"
   }
 }

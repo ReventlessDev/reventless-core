@@ -63,7 +63,7 @@
   },
   "gitHead": "ddea51534dc210635d7b11968089627b3b697ce2",
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org"
   },
   "repository": {
     "type": "git",

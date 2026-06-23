@@ -137,10 +137,12 @@ Triggered on:
 
 ### `.npmrc`
 ```ini
-@reventless:registry=https://npm.pkg.github.com
 registry=https://registry.npmjs.org
-access=restricted
+access=public
 audit-level=moderate
+
+# CI publish auth (installs of public packages need no token)
+//registry.npmjs.org/:_authToken=${NPM_TOKEN}
 ```
 
 ### `lerna.json`
@@ -151,7 +153,8 @@ audit-level=moderate
   "packages": ["packages/*"],
   "command": {
     "publish": {
-      "registry": "https://npm.pkg.github.com",
+      "registry": "https://registry.npmjs.org",
+      "access": "public",
       "conventionalCommits": true
     },
     "version": {

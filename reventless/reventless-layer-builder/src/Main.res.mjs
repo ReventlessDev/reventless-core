@@ -106,16 +106,10 @@ let config_excludeModules = [
 
 let config_includeModules = ["@rescript/runtime"];
 
-let config_registryOpts = Object.fromEntries([
-  [
+let config_registryOpts = Object.fromEntries([[
     "@reventlessdev:registry",
-    "https://npm.pkg.github.com"
-  ],
-  [
-    "//npm.pkg.github.com/:_authToken",
-    Stdlib_Option.getOr(process.env["GITHUB_TOKEN"], "")
-  ]
-]);
+    "https://registry.npmjs.org"
+  ]]);
 
 let config_postProcess = Object.fromEntries([
   [

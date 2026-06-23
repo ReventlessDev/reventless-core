@@ -8,7 +8,7 @@
     "url": "git+ssh://git@github.com/ReventlessDev/reventless-core.git"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

@@ -9,7 +9,8 @@
   ],
   "command": {
     "publish": {
-      "registry": "https://npm.pkg.github.com",
+      "registry": "https://registry.npmjs.org",
+      "access": "public",
       "conventionalCommits": true,
       "changelogPreset": "@reventlessdev/reventless-conventional-changelog",
       "message": "chore(release): publish packages",

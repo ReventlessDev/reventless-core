@@ -158,7 +158,7 @@ jobs:
         with:
           node-version: "22.17.1"
           cache: "pnpm"
-          registry-url: "https://npm.pkg.github.com"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Setup workspace (pnpm-workspace.yaml)
         if: steps.affected.outputs.select != 'none'
@@ -168,7 +168,7 @@ jobs:
         if: steps.affected.outputs.select != 'none'
         run: pnpm install --frozen-lockfile
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Build all packages
         id: build

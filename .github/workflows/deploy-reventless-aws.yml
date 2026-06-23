@@ -298,15 +298,15 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
           cache: "pnpm"
-          registry-url: "https://npm.pkg.github.com"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Setup workspace (pnpm-workspace.yaml)
         run: node scripts/workspace-setup.mjs
 
       - name: Install dependencies
+        # All @reventlessdev/* deps (and the host-shell tarball) are public on
+        # npmjs — anonymous install, no auth token needed.
         run: pnpm install --frozen-lockfile
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
         run: pnpm run build
@@ -436,15 +436,15 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
           cache: "pnpm"
-          registry-url: "https://npm.pkg.github.com"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Setup workspace (pnpm-workspace.yaml)
         run: node scripts/workspace-setup.mjs
 
       - name: Install dependencies
+        # All @reventlessdev/* deps (and the host-shell tarball) are public on
+        # npmjs — anonymous install, no auth token needed.
         run: pnpm install --frozen-lockfile
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
         run: pnpm run build

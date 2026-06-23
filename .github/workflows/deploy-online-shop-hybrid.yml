@@ -32,20 +32,10 @@ permissions:
   # Required so detect-changes can derive the base SHA from the last successful
   # run of this workflow via `gh run list` (the GitHub Actions API).
   actions: read
-  # Required so the auto-issued GITHUB_TOKEN can read from
-  # npm.pkg.github.com during `pnpm install` (e.g. the
-  # @reventlessdev/reventless-host-shell tarball used by platform-aws).
-  #
-  # NOTE: `packages: read` alone is not sufficient for packages published
-  # from a *different* repo. GitHub Packages enforces access per package,
-  # not per scope: the workflow's GITHUB_TOKEN only authorizes packages
-  # owned by reventless-core. Cross-repo packages (e.g. host-shell, which
-  # is published from sibling repo reventless-ui) must be linked to this
-  # repo via the package's "Manage Actions access" settings on github.com
-  # (Read role for ReventlessDev/reventless-core). Without that link, the
-  # install fails with HTTP 403 from npm.pkg.github.com even though the
-  # token has packages:read scope.
-  packages: read
+  # Dependencies — including the @reventlessdev/reventless-host-shell tarball
+  # used by platform-aws — are public on npmjs, so `pnpm install` is anonymous.
+  # No `packages: read` scope or GitHub Packages cross-repo linking is needed
+  # (host-shell is published to public npmjs from the sibling reventless-ui repo).
 
 jobs:
   deploy:

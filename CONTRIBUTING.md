@@ -313,60 +313,37 @@ See [RELEASE.md](RELEASE.md) for complete documentation on:
 
 ## Publishing Packages
 
-Packages in this monorepo are published to the GitHub Package Registry.
-
-### Prerequisites
-
-1. Create a Personal Access Token in GitHub Settings with the following privileges:
-   - `repo` - Full control of private repositories
-   - `write:packages` - Upload packages to GitHub Package Registry
-   - `read:packages` - Download packages from GitHub Package Registry
-
-2. Log in to the GitHub registry on your local machine:
-
-   ```bash
-   npm login --registry=https://npm.pkg.github.com --scope=@reventless
-   ```
-
-   You will be prompted for:
-   - **Username**: Your GitHub username
-   - **Password**: Your Personal Access Token (not your GitHub password)
-   - **Email**: Your public email address
+Packages in this monorepo are published to the **public npm registry** (npmjs.com)
+under the `@reventlessdev` scope.
 
 ### Installing Packages
 
-After authentication, you can install packages:
+`@reventlessdev/*` packages are public — installing needs **no authentication**:
 
 ```bash
-npm install @reventless/<package-name>
+npm install @reventlessdev/<package-name>
 ```
 
 ### Publishing Packages
 
-To publish a package:
-
-```bash
-# Navigate to the package directory
-cd packages/<package-name>
-
-# Publish to GitHub Registry
-npm publish
-```
-
-Or use Lerna to publish all updated packages:
-
-```bash
-npx lerna publish
-```
+Publishing is automated in CI (`release.yml`) via Lerna and authenticated with an
+`NPM_TOKEN` org secret; scoped packages publish with `--access public`. Releases
+flow through the branch pipeline (feature → alpha → beta → main) — see
+[RELEASE.md](RELEASE.md). Manual publishing is not part of the normal workflow.
 
 ### Registry Configuration
 
-The registry is configured in [`package.json`](package.json):
+`registry.npmjs.org` is the default registry, so packages need no
+`publishConfig.registry` override. The publish registry and public access are set
+once in [`lerna.json`](lerna.json):
 
 ```json
 {
-  "publishConfig": {
-    "@reventless:registry": "https://npm.pkg.github.com/"
+  "command": {
+    "publish": {
+      "registry": "https://registry.npmjs.org",
+      "access": "public"
+    }
   }
 }
 ```

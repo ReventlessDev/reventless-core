@@ -111,12 +111,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22.17.1"
-          registry-url: "https://npm.pkg.github.com"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Publish per-platform package
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           ( cd "packages/reventless-ppx/npm/${{ matrix.target }}" && npm publish ) \
             || echo "::warning::publish of ${{ matrix.target }} skipped (version may already exist)"
@@ -136,7 +136,7 @@ jobs:
         with:
           node-version: "22.17.1"
           cache: "pnpm"
-          registry-url: "https://npm.pkg.github.com"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Setup workspace (pnpm-workspace.yaml)
         run: node scripts/workspace-setup.mjs
@@ -144,7 +144,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Setup OCaml
         uses: ocaml/setup-ocaml@v3
@@ -178,11 +178,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22.17.1"
-          registry-url: "https://npm.pkg.github.com"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Publish main (thin) package
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           ( cd packages/reventless-ppx && npm publish ) \
             || echo "::warning::publish of main skipped (version may already exist)"

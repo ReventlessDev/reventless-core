@@ -25,9 +25,6 @@
   },
   "peerDependencies": {
     "rescript": "^12.2.0"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
   }
 }
 ```
@@ -90,9 +87,6 @@
   },
   "peerDependencies": {
     "rescript": "^12.2.0"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
   }
 }
 ```

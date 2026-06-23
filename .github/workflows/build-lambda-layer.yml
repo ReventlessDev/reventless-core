@@ -48,7 +48,7 @@ jobs:
         with:
           node-version: "22.17.1"
           cache: "pnpm"
-          registry-url: "https://npm.pkg.github.com"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Extract version
         id: version
@@ -72,14 +72,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Build layer
         working-directory: reventless/reventless-layer-builder
         run: pnpm run build
         env:
           REVENTLESS_AWS_VERSION: ${{ steps.version.outputs.version }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Verify artifact
         working-directory: reventless/reventless-layer-builder/builder

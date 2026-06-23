@@ -20,7 +20,7 @@
     "@reventlessdev/reventless-ppx-linux-x64": "^1.0.0-alpha.45"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org"
   },
   "repository": {
     "type": "git",

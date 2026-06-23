@@ -39,7 +39,7 @@ jobs:
         with:
           node-version: "22.17.1"
           cache: "pnpm"
-          registry-url: "https://npm.pkg.github.com"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Configure Git
         run: |
@@ -52,7 +52,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Check if PPX Linux binary is available
         id: ppx_check
@@ -277,10 +277,10 @@ jobs:
         if: steps.changes.outputs.count != '0'
         run: |
           npx lerna publish from-package \
-            --registry=https://npm.pkg.github.com \
+            --registry=https://registry.npmjs.org \
             --yes
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Push version tags and commits
         if: steps.changes.outputs.count != '0'
