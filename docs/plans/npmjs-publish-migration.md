@@ -41,9 +41,28 @@ hardening**, deferred because:
   **unverified**; would need a throwaway-package test before relying on it.
 - Token-only avoids per-package Trusted-Publisher setup across the full publishable set.
 
-Status: an **`NPM_TOKEN`** (npm automation/granular token, scoped to `@reventlessdev`) has been
-minted and added as a **`ReventlessDev` GitHub org Actions secret** (2026-06-23), available to
-this repo. **Not yet wired into workflows.**
+Status (2026-06-23): an **`NPM_TOKEN`** is set as a **repo-level** GitHub Actions secret on
+`ReventlessDev/reventless-core` and is **already wired** into `release.yml`, `ci.yml`,
+`publish-ppx.yml`, and `build-lambda-layer.yml`. The `.npmrc`, `lerna.json`, and all package
+`publishConfig` entries already point at `registry.npmjs.org`. Migration is config-complete.
+
+**CRITICAL token requirement — the 2FA gotcha.** The npm account `reventless` runs 2FA in
+`auth-and-writes` mode, so **publishing requires a token that bypasses 2FA**. A plain
+read/auth token authenticates (`npm whoami` works) but gets `403 … Two-factor authentication
+or granular access token with bypass 2fa enabled is required to publish` on `npm publish`. The
+working token is a **Granular Access Token with Read **and Write** permission on the
+`@reventlessdev` scope** (granular tokens bypass 2FA for automation). A read-only token, or a
+classic "Publish" token (which demands an interactive OTP), will fail in CI.
+
+This bit us on 2026-06-23: the `publish-ppx.yml` per-platform/main publish steps wrapped
+`npm publish` in `|| echo "::warning::…"`, so the 403 was swallowed and the jobs went **green
+while publishing nothing**. Fixed — the publish steps now fail loudly on any error except a
+genuine "version already exists" re-publish.
+
+**Local publish caveat:** the repo `.npmrc` line `_authToken=${NPM_TOKEN}` overrides
+`~/.npmrc` when commands run inside the repo tree. For a local `lerna publish`, `export
+NPM_TOKEN=<token>` in the shell — setting it via `npm config set` in `~/.npmrc` is ignored
+inside the repo.
 
 Optional later: emit provenance with `npm publish --provenance` (needs `id-token: write`) for
 the supply-chain attestation, without full OIDC.
