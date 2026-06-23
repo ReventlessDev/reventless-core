@@ -4,6 +4,7 @@ title: "Aggregate vs DCB: when to use which"
 authors: [reventless]
 tags: [dcb, event-sourcing]
 date: 2026-05-22
+draft: true
 ---
 
 One of the first modelling decisions in Reventless is whether an entity should be

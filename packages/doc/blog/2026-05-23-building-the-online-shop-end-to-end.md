@@ -4,6 +4,7 @@ title: Building the online shop, end to end
 authors: [reventless]
 tags: [case-study, event-sourcing]
 date: 2026-05-23
+draft: true
 ---
 
 The clearest way to understand Reventless is to follow one application all the way

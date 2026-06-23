@@ -173,7 +173,8 @@ const config = {
         hashed: true,
         language: ["en"],
         indexDocs: true,
-        indexBlog: true,
+        // Blog hidden for now (all posts `draft: true`); nothing to index.
+        indexBlog: false,
         // Parallel arrays: each docsDir (the plugin instance's `path`) maps to
         // the matching docsRouteBasePath (its `routeBasePath`). docsDir must be
         // set explicitly here because this site has no default `docs/` folder —
@@ -329,11 +330,14 @@ const config = {
             position: "left",
             label: "Contributing",
           },
-          {
-            to: "/blog",
-            label: "Blog",
-            position: "left",
-          },
+          // Blog hidden for now: all posts are `draft: true`, so the /blog
+          // index isn't generated and this link would 404. Restore alongside
+          // the posts when the blog goes live.
+          // {
+          //   to: "/blog",
+          //   label: "Blog",
+          //   position: "left",
+          // },
           {
             type: "custom-versionSwitcher",
             position: "right",

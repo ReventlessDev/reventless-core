@@ -3,6 +3,8 @@ reventless:
   title: Maintainers of Reventless
   url: https://github.com/ReventlessDev
   image_url: https://github.com/ReventlessDev.png
-  page: true
+  # Standalone author page disabled while the blog is hidden (all posts are
+  # `draft: true`); it would otherwise link to the ungenerated /blog index.
+  page: false
   socials:
     github: ReventlessDev
