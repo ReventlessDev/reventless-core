@@ -4,23 +4,32 @@
 `pos#<eventType>` fence attributes, **with the create guard folded into the fence** (separate
 `create#` rows retired).
 
-Done:
-- [`DcbEventLogStorage_DynamoDb_Runtime.res`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res) —
+Done (committed `a20646f31` on `alpha`, not pushed):
+- [`DcbEventLogStorage_DynamoDb_Runtime.res`](../../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res) —
   per-type `buildConditionalFenceUpdate` / `buildUnconditionalFenceUpdate` /
   `buildFenceConditionCheck`, folded create guard in `buildConditionalTransactItems`
   (`create#`/`createGuard*` helpers deleted), per-type bumps in `appendUnconditional`.
-- [`DcbEventLogStorage_DynamoDb_RuntimeTest.res`](../../reventless/reventless-aws/tests/DcbEventLogStorage_DynamoDb_RuntimeTest.res) —
+- [`DcbEventLogStorage_DynamoDb_RuntimeTest.res`](../../../reventless/reventless-aws/tests/DcbEventLogStorage_DynamoDb_RuntimeTest.res) —
   45 tests green (incl. Issue 4 subset-type check, folded guard, produced-not-consumed gate).
   Full AWS suite 133 green, zero-warning build (root).
+- **Talk pages** rewritten (per-type + folded guard): the internals page, AWS + local adapter
+  pages; doc-site swept for stale `lastPosition`/`create#` prose. See § Documentation.
+- **Alpha sentinel rows wiped (2026-06-23)** — superseded by a **full catalog reset** of the
+  live hybrid table set (`CatalogDcbEventLog-c0509c2` events + `create#` guards + fences, and
+  read models `Products-07b7f5f`/`ProductDemand-4d2a936`/`AvailableProducts-93d2633`/
+  `CatalogActivity-a01f9c6`) — all emptied to unblock the wedged product. Note: the new code
+  ignores any stale scalar `lastPosition` (it reads `pos#*`), so a post-deploy wipe is cleanup,
+  not a correctness requirement.
 
-Remaining:
-- **Live DynamoDB integration test** — rewrite the Docker-gated suite (per-type seeding,
-  folded-guard create race, subset-type no-conflict); needs DynamoDB Local to verify. The
-  existing suite is marked PENDING REWRITE at its header.
-- **Talk pages** (doc-site prose) — see § Documentation.
-- **Alpha sentinel-row wipe** on deploy — see § Deploy / data.
-**Analysis**: [dcb-consistency-check-issues.md](../analysis/dcb-consistency-check-issues.md) — Issue 4 (upgraded severity).
-**Sibling plans**: [dcb-fence-scope-alignment.md](dcb-fence-scope-alignment.md) (Issue 1, cross-partition secondary tags), [dcb-hot-tag-fence-contention.md](Backlog/dcb-hot-tag-fence-contention.md).
+Remaining (carved out — this plan is complete):
+- **Deploy** — push `alpha` so CI redeploys the `catalog-aws` Lambda. Until then the live site
+  runs the old scalar-fence code and the Issue 4 deadlock can recur on mixed-attribute edits.
+  (Normal release flow, not a code task.)
+- **Live DynamoDB integration test** — moved to
+  [Backlog/dcb-fence-granularity-integration-test.md](../Backlog/dcb-fence-granularity-integration-test.md)
+  (needs DynamoDB Local; the existing suite is marked PENDING REWRITE at its header).
+**Analysis**: [dcb-consistency-check-issues.md](../../analysis/dcb-consistency-check-issues.md) — Issue 4 (upgraded severity).
+**Sibling plans**: [dcb-fence-scope-alignment.md](../dcb-fence-scope-alignment.md) (Issue 1, cross-partition secondary tags), [dcb-hot-tag-fence-contention.md](../Backlog/dcb-hot-tag-fence-contention.md).
 
 ## Symptom (live, 2026-06-23)
 
@@ -55,7 +64,7 @@ reading a **subset** of the product's event types:
 All four bump **one** fence: `fence#productId:<id>` — its `lastPosition` is the position
 of the **latest write of any type** to that product. But each slice computes its OCC
 `after` from **only the event types its query lists**
-([`StateChangeSlice_Callback.res`](../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L298)).
+([`StateChangeSlice_Callback.res`](../../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L298)).
 
 Walk-through (`pos(X)` = position of event X):
 
@@ -73,14 +82,14 @@ every other attribute slice is permanently blocked until the fence row is reset.
 
 The **local** in-memory/SQLite backends evaluate the append condition with true DCB query
 semantics — `matchesQuery` filters by **event type**
-([`DcbEventLogStorage_InMemory.res:13-14,51-58`](../../reventless/reventless-local/src/adapter/DcbEventLog/DcbEventLogStorage_InMemory.res#L13)) —
+([`DcbEventLogStorage_InMemory.res:13-14,51-58`](../../../reventless/reventless-local/src/adapter/DcbEventLog/DcbEventLogStorage_InMemory.res#L13)) —
 so a `ProductPriceChanged` never matches `ChangeProductName`'s query and never conflicts.
 Only the DynamoDB **fence approximation** collapses event type into a single position. This
 is exactly the Issue 3 backend divergence; fence-shape bugs are invisible to GWT/local E2E.
 
 ### Relationship to the Issue 1 fix
 
-[dcb-fence-scope-alignment](dcb-fence-scope-alignment.md) fixed the cross-partition
+[dcb-fence-scope-alignment](../dcb-fence-scope-alignment.md) fixed the cross-partition
 *secondary*-tag case (PlaceOrder/`productId`) by bumping `fence#T` only when `T` is the
 event's **partition** tag. That does not help here: `productId` **is** the partition tag for
 all four Product slices, so all four legitimately bump `fence#productId:P`. The remaining
@@ -105,7 +114,7 @@ appended after the slice's `after` — matching the local backends exactly.
 
 ## Non-goals
 
-- Hot-tag throughput / fence sharding ([dcb-hot-tag-fence-contention](Backlog/dcb-hot-tag-fence-contention.md)).
+- Hot-tag throughput / fence sharding ([dcb-hot-tag-fence-contention](../Backlog/dcb-hot-tag-fence-contention.md)).
 - Migrating existing fence rows — fences are derived state; an alpha fence-row **wipe** is
   acceptable (cf. memory: prefer wipe over migration in alpha).
 - Per-clause `after` (Issue 6) — orthogonal; the global head stays.
@@ -182,7 +191,7 @@ fence and the `create#` rows go away:
 ## Implementation sketch
 
 All in
-[`DcbEventLogStorage_DynamoDb_Runtime.res`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res):
+[`DcbEventLogStorage_DynamoDb_Runtime.res`](../../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res):
 
 1. **Attribute helper** — `fenceTypeAttr = (eventType) => "pos#" ++ eventType`.
 2. **`buildConditionalFenceUpdate`** → take the clause's consumed `eventTypes`, the **produced**
@@ -226,7 +235,7 @@ All in
 ## Test plan
 
 1. **Unit (transaction shape)** — extend
-   [`DcbEventLogStorage_DynamoDb_RuntimeTest.res`](../../reventless/reventless-aws/tests/DcbEventLogStorage_DynamoDb_RuntimeTest.res):
+   [`DcbEventLogStorage_DynamoDb_RuntimeTest.res`](../../../reventless/reventless-aws/tests/DcbEventLogStorage_DynamoDb_RuntimeTest.res):
    - `ChangeProductName` append (consumed `[ProductAdded, ProductNameChanged]`, produced
      `ProductNameChanged`) emits a fence Update whose condition references **only**
      `pos#ProductAdded` and `pos#ProductNameChanged` (never `pos#ProductPriceChanged`), and
@@ -241,7 +250,7 @@ All in
      separate row made impossible — it must be covered before shipping the fold.
    - Composite clause keeps check+bump, scoped to its consumed type.
 2. **Live DynamoDB integration** (the failing path; local backends don't use fences) — extend
-   [`dcb-dynamodb-atomic-append-integration-test`](done/dcb-dynamodb-atomic-append-integration-test.md):
+   [`dcb-dynamodb-atomic-append-integration-test`](dcb-dynamodb-atomic-append-integration-test.md):
    - Create product `P`; change **price**, then change **name** → **Ok** (currently the
      permanent `Conflict`). Regression guard for this bug.
    - Interleave name/description/price changes in any order → all Ok; the entity never wedges.
@@ -273,7 +282,7 @@ All in
 The explanatory ("talk") pages on the doc site describe the **scalar fence + separate create
 guard** model; they must be rewritten to the **per-type fence with folded create guard**:
 
-- [`packages/doc/docs-framework/internals/dcb-consistency-checks.md`](../../packages/doc/docs-framework/internals/dcb-consistency-checks.md)
+- [`packages/doc/docs-framework/internals/dcb-consistency-checks.md`](../../../packages/doc/docs-framework/internals/dcb-consistency-checks.md)
   — the primary page. Update **Stage 3 — The conditional append** (the fence item is now
   `pos#<eventType>` attributes, not a scalar `lastPosition`); the **"How each query tag becomes a
   fence item"** table (conditions are per-consumed-type AND-clauses); the **"When the read found
@@ -281,12 +290,12 @@ guard** model; they must be rewritten to the **per-type fence with folded create
   on the partition fence, no `create#` row); and the worked-example fence tables. State the
   one-event-type-per-attribute deadlock (Issue 4) as the motivating example, and that this
   realigns DynamoDB with the local backends' true query semantics.
-- [`packages/doc/docs-infrastructure/aws/adapters/dcbeventlog.md`](../../packages/doc/docs-infrastructure/aws/adapters/dcbeventlog.md)
+- [`packages/doc/docs-infrastructure/aws/adapters/dcbeventlog.md`](../../../packages/doc/docs-infrastructure/aws/adapters/dcbeventlog.md)
   — adapter-level description of the fence sentinels / create guard; same per-type + folded-guard
   rewrite.
-- [`packages/doc/docs-framework/architecture/dcb.md`](../../packages/doc/docs-framework/architecture/dcb.md)
+- [`packages/doc/docs-framework/architecture/dcb.md`](../../../packages/doc/docs-framework/architecture/dcb.md)
   — check its fence references; update any that describe the scalar model.
-- [`packages/doc/docs-infrastructure/local/adapters/dcbeventlog.md`](../../packages/doc/docs-infrastructure/local/adapters/dcbeventlog.md)
+- [`packages/doc/docs-infrastructure/local/adapters/dcbeventlog.md`](../../../packages/doc/docs-infrastructure/local/adapters/dcbeventlog.md)
   — the local backend is unchanged, but verify any AWS-vs-local contrast wording still matches
   (it should now read "AWS per-type fences mirror the local true-query semantics").
 - Grep the rest of `packages/doc/` for `lastPosition`, `create#`, "creation guard", and

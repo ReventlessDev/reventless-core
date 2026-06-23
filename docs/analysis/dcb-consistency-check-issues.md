@@ -15,7 +15,7 @@ A `StateChangeSlice` reads its decision model via `dcbEventLog.readStream(~query
 | 1 | Fence-scope broader than read-scope → false `ConditionalCheckFailed` | High (was live) | **Fixed 2026-06-20** (`2ecbd8599`) |
 | 2 | `after=None` performs no conflict check (create-race hole) | High | **Fixed 2026-06-20** (per-type create guard) |
 | 3 | Local backend ≠ AWS backend consistency semantics (test gap) | High | Open — needs integration test |
-| 4 | Fences are per-tag-value, not per-(tag, event-type) | **High** (was live 2026-06-23) | Open — [plan](../plans/dcb-fence-event-type-granularity.md) |
+| 4 | Fences are per-tag-value, not per-(tag, event-type) | **High** (was live 2026-06-23) | **Fixed 2026-06-23** (`a20646f31`) — [plan](../plans/done/dcb-fence-event-type-granularity.md) |
 | 5 | Composite (GSI) read requires an exact full-tag-set match | Medium | Latent |
 | 6 | Single global `after` across a multi-clause OR query | Medium | Partial (mitigated for non-partition tags by #1) |
 | 7 | Position ordering ties broken by UUID; stringified-ms fragility | Low–Med | Tracked (`dcb-monotonic-position-generation`) |
@@ -138,7 +138,7 @@ sharing the partition tag — the failure is **permanent and needs no concurrenc
 **Fix**: give the DynamoDB fence event-type granularity so the OCC check mirrors the query's
 type filter (flattened `pos#<eventType>` attributes on the one fence item per partition tag;
 check consumed types, bump produced types). Adapter-local — `cond.query` already carries the
-per-clause `eventTypes`. Plan: [dcb-fence-event-type-granularity.md](../plans/dcb-fence-event-type-granularity.md).
+per-clause `eventTypes`. Plan: [dcb-fence-event-type-granularity.md](../plans/done/dcb-fence-event-type-granularity.md).
 This reverses the "per-(tag, event-type) fences are a non-goal" call in
 [dcb-fence-scope-alignment](../plans/dcb-fence-scope-alignment.md), which held only while no
 entity used one-event-type-per-attribute slices.
