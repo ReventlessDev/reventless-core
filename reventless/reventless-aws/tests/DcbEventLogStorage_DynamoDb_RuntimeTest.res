@@ -95,41 +95,69 @@ describe("Runtime.collectEventTags", () => {
 })
 
 describe("Runtime.buildConditionalFenceUpdate", () => {
-  testSync("uses attribute_not_exists when after is None", () => {
+  testSync("after=Some: per-consumed-type OCC check, bumps only produced types", () => {
+    // ChangeProductName: reads [ProductAdded, ProductNameChanged], produces
+    // ProductNameChanged. The check must reference only those two types — never
+    // pos#ProductPriceChanged (the Issue 4 fix) — and bump only the produced type.
     let update = Runtime.buildConditionalFenceUpdate(
       "TestTable",
-      tag("orderId", "o1"),
-      ~newPosition="100",
-      ~after=None,
-    )
-    expect(update.conditionExpression)->toEqual(Some("attribute_not_exists(lastPosition)"))
-  })
-
-  testSync("includes lastPosition <= :after when after is Some", () => {
-    let update = Runtime.buildConditionalFenceUpdate(
-      "TestTable",
-      tag("orderId", "o1"),
+      tag("productId", "p1"),
+      ~consumedTypes=["ProductAdded", "ProductNameChanged"],
+      ~producedTypes=["ProductNameChanged"],
       ~newPosition="100",
       ~after=Some("50"),
     )
     expect(update.conditionExpression)->toEqual(
-      Some("attribute_not_exists(lastPosition) OR lastPosition <= :after"),
+      Some(
+        "(attribute_not_exists(#c0) OR #c0 <= :after) AND (attribute_not_exists(#c1) OR #c1 <= :after)",
+      ),
+    )
+    expect(update.updateExpression)->toBe("SET #p0 = :new")
+    expect(update.expressionAttributeNames)->toEqual(
+      Some(
+        Dict.fromArray([
+          ("#p0", "pos#ProductNameChanged"),
+          ("#c0", "pos#ProductAdded"),
+          ("#c1", "pos#ProductNameChanged"),
+        ]),
+      ),
     )
     expect(update.expressionAttributeValues->Option.flatMap(v => v->Dict.get(":after")))->toEqual(
       Some("50"->JSON.Encode.string),
     )
+    expect(update.expressionAttributeValues->Option.flatMap(v => v->Dict.get(":new")))->toEqual(
+      Some("100"->JSON.Encode.string),
+    )
   })
 
-  testSync("always sets lastPosition to newPosition", () => {
+  testSync("after=Some: a non-read type is never referenced in the condition", () => {
     let update = Runtime.buildConditionalFenceUpdate(
       "TestTable",
-      tag("orderId", "o1"),
+      tag("productId", "p1"),
+      ~consumedTypes=["ProductAdded", "ProductNameChanged"],
+      ~producedTypes=["ProductNameChanged"],
+      ~newPosition="100",
+      ~after=Some("50"),
+    )
+    let referenced =
+      update.expressionAttributeNames->Option.getOr(Dict.make())->Dict.valuesToArray
+    expect(referenced->Array.includes("pos#ProductPriceChanged"))->toBe(false)
+  })
+
+  testSync("after=None: folded create guard over consumed ∪ produced types", () => {
+    let update = Runtime.buildConditionalFenceUpdate(
+      "TestTable",
+      tag("productId", "p1"),
+      ~consumedTypes=["ProductAdded"],
+      ~producedTypes=["ProductAdded"],
       ~newPosition="100",
       ~after=None,
     )
-    expect(update.updateExpression)->toBe("SET lastPosition = :new")
-    expect(update.expressionAttributeValues->Option.flatMap(v => v->Dict.get(":new")))->toEqual(
-      Some("100"->JSON.Encode.string),
+    // consumed ∪ produced dedups to [ProductAdded] → a single attribute_not_exists.
+    expect(update.conditionExpression)->toEqual(Some("attribute_not_exists(#c0)"))
+    expect(update.updateExpression)->toBe("SET #p0 = :new")
+    expect(update.expressionAttributeValues->Option.flatMap(v => v->Dict.get(":after")))->toEqual(
+      None,
     )
   })
 
@@ -137,6 +165,8 @@ describe("Runtime.buildConditionalFenceUpdate", () => {
     let update = Runtime.buildConditionalFenceUpdate(
       "TestTable",
       tag("orderId", "o1"),
+      ~consumedTypes=["OrderPlaced"],
+      ~producedTypes=["OrderPlaced"],
       ~newPosition="100",
       ~after=None,
     )
@@ -150,18 +180,23 @@ describe("Runtime.buildUnconditionalFenceUpdate", () => {
     let update = Runtime.buildUnconditionalFenceUpdate(
       "TestTable",
       tag("orderId", "o1"),
+      ~producedTypes=["OrderPlaced"],
       ~newPosition="100",
     )
     expect(update.conditionExpression)->toEqual(None)
   })
 
-  testSync("still bumps lastPosition", () => {
+  testSync("bumps each produced type's position attribute", () => {
     let update = Runtime.buildUnconditionalFenceUpdate(
       "TestTable",
       tag("orderId", "o1"),
+      ~producedTypes=["OrderPlaced", "OrderShipped"],
       ~newPosition="100",
     )
-    expect(update.updateExpression)->toBe("SET lastPosition = :new")
+    expect(update.updateExpression)->toBe("SET #p0 = :new, #p1 = :new")
+    expect(update.expressionAttributeNames)->toEqual(
+      Some(Dict.fromArray([("#p0", "pos#OrderPlaced"), ("#p1", "pos#OrderShipped")])),
+    )
   })
 })
 
@@ -315,7 +350,10 @@ describe("Runtime.buildConditionalTransactItems — fence-scope = read-scope", (
     )
     let partitionTag = Some(Reventless.DcbTag.Simple({key: "orderId"}))
     let cond: Reventless.DcbTag.appendCondition = {
-      query: [{tags: [tag("orderId", "o1")]}, {tags: [tag("productId", "p5")]}],
+      query: [
+        {tags: [tag("orderId", "o1")], eventTypes: ["OrderPlaced"]},
+        {tags: [tag("productId", "p5")], eventTypes: ["OrderPlaced", "CatalogProductSynced"]},
+      ],
       after: "50",
     }
     let items = Runtime.buildConditionalTransactItems(table, [orderPlaced], cond, "100", ~partitionTag?)
@@ -340,7 +378,9 @@ describe("Runtime.buildConditionalTransactItems — fence-scope = read-scope", (
     let demand = event("ProductDemandRecorded", [tag("productId", "p1"), tag("orderId", "o1")])
     let partitionTag = Some(Reventless.DcbTag.Simple({key: "productId"}))
     let cond: Reventless.DcbTag.appendCondition = {
-      query: [{tags: [tag("productId", "p1"), tag("orderId", "o1")]}],
+      query: [
+        {tags: [tag("productId", "p1"), tag("orderId", "o1")], eventTypes: ["ProductDemandRecorded"]},
+      ],
       after: "50",
     }
     let items = Runtime.buildConditionalTransactItems(table, [demand], cond, "100", ~partitionTag?)
@@ -363,7 +403,10 @@ describe("Runtime.buildConditionalTransactItems — fence-scope = read-scope", (
     let subscribed = event("StudentSubscribed", [tag("courseId", "C1"), tag("studentId", "S1")])
     let partitionTag = Some(Reventless.DcbTag.Simple({key: "courseId"}))
     let cond: Reventless.DcbTag.appendCondition = {
-      query: [{tags: [tag("courseId", "C1")]}, {tags: [tag("studentId", "S1")]}],
+      query: [
+        {tags: [tag("courseId", "C1")], eventTypes: ["StudentSubscribed"]},
+        {tags: [tag("studentId", "S1")], eventTypes: ["StudentSubscribed"]},
+      ],
       after: "50",
     }
 
@@ -390,7 +433,7 @@ describe("Runtime.buildConditionalTransactItems — fence-scope = read-scope", (
   })
 })
 
-describe("Runtime.buildConditionalTransactItems — create guard (after=None)", () => {
+describe("Runtime.buildConditionalTransactItems — folded create guard (after=None)", () => {
   let event = (eventType, tags): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
     eventType,
     data: JSON.Object(Dict.make()),
@@ -398,48 +441,109 @@ describe("Runtime.buildConditionalTransactItems — create guard (after=None)", 
     meta: testMeta(),
   }
 
-  let findById = (items: array<AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.transactWriteItem>, id) =>
-    items->Array.find(it =>
-      switch it.update {
-      | Some(u) => u.key->Dict.get("id") == Some(id->JSON.Encode.string)
+  // The partition-tag fence Update for `fenceId`, if any.
+  let fenceUpdate = (
+    items: array<AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.transactWriteItem>,
+    fenceId,
+  ) =>
+    items->Array.findMap(it =>
+      switch it.AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.update {
+      | Some(u) if u.key->Dict.get("id") == Some(fenceId->JSON.Encode.string) => Some(u)
+      | _ => None
+      }
+    )
+
+  // True if any item targets a legacy `create#…` sentinel row (must be none now).
+  let hasCreateRow = (items: array<AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.transactWriteItem>) =>
+    items->Array.some(it =>
+      switch it.AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.update {
+      | Some(u) =>
+        u.key
+        ->Dict.get("id")
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.mapOr(false, id => id->String.startsWith("create#"))
       | None => false
       }
     )
 
-  let orderCreated = event("OrderCreated", [tag("orderId", "o1")])
-  let partitionTag = Some(Reventless.DcbTag.Simple({key: "orderId"}))
+  let referencedAttrs = (u: AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.update) =>
+    u.expressionAttributeNames->Option.getOr(Dict.make())->Dict.valuesToArray
 
-  describe("at after=None (first-writer)", () => {
-    let cond: Reventless.DcbTag.appendCondition = {query: [{tags: [tag("orderId", "o1")]}]}
-    let items = Runtime.buildConditionalTransactItems(table, [orderCreated], cond, "100", ~partitionTag?)
+  describe("first write of a create slice (consumes == produces)", () => {
+    let added = event("ProductAdded", [tag("productId", "p1")])
+    let partitionTag = Some(Reventless.DcbTag.Simple({key: "productId"}))
+    let cond: Reventless.DcbTag.appendCondition = {
+      query: [{tags: [tag("productId", "p1")], eventTypes: ["ProductAdded"]}],
+    }
+    let items = Runtime.buildConditionalTransactItems(table, [added], cond, "100", ~partitionTag?)
 
-    testSync("emits a create guard keyed by (eventType, partition value)", () => {
-      expect((findById(items, "create#OrderCreated#orderId:o1"))->Option.isSome)->toBe(true)
+    testSync("no separate create# row is emitted (guard folded into the fence)", () => {
+      expect(hasCreateRow(items))->toBe(false)
     })
 
-    testSync("the create guard is gated on attribute_not_exists", () => {
-      let guard = findById(items, "create#OrderCreated#orderId:o1")->Option.flatMap(it => it.update)
-      expect(guard->Option.flatMap(u => u.conditionExpression))->toEqual(
-        Some("attribute_not_exists(lastPosition)"),
+    testSync("the partition fence is a conditional Update gated on attribute_not_exists", () => {
+      let u = fenceUpdate(items, "fence#productId:p1")->Option.getOrThrow
+      expect(u.conditionExpression)->toEqual(Some("attribute_not_exists(#c0)"))
+      expect(u.updateExpression)->toBe("SET #p0 = :new")
+      expect(u.expressionAttributeValues->Option.flatMap(v => v->Dict.get(":after")))->toEqual(None)
+    })
+
+    testSync("the guard references only the produced/consumed type", () => {
+      let u = fenceUpdate(items, "fence#productId:p1")->Option.getOrThrow
+      let referenced = referencedAttrs(u)
+      expect(referenced->Array.includes("pos#ProductAdded"))->toBe(true)
+      expect(referenced->Array.includes("pos#ProductPriceChanged"))->toBe(false)
+    })
+  })
+
+  describe("produced-not-consumed (the double-create gate — analysis con #1)", () => {
+    // A slice producing a type it does NOT read must still guard on the produced
+    // type at after=None, or two concurrent first-writers both commit.
+    let started = event("OrderStarted", [tag("orderId", "o1")])
+    let partitionTag = Some(Reventless.DcbTag.Simple({key: "orderId"}))
+    let cond: Reventless.DcbTag.appendCondition = {
+      query: [{tags: [tag("orderId", "o1")], eventTypes: ["OrderDrafted"]}],
+    }
+    let items = Runtime.buildConditionalTransactItems(table, [started], cond, "100", ~partitionTag?)
+
+    testSync("the produced type is in the guard even though it is not consumed", () => {
+      let u = fenceUpdate(items, "fence#orderId:o1")->Option.getOrThrow
+      let referenced = referencedAttrs(u)
+      // guard set = consumed ∪ produced = {OrderDrafted, OrderStarted}
+      expect(referenced->Array.includes("pos#OrderStarted"))->toBe(true)
+      expect(referenced->Array.includes("pos#OrderDrafted"))->toBe(true)
+    })
+
+    testSync("the bump advances the produced type", () => {
+      let u = fenceUpdate(items, "fence#orderId:o1")->Option.getOrThrow
+      expect(u.updateExpression)->toBe("SET #p0 = :new")
+      expect(u.expressionAttributeNames->Option.flatMap(n => n->Dict.get("#p0")))->toEqual(
+        Some("pos#OrderStarted"),
       )
-    })
-
-    testSync("a second event type on the same partition gets its own guard (no over-serialization)", () => {
-      let note = event("NoteAdded", [tag("orderId", "o1")])
-      let items2 = Runtime.buildConditionalTransactItems(table, [note], cond, "100", ~partitionTag?)
-      // NoteAdded's guard is distinct from OrderCreated's — reading a subset of a
-      // partition's event types does not false-conflict (analysis Issue 4).
-      expect((findById(items2, "create#NoteAdded#orderId:o1"))->Option.isSome)->toBe(true)
-      expect((findById(items2, "create#OrderCreated#orderId:o1"))->Option.isSome)->toBe(false)
     })
   })
 
   describe("at after=Some (entity exists)", () => {
-    let cond: Reventless.DcbTag.appendCondition = {query: [{tags: [tag("orderId", "o1")]}], after: "50"}
-    let items = Runtime.buildConditionalTransactItems(table, [orderCreated], cond, "100", ~partitionTag?)
+    let changed = event("ProductNameChanged", [tag("productId", "p1")])
+    let partitionTag = Some(Reventless.DcbTag.Simple({key: "productId"}))
+    let cond: Reventless.DcbTag.appendCondition = {
+      query: [
+        {tags: [tag("productId", "p1")], eventTypes: ["ProductAdded", "ProductNameChanged"]},
+      ],
+      after: "50",
+    }
+    let items = Runtime.buildConditionalTransactItems(table, [changed], cond, "100", ~partitionTag?)
 
-    testSync("emits no create guard (the partition fence enforces OCC)", () => {
-      expect((findById(items, "create#OrderCreated#orderId:o1"))->Option.isSome)->toBe(false)
+    testSync("emits no create# row", () => {
+      expect(hasCreateRow(items))->toBe(false)
+    })
+
+    testSync("the fence check covers consumed types but not unrelated ones (Issue 4 fix)", () => {
+      let u = fenceUpdate(items, "fence#productId:p1")->Option.getOrThrow
+      let referenced = referencedAttrs(u)
+      expect(referenced->Array.includes("pos#ProductAdded"))->toBe(true)
+      expect(referenced->Array.includes("pos#ProductNameChanged"))->toBe(true)
+      expect(referenced->Array.includes("pos#ProductPriceChanged"))->toBe(false)
     })
   })
 })
@@ -464,7 +568,7 @@ describe("Runtime.appendConditional", () => {
     // bump-only fallback.
     let manyTags = Array.fromInitializer(~length=100, i => tag("k", `v${i->Int.toString}`))
     let cond: Reventless.DcbTag.appendCondition = {
-      query: manyTags->Array.map(t => {Reventless.DcbTag.tags: [t]}),
+      query: manyTags->Array.map(t => {Reventless.DcbTag.tags: [t], eventTypes: ["Foo"]}),
       after: "0",
     }
     let event: ReventlessCore.DcbEventLog_Adapter.rawStoredEvent = {

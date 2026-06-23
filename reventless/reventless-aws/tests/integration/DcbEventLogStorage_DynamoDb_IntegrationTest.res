@@ -1,3 +1,12 @@
+// ⚠️ PENDING REWRITE (dcb-fence-event-type-granularity): this suite still encodes
+// the OLD scalar-`lastPosition` fence + `create#…` create-guard model. The adapter
+// now uses PER-TYPE `pos#<eventType>` fence attributes with the create guard folded
+// in, so `H.setFence(~lastPosition=…)` seeding, the `create#…`-row assertions, and
+// the tag-only (no `eventTypes`) queries below must be reworked and re-run against
+// DynamoDB Local before they pass. Tracked as Test plan #2 in
+// docs/plans/dcb-fence-event-type-granularity.md. Not run by the default unit suite
+// (CI `pnpm test`), so it does not gate the build.
+//
 // DCB DynamoDB integration suite — exercises the real fence path against a
 // DynamoDB Local engine (NOT run by the default unit suite; see
 // `jest.integration.config.js` + `scripts/run-integration-tests.sh`).

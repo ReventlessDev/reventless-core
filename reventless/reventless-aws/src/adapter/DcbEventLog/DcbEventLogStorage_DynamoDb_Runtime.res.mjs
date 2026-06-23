@@ -496,79 +496,123 @@ function collectEventTags(events) {
   return acc;
 }
 
-function buildConditionalFenceUpdate(tableName, tag, newPosition, after) {
+function fenceTypeAttr(eventType) {
+  return `pos#` + eventType;
+}
+
+function dedupStrings(xs) {
+  let seen = new Set();
+  return xs.filter(x => {
+    if (seen.has(x)) {
+      return false;
+    } else {
+      seen.add(x);
+      return true;
+    }
+  });
+}
+
+function carriedTypesByTag(events) {
+  let d = {};
+  events.forEach(e => {
+    e.tags.forEach(t => {
+      let k = t.key + `:` + t.value;
+      let cur = Stdlib_Option.getOr(d[k], []);
+      if (!cur.includes(e.eventType)) {
+        d[k] = cur.concat([e.eventType]);
+        return;
+      }
+    });
+  });
+  return d;
+}
+
+function buildConditionalFenceUpdate(tableName, tag, consumedTypes, producedTypes, newPosition, after) {
+  let names = {};
   let values = Object.fromEntries([[
       ":new",
       newPosition
     ]]);
-  let conditionExpression = after !== undefined ? (values[":after"] = after, "attribute_not_exists(lastPosition) OR lastPosition <= :after") : "attribute_not_exists(lastPosition)";
-  return {
-    Key: fenceKey(tag),
-    TableName: tableName,
-    UpdateExpression: "SET lastPosition = :new",
-    ConditionExpression: conditionExpression,
-    ExpressionAttributeValues: values
-  };
-}
-
-function buildUnconditionalFenceUpdate(tableName, tag, newPosition) {
-  let values = Object.fromEntries([[
-      ":new",
-      newPosition
-    ]]);
-  return {
-    Key: fenceKey(tag),
-    TableName: tableName,
-    UpdateExpression: "SET lastPosition = :new",
-    ExpressionAttributeValues: values
-  };
-}
-
-function buildFenceConditionCheck(tableName, tag, after) {
+  let setClauses = producedTypes.map((pt, i) => {
+    let ph = `#p` + i.toString();
+    names[ph] = fenceTypeAttr(pt);
+    return ph + ` = :new`;
+  });
+  let conditionExpression;
   if (after !== undefined) {
+    values[":after"] = after;
+    let checkTypes = consumedTypes.length === 0 ? producedTypes : consumedTypes;
+    conditionExpression = checkTypes.map((t, i) => {
+      let ph = `#c` + i.toString();
+      names[ph] = fenceTypeAttr(t);
+      return `(attribute_not_exists(` + ph + `) OR ` + ph + ` <= :after)`;
+    }).join(" AND ");
+  } else {
+    conditionExpression = dedupStrings(consumedTypes.concat(producedTypes)).map((t, i) => {
+      let ph = `#c` + i.toString();
+      names[ph] = fenceTypeAttr(t);
+      return `attribute_not_exists(` + ph + `)`;
+    }).join(" AND ");
+  }
+  return {
+    Key: fenceKey(tag),
+    TableName: tableName,
+    UpdateExpression: `SET ` + setClauses.join(", "),
+    ConditionExpression: conditionExpression,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values
+  };
+}
+
+function buildUnconditionalFenceUpdate(tableName, tag, producedTypes, newPosition) {
+  let names = {};
+  let values = Object.fromEntries([[
+      ":new",
+      newPosition
+    ]]);
+  let setClauses = producedTypes.map((pt, i) => {
+    let ph = `#p` + i.toString();
+    names[ph] = fenceTypeAttr(pt);
+    return ph + ` = :new`;
+  });
+  return {
+    Key: fenceKey(tag),
+    TableName: tableName,
+    UpdateExpression: `SET ` + setClauses.join(", "),
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values
+  };
+}
+
+function buildFenceConditionCheck(tableName, tag, consumedTypes, after) {
+  let names = {};
+  if (after !== undefined) {
+    let conditionExpression = consumedTypes.map((t, i) => {
+      let ph = `#c` + i.toString();
+      names[ph] = fenceTypeAttr(t);
+      return `(attribute_not_exists(` + ph + `) OR ` + ph + ` <= :after)`;
+    }).join(" AND ");
     return {
       Key: fenceKey(tag),
       TableName: tableName,
-      ConditionExpression: "attribute_not_exists(lastPosition) OR lastPosition <= :after",
+      ConditionExpression: conditionExpression,
+      ExpressionAttributeNames: names,
       ExpressionAttributeValues: Object.fromEntries([[
           ":after",
           after
         ]])
     };
-  } else {
-    return {
-      Key: fenceKey(tag),
-      TableName: tableName,
-      ConditionExpression: "attribute_not_exists(lastPosition)"
-    };
   }
-}
-
-let createGuardSortKey = "CREATE";
-
-function createGuardId(eventType, tag) {
-  return `create#` + eventType + `#` + tag.key + `:` + tag.value;
-}
-
-function buildCreateGuardUpdate(tableName, guardId, newPosition) {
+  let conditionExpression$1 = consumedTypes.map((t, i) => {
+    let ph = `#c` + i.toString();
+    names[ph] = fenceTypeAttr(t);
+    return `attribute_not_exists(` + ph + `)`;
+  }).join(" AND ");
   return {
-    Key: Object.fromEntries([
-      [
-        "id",
-        guardId
-      ],
-      [
-        "position",
-        createGuardSortKey
-      ]
-    ]),
+    Key: fenceKey(tag),
     TableName: tableName,
-    UpdateExpression: "SET lastPosition = :new",
-    ConditionExpression: "attribute_not_exists(lastPosition)",
-    ExpressionAttributeValues: Object.fromEntries([[
-        ":new",
-        newPosition
-      ]])
+    ConditionExpression: conditionExpression$1,
+    ExpressionAttributeNames: names
   };
 }
 
@@ -626,10 +670,18 @@ async function appendUnconditional(table, events, partitionTag) {
     };
   }
   let basePosition = generatePosition();
+  let carriedMap = carriedTypesByTag(events);
   let putItems = buildEventPuts(table, events, basePosition, partitionTag);
-  let updateItems = eventTags.map(tag => ({
-    Update: buildUnconditionalFenceUpdate(table.name, tag, basePosition)
-  }));
+  let updateItems = Stdlib_Array.filterMap(eventTags, tag => {
+    let producedTypes = Stdlib_Option.getOr(carriedMap[tag.key + `:` + tag.value], []);
+    if (producedTypes.length === 0) {
+      return;
+    } else {
+      return {
+        Update: buildUnconditionalFenceUpdate(table.name, tag, producedTypes, basePosition)
+      };
+    }
+  });
   let input_TransactItems = putItems.concat(updateItems);
   let input = {
     TransactItems: input_TransactItems
@@ -678,6 +730,21 @@ function collectEventPartitionTags(events, partitionTag) {
   return acc;
 }
 
+function partitionTypesByTag(events, partitionTag) {
+  let d = {};
+  events.forEach(e => {
+    eventPartitionTags(e, partitionTag).forEach(t => {
+      let k = t.key + `:` + t.value;
+      let cur = Stdlib_Option.getOr(d[k], []);
+      if (!cur.includes(e.eventType)) {
+        d[k] = cur.concat([e.eventType]);
+        return;
+      }
+    });
+  });
+  return d;
+}
+
 function buildConditionalTransactItems(table, events, cond, basePosition, partitionTag, crossPartitionTagKeysOpt) {
   let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
   let partitionTags = collectEventPartitionTags(events, partitionTag);
@@ -688,6 +755,28 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
   let isPartition = t => partitionKeySet.has(t.key + `:` + t.value);
   let isCrossPartition = t => crossPartitionTagKeys.includes(t.key);
   let crossPartitionEventTags = collectEventTags(events).filter(isCrossPartition);
+  let carriedMap = carriedTypesByTag(events);
+  let partitionMap = partitionTypesByTag(events, partitionTag);
+  let producedTypesFor = t => {
+    let k = t.key + `:` + t.value;
+    return Stdlib_Option.getOr((
+        isPartition(t) && !crossPartitionTagKeys.includes(t.key) ? partitionMap : carriedMap
+      )[k], []);
+  };
+  let consumedMap = {};
+  cond.query.forEach(qi => {
+    let match = qi.tags;
+    let match$1 = qi.eventTypes;
+    if (match !== undefined && match$1 !== undefined) {
+      match.forEach(t => {
+        let k = t.key + `:` + t.value;
+        let cur = Stdlib_Option.getOr(consumedMap[k], []);
+        consumedMap[k] = dedupStrings(cur.concat(match$1));
+      });
+      return;
+    }
+  });
+  let consumedTypesFor = t => Stdlib_Option.getOr(consumedMap[t.key + `:` + t.value], []);
   let compositeKeySet = new Set();
   let compositeQueryTags = [];
   cond.query.forEach(qi => {
@@ -752,15 +841,25 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
           return;
         }
       }
+    } else if (isPartition(tag)) {
+      return pushUpdate(tag);
+    } else {
+      return;
     }
   });
+  let match = cond.after;
+  if (match !== undefined) {
+    
+  } else {
+    partitionTags.forEach(pushUpdate);
+  }
   let bumpSeen = new Set();
   conditionalUpdateTags.forEach(t => {
     bumpSeen.add(t.key + `:` + t.value);
   });
   let bumpTags = [];
-  let match = cond.after;
-  let candidateBumps = match !== undefined ? partitionTags.concat(crossPartitionEventTags) : partitionTags.concat(compositeQueryTags.concat(crossPartitionEventTags));
+  let match$1 = cond.after;
+  let candidateBumps = match$1 !== undefined ? partitionTags.concat(crossPartitionEventTags) : partitionTags.concat(compositeQueryTags.concat(crossPartitionEventTags));
   candidateBumps.forEach(tag => {
     let k = tag.key + `:` + tag.value;
     if (!bumpSeen.has(k)) {
@@ -769,39 +868,38 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
       return;
     }
   });
-  let match$1 = cond.after;
-  let guardTags;
-  if (match$1 !== undefined) {
-    guardTags = [];
-  } else {
-    let seen = new Set();
-    let guards = [];
-    events.forEach(event => {
-      eventPartitionTags(event, partitionTag).forEach(pt => {
-        let guardId = createGuardId(event.eventType, pt);
-        if (!seen.has(guardId)) {
-          seen.add(guardId);
-          guards.push(guardId);
-          return;
-        }
-      });
-    });
-    guardTags = guards;
-  }
   let putItems = buildEventPuts(table, events, basePosition, partitionTag);
-  let updateItems = conditionalUpdateTags.map(tag => ({
-    Update: buildConditionalFenceUpdate(table.name, tag, basePosition, cond.after)
-  }));
-  let checkItems = conditionCheckTags.map(tag => ({
-    ConditionCheck: buildFenceConditionCheck(table.name, tag, cond.after)
-  }));
-  let bumpItems = bumpTags.map(tag => ({
-    Update: buildUnconditionalFenceUpdate(table.name, tag, basePosition)
-  }));
-  let guardItems = guardTags.map(guardId => ({
-    Update: buildCreateGuardUpdate(table.name, guardId, basePosition)
-  }));
-  return putItems.concat(updateItems.concat(checkItems.concat(bumpItems.concat(guardItems))));
+  let updateItems = Stdlib_Array.filterMap(conditionalUpdateTags, tag => {
+    let producedTypes = producedTypesFor(tag);
+    if (producedTypes.length === 0) {
+      return;
+    } else {
+      return {
+        Update: buildConditionalFenceUpdate(table.name, tag, consumedTypesFor(tag), producedTypes, basePosition, cond.after)
+      };
+    }
+  });
+  let checkItems = Stdlib_Array.filterMap(conditionCheckTags, tag => {
+    let consumedTypes = consumedTypesFor(tag);
+    if (consumedTypes.length === 0) {
+      return;
+    } else {
+      return {
+        ConditionCheck: buildFenceConditionCheck(table.name, tag, consumedTypes, cond.after)
+      };
+    }
+  });
+  let bumpItems = Stdlib_Array.filterMap(bumpTags, tag => {
+    let producedTypes = producedTypesFor(tag);
+    if (producedTypes.length === 0) {
+      return;
+    } else {
+      return {
+        Update: buildUnconditionalFenceUpdate(table.name, tag, producedTypes, basePosition)
+      };
+    }
+  });
+  return putItems.concat(updateItems.concat(checkItems.concat(bumpItems)));
 }
 
 async function appendConditional(table, events, cond, partitionTag, crossPartitionTagKeysOpt) {
@@ -1020,18 +1118,19 @@ export {
   fenceKey,
   collectQueryTags,
   collectEventTags,
+  fenceTypeAttr,
+  dedupStrings,
+  carriedTypesByTag,
   buildConditionalFenceUpdate,
   buildUnconditionalFenceUpdate,
   buildFenceConditionCheck,
-  createGuardSortKey,
-  createGuardId,
-  buildCreateGuardUpdate,
   transactWriteItemsLimit,
   buildEventPuts,
   runTransactWrite,
   appendUnconditional,
   eventPartitionTags,
   collectEventPartitionTags,
+  partitionTypesByTag,
   buildConditionalTransactItems,
   appendConditional,
   append,

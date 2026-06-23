@@ -576,17 +576,22 @@ let read = (table: resolvedTable, ~crossPartitionTagKeys: array<string>=[]) =>
 
 // --- DCB consistency fences ---
 //
-// A fence is a sentinel item in the same table whose `lastPosition` is bumped
-// inside every conditional append. Each tag value (`<key>:<value>`) gets its
-// own fence at `id = "fence#<key>:<value>", position = "FENCE"`. The id prefix
-// is distinct from event partition keys (`<key>:<value>`), so event reads never
-// see fence items.
+// A fence is a sentinel item in the same table holding one position attribute PER
+// EVENT TYPE — `pos#<eventType>` — instead of a single scalar. Each tag value
+// (`<key>:<value>`) gets its own fence at `id = "fence#<key>:<value>", position =
+// "FENCE"`. The id prefix is distinct from event partition keys (`<key>:<value>`),
+// so event reads never see fence items.
 //
-// On conditional append: every tag value present in `cond.query` gets a
-// `ConditionalUpdate` checking that nothing has bumped the fence past `after`
-// since the slice's decision-model read. Every tag value present in the new
-// events' tags ALSO gets bumped (without condition) so future readers querying
-// those tags will detect this commit.
+// On conditional append, each query tag becomes a per-type `ConditionalUpdate` or
+// read-only `ConditionCheck`: it asserts that no event OF A TYPE THE SLICE READS
+// (`pos#<consumedType>`) has advanced past `after` since the decision-model read,
+// and advances `pos#<producedType>` for the types it writes. Because the check is
+// scoped to the consumed types, a slice reading only a SUBSET of a partition's
+// event types no longer false-conflicts when a sibling type advances (analysis
+// Issue 4); the OCC now mirrors the local backends' true query semantics. At
+// `after=None` the partition-tag Update is gated on `attribute_not_exists(pos#…)`
+// over the consumed ∪ produced types — the FOLDED CREATE GUARD that serializes
+// concurrent first-writers (replacing the old `create#…` sentinel rows).
 //
 // All Puts and Updates ride a single `TransactWriteItems` call — atomic by
 // DynamoDB. Conflicts surface as `TransactionCanceledException` →
@@ -640,45 +645,132 @@ let collectEventTags = (
   acc
 }
 
-// Conditional fence update: a writer may commit only if no one bumped the
-// fence past the position the slice observed when building its decision model.
-// `after = None` means "no events seen" — the strictest form is
-// `attribute_not_exists(lastPosition)`.
+// Per-event-type fence attributes. The fence sentinel holds one position
+// attribute per event type — `pos#<eventType>` — instead of a single scalar
+// `lastPosition`. This lets the OCC check mirror the read query's event-type
+// filter: a slice reading only a subset of a partition's event types conflicts
+// only when an event *of a type it reads* advances past its `after`, matching the
+// local backends' true DCB query semantics (and fixing analysis Issue 4 — the
+// one-event-type-per-attribute deadlock). It also folds the create guard into the
+// fence (see `buildConditionalFenceUpdate`), retiring the `create#` rows.
+// Plan: docs/plans/dcb-fence-event-type-granularity.md.
+let fenceTypeAttr = (eventType: string) => `pos#${eventType}`
+
+let dedupStrings = (xs: array<string>): array<string> => {
+  let seen = Set.make()
+  xs->Array.filter(x =>
+    if seen->Set.has(x) {
+      false
+    } else {
+      seen->Set.add(x)
+      true
+    }
+  )
+}
+
+// tagKey ("key:value") -> distinct event types among `events` that CARRY the tag.
+// Used to advance the fences of composite query tags and cross-partition tags
+// (bumped by every carrier), and by `appendUnconditional`.
+let carriedTypesByTag = (
+  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
+): Dict.t<array<string>> => {
+  let d = Dict.make()
+  events->Array.forEach(e =>
+    e.tags->Array.forEach((t: Reventless.DcbTag.tag) => {
+      let k = `${t.key}:${t.value}`
+      let cur = d->Dict.get(k)->Option.getOr([])
+      if !(cur->Array.includes(e.eventType)) {
+        d->Dict.set(k, cur->Array.concat([e.eventType]))
+      }
+    })
+  )
+  d
+}
+
+// Conditional fence update with per-type granularity AND a folded create guard:
+//  - `producedTypes`: event types this append writes into the tag's partition; each
+//    `pos#<type>` is advanced to `newPosition`.
+//  - `consumedTypes`: event types the slice reads on this tag — the OCC check scope.
+//  - `after = Some(p)`: assert each consumed type's position has not advanced past
+//    `p` (`attribute_not_exists(pos#C) OR pos#C <= :after`).
+//  - `after = None`: the folded create guard — assert `attribute_not_exists` over
+//    every consumed AND produced type, so two concurrent first-writers of the same
+//    `(producedType, partition)` collide and only one commits. The produced arm
+//    guards against a double-create even when the produced type is not consumed and
+//    must NEVER be dropped (it replaces the old `create#` sentinel row).
 let buildConditionalFenceUpdate = (
   tableName: string,
   tag: Reventless.DcbTag.tag,
+  ~consumedTypes: array<string>,
+  ~producedTypes: array<string>,
   ~newPosition: string,
   ~after: option<string>,
 ): TransactWriteCommand.update => {
+  let names = Dict.make()
   let values = Dict.fromArray([(":new", newPosition->JSON.Encode.string)])
+
+  let setClauses = producedTypes->Array.mapWithIndex((pt, i) => {
+    let ph = `#p${i->Int.toString}`
+    names->Dict.set(ph, fenceTypeAttr(pt))
+    `${ph} = :new`
+  })
+
   let conditionExpression = switch after {
-  | None => "attribute_not_exists(lastPosition)"
+  | None =>
+    dedupStrings(Array.concat(consumedTypes, producedTypes))
+    ->Array.mapWithIndex((t, i) => {
+      let ph = `#c${i->Int.toString}`
+      names->Dict.set(ph, fenceTypeAttr(t))
+      `attribute_not_exists(${ph})`
+    })
+    ->Array.join(" AND ")
   | Some(pos) =>
     values->Dict.set(":after", pos->JSON.Encode.string)
-    "attribute_not_exists(lastPosition) OR lastPosition <= :after"
+    // A real append condition always carries the consumed types (buildQueryFromCommand
+    // sets them). Fall back to the produced types if a caller omits them, so the
+    // conditional Update never degenerates to an empty condition expression.
+    let checkTypes = consumedTypes->Array.length == 0 ? producedTypes : consumedTypes
+    checkTypes
+    ->Array.mapWithIndex((t, i) => {
+      let ph = `#c${i->Int.toString}`
+      names->Dict.set(ph, fenceTypeAttr(t))
+      `(attribute_not_exists(${ph}) OR ${ph} <= :after)`
+    })
+    ->Array.join(" AND ")
   }
+
   {
     TransactWriteCommand.key: fenceKey(tag),
     tableName,
-    updateExpression: "SET lastPosition = :new",
+    updateExpression: `SET ${setClauses->Array.join(", ")}`,
     conditionExpression,
+    expressionAttributeNames: names,
     expressionAttributeValues: values,
   }
 }
 
-// Unconditional bump — used for tags appearing in new events but not in the
-// query. Future readers querying those tags will see the bump and conflict
-// against any concurrent writer.
+// Unconditional per-type bump — used for tags appearing in new events but not gated
+// by this append (composite query tags, cross-partition carriers, replay/seed). Each
+// produced type's `pos#<type>` is advanced so future readers querying that tag detect
+// the commit and conflict against any concurrent writer; no condition.
 let buildUnconditionalFenceUpdate = (
   tableName: string,
   tag: Reventless.DcbTag.tag,
+  ~producedTypes: array<string>,
   ~newPosition: string,
 ): TransactWriteCommand.update => {
+  let names = Dict.make()
   let values = Dict.fromArray([(":new", newPosition->JSON.Encode.string)])
+  let setClauses = producedTypes->Array.mapWithIndex((pt, i) => {
+    let ph = `#p${i->Int.toString}`
+    names->Dict.set(ph, fenceTypeAttr(pt))
+    `${ph} = :new`
+  })
   {
     TransactWriteCommand.key: fenceKey(tag),
     tableName,
-    updateExpression: "SET lastPosition = :new",
+    updateExpression: `SET ${setClauses->Array.join(", ")}`,
+    expressionAttributeNames: names,
     expressionAttributeValues: values,
   }
 }
@@ -692,63 +784,52 @@ let buildUnconditionalFenceUpdate = (
 let buildFenceConditionCheck = (
   tableName: string,
   tag: Reventless.DcbTag.tag,
+  ~consumedTypes: array<string>,
   ~after: option<string>,
-): TransactWriteCommand.conditionCheck =>
+): TransactWriteCommand.conditionCheck => {
+  let names = Dict.make()
   switch after {
-  | None => {
+  | None =>
+    let conditionExpression =
+      consumedTypes
+      ->Array.mapWithIndex((t, i) => {
+        let ph = `#c${i->Int.toString}`
+        names->Dict.set(ph, fenceTypeAttr(t))
+        `attribute_not_exists(${ph})`
+      })
+      ->Array.join(" AND ")
+    {
       TransactWriteCommand.key: fenceKey(tag),
       tableName,
-      conditionExpression: "attribute_not_exists(lastPosition)",
+      conditionExpression,
+      expressionAttributeNames: names,
     }
-  | Some(pos) => {
+  | Some(pos) =>
+    let conditionExpression =
+      consumedTypes
+      ->Array.mapWithIndex((t, i) => {
+        let ph = `#c${i->Int.toString}`
+        names->Dict.set(ph, fenceTypeAttr(t))
+        `(attribute_not_exists(${ph}) OR ${ph} <= :after)`
+      })
+      ->Array.join(" AND ")
+    {
       TransactWriteCommand.key: fenceKey(tag),
       tableName,
-      conditionExpression: "attribute_not_exists(lastPosition) OR lastPosition <= :after",
+      conditionExpression,
+      expressionAttributeNames: names,
       expressionAttributeValues: Dict.fromArray([(":after", pos->JSON.Encode.string)]),
     }
   }
-
-// Create-guard sentinel: serializes concurrent first-writers of a given event
-// type for a given entity (partition value). At `after=None` the slice's
-// decision-model read saw zero matching events, so the partition fence alone
-// performs NO conflict check (the idempotent fallback) — two concurrent
-// first-writers to the same entity would both commit (analysis Issue 2). Gating
-// the partition *fence* on `attribute_not_exists` instead would false-conflict a
-// slice that reads only a SUBSET of a partition's event types: a different type
-// may already have created `fence#<key>`, even though no event of THIS slice's
-// type exists (analysis Issue 4). A guard keyed by (eventType, partition value)
-// sidesteps that — it is unique to this event type, so it never collides with
-// other types sharing the partition. The id prefix `create#` is distinct from
-// event partition keys (`<key>:<value>`) and `fence#` sentinels, so neither
-// event reads nor fence checks ever observe it.
-//
-// Assumption: `after=None` recurs for a (producedType, partition) only as a
-// genuine first-write. This holds for every current slice shape — create slices
-// consume their own produced type (so re-runs read `after=Some`), and transition
-// slices that produce a non-consumed type only fire when their prerequisite
-// exists (`after=Some`); at `after=None` their behavior rejects. A slice that
-// produces a type it never reads AND legitimately re-produces the same
-// (type, partition) with a perpetually-empty decision model would be wrongly
-// blocked on the second write — such a slice should consume its produced type.
-let createGuardSortKey = "CREATE"
-
-let createGuardId = (eventType: string, tag: Reventless.DcbTag.tag) =>
-  `create#${eventType}#${tag.key}:${tag.value}`
-
-let buildCreateGuardUpdate = (
-  tableName: string,
-  guardId: string,
-  ~newPosition: string,
-): TransactWriteCommand.update => {
-  TransactWriteCommand.key: Dict.fromArray([
-    ("id", guardId->JSON.Encode.string),
-    ("position", createGuardSortKey->JSON.Encode.string),
-  ]),
-  tableName,
-  updateExpression: "SET lastPosition = :new",
-  conditionExpression: "attribute_not_exists(lastPosition)",
-  expressionAttributeValues: Dict.fromArray([(":new", newPosition->JSON.Encode.string)]),
 }
+
+// The create guard is now FOLDED INTO THE FENCE (see `buildConditionalFenceUpdate`).
+// At `after=None` the partition-tag fence is a conditional Update gated on
+// `attribute_not_exists(pos#<producedType>)`, which serializes concurrent
+// first-writers of the same `(producedType, partition)` without a separate sentinel
+// row. The old per-(eventType, partition) `create#…` rows are retired — per-type
+// `pos#` attributes are type-scoped, so they don't false-conflict a subset-type
+// slice the way a scalar `lastPosition` did (analysis Issues 2 & 4).
 
 // `TransactWriteItems` is capped at 100 items per call. We surface a clear
 // error before calling AWS rather than leaking ValidationException upstream.
@@ -809,14 +890,21 @@ let appendUnconditional = async (
     )
   } else {
     let basePosition = generatePosition()
+    let carriedMap = carriedTypesByTag(events)
     let putItems = buildEventPuts(table, events, basePosition, ~partitionTag?)
     let updateItems =
-      eventTags->Array.map(tag => {
-        TransactWriteCommand.update: buildUnconditionalFenceUpdate(
-          table.name,
-          tag,
-          ~newPosition=basePosition,
-        ),
+      eventTags->Array.filterMap(tag => {
+        let producedTypes = carriedMap->Dict.get(`${tag.key}:${tag.value}`)->Option.getOr([])
+        producedTypes->Array.length == 0
+          ? None
+          : Some({
+              TransactWriteCommand.update: buildUnconditionalFenceUpdate(
+                table.name,
+                tag,
+                ~producedTypes,
+                ~newPosition=basePosition,
+              ),
+            })
       })
     let input: TransactWriteCommand.input = {
       transactItems: Array.concat(putItems, updateItems),
@@ -872,6 +960,26 @@ let collectEventPartitionTags = (
   acc
 }
 
+// tagKey ("key:value") -> distinct event types among `events` PARTITIONED by the
+// tag. A partition-scoped fence advances only for events whose partition tag is this
+// one (Issue 1), so this is the produced-type set for partition-tag bumps/updates.
+let partitionTypesByTag = (
+  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
+  ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>,
+): Dict.t<array<string>> => {
+  let d = Dict.make()
+  events->Array.forEach(e =>
+    eventPartitionTags(e, ~partitionTag)->Array.forEach((t: Reventless.DcbTag.tag) => {
+      let k = `${t.key}:${t.value}`
+      let cur = d->Dict.get(k)->Option.getOr([])
+      if !(cur->Array.includes(e.eventType)) {
+        d->Dict.set(k, cur->Array.concat([e.eventType]))
+      }
+    })
+  )
+  d
+}
+
 // Builds the full ordered `TransactWriteItems` array for a conditional append:
 // event Puts, then fence Updates (check + bump), then fence ConditionChecks
 // (check only), then unconditional bumps. Pure — no IO — so the transaction shape
@@ -899,6 +1007,35 @@ let buildConditionalTransactItems = (
   // Issue 13). Partition-scoped tags keep the narrow rule.
   let isCrossPartition = (t: Reventless.DcbTag.tag) => crossPartitionTagKeys->Array.includes(t.key)
   let crossPartitionEventTags = collectEventTags(events)->Array.filter(isCrossPartition)
+
+  // Per-type position maps: which event types this append advances for each tag.
+  // Partition-scoped tags advance only for events partitioned by them (Issue 1);
+  // composite query tags and cross-partition tags advance for every carrier.
+  let carriedMap = carriedTypesByTag(events)
+  let partitionMap = partitionTypesByTag(events, ~partitionTag)
+  let producedTypesFor = (t: Reventless.DcbTag.tag) => {
+    let k = `${t.key}:${t.value}`
+    (isPartition(t) && !isCrossPartition(t) ? partitionMap : carriedMap)
+    ->Dict.get(k)
+    ->Option.getOr([])
+  }
+
+  // Consumed event types per tag value, from the query clauses — the OCC check
+  // scope. A clause with no `eventTypes` contributes nothing (vacuous — Issue 14).
+  let consumedMap = Dict.make()
+  cond.query->Array.forEach(qi =>
+    switch (qi.tags, qi.eventTypes) {
+    | (Some(tags), Some(ets)) =>
+      tags->Array.forEach(t => {
+        let k = `${t.key}:${t.value}`
+        let cur = consumedMap->Dict.get(k)->Option.getOr([])
+        consumedMap->Dict.set(k, dedupStrings(Array.concat(cur, ets)))
+      })
+    | _ => ()
+    }
+  )
+  let consumedTypesFor = (t: Reventless.DcbTag.tag) =>
+    consumedMap->Dict.get(`${t.key}:${t.value}`)->Option.getOr([])
 
   // Distinct tags belonging to multi-tag (composite GSI) query clauses. A composite
   // read can match cross-partition events, so its fences keep the historical
@@ -944,14 +1081,13 @@ let buildConditionalTransactItems = (
   cond.query->Array.forEach(qi =>
     switch qi.tags {
     // Single-tag clause. A `@crossPartition` tag is a cross-partition read, so
-    // its fence is BUMPED (conditional Update) by every carrier — at after=Some
-    // gated on `lastPosition <= after`, at after=None on `attribute_not_exists`
-    // (a first-writer guard: the fence exists only if a carrier has written, and
-    // an empty cross-partition read means none has). A partition-scoped tag
-    // keeps the narrow rule: BUMP only when this append writes into that
-    // partition (or it backs a composite read), else read-only ConditionCheck;
-    // and at after=None no check at all (the per-(type,partition) create-guard
-    // handles first-writer races without false-conflicting subset-type slices).
+    // its fence is BUMPED (conditional Update) by every carrier. A partition-scoped
+    // tag keeps the narrow rule: BUMP only when this append writes into that
+    // partition (or it backs a composite read), else read-only ConditionCheck. At
+    // after=None the partition tag becomes a conditional Update too — the FOLDED
+    // CREATE GUARD (`attribute_not_exists(pos#<producedType>)`) serializing
+    // first-writers; the per-type attribute keeps it from false-conflicting a
+    // subset-type slice. Non-partition single tags at after=None do nothing.
     | Some([tag]) =>
       if isCrossPartition(tag) {
         pushUpdate(tag)
@@ -963,7 +1099,10 @@ let buildConditionalTransactItems = (
           } else {
             pushCheck(tag)
           }
-        | None => ()
+        | None =>
+          if isPartition(tag) {
+            pushUpdate(tag)
+          }
         }
       }
     // Multi-tag clause = composite (GSI) read — keep check+bump on every tag at
@@ -976,6 +1115,15 @@ let buildConditionalTransactItems = (
     | _ => ()
     }
   )
+
+  // Folded create guard coverage: ensure EVERY event partition tag is a conditional
+  // Update at after=None, even one that never appeared as its own single-tag query
+  // clause (matches the old per-(eventType, partition) create guard's reach).
+  // `pushUpdate` dedups, so a partition tag already routed above is untouched.
+  switch cond.after {
+  | None => partitionTags->Array.forEach(pushUpdate)
+  | Some(_) => ()
+  }
 
   // Unconditional bumps. Advance fences for the partitions this append writes into
   // (so future partition-scoped readers detect it) plus composite query tags (so
@@ -999,55 +1147,57 @@ let buildConditionalTransactItems = (
     }
   })
 
-  // Create-guards — emitted only at `after=None` (the create / first-writer
-  // case). One conditional `Update` per distinct (eventType, partition value),
-  // gated on `attribute_not_exists`, so two concurrent first-writers to the same
-  // entity cannot both commit. Empty at `after=Some`, where the partition fence
-  // already enforces OCC and the entity is known to exist.
-  let guardTags = switch cond.after {
-  | Some(_) => []
-  | None =>
-    let seen = Set.make()
-    let guards = []
-    events->Array.forEach(event =>
-      eventPartitionTags(event, ~partitionTag)->Array.forEach(pt => {
-        let guardId = createGuardId(event.eventType, pt)
-        if !(seen->Set.has(guardId)) {
-          seen->Set.add(guardId)
-          guards->Array.push(guardId)
-        }
-      })
-    )
-    guards
-  }
-
   let putItems = buildEventPuts(table, events, basePosition, ~partitionTag?)
   let updateItems =
-    conditionalUpdateTags->Array.map(tag => {
-      TransactWriteCommand.update: buildConditionalFenceUpdate(
-        table.name,
-        tag,
-        ~newPosition=basePosition,
-        ~after=cond.after,
-      ),
+    conditionalUpdateTags->Array.filterMap(tag => {
+      let producedTypes = producedTypesFor(tag)
+      // A conditional Update must advance ≥1 produced type; partition / composite /
+      // cross-partition carriers always have one. If none (a misconfigured clause),
+      // skip rather than emit an empty `SET`.
+      producedTypes->Array.length == 0
+        ? None
+        : Some({
+            TransactWriteCommand.update: buildConditionalFenceUpdate(
+              table.name,
+              tag,
+              ~consumedTypes=consumedTypesFor(tag),
+              ~producedTypes,
+              ~newPosition=basePosition,
+              ~after=cond.after,
+            ),
+          })
     })
   let checkItems =
-    conditionCheckTags->Array.map(tag => {
-      TransactWriteCommand.conditionCheck: buildFenceConditionCheck(table.name, tag, ~after=cond.after),
+    conditionCheckTags->Array.filterMap(tag => {
+      let consumedTypes = consumedTypesFor(tag)
+      // A vacuous clause (no consumed type carries the tag) matches nothing — skip.
+      consumedTypes->Array.length == 0
+        ? None
+        : Some({
+            TransactWriteCommand.conditionCheck: buildFenceConditionCheck(
+              table.name,
+              tag,
+              ~consumedTypes,
+              ~after=cond.after,
+            ),
+          })
     })
   let bumpItems =
-    bumpTags->Array.map(tag => {
-      TransactWriteCommand.update: buildUnconditionalFenceUpdate(table.name, tag, ~newPosition=basePosition),
-    })
-  let guardItems =
-    guardTags->Array.map(guardId => {
-      TransactWriteCommand.update: buildCreateGuardUpdate(table.name, guardId, ~newPosition=basePosition),
+    bumpTags->Array.filterMap(tag => {
+      let producedTypes = producedTypesFor(tag)
+      producedTypes->Array.length == 0
+        ? None
+        : Some({
+            TransactWriteCommand.update: buildUnconditionalFenceUpdate(
+              table.name,
+              tag,
+              ~producedTypes,
+              ~newPosition=basePosition,
+            ),
+          })
     })
 
-  Array.concat(
-    putItems,
-    Array.concat(updateItems, Array.concat(checkItems, Array.concat(bumpItems, guardItems))),
-  )
+  Array.concat(putItems, Array.concat(updateItems, Array.concat(checkItems, bumpItems)))
 }
 
 let appendConditional = async (

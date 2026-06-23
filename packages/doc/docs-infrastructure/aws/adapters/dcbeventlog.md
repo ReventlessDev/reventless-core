@@ -76,26 +76,25 @@ The actual stored events.
 ### Fence sentinels
 
 One control-flow item per distinct tag value, holding the highest position written under
-that tag. These enforce optimistic concurrency.
+that tag **for each event type**. These enforce optimistic concurrency.
 
 - **`id`** = `fence#<tagKey>:<tagValue>` — the `fence#` prefix keeps fences out of the
   event partitions.
 - **`position`** = the constant `"FENCE"`.
-- **`lastPosition`** — the latest position bumped onto this fence.
+- **`pos#<eventType>`** — one attribute per event type, the latest position of that type
+  bumped onto this fence. Scoping by type lets the OCC check mirror the read query's
+  event-type filter (a slice reading only some of a partition's types is not conflicted by a
+  sibling type).
 
 Fences carry **no** `event`/`data` attributes; scans guard with `attribute_exists(event)`
 so sentinels are never returned as events.
 
-### Creation guards
-
-A sentinel that serialises concurrent *first* writers to the same entity.
-
-- **`id`** = `create#<eventType>#<tagKey>:<tagValue>`.
-- **`position`** = the constant `"CREATE"`.
-
-The `create#` prefix is distinct from both event partition keys and `fence#` sentinels, so
-guarding the create-race never false-conflicts a different slice that merely shares the
-partition (see [Conditional append](#conditional-append-optimistic-concurrency)).
+The **creation guard** (serialising concurrent *first* writers to an entity) is **folded into
+the fence**: at `after = None` the partition-tag fence `Update` is gated on
+`attribute_not_exists(pos#<producedType>)`, so two first-writers of the same type collide on
+that attribute. Because the guard is the per-type attribute, it never false-conflicts a
+different slice that merely shares the partition — so there is no separate `create#…` sentinel
+row (see [Conditional append](#conditional-append-optimistic-concurrency)).
 
 ## Global Secondary Indexes
 
@@ -140,7 +139,7 @@ A DCB query is an OR of query items, each an AND of tag constraints (optionally 
   returns full events directly.
 - **Tagless / by-type** — a base-table `Scan` with
   `FilterExpression: attribute_exists(event) AND event IN (…)`. Expensive; the
-  `attribute_exists(event)` guard excludes fence and create-guard sentinels.
+  `attribute_exists(event)` guard excludes fence sentinels.
 
 Multiple query items are merged by `position` (k-way lazy merge, deduped by position) so the
 slice sees one ascending stream. The latest position seen is returned as the read head and
@@ -153,19 +152,22 @@ condition. Everything — new event `Put`s **and** the fence operations — ride
 `TransactWriteItems` call, so the append is atomic and conflict-detecting.
 
 Each distinct tag value involved gets exactly one fence operation, whose *role* depends on
-whether the query read that tag and whether the read was partition-scoped:
+whether the query read that tag and whether the read was partition-scoped. The check is
+scoped to the **consumed** event types (`pos#<consumedType>`); the bump advances the
+**produced** types (`pos#<producedType>`):
 
 | Fence role | Operation | Condition |
 |---|---|---|
-| Tag the query read (and writes) | `Update` (check + bump) | `attribute_not_exists(lastPosition) OR lastPosition <= :after` |
+| Tag the query read (and writes) | `Update` (check + bump) | per consumed type: `attribute_not_exists(pos#<T>) OR pos#<T> <= :after` |
 | Tag read but not advanced (partition-scoped, single-tag clause) | `ConditionCheck` | same predicate, no bump |
-| Partition / cross-partition tag carried by a new event | `Update` (unconditional bump) | `SET lastPosition = :new` |
-| First write of an event type to an entity (`after = None`) | `Update` create guard | `attribute_not_exists(lastPosition)` |
+| Partition / cross-partition tag carried by a new event | `Update` (unconditional bump) | `SET pos#<producedType> = :new` |
+| First write to an entity (`after = None`, folded create guard) | `Update` on the partition fence | per consumed ∪ produced type: `attribute_not_exists(pos#<T>)` |
 
 ```rescript
-// conditional fence: rejects if another writer already advanced past :after
-conditionExpression: "attribute_not_exists(lastPosition) OR lastPosition <= :after"
-updateExpression:    "SET lastPosition = :new"
+// conditional fence (one consumed type shown): rejects if another writer of a
+// type this slice reads already advanced past :after
+conditionExpression: "attribute_not_exists(#posT) OR #posT <= :after"  // #posT = pos#<consumedType>
+updateExpression:    "SET #posP = :new"                                // #posP = pos#<producedType>
 ```
 
 If any condition fails, DynamoDB cancels the whole transaction
@@ -196,7 +198,7 @@ adapter still writes events and bumps every carried tag's fence in one atomic
 
 2. Runtime (DcbEventLogStorage_DynamoDb_Runtime.res):
    └─> read / readStream  — route query items to base table / GSI / scan, merge by position
-   └─> append             — TransactWriteItems: event Puts + fence Updates/Checks + create guards
+   └─> append             — TransactWriteItems: event Puts + per-type fence Updates/Checks
    └─> conflicts surface as TransactionCanceledException → Conflict → slice retries
 ```
 
@@ -207,5 +209,5 @@ adapter still writes events and bumps every carried tag's fence in one atomic
 | Partition key | aggregate instance `id` | `<partitionTag>:<value>` |
 | Sort key | `sequenceNr` | `position` (`<timestamp>-<uuid>`) |
 | Scope | one stream per aggregate | one table per plugin, many slices |
-| Concurrency | per-aggregate sequence | per-tag fences in `TransactWriteItems` |
+| Concurrency | per-aggregate sequence | per-tag, per-event-type fences in `TransactWriteItems` |
 | Cross-entity query | not supported | tag GSIs (`tag_<key>`, `tag_composite`) |

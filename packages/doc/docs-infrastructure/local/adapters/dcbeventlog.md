@@ -124,8 +124,11 @@ back through `Message.metaSchema`.
 3. The last inserted `position` is returned as a string.
 
 There are **no fence sentinels** — the literal re-read inside the transaction is the
-concurrency check, which the single-writer local process makes sufficient. This is the
-key simplification over the DynamoDB backend's `TransactWriteItems` + per-tag fences.
+concurrency check, which the single-writer local process makes sufficient. This filters the
+append condition by tag **and event type**, exactly the semantics the DynamoDB backend now
+mirrors with its per-type (`pos#<eventType>`) fences — so a slice reading a subset of a
+partition's event types behaves identically on both backends. This is the key simplification
+over the DynamoDB backend's `TransactWriteItems` + per-type fences.
 
 `readStream` is materialised eagerly via `read` for now; true streaming via
 `statement.iterate()` would need a `Stream.fromIteratorEffect` the current ReScript
@@ -136,10 +139,10 @@ interface parity and ignored — a local SQLite file is always consistent.
 
 | Aspect | Local (in-memory) | Local (SQLite) | AWS (DynamoDB) |
 |---|---|---|---|
-| Storage | `ref<array>` | `dcb_event` + `dcb_tag` tables | One table: events, fences, create guards |
+| Storage | `ref<array>` | `dcb_event` + `dcb_tag` tables | One table: events + per-type fences |
 | Position | Integer counter | Per-log `MAX(position)+1` | `<timestamp>-<uuid>` string |
 | Tag index | Array filter | `dcb_tag_by_kv` index + `EXISTS` subqueries | `tag_<key>` / `tag_composite` GSIs |
-| Concurrency | Array scan after position | Re-read inside a transaction | `TransactWriteItems` + per-tag fences |
+| Concurrency | Array scan after position | Re-read inside a transaction | `TransactWriteItems` + per-type fences |
 | Durability | Ephemeral | Persists across restarts | Persistent |
 
 See the [AWS DcbEventLog adapter](/infrastructure/aws/adapters/dcbeventlog) for the

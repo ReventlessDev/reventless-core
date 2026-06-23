@@ -15,7 +15,7 @@ A `StateChangeSlice` reads its decision model via `dcbEventLog.readStream(~query
 | 1 | Fence-scope broader than read-scope → false `ConditionalCheckFailed` | High (was live) | **Fixed 2026-06-20** (`2ecbd8599`) |
 | 2 | `after=None` performs no conflict check (create-race hole) | High | **Fixed 2026-06-20** (per-type create guard) |
 | 3 | Local backend ≠ AWS backend consistency semantics (test gap) | High | Open — needs integration test |
-| 4 | Fences are per-tag-value, not per-(tag, event-type) | Medium | Known / partial |
+| 4 | Fences are per-tag-value, not per-(tag, event-type) | **High** (was live 2026-06-23) | Open — [plan](../plans/dcb-fence-event-type-granularity.md) |
 | 5 | Composite (GSI) read requires an exact full-tag-set match | Medium | Latent |
 | 6 | Single global `after` across a multi-clause OR query | Medium | Partial (mitigated for non-partition tags by #1) |
 | 7 | Position ordering ties broken by UUID; stringified-ms fragility | Low–Med | Tracked (`dcb-monotonic-position-generation`) |
@@ -111,11 +111,37 @@ Scope note: `appendUnconditional` (seeding/import/replay) deliberately does **no
 
 ---
 
-## Issue 4 — Fences are per-tag-value, not per-(tag, event-type)
+## Issue 4 — Fences are per-tag-value, not per-(tag, event-type) — **HIGH (was live 2026-06-23)**
 
 The fold computes `after` from *decoded* events only (events whose type isn't in the clause are dropped before the fold), but the fence is bumped by **every** event in that partition regardless of type. So in the `after=Some` case a slice reading type A on partition P conflicts with a concurrent writer of type B on the same P.
 
-For same-entity lifecycles (`OrderPlaced`/`Shipped`/`Cancelled` on one `orderId`) this over-serialization is usually **desirable** (entity-level serialization is what you want). It only becomes a problem — false conflicts / extra retries — when two genuinely independent concerns share a partition-key value. Related: the `@dcbTag(~consistencyMode=#LookupOnly)` idea in the hot-tag plan would let authors opt a tag out of fencing entirely.
+For same-entity lifecycles (`OrderPlaced`/`Shipped`/`Cancelled` on one `orderId`) this over-serialization is usually **desirable** (entity-level serialization is what you want). It only becomes a problem when two genuinely independent concerns share a partition-key value. Related: the `@dcbTag(~consistencyMode=#LookupOnly)` idea in the hot-tag plan would let authors opt a tag out of fencing entirely.
+
+### Severity upgrade — permanent deterministic deadlock, not just retry churn (2026-06-23)
+
+The "extra retries under contention" framing **understated this**. When an entity is modeled
+with **one event type per attribute** — each attribute changed by its own subset-reading slice
+sharing the partition tag — the failure is **permanent and needs no concurrency at all**:
+
+- Live repro: **Change Product Name** on `online-shop-hybrid-platform-aws-alpha` (product
+  `12f8c090…`) → `Conflict … [None, ConditionalCheckFailed]`. The four Catalog Product slices
+  (`AddProduct`, `ChangeProduct{Name,Description,Price}`) all partition by `productId` and each
+  read only their own attribute's types.
+- After any *other*-typed write (e.g. a price change) is the latest on the partition,
+  `fence#productId:P.lastPosition` sits **above** the name slice's `after` (which only sees name
+  events). The conditional check `lastPosition <= :after` is false **forever** — every retry
+  re-reads the same name-only history, so `after` never catches up. The entity wedges to
+  whichever attribute was edited last.
+- DynamoDB-only: the local in-memory/SQLite backends filter the condition by event type
+  (`matchesQuery`, Issue 3) and behave correctly, which is why GWT/local dev never showed it.
+
+**Fix**: give the DynamoDB fence event-type granularity so the OCC check mirrors the query's
+type filter (flattened `pos#<eventType>` attributes on the one fence item per partition tag;
+check consumed types, bump produced types). Adapter-local — `cond.query` already carries the
+per-clause `eventTypes`. Plan: [dcb-fence-event-type-granularity.md](../plans/dcb-fence-event-type-granularity.md).
+This reverses the "per-(tag, event-type) fences are a non-goal" call in
+[dcb-fence-scope-alignment](../plans/dcb-fence-scope-alignment.md), which held only while no
+entity used one-event-type-per-attribute slices.
 
 ---
 

@@ -219,31 +219,35 @@ So the default is `PartitionScoped` (cheap, narrow fence, secure-by-default) and
 
 If `decide` produces events, the callback appends them with `~condition={ query, after }`. The DynamoDB adapter turns that condition into **fence sentinels** carried on a single `TransactWriteItems` alongside the event writes — so the whole append is atomic.
 
-A fence is one item per tag value: `id="fence#<key>:<value>", position="FENCE", lastPosition=<position>`. Its `lastPosition` is the newest position written into that tag's partition. The append asserts, per relevant tag, that the fence has not advanced past the `after` the slice observed:
+A fence is one item per tag value: `id="fence#<key>:<value>", position="FENCE"`, holding one position attribute **per event type** — `pos#<eventType>` — each the newest position of that type written into the tag's partition. The append asserts, per relevant tag, that no event **of a type the slice reads** has advanced past the `after` the slice observed:
 
 ```
-attribute_not_exists(lastPosition) OR lastPosition <= :after
+(attribute_not_exists(pos#<consumedTypeA>) OR pos#<consumedTypeA> <= :after)
+  AND (attribute_not_exists(pos#<consumedTypeB>) OR pos#<consumedTypeB> <= :after)
+  AND …
 ```
 
-If any assertion fails the transaction is cancelled → surfaced as `Conflict`.
+and advances `pos#<producedType>` for the types it writes. If any assertion fails the transaction is cancelled → surfaced as `Conflict`.
+
+Scoping the check to the **consumed** types is what makes the OCC mirror the read query's event-type filter: a slice reading only a *subset* of a partition's event types — e.g. `ChangeProductName`, which reads `ProductAdded`/`ProductNameChanged` but not `ProductPriceChanged` — no longer conflicts when a *sibling* type (a price change) advances the partition. Per-type fence attributes keep the DynamoDB check identical to the local backends' true query semantics (which filter the append condition by event type as well as tag).
 
 ### How each query tag becomes a fence item
 
-The adapter classifies each tag of the condition. The guiding rule is **fence-scope = read-scope**: a tag's fence is *advanced* only by writes into the partition that a read of that tag would observe — otherwise a secondary tag shared across partitions would conflict every later writer that merely carries the same value.
+The adapter classifies each tag of the condition. The guiding rule is **fence-scope = read-scope**: a tag's fence is *advanced* only by writes into the partition that a read of that tag would observe — otherwise a secondary tag shared across partitions would conflict every later writer that merely carries the same value. Within that, each item is scoped to the relevant event types (consumed for the check, produced for the advance).
 
 | Tag role in the append | Fence item | Effect |
 |---|---|---|
-| The written event's **partition** tag | conditional `Update` | assert `≤ after` **and** advance the fence |
-| A **single-tag** clause that is *not* the partition tag (a partition-scoped secondary read) | `ConditionCheck` | assert `≤ after` only — never advance |
-| A **single-tag** clause on a `CrossPartition` tag (see [above](#reading-by-a-secondary-tag--cross-partition-reads)) | conditional `Update` | assert `≤ after` **and** advance (read crosses partitions, so OCC needs the bump) |
-| A tag in a **multi-tag (composite)** clause | conditional `Update` | assert `≤ after` and advance (composite reads cross partitions, so OCC needs the bump) |
+| The written event's **partition** tag | conditional `Update` | assert each `pos#<consumedType> ≤ after` **and** advance `pos#<producedType>` |
+| A **single-tag** clause that is *not* the partition tag (a partition-scoped secondary read) | `ConditionCheck` | assert each `pos#<consumedType> ≤ after` only — never advance |
+| A **single-tag** clause on a `CrossPartition` tag (see [above](#reading-by-a-secondary-tag--cross-partition-reads)) | conditional `Update` | assert **and** advance (read crosses partitions, so OCC needs the bump) |
+| A tag in a **multi-tag (composite)** clause | conditional `Update` | assert **and** advance (composite reads cross partitions, so OCC needs the bump) |
 | An untagged field (e.g. `@noDcbTag customerId`) | — | no fence at all |
 
-### First writes — the creation guard
+### First writes — the folded creation guard
 
-When the decision-model read returned nothing, `after` is absent: there is no fence position to check against. A plain append would let two concurrent first-writers both create the same entity. Instead, a first write emits a **creation guard** — one conditional item per `(eventType, partition value)` at `id="create#<eventType>#<key>:<value>", position="CREATE"`, gated on `attribute_not_exists`. Two concurrent first-writers collide on the guard, so at most one commits; the loser conflicts and retries.
+When the decision-model read returned nothing, `after` is absent: there is no fence position to check against. A plain append would let two concurrent first-writers both create the same entity. Instead, at `after=None` the **partition-tag fence** becomes a conditional `Update` gated on `attribute_not_exists(pos#<type>)` over the slice's consumed **and** produced types, advancing `pos#<producedType>`. Two concurrent first-writers of the same `(producedType, partition)` collide on `attribute_not_exists(pos#<producedType>)`, so at most one commits; the loser conflicts and retries.
 
-Keying the guard by event *type* means it never collides with a *different* type already in the partition — a slice that reads only a subset of a partition's event types (and so legitimately sees nothing) is not falsely blocked.
+Because the guard lives in the per-type attribute, it never collides with a *different* type already in the partition — a slice that reads only a subset of a partition's event types (and so legitimately sees nothing) is not falsely blocked. This **folds the creation guard into the fence**: there is no longer a separate `create#…` sentinel row (earlier versions used one because a scalar `lastPosition` could not distinguish event types).
 
 ### Worked example — `PlaceOrder` transaction
 
@@ -252,11 +256,11 @@ For `PlaceOrder({orderId:"ord-1", customerId:"cust-9", productIds:["prod-1","pro
 | Transact item | Why |
 |---|---|
 | `Put` `OrderPlaced` at `id="orderId:ord-1"` | the new event |
-| `Update` `fence#orderId:ord-1` (check + advance) | `orderId` is the partition tag |
-| `ConditionCheck` `fence#productId:prod-1` (check only) | secondary read — assert the product wasn't re-synced under us |
-| `ConditionCheck` `fence#productId:prod-2` (check only) | same |
+| `Update` `fence#orderId:ord-1` — check `pos#OrderPlaced ≤ after`, advance `pos#OrderPlaced` | `orderId` is the partition tag |
+| `ConditionCheck` `fence#productId:prod-1` — check `pos#CatalogProductSynced ≤ after` | secondary read — assert the product wasn't re-synced under us |
+| `ConditionCheck` `fence#productId:prod-2` — same | same |
 
-`customerId` is untagged, so it contributes no fence. The two `ConditionCheck`s preserve the availability decision (a concurrent re-sync of a product would advance its fence and conflict this order) **without** advancing `fence#productId:*` — so a *different* order of the same product does not spuriously conflict.
+`customerId` is untagged, so it contributes no fence. The two `ConditionCheck`s preserve the availability decision (a concurrent re-sync of a product would advance its `pos#CatalogProductSynced` and conflict this order) **without** advancing `fence#productId:*` — so a *different* order of the same product does not spuriously conflict.
 
 ### Worked example — `RecordProductDemand` transaction
 
@@ -265,8 +269,8 @@ For `PlaceOrder({orderId:"ord-1", customerId:"cust-9", productIds:["prod-1","pro
 | Transact item | Why |
 |---|---|
 | `Put` `ProductDemandRecorded` at `id="productId:prod-1"` | the new event |
-| `Update` `fence#productId:prod-1` (check + advance) | composite tag |
-| `Update` `fence#orderId:ord-1` (check + advance) | composite tag |
+| `Update` `fence#productId:prod-1` — check `pos#ProductDemandRecorded ≤ after`, advance it | composite tag |
+| `Update` `fence#orderId:ord-1` — same | composite tag |
 
 Both tags check **and** advance, because a composite read can match events across partitions.
 
@@ -280,6 +284,6 @@ Both tags check **and** advance, because a composite read can match events acros
 |---|---|
 | Query construction | `reventless-spec` · `DcbTag.buildQueryFromCommand`, `extractTags`, `extractTagsExpanded` |
 | Read / decide / append / retry | `reventless-core` · `StateChangeSlice_Callback.handleSingleCommand` |
-| Fence transaction, partition derivation, creation guard | `reventless-aws` · `DcbEventLogStorage_DynamoDb_Runtime.buildConditionalTransactItems` |
+| Fence transaction, partition derivation, folded creation guard | `reventless-aws` · `DcbEventLogStorage_DynamoDb_Runtime.buildConditionalTransactItems` |
 
 See also [DCB (Dynamic Consistency Boundary)](../architecture/dcb.md) for how slices, the command topic and the event log are wired together at deploy time.
