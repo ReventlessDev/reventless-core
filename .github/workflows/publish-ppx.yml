@@ -118,7 +118,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          ( cd "packages/reventless-ppx/npm/${{ matrix.target }}" && npm publish ) \
+          ( cd "packages/reventless-ppx/npm/${{ matrix.target }}" && npm publish --access public ) \
             || echo "::warning::publish of ${{ matrix.target }} skipped (version may already exist)"
 
   test:
@@ -184,5 +184,5 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          ( cd packages/reventless-ppx && npm publish ) \
+          ( cd packages/reventless-ppx && npm publish --access public ) \
             || echo "::warning::publish of main skipped (version may already exist)"
