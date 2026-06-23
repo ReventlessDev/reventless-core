@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.166 (2026-06-23)
+
+### Bug Fixes
+
+* **dcb:** scope DynamoDB consistency fences per event type ([a20646f](https://github.com/ReventlessDev/reventless-core/commit/a20646f31a33041871f123cf66e65dd8dff429c3))
+
+
 # 3.0.0-alpha.165 (2026-06-22)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
