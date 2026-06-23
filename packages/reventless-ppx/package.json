@@ -16,8 +16,8 @@
     "test": "./test/run.sh"
   },
   "optionalDependencies": {
-    "@reventlessdev/reventless-ppx-darwin-arm64": "^1.0.0-alpha.46",
-    "@reventlessdev/reventless-ppx-linux-x64": "^1.0.0-alpha.46"
+    "@reventlessdev/reventless-ppx-darwin-arm64": "^1.0.0-alpha.45",
+    "@reventlessdev/reventless-ppx-linux-x64": "^1.0.0-alpha.45"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org"
