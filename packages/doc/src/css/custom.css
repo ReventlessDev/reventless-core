@@ -4,6 +4,28 @@
  * work well for content-centric websites.
  */
 
+/* Brand wordmark font — Geist (SIL OFL 1.1, redistribution permitted; license
+ * at /fonts/geist/OFL.txt). Self-hosted so the navbar logo lockup renders in
+ * Geist instead of silently falling back to system-ui (SF Pro on macOS), whose
+ * Apple license forbids logo/brand use. Only the two weights the wordmark needs
+ * are loaded: SemiBold 600 ("R…less") and Bold 700 ("event"). Referenced
+ * relatively so css-loader fingerprints them under the active baseUrl
+ * (survives the Phase 8 cutover to the reventless.dev root). */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/geist/Geist-SemiBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/geist/Geist-Bold.woff2') format('woff2');
+}
+
 /* You can override the default Infima variables here. */
 :root {
   --ifm-color-primary: #ffa500;

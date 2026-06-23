@@ -120,7 +120,7 @@ const copyrightYears = (() => {
 const config = {
   title: "Reventless",
   tagline: "Ship Value Fast",
-  favicon: "img/logo-icon-v2a-sticky.svg",
+  favicon: "img/logo-icon-v16e-log-asym.svg",
 
   // Geist is the brand wordmark font (rendered as real text in src/theme/Logo).
   headTags: [
@@ -293,7 +293,7 @@ const config = {
         // src is required by the navbar schema but unused by that component.
         logo: {
           alt: 'Reventless',
-          src: 'img/logo-icon-v2a-sticky.svg',
+          src: 'img/logo-icon-v16e-log-asym.svg',
         },
         items: [
           {

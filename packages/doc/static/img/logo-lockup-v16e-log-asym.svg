@@ -1,0 +1,34 @@
+<svg viewBox="0 0 140 30" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reventless">
+  <!-- Variation 16e — Asymmetric log-mast cable-stayed bridge. Single themed
+       lockup for the docs site: the "R"/"less" wordmark uses currentColor so the
+       navbar can recolour it per theme via CSS, avoiding two near-identical SVGs
+       whose minified gradient ids collide when both are inlined. -->
+  <defs>
+    <linearGradient id="rv-v16e-l" x1="2.5" y1="0" x2="137.2" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f97316"/>
+      <stop offset="0.21" stop-color="#f97316"/>
+      <stop offset="1" stop-color="#f97316" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- back-stays: enter the LEFT side of the top log bars -->
+  <path d="M10.2 5 L2 25 M10.07 7.7 L5.5 25" stroke="#f97316" stroke-width="0.7" stroke-linecap="round"/>
+  <!-- main-span fan (3 cables): enter the RIGHT side of the top log bars -->
+  <path d="M11.8 5 L29 25 M11.93 7.7 L24 25 M12.055 10.4 L19 25" stroke="#f97316" stroke-width="0.7" stroke-linecap="round"/>
+  <!-- log-mast: stacked event bars -->
+  <rect x="10.2"  y="4.25"  width="1.6"  height="1.5" rx="0.6" fill="#f97316"/>
+  <rect x="10.07" y="6.95"  width="1.86" height="1.5" rx="0.6" fill="#f97316"/>
+  <rect x="9.94"  y="9.65"  width="2.11" height="1.5" rx="0.6" fill="#f97316"/>
+  <rect x="9.81"  y="12.35" width="2.37" height="1.5" rx="0.6" fill="#f97316"/>
+  <rect x="9.69"  y="15.05" width="2.63" height="1.5" rx="0.6" fill="#f97316"/>
+  <rect x="9.56"  y="17.75" width="2.89" height="1.5" rx="0.6" fill="#f97316"/>
+  <rect x="9.43"  y="20.45" width="3.14" height="1.5" rx="0.6" fill="#f97316"/>
+  <rect x="9.3"   y="23.15" width="3.4"  height="1.5" rx="0.6" fill="#f97316"/>
+  <!-- base pier -->
+  <path d="M8.8 25 H13.2 V29 H8.8 Z" fill="#f97316"/>
+  <!-- deck + tail (fades out at the end of the wordmark) -->
+  <path d="M2.5 25 L137.2 25" stroke="url(#rv-v16e-l)" stroke-width="3.75" stroke-linecap="round"/>
+
+  <text x="33" y="18" font-family="Geist, Inter, system-ui, sans-serif" font-size="20" letter-spacing="-0.4">
+    <tspan font-weight="600" fill="currentColor">R</tspan><tspan font-weight="700" fill="#f97316">event</tspan><tspan font-weight="600" fill="currentColor">less</tspan>
+  </text>
+</svg>

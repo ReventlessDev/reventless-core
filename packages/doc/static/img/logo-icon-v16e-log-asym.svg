@@ -1,0 +1,30 @@
+<svg viewBox="0 0 24 16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reventless">
+  <!--
+    Variation 16e — Asymmetric log-mast cable-stayed bridge.
+
+    V16c's asymmetric single pylon (short back-stays + long main-span fan)
+    fused with V16d's log-mast: the offset tower is the append-only event
+    log (stacked event bars). Four stay cables on the main-span side.
+  -->
+  <defs>
+    <linearGradient id="rv-v16e" x1="1" y1="0" x2="23" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f97316"/>
+      <stop offset="1" stop-color="#f97316" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- back-stays: enter the LEFT side of the top log bars -->
+  <path d="M8.4 2.075 L2 13 M8.2 3.875 L5 13" stroke="#f97316" stroke-width="0.4" stroke-linecap="round"/>
+  <!-- main-span fan (3 cables): enter the RIGHT side of the top log bars -->
+  <path d="M9.6 2.075 L22 13 M9.8 3.875 L18.5 13 M9.95 5.675 L15 13" stroke="#f97316" stroke-width="0.4" stroke-linecap="round"/>
+  <!-- log-mast: stacked event bars -->
+  <rect x="8.4"  y="1.6"  width="1.2" height="0.95" rx="0.4" fill="#f97316"/>
+  <rect x="8.2"  y="3.4"  width="1.6" height="0.95" rx="0.4" fill="#f97316"/>
+  <rect x="8.05" y="5.2"  width="1.9" height="0.95" rx="0.4" fill="#f97316"/>
+  <rect x="7.95" y="7"    width="2.1" height="0.95" rx="0.4" fill="#f97316"/>
+  <rect x="7.85" y="8.8"  width="2.3" height="0.95" rx="0.4" fill="#f97316"/>
+  <rect x="7.75" y="10.6" width="2.5" height="0.95" rx="0.4" fill="#f97316"/>
+  <!-- base pier -->
+  <path d="M7.6 13 H10.4 V15.3 H7.6 Z" fill="#f97316"/>
+  <!-- deck (tail) -->
+  <path d="M1 13 L23 13" stroke="#f97316" stroke-width="2" stroke-linecap="round"/>
+</svg>

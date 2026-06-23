@@ -1,10 +1,9 @@
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
   text-decoration: none;
   /* Never let the flex navbar squeeze the brand — that would overflow the
-     nowrap wordmark onto the first nav item. */
+     nowrap lockup onto the first nav item. */
   flex-shrink: 0;
 }
 
@@ -12,28 +11,18 @@
   text-decoration: none;
 }
 
-.icon {
-  height: 20px;
+.lockup {
+  /* Sized up for presence while staying inside the fixed 3.75rem (60px) navbar,
+     so the header height is unchanged. */
+  height: 38px;
   width: auto;
   display: block;
   flex-shrink: 0;
-}
-
-.wordmark {
-  font-family: Geist, Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  font-size: 1.4rem;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  white-space: nowrap;
+  /* Drives the "R"/"less" wordmark (fill="currentColor"); "event" and the
+     bridge mark keep their own brand colours. */
   color: #1a1a2e;
 }
 
-:global([data-theme='dark']) .wordmark {
+:global([data-theme='dark']) .lockup {
   color: #e8e8f0;
-}
-
-.event {
-  color: #f97316;
-  font-weight: 700;
 }
