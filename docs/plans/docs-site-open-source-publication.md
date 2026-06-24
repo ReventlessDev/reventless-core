@@ -9,17 +9,29 @@ a real blog, and an integrated Slidev "Talks" section.
 **Status:** In progress. **Phases 0–6 complete** (2026-05-23) — front door,
 hybrid spine, all canonical guides, app-dev depth + custom-domain page,
 contributor track + "Extending the framework" capstone, and a real blog; docs
-build green with **zero broken links**. **Phases 7 (Talks) and 8 (domain cutover)
-deferred** by maintainer decision — Talks is a large net-new Slidev subsystem
-best done standalone; the reventless.dev cutover waits until DNS/Pages
-custom-domain is confirmed ready (it changes the live deploy URL).
+build green with **zero broken links**. **Phase 8 domain cutover done (2026-06-25)** —
+repo is public, docs live at **https://docs.reventless.dev** (see Phase 8 below
+for the actual subdomain decision and the deploy-pipeline fixes it required).
+**Phase 7 (Talks) still deferred** (large net-new Slidev subsystem, best done
+standalone). **Remaining in Phase 8: 8.3 `onBrokenLinks: throw`** (still `warn` —
+there is a known broken anchor on `aws/adapters/dcbeventlog`). The site root
+(`/`) is a 0s redirect placeholder to `/alpha/` (the only published version);
+visitors land on current alpha docs — no stale content. Optionally publish a
+`latest` at root later so the bare URL serves docs without the redirect hop.
 
 **Prior work in this repo:**
 - [`docs/analysis/docusaurus-docs-audit.md`](../analysis/docusaurus-docs-audit.md) (2026-04-04) — per-file audit; its structural renames (`providers→infrastructure`, `online-shop→tutorials`, `architecture→concepts`, glossary, Releases link) are already done. This plan supersedes it at the structural level and folds the remaining open items into Phase 0.
 - [`docs/analysis/host-ui-custom-domain.md`](../analysis/host-ui-custom-domain.md) — input for the "deploy to your own domain" page (journey E).
 
 **Resolved decisions:**
-- **Domain/version layout:** `main` on `reventless.dev` root; `beta`/`alpha` at sub-paths.
+- **Domain/version layout:** ~~`main` on `reventless.dev` root~~ → **(revised 2026-06-25)**
+  docs serve at the **`docs.reventless.dev`** subdomain (`baseUrl: "/"`); the apex
+  `reventless.dev` 301-redirects to it via a Cloudflare Redirect Rule (the apex is
+  reserved for the `reventless-launch` landing page). Versions live at `/` (main),
+  `/alpha/`, `/beta/`. Only `alpha` is published (`main`/`latest` is unpublished),
+  so `docs.reventless.dev/` is a 0s redirect placeholder to `/alpha/` — visitors
+  get current content; no stale docs are served. Optionally publish a `latest` at
+  root later so the bare URL serves docs directly.
 - **UI docs scope:** document UI *consumption* (host-shell, Auto UI, custom domain) by package name only — no links to the private UI repo. Package names are fine; repo/internal links are not.
 
 **Open decisions** (each carries a recommended default; resolve before the phase that needs it):
@@ -260,15 +272,43 @@ Acceptance: `/talks` lists the decks; each deck loads correctly under root and u
 
 ## Phase 8 — Domain cutover & link hardening (Medium)
 
-1. **Custom domain `reventless.dev`** (decided: `main` at root, pre-release at sub-paths):
-   - Add `packages/doc/static/CNAME` (`reventless.dev`).
-   - `main` build: `url: "https://reventless.dev"`, `baseUrl: "/"` (`docusaurus.config.js` lines 92, 95).
-   - Keep `/beta/`, `/alpha/` sub-paths; adjust the `sed` base-rewrite in `deploy-docs.yml` (line ~200) accordingly.
-   - Re-point: search `docsRouteBasePath`, footer/edit URLs, and the D2 `linkPath` (`/reventless-core/d2` → `/d2`, `docusaurus.config.js` line 81).
-2. **Org/repo sweep** — `ReventlessDev/reventless-core` is already in config; remove any remaining `yourorg`/GitLab/`reventless-universe` references (overlaps Phase 0; re-verify here).
-3. **`onBrokenLinks: throw`** — flip from `warn` (line 101) in CI once the IA has stabilized, to catch dead links.
+**8.1 Custom domain — ✅ DONE (2026-06-25), on `docs.reventless.dev` (not the apex).**
+The repo was made public, GitHub Pages enabled (source = GitHub Actions), and the
+docs cut over to the custom domain:
+- `docusaurus.config.js`: `url: "https://docs.reventless.dev"`, `baseUrl: "/"`.
+- `deploy-docs.yml`: per-version base rewrites now `/` → `/alpha/` & `/beta/`,
+  manifest `BASE=""`, wget-mirror URL → the custom domain, and a `CNAME` file
+  (`docs.reventless.dev`) written on every deploy so Pages never drops the domain.
+- DNS (Cloudflare, grey-cloud `docs` CNAME → `reventlessdev.github.io`); apex
+  `reventless.dev` 301→docs via a Cloudflare Redirect Rule. Let's Encrypt cert
+  issued, Enforce-HTTPS on. (Details + the grey-cloud/Worker-wildcard caveat live
+  in auto-memory `reference_publishing_gate_and_pages`.)
 
-Acceptance: `reventless.dev` serves `main` at root and pre-release at sub-paths; D2/search/edit URLs resolve under the new base; CI build is green with `onBrokenLinks: throw`.
+This cutover also required **five pre-existing deploy-pipeline bugs to be fixed**
+before the alpha docs would build/deploy at all (cwd-independent
+`workspace-setup.mjs`; wipe `node_modules` between branch builds; escape
+`${NPM_TOKEN}` in MDX; install the `d2` CLI; convert the lone Mermaid diagram to
+D2). Captured in auto-memory `reference_deploy_docs_pipeline`.
+
+Separately, push-triggered npm publishing was gated behind the `PUBLISHING_ENABLED`
+repo variable (currently `false`) so docs pushes don't trigger the blocked publish.
+
+**8.2 Org/repo sweep** — `ReventlessDev/reventless-core` already in config; re-verify
+no `yourorg`/GitLab/`reventless-universe` references remain.
+
+**8.3 `onBrokenLinks: throw` — ⏳ NOT DONE.** Still `warn`. Blocker: a known broken
+anchor `#conditional-append-optimistic-concurrency` on
+`infrastructure/aws/adapters/dcbeventlog`. Fix that anchor, then flip to `throw`.
+
+**8.4 Content-at-root — ℹ️ optional polish, not a bug.** `docs.reventless.dev/` is a
+0s redirect placeholder to `/alpha/` (verified: `default: alpha`, `latest` unpublished
+in `versions.json`); visitors reach current alpha docs immediately. If desired,
+publish a `latest` (fast-forward `main`, or change the default version) so the bare
+root serves docs without the redirect hop. No stale content is served today.
+
+Acceptance: ~~`reventless.dev` serves `main` at root~~ → `docs.reventless.dev` serves
+current docs (✅; `/` → `/alpha/`); D2/search/edit URLs resolve under the new base
+(✅); CI build green with `onBrokenLinks: throw` (⏳ 8.3).
 
 ---
 
@@ -284,6 +324,6 @@ Acceptance: `reventless.dev` serves `main` at root and pre-release at sub-paths;
 | 5 | Contributor track | Medium | ✅ Done (2026-05-23) |
 | 6 | Blog | Medium | ✅ Done (2026-05-23) — one canonical blog on main |
 | 7 | Talks | Medium | ⏸️ Deferred (large net-new Slidev workspace) |
-| 8 | Domain cutover & link hardening | Medium | ⏸️ Deferred (waits on reventless.dev DNS readiness) |
+| 8 | Domain cutover & link hardening | Medium | 🔶 Mostly done (2026-06-25) — cutover to docs.reventless.dev live (`/`→`/alpha/`); remaining: 8.3 `onBrokenLinks: throw` (8.4 root-redirect is fine; publishing a `latest` is optional) |
 
 Phases 0–3 are the minimum for a credible open-source launch; 4–8 are follow-on polish. Phases 6 and 7 are independent and can run in parallel with 4–5.
