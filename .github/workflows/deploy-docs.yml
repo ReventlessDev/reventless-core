@@ -38,6 +38,15 @@ jobs:
           node-version: "22.17.1"
           cache: "pnpm"
 
+      - name: Setup D2 (remark-d2 shells out to the d2 CLI)
+        run: |
+          curl -fsSL https://d2lang.com/install.sh | sh -s -- --version v0.7.1
+          # The installer drops the binary in ~/.local/bin (or /usr/local/bin);
+          # expose ~/.local/bin to later steps and verify it resolves now.
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$PATH"
+          d2 --version
+
       - name: Create build directory structure
         run: mkdir -p build-output
 
