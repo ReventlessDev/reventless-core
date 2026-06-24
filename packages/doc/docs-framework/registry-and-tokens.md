@@ -30,7 +30,7 @@ registry=https://registry.npmjs.org
 ```
 
 > Local builds run without `NPM_TOKEN` set; pnpm prints a harmless
-> "Failed to replace env in config: ${NPM_TOKEN}" warning that can be ignored.
+> `Failed to replace env in config: ${NPM_TOKEN}` warning that can be ignored.
 
 ## Publishing (maintainers / CI)
 
