@@ -15,7 +15,9 @@ jobs:
   release:
     name: Release Packages
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # While npm publishing is blocked, push-triggered releases are gated behind
+    # the PUBLISHING_ENABLED repo variable. Manual workflow_dispatch still runs.
+    if: github.event_name == 'workflow_dispatch' || (vars.PUBLISHING_ENABLED == 'true' && github.event.workflow_run.conclusion == 'success')
     permissions:
       contents: write
       packages: write
