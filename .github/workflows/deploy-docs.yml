@@ -55,7 +55,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "🔍 Checking if GitHub Pages is enabled and has existing documentation..."
-          PAGES_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          PAGES_URL="https://docs.reventless.dev"
 
           # Check if GitHub Pages URL is accessible with a simple HTTP request
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${PAGES_URL}/" || echo "000")
@@ -67,7 +67,7 @@ jobs:
             # Download existing documentation using wget mirror mode
             if wget --mirror --no-parent --no-host-directories \
               --directory-prefix=build-output \
-              --cut-dirs=1 \
+              --cut-dirs=0 \
               --quiet \
               --reject="*.html.tmp" \
               --timeout=30 \
@@ -216,7 +216,7 @@ jobs:
           fi
 
           # Update config for beta version
-          sed -i 's|baseUrl: "/reventless-core/",|baseUrl: "/reventless-core/beta/",|g' docusaurus.config.js
+          sed -i 's|baseUrl: "/",|baseUrl: "/beta/",|g' docusaurus.config.js
 
           cat > version-config.js << 'EOF'
           module.exports = {
@@ -253,7 +253,7 @@ jobs:
           fi
 
           # Update config for alpha version
-          sed -i 's|baseUrl: "/reventless-core/",|baseUrl: "/reventless-core/alpha/",|g' docusaurus.config.js
+          sed -i 's|baseUrl: "/",|baseUrl: "/alpha/",|g' docusaurus.config.js
 
           cat > version-config.js << 'EOF'
           module.exports = {
@@ -274,7 +274,7 @@ jobs:
       - name: Generate version manifest, placeholders, and apex
         run: |
           set -euo pipefail
-          BASE="/reventless-core"
+          BASE=""
 
           # A version counts as published only when REAL (non-placeholder) docs
           # are present in build-output — either freshly built this run or
@@ -376,7 +376,12 @@ jobs:
           # version switcher; drop any copy preserved by the wget mirror.
           rm -f build-output/versions.html
 
-          echo "✅ versions.json, placeholders, and apex generated"
+          # Custom domain: GitHub Pages (Actions deploy) reads the served domain
+          # from a CNAME file in the artifact. Write it on every deploy so the
+          # custom domain is never dropped.
+          echo "docs.reventless.dev" > build-output/CNAME
+
+          echo "✅ versions.json, placeholders, apex, and CNAME generated"
           ls -la build-output
 
       - name: Setup Pages

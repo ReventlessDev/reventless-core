@@ -142,10 +142,10 @@ const config = {
   ],
 
   // Set the production url of your site here
-  url: "https://reventlessdev.github.io",
-  // Set the /<baseUrl>/ pathname under which your site is served
-  // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: "/reventless-core/",
+  url: "https://docs.reventless.dev",
+  // Served at the domain root via the docs.reventless.dev custom domain.
+  // The deploy-docs workflow rewrites this to /beta/ and /alpha/ per version.
+  baseUrl: "/",
 
   // GitHub pages deployment config.
   organizationName: "ReventlessDev", // Usually your GitHub org/user name.
