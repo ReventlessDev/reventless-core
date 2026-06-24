@@ -251,30 +251,33 @@ dead, and the symptom is "data lands in DynamoDB but the UI never updates".
 
 ## End-to-end flow
 
-```mermaid
-sequenceDiagram
-    participant U as Browser (host-shell)
-    participant CFG as config.json (S3/CloudFront)
-    participant EV as AppSync Events API<br/>(namespace "default")
-    participant CMD as AppSync GraphQL (mutation)
-    participant AGG as Aggregate / DCB
-    participant DDB as QueryDb table (stream)
-    participant LMB as StateTopic Lambda
+```d2
+shape: sequence_diagram
 
-    Note over U,CFG: boot
-    U->>CFG: GET /config.json
-    CFG-->>U: domainApiEventsEndpoint, liveUpdates, cognito pool
-    U->>EV: WSS connect /event/realtime (Cognito IdToken)
-    EV-->>U: connection_ack
-    U->>EV: subscribe "/default/Catalog-Products/*" (Cognito)
+U: "Browser (host-shell)" { class: client }
+CFG: "config.json (S3/CloudFront)" { class: aws-service }
+EV: "AppSync Events API (namespace default)" { class: aws-service }
+CMD: "AppSync GraphQL (mutation)" { class: api }
+AGG: Aggregate / DCB { class: aggregate }
+DDB: "QueryDb table (stream)" { class: query-db }
+LMB: StateTopic Lambda { class: side-effect }
 
-    Note over U,LMB: AddProduct
-    U->>CMD: mutation Catalog_Product_Add
-    CMD->>AGG: command
-    AGG->>DDB: projection writes row
-    DDB-->>LMB: stream record (INSERT)
-    LMB->>EV: POST /event "/default/Catalog-Products/<id>" (SigV4)<br/>{changeKind:"Added", id}
-    EV-->>U: data frame → "new items" badge
+boot: boot {
+  U -> CFG: "GET /config.json"
+  CFG -> U: "domainApiEventsEndpoint, liveUpdates, cognito pool"
+  U -> EV: "WSS connect /event/realtime (Cognito IdToken)"
+  EV -> U: connection_ack
+  U -> EV: "subscribe /default/Catalog-Products/* (Cognito)"
+}
+
+AddProduct: AddProduct {
+  U -> CMD: mutation Catalog_Product_Add
+  CMD -> AGG: command
+  AGG -> DDB: projection writes row
+  DDB -> LMB: "stream record (INSERT)"
+  LMB -> EV: "POST /event /default/Catalog-Products/<id> (SigV4) {changeKind: Added, id}"
+  EV -> U: "data frame → new items badge"
+}
 ```
 
 ---
