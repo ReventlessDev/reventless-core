@@ -162,6 +162,11 @@ jobs:
           echo "Building main documentation..."
           git checkout main
           cd packages/doc
+          # Wipe node_modules left over from a previous branch's build in this
+          # same job: main uses npm + Docusaurus 3.5.2, alpha uses pnpm + 3.9.2.
+          # A stale nested node_modules shadows the current branch's version and
+          # trips Docusaurus's "all @docusaurus/* must match core" check.
+          rm -rf node_modules ../../node_modules
           if [ -f ../../pnpm-lock.yaml ]; then
             node ../../scripts/workspace-setup.mjs
             pnpm install --frozen-lockfile
@@ -189,6 +194,11 @@ jobs:
           echo "Building beta documentation..."
           git checkout beta
           cd packages/doc
+          # Wipe node_modules left over from a previous branch's build in this
+          # same job: main uses npm + Docusaurus 3.5.2, alpha uses pnpm + 3.9.2.
+          # A stale nested node_modules shadows the current branch's version and
+          # trips Docusaurus's "all @docusaurus/* must match core" check.
+          rm -rf node_modules ../../node_modules
           if [ -f ../../pnpm-lock.yaml ]; then
             node ../../scripts/workspace-setup.mjs
             pnpm install --frozen-lockfile
@@ -221,6 +231,11 @@ jobs:
           echo "Building alpha documentation..."
           git checkout alpha
           cd packages/doc
+          # Wipe node_modules left over from a previous branch's build in this
+          # same job: main uses npm + Docusaurus 3.5.2, alpha uses pnpm + 3.9.2.
+          # A stale nested node_modules shadows the current branch's version and
+          # trips Docusaurus's "all @docusaurus/* must match core" check.
+          rm -rf node_modules ../../node_modules
           if [ -f ../../pnpm-lock.yaml ]; then
             node ../../scripts/workspace-setup.mjs
             pnpm install --frozen-lockfile
