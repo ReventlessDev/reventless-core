@@ -1,8 +1,26 @@
 # Reventless Core
 
-**Reventless** is a modern holistic approach for the development of event-based business applications, consisting of:
+> ⚠️ **Alpha release.** Reventless is under active development on the `alpha` branch.
+> APIs, package layouts, and on-disk formats can change without notice, and releases
+> may include **breaking changes** between versions. Pin exact versions and expect churn.
 
-- A *Methodology* which covers the full delivery cycle
+> 🚧 **Known issue — apps can't be created or run from the published packages yet.**
+> Package publishing to the registry is currently broken, so the `@reventlessdev/*`
+> packages needed to scaffold and run a Reventless application aren't installable.
+> This is being worked on and should be resolved soon. In the meantime you can still
+> build and run the bundled [hybrid example](#-getting-started) **from source** in this repo.
+
+**Reventless is a spec-driven, event-sourced CQRS platform for serverless applications.**
+You describe your domain as commands, events, and projections in type-safe
+[ReScript](https://rescript-lang.org/); the framework provisions and wires the
+infrastructure — queues, tables, functions, event routing, serialization, and the
+GraphQL and MCP APIs — with [Pulumi](https://www.pulumi.com/).
+
+📚 Full documentation: **[docs.reventless.dev](https://docs.reventless.dev)**.
+
+It is a holistic approach for building event-based business applications, consisting of:
+
+- A *Methodology* (Event Storming–based) which covers the full delivery cycle
 - A *Programming Model* which focuses on business value
 - A *Domain Independent* reusable *Framework* to optimize operational costs
 
@@ -124,7 +142,9 @@ For detailed development workflow and contributing guidelines, see [CONTRIBUTING
 
 ## 📚 Documentation
 
-Full documentation is a [Docusaurus](https://docusaurus.io) site under [`packages/doc/`](packages/doc/). To run it locally:
+Full documentation is published at **[docs.reventless.dev](https://docs.reventless.dev)**.
+
+It is a [Docusaurus](https://docusaurus.io) site under [`packages/doc/`](packages/doc/) — to run it locally:
 
 ```bash
 pnpm --filter ./packages/doc run start   # dev server with hot reload
