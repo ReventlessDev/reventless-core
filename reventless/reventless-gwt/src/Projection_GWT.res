@@ -38,6 +38,7 @@ module type T = {
 
   let describe: (string, unit => unit) => unit
   let describeWithId: (string, string, unit => unit) => unit
+  let todo: string => unit
   let test: (string, ~timeout: int=?, unit => promise<Outcome.outcome>) => unit
 
   type store = dict<array<Spec.state>>
@@ -69,6 +70,7 @@ module Make = (
   let testId = ref(TestFixtures.id)
 
   let describe = JestBind.describe
+  let todo = JestBind.todo
   let describeWithId = (description, id, fn) => {
     testId := id
     JestBind.describe(description, fn)

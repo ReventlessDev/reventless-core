@@ -37,6 +37,8 @@ describe("ExternalAddCategory StateChangeSlice (external Spec)", () => {
 
 let Spec = include.Spec;
 
+let todo = include.todo;
+
 let thenEvents = include.thenEvents;
 
 let thenNoEvent = include.thenNoEvent;
@@ -52,6 +54,7 @@ let thenAppendsConditionedOnExactly = include.thenAppendsConditionedOnExactly;
 export {
   Spec,
   describe,
+  todo,
   test,
   givenEvents,
   whenCmd,

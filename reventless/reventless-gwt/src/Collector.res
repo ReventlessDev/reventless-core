@@ -101,6 +101,24 @@ let push = (
   entries := Array.concat(entries.contents, [entry])
 }
 
+// A `todo` placeholder: a spec-less slice still ships a discoverable, compiling
+// `_GWT.res`. Register it as a Skipped entry with a no-op passing body so the
+// CLI runner lists it without executing or failing.
+let pushTodo = (name: string) => {
+  let describePath = describeStack.contents
+  let id = buildId(describePath, name)
+  let entry = {
+    id,
+    name,
+    describePath,
+    slice: None,
+    body: () => Promise.resolve(Outcome.pass),
+    status: Skipped,
+    location: None,
+  }
+  entries := Array.concat(entries.contents, [entry])
+}
+
 let drain = () => {
   let result = entries.contents
   entries := []

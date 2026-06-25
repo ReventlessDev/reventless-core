@@ -306,6 +306,7 @@ function Make(Spec) {
       Spec: Spec,
       describe: JestBind$ReventlessGwt.describe,
       describeWithId: describeWithId,
+      todo: JestBind$ReventlessGwt.todo,
       test: test,
       givenEvents: givenEvents,
       whenEvent: whenEvent,

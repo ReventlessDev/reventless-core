@@ -35,6 +35,15 @@ let describe = (label: string, body: unit => unit) =>
     JestGlobals.describe(label, body)
   }
 
+// Pending-spec placeholder emitted by the codegen for slices with no upstream
+// specification. Registers a non-running, non-failing entry under both runners.
+let todo = (label: string) =>
+  if Collector.isActive() {
+    Collector.pushTodo(label)
+  } else {
+    JestGlobals.todo(label)
+  }
+
 let test = (~slice=?, name: string, body: unit => Outcome.outcome) =>
   if Collector.isActive() {
     let location = Collector.captureLocation(1)

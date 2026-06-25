@@ -246,6 +246,8 @@ MissingTagGwt.describe("MissingTag slice implicit check", () => {
 
 let Spec = include.Spec;
 
+let todo = include.todo;
+
 let thenEvents = include.thenEvents;
 
 let thenNoEvent = include.thenNoEvent;
@@ -259,6 +261,7 @@ export {
   AddCategorySliceBehavior,
   Spec,
   describe,
+  todo,
   test,
   givenEvents,
   whenCmd,

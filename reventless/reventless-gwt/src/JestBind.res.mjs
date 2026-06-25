@@ -23,6 +23,15 @@ function describe(label, body) {
   }
 }
 
+function todo(label) {
+  if (Collector$ReventlessGwt.isActive()) {
+    return Collector$ReventlessGwt.pushTodo(label);
+  } else {
+    globalThis.test.todo(label);
+    return;
+  }
+}
+
 function test(slice, name, body) {
   if (Collector$ReventlessGwt.isActive()) {
     let location = Collector$ReventlessGwt.captureLocation(1);
@@ -47,6 +56,7 @@ function testPromise(slice, name, timeout, body) {
 export {
   assertOutcome,
   describe,
+  todo,
   test,
   testPromise,
 }

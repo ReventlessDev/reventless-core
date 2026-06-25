@@ -57,6 +57,9 @@ module Runner = {
   @scope(("globalThis", "test")) @val
   external testSkipWithTimeout: (string, unit => promise<unit>, int) => unit = "skip"
 
+  // Pending test placeholder — Jest reports it as "todo" and never runs a body.
+  @scope(("globalThis", "test")) @val external todo: string => unit = "todo"
+
   @scope("globalThis") @val external describe: (string, unit => unit) => unit = "describe"
   @scope("globalThis") @val external beforeEach: (unit => unit) => unit = "beforeEach"
   @scope("globalThis") @val external afterEach: (unit => unit) => unit = "afterEach"

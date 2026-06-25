@@ -55,6 +55,7 @@ module type T = {
   module Spec: BehaviorSpec
 
   let describe: (string, unit => unit) => unit
+  let todo: string => unit
   let test: (string, unit => Outcome.outcome) => unit
 
   let givenEvents: array<Spec.consumedEvent> => array<Spec.consumedEvent>
@@ -125,6 +126,7 @@ module Make = (
   S.enableJson()
 
   let describe = JestBind.describe
+  let todo = JestBind.todo
   let test = (name, body) => JestBind.test(~slice=Spec.name, name, body)
 
   let currentState = consumed =>
