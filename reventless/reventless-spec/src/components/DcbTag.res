@@ -976,24 +976,6 @@ let eventShapesOfSchema = (schema: S.t<'a>): array<DcbScopeInference.eventShape>
   }
 }
 
-/**
-Builds the `DcbScopeInference.sliceShape` for one slice from its sury schemas.
-The `command` fields are flattened across command variants; `consumed` / `produced`
-keep their per-arm structure. Schema-coupling lives here so the inference core
-stays schema-agnostic.
-*/
-let sliceShapeFromSchemas = (
-  ~name: string,
-  ~commandSchema: S.t<'c>,
-  ~consumedEventSchema: S.t<'ce>,
-  ~eventSchema: S.t<'e>,
-): DcbScopeInference.sliceShape => {
-  sliceName: name,
-  command: eventShapesOfSchema(commandSchema)->Array.flatMap(e => e.idFields),
-  consumed: eventShapesOfSchema(consumedEventSchema),
-  produced: eventShapesOfSchema(eventSchema),
-}
-
 // --- Partition tag derivation ---
 
 /**
@@ -1033,6 +1015,33 @@ let extractPartitionTagFields = (schema: S.t<'event>): array<string> => {
     )
 
   | _ => []
+  }
+}
+
+/**
+Builds the `DcbScopeInference.sliceShape` for one slice from its sury schemas.
+The `command` fields are flattened across command variants; `consumed` / `produced`
+keep their per-arm structure. Schema-coupling lives here so the inference core
+stays schema-agnostic.
+*/
+let sliceShapeFromSchemas = (
+  ~name: string,
+  ~commandSchema: S.t<'c>,
+  ~consumedEventSchema: S.t<'ce>,
+  ~eventSchema: S.t<'e>,
+): DcbScopeInference.sliceShape => {
+  // An explicit @partitionTag on the produced event is the escape hatch for
+  // slices whose own events carry two owned keys (e.g. RecordProductDemand).
+  let partitionHint = switch extractPartitionTagFields(eventSchema) {
+  | [single] => Some(single)
+  | _ => None
+  }
+  {
+    sliceName: name,
+    command: eventShapesOfSchema(commandSchema)->Array.flatMap(e => e.idFields),
+    consumed: eventShapesOfSchema(consumedEventSchema),
+    produced: eventShapesOfSchema(eventSchema),
+    partitionHint,
   }
 }
 

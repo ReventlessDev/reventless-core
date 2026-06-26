@@ -335,12 +335,37 @@ over to the derived values.
      `["productId"]` only (categoryId payload) **from un-annotated structure**; the
      adapter reproduces `extractCrossPartitionTagKeys` on a real annotated fixture.
 
-   **Note on the gate:** the only diff the inference produces on the current hybrid
-   example is the *intended* one — `ProductAdded` drops `categoryId` (the sibling
-   leak). Every other slice is zero-diff. The runtime `log.info` makes this visible
-   on the next platform build; the unit tests pin it. **Not yet done:** observe the
-   live `Dcb_Builder` log on an actual `online-shop-hybrid` deploy/run (Phase 2
-   territory, where the wiring switches over).
+   **Gate observed against the real compiled catalog** (8 StateChangeSlices, via
+   `DcbTag.sliceShapeFromSchemas` + `infer` over the actual `S.t` schemas):
+   - `crossPartitionTagKeys`: **zero diff** (`["categoryId"]` both).
+   - `tagKeysByEventType`: **one diff only** — `ProductAdded [categoryId,productId]
+     → [productId]`, the intended sibling-leak fix. Every other event type
+     (Category*, ProductDemand*, Product*Changed) is byte-identical.
+   - `partitionBySlice`: all correct; `ambiguities: []`.
+
+   **Two corrections the real data forced into the core** (would have shipped
+   wrong without running the gate):
+   - **`RecordProductDemand` ambiguity → `@partitionTag` hint.** Its event carries
+     two owned-looking keys (`productId`, `orderId`); inference can't pick. Added
+     `partitionHint: option<string>` to `sliceShape` (the explicit `@partitionTag`
+     escape hatch), extracted by the adapter via `extractPartitionTagFields`. With
+     it, the partition resolves to `productId` and the ambiguity disappears.
+   - **Generalized rule 3 (own-stream / composite reads).** The first cut indexed
+     *only* the partition key, which would have dropped `orderId` from
+     `ProductDemandRecorded` and **broken its idempotency read**. Rule 3 now indexes
+     a key iff it is the partition **or** some slice reads that event type by it
+     (the key rides a consumed arm naming the event). This keeps `orderId` indexed
+     (own composite read) and an M:N capacity read indexed *without* a hand
+     annotation, while still dropping `categoryId` from `ProductAdded` (nobody reads
+     `ProductAdded` by `categoryId`). 19 unit tests pin all of this; full dcb suite
+     157/157, zero warnings.
+
+   **Not yet done (Phase 2):** switch the wiring to consume the inferred values.
+   The gate shows the only behavioural delta is `ProductAdded` dropping `categoryId`
+   — which is coupled to the example still carrying `@crossPartition` on the emitted
+   `categoryId` *and* the `addedProductIds` sibling-leak workaround in
+   `AddProduct_Behavior`. So the wiring switch and the `AddProduct` migration are
+   one unit (Phase 2 ∪ Phase 4 for that slice), not independent steps.
 2. **Emit derived scope** into the wiring; make annotations optional (escape
    hatches only). Update `validateCrossPartitionScope` to validate the *derived*
    scope and to flag an explicit annotation that *contradicts* inference.

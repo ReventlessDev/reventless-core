@@ -27,7 +27,7 @@ function ev(eventType, idFields) {
   };
 }
 
-function slice(sliceName, commandOpt, consumedOpt, producedOpt) {
+function slice(sliceName, commandOpt, consumedOpt, producedOpt, partitionHint) {
   let command = commandOpt !== undefined ? commandOpt : [];
   let consumed = consumedOpt !== undefined ? consumedOpt : [];
   let produced = producedOpt !== undefined ? producedOpt : [];
@@ -35,7 +35,8 @@ function slice(sliceName, commandOpt, consumedOpt, producedOpt) {
     sliceName: sliceName,
     command: command,
     consumed: consumed,
-    produced: produced
+    produced: produced,
+    partitionHint: partitionHint
   };
 }
 
@@ -82,7 +83,7 @@ let addProduct = slice("AddProduct", [
         isList: false
       }
     ]
-  }]);
+  }], undefined);
 
 let addCategory = slice("AddCategory", [{
     name: "categoryId",
@@ -102,7 +103,7 @@ let addCategory = slice("AddCategory", [{
         name: "categoryId",
         isList: false
       }]
-  }]);
+  }], undefined);
 
 let renameCategory = slice("RenameCategory", [{
     name: "categoryId",
@@ -126,7 +127,7 @@ let renameCategory = slice("RenameCategory", [{
         name: "categoryId",
         isList: false
       }]
-  }]);
+  }], undefined);
 
 let archiveCategory = slice("ArchiveCategory", [{
     name: "categoryId",
@@ -146,7 +147,7 @@ let archiveCategory = slice("ArchiveCategory", [{
         name: "categoryId",
         isList: false
       }]
-  }]);
+  }], undefined);
 
 let catalog = [
   addProduct,
@@ -197,6 +198,65 @@ globalThis.describe("DcbScopeInference:", () => {
       globalThis.expect(Stdlib_Option.isSome(d.ownerByKey["categoryId"])).toBe(true);
     });
   });
+  globalThis.describe("own composite read + @partitionTag hint (RecordProductDemand shape)", () => {
+    let recordDemand = slice("RecordProductDemand", undefined, [
+      {
+        eventType: "ProductDemandRecorded",
+        idFields: [{
+            name: "orderId",
+            isList: false
+          }]
+      },
+      {
+        eventType: "ProductDemandRevoked",
+        idFields: [{
+            name: "orderId",
+            isList: false
+          }]
+      }
+    ], [
+      {
+        eventType: "ProductDemandRecorded",
+        idFields: [
+          {
+            name: "productId",
+            isList: false
+          },
+          {
+            name: "orderId",
+            isList: false
+          }
+        ]
+      },
+      {
+        eventType: "ProductDemandRevoked",
+        idFields: [
+          {
+            name: "productId",
+            isList: false
+          },
+          {
+            name: "orderId",
+            isList: false
+          }
+        ]
+      }
+    ], "productId");
+    let d = DcbScopeInference$Reventless.infer([recordDemand]);
+    globalThis.test("the @partitionTag hint resolves the partition (no ambiguity)", () => {
+      globalThis.expect(d.partitionBySlice["RecordProductDemand"]).toEqual("productId");
+      globalThis.expect(d.ambiguities).toEqual([]);
+    });
+    globalThis.test("orderId stays indexed — it is an own-stream read key, not a foreign ref", () => {
+      globalThis.expect(d.tagKeysByEventType["ProductDemandRecorded"]).toEqual([
+        "orderId",
+        "productId"
+      ]);
+    });
+    globalThis.test("orderId is not cross-partition (no Order entity owns it in this boundary)", () => {
+      globalThis.expect(d.crossPartitionTagKeys).toEqual([]);
+    });
+  });
   globalThis.describe("M:N array reference (productIds)", () => {
     let placeOrder = slice("PlaceOrder", [
       {
@@ -234,7 +294,7 @@ globalThis.describe("DcbScopeInference:", () => {
             isList: true
           }
         ]
-      }]);
+      }], undefined);
     let productEntity = slice("AddProduct2", [{
         name: "productId",
         isList: false
@@ -247,7 +307,7 @@ globalThis.describe("DcbScopeInference:", () => {
             name: "productId",
             isList: false
           }]
-      }]);
+      }], undefined);
     let d = DcbScopeInference$Reventless.infer([
       placeOrder,
       productEntity
@@ -281,7 +341,7 @@ globalThis.describe("DcbScopeInference:", () => {
               name: "studentId",
               isList: false
             }]
-        }]);
+        }], undefined);
       let subscribe_command = [];
       let subscribe_consumed = [{
           eventType: "StudentRegistered",
@@ -294,7 +354,8 @@ globalThis.describe("DcbScopeInference:", () => {
         sliceName: "SubscribeStudent",
         command: subscribe_command,
         consumed: subscribe_consumed,
-        produced: shapes
+        produced: shapes,
+        partitionHint: undefined
       };
       let d = DcbScopeInference$Reventless.infer([
         studentEntity,
@@ -311,14 +372,14 @@ globalThis.describe("DcbScopeInference:", () => {
             name: "aId",
             isList: false
           }]
-      }]);
+      }], undefined);
     let bOwner = slice("B", undefined, undefined, [{
         eventType: "BHappened",
         idFields: [{
             name: "bId",
             isList: false
           }]
-      }]);
+      }], undefined);
     let join = slice("Join", undefined, [
       {
         eventType: "AHappened",
@@ -346,7 +407,7 @@ globalThis.describe("DcbScopeInference:", () => {
             isList: false
           }
         ]
-      }]);
+      }], undefined);
     let d = DcbScopeInference$Reventless.infer([
       aOwner,
       bOwner,

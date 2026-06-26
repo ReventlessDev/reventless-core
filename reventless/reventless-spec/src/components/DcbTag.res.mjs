@@ -635,15 +635,6 @@ function eventShapesOfSchema(schema) {
   }
 }
 
-function sliceShapeFromSchemas(name, commandSchema, consumedEventSchema, eventSchema) {
-  return {
-    sliceName: name,
-    command: eventShapesOfSchema(commandSchema).flatMap(e => e.idFields),
-    consumed: eventShapesOfSchema(consumedEventSchema),
-    produced: eventShapesOfSchema(eventSchema)
-  };
-}
-
 function extractPartitionTagFields(schema) {
   switch (schema.type) {
     case "object" :
@@ -672,6 +663,18 @@ function extractPartitionTagFields(schema) {
     default:
       return [];
   }
+}
+
+function sliceShapeFromSchemas(name, commandSchema, consumedEventSchema, eventSchema) {
+  let match = extractPartitionTagFields(eventSchema);
+  let partitionHint = match.length !== 1 ? undefined : match[0];
+  return {
+    sliceName: name,
+    command: eventShapesOfSchema(commandSchema).flatMap(e => e.idFields),
+    consumed: eventShapesOfSchema(consumedEventSchema),
+    produced: eventShapesOfSchema(eventSchema),
+    partitionHint: partitionHint
+  };
 }
 
 function hasMultiTagVariant(schema) {
@@ -925,8 +928,8 @@ export {
   extractCrossPartitionTagKeys,
   idFieldsOfProperties,
   eventShapesOfSchema,
-  sliceShapeFromSchemas,
   extractPartitionTagFields,
+  sliceShapeFromSchemas,
   hasMultiTagVariant,
   findMultiTagVariantNames,
   extractCompositePartitionFieldsFromProperties,

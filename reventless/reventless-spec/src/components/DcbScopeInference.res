@@ -40,13 +40,17 @@ type eventShape = {eventType: string, idFields: array<idField>}
 The structural shape of one slice, the boundary type both adapters produce:
 - `command` — the `*Id` fields on the slice's command,
 - `consumed` — the arms (and their `*Id` fields) the slice reads,
-- `produced` — the arms (and their `*Id` fields) the slice writes.
+- `produced` — the arms (and their `*Id` fields) the slice writes,
+- `partitionHint` — an explicit `@partitionTag` escape hatch (when the dev marked
+  the partition because the slice's own events legitimately carry two owned keys,
+  e.g. `RecordProductDemand`). Overrides the inferred partition.
 */
 type sliceShape = {
   sliceName: string,
   command: array<idField>,
   consumed: array<eventShape>,
   produced: array<eventShape>,
+  partitionHint: option<string>,
 }
 
 /** Derived scope for one tag key. */
@@ -114,30 +118,36 @@ let infer = (slices: array<sliceShape>): derived => {
 
   // Rule 1 — partition(S) = producedKeys(S) \ foreignConsumedKeys(S), where a
   // foreign-consumed key rides a consumed arm produced by a *different* slice.
+  // An explicit @partitionTag hint overrides the derivation (escape hatch for
+  // slices whose own events legitimately carry two owned keys).
   let partitionBySlice = Dict.make()
   let ambiguities = []
   slices->Array.forEach(s => {
-    let foreign = Set.make()
-    s.consumed->Array.forEach(e =>
-      switch producerOf->Dict.get(e.eventType) {
-      | Some(producer) if producer != s.sliceName =>
-        e->keysOfEvent->Array.forEach(k => foreign->Set.add(k))
-      | _ => () // own-lifecycle read, or a producer not in this boundary
+    let produced = producedKeys(s)
+    switch s.partitionHint {
+    | Some(h) if produced->Array.includes(h) => partitionBySlice->Dict.set(s.sliceName, h)
+    | _ =>
+      let foreign = Set.make()
+      s.consumed->Array.forEach(e =>
+        switch producerOf->Dict.get(e.eventType) {
+        | Some(producer) if producer != s.sliceName =>
+          e->keysOfEvent->Array.forEach(k => foreign->Set.add(k))
+        | _ => () // own-lifecycle read, or a producer not in this boundary
+        }
+      )
+      switch produced->Array.filter(k => !(foreign->Set.has(k))) {
+      | [single] => partitionBySlice->Dict.set(s.sliceName, single)
+      | [] =>
+        let _ = ambiguities->Array.push((
+          s.sliceName,
+          "no own partition key — every produced *Id is read from a foreign producer (pure join?); add an explicit @partitionTag",
+        ))
+      | many =>
+        let _ = ambiguities->Array.push((
+          s.sliceName,
+          `multiple candidate partition keys (${many->Array.join(", ")}) — add an explicit @partitionTag`,
+        ))
       }
-    )
-    let candidates = producedKeys(s)->Array.filter(k => !(foreign->Set.has(k)))
-    switch candidates {
-    | [single] => partitionBySlice->Dict.set(s.sliceName, single)
-    | [] =>
-      let _ = ambiguities->Array.push((
-        s.sliceName,
-        "no own partition key — every produced *Id is read from a foreign producer (pure join?); add an explicit @partitionTag",
-      ))
-    | many =>
-      let _ = ambiguities->Array.push((
-        s.sliceName,
-        `multiple candidate partition keys (${many->Array.join(", ")}) — add an explicit @partitionTag`,
-      ))
     }
   })
 
@@ -170,13 +180,27 @@ let infer = (slices: array<sliceShape>): derived => {
   let crossPartitionTagKeys =
     Array.fromIterator(crossKeys->Set.values)->Array.toSorted((a, b) => String.compare(a, b))
 
-  // Rule 3 — a produced event indexes only its producing slice's own partition
-  // key; foreign reference keys are payload (omitted ⇒ no GSI write).
+  // Rule 3 — a produced key is indexed iff it is the producing slice's own
+  // partition OR some slice issues a decision read of *that event type* by it
+  // (the key appears on a consumed arm naming the event type). Foreign reference
+  // keys that nobody reads this event type by are payload ⇒ no GSI write ⇒ the
+  // sibling leak is impossible. The read-by-anybody arm is what keeps a composite
+  // own-stream read (e.g. ProductDemandRecorded read by orderId) — and an M:N
+  // capacity read — correctly indexed without a hand annotation.
+  let readKeysByEventType = Dict.make()
+  slices->Array.forEach(s =>
+    s.consumed->Array.forEach(e => {
+      let prev = readKeysByEventType->Dict.get(e.eventType)->Option.getOr([])
+      readKeysByEventType->Dict.set(e.eventType, prev->Array.concat(e->keysOfEvent))
+    })
+  )
   let tagKeysByEventType = Dict.make()
   slices->Array.forEach(s => {
     let own = partitionBySlice->Dict.get(s.sliceName)
     s.produced->Array.forEach(e => {
-      let indexed = e->keysOfEvent->Array.filter(k => Some(k) == own)
+      let readKeys = readKeysByEventType->Dict.get(e.eventType)->Option.getOr([])
+      let indexed =
+        e->keysOfEvent->Array.filter(k => Some(k) == own || readKeys->Array.includes(k))
       tagKeysByEventType->Dict.set(e.eventType, dedupSorted(indexed))
     })
   })

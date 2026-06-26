@@ -6,11 +6,12 @@ module DSI = Reventless.DcbScopeInference
 let scal = (name): DSI.idField => {name, isList: false}
 let arr = (name): DSI.idField => {name, isList: true}
 let ev = (eventType, idFields): DSI.eventShape => {eventType, idFields}
-let slice = (sliceName, ~command=[], ~consumed=[], ~produced=[]): DSI.sliceShape => {
+let slice = (sliceName, ~command=[], ~consumed=[], ~produced=[], ~partitionHint=?): DSI.sliceShape => {
   sliceName,
   command,
   consumed,
   produced,
+  partitionHint,
 }
 
 // The online-shop-hybrid catalog boundary, transcribed structurally (NO tag
@@ -86,6 +87,32 @@ describe("DcbScopeInference:", () => {
     })
   })
 
+  describe("own composite read + @partitionTag hint (RecordProductDemand shape)", () => {
+    // Event carries two owned-looking keys (productId, orderId); the slice reads
+    // its OWN stream by both (idempotency). @partitionTag picks productId; orderId
+    // must stay indexed because the slice reads its own event type by it.
+    let recordDemand = slice(
+      "RecordProductDemand",
+      ~partitionHint="productId",
+      ~consumed=[ev("ProductDemandRecorded", [scal("orderId")]), ev("ProductDemandRevoked", [scal("orderId")])],
+      ~produced=[ev("ProductDemandRecorded", [scal("productId"), scal("orderId")]), ev("ProductDemandRevoked", [scal("productId"), scal("orderId")])],
+    )
+    let d = DSI.infer([recordDemand])
+
+    testSync("the @partitionTag hint resolves the partition (no ambiguity)", () => {
+      expect(d.partitionBySlice->Dict.get("RecordProductDemand"))->toEqual(Some("productId"))
+      expect(d.ambiguities)->toEqual([])
+    })
+    testSync("orderId stays indexed — it is an own-stream read key, not a foreign ref", () =>
+      expect(d.tagKeysByEventType->Dict.get("ProductDemandRecorded"))->toEqual(
+        Some(["orderId", "productId"]),
+      )
+    )
+    testSync("orderId is not cross-partition (no Order entity owns it in this boundary)", () =>
+      expect(d.crossPartitionTagKeys)->toEqual([])
+    )
+  })
+
   describe("M:N array reference (productIds)", () => {
     // An ordering-style slice reading "all orders for each product" via array tag.
     let placeOrder = slice(
@@ -140,6 +167,7 @@ describe("DcbScopeInference:", () => {
         command: [],
         consumed: [ev("StudentRegistered", [scal("studentId")])],
         produced: shapes, // StudentSubscribed({courseId, studentId}) from the schema adapter
+        partitionHint: None,
       }
       let d = DSI.infer([studentEntity, subscribe])
       expect(d.crossPartitionTagKeys)->toEqual(
