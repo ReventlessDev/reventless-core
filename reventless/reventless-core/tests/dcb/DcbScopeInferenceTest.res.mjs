@@ -3,6 +3,7 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as DcbValidation$Reventless from "@reventlessdev/reventless-spec/src/components/DcbValidation.res.mjs";
 import * as DcbFixtures$ReventlessCore from "./DcbFixtures.res.mjs";
 import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
 
@@ -363,6 +364,34 @@ globalThis.describe("DcbScopeInference:", () => {
       ]);
       globalThis.expect(d.crossPartitionTagKeys).toEqual(DcbTag$Reventless.extractCrossPartitionTagKeys(DcbFixtures$ReventlessCore.subscriptionEventSchema));
       globalThis.expect(d.partitionBySlice["SubscribeStudent"]).toEqual("courseId");
+    });
+  });
+  globalThis.describe("validateScopeVsInference (annotation ⇄ inference)", () => {
+    let d = DcbScopeInference$Reventless.infer(catalog);
+    globalThis.test("flags @crossPartition on a slice's OWN partition as a contradiction", () => {
+      let issues = DcbValidation$Reventless.validateScopeVsInference([[
+          "AddCategory",
+          ["categoryId"]
+        ]], d);
+      globalThis.expect(issues.contradictions.length).toBe(1);
+      globalThis.expect(issues.contradictions[0].sliceName).toBe("AddCategory");
+      globalThis.expect(issues.redundancies).toEqual([]);
+    });
+    globalThis.test("flags @crossPartition that inference already derives as redundant", () => {
+      let issues = DcbValidation$Reventless.validateScopeVsInference([[
+          "AddProduct",
+          ["categoryId"]
+        ]], d);
+      globalThis.expect(issues.contradictions).toEqual([]);
+      globalThis.expect(issues.redundancies.length).toBe(1);
+    });
+    globalThis.test("no annotations ⇒ no issues (the migrated catalog)", () => {
+      let issues = DcbValidation$Reventless.validateScopeVsInference(catalog.map(s => [
+        s.sliceName,
+        []
+      ]), d);
+      globalThis.expect(issues.contradictions).toEqual([]);
+      globalThis.expect(issues.redundancies).toEqual([]);
     });
   });
   globalThis.describe("ambiguity surfacing", () => {

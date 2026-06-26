@@ -264,6 +264,25 @@ module Make = (
           )
         )
 
+        // Validate any remaining explicit @crossPartition against the derived scope:
+        // contradictions (a key marked cross-partition that is the slice's own
+        // partition) are likely bugs; redundant annotations can simply be dropped.
+        let scopeAnnotations =
+          stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) => (
+            Sc.Spec.name,
+            Reventless.DcbTag.extractCrossPartitionTagKeys(Sc.Spec.eventSchema->S.castToUnknown),
+          ))
+        let scopeIssues = Reventless.DcbValidation.validateScopeVsInference(
+          ~annotations=scopeAnnotations,
+          ~inferred,
+        )
+        scopeIssues.contradictions->Array.forEach(e =>
+          log.warn(~comp="Dcb_Builder", `DCB scope contradiction (${e.sliceName}): ${e.message}`)
+        )
+        scopeIssues.redundancies->Array.forEach(e =>
+          log.info(~comp="Dcb_Builder", `DCB scope (${e.sliceName}): ${e.message}`)
+        )
+
         // All-or-nothing: thread the derived scope only when every slice resolved.
         // An ambiguous boundary keeps the annotated values (no partial inference).
         let useInferred = inferred.ambiguities->Array.length == 0

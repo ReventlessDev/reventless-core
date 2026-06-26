@@ -360,3 +360,49 @@ let validateCrossPartitionScope = (
   )
   warnings
 }
+
+/** Two-bucket result of validating annotations against the inferred scope. */
+type scopeInferenceIssues = {
+  /** Annotations that conflict with inference — likely bugs (warn/error). */
+  contradictions: array<validationError>,
+  /** Annotations inference already derives — safe to delete (info). */
+  redundancies: array<validationError>,
+}
+
+/**
+Validates explicit `@crossPartition` annotations against the *inferred* scope,
+now that inference drives the decision-query wiring. Two cases per annotated key:
+
+- **Contradiction** — the key is marked `@crossPartition` on a slice that inference
+  resolves as that slice's *own partition*. A slice's own identity is never a
+  cross-partition read; the annotation is wrong and (were it to drive the wiring)
+  would fan the partition into a spurious secondary read. Surface loudly.
+- **Redundant** — the key is marked `@crossPartition` and inference *also* derives
+  it as cross-partition from the slice graph. Harmless, but the annotation can be
+  dropped — that is the whole point of inference.
+
+@param annotations `(sliceName, @crossPartition keys on the slice's produced event)`.
+*/
+let validateScopeVsInference = (
+  ~annotations: array<(string, array<string>)>,
+  ~inferred: DcbScopeInference.derived,
+): scopeInferenceIssues => {
+  let contradictions: array<validationError> = []
+  let redundancies: array<validationError> = []
+  annotations->Array.forEach(((name, cpKeys)) =>
+    cpKeys->Array.forEach(k =>
+      if inferred.partitionBySlice->Dict.get(name) == Some(k) {
+        let _ = contradictions->Array.push({
+          sliceName: name,
+          message: `tag '${k}' is marked @crossPartition but inference resolves it as this slice's own partition key — a slice's own identity is never a cross-partition read. Remove the annotation.`,
+        })
+      } else if inferred.crossPartitionTagKeys->Array.includes(k) {
+        let _ = redundancies->Array.push({
+          sliceName: name,
+          message: `tag '${k}' is marked @crossPartition but the framework already infers it as a cross-partition read from the slice graph — the annotation is redundant and can be removed.`,
+        })
+      }
+    )
+  )
+  {contradictions, redundancies}
+}

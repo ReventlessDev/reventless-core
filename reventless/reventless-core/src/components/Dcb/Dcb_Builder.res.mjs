@@ -159,6 +159,13 @@ function Make(DcbEventLogStorage) {
         }
       });
       inferred.ambiguities.forEach(param => log.warn("Dcb_Builder", undefined, `DCB scope-inference ambiguity (` + param[0] + `): ` + param[1]));
+      let scopeAnnotations = stateChangeSlices.map(Sc => [
+        Sc.Spec.name,
+        DcbTag$Reventless.extractCrossPartitionTagKeys(Sc.Spec.eventSchema)
+      ]);
+      let scopeIssues = DcbValidation$Reventless.validateScopeVsInference(scopeAnnotations, inferred);
+      scopeIssues.contradictions.forEach(e => log.warn("Dcb_Builder", undefined, `DCB scope contradiction (` + e.sliceName + `): ` + e.message));
+      scopeIssues.redundancies.forEach(e => log.info("Dcb_Builder", undefined, `DCB scope (` + e.sliceName + `): ` + e.message));
       let useInferred = inferred.ambiguities.length === 0;
       let effectiveCrossPartitionTagKeys = useInferred ? inferred.crossPartitionTagKeys : crossPartitionTagKeys;
       let effectiveTagKeysByEventType = useInferred ? inferred.tagKeysByEventType : tagKeysByEventType;

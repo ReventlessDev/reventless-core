@@ -177,6 +177,41 @@ describe("DcbScopeInference:", () => {
     })
   })
 
+  describe("validateScopeVsInference (annotation ⇄ inference)", () => {
+    let d = DSI.infer(catalog)
+
+    testSync("flags @crossPartition on a slice's OWN partition as a contradiction", () => {
+      // AddCategory's partition is categoryId; marking it @crossPartition is wrong.
+      let issues = Reventless.DcbValidation.validateScopeVsInference(
+        ~annotations=[("AddCategory", ["categoryId"])],
+        ~inferred=d,
+      )
+      expect(issues.contradictions->Array.length)->toBe(1)
+      expect((issues.contradictions->Array.getUnsafe(0)).sliceName)->toBe("AddCategory")
+      expect(issues.redundancies)->toEqual([])
+    })
+
+    testSync("flags @crossPartition that inference already derives as redundant", () => {
+      // AddProduct really does read categoryId cross-partition — the annotation is
+      // just no longer needed.
+      let issues = Reventless.DcbValidation.validateScopeVsInference(
+        ~annotations=[("AddProduct", ["categoryId"])],
+        ~inferred=d,
+      )
+      expect(issues.contradictions)->toEqual([])
+      expect(issues.redundancies->Array.length)->toBe(1)
+    })
+
+    testSync("no annotations ⇒ no issues (the migrated catalog)", () => {
+      let issues = Reventless.DcbValidation.validateScopeVsInference(
+        ~annotations=catalog->Array.map(s => (s.sliceName, [])),
+        ~inferred=d,
+      )
+      expect(issues.contradictions)->toEqual([])
+      expect(issues.redundancies)->toEqual([])
+    })
+  })
+
   describe("ambiguity surfacing", () => {
     // A pure join: produces an event carrying two foreign keys, owns neither.
     let aOwner = slice("A", ~produced=[ev("AHappened", [scal("aId")])])

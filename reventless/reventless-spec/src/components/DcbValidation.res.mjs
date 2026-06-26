@@ -2,6 +2,7 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as DcbTag$Reventless from "./DcbTag.res.mjs";
 
@@ -346,6 +347,35 @@ function validateCrossPartitionScope(producers) {
   return warnings;
 }
 
+function validateScopeVsInference(annotations, inferred) {
+  let contradictions = [];
+  let redundancies = [];
+  annotations.forEach(param => {
+    let name = param[0];
+    param[1].forEach(k => {
+      if (Primitive_object.equal(inferred.partitionBySlice[name], k)) {
+        contradictions.push({
+          sliceName: name,
+          message: `tag '` + k + `' is marked @crossPartition but inference resolves it as this slice's own partition key — a slice's own identity is never a cross-partition read. Remove the annotation.`
+        });
+        return;
+      } else if (inferred.crossPartitionTagKeys.includes(k)) {
+        redundancies.push({
+          sliceName: name,
+          message: `tag '` + k + `' is marked @crossPartition but the framework already infers it as a cross-partition read from the slice graph — the annotation is redundant and can be removed.`
+        });
+        return;
+      } else {
+        return;
+      }
+    });
+  });
+  return {
+    contradictions: contradictions,
+    redundancies: redundancies
+  };
+}
+
 export {
   extractVariantInfo,
   extractAllVariants,
@@ -356,5 +386,6 @@ export {
   validateCompositeReads,
   validateProducedAndConsumed,
   validateCrossPartitionScope,
+  validateScopeVsInference,
 }
 /* DcbTag-Reventless Not a pure module */

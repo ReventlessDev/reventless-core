@@ -370,9 +370,12 @@ over to the derived values.
    `inferred.crossPartitionTagKeys` / `inferred.tagKeysByEventType` into the
    decision-query wiring (all-or-nothing per boundary: an ambiguous slice keeps the
    annotated values). The derived `tagKeysByEventType` is the sibling-leak fix.
-   *Remaining for a later sub-step:* `validateCrossPartitionScope` still checks the
-   annotated scope — switch it to validate the derived scope / flag contradicting
-   annotations.
+   ✅ `DcbValidation.validateScopeVsInference` now validates remaining `@crossPartition`
+   annotations against the derived scope: a key marked cross-partition that inference
+   resolves as the slice's *own* partition is a **contradiction** (`warn`); a key
+   inference already derives as cross-partition is **redundant** (`info`, safe to
+   delete). Wired into `Dcb_Builder`; 3 unit tests. The original cross-producer
+   `validateCrossPartitionScope` stays for the annotated/ambiguous fallback path.
 3. **Harness parity** — ✅ **Done (read path).** `Behavior_GWT` / `Flow_GWT` derive
    `crossPartitionTagKeys` as `extractCrossPartitionTagKeys ∪
    DcbScopeInference.crossPartitionForSlice` and thread `infer([shape])`'s
