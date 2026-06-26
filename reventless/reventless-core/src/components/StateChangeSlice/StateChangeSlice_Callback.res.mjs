@@ -169,13 +169,17 @@ function Make(Spec) {
                 let parentMeta = command$p.meta;
                 let json = JSON.parse(Stdlib_Option.getOrThrow(JSON.stringify(e), undefined));
                 let match = Message$ReventlessCore.splitMessage(json);
-                let tags = DcbTag$Reventless.extractTagsExpanded(Spec.eventSchema, e).concat([{
+                let eventType = match[0];
+                let baseTags = DcbTag$Reventless.extractTagsExpanded(Spec.eventSchema, e);
+                let keys = tagKeysByEventType[eventType];
+                let indexedTags = keys !== undefined ? baseTags.filter(t => keys.includes(t.key)) : baseTags;
+                let tags = indexedTags.concat([{
                     key: "originatorSlice",
                     value: Spec.name
                   }]);
                 let meta = Message$ReventlessCore.deriveMeta(parentMeta, undefined);
                 return {
-                  eventType: match[0],
+                  eventType: eventType,
                   data: match[1],
                   tags: tags,
                   meta: meta

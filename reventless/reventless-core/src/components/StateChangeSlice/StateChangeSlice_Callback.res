@@ -31,6 +31,7 @@ module Make = (
 
   let encodeEvent = (
     ~parentMeta: Message.meta,
+    ~tagKeysByEventType: Dict.t<array<string>>,
     event: Spec.event,
   ): ReventlessInfra.DcbEventLog.rawEvent => {
     let json = event->JSON.stringifyAny->Option.getOrThrow->JSON.parseOrThrow
@@ -48,10 +49,20 @@ module Make = (
     // `fence#productId:<x>` — that fence is owned by productId-partitioned events
     // (e.g. CatalogProductSynced). This keeps read-scope and fence-scope aligned;
     // see `docs/analysis/dcb-consistency-check-issues.md`.
+    // Keep only the keys this event type is *indexed* by (`tagKeysByEventType`,
+    // which Dcb_Builder threads from the inferred scope — or the full annotated tag
+    // set on an ambiguous boundary, where this filter is a no-op). A foreign
+    // reference key that is payload here (e.g. `categoryId` on `ProductAdded`) is
+    // dropped, so the event is never written to that key's GSI and a cross-partition
+    // read of it can't sweep up this event. When no entry exists for the type, keep
+    // all tags (back-compat for callers that don't thread the map).
+    let baseTags = Reventless.DcbTag.extractTagsExpanded(Spec.eventSchema, event)
+    let indexedTags = switch tagKeysByEventType->Dict.get(eventType) {
+    | Some(keys) => baseTags->Array.filter(t => keys->Array.includes(t.key))
+    | None => baseTags
+    }
     let tags =
-      Reventless.DcbTag.extractTagsExpanded(Spec.eventSchema, event)->Array.concat([
-        {Reventless.DcbTag.key: "originatorSlice", value: Spec.name},
-      ])
+      indexedTags->Array.concat([{Reventless.DcbTag.key: "originatorSlice", value: Spec.name}])
     // Inherit service from the triggering command — the DcbEventLog publish path
     // overrides service to `<name>DcbEventLog` for routing so EventCollector
     // subscriptions still match.
@@ -274,7 +285,10 @@ module Make = (
             )
             EffectLogger.logInfo(~comp, "no events produced")->Effect.map(_ => Ok("ok"))
           | Ok(newEvents) =>
-            let rawEvents = newEvents->Array.map(e => encodeEvent(~parentMeta=command'.meta, e))
+            let rawEvents =
+              newEvents->Array.map(e =>
+                encodeEvent(~parentMeta=command'.meta, ~tagKeysByEventType, e)
+              )
             let eventCount = rawEvents->Array.length->Int.toString
             let eventDetails =
               rawEvents

@@ -35,6 +35,25 @@ describe("DCB inferred cross-partition read (sibling exclusion)", () => {
     },
   )
 
+  testPromise(
+    "a product added through the slice is NOT written to the categoryId GSI (payload, not indexed)",
+    async () => {
+      let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
+      let _ = await ops.append([encodeEvent(CategoryAdded({categoryId: "cat3", name: "Toys"}))])
+      // p3 is produced by the slice → its categoryId is filtered out on write.
+      await dispatch(addProductJson("p3", "cat3", "Blocks"), "p3")
+
+      // Queryable by its own partition key…
+      let byProduct = await ops.read(~query=[{tags: [{Reventless.DcbTag.key: "productId", value: "p3"}]}])
+      expect(byProduct.events->Array.some(e => e.eventType == "ProductAdded"))->toBe(true)
+
+      // …but the categoryId index returns only the category's own event, never p3.
+      let byCategory = await ops.read(~query=[{tags: [{Reventless.DcbTag.key: "categoryId", value: "cat3"}]}])
+      expect(byCategory.events->Array.some(e => e.eventType == "ProductAdded"))->toBe(false)
+      expect(byCategory.events->Array.some(e => e.eventType == "CategoryAdded"))->toBe(true)
+    },
+  )
+
   testPromise("re-adding the same product is still rejected (its own read is partition-scoped)", async () => {
     let ops = await eventLog->ReventlessCore.Component.operations->TestRunner.resolve
     let _ = await ops.append([

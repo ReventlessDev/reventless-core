@@ -403,12 +403,26 @@ over to the derived values.
    partition + GSI list) still read schema metadata, and the PPX auto-tags every
    `*Id`, so removing `@partitionTag` needs the write-side inference phase (below).
    The dcb example has no `@crossPartition` to strip.
-4b. **Write-side inference (new, deferred).** Move `derivePartitionTag` /
-   `extractTaggedFields` (storage partition key + GSI set + per-event write tagging)
-   onto the inference so the emitted `categoryId` stops being written to the
-   `tag_categoryId` GSI and `@partitionTag` can be dropped entirely. Couples to the
-   PPX auto-tag (republish-gated). Until then the over-tag is a harmless extra GSI
-   write the read path already ignores.
+4b. **Write-side inference.** ⚙️ **Part A done; Part B deferred.** (Earlier called
+   "PPX-republish-gated" — that was wrong; the write path is all runtime.)
+   - ✅ **Part A — per-event-type write-tag filtering (runtime-only).**
+     `StateChangeSlice_Callback.encodeEvent` now filters the extracted tags by the
+     threaded `tagKeysByEventType` (the effective inferred-or-annotated map), so a
+     produced event only carries its *indexed* keys. `categoryId` on `ProductAdded`
+     is dropped on write ⇒ the event is **never written to the `tag_categoryId` GSI**
+     ⇒ the sibling leak is now impossible at the storage level, not just narrowed
+     away at read time. Auto-respects the ambiguity guard (annotated map ⇒ no-op).
+     Proven by `DcbCrossPartitionReadTest`: a slice-produced product is queryable by
+     `productId` but not by `categoryId`. Full blast radius green (local 419, core
+     471, all examples).
+   - ⬜ **Part B — drop `@partitionTag`.** Blocked on `derivePartitionTag`, which
+     reads `@partitionTag` metadata to pick the **single global storage partition key**
+     of a multi-entity DcbEventLog (e.g. `productId` for the catalog). Removing the
+     annotation means inferring that global key — a **DynamoDB main-PK** decision
+     (`DcbEventLogStorage_DynamoDb_Runtime.derivePartitionKey`) that local storage
+     ignores and that I can't validate without a real DynamoDB deploy. Defer until it
+     can be validated there; `@partitionTag` stays meanwhile (a small, honest
+     annotation — the leak is already fixed read- and write-side without it).
 5. **Docs** — rewrite the tag sections of `docs-app/` (component guidelines,
    mixed-source readmodel, platform-and-plugin guide) to "fields + consume;
    annotate only composite/M:N", and update CLAUDE.md's PPX-annotation section.

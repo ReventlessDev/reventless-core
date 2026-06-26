@@ -30,6 +30,30 @@ globalThis.describe("DCB inferred cross-partition read (sibling exclusion)", () 
     await DcbCrossPartitionFixtures$ReventlessLocal.dispatch(DcbCrossPartitionFixtures$ReventlessLocal.addProductJson("p2", "cat1", "Mouse"), "p2");
     globalThis.expect(DcbCrossPartitionFixtures$ReventlessLocal.capturedEventCount.contents).toBe(1);
   });
+  globalThis.test("a product added through the slice is NOT written to the categoryId GSI (payload, not indexed)", async () => {
+    let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(DcbCrossPartitionFixtures$ReventlessLocal.eventLog));
+    await ops.append([DcbCrossPartitionFixtures$ReventlessLocal.encodeEvent({
+        TAG: "CategoryAdded",
+        categoryId: "cat3",
+        name: "Toys"
+      })], undefined);
+    await DcbCrossPartitionFixtures$ReventlessLocal.dispatch(DcbCrossPartitionFixtures$ReventlessLocal.addProductJson("p3", "cat3", "Blocks"), "p3");
+    let byProduct = await ops.read([{
+        tags: [{
+            key: "productId",
+            value: "p3"
+          }]
+      }], undefined);
+    globalThis.expect(byProduct.events.some(e => e.eventType === "ProductAdded")).toBe(true);
+    let byCategory = await ops.read([{
+        tags: [{
+            key: "categoryId",
+            value: "cat3"
+          }]
+      }], undefined);
+    globalThis.expect(byCategory.events.some(e => e.eventType === "ProductAdded")).toBe(false);
+    globalThis.expect(byCategory.events.some(e => e.eventType === "CategoryAdded")).toBe(true);
+  });
   globalThis.test("re-adding the same product is still rejected (its own read is partition-scoped)", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(DcbCrossPartitionFixtures$ReventlessLocal.eventLog));
     await ops.append([
