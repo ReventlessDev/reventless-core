@@ -59,12 +59,44 @@ function Make(Spec) {
       contents: undefined
     };
     let consumedEventTypes = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema).eventTypes;
+    let crossPartitionTagKeys = DcbTag$Reventless.extractCrossPartitionTagKeys(Spec.eventSchema);
+    let emittedEventTypes = DcbDecode$Reventless.makeDecoder(Spec.eventSchema).eventTypes;
+    let consumedTagKeysByType = DcbTag$Reventless.extractTagKeysByEventType(Spec.consumedEventSchema);
+    let queryTagKeys = query => query.flatMap(qi => Stdlib_Option.mapOr(qi.tags, [], tags => tags.map(t => t.key)));
+    let selectableBy = (query, declaredKeys) => {
+      if (query.length === 0) {
+        return true;
+      } else {
+        return query.some(qi => {
+          let tags = qi.tags;
+          if (tags !== undefined && tags.length !== 0) {
+            return tags.every(t => declaredKeys.includes(t.key));
+          } else {
+            return true;
+          }
+        });
+      }
+    };
+    let unreachableForeignReads = query => {
+      let qKeys = queryTagKeys(query);
+      return Stdlib_Array.filterMap(Object.entries(consumedTagKeysByType), param => {
+        let keys = param[1];
+        let evType = param[0];
+        let key = keys.find(k => qKeys.includes(k));
+        if (key !== undefined && !emittedEventTypes.includes(evType) && !selectableBy(query, keys)) {
+          return [
+            evType,
+            key
+          ];
+        }
+      });
+    };
     let queryTagsTotal = q => Stdlib_Array.reduce(q, 0, (acc, qi) => acc + Stdlib_Option.mapOr(qi.tags, 0, t => t.length) | 0);
     let givenEvents = consumed => consumed;
     let whenCmd = (history, cmd) => {
       errors.contents = [];
       appendConditionFailure.contents = undefined;
-      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, cmd, undefined, undefined);
+      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, cmd, undefined, crossPartitionTagKeys);
       let condition = {
         query: query
       };
@@ -75,6 +107,17 @@ function Make(Spec) {
           expected: "a non-empty tag set derived from @s.matches(DcbTag.string) fields on the command",
           actual: encodeAppendCondition(condition)
         };
+      } else {
+        let match = unreachableForeignReads(query)[0];
+        if (match !== undefined) {
+          let key = match[1];
+          let evType = match[0];
+          appendConditionFailure.contents = {
+            TAG: "AppendConditionMismatch",
+            expected: `a decision-query clause that selects '` + evType + `' on tag '` + key + `' alone — this is a cross-entity read, so mark '` + key + `' @crossPartition (or model it as a tagged array) and it will fan into its own clause; otherwise the decision model can never see '` + evType + `'`,
+            actual: encodeAppendCondition(condition)
+          };
+        }
       }
       let state = Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve);
       let events = Behavior.decide(state, cmd);

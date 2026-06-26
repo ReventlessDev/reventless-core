@@ -147,6 +147,60 @@ module Make = (
   let consumedEventTypes =
     Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema).eventTypes
 
+  // Cross-partition tag keys are a global per-key property the runtime derives
+  // from the produced event schemas and threads into the decision query so a
+  // `@crossPartition` scalar tag fans into its own single-tag clause instead of
+  // being AND-ed with the partition. Deriving them here keeps the per-slice
+  // query identical to Flow_GWT and the StateChangeSlice runtime.
+  let crossPartitionTagKeys =
+    Reventless.DcbTag.extractCrossPartitionTagKeys(Spec.eventSchema)
+
+  // Reachability guard inputs. The event types this slice *emits* are its own
+  // history — read with composite AND clauses, which is fine. A *foreign* event
+  // type (consumed from a sibling slice) is a cross-entity read: if the command
+  // filters it by a tag key that appears in the decision query, yet the event
+  // cannot satisfy any whole clause, it can never reach `decide` — the classic
+  // "forgot @crossPartition on a cross-entity reference" bug (the key is AND-ed
+  // with the partition instead of fanning into its own clause). Tag keys the
+  // event carries but the command does NOT query are payload, not read keys, so
+  // they are ignored (e.g. CancelOrder reads OrderPlaced by orderId and merely
+  // carries its productIds over to the cancel event). Flow_GWT catches this
+  // because it threads a real tagged log; this lets the per-slice GWT catch it
+  // too, rather than folding an unreachable event straight through.
+  let emittedEventTypes =
+    Reventless.DcbDecode.makeDecoder(Spec.eventSchema).eventTypes
+  let consumedTagKeysByType =
+    Reventless.DcbTag.extractTagKeysByEventType(Spec.consumedEventSchema)
+
+  let queryTagKeys = (query: Reventless.DcbTag.query): array<string> =>
+    query->Array.flatMap(qi => qi.tags->Option.mapOr([], tags => tags->Array.map(t => t.key)))
+
+  // True when some clause's tags are all carried by `declaredKeys` (so an event
+  // declaring exactly those keys would match it). An empty query selects all.
+  let selectableBy = (query: Reventless.DcbTag.query, declaredKeys: array<string>): bool =>
+    query->Array.length == 0 ||
+      query->Array.some(qi =>
+        switch qi.tags {
+        | None | Some([]) => true
+        | Some(tags) => tags->Array.every(t => declaredKeys->Array.includes(t.key))
+        }
+      )
+
+  // Foreign consumed event types the command filters by a query key yet cannot
+  // select. Returns (eventType, offendingKey).
+  let unreachableForeignReads = (query: Reventless.DcbTag.query): array<(string, string)> => {
+    let qKeys = queryTagKeys(query)
+    consumedTagKeysByType
+    ->Dict.toArray
+    ->Array.filterMap(((evType, keys)) =>
+      switch keys->Array.find(k => qKeys->Array.includes(k)) {
+      | Some(key) if !(emittedEventTypes->Array.includes(evType)) && !selectableBy(query, keys) =>
+        Some((evType, key))
+      | _ => None
+      }
+    )
+  }
+
   let queryTagsTotal = (q: Reventless.DcbTag.query): int =>
     q->Array.reduce(0, (acc, qi) =>
       acc + qi.tags->Option.mapOr(0, t => t->Array.length)
@@ -160,6 +214,7 @@ module Make = (
       ~eventTypes=consumedEventTypes,
       ~schema=Spec.commandSchema,
       ~value=command,
+      ~crossPartitionTagKeys,
     )
     let condition: Reventless.DcbTag.appendCondition = {query: query}
     derivedCondition := Some(condition)
@@ -174,6 +229,22 @@ module Make = (
             actual: encodeAppendCondition(condition),
           }),
         )
+    } else {
+      // Surfaced through the same pending-failure channel as the zero-tags
+      // footgun above (regular `then*` combinators check it first).
+      switch unreachableForeignReads(query)->Array.get(0) {
+      | Some((evType, key)) =>
+        appendConditionFailure :=
+          Some(
+            Outcome.AppendConditionMismatch({
+              expected: JSON.Encode.string(
+                `a decision-query clause that selects '${evType}' on tag '${key}' alone — this is a cross-entity read, so mark '${key}' @crossPartition (or model it as a tagged array) and it will fan into its own clause; otherwise the decision model can never see '${evType}'`,
+              ),
+              actual: encodeAppendCondition(condition),
+            }),
+          )
+      | None => ()
+      }
     }
 
     let state = currentState(history)
