@@ -104,20 +104,44 @@ let consumedKeys = (s: sliceShape): array<string> =>
 Infers DCB tag scope for a set of slices (one DCB consistency boundary / plugin).
 Pure and total — never throws; unresolvable partitions land in `ambiguities`.
 */
-let infer = (slices: array<sliceShape>): derived => {
-  // eventType -> a slice name that produces it (authoritative producer).
-  let producerOf = Dict.make()
-  slices->Array.forEach(s =>
-    s.produced->Array.forEach(e =>
-      switch producerOf->Dict.get(e.eventType) {
-      | Some(_) => () // first producer wins; an event type is produced once
-      | None => producerOf->Dict.set(e.eventType, s.sliceName)
-      }
-    )
+/**
+The keys a slice reads from a *foreign* event — a consumed arm whose event type
+the slice does **not** itself produce. These are the candidate cross-entity
+references; they cannot be the slice's own partition. Defined on a single shape
+so it works both globally (in `infer`) and per-slice (in the GWT harness, which
+sees only one slice).
+*/
+let foreignConsumedKeys = (s: sliceShape): array<string> => {
+  let ownProduced = Set.make()
+  s.produced->Array.forEach(e => ownProduced->Set.add(e.eventType))
+  dedupSorted(
+    s.consumed->Array.flatMap(e => ownProduced->Set.has(e.eventType) ? [] : e->keysOfEvent),
   )
+}
 
+/**
+Per-slice cross-partition keys for the test harness, which has no global owner
+map: a foreign-read key that is not the slice's own partition is read across
+partitions. Matches `infer`'s global rule 2 for the common "reference another
+entity" case; the harness unions this with any explicit `@crossPartition`
+annotation so capacity/escape-hatch reads remain covered.
+*/
+let crossPartitionForSlice = (s: sliceShape): array<string> => {
+  let foreign = foreignConsumedKeys(s)
+  let partition = switch s.partitionHint {
+  | Some(h) if producedKeys(s)->Array.includes(h) => Some(h)
+  | _ =>
+    switch producedKeys(s)->Array.filter(k => !(foreign->Array.includes(k))) {
+    | [single] => Some(single)
+    | _ => None
+    }
+  }
+  foreign->Array.filter(k => Some(k) != partition)
+}
+
+let infer = (slices: array<sliceShape>): derived => {
   // Rule 1 — partition(S) = producedKeys(S) \ foreignConsumedKeys(S), where a
-  // foreign-consumed key rides a consumed arm produced by a *different* slice.
+  // foreign-consumed key rides a consumed arm the slice does not itself produce.
   // An explicit @partitionTag hint overrides the derivation (escape hatch for
   // slices whose own events legitimately carry two owned keys).
   let partitionBySlice = Dict.make()
@@ -127,15 +151,8 @@ let infer = (slices: array<sliceShape>): derived => {
     switch s.partitionHint {
     | Some(h) if produced->Array.includes(h) => partitionBySlice->Dict.set(s.sliceName, h)
     | _ =>
-      let foreign = Set.make()
-      s.consumed->Array.forEach(e =>
-        switch producerOf->Dict.get(e.eventType) {
-        | Some(producer) if producer != s.sliceName =>
-          e->keysOfEvent->Array.forEach(k => foreign->Set.add(k))
-        | _ => () // own-lifecycle read, or a producer not in this boundary
-        }
-      )
-      switch produced->Array.filter(k => !(foreign->Set.has(k))) {
+      let foreign = foreignConsumedKeys(s)
+      switch produced->Array.filter(k => !(foreign->Array.includes(k))) {
       | [single] => partitionBySlice->Dict.set(s.sliceName, single)
       | [] =>
         let _ = ambiguities->Array.push((

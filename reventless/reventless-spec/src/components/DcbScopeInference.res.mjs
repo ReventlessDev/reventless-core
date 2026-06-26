@@ -32,19 +32,38 @@ function consumedKeys(s) {
   return dedupSorted(s.consumed.flatMap(keysOfEvent));
 }
 
-function infer(slices) {
-  let producerOf = {};
-  slices.forEach(s => {
-    s.produced.forEach(e => {
-      let match = producerOf[e.eventType];
-      if (match !== undefined) {
-        return;
-      } else {
-        producerOf[e.eventType] = s.sliceName;
-        return;
-      }
-    });
+function foreignConsumedKeys(s) {
+  let ownProduced = new Set();
+  s.produced.forEach(e => {
+    ownProduced.add(e.eventType);
   });
+  return dedupSorted(s.consumed.flatMap(e => {
+    if (ownProduced.has(e.eventType)) {
+      return [];
+    } else {
+      return e.idFields.map(tagKeyOf);
+    }
+  }));
+}
+
+function crossPartitionForSlice(s) {
+  let foreign = foreignConsumedKeys(s);
+  let h = s.partitionHint;
+  let partition;
+  let exit = 0;
+  if (h !== undefined && producedKeys(s).includes(h)) {
+    partition = h;
+  } else {
+    exit = 1;
+  }
+  if (exit === 1) {
+    let match = producedKeys(s).filter(k => !foreign.includes(k));
+    partition = match.length !== 1 ? undefined : match[0];
+  }
+  return foreign.filter(k => Primitive_object.notequal(k, partition));
+}
+
+function infer(slices) {
   let partitionBySlice = {};
   let ambiguities = [];
   slices.forEach(s => {
@@ -54,17 +73,8 @@ function infer(slices) {
       partitionBySlice[s.sliceName] = h;
       return;
     }
-    let foreign = new Set();
-    s.consumed.forEach(e => {
-      let producer = producerOf[e.eventType];
-      if (producer !== undefined && producer !== s.sliceName) {
-        e.idFields.map(tagKeyOf).forEach(k => {
-          foreign.add(k);
-        });
-        return;
-      }
-    });
-    let many = produced.filter(k => !foreign.has(k));
+    let foreign = foreignConsumedKeys(s);
+    let many = produced.filter(k => !foreign.includes(k));
     let len = many.length;
     if (len !== 1) {
       if (len !== 0) {
@@ -147,6 +157,8 @@ export {
   keysOfEvent,
   producedKeys,
   consumedKeys,
+  foreignConsumedKeys,
+  crossPartitionForSlice,
   infer,
 }
 /* No side effect */

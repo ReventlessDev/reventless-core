@@ -214,13 +214,15 @@ module Make = (
           log.warn(~comp="Dcb_Builder", `DCB composite-read warning (${w.sliceName}): ${w.message}`)
         )
 
-        // --- Phase 1 (dcb-tag-scope-inference): derive scope from the global slice
-        // graph and LOG the diff against today's annotation-based extraction. Pure
-        // diagnostics — nothing is threaded from the inference yet; the annotated
-        // values above still drive the wiring. A non-empty diff on `AddProduct`
-        // (categoryId dropped from `ProductAdded`) is the *expected* improvement;
-        // any other diff, or an ambiguity, flags a slice to look at before Phase 2
-        // switches the wiring over. See docs/plans/dcb-tag-scope-inference.md.
+        // --- Phase 2 (dcb-tag-scope-inference): derive scope from the global slice
+        // graph and THREAD it into the decision-query wiring, replacing the
+        // annotation-based extraction. The derived `tagKeysByEventType` is what
+        // fixes the sibling leak — a foreign reference key (e.g. `categoryId` on
+        // `ProductAdded`) is payload, so the cross-partition read clause no longer
+        // sweeps up sibling products. Cross-partition fan-out and capacity reads are
+        // preserved (generalised rule 3). Safety guard: if any slice's partition is
+        // ambiguous we keep the annotated values for the whole boundary rather than
+        // thread a partial inference. See docs/plans/dcb-tag-scope-inference.md.
         let inferenceShapes =
           stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) =>
             Reventless.DcbTag.sliceShapeFromSchemas(
@@ -262,11 +264,26 @@ module Make = (
           )
         )
 
+        // All-or-nothing: thread the derived scope only when every slice resolved.
+        // An ambiguous boundary keeps the annotated values (no partial inference).
+        let useInferred = inferred.ambiguities->Array.length == 0
+        let effectiveCrossPartitionTagKeys =
+          useInferred ? inferred.crossPartitionTagKeys : crossPartitionTagKeys
+        let effectiveTagKeysByEventType =
+          useInferred ? inferred.tagKeysByEventType : tagKeysByEventType
+
         module DcbEventLog = DcbEventLog_Builder.Make(
           DcbEventLogStorage,
           DcbEventTopicPublisher,
         )
-        let dcbEventLog = DcbEventLog.make(~name, ~indexes, ~partitionTag, ~crossPartitionTagKeys, ~opts)
+        let dcbEventLog =
+          DcbEventLog.make(
+            ~name,
+            ~indexes,
+            ~partitionTag,
+            ~crossPartitionTagKeys=effectiveCrossPartitionTagKeys,
+            ~opts,
+          )
 
         // Notify platform hook that DCB EventLog was created (AWS extracts table name)
         HooksConfig.hooks.onDcbEventLogCreated->Option.forEach(hook =>
@@ -318,7 +335,13 @@ module Make = (
         let stateChangeSlicesOutputs =
           syncSlices
           ->Array.map((module(StateChangeSlice: StateChangeSlice.T)) => {
-            let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons, ~tagKeysByEventType, ~crossPartitionTagKeys, ~opts)
+            let ch = StateChangeSlice.make(
+              ~dcbEventLog,
+              ~publishJsons,
+              ~tagKeysByEventType=effectiveTagKeysByEventType,
+              ~crossPartitionTagKeys=effectiveCrossPartitionTagKeys,
+              ~opts,
+            )
             (StateChangeSlice.Spec.name, ch->Component.outputs)
           })
           ->Dict.fromArray
@@ -332,7 +355,13 @@ module Make = (
               asyncDcbCommandTopic->Component.operations->Pulumi.Output.apply(ops => ops.publishJsons)
             asyncSlices
             ->Array.map((module(StateChangeSlice: StateChangeSlice.T)) => {
-              let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons=asyncPublishJsons, ~tagKeysByEventType, ~crossPartitionTagKeys, ~opts)
+              let ch = StateChangeSlice.make(
+                ~dcbEventLog,
+                ~publishJsons=asyncPublishJsons,
+                ~tagKeysByEventType=effectiveTagKeysByEventType,
+                ~crossPartitionTagKeys=effectiveCrossPartitionTagKeys,
+                ~opts,
+              )
               (StateChangeSlice.Spec.name, ch->Component.outputs)
             })
             ->Dict.fromArray

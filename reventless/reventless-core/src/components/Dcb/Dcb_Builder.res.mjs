@@ -159,8 +159,11 @@ function Make(DcbEventLogStorage) {
         }
       });
       inferred.ambiguities.forEach(param => log.warn("Dcb_Builder", undefined, `DCB scope-inference ambiguity (` + param[0] + `): ` + param[1]));
+      let useInferred = inferred.ambiguities.length === 0;
+      let effectiveCrossPartitionTagKeys = useInferred ? inferred.crossPartitionTagKeys : crossPartitionTagKeys;
+      let effectiveTagKeysByEventType = useInferred ? inferred.tagKeysByEventType : tagKeysByEventType;
       let DcbEventLog = DcbEventLog_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher);
-      let dcbEventLog = DcbEventLog.make(name, indexes$1, partitionTag, crossPartitionTagKeys, opts);
+      let dcbEventLog = DcbEventLog.make(name, indexes$1, partitionTag, effectiveCrossPartitionTagKeys, opts);
       Stdlib_Option.forEach(HooksConfig.hooks.onDcbEventLogCreated, hook => hook(dcbEventLog));
       let DcbCommandTopic = CommandTopic_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,
@@ -185,7 +188,7 @@ function Make(DcbEventLogStorage) {
         asyncDcbCommandTopicOpt = undefined;
       }
       let stateChangeSlicesOutputs = Object.fromEntries(syncSlices.map(StateChangeSlice => {
-        let ch = StateChangeSlice.make(dcbEventLog, publishJsons, tagKeysByEventType, crossPartitionTagKeys, opts);
+        let ch = StateChangeSlice.make(dcbEventLog, publishJsons, effectiveTagKeysByEventType, effectiveCrossPartitionTagKeys, opts);
         return [
           StateChangeSlice.Spec.name,
           Component$ReventlessCore.outputs(ch)
@@ -195,7 +198,7 @@ function Make(DcbEventLogStorage) {
       if (asyncDcbCommandTopicOpt !== undefined) {
         let asyncPublishJsons = Component$ReventlessCore.operations(Primitive_option.valFromOption(asyncDcbCommandTopicOpt)).apply(ops => ops.publishJsons);
         asyncStateChangeSlicesOutputs = Object.fromEntries(asyncSlices.map(StateChangeSlice => {
-          let ch = StateChangeSlice.make(dcbEventLog, asyncPublishJsons, tagKeysByEventType, crossPartitionTagKeys, opts);
+          let ch = StateChangeSlice.make(dcbEventLog, asyncPublishJsons, effectiveTagKeysByEventType, effectiveCrossPartitionTagKeys, opts);
           return [
             StateChangeSlice.Spec.name,
             Component$ReventlessCore.outputs(ch)
