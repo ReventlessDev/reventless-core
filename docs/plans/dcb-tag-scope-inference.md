@@ -376,6 +376,15 @@ over to the derived values.
    inference already derives as cross-partition is **redundant** (`info`, safe to
    delete). Wired into `Dcb_Builder`; 3 unit tests. The original cross-producer
    `validateCrossPartitionScope` stays for the annotated/ambiguous fallback path.
+2c. **End-to-end verified.** ✅ `reventless-local`'s
+   `DcbCrossPartitionReadTest` builds an AddProduct StateChangeSlice over the real
+   in-memory `DcbEventLog`, threaded with the inferred scope. With a sibling product
+   preseeded in the same category, the decision read resolves to
+   `ProductAdded{productId=p2} OR CategoryAdded{categoryId=cat1}` and returns
+   `[CategoryAdded(cat1)]` only — the sibling `ProductAdded(p1)` is **not** read — so
+   p2 is added; re-adding an existing product is still rejected via its own
+   partition-scoped clause. This closes the gap that nothing exercised the threaded
+   storage read (the GWT harness folds events raw).
 3. **Harness parity** — ✅ **Done (read path).** `Behavior_GWT` / `Flow_GWT` derive
    `crossPartitionTagKeys` as `extractCrossPartitionTagKeys ∪
    DcbScopeInference.crossPartitionForSlice` and thread `infer([shape])`'s
