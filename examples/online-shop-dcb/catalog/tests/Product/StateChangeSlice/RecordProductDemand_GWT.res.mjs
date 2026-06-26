@@ -87,6 +87,8 @@ describe("RecordProductDemand StateChangeSlice", () => {
 
 let Spec = include.Spec;
 
+let todo = include.todo;
+
 let thenEvents = include.thenEvents;
 
 let thenEventWithError = include.thenEventWithError;
@@ -102,6 +104,7 @@ let thenAppendsConditionedOnExactly = include.thenAppendsConditionedOnExactly;
 export {
   Spec,
   describe,
+  todo,
   test,
   givenEvents,
   whenCmd,
