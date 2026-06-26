@@ -2,36 +2,53 @@
 
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Category$CatalogPlugin from "./Category/Aggregate/Category.res.mjs";
 import * as Products$CatalogPlugin from "./Product/StateViewSliceStream/Products.res.mjs";
 import * as AddProduct$CatalogPlugin from "./Product/StateChangeSlice/AddProduct.res.mjs";
-import * as Categories$CatalogPlugin from "./Category/ReadModel/Categories.res.mjs";
+import * as Categories$CatalogPlugin from "./Category/StateViewSliceStream/Categories.res.mjs";
+import * as AddCategory$CatalogPlugin from "./Category/StateChangeSlice/AddCategory.res.mjs";
 import * as ImportProduct$CatalogPlugin from "./Product/InboundTranslationSlice/ImportProduct.res.mjs";
 import * as ProductDemand$CatalogPlugin from "./Product/StateViewSliceStream/ProductDemand.res.mjs";
 import * as ImportProducts$CatalogPlugin from "./Task/ImportProducts.res.mjs";
-import * as CatalogActivity$CatalogPlugin from "./CatalogActivity/ReadModel/CatalogActivity.res.mjs";
+import * as RenameCategory$CatalogPlugin from "./Category/StateChangeSlice/RenameCategory.res.mjs";
+import * as ArchiveCategory$CatalogPlugin from "./Category/StateChangeSlice/ArchiveCategory.res.mjs";
 import * as Orders_Extension$CatalogPlugin from "./Extension/Orders_Extension.res.mjs";
-import * as Category_Behavior$CatalogPlugin from "./Category/Aggregate/Category_Behavior.res.mjs";
 import * as ChangeProductName$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductName.res.mjs";
-import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as ChangeProductPrice$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductPrice.res.mjs";
 import * as AddProduct_Behavior$CatalogPlugin from "./Product/StateChangeSlice/AddProduct_Behavior.res.mjs";
 import * as Products_Projection$CatalogPlugin from "./Product/StateViewSliceStream/Products_Projection.res.mjs";
 import * as RecordProductDemand$CatalogPlugin from "./ProductDemand/StateChangeSlice/RecordProductDemand.res.mjs";
+import * as AddCategory_Behavior$CatalogPlugin from "./Category/StateChangeSlice/AddCategory_Behavior.res.mjs";
 import * as Orders_ExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-hybrid-ordering-spec/src/Orders_ExtensionPoint.res.mjs";
+import * as Categories_Projection$CatalogPlugin from "./Category/StateViewSliceStream/Categories_Projection.res.mjs";
 import * as Products_ExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/Products_ExtensionPoint.res.mjs";
-import * as Categories_Projections$CatalogPlugin from "./Category/ReadModel/Categories_Projections.res.mjs";
+import * as RenameCategory_Behavior$CatalogPlugin from "./Category/StateChangeSlice/RenameCategory_Behavior.res.mjs";
+import * as ArchiveCategory_Behavior$CatalogPlugin from "./Category/StateChangeSlice/ArchiveCategory_Behavior.res.mjs";
 import * as ChangeProductDescription$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductDescription.res.mjs";
 import * as ProductDemand_Projection$CatalogPlugin from "./Product/StateViewSliceStream/ProductDemand_Projection.res.mjs";
 import * as ImportProduct_Translation$CatalogPlugin from "./Product/InboundTranslationSlice/ImportProduct_Translation.res.mjs";
 import * as ChangeProductName_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductName_Behavior.res.mjs";
-import * as CatalogActivity_Projections$CatalogPlugin from "./CatalogActivity/ReadModel/CatalogActivity_Projections.res.mjs";
 import * as ChangeProductPrice_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductPrice_Behavior.res.mjs";
 import * as RecordProductDemand_Behavior$CatalogPlugin from "./ProductDemand/StateChangeSlice/RecordProductDemand_Behavior.res.mjs";
 import * as Products_ExtensionPointMapping$CatalogPlugin from "./ExtensionPoint/Products_ExtensionPointMapping.res.mjs";
 import * as ChangeProductDescription_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductDescription_Behavior.res.mjs";
 
 function Make(Platform) {
+  let AddCategorySlice = Platform.StateChangeSlice.Make({
+    name: AddCategory$CatalogPlugin.name,
+    moduleUrl: AddCategory$CatalogPlugin.moduleUrl,
+    Id: Id$Reventless.$$String,
+    consumedEventSchema: AddCategory$CatalogPlugin.consumedEventSchema,
+    errorSchema: AddCategory$CatalogPlugin.errorSchema,
+    eventSchema: AddCategory$CatalogPlugin.eventSchema,
+    commandSchema: AddCategory$CatalogPlugin.commandSchema,
+    commandAuthorization: AddCategory$CatalogPlugin.commandAuthorization,
+    readConsistency: AddCategory$CatalogPlugin.readConsistency
+  })({
+    initialState: AddCategory_Behavior$CatalogPlugin.initialState,
+    evolve: AddCategory_Behavior$CatalogPlugin.evolve,
+    decide: AddCategory_Behavior$CatalogPlugin.decide,
+    moduleUrl: AddCategory_Behavior$CatalogPlugin.moduleUrl
+  });
   let AddProductSlice = Platform.StateChangeSlice.Make({
     name: AddProduct$CatalogPlugin.name,
     moduleUrl: AddProduct$CatalogPlugin.moduleUrl,
@@ -47,6 +64,22 @@ function Make(Platform) {
     evolve: AddProduct_Behavior$CatalogPlugin.evolve,
     decide: AddProduct_Behavior$CatalogPlugin.decide,
     moduleUrl: AddProduct_Behavior$CatalogPlugin.moduleUrl
+  });
+  let ArchiveCategorySlice = Platform.StateChangeSlice.Make({
+    name: ArchiveCategory$CatalogPlugin.name,
+    moduleUrl: ArchiveCategory$CatalogPlugin.moduleUrl,
+    Id: Id$Reventless.$$String,
+    consumedEventSchema: ArchiveCategory$CatalogPlugin.consumedEventSchema,
+    errorSchema: ArchiveCategory$CatalogPlugin.errorSchema,
+    eventSchema: ArchiveCategory$CatalogPlugin.eventSchema,
+    commandSchema: ArchiveCategory$CatalogPlugin.commandSchema,
+    commandAuthorization: ArchiveCategory$CatalogPlugin.commandAuthorization,
+    readConsistency: ArchiveCategory$CatalogPlugin.readConsistency
+  })({
+    initialState: ArchiveCategory_Behavior$CatalogPlugin.initialState,
+    evolve: ArchiveCategory_Behavior$CatalogPlugin.evolve,
+    decide: ArchiveCategory_Behavior$CatalogPlugin.decide,
+    moduleUrl: ArchiveCategory_Behavior$CatalogPlugin.moduleUrl
   });
   let ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductDescription$CatalogPlugin.name,
@@ -112,6 +145,35 @@ function Make(Platform) {
     decide: RecordProductDemand_Behavior$CatalogPlugin.decide,
     moduleUrl: RecordProductDemand_Behavior$CatalogPlugin.moduleUrl
   });
+  let RenameCategorySlice = Platform.StateChangeSlice.Make({
+    name: RenameCategory$CatalogPlugin.name,
+    moduleUrl: RenameCategory$CatalogPlugin.moduleUrl,
+    Id: Id$Reventless.$$String,
+    consumedEventSchema: RenameCategory$CatalogPlugin.consumedEventSchema,
+    errorSchema: RenameCategory$CatalogPlugin.errorSchema,
+    eventSchema: RenameCategory$CatalogPlugin.eventSchema,
+    commandSchema: RenameCategory$CatalogPlugin.commandSchema,
+    commandAuthorization: RenameCategory$CatalogPlugin.commandAuthorization,
+    readConsistency: RenameCategory$CatalogPlugin.readConsistency
+  })({
+    initialState: RenameCategory_Behavior$CatalogPlugin.initialState,
+    evolve: RenameCategory_Behavior$CatalogPlugin.evolve,
+    decide: RenameCategory_Behavior$CatalogPlugin.decide,
+    moduleUrl: RenameCategory_Behavior$CatalogPlugin.moduleUrl
+  });
+  let CategoriesStreamSlice = Platform.StateViewSliceStream.Make({
+    name: Categories$CatalogPlugin.name,
+    moduleUrl: Categories$CatalogPlugin.moduleUrl,
+    stateSchema: Categories$CatalogPlugin.stateSchema,
+    consumedEventSchema: Categories$CatalogPlugin.consumedEventSchema,
+    config: Categories$CatalogPlugin.config,
+    subIdConfig: undefined,
+    authorization: Categories$CatalogPlugin.authorization,
+    visibility: Categories$CatalogPlugin.visibility
+  })({
+    project: Categories_Projection$CatalogPlugin.project,
+    moduleUrl: Categories_Projection$CatalogPlugin.moduleUrl
+  });
   let ProductDemandStreamSlice = Platform.StateViewSliceStream.Make({
     name: ProductDemand$CatalogPlugin.name,
     moduleUrl: ProductDemand$CatalogPlugin.moduleUrl,
@@ -148,50 +210,6 @@ function Make(Platform) {
   })({
     translate: ImportProduct_Translation$CatalogPlugin.translate,
     moduleUrl: ImportProduct_Translation$CatalogPlugin.moduleUrl
-  });
-  let CategoryAggregate = Platform.Aggregate.Make({
-    Id: Id$Reventless.$$String,
-    name: Category$CatalogPlugin.name,
-    eventSchema: Category$CatalogPlugin.eventSchema,
-    errorSchema: Category$CatalogPlugin.errorSchema,
-    commandSchema: Category$CatalogPlugin.commandSchema,
-    moduleUrl: Category$CatalogPlugin.moduleUrl,
-    commandAuthorization: Category$CatalogPlugin.commandAuthorization
-  })({
-    initialState: Category_Behavior$CatalogPlugin.initialState,
-    evolve: Category_Behavior$CatalogPlugin.evolve,
-    decide: Category_Behavior$CatalogPlugin.decide,
-    moduleUrl: Category_Behavior$CatalogPlugin.moduleUrl
-  })(NoEventMappings$ReventlessInfra.Make({
-    name: Category$CatalogPlugin.name,
-    Id: Id$Reventless.$$String,
-    commandSchema: Category$CatalogPlugin.commandSchema
-  }));
-  let CatalogActivityReadModel = Platform.ReadModel.Make({
-    Id: Id$Reventless.$$String,
-    name: CatalogActivity$CatalogPlugin.name,
-    moduleUrl: CatalogActivity$CatalogPlugin.moduleUrl,
-    stateSchema: CatalogActivity$CatalogPlugin.stateSchema,
-    config: CatalogActivity$CatalogPlugin.config,
-    subIdConfig: undefined,
-    authorization: CatalogActivity$CatalogPlugin.authorization,
-    visibility: CatalogActivity$CatalogPlugin.visibility
-  })({
-    moduleUrl: CatalogActivity_Projections$CatalogPlugin.moduleUrl,
-    mappings: CatalogActivity_Projections$CatalogPlugin.mappings
-  });
-  let CategoriesReadModel = Platform.ReadModel.Make({
-    Id: Id$Reventless.$$String,
-    name: Categories$CatalogPlugin.name,
-    moduleUrl: Categories$CatalogPlugin.moduleUrl,
-    stateSchema: Categories$CatalogPlugin.stateSchema,
-    config: Categories$CatalogPlugin.config,
-    subIdConfig: undefined,
-    authorization: Categories$CatalogPlugin.authorization,
-    visibility: Categories$CatalogPlugin.visibility
-  })({
-    moduleUrl: Categories_Projections$CatalogPlugin.moduleUrl,
-    mappings: Categories_Projections$CatalogPlugin.mappings
   });
   let ImportProductsTask = Platform.Task.Make({
     name: ImportProducts$CatalogPlugin.name,
@@ -241,18 +259,19 @@ function Make(Platform) {
     mapIncomingEvent: Orders_Extension$CatalogPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: Orders_Extension$CatalogPlugin.Mapping.mapOutgoingEvent
   });
-  let pluginStructure = Platform.Plugin.makePluginDefinition("Catalog", [CategoryAggregate], [
-    CatalogActivityReadModel,
-    CategoriesReadModel
-  ], [
+  let pluginStructure = Platform.Plugin.makePluginDefinition("Catalog", undefined, undefined, [
+    CategoriesStreamSlice,
     ProductDemandStreamSlice,
     ProductsStreamSlice
   ], [
+    AddCategorySlice,
     AddProductSlice,
+    ArchiveCategorySlice,
     ChangeProductDescriptionSlice,
     ChangeProductNameSlice,
     ChangeProductPriceSlice,
-    RecordProductDemandSlice
+    RecordProductDemandSlice,
+    RenameCategorySlice
   ], undefined, undefined, [ImportProductSlice], [Orders_Extension], [{
       ExtensionPoint: {
         name: Products_ExtensionPoint$CatalogSpec.name,
@@ -274,31 +293,33 @@ function Make(Platform) {
       mapIncomingCommand: Products_ExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
       mapOutgoingEvent: Products_ExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
     }]);
-  let make = () => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], [CategoryAggregate], [
-    CatalogActivityReadModel,
-    CategoriesReadModel
-  ], [ImportProductsTask], [
+  let make = () => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], undefined, undefined, [ImportProductsTask], [
+    AddCategorySlice,
     AddProductSlice,
+    ArchiveCategorySlice,
     ChangeProductDescriptionSlice,
     ChangeProductNameSlice,
     ChangeProductPriceSlice,
-    RecordProductDemandSlice
+    RecordProductDemandSlice,
+    RenameCategorySlice
   ], [
+    CategoriesStreamSlice,
     ProductDemandStreamSlice,
     ProductsStreamSlice
   ], undefined, undefined, [ImportProductSlice], Stdlib_Option.map(process.env.CATALOG_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Catalog", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
+    AddCategorySlice: AddCategorySlice,
     AddProductSlice: AddProductSlice,
+    ArchiveCategorySlice: ArchiveCategorySlice,
     ChangeProductDescriptionSlice: ChangeProductDescriptionSlice,
     ChangeProductNameSlice: ChangeProductNameSlice,
     ChangeProductPriceSlice: ChangeProductPriceSlice,
     RecordProductDemandSlice: RecordProductDemandSlice,
+    RenameCategorySlice: RenameCategorySlice,
+    CategoriesStreamSlice: CategoriesStreamSlice,
     ProductDemandStreamSlice: ProductDemandStreamSlice,
     ProductsStreamSlice: ProductsStreamSlice,
     ImportProductSlice: ImportProductSlice,
-    CategoryAggregate: CategoryAggregate,
-    CatalogActivityReadModel: CatalogActivityReadModel,
-    CategoriesReadModel: CategoriesReadModel,
     ImportProductsTask: ImportProductsTask,
     Products_ExtensionPoint: Products_ExtensionPoint,
     Orders_Extension: Orders_Extension,

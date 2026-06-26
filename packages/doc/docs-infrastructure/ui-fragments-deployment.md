@@ -33,10 +33,10 @@ Every plugin auto-derives its fragment manifest via `Plugin.makeAutoUIManifest`.
 | Read model `<Name>` | `<Plugin>.<Name>.list` | Page + summary panel |
 | Aggregate `<Name>`  | `<Plugin>.<Name>.detail` | Detail panel |
 
-E.g. the catalog plugin declares `aggregates=[CategoryAggregate]` and `readModels=[CatalogActivity, Categories]`. Its auto-derived manifest contains:
+E.g. the ordering plugin declares `aggregates=[CustomerAggregate]` and `readModels=[Customers]`. Its auto-derived manifest contains:
 
-- panels: `Catalog.CatalogActivity.list`, `Catalog.Categories.list`, `Catalog.Category.detail`
-- pages: `Catalog.CatalogActivity.list`, `Catalog.Categories.list`
+- panels: `Ordering.Customers.list`, `Ordering.Customer.detail`
+- pages: `Ordering.Customers.list`
 
 The host shell reads these strings and decides which rendered view goes where. The plugin author writes zero UI code.
 

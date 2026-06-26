@@ -7,7 +7,8 @@ let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "ProductAdded",
     productId: s.m(S.string),
-    name: s.m(S.string)
+    name: s.m(S.string),
+    categoryId: s.m(S.string)
   })),
   S.schema(s => ({
     TAG: "ProductDemandRecorded",
@@ -22,6 +23,7 @@ let consumedEventSchema = S.union([
 let stateSchema = S.schema(s => ({
   productId: s.m(S.string),
   name: s.m(S.string),
+  categoryId: s.m(S.string),
   orderCount: s.m(S.int)
 }));
 

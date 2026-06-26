@@ -17,6 +17,11 @@ function translate(input) {
       TAG: "Error",
       _0: "SKU is required"
     };
+  } else if (input.category === "") {
+    return {
+      TAG: "Error",
+      _0: "Category is required"
+    };
   } else {
     return {
       TAG: "Ok",
@@ -27,7 +32,8 @@ function translate(input) {
             productId: input.sku,
             name: input.title,
             description: input.desc,
-            price: input.unitPrice / 100.0
+            price: input.unitPrice / 100.0,
+            categoryId: input.category
           }
         ]]
     };

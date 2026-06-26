@@ -3,29 +3,22 @@
 import * as Customers_Projections$OrderingPlugin from "../../../src/Customer/ReadModelStream/Customers_Projections.res.mjs";
 import * as MultiSourceProjection_GWT$ReventlessGwt from "@reventlessdev/reventless-gwt/src/MultiSourceProjection_GWT.res.mjs";
 
-let include = MultiSourceProjection_GWT$ReventlessGwt.Make(Customers_Projections$OrderingPlugin.CustomerMapping);
+let CustomerGwt = MultiSourceProjection_GWT$ReventlessGwt.Make(Customers_Projections$OrderingPlugin.CustomerMapping);
 
-let describe = include.describe;
+let OrderGwt = MultiSourceProjection_GWT$ReventlessGwt.Make(Customers_Projections$OrderingPlugin.CustomerOrdersMapping);
 
-let test = include.test;
-
-let givenEvents = include.givenEvents;
-
-let whenEvent = include.whenEvent;
-
-let thenState = include.thenState;
-
-describe("Customers ReadModel ← Customer", () => {
-  test("Registered sets initial read model state", undefined, () => thenState(whenEvent(givenEvents([]), {
+CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
+  CustomerGwt.test("Registered sets initial read model state", undefined, () => CustomerGwt.thenState(CustomerGwt.whenEvent(CustomerGwt.givenEvents([]), {
     TAG: "Registered",
     email: "alice@x.y",
     address: "123 Main"
   }), {
     email: "alice@x.y",
     address: "123 Main",
-    deactivated: false
+    deactivated: false,
+    orderCount: 0
   }));
-  test("EmailUpdated updates the email", undefined, () => thenState(whenEvent(givenEvents([{
+  CustomerGwt.test("EmailUpdated updates the email", undefined, () => CustomerGwt.thenState(CustomerGwt.whenEvent(CustomerGwt.givenEvents([{
       TAG: "Registered",
       email: "alice@x.y",
       address: "123 Main"
@@ -35,9 +28,10 @@ describe("Customers ReadModel ← Customer", () => {
   }), {
     email: "alice2@x.y",
     address: "123 Main",
-    deactivated: false
+    deactivated: false,
+    orderCount: 0
   }));
-  test("AddressUpdated updates the address", undefined, () => thenState(whenEvent(givenEvents([{
+  CustomerGwt.test("AddressUpdated updates the address", undefined, () => CustomerGwt.thenState(CustomerGwt.whenEvent(CustomerGwt.givenEvents([{
       TAG: "Registered",
       email: "alice@x.y",
       address: "123 Main"
@@ -47,60 +41,50 @@ describe("Customers ReadModel ← Customer", () => {
   }), {
     email: "alice@x.y",
     address: "789 Pine",
-    deactivated: false
+    deactivated: false,
+    orderCount: 0
   }));
-  test("Deactivated sets deactivated flag", undefined, () => thenState(whenEvent(givenEvents([{
+  CustomerGwt.test("Deactivated sets deactivated flag", undefined, () => CustomerGwt.thenState(CustomerGwt.whenEvent(CustomerGwt.givenEvents([{
       TAG: "Registered",
       email: "alice@x.y",
       address: "123 Main"
     }]), "Deactivated"), {
     email: "alice@x.y",
     address: "123 Main",
-    deactivated: true
+    deactivated: true,
+    orderCount: 0
   }));
 });
 
-let describeWithId = include.describeWithId;
-
-let givenEventsWithTime = include.givenEventsWithTime;
-
-let whenEvents = include.whenEvents;
-
-let whenEventWithTime = include.whenEventWithTime;
-
-let whenEventsWithTime = include.whenEventsWithTime;
-
-let thenStates = include.thenStates;
-
-let thenStatesWithId = include.thenStatesWithId;
-
-let thenAllStates = include.thenAllStates;
-
-let thenStateWithId = include.thenStateWithId;
-
-let thenNoState = include.thenNoState;
-
-let thenThrow = include.thenThrow;
-
-let thenFail = include.thenFail;
+OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {
+  OrderGwt.test("OrderPlaced creates a row and counts the placement", undefined, () => OrderGwt.thenStateWithId(OrderGwt.whenEvent(OrderGwt.givenEvents([]), {
+    TAG: "OrderPlaced",
+    orderId: "o1",
+    customerId: "c1"
+  }), "c1", {
+    email: "",
+    address: "",
+    deactivated: false,
+    orderCount: 1
+  }));
+  OrderGwt.test("a second OrderPlaced increments orderCount", undefined, () => OrderGwt.thenStateWithId(OrderGwt.whenEvent(OrderGwt.givenEvents([{
+      TAG: "OrderPlaced",
+      orderId: "o1",
+      customerId: "c1"
+    }]), {
+    TAG: "OrderPlaced",
+    orderId: "o2",
+    customerId: "c1"
+  }), "c1", {
+    email: "",
+    address: "",
+    deactivated: false,
+    orderCount: 2
+  }));
+});
 
 export {
-  describe,
-  describeWithId,
-  test,
-  givenEvents,
-  givenEventsWithTime,
-  whenEvent,
-  whenEvents,
-  whenEventWithTime,
-  whenEventsWithTime,
-  thenStates,
-  thenStatesWithId,
-  thenAllStates,
-  thenState,
-  thenStateWithId,
-  thenNoState,
-  thenThrow,
-  thenFail,
+  CustomerGwt,
+  OrderGwt,
 }
-/* include Not a pure module */
+/* CustomerGwt Not a pure module */

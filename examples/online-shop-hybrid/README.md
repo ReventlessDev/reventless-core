@@ -1,11 +1,15 @@
 # Online Shop — Hybrid example
 
 A complete, working Reventless application: a small online shop modelled with a
-**hybrid** plugin style — aggregates for independent entities (Category,
-Customer) and DCB slices for interdependent ones (Product + ProductDemand, Order
-+ CatalogProduct). It runs locally on the local platform and deploys to AWS
-with Pulumi, exercising commands, events, projections, live subscriptions, and
-cross-plugin extension points end to end.
+**hybrid** plugin style — aggregates for self-contained entities (Customer) and
+DCB slices for entities that take part in cross-slice invariants (Category,
+Product + ProductDemand, Order + CatalogProduct). Adding a product verifies —
+inside its decision model — that the referenced category exists and is active,
+which is exactly why Category is modelled as DCB slices writing to the shared
+catalog event log: a DCB slice can read a sibling slice's events, but not an
+aggregate's isolated log. It runs locally on the local platform and deploys to
+AWS with Pulumi, exercising commands, events, projections, live subscriptions,
+and cross-plugin extension points end to end.
 
 This is the package behind the documentation
 [Tutorial spine](../../packages/doc/docs-tutorials/get-started.md).
@@ -16,8 +20,8 @@ This is the package behind the documentation
 |---|---|
 | `catalog-spec/` | Catalog's public extension-point contract (`Products`) — depended on by Ordering |
 | `ordering-spec/` | Ordering's public extension-point contract (`Orders`) — depended on by Catalog |
-| `catalog/` | Catalog plugin: Category aggregate; Product/ProductDemand DCB slices; read models; task; EP + extension |
-| `ordering/` | Ordering plugin: Customer aggregate; Order/CatalogProduct DCB slices; automation; outbound email; EP + extension |
+| `catalog/` | Catalog plugin: Category, Product, and ProductDemand DCB slices (AddProduct verifies the referenced category exists); StateView stream views; task; EP + extension |
+| `ordering/` | Ordering plugin: Customer aggregate; Order/CatalogProduct DCB slices; the `Customers` mixed aggregate+DCB read model (profile + order count); automation; outbound email; EP + extension |
 | `catalog-aws/`, `ordering-aws/` | AWS deployment entry points for each plugin |
 | `platform-local/` | Local dev runtime — GraphQL server + in-memory stores |
 | `platform-aws/` | AWS platform: shared AppSync API, admin components, scheduler, host-shell SPA |

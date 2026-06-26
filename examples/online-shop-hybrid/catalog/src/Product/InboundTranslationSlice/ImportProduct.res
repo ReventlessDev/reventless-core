@@ -10,6 +10,7 @@ type externalInput = {
   desc: string,
   unitPrice: int,
   currency: string,
+  category: string,
 }
 
 @schema
@@ -18,6 +19,7 @@ type command = AddProduct({
   name: string,
   description: string,
   price: float,
+  categoryId: string,
 })
 
 let targetName = "AddProduct"

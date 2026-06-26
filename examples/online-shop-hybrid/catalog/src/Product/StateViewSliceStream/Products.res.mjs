@@ -9,7 +9,8 @@ let consumedEventSchema = S.union([
     productId: s.m(S.string),
     name: s.m(S.string),
     description: s.m(S.string),
-    price: s.m(S.float)
+    price: s.m(S.float),
+    categoryId: s.m(S.string)
   })),
   S.schema(s => ({
     TAG: "ProductNameChanged",
@@ -32,7 +33,8 @@ let stateSchema = S.schema(s => ({
   productId: s.m(S.string),
   name: s.m(S.string),
   description: s.m(S.string),
-  price: s.m(S.float)
+  price: s.m(S.float),
+  categoryId: s.m(S.string)
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);

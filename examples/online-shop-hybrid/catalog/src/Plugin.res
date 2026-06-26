@@ -4,29 +4,22 @@
 
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
+  module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Behavior)
   module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
+  module ArchiveCategorySlice = Platform.StateChangeSlice.Make(ArchiveCategory, ArchiveCategory_Behavior)
   module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(ChangeProductDescription, ChangeProductDescription_Behavior)
   module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName, ChangeProductName_Behavior)
   module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(ChangeProductPrice, ChangeProductPrice_Behavior)
   module RecordProductDemandSlice = Platform.StateChangeSlice.Make(RecordProductDemand, RecordProductDemand_Behavior)
+  module RenameCategorySlice = Platform.StateChangeSlice.Make(RenameCategory, RenameCategory_Behavior)
 
   // StateViewSliceStreams
+  module CategoriesStreamSlice = Platform.StateViewSliceStream.Make(Categories, Categories_Projection)
   module ProductDemandStreamSlice = Platform.StateViewSliceStream.Make(ProductDemand, ProductDemand_Projection)
   module ProductsStreamSlice = Platform.StateViewSliceStream.Make(Products, Products_Projection)
 
   // InboundTranslationSlices
   module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct, ImportProduct_Translation)
-
-  // Aggregates
-  module CategoryAggregate = Platform.Aggregate.Make(
-    Category,
-    Category_Behavior,
-    ReventlessInfra.NoEventMappings.Make(Category),
-  )
-
-  // ReadModels
-  module CatalogActivityReadModel = Platform.ReadModel.Make(CatalogActivity, CatalogActivity_Projections)
-  module CategoriesReadModel = Platform.ReadModel.Make(Categories, Categories_Projections)
 
   // Tasks
   module ImportProductsTask = Platform.Task.Make(ImportProducts)
@@ -39,10 +32,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Catalog",
-    ~aggregates=[module(CategoryAggregate)],
-    ~readModels=[module(CatalogActivityReadModel), module(CategoriesReadModel)],
-    ~stateViewSlices=[module(ProductDemandStreamSlice), module(ProductsStreamSlice)],
-    ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
+    ~stateViewSlices=[module(CategoriesStreamSlice), module(ProductDemandStreamSlice), module(ProductsStreamSlice)],
+    ~stateChangeSlices=[module(AddCategorySlice), module(AddProductSlice), module(ArchiveCategorySlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice), module(RenameCategorySlice)],
     ~inboundTranslationSlices=[module(ImportProductSlice)],
     ~extensions=[module(Orders_Extension)],
     ~extensionPoints=[module(Products_ExtensionPointMapping)],
@@ -54,11 +45,9 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~heartbeatInterval=5,
       ~extensionPoints=[module(Products_ExtensionPoint)],
       ~extensions=[module(Orders_Extension)],
-      ~aggregates=[module(CategoryAggregate)],
-      ~readModels=[module(CatalogActivityReadModel), module(CategoriesReadModel)],
       ~tasks=[module(ImportProductsTask)],
-      ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
-      ~stateViewSlices=[module(ProductDemandStreamSlice), module(ProductsStreamSlice)],
+      ~stateChangeSlices=[module(AddCategorySlice), module(AddProductSlice), module(ArchiveCategorySlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice), module(RenameCategorySlice)],
+      ~stateViewSlices=[module(CategoriesStreamSlice), module(ProductDemandStreamSlice), module(ProductsStreamSlice)],
       ~inboundTranslationSlices=[module(ImportProductSlice)],
       ~pluginStructure=pluginStructure,
       ~uiFragments=?uiBundleUrl->Option.map(url =>

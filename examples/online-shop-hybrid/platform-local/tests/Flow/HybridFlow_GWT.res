@@ -14,6 +14,7 @@
 //               └─ Catalog: RecordProductDemand ─→ ProductDemandRecorded
 @@reventless.gwt
 
+module Cat = CommandStep(CatalogPlugin.AddCategory, CatalogPlugin.AddCategory_Behavior)
 module Add = CommandStep(CatalogPlugin.AddProduct, CatalogPlugin.AddProduct_Behavior)
 module ProductsEp = ExtensionPointStep(CatalogPlugin.Products_ExtensionPointMapping)
 module ProductsExt = ExtensionStep(OrderingPlugin.Products_Extension.Mapping)
@@ -26,12 +27,15 @@ module Demand = CommandStep(CatalogPlugin.RecordProductDemand, CatalogPlugin.Rec
 describe("Hybrid cross-plugin flow", () => {
   test("Tier 2 — a product added in Catalog becomes orderable in Ordering via the sync", () =>
     start
+    // AddProduct now verifies the category exists, so seed it into the shared log first.
+    ->Cat.givenEvents([CatalogPlugin.AddCategory.CategoryAdded({categoryId: "cat1", name: "Books"})])
     ->Add.whenCommand(
       CatalogPlugin.AddProduct.AddProduct({
         productId: "p1",
         name: "Book",
         description: "A good book",
         price: 9.99,
+        categoryId: "cat1",
       }),
     )
     ->Add.thenEvent(
@@ -40,6 +44,7 @@ describe("Hybrid cross-plugin flow", () => {
         name: "Book",
         description: "A good book",
         price: 9.99,
+        categoryId: "cat1",
       }),
     )
     ->ProductsEp.whenPublishedThrough

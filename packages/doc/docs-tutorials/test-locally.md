@@ -57,7 +57,7 @@ connection (`edges { node { … } }`). For example, add a category:
 curl http://localhost:4000/graphql \
   -H 'content-type: application/json' \
   -H 'X-User: admin' \
-  -d '{"query":"mutation { Catalog_Category_Add(id: \"books\", name: \"Books\") { __typename } }"}'
+  -d '{"query":"mutation { Catalog_AddCategory(categoryId: \"books\", name: \"Books\") { __typename } }"}'
 ```
 
 Then query it back:

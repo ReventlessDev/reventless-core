@@ -4,12 +4,16 @@ A ReadModel can subscribe to events from any combination of Aggregate `EventTopi
 and a plugin's DCB `EventLog`. The runtime registers all of them in the same
 `allEventTopics` dict; `Mapping.Make` picks sources by **name**.
 
-This guide is the application-developer reference for that pattern.
+This guide is the application-developer reference for that pattern. The reference
+implementation is Ordering's `Customers` read model in
+`examples/online-shop-hybrid/`: a customer profile (from the **`Customer`
+aggregate**) blended with an `orderCount` (from the plugin's **DCB log**), merged
+into one row keyed by `customerId`.
 
 ## When to use it
 
-- A read model needs *both* an Aggregate's lifecycle (e.g. `Category`) and DCB
-  slice events (e.g. `ProductAdded`) in the same projected state.
+- A read model needs *both* an Aggregate's lifecycle (e.g. `Customer`) and DCB
+  slice events (e.g. `OrderPlaced`) in the same projected state.
 - A read model needs to denormalise a few DCB-slice variants into a query table
   so an API can fetch them without re-deriving from raw events.
 
@@ -24,12 +28,12 @@ the source's `name` field. The runtime uses these dict keys:
 
 | Source type | Dict key |
 |-------------|----------|
-| Aggregate | `<AggregateSpec.name>` (e.g. `"Category"`) |
-| DCB EventLog | `<pluginName> ++ "DcbEventLog"` (e.g. `"CatalogDcbEventLog"`) |
+| Aggregate | `<AggregateSpec.name>` (e.g. `"Customer"`) |
+| DCB EventLog | `<pluginName> ++ "DcbEventLog"` (e.g. `"OrderingDcbEventLog"`) |
 
 For DCB sources the **plugin name** is the `~name` argument the plugin's
 generated `make` function passes to the framework — i.e. the same string you
-read in the `Catalog/src/plugin.json` (or that defaults to your folder name).
+read in the `Ordering/src/plugin.json` (or that defaults to your folder name).
 
 > **Pro tip — fail-fast.** If a `Mapping.sourceName` doesn't match any key in
 > `allEventTopics`, ReadModel construction throws with a clear error pointing to
@@ -40,20 +44,27 @@ read in the `Catalog/src/plugin.json` (or that defaults to your folder name).
 
 ### 1. The ReadModel spec
 
-The spec file lives in a `ReadModel/` folder, so its filename carries no kind
-suffix — the folder supplies the kind:
+The spec file lives in a `ReadModel/` (or `ReadModelStream/`) folder, so its
+filename carries no kind suffix — the folder supplies the kind. `Customers` uses
+the stream variant, which adds live updates on top of the same multi-source
+dispatch:
 
 ```rescript
-// catalog/src/CatalogActivity/ReadModel/CatalogActivity.res
+// ordering/src/Customer/ReadModelStream/Customers.res
 @@reventless.spec
 
 @schema
-type state = {kind: string, lastChange: string}
+type state = {
+  @displayName email: string,
+  address: string,
+  deactivated: bool,
+  orderCount: int,
+}
 ```
 
 ### 2. The Projections file — define each `Mapping`
 
-The sibling body file is `CatalogActivity_Projections.res` (underscore + plural
+The sibling body file is `Customers_Projections.res` (underscore + plural
 `_Projections`). Its `@@reventless.mappings` annotation auto-injects the domain
 opens, `module Target` / `module M` / `module type Mapping`, `let moduleUrl`, and
 — for any inline DCB `Source` module — `module Id` + dcbTags on `*Id` fields.
@@ -62,19 +73,26 @@ The Aggregate-source mapping passes the aggregate spec module as the first
 argument:
 
 ```rescript
-// CatalogActivity_Projections.res
+// Customers_Projections.res
 @@reventless.mappings
 
-module CategoryActivityMapping = Mapping.Make(
-  Category,                             // Aggregate spec module — name = "Category"
-  CatalogActivity,
+module CustomerMapping = Mapping.Make(
+  Customer,                             // Aggregate spec module — name = "Customer"
+  Customers,
   {
-    open Category
+    open Customer
     let project = ({event, id, _}) =>
       switch event {
-      | Added(_) => Set(id, {CatalogActivity.kind: "category", lastChange: "Added"})
-      | Renamed(_) => Update(id, s => {...s, lastChange: "Renamed"})
-      | Archived => Update(id, s => {...s, lastChange: "Archived"})
+      | Registered({email, address}) =>
+        // UpdateWithDefault, not Set, so an OrderPlaced that arrived first isn't clobbered
+        UpdateWithDefault(
+          id,
+          {Customers.email: email, address, deactivated: false, orderCount: 0},
+          s => {...s, email, address, deactivated: false},
+        )
+      | EmailUpdated({email}) => Update(id, s => {...s, email})
+      | AddressUpdated({address}) => Update(id, s => {...s, address})
+      | Deactivated => Update(id, s => {...s, deactivated: true})
       }
   },
 )
@@ -86,41 +104,45 @@ The `name` MUST match the dict key (`module Id` is auto-injected by
 
 ```rescript
 // Same file, just above the DCB mapping.
-module CatalogDcbSource = {
-  let name = "CatalogDcbEventLog"        // <pluginName>DcbEventLog
+module OrderEvents = {
+  let name = "OrderingDcbEventLog"        // <pluginName>DcbEventLog
 
   @schema
-  type event =
-    | ProductAdded({productId: string, name: string, description: string, price: float})
-    | ProductRenamed({productId: string, name: string})
+  type event = OrderPlaced({orderId: string, customerId: string})
 }
 
-module ProductActivityMapping = Mapping.Make(
-  CatalogDcbSource,
-  CatalogActivity,
+module CustomerOrdersMapping = Mapping.Make(
+  OrderEvents,
+  Customers,
   {
-    open CatalogDcbSource
+    open OrderEvents
     let project = ({event, _}) =>
       switch event {
-      | ProductAdded({productId}) =>
-        Set(productId, {CatalogActivity.kind: "product", lastChange: "Added"})
-      | ProductRenamed({productId}) => Update(productId, s => {...s, lastChange: "Renamed"})
+      | OrderPlaced({customerId}) =>
+        // Same row id (customerId) as the aggregate source → the two sources merge
+        UpdateWithDefault(
+          customerId,
+          {Customers.email: "", address: "", deactivated: false, orderCount: 1},
+          s => {...s, orderCount: s.orderCount + 1},
+        )
       }
   },
 )
 
-let mappings: array<module(Mapping)> = [module(CategoryActivityMapping), module(ProductActivityMapping)]
+let mappings: array<module(Mapping)> = [module(CustomerMapping), module(CustomerOrdersMapping)]
 ```
 
-Both mappings target `CatalogActivity`. The auto-generated `Plugin.res` wires the
-pair as `Platform.ReadModel.Make(CatalogActivity, CatalogActivity_Projections)` —
-no manual wiring is needed.
+Both mappings target `Customers` and write to the **same row id** (`customerId`),
+so the framework merges the aggregate profile and the DCB-derived `orderCount`
+into one record. The auto-generated `Plugin.res` wires the pair as
+`Platform.ReadModelStream.Make(Customers, Customers_Projections)` — no manual
+wiring is needed.
 
 ### 3. Typed event subsetting
 
 The DCB log carries the union of every event variant produced by every
-StateChangeSlice in the plugin (`ProductAdded`, `ProductRenamed`, `RecordProductDemand`, …).
-Your `CatalogDcbSource.event` type only needs to enumerate the variants this
+StateChangeSlice in the plugin (`OrderPlaced`, `OrderShipped`, `CatalogProductSynced`, …).
+Your `OrderEvents.event` type only needs to enumerate the variants this
 projection cares about. Other variants decode as parse errors and the runtime
 treats them as `Ignore` — same behaviour as Aggregate ReadModels seeing event
 variants they don't enumerate.
@@ -129,18 +151,18 @@ This means:
 - Adding a new `event` variant to a sibling DCB slice **does not** force
   consumers to recompile or update their projections.
 - Awareness of a new variant is a deliberate developer action: extend
-  `CatalogDcbSource.event` and add a `switch` arm.
+  `OrderEvents.event` and add a `switch` arm.
 
 ### 4. Optional helper: `Reventless.Projection.DcbSource.Make`
 
 There's a thin functor for declaring DCB sources:
 
 ```rescript
-module CatalogDcbSourceDef = {
-  let name = "CatalogDcbEventLog"
-  @schema type event = ProductAdded({productId: string, name: string})
+module OrderEventsDef = {
+  let name = "OrderingDcbEventLog"
+  @schema type event = OrderPlaced({orderId: string, customerId: string})
 }
-module CatalogDcbSource = Reventless.Projection.DcbSource.Make(CatalogDcbSourceDef)
+module OrderEvents = Reventless.Projection.DcbSource.Make(OrderEventsDef)
 ```
 
 It's purely cosmetic. ReScript requires the inline definition to be bound to a
@@ -157,7 +179,7 @@ the hand-rolled form above is usually shorter. Use whichever you prefer.
 
 ## See also
 
-- `examples/online-shop-hybrid/catalog/src/CatalogActivity/ReadModel/` — the
+- `examples/online-shop-hybrid/ordering/src/Customer/ReadModelStream/` — the
   reference example for this pattern.
 - `reventless/reventless-local/tests/components/readmodel/DcbReadModelE2ETest.res`
   — focused integration test that exercises the DCB → ReadModel path

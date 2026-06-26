@@ -336,21 +336,24 @@ You do so by calling the `Mapping.Make` [module function](../rescript-syntax.md#
 The `mappings` array can hold one `Mapping.Make` module per source — an Aggregate
 and a DCB source can both feed the same ReadModel:
 
-```rescript title="CatalogActivity/ReadModel/CatalogActivity_Projections.res" showLineNumbers
+```rescript title="Customer/ReadModelStream/Customers_Projections.res" showLineNumbers
 @@reventless.mappings
 
 // A DCB source: `name` MUST equal `<pluginName>DcbEventLog`.
-module CatalogDcbSource = {
-  let name = "CatalogDcbEventLog"
+module OrderEvents = {
+  let name = "OrderingDcbEventLog"
   @schema
-  type event = ProductAdded({productId: string, name: string})
+  type event = OrderPlaced({orderId: string, customerId: string})
 }
 
-module CategoryActivityMapping = Mapping.Make(Category, CatalogActivity, { /* project ... */ })
-module ProductActivityMapping = Mapping.Make(CatalogDcbSource, CatalogActivity, { /* project ... */ })
+module CustomerMapping = Mapping.Make(Customer, Customers, { /* project profile ... */ })
+module CustomerOrdersMapping = Mapping.Make(OrderEvents, Customers, { /* project orderCount ... */ })
 
-let mappings: array<module(Mapping)> = [module(CategoryActivityMapping), module(ProductActivityMapping)]
+let mappings: array<module(Mapping)> = [module(CustomerMapping), module(CustomerOrdersMapping)]
 ```
+
+Both mappings write to the same row id (`customerId`), so the Customer
+aggregate's profile and the DCB-derived `orderCount` merge into one record.
 
 ## Wiring (generated)
 

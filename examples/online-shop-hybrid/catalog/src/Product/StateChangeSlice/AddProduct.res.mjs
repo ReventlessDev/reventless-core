@@ -2,25 +2,44 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
 
-let consumedEventSchema = S.literal("ProductAdded");
+let consumedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "ProductAdded",
+    productId: s.m(DcbTag$Reventless.string)
+  })),
+  S.schema(s => ({
+    TAG: "CategoryAdded",
+    categoryId: s.m(DcbTag$Reventless.string)
+  })),
+  S.schema(s => ({
+    TAG: "CategoryArchived",
+    categoryId: s.m(DcbTag$Reventless.string)
+  }))
+]);
 
 let commandSchema = S.schema(s => ({
   TAG: "AddProduct",
-  productId: s.m(DcbTag$Reventless.string),
+  productId: s.m(DcbTag$Reventless.partition),
   name: s.m(S.string),
   description: s.m(S.string),
-  price: s.m(S.float)
+  price: s.m(S.float),
+  categoryId: s.m(Reference$Reventless.to_(undefined, undefined, "Categories"))
 }));
 
-let errorSchema = S.literal("ProductAlreadyExists");
+let errorSchema = S.union([
+  S.literal("ProductAlreadyExists"),
+  S.literal("CategoryNotFound")
+]);
 
 let eventSchema = S.schema(s => ({
   TAG: "ProductAdded",
-  productId: s.m(DcbTag$Reventless.string),
+  productId: s.m(DcbTag$Reventless.partition),
   name: s.m(S.string),
   description: s.m(S.string),
-  price: s.m(S.float)
+  price: s.m(S.float),
+  categoryId: s.m(DcbTag$Reventless.crossPartition)
 }));
 
 function commandAuthorization(param) {

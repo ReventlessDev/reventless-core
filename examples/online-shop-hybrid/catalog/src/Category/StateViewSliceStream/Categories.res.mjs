@@ -3,7 +3,25 @@
 import * as S from "sury/src/S.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 
+let consumedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "CategoryAdded",
+    categoryId: s.m(S.string),
+    name: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "CategoryRenamed",
+    categoryId: s.m(S.string),
+    name: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "CategoryArchived",
+    categoryId: s.m(S.string)
+  }))
+]);
+
 let stateSchema = S.schema(s => ({
+  categoryId: s.m(S.string),
   name: s.m(S.string),
   archived: s.m(S.bool)
 }));
@@ -16,7 +34,7 @@ let Id;
 
 let subIdConfig;
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Category/ReadModel/Categories.res.mjs";
+let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Category/StateViewSliceStream/Categories.res.mjs";
 
 let authorization = "AllowAuthenticated";
 
@@ -25,6 +43,7 @@ let visibility = "Public";
 export {
   name,
   Id,
+  consumedEventSchema,
   stateSchema,
   config,
   subIdConfig,
@@ -32,4 +51,4 @@ export {
   authorization,
   visibility,
 }
-/* stateSchema Not a pure module */
+/* consumedEventSchema Not a pure module */

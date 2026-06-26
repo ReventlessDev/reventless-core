@@ -149,9 +149,10 @@ function CommandStep(Spec) {
         lastAggregateId: s.lastAggregateId
       };
     };
+    let crossPartitionTagKeys = DcbTag$Reventless.extractCrossPartitionTagKeys(Spec.eventSchema);
     let whenCommand = async (flowP, command) => {
       let s = await flowP;
-      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, undefined, undefined);
+      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, undefined, crossPartitionTagKeys);
       let history = decodeMatching(s.log, consumedDecoder, query);
       let state = Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve);
       let events = Behavior.decide(state, command);
@@ -219,6 +220,7 @@ function CommandStep(Spec) {
       consumedDecoder: consumedDecoder,
       consumedEventTypes: consumedEventTypes,
       givenEvents: givenEvents,
+      crossPartitionTagKeys: crossPartitionTagKeys,
       whenCommand: whenCommand,
       thenEvents: thenEvents,
       thenEvent: thenEvent,

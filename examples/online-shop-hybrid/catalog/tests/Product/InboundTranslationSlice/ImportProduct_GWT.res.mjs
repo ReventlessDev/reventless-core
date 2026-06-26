@@ -38,35 +38,48 @@ describe("ImportProduct InboundTranslationSlice", () => {
     title: "Laptop",
     desc: "high-end",
     unitPrice: 99999,
-    currency: "USD"
+    currency: "USD",
+    category: "cat1"
   }), "p-1", {
     TAG: "AddProduct",
     productId: "p-1",
     name: "Laptop",
     description: "high-end",
-    price: 999.99
+    price: 999.99,
+    categoryId: "cat1"
   }));
   test("non-USD currency surfaces a translate error", () => thenTranslateError(whenInput({
     sku: "p-1",
     title: "Laptop",
     desc: "x",
     unitPrice: 1,
-    currency: "EUR"
+    currency: "EUR",
+    category: "cat1"
   }), "Unsupported currency: EUR"));
   test("non-positive price surfaces a translate error", () => thenTranslateError(whenInput({
     sku: "p-1",
     title: "Laptop",
     desc: "x",
     unitPrice: 0,
-    currency: "USD"
+    currency: "USD",
+    category: "cat1"
   }), "Price must be positive"));
   test("empty SKU surfaces a translate error", () => thenTranslateError(whenInput({
     sku: "",
     title: "Laptop",
     desc: "x",
     unitPrice: 100,
-    currency: "USD"
+    currency: "USD",
+    category: "cat1"
   }), "SKU is required"));
+  test("empty category surfaces a translate error", () => thenTranslateError(whenInput({
+    sku: "p-1",
+    title: "Laptop",
+    desc: "x",
+    unitPrice: 100,
+    currency: "USD",
+    category: ""
+  }), "Category is required"));
 });
 
 let Spec = include.Spec;

@@ -8,7 +8,8 @@ let externalInputSchema = S.schema(s => ({
   title: s.m(S.string),
   desc: s.m(S.string),
   unitPrice: s.m(S.int),
-  currency: s.m(S.string)
+  currency: s.m(S.string),
+  category: s.m(S.string)
 }));
 
 let commandSchema = S.schema(s => ({
@@ -16,7 +17,8 @@ let commandSchema = S.schema(s => ({
   productId: s.m(DcbTag$Reventless.string),
   name: s.m(S.string),
   description: s.m(S.string),
-  price: s.m(S.float)
+  price: s.m(S.float),
+  categoryId: s.m(DcbTag$Reventless.string)
 }));
 
 function commandAuthorization(param) {

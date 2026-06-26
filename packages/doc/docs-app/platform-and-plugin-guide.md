@@ -1209,45 +1209,46 @@ A hybrid plugin passes both `~aggregates` and DCB slice arrays to `Plugin.make`:
 
 ```rescript
 // AUTO-GENERATED — do not edit. Run `npm run generate` to update.
-// Hybrid Catalog: Category aggregate + Product/Demand DCB slices
+// Hybrid Ordering: Customer aggregate + Order/CatalogProduct DCB slices
 module Make = (Platform: ReventlessInfra.Platform.T) => {
-  // --- Aggregate-based: Category (independent entity) ---
+  // --- Aggregate-based: Customer (independent write side) ---
   // The generated form always passes the event-mappings module as the third
-  // arg — `NoEventMappings.Make(Category)` when there is no inbound routing.
-  module CategoryAggregate = Platform.Aggregate.Make(
-    Category,
-    Category_Behavior,
-    ReventlessInfra.NoEventMappings.Make(Category),
+  // arg — `NoEventMappings.Make(Customer)` when there is no inbound routing.
+  module CustomerAggregate = Platform.Aggregate.Make(
+    Customer,
+    Customer_Behavior,
+    ReventlessInfra.NoEventMappings.Make(Customer),
   )
-  module CategoriesReadModel = Platform.ReadModel.Make(Categories, Categories_Projections)
+  // Mixed-source: profile from the Customer aggregate + orderCount from the DCB log
+  module CustomersReadModel = Platform.ReadModelStream.Make(Customers, Customers_Projections)
 
-  // --- DCB-based: Product + ProductDemand (cross-entity consistency) ---
-  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
-  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName, ChangeProductName_Behavior)
+  // --- DCB-based: Order + CatalogProduct (cross-entity consistency) ---
+  module PlaceOrderSlice = Platform.StateChangeSlice.Make(PlaceOrder, PlaceOrder_Behavior)
+  module ShipOrderSlice = Platform.StateChangeSlice.Make(ShipOrder, ShipOrder_Behavior)
   // ... more slices
 
-  module ProductsStreamSlice = Platform.StateViewSliceStream.Make(Products, Products_Projection)
-  module ProductDemandStreamSlice = Platform.StateViewSliceStream.Make(ProductDemand, ProductDemand_Projection)
+  module OrdersStreamSlice = Platform.StateViewSliceStream.Make(Orders, Orders_Projection)
+  module AvailableProductsStreamSlice = Platform.StateViewSliceStream.Make(AvailableProducts, AvailableProducts_Projection)
 
   let make = () =>
     Platform.Plugin.make(
-      ~name="Catalog",
+      ~name="Ordering",
       ~heartbeatInterval=60,
-      ~aggregates=[module(CategoryAggregate)],        // Aggregate components
-      ~readModels=[module(CategoriesReadModel)],      // Aggregate read models
+      ~aggregates=[module(CustomerAggregate)],        // Aggregate components
+      ~readModels=[module(CustomersReadModel)],       // Mixed aggregate + DCB read model
       ~stateChangeSlices=[                            // DCB slices
-        module(AddProductSlice),
-        module(ChangeProductNameSlice),
+        module(PlaceOrderSlice),
+        module(ShipOrderSlice),
       ],
       ~stateViewSlices=[
-        module(ProductsStreamSlice),
-        module(ProductDemandStreamSlice),
+        module(OrdersStreamSlice),
+        module(AvailableProductsStreamSlice),
       ],
       ~pluginStructure=pluginStructure,
       ~uiFragments=?uiBundleUrl->Option.map(url =>
         Platform.Plugin.makeAutoUIManifest(
           ~remoteEntryUrl=url,
-          ~name="Catalog",
+          ~name="Ordering",
           ~pluginStructure,
           ~readModelPositions=["platform-summary"],
           ~aggregatePositions=["resource-detail"],
@@ -1257,65 +1258,68 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 }
 ```
 
-Both contribute to the unified GraphQL schema automatically — aggregate mutations/queries and DCB mutations/queries appear side by side.
+Both contribute to the unified GraphQL schema automatically — aggregate mutations/queries and DCB mutations/queries appear side by side. (The sibling **Catalog** plugin is the other shape: it has no `Aggregate/` folder, so every write-side entity — Category, Product, ProductDemand — is a DCB slice.)
 
 ### ReadModel Sourcing from DCB EventTopic
 
-A traditional `ReadModel` can be fed by both an aggregate and the plugin's DCB log in the same multi-source `*_Projections.res` file. The DCB EventTopic is registered under the key `<pluginName> ++ "DcbEventLog"` (e.g., `"CatalogDcbEventLog"`), which is also the `meta.service` value DcbEventLog stamps on every published event — the two must match for events to route into the projection.
+A traditional `ReadModel` (or `ReadModelStream`) can be fed by both an aggregate and the plugin's DCB log in the same multi-source `*_Projections.res` file. The DCB EventTopic is registered under the key `<pluginName> ++ "DcbEventLog"` (e.g., `"OrderingDcbEventLog"`), which is also the `meta.service` value DcbEventLog stamps on every published event — the two must match for events to route into the projection.
 
-A DCB-sourced mapping declares an inner module whose `let name` equals `<pluginName>DcbEventLog` and a `@schema type event` listing the variants it cares about. The `@@reventless.mappings` PPX auto-tags the source as a DCB source (injects `module Id = Reventless.Id.String` and dcbTags on `*Id` fields). The aggregate source resolves to its `Spec.name`. Each source is wired with `Mapping.Make(Source, Target, { ... })`, and the file ends with `let mappings: array<module(Mapping)>`:
+A DCB-sourced mapping declares an inner module whose `let name` equals `<pluginName>DcbEventLog` and a `@schema type event` listing the variants it cares about. The `@@reventless.mappings` PPX auto-tags the source as a DCB source (injects `module Id = Reventless.Id.String` and dcbTags on `*Id` fields). The aggregate source resolves to its `Spec.name`. Each source is wired with `Mapping.Make(Source, Target, { ... })`, and the file ends with `let mappings: array<module(Mapping)>`. When both mappings write to the same row id — as below, keyed by `customerId` — the aggregate and DCB contributions **merge into one record**:
 
 ```rescript
 @@reventless.mappings
 
 // DCB source — `name` MUST equal `<pluginName>DcbEventLog`.
-module CatalogDcbSource = {
-  let name = "CatalogDcbEventLog"
+module OrderEvents = {
+  let name = "OrderingDcbEventLog"
 
   @schema
-  type event =
-    | ProductAdded({productId: string, name: string, description: string, price: float})
-    | ProductRenamed({productId: string, name: string})
+  type event = OrderPlaced({orderId: string, customerId: string})
 }
 
-// Source 1 — Category Aggregate
-module CategoryActivityMapping = Mapping.Make(
-  Category,
-  CatalogActivity,
+// Source 1 — Customer Aggregate (profile)
+module CustomerMapping = Mapping.Make(
+  Customer,
+  Customers,
   {
-    open Category
+    open Customer
     let project = ({event, id, _}) =>
       switch event {
-      | Added({name}) =>
-        Set(id, {CatalogActivity.name: name, kind: Category, lastChange: (Added: CatalogActivity.change)})
-      | Renamed({name}) =>
-        Update(id, state => {...state, name, lastChange: (Renamed: CatalogActivity.change)})
-      | Archived =>
-        Update(id, state => {...state, lastChange: (Archived: CatalogActivity.change)})
+      | Registered({email, address}) =>
+        UpdateWithDefault(
+          id,
+          {Customers.email: email, address, deactivated: false, orderCount: 0},
+          state => {...state, email, address, deactivated: false},
+        )
+      | EmailUpdated({email}) => Update(id, state => {...state, email})
+      | AddressUpdated({address}) => Update(id, state => {...state, address})
+      | Deactivated => Update(id, state => {...state, deactivated: true})
       }
   },
 )
 
-// Source 2 — Catalog DCB EventLog
-module ProductActivityMapping = Mapping.Make(
-  CatalogDcbSource,
-  CatalogActivity,
+// Source 2 — Ordering DCB EventLog (orderCount, keyed by customerId)
+module CustomerOrdersMapping = Mapping.Make(
+  OrderEvents,
+  Customers,
   {
-    open CatalogDcbSource
+    open OrderEvents
     let project = ({event, _}) =>
       switch event {
-      | ProductAdded({productId, name}) =>
-        Set(productId, {CatalogActivity.name: name, kind: Product, lastChange: Added})
-      | ProductRenamed({productId, name}) =>
-        Update(productId, state => {...state, name, lastChange: Renamed})
+      | OrderPlaced({customerId}) =>
+        UpdateWithDefault(
+          customerId,
+          {Customers.email: "", address: "", deactivated: false, orderCount: 1},
+          state => {...state, orderCount: state.orderCount + 1},
+        )
       }
   },
 )
 
-let mappings: array<module(Mapping)> = [module(CategoryActivityMapping), module(ProductActivityMapping)]
+let mappings: array<module(Mapping)> = [module(CustomerMapping), module(CustomerOrdersMapping)]
 ```
 
-See `examples/online-shop-hybrid/catalog/src/CatalogActivity/ReadModel/CatalogActivity_Projections.res` for the complete mixed-source example.
+See `examples/online-shop-hybrid/ordering/src/Customer/ReadModelStream/Customers_Projections.res` for the complete mixed-source example.
 
 ### Extension Points in Hybrid Plugins
 
@@ -1360,25 +1364,23 @@ Other plugins see the extension point API and never know whether the source is a
 catalog/
 ├── src/
 │   ├── Category/
-│   │   ├── Aggregate/
-│   │   │   ├── Category.res           # Aggregate spec
-│   │   │   └── Category_Behavior.res  # Aggregate behavior
-│   │   └── ReadModel/
-│   │       ├── Categories.res
-│   │       └── Categories_Projections.res
+│   │   ├── StateChangeSlice/
+│   │   │   ├── AddCategory.res            # Slice spec (consumedEvent/command/error/event)
+│   │   │   ├── AddCategory_Behavior.res   # Slice behavior (state/initialState/evolve/decide)
+│   │   │   ├── RenameCategory.res
+│   │   │   └── ArchiveCategory.res
+│   │   └── StateViewSliceStream/
+│   │       ├── Categories.res             # View spec (state + consumedEvent)
+│   │       └── Categories_Projection.res  # View projection
 │   ├── Product/
 │   │   ├── StateChangeSlice/
-│   │   │   ├── AddProduct.res             # Slice spec (consumedEvent/command/error/event)
+│   │   │   ├── AddProduct.res             # Slice spec — verifies categoryId exists
 │   │   │   ├── AddProduct_Behavior.res    # Slice behavior (state/initialState/evolve/decide)
 │   │   │   ├── ChangeProductName.res
 │   │   │   └── ChangeProductName_Behavior.res
 │   │   └── StateViewSliceStream/
 │   │       ├── Products.res               # View spec (state + consumedEvent)
 │   │       └── Products_Projection.res    # View projection
-│   ├── CatalogActivity/
-│   │   └── ReadModel/
-│   │       ├── CatalogActivity.res        # Mixed-source: Aggregate + DCB log
-│   │       └── CatalogActivity_Projections.res
 │   ├── ExtensionPoint/
 │   │   └── Products_ExtensionPointMapping.res
 │   ├── Extension/
@@ -1392,12 +1394,12 @@ There is no shared event-log file: Product DCB events live entirely in the Produ
 
 ### Reference Example
 
-See `examples/online-shop-hybrid/` for a complete working example with two hybrid plugins (Catalog and Ordering), demonstrating:
+See `examples/online-shop-hybrid/` for a complete working example with two plugins (Catalog and Ordering), demonstrating:
 
-- Category and Customer as aggregates (independent entities)
-- Product/Demand and Order/CatalogProduct as DCB slices (cross-entity consistency)
+- Customer as an aggregate (independent write side); Category, Product/Demand, and Order/CatalogProduct as DCB slices (cross-entity consistency — e.g. AddProduct verifies its category exists)
+- Ordering's `Customers` as a mixed aggregate + DCB read model (profile + order count)
 - Extension points bridging between plugins regardless of modeling approach
-- Behavior tests (aggregates), decision tests (DCB), and E2E tests
+- Behavior tests (aggregates) and decision tests (DCB) via the GWT DSL
 
 ---
 

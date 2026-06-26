@@ -29,19 +29,22 @@ describe("Products StateViewSliceStream", () => {
     productId: "p1",
     name: "Laptop",
     description: "x",
-    price: 999.99
+    price: 999.99,
+    categoryId: "cat1"
   }), "p1", {
     productId: "p1",
     name: "Laptop",
     description: "x",
-    price: 999.99
+    price: 999.99,
+    categoryId: "cat1"
   }));
   test("ProductNameChanged updates the name", undefined, () => thenStateWithId(whenEvent(givenEvents([{
       TAG: "ProductAdded",
       productId: "p1",
       name: "Laptop",
       description: "x",
-      price: 999.99
+      price: 999.99,
+      categoryId: "cat1"
     }]), {
     TAG: "ProductNameChanged",
     productId: "p1",
@@ -50,14 +53,16 @@ describe("Products StateViewSliceStream", () => {
     productId: "p1",
     name: "Gaming Laptop",
     description: "x",
-    price: 999.99
+    price: 999.99,
+    categoryId: "cat1"
   }));
   test("ProductDescriptionChanged updates the description", undefined, () => thenStateWithId(whenEvent(givenEvents([{
       TAG: "ProductAdded",
       productId: "p1",
       name: "Laptop",
       description: "x",
-      price: 999.99
+      price: 999.99,
+      categoryId: "cat1"
     }]), {
     TAG: "ProductDescriptionChanged",
     productId: "p1",
@@ -66,14 +71,16 @@ describe("Products StateViewSliceStream", () => {
     productId: "p1",
     name: "Laptop",
     description: "high-end",
-    price: 999.99
+    price: 999.99,
+    categoryId: "cat1"
   }));
   test("ProductPriceChanged updates the price", undefined, () => thenStateWithId(whenEvent(givenEvents([{
       TAG: "ProductAdded",
       productId: "p1",
       name: "Laptop",
       description: "x",
-      price: 999.99
+      price: 999.99,
+      categoryId: "cat1"
     }]), {
     TAG: "ProductPriceChanged",
     productId: "p1",
@@ -82,7 +89,8 @@ describe("Products StateViewSliceStream", () => {
     productId: "p1",
     name: "Laptop",
     description: "x",
-    price: 899.99
+    price: 899.99,
+    categoryId: "cat1"
   }));
 });
 

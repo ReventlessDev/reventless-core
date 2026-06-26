@@ -54,6 +54,8 @@ let Spec = include.Spec;
 
 let describeWithId = include.describeWithId;
 
+let todo = include.todo;
+
 let whenEvents = include.whenEvents;
 
 let thenStates = include.thenStates;
@@ -74,6 +76,7 @@ export {
   Spec,
   describe,
   describeWithId,
+  todo,
   test,
   givenEvents,
   whenEvent,

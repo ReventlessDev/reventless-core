@@ -81,12 +81,11 @@ Mutation and query field names, and the GraphQL type names they return, are alwa
 
 | Component                            | Mutation field            | Query field (single) | Query field (list)   | GraphQL type name      |
 | ------------------------------------ | ------------------------- | -------------------- | -------------------- | ---------------------- |
-| `Aggregate/Category.res`             | `Catalog_Category_<Variant>` | —                  | —                    | —                      |
+| `StateChangeSlice/AddCategory.res`   | `Catalog_AddCategory`     | —                    | —                    | —                      |
 | `StateChangeSlice/AddProduct.res`    | `Catalog_AddProduct`      | —                    | —                    | —                      |
-| `ReadModel/Categories.res`           | —                         | `Catalog_Category`   | `Catalog_Categories` | `Catalog_Category`     |
+| `StateViewSliceStream/Categories.res` | —                        | `Catalog_Category`   | `Catalog_Categories` | `Catalog_Category`     |
 | `StateViewSliceStream/Products.res`  | —                         | `Catalog_Product`    | `Catalog_Products`   | `Catalog_Product`      |
 | `StateViewSliceStream/ProductDemand.res` | —                     | `Catalog_ProductDemand` | `Catalog_ProductDemands` | `Catalog_ProductDemand` |
-| `ReadModel/CatalogActivity.res`      | —                         | `Catalog_CatalogActivity` | `Catalog_CatalogActivities` | `Catalog_CatalogActivity` |
 
 Connection plumbing (`<Type>Edge`, `<Type>Connection`, `<Type>Filter`, `<Type>OrderField`, `<Type>OrderBy`) attaches to the GraphQL type name — e.g. `Catalog_CategoryEdge`, `Catalog_CategoryConnection`, `Catalog_CategoryFilter`, `Catalog_CategoryOrderField`, `Catalog_CategoryOrderBy`.
 
@@ -117,21 +116,21 @@ The return type of every mutation is `String!` — the resolver returns a JSON-e
 A closed union `command` produces one mutation field per variant. The field name is `<Plugin>_<Entity>_<Variant>`, and an `id: ID!` argument is **prepended** to the variant's native args (because aggregates are keyed by the aggregate id).
 
 ```rescript
-// catalog/src/Category/Aggregate/Category.res
+// ordering/src/Customer/Aggregate/Customer.res
 @@reventless.spec
 
 @schema
 type command =
-  | Add({name: string})
-  | Rename({name: string})
-  | Archive
+  | Register({email: string, address: string})
+  | UpdateEmail({email: string})
+  | Deactivate
 ```
 
 ```graphql
 extend type Mutation {
-  Catalog_Category_Add(id: ID!, name: String!): String!
-  Catalog_Category_Rename(id: ID!, name: String!): String!
-  Catalog_Category_Archive(id: ID!): String!
+  Ordering_Customer_Register(id: ID!, email: String!, address: String!): String!
+  Ordering_Customer_UpdateEmail(id: ID!, email: String!): String!
+  Ordering_Customer_Deactivate(id: ID!): String!
 }
 ```
 
@@ -602,8 +601,8 @@ One field per mutation. Fires when the mutation is accepted (before its side eff
 extend type Subscription {
   onCatalog_AddProduct(id: ID): String!
     @aws_subscribe(mutations: ["Catalog_AddProduct"])
-  onCatalog_Category_Add(id: ID): String!
-    @aws_subscribe(mutations: ["Catalog_Category_Add"])
+  onCatalog_AddCategory(id: ID): String!
+    @aws_subscribe(mutations: ["Catalog_AddCategory"])
   onOrdering_PlaceOrder(id: ID): String!
     @aws_subscribe(mutations: ["Ordering_PlaceOrder"])
 }
@@ -645,6 +644,7 @@ type Subscription { _noop: String }
 # Catalog
 type Catalog_Category implements Node {
   id: ID!
+  categoryId: ID!
   name: String!
   archived: Boolean!
 }
@@ -655,23 +655,15 @@ type Catalog_Product implements Node {
   name: String!
   description: String!
   price: Float!
+  categoryId: ID!
 }
 
 type Catalog_ProductDemand implements Node {
   id: ID!
   productId: ID!
   name: String!
+  categoryId: ID!
   orderCount: Int!
-}
-
-enum Catalog_CatalogActivityKind { Category Product }
-enum Catalog_CatalogActivityChange { Added Renamed Archived }
-
-type Catalog_CatalogActivity implements Node {
-  id: ID!
-  name: String!
-  kind: Catalog_CatalogActivityKind!
-  lastChange: Catalog_CatalogActivityChange!
 }
 
 # Ordering
@@ -680,6 +672,7 @@ type Ordering_Customer implements Node {
   email: String!
   address: String!
   deactivated: Boolean!
+  orderCount: Int!
   displayName: String!
 }
 
@@ -711,7 +704,7 @@ enum Catalog_CategoryOrderField { name }
 input Catalog_CategoryOrderBy { field: Catalog_CategoryOrderField! direction: SortOrder! }
 ```
 
-Repeat for every entity type with the appropriate prefix (`Catalog_Product*`, `Catalog_ProductDemand*`, `Catalog_CatalogActivity*`, `Ordering_Customer*`, `Ordering_Order*`, `Ordering_AvailableProduct*`). The `OrderField` enum values come from state fields tagged `@id`/`@subId`/`@index`/`@scanSort`; absent any such tags, the enum is empty and the `orderBy` argument is dropped.
+Repeat for every entity type with the appropriate prefix (`Catalog_Product*`, `Catalog_ProductDemand*`, `Ordering_Customer*`, `Ordering_Order*`, `Ordering_AvailableProduct*`). The `OrderField` enum values come from state fields tagged `@id`/`@subId`/`@index`/`@scanSort`; absent any such tags, the enum is empty and the `orderBy` argument is dropped.
 
 ### Subscription supporting types
 
@@ -726,20 +719,20 @@ type CustomerEventLogEvent { position: String! eventType: String! payload: AWSJS
 
 ```graphql
 extend type Mutation {
-  # Catalog — Category aggregate
-  Catalog_Category_Add(id: ID!, name: String!): String!
-  Catalog_Category_Rename(id: ID!, name: String!): String!
-  Catalog_Category_Archive(id: ID!): String!
+  # Catalog — Category DCB slices
+  Catalog_AddCategory(categoryId: ID!, name: String!): String!
+  Catalog_RenameCategory(categoryId: ID!, name: String!): String!
+  Catalog_ArchiveCategory(categoryId: ID!): String!
 
   # Catalog — Product DCB slices
-  Catalog_AddProduct(productId: ID!, name: String!, description: String!, price: Float!): String!
+  Catalog_AddProduct(productId: ID!, name: String!, description: String!, price: Float!, categoryId: ID!): String!
   Catalog_ChangeProductName(productId: ID!, newName: String!): String!
   Catalog_ChangeProductDescription(productId: ID!, description: String!): String!
   Catalog_ChangeProductPrice(productId: ID!, price: Float!): String!
   Catalog_RecordProductDemand(productId: ID!): String!
 
   # Catalog — Inbound translation (external schema as args)
-  Catalog_ImportProduct(sku: String!, title: String!, desc: String!, unitPrice: Int!, currency: String!): String!
+  Catalog_ImportProduct(sku: String!, title: String!, desc: String!, unitPrice: Int!, currency: String!, category: String!): String!
 
   # Ordering — Customer aggregate
   Ordering_Customer_Register(id: ID!, email: String!, address: String!): String!
@@ -773,9 +766,6 @@ extend type Query {
   Catalog_ProductDemand(id: ID!): Catalog_ProductDemand
   Catalog_ProductDemands(filter: Catalog_ProductDemandFilter, orderBy: Catalog_ProductDemandOrderBy, first: Int, after: String, last: Int, before: String): Catalog_ProductDemandConnection!
 
-  Catalog_CatalogActivity(id: ID!): Catalog_CatalogActivity
-  Catalog_CatalogActivities(filter: Catalog_CatalogActivityFilter, orderBy: Catalog_CatalogActivityOrderBy, first: Int, after: String, last: Int, before: String): Catalog_CatalogActivityConnection!
-
   # Ordering
   Ordering_Customer(id: ID!): Ordering_Customer
   Ordering_Customers(filter: Ordering_CustomerFilter, orderBy: Ordering_CustomerOrderBy, first: Int, after: String, last: Int, before: String): Ordering_CustomerConnection!
@@ -793,16 +783,15 @@ extend type Query {
 ```graphql
 extend type Subscription {
   # Mutation-accepted feed (one per mutation field)
-  onCatalog_Category_Add(id: ID): String! @aws_subscribe(mutations: ["Catalog_Category_Add"])
-  onCatalog_AddProduct(id: ID): String!   @aws_subscribe(mutations: ["Catalog_AddProduct"])
-  onOrdering_PlaceOrder(id: ID): String!  @aws_subscribe(mutations: ["Ordering_PlaceOrder"])
+  onCatalog_AddCategory(id: ID): String! @aws_subscribe(mutations: ["Catalog_AddCategory"])
+  onCatalog_AddProduct(id: ID): String!  @aws_subscribe(mutations: ["Catalog_AddProduct"])
+  onOrdering_PlaceOrder(id: ID): String! @aws_subscribe(mutations: ["Ordering_PlaceOrder"])
   # ... one entry per mutation above
 
   # Read-model feed (one per queryable type)
   onCatalog_Category_stateChanged(id: ID):         Catalog_Category
   onCatalog_Product_stateChanged(id: ID):          Catalog_Product
   onCatalog_ProductDemand_stateChanged(id: ID):    Catalog_ProductDemand
-  onCatalog_CatalogActivity_stateChanged(id: ID):  Catalog_CatalogActivity
   onOrdering_Customer_stateChanged(id: ID):        Ordering_Customer
   onOrdering_Order_stateChanged(id: ID):           Ordering_Order
   onOrdering_AvailableProduct_stateChanged(id: ID): Ordering_AvailableProduct

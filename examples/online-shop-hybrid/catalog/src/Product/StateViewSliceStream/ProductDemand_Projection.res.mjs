@@ -5,6 +5,7 @@ import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
 function project(event) {
   switch (event.TAG) {
     case "ProductAdded" :
+      let categoryId = event.categoryId;
       let name = event.name;
       let productId = event.productId;
       return [{
@@ -13,11 +14,13 @@ function project(event) {
           _1: {
             productId: productId,
             name: name,
+            categoryId: categoryId,
             orderCount: 0
           },
           _2: s => ({
             productId: s.productId,
             name: name,
+            categoryId: categoryId,
             orderCount: s.orderCount
           })
         }];
@@ -28,6 +31,7 @@ function project(event) {
           _1: s => ({
             productId: s.productId,
             name: s.name,
+            categoryId: s.categoryId,
             orderCount: s.orderCount + 1 | 0
           })
         }];
@@ -38,6 +42,7 @@ function project(event) {
           _1: s => ({
             productId: s.productId,
             name: s.name,
+            categoryId: s.categoryId,
             orderCount: Primitive_int.max(0, s.orderCount - 1 | 0)
           })
         }];

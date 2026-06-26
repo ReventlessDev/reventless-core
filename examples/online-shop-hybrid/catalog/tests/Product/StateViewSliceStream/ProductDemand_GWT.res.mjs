@@ -27,29 +27,34 @@ describe("ProductDemand StateViewSliceStream", () => {
   test("ProductAdded initialises a row with orderCount = 0", undefined, () => thenStateWithId(whenEvent(givenEvents([]), {
     TAG: "ProductAdded",
     productId: "p1",
-    name: "Laptop"
+    name: "Laptop",
+    categoryId: "cat1"
   }), "p1", {
     productId: "p1",
     name: "Laptop",
+    categoryId: "cat1",
     orderCount: 0
   }));
   test("ProductDemandRecorded increments orderCount", undefined, () => thenStateWithId(whenEvent(givenEvents([{
       TAG: "ProductAdded",
       productId: "p1",
-      name: "Laptop"
+      name: "Laptop",
+      categoryId: "cat1"
     }]), {
     TAG: "ProductDemandRecorded",
     productId: "p1"
   }), "p1", {
     productId: "p1",
     name: "Laptop",
+    categoryId: "cat1",
     orderCount: 1
   }));
   test("ProductDemandRevoked decrements orderCount", undefined, () => thenStateWithId(whenEvent(givenEvents([
     {
       TAG: "ProductAdded",
       productId: "p1",
-      name: "Laptop"
+      name: "Laptop",
+      categoryId: "cat1"
     },
     {
       TAG: "ProductDemandRecorded",
@@ -65,18 +70,21 @@ describe("ProductDemand StateViewSliceStream", () => {
   }), "p1", {
     productId: "p1",
     name: "Laptop",
+    categoryId: "cat1",
     orderCount: 1
   }));
   test("ProductDemandRevoked clamps orderCount at zero", undefined, () => thenStateWithId(whenEvent(givenEvents([{
       TAG: "ProductAdded",
       productId: "p1",
-      name: "Laptop"
+      name: "Laptop",
+      categoryId: "cat1"
     }]), {
     TAG: "ProductDemandRevoked",
     productId: "p1"
   }), "p1", {
     productId: "p1",
     name: "Laptop",
+    categoryId: "cat1",
     orderCount: 0
   }));
 });

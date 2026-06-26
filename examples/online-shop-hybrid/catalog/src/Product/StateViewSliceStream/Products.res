@@ -5,10 +5,16 @@
 
 @schema
 type consumedEvent =
-  | ProductAdded({productId: string, name: string, description: string, price: float})
+  | ProductAdded({productId: string, name: string, description: string, price: float, categoryId: string})
   | ProductNameChanged({productId: string, name: string})
   | ProductDescriptionChanged({productId: string, description: string})
   | ProductPriceChanged({productId: string, price: float})
 
 @schema
-type state = {productId: string, name: string, description: string, price: float}
+type state = {
+  productId: string,
+  name: string,
+  description: string,
+  price: float,
+  categoryId: string,
+}

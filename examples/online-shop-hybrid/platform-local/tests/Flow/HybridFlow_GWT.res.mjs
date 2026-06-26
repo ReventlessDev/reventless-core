@@ -3,12 +3,14 @@
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Flow_GWT$ReventlessGwt from "@reventlessdev/reventless-gwt/src/Flow_GWT.res.mjs";
 import * as AddProduct$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateChangeSlice/AddProduct.res.mjs";
+import * as AddCategory$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Category/StateChangeSlice/AddCategory.res.mjs";
 import * as PlaceOrder$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateChangeSlice/PlaceOrder.res.mjs";
 import * as Orders_Extension$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Extension/Orders_Extension.res.mjs";
 import * as AddProduct_Behavior$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateChangeSlice/AddProduct_Behavior.res.mjs";
 import * as Products_Extension$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Extension/Products_Extension.res.mjs";
 import * as RecordProductDemand$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/ProductDemand/StateChangeSlice/RecordProductDemand.res.mjs";
 import * as SyncCatalogProduct$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/CatalogProduct/StateChangeSlice/SyncCatalogProduct.res.mjs";
+import * as AddCategory_Behavior$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Category/StateChangeSlice/AddCategory_Behavior.res.mjs";
 import * as Orders_ExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-hybrid-ordering-spec/src/Orders_ExtensionPoint.res.mjs";
 import * as PlaceOrder_Behavior$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateChangeSlice/PlaceOrder_Behavior.res.mjs";
 import * as Products_ExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/Products_ExtensionPoint.res.mjs";
@@ -16,6 +18,18 @@ import * as RecordProductDemand_Behavior$CatalogPlugin from "@reventlessdev/onli
 import * as SyncCatalogProduct_Behavior$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/CatalogProduct/StateChangeSlice/SyncCatalogProduct_Behavior.res.mjs";
 import * as Orders_ExtensionPointMapping$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/ExtensionPoint/Orders_ExtensionPointMapping.res.mjs";
 import * as Products_ExtensionPointMapping$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/ExtensionPoint/Products_ExtensionPointMapping.res.mjs";
+
+let Cat = Flow_GWT$ReventlessGwt.CommandStep({
+  name: AddCategory$CatalogPlugin.name,
+  consumedEventSchema: AddCategory$CatalogPlugin.consumedEventSchema,
+  commandSchema: AddCategory$CatalogPlugin.commandSchema,
+  errorSchema: AddCategory$CatalogPlugin.errorSchema,
+  eventSchema: AddCategory$CatalogPlugin.eventSchema
+})({
+  initialState: AddCategory_Behavior$CatalogPlugin.initialState,
+  evolve: AddCategory_Behavior$CatalogPlugin.evolve,
+  decide: AddCategory_Behavior$CatalogPlugin.decide
+});
 
 let Add = Flow_GWT$ReventlessGwt.CommandStep({
   name: AddProduct$CatalogPlugin.name,
@@ -156,18 +170,24 @@ let Demand = Flow_GWT$ReventlessGwt.CommandStep({
 });
 
 Flow_GWT$ReventlessGwt.describe("Hybrid cross-plugin flow", () => {
-  Flow_GWT$ReventlessGwt.test("Tier 2 — a product added in Catalog becomes orderable in Ordering via the sync", undefined, () => Place.thenEvent(Place.whenCommand(Sync.thenEvent(Sync.whenCommand(ProductsExt.thenIssuesCommand(ProductsExt.whenExtensionReacts(ProductsEp.thenPublicEvent(ProductsEp.whenPublishedThrough(Add.thenEvent(Add.whenCommand(Flow_GWT$ReventlessGwt.start, {
+  Flow_GWT$ReventlessGwt.test("Tier 2 — a product added in Catalog becomes orderable in Ordering via the sync", undefined, () => Place.thenEvent(Place.whenCommand(Sync.thenEvent(Sync.whenCommand(ProductsExt.thenIssuesCommand(ProductsExt.whenExtensionReacts(ProductsEp.thenPublicEvent(ProductsEp.whenPublishedThrough(Add.thenEvent(Add.whenCommand(Cat.givenEvents(Flow_GWT$ReventlessGwt.start, [{
+      TAG: "CategoryAdded",
+      categoryId: "cat1",
+      name: "Books"
+    }]), {
     TAG: "AddProduct",
     productId: "p1",
     name: "Book",
     description: "A good book",
-    price: 9.99
+    price: 9.99,
+    categoryId: "cat1"
   }), {
     TAG: "ProductAdded",
     productId: "p1",
     name: "Book",
     description: "A good book",
-    price: 9.99
+    price: 9.99,
+    categoryId: "cat1"
   })), {
     TAG: "ProductBecameAvailable",
     productId: "p1",
@@ -273,6 +293,7 @@ Flow_GWT$ReventlessGwt.describe("Hybrid cross-plugin flow", () => {
 });
 
 export {
+  Cat,
   Add,
   ProductsEp,
   ProductsExt,
@@ -282,4 +303,4 @@ export {
   OrdersExt,
   Demand,
 }
-/* Add Not a pure module */
+/* Cat Not a pure module */

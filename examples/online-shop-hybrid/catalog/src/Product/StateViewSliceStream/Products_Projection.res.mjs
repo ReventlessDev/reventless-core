@@ -12,7 +12,8 @@ function project(event) {
             productId: productId,
             name: event.name,
             description: event.description,
-            price: event.price
+            price: event.price,
+            categoryId: event.categoryId
           }
         }];
     case "ProductNameChanged" :
@@ -24,7 +25,8 @@ function project(event) {
             productId: state.productId,
             name: name,
             description: state.description,
-            price: state.price
+            price: state.price,
+            categoryId: state.categoryId
           })
         }];
     case "ProductDescriptionChanged" :
@@ -36,7 +38,8 @@ function project(event) {
             productId: state.productId,
             name: state.name,
             description: description,
-            price: state.price
+            price: state.price,
+            categoryId: state.categoryId
           })
         }];
     case "ProductPriceChanged" :
@@ -48,7 +51,8 @@ function project(event) {
             productId: state.productId,
             name: state.name,
             description: state.description,
-            price: price
+            price: price,
+            categoryId: state.categoryId
           })
         }];
   }

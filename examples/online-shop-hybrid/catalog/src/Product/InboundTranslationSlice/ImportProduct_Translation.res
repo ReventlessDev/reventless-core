@@ -7,6 +7,8 @@ let translate = (input: externalInput) =>
     Error("Price must be positive")
   } else if input.sku === "" {
     Error("SKU is required")
+  } else if input.category === "" {
+    Error("Category is required")
   } else {
     Ok([(
       input.sku,
@@ -15,6 +17,7 @@ let translate = (input: externalInput) =>
         name: input.title,
         description: input.desc,
         price: Int.toFloat(input.unitPrice) /. 100.0,
+        categoryId: input.category,
       }),
     )])
   }

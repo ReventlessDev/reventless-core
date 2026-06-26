@@ -5,9 +5,9 @@
 
 @schema
 type consumedEvent =
-  | ProductAdded({productId: string, name: string})
+  | ProductAdded({productId: string, name: string, categoryId: string})
   | ProductDemandRecorded({productId: string})
   | ProductDemandRevoked({productId: string})
 
 @schema
-type state = {productId: string, name: string, orderCount: int}
+type state = {productId: string, name: string, categoryId: string, orderCount: int}

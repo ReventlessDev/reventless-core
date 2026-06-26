@@ -8,6 +8,7 @@ let stateSchema = S.schema(s => ({
   email: s.m(S.string),
   address: s.m(S.string),
   deactivated: s.m(S.bool),
+  orderCount: s.m(S.int),
   displayName: s.m(S.option(S.string))
 }));
 

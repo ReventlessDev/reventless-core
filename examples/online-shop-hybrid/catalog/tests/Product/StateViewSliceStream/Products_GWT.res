@@ -3,37 +3,45 @@
 describe("Products StateViewSliceStream", () => {
   test("ProductAdded creates a row", () =>
     givenEvents([])
-    ->whenEvent(ProductAdded({productId: "p1", name: "Laptop", description: "x", price: 999.99}))
+    ->whenEvent(
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: 999.99, categoryId: "cat1"}),
+    )
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: 999.99},
+      {productId: "p1", name: "Laptop", description: "x", price: 999.99, categoryId: "cat1"},
     )
   )
 
   test("ProductNameChanged updates the name", () =>
-    givenEvents([ProductAdded({productId: "p1", name: "Laptop", description: "x", price: 999.99})])
+    givenEvents([
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: 999.99, categoryId: "cat1"}),
+    ])
     ->whenEvent(ProductNameChanged({productId: "p1", name: "Gaming Laptop"}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Gaming Laptop", description: "x", price: 999.99},
+      {productId: "p1", name: "Gaming Laptop", description: "x", price: 999.99, categoryId: "cat1"},
     )
   )
 
   test("ProductDescriptionChanged updates the description", () =>
-    givenEvents([ProductAdded({productId: "p1", name: "Laptop", description: "x", price: 999.99})])
+    givenEvents([
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: 999.99, categoryId: "cat1"}),
+    ])
     ->whenEvent(ProductDescriptionChanged({productId: "p1", description: "high-end"}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "high-end", price: 999.99},
+      {productId: "p1", name: "Laptop", description: "high-end", price: 999.99, categoryId: "cat1"},
     )
   )
 
   test("ProductPriceChanged updates the price", () =>
-    givenEvents([ProductAdded({productId: "p1", name: "Laptop", description: "x", price: 999.99})])
+    givenEvents([
+      ProductAdded({productId: "p1", name: "Laptop", description: "x", price: 999.99, categoryId: "cat1"}),
+    ])
     ->whenEvent(ProductPriceChanged({productId: "p1", price: 899.99}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: 899.99},
+      {productId: "p1", name: "Laptop", description: "x", price: 899.99, categoryId: "cat1"},
     )
   )
 })

@@ -29,26 +29,90 @@ let thenEvent = include.thenEvent;
 let thenError = include.thenError;
 
 describe("AddProduct StateChangeSlice", () => {
-  test("empty event log produces ProductAdded", () => thenEvent(whenCmd(givenEvents([]), {
+  test("adds product when the referenced category exists", () => thenEvent(whenCmd(givenEvents([{
+      TAG: "CategoryAdded",
+      categoryId: "cat1"
+    }]), {
     TAG: "AddProduct",
     productId: "p1",
     name: "Laptop",
     description: "x",
-    price: 999.99
+    price: 999.99,
+    categoryId: "cat1"
   }), {
     TAG: "ProductAdded",
     productId: "p1",
     name: "Laptop",
     description: "x",
-    price: 999.99
+    price: 999.99,
+    categoryId: "cat1"
   }));
-  test("existing product returns ProductAlreadyExists", () => thenError(whenCmd(givenEvents(["ProductAdded"]), {
+  test("rejects when the referenced category does not exist", () => thenError(whenCmd(givenEvents([]), {
     TAG: "AddProduct",
     productId: "p1",
     name: "Laptop",
     description: "x",
-    price: 999.99
+    price: 999.99,
+    categoryId: "cat1"
+  }), "CategoryNotFound"));
+  test("rejects when the referenced category is archived", () => thenError(whenCmd(givenEvents([
+    {
+      TAG: "CategoryAdded",
+      categoryId: "cat1"
+    },
+    {
+      TAG: "CategoryArchived",
+      categoryId: "cat1"
+    }
+  ]), {
+    TAG: "AddProduct",
+    productId: "p1",
+    name: "Laptop",
+    description: "x",
+    price: 999.99,
+    categoryId: "cat1"
+  }), "CategoryNotFound"));
+  test("existing product returns ProductAlreadyExists", () => thenError(whenCmd(givenEvents([
+    {
+      TAG: "CategoryAdded",
+      categoryId: "cat1"
+    },
+    {
+      TAG: "ProductAdded",
+      productId: "p1"
+    }
+  ]), {
+    TAG: "AddProduct",
+    productId: "p1",
+    name: "Laptop",
+    description: "x",
+    price: 999.99,
+    categoryId: "cat1"
   }), "ProductAlreadyExists"));
+  test("a sibling product in the same category does not block a new product", () => thenEvent(whenCmd(givenEvents([
+    {
+      TAG: "CategoryAdded",
+      categoryId: "cat1"
+    },
+    {
+      TAG: "ProductAdded",
+      productId: "p1"
+    }
+  ]), {
+    TAG: "AddProduct",
+    productId: "p2",
+    name: "Mouse",
+    description: "y",
+    price: 19.99,
+    categoryId: "cat1"
+  }), {
+    TAG: "ProductAdded",
+    productId: "p2",
+    name: "Mouse",
+    description: "y",
+    price: 19.99,
+    categoryId: "cat1"
+  }));
 });
 
 let Spec = include.Spec;

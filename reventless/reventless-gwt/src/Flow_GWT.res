@@ -236,12 +236,19 @@ module CommandStep = (
 
   // Filter the log by the command's DCB tags, fold `evolve`, run `decide`, and
   // append the emitted events back onto the shared log.
+  // Cross-partition tag keys are a global per-key property derived (in
+  // production) from the produced event schemas, then threaded to the decision
+  // query builder so a `@crossPartition` scalar tag fans out into its own
+  // single-tag clause instead of being AND-ed into the partition clause.
+  let crossPartitionTagKeys = Reventless.DcbTag.extractCrossPartitionTagKeys(Spec.eventSchema)
+
   let whenCommand = async (flowP: flow, command: Spec.command) => {
     let s = await flowP
     let query = Reventless.DcbTag.buildQueryFromCommand(
       ~eventTypes=consumedEventTypes,
       ~schema=Spec.commandSchema,
       ~value=command,
+      ~crossPartitionTagKeys,
     )
     let history = decodeMatching(s.log, consumedDecoder, query)
     let state = history->Array.reduce(Behavior.initialState, Behavior.evolve)
