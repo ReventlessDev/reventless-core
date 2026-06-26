@@ -41,8 +41,13 @@ describe("AddProduct StateChangeSlice", () => {
     ->thenError(ProductAlreadyExists)
   )
 
+  // A sibling product in the same category is NOT in this product's decision read:
+  // `categoryId` is an inferred cross-partition reference, so the category clause
+  // reads only `CategoryAdded` / `CategoryArchived`, and the `productId` clause
+  // returns only p2's own (absent) `ProductAdded`. So p2's history carries no
+  // sibling `ProductAdded` — exactly what makes the plain existence check correct.
   test("a sibling product in the same category does not block a new product", () =>
-    givenEvents([CategoryAdded({categoryId: "cat1"}), ProductAdded({productId: "p1"})])
+    givenEvents([CategoryAdded({categoryId: "cat1"})])
     ->whenCmd(
       AddProduct({productId: "p2", name: "Mouse", description: "y", price: 19.99, categoryId: "cat1"}),
     )

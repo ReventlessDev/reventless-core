@@ -366,14 +366,37 @@ over to the derived values.
    `categoryId` *and* the `addedProductIds` sibling-leak workaround in
    `AddProduct_Behavior`. So the wiring switch and the `AddProduct` migration are
    one unit (Phase 2 ∪ Phase 4 for that slice), not independent steps.
-2. **Emit derived scope** into the wiring; make annotations optional (escape
-   hatches only). Update `validateCrossPartitionScope` to validate the *derived*
-   scope and to flag an explicit annotation that *contradicts* inference.
-3. **Harness parity** — `Behavior_GWT` / `Flow_GWT` consume the derived scope.
-4. **Migrate the examples** — strip the now-inferred `@partitionTag` /
-   `@crossPartition` / `@noTag` from `online-shop-hybrid` (AddProduct + Category
-   slices) and the dcb example; keep only escape-hatch annotations. The example
-   diff is the proof the ergonomics improved.
+2. **Emit derived scope** into the wiring. ✅ **Done.** `Dcb_Builder` threads
+   `inferred.crossPartitionTagKeys` / `inferred.tagKeysByEventType` into the
+   decision-query wiring (all-or-nothing per boundary: an ambiguous slice keeps the
+   annotated values). The derived `tagKeysByEventType` is the sibling-leak fix.
+   *Remaining for a later sub-step:* `validateCrossPartitionScope` still checks the
+   annotated scope — switch it to validate the derived scope / flag contradicting
+   annotations.
+3. **Harness parity** — ✅ **Done (read path).** `Behavior_GWT` / `Flow_GWT` derive
+   `crossPartitionTagKeys` as `extractCrossPartitionTagKeys ∪
+   DcbScopeInference.crossPartitionForSlice` and thread `infer([shape])`'s
+   `tagKeysByEventType`. Backward-compatible (annotations still honoured), so all 5
+   example plugins + reventless-gwt stay green. This is what lets the reachability
+   guard pass after `@crossPartition` is removed.
+4. **Migrate the examples** — ⚙️ **Partial (hybrid catalog).** Stripped **all
+   `@crossPartition`** from `online-shop-hybrid` catalog (AddProduct + the three
+   Category slices) and removed the `addedProductIds` sibling-leak workaround in
+   `AddProduct_Behavior` (now a plain `exists` flag); updated the AddProduct GWT to
+   the production-accurate history. End state verified: zero `@crossPartition`
+   remaining, inference derives `["categoryId"]`, `ProductAdded` indexes
+   `["productId"]` only, no ambiguities, all tests green.
+   *Still annotated:* `@partitionTag` remains on `ProductAdded` / `RecordProductDemand`
+   — the **write-side** `derivePartitionTag` / `extractTaggedFields` (storage
+   partition + GSI list) still read schema metadata, and the PPX auto-tags every
+   `*Id`, so removing `@partitionTag` needs the write-side inference phase (below).
+   The dcb example has no `@crossPartition` to strip.
+4b. **Write-side inference (new, deferred).** Move `derivePartitionTag` /
+   `extractTaggedFields` (storage partition key + GSI set + per-event write tagging)
+   onto the inference so the emitted `categoryId` stops being written to the
+   `tag_categoryId` GSI and `@partitionTag` can be dropped entirely. Couples to the
+   PPX auto-tag (republish-gated). Until then the over-tag is a harmless extra GSI
+   write the read path already ignores.
 5. **Docs** — rewrite the tag sections of `docs-app/` (component guidelines,
    mixed-source readmodel, platform-and-plugin guide) to "fields + consume;
    annotate only composite/M:N", and update CLAUDE.md's PPX-annotation section.

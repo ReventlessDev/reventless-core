@@ -147,13 +147,33 @@ module Make = (
   let consumedEventTypes =
     Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema).eventTypes
 
-  // Cross-partition tag keys are a global per-key property the runtime derives
-  // from the produced event schemas and threads into the decision query so a
-  // `@crossPartition` scalar tag fans into its own single-tag clause instead of
-  // being AND-ed with the partition. Deriving them here keeps the per-slice
-  // query identical to Flow_GWT and the StateChangeSlice runtime.
-  let crossPartitionTagKeys =
-    Reventless.DcbTag.extractCrossPartitionTagKeys(Spec.eventSchema)
+  // Scope derived from this slice's schemas, mirroring the StateChangeSlice runtime.
+  let scopeShape = Reventless.DcbTag.sliceShapeFromSchemas(
+    ~name="",
+    ~commandSchema=Spec.commandSchema,
+    ~consumedEventSchema=Spec.consumedEventSchema,
+    ~eventSchema=Spec.eventSchema,
+  )
+  // Cross-partition tag keys fan a foreign-entity reference into its own single-tag
+  // clause instead of being AND-ed with the partition. Unioned: any explicit
+  // `@crossPartition` annotation (capacity / escape-hatch reads) plus the per-slice
+  // inference (a foreign consumed key that is not this slice's partition), so a slice
+  // with *no* annotation still reads correctly.
+  let crossPartitionTagKeys = {
+    let set = Set.make()
+    Reventless.DcbTag.extractCrossPartitionTagKeys(Spec.eventSchema)->Array.forEach(k =>
+      set->Set.add(k)
+    )
+    Reventless.DcbScopeInference.crossPartitionForSlice(scopeShape)->Array.forEach(k =>
+      set->Set.add(k)
+    )
+    Array.fromIterator(set->Set.values)->Array.toSorted((a, b) => String.compare(a, b))
+  }
+  // Per-event indexed-tag map so a foreign reference key on this slice's *own*
+  // emitted event (payload, not a read key) is narrowed out of a cross-partition
+  // clause — the same dead-clause removal the runtime threads.
+  let tagKeysByEventType =
+    Reventless.DcbScopeInference.infer([scopeShape]).tagKeysByEventType
 
   // Reachability guard inputs. The event types this slice *emits* are its own
   // history — read with composite AND clauses, which is fine. A *foreign* event
@@ -214,6 +234,7 @@ module Make = (
       ~eventTypes=consumedEventTypes,
       ~schema=Spec.commandSchema,
       ~value=command,
+      ~tagKeysByEventType,
       ~crossPartitionTagKeys,
     )
     let condition: Reventless.DcbTag.appendCondition = {query: query}

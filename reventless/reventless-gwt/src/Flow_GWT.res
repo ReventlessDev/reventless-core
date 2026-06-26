@@ -236,11 +236,29 @@ module CommandStep = (
 
   // Filter the log by the command's DCB tags, fold `evolve`, run `decide`, and
   // append the emitted events back onto the shared log.
-  // Cross-partition tag keys are a global per-key property derived (in
-  // production) from the produced event schemas, then threaded to the decision
-  // query builder so a `@crossPartition` scalar tag fans out into its own
-  // single-tag clause instead of being AND-ed into the partition clause.
-  let crossPartitionTagKeys = Reventless.DcbTag.extractCrossPartitionTagKeys(Spec.eventSchema)
+  // Scope derived from this slice's schemas, mirroring the StateChangeSlice runtime:
+  // cross-partition keys (explicit @crossPartition ∪ per-slice inference) fan a
+  // foreign reference into its own clause, and the per-event indexed-tag map narrows
+  // a foreign reference on this slice's own emitted event out of that clause (so the
+  // real tagged log here does not return sibling entities).
+  let scopeShape = Reventless.DcbTag.sliceShapeFromSchemas(
+    ~name="",
+    ~commandSchema=Spec.commandSchema,
+    ~consumedEventSchema=Spec.consumedEventSchema,
+    ~eventSchema=Spec.eventSchema,
+  )
+  let crossPartitionTagKeys = {
+    let set = Set.make()
+    Reventless.DcbTag.extractCrossPartitionTagKeys(Spec.eventSchema)->Array.forEach(k =>
+      set->Set.add(k)
+    )
+    Reventless.DcbScopeInference.crossPartitionForSlice(scopeShape)->Array.forEach(k =>
+      set->Set.add(k)
+    )
+    Array.fromIterator(set->Set.values)->Array.toSorted((a, b) => String.compare(a, b))
+  }
+  let tagKeysByEventType =
+    Reventless.DcbScopeInference.infer([scopeShape]).tagKeysByEventType
 
   let whenCommand = async (flowP: flow, command: Spec.command) => {
     let s = await flowP
@@ -248,6 +266,7 @@ module CommandStep = (
       ~eventTypes=consumedEventTypes,
       ~schema=Spec.commandSchema,
       ~value=command,
+      ~tagKeysByEventType,
       ~crossPartitionTagKeys,
     )
     let history = decodeMatching(s.log, consumedDecoder, query)

@@ -39,7 +39,7 @@ let eventSchema = S.schema(s => ({
   name: s.m(S.string),
   description: s.m(S.string),
   price: s.m(S.float),
-  categoryId: s.m(DcbTag$Reventless.crossPartition)
+  categoryId: s.m(DcbTag$Reventless.string)
 }));
 
 function commandAuthorization(param) {

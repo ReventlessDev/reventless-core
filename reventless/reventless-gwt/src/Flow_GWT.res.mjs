@@ -12,6 +12,7 @@ import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as JestBind$ReventlessGwt from "./JestBind.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as StubRuntime$ReventlessGwt from "./StubRuntime.res.mjs";
+import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
 import * as Projection_GWT$ReventlessGwt from "./Projection_GWT.res.mjs";
 
 S.enableJson();
@@ -149,10 +150,19 @@ function CommandStep(Spec) {
         lastAggregateId: s.lastAggregateId
       };
     };
-    let crossPartitionTagKeys = DcbTag$Reventless.extractCrossPartitionTagKeys(Spec.eventSchema);
+    let scopeShape = DcbTag$Reventless.sliceShapeFromSchemas("", Spec.commandSchema, Spec.consumedEventSchema, Spec.eventSchema);
+    let set = new Set();
+    DcbTag$Reventless.extractCrossPartitionTagKeys(Spec.eventSchema).forEach(k => {
+      set.add(k);
+    });
+    DcbScopeInference$Reventless.crossPartitionForSlice(scopeShape).forEach(k => {
+      set.add(k);
+    });
+    let crossPartitionTagKeys = Array.from(set.values()).toSorted(Primitive_string.compare);
+    let tagKeysByEventType = DcbScopeInference$Reventless.infer([scopeShape]).tagKeysByEventType;
     let whenCommand = async (flowP, command) => {
       let s = await flowP;
-      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, undefined, crossPartitionTagKeys);
+      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, command, tagKeysByEventType, crossPartitionTagKeys);
       let history = decodeMatching(s.log, consumedDecoder, query);
       let state = Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve);
       let events = Behavior.decide(state, command);
@@ -220,7 +230,9 @@ function CommandStep(Spec) {
       consumedDecoder: consumedDecoder,
       consumedEventTypes: consumedEventTypes,
       givenEvents: givenEvents,
+      scopeShape: scopeShape,
       crossPartitionTagKeys: crossPartitionTagKeys,
+      tagKeysByEventType: tagKeysByEventType,
       whenCommand: whenCommand,
       thenEvents: thenEvents,
       thenEvent: thenEvent,

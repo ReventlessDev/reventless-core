@@ -5,11 +5,13 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as JestBind$ReventlessGwt from "./JestBind.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
+import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
 
 function encodeTag(t) {
   let d = {};
@@ -59,7 +61,16 @@ function Make(Spec) {
       contents: undefined
     };
     let consumedEventTypes = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema).eventTypes;
-    let crossPartitionTagKeys = DcbTag$Reventless.extractCrossPartitionTagKeys(Spec.eventSchema);
+    let scopeShape = DcbTag$Reventless.sliceShapeFromSchemas("", Spec.commandSchema, Spec.consumedEventSchema, Spec.eventSchema);
+    let set = new Set();
+    DcbTag$Reventless.extractCrossPartitionTagKeys(Spec.eventSchema).forEach(k => {
+      set.add(k);
+    });
+    DcbScopeInference$Reventless.crossPartitionForSlice(scopeShape).forEach(k => {
+      set.add(k);
+    });
+    let crossPartitionTagKeys = Array.from(set.values()).toSorted(Primitive_string.compare);
+    let tagKeysByEventType = DcbScopeInference$Reventless.infer([scopeShape]).tagKeysByEventType;
     let emittedEventTypes = DcbDecode$Reventless.makeDecoder(Spec.eventSchema).eventTypes;
     let consumedTagKeysByType = DcbTag$Reventless.extractTagKeysByEventType(Spec.consumedEventSchema);
     let queryTagKeys = query => query.flatMap(qi => Stdlib_Option.mapOr(qi.tags, [], tags => tags.map(t => t.key)));
@@ -96,7 +107,7 @@ function Make(Spec) {
     let whenCmd = (history, cmd) => {
       errors.contents = [];
       appendConditionFailure.contents = undefined;
-      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, cmd, undefined, crossPartitionTagKeys);
+      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, cmd, tagKeysByEventType, crossPartitionTagKeys);
       let condition = {
         query: query
       };

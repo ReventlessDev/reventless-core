@@ -17,7 +17,7 @@ let errorSchema = S.literal("CategoryNotFound");
 
 let eventSchema = S.schema(s => ({
   TAG: "CategoryArchived",
-  categoryId: s.m(DcbTag$Reventless.crossPartition)
+  categoryId: s.m(DcbTag$Reventless.string)
 }));
 
 function commandAuthorization(command) {

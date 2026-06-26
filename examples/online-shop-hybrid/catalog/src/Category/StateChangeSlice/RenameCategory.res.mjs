@@ -28,7 +28,7 @@ let errorSchema = S.union([
 
 let eventSchema = S.schema(s => ({
   TAG: "CategoryRenamed",
-  categoryId: s.m(DcbTag$Reventless.crossPartition),
+  categoryId: s.m(DcbTag$Reventless.string),
   name: s.m(S.string)
 }));
 

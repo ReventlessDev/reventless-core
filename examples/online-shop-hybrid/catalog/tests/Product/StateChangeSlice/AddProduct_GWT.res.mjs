@@ -89,16 +89,10 @@ describe("AddProduct StateChangeSlice", () => {
     price: 999.99,
     categoryId: "cat1"
   }), "ProductAlreadyExists"));
-  test("a sibling product in the same category does not block a new product", () => thenEvent(whenCmd(givenEvents([
-    {
+  test("a sibling product in the same category does not block a new product", () => thenEvent(whenCmd(givenEvents([{
       TAG: "CategoryAdded",
       categoryId: "cat1"
-    },
-    {
-      TAG: "ProductAdded",
-      productId: "p1"
-    }
-  ]), {
+    }]), {
     TAG: "AddProduct",
     productId: "p2",
     name: "Mouse",

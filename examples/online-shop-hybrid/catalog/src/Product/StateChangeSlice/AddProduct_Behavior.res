@@ -1,23 +1,17 @@
 @@reventless.behavior
 
-// `addedProductIds` tracks every ProductAdded the multi-clause query returned
-// (the `categoryId` tag clause also fetches sibling products in the same
-// category), so `decide` can ask "is THIS productId already added?" without
-// being confused by siblings. `liveCategoryIds` holds categories that exist and
-// are not archived — adding a product to a missing or archived category is
-// rejected.
-type state = {addedProductIds: array<string>, liveCategoryIds: array<string>}
+// `exists` becomes true once this product's own `ProductAdded` is in the decision
+// read — the `productId` clause returns only this product (categoryId is inferred
+// payload, so no sibling products leak in), making a plain existence flag enough.
+// `liveCategoryIds` holds categories that exist and are not archived — adding a
+// product to a missing or archived category is rejected.
+type state = {exists: bool, liveCategoryIds: array<string>}
 
-let initialState = {addedProductIds: [], liveCategoryIds: []}
+let initialState = {exists: false, liveCategoryIds: []}
 
 let evolve = (state, event: consumedEvent) =>
   switch event {
-  | ProductAdded({productId}) => {
-      ...state,
-      addedProductIds: state.addedProductIds->Array.includes(productId)
-        ? state.addedProductIds
-        : Array.concat(state.addedProductIds, [productId]),
-    }
+  | ProductAdded(_) => {...state, exists: true}
   | CategoryAdded({categoryId}) => {
       ...state,
       liveCategoryIds: state.liveCategoryIds->Array.includes(categoryId)
@@ -33,7 +27,7 @@ let evolve = (state, event: consumedEvent) =>
 let decide = (state, command) =>
   switch command {
   | AddProduct({productId, name, description, price, categoryId}) =>
-    if state.addedProductIds->Array.includes(productId) {
+    if state.exists {
       Error(ProductAlreadyExists)
     } else if !(state.liveCategoryIds->Array.includes(categoryId)) {
       Error(CategoryNotFound)

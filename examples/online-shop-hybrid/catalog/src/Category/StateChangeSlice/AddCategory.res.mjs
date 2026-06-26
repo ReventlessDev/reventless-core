@@ -18,7 +18,7 @@ let errorSchema = S.literal("CategoryAlreadyExists");
 
 let eventSchema = S.schema(s => ({
   TAG: "CategoryAdded",
-  categoryId: s.m(DcbTag$Reventless.crossPartition),
+  categoryId: s.m(DcbTag$Reventless.string),
   name: s.m(S.string)
 }));
 

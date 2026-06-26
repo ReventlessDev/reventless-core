@@ -14,7 +14,7 @@ type command =
 @schema
 type error = CategoryNotFound
 
-// `categoryId` is `@crossPartition` to agree with the global per-key scope used
-// by AddProduct's cross-partition category read (see AddCategory).
+// `categoryId` is this slice's partition; AddProduct's cross-partition read of it
+// is inferred from the slice graph (see AddCategory) — no annotation needed.
 @schema
-type event = CategoryArchived({@crossPartition categoryId: string})
+type event = CategoryArchived({categoryId: string})

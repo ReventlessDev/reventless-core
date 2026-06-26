@@ -2,11 +2,13 @@
 // Handles the AddProduct command; rejects duplicate creation via DCB optimistic
 // concurrency AND validates that the referenced category exists and is active.
 //
-// `productId` is the partition tag; `categoryId` adds a second tag clause so the
-// decision query also fetches the category's lifecycle events. Because the
-// category clause also returns sibling `ProductAdded` events sharing the same
-// `categoryId` tag, `ProductAdded` carries `productId` so the decision model can
-// ask "is THIS product already added?" without being confused by siblings.
+// The cross-partition read is now *inferred* — no `@crossPartition`. `productId`
+// is this slice's partition (it owns `ProductAdded`); `categoryId` is a foreign
+// reference (Category owns it), so the framework reads the category's lifecycle
+// (`CategoryAdded` / `CategoryArchived`) by `categoryId` in its own clause and
+// treats `categoryId` as *payload* on the emitted `ProductAdded`. No sibling
+// products are swept into the category read, so the decision model only needs a
+// plain "does this product already exist?" check.
 
 @@reventless.spec
 
@@ -38,10 +40,7 @@ type event =
       name: string,
       description: string,
       price: float,
-      // Secondary cross-partition tag: AddProduct's decision model reads the
-      // category's lifecycle (a different partition) by this key, so it must be
-      // @crossPartition on every event that carries it (here and on the Category
-      // slices). Without it the decision query AND-s productId+categoryId into
-      // one clause and never sees CategoryAdded → CategoryNotFound always.
-      @crossPartition categoryId: string,
+      // Foreign reference (Category owns it). Inferred as a cross-partition read
+      // key and payload on this event — no annotation needed.
+      categoryId: string,
     })
