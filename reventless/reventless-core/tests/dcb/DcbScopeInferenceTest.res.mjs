@@ -258,7 +258,7 @@ globalThis.describe("DcbScopeInference:", () => {
       globalThis.expect(d.crossPartitionTagKeys).toEqual([]);
     });
   });
-  globalThis.describe("M:N array reference (productIds)", () => {
+  globalThis.describe("array foreign reference (productIds) stays partition-scoped", () => {
     let placeOrder = slice("PlaceOrder", [
       {
         name: "orderId",
@@ -277,7 +277,7 @@ globalThis.describe("DcbScopeInference:", () => {
           }]
       },
       {
-        eventType: "ProductAdded",
+        eventType: "CatalogProductSynced",
         idFields: [{
             name: "productId",
             isList: false
@@ -296,14 +296,14 @@ globalThis.describe("DcbScopeInference:", () => {
           }
         ]
       }], undefined);
-    let productEntity = slice("AddProduct2", [{
+    let productEntity = slice("SyncCatalogProduct", [{
         name: "productId",
         isList: false
       }], [{
-        eventType: "ProductAdded",
+        eventType: "CatalogProductSynced",
         idFields: []
       }], [{
-        eventType: "ProductAdded",
+        eventType: "CatalogProductSynced",
         idFields: [{
             name: "productId",
             isList: false
@@ -313,8 +313,8 @@ globalThis.describe("DcbScopeInference:", () => {
       placeOrder,
       productEntity
     ]);
-    globalThis.test("plural productIds read cross-partition shares the singular producer key", () => {
-      globalThis.expect(d.crossPartitionTagKeys).toEqual(["productId"]);
+    globalThis.test("an array-only foreign read is NOT cross-partition (auto-fans, partition-scoped)", () => {
+      globalThis.expect(d.crossPartitionTagKeys).toEqual([]);
     });
     globalThis.test("PlaceOrder partition = orderId", () => {
       globalThis.expect(d.partitionBySlice["PlaceOrder"]).toEqual("orderId");
@@ -343,7 +343,16 @@ globalThis.describe("DcbScopeInference:", () => {
               isList: false
             }]
         }], undefined);
-      let subscribe_command = [];
+      let subscribe_command = [
+        {
+          name: "courseId",
+          isList: false
+        },
+        {
+          name: "studentId",
+          isList: false
+        }
+      ];
       let subscribe_consumed = [{
           eventType: "StudentRegistered",
           idFields: [{

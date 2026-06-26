@@ -101,6 +101,17 @@ let consumedKeys = (s: sliceShape): array<string> =>
   dedupSorted(s.consumed->Array.flatMap(keysOfEvent))
 
 /**
+Keys the command carries as a **scalar** (`*Id: string`, not `*Ids: array<string>`).
+A scalar tag is AND-ed with the partition into one composite clause unless it is
+read cross-partition, so only a scalar foreign reference needs the cross-partition
+fan. A foreign key the command carries *only* as an array already fans per element
+and stays partition-scoped (it reads the foreign entity's own partition) — the
+`PlaceOrder`/`productIds` shape — so it is **not** cross-partition.
+*/
+let commandScalarKeys = (s: sliceShape): array<string> =>
+  dedupSorted(s.command->Array.filter(f => !f.isList)->Array.map(tagKeyOf))
+
+/**
 Infers DCB tag scope for a set of slices (one DCB consistency boundary / plugin).
 Pure and total — never throws; unresolvable partitions land in `ambiguities`.
 */
@@ -128,6 +139,7 @@ annotation so capacity/escape-hatch reads remain covered.
 */
 let crossPartitionForSlice = (s: sliceShape): array<string> => {
   let foreign = foreignConsumedKeys(s)
+  let scalar = commandScalarKeys(s)
   let partition = switch s.partitionHint {
   | Some(h) if producedKeys(s)->Array.includes(h) => Some(h)
   | _ =>
@@ -136,7 +148,9 @@ let crossPartitionForSlice = (s: sliceShape): array<string> => {
     | _ => None
     }
   }
-  foreign->Array.filter(k => Some(k) != partition)
+  // A foreign read is cross-partition only when the command carries the key as a
+  // scalar (must be fanned); an array-only foreign key auto-fans partition-scoped.
+  foreign->Array.filter(k => Some(k) != partition && scalar->Array.includes(k))
 }
 
 let infer = (slices: array<sliceShape>): derived => {
@@ -184,12 +198,16 @@ let infer = (slices: array<sliceShape>): derived => {
   )
 
   // Rule 2 — a key read on a foreign consumed event that is another entity's
-  // partition (and not this slice's own partition) is cross-partition.
+  // partition (and not this slice's own partition) is cross-partition — but only
+  // when the command carries it as a SCALAR. A foreign key the command carries
+  // only as an array auto-fans per element and stays partition-scoped (it reads
+  // the foreign entity's own partition), so it is not cross-partition.
   let crossKeys = Set.make()
   slices->Array.forEach(s => {
     let own = partitionBySlice->Dict.get(s.sliceName)
+    let scalar = commandScalarKeys(s)
     s->consumedKeys->Array.forEach(k =>
-      if ownedPartitionKeys->Set.has(k) && Some(k) != own {
+      if ownedPartitionKeys->Set.has(k) && Some(k) != own && scalar->Array.includes(k) {
         crossKeys->Set.add(k)
       }
     )

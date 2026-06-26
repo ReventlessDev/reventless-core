@@ -113,24 +113,28 @@ describe("DcbScopeInference:", () => {
     )
   })
 
-  describe("M:N array reference (productIds)", () => {
-    // An ordering-style slice reading "all orders for each product" via array tag.
+  describe("array foreign reference (productIds) stays partition-scoped", () => {
+    // PlaceOrder references products via an ARRAY (productIds). An array command
+    // tag auto-fans into per-element single-tag clauses that read the foreign
+    // entity's own partition (CatalogProductSynced is partitioned by productId),
+    // so it must NOT be promoted to a cross-partition read — unlike a scalar
+    // reference. This is the deliberate `PlaceOrder` counterexample.
     let placeOrder = slice(
       "PlaceOrder",
       ~command=[scal("orderId"), arr("productIds")],
-      ~consumed=[ev("OrderPlaced", [scal("orderId")]), ev("ProductAdded", [scal("productId")])],
+      ~consumed=[ev("OrderPlaced", [scal("orderId")]), ev("CatalogProductSynced", [scal("productId")])],
       ~produced=[ev("OrderPlaced", [scal("orderId"), arr("productIds")])],
     )
     let productEntity = slice(
-      "AddProduct2",
+      "SyncCatalogProduct",
       ~command=[scal("productId")],
-      ~consumed=[ev("ProductAdded", [])],
-      ~produced=[ev("ProductAdded", [scal("productId")])],
+      ~consumed=[ev("CatalogProductSynced", [])],
+      ~produced=[ev("CatalogProductSynced", [scal("productId")])],
     )
     let d = DSI.infer([placeOrder, productEntity])
 
-    testSync("plural productIds read cross-partition shares the singular producer key", () =>
-      expect(d.crossPartitionTagKeys)->toEqual(["productId"])
+    testSync("an array-only foreign read is NOT cross-partition (auto-fans, partition-scoped)", () =>
+      expect(d.crossPartitionTagKeys)->toEqual([])
     )
     testSync("PlaceOrder partition = orderId", () =>
       expect(d.partitionBySlice->Dict.get("PlaceOrder"))->toEqual(Some("orderId"))
@@ -164,7 +168,9 @@ describe("DcbScopeInference:", () => {
       )
       let subscribe: DSI.sliceShape = {
         sliceName: "SubscribeStudent",
-        command: [],
+        // The real command carries studentId as a SCALAR — so the foreign read is
+        // fanned cross-partition (a scalar reference, unlike PlaceOrder's array).
+        command: [scal("courseId"), scal("studentId")],
         consumed: [ev("StudentRegistered", [scal("studentId")])],
         produced: shapes, // StudentSubscribed({courseId, studentId}) from the schema adapter
         partitionHint: None,

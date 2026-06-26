@@ -32,6 +32,10 @@ function consumedKeys(s) {
   return dedupSorted(s.consumed.flatMap(keysOfEvent));
 }
 
+function commandScalarKeys(s) {
+  return dedupSorted(s.command.filter(f => !f.isList).map(tagKeyOf));
+}
+
 function foreignConsumedKeys(s) {
   let ownProduced = new Set();
   s.produced.forEach(e => {
@@ -48,6 +52,7 @@ function foreignConsumedKeys(s) {
 
 function crossPartitionForSlice(s) {
   let foreign = foreignConsumedKeys(s);
+  let scalar = commandScalarKeys(s);
   let h = s.partitionHint;
   let partition;
   let exit = 0;
@@ -60,7 +65,13 @@ function crossPartitionForSlice(s) {
     let match = producedKeys(s).filter(k => !foreign.includes(k));
     partition = match.length !== 1 ? undefined : match[0];
   }
-  return foreign.filter(k => Primitive_object.notequal(k, partition));
+  return foreign.filter(k => {
+    if (Primitive_object.notequal(k, partition)) {
+      return scalar.includes(k);
+    } else {
+      return false;
+    }
+  });
 }
 
 function infer(slices) {
@@ -112,8 +123,9 @@ function infer(slices) {
   let crossKeys = new Set();
   slices.forEach(s => {
     let own = partitionBySlice[s.sliceName];
+    let scalar = commandScalarKeys(s);
     consumedKeys(s).forEach(k => {
-      if (ownedPartitionKeys.has(k) && Primitive_object.notequal(k, own)) {
+      if (ownedPartitionKeys.has(k) && Primitive_object.notequal(k, own) && scalar.includes(k)) {
         crossKeys.add(k);
         return;
       }
@@ -157,6 +169,7 @@ export {
   keysOfEvent,
   producedKeys,
   consumedKeys,
+  commandScalarKeys,
   foreignConsumedKeys,
   crossPartitionForSlice,
   infer,
