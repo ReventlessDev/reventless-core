@@ -758,7 +758,30 @@ type event =
 
 Both fields remain DCB tags (used for query filtering), but the annotated field determines the partition key. Events without the designated partition tag fall back to their first tag.
 
-For most DCB specs — where each event variant has exactly one tagged field — no annotation is needed.
+For most DCB specs — where each event variant has exactly one tagged field — no annotation is needed. You only reach for `@partitionTag` when an event carries **two or more `*Id` fields** and the storage partition would otherwise be ambiguous — most often because the event also carries a **foreign reference** (see the next section).
+
+### Cross-entity reference reads (inferred — no annotation)
+
+The common cross-partition case — "this command references another entity; does it exist / is it valid?" — needs **no tag annotation at all**. You declare the fields and what the slice consumes, and the framework derives the scope from the whole plugin's slice graph:
+
+```rescript
+// AddProduct.res — references a Category. Zero scope annotations.
+@schema
+type consumedEvent =
+  | ProductAdded({productId: string})        // my own lifecycle
+  | CategoryAdded({categoryId: string})      // the category's lifecycle…
+  | CategoryArchived({categoryId: string})
+@schema
+type command = AddProduct({@partitionTag productId: string, name, price, categoryId: string})
+@schema
+type event   = ProductAdded({@partitionTag productId: string, name, price, categoryId: string})
+```
+
+Because `categoryId` is owned by another entity (Category emits `CategoryAdded` keyed by it), the framework infers that `AddProduct` reads it **cross-partition** — the `categoryId` clause reads only the category's lifecycle, never sibling products — and that `categoryId` is **payload** on the emitted `ProductAdded` (so the event is never written to the `categoryId` index). You write no `@crossPartition` and no `@noTag`.
+
+The one annotation still required here is **`@partitionTag productId`**: the emitted `ProductAdded` carries two `*Id` fields (`productId` + the foreign `categoryId`), so storage needs to be told which one is the partition. (Inferring the storage partition is planned; until then, mark it.)
+
+If you write a redundant or contradictory `@crossPartition` the build logs a diagnostic — a key marked cross-partition that the framework resolves as the slice's *own* partition is flagged as a contradiction.
 
 ### Composite partition keys (`@compositePartitionTag`)
 
@@ -795,15 +818,19 @@ Each `@compositePartitionTag` field is still a regular DCB tag — individually 
 - Annotations must be on `string` fields; non-string fields are silently ignored.
 - Placement is **before the field name** (field-level attribute), not after the colon.
 
-### Cross-partition secondary-tag reads (`@crossPartition`)
+### M:N capacity reads (`@crossPartition`) — the escape hatch inference can't see
+
+The reference case above is inferred because the foreign key is *another entity's*
+partition. The one case the framework **cannot** infer is the **M:N capacity
+invariant**, where a slice reads its **own** event type by a secondary key across
+*all* of that key's partitions — e.g. "≤ N subscriptions per student": the slice
+both produces and reads `StudentSubscribed`, so inference sees `studentId` as an
+own-stream read (partition-scoped), not a cross-partition one. Here you must opt in.
 
 Because each event lives in exactly one partition (its partition tag), a
-single-tag read of any *other* tag is **partition-scoped** — it returns only
-events partitioned by that tag, so a tag that is *secondary* on the event is not
-seen. That is the right default (it keeps each tag's consistency fence narrow),
-but it blocks the canonical **M:N invariant**: an event ties two entities and can
-be partitioned by only one, so the decision must read by *both* — and one of
-those reads is inherently a secondary-tag read across partitions.
+single-tag read of any *other* tag is **partition-scoped** by default — it keeps
+that tag's consistency fence narrow. The M:N invariant needs the opposite: read
+`studentId` across every course partition the student appears in.
 
 Mark such a tag `@crossPartition` (on the command **and** the produced event,
 like `@partitionTag` — never on `consumedEvent`):

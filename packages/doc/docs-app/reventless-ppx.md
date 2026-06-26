@@ -157,7 +157,7 @@ These field attributes give fine-grained control over DCB tag injection. They wo
 | Annotation | Placed on | Effect |
 |---|---|---|
 | `@partitionTag` | A `*Id: string` field | Injects `@s.matches(DcbTag.partition)` — marks this field as the partition key. Required when a variant has multiple `*Id` fields. |
-| `@crossPartition` | A `string` (or `array<string>` element) field | Injects `@s.matches(DcbTag.crossPartition)` — marks this tag as readable across **all** partitions (a secondary-tag read), not just the one it keys. See [`@crossPartition`](#crosspartition--cross-partition-secondary-tag-reads) below. |
+| `@crossPartition` | A `string` (or `array<string>` element) field | Injects `@s.matches(DcbTag.crossPartition)`. **Rarely needed** — cross-entity *reference* reads are inferred from the slice graph; this is the escape hatch only for **M:N capacity** reads of a slice's own event type. See [`@crossPartition`](#crosspartition--cross-partition-secondary-tag-reads) below. |
 | `@noDcbTag` | A `*Id: string` field | Suppresses auto-tagging — the field stays as plain `string`. Use when the field is payload data, not a DCB query key. |
 | `@dcbTag` | Any `string` field | Injects `@s.matches(DcbTag.string)` — explicit opt-in for fields that don't follow `*Id` naming (e.g., `sku`, `slug`, `reference`). |
 
@@ -254,6 +254,15 @@ environment: @compositePartitionTag string
 
 ### `@crossPartition` — cross-partition (secondary-tag) reads
 
+> **You usually don't need this.** When a slice reads *another entity's* lifecycle
+> by its id (e.g. `AddProduct` checking a `categoryId` that `Category` owns), the
+> framework **infers** the cross-partition read from the slice graph — declare the
+> consumed events and the foreign field, and write no annotation. `@crossPartition`
+> is the **escape hatch for the one case inference can't see**: an **M:N capacity**
+> read where a slice reads its *own* event type by a secondary key across all of
+> that key's partitions (below). A `@crossPartition` that the framework resolves as
+> the slice's own partition is flagged as a contradiction at build time.
+
 A DCB event is stored under exactly one **partition** (its `@partitionTag`). A
 single-tag decision read of any *other* tag the event carries is, by default,
 **partition-scoped** — it only sees events whose partition key is that tag, so a
@@ -261,9 +270,10 @@ tag that is secondary on the event is invisible to such a read.
 
 `@crossPartition` opts a tag into a **cross-partition read**: a single-tag read
 of that key returns **every** event carrying it across *all* partitions. This is
-the canonical shape for an **M:N invariant** — an event ties two entities but can
-be partitioned by only one, so the decision must read by *both*, and the
-non-partition side is inherently a secondary-tag read.
+the canonical shape for an **M:N capacity invariant** — a slice both produces and
+reads an event that ties two entities, partitioned by one, so it must also read by
+the other; inference treats that own-stream read as partition-scoped, so you opt
+in explicitly.
 
 ```rescript
 // Course subscription: partition by courseId; studentId is read across every

@@ -171,12 +171,12 @@ For `PlaceOrder` the three clauses become three partition reads, folded together
 
 `decide` then returns `OrderAlreadyPlaced`, `ProductsNotAvailable`, or `Ok([OrderPlaced{…}])`.
 
-Note the `productId` reads here are deliberately **partition-scoped**: `PlaceOrder` wants `CatalogProductSynced` (partitioned by `productId`) and *tolerates* not seeing sibling `OrderPlaced` (which carry `productId` only as a secondary tag). So `productId` is **not** marked `@crossPartition` — `PlaceOrder` is exactly the counterexample for why cross-partition must be opt-in, not inferred (see [Reading by a secondary tag](#reading-by-a-secondary-tag--cross-partition-reads)).
+Note the `productId` reads here are deliberately **partition-scoped**: `PlaceOrder` wants `CatalogProductSynced` (partitioned by `productId`) and *tolerates* not seeing sibling `OrderPlaced` (which carry `productId` only as a secondary tag). So `productId` is **not** `@crossPartition`, and scope inference agrees: it promotes a foreign reference to a cross-partition read **only when the command carries it as a scalar** (which must be fanned out of the composite clause). `PlaceOrder` reads `productId` via the **array** `productIds`, which already auto-fans into per-element partition-scoped clauses — so inference leaves it partition-scoped. (A *scalar* foreign reference like `AddProduct`'s `categoryId` is the opposite case: it is fanned cross-partition automatically. See [Reading by a secondary tag](#reading-by-a-secondary-tag--cross-partition-reads).)
 
 ### Reading by a secondary tag — cross-partition reads
 
 :::info Default is partition-scoped
-Every single-tag read is partition-scoped **by default** (`PartitionScoped`). `@crossPartition` (implemented) opts a specific tag key into a cross-partition read. This section documents how it works and, importantly, *why the opt-in must be explicit*.
+Every single-tag read is partition-scoped **by default** (`PartitionScoped`). `@crossPartition` opts a specific tag key into a cross-partition read. This section documents how it works. Note that scope inference (`DcbScopeInference`) now derives cross-partition scope for **scalar cross-entity references** automatically (a slice reading another entity's lifecycle by its id), so the explicit annotation below is reserved for the case inference can't see — the **M:N capacity** read, where a slice reads its *own* event type by a secondary key across all partitions.
 :::
 
 A single-tag read being partition-scoped (above) blocks the **canonical M:N decision**. Take course subscription: a `StudentSubscribed` event ties two entities and must enforce two invariants on subscribe — *course not full* (read by `courseId`) and *student not over-enrolled* (read by `studentId`). The event can be partitioned by only one tag, so the other read is inherently cross-partition.

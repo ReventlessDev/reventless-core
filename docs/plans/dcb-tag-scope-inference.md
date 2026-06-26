@@ -423,9 +423,25 @@ over to the derived values.
      ignores and that I can't validate without a real DynamoDB deploy. Defer until it
      can be validated there; `@partitionTag` stays meanwhile (a small, honest
      annotation — the leak is already fixed read- and write-side without it).
-5. **Docs** — rewrite the tag sections of `docs-app/` (component guidelines,
-   mixed-source readmodel, platform-and-plugin guide) to "fields + consume;
-   annotate only composite/M:N", and update CLAUDE.md's PPX-annotation section.
+5. **Docs** — ✅ **Done (developer-facing + internals).** Rewrote the tag guidance to
+   the new model: cross-entity *reference* reads are inferred (no annotation);
+   `@crossPartition` is reserved for **M:N capacity**; `@partitionTag` is still
+   required on multi-`*Id` events (write-side partition not yet inferred). Updated
+   `docs-app/dcb-usage.md` (new "Cross-entity reference reads (inferred)" section +
+   reframed `@crossPartition`), `docs-app/reventless-ppx.md` (the `@crossPartition`
+   reference + table), `.claude/rules/app-developer.md` (the PPX-annotation rule —
+   this is where the reference lives, *not* CLAUDE.md), and
+   `docs-framework/internals/dcb-consistency-checks.md` (the `PlaceOrder`
+   counterexample — now correctly handled by inference, see below).
+
+   **Correction surfaced by the docs pass (committed separately):** writing the
+   `PlaceOrder` counterexample revealed the inference was **over-eager** — it marked
+   *array* foreign references (`productIds`) cross-partition, contradicting that
+   plugin's deliberate partition-scoped design and silently changing the dcb-ordering
+   storage read path (untestable locally). Fixed: a foreign reference is inferred
+   cross-partition **only when the command carries it as a scalar** (scalars must be
+   fanned; arrays auto-fan partition-scoped). Rule 2 now gates on `commandScalarKeys`.
+   This corrects a latent regression from the Phase 2 threading commit.
 
 ---
 
