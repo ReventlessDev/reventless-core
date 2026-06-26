@@ -7,12 +7,14 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as DcbValidation$Reventless from "@reventlessdev/reventless-spec/src/components/DcbValidation.res.mjs";
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
+import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "../../plugin/component/Plugin_Helpers.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../Api/ApiNoApiHelpers.res.mjs";
 import * as Plugin_Structure$ReventlessCore from "../../plugin/component/Plugin_Structure.res.mjs";
@@ -142,6 +144,21 @@ function Make(DcbEventLogStorage) {
         Sc.Spec.commandSchema,
         Sc.Spec.consumedEventSchema
       ]), tagKeysByEventType).forEach(w => log.warn("Dcb_Builder", undefined, `DCB composite-read warning (` + w.sliceName + `): ` + w.message));
+      let inferenceShapes = stateChangeSlices.map(Sc => DcbTag$Reventless.sliceShapeFromSchemas(Sc.Spec.name, Sc.Spec.commandSchema, Sc.Spec.consumedEventSchema, Sc.Spec.eventSchema));
+      let inferred = DcbScopeInference$Reventless.infer(inferenceShapes);
+      if (Primitive_object.notequal(inferred.crossPartitionTagKeys, crossPartitionTagKeys)) {
+        log.info("Dcb_Builder", undefined, `DCB scope-inference diff: crossPartitionTagKeys annotated=[` + crossPartitionTagKeys.join(", ") + `] inferred=[` + inferred.crossPartitionTagKeys.join(", ") + `]`);
+      }
+      Object.entries(inferred.tagKeysByEventType).forEach(param => {
+        let inferredKeys = param[1];
+        let eventType = param[0];
+        let annotatedKeys = Stdlib_Option.getOr(tagKeysByEventType[eventType], []);
+        let dropped = annotatedKeys.filter(k => !inferredKeys.includes(k));
+        if (dropped.length !== 0) {
+          return log.info("Dcb_Builder", undefined, `DCB scope-inference diff: ` + eventType + ` indexes [` + inferredKeys.join(", ") + `] (inferred) vs [` + annotatedKeys.join(", ") + `] (annotated) — payload now: [` + dropped.join(", ") + `]`);
+        }
+      });
+      inferred.ambiguities.forEach(param => log.warn("Dcb_Builder", undefined, `DCB scope-inference ambiguity (` + param[0] + `): ` + param[1]));
       let DcbEventLog = DcbEventLog_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher);
       let dcbEventLog = DcbEventLog.make(name, indexes$1, partitionTag, crossPartitionTagKeys, opts);
       Stdlib_Option.forEach(HooksConfig.hooks.onDcbEventLogCreated, hook => hook(dcbEventLog));

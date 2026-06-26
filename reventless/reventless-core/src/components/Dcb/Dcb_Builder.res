@@ -214,6 +214,54 @@ module Make = (
           log.warn(~comp="Dcb_Builder", `DCB composite-read warning (${w.sliceName}): ${w.message}`)
         )
 
+        // --- Phase 1 (dcb-tag-scope-inference): derive scope from the global slice
+        // graph and LOG the diff against today's annotation-based extraction. Pure
+        // diagnostics — nothing is threaded from the inference yet; the annotated
+        // values above still drive the wiring. A non-empty diff on `AddProduct`
+        // (categoryId dropped from `ProductAdded`) is the *expected* improvement;
+        // any other diff, or an ambiguity, flags a slice to look at before Phase 2
+        // switches the wiring over. See docs/plans/dcb-tag-scope-inference.md.
+        let inferenceShapes =
+          stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) =>
+            Reventless.DcbTag.sliceShapeFromSchemas(
+              ~name=Sc.Spec.name,
+              ~commandSchema=Sc.Spec.commandSchema->S.castToUnknown,
+              ~consumedEventSchema=Sc.Spec.consumedEventSchema->S.castToUnknown,
+              ~eventSchema=Sc.Spec.eventSchema->S.castToUnknown,
+            )
+          )
+        let inferred = Reventless.DcbScopeInference.infer(inferenceShapes)
+        if inferred.crossPartitionTagKeys != crossPartitionTagKeys {
+          log.info(
+            ~comp="Dcb_Builder",
+            `DCB scope-inference diff: crossPartitionTagKeys annotated=[${crossPartitionTagKeys->Array.join(
+                ", ",
+              )}] inferred=[${inferred.crossPartitionTagKeys->Array.join(", ")}]`,
+          )
+        }
+        inferred.tagKeysByEventType
+        ->Dict.toArray
+        ->Array.forEach(((eventType, inferredKeys)) => {
+          let annotatedKeys = tagKeysByEventType->Dict.get(eventType)->Option.getOr([])
+          let dropped = annotatedKeys->Array.filter(k => !(inferredKeys->Array.includes(k)))
+          if dropped->Array.length > 0 {
+            log.info(
+              ~comp="Dcb_Builder",
+              `DCB scope-inference diff: ${eventType} indexes [${inferredKeys->Array.join(
+                  ", ",
+                )}] (inferred) vs [${annotatedKeys->Array.join(
+                  ", ",
+                )}] (annotated) — payload now: [${dropped->Array.join(", ")}]`,
+            )
+          }
+        })
+        inferred.ambiguities->Array.forEach(((sliceName, reason)) =>
+          log.warn(
+            ~comp="Dcb_Builder",
+            `DCB scope-inference ambiguity (${sliceName}): ${reason}`,
+          )
+        )
+
         module DcbEventLog = DcbEventLog_Builder.Make(
           DcbEventLogStorage,
           DcbEventTopicPublisher,

@@ -926,6 +926,74 @@ let extractCrossPartitionTagKeys = (schema: S.t<'event>): array<string> => {
   Array.fromIterator(seen->Set.values)->Array.toSorted((a, b) => String.compare(a, b))
 }
 
+// --- Schema -> DcbScopeInference shapes (the runtime adapter) ---
+
+/**
+Collects the `*Id` / `*Ids`-shaped fields of one object-variant's properties as
+`DcbScopeInference.idField`s — by **name**, independent of any DCB tag flag. This
+is the un-annotated structural view the scope inference consumes.
+*/
+let idFieldsOfProperties = (properties: dict<S.t<unknown>>): array<DcbScopeInference.idField> =>
+  properties
+  ->Dict.toArray
+  ->Array.filterMap(((name, fieldSchema)) =>
+    if name->String.endsWith("Ids") || name->String.endsWith("Id") {
+      let isList = switch fieldSchema {
+      | Array(_) => true
+      | _ => false
+      }
+      Some({DcbScopeInference.name, isList})
+    } else {
+      None
+    }
+  )
+
+/**
+Extracts the `DcbScopeInference.eventShape`s (variant name + `*Id` fields) from a
+variant schema. Payload-less arms are kept (no id fields); non-variant schemas
+return a single shape.
+*/
+let eventShapesOfSchema = (schema: S.t<'a>): array<DcbScopeInference.eventShape> => {
+  let ofVariant = (variantSchema: S.t<unknown>): option<DcbScopeInference.eventShape> =>
+    switch variantSchema {
+    | Object({items, properties}) =>
+      items
+      ->Array.find(item => item.location == "TAG")
+      ->Option.flatMap(item =>
+        switch item.schema {
+        | String({const}) => Some(const)
+        | _ => None
+        }
+      )
+      ->Option.map(eventType => {DcbScopeInference.eventType, idFields: idFieldsOfProperties(properties)})
+    | String({const}) => Some({DcbScopeInference.eventType: const, idFields: []})
+    | _ => None
+    }
+  switch schema->toUnknownSchema {
+  | Union({anyOf}) => anyOf->Array.filterMap(ofVariant)
+  | Object(_) as obj => ofVariant(obj)->Option.mapOr([], s => [s])
+  | _ => []
+  }
+}
+
+/**
+Builds the `DcbScopeInference.sliceShape` for one slice from its sury schemas.
+The `command` fields are flattened across command variants; `consumed` / `produced`
+keep their per-arm structure. Schema-coupling lives here so the inference core
+stays schema-agnostic.
+*/
+let sliceShapeFromSchemas = (
+  ~name: string,
+  ~commandSchema: S.t<'c>,
+  ~consumedEventSchema: S.t<'ce>,
+  ~eventSchema: S.t<'e>,
+): DcbScopeInference.sliceShape => {
+  sliceName: name,
+  command: eventShapesOfSchema(commandSchema)->Array.flatMap(e => e.idFields),
+  consumed: eventShapesOfSchema(consumedEventSchema),
+  produced: eventShapesOfSchema(eventSchema),
+}
+
 // --- Partition tag derivation ---
 
 /**

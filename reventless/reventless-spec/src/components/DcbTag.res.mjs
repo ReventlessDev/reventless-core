@@ -578,6 +578,72 @@ function extractCrossPartitionTagKeys(schema) {
   return Array.from(seen.values()).toSorted(Primitive_string.compare);
 }
 
+function idFieldsOfProperties(properties) {
+  return Stdlib_Array.filterMap(Object.entries(properties), param => {
+    let name = param[0];
+    if (!(name.endsWith("Ids") || name.endsWith("Id"))) {
+      return;
+    }
+    let isList;
+    isList = param[1].type === "array";
+    return {
+      name: name,
+      isList: isList
+    };
+  });
+}
+
+function eventShapesOfSchema(schema) {
+  let ofVariant = variantSchema => {
+    switch (variantSchema.type) {
+      case "string" :
+        let $$const = variantSchema.const;
+        if ($$const !== undefined) {
+          return {
+            eventType: $$const,
+            idFields: []
+          };
+        } else {
+          return;
+        }
+      case "object" :
+        let properties = variantSchema.properties;
+        return Stdlib_Option.map(Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
+          let match = item.schema;
+          if (match.type !== "string") {
+            return;
+          }
+          let $$const = match.const;
+          if ($$const !== undefined) {
+            return $$const;
+          }
+        }), eventType => ({
+          eventType: eventType,
+          idFields: idFieldsOfProperties(properties)
+        }));
+      default:
+        return;
+    }
+  };
+  switch (schema.type) {
+    case "object" :
+      return Stdlib_Option.mapOr(ofVariant(schema), [], s => [s]);
+    case "union" :
+      return Stdlib_Array.filterMap(schema.anyOf, ofVariant);
+    default:
+      return [];
+  }
+}
+
+function sliceShapeFromSchemas(name, commandSchema, consumedEventSchema, eventSchema) {
+  return {
+    sliceName: name,
+    command: eventShapesOfSchema(commandSchema).flatMap(e => e.idFields),
+    consumed: eventShapesOfSchema(consumedEventSchema),
+    produced: eventShapesOfSchema(eventSchema)
+  };
+}
+
 function extractPartitionTagFields(schema) {
   switch (schema.type) {
     case "object" :
@@ -857,6 +923,9 @@ export {
   extractTaggedFields,
   crossPartitionKeysOfProperties,
   extractCrossPartitionTagKeys,
+  idFieldsOfProperties,
+  eventShapesOfSchema,
+  sliceShapeFromSchemas,
   extractPartitionTagFields,
   hasMultiTagVariant,
   findMultiTagVariantNames,
