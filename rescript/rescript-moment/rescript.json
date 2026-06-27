@@ -13,10 +13,11 @@
     },
     {
       "dir": "tests",
-      "subdirs": true
+      "subdirs": true,
+      "type": "dev"
     }
   ],
-  "dependencies": [
+  "dev-dependencies": [
     "@reventlessdev/rescript-jest"
   ]
 }
