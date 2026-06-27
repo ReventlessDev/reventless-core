@@ -129,6 +129,52 @@ unpublished/private. Republishing them public is what makes a clean external
   `@reventlessdev/*` packages.
 - `release.yml` / `publish-ppx.yml` green on a branch before the public flip.
 
+## Post-migration fallout — `.npmrc ${NPM_TOKEN}` breaks pnpm hoisting in deploys (2026-06-27)
+
+The migration switched `.npmrc`'s auth line from `${GITHUB_TOKEN}` →
+`${NPM_TOKEN}` and **deferred the `pnpm-lock.yaml` regen**. That combination
+silently broke the AWS deploy (`deploy-online-shop-hybrid.yml` →
+`deploy-reventless-aws.yml`):
+
+- The deploy's `pnpm install` steps were made **anonymous** (all deps public on
+  npmjs), so they ran with `NPM_TOKEN` **undefined**.
+- The repo `.npmrc` still hard-references `${NPM_TOKEN}` on its authToken line.
+  When that var is undefined, pnpm **fails to parse the whole `.npmrc`** and
+  drops `node-linker=hoisted`, falling back to **isolated** linking.
+- Under isolated linking, transitive `@pulumi/*` (the SDK + the `pulumi-nodejs`
+  dynamic-provider plugin, which lives inside the `@pulumi/pulumi` package) are
+  **not hoisted** to the root `node_modules` and are unreachable from the deploy
+  program → Pulumi reports `"Pulumi SDK has not been installed"` /
+  `"could not read plugin pulumi-resource-pulumi-nodejs: EOF"`.
+- Pre-migration this worked because `.npmrc` referenced `${GITHUB_TOKEN}`, which
+  is always set in Actions — so hoisting was always honoured.
+
+Symptom is **registry-independent and Pulumi-version-independent**; pinning the
+CLI (`pulumi/setup-pulumi`) does nothing. The tell is the repeated
+`WARN  Issue while reading ".npmrc". Failed to replace env in config: ${NPM_TOKEN}`
+on every pnpm invocation.
+
+**Fix shipped (commit `61df3b445`):** define `NPM_TOKEN` (optional secret, may be
+empty — install stays anonymous) on both deploy jobs in
+`deploy-reventless-aws.yml` and thread it from the `deploy-online-shop-hybrid.yml`
+caller, so `${NPM_TOKEN}` always expands and pnpm honours `node-linker=hoisted`.
+Validated: platform + both plugins deploy green. (Catalog also hit an unrelated
+AWS state-drift error — deleting a `CategoryAggrCmdTopic` SQS QueuePolicy whose
+queue was already gone — which self-healed on a re-dispatch's `pulumi refresh`.)
+
+Two related deploy-chain fixes from the same day:
+- `4117a3bc2` — layer-builder retries npmjs registry reads through Cloudflare
+  CDN read-after-write propagation lag (`E404` is terminal in
+  `npm-registry-fetch`); the layer build is dispatched immediately post-publish.
+- `5de41d8a7` — pinned `pulumi/setup-pulumi` to `3.247.0` (hygiene only; NOT a
+  fix for the above — kept to stop silent version float).
+
+**Durable cleanup (TODO — the proper fix):** regenerate `pnpm-lock.yaml` against
+npmjs (the regen this plan deferred "until ppx + UI packages are published").
+Until then, hoisting stays brittle and the `NPM_TOKEN`-defined workaround is
+load-bearing. Also consider making the `.npmrc` authToken tolerant of an
+undefined token so a missing `NPM_TOKEN` can't silently disable hoisting again.
+
 ## Related (this repo)
 
 - `docs/plans/docs-site-open-source-publication.md` — public docs cut.
