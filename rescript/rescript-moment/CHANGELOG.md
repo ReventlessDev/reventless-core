@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.10.0-alpha.15 (2026-06-27)
+
+### Bug Fixes
+
+* **rescript-moment:** mark tests + rescript-jest as dev for downstream builds ([6e35fed](https://github.com/ReventlessDev/reventless-core/commit/6e35fed9b24e24bac63117766cd3f327cf5a5779))
+
+
 # 0.10.0-alpha.14 (2026-06-27)
 
 **Note:** Version bump only for package @reventlessdev/rescript-moment
