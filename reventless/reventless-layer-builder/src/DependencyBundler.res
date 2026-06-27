@@ -52,7 +52,9 @@ let build = async (config: DependencyBundler_Config.t) => {
 
   // --- extract root module ---
   let _ = spinner->Ora.start("extract source package")
-  let _ = await Pacote.extract(sourcePackageSpec, rootPath, opts)
+  let _ = await RegistryRetry.withRetry(~label="extract " ++ sourcePackageSpec, () =>
+    Pacote.extract(sourcePackageSpec, rootPath, opts)
+  )
   let _ = spinner->Ora.succeed(())
 
   // --- post-process root module ---
@@ -73,10 +75,12 @@ let build = async (config: DependencyBundler_Config.t) => {
       ("path", rootPath),
     ]),
   )
-  let tree = await Arborist.make(arboristConfig)->Arborist.buildIdealTree({
-    preferDedupe: true,
-    saveType: "prod",
-  })
+  let tree = await RegistryRetry.withRetry(~label="build dependency tree", () =>
+    Arborist.make(arboristConfig)->Arborist.buildIdealTree({
+      preferDedupe: true,
+      saveType: "prod",
+    })
+  )
   let _ = spinner->Ora.succeed(())
 
   // --- stats ---
@@ -110,10 +114,13 @@ let build = async (config: DependencyBundler_Config.t) => {
             ]),
           )
           let dest = NodePath.resolve([pathToSavedDependencies, node->Arborist.packageName])
-          let _ = await Pacote.extract(
-            node->Arborist.packageName ++ "@" ++ node->Arborist.version,
-            dest,
-            extractOpts,
+          let _ = await RegistryRetry.withRetry(
+            ~label="extract " ++ node->Arborist.packageName,
+            () => Pacote.extract(
+              node->Arborist.packageName ++ "@" ++ node->Arborist.version,
+              dest,
+              extractOpts,
+            ),
           )
 
           spinner->Ora.setSuffixText("")

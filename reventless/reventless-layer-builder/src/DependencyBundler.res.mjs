@@ -9,6 +9,7 @@ import * as Treeverse from "treeverse";
 import * as Belt_Array from "@rescript/runtime/lib/es6/Belt_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as ZipAFolder from "zip-a-folder";
+import * as RegistryRetry from "./RegistryRetry.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import Arborist from "@npmcli/arborist";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
@@ -55,7 +56,7 @@ async function build(config) {
   await Rimraf.rimraf(pathToLayerData);
   spinner.succeed(undefined);
   spinner.start("extract source package");
-  await Pacote.default.extract(sourcePackageSpec, rootPath, registryOpts);
+  await RegistryRetry.withRetry("extract " + sourcePackageSpec, undefined, () => Pacote.default.extract(sourcePackageSpec, rootPath, registryOpts));
   spinner.succeed(undefined);
   if (rootPostProcess !== undefined) {
     spinner.start("postprocess source package");
@@ -71,10 +72,10 @@ async function build(config) {
         rootPath
       ]]
   ]));
-  let tree = await new Arborist(arboristConfig).buildIdealTree({
+  let tree = await RegistryRetry.withRetry("build dependency tree", undefined, () => new Arborist(arboristConfig).buildIdealTree({
     preferDedupe: true,
     saveType: "prod"
-  });
+  }));
   spinner.succeed(undefined);
   DependencyBundler_Stats.stats(tree, true);
   let extractionCount = {
@@ -110,7 +111,7 @@ async function build(config) {
           ]]
       ]));
       let dest = Nodepath.resolve(pathToSavedDependencies, node.packageName);
-      await Pacote.default.extract(node.packageName + "@" + node.version, dest, extractOpts);
+      await RegistryRetry.withRetry("extract " + node.packageName, undefined, () => Pacote.default.extract(node.packageName + "@" + node.version, dest, extractOpts));
       spinner.suffixText = "";
       spinner.succeed("extracted dependency " + node.name);
       extractionCount.contents = extractionCount.contents + 1 | 0;
