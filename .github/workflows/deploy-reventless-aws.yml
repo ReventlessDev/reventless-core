@@ -314,12 +314,28 @@ jobs:
       - name: Install Pulumi CLI
         uses: pulumi/setup-pulumi@v2
         with:
-          # Pin to a known-good release. Unpinned, setup-pulumi floats to the
-          # latest Pulumi; v3.248.0 shipped a broken nodejs language plugin
-          # ("could not read plugin pulumi-resource-pulumi-nodejs: EOF" →
-          # "Pulumi SDK has not been installed"). v3.247.0 is the last version
-          # that deployed cleanly. Bump deliberately after verifying a release.
+          # Pinned to the last version that deployed cleanly (Jun 2026). The CLI
+          # version is NOT the root cause of the nodejs-provider load failures
+          # (3.247.0 reproduces them); pinning is just hygiene to stop
+          # setup-pulumi silently floating to newer releases.
           pulumi-version: 3.247.0
+
+      - name: Ensure nodejs dynamic-provider plugin resolves
+        run: |
+          # The `pulumi-nodejs` dynamic-provider plugin
+          # (pulumi-resource-pulumi-nodejs) ships inside the @pulumi/pulumi npm
+          # package, not the CLI. On PATH the CLI dir can shadow it with an empty
+          # stub, so loading the provider for the Platform_Plugins dynamic
+          # resource fails: "could not read plugin ...: EOF" -> "Pulumi SDK has
+          # not been installed". Resolve the package's own launcher and prepend
+          # its dir to PATH so the valid copy wins. Diagnostics print both copies
+          # (this step still sees the pre-change PATH).
+          PKG_DIR=$(node -e "console.log(require('path').dirname(require.resolve('@pulumi/pulumi/package.json')))")
+          echo "Resolved @pulumi/pulumi at: $PKG_DIR"
+          ls -la "$PKG_DIR/pulumi-resource-pulumi-nodejs" || echo "WARN: launcher missing in @pulumi/pulumi"
+          CLI_PLUGIN=$(command -v pulumi-resource-pulumi-nodejs || true)
+          if [ -n "$CLI_PLUGIN" ]; then ls -la "$CLI_PLUGIN"; echo "(was first on PATH: $CLI_PLUGIN)"; else echo "no pulumi-resource-pulumi-nodejs on PATH before this step"; fi
+          echo "$PKG_DIR" >> "$GITHUB_PATH"
 
       - name: Resolve platform path
         id: platform
@@ -459,12 +475,28 @@ jobs:
       - name: Install Pulumi CLI
         uses: pulumi/setup-pulumi@v2
         with:
-          # Pin to a known-good release. Unpinned, setup-pulumi floats to the
-          # latest Pulumi; v3.248.0 shipped a broken nodejs language plugin
-          # ("could not read plugin pulumi-resource-pulumi-nodejs: EOF" →
-          # "Pulumi SDK has not been installed"). v3.247.0 is the last version
-          # that deployed cleanly. Bump deliberately after verifying a release.
+          # Pinned to the last version that deployed cleanly (Jun 2026). The CLI
+          # version is NOT the root cause of the nodejs-provider load failures
+          # (3.247.0 reproduces them); pinning is just hygiene to stop
+          # setup-pulumi silently floating to newer releases.
           pulumi-version: 3.247.0
+
+      - name: Ensure nodejs dynamic-provider plugin resolves
+        run: |
+          # The `pulumi-nodejs` dynamic-provider plugin
+          # (pulumi-resource-pulumi-nodejs) ships inside the @pulumi/pulumi npm
+          # package, not the CLI. On PATH the CLI dir can shadow it with an empty
+          # stub, so loading the provider for the Platform_Plugins dynamic
+          # resource fails: "could not read plugin ...: EOF" -> "Pulumi SDK has
+          # not been installed". Resolve the package's own launcher and prepend
+          # its dir to PATH so the valid copy wins. Diagnostics print both copies
+          # (this step still sees the pre-change PATH).
+          PKG_DIR=$(node -e "console.log(require('path').dirname(require.resolve('@pulumi/pulumi/package.json')))")
+          echo "Resolved @pulumi/pulumi at: $PKG_DIR"
+          ls -la "$PKG_DIR/pulumi-resource-pulumi-nodejs" || echo "WARN: launcher missing in @pulumi/pulumi"
+          CLI_PLUGIN=$(command -v pulumi-resource-pulumi-nodejs || true)
+          if [ -n "$CLI_PLUGIN" ]; then ls -la "$CLI_PLUGIN"; echo "(was first on PATH: $CLI_PLUGIN)"; else echo "no pulumi-resource-pulumi-nodejs on PATH before this step"; fi
+          echo "$PKG_DIR" >> "$GITHUB_PATH"
 
       - name: Resolve plugin path
         id: plugin
