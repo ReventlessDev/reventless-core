@@ -51,15 +51,7 @@ function evolve(state, event) {
       case "Cancelled" :
         return "Cancelled";
       case "Refunded" :
-        throw {
-          RE_EXN_ID: "Match_failure",
-          _1: [
-            "Order_Behavior.res",
-            17,
-            2
-          ],
-          Error: new Error()
-        };
+        return state;
     }
   }
 }

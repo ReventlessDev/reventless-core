@@ -8,7 +8,10 @@
 // install also resets the recorded-calls ref, so tests stay isolated without
 // pulling rescript-jest's `beforeEach` into the example's dependencies.
 
-describe("Order_EmailNotification SideEffect", () => {
+// `name` comes from the spec module the PPX auto-opens (`Order_EmailNotification`);
+// using it here names the suite after the spec and consumes that open — an egress
+// test otherwise references only the source aggregate's events (`Order.*`).
+describe(name ++ " SideEffect", () => {
   test("Placed triggers a confirmation email", () => {
     EmailService_Mock.install()
     givenEventForId(

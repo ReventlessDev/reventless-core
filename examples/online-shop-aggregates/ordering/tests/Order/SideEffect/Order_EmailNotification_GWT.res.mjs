@@ -29,7 +29,7 @@ let thenNoExternalCalls = include.thenNoExternalCalls;
 
 let thenExternalCalls = include.thenExternalCalls;
 
-describe("Order_EmailNotification SideEffect", () => {
+describe(Order_EmailNotification$OrderingPlugin.name + " SideEffect", () => {
   test("Placed triggers a confirmation email", undefined, () => {
     EmailService_Mock$OrderingPlugin.install();
     return thenExternalCalls(whenExecuted(givenEventForId(Id$Reventless.$$String.makeFromString("o1"), {

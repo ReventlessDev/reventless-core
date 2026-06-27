@@ -19,6 +19,7 @@ let evolve = (state, event) =>
   | (Placed(_), Order.Placed({customerId, productIds})) => Placed({customerId, productIds})
   | (Placed(_), Order.Shipped) => Shipped
   | (Placed(_), Order.Cancelled(_)) => Cancelled
+  | (Placed(_), Order.Refunded(_)) => state // unreachable: refunds only follow a cancellation
   | (Cancelled, Order.Refunded(_)) => Refunded
   | (Shipped, _) => state
   | (Cancelled, _) => state
