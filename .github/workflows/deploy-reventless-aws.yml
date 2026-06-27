@@ -313,6 +313,13 @@ jobs:
 
       - name: Install Pulumi CLI
         uses: pulumi/setup-pulumi@v2
+        with:
+          # Pin to a known-good release. Unpinned, setup-pulumi floats to the
+          # latest Pulumi; v3.248.0 shipped a broken nodejs language plugin
+          # ("could not read plugin pulumi-resource-pulumi-nodejs: EOF" →
+          # "Pulumi SDK has not been installed"). v3.247.0 is the last version
+          # that deployed cleanly. Bump deliberately after verifying a release.
+          pulumi-version: 3.247.0
 
       - name: Resolve platform path
         id: platform
@@ -451,6 +458,13 @@ jobs:
 
       - name: Install Pulumi CLI
         uses: pulumi/setup-pulumi@v2
+        with:
+          # Pin to a known-good release. Unpinned, setup-pulumi floats to the
+          # latest Pulumi; v3.248.0 shipped a broken nodejs language plugin
+          # ("could not read plugin pulumi-resource-pulumi-nodejs: EOF" →
+          # "Pulumi SDK has not been installed"). v3.247.0 is the last version
+          # that deployed cleanly. Bump deliberately after verifying a release.
+          pulumi-version: 3.247.0
 
       - name: Resolve plugin path
         id: plugin
