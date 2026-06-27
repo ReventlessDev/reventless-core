@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-aws-sdk",
-  "version": "2.2.0-alpha.19",
+  "version": "2.2.0-alpha.20",
   "description": "ReScript bindings for aws-sdk",
   "license": "Apache-2.0",
   "scripts": {

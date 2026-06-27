@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.3 (2026-06-27)
+
+### Features
+
+* **gwt:** add `todo` binding for spec-less slice scaffolds ([c8ecf02](https://github.com/ReventlessDev/reventless-core/commit/c8ecf0255b324afc4d2bb7258f7e9fd2a4c820be))
+
+
 # 1.0.0-alpha.2 (2026-06-20)
 
 ### Bug Fixes

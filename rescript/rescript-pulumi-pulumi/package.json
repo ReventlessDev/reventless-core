@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-pulumi-pulumi",
-  "version": "2.3.0-alpha.13",
+  "version": "2.3.0-alpha.14",
   "description": "ReScript bindings for @pulumi/pulumi",
   "license": "Apache-2.0",
   "scripts": {

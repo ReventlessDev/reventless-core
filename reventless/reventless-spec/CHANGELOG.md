@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.61 (2026-06-27)
+
+### Bug Fixes
+
+* **dcb:** harden scope inference against real catalog (partitionHint + rule 3) ([acea3f8](https://github.com/ReventlessDev/reventless-core/commit/acea3f8bb0e96a0993d81fd1aa521e9456982a13))
+* **dcb:** only infer cross-partition for SCALAR foreign references ([57416bf](https://github.com/ReventlessDev/reventless-core/commit/57416bf150df4c801577a60bf72f69abe9c701a8))
+### Features
+
+* **dcb:** add tag-scope inference core + runtime diff logging (Phase 1) ([5e17560](https://github.com/ReventlessDev/reventless-core/commit/5e17560fefc4272deb8b501dcb8ecef11c3a7c23))
+* **dcb:** thread inferred tag scope into the decision-query wiring (Phase 2) ([63445b2](https://github.com/ReventlessDev/reventless-core/commit/63445b239bc368932b043872ca16b6c35f723566))
+* **dcb:** validate [@cross](https://github.com/cross)Partition annotations against inferred scope ([acbb387](https://github.com/ReventlessDev/reventless-core/commit/acbb3870d32bbd4ef7e61ed52795800b87660e93))
+
+
 # 3.0.0-alpha.60 (2026-06-22)
 
 ### Bug Fixes

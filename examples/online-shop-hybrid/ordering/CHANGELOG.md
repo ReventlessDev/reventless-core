@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.99 (2026-06-27)
+
+### Features
+
+* verify category exists in AddProduct via cross-partition DCB read ([074d4fa](https://github.com/ReventlessDev/reventless-core/commit/074d4faecf694164f2e0c789c4d94cae402b03e1))
+
+
 # 1.0.0-alpha.98 (2026-06-22)
 
 ### Bug Fixes

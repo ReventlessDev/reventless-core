@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.113 (2026-06-27)
+
+### Features
+
+* **dcb:** filter written tags per event type — stop the foreign-GSI over-write ([e2c8b2a](https://github.com/ReventlessDev/reventless-core/commit/e2c8b2ae7e4db95232c27c3bbf0cbf31d4315469))
+
+
 # 3.0.0-alpha.112 (2026-06-22)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local

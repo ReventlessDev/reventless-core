@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-jest",
-  "version": "1.0.0-alpha.2",
+  "version": "1.0.0-alpha.3",
   "description": "Direct ReScript bindings to Jest's global APIs with throwing `expect` and native async test bodies",
   "license": "Apache-2.0",
   "scripts": {

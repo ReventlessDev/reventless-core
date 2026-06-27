@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.53 (2026-06-27)
+
+### Bug Fixes
+
+* **docs:** convert lone Mermaid diagram to D2 in appsync-events-live-updates ([317381a](https://github.com/ReventlessDev/reventless-core/commit/317381a64bc44629eb09a6eab44207b88bb6620b))
+### Features
+
+* **doc:** adopt V16e brand logo, self-host Geist webfont ([a56b319](https://github.com/ReventlessDev/reventless-core/commit/a56b319eac58dc4feafa0731c08063ef2dada8f5))
+* verify category exists in AddProduct via cross-partition DCB read ([074d4fa](https://github.com/ReventlessDev/reventless-core/commit/074d4faecf694164f2e0c789c4d94cae402b03e1))
+
+
 # 1.0.0-alpha.52 (2026-06-23)
 
 ### Bug Fixes

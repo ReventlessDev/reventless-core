@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.74 (2026-06-27)
+
+### Features
+
+* **dcb:** infer cross-partition scope; drop [@cross](https://github.com/cross)Partition from hybrid catalog ([268c57b](https://github.com/ReventlessDev/reventless-core/commit/268c57b1620b6075d2259f3a312efd04ecd735d5))
+* **gwt:** add `todo` binding for spec-less slice scaffolds ([c8ecf02](https://github.com/ReventlessDev/reventless-core/commit/c8ecf0255b324afc4d2bb7258f7e9fd2a4c820be))
+* **gwt:** catch unreachable cross-entity reads in per-slice Behavior GWT ([9666033](https://github.com/ReventlessDev/reventless-core/commit/96660335e8b5642b0798fde2231fb0ddad8f90d7))
+* verify category exists in AddProduct via cross-partition DCB read ([074d4fa](https://github.com/ReventlessDev/reventless-core/commit/074d4faecf694164f2e0c789c4d94cae402b03e1))
+
+
 # 1.0.0-alpha.73 (2026-06-22)
 
 ### Bug Fixes

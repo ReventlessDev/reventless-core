@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.47 (2026-06-27)
+
+### Bug Fixes
+
+* **ppx:** keep optionalDeps range at ^alpha.45 to match lockfile ([98036f1](https://github.com/ReventlessDev/reventless-core/commit/98036f14bb94df156abffeff3dea709f5a2d9037))
+
+
 # 1.0.0-alpha.46 (2026-06-22)
 
 ### Bug Fixes
