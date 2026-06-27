@@ -175,6 +175,41 @@ Until then, hoisting stays brittle and the `NPM_TOKEN`-defined workaround is
 load-bearing. Also consider making the `.npmrc` authToken tolerant of an
 undefined token so a missing `NPM_TOKEN` can't silently disable hoisting again.
 
+### Status of the two durable follow-ups (checked 2026-06-27)
+
+**(1) Lockfile regen — DONE (2026-06-27).** The UI repo published, unblocking
+the regen. Resolution notes: core only directly pins `reventless-host-shell`
+(exact, in the 6 example platform packages); `reventless-ui`/`reventless-routes`
+were transitive via the old host-shell. The UI publish landed *newer* versions
+(`host-shell@3.0.0-alpha.33`, `reventless-ui@3.0.0-alpha.29`; `routes` not
+republished and no longer a dependency of either), so the fix was to **bump the
+exact host-shell pin `3.0.0-alpha.32 → 3.0.0-alpha.33`** across the 6 platform
+packages, then regenerate. `host-shell@33` drops its dependency on
+`reventless-ui` + `reventless-routes` (both now runtime-only via module
+federation), so the regen removed that whole subtree (~1064 packages) and left
+**0 GitHub-Packages refs** in `pnpm-lock.yaml` (was 5). Verified: frozen install
+consistent (+80/−1064), and **no build-critical dep drifted** (rescript@12.3.0,
+sury@11.0.0-alpha.4, @rescript/runtime/react, rescript-relay all unchanged) — the
+only `@reventlessdev` deltas are the intended host-shell bump + ui/routes drop.
+`darwin-x64` PPX never mattered here (not an `optionalDependency` of
+`reventless-ppx`). The hoisting fragility is now only mitigated, not removed —
+see (3).
+
+**(3) `.npmrc` hardening — no one-line fix; real change touches the publish
+path.** Tested on pnpm 10.33: `${NPM_TOKEN}`, `${NPM_TOKEN-}`, and
+`${NPM_TOKEN:-}` *all* warn and drop the whole file when the var is unset — pnpm
+has no default-value env syntax. The robust fix is to **remove the
+`//registry.npmjs.org/:_authToken=${NPM_TOKEN}` line from the committed `.npmrc`**
+(installs are anonymous; only *publish* needs auth) so the file has no env
+references and `node-linker=hoisted` can never be silently dropped. Publish auth
+then comes from `actions/setup-node`'s generated userconfig `.npmrc`, which uses
+`${NODE_AUTH_TOKEN}` — so `release.yml`/`ci.yml` (currently set `NPM_TOKEN`) must
+also set `NODE_AUTH_TOKEN`; `publish-ppx.yml` already does. **Requires a publish
+dry-run before trusting** (the publish path has bitten us before — see the
+swallowed-403 note above). The urgent risk is already contained: the deploy is
+fixed, and `ci.yml`/`release.yml` build steps already define `NPM_TOKEN`, so this
+is can't-recur hardening, not a live outage.
+
 ## Related (this repo)
 
 - `docs/plans/docs-site-open-source-publication.md` — public docs cut.
