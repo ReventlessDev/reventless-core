@@ -275,14 +275,39 @@ jobs:
           # before lerna publish, which requires a clean working tree.
           git checkout -- .
 
-      - name: Publish to GitHub Package Registry
+      - name: Publish to npmjs (throttled, sequential, stop on first error)
         if: steps.changes.outputs.count != '0'
-        run: |
-          npx lerna publish from-package \
-            --registry=https://registry.npmjs.org \
-            --yes
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PUBLISH_DELAY_SECONDS: "12"
+        run: |
+          set -euo pipefail
+          # Publish one package at a time in dependency (topological) order with
+          # a delay between each, instead of lerna's parallel `publish
+          # from-package`. The bulk parallel publish previously tripped npmjs'
+          # E429 publish rate limiter during the first-time scope publish.
+          #
+          #   * topo order  -> every workspace dependency is already on the
+          #                    registry before its dependents publish, so pnpm's
+          #                    `workspace:*` -> exact-version rewrite resolves.
+          #   * pnpm publish -> rewrites the `workspace:*` protocol (lerna does
+          #                    not understand it on its own).
+          #   * set -e + loop in the foreground -> first failed publish aborts
+          #                    the whole step (no silent partial release).
+          #   * already-on-registry versions are skipped (idempotent re-runs).
+          npx lerna list --toposort --json --no-private \
+            | jq -r '.[] | "\(.name)\t\(.version)\t\(.location)"' \
+            | while IFS=$'\t' read -r name version location; do
+                if npm view "$name@$version" version \
+                     --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+                  echo "skip    $name@$version (already on registry)"
+                  continue
+                fi
+                echo "publish $name@$version"
+                ( cd "$location" && pnpm publish --no-git-checks --access public )
+                echo "waiting ${PUBLISH_DELAY_SECONDS}s before next publish"
+                sleep "$PUBLISH_DELAY_SECONDS"
+              done
 
       - name: Push version tags and commits
         if: steps.changes.outputs.count != '0'
