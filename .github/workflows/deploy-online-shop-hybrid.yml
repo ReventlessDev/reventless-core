@@ -60,3 +60,6 @@ jobs:
       # the repository or environment settings to enable; leave unset to
       # let each deploy provision its own pool.
       COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+      # Defined so the repo .npmrc's ${NPM_TOKEN} expands and pnpm honours
+      # node-linker=hoisted during the deploy install (see deploy-reventless-aws.yml).
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

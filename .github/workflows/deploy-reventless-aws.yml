@@ -64,6 +64,11 @@ on:
       # REVENTLESS_COGNITO_USER_POOL_ID (read by Util_LocalConfig).
       COGNITO_USER_POOL_ID:
         required: false
+      # Optional. Only needs to be DEFINED so the repo .npmrc's ${NPM_TOKEN}
+      # reference expands and `node-linker=hoisted` is honoured; the install
+      # itself is anonymous (all deps are public on npmjs).
+      NPM_TOKEN:
+        required: false
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -255,6 +260,14 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ needs.detect-changes.outputs.region }}
+      # Defines NPM_TOKEN for every pnpm step. The repo .npmrc references
+      # ${NPM_TOKEN} on its npmjs authToken line; if the var is undefined pnpm
+      # fails to parse the whole file and silently drops `node-linker=hoisted`,
+      # falling back to isolated linking. That leaves @pulumi/* unhoisted and
+      # unreachable from the deploy program -> "Pulumi SDK has not been
+      # installed". Install itself stays anonymous (all deps are public), so an
+      # empty value is fine — it just has to be defined.
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       # Read by Util_LocalConfig (Platform_Stack.resolveCognitoUserPool).
       # Unset/empty → falls through to Pulumi.local.yaml then Pulumi
       # stack config; if still unset, auto-provisions a fresh UserPool.
@@ -319,40 +332,6 @@ jobs:
           # (3.247.0 reproduces them); pinning is just hygiene to stop
           # setup-pulumi silently floating to newer releases.
           pulumi-version: 3.247.0
-
-      - name: Ensure @pulumi/pulumi SDK is resolvable
-        # The Pulumi nodejs runtime + the pulumi-nodejs dynamic provider (used by
-        # the Platform_Plugins resource) both require `require.resolve('@pulumi/
-        # pulumi')` to succeed from the program dir. Since the npmjs-publishing
-        # migration (registry switch with a deferred pnpm-lock.yaml regen),
-        # `pnpm install --frozen-lockfile` no longer hoists @pulumi/pulumi to the
-        # repo-root node_modules, so it is unreachable and Pulumi reports "Pulumi
-        # SDK has not been installed" (and "could not read plugin ...: EOF").
-        # Workaround until the lockfile is regenerated against npmjs: symlink the
-        # installed copy from the pnpm store into the root node_modules. Non-fatal
-        # and diagnostic — never blocks the deploy on its own.
-        run: |
-          set +e
-          if node -e "require.resolve('@pulumi/pulumi/package.json')" 2>/dev/null; then
-            echo "@pulumi/pulumi already resolvable from repo root — nothing to do."
-            exit 0
-          fi
-          echo "@pulumi/pulumi NOT resolvable from repo root; locating it in the pnpm store…"
-          PKG_DIR=$(find node_modules/.pnpm -maxdepth 4 -type d -path '*/node_modules/@pulumi/pulumi' 2>/dev/null | head -1)
-          if [ -z "$PKG_DIR" ]; then
-            echo "WARN: could not find @pulumi/pulumi anywhere under node_modules/.pnpm — install may be incomplete."
-            find node_modules -maxdepth 5 -type d -name pulumi -path '*@pulumi*' 2>/dev/null | head
-            exit 0
-          fi
-          echo "Found: $PKG_DIR"
-          ls -la "$PKG_DIR/pulumi-resource-pulumi-nodejs" 2>/dev/null || echo "(launcher not present in this copy)"
-          mkdir -p node_modules/@pulumi
-          ln -sfn "$(cd "$PKG_DIR" && pwd)" node_modules/@pulumi/pulumi
-          if node -e "require.resolve('@pulumi/pulumi/package.json')" 2>/dev/null; then
-            echo "Symlinked — @pulumi/pulumi now resolves from repo root."
-          else
-            echo "WARN: symlink created but still not resolvable; deploy will surface the underlying error."
-          fi
 
       - name: Resolve platform path
         id: platform
@@ -435,6 +414,14 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ needs.detect-changes.outputs.region }}
+      # Defines NPM_TOKEN for every pnpm step. The repo .npmrc references
+      # ${NPM_TOKEN} on its npmjs authToken line; if the var is undefined pnpm
+      # fails to parse the whole file and silently drops `node-linker=hoisted`,
+      # falling back to isolated linking. That leaves @pulumi/* unhoisted and
+      # unreachable from the deploy program -> "Pulumi SDK has not been
+      # installed". Install itself stays anonymous (all deps are public), so an
+      # empty value is fine — it just has to be defined.
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       # Forwarded for plugin stacks that wire AppSync auth themselves.
       # Unset/empty → falls through to local sidecar / stack config.
       REVENTLESS_COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
@@ -497,40 +484,6 @@ jobs:
           # (3.247.0 reproduces them); pinning is just hygiene to stop
           # setup-pulumi silently floating to newer releases.
           pulumi-version: 3.247.0
-
-      - name: Ensure @pulumi/pulumi SDK is resolvable
-        # The Pulumi nodejs runtime + the pulumi-nodejs dynamic provider (used by
-        # the Platform_Plugins resource) both require `require.resolve('@pulumi/
-        # pulumi')` to succeed from the program dir. Since the npmjs-publishing
-        # migration (registry switch with a deferred pnpm-lock.yaml regen),
-        # `pnpm install --frozen-lockfile` no longer hoists @pulumi/pulumi to the
-        # repo-root node_modules, so it is unreachable and Pulumi reports "Pulumi
-        # SDK has not been installed" (and "could not read plugin ...: EOF").
-        # Workaround until the lockfile is regenerated against npmjs: symlink the
-        # installed copy from the pnpm store into the root node_modules. Non-fatal
-        # and diagnostic — never blocks the deploy on its own.
-        run: |
-          set +e
-          if node -e "require.resolve('@pulumi/pulumi/package.json')" 2>/dev/null; then
-            echo "@pulumi/pulumi already resolvable from repo root — nothing to do."
-            exit 0
-          fi
-          echo "@pulumi/pulumi NOT resolvable from repo root; locating it in the pnpm store…"
-          PKG_DIR=$(find node_modules/.pnpm -maxdepth 4 -type d -path '*/node_modules/@pulumi/pulumi' 2>/dev/null | head -1)
-          if [ -z "$PKG_DIR" ]; then
-            echo "WARN: could not find @pulumi/pulumi anywhere under node_modules/.pnpm — install may be incomplete."
-            find node_modules -maxdepth 5 -type d -name pulumi -path '*@pulumi*' 2>/dev/null | head
-            exit 0
-          fi
-          echo "Found: $PKG_DIR"
-          ls -la "$PKG_DIR/pulumi-resource-pulumi-nodejs" 2>/dev/null || echo "(launcher not present in this copy)"
-          mkdir -p node_modules/@pulumi
-          ln -sfn "$(cd "$PKG_DIR" && pwd)" node_modules/@pulumi/pulumi
-          if node -e "require.resolve('@pulumi/pulumi/package.json')" 2>/dev/null; then
-            echo "Symlinked — @pulumi/pulumi now resolves from repo root."
-          else
-            echo "WARN: symlink created but still not resolvable; deploy will surface the underlying error."
-          fi
 
       - name: Resolve plugin path
         id: plugin
