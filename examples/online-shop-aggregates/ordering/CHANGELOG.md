@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.102 (2026-06-27)
+
+### Bug Fixes
+
+* **ordering-example:** resolve evolve exhaustiveness + GWT unused-open warnings ([c1e1476](https://github.com/ReventlessDev/reventless-core/commit/c1e1476eba7036fcf355f4190aa045e1c876edd7))
+
+
 # 3.0.0-alpha.101 (2026-06-27)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-ordering

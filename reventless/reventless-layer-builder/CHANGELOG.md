@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.18 (2026-06-27)
+
+### Bug Fixes
+
+* **layer-builder:** retry npmjs registry reads through CDN propagation lag ([4117a3b](https://github.com/ReventlessDev/reventless-core/commit/4117a3bc2f77fe4a863b8c7811dbc4452d722f2b))
+
+
 # 3.0.0-alpha.17 (2026-06-27)
 
 **Note:** Version bump only for package @reventlessdev/reventless-layer-builder
