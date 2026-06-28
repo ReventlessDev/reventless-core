@@ -4,8 +4,6 @@
 // `name` MUST equal `<pluginName>DcbEventLog` so the dispatch in
 // `AutomationSlice_Callback` resolves it to the topic key `Plugin_Builder`
 // registers under.
-// `module Id = Reventless.Id.String` and dcbTags on `*Id` fields are
-// auto-injected by `@@reventless.automation` (Source-module scan).
 module OrderingDcbSource = {
   let name = "OrderingDcbEventLog"
   @schema

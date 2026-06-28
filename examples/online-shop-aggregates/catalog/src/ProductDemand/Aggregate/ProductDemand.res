@@ -3,9 +3,7 @@
 
 @@reventless.spec
 
-// Not a UI/API command — driven only by Ordering's OrdersExtensionPoint.
-// @noApi removes it from the GraphQL/MCP/AutoUI surface, so the cross-plugin
-// `orderId` is never rendered as a picker and needs no @ref.
+// @noApi keeps this event-driven command off the GraphQL/MCP/AutoUI surface.
 @schema @noApi
 type command =
   | Record({orderId: string})

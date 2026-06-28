@@ -131,7 +131,7 @@ type event =
   | CategoryAdded({categoryId: @s.matches(DcbTag.string) string, name: string})
   | CategoryRenamed({categoryId: @s.matches(DcbTag.string) string, name: string})
   | CategoryArchived({categoryId: @s.matches(DcbTag.string) string})
-  | ProductAdded({productId: @s.matches(DcbTag.string) string, categoryId: @s.matches(DcbTag.string) string, name: string, /* … */})
+  | ProductAdded({productId: @s.matches(DcbTag.string) string, categoryId: string, /* payload, not a stored tag */ name: string, /* … */})
   | ProductNameChanged({productId: @s.matches(DcbTag.string) string, name: string})
   // … ProductDescriptionChanged, ProductPriceChanged
   | ProductDemandRecorded({productId: @s.matches(DcbTag.string) string, orderId: string})
@@ -262,7 +262,7 @@ A lightweight shadow copy of Catalog product data, kept in sync via Catalog's Ex
 
 **Why Order + CatalogProduct share DCB?** Both entities benefit from living in the same event log. The shared log means CatalogProduct sync events and Order events are available together, enabling the framework to deliver both in filtered reads for projections like `AvailableProductsView`.
 
-**Cross-entity validation:** The `PlaceOrder` command uses a tagged array field (`productId: array<@s.matches(DcbTag.string) string>`) to reference product IDs. The runtime automatically builds a multi-clause OR query that fetches both Order events (by `orderId`) and CatalogProduct events (by each `productId`) into the same decision model — enabling PlaceOrder to reject orders referencing unknown products.
+**Cross-entity validation:** The `PlaceOrder` command uses an array reference field (`@ref("AvailableProducts") productIds: array<string>`) to reference product IDs. The runtime automatically builds a multi-clause OR query that fetches both Order events (by `orderId`) and CatalogProduct events (by each `productId`) into the same decision model — enabling PlaceOrder to reject orders referencing unknown products.
 
 ### The shared Ordering DCB event log
 

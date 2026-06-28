@@ -11,8 +11,7 @@
 // The DCB source's `name` MUST equal `<pluginName>DcbEventLog`
 // ("OrderingDcbEventLog") — the key under which `Plugin_Builder` registers the
 // ordering plugin's DCB EventTopic AND the `meta.service` DcbEventLog stamps on
-// every published event. `module Id = Reventless.Id.String` and dcbTags on
-// `*Id` fields are auto-injected by `@@reventless.mappings` (Source-module scan).
+// every published event.
 //
 // Both mappings use `UpdateWithDefault` so the merge is order-independent: an
 // `OrderPlaced` that arrives before its customer's `Registered` still creates a

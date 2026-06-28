@@ -19,7 +19,5 @@ type error =
   | CategoryNotFound
   | CategoryAlreadyArchived
 
-// `categoryId` is this slice's partition; AddProduct's cross-partition read of it
-// is inferred from the slice graph (see AddCategory) — no annotation needed.
 @schema
 type event = CategoryRenamed({categoryId: string, name: string})

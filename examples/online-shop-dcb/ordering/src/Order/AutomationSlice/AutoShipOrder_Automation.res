@@ -1,8 +1,6 @@
 @@reventless.automation
 
 // Single DCB source — events from the ordering plugin's own event log.
-// `module Id = Reventless.Id.String` and dcbTags on `*Id` fields are
-// auto-injected by `@@reventless.automation` (Source-module scan).
 module OrderingDcbSource = {
   let name = "OrderingDcbEventLog"
   @schema

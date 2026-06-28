@@ -8,11 +8,10 @@ type consumedEvent =
   | ProductDemandRecorded({orderId: string})
   | ProductDemandRevoked({orderId: string})
 
-// Not a UI/API command — driven only by Ordering's extension-point events.
-// @noApi removes it from the GraphQL/MCP/AutoUI surface, so the cross-plugin
-// `orderId` is never rendered as a picker and needs no @ref.
+// @noApi keeps this event-driven command off the GraphQL/MCP/AutoUI surface.
 @schema @noApi
 type command =
+  // Two *Id fields (productId + orderId) — @partitionTag picks the storage partition.
   | RecordDemand({@partitionTag productId: string, orderId: string})
   | RevokeDemand({@partitionTag productId: string, orderId: string})
 

@@ -19,6 +19,7 @@ type error =
 
 @schema
 type event = OrderCancelled({
+  // orderId and productIds both tag — @partitionTag picks the storage partition.
   @partitionTag orderId: string,
   productIds: array<string>,
 })

@@ -51,7 +51,6 @@ module FromOrderShipped = Mapping.Make(
 )
 
 // Source 2 — events from this plugin's own DcbEventLog.
-// `module Id` and dcbTags on `*Id` fields are auto-injected by @@reventless.automation.
 module InventoryDcbSource = {
   let name = "InventoryDcbEventLog"   // MUST match Plugin_Builder's topic key
   @schema

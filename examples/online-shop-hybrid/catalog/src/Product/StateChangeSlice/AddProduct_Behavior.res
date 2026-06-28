@@ -1,10 +1,8 @@
 @@reventless.behavior
 
-// `exists` becomes true once this product's own `ProductAdded` is in the decision
-// read — the `productId` clause returns only this product (categoryId is inferred
-// payload, so no sibling products leak in), making a plain existence flag enough.
-// `liveCategoryIds` holds categories that exist and are not archived — adding a
-// product to a missing or archived category is rejected.
+// `exists` flags whether this product already exists; `liveCategoryIds` holds
+// categories that exist and are not archived — adding a product to a missing or
+// archived category is rejected.
 type state = {exists: bool, liveCategoryIds: array<string>}
 
 let initialState = {exists: false, liveCategoryIds: []}

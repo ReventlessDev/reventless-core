@@ -13,6 +13,7 @@ type consumedEvent =
 type command =
   PlaceOrder({
     @partitionTag orderId: string,
+    // customerId is payload, not a query key — @noDcbTag stops it auto-tagging.
     @noDcbTag customerId: string,
     @ref("AvailableProducts") productIds: array<string>,
   })
