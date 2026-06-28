@@ -62,10 +62,12 @@ Panel > Output (channel dropdown)
 - **Trigger:** always present once the extension activates (activation fires on a workspace containing `*_GWT.res` / `*GwtTest.res` / `reventless-gwt.config.json`).
 - **Source:** `contributes.viewsContainers.activitybar` in `package.json`.
 
-### B. Primary Side Bar → **Components** view (Phase 2/3)
+### B. Primary Side Bar → **Components** view
 - **Where:** click the Reventless Activity Bar icon → the view titled **COMPONENTS**.
 - **Shows:** a tree **Plugin → kind group → component → files**. Plugin nodes (the short package dir name, e.g. `catalog`) use `$(package)`; kind groups (`Aggregate`, `StateChangeSlice`, `ReadModel`, …) use `$(symbol-namespace)`; components use `$(symbol-method)`. Under each component, its **source files** list first — the spec (marked `spec`) then body/implementation files like `*_Behavior.res` / `*_Mappings.res` — followed by its **GWT test files**. Each file leaf uses the **same glyph as its category toggle** (`media/cat-spec.svg` / `cat-behavior.svg` / `cat-gwt.svg`), so the tree and the show/hide buttons match.
 - **Completeness indicator:** an incomplete component shows the description `⚠ missing <parts>` (any of `spec`, `behavior`, `GWT`) with a `$(warning)` icon; a complete one shows no description. The check is kind-aware: `Task` expects only a spec; `Extension` / `ExtensionPoint` expect a body file + a GWT (no separate spec). Source files always list regardless.
+- **Authoring:** the title bar's **`＋`** creates a component (and there's a remove action); right-clicking a plugin / chapter / component row offers create-in-scope, rename, move-to-chapter, and delete — scaffolding the spec / body / GWT files and updating workspace wiring. A just-created row appears **optimistically** before the watch re-reflects.
+- **Domain badges:** rows carry inline signals beside the name — a **codegen / synthesize** status badge (forward/backward codegen progress), a **dead-code** `⚠` when a produced event has no consumer, and, on a DCB consumed slice, a **`◂ N consumed · K unknown`** badge (`K` = consumed-event arms naming no known producer; expand the `consumed events` group for the per-arm diagnostic + a rename quick-fix).
 - **Click-through:** clicking a component opens its **spec file** (or first test if no spec); clicking any file leaf opens that file.
 - **Category filters:** three title-bar toggles show/hide each file category, each with its own glyph (custom `media/cat-*.svg`: document = **spec**, `</>` = **behavior**, flask = **GWT**). All on by default; hiding a category strikes its glyph through (and dims it) and removes those files from every component. Commands `reventless.showSpec` / `hideSpec` (and behavior / gwt), also in the Command Palette.
 - **Flat / tree toggle:** `$(list-flat)` / `$(list-tree)` switches between the full tree (`plugin → kind → component → files`) and a **flat** view — `plugin → files`, every file directly under its plugin (grouped by component, spec → behavior → GWT), with no kind-group or component level. Commands `reventless.componentsAsFlat` / `componentsAsTree`.
@@ -95,7 +97,7 @@ Open it via the **flask icon** in the Activity Bar (or **View → Testing**).
    - **Source:** `WatchTreeProvider`, view id `reventless.watch`; title actions via `contributes.menus.view/title`.
    - **Note:** the build *log* is a single shared channel, so "Open Build Log" shows the same output regardless of which package you came from — the per-package signal is the state icon/label, not separate logs.
 
-### D. Status Bar — workspace health (Phase 1a)
+### D. Status Bar — workspace health
 - **Where:** **bottom-left** of the window (left-aligned, priority 100).
 - **Shows:** one folded summary, e.g. `$(check) Reventless · 312✓ 2✗`, `$(sync~spin) Reventless · building catalog`, `$(error) … · build failed`, `… · watch stopped`, with a `N⊘` segment when tests are skipped. Hover tooltip: *"Reventless watch session"*.
 - **Red background:** the whole item turns red (`statusBarItem.errorBackground`) on an error state — **failing tests**, a build failure, or a watcher that died unexpectedly. An in-progress build suppresses the red (spinner instead), and a clean run clears it.
@@ -105,9 +107,9 @@ Open it via the **flask icon** in the Activity Bar (or **View → Testing**).
 - **Source:** `WatchRegistry.statusText()` (unit-tested in [`test/watchRegistry.test.mjs`](https://github.com/ReventlessDev/reventless-core/blob/main/packages/reventless-vscode/test/watchRegistry.test.mjs)).
 
 ### E. Editor — CodeLenses and the quick-fix
-- **Run CodeLens (Phase 1c):** open any `*_GWT.res` → a clickable **`▷ Run`** sits **above each `test(…)` / `describe(…)`**. Clicking runs just that id via `run --filter`. Source: `GwtCodeLensProvider`.
-- **Coverage CodeLens (Phase 3):** open a component **spec** `.res` file (e.g. `Aggregate/Product.res`) → at the **very top (line 1)** a lens reads **`$(beaker) N GWT`** or **`$(warning) No GWT tests`**. It is package-scoped and skips body files (`_Behavior`, `_Projections`, …) and GWT files. Source: `SpecCoverageCodeLensProvider`.
-- **Apply-expected quick-fix (Phase 4):** in a `*_GWT.res` with a **failing `thenEvents([…])`** assertion, put the cursor on the failing test block → the **💡 lightbulb** (line start, or `Cmd+.`) offers **"Replace expected with actual (thenEvents)"**. It appears only for `EventsMismatch`; not for singular `thenEvent`, `thenError`, or state mismatches. Source: `ApplyExpectedProvider`.
+- **Run CodeLens:** open any `*_GWT.res` → a clickable **`▷ Run`** sits **above each `test(…)` / `describe(…)`**. Clicking runs just that id via `run --filter`. Source: `GwtCodeLensProvider`.
+- **Coverage CodeLens:** open a component **spec** `.res` file (e.g. `Aggregate/Product.res`) → at the **very top (line 1)** a lens reads **`$(beaker) N GWT`** or **`$(warning) No GWT tests`**. It is package-scoped and skips body files (`_Behavior`, `_Projections`, …) and GWT files. Source: `SpecCoverageCodeLensProvider`.
+- **Apply-expected quick-fix:** in a `*_GWT.res` with a **failing `thenEvents([…])`** assertion, put the cursor on the failing test block → the **💡 lightbulb** (line start, or `Cmd+.`) offers **"Replace expected with actual (thenEvents)"**. It appears only for `EventsMismatch`; not for singular `thenEvent`, `thenError`, or state mismatches. Source: `ApplyExpectedProvider`.
 
 ### F. Test failure detail — the expected/actual diff
 - **Where:** when a test fails, an inline red decoration appears on the assertion line in the editor (the message + a peek), and the same is reachable from the **Test Results** panel (**View → Testing → Show Test Output**, or click the failed leaf).
@@ -124,8 +126,26 @@ Open it via the **flask icon** in the Activity Bar (or **View → Testing**).
 - **Visible:** Open Build Log; Show Only / All Failed Tests; Expand / Collapse All Tests; Components as Flat / Tree; Show / Hide Spec / Behavior / GWT; Expand All Components; Restart / Stop / Start Watch. (These are the same commands behind the view-title icons — the palette is the always-available path, and the reliable one for *Collapse All Tests*.)
 - **Hidden** (`when: false`, invoked from the UI only): `reventless.runTest` (Run CodeLens), `reventless.statusBarClick` (status bar), `reventless.expandPlugin` / `collapsePlugin` (per-plugin inline actions — they need the row as an argument).
 
-### Not rendered yet (don't go looking)
-Per the [features plan](https://github.com/ReventlessDev/reventless-core/blob/main/docs/plans/reventless-vscode-features.md) status table: **Phase 5** (domain dead-code → `Problems` diagnostics), **Phase 6** (event-flow / D2 graph webview), and **Phase 8** (`buildFail` → `Problems` fallback) are unbuilt. (Phase 7 watch-session control is now done — Restart / Stop / Start on the Watch view.) Compile errors you see in **Problems** come from the `rescript-vscode` LSP, not this extension.
+### I. Event Graph webview
+- **Where:** the **Components** view title bar → the **graph** icon (type-hierarchy), or **Reventless: Show Event Graph** in the Command Palette. Opens a webview panel titled **Reventless — Event Graph**. A `platformEvents` row's inline **Show Event in Graph** and a `readModels` row's **Show Read Model in Graph** open it focused on that node.
+- **Shows:** the Event-Modeling flow as a D2 diagram — commands (blue) → write-sides (Aggregate / StateChangeSlice, yellow) → events (orange) → read models / state views (green), plus automation slices (purple), translation slices (rose, with `IN` / `OUT` corner badges), and the extension-point ↔ extension cross-plugin chain (teal hexagons). Nodes group into **per-plugin containers**, sub-grouped by **chapter**. An `API` corner badge marks API-exposed commands / read models.
+- **Focus scoping:** click a node to focus it; the toolbar toggles **Scoped** (the kind-aware neighbourhood, bounded at the EP / Extension connectors) vs **Full flow** (the whole connected component), with **✕ Full graph** to clear. Clicking a **plugin** or **chapter** container scopes to it (and selects the matching Components row); ⌘/Ctrl-click a node opens its source.
+- **Legend:** a collapsible panel (top-right) listing every node kind + arrow type with a colour swatch, a checkbox per type, and a master **Show all** — hide a type to declutter (e.g. hide the dashed DCB-read overlay). Toggles are active only for types present in the current view; deselecting everything still leaves the plugin boxes.
+- **External systems:** a translation slice that names an `externalSystem` draws a rose dashed **external box** outside its plugin, with a directional dashed boundary arrow (the anti-corruption boundary).
+- **Authoring:** right-click a node / container / empty canvas for create-component, create-chapter, and new-plugin actions (plus rename / move-to-chapter / delete on component nodes) — the same engine as the Components view's create flow.
+- **Pan/zoom:** scroll to zoom (toward the cursor), drag to pan, double-click or `0` to fit, `+` / `-` to zoom.
+- **Trigger:** uses the watch session's `graph` event (the live reflected model); when the platform isn't running it falls back to a disk-derived synthetic graph, and to a raw-D2 text view if the `d2` binary isn't on `PATH`.
+- **Source:** `DomainGraphD2.res` (pure D2 builder) + `renderGraph` in `extension.ts`; `media/graphView.{js,css}`.
+
+### J. Context Map webview
+- **Where:** the **Components** view title bar → the **globe** icon, or **Reventless: Show Context Map**. Panel titled **Reventless — Context Map**.
+- **Shows:** the whole platform at the **plugin-composition** layer — every plugin as a bounded-context box (even element-less ones), its **extension points** (provided ports) and **extensions** (required ports) as interlocking hexagon icons, its inbound/outbound translation slices, and the dashed **cross-plugin links** wiring an extension to the extension point it targets. Command / event / read-model detail is omitted — that's the Event Graph's job.
+- **External systems:** grouped into one **"External Systems" lane** pinned above the contexts, each with a dashed boundary link to its translation slice.
+- **Always full:** never scoped — clicking a port only **highlights** it (and selects the matching Components row, preserving pan/zoom); clicking a plugin box selects that plugin. Uses the same legend panel as the Event Graph (port kinds + the cross-plugin link).
+- **Source:** `ContextMapD2.res` + `renderContextMap` in `extension.ts`; `media/contextMapView.{js,css}`.
+
+### Now built (the earlier "not yet" list)
+The features this guide once listed as unbuilt have shipped: **domain dead-code** → component-row `⚠` warnings + `Problems` diagnostics; the **Event Graph** + **Context Map** D2 webviews (sections I/J above); **watch-session control** (Restart / Stop / Start); and a **`buildFail` → `Problems` fallback** when the `rescript-vscode` LSP is absent. Compile errors you see in **Problems** still come from the LSP, not this extension.
 
 ---
 
