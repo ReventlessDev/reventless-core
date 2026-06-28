@@ -394,12 +394,14 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     name: OTS.Spec.name,
     consumedEventTypes: qualify(name, DcbTag$Reventless.extractVariantNames(OTS.Spec.consumedEventSchema)),
     inboundCommandTypes: qualify(name, DcbTag$Reventless.extractAllVariantNames(OTS.Spec.inboundCommandSchema)),
-    targetName: OTS.Spec.targetName
+    targetName: OTS.Spec.targetName,
+    externalSystem: OTS.Spec.externalSystem
   }));
   let inboundTranslationSliceDefs = inboundTranslationSlices.map(ITS => ({
     name: ITS.Spec.name,
     commandTypes: qualify(name, DcbTag$Reventless.extractAllVariantNames(ITS.Spec.commandSchema)),
-    targetName: ITS.Spec.targetName
+    targetName: ITS.Spec.targetName,
+    externalSystem: ITS.Spec.externalSystem
   }));
   let extensionDefs = extensions.map(E => {
     let delegateNames = E.mappings.map(M => M.delegateName);

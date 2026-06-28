@@ -46,7 +46,8 @@ let PaymentWebhookSlice = {
   externalInputSchema: externalInputSchema,
   commandSchema: commandSchema,
   translate: translate,
-  commandAuthorization: commandAuthorization
+  commandAuthorization: commandAuthorization,
+  externalSystem: undefined
 };
 
 let include = InboundTranslation_GWT$ReventlessGwt.Make(PaymentWebhookSlice);

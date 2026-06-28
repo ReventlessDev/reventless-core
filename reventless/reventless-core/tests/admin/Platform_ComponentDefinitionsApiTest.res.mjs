@@ -85,13 +85,15 @@ let structure_outboundTranslationSlices = [{
     name: "ToShipper",
     consumedEventTypes: ["OrderPlaced"],
     inboundCommandTypes: ["Ship"],
-    targetName: undefined
+    targetName: undefined,
+    externalSystem: undefined
   }];
 
 let structure_inboundTranslationSlices = [{
     name: "FromBilling",
     commandTypes: ["RecordPayment"],
-    targetName: "Order"
+    targetName: "Order",
+    externalSystem: undefined
   }];
 
 let structure_extensions = [{

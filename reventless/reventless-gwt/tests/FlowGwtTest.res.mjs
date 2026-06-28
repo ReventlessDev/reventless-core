@@ -307,7 +307,8 @@ let ConfirmSlice = {
   consumedEventSchema: consumedEventSchema$4,
   outboundItemSchema: outboundItemSchema,
   inboundCommandSchema: S.unit,
-  collect: collect$1
+  collect: collect$1,
+  externalSystem: undefined
 };
 
 let Place = Flow_GWT$ReventlessGwt.CommandStep(PlaceOrderSlice)({

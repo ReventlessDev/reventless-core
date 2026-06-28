@@ -64,7 +64,8 @@ let SendTrackingEmailSpec = {
   translate: translate,
   maxRetries: 3,
   heartbeatInterval: 60,
-  targetName: undefined
+  targetName: undefined,
+  externalSystem: undefined
 };
 
 let moduleUrl$2 = import.meta.url;
@@ -126,7 +127,8 @@ let ProcessPaymentSpec = {
   translate: translate$1,
   maxRetries: 2,
   heartbeatInterval: 30,
-  targetName: ProcessPaymentSpec_targetName
+  targetName: ProcessPaymentSpec_targetName,
+  externalSystem: undefined
 };
 
 export {

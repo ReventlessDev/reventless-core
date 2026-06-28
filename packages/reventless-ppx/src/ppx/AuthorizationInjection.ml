@@ -348,6 +348,33 @@ let inject ~loc fname (body : structure) : structure_item list * structure * str
     in
     (prefix, body, suffix)
 
+(* externalSystem auto-injection for translation slices ---------------------- *)
+(* [let externalSystem = None] — the opt-in display name of the foreign system a
+   translation slice integrates with. It drives the "external box" drawn outside the
+   plugin in the Event Graph / Context Map (docs/plans/translation-external-boxes.md).
+   Injected for Inbound/Outbound translation specs that don't already declare it, so
+   existing specs satisfy the [Spec] module type without a hand-written [= None]. A spec
+   that names its system (`let externalSystem = Some("…")`) wins — idempotent. *)
+let gen_external_system ~loc =
+  let none = Ast_builder.Default.pexp_construct ~loc { txt = Lident "None"; loc } None in
+  let pat = Ast_builder.Default.ppat_var ~loc { txt = "externalSystem"; loc } in
+  Ast_builder.Default.pstr_value ~loc Nonrecursive
+    [Ast_builder.Default.value_binding ~loc ~pat ~expr:none]
+
+let is_translation_folder fname =
+  Util.is_in_folder fname "InboundTranslationSlice"
+  || Util.is_in_folder fname "InboundTranslationSlices"
+  || Util.is_in_folder fname "OutboundTranslationSlice"
+  || Util.is_in_folder fname "OutboundTranslationSlices"
+
+(* Suffix to splice after the spec body — [] unless this is a translation spec
+   missing the binding. Shares the [is_spec_namespace_pkg] skip with [inject]. *)
+let external_system_suffix ~loc fname (body : structure) : structure_item list =
+  if is_spec_namespace_pkg loc then []
+  else if is_translation_folder fname && not (Util.has_let_binding "externalSystem" body)
+  then [gen_external_system ~loc]
+  else []
+
 (* Inline-module detection + injection --------------------------------------- *)
 (*
    Test fixtures and a handful of framework-internal helpers define spec
@@ -397,6 +424,25 @@ let inner_module_is_readmodel_spec (mb : module_binding) : bool =
     body_has_schema_type "state" body
     && Util.has_let_binding "subIdConfig" body
   | _ -> false
+
+(* Inbound translation specs carry [@schema type externalInput]; outbound ones
+   [@schema type outboundItem] — either marks a translation spec needing the
+   optional [externalSystem] field. (Inbound also has [@schema type command], so it
+   ALSO matches the aggregate shape and gets commandAuthorization; the two
+   injections compose.) *)
+let inner_module_is_translation_spec (mb : module_binding) : bool =
+  match mb.pmb_expr.pmod_desc with
+  | Pmod_structure body ->
+    body_has_schema_type "externalInput" body || body_has_schema_type "outboundItem" body
+  | _ -> false
+
+(* Append [let externalSystem = None] to an inline translation spec lacking it. *)
+let inject_external_system_into_inner_module ~loc (mb : module_binding) : module_binding =
+  match mb.pmb_expr.pmod_desc with
+  | Pmod_structure body when not (Util.has_let_binding "externalSystem" body) ->
+    let new_body = body @ [gen_external_system ~loc] in
+    { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_structure new_body } }
+  | _ -> mb
 
 (* Inject the appropriate field into an inline spec module body, if it
    isn't already present. Honours an inner [@@reventless.authorize(rule)]
@@ -455,12 +501,25 @@ let walk_inline_specs (str : structure) : structure =
   if in_spec_pkg then str
   else
   List.map (fun (item : structure_item) ->
+    let loc = item.pstr_loc in
     match item.pstr_desc with
     | Pstr_module mb when inner_module_is_aggregate_spec mb ->
-      let mb' = inject_into_inner_module ~loc:item.pstr_loc ~is_command_carrier:true mb in
+      (* Inbound translation specs also match the aggregate shape (they declare a
+         command): inject commandAuthorization AND, when it's a translation,
+         externalSystem. *)
+      let mb' = inject_into_inner_module ~loc ~is_command_carrier:true mb in
+      let mb' =
+        if inner_module_is_translation_spec mb'
+        then inject_external_system_into_inner_module ~loc mb'
+        else mb'
+      in
       { item with pstr_desc = Pstr_module mb' }
     | Pstr_module mb when inner_module_is_readmodel_spec mb ->
-      let mb' = inject_into_inner_module ~loc:item.pstr_loc ~is_command_carrier:false mb in
+      let mb' = inject_into_inner_module ~loc ~is_command_carrier:false mb in
+      { item with pstr_desc = Pstr_module mb' }
+    | Pstr_module mb when inner_module_is_translation_spec mb ->
+      (* Outbound translation specs (outboundItem, no command): externalSystem only. *)
+      let mb' = inject_external_system_into_inner_module ~loc mb in
       { item with pstr_desc = Pstr_module mb' }
     | _ -> item
   ) str

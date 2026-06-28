@@ -26,6 +26,8 @@ let heartbeatInterval = 60;
 
 let targetName;
 
+let externalSystem = "EmailService";
+
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Order/OutboundTranslationSlice/SendOrderConfirmation.res.mjs";
 
 export {
@@ -37,6 +39,7 @@ export {
   maxRetries,
   heartbeatInterval,
   targetName,
+  externalSystem,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

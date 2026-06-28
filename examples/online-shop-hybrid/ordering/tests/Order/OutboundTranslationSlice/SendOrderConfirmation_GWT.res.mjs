@@ -13,6 +13,7 @@ let SendOrderConfirmationSlice = {
   maxRetries: SendOrderConfirmation$OrderingPlugin.maxRetries,
   heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval,
   targetName: undefined,
+  externalSystem: SendOrderConfirmation$OrderingPlugin.externalSystem,
   moduleUrl: SendOrderConfirmation$OrderingPlugin.moduleUrl,
   collect: SendOrderConfirmation_Translation$OrderingPlugin.collect
 };

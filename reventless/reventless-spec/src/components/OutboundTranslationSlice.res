@@ -75,6 +75,12 @@ module type Spec = {
 
   /** Name of the aggregate or StateChangeSlice that receives the inbound command, or None for fire-and-forget. */
   let targetName: option<string>
+
+  /** Optional display name of the foreign system this anti-corruption slice publishes
+      to (e.g. `"EmailService"`). Drives the **external box** drawn outside the plugin
+      in the Event Graph / Context Map (see docs/plans/translation-external-boxes.md).
+      Auto-injected by `@@reventless.spec` defaulting to `None` — set it to name the box. */
+  let externalSystem: option<string>
 }
 
 /**

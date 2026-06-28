@@ -291,7 +291,8 @@ function graph(g) {
   let e_1 = g.edges.map(e => ({
     from: e.from,
     to: e.to,
-    kind: e.kind
+    kind: e.kind,
+    label: e.label
   }));
   let e = {
     event: "graph",

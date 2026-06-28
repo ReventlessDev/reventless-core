@@ -262,7 +262,7 @@ let graph = (g: DomainGraph.graph) =>
         label: n.label,
         plugin: n.plugin,
       }),
-      edges: g.edges->Array.map((e): P.graphEdge => {from: e.from, to_: e.to, kind: e.kind}),
+      edges: g.edges->Array.map((e): P.graphEdge => {from: e.from, to_: e.to, kind: e.kind, label: ?e.label}),
     }),
   )
 

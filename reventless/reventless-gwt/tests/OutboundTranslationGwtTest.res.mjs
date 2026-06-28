@@ -32,7 +32,8 @@ let SendTrackingEmailSlice = {
   consumedEventSchema: consumedEventSchema,
   outboundItemSchema: outboundItemSchema,
   inboundCommandSchema: inboundCommandSchema,
-  collect: collect
+  collect: collect,
+  externalSystem: undefined
 };
 
 let include = OutboundTranslation_GWT$ReventlessGwt.Make(SendTrackingEmailSlice);

@@ -47,17 +47,19 @@ let automation = (~name, ~consumes=[], ~produces=[], ~target=""): Reventless.Plu
   targetName: target,
 }
 
-let inbound = (~name, ~produces=[], ~target=""): Reventless.Plugin.inboundTranslationSliceDef => {
+let inbound = (~name, ~produces=[], ~target="", ~ext=None): Reventless.Plugin.inboundTranslationSliceDef => {
   name,
   commandTypes: produces,
   targetName: target,
+  externalSystem: ext,
 }
 
-let outbound = (~name, ~consumes=[], ~produces=[], ~target=None): Reventless.Plugin.outboundTranslationSliceDef => {
+let outbound = (~name, ~consumes=[], ~produces=[], ~target=None, ~ext=None): Reventless.Plugin.outboundTranslationSliceDef => {
   name,
   consumedEventTypes: consumes,
   inboundCommandTypes: produces,
   targetName: target,
+  externalSystem: ext,
 }
 
 let structure = (
@@ -83,6 +85,8 @@ let structure = (
 
 let hasEdge = (g: DomainGraph.graph, from, to, kind) =>
   g.edges->Array.some(e => e.from == from && e.to == to && e.kind == kind)
+let edgeLabel = (g: DomainGraph.graph, from, to, kind) =>
+  g.edges->Array.find(e => e.from == from && e.to == to && e.kind == kind)->Option.flatMap(e => e.label)
 let nodeKind = (g: DomainGraph.graph, id) =>
   g.nodes->Array.find(n => n.id == id)->Option.map(n => n.kind)
 
@@ -215,6 +219,60 @@ describe("DomainGraph.build", () => {
     )
     let g = DomainGraph.build(~structures=[("Shop", shop)])
     expect(hasEdge(g, "Shop:ExportProduct", "Shop_Product_Sync", "delegatesTo"))->toBe(true)
+  })
+
+  testPromise("an inbound translation naming an external system draws a box feeding it", async () => {
+    let shop = structure(
+      ~inboundTranslationSlices=[
+        inbound(~name="ImportProduct", ~produces=["ImportProduct.Add"], ~target="Product", ~ext=Some("SupplierFeed")),
+      ],
+    )
+    let g = DomainGraph.build(~structures=[("Shop", shop)])
+    // External box: drawn OUTSIDE the plugin (plugin: "") with a stable "ext:<name>" id.
+    expect(nodeKind(g, "ext:SupplierFeed"))->toEqual(Some("ExternalSystem"))
+    expect(g.nodes->Array.find(n => n.id == "ext:SupplierFeed")->Option.map(n => n.plugin))->toEqual(Some(""))
+    // Inbound direction: external → slice (unlabelled — the arrowhead carries the meaning).
+    expect(hasEdge(g, "ext:SupplierFeed", "Shop:ImportProduct", "translatesIn"))->toBe(true)
+    expect(edgeLabel(g, "ext:SupplierFeed", "Shop:ImportProduct", "translatesIn"))->toEqual(None)
+  })
+
+  testPromise("an outbound translation naming an external system feeds the box", async () => {
+    let shop = structure(
+      ~outboundTranslationSlices=[
+        outbound(~name="SendEmail", ~consumes=["Shop.Placed"], ~target=None, ~ext=Some("EmailService")),
+      ],
+    )
+    let g = DomainGraph.build(~structures=[("Shop", shop)])
+    expect(nodeKind(g, "ext:EmailService"))->toEqual(Some("ExternalSystem"))
+    // Outbound direction: slice → external (unlabelled — the arrowhead carries the meaning).
+    expect(hasEdge(g, "Shop:SendEmail", "ext:EmailService", "translatesOut"))->toBe(true)
+    expect(edgeLabel(g, "Shop:SendEmail", "ext:EmailService", "translatesOut"))->toEqual(None)
+  })
+
+  testPromise("translation slices with no external system draw no box (opt-in)", async () => {
+    let shop = structure(
+      ~inboundTranslationSlices=[inbound(~name="ImportProduct", ~target="Product")],
+    )
+    let g = DomainGraph.build(~structures=[("Shop", shop)])
+    expect(g.nodes->Array.some(n => n.kind == "ExternalSystem"))->toBe(false)
+  })
+
+  testPromise("two slices naming the same external system share one deduped box", async () => {
+    let a = structure(
+      ~outboundTranslationSlices=[
+        outbound(~name="SendEmailA", ~consumes=["A.X"], ~target=None, ~ext=Some("EmailService")),
+      ],
+    )
+    let b = structure(
+      ~inboundTranslationSlices=[
+        inbound(~name="FromEmail", ~produces=["FromEmail.Record"], ~target="Inbox", ~ext=Some("EmailService")),
+      ],
+    )
+    let g = DomainGraph.build(~structures=[("PluginA", a), ("PluginB", b)])
+    // One shared box (per-platform dedup by name) with both an out- and an in-edge.
+    expect(g.nodes->Array.filter(n => n.id == "ext:EmailService")->Array.length)->toBe(1)
+    expect(hasEdge(g, "PluginA:SendEmailA", "ext:EmailService", "translatesOut"))->toBe(true)
+    expect(hasEdge(g, "ext:EmailService", "PluginB:FromEmail", "translatesIn"))->toBe(true)
   })
 
   testPromise("an event produced by two write-sides is one node with two emit edges", async () => {

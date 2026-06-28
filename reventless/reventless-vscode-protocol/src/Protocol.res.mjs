@@ -64,7 +64,8 @@ let graphNodeSchema = S.schema(s => ({
 let graphEdgeSchema = S.schema(s => ({
   from: s.m(S.string),
   to: s.m(S.string),
-  kind: s.m(S.string)
+  kind: s.m(S.string),
+  label: s.m(S.option(S.string))
 }));
 
 let streamEventSchema = S.union([

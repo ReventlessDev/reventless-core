@@ -59,10 +59,11 @@ let structure: pluginStructure = {
       consumedEventTypes: ["OrderPlaced"],
       inboundCommandTypes: ["Ship"],
       targetName: None,
+      externalSystem: None,
     },
   ],
   inboundTranslationSlices: [
-    {name: "FromBilling", commandTypes: ["RecordPayment"], targetName: "Order"},
+    {name: "FromBilling", commandTypes: ["RecordPayment"], targetName: "Order", externalSystem: None},
   ],
   extensions: [
     {

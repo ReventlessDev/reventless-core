@@ -53,8 +53,10 @@ type deadCodeFinding = {kind: string, plugin: string, component: string, detail:
 // `to` is a ReScript keyword → `@as` keeps the runtime/wire/TS field name `to`.
 @genType @schema
 type graphNode = {id: string, kind: string, label: string, plugin: string}
+// `label` (optional) annotates the connection — e.g. the payload type crossing a
+// translation slice's boundary to/from an external system. Absent on ordinary edges.
 @genType @schema
-type graphEdge = {from: string, @as("to") to_: string, kind: string}
+type graphEdge = {from: string, @as("to") to_: string, kind: string, label?: string}
 
 // The watch + platform-runner stream as a flat, internally-tagged variant.
 // `discoverStart` carries an optional phantom field so it serialises as an object

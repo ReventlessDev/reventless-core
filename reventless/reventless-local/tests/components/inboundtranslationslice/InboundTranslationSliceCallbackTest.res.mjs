@@ -22,6 +22,7 @@ let Callback = InboundTranslationSlice_Callback$ReventlessCore.Make({
   externalInputSchema: InboundTranslationSliceFixtures$ReventlessLocal.PaymentWebhookSpec.externalInputSchema,
   commandSchema: InboundTranslationSliceFixtures$ReventlessLocal.PaymentWebhookSpec.commandSchema,
   targetName: InboundTranslationSliceFixtures$ReventlessLocal.PaymentWebhookSpec.targetName,
+  externalSystem: InboundTranslationSliceFixtures$ReventlessLocal.PaymentWebhookSpec.externalSystem,
   commandAuthorization: InboundTranslationSliceFixtures$ReventlessLocal.PaymentWebhookSpec.commandAuthorization
 })(PaymentWebhookTranslation);
 
@@ -153,6 +154,7 @@ globalThis.describe("InboundTranslationSlice Callback", () => {
         externalInputSchema: externalInputSchema,
         commandSchema: commandSchema,
         targetName: "ConfirmPayment",
+        externalSystem: undefined,
         commandAuthorization: commandAuthorization
       })(MultiTranslation);
       let publishedCommands = {
@@ -210,6 +212,7 @@ globalThis.describe("InboundTranslationSlice Callback", () => {
         externalInputSchema: externalInputSchema,
         commandSchema: commandSchema,
         targetName: "ConfirmPayment",
+        externalSystem: undefined,
         commandAuthorization: commandAuthorization
       })(EmptyTranslation);
       let publishedCommands = {

@@ -63,7 +63,8 @@ let PaymentWebhookSpec = {
   commandSchema: commandSchema,
   targetName: "ConfirmPayment",
   translate: translate,
-  commandAuthorization: commandAuthorization
+  commandAuthorization: commandAuthorization,
+  externalSystem: undefined
 };
 
 export {

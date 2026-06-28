@@ -158,7 +158,8 @@ function Make(Platform) {
     inboundCommandSchema: SendOrderConfirmation$OrderingPlugin.inboundCommandSchema,
     maxRetries: SendOrderConfirmation$OrderingPlugin.maxRetries,
     heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval,
-    targetName: undefined
+    targetName: undefined,
+    externalSystem: SendOrderConfirmation$OrderingPlugin.externalSystem
   })({
     collect: SendOrderConfirmation_Translation$OrderingPlugin.collect,
     translate: SendOrderConfirmation_Translation$OrderingPlugin.translate,

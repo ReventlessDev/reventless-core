@@ -132,13 +132,15 @@ let outboundTranslationSliceDefSchema = S.schema(s => ({
   name: s.m(S.string),
   consumedEventTypes: s.m(S.array(S.string)),
   inboundCommandTypes: s.m(S.array(S.string)),
-  targetName: s.m(stringOptionSchema)
+  targetName: s.m(stringOptionSchema),
+  externalSystem: s.m(stringOptionSchema)
 }));
 
 let inboundTranslationSliceDefSchema = S.schema(s => ({
   name: s.m(S.string),
   commandTypes: s.m(S.array(S.string)),
-  targetName: s.m(S.string)
+  targetName: s.m(S.string),
+  externalSystem: s.m(stringOptionSchema)
 }));
 
 let extensionDefSchema = S.schema(s => ({

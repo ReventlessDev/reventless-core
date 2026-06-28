@@ -140,6 +140,7 @@ describe("InboundTranslationSlice Callback", () => {
         })
 
         let targetName = "ConfirmPayment"
+        let externalSystem = None
 
         let translate = (input: externalInput) =>
           Ok(
@@ -206,6 +207,7 @@ describe("InboundTranslationSlice Callback", () => {
         })
 
         let targetName = "ConfirmPayment"
+        let externalSystem = None
 
         let translate = (_input: externalInput) => Ok([])
 

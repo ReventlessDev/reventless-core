@@ -243,6 +243,8 @@ type outboundTranslationSliceDef = {
   consumedEventTypes: array<string>,
   inboundCommandTypes: array<string>,
   targetName: @s.matches(stringOptionSchema) option<string>,
+  // Foreign system this slice publishes to — drives the external box (Event Graph).
+  externalSystem: @s.matches(stringOptionSchema) option<string>,
 }
 
 @schema
@@ -250,6 +252,8 @@ type inboundTranslationSliceDef = {
   name: string,
   commandTypes: array<string>,
   targetName: string,
+  // Foreign system this slice receives from — drives the external box (Event Graph).
+  externalSystem: @s.matches(stringOptionSchema) option<string>,
 }
 
 @schema

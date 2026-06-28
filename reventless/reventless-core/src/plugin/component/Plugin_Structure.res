@@ -497,6 +497,7 @@ let make = (
       consumedEventTypes: qualify(~prefix=name, eventVariantNames(OTS.Spec.consumedEventSchema)),
       inboundCommandTypes: qualify(~prefix=name, commandVariantNames(OTS.Spec.inboundCommandSchema)),
       targetName: OTS.Spec.targetName,
+      externalSystem: OTS.Spec.externalSystem,
     }: Reventless.Plugin.outboundTranslationSliceDef))
 
   // ── Inbound translation slices ────────────────────────────────────────────
@@ -506,6 +507,7 @@ let make = (
       Reventless.Plugin.name: ITS.Spec.name,
       commandTypes: qualify(~prefix=name, commandVariantNames(ITS.Spec.commandSchema)),
       targetName: ITS.Spec.targetName,
+      externalSystem: ITS.Spec.externalSystem,
     }: Reventless.Plugin.inboundTranslationSliceDef))
 
   // ── Extensions ───────────────────────────────────────────────────────────

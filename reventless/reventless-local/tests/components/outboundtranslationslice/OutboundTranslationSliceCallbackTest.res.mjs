@@ -37,7 +37,8 @@ let FireForgetCallback = OutboundTranslationSlice_Callback$ReventlessCore.Make({
   inboundCommandSchema: OutboundTranslationSliceFixtures$ReventlessLocal.SendTrackingEmailSpec.inboundCommandSchema,
   maxRetries: OutboundTranslationSliceFixtures$ReventlessLocal.SendTrackingEmailSpec.maxRetries,
   heartbeatInterval: OutboundTranslationSliceFixtures$ReventlessLocal.SendTrackingEmailSpec.heartbeatInterval,
-  targetName: OutboundTranslationSliceFixtures$ReventlessLocal.SendTrackingEmailSpec.targetName
+  targetName: OutboundTranslationSliceFixtures$ReventlessLocal.SendTrackingEmailSpec.targetName,
+  externalSystem: OutboundTranslationSliceFixtures$ReventlessLocal.SendTrackingEmailSpec.externalSystem
 })(SendTrackingEmailTranslation);
 
 let CommandBackCallback = OutboundTranslationSlice_Callback$ReventlessCore.Make({
@@ -48,7 +49,8 @@ let CommandBackCallback = OutboundTranslationSlice_Callback$ReventlessCore.Make(
   inboundCommandSchema: OutboundTranslationSliceFixtures$ReventlessLocal.ProcessPaymentSpec.inboundCommandSchema,
   maxRetries: OutboundTranslationSliceFixtures$ReventlessLocal.ProcessPaymentSpec.maxRetries,
   heartbeatInterval: OutboundTranslationSliceFixtures$ReventlessLocal.ProcessPaymentSpec.heartbeatInterval,
-  targetName: OutboundTranslationSliceFixtures$ReventlessLocal.ProcessPaymentSpec.targetName
+  targetName: OutboundTranslationSliceFixtures$ReventlessLocal.ProcessPaymentSpec.targetName,
+  externalSystem: OutboundTranslationSliceFixtures$ReventlessLocal.ProcessPaymentSpec.externalSystem
 })(ProcessPaymentTranslation);
 
 globalThis.describe("OutboundTranslationSlice Callback", () => {

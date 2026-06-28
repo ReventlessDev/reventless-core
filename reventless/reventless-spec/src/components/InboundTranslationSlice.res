@@ -51,6 +51,12 @@ module type Spec = {
   /** Name of the aggregate or StateChangeSlice that receives the produced command. */
   let targetName: string
 
+  /** Optional display name of the foreign system this anti-corruption slice receives
+      from (e.g. `"SupplierFeed"`). Drives the **external box** drawn outside the plugin
+      in the Event Graph / Context Map (see docs/plans/translation-external-boxes.md).
+      Auto-injected by `@@reventless.spec` defaulting to `None` — set it to name the box. */
+  let externalSystem: option<string>
+
   /** Authorization rule evaluated at the GraphQL resolver entry before any
       external input is translated. Auto-injected by `@@reventless.spec` and
       on structurally-detected inline spec modules — defaults to

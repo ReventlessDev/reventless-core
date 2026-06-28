@@ -791,8 +791,14 @@ let transform (str : structure) : structure =
       let (rc_prefix, body, rc_suffix) =
         ReadConsistencyInjection.inject ~loc loc.loc_start.pos_fname body
       in
+      (* externalSystem auto-injection (Inbound/Outbound translation only). Appends
+         [let externalSystem = None] when the spec doesn't name its foreign system, so
+         the optional Spec field is satisfied without a manual binding. Idempotent. *)
+      let ext_suffix =
+        AuthorizationInjection.external_system_suffix ~loc loc.loc_start.pos_fname body
+      in
       !prefix @ authz_prefix @ vis_prefix @ rc_prefix @ body
-        @ readmodel_suffix @ suffix @ authz_suffix @ vis_suffix @ rc_suffix
+        @ readmodel_suffix @ suffix @ authz_suffix @ vis_suffix @ rc_suffix @ ext_suffix
 
     | Implementation (kind, spec_name_opt) ->
       let fname = loc.loc_start.pos_fname in

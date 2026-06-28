@@ -71,25 +71,29 @@ function automation(name, consumesOpt, producesOpt, targetOpt) {
   };
 }
 
-function inbound(name, producesOpt, targetOpt) {
+function inbound(name, producesOpt, targetOpt, extOpt) {
   let produces = producesOpt !== undefined ? producesOpt : [];
   let target = targetOpt !== undefined ? targetOpt : "";
+  let ext = extOpt !== undefined ? Primitive_option.valFromOption(extOpt) : undefined;
   return {
     name: name,
     commandTypes: produces,
-    targetName: target
+    targetName: target,
+    externalSystem: ext
   };
 }
 
-function outbound(name, consumesOpt, producesOpt, targetOpt) {
+function outbound(name, consumesOpt, producesOpt, targetOpt, extOpt) {
   let consumes = consumesOpt !== undefined ? consumesOpt : [];
   let produces = producesOpt !== undefined ? producesOpt : [];
   let target = targetOpt !== undefined ? Primitive_option.valFromOption(targetOpt) : undefined;
+  let ext = extOpt !== undefined ? Primitive_option.valFromOption(extOpt) : undefined;
   return {
     name: name,
     consumedEventTypes: consumes,
     inboundCommandTypes: produces,
-    targetName: target
+    targetName: target,
+    externalSystem: ext
   };
 }
 
@@ -123,6 +127,16 @@ function hasEdge(g, from, to, kind) {
       return false;
     }
   });
+}
+
+function edgeLabel(g, from, to, kind) {
+  return Stdlib_Option.flatMap(g.edges.find(e => {
+    if (e.from === from && e.to === to) {
+      return e.kind === kind;
+    } else {
+      return false;
+    }
+  }), e => e.label);
 }
 
 function nodeKind(g, id) {
@@ -209,7 +223,7 @@ globalThis.describe("DomainGraph.build", () => {
     globalThis.expect(hasEdge(g, "Shop:AutoShip", "Shop_Ship_Place", "delegatesTo")).toBe(false);
   });
   globalThis.test("an inbound translation routes to the command it raises on its target", async () => {
-    let shop = structure(undefined, undefined, undefined, [writable("Product", [command("Add", "Shop_Product_Add", undefined)], undefined, undefined, undefined, undefined)], undefined, undefined, [inbound("ImportProduct", ["ImportProduct.Add"], "Product")], undefined);
+    let shop = structure(undefined, undefined, undefined, [writable("Product", [command("Add", "Shop_Product_Add", undefined)], undefined, undefined, undefined, undefined)], undefined, undefined, [inbound("ImportProduct", ["ImportProduct.Add"], "Product", undefined)], undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -218,12 +232,58 @@ globalThis.describe("DomainGraph.build", () => {
     globalThis.expect(hasEdge(g, "Shop:ImportProduct", "Shop_Product_Add", "delegatesTo")).toBe(true);
   });
   globalThis.test("an outbound translation with a target routes to the command it raises", async () => {
-    let shop = structure(undefined, undefined, undefined, [writable("Product", [command("Sync", "Shop_Product_Sync", undefined)], undefined, undefined, undefined, undefined)], undefined, [outbound("ExportProduct", ["Shop.Added"], ["ExportProduct.Sync"], "Product")], undefined, undefined);
+    let shop = structure(undefined, undefined, undefined, [writable("Product", [command("Sync", "Shop_Product_Sync", undefined)], undefined, undefined, undefined, undefined)], undefined, [outbound("ExportProduct", ["Shop.Added"], ["ExportProduct.Sync"], "Product", undefined)], undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
       ]]);
     globalThis.expect(hasEdge(g, "Shop:ExportProduct", "Shop_Product_Sync", "delegatesTo")).toBe(true);
+  });
+  globalThis.test("an inbound translation naming an external system draws a box feeding it", async () => {
+    let shop = structure(undefined, undefined, undefined, undefined, undefined, undefined, [inbound("ImportProduct", ["ImportProduct.Add"], "Product", "SupplierFeed")], undefined);
+    let g = DomainGraph$ReventlessGwt.build([[
+        "Shop",
+        shop
+      ]]);
+    globalThis.expect(nodeKind(g, "ext:SupplierFeed")).toEqual("ExternalSystem");
+    globalThis.expect(Stdlib_Option.map(g.nodes.find(n => n.id === "ext:SupplierFeed"), n => n.plugin)).toEqual("");
+    globalThis.expect(hasEdge(g, "ext:SupplierFeed", "Shop:ImportProduct", "translatesIn")).toBe(true);
+    globalThis.expect(edgeLabel(g, "ext:SupplierFeed", "Shop:ImportProduct", "translatesIn")).toEqual(undefined);
+  });
+  globalThis.test("an outbound translation naming an external system feeds the box", async () => {
+    let shop = structure(undefined, undefined, undefined, undefined, undefined, [outbound("SendEmail", ["Shop.Placed"], undefined, Primitive_option.some(undefined), "EmailService")], undefined, undefined);
+    let g = DomainGraph$ReventlessGwt.build([[
+        "Shop",
+        shop
+      ]]);
+    globalThis.expect(nodeKind(g, "ext:EmailService")).toEqual("ExternalSystem");
+    globalThis.expect(hasEdge(g, "Shop:SendEmail", "ext:EmailService", "translatesOut")).toBe(true);
+    globalThis.expect(edgeLabel(g, "Shop:SendEmail", "ext:EmailService", "translatesOut")).toEqual(undefined);
+  });
+  globalThis.test("translation slices with no external system draw no box (opt-in)", async () => {
+    let shop = structure(undefined, undefined, undefined, undefined, undefined, undefined, [inbound("ImportProduct", undefined, "Product", undefined)], undefined);
+    let g = DomainGraph$ReventlessGwt.build([[
+        "Shop",
+        shop
+      ]]);
+    globalThis.expect(g.nodes.some(n => n.kind === "ExternalSystem")).toBe(false);
+  });
+  globalThis.test("two slices naming the same external system share one deduped box", async () => {
+    let a = structure(undefined, undefined, undefined, undefined, undefined, [outbound("SendEmailA", ["A.X"], undefined, Primitive_option.some(undefined), "EmailService")], undefined, undefined);
+    let b = structure(undefined, undefined, undefined, undefined, undefined, undefined, [inbound("FromEmail", ["FromEmail.Record"], "Inbox", "EmailService")], undefined);
+    let g = DomainGraph$ReventlessGwt.build([
+      [
+        "PluginA",
+        a
+      ],
+      [
+        "PluginB",
+        b
+      ]
+    ]);
+    globalThis.expect(g.nodes.filter(n => n.id === "ext:EmailService").length).toBe(1);
+    globalThis.expect(hasEdge(g, "PluginA:SendEmailA", "ext:EmailService", "translatesOut")).toBe(true);
+    globalThis.expect(hasEdge(g, "ext:EmailService", "PluginB:FromEmail", "translatesIn")).toBe(true);
   });
   globalThis.test("an event produced by two write-sides is one node with two emit edges", async () => {
     let shop = structure([
@@ -408,6 +468,7 @@ export {
   outbound,
   structure,
   hasEdge,
+  edgeLabel,
   nodeKind,
 }
 /*  Not a pure module */
