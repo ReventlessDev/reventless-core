@@ -1,6 +1,16 @@
-# Plan (Backlog): Infer DCB Tag Scope From Global Usage
+# Plan: Infer DCB Tag Scope From Global Usage
 
-**Status:** Backlog (not started)
+**Status:** ✅ **Complete.** Phases 1–3, 4b-Part A, and 5 done; example migration
+(Phase 4) done for the headline `AddProduct`/Category case. Phase 4b-**Part B (drop
+`@partitionTag`) is closed as WON'T-DO by design** — not deferred: a correctness
+analysis of the read + fence path (see Phase 4b) showed the partition tag is the
+consistency-critical storage-partition/fence decision and that `@partitionTag` is the
+build-time **intent oracle** that makes inference verifiable; removing it would delete
+that oracle on the one decision where a wrong guess is a *silent* consistency bug.
+The sibling-leak footgun is fixed read- **and** write-side; `AddProduct` carries zero
+scope annotations; the only annotation still standing is `@partitionTag` on
+multi-`*Id` events — retained deliberately, a one-token build-checked declaration, not
+a leftover.
 
 **Motivation commits:**
 `074d4faec` (*feat: verify category exists in AddProduct via cross-partition DCB read*) and
@@ -415,14 +425,74 @@ over to the derived values.
      Proven by `DcbCrossPartitionReadTest`: a slice-produced product is queryable by
      `productId` but not by `categoryId`. Full blast radius green (local 419, core
      471, all examples).
-   - ⬜ **Part B — drop `@partitionTag`.** Blocked on `derivePartitionTag`, which
-     reads `@partitionTag` metadata to pick the **single global storage partition key**
-     of a multi-entity DcbEventLog (e.g. `productId` for the catalog). Removing the
-     annotation means inferring that global key — a **DynamoDB main-PK** decision
-     (`DcbEventLogStorage_DynamoDb_Runtime.derivePartitionKey`) that local storage
-     ignores and that I can't validate without a real DynamoDB deploy. Defer until it
-     can be validated there; `@partitionTag` stays meanwhile (a small, honest
-     annotation — the leak is already fixed read- and write-side without it).
+   - 🚫 **Part B — drop `@partitionTag`. WON'T-DO (by design).** Originally "deferred,
+     blocked on a real DynamoDB deploy." A correctness analysis of the read + fence path
+     (below) changed this from "deferred" to "deliberately retained": `@partitionTag` is
+     kept **permanently** as the build-time intent oracle for the most consistency-
+     critical DCB decision. The sibling leak — the actual footgun — is already fixed
+     read- **and** write-side (Part A) without removing it.
+
+     **Why the partition tag is consistency-critical, not cosmetic/perf.** The storage
+     partition key `id` chosen by `derivePartitionTag`
+     ([`DcbTag.res:1211-1312`](../../reventless/reventless-spec/src/components/DcbTag.res))
+     is on the **decision READ path**, not just a distribution knob. A wrong choice is a
+     *silent consistency bug* in two independent ways:
+
+     1. **Missed events → silent invariant violation.** A plain (non-`@crossPartition`)
+        single-tag decision clause is served by a **base-table Query on
+        `id = "<key>:<value>"`** —
+        [`buildQueryByPartitionKeyInput`, `DcbEventLogStorage_DynamoDb_Runtime.res:276-300`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res)
+        — **not** a GSI (GSIs back only `@crossPartition` and composite clauses). The
+        **write** picks `id` from the partition tag
+        ([`derivePartitionKey`, same file `:41-62`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res));
+        the **read** picks its partition from *the clause's own tag*
+        ([`buildQueryFromCommand`, `DcbTag.res:793-829`](../../reventless/reventless-spec/src/components/DcbTag.res)),
+        which never consults the partition tag. They agree **only by construction.** If
+        an event is stored under partition **A** but a slice reads it by tag **B**, the
+        read hits `id="B:..."`, the event lives in `A:...`, and `decide` folds an
+        **incomplete event set** → wrong decision, silently. (The documented PlaceOrder
+        partition-miss: `docs/analysis/dcb-consistency-check-issues.md:54-65`.)
+     2. **Lost update / double-create.** The partition tag also selects which
+        `fence#<key>:<value>` item carries the OCC bump and the `after=None` **create
+        guard**
+        ([fence builders `DcbEventLogStorage_DynamoDb_Runtime.res:600-832`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res);
+        `eventPartitionTags` `:916-961`). A wrong key routes two concurrent first-writers'
+        `attribute_not_exists` guards to **different fence items** ⇒ both commit ⇒
+        lost-update / double-create — exactly what the create guard exists to prevent.
+
+     This is the worst class of bug: silent, data-dependent, surfaces only under specific
+     event shapes or concurrency. `derivePartitionKey`'s `None` arm even falls back to
+     `tags->getUnsafe(0)` (first tag) — a wrong inference doesn't fail loudly, it
+     mis-partitions.
+
+     **Why removal is self-defeating (the decisive argument).** The danger only
+     materializes if inference picks a *different* partition than intended **and it goes
+     unnoticed.** Two things bound that today — and removing the annotation throws away
+     the second:
+     - The genuinely ambiguous case **throws, it doesn't guess**: `derivePartitionTag`
+       errors when a multi-`*Id` variant has no clear partition
+       ([`DcbTag.res:1296-1303`](../../reventless/reventless-spec/src/components/DcbTag.res)),
+       forcing an explicit decision. The only *silent*-divergence spot is the
+       multi-entity single-tag-per-variant case picking "first field alphabetically"
+       ([`:1306-1307`](../../reventless/reventless-spec/src/components/DcbTag.res)).
+     - **`@partitionTag` is the ground-truth oracle that makes inference verifiable.**
+       Phase 1's zero-diff gate works *precisely because* the annotation states intent and
+       inference can be diffed against it (and it confirmed `partitionBySlice` ==
+       `derivePartitionTag` for every existing slice — no divergence today). Delete the
+       annotation to make the inferred value the sole authority and you delete the oracle:
+       inference might still be right, but nothing can detect when a **future** plugin's
+       event shape diverges from intent — on the one decision where "wrong" is a silent
+       consistency bug. Trading a free, permanent build-time correctness check for that
+       risk, to save one token on a handful of multi-`*Id` events, is a bad trade.
+
+     **Decision:** `@partitionTag` is retained by design. It is a one-token, build-checked
+     declaration of storage partition + fence scope on multi-entity event logs, kept as
+     the verifiable intent oracle — **not** a TODO. Cross-ref `dcb-fence-scope-alignment.md`
+     (fence-scope = read-scope) and `docs-framework/internals/dcb-consistency-checks.md`
+     (Stage 2 read scoping `:152-216`, Stage 3 fences `:218-275`). Revisit only if
+     write-side authoring becomes a real pain point *and* a build-time oracle replacing the
+     annotation (e.g. inference cross-checked against a deployed-DynamoDB conformance test)
+     is in place first.
 5. **Docs** — ✅ **Done (developer-facing + internals).** Rewrote the tag guidance to
    the new model: cross-entity *reference* reads are inferred (no annotation);
    `@crossPartition` is reserved for **M:N capacity**; `@partitionTag` is still
@@ -470,8 +540,11 @@ over to the derived values.
 ## Definition of done
 
 - `online-shop-hybrid`'s `AddProduct` + Category slices compile and pass (unit +
-  flow) with **no** `@partitionTag` / `@crossPartition` / `@noTag` anywhere, and no
-  sibling-leak workaround in the behavior.
+  flow) with **no** `@crossPartition` / `@noTag` anywhere, and no sibling-leak
+  workaround in the behavior. ✅ Met. *(`@partitionTag` on multi-`*Id` events is
+  retained by design — see Phase 4b-Part B; the original "no `@partitionTag`" goal
+  was dropped once the read+fence correctness analysis showed the annotation is the
+  consistency-critical intent oracle, not a removable leftover.)*
 - The generator emits the same `crossPartitionTagKeys` / `tagKeysByEventType` it
   does today for every example (zero behavioural diff), now derived rather than
   annotated.
