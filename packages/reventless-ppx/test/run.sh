@@ -11,11 +11,75 @@ cd "$(dirname "$0")/.."
 
 PASS=0
 FAIL=0
-PPX_BIN="$(pwd)/bin"
+PPX_DIR="$(pwd)"
+PPX_BIN="$PPX_DIR/bin"
 REPO_ROOT="$(cd ../.. && pwd)"
 
 pass() { echo "  ✓ $1"; PASS=$((PASS + 1)); }
 fail() { echo "  ✗ $1: $2"; FAIL=$((FAIL + 1)); }
+
+# ─── node_modules for the temp packages (linker-agnostic) ───────────
+#
+# The temp ReScript packages resolve their dependencies through a node_modules that we link
+# into each one. The healthy layout is pnpm's *hoisted* linker (.npmrc → node-linker=hoisted),
+# where every dep — including `sury` — sits in $REPO_ROOT/node_modules, so a single symlink to
+# it is enough. But when `pnpm install` runs without NPM_TOKEN (e.g. a fork PR, where the
+# project .npmrc that references ${NPM_TOKEN} is discarded), pnpm falls back to the *isolated*
+# linker and `sury` is NOT hoisted to the root — rescript's upward traversal then fails with
+# "did not find 'sury'". To stay correct under either linker we detect that case and build a
+# real node_modules that mirrors the root and adds the un-hoisted deps individually.
+
+# Deps the fixtures declare (or reach via ppx-flags like "sury-ppx/bin"). Extra entries are
+# harmless: a temp package only builds what its own rescript.json lists.
+REQUIRED_DEPS=(sury sury-ppx @reventlessdev/reventless-spec @reventlessdev/reventless-infra)
+
+# Print a package's directory, resolved under either linker. Workspace @reventlessdev/* live at
+# known repo paths; external deps go through node's resolver, anchored at dirs that can see them
+# (the root and the workspace packages that depend on sury).
+resolve_dep_dir() {
+  local dep="$1"
+  case "$dep" in
+    @reventlessdev/*)
+      local short="${dep#@reventlessdev/}"
+      for cand in "$REPO_ROOT/reventless/$short" "$REPO_ROOT/packages/$short"; do
+        [ -f "$cand/package.json" ] && { echo "$cand"; return 0; }
+      done
+      ;;
+  esac
+  node -e 'try { console.log(require("path").dirname(require.resolve(process.argv[1] + "/package.json", { paths: process.argv.slice(2) }))); } catch { process.exit(1); }' \
+    "$dep" "$REPO_ROOT" "$REPO_ROOT/reventless/reventless-spec" "$REPO_ROOT/reventless/reventless-infra" "$PPX_DIR"
+}
+
+# Give $1/node_modules a layout where every REQUIRED_DEP resolves.
+link_node_modules() {
+  local target="$1" nm="$1/node_modules"
+  # Fast path (unchanged): hoisted root already contains sury → one symlink covers everything.
+  if [ -e "$REPO_ROOT/node_modules/sury" ]; then
+    ln -s "$REPO_ROOT/node_modules" "$nm"
+    return
+  fi
+  # Fallback (isolated linker): mirror the root node_modules so rescript + @rescript/* + the
+  # workspace packages still resolve, then symlink the deps the root is missing (sury, …).
+  echo "  (note: 'sury' not hoisted in \$REPO_ROOT/node_modules — linking deps individually)"
+  mkdir -p "$nm"
+  for entry in "$REPO_ROOT"/node_modules/*; do
+    local base; base="$(basename "$entry")"
+    if [[ "$base" == @* ]]; then
+      mkdir -p "$nm/$base"
+      for scoped in "$entry"/*; do
+        [ -e "$scoped" ] && ln -sfn "$scoped" "$nm/$base/$(basename "$scoped")"
+      done
+    else
+      ln -sfn "$entry" "$nm/$base"
+    fi
+  done
+  for dep in "${REQUIRED_DEPS[@]}"; do
+    [ -e "$nm/$dep" ] && continue
+    local dir; dir="$(resolve_dep_dir "$dep")" || { echo "  ✗ could not resolve dependency '$dep'"; exit 1; }
+    [[ "$dep" == @*/* ]] && mkdir -p "$nm/${dep%/*}"
+    ln -sfn "$dir" "$nm/$dep"
+  done
+}
 
 assert_js_contains() {
   local file="$1" pattern="$2" label="$3"
@@ -61,7 +125,7 @@ cat > "$PLUGIN/rescript.json" <<EOF
 }
 EOF
 
-ln -s "$REPO_ROOT/node_modules" "$PLUGIN/node_modules"
+link_node_modules "$PLUGIN"
 
 # Spec file — no @schema needed, just test PPX injections
 cat > "$PLUGIN/src/Aggregate/Product.res" <<'EOF'
@@ -145,7 +209,7 @@ cat > "$SPEC/rescript.json" <<EOF
 }
 EOF
 
-ln -s "$REPO_ROOT/node_modules" "$SPEC/node_modules"
+link_node_modules "$SPEC"
 
 # EP spec — derives "Catalog.Products" from CatalogSpec namespace
 cat > "$SPEC/src/ProductsExtensionPoint.res" <<'EOF'
@@ -179,7 +243,7 @@ cat > "$DCB/rescript.json" <<EOF
 }
 EOF
 
-ln -s "$REPO_ROOT/node_modules" "$DCB/node_modules"
+link_node_modules "$DCB"
 
 # DCB StateChangeSlice — *Id fields should get auto-annotated (explicit @@reventless.dcbTags)
 cat > "$DCB/src/AddItem.res" <<'EOF'
@@ -1576,7 +1640,7 @@ cat > "$ERROR/rescript.json" <<EOF
 }
 EOF
 
-ln -s "$REPO_ROOT/node_modules" "$ERROR/node_modules"
+link_node_modules "$ERROR"
 
 echo ""
 echo "=== Test: PPX error — @subId + @compositeSubId on same type ==="
