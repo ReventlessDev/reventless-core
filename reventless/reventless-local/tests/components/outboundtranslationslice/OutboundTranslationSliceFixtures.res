@@ -40,6 +40,7 @@ module SendTrackingEmailSpec = {
   let maxRetries = 3
   let heartbeatInterval = 60
   let targetName = None
+  let externalSystem = None
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -75,4 +76,5 @@ module ProcessPaymentSpec = {
   let maxRetries = 2
   let heartbeatInterval = 30
   let targetName = Some("ConfirmPayment")
+  let externalSystem = None
 }
