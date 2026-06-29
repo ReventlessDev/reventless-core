@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.114 (2026-06-29)
+
+### Bug Fixes
+
+* **test:** set externalSystem on translation slice fixtures for published PPX ([19bbb2f](https://github.com/ReventlessDev/reventless-core/commit/19bbb2fa7f4606c0ff00aa9b403ebf74415d58c0))
+### Features
+
+* external-system boxes for translation slices (Event Graph data) ([3f8ad39](https://github.com/ReventlessDev/reventless-core/commit/3f8ad39b78a3cb1182d59a0e1fb203b7dcb7379b))
+
+
 # 3.0.0-alpha.113 (2026-06-27)
 
 ### Features

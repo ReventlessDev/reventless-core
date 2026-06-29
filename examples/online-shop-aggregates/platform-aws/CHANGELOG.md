@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.19 (2026-06-29)
+
+### Bug Fixes
+
+* **deps:** regenerate pnpm-lock.yaml onto npmjs; bump host-shell alpha.32->alpha.33 ([b3e5ae2](https://github.com/ReventlessDev/reventless-core/commit/b3e5ae2d8a2aebd4ddf5480dfe64d647c340f130)), closes [#1](https://github.com/ReventlessDev/reventless-core/issues/1) [#3](https://github.com/ReventlessDev/reventless-core/issues/3)
+
+
 # 1.0.0-alpha.18 (2026-06-27)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-platform-aws

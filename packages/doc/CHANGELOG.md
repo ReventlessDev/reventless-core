@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.54 (2026-06-29)
+
+### Bug Fixes
+
+* **docs:** derive D2 image linkPath from baseUrl so diagrams resolve per version ([ec24e9f](https://github.com/ReventlessDev/reventless-core/commit/ec24e9f0cba04dca04ea269dbdc7edde5b625b0a))
+
+
 # 1.0.0-alpha.53 (2026-06-27)
 
 ### Bug Fixes
