@@ -195,6 +195,18 @@ jobs:
             npm run build
           fi
           cd ../..
+          # Replace the latest (root) version wholesale without disturbing the
+          # beta/alpha subtrees or generated root files. The wget mirror in
+          # "Download existing documentation" may have saved page routes as FILES
+          # (no trailing slash, e.g. app/get-started) where the fresh build emits
+          # DIRECTORIES (app/get-started/index.html); `cp -r` cannot overwrite a
+          # file with a directory. The main build output holds only the latest
+          # version's own top-level entries (app/, framework/, index.html, …) —
+          # never the beta/ or alpha/ subdirs — so removing each entry's
+          # counterpart first is safe and leaves the other versions intact.
+          for entry in packages/doc/build/*; do
+            rm -rf "build-output/$(basename "$entry")"
+          done
           cp -r packages/doc/build/* build-output/
 
       - name: Build Beta Documentation
@@ -231,6 +243,14 @@ jobs:
             npm run build
           fi
           cd ../..
+          # This version is being rebuilt — replace it wholesale. The wget mirror
+          # in "Download existing documentation" may have populated
+          # build-output/beta with the live site, whose page routes are saved as
+          # FILES (no trailing slash, e.g. app/get-started) where the fresh build
+          # emits DIRECTORIES (app/get-started/index.html). `cp -r` cannot
+          # overwrite a file with a directory, so clear this version's subtree
+          # first. Other versions (root/alpha) stay intact, preserving the mirror.
+          rm -rf build-output/beta
           mkdir -p build-output/beta
           cp -r packages/doc/build/* build-output/beta/
 
@@ -268,6 +288,14 @@ jobs:
             npm run build
           fi
           cd ../..
+          # This version is being rebuilt — replace it wholesale. The wget mirror
+          # in "Download existing documentation" may have populated
+          # build-output/alpha with the live site, whose page routes are saved as
+          # FILES (no trailing slash, e.g. app/get-started) where the fresh build
+          # emits DIRECTORIES (app/get-started/index.html). `cp -r` cannot
+          # overwrite a file with a directory, so clear this version's subtree
+          # first. Other versions (root/beta) stay intact, preserving the mirror.
+          rm -rf build-output/alpha
           mkdir -p build-output/alpha
           cp -r packages/doc/build/* build-output/alpha/
 
