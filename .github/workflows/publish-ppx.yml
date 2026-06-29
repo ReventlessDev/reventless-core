@@ -157,7 +157,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Must be NPM_TOKEN (not NODE_AUTH_TOKEN): the project .npmrc references
+          # ${NPM_TOKEN}. When that env var is undefined, pnpm discards the entire
+          # .npmrc — dropping node-linker=hoisted and falling back to the isolated
+          # linker. That un-hoists `sury` from the root node_modules, so the PPX
+          # test's temp packages (which symlink to root node_modules) fail
+          # rescript's upward traversal: "did not find 'sury'".
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Setup OCaml
         uses: ocaml/setup-ocaml@v3
