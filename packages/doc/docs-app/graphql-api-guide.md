@@ -47,11 +47,11 @@ Both platforms expose the same Domain API shape described in this guide. The dif
 
 - **Subscriptions.** The framework generates three subscription feeds for every platform (covered in §10):
 
-  - **Source A** — event-log feed (`on<EventLog>EventLog_eventAppended`): one field per event log, fires on each appended event.
-  - **Source B** — read-model feed (`on<Type>_stateChanged`): one field per queryable type, fires after the projection has written the new state.
-  - **Source C** — mutation-accepted feed (`on<MutationField>`): one field per mutation, fires when the mutation is accepted.
+  - **Event-log feed** (`on<EventLog>EventLog_eventAppended`): one field per event log, fires on each appended event.
+  - **Read-model feed** (`on<Type>_stateChanged`): one field per queryable type, fires after the projection has written the new state.
+  - **Mutation-accepted feed** (`on<MutationField>`): one field per mutation, fires when the mutation is accepted.
 
-  The local platform delivers all three feeds over its in-process bus through graphql-yoga's subscription transport. The AWS platform delivers Source C via AppSync's native `@aws_subscribe` directive and Sources A and B via AppSync Events.
+  The local platform delivers all three feeds over its in-process bus through graphql-yoga's subscription transport. The AWS platform delivers the mutation-accepted feed via AppSync's native `@aws_subscribe` directive, and the event-log and read-model feeds via AppSync Events.
 - **Authorization.** The AWS platform honours per-table Cognito authorization rules attached at the read-model level; the local platform ignores them (every operation is permitted).
 - **Latency and durability.** Operations on the local platform are synchronous and lose state when the process exits; the AWS platform is eventually consistent (event → projection → query db) and durable.
 
@@ -556,7 +556,7 @@ If no plugin contributes any mutations, the schema declares `type Mutation { _no
 
 There are three subscription feeds. Each is generated automatically from the same specs that drive mutations and queries.
 
-### 10.1 Source A — Event-log feed — `on<EventLog>EventLog_eventAppended`
+### 10.1 Event-log feed — `on<EventLog>EventLog_eventAppended`
 
 One field per aggregate `EventLog` and per plugin `DcbEventLog`. Fires when any event is appended to that log. Carries the raw event as `AWSJSON`. Primarily for observability and admin tooling.
 
@@ -578,7 +578,7 @@ extend type Subscription {
 
 `originatorSlice` is set when the event was appended through a `StateChangeSlice` (so you can attribute change in mixed-source projections).
 
-### 10.2 Source B — Read-model feed — `on<Type>_stateChanged(id: ID)`
+### 10.2 Read-model feed — `on<Type>_stateChanged(id: ID)`
 
 One field per queryable type. Fires *after* the projection has fully written the new state to the QueryDb. The optional `id` argument is a server-side filter — clients receive only updates for the entity they care about.
 
@@ -593,7 +593,7 @@ extend type Subscription {
 
 Use this to drive live UI updates.
 
-### 10.3 Source C — Mutation-accepted feed — `on<MutationField>(id: ID)`
+### 10.3 Mutation-accepted feed — `on<MutationField>(id: ID)`
 
 One field per mutation. Fires when the mutation is accepted (before its side effects complete). Useful for optimistic UI progress indicators.
 

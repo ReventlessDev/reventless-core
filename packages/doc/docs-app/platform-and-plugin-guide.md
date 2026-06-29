@@ -456,8 +456,9 @@ When the target read model type is ambiguous in the `Update` callback, annotate 
 ### ReadModelStream
 
 `ReadModelStream` is a variant of `ReadModel` whose query view also pushes
-**live updates** to subscribed browsers (AppSync Events "Source B" — the AutoUI
-list/detail refresh-without-reload behavior). Use it for read models backing a
+**live updates** to subscribed browsers (live read-model state-change events,
+delivered over AppSync Events — the AutoUI list/detail refresh-without-reload
+behavior). Use it for read models backing a
 UI list or detail that users keep open and expect to stay fresh.
 
 **Spec and projection files are identical to `ReadModel`** — same `@@reventless.spec`

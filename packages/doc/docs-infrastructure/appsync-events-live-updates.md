@@ -37,7 +37,7 @@ AWS AppSync exposes **two unrelated real-time products**:
 | Model | subscribe to a GraphQL field; server resolves a mutation→subscription mapping | publish/subscribe to free-form **channels**; no schema, no resolvers |
 | Endpoint | `wss://<host>.appsync-realtime-api.<region>…/graphql` | `wss://<host>.appsync-realtime-api.<region>…/event/realtime` |
 | Publish | implicit (a mutation triggers the subscription) | explicit HTTP `POST /event` to a channel |
-| Reventless usage | **Source C** (command-result subscriptions, `onX_…`) | **Sources A & B** (raw events + read-model state changes) |
+| Reventless usage | the **mutation-accepted feed** (command-result subscriptions, `onX_…`) | the **event-log + read-model feeds** (raw events + read-model state changes) |
 
 Reventless uses the **Events** API for live read-model updates because the
 publisher is a **Lambda reacting to a DynamoDB Stream**, not a GraphQL mutation.
@@ -49,16 +49,16 @@ that read model is subscribed to it.
 A single AppSync Events API per platform serves **both** domain and platform
 read-model channels (see [`AppSync_EventsApi.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/Api/AppSync_EventsApi.res)).
 
-### The two server-side sources
+### The two server-side feeds
 
-| Source | Trigger | Adapter | Channel root | Payload |
-|--------|---------|---------|--------------|---------|
-| **B — state changes** | QueryDb DynamoDB **Stream** | [`StateTopic_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res) | read model **list field name** | change descriptor `{changeKind, id, sortKeyValue?}` |
-| **A — raw events** | SNS EventTopic → SQS | [`EventLogSubscription_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res) | event log **displayName** | `{position, eventType, payload, originatorSlice}` |
+| Feed | Trigger | Adapter | Channel root | Payload |
+|------|---------|---------|--------------|---------|
+| **Read-model feed** (state changes) | QueryDb DynamoDB **Stream** | [`StateTopic_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res) | read model **list field name** | change descriptor `{changeKind, id, sortKeyValue?}` |
+| **Event-log feed** (raw events) | SNS EventTopic → SQS | [`EventLogSubscription_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res) | event log **displayName** | `{position, eventType, payload, originatorSlice}` |
 
-AutoUI list/detail views consume **Source B**. The rest of this guide focuses on
-Source B; Source A follows the same namespace/auth rules with a different channel
-root and payload.
+AutoUI list/detail views consume the **read-model feed**. The rest of this guide
+focuses on it; the **event-log feed** follows the same namespace/auth rules with a
+different channel root and payload.
 
 ---
 
@@ -193,7 +193,7 @@ delivered to a channel nobody listens to.
 The trailing `*` wildcard matches any entity key, so a list view receives every
 row change in the read model; a detail view receives only its own entity's changes.
 
-### Change-descriptor payload (Source B)
+### Change-descriptor payload (read-model feed)
 
 The publisher sends a small descriptor — **not** the full row:
 
@@ -352,7 +352,7 @@ server-side change journal, descriptor-level catch-up
 |---------|-------|-------|
 | Create the Events API + `default` namespace | `AppSync_EventsApi.make` in [`Platform.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/Platform.res) | **Only on the platform/monolithic stack.** Plugin stacks reconstruct a phantom from the `eventsApiArn` / `eventsApiDns` stack exports. |
 | Shared StateTopic Lambda (one per events API per stack) | `StateTopic_AppSync.make` (registers) + `StateTopic_AppSync.finish` (builds) in `Platform.res` | `subscriptionInfraHook` calls `make` for every stream-enabled QueryDb in the stack — admin RMs, user-plugin `ReadModelStream`s, and `StateViewSliceStream`s alike. `finish` runs once at the end of `makePlatform` / `deployPlatform` / `deployPlugin` and builds a single Lambda + IAM role/policy + one `EventSourceMapping` per stream, all targeting that shared Lambda. Routing is per-record via the `STATE_TOPIC_MAP` env var (`{ "<ddbTableName>": "<listFieldName>" }`) — the handler reads `record.eventSourceARN`, extracts the table name, and looks up the matching channel root. |
-| Admin RM live updates | `PluginReadModel`, `PlatformEventGraphReadModel`, `UIFragmentRegistryReadModel` in `Platform.res` | The framework's built-in admin read models (`Platform_Plugins`, `Platform_PlatformEventGraphs`, `Platform_UIFragments`) are stream-enabled and participate in Source B — admin lists in the host-shell live-update. UIFragmentRegistry uses `ReadModel_Builder_NoResolver_Stream` because its GraphQL field is served by a dedicated `Platform_UIFragments_Lambda`, not an auto-generated resolver. |
+| Admin RM live updates | `PluginReadModel`, `PlatformEventGraphReadModel`, `UIFragmentRegistryReadModel` in `Platform.res` | The framework's built-in admin read models (`Platform_Plugins`, `Platform_PlatformEventGraphs`, `Platform_UIFragments`) are stream-enabled and participate in the read-model feed — admin lists in the host-shell live-update. UIFragmentRegistry uses `ReadModel_Builder_NoResolver_Stream` because its GraphQL field is served by a dedicated `Platform_UIFragments_Lambda`, not an auto-generated resolver. |
 
 > **Which read models get a stream (and therefore live updates)?** Streaming is
 > **opt-in**, because each streamed read model costs one DynamoDB Stream + one
@@ -496,8 +496,8 @@ work" until the last fell.
 
 **Server (publish) — `reventless-core`:**
 - [`adapter/Api/AppSync_EventsApi.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/Api/AppSync_EventsApi.res) — Events API + `default` namespace + auth modes.
-- [`adapter/StateTopic/StateTopic_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res) — Source B Lambda (stream → channel).
-- [`adapter/EventLogSubscription/EventLogSubscription_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res) — Source A Lambda (SNS → channel).
+- [`adapter/StateTopic/StateTopic_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res) — read-model-feed Lambda (stream → channel).
+- [`adapter/EventLogSubscription/EventLogSubscription_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res) — event-log-feed Lambda (SNS → channel).
 - [`Platform.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/Platform.res) — `subscriptionInfraHook`, Events API creation, `config.json`, stack exports.
 - [`components/Api/Api_Naming.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/Api/Api_Naming.res) — `listFieldName` vs `returnTypeName`.
 
