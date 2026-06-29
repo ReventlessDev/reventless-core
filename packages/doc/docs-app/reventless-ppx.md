@@ -41,9 +41,9 @@ Use on **all spec files**: aggregate specs, read model specs, extension point sp
 | `AddCategory.res` | `"AddCategory"` |
 | `CategoriesView.res` | `"Categories"` |
 | `ProductsExtensionPoint.res` | `"Products"` |
-| `ProductBehavior.res` | `"Product"` |
+| `Product_Behavior.res` | `"Product"` |
 
-Stripped suffixes: `ExtensionPointMapping`, `ExtensionPoint`, `ReadModel`, `Behavior`, `Projections`, `Projection`, `Aggregate`, `Plugin`, `Slice`, `Spec`, `View`.
+Stripped suffixes (each tried first with a leading underscore, e.g. `_Behavior`, then bare): `ExtensionPointMapping`, `ExtensionPoint`, `ReadModel`, `Behavior`, `Projections`, `Projection`, `Aggregate`, `Plugin`, `Slice`, `Spec`, `View`.
 
 **Dotted names in spec packages:** When the `rescript.json` namespace ends in `Spec` (e.g., `CatalogSpec`), the PPX automatically prefixes the derived name with the plugin name:
 
@@ -77,13 +77,13 @@ Use on **all behavior files**.
 | `module Spec = Spec` | Not already declared | Aliases the spec module |
 | `let moduleUrl` | Not already declared | Computed npm specifier |
 
-**Spec module derivation:** strips `Behavior` from the filename.
+**Spec module derivation:** strips `_Behavior` (or a bare `Behavior`) from the filename.
 
 | Filename | Derived spec |
 |----------|-------------|
-| `CategoryBehavior.res` | `open Category; module Spec = Category` |
-| `OrderBehavior.res` | `open Order; module Spec = Order` |
-| `ProductDemandBehavior.res` | `open ProductDemand; module Spec = ProductDemand` |
+| `Category_Behavior.res` | `open Category; module Spec = Category` |
+| `Order_Behavior.res` | `open Order; module Spec = Order` |
+| `ProductDemand_Behavior.res` | `open ProductDemand; module Spec = ProductDemand` |
 
 **Explicit spec override:**
 

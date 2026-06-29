@@ -51,7 +51,7 @@ The following example builds the **Catalog plugin** step by step, focusing on th
 The Spec defines the aggregate's **identity**, **commands**, **events**, and **errors**. It lives in its own file so both the behavior and any event mappings can reference it without creating circular dependencies.
 
 ```rescript
-// Product.res
+// Product/Aggregate/Product.res
 @@reventless.spec
 
 @schema
@@ -85,7 +85,7 @@ The Behavior implements the aggregate's state machine. It defines three values:
 - **`decide`** — takes the current state and a command, returns `result<array<event>, error>`; `Ok([...events])` accepts the command, `Error(err)` rejects it
 
 ```rescript
-// ProductBehavior.res
+// Product/Aggregate/Product_Behavior.res
 @@reventless.behavior
 
 @schema
@@ -138,34 +138,9 @@ type state = {
 }
 ```
 
-Inside a `ReadModel/` folder, `@@reventless.spec` auto-injects `let name`, `let config`, and `let subIdConfig = None`.
+Inside a `ReadModel/` folder, `@@reventless.spec` auto-injects `let name`, `let config`, and `let subIdConfig = None`. The row id is whatever the projection passes to `Set`/`Update` (the source aggregate's id), so a basic read model needs no key declarations of its own.
 
-**Custom indexes** — to query a read model by a field other than the primary id, declare `let config` explicitly:
-
-```rescript
-// Product/ReadModel/Products.res
-@@reventless.spec
-
-@schema
-type state = {
-  name: string,
-  description: string,
-  price: float,
-}
-
-let config = Reventless.ReadModel.config(
-  ~indexes=[
-    {
-      index: "name",
-      _type: "S",
-      projectionType: #ALL,
-    },
-  ],
-  (),
-)
-```
-
-**Sub-id (composite key)** — if a read model stores multiple rows per id (e.g. order line items), add `let subIdConfig`:
+**Keys and indexes come from field annotations.** You don't hand-write `let makeId`, `let subIdConfig`, or `let config` — annotate the `@schema type state` fields and the PPX generates them:
 
 ```rescript
 // Order/ReadModel/OrderItems.res
@@ -173,19 +148,19 @@ let config = Reventless.ReadModel.config(
 
 @schema
 type state = {
-  itemId: string,
-  name: string,
+  @id orderId: string,        // partition key  → generates `let makeId`
+  @subId itemId: string,      // sort key        → generates `let subIdConfig`
+  @index name: string,        // secondary index → adds an entry to `let config`
   quantity: int,
   price: float,
 }
-
-let subIdConfig = Some({
-  Reventless.ReadModel.Spec.subIdField: "itemId",
-  getSubId: state => state.itemId,
-})
 ```
 
-With `subIdConfig`, `load(orderId)` returns an array of items sorted by the sub-id field.
+- `@id` / `@compositeId` — designate the partition-key field(s).
+- `@subId` / `@compositeSubId` — add a sort key, so the read model stores multiple rows per id. `load(orderId)` then returns them sorted by the sub-id field.
+- `@index` / `@index("name")` — expose a secondary index so the read model can be queried by a non-id field.
+
+See [PPX annotations](./rescript-syntax.md#reventless-ppx-annotations) for the full set (including `@resolves` cross-table joins and `@indexSubId`). For an index the annotations can't express, you can still fall back to declaring `let config = Reventless.ReadModel.config(~indexes=[...])` explicitly.
 
 ### Step 4: Implement the Projection
 
@@ -242,9 +217,11 @@ let mappings: array<module(Mapping)> = [module(AutoShipMapping)]
 
 If an aggregate has no event mappings, the generator wires `ReventlessInfra.NoEventMappings.Make(Product)` for it.
 
-### Step 6: Assemble the Plugin
+### Step 6: Let the Generator Assemble the Plugin
 
-The Plugin is assembled as a **[module function](./rescript-syntax.md#functors) over `Platform.T`**. This keeps your application code decoupled from the AWS infrastructure—only the composition root imports `reventless-aws`.
+You don't write the composition root by hand. Before every build, `generate-plugin src/` (wired as the `prebuild` script, also runnable via `pnpm run generate`) scans `src/` by folder name — `Aggregate/`, `ReadModel/`, `StateChangeSlice/`, … — and wires every component it discovers into a **generated** `src/Plugin.res`. The plugin is a [module function](./rescript-syntax.md#functors) over `Platform.T`, which keeps your application code decoupled from the AWS infrastructure — only the composition root touches the platform.
+
+For the Catalog plugin built above, the generator emits roughly:
 
 ```rescript
 // src/Plugin.res — AUTO-GENERATED — do not edit. Run `pnpm run generate` to update.
@@ -270,6 +247,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 }
 ```
 
+`src/Plugin.res` is committed to git, so CI compiles it directly without re-running the generator. An optional `src/plugin.json` sets the plugin name and heartbeat interval; without it the generator falls back to the folder name and defaults.
+
 ## Deploying the Plugin
 
 The composition root is the only file that imports `reventless-aws`. It instantiates the Platform with AWS config and passes it to the [plugin module function](./rescript-syntax.md#functors), then calls `makePlatform` to create the Pulumi infrastructure.
@@ -290,46 +269,33 @@ Platform.makePlatform(
 )
 ```
 
-## High-Contention Aggregates — `MakeAsync`
+## High-Contention Aggregates — `@@reventless.async`
 
-By default, `Platform.Aggregate.Make` uses a standard SQS queue. Commands are processed synchronously within the Lambda invocation, and mutations return `CommandAccepted` or `CommandRejected` immediately.
+By default, an aggregate uses a standard SQS queue: commands are processed synchronously within the Lambda invocation and the mutation returns `CommandAccepted` or `CommandRejected` immediately. The generator wires this with `Platform.Aggregate.Make`.
 
-For aggregates with very high write throughput (e.g. a shared inventory counter or a hot-partition entity), you can opt into an async FIFO queue with `Platform.Aggregate.MakeAsync`:
+For aggregates with very high write throughput (e.g. a shared inventory counter or a hot-partition entity), opt into an async FIFO queue by adding `@@reventless.async` at the top of the **spec file** — no change to the generated `Plugin.res`:
 
 ```rescript
-module Make = (Platform: ReventlessInfra.Platform.T) => {
-  // Standard aggregate — mutation returns CommandAccepted | CommandRejected
-  module ProductAggregate = Platform.Aggregate.Make(
-    Product,
-    Product_Behavior,
-    ReventlessInfra.NoEventMappings.Make(Product),
-  )
+// Inventory/Aggregate/Inventory.res
+@@reventless.spec
+@@reventless.async
 
-  // High-contention aggregate — mutation returns CommandPending immediately
-  module InventoryAggregate = Platform.Aggregate.MakeAsync(
-    Inventory,
-    Inventory_Behavior,
-    ReventlessInfra.NoEventMappings.Make(Inventory),
-  )
-
-  let make = () =>
-    Platform.Plugin.make(
-      ~name="Catalog",
-      ~heartbeatInterval=5,
-      ~aggregates=[module(ProductAggregate), module(InventoryAggregate)],
-    )
-}
+@schema
+type command = Reserve({sku: string, quantity: int})
+// ...events, error
 ```
 
-Both variants go in the same `~aggregates` array — the channel choice is encoded in the builder. In the AWS platform, `MakeAsync` provisions a FIFO SQS queue and its own Lambda. In the local platform, both `Make` and `MakeAsync` behave identically.
+On the next build, `prebuild` regenerates `Plugin.res` and the generator emits `Platform.Aggregate.MakeAsync(Inventory, Inventory_Behavior, ...)` instead of `Make` for that aggregate. The opt-in lives entirely on the spec file; you never edit the wiring by hand.
 
-When a command is dispatched to a `MakeAsync` aggregate, the mutation returns:
+Async aggregates route to a separate FIFO-backed command-handler Lambda (`AllAggregatesAsyncCmdHandler`), distinct from the default sync `AllAggregatesCmdHandler`. Each is only provisioned when at least one aggregate of that flavor exists, so sync-only setups (the default) pay no extra Lambda cost. In the local platform, sync and async behave identically.
+
+When a command is dispatched to an async aggregate, the mutation returns `CommandPending` instead of `CommandAccepted`/`CommandRejected`:
 
 ```graphql
 { commandPending: { msgId: "..." } }
 ```
 
-The client receives the `msgId` and can poll or subscribe for the eventual outcome. Use `MakeAsync` only when you have measured contention on a specific aggregate — the default synchronous path is simpler to reason about and provides immediate feedback.
+The client receives the `msgId` and can poll or subscribe (`Subscription.onX`) for the eventual outcome. Reach for `@@reventless.async` only when you have measured contention on a specific aggregate — the default synchronous path is simpler to reason about and gives immediate feedback. The same attribute works on StateChangeSlice spec files; see the [Aggregate component](./components/aggregate.md#sync-vs-async-command-dispatch) and [Lambda deployment guide](/infrastructure/lambda-deployment) for the per-handler tuning knobs.
 
 ## Next Steps
 

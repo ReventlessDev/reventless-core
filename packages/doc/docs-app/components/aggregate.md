@@ -262,8 +262,8 @@ module CustomerMapping = {
 
   let map = (customerId, event, _queryEngine) =>
     switch event {
-    | Customer.Created(customer) => [
-        Publish(customerId, Customer.ChangeAddress(customer.address ++ " Suffix")),
+    | Customer.Registered({address, _}) => [
+        Publish(customerId, Customer.UpdateAddress({address: address ++ " Suffix"})),
       ]
     | _ => []
     }

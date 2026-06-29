@@ -156,7 +156,7 @@ All types use `@schema` (sury-ppx) for automatic JSON serialization.
     "@reventlessdev/reventless-spec": "*"
   },
   "devDependencies": {
-    "rescript": "^12.1.0",
+    "rescript": "^12.3.0",
     "sury-ppx": "^11.0.0-alpha.2"
   }
 }
