@@ -25,6 +25,18 @@ module Make = (
     ->Belt.Set.String.fromArray
     ->Belt.Set.String.toArray
 
+  // Bare event-variant names consumed across every mapping's source event schema — the
+  // union the reflected graph turns into Event→ReadModel "projects" edges (see
+  // Plugin_Structure / DomainGraph). A DCB-log-sourced mapping declares a narrow event type
+  // (e.g. just `OrderPlaced`), so this captures cross-source events `sourceNames` can't name.
+  let consumedEventNames =
+    Mappings.mappings
+    ->Array.flatMap((module(Mapping: Mappings.Mapping)) =>
+      Reventless.DcbTag.extractVariantNames(Mapping.sourceEventSchema->S.castToUnknown)
+    )
+    ->Belt.Set.String.fromArray
+    ->Belt.Set.String.toArray
+
   type api = QueryDbStorage.api
   type role = QueryDbStorage.role
   type component = ReadModel.component

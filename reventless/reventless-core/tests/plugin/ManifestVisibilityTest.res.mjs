@@ -53,6 +53,8 @@ let InternalSpec = {
 
 let sourceNames = [];
 
+let consumedEventNames = ["OrderPlaced"];
+
 function make(param, param$1, param$2, param$3) {
   return 0;
 }
@@ -89,6 +91,7 @@ let PublicReadModel_Spec = {
 let PublicReadModel = {
   Spec: PublicReadModel_Spec,
   sourceNames: sourceNames,
+  consumedEventNames: consumedEventNames,
   make: make,
   outputs: outputs,
   operations: operations,
@@ -96,6 +99,8 @@ let PublicReadModel = {
 };
 
 let sourceNames$1 = [];
+
+let consumedEventNames$1 = [];
 
 function make$1(param, param$1, param$2, param$3) {
   return 0;
@@ -133,6 +138,7 @@ let InternalReadModel_Spec = {
 let InternalReadModel = {
   Spec: InternalReadModel_Spec,
   sourceNames: sourceNames$1,
+  consumedEventNames: consumedEventNames$1,
   make: make$1,
   outputs: outputs$1,
   operations: operations$1,
@@ -182,6 +188,10 @@ globalThis.describe("Plugin_Structure.make — visibility tagging", () => {
   globalThis.test("the Internal entry is carried and tagged visibility = Some(\"Internal\")", () => {
     let internal = structure.readModels.find(d => d.name === "InternalView");
     globalThis.expect(Stdlib_Option.map(internal, d => d.visibility)).toEqual("Internal");
+  });
+  globalThis.test("a read model's mapping-consumed events surface as qualified consumedEventTypes", () => {
+    let $$public = structure.readModels.find(d => d.name === "PublicView");
+    globalThis.expect(Stdlib_Option.map($$public, d => d.consumedEventTypes)).toEqual(["VisibilityPlugin.OrderPlaced"]);
   });
   globalThis.test("aggregates / stateViewSlices stay empty when none are passed (sanity)", () => {
     globalThis.expect([

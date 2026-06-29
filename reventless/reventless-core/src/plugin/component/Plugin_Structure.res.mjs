@@ -323,12 +323,13 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let qf = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(name, R.Spec.name, undefined);
     let stateSchema = R.Spec.stateSchema;
     let match = labelFieldsFromStateSchema(R.Spec.name, stateSchema);
+    let consumed = qualify(name, R.consumedEventNames);
     return {
       name: R.Spec.name,
       queryField: qf.listFieldName,
       schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(stateSchema)),
-      consumedEventTypes: [],
-      linkedWriteSide: [],
+      consumedEventTypes: consumed,
+      linkedWriteSide: linkedWriteSideFor(consumed),
       labelField: match[0],
       searchableFields: match[1],
       statusField: statusFieldFromStateSchema(stateSchema),

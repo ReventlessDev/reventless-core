@@ -4,6 +4,7 @@ import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ReadModel$ReventlessCore from "./ReadModel.res.mjs";
 import * as EventTopic$ReventlessCore from "../EventTopic/EventTopic.res.mjs";
@@ -15,6 +16,7 @@ import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventC
 function Make(Spec) {
   return Mappings => (RuntimeEnvironment => (QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => {
     let sourceNames = Belt_SetString.toArray(Belt_SetString.fromArray(Mappings.mappings.map(Mapping => Mapping.sourceName)));
+    let consumedEventNames = Belt_SetString.toArray(Belt_SetString.fromArray(Mappings.mappings.flatMap(Mapping => DcbTag$Reventless.extractVariantNames(Mapping.sourceEventSchema))));
     let make = (api, apiRole, allEventTopics, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(ReadModel$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
       let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
       let opts = {
@@ -88,6 +90,7 @@ function Make(Spec) {
       EventCollectorRuntimeBuilder: EventCollectorRuntimeBuilder,
       make: make,
       sourceNames: sourceNames,
+      consumedEventNames: consumedEventNames,
       outputs: Component$ReventlessCore.outputs,
       operations: Component$ReventlessCore.operations,
       finish: finish

@@ -43,6 +43,7 @@ function Make(Spec) {
     return {
       Spec: Inner.Spec,
       sourceNames: Inner.sourceNames,
+      consumedEventNames: Inner.consumedEventNames,
       make: make,
       outputs: Inner.outputs,
       operations: Inner.operations,

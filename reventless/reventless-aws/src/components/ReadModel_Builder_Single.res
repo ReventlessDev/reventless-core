@@ -46,6 +46,7 @@ module Make = (
   }
 
   let sourceNames = Inner.sourceNames
+  let consumedEventNames = Inner.consumedEventNames
   let outputs = Inner.outputs
   let operations = Inner.operations
   let finish = () => EventCollectorRuntimeBuilder.finish()

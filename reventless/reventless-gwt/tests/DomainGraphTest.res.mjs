@@ -180,6 +180,26 @@ globalThis.describe("DomainGraph.build", () => {
     globalThis.expect(hasEdge(g, "Catalog:Category", "Catalog.Added", "emits")).toBe(true);
     globalThis.expect(hasEdge(g, "Catalog:Category", "Catalog.Archived", "emits")).toBe(true);
   });
+  globalThis.test("a payload-less event also projects into the aggregate's linked view", async () => {
+    let shop = structure([writable("Category", undefined, ["Catalog.Added"], undefined, ["Categories"], [
+        {
+          name: "Added",
+          schema: "",
+          references: []
+        },
+        {
+          name: "Archived",
+          schema: "",
+          references: []
+        }
+      ])], undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let g = DomainGraph$ReventlessGwt.build([[
+        "Catalog",
+        shop
+      ]]);
+    globalThis.expect(hasEdge(g, "Catalog.Added", "Catalog:Categories", "projects")).toBe(true);
+    globalThis.expect(hasEdge(g, "Catalog.Archived", "Catalog:Categories", "projects")).toBe(true);
+  });
   globalThis.test("an Internal StateViewSlice still gets a node + projects edge (dev graph shows it)", async () => {
     let shop = structure([writable("Order", undefined, ["Shop.Placed"], undefined, undefined, undefined)], undefined, [queryable("AvailableView", ["Shop.Placed"], "Internal")], undefined, undefined, undefined, undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[

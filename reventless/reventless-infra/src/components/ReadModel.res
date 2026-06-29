@@ -37,6 +37,12 @@ module type T = {
   type component
   /** Names of aggregates whose events feed this read model (from Projection.Mapping.sourceName). */
   let sourceNames: array<string>
+  /** Bare event-variant names this read model consumes, unioned across every projection
+      mapping's source event schema (Projection.Mapping.sourceEventSchema). Unlike
+      `sourceNames` (the source aggregate / DCB-log names) this names the actual events — so
+      a DCB-log-sourced mapping (e.g. consuming `OrderPlaced`) is captured, which sourceNames
+      cannot express. Plugin_Structure qualifies + exposes these as `queryableDef.consumedEventTypes`. */
+  let consumedEventNames: array<string>
   let make: (
     ~api: api,
     ~apiRole: role,

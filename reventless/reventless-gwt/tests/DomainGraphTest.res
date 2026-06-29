@@ -132,6 +132,25 @@ describe("DomainGraph.build", () => {
     expect(hasEdge(g, "Catalog:Category", "Catalog.Archived", "emits"))->toBe(true)
   })
 
+  testPromise("a payload-less event also projects into the aggregate's linked view", async () => {
+    // Classic aggregate → linked view: the projection drew only producedEventTypes, which
+    // drops payload-less events — so a bare `| Archived` emitted but never reached the view.
+    // It must now project too (matching the emit), just like the payloaded `Added`.
+    let shop = structure(
+      ~aggregates=[
+        writable(
+          ~name="Category",
+          ~produces=["Catalog.Added"],
+          ~events=[evt(~name="Added"), evt(~name="Archived")],
+          ~linkedViews=["Categories"],
+        ),
+      ],
+    )
+    let g = DomainGraph.build(~structures=[("Catalog", shop)])
+    expect(hasEdge(g, "Catalog.Added", "Catalog:Categories", "projects"))->toBe(true)
+    expect(hasEdge(g, "Catalog.Archived", "Catalog:Categories", "projects"))->toBe(true)
+  })
+
   testPromise("an Internal StateViewSlice still gets a node + projects edge (dev graph shows it)", async () => {
     // Internal components are hidden from the deployed AutoUI but carried in pluginStructure
     // so the developer-facing domain graph can render them — see Plugin_Structure.res /

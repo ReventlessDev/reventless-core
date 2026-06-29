@@ -45,6 +45,9 @@ module PublicReadModel: ReventlessInfra.ReadModel.T
   type role = unit
   type component
   let sourceNames: array<string> = []
+  // A read model that projects an event reaching it via a (DCB-log-sourced) mapping — the
+  // case Plugin_Structure must surface as a qualified `consumedEventTypes` entry.
+  let consumedEventNames: array<string> = ["OrderPlaced"]
   let make = (~api as _, ~apiRole as _, ~allEventTopics as _, ~opts as _=?): component =>
     Obj.magic(0)
   let outputs = (_: component): ReventlessInfra.ReadModel.outputs => Obj.magic(0)
@@ -60,6 +63,7 @@ module InternalReadModel: ReventlessInfra.ReadModel.T
   type role = unit
   type component
   let sourceNames: array<string> = []
+  let consumedEventNames: array<string> = []
   let make = (~api as _, ~apiRole as _, ~allEventTopics as _, ~opts as _=?): component =>
     Obj.magic(0)
   let outputs = (_: component): ReventlessInfra.ReadModel.outputs => Obj.magic(0)
@@ -126,6 +130,16 @@ describe("Plugin_Structure.make — visibility tagging", () => {
   testSync("the Internal entry is carried and tagged visibility = Some(\"Internal\")", () => {
     let internal = structure.readModels->Array.find(d => d.name == "InternalView")
     expect(internal->Option.map(d => d.visibility))->toEqual(Some(Some("Internal")))
+  })
+
+  testSync("a read model's mapping-consumed events surface as qualified consumedEventTypes", () => {
+    // Q6 #2: a classic read model fed via a (DCB-log-sourced) mapping now reflects the
+    // events it projects from, qualified to the plugin — so DomainGraph draws the
+    // Event→ReadModel projection edge (e.g. OrderPlaced → Customers).
+    let public = structure.readModels->Array.find(d => d.name == "PublicView")
+    expect(public->Option.map(d => d.consumedEventTypes))->toEqual(
+      Some(["VisibilityPlugin.OrderPlaced"]),
+    )
   })
 
   testSync("aggregates / stateViewSlices stay empty when none are passed (sanity)", () => {

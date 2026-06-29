@@ -390,12 +390,17 @@ let make = (
         ~entityName=R.Spec.name,
         stateSchema,
       )
+      // The events this read model projects from, qualified to the plugin's event ids so
+      // they match the producers' nodes in the graph. Was empty — which dropped projection
+      // edges for any event reaching the read model via a DCB-log-sourced mapping (a classic
+      // aggregate→view link is also drawn from the producer's linkedViews, deduped downstream).
+      let consumed = qualify(~prefix=name, R.consumedEventNames)
       ({
         Reventless.Plugin.name: R.Spec.name,
         queryField: qf.listFieldName,
         schema: stateSchema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
-        consumedEventTypes: [],
-        linkedWriteSide: [],
+        consumedEventTypes: consumed,
+        linkedWriteSide: linkedWriteSideFor(consumed),
         labelField,
         searchableFields,
         statusField: statusFieldFromStateSchema(stateSchema),

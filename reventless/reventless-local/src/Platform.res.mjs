@@ -424,6 +424,7 @@ function MakeWithConfig(Config) {
     return {
       Spec: $$let.Spec,
       sourceNames: $$let.sourceNames,
+      consumedEventNames: $$let.consumedEventNames,
       make: $$let.make,
       outputs: $$let.outputs,
       operations: $$let.operations,
@@ -438,6 +439,7 @@ function MakeWithConfig(Config) {
     return {
       Spec: $$let.Spec,
       sourceNames: $$let.sourceNames,
+      consumedEventNames: $$let.consumedEventNames,
       make: $$let.make,
       outputs: $$let.outputs,
       operations: $$let.operations,
@@ -1158,6 +1160,7 @@ function MakeWithConfig(Config) {
     let admin = Admin.construct(version, [], [LocalPluginAggregate], [{
         Spec: PluginsReadModel.Spec,
         sourceNames: PluginsReadModel.sourceNames,
+        consumedEventNames: PluginsReadModel.consumedEventNames,
         make: PluginsReadModel.make,
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
@@ -1614,6 +1617,7 @@ function MakeWithConfig(Config) {
     let admin = Admin.construct("", [], [LocalPluginAggregate], [{
         Spec: PluginsReadModel.Spec,
         sourceNames: PluginsReadModel.sourceNames,
+        consumedEventNames: PluginsReadModel.consumedEventNames,
         make: PluginsReadModel.make,
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
@@ -2073,6 +2077,7 @@ function Make($star) {
     return {
       Spec: $$let.Spec,
       sourceNames: $$let.sourceNames,
+      consumedEventNames: $$let.consumedEventNames,
       make: $$let.make,
       outputs: $$let.outputs,
       operations: $$let.operations,
@@ -2087,6 +2092,7 @@ function Make($star) {
     return {
       Spec: $$let.Spec,
       sourceNames: $$let.sourceNames,
+      consumedEventNames: $$let.consumedEventNames,
       make: $$let.make,
       outputs: $$let.outputs,
       operations: $$let.operations,
@@ -2801,6 +2807,7 @@ function Make($star) {
     let admin = Admin.construct(version, [], [LocalPluginAggregate], [{
         Spec: PluginsReadModel.Spec,
         sourceNames: PluginsReadModel.sourceNames,
+        consumedEventNames: PluginsReadModel.consumedEventNames,
         make: PluginsReadModel.make,
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
@@ -3248,6 +3255,7 @@ function Make($star) {
     let admin = Admin.construct("", [], [LocalPluginAggregate], [{
         Spec: PluginsReadModel.Spec,
         sourceNames: PluginsReadModel.sourceNames,
+        consumedEventNames: PluginsReadModel.consumedEventNames,
         make: PluginsReadModel.make,
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
