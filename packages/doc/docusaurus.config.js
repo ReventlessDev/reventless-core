@@ -104,7 +104,13 @@ try {
 }
 const d2StylesPath = join(process.cwd(), "d2", "reventless.d2");
 const d2Opts = {
-  linkPath: "/reventless-core/d2",
+  // `linkPath` is the URL prefix prepended to every generated diagram <img src>.
+  // It MUST match the site's baseUrl, which the deploy-docs workflow rewrites
+  // per version (`/`, `/beta/`, `/alpha/`). We therefore derive it from
+  // `config.baseUrl` after the config object is built (see end of createConfig)
+  // instead of hardcoding it — a stale literal here (it used to be the old
+  // `/reventless-core/` Pages project path) makes every diagram 404.
+  linkPath: "/d2",
   defaultD2Opts: ["-t=100", "--dark-theme=200", "--pad=10", "--scale=0.8"],
 };
 
@@ -564,6 +570,12 @@ const config = {
       },
     }),
 };
+
+// Keep the D2 image URL prefix in lockstep with baseUrl. `config.baseUrl` is the
+// value the deploy-docs workflow has already sed-rewritten for this version
+// (`/`, `/beta/`, `/alpha/`); `d2Opts` is shared by reference with the remark
+// plugins above, so mutating it here updates every generated diagram <img src>.
+d2Opts.linkPath = config.baseUrl.replace(/\/$/, "") + "/d2";
 
 return config;
 }
