@@ -23,7 +23,8 @@ function describeSchema(schema) {
       itemDesc = additionalItems === "strip" || additionalItems === "strict" ? "unknown" : describeSchema(additionalItems);
       return "array<" + itemDesc + ">";
     case "object" :
-      return "object";
+      let inner = Object.entries(schema.properties).filter(param => param[0] !== "TAG").toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0])).map(param => param[0] + ":" + describeSchema(param[1])).join(",");
+      return "{" + inner + "}";
     case "union" :
       let nonNull = schema.anyOf.filter(v => {
         switch (v.type) {
@@ -34,9 +35,9 @@ function describeSchema(schema) {
             return true;
         }
       });
-      let inner = nonNull[0];
-      if (inner !== undefined) {
-        return "option<" + describeSchema(inner) + ">";
+      let inner$1 = nonNull[0];
+      if (inner$1 !== undefined) {
+        return "option<" + describeSchema(inner$1) + ">";
       } else {
         return "unknown";
       }

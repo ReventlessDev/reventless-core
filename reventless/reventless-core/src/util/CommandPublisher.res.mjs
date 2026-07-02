@@ -54,7 +54,8 @@ function Make(Spec) {
         if (size <= 0) {
           return;
         }
-        let commandsToSend = buffer.toSpliced(0, size);
+        let commandsToSend = buffer.slice(0, size);
+        buffer.splice(0, size);
         let promise = Config.publishCommands(Spec.name, toJsons(commandsToSend));
         running.contents = promise;
         let exit = 0;
@@ -88,7 +89,8 @@ function Make(Spec) {
       let bufferSizeStr = buffer.length.toString();
       let chunkCountStr = chunkCount.contents.toString();
       Effect.runSync(EffectLogger$ReventlessCore.logDebug("CommandPublisher", undefined, `send: bufferSize: ` + bufferSizeStr + `, chunk: ` + chunkCountStr + `, size: ` + sizeStr));
-      let commandsToSend$1 = buffer.toSpliced(0, size$1);
+      let commandsToSend$1 = buffer.slice(0, size$1);
+      buffer.splice(0, size$1);
       let promise$1 = Config.publishCommands(Spec.name, toJsons(commandsToSend$1));
       running.contents = promise$1;
       let exit$1 = 0;
@@ -127,19 +129,13 @@ function Make(Spec) {
     };
     let clear = () => {
       Effect.runSync(EffectLogger$ReventlessCore.logDebug("CommandPublisher", undefined, "clear"));
-      buffer.splice(0, 1);
+      buffer.splice(0, buffer.length);
       flush.contents = false;
     };
     let flush$1 = async () => {
       Effect.runSync(EffectLogger$ReventlessCore.logDebug("CommandPublisher", undefined, "flush"));
       flush.contents = true;
-      let match = running.contents;
-      if (match === undefined) {
-        return await send();
-      }
-      while (Stdlib_Option.isNone(running.contents)) {
-        await finishRunning();
-      };
+      return await send();
     };
     return {
       buffer: buffer,

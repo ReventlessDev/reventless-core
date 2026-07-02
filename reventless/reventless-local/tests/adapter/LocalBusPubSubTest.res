@@ -78,4 +78,35 @@ describe("LocalBus PubSub (Phase F)", () => {
       expect(countB.contents)->toBe(0)
     })
   })
+
+  // A5: a throwing/rejecting subscriber must not (a) hang publishEvent (its
+  // done_ countdown never reaching zero) nor (b) kill the drain fiber so the
+  // topic stops working. If either regressed, these tests would time out.
+  describe("failing subscriber", () => {
+    testPromise("a throwing subscriber does not hang publish; healthy siblings still receive it", async () => {
+      module TestBus = LocalBus.Make()
+      let healthy = ref(0)
+      TestBus.subscribeToEvents("T", async (_, _, _) => JsError.throwWithMessage("boom"))
+      TestBus.subscribeToEvents("T", async (_, _, _) => {
+        healthy := healthy.contents + 1
+      })
+      // Must resolve — not hang — even though one subscriber threw.
+      await TestBus.publishEvent("T", "svc", defaultMeta, JSON.Null)
+      expect(healthy.contents)->toBe(1)
+    })
+
+    testPromise("the topic keeps working after a subscriber throws (drain fiber survives)", async () => {
+      module TestBus = LocalBus.Make()
+      let healthy = ref(0)
+      TestBus.subscribeToEvents("T", async (_, _, _) => JsError.throwWithMessage("boom"))
+      TestBus.subscribeToEvents("T", async (_, _, _) => {
+        healthy := healthy.contents + 1
+      })
+      await TestBus.publishEvent("T", "svc", defaultMeta, JSON.Null)
+      // Second publish on the same topic must also complete and be delivered —
+      // proving the dead-fiber cascade is gone.
+      await TestBus.publishEvent("T", "svc", defaultMeta, JSON.Null)
+      expect(healthy.contents)->toBe(2)
+    })
+  })
 })

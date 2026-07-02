@@ -174,14 +174,19 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
   ]);
   let deletedCount = batchToDelete.length;
   logAction(action + `(` + id + `): beforeStates:` + beforeCount.toString() + ` afterStates:` + afterCount.toString() + ` added:` + addedCount.toString() + ` changed:` + changedCount.toString() + ` deleted:` + deletedCount.toString());
-  await Promise.all([
+  let result = await Promise.all([
     param.deleteBatch(batchToDelete),
     param.saveBatch(batchToSave)
   ]);
-  return {
-    TAG: "Ok",
-    _0: undefined
-  };
+  let err = result.find(r => r.TAG !== "Ok");
+  if (err !== undefined) {
+    return err;
+  } else {
+    return {
+      TAG: "Ok",
+      _0: undefined
+    };
+  }
 }
 
 function stateToString(state) {
@@ -369,10 +374,13 @@ async function handleAction(action, operations, subIdConfig) {
         _0: "MissingSubIdConfig"
       };
     default:
-      logAction("Error: Action not yet supported !");
+      logAction("Error: projection action not supported");
       return {
-        TAG: "Ok",
-        _0: undefined
+        TAG: "Error",
+        _0: {
+          TAG: "NotSavedToStorage",
+          _0: "unsupported projection action"
+        }
       };
   }
 }
@@ -456,7 +464,7 @@ function optimizeActions(actions) {
       return [action];
     }
     let lastAction = optimizedActions[optimizedActionsCount - 1 | 0];
-    let previousActions = optimizedActionsCount === 1 ? [] : optimizedActions.slice(0, optimizedActionsCount);
+    let previousActions = optimizedActions.slice(0, optimizedActionsCount - 1 | 0);
     if (typeof lastAction === "object") {
       switch (lastAction.TAG) {
         case "Create" :

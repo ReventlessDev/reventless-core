@@ -103,8 +103,16 @@ let applyChanges = async (
     `${action}(${id}): beforeStates:${beforeCount->Int.toString} afterStates:${afterCount->Int.toString} added:${addedCount->Int.toString} changed:${changedCount->Int.toString} deleted:${deletedCount->Int.toString}`,
   )
   let result = await [deleteBatch(batchToDelete), saveBatch(batchToSave)]->Promise.all
-  switch result {
-  | _ => Ok() // TODO: Error handling
+  // Propagate the first storage failure instead of swallowing it — a failed
+  // delete/save was previously reported as a successful projection.
+  switch result->Array.find(r =>
+    switch r {
+    | Error(_) => true
+    | Ok(_) => false
+    }
+  ) {
+  | Some(err) => err
+  | None => Ok()
   }
 }
 
@@ -236,10 +244,12 @@ let handleAction = async (
     logAction(`DeleteMany(${ids->Array.joinUnsafe(", ")})`)
     await deleteBatch(ids->Array.map(id => (id, None)))
 
-  // TODO: add missing actions
+  // An action reaching here is one this projection engine doesn't implement.
+  // Returning Ok() reported the read-model write as done while silently losing
+  // it; surface a storage error instead.
   | _ =>
-    logAction("Error: Action not yet supported !")
-    Ok()
+    logAction("Error: projection action not supported")
+    Error(ReventlessInfra.QueryDb.NotSavedToStorage("unsupported projection action"))
   }
 }
 
@@ -285,11 +295,10 @@ let optimizeActions = actions => {
       [action]
     } else {
       let lastAction = optimizedActions->Array.getUnsafe(optimizedActionsCount - 1)
-      let previousActions = if optimizedActionsCount == 1 {
-        []
-      } else {
-        optimizedActions->Array.slice(~start=0, ~end=optimizedActionsCount)
-      }
+      // Everything BEFORE the last action. `~end` is exclusive, so this must be
+      // `count - 1`; using `count` kept `lastAction` in the slice while the merged
+      // action was also appended, applying the last action twice.
+      let previousActions = optimizedActions->Array.slice(~start=0, ~end=optimizedActionsCount - 1)
 
       switch (lastAction, action) {
       // SINGLE STATES

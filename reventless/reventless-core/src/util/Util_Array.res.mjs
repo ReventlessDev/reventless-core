@@ -3,7 +3,7 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
 function containsByPredicate(arr, predicate) {
-  return Stdlib_Option.isNone(arr.find(predicate));
+  return Stdlib_Option.isSome(arr.find(predicate));
 }
 
 export {

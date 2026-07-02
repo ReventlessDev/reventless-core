@@ -38,7 +38,19 @@ let rec describeSchema = (schema: S.t<unknown>): string =>
     | _ => "unknown"
     }
     "array<" ++ itemDesc ++ ">"
-  | Object(_) => "object"
+  | Object({properties}) =>
+    // Recurse into nested records. Rendering every object as the literal
+    // "object" made the structural hash blind to nested field changes — a
+    // nested schema edit produced an identical SHA256, so drift detection
+    // silently missed it. Emit a sorted `{name:type,…}` description instead.
+    let inner =
+      properties
+      ->Dict.toArray
+      ->Array.filter(((name, _)) => name != "TAG")
+      ->Array.toSorted(((a, _), (b, _)) => String.compare(a, b))
+      ->Array.map(((name, s)) => name ++ ":" ++ describeSchema(s))
+      ->Array.join(",")
+    "{" ++ inner ++ "}"
   | _ => "unknown"
   }
 

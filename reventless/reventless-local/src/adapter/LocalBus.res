@@ -265,7 +265,19 @@ module Impl = (C: BusConfig): T => {
     let drainLoop = Effect.scoped(
       PubSub.subscribe(hub)->Effect.flatMap(queue =>
         Stream.fromQueue(queue)->Stream.runForEach(msg =>
-          Effect.promise(() => handler(msg.service, msg.meta, msg.json))->Effect.zipRight(msg.done_)
+          // A throwing/rejecting handler must not (a) leave `done_` uncalled —
+          // the publisher's countdown would never reach zero and every publish
+          // on this topic would hang — nor (b) kill this drain fiber, which
+          // would stop consuming while the subscriber stays counted, hanging all
+          // future publishes too. So: convert a rejection into a typed error
+          // (`tryPromise`), log-and-recover (`catchAll`) so the stream keeps
+          // draining, and run `done_` via `ensuring` so the countdown always
+          // advances regardless of outcome.
+          Effect.tryPromise(~catch=e => e, () => handler(msg.service, msg.meta, msg.json))
+          ->Effect.catchAll(err =>
+            Effect.sync(() => Console.error2("[LocalBus] subscriber handler failed:", err))
+          )
+          ->Effect.ensuring(msg.done_)
         )
       ),
     )
@@ -372,7 +384,11 @@ module Impl = (C: BusConfig): T => {
       let pending = queue.contents
       queue.contents = []
       pending->Array.forEach(json => {
-        let _ = handler(json, ())
+        let _ =
+          handler(json, ())->Promise.catch(e => {
+            Console.error2("[LocalBus] parked command handler failed:", e)
+            Promise.resolve()
+          })
       })
     | None => ()
     }
@@ -414,7 +430,11 @@ module Impl = (C: BusConfig): T => {
   // and done_ is called immediately. This prevents a deadlock where publishEvent on the
   // EP topic would block until the downstream aggregate command chain completes.
   let makeFireAndForgetHandler = handler => (_, _, json) => {
-    let _ = handler(json, ())
+    let _ =
+      handler(json, ())->Promise.catch(e => {
+        Console.error2("[LocalBus] fire-and-forget handler failed:", e)
+        Promise.resolve()
+      })
     Promise.resolve()
   }
 

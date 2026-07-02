@@ -63,7 +63,12 @@ module Make = (Spec: Spec, Config: Config) => {
           ~comp="CommandPublisher",
           `send: bufferSize: ${bufferSizeStr}, chunk: ${chunkCountStr}, size: ${sizeStr}`,
         )->Effect.runSync
-        let commandsToSend = buffer->Array.toSpliced(~start=0, ~remove=size, ~insert=[])
+        // Take the first `size` commands and remove them from the buffer.
+        // (`toSpliced` is non-mutating and returns the *remainder*, so the buffer
+        // never drained: send() recursed on the same buffer and published the
+        // wrong slice. `slice` captures the chunk; `splice` drains it in place.)
+        let commandsToSend = buffer->Array.slice(~start=0, ~end=size)
+        buffer->Array.splice(~start=0, ~remove=size, ~insert=[])
         let promise = Config.publishCommands(Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
@@ -82,7 +87,12 @@ module Make = (Spec: Spec, Config: Config) => {
     | SendAllInOneChunk =>
       let size = buffer->Array.length
       if size > 0 {
-        let commandsToSend = buffer->Array.toSpliced(~start=0, ~remove=size, ~insert=[])
+        // Take the first `size` commands and remove them from the buffer.
+        // (`toSpliced` is non-mutating and returns the *remainder*, so the buffer
+        // never drained: send() recursed on the same buffer and published the
+        // wrong slice. `slice` captures the chunk; `splice` drains it in place.)
+        let commandsToSend = buffer->Array.slice(~start=0, ~end=size)
+        buffer->Array.splice(~start=0, ~remove=size, ~insert=[])
         let promise = Config.publishCommands(Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
@@ -115,19 +125,19 @@ module Make = (Spec: Spec, Config: Config) => {
 
   let clear = () => {
     EffectLogger.logDebug(~comp="CommandPublisher", "clear")->Effect.runSync
-    let _ = buffer->Array.removeInPlace(0)
+    // Truncate the whole buffer. `removeInPlace(0)` is `splice(0, 1)` — it drops
+    // only the first element, so the rest leaked out on a later publish.
+    buffer->Array.splice(~start=0, ~remove=buffer->Array.length, ~insert=[])
     flush := false
   }
 
   let flush = async () => {
     EffectLogger.logDebug(~comp="CommandPublisher", "flush")->Effect.runSync
     flush := true
-    switch running.contents {
-    | None => await send()
-    | _ =>
-      while running.contents->Option.isNone {
-        await finishRunning()
-      }
-    }
+    // `send` already awaits any in-flight publish (finishRunning) before draining
+    // the buffer, and flush:=true forces a partial final chunk. The previous
+    // in-flight arm looped on `running.contents->Option.isNone` — dead, since this
+    // path only ran when running was Some — so buffered commands were never sent.
+    await send()
   }
 }
