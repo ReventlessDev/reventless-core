@@ -3,13 +3,25 @@
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+
+let _errCode = ((e) => (e && typeof e.code === "string") ? e.code : undefined);
 
 function isAlive(pid) {
   try {
     process.kill(pid, 0);
     return true;
-  } catch (exn) {
-    return false;
+  } catch (raw_exn) {
+    let exn = Primitive_exceptions.internalToException(raw_exn);
+    let e = Stdlib_JsExn.fromException(exn);
+    if (e !== undefined) {
+      return Primitive_object.equal(_errCode(Primitive_option.valFromOption(e)), "EPERM");
+    } else {
+      return false;
+    }
   }
 }
 
@@ -38,6 +50,7 @@ function hasLiveWatcher(dir) {
 }
 
 export {
+  _errCode,
   isAlive,
   libLock,
   lockHasLivePid,

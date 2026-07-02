@@ -1,6 +1,10 @@
 # Plan: Quality & Performance Hardening (gwt runner, runtime packages, spec generator, protocol)
 
-**Status**: Proposed — derived from a five-pass quality review of the toolchain (2026-07-02); line refs to the tree of that date.
+**Status**: In progress — derived from a five-pass quality review of the toolchain (2026-07-02); line refs to the tree of that date.
+
+**Progress log:**
+- 2026-07-02 — **A2, A3, A4 done** (gwt correctness). Second-signal hard exit; rerun drain-loop (no third concurrent pass); per-test timeout race (`Collector.entry.timeout` + `Cli.raceWithTimeout`, default 5s, reported as `Throw`); `ChildProcess.onError` + trailing-line flush on stream `end`; `WatcherProbe.isAlive` ESRCH-vs-EPERM; `ProcessManager` stderr wiring + bounded watcher-crash respawn + `cleanRebuild` exit-code propagation; `structuralRebuild` only reports `buildOk` on real success + per-package rebuild dedup; `Watch.debounce` accumulates the *set* of distinct structural paths (multi-package bursts) + widened ignore globs (`dist`/`.history`); `Collector.activate` resets `skipDepth`, `Filter.xdescribe` decrements on the throwing path; `PlatformRunner` awaits ephemeral-port closes + resolves keep-alive on child exit with real exit code; watch re-emits discovery on a new source `.res` add. Tests: `WatchDebounceTest` updated + 2 new A4.1 cases; new `CliRunEntryTest` (timeout + skipDepth). Full gwt suite green (25 suites / 149 tests), clean build zero warnings.
+- **A1 deferred**: the worker-per-run rewrite (fresh ESM registry per re-run) is a larger architectural change than the rest of the gwt cluster; recommend a focused dedicated pass. Tracked but not yet started.
 **Nature**: umbrella roadmap. Covers correctness, performance-at-scale, duplication, and missing-infrastructure items across `reventless-gwt`, `reventless-local`, `reventless-core`, `reventless-spec`, `reventless-interop`, `reventless-layer-builder`, and `reventless-vscode-protocol`. Each finding is restated inline so the plan stands alone; fixes should land with their tests.
 
 ## Phasing rationale

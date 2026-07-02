@@ -6,12 +6,12 @@ let describe = Collector$ReventlessGwt.pushDescribe;
 
 function test(slice, name, body) {
   let location = Collector$ReventlessGwt.captureLocation(1);
-  Collector$ReventlessGwt.push(slice, location, name, () => Promise.resolve(body()));
+  Collector$ReventlessGwt.push(slice, location, undefined, name, () => Promise.resolve(body()));
 }
 
 function testPromise(slice, name, body) {
   let location = Collector$ReventlessGwt.captureLocation(1);
-  Collector$ReventlessGwt.push(slice, location, name, body);
+  Collector$ReventlessGwt.push(slice, location, undefined, name, body);
 }
 
 export {

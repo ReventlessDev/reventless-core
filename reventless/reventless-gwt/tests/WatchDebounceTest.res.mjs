@@ -55,7 +55,7 @@ globalThis.describe("Watch.debounce coalescing", () => {
     await delay(120);
     globalThis.expect(calls.contents).toEqual(["Unlink"]);
   });
-  globalThis.test("interleaved .res.mjs unlinks don't steal the representative path", async () => {
+  globalThis.test("interleaved .res.mjs unlinks never surface; each distinct .res source does", async () => {
     let calls = {
       contents: []
     };
@@ -72,11 +72,42 @@ globalThis.describe("Watch.debounce coalescing", () => {
     fire("Add", "/p/src/new/A.res");
     fire("Add", "/p/src/new/A.res.mjs");
     await delay(120);
-    globalThis.expect(calls.contents.length).toEqual(1);
-    let match = calls.contents[0];
-    let e = match[0];
-    globalThis.expect(e).toEqual("Unlink");
-    globalThis.expect(Watch$ReventlessGwt.isStructuralSource(e, match[1])).toEqual(true);
+    let paths = calls.contents.map(param => param[1]);
+    globalThis.expect(calls.contents.every(param => Watch$ReventlessGwt.isStructuralSource(param[0], param[1]))).toEqual(true);
+    globalThis.expect(paths.includes("/p/src/old/A.res")).toEqual(true);
+    globalThis.expect(paths.includes("/p/src/old/A_Behavior.res")).toEqual(true);
+    globalThis.expect(paths.some(p => p.endsWith(".mjs"))).toEqual(false);
+    globalThis.expect(calls.contents.length).toEqual(2);
+  });
+  globalThis.test("a burst spanning two packages emits an unlink per package (A4.1)", async () => {
+    let calls = {
+      contents: []
+    };
+    let fire = Watch$ReventlessGwt.debounce(40, (e, p) => {
+      calls.contents = calls.contents.concat([[
+          e,
+          p
+        ]]);
+    });
+    fire("Unlink", "/pkgA/src/Foo.res");
+    fire("Unlink", "/pkgB/src/Bar.res");
+    await delay(120);
+    let paths = calls.contents.map(param => param[1]);
+    globalThis.expect(paths.includes("/pkgA/src/Foo.res")).toEqual(true);
+    globalThis.expect(paths.includes("/pkgB/src/Bar.res")).toEqual(true);
+    globalThis.expect(calls.contents.length).toEqual(2);
+  });
+  globalThis.test("a structural signal suppresses a co-occurring plain change", async () => {
+    let calls = {
+      contents: []
+    };
+    let fire = Watch$ReventlessGwt.debounce(40, (e, _p) => {
+      calls.contents = calls.contents.concat([e]);
+    });
+    fire("Change", "/p/src/Edited.res");
+    fire("Unlink", "/p/src/old/Moved.res");
+    await delay(120);
+    globalThis.expect(calls.contents).toEqual(["Unlink"]);
   });
   globalThis.test("a lone change stays a change (incremental re-run)", async () => {
     let calls = {

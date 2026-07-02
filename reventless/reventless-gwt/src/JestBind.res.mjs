@@ -35,7 +35,7 @@ function todo(label) {
 function test(slice, name, body) {
   if (Collector$ReventlessGwt.isActive()) {
     let location = Collector$ReventlessGwt.captureLocation(1);
-    return Collector$ReventlessGwt.push(slice, location, name, () => Promise.resolve(body()));
+    return Collector$ReventlessGwt.push(slice, location, undefined, name, () => Promise.resolve(body()));
   }
   globalThis.test(name, () => assertOutcome(slice, body()));
 }
@@ -50,7 +50,7 @@ function testPromise(slice, name, timeout, body) {
     return;
   }
   let location = Collector$ReventlessGwt.captureLocation(1);
-  Collector$ReventlessGwt.push(slice, location, name, body);
+  Collector$ReventlessGwt.push(slice, location, timeout, name, body);
 }
 
 export {

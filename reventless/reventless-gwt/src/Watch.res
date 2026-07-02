@@ -22,21 +22,6 @@ type event = Add | Change | Unlink
 @val external setTimeout: (unit => unit, int) => float = "setTimeout"
 @val external clearTimeout: float => unit = "clearTimeout"
 
-// Rank events so a coalesced burst reports the *strongest structural* signal
-// with a representative path. A single directory `mv` emits an interleaved
-// burst — `unlink` of the `.res` AND the generated `.res.mjs`, then `add`s at
-// the new path — inside one debounce window. The representative path must be a
-// `.res` *source* unlink (the relocation signal), never a `.res.mjs` or a
-// trailing add, or the consumer misclassifies it as an ordinary change. So an
-// unlink of a `.res` source outranks everything; any other unlink/add outranks
-// a plain edit.
-let rank = (event: event, path: string): int =>
-  switch event {
-  | Unlink => String.endsWith(path, ".res") ? 2 : 1
-  | Add => 1
-  | Change => 0
-  }
-
 // True when an event is the *structural* signal Phase 12 acts on: a source
 // `.res` file leaving a directory (the move/delete half of a relocation).
 // Generated `.res.mjs` outputs end in `.mjs`, so they never match — which is
@@ -45,17 +30,30 @@ let rank = (event: event, path: string): int =>
 let isStructuralSource = (event: event, path: string): bool =>
   event == Unlink && String.endsWith(path, ".res")
 
+// Coalesce a burst of chokidar events into a single debounce window, then emit.
+// A window may span *multiple* packages — a branch switch or a multi-package
+// refactor emits `.res` unlinks under several package roots at once. The old
+// shape kept only one "best" path, so it clean-rebuilt just one package and
+// left the others with stale `.res.mjs`. Instead accumulate the *set* of
+// distinct structural source paths and emit one `Unlink` callback per path
+// (the consumer maps each to its owning package). If the window held no
+// structural signal, emit a single representative event so the consumer does a
+// plain re-run.
 let debounce = (wait: int, fn: (event, string) => unit) => {
   let pending: ref<option<float>> = ref(None)
-  let bestRank = ref(-1)
-  let bestEvent = ref(Change)
-  let bestPath = ref("")
+  let structural: ref<array<string>> = ref([])
+  let sawOther = ref(false)
+  let otherEvent = ref(Change)
+  let otherPath = ref("")
   (event, path) => {
-    let r = rank(event, path)
-    if r >= bestRank.contents {
-      bestRank := r
-      bestEvent := event
-      bestPath := path
+    if isStructuralSource(event, path) {
+      if !(structural.contents->Array.includes(path)) {
+        structural := Array.concat(structural.contents, [path])
+      }
+    } else {
+      sawOther := true
+      otherEvent := event
+      otherPath := path
     }
     switch pending.contents {
     | Some(t) => clearTimeout(t)
@@ -65,12 +63,21 @@ let debounce = (wait: int, fn: (event, string) => unit) => {
       Some(
         setTimeout(() => {
           pending := None
-          let e = bestEvent.contents
-          let p = bestPath.contents
-          bestRank := -1
-          bestEvent := Change
-          bestPath := ""
-          fn(e, p)
+          let paths = structural.contents
+          let other = sawOther.contents
+          let oe = otherEvent.contents
+          let op = otherPath.contents
+          structural := []
+          sawOther := false
+          otherEvent := Change
+          otherPath := ""
+          if paths->Array.length > 0 {
+            // One rebuild per distinct owning package; a plain edit alongside
+            // is covered by each structural rebuild's own re-run.
+            paths->Array.forEach(p => fn(Unlink, p))
+          } else if other {
+            fn(oe, op)
+          }
         }, wait),
       )
   }
@@ -81,7 +88,16 @@ let start = (roots: array<string>, onChange: (event, string) => unit): watcher =
     roots,
     {
       ignoreInitial: true,
-      ignored: ["**/node_modules/**", "**/lib/**", "**/.git/**"],
+      // Keep in sync with Discovery's pruned dirs — writes under `dist/` or
+      // `.history/` are build/editor output, not source, and a `dist/` write
+      // could otherwise drive a re-run loop.
+      ignored: [
+        "**/node_modules/**",
+        "**/lib/**",
+        "**/.git/**",
+        "**/dist/**",
+        "**/.history/**",
+      ],
     },
   )
   let debounced = debounce(120, onChange)

@@ -2,21 +2,6 @@
 
 import * as Chokidar from "chokidar";
 
-function rank(event, path) {
-  switch (event) {
-    case "Add" :
-      return 1;
-    case "Change" :
-      return 0;
-    case "Unlink" :
-      if (path.endsWith(".res")) {
-        return 2;
-      } else {
-        return 1;
-      }
-  }
-}
-
 function isStructuralSource(event, path) {
   if (event === "Unlink") {
     return path.endsWith(".res");
@@ -29,21 +14,27 @@ function debounce(wait, fn) {
   let pending = {
     contents: undefined
   };
-  let bestRank = {
-    contents: -1
+  let structural = {
+    contents: []
   };
-  let bestEvent = {
+  let sawOther = {
+    contents: false
+  };
+  let otherEvent = {
     contents: "Change"
   };
-  let bestPath = {
+  let otherPath = {
     contents: ""
   };
   return (event, path) => {
-    let r = rank(event, path);
-    if (r >= bestRank.contents) {
-      bestRank.contents = r;
-      bestEvent.contents = event;
-      bestPath.contents = path;
+    if (isStructuralSource(event, path)) {
+      if (!structural.contents.includes(path)) {
+        structural.contents = structural.contents.concat([path]);
+      }
+    } else {
+      sawOther.contents = true;
+      otherEvent.contents = event;
+      otherPath.contents = path;
     }
     let t = pending.contents;
     if (t !== undefined) {
@@ -51,12 +42,22 @@ function debounce(wait, fn) {
     }
     pending.contents = setTimeout(() => {
       pending.contents = undefined;
-      let e = bestEvent.contents;
-      let p = bestPath.contents;
-      bestRank.contents = -1;
-      bestEvent.contents = "Change";
-      bestPath.contents = "";
-      fn(e, p);
+      let paths = structural.contents;
+      let other = sawOther.contents;
+      let oe = otherEvent.contents;
+      let op = otherPath.contents;
+      structural.contents = [];
+      sawOther.contents = false;
+      otherEvent.contents = "Change";
+      otherPath.contents = "";
+      if (paths.length !== 0) {
+        paths.forEach(p => fn("Unlink", p));
+        return;
+      } else if (other) {
+        return fn(oe, op);
+      } else {
+        return;
+      }
     }, wait);
   };
 }
@@ -67,7 +68,9 @@ function start(roots, onChange) {
     ignored: [
       "**/node_modules/**",
       "**/lib/**",
-      "**/.git/**"
+      "**/.git/**",
+      "**/dist/**",
+      "**/.history/**"
     ]
   });
   let debounced = debounce(120, onChange);
@@ -75,7 +78,6 @@ function start(roots, onChange) {
 }
 
 export {
-  rank,
   isStructuralSource,
   debounce,
   start,

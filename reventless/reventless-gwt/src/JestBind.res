@@ -60,7 +60,7 @@ let testPromise = (
 ) =>
   if Collector.isActive() {
     let location = Collector.captureLocation(1)
-    Collector.push(~slice?, ~location?, name, body)
+    Collector.push(~slice?, ~location?, ~timeout?, name, body)
   } else {
     switch timeout {
     | Some(t) =>

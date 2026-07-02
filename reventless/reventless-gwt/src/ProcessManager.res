@@ -10,6 +10,13 @@ type managed = {
 
 let running: Dict.t<managed> = Dict.make()
 
+// Per-dir count of unexpected watcher exits, so a build-watcher that crashes on
+// startup (bad config, missing binary) is respawned a bounded number of times
+// rather than either freezing the build status forever or spinning in a tight
+// respawn loop.
+let restarts: Dict.t<int> = Dict.make()
+let maxRestarts = 3
+
 let isManaging = (dir: string): bool =>
   switch running->Dict.get(dir) {
   | Some(_) => true
@@ -19,12 +26,33 @@ let isManaging = (dir: string): bool =>
 // Spawn `pnpm run start` (the package's `rescript build -w`) in `pkg.dir`,
 // unless one is already managed there. `onStdout` receives each output line so
 // the caller can classify compiler markers (Phase 5).
-let spawnWatcher = (pkg: PackageScan.pkg, ~onStdout: (string, string) => unit): unit =>
+let rec spawnWatcher = (pkg: PackageScan.pkg, ~onStdout: (string, string) => unit): unit =>
   switch running->Dict.get(pkg.dir) {
   | Some(_) => ()
   | None => {
       let proc = ChildProcess.spawn("pnpm", ["run", "start"], ~cwd=pkg.dir)
       ChildProcess.onStdoutLine(proc, line => onStdout(pkg.dir, line))
+      // stderr carries compiler/pnpm crash output; without this a watcher that
+      // dies on stderr was invisible until the caller's 120s watchdog.
+      ChildProcess.onStderrLine(proc, line => onStdout(pkg.dir, line))
+      // A spawn failure ("error") never reaches "close"; surface it as output.
+      ChildProcess.onError(proc, msg => onStdout(pkg.dir, msg))
+      // Detect an unexpected exit. We compare the stored proc identity: an
+      // intentional `stop` deletes the entry synchronously before "close" fires,
+      // so if we still own this exact proc, the watcher crashed — respawn it up
+      // to `maxRestarts` times so build status doesn't freeze.
+      ChildProcess.onClose(proc, _code =>
+        switch running->Dict.get(pkg.dir) {
+        | Some(m) if m.proc === proc =>
+          running->Dict.delete(pkg.dir)
+          let n = restarts->Dict.get(pkg.dir)->Option.getOr(0)
+          if n < maxRestarts {
+            restarts->Dict.set(pkg.dir, n + 1)
+            spawnWatcher(pkg, ~onStdout)
+          }
+        | _ => ()
+        }
+      )
       running->Dict.set(pkg.dir, {dir: pkg.dir, proc})
     }
   }
@@ -58,20 +86,36 @@ let stop = (dir: string): bool =>
 let cleanRebuild = (
   pkg: PackageScan.pkg,
   ~onStdout: (string, string) => unit,
-  ~onDone: unit => unit,
+  ~onDone: bool => unit,
 ): unit => {
   let wasManaged = stop(pkg.dir)
-  let step = (cmd: string, args: array<string>, next: unit => unit): unit => {
+  // `next` receives the step's exit code so the chain can tell a failed clean or
+  // build (non-zero / crash) from success — the previous shape discarded exit
+  // codes and always reported the rebuild as OK, masking compile failures.
+  let step = (cmd: string, args: array<string>, next: option<int> => unit): unit => {
     let proc = ChildProcess.spawn(cmd, args, ~cwd=pkg.dir)
+    // "error" (spawn failure) and "close" can both fire; ensure the chain
+    // advances exactly once.
+    let settled = ref(false)
+    let settle = (code: option<int>) =>
+      if !settled.contents {
+        settled := true
+        next(code)
+      }
     ChildProcess.onStdoutLine(proc, line => onStdout(pkg.dir, line))
-    ChildProcess.onClose(proc, _ => next())
+    ChildProcess.onStderrLine(proc, line => onStdout(pkg.dir, line))
+    ChildProcess.onError(proc, msg => {
+      onStdout(pkg.dir, msg)
+      settle(None)
+    })
+    ChildProcess.onClose(proc, code => settle(code))
   }
-  step("pnpm", ["exec", "rescript", "clean"], () =>
-    step("pnpm", ["exec", "rescript", "build"], () => {
+  step("pnpm", ["exec", "rescript", "clean"], _cleanCode =>
+    step("pnpm", ["exec", "rescript", "build"], buildCode => {
       if wasManaged {
         spawnWatcher(pkg, ~onStdout)
       }
-      onDone()
+      onDone(buildCode == Some(0))
     })
   )
 }

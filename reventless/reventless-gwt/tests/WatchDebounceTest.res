@@ -49,10 +49,11 @@ describe("Watch.debounce coalescing", () => {
     expect(calls.contents)->toEqual([Watch.Unlink])
   })
 
-  testPromise("interleaved .res.mjs unlinks don't steal the representative path", async () => {
+  testPromise("interleaved .res.mjs unlinks never surface; each distinct .res source does", async () => {
     // The real directory-mv burst chokidar emits: source AND generated files
-    // unlink interleaved. The coalesced path must be a `.res` source, not the
-    // last-seen `.res.mjs` (which would misclassify as a non-structural change).
+    // unlink interleaved. Only `.res` sources are emitted (never a `.res.mjs`),
+    // and every *distinct* source is emitted — two moved modules must both drive
+    // a rebuild, not collapse to one representative.
     let calls = ref([])
     let fire = Watch.debounce(40, (e, p) => calls := Array.concat(calls.contents, [(e, p)]))
     fire(Watch.Unlink, "/p/src/old/A.res")
@@ -62,10 +63,37 @@ describe("Watch.debounce coalescing", () => {
     fire(Watch.Add, "/p/src/new/A.res")
     fire(Watch.Add, "/p/src/new/A.res.mjs")
     await delay(120)
-    expect(calls.contents->Array.length)->toEqual(1)
-    let (e, p) = calls.contents->Array.getUnsafe(0)
-    expect(e)->toEqual(Watch.Unlink)
-    expect(Watch.isStructuralSource(e, p))->toEqual(true)
+    let paths = calls.contents->Array.map(((_, p)) => p)
+    expect(calls.contents->Array.every(((e, p)) => Watch.isStructuralSource(e, p)))->toEqual(true)
+    expect(paths->Array.includes("/p/src/old/A.res"))->toEqual(true)
+    expect(paths->Array.includes("/p/src/old/A_Behavior.res"))->toEqual(true)
+    expect(paths->Array.some(p => p->String.endsWith(".mjs")))->toEqual(false)
+    expect(calls.contents->Array.length)->toEqual(2)
+  })
+
+  testPromise("a burst spanning two packages emits an unlink per package (A4.1)", async () => {
+    // Regression: the old single-`bestPath` debounce clean-rebuilt only one
+    // package on a multi-package burst, stranding the other with stale .res.mjs.
+    let calls = ref([])
+    let fire = Watch.debounce(40, (e, p) => calls := Array.concat(calls.contents, [(e, p)]))
+    fire(Watch.Unlink, "/pkgA/src/Foo.res")
+    fire(Watch.Unlink, "/pkgB/src/Bar.res")
+    await delay(120)
+    let paths = calls.contents->Array.map(((_, p)) => p)
+    expect(paths->Array.includes("/pkgA/src/Foo.res"))->toEqual(true)
+    expect(paths->Array.includes("/pkgB/src/Bar.res"))->toEqual(true)
+    expect(calls.contents->Array.length)->toEqual(2)
+  })
+
+  testPromise("a structural signal suppresses a co-occurring plain change", async () => {
+    // A structural rebuild does its own re-run, so a plain edit in the same
+    // window must not also emit a separate Change (which would double-run).
+    let calls = ref([])
+    let fire = Watch.debounce(40, (e, _p) => calls := Array.concat(calls.contents, [e]))
+    fire(Watch.Change, "/p/src/Edited.res")
+    fire(Watch.Unlink, "/p/src/old/Moved.res")
+    await delay(120)
+    expect(calls.contents)->toEqual([Watch.Unlink])
   })
 
   testPromise("a lone change stays a change (incremental re-run)", async () => {

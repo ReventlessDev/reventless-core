@@ -24,6 +24,12 @@ let install = () => {
         | _ => ()
         }
       )
+    } else {
+      // Second signal: the first requested a graceful drain, but a hung await
+      // can keep the process alive indefinitely. Honour the operator's repeat
+      // SIGINT/SIGTERM as a hard exit (130 = terminated by SIGINT) so only the
+      // one signal — not SIGKILL — is needed to break out.
+      process->exit(130)
     }
   }
   process->onSignal("SIGINT", handler)

@@ -60,6 +60,9 @@ let openEphemeral = (): promise<(netServer, int)> =>
     s->_listen(0, "127.0.0.1", () => resolve((s, (s->_address)["port"])))
   })
 
+let closeServer = (s: netServer): promise<unit> =>
+  Promise.make((resolve, _reject) => s->_close(() => resolve()))
+
 // Hold all n open while collecting ports so they're guaranteed distinct, then
 // release them just before the child binds.
 let allocFreePorts = async (n: int): array<int> => {
@@ -70,7 +73,10 @@ let allocFreePorts = async (n: int): array<int> => {
     servers->Array.push(s)
     ports->Array.push(p)
   }
-  servers->Array.forEach(s => s->_close(() => ()))
+  // Await every close so the ports are actually released before the child binds
+  // them. Closing fire-and-forget returned the ports while the sockets were
+  // still bound, racing the child's bind into EADDRINUSE.
+  let _ = await Promise.all(servers->Array.map(closeServer))
   ports
 }
 
@@ -150,11 +156,26 @@ let run = async (
       }
     ChildProcess.onStdoutLine(proc, handle)
     ChildProcess.onStderrLine(proc, handle)
-    ChildProcess.onClose(proc, code => callbacks.onStop(code))
 
-    // Keep the process alive until cancelled — like runWatch, returning here would
-    // let the bin wrapper process.exit and tear down the child immediately.
-    await Promise.make((resolve, _reject) => Cancellation.onCancel(() => resolve()))
-    0
+    // Keep the parent alive until either the operator cancels or the child exits.
+    // The previous shape awaited cancellation *forever* and always returned 0, so
+    // a crashed platform child left a zombie parent that reported success. Resolve
+    // on child close (or a spawn error) too, and surface the child's exit code.
+    let exitCode = ref(0)
+    await Promise.make((resolve, _reject) => {
+      Cancellation.onCancel(() => resolve())
+      ChildProcess.onError(proc, msg => {
+        callbacks.onLog("platform spawn error: " ++ msg)
+        callbacks.onStop(None)
+        exitCode := 1
+        resolve()
+      })
+      ChildProcess.onClose(proc, code => {
+        callbacks.onStop(code)
+        exitCode := code->Option.getOr(0)
+        resolve()
+      })
+    })
+    exitCode.contents
   }
 }

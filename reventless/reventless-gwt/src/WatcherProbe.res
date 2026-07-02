@@ -19,14 +19,22 @@
 @module("node:path") external join: (string, string) => string = "join"
 @val external _processKillSig: (int, int) => unit = "process.kill"
 
-// `process.kill(pid, 0)` performs no signal delivery — it only probes existence
-// (throws ESRCH when the pid is gone), which is exactly the liveness check.
+// `process.kill(pid, 0)` performs no signal delivery — it only probes existence.
+// It throws `ESRCH` when the pid is gone (dead) and `EPERM` when the pid exists
+// but is owned by another user (alive, just not ours). A bare catch-all treated
+// EPERM as dead, which would spawn a duplicate watcher over a live foreign one;
+// treat EPERM as alive.
+let _errCode: JsExn.t => option<string> = %raw(`(e) => (e && typeof e.code === "string") ? e.code : undefined`)
 let isAlive = (pid: int): bool =>
   try {
     _processKillSig(pid, 0)
     true
   } catch {
-  | _ => false
+  | exn =>
+    switch JsExn.fromException(exn) {
+    | Some(e) => _errCode(e) == Some("EPERM")
+    | None => false
+    }
   }
 
 let libLock = (dir: string, name: string): string => join(join(dir, "lib"), name)

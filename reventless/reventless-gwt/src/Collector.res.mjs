@@ -42,6 +42,7 @@ function activate() {
   hasOnly.contents = false;
   skipNext.contents = false;
   onlyNext.contents = false;
+  skipDepth.contents = 0;
   currentFile.contents = undefined;
 }
 
@@ -86,7 +87,7 @@ function buildId(describePath, name) {
   }
 }
 
-function push(slice, location, name, body) {
+function push(slice, location, timeout, name, body) {
   let status = skipDepth.contents > 0 ? "Skipped" : (
       skipNext.contents ? (skipNext.contents = false, "Skipped") : (
           onlyNext.contents ? (onlyNext.contents = false, "Only") : "Runnable"
@@ -101,7 +102,8 @@ function push(slice, location, name, body) {
     slice: slice,
     body: body,
     status: status,
-    location: location
+    location: location,
+    timeout: timeout
   };
   entries.contents = entries.contents.concat([entry]);
 }
@@ -117,7 +119,8 @@ function pushTodo(name) {
     slice: undefined,
     body: entry_body,
     status: "Skipped",
-    location: undefined
+    location: undefined,
+    timeout: undefined
   };
   entries.contents = entries.contents.concat([entry]);
 }

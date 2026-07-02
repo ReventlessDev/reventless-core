@@ -19,7 +19,9 @@ function onCancel(handler) {
 
 function install() {
   let handler = () => {
-    if (!cancelled.contents) {
+    if (cancelled.contents) {
+      process.exit(130);
+    } else {
       cancelled.contents = true;
       handlers.contents.forEach(h => {
         try {
@@ -28,7 +30,6 @@ function install() {
           return;
         }
       });
-      return;
     }
   };
   process.on("SIGINT", handler);

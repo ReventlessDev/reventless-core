@@ -25,6 +25,10 @@ type entry = {
   body: unit => promise<Outcome.outcome>,
   status: status,
   location: option<location>,
+  // Per-test deadline in ms (from `~timeout` on `testPromise`). `None` = use the
+  // runner default. The CLI runner races the body against this; the Jest arm
+  // passes it to Jest's own timeout instead.
+  timeout: option<int>,
 }
 
 let active = ref(false)
@@ -43,6 +47,10 @@ let activate = () => {
   hasOnly := false
   skipNext := false
   onlyNext := false
+  // Reset the skip nesting depth too: a throwing `xdescribe` body in a prior
+  // file could otherwise leave it > 0, silently skipping every test in every
+  // subsequently loaded file.
+  skipDepth := 0
   currentFile := None
 }
 
@@ -73,6 +81,7 @@ let buildId = (describePath, name) => {
 let push = (
   ~slice=?,
   ~location=?,
+  ~timeout=?,
   name: string,
   body: unit => promise<Outcome.outcome>,
 ) => {
@@ -97,6 +106,7 @@ let push = (
     body,
     status,
     location,
+    timeout,
   }
   entries := Array.concat(entries.contents, [entry])
 }
@@ -115,6 +125,7 @@ let pushTodo = (name: string) => {
     body: () => Promise.resolve(Outcome.pass),
     status: Skipped,
     location: None,
+    timeout: None,
   }
   entries := Array.concat(entries.contents, [entry])
 }

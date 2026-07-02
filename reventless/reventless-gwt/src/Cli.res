@@ -222,6 +222,42 @@ let exnMessage: exn => string = %raw(`function(e) {
   return "unknown error"
 }`)
 
+// Default per-test deadline (ms) when a test body doesn't set `~timeout`.
+// Mirrors Jest's default so behaviour is consistent across both runners.
+let defaultTimeoutMs = 5000
+
+// Resolve to a timeout `Outcome` after `ms`. Raced against the test body so a
+// hung await reports a failure instead of wedging the entire run.
+type timeoutHandle
+@val external setTimeout: (unit => unit, int) => timeoutHandle = "setTimeout"
+@val external clearTimeout: timeoutHandle => unit = "clearTimeout"
+let raceWithTimeout = (body: unit => promise<Outcome.outcome>, ms: int): promise<
+  Outcome.outcome,
+> => {
+  let handleRef: ref<option<timeoutHandle>> = ref(None)
+  let timeout = Promise.make((resolve, _reject) => {
+    handleRef :=
+      Some(
+        setTimeout(
+          () =>
+            resolve(
+              Outcome.fail(
+                Throw({error: `timed out after ${Int.toString(ms)}ms`, stack: ""}),
+              ),
+            ),
+          ms,
+        ),
+      )
+  })
+  Promise.race([body(), timeout])->Promise.then(o => {
+    switch handleRef.contents {
+    | Some(h) => clearTimeout(h)
+    | None => ()
+    }
+    Promise.resolve(o)
+  })
+}
+
 // Execute a single entry, catching exceptions and thrown values so a
 // misbehaved slice doesn't abort the rest of the suite.
 let runEntry = async (entry: Collector.entry): RunnerTypes.testResult => {
@@ -232,7 +268,8 @@ let runEntry = async (entry: Collector.entry): RunnerTypes.testResult => {
   | Collector.Skipped => status := Skip
   | _ =>
     try {
-      let outcome = await entry.body()
+      let deadline = entry.timeout->Option.getOr(defaultTimeoutMs)
+      let outcome = await raceWithTimeout(entry.body, deadline)
       switch outcome {
       | Ok() => status := Pass
       | Error(m) => {
@@ -539,12 +576,16 @@ let runWatch = async (opts: options): int => {
     } else {
       runInProgress := true
       let _ = await runOnce(opts)
-      runInProgress := false
-      if rerunPending.contents {
+      // Drain every re-run request that arrived while a pass was in flight.
+      // Clearing `runInProgress` before awaiting the pending pass (the previous
+      // shape) let a third concurrent `run` start mid-drain, which corrupts the
+      // module-global `Collector` and interleaves NDJSON events. Hold the flag
+      // across the whole drain loop so only one pass ever runs at a time.
+      while rerunPending.contents {
         rerunPending := false
         let _ = await runOnce(opts)
-        ()
       }
+      runInProgress := false
     }
   }
   let _ = await run()
@@ -560,33 +601,67 @@ let runWatch = async (opts: options): int => {
   // completion. Edits and adds stay on the lean incremental re-run. VS Code
   // only: a human terminal `watch` keeps the re-run-only loop (it doesn't own
   // the builds, so there's nothing to clean-rebuild).
+  // Guards against two structural paths from the *same* burst (a multi-file move
+  // within one package) each launching a concurrent clean-rebuild of that
+  // package. The first sets the flag; siblings coalesce into its completion
+  // re-run. Watch now emits one callback per distinct structural path, so this
+  // is what makes "rebuild every distinct owning package" (not per-file) true.
+  let rebuilding: Dict.t<bool> = Dict.make()
   let structuralRebuild = (path: string): unit =>
     switch PackageScan.findOwning(path) {
     | None => ignore(run())
+    | Some(pkg) if rebuilding->Dict.get(pkg.dir)->Option.getOr(false) => ()
     | Some(pkg) =>
+      rebuilding->Dict.set(pkg.dir, true)
       let t0 = Date.now()
       FormatterVsCode.buildStart(pkg.dir)
       // Surface a compile error during the rebuild (the clean/build stream is
       // classified for the error marker); the re-run is gated on completion
       // below, not on the classifier, since a one-shot `rescript build` has no
       // "Finished … compilation" terminator.
+      let sawError = ref(false)
       let feed = BuildClassifier.make({
         onStart: () => (),
         onOk: _ms => (),
-        onFail: msg => FormatterVsCode.buildFail(pkg.dir, msg),
+        onFail: msg => {
+          sawError := true
+          FormatterVsCode.buildFail(pkg.dir, msg)
+        },
       })
       ProcessManager.cleanRebuild(
         pkg,
         ~onStdout=(_dir, line) => feed(line),
-        ~onDone=() => {
-          FormatterVsCode.buildOk(pkg.dir, Date.now() -. t0)
+        ~onDone=ok => {
+          rebuilding->Dict.set(pkg.dir, false)
+          // Only report success when the build actually succeeded. On failure
+          // the classifier's `onFail` has usually already emitted the compiler
+          // error; emit a fallback `buildFail` only if it didn't (e.g. a crash
+          // with no recognisable marker), so we never claim `buildOk` over a
+          // broken build and re-run against stale `.res.mjs`.
+          if ok {
+            FormatterVsCode.buildOk(pkg.dir, Date.now() -. t0)
+          } else if !sawError.contents {
+            FormatterVsCode.buildFail(pkg.dir, "clean rebuild failed")
+          }
           ignore(run())
         },
       )
     }
+  // A test file added mid-session runs (discover re-scans each pass) but never
+  // appears in the client's tree, which was emitted once at start. On an `Add`
+  // of a *source* `.res` re-emit the discovery stream (idempotent snapshot) and
+  // (re)claim build watchers for any new package before re-running.
+  let refreshDiscovery = async () => {
+    let paths = await Discovery.discover(roots)
+    await emitDiscovery(paths)
+    startBuildWatchers(paths)
+    ignore(run())
+  }
   let _watcher = Watch.start(roots, (event, path) =>
     if opts.format == VsCode && Watch.isStructuralSource(event, path) {
       structuralRebuild(path)
+    } else if opts.format == VsCode && event == Watch.Add && path->String.endsWith(".res") {
+      ignore(refreshDiscovery())
     } else {
       ignore(run())
     }

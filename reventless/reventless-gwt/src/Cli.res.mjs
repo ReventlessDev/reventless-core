@@ -3,6 +3,7 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Watch$ReventlessGwt from "./Watch.res.mjs";
 import * as Loader$ReventlessGwt from "./Loader.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -317,6 +318,29 @@ let exnMessage = (function(e) {
   return "unknown error"
 });
 
+function raceWithTimeout(body, ms) {
+  let handleRef = {
+    contents: undefined
+  };
+  let timeout = new Promise((resolve, _reject) => {
+    handleRef.contents = Primitive_option.some(setTimeout(() => resolve(Outcome$ReventlessGwt.fail({
+      TAG: "Throw",
+      error: `timed out after ` + ms.toString() + `ms`,
+      stack: ""
+    })), ms));
+  });
+  return Promise.race([
+    body(),
+    timeout
+  ]).then(o => {
+    let h = handleRef.contents;
+    if (h !== undefined) {
+      clearTimeout(Primitive_option.valFromOption(h));
+    }
+    return Promise.resolve(o);
+  });
+}
+
 async function runEntry(entry) {
   let start = performance.now();
   let status = "Pass";
@@ -334,7 +358,8 @@ async function runEntry(entry) {
   }
   if (exit === 1) {
     try {
-      let outcome = await entry.body();
+      let deadline = Stdlib_Option.getOr(entry.timeout, 5000);
+      let outcome = await raceWithTimeout(entry.body, deadline);
       if (outcome.TAG === "Ok") {
         status = "Pass";
       } else {
@@ -375,7 +400,7 @@ async function loadAndCollect(path) {
   } catch (raw_exn) {
     let exn = Primitive_exceptions.internalToException(raw_exn);
     let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "import failed");
-    Collector$ReventlessGwt.push(undefined, undefined, `<file-load-error>`, () => Promise.resolve(Outcome$ReventlessGwt.fail({
+    Collector$ReventlessGwt.push(undefined, undefined, undefined, `<file-load-error>`, () => Promise.resolve(Outcome$ReventlessGwt.fail({
       TAG: "Throw",
       error: "Failed to load " + path + ": " + msg,
       stack: ""
@@ -608,40 +633,62 @@ async function runWatch(opts) {
     if (runInProgress.contents) {
       rerunPending.contents = true;
       return;
-    } else {
-      runInProgress.contents = true;
-      await runOnce(opts);
-      runInProgress.contents = false;
-      if (rerunPending.contents) {
-        rerunPending.contents = false;
-        await runOnce(opts);
-        return;
-      } else {
-        return;
-      }
     }
+    runInProgress.contents = true;
+    await runOnce(opts);
+    while (rerunPending.contents) {
+      rerunPending.contents = false;
+      await runOnce(opts);
+    };
+    runInProgress.contents = false;
   };
   await run();
+  let rebuilding = {};
+  let refreshDiscovery = async () => {
+    let paths = await Discovery$ReventlessGwt.discover(roots);
+    await emitDiscovery(paths);
+    startBuildWatchers(paths);
+    run();
+  };
   Watch$ReventlessGwt.start(roots, (event, path) => {
     if (opts.format === "VsCode" && Watch$ReventlessGwt.isStructuralSource(event, path)) {
       let pkg = PackageScan$ReventlessGwt.findOwning(path);
       if (pkg !== undefined) {
+        if (Stdlib_Option.getOr(rebuilding[pkg.dir], false)) {
+          return;
+        }
+        rebuilding[pkg.dir] = true;
         let t0 = Date.now();
         FormatterVsCode$ReventlessGwt.buildStart(pkg.dir);
+        let sawError = {
+          contents: false
+        };
         let feed = BuildClassifier$ReventlessGwt.make(undefined, {
           onStart: () => {},
           onOk: _ms => {},
-          onFail: msg => FormatterVsCode$ReventlessGwt.buildFail(pkg.dir, msg)
+          onFail: msg => {
+            sawError.contents = true;
+            FormatterVsCode$ReventlessGwt.buildFail(pkg.dir, msg);
+          }
         });
-        return ProcessManager$ReventlessGwt.cleanRebuild(pkg, (_dir, line) => feed(line), () => {
-          FormatterVsCode$ReventlessGwt.buildOk(pkg.dir, Date.now() - t0);
+        return ProcessManager$ReventlessGwt.cleanRebuild(pkg, (_dir, line) => feed(line), ok => {
+          rebuilding[pkg.dir] = false;
+          if (ok) {
+            FormatterVsCode$ReventlessGwt.buildOk(pkg.dir, Date.now() - t0);
+          } else if (!sawError.contents) {
+            FormatterVsCode$ReventlessGwt.buildFail(pkg.dir, "clean rebuild failed");
+          }
           run();
         });
       }
       run();
       return;
     } else {
-      run();
+      if (opts.format === "VsCode" && event === "Add" && path.endsWith(".res")) {
+        refreshDiscovery();
+      } else {
+        run();
+      }
       return;
     }
   });
@@ -728,6 +775,8 @@ async function main() {
   }
 }
 
+let defaultTimeoutMs = 5000;
+
 export {
   toolVersion,
   dateNowIso,
@@ -737,6 +786,8 @@ export {
   parseArgv,
   passesFilter,
   exnMessage,
+  defaultTimeoutMs,
+  raceWithTimeout,
   runEntry,
   loadAndCollect,
   runFiles,

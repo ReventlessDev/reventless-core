@@ -14,7 +14,7 @@ function only() {
 function xtest(param, name, _body) {
   if (Collector$ReventlessGwt.isActive()) {
     Collector$ReventlessGwt.markSkipNext();
-    return Collector$ReventlessGwt.push(undefined, undefined, name, () => Promise.resolve(Outcome$ReventlessGwt.pass));
+    return Collector$ReventlessGwt.push(undefined, undefined, undefined, name, () => Promise.resolve(Outcome$ReventlessGwt.pass));
   } else {
     globalThis.xtest(name, () => {});
     return;
@@ -24,10 +24,17 @@ function xtest(param, name, _body) {
 function xdescribe(label, body) {
   if (Collector$ReventlessGwt.isActive()) {
     Collector$ReventlessGwt.skipDepth.contents = Collector$ReventlessGwt.skipDepth.contents + 1 | 0;
-    Collector$ReventlessGwt.pushDescribe(label, body);
-    Collector$ReventlessGwt.skipDepth.contents = Collector$ReventlessGwt.skipDepth.contents - 1 | 0;
+    try {
+      Collector$ReventlessGwt.pushDescribe(label, body);
+      Collector$ReventlessGwt.skipDepth.contents = Collector$ReventlessGwt.skipDepth.contents - 1 | 0;
+      return;
+    } catch (e) {
+      Collector$ReventlessGwt.skipDepth.contents = Collector$ReventlessGwt.skipDepth.contents - 1 | 0;
+      throw e;
+    }
   } else {
     globalThis.xdescribe(label, body);
+    return;
   }
 }
 
