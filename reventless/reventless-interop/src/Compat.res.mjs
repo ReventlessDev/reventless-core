@@ -6,7 +6,9 @@ import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 
 function parseSemVer(v) {
-  let parts = v.split(".");
+  let core = Stdlib_Option.getOr(v.split("+")[0], v);
+  let core$1 = Stdlib_Option.getOr(core.split("-")[0], core);
+  let parts = core$1.split(".");
   if (parts.length !== 3) {
     return;
   }
@@ -27,10 +29,18 @@ function validateProtocol(host, extensionPointName, commandVersion, eventVersion
     let match = parseSemVer(hostV);
     let match$1 = parseSemVer(extV);
     if (match === undefined) {
-      return [makeError()];
+      return [{
+          TAG: "MalformedVersion",
+          extensionPointName: extensionPointName,
+          version: hostV
+        }];
     }
     if (match$1 === undefined) {
-      return [makeError()];
+      return [{
+          TAG: "MalformedVersion",
+          extensionPointName: extensionPointName,
+          version: extV
+        }];
     }
     let eMi = match$1[1];
     let hMi = match[1];

@@ -120,7 +120,15 @@ let makeDecoder = (schema: S.t<'event>): makeDecoderResult<'event> => {
       try {
         Some(JSON.Object(jsonDict)->S.parseJsonOrThrow(schema))
       } catch {
-      | _ => None
+      | _ =>
+        // A parse failure here means a stored event no longer matches the
+        // current schema (drift). Dropping it silently hid real data loss;
+        // surface it as a warning so it's diagnosable.
+        Console.warn(
+          "DcbDecode: dropped event `" ++
+          eventType ++ "` — payload does not match the current schema (drift?)",
+        )
+        None
       }
     }
 

@@ -140,4 +140,14 @@ let config: DependencyBundler_Config.t = {
   ]),
 }
 
-let _ = DependencyBundler.build(config)
+@val external processExit: int => unit = "process.exit"
+
+// Await the build and exit non-zero on failure. Discarding the promise (the
+// previous shape) surfaced failures only as an unhandledRejection, so CI saw a
+// green exit even when the layer build threw.
+let _ =
+  DependencyBundler.build(config)->Promise.catch(e => {
+    Console.error2("layer build failed:", e)
+    processExit(1)
+    Promise.resolve()
+  })

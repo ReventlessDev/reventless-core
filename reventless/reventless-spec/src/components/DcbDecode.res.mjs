@@ -100,6 +100,7 @@ function makeDecoder(schema) {
     try {
       return Primitive_option.some(S.parseJsonOrThrow(jsonDict, schema));
     } catch (exn) {
+      console.warn("DcbDecode: dropped event `" + eventType + "` — payload does not match the current schema (drift?)");
       return;
     }
   };

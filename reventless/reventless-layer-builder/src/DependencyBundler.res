@@ -1,4 +1,7 @@
-let doPostProcessing = async (node, pathToSavedDependencies, fn, spinner) => {
+// Returns false when the post-processing step failed. The caller tracks this so
+// the overall build can exit non-zero — previously a failed step was logged and
+// the build still "succeeded", shipping unstripped deploy-time/test code.
+let doPostProcessing = async (node, pathToSavedDependencies, fn, spinner): bool => {
   let cwd = NodePath.resolve([pathToSavedDependencies, "../" ++ node->Arborist.location])
   let fnName = %raw(`fn.name`)
   let _ = spinner->Ora.start("postprocess " ++ node->Arborist.name ++ ": " ++ fnName)
@@ -6,11 +9,13 @@ let doPostProcessing = async (node, pathToSavedDependencies, fn, spinner) => {
   try {
     await fn(node, cwd)
     let _ = spinner->Ora.succeed(())
+    true
   } catch {
   | exn => {
       let _ = spinner->Ora.fail(())
       let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
       Console.error2("postprocessing of " ++ node->Arborist.name ++ " did fail at '" ++ fnName ++ "':", msg)
+      false
     }
   }
 }
@@ -89,7 +94,7 @@ let build = async (config: DependencyBundler_Config.t) => {
   // --- extract dependencies ---
   let extractionCount = ref(0)
   let _skippedExtractionCount = ref(0)
-  let rescriptModule: ref<option<Arborist.node>> = ref(None)
+  let postProcessFailed = ref(false)
 
   let _ = spinner->Ora.start("extract dependencies")
   let _ = await Treeverse.depth({
@@ -100,10 +105,6 @@ let build = async (config: DependencyBundler_Config.t) => {
       if node->Arborist.isRoot {
         ()
       } else {
-        if node->Arborist.name === "rescript" {
-          rescriptModule := Some(node)
-        }
-
         Console.log2("\nNode: ", node->Arborist.packageName)
 
         if DependencyBundler_Filter.predIsNecessary(~excludeScopes, ~excludeModules, ~includeModules, node) {
@@ -143,7 +144,10 @@ let build = async (config: DependencyBundler_Config.t) => {
 
           if shouldPostProcess {
             switch postProcess->Dict.get(node->Arborist.name) {
-            | Some(fn) => await doPostProcessing(node, pathToSavedDependencies, fn, spinner)
+            | Some(fn) =>
+              if !(await doPostProcessing(node, pathToSavedDependencies, fn, spinner)) {
+                postProcessFailed := true
+              }
             | None => ()
             }
           }
@@ -152,7 +156,10 @@ let build = async (config: DependencyBundler_Config.t) => {
             let depName = postProcessingNamesForDependencies->Array.getUnsafe(i)
             if DependencyBundler_Filter.hasDependency(node, depName) {
               switch postProcess->Dict.get(">" ++ depName) {
-              | Some(fn) => await doPostProcessing(node, pathToSavedDependencies, fn, spinner)
+              | Some(fn) =>
+                if !(await doPostProcessing(node, pathToSavedDependencies, fn, spinner)) {
+                  postProcessFailed := true
+                }
               | None => ()
               }
             }
@@ -174,8 +181,17 @@ let build = async (config: DependencyBundler_Config.t) => {
   spinner->Ora.setSuffixText("")
   let _ = spinner->Ora.succeed(())
 
+  // Fail the whole build if any post-processing step failed — a broken layer must
+  // not be zipped and shipped as if it succeeded.
+  if postProcessFailed.contents {
+    panic("layer build: one or more post-processing steps failed")
+  }
+
   // --- rescript safety check ---
-  switch rescriptModule.contents {
+  // Look rescript up from the tree's own children rather than a walk-populated
+  // ref: rescript is a dev dep filtered out of the extraction walk, so the ref
+  // was always None and this guard could never fire.
+  switch tree->Arborist.children->Map.get("rescript") {
   | Some(rescriptNode) =>
     rescriptNode
     ->Arborist.edgesIn

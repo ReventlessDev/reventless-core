@@ -56,7 +56,10 @@ let extractAllVariants = (schema: S.t<unknown>): array<variantInfo> =>
 // Check if a variant has no payload fields (only TAG)
 let isPayloadLess = (info: variantInfo): bool => info.fields->Dict.toArray->Array.length == 0
 
-// Compare two sury schema types for structural compatibility
+// Compare two sury schema types for structural compatibility. Objects and
+// unions recurse: previously any (Object, Object) / (Union, Union) pair was
+// declared compatible, so nested payload drift (a renamed/retyped nested field,
+// a changed variant) passed validation undetected.
 let rec schemasAreCompatible = (a: S.t<unknown>, b: S.t<unknown>): bool =>
   switch (a, b) {
   | (String(_), String(_)) => true
@@ -65,10 +68,35 @@ let rec schemasAreCompatible = (a: S.t<unknown>, b: S.t<unknown>): bool =>
   | (BigInt(_), BigInt(_)) => true
   | (Array({additionalItems: Schema(aItem)}), Array({additionalItems: Schema(bItem)})) =>
     schemasAreCompatible(aItem, bItem)
-  | (Union(_), Union(_)) => true
-  | (Object(_), Object(_)) => true
+  | (Object({properties: aProps}), Object({properties: bProps})) => propsCompatible(aProps, bProps)
+  | (Union(_), Union(_)) =>
+    // Same set of variant tags, and each shared variant's payload compatible.
+    let av = extractAllVariants(a)
+    let bv = extractAllVariants(b)
+    let at = av->Array.map(v => v.tagName)->Array.toSorted(String.compare)
+    let bt = bv->Array.map(v => v.tagName)->Array.toSorted(String.compare)
+    at == bt &&
+    at->Array.every(tag =>
+      switch (av->Array.find(v => v.tagName == tag), bv->Array.find(v => v.tagName == tag)) {
+      | (Some(x), Some(y)) => propsCompatible(x.fields, y.fields)
+      | _ => false
+      }
+    )
   | _ => false
   }
+// Two property maps are compatible when they carry the same field names and each
+// field's schema is compatible.
+and propsCompatible = (aProps: dict<S.t<unknown>>, bProps: dict<S.t<unknown>>): bool => {
+  let aKeys = aProps->Dict.keysToArray->Array.toSorted(String.compare)
+  let bKeys = bProps->Dict.keysToArray->Array.toSorted(String.compare)
+  aKeys == bKeys &&
+  aKeys->Array.every(k =>
+    switch (aProps->Dict.get(k), bProps->Dict.get(k)) {
+    | (Some(av), Some(bv)) => schemasAreCompatible(av, bv)
+    | _ => false
+    }
+  )
+}
 
 // Get a human-readable type name for a schema
 let schemaTypeName = (schema: S.t<unknown>): string =>

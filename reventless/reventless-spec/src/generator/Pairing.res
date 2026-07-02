@@ -316,12 +316,16 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
     switch epGroup {
     | None => flatEpMappings->Array.push(stem)
     | Some(g) =>
-      let arr = Dict.get(epByGroup, g)->Option.getOr({
-        let a: array<string> = []
-        Dict.set(epByGroup, g, a)
-        a
-      })
-      arr->Array.push(stem)
+      // `Option.getOr`'s default is evaluated eagerly, so the previous shape
+      // re-created and re-set a fresh empty array every iteration — overwriting
+      // the group's real entry and pushing onto a now-detached array. A group
+      // with ≥2 mappings ended up empty, emitting a Plugin.res that referenced a
+      // never-generated module (`Array.getUnsafe(0)` on `[]`). Use a switch so
+      // the create branch runs only when the group is genuinely absent.
+      switch Dict.get(epByGroup, g) {
+      | Some(arr) => arr->Array.push(stem)
+      | None => Dict.set(epByGroup, g, [stem])
+      }
     }
   })
 

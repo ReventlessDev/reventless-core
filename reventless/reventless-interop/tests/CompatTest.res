@@ -263,3 +263,93 @@ describe("Compat.validateAndProject", () => {
     })
   })
 })
+
+// A9: SemVer parsing + protocol compatibility. Regression coverage for the
+// prerelease bug — every `-alpha` version parsed as None and was reported
+// incompatible — and the new malformed-vs-incompatible distinction.
+let host = (~cmd, ~evt): ExtensionPointProtocol.schemaVersions => {
+  commandVersion: cmd,
+  eventVersion: evt,
+}
+let ep = "Catalog.Products"
+let check = (~hostCmd, ~hostEvt, ~extCmd, ~extEvt) =>
+  Compat.validateProtocol(
+    ~host=host(~cmd=hostCmd, ~evt=hostEvt),
+    ~extensionPointName=ep,
+    ~commandVersion=extCmd,
+    ~eventVersion=extEvt,
+  )
+
+describe("Compat.validateProtocol", () => {
+  testSync("exact match is compatible", () => {
+    expect(check(~hostCmd="1.2.3", ~hostEvt="1.2.3", ~extCmd="1.2.3", ~extEvt="1.2.3"))->toEqual([])
+  })
+
+  testSync("host minor ahead is compatible", () => {
+    expect(check(~hostCmd="1.3.0", ~hostEvt="1.3.0", ~extCmd="1.2.9", ~extEvt="1.2.9"))->toEqual([])
+  })
+
+  testSync("host minor behind is incompatible (command only, event matches)", () => {
+    let errs = check(~hostCmd="1.1.0", ~hostEvt="1.2.0", ~extCmd="1.2.0", ~extEvt="1.2.0")
+    expect(errs->Array.length)->toBe(1)
+    switch errs->Array.get(0) {
+    | Some(Compat.IncompatibleCommandSchema(_)) => expect(true)->toBe(true)
+    | _ => expect(true)->toBe(false)
+    }
+  })
+
+  testSync("major mismatch is incompatible", () => {
+    let errs = check(~hostCmd="2.0.0", ~hostEvt="1.0.0", ~extCmd="1.0.0", ~extEvt="1.0.0")
+    expect(errs->Array.length)->toBe(1)
+  })
+
+  testSync("host patch behind at equal minor is incompatible", () => {
+    let errs = check(~hostCmd="1.2.3", ~hostEvt="1.2.5", ~extCmd="1.2.5", ~extEvt="1.2.5")
+    expect(errs->Array.length)->toBe(1)
+  })
+
+  testSync("prerelease versions are compatible — the -alpha suffix is ignored", () => {
+    // The headline fix: without prerelease stripping these parsed as None and
+    // were falsely reported incompatible.
+    expect(
+      check(
+        ~hostCmd="1.0.0-alpha.62",
+        ~hostEvt="1.0.0-alpha.62",
+        ~extCmd="1.0.0-alpha.5",
+        ~extEvt="1.0.0-alpha.5",
+      ),
+    )->toEqual([])
+  })
+
+  testSync("build metadata is ignored", () => {
+    expect(
+      check(~hostCmd="1.2.3+abc", ~hostEvt="1.2.3", ~extCmd="1.2.3", ~extEvt="1.2.3"),
+    )->toEqual([])
+  })
+
+  testSync("a malformed version yields MalformedVersion, not a bogus incompatibility", () => {
+    let errs = check(~hostCmd="not-a-version", ~hostEvt="1.0.0", ~extCmd="1.0.0", ~extEvt="1.0.0")
+    switch errs->Array.get(0) {
+    | Some(Compat.MalformedVersion({version})) => expect(version)->toBe("not-a-version")
+    | _ => expect(true)->toBe(false)
+    }
+  })
+})
+
+describe("Compat.parseSemVer", () => {
+  testSync("parses a plain version", () => {
+    expect(Compat.parseSemVer("1.2.3"))->toEqual(Some((1, 2, 3)))
+  })
+  testSync("strips a prerelease suffix", () => {
+    expect(Compat.parseSemVer("1.0.0-alpha.62"))->toEqual(Some((1, 0, 0)))
+  })
+  testSync("strips build metadata", () => {
+    expect(Compat.parseSemVer("2.5.1+build.9"))->toEqual(Some((2, 5, 1)))
+  })
+  testSync("returns None for a non-version string", () => {
+    expect(Compat.parseSemVer("nope"))->toEqual(None)
+  })
+  testSync("returns None for a too-short core", () => {
+    expect(Compat.parseSemVer("1.2"))->toEqual(None)
+  })
+})

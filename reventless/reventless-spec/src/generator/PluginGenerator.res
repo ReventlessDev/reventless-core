@@ -2,6 +2,8 @@
 // Usage: generate-plugin <srcDir>
 //        generate-plugin --aws <Namespace> <srcDir>
 
+@val external processExit: int => unit = "process.exit"
+
 let () = {
   let argv2 = Generator_Node.argv->Array.get(2)->Option.getOr("")
   let argv3 = Generator_Node.argv->Array.get(3)->Option.getOr("")
@@ -23,6 +25,9 @@ let () = {
       Console.error("Usage: generate-plugin <srcDir>")
       Console.error("       generate-plugin --aws <Namespace> <srcDir>")
     }
+    // Exit non-zero on a usage error so `prebuild` (and CI) actually fail
+    // instead of continuing green with no Plugin.res generated.
+    processExit(1)
   } else {
     // Resolve to absolute path (handles relative paths and trailing slashes)
     let srcDir = Generator_Node.resolve([srcDirArg])

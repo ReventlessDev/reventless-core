@@ -328,10 +328,113 @@ globalThis.describe("Compat.validateAndProject", () => {
   });
 });
 
+function host(cmd, evt) {
+  return {
+    commandVersion: cmd,
+    eventVersion: evt
+  };
+}
+
+let ep = "Catalog.Products";
+
+function check(hostCmd, hostEvt, extCmd, extEvt) {
+  return Compat$ReventlessInterop.validateProtocol({
+    commandVersion: hostCmd,
+    eventVersion: hostEvt
+  }, ep, extCmd, extEvt);
+}
+
+globalThis.describe("Compat.validateProtocol", () => {
+  globalThis.test("exact match is compatible", () => {
+    globalThis.expect(check("1.2.3", "1.2.3", "1.2.3", "1.2.3")).toEqual([]);
+  });
+  globalThis.test("host minor ahead is compatible", () => {
+    globalThis.expect(check("1.3.0", "1.3.0", "1.2.9", "1.2.9")).toEqual([]);
+  });
+  globalThis.test("host minor behind is incompatible (command only, event matches)", () => {
+    let errs = check("1.1.0", "1.2.0", "1.2.0", "1.2.0");
+    globalThis.expect(errs.length).toBe(1);
+    let match = errs[0];
+    if (match !== undefined) {
+      switch (match.TAG) {
+        case "IncompatibleCommandSchema" :
+          globalThis.expect(true).toBe(true);
+          return;
+        case "IncompatibleEventSchema" :
+        case "MalformedVersion" :
+          break;
+      }
+    }
+    globalThis.expect(true).toBe(false);
+  });
+  globalThis.test("major mismatch is incompatible", () => {
+    let errs = check("2.0.0", "1.0.0", "1.0.0", "1.0.0");
+    globalThis.expect(errs.length).toBe(1);
+  });
+  globalThis.test("host patch behind at equal minor is incompatible", () => {
+    let errs = check("1.2.3", "1.2.5", "1.2.5", "1.2.5");
+    globalThis.expect(errs.length).toBe(1);
+  });
+  globalThis.test("prerelease versions are compatible — the -alpha suffix is ignored", () => {
+    globalThis.expect(check("1.0.0-alpha.62", "1.0.0-alpha.62", "1.0.0-alpha.5", "1.0.0-alpha.5")).toEqual([]);
+  });
+  globalThis.test("build metadata is ignored", () => {
+    globalThis.expect(check("1.2.3+abc", "1.2.3", "1.2.3", "1.2.3")).toEqual([]);
+  });
+  globalThis.test("a malformed version yields MalformedVersion, not a bogus incompatibility", () => {
+    let errs = check("not-a-version", "1.0.0", "1.0.0", "1.0.0");
+    let match = errs[0];
+    if (match !== undefined) {
+      switch (match.TAG) {
+        case "IncompatibleCommandSchema" :
+        case "IncompatibleEventSchema" :
+          break;
+        case "MalformedVersion" :
+          globalThis.expect(match.version).toBe("not-a-version");
+          return;
+      }
+    }
+    globalThis.expect(true).toBe(false);
+  });
+});
+
+globalThis.describe("Compat.parseSemVer", () => {
+  globalThis.test("parses a plain version", () => {
+    globalThis.expect(Compat$ReventlessInterop.parseSemVer("1.2.3")).toEqual([
+      1,
+      2,
+      3
+    ]);
+  });
+  globalThis.test("strips a prerelease suffix", () => {
+    globalThis.expect(Compat$ReventlessInterop.parseSemVer("1.0.0-alpha.62")).toEqual([
+      1,
+      0,
+      0
+    ]);
+  });
+  globalThis.test("strips build metadata", () => {
+    globalThis.expect(Compat$ReventlessInterop.parseSemVer("2.5.1+build.9")).toEqual([
+      2,
+      5,
+      1
+    ]);
+  });
+  globalThis.test("returns None for a non-version string", () => {
+    globalThis.expect(Compat$ReventlessInterop.parseSemVer("nope")).toEqual(undefined);
+  });
+  globalThis.test("returns None for a too-short core", () => {
+    globalThis.expect(Compat$ReventlessInterop.parseSemVer("1.2")).toEqual(undefined);
+  });
+});
+
 export {
   makeMeta,
   alwaysOkFromJson,
   alwaysErrorFromJson,
   emptyJsonObject,
+  host,
+  ep,
+  check,
 }
 /*  Not a pure module */

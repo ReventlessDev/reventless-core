@@ -39,6 +39,7 @@ if (srcDirArg === "") {
     console.error("Usage: generate-plugin <srcDir>");
     console.error("       generate-plugin --aws <Namespace> <srcDir>");
   }
+  process.exit(1);
 } else {
   let srcDir = Nodepath.resolve(srcDirArg);
   let init = Config$Reventless.read(srcDir);

@@ -3,6 +3,7 @@
 import * as Nodeurl from "node:url";
 import * as Nodepath from "node:path";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as DependencyBundler from "./DependencyBundler.res.mjs";
 import * as DependencyBundler_PostProcess from "./DependencyBundler_PostProcess.res.mjs";
 
@@ -153,7 +154,11 @@ let config = {
   rootPostProcess: config_rootPostProcess
 };
 
-DependencyBundler.build(config);
+Stdlib_Promise.$$catch(DependencyBundler.build(config), e => {
+  console.error("layer build failed:", e);
+  process.exit(1);
+  return Promise.resolve();
+});
 
 export {
   dirname,

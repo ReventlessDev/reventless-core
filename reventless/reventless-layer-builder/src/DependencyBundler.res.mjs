@@ -25,13 +25,13 @@ async function doPostProcessing(node, pathToSavedDependencies, fn, spinner) {
   try {
     await fn(node, cwd);
     spinner.succeed(undefined);
-    return;
+    return true;
   } catch (raw_exn) {
     let exn = Primitive_exceptions.internalToException(raw_exn);
     spinner.fail(undefined);
     let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
     console.error("postprocessing of " + node.name + " did fail at '" + fnName + "':", msg);
-    return;
+    return false;
   }
 }
 
@@ -84,8 +84,8 @@ async function build(config) {
   let _skippedExtractionCount = {
     contents: 0
   };
-  let rescriptModule = {
-    contents: undefined
+  let postProcessFailed = {
+    contents: false
   };
   spinner.start("extract dependencies");
   await Treeverse.default.depth({
@@ -94,9 +94,6 @@ async function build(config) {
       spinner.suffixText = node.name;
       if (node.isRoot) {
         return;
-      }
-      if (node.name === "rescript") {
-        rescriptModule.contents = Primitive_option.some(node);
       }
       console.log("\nNode: ", node.packageName);
       if (!DependencyBundler_Filter.predIsNecessary(excludeScopes, excludeModules, includeModules, node)) {
@@ -123,16 +120,16 @@ async function build(config) {
       }
       if (shouldPostProcess) {
         let fn = postProcess[node.name];
-        if (fn !== undefined) {
-          await doPostProcessing(node, pathToSavedDependencies, fn, spinner);
+        if (fn !== undefined && !await doPostProcessing(node, pathToSavedDependencies, fn, spinner)) {
+          postProcessFailed.contents = true;
         }
       }
       for (let i = 0, i_finish = postProcessingNamesForDependencies.length; i < i_finish; ++i) {
         let depName = postProcessingNamesForDependencies[i];
         if (DependencyBundler_Filter.hasDependency(node, depName)) {
           let fn$1 = postProcess[">" + depName];
-          if (fn$1 !== undefined) {
-            await doPostProcessing(node, pathToSavedDependencies, fn$1, spinner);
+          if (fn$1 !== undefined && !await doPostProcessing(node, pathToSavedDependencies, fn$1, spinner)) {
+            postProcessFailed.contents = true;
           }
         }
       }
@@ -148,7 +145,10 @@ async function build(config) {
   });
   spinner.suffixText = "";
   spinner.succeed(undefined);
-  let rescriptNode = rescriptModule.contents;
+  if (postProcessFailed.contents) {
+    Stdlib.panic("layer build: one or more post-processing steps failed");
+  }
+  let rescriptNode = tree.children.get("rescript");
   if (rescriptNode !== undefined) {
     Array.from(Primitive_option.valFromOption(rescriptNode).edgesIn).forEach(rescriptEdge => {
       if (rescriptEdge.type !== "prod") {

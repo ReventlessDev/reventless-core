@@ -95,13 +95,54 @@ function schemasAreCompatible(_a, _b) {
         _a = aItem;
         continue;
       case "object" :
-        return b.type === "object";
+        if (b.type === "object") {
+          return propsCompatible(a.properties, b.properties);
+        } else {
+          return false;
+        }
       case "union" :
-        return b.type === "union";
+        if (b.type !== "union") {
+          return false;
+        }
+        let av = extractAllVariants(a);
+        let bv = extractAllVariants(b);
+        let at = av.map(v => v.tagName).toSorted(Primitive_string.compare);
+        let bt = bv.map(v => v.tagName).toSorted(Primitive_string.compare);
+        if (Primitive_object.equal(at, bt)) {
+          return at.every(tag => {
+            let match = av.find(v => v.tagName === tag);
+            let match$1 = bv.find(v => v.tagName === tag);
+            if (match !== undefined && match$1 !== undefined) {
+              return propsCompatible(match.fields, match$1.fields);
+            } else {
+              return false;
+            }
+          });
+        } else {
+          return false;
+        }
       default:
         return false;
     }
   };
+}
+
+function propsCompatible(aProps, bProps) {
+  let aKeys = Object.keys(aProps).toSorted(Primitive_string.compare);
+  let bKeys = Object.keys(bProps).toSorted(Primitive_string.compare);
+  if (Primitive_object.equal(aKeys, bKeys)) {
+    return aKeys.every(k => {
+      let match = aProps[k];
+      let match$1 = bProps[k];
+      if (match !== undefined && match$1 !== undefined) {
+        return schemasAreCompatible(match, match$1);
+      } else {
+        return false;
+      }
+    });
+  } else {
+    return false;
+  }
 }
 
 function schemaTypeName(schema) {
@@ -381,6 +422,7 @@ export {
   extractAllVariants,
   isPayloadLess,
   schemasAreCompatible,
+  propsCompatible,
   schemaTypeName,
   dedupeKeys,
   validateCompositeReads,

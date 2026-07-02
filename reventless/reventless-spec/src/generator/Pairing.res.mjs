@@ -3,7 +3,6 @@
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Generator_Node$Reventless from "./Generator_Node.res.mjs";
 
 let implSuffixForStateChange = "_Behavior";
@@ -282,9 +281,12 @@ function resolve(discovered, srcDir) {
     let epGroup = param.epGroup;
     let stem = param.stem;
     if (epGroup !== undefined) {
-      let a = [];
-      let arr = Stdlib_Option.getOr(epByGroup[epGroup], (epByGroup[epGroup] = a, a));
-      arr.push(stem);
+      let arr = epByGroup[epGroup];
+      if (arr !== undefined) {
+        arr.push(stem);
+      } else {
+        epByGroup[epGroup] = [stem];
+      }
       return;
     }
     flatEpMappings.push(stem);

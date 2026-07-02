@@ -13,11 +13,23 @@ type protocolError =
       hostVersion: string,
       extensionVersion: string,
     })
+  // A version string that isn't valid SemVer at all — distinct from a
+  // well-formed but incompatible one, so callers can tell "you shipped garbage"
+  // from "your version is too old".
+  | MalformedVersion({
+      extensionPointName: string,
+      version: string,
+    })
 
-// Parse a SemVer string "MAJOR.MINOR.PATCH" into integer components.
-// Returns None for any malformed input.
+// Parse a SemVer string "MAJOR.MINOR.PATCH" into integer components, ignoring any
+// prerelease (`-alpha.1`) or build (`+sha`) suffix. Returns None only when the
+// MAJOR.MINOR.PATCH core is itself malformed. (This codebase lives on `-alpha`
+// versions, so stripping the prerelease is essential — otherwise every version
+// parsed as None and was reported incompatible.)
 let parseSemVer = (v: string): option<(int, int, int)> => {
-  let parts = v->String.split(".")
+  let core = v->String.split("+")->Array.get(0)->Option.getOr(v)
+  let core = core->String.split("-")->Array.get(0)->Option.getOr(core)
+  let parts = core->String.split(".")
   if parts->Array.length != 3 {
     None
   } else {
@@ -59,7 +71,9 @@ let validateProtocol = (
       } else {
         []
       }
-    | _ => [makeError()]
+    // Report the actually-malformed string rather than a bogus incompatibility.
+    | (None, _) => [MalformedVersion({extensionPointName, version: hostV})]
+    | (_, None) => [MalformedVersion({extensionPointName, version: extV})]
     }
 
   Array.concat(
