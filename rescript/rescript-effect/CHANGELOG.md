@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.1.0-alpha.24 (2026-07-02)
+
+**Note:** Version bump only for package @reventlessdev/rescript-effect
+
+
+
+
+
 # 0.1.0-alpha.23 (2026-06-27)
 
 **Note:** Version bump only for package @reventlessdev/rescript-effect

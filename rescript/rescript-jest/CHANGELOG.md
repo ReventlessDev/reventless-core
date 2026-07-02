@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.5 (2026-07-02)
+
+### Bug Fixes
+
+* **rescript-jest:** release alpha.4 to publish the todo external ([26393e0](https://github.com/ReventlessDev/reventless-core/commit/26393e05a54f6fc3e40087d86317ec049eb6f4e1))
+
+
 # 1.0.0-alpha.3 (2026-06-27)
 
 ### Features

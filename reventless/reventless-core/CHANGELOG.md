@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.136 (2026-07-02)
+
+### Bug Fixes
+
+* **core,local:** projection/publisher/bus correctness (plan A5,A7) ([86e27a5](https://github.com/ReventlessDev/reventless-core/commit/86e27a5d68873d7dd9e746f9b4126f4d5bad63c9))
+
+
 # 3.0.0-alpha.135 (2026-06-29)
 
 ### Features

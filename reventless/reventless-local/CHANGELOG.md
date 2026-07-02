@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.115 (2026-07-02)
+
+### Bug Fixes
+
+* **core,local:** projection/publisher/bus correctness (plan A5,A7) ([86e27a5](https://github.com/ReventlessDev/reventless-core/commit/86e27a5d68873d7dd9e746f9b4126f4d5bad63c9))
+* **local:** conflict classification, rollback masking, MCP pagination (plan A6) ([b3e6d24](https://github.com/ReventlessDev/reventless-core/commit/b3e6d242ddf2df066ca94b0db2266275f1453fbf))
+* **local:** InMemory QueryDb TTL parity + backend-aware UIFragment store (plan A6) ([c31727f](https://github.com/ReventlessDev/reventless-core/commit/c31727fa3fe98b4f15b55300fdf8b80221fabbee))
+* **local:** QueryDb count returns a running total, not the increment (plan A6) ([4ac3822](https://github.com/ReventlessDev/reventless-core/commit/4ac3822ac310d62bb4b1c4c021a85f45883f4785))
+* **local:** wire standalone DCB log through the backend-aware storage (plan A6) ([40734e9](https://github.com/ReventlessDev/reventless-core/commit/40734e902436dfce623061416e9edeafa822f1d3))
+
+
 # 3.0.0-alpha.114 (2026-06-29)
 
 ### Bug Fixes

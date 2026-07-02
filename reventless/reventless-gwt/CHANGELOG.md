@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.76 (2026-07-02)
+
+### Bug Fixes
+
+* **gwt:** harden watch runner process/lifecycle/fidelity (plan A2–A4) ([9d5d566](https://github.com/ReventlessDev/reventless-core/commit/9d5d566f2de572b6de19c18e5a1d3dd53982f1e8))
+* **gwt:** run each watch re-run in a fresh worker (plan A1/B2) ([af71131](https://github.com/ReventlessDev/reventless-core/commit/af711312b8d6f7482ee22faaa3265e72ca3ed68b))
+
+
 # 1.0.0-alpha.75 (2026-06-29)
 
 ### Features

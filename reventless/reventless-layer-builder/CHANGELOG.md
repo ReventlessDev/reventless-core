@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.19 (2026-07-02)
+
+### Bug Fixes
+
+* **spec,interop,layer-builder:** generator/protocol/build failure modes (plan A8,A9) ([66d7a54](https://github.com/ReventlessDev/reventless-core/commit/66d7a54e3a0afdbfe3ea2975f517d1d64d52c180))
+
+
 # 3.0.0-alpha.18 (2026-06-27)
 
 ### Bug Fixes
