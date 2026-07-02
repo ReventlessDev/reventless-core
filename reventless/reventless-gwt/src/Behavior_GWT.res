@@ -117,6 +117,111 @@ let encodeAppendCondition = (c: Reventless.DcbTag.appendCondition): JSON.t => {
   JSON.Encode.object(d)
 }
 
+// ---------------------------------------------------------------------------
+// Shared assertion core for both Behavior GWT flavours.
+//
+// `Make` (slice/DCB) and `MakeFromAggregate` encode produced events / errors
+// identically and compare them against the expectation the same way — only the
+// DCB append-condition footgun that `Make` layers on top, and the `thenCompare*`
+// custom-equality arms the aggregate flavour adds, differ. Factoring the
+// comparison core out (mirroring `Delegate_GWT`'s `Make`) keeps the two from
+// silently drifting. The `errors` ref is owned here and set by each outer
+// functor's `exec`.
+// ---------------------------------------------------------------------------
+module type CoreSpec = {
+  @schema
+  type event
+  @schema
+  type error
+}
+
+module AssertionCore = (Spec: CoreSpec) => {
+  let errors: ref<array<Spec.error>> = ref([])
+
+  let encEvent = (e: Spec.event) => e->Message.encode(Spec.eventSchema)
+  let encEvents = evs => evs->Array.map(encEvent)
+  let encError = (err: Spec.error) => err->Message.encode(Spec.errorSchema)
+
+  let unexpectedError = (events: array<Spec.event>): Outcome.outcome => {
+    let actual = errors.contents->Array.get(0)->Option.map(encError)
+    Outcome.fail(
+      ErrorMismatch({
+        expected: JSON.Encode.null,
+        actual,
+        actualEvents: events->encEvents,
+      }),
+    )
+  }
+
+  let compareEvents = (events, expectedEvents) =>
+    if errors.contents->Array.length > 0 {
+      unexpectedError(events)
+    } else if events == expectedEvents {
+      Outcome.pass
+    } else {
+      Outcome.fail(
+        EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}),
+      )
+    }
+
+  let compareEventsWith = (events, expectedEvents, cmp) =>
+    if errors.contents->Array.length > 0 {
+      unexpectedError(events)
+    } else if (
+      events->Array.length == expectedEvents->Array.length &&
+        Array.zip(events, expectedEvents)->Array.every(((e1, e2)) => cmp(e1, e2))
+    ) {
+      Outcome.pass
+    } else {
+      Outcome.fail(
+        EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}),
+      )
+    }
+
+  let compareNoEvent = events =>
+    if errors.contents->Array.length > 0 {
+      unexpectedError(events)
+    } else if events->Array.length == 0 {
+      Outcome.pass
+    } else {
+      Outcome.fail(NoEventExpected({actual: events->encEvents}))
+    }
+
+  let matchesError = (
+    events: array<Spec.event>,
+    expectedEvents: array<Spec.event>,
+    expectedError: Spec.error,
+  ): Outcome.outcome => {
+    let expectedErrorJson = encError(expectedError)
+    switch errors.contents->Array.get(0) {
+    | None =>
+      Outcome.fail(
+        ErrorMismatch({
+          expected: expectedErrorJson,
+          actual: None,
+          actualEvents: events->encEvents,
+        }),
+      )
+    | Some(actual) if actual != expectedError =>
+      Outcome.fail(
+        ErrorMismatch({
+          expected: expectedErrorJson,
+          actual: Some(encError(actual)),
+          actualEvents: events->encEvents,
+        }),
+      )
+    | Some(_) =>
+      if events == expectedEvents {
+        Outcome.pass
+      } else {
+        Outcome.fail(
+          EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}),
+        )
+      }
+    }
+  }
+}
+
 module Make = (
   Spec: BehaviorSpec,
   Behavior: Behavior with module Spec := Spec,
@@ -132,7 +237,8 @@ module Make = (
   let currentState = consumed =>
     consumed->Array.reduce(Behavior.initialState, Behavior.evolve)
 
-  let errors = ref([])
+  module Core = AssertionCore(Spec)
+  let errors = Core.errors
 
   // DCB append-condition derived inside [whenCmd]; [None] until first call.
   let derivedCondition: ref<option<Reventless.DcbTag.appendCondition>> = ref(None)
@@ -280,37 +386,15 @@ module Make = (
   let givenEvents = consumed => consumed
   let whenCmd = (history, cmd) => history->exec(cmd)
 
-  let encEvent = (e: Spec.event) => e->Message.encode(Spec.eventSchema)
-  let encEvents = evs => evs->Array.map(encEvent)
-  let encError = (err: Spec.error) => err->Message.encode(Spec.errorSchema)
-
   let checkAppendCondition = (): option<Outcome.outcome> =>
     appendConditionFailure.contents->Option.map(m => Outcome.fail(m))
 
-  let unexpectedError = (events: array<Spec.event>): Outcome.outcome => {
-    let actual = errors.contents->Array.get(0)->Option.map(encError)
-    Outcome.fail(
-      ErrorMismatch({
-        expected: JSON.Encode.null,
-        actual,
-        actualEvents: events->encEvents,
-      }),
-    )
-  }
-
+  // The append-condition footgun is surfaced before the shared comparison core
+  // runs; `thenAppends*` below bypass it deliberately.
   let thenEvents = (events, expectedEvents) =>
     switch checkAppendCondition() {
     | Some(o) => o
-    | None =>
-      if errors.contents->Array.length > 0 {
-        unexpectedError(events)
-      } else if events == expectedEvents {
-        Outcome.pass
-      } else {
-        Outcome.fail(
-          EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}),
-        )
-      }
+    | None => Core.compareEvents(events, expectedEvents)
     }
 
   let thenEvent = (events, expectedEvent) => thenEvents(events, [expectedEvent])
@@ -318,66 +402,25 @@ module Make = (
   let thenNoEvent = events =>
     switch checkAppendCondition() {
     | Some(o) => o
-    | None =>
-      if errors.contents->Array.length > 0 {
-        unexpectedError(events)
-      } else if events->Array.length == 0 {
-        Outcome.pass
-      } else {
-        Outcome.fail(NoEventExpected({actual: events->encEvents}))
-      }
+    | None => Core.compareNoEvent(events)
     }
-
-  let matchesError = (
-    events: array<Spec.event>,
-    expectedEvents: array<Spec.event>,
-    expectedError: Spec.error,
-  ): Outcome.outcome => {
-    let expectedErrorJson = encError(expectedError)
-    switch errors.contents->Array.get(0) {
-    | None =>
-      Outcome.fail(
-        ErrorMismatch({
-          expected: expectedErrorJson,
-          actual: None,
-          actualEvents: events->encEvents,
-        }),
-      )
-    | Some(actual) if actual != expectedError =>
-      Outcome.fail(
-        ErrorMismatch({
-          expected: expectedErrorJson,
-          actual: Some(encError(actual)),
-          actualEvents: events->encEvents,
-        }),
-      )
-    | Some(_) =>
-      if events == expectedEvents {
-        Outcome.pass
-      } else {
-        Outcome.fail(
-          EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}),
-        )
-      }
-    }
-  }
 
   let thenError = (events, expectedError) =>
     switch checkAppendCondition() {
     | Some(o) => o
-    | None => matchesError(events, [], expectedError)
+    | None => Core.matchesError(events, [], expectedError)
     }
 
   let thenEventWithError = (events, expectedEvent, expectedError) =>
     switch checkAppendCondition() {
     | Some(o) => o
-    | None => matchesError(events, [expectedEvent], expectedError)
+    | None => Core.matchesError(events, [expectedEvent], expectedError)
     }
 
   let thenEventsWithError = (events, expectedEvents, expectedError) =>
     switch checkAppendCondition() {
     | Some(o) => o
-    | None => matchesError(events, expectedEvents, expectedError)
+    | None => Core.matchesError(events, expectedEvents, expectedError)
     }
 
   let thenAppendsConditionedOn = (_events, expectedQuery: Reventless.DcbTag.query) =>
@@ -489,7 +532,8 @@ module MakeFromAggregate = (
   let currentState = events =>
     events->Array.reduce(Behavior.initialState, Behavior.evolve)
 
-  let errors = ref([])
+  module Core = AssertionCore(Spec)
+  let errors = Core.errors
 
   let exec = (history, command): array<Spec.event> => {
     errors := []
@@ -505,99 +549,21 @@ module MakeFromAggregate = (
   let givenEvents = events => events
   let whenCmd = (history, cmd) => history->exec(cmd)
 
-  let encEvent = (e: Spec.event) => e->Message.encode(Spec.eventSchema)
-  let encEvents = evs => evs->Array.map(encEvent)
-  let encError = (err: Spec.error) => err->Message.encode(Spec.errorSchema)
-
-  let unexpectedError = (events: array<Spec.event>): Outcome.outcome => {
-    let actual = errors.contents->Array.get(0)->Option.map(encError)
-    Outcome.fail(
-      ErrorMismatch({
-        expected: JSON.Encode.null,
-        actual,
-        actualEvents: events->encEvents,
-      }),
-    )
-  }
-
-  let thenEvents = (events, expectedEvents) =>
-    if errors.contents->Array.length > 0 {
-      unexpectedError(events)
-    } else if events == expectedEvents {
-      Outcome.pass
-    } else {
-      Outcome.fail(
-        EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}),
-      )
-    }
-
-  let thenCompareEvents = (events, expectedEvents, cmp) =>
-    if errors.contents->Array.length > 0 {
-      unexpectedError(events)
-    } else if (
-      events->Array.length == expectedEvents->Array.length &&
-        Array.zip(events, expectedEvents)->Array.every(((e1, e2)) => cmp(e1, e2))
-    ) {
-      Outcome.pass
-    } else {
-      Outcome.fail(
-        EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}),
-      )
-    }
-
+  // The aggregate flavour has no append-condition footgun, so the shared core's
+  // comparisons are exposed directly; only `thenCompare*` (custom equality) is
+  // specific to this surface.
+  let thenEvents = Core.compareEvents
+  let thenCompareEvents = Core.compareEventsWith
   let thenEvent = (events, expectedEvent) => thenEvents(events, [expectedEvent])
-
   let thenCompareEvent = (events, expectedEvent, cmp) =>
     thenCompareEvents(events, [expectedEvent], cmp)
+  let thenNoEvent = Core.compareNoEvent
 
-  let thenNoEvent = events =>
-    if errors.contents->Array.length > 0 {
-      unexpectedError(events)
-    } else if events->Array.length == 0 {
-      Outcome.pass
-    } else {
-      Outcome.fail(NoEventExpected({actual: events->encEvents}))
-    }
-
-  let matchesError = (
-    events: array<Spec.event>,
-    expectedEvents: array<Spec.event>,
-    expectedError: Spec.error,
-  ): Outcome.outcome => {
-    let expectedErrorJson = encError(expectedError)
-    switch errors.contents->Array.get(0) {
-    | None =>
-      Outcome.fail(
-        ErrorMismatch({
-          expected: expectedErrorJson,
-          actual: None,
-          actualEvents: events->encEvents,
-        }),
-      )
-    | Some(actual) if actual != expectedError =>
-      Outcome.fail(
-        ErrorMismatch({
-          expected: expectedErrorJson,
-          actual: Some(encError(actual)),
-          actualEvents: events->encEvents,
-        }),
-      )
-    | Some(_) =>
-      if events == expectedEvents {
-        Outcome.pass
-      } else {
-        Outcome.fail(
-          EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}),
-        )
-      }
-    }
-  }
-
-  let thenError = (events, expectedError) => matchesError(events, [], expectedError)
+  let thenError = (events, expectedError) => Core.matchesError(events, [], expectedError)
 
   let thenEventWithError = (events, expectedEvent, expectedError) =>
-    matchesError(events, [expectedEvent], expectedError)
+    Core.matchesError(events, [expectedEvent], expectedError)
 
   let thenEventsWithError = (events, expectedEvents, expectedError) =>
-    matchesError(events, expectedEvents, expectedError)
+    Core.matchesError(events, expectedEvents, expectedError)
 }

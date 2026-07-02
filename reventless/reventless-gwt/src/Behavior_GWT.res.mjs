@@ -47,12 +47,148 @@ function encodeAppendCondition(c) {
   return d;
 }
 
+function AssertionCore(Spec) {
+  let errors = {
+    contents: []
+  };
+  let encEvent = e => Message$ReventlessCore.encode(e, Spec.eventSchema);
+  let encEvents = evs => evs.map(encEvent);
+  let encError = err => Message$ReventlessCore.encode(err, Spec.errorSchema);
+  let unexpectedError = events => {
+    let actual = Stdlib_Option.map(errors.contents[0], encError);
+    return Outcome$ReventlessGwt.fail({
+      TAG: "ErrorMismatch",
+      expected: null,
+      actual: actual,
+      actualEvents: events.map(encEvent)
+    });
+  };
+  let compareEvents = (events, expectedEvents) => {
+    if (errors.contents.length !== 0) {
+      return unexpectedError(events);
+    } else if (Primitive_object.equal(events, expectedEvents)) {
+      return Outcome$ReventlessGwt.pass;
+    } else {
+      return Outcome$ReventlessGwt.fail({
+        TAG: "EventsMismatch",
+        expected: expectedEvents.map(encEvent),
+        actual: events.map(encEvent)
+      });
+    }
+  };
+  let compareEventsWith = (events, expectedEvents, cmp) => {
+    if (errors.contents.length !== 0) {
+      return unexpectedError(events);
+    } else if (events.length === expectedEvents.length && Stdlib_Array.zip(events, expectedEvents).every(param => cmp(param[0], param[1]))) {
+      return Outcome$ReventlessGwt.pass;
+    } else {
+      return Outcome$ReventlessGwt.fail({
+        TAG: "EventsMismatch",
+        expected: expectedEvents.map(encEvent),
+        actual: events.map(encEvent)
+      });
+    }
+  };
+  let compareNoEvent = events => {
+    if (errors.contents.length !== 0) {
+      return unexpectedError(events);
+    } else if (events.length === 0) {
+      return Outcome$ReventlessGwt.pass;
+    } else {
+      return Outcome$ReventlessGwt.fail({
+        TAG: "NoEventExpected",
+        actual: events.map(encEvent)
+      });
+    }
+  };
+  let matchesError = (events, expectedEvents, expectedError) => {
+    let expectedErrorJson = Message$ReventlessCore.encode(expectedError, Spec.errorSchema);
+    let actual = errors.contents[0];
+    if (actual === undefined) {
+      return Outcome$ReventlessGwt.fail({
+        TAG: "ErrorMismatch",
+        expected: expectedErrorJson,
+        actual: undefined,
+        actualEvents: events.map(encEvent)
+      });
+    }
+    let actual$1 = Primitive_option.valFromOption(actual);
+    if (Primitive_object.notequal(actual$1, expectedError)) {
+      return Outcome$ReventlessGwt.fail({
+        TAG: "ErrorMismatch",
+        expected: expectedErrorJson,
+        actual: Message$ReventlessCore.encode(actual$1, Spec.errorSchema),
+        actualEvents: events.map(encEvent)
+      });
+    } else if (Primitive_object.equal(events, expectedEvents)) {
+      return Outcome$ReventlessGwt.pass;
+    } else {
+      return Outcome$ReventlessGwt.fail({
+        TAG: "EventsMismatch",
+        expected: expectedEvents.map(encEvent),
+        actual: events.map(encEvent)
+      });
+    }
+  };
+  return {
+    errors: errors,
+    encEvent: encEvent,
+    encEvents: encEvents,
+    encError: encError,
+    unexpectedError: unexpectedError,
+    compareEvents: compareEvents,
+    compareEventsWith: compareEventsWith,
+    compareNoEvent: compareNoEvent,
+    matchesError: matchesError
+  };
+}
+
 function Make(Spec) {
   return Behavior => {
     S.enableJson();
     let test = (name, body) => JestBind$ReventlessGwt.test(Spec.name, name, body);
     let errors = {
       contents: []
+    };
+    let encEvent = e => Message$ReventlessCore.encode(e, Spec.eventSchema);
+    let encError = err => Message$ReventlessCore.encode(err, Spec.errorSchema);
+    let unexpectedError = events => {
+      let actual = Stdlib_Option.map(errors.contents[0], encError);
+      return Outcome$ReventlessGwt.fail({
+        TAG: "ErrorMismatch",
+        expected: null,
+        actual: actual,
+        actualEvents: events.map(encEvent)
+      });
+    };
+    let matchesError = (events, expectedEvents, expectedError) => {
+      let expectedErrorJson = Message$ReventlessCore.encode(expectedError, Spec.errorSchema);
+      let actual = errors.contents[0];
+      if (actual === undefined) {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "ErrorMismatch",
+          expected: expectedErrorJson,
+          actual: undefined,
+          actualEvents: events.map(encEvent)
+        });
+      }
+      let actual$1 = Primitive_option.valFromOption(actual);
+      if (Primitive_object.notequal(actual$1, expectedError)) {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "ErrorMismatch",
+          expected: expectedErrorJson,
+          actual: Message$ReventlessCore.encode(actual$1, Spec.errorSchema),
+          actualEvents: events.map(encEvent)
+        });
+      } else if (Primitive_object.equal(events, expectedEvents)) {
+        return Outcome$ReventlessGwt.pass;
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "EventsMismatch",
+          expected: expectedEvents.map(encEvent),
+          actual: events.map(encEvent)
+        });
+      }
     };
     let derivedCondition = {
       contents: undefined
@@ -138,18 +274,7 @@ function Make(Spec) {
       errors.contents = [events._0];
       return [];
     };
-    let encEvent = e => Message$ReventlessCore.encode(e, Spec.eventSchema);
-    let encError = err => Message$ReventlessCore.encode(err, Spec.errorSchema);
     let checkAppendCondition = () => Stdlib_Option.map(appendConditionFailure.contents, Outcome$ReventlessGwt.fail);
-    let unexpectedError = events => {
-      let actual = Stdlib_Option.map(errors.contents[0], encError);
-      return Outcome$ReventlessGwt.fail({
-        TAG: "ErrorMismatch",
-        expected: null,
-        actual: actual,
-        actualEvents: events.map(encEvent)
-      });
-    };
     let thenEvents = (events, expectedEvents) => {
       let o = checkAppendCondition();
       if (o !== undefined) {
@@ -178,35 +303,6 @@ function Make(Spec) {
       } else {
         return Outcome$ReventlessGwt.fail({
           TAG: "NoEventExpected",
-          actual: events.map(encEvent)
-        });
-      }
-    };
-    let matchesError = (events, expectedEvents, expectedError) => {
-      let expectedErrorJson = Message$ReventlessCore.encode(expectedError, Spec.errorSchema);
-      let actual = errors.contents[0];
-      if (actual === undefined) {
-        return Outcome$ReventlessGwt.fail({
-          TAG: "ErrorMismatch",
-          expected: expectedErrorJson,
-          actual: undefined,
-          actualEvents: events.map(encEvent)
-        });
-      }
-      let actual$1 = Primitive_option.valFromOption(actual);
-      if (Primitive_object.notequal(actual$1, expectedError)) {
-        return Outcome$ReventlessGwt.fail({
-          TAG: "ErrorMismatch",
-          expected: expectedErrorJson,
-          actual: Message$ReventlessCore.encode(actual$1, Spec.errorSchema),
-          actualEvents: events.map(encEvent)
-        });
-      } else if (Primitive_object.equal(events, expectedEvents)) {
-        return Outcome$ReventlessGwt.pass;
-      } else {
-        return Outcome$ReventlessGwt.fail({
-          TAG: "EventsMismatch",
-          expected: expectedEvents.map(encEvent),
           actual: events.map(encEvent)
         });
       }
@@ -303,17 +399,6 @@ function MakeFromAggregate(Spec) {
     let errors = {
       contents: []
     };
-    let givenEvents = events => events;
-    let whenCmd = (history, cmd) => {
-      errors.contents = [];
-      let state = Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve);
-      let events = Behavior.decide(state, cmd);
-      if (events.TAG === "Ok") {
-        return events._0;
-      }
-      errors.contents = [events._0];
-      return [];
-    };
     let encEvent = e => Message$ReventlessCore.encode(e, Spec.eventSchema);
     let encError = err => Message$ReventlessCore.encode(err, Spec.errorSchema);
     let unexpectedError = events => {
@@ -325,7 +410,7 @@ function MakeFromAggregate(Spec) {
         actualEvents: events.map(encEvent)
       });
     };
-    let thenEvents = (events, expectedEvents) => {
+    let compareEvents = (events, expectedEvents) => {
       if (errors.contents.length !== 0) {
         return unexpectedError(events);
       } else if (Primitive_object.equal(events, expectedEvents)) {
@@ -338,7 +423,7 @@ function MakeFromAggregate(Spec) {
         });
       }
     };
-    let thenCompareEvents = (events, expectedEvents, cmp) => {
+    let compareEventsWith = (events, expectedEvents, cmp) => {
       if (errors.contents.length !== 0) {
         return unexpectedError(events);
       } else if (events.length === expectedEvents.length && Stdlib_Array.zip(events, expectedEvents).every(param => cmp(param[0], param[1]))) {
@@ -351,9 +436,7 @@ function MakeFromAggregate(Spec) {
         });
       }
     };
-    let thenEvent = (events, expectedEvent) => thenEvents(events, [expectedEvent]);
-    let thenCompareEvent = (events, expectedEvent, cmp) => thenCompareEvents(events, [expectedEvent], cmp);
-    let thenNoEvent = events => {
+    let compareNoEvent = events => {
       if (errors.contents.length !== 0) {
         return unexpectedError(events);
       } else if (events.length === 0) {
@@ -394,6 +477,19 @@ function MakeFromAggregate(Spec) {
         });
       }
     };
+    let givenEvents = events => events;
+    let whenCmd = (history, cmd) => {
+      errors.contents = [];
+      let state = Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve);
+      let events = Behavior.decide(state, cmd);
+      if (events.TAG === "Ok") {
+        return events._0;
+      }
+      errors.contents = [events._0];
+      return [];
+    };
+    let thenEvent = (events, expectedEvent) => compareEvents(events, [expectedEvent]);
+    let thenCompareEvent = (events, expectedEvent, cmp) => compareEventsWith(events, [expectedEvent], cmp);
     let thenError = (events, expectedError) => matchesError(events, [], expectedError);
     let thenEventWithError = (events, expectedEvent, expectedError) => matchesError(events, [expectedEvent], expectedError);
     let thenEventsWithError = matchesError;
@@ -405,10 +501,10 @@ function MakeFromAggregate(Spec) {
       whenCmd: whenCmd,
       thenEvent: thenEvent,
       thenCompareEvent: thenCompareEvent,
-      thenNoEvent: thenNoEvent,
+      thenNoEvent: compareNoEvent,
       thenEventWithError: thenEventWithError,
-      thenEvents: thenEvents,
-      thenCompareEvents: thenCompareEvents,
+      thenEvents: compareEvents,
+      thenCompareEvents: compareEventsWith,
       thenEventsWithError: thenEventsWithError,
       thenError: thenError
     };
@@ -420,6 +516,7 @@ export {
   encodeQueryItem,
   encodeQuery,
   encodeAppendCondition,
+  AssertionCore,
   Make,
   MakeFromAggregate,
 }
