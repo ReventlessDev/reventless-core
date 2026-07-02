@@ -83,6 +83,79 @@ describe("DcbEventLogStorage_Sqlite", () => {
     })
   })
 
+  testPromise("batched tag hydration preserves per-event tags and order", async () => {
+    await runUnderSqlite(async () => {
+      module TestBus = LocalBus.Make()
+      module Storage = DcbEventLogStorage_InMemory.Make(TestBus)
+      let s = Storage.make(
+        ~name="dcb-multitag",
+        ~indexes=[],
+        ~partitionTag=Reventless.DcbTag.Simple({key: "k"}),
+        ~opts,
+      )
+      let ops = await s.operations->TestRunner.resolve
+
+      // e1 carries three tags (declaration order matters); e2 carries one; e3 none.
+      let e1 = stored(
+        "Multi",
+        [
+          {key: "a", value: "1"},
+          {key: "b", value: "2"},
+          {key: "c", value: "3"},
+        ],
+        JSON.Encode.string("first"),
+      )
+      let e2 = stored("Single", [{key: "only", value: "z"}], JSON.Encode.string("second"))
+      let e3 = stored("None", [], JSON.Encode.string("third"))
+      let _ = await ops.append([e1])
+      let _ = await ops.append([e2])
+      let _ = await ops.append([e3])
+
+      let read = await ops.read(~query=[])
+      expect(read.events->Array.length)->toBe(3)
+      let first = read.events->Array.getUnsafe(0)
+      // Order and grouping survive the single batched IN query.
+      expect(first.tags->Array.map(t => t.key))->toEqual(["a", "b", "c"])
+      expect(first.tags->Array.map(t => t.value))->toEqual(["1", "2", "3"])
+      let second = read.events->Array.getUnsafe(1)
+      expect(second.tags->Array.length)->toBe(1)
+      expect((second.tags->Array.getUnsafe(0)).key)->toBe("only")
+      let third = read.events->Array.getUnsafe(2)
+      expect(third.tags->Array.length)->toBe(0)
+    })
+  })
+
+  testPromise("append with a non-conflicting condition succeeds", async () => {
+    await runUnderSqlite(async () => {
+      module TestBus = LocalBus.Make()
+      module Storage = DcbEventLogStorage_InMemory.Make(TestBus)
+      let s = Storage.make(
+        ~name="dcb-noconflict",
+        ~indexes=[],
+        ~partitionTag=Reventless.DcbTag.Simple({key: "k"}),
+        ~opts,
+      )
+      let ops = await s.operations->TestRunner.resolve
+
+      let _ = await ops.append([stored("Created", [{key: "id", value: "x"}], JSON.Encode.string("a"))])
+      // Condition queries a tag value that does not exist → anyMatch is false →
+      // the append is allowed.
+      let cond: Reventless.DcbTag.appendCondition = {
+        query: [{tags: [{key: "id", value: "other"}]}],
+      }
+      let result = await ops.append(
+        [stored("Created", [{key: "id", value: "other"}], JSON.Encode.string("b"))],
+        ~condition=cond,
+      )
+      switch result {
+      | Ok(_) => expect(true)->toBe(true)
+      | Error(m) => expect(m)->toBe("expected Ok")
+      }
+      let read = await ops.read(~query=[])
+      expect(read.events->Array.length)->toBe(2)
+    })
+  })
+
   testPromise("append with conflicting condition returns Error", async () => {
     await runUnderSqlite(async () => {
       module TestBus = LocalBus.Make()

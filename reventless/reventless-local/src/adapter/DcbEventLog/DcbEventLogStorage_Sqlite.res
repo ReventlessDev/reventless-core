@@ -34,6 +34,12 @@ let ensureSchema = (db: SqliteDriver.t) => {
   db->SqliteDriver.exec(
     "CREATE INDEX IF NOT EXISTS dcb_tag_by_kv ON dcb_tag(log_name, tag_key, tag_value, position)",
   )
+  // Serves the per-position tag hydration (the `WHERE log_name = ? AND position
+  // IN (...)` batch). The `_by_kv` index leads with tag_key/tag_value, so it
+  // cannot answer a position lookup — without this the batch scanned dcb_tag.
+  db->SqliteDriver.exec(
+    "CREATE INDEX IF NOT EXISTS dcb_tag_by_pos ON dcb_tag(log_name, position)",
+  )
 }
 
 let posToInt = (pos: string) => pos->Int.fromString->Option.getOr(0)
@@ -117,7 +123,10 @@ let buildClauseSql = (
   ("(" ++ parts.contents->Array.join(" AND ") ++ ")", params.contents)
 }
 
-let buildQuerySql = (
+// The WHERE expression (+ bound params) for a query — shared by the row-fetching
+// read path and the LIMIT-1 existence check the append-condition uses, so both
+// match the exact same rows.
+let buildQueryWhere = (
   ~logName: string,
   ~query: DcbTag.query,
   ~after: option<int>,
@@ -132,20 +141,25 @@ let buildQuerySql = (
     | None => [JSON.Encode.string(logName)]
     }
     let _ = sqlEscape
-    (
-      `SELECT position, event_type, data, meta, recorded_at FROM dcb_event WHERE ${baseWhere} ORDER BY position ASC`,
-      baseParams,
-    )
+    (baseWhere, baseParams)
   } else {
     let clauses = query->Array.map(c => buildClauseSql(~logName, ~clause=c, ~after))
-    let combinedWhere =
-      clauses->Array.map(((sql, _)) => sql)->Array.join(" OR ")
+    let combinedWhere = clauses->Array.map(((sql, _)) => sql)->Array.join(" OR ")
     let combinedParams = clauses->Array.flatMap(((_, p)) => p)
-    (
-      `SELECT position, event_type, data, meta, recorded_at FROM dcb_event WHERE ${combinedWhere} ORDER BY position ASC`,
-      combinedParams,
-    )
+    (combinedWhere, combinedParams)
   }
+}
+
+let buildQuerySql = (
+  ~logName: string,
+  ~query: DcbTag.query,
+  ~after: option<int>,
+): (string, array<JSON.t>) => {
+  let (where, params) = buildQueryWhere(~logName, ~query, ~after)
+  (
+    `SELECT position, event_type, data, meta, recorded_at FROM dcb_event WHERE ${where} ORDER BY position ASC`,
+    params,
+  )
 }
 
 let makeStorage = (
@@ -171,9 +185,21 @@ let makeStorage = (
   let headPositionStmt = db->SqliteDriver.prepare(
     "SELECT MAX(position) AS m FROM dcb_event WHERE log_name = ?",
   )
-  let tagsForPositionsStmt = db->SqliteDriver.prepare(
-    "SELECT position, tag_key, tag_value FROM dcb_tag WHERE log_name = ? AND position = ?",
-  )
+
+  // Prepared-statement cache keyed on SQL text. `runQuery`, the batched tag
+  // hydration, and the conflict check all build SQL whose shape varies with the
+  // clause/position count; preparing per call (the old `runQuery`) recompiled the
+  // same handful of shapes on every read. node:sqlite statements are re-runnable
+  // with fresh params, so one prepare per distinct shape suffices.
+  let stmtCache: Dict.t<SqliteDriver.statement> = Dict.make()
+  let preparedFor = (sql: string): SqliteDriver.statement =>
+    switch stmtCache->Dict.get(sql) {
+    | Some(s) => s
+    | None =>
+      let s = db->SqliteDriver.prepare(sql)
+      stmtCache->Dict.set(sql, s)
+      s
+    }
 
   let _ = bus
   let _ = publishToTopic
@@ -188,27 +214,56 @@ let makeStorage = (
     | None => 0
     }
 
-  let tagsForPosition = (pos: int): array<DcbTag.tag> =>
-    tagsForPositionsStmt
-    ->SqliteDriver.all([JSON.Encode.string(name), JSON.Encode.int(pos)])
-    ->Array.map(row => {
-      let key = switch row->Dict.get("tag_key") {
-      | Some(JSON.String(s)) => s
-      | _ => ""
-      }
-      let value = switch row->Dict.get("tag_value") {
-      | Some(JSON.String(s)) => s
-      | _ => ""
-      }
-      ({key, value}: DcbTag.tag)
-    })
+  // Hydrate tags for a batch of positions in ONE query, grouped by position, in
+  // insertion order (`rowid`) within each position — the same order the old
+  // per-position query returned. Replaces the N+1 `tagsForPosition` per event.
+  let tagsForPositions = (positions: array<int>): Dict.t<array<DcbTag.tag>> => {
+    let byPos: Dict.t<array<DcbTag.tag>> = Dict.make()
+    if positions->Array.length > 0 {
+      let placeholders = positions->Array.map(_ => "?")->Array.join(",")
+      let sql = `SELECT position, tag_key, tag_value FROM dcb_tag WHERE log_name = ? AND position IN (${placeholders}) ORDER BY position ASC, rowid ASC`
+      let params =
+        [JSON.Encode.string(name)]->Array.concat(positions->Array.map(JSON.Encode.int))
+      preparedFor(sql)
+      ->SqliteDriver.all(params)
+      ->Array.forEach(row => {
+        let pos = switch row->Dict.get("position") {
+        | Some(v) => coercePosition(v)
+        | None => 0
+        }
+        let key = switch row->Dict.get("tag_key") {
+        | Some(JSON.String(s)) => s
+        | _ => ""
+        }
+        let value = switch row->Dict.get("tag_value") {
+        | Some(JSON.String(s)) => s
+        | _ => ""
+        }
+        let k = Int.toString(pos)
+        let arr = switch byPos->Dict.get(k) {
+        | Some(a) => a
+        | None =>
+          let a = []
+          byPos->Dict.set(k, a)
+          a
+        }
+        arr->Array.push(({key, value}: DcbTag.tag))
+      })
+    }
+    byPos
+  }
 
   let runQuery = (~query: DcbTag.query, ~after: option<int>): array<DcbEventLog_Adapter.rawSequencedEvent> => {
     let (sql, params) = buildQuerySql(~logName=name, ~query, ~after)
-    let stmt = db->SqliteDriver.prepare(sql)
-    stmt
-    ->SqliteDriver.all(params)
-    ->Array.map(row => {
+    let rows = preparedFor(sql)->SqliteDriver.all(params)
+    let positions = rows->Array.map(row =>
+      switch row->Dict.get("position") {
+      | Some(v) => coercePosition(v)
+      | None => 0
+      }
+    )
+    let tagsByPos = tagsForPositions(positions)
+    rows->Array.map(row => {
       let position = switch row->Dict.get("position") {
       | Some(v) => coercePosition(v)
       | None => 0
@@ -237,11 +292,21 @@ let makeStorage = (
         DcbEventLog_Adapter.position: Int.toString(position),
         eventType,
         data,
-        tags: tagsForPosition(position),
+        tags: tagsByPos->Dict.get(Int.toString(position))->Option.getOr([]),
         meta,
         recordedAt,
       }: DcbEventLog_Adapter.rawSequencedEvent)
     })
+  }
+
+  // Does any event match the query? The append-condition only needs existence,
+  // so avoid materialising + tag-hydrating every conflicting row (the old
+  // `runQuery(...)->Array.length > 0`): a `SELECT 1 … LIMIT 1` short-circuits.
+  let anyMatch = (~query: DcbTag.query, ~after: option<int>): bool => {
+    let (where, params) = buildQueryWhere(~logName=name, ~query, ~after)
+    preparedFor(`SELECT 1 FROM dcb_event WHERE ${where} LIMIT 1`)
+    ->SqliteDriver.get(params)
+    ->Option.isSome
   }
 
   let read = async (
@@ -268,8 +333,7 @@ let makeStorage = (
         switch condition {
         | Some(cond: DcbTag.appendCondition) =>
           let afterInt = cond.after->Option.map(posToInt)
-          let conflicting = runQuery(~query=cond.query, ~after=afterInt)
-          if conflicting->Array.length > 0 {
+          if anyMatch(~query=cond.query, ~after=afterInt) {
             throw(Failure("conflict: condition check failed"))
           }
         | None => ()

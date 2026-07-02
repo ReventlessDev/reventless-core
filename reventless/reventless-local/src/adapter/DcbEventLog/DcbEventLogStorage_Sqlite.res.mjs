@@ -8,6 +8,7 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
@@ -17,6 +18,7 @@ function ensureSchema(db) {
   SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS dcb_event (log_name TEXT NOT NULL, position INTEGER NOT NULL, event_type TEXT NOT NULL, data TEXT NOT NULL, meta TEXT NOT NULL, recorded_at TEXT NOT NULL, PRIMARY KEY (log_name, position))");
   SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS dcb_tag (log_name TEXT NOT NULL, position INTEGER NOT NULL, tag_key TEXT NOT NULL, tag_value TEXT NOT NULL)");
   SqliteDriver$ReventlessLocal.exec(db, "CREATE INDEX IF NOT EXISTS dcb_tag_by_kv ON dcb_tag(log_name, tag_key, tag_value, position)");
+  SqliteDriver$ReventlessLocal.exec(db, "CREATE INDEX IF NOT EXISTS dcb_tag_by_pos ON dcb_tag(log_name, position)");
 }
 
 function posToInt(pos) {
@@ -96,7 +98,7 @@ function buildClauseSql(logName, clause, after) {
   ];
 }
 
-function buildQuerySql(logName, query, after) {
+function buildQueryWhere(logName, query, after) {
   if (query.length === 0) {
     let baseWhere = after !== undefined ? "log_name = ? AND position > ?" : "log_name = ?";
     let baseParams = after !== undefined ? [
@@ -104,7 +106,7 @@ function buildQuerySql(logName, query, after) {
         after
       ] : [logName];
     return [
-      `SELECT position, event_type, data, meta, recorded_at FROM dcb_event WHERE ` + baseWhere + ` ORDER BY position ASC`,
+      baseWhere,
       baseParams
     ];
   }
@@ -112,8 +114,16 @@ function buildQuerySql(logName, query, after) {
   let combinedWhere = clauses.map(param => param[0]).join(" OR ");
   let combinedParams = clauses.flatMap(param => param[1]);
   return [
-    `SELECT position, event_type, data, meta, recorded_at FROM dcb_event WHERE ` + combinedWhere + ` ORDER BY position ASC`,
+    combinedWhere,
     combinedParams
+  ];
+}
+
+function buildQuerySql(logName, query, after) {
+  let match = buildQueryWhere(logName, query, after);
+  return [
+    `SELECT position, event_type, data, meta, recorded_at FROM dcb_event WHERE ` + match[0] + ` ORDER BY position ASC`,
+    match[1]
   ];
 }
 
@@ -123,7 +133,16 @@ function makeStorage(db, bus, publishToTopic, name, param, param$1, param$2) {
   let insertTagStmt = SqliteDriver$ReventlessLocal.prepare(db, "INSERT INTO dcb_tag(log_name, position, tag_key, tag_value) VALUES(?,?,?,?)");
   let maxPositionStmt = SqliteDriver$ReventlessLocal.prepare(db, "SELECT COALESCE(MAX(position), 0) AS m FROM dcb_event WHERE log_name = ?");
   SqliteDriver$ReventlessLocal.prepare(db, "SELECT MAX(position) AS m FROM dcb_event WHERE log_name = ?");
-  let tagsForPositionsStmt = SqliteDriver$ReventlessLocal.prepare(db, "SELECT position, tag_key, tag_value FROM dcb_tag WHERE log_name = ? AND position = ?");
+  let stmtCache = {};
+  let preparedFor = sql => {
+    let s = stmtCache[sql];
+    if (s !== undefined) {
+      return Primitive_option.valFromOption(s);
+    }
+    let s$1 = SqliteDriver$ReventlessLocal.prepare(db, sql);
+    stmtCache[sql] = s$1;
+    return s$1;
+  };
   let currentMaxPosition = () => {
     let row = SqliteDriver$ReventlessLocal.get(maxPositionStmt, [name]);
     if (row === undefined) {
@@ -136,23 +155,50 @@ function makeStorage(db, bus, publishToTopic, name, param, param$1, param$2) {
       return 0;
     }
   };
-  let tagsForPosition = pos => SqliteDriver$ReventlessLocal.all(tagsForPositionsStmt, [
-    name,
-    pos
-  ]).map(row => {
-    let match = row["tag_key"];
-    let key = typeof match === "string" ? match : "";
-    let match$1 = row["tag_value"];
-    let value = typeof match$1 === "string" ? match$1 : "";
-    return {
-      key: key,
-      value: value
-    };
-  });
+  let tagsForPositions = positions => {
+    let byPos = {};
+    if (positions.length !== 0) {
+      let placeholders = positions.map(param => "?").join(",");
+      let sql = `SELECT position, tag_key, tag_value FROM dcb_tag WHERE log_name = ? AND position IN (` + placeholders + `) ORDER BY position ASC, rowid ASC`;
+      let params = [name].concat(positions.map(prim => prim));
+      SqliteDriver$ReventlessLocal.all(preparedFor(sql), params).forEach(row => {
+        let v = row["position"];
+        let pos = v !== undefined ? coercePosition(v) : 0;
+        let match = row["tag_key"];
+        let key = typeof match === "string" ? match : "";
+        let match$1 = row["tag_value"];
+        let value = typeof match$1 === "string" ? match$1 : "";
+        let k = pos.toString();
+        let a = byPos[k];
+        let arr;
+        if (a !== undefined) {
+          arr = a;
+        } else {
+          let a$1 = [];
+          byPos[k] = a$1;
+          arr = a$1;
+        }
+        arr.push({
+          key: key,
+          value: value
+        });
+      });
+    }
+    return byPos;
+  };
   let runQuery = (query, after) => {
     let match = buildQuerySql(name, query, after);
-    let stmt = SqliteDriver$ReventlessLocal.prepare(db, match[0]);
-    return SqliteDriver$ReventlessLocal.all(stmt, match[1]).map(row => {
+    let rows = SqliteDriver$ReventlessLocal.all(preparedFor(match[0]), match[1]);
+    let positions = rows.map(row => {
+      let v = row["position"];
+      if (v !== undefined) {
+        return coercePosition(v);
+      } else {
+        return 0;
+      }
+    });
+    let tagsByPos = tagsForPositions(positions);
+    return rows.map(row => {
       let v = row["position"];
       let position = v !== undefined ? coercePosition(v) : 0;
       let match = row["event_type"];
@@ -182,11 +228,15 @@ function makeStorage(db, bus, publishToTopic, name, param, param$1, param$2) {
         position: position.toString(),
         eventType: eventType,
         data: data,
-        tags: tagsForPosition(position),
+        tags: Stdlib_Option.getOr(tagsByPos[position.toString()], []),
         meta: meta,
         recordedAt: recordedAt
       };
     });
+  };
+  let anyMatch = (query, after) => {
+    let match = buildQueryWhere(name, query, after);
+    return Stdlib_Option.isSome(SqliteDriver$ReventlessLocal.get(preparedFor(`SELECT 1 FROM dcb_event WHERE ` + match[0] + ` LIMIT 1`), match[1]));
   };
   let read = async (query, after) => {
     let afterInt = Stdlib_Option.map(after, posToInt);
@@ -214,8 +264,7 @@ function makeStorage(db, bus, publishToTopic, name, param, param$1, param$2) {
       SqliteDriver$ReventlessLocal.transaction(db, () => {
         if (condition !== undefined) {
           let afterInt = Stdlib_Option.map(condition.after, posToInt);
-          let conflicting = runQuery(condition.query, afterInt);
-          if (conflicting.length !== 0) {
+          if (anyMatch(condition.query, afterInt)) {
             throw {
               RE_EXN_ID: "Failure",
               _1: "conflict: condition check failed",
@@ -301,6 +350,7 @@ export {
   coercePosition,
   sqlEscape,
   buildClauseSql,
+  buildQueryWhere,
   buildQuerySql,
   makeStorage,
 }

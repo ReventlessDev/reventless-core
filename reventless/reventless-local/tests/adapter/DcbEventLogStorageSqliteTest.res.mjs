@@ -88,6 +88,92 @@ globalThis.describe("DcbEventLogStorage_Sqlite", () => {
       }], undefined);
     globalThis.expect(read.events.length).toBe(2);
   }));
+  globalThis.test("batched tag hydration preserves per-event tags and order", async () => await runUnderSqlite(async () => {
+    let TestBus = LocalBus$ReventlessLocal.Make({});
+    let Storage = DcbEventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
+    let s = Storage.make("dcb-multitag", [], {
+      TAG: "Simple",
+      _0: {
+        key: "k"
+      }
+    }, undefined, opts);
+    let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
+    let e1 = stored("Multi", [
+      {
+        key: "a",
+        value: "1"
+      },
+      {
+        key: "b",
+        value: "2"
+      },
+      {
+        key: "c",
+        value: "3"
+      }
+    ], "first");
+    let e2 = stored("Single", [{
+        key: "only",
+        value: "z"
+      }], "second");
+    let e3 = stored("None", [], "third");
+    await ops.append([e1], undefined);
+    await ops.append([e2], undefined);
+    await ops.append([e3], undefined);
+    let read = await ops.read([], undefined);
+    globalThis.expect(read.events.length).toBe(3);
+    let first = read.events[0];
+    globalThis.expect(first.tags.map(t => t.key)).toEqual([
+      "a",
+      "b",
+      "c"
+    ]);
+    globalThis.expect(first.tags.map(t => t.value)).toEqual([
+      "1",
+      "2",
+      "3"
+    ]);
+    let second = read.events[1];
+    globalThis.expect(second.tags.length).toBe(1);
+    globalThis.expect(second.tags[0].key).toBe("only");
+    let third = read.events[2];
+    globalThis.expect(third.tags.length).toBe(0);
+  }));
+  globalThis.test("append with a non-conflicting condition succeeds", async () => await runUnderSqlite(async () => {
+    let TestBus = LocalBus$ReventlessLocal.Make({});
+    let Storage = DcbEventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
+    let s = Storage.make("dcb-noconflict", [], {
+      TAG: "Simple",
+      _0: {
+        key: "k"
+      }
+    }, undefined, opts);
+    let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
+    await ops.append([stored("Created", [{
+          key: "id",
+          value: "x"
+        }], "a")], undefined);
+    let cond_query = [{
+        tags: [{
+            key: "id",
+            value: "other"
+          }]
+      }];
+    let cond = {
+      query: cond_query
+    };
+    let result = await ops.append([stored("Created", [{
+          key: "id",
+          value: "other"
+        }], "b")], cond);
+    if (result.TAG === "Ok") {
+      globalThis.expect(true).toBe(true);
+    } else {
+      globalThis.expect(result._0).toBe("expected Ok");
+    }
+    let read = await ops.read([], undefined);
+    globalThis.expect(read.events.length).toBe(2);
+  }));
   globalThis.test("append with conflicting condition returns Error", async () => await runUnderSqlite(async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let Storage = DcbEventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
