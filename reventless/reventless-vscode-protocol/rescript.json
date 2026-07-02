@@ -22,8 +22,7 @@
     },
     {
       "dir": "tests",
-      "subdirs": false,
-      "type": "dev"
+      "subdirs": false
     }
   ]
 }

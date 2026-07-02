@@ -28,6 +28,21 @@ describe("ComponentMeta.componentOfTestFile", () => {
     let c = ComponentMeta.componentOfTestFile("/repo/x/tests/Helpers/Thing_GWT.res.mjs")
     expect(c)->toEqual(None)
   })
+
+  testPromise("recognises a plural folder spelling with the canonical kind (C2)", async () => {
+    // The generator accepts `Aggregates/`; previously the gwt discovery only knew
+    // the singular `Aggregate/` and silently returned None. Now it derives from
+    // the shared vocabulary and reports the canonical singular kind.
+    let c = ComponentMeta.componentOfTestFile("/repo/x/tests/Order/Aggregates/Order_GWT.res.mjs")
+    expect(c)->toEqual(Some({ComponentMeta.kind: "Aggregate", name: "Order"}))
+  })
+
+  testPromise("recognises a short slice folder spelling (StateChange) too (C2)", async () => {
+    let c = ComponentMeta.componentOfTestFile(
+      "/repo/catalog/tests/Product/StateChange/AddProduct_GWT.res.mjs",
+    )
+    expect(c)->toEqual(Some({ComponentMeta.kind: "StateChangeSlice", name: "AddProduct"}))
+  })
 })
 
 describe("ComponentMeta.componentOfSrcFile", () => {

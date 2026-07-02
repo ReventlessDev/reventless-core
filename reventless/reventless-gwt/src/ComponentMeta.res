@@ -5,42 +5,16 @@
 
 type component = {kind: string, name: string}
 
-// Folder names that denote a component kind. A file counts as a component when
-// its immediate parent folder is one of these.
-let kindFolders = [
-  "Aggregate",
-  "StateChangeSlice",
-  "StateViewSlice",
-  "StateViewSliceStream",
-  "ReadModel",
-  "ReadModelStream",
-  "AutomationSlice",
-  "InboundTranslationSlice",
-  "OutboundTranslationSlice",
-  "Extension",
-  "ExtensionPoint",
-  "Task",
-]
+// The folder→kind vocabulary and body-file suffixes are the single source in
+// `Reventless.ComponentKind` (shared with the plugin generator). Deriving from it
+// means the gwt discovery recognises exactly the folder spellings the generator
+// classifies — including the plural / short forms this file used to miss.
+module Kind = Reventless.ComponentKind
 
-let isKindFolder = (segment: string) => kindFolders->Array.includes(segment)
-
-// Body-file suffixes stripped to recover the spec stem (longest first so
-// `_ExtensionPointMapping` is removed before `_ExtensionPoint`). Spec and body
-// files in one folder collapse to the same component name.
-let bodySuffixes = [
-  "_ExtensionPointMapping",
-  "_ExtensionPoint",
-  "_Extension",
-  "_Projections",
-  "_Projection",
-  "_Mappings",
-  "_Behavior",
-  "_Automation",
-  "_Translation",
-]
-
+// Strip a body-file suffix (longest first) to recover the spec stem, so spec and
+// body files in one folder collapse to the same component name.
 let stripBody = (stem: string) =>
-  switch bodySuffixes->Array.find(suf => String.endsWith(stem, suf)) {
+  switch Kind.bodySuffixes->Array.find(suf => String.endsWith(stem, suf)) {
   | Some(suf) => String.slice(stem, ~start=0, ~end=String.length(stem) - String.length(suf))
   | None => stem
   }
@@ -87,18 +61,17 @@ let stem = (filename: string) =>
   }
 
 // {kind, name} for a discovered GWT test file, or None if it isn't inside a
-// recognised kind folder.
+// recognised kind folder. `kind` is the canonical folder name, so a plural
+// folder (`Aggregates/`) reports the same kind as its singular form.
 let componentOfTestFile = (path: string): option<component> =>
-  switch parentFolder(path) {
-  | Some(folder) if isKindFolder(folder) =>
-    Some({kind: folder, name: path->basename->stem->stripGwt->stripBody})
-  | _ => None
+  switch parentFolder(path)->Option.flatMap(Kind.folderToKind) {
+  | Some(kind) => Some({kind: Kind.folderName(kind), name: path->basename->stem->stripGwt->stripBody})
+  | None => None
   }
 
 // {kind, name} for a src/ component file (spec or body), or None.
 let componentOfSrcFile = (path: string): option<component> =>
-  switch parentFolder(path) {
-  | Some(folder) if isKindFolder(folder) =>
-    Some({kind: folder, name: path->basename->stem->stripBody})
-  | _ => None
+  switch parentFolder(path)->Option.flatMap(Kind.folderToKind) {
+  | Some(kind) => Some({kind: Kind.folderName(kind), name: path->basename->stem->stripBody})
+  | None => None
   }

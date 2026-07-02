@@ -28,6 +28,20 @@ globalThis.describe("ComponentMeta.componentOfTestFile", () => {
     let c = ComponentMeta$ReventlessGwt.componentOfTestFile("/repo/x/tests/Helpers/Thing_GWT.res.mjs");
     globalThis.expect(c).toEqual(undefined);
   });
+  globalThis.test("recognises a plural folder spelling with the canonical kind (C2)", async () => {
+    let c = ComponentMeta$ReventlessGwt.componentOfTestFile("/repo/x/tests/Order/Aggregates/Order_GWT.res.mjs");
+    globalThis.expect(c).toEqual({
+      kind: "Aggregate",
+      name: "Order"
+    });
+  });
+  globalThis.test("recognises a short slice folder spelling (StateChange) too (C2)", async () => {
+    let c = ComponentMeta$ReventlessGwt.componentOfTestFile("/repo/catalog/tests/Product/StateChange/AddProduct_GWT.res.mjs");
+    globalThis.expect(c).toEqual({
+      kind: "StateChangeSlice",
+      name: "AddProduct"
+    });
+  });
 });
 
 globalThis.describe("ComponentMeta.componentOfSrcFile", () => {

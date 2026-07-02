@@ -1,6 +1,9 @@
 // Directory scanner: walks src/, classifies .res files by parent folder name.
 
-type componentType =
+// Re-export the single-source `ComponentKind.t` (same constructors, so the bare
+// pattern matches in `Pairing` keep resolving via type inference) and derive the
+// folder classifier from it — one vocabulary shared with the gwt discovery.
+type componentType = ComponentKind.t =
   | StateChangeSlice
   | StateViewSlice
   | StateViewSliceStream
@@ -17,31 +20,7 @@ type componentType =
 // relPath: path relative to srcDir (e.g. "ReadModel/ProductsProjections.res")
 type discoveredFile = {stem: string, componentType: componentType, epGroup: option<string>, relPath: string}
 
-let folderToComponentType = (folder: string): option<componentType> =>
-  switch folder {
-  | "StateChange" | "StateChanges" | "StateChangeSlice" | "StateChangeSlices" =>
-    Some(StateChangeSlice)
-  | "StateView" | "StateViews" | "StateViewSlice" | "StateViewSlices" => Some(StateViewSlice)
-  | "StateViewSliceStream" | "StateViewSliceStreams" => Some(StateViewSliceStream)
-  | "Automation" | "Automations" | "AutomationSlice" | "AutomationSlices" => Some(AutomationSlice)
-  | "InboundTranslation"
-  | "InboundTranslations"
-  | "InboundTranslationSlice"
-  | "InboundTranslationSlices" =>
-    Some(InboundTranslationSlice)
-  | "OutboundTranslation"
-  | "OutboundTranslations"
-  | "OutboundTranslationSlice"
-  | "OutboundTranslationSlices" =>
-    Some(OutboundTranslationSlice)
-  | "Aggregate" | "Aggregates" => Some(Aggregate)
-  | "ReadModel" | "ReadModels" => Some(ReadModel)
-  | "ReadModelStream" | "ReadModelStreams" => Some(ReadModelStream)
-  | "Task" | "Tasks" => Some(Task)
-  | "ExtensionPoint" | "ExtensionPoints" => Some(ExtensionPoint)
-  | "Extension" | "Extensions" => Some(Extension)
-  | _ => None
-  }
+let folderToComponentType = ComponentKind.folderToKind
 
 let isAlwaysExcludedDir = (name: string): bool =>
   name === "Plugin" || name === "tests" || name === "lib"
