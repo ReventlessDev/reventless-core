@@ -102,6 +102,69 @@ globalThis.describe("DcbEventLogStorage_InMemory", () => {
       let firstEvent = result.events[0];
       globalThis.expect(firstEvent.tags.length).toBe(1);
     });
+    globalThis.test("multi-tag clause matches only events carrying ALL tags", async () => {
+      let storage = makeStorage();
+      let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
+      await ops.append([
+        makeEvent("Evt", null, [
+          {
+            key: "tenant",
+            value: "acme"
+          },
+          {
+            key: "region",
+            value: "eu"
+          }
+        ]),
+        makeEvent("Evt", null, [{
+            key: "tenant",
+            value: "acme"
+          }]),
+        makeEvent("Evt", null, [{
+            key: "region",
+            value: "eu"
+          }])
+      ], undefined);
+      let result = await ops.read([{
+          tags: [
+            {
+              key: "tenant",
+              value: "acme"
+            },
+            {
+              key: "region",
+              value: "eu"
+            }
+          ]
+        }], undefined);
+      globalThis.expect(result.events.length).toBe(1);
+    });
+    globalThis.test("OR of clauses unions matches across clauses in position order", async () => {
+      let storage = makeStorage();
+      let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
+      await ops.append([
+        makeEvent("A", null, undefined),
+        makeEvent("B", null, [{
+            key: "x",
+            value: "1"
+          }]),
+        makeEvent("C", null, undefined)
+      ], undefined);
+      let result = await ops.read([
+        {
+          eventTypes: ["A"]
+        },
+        {
+          tags: [{
+              key: "x",
+              value: "1"
+            }]
+        }
+      ], undefined);
+      globalThis.expect(result.events.length).toBe(2);
+      globalThis.expect(result.events[0].eventType).toBe("A");
+      globalThis.expect(result.events[1].eventType).toBe("B");
+    });
     globalThis.test("after parameter skips events at or before that position", async () => {
       let storage = makeStorage();
       let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);

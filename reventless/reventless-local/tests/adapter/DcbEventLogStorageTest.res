@@ -96,6 +96,52 @@ describe("DcbEventLogStorage_InMemory", () => {
       expect(firstEvent.tags->Array.length)->toBe(1)
     })
 
+    testPromise("multi-tag clause matches only events carrying ALL tags", async () => {
+      let storage = makeStorage()
+      let ops = await storage.operations->TestRunner.resolve
+      let _ = await ops.append([
+        makeEvent(
+          ~eventType="Evt",
+          ~data=JSON.Null,
+          ~tags=[{Reventless.DcbTag.key: "tenant", value: "acme"}, {key: "region", value: "eu"}],
+        ),
+        makeEvent(~eventType="Evt", ~data=JSON.Null, ~tags=[{Reventless.DcbTag.key: "tenant", value: "acme"}]),
+        makeEvent(~eventType="Evt", ~data=JSON.Null, ~tags=[{Reventless.DcbTag.key: "region", value: "eu"}]),
+      ])
+      // Intersection of the two tags' posting lists → only the first event.
+      let result = await ops.read(
+        ~query=[
+          {
+            Reventless.DcbTag.tags: [
+              {Reventless.DcbTag.key: "tenant", value: "acme"},
+              {key: "region", value: "eu"},
+            ],
+          },
+        ],
+      )
+      expect(result.events->Array.length)->toBe(1)
+    })
+
+    testPromise("OR of clauses unions matches across clauses in position order", async () => {
+      let storage = makeStorage()
+      let ops = await storage.operations->TestRunner.resolve
+      let _ = await ops.append([
+        makeEvent(~eventType="A", ~data=JSON.Null),
+        makeEvent(~eventType="B", ~data=JSON.Null, ~tags=[{Reventless.DcbTag.key: "x", value: "1"}]),
+        makeEvent(~eventType="C", ~data=JSON.Null),
+      ])
+      // Clause 1 (type A) ∪ clause 2 (tag x=1) → events at positions 1 and 2.
+      let result = await ops.read(
+        ~query=[
+          {Reventless.DcbTag.eventTypes: ["A"]},
+          {Reventless.DcbTag.tags: [{Reventless.DcbTag.key: "x", value: "1"}]},
+        ],
+      )
+      expect(result.events->Array.length)->toBe(2)
+      expect((result.events->Array.getUnsafe(0)).eventType)->toBe("A")
+      expect((result.events->Array.getUnsafe(1)).eventType)->toBe("B")
+    })
+
     testPromise("after parameter skips events at or before that position", async () => {
       let storage = makeStorage()
       let ops = await storage.operations->TestRunner.resolve
