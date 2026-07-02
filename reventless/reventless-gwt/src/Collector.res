@@ -108,7 +108,7 @@ let push = (
     location,
     timeout,
   }
-  entries := Array.concat(entries.contents, [entry])
+  entries.contents->Array.push(entry)
 }
 
 // A `todo` placeholder: a spec-less slice still ships a discoverable, compiling
@@ -127,7 +127,7 @@ let pushTodo = (name: string) => {
     location: None,
     timeout: None,
   }
-  entries := Array.concat(entries.contents, [entry])
+  entries.contents->Array.push(entry)
 }
 
 let drain = () => {

@@ -48,6 +48,18 @@ type options = {
 
 @val external now: unit => float = "performance.now"
 
+type hash
+@module("node:crypto") external createHash: string => hash = "createHash"
+@send external hashUpdate: (hash, string) => hash = "update"
+@send external hashDigest: (hash, string) => string = "digest"
+let sha256 = (s: string): string => createHash("sha256")->hashUpdate(s)->hashDigest("hex")
+
+// Last-emitted domain-analysis fingerprint (deadCode + graph + definitions all
+// derive from the loaded plugin structures). Persists across a watch session's
+// repeated discovery emits so an unchanged graph isn't re-sent — a redundant
+// re-emit forces the client to re-render the domain view for nothing.
+let lastDomainHash: ref<option<string>> = ref(None)
+
 let dateNowIso: unit => string = %raw(`() => new Date().toISOString()`)
 
 let parseFormat = (s: string) =>
@@ -536,15 +548,22 @@ let emitDomainAnalysis = async (pkgs: array<PackageScan.pkg>): unit =>
     | Some(platformModulePath) =>
       try {
         let loaded = await LocalHost.loadGraph(~platformModulePath, ~plugins)
-        FormatterVsCode.deadCode(DomainDeadCode.analyze(~structures=loaded.structures))
-        FormatterVsCode.graph(DomainGraph.build(~structures=loaded.structures))
         // Field schemas for command/event/read-side state (Phase 6.3): the same
         // per-plugin entry the Platform_ComponentDefinitions GraphQL query returns.
-        FormatterVsCode.definitions(
+        let definitions =
           loaded.structures->Array.map(((pluginId, s)) =>
             ReventlessCore.Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId, s)
-          ),
-        )
+          )
+        // deadCode + graph + definitions are all pure functions of `structures`,
+        // so the definitions JSON is a faithful fingerprint of all three. Skip
+        // the whole emit when it hasn't moved since the last discovery.
+        let fingerprint = sha256(JSON.stringify(JSON.Array(definitions)))
+        if lastDomainHash.contents != Some(fingerprint) {
+          lastDomainHash := Some(fingerprint)
+          FormatterVsCode.deadCode(DomainDeadCode.analyze(~structures=loaded.structures))
+          FormatterVsCode.graph(DomainGraph.build(~structures=loaded.structures))
+          FormatterVsCode.definitions(definitions)
+        }
       } catch {
       | _ => ()
       }

@@ -71,10 +71,10 @@ function make(watchdogMsOpt, cb) {
     buffer.contents = [];
   };
   let settle = () => {
-    if (!(compiling.contents && hasError.contents)) {
+    if (!hasError.contents) {
       return;
     }
-    let msg = buffer.contents.slice(0, 20).join("\n");
+    let msg = buffer.contents.slice(0, 200).join("\n");
     clearWatchdog();
     cb.onFail(msg);
     reset();
@@ -116,7 +116,7 @@ function make(watchdogMsOpt, cb) {
       }
     } else {
       if (l.length > 0) {
-        buffer.contents = buffer.contents.concat([l]);
+        buffer.contents.push(l);
       }
       if (isErrorMarker(l)) {
         hasError.contents = true;

@@ -74,11 +74,21 @@ let make = (~watchdogMs: int=120_000, cb: callbacks): (string => unit) => {
     buffer := []
   }
 
-  // After output settles, a compile that saw an error (and thus no "Finished"
-  // terminator) is reported failed, capturing a concise message.
+  // Cap the failure message so a pathological build can't emit an unbounded
+  // line. 20 was too tight — a multi-error build has several "We've found a bug"
+  // blocks and the tail (later errors) was silently dropped; keep enough to
+  // carry a handful of blocks.
+  let maxMessageLines = 200
+
+  // After output settles, a build that saw an error (and thus no "Finished"
+  // terminator) is reported failed, capturing a concise message. The condition
+  // is `hasError` alone — not `compiling && hasError` — so an error emitted
+  // *before* the first "Parsed …" line (a crashed toolchain, a pnpm/resolution
+  // failure) still settles into an `onFail` instead of leaving the consumer
+  // pinned at its previous state forever.
   let settle = () =>
-    if compiling.contents && hasError.contents {
-      let msg = buffer.contents->Array.slice(~start=0, ~end=20)->Array.join("\n")
+    if hasError.contents {
+      let msg = buffer.contents->Array.slice(~start=0, ~end=maxMessageLines)->Array.join("\n")
       clearWatchdog()
       cb.onFail(msg)
       reset()
@@ -126,7 +136,7 @@ let make = (~watchdogMs: int=120_000, cb: callbacks): (string => unit) => {
       }
     } else {
       if String.length(l) > 0 {
-        buffer := Array.concat(buffer.contents, [l])
+        buffer.contents->Array.push(l)
       }
       if isErrorMarker(l) {
         hasError := true

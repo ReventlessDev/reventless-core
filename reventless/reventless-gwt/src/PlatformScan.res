@@ -105,16 +105,20 @@ let inspectDir = (dir: string): option<platformPkg> => {
 // declaration order preserved). Prunes node_modules/lib/.git like Discovery.
 let rec walk = async (dir: string, acc: array<platformPkg>): array<platformPkg> => {
   switch inspectDir(dir) {
-  | Some(pkg) => acc->Array.push(pkg) // a platform package — record, don't descend into its src
-  | None => ()
-  }
-  let entries = try await _readdir(dir, {withFileTypes: true}) catch {
-  | _ => []
-  }
-  for i in 0 to entries->Array.length - 1 {
-    let entry = entries->Array.getUnsafe(i)
-    if entry._isDirectory() && !Array.includes(ignoreNames, entry.name) {
-      let _ = await walk(join(dir, entry.name), acc)
+  // A platform package — record it and stop: descending into its own subtree
+  // (src/, generated code, nested workspace copies) can only waste I/O or turn
+  // up spurious inner matches. This is what the "don't descend" comment always
+  // intended; the recursion below used to run regardless.
+  | Some(pkg) => acc->Array.push(pkg)
+  | None =>
+    let entries = try await _readdir(dir, {withFileTypes: true}) catch {
+    | _ => []
+    }
+    for i in 0 to entries->Array.length - 1 {
+      let entry = entries->Array.getUnsafe(i)
+      if entry._isDirectory() && !Array.includes(ignoreNames, entry.name) {
+        let _ = await walk(join(dir, entry.name), acc)
+      }
     }
   }
   acc

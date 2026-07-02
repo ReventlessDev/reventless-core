@@ -39,22 +39,19 @@ async function walk(dir, acc) {
     entries = [];
   }
   if (isPruned(entries)) {
-    return acc;
+    return;
   }
-  let found = acc;
   for (let i = 0, i_finish = entries.length; i < i_finish; ++i) {
     let entry = entries[i];
     if (!ignoreNames.includes(entry.name)) {
       let full = Nodepath.join(dir, entry.name);
       if (entry.isDirectory()) {
-        let nested = await walk(full, []);
-        found = found.concat(nested);
+        await walk(full, acc);
       } else if (entry.isFile() && isGwtTestFile(entry.name)) {
-        found = found.concat([full]);
+        acc.push(full);
       }
     }
   }
-  return found;
 }
 
 async function discover(roots) {
@@ -70,10 +67,9 @@ async function discover(roots) {
       isDir = false;
     }
     if (isDir) {
-      let collected = await walk(absolute, []);
-      found = found.concat(collected);
+      await walk(absolute, found);
     } else if (isGwtTestFile(absolute)) {
-      found = found.concat([absolute]);
+      found.push(absolute);
     }
   }
   let seen = {};

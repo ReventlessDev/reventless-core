@@ -109,6 +109,50 @@ globalThis.describe("BuildClassifier", () => {
     globalThis.expect(oks.contents).toEqual(1);
     globalThis.expect(fails.contents.length).toEqual(0);
   });
+  globalThis.test("errors emitted before the first Parsed line still settle to onFail (B3)", async () => {
+    let oks = {
+      contents: 0
+    };
+    let fails = {
+      contents: []
+    };
+    let feed = BuildClassifier$ReventlessGwt.make(undefined, {
+      onStart: () => {},
+      onOk: _ms => {
+        oks.contents = oks.contents + 1 | 0;
+      },
+      onFail: msg => {
+        fails.contents = fails.contents.concat([msg]);
+      }
+    });
+    feed("Syntax error: unexpected token");
+    feed("  at Foo.res:3:1");
+    await delay(550);
+    globalThis.expect(oks.contents).toEqual(0);
+    globalThis.expect(fails.contents.length).toEqual(1);
+    globalThis.expect(fails.contents[0].includes("Syntax error")).toEqual(true);
+  });
+  globalThis.test("a multi-error build keeps error blocks past the old 20-line cap (B3)", async () => {
+    let fails = {
+      contents: []
+    };
+    let feed = BuildClassifier$ReventlessGwt.make(undefined, {
+      onStart: () => {},
+      onOk: _ms => {},
+      onFail: msg => {
+        fails.contents = fails.contents.concat([msg]);
+      }
+    });
+    feed("Parsed 1 source files");
+    feed("We've found a bug for you!");
+    for (let i = 1; i <= 30; ++i) {
+      feed("noise line " + i.toString());
+    }
+    feed("Found 2 errors");
+    await delay(550);
+    globalThis.expect(fails.contents.length).toEqual(1);
+    globalThis.expect(fails.contents[0].includes("Found 2 errors")).toEqual(true);
+  });
   globalThis.test("strips ANSI colour codes before matching the finish line", async () => {
     let oks = {
       contents: 0

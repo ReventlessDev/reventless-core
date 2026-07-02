@@ -105,7 +105,7 @@ function push(slice, location, timeout, name, body) {
     location: location,
     timeout: timeout
   };
-  entries.contents = entries.contents.concat([entry]);
+  entries.contents.push(entry);
 }
 
 function pushTodo(name) {
@@ -122,7 +122,7 @@ function pushTodo(name) {
     location: undefined,
     timeout: undefined
   };
-  entries.contents = entries.contents.concat([entry]);
+  entries.contents.push(entry);
 }
 
 function drain() {

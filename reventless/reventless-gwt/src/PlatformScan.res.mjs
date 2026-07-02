@@ -83,19 +83,20 @@ async function walk(dir, acc) {
   let pkg = inspectDir(dir);
   if (pkg !== undefined) {
     acc.push(pkg);
-  }
-  let entries;
-  try {
-    entries = await Promises.readdir(dir, {
-      withFileTypes: true
-    });
-  } catch (exn) {
-    entries = [];
-  }
-  for (let i = 0, i_finish = entries.length; i < i_finish; ++i) {
-    let entry = entries[i];
-    if (entry.isDirectory() && !ignoreNames.includes(entry.name)) {
-      await walk(Nodepath.join(dir, entry.name), acc);
+  } else {
+    let entries;
+    try {
+      entries = await Promises.readdir(dir, {
+        withFileTypes: true
+      });
+    } catch (exn) {
+      entries = [];
+    }
+    for (let i = 0, i_finish = entries.length; i < i_finish; ++i) {
+      let entry = entries[i];
+      if (entry.isDirectory() && !ignoreNames.includes(entry.name)) {
+        await walk(Nodepath.join(dir, entry.name), acc);
+      }
     }
   }
   return acc;

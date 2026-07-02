@@ -43,36 +43,37 @@ let isGwtTestFile = (name: string) =>
   String.endsWith(name, "GwtTest.res.mjs") ||
   String.endsWith(name, "Gwt.res.mjs")
 
-let rec walk = async (dir: string, acc: array<string>): array<string> => {
+// Depth-first, pushing into a shared accumulator instead of rebuilding it with
+// `Array.concat` per entry (which was O(n²) over a large tree). The traversal
+// order is unchanged: files and nested subtree results still land in on-disk
+// entry order.
+let rec walk = async (dir: string, acc: array<string>): unit => {
   let entries = try {
     await _readdir(dir, {withFileTypes: true})
   } catch {
   | _ => []
   }
   if isPruned(entries) {
-    acc
+    ()
   } else {
-  let found = ref(acc)
-  for i in 0 to entries->Array.length - 1 {
-    let entry = entries->Array.getUnsafe(i)
-    if !shouldIgnore(entry.name) {
-      let full = join(dir, entry.name)
-      if entry._isDirectory() {
-        let nested = await walk(full, [])
-        found := Array.concat(found.contents, nested)
-      } else if entry._isFile() && isGwtTestFile(entry.name) {
-        found := Array.concat(found.contents, [full])
+    for i in 0 to entries->Array.length - 1 {
+      let entry = entries->Array.getUnsafe(i)
+      if !shouldIgnore(entry.name) {
+        let full = join(dir, entry.name)
+        if entry._isDirectory() {
+          await walk(full, acc)
+        } else if entry._isFile() && isGwtTestFile(entry.name) {
+          acc->Array.push(full)
+        }
       }
     }
-  }
-  found.contents
   }
 }
 
 // Returns absolute paths of `*GWT*.res.mjs` test files reachable from the
 // supplied roots. A root may be a directory or a single file.
 let discover = async (roots: array<string>): array<string> => {
-  let found = ref([])
+  let found = []
   for i in 0 to roots->Array.length - 1 {
     let root = roots->Array.getUnsafe(i)
     let absolute = isAbsolute(root) ? root : resolve(root)
@@ -83,16 +84,15 @@ let discover = async (roots: array<string>): array<string> => {
     | _ => false
     }
     if isDir {
-      let collected = await walk(absolute, [])
-      found := Array.concat(found.contents, collected)
+      await walk(absolute, found)
     } else if isGwtTestFile(absolute) {
-      found := Array.concat(found.contents, [absolute])
+      found->Array.push(absolute)
     }
   }
   // Deduplicate (if roots overlap).
   let seen = Dict.make()
   let unique = []
-  found.contents->Array.forEach(path =>
+  found->Array.forEach(path =>
     switch seen->Dict.get(path) {
     | Some(_) => ()
     | None => {
