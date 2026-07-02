@@ -161,6 +161,26 @@ module type T = {
   // when present and fall back to `getQueryDbScan` otherwise.
   let registerQueryDbIndexLookup: (string, (string, string) => array<JSON.t>) => unit
   let getQueryDbIndexLookup: string => option<(string, string) => array<JSON.t>>
+  // Connection-list push-down: given the GraphQL args + derived capability +
+  // label field, a backend may return a ready Relay connection object computed
+  // entirely in storage (SQLite: json_extract predicates + ORDER BY … LIMIT), or
+  // `None` when it can't serve that query shape — the resolver then falls back to
+  // materialise + `QueryDbListQuery.run`. Only the SQLite backend registers one.
+  let registerQueryDbListPage: (
+    string,
+    (
+      ~argsDict: dict<JSON.t>,
+      ~capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability,
+      ~labelField: string,
+    ) => option<JSON.t>,
+  ) => unit
+  let getQueryDbListPage: string => option<
+    (
+      ~argsDict: dict<JSON.t>,
+      ~capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability,
+      ~labelField: string,
+    ) => option<JSON.t>,
+  >
 
   // Event log replay registry: aggregate EventLog name → replay function (entityId → events)
   let registerEventLogReplay: (string, string => promise<array<JSON.t>>) => unit
@@ -235,6 +255,15 @@ module Impl = (C: BusConfig): T => {
   let queryDbScanRegistry: ref<dict<unit => array<JSON.t>>> = ref(Dict.make())
   let queryDbStreamRegistry: ref<dict<unit => Stream.t<JSON.t, string, unit>>> = ref(Dict.make())
   let queryDbIndexLookupRegistry: ref<dict<(string, string) => array<JSON.t>>> = ref(Dict.make())
+  let queryDbListPageRegistry: ref<
+    dict<
+      (
+        ~argsDict: dict<JSON.t>,
+        ~capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability,
+        ~labelField: string,
+      ) => option<JSON.t>,
+    >,
+  > = ref(Dict.make())
   let eventLogReplayRegistry: ref<dict<string => promise<array<JSON.t>>>> = ref(Dict.make())
   let dcbEventLogReadRegistry: ref<
     dict<
@@ -412,6 +441,9 @@ module Impl = (C: BusConfig): T => {
   let registerQueryDbIndexLookup = (name, lookup) =>
     queryDbIndexLookupRegistry.contents->Dict.set(name, lookup)
   let getQueryDbIndexLookup = name => queryDbIndexLookupRegistry.contents->Dict.get(name)
+  let registerQueryDbListPage = (name, listPage) =>
+    queryDbListPageRegistry.contents->Dict.set(name, listPage)
+  let getQueryDbListPage = name => queryDbListPageRegistry.contents->Dict.get(name)
 
   let registerEventLogReplay = (name, replay) =>
     eventLogReplayRegistry.contents->Dict.set(name, replay)
@@ -489,6 +521,7 @@ module Impl = (C: BusConfig): T => {
     queryDbScanRegistry := Dict.make()
     queryDbStreamRegistry := Dict.make()
     queryDbIndexLookupRegistry := Dict.make()
+    queryDbListPageRegistry := Dict.make()
     eventLogReplayRegistry := Dict.make()
     dcbEventLogReadRegistry := Dict.make()
     stateChangeListeners := Dict.make()

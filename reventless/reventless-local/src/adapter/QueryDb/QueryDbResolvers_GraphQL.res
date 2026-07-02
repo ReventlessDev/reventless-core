@@ -25,17 +25,11 @@ type relaySupport = {
 @val external btoa: string => string = "btoa"
 @val external atob: string => string = "atob"
 
-// Shared keyset-cursor helpers. The cursor is base64 of the row's value for the
-// active sort field (orderBy.field, or "id" when no orderBy is supplied). Used
-// by both the connection list resolver and the items resolver so cursor encoding
-// stays in lockstep.
+// Keyset-cursor helpers for the `{name}Items` (sub-id) connection — base64 of
+// the sub-key value. The main connection list resolver's cursor logic now lives
+// in `QueryDbListQuery`; these remain for the items resolver below.
 let encodeCursor = (value: string): string => btoa(value)
 let decodeCursor = (cursor: string): string => atob(cursor)
-
-// Default page size for the connection list resolver when neither `first` nor
-// `last` is supplied. Matches the UI's `defaultPageSize` constant; a bound is
-// necessary for the keyset model to report `pageInfo` correctly.
-let defaultListPageSize = 50
 
 module Make = (Bus: LocalBus.T) => {
   open ReventlessCore
@@ -288,6 +282,19 @@ module Make = (Bus: LocalBus.T) => {
     | Some(s) => GraphQL_FragmentGenerator.deriveServerCapability(s)
     | None => GraphQL_FragmentGenerator.emptyCapability
     }
+
+    // Materialise the whole read model (stream preferred, scan fallback). The
+    // fallback path for list queries when no backend push-down is available.
+    let fetchAllItems = async (): array<JSON.t> =>
+      switch Bus.getQueryDbStream(name) {
+      | Some(makeStream) => await makeStream()->Stream.runCollect->Effect.runPromise
+      | None =>
+        switch Bus.getQueryDbScan(name) {
+        | Some(scanAll) => scanAll()
+        | None => []
+        }
+      }
+
     let (listSdl, listResolver): (array<string>, GraphQL_ServerInstance.resolverFn) = if connectionSpec {
       // Relay Connection spec format
       let filterTypeName = returnTypeName ++ "Filter"
@@ -321,265 +328,27 @@ module Make = (Bus: LocalBus.T) => {
             },
           })
         | Allow =>
-          let items = switch Bus.getQueryDbStream(name) {
-          | Some(makeStream) =>
-            await makeStream()->Stream.runCollect->Effect.runPromise
-          | None =>
-            switch Bus.getQueryDbScan(name) {
-            | Some(scanAll) => scanAll()
-            | None => []
-            }
-          }
-          // Apply filter (search, searchPrefix, ids) before any pagination.
           let argsDict = args->JSON.Decode.object->Option.getOr(Dict.make())
-          let filterDict =
-            argsDict->Dict.get("filter")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
-          let search = filterDict->Dict.get("search")->Option.flatMap(JSON.Decode.string)
-          let searchPrefix = filterDict->Dict.get("searchPrefix")->Option.flatMap(JSON.Decode.string)
-          let ids =
-            filterDict
-            ->Dict.get("ids")
-            ->Option.flatMap(JSON.Decode.array)
-            ->Option.map(arr => arr->Array.filterMap(JSON.Decode.string))
-          let getLabel = item =>
-            item
-            ->JSON.Decode.object
-            ->Option.flatMap(d => d->Dict.get(labelField))
-            ->Option.flatMap(JSON.Decode.string)
-            ->Option.getOr("")
-          let getId = item =>
-            item
-            ->JSON.Decode.object
-            ->Option.flatMap(d => d->Dict.get("id"))
-            ->Option.flatMap(JSON.Decode.string)
-            ->Option.getOr("")
-          // Per-field eq / from / to filters derived from capability — applied
-          // alongside the legacy search/searchPrefix/ids block.
-          let getFieldString = (item, field) =>
-            item
-            ->JSON.Decode.object
-            ->Option.flatMap(d => d->Dict.get(field))
-            ->Option.flatMap(v =>
-              switch v->JSON.Decode.string {
-              | Some(s) => Some(s)
-              | None =>
-                v
-                ->JSON.Decode.float
-                ->Option.map(f => Float.toString(f))
-              }
-            )
-          let perFieldChecks: array<JSON.t => bool> = capability.filterFields->Array.flatMap(f => {
-            let checks: array<JSON.t => bool> = []
-            switch filterDict->Dict.get(f.name ++ "Eq") {
-            | Some(v) when v != JSON.Encode.null =>
-              let expected = switch v->JSON.Decode.string {
-              | Some(s) => s
-              | None =>
-                v->JSON.Decode.float->Option.map(f => Float.toString(f))->Option.getOr("")
-              }
-              checks->Array.push(item =>
-                getFieldString(item, f.name)->Option.mapOr(false, v => v == expected)
-              )
-            | _ => ()
+          // Prefer a backend list push-down (SQLite builds json_extract predicates
+          // + ORDER BY … LIMIT so it never materialises the whole read model). When
+          // the backend can't serve this query shape it returns None and we fall
+          // back to materialising the full model and running the shared
+          // `QueryDbListQuery` spec over it (the same code the in-memory backend and
+          // the push-down are tested against).
+          let decodeLocalId = id =>
+            DomainGraphQL_Server.decodeGlobalId(id)->Option.map(((_, lid)) => lid)
+          switch Bus.getQueryDbListPage(name) {
+          | Some(listPage) =>
+            switch listPage(~argsDict, ~capability, ~labelField) {
+            | Some(conn) => conn
+            | None =>
+              let items = await fetchAllItems()
+              QueryDbListQuery.run(~items, ~argsDict, ~capability, ~labelField, ~decodeLocalId)
             }
-            if f.range {
-              switch filterDict->Dict.get(f.name ++ "From") {
-              | Some(v) when v != JSON.Encode.null =>
-                let from =
-                  v
-                  ->JSON.Decode.string
-                  ->Option.getOr(
-                    v->JSON.Decode.float->Option.map(f => Float.toString(f))->Option.getOr(""),
-                  )
-                checks->Array.push(item =>
-                  getFieldString(item, f.name)->Option.mapOr(false, v => v >= from)
-                )
-              | _ => ()
-              }
-              switch filterDict->Dict.get(f.name ++ "To") {
-              | Some(v) when v != JSON.Encode.null =>
-                let to_ =
-                  v
-                  ->JSON.Decode.string
-                  ->Option.getOr(
-                    v->JSON.Decode.float->Option.map(f => Float.toString(f))->Option.getOr(""),
-                  )
-                checks->Array.push(item =>
-                  getFieldString(item, f.name)->Option.mapOr(false, v => v <= to_)
-                )
-              | _ => ()
-              }
-            }
-            checks
-          })
-
-          let filtered = items->Array.filter(item => {
-            let passSearch = switch search {
-            | Some(s) if s->String.length > 0 =>
-              getLabel(item)->String.toLowerCase->String.includes(s->String.toLowerCase)
-            | _ => true
-            }
-            let passPrefix = switch searchPrefix {
-            | Some(p) if p->String.length > 0 =>
-              getLabel(item)->String.toLowerCase->String.startsWith(p->String.toLowerCase)
-            | _ => true
-            }
-            // Filter `ids` accepts either the Relay-encoded global ID (the
-            // form returned by node.id) or the entity's raw local ID — so
-            // callers that hold a foreign-key value like `customerId =
-            // "cust-1"` can hydrate labels without first encoding to
-            // `Ordering_Customer:cust-1` base64.
-            let passIds = switch ids {
-            | Some(idList) if idList->Array.length > 0 =>
-              let itemId = getId(item)
-              let itemLocalId =
-                DomainGraphQL_Server.decodeGlobalId(itemId)->Option.map(((_, lid)) => lid)
-              idList->Array.some(i => i == itemId || itemLocalId == Some(i))
-            | _ => true
-            }
-            let passPerField = perFieldChecks->Array.every(check => check(item))
-            passSearch && passPrefix && passIds && passPerField
-          })
-
-          // Apply orderBy when provided. Sorts on the requested field; ties
-          // broken by id so keyset-style cursors stay stable across requests
-          // that share a sort field. When orderBy is omitted, items are sorted
-          // by id ascending so the natural order is deterministic and pagination
-          // cursors remain stable.
-          let orderByDict =
-            argsDict
-            ->Dict.get("orderBy")
-            ->Option.flatMap(JSON.Decode.object)
-          let orderByField =
-            orderByDict
-            ->Option.flatMap(ob => ob->Dict.get("field"))
-            ->Option.flatMap(JSON.Decode.string)
-          let direction =
-            orderByDict
-            ->Option.flatMap(ob => ob->Dict.get("direction"))
-            ->Option.flatMap(JSON.Decode.string)
-            ->Option.getOr("ASC")
-          let isDesc = direction == "DESC"
-          let sorted = switch orderByField {
-          | Some(f) =>
-            let cmp = (a, b) => {
-              let av = getFieldString(a, f)->Option.getOr("")
-              let bv = getFieldString(b, f)->Option.getOr("")
-              let primary = if av < bv {
-                -1
-              } else if av > bv {
-                1
-              } else {
-                0
-              }
-              let primary = isDesc ? -primary : primary
-              if primary != 0 {
-                primary
-              } else {
-                let aid = getId(a)
-                let bid = getId(b)
-                if aid < bid {
-                  -1
-                } else if aid > bid {
-                  1
-                } else {
-                  0
-                }
-              }
-            }
-            filtered->Array.toSorted((a, b) => cmp(a, b)->Int.toFloat)
           | None =>
-            // Default to id-ascending so cursor pagination has a stable order.
-            filtered->Array.toSorted((a, b) => {
-              let aid = getId(a)
-              let bid = getId(b)
-              if aid < bid {
-                -1.
-              } else if aid > bid {
-                1.
-              } else {
-                0.
-              }
-            })
+            let items = await fetchAllItems()
+            QueryDbListQuery.run(~items, ~argsDict, ~capability, ~labelField, ~decodeLocalId)
           }
-
-          // Keyset pagination. Cursor encodes the row's value for the active
-          // sort field — orderBy.field when supplied, "id" otherwise. Boundary
-          // is applied as a value comparison against the sorted array; in DESC
-          // sort the comparison flips. Note: when the cursor field has duplicate
-          // values, the boundary excludes all rows with the cursor's value, not
-          // just the row at the cursor position. Acceptable for in-memory dev;
-          // in practice common sort fields (id, createdAt) are unique.
-          let first =
-            argsDict->Dict.get("first")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
-          let after = argsDict->Dict.get("after")->Option.flatMap(JSON.Decode.string)
-          let last =
-            argsDict->Dict.get("last")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
-          let before = argsDict->Dict.get("before")->Option.flatMap(JSON.Decode.string)
-          let isBackward = last->Option.isSome
-          let cursorField = orderByField->Option.getOr("id")
-          let getCursorValue = item =>
-            getFieldString(item, cursorField)->Option.getOr(getId(item))
-
-          let cursorBounded = switch (isBackward, after, before) {
-          | (false, Some(c), _) =>
-            let cv = decodeCursor(c)
-            sorted->Array.filter(item => {
-              let v = getCursorValue(item)
-              isDesc ? v < cv : v > cv
-            })
-          | (true, _, Some(c)) =>
-            let cv = decodeCursor(c)
-            sorted->Array.filter(item => {
-              let v = getCursorValue(item)
-              isDesc ? v > cv : v < cv
-            })
-          | _ => sorted
-          }
-
-          let pageSize = if isBackward {
-            last->Option.getOr(defaultListPageSize)
-          } else {
-            first->Option.getOr(defaultListPageSize)
-          }
-          let take = pageSize + 1
-          let (pageItems, hasMore) = if isBackward {
-            // Take the last `take` items from the cursor-bounded slice. If we
-            // grabbed an extra, drop the leading entry (the boundary marker).
-            let len = cursorBounded->Array.length
-            let startIdx = len > take ? len - take : 0
-            let arr = cursorBounded->Array.slice(~start=startIdx, ~end=len)
-            let hasMore = arr->Array.length > pageSize
-            let result = if hasMore {
-              arr->Array.slice(~start=1, ~end=arr->Array.length)
-            } else {
-              arr
-            }
-            (result, hasMore)
-          } else {
-            let arr = cursorBounded->Array.slice(~start=0, ~end=take)
-            let hasMore = arr->Array.length > pageSize
-            (arr->Array.slice(~start=0, ~end=pageSize), hasMore)
-          }
-
-          let edges = pageItems->Array.map(item =>
-            Obj.magic({"node": item, "cursor": encodeCursor(getCursorValue(item))})
-          )
-          let startCursor =
-            pageItems->Array.get(0)->Option.map(item => encodeCursor(getCursorValue(item)))
-          let endCursor =
-            pageItems
-            ->Array.get(pageItems->Array.length - 1)
-            ->Option.map(item => encodeCursor(getCursorValue(item)))
-          Obj.magic({
-            "edges": edges,
-            "pageInfo": {
-              "hasNextPage": !isBackward && hasMore,
-              "hasPreviousPage": isBackward && hasMore,
-              "startCursor": startCursor->Nullable.fromOption,
-              "endCursor": endCursor->Nullable.fromOption,
-            },
-          })
         }
       }
       (sdl, resolver)
@@ -590,15 +359,7 @@ module Make = (Bus: LocalBus.T) => {
         switch await runInterceptor(~ctx, ~args) {
         | Deny(_) => Obj.magic({"nextToken": Nullable.null, "scannedCount": 0, "items": []})
         | Allow =>
-          let items = switch Bus.getQueryDbStream(name) {
-          | Some(makeStream) =>
-            await makeStream()->Stream.runCollect->Effect.runPromise
-          | None =>
-            switch Bus.getQueryDbScan(name) {
-            | Some(scanAll) => scanAll()
-            | None => []
-            }
-          }
+          let items = await fetchAllItems()
           Obj.magic({"nextToken": Nullable.null, "scannedCount": items->Array.length, "items": items})
         }
       }

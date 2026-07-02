@@ -6,12 +6,12 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
-import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as SortKey_Filter$ReventlessLocal from "./SortKey_Filter.res.mjs";
 import * as QueryDb_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Callback.res.mjs";
+import * as QueryDbListQuery$ReventlessLocal from "./QueryDbListQuery.res.mjs";
 import * as DomainGraphQL_Server$ReventlessLocal from "../DomainGraphQL_Server.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
@@ -157,6 +157,18 @@ function Make(Bus) {
     let labelField = registryEntry !== undefined ? Stdlib_Option.getOr(registryEntry.labelField, "id") : "id";
     let stateSchemaOpt = Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name];
     let capability = stateSchemaOpt !== undefined ? GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(stateSchemaOpt) : GraphQL_FragmentGenerator$ReventlessCore.emptyCapability;
+    let fetchAllItems = async () => {
+      let makeStream = Bus.getQueryDbStream(name);
+      if (makeStream !== undefined) {
+        return await Effect.runPromise(Stream.runCollect(makeStream()));
+      }
+      let scanAll = Bus.getQueryDbScan(name);
+      if (scanAll !== undefined) {
+        return scanAll();
+      } else {
+        return [];
+      }
+    };
     let match;
     if (connectionSpec) {
       let filterTypeName = returnTypeName + "Filter";
@@ -178,187 +190,19 @@ function Make(Bus) {
             }
           };
         }
-        let makeStream = Bus.getQueryDbStream(name);
-        let items;
-        if (makeStream !== undefined) {
-          items = await Effect.runPromise(Stream.runCollect(makeStream()));
-        } else {
-          let scanAll = Bus.getQueryDbScan(name);
-          items = scanAll !== undefined ? scanAll() : [];
-        }
         let argsDict = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(args), {});
-        let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});
-        let search = Stdlib_Option.flatMap(filterDict["search"], Stdlib_JSON.Decode.string);
-        let searchPrefix = Stdlib_Option.flatMap(filterDict["searchPrefix"], Stdlib_JSON.Decode.string);
-        let ids = Stdlib_Option.map(Stdlib_Option.flatMap(filterDict["ids"], Stdlib_JSON.Decode.array), arr => Stdlib_Array.filterMap(arr, Stdlib_JSON.Decode.string));
-        let getLabel = item => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[labelField]), Stdlib_JSON.Decode.string), "");
-        let getId = item => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d["id"]), Stdlib_JSON.Decode.string), "");
-        let getFieldString = (item, field) => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]), v => {
-          let s = Stdlib_JSON.Decode.string(v);
-          if (s !== undefined) {
-            return s;
-          } else {
-            return Stdlib_Option.map(Stdlib_JSON.Decode.float(v), f => f.toString());
+        let decodeLocalId = id => Stdlib_Option.map(DomainGraphQL_Server$ReventlessLocal.decodeGlobalId(id), param => param[1]);
+        let listPage = Bus.getQueryDbListPage(name);
+        if (listPage !== undefined) {
+          let conn = listPage(argsDict, capability, labelField);
+          if (conn !== undefined) {
+            return conn;
           }
-        });
-        let perFieldChecks = capability.filterFields.flatMap(f => {
-          let checks = [];
-          let v = filterDict[f.name + "Eq"];
-          if (v !== undefined && v !== null) {
-            let s = Stdlib_JSON.Decode.string(v);
-            let expected = s !== undefined ? s : Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_JSON.Decode.float(v), f => f.toString()), "");
-            checks.push(item => Stdlib_Option.mapOr(getFieldString(item, f.name), false, v => v === expected));
-          }
-          if (f.range) {
-            let v$1 = filterDict[f.name + "From"];
-            if (v$1 !== undefined && v$1 !== null) {
-              let from = Stdlib_Option.getOr(Stdlib_JSON.Decode.string(v$1), Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_JSON.Decode.float(v$1), f => f.toString()), ""));
-              checks.push(item => Stdlib_Option.mapOr(getFieldString(item, f.name), false, v => v >= from));
-            }
-            let v$2 = filterDict[f.name + "To"];
-            if (v$2 !== undefined && v$2 !== null) {
-              let to_ = Stdlib_Option.getOr(Stdlib_JSON.Decode.string(v$2), Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_JSON.Decode.float(v$2), f => f.toString()), ""));
-              checks.push(item => Stdlib_Option.mapOr(getFieldString(item, f.name), false, v => v <= to_));
-            }
-          }
-          return checks;
-        });
-        let filtered = items.filter(item => {
-          let passSearch = search !== undefined && search.length > 0 ? getLabel(item).toLowerCase().includes(search.toLowerCase()) : true;
-          let passPrefix = searchPrefix !== undefined && searchPrefix.length > 0 ? getLabel(item).toLowerCase().startsWith(searchPrefix.toLowerCase()) : true;
-          let passIds;
-          if (ids !== undefined && ids.length !== 0) {
-            let itemId = getId(item);
-            let itemLocalId = Stdlib_Option.map(DomainGraphQL_Server$ReventlessLocal.decodeGlobalId(itemId), param => param[1]);
-            passIds = ids.some(i => {
-              if (i === itemId) {
-                return true;
-              } else {
-                return Primitive_object.equal(itemLocalId, i);
-              }
-            });
-          } else {
-            passIds = true;
-          }
-          let passPerField = perFieldChecks.every(check => check(item));
-          if (passSearch && passPrefix && passIds) {
-            return passPerField;
-          } else {
-            return false;
-          }
-        });
-        let orderByDict = Stdlib_Option.flatMap(argsDict["orderBy"], Stdlib_JSON.Decode.object);
-        let orderByField = Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["field"]), Stdlib_JSON.Decode.string);
-        let direction = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["direction"]), Stdlib_JSON.Decode.string), "ASC");
-        let isDesc = direction === "DESC";
-        let sorted;
-        if (orderByField !== undefined) {
-          sorted = filtered.toSorted((a, b) => {
-            let av = Stdlib_Option.getOr(getFieldString(a, orderByField), "");
-            let bv = Stdlib_Option.getOr(getFieldString(b, orderByField), "");
-            let primary = av < bv ? -1 : (
-                av > bv ? 1 : 0
-              );
-            let primary$1 = isDesc ? -primary | 0 : primary;
-            if (primary$1 !== 0) {
-              return primary$1;
-            }
-            let aid = getId(a);
-            let bid = getId(b);
-            if (aid < bid) {
-              return -1;
-            } else if (aid > bid) {
-              return 1;
-            } else {
-              return 0;
-            }
-          });
-        } else {
-          sorted = filtered.toSorted((a, b) => {
-            let aid = getId(a);
-            let bid = getId(b);
-            if (aid < bid) {
-              return -1;
-            } else if (aid > bid) {
-              return 1;
-            } else {
-              return 0;
-            }
-          });
+          let items = await fetchAllItems();
+          return QueryDbListQuery$ReventlessLocal.run(items, argsDict, capability, labelField, decodeLocalId);
         }
-        let first = Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["first"], Stdlib_JSON.Decode.float), prim => prim | 0);
-        let after = Stdlib_Option.flatMap(argsDict["after"], Stdlib_JSON.Decode.string);
-        let last = Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["last"], Stdlib_JSON.Decode.float), prim => prim | 0);
-        let before = Stdlib_Option.flatMap(argsDict["before"], Stdlib_JSON.Decode.string);
-        let isBackward = Stdlib_Option.isSome(last);
-        let cursorField = Stdlib_Option.getOr(orderByField, "id");
-        let getCursorValue = item => Stdlib_Option.getOr(getFieldString(item, cursorField), getId(item));
-        let cursorBounded;
-        if (isBackward) {
-          if (before !== undefined) {
-            let cv = atob(before);
-            cursorBounded = sorted.filter(item => {
-              let v = getCursorValue(item);
-              if (isDesc) {
-                return v > cv;
-              } else {
-                return v < cv;
-              }
-            });
-          } else {
-            cursorBounded = sorted;
-          }
-        } else if (after !== undefined) {
-          let cv$1 = atob(after);
-          cursorBounded = sorted.filter(item => {
-            let v = getCursorValue(item);
-            if (isDesc) {
-              return v < cv$1;
-            } else {
-              return v > cv$1;
-            }
-          });
-        } else {
-          cursorBounded = sorted;
-        }
-        let pageSize = isBackward ? Stdlib_Option.getOr(last, 50) : Stdlib_Option.getOr(first, 50);
-        let take = pageSize + 1 | 0;
-        let match$1;
-        if (isBackward) {
-          let len = cursorBounded.length;
-          let startIdx = len > take ? len - take | 0 : 0;
-          let arr = cursorBounded.slice(startIdx, len);
-          let hasMore = arr.length > pageSize;
-          let result = hasMore ? arr.slice(1, arr.length) : arr;
-          match$1 = [
-            result,
-            hasMore
-          ];
-        } else {
-          let arr$1 = cursorBounded.slice(0, take);
-          let hasMore$1 = arr$1.length > pageSize;
-          match$1 = [
-            arr$1.slice(0, pageSize),
-            hasMore$1
-          ];
-        }
-        let hasMore$2 = match$1[1];
-        let pageItems = match$1[0];
-        let edges = pageItems.map(item => ({
-          node: item,
-          cursor: btoa(getCursorValue(item))
-        }));
-        let startCursor = Stdlib_Option.map(pageItems[0], item => btoa(getCursorValue(item)));
-        let endCursor = Stdlib_Option.map(pageItems[pageItems.length - 1 | 0], item => btoa(getCursorValue(item)));
-        return {
-          edges: edges,
-          pageInfo: {
-            hasNextPage: !isBackward && hasMore$2,
-            hasPreviousPage: isBackward && hasMore$2,
-            startCursor: Stdlib_Nullable.fromOption(startCursor),
-            endCursor: Stdlib_Nullable.fromOption(endCursor)
-          }
-        };
+        let items$1 = await fetchAllItems();
+        return QueryDbListQuery$ReventlessLocal.run(items$1, argsDict, capability, labelField, decodeLocalId);
       };
       match = [
         sdl,
@@ -375,14 +219,7 @@ function Make(Bus) {
             items: []
           };
         }
-        let makeStream = Bus.getQueryDbStream(name);
-        let items;
-        if (makeStream !== undefined) {
-          items = await Effect.runPromise(Stream.runCollect(makeStream()));
-        } else {
-          let scanAll = Bus.getQueryDbScan(name);
-          items = scanAll !== undefined ? scanAll() : [];
-        }
+        let items = await fetchAllItems();
         return {
           nextToken: null,
           scannedCount: items.length,
@@ -562,12 +399,9 @@ function Make(Bus) {
   };
 }
 
-let defaultListPageSize = 50;
-
 export {
   encodeCursor,
   decodeCursor,
-  defaultListPageSize,
   Make,
 }
 /* Stream Not a pure module */
