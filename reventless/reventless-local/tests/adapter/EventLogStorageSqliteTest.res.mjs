@@ -65,7 +65,12 @@ globalThis.describe("EventLogStorage_Sqlite", () => {
       globalThis.expect("expected conflict").toBe("actual Ok");
       return;
     }
-    globalThis.expect(result._0.includes("conflict")).toBe(true);
+    let msg = result._0;
+    if (typeof msg !== "object") {
+      globalThis.expect(true).toBe(true);
+      return;
+    }
+    globalThis.expect("expected Conflict, got StorageFailure").toBe(msg._0);
   });
   globalThis.test("replay returns empty array for unknown id", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});

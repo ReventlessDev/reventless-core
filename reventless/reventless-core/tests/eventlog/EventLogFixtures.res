@@ -28,10 +28,10 @@ let mockStorage: EventLog_Adapter.operations = {
     appendCallCount := appendCallCount.contents + 1
     if failNextAppend.contents {
       failNextAppend := false
-      Error("mock storage failure")
+      Error(EventLog.StorageFailure("mock storage failure"))
     } else if failNextAppendsWithTransient.contents > 0 {
       failNextAppendsWithTransient := failNextAppendsWithTransient.contents - 1
-      Error("ThrottlingException: Rate exceeded")
+      Error(EventLog.StorageFailure("ThrottlingException: Rate exceeded"))
     } else {
       let existing = storedEvents.contents->Dict.get(id)->Option.getOr([])
       storedEvents.contents->Dict.set(id, existing->Array.concat(jsons))

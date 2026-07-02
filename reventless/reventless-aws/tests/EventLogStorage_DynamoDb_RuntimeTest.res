@@ -17,9 +17,10 @@ describe("Runtime.append", () => {
     let jsons = Array.fromInitializer(~length=101, mkJson)
     let result = await Runtime.append(table)(0, "test-id", jsons)
     switch result {
-    | Error(msg) =>
+    | Error(ReventlessCore.EventLog.StorageFailure(msg)) =>
       expect(msg->String.includes("max 100 events per command"))->toBe(true)
       expect(msg->String.includes("101"))->toBe(true)
+    | Error(Conflict) => expect("expected StorageFailure, got Conflict")->toBe("")
     | Ok(_) => expect("expected Error, got Ok")->toBe("")
     }
   })

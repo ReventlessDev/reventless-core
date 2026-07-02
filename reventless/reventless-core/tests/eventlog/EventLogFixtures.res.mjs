@@ -47,14 +47,20 @@ async function mockStorage_append(_seqNr, id, jsons) {
     failNextAppend.contents = false;
     return {
       TAG: "Error",
-      _0: "mock storage failure"
+      _0: {
+        TAG: "StorageFailure",
+        _0: "mock storage failure"
+      }
     };
   }
   if (failNextAppendsWithTransient.contents > 0) {
     failNextAppendsWithTransient.contents = failNextAppendsWithTransient.contents - 1 | 0;
     return {
       TAG: "Error",
-      _0: "ThrottlingException: Rate exceeded"
+      _0: {
+        TAG: "StorageFailure",
+        _0: "ThrottlingException: Rate exceeded"
+      }
     };
   }
   let existing = Stdlib_Option.getOr(storedEvents.contents[id], []);

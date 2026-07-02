@@ -16,14 +16,21 @@ module type T = {
 // Retry schedule for transient storage errors.
 // Exponential backoff: 100ms, ~200ms, ~400ms, ~800ms, ~1600ms — max 5 retries.
 // Only retries on recognised transient error messages; permanent errors propagate immediately.
-let isTransient = (msg: string) =>
-  msg->String.includes("ThrottlingException") ||
-  msg->String.includes("ProvisionedThroughputExceededException") ||
-  msg->String.includes("ServiceUnavailable") ||
-  msg->String.includes("RequestLimitExceeded") ||
-  msg->String.includes("InternalServerError")
+// Retry only recognised transient storage failures — never a Conflict (a retry
+// of the same append would just conflict again; the OCC retry happens a layer up
+// via replay+re-decide).
+let isTransient = (e: EventLog.appendError) =>
+  switch e {
+  | EventLog.Conflict => false
+  | StorageFailure(msg) =>
+    msg->String.includes("ThrottlingException") ||
+    msg->String.includes("ProvisionedThroughputExceededException") ||
+    msg->String.includes("ServiceUnavailable") ||
+    msg->String.includes("RequestLimitExceeded") ||
+    msg->String.includes("InternalServerError")
+  }
 
-let storageRetrySchedule: Schedule.t<(Duration.t, int), string, unit> =
+let storageRetrySchedule: Schedule.t<(Duration.t, int), EventLog.appendError, unit> =
   Schedule.exponential(Duration.millis(100))
   ->Schedule.jittered
   ->Schedule.intersect(Schedule.recurs(5))
@@ -112,44 +119,40 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
     }
   }
 
-  // append returns result<unit, string> — never throws.
-  // Storage errors are retried with exponential backoff (up to 5 times for transient errors).
-  // After exhausting retries, or on permanent errors, returns Error.
-  let isConflict = (msg: string) => msg->String.includes("conflict")
-
+  // append returns result<unit, EventLog.appendError> — never throws.
+  // Transient storage failures are retried with exponential backoff (up to 5
+  // times); a Conflict is returned immediately (retried a layer up), and other
+  // failures propagate after retries are exhausted.
   let append = async (sequenceNr, id, events') => {
     let eventsJson = events'->encodeEvents'(id, sequenceNr)
     let idStr = id->Spec.Id.toString
-    // Build an Effect that fails with a string on storage error (enabling retry)
+    // A thrown storage error becomes a StorageFailure; a returned Error keeps its
+    // typed variant. The Effect fails with the typed appendError so the schedule
+    // can retry only transient failures, then we collapse the outcome back into a
+    // result (no Cause stringification / substring matching).
     let storageEffect =
       Effect.tryPromise(
-        ~catch=(err: unknown) => Util.Error.messageFromUnknown(err, "storage error"),
+        ~catch=(err: unknown) =>
+          EventLog.StorageFailure(Util.Error.messageFromUnknown(err, "storage error")),
         () => Ops.storage.append(sequenceNr, idStr, eventsJson),
       )
       ->Effect.flatMap(result =>
         switch result {
-        | Ok(_) => Effect.succeed(())
-        | Error(msg) => Effect.fail(msg)
+        | Ok(_) => Effect.succeed()
+        | Error(e) => Effect.fail(e)
         }
       )
       ->Effect.retry(storageRetrySchedule)
-    let exit = await storageEffect->Effect.runPromiseExit
-    if exit->Exit.isSuccess {
-      await publishToEventTopic(id, events', eventsJson)
-    } else {
-      // Retry exhausted — extract the final error message from the Cause.
-      // Use Cause.pretty so defects (uncaught throws) are surfaced too, not
-      // just typed failures from Cause.failures.
-      let failMsg = exit->Exit.match(
-        ~onFailure=cause => cause->Cause.pretty,
-        ~onSuccess=_ => "storage error", // unreachable: we are in the isFailure branch
-      )
-      // Propagate conflict errors without wrapping so callers can detect them
-      if isConflict(failMsg) {
-        Error("conflict")
-      } else {
-        Error(`EventLog: Error: Couldn't append for ${Spec.name}(${idStr}): ${failMsg}`)
-      }
+      ->Effect.map(_ => Ok())
+      ->Effect.catchAll(e => Effect.succeed(Error(e)))
+    switch await storageEffect->Effect.runPromise {
+    | Ok() =>
+      (await publishToEventTopic(id, events', eventsJson))->Result.mapError(msg => EventLog.StorageFailure(
+        msg,
+      ))
+    | Error(EventLog.Conflict) => Error(EventLog.Conflict)
+    | Error(StorageFailure(msg)) =>
+      Error(EventLog.StorageFailure(`EventLog: Error: Couldn't append for ${Spec.name}(${idStr}): ${msg}`))
     }
   }
 

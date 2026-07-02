@@ -88,17 +88,19 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
       })
       Ok()
     } catch {
-    | Failure(msg) => Error(msg)
+    // The deliberate seq_nr check above throws Failure("conflict"); a lost race
+    // shows up as a PRIMARY KEY violation on (log_name, aggregate_id, seq_nr) —
+    // also a genuine OCC conflict. Every OTHER failure (disk full, SQL error,
+    // locked db) is a real StorageFailure, not the retryable Conflict sentinel.
+    | Failure(msg) =>
+      msg == "conflict"
+        ? Error(ReventlessCore.EventLog.Conflict)
+        : Error(ReventlessCore.EventLog.StorageFailure(msg))
     | exn =>
-      // The deliberate seq_nr check above throws Failure("conflict"); a lost race
-      // shows up here as a PRIMARY KEY violation on (log_name, aggregate_id,
-      // seq_nr) — also a genuine OCC conflict. Every OTHER failure (disk full, SQL
-      // error, locked db) must surface as a real error, not be mapped to the
-      // retryable "conflict" sentinel and retried forever.
       let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("")
       msg->String.includes("constraint failed")
-        ? Error("conflict")
-        : Error(msg == "" ? "storage error" : msg)
+        ? Error(ReventlessCore.EventLog.Conflict)
+        : Error(ReventlessCore.EventLog.StorageFailure(msg == "" ? "storage error" : msg))
     }
   }
 
@@ -124,7 +126,9 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
         | Ok() =>
           seqNrRef := currentSeq + 1
           Effect.succeed()
-        | Error(msg) => Effect.fail(msg)
+        // appendStream's error channel is a string; map the typed append error.
+        | Error(ReventlessCore.EventLog.Conflict) => Effect.fail("conflict")
+        | Error(StorageFailure(msg)) => Effect.fail(msg)
         }
       )
     })

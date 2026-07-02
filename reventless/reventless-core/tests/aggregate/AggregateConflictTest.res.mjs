@@ -87,7 +87,7 @@ function makeMockEL() {
       failConflictRef.contents = failConflictRef.contents - 1 | 0;
       return {
         TAG: "Error",
-        _0: "conflict"
+        _0: "Conflict"
       };
     } else {
       storedRef.contents = storedRef.contents.concat(newEvents);

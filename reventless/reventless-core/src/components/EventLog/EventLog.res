@@ -7,7 +7,19 @@ type component<'operations> = Component.t<t, outputs, 'operations>
 
 exception ReplayError(string)
 
-type append<'id, 'event> = (int, 'id, array<'event>) => promise<result<unit, string>>
+// Typed append outcome. `Conflict` is the optimistic-concurrency sentinel — the
+// deliberate append-condition failure (seq_nr/position already taken) that the
+// caller retries by re-reading and re-deciding. Every other failure is a
+// `StorageFailure` carrying its message. This replaces the former string sentinel
+// that was detected by substring-matching a pretty-printed Cause across three
+// layers — a real error whose text happened to contain "conflict" would have
+// been retried as an OCC conflict, and a misclassified conflict would surface as
+// a permanent error.
+type appendError =
+  | Conflict
+  | StorageFailure(string)
+
+type append<'id, 'event> = (int, 'id, array<'event>) => promise<result<unit, appendError>>
 type replay<'id, 'event> = 'id => promise<array<'event>>
 type replayStream<'id, 'event> = 'id => Stream.t<'event, string, unit>
 type appendStream<'id, 'event> = (int, 'id, Stream.t<'event, string, unit>) => Effect.t<unit, string, unit>

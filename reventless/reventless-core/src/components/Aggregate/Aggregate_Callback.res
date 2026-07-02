@@ -185,11 +185,14 @@ module Make = (
                 ~appendedEventCount=generatedEvents'->Array.length,
               )
               EffectLogger.logInfo(~comp, `append: id=${idStr}`)->Effect.map(_ => Ok(perRef))
-            | Error(msg) if msg->String.includes("conflict") =>
+            | Error(EventLog.Conflict) =>
+              // Signal the outer replay+re-decide retry loop (which matches
+              // Error(_)); the string is an internal marker, no longer a
+              // cross-component substring sentinel.
               EffectLogger.logWarn(~comp, `conflict: id=${idStr}, will retry`)->Effect.map(
-                _ => Error(msg),
+                _ => Error("conflict"),
               )
-            | Error(msg) =>
+            | Error(EventLog.StorageFailure(msg)) =>
               let perRef = reportFinalOutcomes(
                 outcomes,
                 ~entityId=idStr,

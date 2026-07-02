@@ -20,7 +20,7 @@ function makeMemoryStorage(_name, param) {
       return [
         {
           TAG: "Error",
-          _0: "conflict"
+          _0: "Conflict"
         },
         events
       ];

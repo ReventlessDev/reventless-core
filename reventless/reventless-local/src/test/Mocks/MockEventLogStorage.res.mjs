@@ -21,7 +21,10 @@ function make($staropt$star, $staropt$star$1) {
       failNextAppends.contents = failNextAppends.contents - 1 | 0;
       return {
         TAG: "Error",
-        _0: "mock append failure"
+        _0: {
+          TAG: "StorageFailure",
+          _0: "mock append failure"
+        }
       };
     }
     let existing = Stdlib_Option.getOr(events.contents[id], []);

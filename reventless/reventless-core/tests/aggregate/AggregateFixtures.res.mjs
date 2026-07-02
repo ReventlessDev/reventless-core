@@ -129,7 +129,10 @@ function makeMockEL() {
       failRef.contents = false;
       return {
         TAG: "Error",
-        _0: "append failed"
+        _0: {
+          TAG: "StorageFailure",
+          _0: "append failed"
+        }
       };
     } else {
       storedRef.contents = storedRef.contents.concat(newEvents);

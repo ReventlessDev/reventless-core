@@ -74,25 +74,49 @@ globalThis.beforeEach(() => EventLogFixtures$ReventlessCore.reset());
 globalThis.describe("EventLog_Operations — retry:", () => {
   globalThis.describe("isTransient predicate:", () => {
     globalThis.test("ThrottlingException is transient", async () => {
-      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient("ThrottlingException: Rate exceeded")).toBe(true);
+      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient({
+        TAG: "StorageFailure",
+        _0: "ThrottlingException: Rate exceeded"
+      })).toBe(true);
     });
     globalThis.test("ProvisionedThroughputExceededException is transient", async () => {
-      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient("ProvisionedThroughputExceededException")).toBe(true);
+      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient({
+        TAG: "StorageFailure",
+        _0: "ProvisionedThroughputExceededException"
+      })).toBe(true);
     });
     globalThis.test("ServiceUnavailable is transient", async () => {
-      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient("ServiceUnavailable")).toBe(true);
+      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient({
+        TAG: "StorageFailure",
+        _0: "ServiceUnavailable"
+      })).toBe(true);
     });
     globalThis.test("RequestLimitExceeded is transient", async () => {
-      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient("RequestLimitExceeded")).toBe(true);
+      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient({
+        TAG: "StorageFailure",
+        _0: "RequestLimitExceeded"
+      })).toBe(true);
     });
     globalThis.test("InternalServerError is transient", async () => {
-      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient("InternalServerError: something went wrong")).toBe(true);
+      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient({
+        TAG: "StorageFailure",
+        _0: "InternalServerError: something went wrong"
+      })).toBe(true);
     });
     globalThis.test("ValidationException is not transient", async () => {
-      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient("ValidationException: invalid field")).toBe(false);
+      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient({
+        TAG: "StorageFailure",
+        _0: "ValidationException: invalid field"
+      })).toBe(false);
     });
     globalThis.test("generic mock storage failure is not transient", async () => {
-      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient("mock storage failure")).toBe(false);
+      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient({
+        TAG: "StorageFailure",
+        _0: "mock storage failure"
+      })).toBe(false);
+    });
+    globalThis.test("a Conflict is never transient (retried a layer up, not here)", async () => {
+      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient("Conflict")).toBe(false);
     });
   });
   globalThis.describe("permanent storage failure:", () => {

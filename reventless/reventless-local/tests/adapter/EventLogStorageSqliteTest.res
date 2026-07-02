@@ -51,12 +51,12 @@ describe("EventLogStorage_Sqlite", () => {
     let e = JSON.Encode.object(Dict.fromArray([("t", JSON.Encode.string("X"))]))
     let _ = await ops.append(0, "id-c", [e])
 
-    // Caller re-uses seqNr=0 — conflict. The error must carry the "conflict"
-    // sentinel that the core append-retry loop matches on; the classification
-    // change must not have broken that for genuine conflicts.
+    // Caller re-uses seqNr=0 — a genuine conflict must be the typed Conflict
+    // sentinel (not a StorageFailure), so the core retry loop treats it as OCC.
     let result = await ops.append(0, "id-c", [e])
     switch result {
-    | Error(msg) => expect(msg->String.includes("conflict"))->toBe(true)
+    | Error(ReventlessCore.EventLog.Conflict) => expect(true)->toBe(true)
+    | Error(StorageFailure(msg)) => expect("expected Conflict, got StorageFailure")->toBe(msg)
     | Ok() => expect("expected conflict")->toBe("actual Ok")
     }
   })

@@ -41,7 +41,7 @@ module TestBehavior = {
 }
 
 type mockEL = {
-  appendFn: (int, string, array<Message.event'<string, AggSpec.event>>) => promise<result<unit, string>>,
+  appendFn: (int, string, array<Message.event'<string, AggSpec.event>>) => promise<result<unit, EventLog.appendError>>,
   replayFn: string => promise<array<AggSpec.event>>,
   replayStreamFn: string => Stream.t<AggSpec.event, string, unit>,
   getAll: unit => array<Message.event'<string, AggSpec.event>>,
@@ -61,7 +61,7 @@ let makeMockEL = (): mockEL => {
     appendCount := appendCount.contents + 1
     if failConflictRef.contents > 0 {
       failConflictRef := failConflictRef.contents - 1
-      Error("conflict")
+      Error(EventLog.Conflict)
     } else {
       storedRef := storedRef.contents->Array.concat(newEvents)
       Ok(())
@@ -114,7 +114,7 @@ module TestOps = {
       type event = AggSpec.event
     }
     type operations = {
-      append: (int, string, array<Message.event'<string, AggSpec.event>>) => promise<result<unit, string>>,
+      append: (int, string, array<Message.event'<string, AggSpec.event>>) => promise<result<unit, EventLog.appendError>>,
       replay: string => promise<array<AggSpec.event>>,
       replayStream: string => Stream.t<AggSpec.event, string, unit>,
       appendStream: (int, string, Stream.t<AggSpec.event, string, unit>) => Effect.t<unit, string, unit>,

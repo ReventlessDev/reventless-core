@@ -51,7 +51,10 @@ function appendWithCondition(tableName, jsons) {
   if (count > 100) {
     return Effect$1.succeed({
       TAG: "Error",
-      _0: `EventLog.append: max 100 events per command, got ` + count.toString()
+      _0: {
+        TAG: "StorageFailure",
+        _0: `EventLog.append: max 100 events per command, got ` + count.toString()
+      }
     });
   } else if (count === 1) {
     return Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => putItemConditional(tableName, jsons[0])), param => ({
@@ -69,7 +72,7 @@ function append(table) {
       case "StaleState" :
         return Effect$1.succeed({
           TAG: "Error",
-          _0: "conflict"
+          _0: "Conflict"
         });
       case "Transient" :
       case "Permanent" :
@@ -78,7 +81,10 @@ function append(table) {
     let msg = DynamoDb_Error$ReventlessAws.message(err);
     return Effect$1.succeed({
       TAG: "Error",
-      _0: `DynamoDB conditional append failed: ` + msg
+      _0: {
+        TAG: "StorageFailure",
+        _0: `DynamoDB conditional append failed: ` + msg
+      }
     });
   }));
 }

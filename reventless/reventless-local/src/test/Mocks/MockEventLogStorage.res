@@ -15,7 +15,7 @@ let make = (~name as _="mock-event-log", ~opts as _: Pulumi.CustomResourceOption
   let append: ReventlessCore.EventLog.append<string, JSON.t> = async (_seqNr, id, jsons) => {
     if failNextAppends.contents > 0 {
       failNextAppends := failNextAppends.contents - 1
-      Error("mock append failure")
+      Error(ReventlessCore.EventLog.StorageFailure("mock append failure"))
     } else {
       let existing = events.contents->Dict.get(id)->Option.getOr([])
       events.contents->Dict.set(id, existing->Array.concat(jsons))

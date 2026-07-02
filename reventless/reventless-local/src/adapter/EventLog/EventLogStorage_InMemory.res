@@ -17,7 +17,7 @@ let makeMemoryStorage = (~name as _name, ~opts as _) => {
       let existing = events->Dict.get(id)->Option.getOr([])
       let currentCount = existing->Array.length
       if seqNr != currentCount {
-        (Error("conflict"), events)
+        (Error(ReventlessCore.EventLog.Conflict), events)
       } else {
         events->Dict.set(id, existing->Array.concat(jsons))
         (Ok(), events)

@@ -16,36 +16,37 @@ let _ = beforeEach(() => reset())
 
 describe("EventLog_Operations — retry:", () => {
   describe("isTransient predicate:", () => {
+    let transient = msg => EventLog_Operations.isTransient(EventLog.StorageFailure(msg))
     testPromise("ThrottlingException is transient", async () => {
-      expect(EventLog_Operations.isTransient("ThrottlingException: Rate exceeded"))->toBe(true)
+      expect(transient("ThrottlingException: Rate exceeded"))->toBe(true)
     })
 
     testPromise("ProvisionedThroughputExceededException is transient", async () => {
-      expect(
-        EventLog_Operations.isTransient("ProvisionedThroughputExceededException"),
-      )->toBe(true)
+      expect(transient("ProvisionedThroughputExceededException"))->toBe(true)
     })
 
     testPromise("ServiceUnavailable is transient", async () => {
-      expect(EventLog_Operations.isTransient("ServiceUnavailable"))->toBe(true)
+      expect(transient("ServiceUnavailable"))->toBe(true)
     })
 
     testPromise("RequestLimitExceeded is transient", async () => {
-      expect(EventLog_Operations.isTransient("RequestLimitExceeded"))->toBe(true)
+      expect(transient("RequestLimitExceeded"))->toBe(true)
     })
 
     testPromise("InternalServerError is transient", async () => {
-      expect(EventLog_Operations.isTransient("InternalServerError: something went wrong"))->toBe(
-        true,
-      )
+      expect(transient("InternalServerError: something went wrong"))->toBe(true)
     })
 
     testPromise("ValidationException is not transient", async () => {
-      expect(EventLog_Operations.isTransient("ValidationException: invalid field"))->toBe(false)
+      expect(transient("ValidationException: invalid field"))->toBe(false)
     })
 
     testPromise("generic mock storage failure is not transient", async () => {
-      expect(EventLog_Operations.isTransient("mock storage failure"))->toBe(false)
+      expect(transient("mock storage failure"))->toBe(false)
+    })
+
+    testPromise("a Conflict is never transient (retried a layer up, not here)", async () => {
+      expect(EventLog_Operations.isTransient(EventLog.Conflict))->toBe(false)
     })
   })
 

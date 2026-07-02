@@ -27,8 +27,13 @@ globalThis.describe("Runtime.append", () => {
       return;
     }
     let msg = result._0;
-    globalThis.expect(msg.includes("max 100 events per command")).toBe(true);
-    globalThis.expect(msg.includes("101")).toBe(true);
+    if (typeof msg !== "object") {
+      globalThis.expect("expected StorageFailure, got Conflict").toBe("");
+      return;
+    }
+    let msg$1 = msg._0;
+    globalThis.expect(msg$1.includes("max 100 events per command")).toBe(true);
+    globalThis.expect(msg$1.includes("101")).toBe(true);
   });
 });
 

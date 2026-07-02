@@ -40,7 +40,9 @@ let appendWithCondition = (tableName, jsons) => {
   if count > 100 {
     Effect.succeed(
       Error(
-        `EventLog.append: max 100 events per command, got ${count->Int.toString}`,
+        ReventlessCore.EventLog.StorageFailure(
+          `EventLog.append: max 100 events per command, got ${count->Int.toString}`,
+        ),
       ),
     )
   } else if count == 1 {
@@ -58,10 +60,13 @@ let append = table =>
     appendWithCondition(table.name, jsons)
     ->Effect.catchAll(err =>
       switch err {
-      | DynamoDb_Error.StaleState(_) => Effect.succeed(Error("conflict"))
+      | DynamoDb_Error.StaleState(_) =>
+        Effect.succeed(Error(ReventlessCore.EventLog.Conflict))
       | _ =>
         let msg = DynamoDb_Error.message(err)
-        Effect.succeed(Error(`DynamoDB conditional append failed: ${msg}`))
+        Effect.succeed(
+          Error(ReventlessCore.EventLog.StorageFailure(`DynamoDB conditional append failed: ${msg}`)),
+        )
       }
     )
     ->Effect.runPromise

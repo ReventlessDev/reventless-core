@@ -86,21 +86,35 @@ function makeStorage(db, name, param) {
     } catch (raw_msg) {
       let msg = Primitive_exceptions.internalToException(raw_msg);
       if (msg.RE_EXN_ID === "Failure") {
-        return {
-          TAG: "Error",
-          _0: msg._1
-        };
+        let msg$1 = msg._1;
+        if (msg$1 === "conflict") {
+          return {
+            TAG: "Error",
+            _0: "Conflict"
+          };
+        } else {
+          return {
+            TAG: "Error",
+            _0: {
+              TAG: "StorageFailure",
+              _0: msg$1
+            }
+          };
+        }
       }
-      let msg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(msg), Stdlib_JsExn.message), "");
-      if (msg$1.includes("constraint failed")) {
+      let msg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(msg), Stdlib_JsExn.message), "");
+      if (msg$2.includes("constraint failed")) {
         return {
           TAG: "Error",
-          _0: "conflict"
+          _0: "Conflict"
         };
       } else {
         return {
           TAG: "Error",
-          _0: msg$1 === "" ? "storage error" : msg$1
+          _0: {
+            TAG: "StorageFailure",
+            _0: msg$2 === "" ? "storage error" : msg$2
+          }
         };
       }
     }
@@ -118,11 +132,16 @@ function makeStorage(db, name, param) {
     return Stream.runForEach(stream, json => {
       let currentSeq = seqNrRef.contents;
       return Effect.flatMap(Effect.promise(() => append(currentSeq, id, [json])), result => {
-        if (result.TAG !== "Ok") {
-          return Effect.fail(result._0);
+        if (result.TAG === "Ok") {
+          seqNrRef.contents = currentSeq + 1 | 0;
+          return Effect.succeed();
         }
-        seqNrRef.contents = currentSeq + 1 | 0;
-        return Effect.succeed();
+        let msg = result._0;
+        if (typeof msg !== "object") {
+          return Effect.fail("conflict");
+        } else {
+          return Effect.fail(msg._0);
+        }
       });
     });
   };
