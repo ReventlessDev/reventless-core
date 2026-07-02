@@ -3,7 +3,13 @@
 module Make = (Bus: LocalBus.T) => {
   module EventTopicPublisher = LocalEventTopicPublisher.Make(Bus)
 
-  module Inner = ReventlessCore.DcbEventLog_Builder.Make(DcbEventLogStorage_InMemory, EventTopicPublisher)
+  // Use the backend-aware storage functor (as Platform does), not the plain
+  // module: the functor consults BackendState so a standalone DCB log honours
+  // REVENTLESS_LOCAL_BACKEND=sqlite, and it registers the read with the Bus so
+  // `Bus.getDcbEventLogRead` can see it. The plain module did neither — the log
+  // silently stayed in memory under SQLite and was invisible to bus readers.
+  module Storage = DcbEventLogStorage_InMemory.Make(Bus)
+  module Inner = ReventlessCore.DcbEventLog_Builder.Make(Storage, EventTopicPublisher)
   type component = ReventlessInfra.DcbEventLog.component
   let make: (
     ~name: string,

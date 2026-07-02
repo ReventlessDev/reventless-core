@@ -7,11 +7,11 @@ import * as DcbEventLogStorage_InMemory$ReventlessLocal from "../adapter/DcbEven
 
 function Make(Bus) {
   let EventTopicPublisher = LocalEventTopicPublisher$ReventlessLocal.Make(Bus);
-  let Inner = DcbEventLog_Builder$ReventlessCore.Make({
-    make: DcbEventLogStorage_InMemory$ReventlessLocal.make
-  })(EventTopicPublisher);
+  let Storage = DcbEventLogStorage_InMemory$ReventlessLocal.Make(Bus);
+  let Inner = DcbEventLog_Builder$ReventlessCore.Make(Storage)(EventTopicPublisher);
   return {
     EventTopicPublisher: EventTopicPublisher,
+    Storage: Storage,
     Inner: Inner,
     make: Inner.make,
     operations: Component$ReventlessInfra.operations
