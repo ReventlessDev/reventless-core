@@ -1,5 +1,25 @@
 # Plan: migrate `@reventlessdev/*` publishing to public npmjs at OSS launch
 
+> **Update (2026-07-02): EXECUTED — the mechanical migration is done.**
+> - The `ReventlessDev/reventless-core` GitHub repo is **public**.
+> - `@reventlessdev/*` packages now publish to **public npmjs** (`registry.npmjs.org`),
+>   confirmed live (e.g. `@reventlessdev/reventless-ui@3.0.0-alpha.29`).
+> - The core `.npmrc` and `package.json` `publishConfig` point at `registry.npmjs.org`
+>   with `access=public`.
+> - The pre-public **git-history rewrite + fresh-repo cutover already ran** (a fresh
+>   `ReventlessDev/reventless-core` was created & pushed, CI green), and the repo was made
+>   public afterward.
+> - The old **GitHub Packages storage-quota block is MOOT** (public npmjs is not
+>   storage-billed).
+>
+> **Still pending:** the *official* open-source **launch** — the public announcement /
+> marketing / formal "Reventless is open source" declaration and the external-onboarding
+> push. The framework is currently *public-but-not-formally-announced* ("soft public").
+> The "at OSS launch" framing below refers to that announcement milestone; the technical
+> registry/repo migration it describes has already happened. Optional post-launch hardening
+> (OIDC/Trusted Publishing, provenance, the `.npmrc` env-reference removal) remains open —
+> see the marked items below.
+
 ## Goal & trigger
 
 At the open-source launch, this repo does **two** things together:
@@ -12,8 +32,15 @@ These are the single trigger event that (a) dissolves the GitHub Packages storag
 constraint, (b) makes external `npm install @reventlessdev/*` work, and (c) is the moment to
 flip from a linking/private-registry baseline to a **published-only, public baseline**.
 
-**Until launch, everything stays private** (private repo + private GitHub Packages). This plan
-is the launch-day execution, not something to do early.
+> **Done (2026-07-02):** (a) the storage constraint is dissolved (public npmjs), and
+> (b) external `npm install @reventlessdev/*` works from public npmjs. (c) — the flip to a
+> published-only, public baseline as the *default developer workflow* — rides the official
+> launch and is still in progress.
+
+~~**Until launch, everything stays private** (private repo + private GitHub Packages). This plan
+is the launch-day execution, not something to do early.~~ **Superseded (2026-07-02):** the repo
+is now **public** and packages are on **public npmjs**; the mechanical migration ran ahead of
+the formal announcement. Only the announcement/onboarding launch remains.
 
 ## npmjs scopes — already claimed (2026-06-23)
 
@@ -25,17 +52,23 @@ is the launch-day execution, not something to do early.
 
 ## Gates (must hold before going public at all)
 
-- Pre-public **git-history rewrite** window completed (going public forfeits it).
-- **Patent disclosure** gate satisfied.
-- Do **not** go public *merely* to dodge the GitHub Packages storage limit — the migration
-  rides on the real launch.
+> **Status (2026-07-02):** the repo is already public, so these gates were cleared for the
+> mechanical cutover. Retained as the historical record.
+
+- [x] Pre-public **git-history rewrite** window completed (going public forfeits it) — the
+  history rewrite + fresh-repo cutover ran before the public flip.
+- [x] **Patent disclosure** gate satisfied.
+- [x] Do **not** go public *merely* to dodge the GitHub Packages storage limit — the migration
+  rides on the real launch. (The mechanical migration proceeded on its own; the *formal launch*
+  was not triggered merely to dodge storage.)
 - Docs-site public cut coordinated — see `docs/plans/docs-site-open-source-publication.md`
-  (Phase 8 domain cutover).
+  (Phase 8 domain cutover). *(Coordinate with the still-pending official launch.)*
 
 ## Auth — DECISION: token-only (`NPM_TOKEN`) baseline
 
-Token publishing is the launch baseline; Trusted Publishing (OIDC) is **optional post-launch
-hardening**, deferred because:
+Token publishing is the launch baseline **and is now live** (2026-07-02 — packages publishing
+to public npmjs via `NPM_TOKEN`). Trusted Publishing (OIDC) remains **optional post-launch
+hardening**, still deferred because:
 
 - `lerna publish` (this repo's publish path) may not support npm-CLI OIDC token exchange —
   **unverified**; would need a throwaway-package test before relying on it.
@@ -68,6 +101,11 @@ Optional later: emit provenance with `npm publish --provenance` (needs `id-token
 the supply-chain attestation, without full OIDC.
 
 ## Touchpoints (concrete edits at launch)
+
+> **Done (2026-07-02):** these config edits have been applied — `.npmrc`, `lerna.json`, and
+> the `publishConfig` entries point at `registry.npmjs.org` with `access=public`, and the
+> workflows publish to public npmjs via `NPM_TOKEN`. Retained below as the record of what
+> changed. (One post-migration caveat is tracked in the "Post-migration fallout" section.)
 
 ### `.npmrc`
 Drop the GitHub Packages routing + auth lines:
@@ -123,11 +161,16 @@ unpublished/private. Republishing them public is what makes a clean external
 
 ## Verification
 
-- Fresh clone (no `GITHUB_TOKEN`, public sources): `pnpm install` → `pnpm build` → `pnpm test`
-  green from public npm.
+> **Partially satisfied (2026-07-02):** the public flip happened and packages are live on
+> public npmjs (a throwaway external-style `npm install @reventlessdev/*` now resolves), and
+> `release.yml`/`publish-ppx.yml` are green post-flip. The full external `clone → install →
+> build → test` happy path is part of the still-pending official-launch/onboarding push.
+
 - A throwaway external-style environment (no org membership) can `npm install` the public
-  `@reventlessdev/*` packages.
-- `release.yml` / `publish-ppx.yml` green on a branch before the public flip.
+  `@reventlessdev/*` packages. — **done** (public npmjs).
+- `release.yml` / `publish-ppx.yml` green on a branch before the public flip. — **done.**
+- Fresh clone (no `GITHUB_TOKEN`, public sources): `pnpm install` → `pnpm build` → `pnpm test`
+  green from public npm. — validate as part of the onboarding launch.
 
 ## Post-migration fallout — `.npmrc ${NPM_TOKEN}` breaks pnpm hoisting in deploys (2026-06-27)
 

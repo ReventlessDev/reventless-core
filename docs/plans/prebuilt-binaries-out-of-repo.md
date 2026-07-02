@@ -252,7 +252,7 @@ CI runner has. The cost of solving (a)-(c) by committing is the bloat.
 
 | Store | Role | Notes |
 |---|---|---|
-| **npm registry** (GitHub Packages now; npm when public) | **Primary** | Versioned, immutable, cached by the pnpm/npm store. CI's "Linux PPX" = install `@reventlessdev/reventless-ppx[-linux-x64]@<version>`; reused from cache across builds, **never recompiled**. |
+| **npm registry** (public npmjs since 2026-07-02; formerly GitHub Packages) | **Primary** | Versioned, immutable, cached by the pnpm/npm store. CI's "Linux PPX" = install `@reventlessdev/reventless-ppx[-linux-x64]@<version>`; reused from cache across builds, **never recompiled**. |
 | **GitHub Release assets** (raw per-platform `.exe`) | Optional secondary | For Docker images, non-npm consumers, debugging. `install.cjs` could fall back to downloading from here. |
 | **git** | **Never** | The whole point of this plan. |
 
@@ -394,6 +394,15 @@ framework build.
 
 ### Publish prerequisite: GitHub Packages storage
 
+> **Update (2026-07-02): this storage gate is now MOOT.** `@reventlessdev/*` publishing has
+> migrated to **public npmjs** (`registry.npmjs.org`), and the repo is public — public
+> packages are **not storage-billed**, so the GitHub Packages storage-quota / overage-block
+> constraint described here no longer applies to the first-publish pivot or any later publish.
+> The per-platform split below **remains worthwhile** — but for **install size and the npm
+> per-tarball size limit** (each install pulls only the ~25 MB matching platform, not the
+> ~125 MB fat package), **not** as a storage unblock. Read this section as historical context
+> for the GitHub-Packages era; the "raise the org spending limit" step is no longer needed.
+
 The first-publish pivot (step 3) and every later publish require **headroom under
 the org's GitHub Packages storage limit**. Private packages count against the
 quota, and the fat package is ~125 MB per version, so a few alpha releases exhaust
@@ -413,9 +422,11 @@ spending limit for Packages did** (resolved 2026-05-25). So:
   ~25 MB each (only the matching one is downloaded), so the fat 125 MB versions go
   away after the cutover.
 
-Public packages on GitHub Packages are free, so going public would also remove
-this limit — but that is a separate release decision, **out of scope here**, and
-must not be driven by this storage constraint.
+Public packages are free of this storage constraint, so going public removes the
+limit entirely. **This has since happened (2026-07-02):** publishing migrated to
+public npmjs and the repo is public, so the storage limit no longer applies (see
+the update banner above). It was a separate release decision, not driven by this
+storage constraint.
 
 ### Related HEAD hygiene: redundant per-package lock files
 

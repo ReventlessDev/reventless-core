@@ -1,5 +1,15 @@
 # GitHub CI/CD Migration Guide
 
+> **Update (2026-07-02): the GitHub migration has been executed.** The repo is on GitHub
+> (`ReventlessDev/reventless-core`) and is now **public**, CI/CD runs on GitHub Actions, and
+> package publishing has since **moved off GitHub Packages onto public npmjs**
+> (`registry.npmjs.org`, `access=public`) — so the `.npmrc`/`publishConfig`/registry examples
+> below that target `npm.pkg.github.com` describe the **historical** GitHub-Packages phase, not
+> the current state. For the current npmjs publishing setup see
+> [`docs/plans/npmjs-publish-migration.md`](../plans/npmjs-publish-migration.md). This guide is
+> retained as the record of the GitLab→GitHub migration and remains a usable reference for the
+> Actions/branch-protection/release setup.
+
 This guide provides step-by-step instructions for migrating from GitLab to GitHub with the new CI/CD pipeline.
 
 ## Overview

@@ -1,5 +1,14 @@
 # GitHub CI/CD Pipeline Implementation Summary
 
+> **Update (2026-07-02):** the GitHub migration and repo/registry cutover are **done**. The
+> `ReventlessDev/reventless-core` repo is **public**, and package publishing has since **moved
+> from GitHub Packages to public npmjs** (`registry.npmjs.org`, `access=public`). References
+> below to "GitHub Packages" and the `@reventless` scope reflect the original implementation;
+> the live scope is `@reventlessdev/*` on public npmjs. The "Next Steps → Immediate Actions"
+> (repository setup, secrets, branch protection) have been carried out. See
+> [`docs/plans/npmjs-publish-migration.md`](../plans/npmjs-publish-migration.md) for the
+> current publishing state.
+
 ## Overview
 
 Successfully implemented a comprehensive GitHub CI/CD pipeline for the Reventless monorepo, migrating from GitLab to GitHub with modern DevOps practices, automated releases, and robust security measures.

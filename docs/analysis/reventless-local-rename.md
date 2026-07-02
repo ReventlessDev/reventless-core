@@ -4,6 +4,14 @@
 **Date:** 2026-06-06
 **Scope:** Rename the `reventless-in-memory` package (and the broader "in-memory" vocabulary) to "local", on the premise that the platform supports **both** a pure in-memory backend and a SQLite-backed one.
 
+> **Update (2026-07-02):** this analysis was written while `@reventlessdev/*` published to the
+> **private GitHub Packages** registry. That has since changed — publishing migrated to
+> **public npmjs** (`registry.npmjs.org`) and the repo is public. Where the text below reasons
+> about a "private registry" or GitHub-Packages dist-tag unreliability as a *constraint on the
+> rename*, read it as historical: on public npmjs the rename is still a **new package +
+> deprecate-old** operation (npm likewise cannot rename a published package in place), so the
+> analysis's conclusion is unchanged; only the registry named is now npmjs.
+
 ---
 
 ## Executive Summary
