@@ -13,16 +13,7 @@ type variantInfo = {
 let extractVariantInfo = (variantSchema: S.t<unknown>): option<variantInfo> =>
   switch variantSchema {
   | Object({items, properties}) =>
-    let tagName =
-      items
-      ->Array.find(item => item.location == "TAG")
-      ->Option.flatMap(item =>
-        switch item.schema {
-        | String({const}) => Some(const)
-        | _ => None
-        }
-      )
-    tagName->Option.map(tagName => {
+    DcbTag.variantTagName(items)->Option.map(tagName => {
       let taggedFields =
         properties
         ->Dict.toArray

@@ -18,16 +18,7 @@ let buildVariantLookup = (schema: S.t<unknown>): dict<variantKind> => {
     anyOf->Array.forEach(variantSchema =>
       switch variantSchema {
       | Object({items, properties}) =>
-        let tagName =
-          items
-          ->Array.find(item => item.location == "TAG")
-          ->Option.flatMap(item =>
-            switch item.schema {
-            | String({const}) => Some(const)
-            | _ => None
-            }
-          )
-        switch tagName {
+        switch DcbTag.variantTagName(items) {
         | Some(name) =>
           let kind = if properties->Dict.keysToArray->Array.length == 0 {
             PayloadLess
@@ -45,16 +36,7 @@ let buildVariantLookup = (schema: S.t<unknown>): dict<variantKind> => {
     )
   | Object({items}) =>
     // Single-variant schema with fields
-    let tagName =
-      items
-      ->Array.find(item => item.location == "TAG")
-      ->Option.flatMap(item =>
-        switch item.schema {
-        | String({const}) => Some(const)
-        | _ => None
-        }
-      )
-    switch tagName {
+    switch DcbTag.variantTagName(items) {
     | Some(name) => lookup->Dict.set(name, WithFields)
     | None => ()
     }

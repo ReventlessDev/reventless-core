@@ -11,17 +11,7 @@ function extractVariantInfo(variantSchema) {
     return;
   }
   let properties = variantSchema.properties;
-  let tagName = Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
-    let match = item.schema;
-    if (match.type !== "string") {
-      return;
-    }
-    let $$const = match.const;
-    if ($$const !== undefined) {
-      return $$const;
-    }
-  });
-  return Stdlib_Option.map(tagName, tagName => {
+  return Stdlib_Option.map(DcbTag$Reventless.variantTagName(variantSchema.items), tagName => {
     let taggedFields = Stdlib_Array.filterMap(Object.entries(properties), param => {
       if (DcbTag$Reventless.isTagged(param[1])) {
         return param[0];
