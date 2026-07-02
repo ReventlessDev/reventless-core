@@ -104,6 +104,9 @@ function Impl(C) {
   let queryDbStreamRegistry = {
     contents: {}
   };
+  let queryDbIndexLookupRegistry = {
+    contents: {}
+  };
   let eventLogReplayRegistry = {
     contents: {}
   };
@@ -234,6 +237,10 @@ function Impl(C) {
     queryDbStreamRegistry.contents[name] = streamFn;
   };
   let getQueryDbStream = name => queryDbStreamRegistry.contents[name];
+  let registerQueryDbIndexLookup = (name, lookup) => {
+    queryDbIndexLookupRegistry.contents[name] = lookup;
+  };
+  let getQueryDbIndexLookup = name => queryDbIndexLookupRegistry.contents[name];
   let registerEventLogReplay = (name, replay) => {
     eventLogReplayRegistry.contents[name] = replay;
   };
@@ -294,6 +301,7 @@ function Impl(C) {
     queryDbRegistry.contents = {};
     queryDbScanRegistry.contents = {};
     queryDbStreamRegistry.contents = {};
+    queryDbIndexLookupRegistry.contents = {};
     eventLogReplayRegistry.contents = {};
     dcbEventLogReadRegistry.contents = {};
     stateChangeListeners.contents = {};
@@ -312,6 +320,8 @@ function Impl(C) {
     getQueryDbScan: getQueryDbScan,
     registerQueryDbStream: registerQueryDbStream,
     getQueryDbStream: getQueryDbStream,
+    registerQueryDbIndexLookup: registerQueryDbIndexLookup,
+    getQueryDbIndexLookup: getQueryDbIndexLookup,
     registerEventLogReplay: registerEventLogReplay,
     getEventLogReplay: getEventLogReplay,
     registerDcbEventLogRead: registerDcbEventLogRead,
@@ -346,6 +356,9 @@ function Make($star) {
   let queryDbStreamRegistry = {
     contents: {}
   };
+  let queryDbIndexLookupRegistry = {
+    contents: {}
+  };
   let eventLogReplayRegistry = {
     contents: {}
   };
@@ -470,6 +483,10 @@ function Make($star) {
     queryDbStreamRegistry.contents[name] = streamFn;
   };
   let getQueryDbStream = name => queryDbStreamRegistry.contents[name];
+  let registerQueryDbIndexLookup = (name, lookup) => {
+    queryDbIndexLookupRegistry.contents[name] = lookup;
+  };
+  let getQueryDbIndexLookup = name => queryDbIndexLookupRegistry.contents[name];
   let registerEventLogReplay = (name, replay) => {
     eventLogReplayRegistry.contents[name] = replay;
   };
@@ -530,6 +547,7 @@ function Make($star) {
     queryDbRegistry.contents = {};
     queryDbScanRegistry.contents = {};
     queryDbStreamRegistry.contents = {};
+    queryDbIndexLookupRegistry.contents = {};
     eventLogReplayRegistry.contents = {};
     dcbEventLogReadRegistry.contents = {};
     stateChangeListeners.contents = {};
@@ -548,6 +566,8 @@ function Make($star) {
     getQueryDbScan: getQueryDbScan,
     registerQueryDbStream: registerQueryDbStream,
     getQueryDbStream: getQueryDbStream,
+    registerQueryDbIndexLookup: registerQueryDbIndexLookup,
+    getQueryDbIndexLookup: getQueryDbIndexLookup,
     registerEventLogReplay: registerEventLogReplay,
     getEventLogReplay: getEventLogReplay,
     registerDcbEventLogRead: registerDcbEventLogRead,
@@ -582,6 +602,9 @@ function MakeSilent($star) {
   let queryDbStreamRegistry = {
     contents: {}
   };
+  let queryDbIndexLookupRegistry = {
+    contents: {}
+  };
   let eventLogReplayRegistry = {
     contents: {}
   };
@@ -706,6 +729,10 @@ function MakeSilent($star) {
     queryDbStreamRegistry.contents[name] = streamFn;
   };
   let getQueryDbStream = name => queryDbStreamRegistry.contents[name];
+  let registerQueryDbIndexLookup = (name, lookup) => {
+    queryDbIndexLookupRegistry.contents[name] = lookup;
+  };
+  let getQueryDbIndexLookup = name => queryDbIndexLookupRegistry.contents[name];
   let registerEventLogReplay = (name, replay) => {
     eventLogReplayRegistry.contents[name] = replay;
   };
@@ -766,6 +793,7 @@ function MakeSilent($star) {
     queryDbRegistry.contents = {};
     queryDbScanRegistry.contents = {};
     queryDbStreamRegistry.contents = {};
+    queryDbIndexLookupRegistry.contents = {};
     eventLogReplayRegistry.contents = {};
     dcbEventLogReadRegistry.contents = {};
     stateChangeListeners.contents = {};
@@ -784,6 +812,8 @@ function MakeSilent($star) {
     getQueryDbScan: getQueryDbScan,
     registerQueryDbStream: registerQueryDbStream,
     getQueryDbStream: getQueryDbStream,
+    registerQueryDbIndexLookup: registerQueryDbIndexLookup,
+    getQueryDbIndexLookup: getQueryDbIndexLookup,
     registerEventLogReplay: registerEventLogReplay,
     getEventLogReplay: getEventLogReplay,
     registerDcbEventLogRead: registerDcbEventLogRead,
@@ -817,6 +847,9 @@ function MakeBounded(C) {
     contents: {}
   };
   let queryDbStreamRegistry = {
+    contents: {}
+  };
+  let queryDbIndexLookupRegistry = {
     contents: {}
   };
   let eventLogReplayRegistry = {
@@ -940,6 +973,10 @@ function MakeBounded(C) {
     queryDbStreamRegistry.contents[name] = streamFn;
   };
   let getQueryDbStream = name => queryDbStreamRegistry.contents[name];
+  let registerQueryDbIndexLookup = (name, lookup) => {
+    queryDbIndexLookupRegistry.contents[name] = lookup;
+  };
+  let getQueryDbIndexLookup = name => queryDbIndexLookupRegistry.contents[name];
   let registerEventLogReplay = (name, replay) => {
     eventLogReplayRegistry.contents[name] = replay;
   };
@@ -1000,6 +1037,7 @@ function MakeBounded(C) {
     queryDbRegistry.contents = {};
     queryDbScanRegistry.contents = {};
     queryDbStreamRegistry.contents = {};
+    queryDbIndexLookupRegistry.contents = {};
     eventLogReplayRegistry.contents = {};
     dcbEventLogReadRegistry.contents = {};
     stateChangeListeners.contents = {};
@@ -1018,6 +1056,8 @@ function MakeBounded(C) {
     getQueryDbScan: getQueryDbScan,
     registerQueryDbStream: registerQueryDbStream,
     getQueryDbStream: getQueryDbStream,
+    registerQueryDbIndexLookup: registerQueryDbIndexLookup,
+    getQueryDbIndexLookup: getQueryDbIndexLookup,
     registerEventLogReplay: registerEventLogReplay,
     getEventLogReplay: getEventLogReplay,
     registerDcbEventLogRead: registerDcbEventLogRead,

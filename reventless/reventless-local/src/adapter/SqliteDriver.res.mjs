@@ -19,7 +19,11 @@ function openDb(path) {
       recursive: true
     });
   }
-  return new Nodesqlite.DatabaseSync(path);
+  let db = new Nodesqlite.DatabaseSync(path);
+  db.exec("PRAGMA journal_mode=WAL");
+  db.exec("PRAGMA synchronous=NORMAL");
+  db.exec("PRAGMA busy_timeout=5000");
+  return db;
 }
 
 function close(db) {

@@ -517,6 +517,10 @@ function Make(Bus) {
           return [];
         }
         let value = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d[index]), Stdlib_JSON.Decode.string), "");
+        let lookup = Bus.getQueryDbIndexLookup(name);
+        if (lookup !== undefined) {
+          return lookup(filterField, value);
+        }
         let scanAll = Bus.getQueryDbScan(name);
         if (scanAll !== undefined) {
           return scanAll().filter(item => Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[filterField]), Stdlib_JSON.Decode.string), v => v === value), false));

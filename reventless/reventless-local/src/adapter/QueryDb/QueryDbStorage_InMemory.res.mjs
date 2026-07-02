@@ -60,21 +60,30 @@ function Make(Bus) {
   let sqliteBusCallbacks_registerQueryDb = Bus.registerQueryDb;
   let sqliteBusCallbacks_registerQueryDbScan = Bus.registerQueryDbScan;
   let sqliteBusCallbacks_registerQueryDbStream = Bus.registerQueryDbStream;
+  let sqliteBusCallbacks_registerQueryDbIndexLookup = Bus.registerQueryDbIndexLookup;
   let sqliteBusCallbacks = {
     publishStateChange: sqliteBusCallbacks_publishStateChange,
     registerQueryDb: sqliteBusCallbacks_registerQueryDb,
     registerQueryDbScan: sqliteBusCallbacks_registerQueryDbScan,
-    registerQueryDbStream: sqliteBusCallbacks_registerQueryDbStream
+    registerQueryDbStream: sqliteBusCallbacks_registerQueryDbStream,
+    registerQueryDbIndexLookup: sqliteBusCallbacks_registerQueryDbIndexLookup
   };
   let makeMemory = (name, param, subIdField, param$1, param$2, param$3, param$4) => {
     let store = {
       contents: {}
     };
-    let allItems = {
+    let snapshot = {
       contents: []
     };
-    let syncAll = () => {
-      allItems.contents = flattenStore(store.contents);
+    let dirty = {
+      contents: false
+    };
+    let currentItems = () => {
+      if (dirty.contents) {
+        snapshot.contents = flattenStore(store.contents);
+        dirty.contents = false;
+      }
+      return snapshot.contents;
     };
     let expiries = {
       contents: {}
@@ -125,7 +134,8 @@ function Make(Bus) {
         });
       });
       if (removedAny.contents) {
-        return syncAll();
+        dirty.contents = true;
+        return;
       }
     };
     let getOrCreateSubMap = partitionKey => {
@@ -169,7 +179,7 @@ function Make(Bus) {
       let subMap = getOrCreateSubMap(id);
       subMap[subKey] = state;
       recordExpiry(id, subKey, ttl);
-      syncAll();
+      dirty.contents = true;
       publishUpdated(id, state);
       return {
         TAG: "Ok",
@@ -185,7 +195,7 @@ function Make(Bus) {
         subMap[subKey] = state;
         recordExpiry(id, subKey, param[2]);
       });
-      syncAll();
+      dirty.contents = true;
       batch.forEach(param => publishUpdated(param[0], param[1]));
       return {
         TAG: "Ok",
@@ -206,7 +216,7 @@ function Make(Bus) {
       obj["id"] = id;
       obj[fieldName] = next;
       subMap[""] = obj;
-      syncAll();
+      dirty.contents = true;
       publishUpdated(id, obj);
       return {
         TAG: "Ok",
@@ -220,18 +230,18 @@ function Make(Bus) {
         if (subMap !== undefined) {
           let hadIt = Stdlib_Option.isSome(subMap[subValue]);
           Stdlib_Dict.$$delete(subMap, subValue);
-          syncAll();
+          dirty.contents = true;
           if (hadIt) {
             publishRemoved(id, subValue);
           }
         } else {
-          syncAll();
+          dirty.contents = true;
         }
       } else {
         let subMap$1 = store.contents[id];
         let subKeys = subMap$1 !== undefined ? Object.keys(subMap$1) : [];
         Stdlib_Dict.$$delete(store.contents, id);
-        syncAll();
+        dirty.contents = true;
         subKeys.forEach(subKey => publishRemoved(id, subKey));
       }
       return {
@@ -270,7 +280,7 @@ function Make(Bus) {
         }
         Stdlib_Dict.$$delete(store.contents, id);
       });
-      syncAll();
+      dirty.contents = true;
       removed.forEach(param => publishRemoved(param[0], param[1]));
       return {
         TAG: "Ok",
@@ -289,11 +299,15 @@ function Make(Bus) {
     Bus.registerQueryDb(name, ops);
     Bus.registerQueryDbScan(name, () => {
       purgeExpired();
-      return allItems.contents;
+      return currentItems();
     });
     Bus.registerQueryDbStream(name, () => {
       purgeExpired();
-      return Stream.fromIterable(allItems.contents);
+      return Stream.fromIterable(currentItems());
+    });
+    Bus.registerQueryDbIndexLookup(name, (field, value) => {
+      purgeExpired();
+      return currentItems().filter(item => Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]), Stdlib_JSON.Decode.string), v => v === value), false));
     });
     return {
       resources: [],

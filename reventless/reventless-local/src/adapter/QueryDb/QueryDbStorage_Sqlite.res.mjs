@@ -4,6 +4,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stream from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as LocalBus$ReventlessLocal from "../LocalBus.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "../SqliteDriver.res.mjs";
 
@@ -146,12 +147,27 @@ function makeStorage(db, bus, name, indexes, subIdField) {
   let deleteBySubKeyStmt = SqliteDriver$ReventlessLocal.prepare(db, `DELETE FROM ` + table + ` WHERE partition_key = ? AND sub_key = ?`);
   let scanAllStmt = SqliteDriver$ReventlessLocal.prepare(db, `SELECT partition_key, sub_key, item FROM ` + table + ` WHERE ` + notExpiredClause + ` ORDER BY partition_key, sub_key`);
   let rowsFor = id => SqliteDriver$ReventlessLocal.all(selectByPartitionStmt, [id]).map(decodeItem);
-  let allRows = () => SqliteDriver$ReventlessLocal.all(scanAllStmt, []).map(row => {
+  let rowToItem = row => {
     let item = decodeItem(row);
     let match = row["partition_key"];
     let partition = typeof match === "string" ? match : "";
     return withId(item, partition);
-  });
+  };
+  let allRows = () => SqliteDriver$ReventlessLocal.all(scanAllStmt, []).map(rowToItem);
+  let indexLookupStmts = {};
+  let lookupByField = (field, value) => {
+    let s = indexLookupStmts[field];
+    let stmt;
+    if (s !== undefined) {
+      stmt = Primitive_option.valFromOption(s);
+    } else {
+      let escapedField = field.replaceAll("'", "''");
+      let s$1 = SqliteDriver$ReventlessLocal.prepare(db, `SELECT partition_key, sub_key, item FROM ` + table + ` WHERE json_extract(item, '$.` + escapedField + `') = ? AND ` + notExpiredClause);
+      indexLookupStmts[field] = s$1;
+      stmt = s$1;
+    }
+    return SqliteDriver$ReventlessLocal.all(stmt, [value]).map(rowToItem);
+  };
   let saveOne = (id, state, ttl) => {
     let subKey = computeSubKey(state, subIdField);
     let expiresAt = ttl !== undefined ? ttl : null;
@@ -287,6 +303,7 @@ function makeStorage(db, bus, name, indexes, subIdField) {
   bus.registerQueryDb(name, ops);
   bus.registerQueryDbScan(name, () => allRows());
   bus.registerQueryDbStream(name, () => Stream.fromIterable(allRows()));
+  bus.registerQueryDbIndexLookup(name, lookupByField);
   return {
     resources: [],
     dataSourceName: Pulumi.output(""),
@@ -300,11 +317,13 @@ function Make(Bus) {
     let busCallbacks_registerQueryDb = Bus.registerQueryDb;
     let busCallbacks_registerQueryDbScan = Bus.registerQueryDbScan;
     let busCallbacks_registerQueryDbStream = Bus.registerQueryDbStream;
+    let busCallbacks_registerQueryDbIndexLookup = Bus.registerQueryDbIndexLookup;
     let busCallbacks = {
       publishStateChange: busCallbacks_publishStateChange,
       registerQueryDb: busCallbacks_registerQueryDb,
       registerQueryDbScan: busCallbacks_registerQueryDbScan,
-      registerQueryDbStream: busCallbacks_registerQueryDbStream
+      registerQueryDbStream: busCallbacks_registerQueryDbStream,
+      registerQueryDbIndexLookup: busCallbacks_registerQueryDbIndexLookup
     };
     let make = (name, indexes, subIdField, param, param$1, param$2, param$3) => makeStorage(DbProvider.db, busCallbacks, name, indexes, subIdField);
     return {

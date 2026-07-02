@@ -139,6 +139,7 @@ type busCallbacks = {
   registerQueryDb: (string, QueryDb_Adapter.operations) => unit,
   registerQueryDbScan: (string, unit => array<JSON.t>) => unit,
   registerQueryDbStream: (string, unit => Stream.t<JSON.t, string, unit>) => unit,
+  registerQueryDbIndexLookup: (string, (string, string) => array<JSON.t>) => unit,
 }
 
 // SQL fragment that excludes expired rows. Uses unix-epoch seconds via
@@ -178,17 +179,38 @@ let makeStorage = (
     ->SqliteDriver.all([JSON.Encode.string(id)])
     ->Array.map(decodeItem)
 
-  let allRows = (): array<JSON.t> =>
-    scanAllStmt
-    ->SqliteDriver.all([])
-    ->Array.map(row => {
-      let item = decodeItem(row)
-      let partition = switch row->Dict.get("partition_key") {
-      | Some(JSON.String(s)) => s
-      | _ => ""
-      }
-      withId(item, partition)
-    })
+  let rowToItem = (row: dict<JSON.t>): JSON.t => {
+    let item = decodeItem(row)
+    let partition = switch row->Dict.get("partition_key") {
+    | Some(JSON.String(s)) => s
+    | _ => ""
+    }
+    withId(item, partition)
+  }
+
+  let allRows = (): array<JSON.t> => scanAllStmt->SqliteDriver.all([])->Array.map(rowToItem)
+
+  // Equality lookup on an indexed JSON field, pushed down to SQLite so the query
+  // rides the `json_extract` GSI index (`ensureIndexes`) instead of scanning +
+  // parsing every row in the resolver. Statements are prepared once per field and
+  // cached. String comparison mirrors the resolver's JS path (which only matched
+  // string-typed fields), so results are identical.
+  let indexLookupStmts: Dict.t<SqliteDriver.statement> = Dict.make()
+  let lookupByField = (field: string, value: string): array<JSON.t> => {
+    let stmt = switch indexLookupStmts->Dict.get(field) {
+    | Some(s) => s
+    | None =>
+      // Escape single quotes in the JSON path literal so an odd field name can't
+      // break out of the string (bound `?` already covers the value).
+      let escapedField = field->String.replaceAll("'", "''")
+      let s = db->SqliteDriver.prepare(
+        `SELECT partition_key, sub_key, item FROM ${table} WHERE json_extract(item, '$.${escapedField}') = ? AND ${notExpiredClause}`,
+      )
+      indexLookupStmts->Dict.set(field, s)
+      s
+    }
+    stmt->SqliteDriver.all([JSON.Encode.string(value)])->Array.map(rowToItem)
+  }
 
   let saveOne = (id: string, state: JSON.t, ttl: option<int>) => {
     let subKey = computeSubKey(state, subIdField)
@@ -331,6 +353,7 @@ let makeStorage = (
   bus.registerQueryDb(name, ops)
   bus.registerQueryDbScan(name, () => allRows())
   bus.registerQueryDbStream(name, () => allRows()->Stream.fromIterable)
+  bus.registerQueryDbIndexLookup(name, lookupByField)
 
   {
     resources: [],
@@ -348,6 +371,7 @@ module Make = (Bus: LocalBus.T, DbProvider: {let db: SqliteDriver.t}) => {
     registerQueryDb: Bus.registerQueryDb,
     registerQueryDbScan: Bus.registerQueryDbScan,
     registerQueryDbStream: Bus.registerQueryDbStream,
+    registerQueryDbIndexLookup: Bus.registerQueryDbIndexLookup,
   }
 
   let make: QueryDb_Adapter.storageMaker<unit, unit> = (

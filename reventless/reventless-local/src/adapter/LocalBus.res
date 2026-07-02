@@ -154,6 +154,13 @@ module type T = {
   // Used by LocalQueryEngine to honour ~limit via Stream.take without loading all items.
   let registerQueryDbStream: (string, unit => Stream.t<JSON.t, string, unit>) => unit
   let getQueryDbStream: string => option<unit => Stream.t<JSON.t, string, unit>>
+  // Indexed equality lookup: (field, value) → matching items. The SQLite backend
+  // registers a closure that pushes the predicate down to a `json_extract` GSI
+  // index instead of materialising + parsing the whole table; the in-memory
+  // backend registers a scan+filter. The `{name}By{Index}` resolvers use this
+  // when present and fall back to `getQueryDbScan` otherwise.
+  let registerQueryDbIndexLookup: (string, (string, string) => array<JSON.t>) => unit
+  let getQueryDbIndexLookup: string => option<(string, string) => array<JSON.t>>
 
   // Event log replay registry: aggregate EventLog name → replay function (entityId → events)
   let registerEventLogReplay: (string, string => promise<array<JSON.t>>) => unit
@@ -227,6 +234,7 @@ module Impl = (C: BusConfig): T => {
   let queryDbRegistry: ref<dict<ReventlessCore.QueryDb_Adapter.operations>> = ref(Dict.make())
   let queryDbScanRegistry: ref<dict<unit => array<JSON.t>>> = ref(Dict.make())
   let queryDbStreamRegistry: ref<dict<unit => Stream.t<JSON.t, string, unit>>> = ref(Dict.make())
+  let queryDbIndexLookupRegistry: ref<dict<(string, string) => array<JSON.t>>> = ref(Dict.make())
   let eventLogReplayRegistry: ref<dict<string => promise<array<JSON.t>>>> = ref(Dict.make())
   let dcbEventLogReadRegistry: ref<
     dict<
@@ -401,6 +409,9 @@ module Impl = (C: BusConfig): T => {
   let registerQueryDbStream = (name, streamFn) =>
     queryDbStreamRegistry.contents->Dict.set(name, streamFn)
   let getQueryDbStream = name => queryDbStreamRegistry.contents->Dict.get(name)
+  let registerQueryDbIndexLookup = (name, lookup) =>
+    queryDbIndexLookupRegistry.contents->Dict.set(name, lookup)
+  let getQueryDbIndexLookup = name => queryDbIndexLookupRegistry.contents->Dict.get(name)
 
   let registerEventLogReplay = (name, replay) =>
     eventLogReplayRegistry.contents->Dict.set(name, replay)
@@ -477,6 +488,7 @@ module Impl = (C: BusConfig): T => {
     queryDbRegistry := Dict.make()
     queryDbScanRegistry := Dict.make()
     queryDbStreamRegistry := Dict.make()
+    queryDbIndexLookupRegistry := Dict.make()
     eventLogReplayRegistry := Dict.make()
     dcbEventLogReadRegistry := Dict.make()
     stateChangeListeners := Dict.make()

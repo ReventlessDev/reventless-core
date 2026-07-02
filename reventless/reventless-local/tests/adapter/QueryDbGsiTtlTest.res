@@ -147,6 +147,84 @@ describe("QueryDbStorage_Sqlite — GSI", () => {
   })
 })
 
+describe("QueryDb — indexed equality lookup (B4 push-down)", () => {
+  let byOwner: Reventless.ReadModel.indexConfig = {
+    index: "ByOwner",
+    type_: "S",
+    idField: "ownerId",
+    projectionType: ALL,
+  }
+  let item = (owner: string) => {
+    let o = Dict.make()
+    o->Dict.set("ownerId", JSON.Encode.string(owner))
+    JSON.Encode.object(o)
+  }
+
+  testPromise("sqlite lookup returns only rows whose indexed field matches", async () => {
+    module TestBus = LocalBus.Make()
+    module DbProvider = {
+      let db = openFreshDb()
+    }
+    module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
+    let s = Storage.make(~name="orders", ~indexes=[byOwner], ~api=(), ~apiRole=(), ~opts)
+    let ops = await s.operations->TestRunner.resolve
+    let _ = await ops.save("k1", item("o1"), ReventlessCore.QueryDb.Any, None)
+    let _ = await ops.save("k2", item("o2"), ReventlessCore.QueryDb.Any, None)
+    let _ = await ops.save("k3", item("o1"), ReventlessCore.QueryDb.Any, None)
+
+    let lookup = TestBus.getQueryDbIndexLookup("orders")->Option.getOrThrow
+    expect(lookup("ownerId", "o1")->Array.length)->toBe(2)
+    expect(lookup("ownerId", "o2")->Array.length)->toBe(1)
+    expect(lookup("ownerId", "absent")->Array.length)->toBe(0)
+  })
+
+  testPromise("sqlite lookup excludes expired rows", async () => {
+    module TestBus = LocalBus.Make()
+    module DbProvider = {
+      let db = openFreshDb()
+    }
+    module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
+    let s = Storage.make(~name="orders", ~indexes=[byOwner], ~api=(), ~apiRole=(), ~opts)
+    let ops = await s.operations->TestRunner.resolve
+    let aMinuteAgo = Float.toInt(Date.now() /. 1000.0) - 60
+    let _ = await ops.save("k1", item("o1"), ReventlessCore.QueryDb.Any, None)
+    let _ = await ops.save("k2", item("o1"), ReventlessCore.QueryDb.Any, Some(aMinuteAgo))
+    let lookup = TestBus.getQueryDbIndexLookup("orders")->Option.getOrThrow
+    expect(lookup("ownerId", "o1")->Array.length)->toBe(1)
+  })
+
+  testPromise("in-memory lookup matches the sqlite result (backend parity)", async () => {
+    module TestBus = LocalBus.Make()
+    module Storage = QueryDbStorage_InMemory.Make(TestBus)
+    let s = Storage.makeMemory(~name="orders", ~indexes=[byOwner], ~api=(), ~apiRole=(), ~opts)
+    let ops = await s.operations->TestRunner.resolve
+    let _ = await ops.save("k1", item("o1"), ReventlessCore.QueryDb.Any, None)
+    let _ = await ops.save("k2", item("o2"), ReventlessCore.QueryDb.Any, None)
+    let _ = await ops.save("k3", item("o1"), ReventlessCore.QueryDb.Any, None)
+    let lookup = TestBus.getQueryDbIndexLookup("orders")->Option.getOrThrow
+    expect(lookup("ownerId", "o1")->Array.length)->toBe(2)
+    expect(lookup("ownerId", "o2")->Array.length)->toBe(1)
+    expect(lookup("ownerId", "absent")->Array.length)->toBe(0)
+  })
+})
+
+describe("QueryDbStorage_InMemory — lazy scan snapshot (B4 dirty-flag)", () => {
+  testPromise("interleaved save/scan reflects each write without stale reads", async () => {
+    module TestBus = LocalBus.Make()
+    module Storage = QueryDbStorage_InMemory.Make(TestBus)
+    let s = Storage.make(~name="lazy", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+    let ops = await s.operations->TestRunner.resolve
+    let scanFn = TestBus.getQueryDbScan("lazy")->Option.getOrThrow
+    expect(scanFn()->Array.length)->toBe(0)
+    let _ = await ops.save("a", JSON.Encode.string("va"), ReventlessCore.QueryDb.Any, None)
+    expect(scanFn()->Array.length)->toBe(1)
+    let _ = await ops.save("b", JSON.Encode.string("vb"), ReventlessCore.QueryDb.Any, None)
+    expect(scanFn()->Array.length)->toBe(2)
+    let _ = await ops.delete("a", None)
+    expect(scanFn()->Array.length)->toBe(1)
+  })
+})
+
 describe("QueryDbStorage_Sqlite — TTL", () => {
   testPromise("save with TTL in the future returns the item", async () => {
     module TestBus = LocalBus.Make()

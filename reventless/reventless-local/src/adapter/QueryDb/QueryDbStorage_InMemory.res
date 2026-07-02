@@ -69,6 +69,7 @@ module Make = (Bus: LocalBus.T) => {
     registerQueryDb: Bus.registerQueryDb,
     registerQueryDbScan: Bus.registerQueryDbScan,
     registerQueryDbStream: Bus.registerQueryDbStream,
+    registerQueryDbIndexLookup: Bus.registerQueryDbIndexLookup,
   }
 
   let makeMemory: QueryDb_Adapter.storageMaker<unit, unit> = (
@@ -81,10 +82,20 @@ module Make = (Bus: LocalBus.T) => {
     ~opts as _,
   ) => {
     let store: ref<dict<dict<JSON.t>>> = ref(Dict.make())
-    let allItems: ref<array<JSON.t>> = ref([])
-
-    let syncAll = () => {
-      allItems.contents = flattenStore(store.contents)
+    // Lazy flattened snapshot for the registered scan/stream closures. The old
+    // shape reflattened+resorted the *entire* store on every single-row write
+    // (`syncAll`), so a projection replaying N events was O(n²). Instead each
+    // mutation just marks the snapshot dirty; the scan closure reflattens once,
+    // on demand, and only when something changed since the last read.
+    let snapshot: ref<array<JSON.t>> = ref([])
+    let dirty = ref(false)
+    let syncAll = () => dirty := true
+    let currentItems = () => {
+      if dirty.contents {
+        snapshot.contents = flattenStore(store.contents)
+        dirty := false
+      }
+      snapshot.contents
     }
 
     // TTL parity with the SQLite backend (which filters on `expires_at`). We
@@ -303,11 +314,25 @@ module Make = (Bus: LocalBus.T) => {
     Bus.registerQueryDb(name, ops)
     Bus.registerQueryDbScan(name, () => {
       purgeExpired()
-      allItems.contents
+      currentItems()
     })
     Bus.registerQueryDbStream(name, () => {
       purgeExpired()
-      allItems.contents->Stream.fromIterable
+      currentItems()->Stream.fromIterable
+    })
+    // Equality lookup on an indexed field. No real in-memory index (dev scale),
+    // but reusing the lazy snapshot avoids reflattening per call and keeps result
+    // parity with the SQLite `json_extract` push-down (both match string fields).
+    Bus.registerQueryDbIndexLookup(name, (field, value) => {
+      purgeExpired()
+      currentItems()->Array.filter(item =>
+        item
+        ->JSON.Decode.object
+        ->Option.flatMap(d => d->Dict.get(field))
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.map(v => v == value)
+        ->Option.getOr(false)
+      )
     })
 
     {

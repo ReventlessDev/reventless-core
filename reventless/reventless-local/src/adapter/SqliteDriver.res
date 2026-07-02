@@ -27,7 +27,17 @@ let openDb = (~path) => {
   if path !== ":memory:" {
     mkdirSync(dirname(path), {recursive: true})
   }
-  openDatabaseSync(path)
+  let db = openDatabaseSync(path)
+  // Connection pragmas. WAL lets readers proceed concurrently with a writer and
+  // batches fsyncs into the write-ahead log (a no-op for `:memory:`, which stays
+  // on its MEMORY journal); `synchronous=NORMAL` is the safe WAL companion —
+  // durable across app crashes, only a power-loss window remains — and cuts the
+  // per-commit fsync cost that dominated replay-heavy dev sessions;
+  // `busy_timeout` makes a momentarily-locked db wait rather than throw SQLITE_BUSY.
+  _exec(db, "PRAGMA journal_mode=WAL")
+  _exec(db, "PRAGMA synchronous=NORMAL")
+  _exec(db, "PRAGMA busy_timeout=5000")
+  db
 }
 let close = db => _close(db)
 let exec = (db, sql) => _exec(db, sql)

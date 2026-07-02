@@ -748,19 +748,26 @@ module Make = (Bus: LocalBus.T) => {
           | Allow =>
             let value =
               args->JSON.Decode.object->Option.flatMap(d => d->Dict.get(index))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
-            switch Bus.getQueryDbScan(name) {
-            | Some(scanAll) =>
-              scanAll()
-              ->Array.filter(item =>
-                item
-                ->JSON.Decode.object
-                ->Option.flatMap(d => d->Dict.get(filterField))
-                ->Option.flatMap(JSON.Decode.string)
-                ->Option.map(v => v == value)
-                ->Option.getOr(false)
-              )
-              ->JSON.Encode.array
-            | None => []->JSON.Encode.array
+            // Prefer the pushed-down equality lookup (SQLite rides the GSI index;
+            // in-memory reuses its lazy snapshot). Fall back to scan+filter only
+            // if no lookup is registered for this QueryDb.
+            switch Bus.getQueryDbIndexLookup(name) {
+            | Some(lookup) => lookup(filterField, value)->JSON.Encode.array
+            | None =>
+              switch Bus.getQueryDbScan(name) {
+              | Some(scanAll) =>
+                scanAll()
+                ->Array.filter(item =>
+                  item
+                  ->JSON.Decode.object
+                  ->Option.flatMap(d => d->Dict.get(filterField))
+                  ->Option.flatMap(JSON.Decode.string)
+                  ->Option.map(v => v == value)
+                  ->Option.getOr(false)
+                )
+                ->JSON.Encode.array
+              | None => []->JSON.Encode.array
+              }
             }
           }
         }
