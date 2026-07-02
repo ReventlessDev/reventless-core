@@ -20,6 +20,53 @@ let decodeCursor = (cursor: string): string => atob(cursor)
 // required for keyset `pageInfo` to be reported correctly.
 let defaultListPageSize = 50
 
+// The effective id of an item (its "id" field). Shared with the SQLite
+// push-down so both compute the tiebreak / default-cursor value identically.
+let getId = (item: JSON.t): string =>
+  item
+  ->JSON.Decode.object
+  ->Option.flatMap(d => d->Dict.get("id"))
+  ->Option.flatMap(JSON.Decode.string)
+  ->Option.getOr("")
+
+// String form of a field for comparison / cursor purposes: the string itself,
+// or a number rendered via Float.toString, else None. The push-down must render
+// the same string in SQL (CAST … AS TEXT) for cursor/order parity.
+let getFieldString = (item: JSON.t, field: string): option<string> =>
+  item
+  ->JSON.Decode.object
+  ->Option.flatMap(d => d->Dict.get(field))
+  ->Option.flatMap(v =>
+    switch v->JSON.Decode.string {
+    | Some(s) => Some(s)
+    | None => v->JSON.Decode.float->Option.map(f => Float.toString(f))
+    }
+  )
+
+// Build the Relay connection object from an already-ordered page. Shared by
+// `run` and the SQLite push-down so edges / cursors / pageInfo have one shape.
+let buildConnection = (
+  ~pageItems: array<JSON.t>,
+  ~hasNextPage: bool,
+  ~hasPreviousPage: bool,
+  ~cursorValueOf: JSON.t => string,
+): JSON.t => {
+  let edges =
+    pageItems->Array.map(item => Obj.magic({"node": item, "cursor": encodeCursor(cursorValueOf(item))}))
+  let startCursor = pageItems->Array.get(0)->Option.map(item => encodeCursor(cursorValueOf(item)))
+  let endCursor =
+    pageItems->Array.get(pageItems->Array.length - 1)->Option.map(item => encodeCursor(cursorValueOf(item)))
+  Obj.magic({
+    "edges": edges,
+    "pageInfo": {
+      "hasNextPage": hasNextPage,
+      "hasPreviousPage": hasPreviousPage,
+      "startCursor": startCursor->Nullable.fromOption,
+      "endCursor": endCursor->Nullable.fromOption,
+    },
+  })
+}
+
 // Compute the Relay connection response (edges + pageInfo) for `items` under the
 // GraphQL args. `decodeLocalId` maps a possibly-Relay-encoded id to its local id
 // (the resolver passes DomainGraphQL_Server.decodeGlobalId); everything else is
@@ -46,24 +93,8 @@ let run = (
     ->Option.flatMap(d => d->Dict.get(labelField))
     ->Option.flatMap(JSON.Decode.string)
     ->Option.getOr("")
-  let getId = item =>
-    item
-    ->JSON.Decode.object
-    ->Option.flatMap(d => d->Dict.get("id"))
-    ->Option.flatMap(JSON.Decode.string)
-    ->Option.getOr("")
   // Per-field eq / from / to filters derived from capability — applied alongside
   // the legacy search/searchPrefix/ids block.
-  let getFieldString = (item, field) =>
-    item
-    ->JSON.Decode.object
-    ->Option.flatMap(d => d->Dict.get(field))
-    ->Option.flatMap(v =>
-      switch v->JSON.Decode.string {
-      | Some(s) => Some(s)
-      | None => v->JSON.Decode.float->Option.map(f => Float.toString(f))
-      }
-    )
   let perFieldChecks: array<JSON.t => bool> = capability.filterFields->Array.flatMap(f => {
     let checks: array<JSON.t => bool> = []
     switch filterDict->Dict.get(f.name ++ "Eq") {
@@ -221,20 +252,10 @@ let run = (
     (arr->Array.slice(~start=0, ~end=pageSize), hasMore)
   }
 
-  let edges =
-    pageItems->Array.map(item => Obj.magic({"node": item, "cursor": encodeCursor(getCursorValue(item))}))
-  let startCursor = pageItems->Array.get(0)->Option.map(item => encodeCursor(getCursorValue(item)))
-  let endCursor =
-    pageItems
-    ->Array.get(pageItems->Array.length - 1)
-    ->Option.map(item => encodeCursor(getCursorValue(item)))
-  Obj.magic({
-    "edges": edges,
-    "pageInfo": {
-      "hasNextPage": !isBackward && hasMore,
-      "hasPreviousPage": isBackward && hasMore,
-      "startCursor": startCursor->Nullable.fromOption,
-      "endCursor": endCursor->Nullable.fromOption,
-    },
-  })
+  buildConnection(
+    ~pageItems,
+    ~hasNextPage=!isBackward && hasMore,
+    ~hasPreviousPage=isBackward && hasMore,
+    ~cursorValueOf=getCursorValue,
+  )
 }

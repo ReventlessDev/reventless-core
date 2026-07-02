@@ -14,14 +14,12 @@ function decodeCursor(cursor) {
   return atob(cursor);
 }
 
-function run(items, argsDict, capability, labelField, decodeLocalId) {
-  let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});
-  let search = Stdlib_Option.flatMap(filterDict["search"], Stdlib_JSON.Decode.string);
-  let searchPrefix = Stdlib_Option.flatMap(filterDict["searchPrefix"], Stdlib_JSON.Decode.string);
-  let ids = Stdlib_Option.map(Stdlib_Option.flatMap(filterDict["ids"], Stdlib_JSON.Decode.array), arr => Stdlib_Array.filterMap(arr, Stdlib_JSON.Decode.string));
-  let getLabel = item => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[labelField]), Stdlib_JSON.Decode.string), "");
-  let getId = item => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d["id"]), Stdlib_JSON.Decode.string), "");
-  let getFieldString = (item, field) => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]), v => {
+function getId(item) {
+  return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d["id"]), Stdlib_JSON.Decode.string), "");
+}
+
+function getFieldString(item, field) {
+  return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]), v => {
     let s = Stdlib_JSON.Decode.string(v);
     if (s !== undefined) {
       return s;
@@ -29,6 +27,32 @@ function run(items, argsDict, capability, labelField, decodeLocalId) {
       return Stdlib_Option.map(Stdlib_JSON.Decode.float(v), f => f.toString());
     }
   });
+}
+
+function buildConnection(pageItems, hasNextPage, hasPreviousPage, cursorValueOf) {
+  let edges = pageItems.map(item => ({
+    node: item,
+    cursor: btoa(cursorValueOf(item))
+  }));
+  let startCursor = Stdlib_Option.map(pageItems[0], item => btoa(cursorValueOf(item)));
+  let endCursor = Stdlib_Option.map(pageItems[pageItems.length - 1 | 0], item => btoa(cursorValueOf(item)));
+  return {
+    edges: edges,
+    pageInfo: {
+      hasNextPage: hasNextPage,
+      hasPreviousPage: hasPreviousPage,
+      startCursor: Stdlib_Nullable.fromOption(startCursor),
+      endCursor: Stdlib_Nullable.fromOption(endCursor)
+    }
+  };
+}
+
+function run(items, argsDict, capability, labelField, decodeLocalId) {
+  let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});
+  let search = Stdlib_Option.flatMap(filterDict["search"], Stdlib_JSON.Decode.string);
+  let searchPrefix = Stdlib_Option.flatMap(filterDict["searchPrefix"], Stdlib_JSON.Decode.string);
+  let ids = Stdlib_Option.map(Stdlib_Option.flatMap(filterDict["ids"], Stdlib_JSON.Decode.array), arr => Stdlib_Array.filterMap(arr, Stdlib_JSON.Decode.string));
+  let getLabel = item => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[labelField]), Stdlib_JSON.Decode.string), "");
   let perFieldChecks = capability.filterFields.flatMap(f => {
     let checks = [];
     let v = filterDict[f.name + "Eq"];
@@ -171,22 +195,7 @@ function run(items, argsDict, capability, labelField, decodeLocalId) {
     ];
   }
   let hasMore$2 = match[1];
-  let pageItems = match[0];
-  let edges = pageItems.map(item => ({
-    node: item,
-    cursor: btoa(getCursorValue(item))
-  }));
-  let startCursor = Stdlib_Option.map(pageItems[0], item => btoa(getCursorValue(item)));
-  let endCursor = Stdlib_Option.map(pageItems[pageItems.length - 1 | 0], item => btoa(getCursorValue(item)));
-  return {
-    edges: edges,
-    pageInfo: {
-      hasNextPage: !isBackward && hasMore$2,
-      hasPreviousPage: isBackward && hasMore$2,
-      startCursor: Stdlib_Nullable.fromOption(startCursor),
-      endCursor: Stdlib_Nullable.fromOption(endCursor)
-    }
-  };
+  return buildConnection(match[0], !isBackward && hasMore$2, isBackward && hasMore$2, getCursorValue);
 }
 
 let defaultListPageSize = 50;
@@ -195,6 +204,9 @@ export {
   encodeCursor,
   decodeCursor,
   defaultListPageSize,
+  getId,
+  getFieldString,
+  buildConnection,
   run,
 }
 /* No side effect */

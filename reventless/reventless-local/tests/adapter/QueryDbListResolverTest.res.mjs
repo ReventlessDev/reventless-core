@@ -13,6 +13,8 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as LocalBus$ReventlessLocal from "../../src/adapter/LocalBus.res.mjs";
 import * as TestRunner$ReventlessLocal from "../../src/test/TestRunner.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
+import * as BackendState$ReventlessLocal from "../../src/adapter/BackendState.res.mjs";
+import * as SqliteDriver$ReventlessLocal from "../../src/adapter/SqliteDriver.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as QueryDb_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Adapter.res.mjs";
 import * as QueryDb_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Builder.res.mjs";
@@ -404,6 +406,88 @@ globalThis.describe("QueryDb list resolver — keyset pagination", () => {
     globalThis.expect(pageInfoBool(response, "hasNextPage")).toBe(false);
     globalThis.expect(pageInfoBool(response, "hasPreviousPage")).toBe(false);
   });
+});
+
+globalThis.describe("QueryDb list resolver — SQLite push-down path", () => {
+  globalThis.beforeEach(() => DomainGraphQL_Server$ReventlessLocal.reset());
+  let withSqlite = async fn => {
+    let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
+    BackendState$ReventlessLocal.setSqlite(db, ":memory:");
+    let r = await fn();
+    BackendState$ReventlessLocal.setMemory();
+    SqliteDriver$ReventlessLocal.close(db);
+    return r;
+  };
+  globalThis.test("first:2 then after walks forward without overlap", () => withSqlite(async () => {
+    let match = await buildFixture("SqlPageA");
+    let resolver = match[0];
+    let page1 = await resolver(null, Object.fromEntries([[
+        "first",
+        2
+      ]]), emptyCtx);
+    let edges1 = getEdges(page1);
+    globalThis.expect(edges1.length).toBe(2);
+    globalThis.expect(edgeNodeField(edges1[0], "productId")).toBe("p-1");
+    globalThis.expect(edgeNodeField(edges1[1], "productId")).toBe("p-2");
+    globalThis.expect(pageInfoBool(page1, "hasNextPage")).toBe(true);
+    let endCursor1 = Stdlib_Option.getOr(getString(pageInfo(page1), "endCursor"), "");
+    let page2 = await resolver(null, Object.fromEntries([
+      [
+        "first",
+        2
+      ],
+      [
+        "after",
+        endCursor1
+      ]
+    ]), emptyCtx);
+    let edges2 = getEdges(page2);
+    globalThis.expect(edges2.length).toBe(2);
+    globalThis.expect(edgeNodeField(edges2[0], "productId")).toBe("p-3");
+    globalThis.expect(edgeNodeField(edges2[1], "productId")).toBe("p-4");
+  }));
+  globalThis.test("orderBy name DESC + first:2 returns the reverse-sorted head", () => withSqlite(async () => {
+    let match = await buildFixture("SqlPageB");
+    let orderBy = Object.fromEntries([
+      [
+        "field",
+        "name"
+      ],
+      [
+        "direction",
+        "DESC"
+      ]
+    ]);
+    let page1 = await match[0](null, Object.fromEntries([
+      [
+        "orderBy",
+        orderBy
+      ],
+      [
+        "first",
+        2
+      ]
+    ]), emptyCtx);
+    let edges1 = getEdges(page1);
+    globalThis.expect(edges1.length).toBe(2);
+    globalThis.expect(edgeNodeField(edges1[0], "name")).toBe("Echo");
+    globalThis.expect(edgeNodeField(edges1[1], "name")).toBe("Delta");
+  }));
+  globalThis.test("statusEq active narrows the pushed page", () => withSqlite(async () => {
+    let match = await buildFixture("SqlPageC");
+    let activeFilter = Object.fromEntries([[
+        "statusEq",
+        "active"
+      ]]);
+    let response = await match[0](null, Object.fromEntries([[
+        "filter",
+        activeFilter
+      ]]), emptyCtx);
+    let edges = getEdges(response);
+    globalThis.expect(edges.length).toBe(3);
+    globalThis.expect(edgeNodeField(edges[0], "productId")).toBe("p-1");
+    globalThis.expect(edgeNodeField(edges[2], "productId")).toBe("p-4");
+  }));
 });
 
 export {

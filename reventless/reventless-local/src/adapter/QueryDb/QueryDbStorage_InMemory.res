@@ -70,6 +70,7 @@ module Make = (Bus: LocalBus.T) => {
     registerQueryDbScan: Bus.registerQueryDbScan,
     registerQueryDbStream: Bus.registerQueryDbStream,
     registerQueryDbIndexLookup: Bus.registerQueryDbIndexLookup,
+    registerQueryDbListPage: Bus.registerQueryDbListPage,
   }
 
   let makeMemory: QueryDb_Adapter.storageMaker<unit, unit> = (

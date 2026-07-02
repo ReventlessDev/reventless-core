@@ -7,6 +7,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as LocalBus$ReventlessLocal from "../LocalBus.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "../SqliteDriver.res.mjs";
+import * as QueryDbListQuery$ReventlessLocal from "./QueryDbListQuery.res.mjs";
 
 function tableName(name) {
   return "qdb_" + name.replaceAll("-", "_");
@@ -304,6 +305,82 @@ function makeStorage(db, bus, name, indexes, subIdField) {
   bus.registerQueryDbScan(name, () => allRows());
   bus.registerQueryDbStream(name, () => Stream.fromIterable(allRows()));
   bus.registerQueryDbIndexLookup(name, lookupByField);
+  let listStmtCache = {};
+  let preparedList = sql => {
+    let s = listStmtCache[sql];
+    if (s !== undefined) {
+      return Primitive_option.valFromOption(s);
+    }
+    let s$1 = SqliteDriver$ReventlessLocal.prepare(db, sql);
+    listStmtCache[sql] = s$1;
+    return s$1;
+  };
+  let jsonText = field => `CAST(json_extract(item, '$.` + field.replaceAll("'", "''") + `') AS TEXT)`;
+  let idExpr = "COALESCE(json_extract(item, '$.id'), partition_key)";
+  let listPage = (argsDict, capability, param) => {
+    let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});
+    let strNonEmpty = k => Stdlib_Option.mapOr(Stdlib_Option.flatMap(filterDict[k], Stdlib_JSON.Decode.string), false, s => s.length > 0);
+    let hasIds = Stdlib_Option.mapOr(Stdlib_Option.flatMap(filterDict["ids"], Stdlib_JSON.Decode.array), false, a => a.length !== 0);
+    let last = Stdlib_Option.flatMap(argsDict["last"], Stdlib_JSON.Decode.float);
+    let before = Stdlib_Option.flatMap(argsDict["before"], Stdlib_JSON.Decode.string);
+    if (strNonEmpty("search") || strNonEmpty("searchPrefix") || hasIds || Stdlib_Option.isSome(last) || Stdlib_Option.isSome(before)) {
+      return;
+    }
+    let whereParts = [notExpiredClause];
+    let params = [];
+    let valString = v => {
+      let s = Stdlib_JSON.Decode.string(v);
+      if (s !== undefined) {
+        return s;
+      } else {
+        return Stdlib_Option.map(Stdlib_JSON.Decode.float(v), f => f.toString());
+      }
+    };
+    capability.filterFields.forEach(f => {
+      let v = filterDict[f.name + "Eq"];
+      if (v !== undefined && v !== null) {
+        whereParts.push(jsonText(f.name) + ` = ?`);
+        params.push(Stdlib_Option.getOr(valString(v), ""));
+      }
+      if (!f.range) {
+        return;
+      }
+      let v$1 = filterDict[f.name + "From"];
+      if (v$1 !== undefined && v$1 !== null) {
+        whereParts.push(jsonText(f.name) + ` >= ?`);
+        params.push(Stdlib_Option.getOr(valString(v$1), ""));
+      }
+      let v$2 = filterDict[f.name + "To"];
+      if (v$2 !== undefined && v$2 !== null) {
+        whereParts.push(jsonText(f.name) + ` <= ?`);
+        params.push(Stdlib_Option.getOr(valString(v$2), ""));
+        return;
+      }
+    });
+    let orderByDict = Stdlib_Option.flatMap(argsDict["orderBy"], Stdlib_JSON.Decode.object);
+    let orderByField = Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["field"]), Stdlib_JSON.Decode.string);
+    let isDesc = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["direction"]), Stdlib_JSON.Decode.string), "ASC") === "DESC";
+    let cursorExpr = orderByField !== undefined ? jsonText(orderByField) : idExpr;
+    let c = Stdlib_Option.flatMap(argsDict["after"], Stdlib_JSON.Decode.string);
+    if (c !== undefined) {
+      whereParts.push(cursorExpr + ` ` + (
+        isDesc ? "<" : ">"
+      ) + ` ?`);
+      params.push(QueryDbListQuery$ReventlessLocal.decodeCursor(c));
+    }
+    let orderClause = orderByField !== undefined ? jsonText(orderByField) + ` ` + (
+        isDesc ? "DESC" : "ASC"
+      ) + `, ` + idExpr + ` ASC` : idExpr + ` ASC`;
+    let pageSize = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["first"], Stdlib_JSON.Decode.float), prim => prim | 0), QueryDbListQuery$ReventlessLocal.defaultListPageSize);
+    let sql = `SELECT partition_key, item FROM ` + table + ` WHERE ` + whereParts.join(" AND ") + ` ORDER BY ` + orderClause + ` LIMIT ?`;
+    let rows = SqliteDriver$ReventlessLocal.all(preparedList(sql), params.concat([pageSize + 1 | 0])).map(rowToItem);
+    let hasMore = rows.length > pageSize;
+    let pageItems = rows.slice(0, pageSize);
+    let cursorField = Stdlib_Option.getOr(orderByField, "id");
+    let cursorValueOf = item => Stdlib_Option.getOr(QueryDbListQuery$ReventlessLocal.getFieldString(item, cursorField), QueryDbListQuery$ReventlessLocal.getId(item));
+    return QueryDbListQuery$ReventlessLocal.buildConnection(pageItems, hasMore, false, cursorValueOf);
+  };
+  bus.registerQueryDbListPage(name, listPage);
   return {
     resources: [],
     dataSourceName: Pulumi.output(""),
@@ -318,12 +395,14 @@ function Make(Bus) {
     let busCallbacks_registerQueryDbScan = Bus.registerQueryDbScan;
     let busCallbacks_registerQueryDbStream = Bus.registerQueryDbStream;
     let busCallbacks_registerQueryDbIndexLookup = Bus.registerQueryDbIndexLookup;
+    let busCallbacks_registerQueryDbListPage = Bus.registerQueryDbListPage;
     let busCallbacks = {
       publishStateChange: busCallbacks_publishStateChange,
       registerQueryDb: busCallbacks_registerQueryDb,
       registerQueryDbScan: busCallbacks_registerQueryDbScan,
       registerQueryDbStream: busCallbacks_registerQueryDbStream,
-      registerQueryDbIndexLookup: busCallbacks_registerQueryDbIndexLookup
+      registerQueryDbIndexLookup: busCallbacks_registerQueryDbIndexLookup,
+      registerQueryDbListPage: busCallbacks_registerQueryDbListPage
     };
     let make = (name, indexes, subIdField, param, param$1, param$2, param$3) => makeStorage(DbProvider.db, busCallbacks, name, indexes, subIdField);
     return {

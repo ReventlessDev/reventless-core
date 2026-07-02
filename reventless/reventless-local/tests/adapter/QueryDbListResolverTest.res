@@ -359,3 +359,79 @@ describe("QueryDb list resolver — keyset pagination", () => {
     expect(pageInfoBool(response, "hasPreviousPage"))->toBe(false)
   })
 })
+
+// End-to-end under SQLite: the storage registers the list push-down, so the
+// resolver takes the pushed path (json_extract + ORDER BY … LIMIT) rather than
+// the JS fallback. Same fixture, same expectations → proves the resolver wiring
+// (capability derivation + args → push-down) yields identical output. Unit-level
+// SQL≡spec parity across the full arg matrix lives in QueryDbListPushdownParityTest.
+describe("QueryDb list resolver — SQLite push-down path", () => {
+  beforeEach(() => {
+    DomainGraphQL_Server.reset()
+  })
+
+  let withSqlite = async fn => {
+    let db = SqliteDriver.openDb(~path=":memory:")
+    BackendState.setSqlite(~db, ~path=":memory:")
+    let r = await fn()
+    BackendState.setMemory()
+    db->SqliteDriver.close
+    r
+  }
+
+  testPromise("first:2 then after walks forward without overlap", () =>
+    withSqlite(async () => {
+      let (resolver, _) = await buildFixture(~name="SqlPageA")
+      let page1 = await resolver(JSON.Encode.null, argsOf([("first", numJson(2))]), emptyCtx)
+      let edges1 = getEdges(page1)
+      expect(edges1->Array.length)->toBe(2)
+      expect(edgeNodeField(edges1->Array.getUnsafe(0), "productId"))->toBe("p-1")
+      expect(edgeNodeField(edges1->Array.getUnsafe(1), "productId"))->toBe("p-2")
+      expect(pageInfoBool(page1, "hasNextPage"))->toBe(true)
+
+      let endCursor1 = pageInfoString(page1, "endCursor")->Option.getOr("")
+      let page2 =
+        await resolver(
+          JSON.Encode.null,
+          argsOf([("first", numJson(2)), ("after", strJson(endCursor1))]),
+          emptyCtx,
+        )
+      let edges2 = getEdges(page2)
+      expect(edges2->Array.length)->toBe(2)
+      expect(edgeNodeField(edges2->Array.getUnsafe(0), "productId"))->toBe("p-3")
+      expect(edgeNodeField(edges2->Array.getUnsafe(1), "productId"))->toBe("p-4")
+    })
+  )
+
+  testPromise("orderBy name DESC + first:2 returns the reverse-sorted head", () =>
+    withSqlite(async () => {
+      let (resolver, _) = await buildFixture(~name="SqlPageB")
+      let orderBy = JSON.Encode.object(
+        Dict.fromArray([("field", strJson("name")), ("direction", strJson("DESC"))]),
+      )
+      let page1 =
+        await resolver(
+          JSON.Encode.null,
+          argsOf([("orderBy", orderBy), ("first", numJson(2))]),
+          emptyCtx,
+        )
+      let edges1 = getEdges(page1)
+      expect(edges1->Array.length)->toBe(2)
+      expect(edgeNodeField(edges1->Array.getUnsafe(0), "name"))->toBe("Echo")
+      expect(edgeNodeField(edges1->Array.getUnsafe(1), "name"))->toBe("Delta")
+    })
+  )
+
+  testPromise("statusEq active narrows the pushed page", () =>
+    withSqlite(async () => {
+      let (resolver, _) = await buildFixture(~name="SqlPageC")
+      let activeFilter = JSON.Encode.object(Dict.fromArray([("statusEq", strJson("active"))]))
+      let response =
+        await resolver(JSON.Encode.null, argsOf([("filter", activeFilter)]), emptyCtx)
+      let edges = getEdges(response)
+      expect(edges->Array.length)->toBe(3)
+      expect(edgeNodeField(edges->Array.getUnsafe(0), "productId"))->toBe("p-1")
+      expect(edgeNodeField(edges->Array.getUnsafe(2), "productId"))->toBe("p-4")
+    })
+  )
+})

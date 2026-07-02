@@ -140,6 +140,14 @@ type busCallbacks = {
   registerQueryDbScan: (string, unit => array<JSON.t>) => unit,
   registerQueryDbStream: (string, unit => Stream.t<JSON.t, string, unit>) => unit,
   registerQueryDbIndexLookup: (string, (string, string) => array<JSON.t>) => unit,
+  registerQueryDbListPage: (
+    string,
+    (
+      ~argsDict: dict<JSON.t>,
+      ~capability: GraphQL_FragmentGenerator.serverCapability,
+      ~labelField: string,
+    ) => option<JSON.t>,
+  ) => unit,
 }
 
 // SQL fragment that excludes expired rows. Uses unix-epoch seconds via
@@ -355,6 +363,125 @@ let makeStorage = (
   bus.registerQueryDbStream(name, () => allRows()->Stream.fromIterable)
   bus.registerQueryDbIndexLookup(name, lookupByField)
 
+  // Connection-list push-down. Builds `json_extract` predicates + `ORDER BY …
+  // LIMIT pageSize+1` so a page fetch reads only what it returns rather than the
+  // whole read model. Reproduces `QueryDbListQuery` semantics exactly for the
+  // shapes it handles; returns None (→ the resolver falls back to that shared
+  // spec over a full scan) for shapes not bit-exact in SQL: case-insensitive
+  // search/searchPrefix, Relay-global-id `ids`, and backward pagination
+  // (last/before). Cursor values, edges, and pageInfo are built by the SAME
+  // `QueryDbListQuery` helpers the fallback uses, so only the WHERE/ORDER/LIMIT
+  // needs to match — which the parity harness asserts across a data + args
+  // matrix. Comparisons use TEXT (CAST) to mirror the JS string-comparison
+  // semantics; BINARY collation agrees with JS `<` for the ASCII id/status/name
+  // fields used as sort/filter keys.
+  let listStmtCache: Dict.t<SqliteDriver.statement> = Dict.make()
+  let preparedList = (sql: string): SqliteDriver.statement =>
+    switch listStmtCache->Dict.get(sql) {
+    | Some(s) => s
+    | None =>
+      let s = db->SqliteDriver.prepare(sql)
+      listStmtCache->Dict.set(sql, s)
+      s
+    }
+  let jsonText = (field: string): string =>
+    `CAST(json_extract(item, '$.${field->String.replaceAll("'", "''")}') AS TEXT)`
+  let idExpr = "COALESCE(json_extract(item, '$.id'), partition_key)"
+  let listPage = (
+    ~argsDict: dict<JSON.t>,
+    ~capability: GraphQL_FragmentGenerator.serverCapability,
+    ~labelField as _,
+  ): option<JSON.t> => {
+    let filterDict =
+      argsDict->Dict.get("filter")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
+    let strNonEmpty = k =>
+      filterDict->Dict.get(k)->Option.flatMap(JSON.Decode.string)->Option.mapOr(false, s => s->String.length > 0)
+    let hasIds =
+      filterDict->Dict.get("ids")->Option.flatMap(JSON.Decode.array)->Option.mapOr(false, a => a->Array.length > 0)
+    let last = argsDict->Dict.get("last")->Option.flatMap(JSON.Decode.float)
+    let before = argsDict->Dict.get("before")->Option.flatMap(JSON.Decode.string)
+    if strNonEmpty("search") || strNonEmpty("searchPrefix") || hasIds || last->Option.isSome || before->Option.isSome {
+      None
+    } else {
+      let whereParts = [notExpiredClause]
+      let params = []
+      let valString = v =>
+        switch v->JSON.Decode.string {
+        | Some(s) => Some(s)
+        | None => v->JSON.Decode.float->Option.map(f => Float.toString(f))
+        }
+      capability.filterFields->Array.forEach(f => {
+        switch filterDict->Dict.get(f.name ++ "Eq") {
+        | Some(v) when v != JSON.Encode.null =>
+          whereParts->Array.push(`${jsonText(f.name)} = ?`)
+          params->Array.push(JSON.Encode.string(valString(v)->Option.getOr("")))
+        | _ => ()
+        }
+        if f.range {
+          switch filterDict->Dict.get(f.name ++ "From") {
+          | Some(v) when v != JSON.Encode.null =>
+            whereParts->Array.push(`${jsonText(f.name)} >= ?`)
+            params->Array.push(JSON.Encode.string(valString(v)->Option.getOr("")))
+          | _ => ()
+          }
+          switch filterDict->Dict.get(f.name ++ "To") {
+          | Some(v) when v != JSON.Encode.null =>
+            whereParts->Array.push(`${jsonText(f.name)} <= ?`)
+            params->Array.push(JSON.Encode.string(valString(v)->Option.getOr("")))
+          | _ => ()
+          }
+        }
+      })
+      let orderByDict = argsDict->Dict.get("orderBy")->Option.flatMap(JSON.Decode.object)
+      let orderByField =
+        orderByDict->Option.flatMap(ob => ob->Dict.get("field"))->Option.flatMap(JSON.Decode.string)
+      let isDesc =
+        orderByDict
+        ->Option.flatMap(ob => ob->Dict.get("direction"))
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.getOr("ASC") == "DESC"
+      let cursorExpr = switch orderByField {
+      | Some(f) => jsonText(f)
+      | None => idExpr
+      }
+      switch argsDict->Dict.get("after")->Option.flatMap(JSON.Decode.string) {
+      | Some(c) =>
+        whereParts->Array.push(`${cursorExpr} ${isDesc ? "<" : ">"} ?`)
+        params->Array.push(JSON.Encode.string(QueryDbListQuery.decodeCursor(c)))
+      | None => ()
+      }
+      let orderClause = switch orderByField {
+      | Some(f) => `${jsonText(f)} ${isDesc ? "DESC" : "ASC"}, ${idExpr} ASC`
+      | None => `${idExpr} ASC`
+      }
+      let pageSize =
+        argsDict
+        ->Dict.get("first")
+        ->Option.flatMap(JSON.Decode.float)
+        ->Option.map(Float.toInt)
+        ->Option.getOr(QueryDbListQuery.defaultListPageSize)
+      let sql = `SELECT partition_key, item FROM ${table} WHERE ${whereParts->Array.join(" AND ")} ORDER BY ${orderClause} LIMIT ?`
+      let rows =
+        preparedList(sql)
+        ->SqliteDriver.all(params->Array.concat([JSON.Encode.int(pageSize + 1)]))
+        ->Array.map(rowToItem)
+      let hasMore = rows->Array.length > pageSize
+      let pageItems = rows->Array.slice(~start=0, ~end=pageSize)
+      let cursorField = orderByField->Option.getOr("id")
+      let cursorValueOf = item =>
+        QueryDbListQuery.getFieldString(item, cursorField)->Option.getOr(QueryDbListQuery.getId(item))
+      Some(
+        QueryDbListQuery.buildConnection(
+          ~pageItems,
+          ~hasNextPage=hasMore,
+          ~hasPreviousPage=false,
+          ~cursorValueOf,
+        ),
+      )
+    }
+  }
+  bus.registerQueryDbListPage(name, listPage)
+
   {
     resources: [],
     dataSourceName: ""->Pulumi.Output.make,
@@ -372,6 +499,7 @@ module Make = (Bus: LocalBus.T, DbProvider: {let db: SqliteDriver.t}) => {
     registerQueryDbScan: Bus.registerQueryDbScan,
     registerQueryDbStream: Bus.registerQueryDbStream,
     registerQueryDbIndexLookup: Bus.registerQueryDbIndexLookup,
+    registerQueryDbListPage: Bus.registerQueryDbListPage,
   }
 
   let make: QueryDb_Adapter.storageMaker<unit, unit> = (

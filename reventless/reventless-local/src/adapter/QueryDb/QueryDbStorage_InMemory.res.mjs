@@ -61,12 +61,14 @@ function Make(Bus) {
   let sqliteBusCallbacks_registerQueryDbScan = Bus.registerQueryDbScan;
   let sqliteBusCallbacks_registerQueryDbStream = Bus.registerQueryDbStream;
   let sqliteBusCallbacks_registerQueryDbIndexLookup = Bus.registerQueryDbIndexLookup;
+  let sqliteBusCallbacks_registerQueryDbListPage = Bus.registerQueryDbListPage;
   let sqliteBusCallbacks = {
     publishStateChange: sqliteBusCallbacks_publishStateChange,
     registerQueryDb: sqliteBusCallbacks_registerQueryDb,
     registerQueryDbScan: sqliteBusCallbacks_registerQueryDbScan,
     registerQueryDbStream: sqliteBusCallbacks_registerQueryDbStream,
-    registerQueryDbIndexLookup: sqliteBusCallbacks_registerQueryDbIndexLookup
+    registerQueryDbIndexLookup: sqliteBusCallbacks_registerQueryDbIndexLookup,
+    registerQueryDbListPage: sqliteBusCallbacks_registerQueryDbListPage
   };
   let makeMemory = (name, param, subIdField, param$1, param$2, param$3, param$4) => {
     let store = {
