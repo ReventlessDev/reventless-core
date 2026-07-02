@@ -12,20 +12,35 @@ import * as Logger$ReventlessCore from "./util/Logger.res.mjs";
 
 let logger = Logger$ReventlessCore.fromEnv();
 
+let _rawMemoize = ((function(){
+  const outer = new WeakMap();
+  return function(a, b, build){
+    let inner = outer.get(a);
+    if (inner === undefined) { inner = new WeakMap(); outer.set(a, inner); }
+    let v = inner.get(b);
+    if (v === undefined) { v = build(a, b); inner.set(b, v); }
+    return v;
+  };
+})());
+
+function memoizeBySchemaPair(a, b, build) {
+  return _rawMemoize(a, b, build);
+}
+
 function toEventSchema$p(idSchema, eventSchema) {
-  return S.object(s => ({
+  return _rawMemoize(idSchema, eventSchema, (idSchema, eventSchema) => S.object(s => ({
     id: s.f("id", idSchema),
     meta: s.f("meta", Message$Reventless.metaSchema),
     event: s.f("event", eventSchema)
-  }));
+  })));
 }
 
 function toCommandSchema$p(idSchema, commandSchema) {
-  return S.object(s => ({
+  return _rawMemoize(idSchema, commandSchema, (idSchema, commandSchema) => S.object(s => ({
     id: s.f("id", idSchema),
     meta: s.f("meta", Message$Reventless.metaSchema),
     command: s.f("command", commandSchema)
-  }));
+  })));
 }
 
 function decodeEvent$p(json, idSchema, eventSchema) {
@@ -385,6 +400,8 @@ export {
   decode,
   encode,
   InvalidEvent,
+  _rawMemoize,
+  memoizeBySchemaPair,
   toEventSchema$p,
   toCommandSchema$p,
   decodeEvent$p,

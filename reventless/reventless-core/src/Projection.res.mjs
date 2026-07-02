@@ -10,6 +10,7 @@ import * as Stream$1 from "effect/Stream";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Logger$ReventlessCore from "./util/Logger.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as Message$ReventlessCore from "./Message.res.mjs";
@@ -30,8 +31,8 @@ let Mapping = {
   MakeGenericSource: MakeGenericSource
 };
 
-function logAction(str) {
-  log.debug("Projection", undefined, str);
+function logAction(makeStr) {
+  log.debugLazy("Projection", makeStr);
 }
 
 function overlayDisplayName(state, stateSchema, spec) {
@@ -148,15 +149,19 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
   let addedSubIds = Belt_SetString.diff(afterSubIds, beforeSubIds);
   let addedStates = afterStates.filter(state => Belt_SetString.has(addedSubIds, getSubId(state)));
   let addedCount = addedStates.length;
+  let afterBySubId = {};
+  afterStates.forEach(after => {
+    afterBySubId[getSubId(after)] = after;
+  });
   let changedStates = Stdlib_Array.filterMap(beforeStates, before => {
-    let beforeSubId = getSubId(before);
-    return afterStates.find(after => {
-      if (getSubId(after) === beforeSubId) {
-        return Primitive_object.notequal(after, before);
-      } else {
-        return false;
-      }
-    });
+    let after = afterBySubId[getSubId(before)];
+    if (after === undefined) {
+      return;
+    }
+    let after$1 = Primitive_option.valFromOption(after);
+    if (Primitive_object.notequal(after$1, before)) {
+      return Primitive_option.some(after$1);
+    }
   });
   let changedCount = changedStates.length;
   let batchToSave = changedStates.concat(addedStates).map(state => [
@@ -173,7 +178,7 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
     ]
   ]);
   let deletedCount = batchToDelete.length;
-  logAction(action + `(` + id + `): beforeStates:` + beforeCount.toString() + ` afterStates:` + afterCount.toString() + ` added:` + addedCount.toString() + ` changed:` + changedCount.toString() + ` deleted:` + deletedCount.toString());
+  log.debugLazy("Projection", () => action + `(` + id + `): beforeStates:` + beforeCount.toString() + ` afterStates:` + afterCount.toString() + ` added:` + addedCount.toString() + ` changed:` + changedCount.toString() + ` deleted:` + deletedCount.toString());
   let result = await Promise.all([
     param.deleteBatch(batchToDelete),
     param.saveBatch(batchToSave)
@@ -190,7 +195,7 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
 }
 
 function stateToString(state) {
-  return Stdlib_Option.getOrThrow(JSON.stringify(state), undefined);
+  return Stdlib_Option.getOr(JSON.stringify(state), "<unserializable>");
 }
 
 function statesToString(states) {
@@ -216,7 +221,7 @@ async function handleAction(action, operations, subIdConfig) {
     _0: e
   })));
   if (typeof action !== "object") {
-    logAction("Ignore");
+    log.debugLazy("Projection", () => "Ignore");
     return {
       TAG: "Ok",
       _0: undefined
@@ -226,7 +231,7 @@ async function handleAction(action, operations, subIdConfig) {
     case "Create" :
       let state = action._1;
       let id = action._0;
-      logAction(`Create(` + id + `, ` + stateToString(state) + `)`);
+      log.debugLazy("Projection", () => `Create(` + id + `, ` + stateToString(state) + `)`);
       return await save(id, state, "Init", undefined);
     case "CreateMany" :
       let batch = action._0.map(param => [
@@ -234,8 +239,7 @@ async function handleAction(action, operations, subIdConfig) {
         param[1],
         undefined
       ]);
-      let statesStr = batch.map(param => `(` + param[0] + `,` + stateToString(param[1]) + `)`).join(", ");
-      logAction(`CreateMany(` + statesStr + `)`);
+      log.debugLazy("Projection", () => `CreateMany(` + batch.map(param => `(` + param[0] + `,` + stateToString(param[1]) + `)`).join(", ") + `)`);
       return await saveBatch(batch);
     case "Update" :
       let id$1 = action._0;
@@ -250,13 +254,13 @@ async function handleAction(action, operations, subIdConfig) {
       let len = states$1.length;
       if (len !== 1) {
         if (len !== 0) {
-          logAction(`Update Error: Multiple oldStates for ` + id$1 + `)`);
+          log.debugLazy("Projection", () => `Update Error: Multiple oldStates for ` + id$1 + `)`);
           return {
             TAG: "Error",
             _0: "StaleState"
           };
         } else {
-          logAction(`Update Error: No oldState for ` + id$1 + `)`);
+          log.debugLazy("Projection", () => `Update Error: No oldState for ` + id$1 + `)`);
           return {
             TAG: "Error",
             _0: "StaleState"
@@ -265,35 +269,35 @@ async function handleAction(action, operations, subIdConfig) {
       }
       let oldState = states$1[0];
       let newState = action._1(oldState);
-      logAction(`Update(` + id$1 + `, ` + stateToString(oldState) + ` => ` + stateToString(newState) + `)`);
+      log.debugLazy("Projection", () => `Update(` + id$1 + `, ` + stateToString(oldState) + ` => ` + stateToString(newState) + `)`);
       return await save(id$1, newState, "Overwrite", undefined);
     case "UpdateWithDefault" :
       let $$default = action._1;
       let id$2 = action._0;
-      log.debug("Projection", undefined, `UpdateWithDefault(` + id$2 + `, loading ...`);
+      log.debugLazy("Projection", () => `UpdateWithDefault(` + id$2 + `, loading ...`);
       let states$2 = await loadAtMost(2, id$2);
       if (states$2.TAG === "Ok") {
         let states$3 = states$2._0;
         let len$1 = states$3.length;
         if (len$1 !== 1) {
           if (len$1 !== 0) {
-            logAction(`UpdateWithDefault Error: Multiple oldStates for ` + id$2 + `)`);
+            log.debugLazy("Projection", () => `UpdateWithDefault Error: Multiple oldStates for ` + id$2 + `)`);
             return {
               TAG: "Error",
               _0: "StaleState"
             };
           } else {
-            logAction(`UpdateWithDefault(` + id$2 + `, default: ` + stateToString($$default) + `)`);
+            log.debugLazy("Projection", () => `UpdateWithDefault(` + id$2 + `, default: ` + stateToString($$default) + `)`);
             return await save(id$2, $$default, "Init", undefined);
           }
         }
         let oldState$1 = states$3[0];
         let newState$1 = action._2(oldState$1);
-        logAction(`UpdateWithDefault(` + id$2 + `, ` + stateToString(oldState$1) + ` => ` + stateToString(newState$1) + `)`);
+        log.debugLazy("Projection", () => `UpdateWithDefault(` + id$2 + `, ` + stateToString(oldState$1) + ` => ` + stateToString(newState$1) + `)`);
         return await save(id$2, newState$1, "Overwrite", undefined);
       }
       let err = states$2._0;
-      logAction(`UpdateWithDefault Error: Couldn't load oldState(s) for ` + id$2 + `: ` + QueryDb$ReventlessCore.storageErrorToString(err) + `)`);
+      log.debugLazy("Projection", () => `UpdateWithDefault Error: Couldn't load oldState(s) for ` + id$2 + `: ` + QueryDb$ReventlessCore.storageErrorToString(err) + `)`);
       return {
         TAG: "Error",
         _0: err
@@ -301,7 +305,7 @@ async function handleAction(action, operations, subIdConfig) {
     case "Set" :
       let state$1 = action._1;
       let id$3 = action._0;
-      logAction(`Set(` + id$3 + `, ` + stateToString(state$1) + `)`);
+      log.debugLazy("Projection", () => `Set(` + id$3 + `, ` + stateToString(state$1) + `)`);
       return await save(id$3, state$1, "Any", undefined);
     case "SetMany" :
       let set = action._1;
@@ -310,16 +314,15 @@ async function handleAction(action, operations, subIdConfig) {
         set(id),
         undefined
       ]);
-      let statesStr$1 = batch$1.map(param => `(` + param[0] + `,` + stateToString(param[1]) + `)`).join(", ");
-      logAction(`SetMany(` + statesStr$1 + `)`);
+      log.debugLazy("Projection", () => `SetMany(` + batch$1.map(param => `(` + param[0] + `,` + stateToString(param[1]) + `)`).join(", ") + `)`);
       return await saveBatch(batch$1);
     case "Delete" :
       let id$4 = action._0;
-      logAction(`Delete(` + id$4 + `)`);
+      log.debugLazy("Projection", () => `Delete(` + id$4 + `)`);
       return await operations.delete(id$4, undefined);
     case "DeleteMany" :
       let ids = action._0;
-      logAction(`DeleteMany(` + ids.join(", ") + `)`);
+      log.debugLazy("Projection", () => `DeleteMany(` + ids.join(", ") + `)`);
       return await operations.deleteBatch(ids.map(id => [
         id,
         undefined
@@ -327,7 +330,7 @@ async function handleAction(action, operations, subIdConfig) {
     case "CreateMultiState" :
       let states$4 = action._1;
       let id$5 = action._0;
-      logAction(`CreateMultiState(` + id$5 + `, ` + states$4.map(stateToString).join(", ") + `)`);
+      log.debugLazy("Projection", () => `CreateMultiState(` + id$5 + `, ` + states$4.map(stateToString).join(", ") + `)`);
       let len$2 = states$4.length;
       if (len$2 !== 1) {
         if (len$2 === 0) {
@@ -354,27 +357,21 @@ async function handleAction(action, operations, subIdConfig) {
           let afterStates = action._1(states$5);
           return await applyChanges("UpdateMultiState", id$6, states$5, afterStates, operations, subIdConfig);
         }
-        logAction("UpdateMultiState Error: Missing SubIdConfig !");
-        return {
-          TAG: "Error",
-          _0: "MissingSubIdConfig"
-        };
-      }
-      if (subIdConfig !== undefined) {
+      } else if (subIdConfig !== undefined) {
         let err$1 = match._0;
-        logAction(`UpdateMultiState Error: Couldn't load states for ` + id$6 + `: ` + QueryDb$ReventlessCore.storageErrorToString(err$1) + `)`);
+        log.debugLazy("Projection", () => `UpdateMultiState Error: Couldn't load states for ` + id$6 + `: ` + QueryDb$ReventlessCore.storageErrorToString(err$1) + `)`);
         return {
           TAG: "Error",
           _0: err$1
         };
       }
-      logAction("UpdateMultiState Error: Missing SubIdConfig !");
+      log.debugLazy("Projection", () => "UpdateMultiState Error: Missing SubIdConfig !");
       return {
         TAG: "Error",
         _0: "MissingSubIdConfig"
       };
     default:
-      logAction("Error: projection action not supported");
+      log.debugLazy("Projection", () => "Error: projection action not supported");
       return {
         TAG: "Error",
         _0: {
@@ -424,8 +421,7 @@ function actionsWithId(action) {
     case "UpdateManyWithDefault" :
     case "DeleteIf" :
     case "DeleteManyIf" :
-      logAction("Error: Action not yet supported !");
-      return [];
+      break;
     case "UpdateManyMultiStates" :
       let update = action._1;
       return action._0.map(id => [
@@ -442,18 +438,26 @@ function actionsWithId(action) {
           action
         ]];
   }
+  log.debugLazy("Projection", () => "Error: Action not yet supported !");
+  return [];
 }
 
 function groupActionsById(actions) {
   let allActionsWithId = actions.map(actionsWithId).flat();
-  let ids = allActionsWithId.map(param => param[0]);
-  return Belt_SetString.toArray(Belt_SetString.fromArray(ids)).map(id => [
+  let groups = {};
+  allActionsWithId.forEach(param => {
+    let action = param[1];
+    let id = param[0];
+    let arr = groups[id];
+    if (arr !== undefined) {
+      arr.push(action);
+    } else {
+      groups[id] = [action];
+    }
+  });
+  return Belt_SetString.toArray(Belt_SetString.fromArray(Object.keys(groups))).map(id => [
     id,
-    Stdlib_Array.filterMap(allActionsWithId, param => {
-      if (param[0] === id) {
-        return param[1];
-      }
-    })
+    groups[id]
   ]);
 }
 

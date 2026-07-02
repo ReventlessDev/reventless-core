@@ -16,7 +16,10 @@ module Mapping = {
   }
 }
 
-let logAction = str => log.debug(~comp="Projection", str)
+// Lazy: the message thunk (and any `stateToString` it triggers) runs only when
+// debug logging is enabled, so projection actions don't serialize state on the
+// hot path at the default Info level.
+let logAction = makeStr => log.debugLazy(~comp="Projection", makeStr)
 
 // ── @displayName overlay ────────────────────────────────────────────────────
 // When a read model's state schema carries DisplayName metadata, every state
@@ -86,10 +89,16 @@ let applyChanges = async (
   let addedStates = afterStates->Array.filter(state => addedSubIds->Set.has(state->getSubId))
   let addedCount = addedStates->Array.length
 
-  let changedStates = beforeStates->Array.filterMap(before => {
-    let beforeSubId = before->getSubId
-    afterStates->Array.find(after => after->getSubId == beforeSubId && after != before)
-  })
+  // Index the after-states by subId once instead of scanning them per
+  // before-state (was O(before × after)).
+  let afterBySubId = Dict.make()
+  afterStates->Array.forEach(after => afterBySubId->Dict.set(after->getSubId, after))
+  let changedStates = beforeStates->Array.filterMap(before =>
+    switch afterBySubId->Dict.get(before->getSubId) {
+    | Some(after) if after != before => Some(after)
+    | _ => None
+    }
+  )
   let changedCount = changedStates->Array.length
 
   let batchToSave =
@@ -99,8 +108,8 @@ let applyChanges = async (
   let batchToDelete = deletedSubIds->Array.map(subId => (id, Some((subIdField, subId))))
   let deletedCount = batchToDelete->Array.length
 
-  logAction(
-    `${action}(${id}): beforeStates:${beforeCount->Int.toString} afterStates:${afterCount->Int.toString} added:${addedCount->Int.toString} changed:${changedCount->Int.toString} deleted:${deletedCount->Int.toString}`,
+  logAction(() =>
+    `${action}(${id}): beforeStates:${beforeCount->Int.toString} afterStates:${afterCount->Int.toString} added:${addedCount->Int.toString} changed:${changedCount->Int.toString} deleted:${deletedCount->Int.toString}`
   )
   let result = await [deleteBatch(batchToDelete), saveBatch(batchToSave)]->Promise.all
   // Propagate the first storage failure instead of swallowing it — a failed
@@ -116,7 +125,10 @@ let applyChanges = async (
   }
 }
 
-let stateToString: 'a => string = state => state->JSON.stringifyAny->Option.getOrThrow
+// Best-effort: a state that can't be JSON-serialized (e.g. carries a function)
+// must not crash the projection just to produce a debug line.
+let stateToString: 'a => string = state =>
+  state->JSON.stringifyAny->Option.getOr("<unserializable>")
 let statesToString: array<'a> => string = states =>
   states->Array.map(stateToString)->Array.joinUnsafe(", ")
 
@@ -140,17 +152,17 @@ let handleAction = async (
     ->Effect.runPromise
   switch action {
   | Ignore =>
-    logAction("Ignore")
+    logAction(() => "Ignore")
     Ok()
 
   | Create(id, state) =>
-    logAction(`Create(${id}, ${state->stateToString})`)
+    logAction(() => `Create(${id}, ${state->stateToString})`)
     await save(id, state, Init, None)
   | CreateMultiState(id, states) =>
-    logAction(
+    logAction(() =>
       `CreateMultiState(${id}, ${states
         ->Array.map(state => state->stateToString)
-        ->Array.joinUnsafe(", ")})`,
+        ->Array.joinUnsafe(", ")})`
     )
     switch states {
     | [] => Ok()
@@ -161,23 +173,23 @@ let handleAction = async (
     }
   | CreateMany(states) =>
     let batch = states->Array.map(((id, state)) => (id, state, None))
-    let statesStr =
-      batch
-      ->Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
-      ->Array.joinUnsafe(", ")
-    logAction(`CreateMany(${statesStr})`)
+    logAction(() =>
+      `CreateMany(${batch
+        ->Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
+        ->Array.joinUnsafe(", ")})`
+    )
     await saveBatch(batch) // TODO: think about using single saves with saveMode Init
 
   | Set(id, state) =>
-    logAction(`Set(${id}, ${state->stateToString})`)
+    logAction(() => `Set(${id}, ${state->stateToString})`)
     await save(id, state, Any, None)
   | SetMany(ids, set) =>
     let batch = ids->Array.map(id => (id, set(id), None))
-    let statesStr =
-      batch
-      ->Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
-      ->Array.joinUnsafe(", ")
-    logAction(`SetMany(${statesStr})`)
+    logAction(() =>
+      `SetMany(${batch
+        ->Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
+        ->Array.joinUnsafe(", ")})`
+    )
     await saveBatch(batch)
 
   | Update(id, update) =>
@@ -185,39 +197,39 @@ let handleAction = async (
     | Ok(states) =>
       switch states {
       | [] =>
-        logAction(`Update Error: No oldState for ${id})`)
+        logAction(() => `Update Error: No oldState for ${id})`)
         Error(ReventlessInfra.QueryDb.StaleState)
       | [oldState] =>
         let newState = oldState->update
-        logAction(`Update(${id}, ${oldState->stateToString} => ${newState->stateToString})`)
+        logAction(() => `Update(${id}, ${oldState->stateToString} => ${newState->stateToString})`)
         await save(id, newState, Overwrite, None)
       | _ =>
-        logAction(`Update Error: Multiple oldStates for ${id})`)
+        logAction(() => `Update Error: Multiple oldStates for ${id})`)
         Error(ReventlessInfra.QueryDb.StaleState)
       }
     | Error(err) => Error(err)
     }
   | UpdateWithDefault(id, default, update) =>
-    log.debug(~comp="Projection", `UpdateWithDefault(${id}, loading ...`)
+    logAction(() => `UpdateWithDefault(${id}, loading ...`)
     switch await loadAtMost(2, id) {
     | Ok(states) =>
       switch states {
       | [] =>
-        logAction(`UpdateWithDefault(${id}, default: ${default->stateToString})`)
+        logAction(() => `UpdateWithDefault(${id}, default: ${default->stateToString})`)
         await save(id, default, Init, None)
       | [oldState] =>
         let newState = oldState->update
-        logAction(
-          `UpdateWithDefault(${id}, ${oldState->stateToString} => ${newState->stateToString})`,
+        logAction(() =>
+          `UpdateWithDefault(${id}, ${oldState->stateToString} => ${newState->stateToString})`
         )
         await save(id, newState, Overwrite, None)
       | _ =>
-        logAction(`UpdateWithDefault Error: Multiple oldStates for ${id})`)
+        logAction(() => `UpdateWithDefault Error: Multiple oldStates for ${id})`)
         Error(ReventlessInfra.QueryDb.StaleState)
       }
     | Error(err) =>
-      logAction(
-        `UpdateWithDefault Error: Couldn't load oldState(s) for ${id}: ${err->QueryDb.storageErrorToString})`,
+      logAction(() =>
+        `UpdateWithDefault Error: Couldn't load oldState(s) for ${id}: ${err->QueryDb.storageErrorToString})`
       )
       Error(err)
     }
@@ -229,26 +241,26 @@ let handleAction = async (
       await applyChanges("UpdateMultiState", id, beforeStates, afterStates, operations, subIdConfig)
 
     | (Error(err), Some(_)) =>
-      logAction(
-        `UpdateMultiState Error: Couldn't load states for ${id}: ${err->QueryDb.storageErrorToString})`,
+      logAction(() =>
+        `UpdateMultiState Error: Couldn't load states for ${id}: ${err->QueryDb.storageErrorToString})`
       )
       Error(err)
     | (_, None) =>
-      logAction("UpdateMultiState Error: Missing SubIdConfig !")
+      logAction(() => "UpdateMultiState Error: Missing SubIdConfig !")
       Error(ReventlessInfra.QueryDb.MissingSubIdConfig)
     }
   | Delete(id) =>
-    logAction(`Delete(${id})`)
+    logAction(() => `Delete(${id})`)
     await delete(id, None)
   | DeleteMany(ids) =>
-    logAction(`DeleteMany(${ids->Array.joinUnsafe(", ")})`)
+    logAction(() => `DeleteMany(${ids->Array.joinUnsafe(", ")})`)
     await deleteBatch(ids->Array.map(id => (id, None)))
 
   // An action reaching here is one this projection engine doesn't implement.
   // Returning Ok() reported the read-model write as done while silently losing
   // it; surface a storage error instead.
   | _ =>
-    logAction("Error: projection action not supported")
+    logAction(() => "Error: projection action not supported")
     Error(ReventlessInfra.QueryDb.NotSavedToStorage("unsupported projection action"))
   }
 }
@@ -271,20 +283,27 @@ let actionsWithId = action =>
 
   // TODO: add missing actions
   | _ =>
-    logAction("Error: Action not yet supported !")
+    logAction(() => "Error: Action not yet supported !")
     []
   }
 
 let groupActionsById = actions => {
   let allActionsWithId = actions->Array.map(action => action->actionsWithId)->Array.flat
-  let ids = allActionsWithId->Array.map(((id, _)) => id)
-  ids
+  // One pass into a dict keyed by id (was O(ids × actions): a filterMap over
+  // every action per unique id). The id ordering is unchanged — still the sorted
+  // Belt.Set order — and each group preserves the actions' original order.
+  let groups = Dict.make()
+  allActionsWithId->Array.forEach(((id, action)) =>
+    switch groups->Dict.get(id) {
+    | Some(arr) => arr->Array.push(action)
+    | None => groups->Dict.set(id, [action])
+    }
+  )
+  groups
+  ->Dict.keysToArray
   ->Belt.Set.String.fromArray
   ->Belt.Set.String.toArray
-  ->Array.map(id => (
-    id,
-    allActionsWithId->Array.filterMap(((actionId, action)) => actionId == id ? Some(action) : None),
-  ))
+  ->Array.map(id => (id, groups->Dict.getUnsafe(id)))
 }
 
 let optimizeActions = actions => {

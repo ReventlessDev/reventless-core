@@ -82,9 +82,24 @@ function Make(Spec) {
         let tags = DcbTag$Reventless.extractTags(Spec.commandSchema, command$p.command);
         entityId = DcbTag$Reventless.getCompositePartitionKeyValue(tags, derivedPartitionTag._0);
       }
-      let cacheKey = Stdlib_Option.getOr(JSON.stringify(query), "");
+      let cacheKey = JSON.stringify(query);
+      let cacheGet = () => {
+        if (cacheKey !== undefined) {
+          return Lru$ReventlessCore.get(projectionCache, cacheKey);
+        }
+      };
+      let cachePut = v => {
+        if (cacheKey !== undefined) {
+          return Lru$ReventlessCore.put(projectionCache, cacheKey, v);
+        }
+      };
+      let cacheInvalidate = () => {
+        if (cacheKey !== undefined) {
+          return Lru$ReventlessCore.invalidate(projectionCache, cacheKey);
+        }
+      };
       let seed = {
-        contents: Lru$ReventlessCore.get(projectionCache, cacheKey)
+        contents: cacheGet()
       };
       let attempt = retries => {
         let match = seed.contents;
@@ -150,7 +165,7 @@ function Make(Spec) {
             if (newEvents.TAG === "Ok") {
               let newEvents$1 = newEvents._0;
               if (newEvents$1.length === 0) {
-                Lru$ReventlessCore.put(projectionCache, cacheKey, [
+                cachePut([
                   state,
                   headPosition
                 ]);
@@ -204,7 +219,7 @@ function Make(Spec) {
               };
               return Effect.flatMap(Effect.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect.promise(() => dcbEventLog.append(rawEvents, condition))), appendResult => {
                 if (appendResult.TAG === "Ok") {
-                  Lru$ReventlessCore.put(projectionCache, cacheKey, [
+                  cachePut([
                     state,
                     headPosition
                   ]);
@@ -228,7 +243,7 @@ function Make(Spec) {
                   Metrics$ReventlessCore.emitCount("AppendRetry", Spec.name, undefined);
                   return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `append failed (retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString() + `): ` + err), () => attempt(retries - 1 | 0));
                 }
-                Lru$ReventlessCore.invalidate(projectionCache, cacheKey);
+                cacheInvalidate();
                 let errorCode = err.startsWith("Conflict") ? "Conflict" : "AppendFailed";
                 if (errorCode === "Conflict") {
                   Metrics$ReventlessCore.emitCount("AppendConflict", Spec.name, undefined);
@@ -243,7 +258,7 @@ function Make(Spec) {
                 }));
               });
             }
-            Lru$ReventlessCore.put(projectionCache, cacheKey, [
+            cachePut([
               state,
               headPosition
             ]);

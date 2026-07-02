@@ -156,7 +156,12 @@ function makeLogger(minLevelOpt) {
     debug: (comp, data, msg) => log("Debug", comp, data, msg),
     info: (comp, data, msg) => log("Info", comp, data, msg),
     warn: (comp, data, msg) => log("Warn", comp, data, msg),
-    error: (comp, data, msg) => log("Error", comp, data, msg)
+    error: (comp, data, msg) => log("Error", comp, data, msg),
+    debugLazy: (comp, makeMsg) => {
+      if (shouldLog("Debug")) {
+        return emit("Debug", comp, undefined, undefined, undefined, makeMsg());
+      }
+    }
   };
 }
 
@@ -176,11 +181,16 @@ function silent_error(param, param$1, param$2) {
   
 }
 
+function silent_debugLazy(param, param$1) {
+  
+}
+
 let silent = {
   debug: silent_debug,
   info: silent_info,
   warn: silent_warn,
-  error: silent_error
+  error: silent_error,
+  debugLazy: silent_debugLazy
 };
 
 function fromEnv() {

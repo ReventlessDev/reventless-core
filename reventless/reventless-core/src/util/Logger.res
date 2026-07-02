@@ -37,6 +37,11 @@ type t = {
   info: logFn,
   warn: logFn,
   error: logFn,
+  // Lazy debug: the message thunk runs only when debug output is actually
+  // enabled. On a hot path (e.g. per-projection-action logging) this avoids
+  // building — and serializing state into — a string that is then dropped at
+  // the default Info level.
+  debugLazy: (~comp: string=?, unit => string) => unit,
 }
 
 type level = Debug | Info | Warn | Error
@@ -172,6 +177,10 @@ let makeLogger = (~minLevel=Info): t => {
     info: (~comp=?, ~data=?, msg) => log(Info, ~comp?, ~data?, msg),
     warn: (~comp=?, ~data=?, msg) => log(Warn, ~comp?, ~data?, msg),
     error: (~comp=?, ~data=?, msg) => log(Error, ~comp?, ~data?, msg),
+    debugLazy: (~comp=?, makeMsg) =>
+      if shouldLog(Debug) {
+        emit(~level=Debug, ~comp?, makeMsg())
+      },
   }
 }
 
@@ -180,6 +189,7 @@ let silent: t = {
   info: (~comp as _=?, ~data as _=?, _) => (),
   warn: (~comp as _=?, ~data as _=?, _) => (),
   error: (~comp as _=?, ~data as _=?, _) => (),
+  debugLazy: (~comp as _=?, _) => (),
 }
 
 // Reads LOG_LEVEL from process.env and returns a configured logger.

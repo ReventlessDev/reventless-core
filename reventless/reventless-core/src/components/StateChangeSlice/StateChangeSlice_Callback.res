@@ -199,13 +199,33 @@ module Make = (
       Some(Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec))
     }
 
-    let cacheKey = query->JSON.stringifyAny->Option.getOr("")
+    // Fail closed: a query that can't be serialized yields `None`, not the empty
+    // string. The old `""` fallback made every unserializable query collide on
+    // one shared cache slot, so one slice's folded state could seed another's —
+    // a silent correctness bug. `None` simply bypasses the cache (cold read, no
+    // write) for that operation.
+    let cacheKey = query->JSON.stringifyAny
+    let cacheGet = () =>
+      switch cacheKey {
+      | Some(k) => Lru.get(projectionCache, k)
+      | None => None
+      }
+    let cachePut = v =>
+      switch cacheKey {
+      | Some(k) => Lru.put(projectionCache, k, v)
+      | None => ()
+      }
+    let cacheInvalidate = () =>
+      switch cacheKey {
+      | Some(k) => Lru.invalidate(projectionCache, k)
+      | None => ()
+      }
 
     // Working seed across retries: the `(state, head)` the read folds from.
     // Starts from the projection cache (warm) or empty (cold); the conflict
     // branch re-seeds it with the just-read `(state, head)` so each retry reads
     // only the delta the conflicting writer added rather than full history.
-    let seed = ref(Lru.get(projectionCache, cacheKey))
+    let seed = ref(cacheGet())
 
     let rec attempt = (~retries) => {
       let (baseState, afterPos) = switch seed.contents {
@@ -275,7 +295,7 @@ module Make = (
           switch Behavior.decide(state, command'.command) {
           | Ok(newEvents) if newEvents->Array.length == 0 =>
             // No append, but the read snapshot is valid — cache it for the next command.
-            Lru.put(projectionCache, cacheKey, (state, headPosition))
+            cachePut((state, headPosition))
             CommandTopic_Helpers.reportAccepted(
               cmdJson.meta.msgId,
               switch entityId {
@@ -326,7 +346,7 @@ module Make = (
                   // Cache the decided-on state at the read head (NOT including the
                   // events we just appended, and NOT the returned position): the
                   // next command's delta read picks our events up from `headPosition`.
-                  Lru.put(projectionCache, cacheKey, (state, headPosition))
+                  cachePut((state, headPosition))
                   CommandTopic_Helpers.reportAccepted(
                     cmdJson.meta.msgId,
                     switch entityId {
@@ -354,7 +374,7 @@ module Make = (
                   } else {
                     // Retries exhausted — drop any cached snapshot so the next
                     // command for this entity takes the cold full-read path.
-                    Lru.invalidate(projectionCache, cacheKey)
+                    cacheInvalidate()
                     let errorCode = err->String.startsWith("Conflict") ? "Conflict" : "AppendFailed"
                     // A surfaced Conflict means the 3-retry loop could not absorb
                     // the contention — the operator signal for "this slice is hot"
@@ -375,7 +395,7 @@ module Make = (
             )
           | Error(error) =>
             // Business-rule rejection — no append, but the read snapshot is valid; cache it.
-            Lru.put(projectionCache, cacheKey, (state, headPosition))
+            cachePut((state, headPosition))
             let errorJson = error->S.reverseConvertToJsonOrThrow(Spec.errorSchema)
             let errorCode = errorJson->Message.variantNameOfJson
             let (_, payloadDict) = errorJson->Message.splitMessage

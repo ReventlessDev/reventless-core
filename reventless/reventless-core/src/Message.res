@@ -18,18 +18,51 @@ module type Service = {
 
 include Reventless.Message
 
+// Compose the wrapper schema once per (idSchema, payloadSchema) reference pair.
+// Both are module-level constants per message type, and sury schemas are built
+// to be reused across many parse/serialize calls — so the previous fresh
+// `S.object` on every decode/encode was pure allocation on the hottest path in
+// the framework. The cache is keyed by object identity (nested WeakMaps), so a
+// dropped schema is still collectable. `build` runs only on a miss.
+//
+// The raw closure is typed monomorphically over an opaque type (concrete → no
+// weak-var value-restriction problem); the locally-abstract-typed wrapper below
+// is a syntactic function, so it generalizes and `Obj.magic` bridges the two.
+// This keeps the public `toEventSchema'` / `toCommandSchema'` fully polymorphic.
+type opaqueSchema
+let _rawMemoize: (
+  opaqueSchema,
+  opaqueSchema,
+  (opaqueSchema, opaqueSchema) => opaqueSchema,
+) => opaqueSchema = %raw(`(function(){
+  const outer = new WeakMap();
+  return function(a, b, build){
+    let inner = outer.get(a);
+    if (inner === undefined) { inner = new WeakMap(); outer.set(a, inner); }
+    let v = inner.get(b);
+    if (v === undefined) { v = build(a, b); inner.set(b, v); }
+    return v;
+  };
+})()`)
+let memoizeBySchemaPair = (type a b c, a: a, b: b, build: (a, b) => c): c =>
+  _rawMemoize(Obj.magic(a), Obj.magic(b), Obj.magic(build))->Obj.magic
+
 let toEventSchema' = (idSchema, eventSchema) =>
-  S.object(s => {
-    id: s.field("id", idSchema),
-    meta: s.field("meta", metaSchema),
-    event: s.field("event", eventSchema),
-  })
+  memoizeBySchemaPair(idSchema, eventSchema, (idSchema, eventSchema) =>
+    S.object(s => {
+      id: s.field("id", idSchema),
+      meta: s.field("meta", metaSchema),
+      event: s.field("event", eventSchema),
+    })
+  )
 let toCommandSchema' = (idSchema, commandSchema) =>
-  S.object(s => {
-    id: s.field("id", idSchema),
-    meta: s.field("meta", metaSchema),
-    command: s.field("command", commandSchema),
-  })
+  memoizeBySchemaPair(idSchema, commandSchema, (idSchema, commandSchema) =>
+    S.object(s => {
+      id: s.field("id", idSchema),
+      meta: s.field("meta", metaSchema),
+      command: s.field("command", commandSchema),
+    })
+  )
 
 let decodeEvent' = (json, idSchema, eventSchema) =>
   json->S.parseJsonOrThrow(toEventSchema'(idSchema, eventSchema))
