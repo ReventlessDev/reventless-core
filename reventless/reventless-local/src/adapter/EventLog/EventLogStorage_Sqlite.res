@@ -53,15 +53,20 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
   let insertStmt = db->SqliteDriver.prepare(
     "INSERT INTO event_log(log_name, aggregate_id, seq_nr, payload) VALUES(?,?,?,?)",
   )
-  let countStmt = db->SqliteDriver.prepare(
-    "SELECT COUNT(*) AS c FROM event_log WHERE log_name=? AND aggregate_id=?",
+  // Expected next seq_nr for an aggregate. Events are always appended
+  // contiguously from seq 0 (the OCC check below forbids gaps), so
+  // `MAX(seq_nr)+1` equals the row count — but it reads the rightmost leaf of the
+  // (log_name, aggregate_id, seq_nr) PK index in O(log n) instead of `COUNT(*)`
+  // scanning every row for the aggregate. `COALESCE(…, -1)+1` yields 0 when empty.
+  let nextSeqStmt = db->SqliteDriver.prepare(
+    "SELECT COALESCE(MAX(seq_nr), -1) + 1 AS c FROM event_log WHERE log_name=? AND aggregate_id=?",
   )
   let selectByIdStmt = db->SqliteDriver.prepare(
     "SELECT payload FROM event_log WHERE log_name=? AND aggregate_id=? ORDER BY seq_nr ASC",
   )
 
-  let currentCount = (id: string): int =>
-    switch countStmt->SqliteDriver.get([JSON.Encode.string(name), JSON.Encode.string(id)]) {
+  let expectedNextSeq = (id: string): int =>
+    switch nextSeqStmt->SqliteDriver.get([JSON.Encode.string(name), JSON.Encode.string(id)]) {
     | Some(row) =>
       switch row->Dict.get("c") {
       | Some(JSON.Number(n)) => Float.toInt(n)
@@ -73,7 +78,7 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
   let append: EventLog.append<string, JSON.t> = async (seqNr, id, jsons) => {
     try {
       db->SqliteDriver.transaction(() => {
-        let existing = currentCount(id)
+        let existing = expectedNextSeq(id)
         if seqNr != existing {
           throw(Failure("conflict"))
         }
@@ -117,22 +122,24 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
   let replayStream: string => Stream.t<JSON.t, string, unit> = id =>
     replayArray(id)->Stream.fromIterable
 
-  let appendStream: EventLog.appendStream<string, JSON.t> = (startingSeqNr, id, stream) => {
-    let seqNrRef = ref(startingSeqNr)
-    stream->Stream.runForEach(json => {
-      let currentSeq = seqNrRef.contents
-      Effect.promise(() => append(currentSeq, id, [json]))->Effect.flatMap(result =>
+  // Collect the stream and hand the whole batch to `append`, which inserts every
+  // event under one transaction with a single OCC check (vs the old per-element
+  // append: one transaction + one seq lookup per event over a bulk replay). This
+  // also makes the replay atomic — all events land or none do, rather than
+  // leaving a partial prefix committed if a later element hit a raced PK.
+  let appendStream: EventLog.appendStream<string, JSON.t> = (startingSeqNr, id, stream) =>
+    stream
+    ->Stream.runCollect
+    ->Effect.flatMap(jsons =>
+      Effect.promise(() => append(startingSeqNr, id, jsons))->Effect.flatMap(result =>
         switch result {
-        | Ok() =>
-          seqNrRef := currentSeq + 1
-          Effect.succeed()
+        | Ok() => Effect.succeed()
         // appendStream's error channel is a string; map the typed append error.
         | Error(ReventlessCore.EventLog.Conflict) => Effect.fail("conflict")
         | Error(StorageFailure(msg)) => Effect.fail(msg)
         }
       )
-    })
-  }
+    )
 
   (
     name,

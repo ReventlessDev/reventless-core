@@ -61,6 +61,52 @@ describe("EventLogStorage_Sqlite", () => {
     }
   })
 
+  testPromise("multi-event append advances the expected seq via MAX(seq_nr)+1", async () => {
+    module TestBus = LocalBus.Make()
+    module DbProvider = {
+      let db = makeFreshDb()
+    }
+    module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
+    let s = Storage.make(~name="agg", ~opts)
+    let ops = await s.operations->TestRunner.resolve
+
+    let ev = i => JSON.Encode.object(Dict.fromArray([("i", JSON.Encode.int(i))]))
+    // Batch of three at seq 0 → occupies seq 0,1,2.
+    let r1 = await ops.append(0, "id-m", [ev(0), ev(1), ev(2)])
+    expect(r1)->toEqual(Ok())
+    // A stale seq (2) is a conflict; the correct next seq is 3.
+    let stale = await ops.append(2, "id-m", [ev(9)])
+    switch stale {
+    | Error(ReventlessCore.EventLog.Conflict) => expect(true)->toBe(true)
+    | _ => expect("expected Conflict")->toBe("other")
+    }
+    let r2 = await ops.append(3, "id-m", [ev(3)])
+    expect(r2)->toEqual(Ok())
+    let replayed = await ops.replay("id-m")
+    expect(replayed->Array.length)->toBe(4)
+  })
+
+  testPromise("appendStream persists the whole batch in order from the starting seq", async () => {
+    module TestBus = LocalBus.Make()
+    module DbProvider = {
+      let db = makeFreshDb()
+    }
+    module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
+    let s = Storage.make(~name="agg", ~opts)
+    let ops = await s.operations->TestRunner.resolve
+
+    let ev = i => JSON.Encode.object(Dict.fromArray([("i", JSON.Encode.int(i))]))
+    // Seed one event, then stream three more starting at seq 1.
+    let _ = await ops.append(0, "id-s", [ev(0)])
+    let _ =
+      await ops.appendStream(1, "id-s", Stream.fromIterable([ev(1), ev(2), ev(3)]))
+      ->Effect.runPromise
+    let replayed = await ops.replay("id-s")
+    expect(replayed->Array.length)->toBe(4)
+    expect(replayed->Array.getUnsafe(0))->toEqual(ev(0))
+    expect(replayed->Array.getUnsafe(3))->toEqual(ev(3))
+  })
+
   testPromise("replay returns empty array for unknown id", async () => {
     module TestBus = LocalBus.Make()
     module DbProvider = {
