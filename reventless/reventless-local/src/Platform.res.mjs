@@ -268,7 +268,15 @@ function MakeWithConfig(Config) {
       let paginate = (events, getPosition) => {
         let filtered;
         if (after !== undefined) {
-          let idx = events.findIndex(e => Stdlib_Option.mapOr(getPosition(e), false, p => p > after));
+          let idx = events.findIndex(e => Stdlib_Option.mapOr(getPosition(e), false, p => {
+            let match = Stdlib_Int.fromString(p, undefined);
+            let match$1 = Stdlib_Int.fromString(after, undefined);
+            if (match !== undefined && match$1 !== undefined) {
+              return match > match$1;
+            } else {
+              return p > after;
+            }
+          }));
           filtered = idx >= 0 ? events.slice(idx, events.length) : [];
         } else {
           filtered = events;
@@ -1921,7 +1929,15 @@ function Make($star) {
       let paginate = (events, getPosition) => {
         let filtered;
         if (after !== undefined) {
-          let idx = events.findIndex(e => Stdlib_Option.mapOr(getPosition(e), false, p => p > after));
+          let idx = events.findIndex(e => Stdlib_Option.mapOr(getPosition(e), false, p => {
+            let match = Stdlib_Int.fromString(p, undefined);
+            let match$1 = Stdlib_Int.fromString(after, undefined);
+            if (match !== undefined && match$1 !== undefined) {
+              return match > match$1;
+            } else {
+              return p > after;
+            }
+          }));
           filtered = idx >= 0 ? events.slice(idx, events.length) : [];
         } else {
           filtered = events;

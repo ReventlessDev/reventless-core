@@ -51,10 +51,12 @@ describe("EventLogStorage_Sqlite", () => {
     let e = JSON.Encode.object(Dict.fromArray([("t", JSON.Encode.string("X"))]))
     let _ = await ops.append(0, "id-c", [e])
 
-    // Caller re-uses seqNr=0 — conflict.
+    // Caller re-uses seqNr=0 — conflict. The error must carry the "conflict"
+    // sentinel that the core append-retry loop matches on; the classification
+    // change must not have broken that for genuine conflicts.
     let result = await ops.append(0, "id-c", [e])
     switch result {
-    | Error(_) => expect(true)->toBe(true)
+    | Error(msg) => expect(msg->String.includes("conflict"))->toBe(true)
     | Ok() => expect("expected conflict")->toBe("actual Ok")
     }
   })

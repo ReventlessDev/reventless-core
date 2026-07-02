@@ -279,10 +279,18 @@ module MakeWithConfig = (
             ])->JSON.Encode.object
 
           let paginate = (events: array<JSON.t>, getPosition: JSON.t => option<string>) => {
+            // Positions are numeric strings; compare them as ints, not lexically
+            // ("10" > "9" is false as strings) — otherwise cursor pages skip or
+            // duplicate events once positions cross a digit boundary.
+            let positionGt = (p, afterPos) =>
+              switch (Int.fromString(p), Int.fromString(afterPos)) {
+              | (Some(pi), Some(ai)) => pi > ai
+              | _ => p > afterPos
+              }
             let filtered = switch after {
             | Some(afterPos) =>
               let idx =
-                events->Array.findIndex(e => getPosition(e)->Option.mapOr(false, p => p > afterPos))
+                events->Array.findIndex(e => getPosition(e)->Option.mapOr(false, p => positionGt(p, afterPos)))
               if idx >= 0 {
                 events->Array.slice(~start=idx, ~end=events->Array.length)
               } else {

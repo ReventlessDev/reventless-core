@@ -306,7 +306,16 @@ let makeStorage = (
       result.contents
     } catch {
     | Failure(msg) => Error(msg)
-    | _ => Error("conflict")
+    | exn =>
+      // The deliberate append-condition failure above throws
+      // Failure("conflict: …"); a lost race on the computed position shows up here
+      // as a PRIMARY KEY / UNIQUE violation — also a genuine conflict. Every other
+      // failure (disk full, SQL error, locked db) must surface as a real error,
+      // not the retryable "conflict" sentinel that would be retried forever.
+      let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("")
+      msg->String.includes("constraint failed")
+        ? Error("conflict")
+        : Error(msg == "" ? "storage error" : msg)
     }
   }
 

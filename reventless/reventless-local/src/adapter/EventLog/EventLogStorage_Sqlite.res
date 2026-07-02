@@ -89,7 +89,16 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
       Ok()
     } catch {
     | Failure(msg) => Error(msg)
-    | _ => Error("conflict")
+    | exn =>
+      // The deliberate seq_nr check above throws Failure("conflict"); a lost race
+      // shows up here as a PRIMARY KEY violation on (log_name, aggregate_id,
+      // seq_nr) — also a genuine OCC conflict. Every OTHER failure (disk full, SQL
+      // error, locked db) must surface as a real error, not be mapped to the
+      // retryable "conflict" sentinel and retried forever.
+      let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("")
+      msg->String.includes("constraint failed")
+        ? Error("conflict")
+        : Error(msg == "" ? "storage error" : msg)
     }
   }
 

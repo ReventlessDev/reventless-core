@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
@@ -262,10 +263,17 @@ function makeStorage(db, bus, publishToTopic, name, param, param$1, param$2) {
           TAG: "Error",
           _0: msg._1
         };
-      } else {
+      }
+      let msg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(msg), Stdlib_JsExn.message), "");
+      if (msg$1.includes("constraint failed")) {
         return {
           TAG: "Error",
           _0: "conflict"
+        };
+      } else {
+        return {
+          TAG: "Error",
+          _0: msg$1 === "" ? "storage error" : msg$1
         };
       }
     }

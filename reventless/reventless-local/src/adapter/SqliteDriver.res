@@ -46,7 +46,12 @@ let transaction = (db, fn) => {
     result
   } catch {
   | exn =>
-    exec(db, "ROLLBACK")
+    // Roll back, but never let a failing ROLLBACK replace the original error —
+    // the original is the diagnostic one; a rollback failure (e.g. no active
+    // transaction) would otherwise mask it.
+    try exec(db, "ROLLBACK") catch {
+    | _ => ()
+    }
     throw(exn)
   }
 }

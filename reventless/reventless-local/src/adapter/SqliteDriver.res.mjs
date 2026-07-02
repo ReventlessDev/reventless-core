@@ -57,7 +57,11 @@ function transaction(db, fn) {
     db.exec("COMMIT");
     return result;
   } catch (exn) {
-    db.exec("ROLLBACK");
+    try {
+      db.exec("ROLLBACK");
+    } catch (exn$1) {
+      
+    }
     throw exn;
   }
 }
