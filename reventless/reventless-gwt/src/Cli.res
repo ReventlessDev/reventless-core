@@ -31,9 +31,20 @@ type options = {
   // the VS Code extension to populate its active-app picker.
   listPlatforms: bool,
   toolVersion: string,
+  // When `Some`, `runOnce` runs exactly these compiled test paths instead of
+  // walking the tree. Set by the watch loop's worker passes (the parent owns
+  // discovery and narrows to the affected package); `None` for the one-shot
+  // `run`/`discover` commands, which discover from `roots`.
+  paths: option<array<string>>,
 }
 
 @val external argv: array<string> = "process.argv"
+
+// chokidar reports paths in the same form as its watched roots (relative when
+// roots are `["."]`), while `Discovery` returns absolute paths. Normalize a
+// changed path to absolute before mapping it to an owning package so the
+// prefix match against the discovered set holds.
+@module("node:path") external resolvePath: string => string = "resolve"
 
 @val external now: unit => float = "performance.now"
 
@@ -195,6 +206,7 @@ let parseArgv = (argv: array<string>): result<options, string> => {
         uiPorts: uiPorts.contents,
         listPlatforms: listPlatforms.contents,
         toolVersion,
+        paths: None,
       })
     }
   }
@@ -417,8 +429,50 @@ let emitResult = (opts: options, r: RunnerTypes.runResult) =>
   | VsCode => FormatterVsCode.runEnd(r.summary)
   }
 
+// Watch re-run scope. A plain edit under a test-owning package narrows the pass
+// to that package's test files (`RunPackages`); structural rebuilds, new-file
+// adds, and any non-VsCode watch use `RunAll`. Scopes accumulate while a pass is
+// in flight — `RunAll` is absorbing (an all-run unioned with anything is an
+// all-run), and `RunPackages` unions its dirs.
+type runScope = RunAll | RunPackages(array<string>)
+
+let mergeScope = (a: runScope, b: runScope): runScope =>
+  switch (a, b) {
+  | (RunAll, _) | (_, RunAll) => RunAll
+  | (RunPackages(x), RunPackages(y)) =>
+    let seen = Dict.make()
+    let union = []
+    Array.concat(x, y)->Array.forEach(d =>
+      switch seen->Dict.get(d) {
+      | Some(_) => ()
+      | None => {
+          seen->Dict.set(d, true)
+          union->Array.push(d)
+        }
+      }
+    )
+    RunPackages(union)
+  }
+
+// True when `path` sits inside directory `dir` (dir is an ancestor). Lets a
+// package dir be mapped to its test files by prefix, with no per-path fs walk.
+let pathUnderDir = (path: string, dir: string): bool =>
+  String.startsWith(path, String.endsWith(dir, "/") ? dir : dir ++ "/")
+
+// The subset of `allPaths` a scope re-runs.
+let scopeSubset = (scope: runScope, allPaths: array<string>): array<string> =>
+  switch scope {
+  | RunAll => allPaths
+  | RunPackages(dirs) => allPaths->Array.filter(p => dirs->Array.some(d => pathUnderDir(p, d)))
+  }
+
 let runOnce = async (opts: options): int => {
-  let paths = await Discovery.discover(opts.roots)
+  // A watch worker pass supplies the exact path set (parent-owned discovery,
+  // narrowed to the affected package); the one-shot commands discover the tree.
+  let paths = switch opts.paths {
+  | Some(p) => p
+  | None => await Discovery.discover(opts.roots)
+  }
   if opts.format == Json && opts.stream {
     FormatterJson.streamRunStart(~toolVersion=opts.toolVersion, ~startedAt=dateNowIso())
   }
@@ -561,10 +615,18 @@ let startBuildWatchers = (paths: array<string>): unit => {
 
 let runWatch = async (opts: options): int => {
   let roots = opts.roots
+  // Parent-owned discovery set for the VS Code engine: walked once here and
+  // refreshed only on structural rebuilds / new-file adds. A plain edit's re-run
+  // pass reuses it (no per-pass tree re-walk) and narrows to the edited file's
+  // owning test package (`affectedScope`), so an unrelated plugin's tests aren't
+  // re-executed. The per-test NDJSON protocol keeps the client's other results
+  // untouched across a narrowed pass.
+  let discoveredPaths: ref<array<string>> = ref([])
   // For the VS Code client, watch mode is the whole engine: emit the test tree
   // and package set, take over the ReScript builds, then run + re-run on change.
   if opts.format == VsCode {
     let paths = await Discovery.discover(roots)
+    discoveredPaths := paths
     await emitDiscovery(paths)
     startBuildWatchers(paths)
   }
@@ -582,9 +644,12 @@ let runWatch = async (opts: options): int => {
     | None => ()
     }
   )
-  let runInWorker = (): promise<unit> =>
+  // Run one pass in a fresh worker over `paths`. `None` lets the worker discover
+  // the full tree itself — kept for a human terminal `watch`, whose full-summary
+  // output must always reflect every file.
+  let runInWorker = (paths: option<array<string>>): promise<unit> =>
     Promise.make((resolve, _reject) => {
-      let w = Worker.make(Worker.runWorkerUrl, {workerData: opts})
+      let w = Worker.make(Worker.runWorkerUrl, {workerData: {...opts, paths}})
       currentWorker := Some(w)
       let settled = ref(false)
       let settle = () =>
@@ -599,27 +664,50 @@ let runWatch = async (opts: options): int => {
         settle()
       })
     })
+  // Resolve a scope to the concrete path subset for a worker pass. The VS Code
+  // engine passes the parent-owned subset; a human terminal `watch` passes None
+  // (worker discovers), preserving its full-summary semantics.
+  let pathsForScope = (scope: runScope): option<array<string>> =>
+    opts.format == VsCode ? Some(scopeSubset(scope, discoveredPaths.contents)) : None
+  // Single-flight run state machine. A re-run requested while a pass is in flight
+  // coalesces into `pendingScope` (scopes merge; `RunAll` absorbing) and drains
+  // after the current pass. Holding `runInProgress` across the whole drain loop
+  // means only one worker ever runs at a time — a third concurrent request can't
+  // corrupt the run or interleave NDJSON.
   let runInProgress = ref(false)
-  let rerunPending = ref(false)
-  let run = async () => {
+  let pendingScope: ref<option<runScope>> = ref(None)
+  let requestRun = async (scope: runScope) =>
     if runInProgress.contents {
-      rerunPending := true
+      pendingScope :=
+        Some(
+          switch pendingScope.contents {
+          | Some(s) => mergeScope(s, scope)
+          | None => scope
+          },
+        )
     } else {
       runInProgress := true
-      let _ = await runInWorker()
-      // Drain every re-run request that arrived while a pass was in flight.
-      // Clearing `runInProgress` before awaiting the pending pass (the previous
-      // shape) let a third concurrent `run` start mid-drain, which corrupts the
-      // module-global `Collector` and interleaves NDJSON events. Hold the flag
-      // across the whole drain loop so only one pass ever runs at a time.
-      while rerunPending.contents {
-        rerunPending := false
-        let _ = await runInWorker()
-      }
-      runInProgress := false
+      let _ = await runInWorker(pathsForScope(scope))
+      let rec drain = async () =>
+        switch pendingScope.contents {
+        | Some(next) => {
+            pendingScope := None
+            let _ = await runInWorker(pathsForScope(next))
+            await drain()
+          }
+        | None => runInProgress := false
+        }
+      await drain()
     }
+  let _ = await requestRun(RunAll)
+  // Re-walk discovery (VS Code) then re-run everything. Used after a structural
+  // clean-rebuild, whose relocation may have changed the discovered test set.
+  let rediscoverAndRun = async () => {
+    if opts.format == VsCode {
+      discoveredPaths := (await Discovery.discover(roots))
+    }
+    let _ = await requestRun(RunAll)
   }
-  let _ = await run()
   // A *relocation* (a module moved to another directory — a chapter rename /
   // ungroup / move-to-chapter in the extension, or a terminal `mv`) leaves
   // dependents' emitted `.res.mjs` pointing at the old path: incremental
@@ -640,7 +728,7 @@ let runWatch = async (opts: options): int => {
   let rebuilding: Dict.t<bool> = Dict.make()
   let structuralRebuild = (path: string): unit =>
     switch PackageScan.findOwning(path) {
-    | None => ignore(run())
+    | None => ignore(requestRun(RunAll))
     | Some(pkg) if rebuilding->Dict.get(pkg.dir)->Option.getOr(false) => ()
     | Some(pkg) =>
       rebuilding->Dict.set(pkg.dir, true)
@@ -674,7 +762,7 @@ let runWatch = async (opts: options): int => {
           } else if !sawError.contents {
             FormatterVsCode.buildFail(pkg.dir, "clean rebuild failed")
           }
-          ignore(run())
+          ignore(rediscoverAndRun())
         },
       )
     }
@@ -684,17 +772,34 @@ let runWatch = async (opts: options): int => {
   // (re)claim build watchers for any new package before re-running.
   let refreshDiscovery = async () => {
     let paths = await Discovery.discover(roots)
+    discoveredPaths := paths
     await emitDiscovery(paths)
     startBuildWatchers(paths)
-    ignore(run())
+    let _ = await requestRun(RunAll)
   }
+  // Narrow a plain edit's re-run to the edited file's owning test package (VS
+  // Code only). `RunAll` when the file has no owning package, or the owner isn't
+  // one of the discovered test packages (e.g. a framework edit that ripples into
+  // several plugins — full re-run is the safe choice there). A human terminal
+  // `watch` always re-runs everything (full-summary output).
+  let affectedScope = (path: string): runScope =>
+    if opts.format == VsCode {
+      let abs = resolvePath(path)
+      switch PackageScan.findOwning(PackageScan.dirname(abs)) {
+      | Some(pkg) if discoveredPaths.contents->Array.some(p => pathUnderDir(p, pkg.dir)) =>
+        RunPackages([pkg.dir])
+      | _ => RunAll
+      }
+    } else {
+      RunAll
+    }
   let _watcher = Watch.start(roots, (event, path) =>
     if opts.format == VsCode && Watch.isStructuralSource(event, path) {
       structuralRebuild(path)
     } else if opts.format == VsCode && event == Watch.Add && path->String.endsWith(".res") {
       ignore(refreshDiscovery())
     } else {
-      ignore(run())
+      ignore(requestRun(affectedScope(path)))
     }
   )
   // Keep the process alive until cancelled. Awaiting here (rather than letting
