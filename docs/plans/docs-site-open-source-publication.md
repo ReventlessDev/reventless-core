@@ -197,8 +197,8 @@ Decide **one canonical home** per topic. Default (open decision #2): `git mv` th
 | forward-codegen-pipeline.md | — | Moved to the developer-tooling repo |
 | graphql-schema-debugging.md | Contributing | Migrate |
 | reventless-vscode-testing.md | Contributing | Keep — user docs for the free VS Code extension |
-| GITHUB_MIGRATION_GUIDE.md | — | **Do not publish** |
-| GITHUB.IMPLEMENTATION_SUMMARY.md | — | **Do not publish** |
+| GITHUB_MIGRATION_GUIDE.md | — | **Deleted** (stale GitLab→GitHub/GH-Packages boilerplate; migration done, npmjs live) |
+| GITHUB.IMPLEMENTATION_SUMMARY.md | — | **Deleted** (misdescribed reality: semantic-release/CI-matrix/scope) |
 | CICD_SETUP.md | — | **Do not publish** |
 | AWS_PACKAGE_SEPARATION.md | — | **Do not publish** |
 
