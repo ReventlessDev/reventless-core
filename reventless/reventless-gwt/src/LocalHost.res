@@ -55,23 +55,11 @@ type pluginExports = {"Make": platform => builtPlugin}
 //    plugin keys match the names the framework itself bakes into Plugin.res. ──
 
 // "@scope/my-catalog" → "MyCatalog", "online-shop" → "OnlineShop".
-let packageNameToPluginName = (packageName: string): string => {
-  let base = switch packageName->String.split("/") {
-  | [_scope, local] => local
-  | [local] => local
-  | parts => parts->Array.getUnsafe(parts->Array.length - 1)
-  }
-  base
-  ->String.split("-")
-  ->Array.flatMap(part => part->String.split("_"))
-  ->Array.map(word =>
-    word === ""
-      ? ""
-      : word->String.slice(~start=0, ~end=1)->String.toUpperCase ++
-          word->String.slice(~start=1, ~end=word->String.length)
-  )
-  ->Array.join("")
-}
+// Single-sourced with the plugin generator (spec's `Config`) via
+// `Reventless.PluginName` so the two can't drift — a drift silently breaks
+// graph plugin keys (see the module for the full rationale). Re-exported here
+// under the historical name the tests already pin.
+let packageNameToPluginName = Reventless.PluginName.fromPackageName
 
 let strField = (json, key) =>
   json->JSON.Decode.object->Option.flatMap(d => d->Dict.get(key))->Option.flatMap(JSON.Decode.string)
@@ -82,19 +70,15 @@ let readJson = path =>
   }
 
 // plugin.json `name` → else PascalCase(package.json `name`) → else "Plugin".
+// The precedence itself lives in `Reventless.PluginName.resolve`; this only
+// reads the two raw fields with the local node bindings.
 let derivePluginName = (~pluginSrcDir: string): string => {
   let pluginJson = join(pluginSrcDir, "plugin.json")
-  let fromPluginJson =
+  let pluginJsonName =
     existsSync(pluginJson) ? readJson(pluginJson)->Option.flatMap(j => strField(j, "name")) : None
-  switch fromPluginJson {
-  | Some(name) => name
-  | None =>
-    let pkgJson = join(dirname(pluginSrcDir), "package.json")
-    readJson(pkgJson)
-    ->Option.flatMap(j => strField(j, "name"))
-    ->Option.map(packageNameToPluginName)
-    ->Option.getOr("Plugin")
-  }
+  let packageJsonName =
+    readJson(join(dirname(pluginSrcDir), "package.json"))->Option.flatMap(j => strField(j, "name"))
+  Reventless.PluginName.resolve(~pluginJsonName, ~packageJsonName)
 }
 
 // Given workspace package dirs (e.g. from PackageScan), keep those that carry a

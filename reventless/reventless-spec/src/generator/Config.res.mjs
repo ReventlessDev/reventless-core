@@ -5,34 +5,7 @@ import * as Nodepath from "node:path";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-
-function packageNameToPluginName(packageName) {
-  let parts = packageName.split("/");
-  let len = parts.length;
-  let base;
-  if (len >= 3) {
-    base = parts[parts.length - 1 | 0];
-  } else {
-    switch (len) {
-      case 0 :
-        base = parts[parts.length - 1 | 0];
-        break;
-      case 1 :
-        base = parts[0];
-        break;
-      case 2 :
-        base = parts[1];
-        break;
-    }
-  }
-  return base.split("-").flatMap(part => part.split("_")).map(word => {
-    if (word === "") {
-      return "";
-    } else {
-      return word.slice(0, 1).toUpperCase() + word.slice(1, word.length);
-    }
-  }).join("");
-}
+import * as PluginName$Reventless from "../components/PluginName.res.mjs";
 
 function readJson(path) {
   try {
@@ -56,16 +29,18 @@ function getStrArrayField(json, key) {
 
 function read(srcDir) {
   let packageJsonPath = Nodepath.join(Nodepath.dirname(srcDir), "package.json");
-  let derivedName = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(readJson(packageJsonPath), j => getStrField(j, "name")), packageNameToPluginName), "Plugin");
+  let packageJsonName = Stdlib_Option.flatMap(readJson(packageJsonPath), j => getStrField(j, "name"));
   let pluginJsonPath = Nodepath.join(srcDir, "plugin.json");
   let pluginJson = Nodefs.existsSync(pluginJsonPath) ? readJson(pluginJsonPath) : undefined;
   return {
-    name: Stdlib_Option.getOr(Stdlib_Option.flatMap(pluginJson, j => getStrField(j, "name")), derivedName),
+    name: PluginName$Reventless.resolve(Stdlib_Option.flatMap(pluginJson, j => getStrField(j, "name")), packageJsonName),
     heartbeatInterval: Stdlib_Option.getOr(Stdlib_Option.flatMap(pluginJson, j => getIntField(j, "heartbeatInterval")), 5),
     exclude: Stdlib_Option.getOr(Stdlib_Option.flatMap(pluginJson, j => getStrArrayField(j, "exclude")), []),
     variant: "Composition"
   };
 }
+
+let packageNameToPluginName = PluginName$Reventless.fromPackageName;
 
 export {
   packageNameToPluginName,

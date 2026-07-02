@@ -7,6 +7,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Nodemodule from "node:module";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as PluginName$Reventless from "@reventlessdev/reventless-spec/src/components/PluginName.res.mjs";
 
 let dynamicImport = ((u) => import(u));
 
@@ -17,34 +18,6 @@ let counter = {
 function bustedUrl(absolutePath) {
   counter.contents = counter.contents + 1 | 0;
   return Nodeurl.pathToFileURL(absolutePath).href + "?t=" + counter.contents.toString();
-}
-
-function packageNameToPluginName(packageName) {
-  let parts = packageName.split("/");
-  let len = parts.length;
-  let base;
-  if (len >= 3) {
-    base = parts[parts.length - 1 | 0];
-  } else {
-    switch (len) {
-      case 0 :
-        base = parts[parts.length - 1 | 0];
-        break;
-      case 1 :
-        base = parts[0];
-        break;
-      case 2 :
-        base = parts[1];
-        break;
-    }
-  }
-  return base.split("-").flatMap(part => part.split("_")).map(word => {
-    if (word === "") {
-      return "";
-    } else {
-      return word.slice(0, 1).toUpperCase() + word.slice(1, word.length);
-    }
-  }).join("");
 }
 
 function strField(json, key) {
@@ -61,12 +34,9 @@ function readJson(path) {
 
 function derivePluginName(pluginSrcDir) {
   let pluginJson = Nodepath.join(pluginSrcDir, "plugin.json");
-  let fromPluginJson = Nodefs.existsSync(pluginJson) ? Stdlib_Option.flatMap(readJson(pluginJson), j => strField(j, "name")) : undefined;
-  if (fromPluginJson !== undefined) {
-    return fromPluginJson;
-  }
-  let pkgJson = Nodepath.join(Nodepath.dirname(pluginSrcDir), "package.json");
-  return Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(readJson(pkgJson), j => strField(j, "name")), packageNameToPluginName), "Plugin");
+  let pluginJsonName = Nodefs.existsSync(pluginJson) ? Stdlib_Option.flatMap(readJson(pluginJson), j => strField(j, "name")) : undefined;
+  let packageJsonName = Stdlib_Option.flatMap(readJson(Nodepath.join(Nodepath.dirname(pluginSrcDir), "package.json")), j => strField(j, "name"));
+  return PluginName$Reventless.resolve(pluginJsonName, packageJsonName);
 }
 
 function discover(packageDirs) {
@@ -110,6 +80,8 @@ async function loadGraph(platformModulePath, plugins) {
     structures: structures
   };
 }
+
+let packageNameToPluginName = PluginName$Reventless.fromPackageName;
 
 export {
   dynamicImport,

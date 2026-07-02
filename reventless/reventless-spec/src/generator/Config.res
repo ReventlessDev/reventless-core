@@ -12,25 +12,9 @@ type config = {
 
 // Convert npm package name to PascalCase plugin name.
 // "@scope/my-catalog" → "MyCatalog", "online-shop" → "OnlineShop"
-let packageNameToPluginName = (packageName: string): string => {
-  let base = switch packageName->String.split("/") {
-  | [_scope, local] => local
-  | [local] => local
-  | parts => parts->Array.getUnsafe(parts->Array.length - 1)
-  }
-  base
-  ->String.split("-")
-  ->Array.flatMap(part => part->String.split("_"))
-  ->Array.map(word =>
-    if word === "" {
-      ""
-    } else {
-      word->String.slice(~start=0, ~end=1)->String.toUpperCase ++
-        word->String.slice(~start=1, ~end=word->String.length)
-    }
-  )
-  ->Array.join("")
-}
+// Single-sourced with reventless-gwt's LocalHost via `PluginName` so the two
+// can't drift (a drift silently breaks graph plugin keys).
+let packageNameToPluginName = PluginName.fromPackageName
 
 let readJson = (path: string): option<JSON.t> =>
   try Some(Generator_Node.readFileSync(path)->JSON.parseOrThrow) catch {
@@ -58,13 +42,9 @@ let getStrArrayField = (json: JSON.t, key: string): option<array<string>> =>
   ->Option.map(arr => arr->Array.filterMap(JSON.Decode.string))
 
 let read = (~srcDir: string): config => {
-  // Derive plugin name from package.json in parent of srcDir
+  // Read package.json `name` from the parent of srcDir
   let packageJsonPath = Generator_Node.join([Generator_Node.dirname(srcDir), "package.json"])
-  let derivedName =
-    readJson(packageJsonPath)
-    ->Option.flatMap(j => getStrField(j, "name"))
-    ->Option.map(packageNameToPluginName)
-    ->Option.getOr("Plugin")
+  let packageJsonName = readJson(packageJsonPath)->Option.flatMap(j => getStrField(j, "name"))
 
   // Read plugin.json from srcDir (optional)
   let pluginJsonPath = Generator_Node.join([srcDir, "plugin.json"])
@@ -75,7 +55,10 @@ let read = (~srcDir: string): config => {
   }
 
   {
-    name: pluginJson->Option.flatMap(j => getStrField(j, "name"))->Option.getOr(derivedName),
+    name: PluginName.resolve(
+      ~pluginJsonName=pluginJson->Option.flatMap(j => getStrField(j, "name")),
+      ~packageJsonName,
+    ),
     heartbeatInterval: pluginJson
     ->Option.flatMap(j => getIntField(j, "heartbeatInterval"))
     ->Option.getOr(5),
