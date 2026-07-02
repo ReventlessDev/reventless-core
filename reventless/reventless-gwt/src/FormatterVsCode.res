@@ -253,18 +253,9 @@ let deadCode = (findings: array<DomainDeadCode.finding>) =>
 
 // Event-Modeling graph (Phase 6) — the node/edge model assembled from each plugin's
 // `pluginStructure` + cross-plugin edges.
-let graph = (g: DomainGraph.graph) =>
-  emit(
-    Graph({
-      nodes: g.nodes->Array.map((n): P.graphNode => {
-        id: n.id,
-        kind: n.kind,
-        label: n.label,
-        plugin: n.plugin,
-      }),
-      edges: g.edges->Array.map((e): P.graphEdge => {from: e.from, to_: e.to, kind: e.kind, label: ?e.label}),
-    }),
-  )
+// `DomainGraph` already builds `P.graphNode`/`P.graphEdge`, so the graph event
+// forwards them directly — no field-by-field re-map to drift from the contract.
+let graph = (g: DomainGraph.graph) => emit(Graph({nodes: g.nodes, edges: g.edges}))
 
 // Component definitions (Phase 6.3) — one `encodePluginStructureEntry` JSON object
 // per plugin (commands/events with field schemas, read-side state schemas), used by
@@ -292,7 +283,7 @@ let domainEvent = (payload: JSON.t) => writeLine(JSON.stringify(payload))
 
 let platformLog = (~line: string) => emit(PlatformLog({line: line}))
 
-let platformStop = (~code: option<int>) => emit(PlatformStop({code: code}))
+let platformStop = (~code: option<int>) => emit(PlatformStop({code: ?code}))
 
 let runStart = (~total: int, ~filter: array<string>) => emit(RunStart({total, filter}))
 

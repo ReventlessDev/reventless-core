@@ -14,12 +14,6 @@
 // before any schema referencing it is built.
 let () = S.enableJson()
 
-// `js_nullable` (exported as `nullable` from sury's CJS entry) yields a `T | null`
-// schema typed as `option` — unlike `S.null`/`S.nullable`, which add `undefined` and
-// then fail sury's `jsonableValidation` on serialize (the reverse direction the CLI
-// uses). See the reventless-core sury notes.
-@module("sury") external jsNullable: (S.t<'a>, unit) => S.t<option<'a>> = "nullable"
-
 @genType @schema
 type position = {line: int, character: int}
 
@@ -101,13 +95,24 @@ type streamEvent =
   | @as("platformReady") PlatformReady({domainEndpoint: string})
   | @as("domainEvent") DomainEvent({seq: int, topic: string, service: string, payload: JSON.t, ts: string})
   | @as("platformLog") PlatformLog({line: string})
-  | @as("platformStop") PlatformStop({code: @s.matches(jsNullable(S.int, ())) option<int>})
+  // `code` is a plain OPTIONAL field: an exit code (`code: N`) or absent when the
+  // child was killed by a signal. A previous `jsNullable` (required `int | null`)
+  // field didn't round-trip — sury's serialize of `None` *omits* the key, but the
+  // parser then required it present, so a signal-killed platform's stop event was
+  // undecodable. Optional ⇄ absent round-trips cleanly (no `null`/`undefined` in
+  // the JSON, so `jsonableValidation` still passes).
+  | @as("platformStop") PlatformStop({code?: int})
 
 // Bumped whenever the contract changes (new events, renamed fields). Single source —
 // the CLI's `hello` emission and the extension's protocol check both read this.
+// `@genType` so the TS consumer imports this constant instead of hand-copying the
+// number (which would silently drift from the schema it's meant to gate).
 // v7: local platform runner events (platformStart/Ready/Log/Stop + domainEvent).
 // v8: component definitions event (field schemas for command/event/read-side state).
-let protocolVersion = 8
+// v9: platformStop `code` is now a plain optional (was required `int | null`), so a
+//     signal-killed platform's stop event round-trips instead of failing to decode.
+@genType
+let protocolVersion = 9
 
 // Decode + validate one NDJSON line. `None` for a malformed line or an unknown event
 // (a version-skewed CLI degrades gracefully — same effect as the old "ignore unknown").

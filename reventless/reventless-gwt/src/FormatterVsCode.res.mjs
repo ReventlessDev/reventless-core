@@ -282,24 +282,11 @@ function deadCode(findings) {
 }
 
 function graph(g) {
-  let e_0 = g.nodes.map(n => ({
-    id: n.id,
-    kind: n.kind,
-    label: n.label,
-    plugin: n.plugin
-  }));
-  let e_1 = g.edges.map(e => ({
-    from: e.from,
-    to: e.to,
-    kind: e.kind,
-    label: e.label
-  }));
-  let e = {
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
     event: "graph",
-    nodes: e_0,
-    edges: e_1
-  };
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+    nodes: g.nodes,
+    edges: g.edges
+  });
   process.stdout.write(s + "\n");
 }
 

@@ -84,9 +84,9 @@ let structure = (
 }
 
 let hasEdge = (g: DomainGraph.graph, from, to, kind) =>
-  g.edges->Array.some(e => e.from == from && e.to == to && e.kind == kind)
+  g.edges->Array.some(e => e.from == from && e.to_ == to && e.kind == kind)
 let edgeLabel = (g: DomainGraph.graph, from, to, kind) =>
-  g.edges->Array.find(e => e.from == from && e.to == to && e.kind == kind)->Option.flatMap(e => e.label)
+  g.edges->Array.find(e => e.from == from && e.to_ == to && e.kind == kind)->Option.flatMap(e => e.label)
 let nodeKind = (g: DomainGraph.graph, id) =>
   g.nodes->Array.find(n => n.id == id)->Option.map(n => n.kind)
 
