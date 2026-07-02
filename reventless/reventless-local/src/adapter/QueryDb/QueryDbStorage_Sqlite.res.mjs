@@ -209,10 +209,25 @@ function makeStorage(db, bus, name, indexes, subIdField) {
       _0: undefined
     };
   };
-  let count = async (_id, _fieldName, inc) => ({
-    TAG: "Ok",
-    _0: inc
-  });
+  let count = async (id, fieldName, inc) => {
+    let existing = Stdlib_Option.flatMap(rowsFor(id)[0], Stdlib_JSON.Decode.object);
+    let current = Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(existing, o => o[fieldName]), Stdlib_JSON.Decode.float), 0, prim => prim | 0);
+    let next = current + inc | 0;
+    let obj = {};
+    if (existing !== undefined) {
+      Object.entries(existing).forEach(param => {
+        obj[param[0]] = param[1];
+      });
+    }
+    obj["id"] = id;
+    obj[fieldName] = next;
+    saveOne(id, obj, undefined);
+    publishUpdated(id, obj);
+    return {
+      TAG: "Ok",
+      _0: next
+    };
+  };
   let deleteOne = (id, subIdOpt) => {
     if (subIdOpt !== undefined) {
       return SqliteDriver$ReventlessLocal.run(deleteBySubKeyStmt, [

@@ -70,6 +70,41 @@ describe("Backend parity (Memory vs Sqlite)", () => {
     await runUnderSqlite(scenario)
   })
 
+  testPromise("QueryDb: count returns a running total and loadStream reflects it under both", async () => {
+    let scenario = async () => {
+      module TestBus = LocalBus.Make()
+      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      let s = Storage.make(~name="parity-count", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let ops = await s.operations->TestRunner.resolve
+
+      // First increment creates the counter item and returns the new total.
+      let r1 = await ops.count("prod-1", "orderCount", 3)
+      expect(r1)->toEqual(Ok(3))
+      // Second increment accumulates (not just echoes the increment).
+      let r2 = await ops.count("prod-1", "orderCount", 2)
+      expect(r2)->toEqual(Ok(5))
+
+      // loadStream must see the persisted counter — count is not a side channel.
+      let items =
+        await ops.loadStream("prod-1")
+        ->Stream.runCollect
+        ->Effect.catchAll(_ => Effect.succeed([]))
+        ->Effect.runPromise
+      expect(items->Array.length)->toBe(1)
+      let field =
+        items
+        ->Array.getUnsafe(0)
+        ->JSON.Decode.object
+        ->Option.flatMap(o => o->Dict.get("orderCount"))
+        ->Option.flatMap(JSON.Decode.float)
+        ->Option.mapOr(0, Float.toInt)
+      expect(field)->toBe(5)
+    }
+
+    await runUnderMemory(scenario)
+    await runUnderSqlite(scenario)
+  })
+
   testPromise("EventLog: conflict detection works under both", async () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()

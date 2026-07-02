@@ -131,10 +131,27 @@ function Make(Bus) {
         _0: undefined
       };
     };
-    let count = async (_id, _fieldName, inc) => ({
-      TAG: "Ok",
-      _0: inc
-    });
+    let count = async (id, fieldName, inc) => {
+      let subMap = getOrCreateSubMap(id);
+      let existing = Stdlib_Option.flatMap(subMap[""], Stdlib_JSON.Decode.object);
+      let current = Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(existing, o => o[fieldName]), Stdlib_JSON.Decode.float), 0, prim => prim | 0);
+      let next = current + inc | 0;
+      let obj = {};
+      if (existing !== undefined) {
+        Object.entries(existing).forEach(param => {
+          obj[param[0]] = param[1];
+        });
+      }
+      obj["id"] = id;
+      obj[fieldName] = next;
+      subMap[""] = obj;
+      syncAll();
+      publishUpdated(id, obj);
+      return {
+        TAG: "Ok",
+        _0: next
+      };
+    };
     let $$delete = async (id, subIdOpt) => {
       if (subIdOpt !== undefined) {
         let subValue = subIdOpt[1];

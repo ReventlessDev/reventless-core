@@ -260,7 +260,30 @@ let makeStorage = (
     Ok()
   }
 
-  let count: QueryDb.count<string> = async (_id, _fieldName, inc) => Ok(inc)
+  // Mirror DynamoDB's `ADD #fieldName :inc` on key {id}: read the counter field
+  // on the partition-key item (counters are single-state, sub_key=""), add `inc`,
+  // upsert, and return the NEW total. The previous `Ok(inc)` echoed the increment
+  // and never persisted, so the total was wrong and `loadStream` never saw it.
+  let count: QueryDb.count<string> = async (id, fieldName, inc) => {
+    let existing = rowsFor(id)->Array.get(0)->Option.flatMap(JSON.Decode.object)
+    let current =
+      existing
+      ->Option.flatMap(o => o->Dict.get(fieldName))
+      ->Option.flatMap(JSON.Decode.float)
+      ->Option.mapOr(0, Float.toInt)
+    let next = current + inc
+    let obj = Dict.make()
+    switch existing {
+    | Some(o) => o->Dict.toArray->Array.forEach(((k, v)) => obj->Dict.set(k, v))
+    | None => ()
+    }
+    obj->Dict.set("id", JSON.Encode.string(id))
+    obj->Dict.set(fieldName, JSON.Encode.int(next))
+    let newItem = JSON.Encode.object(obj)
+    saveOne(id, newItem, None)
+    publishUpdated(id, newItem)
+    Ok(next)
+  }
 
   let deleteOne = (id: string, subIdOpt) =>
     switch subIdOpt {
