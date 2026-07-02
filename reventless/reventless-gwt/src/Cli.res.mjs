@@ -5,8 +5,10 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Watch$ReventlessGwt from "./Watch.res.mjs";
+import * as Nodeworker_threads from "node:worker_threads";
 import * as Loader$ReventlessGwt from "./Loader.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Worker$ReventlessGwt from "./Worker.res.mjs";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as Collector$ReventlessGwt from "./Collector.res.mjs";
 import * as Discovery$ReventlessGwt from "./Discovery.res.mjs";
@@ -623,6 +625,37 @@ async function runWatch(opts) {
     await emitDiscovery(paths);
     startBuildWatchers(paths);
   }
+  let currentWorker = {
+    contents: undefined
+  };
+  Cancellation$ReventlessGwt.onCancel(() => {
+    let w = currentWorker.contents;
+    if (w !== undefined) {
+      Primitive_option.valFromOption(w).terminate();
+      return;
+    }
+  });
+  let runInWorker = () => new Promise((resolve, _reject) => {
+    let w = new Nodeworker_threads.Worker(Worker$ReventlessGwt.runWorkerUrl, {
+      workerData: opts
+    });
+    currentWorker.contents = Primitive_option.some(w);
+    let settled = {
+      contents: false
+    };
+    let settle = () => {
+      if (!settled.contents) {
+        settled.contents = true;
+        currentWorker.contents = undefined;
+        return resolve();
+      }
+    };
+    w.on("exit", _code => settle());
+    w.on("error", e => {
+      console.error("gwt run worker error:", e);
+      settle();
+    });
+  });
   let runInProgress = {
     contents: false
   };
@@ -635,10 +668,10 @@ async function runWatch(opts) {
       return;
     }
     runInProgress.contents = true;
-    await runOnce(opts);
+    await runInWorker();
     while (rerunPending.contents) {
       rerunPending.contents = false;
-      await runOnce(opts);
+      await runInWorker();
     };
     runInProgress.contents = false;
   };

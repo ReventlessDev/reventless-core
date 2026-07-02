@@ -568,6 +568,37 @@ let runWatch = async (opts: options): int => {
     await emitDiscovery(paths)
     startBuildWatchers(paths)
   }
+  // Each re-run pass executes in a short-lived Worker so it gets a fresh ESM
+  // module registry (recompiled implementation modules are re-imported instead
+  // of served stale from Node's never-evicting cache) and reclaims the imported
+  // graph on exit. The worker's stdout is piped to ours, so its NDJSON reaches
+  // the client unchanged. One worker per pass; the parent keeps ownership of the
+  // build watchers and chokidar.
+  let currentWorker: ref<option<Worker.t>> = ref(None)
+  Cancellation.onCancel(() =>
+    switch currentWorker.contents {
+    | Some(w) =>
+      let _ = Worker.terminate(w)
+    | None => ()
+    }
+  )
+  let runInWorker = (): promise<unit> =>
+    Promise.make((resolve, _reject) => {
+      let w = Worker.make(Worker.runWorkerUrl, {workerData: opts})
+      currentWorker := Some(w)
+      let settled = ref(false)
+      let settle = () =>
+        if !settled.contents {
+          settled := true
+          currentWorker := None
+          resolve()
+        }
+      w->Worker.on("exit", (_code: int) => settle())
+      w->Worker.on("error", e => {
+        Console.error2("gwt run worker error:", e)
+        settle()
+      })
+    })
   let runInProgress = ref(false)
   let rerunPending = ref(false)
   let run = async () => {
@@ -575,7 +606,7 @@ let runWatch = async (opts: options): int => {
       rerunPending := true
     } else {
       runInProgress := true
-      let _ = await runOnce(opts)
+      let _ = await runInWorker()
       // Drain every re-run request that arrived while a pass was in flight.
       // Clearing `runInProgress` before awaiting the pending pass (the previous
       // shape) let a third concurrent `run` start mid-drain, which corrupts the
@@ -583,7 +614,7 @@ let runWatch = async (opts: options): int => {
       // across the whole drain loop so only one pass ever runs at a time.
       while rerunPending.contents {
         rerunPending := false
-        let _ = await runOnce(opts)
+        let _ = await runInWorker()
       }
       runInProgress := false
     }
