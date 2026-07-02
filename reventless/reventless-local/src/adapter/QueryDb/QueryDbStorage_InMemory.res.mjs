@@ -76,6 +76,58 @@ function Make(Bus) {
     let syncAll = () => {
       allItems.contents = flattenStore(store.contents);
     };
+    let expiries = {
+      contents: {}
+    };
+    let recordExpiry = (id, subKey, ttl) => {
+      if (ttl !== undefined) {
+        let m = expiries.contents[id];
+        let subExp;
+        if (m !== undefined) {
+          subExp = m;
+        } else {
+          let m$1 = {};
+          expiries.contents[id] = m$1;
+          subExp = m$1;
+        }
+        subExp[subKey] = ttl;
+        return;
+      }
+      let m$2 = expiries.contents[id];
+      if (m$2 !== undefined) {
+        return Stdlib_Dict.$$delete(m$2, subKey);
+      }
+    };
+    let purgeExpired = () => {
+      let now = Date.now() / 1000.0;
+      let removedAny = {
+        contents: false
+      };
+      Object.entries(expiries.contents).forEach(param => {
+        let subExp = param[1];
+        let id = param[0];
+        Object.entries(subExp).forEach(param => {
+          if (param[1] > now) {
+            return;
+          }
+          let subKey = param[0];
+          let sm = store.contents[id];
+          if (sm !== undefined) {
+            if (Stdlib_Option.isSome(sm[subKey])) {
+              Stdlib_Dict.$$delete(sm, subKey);
+              removedAny.contents = true;
+            }
+            if (Object.keys(sm).length === 0) {
+              Stdlib_Dict.$$delete(store.contents, id);
+            }
+          }
+          Stdlib_Dict.$$delete(subExp, subKey);
+        });
+      });
+      if (removedAny.contents) {
+        return syncAll();
+      }
+    };
     let getOrCreateSubMap = partitionKey => {
       let m = store.contents[partitionKey];
       if (m !== undefined) {
@@ -85,11 +137,17 @@ function Make(Bus) {
       store.contents[partitionKey] = m$1;
       return m$1;
     };
-    let load = async id => ({
-      TAG: "Ok",
-      _0: sortedItems(store.contents, id)
-    });
-    let loadStream = id => Stream.fromIterable(sortedItems(store.contents, id));
+    let load = async id => {
+      purgeExpired();
+      return {
+        TAG: "Ok",
+        _0: sortedItems(store.contents, id)
+      };
+    };
+    let loadStream = id => {
+      purgeExpired();
+      return Stream.fromIterable(sortedItems(store.contents, id));
+    };
     let entityKeyFor = (id, subKey) => {
       if (subIdField !== undefined) {
         return id + "-" + subKey;
@@ -106,10 +164,11 @@ function Make(Bus) {
       let descriptor = LocalBus$ReventlessLocal.makeStateChangeDescriptor("Removed", entityKeyFor(id, subKey), undefined);
       Bus.publishStateChange(name, descriptor);
     };
-    let save = async (id, state, _saveMode, _ttl) => {
+    let save = async (id, state, _saveMode, ttl) => {
       let subKey = getSubKey(state, subIdField);
       let subMap = getOrCreateSubMap(id);
       subMap[subKey] = state;
+      recordExpiry(id, subKey, ttl);
       syncAll();
       publishUpdated(id, state);
       return {
@@ -120,9 +179,11 @@ function Make(Bus) {
     let saveBatch = async batch => {
       batch.forEach(param => {
         let state = param[1];
+        let id = param[0];
         let subKey = getSubKey(state, subIdField);
-        let subMap = getOrCreateSubMap(param[0]);
+        let subMap = getOrCreateSubMap(id);
         subMap[subKey] = state;
+        recordExpiry(id, subKey, param[2]);
       });
       syncAll();
       batch.forEach(param => publishUpdated(param[0], param[1]));
@@ -226,8 +287,14 @@ function Make(Bus) {
       deleteBatch: deleteBatch
     };
     Bus.registerQueryDb(name, ops);
-    Bus.registerQueryDbScan(name, () => allItems.contents);
-    Bus.registerQueryDbStream(name, () => Stream.fromIterable(allItems.contents));
+    Bus.registerQueryDbScan(name, () => {
+      purgeExpired();
+      return allItems.contents;
+    });
+    Bus.registerQueryDbStream(name, () => {
+      purgeExpired();
+      return Stream.fromIterable(allItems.contents);
+    });
     return {
       resources: [],
       dataSourceName: Pulumi.output(""),

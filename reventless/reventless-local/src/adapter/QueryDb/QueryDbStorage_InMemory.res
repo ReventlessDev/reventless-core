@@ -87,6 +87,60 @@ module Make = (Bus: LocalBus.T) => {
       allItems.contents = flattenStore(store.contents)
     }
 
+    // TTL parity with the SQLite backend (which filters on `expires_at`). We
+    // record an absolute expiry (epoch seconds, the same value SQLite stores) per
+    // (partition, sub-key) and drop expired entries lazily on read — a session
+    // without reads never spends cycles expiring, matching SQLite's read-time
+    // `notExpiredClause`. Previously `~ttl` was ignored entirely in memory.
+    let expiries: ref<dict<dict<float>>> = ref(Dict.make())
+    let nowSecs = () => Date.now() /. 1000.0
+    let recordExpiry = (id: string, subKey: string, ttl: option<int>) =>
+      switch ttl {
+      | Some(t) =>
+        let subExp = switch expiries.contents->Dict.get(id) {
+        | Some(m) => m
+        | None =>
+          let m = Dict.make()
+          expiries.contents->Dict.set(id, m)
+          m
+        }
+        subExp->Dict.set(subKey, Int.toFloat(t))
+      | None =>
+        switch expiries.contents->Dict.get(id) {
+        | Some(m) => m->Dict.delete(subKey)
+        | None => ()
+        }
+      }
+    let purgeExpired = () => {
+      let now = nowSecs()
+      let removedAny = ref(false)
+      expiries.contents
+      ->Dict.toArray
+      ->Array.forEach(((id, subExp)) =>
+        subExp
+        ->Dict.toArray
+        ->Array.forEach(((subKey, exp)) =>
+          if exp <= now {
+            switch store.contents->Dict.get(id) {
+            | Some(sm) =>
+              if sm->Dict.get(subKey)->Option.isSome {
+                sm->Dict.delete(subKey)
+                removedAny := true
+              }
+              if sm->Dict.keysToArray->Array.length == 0 {
+                store.contents->Dict.delete(id)
+              }
+            | None => ()
+            }
+            subExp->Dict.delete(subKey)
+          }
+        )
+      )
+      if removedAny.contents {
+        syncAll()
+      }
+    }
+
     let getOrCreateSubMap = (partitionKey: string): dict<JSON.t> =>
       switch store.contents->Dict.get(partitionKey) {
       | Some(m) => m
@@ -96,11 +150,15 @@ module Make = (Bus: LocalBus.T) => {
         m
       }
 
-    let load: QueryDb.load<string, JSON.t> = async id =>
+    let load: QueryDb.load<string, JSON.t> = async id => {
+      purgeExpired()
       Ok(sortedItems(store.contents, id))
+    }
 
-    let loadStream: QueryDb.loadStream<string, JSON.t> = id =>
+    let loadStream: QueryDb.loadStream<string, JSON.t> = id => {
+      purgeExpired()
       sortedItems(store.contents, id)->Stream.fromIterable
+    }
 
     // Entity key matches the AWS StateTopic Lambda output (Phase 1):
     // single-key tables → partition value; composite tables → `pk-sk`.
@@ -129,20 +187,22 @@ module Make = (Bus: LocalBus.T) => {
       Bus.publishStateChange(~name, ~descriptor)
     }
 
-    let save: QueryDb.save<string, JSON.t> = async (id, state, _saveMode, _ttl) => {
+    let save: QueryDb.save<string, JSON.t> = async (id, state, _saveMode, ttl) => {
       let subKey = getSubKey(state, subIdField)
       let subMap = getOrCreateSubMap(id)
       subMap->Dict.set(subKey, state)
+      recordExpiry(id, subKey, ttl)
       syncAll()
       publishUpdated(id, state)
       Ok()
     }
 
     let saveBatch: QueryDb.saveBatch<string, JSON.t> = async batch => {
-      batch->Array.forEach(((id, state, _ttl)) => {
+      batch->Array.forEach(((id, state, ttl)) => {
         let subKey = getSubKey(state, subIdField)
         let subMap = getOrCreateSubMap(id)
         subMap->Dict.set(subKey, state)
+        recordExpiry(id, subKey, ttl)
       })
       syncAll()
       // Notify subscribers for each saved item
@@ -241,8 +301,14 @@ module Make = (Bus: LocalBus.T) => {
     }
 
     Bus.registerQueryDb(name, ops)
-    Bus.registerQueryDbScan(name, () => allItems.contents)
-    Bus.registerQueryDbStream(name, () => allItems.contents->Stream.fromIterable)
+    Bus.registerQueryDbScan(name, () => {
+      purgeExpired()
+      allItems.contents
+    })
+    Bus.registerQueryDbStream(name, () => {
+      purgeExpired()
+      allItems.contents->Stream.fromIterable
+    })
 
     {
       resources: [],

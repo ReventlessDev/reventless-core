@@ -4,14 +4,12 @@ import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_Bool from "@rescript/runtime/lib/es6/Stdlib_Bool.js";
-import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Effect from "effect/Effect";
-import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
@@ -63,6 +61,7 @@ import * as AutomationSlice_Builder$ReventlessLocal from "./components/Automatio
 import * as LocalRuntimeEnvironment$ReventlessLocal from "./adapter/Runtime/LocalRuntimeEnvironment.res.mjs";
 import * as LocalScheduledPublisher$ReventlessLocal from "./adapter/Scheduler/LocalScheduledPublisher.res.mjs";
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
+import * as QueryDbStorage_InMemory$ReventlessLocal from "./adapter/QueryDb/QueryDbStorage_InMemory.res.mjs";
 import * as LocalCommandTopicChannel$ReventlessLocal from "./adapter/CommandTopic/LocalCommandTopicChannel.res.mjs";
 import * as LocalEventTopicPublisher$ReventlessLocal from "./adapter/EventTopic/LocalEventTopicPublisher.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateChangeSlice_Builder.res.mjs";
@@ -712,89 +711,14 @@ function MakeWithConfig(Config) {
   let uiFragmentQueryDbOpsRef = {
     contents: undefined
   };
+  let UIFragmentStorage = QueryDbStorage_InMemory$ReventlessLocal.Make(Bus);
   let ensureUIFragmentRegistryQueryDbStore = () => {
     let ops = uiFragmentQueryDbOpsRef.contents;
     if (ops !== undefined) {
       return ops;
     }
-    let store = {
-      contents: {}
-    };
-    let allItems = {
-      contents: []
-    };
-    let syncAll = () => {
-      allItems.contents = Object.entries(store.contents).flatMap(param => {
-        let id = param[0];
-        return param[1].map(item => {
-          let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
-          if (Stdlib_Option.isSome(obj["id"])) {
-            return item;
-          }
-          let copy = {};
-          Object.entries(obj).forEach(param => {
-            copy[param[0]] = param[1];
-          });
-          copy["id"] = id;
-          return copy;
-        });
-      });
-    };
-    let ops_load = async id => ({
-      TAG: "Ok",
-      _0: Stdlib_Option.getOr(store.contents[id], [])
-    });
-    let ops_loadStream = id => Stream$1.fromIterable(Stdlib_Option.getOr(store.contents[id], []));
-    let ops_save = async (id, state, param, param$1) => {
-      store.contents[id] = [state];
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops_saveBatch = async batch => {
-      batch.forEach(param => {
-        store.contents[param[0]] = [param[1]];
-      });
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops_count = async (param, param$1, inc) => ({
-      TAG: "Ok",
-      _0: inc
-    });
-    let ops_delete = async (id, param) => {
-      Stdlib_Dict.$$delete(store.contents, id);
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops_deleteBatch = async ids => {
-      ids.forEach(param => Stdlib_Dict.$$delete(store.contents, param[0]));
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops$1 = {
-      load: ops_load,
-      loadStream: ops_loadStream,
-      save: ops_save,
-      saveBatch: ops_saveBatch,
-      count: ops_count,
-      delete: ops_delete,
-      deleteBatch: ops_deleteBatch
-    };
-    Bus.registerQueryDb(UIFragmentRegistryReadModelSpec$ReventlessCore.name, ops$1);
-    Bus.registerQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name, () => allItems.contents);
-    Bus.registerQueryDbStream(UIFragmentRegistryReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
+    UIFragmentStorage.make(UIFragmentRegistryReadModelSpec$ReventlessCore.name, [], undefined, undefined, undefined, undefined, {});
+    let ops$1 = Stdlib_Option.getOrThrow(Bus.getQueryDb(UIFragmentRegistryReadModelSpec$ReventlessCore.name), undefined);
     uiFragmentQueryDbOpsRef.contents = ops$1;
     return ops$1;
   };
@@ -2372,89 +2296,14 @@ function Make($star) {
   let uiFragmentQueryDbOpsRef = {
     contents: undefined
   };
+  let UIFragmentStorage = QueryDbStorage_InMemory$ReventlessLocal.Make(Bus);
   let ensureUIFragmentRegistryQueryDbStore = () => {
     let ops = uiFragmentQueryDbOpsRef.contents;
     if (ops !== undefined) {
       return ops;
     }
-    let store = {
-      contents: {}
-    };
-    let allItems = {
-      contents: []
-    };
-    let syncAll = () => {
-      allItems.contents = Object.entries(store.contents).flatMap(param => {
-        let id = param[0];
-        return param[1].map(item => {
-          let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
-          if (Stdlib_Option.isSome(obj["id"])) {
-            return item;
-          }
-          let copy = {};
-          Object.entries(obj).forEach(param => {
-            copy[param[0]] = param[1];
-          });
-          copy["id"] = id;
-          return copy;
-        });
-      });
-    };
-    let ops_load = async id => ({
-      TAG: "Ok",
-      _0: Stdlib_Option.getOr(store.contents[id], [])
-    });
-    let ops_loadStream = id => Stream$1.fromIterable(Stdlib_Option.getOr(store.contents[id], []));
-    let ops_save = async (id, state, param, param$1) => {
-      store.contents[id] = [state];
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops_saveBatch = async batch => {
-      batch.forEach(param => {
-        store.contents[param[0]] = [param[1]];
-      });
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops_count = async (param, param$1, inc) => ({
-      TAG: "Ok",
-      _0: inc
-    });
-    let ops_delete = async (id, param) => {
-      Stdlib_Dict.$$delete(store.contents, id);
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops_deleteBatch = async ids => {
-      ids.forEach(param => Stdlib_Dict.$$delete(store.contents, param[0]));
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops$1 = {
-      load: ops_load,
-      loadStream: ops_loadStream,
-      save: ops_save,
-      saveBatch: ops_saveBatch,
-      count: ops_count,
-      delete: ops_delete,
-      deleteBatch: ops_deleteBatch
-    };
-    Bus.registerQueryDb(UIFragmentRegistryReadModelSpec$ReventlessCore.name, ops$1);
-    Bus.registerQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name, () => allItems.contents);
-    Bus.registerQueryDbStream(UIFragmentRegistryReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
+    UIFragmentStorage.make(UIFragmentRegistryReadModelSpec$ReventlessCore.name, [], undefined, undefined, undefined, undefined, {});
+    let ops$1 = Stdlib_Option.getOrThrow(Bus.getQueryDb(UIFragmentRegistryReadModelSpec$ReventlessCore.name), undefined);
     uiFragmentQueryDbOpsRef.contents = ops$1;
     return ops$1;
   };

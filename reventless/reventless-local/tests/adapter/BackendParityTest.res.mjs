@@ -91,6 +91,25 @@ globalThis.describe("Backend parity (Memory vs Sqlite)", () => {
     await runUnderMemory(scenario);
     return await runUnderSqlite(scenario);
   });
+  globalThis.test("QueryDb: an expired-TTL item is filtered from loadStream under both", async () => {
+    let scenario = async () => {
+      let TestBus = LocalBus$ReventlessLocal.Make({});
+      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let s = Storage.make("parity-ttl", [], undefined, undefined, undefined, undefined, opts);
+      let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
+      let item = k => Object.fromEntries([[
+          "id",
+          k
+        ]]);
+      let readCount = async k => (await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(k)), param => Effect.succeed([])))).length;
+      await ops.save("live", item("live"), "Any", undefined);
+      await ops.save("dead", item("dead"), "Any", 1);
+      globalThis.expect(await readCount("live")).toBe(1);
+      globalThis.expect(await readCount("dead")).toBe(0);
+    };
+    await runUnderMemory(scenario);
+    return await runUnderSqlite(scenario);
+  });
   globalThis.test("EventLog: conflict detection works under both", async () => {
     let scenario = async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});

@@ -105,6 +105,35 @@ describe("Backend parity (Memory vs Sqlite)", () => {
     await runUnderSqlite(scenario)
   })
 
+  testPromise("QueryDb: an expired-TTL item is filtered from loadStream under both", async () => {
+    let scenario = async () => {
+      module TestBus = LocalBus.Make()
+      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      let s = Storage.make(~name="parity-ttl", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let ops = await s.operations->TestRunner.resolve
+
+      let item = k => JSON.Encode.object(Dict.fromArray([("id", JSON.Encode.string(k))]))
+      let readCount = async k =>
+        (
+          await ops.loadStream(k)
+          ->Stream.runCollect
+          ->Effect.catchAll(_ => Effect.succeed([]))
+          ->Effect.runPromise
+        )->Array.length
+
+      // A live item (no TTL) and one whose absolute expiry (epoch second 1) is
+      // long past — the expired one must not surface under either backend.
+      let _ = await ops.save("live", item("live"), ReventlessCore.QueryDb.Any, None)
+      let _ = await ops.save("dead", item("dead"), ReventlessCore.QueryDb.Any, Some(1))
+
+      expect(await readCount("live"))->toBe(1)
+      expect(await readCount("dead"))->toBe(0)
+    }
+
+    await runUnderMemory(scenario)
+    await runUnderSqlite(scenario)
+  })
+
   testPromise("EventLog: conflict detection works under both", async () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()

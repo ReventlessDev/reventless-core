@@ -757,60 +757,27 @@ module MakeWithConfig = (
   // UIFragmentRegistry QueryDb store ops — initialized lazily on first seed call.
   let uiFragmentQueryDbOpsRef: ref<option<ReventlessCore.QueryDb_Adapter.operations>> = ref(None)
 
+  // Backend-aware storage for the UIFragment registry — the same functor every
+  // other read model uses. Replaces a hand-rolled memory-only store that ignored
+  // BackendState, so the registry now persists under SQLite too.
+  module UIFragmentStorage = QueryDbStorage_InMemory.Make(Bus)
+
   let ensureUIFragmentRegistryQueryDbStore = () => {
     switch uiFragmentQueryDbOpsRef.contents {
     | Some(ops) => ops
     | None =>
       let name = ReventlessCore.UIFragmentRegistryReadModelSpec.name
-      let store: ref<dict<array<JSON.t>>> = ref(Dict.make())
-      let allItems: ref<array<JSON.t>> = ref([])
-      let syncAll = () => {
-        allItems.contents =
-          store.contents
-          ->Dict.toArray
-          ->Array.flatMap(((id, items)) =>
-            items->Array.map(item => {
-              let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
-              if !(obj->Dict.get("id")->Option.isSome) {
-                let copy = Dict.make()
-                obj->Dict.toArray->Array.forEach(((k, v)) => copy->Dict.set(k, v))
-                copy->Dict.set("id", JSON.Encode.string(id))
-                JSON.Encode.object(copy)
-              } else {
-                item
-              }
-            })
-          )
-      }
-      let ops: ReventlessCore.QueryDb_Adapter.operations = {
-        load: async id => Ok(store.contents->Dict.get(id)->Option.getOr([])),
-        loadStream: id =>
-          store.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable,
-        save: async (id, state, _, _) => {
-          store.contents->Dict.set(id, [state])
-          syncAll()
-          Ok()
-        },
-        saveBatch: async batch => {
-          batch->Array.forEach(((id, state, _)) => store.contents->Dict.set(id, [state]))
-          syncAll()
-          Ok()
-        },
-        count: async (_, _, inc) => Ok(inc),
-        delete: async (id, _) => {
-          store.contents->Dict.delete(id)
-          syncAll()
-          Ok()
-        },
-        deleteBatch: async ids => {
-          ids->Array.forEach(((id, _)) => store.contents->Dict.delete(id))
-          syncAll()
-          Ok()
-        },
-      }
-      Bus.registerQueryDb(name, ops)
-      Bus.registerQueryDbScan(name, () => allItems.contents)
-      Bus.registerQueryDbStream(name, () => allItems.contents->Stream.fromIterable)
+      // `make` registers the ops (and scan/stream) with the Bus for the active
+      // backend; retrieve them synchronously via getQueryDb rather than resolving
+      // the Pulumi Output.
+      let _ = UIFragmentStorage.make(
+        ~name,
+        ~indexes=[],
+        ~api=(),
+        ~apiRole=(),
+        ~opts=({}: Pulumi.CustomResourceOptions.t),
+      )
+      let ops = Bus.getQueryDb(name)->Option.getOrThrow
       uiFragmentQueryDbOpsRef := Some(ops)
       ops
     }
