@@ -15,10 +15,15 @@
     {
       "dir": "src",
       "subdirs": true
+    },
+    {
+      "dir": "tests",
+      "subdirs": true
     }
   ],
   "dependencies": [
-    "sury"
+    "sury",
+    "@reventlessdev/rescript-jest"
   ],
   "compiler-flags": [],
   "suffix": ".res.mjs"

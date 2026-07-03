@@ -1478,6 +1478,9 @@ importers:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
     devDependencies:
+      '@reventlessdev/rescript-jest':
+        specifier: workspace:*
+        version: link:../../rescript/rescript-jest
       rescript:
         specifier: ^12.3.0
         version: 12.3.0

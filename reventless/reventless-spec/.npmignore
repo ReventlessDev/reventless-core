@@ -1,6 +1,7 @@
 node_modules/
 lib/
 docs/
+tests/
 __tests__/*.re
 __tests__/*.js
 yarn.lock

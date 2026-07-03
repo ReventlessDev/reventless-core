@@ -9,7 +9,18 @@
   "scripts": {
     "build": "rescript build",
     "start": "rescript start",
-    "clean": "rescript clean"
+    "clean": "rescript clean",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "dev": "NODE_OPTIONS='--experimental-vm-modules' jest --watchAll"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/**/*Test.res.mjs"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs"
+    ]
   },
   "dependencies": {
     "jsonschema2graphql": "1.1.1",
@@ -17,6 +28,7 @@
     "sury-ppx": "11.0.0-alpha.2"
   },
   "devDependencies": {
+    "@reventlessdev/rescript-jest": "workspace:*",
     "rescript": "^12.3.0"
   },
   "peerDependencies": {
