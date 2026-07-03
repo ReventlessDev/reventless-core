@@ -107,9 +107,15 @@ Every AWS Aggregate builder pairs `EventLogStorage.DynamoDbStream` with `EventTo
 
 **Hot spots**
 
-- **Long-tail aggregates** (1k+ events) → every command triggers a full streaming replay. The `replayStream` is lazy on DDB pages but the fold consumes everything before `decide` can run. Snapshotting is the standard remediation; not implemented.
+> **Resolved (2026-07-03):** the hot spots below are addressed by
+> [`aggregate-snapshotting`](../plans/done/aggregate-snapshotting.md) — an always-on
+> in-process `(id → state, seq)` replay cache plus opt-in persisted snapshots
+> (`@@reventless.snapshots(N)`) across all three EventLog backends. The originals are
+> kept for context.
+
+- **Long-tail aggregates** (1k+ events) → every command triggers a full streaming replay. The `replayStream` is lazy on DDB pages but the fold consumes everything before `decide` can run. Snapshotting is the standard remediation; ~~not implemented~~ **now implemented** (cold replay is `O(events since last snapshot)`).
 - **Burst writes to one aggregate** → SQS FIFO serializes them; throughput ceiling per aggregate is `1 / (replay + decide + append)` ≈ 10–30 commands/s on a small aggregate, much less on a large one. This is fundamental to the consistency model, not a defect — but worth documenting for capacity planners.
-- **Lambda cold starts compound replay cost.** The first invocation pays cold-start + full replay; warm invocations only pay replay (state is rebuilt every time, not cached). A simple in-memory cache keyed by `(id, seq)` would cut steady-state RCU dramatically; not implemented (correctness implication: cache invalidation on conflict retry must reset to the just-replayed state).
+- **Lambda cold starts compound replay cost.** The first invocation pays cold-start + full replay; warm invocations only pay replay (state is rebuilt every time, not cached). A simple in-memory cache keyed by `(id, seq)` would cut steady-state RCU dramatically; ~~not implemented~~ **now implemented** — the in-process replay cache invalidates on conflict/storage-failure and reseeds from the just-replayed state, exactly as the correctness note requires.
 
 ---
 
@@ -151,7 +157,7 @@ The biggest realistic win is **snapshotting**: turns replay cost from O(N) to O(
 | 4 | [`aggregate-remove-dead-error-branches`](../plans/done/aggregate-remove-dead-error-branches.md) ✓ done | **Cleanup — P2** | Tiny (~½ d) | Zero | Folded into #1's PR — the new accumulator shape removed both branches outright. |
 | 5 | [`aggregate-msgid-causation-correlation`](../plans/Backlog/aggregate-msgid-causation-correlation.md) | **Observability — P2** | Small (~2–3 d) | Zero | Closes the command→event correlation gap. Schema-additive (`@s.optional causationId`); backwards compatible. |
 | 6 | [`aggregate-replay-cost-documentation`](../plans/Backlog/aggregate-replay-cost-documentation.md) | **Documentation — P2** | Small (~1–2 d incl. benchmark) | Zero | Operators sizing long-aggregate workloads need the cost / throughput-ceiling profile written down. Prerequisite for justifying or deferring #7. |
-| 7 | [`aggregate-snapshotting`](../plans/Backlog/aggregate-snapshotting.md) | **Performance — P3, profile-gated** | Large (~2–3 w) | **Negative** — replay cost from O(events) to O(events_since_snapshot). Pays back only on long-lived aggregates. | Significant rework. **Do not start until production data shows the linear replay cost is a real bill.** Until then, #6 is the right level of investment. |
+| 7 | [`aggregate-snapshotting`](../plans/done/aggregate-snapshotting.md) | **Performance — ✅ done (2026-07-03)** | — | replay cost from O(events) to O(events_since_snapshot) | Shipped opt-in (`@@reventless.snapshots(N)`) + an always-on in-process replay cache, all three backends. The "profile-gated, do not start" guidance is superseded: the feature is low-risk to ship because it's opt-in; *enabling* it per-aggregate is the cost-driven decision. |
 
 ### Sequencing rationale
 

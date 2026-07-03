@@ -1,7 +1,13 @@
 // Product aggregate behavior.
 // Implements the state machine for adding and updating products.
+//
+// Snapshotting is enabled (every 50 events): a long-lived product with many
+// price/name updates seeds its cold replay from the latest snapshot instead of
+// folding full history. See the "Replay cost and snapshots" section of the
+// aggregate component docs.
 
 @@reventless.behavior
+@@reventless.snapshots(50)
 
 @schema
 type state =

@@ -197,6 +197,42 @@ A command that produces:
 
 Multi-event commands always commit atomically: either every event is durable, or none are. The 2× WCU on the 2–100 band is the price DynamoDB charges for transactional atomicity.
 
+#### Replay cost and snapshots
+
+Every command rebuilds current state by replaying the aggregate's event log, so read cost and latency grow linearly with the number of events an entity has accumulated. Two mechanisms cap that cost:
+
+- **In-process replay cache (always on).** A warm runtime instance keeps the `(state, sequenceNr)` it last derived per aggregate id. The next command for the same id decides on the cached state and skips the replay entirely; correctness still rests on the optimistic-concurrency check at append time, so a stale cache can only cost a rejected append and a retry, never a wrong write. This needs no configuration.
+
+- **Persisted snapshots (opt-in).** For long-lived aggregates (running orders, ledgers, multi-month workflows), a cold start — a fresh instance, or an entity evicted from the cache — still pays a full replay. Enabling snapshots makes that cold replay `O(events since the last snapshot)` instead of `O(all events)`: the runtime periodically persists the folded state and, on a cold read, seeds from the latest snapshot and replays only the delta after it.
+
+Snapshotting is enabled per aggregate on the **behavior** file (where `state` is defined):
+
+```rescript
+@@reventless.behavior
+@@reventless.snapshots(50)   // write a snapshot every 50 events
+
+@schema
+type state = …              // @schema is required — the snapshot is serialized with the generated stateSchema
+```
+
+or, equivalently, by declaring the binding by hand:
+
+```rescript
+let snapshot = Some({interval: 50, stateSchema})
+```
+
+Behaviors that declare neither keep full replay (the default injection is `let snapshot = None`).
+
+Guarantees and behavior:
+
+- **Snapshots never affect correctness.** They are a read optimization; the sequence-number fence at append time remains the only consistency primitive. A missing, unreadable, or schema-drifted snapshot silently falls back to full replay.
+- **Keep-one.** Each aggregate keeps a single snapshot, overwritten as it advances. A batch that crosses several interval boundaries writes just the latest state.
+- **Schema-gated.** Each snapshot records a hash of the state schema; a snapshot whose hash no longer matches (a change to `type state`) is ignored and overwritten at the next boundary, so a redeploy can't decode stale bytes into a new shape. The hash catches *shape* changes only — a change to `evolve`'s logic that leaves the state type unchanged is invisible, so wipe snapshots when you change fold semantics.
+- **Writes never block a command.** The snapshot write is fire-and-forget; a write failure just means the next cold replay reads a longer delta.
+- **All backends.** The in-memory and SQLite local backends and the DynamoDB adapter all implement snapshots. Under the local SQLite backend the snapshot persists across a restart, so a dev session that crashed between append and projection resumes from the snapshot rather than replaying from event 0.
+
+**When to enable:** the feature is opt-in and low-risk to ship, but enabling it earns its keep only once replay cost is real — an entity's event count runs into the hundreds, aggregate read cost is a visible share of the bill, or replay-and-decide approaches the command handler's timeout. On the local platform, enable freely for replay-heavy development.
+
 ### Rejection contract
 
 When `decide` returns `Error(error)`:

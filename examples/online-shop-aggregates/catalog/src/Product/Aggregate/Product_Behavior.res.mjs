@@ -133,13 +133,16 @@ function decide(state, command) {
   }
 }
 
+let snapshot = {
+  interval: 50,
+  stateSchema: stateSchema
+};
+
 let Spec;
 
 let initialState = "NotCreated";
 
 let moduleUrl = "@reventlessdev/online-shop-aggregates-catalog/src/Product/Aggregate/Product_Behavior.res.mjs";
-
-let snapshot;
 
 export {
   Spec,
