@@ -35,6 +35,7 @@ function Make(Platform) {
     initialState: CatalogProduct_Behavior$OrderingPlugin.initialState,
     evolve: CatalogProduct_Behavior$OrderingPlugin.evolve,
     decide: CatalogProduct_Behavior$OrderingPlugin.decide,
+    snapshot: undefined,
     moduleUrl: CatalogProduct_Behavior$OrderingPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: CatalogProduct$OrderingPlugin.name,
@@ -53,6 +54,7 @@ function Make(Platform) {
     initialState: Customer_Behavior$OrderingPlugin.initialState,
     evolve: Customer_Behavior$OrderingPlugin.evolve,
     decide: Customer_Behavior$OrderingPlugin.decide,
+    snapshot: undefined,
     moduleUrl: Customer_Behavior$OrderingPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Customer$OrderingPlugin.name,
@@ -71,6 +73,7 @@ function Make(Platform) {
     initialState: Order_Behavior$OrderingPlugin.initialState,
     evolve: Order_Behavior$OrderingPlugin.evolve,
     decide: Order_Behavior$OrderingPlugin.decide,
+    snapshot: undefined,
     moduleUrl: Order_Behavior$OrderingPlugin.moduleUrl
   })({
     moduleUrl: Order_Mappings$OrderingPlugin.moduleUrl,

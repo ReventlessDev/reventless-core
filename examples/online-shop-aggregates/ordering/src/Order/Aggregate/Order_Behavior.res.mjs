@@ -174,6 +174,8 @@ let initialState = "NotCreated";
 
 let moduleUrl = "@reventlessdev/online-shop-aggregates-ordering/src/Order/Aggregate/Order_Behavior.res.mjs";
 
+let snapshot;
+
 export {
   Spec,
   stateSchema,
@@ -181,5 +183,6 @@ export {
   evolve,
   decide,
   moduleUrl,
+  snapshot,
 }
 /* stateSchema Not a pure module */

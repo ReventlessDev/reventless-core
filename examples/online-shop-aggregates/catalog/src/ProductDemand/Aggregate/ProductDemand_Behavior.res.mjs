@@ -91,6 +91,8 @@ let initialState = "NotCreated";
 
 let moduleUrl = "@reventlessdev/online-shop-aggregates-catalog/src/ProductDemand/Aggregate/ProductDemand_Behavior.res.mjs";
 
+let snapshot;
+
 export {
   Spec,
   stateSchema,
@@ -98,5 +100,6 @@ export {
   evolve,
   decide,
   moduleUrl,
+  snapshot,
 }
 /* stateSchema Not a pure module */

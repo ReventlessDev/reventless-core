@@ -32,6 +32,7 @@ let Sync = Flow_GWT$ReventlessGwt.AggregateCommandStep({
   initialState: CatalogProduct_Behavior$OrderingPlugin.initialState,
   evolve: CatalogProduct_Behavior$OrderingPlugin.evolve,
   decide: CatalogProduct_Behavior$OrderingPlugin.decide,
+  snapshot: undefined,
   moduleUrl: CatalogProduct_Behavior$OrderingPlugin.moduleUrl
 });
 
@@ -50,6 +51,7 @@ let Place = Flow_GWT$ReventlessGwt.AggregateCommandStep({
   initialState: Order_Behavior$OrderingPlugin.initialState,
   evolve: Order_Behavior$OrderingPlugin.evolve,
   decide: Order_Behavior$OrderingPlugin.decide,
+  snapshot: undefined,
   moduleUrl: Order_Behavior$OrderingPlugin.moduleUrl
 });
 
@@ -68,6 +70,7 @@ let Add = Flow_GWT$ReventlessGwt.AggregateCommandStep({
   initialState: Product_Behavior$CatalogPlugin.initialState,
   evolve: Product_Behavior$CatalogPlugin.evolve,
   decide: Product_Behavior$CatalogPlugin.decide,
+  snapshot: undefined,
   moduleUrl: Product_Behavior$CatalogPlugin.moduleUrl
 });
 
@@ -176,6 +179,7 @@ let Demand = Flow_GWT$ReventlessGwt.AggregateCommandStep({
   initialState: ProductDemand_Behavior$CatalogPlugin.initialState,
   evolve: ProductDemand_Behavior$CatalogPlugin.evolve,
   decide: ProductDemand_Behavior$CatalogPlugin.decide,
+  snapshot: undefined,
   moduleUrl: ProductDemand_Behavior$CatalogPlugin.moduleUrl
 });
 

@@ -29,6 +29,8 @@ let Id;
 
 let targetName = "AddProduct";
 
+let externalSystem = "SupplierFeed";
+
 let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Product/InboundTranslationSlice/ImportProduct.res.mjs";
 
 export {
@@ -37,6 +39,7 @@ export {
   externalInputSchema,
   commandSchema,
   targetName,
+  externalSystem,
   moduleUrl,
   commandAuthorization,
 }

@@ -10,6 +10,7 @@ let ImportProductSlice = {
   externalInputSchema: ImportProduct$CatalogPlugin.externalInputSchema,
   commandSchema: ImportProduct$CatalogPlugin.commandSchema,
   targetName: ImportProduct$CatalogPlugin.targetName,
+  externalSystem: ImportProduct$CatalogPlugin.externalSystem,
   moduleUrl: ImportProduct$CatalogPlugin.moduleUrl,
   commandAuthorization: ImportProduct$CatalogPlugin.commandAuthorization,
   translate: ImportProduct_Translation$CatalogPlugin.translate

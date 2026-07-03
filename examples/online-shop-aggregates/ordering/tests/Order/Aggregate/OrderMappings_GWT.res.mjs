@@ -27,6 +27,7 @@ let OrderSource = Mapping_GWT$ReventlessGwt.FromBehavior({
   initialState: Order_Behavior$OrderingPlugin.initialState,
   evolve: Order_Behavior$OrderingPlugin.evolve,
   decide: Order_Behavior$OrderingPlugin.decide,
+  snapshot: undefined,
   moduleUrl: Order_Behavior$OrderingPlugin.moduleUrl
 });
 
@@ -51,6 +52,7 @@ let OrderTarget = Mapping_GWT$ReventlessGwt.FromBehavior({
   initialState: Order_Behavior$OrderingPlugin.initialState,
   evolve: Order_Behavior$OrderingPlugin.evolve,
   decide: Order_Behavior$OrderingPlugin.decide,
+  snapshot: undefined,
   moduleUrl: Order_Behavior$OrderingPlugin.moduleUrl
 });
 

@@ -19,6 +19,7 @@ let include = Behavior_GWT$ReventlessGwt.MakeFromAggregate({
   initialState: Category_Behavior$CatalogPlugin.initialState,
   evolve: Category_Behavior$CatalogPlugin.evolve,
   decide: Category_Behavior$CatalogPlugin.decide,
+  snapshot: undefined,
   moduleUrl: Category_Behavior$CatalogPlugin.moduleUrl
 });
 

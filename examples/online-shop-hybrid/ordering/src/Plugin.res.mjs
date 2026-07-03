@@ -177,6 +177,7 @@ function Make(Platform) {
     initialState: Customer_Behavior$OrderingPlugin.initialState,
     evolve: Customer_Behavior$OrderingPlugin.evolve,
     decide: Customer_Behavior$OrderingPlugin.decide,
+    snapshot: undefined,
     moduleUrl: Customer_Behavior$OrderingPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Customer$OrderingPlugin.name,

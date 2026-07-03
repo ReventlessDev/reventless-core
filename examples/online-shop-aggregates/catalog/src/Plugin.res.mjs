@@ -34,6 +34,7 @@ function Make(Platform) {
     initialState: Category_Behavior$CatalogPlugin.initialState,
     evolve: Category_Behavior$CatalogPlugin.evolve,
     decide: Category_Behavior$CatalogPlugin.decide,
+    snapshot: undefined,
     moduleUrl: Category_Behavior$CatalogPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Category$CatalogPlugin.name,
@@ -52,6 +53,7 @@ function Make(Platform) {
     initialState: Product_Behavior$CatalogPlugin.initialState,
     evolve: Product_Behavior$CatalogPlugin.evolve,
     decide: Product_Behavior$CatalogPlugin.decide,
+    snapshot: undefined,
     moduleUrl: Product_Behavior$CatalogPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Product$CatalogPlugin.name,
@@ -70,6 +72,7 @@ function Make(Platform) {
     initialState: ProductDemand_Behavior$CatalogPlugin.initialState,
     evolve: ProductDemand_Behavior$CatalogPlugin.evolve,
     decide: ProductDemand_Behavior$CatalogPlugin.decide,
+    snapshot: undefined,
     moduleUrl: ProductDemand_Behavior$CatalogPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: ProductDemand$CatalogPlugin.name,
