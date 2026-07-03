@@ -2,7 +2,9 @@
 
 module Make = (Bus: LocalBus.T) => {
   module RuntimeEnvironment = LocalRuntimeEnvironment
-  module EventCollectorChannel = LocalEventCollectorChannel.Make(Bus)
+  // MakeProjection (not Make): also registers the resolved handler for the
+  // SQLite backend's startup projection catch-up (ProjectionCheckpoint).
+  module EventCollectorChannel = LocalEventCollectorChannel.MakeProjection(Bus)
   module EventCollectorRuntimeBuilder = LocalEventCollectorRuntime_Builder.Make(
     Bus,
     EventCollectorChannel,

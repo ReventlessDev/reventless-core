@@ -85,3 +85,36 @@ module Make = (Bus: LocalBus.T) => {
     []
   }
 }
+
+// Projection-flavoured channel: identical wiring to `Make`, plus registers the
+// resolved handler in the Bus projection catch-up registry so the SQLite
+// backend's startup catch-up (ProjectionCheckpoint) can replay missed stored
+// events into it. Only projection collectors (the ReadModel builders) use this
+// — automation/translation collectors must never receive catch-up events (they
+// would re-run side effects and re-dispatch commands), so they stay on `Make`.
+module MakeProjection = (Bus: LocalBus.T) => {
+  module Base = Make(Bus)
+
+  type callbackEvent = Base.callbackEvent
+  type channelParts = Base.channelParts
+  type runtimeParts = Base.runtimeParts
+
+  let make = Base.make
+
+  let connect: ReventlessCore.EventCollector_Adapter.connect<
+    callbackEvent,
+    'context,
+    channelParts,
+    runtimeParts,
+  > = (~name, ~channelSpecs, ~runtime, ~opts) => {
+    let _reg =
+      runtime.parts.handlerDeferred
+      ->Deferred.await_
+      ->Effect.flatMap(handler =>
+        Effect.sync(() => Bus.registerProjectionCatchupHandler(name, handler))
+      )
+      ->Effect.runPromise
+      ->ignore
+    Base.connect(~name, ~channelSpecs, ~runtime, ~opts)
+  }
+}

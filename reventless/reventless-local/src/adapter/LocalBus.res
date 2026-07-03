@@ -223,6 +223,15 @@ module type T = {
   let registerEventCollectorHandler: (string, (JSON.t, unit) => promise<unit>) => unit
   let subscribeEventCollectorToTopic: (string, string) => unit
 
+  // Projection catch-up registry: collector name → its resolved JSON event
+  // handler, registered only by projection-type collectors (the ReadModel
+  // builders, via LocalEventCollectorChannel.MakeProjection). The SQLite
+  // backend's startup catch-up (ProjectionCheckpoint.runCatchup) replays missed
+  // stored events into these handlers; automation/translation collectors are
+  // deliberately NOT in this registry so catch-up can never re-run side effects.
+  let registerProjectionCatchupHandler: (string, (JSON.t, unit) => promise<unit>) => unit
+  let projectionCatchupHandlers: unit => array<(string, (JSON.t, unit) => promise<unit>)>
+
   let reset: unit => unit
 }
 
@@ -503,6 +512,13 @@ module Impl = (C: BusConfig): T => {
     }
   }
 
+  let projectionCatchupRegistry: ref<dict<(JSON.t, unit) => promise<unit>>> = ref(Dict.make())
+
+  let registerProjectionCatchupHandler = (name, handler) =>
+    projectionCatchupRegistry.contents->Dict.set(name, handler)
+
+  let projectionCatchupHandlers = () => projectionCatchupRegistry.contents->Dict.toArray
+
   let reset = () => {
     // Shut down all hubs — PubSub.shutdown interrupts Stream.fromQueue consumers,
     // causing Stream.runForEach to complete and Effect.scoped to close the subscription.
@@ -527,6 +543,7 @@ module Impl = (C: BusConfig): T => {
     stateChangeListeners := Dict.make()
     eventCollectorHandlers := Dict.make()
     eventCollectorPendingTopics := Dict.make()
+    projectionCatchupRegistry := Dict.make()
   }
 }
 

@@ -9,8 +9,11 @@ import * as LocalEventCollectorChannel$ReventlessLocal from "../adapter/EventCol
 import * as LocalEventCollectorRuntime_Builder$ReventlessLocal from "../adapter/Runtime/LocalEventCollectorRuntime_Builder.res.mjs";
 
 function Make(Bus) {
-  let EventCollectorChannel = LocalEventCollectorChannel$ReventlessLocal.Make(Bus);
-  let EventCollectorRuntimeBuilder = LocalEventCollectorRuntime_Builder$ReventlessLocal.Make(Bus)(EventCollectorChannel);
+  let EventCollectorChannel = LocalEventCollectorChannel$ReventlessLocal.MakeProjection(Bus);
+  let EventCollectorRuntimeBuilder = LocalEventCollectorRuntime_Builder$ReventlessLocal.Make(Bus)({
+    make: EventCollectorChannel.make,
+    connect: EventCollectorChannel.connect
+  });
   let QueryDbStorage = QueryDbStorage_InMemory$ReventlessLocal.Make(Bus);
   let QueryDbResolvers = QueryDbResolvers_GraphQL$ReventlessLocal.Make(Bus);
   let Make$1 = Spec => (Mappings => ReadModel_Builder$ReventlessCore.Make(Spec)(Mappings)({
@@ -23,7 +26,10 @@ function Make(Bus) {
     make: QueryDbStorage.make
   })({
     make: QueryDbResolvers.make
-  })(EventCollectorChannel)(EventCollectorRuntimeBuilder));
+  })({
+    make: EventCollectorChannel.make,
+    connect: EventCollectorChannel.connect
+  })(EventCollectorRuntimeBuilder));
   let NoResolvers = QueryDb_Adapter$ReventlessCore.NoResolvers({
     make: QueryDbStorage.make
   });
@@ -35,7 +41,10 @@ function Make(Bus) {
     asEffectHandler: prim => prim
   })({
     make: QueryDbStorage.make
-  })(NoResolvers)(EventCollectorChannel)(EventCollectorRuntimeBuilder));
+  })(NoResolvers)({
+    make: EventCollectorChannel.make,
+    connect: EventCollectorChannel.connect
+  })(EventCollectorRuntimeBuilder));
   return {
     RuntimeEnvironment: undefined,
     EventCollectorChannel: EventCollectorChannel,

@@ -76,6 +76,23 @@ module MakeWithConfig = (
     LocalBus.seedEventTapSeq(
       EventLogStorage_Sqlite.countAll(db) + DcbEventLogStorage_Sqlite.countAll(db),
     )
+    // Projection checkpoints (plan B5): the event-log storage tracks each
+    // appended batch as pending; this hook resolves it once the publish cycle
+    // completes (publishEvent returns only after every subscriber processed the
+    // events), advancing the persisted per-read-model checkpoints to the
+    // low-watermark. Startup catch-up in makePlatform replays anything below a
+    // read model's checkpoint that a crash left unprojected.
+    ProjectionPending.enableTracking()
+    ReventlessCore.EventPublish_Callback.registerAfterPublish(async publishedEvent => {
+      let msgIds =
+        publishedEvent.eventsJson->Array.filterMap(json =>
+          json
+          ->JSON.Decode.object
+          ->Option.flatMap(d => d->Dict.get("msgId"))
+          ->Option.flatMap(JSON.Decode.string)
+        )
+      ProjectionCheckpoint.completePublished(db, msgIds)
+    })
   }
 
   module Bus = LocalBus.Impl({
@@ -1239,6 +1256,15 @@ module MakeWithConfig = (
         `backend: sqlite (${path}${resetOnStart ? ", resetOnStart" : ""})`
       },
     )
+    // Projection catch-up bound (plan B5): the highest persisted event position
+    // BEFORE this session appends anything. Catch-up replays only (checkpoint,
+    // bound] — this session's own events (Connect dispatches, user commands)
+    // are live-delivered and must not be redelivered.
+    let projectionCatchup = BackendState.getDb()->Option.map(db => (
+      db,
+      ProjectionCheckpoint.maxPosition(db),
+    ))
+
     // Create scheduler and populate platform context refs.
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
@@ -1328,9 +1354,34 @@ module MakeWithConfig = (
     // Drive the admin Plugin read models via synthetic Connect dispatch through
     // LocalPluginAggregate (replaces the old direct-write seed). The real
     // PluginsProjection folds the emitted events into the "Plugins" QueryDb store.
-    connectPlugin(~pluginComponents=plugins)
-    seedUIFragmentRegistryQueryDb(~pluginComponents=plugins)
-    seedPluginStructuresStore(~pluginComponents=plugins)
+    //
+    // Under SQLite this trio is sequenced AFTER the projection catch-up: the
+    // catch-up replays PRIOR sessions' stored events (e.g. the admin plugin
+    // lifecycle history) into the projections, and this session's Connect
+    // events must fold on top of — never race and be overwritten by — that
+    // replay. All three calls are internally fire-and-forget Output.apply
+    // chains, so deferring their invocation changes no synchronous contract.
+    let seedAdminStores = () => {
+      connectPlugin(~pluginComponents=plugins)
+      seedUIFragmentRegistryQueryDb(~pluginComponents=plugins)
+      seedPluginStructuresStore(~pluginComponents=plugins)
+    }
+    switch projectionCatchup {
+    | Some((db, upperBound)) =>
+      let _ =
+        ProjectionCheckpoint.startupCatchup(~db, ~upperBound, ~handlers=() =>
+          Bus.projectionCatchupHandlers()
+        )
+        ->Promise.catch(e => {
+          Console.error2("[Platform] projection catch-up failed:", e)
+          Promise.resolve()
+        })
+        ->Promise.then(() => {
+          seedAdminStores()
+          Promise.resolve()
+        })
+    | None => seedAdminStores()
+    }
 
     // Seed the built-in admin plugin's structure so its Auto UI (Plugin list with
     // Activate/Deactivate buttons) renders alongside the user plugins. Admin.construct

@@ -64,6 +64,7 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
   let selectByIdStmt = db->SqliteDriver.prepare(
     "SELECT payload FROM event_log WHERE log_name=? AND aggregate_id=? ORDER BY seq_nr ASC",
   )
+  let lastRowidStmt = db->SqliteDriver.prepare("SELECT last_insert_rowid() AS r")
 
   let expectedNextSeq = (id: string): int =>
     switch nextSeqStmt->SqliteDriver.get([JSON.Encode.string(name), JSON.Encode.string(id)]) {
@@ -75,9 +76,13 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
     | None => 0
     }
 
-  let append: EventLog.append<string, JSON.t> = async (seqNr, id, jsons) => {
+  // `track=false` for appendStream: bulk-replayed batches never flow through
+  // the EventTopic publish cycle, so they must not enter the projection pending
+  // set — an entry nobody resolves would pin the checkpoint low-watermark
+  // forever (see ProjectionCheckpoint.res).
+  let appendTracked = async (~track, seqNr, id, jsons: array<JSON.t>) => {
     try {
-      db->SqliteDriver.transaction(() => {
+      let lastRowid = db->SqliteDriver.transaction(() => {
         let existing = expectedNextSeq(id)
         if seqNr != existing {
           throw(Failure("conflict"))
@@ -90,7 +95,33 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
             JSON.Encode.string(JSON.stringify(json)),
           ])
         })
+        switch lastRowidStmt->SqliteDriver.get([]) {
+        | Some(row) =>
+          switch row->Dict.get("r") {
+          | Some(JSON.Number(n)) => Float.toInt(n)
+          | _ => 0
+          }
+        | None => 0
+        }
       })
+      // Register the committed batch as appended-but-not-yet-published for the
+      // projection checkpoint low-watermark; Platform's afterPublish hook
+      // resolves the msgIds once the publish cycle completes. A transaction's
+      // inserts get contiguous rowids ending at lastRowid.
+      if track && lastRowid > 0 {
+        let count = jsons->Array.length
+        ProjectionPending.trackAppended(
+          jsons
+          ->Array.mapWithIndex((json, i) =>
+            json
+            ->JSON.Decode.object
+            ->Option.flatMap(d => d->Dict.get("msgId"))
+            ->Option.flatMap(JSON.Decode.string)
+            ->Option.map(msgId => (msgId, lastRowid - count + 1 + i))
+          )
+          ->Array.filterMap(x => x),
+        )
+      }
       Ok()
     } catch {
     // The deliberate seq_nr check above throws Failure("conflict"); a lost race
@@ -108,6 +139,9 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
         : Error(ReventlessCore.EventLog.StorageFailure(msg == "" ? "storage error" : msg))
     }
   }
+
+  let append: EventLog.append<string, JSON.t> = (seqNr, id, jsons) =>
+    appendTracked(~track=true, seqNr, id, jsons)
 
   let replayArray = (id: string): array<JSON.t> =>
     selectByIdStmt
@@ -131,7 +165,7 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
     stream
     ->Stream.runCollect
     ->Effect.flatMap(jsons =>
-      Effect.promise(() => append(startingSeqNr, id, jsons))->Effect.flatMap(result =>
+      Effect.promise(() => appendTracked(~track=false, startingSeqNr, id, jsons))->Effect.flatMap(result =>
         switch result {
         | Ok() => Effect.succeed()
         // appendStream's error channel is a string; map the typed append error.

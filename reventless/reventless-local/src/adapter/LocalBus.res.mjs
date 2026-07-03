@@ -296,6 +296,13 @@ function Impl(C) {
     pending.push(topicName);
     eventCollectorPendingTopics.contents[ecName] = pending;
   };
+  let projectionCatchupRegistry = {
+    contents: {}
+  };
+  let registerProjectionCatchupHandler = (name, handler) => {
+    projectionCatchupRegistry.contents[name] = handler;
+  };
+  let projectionCatchupHandlers = () => Object.entries(projectionCatchupRegistry.contents);
   let reset = () => {
     let shutdownAll = Effect$1.map(Effect$1.all(Object.values(eventHubs.contents).map(hub => PubSub.shutdown(hub)), {
       concurrency: "unbounded"
@@ -315,6 +322,7 @@ function Impl(C) {
     stateChangeListeners.contents = {};
     eventCollectorHandlers.contents = {};
     eventCollectorPendingTopics.contents = {};
+    projectionCatchupRegistry.contents = {};
   };
   return {
     publishEvent: publishEvent,
@@ -340,6 +348,8 @@ function Impl(C) {
     subscribeToStateChanges: subscribeToStateChanges,
     registerEventCollectorHandler: registerEventCollectorHandler,
     subscribeEventCollectorToTopic: subscribeEventCollectorToTopic,
+    registerProjectionCatchupHandler: registerProjectionCatchupHandler,
+    projectionCatchupHandlers: projectionCatchupHandlers,
     reset: reset
   };
 }
@@ -552,6 +562,13 @@ function Make($star) {
     pending.push(topicName);
     eventCollectorPendingTopics.contents[ecName] = pending;
   };
+  let projectionCatchupRegistry = {
+    contents: {}
+  };
+  let registerProjectionCatchupHandler = (name, handler) => {
+    projectionCatchupRegistry.contents[name] = handler;
+  };
+  let projectionCatchupHandlers = () => Object.entries(projectionCatchupRegistry.contents);
   let reset = () => {
     let shutdownAll = Effect$1.map(Effect$1.all(Object.values(eventHubs.contents).map(hub => PubSub.shutdown(hub)), {
       concurrency: "unbounded"
@@ -571,6 +588,7 @@ function Make($star) {
     stateChangeListeners.contents = {};
     eventCollectorHandlers.contents = {};
     eventCollectorPendingTopics.contents = {};
+    projectionCatchupRegistry.contents = {};
   };
   return {
     publishEvent: publishEvent,
@@ -596,6 +614,8 @@ function Make($star) {
     subscribeToStateChanges: subscribeToStateChanges,
     registerEventCollectorHandler: registerEventCollectorHandler,
     subscribeEventCollectorToTopic: subscribeEventCollectorToTopic,
+    registerProjectionCatchupHandler: registerProjectionCatchupHandler,
+    projectionCatchupHandlers: projectionCatchupHandlers,
     reset: reset
   };
 }
@@ -808,6 +828,13 @@ function MakeSilent($star) {
     pending.push(topicName);
     eventCollectorPendingTopics.contents[ecName] = pending;
   };
+  let projectionCatchupRegistry = {
+    contents: {}
+  };
+  let registerProjectionCatchupHandler = (name, handler) => {
+    projectionCatchupRegistry.contents[name] = handler;
+  };
+  let projectionCatchupHandlers = () => Object.entries(projectionCatchupRegistry.contents);
   let reset = () => {
     let shutdownAll = Effect$1.map(Effect$1.all(Object.values(eventHubs.contents).map(hub => PubSub.shutdown(hub)), {
       concurrency: "unbounded"
@@ -827,6 +854,7 @@ function MakeSilent($star) {
     stateChangeListeners.contents = {};
     eventCollectorHandlers.contents = {};
     eventCollectorPendingTopics.contents = {};
+    projectionCatchupRegistry.contents = {};
   };
   return {
     publishEvent: publishEvent,
@@ -852,6 +880,8 @@ function MakeSilent($star) {
     subscribeToStateChanges: subscribeToStateChanges,
     registerEventCollectorHandler: registerEventCollectorHandler,
     subscribeEventCollectorToTopic: subscribeEventCollectorToTopic,
+    registerProjectionCatchupHandler: registerProjectionCatchupHandler,
+    projectionCatchupHandlers: projectionCatchupHandlers,
     reset: reset
   };
 }
@@ -1062,6 +1092,13 @@ function MakeBounded(C) {
     pending.push(topicName);
     eventCollectorPendingTopics.contents[ecName] = pending;
   };
+  let projectionCatchupRegistry = {
+    contents: {}
+  };
+  let registerProjectionCatchupHandler = (name, handler) => {
+    projectionCatchupRegistry.contents[name] = handler;
+  };
+  let projectionCatchupHandlers = () => Object.entries(projectionCatchupRegistry.contents);
   let reset = () => {
     let shutdownAll = Effect$1.map(Effect$1.all(Object.values(eventHubs.contents).map(hub => PubSub.shutdown(hub)), {
       concurrency: "unbounded"
@@ -1081,6 +1118,7 @@ function MakeBounded(C) {
     stateChangeListeners.contents = {};
     eventCollectorHandlers.contents = {};
     eventCollectorPendingTopics.contents = {};
+    projectionCatchupRegistry.contents = {};
   };
   return {
     publishEvent: publishEvent,
@@ -1106,6 +1144,8 @@ function MakeBounded(C) {
     subscribeToStateChanges: subscribeToStateChanges,
     registerEventCollectorHandler: registerEventCollectorHandler,
     subscribeEventCollectorToTopic: subscribeEventCollectorToTopic,
+    registerProjectionCatchupHandler: registerProjectionCatchupHandler,
+    projectionCatchupHandlers: projectionCatchupHandlers,
     reset: reset
   };
 }

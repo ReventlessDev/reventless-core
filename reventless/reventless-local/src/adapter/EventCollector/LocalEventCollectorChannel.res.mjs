@@ -39,7 +39,51 @@ function Make(Bus) {
   };
 }
 
+function MakeProjection(Bus) {
+  let make = (param, eventTopics, param$1) => {
+    let eventTopicResources = Object.values(eventTopics).flatMap(outputs => outputs.resources);
+    return {
+      parts: undefined,
+      resources: eventTopicResources,
+      enqueueEvent: Pulumi.output((param, param$1, param$2) => Promise.resolve()),
+      handleChannelEvent: handleEvents => Pulumi.output((json, _ctx) => Effect.map(handleEvents(Stream.fromIterable([json])), () => {}))
+    };
+  };
+  let connect = (name, channelSpecs, runtime, param) => {
+    Effect.runPromise(Effect.flatMap(Deferred.await(runtime.parts.handlerDeferred), handler => Effect.sync(() => Bus.registerEventCollectorHandler(name, handler))));
+    channelSpecs.forEach(param => {
+      Object.values(param.eventTopics).forEach(topicOutputs => {
+        topicOutputs.resources.forEach(resource => {
+          resource.name.apply(topicName => {
+            let drainEffect = Effect.scoped(Effect.flatMap(Bus.subscribeToEventStream(topicName), stream => Stream.runForEach(stream, msg => Effect.zipRight(Effect.promise(async () => {
+              let handler = await Effect.runPromise(Deferred.await(runtime.parts.handlerDeferred));
+              return await handler(msg.json, undefined);
+            }), msg.done_))));
+            Effect.runFork(drainEffect);
+            Effect.runPromise(runtime.parts.subscriptionLatch.open);
+          });
+        });
+      });
+    });
+    return [];
+  };
+  let Base = {
+    make: make,
+    connect: connect
+  };
+  let connect$1 = (name, channelSpecs, runtime, opts) => {
+    Effect.runPromise(Effect.flatMap(Deferred.await(runtime.parts.handlerDeferred), handler => Effect.sync(() => Bus.registerProjectionCatchupHandler(name, handler))));
+    return connect(name, channelSpecs, runtime, opts);
+  };
+  return {
+    Base: Base,
+    make: make,
+    connect: connect$1
+  };
+}
+
 export {
   Make,
+  MakeProjection,
 }
 /* effect/Effect Not a pure module */

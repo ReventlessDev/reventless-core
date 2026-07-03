@@ -11,6 +11,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Plugin$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin.res.mjs";
@@ -45,12 +46,15 @@ import * as Scheduler_Builder$ReventlessCore from "@reventlessdev/reventless-cor
 import * as Aggregate_Builder$ReventlessLocal from "./components/Aggregate_Builder.res.mjs";
 import * as LocalClonerRunner$ReventlessLocal from "./adapter/Cloner/LocalClonerRunner.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/api/PluginBaseFragment.res.mjs";
+import * as ProjectionPending$ReventlessLocal from "./adapter/ProjectionPending.res.mjs";
 import * as ReadModel_Builder$ReventlessLocal from "./components/ReadModel_Builder.res.mjs";
 import * as PlatformMCP_Server$ReventlessLocal from "./adapter/PlatformMCP_Server.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./adapter/Auth/Auth_GraphqlContext.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
 import * as DomainGraphQL_Server$ReventlessLocal from "./adapter/DomainGraphQL_Server.res.mjs";
+import * as EventPublish_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventLog/EventPublish_Callback.res.mjs";
 import * as LocalGraphQL_Adapter$ReventlessLocal from "./adapter/Api/LocalGraphQL_Adapter.res.mjs";
+import * as ProjectionCheckpoint$ReventlessLocal from "./adapter/ProjectionCheckpoint.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as EventLogStorage_Sqlite$ReventlessLocal from "./adapter/EventLog/EventLogStorage_Sqlite.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessLocal from "./components/ExtensionPoint_Builder.res.mjs";
@@ -106,6 +110,11 @@ function MakeWithConfig(Config) {
     let db = SqliteDriver$ReventlessLocal.openDb(path);
     BackendState$ReventlessLocal.setSqlite(db, path);
     LocalBus$ReventlessLocal.seedEventTapSeq(EventLogStorage_Sqlite$ReventlessLocal.countAll(db) + DcbEventLogStorage_Sqlite$ReventlessLocal.countAll(db) | 0);
+    ProjectionPending$ReventlessLocal.enableTracking();
+    EventPublish_Callback$ReventlessCore.registerAfterPublish(async publishedEvent => {
+      let msgIds = Stdlib_Array.filterMap(publishedEvent.eventsJson, json => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["msgId"]), Stdlib_JSON.Decode.string));
+      return ProjectionCheckpoint$ReventlessLocal.completePublished(db, msgIds);
+    });
   }
   let Bus = LocalBus$ReventlessLocal.Impl({
     capacity: undefined,
@@ -1081,6 +1090,10 @@ function MakeWithConfig(Config) {
         match.resetOnStart ? ", resetOnStart" : ""
       ) + `)`;
     log.info("Platform", undefined, tmp);
+    let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getDb(), db => [
+      db,
+      ProjectionCheckpoint$ReventlessLocal.maxPosition(db)
+    ]);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooks_api.contents = {
@@ -1139,9 +1152,22 @@ function MakeWithConfig(Config) {
       adminResources: []
     });
     subscribeToPluginEvents();
-    connectPlugin(plugins$1);
-    seedUIFragmentRegistryQueryDb(plugins$1);
-    seedPluginStructuresStore(plugins$1);
+    let seedAdminStores = () => {
+      connectPlugin(plugins$1);
+      seedUIFragmentRegistryQueryDb(plugins$1);
+      seedPluginStructuresStore(plugins$1);
+    };
+    if (projectionCatchup !== undefined) {
+      Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], () => Bus.projectionCatchupHandlers()), e => {
+        console.error("[Platform] projection catch-up failed:", e);
+        return Promise.resolve();
+      }).then(() => {
+        seedAdminStores();
+        return Promise.resolve();
+      });
+    } else {
+      seedAdminStores();
+    }
     pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure;
     CommandGeneratorResolvers_GraphQL$ReventlessLocal.setPluginStatusGate(field => {
       let parts = field.split("_");
@@ -1698,6 +1724,11 @@ function Make($star) {
     let db = SqliteDriver$ReventlessLocal.openDb(path);
     BackendState$ReventlessLocal.setSqlite(db, path);
     LocalBus$ReventlessLocal.seedEventTapSeq(EventLogStorage_Sqlite$ReventlessLocal.countAll(db) + DcbEventLogStorage_Sqlite$ReventlessLocal.countAll(db) | 0);
+    ProjectionPending$ReventlessLocal.enableTracking();
+    EventPublish_Callback$ReventlessCore.registerAfterPublish(async publishedEvent => {
+      let msgIds = Stdlib_Array.filterMap(publishedEvent.eventsJson, json => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["msgId"]), Stdlib_JSON.Decode.string));
+      return ProjectionCheckpoint$ReventlessLocal.completePublished(db, msgIds);
+    });
   }
   let Bus = LocalBus$ReventlessLocal.Impl({
     capacity: undefined,
@@ -2661,6 +2692,10 @@ function Make($star) {
         backend.resetOnStart ? ", resetOnStart" : ""
       ) + `)`;
     log.info("Platform", undefined, tmp);
+    let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getDb(), db => [
+      db,
+      ProjectionCheckpoint$ReventlessLocal.maxPosition(db)
+    ]);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooks_api.contents = {
@@ -2719,9 +2754,22 @@ function Make($star) {
       adminResources: []
     });
     subscribeToPluginEvents();
-    connectPlugin(plugins$1);
-    seedUIFragmentRegistryQueryDb(plugins$1);
-    seedPluginStructuresStore(plugins$1);
+    let seedAdminStores = () => {
+      connectPlugin(plugins$1);
+      seedUIFragmentRegistryQueryDb(plugins$1);
+      seedPluginStructuresStore(plugins$1);
+    };
+    if (projectionCatchup !== undefined) {
+      Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], () => Bus.projectionCatchupHandlers()), e => {
+        console.error("[Platform] projection catch-up failed:", e);
+        return Promise.resolve();
+      }).then(() => {
+        seedAdminStores();
+        return Promise.resolve();
+      });
+    } else {
+      seedAdminStores();
+    }
     pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure;
     CommandGeneratorResolvers_GraphQL$ReventlessLocal.setPluginStatusGate(field => {
       let parts = field.split("_");
