@@ -122,6 +122,154 @@ module Make = (
 
   let resetCache = () => replayCache->Lru.clear
 
+  // Persisted-snapshot configuration (docs/plans/aggregate-snapshotting.md).
+  // `None` (the default) keeps full replay; `Some({interval, stateSchema})`
+  // seeds cold replays from the latest persisted snapshot and writes a fresh
+  // one every `interval` events. Snapshots are a read optimization only — the
+  // OCC append remains the sole consistency primitive, so a missing, drifted,
+  // or corrupt snapshot degrades silently to full replay.
+  let snapshotConfig = Behavior.snapshot
+
+  // Structural hash of the state schema, computed once. Stored on every written
+  // snapshot and compared on read: a snapshot whose hash differs from the
+  // current schema (a state-shape change since it was written) is ignored and
+  // overwritten at the next boundary, so a redeploy that changes `type state`
+  // can't decode stale bytes into the wrong shape. NOTE: this catches *shape*
+  // drift only — a semantics-only `evolve` change with an unchanged state type
+  // is invisible (see the plan's open question; for alpha, wipe snapshots on
+  // such changes, consistent with the alpha-wipe-over-migration convention).
+  let stateSchemaHash = switch snapshotConfig {
+  | Some({stateSchema}) =>
+    HashObj.hashDict(
+      ~dict=Dict.fromArray([("state", SchemaWalker.describeSchema(stateSchema->Obj.magic))]),
+      ~options={algorithm: SHA256},
+    )
+  | None => ""
+  }
+
+  // State ⇄ JSON via the configured stateSchema. Both swallow sury failures to
+  // `None` — an unserializable state just skips the snapshot write, and an
+  // undecodable snapshot falls back to full replay; neither can fail a command.
+  let encodeState = (state: Behavior.state): option<JSON.t> =>
+    switch snapshotConfig {
+    | Some({stateSchema}) =>
+      switch state->S.reverseConvertToJsonOrThrow(stateSchema) {
+      | json => Some(json)
+      | exception _ => None
+      }
+    | None => None
+    }
+
+  let decodeState = (json: JSON.t): option<Behavior.state> =>
+    switch snapshotConfig {
+    | Some({stateSchema}) =>
+      switch json->S.parseJsonOrThrow(stateSchema) {
+      | state => Some(state)
+      | exception _ => None
+      }
+    | None => None
+    }
+
+  // Cold read (in-process cache miss): when snapshots are enabled, seed from the
+  // latest persisted snapshot (hash-gated) and replay only the events after it;
+  // otherwise replay full history from seq 0. Returns `(state, sequenceNr)` where
+  // sequenceNr is the total event count (the OCC condition for the next append).
+  let coldReadState = id => {
+    let idStr = id->Spec.Id.toString
+    let seedEffect = switch snapshotConfig {
+    | None => Effect.succeed((Behavior.initialState, 0))
+    | Some(_) =>
+      Effect.promise(() => Ops.eventLog.latestSnapshot(id))
+      ->Effect.map(snapResult =>
+        switch snapResult {
+        | Ok(Some(snap)) if snap.EventLog.schemaHash == stateSchemaHash =>
+          switch decodeState(snap.state) {
+          | Some(state) => (state, snap.seqNr)
+          | None =>
+            EffectLogger.logWarn(
+              ~comp,
+              `snapshot ignored (undecodable): id=${idStr}, seq=${snap.seqNr->Int.toString} — full replay`,
+            )->Effect.runSync
+            (Behavior.initialState, 0)
+          }
+        | Ok(Some(snap)) =>
+          EffectLogger.logWarn(
+            ~comp,
+            `snapshot ignored (schema drift): id=${idStr}, seq=${snap.EventLog.seqNr->Int.toString} — full replay`,
+          )->Effect.runSync
+          (Behavior.initialState, 0)
+        | Ok(None) => (Behavior.initialState, 0)
+        | Error(msg) =>
+          EffectLogger.logWarn(
+            ~comp,
+            `snapshot read failed (ignored): id=${idStr}: ${msg} — full replay`,
+          )->Effect.runSync
+          (Behavior.initialState, 0)
+        }
+      )
+    }
+    seedEffect->Effect.flatMap(((seedState, seedSeq)) =>
+      Ops.eventLog.replayStream(id, ~fromSeq=seedSeq)
+      ->Stream.runFold((seedState, seedSeq), ((st, n), ev) => (Behavior.evolve(st, ev), n + 1))
+      ->Effect.tap(((_, n)) => {
+        let detail =
+          seedSeq > 0
+            ? `(snapshot@${seedSeq->Int.toString}, ${(n - seedSeq)->Int.toString} delta event(s))`
+            : `${n->Int.toString} event(s)`
+        EffectLogger.logInfo(~comp, `replay: id=${idStr}, ${detail}`)
+      })
+    )
+  }
+
+  // Fire-and-forget snapshot write — never awaited, never fails the command. A
+  // failed write just means the next cold replay reads a longer delta.
+  let fireSnapshotWrite = (id, idStr, snap: EventLog.snapshot) => {
+    let _ =
+      Ops.eventLog.writeSnapshot(id, snap)
+      ->Promise.then(result => {
+        switch result {
+        | Ok() =>
+          EffectLogger.logDebug(
+            ~comp,
+            `snapshot written: id=${idStr}, seq=${snap.seqNr->Int.toString}`,
+          )->Effect.runSync
+        | Error(msg) =>
+          EffectLogger.logWarn(
+            ~comp,
+            `snapshot write failed (ignored): id=${idStr}: ${msg}`,
+          )->Effect.runSync
+        }
+        Promise.resolve()
+      })
+      ->Promise.catch(err => {
+        let msg = err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+        EffectLogger.logWarn(
+          ~comp,
+          `snapshot write threw (ignored): id=${idStr}: ${msg}`,
+        )->Effect.runSync
+        Promise.resolve()
+      })
+  }
+
+  // Write a snapshot when this append crossed an `interval` boundary (a multiple
+  // of interval lies in (oldSeq, newSeq]). Keep-one: on a batch that crosses
+  // several boundaries we still write just the latest state at newSeq. No-op
+  // when snapshots are disabled or the state can't be serialized.
+  let maybeWriteSnapshot = (id, idStr, ~oldSeq, ~newSeq, state) =>
+    switch snapshotConfig {
+    | Some({interval}) if interval > 0 && newSeq / interval > oldSeq / interval =>
+      switch encodeState(state) {
+      | Some(stateJson) =>
+        fireSnapshotWrite(id, idStr, {EventLog.seqNr: newSeq, state: stateJson, schemaHash: stateSchemaHash})
+      | None =>
+        EffectLogger.logWarn(
+          ~comp,
+          `snapshot skipped (state not serializable): id=${idStr}, seq=${newSeq->Int.toString}`,
+        )->Effect.runSync
+      }
+    | _ => ()
+    }
+
   // Reports per-command outcomes on the inline side-channels and produces the
   // per-reference Ok/Error array consumed by SQS-style consumers. Domain rejections
   // are always Ok(reference) — SQS deletes the message because retry would not help —
@@ -160,20 +308,17 @@ module Make = (
   ) => {
     let idStr = id->Spec.Id.toString
 
-    // Warm path: seed from the replay cache and skip the event-log read; the
-    // OCC append below fences any staleness. Cold path: full replay as before.
+    // Warm path: seed from the in-process cache and skip both the snapshot read
+    // and the event-log replay; the OCC append below fences any staleness. Cold
+    // path (`coldReadState`): seed from the persisted snapshot when enabled, else
+    // full replay.
     let readState = switch replayCache->Lru.get(idStr) {
     | Some((state, seqNr)) =>
       EffectLogger.logInfo(
         ~comp,
         `replay skipped (cached): id=${idStr}, seq=${seqNr->Int.toString}`,
       )->Effect.map(_ => (state, seqNr))
-    | None =>
-      Ops.eventLog.replayStream(id)
-      ->Stream.runFold((Behavior.initialState, 0), ((st, n), ev) => (Behavior.evolve(st, ev), n + 1))
-      ->Effect.tap(((_, n)) =>
-        EffectLogger.logInfo(~comp, `replay: id=${idStr}, ${n->Int.toString} event(s)`)
-      )
+    | None => coldReadState(id)
     }
 
     readState
@@ -222,10 +367,11 @@ module Make = (
             | Ok(_) =>
               // The post-decide fold state IS the post-append replay result;
               // cache it so the next command for this id skips the replay.
-              replayCache->Lru.put(
-                idStr,
-                (finalState, sequenceNr + generatedEvents'->Array.length),
-              )
+              let newSeq = sequenceNr + generatedEvents'->Array.length
+              replayCache->Lru.put(idStr, (finalState, newSeq))
+              // Persist a snapshot if this append crossed an interval boundary
+              // (fire-and-forget — never blocks or fails the command).
+              maybeWriteSnapshot(id, idStr, ~oldSeq=sequenceNr, ~newSeq, finalState)
               let perRef = reportFinalOutcomes(
                 outcomes,
                 ~entityId=idStr,
