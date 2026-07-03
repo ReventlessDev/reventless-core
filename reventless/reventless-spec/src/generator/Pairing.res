@@ -165,6 +165,38 @@ let hasAsyncAttribute = (filePath: string): bool => {
   }
 }
 
+// Partition the ExtensionPoint mapping files into flat (ungrouped) and grouped
+// `extensionPointDef`s: every mapping sharing an `epGroup` collects into one
+// grouped entry; the ungrouped ones share a single flat (`group: None`) entry.
+// Pure (no I/O) so the grouping is unit-testable — in particular the A8 fix:
+// `Option.getOr`'s eager default previously re-created the group's array every
+// iteration, so a group with ≥2 mappings collapsed to `[]` and the generator
+// emitted a `Plugin.res` referencing a never-generated module.
+let groupExtensionPoints = (epFiles: array<Discovery.discoveredFile>): array<extensionPointDef> => {
+  let epByGroup: Dict.t<array<string>> = Dict.make()
+  let flatEpMappings: array<string> = []
+
+  epFiles->Array.forEach(({stem, epGroup}) =>
+    switch epGroup {
+    | None => flatEpMappings->Array.push(stem)
+    | Some(g) =>
+      switch Dict.get(epByGroup, g) {
+      | Some(arr) => arr->Array.push(stem)
+      | None => Dict.set(epByGroup, g, [stem])
+      }
+    }
+  )
+
+  let extensionPoints: array<extensionPointDef> = []
+  if flatEpMappings->Array.length > 0 {
+    extensionPoints->Array.push({group: None, mappings: flatEpMappings->sortedStems})
+  }
+  Dict.toArray(epByGroup)->Array.forEach(((group, mappings)) =>
+    extensionPoints->Array.push({group: Some(group), mappings: mappings->sortedStems})
+  )
+  extensionPoints
+}
+
 let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): resolved => {
   let eventMappings = findEventMappings(~srcDir)
 
@@ -309,35 +341,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   )
 
   // ── ExtensionPoint grouping ────────────────────────────────────────────────
-  let epByGroup: Dict.t<array<string>> = Dict.make()
-  let flatEpMappings: array<string> = []
-
-  epFiles->Array.forEach(({stem, epGroup}) => {
-    switch epGroup {
-    | None => flatEpMappings->Array.push(stem)
-    | Some(g) =>
-      // `Option.getOr`'s default is evaluated eagerly, so the previous shape
-      // re-created and re-set a fresh empty array every iteration — overwriting
-      // the group's real entry and pushing onto a now-detached array. A group
-      // with ≥2 mappings ended up empty, emitting a Plugin.res that referenced a
-      // never-generated module (`Array.getUnsafe(0)` on `[]`). Use a switch so
-      // the create branch runs only when the group is genuinely absent.
-      switch Dict.get(epByGroup, g) {
-      | Some(arr) => arr->Array.push(stem)
-      | None => Dict.set(epByGroup, g, [stem])
-      }
-    }
-  })
-
-  let extensionPoints: array<extensionPointDef> = []
-
-  if flatEpMappings->Array.length > 0 {
-    extensionPoints->Array.push({group: None, mappings: flatEpMappings->sortedStems})
-  }
-
-  Dict.toArray(epByGroup)->Array.forEach(((group, mappings)) => {
-    extensionPoints->Array.push({group: Some(group), mappings: mappings->sortedStems})
-  })
+  let extensionPoints = groupExtensionPoints(epFiles)
 
   // ── targetName extraction ──────────────────────────────────────────────────
   let buildTargets = (stems: array<string>, relPaths: Dict.t<string>): Dict.t<option<string>> => {

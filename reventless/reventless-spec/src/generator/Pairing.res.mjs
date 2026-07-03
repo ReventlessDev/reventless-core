@@ -131,6 +131,39 @@ function hasAsyncAttribute(filePath) {
   }
 }
 
+function groupExtensionPoints(epFiles) {
+  let epByGroup = {};
+  let flatEpMappings = [];
+  epFiles.forEach(param => {
+    let epGroup = param.epGroup;
+    let stem = param.stem;
+    if (epGroup !== undefined) {
+      let arr = epByGroup[epGroup];
+      if (arr !== undefined) {
+        arr.push(stem);
+      } else {
+        epByGroup[epGroup] = [stem];
+      }
+      return;
+    }
+    flatEpMappings.push(stem);
+  });
+  let extensionPoints = [];
+  if (flatEpMappings.length !== 0) {
+    extensionPoints.push({
+      group: undefined,
+      mappings: sortedStems(flatEpMappings)
+    });
+  }
+  Object.entries(epByGroup).forEach(param => {
+    extensionPoints.push({
+      group: param[0],
+      mappings: sortedStems(param[1])
+    });
+  });
+  return extensionPoints;
+}
+
 function resolve(discovered, srcDir) {
   let eventMappings = findEventMappings(srcDir);
   let stateChangeSlices = [];
@@ -275,35 +308,7 @@ function resolve(discovered, srcDir) {
     }
   };
   let readModels = Stdlib_Array.filterMap(sortedStems(readModelStems), rm => pairReadModel(false, rm)).concat(Stdlib_Array.filterMap(sortedStems(readModelStreamStems), rm => pairReadModel(true, rm)));
-  let epByGroup = {};
-  let flatEpMappings = [];
-  epFiles.forEach(param => {
-    let epGroup = param.epGroup;
-    let stem = param.stem;
-    if (epGroup !== undefined) {
-      let arr = epByGroup[epGroup];
-      if (arr !== undefined) {
-        arr.push(stem);
-      } else {
-        epByGroup[epGroup] = [stem];
-      }
-      return;
-    }
-    flatEpMappings.push(stem);
-  });
-  let extensionPoints = [];
-  if (flatEpMappings.length !== 0) {
-    extensionPoints.push({
-      group: undefined,
-      mappings: sortedStems(flatEpMappings)
-    });
-  }
-  Object.entries(epByGroup).forEach(param => {
-    extensionPoints.push({
-      group: param[0],
-      mappings: sortedStems(param[1])
-    });
-  });
+  let extensionPoints = groupExtensionPoints(epFiles);
   let buildTargets = (stems, relPaths) => {
     let dict = {};
     stems.forEach(stem => {
@@ -350,6 +355,7 @@ export {
   sortedStems,
   extractTargetName,
   hasAsyncAttribute,
+  groupExtensionPoints,
   resolve,
 }
 /* node:fs Not a pure module */
