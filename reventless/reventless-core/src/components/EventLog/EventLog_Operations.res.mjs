@@ -186,7 +186,9 @@ function Make(Spec) {
       let id$1 = Spec.Id.toString(id);
       return eventsJson.map(json => decodeEvent(id$1, json));
     };
-    let replayStream = id => Stream.mapEffect(Ops.storage.replayStream(Spec.Id.toString(id)), json => Effect$1.sync(() => decodeEvent(Spec.Id.toString(id), json)));
+    let replayStream = (id, fromSeq) => Stream.mapEffect(Ops.storage.replayStream(Spec.Id.toString(id), fromSeq), json => Effect$1.sync(() => decodeEvent(Spec.Id.toString(id), json)));
+    let latestSnapshot = id => Ops.storage.latestSnapshot(Spec.Id.toString(id));
+    let writeSnapshot = (id, snap) => Ops.storage.writeSnapshot(Spec.Id.toString(id), snap);
     let appendStream = (startingSeqNr, id, stream) => Ops.storage.appendStream(startingSeqNr, Spec.Id.toString(id), Stream.map(stream, event => {
       let json = Message$ReventlessCore.encode(event, Spec.eventSchema);
       let match = Message$ReventlessCore.splitMessage(json);
@@ -206,7 +208,9 @@ function Make(Spec) {
       append: append,
       replay: replay,
       replayStream: replayStream,
-      appendStream: appendStream
+      appendStream: appendStream,
+      latestSnapshot: latestSnapshot,
+      writeSnapshot: writeSnapshot
     };
   };
 }

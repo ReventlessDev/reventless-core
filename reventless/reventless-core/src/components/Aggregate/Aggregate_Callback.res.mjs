@@ -115,7 +115,7 @@ function Make(Spec) {
           seqNr
         ]);
       } else {
-        readState = Effect.tap(Stream.runFold(Ops.eventLog.replayStream(id), [
+        readState = Effect.tap(Stream.runFold(Ops.eventLog.replayStream(id, undefined), [
           Behavior.initialState,
           0
         ], (param, ev) => [

@@ -121,6 +121,88 @@ describe("EventLogStorage_Sqlite", () => {
     expect(replayed->Array.length)->toBe(0)
   })
 
+  testPromise("replayStream ~fromSeq reads only the delta", async () => {
+    module TestBus = LocalBus.Make()
+    module DbProvider = {
+      let db = makeFreshDb()
+    }
+    module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
+    let s = Storage.make(~name="agg", ~opts)
+    let ops = await s.operations->TestRunner.resolve
+
+    let ev = i => JSON.Encode.object(Dict.fromArray([("i", JSON.Encode.int(i))]))
+    let _ = await ops.append(0, "id-d", [ev(0), ev(1), ev(2), ev(3)])
+    let delta = await ops.replayStream("id-d", ~fromSeq=2)->Stream.runCollect->Effect.runPromise
+    expect(delta)->toEqual([ev(2), ev(3)])
+    // Omitted fromSeq still replays from 0 (unchanged default).
+    let full = await ops.replayStream("id-d")->Stream.runCollect->Effect.runPromise
+    expect(full->Array.length)->toBe(4)
+  })
+
+  testPromise("snapshot round-trip with keep-one overwrite", async () => {
+    module TestBus = LocalBus.Make()
+    module DbProvider = {
+      let db = makeFreshDb()
+    }
+    module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
+    let s = Storage.make(~name="agg", ~opts)
+    let ops = await s.operations->TestRunner.resolve
+
+    let none = await ops.latestSnapshot("id-snap")
+    expect(none)->toEqual(Ok(None))
+
+    let state = JSON.Encode.object(Dict.fromArray([("names", JSON.Encode.int(2))]))
+    let w1 = await ops.writeSnapshot(
+      "id-snap",
+      {ReventlessCore.EventLog.seqNr: 2, state, schemaHash: "h1"},
+    )
+    expect(w1)->toEqual(Ok())
+    let r1 = await ops.latestSnapshot("id-snap")
+    expect(r1)->toEqual(Ok(Some({ReventlessCore.EventLog.seqNr: 2, state, schemaHash: "h1"})))
+
+    // Keep-one: a later write replaces the row, it does not accumulate.
+    let state5 = JSON.Encode.object(Dict.fromArray([("names", JSON.Encode.int(5))]))
+    let _ = await ops.writeSnapshot(
+      "id-snap",
+      {ReventlessCore.EventLog.seqNr: 5, state: state5, schemaHash: "h2"},
+    )
+    let r2 = await ops.latestSnapshot("id-snap")
+    expect(r2)->toEqual(
+      Ok(Some({ReventlessCore.EventLog.seqNr: 5, state: state5, schemaHash: "h2"})),
+    )
+  })
+
+  testPromise("snapshots persist across a reopen of the database file", async () => {
+    let path = `/tmp/reventless-test-snapshot-${Float.toString(Date.now())}.db`
+    let state = JSON.Encode.object(Dict.fromArray([("v", JSON.Encode.int(7))]))
+
+    {
+      module TestBus = LocalBus.Make()
+      module DbProvider = {
+        let db = SqliteDriver.openDb(~path)
+      }
+      module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
+      let s = Storage.make(~name="persist", ~opts)
+      let ops = await s.operations->TestRunner.resolve
+      let _ = await ops.writeSnapshot(
+        "id-sp",
+        {ReventlessCore.EventLog.seqNr: 3, state, schemaHash: "h"},
+      )
+      DbProvider.db->SqliteDriver.close
+    }
+
+    module TestBus2 = LocalBus.Make()
+    module DbProvider2 = {
+      let db = SqliteDriver.openDb(~path)
+    }
+    module Storage2 = EventLogStorage_Sqlite.Make(TestBus2, DbProvider2)
+    let s2 = Storage2.make(~name="persist", ~opts)
+    let ops2 = await s2.operations->TestRunner.resolve
+    let r = await ops2.latestSnapshot("id-sp")
+    expect(r)->toEqual(Ok(Some({ReventlessCore.EventLog.seqNr: 3, state, schemaHash: "h"})))
+    DbProvider2.db->SqliteDriver.close
+  })
+
   testPromise("events persist across a reopen of the database file", async () => {
     let path = `/tmp/reventless-test-eventlog-${Float.toString(Date.now())}.db`
 

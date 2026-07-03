@@ -24,7 +24,9 @@ function make(name, opts) {
       append: EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(resolvedTable),
       replay: EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(resolvedTable),
       replayStream: EventLogStorage_DynamoDb_Runtime$ReventlessAws.replayStream(resolvedTable),
-      appendStream: EventLogStorage_DynamoDb_Runtime$ReventlessAws.appendStream(resolvedTable)
+      appendStream: EventLogStorage_DynamoDb_Runtime$ReventlessAws.appendStream(resolvedTable),
+      latestSnapshot: EventLogStorage_DynamoDb_Runtime$ReventlessAws.latestSnapshot(resolvedTable),
+      writeSnapshot: EventLogStorage_DynamoDb_Runtime$ReventlessAws.writeSnapshot(resolvedTable)
     }))
   };
 }

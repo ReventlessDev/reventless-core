@@ -32,7 +32,9 @@ function Make(Spec) {
           append: Ops.append,
           replay: Ops.replay,
           replayStream: Ops.replayStream,
-          appendStream: Ops.appendStream
+          appendStream: Ops.appendStream,
+          latestSnapshot: Ops.latestSnapshot,
+          writeSnapshot: Ops.writeSnapshot
         };
       }));
       let outputs_resources = storage.resources;

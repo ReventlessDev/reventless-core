@@ -4,9 +4,10 @@ type result =
   | NewAndOldImage(string, JSON.t, JSON.t)
   | Invalid
 
-// Returns None for rows that aren't events — e.g. DCB FENCE rows (no `event`
-// column). The caller filters these out via `Invalid` rather than synthesising
-// a bogus event that sury would later reject.
+// Returns None for rows that aren't events — e.g. DCB FENCE rows and aggregate
+// snapshot rows (position = "SNAPSHOT"; docs/plans/aggregate-snapshotting.md),
+// neither of which has an `event` column. The caller filters these out via
+// `Invalid` rather than synthesising a bogus event that sury would later reject.
 let buildJsonEvent' = dict => {
   switch (dict->Dict.get("event"), dict->Dict.get("data")) {
   | (Some(JSON.String(eventType)), data) =>

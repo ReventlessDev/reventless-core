@@ -11,6 +11,8 @@ module type T = {
   let replay: EventLog.replay<Spec.Id.t, Spec.event>
   let replayStream: EventLog.replayStream<Spec.Id.t, Spec.event>
   let appendStream: EventLog.appendStream<Spec.Id.t, Spec.event>
+  let latestSnapshot: EventLog.latestSnapshot<Spec.Id.t>
+  let writeSnapshot: EventLog.writeSnapshot<Spec.Id.t>
 }
 
 // Retry schedule for transient storage errors.
@@ -187,11 +189,18 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
 
   // Lazy streaming replay — wraps decodeEvent in Effect.sync so thrown exceptions
   // surface through the stream's error channel rather than as unhandled exceptions.
-  let replayStream = id =>
-    Ops.storage.replayStream(id->Spec.Id.toString)
+  let replayStream = (id, ~fromSeq=?) =>
+    Ops.storage.replayStream(id->Spec.Id.toString, ~fromSeq=?fromSeq)
     ->Stream.mapEffect(json =>
       Effect.sync(() => decodeEvent(id->Spec.Id.toString, json))
     )
+
+  // Snapshot passthrough — the state stays JSON at this layer; the consumer
+  // (Aggregate_Callback) decodes it against its own state schema and hash-gates
+  // staleness, so a drifted snapshot degrades to full replay, never to an error.
+  let latestSnapshot = id => Ops.storage.latestSnapshot(id->Spec.Id.toString)
+
+  let writeSnapshot = (id, snap) => Ops.storage.writeSnapshot(id->Spec.Id.toString, snap)
 
   // Streaming append — encodes each Spec.event to the {type, data} storage format
   // and writes sequentially via the storage adapter.

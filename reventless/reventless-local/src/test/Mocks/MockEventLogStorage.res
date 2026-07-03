@@ -27,8 +27,22 @@ let make = (~name as _="mock-event-log", ~opts as _: Pulumi.CustomResourceOption
     events.contents->Dict.get(id)->Option.getOr([])
   }
 
-  let replayStream: string => Stream.t<JSON.t, string, unit> = id =>
-    events.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable
+  let replayStream = (id, ~fromSeq=0) =>
+    events.contents
+    ->Dict.get(id)
+    ->Option.getOr([])
+    ->Array.filterWithIndex((_, i) => i >= fromSeq)
+    ->Stream.fromIterable
+
+  let snapshots: dict<ReventlessCore.EventLog.snapshot> = Dict.make()
+
+  let latestSnapshot: ReventlessCore.EventLog.latestSnapshot<string> = async id =>
+    Ok(snapshots->Dict.get(id))
+
+  let writeSnapshot: ReventlessCore.EventLog.writeSnapshot<string> = async (id, snap) => {
+    snapshots->Dict.set(id, snap)
+    Ok()
+  }
 
   let appendStream: ReventlessCore.EventLog.appendStream<string, JSON.t> = (_startingSeqNr, id, stream) =>
     stream->Stream.runForEach(json =>
@@ -45,11 +59,14 @@ let make = (~name as _="mock-event-log", ~opts as _: Pulumi.CustomResourceOption
       replay,
       replayStream,
       appendStream,
+      latestSnapshot,
+      writeSnapshot,
     }),
   }
 
   let reset = () => {
     events := Dict.make()
+    snapshots->Dict.forEachWithKey((_, k) => snapshots->Dict.delete(k))
     failNextAppends := 0
   }
 

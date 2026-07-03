@@ -18,8 +18,10 @@ let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~opts) => {
         ...
       ),
       replay: EventLogStorage_DynamoDb_Runtime.replay(resolvedTable, ...),
-      replayStream: EventLogStorage_DynamoDb_Runtime.replayStream(resolvedTable, ...),
+      replayStream: EventLogStorage_DynamoDb_Runtime.replayStream(resolvedTable),
       appendStream: EventLogStorage_DynamoDb_Runtime.appendStream(resolvedTable, ...),
+      latestSnapshot: EventLogStorage_DynamoDb_Runtime.latestSnapshot(resolvedTable),
+      writeSnapshot: EventLogStorage_DynamoDb_Runtime.writeSnapshot(resolvedTable),
     }),
   }
 }

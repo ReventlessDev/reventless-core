@@ -13,6 +13,7 @@ import * as EventLogStorage_Sqlite$ReventlessLocal from "./EventLogStorage_Sqlit
 
 function makeMemoryStorage(_name, param) {
   let eventsRef = Effect.runSync(STM.commit(TRef.make({})));
+  let snapshots = {};
   let append = (seqNr, id, jsons) => Effect.runPromise(STM.commit(TRef.modify(eventsRef, events => {
     let existing = Stdlib_Option.getOr(events[id], []);
     let currentCount = existing.length;
@@ -35,8 +36,22 @@ function makeMemoryStorage(_name, param) {
       ];
     }
   })));
-  let replayStream = id => Stream$1.flatMap(Stream$1.fromEffect(Effect.map(STM.commit(TRef.get(eventsRef)), events => Stdlib_Option.getOr(events[id], []))), arr => Stream$1.fromIterable(arr));
-  let replay = id => Effect.runPromise(Stream.runCollect(replayStream(id)));
+  let replayStream = (id, fromSeqOpt) => {
+    let fromSeq = fromSeqOpt !== undefined ? fromSeqOpt : 0;
+    return Stream$1.flatMap(Stream$1.fromEffect(Effect.map(STM.commit(TRef.get(eventsRef)), events => Stdlib_Option.getOr(events[id], []).filter((param, i) => i >= fromSeq))), arr => Stream$1.fromIterable(arr));
+  };
+  let replay = id => Effect.runPromise(Stream.runCollect(replayStream(id, undefined)));
+  let latestSnapshot = async id => ({
+    TAG: "Ok",
+    _0: snapshots[id]
+  });
+  let writeSnapshot = async (id, snap) => {
+    snapshots[id] = snap;
+    return {
+      TAG: "Ok",
+      _0: undefined
+    };
+  };
   let appendStream = (startingSeqNr, id, stream) => {
     let seqNrRef = {
       contents: startingSeqNr
@@ -79,7 +94,9 @@ function makeMemoryStorage(_name, param) {
         append: append,
         replay: replay,
         replayStream: replayStream,
-        appendStream: appendStream
+        appendStream: appendStream,
+        latestSnapshot: latestSnapshot,
+        writeSnapshot: writeSnapshot
       })
     }
   ];

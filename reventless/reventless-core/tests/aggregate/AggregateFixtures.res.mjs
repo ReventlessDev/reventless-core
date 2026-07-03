@@ -180,17 +180,35 @@ let eventLog_append = mock.appendFn;
 
 let eventLog_replay = mock.replayFn;
 
-let eventLog_replayStream = mock.replayStreamFn;
+function eventLog_replayStream(id, param) {
+  return mock.replayStreamFn(id);
+}
 
 function eventLog_appendStream(_startingSeqNr, _id, stream) {
   return Stream.runDrain(stream);
+}
+
+async function eventLog_latestSnapshot(param) {
+  return {
+    TAG: "Ok",
+    _0: undefined
+  };
+}
+
+async function eventLog_writeSnapshot(param, param$1) {
+  return {
+    TAG: "Ok",
+    _0: undefined
+  };
 }
 
 let eventLog = {
   append: eventLog_append,
   replay: eventLog_replay,
   replayStream: eventLog_replayStream,
-  appendStream: eventLog_appendStream
+  appendStream: eventLog_appendStream,
+  latestSnapshot: eventLog_latestSnapshot,
+  writeSnapshot: eventLog_writeSnapshot
 };
 
 let TestOps = {

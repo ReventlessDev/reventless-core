@@ -131,8 +131,10 @@ module TestOps = {
         array<Message.event'<string, AggSpec.event>>,
       ) => promise<result<unit, EventLog.appendError>>,
       replay: string => promise<array<AggSpec.event>>,
-      replayStream: string => Stream.t<AggSpec.event, string, unit>,
+      replayStream: (string, ~fromSeq: int=?) => Stream.t<AggSpec.event, string, unit>,
       appendStream: (int, string, Stream.t<AggSpec.event, string, unit>) => Effect.t<unit, string, unit>,
+      latestSnapshot: string => promise<result<option<EventLog.snapshot>, string>>,
+      writeSnapshot: (string, EventLog.snapshot) => promise<result<unit, string>>,
     }
     type component = Component.t<OuterEventLog.t, OuterEventLog.outputs, operations>
     // Never called — satisfies module type only
@@ -141,8 +143,10 @@ module TestOps = {
   let eventLog: EventLog.operations = {
     append: mock.appendFn,
     replay: mock.replayFn,
-    replayStream: mock.replayStreamFn,
+    replayStream: (id, ~fromSeq as _=?) => mock.replayStreamFn(id),
     appendStream: (_startingSeqNr, _id, stream) => stream->Stream.runDrain,
+    latestSnapshot: async _ => Ok(None),
+    writeSnapshot: async (_, _) => Ok(),
   }
 }
 

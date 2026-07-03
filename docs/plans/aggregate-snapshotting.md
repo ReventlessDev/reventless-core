@@ -3,6 +3,7 @@
 **Analysis**: [aggregate-command-handling-review.md](../analysis/aggregate-command-handling-review.md) — Performance §"Long-tail aggregates" and Cost §"Snapshotting → replay → ~constant RCU"
 
 **Progress log:**
+- 2026-07-03 — **Steps 3 + 4 done — snapshot storage surface, all three backends** (core/local/aws). The adapter contract landed independently of the PPX-blocked Step 2, exactly as sequenced. **(Step 3, core)**: `EventLog.snapshot = {seqNr, state: JSON.t, schemaHash}` + `latestSnapshot`/`writeSnapshot` op types (string-error channel — a snapshot failure must never fail a command, so no typed/retryable errors), added to `EventLog.T.operations`, `EventLog_Adapter.operations`, `EventLog_Operations` (typed passthrough — state stays JSON at this layer; the callback will decode + hash-gate in Step 5), and `EventLog_Builder`. `replayStream` gained the offset — **naming deviation from the draft**: `~fromSeq: int=?` (inclusive, default 0) instead of `afterSeq`, because a snapshot at `seqNr = N` resumes at exactly seq N (seqNr = count of folded events); design snippets updated to match. Optional-arg record fields mean callers are unchanged (`replayStream(id)` still compiles everywhere). All in-repo mocks updated (core aggregate/eventlog fixtures, local `MockEventLogStorage` — the eventlog fixture got a real dict-backed snapshot store so the Operations passthrough is covered). **(4a, InMemory)**: closure dict keyed by id (plain dict — writes are single-threaded fire-and-forget upserts, no Stm); `fromSeq` = index filter (array index ≡ seq, contiguous-from-0 invariant). **(4b, SQLite)**: new `snapshot(log_name, aggregate_id, seq_nr, state, schema_hash)` table, PK `(log_name, aggregate_id)`, `INSERT OR REPLACE` (keep-one), prepared statements; `fromSeq` = `AND seq_nr >= ?` on the existing replay statement. **(4c, DynamoDB — two design deviations from the draft, both documented in source)**: (1) the replay key condition is now `id=:id AND #p BETWEEN :from AND :to` with `:from = pad(fromSeq)` and `:to = "999999999"` — positions are 9-digit zero-padded strings, so the bounded range simultaneously implements `fromSeq` **and excludes the `position = "SNAPSHOT"` side-key row** (`"S" > "9"`), which the old unbounded `id=:id` query would have fed into event decoding; (2) `latestSnapshot` is a separate consistent `GetItem` on `(id, "SNAPSHOT")` rather than the draft's single-partition-query-then-partition — the delta read needs the snapshot's seqNr *before* it can bound the query, and two keyed reads are simpler than a client-side partition split. `writeSnapshot` is an unconditional `PutItem` (keep-one, last-writer-wins is safe — racing writers at the same boundary write identical state). **Stream-feed safety confirmed, not just assumed**: `Util_DynamoDbStream_Runtime.buildJsonEvent'` already drops rows without an `event` column (the DCB FENCE mechanism), so snapshot puts on the streamed table variant never reach event collectors — comment extended, pinned by a test. **Tests**: local `EventLogSnapshotParityTest` (**8**: both backends × absence/round-trip+keep-one/per-id isolation/fromSeq≡full-replay-tail incl. empty-delta), SQLite suite +3 (fromSeq delta, keep-one round-trip, **snapshot survives a db reopen**), aws runtime +6 (query-input bounds default/fromSeq, sentinel-ordering proof, item codec round-trip, malformed-item rejection, snapshot-row-invisible-to-stream-feed). **Verified**: whole monorepo **225 suites / 1749 tests** green, zero warnings. **Next**: Step 2 (config surface — still blocked on the reventless-ppx republish), then Step 5 wires the callback's cold path through `latestSnapshot` + boundary-crossing writes.
 - 2026-07-03 — **Step 1 done — Phase 1 in-process replay cache** (core). `Aggregate_Callback` gained a per-functor-instance `Lru.t<string, (Behavior.state, int)>` (capacity 100, matching the slice cache) keyed by the aggregate id — the functor instance owns the cache, so the event log is implicit and the plan's `logName + id` key reduces to `id`. Warm path: `replayProcessAppend` skips `replayStream` entirely and decides on the cached `(state, sequenceNr)`; after a successful append it stores the **already-folded post-decide state** at `sequenceNr + appended` (the processCommand fold's `finalState`, previously discarded as `_finalState` — aggregates have no consumed-vs-produced event split, so evolve-over-appended IS the replay result, exactly as the plan's design argued); the `Ok([])` no-events branch re-puts the read snapshot (keeps it warm + refreshes recency); `Error(Conflict)` **and** `Error(StorageFailure)` invalidate the entry so the retry/next attempt replays cold. The plan's "fail-closed unserializable key" test is moot for aggregates — the key is `Spec.Id.toString(id)`, always a plain string. `resetCache: unit => unit` exported on `Aggregate_Callback.T` for test isolation (production never needs it) and wired into all four existing aggregate test files' `beforeEach` (their module-level `TestHandler` would otherwise leak warm state across tests — the conflict suite pins exact `replayCallCount`s). New `AggregateCacheTest` (**5 tests**) with the package's first **OCC-enforcing** mock EventLog (the existing mocks ignore `seqNr`, but the cache's correctness argument rests on that fence): warm same-id command skips replay; cached fold ≡ cold replay (a `Checkpoint` command records the decision state's size as an event — warm and post-`resetCache` cold checkpoints both observe 3); **stale-cache self-heal** (an injected second-writer event → warm append conflicts → invalidate → cold retry succeeds and the refreshed state includes the external event); `Ok([])` keeps the snapshot warm; `resetCache` forces a cold replay. **Verified**: core **45 suites / 485 tests** (+5), local **464**, aws **133**, all green, zero warnings; catalog example through the real gwt runner **44/0**; and a **live platform smoke** (online-shop-aggregates `platform-local`, SQLite): AddProduct → UpdatePrice → UpdateName on one id logged `replay: … 0 event(s)` then `replay skipped (cached): seq=1` then `seq=2` — on both the Catalog `Product` aggregate **and** the extension-synced Ordering `CatalogProduct` — with the read model correctly showing the final name/price. **Next**: Step 2 (config surface) — blocked on a reventless-ppx republish.
 
 **Scope note (2026-07-03)**: absorbed the aggregate-snapshot items from
@@ -134,8 +135,10 @@ type snapshot = {seqNr: int, state: JSON.t, schemaHash: string}
 
 latestSnapshot: 'id => promise<result<option<snapshot>, string>>,
 writeSnapshot: ('id, snapshot) => promise<result<unit, string>>,
-// replayStream gains an offset so the delta after a snapshot is readable:
-replayStream: ('id, ~afterSeq: int=?) => Stream.t<'event, string, unit>,
+// replayStream gains an offset so the delta after a snapshot is readable.
+// `fromSeq` is INCLUSIVE (replay events with seq_nr >= fromSeq; default 0) —
+// a snapshot at seqNr = N resumes with replayStream(id, ~fromSeq=N).
+replayStream: ('id, ~fromSeq: int=?) => Stream.t<'event, string, unit>,
 ```
 
 Keep-one semantics everywhere: `writeSnapshot` overwrites the single snapshot row per
@@ -162,7 +165,7 @@ let (seedState, seedSeq) = switch snap {
   }
 | _ => (Behavior.initialState, 0) // absent / drifted / storage error → full replay
 }
-eventLog.replayStream(id, ~afterSeq=seedSeq)
+eventLog.replayStream(id, ~fromSeq=seedSeq)
 ->Stream.runFold((seedState, seedSeq), ...) // sequenceNr for OCC = total event count
 ```
 
@@ -246,6 +249,10 @@ unchanged state type is invisible (see Open questions).
 
 ## Status
 
-In progress — moved out of Backlog 2026-07-03. **Phase 1 (Step 1) is done** (see progress
-log). Phase 2 sequencing: config (Step 2) is blocked on a reventless-ppx republish; the
-SQLite arm should land with or after B5's persisted-data-versioning decision.
+In progress — moved out of Backlog 2026-07-03. **Steps 1, 3, and 4 are done** (see
+progress log): the Phase 1 replay cache ships, and all three backends implement
+`latestSnapshot`/`writeSnapshot`/`replayStream(~fromSeq)`. Remaining: **Step 2** (config
+surface — blocked on a reventless-ppx republish), **Step 5** (callback wiring, needs
+Step 2), **Step 6** (end-to-end example), **Step 7** (docs). The SQLite snapshot table
+shipped ahead of B5's persisted-data-versioning decision; fold its migration story in
+when that lands.

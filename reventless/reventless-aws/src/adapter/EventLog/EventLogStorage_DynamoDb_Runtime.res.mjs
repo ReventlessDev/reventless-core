@@ -2,8 +2,12 @@
 
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
+import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
@@ -89,23 +93,162 @@ function append(table) {
   }));
 }
 
-function replayStream(table) {
-  return id => Stream$1.catchAll(Util_DynamoDb_Runtime$ReventlessAws.queryStream({
-    TableName: table.name,
+let snapshotPosition = "SNAPSHOT";
+
+let maxEventPosition = "999999999";
+
+function padSeq(seq) {
+  return seq.toString().padStart(9, "0");
+}
+
+function replayQueryInput(tableName, id, fromSeqOpt) {
+  let fromSeq = fromSeqOpt !== undefined ? fromSeqOpt : 0;
+  return {
+    TableName: tableName,
     ConsistentRead: true,
-    ExpressionAttributeValues: Object.fromEntries([[
+    ExpressionAttributeNames: positionAttrNames,
+    ExpressionAttributeValues: Object.fromEntries([
+      [
         ":id",
         id
-      ]]),
-    KeyConditionExpression: "id=:id"
-  }), err => {
+      ],
+      [
+        ":from",
+        padSeq(fromSeq)
+      ],
+      [
+        ":to",
+        maxEventPosition
+      ]
+    ]),
+    KeyConditionExpression: "id=:id AND #p BETWEEN :from AND :to"
+  };
+}
+
+function snapshotKey(id) {
+  return Object.fromEntries([
+    [
+      "id",
+      id
+    ],
+    [
+      "position",
+      snapshotPosition
+    ]
+  ]);
+}
+
+function snapshotItem(id, snap) {
+  return Object.fromEntries([
+    [
+      "id",
+      id
+    ],
+    [
+      "position",
+      snapshotPosition
+    ],
+    [
+      "seqNr",
+      snap.seqNr
+    ],
+    [
+      "state",
+      snap.state
+    ],
+    [
+      "schemaHash",
+      snap.schemaHash
+    ]
+  ]);
+}
+
+function decodeSnapshotItem(item) {
+  return Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => {
+    let match = d["seqNr"];
+    let match$1 = d["state"];
+    let match$2 = d["schemaHash"];
+    if (typeof match === "number" && match$1 !== undefined && typeof match$2 === "string") {
+      return {
+        seqNr: match | 0,
+        state: match$1,
+        schemaHash: match$2
+      };
+    }
+  });
+}
+
+function exnMessage(exn, fallback) {
+  return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), fallback);
+}
+
+function latestSnapshot(table) {
+  return async id => {
+    try {
+      let out = await DynamoDb_DocumentClient$AwsSdk.GetCommand.send(new LibDynamodb.GetCommand({
+        TableName: table.name,
+        Key: snapshotKey(id),
+        ConsistentRead: true
+      }));
+      let item = out.Item;
+      if (item === undefined) {
+        return {
+          TAG: "Ok",
+          _0: undefined
+        };
+      }
+      let snap = decodeSnapshotItem(item);
+      if (snap !== undefined) {
+        return {
+          TAG: "Ok",
+          _0: snap
+        };
+      } else {
+        return {
+          TAG: "Error",
+          _0: "snapshot item has unexpected shape"
+        };
+      }
+    } catch (raw_exn) {
+      let exn = Primitive_exceptions.internalToException(raw_exn);
+      return {
+        TAG: "Error",
+        _0: exnMessage(exn, "snapshot read error")
+      };
+    }
+  };
+}
+
+function writeSnapshot(table) {
+  return async (id, snap) => {
+    try {
+      await DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
+        Item: snapshotItem(id, snap),
+        TableName: table.name
+      }));
+      return {
+        TAG: "Ok",
+        _0: undefined
+      };
+    } catch (raw_exn) {
+      let exn = Primitive_exceptions.internalToException(raw_exn);
+      return {
+        TAG: "Error",
+        _0: exnMessage(exn, "snapshot write error")
+      };
+    }
+  };
+}
+
+function replayStream(table) {
+  return (id, fromSeq) => Stream$1.catchAll(Util_DynamoDb_Runtime$ReventlessAws.queryStream(replayQueryInput(table.name, id, fromSeq)), err => {
     let msg = DynamoDb_Error$ReventlessAws.message(err);
     return Stream$1.fromEffect(Effect$1.fail(msg));
   });
 }
 
 function replay(table) {
-  return id => Effect$1.runPromise(Effect$1.catchAll(Stream.runCollect(replayStream(table)(id)), msg => Effect$1.flatMap(EffectLogger$ReventlessCore.logError("EventLogStorage_DynamoDb_Runtime-ReventlessAws", undefined, `Couldn't replay events for id ` + id + ` after retries: ` + msg), () => Effect$1.fail(msg))));
+  return id => Effect$1.runPromise(Effect$1.catchAll(Stream.runCollect(replayStream(table)(id, undefined)), msg => Effect$1.flatMap(EffectLogger$ReventlessCore.logError("EventLogStorage_DynamoDb_Runtime-ReventlessAws", undefined, `Couldn't replay events for id ` + id + ` after retries: ` + msg), () => Effect$1.fail(msg))));
 }
 
 function appendStream(table) {
@@ -136,6 +279,16 @@ export {
   transactWriteConditional,
   appendWithCondition,
   append,
+  snapshotPosition,
+  maxEventPosition,
+  padSeq,
+  replayQueryInput,
+  snapshotKey,
+  snapshotItem,
+  decodeSnapshotItem,
+  exnMessage,
+  latestSnapshot,
+  writeSnapshot,
   replayStream,
   replay,
   appendStream,

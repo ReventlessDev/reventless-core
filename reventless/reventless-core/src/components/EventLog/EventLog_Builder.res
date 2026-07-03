@@ -10,6 +10,8 @@ module Make = (
     replay: EventLog.replay<Spec.Id.t, Spec.event>,
     replayStream: EventLog.replayStream<Spec.Id.t, Spec.event>,
     appendStream: EventLog.appendStream<Spec.Id.t, Spec.event>,
+    latestSnapshot: EventLog.latestSnapshot<Spec.Id.t>,
+    writeSnapshot: EventLog.writeSnapshot<Spec.Id.t>,
   }
   type component = Component.t<EventLog.t, EventLog.outputs, operations>
 
@@ -44,6 +46,8 @@ module Make = (
           replay: Ops.replay,
           replayStream: Ops.replayStream,
           appendStream: Ops.appendStream,
+          latestSnapshot: Ops.latestSnapshot,
+          writeSnapshot: Ops.writeSnapshot,
         }
       }),
     )

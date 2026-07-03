@@ -19,10 +19,27 @@ type appendError =
   | Conflict
   | StorageFailure(string)
 
+// A persisted aggregate-state snapshot: `state` is the fold of events
+// seq 0..seqNr-1, so `seqNr` doubles as the sequence number to resume the
+// replay from (and the OCC condition for the next append). `schemaHash` gates
+// staleness — consumers ignore a snapshot whose hash differs from their current
+// state schema and fall back to full replay. Snapshots are a read optimization
+// only; the OCC append remains the sole consistency primitive
+// (docs/plans/aggregate-snapshotting.md).
+type snapshot = {seqNr: int, state: JSON.t, schemaHash: string}
+
 type append<'id, 'event> = (int, 'id, array<'event>) => promise<result<unit, appendError>>
 type replay<'id, 'event> = 'id => promise<array<'event>>
-type replayStream<'id, 'event> = 'id => Stream.t<'event, string, unit>
+// `fromSeq` starts the replay at that sequence number (inclusive; default 0) —
+// the delta read after seeding from a snapshot at seqNr = fromSeq.
+type replayStream<'id, 'event> = ('id, ~fromSeq: int=?) => Stream.t<'event, string, unit>
 type appendStream<'id, 'event> = (int, 'id, Stream.t<'event, string, unit>) => Effect.t<unit, string, unit>
+// Keep-one semantics: `writeSnapshot` overwrites the single snapshot per
+// aggregate; recovery from a corrupt snapshot is full replay, not older
+// snapshots. Failures are plain strings — a snapshot op failure must never
+// fail a command, so no retryable/typed error channel is needed.
+type latestSnapshot<'id> = 'id => promise<result<option<snapshot>, string>>
+type writeSnapshot<'id> = ('id, snapshot) => promise<result<unit, string>>
 
 module type T = {
   module Spec: ReventlessInfra.EventLog.T
@@ -32,6 +49,8 @@ module type T = {
     replay: replay<Spec.Id.t, Spec.event>,
     replayStream: replayStream<Spec.Id.t, Spec.event>,
     appendStream: appendStream<Spec.Id.t, Spec.event>,
+    latestSnapshot: latestSnapshot<Spec.Id.t>,
+    writeSnapshot: writeSnapshot<Spec.Id.t>,
   }
   type component = component<operations>
 

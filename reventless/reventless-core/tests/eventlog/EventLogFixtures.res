@@ -17,6 +17,7 @@ module ItemEventLogSpec = {
 // ─────────────────────────────────────────────────────────────
 
 let storedEvents: ref<dict<array<JSON.t>>> = ref(Dict.make())
+let storedSnapshots: ref<dict<EventLog.snapshot>> = ref(Dict.make())
 let failNextAppend = ref(false)
 // Inject N transient failures: each call decrements the counter and returns ThrottlingException
 let failNextAppendsWithTransient: ref<int> = ref(0)
@@ -41,8 +42,12 @@ let mockStorage: EventLog_Adapter.operations = {
   replay: async id => {
     storedEvents.contents->Dict.get(id)->Option.getOr([])
   },
-  replayStream: id =>
-    storedEvents.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable,
+  replayStream: (id, ~fromSeq=0) =>
+    storedEvents.contents
+    ->Dict.get(id)
+    ->Option.getOr([])
+    ->Array.slice(~start=fromSeq)
+    ->Stream.fromIterable,
   appendStream: (_startingSeqNr, id, stream) =>
     stream->Stream.runForEach(json =>
       Effect.sync(() => {
@@ -50,6 +55,11 @@ let mockStorage: EventLog_Adapter.operations = {
         storedEvents.contents->Dict.set(id, existing->Array.concat([json]))
       })
     ),
+  latestSnapshot: async id => Ok(storedSnapshots.contents->Dict.get(id)),
+  writeSnapshot: async (id, snap) => {
+    storedSnapshots.contents->Dict.set(id, snap)
+    Ok()
+  },
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -106,6 +116,7 @@ let makeEvent' = (id, event) => {
 
 let reset = () => {
   storedEvents := Dict.make()
+  storedSnapshots := Dict.make()
   failNextAppend := false
   failNextAppendsWithTransient := 0
   appendCallCount := 0

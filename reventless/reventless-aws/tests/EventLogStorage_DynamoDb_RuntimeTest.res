@@ -56,3 +56,69 @@ describe("Runtime.buildTransactItems", () => {
     expect(items->Array.length)->toBe(0)
   })
 })
+
+// ─── Aggregate snapshots (docs/plans/aggregate-snapshotting.md) ───
+
+describe("Runtime.replayQueryInput", () => {
+  testSync("default bounds cover exactly the zero-padded event range", () => {
+    let input = Runtime.replayQueryInput(table.name, "agg-1")
+    expect(input.tableName)->toBe("TestTable")
+    expect(input.consistentRead)->toEqual(Some(true))
+    expect(input.keyConditionExpression)->toEqual(Some("id=:id AND #p BETWEEN :from AND :to"))
+    expect(input.expressionAttributeNames->Option.flatMap(Dict.get(_, "#p")))->toEqual(
+      Some("position"),
+    )
+    let values = input.expressionAttributeValues->Option.getOr(Dict.make())
+    expect(values->Dict.get(":from"))->toEqual(Some(JSON.Encode.string("000000000")))
+    expect(values->Dict.get(":to"))->toEqual(Some(JSON.Encode.string("999999999")))
+  })
+
+  testSync("fromSeq narrows the lower bound to the padded position", () => {
+    let input = Runtime.replayQueryInput(table.name, "agg-1", ~fromSeq=42)
+    let values = input.expressionAttributeValues->Option.getOr(Dict.make())
+    expect(values->Dict.get(":from"))->toEqual(Some(JSON.Encode.string("000000042")))
+  })
+
+  testSync("the snapshot sentinel sorts outside the event range", () => {
+    // DynamoDB compares string range keys lexicographically; the BETWEEN upper
+    // bound excludes the snapshot row because "S" > "9".
+    expect(Runtime.snapshotPosition > Runtime.maxEventPosition)->toBe(true)
+    // And every padded event position stays inside the bounds.
+    expect(Runtime.padSeq(0) >= "000000000" && Runtime.padSeq(0) <= "999999999")->toBe(true)
+    expect(Runtime.padSeq(999999999) <= "999999999")->toBe(true)
+  })
+})
+
+describe("Runtime snapshot item codec", () => {
+  let snap: ReventlessCore.EventLog.snapshot = {
+    seqNr: 50,
+    state: JSON.Encode.object(Dict.fromArray([("names", JSON.Encode.int(3))])),
+    schemaHash: "abc123",
+  }
+
+  testSync("snapshotItem round-trips through decodeSnapshotItem", () => {
+    let item = Runtime.snapshotItem("agg-1", snap)
+    expect(Runtime.decodeSnapshotItem(item))->toEqual(Some(snap))
+    // The item rides the reserved sort key.
+    let d = item->JSON.Decode.object->Option.getOr(Dict.make())
+    expect(d->Dict.get("position"))->toEqual(Some(JSON.Encode.string("SNAPSHOT")))
+    expect(d->Dict.get("id"))->toEqual(Some(JSON.Encode.string("agg-1")))
+  })
+
+  testSync("decodeSnapshotItem rejects a malformed item", () => {
+    let bad =
+      [("id", JSON.Encode.string("agg-1")), ("seqNr", JSON.Encode.string("not-a-number"))]
+      ->Dict.fromArray
+      ->JSON.Encode.object
+    expect(Runtime.decodeSnapshotItem(bad))->toEqual(None)
+  })
+
+  testSync("a snapshot row never reaches the event stream feed", () => {
+    // The DynamoDB stream decoder drops rows without an `event` column (same
+    // mechanism that filters DCB FENCE rows), so snapshot writes are invisible
+    // to event collectors.
+    let asDict =
+      Runtime.snapshotItem("agg-1", snap)->JSON.Decode.object->Option.getOr(Dict.make())
+    expect(Util_DynamoDbStream_Runtime.buildJsonEvent'(asDict))->toEqual(None)
+  })
+})

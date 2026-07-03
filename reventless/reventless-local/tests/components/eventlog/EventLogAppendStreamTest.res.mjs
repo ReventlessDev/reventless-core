@@ -52,7 +52,7 @@ globalThis.describe("EventLog.appendStream (in-memory adapter)", () => {
         }
       ]);
       await Effect.runPromise(ops.appendStream(0, "as-order-1", stream));
-      let replayed = await Effect.runPromise(Stream.runCollect(ops.replayStream("as-order-1")));
+      let replayed = await Effect.runPromise(Stream.runCollect(ops.replayStream("as-order-1", undefined)));
       let first = replayed[0];
       globalThis.expect(first).toEqual({
         TAG: "ItemCreated",
@@ -87,7 +87,7 @@ globalThis.describe("EventLog.appendStream (in-memory adapter)", () => {
           id: "b"
         })
       ]);
-      let sourceStream = ops.replayStream("as-src-1");
+      let sourceStream = ops.replayStream("as-src-1", undefined);
       await Effect.runPromise(ops.appendStream(0, "as-dst-1", sourceStream));
       let destEvents = await ops.replay("as-dst-1");
       globalThis.expect(destEvents.length).toBe(2);
@@ -98,9 +98,9 @@ globalThis.describe("EventLog.appendStream (in-memory adapter)", () => {
           TAG: "ItemCreated",
           name: "copied"
         })]);
-      let sourceStream = ops.replayStream("as-src-2");
+      let sourceStream = ops.replayStream("as-src-2", undefined);
       await Effect.runPromise(ops.appendStream(0, "as-dst-2", sourceStream));
-      let destEvents = await Effect.runPromise(Stream.runCollect(ops.replayStream("as-dst-2")));
+      let destEvents = await Effect.runPromise(Stream.runCollect(ops.replayStream("as-dst-2", undefined)));
       let first = destEvents[0];
       globalThis.expect(first).toEqual({
         TAG: "ItemCreated",

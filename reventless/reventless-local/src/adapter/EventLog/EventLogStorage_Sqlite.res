@@ -16,10 +16,18 @@
 
 open ReventlessCore
 
-let ensureSchema = (db: SqliteDriver.t) =>
+let ensureSchema = (db: SqliteDriver.t) => {
   db->SqliteDriver.exec(
     "CREATE TABLE IF NOT EXISTS event_log (log_name TEXT NOT NULL, aggregate_id TEXT NOT NULL, seq_nr INTEGER NOT NULL, payload TEXT NOT NULL, PRIMARY KEY (log_name, aggregate_id, seq_nr))",
   )
+  // Keep-one aggregate-state snapshots (docs/plans/aggregate-snapshotting.md):
+  // one row per (log, aggregate), overwritten on every snapshot write. `state`
+  // is the JSON-encoded fold of events seq 0..seq_nr-1; `schema_hash` lets the
+  // consumer detect a state-schema drift and fall back to full replay.
+  db->SqliteDriver.exec(
+    "CREATE TABLE IF NOT EXISTS snapshot (log_name TEXT NOT NULL, aggregate_id TEXT NOT NULL, seq_nr INTEGER NOT NULL, state TEXT NOT NULL, schema_hash TEXT NOT NULL, PRIMARY KEY (log_name, aggregate_id))",
+  )
+}
 
 // Decodes the JSON column to a JSON.t. Returns JSON.Null on unparseable input
 // (should not happen for data we wrote ourselves).
@@ -62,9 +70,15 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
     "SELECT COALESCE(MAX(seq_nr), -1) + 1 AS c FROM event_log WHERE log_name=? AND aggregate_id=?",
   )
   let selectByIdStmt = db->SqliteDriver.prepare(
-    "SELECT payload FROM event_log WHERE log_name=? AND aggregate_id=? ORDER BY seq_nr ASC",
+    "SELECT payload FROM event_log WHERE log_name=? AND aggregate_id=? AND seq_nr >= ? ORDER BY seq_nr ASC",
   )
   let lastRowidStmt = db->SqliteDriver.prepare("SELECT last_insert_rowid() AS r")
+  let upsertSnapshotStmt = db->SqliteDriver.prepare(
+    "INSERT OR REPLACE INTO snapshot(log_name, aggregate_id, seq_nr, state, schema_hash) VALUES(?,?,?,?,?)",
+  )
+  let selectSnapshotStmt = db->SqliteDriver.prepare(
+    "SELECT seq_nr, state, schema_hash FROM snapshot WHERE log_name=? AND aggregate_id=?",
+  )
 
   let expectedNextSeq = (id: string): int =>
     switch nextSeqStmt->SqliteDriver.get([JSON.Encode.string(name), JSON.Encode.string(id)]) {
@@ -144,9 +158,13 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
   let append: EventLog.append<string, JSON.t> = (seqNr, id, jsons) =>
     appendTracked(~track=true, seqNr, id, jsons)
 
-  let replayArray = (id: string): array<JSON.t> =>
+  let replayArray = (id: string, ~fromSeq=0): array<JSON.t> =>
     selectByIdStmt
-    ->SqliteDriver.all([JSON.Encode.string(name), JSON.Encode.string(id)])
+    ->SqliteDriver.all([
+      JSON.Encode.string(name),
+      JSON.Encode.string(id),
+      JSON.Encode.int(fromSeq),
+    ])
     ->Array.map(decodePayload)
 
   let replay: EventLog.replay<string, JSON.t> = async id => replayArray(id)
@@ -154,8 +172,54 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
   // node:sqlite's iterate() could back a lazy stream, but the current Stream
   // API only has array-based fromIterable. Small events, dev-only backend →
   // materialise via all() and wrap. Swap to a lazy adapter if it matters.
-  let replayStream: string => Stream.t<JSON.t, string, unit> = id =>
-    replayArray(id)->Stream.fromIterable
+  let replayStream = (id, ~fromSeq=?) => replayArray(id, ~fromSeq=?fromSeq)->Stream.fromIterable
+
+  let latestSnapshot: EventLog.latestSnapshot<string> = async id =>
+    try {
+      switch selectSnapshotStmt->SqliteDriver.get([
+        JSON.Encode.string(name),
+        JSON.Encode.string(id),
+      ]) {
+      | Some(row) =>
+        switch (row->Dict.get("seq_nr"), row->Dict.get("state"), row->Dict.get("schema_hash")) {
+        | (Some(JSON.Number(seq)), Some(JSON.String(stateStr)), Some(JSON.String(schemaHash))) =>
+          Ok(
+            Some({
+              EventLog.seqNr: Float.toInt(seq),
+              state: JSON.parseOrThrow(stateStr),
+              schemaHash,
+            }),
+          )
+        | _ => Error("snapshot row has unexpected shape")
+        }
+      | None => Ok(None)
+      }
+    } catch {
+    | exn =>
+      Error(
+        exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("snapshot read error"),
+      )
+    }
+
+  let writeSnapshot: EventLog.writeSnapshot<string> = async (id, snap) =>
+    try {
+      upsertSnapshotStmt->SqliteDriver.run([
+        JSON.Encode.string(name),
+        JSON.Encode.string(id),
+        JSON.Encode.int(snap.seqNr),
+        JSON.Encode.string(JSON.stringify(snap.state)),
+        JSON.Encode.string(snap.schemaHash),
+      ])
+      Ok()
+    } catch {
+    | exn =>
+      Error(
+        exn
+        ->JsExn.fromException
+        ->Option.flatMap(JsExn.message)
+        ->Option.getOr("snapshot write error"),
+      )
+    }
 
   // Collect the stream and hand the whole batch to `append`, which inserts every
   // event under one transaction with a single OCC check (vs the old per-element
@@ -186,6 +250,8 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
         replay,
         replayStream,
         appendStream,
+        latestSnapshot,
+        writeSnapshot,
       }),
     },
   )

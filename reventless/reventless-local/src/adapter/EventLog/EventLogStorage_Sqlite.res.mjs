@@ -14,6 +14,7 @@ import * as ProjectionPending$ReventlessLocal from "../ProjectionPending.res.mjs
 
 function ensureSchema(db) {
   SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS event_log (log_name TEXT NOT NULL, aggregate_id TEXT NOT NULL, seq_nr INTEGER NOT NULL, payload TEXT NOT NULL, PRIMARY KEY (log_name, aggregate_id, seq_nr))");
+  SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS snapshot (log_name TEXT NOT NULL, aggregate_id TEXT NOT NULL, seq_nr INTEGER NOT NULL, state TEXT NOT NULL, schema_hash TEXT NOT NULL, PRIMARY KEY (log_name, aggregate_id))");
 }
 
 function decodePayload(row) {
@@ -32,7 +33,7 @@ function decodePayload(row) {
 }
 
 function countAll(db) {
-  SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS event_log (log_name TEXT NOT NULL, aggregate_id TEXT NOT NULL, seq_nr INTEGER NOT NULL, payload TEXT NOT NULL, PRIMARY KEY (log_name, aggregate_id, seq_nr))");
+  ensureSchema(db);
   let row = SqliteDriver$ReventlessLocal.get(SqliteDriver$ReventlessLocal.prepare(db, "SELECT COUNT(*) AS c FROM event_log"), []);
   if (row === undefined) {
     return 0;
@@ -46,11 +47,13 @@ function countAll(db) {
 }
 
 function makeStorage(db, name, param) {
-  SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS event_log (log_name TEXT NOT NULL, aggregate_id TEXT NOT NULL, seq_nr INTEGER NOT NULL, payload TEXT NOT NULL, PRIMARY KEY (log_name, aggregate_id, seq_nr))");
+  ensureSchema(db);
   let insertStmt = SqliteDriver$ReventlessLocal.prepare(db, "INSERT INTO event_log(log_name, aggregate_id, seq_nr, payload) VALUES(?,?,?,?)");
   let nextSeqStmt = SqliteDriver$ReventlessLocal.prepare(db, "SELECT COALESCE(MAX(seq_nr), -1) + 1 AS c FROM event_log WHERE log_name=? AND aggregate_id=?");
-  let selectByIdStmt = SqliteDriver$ReventlessLocal.prepare(db, "SELECT payload FROM event_log WHERE log_name=? AND aggregate_id=? ORDER BY seq_nr ASC");
+  let selectByIdStmt = SqliteDriver$ReventlessLocal.prepare(db, "SELECT payload FROM event_log WHERE log_name=? AND aggregate_id=? AND seq_nr >= ? ORDER BY seq_nr ASC");
   let lastRowidStmt = SqliteDriver$ReventlessLocal.prepare(db, "SELECT last_insert_rowid() AS r");
+  let upsertSnapshotStmt = SqliteDriver$ReventlessLocal.prepare(db, "INSERT OR REPLACE INTO snapshot(log_name, aggregate_id, seq_nr, state, schema_hash) VALUES(?,?,?,?,?)");
+  let selectSnapshotStmt = SqliteDriver$ReventlessLocal.prepare(db, "SELECT seq_nr, state, schema_hash FROM snapshot WHERE log_name=? AND aggregate_id=?");
   let expectedNextSeq = id => {
     let row = SqliteDriver$ReventlessLocal.get(nextSeqStmt, [
       name,
@@ -142,12 +145,75 @@ function makeStorage(db, name, param) {
     }
   };
   let append = (seqNr, id, jsons) => appendTracked(true, seqNr, id, jsons);
-  let replayArray = id => SqliteDriver$ReventlessLocal.all(selectByIdStmt, [
-    name,
-    id
-  ]).map(decodePayload);
-  let replay = replayArray;
-  let replayStream = id => Stream$1.fromIterable(replayArray(id));
+  let replayArray = (id, fromSeqOpt) => {
+    let fromSeq = fromSeqOpt !== undefined ? fromSeqOpt : 0;
+    return SqliteDriver$ReventlessLocal.all(selectByIdStmt, [
+      name,
+      id,
+      fromSeq
+    ]).map(decodePayload);
+  };
+  let replay = async id => replayArray(id, undefined);
+  let replayStream = (id, fromSeq) => Stream$1.fromIterable(replayArray(id, fromSeq));
+  let latestSnapshot = async id => {
+    try {
+      let row = SqliteDriver$ReventlessLocal.get(selectSnapshotStmt, [
+        name,
+        id
+      ]);
+      if (row === undefined) {
+        return {
+          TAG: "Ok",
+          _0: undefined
+        };
+      }
+      let match = row["seq_nr"];
+      let match$1 = row["state"];
+      let match$2 = row["schema_hash"];
+      if (typeof match === "number" && typeof match$1 === "string" && typeof match$2 === "string") {
+        return {
+          TAG: "Ok",
+          _0: {
+            seqNr: match | 0,
+            state: JSON.parse(match$1),
+            schemaHash: match$2
+          }
+        };
+      } else {
+        return {
+          TAG: "Error",
+          _0: "snapshot row has unexpected shape"
+        };
+      }
+    } catch (raw_exn) {
+      let exn = Primitive_exceptions.internalToException(raw_exn);
+      return {
+        TAG: "Error",
+        _0: Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "snapshot read error")
+      };
+    }
+  };
+  let writeSnapshot = async (id, snap) => {
+    try {
+      SqliteDriver$ReventlessLocal.run(upsertSnapshotStmt, [
+        name,
+        id,
+        snap.seqNr,
+        JSON.stringify(snap.state),
+        snap.schemaHash
+      ]);
+      return {
+        TAG: "Ok",
+        _0: undefined
+      };
+    } catch (raw_exn) {
+      let exn = Primitive_exceptions.internalToException(raw_exn);
+      return {
+        TAG: "Error",
+        _0: Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "snapshot write error")
+      };
+    }
+  };
   let appendStream = (startingSeqNr, id, stream) => Effect.flatMap(Stream.runCollect(stream), jsons => Effect.flatMap(Effect.promise(() => appendTracked(false, startingSeqNr, id, jsons)), result => {
     if (result.TAG === "Ok") {
       return Effect.succeed();
@@ -168,7 +234,9 @@ function makeStorage(db, name, param) {
         append: append,
         replay: replay,
         replayStream: replayStream,
-        appendStream: appendStream
+        appendStream: appendStream,
+        latestSnapshot: latestSnapshot,
+        writeSnapshot: writeSnapshot
       })
     }
   ];

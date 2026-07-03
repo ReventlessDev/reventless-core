@@ -29,6 +29,10 @@ let storedEvents = {
   contents: {}
 };
 
+let storedSnapshots = {
+  contents: {}
+};
+
 let failNextAppend = {
   contents: false
 };
@@ -75,8 +79,9 @@ async function mockStorage_replay(id) {
   return Stdlib_Option.getOr(storedEvents.contents[id], []);
 }
 
-function mockStorage_replayStream(id) {
-  return Stream.fromIterable(Stdlib_Option.getOr(storedEvents.contents[id], []));
+function mockStorage_replayStream(id, fromSeqOpt) {
+  let fromSeq = fromSeqOpt !== undefined ? fromSeqOpt : 0;
+  return Stream.fromIterable(Stdlib_Option.getOr(storedEvents.contents[id], []).slice(fromSeq));
 }
 
 function mockStorage_appendStream(_startingSeqNr, id, stream) {
@@ -86,11 +91,28 @@ function mockStorage_appendStream(_startingSeqNr, id, stream) {
   }));
 }
 
+async function mockStorage_latestSnapshot(id) {
+  return {
+    TAG: "Ok",
+    _0: storedSnapshots.contents[id]
+  };
+}
+
+async function mockStorage_writeSnapshot(id, snap) {
+  storedSnapshots.contents[id] = snap;
+  return {
+    TAG: "Ok",
+    _0: undefined
+  };
+}
+
 let mockStorage = {
   append: mockStorage_append,
   replay: mockStorage_replay,
   replayStream: mockStorage_replayStream,
-  appendStream: mockStorage_appendStream
+  appendStream: mockStorage_appendStream,
+  latestSnapshot: mockStorage_latestSnapshot,
+  writeSnapshot: mockStorage_writeSnapshot
 };
 
 let capturedPublishes = {
@@ -149,6 +171,7 @@ function makeEvent$p(id, event) {
 
 function reset() {
   storedEvents.contents = {};
+  storedSnapshots.contents = {};
   failNextAppend.contents = false;
   failNextAppendsWithTransient.contents = 0;
   appendCallCount.contents = 0;
@@ -158,6 +181,7 @@ function reset() {
 export {
   ItemEventLogSpec,
   storedEvents,
+  storedSnapshots,
   failNextAppend,
   failNextAppendsWithTransient,
   appendCallCount,

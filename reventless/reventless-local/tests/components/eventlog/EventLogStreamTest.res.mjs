@@ -23,12 +23,12 @@ globalThis.describe("EventLog.replayStream (in-memory adapter)", () => {
           TAG: "ItemDeleted",
           id: "stream-1"
         })]);
-      let count = await Effect.runPromise(Stream$1.runFold(ops.replayStream("stream-1"), 0, (n, param) => n + 1 | 0));
+      let count = await Effect.runPromise(Stream$1.runFold(ops.replayStream("stream-1", undefined), 0, (n, param) => n + 1 | 0));
       globalThis.expect(count).toBe(2);
     });
     globalThis.test("replayStream for unknown id returns empty stream", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
-      let count = await Effect.runPromise(Stream$1.runFold(ops.replayStream("no-such-id"), 0, (n, param) => n + 1 | 0));
+      let count = await Effect.runPromise(Stream$1.runFold(ops.replayStream("no-such-id", undefined), 0, (n, param) => n + 1 | 0));
       globalThis.expect(count).toBe(0);
     });
     globalThis.test("replayStream emits events in append order", async () => {
@@ -41,7 +41,7 @@ globalThis.describe("EventLog.replayStream (in-memory adapter)", () => {
           TAG: "ItemDeleted",
           id: "stream-2"
         })]);
-      let events = await Effect.runPromise(Stream.runCollect(ops.replayStream("stream-2")));
+      let events = await Effect.runPromise(Stream.runCollect(ops.replayStream("stream-2", undefined)));
       globalThis.expect(events.length).toBe(2);
       let first = events[0];
       globalThis.expect(first).toEqual({
@@ -65,8 +65,8 @@ globalThis.describe("EventLog.replayStream (in-memory adapter)", () => {
           id: "agg-Y"
         })
       ]);
-      let countX = await Effect.runPromise(Stream$1.runFold(ops.replayStream("agg-X"), 0, (n, param) => n + 1 | 0));
-      let countY = await Effect.runPromise(Stream$1.runFold(ops.replayStream("agg-Y"), 0, (n, param) => n + 1 | 0));
+      let countX = await Effect.runPromise(Stream$1.runFold(ops.replayStream("agg-X", undefined), 0, (n, param) => n + 1 | 0));
+      let countY = await Effect.runPromise(Stream$1.runFold(ops.replayStream("agg-Y", undefined), 0, (n, param) => n + 1 | 0));
       globalThis.expect(countX).toBe(1);
       globalThis.expect(countY).toBe(2);
     });
@@ -94,7 +94,7 @@ globalThis.describe("EventLog.replayStream (in-memory adapter)", () => {
           name: "e5"
         })
       ]);
-      let first2 = await Effect.runPromise(Stream.runCollect(Stream$1.take(ops.replayStream("stream-3"), 2)));
+      let first2 = await Effect.runPromise(Stream.runCollect(Stream$1.take(ops.replayStream("stream-3", undefined), 2)));
       globalThis.expect(first2.length).toBe(2);
     });
   });
@@ -115,7 +115,7 @@ globalThis.describe("EventLog.replayStream (in-memory adapter)", () => {
           TAG: "ItemCreated",
           name: "e3"
         })]);
-      let match = await Effect.runPromise(Stream$1.runFold(ops.replayStream("fold-1"), [
+      let match = await Effect.runPromise(Stream$1.runFold(ops.replayStream("fold-1", undefined), [
         undefined,
         0
       ], (param, _ev) => [
@@ -126,7 +126,7 @@ globalThis.describe("EventLog.replayStream (in-memory adapter)", () => {
     });
     globalThis.test("runFold on empty stream returns initial accumulator", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
-      let match = await Effect.runPromise(Stream$1.runFold(ops.replayStream("unknown-fold"), [
+      let match = await Effect.runPromise(Stream$1.runFold(ops.replayStream("unknown-fold", undefined), [
         undefined,
         0
       ], (param, _ev) => [
