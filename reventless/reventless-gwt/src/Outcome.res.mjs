@@ -76,52 +76,6 @@ function format(m) {
   }
 }
 
-function toJson(m) {
-  let obj = {};
-  obj["kind"] = kindName(m);
-  switch (m.TAG) {
-    case "ErrorMismatch" :
-      obj["expected"] = m.expected;
-      obj["actual"] = Stdlib_Option.getOr(m.actual, null);
-      obj["actualEvents"] = m.actualEvents;
-      break;
-    case "StateMismatch" :
-      obj["key"] = m.key;
-      obj["expected"] = Stdlib_Option.getOr(m.expected, null);
-      obj["actual"] = Stdlib_Option.getOr(m.actual, null);
-      break;
-    case "NoEventExpected" :
-      obj["actual"] = m.actual;
-      break;
-    case "TodoMismatch" :
-      let pairArr = pairs => pairs.map(param => {
-        let d = {};
-        d["id"] = param[0];
-        d["value"] = param[1];
-        return d;
-      });
-      obj["expected"] = pairArr(m.expected);
-      obj["actual"] = pairArr(m.actual);
-      break;
-    case "TranslateError" :
-      obj["expected"] = m.expected;
-      obj["actual"] = Stdlib_Option.mapOr(m.actual, null, prim => prim);
-      break;
-    case "EventsMismatch" :
-    case "AppendConditionMismatch" :
-    case "QueryRowsMismatch" :
-    case "PublishedActionsMismatch" :
-      obj["expected"] = m.expected;
-      obj["actual"] = m.actual;
-      break;
-    case "Throw" :
-      obj["error"] = m.error;
-      obj["stack"] = m.stack;
-      break;
-  }
-  return obj;
-}
-
 let pass = {
   TAG: "Ok",
   _0: undefined
@@ -135,6 +89,5 @@ export {
   stringifyOptJson,
   stringifyJsonArray,
   format,
-  toJson,
 }
 /* No side effect */

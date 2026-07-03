@@ -7,7 +7,7 @@ import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as RunnerTypes$ReventlessGwt from "./RunnerTypes.res.mjs";
 import * as RenderRescript$ReventlessGwt from "./RenderRescript.res.mjs";
 
-let schemaVersion = "1.1.0";
+let defaultSchemaVersion = "1.1.0";
 
 function write(s) {
   process.stdout.write(s);
@@ -214,7 +214,7 @@ function summaryJson(s) {
   return d;
 }
 
-function envelope(r, toolVersion) {
+function envelope(r, toolVersion, schemaVersion) {
   let d = {};
   d["schemaVersion"] = schemaVersion;
   d["tool"] = "reventless-gwt";
@@ -226,11 +226,13 @@ function envelope(r, toolVersion) {
   return d;
 }
 
-function emit(r, toolVersion) {
-  process.stdout.write(JSON.stringify(envelope(r, toolVersion), undefined, 2) + "\n");
+function emit(r, toolVersion, schemaVersionOpt) {
+  let schemaVersion = schemaVersionOpt !== undefined ? schemaVersionOpt : defaultSchemaVersion;
+  process.stdout.write(JSON.stringify(envelope(r, toolVersion, schemaVersion), undefined, 2) + "\n");
 }
 
-function streamRunStart(toolVersion, startedAt) {
+function streamRunStart(toolVersion, startedAt, schemaVersionOpt) {
+  let schemaVersion = schemaVersionOpt !== undefined ? schemaVersionOpt : defaultSchemaVersion;
   let d = {};
   d["type"] = "runStarted";
   d["schemaVersion"] = schemaVersion;
@@ -299,7 +301,7 @@ function streamRunEnd(r) {
 }
 
 export {
-  schemaVersion,
+  defaultSchemaVersion,
   write,
   writeLine,
   renderValue,

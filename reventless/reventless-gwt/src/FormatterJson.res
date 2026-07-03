@@ -5,7 +5,10 @@
 
 // 1.1.0 — additive: `PublishedActionsMismatch` mismatch kind for the
 // Delegate_GWT / cross-plugin Flow_GWT boundary steps.
-let schemaVersion = "1.1.0"
+// The default the emitted envelope carries; the `--schema-version` CLI flag
+// overrides it (threaded through `emit` / `streamRunStart`) so a consumer can
+// pin the schema version its AI prompt was built against.
+let defaultSchemaVersion = "1.1.0"
 
 @val external processStdout: {"write": string => unit} = "process.stdout"
 let write = (s: string) => processStdout["write"](s)
@@ -184,7 +187,11 @@ let summaryJson = (s: RunnerTypes.summary): JSON.t => {
   JSON.Encode.object(d)
 }
 
-let envelope = (r: RunnerTypes.runResult, ~toolVersion: string): JSON.t => {
+let envelope = (
+  r: RunnerTypes.runResult,
+  ~toolVersion: string,
+  ~schemaVersion: string,
+): JSON.t => {
   let d = Dict.make()
   d->Dict.set("schemaVersion", JSON.Encode.string(schemaVersion))
   d->Dict.set("tool", JSON.Encode.string("reventless-gwt"))
@@ -196,11 +203,11 @@ let envelope = (r: RunnerTypes.runResult, ~toolVersion: string): JSON.t => {
   JSON.Encode.object(d)
 }
 
-let emit = (r: RunnerTypes.runResult, ~toolVersion: string) =>
-  write(JSON.stringify(envelope(r, ~toolVersion), ~space=2) ++ "\n")
+let emit = (r: RunnerTypes.runResult, ~toolVersion: string, ~schemaVersion=defaultSchemaVersion) =>
+  write(JSON.stringify(envelope(r, ~toolVersion, ~schemaVersion), ~space=2) ++ "\n")
 
 // Streaming variant — NDJSON events.
-let streamRunStart = (~toolVersion: string, ~startedAt: string) => {
+let streamRunStart = (~toolVersion: string, ~startedAt: string, ~schemaVersion=defaultSchemaVersion) => {
   let d = Dict.make()
   d->Dict.set("type", JSON.Encode.string("runStarted"))
   d->Dict.set("schemaVersion", JSON.Encode.string(schemaVersion))

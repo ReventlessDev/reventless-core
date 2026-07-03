@@ -45,12 +45,6 @@ let relativeToCwd = (abs: string) => pathRelative(processCwd(), abs)
 
 let sourceLineCache: Dict.t<option<array<string>>> = Dict.make()
 
-let resetLocateCache = () => {
-  sourceLineCache
-  ->Dict.keysToArray
-  ->Array.forEach(k => Dict.delete(sourceLineCache, k))
-}
-
 let mjsToRes = (mjsPath: string): option<string> =>
   if String.endsWith(mjsPath, ".res.mjs") {
     Some(String.slice(mjsPath, ~start=0, ~end=String.length(mjsPath) - 4))

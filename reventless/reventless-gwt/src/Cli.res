@@ -434,7 +434,7 @@ let emitResult = (opts: options, r: RunnerTypes.runResult) =>
     if opts.stream {
       FormatterJson.streamRunEnd(r)
     } else {
-      FormatterJson.emit(r, ~toolVersion=opts.toolVersion)
+      FormatterJson.emit(r, ~toolVersion=opts.toolVersion, ~schemaVersion=?opts.schemaVersion)
     }
   | Tap => FormatterTap.emit(r)
   | Junit => FormatterJunit.emit(r)
@@ -486,7 +486,11 @@ let runOnce = async (opts: options): int => {
   | None => await Discovery.discover(opts.roots)
   }
   if opts.format == Json && opts.stream {
-    FormatterJson.streamRunStart(~toolVersion=opts.toolVersion, ~startedAt=dateNowIso())
+    FormatterJson.streamRunStart(
+      ~toolVersion=opts.toolVersion,
+      ~startedAt=dateNowIso(),
+      ~schemaVersion=?opts.schemaVersion,
+    )
   }
   let onFileFinished: option<RunnerTypes.fileResult => unit> = switch (
     opts.format,

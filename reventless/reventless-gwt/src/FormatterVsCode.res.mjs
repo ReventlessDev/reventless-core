@@ -2,7 +2,6 @@
 
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
-import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Hint$ReventlessGwt from "./Hint.res.mjs";
@@ -42,10 +41,6 @@ function relativeToCwd(abs) {
 }
 
 let sourceLineCache = {};
-
-function resetLocateCache() {
-  Object.keys(sourceLineCache).forEach(k => Stdlib_Dict.$$delete(sourceLineCache, k));
-}
 
 function mjsToRes(mjsPath) {
   if (mjsPath.endsWith(".res.mjs")) {
@@ -514,7 +509,6 @@ export {
   fileLabelOf,
   relativeToCwd,
   sourceLineCache,
-  resetLocateCache,
   mjsToRes,
   readLinesCached,
   escapeForDouble,

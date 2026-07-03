@@ -508,7 +508,7 @@ function emitResult(opts, r) {
       if (opts.stream) {
         return FormatterJson$ReventlessGwt.streamRunEnd(r);
       } else {
-        return FormatterJson$ReventlessGwt.emit(r, opts.toolVersion);
+        return FormatterJson$ReventlessGwt.emit(r, opts.toolVersion, opts.schemaVersion);
       }
     case "Tap" :
       return FormatterTap$ReventlessGwt.emit(r);
@@ -560,7 +560,7 @@ async function runOnce(opts) {
   let p = opts.paths;
   let paths = p !== undefined ? p : await Discovery$ReventlessGwt.discover(opts.roots);
   if (opts.format === "Json" && opts.stream) {
-    FormatterJson$ReventlessGwt.streamRunStart(opts.toolVersion, dateNowIso());
+    FormatterJson$ReventlessGwt.streamRunStart(opts.toolVersion, dateNowIso(), opts.schemaVersion);
   }
   let match = opts.format;
   let match$1 = opts.stream;
