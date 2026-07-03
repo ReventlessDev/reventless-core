@@ -4,7 +4,10 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as AggregateFixtures$ReventlessCore from "./AggregateFixtures.res.mjs";
 
-globalThis.beforeEach(() => AggregateFixtures$ReventlessCore.mock.reset());
+globalThis.beforeEach(() => {
+  AggregateFixtures$ReventlessCore.mock.reset();
+  AggregateFixtures$ReventlessCore.TestHandler.resetCache();
+});
 
 globalThis.describe("Aggregate_Callback.handleCommands:", () => {
   globalThis.describe("single command — new aggregate", () => {

@@ -4,6 +4,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
+import * as Lru$ReventlessCore from "../../util/Lru.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
@@ -64,6 +65,8 @@ function Make(Spec) {
           ]])
       ];
     };
+    let replayCache = Lru$ReventlessCore.make(100);
+    let resetCache = () => Lru$ReventlessCore.clear(replayCache);
     let reportFinalOutcomes = (outcomes, entityId, appendSucceeded, appendedEventCount, appendErrorDetailOpt) => {
       let appendErrorDetail = appendErrorDetailOpt !== undefined ? appendErrorDetailOpt : "";
       return outcomes.map(param => {
@@ -102,19 +105,33 @@ function Make(Spec) {
     };
     let replayProcessAppend = (id, topicItemsForId) => {
       let idStr = Spec.Id.toString(id);
-      return Effect.flatMap(Effect.tap(Stream.runFold(Ops.eventLog.replayStream(id), [
-        Behavior.initialState,
-        0
-      ], (param, ev) => [
-        Behavior.evolve(param[0], ev),
-        param[1] + 1 | 0
-      ]), param => EffectLogger$ReventlessCore.logInfo(comp, undefined, `replay: id=` + idStr + `, ` + param[1].toString() + ` event(s)`)), param => {
+      let match = Lru$ReventlessCore.get(replayCache, idStr);
+      let readState;
+      if (match !== undefined) {
+        let seqNr = match[1];
+        let state = match[0];
+        readState = Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `replay skipped (cached): id=` + idStr + `, seq=` + seqNr.toString()), () => [
+          state,
+          seqNr
+        ]);
+      } else {
+        readState = Effect.tap(Stream.runFold(Ops.eventLog.replayStream(id), [
+          Behavior.initialState,
+          0
+        ], (param, ev) => [
+          Behavior.evolve(param[0], ev),
+          param[1] + 1 | 0
+        ]), param => EffectLogger$ReventlessCore.logInfo(comp, undefined, `replay: id=` + idStr + `, ` + param[1].toString() + ` event(s)`));
+      }
+      return Effect.flatMap(readState, param => {
         let sequenceNr = param[1];
+        let initialState = param[0];
         let match = Stdlib_Array.reduce(topicItemsForId, [
-          param[0],
+          initialState,
           []
         ], processCommand);
         let outcomes = match[1];
+        let finalState = match[0];
         let eventsToAppend = outcomes.map(param => {
           let meta = param[2];
           let outcome = param[1];
@@ -139,6 +156,10 @@ function Make(Spec) {
           let eventJsons = eventsToAppend.map(event$p => Message$ReventlessCore.encode(event$p.event, Spec.eventSchema));
           return Effect.flatMap(Effect.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect.promise(() => Ops.eventLog.append(sequenceNr, id, eventsToAppend))), appendResult => {
             if (appendResult.TAG === "Ok") {
+              Lru$ReventlessCore.put(replayCache, idStr, [
+                finalState,
+                sequenceNr + eventsToAppend.length | 0
+              ]);
               let perRef = reportFinalOutcomes(outcomes, idStr, true, eventsToAppend.length, undefined);
               return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `append: id=` + idStr), () => ({
                 TAG: "Ok",
@@ -147,12 +168,14 @@ function Make(Spec) {
             }
             let msg = appendResult._0;
             if (typeof msg !== "object") {
+              Lru$ReventlessCore.invalidate(replayCache, idStr);
               return Effect.map(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict: id=` + idStr + `, will retry`), () => ({
                 TAG: "Error",
                 _0: "conflict"
               }));
             }
             let msg$1 = msg._0;
+            Lru$ReventlessCore.invalidate(replayCache, idStr);
             let perRef$1 = reportFinalOutcomes(outcomes, idStr, false, 0, msg$1);
             return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `append failed: id=` + idStr + `: ` + msg$1), () => ({
               TAG: "Ok",
@@ -160,6 +183,10 @@ function Make(Spec) {
             }));
           });
         }
+        Lru$ReventlessCore.put(replayCache, idStr, [
+          initialState,
+          sequenceNr
+        ]);
         let perRef = reportFinalOutcomes(outcomes, idStr, true, 0, undefined);
         return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `no events produced: id=` + idStr), () => ({
           TAG: "Ok",
@@ -198,7 +225,8 @@ function Make(Spec) {
     }), prim => prim.flat()));
     return {
       Spec: Spec,
-      handleCommands: handleCommands
+      handleCommands: handleCommands,
+      resetCache: resetCache
     };
   });
 }

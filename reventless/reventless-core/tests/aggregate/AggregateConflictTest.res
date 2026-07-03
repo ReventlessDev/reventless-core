@@ -152,7 +152,10 @@ let makeTopicItem = (reference, command): CommandTopic.topicItem<
   reference,
 }
 
-let _ = beforeEach(() => mock.reset())
+let _ = beforeEach(() => {
+  mock.reset()
+  TestHandler.resetCache()
+})
 
 describe("Aggregate_Callback — conflict retry:", () => {
   testPromise("1 conflict retries and succeeds", async () => {

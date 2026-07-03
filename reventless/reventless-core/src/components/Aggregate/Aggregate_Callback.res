@@ -7,6 +7,11 @@ module type Ops = {
 module type T = {
   module Spec: Reventless.Aggregate.Spec
   let handleCommands: CommandTopic.commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
+
+  /** Flushes this aggregate's in-process replay cache. The cache is a pure read
+      optimization (the OCC append fences staleness), so this is only needed for
+      test isolation — production code never has to call it. */
+  let resetCache: unit => unit
 }
 
 module Make = (
@@ -95,6 +100,28 @@ module Make = (
 
   let maxConflictRetries = 3
 
+  // In-process replay cache (per warm Lambda instance, per aggregate — the
+  // functor instance owns the cache, so the event log is implicit and the key
+  // is just the aggregate id). Holds the `(state, sequenceNr)` the previous
+  // command batch for that id left behind.
+  //
+  // On a hit, `replayProcessAppend` skips the event-log replay entirely and
+  // decides on the cached state; after a successful append it stores the
+  // already-folded post-append state (aggregates have no consumed-vs-produced
+  // event split, so `evolve` over the appended events IS the replay result).
+  // Correctness rests on the append's optimistic-concurrency check: a stale
+  // cached state only changes the *decision*, and a stale sequenceNr conflicts
+  // at append time → the conflict branch invalidates the entry and the retry
+  // replays cold. Mirrors the StateChangeSlice decision-model cache, including
+  // the fixed capacity (a per-aggregate knob is a future refinement — see
+  // docs/plans/aggregate-snapshotting.md).
+  let replayCacheCapacity = 100
+  let replayCache: Lru.t<string, (Behavior.state, int)> = Lru.make(
+    ~capacity=replayCacheCapacity,
+  )
+
+  let resetCache = () => replayCache->Lru.clear
+
   // Reports per-command outcomes on the inline side-channels and produces the
   // per-reference Ok/Error array consumed by SQS-style consumers. Domain rejections
   // are always Ok(reference) — SQS deletes the message because retry would not help —
@@ -133,13 +160,25 @@ module Make = (
   ) => {
     let idStr = id->Spec.Id.toString
 
-    Ops.eventLog.replayStream(id)
-    ->Stream.runFold((Behavior.initialState, 0), ((st, n), ev) => (Behavior.evolve(st, ev), n + 1))
-    ->Effect.tap(((_, n)) =>
-      EffectLogger.logInfo(~comp, `replay: id=${idStr}, ${n->Int.toString} event(s)`)
-    )
+    // Warm path: seed from the replay cache and skip the event-log read; the
+    // OCC append below fences any staleness. Cold path: full replay as before.
+    let readState = switch replayCache->Lru.get(idStr) {
+    | Some((state, seqNr)) =>
+      EffectLogger.logInfo(
+        ~comp,
+        `replay skipped (cached): id=${idStr}, seq=${seqNr->Int.toString}`,
+      )->Effect.map(_ => (state, seqNr))
+    | None =>
+      Ops.eventLog.replayStream(id)
+      ->Stream.runFold((Behavior.initialState, 0), ((st, n), ev) => (Behavior.evolve(st, ev), n + 1))
+      ->Effect.tap(((_, n)) =>
+        EffectLogger.logInfo(~comp, `replay: id=${idStr}, ${n->Int.toString} event(s)`)
+      )
+    }
+
+    readState
     ->Effect.flatMap(((initialState, sequenceNr)) => {
-      let (_finalState, outcomes) =
+      let (finalState, outcomes) =
         topicItemsForId->Array.reduce((initialState, []), processCommand)
 
       let eventsToAppend =
@@ -154,6 +193,9 @@ module Make = (
 
       switch eventsToAppend {
       | [] =>
+        // Nothing appended, but the read snapshot is valid — keep it warm for
+        // the next command (also refreshes recency on a cache hit).
+        replayCache->Lru.put(idStr, (initialState, sequenceNr))
         let perRef = reportFinalOutcomes(
           outcomes,
           ~entityId=idStr,
@@ -178,6 +220,12 @@ module Make = (
           appendResult =>
             switch appendResult {
             | Ok(_) =>
+              // The post-decide fold state IS the post-append replay result;
+              // cache it so the next command for this id skips the replay.
+              replayCache->Lru.put(
+                idStr,
+                (finalState, sequenceNr + generatedEvents'->Array.length),
+              )
               let perRef = reportFinalOutcomes(
                 outcomes,
                 ~entityId=idStr,
@@ -186,6 +234,9 @@ module Make = (
               )
               EffectLogger.logInfo(~comp, `append: id=${idStr}`)->Effect.map(_ => Ok(perRef))
             | Error(EventLog.Conflict) =>
+              // Another writer advanced the stream past our (possibly cached)
+              // sequenceNr — drop the entry so the retry replays cold.
+              replayCache->Lru.invalidate(idStr)
               // Signal the outer replay+re-decide retry loop (which matches
               // Error(_)); the string is an internal marker, no longer a
               // cross-component substring sentinel.
@@ -193,6 +244,10 @@ module Make = (
                 _ => Error("conflict"),
               )
             | Error(EventLog.StorageFailure(msg)) =>
+              // Appends are atomic, so the read snapshot is likely still valid —
+              // but a storage error means we can't be sure what committed;
+              // drop the entry so the next attempt reads authoritative state.
+              replayCache->Lru.invalidate(idStr)
               let perRef = reportFinalOutcomes(
                 outcomes,
                 ~entityId=idStr,

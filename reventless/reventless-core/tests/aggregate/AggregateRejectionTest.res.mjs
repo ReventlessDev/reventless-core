@@ -5,7 +5,10 @@ import * as Stream from "effect/Stream";
 import * as AggregateFixtures$ReventlessCore from "./AggregateFixtures.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "../../src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 
-globalThis.beforeEach(() => AggregateFixtures$ReventlessCore.mock.reset());
+globalThis.beforeEach(() => {
+  AggregateFixtures$ReventlessCore.mock.reset();
+  AggregateFixtures$ReventlessCore.TestHandler.resetCache();
+});
 
 let capturedRejections = {
   contents: []

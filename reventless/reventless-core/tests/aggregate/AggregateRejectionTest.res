@@ -7,7 +7,10 @@
 open JestGlobals
 open AggregateFixtures
 
-let _ = beforeEach(() => mock.reset())
+let _ = beforeEach(() => {
+  mock.reset()
+  TestHandler.resetCache()
+})
 
 // Captures whatever flows through CommandTopic_Helpers.reportRejected during a test.
 let capturedRejections: ref<array<(string, CommandTopic_Helpers.rejectedResult)>> = ref([])

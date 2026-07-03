@@ -236,7 +236,10 @@ function makeTopicItem(reference, command) {
   };
 }
 
-globalThis.beforeEach(() => mock.reset());
+globalThis.beforeEach(() => {
+  mock.reset();
+  TestHandler.resetCache();
+});
 
 globalThis.describe("Aggregate_Callback — conflict retry:", () => {
   globalThis.test("1 conflict retries and succeeds", async () => {

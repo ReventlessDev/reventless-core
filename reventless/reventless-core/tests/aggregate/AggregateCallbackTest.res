@@ -1,7 +1,10 @@
 open JestGlobals
 open AggregateFixtures
 
-let _ = beforeEach(() => mock.reset())
+let _ = beforeEach(() => {
+  mock.reset()
+  TestHandler.resetCache()
+})
 
 describe("Aggregate_Callback.handleCommands:", () => {
   describe("single command — new aggregate", () => {
