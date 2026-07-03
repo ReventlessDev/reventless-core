@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.23 (2026-07-03)
+
+### Bug Fixes
+
+* **interop:** make Resource.resourceInfo StorageKeys serializable (js_nullable sortKey) (plan C4) ([167745a](https://github.com/ReventlessDev/reventless-core/commit/167745ad76865d6b01053dac106aafd85c44ac64))
+
+
 # 3.0.0-alpha.22 (2026-07-02)
 
 ### Bug Fixes

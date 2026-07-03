@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.116 (2026-07-03)
+
+### Bug Fixes
+
+* **local:** decode plugin events from the bus envelope in subscribeToPluginEvents ([0f24dc1](https://github.com/ReventlessDev/reventless-core/commit/0f24dc129bf2631b94c300d7d5f6ceba3a9bb9f7))
+### Features
+
+* **core,local,aws:** EventLog snapshot storage surface, all backends (aggregate-snapshotting plan, steps 3+4) ([b6e50e2](https://github.com/ReventlessDev/reventless-core/commit/b6e50e2e5fe50b7372e54811f883fa91f6758dd1))
+* **local:** DCB-axis projection checkpoints + startup catch-up (plan B5) ([8f9b11d](https://github.com/ReventlessDev/reventless-core/commit/8f9b11d24627bb6cc105d37af4974745444b80ba))
+* **local:** projection checkpoints + startup catch-up under SQLite (plan B5) ([d28f30e](https://github.com/ReventlessDev/reventless-core/commit/d28f30e25d43cbf378b3aab091b1979dbb449a4f))
+### Performance Improvements
+
+* **local:** DCB in-memory posting lists for tag/type queries (plan B4) ([7859fed](https://github.com/ReventlessDev/reventless-core/commit/7859fede8ad6ab44f657d4d9dd44fba08e85e3aa))
+* **local:** DCB SQLite batched tag reads + EXISTS conflict check (plan B4) ([c9d647b](https://github.com/ReventlessDev/reventless-core/commit/c9d647b73adba4e054edbeba83dfb9c8111e4dfb))
+* **local:** EventLog SQLite MAX(seq_nr)+1 + batched appendStream (plan B4) ([7b24fb1](https://github.com/ReventlessDev/reventless-core/commit/7b24fb12b78b79854d3c345a74f1eab68a28e745))
+* **local:** SQLite connection-list push-down with parity harness (plan B4 complete) ([d78d428](https://github.com/ReventlessDev/reventless-core/commit/d78d4282c923c64cbde3432cd906845705a1e97b))
+* **local:** SQLite pragmas, lazy in-memory scan, indexed lookup push-down (plan B4) ([b0ff78a](https://github.com/ReventlessDev/reventless-core/commit/b0ff78a5c02030eef9fc5bb1ee8b92c65114fa45))
+
+
 # 3.0.0-alpha.115 (2026-07-02)
 
 ### Bug Fixes

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.170 (2026-07-03)
+
+### Features
+
+* **core,local,aws:** EventLog snapshot storage surface, all backends (aggregate-snapshotting plan, steps 3+4) ([b6e50e2](https://github.com/ReventlessDev/reventless-core/commit/b6e50e2e5fe50b7372e54811f883fa91f6758dd1))
+
+
 # 3.0.0-alpha.169 (2026-07-02)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

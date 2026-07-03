@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.137 (2026-07-03)
+
+### Features
+
+* **core,local,aws:** EventLog snapshot storage surface, all backends (aggregate-snapshotting plan, steps 3+4) ([b6e50e2](https://github.com/ReventlessDev/reventless-core/commit/b6e50e2e5fe50b7372e54811f883fa91f6758dd1))
+* **core:** in-process aggregate replay cache (aggregate-snapshotting plan, phase 1) ([89c75f3](https://github.com/ReventlessDev/reventless-core/commit/89c75f33116e929cb8f4208b33498bab42db45e2))
+* **local:** DCB-axis projection checkpoints + startup catch-up (plan B5) ([8f9b11d](https://github.com/ReventlessDev/reventless-core/commit/8f9b11d24627bb6cc105d37af4974745444b80ba))
+### Performance Improvements
+
+* **core:** memoize message schemas, lazy projection logs, fail-closed slice cache (plan B6) ([b9e423c](https://github.com/ReventlessDev/reventless-core/commit/b9e423cb27932c4b6b5a123d3ae80d2239341d61))
+
+
 # 3.0.0-alpha.136 (2026-07-02)
 
 ### Bug Fixes

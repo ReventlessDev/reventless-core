@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-local",
-  "version": "3.0.0-alpha.115",
+  "version": "3.0.0-alpha.116",
   "description": "Local platform for Reventless (in-memory or SQLite backend, for development and testing without AWS)",
   "license": "Apache-2.0",
   "scripts": {

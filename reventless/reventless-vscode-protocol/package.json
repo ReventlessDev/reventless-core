@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-vscode-protocol",
-  "version": "1.0.0-alpha.9",
+  "version": "1.0.0-alpha.10",
   "description": "Shared NDJSON contract (StreamEvent) between the reventless-gwt CLI (--format=vscode) and the reventless-vscode extension — a single sury @schema both emit and decode.",
   "license": "Apache-2.0",
   "scripts": {
@@ -11,8 +11,13 @@
     "dev": "NODE_OPTIONS='--experimental-vm-modules' jest --watchAll"
   },
   "jest": {
-    "testMatch": ["<rootDir>/tests/**/*Test.res.mjs"],
-    "moduleFileExtensions": ["js", "mjs"]
+    "testMatch": [
+      "<rootDir>/tests/**/*Test.res.mjs"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs"
+    ]
   },
   "dependencies": {
     "@rescript/runtime": "12.3.0",

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.77 (2026-07-03)
+
+### Performance Improvements
+
+* **gwt:** affected-set watch re-runs + parent-owned discovery (plan B1) ([e7f4e6b](https://github.com/ReventlessDev/reventless-core/commit/e7f4e6bff8c28fdbcf1b15503005ed2ac613fa06))
+* **gwt:** graph-reload dedup, build-classifier fixes, drop quadratic walks (plan B3) ([aeda1b4](https://github.com/ReventlessDev/reventless-core/commit/aeda1b47aec36373aee788def449959a290042f3))
+
+
 # 1.0.0-alpha.76 (2026-07-02)
 
 ### Bug Fixes
