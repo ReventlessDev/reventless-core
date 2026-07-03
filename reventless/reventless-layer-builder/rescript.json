@@ -14,7 +14,13 @@
     {
       "dir": "src",
       "subdirs": true
+    },
+    {
+      "dir": "tests",
+      "subdirs": true
     }
   ],
-  "dependencies": []
+  "dependencies": [
+    "@reventlessdev/rescript-jest"
+  ]
 }
