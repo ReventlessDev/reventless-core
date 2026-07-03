@@ -198,7 +198,7 @@ function Make(Bus) {
   let make = (name, indexes, partitionTag, param, opts) => {
     let db = BackendState$ReventlessLocal.getDb();
     if (db !== undefined) {
-      let match = DcbEventLogStorage_Sqlite$ReventlessLocal.makeStorage(Primitive_option.valFromOption(db), (param, param$1) => {}, (param, param$1) => {}, name, indexes, partitionTag, opts);
+      let match = DcbEventLogStorage_Sqlite$ReventlessLocal.makeStorage(Primitive_option.valFromOption(db), name, indexes, partitionTag, opts);
       Bus.registerDcbEventLogRead(match[0], match[1]);
       return match[2];
     }

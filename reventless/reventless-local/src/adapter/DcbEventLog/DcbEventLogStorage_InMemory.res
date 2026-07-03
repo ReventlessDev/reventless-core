@@ -200,8 +200,6 @@ module Make = (Bus: LocalBus.T) => {
     | Some(db) =>
       let (storageName, read, storage) = DcbEventLogStorage_Sqlite.makeStorage(
         ~db,
-        ~bus=(_, _) => (),
-        ~publishToTopic=(~topicName as _, ~json as _) => (),
         ~name,
         ~indexes,
         ~partitionTag,

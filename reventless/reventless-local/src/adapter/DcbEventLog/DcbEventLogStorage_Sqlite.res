@@ -164,8 +164,6 @@ let buildQuerySql = (
 
 let makeStorage = (
   ~db: SqliteDriver.t,
-  ~bus: ('a, JSON.t) => unit,
-  ~publishToTopic: (~topicName: string, ~json: JSON.t) => unit,
   ~name: string,
   ~indexes as _,
   ~partitionTag as _,
@@ -200,9 +198,6 @@ let makeStorage = (
       stmtCache->Dict.set(sql, s)
       s
     }
-
-  let _ = bus
-  let _ = publishToTopic
 
   let currentMaxPosition = (): int =>
     switch maxPositionStmt->SqliteDriver.get([JSON.Encode.string(name)]) {

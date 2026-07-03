@@ -127,7 +127,7 @@ function buildQuerySql(logName, query, after) {
   ];
 }
 
-function makeStorage(db, bus, publishToTopic, name, param, param$1, param$2) {
+function makeStorage(db, name, param, param$1, param$2) {
   ensureSchema(db);
   let insertEventStmt = SqliteDriver$ReventlessLocal.prepare(db, "INSERT INTO dcb_event(log_name, position, event_type, data, meta, recorded_at) VALUES(?,?,?,?,?,?)");
   let insertTagStmt = SqliteDriver$ReventlessLocal.prepare(db, "INSERT INTO dcb_tag(log_name, position, tag_key, tag_value) VALUES(?,?,?,?)");
