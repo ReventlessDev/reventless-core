@@ -100,13 +100,19 @@ module MakeWithConfig = (
     // read model's checkpoint that a crash left unprojected.
     ProjectionPending.enableTracking()
     ReventlessCore.EventPublish_Callback.registerAfterPublish(async publishedEvent => {
-      let msgIds =
+      // Aggregate EventLog batches carry flat stored events (msgId at the top
+      // level of each eventsJson entry); DcbEventLog batches carry bare event
+      // payloads and expose the per-event metas separately.
+      let msgIds = switch publishedEvent.metas {
+      | Some(metas) => metas->Array.map(m => m.msgId)
+      | None =>
         publishedEvent.eventsJson->Array.filterMap(json =>
           json
           ->JSON.Decode.object
           ->Option.flatMap(d => d->Dict.get("msgId"))
           ->Option.flatMap(JSON.Decode.string)
         )
+      }
       ProjectionCheckpoint.completePublished(db, msgIds)
     })
   }
@@ -1278,7 +1284,8 @@ module MakeWithConfig = (
     // are live-delivered and must not be redelivered.
     let projectionCatchup = BackendState.getDb()->Option.map(db => (
       db,
-      ProjectionCheckpoint.maxPosition(db),
+      ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate),
+      ProjectionCheckpoint.maxPosition(db, ProjectionPending.Dcb),
     ))
 
     // Create scheduler and populate platform context refs.
@@ -1383,9 +1390,9 @@ module MakeWithConfig = (
       seedPluginStructuresStore(~pluginComponents=plugins)
     }
     switch projectionCatchup {
-    | Some((db, upperBound)) =>
+    | Some((db, upperBound, dcbUpperBound)) =>
       let _ =
-        ProjectionCheckpoint.startupCatchup(~db, ~upperBound, ~handlers=() =>
+        ProjectionCheckpoint.startupCatchup(~db, ~upperBound, ~dcbUpperBound, ~handlers=() =>
           Bus.projectionCatchupHandlers()
         )
         ->Promise.catch(e => {

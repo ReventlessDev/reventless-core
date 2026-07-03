@@ -174,6 +174,7 @@ let makeStorage = (
   let insertEventStmt = db->SqliteDriver.prepare(
     "INSERT INTO dcb_event(log_name, position, event_type, data, meta, recorded_at) VALUES(?,?,?,?,?,?)",
   )
+  let lastRowidStmt = db->SqliteDriver.prepare("SELECT last_insert_rowid() AS r")
   let insertTagStmt = db->SqliteDriver.prepare(
     "INSERT INTO dcb_tag(log_name, position, tag_key, tag_value) VALUES(?,?,?,?)",
   )
@@ -323,6 +324,11 @@ let makeStorage = (
     ~condition=?,
   ): result<DcbTag.sequencePosition, string> => {
     let result = ref(Ok(""))
+    // (msgId, dcb_event rowid) per inserted event, for the projection
+    // checkpoint's DCB-axis pending set. The rowid is read immediately after
+    // each event insert — before the tag inserts move last_insert_rowid() to
+    // the dcb_tag table. Registered only after the transaction commits.
+    let appended: array<(string, int)> = []
     try {
       db->SqliteDriver.transaction(() => {
         switch condition {
@@ -349,6 +355,14 @@ let makeStorage = (
             JSON.Encode.string(JSON.stringify(metaJson)),
             JSON.Encode.string(recordedAt),
           ])
+          switch lastRowidStmt->SqliteDriver.get([]) {
+          | Some(row) =>
+            switch row->Dict.get("r") {
+            | Some(JSON.Number(n)) => appended->Array.push((event.meta.msgId, Float.toInt(n)))
+            | _ => ()
+            }
+          | None => ()
+          }
           event.tags->Array.forEach(tag => {
             insertTagStmt->SqliteDriver.run([
               JSON.Encode.string(name),
@@ -362,6 +376,7 @@ let makeStorage = (
 
         result := Ok(Int.toString(lastPos.contents))
       })
+      ProjectionPending.trackAppended(~axis=ProjectionPending.Dcb, appended)
       result.contents
     } catch {
     | Failure(msg) => Error(msg)

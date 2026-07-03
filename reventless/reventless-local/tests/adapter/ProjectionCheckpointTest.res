@@ -49,6 +49,37 @@ let makeHandler = () => {
   (received, handler)
 }
 
+// A DCB raw stored event with a deterministic msgId.
+let dcbEvent = (~eventType, ~tags, ~data=[], ~msgId): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
+  eventType,
+  data: JSON.Encode.object(Dict.fromArray(data)),
+  tags,
+  meta: {
+    service: "OrderingDcbEventLog",
+    time: "2026-07-03T00:00:00.000Z",
+    msgId,
+    correlationId: msgId,
+  },
+}
+
+let makeDcbStorage = async (db, ~name) => {
+  let (_, _, storage) = DcbEventLogStorage_Sqlite.makeStorage(
+    ~db,
+    ~name,
+    ~indexes=[],
+    ~partitionTag=Reventless.DcbTag.Simple({key: "k"}),
+    ~opts,
+  )
+  await storage.operations->TestRunner.resolve
+}
+
+let idOfEnvelope = (json: JSON.t) =>
+  json
+  ->JSON.Decode.object
+  ->Option.flatMap(d => d->Dict.get("id"))
+  ->Option.flatMap(JSON.Decode.string)
+  ->Option.getOr("<none>")
+
 describe("ProjectionCheckpoint", () => {
   describe("pending low-watermark", () => {
     testPromise(
@@ -116,7 +147,7 @@ describe("ProjectionCheckpoint", () => {
           ]),
         )->Effect.runPromise
 
-      expect(ProjectionPending.minPending())->toEqual(None)
+      expect(ProjectionPending.minPending(ProjectionPending.Aggregate))->toEqual(None)
 
       // With nothing pending the watermark covers the bulk rows.
       let db = DbProvider.db
@@ -198,12 +229,13 @@ describe("ProjectionCheckpoint", () => {
 
       let (receivedA, handlerA) = makeHandler()
       let (receivedB, handlerB) = makeHandler()
-      let upperBound = ProjectionCheckpoint.maxPosition(db)
+      let upperBound = ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate)
       expect(upperBound)->toBe(3)
 
       await ProjectionCheckpoint.runCatchup(
         ~db,
         ~upperBound,
+        ~dcbUpperBound=0,
         ~handlers=[("RM-A", handlerA), ("RM-B", handlerB)],
       )
 
@@ -215,7 +247,8 @@ describe("ProjectionCheckpoint", () => {
       // Second startup: checkpoints are current — nothing is redelivered.
       await ProjectionCheckpoint.runCatchup(
         ~db,
-        ~upperBound=ProjectionCheckpoint.maxPosition(db),
+        ~upperBound=ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate),
+        ~dcbUpperBound=0,
         ~handlers=[("RM-A", handlerA), ("RM-B", handlerB)],
       )
       expect(receivedA->Array.length)->toBe(3)
@@ -230,7 +263,7 @@ describe("ProjectionCheckpoint", () => {
       ProjectionPending.reset()
       let db = makeFreshDb()
       let (_, handler) = makeHandler()
-      await ProjectionCheckpoint.runCatchup(~db, ~upperBound=0, ~handlers=[("RM-Fresh", handler)])
+      await ProjectionCheckpoint.runCatchup(~db, ~upperBound=0, ~dcbUpperBound=0, ~handlers=[("RM-Fresh", handler)])
       let stamped =
         db
         ->SqliteDriver.prepare(
@@ -260,7 +293,8 @@ describe("ProjectionCheckpoint", () => {
       let (receivedA, handlerA) = makeHandler()
       await ProjectionCheckpoint.runCatchup(
         ~db,
-        ~upperBound=ProjectionCheckpoint.maxPosition(db),
+        ~upperBound=ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate),
+        ~dcbUpperBound=0,
         ~handlers=[("RM-A", handlerA)],
       )
       expect(receivedA->Array.length)->toBe(1)
@@ -270,12 +304,119 @@ describe("ProjectionCheckpoint", () => {
       let (receivedNew, handlerNew) = makeHandler()
       await ProjectionCheckpoint.runCatchup(
         ~db,
-        ~upperBound=ProjectionCheckpoint.maxPosition(db),
+        ~upperBound=ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate),
+        ~dcbUpperBound=0,
         ~handlers=[("RM-A", handlerA), ("RM-New", handlerNew)],
       )
       expect(receivedA->Array.length)->toBe(1)
       expect(receivedNew->Array.map(msgIdOfEnvelope))->toEqual(["m1"])
       expect(ProjectionCheckpoint.getPosition(db, "RM-New"))->toBe(1)
+    })
+  })
+
+  describe("DCB axis", () => {
+    testPromise(
+      "catch-up delivers missed DCB events with the tag-derived entityId, exactly once",
+      async () => {
+        ProjectionPending.reset()
+        let db = makeFreshDb()
+        let dcbOps = await makeDcbStorage(db, ~name="OrderingDcbEventLog")
+
+        // First tag supplies the envelope id (publish-path parity); a tagless
+        // event falls back to the log name.
+        let _ = await dcbOps.append(
+          [
+            dcbEvent(
+              ~eventType="OrderPlaced",
+              ~tags=[{key: "orderId", value: "o-1"}, {key: "productId", value: "p-1"}],
+              ~data=[("qty", JSON.Encode.int(2))],
+              ~msgId="d1",
+            ),
+          ],
+          ~condition=?None,
+        )
+        let _ = await dcbOps.append(
+          [dcbEvent(~eventType="MaintenanceRan", ~tags=[], ~msgId="d2")],
+          ~condition=?None,
+        )
+
+        let (received, handler) = makeHandler()
+        await ProjectionCheckpoint.runCatchup(
+          ~db,
+          ~upperBound=0,
+          ~dcbUpperBound=ProjectionCheckpoint.maxPosition(db, ProjectionPending.Dcb),
+          ~handlers=[("SV", handler)],
+        )
+
+        expect(received->Array.map(msgIdOfEnvelope))->toEqual(["d1", "d2"])
+        expect(received->Array.map(idOfEnvelope))->toEqual(["o-1", "OrderingDcbEventLog"])
+        // The event payload is the same combineMessage form the live publish uses.
+        expect(
+          received
+          ->Array.get(0)
+          ->Option.flatMap(JSON.Decode.object)
+          ->Option.flatMap(d => d->Dict.get("event")),
+        )->toEqual(
+          Some(
+            JSON.Encode.object(
+              Dict.fromArray([
+                ("TAG", JSON.Encode.string("OrderPlaced")),
+                ("qty", JSON.Encode.int(2)),
+              ]),
+            ),
+          ),
+        )
+        // Axis rows are independent: the DCB row advanced, the aggregate row
+        // stamped at its own (empty) bound.
+        expect(ProjectionCheckpoint.getPosition(db, "dcb:SV"))->toBe(2)
+        expect(ProjectionCheckpoint.getPosition(db, "SV"))->toBe(0)
+
+        // Second startup: nothing redelivered.
+        await ProjectionCheckpoint.runCatchup(
+          ~db,
+          ~upperBound=0,
+          ~dcbUpperBound=ProjectionCheckpoint.maxPosition(db, ProjectionPending.Dcb),
+          ~handlers=[("SV", handler)],
+        )
+        expect(received->Array.length)->toBe(2)
+      },
+    )
+
+    testPromise("the two axes' watermarks are independent", async () => {
+      ProjectionPending.reset()
+      ProjectionPending.enableTracking()
+      module TestBus = LocalBus.Make()
+      module DbProvider = {
+        let db = makeFreshDb()
+      }
+      module AggStorage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
+      let aggS = AggStorage.make(~name="agg", ~opts)
+      let aggOps = await aggS.operations->TestRunner.resolve
+      let db = DbProvider.db
+      let dcbOps = await makeDcbStorage(db, ~name="dcb-log")
+
+      // One pending append on each axis.
+      let _ = await aggOps.append(
+        0,
+        "id-1",
+        [flatEvent(~id="id-1", ~seq=0, ~eventType="Created", ~msgId="agg1")],
+      )
+      let _ = await dcbOps.append(
+        [dcbEvent(~eventType="OrderPlaced", ~tags=[{key: "orderId", value: "o-1"}], ~msgId="dcb1")],
+        ~condition=?None,
+      )
+      ProjectionCheckpoint.setPosition(db, "RM", 0)
+      ProjectionCheckpoint.setPosition(db, "dcb:RM", 0)
+
+      // Only the DCB batch completes: its axis advances, the aggregate axis
+      // stays capped by its own pending append.
+      ProjectionCheckpoint.completePublished(db, ["dcb1"])
+      expect(ProjectionCheckpoint.getPosition(db, "dcb:RM"))->toBe(1)
+      expect(ProjectionCheckpoint.getPosition(db, "RM"))->toBe(0)
+
+      ProjectionCheckpoint.completePublished(db, ["agg1"])
+      expect(ProjectionCheckpoint.getPosition(db, "RM"))->toBe(1)
+      ProjectionPending.reset()
     })
   })
 })

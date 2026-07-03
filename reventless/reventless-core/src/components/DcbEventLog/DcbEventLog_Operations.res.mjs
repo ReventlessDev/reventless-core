@@ -62,12 +62,14 @@ function Make(Ops) {
     }
     try {
       let published_eventCount$1 = finalRawEventsJson.length;
+      let published_metas = rawEvents.map(re => re.meta);
       let published$1 = {
         componentName: name,
         entityId: name,
         eventCount: published_eventCount$1,
         eventsJson: finalRawEventsJson,
-        meta: representativeMeta
+        meta: representativeMeta,
+        metas: published_metas
       };
       await hook$1(published$1);
       return;

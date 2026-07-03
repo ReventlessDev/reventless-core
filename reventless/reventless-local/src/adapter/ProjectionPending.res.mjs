@@ -13,10 +13,13 @@ function enableTracking() {
   enabled.contents = true;
 }
 
-function trackAppended(entries) {
+function trackAppended(axis, entries) {
   if (enabled.contents) {
     entries.forEach(param => {
-      pendingByMsgId[param[0]] = param[1];
+      pendingByMsgId[param[0]] = [
+        axis,
+        param[1]
+      ];
     });
     return;
   }
@@ -26,8 +29,12 @@ function resolve(msgIds) {
   msgIds.forEach(msgId => Stdlib_Dict.$$delete(pendingByMsgId, msgId));
 }
 
-function minPending() {
-  let positions = Object.values(pendingByMsgId);
+function minPending(axis) {
+  let positions = Stdlib_Array.filterMap(Object.values(pendingByMsgId), param => {
+    if (param[0] === axis) {
+      return param[1];
+    }
+  });
   let first = positions[0];
   if (first !== undefined) {
     return Stdlib_Array.reduce(positions, first, (a, b) => {

@@ -111,6 +111,7 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
       if track && lastRowid > 0 {
         let count = jsons->Array.length
         ProjectionPending.trackAppended(
+          ~axis=ProjectionPending.Aggregate,
           jsons
           ->Array.mapWithIndex((json, i) =>
             json

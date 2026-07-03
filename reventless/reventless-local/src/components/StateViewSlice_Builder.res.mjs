@@ -9,8 +9,11 @@ import * as LocalEventCollectorChannel$ReventlessLocal from "../adapter/EventCol
 import * as LocalEventCollectorRuntime_Builder$ReventlessLocal from "../adapter/Runtime/LocalEventCollectorRuntime_Builder.res.mjs";
 
 function Make(Bus) {
-  let EventCollectorChannel = LocalEventCollectorChannel$ReventlessLocal.Make(Bus);
-  let EventCollectorRuntimeBuilder = LocalEventCollectorRuntime_Builder$ReventlessLocal.Make(Bus)(EventCollectorChannel);
+  let EventCollectorChannel = LocalEventCollectorChannel$ReventlessLocal.MakeProjection(Bus);
+  let EventCollectorRuntimeBuilder = LocalEventCollectorRuntime_Builder$ReventlessLocal.Make(Bus)({
+    make: EventCollectorChannel.make,
+    connect: EventCollectorChannel.connect
+  });
   let QueryDbStorage = QueryDbStorage_InMemory$ReventlessLocal.Make(Bus);
   let QueryDbResolvers = QueryDbResolvers_GraphQL$ReventlessLocal.Make(Bus);
   let api = () => {};
@@ -29,7 +32,10 @@ function Make(Bus) {
     make: QueryDbStorage.make
   })({
     make: QueryDbResolvers.make
-  })(EventCollectorChannel)(EventCollectorRuntimeBuilder)(Api);
+  })({
+    make: EventCollectorChannel.make,
+    connect: EventCollectorChannel.connect
+  })(EventCollectorRuntimeBuilder)(Api);
   let Make$1 = Spec => (Projection => {
     let Inner = CoreMaker.Make(Spec)(Projection);
     return {

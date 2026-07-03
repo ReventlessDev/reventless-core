@@ -92,6 +92,9 @@ module Make = (Ops: Ops): T => {
           eventCount: finalRawEventsJson->Array.length,
           eventsJson: finalRawEventsJson,
           meta: representativeMeta,
+          // Bare payloads carry no meta inline — expose the per-event metas so
+          // afterPublish consumers can correlate each published event.
+          metas: rawEvents->Array.map(re => re.meta),
         }
         let _ = await hook(published)
       } catch {

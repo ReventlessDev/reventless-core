@@ -13,6 +13,7 @@ import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Me
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "../SqliteDriver.res.mjs";
+import * as ProjectionPending$ReventlessLocal from "../ProjectionPending.res.mjs";
 
 function ensureSchema(db) {
   SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS dcb_event (log_name TEXT NOT NULL, position INTEGER NOT NULL, event_type TEXT NOT NULL, data TEXT NOT NULL, meta TEXT NOT NULL, recorded_at TEXT NOT NULL, PRIMARY KEY (log_name, position))");
@@ -130,6 +131,7 @@ function buildQuerySql(logName, query, after) {
 function makeStorage(db, name, param, param$1, param$2) {
   ensureSchema(db);
   let insertEventStmt = SqliteDriver$ReventlessLocal.prepare(db, "INSERT INTO dcb_event(log_name, position, event_type, data, meta, recorded_at) VALUES(?,?,?,?,?,?)");
+  let lastRowidStmt = SqliteDriver$ReventlessLocal.prepare(db, "SELECT last_insert_rowid() AS r");
   let insertTagStmt = SqliteDriver$ReventlessLocal.prepare(db, "INSERT INTO dcb_tag(log_name, position, tag_key, tag_value) VALUES(?,?,?,?)");
   let maxPositionStmt = SqliteDriver$ReventlessLocal.prepare(db, "SELECT COALESCE(MAX(position), 0) AS m FROM dcb_event WHERE log_name = ?");
   SqliteDriver$ReventlessLocal.prepare(db, "SELECT MAX(position) AS m FROM dcb_event WHERE log_name = ?");
@@ -260,6 +262,7 @@ function makeStorage(db, name, param, param$1, param$2) {
         _0: ""
       }
     };
+    let appended = [];
     try {
       SqliteDriver$ReventlessLocal.transaction(db, () => {
         if (condition !== undefined) {
@@ -291,6 +294,16 @@ function makeStorage(db, name, param, param$1, param$2) {
             JSON.stringify(metaJson),
             recordedAt
           ]);
+          let row = SqliteDriver$ReventlessLocal.get(lastRowidStmt, []);
+          if (row !== undefined) {
+            let match = row["r"];
+            if (typeof match === "number") {
+              appended.push([
+                event.meta.msgId,
+                match | 0
+              ]);
+            }
+          }
           event.tags.forEach(tag => SqliteDriver$ReventlessLocal.run(insertTagStmt, [
             name,
             pos,
@@ -304,6 +317,7 @@ function makeStorage(db, name, param, param$1, param$2) {
           _0: lastPos.contents.toString()
         };
       });
+      ProjectionPending$ReventlessLocal.trackAppended("Dcb", appended);
       return result.contents;
     } catch (raw_msg) {
       let msg = Primitive_exceptions.internalToException(raw_msg);

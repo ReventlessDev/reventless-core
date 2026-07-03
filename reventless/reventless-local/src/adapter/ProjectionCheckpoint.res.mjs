@@ -9,8 +9,25 @@ import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src
 import * as SqliteDriver$ReventlessLocal from "./SqliteDriver.res.mjs";
 import * as ProjectionPending$ReventlessLocal from "./ProjectionPending.res.mjs";
 import * as EventLogStorage_Sqlite$ReventlessLocal from "./EventLog/EventLogStorage_Sqlite.res.mjs";
+import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
 
 let comp = "ProjectionCheckpoint";
+
+function rowKey(axis, name) {
+  if (axis === "Aggregate") {
+    return name;
+  } else {
+    return "dcb:" + name;
+  }
+}
+
+function axisLabel(axis) {
+  if (axis === "Aggregate") {
+    return "aggregate";
+  } else {
+    return "dcb";
+  }
+}
 
 function ensureSchema(db) {
   SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS projection_checkpoint (read_model TEXT NOT NULL PRIMARY KEY, position INTEGER NOT NULL)");
@@ -25,17 +42,21 @@ function intOf(row, key, $$default) {
   }
 }
 
-function maxPosition(db) {
-  EventLogStorage_Sqlite$ReventlessLocal.ensureSchema(db);
-  return intOf(SqliteDriver$ReventlessLocal.get(SqliteDriver$ReventlessLocal.prepare(db, "SELECT COALESCE(MAX(rowid), 0) AS m FROM event_log"), []), "m", 0);
+function maxPosition(db, axis) {
+  if (axis === "Aggregate") {
+    EventLogStorage_Sqlite$ReventlessLocal.ensureSchema(db);
+    return intOf(SqliteDriver$ReventlessLocal.get(SqliteDriver$ReventlessLocal.prepare(db, "SELECT COALESCE(MAX(rowid), 0) AS m FROM event_log"), []), "m", 0);
+  }
+  DcbEventLogStorage_Sqlite$ReventlessLocal.ensureSchema(db);
+  return intOf(SqliteDriver$ReventlessLocal.get(SqliteDriver$ReventlessLocal.prepare(db, "SELECT COALESCE(MAX(rowid), 0) AS m FROM dcb_event"), []), "m", 0);
 }
 
-function currentWatermark(db) {
-  let lowest = ProjectionPending$ReventlessLocal.minPending();
+function currentWatermark(db, axis) {
+  let lowest = ProjectionPending$ReventlessLocal.minPending(axis);
   if (lowest !== undefined) {
     return lowest - 1 | 0;
   } else {
-    return maxPosition(db);
+    return maxPosition(db, axis);
   }
 }
 
@@ -52,9 +73,11 @@ function setPosition(db, readModel, position) {
   ]);
 }
 
-function advanceAll(db, watermark) {
+function advanceAll(db, axis, watermark) {
   SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS projection_checkpoint (read_model TEXT NOT NULL PRIMARY KEY, position INTEGER NOT NULL)");
-  SqliteDriver$ReventlessLocal.run(SqliteDriver$ReventlessLocal.prepare(db, "UPDATE projection_checkpoint SET position = ? WHERE position < ?"), [
+  let axisFilter;
+  axisFilter = axis === "Aggregate" ? "read_model NOT LIKE 'dcb:%'" : "read_model LIKE 'dcb:%'";
+  SqliteDriver$ReventlessLocal.run(SqliteDriver$ReventlessLocal.prepare(db, `UPDATE projection_checkpoint SET position = ? WHERE position < ? AND ` + axisFilter), [
     watermark,
     watermark
   ]);
@@ -62,7 +85,8 @@ function advanceAll(db, watermark) {
 
 function completePublished(db, msgIds) {
   ProjectionPending$ReventlessLocal.resolve(msgIds);
-  advanceAll(db, currentWatermark(db));
+  advanceAll(db, "Aggregate", currentWatermark(db, "Aggregate"));
+  advanceAll(db, "Dcb", currentWatermark(db, "Dcb"));
 }
 
 function catchupEnvelope(flat) {
@@ -105,85 +129,187 @@ function catchupEnvelope(flat) {
   }
 }
 
-function missedRows(db, afterPos, upTo) {
-  return Stdlib_Array.filterMap(SqliteDriver$ReventlessLocal.all(SqliteDriver$ReventlessLocal.prepare(db, "SELECT rowid AS pos, payload FROM event_log WHERE rowid > ? AND rowid <= ? ORDER BY rowid ASC"), [
-    afterPos,
-    upTo
-  ]), row => {
-    let match = row["pos"];
-    let match$1 = row["payload"];
-    if (match === undefined) {
-      return;
-    }
-    if (typeof match !== "number") {
-      return;
-    }
-    if (match$1 === undefined) {
-      return;
-    }
-    if (typeof match$1 !== "string") {
-      return;
-    }
-    let json;
-    try {
-      json = JSON.parse(match$1);
-    } catch (exn) {
-      return;
-    }
-    return [
-      match | 0,
-      json
-    ];
-  });
+function dcbCatchupEnvelope(logName, eventType, dataText, metaText, firstTagValue) {
+  let val;
+  let val$1;
+  try {
+    val = JSON.parse(dataText);
+    val$1 = JSON.parse(metaText);
+  } catch (exn) {
+    return;
+  }
+  let dataDict = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(val), {});
+  let entityId = Stdlib_Option.getOr(firstTagValue, logName);
+  return Object.fromEntries([
+    [
+      "id",
+      entityId
+    ],
+    [
+      "meta",
+      val$1
+    ],
+    [
+      "event",
+      Message$ReventlessCore.combineMessage(eventType, dataDict)
+    ]
+  ]);
 }
 
-async function runCatchup(db, upperBound, handlers) {
+function missedRows(db, axis, afterPos, upTo) {
+  if (axis === "Aggregate") {
+    return Stdlib_Array.filterMap(SqliteDriver$ReventlessLocal.all(SqliteDriver$ReventlessLocal.prepare(db, "SELECT rowid AS pos, payload FROM event_log WHERE rowid > ? AND rowid <= ? ORDER BY rowid ASC"), [
+      afterPos,
+      upTo
+    ]), row => {
+      let match = row["pos"];
+      let match$1 = row["payload"];
+      if (match === undefined) {
+        return;
+      }
+      if (typeof match !== "number") {
+        return;
+      }
+      if (match$1 === undefined) {
+        return;
+      }
+      if (typeof match$1 !== "string") {
+        return;
+      }
+      let json;
+      try {
+        json = JSON.parse(match$1);
+      } catch (exn) {
+        return [
+          match | 0,
+          undefined
+        ];
+      }
+      return [
+        match | 0,
+        catchupEnvelope(json)
+      ];
+    });
+  } else {
+    return Stdlib_Array.filterMap(SqliteDriver$ReventlessLocal.all(SqliteDriver$ReventlessLocal.prepare(db, "SELECT rowid AS pos, log_name, event_type, data, meta, (SELECT t.tag_value FROM dcb_tag t WHERE t.log_name = dcb_event.log_name AND t.position = dcb_event.position ORDER BY t.rowid ASC LIMIT 1) AS first_tag FROM dcb_event WHERE rowid > ? AND rowid <= ? ORDER BY rowid ASC"), [
+      afterPos,
+      upTo
+    ]), row => {
+      let match = row["pos"];
+      let match$1 = row["log_name"];
+      let match$2 = row["event_type"];
+      let match$3 = row["data"];
+      let match$4 = row["meta"];
+      if (match === undefined) {
+        return;
+      }
+      if (typeof match !== "number") {
+        return;
+      }
+      if (match$1 === undefined) {
+        return;
+      }
+      if (typeof match$1 !== "string") {
+        return;
+      }
+      if (match$2 === undefined) {
+        return;
+      }
+      if (typeof match$2 !== "string") {
+        return;
+      }
+      if (match$3 === undefined) {
+        return;
+      }
+      if (typeof match$3 !== "string") {
+        return;
+      }
+      if (match$4 === undefined) {
+        return;
+      }
+      if (typeof match$4 !== "string") {
+        return;
+      }
+      let match$5 = row["first_tag"];
+      let firstTagValue = typeof match$5 === "string" ? match$5 : undefined;
+      return [
+        match | 0,
+        dcbCatchupEnvelope(match$1, match$2, match$3, match$4, firstTagValue)
+      ];
+    });
+  }
+}
+
+async function runCatchup(db, upperBound, dcbUpperBound, handlers) {
   SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS projection_checkpoint (read_model TEXT NOT NULL PRIMARY KEY, position INTEGER NOT NULL)");
   EventLogStorage_Sqlite$ReventlessLocal.ensureSchema(db);
+  DcbEventLogStorage_Sqlite$ReventlessLocal.ensureSchema(db);
+  let axes = [
+    [
+      "Aggregate",
+      upperBound
+    ],
+    [
+      "Dcb",
+      dcbUpperBound
+    ]
+  ];
   for (let i = 0, i_finish = handlers.length; i < i_finish; ++i) {
     let match = handlers[i];
     let handler = match[1];
     let name = match[0];
-    let checkpoint = getPosition(db, name);
-    if (checkpoint < upperBound) {
-      let rows = missedRows(db, checkpoint, upperBound);
-      if (rows.length !== 0) {
-        Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `catch-up: delivering ` + rows.length.toString() + ` missed event(s) (positions ` + checkpoint.toString() + `..` + upperBound.toString() + `] to ` + name));
-      }
-      for (let j = 0, j_finish = rows.length; j < j_finish; ++j) {
-        let match$1 = rows[j];
-        let pos = match$1[0];
-        let envelope = catchupEnvelope(match$1[1]);
-        if (envelope !== undefined) {
-          try {
-            await handler(envelope, undefined);
-          } catch (exn) {
-            Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `catch-up: ` + name + ` failed on stored event at position ` + pos.toString() + ` — skipped`));
+    for (let a = 0, a_finish = axes.length; a < a_finish; ++a) {
+      let match$1 = axes[a];
+      let bound = match$1[1];
+      let axis = match$1[0];
+      let key = rowKey(axis, name);
+      let checkpoint = getPosition(db, key);
+      if (checkpoint < bound) {
+        let rows = missedRows(db, axis, checkpoint, bound);
+        if (rows.length !== 0) {
+          Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `catch-up: delivering ` + rows.length.toString() + ` missed ` + axisLabel(axis) + ` event(s) (positions ` + checkpoint.toString() + `..` + bound.toString() + `] to ` + name));
+        }
+        for (let j = 0, j_finish = rows.length; j < j_finish; ++j) {
+          let match$2 = rows[j];
+          let envelope = match$2[1];
+          let pos = match$2[0];
+          if (envelope !== undefined) {
+            try {
+              await handler(envelope, undefined);
+            } catch (exn) {
+              Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `catch-up: ` + name + ` failed on stored ` + axisLabel(axis) + ` event at position ` + pos.toString() + ` — skipped`));
+            }
+          } else {
+            Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `catch-up: unreadable stored ` + axisLabel(axis) + ` event at position ` + pos.toString() + ` — skipped`));
           }
-        } else {
-          Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `catch-up: unreadable stored event at position ` + pos.toString() + ` — skipped`));
         }
       }
     }
   }
-  let w = currentWatermark(db);
-  let final = w > upperBound ? w : upperBound;
-  handlers.forEach(param => {
-    let name = param[0];
-    let current = getPosition(db, name);
-    setPosition(db, name, current > final ? current : final);
+  axes.forEach(param => {
+    let bound = param[1];
+    let axis = param[0];
+    let w = currentWatermark(db, axis);
+    let final = w > bound ? w : bound;
+    handlers.forEach(param => {
+      let key = rowKey(axis, param[0]);
+      let current = getPosition(db, key);
+      setPosition(db, key, current > final ? current : final);
+    });
   });
 }
 
-async function startupCatchup(db, upperBound, handlers) {
+async function startupCatchup(db, upperBound, dcbUpperBound, handlers) {
   await new Promise((resolve, param) => {
     setTimeout(() => resolve(), 0);
   });
-  return await runCatchup(db, upperBound, handlers());
+  return await runCatchup(db, upperBound, dcbUpperBound, handlers());
 }
 
 export {
   comp,
+  rowKey,
+  axisLabel,
   ensureSchema,
   intOf,
   maxPosition,
@@ -193,6 +319,7 @@ export {
   advanceAll,
   completePublished,
   catchupEnvelope,
+  dcbCatchupEnvelope,
   missedRows,
   runCatchup,
   startupCatchup,

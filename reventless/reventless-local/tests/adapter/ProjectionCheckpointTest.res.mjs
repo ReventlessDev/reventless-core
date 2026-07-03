@@ -10,6 +10,7 @@ import * as SqliteDriver$ReventlessLocal from "../../src/adapter/SqliteDriver.re
 import * as ProjectionPending$ReventlessLocal from "../../src/adapter/ProjectionPending.res.mjs";
 import * as ProjectionCheckpoint$ReventlessLocal from "../../src/adapter/ProjectionCheckpoint.res.mjs";
 import * as EventLogStorage_Sqlite$ReventlessLocal from "../../src/adapter/EventLog/EventLogStorage_Sqlite.res.mjs";
+import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "../../src/adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
 
 TestRunner$ReventlessLocal.setup();
 
@@ -78,6 +79,35 @@ function makeHandler() {
   ];
 }
 
+function dcbEvent(eventType, tags, dataOpt, msgId) {
+  let data = dataOpt !== undefined ? dataOpt : [];
+  return {
+    eventType: eventType,
+    data: Object.fromEntries(data),
+    tags: tags,
+    meta: {
+      service: "OrderingDcbEventLog",
+      time: "2026-07-03T00:00:00.000Z",
+      msgId: msgId,
+      correlationId: msgId
+    }
+  };
+}
+
+async function makeDcbStorage(db, name) {
+  let match = DcbEventLogStorage_Sqlite$ReventlessLocal.makeStorage(db, name, [], {
+    TAG: "Simple",
+    _0: {
+      key: "k"
+    }
+  }, opts);
+  return await TestRunner$ReventlessLocal.resolve(match[2].operations);
+}
+
+function idOfEnvelope(json) {
+  return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["id"]), Stdlib_JSON.Decode.string), "<none>");
+}
+
 globalThis.describe("ProjectionCheckpoint", () => {
   globalThis.describe("pending low-watermark", () => {
     globalThis.test("out-of-order publish completion cannot advance past a pending earlier append", async () => {
@@ -121,7 +151,7 @@ globalThis.describe("ProjectionCheckpoint", () => {
         flatEvent("id-bulk", 0, "Created", undefined, "s1", undefined),
         flatEvent("id-bulk", 1, "Renamed", undefined, "s2", undefined)
       ])));
-      globalThis.expect(ProjectionPending$ReventlessLocal.minPending()).toEqual(undefined);
+      globalThis.expect(ProjectionPending$ReventlessLocal.minPending("Aggregate")).toEqual(undefined);
       ProjectionCheckpoint$ReventlessLocal.setPosition(db, "RM", 0);
       ProjectionCheckpoint$ReventlessLocal.completePublished(db, []);
       globalThis.expect(ProjectionCheckpoint$ReventlessLocal.getPosition(db, "RM")).toBe(2);
@@ -193,9 +223,9 @@ globalThis.describe("ProjectionCheckpoint", () => {
       let match$1 = makeHandler();
       let handlerB = match$1[1];
       let receivedB = match$1[0];
-      let upperBound = ProjectionCheckpoint$ReventlessLocal.maxPosition(db);
+      let upperBound = ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Aggregate");
       globalThis.expect(upperBound).toBe(3);
-      await ProjectionCheckpoint$ReventlessLocal.runCatchup(db, upperBound, [
+      await ProjectionCheckpoint$ReventlessLocal.runCatchup(db, upperBound, 0, [
         [
           "RM-A",
           handlerA
@@ -217,7 +247,7 @@ globalThis.describe("ProjectionCheckpoint", () => {
       ]);
       globalThis.expect(ProjectionCheckpoint$ReventlessLocal.getPosition(db, "RM-A")).toBe(3);
       globalThis.expect(ProjectionCheckpoint$ReventlessLocal.getPosition(db, "RM-B")).toBe(3);
-      await ProjectionCheckpoint$ReventlessLocal.runCatchup(db, ProjectionCheckpoint$ReventlessLocal.maxPosition(db), [
+      await ProjectionCheckpoint$ReventlessLocal.runCatchup(db, ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Aggregate"), 0, [
         [
           "RM-A",
           handlerA
@@ -234,7 +264,7 @@ globalThis.describe("ProjectionCheckpoint", () => {
       ProjectionPending$ReventlessLocal.reset();
       let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
       let match = makeHandler();
-      await ProjectionCheckpoint$ReventlessLocal.runCatchup(db, 0, [[
+      await ProjectionCheckpoint$ReventlessLocal.runCatchup(db, 0, 0, [[
           "RM-Fresh",
           match[1]
         ]]);
@@ -256,13 +286,13 @@ globalThis.describe("ProjectionCheckpoint", () => {
       let match = makeHandler();
       let handlerA = match[1];
       let receivedA = match[0];
-      await ProjectionCheckpoint$ReventlessLocal.runCatchup(db, ProjectionCheckpoint$ReventlessLocal.maxPosition(db), [[
+      await ProjectionCheckpoint$ReventlessLocal.runCatchup(db, ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Aggregate"), 0, [[
           "RM-A",
           handlerA
         ]]);
       globalThis.expect(receivedA.length).toBe(1);
       let match$1 = makeHandler();
-      await ProjectionCheckpoint$ReventlessLocal.runCatchup(db, ProjectionCheckpoint$ReventlessLocal.maxPosition(db), [
+      await ProjectionCheckpoint$ReventlessLocal.runCatchup(db, ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Aggregate"), 0, [
         [
           "RM-A",
           handlerA
@@ -277,6 +307,85 @@ globalThis.describe("ProjectionCheckpoint", () => {
       globalThis.expect(ProjectionCheckpoint$ReventlessLocal.getPosition(db, "RM-New")).toBe(1);
     });
   });
+  globalThis.describe("DCB axis", () => {
+    globalThis.test("catch-up delivers missed DCB events with the tag-derived entityId, exactly once", async () => {
+      ProjectionPending$ReventlessLocal.reset();
+      let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
+      let dcbOps = await makeDcbStorage(db, "OrderingDcbEventLog");
+      await dcbOps.append([dcbEvent("OrderPlaced", [
+          {
+            key: "orderId",
+            value: "o-1"
+          },
+          {
+            key: "productId",
+            value: "p-1"
+          }
+        ], [[
+            "qty",
+            2
+          ]], "d1")], undefined);
+      await dcbOps.append([dcbEvent("MaintenanceRan", [], undefined, "d2")], undefined);
+      let match = makeHandler();
+      let handler = match[1];
+      let received = match[0];
+      await ProjectionCheckpoint$ReventlessLocal.runCatchup(db, 0, ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Dcb"), [[
+          "SV",
+          handler
+        ]]);
+      globalThis.expect(received.map(msgIdOfEnvelope)).toEqual([
+        "d1",
+        "d2"
+      ]);
+      globalThis.expect(received.map(idOfEnvelope)).toEqual([
+        "o-1",
+        "OrderingDcbEventLog"
+      ]);
+      globalThis.expect(Stdlib_Option.flatMap(Stdlib_Option.flatMap(received[0], Stdlib_JSON.Decode.object), d => d["event"])).toEqual(Object.fromEntries([
+        [
+          "TAG",
+          "OrderPlaced"
+        ],
+        [
+          "qty",
+          2
+        ]
+      ]));
+      globalThis.expect(ProjectionCheckpoint$ReventlessLocal.getPosition(db, "dcb:SV")).toBe(2);
+      globalThis.expect(ProjectionCheckpoint$ReventlessLocal.getPosition(db, "SV")).toBe(0);
+      await ProjectionCheckpoint$ReventlessLocal.runCatchup(db, 0, ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Dcb"), [[
+          "SV",
+          handler
+        ]]);
+      globalThis.expect(received.length).toBe(2);
+    });
+    globalThis.test("the two axes' watermarks are independent", async () => {
+      ProjectionPending$ReventlessLocal.reset();
+      ProjectionPending$ReventlessLocal.enableTracking();
+      let TestBus = LocalBus$ReventlessLocal.Make({});
+      let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
+      let DbProvider = {
+        db: db
+      };
+      let AggStorage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
+      let aggS = AggStorage.make("agg", opts);
+      let aggOps = await TestRunner$ReventlessLocal.resolve(aggS.operations);
+      let dcbOps = await makeDcbStorage(db, "dcb-log");
+      await aggOps.append(0, "id-1", [flatEvent("id-1", 0, "Created", undefined, "agg1", undefined)]);
+      await dcbOps.append([dcbEvent("OrderPlaced", [{
+            key: "orderId",
+            value: "o-1"
+          }], undefined, "dcb1")], undefined);
+      ProjectionCheckpoint$ReventlessLocal.setPosition(db, "RM", 0);
+      ProjectionCheckpoint$ReventlessLocal.setPosition(db, "dcb:RM", 0);
+      ProjectionCheckpoint$ReventlessLocal.completePublished(db, ["dcb1"]);
+      globalThis.expect(ProjectionCheckpoint$ReventlessLocal.getPosition(db, "dcb:RM")).toBe(1);
+      globalThis.expect(ProjectionCheckpoint$ReventlessLocal.getPosition(db, "RM")).toBe(0);
+      ProjectionCheckpoint$ReventlessLocal.completePublished(db, ["agg1"]);
+      globalThis.expect(ProjectionCheckpoint$ReventlessLocal.getPosition(db, "RM")).toBe(1);
+      return ProjectionPending$ReventlessLocal.reset();
+    });
+  });
 });
 
 export {
@@ -285,5 +394,8 @@ export {
   flatEvent,
   msgIdOfEnvelope,
   makeHandler,
+  dcbEvent,
+  makeDcbStorage,
+  idOfEnvelope,
 }
 /*  Not a pure module */

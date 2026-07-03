@@ -96,7 +96,7 @@ function makeStorage(db, name, param) {
       });
       if (track && lastRowid > 0) {
         let count = jsons.length;
-        ProjectionPending$ReventlessLocal.trackAppended(Stdlib_Array.filterMap(jsons.map((json, i) => Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["msgId"]), Stdlib_JSON.Decode.string), msgId => [
+        ProjectionPending$ReventlessLocal.trackAppended("Aggregate", Stdlib_Array.filterMap(jsons.map((json, i) => Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["msgId"]), Stdlib_JSON.Decode.string), msgId => [
           msgId,
           ((lastRowid - count | 0) + 1 | 0) + i | 0
         ])), x => x));

@@ -120,7 +120,8 @@ function MakeWithConfig(Config) {
     LocalBus$ReventlessLocal.seedEventTapSeq(EventLogStorage_Sqlite$ReventlessLocal.countAll(db) + DcbEventLogStorage_Sqlite$ReventlessLocal.countAll(db) | 0);
     ProjectionPending$ReventlessLocal.enableTracking();
     EventPublish_Callback$ReventlessCore.registerAfterPublish(async publishedEvent => {
-      let msgIds = Stdlib_Array.filterMap(publishedEvent.eventsJson, json => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["msgId"]), Stdlib_JSON.Decode.string));
+      let metas = publishedEvent.metas;
+      let msgIds = metas !== undefined ? metas.map(m => m.msgId) : Stdlib_Array.filterMap(publishedEvent.eventsJson, json => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["msgId"]), Stdlib_JSON.Decode.string));
       return ProjectionCheckpoint$ReventlessLocal.completePublished(db, msgIds);
     });
   }
@@ -1098,7 +1099,8 @@ function MakeWithConfig(Config) {
     log.info("Platform", undefined, tmp);
     let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getDb(), db => [
       db,
-      ProjectionCheckpoint$ReventlessLocal.maxPosition(db)
+      ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Aggregate"),
+      ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Dcb")
     ]);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
@@ -1164,7 +1166,7 @@ function MakeWithConfig(Config) {
       seedPluginStructuresStore(plugins$1);
     };
     if (projectionCatchup !== undefined) {
-      Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], () => Bus.projectionCatchupHandlers()), e => {
+      Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], projectionCatchup[2], () => Bus.projectionCatchupHandlers()), e => {
         console.error("[Platform] projection catch-up failed:", e);
         return Promise.resolve();
       }).then(() => {
@@ -1732,7 +1734,8 @@ function Make($star) {
     LocalBus$ReventlessLocal.seedEventTapSeq(EventLogStorage_Sqlite$ReventlessLocal.countAll(db) + DcbEventLogStorage_Sqlite$ReventlessLocal.countAll(db) | 0);
     ProjectionPending$ReventlessLocal.enableTracking();
     EventPublish_Callback$ReventlessCore.registerAfterPublish(async publishedEvent => {
-      let msgIds = Stdlib_Array.filterMap(publishedEvent.eventsJson, json => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["msgId"]), Stdlib_JSON.Decode.string));
+      let metas = publishedEvent.metas;
+      let msgIds = metas !== undefined ? metas.map(m => m.msgId) : Stdlib_Array.filterMap(publishedEvent.eventsJson, json => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["msgId"]), Stdlib_JSON.Decode.string));
       return ProjectionCheckpoint$ReventlessLocal.completePublished(db, msgIds);
     });
   }
@@ -2698,7 +2701,8 @@ function Make($star) {
     log.info("Platform", undefined, tmp);
     let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getDb(), db => [
       db,
-      ProjectionCheckpoint$ReventlessLocal.maxPosition(db)
+      ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Aggregate"),
+      ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Dcb")
     ]);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
@@ -2764,7 +2768,7 @@ function Make($star) {
       seedPluginStructuresStore(plugins$1);
     };
     if (projectionCatchup !== undefined) {
-      Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], () => Bus.projectionCatchupHandlers()), e => {
+      Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], projectionCatchup[2], () => Bus.projectionCatchupHandlers()), e => {
         console.error("[Platform] projection catch-up failed:", e);
         return Promise.resolve();
       }).then(() => {
