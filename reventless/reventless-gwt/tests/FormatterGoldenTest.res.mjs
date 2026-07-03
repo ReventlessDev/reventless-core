@@ -12,6 +12,10 @@ let stateActive = JSON.parse(`{"status":"active"}`);
 
 let stateArchived = JSON.parse(`{"status":"archived"}`);
 
+let appendExpected = JSON.parse(`{"query":[]}`);
+
+let appendActual = JSON.parse(`{"query":[{"eventTypes":["ProductAdded"]}]}`);
+
 let goldens = [
   {
     name: "EventsMismatch",
@@ -79,6 +83,56 @@ let goldens = [
     format: "Throw: unexpected\nat foo",
     human: "  error: unexpected\nat foo",
     tap: "  kind: \"Throw\"\n  error: \"unexpected\"\n  stack: \"at foo\""
+  },
+  {
+    name: "TodoMismatch",
+    mismatch: {
+      TAG: "TodoMismatch",
+      expected: [[
+          "case-1",
+          evA
+        ]],
+      actual: [[
+          "case-2",
+          evB
+        ]]
+    },
+    format: "TodoMismatch:\n  expected: [(case-1, {\n  \"TAG\": \"ProductAdded\",\n  \"_0\": {\n    \"productId\": \"p1\",\n    \"name\": \"Widget\"\n  }\n})]\n  actual:   [(case-2, {\n  \"TAG\": \"ProductRenamed\",\n  \"_0\": {\n    \"productId\": \"p1\",\n    \"name\": \"Gadget\"\n  }\n})]",
+    human: "  expected: [(case-1, ProductAdded({productId: \"p1\", name: \"Widget\"}))]\n  actual:   [(case-2, ProductRenamed({productId: \"p1\", name: \"Gadget\"}))]",
+    tap: "  kind: \"TodoMismatch\"\n  expected: \"[(case-1, ProductAdded({productId: \\\"p1\\\", name: \\\"Widget\\\"}))]\"\n  actual: \"[(case-2, ProductRenamed({productId: \\\"p1\\\", name: \\\"Gadget\\\"}))]\""
+  },
+  {
+    name: "AppendConditionMismatch",
+    mismatch: {
+      TAG: "AppendConditionMismatch",
+      expected: appendExpected,
+      actual: appendActual
+    },
+    format: "AppendConditionMismatch:\n  expected: {\n  \"query\": []\n}\n  actual:   {\n  \"query\": [\n    {\n      \"eventTypes\": [\n        \"ProductAdded\"\n      ]\n    }\n  ]\n}",
+    human: "  expected: {query: []}\n  actual:   {query: [{eventTypes: [\"ProductAdded\"]}]}",
+    tap: "  kind: \"AppendConditionMismatch\"\n  expected: \"{query: []}\"\n  actual: \"{query: [{eventTypes: [\\\"ProductAdded\\\"]}]}\""
+  },
+  {
+    name: "QueryRowsMismatch",
+    mismatch: {
+      TAG: "QueryRowsMismatch",
+      expected: [evA],
+      actual: [evB]
+    },
+    format: "QueryRowsMismatch:\n  expected: [{\n  \"TAG\": \"ProductAdded\",\n  \"_0\": {\n    \"productId\": \"p1\",\n    \"name\": \"Widget\"\n  }\n}]\n  actual:   [{\n  \"TAG\": \"ProductRenamed\",\n  \"_0\": {\n    \"productId\": \"p1\",\n    \"name\": \"Gadget\"\n  }\n}]",
+    human: "  expected: [ProductAdded({productId: \"p1\", name: \"Widget\"})]\n  actual:   [ProductRenamed({productId: \"p1\", name: \"Gadget\"})]",
+    tap: "  kind: \"QueryRowsMismatch\"\n  expected: \"[ProductAdded({productId: \\\"p1\\\", name: \\\"Widget\\\"})]\"\n  actual: \"[ProductRenamed({productId: \\\"p1\\\", name: \\\"Gadget\\\"})]\""
+  },
+  {
+    name: "PublishedActionsMismatch",
+    mismatch: {
+      TAG: "PublishedActionsMismatch",
+      expected: [evA],
+      actual: [evB]
+    },
+    format: "PublishedActionsMismatch:\n  expected: [{\n  \"TAG\": \"ProductAdded\",\n  \"_0\": {\n    \"productId\": \"p1\",\n    \"name\": \"Widget\"\n  }\n}]\n  actual:   [{\n  \"TAG\": \"ProductRenamed\",\n  \"_0\": {\n    \"productId\": \"p1\",\n    \"name\": \"Gadget\"\n  }\n}]",
+    human: "  expected: [ProductAdded({productId: \"p1\", name: \"Widget\"})]\n  actual:   [ProductRenamed({productId: \"p1\", name: \"Gadget\"})]",
+    tap: "  kind: \"PublishedActionsMismatch\"\n  expected: \"[ProductAdded({productId: \\\"p1\\\", name: \\\"Widget\\\"})]\"\n  actual: \"[ProductRenamed({productId: \\\"p1\\\", name: \\\"Gadget\\\"})]\""
   }
 ];
 
@@ -101,6 +155,8 @@ export {
   evB,
   stateActive,
   stateArchived,
+  appendExpected,
+  appendActual,
   goldens,
 }
 /* evA Not a pure module */

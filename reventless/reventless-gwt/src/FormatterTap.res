@@ -18,59 +18,20 @@ let yamlLine = (~indent=2, key: string, value: string) =>
   String.repeat(" ", indent) ++ key ++ ": " ++ value
 
 let renderMismatchYaml = (m: Outcome.mismatch) => {
-  let lines = []
-  lines->Array.push(yamlLine("kind", yamlString(Outcome.kindName(m))))
-  switch m {
-  | EventsMismatch({expected, actual}) => {
-      lines->Array.push(yamlLine("expected", yamlString(RenderRescript.renderMany(expected))))
-      lines->Array.push(yamlLine("actual", yamlString(RenderRescript.renderMany(actual))))
+  let n = MismatchRender.normalize(m)
+  let lines = [yamlLine("kind", yamlString(n.kind))]
+  // `ExpectedNoEvents` is a Human-only literal (TAP simply omits `expected`);
+  // every other field maps to one yaml `key: "escaped-value"` line.
+  n.fields->Array.forEach(f =>
+    switch f {
+    | Expected(v) => lines->Array.push(yamlLine("expected", yamlString(v)))
+    | Actual(v) => lines->Array.push(yamlLine("actual", yamlString(v)))
+    | Key(k) => lines->Array.push(yamlLine("key", yamlString(k)))
+    | Error(e) => lines->Array.push(yamlLine("error", yamlString(e)))
+    | Stack(s) => lines->Array.push(yamlLine("stack", yamlString(s)))
+    | ExpectedNoEvents => ()
     }
-  | ErrorMismatch({expected, actual, actualEvents}) => {
-      lines->Array.push(
-        yamlLine("expected", yamlString("Error(" ++ RenderRescript.render(expected) ++ ")")),
-      )
-      let actualStr = switch actual {
-      | Some(v) => "Error(" ++ RenderRescript.render(v) ++ ")"
-      | None => "Ok(" ++ RenderRescript.renderMany(actualEvents) ++ ")"
-      }
-      lines->Array.push(yamlLine("actual", yamlString(actualStr)))
-    }
-  | StateMismatch({key, expected, actual}) => {
-      lines->Array.push(yamlLine("key", yamlString(key)))
-      lines->Array.push(yamlLine("expected", yamlString(RenderRescript.renderOption(expected))))
-      lines->Array.push(yamlLine("actual", yamlString(RenderRescript.renderOption(actual))))
-    }
-  | NoEventExpected({actual}) =>
-    lines->Array.push(yamlLine("actual", yamlString(RenderRescript.renderMany(actual))))
-  | TodoMismatch({expected, actual}) => {
-      let fmt = arr =>
-        arr
-        ->Array.map(((id, v)) => "(" ++ id ++ ", " ++ RenderRescript.render(v) ++ ")")
-        ->Array.join(", ")
-      lines->Array.push(yamlLine("expected", yamlString("[" ++ fmt(expected) ++ "]")))
-      lines->Array.push(yamlLine("actual", yamlString("[" ++ fmt(actual) ++ "]")))
-    }
-  | AppendConditionMismatch({expected, actual}) => {
-      lines->Array.push(yamlLine("expected", yamlString(RenderRescript.render(expected))))
-      lines->Array.push(yamlLine("actual", yamlString(RenderRescript.render(actual))))
-    }
-  | TranslateError({expected, actual}) => {
-      lines->Array.push(yamlLine("expected", yamlString(expected)))
-      lines->Array.push(yamlLine("actual", yamlString(actual->Option.getOr("(none)"))))
-    }
-  | QueryRowsMismatch({expected, actual}) => {
-      lines->Array.push(yamlLine("expected", yamlString(RenderRescript.renderMany(expected))))
-      lines->Array.push(yamlLine("actual", yamlString(RenderRescript.renderMany(actual))))
-    }
-  | PublishedActionsMismatch({expected, actual}) => {
-      lines->Array.push(yamlLine("expected", yamlString(RenderRescript.renderMany(expected))))
-      lines->Array.push(yamlLine("actual", yamlString(RenderRescript.renderMany(actual))))
-    }
-  | Throw({error, stack}) => {
-      lines->Array.push(yamlLine("error", yamlString(error)))
-      lines->Array.push(yamlLine("stack", yamlString(stack)))
-    }
-  }
+  )
   lines->Array.join("\n")
 }
 

@@ -41,50 +41,21 @@ let formatLocation = (loc: option<Collector.location>) =>
   | Some(l) => `${l.file}:${Int.toString(l.line)}`
   }
 
-let renderMismatch = (m: Outcome.mismatch) =>
-  switch m {
-  | EventsMismatch({expected, actual}) => {
-      let exp = RenderRescript.renderMany(expected)
-      let act = RenderRescript.renderMany(actual)
-      `  expected: ${exp}\n  actual:   ${act}`
-    }
-  | ErrorMismatch({expected, actual, actualEvents}) => {
-      let exp = `Error(${RenderRescript.render(expected)})`
-      let act = switch actual {
-      | Some(v) => `Error(${RenderRescript.render(v)})`
-      | None => `Ok(${RenderRescript.renderMany(actualEvents)})`
-      }
-      `  expected: ${exp}\n  actual:   ${act}`
-    }
-  | StateMismatch({key, expected, actual}) =>
-    `  key:      "${key}"\n  expected: ${RenderRescript.renderOption(
-        expected,
-      )}\n  actual:   ${RenderRescript.renderOption(actual)}`
-  | NoEventExpected({actual}) =>
-    `  expected no events\n  actual:   ${RenderRescript.renderMany(actual)}`
-  | TodoMismatch({expected, actual}) => {
-      let fmt = (arr: array<(string, JSON.t)>) =>
-        arr
-        ->Array.map(((id, v)) => `(${id}, ${RenderRescript.render(v)})`)
-        ->Array.join(", ")
-      `  expected: [${fmt(expected)}]\n  actual:   [${fmt(actual)}]`
-    }
-  | AppendConditionMismatch({expected, actual}) =>
-    `  expected: ${RenderRescript.render(expected)}\n  actual:   ${RenderRescript.render(
-        actual,
-      )}`
-  | TranslateError({expected, actual}) =>
-    `  expected: ${expected}\n  actual:   ${actual->Option.getOr("(none)")}`
-  | QueryRowsMismatch({expected, actual}) =>
-    `  expected: ${RenderRescript.renderMany(expected)}\n  actual:   ${RenderRescript.renderMany(
-        actual,
-      )}`
-  | PublishedActionsMismatch({expected, actual}) =>
-    `  expected: ${RenderRescript.renderMany(expected)}\n  actual:   ${RenderRescript.renderMany(
-        actual,
-      )}`
-  | Throw({error, stack}) => `  error: ${error}\n${stack}`
+// Frames one normalized field as a terminal line. Labels are padded so values
+// align at column 12 (`key:`, `expected:`, `actual:`); `error:` is its own
+// shorter form and the `Throw` stack is dumped raw beneath it.
+let renderField = (f: MismatchRender.field) =>
+  switch f {
+  | Expected(v) => `  expected: ${v}`
+  | Actual(v) => `  actual:   ${v}`
+  | Key(k) => `  key:      "${k}"`
+  | ExpectedNoEvents => "  expected no events"
+  | Error(e) => `  error: ${e}`
+  | Stack(s) => s
   }
+
+let renderMismatch = (m: Outcome.mismatch) =>
+  MismatchRender.normalize(m).fields->Array.map(renderField)->Array.join("\n")
 
 let emitTest = (t: RunnerTypes.testResult) => {
   let path = t.describePath->Array.join(" > ")

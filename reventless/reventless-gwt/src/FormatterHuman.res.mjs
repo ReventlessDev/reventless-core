@@ -4,7 +4,7 @@ import * as Nodepath from "node:path";
 import Picocolors from "picocolors";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Hint$ReventlessGwt from "./Hint.res.mjs";
-import * as RenderRescript$ReventlessGwt from "./RenderRescript.res.mjs";
+import * as MismatchRender$ReventlessGwt from "./MismatchRender.res.mjs";
 
 function write(s) {
   process.stdout.write(s);
@@ -29,34 +29,26 @@ function formatLocation(loc) {
   }
 }
 
-function renderMismatch(m) {
-  switch (m.TAG) {
-    case "EventsMismatch" :
-      let exp = RenderRescript$ReventlessGwt.renderMany(m.expected);
-      let act = RenderRescript$ReventlessGwt.renderMany(m.actual);
-      return `  expected: ` + exp + `\n  actual:   ` + act;
-    case "ErrorMismatch" :
-      let actual = m.actual;
-      let exp$1 = `Error(` + RenderRescript$ReventlessGwt.render(undefined, m.expected) + `)`;
-      let act$1 = actual !== undefined ? `Error(` + RenderRescript$ReventlessGwt.render(undefined, actual) + `)` : `Ok(` + RenderRescript$ReventlessGwt.renderMany(m.actualEvents) + `)`;
-      return `  expected: ` + exp$1 + `\n  actual:   ` + act$1;
-    case "StateMismatch" :
-      return `  key:      "` + m.key + `"\n  expected: ` + RenderRescript$ReventlessGwt.renderOption(m.expected) + `\n  actual:   ` + RenderRescript$ReventlessGwt.renderOption(m.actual);
-    case "NoEventExpected" :
-      return `  expected no events\n  actual:   ` + RenderRescript$ReventlessGwt.renderMany(m.actual);
-    case "TodoMismatch" :
-      let fmt = arr => arr.map(param => `(` + param[0] + `, ` + RenderRescript$ReventlessGwt.render(undefined, param[1]) + `)`).join(", ");
-      return `  expected: [` + fmt(m.expected) + `]\n  actual:   [` + fmt(m.actual) + `]`;
-    case "AppendConditionMismatch" :
-      return `  expected: ` + RenderRescript$ReventlessGwt.render(undefined, m.expected) + `\n  actual:   ` + RenderRescript$ReventlessGwt.render(undefined, m.actual);
-    case "TranslateError" :
-      return `  expected: ` + m.expected + `\n  actual:   ` + Stdlib_Option.getOr(m.actual, "(none)");
-    case "QueryRowsMismatch" :
-    case "PublishedActionsMismatch" :
-      return `  expected: ` + RenderRescript$ReventlessGwt.renderMany(m.expected) + `\n  actual:   ` + RenderRescript$ReventlessGwt.renderMany(m.actual);
-    case "Throw" :
-      return `  error: ` + m.error + `\n` + m.stack;
+function renderField(f) {
+  if (typeof f !== "object") {
+    return "  expected no events";
   }
+  switch (f.TAG) {
+    case "Expected" :
+      return `  expected: ` + f._0;
+    case "Actual" :
+      return `  actual:   ` + f._0;
+    case "Key" :
+      return `  key:      "` + f._0 + `"`;
+    case "Error" :
+      return `  error: ` + f._0;
+    case "Stack" :
+      return f._0;
+  }
+}
+
+function renderMismatch(m) {
+  return MismatchRender$ReventlessGwt.normalize(m).fields.map(renderField).join("\n");
 }
 
 function emitTest(t) {
@@ -113,6 +105,7 @@ export {
   writeLine,
   formatFilePath,
   formatLocation,
+  renderField,
   renderMismatch,
   emitTest,
   emitFile,

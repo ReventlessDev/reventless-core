@@ -2,8 +2,7 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Hint$ReventlessGwt from "./Hint.res.mjs";
-import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
-import * as RenderRescript$ReventlessGwt from "./RenderRescript.res.mjs";
+import * as MismatchRender$ReventlessGwt from "./MismatchRender.res.mjs";
 
 function write(s) {
   process.stdout.write(s);
@@ -27,47 +26,30 @@ function yamlLine(indentOpt, key, value) {
 }
 
 function renderMismatchYaml(m) {
-  let lines = [];
-  lines.push(yamlLine(undefined, "kind", yamlString(Outcome$ReventlessGwt.kindName(m))));
-  switch (m.TAG) {
-    case "ErrorMismatch" :
-      let actual = m.actual;
-      lines.push(yamlLine(undefined, "expected", yamlString("Error(" + RenderRescript$ReventlessGwt.render(undefined, m.expected) + ")")));
-      let actualStr = actual !== undefined ? "Error(" + RenderRescript$ReventlessGwt.render(undefined, actual) + ")" : "Ok(" + RenderRescript$ReventlessGwt.renderMany(m.actualEvents) + ")";
-      lines.push(yamlLine(undefined, "actual", yamlString(actualStr)));
-      break;
-    case "StateMismatch" :
-      lines.push(yamlLine(undefined, "key", yamlString(m.key)));
-      lines.push(yamlLine(undefined, "expected", yamlString(RenderRescript$ReventlessGwt.renderOption(m.expected))));
-      lines.push(yamlLine(undefined, "actual", yamlString(RenderRescript$ReventlessGwt.renderOption(m.actual))));
-      break;
-    case "NoEventExpected" :
-      lines.push(yamlLine(undefined, "actual", yamlString(RenderRescript$ReventlessGwt.renderMany(m.actual))));
-      break;
-    case "TodoMismatch" :
-      let fmt = arr => arr.map(param => "(" + param[0] + ", " + RenderRescript$ReventlessGwt.render(undefined, param[1]) + ")").join(", ");
-      lines.push(yamlLine(undefined, "expected", yamlString("[" + fmt(m.expected) + "]")));
-      lines.push(yamlLine(undefined, "actual", yamlString("[" + fmt(m.actual) + "]")));
-      break;
-    case "AppendConditionMismatch" :
-      lines.push(yamlLine(undefined, "expected", yamlString(RenderRescript$ReventlessGwt.render(undefined, m.expected))));
-      lines.push(yamlLine(undefined, "actual", yamlString(RenderRescript$ReventlessGwt.render(undefined, m.actual))));
-      break;
-    case "TranslateError" :
-      lines.push(yamlLine(undefined, "expected", yamlString(m.expected)));
-      lines.push(yamlLine(undefined, "actual", yamlString(Stdlib_Option.getOr(m.actual, "(none)"))));
-      break;
-    case "EventsMismatch" :
-    case "QueryRowsMismatch" :
-    case "PublishedActionsMismatch" :
-      lines.push(yamlLine(undefined, "expected", yamlString(RenderRescript$ReventlessGwt.renderMany(m.expected))));
-      lines.push(yamlLine(undefined, "actual", yamlString(RenderRescript$ReventlessGwt.renderMany(m.actual))));
-      break;
-    case "Throw" :
-      lines.push(yamlLine(undefined, "error", yamlString(m.error)));
-      lines.push(yamlLine(undefined, "stack", yamlString(m.stack)));
-      break;
-  }
+  let n = MismatchRender$ReventlessGwt.normalize(m);
+  let lines = [yamlLine(undefined, "kind", yamlString(n.kind))];
+  n.fields.forEach(f => {
+    if (typeof f !== "object") {
+      return;
+    }
+    switch (f.TAG) {
+      case "Expected" :
+        lines.push(yamlLine(undefined, "expected", yamlString(f._0)));
+        return;
+      case "Actual" :
+        lines.push(yamlLine(undefined, "actual", yamlString(f._0)));
+        return;
+      case "Key" :
+        lines.push(yamlLine(undefined, "key", yamlString(f._0)));
+        return;
+      case "Error" :
+        lines.push(yamlLine(undefined, "error", yamlString(f._0)));
+        return;
+      case "Stack" :
+        lines.push(yamlLine(undefined, "stack", yamlString(f._0)));
+        return;
+    }
+  });
   return lines.join("\n");
 }
 
