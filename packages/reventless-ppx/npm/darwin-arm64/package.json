@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-ppx-darwin-arm64",
-  "version": "1.0.0-alpha.46",
+  "version": "1.0.0-alpha.49",
   "description": "Prebuilt reventless-ppx native binary for macOS arm64 (Apple Silicon).",
   "license": "Apache-2.0",
   "os": [
