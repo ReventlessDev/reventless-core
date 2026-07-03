@@ -28,6 +28,22 @@ let getPlatformGraphQL = () => platformGraphQLRef.contents
 // Populated by makePlatform when splitApi=true.
 let platformMCPRef: ref<option<MCP_ServerInstance.t>> = ref(None)
 
+// Decode a Plugin aggregate event from the published bus envelope.
+// The bus delivers the EventTopic envelope {id, meta, event} — the event
+// payload lives under "event". (The previous code fed the WHOLE envelope to
+// the event schema in convert mode, which "succeeded" and then threw a
+// TypeError on every variant's payload access, so the Source-C status /
+// UI-fragment subscription emissions never fired.) Top-level, not inside the
+// functor, so the decode is unit-testable.
+let decodePluginEventEnvelope = (eventJson: JSON.t): option<ReventlessCore.PluginSpec.event> =>
+  switch eventJson
+  ->JSON.Decode.object
+  ->Option.flatMap(d => d->Dict.get("event"))
+  ->Option.map(payload => payload->S.parseJsonOrThrow(ReventlessCore.PluginSpec.eventSchema)) {
+  | result => result
+  | exception _ => None
+  }
+
 // Configurable platform — set silent=true to suppress diagnostic warnings in tests,
 // splitApi=true to serve core and plugin APIs on separate ports,
 // backend=Backend.Sqlite({...}) to opt into file-backed SQLite persistence.
@@ -877,36 +893,36 @@ module MakeWithConfig = (
       let manifestJson = (m: Reventless.Plugin.uiFragmentManifest) =>
         m->S.reverseConvertToJsonOrThrow(Reventless.Plugin.uiFragmentManifestSchema)
       Bus.subscribeToEvents(pluginEventTopicKey, async (_service, _meta, eventJson) => {
-        switch eventJson->S.convertOrThrow(ReventlessCore.PluginSpec.eventSchema) {
-        | VersionConnected(def)
-        | VersionActivated(def)
-        | VersionPromoted(def) =>
+        switch decodePluginEventEnvelope(eventJson) {
+        | Some(VersionConnected(def))
+        | Some(VersionActivated(def))
+        | Some(VersionPromoted(def)) =>
           publishStatus(~name=def.name, ~status="Connected")
-        | VersionDisconnected(def) => publishStatus(~name=def.name, ~status="Disconnected")
-        | VersionDeactivated(def) => publishStatus(~name=def.name, ~status="Inactive")
-        | VersionRetired(def) => publishStatus(~name=def.name, ~status="Retired")
-        | UIFragmentRegistered(data) =>
+        | Some(VersionDisconnected(def)) => publishStatus(~name=def.name, ~status="Disconnected")
+        | Some(VersionDeactivated(def)) => publishStatus(~name=def.name, ~status="Inactive")
+        | Some(VersionRetired(def)) => publishStatus(~name=def.name, ~status="Retired")
+        | Some(UIFragmentRegistered(data)) =>
           publishUIFragment(
             ~name=ReventlessCore.Plugin.name(data.pluginId),
             ~changeKind="Registered",
             ~manifest=manifestJson(data.manifest),
           )
-        | UIFragmentUpdated(data) =>
+        | Some(UIFragmentUpdated(data)) =>
           publishUIFragment(
             ~name=ReventlessCore.Plugin.name(data.pluginId),
             ~changeKind="Updated",
             ~manifest=manifestJson(data.newManifest),
           )
-        | UIFragmentDeregistered(data) =>
+        | Some(UIFragmentDeregistered(data)) =>
           publishUIFragment(
             ~name=ReventlessCore.Plugin.name(data.pluginId),
             ~changeKind="Deregistered",
             ~manifest=JSON.Encode.null,
           )
-        | VersionDetected(_)
-        | VersionSuperseded(_)
-        | IncompatiblePluginDetected(_) => ()
-        | exception _ => ()
+        | Some(VersionDetected(_))
+        | Some(VersionSuperseded(_))
+        | Some(IncompatiblePluginDetected(_))
+        | None => ()
         }
       })
     }

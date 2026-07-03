@@ -97,6 +97,14 @@ let platformMCPRef = {
   contents: undefined
 };
 
+function decodePluginEventEnvelope(eventJson) {
+  try {
+    return Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson), d => d["event"]), payload => S.parseJsonOrThrow(payload, PluginSpec$ReventlessCore.eventSchema));
+  } catch (exn) {
+    return;
+  }
+}
+
 function MakeWithConfig(Config) {
   TestRunner$ReventlessLocal.setup();
   let match = Config.backend;
@@ -796,33 +804,31 @@ function MakeWithConfig(Config) {
       ]
     ]));
     Bus.subscribeToEvents(pluginEventTopicKey, async (_service, _meta, eventJson) => {
-      let def;
-      try {
-        def = S.convertOrThrow(eventJson, PluginSpec$ReventlessCore.eventSchema);
-      } catch (exn) {
+      let match = decodePluginEventEnvelope(eventJson);
+      if (match === undefined) {
         return;
       }
-      switch (def.TAG) {
+      switch (match.TAG) {
         case "VersionDisconnected" :
-          return publishStatus(def._0.name, "Disconnected");
+          return publishStatus(match._0.name, "Disconnected");
         case "VersionDeactivated" :
-          return publishStatus(def._0.name, "Inactive");
+          return publishStatus(match._0.name, "Inactive");
         case "VersionRetired" :
-          return publishStatus(def._0.name, "Retired");
+          return publishStatus(match._0.name, "Retired");
         case "VersionDetected" :
         case "VersionSuperseded" :
         case "IncompatiblePluginDetected" :
           return;
         case "UIFragmentRegistered" :
-          let data = def._0;
+          let data = match._0;
           return publishUIFragment(Plugin$ReventlessCore.name(data.pluginId), "Registered", S.reverseConvertToJsonOrThrow(data.manifest, Plugin$Reventless.uiFragmentManifestSchema));
         case "UIFragmentUpdated" :
-          let data$1 = def._0;
+          let data$1 = match._0;
           return publishUIFragment(Plugin$ReventlessCore.name(data$1.pluginId), "Updated", S.reverseConvertToJsonOrThrow(data$1.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
         case "UIFragmentDeregistered" :
-          return publishUIFragment(Plugin$ReventlessCore.name(def._0.pluginId), "Deregistered", null);
+          return publishUIFragment(Plugin$ReventlessCore.name(match._0.pluginId), "Deregistered", null);
         default:
-          return publishStatus(def._0.name, "Connected");
+          return publishStatus(match._0.name, "Connected");
       }
     });
   };
@@ -2403,33 +2409,31 @@ function Make($star) {
       ]
     ]));
     Bus.subscribeToEvents(pluginEventTopicKey, async (_service, _meta, eventJson) => {
-      let def;
-      try {
-        def = S.convertOrThrow(eventJson, PluginSpec$ReventlessCore.eventSchema);
-      } catch (exn) {
+      let match = decodePluginEventEnvelope(eventJson);
+      if (match === undefined) {
         return;
       }
-      switch (def.TAG) {
+      switch (match.TAG) {
         case "VersionDisconnected" :
-          return publishStatus(def._0.name, "Disconnected");
+          return publishStatus(match._0.name, "Disconnected");
         case "VersionDeactivated" :
-          return publishStatus(def._0.name, "Inactive");
+          return publishStatus(match._0.name, "Inactive");
         case "VersionRetired" :
-          return publishStatus(def._0.name, "Retired");
+          return publishStatus(match._0.name, "Retired");
         case "VersionDetected" :
         case "VersionSuperseded" :
         case "IncompatiblePluginDetected" :
           return;
         case "UIFragmentRegistered" :
-          let data = def._0;
+          let data = match._0;
           return publishUIFragment(Plugin$ReventlessCore.name(data.pluginId), "Registered", S.reverseConvertToJsonOrThrow(data.manifest, Plugin$Reventless.uiFragmentManifestSchema));
         case "UIFragmentUpdated" :
-          let data$1 = def._0;
+          let data$1 = match._0;
           return publishUIFragment(Plugin$ReventlessCore.name(data$1.pluginId), "Updated", S.reverseConvertToJsonOrThrow(data$1.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
         case "UIFragmentDeregistered" :
-          return publishUIFragment(Plugin$ReventlessCore.name(def._0.pluginId), "Deregistered", null);
+          return publishUIFragment(Plugin$ReventlessCore.name(match._0.pluginId), "Deregistered", null);
         default:
-          return publishStatus(def._0.name, "Connected");
+          return publishStatus(match._0.name, "Connected");
       }
     });
   };
@@ -3304,6 +3308,7 @@ export {
   platformGraphQLRef,
   getPlatformGraphQL,
   platformMCPRef,
+  decodePluginEventEnvelope,
   MakeWithConfig,
   Make,
 }
