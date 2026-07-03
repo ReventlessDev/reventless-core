@@ -112,6 +112,7 @@ let TestBehavior = {
   Spec: undefined,
   stateSchema: stateSchema,
   initialState: "NotCreated",
+  snapshot: undefined,
   moduleUrl: moduleUrl$1,
   evolve: evolve,
   decide: decide
@@ -235,6 +236,7 @@ let TestHandler = Aggregate_Callback$ReventlessCore.Make({
   initialState: "NotCreated",
   evolve: evolve,
   decide: decide,
+  snapshot: undefined,
   moduleUrl: moduleUrl$1
 })({
   Spec: {

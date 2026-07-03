@@ -30,6 +30,10 @@ module ItemBehavior: ReventlessCore.Behavior.T with module Spec := ItemSpec = {
 
   let initialState = false
 
+  // Hand-written behavior (no @@reventless.behavior PPX) — satisfy the
+  // Behavior.T snapshot field manually.
+  let snapshot = None
+
   let moduleUrl: string = %raw(`import.meta.url`)
 
   let evolve = (_state, _event: ItemSpec.event) => true

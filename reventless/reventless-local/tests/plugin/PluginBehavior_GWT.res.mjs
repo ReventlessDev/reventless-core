@@ -20,6 +20,7 @@ let PluginTest = Behavior_GWT$ReventlessGwt.MakeFromAggregate({
   initialState: PluginBehavior$ReventlessCore.initialState,
   evolve: PluginBehavior$ReventlessCore.evolve,
   decide: PluginBehavior$ReventlessCore.decide,
+  snapshot: undefined,
   moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
 });
 

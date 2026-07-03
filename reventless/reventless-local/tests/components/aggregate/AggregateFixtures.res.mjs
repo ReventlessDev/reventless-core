@@ -64,6 +64,7 @@ let ItemBehavior = {
   initialState: false,
   evolve: evolve,
   decide: decide,
+  snapshot: undefined,
   moduleUrl: moduleUrl$1
 };
 

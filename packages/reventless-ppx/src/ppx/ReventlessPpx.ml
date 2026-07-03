@@ -853,6 +853,16 @@ let transform (str : structure) : structure =
            then automation_mappings_extension ~loc ~spec_name body
            else body
          in
+         (* Aggregate-behavior snapshot config (docs/plans/aggregate-snapshotting.md):
+            default [let snapshot = None]; @@reventless.snapshots(<interval>)
+            switches to Some({interval, stateSchema}). Consumes the attribute;
+            idempotent on bodies already declaring the binding. Aggregate
+            folders only — StateChangeSlice behaviors satisfy a different
+            module type without [snapshot]. *)
+         let (body, snap_suffix) =
+           if kind = Behavior then SnapshotInjection.inject ~loc fname body
+           else (body, [])
+         in
          let prefix = ref [] in
          (* Projection implementations need [Reventless.Projection]'s action
             constructors ([Set], [Update], …) in scope. This mirrors the
@@ -870,7 +880,7 @@ let transform (str : structure) : structure =
              [ModuleUrl.gen_module_url ~loc specifier]
            else []
          in
-         !prefix @ body @ suffix)
+         !prefix @ body @ suffix @ snap_suffix)
 
 let () =
   Driver.register_transformation

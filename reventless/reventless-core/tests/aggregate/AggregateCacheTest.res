@@ -41,6 +41,10 @@ module TestBehavior = {
 
   let initialState = {names: []}
 
+  // Hand-written behavior (no @@reventless.behavior PPX) — satisfy the
+  // Behavior.T snapshot field manually.
+  let snapshot = None
+
   let moduleUrl: string = %raw(`import.meta.url`)
 
   let evolve = (state: state, event: AggSpec.event): state =>

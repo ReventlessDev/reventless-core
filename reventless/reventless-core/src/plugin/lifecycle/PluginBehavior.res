@@ -30,6 +30,12 @@ type state = {
 
 let initialState = {current: None, known: Dict.make()}
 
+// The @@reventless.behavior snapshot injection is gated to Aggregate/ folders;
+// this framework-internal behavior lives under plugin/lifecycle, so the
+// Behavior.T field is satisfied manually. The admin Plugin aggregate's history
+// is short (lifecycle transitions), so persisted snapshots would buy nothing.
+let snapshot = None
+
 let atomicCounter = None
 
 let uiRegisterEvents = (pluginId, manifest) =>

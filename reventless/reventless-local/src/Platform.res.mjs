@@ -655,6 +655,7 @@ function MakeWithConfig(Config) {
     initialState: PluginBehavior$ReventlessCore.initialState,
     evolve: PluginBehavior$ReventlessCore.evolve,
     decide: PluginBehavior$ReventlessCore.decide,
+    snapshot: undefined,
     moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: PluginSpec$ReventlessCore.name,
@@ -2262,6 +2263,7 @@ function Make($star) {
     initialState: PluginBehavior$ReventlessCore.initialState,
     evolve: PluginBehavior$ReventlessCore.evolve,
     decide: PluginBehavior$ReventlessCore.decide,
+    snapshot: undefined,
     moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: PluginSpec$ReventlessCore.name,

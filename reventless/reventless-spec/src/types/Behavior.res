@@ -72,6 +72,14 @@ module type T = {
   */
   let decide: (state, Spec.command) => result<array<Spec.event>, Spec.error>
 
+  /** Persisted-snapshot configuration (docs/plans/aggregate-snapshotting.md).
+      `None` — the default, auto-injected by `@@reventless.behavior` — keeps
+      full replay; `Some({interval, stateSchema})` writes a keep-one snapshot
+      every `interval` events and seeds cold replays from the latest one.
+      Enable with `@@reventless.snapshots(<interval>)` (requires
+      `@schema type state`) or a manual binding. */
+  let snapshot: option<Snapshot.config<state>>
+
   /** File URL of this module (`import.meta.url`). Used by AWS builders to derive
       the npm specifier for runtime dynamic imports. */
   let moduleUrl: string

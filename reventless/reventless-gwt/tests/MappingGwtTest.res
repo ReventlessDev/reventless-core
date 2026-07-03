@@ -33,6 +33,7 @@ module CategoryBehavior = {
   module Spec = CategorySpec
   type state = NotCreated | Created
   let initialState = NotCreated
+  let snapshot = None
 
   let evolve = (_state, event: CategorySpec.event) =>
     switch event {
@@ -70,6 +71,7 @@ module ProductBehavior = {
   module Spec = ProductSpec
   type state = Pristine | Mirrored
   let initialState = Pristine
+  let snapshot = None
 
   let evolve = (_state, event: ProductSpec.event) =>
     switch event {

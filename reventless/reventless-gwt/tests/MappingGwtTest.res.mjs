@@ -66,6 +66,7 @@ let moduleUrl$1 = "";
 let CategoryBehavior = {
   Spec: undefined,
   initialState: "NotCreated",
+  snapshot: undefined,
   evolve: evolve,
   decide: decide,
   moduleUrl: moduleUrl$1
@@ -133,6 +134,7 @@ let moduleUrl$3 = "";
 let ProductBehavior = {
   Spec: undefined,
   initialState: "Pristine",
+  snapshot: undefined,
   evolve: evolve$1,
   decide: decide$1,
   moduleUrl: moduleUrl$3
@@ -299,6 +301,7 @@ let CategorySource = Mapping_GWT$ReventlessGwt.FromBehavior({
   initialState: "NotCreated",
   evolve: evolve,
   decide: decide,
+  snapshot: undefined,
   moduleUrl: moduleUrl$1
 });
 
@@ -335,6 +338,7 @@ let ProductTarget = Mapping_GWT$ReventlessGwt.FromBehavior({
   initialState: "Pristine",
   evolve: evolve$1,
   decide: decide$1,
+  snapshot: undefined,
   moduleUrl: moduleUrl$3
 });
 

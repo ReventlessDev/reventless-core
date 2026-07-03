@@ -366,6 +366,8 @@ function evolve(state, event) {
 
 let Spec;
 
+let snapshot;
+
 let atomicCounter;
 
 let moduleUrl = "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginBehavior.res.mjs";
@@ -376,6 +378,7 @@ export {
   knownVersionSchema,
   stateSchema,
   initialState,
+  snapshot,
   atomicCounter,
   uiRegisterEvents,
   uiDeregisterEvents,

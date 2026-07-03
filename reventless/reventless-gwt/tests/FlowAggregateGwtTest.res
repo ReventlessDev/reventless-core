@@ -34,6 +34,7 @@ module CatalogProductBehavior = {
   type state = NotSynced | Synced
 
   let initialState = NotSynced
+  let snapshot = None
 
   let evolve = (_state, event: CatalogProductAggregate.event) =>
     switch event {
@@ -77,6 +78,7 @@ module OrderBehavior = {
   type state = {placed: bool, shipped: bool}
 
   let initialState = {placed: false, shipped: false}
+  let snapshot = None
 
   let evolve = (state, event: OrderAggregate.event) =>
     switch event {

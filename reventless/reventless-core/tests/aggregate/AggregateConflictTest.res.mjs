@@ -63,6 +63,7 @@ function decide(_state, command) {
 let TestBehavior = {
   Spec: undefined,
   initialState: initialState,
+  snapshot: undefined,
   moduleUrl: moduleUrl$1,
   evolve: evolve,
   decide: decide
@@ -200,6 +201,7 @@ let TestHandler = Aggregate_Callback$ReventlessCore.Make({
   initialState: initialState,
   evolve: evolve,
   decide: decide,
+  snapshot: undefined,
   moduleUrl: moduleUrl$1
 })({
   Spec: {

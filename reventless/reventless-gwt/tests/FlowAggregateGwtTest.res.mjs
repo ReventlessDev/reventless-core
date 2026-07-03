@@ -58,6 +58,7 @@ let moduleUrl = "test://CatalogProductBehavior";
 let CatalogProductBehavior = {
   Spec: undefined,
   initialState: "NotSynced",
+  snapshot: undefined,
   evolve: evolve,
   decide: decide,
   moduleUrl: moduleUrl
@@ -159,6 +160,7 @@ let moduleUrl$1 = "test://OrderBehavior";
 let OrderBehavior = {
   Spec: undefined,
   initialState: initialState,
+  snapshot: undefined,
   evolve: evolve$1,
   decide: decide$1,
   moduleUrl: moduleUrl$1
@@ -169,6 +171,7 @@ let Sync = Flow_GWT$ReventlessGwt.AggregateCommandStep(CatalogProductAggregate)(
   initialState: "NotSynced",
   evolve: evolve,
   decide: decide,
+  snapshot: undefined,
   moduleUrl: moduleUrl
 });
 
@@ -177,6 +180,7 @@ let Place = Flow_GWT$ReventlessGwt.AggregateCommandStep(OrderAggregate)({
   initialState: initialState,
   evolve: evolve$1,
   decide: decide$1,
+  snapshot: undefined,
   moduleUrl: moduleUrl$1
 });
 

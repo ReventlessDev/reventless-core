@@ -146,6 +146,27 @@ let evolve = (_s, _e: event) => true
 let decide = (_s, _c: command) => Ok([Created])
 EOF
 
+# Snapshot-enabled behavior — @@reventless.snapshots(N) injects
+# Some({interval: N, stateSchema}); needs @schema type state for sury.
+cat > "$PLUGIN/src/Aggregate/Snapped.res" <<'EOF'
+@@reventless.spec
+
+type command = Create
+type event = Created
+type error = unit
+EOF
+
+cat > "$PLUGIN/src/Aggregate/SnappedBehavior.res" <<'EOF'
+@@reventless.behavior
+@@reventless.snapshots(25)
+
+@schema
+type state = {count: int}
+let initialState = {count: 0}
+let evolve = (s, _e: event) => {count: s.count + 1}
+let decide = (_s, _c: command) => Ok([Created])
+EOF
+
 # ReadModel — strips "ReadModel" suffix, auto-injects ReadModel defaults
 cat > "$PLUGIN/src/ReadModel/ProductsReadModel.res" <<'EOF'
 @@reventless.spec
@@ -1140,6 +1161,15 @@ JS="$PLUGIN/src/Aggregate/ProductBehavior.res.mjs"
 assert_js_contains "$JS" '@test/my-plugin/src/Aggregate/ProductBehavior.res.mjs' "behavior moduleUrl"
 # open + module Spec are compile-time only — success proves they were injected correctly
 pass "behavior compiles (open + module Spec injected correctly)"
+# Default snapshot injection: `let snapshot = None` (None compiles to an
+# undefined binding, exported by name)
+assert_js_contains "$JS" 'snapshot'                        "behavior: default let snapshot = None injected"
+
+echo ""
+echo "=== Test: @@reventless.snapshots(N) (Some config injection) ==="
+JS="$PLUGIN/src/Aggregate/SnappedBehavior.res.mjs"
+assert_js_contains "$JS" 'interval: 25'                    "snapshots: interval from attribute payload"
+assert_js_contains "$JS" 'stateSchema'                     "snapshots: references generated stateSchema"
 
 echo ""
 echo "=== Test: @authorize per-constructor + @@reventless.authorize file default ==="
