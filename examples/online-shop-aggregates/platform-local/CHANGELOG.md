@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.100 (2026-07-04)
+
+### Features
+
+* **examples,docs:** enable aggregate snapshots on the Product example + document the feature (aggregate-snapshotting plan, steps 6-7, COMPLETE) ([fdda793](https://github.com/ReventlessDev/reventless-core/commit/fdda793e7bba0cd7482b4ba3ac1c73572f75a3c0))
+
+
 # 1.0.0-alpha.99 (2026-07-03)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-platform-local

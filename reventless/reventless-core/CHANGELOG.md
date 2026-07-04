@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.138 (2026-07-04)
+
+### Features
+
+* **core:** wire aggregate snapshots into the command callback (aggregate-snapshotting plan, step 5) ([09fda78](https://github.com/ReventlessDev/reventless-core/commit/09fda78a19bb758482111cebedfdb115d0ec7a35))
+
+
 # 3.0.0-alpha.137 (2026-07-03)
 
 ### Features
