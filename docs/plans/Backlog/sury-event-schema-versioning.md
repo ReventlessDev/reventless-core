@@ -1,7 +1,7 @@
 # Backlog: Event Schema Versioning via Sury Decoder Chains
 
-**Status:** Backlog — depends on `docs/plans/sury-alpha5-migration.md` Phase 4
-**Analysis:** `docs/analysis/sury-alpha5-migration.md` (opportunity C);
+**Status:** Backlog — depends on `docs/plans/sury-11-migration.md` Phase 4
+**Analysis:** `docs/analysis/sury-11-migration.md` (opportunity C);
 related: `docs/plans/done/effect-library-integration.md` §10,
 `docs/analysis/event-format-and-meta-review.md` #9 and "schemaVersion"
 discussion.
@@ -193,7 +193,7 @@ Steps:
 
 ## References
 
-- Sury alpha.5 migration: `docs/plans/sury-alpha5-migration.md`
+- Sury 11 migration: `docs/plans/sury-11-migration.md`
 - Schema versioning gap in Effect tier 3: `docs/plans/done/effect-library-integration.md` §10
 - `schemaVersion` and `dataschema` discussion: `docs/analysis/event-format-and-meta-review.md`
 - Cross-plugin subscriber contracts: `docs/analysis/done/dcb-event-type-coupling.md`

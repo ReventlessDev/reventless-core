@@ -1,16 +1,36 @@
-# Plan: Migrate Reventless to Sury 11.0.0-alpha.5
+# Plan: Migrate Reventless to Sury 11 (current target: 11.0.0-alpha.8)
 
 **Status:** Draft
-**Analysis:** [`docs/analysis/sury-alpha5-migration.md`](../analysis/sury-alpha5-migration.md)
+**Analysis:** [`docs/analysis/sury-11-migration.md`](../analysis/sury-11-migration.md)
 **Triggering incident:** Lambda Layer `reventless-aws-alpha:58` shipped with
 `sury@11.0.0-alpha.5` and crashed every heartbeat Lambda at init with
 `SyntaxError: 'reverseConvertToJsonOrThrow' is not an export`.
+
+> **Re-target update (2026-07-04), verified by a compile+run spike.** Target
+> moved from `alpha.5` to the current **`11.0.0-alpha.8`** (see the analysis's
+> re-target note). What the spike (a throwaway package on `sury@alpha.8` +
+> `sury-ppx@alpha.8`, built + run) established for this plan:
+> - ✅ **The blocker is gone:** `sury-ppx@11.0.0-alpha.8` exists and compiles
+>   `@schema` types against `sury@alpha.8`. So "sury-ppx stays on alpha.2" below
+>   no longer applies — bump the ppx to `alpha.8` **alongside** sury.
+> - ✅ **The ReScript API is the alpha.5-corrected form** — `parseOrThrow(~to=)`
+>   and `decodeOrThrow(~from=, ~to=)` (labeled args) and `nullAsOption` are all
+>   present. The shim/steps below written against that form are **correct as-is**
+>   (encode = `value->S.decodeOrThrow(~from=schema, ~to=S.json)`, spike-verified).
+> - ⚠️ Do **not** follow sury's TypeScript `.d.ts` (it diverges — drops `*OrThrow`,
+>   adds `encoder`). `S.resi` is authoritative for this ReScript codebase; there
+>   is **no `S.encoder`**.
+> - 📌 `S.Exn` (opportunity D) has no ReScript module → re-scope. Bidirectional
+>   transforms (event versioning) use `S.transform`, not `S.to(~decode,~encode)`.
+> - All `alpha.5` version strings in the phase steps below should read `alpha.8`,
+>   except the historical Layer-58 incident.
 
 ## Goal
 
 Move all Reventless framework packages off the alpha.4 sury API, bundle the
 opportunistic cleanups that fall naturally out of the same diff, and re-ship
-the Lambda Layer on sury alpha.5 — with no production downtime in between.
+the Lambda Layer on the current sury 11 (alpha.8) — with no production downtime
+in between.
 
 Out of scope for this plan (deferred to dedicated backlog items, see end of
 document):
@@ -32,8 +52,9 @@ document):
     `S.parseJsonOrThrow`, `S.enableJson`, `S.convertOrThrow`,
     `S.parseJsonStringOrThrow`, `S.reverseConvertToJsonStringOrThrow`.
   - 1 hand-written `.mjs` — `HeartbeatEntryPoint.mjs`.
-- sury-ppx stays on `11.0.0-alpha.2` (no alpha.5 release exists). It emits
-  `S.schema(s => …)` + `s.m(…)` — both still present in alpha.5.
+- sury-ppx bumps to `11.0.0-alpha.8` **alongside** sury (a matching release now
+  exists — the original "no alpha.5 release, stay on alpha.2" note is obsolete).
+  It emits `S.schema(s => …)` + `s.m(…)` — both still present in alpha.8.
 
 ## Phases
 
@@ -80,11 +101,13 @@ careful review.
   and is the lowest framework package using sury — the shim has to sit there
   so every dependent can reach it. From within `reventless-spec`, the shim is
   referenced as `Util_Sury`; from other packages it is `Reventless.Util_Sury`.
-- The alpha.5 signatures of `decodeOrThrow` / `parseOrThrow` take **labeled**
-  `~from` / `~to` arguments, not the positional form the earlier draft of
-  this plan and the analysis doc both showed. The corrected shim is below.
+- **(Confirmed for alpha.8 by the spike.)** `decodeOrThrow` / `parseOrThrow`
+  with labeled `~from` / `~to` are present in alpha.8's `S.resi` — the shim below
+  uses exactly this form (encode via `decodeOrThrow(~from=schema, ~to=S.json)`).
+  Call sites read `value->Util_Sury.toJson(schema)`.
 - `S.t.Object` lost its `items: array<{name, location, schema}>` record in
-  alpha.5 — only `properties: dict<t<unknown>>` remains. `DcbDecode.res` and
+  alpha.5 — only `properties: dict<t<unknown>>` remains (unchanged in alpha.8).
+  `DcbDecode.res` and
   `DcbTag.res` walk variant schemas via
   `Object({items}).find(item => item.location == "TAG")` to identify the
   discriminant; that introspection has to be rewritten to
@@ -94,24 +117,26 @@ careful review.
 
 Steps:
 
-1. Add `reventless/reventless-spec/src/util/Util_Sury.res`:
+1. Add `reventless/reventless-spec/src/util/Util_Sury.res` (alpha.8 — spike-verified):
    ```rescript
    let toJson: ('a, S.t<'a>) => JSON.t = (value, schema) =>
-     value->S.decodeOrThrow(~from=schema->S.reverse, ~to=S.json)
+     value->S.decodeOrThrow(~from=schema, ~to=S.json)
    let toJsonString: ('a, S.t<'a>, ~space: int) => string = (value, schema, ~space) =>
-     value->S.decodeOrThrow(~from=schema->S.reverse, ~to=S.jsonStringWithSpace(space))
+     value->S.decodeOrThrow(~from=schema, ~to=S.jsonStringWithSpace(space))
    let fromJson: (JSON.t, S.t<'a>) => 'a = (json, schema) =>
      json->S.parseOrThrow(~to=schema)
    let fromJsonString: (string, S.t<'a>) => 'a = (str, schema) =>
      str->S.decodeOrThrow(~from=S.jsonString, ~to=schema)
    ```
+   (These four exactly match the standalone spike that compiled + round-tripped
+   on `sury@alpha.8` + `sury-ppx@alpha.8`.)
    (Function-name shapes are kept alpha.4-compatible — `value->Util_Sury.toJson(schema)`
    matches `value->S.reverseConvertToJsonOrThrow(schema)` at the call site —
    so the subsequent bulk replace stays mechanical, even though the inside of
    the shim now uses labeled args.)
 2. In a feature branch, locally bump `"sury": "11.0.0-alpha.4"` →
-   `"11.0.0-alpha.5"` in all 9 framework + adapter packages **and** run
-   `pnpm install` to refresh the lockfile to alpha.5. (The Phase 0 audit
+   `"11.0.0-alpha.8"` (and `sury-ppx` → `"11.0.0-alpha.8"`) in all 9 framework +
+   adapter packages **and** run `pnpm install` to refresh the lockfile. (The Phase 0 audit
    already established 9 packages — `reventless-{spec,infra,interop,core,
    local,gwt,codegen,aws}` + `rescript-pulumi-aws` — not the 4 the
    first draft named.)
@@ -239,7 +264,7 @@ are scoped separately.
 ### Phase 3 — Hoist parsers / decoders on hot paths (opportunity B)
 
 **Goal:** convert the `Util_Sury.fromJson(_, schema)` calls on identified hot
-paths into module-init-time `S.parser(schema)` closures, so each Lambda
+paths into module-init-time `S.parser(~to=schema)` closures, so each Lambda
 invocation skips the per-call parser-construction work.
 
 Hot paths to target (in priority order):
@@ -257,7 +282,7 @@ For each, the pattern:
 let event = json->Util_Sury.fromJson(Spec.eventSchema)
 
 // after
-let parseEvent = S.parser(Spec.eventSchema)
+let parseEvent = S.parser(~to=Spec.eventSchema)
 // ...
 let event = parseEvent(json)
 ```
@@ -273,21 +298,21 @@ Validation:
 
 This phase is independent of Phase 4; can ship before or after.
 
-### Phase 4 — Flip to sury alpha.5 + republish Layer
+### Phase 4 — Flip to sury alpha.8 + republish Layer
 
 **Goal:** remove the Phase-0 pin and ship a Layer carrying the
-alpha.5-compatible framework.
+alpha.8-compatible framework.
 
 Steps:
 1. In `reventless/reventless-{aws,core,infra,spec}/package.json`, change
-   `"sury": "11.0.0-alpha.4"` to `"sury": "11.0.0-alpha.5"` (exact again; do
-   not reintroduce `^` until alpha graduates).
-2. `pnpm install`; confirm only `sury@11.0.0-alpha.5` resolves.
+   `"sury": "11.0.0-alpha.4"` to `"sury": "11.0.0-alpha.8"` (and `sury-ppx` to
+   `"11.0.0-alpha.8"`) — exact again; do not reintroduce `^` until alpha graduates.
+2. `pnpm install`; confirm only `sury@11.0.0-alpha.8` resolves.
 3. Full local build + test pass across reventless-core, reventless-local,
    reventless-aws, reventless-gwt, reventless-codegen, reventless-spec,
    reventless-interop, plus the example plugins.
-4. Commit and push to `alpha`. CI publishes new alphas; Layer 60 builds with
-   `sury@11.0.0-alpha.5`; deploy workflow rolls Lambdas onto it.
+4. Commit and push to `alpha`. CI publishes new alphas; the next Layer builds with
+   `sury@11.0.0-alpha.8`; deploy workflow rolls Lambdas onto it.
 5. Post-deploy verification: identical to Phase 0 (heartbeats clean,
    `Platform_Plugins` returns entries).
 
@@ -331,8 +356,8 @@ post-stability decision, not part of the migration sweep.
 
 | Risk                                                                                       | Likelihood | Impact | Mitigation                                                                       |
 | ------------------------------------------------------------------------------------------ | ---------- | ------ | -------------------------------------------------------------------------------- |
-| Behaviour divergence in `decodeOrThrow(value, reverse(s), S.json)` vs `reverseConvertToJsonOrThrow` under `S.transform` / refinements | medium     | high   | Phase 1 round-trip property tests catch it before bulk migration                |
-| sury-ppx alpha.2 + sury alpha.5 emit incompatible code                                     | low        | high   | Phase 1 runs the full test suite on alpha.5 with a real PPX-using surface       |
+| Behaviour divergence in `S.decodeOrThrow(~from=s, ~to=S.json)` vs `reverseConvertToJsonOrThrow` under `S.transform` / refinements | medium     | high   | Phase 1 round-trip property tests catch it before bulk migration                |
+| sury-ppx alpha.8 + sury alpha.8 emit incompatible code (matched versions now exist)        | low        | high   | Phase 1 runs the full test suite on alpha.8 with a real PPX-using surface       |
 | `S.nullAsOption` does not fully replace `js_nullable` in union variants (jsonableValidation regression returns) | low        | medium | Phase 2 step 3 explicitly re-tests `apiSchemaFragment`-style union variants     |
 | Layer 60 build picks up another transitively-bumped library that breaks                    | low        | medium | Phase 4 verifies the locally-resolved tree before push; rollback to Layer 59     |
 | `S.isoDateTime` rejects a timestamp shape we currently emit                                | low        | low    | Phase 2 step 5 audits `nowAsISOString` callers before flipping                  |
@@ -342,14 +367,15 @@ post-stability decision, not part of the migration sweep.
 These came out of the analysis but are too large to bundle into the
 migration sweep. They become materially easier once Phase 4 lands.
 
-1. **Opportunity C — event schema versioning via `S.decoder` chains.**
-   New plan: `docs/plans/Backlog/sury-event-schema-versioning.md` (to be
-   written). Background:
+1. **Opportunity C — event schema versioning via `S.decoder` / `S.to` chains.**
+   Plan (written): `docs/plans/Backlog/sury-event-schema-versioning.md`.
+   Background:
    `docs/plans/done/effect-library-integration.md` §10,
    `docs/analysis/event-format-and-meta-review.md` #9.
 
 2. **Opportunity F — type-driven GraphQL SDL via `S.toJSONSchema`.**
-   Threads into the existing `docs/plans/Backlog/api-component-openapi.md`
+   Plan (written): `docs/plans/Backlog/typed-graphql-sdl-from-sury.md`; threads
+   into the existing `docs/plans/Backlog/api-component-openapi.md`
    plan; both providers can consume the same converter. Will need a
    prerequisite review of `QueryDbResolvers_GraphQL.res` /
    `CommandGeneratorResolvers_GraphQL.res` to identify the swap surface.
@@ -357,13 +383,11 @@ migration sweep. They become materially easier once Phase 4 lands.
 
 3. **Opportunity G — Standard Schema v1 TypeScript SDK.**
    Threads into `docs/analysis/typescript-client-feasibility.md` Blocker 1
-   resolution. New plan: `docs/plans/Backlog/typescript-client-sdk.md`
-   (to be written; cite the rejected sury-vs-effect-schema analysis and
-   the typescript-client-feasibility doc).
+   resolution. Plan (written): `docs/plans/Backlog/typescript-client-sdk.md`.
 
 ## References
 
-- Analysis: `docs/analysis/sury-alpha5-migration.md`
+- Analysis: `docs/analysis/sury-11-migration.md`
 - Sury repo: <https://github.com/DZakh/sury>
 - Standard Schema: <https://standardschema.dev/>
 - Related: `docs/plans/done/api-component-graphql.md`,

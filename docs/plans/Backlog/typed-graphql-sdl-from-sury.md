@@ -1,7 +1,7 @@
 # Backlog: Type-driven GraphQL SDL Generation from Sury Schemas
 
-**Status:** Backlog — depends on `docs/plans/sury-alpha5-migration.md` Phase 4
-**Analysis:** `docs/analysis/sury-alpha5-migration.md` (opportunity F);
+**Status:** Backlog — depends on `docs/plans/sury-11-migration.md` Phase 4
+**Analysis:** `docs/analysis/sury-11-migration.md` (opportunity F);
 exit verdict from `docs/analysis/rejected/sury-vs-effect-schema.md` §6.1.
 **Companion:** `docs/plans/Backlog/api-component-openapi.md` — both
 providers can consume the same converter.
@@ -188,4 +188,4 @@ Both providers consume `S.toJSONSchema` output → no per-spec duplication.
 - Existing analysis: `docs/analysis/rejected/sury-vs-effect-schema.md` §6.1
 - Companion: `docs/plans/Backlog/api-component-openapi.md`
 - Existing GraphQL stitching: `docs/plans/Backlog/graphql-api-stitching.md`
-- Sury alpha.5 migration: `docs/plans/sury-alpha5-migration.md`
+- Sury 11 migration: `docs/plans/sury-11-migration.md`
