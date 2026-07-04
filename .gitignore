@@ -84,3 +84,7 @@ pnpm-workspace.local.yaml
 *.model.json
 *.gwt.json
 *.wiring.json
+# Event Modeling documents for examples — inputs/outputs of the
+# `reventless-codegen` pipeline, which lives in a separate developer-tooling
+# repo (split out of this repo). Regenerated locally; not tracked here.
+examples/*/models/
