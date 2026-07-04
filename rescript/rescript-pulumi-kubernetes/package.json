@@ -1,0 +1,31 @@
+{
+  "name": "@reventlessdev/rescript-pulumi-kubernetes",
+  "version": "0.1.0-alpha.0",
+  "description": "ReScript bindings for @pulumi/kubernetes",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
+    "test": "node --test tests/SmokeTest.mjs"
+  },
+  "dependencies": {
+    "@pulumi/kubernetes": "~4.32.0",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*"
+  },
+  "devDependencies": {
+    "rescript": "^12.3.0"
+  },
+  "peerDependencies": {
+    "rescript": "^12.3.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "rescript/rescript-pulumi-kubernetes"
+  }
+}

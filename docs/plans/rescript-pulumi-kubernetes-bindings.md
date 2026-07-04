@@ -1,6 +1,8 @@
 # Plan: `rescript-pulumi-kubernetes` (+ `rescript-pulumi-docker-build`) bindings
 
-**Status**: Draft (2026-07-03)
+**Status**: Implemented (2026-07-04) — phases A1–B2 complete and building with
+zero warnings; the mock-mode smoke test passes. B3 (publish) is left to the
+user-initiated release train.
 **Nature**: feature plan. Two new published bindings packages under
 `rescript/`: `@reventlessdev/rescript-pulumi-kubernetes` (externals over
 `@pulumi/kubernetes`) and the much smaller
@@ -64,15 +66,38 @@ transcribing the entire OpenAPI schema.
 
 ## Phasing
 
-| Phase | Item | Class |
-|---|---|---|
-| A1 | Package scaffold + `Provider` + `Meta` + `Core` (Namespace, ConfigMap, Secret, Service, ServiceAccount) | Plumbing |
-| A2 | `Apps` (Deployment incl. pod/container spec types) + `Batch` (Job, CronJob) | Feature (largest item) |
-| A3 | `Rbac` + `Networking` | Feature |
-| A4 | `ApiExtensions.CustomResource` + `Helm.Release` + `Yaml` | Feature (the extension seams) |
-| B1 | `rescript-pulumi-docker-build` package | Feature (small) |
-| B2 | Mock-mode smoke test: a tiny Pulumi program (Deployment + CronJob + CustomResource + Helm Release) compiled and run under Pulumi mocks, asserting emitted resource shapes | Test |
-| B3 | Publish both packages on the regular release train | Release |
+| Phase | Item | Class | Status |
+|---|---|---|---|
+| A1 | Package scaffold + `Provider` + `Meta` + `Core` (Namespace, ConfigMap, Secret, Service, ServiceAccount, PVC) | Plumbing | ✅ done |
+| A2 | `Apps` (Deployment incl. pod/container spec types) + `Batch` (Job, CronJob) | Feature (largest item) | ✅ done |
+| A3 | `Rbac` + `Networking` | Feature | ✅ done |
+| A4 | `ApiExtensions.CustomResource` (+ `CustomResourceDefinition`) + `Helm.Release` + `Yaml` | Feature (the extension seams) | ✅ done |
+| B1 | `rescript-pulumi-docker-build` package | Feature (small) | ✅ done |
+| B2 | Mock-mode smoke test: a tiny Pulumi program (Deployment + CronJob + CustomResource + Helm Release) compiled and run under Pulumi mocks, asserting emitted resource shapes | Test | ✅ done (5/5 pass) |
+| B3 | Publish both packages on the regular release train | Release | ⏳ pending user-initiated release |
+
+### Implementation notes / deviations
+
+- **Pod/container spec types live in `Core` (`Core_Pod.res`), not `Apps`.** They
+  are genuinely `core/v1` types shared by every workload kind, so both `Apps`
+  and `Batch` reference `Core.Pod.*` rather than duplicating them. (The plan
+  sketched them under `Apps`; `Core` is the more accurate home and avoids an
+  Apps→Batch coupling.)
+- **`make` externals take a trailing `unit`** (`make(~name, ~args, ())`), the
+  idiomatic ReScript shape for all-optional trailing labelled args. This lets
+  consumers omit `~opts` and still fully apply — friendlier than the
+  `rescript-pulumi-aws` style that forces `~opts?` at every call site.
+- **Long-tail passthrough** is `JSON.t` on the fields most likely to need it
+  (`affinity`, `securityContext`, CRD `spec`, ClusterRole `aggregationRule`),
+  plus `ApiExtensions.CustomResource.makeRaw(~args: JSON.t)` as the fully-generic
+  escape hatch. Coverage grows additively.
+- **Smoke test runs under Node's built-in test runner**, not jest: importing the
+  full `@pulumi/pulumi` runtime pulls in `@pulumi/pulumi/automation`, whose
+  transitive `spdx-*` deps jest's resolver can't follow through pnpm's symlinked
+  `node_modules`. Node resolves them natively.
+- **`crd2pulumi` compatibility (risk #3)** is exercised in principle by the
+  generic `CustomResource` test (untyped apiVersion/kind/spec round-trips
+  cleanly); binding a real generated CR class is left to consumers.
 
 ## Non-goals
 
