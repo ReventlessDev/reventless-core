@@ -316,7 +316,9 @@ describe("Runtime.appendUnconditional", () => {
     let events = manyTags->Array.map(t => event("Foo", [t]))
     let result = await Runtime.appendUnconditional(table, events)
     switch result {
-    | Error(msg) => expect(msg->String.includes("limit exceeded"))->toBe(true)
+    | Error(ReventlessInfra.DcbEventLog.StorageFailure(msg)) =>
+      expect(msg->String.includes("limit exceeded"))->toBe(true)
+    | Error(Conflict) => expect("expected StorageFailure, got Conflict")->toBe("")
     | Ok(_) => expect("expected Error, got Ok")->toBe("")
     }
   })
@@ -555,8 +557,9 @@ describe("Runtime.appendConditional", () => {
     }
     let result = await Runtime.appendConditional(table, [], cond)
     switch result {
-    | Error(msg) =>
+    | Error(ReventlessInfra.DcbEventLog.StorageFailure(msg)) =>
       expect(msg->String.includes("tagless"))->toBe(true)
+    | Error(Conflict) => expect("expected StorageFailure, got Conflict")->toBe("")
     | Ok(_) => expect("expected Error, got Ok")->toBe("")
     }
   })
@@ -579,8 +582,9 @@ describe("Runtime.appendConditional", () => {
     }
     let result = await Runtime.appendConditional(table, [event], cond)
     switch result {
-    | Error(msg) =>
+    | Error(ReventlessInfra.DcbEventLog.StorageFailure(msg)) =>
       expect(msg->String.includes("limit exceeded"))->toBe(true)
+    | Error(Conflict) => expect("expected StorageFailure, got Conflict")->toBe("")
     | Ok(_) => expect("expected Error, got Ok")->toBe("")
     }
   })

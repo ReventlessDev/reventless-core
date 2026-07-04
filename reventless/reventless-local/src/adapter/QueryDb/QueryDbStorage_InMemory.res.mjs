@@ -5,11 +5,8 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stream from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as LocalBus$ReventlessLocal from "../LocalBus.res.mjs";
-import * as BackendState$ReventlessLocal from "../BackendState.res.mjs";
-import * as QueryDbStorage_Sqlite$ReventlessLocal from "./QueryDbStorage_Sqlite.res.mjs";
 
 function getSubKey(item, subIdField) {
   if (subIdField === undefined) {
@@ -56,21 +53,7 @@ function flattenStore(store) {
 }
 
 function Make(Bus) {
-  let sqliteBusCallbacks_publishStateChange = Bus.publishStateChange;
-  let sqliteBusCallbacks_registerQueryDb = Bus.registerQueryDb;
-  let sqliteBusCallbacks_registerQueryDbScan = Bus.registerQueryDbScan;
-  let sqliteBusCallbacks_registerQueryDbStream = Bus.registerQueryDbStream;
-  let sqliteBusCallbacks_registerQueryDbIndexLookup = Bus.registerQueryDbIndexLookup;
-  let sqliteBusCallbacks_registerQueryDbListPage = Bus.registerQueryDbListPage;
-  let sqliteBusCallbacks = {
-    publishStateChange: sqliteBusCallbacks_publishStateChange,
-    registerQueryDb: sqliteBusCallbacks_registerQueryDb,
-    registerQueryDbScan: sqliteBusCallbacks_registerQueryDbScan,
-    registerQueryDbStream: sqliteBusCallbacks_registerQueryDbStream,
-    registerQueryDbIndexLookup: sqliteBusCallbacks_registerQueryDbIndexLookup,
-    registerQueryDbListPage: sqliteBusCallbacks_registerQueryDbListPage
-  };
-  let makeMemory = (name, param, subIdField, param$1, param$2, param$3, param$4) => {
+  let make = (name, param, subIdField, param$1, param$2, param$3, param$4) => {
     let store = {
       contents: {}
     };
@@ -317,17 +300,7 @@ function Make(Bus) {
       operations: Pulumi.output(ops)
     };
   };
-  let make = (name, indexes, subIdField, ttl, api, apiRole, opts) => {
-    let db = BackendState$ReventlessLocal.getDb();
-    if (db !== undefined) {
-      return QueryDbStorage_Sqlite$ReventlessLocal.makeStorage(Primitive_option.valFromOption(db), sqliteBusCallbacks, name, indexes, subIdField);
-    } else {
-      return makeMemory(name, indexes, subIdField, ttl, api, apiRole, opts);
-    }
-  };
   return {
-    sqliteBusCallbacks: sqliteBusCallbacks,
-    makeMemory: makeMemory,
     make: make
   };
 }

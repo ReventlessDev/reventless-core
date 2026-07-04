@@ -196,7 +196,7 @@ describe("QueryDb — indexed equality lookup (B4 push-down)", () => {
   testPromise("in-memory lookup matches the sqlite result (backend parity)", async () => {
     module TestBus = LocalBus.Make()
     module Storage = QueryDbStorage_InMemory.Make(TestBus)
-    let s = Storage.makeMemory(~name="orders", ~indexes=[byOwner], ~api=(), ~apiRole=(), ~opts)
+    let s = Storage.make(~name="orders", ~indexes=[byOwner], ~api=(), ~apiRole=(), ~opts)
     let ops = await s.operations->TestRunner.resolve
     let _ = await ops.save("k1", item("o1"), ReventlessCore.QueryDb.Any, None)
     let _ = await ops.save("k2", item("o2"), ReventlessCore.QueryDb.Any, None)
@@ -211,7 +211,7 @@ describe("QueryDb — indexed equality lookup (B4 push-down)", () => {
 describe("QueryDbStorage_InMemory — lazy scan snapshot (B4 dirty-flag)", () => {
   testPromise("interleaved save/scan reflects each write without stale reads", async () => {
     module TestBus = LocalBus.Make()
-    module Storage = QueryDbStorage_InMemory.Make(TestBus)
+    module Storage = LocalQueryDbStorage.Make(TestBus)
     let s = Storage.make(~name="lazy", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
     let ops = await s.operations->TestRunner.resolve
     let scanFn = TestBus.getQueryDbScan("lazy")->Option.getOrThrow

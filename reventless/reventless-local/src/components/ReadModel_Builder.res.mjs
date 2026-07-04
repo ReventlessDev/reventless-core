@@ -2,8 +2,8 @@
 
 import * as QueryDb_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Adapter.res.mjs";
 import * as ReadModel_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/ReadModel/ReadModel_Builder.res.mjs";
+import * as LocalQueryDbStorage$ReventlessLocal from "../adapter/QueryDb/LocalQueryDbStorage.res.mjs";
 import * as LocalRuntimeEnvironment$ReventlessLocal from "../adapter/Runtime/LocalRuntimeEnvironment.res.mjs";
-import * as QueryDbStorage_InMemory$ReventlessLocal from "../adapter/QueryDb/QueryDbStorage_InMemory.res.mjs";
 import * as QueryDbResolvers_GraphQL$ReventlessLocal from "../adapter/QueryDb/QueryDbResolvers_GraphQL.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "../adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
 import * as LocalEventCollectorRuntime_Builder$ReventlessLocal from "../adapter/Runtime/LocalEventCollectorRuntime_Builder.res.mjs";
@@ -14,7 +14,7 @@ function Make(Bus) {
     make: EventCollectorChannel.make,
     connect: EventCollectorChannel.connect
   });
-  let QueryDbStorage = QueryDbStorage_InMemory$ReventlessLocal.Make(Bus);
+  let QueryDbStorage = LocalQueryDbStorage$ReventlessLocal.Make(Bus);
   let QueryDbResolvers = QueryDbResolvers_GraphQL$ReventlessLocal.Make(Bus);
   let Make$1 = Spec => (Mappings => ReadModel_Builder$ReventlessCore.Make(Spec)(Mappings)({
     make: LocalRuntimeEnvironment$ReventlessLocal.make,

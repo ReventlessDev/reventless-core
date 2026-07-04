@@ -11,7 +11,7 @@ module Make = (Bus: LocalBus.T) => {
     Bus,
     EventCollectorChannel,
   )
-  module QueryDbStorage = QueryDbStorage_InMemory.Make(Bus)
+  module QueryDbStorage = LocalQueryDbStorage.Make(Bus)
   module QueryDbResolvers = QueryDbResolvers_GraphQL.Make(Bus)
 
   // InMemory api/apiRole are both unit

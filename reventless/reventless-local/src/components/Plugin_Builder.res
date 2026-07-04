@@ -29,7 +29,7 @@ module Make = (Bus: LocalBus.T, HooksConfig: ReventlessCore.Plugin_Helpers.Hooks
     RemoteChannel,
     LocalHeartbeatRunner,
     PluginRuntimeBuilder,
-    DcbEventLogStorage_InMemory.Make(Bus),
+    LocalDcbEventLogStorage.Make(Bus),
     LocalEventTopicPublisher.Make(Bus),
     LocalCommandTopicChannel.Make(Bus),
     LocalCommandTopicChannel.Make(Bus),

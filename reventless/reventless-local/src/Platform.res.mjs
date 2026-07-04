@@ -50,6 +50,8 @@ import * as ProjectionPending$ReventlessLocal from "./adapter/ProjectionPending.
 import * as ReadModel_Builder$ReventlessLocal from "./components/ReadModel_Builder.res.mjs";
 import * as PlatformMCP_Server$ReventlessLocal from "./adapter/PlatformMCP_Server.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./adapter/Auth/Auth_GraphqlContext.res.mjs";
+import * as LocalQueryDbStorage$ReventlessLocal from "./adapter/QueryDb/LocalQueryDbStorage.res.mjs";
+import * as PgProjectionCatchup$ReventlessLocal from "./adapter/PgProjectionCatchup.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
 import * as DomainGraphQL_Server$ReventlessLocal from "./adapter/DomainGraphQL_Server.res.mjs";
 import * as EventPublish_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventLog/EventPublish_Callback.res.mjs";
@@ -62,17 +64,16 @@ import * as PlatformGraphQL_Server$ReventlessLocal from "./adapter/PlatformGraph
 import * as Platform_UIFragmentsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UIFragmentsApi.res.mjs";
 import * as StateViewSlice_Builder$ReventlessLocal from "./components/StateViewSlice_Builder.res.mjs";
 import * as AutomationSlice_Builder$ReventlessLocal from "./components/AutomationSlice_Builder.res.mjs";
+import * as LocalDcbEventLogStorage$ReventlessLocal from "./adapter/DcbEventLog/LocalDcbEventLogStorage.res.mjs";
 import * as LocalRuntimeEnvironment$ReventlessLocal from "./adapter/Runtime/LocalRuntimeEnvironment.res.mjs";
 import * as LocalScheduledPublisher$ReventlessLocal from "./adapter/Scheduler/LocalScheduledPublisher.res.mjs";
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
-import * as QueryDbStorage_InMemory$ReventlessLocal from "./adapter/QueryDb/QueryDbStorage_InMemory.res.mjs";
 import * as LocalCommandTopicChannel$ReventlessLocal from "./adapter/CommandTopic/LocalCommandTopicChannel.res.mjs";
 import * as LocalEventTopicPublisher$ReventlessLocal from "./adapter/EventTopic/LocalEventTopicPublisher.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateChangeSlice_Builder.res.mjs";
 import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
-import * as DcbEventLogStorage_InMemory$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_InMemory.res.mjs";
 import * as UIFragmentRegistryReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UIFragmentRegistryReadModelSpec.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessLocal from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as Platform_ComponentDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_ComponentDefinitionsApi.res.mjs";
@@ -110,7 +111,7 @@ function MakeWithConfig(Config) {
   let match = Config.backend;
   if (typeof match !== "object") {
     BackendState$ReventlessLocal.setMemory();
-  } else {
+  } else if (match.TAG === "Sqlite") {
     let path = match.path;
     if (match.resetOnStart) {
       Backend$ReventlessLocal.removeFileIfExists(path);
@@ -124,6 +125,9 @@ function MakeWithConfig(Config) {
       let msgIds = metas !== undefined ? metas.map(m => m.msgId) : Stdlib_Array.filterMap(publishedEvent.eventsJson, json => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["msgId"]), Stdlib_JSON.Decode.string));
       return ProjectionCheckpoint$ReventlessLocal.completePublished(db, msgIds);
     });
+  } else {
+    BackendState$ReventlessLocal.setPostgres(match.pool);
+    LocalBus$ReventlessLocal.seedEventTapSeq(match.initialCount);
   }
   let Bus = LocalBus$ReventlessLocal.Impl({
     capacity: undefined,
@@ -704,7 +708,7 @@ function MakeWithConfig(Config) {
     extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
-  })(EventCollectorChannel))(DcbEventLogStorage_InMemory$ReventlessLocal.Make(Bus))(LocalEventTopicPublisher$ReventlessLocal.Make(Bus))({
+  })(EventCollectorChannel))(LocalDcbEventLogStorage$ReventlessLocal.Make(Bus))(LocalEventTopicPublisher$ReventlessLocal.Make(Bus))({
     make: $$let$1.make
   })({
     make: $$let$2.make
@@ -730,7 +734,7 @@ function MakeWithConfig(Config) {
   let uiFragmentQueryDbOpsRef = {
     contents: undefined
   };
-  let UIFragmentStorage = QueryDbStorage_InMemory$ReventlessLocal.Make(Bus);
+  let UIFragmentStorage = LocalQueryDbStorage$ReventlessLocal.Make(Bus);
   let ensureUIFragmentRegistryQueryDbStore = () => {
     let ops = uiFragmentQueryDbOpsRef.contents;
     if (ops !== undefined) {
@@ -1094,14 +1098,20 @@ function MakeWithConfig(Config) {
     log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(Config.silent) + `, splitApi: ` + Stdlib_Bool.toString(Config.splitApi) + `, cloner: ` + Stdlib_Bool.toString(Config.cloner));
     let match = Config.backend;
     let tmp;
-    tmp = typeof match !== "object" ? "backend: memory" : `backend: sqlite (` + match.path + (
-        match.resetOnStart ? ", resetOnStart" : ""
-      ) + `)`;
+    tmp = typeof match !== "object" ? "backend: memory" : (
+        match.TAG === "Sqlite" ? `backend: sqlite (` + match.path + (
+            match.resetOnStart ? ", resetOnStart" : ""
+          ) + `)` : `backend: postgres (` + match.connection + `, event-logs only)`
+      );
     log.info("Platform", undefined, tmp);
-    let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getDb(), db => [
+    let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getSqliteDb(), db => [
       db,
       ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Aggregate"),
       ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Dcb")
+    ]);
+    let pgProjectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getPostgresPool(), pool => [
+      pool,
+      PgProjectionCatchup$ReventlessLocal.captureBounds(pool)
     ]);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
@@ -1169,6 +1179,15 @@ function MakeWithConfig(Config) {
     if (projectionCatchup !== undefined) {
       Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], projectionCatchup[2], () => Bus.projectionCatchupHandlers()), e => {
         console.error("[Platform] projection catch-up failed:", e);
+        return Promise.resolve();
+      }).then(() => {
+        seedAdminStores();
+        return Promise.resolve();
+      });
+    } else if (pgProjectionCatchup !== undefined) {
+      let pool = pgProjectionCatchup[0];
+      Stdlib_Promise.$$catch(pgProjectionCatchup[1].then(bounds => PgProjectionCatchup$ReventlessLocal.startupCatchup(pool, bounds, () => Bus.projectionCatchupHandlers())), e => {
+        console.error("[Platform] postgres projection catch-up failed:", e);
         return Promise.resolve();
       }).then(() => {
         seedAdminStores();
@@ -1725,7 +1744,7 @@ function Make($star) {
   TestRunner$ReventlessLocal.setup();
   if (typeof backend !== "object") {
     BackendState$ReventlessLocal.setMemory();
-  } else {
+  } else if (backend.TAG === "Sqlite") {
     let path = backend.path;
     if (backend.resetOnStart) {
       Backend$ReventlessLocal.removeFileIfExists(path);
@@ -1739,6 +1758,9 @@ function Make($star) {
       let msgIds = metas !== undefined ? metas.map(m => m.msgId) : Stdlib_Array.filterMap(publishedEvent.eventsJson, json => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["msgId"]), Stdlib_JSON.Decode.string));
       return ProjectionCheckpoint$ReventlessLocal.completePublished(db, msgIds);
     });
+  } else {
+    BackendState$ReventlessLocal.setPostgres(backend.pool);
+    LocalBus$ReventlessLocal.seedEventTapSeq(backend.initialCount);
   }
   let Bus = LocalBus$ReventlessLocal.Impl({
     capacity: undefined,
@@ -2312,7 +2334,7 @@ function Make($star) {
     extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
-  })(EventCollectorChannel))(DcbEventLogStorage_InMemory$ReventlessLocal.Make(Bus))(LocalEventTopicPublisher$ReventlessLocal.Make(Bus))({
+  })(EventCollectorChannel))(LocalDcbEventLogStorage$ReventlessLocal.Make(Bus))(LocalEventTopicPublisher$ReventlessLocal.Make(Bus))({
     make: $$let$1.make
   })({
     make: $$let$2.make
@@ -2338,7 +2360,7 @@ function Make($star) {
   let uiFragmentQueryDbOpsRef = {
     contents: undefined
   };
-  let UIFragmentStorage = QueryDbStorage_InMemory$ReventlessLocal.Make(Bus);
+  let UIFragmentStorage = LocalQueryDbStorage$ReventlessLocal.Make(Bus);
   let ensureUIFragmentRegistryQueryDbStore = () => {
     let ops = uiFragmentQueryDbOpsRef.contents;
     if (ops !== undefined) {
@@ -2697,14 +2719,20 @@ function Make($star) {
     log.info("Platform", undefined, `v` + version);
     log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(false) + `, splitApi: ` + Stdlib_Bool.toString(true) + `, cloner: ` + Stdlib_Bool.toString(false));
     let tmp;
-    tmp = typeof backend !== "object" ? "backend: memory" : `backend: sqlite (` + backend.path + (
-        backend.resetOnStart ? ", resetOnStart" : ""
-      ) + `)`;
+    tmp = typeof backend !== "object" ? "backend: memory" : (
+        backend.TAG === "Sqlite" ? `backend: sqlite (` + backend.path + (
+            backend.resetOnStart ? ", resetOnStart" : ""
+          ) + `)` : `backend: postgres (` + backend.connection + `, event-logs only)`
+      );
     log.info("Platform", undefined, tmp);
-    let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getDb(), db => [
+    let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getSqliteDb(), db => [
       db,
       ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Aggregate"),
       ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Dcb")
+    ]);
+    let pgProjectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getPostgresPool(), pool => [
+      pool,
+      PgProjectionCatchup$ReventlessLocal.captureBounds(pool)
     ]);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
@@ -2772,6 +2800,15 @@ function Make($star) {
     if (projectionCatchup !== undefined) {
       Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], projectionCatchup[2], () => Bus.projectionCatchupHandlers()), e => {
         console.error("[Platform] projection catch-up failed:", e);
+        return Promise.resolve();
+      }).then(() => {
+        seedAdminStores();
+        return Promise.resolve();
+      });
+    } else if (pgProjectionCatchup !== undefined) {
+      let pool = pgProjectionCatchup[0];
+      Stdlib_Promise.$$catch(pgProjectionCatchup[1].then(bounds => PgProjectionCatchup$ReventlessLocal.startupCatchup(pool, bounds, () => Bus.projectionCatchupHandlers())), e => {
+        console.error("[Platform] postgres projection catch-up failed:", e);
         return Promise.resolve();
       }).then(() => {
         seedAdminStores();

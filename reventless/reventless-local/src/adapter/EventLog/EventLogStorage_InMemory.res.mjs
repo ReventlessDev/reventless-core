@@ -7,9 +7,6 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as BackendState$ReventlessLocal from "../BackendState.res.mjs";
-import * as EventLogStorage_Sqlite$ReventlessLocal from "./EventLogStorage_Sqlite.res.mjs";
 
 function makeMemoryStorage(_name, param) {
   let eventsRef = Effect.runSync(STM.commit(TRef.make({})));
@@ -106,29 +103,11 @@ function make(name, opts) {
   return makeMemoryStorage(name, opts)[2];
 }
 
-function Make(Bus) {
-  let make = (name, opts) => {
-    let db = BackendState$ReventlessLocal.getDb();
-    if (db !== undefined) {
-      let match = EventLogStorage_Sqlite$ReventlessLocal.makeStorage(Primitive_option.valFromOption(db), name, opts);
-      Bus.registerEventLogReplay(match[0], match[1]);
-      return match[2];
-    }
-    let match$1 = makeMemoryStorage(name, opts);
-    Bus.registerEventLogReplay(match$1[0], match$1[1]);
-    return match$1[2];
-  };
-  return {
-    make: make
-  };
-}
-
 let makeStorage = makeMemoryStorage;
 
 export {
   makeMemoryStorage,
   makeStorage,
   make,
-  Make,
 }
 /* Stream Not a pure module */

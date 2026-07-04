@@ -7,7 +7,7 @@ import * as LocalBus$ReventlessLocal from "../../../src/adapter/LocalBus.res.mjs
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as QueryDb_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Adapter.res.mjs";
 import * as QueryDb_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Builder.res.mjs";
-import * as QueryDbStorage_InMemory$ReventlessLocal from "../../../src/adapter/QueryDb/QueryDbStorage_InMemory.res.mjs";
+import * as LocalQueryDbStorage$ReventlessLocal from "../../../src/adapter/QueryDb/LocalQueryDbStorage.res.mjs";
 
 let name = "TestItemQueryDb";
 
@@ -35,7 +35,7 @@ let Bus = LocalBus$ReventlessLocal.Make({});
 
 TestRunner$ReventlessLocal.setup();
 
-let QDbStorage = QueryDbStorage_InMemory$ReventlessLocal.Make(Bus);
+let QDbStorage = LocalQueryDbStorage$ReventlessLocal.Make(Bus);
 
 let QDbResolvers = QueryDb_Adapter$ReventlessCore.NoResolvers({
   make: QDbStorage.make

@@ -1,0 +1,56 @@
+{
+  "name": "@reventlessdev/reventless-postgres",
+  "version": "3.0.0-alpha.0",
+  "description": "Postgres storage backend for Reventless (classic + DCB event logs, query DB, change feed). Connection-string only — RDS/Aurora, any managed provider, or a local container.",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/**/*Test.res.mjs"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs",
+      "cjs"
+    ],
+    "moduleNameMapper": {
+      "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
+      "^spdx-license-ids$": "<rootDir>/../../node_modules/spdx-license-ids/index.json",
+      "^spdx-license-ids/deprecated$": "<rootDir>/../../node_modules/spdx-license-ids/deprecated.json",
+      "^spdx-exceptions$": "<rootDir>/../../node_modules/spdx-exceptions/index.json"
+    }
+  },
+  "dependencies": {
+    "@reventlessdev/rescript-effect": "workspace:*",
+    "@reventlessdev/rescript-jest": "workspace:*",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-core": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
+    "pg": "^8.13.1",
+    "sury": "11.0.0-alpha.4"
+  },
+  "devDependencies": {
+    "@reventlessdev/reventless-ppx": "workspace:*",
+    "@types/pg": "^8.11.10",
+    "rescript": "^12.3.0",
+    "sury-ppx": "11.0.0-alpha.2"
+  },
+  "peerDependencies": {
+    "rescript": "^12.3.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "reventless/reventless-postgres"
+  }
+}

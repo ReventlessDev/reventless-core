@@ -145,7 +145,7 @@ module type T = {
   let registerCommandHandler: (string, (JSON.t, unit) => promise<unit>) => unit
 
   // QueryDb registry: read model name → storage ops and scan function
-  // Populated by QueryDbStorage_InMemory.Make(Bus) during component construction.
+  // Populated by LocalQueryDbStorage.Make(Bus) during component construction.
   let registerQueryDb: (string, ReventlessCore.QueryDb_Adapter.operations) => unit
   let getQueryDb: string => option<ReventlessCore.QueryDb_Adapter.operations>
   let registerQueryDbScan: (string, unit => array<JSON.t>) => unit

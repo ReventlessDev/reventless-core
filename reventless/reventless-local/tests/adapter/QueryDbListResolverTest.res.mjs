@@ -18,8 +18,8 @@ import * as SqliteDriver$ReventlessLocal from "../../src/adapter/SqliteDriver.re
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as QueryDb_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Adapter.res.mjs";
 import * as QueryDb_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Builder.res.mjs";
+import * as LocalQueryDbStorage$ReventlessLocal from "../../src/adapter/QueryDb/LocalQueryDbStorage.res.mjs";
 import * as DomainGraphQL_Server$ReventlessLocal from "../../src/adapter/DomainGraphQL_Server.res.mjs";
-import * as QueryDbStorage_InMemory$ReventlessLocal from "../../src/adapter/QueryDb/QueryDbStorage_InMemory.res.mjs";
 import * as QueryDbResolvers_GraphQL$ReventlessLocal from "../../src/adapter/QueryDb/QueryDbResolvers_GraphQL.res.mjs";
 
 TestRunner$ReventlessLocal.setup();
@@ -109,7 +109,7 @@ function pageInfoString(response, key) {
 
 async function buildFixture(name) {
   let Bus = LocalBus$ReventlessLocal.Make({});
-  let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(Bus);
+  let Storage = LocalQueryDbStorage$ReventlessLocal.Make(Bus);
   let Resolvers = QueryDbResolvers_GraphQL$ReventlessLocal.Make(Bus);
   let moduleUrl = import.meta.url;
   let config = ReadModel$Reventless.config(undefined, undefined, undefined);

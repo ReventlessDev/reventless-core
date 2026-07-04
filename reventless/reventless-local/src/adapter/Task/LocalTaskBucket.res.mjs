@@ -30,7 +30,7 @@ function makeHandler(callback) {
 }
 
 function make(name, param) {
-  let db = BackendState$ReventlessLocal.getDb();
+  let db = BackendState$ReventlessLocal.getSqliteDb();
   if (db !== undefined) {
     TaskBucket_Sqlite$ReventlessLocal.ensureSchema(Primitive_option.valFromOption(db));
   }

@@ -18,25 +18,37 @@ function setSqlite(db, path) {
   };
 }
 
-function getDb() {
+function setPostgres(pool) {
+  current.contents = {
+    TAG: "Postgres",
+    pool: pool
+  };
+}
+
+function getSqliteDb() {
   let match = current.contents;
-  if (typeof match !== "object") {
+  if (typeof match !== "object" || match.TAG !== "Sqlite") {
     return;
   } else {
     return Primitive_option.some(match.db);
   }
 }
 
-function isSqlite() {
+function getPostgresPool() {
   let match = current.contents;
-  return typeof match === "object";
+  if (typeof match !== "object" || match.TAG === "Sqlite") {
+    return;
+  } else {
+    return Primitive_option.some(match.pool);
+  }
 }
 
 export {
   current,
   setMemory,
   setSqlite,
-  getDb,
-  isSqlite,
+  setPostgres,
+  getSqliteDb,
+  getPostgresPool,
 }
 /* No side effect */

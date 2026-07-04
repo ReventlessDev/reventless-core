@@ -6,10 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
-import * as BackendState$ReventlessLocal from "../BackendState.res.mjs";
-import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./DcbEventLogStorage_Sqlite.res.mjs";
 
 function posToInt(pos) {
   return Stdlib_Option.getOr(Stdlib_Int.fromString(pos, undefined), 0);
@@ -146,7 +143,7 @@ function makeStorage(_name, param, param$1, param$2) {
     if (conflictDetected) {
       return {
         TAG: "Error",
-        _0: "conflict: condition check failed"
+        _0: "Conflict"
       };
     }
     let base = events.contents.length;
@@ -194,23 +191,6 @@ function make(name, indexes, partitionTag, param, opts) {
   return makeStorage(name, indexes, partitionTag, opts)[2];
 }
 
-function Make(Bus) {
-  let make = (name, indexes, partitionTag, param, opts) => {
-    let db = BackendState$ReventlessLocal.getDb();
-    if (db !== undefined) {
-      let match = DcbEventLogStorage_Sqlite$ReventlessLocal.makeStorage(Primitive_option.valFromOption(db), name, indexes, partitionTag, opts);
-      Bus.registerDcbEventLogRead(match[0], match[1]);
-      return match[2];
-    }
-    let match$1 = makeStorage(name, indexes, partitionTag, opts);
-    Bus.registerDcbEventLogRead(match$1[0], match$1[1]);
-    return match$1[2];
-  };
-  return {
-    make: make
-  };
-}
-
 export {
   posToInt,
   matchesQuery,
@@ -218,6 +198,5 @@ export {
   intersectSorted,
   makeStorage,
   make,
-  Make,
 }
 /* effect/Effect Not a pure module */

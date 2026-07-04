@@ -2,12 +2,12 @@
 
 import * as Component$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Component.res.mjs";
 import * as DcbEventLog_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/DcbEventLog/DcbEventLog_Builder.res.mjs";
+import * as LocalDcbEventLogStorage$ReventlessLocal from "../adapter/DcbEventLog/LocalDcbEventLogStorage.res.mjs";
 import * as LocalEventTopicPublisher$ReventlessLocal from "../adapter/EventTopic/LocalEventTopicPublisher.res.mjs";
-import * as DcbEventLogStorage_InMemory$ReventlessLocal from "../adapter/DcbEventLog/DcbEventLogStorage_InMemory.res.mjs";
 
 function Make(Bus) {
   let EventTopicPublisher = LocalEventTopicPublisher$ReventlessLocal.Make(Bus);
-  let Storage = DcbEventLogStorage_InMemory$ReventlessLocal.Make(Bus);
+  let Storage = LocalDcbEventLogStorage$ReventlessLocal.Make(Bus);
   let Inner = DcbEventLog_Builder$ReventlessCore.Make(Storage)(EventTopicPublisher);
   return {
     EventTopicPublisher: EventTopicPublisher,

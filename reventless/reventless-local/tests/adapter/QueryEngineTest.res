@@ -11,7 +11,7 @@ describe("LocalQueryEngine", () => {
   describe("query", () => {
     testPromise("query by id returns items saved in the matching QueryDbStorage", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
       let s = Storage.make(~name="users", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
@@ -27,7 +27,7 @@ describe("LocalQueryEngine", () => {
 
     testPromise("query with explicit key overrides the id parameter", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
       let s = Storage.make(~name="products", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
@@ -56,7 +56,7 @@ describe("LocalQueryEngine", () => {
 
     testPromise("query with Int id converts to string key for lookup", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
       let s = Storage.make(~name="counters", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
@@ -73,7 +73,7 @@ describe("LocalQueryEngine", () => {
   describe("scan", () => {
     testPromise("scan returns all items from the matching QueryDbStorage", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
       let s = Storage.make(~name="orders", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
@@ -96,7 +96,7 @@ describe("LocalQueryEngine", () => {
   describe("scan with ~limit", () => {
     testPromise("~limit=2 on a 5-item QueryDb returns exactly 2 items", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
       let s = Storage.make(~name="items", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
@@ -112,7 +112,7 @@ describe("LocalQueryEngine", () => {
 
     testPromise("~limit larger than total returns all items (no padding)", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
       let s = Storage.make(~name="things", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
@@ -125,7 +125,7 @@ describe("LocalQueryEngine", () => {
 
     testPromise("~limit=0 returns empty array", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
       let s = Storage.make(~name="stuff", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
@@ -137,7 +137,7 @@ describe("LocalQueryEngine", () => {
 
     testPromise("~limit=3 on a 3-item QueryDb returns all 3 items", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
       let s = Storage.make(~name="widgets", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve

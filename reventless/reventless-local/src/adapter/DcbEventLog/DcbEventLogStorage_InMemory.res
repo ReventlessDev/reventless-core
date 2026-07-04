@@ -144,7 +144,7 @@ let makeStorage = (~name as _name, ~indexes as _, ~partitionTag as _, ~opts as _
     | None => false
     }
     if conflictDetected {
-      Error("conflict: condition check failed")
+      Error(ReventlessInfra.DcbEventLog.Conflict)
     } else {
       let base = events.contents->Array.length
       let storedEvents =
@@ -189,28 +189,9 @@ let makeStorage = (~name as _name, ~indexes as _, ~partitionTag as _, ~opts as _
 // (true DCB semantics), so a single-tag clause already matches every carrier of
 // the tag regardless of partition — cross-partition reads work without special
 // routing. The flag is accepted for interface parity and ignored.
+// Pure in-memory storageMaker (no BackendState dispatch, no Bus). Backend
+// selection lives in LocalDcbEventLogStorage.Make.
 let make: DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~partitionTag, ~crossPartitionTagKeys as _=?, ~opts) => {
   let (_, _, storage) = makeStorage(~name, ~indexes, ~partitionTag, ~opts)
   storage
-}
-
-module Make = (Bus: LocalBus.T) => {
-  let make: DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~partitionTag, ~crossPartitionTagKeys as _=?, ~opts) => {
-    switch BackendState.getDb() {
-    | Some(db) =>
-      let (storageName, read, storage) = DcbEventLogStorage_Sqlite.makeStorage(
-        ~db,
-        ~name,
-        ~indexes,
-        ~partitionTag,
-        ~opts,
-      )
-      Bus.registerDcbEventLogRead(storageName, read)
-      storage
-    | None =>
-      let (storageName, read, storage) = makeStorage(~name, ~indexes, ~partitionTag, ~opts)
-      Bus.registerDcbEventLogRead(storageName, read)
-      storage
-    }
-  }
 }

@@ -2,10 +2,10 @@
 
 import * as Counter_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Counter/Counter_Builder.res.mjs";
 import * as LocalCounterHandler$ReventlessLocal from "../adapter/Counter/LocalCounterHandler.res.mjs";
-import * as QueryDbStorage_InMemory$ReventlessLocal from "../adapter/QueryDb/QueryDbStorage_InMemory.res.mjs";
+import * as LocalQueryDbStorage$ReventlessLocal from "../adapter/QueryDb/LocalQueryDbStorage.res.mjs";
 
 function Make(Bus) {
-  let QueryDbStorage = QueryDbStorage_InMemory$ReventlessLocal.Make(Bus);
+  let QueryDbStorage = LocalQueryDbStorage$ReventlessLocal.Make(Bus);
   let api = () => {};
   let apiRole = () => {};
   let Api = {

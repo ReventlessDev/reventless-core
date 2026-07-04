@@ -99,7 +99,7 @@ let pageInfoString = (response: JSON.t, key: string): option<string> =>
 
 let buildFixture = async (~name: string) => {
   module Bus = LocalBus.Make()
-  module Storage = QueryDbStorage_InMemory.Make(Bus)
+  module Storage = LocalQueryDbStorage.Make(Bus)
   module Resolvers = QueryDbResolvers_GraphQL.Make(Bus)
 
   module Spec = {

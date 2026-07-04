@@ -79,6 +79,22 @@ module MakeWithConfig = (
   // SQLite handle. resetOnStart truncates the file at construction.
   let _ = switch Config.backend {
   | Backend.Memory => BackendState.setMemory()
+  | Backend.Postgres({pool, initialCount}) =>
+    // Async setup (connect + ensureSchema + count) already ran in the
+    // Backend.postgres smart constructor — the sync functor only stores the
+    // ready pool and seeds the event-tap counter from the persisted totals.
+    BackendState.setPostgres(~pool)
+    LocalBus.seedEventTapSeq(initialCount)
+  // SCOPE: Backend.Postgres persists the durable event logs (classic + DCB) via
+  // the reventless-postgres runtime. Read models use the in-memory live-query
+  // path — the LocalBus scan/stream registrations are synchronous, which async pg
+  // cannot satisfy without a broader bus refactor; the package's
+  // QueryDbStorage_Postgres remains available to deploy-time compute layers.
+  // Because read models are in-memory (empty on start), they are rebuilt on every
+  // startup by full-replaying the durable pg event log through the projection
+  // handlers (PgProjectionCatchup, wired below). The runtime ProjectionPending
+  // low-watermark (a SQLite-only persisted-checkpoint optimisation) stays off —
+  // full replay needs no checkpoint.
   | Backend.Sqlite({path, resetOnStart}) =>
     if resetOnStart {
       Backend.removeFileIfExists(path)
@@ -741,7 +757,7 @@ module MakeWithConfig = (
       LocalRuntimeEnvironment,
       EventCollectorChannel,
     ),
-    DcbEventLogStorage_InMemory.Make(Bus),
+    LocalDcbEventLogStorage.Make(Bus),
     LocalEventTopicPublisher.Make(Bus),
     LocalCommandTopicChannel.Make(Bus),
     LocalCommandTopicChannel.Make(Bus),
@@ -799,7 +815,7 @@ module MakeWithConfig = (
   // Backend-aware storage for the UIFragment registry — the same functor every
   // other read model uses. Replaces a hand-rolled memory-only store that ignored
   // BackendState, so the registry now persists under SQLite too.
-  module UIFragmentStorage = QueryDbStorage_InMemory.Make(Bus)
+  module UIFragmentStorage = LocalQueryDbStorage.Make(Bus)
 
   let ensureUIFragmentRegistryQueryDbStore = () => {
     switch uiFragmentQueryDbOpsRef.contents {
@@ -1274,6 +1290,7 @@ module MakeWithConfig = (
       ~comp="Platform",
       switch Config.backend {
       | Backend.Memory => "backend: memory"
+      | Backend.Postgres({connection}) => `backend: postgres (${connection}, event-logs only)`
       | Backend.Sqlite({path, resetOnStart}) =>
         `backend: sqlite (${path}${resetOnStart ? ", resetOnStart" : ""})`
       },
@@ -1282,11 +1299,16 @@ module MakeWithConfig = (
     // BEFORE this session appends anything. Catch-up replays only (checkpoint,
     // bound] — this session's own events (Connect dispatches, user commands)
     // are live-delivered and must not be redelivered.
-    let projectionCatchup = BackendState.getDb()->Option.map(db => (
+    let projectionCatchup = BackendState.getSqliteDb()->Option.map(db => (
       db,
       ProjectionCheckpoint.maxPosition(db, ProjectionPending.Aggregate),
       ProjectionCheckpoint.maxPosition(db, ProjectionPending.Dcb),
     ))
+    // Postgres: read models are in-memory (rebuilt on every start), so capture the
+    // pre-session head NOW — before plugins build or this session appends — and
+    // full-replay (0, head] after the plugins register their projection handlers.
+    let pgProjectionCatchup =
+      BackendState.getPostgresPool()->Option.map(pool => (pool, PgProjectionCatchup.captureBounds(pool)))
 
     // Create scheduler and populate platform context refs.
     let scheduler = makeScheduler()
@@ -1389,8 +1411,8 @@ module MakeWithConfig = (
       seedUIFragmentRegistryQueryDb(~pluginComponents=plugins)
       seedPluginStructuresStore(~pluginComponents=plugins)
     }
-    switch projectionCatchup {
-    | Some((db, upperBound, dcbUpperBound)) =>
+    switch (projectionCatchup, pgProjectionCatchup) {
+    | (Some((db, upperBound, dcbUpperBound)), _) =>
       let _ =
         ProjectionCheckpoint.startupCatchup(~db, ~upperBound, ~dcbUpperBound, ~handlers=() =>
           Bus.projectionCatchupHandlers()
@@ -1403,7 +1425,23 @@ module MakeWithConfig = (
           seedAdminStores()
           Promise.resolve()
         })
-    | None => seedAdminStores()
+    | (_, Some((pool, boundsPromise))) =>
+      let _ =
+        boundsPromise
+        ->Promise.then(bounds =>
+          PgProjectionCatchup.startupCatchup(~pool, ~bounds, ~handlers=() =>
+            Bus.projectionCatchupHandlers()
+          )
+        )
+        ->Promise.catch(e => {
+          Console.error2("[Platform] postgres projection catch-up failed:", e)
+          Promise.resolve()
+        })
+        ->Promise.then(() => {
+          seedAdminStores()
+          Promise.resolve()
+        })
+    | (None, None) => seedAdminStores()
     }
 
     // Seed the built-in admin plugin's structure so its Auto UI (Plugin list with

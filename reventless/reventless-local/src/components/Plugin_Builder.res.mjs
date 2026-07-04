@@ -5,12 +5,12 @@ import * as LocalPluginSpec$ReventlessLocal from "../adapter/LocalPluginSpec.res
 import * as LocalQueryEngine$ReventlessLocal from "../adapter/QueryEngine/LocalQueryEngine.res.mjs";
 import * as LocalGraphQL_Adapter$ReventlessLocal from "../adapter/Api/LocalGraphQL_Adapter.res.mjs";
 import * as LocalHeartbeatRunner$ReventlessLocal from "../adapter/Heartbeat/LocalHeartbeatRunner.res.mjs";
+import * as LocalDcbEventLogStorage$ReventlessLocal from "../adapter/DcbEventLog/LocalDcbEventLogStorage.res.mjs";
 import * as LocalRuntimeEnvironment$ReventlessLocal from "../adapter/Runtime/LocalRuntimeEnvironment.res.mjs";
 import * as LocalCommandTopicChannel$ReventlessLocal from "../adapter/CommandTopic/LocalCommandTopicChannel.res.mjs";
 import * as LocalEventTopicPublisher$ReventlessLocal from "../adapter/EventTopic/LocalEventTopicPublisher.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "../adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
 import * as LocalPluginRuntime_Builder$ReventlessLocal from "../adapter/Runtime/LocalPluginRuntime_Builder.res.mjs";
-import * as DcbEventLogStorage_InMemory$ReventlessLocal from "../adapter/DcbEventLog/DcbEventLogStorage_InMemory.res.mjs";
 import * as LocalCommandTopicRemoteChannel$ReventlessLocal from "../adapter/CommandTopic/LocalCommandTopicRemoteChannel.res.mjs";
 
 function Make(Bus) {
@@ -44,7 +44,7 @@ function Make(Bus) {
       forPluginHeartbeat: PluginRuntimeBuilder.forPluginHeartbeat,
       forDcbCommandTopic: PluginRuntimeBuilder.forDcbCommandTopic,
       finish: PluginRuntimeBuilder.finish
-    })(DcbEventLogStorage_InMemory$ReventlessLocal.Make(Bus))(LocalEventTopicPublisher$ReventlessLocal.Make(Bus))({
+    })(LocalDcbEventLogStorage$ReventlessLocal.Make(Bus))(LocalEventTopicPublisher$ReventlessLocal.Make(Bus))({
       make: $$let.make
     })({
       make: $$let$1.make

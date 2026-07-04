@@ -37,7 +37,7 @@ module MakeWithHooks = (
       RuntimeEnvironment,
       CommandGeneratorResolvers_GraphQL,
       CommandTopicChannel,
-      EventLogStorage_InMemory.Make(Bus),
+      LocalEventLogStorage.Make(Bus),
       EventTopicPublisher,
       EventCollectorChannel,
       AggregateRuntimeBuilder,

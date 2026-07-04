@@ -20,11 +20,19 @@ let stored = (eventType, tags, data): ReventlessCore.DcbEventLog_Adapter.rawStor
   meta: ReventlessCore.Message.generateMeta(~service="test"),
 }
 
+// Render a typed appendError for assertion diagnostics: an "expected Ok" guard
+// surfaces the real error message on failure instead of a meaningless literal.
+let appendErrMsg = e =>
+  switch e {
+  | ReventlessInfra.DcbEventLog.Conflict => "conflict"
+  | StorageFailure(m) => m
+  }
+
 describe("DcbEventLogStorage_Sqlite", () => {
   testPromise("append + read round-trips events with tags", async () => {
     await runUnderSqlite(async () => {
       module TestBus = LocalBus.Make()
-      module Storage = DcbEventLogStorage_InMemory.Make(TestBus)
+      module Storage = LocalDcbEventLogStorage.Make(TestBus)
       let s = Storage.make(
         ~name="dcb-rt",
         ~indexes=[],
@@ -42,7 +50,7 @@ describe("DcbEventLogStorage_Sqlite", () => {
       let result = await ops.append([e1])
       switch result {
       | Ok(_) => expect(true)->toBe(true)
-      | Error(m) => expect(m)->toBe("Ok")
+      | Error(e) => expect(appendErrMsg(e))->toBe("Ok")
       }
 
       let read = await ops.read(~query=[])
@@ -58,7 +66,7 @@ describe("DcbEventLogStorage_Sqlite", () => {
   testPromise("read filters by tag", async () => {
     await runUnderSqlite(async () => {
       module TestBus = LocalBus.Make()
-      module Storage = DcbEventLogStorage_InMemory.Make(TestBus)
+      module Storage = LocalDcbEventLogStorage.Make(TestBus)
       let s = Storage.make(
         ~name="dcb-tagfilter",
         ~indexes=[],
@@ -86,7 +94,7 @@ describe("DcbEventLogStorage_Sqlite", () => {
   testPromise("batched tag hydration preserves per-event tags and order", async () => {
     await runUnderSqlite(async () => {
       module TestBus = LocalBus.Make()
-      module Storage = DcbEventLogStorage_InMemory.Make(TestBus)
+      module Storage = LocalDcbEventLogStorage.Make(TestBus)
       let s = Storage.make(
         ~name="dcb-multitag",
         ~indexes=[],
@@ -128,7 +136,7 @@ describe("DcbEventLogStorage_Sqlite", () => {
   testPromise("append with a non-conflicting condition succeeds", async () => {
     await runUnderSqlite(async () => {
       module TestBus = LocalBus.Make()
-      module Storage = DcbEventLogStorage_InMemory.Make(TestBus)
+      module Storage = LocalDcbEventLogStorage.Make(TestBus)
       let s = Storage.make(
         ~name="dcb-noconflict",
         ~indexes=[],
@@ -149,7 +157,7 @@ describe("DcbEventLogStorage_Sqlite", () => {
       )
       switch result {
       | Ok(_) => expect(true)->toBe(true)
-      | Error(m) => expect(m)->toBe("expected Ok")
+      | Error(e) => expect(appendErrMsg(e))->toBe("Ok")
       }
       let read = await ops.read(~query=[])
       expect(read.events->Array.length)->toBe(2)
@@ -159,7 +167,7 @@ describe("DcbEventLogStorage_Sqlite", () => {
   testPromise("append with conflicting condition returns Error", async () => {
     await runUnderSqlite(async () => {
       module TestBus = LocalBus.Make()
-      module Storage = DcbEventLogStorage_InMemory.Make(TestBus)
+      module Storage = LocalDcbEventLogStorage.Make(TestBus)
       let s = Storage.make(
         ~name="dcb-conflict",
         ~indexes=[],
@@ -193,7 +201,7 @@ describe("DcbEventLogStorage_Sqlite", () => {
       let db = SqliteDriver.openDb(~path)
       BackendState.setSqlite(~db, ~path)
       module TestBus = LocalBus.Make()
-      module Storage = DcbEventLogStorage_InMemory.Make(TestBus)
+      module Storage = LocalDcbEventLogStorage.Make(TestBus)
       let s = Storage.make(
         ~name="persist",
         ~indexes=[],
@@ -214,7 +222,7 @@ describe("DcbEventLogStorage_Sqlite", () => {
     let db2 = SqliteDriver.openDb(~path)
     BackendState.setSqlite(~db=db2, ~path)
     module TestBus2 = LocalBus.Make()
-    module Storage2 = DcbEventLogStorage_InMemory.Make(TestBus2)
+    module Storage2 = LocalDcbEventLogStorage.Make(TestBus2)
     let s2 = Storage2.make(
       ~name="persist",
       ~indexes=[],

@@ -322,21 +322,35 @@ function makeStorage(db, name, param, param$1, param$2) {
     } catch (raw_msg) {
       let msg = Primitive_exceptions.internalToException(raw_msg);
       if (msg.RE_EXN_ID === "Failure") {
-        return {
-          TAG: "Error",
-          _0: msg._1
-        };
+        let msg$1 = msg._1;
+        if (msg$1.includes("conflict")) {
+          return {
+            TAG: "Error",
+            _0: "Conflict"
+          };
+        } else {
+          return {
+            TAG: "Error",
+            _0: {
+              TAG: "StorageFailure",
+              _0: msg$1
+            }
+          };
+        }
       }
-      let msg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(msg), Stdlib_JsExn.message), "");
-      if (msg$1.includes("constraint failed")) {
+      let msg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(msg), Stdlib_JsExn.message), "");
+      if (msg$2.includes("constraint failed")) {
         return {
           TAG: "Error",
-          _0: "conflict"
+          _0: "Conflict"
         };
       } else {
         return {
           TAG: "Error",
-          _0: msg$1 === "" ? "storage error" : msg$1
+          _0: {
+            TAG: "StorageFailure",
+            _0: msg$2 === "" ? "storage error" : msg$2
+          }
         };
       }
     }

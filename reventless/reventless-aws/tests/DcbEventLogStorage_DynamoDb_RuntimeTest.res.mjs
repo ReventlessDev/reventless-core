@@ -363,7 +363,12 @@ globalThis.describe("Runtime.appendUnconditional", () => {
       globalThis.expect("expected Error, got Ok").toBe("");
       return;
     }
-    globalThis.expect(result._0.includes("limit exceeded")).toBe(true);
+    let msg = result._0;
+    if (typeof msg !== "object") {
+      globalThis.expect("expected StorageFailure, got Conflict").toBe("");
+      return;
+    }
+    globalThis.expect(msg._0.includes("limit exceeded")).toBe(true);
   });
 });
 
@@ -683,7 +688,12 @@ globalThis.describe("Runtime.appendConditional", () => {
       globalThis.expect("expected Error, got Ok").toBe("");
       return;
     }
-    globalThis.expect(result._0.includes("tagless")).toBe(true);
+    let msg = result._0;
+    if (typeof msg !== "object") {
+      globalThis.expect("expected StorageFailure, got Conflict").toBe("");
+      return;
+    }
+    globalThis.expect(msg._0.includes("tagless")).toBe(true);
   });
   globalThis.test("rejects appends exceeding 100 items with a clear error", async () => {
     let manyTags = Stdlib_Array.fromInitializer(100, i => ({
@@ -716,7 +726,12 @@ globalThis.describe("Runtime.appendConditional", () => {
       globalThis.expect("expected Error, got Ok").toBe("");
       return;
     }
-    globalThis.expect(result._0.includes("limit exceeded")).toBe(true);
+    let msg = result._0;
+    if (typeof msg !== "object") {
+      globalThis.expect("expected StorageFailure, got Conflict").toBe("");
+      return;
+    }
+    globalThis.expect(msg._0.includes("limit exceeded")).toBe(true);
   });
 });
 

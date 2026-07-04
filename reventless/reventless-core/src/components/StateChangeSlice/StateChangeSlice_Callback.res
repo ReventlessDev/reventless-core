@@ -358,6 +358,12 @@ module Make = (
                     _ => Ok("ok"),
                   )
                 | Error(err) =>
+                  // Typed classification (was substring-matching the error string,
+                  // which disagreed with the backends' casing).
+                  let (errorCode, errDetail) = switch err {
+                  | ReventlessInfra.DcbEventLog.Conflict => ("Conflict", "conflict: condition check failed")
+                  | StorageFailure(msg) => ("AppendFailed", msg)
+                  }
                   if retries > 0 {
                     // Re-seed from the just-read snapshot so the retry reads only
                     // the delta the conflicting writer added, not full history.
@@ -369,13 +375,12 @@ module Make = (
                     EffectLogger.logWarn(
                       ~comp,
                       `append failed (retrying ${(maxRetries - retries + 1)
-                          ->Int.toString}/${maxRetries->Int.toString}): ${err}`,
+                          ->Int.toString}/${maxRetries->Int.toString}): ${errDetail}`,
                     )->Effect.flatMap(_ => attempt(~retries=retries - 1))
                   } else {
                     // Retries exhausted — drop any cached snapshot so the next
                     // command for this entity takes the cold full-read path.
                     cacheInvalidate()
-                    let errorCode = err->String.startsWith("Conflict") ? "Conflict" : "AppendFailed"
                     // A surfaced Conflict means the 3-retry loop could not absorb
                     // the contention — the operator signal for "this slice is hot"
                     // (consider sharding / async — Issue 10, §4 of the analysis).
@@ -384,12 +389,12 @@ module Make = (
                     }
                     CommandTopic_Helpers.reportRejected(
                       cmdJson.meta.msgId,
-                      {errorCode, errorDetail: err},
+                      {errorCode, errorDetail: errDetail},
                     )
                     EffectLogger.logError(
                       ~comp,
-                      `append failed, retries exhausted: ${err}`,
-                    )->Effect.map(_ => Error(err))
+                      `append failed, retries exhausted: ${errDetail}`,
+                    )->Effect.map(_ => Error(errDetail))
                   }
                 },
             )

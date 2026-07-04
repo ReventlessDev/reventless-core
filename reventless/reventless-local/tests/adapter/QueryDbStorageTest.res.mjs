@@ -5,7 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as LocalBus$ReventlessLocal from "../../src/adapter/LocalBus.res.mjs";
 import * as TestRunner$ReventlessLocal from "../../src/test/TestRunner.res.mjs";
-import * as QueryDbStorage_InMemory$ReventlessLocal from "../../src/adapter/QueryDb/QueryDbStorage_InMemory.res.mjs";
+import * as LocalQueryDbStorage$ReventlessLocal from "../../src/adapter/QueryDb/LocalQueryDbStorage.res.mjs";
 
 TestRunner$ReventlessLocal.setup();
 
@@ -15,7 +15,7 @@ globalThis.describe("QueryDbStorage_InMemory", () => {
   globalThis.describe("save and load", () => {
     globalThis.test("save stores state; loadStream retrieves it by id", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let s = Storage.make("rm1", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("id1", "value1", "Any", undefined);
@@ -25,7 +25,7 @@ globalThis.describe("QueryDbStorage_InMemory", () => {
     });
     globalThis.test("loadStream returns empty for unknown id", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let s = Storage.make("rm2", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("unknown")), param => Effect.succeed([])));
@@ -33,7 +33,7 @@ globalThis.describe("QueryDbStorage_InMemory", () => {
     });
     globalThis.test("save overwrites previous state for same id", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let s = Storage.make("rm3", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("id1", "old", "Any", undefined);
@@ -44,7 +44,7 @@ globalThis.describe("QueryDbStorage_InMemory", () => {
     });
     globalThis.test("load delegates to loadStream (backward-compat)", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let s = Storage.make("load-compat", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("compat-id", "compat-val", "Any", undefined);
@@ -59,7 +59,7 @@ globalThis.describe("QueryDbStorage_InMemory", () => {
   globalThis.describe("saveBatch", () => {
     globalThis.test("stores multiple items; loadStream retrieves each by id", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let s = Storage.make("rm4", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.saveBatch([
@@ -83,7 +83,7 @@ globalThis.describe("QueryDbStorage_InMemory", () => {
   globalThis.describe("count", () => {
     globalThis.test("returns the increment value (no real counting semantics)", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let s = Storage.make("rm5", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       let result = await ops.count("id1", "field", 5);
@@ -96,7 +96,7 @@ globalThis.describe("QueryDbStorage_InMemory", () => {
   globalThis.describe("delete", () => {
     globalThis.test("removes item; loadStream returns empty", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let s = Storage.make("rm6", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("del-id", "v", "Any", undefined);
@@ -106,7 +106,7 @@ globalThis.describe("QueryDbStorage_InMemory", () => {
     });
     globalThis.test("deleteBatch removes multiple items", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let s = Storage.make("rm7", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.saveBatch([
@@ -140,7 +140,7 @@ globalThis.describe("QueryDbStorage_InMemory", () => {
   globalThis.describe("scan registration", () => {
     globalThis.test("after save, scan function returns all stored items", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let s = Storage.make("scan-rm", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("s1", "item1", "Any", undefined);
@@ -151,7 +151,7 @@ globalThis.describe("QueryDbStorage_InMemory", () => {
     });
     globalThis.test("after delete, scan function excludes deleted item", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let s = Storage.make("scan-rm2", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("keep", "keep", "Any", undefined);

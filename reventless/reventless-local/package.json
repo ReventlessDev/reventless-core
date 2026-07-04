@@ -41,6 +41,7 @@
     "@reventlessdev/reventless-core": "workspace:*",
     "@reventlessdev/reventless-gwt": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-postgres": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "graphql": "^16.13.2",
     "graphql-ws": "^5.16.0",

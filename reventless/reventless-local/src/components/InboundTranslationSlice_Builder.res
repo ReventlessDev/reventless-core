@@ -2,7 +2,7 @@
 // Wires in-memory adapters and delegates to the core ReventlessCore.InboundTranslationSlice_Builder.
 
 module Make = (Bus: LocalBus.T) => {
-  module QueryDbStorage = QueryDbStorage_InMemory.Make(Bus)
+  module QueryDbStorage = LocalQueryDbStorage.Make(Bus)
   module QueryDbResolvers = QueryDbResolvers_GraphQL.Make(Bus)
 
   // InMemory api/apiRole are both unit

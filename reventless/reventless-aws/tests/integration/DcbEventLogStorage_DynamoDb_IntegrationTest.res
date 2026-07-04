@@ -44,7 +44,8 @@ let isOk = r =>
 
 let isConflict = r =>
   switch r {
-  | Error(msg) => msg->String.includes("Conflict")
+  | Error(ReventlessInfra.DcbEventLog.Conflict) => true
+  | Error(StorageFailure(_)) => false
   | Ok(_) => false
   }
 

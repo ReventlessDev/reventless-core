@@ -3,7 +3,7 @@
 import * as LocalBus$ReventlessLocal from "../../src/adapter/LocalBus.res.mjs";
 import * as TestRunner$ReventlessLocal from "../../src/test/TestRunner.res.mjs";
 import * as LocalQueryEngine$ReventlessLocal from "../../src/adapter/QueryEngine/LocalQueryEngine.res.mjs";
-import * as QueryDbStorage_InMemory$ReventlessLocal from "../../src/adapter/QueryDb/QueryDbStorage_InMemory.res.mjs";
+import * as LocalQueryDbStorage$ReventlessLocal from "../../src/adapter/QueryDb/LocalQueryDbStorage.res.mjs";
 
 TestRunner$ReventlessLocal.setup();
 
@@ -13,7 +13,7 @@ globalThis.describe("LocalQueryEngine", () => {
   globalThis.describe("query", () => {
     globalThis.test("query by id returns items saved in the matching QueryDbStorage", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
       let s = Storage.make("users", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
@@ -28,7 +28,7 @@ globalThis.describe("LocalQueryEngine", () => {
     });
     globalThis.test("query with explicit key overrides the id parameter", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
       let s = Storage.make("products", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
@@ -53,7 +53,7 @@ globalThis.describe("LocalQueryEngine", () => {
     });
     globalThis.test("query with Int id converts to string key for lookup", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
       let s = Storage.make("counters", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
@@ -69,7 +69,7 @@ globalThis.describe("LocalQueryEngine", () => {
   globalThis.describe("scan", () => {
     globalThis.test("scan returns all items from the matching QueryDbStorage", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
       let s = Storage.make("orders", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
@@ -90,7 +90,7 @@ globalThis.describe("LocalQueryEngine", () => {
   globalThis.describe("scan with ~limit", () => {
     globalThis.test("~limit=2 on a 5-item QueryDb returns exactly 2 items", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
       let s = Storage.make("items", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
@@ -105,7 +105,7 @@ globalThis.describe("LocalQueryEngine", () => {
     });
     globalThis.test("~limit larger than total returns all items (no padding)", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
       let s = Storage.make("things", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
@@ -117,7 +117,7 @@ globalThis.describe("LocalQueryEngine", () => {
     });
     globalThis.test("~limit=0 returns empty array", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
       let s = Storage.make("stuff", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
@@ -128,7 +128,7 @@ globalThis.describe("LocalQueryEngine", () => {
     });
     globalThis.test("~limit=3 on a 3-item QueryDb returns all 3 items", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
       let s = Storage.make("widgets", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);

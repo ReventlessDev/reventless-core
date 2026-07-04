@@ -235,27 +235,37 @@ function Make(Spec) {
                   }));
                 }
                 let err = appendResult._0;
+                let match;
+                match = typeof err !== "object" ? [
+                    "Conflict",
+                    "conflict: condition check failed"
+                  ] : [
+                    "AppendFailed",
+                    err._0
+                  ];
+                let errDetail = match[1];
+                let errorCode = match[0];
                 if (retries > 0) {
                   seed.contents = [
                     state,
                     headPosition
                   ];
                   Metrics$ReventlessCore.emitCount("AppendRetry", Spec.name, undefined);
-                  return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `append failed (retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString() + `): ` + err), () => attempt(retries - 1 | 0));
+                  return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `append failed (retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString() + `): ` + errDetail), () => attempt(retries - 1 | 0));
+                } else {
+                  cacheInvalidate();
+                  if (errorCode === "Conflict") {
+                    Metrics$ReventlessCore.emitCount("AppendConflict", Spec.name, undefined);
+                  }
+                  CommandTopic_Helpers$ReventlessCore.reportRejected(cmdJson.meta.msgId, {
+                    errorCode: errorCode,
+                    errorDetail: errDetail
+                  });
+                  return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `append failed, retries exhausted: ` + errDetail), () => ({
+                    TAG: "Error",
+                    _0: errDetail
+                  }));
                 }
-                cacheInvalidate();
-                let errorCode = err.startsWith("Conflict") ? "Conflict" : "AppendFailed";
-                if (errorCode === "Conflict") {
-                  Metrics$ReventlessCore.emitCount("AppendConflict", Spec.name, undefined);
-                }
-                CommandTopic_Helpers$ReventlessCore.reportRejected(cmdJson.meta.msgId, {
-                  errorCode: errorCode,
-                  errorDetail: err
-                });
-                return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `append failed, retries exhausted: ` + err), () => ({
-                  TAG: "Error",
-                  _0: err
-                }));
               });
             }
             cachePut([

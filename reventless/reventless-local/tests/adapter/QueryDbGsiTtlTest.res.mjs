@@ -6,6 +6,7 @@ import * as Effect from "effect/Effect";
 import * as LocalBus$ReventlessLocal from "../../src/adapter/LocalBus.res.mjs";
 import * as TestRunner$ReventlessLocal from "../../src/test/TestRunner.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "../../src/adapter/SqliteDriver.res.mjs";
+import * as LocalQueryDbStorage$ReventlessLocal from "../../src/adapter/QueryDb/LocalQueryDbStorage.res.mjs";
 import * as QueryDbStorage_Sqlite$ReventlessLocal from "../../src/adapter/QueryDb/QueryDbStorage_Sqlite.res.mjs";
 import * as QueryDbStorage_InMemory$ReventlessLocal from "../../src/adapter/QueryDb/QueryDbStorage_InMemory.res.mjs";
 
@@ -168,7 +169,7 @@ globalThis.describe("QueryDb — indexed equality lookup (B4 push-down)", () => 
   globalThis.test("in-memory lookup matches the sqlite result (backend parity)", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
-    let s = Storage.makeMemory("orders", [byOwner], undefined, undefined, undefined, undefined, opts);
+    let s = Storage.make("orders", [byOwner], undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     await ops.save("k1", item("o1"), "Any", undefined);
     await ops.save("k2", item("o2"), "Any", undefined);
@@ -183,7 +184,7 @@ globalThis.describe("QueryDb — indexed equality lookup (B4 push-down)", () => 
 globalThis.describe("QueryDbStorage_InMemory — lazy scan snapshot (B4 dirty-flag)", () => {
   globalThis.test("interleaved save/scan reflects each write without stale reads", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
-    let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+    let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
     let s = Storage.make("lazy", [], undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let scanFn = Stdlib_Option.getOrThrow(TestBus.getQueryDbScan("lazy"), undefined);

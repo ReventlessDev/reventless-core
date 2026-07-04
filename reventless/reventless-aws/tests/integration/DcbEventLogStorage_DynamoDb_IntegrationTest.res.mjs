@@ -41,9 +41,9 @@ function isOk(r) {
 function isConflict(r) {
   if (r.TAG === "Ok") {
     return false;
-  } else {
-    return r._0.includes("Conflict");
   }
+  let tmp = r._0;
+  return typeof tmp !== "object";
 }
 
 async function readAfter(table, query) {

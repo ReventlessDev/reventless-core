@@ -641,7 +641,7 @@ async function runTransactWrite(input, basePosition, errorPrefix) {
       case "StaleState" :
         return Effect$1.succeed({
           TAG: "Error",
-          _0: `Conflict: ` + err._0
+          _0: "Conflict"
         });
       case "Transient" :
       case "Permanent" :
@@ -649,7 +649,10 @@ async function runTransactWrite(input, basePosition, errorPrefix) {
     }
     return Effect$1.succeed({
       TAG: "Error",
-      _0: errorPrefix + `: ` + err._0
+      _0: {
+        TAG: "StorageFailure",
+        _0: errorPrefix + `: ` + err._0
+      }
     });
   }));
 }
@@ -666,7 +669,10 @@ async function appendUnconditional(table, events, partitionTag) {
   if (totalItems > 100) {
     return {
       TAG: "Error",
-      _0: `DCB append: TransactWriteItems limit exceeded (` + totalItems.toString() + ` > ` + (100).toString() + `); reduce events or distinct tag values per command`
+      _0: {
+        TAG: "StorageFailure",
+        _0: `DCB append: TransactWriteItems limit exceeded (` + totalItems.toString() + ` > ` + (100).toString() + `); reduce events or distinct tag values per command`
+      }
     };
   }
   let basePosition = generatePosition();
@@ -908,7 +914,10 @@ async function appendConditional(table, events, cond, partitionTag, crossPartiti
   if (queryTags.length === 0) {
     return {
       TAG: "Error",
-      _0: "DCB append: tagless conditions are not supported on DynamoDB — every queryItem must have at least one tag"
+      _0: {
+        TAG: "StorageFailure",
+        _0: "DCB append: tagless conditions are not supported on DynamoDB — every queryItem must have at least one tag"
+      }
     };
   }
   let basePosition = generatePosition();
@@ -917,7 +926,10 @@ async function appendConditional(table, events, cond, partitionTag, crossPartiti
   if (totalItems > 100) {
     return {
       TAG: "Error",
-      _0: `DCB append: TransactWriteItems limit exceeded (` + totalItems.toString() + ` > ` + (100).toString() + `); reduce events or distinct tag values per command`
+      _0: {
+        TAG: "StorageFailure",
+        _0: `DCB append: TransactWriteItems limit exceeded (` + totalItems.toString() + ` > ` + (100).toString() + `); reduce events or distinct tag values per command`
+      }
     };
   }
   let input = {

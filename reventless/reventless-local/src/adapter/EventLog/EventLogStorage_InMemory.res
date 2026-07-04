@@ -105,22 +105,10 @@ let makeMemoryStorage = (~name as _name, ~opts as _) => {
 // Alias retained for tests that still want the pure-memory implementation.
 let makeStorage = makeMemoryStorage
 
+// Pure in-memory storageMaker (no BackendState dispatch, no Bus). Backend
+// selection lives in LocalEventLogStorage.Make — this file holds only the
+// in-memory implementation, as its name says.
 let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~opts) => {
   let (_, _, storage) = makeMemoryStorage(~name, ~opts)
   storage
-}
-
-module Make = (Bus: LocalBus.T) => {
-  let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~opts) => {
-    switch BackendState.getDb() {
-    | Some(db) =>
-      let (storageName, replay, storage) = EventLogStorage_Sqlite.makeStorage(~db, ~name, ~opts)
-      Bus.registerEventLogReplay(storageName, replay)
-      storage
-    | None =>
-      let (storageName, replay, storage) = makeMemoryStorage(~name, ~opts)
-      Bus.registerEventLogReplay(storageName, replay)
-      storage
-    }
-  }
 }

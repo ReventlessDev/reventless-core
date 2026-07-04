@@ -5,7 +5,7 @@ import * as LocalBus$ReventlessLocal from "../../src/adapter/LocalBus.res.mjs";
 import * as TestRunner$ReventlessLocal from "../../src/test/TestRunner.res.mjs";
 import * as BackendState$ReventlessLocal from "../../src/adapter/BackendState.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "../../src/adapter/SqliteDriver.res.mjs";
-import * as DcbEventLogStorage_InMemory$ReventlessLocal from "../../src/adapter/DcbEventLog/DcbEventLogStorage_InMemory.res.mjs";
+import * as LocalDcbEventLogStorage$ReventlessLocal from "../../src/adapter/DcbEventLog/LocalDcbEventLogStorage.res.mjs";
 
 TestRunner$ReventlessLocal.setup();
 
@@ -28,10 +28,18 @@ function stored(eventType, tags, data) {
   };
 }
 
+function appendErrMsg(e) {
+  if (typeof e !== "object") {
+    return "conflict";
+  } else {
+    return e._0;
+  }
+}
+
 globalThis.describe("DcbEventLogStorage_Sqlite", () => {
   globalThis.test("append + read round-trips events with tags", async () => await runUnderSqlite(async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
-    let Storage = DcbEventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
+    let Storage = LocalDcbEventLogStorage$ReventlessLocal.Make(TestBus);
     let s = Storage.make("dcb-rt", [], {
       TAG: "Simple",
       _0: {
@@ -50,7 +58,7 @@ globalThis.describe("DcbEventLogStorage_Sqlite", () => {
     if (result.TAG === "Ok") {
       globalThis.expect(true).toBe(true);
     } else {
-      globalThis.expect(result._0).toBe("Ok");
+      globalThis.expect(appendErrMsg(result._0)).toBe("Ok");
     }
     let read = await ops.read([], undefined);
     globalThis.expect(read.events.length).toBe(1);
@@ -62,7 +70,7 @@ globalThis.describe("DcbEventLogStorage_Sqlite", () => {
   }));
   globalThis.test("read filters by tag", async () => await runUnderSqlite(async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
-    let Storage = DcbEventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
+    let Storage = LocalDcbEventLogStorage$ReventlessLocal.Make(TestBus);
     let s = Storage.make("dcb-tagfilter", [], {
       TAG: "Simple",
       _0: {
@@ -90,7 +98,7 @@ globalThis.describe("DcbEventLogStorage_Sqlite", () => {
   }));
   globalThis.test("batched tag hydration preserves per-event tags and order", async () => await runUnderSqlite(async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
-    let Storage = DcbEventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
+    let Storage = LocalDcbEventLogStorage$ReventlessLocal.Make(TestBus);
     let s = Storage.make("dcb-multitag", [], {
       TAG: "Simple",
       _0: {
@@ -141,7 +149,7 @@ globalThis.describe("DcbEventLogStorage_Sqlite", () => {
   }));
   globalThis.test("append with a non-conflicting condition succeeds", async () => await runUnderSqlite(async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
-    let Storage = DcbEventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
+    let Storage = LocalDcbEventLogStorage$ReventlessLocal.Make(TestBus);
     let s = Storage.make("dcb-noconflict", [], {
       TAG: "Simple",
       _0: {
@@ -169,14 +177,14 @@ globalThis.describe("DcbEventLogStorage_Sqlite", () => {
     if (result.TAG === "Ok") {
       globalThis.expect(true).toBe(true);
     } else {
-      globalThis.expect(result._0).toBe("expected Ok");
+      globalThis.expect(appendErrMsg(result._0)).toBe("Ok");
     }
     let read = await ops.read([], undefined);
     globalThis.expect(read.events.length).toBe(2);
   }));
   globalThis.test("append with conflicting condition returns Error", async () => await runUnderSqlite(async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
-    let Storage = DcbEventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
+    let Storage = LocalDcbEventLogStorage$ReventlessLocal.Make(TestBus);
     let s = Storage.make("dcb-conflict", [], {
       TAG: "Simple",
       _0: {
@@ -210,7 +218,7 @@ globalThis.describe("DcbEventLogStorage_Sqlite", () => {
     let db = SqliteDriver$ReventlessLocal.openDb(path);
     BackendState$ReventlessLocal.setSqlite(db, path);
     let TestBus = LocalBus$ReventlessLocal.Make({});
-    let Storage = DcbEventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
+    let Storage = LocalDcbEventLogStorage$ReventlessLocal.Make(TestBus);
     let s = Storage.make("persist", [], {
       TAG: "Simple",
       _0: {
@@ -228,7 +236,7 @@ globalThis.describe("DcbEventLogStorage_Sqlite", () => {
     let db2 = SqliteDriver$ReventlessLocal.openDb(path);
     BackendState$ReventlessLocal.setSqlite(db2, path);
     let TestBus2 = LocalBus$ReventlessLocal.Make({});
-    let Storage2 = DcbEventLogStorage_InMemory$ReventlessLocal.Make(TestBus2);
+    let Storage2 = LocalDcbEventLogStorage$ReventlessLocal.Make(TestBus2);
     let s2 = Storage2.make("persist", [], {
       TAG: "Simple",
       _0: {
@@ -247,5 +255,6 @@ export {
   opts,
   runUnderSqlite,
   stored,
+  appendErrMsg,
 }
 /*  Not a pure module */

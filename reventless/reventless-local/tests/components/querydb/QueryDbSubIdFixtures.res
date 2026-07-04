@@ -33,7 +33,7 @@ let _ = TestRunner.setup()
 // Build QueryDb using in-memory adapters
 // ─────────────────────────────────────────────────────────────
 
-module QDbStorage = QueryDbStorage_InMemory.Make(Bus)
+module QDbStorage = LocalQueryDbStorage.Make(Bus)
 module QDbResolvers = ReventlessCore.QueryDb_Adapter.NoResolvers(QDbStorage)
 module MetricQueryDbMaker = ReventlessCore.QueryDb_Builder.Make(
   MetricSpec,

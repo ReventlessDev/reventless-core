@@ -27,7 +27,7 @@ type operations = {
   append: (
     array<rawStoredEvent>,
     ~condition: Reventless.DcbTag.appendCondition=?,
-  ) => promise<result<Reventless.DcbTag.sequencePosition, string>>,
+  ) => promise<result<Reventless.DcbTag.sequencePosition, ReventlessInfra.DcbEventLog.appendError>>,
   readStream: (
     ~query: Reventless.DcbTag.query,
     ~after: Reventless.DcbTag.sequencePosition=?,

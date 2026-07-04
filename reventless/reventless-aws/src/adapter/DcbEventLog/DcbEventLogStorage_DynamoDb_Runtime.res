@@ -595,7 +595,7 @@ let read = (table: resolvedTable, ~crossPartitionTagKeys: array<string>=[]) =>
 //
 // All Puts and Updates ride a single `TransactWriteItems` call — atomic by
 // DynamoDB. Conflicts surface as `TransactionCanceledException` →
-// `DynamoDb_Error.StaleState` → `Error("Conflict: …")`.
+// `DynamoDb_Error.StaleState` → `Error(DcbEventLog.Conflict)`.
 
 let fenceSortKey = "FENCE"
 
@@ -861,9 +861,9 @@ let runTransactWrite = async (
   ->Effect.map(_ => Ok(basePosition))
   ->Effect.catchAll(err =>
     switch err {
-    | DynamoDb_Error.StaleState(msg) => Effect.succeed(Error(`Conflict: ${msg}`))
+    | DynamoDb_Error.StaleState(_msg) => Effect.succeed(Error(ReventlessInfra.DcbEventLog.Conflict))
     | Transient(msg) | Permanent(msg) =>
-      Effect.succeed(Error(`${errorPrefix}: ${msg}`))
+      Effect.succeed(Error(ReventlessInfra.DcbEventLog.StorageFailure(`${errorPrefix}: ${msg}`)))
     }
   )
   ->Effect.runPromise
@@ -886,7 +886,9 @@ let appendUnconditional = async (
     Ok(generatePosition())
   } else if totalItems > transactWriteItemsLimit {
     Error(
-      `DCB append: TransactWriteItems limit exceeded (${totalItems->Int.toString} > ${transactWriteItemsLimit->Int.toString}); reduce events or distinct tag values per command`,
+      ReventlessInfra.DcbEventLog.StorageFailure(
+        `DCB append: TransactWriteItems limit exceeded (${totalItems->Int.toString} > ${transactWriteItemsLimit->Int.toString}); reduce events or distinct tag values per command`,
+      ),
     )
   } else {
     let basePosition = generatePosition()
@@ -1211,7 +1213,9 @@ let appendConditional = async (
 
   if queryTags->Array.length == 0 {
     Error(
-      "DCB append: tagless conditions are not supported on DynamoDB — every queryItem must have at least one tag",
+      ReventlessInfra.DcbEventLog.StorageFailure(
+        "DCB append: tagless conditions are not supported on DynamoDB — every queryItem must have at least one tag",
+      ),
     )
   } else {
     let basePosition = generatePosition()
@@ -1219,7 +1223,9 @@ let appendConditional = async (
     let totalItems = transactItems->Array.length
     if totalItems > transactWriteItemsLimit {
       Error(
-        `DCB append: TransactWriteItems limit exceeded (${totalItems->Int.toString} > ${transactWriteItemsLimit->Int.toString}); reduce events or distinct tag values per command`,
+        ReventlessInfra.DcbEventLog.StorageFailure(
+          `DCB append: TransactWriteItems limit exceeded (${totalItems->Int.toString} > ${transactWriteItemsLimit->Int.toString}); reduce events or distinct tag values per command`,
+        ),
       )
     } else {
       let input: TransactWriteCommand.input = {transactItems: transactItems}

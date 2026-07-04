@@ -4,16 +4,30 @@ import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as LocalBus$ReventlessLocal from "../../src/adapter/LocalBus.res.mjs";
 import * as TestRunner$ReventlessLocal from "../../src/test/TestRunner.res.mjs";
+import * as PgDriver$ReventlessPostgres from "@reventlessdev/reventless-postgres/src/PgDriver.res.mjs";
+import * as PgSchema$ReventlessPostgres from "@reventlessdev/reventless-postgres/src/PgSchema.res.mjs";
 import * as BackendState$ReventlessLocal from "../../src/adapter/BackendState.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "../../src/adapter/SqliteDriver.res.mjs";
-import * as QueryDbStorage_InMemory$ReventlessLocal from "../../src/adapter/QueryDb/QueryDbStorage_InMemory.res.mjs";
-import * as EventLogStorage_InMemory$ReventlessLocal from "../../src/adapter/EventLog/EventLogStorage_InMemory.res.mjs";
+import * as LocalQueryDbStorage$ReventlessLocal from "../../src/adapter/QueryDb/LocalQueryDbStorage.res.mjs";
+import * as LocalEventLogStorage$ReventlessLocal from "../../src/adapter/EventLog/LocalEventLogStorage.res.mjs";
 
 TestRunner$ReventlessLocal.setup();
 
 let opts = {};
+
+let pgPool = Stdlib_Option.map(process.env["PG_URL"], url => PgDriver$ReventlessPostgres.makePool({
+  connectionString: url
+}));
+
+globalThis.afterAll(() => {
+  if (pgPool !== undefined) {
+    PgDriver$ReventlessPostgres.endPool(Primitive_option.valFromOption(pgPool));
+    return;
+  }
+});
 
 async function runUnderMemory(fn) {
   BackendState$ReventlessLocal.setMemory();
@@ -28,11 +42,23 @@ async function runUnderSqlite(fn) {
   return SqliteDriver$ReventlessLocal.close(db);
 }
 
+async function runUnderPostgres(fn) {
+  if (pgPool === undefined) {
+    return;
+  }
+  let pool = Primitive_option.valFromOption(pgPool);
+  await PgSchema$ReventlessPostgres.ensureSchema(pool);
+  await PgSchema$ReventlessPostgres.truncateAll(pool);
+  BackendState$ReventlessLocal.setPostgres(pool);
+  await fn();
+  return BackendState$ReventlessLocal.setMemory();
+}
+
 globalThis.describe("Backend parity (Memory vs Sqlite)", () => {
   globalThis.test("EventLog: append + replay returns the same events under both", async () => {
     let scenario = async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = EventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalEventLogStorage$ReventlessLocal.Make(TestBus);
       let s = Storage.make("parity-events", opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       let e1 = Object.fromEntries([[
@@ -51,12 +77,13 @@ globalThis.describe("Backend parity (Memory vs Sqlite)", () => {
       globalThis.expect(replayed[1]).toEqual(e2);
     };
     await runUnderMemory(scenario);
-    return await runUnderSqlite(scenario);
+    await runUnderSqlite(scenario);
+    return await runUnderPostgres(scenario);
   });
   globalThis.test("QueryDb: save + loadStream returns the same item under both", async () => {
     let scenario = async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let s = Storage.make("parity-qdb", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("k", "val", "Any", undefined);
@@ -70,7 +97,7 @@ globalThis.describe("Backend parity (Memory vs Sqlite)", () => {
   globalThis.test("QueryDb: count returns a running total and loadStream reflects it under both", async () => {
     let scenario = async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let s = Storage.make("parity-count", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       let r1 = await ops.count("prod-1", "orderCount", 3);
@@ -94,7 +121,7 @@ globalThis.describe("Backend parity (Memory vs Sqlite)", () => {
   globalThis.test("QueryDb: an expired-TTL item is filtered from loadStream under both", async () => {
     let scenario = async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let s = Storage.make("parity-ttl", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       let item = k => Object.fromEntries([[
@@ -113,7 +140,7 @@ globalThis.describe("Backend parity (Memory vs Sqlite)", () => {
   globalThis.test("EventLog: conflict detection works under both", async () => {
     let scenario = async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
-      let Storage = EventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
+      let Storage = LocalEventLogStorage$ReventlessLocal.Make(TestBus);
       let s = Storage.make("parity-conflict", opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       let e = Object.fromEntries([[
@@ -129,13 +156,16 @@ globalThis.describe("Backend parity (Memory vs Sqlite)", () => {
       globalThis.expect(true).toBe(true);
     };
     await runUnderMemory(scenario);
-    return await runUnderSqlite(scenario);
+    await runUnderSqlite(scenario);
+    return await runUnderPostgres(scenario);
   });
 });
 
 export {
   opts,
+  pgPool,
   runUnderMemory,
   runUnderSqlite,
+  runUnderPostgres,
 }
 /*  Not a pure module */

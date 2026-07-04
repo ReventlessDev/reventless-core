@@ -12,6 +12,7 @@
 type active =
   | Memory
   | Sqlite({db: SqliteDriver.t, path: string})
+  | Postgres({pool: ReventlessPostgres.PgDriver.pool})
 
 let current: ref<active> = ref(Memory)
 
@@ -19,16 +20,20 @@ let setMemory = () => current := Memory
 
 let setSqlite = (~db, ~path) => current := Sqlite({db, path})
 
-let getDb = () =>
+let setPostgres = (~pool) => current := Postgres({pool: pool})
+
+// Per-backend handle accessors, symmetric across the SQL backends: each returns
+// Some only when that backend is active. Dispatching adapters
+// (LocalEventLogStorage, LocalDcbEventLogStorage, LocalQueryDbStorage,
+// LocalTaskBucket) switch on these to select their concrete implementation.
+let getSqliteDb = () =>
   switch current.contents {
   | Sqlite({db}) => Some(db)
-  | Memory => None
+  | Memory | Postgres(_) => None
   }
 
-// True when the active backend is SQLite — used by adapters that want to swap
-// their implementation entirely, not just their data access.
-let isSqlite = () =>
+let getPostgresPool = () =>
   switch current.contents {
-  | Sqlite(_) => true
-  | Memory => false
+  | Postgres({pool}) => Some(pool)
+  | Memory | Sqlite(_) => None
   }

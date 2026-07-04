@@ -60,15 +60,30 @@ type read = (
 ) => promise<readResult>
 
 /**
+Typed DCB append outcome — mirrors `EventLog.appendError`. `Conflict` is the
+optimistic-concurrency sentinel (the append-condition failed: a matching event
+was written since `condition.after`), which the slice callback retries by
+re-reading and re-deciding. Every other failure is a `StorageFailure` carrying
+its message. Replaces the former string sentinel that conflated the two — a
+storage error whose text happened to contain "conflict" would have been retried
+forever, and backends disagreed on the sentinel's casing so conflict metrics were
+misclassified across backends.
+*/
+type appendError =
+  | Conflict
+  | StorageFailure(string)
+
+/**
 Appends raw events to the DCB log with optional optimistic-concurrency checking.
 
-Returns `Ok(position)` on success or `Error(reason)` if the append condition
-was violated (i.e. the log was modified since `condition.after`).
+Returns `Ok(position)` on success or `Error(Conflict)` if the append condition
+was violated (i.e. the log was modified since `condition.after`), or
+`Error(StorageFailure(_))` on any other failure.
 */
 type append = (
   array<rawEvent>,
   ~condition: Reventless.DcbTag.appendCondition=?,
-) => promise<result<Reventless.DcbTag.sequencePosition, string>>
+) => promise<result<Reventless.DcbTag.sequencePosition, appendError>>
 
 /**
 Streams events from the DCB log matching the given query.
@@ -91,7 +106,7 @@ Use for high-throughput batch imports.
 type appendStream = (
   Stream.t<rawEvent, string, unit>,
   ~condition: Reventless.DcbTag.appendCondition=?,
-) => Effect.t<result<Reventless.DcbTag.sequencePosition, string>, string, unit>
+) => Effect.t<result<Reventless.DcbTag.sequencePosition, appendError>, string, unit>
 
 /**
 Runtime operations exposed by a `DcbEventLog` component.

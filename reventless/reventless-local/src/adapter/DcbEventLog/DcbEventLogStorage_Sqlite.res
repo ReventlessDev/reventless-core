@@ -322,7 +322,7 @@ let makeStorage = (
   let append = async (
     newEvents: array<DcbEventLog_Adapter.rawStoredEvent>,
     ~condition=?,
-  ): result<DcbTag.sequencePosition, string> => {
+  ): result<DcbTag.sequencePosition, ReventlessInfra.DcbEventLog.appendError> => {
     let result = ref(Ok(""))
     // (msgId, dcb_event rowid) per inserted event, for the projection
     // checkpoint's DCB-axis pending set. The rowid is read immediately after
@@ -379,17 +379,20 @@ let makeStorage = (
       ProjectionPending.trackAppended(~axis=ProjectionPending.Dcb, appended)
       result.contents
     } catch {
-    | Failure(msg) => Error(msg)
+    // The deliberate append-condition failure throws Failure("conflict: …").
+    | Failure(msg) =>
+      msg->String.includes("conflict")
+        ? Error(ReventlessInfra.DcbEventLog.Conflict)
+        : Error(StorageFailure(msg))
     | exn =>
-      // The deliberate append-condition failure above throws
-      // Failure("conflict: …"); a lost race on the computed position shows up here
-      // as a PRIMARY KEY / UNIQUE violation — also a genuine conflict. Every other
-      // failure (disk full, SQL error, locked db) must surface as a real error,
-      // not the retryable "conflict" sentinel that would be retried forever.
+      // A lost race on the computed position shows up here as a PRIMARY KEY /
+      // UNIQUE violation — also a genuine conflict. Every other failure (disk
+      // full, SQL error, locked db) is a real StorageFailure, not the retryable
+      // Conflict sentinel that would be retried forever.
       let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("")
       msg->String.includes("constraint failed")
-        ? Error("conflict")
-        : Error(msg == "" ? "storage error" : msg)
+        ? Error(ReventlessInfra.DcbEventLog.Conflict)
+        : Error(StorageFailure(msg == "" ? "storage error" : msg))
     }
   }
 
@@ -414,4 +417,4 @@ let makeStorage = (
 }
 
 // No `Make(Bus)` functor here on purpose — dispatch is centralised in
-// DcbEventLogStorage_InMemory.Make so callers only ever wire one module.
+// LocalDcbEventLogStorage.Make so callers only ever wire one module.

@@ -1,5 +1,133 @@
 # Plan: Postgres storage backend (`reventless-postgres`) + local-platform integration
 
+**Status**: In progress (2026-07-04) — package Phases A–D built & compiling clean;
+F2 concurrency suite written (skips without `PG_URL`). Awaiting a live Postgres
+to run F2 and validate the `dcb_append` concurrency core before the invasive
+Phase E local-platform integration. See **Progress** below.
+
+## Progress (2026-07-04)
+
+**Done — `reventless/reventless-postgres` package (compiles clean, zero warnings):**
+
+- **A1** `PgDriver.res(i)` — async `pg` wrapper (pool, `query`/`queryOne`/`exec`,
+  single-connection `transaction`, LISTEN/NOTIFY). Diverges from the sync
+  `SqliteDriver`: `pg` has no synchronous client, so makers stay synchronous
+  (close over the pool; operations are already async) and schema setup is a
+  separate async step.
+- **A2** `PgSchema.res` — idempotent `ensureSchema(pool)` (classic `event_log` +
+  `snapshot`, `dcb_event` with `xid8`/IDENTITY, `dcb_scope`, `dcb_subscription`,
+  GIN + btree indexes) and `truncateAll` for `resetOnStart`.
+- **A3** `EventLogStorage_Postgres.res` — classic OCC as a single atomic guarded
+  `INSERT … SELECT … WHERE $seq = expected_next` (gap-proof; racing writers
+  collide on the PK → Conflict). `payload jsonb` returns pre-parsed.
+- **B1** `dcb_append(log, events, condition, lock_strategy)` PL/pgSQL: scoped
+  advisory locks (`hashtextextended`, namespaced per log, sorted acquisition) +
+  **exact server-side condition check** (the `DcbTag.query` is passed as a jsonb
+  AST and compiled to SQL in `dcb_condition_where`, all values `quote_literal`-d)
+  + insert + `pg_notify`. One round trip, transaction-scoped.
+- **B2** Cursor `<xid8>:<position>` (each zero-padded to 20 → string sort ==
+  numeric sort); reads apply the `pg_snapshot_xmin` barrier; the condition
+  check uses the **same two-column `(transaction_id, position)` comparison** as
+  reads (decoded from the cursor), so read→decide→append is exact. The append
+  check deliberately skips the fence (must see latest committed state).
+- **B3** `readStream` — real keyset pagination via `Stream.paginateEffect` on
+  `(transaction_id, position)`.
+- **B4** `~lockStrategy` `#AdvisoryLocks` (default) / `#RowLocks` (`dcb_scope`
+  `FOR UPDATE`), threaded into `dcb_append`.
+- **C1** `QueryDbStorage_Postgres.res` — JSONB document tables implementing the
+  clean `QueryDb_Adapter.storageMaker` (the DynamoDB shape, **no in-process
+  bus**; the local bus bridge is an E concern). Async schema gated behind a
+  `ready` promise. **C2** `QueryEnginePostgres.res` — query/scan filter AST → SQL.
+- **D1/D2** `PgChangeFeed.res` — checkpointed fenced read + `dcb_subscription`
+  checkpoints + LISTEN wakeup + a `drain` reference consumer. The feed-consumer
+  API (`readBatch`/`loadCheckpoint`/`saveCheckpoint`/`listen`/`drain`) is the
+  documented public surface.
+- **F2** `tests/PostgresIntegrationTest.res` — classic OCC, DCB round-trip,
+  conditional-append conflict, **two-writer write-skew (both lock strategies)**,
+  cursor monotonicity, change-feed drain. Skips unless `PG_URL` is set.
+
+**Design decisions / deviations from the draft (all deliberate):**
+
+1. **Async driver, not a `SqliteDriver.resi` mirror.** No synchronous Postgres
+   client exists in Node. Storage *operations* are already async so they fit;
+   only *schema setup* moved out to an explicit async step.
+2. **Condition check is server-side from a jsonb AST** (not a host-compiled
+   WHERE), keeping `dcb_append` a single round trip as the plan's B1 intends,
+   while still "compiling `DcbTag.query` to SQL as the SQLite backend does".
+3. **`dcb_append` returns the encoded cursor** (not a bare position) so
+   read→decide→append round-trips on both columns.
+4. **`hashtextextended`** replaces hand-rolled FNV-1a — a stable Postgres
+   built-in; collisions only coarsen locking, never affect correctness.
+5. **Projection-checkpoint seam is an injected `~onAppended` callback**
+   (`ProjectionPending`/`ProjectionCheckpoint` are reventless-local-only), so the
+   package stays free of local-platform coupling.
+6. **QueryDb split**: the package ships the clean bus-less storage; the
+   bus-coupled variant lives in the local platform (E).
+
+**VALIDATED against live Postgres 16 (2026-07-05):** F2 suite — 8/8 green,
+including two-writer write-skew (both lock strategies) and a 12-writer hot-tag
+test (exactly one wins, no lost updates). The `dcb_append` concurrency core is
+proven: `xid8` casts, `hashtextextended` advisory locks, the xmin barrier,
+cursor encoding, `WITH ORDINALITY` ordering, and the guarded classic insert all
+behave correctly.
+
+**Done — Phase E (local-platform integration):**
+
+- **E1** `Backend.postgres(~connection, ~resetOnStart)` — an **async smart
+  constructor** (connect + `ensureSchema` + optional truncate + `countAll`) that
+  returns a `Backend.Postgres({pool, initialCount, connection})` variant carrying
+  a ready pool, so `Platform.MakeWithConfig` stays a synchronous functor.
+  `BackendState` gains a `Postgres` arm + `setPostgres`/`getPostgresPool`.
+- **E2** Event-log dispatchers route to the Postgres runtime.
+  **Dispatch refactor (requested):** the backend switch was hoisted OUT of the
+  `*Storage_InMemory.res` files (a naming smell) into dedicated
+  `LocalEventLogStorage` / `LocalDcbEventLogStorage` / `LocalQueryDbStorage`
+  `Make(Bus)` modules; the `_InMemory` files now hold only the pure in-memory
+  impl. All ~50 `*Storage_InMemory.Make` call sites repointed. Full
+  reventless-local suite: **475/475 green**; whole monorepo builds clean.
+- **Scope (documented in code + Platform.res):** `Backend.Postgres` persists the
+  durable **event logs** (classic + DCB). Read models (QueryDb) route to the
+  in-memory live-query arm — the LocalBus scan/stream registrations are
+  synchronous and async pg can't satisfy them without a broader bus refactor; the
+  package's `QueryDbStorage_Postgres` remains available to deploy-time compute
+  layers. Tasks remain file/SQLite/memory-backed.
+- **Startup replay (`PgProjectionCatchup`):** because read models are in-memory
+  (empty on start), they are **rebuilt on every startup** by full-replaying the
+  durable pg event log `(0, head]` through the projection handlers — read models
+  are derived data, the log is the source of truth. The pre-session head is
+  captured before plugins build so this session's live-delivered events aren't
+  redelivered; envelopes are reconstructed by `ProjectionCheckpoint`'s builders so
+  they match live delivery exactly. No persisted checkpoint is needed (full
+  replay from 0). Validated live: `PgProjectionCatchupTest` (3/3).
+
+**Done — Phase F:**
+
+- **F1** `BackendParityTest.runUnderPostgres` (guarded on `PG_URL`) — the EventLog
+  scenarios run under Postgres alongside Memory/Sqlite. Green with and without a DB.
+- **F2** live concurrency suite — 8/8 (see above).
+- **F3** `.github/workflows/postgres.yml` — `postgres:16` service-container job.
+
+**Done — F4 (typed DCB `appendError`):** replaced the `Error("conflict")`
+substring convention with a typed variant `Conflict | StorageFailure(string)`,
+defined once in `ReventlessInfra.DcbEventLog` (mirrors `EventLog.appendError`) and
+threaded through the core adapter, all four backends (in-memory, SQLite, Postgres,
+DynamoDB), and the `StateChangeSlice_Callback` retry consumer. This also fixed a
+latent bug: the consumer classified conflicts via `String.startsWith("Conflict")`
+(capital) while local/pg backends emitted lowercase `"conflict"`, so real
+conflicts were **misclassified in metrics** — now a typed `switch`. All tests
+migrated. Validated: core DCB 160/160, local 476/476, postgres 8/8, AWS runtime
+45/45 (AWS integration compiles; needs a live DynamoDB to run).
+
+**Remaining:**
+
+- **Future (out of this plan):** async LocalBus QueryDb registrations → live
+  Postgres-backed read-model *tables* in the local platform (tiers #2/#3 from the
+  scope discussion). Not needed for correctness — startup replay already rebuilds
+  read models from the durable log; this would only add externally-inspectable
+  read-model tables + persisted incremental checkpoints.
+
+---
+
 **Status**: Draft (2026-07-03)
 **Nature**: feature plan. One new package `reventless/reventless-postgres`
 (`@reventlessdev/reventless-postgres`, Apache-2.0), a new backend option in

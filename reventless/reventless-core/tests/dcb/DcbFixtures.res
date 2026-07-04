@@ -167,7 +167,7 @@ let makeMockStorage = (): mockStorage => {
   let append = async (newEvents, ~condition=?) => {
     if failNextAppendsRef.contents > 0 {
       failNextAppendsRef := failNextAppendsRef.contents - 1
-      Error("conflict")
+      Error(ReventlessInfra.DcbEventLog.Conflict)
     } else {
       let conflictDetected = switch condition {
       | Some(cond: Reventless.DcbTag.appendCondition) =>
@@ -181,7 +181,7 @@ let makeMockStorage = (): mockStorage => {
       | None => false
       }
       if conflictDetected {
-        Error("conflict: condition check failed")
+        Error(ReventlessInfra.DcbEventLog.Conflict)
       } else {
         let storedEvents = newEvents->Array.map((event: DcbEventLog_Adapter.rawStoredEvent) => {
           position := position.contents + 1

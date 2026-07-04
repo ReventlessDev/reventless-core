@@ -7,9 +7,32 @@
 type t =
   | Memory
   | Sqlite({path: string, resetOnStart: bool})
+  // Carries a live, schema-ensured pool: `pg` has no synchronous client, and
+  // Platform.MakeWithConfig is a synchronous functor, so the async setup
+  // (connect + ensureSchema + count) is done by the `postgres` smart constructor
+  // BEFORE Make. `initialCount` seeds the event-tap counter; `connection` is
+  // retained for diagnostics only.
+  | Postgres({pool: ReventlessPostgres.PgDriver.pool, initialCount: int, connection: string})
 
 let memory = Memory
 let sqlite = (~path, ~resetOnStart=false) => Sqlite({path, resetOnStart})
+
+// Async constructor for the Postgres backend. Connects a pool, ensures the
+// schema/functions exist, truncates when resetOnStart, and pre-counts persisted
+// events. Await this before Platform.MakeWithConfig:
+//   let backend = await Backend.postgres(~connection="postgres://…")
+//   module Platform = Platform.MakeWithConfig({ …; let backend })
+let postgres = async (~connection, ~resetOnStart=false) => {
+  let pool = ReventlessPostgres.PgDriver.makePool({connectionString: connection})
+  await ReventlessPostgres.PgSchema.ensureSchema(pool)
+  if resetOnStart {
+    await ReventlessPostgres.PgSchema.truncateAll(pool)
+  }
+  let initialCount =
+    (await ReventlessPostgres.EventLogStorage_Postgres.countAll(pool)) +
+      (await ReventlessPostgres.DcbEventLogStorage_Postgres.countAll(pool))
+  Postgres({pool, initialCount, connection})
+}
 
 @val external processEnv: dict<string> = "process.env"
 

@@ -68,7 +68,10 @@ function make(nameOpt, indexesOpt, optsOpt) {
       failNextAppends.contents = failNextAppends.contents - 1 | 0;
       return {
         TAG: "Error",
-        _0: "mock append failure"
+        _0: {
+          TAG: "StorageFailure",
+          _0: "mock append failure"
+        }
       };
     }
     let conflictDetected = condition !== undefined ? events.contents.some(event => {
@@ -83,7 +86,7 @@ function make(nameOpt, indexesOpt, optsOpt) {
     if (conflictDetected) {
       return {
         TAG: "Error",
-        _0: "conflict: condition check failed"
+        _0: "Conflict"
       };
     }
     let storedEvents = newEvents.map(event => {

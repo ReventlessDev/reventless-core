@@ -11,7 +11,7 @@ describe("QueryDbStorage_InMemory", () => {
   describe("save and load", () => {
     testPromise("save stores state; loadStream retrieves it by id", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       let s = Storage.make(~name="rm1", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("id1", JSON.Encode.string("value1"), ReventlessCore.QueryDb.Any, None)
@@ -26,7 +26,7 @@ describe("QueryDbStorage_InMemory", () => {
 
     testPromise("loadStream returns empty for unknown id", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       let s = Storage.make(~name="rm2", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
       let items =
@@ -39,7 +39,7 @@ describe("QueryDbStorage_InMemory", () => {
 
     testPromise("save overwrites previous state for same id", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       let s = Storage.make(~name="rm3", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("id1", JSON.Encode.string("old"), ReventlessCore.QueryDb.Any, None)
@@ -55,7 +55,7 @@ describe("QueryDbStorage_InMemory", () => {
 
     testPromise("load delegates to loadStream (backward-compat)", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       let s = Storage.make(~name="load-compat", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("compat-id", JSON.Encode.string("compat-val"), ReventlessCore.QueryDb.Any, None)
@@ -68,7 +68,7 @@ describe("QueryDbStorage_InMemory", () => {
   describe("saveBatch", () => {
     testPromise("stores multiple items; loadStream retrieves each by id", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       let s = Storage.make(~name="rm4", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.saveBatch([
@@ -93,7 +93,7 @@ describe("QueryDbStorage_InMemory", () => {
   describe("count", () => {
     testPromise("returns the increment value (no real counting semantics)", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       let s = Storage.make(~name="rm5", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
       let result = await ops.count("id1", "field", 5)
@@ -104,7 +104,7 @@ describe("QueryDbStorage_InMemory", () => {
   describe("delete", () => {
     testPromise("removes item; loadStream returns empty", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       let s = Storage.make(~name="rm6", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("del-id", JSON.Encode.string("v"), ReventlessCore.QueryDb.Any, None)
@@ -119,7 +119,7 @@ describe("QueryDbStorage_InMemory", () => {
 
     testPromise("deleteBatch removes multiple items", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       let s = Storage.make(~name="rm7", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.saveBatch([
@@ -145,7 +145,7 @@ describe("QueryDbStorage_InMemory", () => {
   describe("scan registration", () => {
     testPromise("after save, scan function returns all stored items", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       let s = Storage.make(~name="scan-rm", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("s1", JSON.Encode.string("item1"), ReventlessCore.QueryDb.Any, None)
@@ -157,7 +157,7 @@ describe("QueryDbStorage_InMemory", () => {
 
     testPromise("after delete, scan function excludes deleted item", async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       let s = Storage.make(~name="scan-rm2", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("keep", JSON.Encode.string("keep"), ReventlessCore.QueryDb.Any, None)

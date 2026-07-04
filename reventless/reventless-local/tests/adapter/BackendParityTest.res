@@ -1,10 +1,31 @@
-// Behavioural parity between Memory and Sqlite backends at the adapter layer.
-// Each test runs the same scenario against both BackendState settings.
+// Behavioural parity between Memory, Sqlite, and Postgres backends at the adapter
+// layer. Each test runs the same scenario against every BackendState setting.
+//
+// The Postgres arm is exercised only when PG_URL is set (so the default test run
+// stays dependency-free), and only for EventLog scenarios: under Backend.Postgres
+// the read-model (QueryDb) path routes to the in-memory arm by design (the sync
+// LocalBus registrations can't consume async pg — see LocalQueryDbStorage), so a
+// QueryDb "runUnderPostgres" would just re-test Memory. Event logs, however, are
+// genuinely Postgres-backed and must match Memory/Sqlite exactly.
 
 open JestGlobals
 
+@val external processEnv: dict<string> = "process.env"
+
 let _ = TestRunner.setup()
 let opts: Pulumi.CustomResourceOptions.t = {}
+
+let pgPool =
+  processEnv
+  ->Dict.get("PG_URL")
+  ->Option.map(url => ReventlessPostgres.PgDriver.makePool({connectionString: url}))
+
+afterAll(() =>
+  switch pgPool {
+  | Some(pool) => ignore(pool->ReventlessPostgres.PgDriver.endPool)
+  | None => ()
+  }
+)
 
 let runUnderMemory = async fn => {
   BackendState.setMemory()
@@ -19,11 +40,23 @@ let runUnderSqlite = async fn => {
   db->SqliteDriver.close
 }
 
+// No-op when PG_URL is unset. Resets the schema before each scenario for isolation.
+let runUnderPostgres = async fn =>
+  switch pgPool {
+  | Some(pool) =>
+    await ReventlessPostgres.PgSchema.ensureSchema(pool)
+    await ReventlessPostgres.PgSchema.truncateAll(pool)
+    BackendState.setPostgres(~pool)
+    await fn()
+    BackendState.setMemory()
+  | None => ()
+  }
+
 describe("Backend parity (Memory vs Sqlite)", () => {
   testPromise("EventLog: append + replay returns the same events under both", async () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()
-      module Storage = EventLogStorage_InMemory.Make(TestBus)
+      module Storage = LocalEventLogStorage.Make(TestBus)
       let s = Storage.make(~name="parity-events", ~opts)
       let ops = await s.operations->TestRunner.resolve
 
@@ -41,12 +74,13 @@ describe("Backend parity (Memory vs Sqlite)", () => {
 
     await runUnderMemory(scenario)
     await runUnderSqlite(scenario)
+    await runUnderPostgres(scenario)
   })
 
   testPromise("QueryDb: save + loadStream returns the same item under both", async () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       let s = Storage.make(~name="parity-qdb", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
 
@@ -73,7 +107,7 @@ describe("Backend parity (Memory vs Sqlite)", () => {
   testPromise("QueryDb: count returns a running total and loadStream reflects it under both", async () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       let s = Storage.make(~name="parity-count", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
 
@@ -108,7 +142,7 @@ describe("Backend parity (Memory vs Sqlite)", () => {
   testPromise("QueryDb: an expired-TTL item is filtered from loadStream under both", async () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()
-      module Storage = QueryDbStorage_InMemory.Make(TestBus)
+      module Storage = LocalQueryDbStorage.Make(TestBus)
       let s = Storage.make(~name="parity-ttl", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
       let ops = await s.operations->TestRunner.resolve
 
@@ -137,14 +171,14 @@ describe("Backend parity (Memory vs Sqlite)", () => {
   testPromise("EventLog: conflict detection works under both", async () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()
-      module Storage = EventLogStorage_InMemory.Make(TestBus)
+      module Storage = LocalEventLogStorage.Make(TestBus)
       let s = Storage.make(~name="parity-conflict", ~opts)
       let ops = await s.operations->TestRunner.resolve
 
       let e = JSON.Encode.object(Dict.fromArray([("t", JSON.Encode.string("C"))]))
       let _ = await ops.append(0, "cid", [e])
 
-      // Reusing seqNr=0 must conflict under both backends.
+      // Reusing seqNr=0 must conflict under every backend.
       let result = await ops.append(0, "cid", [e])
       switch result {
       | Error(_) => expect(true)->toBe(true)
@@ -154,5 +188,6 @@ describe("Backend parity (Memory vs Sqlite)", () => {
 
     await runUnderMemory(scenario)
     await runUnderSqlite(scenario)
+    await runUnderPostgres(scenario)
   })
 })

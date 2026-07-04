@@ -64,16 +64,9 @@ module Make = (Bus: LocalBus.T) => {
   type api = unit
   type role = unit
 
-  let sqliteBusCallbacks: QueryDbStorage_Sqlite.busCallbacks = {
-    publishStateChange: Bus.publishStateChange,
-    registerQueryDb: Bus.registerQueryDb,
-    registerQueryDbScan: Bus.registerQueryDbScan,
-    registerQueryDbStream: Bus.registerQueryDbStream,
-    registerQueryDbIndexLookup: Bus.registerQueryDbIndexLookup,
-    registerQueryDbListPage: Bus.registerQueryDbListPage,
-  }
-
-  let makeMemory: QueryDb_Adapter.storageMaker<unit, unit> = (
+  // Pure in-memory storageMaker (registers with Bus for live reads). Backend
+  // selection lives in LocalQueryDbStorage.Make.
+  let make: QueryDb_Adapter.storageMaker<unit, unit> = (
     ~name,
     ~indexes as _,
     ~subIdField=?,
@@ -343,18 +336,4 @@ module Make = (Bus: LocalBus.T) => {
     }
   }
 
-  let make: QueryDb_Adapter.storageMaker<unit, unit> = (
-    ~name,
-    ~indexes,
-    ~subIdField=?,
-    ~ttl=?,
-    ~api,
-    ~apiRole,
-    ~opts,
-  ) =>
-    switch BackendState.getDb() {
-    | Some(db) =>
-      QueryDbStorage_Sqlite.makeStorage(~db, ~bus=sqliteBusCallbacks, ~name, ~indexes, ~subIdField)
-    | None => makeMemory(~name, ~indexes, ~subIdField?, ~ttl?, ~api, ~apiRole, ~opts)
-    }
 }

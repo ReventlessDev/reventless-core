@@ -69,7 +69,7 @@ let make = (~name="mock-dcb-log", ~indexes: array<string>=[], ~opts: Pulumi.Cust
   let append = async (newEvents, ~condition=?) => {
     if failNextAppends.contents > 0 {
       failNextAppends := failNextAppends.contents - 1
-      Error("mock append failure")
+      Error(ReventlessInfra.DcbEventLog.StorageFailure("mock append failure"))
     } else {
       let conflictDetected = switch condition {
       | Some(cond: Reventless.DcbTag.appendCondition) =>
@@ -83,7 +83,7 @@ let make = (~name="mock-dcb-log", ~indexes: array<string>=[], ~opts: Pulumi.Cust
       | None => false
       }
       if conflictDetected {
-        Error("conflict: condition check failed")
+        Error(ReventlessInfra.DcbEventLog.Conflict)
       } else {
         let storedEvents = newEvents->Array.map((event: DcbEventLog_Adapter.rawStoredEvent) => {
           position := position.contents + 1

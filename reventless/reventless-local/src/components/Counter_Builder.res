@@ -1,7 +1,7 @@
 // In-memory Counter builder.
 
 module Make = (Bus: LocalBus.T) => {
-  module QueryDbStorage = QueryDbStorage_InMemory.Make(Bus)
+  module QueryDbStorage = LocalQueryDbStorage.Make(Bus)
   module Api = {
     let api = () => ()
     let apiRole = () => ()

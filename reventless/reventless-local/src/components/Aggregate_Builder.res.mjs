@@ -2,8 +2,8 @@
 
 import * as Pulumi from "@pulumi/pulumi";
 import * as Aggregate_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Aggregate/Aggregate_Builder.res.mjs";
+import * as LocalEventLogStorage$ReventlessLocal from "../adapter/EventLog/LocalEventLogStorage.res.mjs";
 import * as LocalRuntimeEnvironment$ReventlessLocal from "../adapter/Runtime/LocalRuntimeEnvironment.res.mjs";
-import * as EventLogStorage_InMemory$ReventlessLocal from "../adapter/EventLog/EventLogStorage_InMemory.res.mjs";
 import * as LocalCommandTopicChannel$ReventlessLocal from "../adapter/CommandTopic/LocalCommandTopicChannel.res.mjs";
 import * as LocalEventTopicPublisher$ReventlessLocal from "../adapter/EventTopic/LocalEventTopicPublisher.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "../adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
@@ -66,7 +66,7 @@ function MakeWithHooks(Bus) {
         make: CommandGeneratorResolvers_GraphQL$ReventlessLocal.make
       })({
         make: CommandTopicChannel.make
-      })(EventLogStorage_InMemory$ReventlessLocal.Make(Bus))(EventTopicPublisher)(EventCollectorChannel)(AggregateRuntimeBuilder)(HooksConfig);
+      })(LocalEventLogStorage$ReventlessLocal.Make(Bus))(EventTopicPublisher)(EventCollectorChannel)(AggregateRuntimeBuilder)(HooksConfig);
       return {
         Spec: include.Spec,
         AggregateRuntimeBuilder: include.AggregateRuntimeBuilder,
@@ -112,7 +112,7 @@ function Make(Bus) {
       make: CommandGeneratorResolvers_GraphQL$ReventlessLocal.make
     })({
       make: CommandTopicChannel.make
-    })(EventLogStorage_InMemory$ReventlessLocal.Make(Bus))(EventTopicPublisher)(EventCollectorChannel)(AggregateRuntimeBuilder)(HooksConfig);
+    })(LocalEventLogStorage$ReventlessLocal.Make(Bus))(EventTopicPublisher)(EventCollectorChannel)(AggregateRuntimeBuilder)(HooksConfig);
     return {
       Spec: include.Spec,
       AggregateRuntimeBuilder: include.AggregateRuntimeBuilder,

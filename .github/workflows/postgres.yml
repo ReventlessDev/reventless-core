@@ -1,0 +1,101 @@
+name: Postgres Backend
+
+# Builds @reventlessdev/reventless-postgres and runs its live-Postgres
+# integration + concurrency suite (F2) against a service-container database.
+# The suite skips itself when PG_URL is unset, so it never runs in the main CI
+# job — this workflow is the only place a real Postgres is provisioned.
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "reventless/reventless-postgres/**"
+      - ".github/workflows/postgres.yml"
+  pull_request:
+    branches: [main, beta, alpha]
+    paths:
+      - "reventless/reventless-postgres/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & Test (Postgres)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: reventless_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check if PPX Linux binary is available
+        id: ppx_check
+        run: |
+          PKG_BIN="node_modules/@reventlessdev/reventless-ppx-linux-x64/ppx.exe"
+          if [ -x "$PKG_BIN" ] || [ -f packages/reventless-ppx/ppx-linux.exe ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup OCaml (fallback — prebuilt PPX binary missing)
+        if: steps.ppx_check.outputs.present == 'false'
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: "5.2.x"
+          dune-cache: true
+
+      - name: Build reventless-ppx for Linux (fallback)
+        if: steps.ppx_check.outputs.present == 'false'
+        run: |
+          opam install . --deps-only --yes
+          opam exec -- dune build
+          cp _build/default/bin/bin.exe ../ppx-linux.exe
+          chmod +x ../ppx-linux.exe
+        working-directory: packages/reventless-ppx/src
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22.17.1"
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Setup workspace (pnpm-workspace.yaml)
+        run: node scripts/workspace-setup.mjs
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Build reventless-postgres (with deps)
+        run: pnpm --filter @reventlessdev/reventless-postgres run build -- -with-deps
+
+      - name: Run Postgres integration + concurrency suite
+        run: pnpm --filter @reventlessdev/reventless-postgres test
+        env:
+          CI: true
+          PG_URL: postgres://postgres:postgres@localhost:5432/reventless_test

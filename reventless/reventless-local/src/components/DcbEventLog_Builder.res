@@ -8,7 +8,7 @@ module Make = (Bus: LocalBus.T) => {
   // REVENTLESS_LOCAL_BACKEND=sqlite, and it registers the read with the Bus so
   // `Bus.getDcbEventLogRead` can see it. The plain module did neither — the log
   // silently stayed in memory under SQLite and was invisible to bus readers.
-  module Storage = DcbEventLogStorage_InMemory.Make(Bus)
+  module Storage = LocalDcbEventLogStorage.Make(Bus)
   module Inner = ReventlessCore.DcbEventLog_Builder.Make(Storage, EventTopicPublisher)
   type component = ReventlessInfra.DcbEventLog.component
   let make: (

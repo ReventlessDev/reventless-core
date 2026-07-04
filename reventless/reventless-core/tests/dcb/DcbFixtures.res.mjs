@@ -245,7 +245,7 @@ function makeMockStorage() {
       failNextAppendsRef.contents = failNextAppendsRef.contents - 1 | 0;
       return {
         TAG: "Error",
-        _0: "conflict"
+        _0: "Conflict"
       };
     }
     let conflictDetected = condition !== undefined ? events.contents.some(event => {
@@ -260,7 +260,7 @@ function makeMockStorage() {
     if (conflictDetected) {
       return {
         TAG: "Error",
-        _0: "conflict: condition check failed"
+        _0: "Conflict"
       };
     }
     let storedEvents = newEvents.map(event => {
