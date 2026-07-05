@@ -22,6 +22,7 @@ import { makeGenerateCommand } from "@reventlessdev/reventless-core/src/componen
 import { commandOutcomeToJson, runInlineAndCollect } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 import { json as jsonSchema } from "sury/src/S.res.mjs";
 import { read, append, readStream } from "@reventlessdev/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
+import { opsFor as pgDcbEventLogOpsFor } from "@reventlessdev/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_Postgres_Runtime.res.mjs";
 import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
@@ -90,12 +91,25 @@ function getIdStringSchema() {
 // can drive the real `cmdGenHandler` end-to-end against DynamoDB Local.
 export async function buildHandlersForConfig(config, opts = {}) {
   const loadModule = opts.loadModule ?? dynamicImport;
-  const resolvedTable = { name: config.dcbEventLogTableName };
-  const rawStorageOps = {
-    read: read(resolvedTable),
-    append: append(resolvedTable),
-    readStream: readStream(resolvedTable),
-  };
+  // `pgConnection`, when present in HANDLER_CONFIG, selects the Postgres DCB
+  // runtime (dcbEventLogTableName doubles as the `dcb_event.log_name`); absence
+  // keeps the DynamoDB path byte-identical. NB: this swaps only the *storage*
+  // ops — event propagation (within-plugin projections + cross-plugin SNS) is
+  // stream-driven on AWS and is handled separately by the change-feed relay
+  // (see docs/plans/aws-postgres-change-feed-bridge.md), not by this Lambda.
+  const rawStorageOps = config.pgConnection
+    ? (() => {
+        const pgOps = pgDcbEventLogOpsFor(config.pgConnection, config.dcbEventLogTableName);
+        return { read: pgOps.read, append: pgOps.append, readStream: pgOps.readStream };
+      })()
+    : (() => {
+        const resolvedTable = { name: config.dcbEventLogTableName };
+        return {
+          read: read(resolvedTable),
+          append: append(resolvedTable),
+          readStream: readStream(resolvedTable),
+        };
+      })();
 
   const handlersByType = {};
   const sharedDcbEventLogOps = dcbEventLogOperationsMake({
