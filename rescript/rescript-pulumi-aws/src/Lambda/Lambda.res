@@ -206,6 +206,15 @@ module Function = {
 
   type ephemeralStorage = {size: Pulumi.Input.t<int>}
 
+  /** Places the function inside a VPC so it can reach private resources such as
+    RDS/Aurora. Adds ENIs to the given subnets and attaches the security
+    groups; the execution role then needs `ec2:CreateNetworkInterface`,
+    `ec2:DescribeNetworkInterfaces`, `ec2:DeleteNetworkInterface`. */
+  type vpcConfig = {
+    subnetIds: Pulumi.Input.t<array<Pulumi.Input.t<string>>>,
+    securityGroupIds: Pulumi.Input.t<array<Pulumi.Input.t<string>>>,
+  }
+
   type args = {
     handler?: Pulumi.Input.t<string>,
     runtime?: Pulumi.Input.t<string>,
@@ -219,6 +228,7 @@ module Function = {
     sourceCodeHash?: Pulumi.Input.t<string>,
     reservedConcurrentExecutions?: Pulumi.Input.t<int>,
     ephemeralStorage?: Pulumi.Input.t<ephemeralStorage>,
+    vpcConfig?: Pulumi.Input.t<vpcConfig>,
   }
 
   type t = {

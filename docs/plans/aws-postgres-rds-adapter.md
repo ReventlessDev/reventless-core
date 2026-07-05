@@ -61,10 +61,68 @@ Adapter interfaces to satisfy (unchanged):
 
 ---
 
+## Exploration findings (2026-07-05 — codebase reconnaissance before starting)
+
+Three parallel seam surveys confirmed the shape and turned up three facts that
+reshape the phasing:
+
+1. **The operations half already returns the adapter shape, but the AWS makers
+   are still new thin files.** The `reventless-postgres` runtime modules
+   (`EventLogStorage_Postgres`, `DcbEventLogStorage_Postgres`,
+   `QueryDbStorage_Postgres`, `QueryEnginePostgres`) implement the exact op
+   signatures the AWS adapters need. But their makers take `~pool: PgDriver.pool`
+   *at call time*, whereas the AWS `storageMaker` is
+   `(~name, ~opts) => {resources, operations: Pulumi.Output.t<operations>}` — the
+   ops live inside a `Pulumi.Output.apply` closure that Pulumi serializes and runs
+   *in the Lambda*. So each AWS Postgres adapter is a **new file** that resolves
+   `{host, port, db, secretArn}` at deploy time and, at cold start, fetches the
+   secret → `PgDriver.makePool(connectionString)` (memoized per container) → binds
+   the existing pg ops. **This is the central glue** and it is what distinguishes
+   the AWS path from the local path (`reventless-local` hands the pool in directly).
+
+2. **`rescript-pulumi-aws` has no RDS bindings and no create-side Secret** — and
+   the standard `Lambda.Function` binding has **no `vpcConfig` field** (only the
+   legacy `CallbackFunction` does). Bindings are hand-written (no codegen). VPC /
+   Subnet / SecurityGroup / Secrets-Manager-*read* bindings already exist. → A new
+   **Pre-A binding phase** is required before any provisioning can compile.
+
+3. **Backend selection is module-alias-based and currently hardcoded.** Each
+   `<Surface>Storage.res` is `module DynamoDb = …`, and the AWS builders hardcode
+   `EventLogStorage.DynamoDbStream` / `QueryDbStorage.DynamoDb` etc. A Postgres arm
+   is a new `module Postgres = …Storage_Postgres` alias plus parallel builder
+   modules; D1's per-surface knob is genuinely new (no existing selection point).
+   Runtime env/IAM seams are clean: `RuntimeEnvironment_Lambda.makeFromCodeAsset`
+   already exposes `additionalEnvVars` (dict) and `additionalIamPolicies` (array).
+
+### Reference: exact seams
+
+- AWS adapter shape (all four surfaces): `EventLog_Adapter.storageMaker =
+  (~name, ~opts) => {resources: array<Adapter.resource>, operations:
+  Pulumi.Output.t<operations>}`. DynamoDb template:
+  `reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb.res`
+  (`operations: table->toResolvedTableOutput->Pulumi.Output.apply(resolved => {…ops…})`).
+  QueryDb additionally carries `dataSourceName: Pulumi.Output.t<string>` (AppSync);
+  **Postgres has no direct AppSync data source → reads must route through a Lambda
+  resolver** (`QueryInterceptor_Lambda` / `NodeResolver_AppSync`) — the largest B3
+  unknown.
+- pg runtime pool: `PgDriver.makePool({connectionString, max?}) => pool`;
+  `PgSchema.ensureSchema(pool)` idempotent (all `IF NOT EXISTS`);
+  DCB lock knob `type lockStrategy = [#AdvisoryLocks | #RowLocks]` on
+  `DcbEventLogStorage_Postgres.makeStorage(~lockStrategy)`.
+- change feed: `PgChangeFeed.{readBatch, loadCheckpoint, saveCheckpoint, listen,
+  unlisten, drain}` (checkpointed LISTEN/NOTIFY; `dcb_subscription` table).
+- Lambda seams: `RuntimeEnvironment_Lambda.makeFromCodeAsset` — inject env via
+  `additionalEnvVars`, IAM via `additionalIamPolicies`; **no `vpcConfig` today**
+  (zero-VPC deploy). `Util_Vpc.getVpcConfig` reads a VPC from a StackReference but
+  targets `CallbackFunction` (Fargate-only use today).
+
+---
+
 ## Phasing
 
 | Phase | Item | Package | Class |
 |---|---|---|---|
+| **A0** | **Pre-A bindings**: `rescript-pulumi-aws` — `Rds.{Instance,Cluster,ClusterInstance,SubnetGroup,Proxy}`, `SecretsManager.{Secret,SecretVersion}`, and a `vpcConfig` field on `Lambda.Function`. Hand-authored, following the existing EC2/DynamoDb binding pattern. | rescript-pulumi-aws | Plumbing (blocker) |
 | A1 | `reventless-aws` takes a workspace dep on `reventless-postgres` + `pg` Lambda-layer/bundling story | reventless-aws | Plumbing |
 | A2 | `PgConnection` deploy-time component: RDS/Aurora resource + Secrets Manager secret + VPC/SG wiring, resolving to a connection-config `Output` | reventless-aws | Feature (core) |
 | A3 | Schema provisioning at deploy time (`ensureSchema`) — Pulumi dynamic/command resource or a one-shot migration Lambda | reventless-aws | Feature |
@@ -79,7 +137,8 @@ Adapter interfaces to satisfy (unchanged):
 | E2 | CI deploy smoke: provision → migrate → append → replay → teardown against a throwaway RDS (or LocalStack/pg where feasible) | repo CI | Test |
 | F1 | Deployment guide: `docs/guides/postgres-aws-deployment.md` (pooling, VPC, secrets, cost, when-to-choose-vs-DynamoDB) | docs | Doc |
 
-Order: A → B (∥ across surfaces) → C → D → E → F. C1 gates any live test.
+Order: **A0 → A** → B (∥ across surfaces) → C → D → E → F. A0 blocks A2 (nothing
+provisions without RDS/Secret bindings). C1 gates any live test.
 
 ---
 
@@ -109,6 +168,13 @@ A single reusable Pulumi component owning:
   resources once; each `storageMaker` contributes only its table/schema concern.
 
 ### A3 — Schema provisioning at deploy time
+**Decision (2026-07-05): one-shot in-VPC migration Lambda.** Invoked as a Pulumi
+resource after the DB is up, running the exact `PgSchema.ensureSchema` the local
+backend uses — zero schema drift, and it works for VPC-only RDS with no deploy-
+runner network reach (the common case). The command/dynamic-resource option is
+rejected: it needs the deploy runner to reach the DB, which breaks for VPC-only
+RDS unless the instance is publicly accessible or the runner runs in-VPC.
+
 `reventless-postgres` exposes idempotent `PgSchema.ensureSchema(pool)`. At
 deploy time this must run against the freshly-provisioned DB. Options
 (pick in the plan's design step):
