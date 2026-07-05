@@ -14,6 +14,7 @@ import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/p
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
+import * as EventLogBackend$ReventlessAws from "../../adapter/EventLog/EventLogBackend.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as StateChangeSliceRuntime_Builder_Single$ReventlessAws from "../../adapter/Runtime/StateChangeSliceRuntime_Builder_Single.res.mjs";
@@ -173,6 +174,9 @@ function Make(EventCollectorChannel) {
         let pluginName = compName.endsWith("Plugin") ? compName.slice(0, compName.length - 6 | 0) : compName;
         DcbBackend$ReventlessAws.attachCollectorQueue(pluginName + "DcbEventLog", queue.id, queue.arn);
       }
+    }
+    if (EventLogBackend$ReventlessAws.isPostgres()) {
+      Object.keys(eventTopics).forEach(aggregateName => EventLogBackend$ReventlessAws.attachCollectorQueue(aggregateName, queue.id, queue.arn));
     }
     let ctx = Plugin_Helpers$ReventlessCore.eventCollectorContextRef.contents[name];
     let context = ctx !== undefined ? ctx : synthesizeAdminContext();

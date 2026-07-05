@@ -8,7 +8,7 @@
     "build": "rescript build",
     "start": "rescript watch",
     "clean": "rescript clean",
-    "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
+    "rebuild": "pnpm run clean && pnpm run build",
     "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest",
     "serve": "REVENTLESS_LOCAL_BACKEND=${REVENTLESS_LOCAL_BACKEND:-sqlite:./.reventless/local.db} NODE_OPTIONS='--disable-warning=ExperimentalWarning' npx tsx src/Main.res.mjs",
     "serve:memory": "REVENTLESS_LOCAL_BACKEND=memory pnpm run serve",

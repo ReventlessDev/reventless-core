@@ -87,3 +87,57 @@ let relay = async (
   let pool = PgRuntime.poolFor(config)
   await relayWithPool(~pool, ~logName, ~subscriber, ~partitionTagJson?, ~sendBatch)
 }
+
+// ─── Classic (aggregate) event_log relay ───
+
+/**
+ * Transform one classic feed event into the EventCollector JSON body. The stored
+ * `payload` IS the flat item the DynamoDB append would have put (id, position,
+ * event, data, decomposed meta) — classic appends write the serialized event JSON
+ * verbatim on both backends — so the transform is exactly the DynamoDB-stream
+ * decoder and the SQS handler cannot tell the difference. Returns `None` for a
+ * malformed row (mirrors `buildJsonEvent'`; snapshots live in a separate Postgres
+ * table and never enter the feed).
+ */
+let toClassicEventCollectorJson = (
+  event: ReventlessPostgres.EventLogChangeFeed.classicEvent,
+): option<JSON.t> =>
+  event.payload
+  ->JSON.Decode.object
+  ->Option.flatMap(Util_DynamoDbStream_Runtime.buildJsonEvent')
+
+/**
+ * Drain a classic Postgres `event_log` log from its checkpoint on the given `pool`
+ * and relay its events to the EventCollector via the injected `sendBatch`. Same
+ * injection seam and at-least-once semantics as `relayWithPool`.
+ */
+let relayClassicWithPool = async (
+  ~pool: ReventlessPostgres.PgDriver.pool,
+  ~logName: string,
+  ~subscriber: string,
+  ~sendBatch: array<JSON.t> => promise<unit>,
+): int =>
+  await ReventlessPostgres.EventLogChangeFeed.drain(
+    pool,
+    ~logName,
+    ~subscriber,
+    ~handle=async events => {
+      let jsons = events->Array.filterMap(toClassicEventCollectorJson)
+      if jsons->Array.length > 0 {
+        await sendBatch(jsons)
+      }
+    },
+  )
+
+/**
+ * Deployed-Lambda entry for a classic log. Thin wrapper over `relayClassicWithPool`.
+ */
+let relayClassic = async (
+  ~config: PgConnection.connectionConfig,
+  ~logName: string,
+  ~subscriber: string,
+  ~sendBatch: array<JSON.t> => promise<unit>,
+): int => {
+  let pool = PgRuntime.poolFor(config)
+  await relayClassicWithPool(~pool, ~logName, ~subscriber, ~sendBatch)
+}

@@ -216,6 +216,18 @@ module Make = (
       }
     }
 
+    // Classic Postgres logs: `~eventTopics` is keyed by aggregate name, so each key
+    // attaches this plugin's EventCollector queue to exactly the aggregates whose
+    // event-log DynamoDB stream the collector would have subscribed on the DynamoDB
+    // path (admin's extension-point filtering included).
+    if EventLogBackend.isPostgres() {
+      eventTopics
+      ->Dict.keysToArray
+      ->Array.forEach(aggregateName =>
+        EventLogBackend.attachCollectorQueue(~aggregateName, ~url=queue.id, ~arn=queue.arn)
+      )
+    }
+
     // Pull the per-EventCollector context registered by Plugin_Helpers.connect
     // (plugins) or synthesise an admin one if none registered.
     let context: ReventlessCore.Plugin_Helpers.eventCollectorContext =

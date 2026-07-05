@@ -66,11 +66,14 @@ Purely **additive** — no change to `EventLogStorage_Postgres.append`:
 
 ## Out of scope (downstream follow-ups)
 
-- The AWS classic relay (a `PgChangeFeedRelay` variant that drains `event_log` and
-  transforms `payload` → `{id: aggregateId, meta, event}` for the EventCollector) —
-  the "aggregate deployed path reuses this exact bridge" step.
-- Deploy-time selection of the classic EventLog backend (the aggregate analogue of
-  B2.3c's `DcbBackend`).
+Both landed 2026-07-05, same day — see the classic-vertical status block in
+`docs/plans/aws-postgres-rds-adapter.md`:
+
+- ✅ The AWS classic relay (`PgChangeFeedRelay_Runtime.relayClassic` — drains
+  `event_log` and feeds each stored `payload` through `buildJsonEvent'` for the
+  EventCollector) — the "aggregate deployed path reuses this exact bridge" step.
+- ✅ Deploy-time selection of the classic EventLog backend (`EventLogBackend`, the
+  aggregate analogue of B2.3c's `DcbBackend`).
 
 ## Validation
 

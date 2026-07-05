@@ -49,7 +49,7 @@ function make(name, logs, securityGroupId, subnetIds, intervalMinutesOpt, opts) 
         cc.secretArn
       ]
     ]);
-    return JSON.stringify(Object.fromEntries([
+    let entries = [
       [
         "pgConnection",
         pgConnectionJson
@@ -63,14 +63,23 @@ function make(name, logs, securityGroupId, subnetIds, intervalMinutesOpt, opts) 
         l.subscriber
       ],
       [
-        "partitionTag",
-        S.reverseConvertToJsonOrThrow(l.partitionTag, DcbTag$Reventless.derivedPartitionTagSchema)
-      ],
-      [
         "targetQueueUrl",
         param[1]
       ]
-    ]));
+    ];
+    let match = l.feed;
+    if (typeof match !== "object") {
+      entries.push([
+        "kind",
+        "classic"
+      ]);
+    } else {
+      entries.push([
+        "partitionTag",
+        S.reverseConvertToJsonOrThrow(match.partitionTag, DcbTag$Reventless.derivedPartitionTagSchema)
+      ]);
+    }
+    return JSON.stringify(Object.fromEntries(entries));
   }));
   let handlerConfigOutput = Pulumi.all(logJsonOutputs).apply(items => `{"logs":[` + items.join(",") + `]}`);
   let envVars = Object.fromEntries([[

@@ -10,6 +10,7 @@ import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
+import * as EventLogBackend$ReventlessAws from "../EventLog/EventLogBackend.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
@@ -154,6 +155,32 @@ function finish() {
       };
       let handlerOutputs = [];
       let packageDirs = {};
+      let pgSelection = EventLogBackend$ReventlessAws.get();
+      let pgConnectionFragment = pgSelection !== undefined ? pgSelection.connectionConfig.apply(cc => {
+          let pgConnectionJson = JSON.stringify(Object.fromEntries([
+            [
+              "host",
+              cc.host
+            ],
+            [
+              "port",
+              cc.port
+            ],
+            [
+              "database",
+              cc.database
+            ],
+            [
+              "username",
+              cc.username
+            ],
+            [
+              "secretArn",
+              cc.secretArn
+            ]
+          ]));
+          return `,"pgConnection":` + pgConnectionJson;
+        }) : Pulumi.output("");
       specs.forEach(spec => {
         let info = aggregateInfos[spec.aggregateName];
         if (info === undefined) {
@@ -168,8 +195,9 @@ function finish() {
         let handlerJson = Pulumi.all([
           info.eventLogTableName,
           spec.queueUrl,
-          spec.queueArn
-        ]).apply(param => `{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"}`);
+          spec.queueArn,
+          pgConnectionFragment
+        ]).apply(param => `{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"` + param[3] + `}`);
         handlerOutputs.push(handlerJson);
       });
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
@@ -187,7 +215,22 @@ function finish() {
       }));
       let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
       Stdlib_Option.forEach(cfg.sqsBatchSize, CommandTopicChannel_SQS_Sync$ReventlessAws.setBatchSize);
-      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAggregatesCmdHandler", match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, undefined, undefined, opts);
+      let vpcConfig = pgSelection !== undefined ? pgSelection.securityGroupId.apply(sgId => ({
+          subnetIds: pgSelection.subnetIds,
+          securityGroupIds: [sgId]
+        })) : undefined;
+      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAggregatesCmdHandler", match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, undefined, vpcConfig, opts);
+      if (pgSelection !== undefined) {
+        pgSelection.connectionConfig.apply(cc => new (Aws.iam.RolePolicy)("AllAggregatesCmdHandler-pgSecret", {
+          policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "AllAggregatesCmdHandler-pgSecretPolicy", [{
+              Sid: "AllowGetPgSecret",
+              Effect: "Allow",
+              Action: "secretsmanager:GetSecretValue",
+              Resource: cc.secretArn
+            }])),
+          role: runtime.parts.lambdaRole.id
+        }));
+      }
       let tableName$1 = pluginRmTableName.contents;
       if (tableName$1 !== undefined) {
         Pulumi.all([

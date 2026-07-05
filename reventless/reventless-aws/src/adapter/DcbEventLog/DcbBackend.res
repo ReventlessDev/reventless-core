@@ -10,8 +10,8 @@
 //     EventCollector SQS queue.
 //
 // All DCB logs in the platform share one selection (the confirmed B2.3c toggle);
-// aggregate EventLogs are unaffected — they stay on DynamoDB until the classic
-// `event_log` change feed lands (B2.5). See docs/plans/aws-postgres-change-feed-bridge.md.
+// classic aggregate EventLogs follow the same platform toggle via the sibling
+// `EventLogBackend` registry. See docs/plans/done/aws-postgres-change-feed-bridge.md.
 
 type selection = {
   connectionConfig: Pulumi.Output.t<PgConnection.connectionConfig>,

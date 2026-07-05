@@ -33,6 +33,7 @@ import * as Platform_Casts$ReventlessAws from "./Platform_Casts.res.mjs";
 import * as Platform_Stack$ReventlessAws from "./Platform_Stack.res.mjs";
 import * as AppSync_Adapter$ReventlessAws from "./components/Api/AppSync_Adapter.res.mjs";
 import * as Counter_Builder$ReventlessAws from "./components/Counter_Builder.res.mjs";
+import * as EventLogBackend$ReventlessAws from "./adapter/EventLog/EventLogBackend.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
 import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginBehavior.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
@@ -120,11 +121,18 @@ function MakeWithConfig(Config) {
     Stdlib_Option.forEach(param.async, AggregateRuntime_Builder_Single_Async$ReventlessAws.setConfig);
   });
   Stdlib_Option.forEach(Config.commandHandlerConfig.stateChanges, param => PluginRuntime_Builder$ReventlessAws.setStateChangesConfig(param.sync, param.async, undefined));
-  Stdlib_Option.forEach(Config.pgConnection, pg => DcbBackend$ReventlessAws.set({
-    connectionConfig: pg.connectionConfig,
-    securityGroupId: pg.securityGroupId,
-    subnetIds: pg.subnetIds
-  }));
+  Stdlib_Option.forEach(Config.pgConnection, pg => {
+    DcbBackend$ReventlessAws.set({
+      connectionConfig: pg.connectionConfig,
+      securityGroupId: pg.securityGroupId,
+      subnetIds: pg.subnetIds
+    });
+    EventLogBackend$ReventlessAws.set({
+      connectionConfig: pg.connectionConfig,
+      securityGroupId: pg.securityGroupId,
+      subnetIds: pg.subnetIds
+    });
+  });
   let currentDeployTarget = {
     contents: "Domain"
   };
@@ -817,27 +825,69 @@ function MakeWithConfig(Config) {
   };
   let provisionPgChangeFeedRelay = () => {
     let match = DcbBackend$ReventlessAws.get();
-    if (match === undefined) {
-      return;
+    let dcbLogs;
+    if (match !== undefined) {
+      let connectionConfig = match.connectionConfig;
+      dcbLogs = Stdlib_Array.filterMap(DcbBackend$ReventlessAws.getRelayLogs(), entry => {
+        let match = entry.collectorQueueUrl;
+        let match$1 = entry.collectorQueueArn;
+        if (match !== undefined && match$1 !== undefined) {
+          return {
+            connectionConfig: connectionConfig,
+            logName: entry.logName,
+            subscriber: `aws-eventcollector-relay:` + entry.logName,
+            feed: {
+              TAG: "Dcb",
+              partitionTag: entry.partitionTag
+            },
+            targetQueueUrl: match,
+            targetQueueArn: match$1
+          };
+        }
+        log.warn("Platform", undefined, `PgChangeFeedRelay: DCB log ` + entry.logName + ` has no EventCollector queue — skipping (its events will not propagate)`);
+      });
+    } else {
+      dcbLogs = [];
     }
-    let connectionConfig = match.connectionConfig;
-    let relayLogs = Stdlib_Array.filterMap(DcbBackend$ReventlessAws.getRelayLogs(), entry => {
-      let match = entry.collectorQueueUrl;
-      let match$1 = entry.collectorQueueArn;
-      if (match !== undefined && match$1 !== undefined) {
-        return {
-          connectionConfig: connectionConfig,
-          logName: entry.logName,
-          subscriber: "aws-eventcollector-relay",
-          partitionTag: entry.partitionTag,
-          targetQueueUrl: match,
-          targetQueueArn: match$1
-        };
-      }
-      log.warn("Platform", undefined, `PgChangeFeedRelay: DCB log ` + entry.logName + ` has no EventCollector queue — skipping (its events will not propagate)`);
-    });
-    if (relayLogs.length !== 0) {
-      PgChangeFeedRelay_Builder$ReventlessAws.make("PgChangeFeedRelay", relayLogs, match.securityGroupId, match.subnetIds, undefined, undefined);
+    let match$1 = EventLogBackend$ReventlessAws.get();
+    let classicLogs;
+    if (match$1 !== undefined) {
+      let connectionConfig$1 = match$1.connectionConfig;
+      classicLogs = Stdlib_Array.filterMap(EventLogBackend$ReventlessAws.getRelayLogs(), entry => {
+        let match = entry.collectorQueueUrl;
+        let match$1 = entry.collectorQueueArn;
+        if (match !== undefined && match$1 !== undefined) {
+          return {
+            connectionConfig: connectionConfig$1,
+            logName: entry.logName,
+            subscriber: `aws-eventcollector-relay:` + entry.logName,
+            feed: "Classic",
+            targetQueueUrl: match,
+            targetQueueArn: match$1
+          };
+        }
+        log.warn("Platform", undefined, `PgChangeFeedRelay: classic log ` + entry.logName + ` has no EventCollector queue — skipping (its events will not propagate)`);
+      });
+    } else {
+      classicLogs = [];
+    }
+    let relayLogs = dcbLogs.concat(classicLogs);
+    let sel = DcbBackend$ReventlessAws.get();
+    let relayVpc;
+    if (sel !== undefined) {
+      relayVpc = [
+        sel.securityGroupId,
+        sel.subnetIds
+      ];
+    } else {
+      let sel$1 = EventLogBackend$ReventlessAws.get();
+      relayVpc = sel$1 !== undefined ? [
+          sel$1.securityGroupId,
+          sel$1.subnetIds
+        ] : undefined;
+    }
+    if (relayVpc !== undefined && relayLogs.length !== 0) {
+      PgChangeFeedRelay_Builder$ReventlessAws.make("PgChangeFeedRelay", relayLogs, relayVpc[0], relayVpc[1], undefined, undefined);
       return;
     }
   };
@@ -1245,11 +1295,18 @@ function Make($star) {
     Stdlib_Option.forEach(param.async, AggregateRuntime_Builder_Single_Async$ReventlessAws.setConfig);
   });
   Stdlib_Option.forEach(commandHandlerConfig.stateChanges, param => PluginRuntime_Builder$ReventlessAws.setStateChangesConfig(param.sync, param.async, undefined));
-  Stdlib_Option.forEach(undefined, pg => DcbBackend$ReventlessAws.set({
-    connectionConfig: pg.connectionConfig,
-    securityGroupId: pg.securityGroupId,
-    subnetIds: pg.subnetIds
-  }));
+  Stdlib_Option.forEach(undefined, pg => {
+    DcbBackend$ReventlessAws.set({
+      connectionConfig: pg.connectionConfig,
+      securityGroupId: pg.securityGroupId,
+      subnetIds: pg.subnetIds
+    });
+    EventLogBackend$ReventlessAws.set({
+      connectionConfig: pg.connectionConfig,
+      securityGroupId: pg.securityGroupId,
+      subnetIds: pg.subnetIds
+    });
+  });
   let currentDeployTarget = {
     contents: "Domain"
   };
@@ -1941,27 +1998,69 @@ function Make($star) {
   };
   let provisionPgChangeFeedRelay = () => {
     let match = DcbBackend$ReventlessAws.get();
-    if (match === undefined) {
-      return;
+    let dcbLogs;
+    if (match !== undefined) {
+      let connectionConfig = match.connectionConfig;
+      dcbLogs = Stdlib_Array.filterMap(DcbBackend$ReventlessAws.getRelayLogs(), entry => {
+        let match = entry.collectorQueueUrl;
+        let match$1 = entry.collectorQueueArn;
+        if (match !== undefined && match$1 !== undefined) {
+          return {
+            connectionConfig: connectionConfig,
+            logName: entry.logName,
+            subscriber: `aws-eventcollector-relay:` + entry.logName,
+            feed: {
+              TAG: "Dcb",
+              partitionTag: entry.partitionTag
+            },
+            targetQueueUrl: match,
+            targetQueueArn: match$1
+          };
+        }
+        log.warn("Platform", undefined, `PgChangeFeedRelay: DCB log ` + entry.logName + ` has no EventCollector queue — skipping (its events will not propagate)`);
+      });
+    } else {
+      dcbLogs = [];
     }
-    let connectionConfig = match.connectionConfig;
-    let relayLogs = Stdlib_Array.filterMap(DcbBackend$ReventlessAws.getRelayLogs(), entry => {
-      let match = entry.collectorQueueUrl;
-      let match$1 = entry.collectorQueueArn;
-      if (match !== undefined && match$1 !== undefined) {
-        return {
-          connectionConfig: connectionConfig,
-          logName: entry.logName,
-          subscriber: "aws-eventcollector-relay",
-          partitionTag: entry.partitionTag,
-          targetQueueUrl: match,
-          targetQueueArn: match$1
-        };
-      }
-      log.warn("Platform", undefined, `PgChangeFeedRelay: DCB log ` + entry.logName + ` has no EventCollector queue — skipping (its events will not propagate)`);
-    });
-    if (relayLogs.length !== 0) {
-      PgChangeFeedRelay_Builder$ReventlessAws.make("PgChangeFeedRelay", relayLogs, match.securityGroupId, match.subnetIds, undefined, undefined);
+    let match$1 = EventLogBackend$ReventlessAws.get();
+    let classicLogs;
+    if (match$1 !== undefined) {
+      let connectionConfig$1 = match$1.connectionConfig;
+      classicLogs = Stdlib_Array.filterMap(EventLogBackend$ReventlessAws.getRelayLogs(), entry => {
+        let match = entry.collectorQueueUrl;
+        let match$1 = entry.collectorQueueArn;
+        if (match !== undefined && match$1 !== undefined) {
+          return {
+            connectionConfig: connectionConfig$1,
+            logName: entry.logName,
+            subscriber: `aws-eventcollector-relay:` + entry.logName,
+            feed: "Classic",
+            targetQueueUrl: match,
+            targetQueueArn: match$1
+          };
+        }
+        log.warn("Platform", undefined, `PgChangeFeedRelay: classic log ` + entry.logName + ` has no EventCollector queue — skipping (its events will not propagate)`);
+      });
+    } else {
+      classicLogs = [];
+    }
+    let relayLogs = dcbLogs.concat(classicLogs);
+    let sel = DcbBackend$ReventlessAws.get();
+    let relayVpc;
+    if (sel !== undefined) {
+      relayVpc = [
+        sel.securityGroupId,
+        sel.subnetIds
+      ];
+    } else {
+      let sel$1 = EventLogBackend$ReventlessAws.get();
+      relayVpc = sel$1 !== undefined ? [
+          sel$1.securityGroupId,
+          sel$1.subnetIds
+        ] : undefined;
+    }
+    if (relayVpc !== undefined && relayLogs.length !== 0) {
+      PgChangeFeedRelay_Builder$ReventlessAws.make("PgChangeFeedRelay", relayLogs, relayVpc[0], relayVpc[1], undefined, undefined);
       return;
     }
   };

@@ -81,17 +81,23 @@ module MakeWithConfig = (
   Config.commandHandlerConfig.stateChanges->Option.forEach(({?sync, ?async}) =>
     PluginRuntime_Builder.setStateChangesConfig(~sync?, ~async?, ())
   )
-  // B2.3c: when a PgConnection is supplied, route ALL DCB EventLogs to Postgres
-  // (aggregate EventLogs stay on DynamoDB until the classic feed lands — B2.5) and
-  // record the selection for the change-feed relay wiring in makePlatform below.
-  // Set BEFORE the Admin/plugin functors run so DcbEventLogStorage.Selectable sees it.
-  Config.pgConnection->Option.forEach((pg: PgConnection.t) =>
+  // B2.3c: when a PgConnection is supplied, route ALL DCB EventLogs (DcbBackend)
+  // AND all classic aggregate EventLogs (EventLogBackend, Single strategies) to
+  // Postgres, and record the selections for the change-feed relay wiring in
+  // makePlatform below. Set BEFORE the Admin/plugin functors run so the storage
+  // Selectables see it.
+  Config.pgConnection->Option.forEach((pg: PgConnection.t) => {
     DcbBackend.set({
       connectionConfig: pg.connectionConfig,
       securityGroupId: pg.securityGroupId,
       subnetIds: pg.subnetIds,
     })
-  )
+    EventLogBackend.set({
+      connectionConfig: pg.connectionConfig,
+      securityGroupId: pg.securityGroupId,
+      subnetIds: pg.subnetIds,
+    })
+  })
   type api = Types.AppSync.api
   type role = Types.AppSync.role
   type apiTarget = Domain | Platform
@@ -1230,36 +1236,73 @@ module MakeWithConfig = (
   type mcpSupported = | @as(true) McpSupported | @as(false) McpNotSupported
   let mcpSupported = McpNotSupported
 
-  // B2.3d: provision the Postgres change-feed relay when the DCB backend is Postgres.
-  // Called after plugins are built (makePlatform monolithic, or deployPlugin per
-  // stack). Each Postgres DCB log registered {logName, partitionTag} during its
-  // plugin build (DcbEventLogStorage_Postgres.make), and its plugin's EventCollector
-  // queue was attached in forPluginEventCollector — so the registry is complete here.
-  // One shared relay Lambda drains all logs from their per-log dcb_subscription
-  // checkpoints and feeds each plugin's collector queue.
-  let provisionPgChangeFeedRelay = () =>
-    switch DcbBackend.get() {
-    | Some({connectionConfig, securityGroupId, subnetIds}) =>
-      let relayLogs =
-        DcbBackend.getRelayLogs()->Array.filterMap(entry =>
-          switch (entry.collectorQueueUrl, entry.collectorQueueArn) {
-          | (Some(targetQueueUrl), Some(targetQueueArn)) =>
-            Some({
-              PgChangeFeedRelay_Builder.connectionConfig,
-              logName: entry.logName,
-              subscriber: "aws-eventcollector-relay",
-              partitionTag: entry.partitionTag,
-              targetQueueUrl,
-              targetQueueArn,
-            })
-          | _ =>
-            log.warn(
-              ~comp="Platform",
-              `PgChangeFeedRelay: DCB log ${entry.logName} has no EventCollector queue — skipping (its events will not propagate)`,
-            )
-            None
-          }
-        )
+  // B2.3d: provision the Postgres change-feed relay when a Postgres backend is
+  // active. Called after plugins are built (makePlatform monolithic, or deployPlugin
+  // per stack). Each Postgres log registered itself during its plugin build
+  // (DcbEventLogStorage_Postgres.make / EventLogStorage_Postgres.make), and its
+  // plugin's EventCollector queue was attached in forPluginEventCollector — so the
+  // registries are complete here. One shared relay Lambda drains all logs (DCB and
+  // classic) and feeds each plugin's collector queue. The checkpoint tables key by
+  // subscriber alone, so the subscriber embeds the log name — a shared subscriber
+  // string across logs would clobber checkpoints and skip events.
+  let provisionPgChangeFeedRelay = () => {
+    let dcbLogs = switch DcbBackend.get() {
+    | Some({connectionConfig}) =>
+      DcbBackend.getRelayLogs()->Array.filterMap(entry =>
+        switch (entry.collectorQueueUrl, entry.collectorQueueArn) {
+        | (Some(targetQueueUrl), Some(targetQueueArn)) =>
+          Some({
+            PgChangeFeedRelay_Builder.connectionConfig,
+            logName: entry.logName,
+            subscriber: `aws-eventcollector-relay:${entry.logName}`,
+            feed: PgChangeFeedRelay_Builder.Dcb({partitionTag: entry.partitionTag}),
+            targetQueueUrl,
+            targetQueueArn,
+          })
+        | _ =>
+          log.warn(
+            ~comp="Platform",
+            `PgChangeFeedRelay: DCB log ${entry.logName} has no EventCollector queue — skipping (its events will not propagate)`,
+          )
+          None
+        }
+      )
+    | None => []
+    }
+    let classicLogs = switch EventLogBackend.get() {
+    | Some({connectionConfig}) =>
+      EventLogBackend.getRelayLogs()->Array.filterMap(entry =>
+        switch (entry.collectorQueueUrl, entry.collectorQueueArn) {
+        | (Some(targetQueueUrl), Some(targetQueueArn)) =>
+          Some({
+            PgChangeFeedRelay_Builder.connectionConfig,
+            logName: entry.logName,
+            subscriber: `aws-eventcollector-relay:${entry.logName}`,
+            feed: PgChangeFeedRelay_Builder.Classic,
+            targetQueueUrl,
+            targetQueueArn,
+          })
+        | _ =>
+          log.warn(
+            ~comp="Platform",
+            `PgChangeFeedRelay: classic log ${entry.logName} has no EventCollector queue — skipping (its events will not propagate)`,
+          )
+          None
+        }
+      )
+    | None => []
+    }
+    let relayLogs = dcbLogs->Array.concat(classicLogs)
+    let relayVpc = switch DcbBackend.get() {
+    | Some(sel) => Some((sel.securityGroupId, sel.subnetIds))
+    | None =>
+      switch EventLogBackend.get() {
+      | Some(sel) => Some((sel.securityGroupId, sel.subnetIds))
+      | None => None
+      }
+    }
+    switch relayVpc {
+    | Some((securityGroupId, subnetIds)) =>
       if relayLogs->Array.length > 0 {
         let _ = PgChangeFeedRelay_Builder.make(
           ~name="PgChangeFeedRelay",
@@ -1270,6 +1313,7 @@ module MakeWithConfig = (
       }
     | None => ()
     }
+  }
 
   // In split mode, create a dedicated core AppSync API and push the core schema.
   // In unified mode, makePlatform is a no-op (schema stitching handled by events).

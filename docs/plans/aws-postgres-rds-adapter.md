@@ -319,17 +319,49 @@ for free, DynamoDB stays the default with Postgres additive.
   clean build, entry-point import smoke test passes, all 139 reventless-aws tests
   green.
 
-Still to do for the first vertical (the deploy-time half — bigger/riskier, its
-own step): `AggregateRuntime_Builder_Single.finish()` must (a) emit
-`pgConnection` into each Postgres-backed handler's `HANDLER_CONFIG` entry and a
-stable `eventLogTable` log-name (no DynamoDB table), (b) attach IAM
-`secretsmanager:GetSecretValue` + VPC config to the AllAggregates Lambda (**C1**),
-and (c) receive the backend choice + `PgConnection` ref from the platform
-(**D1**) — likely a `setPgConnection`-style registry on the runtime builder
-(mirroring the existing `pluginRmTableName` ref) to avoid threading a new param
-through the whole Aggregate builder chain. First cut can be whole-Lambda
-Postgres (any Postgres-backed aggregate forces the shared AllAggregates Lambda
-in-VPC); true per-aggregate mixing is a refinement.
+**Classic vertical — deploy-time half landed (2026-07-05).** The B1 aggregate
+path is now end-to-end at the wiring level, mirroring the DCB (B2.3c/d) pattern
+piece for piece:
+- **`EventLogBackend`** (adapter/EventLog/) — classic analogue of `DcbBackend`:
+  platform selection `{connectionConfig, securityGroupId, subnetIds}` + a
+  relay-log registry `{logName, aggregateName, collectorQueue*}`. Filled in two
+  steps per plugin build: `EventLogStorage_Postgres.make` registers each log
+  (`<Aggregate>EventLog`); `PluginRuntime_Builder.forPluginEventCollector`
+  attaches the plugin's EventCollector SQS queue — its `~eventTopics` dict is
+  keyed by aggregate name, so it attaches exactly the aggregates whose DynamoDB
+  stream the collector would have subscribed (admin EP filtering included).
+- **`EventLogStorage_Postgres` + `EventLogStorage.Selectable`** — deploy-time
+  classic maker (`resources: []`, ops from `EventLogStorage_Postgres_Runtime`)
+  + selector, wired into `Aggregate_Builder_Single` and `_Single_Async` (the
+  Platform strategies). PerAggregate/Micro/NoResolver stay DynamoDB-only. The
+  builders substitute the stable `<Aggregate>EventLog` log-name for the table
+  name when Postgres is active.
+- **`AggregateRuntime_Builder_Single(_Async).finish()`** — emits a per-handler
+  `pgConnection` fragment into HANDLER_CONFIG (activates the entry-point branch),
+  puts the AllAggregates(-Async) Lambda in-VPC on the DB SG/subnets, and grants
+  `secretsmanager:GetSecretValue` on the DB secret (the C1 items for aggregates).
+  Whole-Lambda toggle: all Single-strategy aggregates follow the platform
+  selection — per-aggregate mixing remains a refinement.
+- **Classic relay** — `PgChangeFeedRelay_Builder.relayLog` gained a
+  `feed: Dcb({partitionTag}) | Classic` field; the entry point branches on
+  `kind: "classic"` to `PgChangeFeedRelay_Runtime.relayClassic`, which drains
+  `event_log` via `EventLogChangeFeed.drain` and feeds each stored `payload`
+  (already the flat DynamoDB item shape — classic appends store the serialized
+  event verbatim on both backends) through `buildJsonEvent'` — byte-identical
+  EventCollector bodies. One shared relay Lambda serves DCB + classic logs.
+- **`Platform.MakeWithConfig ~pgConnection`** now also sets `EventLogBackend`
+  (classic follows the same toggle as DCB) and `provisionPgChangeFeedRelay`
+  merges both registries. **Checkpoint-clobber fix:** `dcb_subscription` /
+  `event_log_subscription` key by subscriber alone, but the relay used one
+  shared subscriber string for all logs — multiple logs would clobber each
+  other's checkpoints and skip events. Subscriber is now per-log
+  (`aws-eventcollector-relay:<logName>`), for DCB logs too (pre-live, so no
+  migration; a re-deploy replays from scratch — projections are idempotent).
+- Validated: full monorepo build zero warnings; 1758 tests green incl. new
+  `PG_URL`-gated classic-relay integration tests (bodies, checkpoint, and a
+  cross-log checkpoint-isolation regression test); relay entry-point import
+  smoke test. The remaining untested surface is the same as B2.4's: the live
+  AWS boundary (SQS SendMessage, in-VPC Lambdas, EventCollector fan-out).
 
 ### Original per-surface sketch (in-process / storageMaker path):
 Each mirrors the DynamoDB adapter file layout

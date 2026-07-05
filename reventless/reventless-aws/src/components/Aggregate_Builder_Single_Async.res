@@ -21,7 +21,7 @@ module Make = (
     RuntimeEnvironment,
     CommandGeneratorResolvers,
     CommandTopicChannel,
-    EventLogStorage.DynamoDbStream,
+    EventLogStorage.Selectable,
     EventTopicPublisher.DynamoDbStream,
     EventCollectorChannel,
     AggregateRuntimeBuilder,
@@ -38,10 +38,17 @@ module Make = (
     let aggregate = Inner.make(~api, ~opts?)
 
     // Extract the event log table name from the aggregate's outputs.
-    // EventLog.outputs.resources[0] is the DynamoDB table resource.
-    let eventLogOutputs = (aggregate->Inner.outputs).eventLog
-    let tableResource = eventLogOutputs.resources->Array.getUnsafe(0)
-    let eventLogTableName = tableResource.name
+    // EventLog.outputs.resources[0] is the DynamoDB table resource. On the
+    // Postgres backend there is no table (resources is empty) — the stable
+    // `event_log.log_name` (`<Aggregate>EventLog`) stands in for it, both here
+    // and in the entry point's Postgres branch.
+    let eventLogTableName = if EventLogBackend.isPostgres() {
+      Pulumi.Output.make(Spec.name ++ "EventLog")
+    } else {
+      let eventLogOutputs = (aggregate->Inner.outputs).eventLog
+      let tableResource = eventLogOutputs.resources->Array.getUnsafe(0)
+      tableResource.name
+    }
 
     AggregateRuntimeBuilder.registerAggregate(
       ~aggregateName=Spec.name,

@@ -11,16 +11,24 @@
 // >= 1 minute. Sub-minute latency needs a self-invoking loop / EventBridge
 // Scheduler (follow-up) or the Fargate-LISTEN upgrade.
 
-// One Postgres-backed DCB log to relay.
+// Which Postgres feed a relay log drains.
+type feed =
+  /** `dcb_event` log; the partition tag is sury-encoded into HANDLER_CONFIG so the
+      relay computes the same `id` (partition key) the DynamoDB-stream path would. */
+  | Dcb({partitionTag: Reventless.DcbTag.derivedPartitionTag})
+  /** Classic `event_log` log (one per aggregate); the stored payload already is
+      the DynamoDB item shape, so no extra config is needed. */
+  | Classic
+
+// One Postgres-backed log to relay.
 type relayLog = {
   connectionConfig: Pulumi.Output.t<PgConnection.connectionConfig>,
-  /** dcb_event.log_name — also the DCB `event_log` discriminator. */
+  /** dcb_event.log_name / event_log.log_name discriminator. */
   logName: string,
-  /** dcb_subscription checkpoint key for this relay. */
+  /** dcb_subscription / event_log_subscription checkpoint key for this relay.
+      Both tables key by subscriber alone, so this MUST be unique per log. */
   subscriber: string,
-  /** The DCB log's partition tag — sury-encoded into HANDLER_CONFIG so the relay
-      computes the same `id` (partition key) the DynamoDB-stream path would. */
-  partitionTag: Reventless.DcbTag.derivedPartitionTag,
+  feed: feed,
   /** Plugin EventCollector SQS queue this log's events are relayed to. */
   targetQueueUrl: Pulumi.Output.t<string>,
   targetQueueArn: Pulumi.Output.t<string>,
@@ -60,16 +68,23 @@ let make = (
         ]
         ->Dict.fromArray
         ->JSON.Encode.object
-      [
+      let entries = [
         ("pgConnection", pgConnectionJson),
         ("logName", l.logName->JSON.Encode.string),
         ("subscriber", l.subscriber->JSON.Encode.string),
-        (
-          "partitionTag",
-          l.partitionTag->S.reverseConvertToJsonOrThrow(Reventless.DcbTag.derivedPartitionTagSchema),
-        ),
         ("targetQueueUrl", queueUrl->JSON.Encode.string),
       ]
+      switch l.feed {
+      | Dcb({partitionTag}) =>
+        entries
+        ->Array.push((
+          "partitionTag",
+          partitionTag->S.reverseConvertToJsonOrThrow(Reventless.DcbTag.derivedPartitionTagSchema),
+        ))
+        ->ignore
+      | Classic => entries->Array.push(("kind", "classic"->JSON.Encode.string))->ignore
+      }
+      entries
       ->Dict.fromArray
       ->JSON.Encode.object
       ->JSON.stringify

@@ -7,7 +7,7 @@
     "build": "rescript build",
     "start": "rescript watch",
     "clean": "rescript clean",
-    "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
+    "rebuild": "pnpm run clean && pnpm run build",
     "test": "LOG_LEVEL=${LOG_LEVEL:-silent} NODE_OPTIONS='--experimental-vm-modules' npx jest"
   },
   "jest": {

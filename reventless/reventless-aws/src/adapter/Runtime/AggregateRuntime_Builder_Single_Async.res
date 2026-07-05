@@ -194,6 +194,30 @@ let finish = () =>
         let handlerOutputs: array<Pulumi.Output.t<string>> = []
         let packageDirs: dict<string> = Dict.make()
 
+        // Classic Postgres backend: add a `pgConnection` object to every handler
+        // entry so the AggregateEntryPoint Postgres branch activates (absent →
+        // DynamoDB path, unchanged). Whole-Lambda toggle — all aggregates follow
+        // the platform selection, matching EventLogStorage.Selectable.
+        let pgSelection = EventLogBackend.get()
+        let pgConnectionFragment = switch pgSelection {
+        | Some(sel) =>
+          sel.connectionConfig->Pulumi.Output.apply(cc => {
+            let pgConnectionJson =
+              [
+                ("host", cc.host->JSON.Encode.string),
+                ("port", cc.port->Int.toFloat->JSON.Encode.float),
+                ("database", cc.database->JSON.Encode.string),
+                ("username", cc.username->JSON.Encode.string),
+                ("secretArn", cc.secretArn->JSON.Encode.string),
+              ]
+              ->Dict.fromArray
+              ->JSON.Encode.object
+              ->JSON.stringify
+            `,"pgConnection":${pgConnectionJson}`
+          })
+        | None => Pulumi.Output.make("")
+        }
+
         specs->Array.forEach(spec => {
           switch aggregateInfos->Dict.get(spec.aggregateName) {
           | Some(info) =>
@@ -208,9 +232,14 @@ let finish = () =>
               info.behaviorModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
             let handlerJson =
-              Pulumi.Output.all3((info.eventLogTableName, spec.queueUrl, spec.queueArn))
-              ->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
-                `{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"}`
+              Pulumi.Output.all4((
+                info.eventLogTableName,
+                spec.queueUrl,
+                spec.queueArn,
+                pgConnectionFragment,
+              ))
+              ->Pulumi.Output.apply(((table, queueUrl, queueArn, pgFragment)) =>
+                `{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pgFragment}}`
               )
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
@@ -249,6 +278,27 @@ let finish = () =>
 
         cfg.sqsBatchSize->Option.forEach(CommandTopicChannel.setBatchSize)
 
+        // Postgres-backed classic EventLog → the command Lambda talks to RDS, so it
+        // must land in-VPC on the DB-access security group + private subnets.
+        // makeFromCodeAsset adds the EC2-ENI IAM automatically when vpcConfig is
+        // present (C1).
+        let vpcConfig = switch pgSelection {
+        | Some(sel) =>
+          Some(
+            sel.securityGroupId
+            ->Pulumi.Output.apply(sgId =>
+              (
+                {
+                  PulumiAws.Lambda.Function.subnetIds: sel.subnetIds->Pulumi.Input.make,
+                  securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
+                }: PulumiAws.Lambda.Function.vpcConfig
+              )
+            )
+            ->Pulumi.Output.asInput,
+          )
+        | None => None
+        }
+
         let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
           ~name="AllAggregatesAsyncCmdHandler",
           ~code,
@@ -259,8 +309,38 @@ let finish = () =>
           ~reservedConcurrency=?cfg.reservedConcurrency,
           ~ephemeralStorageMb=?cfg.ephemeralStorageMb,
           ~logRetentionDays=?cfg.logRetentionDays,
+          ~vpcConfig=?vpcConfig,
           ~opts,
         )
+
+        // Grant the Postgres-backed command Lambda read access to the RDS-managed
+        // master secret so PgRuntime can resolve the DB password at cold start.
+        switch pgSelection {
+        | Some(sel) =>
+          let _ = sel.connectionConfig->Pulumi.Output.apply(cc => {
+            open PulumiAws.PolicyDocument
+            PulumiAws.IAM.RolePolicy.make(
+              ~name="AllAggregatesAsyncCmdHandler-pgSecret",
+              ~args={
+                policy: PulumiAws.PolicyDocument.make(
+                  ~id="AllAggregatesAsyncCmdHandler-pgSecretPolicy",
+                  ~statements=[
+                    {
+                      sid: "AllowGetPgSecret",
+                      effect: Allow,
+                      actions: Action("secretsmanager:GetSecretValue"),
+                      resources: Resource(cc.secretArn),
+                    },
+                  ],
+                )
+                ->PulumiAws.PolicyDocument.toJsonString
+                ->Pulumi.Input.make,
+                role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+              },
+            )
+          })
+        | None => ()
+        }
 
         specs->Array.forEach(({connects}) => {
           connects->Array.forEach(connect => connect(~runtime))

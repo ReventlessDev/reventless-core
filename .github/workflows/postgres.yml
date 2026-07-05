@@ -92,7 +92,7 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Build reventless-postgres (with deps)
-        run: pnpm --filter @reventlessdev/reventless-postgres run build -- -with-deps
+        run: pnpm --filter @reventlessdev/reventless-postgres run build
 
       - name: Run Postgres integration + concurrency suite
         run: pnpm --filter @reventlessdev/reventless-postgres test

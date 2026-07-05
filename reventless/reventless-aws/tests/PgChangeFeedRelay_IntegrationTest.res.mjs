@@ -8,6 +8,7 @@ import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Mess
 import * as PgDriver$ReventlessPostgres from "@reventlessdev/reventless-postgres/src/PgDriver.res.mjs";
 import * as PgSchema$ReventlessPostgres from "@reventlessdev/reventless-postgres/src/PgSchema.res.mjs";
 import * as PgChangeFeedRelay_Runtime$ReventlessAws from "../src/adapter/Postgres/PgChangeFeedRelay_Runtime.res.mjs";
+import * as EventLogStorage_Postgres$ReventlessPostgres from "@reventlessdev/reventless-postgres/src/EventLogStorage_Postgres.res.mjs";
 import * as DcbEventLogStorage_Postgres$ReventlessPostgres from "@reventlessdev/reventless-postgres/src/DcbEventLogStorage_Postgres.res.mjs";
 
 let opts = {};
@@ -103,6 +104,89 @@ if (url !== undefined) {
       let second = await PgChangeFeedRelay_Runtime$ReventlessAws.relayWithPool(pool, "relay-checkpoint", "relay-it", undefined, capturingSendBatch(sink));
       globalThis.expect(second).toBe(0);
       globalThis.expect(sink.contents.length).toBe(2);
+    });
+    globalThis.test("classic: relays each appended event_log event as an {id, meta, event} body", async () => {
+      let match = EventLogStorage_Postgres$ReventlessPostgres.makeStorage(pool, "ClassicRelayBasicEventLog", undefined, undefined);
+      let flatItem = (id, seq, eventType, data) => Object.fromEntries([
+        [
+          "id",
+          id
+        ],
+        [
+          "position",
+          seq.toString().padStart(9, "0")
+        ],
+        [
+          "event",
+          eventType
+        ],
+        [
+          "data",
+          data
+        ]
+      ].concat(Message$ReventlessCore.decomposeMeta(Message$ReventlessCore.generateMeta("relay-it", undefined, undefined, undefined, undefined, undefined, undefined, undefined))));
+      await match[1].append(0, "agg-1", [
+        flatItem("agg-1", 0, "NameUpdated", Object.fromEntries([[
+            "n",
+            0
+          ]])),
+        flatItem("agg-1", 1, "NameUpdated", Object.fromEntries([[
+            "n",
+            1
+          ]]))
+      ]);
+      let sink = {
+        contents: []
+      };
+      let processed = await PgChangeFeedRelay_Runtime$ReventlessAws.relayClassicWithPool(pool, "ClassicRelayBasicEventLog", "relay-it:ClassicRelayBasicEventLog", capturingSendBatch(sink));
+      globalThis.expect(processed).toBe(2);
+      globalThis.expect(sink.contents.length).toBe(2);
+      let first = sink.contents[0];
+      globalThis.expect(idOf(first)).toEqual("agg-1");
+      let obj = Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(first), undefined);
+      globalThis.expect(JSON.stringify(Stdlib_Option.getOrThrow(obj["event"], undefined)).includes("NameUpdated")).toBe(true);
+      let metaObj = Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(obj["meta"], Stdlib_JSON.Decode.object), undefined);
+      globalThis.expect(metaObj["service"]).toEqual("relay-it");
+      let second = await PgChangeFeedRelay_Runtime$ReventlessAws.relayClassicWithPool(pool, "ClassicRelayBasicEventLog", "relay-it:ClassicRelayBasicEventLog", capturingSendBatch(sink));
+      globalThis.expect(second).toBe(0);
+      globalThis.expect(sink.contents.length).toBe(2);
+    });
+    globalThis.test("classic: per-log subscribers keep checkpoints isolated across logs", async () => {
+      let mkOps = name => EventLogStorage_Postgres$ReventlessPostgres.makeStorage(pool, name, undefined, undefined)[1];
+      let opsB = mkOps("ClassicRelayIsoBEventLog");
+      let opsA = mkOps("ClassicRelayIsoAEventLog");
+      let meta = () => Message$ReventlessCore.decomposeMeta(Message$ReventlessCore.generateMeta("relay-it", undefined, undefined, undefined, undefined, undefined, undefined, undefined));
+      let item = (id, eventType) => Object.fromEntries([
+        [
+          "id",
+          id
+        ],
+        [
+          "position",
+          "000000000"
+        ],
+        [
+          "event",
+          eventType
+        ],
+        [
+          "data",
+          Object.fromEntries([])
+        ]
+      ].concat(meta()));
+      await opsB.append(0, "b-1", [item("b-1", "BHappened")]);
+      await opsA.append(0, "a-1", [item("a-1", "AHappened")]);
+      let sinkA = {
+        contents: []
+      };
+      let drainedA = await PgChangeFeedRelay_Runtime$ReventlessAws.relayClassicWithPool(pool, "ClassicRelayIsoAEventLog", "relay-it:ClassicRelayIsoAEventLog", capturingSendBatch(sinkA));
+      globalThis.expect(drainedA).toBe(1);
+      let sinkB = {
+        contents: []
+      };
+      let drainedB = await PgChangeFeedRelay_Runtime$ReventlessAws.relayClassicWithPool(pool, "ClassicRelayIsoBEventLog", "relay-it:ClassicRelayIsoBEventLog", capturingSendBatch(sinkB));
+      globalThis.expect(drainedB).toBe(1);
+      globalThis.expect(idOf(sinkB.contents[0])).toEqual("b-1");
     });
     globalThis.test("partitionTag pins the id to its tag on a multi-tag event", async () => {
       let match = DcbEventLogStorage_Postgres$ReventlessPostgres.makeStorage(pool, "relay-pt", [], {
