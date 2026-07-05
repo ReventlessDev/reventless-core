@@ -12,6 +12,7 @@ import { Make as commandTopicCallbackMake } from "@reventlessdev/reventless-core
 import { makeGenerateCommand } from "@reventlessdev/reventless-core/src/components/CommandGenerator/CommandGenerator_Callback.res.mjs";
 import { commandOutcomeToJson, runInlineAndCollect } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 import { append, replay, replayStream, appendStream } from "@reventlessdev/reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res.mjs";
+import { opsFor as pgEventLogOpsFor } from "@reventlessdev/reventless-aws/src/adapter/EventLog/EventLogStorage_Postgres_Runtime.res.mjs";
 import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import { DynamoDBClient, ScanCommand } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
@@ -118,15 +119,32 @@ async function checkPluginStatus(event) {
 // Route 2 (SQS event source): the in-process command handler (used both as the
 // inline dispatch target and as the SQS message handler) plus the resolved
 // queue ref for the fire-and-forget async path.
-function buildAggregateParts(specModule, behaviorModule, eventLogTableName, queueUrl) {
+// `pgConnection`, when present, is the resolved PgConnection.connectionConfig
+// ({host,port,database,username,secretArn}) serialized into HANDLER_CONFIG by the
+// runtime builder for a Postgres-backed aggregate. Its presence selects the
+// Postgres EventLog runtime; absence keeps the DynamoDB path byte-identical.
+// `eventLogTableName` doubles as the Postgres `event_log.log_name` discriminator
+// (all aggregates share one Postgres table, unlike DynamoDB's table-per-aggregate).
+function buildAggregateParts(specModule, behaviorModule, eventLogTableName, queueUrl, pgConnection) {
   const patchedSpec = patchSpecId(specModule);
-  const resolvedTable = { name: eventLogTableName };
-  const rawStorageOps = {
-    append: append(resolvedTable),
-    replay: replay(resolvedTable),
-    replayStream: replayStream(resolvedTable),
-    appendStream: appendStream(resolvedTable),
-  };
+  let rawStorageOps;
+  if (pgConnection) {
+    const pgOps = pgEventLogOpsFor(pgConnection, eventLogTableName);
+    rawStorageOps = {
+      append: pgOps.append,
+      replay: pgOps.replay,
+      replayStream: pgOps.replayStream,
+      appendStream: pgOps.appendStream,
+    };
+  } else {
+    const resolvedTable = { name: eventLogTableName };
+    rawStorageOps = {
+      append: append(resolvedTable),
+      replay: replay(resolvedTable),
+      replayStream: replayStream(resolvedTable),
+      appendStream: appendStream(resolvedTable),
+    };
+  }
   const eventLogOps = eventLogOperationsMake(patchedSpec)({
     Spec: patchedSpec,
     EventTopic: { Spec: patchedSpec },
@@ -246,7 +264,7 @@ async function buildAllHandlers() {
   await Promise.all(config.handlers.map(async h => {
     const specModule = await dynamicImport(h.specModule);
     const behaviorModule = await dynamicImport(h.behaviorModule);
-    const parts = buildAggregateParts(specModule, behaviorModule, h.eventLogTable, h.queueUrl);
+    const parts = buildAggregateParts(specModule, behaviorModule, h.eventLogTable, h.queueUrl, h.pgConnection);
     cmdTopicHandlers[h.queueArn] = parts.sqsHandler;
     cmdGenHandlers[specModule.name] = buildCommandGeneratorHandler(parts, DISPATCH_MODE);
   }));

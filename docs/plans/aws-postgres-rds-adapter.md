@@ -267,9 +267,29 @@ for free, DynamoDB stays the default with Postgres additive.
   cached, rotation-safe provider (pg calls it per physical connection). This is
   the reusable cold-start glue every B-surface entry-point branch will call.
 
-Still to do for the first vertical (aggregate EventLog on Postgres, deployed):
-the `AggregateEntryPoint.mjs` Postgres branch, the `AggregateRuntime_Builder_Single`
-env/IAM/VPC plumbing (**C1**), and the platform-level backend selection (**D1**).
+**Aggregate EventLog runtime + entry-point branch — landed (2026-07-05):**
+- `EventLogStorage_Postgres_Runtime.res` (reventless-aws, EventLog surface folder)
+  — `opsFor(connectionConfig, ~logName) => EventLog_Adapter.operations`, mirroring
+  `EventLogStorage_DynamoDb_Runtime`'s role. `logName` is the per-aggregate
+  `event_log.log_name` (all aggregates share one Postgres table).
+- `AggregateEntryPoint.mjs` gained a **Postgres branch** in `buildAggregateParts`,
+  selected by presence of a per-handler `pgConnection` field in `HANDLER_CONFIG`
+  (finer than a single env var — supports mixed/per-aggregate backends, the D1
+  goal). Absent `pgConnection` ⇒ the DynamoDB path is byte-identical. Verified:
+  clean build, entry-point import smoke test passes, all 139 reventless-aws tests
+  green.
+
+Still to do for the first vertical (the deploy-time half — bigger/riskier, its
+own step): `AggregateRuntime_Builder_Single.finish()` must (a) emit
+`pgConnection` into each Postgres-backed handler's `HANDLER_CONFIG` entry and a
+stable `eventLogTable` log-name (no DynamoDB table), (b) attach IAM
+`secretsmanager:GetSecretValue` + VPC config to the AllAggregates Lambda (**C1**),
+and (c) receive the backend choice + `PgConnection` ref from the platform
+(**D1**) — likely a `setPgConnection`-style registry on the runtime builder
+(mirroring the existing `pluginRmTableName` ref) to avoid threading a new param
+through the whole Aggregate builder chain. First cut can be whole-Lambda
+Postgres (any Postgres-backed aggregate forces the shared AllAggregates Lambda
+in-VPC); true per-aggregate mixing is a refinement.
 
 ### Original per-surface sketch (in-process / storageMaker path):
 Each mirrors the DynamoDB adapter file layout
