@@ -203,7 +203,8 @@ function scanByTableName(tableName, filterConfigs, limit) {
 }
 
 function make(allQueryDbs) {
-  let allRuntimeQueryDbsOutputs = Pulumi.all(Stdlib_Dict.mapValues(allQueryDbs, queryDb => Adapter$ReventlessCore.resourceToResolvedOutput(Util_DynamoDb$ReventlessAws.findResource(queryDb.resources))));
+  let dynamoDbQueryDbs = Object.fromEntries(Object.entries(allQueryDbs).filter(param => param[1].resources.length !== 0));
+  let allRuntimeQueryDbsOutputs = Pulumi.all(Stdlib_Dict.mapValues(dynamoDbQueryDbs, queryDb => Adapter$ReventlessCore.resourceToResolvedOutput(Util_DynamoDb$ReventlessAws.findResource(queryDb.resources))));
   return allRuntimeQueryDbsOutputs.apply(allRuntimeQueryDbs => ({
     scan: (readModelName, filterConfigs, limit) => scanByTableName(Util_QueryDbRuntime$ReventlessCore.getRuntimeResource(allRuntimeQueryDbs, readModelName).name, filterConfigs, limit),
     query: (readModelName, key, id, subIdConfig, filterConfigs, ascending, limit) => queryByTableName(Util_QueryDbRuntime$ReventlessCore.getRuntimeResource(allRuntimeQueryDbs, readModelName).name, key, id, subIdConfig, filterConfigs, ascending, limit)

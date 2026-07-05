@@ -166,13 +166,20 @@ binding it in a deploy-time maker.
     set when `pgConnection` is present (indexes/subIdField read from the
     dynamically-imported spec module); absent → DynamoDB path byte-identical.
   - Validated: full monorepo build zero warnings, 1758 tests green.
-- **B3.1b — QueryEngine on Postgres (open).** Runtime QueryEngine consumers
-  (extensions in the plugin EC Lambda, tasks) rebuild DynamoDB query/scan from
-  table names in HANDLER_CONFIG — they cannot read Postgres-backed read models
-  yet. Needs `QueryEnginePostgres` bound in those runtimes (entry-point branch
-  + VPC on task/EC Lambdas) and a `queryEngineMaker` selector for the
-  deploy-time engine (admin scan stays DynamoDB thanks to the exemption).
-  Scope alongside or into B3.2 — both put query logic behind the same seams.
+- **B3.1b — QueryEngine on Postgres** — ✅ **closed (2026-07-05) with a
+  finding**: on the deployed path there are NO runtime QueryEngine consumers of
+  app read models to migrate. Every bundled entry point's queryEngine is a stub
+  (`SideEffectEntryPoint`: no-op; `ExtensionPointEntryPoint`: throws;
+  `AdminEventCollectorEntryPoint` / `PluginExtensionPointEntryPoint`: `scan`
+  hits only the admin Plugin RM — DynamoDB-exempt — and `query` throws by
+  design). The deploy-time engine (`QueryEngine_DynamoDb.make`) only ever
+  queries admin RMs. One real fix shipped: that maker eagerly resolved a
+  DynamoDB resource for EVERY read model and would have crashed the deploy on
+  resource-less Postgres RMs — it now excludes them (query-time
+  `getRuntimeResource` raises its explicit not-found error instead). When the
+  bundled runtimes gain real QueryEngine support, `QueryEnginePostgres` slots
+  behind the same reconstruction seams — fold that into B3.2, which builds the
+  identical dispatch (readModelName → backend) for the read path anyway.
 - **B3.2 — AppSync read path (the big one).** `PgQueryResolverEntryPoint.mjs`
   + shared Lambda data source + `QueryDbResolvers_Lambda` (parallel to
   `QueryDbResolvers_AppSync`, emitting Invoke templates). Resolver-kind → SQL
