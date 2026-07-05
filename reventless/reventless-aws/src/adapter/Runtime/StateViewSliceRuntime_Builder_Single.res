@@ -129,6 +129,7 @@ let buildLambda = (
   ~handlerOutputs: array<Pulumi.Output.t<handlerEntry>>,
   ~packageDirs,
   ~channelSpecs,
+  ~feedQueue: option<PulumiAws.SQS.Queue.t>=None,
   ~memorySize=1024,
   ~timeout=30,
 ) => {
@@ -217,6 +218,19 @@ let buildLambda = (
     ~runtime,
     ~opts,
   )
+
+  // B3.0: wire the Postgres feed queue into the Lambda (ESM + receive IAM).
+  switch feedQueue {
+  | Some(queue) =>
+    PgProjectionFeed.connect(
+      ~name="AllStateViewSlicesFeed",
+      ~queue,
+      ~lambda=runtime.parts.lambda,
+      ~lambdaRole=runtime.parts.lambdaRole,
+      ~opts=opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions,
+    )
+  | None => ()
+  }
 }
 
 let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) =>
@@ -236,6 +250,25 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           ~opts={Pulumi.ComponentResource.parent: parent},
         )
 
+        // B3.0: a Postgres-backed DCB log has no stream resource — provision the
+        // SQS feed queue the change-feed relay fans DCB events into. Its ARN is
+        // the handlers' sourceUrn dispatch key.
+        let feedQueue = DcbBackend.isPostgres()
+          ? Some(
+              PgProjectionFeed.makeQueue(
+                ~name="AllStateViewSlicesFeed",
+                ~scope="aws-svs-feed",
+                ~includeClassic=false,
+                ~includeDcb=true,
+                ~opts={Pulumi.CustomResourceOptions.parent: parent},
+              ),
+            )
+          : None
+        let feedArnOutput = switch feedQueue {
+        | Some(queue) => queue.arn
+        | None => Pulumi.Output.make("")
+        }
+
         let handlerOutputs: array<Pulumi.Output.t<handlerEntry>> = []
         let packageDirs: dict<string> = Dict.make()
         let allQueryDbResources: array<ReventlessInfra.Adapter.resource> = []
@@ -248,8 +281,11 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           packageDirs->Dict.set(projectionPkg, Util_Bundle.resolvePackageRoot(projectionPkg))
 
           let etResources: array<ReventlessInfra.Adapter.resource> = dcbOutputs.eventTopic.resources
-          let sourceUrn = etResources->Array.getUnsafe(0)
-          let sourceUrn = sourceUrn.urn
+          // No stream resource (Postgres DCB) → dispatch on the feed queue ARN.
+          let sourceUrn = switch etResources->Array.get(0) {
+          | Some(resource) => resource.urn
+          | None => feedArnOutput
+          }
 
           let handlerJson =
             Pulumi.Output.all2((info.queryDbTableName, sourceUrn))
@@ -270,6 +306,7 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           ~handlerOutputs,
           ~packageDirs,
           ~channelSpecs=[{channel: channel, eventTopics, resources: allQueryDbResources}],
+          ~feedQueue,
         )
       | None =>
         log.warn(
@@ -300,6 +337,23 @@ let finish = () =>
         let handlerOutputs: array<Pulumi.Output.t<handlerEntry>> = []
         let packageDirs: dict<string> = Dict.make()
 
+        // B3.0: Postgres-backed source logs have no stream — feed queue instead.
+        let feedQueue = DcbBackend.isPostgres()
+          ? Some(
+              PgProjectionFeed.makeQueue(
+                ~name="AllStateViewSlicesFeed",
+                ~scope="aws-svs-feed",
+                ~includeClassic=false,
+                ~includeDcb=true,
+                ~opts={Pulumi.CustomResourceOptions.parent: parent},
+              ),
+            )
+          : None
+        let feedArnOutput = switch feedQueue {
+        | Some(queue) => queue.arn
+        | None => Pulumi.Output.make("")
+        }
+
         storedSpecs->Array.forEach(spec => {
           switch sliceInfos->Dict.get(spec.componentName) {
           | Some(info) =>
@@ -309,13 +363,14 @@ let finish = () =>
             packageDirs->Dict.set(projectionPkg, Util_Bundle.resolvePackageRoot(projectionPkg))
 
             let handlerJson =
-              Pulumi.Output.all2((info.queryDbTableName, spec.sourceUrns))
-              ->Pulumi.Output.apply(((tableName, urns)) => {
+              Pulumi.Output.all3((info.queryDbTableName, spec.sourceUrns, feedArnOutput))
+              ->Pulumi.Output.apply(((tableName, urns, feedArn)) => {
                 let entry: handlerEntry = {
                   specModule: info.specModulePath,
                   projectionModule: info.projectionModulePath,
                   queryDbTableName: tableName,
-                  sourceUrn: urns->Array.getUnsafe(0),
+                  // No stream resource (Postgres) → dispatch on the feed queue ARN.
+                  sourceUrn: urns->Array.get(0)->Option.getOr(feedArn),
                 }
                 entry
               })
@@ -333,6 +388,7 @@ let finish = () =>
           ~handlerOutputs,
           ~packageDirs,
           ~channelSpecs=storedSpecs->Array.map(({channelSpec}) => channelSpec),
+          ~feedQueue,
           ~memorySize=maxMemorySize,
           ~timeout=maxTimeout,
         )

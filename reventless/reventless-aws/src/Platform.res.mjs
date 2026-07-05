@@ -38,6 +38,7 @@ import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginBehavior.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
+import * as PgProjectionFeed$ReventlessAws from "./adapter/Postgres/PgProjectionFeed.res.mjs";
 import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs";
 import * as IndexJs from "@pulumi/pulumi/runtime/index.js";
 import * as AppSync_EventsApi$ReventlessAws from "./adapter/Api/AppSync_EventsApi.res.mjs";
@@ -824,27 +825,48 @@ function MakeWithConfig(Config) {
     return Component$ReventlessCore.operations(component);
   };
   let provisionPgChangeFeedRelay = () => {
+    let feedTargets = (connectionConfig, logName, feed, isClassic) => Stdlib_Array.filterMap(PgProjectionFeed$ReventlessAws.getFeedQueues(), fq => {
+      if (isClassic ? fq.includeClassic : fq.includeDcb) {
+        return {
+          connectionConfig: connectionConfig,
+          logName: logName,
+          subscriber: fq.scope + `:` + logName,
+          feed: feed,
+          targetQueueUrl: fq.url,
+          targetQueueArn: fq.arn
+        };
+      }
+    });
     let match = DcbBackend$ReventlessAws.get();
     let dcbLogs;
     if (match !== undefined) {
       let connectionConfig = match.connectionConfig;
-      dcbLogs = Stdlib_Array.filterMap(DcbBackend$ReventlessAws.getRelayLogs(), entry => {
+      dcbLogs = DcbBackend$ReventlessAws.getRelayLogs().flatMap(entry => {
+        let feed = {
+          TAG: "Dcb",
+          partitionTag: entry.partitionTag
+        };
         let match = entry.collectorQueueUrl;
         let match$1 = entry.collectorQueueArn;
+        let ecTarget;
+        let exit = 0;
         if (match !== undefined && match$1 !== undefined) {
-          return {
-            connectionConfig: connectionConfig,
-            logName: entry.logName,
-            subscriber: `aws-eventcollector-relay:` + entry.logName,
-            feed: {
-              TAG: "Dcb",
-              partitionTag: entry.partitionTag
-            },
-            targetQueueUrl: match,
-            targetQueueArn: match$1
-          };
+          ecTarget = [{
+              connectionConfig: connectionConfig,
+              logName: entry.logName,
+              subscriber: `aws-eventcollector-relay:` + entry.logName,
+              feed: feed,
+              targetQueueUrl: match,
+              targetQueueArn: match$1
+            }];
+        } else {
+          exit = 1;
         }
-        log.warn("Platform", undefined, `PgChangeFeedRelay: DCB log ` + entry.logName + ` has no EventCollector queue — skipping (its events will not propagate)`);
+        if (exit === 1) {
+          log.warn("Platform", undefined, `PgChangeFeedRelay: DCB log ` + entry.logName + ` has no EventCollector queue — EP/extension fan-out skipped for it`);
+          ecTarget = [];
+        }
+        return ecTarget.concat(feedTargets(connectionConfig, entry.logName, feed, false));
       });
     } else {
       dcbLogs = [];
@@ -853,20 +875,28 @@ function MakeWithConfig(Config) {
     let classicLogs;
     if (match$1 !== undefined) {
       let connectionConfig$1 = match$1.connectionConfig;
-      classicLogs = Stdlib_Array.filterMap(EventLogBackend$ReventlessAws.getRelayLogs(), entry => {
+      classicLogs = EventLogBackend$ReventlessAws.getRelayLogs().flatMap(entry => {
         let match = entry.collectorQueueUrl;
         let match$1 = entry.collectorQueueArn;
+        let ecTarget;
+        let exit = 0;
         if (match !== undefined && match$1 !== undefined) {
-          return {
-            connectionConfig: connectionConfig$1,
-            logName: entry.logName,
-            subscriber: `aws-eventcollector-relay:` + entry.logName,
-            feed: "Classic",
-            targetQueueUrl: match,
-            targetQueueArn: match$1
-          };
+          ecTarget = [{
+              connectionConfig: connectionConfig$1,
+              logName: entry.logName,
+              subscriber: `aws-eventcollector-relay:` + entry.logName,
+              feed: "Classic",
+              targetQueueUrl: match,
+              targetQueueArn: match$1
+            }];
+        } else {
+          exit = 1;
         }
-        log.warn("Platform", undefined, `PgChangeFeedRelay: classic log ` + entry.logName + ` has no EventCollector queue — skipping (its events will not propagate)`);
+        if (exit === 1) {
+          log.warn("Platform", undefined, `PgChangeFeedRelay: classic log ` + entry.logName + ` has no EventCollector queue — EP/extension fan-out skipped for it`);
+          ecTarget = [];
+        }
+        return ecTarget.concat(feedTargets(connectionConfig$1, entry.logName, "Classic", true));
       });
     } else {
       classicLogs = [];
@@ -1997,27 +2027,48 @@ function Make($star) {
     return Component$ReventlessCore.operations(component);
   };
   let provisionPgChangeFeedRelay = () => {
+    let feedTargets = (connectionConfig, logName, feed, isClassic) => Stdlib_Array.filterMap(PgProjectionFeed$ReventlessAws.getFeedQueues(), fq => {
+      if (isClassic ? fq.includeClassic : fq.includeDcb) {
+        return {
+          connectionConfig: connectionConfig,
+          logName: logName,
+          subscriber: fq.scope + `:` + logName,
+          feed: feed,
+          targetQueueUrl: fq.url,
+          targetQueueArn: fq.arn
+        };
+      }
+    });
     let match = DcbBackend$ReventlessAws.get();
     let dcbLogs;
     if (match !== undefined) {
       let connectionConfig = match.connectionConfig;
-      dcbLogs = Stdlib_Array.filterMap(DcbBackend$ReventlessAws.getRelayLogs(), entry => {
+      dcbLogs = DcbBackend$ReventlessAws.getRelayLogs().flatMap(entry => {
+        let feed = {
+          TAG: "Dcb",
+          partitionTag: entry.partitionTag
+        };
         let match = entry.collectorQueueUrl;
         let match$1 = entry.collectorQueueArn;
+        let ecTarget;
+        let exit = 0;
         if (match !== undefined && match$1 !== undefined) {
-          return {
-            connectionConfig: connectionConfig,
-            logName: entry.logName,
-            subscriber: `aws-eventcollector-relay:` + entry.logName,
-            feed: {
-              TAG: "Dcb",
-              partitionTag: entry.partitionTag
-            },
-            targetQueueUrl: match,
-            targetQueueArn: match$1
-          };
+          ecTarget = [{
+              connectionConfig: connectionConfig,
+              logName: entry.logName,
+              subscriber: `aws-eventcollector-relay:` + entry.logName,
+              feed: feed,
+              targetQueueUrl: match,
+              targetQueueArn: match$1
+            }];
+        } else {
+          exit = 1;
         }
-        log.warn("Platform", undefined, `PgChangeFeedRelay: DCB log ` + entry.logName + ` has no EventCollector queue — skipping (its events will not propagate)`);
+        if (exit === 1) {
+          log.warn("Platform", undefined, `PgChangeFeedRelay: DCB log ` + entry.logName + ` has no EventCollector queue — EP/extension fan-out skipped for it`);
+          ecTarget = [];
+        }
+        return ecTarget.concat(feedTargets(connectionConfig, entry.logName, feed, false));
       });
     } else {
       dcbLogs = [];
@@ -2026,20 +2077,28 @@ function Make($star) {
     let classicLogs;
     if (match$1 !== undefined) {
       let connectionConfig$1 = match$1.connectionConfig;
-      classicLogs = Stdlib_Array.filterMap(EventLogBackend$ReventlessAws.getRelayLogs(), entry => {
+      classicLogs = EventLogBackend$ReventlessAws.getRelayLogs().flatMap(entry => {
         let match = entry.collectorQueueUrl;
         let match$1 = entry.collectorQueueArn;
+        let ecTarget;
+        let exit = 0;
         if (match !== undefined && match$1 !== undefined) {
-          return {
-            connectionConfig: connectionConfig$1,
-            logName: entry.logName,
-            subscriber: `aws-eventcollector-relay:` + entry.logName,
-            feed: "Classic",
-            targetQueueUrl: match,
-            targetQueueArn: match$1
-          };
+          ecTarget = [{
+              connectionConfig: connectionConfig$1,
+              logName: entry.logName,
+              subscriber: `aws-eventcollector-relay:` + entry.logName,
+              feed: "Classic",
+              targetQueueUrl: match,
+              targetQueueArn: match$1
+            }];
+        } else {
+          exit = 1;
         }
-        log.warn("Platform", undefined, `PgChangeFeedRelay: classic log ` + entry.logName + ` has no EventCollector queue — skipping (its events will not propagate)`);
+        if (exit === 1) {
+          log.warn("Platform", undefined, `PgChangeFeedRelay: classic log ` + entry.logName + ` has no EventCollector queue — EP/extension fan-out skipped for it`);
+          ecTarget = [];
+        }
+        return ecTarget.concat(feedTargets(connectionConfig$1, entry.logName, "Classic", true));
       });
     } else {
       classicLogs = [];

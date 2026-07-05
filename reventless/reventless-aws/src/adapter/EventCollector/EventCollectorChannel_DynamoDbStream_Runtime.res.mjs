@@ -3,24 +3,29 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
+import * as Util_SQS_Runtime$ReventlessAws from "../../util/Util_SQS_Runtime.res.mjs";
 import * as Util_DynamoDbStream_Runtime$ReventlessAws from "../../util/Util_DynamoDbStream_Runtime.res.mjs";
 
-function handleStreamEvent(handleEvents, streamEvent, param) {
-  let jsons = Stdlib_Array.filterMap(streamEvent.Records, record => {
+function handleStreamEvent(handleEvents, event, param) {
+  let jsons = Stdlib_Array.filterMap(event.Records, record => {
     let _eventSource = record.eventSource;
-    if (_eventSource !== "aws:dynamodb") {
-      return;
-    }
-    let match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
-    if (typeof match !== "object") {
-      return;
-    }
-    switch (match.TAG) {
-      case "OldImage" :
+    switch (_eventSource) {
+      case "aws:dynamodb" :
+        let match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
+        if (typeof match !== "object") {
+          return;
+        }
+        switch (match.TAG) {
+          case "OldImage" :
+            return;
+          case "NewImage" :
+          case "NewAndOldImage" :
+            return match._1;
+        }
+      case "aws:sqs" :
+        return Util_SQS_Runtime$ReventlessAws.parseSqsRecord(record);
+      default:
         return;
-      case "NewImage" :
-      case "NewAndOldImage" :
-        return match._1;
     }
   });
   return Effect.map(handleEvents(Stream.fromIterable(jsons)), () => {});

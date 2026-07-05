@@ -463,6 +463,14 @@ from the platform-and-plugin guide and the done storage-adapter plan.
 
 ## Risks / open questions
 
+- **Projection delivery on Postgres platforms** (found 2026-07-05 while
+  starting B3.1): RM/StateViewSlice EventCollectors subscribe DynamoDB-stream
+  ESMs; Postgres logs have no streams, so within-plugin projections never ran
+  on a B1/B2 platform. ✅ **Fixed same day (B3.0)** — per-consumer-Lambda SQS
+  feed queues fanned out by the relay; see
+  `docs/plans/aws-postgres-querydb-adapter.md`. Live-deploy validation still
+  pending (same boundary as B2.4).
+
 - **VPC changes the whole Lambda deploy shape** (ENIs, cold-start latency,
   NAT for any outbound). Biggest divergence from the zero-VPC DynamoDB path —
   scope C1 first and honestly.

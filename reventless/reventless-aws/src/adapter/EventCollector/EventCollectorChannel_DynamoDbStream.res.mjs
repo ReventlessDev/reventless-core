@@ -21,7 +21,7 @@ function connect(name, channelSpecs, runtime, opts) {
 }
 
 function make(param, eventTopics, param$1) {
-  let eventTopicResources = Object.values(eventTopics).map(outputs => outputs.resources[0]);
+  let eventTopicResources = Stdlib_Array.filterMap(Object.values(eventTopics), outputs => outputs.resources[0]);
   let enqueueEventNotSupported = (delay, id, messageBody) => {
     log.debug("EventCollectorChannel_DynamoDbStream", Object.fromEntries([
       [

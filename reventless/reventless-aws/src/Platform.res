@@ -1246,50 +1246,78 @@ module MakeWithConfig = (
   // subscriber alone, so the subscriber embeds the log name — a shared subscriber
   // string across logs would clobber checkpoints and skip events.
   let provisionPgChangeFeedRelay = () => {
+    // B3.0: besides each plugin's EventCollector queue, every log also fans out
+    // to the registered projection feed queues (the AllReadModels /
+    // AllStateViewSlices Lambdas) — Postgres logs have no DynamoDB stream, so
+    // this is how RM/SVS projections are fed. One subscriber per (feed, log)
+    // keeps checkpoints isolated.
+    let feedTargets = (~connectionConfig, ~logName, ~feed, ~isClassic) =>
+      PgProjectionFeed.getFeedQueues()->Array.filterMap(fq =>
+        (isClassic ? fq.includeClassic : fq.includeDcb)
+          ? Some({
+              PgChangeFeedRelay_Builder.connectionConfig,
+              logName,
+              subscriber: `${fq.scope}:${logName}`,
+              feed,
+              targetQueueUrl: fq.url,
+              targetQueueArn: fq.arn,
+            })
+          : None
+      )
     let dcbLogs = switch DcbBackend.get() {
     | Some({connectionConfig}) =>
-      DcbBackend.getRelayLogs()->Array.filterMap(entry =>
-        switch (entry.collectorQueueUrl, entry.collectorQueueArn) {
-        | (Some(targetQueueUrl), Some(targetQueueArn)) =>
-          Some({
-            PgChangeFeedRelay_Builder.connectionConfig,
-            logName: entry.logName,
-            subscriber: `aws-eventcollector-relay:${entry.logName}`,
-            feed: PgChangeFeedRelay_Builder.Dcb({partitionTag: entry.partitionTag}),
-            targetQueueUrl,
-            targetQueueArn,
-          })
+      DcbBackend.getRelayLogs()->Array.flatMap(entry => {
+        let feed = PgChangeFeedRelay_Builder.Dcb({partitionTag: entry.partitionTag})
+        let ecTarget = switch (entry.collectorQueueUrl, entry.collectorQueueArn) {
+        | (Some(targetQueueUrl), Some(targetQueueArn)) => [
+            {
+              PgChangeFeedRelay_Builder.connectionConfig,
+              logName: entry.logName,
+              subscriber: `aws-eventcollector-relay:${entry.logName}`,
+              feed,
+              targetQueueUrl,
+              targetQueueArn,
+            },
+          ]
         | _ =>
           log.warn(
             ~comp="Platform",
-            `PgChangeFeedRelay: DCB log ${entry.logName} has no EventCollector queue — skipping (its events will not propagate)`,
+            `PgChangeFeedRelay: DCB log ${entry.logName} has no EventCollector queue — EP/extension fan-out skipped for it`,
           )
-          None
+          []
         }
-      )
+        ecTarget->Array.concat(
+          feedTargets(~connectionConfig, ~logName=entry.logName, ~feed, ~isClassic=false),
+        )
+      })
     | None => []
     }
     let classicLogs = switch EventLogBackend.get() {
     | Some({connectionConfig}) =>
-      EventLogBackend.getRelayLogs()->Array.filterMap(entry =>
-        switch (entry.collectorQueueUrl, entry.collectorQueueArn) {
-        | (Some(targetQueueUrl), Some(targetQueueArn)) =>
-          Some({
-            PgChangeFeedRelay_Builder.connectionConfig,
-            logName: entry.logName,
-            subscriber: `aws-eventcollector-relay:${entry.logName}`,
-            feed: PgChangeFeedRelay_Builder.Classic,
-            targetQueueUrl,
-            targetQueueArn,
-          })
+      EventLogBackend.getRelayLogs()->Array.flatMap(entry => {
+        let feed = PgChangeFeedRelay_Builder.Classic
+        let ecTarget = switch (entry.collectorQueueUrl, entry.collectorQueueArn) {
+        | (Some(targetQueueUrl), Some(targetQueueArn)) => [
+            {
+              PgChangeFeedRelay_Builder.connectionConfig,
+              logName: entry.logName,
+              subscriber: `aws-eventcollector-relay:${entry.logName}`,
+              feed,
+              targetQueueUrl,
+              targetQueueArn,
+            },
+          ]
         | _ =>
           log.warn(
             ~comp="Platform",
-            `PgChangeFeedRelay: classic log ${entry.logName} has no EventCollector queue — skipping (its events will not propagate)`,
+            `PgChangeFeedRelay: classic log ${entry.logName} has no EventCollector queue — EP/extension fan-out skipped for it`,
           )
-          None
+          []
         }
-      )
+        ecTarget->Array.concat(
+          feedTargets(~connectionConfig, ~logName=entry.logName, ~feed, ~isClassic=true),
+        )
+      })
     | None => []
     }
     let relayLogs = dcbLogs->Array.concat(classicLogs)

@@ -7,7 +7,11 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
+import * as DcbBackend$ReventlessAws from "../DcbEventLog/DcbBackend.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
+import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as EventLogBackend$ReventlessAws from "../EventLog/EventLogBackend.res.mjs";
+import * as PgProjectionFeed$ReventlessAws from "../Postgres/PgProjectionFeed.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
@@ -81,6 +85,9 @@ function finish() {
       let opts = {
         parent: opts_parent
       };
+      let customOpts = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
+      let feedQueue = EventLogBackend$ReventlessAws.isPostgres() || DcbBackend$ReventlessAws.isPostgres() ? PgProjectionFeed$ReventlessAws.makeQueue("AllReadModelsFeed", "aws-rm-feed", true, true, customOpts) : undefined;
+      let feedArnOutput = feedQueue !== undefined ? feedQueue.arn : Pulumi.output("");
       let handlerOutputs = [];
       let packageDirs = {};
       let sortedSpecs = storedSpecs.toSorted((a, b) => Primitive_string.compare(a.componentName, b.componentName));
@@ -97,9 +104,10 @@ function finish() {
         let mappingsModule = Stdlib_Option.getOr(JSON.stringify(info.mappingsModulePath), `""`);
         let handlerJson = Pulumi.all([
           info.queryDbTableName,
-          spec.sourceUrns
+          spec.sourceUrns,
+          feedArnOutput
         ]).apply(param => {
-          let sourceUrn = param[1][0];
+          let sourceUrn = Stdlib_Option.getOr(param[1][0], param[2]);
           return `{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"}`;
         });
         handlerOutputs.push(handlerJson);
@@ -111,6 +119,9 @@ function finish() {
       let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllReadModels", match$1.code, match$1.sourceCodeHash, envVars, match[0], match[1], undefined, undefined, undefined, undefined, undefined, opts);
       let channelSpecs = storedSpecs.map(param => param.channelSpec);
       EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllReadModels", channelSpecs, runtime, opts);
+      if (feedQueue !== undefined) {
+        PgProjectionFeed$ReventlessAws.connect("AllReadModelsFeed", feedQueue, runtime.parts.lambda, runtime.parts.lambdaRole, customOpts);
+      }
     } else {
       log.warn("EventCollectorRuntime_Builder_Single", undefined, `finish: grandParent not set`);
     }

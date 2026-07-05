@@ -110,6 +110,29 @@ let finish = () =>
       switch grandParent.contents {
       | Some(parent) =>
         let opts = {Pulumi.ComponentResource.parent: parent}
+        let customOpts =
+          opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+
+        // B3.0: Postgres-backed source logs have no DynamoDB stream — provision
+        // the SQS feed queue the change-feed relay fans events into. Its ARN
+        // doubles as the handlers' sourceUrn dispatch key (per-projection
+        // filtering makes over-delivery a no-op).
+        let feedQueue =
+          EventLogBackend.isPostgres() || DcbBackend.isPostgres()
+            ? Some(
+                PgProjectionFeed.makeQueue(
+                  ~name="AllReadModelsFeed",
+                  ~scope="aws-rm-feed",
+                  ~includeClassic=true,
+                  ~includeDcb=true,
+                  ~opts=customOpts,
+                ),
+              )
+            : None
+        let feedArnOutput = switch feedQueue {
+        | Some(queue) => queue.arn
+        | None => Pulumi.Output.make("")
+        }
 
         let handlerOutputs: array<Pulumi.Output.t<string>> = []
         let packageDirs: dict<string> = Dict.make()
@@ -137,9 +160,11 @@ let finish = () =>
               info.mappingsModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
             let handlerJson =
-              Pulumi.Output.all2((info.queryDbTableName, spec.sourceUrns))
-              ->Pulumi.Output.apply(((tableName, urns)) => {
-                let sourceUrn = urns->Array.getUnsafe(0)
+              Pulumi.Output.all3((info.queryDbTableName, spec.sourceUrns, feedArnOutput))
+              ->Pulumi.Output.apply(((tableName, urns, feedArn)) => {
+                // No stream resource (Postgres-backed source) → dispatch on the
+                // feed queue's ARN instead of a stream URN.
+                let sourceUrn = urns->Array.get(0)->Option.getOr(feedArn)
                 `{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"}`
               })
             let _ = handlerOutputs->Array.push(handlerJson)
@@ -182,6 +207,19 @@ let finish = () =>
           ~runtime,
           ~opts,
         )
+
+        // B3.0: wire the Postgres feed queue into the Lambda (ESM + receive IAM).
+        switch feedQueue {
+        | Some(queue) =>
+          PgProjectionFeed.connect(
+            ~name="AllReadModelsFeed",
+            ~queue,
+            ~lambda=runtime.parts.lambda,
+            ~lambdaRole=runtime.parts.lambdaRole,
+            ~opts=customOpts,
+          )
+        | None => ()
+        }
       | None =>
         log.warn(
           ~comp="EventCollectorRuntime_Builder_Single",

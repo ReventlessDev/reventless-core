@@ -65,8 +65,80 @@ Serverless with Data API only** (rules out plain RDS instances the parent plan
 targets), SQL scattered across mapping templates instead of testable ReScript,
 separate auth/limits regime. Keep as a documented alternative, not the default.
 
+## ⚠️ B3.1 prerequisite discovered (2026-07-05): projection delivery
+
+Deep-dive before implementation surfaced a structural gap that predates B3 and
+re-orders it:
+
+- ReadModel and StateViewSlice EventCollectors consume their source event logs
+  via **DynamoDB-stream ESMs** (`EventCollectorChannel.DynamoDbStream`;
+  `ReadModelEntryPoint.mjs` keys handlers by `sourceUrn` = stream ARN;
+  `StateViewSliceRuntime_Builder_Single` same channel).
+- On a Postgres-backed platform (B1/B2 as landed), event-log storage
+  `resources` are empty → **no ESM is created → the ReadModel/StateViewSlice
+  Lambdas are never invoked**. The change-feed relay feeds only the *plugin*
+  EventCollector SQS queue, whose Lambda drives EP/extension routing, the
+  cross-plugin SNS topic, and aggregate command topics — it does **not** run
+  within-plugin RM/SVS projections.
+- Net: before any B3 storage work, a Postgres platform has no working
+  within-plugin projection path. This is a latent B1/B2 gap that would surface
+  on the first live deploy — B2.4's explicitly-untested "EventCollector
+  fan-out" boundary is exactly this.
+- Additional hazard: `EventCollectorChannel_DynamoDbStream.make` does
+  `outputs.resources->Array.getUnsafe(0)` (marked FIXME) per subscribed event
+  topic — empty resources on Postgres produce `undefined` entries at deploy
+  time; whether that crashes `connectLambda` or silently skips is unverified.
+
+**Design options for Postgres projection delivery:**
+
+- **(A) Per-consumer SQS queues (recommended).** On Postgres platforms each
+  RM/SVS EventCollector gets an SQS channel; the relay fans each log out to
+  every subscribed consumer queue, one `(log, consumer)` subscriber checkpoint
+  each (the relay builder already supports N entries per log after the per-log
+  subscriber fix). `ReadModelEntryPoint` handles SQS records (the
+  `handleDynamoDbOrSqsEvent` helper exists) keyed by queue ARN. Preserves the
+  DynamoDB path's per-consumer isolation, retries, and DLQ options.
+- **(B) In-process fan-out in the plugin EC Lambda.** Run RM/SVS projections
+  inside the plugin EventCollector, service-keyed. Fewer queues but couples
+  projection failure/latency to the EC Lambda and loses per-RM isolation —
+  diverges from the DynamoDB path's semantics. Not recommended.
+
+**Revised B3.1** therefore leads with projection delivery (A), then the
+storage/runtime swap below. One more implementation note discovered:
+`QueryDbStorage_Postgres.makeStorage` (reventless-postgres) starts its
+`ensureTable` promise **eagerly** — called at deploy time it would attempt a DB
+connection from outside the VPC; make `ready` lazy (first-operation) before
+binding it in a deploy-time maker.
+
 ## Phasing
 
+- **B3.0 — projection delivery on Postgres platforms** — ✅ **landed
+  (2026-07-05)**, design (A) as scoped, with one simplification: instead of an
+  SQS channel per RM/SVS EventCollector, there is **one feed queue per
+  consumer Lambda** (`AllReadModelsFeed`, `AllStateViewSlicesFeed`) and the
+  relay fans every Postgres log into it; per-projection filtering
+  (`meta.service` / event-type matching in the callbacks) makes over-delivery
+  a no-op — the same property that lets several read models share one DynamoDB
+  stream. Pieces:
+  - `PgProjectionFeed` (adapter/Postgres/) — feed-queue registry + `makeQueue`
+    (DLQ-backed SQS) + `connect` (ESM + receive IAM on the consumer Lambda).
+  - `EventCollectorRuntime_Builder_Single` / `StateViewSliceRuntime_Builder_Single`
+    — provision + connect the feed queue when a Postgres backend is active;
+    handler `sourceUrn` falls back to the feed queue ARN when the source has no
+    stream resource (also de-fuses the `getUnsafe(0)` deploy crashes in
+    `finishWithDcbEventLog` and the HANDLER_CONFIG serializers).
+  - `EventCollectorChannel_DynamoDbStream_Runtime.handleStreamEvent` — now
+    decodes `aws:sqs` records (relay-injected `{id, meta, event}` bodies)
+    alongside `aws:dynamodb`, per record, so mixed backends work; unit-tested
+    (`EventCollectorChannelStreamRuntimeTest`).
+  - `EventCollectorChannel_DynamoDbStream.make` — the `getUnsafe(0)` FIXME is
+    now a `filterMap`, skipping stream-less (Postgres) event topics.
+  - `Platform.provisionPgChangeFeedRelay` — each log now targets the plugin
+    EventCollector queue **plus** every matching feed queue (classic → RM feed;
+    DCB → RM + SVS feeds), one `<scope>:<logName>` subscriber per pair; a log
+    without a collector queue still feeds projections.
+  Still unvalidated live (same boundary as B2.4): actual SQS delivery + ESM
+  behavior on a deployed stack.
 - **B3.1 — storage + engine vertical (no GraphQL reads).**
   `QueryDbBackend` registry (clone of `EventLogBackend`), AWS
   `QueryDbStorage_Postgres` deploy-time maker (`resources: []`, ops via pool;

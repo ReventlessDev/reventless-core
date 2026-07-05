@@ -32,10 +32,13 @@ let make: ReventlessCore.EventCollector_Adapter.channelMaker<callbackEvent, 'con
   ~eventTopics,
   ~opts as _,
 ) => {
+  // Postgres-backed event logs have NO storage resources (no table, no stream) —
+  // skip them instead of producing undefined entries; their events arrive via the
+  // PgProjectionFeed SQS queue (B3.0), not a stream ESM.
   let eventTopicResources =
     eventTopics
     ->Dict.valuesToArray
-    ->Array.map(outputs => outputs.resources->Array.getUnsafe(0)) // FIXME
+    ->Array.filterMap(outputs => outputs.resources->Array.get(0))
 
   let enqueueEventNotSupported = (delay, id, messageBody) => {
     // TODO: can we check this at deploy time ?

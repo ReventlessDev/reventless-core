@@ -6,9 +6,13 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
+import * as DcbBackend$ReventlessAws from "../DcbEventLog/DcbBackend.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
+import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as PgProjectionFeed$ReventlessAws from "../Postgres/PgProjectionFeed.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
@@ -81,7 +85,8 @@ let finished = {
   contents: false
 };
 
-function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, memorySizeOpt, timeoutOpt) {
+function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, feedQueueOpt, memorySizeOpt, timeoutOpt) {
+  let feedQueue = feedQueueOpt !== undefined ? Primitive_option.valFromOption(feedQueueOpt) : undefined;
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   let opts_parent = parent;
@@ -119,6 +124,9 @@ function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, memorySi
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs", packageDirs, undefined);
   let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllStateViewSlices", match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, undefined, opts);
   EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllStateViewSlices", channelSpecs, runtime, opts);
+  if (feedQueue !== undefined) {
+    return PgProjectionFeed$ReventlessAws.connect("AllStateViewSlicesFeed", feedQueue, runtime.parts.lambda, runtime.parts.lambdaRole, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts));
+  }
 }
 
 function finishWithDcbEventLog(dcbEventLog) {
@@ -138,6 +146,10 @@ function finishWithDcbEventLog(dcbEventLog) {
       let channel = EventCollectorChannel_DynamoDbStream$ReventlessAws.make("AllStateViewSlices", eventTopics, {
         parent: parent
       });
+      let feedQueue = DcbBackend$ReventlessAws.isPostgres() ? PgProjectionFeed$ReventlessAws.makeQueue("AllStateViewSlicesFeed", "aws-svs-feed", false, true, {
+          parent: parent
+        }) : undefined;
+      let feedArnOutput = feedQueue !== undefined ? feedQueue.arn : Pulumi.output("");
       let handlerOutputs = [];
       let packageDirs = {};
       let allQueryDbResources = [];
@@ -150,11 +162,11 @@ function finishWithDcbEventLog(dcbEventLog) {
         let projectionPkg = Util_Bundle$ReventlessAws.extractPackageName(info.projectionModulePath);
         packageDirs[projectionPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(projectionPkg);
         let etResources = dcbOutputs.eventTopic.resources;
-        let sourceUrn = etResources[0];
-        let sourceUrn$1 = sourceUrn.urn;
+        let resource = etResources[0];
+        let sourceUrn = resource !== undefined ? resource.urn : feedArnOutput;
         let handlerJson = Pulumi.all([
           info.queryDbTableName,
-          sourceUrn$1
+          sourceUrn
         ]).apply(param => ({
           specModule: info.specModulePath,
           projectionModule: info.projectionModulePath,
@@ -167,7 +179,7 @@ function finishWithDcbEventLog(dcbEventLog) {
           channel: channel,
           eventTopics: eventTopics,
           resources: allQueryDbResources
-        }], undefined, undefined);
+        }], Primitive_option.some(feedQueue), undefined, undefined);
     } else {
       log.warn("StateViewSliceRuntime_Builder_Single", undefined, "finishWithDcbEventLog: DCB EventLog has no parent");
     }
@@ -192,6 +204,10 @@ function finish() {
     if (parent !== undefined) {
       let handlerOutputs = [];
       let packageDirs = {};
+      let feedQueue = DcbBackend$ReventlessAws.isPostgres() ? PgProjectionFeed$ReventlessAws.makeQueue("AllStateViewSlicesFeed", "aws-svs-feed", false, true, {
+          parent: parent
+        }) : undefined;
+      let feedArnOutput = feedQueue !== undefined ? feedQueue.arn : Pulumi.output("");
       storedSpecs.forEach(spec => {
         let info = sliceInfos[spec.componentName];
         if (info === undefined) {
@@ -203,16 +219,17 @@ function finish() {
         packageDirs[projectionPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(projectionPkg);
         let handlerJson = Pulumi.all([
           info.queryDbTableName,
-          spec.sourceUrns
+          spec.sourceUrns,
+          feedArnOutput
         ]).apply(param => ({
           specModule: info.specModulePath,
           projectionModule: info.projectionModulePath,
           queryDbTableName: param[0],
-          sourceUrn: param[1][0]
+          sourceUrn: Stdlib_Option.getOr(param[1][0], param[2])
         }));
         handlerOutputs.push(handlerJson);
       });
-      buildLambda(parent, handlerOutputs, packageDirs, storedSpecs.map(param => param.channelSpec), match[0], match[1]);
+      buildLambda(parent, handlerOutputs, packageDirs, storedSpecs.map(param => param.channelSpec), Primitive_option.some(feedQueue), match[0], match[1]);
     } else {
       log.warn("StateViewSliceRuntime_Builder_Single", undefined, `finish: grandParent not set`);
     }
