@@ -215,6 +215,46 @@ deploy time this must run against the freshly-provisioned DB. Options
 
 ## Phase B — Per-surface storage adapters
 
+### ⚠️⚠️ Coupling finding (2026-07-05 — discovered before the builder step)
+
+**For aggregates, EventLog storage and event propagation are one mechanism: the
+DynamoDB stream.** `Aggregate_Builder_Single.Make` wires three coupled modules —
+`EventLogStorage.DynamoDbStream` (EventLog table *with* a stream),
+`EventTopicPublisher.DynamoDbStream` (publishes events off that stream), and
+`EventCollectorChannel.DynamoDbStream` (consumes the stream → read models &
+cross-aggregate reactions). The aggregate's write path *and* its entire
+downstream propagation both ride that one table's stream.
+
+**Consequence:** routing an aggregate's EventLog to Postgres while leaving the
+propagation on DynamoDB streams ships a **silently broken** system — commands
+append to Postgres, the still-created DynamoDB table (whose stream feeds the
+EventCollector) stays empty, so every projection and cross-aggregate reaction
+no-ops. Therefore **B1(aggregate) is inseparable from B2** (the Postgres
+change-feed → EventCollector bridge): any aggregate with read models or
+cross-entity flows needs both at once. Postgres has no streams, so the propagation
+must come from `PgChangeFeed` via a relay Lambda / long-lived consumer.
+
+The runtime groundwork already landed (PgDriver pool, PgRuntime, EventLog
+Postgres runtime, entry-point branch) is correct and still needed — but the
+**deploy-time builder wiring was deliberately NOT done**, because on its own it
+would produce the broken half above. The only vertical isolatable from B2 is an
+aggregate/DCB with **zero read models and zero cross-entity reactions**
+(pure command → append → replay) — a thin proof, and even that wants a
+storage-selection change so no unused DynamoDB table is created.
+
+**Decision needed** (the fork): (a) do B2's change-feed bridge next so a *real*
+aggregate/DCB vertical works end to end; (b) ship the thin write/replay-only proof
+first (needs D1 storage-selection to avoid the wasted DynamoDB table); or (c) pause
+the deployed path and instead harden/extend the in-process/`reventless-local`
+Postgres path (which already works) until the change-feed design is settled.
+
+**Chosen (2026-07-05): (a) — design B2 first.** See the deep-design doc
+[`aws-postgres-change-feed-bridge.md`](./aws-postgres-change-feed-bridge.md). Two
+constraints it establishes: **B2 is DCB-first** (only DCB has a change feed; the
+classic `event_log` feed is net-new, deferred), and the relay **injects via the
+existing SQS-fed EventCollector path** (`handleDynamoDbOrSqsEvent`), pushing
+`rawSequencedEvent`s transformed into the EventCollector JSON shape.
+
 ### ⚠️ Reframing (2026-07-05 — discovered while starting B1)
 
 **The deployed Lambda does not use the storageMaker's `operations` Output.** The
