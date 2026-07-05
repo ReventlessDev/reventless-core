@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.110 (2026-07-05)
+
+### Features
+
+* @[@reventless](https://github.com/reventless).systemCallable slice opt-in for deploy-time system callers ([c5ed537](https://github.com/ReventlessDev/reventless-core/commit/c5ed537309f8e4b7d4a4d4af1ed1ec83d060aea3))
+
+
 # 1.0.0-alpha.109 (2026-07-05)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-ordering

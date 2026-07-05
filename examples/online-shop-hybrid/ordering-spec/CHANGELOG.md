@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.58 (2026-07-05)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering-spec
+
+
+
+
+
 # 1.0.0-alpha.57 (2026-07-03)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering-spec

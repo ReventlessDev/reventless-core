@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.65 (2026-07-05)
+
+### Features
+
+* @[@reventless](https://github.com/reventless).systemCallable slice opt-in for deploy-time system callers ([c5ed537](https://github.com/ReventlessDev/reventless-core/commit/c5ed537309f8e4b7d4a4d4af1ed1ec83d060aea3))
+* **reventless-aws:** Postgres change-feed relay auto-wiring (B2.3d) ([62b430f](https://github.com/ReventlessDev/reventless-core/commit/62b430f1e6d8ec1f172de0cca324f7f26aaf5fcb))
+
+
 # 3.0.0-alpha.64 (2026-07-03)
 
 **Note:** Version bump only for package @reventlessdev/reventless-spec
