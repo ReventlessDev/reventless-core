@@ -266,6 +266,21 @@ let getClient = () =>
 // reaching request is already authenticated). `AllowGroups([])` and
 // `DenyAll` emit a sentinel `__deny_all__` group that no Cognito user can
 // belong to — effectively blocking the field at the API layer.
+//
+// ── Dual-auth (Cognito + IAM) for deploy-time system callers ────────────────
+// A field flagged `iamCallable` (via `mutationSchemaEntry`/`querySchemaEntry`)
+// must be reachable by BOTH the console UI (Cognito) and a deploy-time system
+// caller signing SigV4 with ambient AWS credentials (`Util_AppSync_Caller`,
+// the AWS_IAM additional auth provider). `@aws_auth(...)` is the single-mode
+// directive form and does not admit IAM on a multi-auth API. For these fields
+// we emit the multi-auth form instead:
+//   @aws_cognito_user_pools(cognito_groups: [...]) @aws_iam
+// The Cognito arm preserves the field's existing group gating (or, when the
+// field carries no Cognito group restriction, a bare `@aws_cognito_user_pools`
+// keeps it open to any authenticated Cognito user); the `@aws_iam` arm admits
+// the system caller. IAM access must be constrained by the API resource policy
+// and a least-privilege deploy-role policy — see
+// `docs/guides/appsync-iam-system-caller.md`.
 
 let _permissionToCognitoGroups = (
   permission: Reventless.Authorization.permission,
@@ -282,6 +297,20 @@ let _formatGroupsDirective = (groups: array<string>): string => {
   `@aws_auth(cognito_groups: [${quoted}])`
 }
 
+// Multi-auth directive for a field that must accept BOTH Cognito and IAM.
+// `groups=Some([...])` preserves Cognito group gating; `groups=None` keeps the
+// field open to any authenticated Cognito user. `@aws_iam` admits the
+// deploy-time SigV4 system caller. See the dual-auth note above.
+let _formatDualAuthDirective = (groups: option<array<string>>): string => {
+  let cognito = switch groups {
+  | Some(g) =>
+    let quoted = g->Array.map(x => `"${x}"`)->Array.join(", ")
+    `@aws_cognito_user_pools(cognito_groups: [${quoted}])`
+  | None => `@aws_cognito_user_pools`
+  }
+  `${cognito} @aws_iam`
+}
+
 let injectAwsAuth = (
   fragment: Reventless.Plugin.apiSchemaFragment,
   ~mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
@@ -292,8 +321,16 @@ let injectAwsAuth = (
   // Build authorization lookup from mutation entries: fieldName -> groups.
   // Spec-level `fieldPermissions` takes precedence over the legacy
   // `authorization.group` per-entry single-group form.
+  // Fields opted into deploy-time IAM invocation (dual-auth). Membership here
+  // switches a field from the single-mode `@aws_auth` form to the multi-auth
+  // `@aws_cognito_user_pools(...) @aws_iam` form.
+  let iamFields: Dict.t<bool> = Dict.make()
+
   let mutationAuthMap: Dict.t<array<string>> = Dict.make()
   mutationEntries->Array.forEach(entry => {
+    if entry.iamCallable->Option.getOr(false) {
+      entry.fieldNames->Array.forEach(fieldName => iamFields->Dict.set(fieldName, true))
+    }
     switch entry.authorization {
     | Some({group}) =>
       entry.fieldNames->Array.forEach(fieldName =>
@@ -319,6 +356,10 @@ let injectAwsAuth = (
   // Spec-level `permission` takes precedence over the legacy authorization.
   let queryAuthMap: Dict.t<array<string>> = Dict.make()
   queryEntries->Array.forEach(entry => {
+    if entry.iamCallable->Option.getOr(false) {
+      iamFields->Dict.set(entry.singleFieldName, true)
+      iamFields->Dict.set(entry.listFieldName, true)
+    }
     switch entry.authorization {
     | Some({group}) =>
       queryAuthMap->Dict.set(entry.singleFieldName, [group])
@@ -341,17 +382,27 @@ let injectAwsAuth = (
 
   let augmentedMutations = parts.mutations->Array.map(field => {
     let fieldName = ReventlessCore.GraphQL_Stitcher.extractLeadingName(field)
-    switch mutationAuthMap->Dict.get(fieldName) {
-    | Some(groups) => `${field}\n    ${_formatGroupsDirective(groups)}`
-    | None => field
+    let groups = mutationAuthMap->Dict.get(fieldName)
+    if iamFields->Dict.get(fieldName)->Option.getOr(false) {
+      `${field}\n    ${_formatDualAuthDirective(groups)}`
+    } else {
+      switch groups {
+      | Some(groups) => `${field}\n    ${_formatGroupsDirective(groups)}`
+      | None => field
+      }
     }
   })
 
   let augmentedQueries = parts.queries->Array.map(field => {
     let fieldName = ReventlessCore.GraphQL_Stitcher.extractLeadingName(field)
-    switch queryAuthMap->Dict.get(fieldName) {
-    | Some(groups) => `${field} ${_formatGroupsDirective(groups)}`
-    | None => field
+    let groups = queryAuthMap->Dict.get(fieldName)
+    if iamFields->Dict.get(fieldName)->Option.getOr(false) {
+      `${field} ${_formatDualAuthDirective(groups)}`
+    } else {
+      switch groups {
+      | Some(groups) => `${field} ${_formatGroupsDirective(groups)}`
+      | None => field
+      }
     }
   })
 
@@ -374,17 +425,30 @@ let injectAwsAuth = (
 // Injects @aws_auth with the given group on ALL mutation, query, and subscription
 // fields in a fragment. Used for the base fragment where all fields share the
 // same authorization group.
+//
+// `~iamFieldNames` opts the named mutation/query fields into deploy-time IAM
+// (dual-auth): those fields emit `@aws_cognito_user_pools(cognito_groups:
+// ["<group>"]) @aws_iam` instead of the single-mode `@aws_auth(...)`, keeping
+// the same Cognito group gating while also admitting the SigV4 system caller.
+// Subscriptions are never IAM-marked (the deploy caller does not subscribe).
 let injectAwsAuthAll = (
   fragment: Reventless.Plugin.apiSchemaFragment,
   ~group: string,
+  ~iamFieldNames: array<string>=[],
 ): Reventless.Plugin.apiSchemaFragment => {
   let parts = ReventlessCore.GraphQL_Stitcher.decode(fragment)
+  let isIam = (field: string): bool =>
+    iamFieldNames->Array.includes(ReventlessCore.GraphQL_Stitcher.extractLeadingName(field))
 
   let augmentedMutations = parts.mutations->Array.map(field =>
-    `${field}\n    @aws_auth(cognito_groups: ["${group}"])`
+    isIam(field)
+      ? `${field}\n    ${_formatDualAuthDirective(Some([group]))}`
+      : `${field}\n    @aws_auth(cognito_groups: ["${group}"])`
   )
   let augmentedQueries = parts.queries->Array.map(field =>
-    `${field} @aws_auth(cognito_groups: ["${group}"])`
+    isIam(field)
+      ? `${field} ${_formatDualAuthDirective(Some([group]))}`
+      : `${field} @aws_auth(cognito_groups: ["${group}"])`
   )
   let augmentedSubscriptions = parts.subscriptions->Array.map(field =>
     `${field}\n    @aws_auth(cognito_groups: ["${group}"])`

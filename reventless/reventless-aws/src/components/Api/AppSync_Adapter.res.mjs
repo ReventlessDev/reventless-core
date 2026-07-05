@@ -204,10 +204,27 @@ function _formatGroupsDirective(groups) {
   return `@aws_auth(cognito_groups: [` + quoted + `])`;
 }
 
+function _formatDualAuthDirective(groups) {
+  let cognito;
+  if (groups !== undefined) {
+    let quoted = groups.map(x => `"` + x + `"`).join(", ");
+    cognito = `@aws_cognito_user_pools(cognito_groups: [` + quoted + `])`;
+  } else {
+    cognito = `@aws_cognito_user_pools`;
+  }
+  return cognito + ` @aws_iam`;
+}
+
 function injectAwsAuth(fragment, mutationEntries, queryEntries) {
   let parts = GraphQL_Stitcher$ReventlessCore.decode(fragment);
+  let iamFields = {};
   let mutationAuthMap = {};
   mutationEntries.forEach(entry => {
+    if (Stdlib_Option.getOr(entry.iamCallable, false)) {
+      entry.fieldNames.forEach(fieldName => {
+        iamFields[fieldName] = true;
+      });
+    }
     let match = entry.authorization;
     if (match !== undefined) {
       let group = match.group;
@@ -232,6 +249,10 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
   });
   let queryAuthMap = {};
   queryEntries.forEach(entry => {
+    if (Stdlib_Option.getOr(entry.iamCallable, false)) {
+      iamFields[entry.singleFieldName] = true;
+      iamFields[entry.listFieldName] = true;
+    }
     let match = entry.authorization;
     if (match !== undefined) {
       let group = match.group;
@@ -255,7 +276,9 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
   let augmentedMutations = parts.mutations.map(field => {
     let fieldName = GraphQL_Stitcher$ReventlessCore.extractLeadingName(field);
     let groups = mutationAuthMap[fieldName];
-    if (groups !== undefined) {
+    if (Stdlib_Option.getOr(iamFields[fieldName], false)) {
+      return field + `\n    ` + _formatDualAuthDirective(groups);
+    } else if (groups !== undefined) {
       return field + `\n    ` + _formatGroupsDirective(groups);
     } else {
       return field;
@@ -264,7 +287,9 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
   let augmentedQueries = parts.queries.map(field => {
     let fieldName = GraphQL_Stitcher$ReventlessCore.extractLeadingName(field);
     let groups = queryAuthMap[fieldName];
-    if (groups !== undefined) {
+    if (Stdlib_Option.getOr(iamFields[fieldName], false)) {
+      return field + ` ` + _formatDualAuthDirective(groups);
+    } else if (groups !== undefined) {
       return field + ` ` + _formatGroupsDirective(groups);
     } else {
       return field;
@@ -294,10 +319,23 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
   };
 }
 
-function injectAwsAuthAll(fragment, group) {
+function injectAwsAuthAll(fragment, group, iamFieldNamesOpt) {
+  let iamFieldNames = iamFieldNamesOpt !== undefined ? iamFieldNamesOpt : [];
   let parts = GraphQL_Stitcher$ReventlessCore.decode(fragment);
-  let augmentedMutations = parts.mutations.map(field => field + `\n    @aws_auth(cognito_groups: ["` + group + `"])`);
-  let augmentedQueries = parts.queries.map(field => field + ` @aws_auth(cognito_groups: ["` + group + `"])`);
+  let augmentedMutations = parts.mutations.map(field => {
+    if (iamFieldNames.includes(GraphQL_Stitcher$ReventlessCore.extractLeadingName(field))) {
+      return field + `\n    ` + _formatDualAuthDirective([group]);
+    } else {
+      return field + `\n    @aws_auth(cognito_groups: ["` + group + `"])`;
+    }
+  });
+  let augmentedQueries = parts.queries.map(field => {
+    if (iamFieldNames.includes(GraphQL_Stitcher$ReventlessCore.extractLeadingName(field))) {
+      return field + ` ` + _formatDualAuthDirective([group]);
+    } else {
+      return field + ` @aws_auth(cognito_groups: ["` + group + `"])`;
+    }
+  });
   let augmentedSubscriptions = parts.subscriptions.map(field => field + `\n    @aws_auth(cognito_groups: ["` + group + `"])`);
   let encoded = JSON.stringify(Object.fromEntries([
     [
@@ -359,7 +397,7 @@ function generateFragment(mutationEntries, queryEntries) {
 }
 
 function updateSchema(api, baseFragment, pluginFragments) {
-  let augmentedBaseFragment = injectAwsAuthAll(baseFragment, "Admin");
+  let augmentedBaseFragment = injectAwsAuthAll(baseFragment, "Admin", undefined);
   let sdl = GraphQL_Stitcher$ReventlessCore.stitch(augmentedBaseFragment, pluginFragments);
   let resultPromise = {
     contents: Promise.resolve()
@@ -387,6 +425,7 @@ export {
   getClient,
   _permissionToCognitoGroups,
   _formatGroupsDirective,
+  _formatDualAuthDirective,
   injectAwsAuth,
   injectAwsAuthAll,
   makeApiResource,

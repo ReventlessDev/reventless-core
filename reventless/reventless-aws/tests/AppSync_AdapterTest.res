@@ -347,6 +347,146 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
   })
 })
 
+// ── Dual-auth (Cognito + IAM) for deploy-time system callers ────────────────
+//
+// A field flagged `iamCallable` must be reachable by BOTH the console UI
+// (Cognito) and the deploy-time SigV4 system caller (AWS_IAM). It switches from
+// the single-mode `@aws_auth(...)` form to the multi-auth
+// `@aws_cognito_user_pools(...) @aws_iam` form.
+
+describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", () => {
+  let makeFragment = (mutationFields, queryFields) =>
+    ReventlessCore.GraphQL_Stitcher.encode({
+      types: [],
+      mutations: mutationFields,
+      queries: queryFields,
+      subscriptions: [],
+    })
+
+  testSync("iamCallable mutation with a group emits @aws_cognito_user_pools + @aws_iam", () => {
+    let entry: ReventlessInfra.Api.mutationSchemaEntry = {
+      fieldNames: ["p_Sync"],
+      commandSchema: S.unknown,
+      fieldPermissions: Dict.fromArray([("p_Sync", Reventless.Authorization.AllowGroups(["Admin"]))]),
+      iamCallable: true,
+    }
+    let frag = makeFragment(["p_Sync(id: ID!): String"], [])
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
+    let m = decodeFragment(aug).mutations->Array.getUnsafe(0)
+    expect(m)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
+    expect(m)->toContain("@aws_iam")
+    // Must NOT emit the single-mode form, which does not admit IAM.
+    expect(m)->not_->toContain("@aws_auth")
+  })
+
+  testSync("iamCallable mutation without a group restriction stays open to Cognito + IAM", () => {
+    let entry: ReventlessInfra.Api.mutationSchemaEntry = {
+      fieldNames: ["p_Sync"],
+      commandSchema: S.unknown,
+      fieldPermissions: Dict.fromArray([("p_Sync", Reventless.Authorization.AllowAuthenticated)]),
+      iamCallable: true,
+    }
+    let frag = makeFragment(["p_Sync(id: ID!): String"], [])
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
+    let m = decodeFragment(aug).mutations->Array.getUnsafe(0)
+    // Bare @aws_cognito_user_pools (any authenticated Cognito user) + IAM.
+    expect(m)->toContain("@aws_cognito_user_pools @aws_iam")
+    expect(m)->not_->toContain("cognito_groups")
+    expect(m)->not_->toContain("@aws_auth")
+  })
+
+  testSync("a non-iamCallable sibling keeps single-mode @aws_auth (no @aws_iam)", () => {
+    let entry: ReventlessInfra.Api.mutationSchemaEntry = {
+      fieldNames: ["p_Sync", "p_Other"],
+      commandSchema: S.unknown,
+      fieldPermissions: Dict.fromArray([
+        ("p_Sync", Reventless.Authorization.AllowGroups(["Admin"])),
+        ("p_Other", Reventless.Authorization.AllowGroups(["Admin"])),
+      ]),
+      // iamCallable applies to every field in the entry; split the fields so only
+      // p_Sync opts in.
+      iamCallable: false,
+    }
+    let iamEntry: ReventlessInfra.Api.mutationSchemaEntry = {
+      fieldNames: ["p_Sync"],
+      commandSchema: S.unknown,
+      fieldPermissions: Dict.fromArray([("p_Sync", Reventless.Authorization.AllowGroups(["Admin"]))]),
+      iamCallable: true,
+    }
+    let frag = makeFragment(["p_Sync(id: ID!): String", "p_Other(id: ID!): String"], [])
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry, iamEntry], ~queryEntries=[])
+    let parts = decodeFragment(aug)
+    switch parts.mutations->Array.find(f => f->String.includes("p_Other")) {
+    | Some(other) =>
+      expect(other)->toContain(`@aws_auth(cognito_groups: ["Admin"])`)
+      expect(other)->not_->toContain("@aws_iam")
+    | None => JsError.throwWithMessage("missing p_Other field")
+    }
+  })
+
+  testSync("iamCallable query applies dual-auth to BOTH single and list fields", () => {
+    let entry: ReventlessInfra.Api.querySchemaEntry = {
+      singleFieldName: "p_Item",
+      listFieldName: "p_Items",
+      returnTypeName: "p_Item",
+      stateSchema: S.unknown,
+      authorization: None,
+      permission: Reventless.Authorization.AllowGroups(["Admin"]),
+      iamCallable: true,
+    }
+    let frag = makeFragment(
+      [],
+      ["p_Item(id: ID!): Item", "p_Items(first: Int, after: String): ItemConnection!"],
+    )
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[], ~queryEntries=[entry])
+    let parts = decodeFragment(aug)
+    switch (
+      parts.queries->Array.find(f => f->String.includes("p_Item(")),
+      parts.queries->Array.find(f => f->String.includes("p_Items(")),
+    ) {
+    | (Some(single), Some(list)) =>
+      expect(single)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
+      expect(single)->toContain("@aws_iam")
+      expect(list)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
+      expect(list)->toContain("@aws_iam")
+    | _ => JsError.throwWithMessage("missing query fields")
+    }
+  })
+})
+
+describe("AppSync_Adapter.injectAwsAuthAll — ~iamFieldNames", () => {
+  let baseFragment = ReventlessCore.AdminApi.baseFragment(~cloner=true)
+
+  testSync("marks only the named field dual-auth, leaving others single-mode", () => {
+    // Pick a real mutation field name from the admin base fragment.
+    let firstMutationName =
+      decodeFragment(baseFragment).mutations
+      ->Array.getUnsafe(0)
+      ->ReventlessCore.GraphQL_Stitcher.extractLeadingName
+    let augmented =
+      AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin", ~iamFieldNames=[firstMutationName])
+    let parts = decodeFragment(augmented)
+    parts.mutations->Array.forEach(field => {
+      let name = ReventlessCore.GraphQL_Stitcher.extractLeadingName(field)
+      if name == firstMutationName {
+        expect(field)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
+        expect(field)->toContain("@aws_iam")
+        expect(field)->not_->toContain("@aws_auth")
+      } else {
+        expect(field)->toContain(`@aws_auth(cognito_groups: ["Admin"])`)
+        expect(field)->not_->toContain("@aws_iam")
+      }
+    })
+  })
+
+  testSync("default (no ~iamFieldNames) leaves every field single-mode @aws_auth", () => {
+    let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
+    let parts = decodeFragment(augmented)
+    parts.mutations->Array.forEach(field => expect(field)->not_->toContain("@aws_iam"))
+    parts.queries->Array.forEach(field => expect(field)->not_->toContain("@aws_iam"))
+  })
+})
+
 describe("Split mode — empty base fragment", () => {
   testSync("empty stitcher encode produces fragment with no fields", () => {
     let emptyFragment = ReventlessCore.GraphQL_Stitcher.encode({

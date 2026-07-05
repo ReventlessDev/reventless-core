@@ -27,14 +27,14 @@ let decodeFragment = GraphQL_Stitcher$ReventlessCore.decode;
 globalThis.describe("AppSync_Adapter.injectAwsAuthAll", () => {
   let baseFragment = AdminApi$ReventlessCore.baseFragment(true);
   globalThis.test("adds @aws_auth directive to all mutation fields", () => {
-    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin");
+    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin", undefined);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
     parts.mutations.forEach(field => {
       globalThis.expect(field).toContain(`@aws_auth(cognito_groups: ["Admin"])`);
     });
   });
   globalThis.test("adds @aws_auth directive to all query fields", () => {
-    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin");
+    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin", undefined);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
     parts.queries.forEach(field => {
       globalThis.expect(field).toContain(`@aws_auth(cognito_groups: ["Admin"])`);
@@ -42,12 +42,12 @@ globalThis.describe("AppSync_Adapter.injectAwsAuthAll", () => {
   });
   globalThis.test("preserves type definitions unchanged", () => {
     let original = GraphQL_Stitcher$ReventlessCore.decode(baseFragment);
-    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin");
+    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin", undefined);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
     globalThis.expect(parts.types).toEqual(original.types);
   });
   globalThis.test("uses specified group name", () => {
-    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "SuperAdmin");
+    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "SuperAdmin", undefined);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
     parts.mutations.forEach(field => {
       globalThis.expect(field).toContain(`cognito_groups: ["SuperAdmin"]`);
@@ -55,7 +55,7 @@ globalThis.describe("AppSync_Adapter.injectAwsAuthAll", () => {
   });
   globalThis.test("preserves subscription fields with @aws_auth directive", () => {
     let original = GraphQL_Stitcher$ReventlessCore.decode(baseFragment);
-    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin");
+    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin", undefined);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
     globalThis.expect(parts.subscriptions.length).toBe(original.subscriptions.length);
     globalThis.expect(parts.subscriptions.length).toBeGreaterThan(0);
@@ -64,7 +64,7 @@ globalThis.describe("AppSync_Adapter.injectAwsAuthAll", () => {
     });
   });
   globalThis.test("admin Plugin aggregate subscription fields survive the round-trip", () => {
-    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin");
+    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin", undefined);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
     let joined = parts.subscriptions.join("\n");
     globalThis.expect(joined).toContain("onPlatform_Plugin_Activate");
@@ -279,6 +279,182 @@ globalThis.describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifti
     let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [entry], []);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(aug);
     globalThis.expect(parts.mutations[0]).not.toContain("@aws_auth");
+  });
+});
+
+globalThis.describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", () => {
+  let makeFragment = (mutationFields, queryFields) => GraphQL_Stitcher$ReventlessCore.encode({
+    types: [],
+    mutations: mutationFields,
+    queries: queryFields,
+    subscriptions: []
+  });
+  globalThis.test("iamCallable mutation with a group emits @aws_cognito_user_pools + @aws_iam", () => {
+    let entry_fieldNames = ["p_Sync"];
+    let entry_fieldPermissions = Object.fromEntries([[
+        "p_Sync",
+        {
+          TAG: "AllowGroups",
+          _0: ["Admin"]
+        }
+      ]]);
+    let entry_iamCallable = true;
+    let entry = {
+      fieldNames: entry_fieldNames,
+      commandSchema: S.unknown,
+      fieldPermissions: entry_fieldPermissions,
+      iamCallable: entry_iamCallable
+    };
+    let frag = makeFragment(["p_Sync(id: ID!): String"], []);
+    let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [entry], []);
+    let m = GraphQL_Stitcher$ReventlessCore.decode(aug).mutations[0];
+    globalThis.expect(m).toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`);
+    globalThis.expect(m).toContain("@aws_iam");
+    globalThis.expect(m).not.toContain("@aws_auth");
+  });
+  globalThis.test("iamCallable mutation without a group restriction stays open to Cognito + IAM", () => {
+    let entry_fieldNames = ["p_Sync"];
+    let entry_fieldPermissions = Object.fromEntries([[
+        "p_Sync",
+        "AllowAuthenticated"
+      ]]);
+    let entry_iamCallable = true;
+    let entry = {
+      fieldNames: entry_fieldNames,
+      commandSchema: S.unknown,
+      fieldPermissions: entry_fieldPermissions,
+      iamCallable: entry_iamCallable
+    };
+    let frag = makeFragment(["p_Sync(id: ID!): String"], []);
+    let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [entry], []);
+    let m = GraphQL_Stitcher$ReventlessCore.decode(aug).mutations[0];
+    globalThis.expect(m).toContain("@aws_cognito_user_pools @aws_iam");
+    globalThis.expect(m).not.toContain("cognito_groups");
+    globalThis.expect(m).not.toContain("@aws_auth");
+  });
+  globalThis.test("a non-iamCallable sibling keeps single-mode @aws_auth (no @aws_iam)", () => {
+    let entry_fieldNames = [
+      "p_Sync",
+      "p_Other"
+    ];
+    let entry_fieldPermissions = Object.fromEntries([
+      [
+        "p_Sync",
+        {
+          TAG: "AllowGroups",
+          _0: ["Admin"]
+        }
+      ],
+      [
+        "p_Other",
+        {
+          TAG: "AllowGroups",
+          _0: ["Admin"]
+        }
+      ]
+    ]);
+    let entry_iamCallable = false;
+    let entry = {
+      fieldNames: entry_fieldNames,
+      commandSchema: S.unknown,
+      fieldPermissions: entry_fieldPermissions,
+      iamCallable: entry_iamCallable
+    };
+    let iamEntry_fieldNames = ["p_Sync"];
+    let iamEntry_fieldPermissions = Object.fromEntries([[
+        "p_Sync",
+        {
+          TAG: "AllowGroups",
+          _0: ["Admin"]
+        }
+      ]]);
+    let iamEntry_iamCallable = true;
+    let iamEntry = {
+      fieldNames: iamEntry_fieldNames,
+      commandSchema: S.unknown,
+      fieldPermissions: iamEntry_fieldPermissions,
+      iamCallable: iamEntry_iamCallable
+    };
+    let frag = makeFragment([
+      "p_Sync(id: ID!): String",
+      "p_Other(id: ID!): String"
+    ], []);
+    let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [
+      entry,
+      iamEntry
+    ], []);
+    let parts = GraphQL_Stitcher$ReventlessCore.decode(aug);
+    let other = parts.mutations.find(f => f.includes("p_Other"));
+    if (other !== undefined) {
+      globalThis.expect(other).toContain(`@aws_auth(cognito_groups: ["Admin"])`);
+      globalThis.expect(other).not.toContain("@aws_iam");
+      return;
+    } else {
+      return Stdlib_JsError.throwWithMessage("missing p_Other field");
+    }
+  });
+  globalThis.test("iamCallable query applies dual-auth to BOTH single and list fields", () => {
+    let entry_permission = {
+      TAG: "AllowGroups",
+      _0: ["Admin"]
+    };
+    let entry_iamCallable = true;
+    let entry = {
+      singleFieldName: "p_Item",
+      listFieldName: "p_Items",
+      returnTypeName: "p_Item",
+      stateSchema: S.unknown,
+      authorization: undefined,
+      permission: entry_permission,
+      iamCallable: entry_iamCallable
+    };
+    let frag = makeFragment([], [
+      "p_Item(id: ID!): Item",
+      "p_Items(first: Int, after: String): ItemConnection!"
+    ]);
+    let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [], [entry]);
+    let parts = GraphQL_Stitcher$ReventlessCore.decode(aug);
+    let match = parts.queries.find(f => f.includes("p_Item("));
+    let match$1 = parts.queries.find(f => f.includes("p_Items("));
+    if (match !== undefined && match$1 !== undefined) {
+      globalThis.expect(match).toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`);
+      globalThis.expect(match).toContain("@aws_iam");
+      globalThis.expect(match$1).toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`);
+      globalThis.expect(match$1).toContain("@aws_iam");
+      return;
+    } else {
+      return Stdlib_JsError.throwWithMessage("missing query fields");
+    }
+  });
+});
+
+globalThis.describe("AppSync_Adapter.injectAwsAuthAll — ~iamFieldNames", () => {
+  let baseFragment = AdminApi$ReventlessCore.baseFragment(true);
+  globalThis.test("marks only the named field dual-auth, leaving others single-mode", () => {
+    let firstMutationName = GraphQL_Stitcher$ReventlessCore.extractLeadingName(GraphQL_Stitcher$ReventlessCore.decode(baseFragment).mutations[0]);
+    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin", [firstMutationName]);
+    let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
+    parts.mutations.forEach(field => {
+      let name = GraphQL_Stitcher$ReventlessCore.extractLeadingName(field);
+      if (name === firstMutationName) {
+        globalThis.expect(field).toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`);
+        globalThis.expect(field).toContain("@aws_iam");
+        globalThis.expect(field).not.toContain("@aws_auth");
+      } else {
+        globalThis.expect(field).toContain(`@aws_auth(cognito_groups: ["Admin"])`);
+        globalThis.expect(field).not.toContain("@aws_iam");
+      }
+    });
+  });
+  globalThis.test("default (no ~iamFieldNames) leaves every field single-mode @aws_auth", () => {
+    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin", undefined);
+    let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
+    parts.mutations.forEach(field => {
+      globalThis.expect(field).not.toContain("@aws_iam");
+    });
+    parts.queries.forEach(field => {
+      globalThis.expect(field).not.toContain("@aws_iam");
+    });
   });
 });
 

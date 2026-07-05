@@ -45,6 +45,16 @@ type mutationSchemaEntry = {
       `docs/plans/host-ui-login-core.md`). In-memory enforcement still happens
       at the resolver layer via the same `commandAuthorization` function. */
   fieldPermissions?: dict<Reventless.Authorization.permission>,
+  /** Opt a mutation field into deploy-time IAM (SigV4) invocation in addition to
+      its Cognito authorization. When `true`, the AWS provider emits the
+      multi-auth directive form `@aws_cognito_user_pools(cognito_groups: [...])
+      @aws_iam` on the field instead of the single-mode `@aws_auth(...)`, so a
+      deploy-time system caller signing with ambient AWS credentials
+      (`Util_AppSync_Caller`) is authorized alongside the console UI. Opt-in per
+      field — only fields a system caller actually invokes should set this, and
+      the IAM principal must be scoped by the API resource policy / deploy-role
+      policy (see `docs/guides/appsync-iam-system-caller.md`). Default `false`. */
+  iamCallable?: bool,
   description?: string,
   linkedViews?: array<string>,
   consistencyRead?: string,
@@ -76,6 +86,11 @@ type querySchemaEntry = {
       `docs/plans/host-ui-login-core.md`). In-memory enforcement happens at
       the QueryDb resolver via the same field. */
   permission?: Reventless.Authorization.permission,
+  /** Opt the single-id and list query fields into deploy-time IAM (SigV4)
+      invocation in addition to their Cognito authorization. See
+      `mutationSchemaEntry.iamCallable` for the emitted directive form and
+      scoping requirements. Default `false`. */
+  iamCallable?: bool,
   excludeFields?: array<string>,
   description?: string,
   includeIdParam?: bool,

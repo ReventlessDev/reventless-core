@@ -598,7 +598,7 @@ function MakeWithConfig(Config) {
       return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => {
         let runSchemaPush = () => writeAndScanFragments().then(async allPluginFragments => {
           let baseFragment;
-          baseFragment = capturedDeployTarget === "Domain" && Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
+          baseFragment = capturedDeployTarget === "Domain" && Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", undefined);
           let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments);
           let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
           let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
@@ -653,7 +653,7 @@ function MakeWithConfig(Config) {
   let hooks_preAdminResolversSchemaHook = adminBarrier => {
     let match = splitApiOutputsRef.contents;
     let targetApi = match !== undefined ? match.platformApi : domainApi;
-    let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
+    let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", undefined);
     let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
     return Output$Pulumi.flatMap(Pulumi.all([
       targetApi,
@@ -920,7 +920,7 @@ function MakeWithConfig(Config) {
           return;
         }
       });
-      let baseFragment = Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
+      let baseFragment = Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", undefined);
       let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, fragments);
       return await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(AppSync_Adapter$ReventlessAws.getClient(), {
         apiId: apiId,
@@ -1686,7 +1686,7 @@ function Make($star) {
       return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => {
         let runSchemaPush = () => writeAndScanFragments().then(async allPluginFragments => {
           let baseFragment;
-          baseFragment = capturedDeployTarget === "Domain" ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
+          baseFragment = capturedDeployTarget === "Domain" ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", undefined);
           let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments);
           let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
           let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
@@ -1741,7 +1741,7 @@ function Make($star) {
   let hooks_preAdminResolversSchemaHook = adminBarrier => {
     let match = splitApiOutputsRef.contents;
     let targetApi = match !== undefined ? match.platformApi : domainApi;
-    let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
+    let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", undefined);
     let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
     return Output$Pulumi.flatMap(Pulumi.all([
       targetApi,
