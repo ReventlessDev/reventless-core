@@ -144,14 +144,40 @@ provisions without RDS/Secret bindings). C1 gates any live test.
 
 ## Phase A — Package wiring & connection component
 
-### A1 — Dependency + bundling
-- `reventless-aws` adds `@reventlessdev/reventless-postgres` (workspace) and the
-  `pg` runtime dependency. Decide `pg`'s Lambda delivery: bundle into each
-  handler vs. a shared Lambda layer (cf. `packages/aws-lambda-layer`,
-  `optimize-lambda-layer-size.md`). `pg` is pure-JS (no native `pg-native`), so
-  bundling is viable; a layer keeps handler artifacts small.
+### A1 — Dependency + bundling ✅ (2026-07-05)
+- **Done.** `reventless-aws` now depends on `@reventlessdev/reventless-postgres`
+  (`workspace:*` in both `package.json` and `rescript.json`); `pg` arrives
+  transitively (as it does for `reventless-local`). Verified: clean build, clean
+  3-line lockfile change, no UI contamination.
+- **`pg` Lambda delivery — decided: the existing layer, no bundling change.** The
+  `reventless-layer-builder` walks the full production dependency tree and bundles
+  everything except a fixed exclude list (`@pulumi/*`, `aws-sdk`, `smithy`,
+  `opentelemetry`, `sury-ppx`, …). `pg` is pure-JS and not excluded, so it rides
+  along automatically once `reventless-postgres` is a transitive dep — no layer or
+  bundling edit required.
 
-### A2 — `PgConnection` deploy-time component (the core)
+### A2 — `PgConnection` deploy-time component (the core) ✅ (2026-07-05, single-instance)
+**Done for single RDS `Instance`** — `reventless-aws/src/adapter/Postgres/PgConnection.res`.
+Compiles clean (zero warnings). Also required a small binding addition:
+`EC2_SecurityGroup.Ingress` gained an optional `self` (and `securityGroups`)
+field to express the self-referencing 5432 rule.
+- **Networking is an input, not provisioned.** `make(~vpcId, ~subnetIds, …)` — the
+  platform supplies an existing VPC + private subnets; `PgConnection` does not
+  create a VPC (a full VPC is a platform concern, out of scope).
+- **Self-referencing SG** (not "allow Lambda SG → 5432"): one shared SG with a
+  self ingress on 5432. Lambdas attach the *same* SG in C1 (`securityGroupId`
+  output), which sidesteps the resource-ordering coupling of a separate client SG.
+- **Credentials via `manageMasterUserPassword`** — RDS mints/rotates the master
+  secret; no plaintext in Pulumi state. `connectionConfig.secretArn` surfaces
+  `masterUserSecrets[0].secretArn`; the runtime resolves it at cold start.
+- **Output shape:** `@schema connectionConfig {host, port, database, secretArn}`
+  (Output) + `securityGroupId` (Output) + `subnetIds` (pass-through for the Lambda
+  `vpcConfig`). Serializable for the C1 handler env var.
+- **Deferred: Aurora / Serverless v2.** Second engine behind the *same*
+  `connectionConfig` output shape — the `Rds.{Cluster,ClusterInstance}` bindings
+  already exist (A0); wiring is a fast-follow, not a blocker for B/C.
+
+Original A2 sketch (retained for reference):
 A single reusable Pulumi component owning:
 - **The instance**: `aws.rds.Instance` (single) or `aws.rds.Cluster` +
   `ClusterInstance` (Aurora Postgres / Aurora Serverless v2). Engine, version,

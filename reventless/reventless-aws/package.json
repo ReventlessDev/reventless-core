@@ -29,6 +29,7 @@
     "@reventlessdev/reventless-core": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-interop": "workspace:*",
+    "@reventlessdev/reventless-postgres": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "11.0.0-alpha.4",
     "uuid": "^13.0.0"

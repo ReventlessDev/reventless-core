@@ -4,7 +4,18 @@
 type t = {id: Pulumi.Output.t<string>}
 
 module Ingress = {
-  type t = {fromPort: int, protocol: string, toPort: int, cidrBlocks: array<string>}
+  type t = {
+    fromPort: int,
+    protocol: string,
+    toPort: int,
+    cidrBlocks: array<string>,
+    /** Allow traffic from other members of this same security group. The
+      idiomatic RDS+Lambda pattern: the DB and its client Lambdas share one SG
+      and this rule lets them reach the DB port without a separate client SG. */
+    self?: bool,
+    /** Allow traffic from the given source security group IDs. */
+    securityGroups?: array<Pulumi.Input.t<string>>,
+  }
   let allowAll = {fromPort: 0, protocol: "-1", toPort: 0, cidrBlocks: ["0.0.0.0/0"]}
 }
 
