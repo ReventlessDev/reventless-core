@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.45 (2026-07-05)
+
+### Features
+
+* **rescript-pulumi-aws:** add RDS, Secrets Manager, and Lambda VPC bindings ([9b4fb3d](https://github.com/ReventlessDev/reventless-core/commit/9b4fb3d0b4173cc6f645a903801e59901dbbdeb2))
+* **reventless-aws:** add PgConnection component + wire reventless-postgres dep ([a403a62](https://github.com/ReventlessDev/reventless-core/commit/a403a6292381513cfe679a2f7a967fda0ab00c0e))
+
+
 # 2.4.0-alpha.44 (2026-06-27)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws

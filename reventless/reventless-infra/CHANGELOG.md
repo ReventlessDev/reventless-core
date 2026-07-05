@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.85 (2026-07-05)
+
+### Features
+
+* **postgres:** add reventless-postgres backend + local-platform integration ([6913200](https://github.com/ReventlessDev/reventless-core/commit/69132001f9271e832a5af33416acd5b645feaf47))
+
+
 # 3.0.0-alpha.84 (2026-07-03)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra

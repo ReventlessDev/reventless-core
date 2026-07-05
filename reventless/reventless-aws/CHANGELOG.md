@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.172 (2026-07-05)
+
+### Bug Fixes
+
+* **reventless-aws:** sub-select CommandResult in AppSync mutation caller ([24cf37c](https://github.com/ReventlessDev/reventless-core/commit/24cf37cc537215b9523d1eac4a0f8ac6c610257d))
+### Features
+
+* **postgres:** add reventless-postgres backend + local-platform integration ([6913200](https://github.com/ReventlessDev/reventless-core/commit/69132001f9271e832a5af33416acd5b645feaf47))
+* **postgres:** cold-start pool foundation for AWS Postgres adapters ([b393449](https://github.com/ReventlessDev/reventless-core/commit/b393449769b6cd92abd03d2d5e7f564fe092938e))
+* **reventless-aws:** add PgConnection component + wire reventless-postgres dep ([a403a62](https://github.com/ReventlessDev/reventless-core/commit/a403a6292381513cfe679a2f7a967fda0ab00c0e))
+
+
 # 3.0.0-alpha.171 (2026-07-04)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
