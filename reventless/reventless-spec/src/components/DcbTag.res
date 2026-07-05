@@ -245,6 +245,10 @@ type compositePartitionSpec = {
   seps: array<string>,
 }
 
+// Republish note: alpha.65 shipped a stale compiled interface that omitted the
+// @schema-generated `derivedPartitionTagSchema`, breaking downstream
+// `Reventless.DcbTag.derivedPartitionTagSchema` references (e.g. reventless-aws
+// PgChangeFeedRelay). This forces a clean rebuild + republish.
 /** Union of simple and composite partition tag strategies. */
 @schema
 type derivedPartitionTag =
