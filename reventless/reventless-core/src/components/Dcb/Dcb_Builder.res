@@ -76,6 +76,10 @@ module Make = (
     ~automationSlices: array<module(AutomationSlice.T)>,
     ~outboundTranslationSlices: array<module(OutboundTranslationSlice.T)>,
     ~inboundTranslationSlices: array<module(InboundTranslationSlice.T)>,
+    // Spec names of slices whose GraphQL fields a deploy-time system caller
+    // (machine credentials — IAM/SigV4 on AWS) must invoke — sets
+    // `systemCallable` on the matching mutation / state-view query schema entries.
+    ~systemCallableComponents: array<string>=[],
     ~pluginStructure: option<Reventless.Plugin.pluginStructure>=?,
     ~opts: Pulumi.ComponentResource.options,
   ): dcbResult => {
@@ -818,6 +822,7 @@ module Make = (
                 ReventlessInfra.Api.fieldNames: [fieldName],
                 commandSchema,
                 fieldPermissions,
+                systemCallable: systemCallableComponents->Array.includes(S.Spec.name),
                 linkedViews: ?sliceDef->Option.map(d => d.linkedViews),
                 consistencyRead: ?sliceDef->Option.flatMap(d => d.consistencyRead),
               })
@@ -858,6 +863,7 @@ module Make = (
             stateSchema: V.Spec.stateSchema->Reventless.DcbTag.toUnknownSchema,
             authorization: None,
             permission: V.Spec.authorization,
+            systemCallable: systemCallableComponents->Array.includes(V.Spec.name),
             includeIdParam: qn.includeIdParam,
             connectionSpec: true,
             subIdField: ?subIdField,

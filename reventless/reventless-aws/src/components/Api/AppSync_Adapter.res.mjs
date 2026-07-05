@@ -220,7 +220,7 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
   let iamFields = {};
   let mutationAuthMap = {};
   mutationEntries.forEach(entry => {
-    if (Stdlib_Option.getOr(entry.iamCallable, false)) {
+    if (Stdlib_Option.getOr(entry.systemCallable, false)) {
       entry.fieldNames.forEach(fieldName => {
         iamFields[fieldName] = true;
       });
@@ -249,7 +249,7 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
   });
   let queryAuthMap = {};
   queryEntries.forEach(entry => {
-    if (Stdlib_Option.getOr(entry.iamCallable, false)) {
+    if (Stdlib_Option.getOr(entry.systemCallable, false)) {
       iamFields[entry.singleFieldName] = true;
       iamFields[entry.listFieldName] = true;
     }

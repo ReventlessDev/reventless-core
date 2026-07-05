@@ -23,6 +23,7 @@ module type T = {
     ~automationSlices: array<module(ReventlessInfra.AutomationSlice.T)>=?,
     ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>=?,
     ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>=?,
+    ~systemCallableComponents: array<string>=?,
     ~uiFragments: Reventless.Plugin.uiFragmentManifest=?,
     ~pluginStructure: Reventless.Plugin.pluginStructure=?,
     ~opts: Pulumi.ComponentResource.options=?,

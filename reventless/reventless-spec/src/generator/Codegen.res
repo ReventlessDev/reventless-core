@@ -672,6 +672,16 @@ let renderComposition = (~config: Config.config, ~resolved: Pairing.resolved): s
       ~moduleSuffix="Slice",
     ),
     hasPluginStructure ? Some("      ~pluginStructure=pluginStructure,") : None,
+    // Components carrying `@@reventless.systemCallable` — only emitted when at
+    // least one opts in, so existing generated Plugin.res files stay identical.
+    resolved.systemCallableComponents->Array.length > 0
+      ? Some(
+          "      ~systemCallableComponents=[" ++
+          resolved.systemCallableComponents
+          ->Array.map(n => "\"" ++ n ++ "\"")
+          ->Array.join(", ") ++ "],",
+        )
+      : None,
   ]
 
   makeParams->Array.filterMap(x => x)->Array.forEach(line => lines->Array.push(line))

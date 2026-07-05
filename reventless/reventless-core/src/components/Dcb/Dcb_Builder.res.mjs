@@ -78,10 +78,11 @@ let emptyResult = {
 
 function Make(DcbEventLogStorage) {
   return DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => (RuntimeBuilder => (HooksConfig => {
-    let construct = (name, childName, environmentOpt, platformNameOpt, aggregateEventTopicsOpt, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, pluginStructure, opts) => {
+    let construct = (name, childName, environmentOpt, platformNameOpt, aggregateEventTopicsOpt, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponentsOpt, pluginStructure, opts) => {
       let environment = environmentOpt !== undefined ? environmentOpt : "";
       let platformName = platformNameOpt !== undefined ? platformNameOpt : "";
       let aggregateEventTopics = aggregateEventTopicsOpt !== undefined ? aggregateEventTopicsOpt : ({});
+      let systemCallableComponents = systemCallableComponentsOpt !== undefined ? systemCallableComponentsOpt : [];
       let hasDcb = stateChangeSlices.length !== 0;
       if (!hasDcb) {
         return emptyResult;
@@ -466,6 +467,7 @@ function Make(DcbEventLogStorage) {
           fieldNames: [fieldName],
           commandSchema: commandSchema,
           fieldPermissions: fieldPermissions,
+          systemCallable: systemCallableComponents.includes(S.Spec.name),
           linkedViews: Stdlib_Option.map(sliceDef, d => d.linkedViews),
           consistencyRead: Stdlib_Option.flatMap(sliceDef, d => d.consistencyRead)
         };
@@ -495,6 +497,7 @@ function Make(DcbEventLogStorage) {
           stateSchema: V.Spec.stateSchema,
           authorization: undefined,
           permission: V.Spec.authorization,
+          systemCallable: systemCallableComponents.includes(V.Spec.name),
           includeIdParam: qn.includeIdParam,
           connectionSpec: true,
           subIdField: subIdField,

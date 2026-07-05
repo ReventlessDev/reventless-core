@@ -88,6 +88,13 @@ let strip_ppx_attrs (str : structure) : structure =
        the attribute so it doesn't reach the compiler; the plugin generator
        reads the raw .res source to flip the emitted Make → MakeAsync. *)
     || String.equal name "reventless.async"
+    (* [@@reventless.systemCallable] marks a StateChangeSlice / StateViewSlice
+       spec whose GraphQL fields a deploy-time IAM (SigV4) system caller must
+       invoke. Like reventless.async it is generator-read (raw source →
+       ~systemCallableComponents on Plugin.make); stripped here for hygiene —
+       the compiler also tolerates it unconsumed, so older published PPX
+       binaries keep working. *)
+    || String.equal name "reventless.systemCallable"
     || List.exists (String.equal name) impl_attr_names
   in
   List.filter (fun (item : structure_item) ->

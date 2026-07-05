@@ -57,6 +57,12 @@ type resolved = {
   // StateChangeSlice stems carrying `@@reventless.async` — codegen emits
   // `Platform.StateChangeSlice.MakeAsync` for these (CommandPending response).
   asyncStateChangeSlices: Dict.t<bool>,
+  // Spec names of StateChangeSlices / StateViewSlices (incl. Stream) carrying
+  // `@@reventless.systemCallable` — codegen threads them as
+  // `~systemCallableComponents` on `Platform.Plugin.make` so the AWS provider
+  // emits the dual-auth `@aws_cognito_user_pools(...) @aws_iam` directive on
+  // their GraphQL fields (deploy-time SigV4 system callers). Sorted.
+  systemCallableComponents: array<string>,
   aggregates: array<aggregateDef>,
   readModels: array<readModelDef>,
   tasks: array<string>,
@@ -139,22 +145,21 @@ let extractTargetName = (filePath: string): option<string> => {
   }
 }
 
-// Returns true if the spec file declares `@@reventless.async` at the file
-// level (Aggregate or StateChangeSlice opt-in to CommandPending response).
-// Falls back to false on read errors so a transient FS failure can't flip
-// component to async — the safe default is sync.
-let hasAsyncAttribute = (filePath: string): bool => {
+// Returns true if the spec file declares the given file-level attribute
+// (e.g. `@@reventless.async`, `@@reventless.systemCallable`). Falls back to
+// false on read errors so a transient FS failure can't flip a component
+// into the opt-in behavior — the safe default is the attribute being absent.
+let hasFileAttribute = (filePath: string, ~attr: string): bool => {
   try {
     let content = Generator_Node.readFileSync(filePath)
     let found = ref(false)
     content->String.split("\n")->Array.forEach(line => {
       let trimmed = line->String.trimStart
-      // Match `@@reventless.async` and tolerate a payload arg in the future.
+      // Match the bare attribute and tolerate a payload arg in the future.
       if (
-        trimmed->String.startsWith("@@reventless.async ") ||
-        trimmed->String.startsWith("@@reventless.async(") ||
-        trimmed === "@@reventless.async" ||
-        trimmed->String.startsWith("@@reventless.async\n")
+        trimmed->String.startsWith(attr ++ " ") ||
+        trimmed->String.startsWith(attr ++ "(") ||
+        trimmed === attr
       ) {
         found := true
       }
@@ -162,6 +167,41 @@ let hasAsyncAttribute = (filePath: string): bool => {
     found.contents
   } catch {
   | _ => false
+  }
+}
+
+// `@@reventless.async` — Aggregate or StateChangeSlice opt-in to async
+// command dispatch (CommandPending response).
+let hasAsyncAttribute = (filePath: string): bool =>
+  hasFileAttribute(filePath, ~attr="@@reventless.async")
+
+// `@@reventless.systemCallable` — StateChangeSlice / StateViewSlice opt-in to
+// deploy-time IAM (SigV4) invocation of the component's GraphQL fields.
+let hasSystemCallableAttribute = (filePath: string): bool =>
+  hasFileAttribute(filePath, ~attr="@@reventless.systemCallable")
+
+// The effective spec name of a file: the explicit `@@reventless.spec("Name")`
+// payload when present, the filename stem otherwise (mirroring the PPX's name
+// derivation). Needed because `systemCallableComponents` is matched against
+// `Spec.name` at deploy time — a stem-only value would silently miss specs
+// with an explicit name override.
+let effectiveSpecName = (filePath: string, ~stem: string): string => {
+  try {
+    let content = Generator_Node.readFileSync(filePath)
+    let name = ref(None)
+    content->String.split("\n")->Array.forEach(line => {
+      let trimmed = line->String.trimStart
+      if trimmed->String.startsWith("@@reventless.spec(") {
+        let firstQuote = trimmed->String.indexOf("\"")
+        let lastQuote = trimmed->String.lastIndexOf("\"")
+        if firstQuote >= 0 && lastQuote > firstQuote {
+          name := Some(trimmed->String.slice(~start=firstQuote + 1, ~end=lastQuote))
+        }
+      }
+    })
+    name.contents->Option.getOr(stem)
+  } catch {
+  | _ => stem
   }
 }
 
@@ -213,6 +253,8 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   let aggregateSpecs: array<string> = []
   let aggregateSpecRelPaths: Dict.t<string> = Dict.make()
   let stateChangeSliceRelPaths: Dict.t<string> = Dict.make()
+  // Shared by StateViewSlice and StateViewSliceStream (stems are unique).
+  let stateViewSliceRelPaths: Dict.t<string> = Dict.make()
   let aggregateBehaviors: array<string> = []
   let readModelStems: array<string> = []
   // Stream-enabled read model spec stems (the `ReadModelStream/` folder).
@@ -236,9 +278,15 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
         stateChangeSliceRelPaths->Dict.set(stem, relPath)
       }
     | StateViewSlice =>
-      if !isImplStem(stem) { stateViewSlices->Array.push(stem) }
+      if !isImplStem(stem) {
+        stateViewSlices->Array.push(stem)
+        stateViewSliceRelPaths->Dict.set(stem, relPath)
+      }
     | StateViewSliceStream =>
-      if !isImplStem(stem) { stateViewSlicesStream->Array.push(stem) }
+      if !isImplStem(stem) {
+        stateViewSlicesStream->Array.push(stem)
+        stateViewSliceRelPaths->Dict.set(stem, relPath)
+      }
     | AutomationSlice =>
       if !isImplStem(stem) {
         automationSlices->Array.push(stem)
@@ -384,6 +432,24 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
         }
       })
       d
+    },
+    systemCallableComponents: {
+      let names = []
+      let collect = (stems: array<string>, relPaths: Dict.t<string>) =>
+        stems->Array.forEach(stem => {
+          switch Dict.get(relPaths, stem) {
+          | None => ()
+          | Some(relPath) =>
+            let filePath = Generator_Node.join([srcDir, relPath])
+            if hasSystemCallableAttribute(filePath) {
+              names->Array.push(effectiveSpecName(filePath, ~stem))
+            }
+          }
+        })
+      collect(stateChangeSlices, stateChangeSliceRelPaths)
+      collect(stateViewSlices, stateViewSliceRelPaths)
+      collect(stateViewSlicesStream, stateViewSliceRelPaths)
+      names->sortedStems
     },
     aggregates,
     readModels,

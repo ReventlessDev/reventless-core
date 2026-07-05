@@ -4,18 +4,22 @@ Scope: let `Util_AppSync_Caller` (the IAM-SigV4 deploy-time GraphQL client) actu
 invoke fields on a Cognito-primary AppSync API. Today it is `Unauthorized` for
 **every** field because the SDL auth injection only emits Cognito directives.
 
-## Status: DONE (framework mechanism)
+## Status: mechanism DONE + plugin-slice opt-in plumbing DONE — downstream verification PENDING
 
-Shipped the opt-in per-field dual-auth mechanism in the framework. Nothing in this
-repo sets the flag yet — the IAM caller and its target fields (PlatformInspector
-`Platform_Sync*` mutations) live downstream and opt in on a version bump. Zero
-change to any existing field's directive.
+Shipped the opt-in per-field dual-auth **mechanism** (below) and the **slice-level
+opt-in plumbing** (see "Opt-in plumbing (shipped)"). A downstream plugin now opts
+its StateChangeSlice / StateViewSlice fields in with the file-level attribute
+`@@reventless.systemCallable` on the spec file plus a plugin regeneration. What
+remains is step 3 of the former gap list: the end-to-end verification against the
+live API from the downstream repo (PlatformInspector marks its `Platform_Sync*`
+slices + reconcile read views, redeploys, and confirms the SigV4 caller is no
+longer `Unauthorized`). Zero change to any existing field's directive.
 
-- `reventless-infra/src/components/Api.res` — added `iamCallable?: bool` to
+- `reventless-infra/src/components/Api.res` — added `systemCallable?: bool` to
   `mutationSchemaEntry` and `querySchemaEntry`.
 - `reventless-aws/src/components/Api/AppSync_Adapter.res` — `injectAwsAuth` now
   emits the multi-auth form `@aws_cognito_user_pools(cognito_groups: [...])
-  @aws_iam` for `iamCallable` fields (bare `@aws_cognito_user_pools` when the
+  @aws_iam` for `systemCallable` fields (bare `@aws_cognito_user_pools` when the
   field carries no Cognito group restriction), keeping `@aws_auth(...)` for every
   other field. `injectAwsAuthAll` gained `~iamFieldNames` for the admin base
   fragment. New `_formatDualAuthDirective` helper.
@@ -33,6 +37,55 @@ against the live API on the first downstream field that opts in.
 emits the directive but does not provision the deploy-role policy or an AppSync
 API resource policy (the deploy role ARN is not known at deploy time; it's an ops
 decision). Scoping requirements are in the guide.
+
+## Opt-in plumbing (shipped)
+
+The spec-level knob is the file-level attribute **`@@reventless.systemCallable`** on
+StateChangeSlice and StateViewSlice (incl. Stream) spec files. It deliberately does
+NOT extend the `Spec` module type (the `commandAuthorization` precedent): a new
+required Spec field needs a PPX auto-injection, and any PPX change is blocked on a
+`reventless-ppx` republish before CI can pass. Instead it mirrors the
+`@@reventless.async` shape — generator-read from raw source — with one improvement:
+no PPX consumption is required at all (verified: the current published PPX passes
+the unknown attribute through and the compiler ignores it with zero warnings), so
+the plumbing ships entirely from this repo.
+
+- `reventless-spec/src/generator/Pairing.res` — `hasSystemCallableAttribute` (shared
+  `hasFileAttribute` helper with `hasAsyncAttribute`); StateViewSlice(+Stream)
+  relPaths now tracked; new `resolved.systemCallableComponents` (sorted effective spec
+  names — the explicit `@@reventless.spec("Name")` payload when present, else the
+  stem, so name-overridden specs don't silently miss).
+- `reventless-spec/src/generator/Codegen.res` — emits
+  `~systemCallableComponents=["..."]` on `Platform.Plugin.make(...)` only when at
+  least one component opts in, so existing generated `Plugin.res` files stay
+  byte-identical.
+- `reventless-infra/src/components/Plugin.res` + core `Plugin.res` module type —
+  `Plugin.T.make` gained optional `~systemCallableComponents: array<string>=?`.
+- `Plugin_Builder.res` — threads it through `make` → `construct` →
+  `DcbBuilder.construct` (both AWS and local platforms `include` this builder, so
+  one implementation covers both; local ignores the flag downstream).
+- `Dcb_Builder.res` — `construct(~systemCallableComponents=[])` stamps
+  `systemCallable: <name match>` on `mutationEntriesFromSlices` (StateChangeSlice
+  command mutations) and `stateViewEntries` (StateViewSlice single+list queries).
+  The plugin-deploy fragment injection already calls `injectAwsAuth`, which reads
+  `entry.systemCallable` — no further wiring in the deploy path.
+- `packages/reventless-ppx/src/ppx/ReventlessPpx.ml` — `reventless.systemCallable`
+  added to the strip list for hygiene (takes effect on the next ppx republish;
+  not required for correctness since pass-through is harmless).
+- Docs: `docs/guides/appsync-iam-system-caller.md` (attribute how-to) and
+  `.claude/rules/app-developer.md` (PPX annotations list).
+
+Out of scope, unchanged: InboundTranslationSlice mutations, AutomationSlice /
+translation-slice audit queries, and Aggregate/ReadModel fields — none are
+deploy-time sync targets today; the entry fields exist if they ever need it.
+
+**Remaining — verify end-to-end downstream.** PlatformInspector (business repo)
+marks its deploy-time-invoked slices with `@@reventless.systemCallable`, regenerates,
+redeploys against a framework version carrying this plumbing, and confirms the
+SigV4 sync caller is no longer `Unauthorized` (Verification section below).
+
+The security scoping (least-privilege deploy-role IAM policy / API resource policy)
+remains an ops concern as documented — unchanged by the above.
 
 ---
 (original design below)

@@ -101,7 +101,7 @@ function Make(Spec) {
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
       return Plugin_Structure$ReventlessCore.make(name, aggregates, readModels, stateViewSlices, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints);
     };
-    let make = (name, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, stateChangeSlicesOpt, stateViewSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, uiFragments, pluginStructure, opts) => {
+    let make = (name, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, stateChangeSlicesOpt, stateViewSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, systemCallableComponentsOpt, uiFragments, pluginStructure, opts) => {
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
       let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
       let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
@@ -112,6 +112,7 @@ function Make(Spec) {
       let automationSlices = automationSlicesOpt !== undefined ? automationSlicesOpt : [];
       let outboundTranslationSlices = outboundTranslationSlicesOpt !== undefined ? outboundTranslationSlicesOpt : [];
       let inboundTranslationSlices = inboundTranslationSlicesOpt !== undefined ? inboundTranslationSlicesOpt : [];
+      let systemCallableComponents = systemCallableComponentsOpt !== undefined ? systemCallableComponentsOpt : [];
       PluginRuntimeBuilder.registerPluginName(name);
       let version = PackageVersion$Reventless.fromCaller();
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Plugin$ReventlessCore.componentType), name, (extra, extra$1) => {
@@ -144,7 +145,7 @@ function Make(Spec) {
         let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(DcbCommandTopicChannelAsync)(PluginRuntimeBuilder)({
           hooks: Spec.hooks
         });
-        let dcbResult = DcbBuilder.construct(extra$1, childName, Spec.environment, Spec.platformName, aggregateEventTopics, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, pluginStructure, opts);
+        let dcbResult = DcbBuilder.construct(extra$1, childName, Spec.environment, Spec.platformName, aggregateEventTopics, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponents, pluginStructure, opts);
         let mutationEntriesFromAggregates = aggregates.flatMap(M => {
           let commandSchema = M.Spec.commandSchema;
           if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {

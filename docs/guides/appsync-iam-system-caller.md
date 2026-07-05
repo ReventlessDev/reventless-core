@@ -30,10 +30,35 @@ errorType: Unauthorized
 
 ## Opting a field into dual-auth (Cognito + IAM)
 
-Set `iamCallable: true` on the field's schema entry
-(`ReventlessInfra.Api.mutationSchemaEntry` / `querySchemaEntry`). The AWS adapter
-then emits the **multi-auth** directive form for that field instead of
-`@aws_auth`:
+### Plugin slices — `@@reventless.systemCallable`
+
+For a plugin's **StateChangeSlice** (command mutation) or **StateViewSlice /
+StateViewSliceStream** (single-id + list queries), add the file-level attribute
+to the spec file:
+
+```rescript
+// StateChangeSlice/SyncComponent.res
+@@reventless.spec
+@@reventless.systemCallable
+
+@schema type command = ...
+```
+
+The plugin generator reads the attribute from the raw source (like
+`@@reventless.async`) and threads the component's spec name as
+`~systemCallableComponents` on the generated `Platform.Plugin.make(...)` call;
+`Dcb_Builder` sets `systemCallable: true` on the matching mutation / query schema
+entries. Re-run `generate-plugin src/` (the `prebuild` script does this
+automatically) and commit the regenerated `src/Plugin.res`.
+
+### Framework-built entries — `systemCallable` on the schema entry
+
+Where the schema entry is constructed by hand (framework/internal code), set
+`systemCallable: true` on the field's schema entry
+(`ReventlessInfra.Api.mutationSchemaEntry` / `querySchemaEntry`).
+
+In both cases the AWS adapter emits the **multi-auth** directive form for that
+field instead of `@aws_auth`:
 
 ```graphql
 Platform_SyncComponent(...): CommandResult
@@ -50,7 +75,7 @@ For the admin **base fragment** (pushed via `AppSync_Adapter.injectAwsAuthAll`),
 pass `~iamFieldNames=[...]` to mark specific base fields dual-auth.
 
 **Opt-in per field.** Only fields a system caller actually invokes should set
-`iamCallable`. Every other field keeps the single-mode `@aws_auth` form
+`systemCallable`. Every other field keeps the single-mode `@aws_auth` form
 unchanged. Subscriptions are never IAM-marked — the deploy caller does not
 subscribe.
 

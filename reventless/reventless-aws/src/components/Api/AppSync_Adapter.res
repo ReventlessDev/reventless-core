@@ -268,7 +268,7 @@ let getClient = () =>
 // belong to — effectively blocking the field at the API layer.
 //
 // ── Dual-auth (Cognito + IAM) for deploy-time system callers ────────────────
-// A field flagged `iamCallable` (via `mutationSchemaEntry`/`querySchemaEntry`)
+// A field flagged `systemCallable` (via `mutationSchemaEntry`/`querySchemaEntry`)
 // must be reachable by BOTH the console UI (Cognito) and a deploy-time system
 // caller signing SigV4 with ambient AWS credentials (`Util_AppSync_Caller`,
 // the AWS_IAM additional auth provider). `@aws_auth(...)` is the single-mode
@@ -328,7 +328,7 @@ let injectAwsAuth = (
 
   let mutationAuthMap: Dict.t<array<string>> = Dict.make()
   mutationEntries->Array.forEach(entry => {
-    if entry.iamCallable->Option.getOr(false) {
+    if entry.systemCallable->Option.getOr(false) {
       entry.fieldNames->Array.forEach(fieldName => iamFields->Dict.set(fieldName, true))
     }
     switch entry.authorization {
@@ -356,7 +356,7 @@ let injectAwsAuth = (
   // Spec-level `permission` takes precedence over the legacy authorization.
   let queryAuthMap: Dict.t<array<string>> = Dict.make()
   queryEntries->Array.forEach(entry => {
-    if entry.iamCallable->Option.getOr(false) {
+    if entry.systemCallable->Option.getOr(false) {
       iamFields->Dict.set(entry.singleFieldName, true)
       iamFields->Dict.set(entry.listFieldName, true)
     }

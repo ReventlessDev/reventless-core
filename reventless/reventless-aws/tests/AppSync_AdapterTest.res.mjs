@@ -282,14 +282,14 @@ globalThis.describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifti
   });
 });
 
-globalThis.describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", () => {
+globalThis.describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
   let makeFragment = (mutationFields, queryFields) => GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: mutationFields,
     queries: queryFields,
     subscriptions: []
   });
-  globalThis.test("iamCallable mutation with a group emits @aws_cognito_user_pools + @aws_iam", () => {
+  globalThis.test("systemCallable mutation with a group emits @aws_cognito_user_pools + @aws_iam", () => {
     let entry_fieldNames = ["p_Sync"];
     let entry_fieldPermissions = Object.fromEntries([[
         "p_Sync",
@@ -298,12 +298,12 @@ globalThis.describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", (
           _0: ["Admin"]
         }
       ]]);
-    let entry_iamCallable = true;
+    let entry_systemCallable = true;
     let entry = {
       fieldNames: entry_fieldNames,
       commandSchema: S.unknown,
       fieldPermissions: entry_fieldPermissions,
-      iamCallable: entry_iamCallable
+      systemCallable: entry_systemCallable
     };
     let frag = makeFragment(["p_Sync(id: ID!): String"], []);
     let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [entry], []);
@@ -312,18 +312,18 @@ globalThis.describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", (
     globalThis.expect(m).toContain("@aws_iam");
     globalThis.expect(m).not.toContain("@aws_auth");
   });
-  globalThis.test("iamCallable mutation without a group restriction stays open to Cognito + IAM", () => {
+  globalThis.test("systemCallable mutation without a group restriction stays open to Cognito + IAM", () => {
     let entry_fieldNames = ["p_Sync"];
     let entry_fieldPermissions = Object.fromEntries([[
         "p_Sync",
         "AllowAuthenticated"
       ]]);
-    let entry_iamCallable = true;
+    let entry_systemCallable = true;
     let entry = {
       fieldNames: entry_fieldNames,
       commandSchema: S.unknown,
       fieldPermissions: entry_fieldPermissions,
-      iamCallable: entry_iamCallable
+      systemCallable: entry_systemCallable
     };
     let frag = makeFragment(["p_Sync(id: ID!): String"], []);
     let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [entry], []);
@@ -332,7 +332,7 @@ globalThis.describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", (
     globalThis.expect(m).not.toContain("cognito_groups");
     globalThis.expect(m).not.toContain("@aws_auth");
   });
-  globalThis.test("a non-iamCallable sibling keeps single-mode @aws_auth (no @aws_iam)", () => {
+  globalThis.test("a non-systemCallable sibling keeps single-mode @aws_auth (no @aws_iam)", () => {
     let entry_fieldNames = [
       "p_Sync",
       "p_Other"
@@ -353,12 +353,12 @@ globalThis.describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", (
         }
       ]
     ]);
-    let entry_iamCallable = false;
+    let entry_systemCallable = false;
     let entry = {
       fieldNames: entry_fieldNames,
       commandSchema: S.unknown,
       fieldPermissions: entry_fieldPermissions,
-      iamCallable: entry_iamCallable
+      systemCallable: entry_systemCallable
     };
     let iamEntry_fieldNames = ["p_Sync"];
     let iamEntry_fieldPermissions = Object.fromEntries([[
@@ -368,12 +368,12 @@ globalThis.describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", (
           _0: ["Admin"]
         }
       ]]);
-    let iamEntry_iamCallable = true;
+    let iamEntry_systemCallable = true;
     let iamEntry = {
       fieldNames: iamEntry_fieldNames,
       commandSchema: S.unknown,
       fieldPermissions: iamEntry_fieldPermissions,
-      iamCallable: iamEntry_iamCallable
+      systemCallable: iamEntry_systemCallable
     };
     let frag = makeFragment([
       "p_Sync(id: ID!): String",
@@ -393,12 +393,12 @@ globalThis.describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", (
       return Stdlib_JsError.throwWithMessage("missing p_Other field");
     }
   });
-  globalThis.test("iamCallable query applies dual-auth to BOTH single and list fields", () => {
+  globalThis.test("systemCallable query applies dual-auth to BOTH single and list fields", () => {
     let entry_permission = {
       TAG: "AllowGroups",
       _0: ["Admin"]
     };
-    let entry_iamCallable = true;
+    let entry_systemCallable = true;
     let entry = {
       singleFieldName: "p_Item",
       listFieldName: "p_Items",
@@ -406,7 +406,7 @@ globalThis.describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", (
       stateSchema: S.unknown,
       authorization: undefined,
       permission: entry_permission,
-      iamCallable: entry_iamCallable
+      systemCallable: entry_systemCallable
     };
     let frag = makeFragment([], [
       "p_Item(id: ID!): Item",

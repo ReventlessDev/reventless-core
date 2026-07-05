@@ -54,7 +54,7 @@ type mutationSchemaEntry = {
       field — only fields a system caller actually invokes should set this, and
       the IAM principal must be scoped by the API resource policy / deploy-role
       policy (see `docs/guides/appsync-iam-system-caller.md`). Default `false`. */
-  iamCallable?: bool,
+  systemCallable?: bool,
   description?: string,
   linkedViews?: array<string>,
   consistencyRead?: string,
@@ -88,9 +88,9 @@ type querySchemaEntry = {
   permission?: Reventless.Authorization.permission,
   /** Opt the single-id and list query fields into deploy-time IAM (SigV4)
       invocation in addition to their Cognito authorization. See
-      `mutationSchemaEntry.iamCallable` for the emitted directive form and
+      `mutationSchemaEntry.systemCallable` for the emitted directive form and
       scoping requirements. Default `false`. */
-  iamCallable?: bool,
+  systemCallable?: bool,
   excludeFields?: array<string>,
   description?: string,
   includeIdParam?: bool,

@@ -3,6 +3,7 @@
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Generator_Node$Reventless from "./Generator_Node.res.mjs";
 
 let implSuffixForStateChange = "_Behavior";
@@ -112,7 +113,7 @@ function extractTargetName(filePath) {
   }
 }
 
-function hasAsyncAttribute(filePath) {
+function hasFileAttribute(filePath, attr) {
   try {
     let content = Nodefs.readFileSync(filePath, "utf8");
     let found = {
@@ -120,7 +121,7 @@ function hasAsyncAttribute(filePath) {
     };
     content.split("\n").forEach(line => {
       let trimmed = line.trimStart();
-      if (trimmed.startsWith("@@reventless.async ") || trimmed.startsWith("@@reventless.async(") || trimmed === "@@reventless.async" || trimmed.startsWith("@@reventless.async\n")) {
+      if (trimmed.startsWith(attr + " ") || trimmed.startsWith(attr + "(") || trimmed === attr) {
         found.contents = true;
         return;
       }
@@ -128,6 +129,38 @@ function hasAsyncAttribute(filePath) {
     return found.contents;
   } catch (exn) {
     return false;
+  }
+}
+
+function hasAsyncAttribute(filePath) {
+  return hasFileAttribute(filePath, "@@reventless.async");
+}
+
+function hasSystemCallableAttribute(filePath) {
+  return hasFileAttribute(filePath, "@@reventless.systemCallable");
+}
+
+function effectiveSpecName(filePath, stem) {
+  try {
+    let content = Nodefs.readFileSync(filePath, "utf8");
+    let name = {
+      contents: undefined
+    };
+    content.split("\n").forEach(line => {
+      let trimmed = line.trimStart();
+      if (!trimmed.startsWith("@@reventless.spec(")) {
+        return;
+      }
+      let firstQuote = trimmed.indexOf("\"");
+      let lastQuote = trimmed.lastIndexOf("\"");
+      if (firstQuote >= 0 && lastQuote > firstQuote) {
+        name.contents = trimmed.slice(firstQuote + 1 | 0, lastQuote);
+        return;
+      }
+    });
+    return Stdlib_Option.getOr(name.contents, stem);
+  } catch (exn) {
+    return stem;
   }
 }
 
@@ -178,6 +211,7 @@ function resolve(discovered, srcDir) {
   let aggregateSpecs = [];
   let aggregateSpecRelPaths = {};
   let stateChangeSliceRelPaths = {};
+  let stateViewSliceRelPaths = {};
   let aggregateBehaviors = [];
   let readModelStems = [];
   let readModelStreamStems = [];
@@ -201,6 +235,7 @@ function resolve(discovered, srcDir) {
       case "StateViewSlice" :
         if (!isImplStem(stem)) {
           stateViewSlices.push(stem);
+          stateViewSliceRelPaths[stem] = relPath;
           return;
         } else {
           return;
@@ -208,6 +243,7 @@ function resolve(discovered, srcDir) {
       case "StateViewSliceStream" :
         if (!isImplStem(stem)) {
           stateViewSlicesStream.push(stem);
+          stateViewSliceRelPaths[stem] = relPath;
           return;
         } else {
           return;
@@ -282,7 +318,7 @@ function resolve(discovered, srcDir) {
       );
     if (behaviorStem !== undefined) {
       let relPath = aggregateSpecRelPaths[spec];
-      let isAsync = relPath !== undefined ? hasAsyncAttribute(Nodepath.join(srcDir, relPath)) : false;
+      let isAsync = relPath !== undefined ? hasFileAttribute(Nodepath.join(srcDir, relPath), "@@reventless.async") : false;
       return {
         spec: spec,
         behavior: behaviorStem,
@@ -319,6 +355,20 @@ function resolve(discovered, srcDir) {
     return dict;
   };
   let d = {};
+  let names = [];
+  let collect = (stems, relPaths) => {
+    stems.forEach(stem => {
+      let relPath = relPaths[stem];
+      if (relPath === undefined) {
+        return;
+      }
+      let filePath = Nodepath.join(srcDir, relPath);
+      if (hasFileAttribute(filePath, "@@reventless.systemCallable")) {
+        names.push(effectiveSpecName(filePath, stem));
+        return;
+      }
+    });
+  };
   return {
     stateChangeSlices: sortedStems(stateChangeSlices),
     stateViewSlices: sortedStems(stateViewSlices),
@@ -331,11 +381,12 @@ function resolve(discovered, srcDir) {
     outboundTranslationSliceTargets: buildTargets(outboundTranslationSlices, outboundTranslationSliceRelPaths),
     asyncStateChangeSlices: (stateChangeSlices.forEach(stem => {
       let relPath = stateChangeSliceRelPaths[stem];
-      if (relPath !== undefined && hasAsyncAttribute(Nodepath.join(srcDir, relPath))) {
+      if (relPath !== undefined && hasFileAttribute(Nodepath.join(srcDir, relPath), "@@reventless.async")) {
         d[stem] = true;
         return;
       }
     }), d),
+    systemCallableComponents: (collect(stateChangeSlices, stateChangeSliceRelPaths), collect(stateViewSlices, stateViewSliceRelPaths), collect(stateViewSlicesStream, stateViewSliceRelPaths), sortedStems(names)),
     aggregates: aggregates,
     readModels: readModels,
     tasks: sortedStems(tasks),
@@ -354,7 +405,10 @@ export {
   findEventMappings,
   sortedStems,
   extractTargetName,
+  hasFileAttribute,
   hasAsyncAttribute,
+  hasSystemCallableAttribute,
+  effectiveSpecName,
   groupExtensionPoints,
   resolve,
 }

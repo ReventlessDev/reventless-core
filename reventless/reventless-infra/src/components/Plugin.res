@@ -58,6 +58,14 @@ module type T = {
     ~automationSlices: array<module(AutomationSlice.T)>=?,
     ~outboundTranslationSlices: array<module(OutboundTranslationSlice.T)>=?,
     ~inboundTranslationSlices: array<module(InboundTranslationSlice.T)>=?,
+    /** Spec names of StateChangeSlices / StateViewSlices whose GraphQL fields a
+        deploy-time system caller (SigV4 / IAM) must invoke. Sets
+        `systemCallable: true` on the matching mutation / query schema entries so
+        the AWS provider emits the dual-auth
+        `@aws_cognito_user_pools(...) @aws_iam` directive form. Authored via
+        `@@reventless.systemCallable` on the spec file and threaded here by the
+        plugin generator; see `docs/guides/appsync-iam-system-caller.md`. */
+    ~systemCallableComponents: array<string>=?,
     ~uiFragments: Reventless.Plugin.uiFragmentManifest=?,
     ~pluginStructure: Reventless.Plugin.pluginStructure=?,
     ~opts: Pulumi.ComponentResource.options=?,

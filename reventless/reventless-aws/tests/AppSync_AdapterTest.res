@@ -349,12 +349,12 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
 
 // ── Dual-auth (Cognito + IAM) for deploy-time system callers ────────────────
 //
-// A field flagged `iamCallable` must be reachable by BOTH the console UI
+// A field flagged `systemCallable` must be reachable by BOTH the console UI
 // (Cognito) and the deploy-time SigV4 system caller (AWS_IAM). It switches from
 // the single-mode `@aws_auth(...)` form to the multi-auth
 // `@aws_cognito_user_pools(...) @aws_iam` form.
 
-describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", () => {
+describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
   let makeFragment = (mutationFields, queryFields) =>
     ReventlessCore.GraphQL_Stitcher.encode({
       types: [],
@@ -363,12 +363,12 @@ describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", () => {
       subscriptions: [],
     })
 
-  testSync("iamCallable mutation with a group emits @aws_cognito_user_pools + @aws_iam", () => {
+  testSync("systemCallable mutation with a group emits @aws_cognito_user_pools + @aws_iam", () => {
     let entry: ReventlessInfra.Api.mutationSchemaEntry = {
       fieldNames: ["p_Sync"],
       commandSchema: S.unknown,
       fieldPermissions: Dict.fromArray([("p_Sync", Reventless.Authorization.AllowGroups(["Admin"]))]),
-      iamCallable: true,
+      systemCallable: true,
     }
     let frag = makeFragment(["p_Sync(id: ID!): String"], [])
     let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
@@ -379,12 +379,12 @@ describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", () => {
     expect(m)->not_->toContain("@aws_auth")
   })
 
-  testSync("iamCallable mutation without a group restriction stays open to Cognito + IAM", () => {
+  testSync("systemCallable mutation without a group restriction stays open to Cognito + IAM", () => {
     let entry: ReventlessInfra.Api.mutationSchemaEntry = {
       fieldNames: ["p_Sync"],
       commandSchema: S.unknown,
       fieldPermissions: Dict.fromArray([("p_Sync", Reventless.Authorization.AllowAuthenticated)]),
-      iamCallable: true,
+      systemCallable: true,
     }
     let frag = makeFragment(["p_Sync(id: ID!): String"], [])
     let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry], ~queryEntries=[])
@@ -395,7 +395,7 @@ describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", () => {
     expect(m)->not_->toContain("@aws_auth")
   })
 
-  testSync("a non-iamCallable sibling keeps single-mode @aws_auth (no @aws_iam)", () => {
+  testSync("a non-systemCallable sibling keeps single-mode @aws_auth (no @aws_iam)", () => {
     let entry: ReventlessInfra.Api.mutationSchemaEntry = {
       fieldNames: ["p_Sync", "p_Other"],
       commandSchema: S.unknown,
@@ -403,15 +403,15 @@ describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", () => {
         ("p_Sync", Reventless.Authorization.AllowGroups(["Admin"])),
         ("p_Other", Reventless.Authorization.AllowGroups(["Admin"])),
       ]),
-      // iamCallable applies to every field in the entry; split the fields so only
+      // systemCallable applies to every field in the entry; split the fields so only
       // p_Sync opts in.
-      iamCallable: false,
+      systemCallable: false,
     }
     let iamEntry: ReventlessInfra.Api.mutationSchemaEntry = {
       fieldNames: ["p_Sync"],
       commandSchema: S.unknown,
       fieldPermissions: Dict.fromArray([("p_Sync", Reventless.Authorization.AllowGroups(["Admin"]))]),
-      iamCallable: true,
+      systemCallable: true,
     }
     let frag = makeFragment(["p_Sync(id: ID!): String", "p_Other(id: ID!): String"], [])
     let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[entry, iamEntry], ~queryEntries=[])
@@ -424,7 +424,7 @@ describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", () => {
     }
   })
 
-  testSync("iamCallable query applies dual-auth to BOTH single and list fields", () => {
+  testSync("systemCallable query applies dual-auth to BOTH single and list fields", () => {
     let entry: ReventlessInfra.Api.querySchemaEntry = {
       singleFieldName: "p_Item",
       listFieldName: "p_Items",
@@ -432,7 +432,7 @@ describe("AppSync_Adapter.injectAwsAuth — iamCallable dual-auth", () => {
       stateSchema: S.unknown,
       authorization: None,
       permission: Reventless.Authorization.AllowGroups(["Admin"]),
-      iamCallable: true,
+      systemCallable: true,
     }
     let frag = makeFragment(
       [],

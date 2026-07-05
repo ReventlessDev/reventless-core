@@ -428,7 +428,8 @@ function renderComposition(config, resolved) {
     renderMakeParam("automationSlices", resolved.automationSlices, "Slice"),
     renderMakeParam("outboundTranslationSlices", resolved.outboundTranslationSlices, "Slice"),
     renderMakeParam("inboundTranslationSlices", resolved.inboundTranslationSlices, "Slice"),
-    hasPluginStructure ? "      ~pluginStructure=pluginStructure," : undefined
+    hasPluginStructure ? "      ~pluginStructure=pluginStructure," : undefined,
+    resolved.systemCallableComponents.length !== 0 ? "      ~systemCallableComponents=[" + resolved.systemCallableComponents.map(n => "\"" + n + "\"").join(", ") + "]," : undefined
   ];
   Stdlib_Array.filterMap(makeParams, x => x).forEach(line => {
     lines.push(line);

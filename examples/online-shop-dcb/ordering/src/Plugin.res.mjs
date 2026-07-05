@@ -319,7 +319,7 @@ function Make(Platform) {
     AvailableProductsSlice,
     CustomersSlice,
     OrdersSlice
-  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, Stdlib_Option.map(process.env.ORDERING_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, undefined, Stdlib_Option.map(process.env.ORDERING_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     CancelOrderSlice: CancelOrderSlice,
     ChangeAddressSlice: ChangeAddressSlice,

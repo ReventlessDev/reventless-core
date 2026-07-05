@@ -204,7 +204,7 @@ function Make(Platform) {
     AvailableProductsReadModel,
     CustomersReadModel,
     OrdersReadModel
-  ], [OrderNotificationsTask], undefined, undefined, undefined, undefined, undefined, Stdlib_Option.map(process.env.ORDERING_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
+  ], [OrderNotificationsTask], undefined, undefined, undefined, undefined, undefined, undefined, Stdlib_Option.map(process.env.ORDERING_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     CatalogProductAggregate: CatalogProductAggregate,
     CustomerAggregate: CustomerAggregate,

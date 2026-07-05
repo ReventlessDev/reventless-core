@@ -55,6 +55,7 @@ module Make = (
     ~automationSlices: array<module(ReventlessInfra.AutomationSlice.T)>,
     ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>,
     ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>,
+    ~systemCallableComponents: array<string>,
     ~uiFragments: option<Reventless.Plugin.uiFragmentManifest>,
     ~pluginStructure: option<Reventless.Plugin.pluginStructure>,
     self,
@@ -155,6 +156,7 @@ module Make = (
       ~automationSlices,
       ~outboundTranslationSlices,
       ~inboundTranslationSlices,
+      ~systemCallableComponents,
       ~pluginStructure?,
       ~opts,
     )
@@ -985,6 +987,7 @@ module Make = (
     ~automationSlices=[],
     ~outboundTranslationSlices=[],
     ~inboundTranslationSlices=[],
+    ~systemCallableComponents=[],
     ~uiFragments: option<Reventless.Plugin.uiFragmentManifest>=?,
     ~pluginStructure: option<Reventless.Plugin.pluginStructure>=?,
     ~opts=?,
@@ -1007,6 +1010,7 @@ module Make = (
         ~automationSlices,
         ~outboundTranslationSlices,
         ~inboundTranslationSlices,
+        ~systemCallableComponents,
         ~uiFragments,
         ~pluginStructure,
         ...
