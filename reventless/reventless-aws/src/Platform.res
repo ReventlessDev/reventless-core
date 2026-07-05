@@ -1230,6 +1230,47 @@ module MakeWithConfig = (
   type mcpSupported = | @as(true) McpSupported | @as(false) McpNotSupported
   let mcpSupported = McpNotSupported
 
+  // B2.3d: provision the Postgres change-feed relay when the DCB backend is Postgres.
+  // Called after plugins are built (makePlatform monolithic, or deployPlugin per
+  // stack). Each Postgres DCB log registered {logName, partitionTag} during its
+  // plugin build (DcbEventLogStorage_Postgres.make), and its plugin's EventCollector
+  // queue was attached in forPluginEventCollector — so the registry is complete here.
+  // One shared relay Lambda drains all logs from their per-log dcb_subscription
+  // checkpoints and feeds each plugin's collector queue.
+  let provisionPgChangeFeedRelay = () =>
+    switch DcbBackend.get() {
+    | Some({connectionConfig, securityGroupId, subnetIds}) =>
+      let relayLogs =
+        DcbBackend.getRelayLogs()->Array.filterMap(entry =>
+          switch (entry.collectorQueueUrl, entry.collectorQueueArn) {
+          | (Some(targetQueueUrl), Some(targetQueueArn)) =>
+            Some({
+              PgChangeFeedRelay_Builder.connectionConfig,
+              logName: entry.logName,
+              subscriber: "aws-eventcollector-relay",
+              partitionTag: entry.partitionTag,
+              targetQueueUrl,
+              targetQueueArn,
+            })
+          | _ =>
+            log.warn(
+              ~comp="Platform",
+              `PgChangeFeedRelay: DCB log ${entry.logName} has no EventCollector queue — skipping (its events will not propagate)`,
+            )
+            None
+          }
+        )
+      if relayLogs->Array.length > 0 {
+        let _ = PgChangeFeedRelay_Builder.make(
+          ~name="PgChangeFeedRelay",
+          ~logs=relayLogs,
+          ~securityGroupId,
+          ~subnetIds,
+        )
+      }
+    | None => ()
+    }
+
   // In split mode, create a dedicated core AppSync API and push the core schema.
   // In unified mode, makePlatform is a no-op (schema stitching handled by events).
   let makePlatform = (~version, ~plugins: array<module(PluginMaker)>) => {
@@ -1340,6 +1381,10 @@ module MakeWithConfig = (
       ReventlessCore.Plugin_Helpers.exportPluginOutputs(pluginOutputs)
     | None => ()
     }
+
+    // B2.3d: provision the Postgres change-feed relay (monolithic mode — all plugins
+    // built above, so the DcbBackend relay registry is complete).
+    provisionPgChangeFeedRelay()
 
     // Admin schema push is fired by preAdminResolversSchemaHook from inside
     // Admin.construct (with createResolvers gated on it). Only exports below.
@@ -1900,6 +1945,10 @@ module MakeWithConfig = (
     // Export plugin outputs (plugin, tasks, eventMappers, extensionPoints) for cross-stack access.
     let pluginOutputs = pluginComponent->ReventlessCore.Component.outputs
     ReventlessCore.Plugin_Helpers.exportPluginOutputs(pluginOutputs)
+
+    // B2.3d: provision the Postgres change-feed relay (plugin-stack mode — this
+    // plugin's Postgres DCB log(s) + collector queue were registered during P.make()).
+    provisionPgChangeFeedRelay()
 
     // Zero-downtime handover (Part 3.1): fire ONE synthetic heartbeat for the
     // just-deployed plugin so its new version runs the connect handshake within

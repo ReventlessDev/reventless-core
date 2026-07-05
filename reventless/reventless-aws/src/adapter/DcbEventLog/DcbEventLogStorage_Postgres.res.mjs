@@ -4,8 +4,9 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as DcbBackend$ReventlessAws from "./DcbBackend.res.mjs";
 import * as DcbEventLogStorage_Postgres_Runtime$ReventlessAws from "./DcbEventLogStorage_Postgres_Runtime.res.mjs";
 
-function make(name, param, param$1, $staropt$star, param$2) {
+function make(name, param, partitionTag, $staropt$star, param$1) {
   $staropt$star !== undefined;
+  DcbBackend$ReventlessAws.registerRelayLog(name, partitionTag);
   let match = DcbBackend$ReventlessAws.get();
   let operations = match !== undefined ? match.connectionConfig.apply(config => DcbEventLogStorage_Postgres_Runtime$ReventlessAws.opsFor(config, name, undefined)) : Stdlib_JsError.throwWithMessage("DcbEventLogStorage_Postgres.make called without a DcbBackend selection");
   return {

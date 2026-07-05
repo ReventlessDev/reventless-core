@@ -51,9 +51,17 @@ let relay = async (
   ~config: PgConnection.connectionConfig,
   ~logName: string,
   ~subscriber: string,
-  ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>=?,
+  // ~partitionTagJson: the DCB log's partition tag, sury-encoded into HANDLER_CONFIG
+  // by the relay builder (B2.3d). Parsed once via the shared derivedPartitionTagSchema
+  // so the `id` the relay emits matches the DynamoDB-stream path. Absent → None (a
+  // single-tag log derives the same id without it).
+  ~partitionTagJson: option<JSON.t>=?,
   ~sendBatch: array<JSON.t> => promise<unit>,
 ): int => {
+  let partitionTag =
+    partitionTagJson->Option.map(json =>
+      json->S.parseJsonOrThrow(Reventless.DcbTag.derivedPartitionTagSchema)
+    )
   let pool = PgRuntime.poolFor(config)
   await ReventlessPostgres.PgChangeFeed.drain(pool, ~logName, ~subscriber, ~handle=async events => {
     let jsons = events->Array.filterMap(event => toEventCollectorJson(event, ~partitionTag?))

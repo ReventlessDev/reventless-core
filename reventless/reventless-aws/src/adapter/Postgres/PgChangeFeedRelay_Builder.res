@@ -18,6 +18,9 @@ type relayLog = {
   logName: string,
   /** dcb_subscription checkpoint key for this relay. */
   subscriber: string,
+  /** The DCB log's partition tag — sury-encoded into HANDLER_CONFIG so the relay
+      computes the same `id` (partition key) the DynamoDB-stream path would. */
+  partitionTag: Reventless.DcbTag.derivedPartitionTag,
   /** Plugin EventCollector SQS queue this log's events are relayed to. */
   targetQueueUrl: Pulumi.Output.t<string>,
   targetQueueArn: Pulumi.Output.t<string>,
@@ -61,6 +64,10 @@ let make = (
         ("pgConnection", pgConnectionJson),
         ("logName", l.logName->JSON.Encode.string),
         ("subscriber", l.subscriber->JSON.Encode.string),
+        (
+          "partitionTag",
+          l.partitionTag->S.reverseConvertToJsonOrThrow(Reventless.DcbTag.derivedPartitionTagSchema),
+        ),
         ("targetQueueUrl", queueUrl->JSON.Encode.string),
       ]
       ->Dict.fromArray

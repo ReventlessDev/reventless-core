@@ -196,6 +196,26 @@ module Make = (
     let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
     let queue = channelParts.queue
 
+    // B2.3d: if this plugin's DCB log is Postgres-backed, hand its EventCollector
+    // SQS queue to the change-feed relay registry. `resource.name` is the plugin
+    // component name (`<plugin>Plugin`), so the canonical log_name is
+    // `<plugin>DcbEventLog` — the key DcbEventLogStorage_Postgres registered under.
+    if DcbBackend.isPostgres() {
+      switch resource.name {
+      | Some(compName) =>
+        let pluginName =
+          compName->String.endsWith("Plugin")
+            ? compName->String.slice(~start=0, ~end=compName->String.length - 6)
+            : compName
+        DcbBackend.attachCollectorQueue(
+          ~logName=pluginName ++ "DcbEventLog",
+          ~url=queue.id,
+          ~arn=queue.arn,
+        )
+      | None => ()
+      }
+    }
+
     // Pull the per-EventCollector context registered by Plugin_Helpers.connect
     // (plugins) or synthesise an admin one if none registered.
     let context: ReventlessCore.Plugin_Helpers.eventCollectorContext =

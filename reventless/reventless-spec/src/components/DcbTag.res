@@ -23,6 +23,7 @@ type tag = {key: string, value: string}
 Identifies which tag field is used as the storage partition key.
 The partition key determines how events are distributed across DynamoDB partitions.
 */
+@schema
 type partitionTag = {key: string}
 
 /**
@@ -238,12 +239,14 @@ let isCompositePartitionMember = (fieldSchema: S.t<unknown>): bool =>
 Composite partition key specification — the ordered field names and inter-field separators.
 `seps[i]` is placed between `keys[i]` and `keys[i+1]`; length is always `keys.length - 1`.
 */
+@schema
 type compositePartitionSpec = {
   keys: array<string>,
   seps: array<string>,
 }
 
 /** Union of simple and composite partition tag strategies. */
+@schema
 type derivedPartitionTag =
   | Simple(partitionTag)
   | Composite(compositePartitionSpec)

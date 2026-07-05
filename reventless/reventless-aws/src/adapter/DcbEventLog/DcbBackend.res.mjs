@@ -18,10 +18,36 @@ function isPostgres() {
   return Stdlib_Option.isSome(selectionRef.contents);
 }
 
+let relayLogs = [];
+
+function registerRelayLog(logName, partitionTag) {
+  relayLogs.push({
+    logName: logName,
+    partitionTag: partitionTag,
+    collectorQueueUrl: undefined,
+    collectorQueueArn: undefined
+  });
+}
+
+function attachCollectorQueue(logName, url, arn) {
+  Stdlib_Option.forEach(relayLogs.find(e => e.logName === logName), e => {
+    e.collectorQueueUrl = url;
+    e.collectorQueueArn = arn;
+  });
+}
+
+function getRelayLogs() {
+  return relayLogs;
+}
+
 export {
   selectionRef,
   set,
   get,
   isPostgres,
+  relayLogs,
+  registerRelayLog,
+  attachCollectorQueue,
+  getRelayLogs,
 }
 /* No side effect */

@@ -14,6 +14,10 @@ let tagSchema = S.schema(s => ({
   value: s.m(S.string)
 }));
 
+let partitionTagSchema = S.schema(s => ({
+  key: s.m(S.string)
+}));
+
 let dcbTagId = S.Metadata.Id.make("dcb", "tag");
 
 let dcbPartitionTagId = S.Metadata.Id.make("dcb", "partitionTag");
@@ -47,6 +51,22 @@ function compositePartitionMember(position, sepOpt) {
 function isCompositePartitionMember(fieldSchema) {
   return Stdlib_Option.isSome(S.Metadata.get(fieldSchema, dcbCompositePartitionMemberId));
 }
+
+let compositePartitionSpecSchema = S.schema(s => ({
+  keys: s.m(S.array(S.string)),
+  seps: s.m(S.array(S.string))
+}));
+
+let derivedPartitionTagSchema = S.union([
+  S.schema(s => ({
+    TAG: "Simple",
+    _0: s.m(partitionTagSchema)
+  })),
+  S.schema(s => ({
+    TAG: "Composite",
+    _0: s.m(compositePartitionSpecSchema)
+  }))
+]);
 
 function isTagged(fieldSchema) {
   return Stdlib_Option.isSome(S.Metadata.get(fieldSchema, dcbTagId));
@@ -800,6 +820,7 @@ function getPartitionTagValue(query, pt) {
 
 export {
   tagSchema,
+  partitionTagSchema,
   dcbTagId,
   dcbPartitionTagId,
   dcbCrossPartitionId,
@@ -812,6 +833,8 @@ export {
   crossPartition,
   compositePartitionMember,
   isCompositePartitionMember,
+  compositePartitionSpecSchema,
+  derivedPartitionTagSchema,
   isTagged,
   isTaggedArray,
   isPartitionTag,

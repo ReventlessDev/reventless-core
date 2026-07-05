@@ -62,6 +62,7 @@ import * as Aggregate_Builder_Single$ReventlessAws from "./components/Aggregate_
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChangeSlice_Builder.res.mjs";
 import * as EventCollectorChannel_SQS$ReventlessAws from "./adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
+import * as PgChangeFeedRelay_Builder$ReventlessAws from "./adapter/Postgres/PgChangeFeedRelay_Builder.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import * as Platform_UIFragments_Lambda$ReventlessAws from "./adapter/Api/Platform_UIFragments_Lambda.res.mjs";
@@ -814,6 +815,32 @@ function MakeWithConfig(Config) {
     hooks_schedulerRoleUrn.contents = outputs.resource.urn;
     return Component$ReventlessCore.operations(component);
   };
+  let provisionPgChangeFeedRelay = () => {
+    let match = DcbBackend$ReventlessAws.get();
+    if (match === undefined) {
+      return;
+    }
+    let connectionConfig = match.connectionConfig;
+    let relayLogs = Stdlib_Array.filterMap(DcbBackend$ReventlessAws.getRelayLogs(), entry => {
+      let match = entry.collectorQueueUrl;
+      let match$1 = entry.collectorQueueArn;
+      if (match !== undefined && match$1 !== undefined) {
+        return {
+          connectionConfig: connectionConfig,
+          logName: entry.logName,
+          subscriber: "aws-eventcollector-relay",
+          partitionTag: entry.partitionTag,
+          targetQueueUrl: match,
+          targetQueueArn: match$1
+        };
+      }
+      log.warn("Platform", undefined, `PgChangeFeedRelay: DCB log ` + entry.logName + ` has no EventCollector queue — skipping (its events will not propagate)`);
+    });
+    if (relayLogs.length !== 0) {
+      PgChangeFeedRelay_Builder$ReventlessAws.make("PgChangeFeedRelay", relayLogs, match.securityGroupId, match.subnetIds, undefined, undefined);
+      return;
+    }
+  };
   let makePlatform = (version, plugins) => {
     log.info("Platform", undefined, `v` + version);
     let scheduler = makeScheduler();
@@ -865,6 +892,7 @@ function MakeWithConfig(Config) {
     if (pluginComponent !== undefined) {
       Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(Primitive_option.valFromOption(pluginComponent)));
     }
+    provisionPgChangeFeedRelay();
     if (Config.splitApi) {
       Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
       Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL)));
@@ -1138,6 +1166,7 @@ function MakeWithConfig(Config) {
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
+    provisionPgChangeFeedRelay();
     let hbConfig = PluginRuntime_Builder$ReventlessAws.heartbeatConfigRef.contents;
     let match = IndexJs.isDryRun();
     let match$1 = hbConfig.epQueueUrl;
@@ -1910,6 +1939,32 @@ function Make($star) {
     hooks_schedulerRoleUrn.contents = outputs.resource.urn;
     return Component$ReventlessCore.operations(component);
   };
+  let provisionPgChangeFeedRelay = () => {
+    let match = DcbBackend$ReventlessAws.get();
+    if (match === undefined) {
+      return;
+    }
+    let connectionConfig = match.connectionConfig;
+    let relayLogs = Stdlib_Array.filterMap(DcbBackend$ReventlessAws.getRelayLogs(), entry => {
+      let match = entry.collectorQueueUrl;
+      let match$1 = entry.collectorQueueArn;
+      if (match !== undefined && match$1 !== undefined) {
+        return {
+          connectionConfig: connectionConfig,
+          logName: entry.logName,
+          subscriber: "aws-eventcollector-relay",
+          partitionTag: entry.partitionTag,
+          targetQueueUrl: match,
+          targetQueueArn: match$1
+        };
+      }
+      log.warn("Platform", undefined, `PgChangeFeedRelay: DCB log ` + entry.logName + ` has no EventCollector queue — skipping (its events will not propagate)`);
+    });
+    if (relayLogs.length !== 0) {
+      PgChangeFeedRelay_Builder$ReventlessAws.make("PgChangeFeedRelay", relayLogs, match.securityGroupId, match.subnetIds, undefined, undefined);
+      return;
+    }
+  };
   let makePlatform = (version, plugins) => {
     log.info("Platform", undefined, `v` + version);
     let scheduler = makeScheduler();
@@ -1956,6 +2011,7 @@ function Make($star) {
     if (pluginComponent !== undefined) {
       Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(Primitive_option.valFromOption(pluginComponent)));
     }
+    provisionPgChangeFeedRelay();
     Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
     Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(platformApiRole, role => role.arn));
@@ -2211,6 +2267,7 @@ function Make($star) {
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
+    provisionPgChangeFeedRelay();
     let hbConfig = PluginRuntime_Builder$ReventlessAws.heartbeatConfigRef.contents;
     let match = IndexJs.isDryRun();
     let match$1 = hbConfig.epQueueUrl;

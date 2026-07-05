@@ -42,3 +42,34 @@ describe("PgChangeFeedRelay_Runtime.toEventCollectorJson", () => {
     expect(obj->Dict.get("id"))->toEqual(Some(JSON.Encode.string("dcb")))
   })
 })
+
+describe("PgChangeFeedRelay_Runtime partitionTag (B2.3d)", () => {
+  let multiTagEvent = {
+    ...sampleEvent,
+    tags: [{key: "orderId", value: "o-1"}, {key: "customerId", value: "c-9"}],
+  }
+
+  testSync("a Simple partitionTag selects its tag for the id, not just the first", () => {
+    let pt = Reventless.DcbTag.Simple({key: "customerId"})
+    let json =
+      PgChangeFeedRelay_Runtime.toEventCollectorJson(multiTagEvent, ~partitionTag=pt)->Option.getOrThrow
+    let obj = json->JSON.Decode.object->Option.getOrThrow
+    // Without partitionTag the id would be "orderId:o-1" (first tag); the tag
+    // pins it to "customerId:c-9".
+    expect(obj->Dict.get("id"))->toEqual(Some(JSON.Encode.string("customerId:c-9")))
+  })
+
+  testSync("derivedPartitionTag round-trips through the sury schema (relay wire-format)", () => {
+    // The relay builder serialises partitionTag with this schema into HANDLER_CONFIG
+    // and PgChangeFeedRelay_Runtime.relay parses it back the same way. Guard the
+    // round-trip so a schema change can't silently break the id derivation.
+    let simple = Reventless.DcbTag.Simple({key: "courseId"})
+    let composite =
+      Reventless.DcbTag.Composite({keys: ["studentId", "courseId"], seps: [":"]})
+    [simple, composite]->Array.forEach(pt => {
+      let wire = pt->S.reverseConvertToJsonOrThrow(Reventless.DcbTag.derivedPartitionTagSchema)
+      let back = wire->S.parseJsonOrThrow(Reventless.DcbTag.derivedPartitionTagSchema)
+      expect(back)->toEqual(pt)
+    })
+  })
+})

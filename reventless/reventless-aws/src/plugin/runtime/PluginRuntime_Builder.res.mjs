@@ -7,6 +7,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
+import * as DcbBackend$ReventlessAws from "../../adapter/DcbEventLog/DcbBackend.res.mjs";
 import * as Heartbeat$ReventlessCore from "@reventlessdev/reventless-core/src/components/Heartbeat/Heartbeat.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
@@ -166,6 +167,13 @@ function Make(EventCollectorChannel) {
     let channel = eventCollector.channel;
     let channelParts = channel.parts;
     let queue = channelParts.queue;
+    if (DcbBackend$ReventlessAws.isPostgres()) {
+      let compName = resource.__name;
+      if (compName !== undefined) {
+        let pluginName = compName.endsWith("Plugin") ? compName.slice(0, compName.length - 6 | 0) : compName;
+        DcbBackend$ReventlessAws.attachCollectorQueue(pluginName + "DcbEventLog", queue.id, queue.arn);
+      }
+    }
     let ctx = Plugin_Helpers$ReventlessCore.eventCollectorContextRef.contents[name];
     let context = ctx !== undefined ? ctx : synthesizeAdminContext();
     let envVars = {};

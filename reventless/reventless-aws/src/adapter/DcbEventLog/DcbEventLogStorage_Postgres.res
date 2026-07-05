@@ -16,10 +16,15 @@
 let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (
   ~name,
   ~indexes as _,
-  ~partitionTag as _,
+  ~partitionTag,
   ~crossPartitionTagKeys as _=[],
   ~opts as _,
 ) => {
+  // B2.3d: `name` is the canonical `dcb_event.log_name` (`<plugin>DcbEventLog`).
+  // Register it with its partition tag so `makePlatform` can wire the change-feed
+  // relay; the collector queue is attached later in forPluginEventCollector.
+  DcbBackend.registerRelayLog(~logName=name, ~partitionTag)
+
   let operations = switch DcbBackend.get() {
   | Some({connectionConfig}) =>
     connectionConfig->Pulumi.Output.apply(config =>
