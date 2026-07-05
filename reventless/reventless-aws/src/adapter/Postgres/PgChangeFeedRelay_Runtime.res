@@ -1,0 +1,64 @@
+// Postgres change-feed relay runtime (B2.2).
+//
+// Drains a Postgres DCB log via `PgChangeFeed` and pushes each event — transformed
+// into the `{id, meta, event}` shape the plugin EventCollector SQS handler
+// consumes — onto that queue. The plugin EventCollector (`AdminEventCollectorEntryPoint`)
+// then drives the full fan-out: read-model projections, aggregate command topics,
+// and the cross-plugin SNS EventTopic. See
+// docs/plans/aws-postgres-change-feed-bridge.md.
+//
+// The transform reuses the canonical DynamoDB shape producers
+// (`derivePartitionKey` + `buildJsonEvent'`) so the emitted body is byte-identical
+// to the DynamoDB-stream path — the SQS handler cannot tell the difference.
+
+/**
+ * Transform one feed event into the EventCollector JSON body. Rebuilds the same
+ * unmarshalled-item dict the DCB DynamoDB-stream decoder would see (id from the
+ * partition tag, position, event type, data, decomposed meta) and runs it through
+ * `buildJsonEvent'` — the exact decoder the SQS handler expects. Returns `None`
+ * for a malformed event (mirrors `buildJsonEvent'`).
+ */
+let toEventCollectorJson = (
+  event: ReventlessCore.DcbEventLog_Adapter.rawSequencedEvent,
+  ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>=?,
+): option<JSON.t> => {
+  let item = Dict.make()
+  item->Dict.set(
+    "id",
+    DcbEventLogStorage_DynamoDb_Runtime.derivePartitionKey(~partitionTag?, event.tags)
+    ->JSON.Encode.string,
+  )
+  item->Dict.set("position", event.position->JSON.Encode.string)
+  item->Dict.set("event", event.eventType->JSON.Encode.string)
+  item->Dict.set("data", event.data)
+  ReventlessCore.Message.decomposeMeta(event.meta)->Array.forEach(((key, value)) =>
+    item->Dict.set(key, value)
+  )
+  Util_DynamoDbStream_Runtime.buildJsonEvent'(item)
+}
+
+/**
+ * Drain a Postgres DCB log from its checkpoint and relay its events to the
+ * EventCollector via the injected `sendBatch`. `sendBatch` is injected (rather than
+ * hardcoding SQS) so the drain/transform is unit-testable; the relay entry point
+ * wires it to the actual `SendMessage`. Returns the number of events processed.
+ *
+ * At-least-once by construction: `PgChangeFeed.drain` replays the last page on a
+ * crash before checkpoint, and EventCollector projections are idempotent
+ * (event-sourced), so re-delivery is safe.
+ */
+let relay = async (
+  ~config: PgConnection.connectionConfig,
+  ~logName: string,
+  ~subscriber: string,
+  ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>=?,
+  ~sendBatch: array<JSON.t> => promise<unit>,
+): int => {
+  let pool = PgRuntime.poolFor(config)
+  await ReventlessPostgres.PgChangeFeed.drain(pool, ~logName, ~subscriber, ~handle=async events => {
+    let jsons = events->Array.filterMap(event => toEventCollectorJson(event, ~partitionTag?))
+    if jsons->Array.length > 0 {
+      await sendBatch(jsons)
+    }
+  })
+}

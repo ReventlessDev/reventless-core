@@ -61,13 +61,16 @@ the projection builders (`ReadModel_Builder_Single`,
 `EventCollectorChannel_SQS_Runtime` already consumes the same JSON event shape
 from an SQS body.
 
-**Chosen seam: D1 swaps projections to `EventCollectorChannel.SQS` when the DCB
-log is Postgres-backed; the relay feeds that queue.** The relay transforms each
-`rawSequencedEvent` into the JSON shape above and `SendMessage`s it to the
-per-projection EventCollector SQS queue — reusing the existing SQS decode/project
-handler untouched. (Rejected: invoking the entry point with a synthetic
+**Chosen seam (refined by B2.0b below): the relay feeds the plugin EventCollector
+hub's SQS queue.** The relay transforms each `rawSequencedEvent` into the JSON shape
+above and `SendMessage`s it to the SQS queue drained by the plugin EventCollector
+Lambda (`AdminEventCollectorEntryPoint`); that hub then fans out to read-model
+queues, aggregate command topics, and the cross-plugin SNS EventTopic — the full
+propagation, from one message. (Rejected: invoking an entry point with a synthetic
 DynamoDB-stream event — brittle shape-mimicry vs. the clean SQS body the SQS
-channel already expects.)
+handler already expects. Also rejected: the relay publishing SNS itself — leaves
+SNS wiring in the collector where it belongs.) See the B2.0b resolution below for
+why this one seam covers both projections and cross-plugin SNS.
 
 ### ⚠️ Correction (2026-07-05): the relay MUST drive cross-plugin SNS too
 
@@ -90,10 +93,24 @@ stream drives *both*:
 
 ⇒ Moving DCB storage to Postgres removes the stream, so the relay must replace
 **both** propagation paths — the within-plugin EventCollector *and* the
-cross-plugin SNS EventTopic publish. **Decision #4 is reopened** (see below); it is
-NOT resolved. The exact cross-plugin injection seam (feed the EventMapper's input,
-vs. call `EventTopicPublisher_SNS_Runtime` directly from the relay) needs a
-follow-up trace before B2.2.
+cross-plugin SNS EventTopic publish.
+
+**B2.0b trace (2026-07-05) — resolved, one seam covers both.** The plugin-level
+EventCollector Lambda (`AdminEventCollectorEntryPoint.mjs` — the general plugin
+collector despite the name) is the single fan-out hub, and it is **already
+SQS-capable**: it drains an SQS `queueUrl` via `handleDynamoDbOrSqsEvent`, and from
+one decoded `{id, meta, event}` it drives the *entire* fan-out —
+- cross-plugin SNS publish (`publishToEventTopic → EventTopicPublisher_SNS_Runtime.publish`),
+- read-model EventCollector queue routing (`readModelQueueUrls`),
+- aggregate command-topic routing (`publishToAggregates`),
+- plugin extension-point routing.
+
+⇒ **The relay feeds this one SQS queue** in the `{id, meta, event}` shape; the
+existing Lambda then drives both projections and cross-plugin SNS. The relay does
+**not** call `EventTopicPublisher_SNS_Runtime` directly (SNS wiring stays in the
+collector). D1 wiring (B2.3) points the collector's event source at the relay-fed
+SQS queue instead of the DCB DynamoDB stream — the Lambda code is unchanged
+(already handles SQS input).
 
 ## The relay
 
@@ -151,11 +168,13 @@ A new deploy-time component + runtime entry point: **`PgChangeFeedRelay`**.
   Composite → composite; no tags → `"dcb"`). **The relay reuses `derivePartitionKey`
   with the DCB log's `partitionTag`** (threaded in at deploy time by the builder).
   `meta` via `Message.decomposeMeta`; `position` → `meta.{time,msgId,correlationId}`.
-- ❌ **#4 SNS fan-out — REOPENED (was wrongly "resolved").** See the correction
-  above: propagation is stream-driven on AWS (append-publish is stubbed in the
-  command Lambdas), so the relay must drive **both** the within-plugin EventCollector
-  *and* the cross-plugin SNS EventTopic. Needs a follow-up trace (B2.0b) to pin the
-  cross-plugin injection seam before B2.2.
+- ✅ **#4 propagation — resolved (correctly, via B2.0b).** Propagation is
+  stream-driven (append-publish stubbed), and the relay must drive both projections
+  and cross-plugin SNS — but **one seam does it**: the relay feeds the plugin
+  EventCollector's SQS queue (`AdminEventCollectorEntryPoint`, already SQS-capable),
+  which fans out to SNS + read models + aggregates from a single `{id, meta, event}`
+  message. Relay does not publish SNS directly. (An earlier note wrongly called SNS
+  "append-driven"; corrected above.)
 
 ## Still-open decisions (to resolve before coding B2)
 
@@ -163,10 +182,7 @@ A new deploy-time component + runtime entry point: **`PgChangeFeedRelay`**.
    A rate rule (e.g. every 1–5 s) invokes the relay Lambda to drain the feed;
    fully serverless, zero long-lived infra, latency = poll interval. Fargate-LISTEN
    (`PgChangeFeed.listen`, sub-second) is a documented low-latency upgrade, not v1.
-2. **#4 (reopened) cross-plugin SNS injection seam**: does the relay feed the
-   stream-consuming EventMapper Lambda's input (so it publishes to SNS as today),
-   or call `EventTopicPublisher_SNS_Runtime` directly? Trace before B2.2.
-3. **Per-log vs shared relay**: one relay Lambda draining all Postgres DCB logs
+2. **Per-log vs shared relay**: one relay Lambda draining all Postgres DCB logs
    (loop over `logName`s) vs. one per log. Shared is cheaper; per-log isolates
    failure/latency. Lean shared with per-log checkpoints.
 3. **SQS body shape**: confirm the exact SQS message body
@@ -178,9 +194,9 @@ A new deploy-time component + runtime entry point: **`PgChangeFeedRelay`**.
 | Step | Item |
 |---|---|
 | B2.0 | ✅ **Partly done (2026-07-05).** Resolved #2 (`id` = `derivePartitionKey(partitionTag, tags)`). #4 investigated and **corrected**: propagation is stream-driven (append-publish stubbed), so the relay must drive within-plugin projections AND cross-plugin SNS — see B2.0b. |
-| B2.0b | **Trace the cross-plugin SNS injection seam** (EventMapper stream-consumer + `EventTopicPublisher_SNS_Runtime`): decide whether the relay feeds the EventMapper input or publishes to SNS directly. Gates B2.2. |
+| B2.0b | ✅ **Done (2026-07-05).** Seam = the plugin EventCollector's SQS queue (`AdminEventCollectorEntryPoint`, already SQS-capable, fans out to SNS + read models + aggregates). Relay feeds that one queue; does not publish SNS directly. |
 | B2.1 | ✅ **Done (2026-07-05).** `DcbEventLogStorage_Postgres_Runtime.opsFor` + `DcbCommandTopicEntryPoint.mjs` Postgres branch (storage swap only; propagation handled by the relay). Clean build, import smoke test, 139 tests green. |
-| B2.2 | `PgChangeFeedRelay` runtime: `drain` → transform (reuse `derivePartitionKey`) → SQS send; unit-test the transform against a golden `{id, meta, event}` EventCollector body |
+| B2.2 | ✅ **Done (2026-07-05).** `PgChangeFeedRelay_Runtime`: `toEventCollectorJson` (rebuilds the DynamoDB-item dict → `buildJsonEvent'` for byte-identical output; `id` via `derivePartitionKey`) + `relay` (`PgChangeFeed.drain` → transform → injected `sendBatch`). Transform unit-tested against a golden `{id, meta, event}` body (2 tests). Clean build. |
 | B2.3 | Relay deploy component + builder: in-VPC Lambda + schedule + IAM (`secretsmanager:GetSecretValue`, `sqs:SendMessage`); swap projection builders `EventCollectorChannel.DynamoDbStream` → `.SQS` when the DCB log is Postgres-backed (D1) |
 | B2.4 | Local/integration test: append DCB events on Postgres → relay drains → projection updates (PG_URL-gated, like the existing pg suite) |
 | B2.5 | Classic-`event_log` feed (notify + reader + checkpoint in reventless-postgres) — unlocks the aggregate deployed path on the same bridge — **separate follow-up** |
