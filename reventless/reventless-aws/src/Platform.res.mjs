@@ -31,6 +31,7 @@ import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/
 import * as Util_DynamoDb$ReventlessAws from "./util/Util_DynamoDb.res.mjs";
 import * as Platform_Casts$ReventlessAws from "./Platform_Casts.res.mjs";
 import * as Platform_Stack$ReventlessAws from "./Platform_Stack.res.mjs";
+import * as QueryDbBackend$ReventlessAws from "./adapter/QueryDb/QueryDbBackend.res.mjs";
 import * as AppSync_Adapter$ReventlessAws from "./components/Api/AppSync_Adapter.res.mjs";
 import * as Counter_Builder$ReventlessAws from "./components/Counter_Builder.res.mjs";
 import * as EventLogBackend$ReventlessAws from "./adapter/EventLog/EventLogBackend.res.mjs";
@@ -133,6 +134,13 @@ function MakeWithConfig(Config) {
       securityGroupId: pg.securityGroupId,
       subnetIds: pg.subnetIds
     });
+    QueryDbBackend$ReventlessAws.set({
+      connectionConfig: pg.connectionConfig,
+      securityGroupId: pg.securityGroupId,
+      subnetIds: pg.subnetIds
+    });
+    QueryDbBackend$ReventlessAws.exempt(PluginsReadModelSpec$ReventlessCore.name);
+    QueryDbBackend$ReventlessAws.exempt(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
   });
   let currentDeployTarget = {
     contents: "Domain"
@@ -1336,6 +1344,13 @@ function Make($star) {
       securityGroupId: pg.securityGroupId,
       subnetIds: pg.subnetIds
     });
+    QueryDbBackend$ReventlessAws.set({
+      connectionConfig: pg.connectionConfig,
+      securityGroupId: pg.securityGroupId,
+      subnetIds: pg.subnetIds
+    });
+    QueryDbBackend$ReventlessAws.exempt(PluginsReadModelSpec$ReventlessCore.name);
+    QueryDbBackend$ReventlessAws.exempt(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
   });
   let currentDeployTarget = {
     contents: "Domain"

@@ -15,8 +15,8 @@ module Make = (Api: {
 }) => {
   module Inner = ReventlessCore.StateViewSlice_Builder.Make(
     RuntimeEnvironment,
-    QueryDbStorage_DynamoDbStream,
-    QueryDbResolvers.AppSync,
+    QueryDbStorage.SelectableStream,
+    QueryDbResolvers.Selectable,
     EventCollectorChannel,
     EventCollectorRuntimeBuilder,
     Api,
@@ -36,12 +36,18 @@ module Make = (Api: {
     let make = (~dcbEventLog, ~opts=?): component => {
       let sv = InnerMake.make(~dcbEventLog, ~opts?)
       let queryDbOutputs = (sv->ReventlessCore.Component.outputs).queryDb
-      let tableResource = queryDbOutputs.resources->Array.getUnsafe(0)
+      // On the Postgres backend there is no DynamoDB table (resources is
+      // empty) — the slice spec name is the stable `qdb_<name>` discriminator.
+      let queryDbTableName = if QueryDbBackend.isPostgresFor(Spec.name) {
+        Pulumi.Output.make(Spec.name)
+      } else {
+        (queryDbOutputs.resources->Array.getUnsafe(0)).name
+      }
       EventCollectorRuntimeBuilder.registerStateViewSlice(
         ~name=Spec.name,
         ~specModulePath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
         ~projectionModulePath=Util_Bundle.getModuleSpecifier(Projection.moduleUrl),
-        ~queryDbTableName=tableResource.name,
+        ~queryDbTableName,
         ~queryDbResources=queryDbOutputs.resources,
       )
       sv

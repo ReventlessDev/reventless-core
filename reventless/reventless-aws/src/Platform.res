@@ -97,6 +97,18 @@ module MakeWithConfig = (
       securityGroupId: pg.securityGroupId,
       subnetIds: pg.subnetIds,
     })
+    // B3.1: app read models / state view slices store to Postgres too. Admin
+    // read models are exempt — deploy-time consumers (schema-clobber guard's
+    // Plugin-RM scan, PLUGIN_RM_TABLE_NAME gates, retire hooks) query them
+    // during `pulumi up` from outside the VPC, and the platform lifecycle
+    // depends on them.
+    QueryDbBackend.set({
+      connectionConfig: pg.connectionConfig,
+      securityGroupId: pg.securityGroupId,
+      subnetIds: pg.subnetIds,
+    })
+    QueryDbBackend.exempt(ReventlessCore.PluginsReadModelSpec.name)
+    QueryDbBackend.exempt(ReventlessCore.UIFragmentRegistryReadModelSpec.name)
   })
   type api = Types.AppSync.api
   type role = Types.AppSync.role

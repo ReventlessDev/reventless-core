@@ -134,14 +134,39 @@ let buildLambda = (
   ~timeout=30,
 ) => {
   let opts = {Pulumi.ComponentResource.parent: parent}
+
+  // B3.1: on a Postgres-backed platform every slice view table lives in
+  // Postgres (slices are never admin-exempt) — one shared `pgConnection` is
+  // hoisted to the top level of the compressed config, like base/sourceUrn.
+  let qdbSelection = QueryDbBackend.get()
+  let pgConnectionFragment = switch qdbSelection {
+  | Some(sel) =>
+    sel.connectionConfig->Pulumi.Output.apply(cc => {
+      let pgConnectionJson =
+        [
+          ("host", cc.host->JSON.Encode.string),
+          ("port", cc.port->Int.toFloat->JSON.Encode.float),
+          ("database", cc.database->JSON.Encode.string),
+          ("username", cc.username->JSON.Encode.string),
+          ("secretArn", cc.secretArn->JSON.Encode.string),
+        ]
+        ->Dict.fromArray
+        ->JSON.Encode.object
+        ->JSON.stringify
+      `,"pgConnection":${pgConnectionJson}`
+    })
+  | None => Pulumi.Output.make("")
+  }
+
   // Compress HANDLER_CONFIG to stay under AWS Lambda's 4KB env-var ceiling:
   // hoist the common module-path prefix (`base`) and the shared DCB stream
   // `sourceUrn` (identical across a plugin's slices) out of the per-handler
   // entries, and use short keys (s/p/q/u). StateViewSliceEntryPoint re-expands
   // these. Durable fix (externalize to S3/SSM) tracked in docs/plans.
   let handlerConfigOutput =
-    Pulumi.Output.all(handlerOutputs)
-    ->Pulumi.Output.apply(handlers => {
+    (Pulumi.Output.all(handlerOutputs), pgConnectionFragment)
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((handlers, pgFragment)) => {
       let paths = []
       handlers->Array.forEach(h => {
         paths->Array.push(h.specModule)->ignore
@@ -176,7 +201,7 @@ let buildLambda = (
         ->Array.join(",")
       let baseJson = base->JSON.stringifyAny->Option.getOr(`""`)
       let urnJson = sharedUrn->JSON.stringifyAny->Option.getOr(`""`)
-      `{"v":2,"base":${baseJson},"sourceUrn":${urnJson},"handlers":[${entries}]}`
+      `{"v":2,"base":${baseJson},"sourceUrn":${urnJson},"handlers":[${entries}]${pgFragment}}`
     })
 
   let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
@@ -202,6 +227,25 @@ let buildLambda = (
     ~packageDirs,
   )
 
+  // Postgres-backed view tables → the projection Lambda writes to RDS, so it
+  // must land in-VPC on the DB-access security group + private subnets.
+  let vpcConfig = switch qdbSelection {
+  | Some(sel) =>
+    Some(
+      sel.securityGroupId
+      ->Pulumi.Output.apply(sgId =>
+        (
+          {
+            PulumiAws.Lambda.Function.subnetIds: sel.subnetIds->Pulumi.Input.make,
+            securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
+          }: PulumiAws.Lambda.Function.vpcConfig
+        )
+      )
+      ->Pulumi.Output.asInput,
+    )
+  | None => None
+  }
+
   let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
     ~name="AllStateViewSlices",
     ~code,
@@ -209,8 +253,38 @@ let buildLambda = (
     ~envVars,
     ~memorySize,
     ~timeout,
+    ~vpcConfig=?vpcConfig,
     ~opts,
   )
+
+  // Grant the Postgres-backed projection Lambda read access to the RDS-managed
+  // master secret so PgRuntime can resolve the DB password at cold start.
+  switch qdbSelection {
+  | Some(sel) =>
+    let _ = sel.connectionConfig->Pulumi.Output.apply(cc => {
+      open PulumiAws.PolicyDocument
+      PulumiAws.IAM.RolePolicy.make(
+        ~name="AllStateViewSlices-pgSecret",
+        ~args={
+          policy: PulumiAws.PolicyDocument.make(
+            ~id="AllStateViewSlices-pgSecretPolicy",
+            ~statements=[
+              {
+                sid: "AllowGetPgSecret",
+                effect: Allow,
+                actions: Action("secretsmanager:GetSecretValue"),
+                resources: Resource(cc.secretArn),
+              },
+            ],
+          )
+          ->PulumiAws.PolicyDocument.toJsonString
+          ->Pulumi.Input.make,
+          role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+        },
+      )
+    })
+  | None => ()
+  }
 
   let _connectResources = EventCollectorChannel.connect(
     ~name="AllStateViewSlices",

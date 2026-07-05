@@ -10,6 +10,7 @@ import { makeTableRef, log, pluginName } from "./HandlerFactoryHelpers.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 import { handleAction } from "@reventlessdev/reventless-core/src/Projection.res.mjs";
 import { load, loadStream, save, saveBatch, count, $$delete, deleteBatch } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res.mjs";
+import { opsFor as pgQdbOpsFor } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_Postgres_Runtime.res.mjs";
 import { handleStreamEvent } from "@reventlessdev/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream_Runtime.res.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
@@ -40,17 +41,27 @@ function groupBySource(records) {
   return dict;
 }
 
-function buildJsonEventsHandler(specModule, projectionModule, queryDbTableName) {
-  const table = makeTableRef(queryDbTableName);
-  const queryDbOps = {
-    load: load(table),
-    loadStream: loadStream(table),
-    save: save(table),
-    saveBatch: saveBatch(table),
-    count: count(table),
-    delete: $$delete(table),
-    deleteBatch: deleteBatch(table),
-  };
+// `pgConnection`, when present, selects the Postgres QueryDb runtime for this
+// slice's view table (`queryDbTableName` is then the slice spec name, the shared
+// `qdb_<name>` discriminator). Absent → the DynamoDB path is byte-identical.
+function buildJsonEventsHandler(specModule, projectionModule, queryDbTableName, pgConnection) {
+  let queryDbOps;
+  if (pgConnection) {
+    const indexes = (specModule.config && specModule.config.indexes) || [];
+    const subIdField = specModule.subIdConfig ? specModule.subIdConfig.subIdField : undefined;
+    queryDbOps = pgQdbOpsFor(pgConnection, queryDbTableName, indexes, subIdField);
+  } else {
+    const table = makeTableRef(queryDbTableName);
+    queryDbOps = {
+      load: load(table),
+      loadStream: loadStream(table),
+      save: save(table),
+      saveBatch: saveBatch(table),
+      count: count(table),
+      delete: $$delete(table),
+      deleteBatch: deleteBatch(table),
+    };
+  }
   // Spec module exports `consumedEventSchema`; the `project` function lives in
   // the sibling projection module (`<Name>_Projection.res`).
   const eventSchema = specModule.consumedEventSchema;
@@ -91,6 +102,9 @@ function expandHandlers(config) {
       projectionModule: base + h.p,
       queryDbTableName: h.q,
       sourceUrn: h.u !== undefined ? h.u : sharedUrn,
+      // Shared across a plugin's slices (all follow the platform backend toggle);
+      // hoisted to the top level of the compressed config like base/sourceUrn.
+      pgConnection: config.pgConnection,
     };
   });
 }
@@ -104,7 +118,7 @@ async function buildAllHandlers() {
       dynamicImport(h.specModule),
       dynamicImport(h.projectionModule),
     ]);
-    const jsonEventsHandler = buildJsonEventsHandler(specModule, projectionModule, h.queryDbTableName);
+    const jsonEventsHandler = buildJsonEventsHandler(specModule, projectionModule, h.queryDbTableName, h.pgConnection);
     const streamHandler = (event, context) => handleStreamEvent(jsonEventsHandler, event, context);
     const existing = handlers[h.sourceUrn] || [];
     existing.push(streamHandler);

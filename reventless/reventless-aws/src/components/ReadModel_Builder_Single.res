@@ -16,8 +16,8 @@ module Make = (
     Spec,
     Mappings,
     RuntimeEnvironment,
-    QueryDbStorage.DynamoDb,
-    QueryDbResolvers.AppSync,
+    QueryDbStorage.Selectable,
+    QueryDbResolvers.Selectable,
     EventCollectorChannel,
     EventCollectorRuntimeBuilder,
   )
@@ -31,15 +31,24 @@ module Make = (
   let make = (~api, ~apiRole, ~allEventTopics, ~opts=?): component => {
     let readModel = Inner.make(~api, ~apiRole, ~allEventTopics, ~opts?)
 
-    let queryDbOutputs = (readModel->Inner.outputs).queryDb
-    let tableResource = queryDbOutputs.resources->Array.getUnsafe(0)
-    let queryDbTableName = tableResource.name
+    // On the Postgres backend there is no DynamoDB table (resources is empty) —
+    // the read-model spec name is the stable `qdb_<name>` discriminator, both
+    // here and in the entry point's Postgres branch.
+    let pgBacked = QueryDbBackend.isPostgresFor(Spec.name)
+    let queryDbTableName = if pgBacked {
+      Pulumi.Output.make(Spec.name)
+    } else {
+      let queryDbOutputs = (readModel->Inner.outputs).queryDb
+      let tableResource = queryDbOutputs.resources->Array.getUnsafe(0)
+      tableResource.name
+    }
 
     EventCollectorRuntimeBuilder.registerReadModel(
       ~readModelName=Spec.name,
       ~specModulePath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
       ~mappingsModulePath=Util_Bundle.getModuleSpecifier(Mappings.moduleUrl),
       ~queryDbTableName,
+      ~pgBacked,
     )
 
     readModel

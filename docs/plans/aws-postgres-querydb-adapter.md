@@ -139,15 +139,40 @@ binding it in a deploy-time maker.
     without a collector queue still feeds projections.
   Still unvalidated live (same boundary as B2.4): actual SQS delivery + ESM
   behavior on a deployed stack.
-- **B3.1 — storage + engine vertical (no GraphQL reads).**
-  `QueryDbBackend` registry (clone of `EventLogBackend`), AWS
-  `QueryDbStorage_Postgres` deploy-time maker (`resources: []`, ops via pool;
-  `ensureSchema`-style table creation folded into A3's migration step),
-  `QueryDbStorage_Postgres_Runtime.opsFor`, Postgres branch +
-  `pgConnection`/VPC/IAM in the ReadModel/EventCollector runtime builders,
-  `QueryEnginePostgres` bound behind `queryEngineMaker` for tasks/extensions.
-  Deliverable: projections persist to Postgres; QueryEngine consumers read it;
-  AppSync reads still unavailable for Postgres-backed read models.
+- **B3.1 — storage vertical (no GraphQL reads)** — ✅ **landed (2026-07-05)**
+  for the write path; the QueryEngine half moved to B3.1b:
+  - `QueryDbBackend` (adapter/QueryDb/) — selection + **admin exemption list**:
+    admin read models (Plugins, UIFragmentRegistry) stay on DynamoDB because
+    deploy-time consumers (schema-clobber guard's Plugin-RM scan,
+    `PLUGIN_RM_TABLE_NAME` gates, retire hooks) query them during `pulumi up`
+    from outside the VPC. Registered by `Platform.MakeWithConfig` alongside the
+    other two backend selections.
+  - AWS `QueryDbStorage_Postgres` maker (`resources: []`, `dataSourceName ""`,
+    ops via `QueryDbStorage_Postgres_Runtime.opsFor` → shared pool) +
+    `QueryDbStorage.Selectable/SelectableStream` + `QueryDbResolvers.Selectable`
+    (Postgres RMs get NoOp resolvers until B3.2 — their GraphQL fields are
+    unresolved). reventless-postgres `makeStorage` was split into a plain-ops
+    `makeOperations` with **lazy** schema setup (first operation, not
+    construction — deploy machines can't reach the VPC-private DB).
+  - Builders swapped to the selectors (ReadModel_Single(_Stream),
+    NoResolver_Stream, StateViewSlice(_Stream)); on Postgres the spec name is
+    registered as the stable `qdb_<name>` discriminator. PerReadModel /
+    NoResolver (non-stream) / Counter / ForeignReadModel stay DynamoDB-only.
+  - Runtime builders emit per-RM `pgConnection` into HANDLER_CONFIG (per read
+    model — admin-exempt RMs share the Lambda with pg-backed ones), SVS gets a
+    shared top-level `pgConnection` in the compressed config; both Lambdas go
+    in-VPC with `GetSecretValue` when any handler is pg-backed. Entry points
+    (`ReadModelEntryPoint` / `StateViewSliceEntryPoint`) bind the Postgres op
+    set when `pgConnection` is present (indexes/subIdField read from the
+    dynamically-imported spec module); absent → DynamoDB path byte-identical.
+  - Validated: full monorepo build zero warnings, 1758 tests green.
+- **B3.1b — QueryEngine on Postgres (open).** Runtime QueryEngine consumers
+  (extensions in the plugin EC Lambda, tasks) rebuild DynamoDB query/scan from
+  table names in HANDLER_CONFIG — they cannot read Postgres-backed read models
+  yet. Needs `QueryEnginePostgres` bound in those runtimes (entry-point branch
+  + VPC on task/EC Lambdas) and a `queryEngineMaker` selector for the
+  deploy-time engine (admin scan stays DynamoDB thanks to the exemption).
+  Scope alongside or into B3.2 — both put query logic behind the same seams.
 - **B3.2 — AppSync read path (the big one).** `PgQueryResolverEntryPoint.mjs`
   + shared Lambda data source + `QueryDbResolvers_Lambda` (parallel to
   `QueryDbResolvers_AppSync`, emitting Invoke templates). Resolver-kind → SQL

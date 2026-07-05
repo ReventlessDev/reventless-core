@@ -102,15 +102,26 @@ function withId(item, partitionKey) {
   return copy;
 }
 
-function makeStorage(pool, name, indexes, subIdField) {
+function makeOperations(pool, name, indexes, subIdField) {
   let table = tableName(name);
-  let ready = ensureTable(pool, table).then(() => ensureIndexes(pool, table, indexes));
+  let readyRef = {
+    contents: undefined
+  };
+  let ready = () => {
+    let p = readyRef.contents;
+    if (p !== undefined) {
+      return p;
+    }
+    let p$1 = ensureTable(pool, table).then(() => ensureIndexes(pool, table, indexes));
+    readyRef.contents = p$1;
+    return p$1;
+  };
   let rowsFor = async id => {
-    await ready;
+    await ready();
     return (await PgDriver$ReventlessPostgres.query(pool, `SELECT item FROM ` + table + ` WHERE partition_key = $1 AND ` + notExpiredClause + ` ORDER BY sub_key ASC`, [id])).map(decodeItem);
   };
   let saveOne = async (id, state, ttl) => {
-    await ready;
+    await ready();
     let subKey = computeSubKey(state, subIdField);
     let expiresAt = ttl !== undefined ? ttl : null;
     await PgDriver$ReventlessPostgres.query(pool, `INSERT INTO ` + table + `(partition_key, sub_key, item, expires_at)
@@ -146,7 +157,7 @@ function makeStorage(pool, name, indexes, subIdField) {
     };
   };
   let count = async (id, fieldName, inc) => {
-    await ready;
+    await ready();
     let existing = Stdlib_Option.flatMap((await rowsFor(id))[0], Stdlib_JSON.Decode.object);
     let current = Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(existing, o => o[fieldName]), Stdlib_JSON.Decode.float), 0, prim => prim | 0);
     let next = current + inc | 0;
@@ -160,7 +171,7 @@ function makeStorage(pool, name, indexes, subIdField) {
     };
   };
   let $$delete = async (id, subIdOpt) => {
-    await ready;
+    await ready();
     if (subIdOpt !== undefined) {
       await PgDriver$ReventlessPostgres.query(pool, `DELETE FROM ` + table + ` WHERE partition_key = $1 AND sub_key = $2`, [
         id,
@@ -184,7 +195,7 @@ function makeStorage(pool, name, indexes, subIdField) {
       _0: undefined
     };
   };
-  let ops = {
+  return {
     load: load,
     loadStream: loadStream,
     save: save,
@@ -193,10 +204,13 @@ function makeStorage(pool, name, indexes, subIdField) {
     delete: $$delete,
     deleteBatch: deleteBatch
   };
+}
+
+function makeStorage(pool, name, indexes, subIdField) {
   return {
     resources: [],
     dataSourceName: Pulumi.output(""),
-    operations: Pulumi.output(ops)
+    operations: Pulumi.output(makeOperations(pool, name, indexes, subIdField))
   };
 }
 
@@ -219,6 +233,7 @@ export {
   decodeItem,
   computeSubKey,
   withId,
+  makeOperations,
   makeStorage,
   Make,
 }

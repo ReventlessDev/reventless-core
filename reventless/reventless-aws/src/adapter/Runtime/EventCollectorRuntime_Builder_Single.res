@@ -10,6 +10,10 @@ type readModelInfo = {
   specModulePath: string,
   mappingsModulePath: string,
   queryDbTableName: Pulumi.Output.t<string>,
+  /** B3.1: this read model's QueryDb is Postgres-backed — its HANDLER_CONFIG
+      entry carries a `pgConnection` (admin-exempt read models stay DynamoDB,
+      so the flag is per read model, not per Lambda). */
+  pgBacked: bool,
 }
 
 let readModelInfos: dict<readModelInfo> = Dict.make()
@@ -19,10 +23,11 @@ let registerReadModel = (
   ~specModulePath,
   ~mappingsModulePath,
   ~queryDbTableName,
+  ~pgBacked=false,
 ) =>
   readModelInfos->Dict.set(
     readModelName,
-    {specModulePath, mappingsModulePath, queryDbTableName},
+    {specModulePath, mappingsModulePath, queryDbTableName, pgBacked},
   )
 
 type storedSpec = {
@@ -134,6 +139,31 @@ let finish = () =>
         | None => Pulumi.Output.make("")
         }
 
+        // B3.1: Postgres-backed read models get a `pgConnection` in their handler
+        // entry (per read model — admin-exempt ones stay DynamoDB in the same
+        // Lambda). The Lambda itself goes in-VPC when any handler is pg-backed.
+        let qdbSelection = QueryDbBackend.get()
+        let anyPgBacked =
+          readModelInfos->Dict.valuesToArray->Array.some(info => info.pgBacked)
+        let pgConnectionFragment = switch (qdbSelection, anyPgBacked) {
+        | (Some(sel), true) =>
+          sel.connectionConfig->Pulumi.Output.apply(cc => {
+            let pgConnectionJson =
+              [
+                ("host", cc.host->JSON.Encode.string),
+                ("port", cc.port->Int.toFloat->JSON.Encode.float),
+                ("database", cc.database->JSON.Encode.string),
+                ("username", cc.username->JSON.Encode.string),
+                ("secretArn", cc.secretArn->JSON.Encode.string),
+              ]
+              ->Dict.fromArray
+              ->JSON.Encode.object
+              ->JSON.stringify
+            `,"pgConnection":${pgConnectionJson}`
+          })
+        | _ => Pulumi.Output.make("")
+        }
+
         let handlerOutputs: array<Pulumi.Output.t<string>> = []
         let packageDirs: dict<string> = Dict.make()
 
@@ -159,13 +189,21 @@ let finish = () =>
             let mappingsModule =
               info.mappingsModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
+            let handlerPgFragment = info.pgBacked
+              ? pgConnectionFragment
+              : Pulumi.Output.make("")
             let handlerJson =
-              Pulumi.Output.all3((info.queryDbTableName, spec.sourceUrns, feedArnOutput))
-              ->Pulumi.Output.apply(((tableName, urns, feedArn)) => {
+              Pulumi.Output.all4((
+                info.queryDbTableName,
+                spec.sourceUrns,
+                feedArnOutput,
+                handlerPgFragment,
+              ))
+              ->Pulumi.Output.apply(((tableName, urns, feedArn, pgFragment)) => {
                 // No stream resource (Postgres-backed source) → dispatch on the
                 // feed queue's ARN instead of a stream URN.
                 let sourceUrn = urns->Array.get(0)->Option.getOr(feedArn)
-                `{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"}`
+                `{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"${pgFragment}}`
               })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
@@ -190,6 +228,25 @@ let finish = () =>
           ~packageDirs,
         )
 
+        // Postgres-backed read models → the projection Lambda writes to RDS, so
+        // it must land in-VPC on the DB-access security group + private subnets.
+        let vpcConfig = switch (qdbSelection, anyPgBacked) {
+        | (Some(sel), true) =>
+          Some(
+            sel.securityGroupId
+            ->Pulumi.Output.apply(sgId =>
+              (
+                {
+                  PulumiAws.Lambda.Function.subnetIds: sel.subnetIds->Pulumi.Input.make,
+                  securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
+                }: PulumiAws.Lambda.Function.vpcConfig
+              )
+            )
+            ->Pulumi.Output.asInput,
+          )
+        | _ => None
+        }
+
         let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
           ~name="AllReadModels",
           ~code,
@@ -197,8 +254,38 @@ let finish = () =>
           ~envVars,
           ~memorySize=maxMemorySize,
           ~timeout=maxTimeout,
+          ~vpcConfig=?vpcConfig,
           ~opts,
         )
+
+        // Grant the Postgres-backed projection Lambda read access to the
+        // RDS-managed master secret so PgRuntime can resolve the DB password.
+        switch (qdbSelection, anyPgBacked) {
+        | (Some(sel), true) =>
+          let _ = sel.connectionConfig->Pulumi.Output.apply(cc => {
+            open PulumiAws.PolicyDocument
+            PulumiAws.IAM.RolePolicy.make(
+              ~name="AllReadModels-pgSecret",
+              ~args={
+                policy: PulumiAws.PolicyDocument.make(
+                  ~id="AllReadModels-pgSecretPolicy",
+                  ~statements=[
+                    {
+                      sid: "AllowGetPgSecret",
+                      effect: Allow,
+                      actions: Action("secretsmanager:GetSecretValue"),
+                      resources: Resource(cc.secretArn),
+                    },
+                  ],
+                )
+                ->PulumiAws.PolicyDocument.toJsonString
+                ->Pulumi.Input.make,
+                role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+              },
+            )
+          })
+        | _ => ()
+        }
 
         let channelSpecs = storedSpecs->Array.map(({channelSpec}) => channelSpec)
         let _connectResources = EventCollectorChannel.connect(

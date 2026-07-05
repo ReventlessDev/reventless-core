@@ -97,23 +97,36 @@ let withId = (item: JSON.t, partitionKey: string): JSON.t =>
   | _ => item
   }
 
-let makeStorage = (
+// Plain operation set for a read model's qdb table. Exposed separately from
+// `makeStorage` so the deployed-Lambda runtime (reventless-aws) can bind ops
+// without touching the Pulumi-shaped `storage` record.
+let makeOperations = (
   ~pool: PgDriver.pool,
   ~name: string,
   ~indexes: array<indexConfig>,
   ~subIdField: option<string>,
-): QueryDb_Adapter.storage => {
+): QueryDb_Adapter.operations => {
   let table = tableName(name)
-  // Schema setup is async but makeStorage is synchronous; gate every operation on
-  // this promise so the first access waits for table + index creation exactly
-  // once (subsequent awaits resolve immediately).
-  let ready = {
-    open Promise
-    ensureTable(~pool, ~table)->then(() => ensureIndexes(~pool, ~table, ~indexes))
-  }
+  // Schema setup is async and LAZY: kicked off by the first operation, not at
+  // construction. A deploy-time caller may build the ops on a machine that
+  // cannot reach the database (VPC-private RDS) — only the runtime, which
+  // actually calls an operation, may open a connection. Subsequent operations
+  // await the same promise (table + index creation runs exactly once).
+  let readyRef: ref<option<promise<unit>>> = ref(None)
+  let ready = () =>
+    switch readyRef.contents {
+    | Some(p) => p
+    | None =>
+      let p = {
+        open Promise
+        ensureTable(~pool, ~table)->then(() => ensureIndexes(~pool, ~table, ~indexes))
+      }
+      readyRef := Some(p)
+      p
+    }
 
   let rowsFor = async (id: string): array<JSON.t> => {
-    await ready
+    await ready()
     (await pool->PgDriver.query(
       `SELECT item FROM ${table} WHERE partition_key = $1 AND ${notExpiredClause} ORDER BY sub_key ASC`,
       [JSON.Encode.string(id)],
@@ -121,7 +134,7 @@ let makeStorage = (
   }
 
   let saveOne = async (id: string, state: JSON.t, ttl: option<int>) => {
-    await ready
+    await ready()
     let subKey = computeSubKey(state, subIdField)
     let expiresAt = switch ttl {
     | Some(t) => JSON.Encode.int(t)
@@ -167,7 +180,7 @@ let makeStorage = (
   // Mirror DynamoDB's `ADD #field :inc`: read the counter on the partition item
   // (counters are single-state, sub_key=""), add inc, upsert, return NEW total.
   let count: QueryDb.count<string> = async (id, fieldName, inc) => {
-    await ready
+    await ready()
     let existing = (await rowsFor(id))->Array.get(0)->Option.flatMap(JSON.Decode.object)
     let current =
       existing
@@ -186,7 +199,7 @@ let makeStorage = (
   }
 
   let delete: QueryDb.delete<string> = async (id, subIdOpt) => {
-    await ready
+    await ready()
     let _ = switch subIdOpt {
     | None =>
       await pool->PgDriver.query(
@@ -219,11 +232,19 @@ let makeStorage = (
     delete,
     deleteBatch,
   }
+  ops
+}
 
+let makeStorage = (
+  ~pool: PgDriver.pool,
+  ~name: string,
+  ~indexes: array<indexConfig>,
+  ~subIdField: option<string>,
+): QueryDb_Adapter.storage => {
   {
     QueryDb_Adapter.resources: [],
     dataSourceName: ""->Pulumi.Output.make,
-    operations: Pulumi.Output.make(ops),
+    operations: Pulumi.Output.make(makeOperations(~pool, ~name, ~indexes, ~subIdField)),
   }
 }
 

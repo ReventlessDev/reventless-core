@@ -34,7 +34,7 @@ function Make(Spec) {
       let queryDbOutputs = Inner.outputs(readModel).queryDb;
       let tableResource = queryDbOutputs.resources[0];
       let queryDbTableName = tableResource.name;
-      EventCollectorRuntime_Builder_Single$ReventlessAws.registerReadModel(Inner.Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Inner.Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Mappings.moduleUrl), queryDbTableName);
+      EventCollectorRuntime_Builder_Single$ReventlessAws.registerReadModel(Inner.Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Inner.Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Mappings.moduleUrl), queryDbTableName, undefined);
       return readModel;
     };
     let finish = () => EventCollectorRuntime_Builder_Single$ReventlessAws.finish();
