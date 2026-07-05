@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.4 (2026-07-05)
+
+### Features
+
+* **reventless-postgres:** classic event_log change feed (B2.5) ([59529c7](https://github.com/ReventlessDev/reventless-core/commit/59529c795395f37d29e935ba2d6bd5a3e7e8b5c0))
+
+
 # 3.0.0-alpha.3 (2026-07-05)
 
 **Note:** Version bump only for package @reventlessdev/reventless-postgres

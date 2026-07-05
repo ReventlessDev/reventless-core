@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.66 (2026-07-05)
+
+### Bug Fixes
+
+* **spec:** republish DcbTag to ship [@schema-generated](https://github.com/schema-generated) derivedPartitionTagSchema ([c110c26](https://github.com/ReventlessDev/reventless-core/commit/c110c26ba54617a8455e205ed77aeba5212f6170))
+
+
 # 3.0.0-alpha.65 (2026-07-05)
 
 ### Features
