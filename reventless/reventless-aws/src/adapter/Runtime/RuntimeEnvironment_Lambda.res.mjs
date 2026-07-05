@@ -41,13 +41,30 @@ function make(name, handler, memorySizeOpt, timeoutOpt, opts) {
   };
 }
 
-function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt, timeoutOpt, reservedConcurrency, ephemeralStorageMb, logRetentionDays, dcbMetricsOpt, opts) {
+function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt, timeoutOpt, reservedConcurrency, ephemeralStorageMb, logRetentionDays, dcbMetricsOpt, vpcConfig, opts) {
   let envVars = envVarsOpt !== undefined ? envVarsOpt : ({});
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : Runtime$ReventlessCore.CommandHandlerDefaults.memorySize;
   let timeout = timeoutOpt !== undefined ? timeoutOpt : Runtime$ReventlessCore.CommandHandlerDefaults.timeout;
   let dcbMetrics = dcbMetricsOpt !== undefined ? dcbMetricsOpt : false;
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
+  Stdlib_Option.forEach(vpcConfig, param => {
+    new (Aws.iam.RolePolicy)(name + `VpcAccess`, {
+      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `VpcAccessPolicy`, [{
+          Sid: "AllowVpcEni",
+          Effect: "Allow",
+          Action: [
+            "ec2:CreateNetworkInterface",
+            "ec2:DescribeNetworkInterfaces",
+            "ec2:DeleteNetworkInterface",
+            "ec2:AssignPrivateIpAddresses",
+            "ec2:UnassignPrivateIpAddresses"
+          ],
+          Resource: "*"
+        }])),
+      role: lambdaRole.id
+    });
+  });
   additionalIamPolicies.forEach(param => {
     let actions = param.actions;
     let suffix = param.suffix;
@@ -91,7 +108,8 @@ function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt
     reservedConcurrentExecutions: Stdlib_Option.map(reservedConcurrency, prim => prim),
     ephemeralStorage: Stdlib_Option.map(ephemeralStorageMb, mb => ({
       size: mb
-    }))
+    })),
+    vpcConfig: vpcConfig
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
   Stdlib_Option.forEach(logRetentionDays, days => {
     let logGroup = new (Aws.cloudwatch.LogGroup)(name + `LogGroup`, {

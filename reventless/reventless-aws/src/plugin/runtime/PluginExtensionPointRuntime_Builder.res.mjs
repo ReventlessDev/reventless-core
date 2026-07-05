@@ -66,7 +66,7 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, param$1, par
   });
   envVars["HANDLER_CONFIG"] = handlerConfigJson;
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.mjs", {}, undefined);
-  return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, opts));
+  return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, undefined, opts));
 }
 
 function finish() {

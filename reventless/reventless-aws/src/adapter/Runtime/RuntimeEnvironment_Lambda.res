@@ -78,6 +78,11 @@ let makeFromCodeAsset: (
       Lambda's log group (command-handler Lambdas only). Requires a managed log
       group, so it only takes effect when `~logRetentionDays` is also set. */
   ~dcbMetrics: bool=?,
+  /** Place the Lambda in a VPC (needed to reach RDS/managed Postgres). When set,
+      the execution role also gets the EC2 network-interface permissions AWS
+      requires for VPC Lambdas. Build it from `PgConnection.{securityGroupId,
+      subnetIds}`. */
+  ~vpcConfig: Pulumi.Input.t<PulumiAws.Lambda.Function.vpcConfig>=?,
   ~opts: Pulumi.ComponentResource.options=?,
 ) => ReventlessCore.Runtime.environment<parts> = (
   ~name,
@@ -90,6 +95,7 @@ let makeFromCodeAsset: (
   ~ephemeralStorageMb=?,
   ~logRetentionDays=?,
   ~dcbMetrics=false,
+  ~vpcConfig=?,
   ~opts=?,
 ) => {
   open PulumiAws
@@ -101,6 +107,37 @@ let makeFromCodeAsset: (
     ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
     ~opts?,
   )
+
+  // VPC Lambdas must be able to manage ENIs in the target subnets. Attach the
+  // standard EC2 network-interface permissions (resource "*", as ENIs have no
+  // predictable ARN) whenever the function is VPC-placed.
+  vpcConfig->Option.forEach(_ => {
+    let _ = PulumiAws.IAM.RolePolicy.make(
+      ~name=`${name}VpcAccess`,
+      ~args={
+        policy: PolicyDocument.make(
+          ~id=`${name}VpcAccessPolicy`,
+          ~statements=[
+            {
+              sid: "AllowVpcEni",
+              effect: Allow,
+              actions: Actions([
+                "ec2:CreateNetworkInterface",
+                "ec2:DescribeNetworkInterfaces",
+                "ec2:DeleteNetworkInterface",
+                "ec2:AssignPrivateIpAddresses",
+                "ec2:UnassignPrivateIpAddresses",
+              ]),
+              resources: Resource("*"),
+            },
+          ],
+        )
+        ->PolicyDocument.toJsonString
+        ->Pulumi.Input.make,
+        role: lambdaRole.id->Pulumi.Output.asInput,
+      },
+    )
+  })
 
   // Create additional IAM policies registered by consumers.
   additionalIamPolicies->Array.forEach(({suffix, actions, resourceArn}) => {
@@ -160,6 +197,7 @@ let makeFromCodeAsset: (
       ),
       layers,
       tags,
+      vpcConfig: ?vpcConfig,
       environment: ({Lambda.Function.variables: variables}: Lambda.Function.functionEnvironment)
         ->Pulumi.Input.make,
     },

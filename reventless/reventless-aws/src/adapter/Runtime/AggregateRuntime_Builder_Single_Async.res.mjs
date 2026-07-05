@@ -174,7 +174,7 @@ function finish() {
       }));
       let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
       Stdlib_Option.forEach(cfg.sqsBatchSize, CommandTopicChannel_SQS_Async$ReventlessAws.setBatchSize);
-      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAggregatesAsyncCmdHandler", match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, undefined, opts);
+      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAggregatesAsyncCmdHandler", match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, undefined, undefined, opts);
       specs.forEach(param => {
         param.connects.forEach(connect => connect(runtime));
       });
