@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.173 (2026-07-05)
+
+### Features
+
+* **reventless-aws:** aggregate EventLog Postgres runtime + entry-point branch ([fd81ece](https://github.com/ReventlessDev/reventless-core/commit/fd81ece65c2bf6aebf227d74ec2d0f002833d351))
+* **reventless-aws:** DCB EventLog Postgres runtime + entry-point branch (B2.1) ([a6b4f8d](https://github.com/ReventlessDev/reventless-core/commit/a6b4f8d34509ff7213273a1f71f31705b625ff40)), closes [#4](https://github.com/ReventlessDev/reventless-core/issues/4)
+* **reventless-aws:** opt-in [@aws](https://github.com/aws)_iam dual-auth for deploy-time AppSync callers ([94037f1](https://github.com/ReventlessDev/reventless-core/commit/94037f17ae48a33415b02e8e7b178906be8b59a4))
+* **reventless-aws:** Postgres change-feed relay deploy builder + Lambda VPC (B2.3a/b, C1) ([64d67f3](https://github.com/ReventlessDev/reventless-core/commit/64d67f3ecd2c42d59ba814d6d821683ae8c81612))
+* **reventless-aws:** Postgres change-feed relay runtime (B2.2) ([9ccb601](https://github.com/ReventlessDev/reventless-core/commit/9ccb60192457e9da21869e0d1c98fe8dbfb42178))
+
+
 # 3.0.0-alpha.172 (2026-07-05)
 
 ### Bug Fixes

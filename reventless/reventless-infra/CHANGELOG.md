@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.86 (2026-07-05)
+
+### Features
+
+* **reventless-aws:** opt-in [@aws](https://github.com/aws)_iam dual-auth for deploy-time AppSync callers ([94037f1](https://github.com/ReventlessDev/reventless-core/commit/94037f17ae48a33415b02e8e7b178906be8b59a4))
+
+
 # 3.0.0-alpha.85 (2026-07-05)
 
 ### Features
