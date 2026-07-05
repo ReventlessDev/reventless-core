@@ -13,8 +13,26 @@
 type pool
 type client
 
+// TLS options. Required for RDS/managed Postgres (PG15+ defaults to
+// `rds.force_ssl=1`). `rejectUnauthorized: false` encrypts without CA
+// verification.
+type sslConfig = {rejectUnauthorized: bool}
+
+// Invoked by pg per physical connection, so a rotated secret is picked up on the
+// next new connection without rebuilding the pool.
+type passwordProvider = unit => promise<string>
+
 type poolConfig = {
-  connectionString: string,
+  // Supply either a full `connectionString` (local/dev) or the discrete fields
+  // (AWS adapter — password comes from a Secrets Manager provider that can't be
+  // baked into a static string).
+  connectionString?: string,
+  host?: string,
+  port?: int,
+  database?: string,
+  user?: string,
+  password?: passwordProvider,
+  ssl?: sslConfig,
   // Upper bound on pooled connections. Defaults to pg's own default (10).
   max?: int,
 }

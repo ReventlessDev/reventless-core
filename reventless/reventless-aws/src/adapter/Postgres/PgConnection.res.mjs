@@ -14,11 +14,13 @@ let connectionConfigSchema = S.schema(s => ({
   host: s.m(S.string),
   port: s.m(S.int),
   database: s.m(S.string),
+  username: s.m(S.string),
   secretArn: s.m(S.string)
 }));
 
-function make(name, vpcId, subnetIds, databaseNameOpt, engineVersionOpt, instanceClassOpt, allocatedStorageOpt, multiAzOpt, storageEncryptedOpt, backupRetentionPeriodOpt, deletionProtectionOpt, skipFinalSnapshotOpt, opts) {
+function make(name, vpcId, subnetIds, databaseNameOpt, usernameOpt, engineVersionOpt, instanceClassOpt, allocatedStorageOpt, multiAzOpt, storageEncryptedOpt, backupRetentionPeriodOpt, deletionProtectionOpt, skipFinalSnapshotOpt, opts) {
   let databaseName = databaseNameOpt !== undefined ? databaseNameOpt : "reventless";
+  let username = usernameOpt !== undefined ? usernameOpt : "reventless_admin";
   let engineVersion = engineVersionOpt !== undefined ? engineVersionOpt : "16";
   let instanceClass = instanceClassOpt !== undefined ? instanceClassOpt : "db.t3.micro";
   let allocatedStorage = allocatedStorageOpt !== undefined ? allocatedStorageOpt : 20;
@@ -66,6 +68,7 @@ function make(name, vpcId, subnetIds, databaseNameOpt, engineVersionOpt, instanc
     engineVersion: engineVersion,
     instanceClass: instanceClass,
     dbName: databaseName,
+    username: username,
     manageMasterUserPassword: true,
     dbSubnetGroupName: subnetGroup.name,
     vpcSecurityGroupIds: [sg.id],
@@ -87,6 +90,7 @@ function make(name, vpcId, subnetIds, databaseNameOpt, engineVersionOpt, instanc
       host: param[0],
       port: 5432,
       database: databaseName,
+      username: username,
       secretArn: secret !== undefined ? secret.secretArn : Stdlib_JsError.throwWithMessage("RDS instance exposes no master user secret — manageMasterUserPassword must be enabled")
     };
   });

@@ -215,6 +215,63 @@ deploy time this must run against the freshly-provisioned DB. Options
 
 ## Phase B — Per-surface storage adapters
 
+### ⚠️ Reframing (2026-07-05 — discovered while starting B1)
+
+**The deployed Lambda does not use the storageMaker's `operations` Output.** The
+runtime path is a set of **hand-written `.mjs` entry points** under
+`src/adapter/Runtime/` (`AggregateEntryPoint.mjs`, `ReadModelEntryPoint.mjs`,
+`DcbCommandTopicEntryPoint.mjs`, …) that, at cold start, read a `HANDLER_CONFIG`
+env var (resolved resource IDs serialized at deploy time by the `*Runtime_Builder`
+modules), dynamically import the Spec/Behavior modules, and **bind storage ops
+directly from the DynamoDB runtime modules**. Concretely, `AggregateEntryPoint.mjs`:
+- `import { append, replay, replayStream, appendStream } from ".../EventLogStorage_DynamoDb_Runtime.res.mjs"` (hardcoded),
+- `const resolvedTable = { name: eventLogTableName }` from the `eventLogTable` env,
+- binds those ops into `EventLog_Operations`.
+
+So a Postgres backend is **not** a drop-in `storageMaker` swap on the deployed
+path. Each surface's EventLog/DcbEventLog/QueryDb ops are wired in a
+backend-specific entry point. Delivering Postgres on the deployed path requires,
+per surface:
+1. a **Postgres branch in the entry point** — read a `connectionConfig` env var,
+   build the pg pool at cold start (async Secrets Manager fetch →
+   `PgDriver.makePool`, memoized per container; pg.Pool connects lazily so a
+   password-provider callback is the clean rotation-safe option), bind
+   `EventLogStorage_Postgres` / `DcbEventLogStorage_Postgres` /
+   `QueryDbStorage_Postgres` runtime ops;
+2. **env plumbing** in the `*Runtime_Builder.finish()` — serialize
+   `PgConnection.connectionConfig` into `HANDLER_CONFIG` (or a dedicated
+   `PG_CONNECTION` var) instead of / alongside the table name; attach IAM
+   `secretsmanager:GetSecretValue` + VPC config (this is the **C1** work, so C1
+   is no longer just "gates live test" — it's a prerequisite of B on the deployed
+   path);
+3. **backend selection** (**D1**) surfaced at entry-point granularity — e.g.
+   presence of `PG_CONNECTION` picks the branch. D1 is therefore entangled with B,
+   not a later step.
+
+The `storageMaker`/selector-module framing below still holds for the **in-process
+/ deploy-time-wiring** path and for `reventless-local`; it's the *deployed AWS
+Lambda* path that goes through the entry points. **Decision (2026-07-05): branch
+inside each existing entry point**, gated by presence of a `PG_CONNECTION` env var
+— one code path per surface, per-Lambda env gives mixed/per-component backends
+for free, DynamoDB stays the default with Postgres additive.
+
+**Runtime pool foundation — landed (2026-07-05):**
+- `PgDriver.poolConfig` (reventless-postgres) extended with discrete
+  `host`/`port`/`database`/`user` + a `password` *provider* + `ssl`
+  (`connectionString` now optional). Cloud-agnostic: the driver only takes a
+  provider function; the Secrets Manager fetch stays AWS-side.
+- `PgConnection.connectionConfig` now carries `username` (deploy-time known) so
+  the pool builds without first awaiting the secret.
+- `PgRuntime.poolFor(connectionConfig)` (reventless-aws) — one memoized pg pool
+  per secret ARN per container, password resolved from Secrets Manager via a
+  cached, rotation-safe provider (pg calls it per physical connection). This is
+  the reusable cold-start glue every B-surface entry-point branch will call.
+
+Still to do for the first vertical (aggregate EventLog on Postgres, deployed):
+the `AggregateEntryPoint.mjs` Postgres branch, the `AggregateRuntime_Builder_Single`
+env/IAM/VPC plumbing (**C1**), and the platform-level backend selection (**D1**).
+
+### Original per-surface sketch (in-process / storageMaker path):
 Each mirrors the DynamoDB adapter file layout
 (`<Surface>Storage_Postgres{,_Runtime}.res` under the surface folder, registered
 in the surface's `<Surface>Storage.res` selector module):

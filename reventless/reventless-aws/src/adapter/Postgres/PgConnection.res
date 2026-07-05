@@ -29,6 +29,9 @@ type connectionConfig = {
   host: string,
   port: int,
   database: string,
+  /** RDS master username — set at deploy time, not secret. The pool's `user`;
+    the Secrets Manager secret supplies only the matching password. */
+  username: string,
   secretArn: string,
 }
 
@@ -53,6 +56,7 @@ let make = (
   ~vpcId: Pulumi.Input.t<string>,
   ~subnetIds: array<Pulumi.Input.t<string>>,
   ~databaseName="reventless",
+  ~username="reventless_admin",
   ~engineVersion="16",
   ~instanceClass="db.t3.micro",
   ~allocatedStorage=20,
@@ -114,6 +118,7 @@ let make = (
       instanceClass: instanceClass->Pulumi.Input.make,
       allocatedStorage: allocatedStorage->Pulumi.Input.make,
       dbName: databaseName->Pulumi.Input.make,
+      username: username->Pulumi.Input.make,
       manageMasterUserPassword: true->Pulumi.Input.make,
       dbSubnetGroupName: subnetGroup.name->Pulumi.Output.asInput,
       vpcSecurityGroupIds: [sg.id->Pulumi.Output.asInput]->Pulumi.Input.make,
@@ -136,6 +141,7 @@ let make = (
       host,
       port,
       database: databaseName,
+      username,
       secretArn: switch secrets->Array.get(0) {
       | Some(secret) => secret.secretArn
       | None =>
