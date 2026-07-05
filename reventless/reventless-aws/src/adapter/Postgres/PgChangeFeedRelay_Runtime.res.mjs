@@ -22,9 +22,8 @@ function toEventCollectorJson(event, partitionTag) {
   return Util_DynamoDbStream_Runtime$ReventlessAws.buildJsonEvent$p(item);
 }
 
-async function relay(config, logName, subscriber, partitionTagJson, sendBatch) {
+async function relayWithPool(pool, logName, subscriber, partitionTagJson, sendBatch) {
   let partitionTag = Stdlib_Option.map(partitionTagJson, json => S.parseJsonOrThrow(json, DcbTag$Reventless.derivedPartitionTagSchema));
-  let pool = PgRuntime$ReventlessAws.poolFor(config);
   return await PgChangeFeed$ReventlessPostgres.drain(pool, logName, subscriber, undefined, async events => {
     let jsons = Stdlib_Array.filterMap(events, event => toEventCollectorJson(event, partitionTag));
     if (jsons.length !== 0) {
@@ -33,8 +32,14 @@ async function relay(config, logName, subscriber, partitionTagJson, sendBatch) {
   });
 }
 
+async function relay(config, logName, subscriber, partitionTagJson, sendBatch) {
+  let pool = PgRuntime$ReventlessAws.poolFor(config);
+  return await relayWithPool(pool, logName, subscriber, partitionTagJson, sendBatch);
+}
+
 export {
   toEventCollectorJson,
+  relayWithPool,
   relay,
 }
 /* S Not a pure module */

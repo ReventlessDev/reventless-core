@@ -38,17 +38,19 @@ let toEventCollectorJson = (
 }
 
 /**
- * Drain a Postgres DCB log from its checkpoint and relay its events to the
- * EventCollector via the injected `sendBatch`. `sendBatch` is injected (rather than
- * hardcoding SQS) so the drain/transform is unit-testable; the relay entry point
- * wires it to the actual `SendMessage`. Returns the number of events processed.
+ * Drain a Postgres DCB log from its checkpoint on the given `pool` and relay its
+ * events to the EventCollector via the injected `sendBatch`. Both `pool` and
+ * `sendBatch` are injected (rather than hardcoding Secrets Manager / SQS) so the
+ * whole drain→transform→send path is integration-testable against a plain local
+ * Postgres (B2.4); the `relay` wrapper below builds the container pool for the
+ * deployed Lambda. Returns the number of events processed.
  *
  * At-least-once by construction: `PgChangeFeed.drain` replays the last page on a
  * crash before checkpoint, and EventCollector projections are idempotent
  * (event-sourced), so re-delivery is safe.
  */
-let relay = async (
-  ~config: PgConnection.connectionConfig,
+let relayWithPool = async (
+  ~pool: ReventlessPostgres.PgDriver.pool,
   ~logName: string,
   ~subscriber: string,
   // ~partitionTagJson: the DCB log's partition tag, sury-encoded into HANDLER_CONFIG
@@ -62,11 +64,26 @@ let relay = async (
     partitionTagJson->Option.map(json =>
       json->S.parseJsonOrThrow(Reventless.DcbTag.derivedPartitionTagSchema)
     )
-  let pool = PgRuntime.poolFor(config)
   await ReventlessPostgres.PgChangeFeed.drain(pool, ~logName, ~subscriber, ~handle=async events => {
     let jsons = events->Array.filterMap(event => toEventCollectorJson(event, ~partitionTag?))
     if jsons->Array.length > 0 {
       await sendBatch(jsons)
     }
   })
+}
+
+/**
+ * Deployed-Lambda entry: resolve the container-lifetime pool from the injected
+ * `PgConnection.connectionConfig` (via Secrets Manager) and relay. Thin wrapper over
+ * `relayWithPool`.
+ */
+let relay = async (
+  ~config: PgConnection.connectionConfig,
+  ~logName: string,
+  ~subscriber: string,
+  ~partitionTagJson: option<JSON.t>=?,
+  ~sendBatch: array<JSON.t> => promise<unit>,
+): int => {
+  let pool = PgRuntime.poolFor(config)
+  await relayWithPool(~pool, ~logName, ~subscriber, ~partitionTagJson?, ~sendBatch)
 }
