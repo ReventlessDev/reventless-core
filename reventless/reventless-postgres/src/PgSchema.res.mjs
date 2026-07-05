@@ -5,6 +5,9 @@ import * as PgDriver$ReventlessPostgres from "./PgDriver.res.mjs";
 let tableStatements = [
   "CREATE TABLE IF NOT EXISTS event_log (\n     log_name      text   NOT NULL,\n     aggregate_id  text   NOT NULL,\n     seq_nr        bigint NOT NULL,\n     payload       jsonb  NOT NULL,\n     msg_id        text,\n     global_seq    bigint GENERATED ALWAYS AS IDENTITY,\n     PRIMARY KEY (log_name, aggregate_id, seq_nr)\n   )",
   "CREATE TABLE IF NOT EXISTS snapshot (\n     log_name      text   NOT NULL,\n     aggregate_id  text   NOT NULL,\n     seq_nr        bigint NOT NULL,\n     state         jsonb  NOT NULL,\n     schema_hash   text   NOT NULL,\n     PRIMARY KEY (log_name, aggregate_id)\n   )",
+  "ALTER TABLE event_log ADD COLUMN IF NOT EXISTS transaction_id xid8 NOT NULL DEFAULT pg_current_xact_id()",
+  "CREATE INDEX IF NOT EXISTS event_log_tx_gseq ON event_log (log_name, transaction_id, global_seq)",
+  "CREATE TABLE IF NOT EXISTS event_log_subscription (\n     subscriber      text   PRIMARY KEY,\n     last_tx         xid8   NOT NULL DEFAULT '0'::xid8,\n     last_global_seq bigint NOT NULL DEFAULT 0\n   )",
   "CREATE TABLE IF NOT EXISTS dcb_event (\n     log_name        text        NOT NULL,\n     position        bigint      GENERATED ALWAYS AS IDENTITY,\n     transaction_id  xid8        NOT NULL DEFAULT pg_current_xact_id(),\n     event_type      text        NOT NULL,\n     tags            text[]      NOT NULL DEFAULT '{}',\n     data            jsonb       NOT NULL,\n     meta            jsonb       NOT NULL,\n     recorded_at     timestamptz NOT NULL DEFAULT now(),\n     PRIMARY KEY (log_name, position)\n   )",
   "CREATE INDEX IF NOT EXISTS dcb_event_tags_gin ON dcb_event USING gin (tags)",
   "CREATE INDEX IF NOT EXISTS dcb_event_type_pos ON dcb_event (log_name, event_type, position)",
@@ -17,9 +20,12 @@ let dcbConditionWhereFn = "\nCREATE OR REPLACE FUNCTION dcb_after_frag(p_tx xid8
 
 let dcbAppendFn = "\nCREATE OR REPLACE FUNCTION dcb_append(\n  p_log_name      text,\n  p_events        jsonb,\n  p_condition     jsonb DEFAULT NULL,\n  p_lock_strategy text  DEFAULT 'advisory'\n) RETURNS text\nLANGUAGE plpgsql AS $fn$\nDECLARE\n  v_lock_keys bigint[];\n  v_after_raw text;\n  v_after_tx  xid8;\n  v_after_pos bigint;\n  v_where     text;\n  v_conflict  boolean;\n  v_last_pos  bigint;\n  v_key       bigint;\nBEGIN\n  -- 1. Lock keys: every tag in written events UNION every tag in the condition.\n  SELECT array_agg(DISTINCT k ORDER BY k) INTO v_lock_keys\n  FROM (\n    SELECT hashtextextended(p_log_name || '=' || tag, 0) AS k\n      FROM jsonb_array_elements(p_events) ev,\n           jsonb_array_elements_text(ev->'tags') tag\n    UNION\n    SELECT hashtextextended(p_log_name || '=' || tag, 0) AS k\n      FROM jsonb_array_elements(COALESCE(p_condition->'query', '[]'::jsonb)) qi,\n           jsonb_array_elements_text(COALESCE(qi->'tags', '[]'::jsonb)) tag\n  ) s;\n\n  -- 2. Acquire in sorted order.\n  IF v_lock_keys IS NOT NULL THEN\n    IF p_lock_strategy = 'rows' THEN\n      INSERT INTO dcb_scope(log_name, scope_hash)\n        SELECT p_log_name, k FROM unnest(v_lock_keys) k\n        ON CONFLICT DO NOTHING;\n      PERFORM 1 FROM dcb_scope\n        WHERE log_name = p_log_name AND scope_hash = ANY(v_lock_keys)\n        ORDER BY scope_hash\n        FOR UPDATE;\n    ELSE\n      FOREACH v_key IN ARRAY v_lock_keys LOOP\n        PERFORM pg_advisory_xact_lock(v_key);\n      END LOOP;\n    END IF;\n  END IF;\n\n  -- 3. Exact condition check under the held locks (READ COMMITTED is race-free\n  --    here: a conflicting concurrent writer is either committed+visible or\n  --    blocked on our lock).\n  IF p_condition IS NOT NULL THEN\n    v_after_raw := NULLIF(p_condition->>'after', '');\n    IF v_after_raw IS NOT NULL THEN\n      -- Cursor is '<xid8>:<position>', each zero-padded to 20 digits. Strip the\n      -- padding before casting (bigint tolerates leading zeros; be explicit for\n      -- xid8, guarding the all-zeros case).\n      v_after_tx  := COALESCE(NULLIF(ltrim(split_part(v_after_raw, ':', 1), '0'), ''), '0')::xid8;\n      v_after_pos := split_part(v_after_raw, ':', 2)::bigint;\n    END IF;\n    v_where := dcb_condition_where(p_log_name, p_condition->'query', v_after_tx, v_after_pos);\n    EXECUTE 'SELECT EXISTS (SELECT 1 FROM dcb_event WHERE ' || v_where || ')'\n      INTO v_conflict;\n    IF v_conflict THEN\n      RAISE EXCEPTION 'dcb_conflict' USING ERRCODE = 'P0001';\n    END IF;\n  END IF;\n\n  -- 4. Insert every event in array order; positions come from the IDENTITY seq.\n  WITH ins AS (\n    INSERT INTO dcb_event(log_name, event_type, tags, data, meta)\n    SELECT p_log_name,\n           ev->>'event_type',\n           ARRAY(SELECT jsonb_array_elements_text(ev->'tags')),\n           ev->'data',\n           ev->'meta'\n      FROM jsonb_array_elements(p_events) WITH ORDINALITY AS t(ev, ord)\n     ORDER BY ord\n    RETURNING position\n  )\n  SELECT max(position) INTO v_last_pos FROM ins;\n\n  -- 5. Wake the change feed (Phase D). No-op if nobody is LISTENing.\n  PERFORM pg_notify('dcb_' || p_log_name, v_last_pos::text);\n\n  RETURN lpad(pg_current_xact_id()::text, 20, '0') || ':' || lpad(v_last_pos::text, 20, '0');\nEND;\n$fn$;\n";
 
+let eventLogNotifyFn = "\nCREATE OR REPLACE FUNCTION event_log_notify() RETURNS trigger\nLANGUAGE plpgsql AS $fn$\nBEGIN\n  PERFORM pg_notify('evlog_' || log_name, '')\n    FROM (SELECT DISTINCT log_name FROM new_rows) s;\n  RETURN NULL;\nEND;\n$fn$;\n\nCREATE OR REPLACE TRIGGER event_log_notify_trg\n  AFTER INSERT ON event_log\n  REFERENCING NEW TABLE AS new_rows\n  FOR EACH STATEMENT EXECUTE FUNCTION event_log_notify();\n";
+
 let functionStatements = [
   dcbConditionWhereFn,
-  dcbAppendFn
+  dcbAppendFn,
+  eventLogNotifyFn
 ];
 
 async function ensureSchema(pool) {
@@ -32,13 +38,14 @@ async function ensureSchema(pool) {
 }
 
 async function truncateAll(pool) {
-  return await PgDriver$ReventlessPostgres.exec(pool, "TRUNCATE event_log, snapshot, dcb_event, dcb_scope, dcb_subscription RESTART IDENTITY");
+  return await PgDriver$ReventlessPostgres.exec(pool, "TRUNCATE event_log, snapshot, dcb_event, dcb_scope, dcb_subscription, event_log_subscription RESTART IDENTITY");
 }
 
 export {
   tableStatements,
   dcbConditionWhereFn,
   dcbAppendFn,
+  eventLogNotifyFn,
   functionStatements,
   ensureSchema,
   truncateAll,

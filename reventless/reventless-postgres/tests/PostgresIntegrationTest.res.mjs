@@ -6,6 +6,7 @@ import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Mess
 import * as PgDriver$ReventlessPostgres from "../src/PgDriver.res.mjs";
 import * as PgSchema$ReventlessPostgres from "../src/PgSchema.res.mjs";
 import * as PgChangeFeed$ReventlessPostgres from "../src/PgChangeFeed.res.mjs";
+import * as EventLogChangeFeed$ReventlessPostgres from "../src/EventLogChangeFeed.res.mjs";
 import * as EventLogStorage_Postgres$ReventlessPostgres from "../src/EventLogStorage_Postgres.res.mjs";
 import * as DcbEventLogStorage_Postgres$ReventlessPostgres from "../src/DcbEventLogStorage_Postgres.res.mjs";
 
@@ -311,6 +312,54 @@ if (url !== undefined) {
       globalThis.expect(collected.contents).toBe(3);
       let again = await PgChangeFeed$ReventlessPostgres.drain(pool, "feed-log", "sub-1", undefined, async param => {});
       globalThis.expect(again).toBe(0);
+    });
+  });
+  globalThis.describe("classic change feed (event_log, B2.5)", () => {
+    globalThis.test("drains classic events in commit order, with fields, then checkpoints", async () => {
+      let match = EventLogStorage_Postgres$ReventlessPostgres.makeStorage(pool, "cf-orders", opts, undefined);
+      let ops = match[1];
+      await ops.append(0, "agg-1", [
+        evJson("m0", 1),
+        evJson("m1", 2)
+      ]);
+      await ops.append(0, "agg-2", [evJson("m2", 3)]);
+      let collected = {
+        contents: []
+      };
+      let processed = await EventLogChangeFeed$ReventlessPostgres.drain(pool, "cf-orders", "cf-sub", undefined, async evs => {
+        collected.contents = collected.contents.concat(evs);
+      });
+      globalThis.expect(processed).toBe(3);
+      globalThis.expect(collected.contents.length).toBe(3);
+      let first = collected.contents[0];
+      globalThis.expect(first.aggregateId).toBe("agg-1");
+      globalThis.expect(first.seqNr).toBe(0);
+      globalThis.expect(first.msgId).toEqual("m0");
+      let cursors = collected.contents.map(e => e.cursor);
+      let increasing = true;
+      for (let i = 1, i_finish = cursors.length; i < i_finish; ++i) {
+        if (cursors[i] <= cursors[i - 1 | 0]) {
+          increasing = false;
+        }
+      }
+      globalThis.expect(increasing).toBe(true);
+      let again = await EventLogChangeFeed$ReventlessPostgres.drain(pool, "cf-orders", "cf-sub", undefined, async param => {});
+      globalThis.expect(again).toBe(0);
+    });
+    globalThis.test("concurrent appends across aggregates: every event drained exactly once", async () => {
+      let match = EventLogStorage_Postgres$ReventlessPostgres.makeStorage(pool, "cf-concurrent", opts, undefined);
+      let ops = match[1];
+      let promises = Stdlib_Array.make(20, 0).map((param, i) => ops.append(0, "agg-" + i.toString(), [evJson("m" + i.toString(), i)]));
+      await Promise.all(promises);
+      let collected = {
+        contents: []
+      };
+      await EventLogChangeFeed$ReventlessPostgres.drain(pool, "cf-concurrent", "cf-conc-sub", undefined, async evs => {
+        collected.contents = collected.contents.concat(evs);
+      });
+      globalThis.expect(collected.contents.length).toBe(20);
+      let distinctCursors = new Set(collected.contents.map(e => e.cursor));
+      globalThis.expect(distinctCursors.size).toBe(20);
     });
   });
 } else {

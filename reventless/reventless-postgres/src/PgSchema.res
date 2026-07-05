@@ -36,6 +36,19 @@ let tableStatements = [
      schema_hash   text   NOT NULL,
      PRIMARY KEY (log_name, aggregate_id)
    )",
+  // --- Classic change feed (B2.5) ---
+  // Stamp every classic event with its committing xid8 so the feed can apply the
+  // same xmin read barrier the DCB feed uses — global_seq (an IDENTITY assigned at
+  // INSERT, before commit) is unsafe as a feed cursor on its own (a late-committing
+  // lower global_seq would be skipped). Idempotent; the volatile default auto-stamps
+  // every future insert with no change to EventLogStorage_Postgres.append.
+  "ALTER TABLE event_log ADD COLUMN IF NOT EXISTS transaction_id xid8 NOT NULL DEFAULT pg_current_xact_id()",
+  "CREATE INDEX IF NOT EXISTS event_log_tx_gseq ON event_log (log_name, transaction_id, global_seq)",
+  "CREATE TABLE IF NOT EXISTS event_log_subscription (
+     subscriber      text   PRIMARY KEY,
+     last_tx         xid8   NOT NULL DEFAULT '0'::xid8,
+     last_global_seq bigint NOT NULL DEFAULT 0
+   )",
   // --- DCB event log (Phase B) ---
   "CREATE TABLE IF NOT EXISTS dcb_event (
      log_name        text        NOT NULL,
@@ -236,7 +249,28 @@ END;
 $fn$;
 "
 
-let functionStatements = [dcbConditionWhereFn, dcbAppendFn]
+// Classic change-feed wakeup (B2.5). A statement-level AFTER INSERT trigger fires
+// one pg_notify per distinct log_name touched by the statement, so the classic feed
+// gets the same near-real-time wakeup the DCB append's inline pg_notify provides —
+// without touching EventLogStorage_Postgres.append. No-op if nobody is LISTENing; a
+// low-frequency fallback tick in the consumer covers missed notifications.
+let eventLogNotifyFn = "
+CREATE OR REPLACE FUNCTION event_log_notify() RETURNS trigger
+LANGUAGE plpgsql AS $fn$
+BEGIN
+  PERFORM pg_notify('evlog_' || log_name, '')
+    FROM (SELECT DISTINCT log_name FROM new_rows) s;
+  RETURN NULL;
+END;
+$fn$;
+
+CREATE OR REPLACE TRIGGER event_log_notify_trg
+  AFTER INSERT ON event_log
+  REFERENCING NEW TABLE AS new_rows
+  FOR EACH STATEMENT EXECUTE FUNCTION event_log_notify();
+"
+
+let functionStatements = [dcbConditionWhereFn, dcbAppendFn, eventLogNotifyFn]
 
 let ensureSchema = async (pool: PgDriver.pool): unit => {
   for i in 0 to tableStatements->Array.length - 1 {
@@ -251,6 +285,6 @@ let ensureSchema = async (pool: PgDriver.pool): unit => {
 // Mirrors the reventless-local contract that reset wipes data, not structure.
 let truncateAll = async (pool: PgDriver.pool): unit => {
   await pool->PgDriver.exec(
-    "TRUNCATE event_log, snapshot, dcb_event, dcb_scope, dcb_subscription RESTART IDENTITY",
+    "TRUNCATE event_log, snapshot, dcb_event, dcb_scope, dcb_subscription, event_log_subscription RESTART IDENTITY",
   )
 }

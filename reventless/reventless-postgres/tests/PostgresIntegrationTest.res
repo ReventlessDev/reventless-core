@@ -233,4 +233,72 @@ switch processEnv->Dict.get("PG_URL") {
       expect(again)->toBe(0)
     })
   })
+
+  describe("classic change feed (event_log, B2.5)", () => {
+    testPromise("drains classic events in commit order, with fields, then checkpoints", async () => {
+      let (_n, ops, _s) = EventLogStorage_Postgres.makeStorage(~pool, ~name="cf-orders", ~opts)
+      let _ = await ops.append(0, "agg-1", [evJson("m0", 1), evJson("m1", 2)])
+      let _ = await ops.append(0, "agg-2", [evJson("m2", 3)])
+
+      let collected = ref([])
+      let processed = await EventLogChangeFeed.drain(
+        pool,
+        ~logName="cf-orders",
+        ~subscriber="cf-sub",
+        ~handle=async evs => collected := collected.contents->Array.concat(evs),
+      )
+      expect(processed)->toBe(3)
+      expect(collected.contents->Array.length)->toBe(3)
+
+      // Fields round-trip from the stored row.
+      let first = collected.contents->Array.getUnsafe(0)
+      expect(first.aggregateId)->toBe("agg-1")
+      expect(first.seqNr)->toBe(0)
+      expect(first.msgId)->toEqual(Some("m0"))
+
+      // Cursors are strictly increasing in drain order.
+      let cursors = collected.contents->Array.map(e => e.cursor)
+      let increasing = ref(true)
+      for i in 1 to cursors->Array.length - 1 {
+        if cursors->Array.getUnsafe(i) <= cursors->Array.getUnsafe(i - 1) {
+          increasing := false
+        }
+      }
+      expect(increasing.contents)->toBe(true)
+
+      // Second drain from the saved checkpoint sees nothing new.
+      let again = await EventLogChangeFeed.drain(
+        pool,
+        ~logName="cf-orders",
+        ~subscriber="cf-sub",
+        ~handle=async _ => (),
+      )
+      expect(again)->toBe(0)
+    })
+
+    testPromise("concurrent appends across aggregates: every event drained exactly once", async () => {
+      let (_n, ops, _s) = EventLogStorage_Postgres.makeStorage(~pool, ~name="cf-concurrent", ~opts)
+      let n = 20
+      // One event per aggregate, all dispatched before awaiting — genuinely
+      // concurrent on the pool, so global_seq is assigned in interleaved/undefined
+      // commit order. The xmin fence must still drain every event exactly once.
+      let promises =
+        Array.make(~length=n, 0)->Array.mapWithIndex((_, i) =>
+          ops.append(0, "agg-" ++ Int.toString(i), [evJson("m" ++ Int.toString(i), i)])
+        )
+      let _ = await Promise.all(promises)
+
+      let collected = ref([])
+      let _ = await EventLogChangeFeed.drain(
+        pool,
+        ~logName="cf-concurrent",
+        ~subscriber="cf-conc-sub",
+        ~handle=async evs => collected := collected.contents->Array.concat(evs),
+      )
+      // No skips: all N events present. No dupes: N distinct cursors.
+      expect(collected.contents->Array.length)->toBe(n)
+      let distinctCursors = collected.contents->Array.map(e => e.cursor)->Set.fromArray
+      expect(distinctCursors->Set.size)->toBe(n)
+    })
+  })
 }
