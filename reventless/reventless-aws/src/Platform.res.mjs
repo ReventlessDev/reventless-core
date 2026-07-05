@@ -22,6 +22,7 @@ import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/adm
 import * as Scheduler$ReventlessAws from "./components/Scheduler.res.mjs";
 import * as Aggregate$ReventlessCore from "@reventlessdev/reventless-core/src/components/Aggregate/Aggregate.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
+import * as DcbBackend$ReventlessAws from "./adapter/DcbEventLog/DcbBackend.res.mjs";
 import * as ReadModel$ReventlessCore from "@reventlessdev/reventless-core/src/components/ReadModel/ReadModel.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
@@ -42,6 +43,7 @@ import * as AppSync_EventsApi$ReventlessAws from "./adapter/Api/AppSync_EventsAp
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as Util_HostUiDomain$ReventlessAws from "./util/Util_HostUiDomain.res.mjs";
+import * as DcbEventLogStorage$ReventlessAws from "./adapter/DcbEventLog/DcbEventLogStorage.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsProjection.res.mjs";
 import * as StateTopic_AppSync$ReventlessAws from "./adapter/StateTopic/StateTopic_AppSync.res.mjs";
@@ -62,7 +64,6 @@ import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChang
 import * as EventCollectorChannel_SQS$ReventlessAws from "./adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
-import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "./adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res.mjs";
 import * as Platform_UIFragments_Lambda$ReventlessAws from "./adapter/Api/Platform_UIFragments_Lambda.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as EventLogSubscription_AppSync$ReventlessAws from "./adapter/EventLogSubscription/EventLogSubscription_AppSync.res.mjs";
@@ -118,6 +119,11 @@ function MakeWithConfig(Config) {
     Stdlib_Option.forEach(param.async, AggregateRuntime_Builder_Single_Async$ReventlessAws.setConfig);
   });
   Stdlib_Option.forEach(Config.commandHandlerConfig.stateChanges, param => PluginRuntime_Builder$ReventlessAws.setStateChangesConfig(param.sync, param.async, undefined));
+  Stdlib_Option.forEach(Config.pgConnection, pg => DcbBackend$ReventlessAws.set({
+    connectionConfig: pg.connectionConfig,
+    securityGroupId: pg.securityGroupId,
+    subnetIds: pg.subnetIds
+  }));
   let currentDeployTarget = {
     contents: "Domain"
   };
@@ -674,6 +680,9 @@ function MakeWithConfig(Config) {
   let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), param.runtime, param.fieldNames, param.opts);
   let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(resolveHookedApi(), param.runtime, param.fieldNames, param.tags, param.opts);
   let hooks_onDcbEventLogCreated = dcbEventLogUnknown => {
+    if (DcbBackend$ReventlessAws.isPostgres()) {
+      return;
+    }
     let outputs = Component$ReventlessCore.outputs(dcbEventLogUnknown);
     let tableResource = outputs.resources[0];
     PluginRuntime_Builder$ReventlessAws.registerDcbTableName(tableResource.name);
@@ -742,7 +751,7 @@ function MakeWithConfig(Config) {
   })(ClonerRunner_Fargate$ReventlessAws)(PluginRuntime_Builder$ReventlessAws.Make({
     make: EventCollectorChannel_SQS$ReventlessAws.make,
     connect: EventCollectorChannel_SQS$ReventlessAws.connect
-  }))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
+  }))(DcbEventLogStorage$ReventlessAws.Selectable)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
     make: CommandTopicChannel_SQS_Sync$ReventlessAws.make
   })({
     make: CommandTopicChannel_SQS_Async$ReventlessAws.make
@@ -1207,6 +1216,11 @@ function Make($star) {
     Stdlib_Option.forEach(param.async, AggregateRuntime_Builder_Single_Async$ReventlessAws.setConfig);
   });
   Stdlib_Option.forEach(commandHandlerConfig.stateChanges, param => PluginRuntime_Builder$ReventlessAws.setStateChangesConfig(param.sync, param.async, undefined));
+  Stdlib_Option.forEach(undefined, pg => DcbBackend$ReventlessAws.set({
+    connectionConfig: pg.connectionConfig,
+    securityGroupId: pg.securityGroupId,
+    subnetIds: pg.subnetIds
+  }));
   let currentDeployTarget = {
     contents: "Domain"
   };
@@ -1762,6 +1776,9 @@ function Make($star) {
   let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), param.runtime, param.fieldNames, param.opts);
   let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(resolveHookedApi(), param.runtime, param.fieldNames, param.tags, param.opts);
   let hooks_onDcbEventLogCreated = dcbEventLogUnknown => {
+    if (DcbBackend$ReventlessAws.isPostgres()) {
+      return;
+    }
     let outputs = Component$ReventlessCore.outputs(dcbEventLogUnknown);
     let tableResource = outputs.resources[0];
     PluginRuntime_Builder$ReventlessAws.registerDcbTableName(tableResource.name);
@@ -1830,7 +1847,7 @@ function Make($star) {
   })(ClonerRunner_Fargate$ReventlessAws)(PluginRuntime_Builder$ReventlessAws.Make({
     make: EventCollectorChannel_SQS$ReventlessAws.make,
     connect: EventCollectorChannel_SQS$ReventlessAws.connect
-  }))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
+  }))(DcbEventLogStorage$ReventlessAws.Selectable)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
     make: CommandTopicChannel_SQS_Sync$ReventlessAws.make
   })({
     make: CommandTopicChannel_SQS_Async$ReventlessAws.make

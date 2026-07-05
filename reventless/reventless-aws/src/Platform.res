@@ -61,6 +61,11 @@ module MakeWithConfig = (
     let splitApi: bool
     let cloner: bool
     let commandHandlerConfig: ReventlessCore.Runtime.commandHandlerConfigs
+    /** B2.3c platform toggle. When `Some`, every DCB EventLog is Postgres-backed
+        (no DynamoDB table/stream; a scheduled `PgChangeFeedRelay` drives propagation),
+        while aggregate EventLogs stay on DynamoDB. Provisioned by the app via
+        `PgConnection.make`. `None` = all-DynamoDB (unchanged). */
+    let pgConnection: option<PgConnection.t>
   },
 ): (
   ReventlessInfra.Platform.T with type api = Types.AppSync.api and type role = Types.AppSync.role
@@ -75,6 +80,17 @@ module MakeWithConfig = (
   })
   Config.commandHandlerConfig.stateChanges->Option.forEach(({?sync, ?async}) =>
     PluginRuntime_Builder.setStateChangesConfig(~sync?, ~async?, ())
+  )
+  // B2.3c: when a PgConnection is supplied, route ALL DCB EventLogs to Postgres
+  // (aggregate EventLogs stay on DynamoDB until the classic feed lands — B2.5) and
+  // record the selection for the change-feed relay wiring in makePlatform below.
+  // Set BEFORE the Admin/plugin functors run so DcbEventLogStorage.Selectable sees it.
+  Config.pgConnection->Option.forEach((pg: PgConnection.t) =>
+    DcbBackend.set({
+      connectionConfig: pg.connectionConfig,
+      securityGroupId: pg.securityGroupId,
+      subnetIds: pg.subnetIds,
+    })
   )
   type api = Types.AppSync.api
   type role = Types.AppSync.role
@@ -999,12 +1015,16 @@ module MakeWithConfig = (
       })
     },
     // DCB EventLog created hook — extracts DynamoDB table name for DCB CommandTopic Lambda handler.
-    onDcbEventLogCreated: dcbEventLogUnknown => {
-      let dcbEventLog = dcbEventLogUnknown->asDcbEventLogComponent
-      let outputs = dcbEventLog->ReventlessCore.Component.outputs
-      let tableResource = outputs.resources->Array.getUnsafe(0)
-      PluginRuntime_Builder.registerDcbTableName(tableResource.name)
-    },
+    // Postgres-backed DCB logs (B2.3c) create no table, so there is no resource to read:
+    // the DCB command Lambda derives its `dcb_event.log_name` from the plugin name and
+    // reads the PG connection from DcbBackend, so no table-name registration is needed.
+    onDcbEventLogCreated: dcbEventLogUnknown =>
+      if !DcbBackend.isPostgres() {
+        let dcbEventLog = dcbEventLogUnknown->asDcbEventLogComponent
+        let outputs = dcbEventLog->ReventlessCore.Component.outputs
+        let tableResource = outputs.resources->Array.getUnsafe(0)
+        PluginRuntime_Builder.registerDcbTableName(tableResource.name)
+      },
     // DCB CommandTopic created hook — extracts SQS queue URL for slice builders.
     onDcbCommandTopicCreated: dcbCommandTopicUnknown => {
       let commandTopic = dcbCommandTopicUnknown->asDcbCommandTopicComponent
@@ -1124,7 +1144,7 @@ module MakeWithConfig = (
     QueryEngine.DynamoDb,
     ClonerRunner.Fargate,
     PluginRuntime_Builder.Make(EventCollectorChannel),
-    DcbEventLogStorage.DynamoDb,
+    DcbEventLogStorage.Selectable,
     EventTopicPublisher.DynamoDbStream,
     CommandTopicChannel.SQS_Sync,
     CommandTopicChannel.SQS_Async,
@@ -1936,5 +1956,6 @@ module Make = (): (
     let splitApi = true
     let cloner = false
     let commandHandlerConfig: ReventlessCore.Runtime.commandHandlerConfigs = {}
+    let pgConnection = None
   })
 }

@@ -189,6 +189,107 @@ A new deploy-time component + runtime entry point: **`PgChangeFeedRelay`**.
    `EventCollectorChannel_SQS_Runtime` expects (the `{id, meta, event}` JSON, or a
    wrapper) — pin it with a golden fixture in B2.2 before wiring the relay send.
 
+## B2.3c detailed design (D1 — the deploy-time Postgres selection seam)
+
+**Status**: Design (2026-07-05). Decisions confirmed: **platform-level toggle**
+(all DCB logs → Postgres when a `PgConnection` is supplied; aggregate EventLogs
+stay on DynamoDB). **Storage-selection half landed as B2.3c** (changes 1–5 below);
+**relay auto-wiring half is B2.3d** (changes 6–7 below — the `makePlatform` relay
+call + the `partitionTag` wire-format). See the phasing table.
+
+### The two facts that shape this step
+
+1. **No deploy-time Postgres selection surface exists yet — anywhere.** `PgConnection`
+   provisions RDS + returns `{connectionConfig, securityGroupId, subnetIds}`, but it
+   is unwired: `Platform.res` never references it, and nothing at deploy time sets the
+   `PG_CONNECTION` env that the B2.1 `DcbCommandTopicEntryPoint.mjs` Postgres branch
+   reads. **B2.3c is the linchpin that makes the whole Postgres DCB vertical
+   deployable**, not just an event-source rewire.
+2. **A whole-platform "Postgres mode" would silently break aggregates.** The classic
+   `event_log` feed is deferred to B2.5, so routing aggregate EventLogs to Postgres now
+   lands events with no propagation — the exact failure this plan warns about. ⇒ the
+   toggle is **DCB-scoped**: within one platform, DCB logs go to Postgres while
+   aggregate EventLogs stay on DynamoDB.
+
+### Why the selection lives AWS-side (reventless-core untouched)
+
+Storage is a **compile-time functor parameter**
+(`Platform_Admin.Make(…, DcbEventLogStorage.DynamoDb, EventTopicPublisher.DynamoDbStream, …)`
+at `Platform.res:1127-1128`; same at `Plugin.res:24`), threaded into
+`Plugin_Builder.Make` → `Dcb_Builder.Make` → `DcbEventLog_Builder.Make`. We do **not**
+swap functors conditionally (painful in ReScript's module language) and we do **not**
+add a `pgConnection` field to core's `platformHooks` (the `PgConnection.t` type lives in
+reventless-aws). Instead:
+
+- The AWS storage module becomes **selectable at build time via an AWS-side ref**
+  (`DcbBackend`), set by the platform before any `construct` runs. `DcbEventLogStorage`
+  gains a `Selectable` module whose `make` reads the ref and dispatches to `DynamoDb.make`
+  (unchanged) or a new `Postgres.make`. The functor arg at `Platform.res:1127` /
+  `Plugin.res:24` becomes `DcbEventLogStorage.Selectable`.
+- The core `DcbEventLog_Builder` only ever consumes `storage.resources` (→ EventTopic
+  `storageResources` + `outputs.resources`) and `storage.operations`. Both tolerate the
+  Postgres shape (empty resources, pool-bound ops) with **no core change**.
+
+This confines B2.3c to reventless-aws.
+
+### The event-source rewire falls out for free
+
+`EventCollectorChannel_Helpers.res:248` creates a DynamoDB-stream ESM **per
+`dynamoDbStreamResource`**. A Postgres DCB log's storage returns **no** stream resource,
+so its DCB EventTopic (still built with the `DynamoDbStream` publisher, now a harmless
+passive marker) contributes no stream → **no ESM is created**. The collector already
+drains its own SQS queue (`EventCollectorChannel_Helpers.res:260-263`). So "point the
+EventCollector at the relay-fed queue" reduces to **the relay `SendMessage`s to the
+collector's existing SQS queue URL** — no ESM surgery, no publisher swap.
+
+### Concrete AWS-side changes
+
+1. **`DcbBackend.res`** (new, reventless-aws) — a module holding
+   `ref<option<pgSelection>>` where `pgSelection = { connectionConfig, securityGroupId,
+   subnetIds }` (echoed from `PgConnection.t`). Set once by the platform; read by the
+   selectable storage, the DCB-command runtime env builder, and `makePlatform`'s relay
+   wiring. Mirrors the existing `apiConfigRef` / hooks-ref pattern in `Platform.res`.
+2. **`DcbEventLogStorage_Postgres.res`** (new) — a deploy-time `storageMaker` returning
+   `{ resources: [], operations }`; operations bound to the pool via
+   `DcbEventLogStorage_Postgres_Runtime` (B2.1) + the ref's `connectionConfig`. Creates
+   **no** table and **no** stream.
+3. **`DcbEventLogStorage.res`** — add `module Postgres = DcbEventLogStorage_Postgres`
+   and `module Selectable` (reads `DcbBackend`, dispatches). Repoint the functor args
+   (`Platform.res:1127`, `Plugin.res:24`) to `.Selectable`.
+4. **`Platform.MakeWithConfig`** — add `pgConnection: option<PgConnection.t>` to its
+   Config; when `Some`, set `DcbBackend` and echo `securityGroupId`/`subnetIds` so DCB
+   Lambdas land in-VPC (the `~vpcConfig` seam landed in B2.3b).
+5. **DCB command Lambda env** — in the AWS `PluginRuntime_Builder` (`forDcbCommandTopic`
+   / `registerDcbTableName`), when Postgres inject `PG_CONNECTION` (from
+   `connectionConfig`) + the DB-access SG/subnets into the DcbCommandTopic Lambda, so the
+   B2.1 Postgres branch activates. The `onDcbEventLogCreated` hook
+   (`Platform.res:1002`, currently `resources->Array.getUnsafe(0)` for the table name)
+   branches on Postgres — there is no table; register the PG connection instead.
+6. **Relay provisioning** — in `makePlatform`, when `DcbBackend` is set, gather the
+   per-DCB-log `{connectionConfig, logName (= name ++ "DcbEventLog"), subscriber,
+   targetQueueUrl/Arn (= collector SQS queue), partitionTag}` and call
+   `PgChangeFeedRelay_Builder.make` once (shared relay, per-log checkpoints).
+7. **partitionTag threading** (was the B2.3b caveat) — add `partitionTag` to the
+   builder's `relayLog` and serialize it into `HANDLER_CONFIG.logs[]`. The runtime +
+   entry point already consume `l.partitionTag`; only the deploy-side is missing.
+
+### Open verification points (resolve during implementation)
+
+- Confirm `EventTopic_Builder` + `EventTopicPublisher_DynamoDbStream` tolerate empty
+  `storageResources` (expected: passive registration → no ESM; no crash).
+- Confirm where the collector's SQS queue URL/ARN is available at `makePlatform` time,
+  and that per-plugin DCB `logName` + `partitionTag` are reachable there (the
+  `onDcbEventLogCreated` / `onDcbSlicesCreated` hooks already surface the DcbEventLog
+  component — extend them to collect relay inputs).
+- The `partitionTag` for the relay must equal the one the DCB storage used
+  (`derivePartitionKey` parity — already the B2.2 invariant).
+
+### What cannot be unit-tested here
+
+The full path needs a live RDS + VPC deploy (**B2.4**, `PG_URL`-gated). B2.3c ships the
+wiring + a clean build + import smoke tests; end-to-end (append on Postgres → relay drains
+→ projection updates) is B2.4.
+
 ## Suggested B2 phasing
 
 | Step | Item |
@@ -199,7 +300,8 @@ A new deploy-time component + runtime entry point: **`PgChangeFeedRelay`**.
 | B2.2 | ✅ **Done (2026-07-05).** `PgChangeFeedRelay_Runtime`: `toEventCollectorJson` (rebuilds the DynamoDB-item dict → `buildJsonEvent'` for byte-identical output; `id` via `derivePartitionKey`) + `relay` (`PgChangeFeed.drain` → transform → injected `sendBatch`). Transform unit-tested against a golden `{id, meta, event}` body (2 tests). Clean build. |
 | B2.3a | ✅ **Done (2026-07-05).** `PgChangeFeedRelayEntryPoint.mjs` (scheduled poll): reads `HANDLER_CONFIG.logs[]`, drains each DCB log via `relay`, sends each `{id, meta, event}` body to the plugin EventCollector SQS queue (`sendMessage`, standard queue). Import + empty-config smoke tests pass. |
 | B2.3b | ✅ **Done (2026-07-05).** `PgChangeFeedRelay_Builder.make(~logs, ~securityGroupId, ~subnetIds, ~intervalMinutes)`: bundles the entry point, provisions the in-VPC relay Lambda (via `makeFromCodeAsset ~vpcConfig`) + EventBridge rate rule + `Permission` + `EventTarget` + IAM (`secretsmanager:GetSecretValue`, `sqs:SendMessage` over all logs' secrets/queues); serializes `HANDLER_CONFIG.logs[]` from Outputs. **Also landed C1 core:** `makeFromCodeAsset` gained `~vpcConfig` (threaded to `Lambda.Function`) + auto EC2-ENI IAM for VPC Lambdas. **Caveat:** EventBridge rate floor = 1 min, so v1 latency ≥ 1 min (`partitionTag` in HANDLER_CONFIG still TODO — B2.3c supplies it). |
-| B2.3c | **Remaining (D1, riskiest):** point the plugin EventCollector's event source at the relay-fed SQS queue (vs. the DCB DynamoDB stream) when the DCB log is Postgres-backed; ensure the DCB log's DynamoDB table+stream is not created. Touches the platform/DcbEventLog builder chain. |
+| B2.3c | ✅ **Done (2026-07-05) — storage-selection half.** Deploy-time DCB Postgres selection introduced AWS-side (reventless-core untouched): `DcbBackend` selection ref; `DcbEventLogStorage_Postgres` (deploy-time storage → **no** table/stream, empty `resources`, pool-bound ops); `DcbEventLogStorage.Selectable` dispatches on the ref and is now the functor arg at `Platform.res` + `Plugin.res`. Platform toggle `Platform.MakeWithConfig(~pgConnection)` sets `DcbBackend`. DCB command Lambda (`StateChangeSliceRuntime_Builder_Single.forDcbCommandTopic`) Postgres branch: `dcbEventLogTableName` = canonical log_name `<plugin>DcbEventLog`, HANDLER_CONFIG `pgConnection` object, in-VPC `vpcConfig`, `secretsmanager:GetSecretValue` IAM. `onDcbEventLogCreated` guarded (no table in PG mode). Because Postgres storage returns no stream resource, the DCB→collector DynamoDB-stream ESM auto-drops. Clean build, 147 tests green. |
+| B2.3d | **Remaining — relay auto-wiring half.** From `makePlatform`, when `DcbBackend` is Postgres: gather per-DCB-log `{logName, partitionTag, collector SQS queue URL/ARN}` and call `PgChangeFeedRelay_Builder.make` (shared relay). Needs: (a) surfacing per-plugin `partitionTag` + the plugin EventCollector queue at `makePlatform` time (extend the DCB hooks), and (b) a **wire-format for `partitionTag`** — `Reventless.DcbTag.derivedPartitionTag` has no sury schema, so either add one and parse in the relay entry point, or ship a stable `{kind,…}` JSON the relay decodes to `derivedPartitionTag`. Until B2.3d lands, enabling `~pgConnection` stores DCB events in Postgres but does **not** propagate them (relay unprovisioned) — the toggle is not yet end-to-end. Also threads `partitionTag` into the builder's `relayLog` (the B2.3b TODO). Validated end-to-end by B2.4. |
 | B2.4 | Local/integration test: append DCB events on Postgres → relay drains → projection updates (PG_URL-gated, like the existing pg suite) |
 | B2.5 | Classic-`event_log` feed (notify + reader + checkpoint in reventless-postgres) — unlocks the aggregate deployed path on the same bridge — **separate follow-up** |
 

@@ -43,9 +43,16 @@ let forDcbCommandTopic = (
     let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
     let queue = channelParts.queue
 
-    let dcbTableName = switch dcbTableName {
-    | Some(tableName) => tableName
-    | None => Pulumi.Output.make("NOT_AVAILABLE")
+    // B2.3c: on a Postgres-backed platform there is no DynamoDB table — DCB events
+    // live in `dcb_event` under the canonical log_name `<plugin>DcbEventLog`
+    // (= ComponentType.name(_, DcbEventLog), the same string the deploy-time
+    // storage + the change-feed relay use). The DcbCommandTopicEntryPoint Postgres
+    // branch reads `dcbEventLogTableName` as that log_name.
+    let pgSelection = DcbBackend.get()
+    let dcbTableName = switch (pgSelection, dcbTableName) {
+    | (Some(_), _) => Pulumi.Output.make(pluginName ++ "DcbEventLog")
+    | (None, Some(tableName)) => tableName
+    | (None, None) => Pulumi.Output.make("NOT_AVAILABLE")
     }
 
     // The async DCB CommandTopic is named `<Plugin>DcbAsync` by Dcb_Builder, so the
@@ -83,11 +90,33 @@ let forDcbCommandTopic = (
       })
       ->Array.join(",")
 
+    // B2.3c: on Postgres, add a `pgConnection` object so the entry point selects the
+    // Postgres DCB runtime (absent → DynamoDB path, unchanged). Built as a JSON
+    // fragment merged into HANDLER_CONFIG below.
+    let pgConnectionFragment = switch pgSelection {
+    | Some(sel) =>
+      sel.connectionConfig->Pulumi.Output.apply(cc => {
+        let pgConnectionJson =
+          [
+            ("host", cc.host->JSON.Encode.string),
+            ("port", cc.port->Int.toFloat->JSON.Encode.float),
+            ("database", cc.database->JSON.Encode.string),
+            ("username", cc.username->JSON.Encode.string),
+            ("secretArn", cc.secretArn->JSON.Encode.string),
+          ]
+          ->Dict.fromArray
+          ->JSON.Encode.object
+          ->JSON.stringify
+        `,"pgConnection":${pgConnectionJson}`
+      })
+    | None => Pulumi.Output.make("")
+    }
+
     let handlerConfigJson =
-      Pulumi.Output.all2((dcbTableName, queue.id))
-      ->Pulumi.Output.apply(((table, queueUrl)) => {
+      Pulumi.Output.all3((dcbTableName, queue.id, pgConnectionFragment))
+      ->Pulumi.Output.apply(((table, queueUrl, pgFragment)) => {
         let pluginNameJson = pluginName->JSON.stringifyAny->Option.getOr(`""`)
-        `{"dcbEventLogTableName":"${table}","queueUrl":"${queueUrl}","pluginName":${pluginNameJson},"stateChangeSliceModules":[${sliceModulesJson}]}`
+        `{"dcbEventLogTableName":"${table}","queueUrl":"${queueUrl}","pluginName":${pluginNameJson},"stateChangeSliceModules":[${sliceModulesJson}]${pgFragment}}`
       })
     envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 
@@ -120,6 +149,26 @@ let forDcbCommandTopic = (
 
     cfg.sqsBatchSize->Option.forEach(CommandTopicChannel.SQS.setBatchSize)
 
+    // B2.3c: Postgres-backed DCB → the command Lambda talks to RDS, so it must land
+    // in-VPC on the DB-access security group + private subnets. makeFromCodeAsset
+    // adds the EC2-ENI IAM automatically when vpcConfig is present (C1).
+    let vpcConfig = switch pgSelection {
+    | Some(sel) =>
+      Some(
+        sel.securityGroupId
+        ->Pulumi.Output.apply(sgId =>
+          (
+            {
+              PulumiAws.Lambda.Function.subnetIds: sel.subnetIds->Pulumi.Input.make,
+              securityGroupIds: [sgId->Pulumi.Input.make]->Pulumi.Input.make,
+            }: PulumiAws.Lambda.Function.vpcConfig
+          )
+        )
+        ->Pulumi.Output.asInput,
+      )
+    | None => None
+    }
+
     let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
       ~name,
       ~code,
@@ -130,11 +179,40 @@ let forDcbCommandTopic = (
       ~reservedConcurrency=?cfg.reservedConcurrency,
       ~ephemeralStorageMb=?cfg.ephemeralStorageMb,
       ~logRetentionDays=?cfg.logRetentionDays,
+      ~vpcConfig=?vpcConfig,
       // This is the StateChangeSlice command handler — provision the DCB
       // retry/conflict metric filters (takes effect when logRetentionDays is set).
       ~dcbMetrics=true,
       ~opts,
     )
+
+    // B2.3c: grant the Postgres command Lambda read access to the RDS-managed
+    // master secret so PgRuntime can resolve the DB password at cold start.
+    switch pgSelection {
+    | Some(sel) =>
+      let _ = sel.connectionConfig->Pulumi.Output.apply(cc => {
+        PulumiAws.IAM.RolePolicy.make(
+          ~name=`${name}-pgSecret`,
+          ~args={
+            policy: PulumiAws.PolicyDocument.make(
+              ~id=`${name}-pgSecretPolicy`,
+              ~statements=[
+                {
+                  sid: "AllowGetPgSecret",
+                  effect: Allow,
+                  actions: Action("secretsmanager:GetSecretValue"),
+                  resources: Resource(cc.secretArn),
+                },
+              ],
+            )
+            ->PulumiAws.PolicyDocument.toJsonString
+            ->Pulumi.Input.make,
+            role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+          },
+        )
+      })
+    | None => ()
+    }
 
     // The DCB command topic Lambda is invoked directly by AppSync (Route 1) and
     // needs sqs:SendMessage to publish commands to the FIFO queue for processing.

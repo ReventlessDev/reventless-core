@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
+import * as DcbBackend$ReventlessAws from "../DcbEventLog/DcbBackend.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as CommandTopicChannel_SQS$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS.res.mjs";
@@ -26,7 +27,10 @@ function forDcbCommandTopic(slicePaths, dcbTableName, pluginName, syncConfig, as
   let channel = dcbCommandTopic.channel;
   let channelParts = channel.parts;
   let queue = channelParts.queue;
-  let dcbTableName$1 = dcbTableName !== undefined ? dcbTableName : Pulumi.output("NOT_AVAILABLE");
+  let pgSelection = DcbBackend$ReventlessAws.get();
+  let dcbTableName$1 = pgSelection !== undefined ? Pulumi.output(pluginName + "DcbEventLog") : (
+      dcbTableName !== undefined ? dcbTableName : Pulumi.output("NOT_AVAILABLE")
+    );
   let isAsync = baseName.endsWith("Async");
   let name = baseName + "CmdHandler";
   let cfg = isAsync ? asyncConfig : syncConfig;
@@ -47,12 +51,38 @@ function forDcbCommandTopic(slicePaths, dcbTableName, pluginName, syncConfig, as
     let b = Stdlib_Option.getOr(JSON.stringify(param[1]), `""`);
     return `{"spec":` + s + `,"behavior":` + b + `}`;
   }).join(",");
+  let pgConnectionFragment = pgSelection !== undefined ? pgSelection.connectionConfig.apply(cc => {
+      let pgConnectionJson = JSON.stringify(Object.fromEntries([
+        [
+          "host",
+          cc.host
+        ],
+        [
+          "port",
+          cc.port
+        ],
+        [
+          "database",
+          cc.database
+        ],
+        [
+          "username",
+          cc.username
+        ],
+        [
+          "secretArn",
+          cc.secretArn
+        ]
+      ]));
+      return `,"pgConnection":` + pgConnectionJson;
+    }) : Pulumi.output("");
   let handlerConfigJson = Pulumi.all([
     dcbTableName$1,
-    queue.id
+    queue.id,
+    pgConnectionFragment
   ]).apply(param => {
     let pluginNameJson = Stdlib_Option.getOr(JSON.stringify(pluginName), `""`);
-    return `{"dcbEventLogTableName":"` + param[0] + `","queueUrl":"` + param[1] + `","pluginName":` + pluginNameJson + `,"stateChangeSliceModules":[` + sliceModulesJson + `]}`;
+    return `{"dcbEventLogTableName":"` + param[0] + `","queueUrl":"` + param[1] + `","pluginName":` + pluginNameJson + `,"stateChangeSliceModules":[` + sliceModulesJson + `]` + param[2] + `}`;
   });
   envVars["HANDLER_CONFIG"] = handlerConfigJson;
   let packageDirs = {};
@@ -66,7 +96,22 @@ function forDcbCommandTopic(slicePaths, dcbTableName, pluginName, syncConfig, as
   packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-core");
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs", packageDirs, undefined);
   Stdlib_Option.forEach(cfg.sqsBatchSize, CommandTopicChannel_SQS$ReventlessAws.setBatchSize);
-  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, true, undefined, opts);
+  let vpcConfig = pgSelection !== undefined ? pgSelection.securityGroupId.apply(sgId => ({
+      subnetIds: pgSelection.subnetIds,
+      securityGroupIds: [sgId]
+    })) : undefined;
+  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, true, vpcConfig, opts);
+  if (pgSelection !== undefined) {
+    pgSelection.connectionConfig.apply(cc => new (Aws.iam.RolePolicy)(name + `-pgSecret`, {
+      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `-pgSecretPolicy`, [{
+          Sid: "AllowGetPgSecret",
+          Effect: "Allow",
+          Action: "secretsmanager:GetSecretValue",
+          Resource: cc.secretArn
+        }])),
+      role: runtime.parts.lambdaRole.id
+    }));
+  }
   queue.arn.apply(queueArn => new (Aws.iam.RolePolicy)(name + `-sqsSend`, {
     policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `-sqsSendPolicy`, [{
         Sid: "AllowSqsSend",

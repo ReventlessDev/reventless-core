@@ -21,7 +21,7 @@ module Make = (HooksConfig: ReventlessCore.Plugin_Helpers.HooksConfig) => {
     CommandTopicRemoteChannel.SQS,
     HeartbeatRunner.CloudwatchEvents,
     PluginRuntime_Builder.Make(EventCollectorChannel),
-    DcbEventLogStorage.DynamoDb,
+    DcbEventLogStorage.Selectable,
     EventTopicPublisher.DynamoDbStream,
     CommandTopicChannel.SQS_Sync,
     CommandTopicChannel.SQS_Async,

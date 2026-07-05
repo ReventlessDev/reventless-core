@@ -4,13 +4,13 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as AppSync_Adapter$ReventlessAws from "./Api/AppSync_Adapter.res.mjs";
 import * as Plugin_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Builder.res.mjs";
+import * as DcbEventLogStorage$ReventlessAws from "../adapter/DcbEventLog/DcbEventLogStorage.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "../util/Util_ResourceNaming.res.mjs";
 import * as QueryEngine_DynamoDb$ReventlessAws from "../adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs";
 import * as PluginRuntime_Builder$ReventlessAws from "../plugin/runtime/PluginRuntime_Builder.res.mjs";
 import * as PluginRuntimeOperations$ReventlessAws from "../plugin/runtime/PluginRuntimeOperations.res.mjs";
 import * as EventCollectorChannel_SQS$ReventlessAws from "../adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
-import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "../adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "../adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as CommandTopicChannel_SQS_Async$ReventlessAws from "../adapter/CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
 import * as CommandTopicRemoteChannel_SQS$ReventlessAws from "../adapter/CommandTopic/CommandTopicRemoteChannel_SQS.res.mjs";
@@ -44,7 +44,7 @@ function Make(HooksConfig) {
   })(CommandTopicRemoteChannel_SQS$ReventlessAws)(HeartbeatRunner_CloudWatchEvents$ReventlessAws)(PluginRuntime_Builder$ReventlessAws.Make({
     make: EventCollectorChannel_SQS$ReventlessAws.make,
     connect: EventCollectorChannel_SQS$ReventlessAws.connect
-  }))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
+  }))(DcbEventLogStorage$ReventlessAws.Selectable)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
     make: CommandTopicChannel_SQS_Sync$ReventlessAws.make
   })({
     make: CommandTopicChannel_SQS_Async$ReventlessAws.make
