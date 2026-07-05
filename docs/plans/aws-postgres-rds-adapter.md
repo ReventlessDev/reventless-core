@@ -380,13 +380,13 @@ in the surface's `<Surface>Storage.res` selector module):
   is the one genuinely new AWS-side component (a poller/relay Lambda or a
   long-lived consumer). Design it against the feed-consumer public API the done
   plan established (D2 there).
-- **B3 QueryDb + QueryEngine** — `QueryDbStorage_Postgres` +
-  `QueryEnginePostgres` runtime bound the same way. Reconcile with AppSync
-  resolver provisioning: DynamoDB uses direct AppSync→DynamoDB resolvers
-  (`QueryDbResolvers_AppSync`); a Postgres-backed read model must route reads
-  through a Lambda resolver (`QueryInterceptor_Lambda` /
-  `NodeResolver_AppSync` are the existing seams). This is the largest B-phase
-  unknown — scope it first.
+- **B3 QueryDb + QueryEngine** — ✅ **scoped (2026-07-05)**, own sub-plan:
+  `docs/plans/aws-postgres-querydb-adapter.md`. Summary: storage + engine
+  already exist live-validated in reventless-postgres; B3.1 is the mechanical
+  B1-style AWS glue (registry, deploy-time maker, runtime opsFor, VPC/IAM),
+  B3.2 is the real project — a shared in-VPC Lambda AppSync data source
+  replacing the direct DynamoDB resolvers (Option A; RDS Data API kept as
+  documented alternative), B3.3 (live updates) deferred.
 
 ---
 
