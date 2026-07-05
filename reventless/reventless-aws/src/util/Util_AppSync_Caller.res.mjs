@@ -47,9 +47,11 @@ function jsonToLiteral(value) {
   }
 }
 
-function buildQuery(mutation, variablesDict) {
+function buildQuery(mutation, selectionOpt, variablesDict) {
+  let selection = selectionOpt !== undefined ? selectionOpt : "{ __typename }";
   let args = Object.entries(variablesDict).map(param => param[0] + `: ` + jsonToLiteral(param[1])).join(", ");
-  return `mutation { ` + mutation + `(` + args + `) }`;
+  let sel = selection === "" ? "" : ` ` + selection;
+  return `mutation { ` + mutation + `(` + args + `)` + sel + ` }`;
 }
 
 async function sendQuery(endpoint, region, queryString) {
@@ -104,7 +106,8 @@ async function sendQuery(endpoint, region, queryString) {
   }
 }
 
-async function sendMutation(endpoint, region, mutation, variables) {
+async function sendMutation(endpoint, region, mutation, selectionOpt, variables) {
+  let selection = selectionOpt !== undefined ? selectionOpt : "{ __typename }";
   let url = new URL(endpoint);
   let hostname = url.hostname;
   let path = url.pathname;
@@ -116,7 +119,7 @@ async function sendMutation(endpoint, region, mutation, variables) {
   } else {
     variablesDict = {};
   }
-  let query = buildQuery(mutation, variablesDict);
+  let query = buildQuery(mutation, selection, variablesDict);
   let body = JSON.stringify(Object.fromEntries([[
       "query",
       query

@@ -107,13 +107,25 @@ let rec jsonToLiteral = (value: JSON.t): string =>
     }
   }
 
-let buildQuery = (~mutation: string, ~variablesDict: dict<JSON.t>): string => {
+// ~selection is the sub-selection appended after the field call. It defaults to
+// `{ __typename }` because every command mutation dispatched through this caller
+// returns the `CommandResult` union (CommandAccepted | CommandPending |
+// CommandRejected); GraphQL rejects a selectionless field on any object/union
+// type with `SubSelectionRequired`. Pass ~selection="" for a scalar-returning
+// mutation, or a richer set (e.g. "{ __typename ... on CommandRejected { reason } }")
+// to inspect the result.
+let buildQuery = (
+  ~mutation: string,
+  ~selection: string="{ __typename }",
+  ~variablesDict: dict<JSON.t>,
+): string => {
   let args =
     variablesDict
     ->Dict.toArray
     ->Array.map(((k, v)) => `${k}: ${jsonToLiteral(v)}`)
     ->Array.join(", ")
-  `mutation { ${mutation}(${args}) }`
+  let sel = selection == "" ? "" : ` ${selection}`
+  `mutation { ${mutation}(${args})${sel} }`
 }
 
 // ── sendMutation ────────────────────────────────────────────────────────────
@@ -121,6 +133,8 @@ let buildQuery = (~mutation: string, ~variablesDict: dict<JSON.t>): string => {
 // Signs and sends a single GraphQL mutation to an AppSync endpoint via IAM.
 // ~variables accepts any value; undefined/optional fields are omitted by
 // JSON.stringifyAny (mirrors how JSON.stringify drops undefined object keys).
+// ~selection defaults to `{ __typename }` so CommandResult-union mutations
+// validate (see buildQuery); pass ~selection="" for scalar-returning mutations.
 // Returns a promise — callers fire-and-forget with `let _ = sendMutation(...)`.
 
 // Signs and sends a GraphQL query; returns the `data` object or None on error.
@@ -164,7 +178,13 @@ let sendQuery = async (~endpoint: string, ~region: string, ~queryString: string)
   }
 }
 
-let sendMutation = async (~endpoint: string, ~region: string, ~mutation: string, ~variables: 'a) => {
+let sendMutation = async (
+  ~endpoint: string,
+  ~region: string,
+  ~mutation: string,
+  ~selection: string="{ __typename }",
+  ~variables: 'a,
+) => {
   let url = parseUrl(endpoint)
   let hostname: string = (url)["hostname"]
   let path: string = (url)["pathname"]
@@ -180,7 +200,7 @@ let sendMutation = async (~endpoint: string, ~region: string, ~mutation: string,
     | None => Dict.make()
     }
 
-  let query = buildQuery(~mutation, ~variablesDict)
+  let query = buildQuery(~mutation, ~selection, ~variablesDict)
   let body =
     Dict.fromArray([("query", query->JSON.Encode.string)])
     ->JSON.Encode.object
