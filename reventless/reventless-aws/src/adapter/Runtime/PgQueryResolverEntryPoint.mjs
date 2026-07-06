@@ -46,6 +46,7 @@ async function buildAllBindings() {
     indexLookup: engine.indexLookup,
     byIds: engine.byIds,
     listPage: engine.listPage,
+    itemsPage: engine.itemsPage,
     scanAll: (readModelName) => engine.scan(readModelName, [], SCAN_ALL_LIMIT),
   };
 

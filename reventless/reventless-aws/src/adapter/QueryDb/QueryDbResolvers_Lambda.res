@@ -130,6 +130,18 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       ~kind=connectionSpec ? "list" : "list",
     )
 
+    // Sub-id connection — {single}Items(id, filter, …); only when subId configured.
+    let items = switch subIdField {
+    | Some(_) => [
+        mkResolver(
+          ~resolverName=fieldNameForSingle->String.capitalize ++ "Items",
+          ~field=fieldNameForSingle ++ "Items",
+          ~kind="items",
+        ),
+      ]
+    | None => []
+    }
+
     // Batched-by-ids — single-key projections only (mirrors the SDL).
     let byIds = if includeIdParam && subIdField === None {
       let byIdsField = fieldNameForAll ++ "ByIds"
@@ -153,6 +165,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     })
 
     [byId, all]
+    ->Array.concat(items)
     ->Array.concat(byIds)
     ->Array.concat(byIndex)
     ->Array.map(Util.AppSync.toResourceNative)

@@ -233,4 +233,80 @@ switch processEnv->Dict.get("PG_URL") {
       expect(items->Array.length)->toBe(0)
     })
   })
+
+  // ── itemsPage (sub-id connection) ─────────────────────────────────────────
+  // A sub-id read model: partition "order-1" holds 5 lines keyed by `seq`.
+  let itemsName = "itemsparity"
+  let mkLine = seq => {
+    let o = Dict.make()
+    o->Dict.set("id", JSON.Encode.string("order-1"))
+    o->Dict.set("seq", JSON.Encode.string(seq))
+    JSON.Encode.object(o)
+  }
+  let seqs = ["a", "b", "c", "d", "e"]
+  beforeAllAsync(async () => {
+    let ops = QueryDbStorage_Postgres.makeOperations(
+      ~pool,
+      ~name=itemsName,
+      ~indexes=[],
+      ~subIdField=Some("seq"),
+    )
+    for i in 0 to seqs->Array.length - 1 {
+      let _ = await ops.save("order-1", mkLine(seqs->Array.getUnsafe(i)), QueryDb.Any, None)
+    }
+  })
+
+  // Extract node `seq` values in edge order.
+  let itemSeqs = (conn: JSON.t) =>
+    conn
+    ->field("edges")
+    ->Option.flatMap(JSON.Decode.array)
+    ->Option.getOr([])
+    ->Array.filterMap(e => e->field("node")->Option.flatMap(n => n->str("seq")))
+
+  let pageInfoBool = (conn, key) =>
+    conn->field("pageInfo")->Option.getOr(JSON.Encode.null)->field(key)->Option.flatMap(JSON.Decode.bool)->Option.getOr(false)
+
+  let itemsPage = args =>
+    Eng.itemsPage(~readModelName=itemsName, ~subIdField="seq", ~id="order-1", ~argsDict=argsOf(args))
+
+  describe("QueryEnginePostgres itemsPage (sub-id keyset)", () => {
+    testPromise("bare → all lines ASC, no next page", async () => {
+      let r = await itemsPage([])
+      expect(r->itemSeqs)->toEqual(["a", "b", "c", "d", "e"])
+      expect(pageInfoBool(r, "hasNextPage"))->toBe(false)
+    })
+    testPromise("first:2 → [a,b], hasNextPage", async () => {
+      let r = await itemsPage([("first", JSON.Encode.int(2))])
+      expect(r->itemSeqs)->toEqual(["a", "b"])
+      expect(pageInfoBool(r, "hasNextPage"))->toBe(true)
+    })
+    testPromise("first:2 after b → [c,d]", async () => {
+      let r = await itemsPage([("first", JSON.Encode.int(2)), ("after", JSON.Encode.string(cur("b")))])
+      expect(r->itemSeqs)->toEqual(["c", "d"])
+    })
+    testPromise("order DESC → [e..a]", async () => {
+      let r = await itemsPage([("filter", filterOf([("order", JSON.Encode.string("DESC"))]))])
+      expect(r->itemSeqs)->toEqual(["e", "d", "c", "b", "a"])
+    })
+    testPromise("filter eq c → [c]", async () => {
+      let r = await itemsPage([("filter", filterOf([("eq", JSON.Encode.string("c"))]))])
+      expect(r->itemSeqs)->toEqual(["c"])
+    })
+    testPromise("filter from b to d → [b,c,d]", async () => {
+      let r = await itemsPage([
+        ("filter", filterOf([("from", JSON.Encode.string("b")), ("to", JSON.Encode.string("d"))])),
+      ])
+      expect(r->itemSeqs)->toEqual(["b", "c", "d"])
+    })
+    testPromise("prefix c → [c]", async () => {
+      let r = await itemsPage([("filter", filterOf([("prefix", JSON.Encode.string("c"))]))])
+      expect(r->itemSeqs)->toEqual(["c"])
+    })
+    testPromise("backward last:2 before d → [b,c] (logical ASC)", async () => {
+      let r = await itemsPage([("last", JSON.Encode.int(2)), ("before", JSON.Encode.string(cur("d")))])
+      expect(r->itemSeqs)->toEqual(["b", "c"])
+      expect(pageInfoBool(r, "hasPreviousPage"))->toBe(true)
+    })
+  })
 }

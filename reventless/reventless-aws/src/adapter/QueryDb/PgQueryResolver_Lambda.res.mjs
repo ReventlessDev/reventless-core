@@ -85,6 +85,13 @@ async function dispatch(binding, payload) {
         let field = Stdlib_Option.getOr(Stdlib_Option.flatMap(binding.indexes.find(ic => ic.index === indexName), ic => ic.idField), indexName);
         let value = Stdlib_Option.getOr(argStr(payload.arguments, indexName), "");
         return await binding.pushdowns.indexLookup(rm, field, value);
+      case "items" :
+        let subIdField = binding.subIdField;
+        if (subIdField === undefined) {
+          return emptyConnection();
+        }
+        let id$1 = Stdlib_Option.getOr(argStr(payload.arguments, "id"), "");
+        return await binding.pushdowns.itemsPage(rm, subIdField, id$1, argObj(payload.arguments));
       case "list" :
         let argsDict = argObj(payload.arguments);
         let conn = await binding.pushdowns.listPage(rm, argsDict, binding.capability, binding.labelField);
@@ -102,6 +109,7 @@ async function dispatch(binding, payload) {
     switch (match$1) {
       case "getById" :
         return null;
+      case "items" :
       case "list" :
         return emptyConnection();
       default:

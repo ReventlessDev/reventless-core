@@ -300,6 +300,142 @@ if (url !== undefined) {
       globalThis.expect(items.length).toBe(0);
     });
   });
+  let itemsName = "itemsparity";
+  let mkLine = seq => {
+    let o = {};
+    o["id"] = "order-1";
+    o["seq"] = seq;
+    return o;
+  };
+  let seqs = [
+    "a",
+    "b",
+    "c",
+    "d",
+    "e"
+  ];
+  globalThis.beforeAll(async () => {
+    let ops = QueryDbStorage_Postgres$ReventlessPostgres.makeOperations(pool, itemsName, [], "seq");
+    for (let i = 0, i_finish = seqs.length; i < i_finish; ++i) {
+      await ops.save("order-1", mkLine(seqs[i]), "Any", undefined);
+    }
+  });
+  let itemSeqs = conn => Stdlib_Array.filterMap(Stdlib_Option.getOr(Stdlib_Option.flatMap(field(conn, "edges"), Stdlib_JSON.Decode.array), []), e => Stdlib_Option.flatMap(field(e, "node"), n => str(n, "seq")));
+  let pageInfoBool = (conn, key) => Stdlib_Option.getOr(Stdlib_Option.flatMap(field(Stdlib_Option.getOr(field(conn, "pageInfo"), null), key), Stdlib_JSON.Decode.bool), false);
+  let itemsPage = args => Eng.itemsPage(itemsName, "seq", "order-1", Object.fromEntries(args));
+  globalThis.describe("QueryEnginePostgres itemsPage (sub-id keyset)", () => {
+    globalThis.test("bare → all lines ASC, no next page", async () => {
+      let r = await itemsPage([]);
+      globalThis.expect(itemSeqs(r)).toEqual([
+        "a",
+        "b",
+        "c",
+        "d",
+        "e"
+      ]);
+      globalThis.expect(pageInfoBool(r, "hasNextPage")).toBe(false);
+    });
+    globalThis.test("first:2 → [a,b], hasNextPage", async () => {
+      let r = await itemsPage([[
+          "first",
+          2
+        ]]);
+      globalThis.expect(itemSeqs(r)).toEqual([
+        "a",
+        "b"
+      ]);
+      globalThis.expect(pageInfoBool(r, "hasNextPage")).toBe(true);
+    });
+    globalThis.test("first:2 after b → [c,d]", async () => {
+      let r = await itemsPage([
+        [
+          "first",
+          2
+        ],
+        [
+          "after",
+          QueryDbListQuery$ReventlessCore.encodeCursor("b")
+        ]
+      ]);
+      globalThis.expect(itemSeqs(r)).toEqual([
+        "c",
+        "d"
+      ]);
+    });
+    globalThis.test("order DESC → [e..a]", async () => {
+      let r = await itemsPage([[
+          "filter",
+          Object.fromEntries([[
+              "order",
+              "DESC"
+            ]])
+        ]]);
+      globalThis.expect(itemSeqs(r)).toEqual([
+        "e",
+        "d",
+        "c",
+        "b",
+        "a"
+      ]);
+    });
+    globalThis.test("filter eq c → [c]", async () => {
+      let r = await itemsPage([[
+          "filter",
+          Object.fromEntries([[
+              "eq",
+              "c"
+            ]])
+        ]]);
+      globalThis.expect(itemSeqs(r)).toEqual(["c"]);
+    });
+    globalThis.test("filter from b to d → [b,c,d]", async () => {
+      let r = await itemsPage([[
+          "filter",
+          Object.fromEntries([
+            [
+              "from",
+              "b"
+            ],
+            [
+              "to",
+              "d"
+            ]
+          ])
+        ]]);
+      globalThis.expect(itemSeqs(r)).toEqual([
+        "b",
+        "c",
+        "d"
+      ]);
+    });
+    globalThis.test("prefix c → [c]", async () => {
+      let r = await itemsPage([[
+          "filter",
+          Object.fromEntries([[
+              "prefix",
+              "c"
+            ]])
+        ]]);
+      globalThis.expect(itemSeqs(r)).toEqual(["c"]);
+    });
+    globalThis.test("backward last:2 before d → [b,c] (logical ASC)", async () => {
+      let r = await itemsPage([
+        [
+          "last",
+          2
+        ],
+        [
+          "before",
+          QueryDbListQuery$ReventlessCore.encodeCursor("d")
+        ]
+      ]);
+      globalThis.expect(itemSeqs(r)).toEqual([
+        "b",
+        "c"
+      ]);
+      globalThis.expect(pageInfoBool(r, "hasPreviousPage")).toBe(true);
+    });
+  });
 } else {
   globalThis.test("Postgres list push-down parity (skipped — set PG_URL to run)", () => {
     globalThis.expect(true).toBe(true);

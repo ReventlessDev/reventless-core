@@ -254,10 +254,8 @@ binding it in a deploy-time maker.
     `QueryDbResolvers_GraphQL`); denials return the kind's empty shape;
     unmapped kinds throw (feature-parity guard). A `bindings` registry +
     `handler` is populated by the entry point at Lambda init (B3.2b). `dispatch`
-    is pure — unit-tested (`PgQueryResolver_LambdaTest`, 9 cases) with an
-    in-memory mock binding, no Postgres. **`items`** (sub-id connection) is
-    deferred: it needs `SortKey_Filter` (still reventless-local-only) hoisted
-    to core — do it when the deploy path issues that field.
+    is pure — unit-tested (`PgQueryResolver_LambdaTest`) with an in-memory mock
+    binding, no Postgres. (`items` added in B3.2c below.)
   - **B3.2b — deploy wiring** — ✅ **landed (2026-07-06), compile-validated;
     AWS boundary unvalidated (no live stack), same as B3.0/B3.1.** Pieces:
     - `PgQueryResolver_Builder.res` — the shared in-VPC `PgQueryResolver` Lambda
@@ -287,8 +285,21 @@ binding it in a deploy-time maker.
       source name to avoid collisions on the shared API; only the monolithic
       `makePlatform` path is wired. `items` (sub-id connection) still needs
       `SortKey_Filter` hoisted (see B3.2a-2).
-  - **B3.2c — long tail.** `@resolves`/`@resolvesMany`, node resolver, auth
-    (auth tables stay DynamoDB in the first cut).
+  - **B3.2c — remaining resolver surface.**
+    - **`items` (sub-id connection)** — ✅ **landed (2026-07-06).**
+      `QueryEnginePostgres.itemsPage`: keyset over `sub_key` WITHIN one
+      partition (prefix/from/to/eq filters, forward/backward keyset with the
+      order-flip, cursor = base64 of sub_key), reproducing
+      `QueryDbResolvers_GraphQL`'s items resolver — **entirely in SQL** (no
+      `SortKey_Filter` hoist needed, since `sub_key` IS the sort key). Wired as
+      the `"items"` dispatch kind + the `{single}Items` resolver field (present
+      only when a subId is configured). `PG_URL`-gated (8 cases, green vs
+      Postgres 16); dispatcher unit test covers routing + the no-subId empty
+      connection.
+    - **Still deferred:** `@resolves`/`@resolvesMany` (cross-table field
+      resolvers — `byIds` engine method already exists for the batch case),
+      node resolver, auth-table pipeline (auth tables stay DynamoDB in the
+      first cut). Plugin-stack-mode provisioning (see B3.2b).
 - **B3.3 — live updates (deferred).** StateTopic assumes a DynamoDB stream
   ARN. Postgres options: (a) publish from the projection Lambda after
   `save` (simplest — the writer knows what changed), or (b) qdb triggers +

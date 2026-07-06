@@ -40,6 +40,13 @@ type pushdowns = {
     ~capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability,
     ~labelField: string,
   ) => promise<option<JSON.t>>,
+  // Sub-id connection ({single}Items) — keyset over sub_key within a partition.
+  itemsPage: (
+    ~readModelName: string,
+    ~subIdField: string,
+    ~id: string,
+    ~argsDict: dict<JSON.t>,
+  ) => promise<JSON.t>,
   // Full materialisation for the list fallback (shapes listPage declines).
   scanAll: (~readModelName: string) => promise<array<JSON.t>>,
 }
@@ -111,10 +118,10 @@ let dispatch = async (~binding: binding, ~payload: payload): JSON.t => {
   let rm = payload.readModelName
   switch await runInterceptor(~binding, ~payload) {
   | Deny(_) =>
-    // Empty shape per kind (null for single, [] for lists, empty connection).
+    // Empty shape per kind (null for single, connection for list/items, [] else).
     switch payload.kind {
     | "getById" => JSON.Encode.null
-    | "list" => emptyConnection()
+    | "list" | "items" => emptyConnection()
     | _ => JSON.Encode.array([])
     }
   | Allow =>
@@ -133,6 +140,21 @@ let dispatch = async (~binding: binding, ~payload: payload): JSON.t => {
     | "byIds" =>
       let ids = payload.arguments->argStrs("ids")
       JSON.Encode.array(await binding.pushdowns.byIds(~readModelName=rm, ids))
+
+    | "items" =>
+      // Sub-id connection: {single}Items(id, filter, first/after/last/before).
+      // Requires a subIdField; without one it's an empty connection.
+      switch binding.subIdField {
+      | Some(subIdField) =>
+        let id = payload.arguments->argStr("id")->Option.getOr("")
+        await binding.pushdowns.itemsPage(
+          ~readModelName=rm,
+          ~subIdField,
+          ~id,
+          ~argsDict=payload.arguments->argObj,
+        )
+      | None => emptyConnection()
+      }
 
     | "index" =>
       // The index arg name is the index; its stored field is idField ?? index.

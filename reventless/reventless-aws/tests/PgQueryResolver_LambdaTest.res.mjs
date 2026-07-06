@@ -3,6 +3,7 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as QueryDb_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Callback.res.mjs";
@@ -72,6 +73,13 @@ async function pushdowns_listPage(param, param$1, param$2, param$3) {
   return listPageReturn.contents;
 }
 
+async function pushdowns_itemsPage(param, param$1, id, param$2) {
+  return Object.fromEntries([[
+      "itemsFor",
+      id
+    ]]);
+}
+
 async function pushdowns_scanAll(param) {
   return Object.values(store);
 }
@@ -80,6 +88,7 @@ let pushdowns = {
   indexLookup: pushdowns_indexLookup,
   byIds: pushdowns_byIds,
   listPage: pushdowns_listPage,
+  itemsPage: pushdowns_itemsPage,
   scanAll: pushdowns_scanAll
 };
 
@@ -99,8 +108,9 @@ let capability = {
   sortFields: capability_sortFields
 };
 
-function makeBinding(authorizationOpt, param) {
+function makeBinding(authorizationOpt, subIdFieldOpt, param) {
   let authorization = authorizationOpt !== undefined ? authorizationOpt : "AllowAnonymous";
+  let subIdField = subIdFieldOpt !== undefined ? Primitive_option.valFromOption(subIdFieldOpt) : undefined;
   return {
     ops: ops,
     pushdowns: pushdowns,
@@ -110,7 +120,7 @@ function makeBinding(authorizationOpt, param) {
         idField: "status",
         projectionType: "ALL"
       }],
-    subIdField: undefined,
+    subIdField: subIdField,
     capability: capability,
     labelField: "name",
     includeIdParam: true,
@@ -147,7 +157,7 @@ function ids(arr) {
 
 globalThis.describe("PgQueryResolver_Lambda.dispatch", () => {
   globalThis.test("getById returns the item (id-carrying)", async () => {
-    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined), mkPayload("getById", undefined, Object.fromEntries([[
+    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined, undefined), mkPayload("getById", undefined, Object.fromEntries([[
         "id",
         "p-2"
       ]]), undefined));
@@ -155,14 +165,14 @@ globalThis.describe("PgQueryResolver_Lambda.dispatch", () => {
     globalThis.expect(str(r, "name")).toEqual("Bravo");
   });
   globalThis.test("getById miss → null", async () => {
-    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined), mkPayload("getById", undefined, Object.fromEntries([[
+    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined, undefined), mkPayload("getById", undefined, Object.fromEntries([[
         "id",
         "absent"
       ]]), undefined));
     globalThis.expect(r).toBe(null);
   });
   globalThis.test("byIds returns matches, drops missing", async () => {
-    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined), mkPayload("byIds", undefined, Object.fromEntries([[
+    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined, undefined), mkPayload("byIds", undefined, Object.fromEntries([[
         "ids",
         [
           "p-1",
@@ -176,7 +186,7 @@ globalThis.describe("PgQueryResolver_Lambda.dispatch", () => {
     ]);
   });
   globalThis.test("index routes to indexLookup on the idField", async () => {
-    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined), mkPayload("index", "byStatus", Object.fromEntries([[
+    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined, undefined), mkPayload("index", "byStatus", Object.fromEntries([[
         "byStatus",
         "active"
       ]]), undefined));
@@ -187,13 +197,13 @@ globalThis.describe("PgQueryResolver_Lambda.dispatch", () => {
   });
   globalThis.test("list with push-down → returns the connection listPage gives", async () => {
     listPageReturn.contents = "PUSHED";
-    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined), mkPayload("list", undefined, undefined, undefined));
+    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined, undefined), mkPayload("list", undefined, undefined, undefined));
     listPageReturn.contents = undefined;
     globalThis.expect(r).toEqual("PUSHED");
   });
   globalThis.test("list without push-down → falls back to the shared spec", async () => {
     listPageReturn.contents = undefined;
-    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined), mkPayload("list", undefined, undefined, undefined));
+    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined, undefined), mkPayload("list", undefined, undefined, undefined));
     let edgeIds = Stdlib_Array.filterMap(Stdlib_Option.getOr(Stdlib_Option.flatMap(field(r, "edges"), Stdlib_JSON.Decode.array), []), e => Stdlib_Option.flatMap(field(e, "node"), n => str(n, "id")));
     globalThis.expect(edgeIds).toEqual([
       "p-1",
@@ -201,8 +211,22 @@ globalThis.describe("PgQueryResolver_Lambda.dispatch", () => {
       "p-3"
     ]);
   });
+  globalThis.test("items with subId routes to itemsPage (id echoed)", async () => {
+    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, "seq", undefined), mkPayload("items", undefined, Object.fromEntries([[
+        "id",
+        "p-2"
+      ]]), undefined));
+    globalThis.expect(str(r, "itemsFor")).toEqual("p-2");
+  });
+  globalThis.test("items without subId → empty connection", async () => {
+    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined, undefined), mkPayload("items", undefined, Object.fromEntries([[
+        "id",
+        "p-2"
+      ]]), undefined));
+    globalThis.expect(Stdlib_Option.getOr(Stdlib_Option.flatMap(field(r, "edges"), Stdlib_JSON.Decode.array), []).length).toBe(0);
+  });
   globalThis.test("authorization DenyAll → empty shape per kind", async () => {
-    let b = makeBinding("DenyAll", undefined);
+    let b = makeBinding("DenyAll", undefined, undefined);
     let single = await PgQueryResolver_Lambda$ReventlessAws.dispatch(b, mkPayload("getById", undefined, Object.fromEntries([[
         "id",
         "p-1"
@@ -221,7 +245,7 @@ globalThis.describe("PgQueryResolver_Lambda.dispatch", () => {
       TAG: "Deny",
       _0: "nope"
     }));
-    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined), mkPayload("getById", undefined, Object.fromEntries([[
+    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined, undefined), mkPayload("getById", undefined, Object.fromEntries([[
         "id",
         "p-1"
       ]]), undefined));
@@ -231,7 +255,7 @@ globalThis.describe("PgQueryResolver_Lambda.dispatch", () => {
   globalThis.test("unmapped kind throws", async () => {
     let threw;
     try {
-      await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined), mkPayload("frobnicate", undefined, undefined, undefined));
+      await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined, undefined), mkPayload("frobnicate", undefined, undefined, undefined));
       threw = false;
     } catch (exn) {
       threw = true;

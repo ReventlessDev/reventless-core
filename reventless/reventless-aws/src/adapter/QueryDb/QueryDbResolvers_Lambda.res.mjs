@@ -59,6 +59,7 @@ function make(name, api, param, dataSourceName, indexes, subIdField, param$1, pa
   let resourcesMaker = _allQueryDbs => {
     let byId = mkResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, includeIdParam ? "getById" : "list", undefined);
     let all = mkResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, "list", undefined);
+    let items = subIdField !== undefined ? [mkResolver(Stdlib_String.capitalize(fieldNameForSingle) + "Items", fieldNameForSingle + "Items", "items", undefined)] : [];
     let byIds;
     if (includeIdParam && subIdField === undefined) {
       let byIdsField = fieldNameForAll + "ByIds";
@@ -75,7 +76,7 @@ function make(name, api, param, dataSourceName, indexes, subIdField, param$1, pa
     return [
       byId,
       all
-    ].concat(byIds).concat(byIndex).map(Util_AppSync$ReventlessAws.toResourceNative);
+    ].concat(items).concat(byIds).concat(byIndex).map(Util_AppSync$ReventlessAws.toResourceNative);
   };
   return {
     resources: [],

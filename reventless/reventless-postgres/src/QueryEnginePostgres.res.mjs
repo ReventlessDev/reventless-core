@@ -3,6 +3,7 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
 import * as PgDriver$ReventlessPostgres from "./PgDriver.res.mjs";
 import * as QueryDbListQuery$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/QueryDbListQuery.res.mjs";
 import * as QueryDbStorage_Postgres$ReventlessPostgres from "./QueryDbStorage_Postgres.res.mjs";
@@ -231,6 +232,78 @@ function Make(P) {
     let cursorValueOf = item => Stdlib_Option.getOr(QueryDbListQuery$ReventlessCore.getFieldString(item, cursorField), QueryDbListQuery$ReventlessCore.getId(item));
     return QueryDbListQuery$ReventlessCore.buildConnection(pageItems, hasMore, false, cursorValueOf);
   };
+  let itemsPage = async (readModelName, param$1, id, argsDict) => {
+    let table = QueryDbStorage_Postgres$ReventlessPostgres.tableName(readModelName);
+    let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});
+    let fstr = k => Stdlib_Option.flatMap(filterDict[k], Stdlib_JSON.Decode.string);
+    let orderDesc = Stdlib_Option.mapOr(fstr("order"), false, o => o === "DESC");
+    let last = Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["last"], Stdlib_JSON.Decode.float), prim => prim | 0);
+    let first = Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["first"], Stdlib_JSON.Decode.float), prim => prim | 0);
+    let after = Stdlib_Option.flatMap(argsDict["after"], Stdlib_JSON.Decode.string);
+    let before = Stdlib_Option.flatMap(argsDict["before"], Stdlib_JSON.Decode.string);
+    let isBackward = Stdlib_Option.isSome(last);
+    let sk = `sub_key COLLATE "C"`;
+    let b = {
+      params: []
+    };
+    let where = [
+      `partition_key = ` + param(b, id),
+      QueryDbStorage_Postgres$ReventlessPostgres.notExpiredClause
+    ];
+    Stdlib_Option.forEach(fstr("prefix"), p => {
+      where.push(`starts_with(sub_key, ` + param(b, p) + `)`);
+    });
+    Stdlib_Option.forEach(fstr("from"), f => {
+      where.push(sk + ` >= ` + param(b, f));
+    });
+    Stdlib_Option.forEach(fstr("to"), t => {
+      where.push(sk + ` <= ` + param(b, t));
+    });
+    Stdlib_Option.forEach(fstr("eq"), e => {
+      where.push(sk + ` = ` + param(b, e));
+    });
+    if (isBackward) {
+      if (before !== undefined) {
+        where.push(sk + ` < ` + param(b, QueryDbListQuery$ReventlessCore.decodeCursor(before)));
+      }
+    } else if (after !== undefined) {
+      where.push(sk + ` > ` + param(b, QueryDbListQuery$ReventlessCore.decodeCursor(after)));
+    }
+    let fetchDesc = isBackward ? !orderDesc : orderDesc;
+    let pageSize = Stdlib_Option.getOr(isBackward ? last : first, QueryDbListQuery$ReventlessCore.defaultListPageSize);
+    let sql = `SELECT partition_key, sub_key, item FROM ` + table + ` WHERE ` + where.join(" AND ") + ` ORDER BY ` + sk + ` ` + (
+      fetchDesc ? "DESC" : "ASC"
+    ) + ` LIMIT ` + param(b, pageSize + 1 | 0);
+    let rows = await PgDriver$ReventlessPostgres.query(P.pool, sql, b.params);
+    let hasMore = rows.length > pageSize;
+    let taken = rows.slice(0, pageSize);
+    let logical = isBackward ? taken.toReversed() : taken;
+    let pageItems = logical.map(extra => decodeRow(false, extra));
+    let subKeyOf = row => {
+      let match = row["sub_key"];
+      if (typeof match === "string") {
+        return match;
+      } else {
+        return "";
+      }
+    };
+    let cursors = logical.map(subKeyOf);
+    let edges = pageItems.map((item, i) => ({
+      node: item,
+      cursor: QueryDbListQuery$ReventlessCore.encodeCursor(cursors[i])
+    }));
+    let startCursor = Stdlib_Option.map(cursors[0], QueryDbListQuery$ReventlessCore.encodeCursor);
+    let endCursor = Stdlib_Option.map(cursors[cursors.length - 1 | 0], QueryDbListQuery$ReventlessCore.encodeCursor);
+    return {
+      edges: edges,
+      pageInfo: {
+        hasNextPage: !isBackward && hasMore,
+        hasPreviousPage: isBackward && hasMore,
+        startCursor: Stdlib_Nullable.fromOption(startCursor),
+        endCursor: Stdlib_Nullable.fromOption(endCursor)
+      }
+    };
+  };
   let make = _allQueryDbs => Pulumi.output({
     scan: scan,
     query: query
@@ -243,6 +316,7 @@ function Make(P) {
     idExprC: idExprC,
     jsonTextC: jsonTextC,
     listPage: listPage,
+    itemsPage: itemsPage,
     make: make
   };
 }

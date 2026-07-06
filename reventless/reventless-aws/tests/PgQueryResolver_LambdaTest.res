@@ -51,6 +51,9 @@ let pushdowns: PgQueryResolver_Lambda.pushdowns = {
     ids->Array.filterMap(id => store->Dict.get(id)),
   listPage: async (~readModelName as _, ~argsDict as _, ~capability as _, ~labelField as _) =>
     listPageReturn.contents,
+  itemsPage: async (~readModelName as _, ~subIdField as _, ~id, ~argsDict as _) =>
+    // Sentinel echoing the requested id, so the dispatch routing is observable.
+    JSON.Encode.object(Dict.fromArray([("itemsFor", JSON.Encode.string(id))])),
   scanAll: async (~readModelName as _) => allItems(),
 }
 
@@ -59,14 +62,18 @@ let capability: GraphQL_FragmentGenerator.serverCapability = {
   sortFields: ["name", "status"],
 }
 
-let makeBinding = (~authorization=Reventless.Authorization.AllowAnonymous, ()): PgQueryResolver_Lambda.binding => {
+let makeBinding = (
+  ~authorization=Reventless.Authorization.AllowAnonymous,
+  ~subIdField=None,
+  (),
+): PgQueryResolver_Lambda.binding => {
   ops,
   pushdowns,
   // "byStatus" index stored on the `status` field.
   indexes: [
     {index: "byStatus", type_: "S", idField: "status", projectionType: Reventless.ReadModel.ALL},
   ],
-  subIdField: None,
+  subIdField,
   capability,
   labelField: "name",
   includeIdParam: true,
@@ -161,6 +168,22 @@ describe("PgQueryResolver_Lambda.dispatch", () => {
       ->Option.getOr([])
       ->Array.filterMap(e => e->field("node")->Option.flatMap(n => n->str("id")))
     expect(edgeIds)->toEqual(["p-1", "p-2", "p-3"])
+  })
+
+  testPromise("items with subId routes to itemsPage (id echoed)", async () => {
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=makeBinding(~subIdField=Some("seq"), ()),
+      ~payload=mkPayload(~kind="items", ~args=objArgs([("id", JSON.Encode.string("p-2"))]), ()),
+    )
+    expect(r->str("itemsFor"))->toEqual(Some("p-2"))
+  })
+
+  testPromise("items without subId → empty connection", async () => {
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=makeBinding(),
+      ~payload=mkPayload(~kind="items", ~args=objArgs([("id", JSON.Encode.string("p-2"))]), ()),
+    )
+    expect(r->field("edges")->Option.flatMap(JSON.Decode.array)->Option.getOr([])->Array.length)->toBe(0)
   })
 
   testPromise("authorization DenyAll → empty shape per kind", async () => {
