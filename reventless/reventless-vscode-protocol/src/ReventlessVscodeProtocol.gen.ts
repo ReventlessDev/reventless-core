@@ -22,4 +22,5 @@ export type {
   graphNode as GraphOps_graphNode,
   leafGroups as GraphOps_leafGroups,
   readCandidate as GraphOps_readCandidate,
+  subgraph as GraphOps_subgraph,
 } from './GraphOps.gen';

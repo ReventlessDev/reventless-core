@@ -182,6 +182,117 @@ describe("propagateChapters", () => {
   })
 })
 
+// Sorted node ids of a scoped subgraph — order-insensitive membership pinning.
+let ids = (sg: GraphOps.subgraph) =>
+  sg.nodes->Array.map((n: GraphOps.graphNode) => n.id)->Array.toSorted(String.compare)
+let has = (sg: GraphOps.subgraph, id) => sg.nodes->Array.some(n => n.id == id)
+
+describe("neighbourhood", () => {
+  testSync("follows the full flow across plugin boundaries", () => {
+    let ns = [
+      n(~id="A", ~kind="Aggregate"),
+      n(~id="B", ~kind="Extension"),
+      n(~id="C", ~kind="ExtensionPoint"),
+    ]
+    let es = [
+      e(~from="A", ~to_="B", ~kind="delegatesTo"),
+      e(~from="C", ~to_="B", ~kind="consumes"), // crosses into the neighbouring plugin
+    ]
+    expect(ids(GraphOps.neighbourhood(ns, es, "B")))->toEqual(["A", "B", "C"])
+  })
+
+  testSync("keeps the whole connected component, excludes disjoint nodes", () => {
+    let ns = ["A", "B", "C", "X"]->Array.map(id => n(~id, ~kind="Event"))
+    let es = [e(~from="A", ~to_="B", ~kind="emits"), e(~from="B", ~to_="C", ~kind="emits")]
+    expect(ids(GraphOps.neighbourhood(ns, es, "A")))->toEqual(["A", "B", "C"]) // not X
+  })
+})
+
+// A producer→EP→extension→consumer chain spanning two plugins, pinning focusView.
+let chainNodes = [
+  n(~id="Catalog_AddProduct", ~kind="Command", ~label="AddProduct"),
+  n(~id="Catalog:AddProduct", ~kind="StateChangeSlice", ~label="AddProduct"),
+  n(~id="Catalog.ProductAdded", ~kind="Event", ~label="ProductAdded"),
+  n(~id="Catalog:ep:Catalog.Products", ~kind="ExtensionPoint", ~label="Catalog.Products"),
+  n(~id="Catalog.Products.ProductBecameAvailable", ~kind="Event", ~label="ProductBecameAvailable"),
+  n(~id="Ordering:ext:Catalog.Products", ~kind="Extension", ~label="Catalog.Products.Ordering"),
+  n(~id="Ordering:AvailableProducts", ~kind="StateViewSlice", ~label="AvailableProducts"),
+  n(~id="Ordering.ProductCached", ~kind="Event", ~label="ProductCached"),
+  n(~id="Ordering:Catalogue", ~kind="ReadModel", ~label="Catalogue"),
+]
+let chainEdges = [
+  e(~from="Catalog_AddProduct", ~to_="Catalog:AddProduct", ~kind="handles"),
+  e(~from="Catalog:AddProduct", ~to_="Catalog.ProductAdded", ~kind="emits"),
+  e(~from="Catalog.ProductAdded", ~to_="Catalog:ep:Catalog.Products", ~kind="feeds"),
+  e(~from="Catalog:ep:Catalog.Products", ~to_="Catalog.Products.ProductBecameAvailable", ~kind="publishes"),
+  e(~from="Catalog.Products.ProductBecameAvailable", ~to_="Ordering:ext:Catalog.Products", ~kind="consumes"),
+  e(~from="Ordering:ext:Catalog.Products", ~to_="Ordering:AvailableProducts", ~kind="delegatesTo"),
+  e(~from="Ordering:AvailableProducts", ~to_="Ordering.ProductCached", ~kind="emits"),
+  e(~from="Ordering.ProductCached", ~to_="Ordering:Catalogue", ~kind="projects"),
+]
+
+describe("focusView", () => {
+  testSync("producer-side focus stops at the extension point", () => {
+    let v = GraphOps.focusView(chainNodes, chainEdges, "Catalog:AddProduct")
+    expect((
+      v->has("Catalog_AddProduct"),
+      v->has("Catalog.ProductAdded"),
+      v->has("Catalog:ep:Catalog.Products"),
+      v->has("Catalog.Products.ProductBecameAvailable"),
+      v->has("Ordering:ext:Catalog.Products"),
+      v->has("Ordering:Catalogue"),
+    ))->toEqual((true, true, true, false, false, false))
+  })
+
+  testSync("extension-point focus shows its connected extensions + direct producers", () => {
+    let v = GraphOps.focusView(chainNodes, chainEdges, "Catalog:ep:Catalog.Products")
+    expect((
+      v->has("Catalog:ep:Catalog.Products"),
+      v->has("Catalog.Products.ProductBecameAvailable"),
+      v->has("Ordering:ext:Catalog.Products"),
+      v->has("Catalog.ProductAdded"),
+      v->has("Catalog:AddProduct"),
+      v->has("Catalog_AddProduct"),
+      v->has("Ordering:AvailableProducts"),
+      v->has("Ordering.ProductCached"),
+      v->has("Ordering:Catalogue"),
+    ))->toEqual((true, true, true, true, true, true, false, false, false))
+  })
+
+  testSync("extension focus shows the consuming parts + the connected extension point", () => {
+    let v = GraphOps.focusView(chainNodes, chainEdges, "Ordering:ext:Catalog.Products")
+    expect((
+      v->has("Ordering:ext:Catalog.Products"),
+      v->has("Ordering:AvailableProducts"),
+      v->has("Ordering.ProductCached"),
+      v->has("Ordering:Catalogue"),
+      v->has("Catalog.Products.ProductBecameAvailable"),
+      v->has("Catalog:ep:Catalog.Products"),
+      v->has("Catalog.ProductAdded"),
+      v->has("Catalog:AddProduct"),
+      v->has("Catalog_AddProduct"),
+    ))->toEqual((true, true, true, true, true, true, false, false, false))
+  })
+
+  testSync("producer focus does NOT bounce back through a shared read model", () => {
+    let ns = [
+      n(~id="p:Slice1", ~kind="StateChangeSlice", ~label="Slice1"),
+      n(~id="p.Event1", ~kind="Event", ~label="Event1"),
+      n(~id="p:View", ~kind="ReadModel", ~label="View"),
+      n(~id="p:Slice2", ~kind="StateChangeSlice", ~label="Slice2"),
+      n(~id="p.Event2", ~kind="Event", ~label="Event2"),
+    ]
+    let es = [
+      e(~from="p:Slice1", ~to_="p.Event1", ~kind="emits"),
+      e(~from="p.Event1", ~to_="p:View", ~kind="projects"),
+      e(~from="p:Slice2", ~to_="p.Event2", ~kind="emits"),
+      e(~from="p.Event2", ~to_="p:View", ~kind="projects"),
+    ]
+    // not Slice2 / Event2
+    expect(ids(GraphOps.focusView(ns, es, "p:Slice1")))->toEqual(["p.Event1", "p:Slice1", "p:View"])
+  })
+})
+
 let rc = (~eventId, ~sliceId, ~crossPartition=false): GraphOps.readCandidate => {
   eventId,
   sliceId,

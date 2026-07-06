@@ -175,6 +175,122 @@ let readEdgesToAdd = (
   out
 }
 
+// ── focus / neighbourhood scoping ────────────────────────────────────────────
+
+// A filtered view of a graph — nodes surviving a scoping walk, plus the edges
+// whose BOTH endpoints survive.
+@genType type subgraph = {nodes: array<graphNode>, edges: array<graphEdge>}
+
+/** Subgraph around a focus node: the whole connected component it sits in, following
+    every edge (including the EP→Extension chain into neighbouring plugins). Edges are
+    kept only when both endpoints survive. */
+@genType
+let neighbourhood = (nodes: array<graphNode>, edges: array<graphEdge>, focusId: string): subgraph => {
+  let adj: Dict.t<Set.t<string>> = Dict.make()
+  let link = (a, b) =>
+    switch adj->Dict.get(a) {
+    | Some(s) => s->Set.add(b)
+    | None =>
+      let s = Set.make()
+      s->Set.add(b)
+      adj->Dict.set(a, s)
+    }
+  edges->Array.forEach(e => {
+    link(e.from, e.to_)
+    link(e.to_, e.from)
+  })
+  let keep = Set.make()
+  keep->Set.add(focusId)
+  let queue = [focusId]
+  let i = ref(0)
+  while i.contents < queue->Array.length {
+    let cur = queue->Array.getUnsafe(i.contents)
+    i := i.contents + 1
+    switch adj->Dict.get(cur) {
+    | Some(s) =>
+      s->Set.forEach(nb =>
+        if !(keep->Set.has(nb)) {
+          keep->Set.add(nb)
+          queue->Array.push(nb)
+        }
+      )
+    | None => ()
+    }
+  }
+  {
+    nodes: nodes->Array.filter(n => keep->Set.has(n.id)),
+    edges: edges->Array.filter(e => keep->Set.has(e.from) && keep->Set.has(e.to_)),
+  }
+}
+
+/** Kind-aware focus scoping — the default view when a node is focused. The subgraph is
+    bounded at the natural Event-Modeling connectors (ExtensionPoint / Extension)
+    depending on what was focused. Edges survive only when both endpoints do. An
+    unknown `focusId` returns the graph unfiltered. */
+@genType
+let focusView = (nodes: array<graphNode>, edges: array<graphEdge>, focusId: string): subgraph => {
+  let byId: Dict.t<graphNode> = Dict.make()
+  nodes->Array.forEach(n => byId->Dict.set(n.id, n))
+  switch byId->Dict.get(focusId) {
+  | None => {nodes, edges}
+  | Some(focus) =>
+    let out: Dict.t<array<string>> = Dict.make()
+    let inc: Dict.t<array<string>> = Dict.make()
+    let push = (m: Dict.t<array<string>>, k, v) =>
+      switch m->Dict.get(k) {
+      | Some(a) => a->Array.push(v)
+      | None => m->Dict.set(k, [v])
+      }
+    edges->Array.forEach(e => {
+      push(out, e.from, e.to_)
+      push(inc, e.to_, e.from)
+    })
+    let kindOf = id => byId->Dict.get(id)->Option.map(n => n.kind)
+    let keep = Set.make()
+    keep->Set.add(focusId)
+
+    // BFS following the given adjacency map(s); a node satisfying `absorbing` (other
+    // than the focus itself) is kept but not expanded past — a boundary.
+    let walk = (dirs: array<Dict.t<array<string>>>, absorbing: string => bool) => {
+      let queue = [focusId]
+      let i = ref(0)
+      while i.contents < queue->Array.length {
+        let cur = queue->Array.getUnsafe(i.contents)
+        i := i.contents + 1
+        if cur == focusId || !absorbing(cur) {
+          dirs->Array.forEach(m =>
+            switch m->Dict.get(cur) {
+            | Some(nbs) =>
+              nbs->Array.forEach(nb =>
+                if !(keep->Set.has(nb)) {
+                  keep->Set.add(nb)
+                  queue->Array.push(nb)
+                }
+              )
+            | None => ()
+            }
+          )
+        }
+      }
+    }
+
+    let stopAtEp = id => kindOf(id) == Some("ExtensionPoint")
+    switch focus.kind {
+    | "ExtensionPoint" =>
+      walk([out], id => kindOf(id) == Some("Extension"))
+      walk([inc], stopAtEp)
+    | _ =>
+      walk([out], stopAtEp) // descendants
+      walk([inc], stopAtEp) // ancestors
+    }
+
+    {
+      nodes: nodes->Array.filter(n => keep->Set.has(n.id)),
+      edges: edges->Array.filter(e => keep->Set.has(e.from) && keep->Set.has(e.to_)),
+    }
+  }
+}
+
 // A component may surface in the graph under a `Stream` variant kind (a
 // `StateViewSliceStream` component becomes a `StateViewSlice` node, etc.), so kind
 // comparisons between an inventory and the graph ignore the `Stream` suffix.
