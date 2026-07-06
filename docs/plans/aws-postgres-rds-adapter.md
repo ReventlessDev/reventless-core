@@ -132,7 +132,7 @@ reshape the phasing:
 | C1 | Lambda runtime env: inject connection secret ARN, resolve at cold start, IAM `secretsmanager:GetSecretValue`, VPC config + SG | reventless-aws | Feature (core) |
 | C2 | Connection pooling decision: pinned `#AdvisoryLocks` on direct RDS vs. RDS Proxy + `#RowLocks` — expose as a config knob (**knob landed 2026-07-06**; RDS Proxy provisioning deferred as fast-follow) | reventless-aws | Hardening |
 | D1 | Backend selection: how a platform opts a surface into Postgres vs. DynamoDB (per-surface, so mixed deployments are possible) | reventless-aws | Contract |
-| D2 | Deploy-time resource `service`-tag / routing so command publishers target the right backend (cf. `meta.service` dispatch note) | reventless-aws | Contract |
+| D2 | Deploy-time resource `service`-tag / routing so command publishers target the right backend (cf. `meta.service` dispatch note) (**verified PASS 2026-07-06** — relay body byte-identical to DynamoDB-stream body; no change needed) | reventless-aws | Contract |
 | E1 | Example: a hybrid example (or new `examples/online-shop-postgres/`) deploying one plugin on RDS | examples | Integration |
 | E2 | CI deploy smoke: provision → migrate → append → replay → teardown against a throwaway RDS (or LocalStack/pg where feasible) | repo CI | Test |
 | F1 | Deployment guide: `docs/guides/postgres-aws-deployment.md` (pooling, VPC, secrets, cost, when-to-choose-vs-DynamoDB) (**landed 2026-07-06**) | docs | Doc |
@@ -481,6 +481,33 @@ F1 deployment guide documents the direct-RDS vs. Proxy pairing.
   (target aggregate's spec name) for projection dispatch — verify the Postgres
   path doesn't silently break this routing (see the repeatedly-bit
   `meta.service`-dispatch memory). A `service`-mismatch is a silent no-op.
+
+  **Verified — PASS (2026-07-06).** The Postgres path preserves `meta.service`
+  by construction; no code change needed. Evidence:
+  1. **`meta.service` is set backend-agnostically.** DCB append normalizes it in
+     `DcbEventLog_Operations` (core), not in any storage adapter
+     (`serviceName = <plugin> ++ "DcbEventLog"`, wired identically by
+     `DcbCommandTopicEntryPoint.mjs` for both backends); classic aggregate append
+     sets it the same way. Postgres and DynamoDB therefore *store the identical
+     meta*.
+  2. **The relay body is byte-identical to the DynamoDB-stream body.** The
+     DynamoDB DCB append flattens `event.meta` to top-level item attrs via
+     `Message.decomposeMeta` (`DcbEventLogStorage_DynamoDb_Runtime.res:91-96`);
+     the Postgres relay's `toEventCollectorJson` does the *same* `decomposeMeta`
+     and both reconstruct meta through the *same* `Util_DynamoDbStream_Runtime.
+     buildJsonEvent'` → `Message.composeMeta`. Classic relays the stored flat
+     `payload` verbatim (already carries decomposed meta). So the EventCollector
+     receives the same `meta.service` on both backends.
+  3. **The dispatch key is `context.meta.service`** — `ReadModel_Callback.res:23`
+     reads it and threads it as `~sourceName` to the projection mapper; the same
+     value arrives on both paths.
+  4. **Deploy-time command publishers** (retire hooks, cross-plugin) flow through
+     backend-agnostic SQS/SNS command topics — untouched by Postgres, so the
+     `meta.service`-tagging path the memory warns about is not on the Postgres
+     seam at all.
+  5. **Test evidence:** `PgChangeFeedRelay_IntegrationTest` (PG_URL-gated) already
+     asserts `meta.service == "relay-it"` on both the DCB relayed body (line 87)
+     and the classic relayed body (line 162).
 
 ---
 
