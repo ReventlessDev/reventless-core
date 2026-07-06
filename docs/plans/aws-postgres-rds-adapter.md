@@ -521,6 +521,37 @@ F1 deployment guide documents the direct-RDS vs. Proxy pairing.
   teardown. Guard/skip when no AWS creds (keep default `pnpm test`
   dependency-free, as the local pg suite already does with `PG_URL`).
 
+**Verification ladder (2026-07-06).** The whole Postgres AWS path shares one
+unvalidated surface: the live AWS boundary (in-VPC invoke, Secrets Manager fetch,
+SQS/AppSync fan-out, real RDS/VPC/IAM). LocalStack can't faithfully emulate
+RDS-in-VPC + AppSync + IAM, so the true validation is a real deploy (E1/E2).
+Before spending on that, two **Rung-1** local guards landed to de-risk the
+cold-start path without AWS:
+- **`PgConnectionJsonTest`** (unit, always runs) — pins the `pgConnection`
+  HANDLER_CONFIG field contract (the untyped cross-language shape every entry
+  point reads at cold start). Also drove a refactor: all seven deploy-time
+  builders now serialize via one shared `PgConnection.connectionConfigToJson`
+  (`~lockStrategy` on the DCB path only), so the test pins them all and the
+  ≥7 hand-rolled copies collapsed to one.
+- **`PgMigrationEntryPoint_IntegrationTest`** — a guard case (no `pgConnection`
+  ⇒ throws, always runs) plus a `PG_URL`-gated case that drives the real
+  `runMigration` orchestration against a live Postgres 16 (pool injected to skip
+  Secrets Manager): asserts the schema is created + queryable and that a second
+  run is idempotent. To make it testable, the entry point gained a pool-injectable
+  `runMigration` (mirrors the relay's `relayWithPool`/`relay` split); `handler`
+  stays thin. Validated locally against Docker Postgres 16 (both event logs
+  queryable, idempotent). Default `pnpm test` stays dependency-free (189 green).
+- **Remaining for a real deploy:** the "Rung-2" smallest real-AWS check is
+  deploying **just `PgConnection`** (RDS + migration Invocation, no plugins) to a
+  throwaway stack — a green `pulumi up` proves VPC reachability + secret fetch +
+  `ensureSchema` in one cheap step; "Rung-3" is the full E1/E2 plugin chain.
+- **Pre-existing hazard noted (not fixed here):** the `PG_URL` integration suites
+  (relay, pipeline, migration) share one database and `truncateAll`, so running
+  them **in parallel** under `PG_URL` cross-contaminates (relay⇄pipeline fail even
+  without the new test). They pass in isolation and with `jest --runInBand`
+  (195 green). Fix later with a `test:integration` script that runs serial or
+  isolates a DB per suite; unaffected by default CI (`PG_URL` unset there).
+
 ## Phase F — Docs
 
 `docs/guides/postgres-aws-deployment.md`: provisioning options (RDS vs. Aurora

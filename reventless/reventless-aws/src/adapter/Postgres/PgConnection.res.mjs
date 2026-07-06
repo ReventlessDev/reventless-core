@@ -19,6 +19,45 @@ let connectionConfigSchema = S.schema(s => ({
   secretArn: s.m(S.string)
 }));
 
+function connectionConfigToJson(lockStrategy, cc) {
+  let fields = [
+    [
+      "host",
+      cc.host
+    ],
+    [
+      "port",
+      cc.port
+    ],
+    [
+      "database",
+      cc.database
+    ],
+    [
+      "username",
+      cc.username
+    ],
+    [
+      "secretArn",
+      cc.secretArn
+    ]
+  ];
+  if (lockStrategy !== undefined) {
+    if (lockStrategy === "AdvisoryLocks") {
+      fields.push([
+        "lockStrategy",
+        "AdvisoryLocks"
+      ]);
+    } else {
+      fields.push([
+        "lockStrategy",
+        "RowLocks"
+      ]);
+    }
+  }
+  return Object.fromEntries(fields);
+}
+
 function make(name, vpcId, subnetIds, databaseNameOpt, usernameOpt, engineVersionOpt, instanceClassOpt, allocatedStorageOpt, multiAzOpt, storageEncryptedOpt, backupRetentionPeriodOpt, deletionProtectionOpt, skipFinalSnapshotOpt, lockStrategyOpt, opts) {
   let databaseName = databaseNameOpt !== undefined ? databaseNameOpt : "reventless";
   let username = usernameOpt !== undefined ? usernameOpt : "reventless_admin";
@@ -96,31 +135,7 @@ function make(name, vpcId, subnetIds, databaseNameOpt, usernameOpt, engineVersio
       secretArn: secret !== undefined ? secret.secretArn : Stdlib_JsError.throwWithMessage("RDS instance exposes no master user secret — manageMasterUserPassword must be enabled")
     };
   });
-  let migrationHandlerConfig = connectionConfig.apply(cc => {
-    let pgConnectionJson = JSON.stringify(Object.fromEntries([
-      [
-        "host",
-        cc.host
-      ],
-      [
-        "port",
-        cc.port
-      ],
-      [
-        "database",
-        cc.database
-      ],
-      [
-        "username",
-        cc.username
-      ],
-      [
-        "secretArn",
-        cc.secretArn
-      ]
-    ]));
-    return `{"pgConnection":` + pgConnectionJson + `}`;
-  });
+  let migrationHandlerConfig = connectionConfig.apply(cc => `{"pgConnection":` + JSON.stringify(connectionConfigToJson(undefined, cc)) + `}`);
   let migrationResources = PgMigration_Builder$ReventlessAws.make(name + `-pg-migrate`, migrationHandlerConfig, connectionConfig.apply(cc => cc.secretArn), sg.id, subnetIds, opts);
   return {
     resources: [Adapter$ReventlessInfra.make(Pulumi.output(name), instance.id, instance.arn, Pulumi.output("aws:rds"), undefined, Pulumi.output("postgres"), undefined, Pulumi.output("aws:rds:Instance"), undefined, undefined)].concat(migrationResources),
@@ -135,6 +150,7 @@ let port = 5432;
 
 export {
   connectionConfigSchema,
+  connectionConfigToJson,
   port,
   make,
 }

@@ -13,6 +13,7 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as DcbBackend$ReventlessAws from "../DcbEventLog/DcbBackend.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
+import * as PgConnection$ReventlessAws from "../Postgres/PgConnection.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as QueryDbBackend$ReventlessAws from "../QueryDb/QueryDbBackend.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
@@ -115,31 +116,7 @@ function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, feedQueu
     parent: opts_parent
   };
   let qdbSelection = QueryDbBackend$ReventlessAws.get();
-  let pgConnectionFragment = qdbSelection !== undefined ? qdbSelection.connectionConfig.apply(cc => {
-      let pgConnectionJson = JSON.stringify(Object.fromEntries([
-        [
-          "host",
-          cc.host
-        ],
-        [
-          "port",
-          cc.port
-        ],
-        [
-          "database",
-          cc.database
-        ],
-        [
-          "username",
-          cc.username
-        ],
-        [
-          "secretArn",
-          cc.secretArn
-        ]
-      ]));
-      return `,"pgConnection":` + pgConnectionJson;
-    }) : Pulumi.output("");
+  let pgConnectionFragment = qdbSelection !== undefined ? qdbSelection.connectionConfig.apply(cc => `,"pgConnection":` + JSON.stringify(PgConnection$ReventlessAws.connectionConfigToJson(undefined, cc))) : Pulumi.output("");
   let handlerConfigOutput = Pulumi.all([
     Pulumi.all(handlerOutputs),
     pgConnectionFragment

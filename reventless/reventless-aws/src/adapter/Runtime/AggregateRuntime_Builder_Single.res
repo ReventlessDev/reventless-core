@@ -214,20 +214,9 @@ let finish = () =>
         let pgSelection = EventLogBackend.get()
         let pgConnectionFragment = switch pgSelection {
         | Some(sel) =>
-          sel.connectionConfig->Pulumi.Output.apply(cc => {
-            let pgConnectionJson =
-              [
-                ("host", cc.host->JSON.Encode.string),
-                ("port", cc.port->Int.toFloat->JSON.Encode.float),
-                ("database", cc.database->JSON.Encode.string),
-                ("username", cc.username->JSON.Encode.string),
-                ("secretArn", cc.secretArn->JSON.Encode.string),
-              ]
-              ->Dict.fromArray
-              ->JSON.Encode.object
-              ->JSON.stringify
-            `,"pgConnection":${pgConnectionJson}`
-          })
+          sel.connectionConfig->Pulumi.Output.apply(cc =>
+            `,"pgConnection":${cc->PgConnection.connectionConfigToJson->JSON.stringify}`
+          )
         | None => Pulumi.Output.make("")
         }
 

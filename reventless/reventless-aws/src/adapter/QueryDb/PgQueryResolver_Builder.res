@@ -81,16 +81,7 @@ export function response(ctx) {
 // Serialize the shared connection config into the env-config JSON (same shape
 // EventCollectorRuntime_Builder_Single bakes into HANDLER_CONFIG).
 let pgConnectionJson = (cc: PgConnection.connectionConfig): string =>
-  [
-    ("host", cc.host->JSON.Encode.string),
-    ("port", cc.port->Int.toFloat->JSON.Encode.float),
-    ("database", cc.database->JSON.Encode.string),
-    ("username", cc.username->JSON.Encode.string),
-    ("secretArn", cc.secretArn->JSON.Encode.string),
-  ]
-  ->Dict.fromArray
-  ->JSON.Encode.object
-  ->JSON.stringify
+  cc->PgConnection.connectionConfigToJson->JSON.stringify
 
 let provision = (
   ~api: Pulumi.Output.t<AppSync.GraphQLApi.t>,

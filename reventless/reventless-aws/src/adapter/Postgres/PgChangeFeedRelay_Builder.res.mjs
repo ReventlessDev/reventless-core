@@ -12,6 +12,7 @@ import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adap
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Lambda$ReventlessAws from "../../util/Util_Lambda.res.mjs";
+import * as PgConnection$ReventlessAws from "./PgConnection.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_Cloudwatch$ReventlessAws from "../../util/Util_Cloudwatch.res.mjs";
 import * as Cloudwatch_EventRule$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Cloudwatch/Cloudwatch_EventRule.res.mjs";
@@ -26,33 +27,10 @@ function make(name, logs, securityGroupId, subnetIds, intervalMinutesOpt, opts) 
     l.connectionConfig,
     l.targetQueueUrl
   ]).apply(param => {
-    let cc = param[0];
-    let pgConnectionJson = Object.fromEntries([
-      [
-        "host",
-        cc.host
-      ],
-      [
-        "port",
-        cc.port
-      ],
-      [
-        "database",
-        cc.database
-      ],
-      [
-        "username",
-        cc.username
-      ],
-      [
-        "secretArn",
-        cc.secretArn
-      ]
-    ]);
     let entries = [
       [
         "pgConnection",
-        pgConnectionJson
+        PgConnection$ReventlessAws.connectionConfigToJson(undefined, param[0])
       ],
       [
         "logName",

@@ -15,18 +15,26 @@ import { poolFor } from "@reventlessdev/reventless-aws/src/adapter/Postgres/PgRu
 import { ensureSchema } from "@reventlessdev/reventless-postgres/src/PgSchema.res.mjs";
 import { log } from "./HandlerFactoryHelpers.mjs";
 
-export async function handler(_event, _context) {
-  const configStr = process.env["HANDLER_CONFIG"] || "{}";
-  const config = JSON.parse(configStr);
+// Config parse → pool → ensureSchema, with the pool source injectable so the
+// orchestration is integration-testable against a real Postgres without the
+// Secrets Manager round-trip (mirrors PgChangeFeedRelay_Runtime's
+// relayWithPool/relay split). `opts.makePool` defaults to the production `poolFor`.
+export async function runMigration(config, opts = {}) {
   if (!config.pgConnection) {
     throw new Error("PgMigrationEntryPoint: HANDLER_CONFIG has no pgConnection");
   }
   // `poolFor` memoises one pool per secret ARN per container and resolves the
   // RDS-managed password from Secrets Manager via a cached provider.
-  const pool = poolFor(config.pgConnection);
+  const makePool = opts.makePool ?? poolFor;
+  const pool = makePool(config.pgConnection);
   await ensureSchema(pool);
   log.info("ensureSchema completed for " + config.pgConnection.database, {
     comp: "PgMigration",
   });
   return "ok";
+}
+
+export async function handler(_event, _context) {
+  const config = JSON.parse(process.env["HANDLER_CONFIG"] || "{}");
+  return runMigration(config);
 }

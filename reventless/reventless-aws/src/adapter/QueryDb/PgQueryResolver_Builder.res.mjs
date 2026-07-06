@@ -11,6 +11,7 @@ import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
+import * as PgConnection$ReventlessAws from "../Postgres/PgConnection.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../Runtime/RuntimeEnvironment_Lambda.res.mjs";
@@ -70,28 +71,7 @@ export function response(ctx) {
 `;
 
 function pgConnectionJson(cc) {
-  return JSON.stringify(Object.fromEntries([
-    [
-      "host",
-      cc.host
-    ],
-    [
-      "port",
-      cc.port
-    ],
-    [
-      "database",
-      cc.database
-    ],
-    [
-      "username",
-      cc.username
-    ],
-    [
-      "secretArn",
-      cc.secretArn
-    ]
-  ]));
+  return JSON.stringify(PgConnection$ReventlessAws.connectionConfigToJson(undefined, cc));
 }
 
 function provision(api, selection, opts, createNodeResolverOpt) {

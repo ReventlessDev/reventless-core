@@ -98,26 +98,12 @@ let forDcbCommandTopic = (
       // C2: the DCB command Lambda is the only Postgres path that takes an append
       // lock, so `lockStrategy` rides in this fragment (not in `connectionConfig`,
       // which the classic/QueryDb paths share). The entry point passes it to
-      // `DcbEventLogStorage_Postgres_Runtime.opsFor`; polyvariant → its string name.
-      let lockStrategyStr = switch sel.lockStrategy {
-      | #AdvisoryLocks => "AdvisoryLocks"
-      | #RowLocks => "RowLocks"
-      }
-      sel.connectionConfig->Pulumi.Output.apply(cc => {
-        let pgConnectionJson =
-          [
-            ("host", cc.host->JSON.Encode.string),
-            ("port", cc.port->Int.toFloat->JSON.Encode.float),
-            ("database", cc.database->JSON.Encode.string),
-            ("username", cc.username->JSON.Encode.string),
-            ("secretArn", cc.secretArn->JSON.Encode.string),
-            ("lockStrategy", lockStrategyStr->JSON.Encode.string),
-          ]
-          ->Dict.fromArray
-          ->JSON.Encode.object
-          ->JSON.stringify
-        `,"pgConnection":${pgConnectionJson}`
-      })
+      // `DcbEventLogStorage_Postgres_Runtime.opsFor`.
+      sel.connectionConfig->Pulumi.Output.apply(cc =>
+        `,"pgConnection":${cc
+          ->PgConnection.connectionConfigToJson(~lockStrategy=sel.lockStrategy)
+          ->JSON.stringify}`
+      )
     | None => Pulumi.Output.make("")
     }
 

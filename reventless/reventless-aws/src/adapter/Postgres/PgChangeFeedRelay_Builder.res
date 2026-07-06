@@ -58,18 +58,8 @@ let make = (
     (l.connectionConfig, l.targetQueueUrl)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((cc, queueUrl)) => {
-      let pgConnectionJson =
-        [
-          ("host", cc.host->JSON.Encode.string),
-          ("port", cc.port->Int.toFloat->JSON.Encode.float),
-          ("database", cc.database->JSON.Encode.string),
-          ("username", cc.username->JSON.Encode.string),
-          ("secretArn", cc.secretArn->JSON.Encode.string),
-        ]
-        ->Dict.fromArray
-        ->JSON.Encode.object
       let entries = [
-        ("pgConnection", pgConnectionJson),
+        ("pgConnection", cc->PgConnection.connectionConfigToJson),
         ("logName", l.logName->JSON.Encode.string),
         ("subscriber", l.subscriber->JSON.Encode.string),
         ("targetQueueUrl", queueUrl->JSON.Encode.string),

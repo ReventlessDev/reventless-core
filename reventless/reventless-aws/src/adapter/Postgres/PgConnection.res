@@ -35,6 +35,32 @@ type connectionConfig = {
   secretArn: string,
 }
 
+/** Serialize a resolved `connectionConfig` into the `pgConnection` JSON object
+  the runtime entry points read from `HANDLER_CONFIG` (and `PgRuntime.poolFor`
+  reconstructs). One shared producer so all seven deploy-time builders emit a
+  byte-identical shape — the field set is a cold-start contract with the entry
+  points, so a drift here silently breaks a Lambda. `~lockStrategy` is included
+  only on the DCB command path (the sole Postgres append that takes a lock);
+  omit it everywhere else. Kept pure (no Pulumi) so it is directly unit-testable. */
+let connectionConfigToJson = (
+  ~lockStrategy: option<ReventlessPostgres.DcbEventLogStorage_Postgres.lockStrategy>=?,
+  cc: connectionConfig,
+): JSON.t => {
+  let fields = [
+    ("host", cc.host->JSON.Encode.string),
+    ("port", cc.port->Int.toFloat->JSON.Encode.float),
+    ("database", cc.database->JSON.Encode.string),
+    ("username", cc.username->JSON.Encode.string),
+    ("secretArn", cc.secretArn->JSON.Encode.string),
+  ]
+  switch lockStrategy {
+  | Some(#AdvisoryLocks) => fields->Array.push(("lockStrategy", "AdvisoryLocks"->JSON.Encode.string))
+  | Some(#RowLocks) => fields->Array.push(("lockStrategy", "RowLocks"->JSON.Encode.string))
+  | None => ()
+  }
+  fields->Dict.fromArray->JSON.Encode.object
+}
+
 type t = {
   /** Deploy-time resources (currently the RDS instance) for dependency wiring —
     e.g. the A3 migration Lambda and the B-phase adapters order after these. */
@@ -169,20 +195,9 @@ let make = (
   // instance's so the B-phase storage adapters can order after the schema exists.
   // The connection is passed as pre-serialized pieces to avoid a module cycle
   // (PgMigration_Builder must not reference this module's `connectionConfig`).
-  let migrationHandlerConfig = connectionConfig->Pulumi.Output.apply(cc => {
-    let pgConnectionJson =
-      [
-        ("host", cc.host->JSON.Encode.string),
-        ("port", cc.port->Int.toFloat->JSON.Encode.float),
-        ("database", cc.database->JSON.Encode.string),
-        ("username", cc.username->JSON.Encode.string),
-        ("secretArn", cc.secretArn->JSON.Encode.string),
-      ]
-      ->Dict.fromArray
-      ->JSON.Encode.object
-      ->JSON.stringify
-    `{"pgConnection":${pgConnectionJson}}`
-  })
+  let migrationHandlerConfig = connectionConfig->Pulumi.Output.apply(cc =>
+    `{"pgConnection":${cc->connectionConfigToJson->JSON.stringify}}`
+  )
   let migrationResources = PgMigration_Builder.make(
     ~name=`${name}-pg-migrate`,
     ~handlerConfig=migrationHandlerConfig,

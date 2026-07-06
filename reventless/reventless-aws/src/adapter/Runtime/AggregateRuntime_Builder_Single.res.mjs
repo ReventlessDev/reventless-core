@@ -10,6 +10,7 @@ import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
+import * as PgConnection$ReventlessAws from "../Postgres/PgConnection.res.mjs";
 import * as EventLogBackend$ReventlessAws from "../EventLog/EventLogBackend.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
@@ -156,31 +157,7 @@ function finish() {
       let handlerOutputs = [];
       let packageDirs = {};
       let pgSelection = EventLogBackend$ReventlessAws.get();
-      let pgConnectionFragment = pgSelection !== undefined ? pgSelection.connectionConfig.apply(cc => {
-          let pgConnectionJson = JSON.stringify(Object.fromEntries([
-            [
-              "host",
-              cc.host
-            ],
-            [
-              "port",
-              cc.port
-            ],
-            [
-              "database",
-              cc.database
-            ],
-            [
-              "username",
-              cc.username
-            ],
-            [
-              "secretArn",
-              cc.secretArn
-            ]
-          ]));
-          return `,"pgConnection":` + pgConnectionJson;
-        }) : Pulumi.output("");
+      let pgConnectionFragment = pgSelection !== undefined ? pgSelection.connectionConfig.apply(cc => `,"pgConnection":` + JSON.stringify(PgConnection$ReventlessAws.connectionConfigToJson(undefined, cc))) : Pulumi.output("");
       specs.forEach(spec => {
         let info = aggregateInfos[spec.aggregateName];
         if (info === undefined) {

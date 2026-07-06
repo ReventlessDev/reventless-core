@@ -11,6 +11,7 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as DcbBackend$ReventlessAws from "../DcbEventLog/DcbBackend.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
+import * as PgConnection$ReventlessAws from "../Postgres/PgConnection.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as QueryDbBackend$ReventlessAws from "../QueryDb/QueryDbBackend.res.mjs";
 import * as EventLogBackend$ReventlessAws from "../EventLog/EventLogBackend.res.mjs";
@@ -104,31 +105,7 @@ function finish() {
       let feedArnOutput = feedQueue !== undefined ? feedQueue.arn : Pulumi.output("");
       let qdbSelection = QueryDbBackend$ReventlessAws.get();
       let anyPgBacked = Object.values(readModelInfos).some(info => info.pgBacked);
-      let pgConnectionFragment = qdbSelection !== undefined && anyPgBacked ? qdbSelection.connectionConfig.apply(cc => {
-          let pgConnectionJson = JSON.stringify(Object.fromEntries([
-            [
-              "host",
-              cc.host
-            ],
-            [
-              "port",
-              cc.port
-            ],
-            [
-              "database",
-              cc.database
-            ],
-            [
-              "username",
-              cc.username
-            ],
-            [
-              "secretArn",
-              cc.secretArn
-            ]
-          ]));
-          return `,"pgConnection":` + pgConnectionJson;
-        }) : Pulumi.output("");
+      let pgConnectionFragment = qdbSelection !== undefined && anyPgBacked ? qdbSelection.connectionConfig.apply(cc => `,"pgConnection":` + JSON.stringify(PgConnection$ReventlessAws.connectionConfigToJson(undefined, cc))) : Pulumi.output("");
       let handlerOutputs = [];
       let packageDirs = {};
       let sortedSpecs = storedSpecs.toSorted((a, b) => Primitive_string.compare(a.componentName, b.componentName));

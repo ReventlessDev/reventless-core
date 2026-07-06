@@ -9,6 +9,7 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as DcbBackend$ReventlessAws from "../DcbEventLog/DcbBackend.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
+import * as PgConnection$ReventlessAws from "../Postgres/PgConnection.res.mjs";
 import * as CommandTopicChannel_SQS$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 
@@ -51,42 +52,7 @@ function forDcbCommandTopic(slicePaths, dcbTableName, pluginName, syncConfig, as
     let b = Stdlib_Option.getOr(JSON.stringify(param[1]), `""`);
     return `{"spec":` + s + `,"behavior":` + b + `}`;
   }).join(",");
-  let pgConnectionFragment;
-  if (pgSelection !== undefined) {
-    let match = pgSelection.lockStrategy;
-    let lockStrategyStr = match === "AdvisoryLocks" ? "AdvisoryLocks" : "RowLocks";
-    pgConnectionFragment = pgSelection.connectionConfig.apply(cc => {
-      let pgConnectionJson = JSON.stringify(Object.fromEntries([
-        [
-          "host",
-          cc.host
-        ],
-        [
-          "port",
-          cc.port
-        ],
-        [
-          "database",
-          cc.database
-        ],
-        [
-          "username",
-          cc.username
-        ],
-        [
-          "secretArn",
-          cc.secretArn
-        ],
-        [
-          "lockStrategy",
-          lockStrategyStr
-        ]
-      ]));
-      return `,"pgConnection":` + pgConnectionJson;
-    });
-  } else {
-    pgConnectionFragment = Pulumi.output("");
-  }
+  let pgConnectionFragment = pgSelection !== undefined ? pgSelection.connectionConfig.apply(cc => `,"pgConnection":` + JSON.stringify(PgConnection$ReventlessAws.connectionConfigToJson(pgSelection.lockStrategy, cc))) : Pulumi.output("");
   let handlerConfigJson = Pulumi.all([
     dcbTableName$1,
     queue.id,
@@ -105,13 +71,13 @@ function forDcbCommandTopic(slicePaths, dcbTableName, pluginName, syncConfig, as
   });
   packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws");
   packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-core");
-  let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs", packageDirs, undefined);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs", packageDirs, undefined);
   Stdlib_Option.forEach(cfg.sqsBatchSize, CommandTopicChannel_SQS$ReventlessAws.setBatchSize);
   let vpcConfig = pgSelection !== undefined ? pgSelection.securityGroupId.apply(sgId => ({
       subnetIds: pgSelection.subnetIds,
       securityGroupIds: [sgId]
     })) : undefined;
-  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match$1.code, match$1.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, true, vpcConfig, opts);
+  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, true, vpcConfig, opts);
   if (pgSelection !== undefined) {
     pgSelection.connectionConfig.apply(cc => new (Aws.iam.RolePolicy)(name + `-pgSecret`, {
       policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `-pgSecretPolicy`, [{
