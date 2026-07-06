@@ -6,6 +6,19 @@ provision managed Postgres (RDS/Aurora) and route EventLog / DcbEventLog /
 QueryDb Lambda operations to the existing `@reventlessdev/reventless-postgres`
 runtime. No new storage semantics — the storage engine already exists and is
 live-validated; this plan is **provisioning + connection wiring only**.
+
+> **⚠️ BLOCKED on a systemic deploy bug (found 2026-07-06 via a real-AWS Rung-2
+> deploy).** All the B1/B2/B3 wiring here is correct, but **none of it runs on
+> real AWS yet** — every deployed `.mjs` Lambda fails at cold start with
+> `ERR_MODULE_NOT_FOUND` because ESM `import` can't resolve `@reventlessdev/*`
+> (or `effect`/`sury`) from the Lambda **layer** (`/opt/nodejs/node_modules` is
+> off the ESM path; only CJS `require` uses `NODE_PATH`). This is **not**
+> Postgres-specific — it affects the entire deployed-Lambda runtime (DynamoDB
+> path included) and has almost certainly never worked end-to-end on AWS. The fix
+> is its own plan:
+> [`deployed-lambda-esm-self-containment.md`](./deployed-lambda-esm-self-containment.md).
+> The Postgres deployed path (and any E1/E2/live validation below) is blocked on
+> that plan's Phase 1.
 **Prior art in this repo**:
 - `docs/plans/done/postgres-storage-adapter.md` — the storage engine
   (`reventless-postgres`), live-validated on Postgres 16 (8/8 concurrency,
@@ -541,10 +554,18 @@ cold-start path without AWS:
   `runMigration` (mirrors the relay's `relayWithPool`/`relay` split); `handler`
   stays thin. Validated locally against Docker Postgres 16 (both event logs
   queryable, idempotent). Default `pnpm test` stays dependency-free (189 green).
-- **Remaining for a real deploy:** the "Rung-2" smallest real-AWS check is
-  deploying **just `PgConnection`** (RDS + migration Invocation, no plugins) to a
-  throwaway stack — a green `pulumi up` proves VPC reachability + secret fetch +
-  `ensureSchema` in one cheap step; "Rung-3" is the full E1/E2 plugin chain.
+- **Rung 2 — RAN 2026-07-06, and caught the blocker.** Deployed **just
+  `PgConnection`** (minimal VPC + 2-AZ subnets + Secrets Manager interface
+  endpoint + RDS + the A3 migration Lambda + Invocation) to a throwaway
+  `eu-west-1` stack. **All infra provisioned cleanly** (VPC/subnets/endpoint/RDS/
+  the full A3 resource graph — the `EC2_VpcEndpoint.subnetIds` binding was added
+  for it, commit `77fb6069d`), then destroyed cleanly (~$0.50). But the migration
+  **Invocation failed**: the in-VPC Lambda hit `ERR_MODULE_NOT_FOUND` for
+  `@reventlessdev/reventless-aws` — the **systemic ESM/layer bug** (see the
+  ⚠️ banner up top). So Rung 2 validated everything *except* the Lambda runtime,
+  which is blocked on
+  [`deployed-lambda-esm-self-containment.md`](./deployed-lambda-esm-self-containment.md)
+  Phase 1. "Rung-3" (full E1/E2 plugin chain) is likewise blocked on it.
 - **Parallel-`PG_URL` contention — fixed (2026-07-06).** The `PG_URL` integration
   suites (relay, pipeline, migration) share one database and `truncateAll`, so
   running them **in parallel** under `PG_URL` cross-contaminated (relay⇄pipeline
