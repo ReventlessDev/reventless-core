@@ -203,9 +203,56 @@ transitive imports). Build green, all 185 `reventless-aws` tests pass.
   would fail on a *missing subpath* even with the fix. CI publishes the layer from
   the npm-published `reventless-aws`, so the entry point + fix reach the layer only
   after that package version is released.
-- **Rung 3 — TODO.** Deploy one real plugin (an aggregate + a read model, DynamoDB
-  backend) and drive command → projection → query end to end. This validates the
-  *default* deployed path, not just Postgres.
+- **Rung 3 — RAN 2026-07-06, caught a SECOND blocker.** Rather than a fresh deploy,
+  drove the already-live CI-deployed `online-shop-hybrid` platform (deployed 21:46
+  UTC on layer `:159`/alpha.178 — its Lambdas carry `NODE_OPTIONS=--import` +
+  `ESM_FALLBACK_DIRS`, confirming the fix shipped). Direct cold-start probes
+  (empty-batch invokes) of the fixed default-path Lambdas:
+  - **Read-model collector (`AllReadModels`): GREEN** — cold-started clean, no error.
+  - **Aggregate command handler (`AllAggregatesCmdHandler`): FAILS** — and *not* the
+    original bug. The hook fired and correctly exhausted its fallbacks because the
+    missing package genuinely isn't at runtime:
+    `Cannot find package '@pulumi/pulumi' imported from
+    .../reventless-postgres/src/EventLogStorage_Postgres.res.mjs`.
+  - **DCB command handler (`OrderingDcbCmdHandler`): FAILS** — same, via
+    `DcbEventLogStorage_Postgres.res.mjs`.
+
+  **Second blocker (distinct from ESM self-containment; pre-existing from the
+  Postgres B-phase):** the runtime entry points (`AggregateEntryPoint` line 15,
+  and the DCB equivalent) *unconditionally* import the Postgres event-log runtime
+  ops, which transitively import `@reventlessdev/reventless-postgres`'s storage
+  modules — and those modules import `@pulumi/pulumi` at module top-level for a
+  **deploy-time** `Pulumi.Output.make(ops)` wrapper (`EventLogStorage_Postgres.res:175`,
+  `DcbEventLogStorage_Postgres.res:351`, `QueryDbStorage_Postgres.res:246`). ESM
+  loads a module's whole import graph, so the runtime drags in a deploy-time-only
+  package that exists in no Lambda (not the layer, not `/var/runtime`). Every
+  runtime caller already discards the Pulumi-wrapped element
+  (`let (_name, ops, _storage) = makeStorage(...)`), so it is pure runtime-vs-deploy
+  bleed. The ESM loader can't fix this — the fix is to keep `@pulumi/pulumi` out of
+  the runtime import graph (split the runtime `ops` from the deploy-time
+  `Pulumi.Output` wrapper — the same "keep runtime pure of Pulumi" split already
+  applied to `PgConnection.connectionConfigToJson`). Tracked as a follow-up; the
+  *default DynamoDB* command path is broken by it too (the aggregate handler pulls
+  the PG ops unconditionally regardless of backend).
+
+  So: ESM self-containment (Phase 1) is validated GREEN; the deployed command path
+  needs this second, separate fix before Rung-3 can go end-to-end.
+
+- **Second blocker — FIXED 2026-07-06 (runtime/deploy split; pending layer
+  republish for the on-AWS re-check).** Split each of the three `reventless-postgres`
+  storage modules into a runtime-pure `*_Ops` module (the ops/helpers, imports NO
+  `@pulumi/pulumi`) and a thin wrapper that `include`s it and adds only the
+  deploy-time `Pulumi.Output` adapter — keeping the historic `makeStorage` 3-tuple /
+  `Make` APIs unchanged so `reventless-local`, tests, and deploy-time callers are
+  untouched. Repointed the three reventless-aws runtime shims
+  (`EventLog`/`DcbEventLog`/`QueryDb` `*_Postgres_Runtime`) at the `*_Ops` modules.
+  Validated locally by a static import-graph walk of **all 16 deployed entry
+  points** — none can reach `@pulumi/*` (the walker was confirmed to flag the
+  deploy-time wrappers/builders it should). Builds clean; postgres/aws/local suites
+  green (669 tests) + PG integration. Full on-AWS re-check waits on the next CI
+  layer (which republishes reventless-postgres with the split), then re-probe the
+  command handlers — an empty-batch `aws lambda invoke` must no longer
+  `ERR_MODULE_NOT_FOUND`.
 
 ---
 

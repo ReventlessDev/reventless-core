@@ -15,5 +15,7 @@ let opsFor = (
   ~subIdField: option<string>=?,
 ): ReventlessCore.QueryDb_Adapter.operations => {
   let pool = PgRuntime.poolFor(config)
-  ReventlessPostgres.QueryDbStorage_Postgres.makeOperations(~pool, ~name, ~indexes, ~subIdField)
+  // Import the runtime-pure ops module (no @pulumi/pulumi) so this deployed-Lambda
+  // path never drags a deploy-time dep into its ESM import graph.
+  ReventlessPostgres.QueryDbStorage_Postgres_Ops.makeOperations(~pool, ~name, ~indexes, ~subIdField)
 }

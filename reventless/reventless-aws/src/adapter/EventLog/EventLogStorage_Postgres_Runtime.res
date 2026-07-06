@@ -14,7 +14,9 @@ let opsFor = (
   ~logName: string,
 ): ReventlessCore.EventLog_Adapter.operations => {
   let pool = PgRuntime.poolFor(config)
-  let (_name, ops, _storage) = ReventlessPostgres.EventLogStorage_Postgres.makeStorage(
+  // Import the runtime-pure ops module (no @pulumi/pulumi) so this deployed-Lambda
+  // path never drags a deploy-time dep into its ESM import graph.
+  let (_name, ops) = ReventlessPostgres.EventLogStorage_Postgres_Ops.makeOps(
     ~pool,
     ~name=logName,
     ~opts=(),

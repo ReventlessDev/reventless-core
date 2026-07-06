@@ -11,10 +11,12 @@
 let opsFor = (
   config: PgConnection.connectionConfig,
   ~logName: string,
-  ~lockStrategy: ReventlessPostgres.DcbEventLogStorage_Postgres.lockStrategy=#AdvisoryLocks,
+  ~lockStrategy: ReventlessPostgres.DcbEventLogStorage_Postgres_Ops.lockStrategy=#AdvisoryLocks,
 ): ReventlessCore.DcbEventLog_Adapter.operations => {
   let pool = PgRuntime.poolFor(config)
-  let (_name, ops, _storage) = ReventlessPostgres.DcbEventLogStorage_Postgres.makeStorage(
+  // Import the runtime-pure ops module (no @pulumi/pulumi) so this deployed-Lambda
+  // path never drags a deploy-time dep into its ESM import graph.
+  let (_name, ops) = ReventlessPostgres.DcbEventLogStorage_Postgres_Ops.makeOps(
     ~pool,
     ~name=logName,
     ~indexes=[],
