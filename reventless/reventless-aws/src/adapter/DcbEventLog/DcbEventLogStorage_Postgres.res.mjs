@@ -8,7 +8,13 @@ function make(name, param, partitionTag, $staropt$star, param$1) {
   $staropt$star !== undefined;
   DcbBackend$ReventlessAws.registerRelayLog(name, partitionTag);
   let match = DcbBackend$ReventlessAws.get();
-  let operations = match !== undefined ? match.connectionConfig.apply(config => DcbEventLogStorage_Postgres_Runtime$ReventlessAws.opsFor(config, name, undefined)) : Stdlib_JsError.throwWithMessage("DcbEventLogStorage_Postgres.make called without a DcbBackend selection");
+  let operations;
+  if (match !== undefined) {
+    let lockStrategy = match.lockStrategy;
+    operations = match.connectionConfig.apply(config => DcbEventLogStorage_Postgres_Runtime$ReventlessAws.opsFor(config, name, lockStrategy));
+  } else {
+    operations = Stdlib_JsError.throwWithMessage("DcbEventLogStorage_Postgres.make called without a DcbBackend selection");
+  }
   return {
     resources: [],
     operations: operations

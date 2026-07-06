@@ -46,6 +46,14 @@ type t = {
   /** The DB's private subnets, echoed back for the Lambda `vpcConfig` so
     handlers land in the same subnets as the database. */
   subnetIds: array<Pulumi.Input.t<string>>,
+  /** DCB append lock strategy (C2). `#AdvisoryLocks` (default) is
+    transaction-scoped and lowest-overhead when Lambdas hold a few long-lived
+    pools **directly** against RDS, but it **pins connections on RDS Proxy**
+    (advisory locks are session state Proxy cannot multiplex). Choose
+    `#RowLocks` when fronting the DB with RDS Proxy so the Proxy can share
+    connections across invocations. Threaded to the DCB command Lambda via
+    `DcbBackend`; classic EventLog and QueryDb appends take no such lock. */
+  lockStrategy: ReventlessPostgres.DcbEventLogStorage_Postgres.lockStrategy,
 }
 
 /** Postgres wire port. */
@@ -65,6 +73,7 @@ let make = (
   ~backupRetentionPeriod=7,
   ~deletionProtection=true,
   ~skipFinalSnapshot=false,
+  ~lockStrategy: ReventlessPostgres.DcbEventLogStorage_Postgres.lockStrategy=#AdvisoryLocks,
   ~opts: option<Pulumi.ComponentResource.options>=?,
 ): t => {
   let opts =
@@ -165,5 +174,6 @@ let make = (
     connectionConfig,
     securityGroupId: sg.id,
     subnetIds,
+    lockStrategy,
   }
 }

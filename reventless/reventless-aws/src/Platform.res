@@ -91,6 +91,7 @@ module MakeWithConfig = (
       connectionConfig: pg.connectionConfig,
       securityGroupId: pg.securityGroupId,
       subnetIds: pg.subnetIds,
+      lockStrategy: pg.lockStrategy,
     })
     EventLogBackend.set({
       connectionConfig: pg.connectionConfig,

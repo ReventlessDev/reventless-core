@@ -99,7 +99,13 @@ export async function buildHandlersForConfig(config, opts = {}) {
   // (see docs/plans/aws-postgres-change-feed-bridge.md), not by this Lambda.
   const rawStorageOps = config.pgConnection
     ? (() => {
-        const pgOps = pgDcbEventLogOpsFor(config.pgConnection, config.dcbEventLogTableName);
+        // C2: `lockStrategy` ("AdvisoryLocks" | "RowLocks") is the polyvariant's
+        // string name; `opsFor` defaults to "AdvisoryLocks" when it's absent.
+        const pgOps = pgDcbEventLogOpsFor(
+          config.pgConnection,
+          config.dcbEventLogTableName,
+          config.pgConnection.lockStrategy,
+        );
         return { read: pgOps.read, append: pgOps.append, readStream: pgOps.readStream };
       })()
     : (() => {

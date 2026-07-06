@@ -130,7 +130,7 @@ reshape the phasing:
 | B2 | `DcbEventLogStorage_Postgres` AWS adapter + change-feed → EventCollector/bus bridge | reventless-aws | Feature |
 | B3 | `QueryDbStorage_Postgres` + `QueryEngine_Postgres` AWS adapters | reventless-aws | Feature |
 | C1 | Lambda runtime env: inject connection secret ARN, resolve at cold start, IAM `secretsmanager:GetSecretValue`, VPC config + SG | reventless-aws | Feature (core) |
-| C2 | Connection pooling decision: pinned `#AdvisoryLocks` on direct RDS vs. RDS Proxy + `#RowLocks` — expose as a config knob | reventless-aws | Hardening |
+| C2 | Connection pooling decision: pinned `#AdvisoryLocks` on direct RDS vs. RDS Proxy + `#RowLocks` — expose as a config knob (**knob landed 2026-07-06**; RDS Proxy provisioning deferred as fast-follow) | reventless-aws | Hardening |
 | D1 | Backend selection: how a platform opts a surface into Postgres vs. DynamoDB (per-surface, so mixed deployments are possible) | reventless-aws | Contract |
 | D2 | Deploy-time resource `service`-tag / routing so command publishers target the right backend (cf. `meta.service` dispatch note) | reventless-aws | Contract |
 | E1 | Example: a hybrid example (or new `examples/online-shop-postgres/`) deploying one plugin on RDS | examples | Integration |
@@ -416,6 +416,30 @@ per-surface config knob and **document the default deployment shape**:
   `#RowLocks`.
 Lambda's fan-out concurrency makes connection exhaustion a real risk; the docs
 must steer, and the default should be safe for the common Lambda+Proxy case.
+
+**Lock-strategy knob — landed (2026-07-06).** `PgConnection.make(~lockStrategy=
+#AdvisoryLocks)` now surfaces the choice; `PgConnection.t` carries it. The value
+threads platform-wide through the single DCB toggle:
+`Platform.MakeWithConfig(~pgConnection)` → `DcbBackend.selection.lockStrategy` →
+`StateChangeSliceRuntime_Builder_Single` serializes it into the DCB command
+Lambda's `HANDLER_CONFIG.pgConnection.lockStrategy` (as the polyvariant's string
+name) → `DcbCommandTopicEntryPoint.mjs` forwards it as the 3rd arg to
+`DcbEventLogStorage_Postgres_Runtime.opsFor` → `makeStorage(~lockStrategy)`. The
+DCB command Lambda is the **only** Postgres path that takes an append lock, so
+the field rides in the `pgConnection` HANDLER_CONFIG fragment, not in the shared
+`connectionConfig` (which classic EventLog and QueryDb also read — neither takes
+such a lock). Absent field ⇒ `opsFor` defaults to `#AdvisoryLocks`, so the
+DynamoDB and pre-existing Postgres paths stay byte-identical. Lock-strategy
+*correctness* under each mode is already live-validated in `reventless-postgres`
+(done-plan B4); the AWS side is type-checked plumbing. Full `reventless-aws`
+build zero warnings, 181 tests green.
+
+**Deferred within C2: RDS Proxy provisioning.** The `Rds_Proxy` binding exists
+(A0) but `PgConnection` does not yet provision a Proxy or swap
+`connectionConfig.host` to the Proxy endpoint. It interacts with C1's VPC/
+endpoint reachability and is only meaningful under live-stack validation, so it
+is a fast-follow: the `#RowLocks` knob it pairs with is already in place, and the
+F1 deployment guide documents the direct-RDS vs. Proxy pairing.
 
 ---
 

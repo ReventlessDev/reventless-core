@@ -129,7 +129,8 @@ function MakeWithConfig(Config) {
     DcbBackend$ReventlessAws.set({
       connectionConfig: pg.connectionConfig,
       securityGroupId: pg.securityGroupId,
-      subnetIds: pg.subnetIds
+      subnetIds: pg.subnetIds,
+      lockStrategy: pg.lockStrategy
     });
     EventLogBackend$ReventlessAws.set({
       connectionConfig: pg.connectionConfig,
@@ -1360,7 +1361,8 @@ function Make($star) {
     DcbBackend$ReventlessAws.set({
       connectionConfig: pg.connectionConfig,
       securityGroupId: pg.securityGroupId,
-      subnetIds: pg.subnetIds
+      subnetIds: pg.subnetIds,
+      lockStrategy: pg.lockStrategy
     });
     EventLogBackend$ReventlessAws.set({
       connectionConfig: pg.connectionConfig,

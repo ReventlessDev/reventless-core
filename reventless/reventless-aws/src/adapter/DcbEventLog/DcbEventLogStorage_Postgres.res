@@ -26,9 +26,9 @@ let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (
   DcbBackend.registerRelayLog(~logName=name, ~partitionTag)
 
   let operations = switch DcbBackend.get() {
-  | Some({connectionConfig}) =>
+  | Some({connectionConfig, lockStrategy}) =>
     connectionConfig->Pulumi.Output.apply(config =>
-      DcbEventLogStorage_Postgres_Runtime.opsFor(config, ~logName=name)
+      DcbEventLogStorage_Postgres_Runtime.opsFor(config, ~logName=name, ~lockStrategy)
     )
   | None =>
     // Selectable only routes here when a selection is set; guard defensively.

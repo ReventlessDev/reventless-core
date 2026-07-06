@@ -18,7 +18,7 @@ let connectionConfigSchema = S.schema(s => ({
   secretArn: s.m(S.string)
 }));
 
-function make(name, vpcId, subnetIds, databaseNameOpt, usernameOpt, engineVersionOpt, instanceClassOpt, allocatedStorageOpt, multiAzOpt, storageEncryptedOpt, backupRetentionPeriodOpt, deletionProtectionOpt, skipFinalSnapshotOpt, opts) {
+function make(name, vpcId, subnetIds, databaseNameOpt, usernameOpt, engineVersionOpt, instanceClassOpt, allocatedStorageOpt, multiAzOpt, storageEncryptedOpt, backupRetentionPeriodOpt, deletionProtectionOpt, skipFinalSnapshotOpt, lockStrategyOpt, opts) {
   let databaseName = databaseNameOpt !== undefined ? databaseNameOpt : "reventless";
   let username = usernameOpt !== undefined ? usernameOpt : "reventless_admin";
   let engineVersion = engineVersionOpt !== undefined ? engineVersionOpt : "16";
@@ -29,6 +29,7 @@ function make(name, vpcId, subnetIds, databaseNameOpt, usernameOpt, engineVersio
   let backupRetentionPeriod = backupRetentionPeriodOpt !== undefined ? backupRetentionPeriodOpt : 7;
   let deletionProtection = deletionProtectionOpt !== undefined ? deletionProtectionOpt : true;
   let skipFinalSnapshot = skipFinalSnapshotOpt !== undefined ? skipFinalSnapshotOpt : false;
+  let lockStrategy = lockStrategyOpt !== undefined ? lockStrategyOpt : "AdvisoryLocks";
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let tags = Object.fromEntries([
     [
@@ -98,7 +99,8 @@ function make(name, vpcId, subnetIds, databaseNameOpt, usernameOpt, engineVersio
     resources: [Adapter$ReventlessInfra.make(Pulumi.output(name), instance.id, instance.arn, Pulumi.output("aws:rds"), undefined, Pulumi.output("postgres"), undefined, Pulumi.output("aws:rds:Instance"), undefined, undefined)],
     connectionConfig: connectionConfig,
     securityGroupId: sg.id,
-    subnetIds: subnetIds
+    subnetIds: subnetIds,
+    lockStrategy: lockStrategy
   };
 }
 

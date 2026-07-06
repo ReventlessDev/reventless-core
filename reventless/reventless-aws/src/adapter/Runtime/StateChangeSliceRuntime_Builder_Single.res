@@ -95,6 +95,14 @@ let forDcbCommandTopic = (
     // fragment merged into HANDLER_CONFIG below.
     let pgConnectionFragment = switch pgSelection {
     | Some(sel) =>
+      // C2: the DCB command Lambda is the only Postgres path that takes an append
+      // lock, so `lockStrategy` rides in this fragment (not in `connectionConfig`,
+      // which the classic/QueryDb paths share). The entry point passes it to
+      // `DcbEventLogStorage_Postgres_Runtime.opsFor`; polyvariant → its string name.
+      let lockStrategyStr = switch sel.lockStrategy {
+      | #AdvisoryLocks => "AdvisoryLocks"
+      | #RowLocks => "RowLocks"
+      }
       sel.connectionConfig->Pulumi.Output.apply(cc => {
         let pgConnectionJson =
           [
@@ -103,6 +111,7 @@ let forDcbCommandTopic = (
             ("database", cc.database->JSON.Encode.string),
             ("username", cc.username->JSON.Encode.string),
             ("secretArn", cc.secretArn->JSON.Encode.string),
+            ("lockStrategy", lockStrategyStr->JSON.Encode.string),
           ]
           ->Dict.fromArray
           ->JSON.Encode.object

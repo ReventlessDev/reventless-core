@@ -19,6 +19,10 @@ type selection = {
   securityGroupId: Pulumi.Output.t<string>,
   /** Private subnets for the in-VPC DCB/relay Lambdas (PgConnection.subnetIds). */
   subnetIds: array<Pulumi.Input.t<string>>,
+  /** DCB append lock strategy (C2), carried from `PgConnection.lockStrategy` and
+    serialized into the DCB command Lambda's HANDLER_CONFIG. Default
+    `#AdvisoryLocks`; `#RowLocks` for RDS-Proxy-fronted deployments. */
+  lockStrategy: ReventlessPostgres.DcbEventLogStorage_Postgres.lockStrategy,
 }
 
 let selectionRef: ref<option<selection>> = ref(None)
