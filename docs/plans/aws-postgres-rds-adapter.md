@@ -545,12 +545,26 @@ cold-start path without AWS:
   deploying **just `PgConnection`** (RDS + migration Invocation, no plugins) to a
   throwaway stack — a green `pulumi up` proves VPC reachability + secret fetch +
   `ensureSchema` in one cheap step; "Rung-3" is the full E1/E2 plugin chain.
-- **Pre-existing hazard noted (not fixed here):** the `PG_URL` integration suites
-  (relay, pipeline, migration) share one database and `truncateAll`, so running
-  them **in parallel** under `PG_URL` cross-contaminates (relay⇄pipeline fail even
-  without the new test). They pass in isolation and with `jest --runInBand`
-  (195 green). Fix later with a `test:integration` script that runs serial or
-  isolates a DB per suite; unaffected by default CI (`PG_URL` unset there).
+- **Parallel-`PG_URL` contention — fixed (2026-07-06).** The `PG_URL` integration
+  suites (relay, pipeline, migration) share one database and `truncateAll`, so
+  running them **in parallel** under `PG_URL` cross-contaminated (relay⇄pipeline
+  failed even without the new test). Fixed by giving them their own serial path,
+  mirroring the DynamoDB integration setup:
+  - `pnpm run test:integration:pg` → `run-pg-integration-tests.sh` boots a
+    Postgres 16 sidecar (`docker-compose.postgres.yml`, dedicated host port 55433
+    so it never collides with a dev's own Postgres), exports `PG_URL`, runs
+    `jest.integration.pg.config.js` with `maxWorkers: 1` (serial), tears down.
+    Skips cleanly if Docker is absent; honours a pre-set `PG_URL`. Wired into CI
+    (`continue-on-error`, like the DynamoDB step).
+  - The three suites are now **excluded from the default parallel project**
+    (`Pg.*IntegrationTest` in `testPathIgnorePatterns`), so `PG_URL=… pnpm test`
+    can no longer contend. The `PgConnectionJsonTest` unit contract guard stays in
+    the default run. Verified: 10 PG integration tests green serially; default
+    `pnpm test` 185 green; full build zero warnings.
+  - Gotcha found: the serial config needs the same `@npmcli/arborist`/`spdx-*`
+    `moduleNameMapper` shims the default project has (rebased to repo-root
+    rootDir) — a transitive deploy-graph import pulls them, and without the shims
+    ESM collection silently registers 0 tests.
 
 ## Phase F — Docs
 

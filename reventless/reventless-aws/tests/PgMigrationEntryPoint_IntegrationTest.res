@@ -7,9 +7,10 @@
 // (that AWS boundary is the only remaining unvalidated piece). Proves the
 // migration leaves a queryable schema and is safely re-runnable.
 //
-// The guard test (no pgConnection → throws) runs always; the live path is
-// skipped unless PG_URL is set, keeping default `pnpm test` dependency-free:
-//   PG_URL=postgres://postgres:postgres@localhost:5432/postgres pnpm test
+// Run via `pnpm run test:integration:pg` (boots a Postgres sidecar, runs the PG
+// suites serially, tears down). Excluded from the default parallel `pnpm test`.
+// The guard test (no pgConnection → throws) needs no DB; the live path is
+// skipped unless PG_URL is set (the script exports it).
 
 open JestGlobals
 

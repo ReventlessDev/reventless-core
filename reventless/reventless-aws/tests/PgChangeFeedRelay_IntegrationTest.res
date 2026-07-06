@@ -1,8 +1,8 @@
 // Live-Postgres integration suite for the change-feed relay (B2.4).
 //
-// Skipped unless PG_URL is set, so the default `pnpm test` stays dependency-free.
-// Run against a real database with e.g.:
-//   PG_URL=postgres://postgres:postgres@localhost:5432/postgres pnpm test
+// Run via `pnpm run test:integration:pg` (boots a Postgres sidecar, runs the PG
+// suites serially, tears down). Excluded from the default parallel `pnpm test`;
+// self-skips unless PG_URL is set (the script exports it).
 //
 // Exercises the deployed propagation path end-to-end minus AWS: DCB events are
 // appended to a real `dcb_event` log (classic events to `event_log`), then

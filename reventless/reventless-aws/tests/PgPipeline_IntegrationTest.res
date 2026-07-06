@@ -1,6 +1,8 @@
 // End-to-end Postgres projection pipeline (B1 + B3.0 + B3.1 composed), minus AWS.
 //
-// Skipped unless PG_URL is set. Exercises the full deployed classic path against
+// Run via `pnpm run test:integration:pg` (boots a Postgres sidecar, runs the PG
+// suites serially, tears down). Excluded from the default parallel `pnpm test`;
+// self-skips unless PG_URL is set. Exercises the full deployed classic path against
 // a real database:
 //   classic append (`event_log`) → change-feed relay (`relayClassicWithPool`,
 //   emitting the EventCollector `{id, meta, event}` bodies) → feed-queue SQS

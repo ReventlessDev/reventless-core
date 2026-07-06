@@ -50,7 +50,8 @@
     ],
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "<rootDir>/tests/integration/"
+      "<rootDir>/tests/integration/",
+      "Pg.*IntegrationTest\\.res\\.mjs$"
     ],
     "moduleFileExtensions": [
       "js",

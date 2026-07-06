@@ -1,0 +1,21 @@
+# Postgres sidecar for the PG_URL-gated integration suites (change-feed relay,
+# projection pipeline, schema-migration entry point).
+# Booted/torn down by scripts/run-pg-integration-tests.sh.
+#
+# tmpfs keeps the data dir in RAM (no on-disk state to clean up); the suites
+# ensureSchema + truncateAll themselves, and run serially, so one shared DB is
+# fine.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+    command: "-c fsync=off -c full_page_writes=off"
+    tmpfs:
+      - /var/lib/postgresql/data
+    # Non-standard host port so the sidecar never collides with a dev's own
+    # Postgres on 5432 (the run script exports a matching PG_URL).
+    ports:
+      - "55433:5432"

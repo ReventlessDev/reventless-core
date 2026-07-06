@@ -198,6 +198,11 @@ jobs:
         run: pnpm run test:integration
         continue-on-error: true
 
+      - name: Run Postgres integration tests
+        if: success() && steps.affected.outputs.select != 'none'
+        run: pnpm run test:integration:pg
+        continue-on-error: true
+
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
