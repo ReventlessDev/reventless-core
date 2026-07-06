@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.5 (2026-07-06)
+
+### Features
+
+* **reventless-aws:** classic EventLog Postgres deploy-time wiring + relay (B1 vertical) ([8235ba4](https://github.com/ReventlessDev/reventless-core/commit/8235ba44e506f7094d17251405c6a05c39789805))
+* **reventless-aws:** Postgres QueryDb storage vertical (B3.1) ([51a7993](https://github.com/ReventlessDev/reventless-core/commit/51a79934c1d9f59bb6f61233a90651d5eadf9f4e))
+* **reventless-postgres:** QueryEnginePostgres list/index/byIds resolver push-downs (B3.2a-1) ([8cb09e4](https://github.com/ReventlessDev/reventless-core/commit/8cb09e40cffa9698a251f1ee3fb17b016c4f8b07))
+
+
 # 3.0.0-alpha.4 (2026-07-05)
 
 ### Features

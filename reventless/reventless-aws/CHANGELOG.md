@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.176 (2026-07-06)
+
+### Bug Fixes
+
+* **reventless-aws:** QueryEngine deploy crash on resource-less Postgres QueryDbs (B3.1b) ([a11b5d6](https://github.com/ReventlessDev/reventless-core/commit/a11b5d6f0797f1c9324f2a4ff3ba4197c20e721b))
+### Features
+
+* **reventless-aws:** classic EventLog Postgres deploy-time wiring + relay (B1 vertical) ([8235ba4](https://github.com/ReventlessDev/reventless-core/commit/8235ba44e506f7094d17251405c6a05c39789805))
+* **reventless-aws:** PgQueryResolver Lambda dispatcher for Postgres GraphQL reads (B3.2a-2) ([140d2bd](https://github.com/ReventlessDev/reventless-core/commit/140d2bd44c2443a03de16e21fd29d5a66b5db9be))
+* **reventless-aws:** Postgres projection delivery via relay feed queues (B3.0) ([80a0ffb](https://github.com/ReventlessDev/reventless-core/commit/80a0ffb1696902a1df99acca1f7915dd65e5c016))
+* **reventless-aws:** Postgres QueryDb storage vertical (B3.1) ([51a7993](https://github.com/ReventlessDev/reventless-core/commit/51a79934c1d9f59bb6f61233a90651d5eadf9f4e))
+
+
 # 3.0.0-alpha.175 (2026-07-05)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

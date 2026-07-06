@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.1.0-alpha.25 (2026-07-06)
+
+### Features
+
+* **reventless-aws:** classic EventLog Postgres deploy-time wiring + relay (B1 vertical) ([8235ba4](https://github.com/ReventlessDev/reventless-core/commit/8235ba44e506f7094d17251405c6a05c39789805))
+
+
 # 0.1.0-alpha.24 (2026-07-02)
 
 **Note:** Version bump only for package @reventlessdev/rescript-effect
