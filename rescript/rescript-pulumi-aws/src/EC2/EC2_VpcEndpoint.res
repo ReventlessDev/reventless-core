@@ -11,6 +11,9 @@ type args = {
   /** routeTableIds are only relevant if endpointType = Gateway */
   routeTableIds?: array<Pulumi.Input.t<string>>,
   securityGroupIds?: array<Pulumi.Input.t<string>>,
+  /** Subnets the Interface endpoint's ENIs are placed in (one per AZ). Required
+    for `Interface` endpoints; ignored for `Gateway`. */
+  subnetIds?: array<Pulumi.Input.t<string>>,
   serviceName: Pulumi.Input.t<string>,
   tags?: Aws.tags,
   /** Default: Gateway */
@@ -33,6 +36,7 @@ let make: (~name: string, ~args: args, ~opts: Pulumi.CustomResourceOptions.t=?) 
       policy: ?args.policy,
       privateDnsEnabled: ?args.privateDnsEnabled,
       securityGroupIds: ?args.securityGroupIds,
+      subnetIds: ?args.subnetIds,
       serviceName: args.serviceName,
       tags: args.tags->EC2_Common.supplementTagsWithName(name),
       vpcEndpointType: ?args.vpcEndpointType,

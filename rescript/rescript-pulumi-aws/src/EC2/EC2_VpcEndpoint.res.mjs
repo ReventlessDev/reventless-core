@@ -9,6 +9,7 @@ function make(name, args, opts) {
     policy: args.policy,
     privateDnsEnabled: args.privateDnsEnabled,
     securityGroupIds: args.securityGroupIds,
+    subnetIds: args.subnetIds,
     serviceName: args.serviceName,
     tags: EC2_Common$PulumiAws.supplementTagsWithName(args.tags, name),
     vpcEndpointType: args.vpcEndpointType,
