@@ -119,8 +119,9 @@ function make(api, pluginReadModelTableName, opts) {
   let archiveContents = {};
   let handlerCodeStub = makeHandlerCode("", adminEntryJson);
   archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(handlerCodeStub);
+  let loaderHash = Util_Bundle$ReventlessAws.addEsmLoaderAssets(archiveContents);
   let code = new (Pulumi.asset.AssetArchive)(archiveContents);
-  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(handlerCodeStub);
+  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(handlerCodeStub + "\n---\n" + loaderHash);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
   let lambda = new (Aws.lambda.Function)(name + "Lambda", {
     handler: "index.handler",
@@ -140,6 +141,14 @@ function make(api, pluginReadModelTableName, opts) {
         [
           "PLUGIN_RM_TABLE",
           pluginReadModelTableName
+        ],
+        [
+          "NODE_OPTIONS",
+          Util_Bundle$ReventlessAws.esmLoaderNodeOptions
+        ],
+        [
+          "ESM_FALLBACK_DIRS",
+          Util_Bundle$ReventlessAws.esmFallbackDirs
         ]
       ])
     },

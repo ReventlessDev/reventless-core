@@ -354,8 +354,12 @@ let finish = (
       "index.mjs",
       Pulumi.Asset.stringAsset(handlerCode)->Pulumi.Archive.assetToAssetOrArchive,
     )
+    // ESM self-containment: the handler imports @aws-sdk/util-dynamodb, provided
+    // by the nodejs22.x runtime only under /var/runtime — unreachable from
+    // /var/task ESM without the resolver hook. Ship the loader + set its env vars.
+    let loaderHash = Util_Bundle.addEsmLoaderAssets(archiveContents)
     let code = Pulumi.Archive.assetArchive(archiveContents)
-    let sourceCodeHash = Util_Bundle.hashString(handlerCode)
+    let sourceCodeHash = Util_Bundle.hashString(handlerCode ++ "\n---\n" ++ loaderHash)
 
     let layers =
       Lambda.reventlessLayerArn
@@ -383,6 +387,8 @@ let finish = (
               ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
               ("APPSYNC_ENDPOINT", appsyncEndpoint->Pulumi.Output.asInput),
               ("STATE_TOPIC_MAP", topicMapJson->Pulumi.Output.asInput),
+              ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
+              ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
             ]),
           }: Lambda.Function.functionEnvironment
         )->Pulumi.Input.make,

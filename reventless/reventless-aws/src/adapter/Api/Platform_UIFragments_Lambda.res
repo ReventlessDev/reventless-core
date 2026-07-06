@@ -138,8 +138,12 @@ let make = (
     "index.mjs",
     Pulumi.Asset.stringAsset(handlerCodeStub)->Pulumi.Archive.assetToAssetOrArchive,
   )
+  // ESM self-containment: the handler imports @aws-sdk/* bare specifiers the
+  // nodejs22.x runtime provides only under /var/runtime — unreachable from
+  // /var/task ESM without the resolver hook. Ship the loader + set its env vars.
+  let loaderHash = Util_Bundle.addEsmLoaderAssets(archiveContents)
   let code = Pulumi.Archive.assetArchive(archiveContents)
-  let sourceCodeHash = Util_Bundle.hashString(handlerCodeStub)
+  let sourceCodeHash = Util_Bundle.hashString(handlerCodeStub ++ "\n---\n" ++ loaderHash)
 
   let layers =
     Lambda.reventlessLayerArn
@@ -164,6 +168,8 @@ let make = (
           Lambda.Function.variables: Dict.fromArray([
             ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
             ("UI_FRAGMENT_RM_TABLE", uiFragmentRegistryTableName->Pulumi.Output.asInput),
+            ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
+            ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
           ]),
         }: Lambda.Function.functionEnvironment
       )->Pulumi.Input.make,

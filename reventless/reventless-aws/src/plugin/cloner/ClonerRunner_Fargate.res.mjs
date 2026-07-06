@@ -81,8 +81,9 @@ export const handler = async (event) => {
 };`;
   let clonerArchiveContents = {};
   clonerArchiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(entryPointCode);
+  let loaderHash = Util_Bundle$ReventlessAws.addEsmLoaderAssets(clonerArchiveContents);
   let code = new (Pulumi.asset.AssetArchive)(clonerArchiveContents);
-  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(entryPointCode);
+  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(entryPointCode + "\n---\n" + loaderHash);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
   let vpcStackName = Stdlib_Option.getOrThrow(new Pulumi.Config("vpc").get("stack"), undefined);
   let vpcConfig = Util_Vpc$ReventlessAws.getVpcConfig(vpcStackName, "vpc");
@@ -168,6 +169,14 @@ export const handler = async (event) => {
           [
             "Environment",
             Pulumi.getStack()
+          ],
+          [
+            "NODE_OPTIONS",
+            Util_Bundle$ReventlessAws.esmLoaderNodeOptions
+          ],
+          [
+            "ESM_FALLBACK_DIRS",
+            Util_Bundle$ReventlessAws.esmFallbackDirs
           ]
         ])
       },

@@ -47,27 +47,12 @@ let make: ReventlessCore.Counter_Adapter.handlerMaker = (
   packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
   packageDirs->Dict.set(mappingsPkg, Util_Bundle.resolvePackageRoot(mappingsPkg))
 
-  let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/CounterEntryPoint.mjs";`
-
-  let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-  archiveContents->Dict.set(
-    "index.mjs",
-    Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
-  )
-  let packageContentHashes: ref<array<string>> = ref([])
-  packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
-    let (archive, contentHash) = Util_Bundle.createFilteredPackageArchive(pkgRoot)
-    archiveContents->Dict.set(
-      `node_modules/${pkgName}`,
-      archive->Pulumi.Archive.archiveToAssetOrArchive,
-    )
-    packageContentHashes.contents->Array.push(`${pkgName}:${contentHash}`)
-  })
-
-  let code = Pulumi.Archive.assetArchive(archiveContents)
-  packageContentHashes.contents->Array.sort(String.compare)
-  let sourceCodeHash = Util_Bundle.hashString(
-    reExportCode ++ packageContentHashes.contents->Array.join(","),
+  // buildCodeArchive centralises the entry-point re-export, package bundling, and
+  // the ESM self-containment loader (register-hook.mjs / layer-resolver.mjs) that
+  // makeFromCodeAsset's NODE_OPTIONS=--import depends on.
+  let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
+    ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/CounterEntryPoint.mjs",
+    ~packageDirs,
   )
 
   let componentOpts: Pulumi.ComponentResource.options = {parent: ?opts.parent}

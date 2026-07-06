@@ -13,6 +13,7 @@ import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Runtime$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/Runtime.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
+import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Lambda$ReventlessAws from "../../util/Util_Lambda.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
@@ -91,6 +92,8 @@ function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt
   Stdlib_Dict.forEachWithKey(additionalEnvVars, (value, key) => {
     variables[key] = value;
   });
+  variables["NODE_OPTIONS"] = Util_Bundle$ReventlessAws.esmLoaderNodeOptions;
+  variables["ESM_FALLBACK_DIRS"] = Util_Bundle$ReventlessAws.esmFallbackDirs;
   let tags = AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType);
   let lambda = new (Aws.lambda.Function)(name, {
     handler: "index.handler",

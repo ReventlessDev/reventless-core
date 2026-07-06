@@ -243,8 +243,9 @@ function finish(eventsApi, opts) {
   });
   let archiveContents = {};
   archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(handlerCode);
+  let loaderHash = Util_Bundle$ReventlessAws.addEsmLoaderAssets(archiveContents);
   let code = new (Pulumi.asset.AssetArchive)(archiveContents);
-  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(handlerCode);
+  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(handlerCode + "\n---\n" + loaderHash);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
   let appsyncEndpoint = AppSync_EventsApi$ReventlessAws.httpEndpoint(eventsApi);
   let lambda = new (Aws.lambda.Function)(name + "StateTopicPublisher", {
@@ -269,6 +270,14 @@ function finish(eventsApi, opts) {
         [
           "STATE_TOPIC_MAP",
           topicMapJson
+        ],
+        [
+          "NODE_OPTIONS",
+          Util_Bundle$ReventlessAws.esmLoaderNodeOptions
+        ],
+        [
+          "ESM_FALLBACK_DIRS",
+          Util_Bundle$ReventlessAws.esmFallbackDirs
         ]
       ])
     },

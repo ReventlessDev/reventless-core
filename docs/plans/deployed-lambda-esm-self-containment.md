@@ -1,9 +1,11 @@
 # Plan: deployed-Lambda ESM self-containment (unblock the AWS runtime path)
 
-**Status**: Active (2026-07-06). **Blocking** — the entire `reventless-aws`
-deployed-Lambda runtime is non-functional on real AWS until Phase 1 lands.
-**Nature**: framework fix (deploy-time bundling + Lambda module resolution),
-followed by an optional consistency refactor.
+**Status**: Active (2026-07-06). Phase 1a (spike) + **1b (implementation) DONE**;
+**1c (real-AWS validation) is the remaining gate** — the code fix is landed but
+unproven on Lambda until a Rung-2/Rung-3 deploy runs. **Blocking** — the entire
+`reventless-aws` deployed-Lambda runtime stays presumed non-functional on real AWS
+until 1c is green. **Nature**: framework fix (deploy-time bundling + Lambda module
+resolution), followed by an optional consistency refactor.
 
 ## Motivation — the bug (found via a real-AWS Rung-2 deploy, 2026-07-06)
 
@@ -66,8 +68,36 @@ Confirmed by reading every builder + `Util_Bundle` (see Sources):
 
 ### 1a. Choose the resolution mechanism (spike first)
 
-Three viable approaches; each must handle **both** axes. Recommendation: spike
-Option C first (smallest, preserves the layer), fall back to A.
+**Local spike DONE (2026-07-06) — Option C validated; adopt it.** A Node 22.17.1
+rig (Lambda's runtime version) simulated the Lambda layout (`/var/task` app +
+`/opt/nodejs` layer + a runtime-SDK dir) and proved:
+- **baseline (no loader) reproduces** the exact `ERR_MODULE_NOT_FOUND`;
+- **with the resolver-hook loader, every case resolves** — static bare import
+  from the layer (`@reventlessdev/*`/`effect`/`sury`), an import from a *second*
+  fallback dir (the `@aws-sdk/*` runtime-provided case), the transitive bare
+  imports of a **dynamically** path-imported user module (axis 2), and **deep
+  subpaths** (`@fake/framework/src/Deep.res.mjs`, mirroring
+  `@reventlessdev/reventless-core/src/X.res.mjs`).
+
+Mechanism (the concrete fix): ship two tiny files in each archive —
+`register-hook.mjs` (`module.register("./layer-resolver.mjs", …)`) and
+`layer-resolver.mjs` (a `resolve` hook that, on `ERR_MODULE_NOT_FOUND` for a bare
+specifier, retries `nextResolve` with `parentURL` pointed at each fallback dir so
+Node's own `node_modules` walk + `exports` handling finds it) — and set
+`NODE_OPTIONS=--import file:///var/task/register-hook.mjs` +
+`ESM_FALLBACK_DIRS=/opt/nodejs/node_modules:/var/runtime/node_modules` in the
+Lambda env. Preserves the layer; no esbuild; no per-Lambda bloat; one shared edit
+in `makeFromCodeAsset`.
+
+**Still to confirm on the real Rung-2 deploy** (now low-risk): (1) Lambda's
+`nodejs22.x` bootstrap honours `NODE_OPTIONS=--import`; (2) the exact runtime-SDK
+fallback path for `@aws-sdk/*` (`/var/runtime/node_modules` expected); (3)
+cold-start cost of the hook (fires only on cache-miss resolutions). Options A
+(esbuild) / B (ship full closure) remain documented fallbacks if any of these
+fail on real Lambda.
+
+Three approaches were considered; each must handle **both** axes. Option C
+(above) chosen; A/B retained as fallbacks.
 
 **Option A — esbuild-bundle.** Bundle each entry point's static closure into one
 self-contained `index.mjs` (`@aws-sdk/*` left external — the Lambda runtime
@@ -111,15 +141,46 @@ env var once in `RuntimeEnvironment_Lambda.makeFromCodeAsset`.
 it's the cheapest real-AWS check) deploying with Option C. Green → adopt C.
 Flaky → fall back to A. Record the outcome here before 1b.
 
-### 1b. Implement across the surface
-- Apply the chosen mechanism in the **one** shared seam where possible
-  (`RuntimeEnvironment_Lambda.makeFromCodeAsset` for Option C's loader+env; or
-  `Util_Bundle.buildCodeArchive` for A/B), so all ~16 entry points inherit it
-  without per-builder edits.
-- For Option A specifically, add an esbuild step to `buildCodeArchive` and a
-  user-module bundling pass; keep `@aws-sdk/*` external.
-- Leave the Reventless layer in place (still useful for CJS paths / size) unless
-  Option A makes it fully redundant — decide during 1b.
+### 1b. Implement across the surface — DONE (2026-07-06, Option C)
+
+Landed as a code-level change; **not yet deployed** (1c is the real-AWS gate).
+
+**Shared mechanism, single source of truth in `Util_Bundle`:**
+- `registerHookSource` / `layerResolverSource` — the two validated loader files
+  (byte-identical to the spike), exposed as constants.
+- `addEsmLoaderAssets(archiveContents)` — drops both files at the archive root and
+  returns a hash fragment callers fold into their `sourceCodeHash`.
+- `esmLoaderNodeOptions` (`--import file:///var/task/register-hook.mjs`) and
+  `esmFallbackDirs` (`/opt/nodejs/node_modules:/var/runtime/node_modules`) — the
+  two env vars that activate the hook.
+
+**Two seams cover the whole deployed ESM surface:**
+1. **`buildCodeArchive` + `makeFromCodeAsset`** — the ~16 entry-point builders.
+   `buildCodeArchive` now ships the loader in every archive; `makeFromCodeAsset`
+   sets the two env vars once. `CounterHandler_DynamoDbStream` hand-rolled its own
+   archive (bypassing `buildCodeArchive`) — refactored to call `buildCodeArchive`
+   so it inherits the loader and can't drift.
+2. **Direct `Lambda.Function.make` handlers** (discovered during 1b — *not* in the
+   original scope survey, and they bypass both seams above). Those importing bare
+   `@aws-sdk/*` now get `addEsmLoaderAssets` + the env vars inline:
+   `Platform_UIFragments_Lambda`, `Platform_ComponentDefinitions_Lambda`,
+   `StateTopic_AppSync`, `ClonerRunner_Fargate` (its ECS-launch Lambda).
+   Intentionally left untouched — no bare imports, so setting `NODE_OPTIONS` would
+   `--import` a file their archive doesn't contain and break cold start:
+   `Util_DeadLetterQueue` (inline handler, no imports) and
+   `EventLogSubscription_AppSync` (only `node:crypto`).
+
+**Invariant to preserve:** ship the loader (`addEsmLoaderAssets`) *iff* you set the
+env vars. Never one without the other. `@aws-appsync/utils` JS resolvers run under
+the APPSYNC_JS runtime, not Node ESM — out of scope.
+
+**Local re-validation:** the framework-*generated* loader files (extracted from the
+compiled `Util_Bundle.res.mjs`) were run against the spike rig — baseline still
+reproduces `ERR_MODULE_NOT_FOUND`; with the hook all four cases resolve (static
+layer import, deep subpath, runtime-SDK `/var/runtime` fallback, dynamic axis-2
+transitive imports). Build green, all 185 `reventless-aws` tests pass.
+
+- Reventless layer left in place (still useful for CJS paths / size).
 
 ### 1c. Validate on real AWS (the whole point)
 - **Rung 2** — re-run the `PgConnection`-only harness; a green `pulumi up` proves

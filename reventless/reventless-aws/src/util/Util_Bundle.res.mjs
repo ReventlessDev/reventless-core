@@ -78,6 +78,44 @@ function hashString(str) {
   return Crypto.createHash("sha256").update(str).digest("base64");
 }
 
+let registerHookFileName = "register-hook.mjs";
+
+let layerResolverFileName = "layer-resolver.mjs";
+
+let registerHookSource = `import { register } from "node:module";
+register("./` + layerResolverFileName + `", import.meta.url);
+`;
+
+let layerResolverSource = `// Fallback dirs (real Lambda: /opt/nodejs for the layer, /var/runtime for the SDK).
+// Passed via env so the same hook is testable locally.
+const FALLBACKS = (process.env.ESM_FALLBACK_DIRS || "").split(":").filter(Boolean);
+export async function resolve(specifier, context, nextResolve) {
+  try {
+    return await nextResolve(specifier, context);
+  } catch (err) {
+    const bare = !/^[./]|^file:|^node:/.test(specifier);
+    if (err?.code !== "ERR_MODULE_NOT_FOUND" || !bare) throw err;
+    for (const dir of FALLBACKS) {
+      try {
+        // Re-resolve as if imported from a virtual file inside the fallback dir,
+        // so Node's own node_modules walk finds it (honours package.json exports).
+        const parentURL = new URL("file://" + dir + "/__resolver__.mjs").href;
+        return await nextResolve(specifier, { ...context, parentURL });
+      } catch { /* try next fallback */ }
+    }
+    throw err;
+  }
+}
+`;
+
+let esmLoaderNodeOptions = `--import file:///var/task/` + registerHookFileName;
+
+function addEsmLoaderAssets(archiveContents) {
+  archiveContents[registerHookFileName] = new (Pulumi.asset.StringAsset)(registerHookSource);
+  archiveContents[layerResolverFileName] = new (Pulumi.asset.StringAsset)(layerResolverSource);
+  return hashString(registerHookSource + "\n---\n" + layerResolverSource);
+}
+
 function isSkippedDir(n) {
   if (n === "node_modules" || n === "lib" || n === "cjs" || n === "dts" || n === "tests" || n === "test" || n === "__mocks__" || n === "__tests__" || n === ".git") {
     return true;
@@ -129,6 +167,7 @@ function buildCodeArchive(entryPointModule, packageDirs, extraStringAssetsOpt) {
   let reExportCode = `export { handler } from "` + entryPointModule + `";`;
   let archiveContents = {};
   archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
+  let loaderHash = addEsmLoaderAssets(archiveContents);
   Stdlib_Dict.forEachWithKey(extraStringAssets, (content, fileName) => {
     archiveContents[fileName] = new (Pulumi.asset.StringAsset)(content);
   });
@@ -157,12 +196,14 @@ function buildCodeArchive(entryPointModule, packageDirs, extraStringAssetsOpt) {
   });
   let code = new (Pulumi.asset.AssetArchive)(archiveContents);
   packageContentHashes.contents.sort(Primitive_string.compare);
-  let sourceCodeHash = hashString(reExportCode + "\n---\n" + packageContentHashes.contents.join(",") + "\n---\n" + extraHashEntries.join("\n"));
+  let sourceCodeHash = hashString(reExportCode + "\n---\n" + packageContentHashes.contents.join(",") + "\n---\n" + extraHashEntries.join("\n") + "\n---\n" + loaderHash);
   return {
     code: code,
     sourceCodeHash: sourceCodeHash
   };
 }
+
+let esmFallbackDirs = "/opt/nodejs/node_modules:/var/runtime/node_modules";
 
 export {
   packageRootCache,
@@ -171,6 +212,13 @@ export {
   extractPackageName,
   resolvePackageRoot,
   hashString,
+  registerHookFileName,
+  layerResolverFileName,
+  registerHookSource,
+  layerResolverSource,
+  esmLoaderNodeOptions,
+  esmFallbackDirs,
+  addEsmLoaderAssets,
   isSkippedDir,
   walkDir,
   createFilteredPackageArchive,

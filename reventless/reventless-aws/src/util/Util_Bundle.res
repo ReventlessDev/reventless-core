@@ -112,6 +112,72 @@ let resolvePackageRoot = (packageName: string): string => {
 let hashString = (str: string): string =>
   createHash("sha256")->update(str)->digest("base64")
 
+// ── ESM self-containment loader (Option C) ──────────────────────────────────
+// Deployed Lambda entry points are ESM (`.mjs`) and statically/dynamically import
+// bare specifiers (`@reventlessdev/*`, `effect`, `sury`, `@aws-sdk/*`) that live in
+// the attached layer at /opt/nodejs/node_modules or the runtime SDK dir. ESM
+// `import` ignores NODE_PATH and /opt, so those imports fail from /var/task with
+// ERR_MODULE_NOT_FOUND. These two files install a `resolve` hook that, on an
+// unresolved bare specifier, retries against each dir named in ESM_FALLBACK_DIRS
+// (set on the Lambda env by RuntimeEnvironment_Lambda.makeFromCodeAsset). Shipped
+// at the root of every code archive; NODE_OPTIONS=--import points Node at
+// register-hook.mjs. Validated on a Node 22.17.1 rig; see
+// docs/plans/deployed-lambda-esm-self-containment.md.
+let registerHookFileName = "register-hook.mjs"
+let layerResolverFileName = "layer-resolver.mjs"
+
+let registerHookSource = `import { register } from "node:module";
+register("./${layerResolverFileName}", import.meta.url);
+`
+
+let layerResolverSource = `// Fallback dirs (real Lambda: /opt/nodejs for the layer, /var/runtime for the SDK).
+// Passed via env so the same hook is testable locally.
+const FALLBACKS = (process.env.ESM_FALLBACK_DIRS || "").split(":").filter(Boolean);
+export async function resolve(specifier, context, nextResolve) {
+  try {
+    return await nextResolve(specifier, context);
+  } catch (err) {
+    const bare = !/^[./]|^file:|^node:/.test(specifier);
+    if (err?.code !== "ERR_MODULE_NOT_FOUND" || !bare) throw err;
+    for (const dir of FALLBACKS) {
+      try {
+        // Re-resolve as if imported from a virtual file inside the fallback dir,
+        // so Node's own node_modules walk finds it (honours package.json exports).
+        const parentURL = new URL("file://" + dir + "/__resolver__.mjs").href;
+        return await nextResolve(specifier, { ...context, parentURL });
+      } catch { /* try next fallback */ }
+    }
+    throw err;
+  }
+}
+`
+
+// Env vars that activate the loader. Any Lambda whose archive includes the loader
+// files (via addEsmLoaderAssets / buildCodeArchive) MUST also set these two; any
+// that does NOT ship the loader MUST NOT set NODE_OPTIONS (it would --import a
+// missing file and fail cold start). --import registers the resolve hook;
+// ESM_FALLBACK_DIRS names the layer (/opt/nodejs) and runtime-SDK (/var/runtime)
+// node_modules dirs the hook retries against for @aws-sdk/*.
+let esmLoaderNodeOptions = `--import file:///var/task/${registerHookFileName}`
+let esmFallbackDirs = "/opt/nodejs/node_modules:/var/runtime/node_modules"
+
+/**
+ * Add the ESM self-containment loader files to an archive-contents dict and return
+ * a hash fragment so callers can fold them into their sourceCodeHash. Every code
+ * archive whose Lambda sets the esmLoader env vars MUST include these files.
+ */
+let addEsmLoaderAssets = (archiveContents: dict<Pulumi.Archive.assetOrArchive>): string => {
+  archiveContents->Dict.set(
+    registerHookFileName,
+    Pulumi.Asset.stringAsset(registerHookSource)->Pulumi.Archive.assetToAssetOrArchive,
+  )
+  archiveContents->Dict.set(
+    layerResolverFileName,
+    Pulumi.Asset.stringAsset(layerResolverSource)->Pulumi.Archive.assetToAssetOrArchive,
+  )
+  hashString(registerHookSource ++ "\n---\n" ++ layerResolverSource)
+}
+
 let isSkippedDir = (n: string) =>
   n == "node_modules" ||
   n == "lib" ||
@@ -207,6 +273,8 @@ let buildCodeArchive = (
     "index.mjs",
     Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
   )
+  // ESM self-containment loader — shipped in every archive (see addEsmLoaderAssets).
+  let loaderHash = addEsmLoaderAssets(archiveContents)
   extraStringAssets->Dict.forEachWithKey((content, fileName) => {
     archiveContents->Dict.set(
       fileName,
@@ -249,7 +317,9 @@ let buildCodeArchive = (
       "\n---\n" ++
       packageContentHashes.contents->Array.join(",") ++
       "\n---\n" ++
-      extraHashEntries->Array.join("\n"),
+      extraHashEntries->Array.join("\n") ++
+      "\n---\n" ++
+      loaderHash,
     )
   {code, sourceCodeHash}
 }
