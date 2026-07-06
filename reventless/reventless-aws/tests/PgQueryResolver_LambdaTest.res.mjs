@@ -252,6 +252,115 @@ globalThis.describe("PgQueryResolver_Lambda.dispatch", () => {
     QueryDb_Callback$ReventlessCore.clearQueryInterceptor();
     globalThis.expect(r).toBe(null);
   });
+  globalThis.test("resolveOne loads target by parent's id field", async () => {
+    let payload_target = "Things";
+    let payload_source = Object.fromEntries([[
+        "ref",
+        "p-2"
+      ]]);
+    let payload_sourceIdField = "ref";
+    let payload_multi = false;
+    let payload_arguments = Object.fromEntries([]);
+    let payload = {
+      readModelName: "Things",
+      kind: "resolveOne",
+      target: payload_target,
+      source: payload_source,
+      sourceIdField: payload_sourceIdField,
+      multi: payload_multi,
+      arguments: payload_arguments,
+      identity: Identity$Reventless.anonymous
+    };
+    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined, undefined), payload);
+    globalThis.expect(str(r, "id")).toEqual("p-2");
+  });
+  globalThis.test("resolveOne multi via target index → array", async () => {
+    let payload_target = "Things";
+    let payload_source = Object.fromEntries([[
+        "st",
+        "active"
+      ]]);
+    let payload_sourceIdField = "st";
+    let payload_targetIndex = "byStatus";
+    let payload_targetIndexIdField = "status";
+    let payload_multi = true;
+    let payload_arguments = Object.fromEntries([]);
+    let payload = {
+      readModelName: "Things",
+      kind: "resolveOne",
+      target: payload_target,
+      source: payload_source,
+      sourceIdField: payload_sourceIdField,
+      targetIndex: payload_targetIndex,
+      targetIndexIdField: payload_targetIndexIdField,
+      multi: payload_multi,
+      arguments: payload_arguments,
+      identity: Identity$Reventless.anonymous
+    };
+    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined, undefined), payload);
+    globalThis.expect(ids(r)).toEqual([
+      "p-1",
+      "p-3"
+    ]);
+  });
+  globalThis.test("resolveMany batch-loads target by parent's ids field", async () => {
+    let payload_target = "Things";
+    let payload_source = Object.fromEntries([[
+        "refs",
+        [
+          "p-1",
+          "x",
+          "p-3"
+        ].map(prim => prim)
+      ]]);
+    let payload_sourceIdsField = "refs";
+    let payload_arguments = Object.fromEntries([]);
+    let payload = {
+      readModelName: "Things",
+      kind: "resolveMany",
+      target: payload_target,
+      source: payload_source,
+      sourceIdsField: payload_sourceIdsField,
+      arguments: payload_arguments,
+      identity: Identity$Reventless.anonymous
+    };
+    let r = await PgQueryResolver_Lambda$ReventlessAws.dispatch(makeBinding(undefined, undefined, undefined), payload);
+    globalThis.expect(ids(r)).toEqual([
+      "p-1",
+      "p-3"
+    ]);
+  });
+  globalThis.test("node decodes global id → __typename + item", async () => {
+    PgQueryResolver_Lambda$ReventlessAws.register("Things", makeBinding(undefined, undefined, undefined));
+    PgQueryResolver_Lambda$ReventlessAws.registerNodeType("Thing", "Things");
+    let payload_arguments = Object.fromEntries([[
+        "id",
+        btoa("Thing:p-2")
+      ]]);
+    let payload = {
+      readModelName: "",
+      kind: "node",
+      arguments: payload_arguments,
+      identity: Identity$Reventless.anonymous
+    };
+    let r = await PgQueryResolver_Lambda$ReventlessAws.handler(payload, null);
+    globalThis.expect(str(r, "__typename")).toEqual("Thing");
+    globalThis.expect(str(r, "name")).toEqual("Bravo");
+  });
+  globalThis.test("node with unknown type → null", async () => {
+    let payload_arguments = Object.fromEntries([[
+        "id",
+        btoa("Nope:p-1")
+      ]]);
+    let payload = {
+      readModelName: "",
+      kind: "node",
+      arguments: payload_arguments,
+      identity: Identity$Reventless.anonymous
+    };
+    let r = await PgQueryResolver_Lambda$ReventlessAws.handler(payload, null);
+    globalThis.expect(r).toBe(null);
+  });
   globalThis.test("unmapped kind throws", async () => {
     let threw;
     try {

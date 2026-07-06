@@ -12,6 +12,7 @@ import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorRuntime_Builder_Single$ReventlessAws from "../Runtime/EventCollectorRuntime_Builder_Single.res.mjs";
 
@@ -31,6 +32,12 @@ function register(entry) {
   entries[entry.readModelName] = entry;
 }
 
+let nodeTypes = {};
+
+function registerNodeType(typeName, readModelName) {
+  nodeTypes[typeName] = readModelName;
+}
+
 function bool(b) {
   if (b) {
     return "true";
@@ -38,6 +45,29 @@ function bool(b) {
     return "false";
   }
 }
+
+let nodeResolverCode = `import { util } from '@aws-appsync/utils';
+export function request(ctx) {
+  const id = ctx.identity;
+  return {
+    operation: 'Invoke',
+    payload: {
+      readModelName: '',
+      kind: 'node',
+      arguments: ctx.args,
+      identity: id != null && id.sub != null
+        ? { userId: id.sub, username: id.username, groups: id.claims?.['cognito:groups'] ?? [], claims: id.claims, provider: 'Cognito' }
+        : id != null
+          ? { userArn: id.userArn ?? null, accountId: id.accountId ?? null, username: id.username ?? null, provider: 'IAM' }
+          : null
+    }
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  return ctx.result;
+}
+`;
 
 function pgConnectionJson(cc) {
   return JSON.stringify(Object.fromEntries([
@@ -91,7 +121,8 @@ function provision(api, selection, opts) {
       entry.includeIdParam ? "true" : "false"
     ) + `}`;
   });
-  let queryResolverConfig = selection.connectionConfig.apply(cc => `{"pgConnection":` + pgConnectionJson(cc) + `,"handlers":[` + handlerJsons.join(",") + `]}`);
+  let nodeTypesJson = Object.entries(nodeTypes).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0])).map(param => `"` + param[0] + `":"` + param[1] + `"`).join(",");
+  let queryResolverConfig = selection.connectionConfig.apply(cc => `{"pgConnection":` + pgConnectionJson(cc) + `,"handlers":[` + handlerJsons.join(",") + `],"nodeTypes":{` + nodeTypesJson + `}}`);
   let envVars = {};
   envVars["QUERY_RESOLVER_CONFIG"] = queryResolverConfig;
   envVars["Environment"] = Pulumi.getStack();
@@ -132,6 +163,9 @@ function provision(api, selection, opts) {
     },
     serviceRoleArn: dataSourceRole.arn
   }, customOpts);
+  if (Object.entries(nodeTypes).length !== 0) {
+    AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name + "NodeResolver", api, dataSource.name, "Query", "node", nodeResolverCode, customOpts);
+  }
   dataSource.name.apply(n => resolveDataSourceName.contents(n));
   log.info("PgQueryResolver_Builder", undefined, `provisioned for ` + handlers.length.toString() + ` read model(s)`);
 }
@@ -145,7 +179,10 @@ export {
   dataSourceName,
   entries,
   register,
+  nodeTypes,
+  registerNodeType,
   bool,
+  nodeResolverCode,
   pgConnectionJson,
   provision,
 }

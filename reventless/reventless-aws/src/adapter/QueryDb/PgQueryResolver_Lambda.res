@@ -19,12 +19,28 @@
 
 let log = ReventlessCore.Logger.fromEnv()
 
+@val external atob: string => string = "atob"
+
+// Where a cross-table resolver reads the target's sort-key value from.
+// `kind`: "field" (the parent object) | "arg" (the GraphQL arguments).
+type subIdSource = {kind: string, name: string}
+
 // Wire payload from the resolver template. `arguments` mirrors the field name the
 // other Invoke templates use (QueryInterceptor_Lambda, invokeCommandGenerator).
+// The cross-table fields (B3.2c) are present only for resolveOne/resolveMany:
 type payload = {
   readModelName: string,
   kind: string,
   index?: string,
+  // Cross-table (@resolves/@resolvesMany) — see B3.2c dispatch below.
+  target?: string,
+  source?: JSON.t,
+  sourceIdField?: string,
+  sourceIdsField?: string,
+  sourceSubId?: subIdSource,
+  targetIndex?: string,
+  targetIndexIdField?: string,
+  multi?: bool,
   arguments: JSON.t,
   identity: Reventless.Identity.t,
 }
@@ -119,8 +135,10 @@ let dispatch = async (~binding: binding, ~payload: payload): JSON.t => {
   switch await runInterceptor(~binding, ~payload) {
   | Deny(_) =>
     // Empty shape per kind (null for single, connection for list/items, [] else).
+    let isMulti = payload.multi->Option.getOr(false)
     switch payload.kind {
     | "getById" => JSON.Encode.null
+    | "resolveOne" if !isMulti => JSON.Encode.null
     | "list" | "items" => emptyConnection()
     | _ => JSON.Encode.array([])
     }
@@ -191,6 +209,55 @@ let dispatch = async (~binding: binding, ~payload: payload): JSON.t => {
         )
       }
 
+    // Cross-table single-ID field resolver (@resolves). `binding` is the TARGET
+    // binding (the handler looks it up by payload.target); the key comes from the
+    // parent object (payload.source[sourceIdField]).
+    | "resolveOne" =>
+      let target = payload.target->Option.getOr(rm)
+      let source = payload.source->Option.getOr(JSON.Encode.null)
+      let key = source->argStr(payload.sourceIdField->Option.getOr(""))->Option.getOr("")
+      let items = switch payload.targetIndex {
+      | Some(ix) =>
+        await binding.pushdowns.indexLookup(
+          ~readModelName=target,
+          payload.targetIndexIdField->Option.getOr(ix),
+          key,
+        )
+      | None =>
+        switch await binding.ops.load(key) {
+        | Ok(items) => items
+        | Error(_) => []
+        }
+      }
+      // Optional target sort-key filter (source field or GraphQL arg).
+      let filtered = switch (payload.sourceSubId, binding.subIdField) {
+      | (Some({kind, name}), Some(subField)) =>
+        let subVal =
+          switch kind {
+          | "arg" => payload.arguments->argStr(name)
+          | _ => source->argStr(name)
+          }->Option.getOr("")
+        items->Array.filter(it => it->argStr(subField)->Option.getOr("") == subVal)
+      | _ => items
+      }
+      if payload.multi->Option.getOr(false) {
+        JSON.Encode.array(filtered)
+      } else {
+        switch filtered->Array.get(0) {
+        | Some(item) => item
+        | None => JSON.Encode.null
+        }
+      }
+
+    // Cross-table batch field resolver (@resolvesMany). ids come from the parent
+    // object (payload.source[sourceIdsField]); BatchGet the target by partition
+    // key (missing ids drop out).
+    | "resolveMany" =>
+      let target = payload.target->Option.getOr(rm)
+      let source = payload.source->Option.getOr(JSON.Encode.null)
+      let ids = source->argStrs(payload.sourceIdsField->Option.getOr(""))
+      JSON.Encode.array(await binding.pushdowns.byIds(~readModelName=target, ids))
+
     | other =>
       // Fail loudly on unmapped kinds (feature-parity guard, per the B3.2 plan).
       log.error(~comp="PgQueryResolver_Lambda", `unmapped resolver kind '${other}' for ${rm}`)
@@ -204,11 +271,65 @@ let bindings: dict<binding> = Dict.make()
 let register = (~readModelName: string, binding: binding): unit =>
   bindings->Dict.set(readModelName, binding)
 
-let handler = async (payload: payload, _context) =>
-  switch bindings->Dict.get(payload.readModelName) {
-  | Some(binding) => await dispatch(~binding, ~payload)
-  | None =>
-    JsError.throwWithMessage(
-      "PgQueryResolver: no binding registered for read model " ++ payload.readModelName,
-    )
+// Relay node type → read-model-name map (B3.2c), populated at Lambda init from
+// the deploy-time registerNodeType calls.
+let nodeTypeMap: dict<string> = Dict.make()
+let registerNodeType = (~typeName: string, ~readModelName: string): unit =>
+  nodeTypeMap->Dict.set(typeName, readModelName)
+
+// node(id: ID!) — decode the global id (base64 of `typeName:localId`, matching
+// AppSync's nodeDecodeGlobalId), map typeName → read model, load by localId,
+// return the item tagged with __typename and the original global id. Runs the
+// target's authorization/interceptor. Self-contained (getById returns raw ids,
+// so no encoding elsewhere is affected).
+let handleNode = async (~payload: payload): JSON.t => {
+  let globalId = payload.arguments->argStr("id")->Option.getOr("")
+  let decoded = try atob(globalId) catch {
+  | _ => ""
   }
+  let colonIdx = decoded->String.indexOf(":")
+  if colonIdx <= 0 {
+    JSON.Encode.null
+  } else {
+    let typeName = decoded->String.slice(~start=0, ~end=colonIdx)
+    let localId = decoded->String.slice(~start=colonIdx + 1, ~end=decoded->String.length)
+    switch nodeTypeMap->Dict.get(typeName)->Option.flatMap(rm => bindings->Dict.get(rm)) {
+    | Some(binding) =>
+      switch await runInterceptor(~binding, ~payload) {
+      | Deny(_) => JSON.Encode.null
+      | Allow =>
+        switch await binding.ops.load(localId) {
+        | Ok(items) =>
+          switch items->Array.get(0) {
+          | Some(item) =>
+            let obj = item->JSON.Decode.object->Option.getOr(Dict.make())->Dict.copy
+            obj->Dict.set("__typename", JSON.Encode.string(typeName))
+            obj->Dict.set("id", JSON.Encode.string(globalId))
+            JSON.Encode.object(obj)
+          | None => JSON.Encode.null
+          }
+        | Error(_) => JSON.Encode.null
+        }
+      }
+    | None => JSON.Encode.null
+    }
+  }
+}
+
+let handler = async (payload: payload, _context) => {
+  // node decodes its own target; the cross-table field resolvers dispatch against
+  // the TARGET binding; everything else against the payload's own read model.
+  let bindingKey = switch payload.kind {
+  | "resolveOne" | "resolveMany" => payload.target->Option.getOr(payload.readModelName)
+  | _ => payload.readModelName
+  }
+  switch payload.kind {
+  | "node" => await handleNode(~payload)
+  | _ =>
+    switch bindings->Dict.get(bindingKey) {
+    | Some(binding) => await dispatch(~binding, ~payload)
+    | None =>
+      JsError.throwWithMessage("PgQueryResolver: no binding registered for read model " ++ bindingKey)
+    }
+  }
+}

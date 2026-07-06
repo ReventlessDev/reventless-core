@@ -9,6 +9,8 @@
 open JestGlobals
 open ReventlessCore
 
+@val external btoa: string => string = "btoa"
+
 let mk = (id, status, name) => {
   let o = Dict.make()
   o->Dict.set("id", JSON.Encode.string(id))
@@ -211,6 +213,83 @@ describe("PgQueryResolver_Lambda.dispatch", () => {
       ~payload=mkPayload(~kind="getById", ~args=objArgs([("id", JSON.Encode.string("p-1"))]), ()),
     )
     QueryDb_Callback.clearQueryInterceptor()
+    expect(r)->toBe(JSON.Encode.null)
+  })
+
+  // ── cross-table (@resolves / @resolvesMany / node) ────────────────────────
+  // For resolveOne/resolveMany the dispatch binding IS the target binding
+  // (the handler selects it); source carries the parent object's key(s).
+  testPromise("resolveOne loads target by parent's id field", async () => {
+    let payload: PgQueryResolver_Lambda.payload = {
+      readModelName: "Things",
+      kind: "resolveOne",
+      target: "Things",
+      source: objArgs([("ref", JSON.Encode.string("p-2"))]),
+      sourceIdField: "ref",
+      multi: false,
+      arguments: objArgs([]),
+      identity: Reventless.Identity.anonymous,
+    }
+    let r = await PgQueryResolver_Lambda.dispatch(~binding=makeBinding(), ~payload)
+    expect(r->str("id"))->toEqual(Some("p-2"))
+  })
+
+  testPromise("resolveOne multi via target index → array", async () => {
+    let payload: PgQueryResolver_Lambda.payload = {
+      readModelName: "Things",
+      kind: "resolveOne",
+      target: "Things",
+      source: objArgs([("st", JSON.Encode.string("active"))]),
+      sourceIdField: "st",
+      targetIndex: "byStatus",
+      targetIndexIdField: "status",
+      multi: true,
+      arguments: objArgs([]),
+      identity: Reventless.Identity.anonymous,
+    }
+    let r = await PgQueryResolver_Lambda.dispatch(~binding=makeBinding(), ~payload)
+    expect(r->ids)->toEqual(["p-1", "p-3"])
+  })
+
+  testPromise("resolveMany batch-loads target by parent's ids field", async () => {
+    let payload: PgQueryResolver_Lambda.payload = {
+      readModelName: "Things",
+      kind: "resolveMany",
+      target: "Things",
+      source: objArgs([
+        ("refs", JSON.Encode.array(["p-1", "x", "p-3"]->Array.map(JSON.Encode.string))),
+      ]),
+      sourceIdsField: "refs",
+      arguments: objArgs([]),
+      identity: Reventless.Identity.anonymous,
+    }
+    let r = await PgQueryResolver_Lambda.dispatch(~binding=makeBinding(), ~payload)
+    expect(r->ids)->toEqual(["p-1", "p-3"])
+  })
+
+  testPromise("node decodes global id → __typename + item", async () => {
+    // Register a binding + node type in the module-level registries.
+    PgQueryResolver_Lambda.register(~readModelName="Things", makeBinding())
+    PgQueryResolver_Lambda.registerNodeType(~typeName="Thing", ~readModelName="Things")
+    let payload: PgQueryResolver_Lambda.payload = {
+      readModelName: "",
+      kind: "node",
+      arguments: objArgs([("id", JSON.Encode.string(btoa("Thing:p-2")))]),
+      identity: Reventless.Identity.anonymous,
+    }
+    let r = await PgQueryResolver_Lambda.handler(payload, Obj.magic(Nullable.null))
+    expect(r->str("__typename"))->toEqual(Some("Thing"))
+    expect(r->str("name"))->toEqual(Some("Bravo"))
+  })
+
+  testPromise("node with unknown type → null", async () => {
+    let payload: PgQueryResolver_Lambda.payload = {
+      readModelName: "",
+      kind: "node",
+      arguments: objArgs([("id", JSON.Encode.string(btoa("Nope:p-1")))]),
+      identity: Reventless.Identity.anonymous,
+    }
+    let r = await PgQueryResolver_Lambda.handler(payload, Obj.magic(Nullable.null))
     expect(r)->toBe(JSON.Encode.null)
   })
 

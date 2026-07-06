@@ -19,7 +19,7 @@ import { poolFor } from "@reventlessdev/reventless-aws/src/adapter/Postgres/PgRu
 import { Make as makeEngine } from "@reventlessdev/reventless-postgres/src/QueryEnginePostgres.res.mjs";
 import { opsFor as pgQdbOpsFor } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_Postgres_Runtime.res.mjs";
 import { deriveServerCapability } from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
-import { register, handler as dispatchHandler } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/PgQueryResolver_Lambda.res.mjs";
+import { register, registerNodeType, handler as dispatchHandler } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/PgQueryResolver_Lambda.res.mjs";
 import { patchSpecId, log } from "./HandlerFactoryHelpers.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
@@ -41,6 +41,11 @@ async function buildAllBindings() {
   // share it, so a Lambda holds one pool regardless of read model count.
   const pool = poolFor(pgConnection);
   const engine = makeEngine({ pool });
+
+  // Relay node type → read-model map (B3.2c), baked into the config.
+  for (const [typeName, rm] of Object.entries(config.nodeTypes || {})) {
+    registerNodeType(typeName, rm);
+  }
 
   const pushdowns = {
     indexLookup: engine.indexLookup,

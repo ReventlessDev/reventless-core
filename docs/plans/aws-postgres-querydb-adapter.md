@@ -296,8 +296,26 @@ binding it in a deploy-time maker.
       only when a subId is configured). `PG_URL`-gated (8 cases, green vs
       Postgres 16); dispatcher unit test covers routing + the no-subId empty
       connection.
-    - **`@resolves` / `@resolvesMany` / `node` — design (2026-07-06), awaiting
-      go-ahead.** These differ from the primary surface: they are field
+    - **`@resolves` / `@resolvesMany` / `node`** — ✅ **landed (2026-07-06),
+      dispatch unit-validated; deploy wiring compile-only.** Implemented per the
+      design below. `PgQueryResolver_Lambda`: `resolveOne` (target `ops.load` or
+      `indexLookup`, optional sort filter, Single→item / Multi→array),
+      `resolveMany` (existing `byIds`), `node` (decode `base64(typeName:localId)`
+      → `nodeTypeMap` → load → `{...item, __typename, id}`); the handler selects
+      the TARGET binding for cross-table kinds and decodes node itself.
+      `QueryDbResolvers_Lambda` emits the `idResolvers`/`idsResolvers` (Invoke
+      templates on the parent type, carrying `ctx.source` + baked target
+      metadata) and registers node types; `PgQueryResolver_Builder.provision`
+      bakes the `nodeTypes` map into the env config and creates the one shared
+      `node(id)` resolver. `QueryEnginePostgres` needed no new methods.
+      Dispatcher tests: 16 cases incl. resolveOne (single + multi-via-index),
+      resolveMany, node decode + unknown-type. `target.tableName → binding key`
+      resolved as `String.capitalize` (the binding registry's key). Build
+      warning-free. Remaining un-validated surface: the AWS boundary + the
+      `tableName`↔spec-name assumption on a real cross-plugin deploy.
+
+      Original design (2026-07-06) — for reference: these differ from the
+      primary surface: they are field
       resolvers on **parent entity types** (not `Query`), and they read a
       **different (target) read model** than the one they hang off. On DynamoDB
       each gets its own data source on the target table; on Postgres they become

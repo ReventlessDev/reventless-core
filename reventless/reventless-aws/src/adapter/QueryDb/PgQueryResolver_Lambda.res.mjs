@@ -100,18 +100,62 @@ async function dispatch(binding, payload) {
         }
         let items$1 = await binding.pushdowns.scanAll(rm);
         return QueryDbListQuery$ReventlessCore.run(items$1, argsDict, binding.capability, binding.labelField, param => {});
+      case "resolveMany" :
+        let target = Stdlib_Option.getOr(payload.target, rm);
+        let source = Stdlib_Option.getOr(payload.source, null);
+        let ids$1 = argStrs(source, Stdlib_Option.getOr(payload.sourceIdsField, ""));
+        return await binding.pushdowns.byIds(target, ids$1);
+      case "resolveOne" :
+        let target$1 = Stdlib_Option.getOr(payload.target, rm);
+        let source$1 = Stdlib_Option.getOr(payload.source, null);
+        let key = Stdlib_Option.getOr(argStr(source$1, Stdlib_Option.getOr(payload.sourceIdField, "")), "");
+        let ix = payload.targetIndex;
+        let items$2;
+        if (ix !== undefined) {
+          items$2 = await binding.pushdowns.indexLookup(target$1, Stdlib_Option.getOr(payload.targetIndexIdField, ix), key);
+        } else {
+          let items$3 = await binding.ops.load(key);
+          items$2 = items$3.TAG === "Ok" ? items$3._0 : [];
+        }
+        let match$1 = payload.sourceSubId;
+        let match$2 = binding.subIdField;
+        let filtered;
+        if (match$1 !== undefined && match$2 !== undefined) {
+          let name = match$1.name;
+          let tmp = match$1.kind === "arg" ? argStr(payload.arguments, name) : argStr(source$1, name);
+          let subVal = Stdlib_Option.getOr(tmp, "");
+          filtered = items$2.filter(it => Stdlib_Option.getOr(argStr(it, match$2), "") === subVal);
+        } else {
+          filtered = items$2;
+        }
+        if (Stdlib_Option.getOr(payload.multi, false)) {
+          return filtered;
+        }
+        let item$1 = filtered[0];
+        if (item$1 !== undefined) {
+          return item$1;
+        } else {
+          return null;
+        }
       default:
         log.error("PgQueryResolver_Lambda", undefined, `unmapped resolver kind '` + other + `' for ` + rm);
         return Stdlib_JsError.throwWithMessage(`PgQueryResolver: unmapped resolver kind '` + other + `' for ` + rm);
     }
   } else {
-    let match$1 = payload.kind;
-    switch (match$1) {
+    let isMulti = Stdlib_Option.getOr(payload.multi, false);
+    let match$3 = payload.kind;
+    switch (match$3) {
       case "getById" :
         return null;
       case "items" :
       case "list" :
         return emptyConnection();
+      case "resolveOne" :
+        if (isMulti) {
+          return [];
+        } else {
+          return null;
+        }
       default:
         return [];
     }
@@ -124,12 +168,68 @@ function register(readModelName, binding) {
   bindings[readModelName] = binding;
 }
 
+let nodeTypeMap = {};
+
+function registerNodeType(typeName, readModelName) {
+  nodeTypeMap[typeName] = readModelName;
+}
+
+async function handleNode(payload) {
+  let globalId = Stdlib_Option.getOr(argStr(payload.arguments, "id"), "");
+  let decoded;
+  try {
+    decoded = atob(globalId);
+  } catch (exn) {
+    decoded = "";
+  }
+  let colonIdx = decoded.indexOf(":");
+  if (colonIdx <= 0) {
+    return null;
+  }
+  let typeName = decoded.slice(0, colonIdx);
+  let localId = decoded.slice(colonIdx + 1 | 0, decoded.length);
+  let binding = Stdlib_Option.flatMap(nodeTypeMap[typeName], rm => bindings[rm]);
+  if (binding === undefined) {
+    return null;
+  }
+  let match = await runInterceptor(binding, payload);
+  if (typeof match === "object") {
+    return null;
+  }
+  let items = await binding.ops.load(localId);
+  if (items.TAG !== "Ok") {
+    return null;
+  }
+  let item = items._0[0];
+  if (item === undefined) {
+    return null;
+  }
+  let obj = Object.assign({}, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {}));
+  obj["__typename"] = typeName;
+  obj["id"] = globalId;
+  return obj;
+}
+
 async function handler(payload, _context) {
-  let binding = bindings[payload.readModelName];
+  let match = payload.kind;
+  let bindingKey;
+  switch (match) {
+    case "resolveMany" :
+    case "resolveOne" :
+      bindingKey = Stdlib_Option.getOr(payload.target, payload.readModelName);
+      break;
+    default:
+      bindingKey = payload.readModelName;
+  }
+  let match$1 = payload.kind;
+  if (match$1 === "node") {
+    return await handleNode(payload);
+  }
+  let binding = bindings[bindingKey];
   if (binding !== undefined) {
     return await dispatch(binding, payload);
   } else {
-    return Stdlib_JsError.throwWithMessage("PgQueryResolver: no binding registered for read model " + payload.readModelName);
+    return Stdlib_JsError.throwWithMessage("PgQueryResolver: no binding registered for read model " + bindingKey);
   }
 }
 
@@ -144,6 +244,9 @@ export {
   dispatch,
   bindings,
   register,
+  nodeTypeMap,
+  registerNodeType,
+  handleNode,
   handler,
 }
 /* log Not a pure module */

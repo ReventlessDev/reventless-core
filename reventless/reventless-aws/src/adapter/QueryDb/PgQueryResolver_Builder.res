@@ -44,8 +44,39 @@ let entries: dict<resolverEntry> = Dict.make()
 let register = (entry: resolverEntry): unit =>
   entries->Dict.set(entry.readModelName, entry)
 
+// Relay node type → read-model-name, populated per RM by QueryDbResolvers_Lambda.
+// Baked into the env config so the entry point can serve the shared node(id).
+let nodeTypes: dict<string> = Dict.make()
+let registerNodeType = (~typeName: string, ~readModelName: string): unit =>
+  nodeTypes->Dict.set(typeName, readModelName)
+
 // -- Provision --------------------------------------------------------------
 let bool = b => b ? "true" : "false"
+
+// One `node(id: ID!)` resolver on the shared data source → Invoke {kind:"node"}.
+let nodeResolverCode =
+  `import { util } from '@aws-appsync/utils';
+export function request(ctx) {
+  const id = ctx.identity;
+  return {
+    operation: 'Invoke',
+    payload: {
+      readModelName: '',
+      kind: 'node',
+      arguments: ctx.args,
+      identity: id != null && id.sub != null
+        ? { userId: id.sub, username: id.username, groups: id.claims?.['cognito:groups'] ?? [], claims: id.claims, provider: 'Cognito' }
+        : id != null
+          ? { userArn: id.userArn ?? null, accountId: id.accountId ?? null, username: id.username ?? null, provider: 'IAM' }
+          : null
+    }
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  return ctx.result;
+}
+`->Pulumi.Input.make
 
 // Serialize the shared connection config into the env-config JSON (same shape
 // EventCollectorRuntime_Builder_Single bakes into HANDLER_CONFIG).
@@ -109,9 +140,19 @@ let provision = (
           )}}`
       })
 
+    // Relay node type → read-model map, baked so the entry point can serve node(id).
+    let nodeTypesJson =
+      nodeTypes
+      ->Dict.toArray
+      ->Array.toSorted(((a, _), (b, _)) => String.compare(a, b))
+      ->Array.map(((typeName, rm)) => `"${typeName}":"${rm}"`)
+      ->Array.join(",")
+
     let queryResolverConfig =
       selection.connectionConfig->Pulumi.Output.apply(cc =>
-        `{"pgConnection":${pgConnectionJson(cc)},"handlers":[${handlerJsons->Array.join(",")}]}`
+        `{"pgConnection":${pgConnectionJson(cc)},"handlers":[${handlerJsons->Array.join(
+            ",",
+          )}],"nodeTypes":{${nodeTypesJson}}}`
       )
 
     let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
@@ -216,6 +257,22 @@ let provision = (
       },
       ~opts=Some(customOpts),
     )
+
+    // Shared node(id) resolver (B3.2c) — one for the whole API, dispatched by
+    // typeName in the Lambda. Only when some entity registered a node type
+    // (else the `node` field isn't in the schema). Mirrors NodeResolver_AppSync,
+    // which likewise creates the node resolver directly at deploy time.
+    if nodeTypes->Dict.toArray->Array.length > 0 {
+      let _nodeResolver = AppSync_Resolver_Retrying.makeUnitJsResolver(
+        ~name=name ++ "NodeResolver",
+        ~api,
+        ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
+        ~type_="Query"->Pulumi.Input.make,
+        ~field="node"->Pulumi.Input.make,
+        ~code=nodeResolverCode,
+        ~opts=customOpts,
+      )
+    }
 
     // Fulfil the deferred name the Postgres storage maker handed to resolvers.
     let _ = dataSource.name->Pulumi.Output.apply(n => resolveDataSourceName.contents(n))

@@ -51,6 +51,32 @@ export function response(ctx) {
 `->Pulumi.Input.make
 }
 
+// Cross-table field resolver (@resolves/@resolvesMany, B3.2c): on a parent
+// entity type's field, carrying the parent object (ctx.source) + baked target
+// metadata (`extra`). `sourceType` is the parent read model (used only for auth
+// scoping in dispatch); `target` is the target read model's binding key.
+let invokeFieldTemplate = (~sourceType: string, ~kind: string, ~target: string, ~extra: string) =>
+  `import { util } from '@aws-appsync/utils';
+export function request(ctx) {
+  const id = ctx.identity;
+  return {
+    operation: 'Invoke',
+    payload: {
+      readModelName: '${sourceType}',
+      kind: '${kind}',
+      target: '${target}',
+      source: ctx.source,
+      arguments: ctx.args,${extra}
+      identity: ${identityBlock}
+    }
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  return ctx.result;
+}
+`->Pulumi.Input.make
+
 let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   ~name: string,
   ~api: api,
@@ -58,8 +84,8 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   ~dataSourceName,
   ~indexes: array<indexConfig>,
   ~subIdField,
-  ~idResolverConfigs as _: array<idResolverConfig>,
-  ~idsResolverConfigs as _: array<idsResolverConfig>,
+  ~idResolverConfigs: array<idResolverConfig>,
+  ~idsResolverConfigs: array<idsResolverConfig>,
   ~authorization as _: Reventless.Authorization.permission,
   ~opts,
 ) => {
@@ -87,11 +113,21 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   | Some({labelField: ?lf}) => lf->Option.getOr("id")
   | None => "id"
   }
+  let returnTypeName = switch registryEntry {
+  | Some({returnTypeName: rt}) => rt
+  | None => name
+  }
 
   // Register the binding info the shared Lambda's env config needs (the entry
   // point gets indexes/subIdField/schema from the spec module; labelField and
   // includeIdParam come from this deploy-time registry). Keyed by spec name.
   PgQueryResolver_Builder.register({readModelName: name, labelField, includeIdParam})
+
+  // Relay node type → this read model (for the shared node(id) resolver, B3.2c).
+  // Only entities addressable by id participate in node resolution.
+  if includeIdParam {
+    PgQueryResolver_Builder.registerNodeType(~typeName=returnTypeName, ~readModelName=name)
+  }
 
   let mkResolver = (~resolverName, ~field, ~kind, ~index=?) =>
     Resolver.makeUnitJsResolver(
@@ -164,10 +200,63 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       mkResolver(~resolverName, ~field, ~kind="index", ~index)
     })
 
+    // @resolves — single cross-table field resolver on this (parent) type. The
+    // target's binding key is its capitalized spec name (mirrors how the binding
+    // registry is keyed); the parent object flows via ctx.source.
+    let idResolvers = idResolverConfigs->Array.map(config => {
+      let {source: {idField, subId, resolvedField}, target} = config
+      let targetKey = target.tableName->String.capitalize
+      let (field, multi) = switch resolvedField {
+      | Single(f) => (f, false)
+      | Multi(f) => (f, true)
+      }
+      let targetFrag = switch target.idField {
+      | Index(ix) => `\n      targetIndex: '${ix}',\n      targetIndexIdField: '${ix}',`
+      | IndexWithId(ix, idf) => `\n      targetIndex: '${ix}',\n      targetIndexIdField: '${idf}',`
+      | Id => ""
+      }
+      let subIdFrag = switch subId {
+      | Field(f) => `\n      sourceSubId: { kind: 'field', name: '${f}' },`
+      | Argument(a) => `\n      sourceSubId: { kind: 'arg', name: '${a}' },`
+      | NoSubId => ""
+      }
+      let extra =
+        `\n      sourceIdField: '${idField}',\n      multi: ${multi ? "true" : "false"},` ++
+        targetFrag ++
+        subIdFrag
+      Resolver.makeUnitJsResolver(
+        ~name=name ++ field->String.capitalize,
+        ~api,
+        ~dataSourceName,
+        ~type_=name->Pulumi.Input.make,
+        ~field=field->Pulumi.Input.make,
+        ~code=invokeFieldTemplate(~sourceType=name, ~kind="resolveOne", ~target=targetKey, ~extra),
+        ~opts,
+      )
+    })
+
+    // @resolvesMany — batch cross-table field resolver (BatchGet by ids).
+    let idsResolvers = idsResolverConfigs->Array.map(config => {
+      let {source: {idsField, resolvedField}, target} = config
+      let targetKey = target.tableName->String.capitalize
+      let extra = `\n      sourceIdsField: '${idsField}',`
+      Resolver.makeUnitJsResolver(
+        ~name=name ++ resolvedField->String.capitalize,
+        ~api,
+        ~dataSourceName,
+        ~type_=name->Pulumi.Input.make,
+        ~field=resolvedField->Pulumi.Input.make,
+        ~code=invokeFieldTemplate(~sourceType=name, ~kind="resolveMany", ~target=targetKey, ~extra),
+        ~opts,
+      )
+    })
+
     [byId, all]
     ->Array.concat(items)
     ->Array.concat(byIds)
     ->Array.concat(byIndex)
+    ->Array.concat(idResolvers)
+    ->Array.concat(idsResolvers)
     ->Array.map(Util.AppSync.toResourceNative)
   }
 
