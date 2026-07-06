@@ -386,7 +386,10 @@ in the surface's `<Surface>Storage.res` selector module):
   B1-style AWS glue (registry, deploy-time maker, runtime opsFor, VPC/IAM),
   B3.2 is the real project — a shared in-VPC Lambda AppSync data source
   replacing the direct DynamoDB resolvers (Option A; RDS Data API kept as
-  documented alternative), B3.3 (live updates) deferred.
+  documented alternative). All phases B3.0–B3.3 landed 2026-07-05/06; B3.3
+  (live updates) publishes descriptors from the projection Lambda after each
+  save/delete (mirrors the reventless-local Sqlite backend), not from a stream.
+  AWS-boundary (live-stack) validation is the only remaining surface.
 
 ---
 

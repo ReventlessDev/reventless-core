@@ -13,6 +13,9 @@ type handlerEntry = {
   projectionModule: string,
   queryDbTableName: string,
   sourceUrn: string,
+  // B3.3: AppSync Events channel root for a subscription-enabled Postgres view
+  // slice; "" when the slice isn't live-enabled (compact key `t`, omitted then).
+  stateTopicName: string,
 }
 
 // Longest common prefix of a set of strings. Used to factor the shared
@@ -39,6 +42,27 @@ type sliceInfo = {
 }
 
 let sliceInfos: dict<sliceInfo> = Dict.make()
+
+// B3.3: the AppSync Events API a Postgres-backed stream view slice publishes live
+// updates to. Set once by `Platform.makePlatform` before plugins build (mirrors
+// EventCollectorRuntime_Builder_Single). None → no live updates.
+type eventsApiConfig = {
+  endpoint: Pulumi.Output.t<string>,
+  apiArn: Pulumi.Output.t<string>,
+}
+let eventsApiConfig: ref<option<eventsApiConfig>> = ref(None)
+let setEventsApiConfig = (cfg: eventsApiConfig) => eventsApiConfig := Some(cfg)
+
+// Channel root for a subscription-enabled Postgres view slice (the plural LIST
+// field name, same source as the DynamoDB subscriptionInfraHook); "" when the
+// slice isn't stream-routed or there's no events API.
+let stateTopicNameFor = (name: string): string =>
+  QueryDbBackend.postgresStreamRegistry->Set.has(name) && eventsApiConfig.contents->Option.isSome
+    ? ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry
+      ->Dict.get(name)
+      ->Option.map(qn => qn.listFieldName)
+      ->Option.getOr(name)
+    : ""
 
 let registerStateViewSlice = (
   ~name,
@@ -130,6 +154,9 @@ let buildLambda = (
   ~packageDirs,
   ~channelSpecs,
   ~feedQueue: option<PulumiAws.SQS.Queue.t>=None,
+  // B3.3: Some when any slice on this Lambda is a subscription-enabled Postgres
+  // view slice — arms the APPSYNC_ENDPOINT env + appsync:EventPublish IAM.
+  ~pgStreamConfig: option<eventsApiConfig>=None,
   ~memorySize=1024,
   ~timeout=30,
 ) => {
@@ -191,11 +218,16 @@ let buildLambda = (
             ->JSON.stringifyAny
             ->Option.getOr(`""`)
           let q = h.queryDbTableName->JSON.stringifyAny->Option.getOr(`""`)
+          // B3.3: compact key `t` = live-update channel root; omit when empty.
+          let t =
+            h.stateTopicName == ""
+              ? ""
+              : `,"t":${h.stateTopicName->JSON.Encode.string->JSON.stringify}`
           if sharedUrn != "" {
-            `{"s":${s},"p":${p},"q":${q}}`
+            `{"s":${s},"p":${p},"q":${q}${t}}`
           } else {
             let u = h.sourceUrn->JSON.stringifyAny->Option.getOr(`""`)
-            `{"s":${s},"p":${p},"q":${q},"u":${u}}`
+            `{"s":${s},"p":${p},"q":${q},"u":${u}${t}}`
           }
         })
         ->Array.join(",")
@@ -206,6 +238,13 @@ let buildLambda = (
 
   let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
   envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
+
+  // B3.3: give the projection Lambda the AppSync Events endpoint when any of its
+  // slices publish live updates (IAM added below).
+  switch pgStreamConfig {
+  | Some(cfg) => envVars->Dict.set("APPSYNC_ENDPOINT", cfg.endpoint->Pulumi.Output.asInput)
+  | None => ()
+  }
 
   // Bundle the framework packages alongside the entry point so the deployed
   // Lambda picks up local edits without waiting for a Lambda Layer rebuild
@@ -286,6 +325,35 @@ let buildLambda = (
   | None => ()
   }
 
+  // B3.3: grant appsync:EventPublish so subscription-enabled Postgres view slices
+  // can push live-update descriptors from this Lambda.
+  switch pgStreamConfig {
+  | Some(cfg) =>
+    let _ = cfg.apiArn->Pulumi.Output.apply(apiArn => {
+      open PulumiAws.PolicyDocument
+      PulumiAws.IAM.RolePolicy.make(
+        ~name="AllStateViewSlices-appsyncPublish",
+        ~args={
+          policy: PulumiAws.PolicyDocument.make(
+            ~id="AllStateViewSlices-appsyncPublishPolicy",
+            ~statements=[
+              {
+                sid: "AllowPublishAppSyncEvents",
+                effect: Allow,
+                actions: Action("appsync:EventPublish"),
+                resources: Resource(apiArn ++ "/*"),
+              },
+            ],
+          )
+          ->PulumiAws.PolicyDocument.toJsonString
+          ->Pulumi.Input.make,
+          role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+        },
+      )
+    })
+  | None => ()
+  }
+
   let _connectResources = EventCollectorChannel.connect(
     ~name="AllStateViewSlices",
     ~channelSpecs,
@@ -347,7 +415,7 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
         let packageDirs: dict<string> = Dict.make()
         let allQueryDbResources: array<ReventlessInfra.Adapter.resource> = []
 
-        sliceInfos->Dict.forEachWithKey((info, _name) => {
+        sliceInfos->Dict.forEachWithKey((info, name) => {
           info.queryDbResources->Array.forEach(r => allQueryDbResources->Array.push(r)->ignore)
           let specPkg = Util_Bundle.extractPackageName(info.specModulePath)
           packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
@@ -369,18 +437,24 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
                 projectionModule: info.projectionModulePath,
                 queryDbTableName: tableName,
                 sourceUrn: urn,
+                stateTopicName: stateTopicNameFor(name),
               }
               entry
             })
           let _ = handlerOutputs->Array.push(handlerJson)
         })
 
+        let anyPgStream =
+          sliceInfos
+          ->Dict.keysToArray
+          ->Array.some(n => QueryDbBackend.postgresStreamRegistry->Set.has(n))
         buildLambda(
           ~parent,
           ~handlerOutputs,
           ~packageDirs,
           ~channelSpecs=[{channel: channel, eventTopics, resources: allQueryDbResources}],
           ~feedQueue,
+          ~pgStreamConfig=anyPgStream ? eventsApiConfig.contents : None,
         )
       | None =>
         log.warn(
@@ -445,6 +519,7 @@ let finish = () =>
                   queryDbTableName: tableName,
                   // No stream resource (Postgres) → dispatch on the feed queue ARN.
                   sourceUrn: urns->Array.get(0)->Option.getOr(feedArn),
+                  stateTopicName: stateTopicNameFor(spec.componentName),
                 }
                 entry
               })
@@ -457,12 +532,17 @@ let finish = () =>
           }
         })
 
+        let anyPgStream =
+          storedSpecs->Array.some(spec =>
+            QueryDbBackend.postgresStreamRegistry->Set.has(spec.componentName)
+          )
         buildLambda(
           ~parent,
           ~handlerOutputs,
           ~packageDirs,
           ~channelSpecs=storedSpecs->Array.map(({channelSpec}) => channelSpec),
           ~feedQueue,
+          ~pgStreamConfig=anyPgStream ? eventsApiConfig.contents : None,
           ~memorySize=maxMemorySize,
           ~timeout=maxTimeout,
         )

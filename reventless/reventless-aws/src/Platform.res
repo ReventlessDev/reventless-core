@@ -332,6 +332,25 @@ module MakeWithConfig = (
       Some(eventsApi)
     }
 
+  // B3.3: publish the events-API endpoint + ARN to the projection-Lambda runtime
+  // builders, so a subscription-enabled Postgres read model / view slice gets the
+  // APPSYNC_ENDPOINT env + appsync:EventPublish IAM at their `finish`. Set once
+  // here (before plugins build) in both monolithic and plugin-stack mode — the
+  // phantom events API carries apiArn + dns, so httpEndpoint resolves either way.
+  switch domainEventsApiOpt {
+  | Some(eventsApi) =>
+    let cfg = {
+      EventCollectorRuntime_Builder_Single.endpoint: AppSync_EventsApi.httpEndpoint(eventsApi),
+      apiArn: eventsApi.api.apiArn,
+    }
+    EventCollectorRuntime_Builder_Single.setEventsApiConfig(cfg)
+    StateViewSliceRuntime_Builder_Single.setEventsApiConfig({
+      StateViewSliceRuntime_Builder_Single.endpoint: AppSync_EventsApi.httpEndpoint(eventsApi),
+      apiArn: eventsApi.api.apiArn,
+    })
+  | None => ()
+  }
+
   // Returns the AppSync API/role to attach resolvers to for the current deploy target.
   // Hoisted above ApiConfig so the module can reference them as thunks.
   let resolveTargetApi = () =>

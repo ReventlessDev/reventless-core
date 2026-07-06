@@ -19,6 +19,7 @@ let Selectable = {
 
 function make$1(name, indexes, subIdField, ttl, api, apiRole, opts) {
   if (QueryDbBackend$ReventlessAws.isPostgresFor(name)) {
+    QueryDbBackend$ReventlessAws.postgresStreamRegistry.add(name);
     return QueryDbStorage_Postgres$ReventlessAws.make(name, indexes, subIdField, ttl, api, apiRole, opts);
   } else {
     return QueryDbStorage_DynamoDbStream$ReventlessAws.make(name, indexes, subIdField, ttl, api, apiRole, opts);
@@ -48,4 +49,4 @@ export {
   Selectable,
   SelectableStream,
 }
-/* QueryDbStorage_DynamoDb-ReventlessAws Not a pure module */
+/* QueryDbBackend-ReventlessAws Not a pure module */

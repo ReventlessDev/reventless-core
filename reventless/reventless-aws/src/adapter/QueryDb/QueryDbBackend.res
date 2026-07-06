@@ -50,3 +50,11 @@ let isPostgresFor = (name: string): bool =>
 /** Whether ANY read model on this platform is Postgres-backed (used to decide
     whether the projection Lambdas need VPC/secret access). */
 let isPostgres = (): bool => selectionRef.contents->Option.isSome
+
+// B3.3: Postgres read models routed through `QueryDbStorage.SelectableStream`
+// (i.e. subscription-enabled). Lives here — a leaf both the storage selector and
+// the projection-Lambda runtime builders already import — so the runtime builder
+// can consult it without pulling in QueryDbStorage (which would close a build
+// cycle via QueryDbStorage_Postgres → PgQueryResolver_Builder). Membership means
+// "publish live updates from the projection Lambda after save/delete".
+let postgresStreamRegistry: Set.t<string> = Set.make()

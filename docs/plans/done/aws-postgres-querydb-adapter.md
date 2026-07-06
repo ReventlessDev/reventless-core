@@ -398,12 +398,66 @@ binding it in a deploy-time maker.
       only has its own plugin's read models registered; a platform-level node
       dispatcher across plugin Lambdas is a separate effort — and node isn't
       wired on the DynamoDB path either).
-- **B3.3 — live updates (deferred).** StateTopic assumes a DynamoDB stream
-  ARN. Postgres options: (a) publish from the projection Lambda after
-  `save` (simplest — the writer knows what changed), or (b) qdb triggers +
-  NOTIFY + the relay pattern (B2 infrastructure). Decide when the live-update
-  contract (docs/guides/appsync-events-live-updates.md) is actually needed on
-  a Postgres platform; not a blocker for B3.1/2.
+- **B3.3 — live updates (un-deferred 2026-07-06).** Design **(a) chosen**:
+  publish from the projection Lambda after `save`/`delete`. **Key recon
+  finding:** the DynamoDB path (stream → shared StateTopic Lambda → SigV4 POST
+  to AppSync Events `/event`, descriptor `{changeKind, id, sortKeyValue?}` on
+  channel `/default/{topicRoot}/{pathSegment(entityKey)}`) is NOT the only
+  precedent — the **reventless-local Sqlite/InMemory backends already implement
+  exactly design (a)**: `QueryDbStorage_Sqlite`/`_InMemory` publish the same
+  descriptor right after their save/delete, with `changeKind` for save fixed to
+  `"Updated"` (documented degradation vs the stream at `LocalBus.res:213` — no
+  Added detection). So Postgres mirrors the **Sqlite backend**, not the stream:
+  the projection Lambda (already in-VPC, already writing to Postgres) POSTs the
+  descriptor after each write. The client/AutoLive contract is byte-identical to
+  the DynamoDB path (same channel, same descriptor) — option (b) (qdb triggers +
+  NOTIFY + relay) is unnecessary and dropped. Runtime Lambda glue in this repo is
+  hand-written `.mjs` (the entry points), so the publish helper is a `.mjs` too.
+
+  Decomposed (mirrors the B3.0–B3.2 rhythm: pure/runtime logic proven headlessly,
+  AWS deploy boundary compile-validated only):
+
+  - **B3.3a — runtime publish + entry-point wrapping** — ✅ **landed
+    (2026-07-06).** `StateTopicPublish.mjs` (reventless-aws/adapter/Runtime/):
+    SigV4 POST to `{endpoint}/event`, descriptor + channel built exactly as
+    `StateTopic_AppSync.handlerCode` (fixed `changeKind`: save→`"Updated"`,
+    delete→`"Removed"`; `entityKey` = `id` or `id-subKey`; `sortKeyValue` from
+    `updatedAt`/`createdAt`; `pathSegment` sanitiser). One deliberate difference
+    from the DDB Lambda: publish failures are **logged and swallowed** — the
+    projection row is already committed and the Lambda is at-least-once, so
+    throwing would re-run the projection and duplicate. `withLiveUpdates(ops,
+    liveConfig)` wraps `save`/`saveBatch`/`delete`/`deleteBatch`; the real
+    `delete` signature is `(id, option<(field,subValue)>)`, and a whole-partition
+    composite delete (`Delete(id)`) enumerates rows via `ops.load(id)` **before**
+    deleting so each removed sub-row gets its own descriptor (matches
+    `QueryDbStorage_Sqlite.delete`). `ReadModelEntryPoint.mjs` (before
+    `mkInjectIdSave`, so the publish sees the id-injected state) +
+    `StateViewSliceEntryPoint.mjs` Postgres branch apply it, gated on a
+    per-handler `stateTopicName` + `APPSYNC_ENDPOINT` env (absent → pass-through,
+    non-stream/non-live RMs unaffected). Headless test
+    (`StateTopicPublishTest.res`, 9 cases): capturing-publish stub + mock ops,
+    asserting entity key / changeKind / sortKeyValue for save/delete ×
+    single/composite (incl. partition-wide enumeration) + the no-topic gate.
+  - **B3.3b — deploy wiring (compile-validated; AWS boundary unvalidated)** — ✅
+    **landed (2026-07-06).** `QueryDbBackend.postgresStreamRegistry` (populated by
+    `QueryDbStorage.SelectableStream`'s Postgres branch) marks subscription-enabled
+    pg RMs — it lives in the **leaf** `QueryDbBackend` (not `QueryDbStorage`) to
+    avoid a build cycle (`QueryDbStorage_Postgres → PgQueryResolver_Builder →
+    EventCollectorRuntime_Builder_Single → QueryDbStorage`). The events-API
+    endpoint + ARN thread into both runtime builders via a module-level
+    `eventsApiConfig` ref set by `Platform.makePlatform` right after
+    `domainEventsApiOpt` (before plugins build; works in monolithic and plugin
+    mode — the phantom events API carries apiArn + dns). For pg-backed stream
+    RMs/SVS the builders bake `stateTopicName` (listFieldName from
+    `Plugin_Helpers.queryFieldNamesRegistry`, same source as the DynamoDB
+    `subscriptionInfraHook`) into the handler config (RM: `,"stateTopicName":…`;
+    SVS: compact key `t`), add the `APPSYNC_ENDPOINT` env, and grant
+    `appsync:EventPublish` on the events-API ARN to the projection Lambda role.
+    Full reventless-aws build zero warnings, 181 tests green. Reachability caveat
+    (defer to C1): an in-VPC Lambda needs a NAT / VPC endpoint to reach the public
+    AppSync Events endpoint — same constraint as its existing `GetSecretValue`
+    call. Remaining unvalidated surface: the AWS boundary (real SigV4 publish +
+    AppSync Events delivery on a deployed stack).
 
 Order: B3.1 is mechanical (one day-scale, follows B1 file-for-file). B3.2 is
 the real project — resolver-kind coverage should be driven by what the AutoUI

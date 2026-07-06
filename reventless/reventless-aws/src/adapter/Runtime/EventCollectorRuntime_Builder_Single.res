@@ -18,6 +18,18 @@ type readModelInfo = {
 
 let readModelInfos: dict<readModelInfo> = Dict.make()
 
+// B3.3: the AppSync Events API a Postgres-backed stream read model publishes live
+// updates to. Set once by `Platform.makePlatform` (monolithic mode) before the
+// plugins build, so `finish` can add the APPSYNC_ENDPOINT env + appsync:EventPublish
+// IAM to the projection Lambda. None → no live updates (no events API, or the
+// platform runs without one).
+type eventsApiConfig = {
+  endpoint: Pulumi.Output.t<string>,
+  apiArn: Pulumi.Output.t<string>,
+}
+let eventsApiConfig: ref<option<eventsApiConfig>> = ref(None)
+let setEventsApiConfig = (cfg: eventsApiConfig) => eventsApiConfig := Some(cfg)
+
 let registerReadModel = (
   ~readModelName,
   ~specModulePath,
@@ -192,6 +204,23 @@ let finish = () =>
             let handlerPgFragment = info.pgBacked
               ? pgConnectionFragment
               : Pulumi.Output.make("")
+            // B3.3: a subscription-enabled Postgres read model publishes live
+            // updates from the projection Lambda — bake its AppSync Events channel
+            // root (the plural LIST field name, same source as the DynamoDB
+            // subscriptionInfraHook). Deploy-time resolved, so a plain string.
+            let stateTopicFragment =
+              info.pgBacked &&
+              QueryDbBackend.postgresStreamRegistry->Set.has(spec.componentName) &&
+              eventsApiConfig.contents->Option.isSome
+                ? {
+                    let topic =
+                      ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry
+                      ->Dict.get(spec.componentName)
+                      ->Option.map(qn => qn.listFieldName)
+                      ->Option.getOr(spec.componentName)
+                    `,"stateTopicName":${topic->JSON.Encode.string->JSON.stringify}`
+                  }
+                : ""
             let handlerJson =
               Pulumi.Output.all4((
                 info.queryDbTableName,
@@ -203,7 +232,7 @@ let finish = () =>
                 // No stream resource (Postgres-backed source) → dispatch on the
                 // feed queue's ARN instead of a stream URN.
                 let sourceUrn = urns->Array.get(0)->Option.getOr(feedArn)
-                `{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"${pgFragment}}`
+                `{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"${pgFragment}${stateTopicFragment}}`
               })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
@@ -222,6 +251,22 @@ let finish = () =>
 
         let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
         envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
+
+        // B3.3: when any Postgres-backed read model is subscription-enabled, the
+        // projection Lambda publishes live updates to the AppSync Events API —
+        // give it the endpoint (env) and appsync:EventPublish (IAM, below).
+        let anyPgStream =
+          readModelInfos
+          ->Dict.keysToArray
+          ->Array.some(rmName =>
+            (readModelInfos->Dict.get(rmName)->Option.mapOr(false, i => i.pgBacked)) &&
+              QueryDbBackend.postgresStreamRegistry->Set.has(rmName)
+          )
+        let pgStreamConfig = anyPgStream ? eventsApiConfig.contents : None
+        switch pgStreamConfig {
+        | Some(cfg) => envVars->Dict.set("APPSYNC_ENDPOINT", cfg.endpoint->Pulumi.Output.asInput)
+        | None => ()
+        }
 
         let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
           ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelEntryPoint.mjs",
@@ -285,6 +330,35 @@ let finish = () =>
             )
           })
         | _ => ()
+        }
+
+        // B3.3: grant the projection Lambda appsync:EventPublish on the events API
+        // so a Postgres-backed stream read model can push live-update descriptors.
+        switch pgStreamConfig {
+        | Some(cfg) =>
+          let _ = cfg.apiArn->Pulumi.Output.apply(apiArn => {
+            open PulumiAws.PolicyDocument
+            PulumiAws.IAM.RolePolicy.make(
+              ~name="AllReadModels-appsyncPublish",
+              ~args={
+                policy: PulumiAws.PolicyDocument.make(
+                  ~id="AllReadModels-appsyncPublishPolicy",
+                  ~statements=[
+                    {
+                      sid: "AllowPublishAppSyncEvents",
+                      effect: Allow,
+                      actions: Action("appsync:EventPublish"),
+                      resources: Resource(apiArn ++ "/*"),
+                    },
+                  ],
+                )
+                ->PulumiAws.PolicyDocument.toJsonString
+                ->Pulumi.Input.make,
+                role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+              },
+            )
+          })
+        | None => ()
         }
 
         let channelSpecs = storedSpecs->Array.map(({channelSpec}) => channelSpec)

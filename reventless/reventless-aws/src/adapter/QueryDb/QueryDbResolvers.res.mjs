@@ -28,4 +28,4 @@ export {
   Lambda,
   Selectable,
 }
-/* QueryDbResolvers_Lambda-ReventlessAws Not a pure module */
+/* QueryDbBackend-ReventlessAws Not a pure module */

@@ -89,6 +89,7 @@ import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "./adapter/Eve
 import * as InboundTranslationResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res.mjs";
 import * as PluginExtensionPointRuntime_Builder$ReventlessAws from "./plugin/runtime/PluginExtensionPointRuntime_Builder.res.mjs";
 import * as ReadModel_Builder_NoResolver_Stream$ReventlessAws from "./components/ReadModel_Builder_NoResolver_Stream.res.mjs";
+import * as EventCollectorRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/EventCollectorRuntime_Builder_Single.res.mjs";
 import * as Platform_ComponentDefinitions_Lambda$ReventlessAws from "./adapter/Api/Platform_ComponentDefinitions_Lambda.res.mjs";
 import * as StateViewSliceRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/StateViewSliceRuntime_Builder_Single.res.mjs";
 import * as AggregateRuntime_Builder_Single_Async$ReventlessAws from "./adapter/Runtime/AggregateRuntime_Builder_Single_Async.res.mjs";
@@ -273,6 +274,19 @@ function MakeWithConfig(Config) {
     let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
     let awsRegion = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
     domainEventsApiOpt = AppSync_EventsApi$ReventlessAws.make("DomainEventsApi", cognitoPool.poolId, awsRegion, {});
+  }
+  if (domainEventsApiOpt !== undefined) {
+    let cfg_endpoint = AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt);
+    let cfg_apiArn = domainEventsApiOpt.api.apiArn;
+    let cfg = {
+      endpoint: cfg_endpoint,
+      apiArn: cfg_apiArn
+    };
+    EventCollectorRuntime_Builder_Single$ReventlessAws.setEventsApiConfig(cfg);
+    StateViewSliceRuntime_Builder_Single$ReventlessAws.setEventsApiConfig({
+      endpoint: AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt),
+      apiArn: domainEventsApiOpt.api.apiArn
+    });
   }
   let resolveTargetApi = () => {
     let match = currentDeployTarget.contents;
@@ -1491,6 +1505,19 @@ function Make($star) {
     let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
     let awsRegion = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
     domainEventsApiOpt = AppSync_EventsApi$ReventlessAws.make("DomainEventsApi", cognitoPool.poolId, awsRegion, {});
+  }
+  if (domainEventsApiOpt !== undefined) {
+    let cfg_endpoint = AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt);
+    let cfg_apiArn = domainEventsApiOpt.api.apiArn;
+    let cfg = {
+      endpoint: cfg_endpoint,
+      apiArn: cfg_apiArn
+    };
+    EventCollectorRuntime_Builder_Single$ReventlessAws.setEventsApiConfig(cfg);
+    StateViewSliceRuntime_Builder_Single$ReventlessAws.setEventsApiConfig({
+      endpoint: AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt),
+      apiArn: domainEventsApiOpt.api.apiArn
+    });
   }
   let resolveTargetApi = () => {
     let match = currentDeployTarget.contents;

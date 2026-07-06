@@ -18,4 +18,4 @@ function make(name, indexes, subIdField, param, param$1, param$2, param$3) {
 export {
   make,
 }
-/* PgQueryResolver_Builder-ReventlessAws Not a pure module */
+/* QueryDbBackend-ReventlessAws Not a pure module */

@@ -14,6 +14,7 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as QueryDbBackend$ReventlessAws from "../QueryDb/QueryDbBackend.res.mjs";
 import * as EventLogBackend$ReventlessAws from "../EventLog/EventLogBackend.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as PgProjectionFeed$ReventlessAws from "../Postgres/PgProjectionFeed.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
@@ -21,6 +22,14 @@ import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCol
 let log = Logger$ReventlessCore.fromEnv();
 
 let readModelInfos = {};
+
+let eventsApiConfig = {
+  contents: undefined
+};
+
+function setEventsApiConfig(cfg) {
+  eventsApiConfig.contents = cfg;
+}
 
 function registerReadModel(readModelName, specModulePath, mappingsModulePath, queryDbTableName, pgBackedOpt) {
   let pgBacked = pgBackedOpt !== undefined ? pgBackedOpt : false;
@@ -135,6 +144,13 @@ function finish() {
         let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
         let mappingsModule = Stdlib_Option.getOr(JSON.stringify(info.mappingsModulePath), `""`);
         let handlerPgFragment = info.pgBacked ? pgConnectionFragment : Pulumi.output("");
+        let stateTopicFragment;
+        if (info.pgBacked && QueryDbBackend$ReventlessAws.postgresStreamRegistry.has(spec.componentName) && Stdlib_Option.isSome(eventsApiConfig.contents)) {
+          let topic = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[spec.componentName], qn => qn.listFieldName), spec.componentName);
+          stateTopicFragment = `,"stateTopicName":` + JSON.stringify(topic);
+        } else {
+          stateTopicFragment = "";
+        }
         let handlerJson = Pulumi.all([
           info.queryDbTableName,
           spec.sourceUrns,
@@ -142,13 +158,24 @@ function finish() {
           handlerPgFragment
         ]).apply(param => {
           let sourceUrn = Stdlib_Option.getOr(param[1][0], param[2]);
-          return `{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"` + param[3] + `}`;
+          return `{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"` + param[3] + stateTopicFragment + `}`;
         });
         handlerOutputs.push(handlerJson);
       });
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
       let envVars = {};
       envVars["HANDLER_CONFIG"] = handlerConfigOutput;
+      let anyPgStream = Object.keys(readModelInfos).some(rmName => {
+        if (Stdlib_Option.mapOr(readModelInfos[rmName], false, i => i.pgBacked)) {
+          return QueryDbBackend$ReventlessAws.postgresStreamRegistry.has(rmName);
+        } else {
+          return false;
+        }
+      });
+      let pgStreamConfig = anyPgStream ? eventsApiConfig.contents : undefined;
+      if (pgStreamConfig !== undefined) {
+        envVars["APPSYNC_ENDPOINT"] = pgStreamConfig.endpoint;
+      }
       let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelEntryPoint.mjs", packageDirs, undefined);
       let vpcConfig = qdbSelection !== undefined && anyPgBacked ? qdbSelection.securityGroupId.apply(sgId => ({
           subnetIds: qdbSelection.subnetIds,
@@ -162,6 +189,17 @@ function finish() {
               Effect: "Allow",
               Action: "secretsmanager:GetSecretValue",
               Resource: cc.secretArn
+            }])),
+          role: runtime.parts.lambdaRole.id
+        }));
+      }
+      if (pgStreamConfig !== undefined) {
+        pgStreamConfig.apiArn.apply(apiArn => new (Aws.iam.RolePolicy)("AllReadModels-appsyncPublish", {
+          policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "AllReadModels-appsyncPublishPolicy", [{
+              Sid: "AllowPublishAppSyncEvents",
+              Effect: "Allow",
+              Action: "appsync:EventPublish",
+              Resource: apiArn + "/*"
             }])),
           role: runtime.parts.lambdaRole.id
         }));
@@ -187,6 +225,8 @@ export {
   RuntimeEnvironment,
   log,
   readModelInfos,
+  eventsApiConfig,
+  setEventsApiConfig,
   registerReadModel,
   storedSpecs,
   grandParent,

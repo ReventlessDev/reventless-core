@@ -15,6 +15,7 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as QueryDbBackend$ReventlessAws from "../QueryDb/QueryDbBackend.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as PgProjectionFeed$ReventlessAws from "../Postgres/PgProjectionFeed.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
@@ -37,6 +38,22 @@ function commonPrefix(strings) {
 }
 
 let sliceInfos = {};
+
+let eventsApiConfig = {
+  contents: undefined
+};
+
+function setEventsApiConfig(cfg) {
+  eventsApiConfig.contents = cfg;
+}
+
+function stateTopicNameFor(name) {
+  if (QueryDbBackend$ReventlessAws.postgresStreamRegistry.has(name) && Stdlib_Option.isSome(eventsApiConfig.contents)) {
+    return Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[name], qn => qn.listFieldName), name);
+  } else {
+    return "";
+  }
+}
 
 function registerStateViewSlice(name, specModulePath, projectionModulePath, queryDbTableName, queryDbResourcesOpt) {
   let queryDbResources = queryDbResourcesOpt !== undefined ? queryDbResourcesOpt : [];
@@ -88,8 +105,9 @@ let finished = {
   contents: false
 };
 
-function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, feedQueueOpt, memorySizeOpt, timeoutOpt) {
+function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, feedQueueOpt, pgStreamConfigOpt, memorySizeOpt, timeoutOpt) {
   let feedQueue = feedQueueOpt !== undefined ? Primitive_option.valFromOption(feedQueueOpt) : undefined;
+  let pgStreamConfig = pgStreamConfigOpt !== undefined ? Primitive_option.valFromOption(pgStreamConfigOpt) : undefined;
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   let opts_parent = parent;
@@ -140,11 +158,12 @@ function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, feedQueu
       let s = Stdlib_Option.getOr(JSON.stringify(h.specModule.slice(baseLen, h.specModule.length)), `""`);
       let p = Stdlib_Option.getOr(JSON.stringify(h.projectionModule.slice(baseLen, h.projectionModule.length)), `""`);
       let q = Stdlib_Option.getOr(JSON.stringify(h.queryDbTableName), `""`);
+      let t = h.stateTopicName === "" ? "" : `,"t":` + JSON.stringify(h.stateTopicName);
       if (sharedUrn !== "") {
-        return `{"s":` + s + `,"p":` + p + `,"q":` + q + `}`;
+        return `{"s":` + s + `,"p":` + p + `,"q":` + q + t + `}`;
       }
       let u = Stdlib_Option.getOr(JSON.stringify(h.sourceUrn), `""`);
-      return `{"s":` + s + `,"p":` + p + `,"q":` + q + `,"u":` + u + `}`;
+      return `{"s":` + s + `,"p":` + p + `,"q":` + q + `,"u":` + u + t + `}`;
     }).join(",");
     let baseJson = Stdlib_Option.getOr(JSON.stringify(base), `""`);
     let urnJson = Stdlib_Option.getOr(JSON.stringify(sharedUrn), `""`);
@@ -152,6 +171,9 @@ function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, feedQueu
   });
   let envVars = {};
   envVars["HANDLER_CONFIG"] = handlerConfigOutput;
+  if (pgStreamConfig !== undefined) {
+    envVars["APPSYNC_ENDPOINT"] = pgStreamConfig.endpoint;
+  }
   packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws");
   packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-core");
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs", packageDirs, undefined);
@@ -167,6 +189,17 @@ function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, feedQueu
           Effect: "Allow",
           Action: "secretsmanager:GetSecretValue",
           Resource: cc.secretArn
+        }])),
+      role: runtime.parts.lambdaRole.id
+    }));
+  }
+  if (pgStreamConfig !== undefined) {
+    pgStreamConfig.apiArn.apply(apiArn => new (Aws.iam.RolePolicy)("AllStateViewSlices-appsyncPublish", {
+      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "AllStateViewSlices-appsyncPublishPolicy", [{
+          Sid: "AllowPublishAppSyncEvents",
+          Effect: "Allow",
+          Action: "appsync:EventPublish",
+          Resource: apiArn + "/*"
         }])),
       role: runtime.parts.lambdaRole.id
     }));
@@ -201,7 +234,7 @@ function finishWithDcbEventLog(dcbEventLog) {
       let handlerOutputs = [];
       let packageDirs = {};
       let allQueryDbResources = [];
-      Stdlib_Dict.forEachWithKey(sliceInfos, (info, _name) => {
+      Stdlib_Dict.forEachWithKey(sliceInfos, (info, name) => {
         info.queryDbResources.forEach(r => {
           allQueryDbResources.push(r);
         });
@@ -219,15 +252,17 @@ function finishWithDcbEventLog(dcbEventLog) {
           specModule: info.specModulePath,
           projectionModule: info.projectionModulePath,
           queryDbTableName: param[0],
-          sourceUrn: param[1]
+          sourceUrn: param[1],
+          stateTopicName: stateTopicNameFor(name)
         }));
         handlerOutputs.push(handlerJson);
       });
+      let anyPgStream = Object.keys(sliceInfos).some(n => QueryDbBackend$ReventlessAws.postgresStreamRegistry.has(n));
       buildLambda(parent, handlerOutputs, packageDirs, [{
           channel: channel,
           eventTopics: eventTopics,
           resources: allQueryDbResources
-        }], Primitive_option.some(feedQueue), undefined, undefined);
+        }], Primitive_option.some(feedQueue), Primitive_option.some(anyPgStream ? eventsApiConfig.contents : undefined), undefined, undefined);
     } else {
       log.warn("StateViewSliceRuntime_Builder_Single", undefined, "finishWithDcbEventLog: DCB EventLog has no parent");
     }
@@ -273,11 +308,13 @@ function finish() {
           specModule: info.specModulePath,
           projectionModule: info.projectionModulePath,
           queryDbTableName: param[0],
-          sourceUrn: Stdlib_Option.getOr(param[1][0], param[2])
+          sourceUrn: Stdlib_Option.getOr(param[1][0], param[2]),
+          stateTopicName: stateTopicNameFor(spec.componentName)
         }));
         handlerOutputs.push(handlerJson);
       });
-      buildLambda(parent, handlerOutputs, packageDirs, storedSpecs.map(param => param.channelSpec), Primitive_option.some(feedQueue), match[0], match[1]);
+      let anyPgStream = storedSpecs.some(spec => QueryDbBackend$ReventlessAws.postgresStreamRegistry.has(spec.componentName));
+      buildLambda(parent, handlerOutputs, packageDirs, storedSpecs.map(param => param.channelSpec), Primitive_option.some(feedQueue), Primitive_option.some(anyPgStream ? eventsApiConfig.contents : undefined), match[0], match[1]);
     } else {
       log.warn("StateViewSliceRuntime_Builder_Single", undefined, `finish: grandParent not set`);
     }
@@ -295,6 +332,9 @@ export {
   log,
   commonPrefix,
   sliceInfos,
+  eventsApiConfig,
+  setEventsApiConfig,
+  stateTopicNameFor,
   registerStateViewSlice,
   storedSpecs,
   grandParent,

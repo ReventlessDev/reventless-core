@@ -11,6 +11,7 @@ import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/Req
 import { handleAction } from "@reventlessdev/reventless-core/src/Projection.res.mjs";
 import { load, loadStream, save, saveBatch, count, $$delete, deleteBatch } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res.mjs";
 import { opsFor as pgQdbOpsFor } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_Postgres_Runtime.res.mjs";
+import { withLiveUpdates } from "./StateTopicPublish.mjs";
 import { handleStreamEvent } from "@reventlessdev/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream_Runtime.res.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
@@ -44,12 +45,22 @@ function groupBySource(records) {
 // `pgConnection`, when present, selects the Postgres QueryDb runtime for this
 // slice's view table (`queryDbTableName` is then the slice spec name, the shared
 // `qdb_<name>` discriminator). Absent → the DynamoDB path is byte-identical.
-function buildJsonEventsHandler(specModule, projectionModule, queryDbTableName, pgConnection) {
+function buildJsonEventsHandler(specModule, projectionModule, queryDbTableName, pgConnection, stateTopicName) {
   let queryDbOps;
   if (pgConnection) {
     const indexes = (specModule.config && specModule.config.indexes) || [];
     const subIdField = specModule.subIdConfig ? specModule.subIdConfig.subIdField : undefined;
-    queryDbOps = pgQdbOpsFor(pgConnection, queryDbTableName, indexes, subIdField);
+    const pgOps = pgQdbOpsFor(pgConnection, queryDbTableName, indexes, subIdField);
+    // B3.3: subscription-enabled (Stream) Postgres view slice → publish a
+    // live-update descriptor after save/delete. `stateTopicName` + APPSYNC_ENDPOINT
+    // gate it; absent → withLiveUpdates passes pgOps through. The view slice's id
+    // is the save's first arg (no id injection), so no wrap-ordering concern.
+    queryDbOps = withLiveUpdates(pgOps, {
+      endpoint: process.env.APPSYNC_ENDPOINT,
+      region: process.env.AWS_REGION,
+      topicName: stateTopicName,
+      subIdField,
+    });
   } else {
     const table = makeTableRef(queryDbTableName);
     queryDbOps = {
@@ -105,6 +116,9 @@ function expandHandlers(config) {
       // Shared across a plugin's slices (all follow the platform backend toggle);
       // hoisted to the top level of the compressed config like base/sourceUrn.
       pgConnection: config.pgConnection,
+      // B3.3: per-slice AppSync Events channel root (list field name). Present
+      // only for subscription-enabled (Stream) Postgres view slices.
+      stateTopicName: h.t,
     };
   });
 }
@@ -118,7 +132,7 @@ async function buildAllHandlers() {
       dynamicImport(h.specModule),
       dynamicImport(h.projectionModule),
     ]);
-    const jsonEventsHandler = buildJsonEventsHandler(specModule, projectionModule, h.queryDbTableName, h.pgConnection);
+    const jsonEventsHandler = buildJsonEventsHandler(specModule, projectionModule, h.queryDbTableName, h.pgConnection, h.stateTopicName);
     const streamHandler = (event, context) => handleStreamEvent(jsonEventsHandler, event, context);
     const existing = handlers[h.sourceUrn] || [];
     existing.push(streamHandler);

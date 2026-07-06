@@ -8,6 +8,7 @@ import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/Req
 import { Make as readModelCallbackMake } from "@reventlessdev/reventless-core/src/components/ReadModel/ReadModel_Callback.res.mjs";
 import { load as qdbLoad, loadStream as qdbLoadStream, save as qdbSave, saveBatch as qdbSaveBatch, count as qdbCount, $$delete as qdbDelete, deleteBatch as qdbDeleteBatch } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res.mjs";
 import { opsFor as pgQdbOpsFor } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_Postgres_Runtime.res.mjs";
+import { withLiveUpdates } from "./StateTopicPublish.mjs";
 import { handleStreamEvent } from "@reventlessdev/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream_Runtime.res.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
@@ -74,17 +75,28 @@ function groupBySource(records) {
 // runtime builder injected for a Postgres-backed read model: bind the Postgres
 // operation set (queryDbTableName is then the read-model spec name, the shared
 // `qdb_<name>` discriminator). Absent → the DynamoDB path is byte-identical.
-function buildReadModelHandler(specModule, mappingsModule, queryDbTableName, pgConnection) {
+function buildReadModelHandler(specModule, mappingsModule, queryDbTableName, pgConnection, stateTopicName) {
   const patchedSpec = patchSpecId(specModule);
   let operations;
   if (pgConnection) {
     const indexes = (patchedSpec.config && patchedSpec.config.indexes) || [];
     const subIdField = patchedSpec.subIdConfig ? patchedSpec.subIdConfig.subIdField : undefined;
     const pgOps = pgQdbOpsFor(pgConnection, queryDbTableName, indexes, subIdField);
+    // B3.3: on a subscription-enabled (Stream) Postgres read model, publish a
+    // live-update descriptor after each save/delete (no DynamoDB stream exists).
+    // `stateTopicName` (present only for stream RMs) + APPSYNC_ENDPOINT gate it;
+    // absent → withLiveUpdates returns pgOps unchanged. Wrap BEFORE mkInjectIdSave
+    // so the publish sees the id-injected state (id, subId, updatedAt).
+    const livePgOps = withLiveUpdates(pgOps, {
+      endpoint: process.env.APPSYNC_ENDPOINT,
+      region: process.env.AWS_REGION,
+      topicName: stateTopicName,
+      subIdField,
+    });
     operations = {
-      ...pgOps,
-      save: mkInjectIdSave(pgOps.save),
-      saveBatch: mkInjectIdSaveBatch(pgOps.saveBatch),
+      ...livePgOps,
+      save: mkInjectIdSave(livePgOps.save),
+      saveBatch: mkInjectIdSaveBatch(livePgOps.saveBatch),
     };
   } else {
     const table = makeTableRef(queryDbTableName);
@@ -119,7 +131,7 @@ async function buildAllHandlers() {
   await Promise.all(config.handlers.map(async h => {
     const specModule = await dynamicImport(h.specModule);
     const mappingsModule = await dynamicImport(h.mappingsModule);
-    const handler = buildReadModelHandler(specModule, mappingsModule, h.queryDbTableName, h.pgConnection);
+    const handler = buildReadModelHandler(specModule, mappingsModule, h.queryDbTableName, h.pgConnection, h.stateTopicName);
     // Multiple read models can share one source stream — e.g. every admin read
     // model (Plugins, PluginHistory, PlatformEventGraph, UIFragmentRegistry)
     // projects the Plugin aggregate's EventLog stream. Accumulate ALL handlers

@@ -32,6 +32,8 @@ function isPostgres() {
   return Stdlib_Option.isSome(selectionRef.contents);
 }
 
+let postgresStreamRegistry = new Set();
+
 export {
   selectionRef,
   set,
@@ -40,5 +42,6 @@ export {
   exempt,
   isPostgresFor,
   isPostgres,
+  postgresStreamRegistry,
 }
-/* No side effect */
+/* postgresStreamRegistry Not a pure module */
