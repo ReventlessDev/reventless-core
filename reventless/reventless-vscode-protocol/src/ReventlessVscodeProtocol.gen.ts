@@ -1,0 +1,25 @@
+// Hand-written IN-PACKAGE genType type bridge (NOT generated — un-ignored in
+// .gitignore). When one module of this namespaced package references another's
+// genType types (e.g. GraphOps.res aliasing Protocol.graphNode), genType emits an
+// import of './ReventlessVscodeProtocol.gen' RELATIVE TO src/ with
+// `<Module>_`-prefixed names — the sibling of the package-root bridge, which serves
+// the cross-package form of the same convention. Type-only (erased at runtime); the
+// contract shape stays single-source in the .res modules.
+export type {
+  componentMeta as Protocol_componentMeta,
+  componentRef as Protocol_componentRef,
+  deadCodeFinding as Protocol_deadCodeFinding,
+  failMessage as Protocol_failMessage,
+  graphEdge as Protocol_graphEdge,
+  graphNode as Protocol_graphNode,
+  packageInfo as Protocol_packageInfo,
+  streamEvent as Protocol_streamEvent,
+  vsRange as Protocol_vsRange,
+} from './Protocol.gen';
+export type {
+  graphEdge as GraphOps_graphEdge,
+  graphLeaf as GraphOps_graphLeaf,
+  graphNode as GraphOps_graphNode,
+  leafGroups as GraphOps_leafGroups,
+  readCandidate as GraphOps_readCandidate,
+} from './GraphOps.gen';

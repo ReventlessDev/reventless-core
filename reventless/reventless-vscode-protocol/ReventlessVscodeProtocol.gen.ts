@@ -16,3 +16,10 @@ export type {
   streamEvent as Protocol_streamEvent,
   vsRange as Protocol_vsRange,
 } from './src/Protocol.gen';
+export type {
+  graphEdge as GraphOps_graphEdge,
+  graphLeaf as GraphOps_graphLeaf,
+  graphNode as GraphOps_graphNode,
+  leafGroups as GraphOps_leafGroups,
+  readCandidate as GraphOps_readCandidate,
+} from './src/GraphOps.gen';
