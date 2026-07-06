@@ -14,8 +14,9 @@ let identityBlock = `id != null && id.sub != null
         ? { userArn: id.userArn ?? null, accountId: id.accountId ?? null, username: id.username ?? null, provider: 'IAM' }
         : null`;
 
-function invokeTemplate(readModelName, kind, index) {
+function invokeTemplate(readModelName, kind, index, authTable, authGroup) {
   let indexFrag = index !== undefined ? `\n      index: '` + index + `',` : "";
+  let authFrag = authTable !== undefined && authGroup !== undefined ? `\n      authTable: '` + authTable + `',\n      authGroup: '` + authGroup + `',` : "";
   return `import { util } from '@aws-appsync/utils';
 export function request(ctx) {
   const id = ctx.identity;
@@ -23,7 +24,7 @@ export function request(ctx) {
     operation: 'Invoke',
     payload: {
       readModelName: '` + readModelName + `',
-      kind: '` + kind + `',` + indexFrag + `
+      kind: '` + kind + `',` + indexFrag + authFrag + `
       arguments: ctx.args,
       identity: ` + identityBlock + `
     }
@@ -75,7 +76,7 @@ function make(name, api, param, dataSourceName, indexes, subIdField, idResolverC
   if (includeIdParam) {
     PgQueryResolver_Builder$ReventlessAws.registerNodeType(returnTypeName, name$1);
   }
-  let mkResolver = (resolverName, field, kind, index) => AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(resolverName, api, dataSourceName, "Query", field, invokeTemplate(name$1, kind, index), opts);
+  let mkResolver = (resolverName, field, kind, index, authTable, authGroup) => AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(resolverName, api, dataSourceName, "Query", field, invokeTemplate(name$1, kind, index, authTable, authGroup), opts);
   let stripLeadingBy = s => {
     if (s.startsWith("by") && s.length > 2) {
       return s.slice(2, s.length);
@@ -84,21 +85,26 @@ function make(name, api, param, dataSourceName, indexes, subIdField, idResolverC
     }
   };
   let resourcesMaker = _allQueryDbs => {
-    let byId = mkResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, includeIdParam ? "getById" : "list", undefined);
-    let all = mkResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, "list", undefined);
-    let items = subIdField !== undefined ? [mkResolver(Stdlib_String.capitalize(fieldNameForSingle) + "Items", fieldNameForSingle + "Items", "items", undefined)] : [];
+    let byId = mkResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, includeIdParam ? "getById" : "list", undefined, undefined, undefined);
+    let all = mkResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, "list", undefined, undefined, undefined);
+    let items = subIdField !== undefined ? [mkResolver(Stdlib_String.capitalize(fieldNameForSingle) + "Items", fieldNameForSingle + "Items", "items", undefined, undefined, undefined)] : [];
     let byIds;
     if (includeIdParam && subIdField === undefined) {
       let byIdsField = fieldNameForAll + "ByIds";
-      byIds = [mkResolver(Stdlib_String.capitalize(byIdsField), byIdsField, "byIds", undefined)];
+      byIds = [mkResolver(Stdlib_String.capitalize(byIdsField), byIdsField, "byIds", undefined, undefined, undefined)];
     } else {
       byIds = [];
     }
-    let byIndex = indexes.map(param => {
-      let index = param.index;
+    let byIndex = indexes.map(ic => {
+      let index = ic.index;
       let resolverName = Stdlib_String.capitalize(fieldNameForSingle) + "By" + Stdlib_String.capitalize(stripLeadingBy(index));
       let field = fieldNameForSingle + "By" + Stdlib_String.capitalize(stripLeadingBy(index));
-      return mkResolver(resolverName, field, "index", index);
+      let match = ic.authorization;
+      if (match !== undefined) {
+        return mkResolver(resolverName, field, "index", index, Stdlib_String.capitalize(match.tableName), match.group);
+      } else {
+        return mkResolver(resolverName, field, "index", index, undefined, undefined);
+      }
     });
     let idResolvers = idResolverConfigs.map(config => {
       let target = config.target;

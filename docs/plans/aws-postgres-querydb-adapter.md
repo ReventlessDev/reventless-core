@@ -366,9 +366,25 @@ binding it in a deploy-time maker.
       cross-plugin targets are monolithic-only (split/multi-Lambda would need
       cross-Lambda calls — out of scope).
 
-    - **Deferred (unchanged):** auth-table pipeline (`@index` authorization —
-      auth tables stay DynamoDB in the first cut; admin-managed and tiny);
-      plugin-stack-mode provisioning (per-stack data-source naming, see B3.2b).
+    - **Auth-table pipeline (`@index` authorization)** — ✅ **landed
+      (2026-07-06), dispatch unit-validated.** A group-restricted index bakes
+      `authTable` + `authGroup` into its Invoke template; the Lambda's `index`
+      dispatch runs the check before the query — non-members pass through,
+      members must own the resource (the auth table maps the index value →
+      `{<group>Id: username}`, matching `authorizeIndexedAccess`). The auth
+      table is read **via the binding registry** (it's another read model,
+      loaded by the index value through a `~lookupBinding` seam the handler
+      supplies), so no DynamoDB round-trip is needed when the auth table is
+      itself Postgres-backed — cleaner than the plan's original "stays
+      DynamoDB" note. **Limitation:** if the auth-table read model is
+      DynamoDB-exempt (admin), there's no Postgres binding → the check denies;
+      supporting a DynamoDB-resident auth table would need a DynamoDB read path
+      in the Lambda (follow-up). Tests: 3 cases (member-owns → results,
+      member-not-owns → empty, non-member → pass-through). Note: unauthorized
+      returns an empty result (the module's Deny-returns-empty convention),
+      not a GraphQL auth error.
+    - **Deferred (unchanged):** plugin-stack-mode provisioning (per-stack
+      data-source naming, see B3.2b).
 - **B3.3 — live updates (deferred).** StateTopic assumes a DynamoDB stream
   ARN. Postgres options: (a) publish from the projection Lambda after
   `save` (simplest — the writer knows what changed), or (b) qdb triggers +

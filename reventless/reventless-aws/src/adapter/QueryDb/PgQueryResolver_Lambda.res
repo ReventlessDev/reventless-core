@@ -41,9 +41,21 @@ type payload = {
   targetIndex?: string,
   targetIndexIdField?: string,
   multi?: bool,
+  // Auth-table pipeline (B3.2c): a group-restricted index. Group members must
+  // own the resource (the auth table maps index value → {<group>Id: username});
+  // non-members pass through (mirrors the DynamoDB pipeline's earlyReturn).
+  authTable?: string,
+  authGroup?: string,
   arguments: JSON.t,
   identity: Reventless.Identity.t,
 }
+
+// "Owner" → "ownerId" (auth-table owner field name, matching authorizeIndexedAccess).
+let authIdField = (group: string): string =>
+  switch group->String.get(0) {
+  | Some(c) => c->String.toLowerCase ++ group->String.slice(~start=1, ~end=group->String.length) ++ "Id"
+  | None => "Id"
+  }
 
 // The Postgres query push-downs a binding needs (QueryEnginePostgres.Make
 // provides these; the mock in tests provides in-memory equivalents).
@@ -130,7 +142,14 @@ let runInterceptor = async (~binding, ~payload): ReventlessCore.QueryDb_Callback
   }
 }
 
-let dispatch = async (~binding: binding, ~payload: payload): JSON.t => {
+// `lookupBinding` resolves another read model's binding by key — needed only for
+// the auth-table pipeline (the auth table is another read model, loaded by the
+// index value). The handler passes the module-level registry; tests pass a mock.
+let dispatch = async (
+  ~binding: binding,
+  ~lookupBinding: string => option<binding>=_ => None,
+  ~payload: payload,
+): JSON.t => {
   let rm = payload.readModelName
   switch await runInterceptor(~binding, ~payload) {
   | Deny(_) =>
@@ -183,7 +202,35 @@ let dispatch = async (~binding: binding, ~payload: payload): JSON.t => {
         ->Option.flatMap(ic => ic.idField)
         ->Option.getOr(indexName)
       let value = payload.arguments->argStr(indexName)->Option.getOr("")
-      JSON.Encode.array(await binding.pushdowns.indexLookup(~readModelName=rm, field, value))
+      // Auth-table pipeline: a group-restricted index. Non-members pass through;
+      // members must own the resource (auth table maps index value →
+      // {<group>Id: username}). Auth table is another read model, loaded via the
+      // registry (unsupported → deny if it isn't Postgres-registered).
+      let authorized = switch (payload.authGroup, payload.authTable) {
+      | (Some(group), Some(authTable)) =>
+        if !Reventless.Identity.hasGroup(payload.identity, group) {
+          true
+        } else {
+          switch lookupBinding(authTable) {
+          | Some(authBinding) =>
+            switch await authBinding.ops.load(value) {
+            | Ok(items) =>
+              items
+              ->Array.get(0)
+              ->Option.flatMap(row => row->argStr(authIdField(group)))
+              ->Option.mapOr(false, owner => owner == payload.identity.username)
+            | Error(_) => false
+            }
+          | None => false
+          }
+        }
+      | _ => true
+      }
+      if authorized {
+        JSON.Encode.array(await binding.pushdowns.indexLookup(~readModelName=rm, field, value))
+      } else {
+        JSON.Encode.array([])
+      }
 
     | "list" =>
       let argsDict = payload.arguments->argObj
@@ -327,7 +374,8 @@ let handler = async (payload: payload, _context) => {
   | "node" => await handleNode(~payload)
   | _ =>
     switch bindings->Dict.get(bindingKey) {
-    | Some(binding) => await dispatch(~binding, ~payload)
+    | Some(binding) =>
+      await dispatch(~binding, ~lookupBinding=name => bindings->Dict.get(name), ~payload)
     | None =>
       JsError.throwWithMessage("PgQueryResolver: no binding registered for read model " ++ bindingKey)
     }

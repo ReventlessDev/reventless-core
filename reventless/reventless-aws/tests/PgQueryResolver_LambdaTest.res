@@ -293,6 +293,65 @@ describe("PgQueryResolver_Lambda.dispatch", () => {
     expect(r)->toBe(JSON.Encode.null)
   })
 
+  // ── auth-table pipeline (group-restricted index) ──────────────────────────
+  // Auth table (another read model) maps index value → { ownerId: <username> }.
+  let authStore = Dict.fromArray([
+    ("active", JSON.Encode.object(Dict.fromArray([("ownerId", JSON.Encode.string("alice"))]))),
+  ])
+  let authOps: QueryDb_Adapter.operations = {
+    load: async id => Ok(authStore->Dict.get(id)->Option.mapOr([], r => [r])),
+    loadStream: Obj.magic(0),
+    save: Obj.magic(0),
+    saveBatch: Obj.magic(0),
+    count: Obj.magic(0),
+    delete: Obj.magic(0),
+    deleteBatch: Obj.magic(0),
+  }
+  let authBinding = {...makeBinding(), PgQueryResolver_Lambda.ops: authOps}
+  let lookupAuth = name => name == "AuthTable" ? Some(authBinding) : None
+  let ident = (~username, ~groups): Reventless.Identity.t => {
+    userId: username,
+    username,
+    groups,
+    provider: InMemory,
+  }
+  let authIndexPayload = (~username, ~groups): PgQueryResolver_Lambda.payload => {
+    readModelName: "Things",
+    kind: "index",
+    index: "byStatus",
+    authTable: "AuthTable",
+    authGroup: "Owner",
+    arguments: objArgs([("byStatus", JSON.Encode.string("active"))]),
+    identity: ident(~username, ~groups),
+  }
+
+  testPromise("auth index: group member who owns → results", async () => {
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=makeBinding(),
+      ~lookupBinding=lookupAuth,
+      ~payload=authIndexPayload(~username="alice", ~groups=["Owner"]),
+    )
+    expect(r->ids)->toEqual(["p-1", "p-3"])
+  })
+
+  testPromise("auth index: group member who does NOT own → empty", async () => {
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=makeBinding(),
+      ~lookupBinding=lookupAuth,
+      ~payload=authIndexPayload(~username="bob", ~groups=["Owner"]),
+    )
+    expect(r->JSON.Decode.array->Option.getOr([])->Array.length)->toBe(0)
+  })
+
+  testPromise("auth index: non-member passes through → results", async () => {
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=makeBinding(),
+      ~lookupBinding=lookupAuth,
+      ~payload=authIndexPayload(~username="bob", ~groups=[]),
+    )
+    expect(r->ids)->toEqual(["p-1", "p-3"])
+  })
+
   testPromise("unmapped kind throws", async () => {
     let threw = try {
       let _ = await PgQueryResolver_Lambda.dispatch(

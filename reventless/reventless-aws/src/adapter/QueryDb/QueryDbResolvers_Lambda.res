@@ -26,10 +26,20 @@ let identityBlock = `id != null && id.sub != null
         ? { userArn: id.userArn ?? null, accountId: id.accountId ?? null, username: id.username ?? null, provider: 'IAM' }
         : null`
 
-let invokeTemplate = (~readModelName: string, ~kind: string, ~index: option<string>=?) => {
+let invokeTemplate = (
+  ~readModelName: string,
+  ~kind: string,
+  ~index: option<string>=?,
+  ~authTable: option<string>=?,
+  ~authGroup: option<string>=?,
+) => {
   let indexFrag = switch index {
   | Some(ix) => `\n      index: '${ix}',`
   | None => ""
+  }
+  let authFrag = switch (authTable, authGroup) {
+  | (Some(t), Some(g)) => `\n      authTable: '${t}',\n      authGroup: '${g}',`
+  | _ => ""
   }
   `import { util } from '@aws-appsync/utils';
 export function request(ctx) {
@@ -38,7 +48,7 @@ export function request(ctx) {
     operation: 'Invoke',
     payload: {
       readModelName: '${readModelName}',
-      kind: '${kind}',${indexFrag}
+      kind: '${kind}',${indexFrag}${authFrag}
       arguments: ctx.args,
       identity: ${identityBlock}
     }
@@ -129,14 +139,14 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     PgQueryResolver_Builder.registerNodeType(~typeName=returnTypeName, ~readModelName=name)
   }
 
-  let mkResolver = (~resolverName, ~field, ~kind, ~index=?) =>
+  let mkResolver = (~resolverName, ~field, ~kind, ~index=?, ~authTable=?, ~authGroup=?) =>
     Resolver.makeUnitJsResolver(
       ~name=resolverName,
       ~api,
       ~dataSourceName,
       ~type_="Query"->Pulumi.Input.make,
       ~field=field->Pulumi.Input.make,
-      ~code=invokeTemplate(~readModelName=name, ~kind, ~index?),
+      ~code=invokeTemplate(~readModelName=name, ~kind, ~index?, ~authTable?, ~authGroup?),
       ~opts,
     )
 
@@ -192,12 +202,26 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       []
     }
 
-    // Per-index equality queries: {single}By{Index}.
-    let byIndex = indexes->Array.map(({index}) => {
+    // Per-index equality queries: {single}By{Index}. A group-restricted index
+    // (indexConfig.authorization) bakes the auth-table pipeline params — the
+    // Lambda verifies group membership + ownership against the auth read model.
+    let byIndex = indexes->Array.map((ic: indexConfig) => {
+      let index = ic.index
       let resolverName =
         fieldNameForSingle->String.capitalize ++ "By" ++ index->stripLeadingBy->String.capitalize
       let field = fieldNameForSingle ++ "By" ++ index->stripLeadingBy->String.capitalize
-      mkResolver(~resolverName, ~field, ~kind="index", ~index)
+      switch ic.authorization {
+      | Some({tableName, group}) =>
+        mkResolver(
+          ~resolverName,
+          ~field,
+          ~kind="index",
+          ~index,
+          ~authTable=tableName->String.capitalize,
+          ~authGroup=group,
+        )
+      | None => mkResolver(~resolverName, ~field, ~kind="index", ~index)
+      }
     })
 
     // @resolves — single cross-table field resolver on this (parent) type. The
