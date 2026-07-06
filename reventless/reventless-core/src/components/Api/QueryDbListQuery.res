@@ -1,13 +1,16 @@
 // The connection-list filter / sort / keyset-paginate logic, extracted verbatim
 // from QueryDbResolvers_GraphQL so there is ONE source of truth for the
-// semantics. The resolver calls `run` over the materialised items (in-memory
-// path); the SQLite backend's list push-down must reproduce these exact
-// semantics, and the parity harness asserts it does. Keeping this pure (no
-// server / storage dependencies — the one server helper it needs, global-id
-// decoding for the `ids` filter, is passed in) is what lets it be the shared
-// spec both paths are tested against.
-
-open ReventlessCore
+// semantics. The in-memory / GraphQL resolver calls `run` over the materialised
+// items; the SQLite backend's list push-down (reventless-local) and the Postgres
+// resolver Lambda (reventless-aws) must reproduce these exact semantics, and the
+// parity harness asserts they do. Kept pure (no server / storage dependencies —
+// the one server helper it needs, global-id decoding for the `ids` filter, is
+// passed in) so it can be the shared spec every backend is tested against.
+//
+// Lives in reventless-core (not reventless-local) so both the local SQLite path
+// and the AWS Postgres resolver path can share it without a layering violation —
+// `GraphQL_FragmentGenerator.serverCapability`, its only dependency, is a sibling
+// here.
 
 // base64 cursor of the active sort field's value. Shared with the resolver's
 // items (sub-id) connection so cursor encoding stays in lockstep.

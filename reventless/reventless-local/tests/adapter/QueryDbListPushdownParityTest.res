@@ -107,14 +107,14 @@ let orderBy = (f, dir) =>
   JSON.Encode.object(
     Dict.fromArray([("field", JSON.Encode.string(f)), ("direction", JSON.Encode.string(dir))]),
   )
-let cur = QueryDbListQuery.encodeCursor
+let cur = ReventlessCore.QueryDbListQuery.encodeCursor
 
 // Assert the push-down serves this shape AND matches the spec exactly.
 let checkPushed = async (~label, args) => {
   let s = await build()
   let argsDict = argsOf(args)
   let expected =
-    QueryDbListQuery.run(
+    ReventlessCore.QueryDbListQuery.run(
       ~items=s.fullScan(),
       ~argsDict,
       ~capability,

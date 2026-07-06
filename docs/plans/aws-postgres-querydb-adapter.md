@@ -196,6 +196,68 @@ binding it in a deploy-time maker.
   node resolver → same dispatch keyed by type name; auth-table pipeline →
   Lambda-side lookup (auth tables themselves stay DynamoDB in the first cut —
   they're admin-managed and tiny; porting them is a follow-up).
+
+  **Recon (2026-07-06) — the resolver dispatch already has a provider-agnostic
+  reference implementation.** `reventless-local/QueryDbResolvers_GraphQL.res`
+  registers exactly these resolver kinds against a `QueryDb` ops set +
+  `QueryEngine`, defining the arg/result shapes the Postgres resolver Lambda
+  must reproduce headlessly (returning JSON to AppSync instead of registering
+  graphql-yoga resolvers): **getById** (`{single}(id[,subId])` → `loadStream`),
+  **byIds** (`{list}ByIds(ids)`), **connection list** (`{list}(filter, orderBy,
+  first/after/last/before)`), **items** (`{single}Items(id, filter, …)` keyset
+  over sub-id), **index** (`{single}By{Index}(field)`). The connection list is
+  served by the shared `QueryDbListQuery` spec (materialise + filter) OR a
+  backend push-down (`getQueryDbListPage`); SQLite implements the push-down
+  (`QueryDbStorage_Sqlite.listPage`) so a page reads only what it returns.
+  **Dependency finding:** `deriveServerCapability` is in **reventless-core**
+  (reachable), but `QueryDbListQuery` + `SortKey_Filter` live **only in
+  reventless-local** — unreachable from `reventless-aws`/`reventless-postgres`
+  without a layering violation. Even SQLite's `listPage` leans on
+  `QueryDbListQuery`'s connection/cursor helpers. So the Postgres path must
+  push the list query down to SQL AND reuse the same connection-builder — which
+  forces hoisting those helpers to core (B3.2a-0 below).
+
+  Decomposed into validatable increments (mirrors the B3.0/B3.1 rhythm: build
+  the pure logic, prove it against a real Postgres via a `PG_URL`-gated test,
+  leave the AWS deploy boundary unvalidated until a live stack):
+
+  - **B3.2a-0 — hoist `QueryDbListQuery` to reventless-core** — ✅ **landed
+    (2026-07-06).** Move the pure,
+    provider-agnostic connection/cursor helpers (`buildConnection`,
+    `encodeCursor`/`decodeCursor`, `defaultListPageSize`, `getFieldString`,
+    `getId`, `run`) from `reventless-local` into
+    `reventless-core/src/components/Api/` so the SQLite backend, the shared
+    GraphQL resolver, AND the Postgres resolver Lambda share one source of
+    truth. Repoint the four reventless-local references. Validated by the
+    existing reventless-local suite (`QueryDbListPushdownParityTest`) — no new
+    infra. **On the critical path: connection pagination (a-1/a-2) needs it.**
+  - **B3.2a-1 — Postgres query push-downs** — ✅ **landed (2026-07-06).** Added
+    `listPage` (connection keyset over the `qdb_<name>` JSONB expression
+    indexes, mirroring SQLite's `listPage` WHERE/ORDER/LIMIT semantics, using
+    `COLLATE "C"` = byte order so text/cursor comparisons match JS `<`),
+    `indexLookup`, and `byIds` (`WHERE partition_key = ANY($1::text[])`) to
+    `QueryEnginePostgres`, reusing the hoisted `buildConnection`/cursor helpers.
+    `PG_URL`-gated parity test (`QueryEnginePostgresListPageTest`) — same
+    capability/rows/args matrix as the SQLite harness, so SQLite ≡ Postgres ≡
+    spec — run green against a real Postgres 16 (19 cases: keyset pages,
+    numeric-as-string order, id-tiebreak, declined-shape fallbacks, index/batch
+    lookups).
+  - **B3.2a-2 — resolver Lambda dispatcher.** `PgQueryResolver_Lambda.res`:
+    payload `{readModelName, kind, args, identity}` → dispatch (getById, byIds,
+    connection, items, index) → JSON, running spec-level authorization + the
+    `queryInterceptorHook` first (mirrors `QueryDbResolvers_GraphQL`). Pure
+    logic; testable against a real Postgres.
+  - **B3.2b — deploy wiring (needs a live stack to validate).** Shared in-VPC
+    `PgQueryResolver` Lambda (`PgQueryResolverEntryPoint.mjs`, env config =
+    per-RM spec modules + one shared `pgConnection`, VPC/secret via
+    `QueryDbBackend.get()` — the EventCollector Lambda pattern) + one AppSync
+    Lambda data source, created once in `makePlatform` before construct; its
+    name flows into `QueryDbStorage_Postgres.make`'s `dataSourceName` (today
+    `""`) via a registry ref. `QueryDbResolvers_Lambda.res` emits the Invoke
+    templates; `QueryDbResolvers.Selectable` routes Postgres RMs to it instead
+    of `NoOp`.
+  - **B3.2c — long tail.** `@resolves`/`@resolvesMany`, node resolver, auth
+    (auth tables stay DynamoDB in the first cut).
 - **B3.3 — live updates (deferred).** StateTopic assumes a DynamoDB stream
   ARN. Postgres options: (a) publish from the projection Lambda after
   `save` (simplest — the writer knows what changed), or (b) qdb triggers +

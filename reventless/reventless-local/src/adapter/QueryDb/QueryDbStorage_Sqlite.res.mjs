@@ -7,7 +7,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as LocalBus$ReventlessLocal from "../LocalBus.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "../SqliteDriver.res.mjs";
-import * as QueryDbListQuery$ReventlessLocal from "./QueryDbListQuery.res.mjs";
+import * as QueryDbListQuery$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/QueryDbListQuery.res.mjs";
 
 function tableName(name) {
   return "qdb_" + name.replaceAll("-", "_");
@@ -366,19 +366,19 @@ function makeStorage(db, bus, name, indexes, subIdField) {
       whereParts.push(cursorExpr + ` ` + (
         isDesc ? "<" : ">"
       ) + ` ?`);
-      params.push(QueryDbListQuery$ReventlessLocal.decodeCursor(c));
+      params.push(QueryDbListQuery$ReventlessCore.decodeCursor(c));
     }
     let orderClause = orderByField !== undefined ? jsonText(orderByField) + ` ` + (
         isDesc ? "DESC" : "ASC"
       ) + `, ` + idExpr + ` ASC` : idExpr + ` ASC`;
-    let pageSize = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["first"], Stdlib_JSON.Decode.float), prim => prim | 0), QueryDbListQuery$ReventlessLocal.defaultListPageSize);
+    let pageSize = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["first"], Stdlib_JSON.Decode.float), prim => prim | 0), QueryDbListQuery$ReventlessCore.defaultListPageSize);
     let sql = `SELECT partition_key, item FROM ` + table + ` WHERE ` + whereParts.join(" AND ") + ` ORDER BY ` + orderClause + ` LIMIT ?`;
     let rows = SqliteDriver$ReventlessLocal.all(preparedList(sql), params.concat([pageSize + 1 | 0])).map(rowToItem);
     let hasMore = rows.length > pageSize;
     let pageItems = rows.slice(0, pageSize);
     let cursorField = Stdlib_Option.getOr(orderByField, "id");
-    let cursorValueOf = item => Stdlib_Option.getOr(QueryDbListQuery$ReventlessLocal.getFieldString(item, cursorField), QueryDbListQuery$ReventlessLocal.getId(item));
-    return QueryDbListQuery$ReventlessLocal.buildConnection(pageItems, hasMore, false, cursorValueOf);
+    let cursorValueOf = item => Stdlib_Option.getOr(QueryDbListQuery$ReventlessCore.getFieldString(item, cursorField), QueryDbListQuery$ReventlessCore.getId(item));
+    return QueryDbListQuery$ReventlessCore.buildConnection(pageItems, hasMore, false, cursorValueOf);
   };
   bus.registerQueryDbListPage(name, listPage);
   return {

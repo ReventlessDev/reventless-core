@@ -10,8 +10,8 @@ import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/I
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as SortKey_Filter$ReventlessLocal from "./SortKey_Filter.res.mjs";
+import * as QueryDbListQuery$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/QueryDbListQuery.res.mjs";
 import * as QueryDb_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Callback.res.mjs";
-import * as QueryDbListQuery$ReventlessLocal from "./QueryDbListQuery.res.mjs";
 import * as DomainGraphQL_Server$ReventlessLocal from "../DomainGraphQL_Server.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
@@ -199,10 +199,10 @@ function Make(Bus) {
             return conn;
           }
           let items = await fetchAllItems();
-          return QueryDbListQuery$ReventlessLocal.run(items, argsDict, capability, labelField, decodeLocalId);
+          return QueryDbListQuery$ReventlessCore.run(items, argsDict, capability, labelField, decodeLocalId);
         }
         let items$1 = await fetchAllItems();
-        return QueryDbListQuery$ReventlessLocal.run(items$1, argsDict, capability, labelField, decodeLocalId);
+        return QueryDbListQuery$ReventlessCore.run(items$1, argsDict, capability, labelField, decodeLocalId);
       };
       match = [
         sdl,

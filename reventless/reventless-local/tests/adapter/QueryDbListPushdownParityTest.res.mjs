@@ -5,7 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as LocalBus$ReventlessLocal from "../../src/adapter/LocalBus.res.mjs";
 import * as TestRunner$ReventlessLocal from "../../src/test/TestRunner.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "../../src/adapter/SqliteDriver.res.mjs";
-import * as QueryDbListQuery$ReventlessLocal from "../../src/adapter/QueryDb/QueryDbListQuery.res.mjs";
+import * as QueryDbListQuery$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/QueryDbListQuery.res.mjs";
 import * as QueryDbStorage_Sqlite$ReventlessLocal from "../../src/adapter/QueryDb/QueryDbStorage_Sqlite.res.mjs";
 
 TestRunner$ReventlessLocal.setup();
@@ -145,7 +145,7 @@ function orderBy(f, dir) {
 async function checkPushed(label, args) {
   let s = await build();
   let argsDict = Object.fromEntries(args);
-  let expected = norm(QueryDbListQuery$ReventlessLocal.run(s.fullScan(), argsDict, capability, "name", param => {}));
+  let expected = norm(QueryDbListQuery$ReventlessCore.run(s.fullScan(), argsDict, capability, "name", param => {}));
   let actual = s.listPage(argsDict, capability, "name");
   if (actual !== undefined) {
     globalThis.expect(norm(actual)).toEqual(expected);
@@ -172,7 +172,7 @@ globalThis.describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery 
     ],
     [
       "after",
-      QueryDbListQuery$ReventlessLocal.encodeCursor("p-2")
+      QueryDbListQuery$ReventlessCore.encodeCursor("p-2")
     ]
   ]));
   globalThis.test("statusEq active", () => checkPushed("eq", [[
@@ -214,7 +214,7 @@ globalThis.describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery 
     ],
     [
       "after",
-      QueryDbListQuery$ReventlessLocal.encodeCursor("Delta")
+      QueryDbListQuery$ReventlessCore.encodeCursor("Delta")
     ]
   ]));
   globalThis.test("orderBy status ASC (tiebreak by id)", () => checkPushed("order-tiebreak", [[
@@ -266,12 +266,12 @@ globalThis.describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery 
     ],
     [
       "before",
-      QueryDbListQuery$ReventlessLocal.encodeCursor("p-4")
+      QueryDbListQuery$ReventlessCore.encodeCursor("p-4")
     ]
   ]));
 });
 
-let cur = QueryDbListQuery$ReventlessLocal.encodeCursor;
+let cur = QueryDbListQuery$ReventlessCore.encodeCursor;
 
 export {
   opts,
