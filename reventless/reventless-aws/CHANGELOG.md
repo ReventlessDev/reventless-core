@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.178 (2026-07-06)
+
+### Bug Fixes
+
+* **reventless-aws:** make deployed ESM Lambdas self-contained via layer resolver hook ([3fc768c](https://github.com/ReventlessDev/reventless-core/commit/3fc768cba5ef72fca6e4a706eb855f67ac7f0b30))
+### Features
+
+* **reventless-aws:** auth-table pipeline for group-restricted Postgres indexes (B3.2c) ([52be859](https://github.com/ReventlessDev/reventless-core/commit/52be8590ed934a2ffbc898cef381ca4ce50d8cda))
+* **reventless-aws:** deploy-time Postgres schema provisioning via in-VPC migration Lambda (A3) ([44c8eee](https://github.com/ReventlessDev/reventless-core/commit/44c8eeebd351e883f2d2e21460108e2963a061ce))
+* **reventless-aws:** expose DCB Postgres lock-strategy knob (C2) ([3991862](https://github.com/ReventlessDev/reventless-core/commit/3991862aa50eb939796413236a04deae80a61aa3))
+* **reventless-aws:** Postgres read-model live updates via projection Lambda (B3.3) ([ff8fc43](https://github.com/ReventlessDev/reventless-core/commit/ff8fc43049a8fc7134e340a473c2a1665a139140))
+* **reventless-aws:** provision the Postgres read path in plugin-stack mode (B3.2) ([719efbc](https://github.com/ReventlessDev/reventless-core/commit/719efbc20ab6e8bf5bb46499150fe07e54d9eca5))
+
+
 # 3.0.0-alpha.177 (2026-07-06)
 
 ### Features

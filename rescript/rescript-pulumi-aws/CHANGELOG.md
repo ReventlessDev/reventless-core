@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.46 (2026-07-06)
+
+### Features
+
+* **rescript-pulumi-aws:** add subnetIds to EC2_VpcEndpoint binding ([77fb606](https://github.com/ReventlessDev/reventless-core/commit/77fb6069d76b8026c7c12db433e5f6717b037d39))
+* **reventless-aws:** deploy-time Postgres schema provisioning via in-VPC migration Lambda (A3) ([44c8eee](https://github.com/ReventlessDev/reventless-core/commit/44c8eeebd351e883f2d2e21460108e2963a061ce))
+
+
 # 2.4.0-alpha.45 (2026-07-05)
 
 ### Features

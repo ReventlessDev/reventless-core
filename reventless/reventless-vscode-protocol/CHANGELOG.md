@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.14 (2026-07-06)
+
+### Bug Fixes
+
+* **vscode-protocol:** exclude test sources + jest dep from consumers ([d4e7b11](https://github.com/ReventlessDev/reventless-core/commit/d4e7b11d2a332eac9726029c3c8309066bb0f85a))
+
+
 # 1.0.0-alpha.13 (2026-07-06)
 
 ### Features
