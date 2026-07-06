@@ -242,11 +242,22 @@ binding it in a deploy-time maker.
     spec — run green against a real Postgres 16 (19 cases: keyset pages,
     numeric-as-string order, id-tiebreak, declined-shape fallbacks, index/batch
     lookups).
-  - **B3.2a-2 — resolver Lambda dispatcher.** `PgQueryResolver_Lambda.res`:
-    payload `{readModelName, kind, args, identity}` → dispatch (getById, byIds,
-    connection, items, index) → JSON, running spec-level authorization + the
-    `queryInterceptorHook` first (mirrors `QueryDbResolvers_GraphQL`). Pure
-    logic; testable against a real Postgres.
+  - **B3.2a-2 — resolver Lambda dispatcher** — ✅ **landed (2026-07-06).**
+    `PgQueryResolver_Lambda.res` (reventless-aws): payload
+    `{readModelName, kind, index?, arguments, identity}` → `dispatch` over a
+    per-RM `binding` (ops + push-downs + indexes + capability + labelField +
+    authorization) → JSON. Kinds covered: **getById** (`ops.load`, id-carrying),
+    **byIds** (push-down, missing drop out), **index** (push-down on the
+    index's `idField`), **list** (`listPage` push-down, else fallback to
+    `scanAll` + the shared `QueryDbListQuery.run`). Runs spec-level
+    authorization + the `queryInterceptorHook` first (mirrors
+    `QueryDbResolvers_GraphQL`); denials return the kind's empty shape;
+    unmapped kinds throw (feature-parity guard). A `bindings` registry +
+    `handler` is populated by the entry point at Lambda init (B3.2b). `dispatch`
+    is pure — unit-tested (`PgQueryResolver_LambdaTest`, 9 cases) with an
+    in-memory mock binding, no Postgres. **`items`** (sub-id connection) is
+    deferred: it needs `SortKey_Filter` (still reventless-local-only) hoisted
+    to core — do it when the deploy path issues that field.
   - **B3.2b — deploy wiring (needs a live stack to validate).** Shared in-VPC
     `PgQueryResolver` Lambda (`PgQueryResolverEntryPoint.mjs`, env config =
     per-RM spec modules + one shared `pgConnection`, VPC/secret via
