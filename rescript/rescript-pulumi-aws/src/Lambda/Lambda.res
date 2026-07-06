@@ -268,6 +268,32 @@ module Permission = {
     "Permission"
 }
 
+module Invocation = {
+  /** `aws.lambda.Invocation` — invokes the function **during `pulumi up`** (a
+    data-plane action, not a control-plane resource) and re-invokes whenever
+    `input` or `triggers` change. Used for one-shot deploy-time work such as
+    running a schema migration from inside the target VPC, so the deploy runner
+    itself needs no network path to the private resource. */
+  type args = {
+    functionName: Pulumi.Input.t<string>,
+    /** JSON string passed as the Lambda event payload. */
+    input: Pulumi.Input.t<string>,
+    /** Optional map whose changes force a re-invocation independently of `input`. */
+    triggers?: Pulumi.Input.t<dict<string>>,
+    qualifier?: Pulumi.Input.t<string>,
+  }
+
+  type t = {
+    id: Pulumi.Output.t<string>,
+    /** The function's JSON response, as a string. */
+    result: Pulumi.Output.t<string>,
+  }
+
+  @module("@pulumi/aws") @scope("lambda") @new
+  external make: (~name: string, ~args: args, ~opts: Pulumi.CustomResourceOptions.t=?) => t =
+    "Invocation"
+}
+
 let defaultLoggingPolicyDocument = PolicyDocument.make(
   ~statements=[
     {

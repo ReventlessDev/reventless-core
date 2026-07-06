@@ -9,6 +9,7 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as EC2_SecurityGroup$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_SecurityGroup.res.mjs";
+import * as PgMigration_Builder$ReventlessAws from "./PgMigration_Builder.res.mjs";
 
 let connectionConfigSchema = S.schema(s => ({
   host: s.m(S.string),
@@ -95,8 +96,34 @@ function make(name, vpcId, subnetIds, databaseNameOpt, usernameOpt, engineVersio
       secretArn: secret !== undefined ? secret.secretArn : Stdlib_JsError.throwWithMessage("RDS instance exposes no master user secret — manageMasterUserPassword must be enabled")
     };
   });
+  let migrationHandlerConfig = connectionConfig.apply(cc => {
+    let pgConnectionJson = JSON.stringify(Object.fromEntries([
+      [
+        "host",
+        cc.host
+      ],
+      [
+        "port",
+        cc.port
+      ],
+      [
+        "database",
+        cc.database
+      ],
+      [
+        "username",
+        cc.username
+      ],
+      [
+        "secretArn",
+        cc.secretArn
+      ]
+    ]));
+    return `{"pgConnection":` + pgConnectionJson + `}`;
+  });
+  let migrationResources = PgMigration_Builder$ReventlessAws.make(name + `-pg-migrate`, migrationHandlerConfig, connectionConfig.apply(cc => cc.secretArn), sg.id, subnetIds, opts);
   return {
-    resources: [Adapter$ReventlessInfra.make(Pulumi.output(name), instance.id, instance.arn, Pulumi.output("aws:rds"), undefined, Pulumi.output("postgres"), undefined, Pulumi.output("aws:rds:Instance"), undefined, undefined)],
+    resources: [Adapter$ReventlessInfra.make(Pulumi.output(name), instance.id, instance.arn, Pulumi.output("aws:rds"), undefined, Pulumi.output("postgres"), undefined, Pulumi.output("aws:rds:Instance"), undefined, undefined)].concat(migrationResources),
     connectionConfig: connectionConfig,
     securityGroupId: sg.id,
     subnetIds: subnetIds,

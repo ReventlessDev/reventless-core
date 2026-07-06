@@ -72,6 +72,8 @@ let $$Function = {};
 
 let Permission = {};
 
+let Invocation = {};
+
 let defaultLoggingPolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
     Sid: "DefaultLambdaLoggingPolicy",
     Effect: "Allow",
@@ -89,6 +91,7 @@ export {
   CallbackFunction,
   $$Function,
   Permission,
+  Invocation,
   defaultLoggingPolicyDocument,
 }
 /* arn Not a pure module */

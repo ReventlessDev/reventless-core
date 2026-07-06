@@ -125,7 +125,7 @@ reshape the phasing:
 | **A0** | **Pre-A bindings**: `rescript-pulumi-aws` — `Rds.{Instance,Cluster,ClusterInstance,SubnetGroup,Proxy}`, `SecretsManager.{Secret,SecretVersion}`, and a `vpcConfig` field on `Lambda.Function`. Hand-authored, following the existing EC2/DynamoDb binding pattern. | rescript-pulumi-aws | Plumbing (blocker) |
 | A1 | `reventless-aws` takes a workspace dep on `reventless-postgres` + `pg` Lambda-layer/bundling story | reventless-aws | Plumbing |
 | A2 | `PgConnection` deploy-time component: RDS/Aurora resource + Secrets Manager secret + VPC/SG wiring, resolving to a connection-config `Output` | reventless-aws | Feature (core) |
-| A3 | Schema provisioning at deploy time (`ensureSchema`) — Pulumi dynamic/command resource or a one-shot migration Lambda | reventless-aws | Feature |
+| A3 | Schema provisioning at deploy time (`ensureSchema`) — Pulumi dynamic/command resource or a one-shot migration Lambda (**landed 2026-07-06**: in-VPC migration Lambda + `aws.lambda.Invocation`) | reventless-aws | Feature |
 | B1 | `EventLogStorage_Postgres` AWS adapter (`storageMaker`: resources = shared PgConnection ref; operations delegate to the pg runtime) | reventless-aws | Feature |
 | B2 | `DcbEventLogStorage_Postgres` AWS adapter + change-feed → EventCollector/bus bridge | reventless-aws | Feature |
 | B3 | `QueryDbStorage_Postgres` + `QueryEngine_Postgres` AWS adapters | reventless-aws | Feature |
@@ -193,13 +193,41 @@ A single reusable Pulumi component owning:
   Follow the "resources vs. operations" split: `PgConnection` emits the
   resources once; each `storageMaker` contributes only its table/schema concern.
 
-### A3 — Schema provisioning at deploy time
+### A3 — Schema provisioning at deploy time ✅ (2026-07-06)
 **Decision (2026-07-05): one-shot in-VPC migration Lambda.** Invoked as a Pulumi
 resource after the DB is up, running the exact `PgSchema.ensureSchema` the local
 backend uses — zero schema drift, and it works for VPC-only RDS with no deploy-
 runner network reach (the common case). The command/dynamic-resource option is
 rejected: it needs the deploy runner to reach the DB, which breaks for VPC-only
 RDS unless the instance is publicly accessible or the runner runs in-VPC.
+
+**Landed (2026-07-06).** Before this, nothing created the schema on the AWS path
+— `ensureSchema` was called only in tests and by `reventless-local`'s `postgres`
+smart constructor, so a Postgres AWS deploy stood up RDS with no tables and the
+first append/query failed. Now `PgConnection.make` provisions the migration
+itself, so every `PgConnection` gets its schema:
+- **`PgMigrationEntryPoint.mjs`** (Runtime/) — reads `HANDLER_CONFIG.pgConnection`,
+  builds the pool via `PgRuntime.poolFor`, runs `PgSchema.ensureSchema`, returns.
+- **`PgMigration_Builder.res`** (adapter/Postgres/) — provisions an in-VPC Lambda
+  (`RuntimeEnvironment_Lambda.makeFromCodeAsset` → DB SG + subnets + the auto EC2
+  ENI role perms), a `secretsmanager:GetSecretValue` RolePolicy on the DB secret,
+  and an **`aws.lambda.Invocation`** that invokes it once during `pulumi up`.
+  Because the Lambda runs *inside* the VPC, the deploy runner needs no DB
+  reachability — the whole point of choosing a Lambda over a `command` resource.
+  Takes the connection as pre-serialized pieces (`~handlerConfig`, `~secretArn`)
+  rather than the `PgConnection.connectionConfig` record, to avoid a module cycle
+  (`PgConnection` → builder → `PgConnection`).
+- **New binding: `Lambda.Invocation`** in `rescript-pulumi-aws` (none existed).
+- **Ordering:** the invocation's `functionName` ties it to the Lambda, whose env
+  depends on the resolved `connectionConfig` (the instance's outputs, which
+  `aws.rds.Instance` resolves only at `available`), so it waits for the DB;
+  `dependsOn` the RolePolicy guarantees secret access before the first invoke.
+- **Re-runs** when the migration code or the Reventless layer (which ships the
+  DDL) changes — the invocation `input` carries `sourceCodeHash:layerArn`;
+  idempotent `IF NOT EXISTS` DDL makes an unchanged re-run a no-op.
+- Validated: full monorepo build zero warnings, 181 reventless-aws tests green,
+  migration entry-point import smoke passes. Unvalidated surface: the live AWS
+  boundary (actual in-VPC invoke + Secrets Manager fetch + DDL execution).
 
 `reventless-postgres` exposes idempotent `PgSchema.ensureSchema(pool)`. At
 deploy time this must run against the freshly-provisioned DB. Options

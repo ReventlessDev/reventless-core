@@ -76,6 +76,10 @@ let make = (
   ~lockStrategy: ReventlessPostgres.DcbEventLogStorage_Postgres.lockStrategy=#AdvisoryLocks,
   ~opts: option<Pulumi.ComponentResource.options>=?,
 ): t => {
+  // Keep the caller's ComponentResource.options for sub-builders that take it
+  // directly (PgMigration_Builder → RuntimeEnvironment_Lambda); the RDS/SG/subnet
+  // resources below want the CustomResourceOptions form.
+  let componentOpts = opts
   let opts =
     opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
@@ -160,17 +164,48 @@ let make = (
       },
     })
 
+  // A3: run PgSchema.ensureSchema against the fresh instance via a one-shot
+  // in-VPC migration Lambda invoked during `pulumi up`. Its resources join the
+  // instance's so the B-phase storage adapters can order after the schema exists.
+  // The connection is passed as pre-serialized pieces to avoid a module cycle
+  // (PgMigration_Builder must not reference this module's `connectionConfig`).
+  let migrationHandlerConfig = connectionConfig->Pulumi.Output.apply(cc => {
+    let pgConnectionJson =
+      [
+        ("host", cc.host->JSON.Encode.string),
+        ("port", cc.port->Int.toFloat->JSON.Encode.float),
+        ("database", cc.database->JSON.Encode.string),
+        ("username", cc.username->JSON.Encode.string),
+        ("secretArn", cc.secretArn->JSON.Encode.string),
+      ]
+      ->Dict.fromArray
+      ->JSON.Encode.object
+      ->JSON.stringify
+    `{"pgConnection":${pgConnectionJson}}`
+  })
+  let migrationResources = PgMigration_Builder.make(
+    ~name=`${name}-pg-migrate`,
+    ~handlerConfig=migrationHandlerConfig,
+    ~secretArn=connectionConfig->Pulumi.Output.apply(cc => cc.secretArn),
+    ~securityGroupId=sg.id,
+    ~subnetIds,
+    ~opts=?componentOpts,
+  )
+
   {
-    resources: [
-      ReventlessInfra.Adapter.make(
-        ~name=name->Pulumi.Output.make,
-        ~id=instance.id,
-        ~urn=instance.arn,
-        ~service="aws:rds"->Pulumi.Output.make,
-        ~role="postgres"->Pulumi.Output.make,
-        ~resourceType="aws:rds:Instance"->Pulumi.Output.make,
-      ),
-    ],
+    resources: Array.concat(
+      [
+        ReventlessInfra.Adapter.make(
+          ~name=name->Pulumi.Output.make,
+          ~id=instance.id,
+          ~urn=instance.arn,
+          ~service="aws:rds"->Pulumi.Output.make,
+          ~role="postgres"->Pulumi.Output.make,
+          ~resourceType="aws:rds:Instance"->Pulumi.Output.make,
+        ),
+      ],
+      migrationResources,
+    ),
     connectionConfig,
     securityGroupId: sg.id,
     subnetIds,
