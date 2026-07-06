@@ -165,7 +165,13 @@ binding it in a deploy-time maker.
     (`ReadModelEntryPoint` / `StateViewSliceEntryPoint`) bind the Postgres op
     set when `pgConnection` is present (indexes/subIdField read from the
     dynamically-imported spec module); absent → DynamoDB path byte-identical.
-  - Validated: full monorepo build zero warnings, 1758 tests green.
+  - Validated: full monorepo build zero warnings, 1758 tests green. Plus a
+    `PG_URL`-gated **end-to-end pipeline test** (`PgPipeline_IntegrationTest`)
+    composing B1 + B3.0 + B3.1 against a real Postgres: classic append →
+    `relayClassicWithPool` → feed-queue SQS records → `handleStreamEvent`
+    decode → a real `ReadModel_Callback` projection → `qdb_` row, including a
+    negative meta.service-dispatch test. The remaining unvalidated surface is
+    the AWS boundary only (SQS delivery, ESMs, VPC).
 - **B3.1b — QueryEngine on Postgres** — ✅ **closed (2026-07-05) with a
   finding**: on the deployed path there are NO runtime QueryEngine consumers of
   app read models to migrate. Every bundled entry point's queryEngine is a stub
