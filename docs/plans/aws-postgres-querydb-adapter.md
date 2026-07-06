@@ -383,8 +383,21 @@ binding it in a deploy-time maker.
       member-not-owns → empty, non-member → pass-through). Note: unauthorized
       returns an empty result (the module's Deny-returns-empty convention),
       not a GraphQL auth error.
-    - **Deferred (unchanged):** plugin-stack-mode provisioning (per-stack
-      data-source naming, see B3.2b).
+    - **Plugin-stack-mode provisioning** — ✅ **landed (2026-07-06),
+      compile-validated.** `deployPlugin` (the per-plugin-stack path) now calls
+      `PgQueryResolver_Builder.provision(~api=domainApi, ~createNodeResolver=false)`
+      after its `provisionPgChangeFeedRelay`, so a plugin stack's Postgres read
+      models get their own PgQueryResolver Lambda + AppSync data source. The
+      feared naming collision was a non-issue: the Lambda and data source set no
+      explicit physical names, so Pulumi auto-suffixes them per stack. The one
+      genuine cross-stack conflict — the single shared `Query.node` field (only
+      one resolver allowed per field per API) — is avoided by the
+      `~createNodeResolver` flag: monolithic `makePlatform` creates it,
+      plugin stacks skip it. **Limitation:** node resolution and cross-plugin
+      `@resolves` stay monolithic-only in plugin-stack mode (a per-plugin Lambda
+      only has its own plugin's read models registered; a platform-level node
+      dispatcher across plugin Lambdas is a separate effort — and node isn't
+      wired on the DynamoDB path either).
 - **B3.3 — live updates (deferred).** StateTopic assumes a DynamoDB stream
   ARN. Postgres options: (a) publish from the projection Lambda after
   `save` (simplest — the writer knows what changed), or (b) qdb triggers +

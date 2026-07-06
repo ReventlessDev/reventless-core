@@ -2046,6 +2046,23 @@ module MakeWithConfig = (
     // plugin's Postgres DCB log(s) + collector queue were registered during P.make()).
     provisionPgChangeFeedRelay()
 
+    // B3.2b/c: provision this plugin stack's PgQueryResolver Lambda + AppSync data
+    // source for its Postgres-backed read models (registered during P.make()). App
+    // read model resolvers attach to the Domain API. Per-plugin Lambda + auto-named
+    // data source, so plugin stacks don't collide. The node(id) resolver is skipped
+    // in plugin-stack mode — it's a single shared Query.node field only one stack
+    // may own (monolithic-only; see PgQueryResolver_Builder.provision).
+    switch QueryDbBackend.get() {
+    | Some(sel) =>
+      PgQueryResolver_Builder.provision(
+        ~api=domainApi,
+        ~selection=sel,
+        ~opts={},
+        ~createNodeResolver=false,
+      )
+    | None => ()
+    }
+
     // Zero-downtime handover (Part 3.1): fire ONE synthetic heartbeat for the
     // just-deployed plugin so its new version runs the connect handshake within
     // seconds instead of waiting for the CloudWatch heartbeat rule's first

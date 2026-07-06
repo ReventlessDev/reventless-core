@@ -94,7 +94,8 @@ function pgConnectionJson(cc) {
   ]));
 }
 
-function provision(api, selection, opts) {
+function provision(api, selection, opts, createNodeResolverOpt) {
+  let createNodeResolver = createNodeResolverOpt !== undefined ? createNodeResolverOpt : true;
   let handlers = Stdlib_Array.filterMap(Object.values(entries), entry => {
     let info = EventCollectorRuntime_Builder_Single$ReventlessAws.readModelInfos[entry.readModelName];
     if (info !== undefined && info.pgBacked) {
@@ -163,7 +164,7 @@ function provision(api, selection, opts) {
     },
     serviceRoleArn: dataSourceRole.arn
   }, customOpts);
-  if (Object.entries(nodeTypes).length !== 0) {
+  if (createNodeResolver && Object.entries(nodeTypes).length !== 0) {
     AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name + "NodeResolver", api, dataSource.name, "Query", "node", nodeResolverCode, customOpts);
   }
   dataSource.name.apply(n => resolveDataSourceName.contents(n));

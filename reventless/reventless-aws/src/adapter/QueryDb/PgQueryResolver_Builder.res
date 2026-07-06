@@ -96,6 +96,13 @@ let provision = (
   ~api: Pulumi.Output.t<AppSync.GraphQLApi.t>,
   ~selection: QueryDbBackend.selection,
   ~opts: Pulumi.ComponentResource.options,
+  // The shared node(id) resolver is a single resolver on the API's Query.node
+  // field. In plugin-stack mode each plugin stack deploys independently onto one
+  // shared API, so only ONE stack may own that field — and a per-plugin node
+  // resolver only knows its own plugin's types anyway. So node is provisioned in
+  // monolithic mode only; plugin stacks pass false. (Node is not wired on the
+  // DynamoDB path either — it stays a monolithic-only capability for now.)
+  ~createNodeResolver: bool=true,
 ): unit => {
   // Join the resolver-binding registry (labelField/includeIdParam) with the
   // ReadModel runtime registry (specModulePath, pgBacked). Only read models
@@ -260,9 +267,9 @@ let provision = (
 
     // Shared node(id) resolver (B3.2c) — one for the whole API, dispatched by
     // typeName in the Lambda. Only when some entity registered a node type
-    // (else the `node` field isn't in the schema). Mirrors NodeResolver_AppSync,
-    // which likewise creates the node resolver directly at deploy time.
-    if nodeTypes->Dict.toArray->Array.length > 0 {
+    // (else the `node` field isn't in the schema) AND in monolithic mode
+    // (plugin stacks would collide on the single Query.node field).
+    if createNodeResolver && nodeTypes->Dict.toArray->Array.length > 0 {
       let _nodeResolver = AppSync_Resolver_Retrying.makeUnitJsResolver(
         ~name=name ++ "NodeResolver",
         ~api,

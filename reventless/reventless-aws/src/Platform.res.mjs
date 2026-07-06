@@ -984,7 +984,7 @@ function MakeWithConfig(Config) {
     provisionPgChangeFeedRelay();
     let sel = QueryDbBackend$ReventlessAws.get();
     if (sel !== undefined) {
-      PgQueryResolver_Builder$ReventlessAws.provision(domainApi, sel, {});
+      PgQueryResolver_Builder$ReventlessAws.provision(domainApi, sel, {}, undefined);
     }
     if (Config.splitApi) {
       Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
@@ -1260,6 +1260,10 @@ function MakeWithConfig(Config) {
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
     provisionPgChangeFeedRelay();
+    let sel = QueryDbBackend$ReventlessAws.get();
+    if (sel !== undefined) {
+      PgQueryResolver_Builder$ReventlessAws.provision(domainApi, sel, {}, false);
+    }
     let hbConfig = PluginRuntime_Builder$ReventlessAws.heartbeatConfigRef.contents;
     let match = IndexJs.isDryRun();
     let match$1 = hbConfig.epQueueUrl;
@@ -2192,7 +2196,7 @@ function Make($star) {
     provisionPgChangeFeedRelay();
     let sel = QueryDbBackend$ReventlessAws.get();
     if (sel !== undefined) {
-      PgQueryResolver_Builder$ReventlessAws.provision(domainApi, sel, {});
+      PgQueryResolver_Builder$ReventlessAws.provision(domainApi, sel, {}, undefined);
     }
     Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
     Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL)));
@@ -2450,6 +2454,10 @@ function Make($star) {
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
     provisionPgChangeFeedRelay();
+    let sel = QueryDbBackend$ReventlessAws.get();
+    if (sel !== undefined) {
+      PgQueryResolver_Builder$ReventlessAws.provision(domainApi, sel, {}, false);
+    }
     let hbConfig = PluginRuntime_Builder$ReventlessAws.heartbeatConfigRef.contents;
     let match = IndexJs.isDryRun();
     let match$1 = hbConfig.epQueueUrl;
