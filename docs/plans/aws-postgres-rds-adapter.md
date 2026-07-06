@@ -135,7 +135,7 @@ reshape the phasing:
 | D2 | Deploy-time resource `service`-tag / routing so command publishers target the right backend (cf. `meta.service` dispatch note) | reventless-aws | Contract |
 | E1 | Example: a hybrid example (or new `examples/online-shop-postgres/`) deploying one plugin on RDS | examples | Integration |
 | E2 | CI deploy smoke: provision → migrate → append → replay → teardown against a throwaway RDS (or LocalStack/pg where feasible) | repo CI | Test |
-| F1 | Deployment guide: `docs/guides/postgres-aws-deployment.md` (pooling, VPC, secrets, cost, when-to-choose-vs-DynamoDB) | docs | Doc |
+| F1 | Deployment guide: `docs/guides/postgres-aws-deployment.md` (pooling, VPC, secrets, cost, when-to-choose-vs-DynamoDB) (**landed 2026-07-06**) | docs | Doc |
 
 Order: **A0 → A** → B (∥ across surfaces) → C → D → E → F. A0 blocks A2 (nothing
 provisions without RDS/Secret bindings). C1 gates any live test.
@@ -502,6 +502,21 @@ lock-strategy guidance, cost notes, and a **decision section: managed Postgres
 vs. DynamoDB** (exact DCB semantics & monotonic positions & relational tooling
 vs. DynamoDB's serverless-native zero-VPC operational simplicity). Cross-link
 from the platform-and-plugin guide and the done storage-adapter plan.
+
+**Landed (2026-07-06).** Published in the docs site at
+`packages/doc/docs-infrastructure/postgres-aws-deployment.md` (route
+`/infrastructure/postgres-aws-deployment`), added to the infrastructure sidebar's
+Guides category, with the conventional moved-stub at
+`docs/guides/postgres-aws-deployment.md`. Covers: the Postgres-vs-DynamoDB
+decision table, what `PgConnection` provisions, the `make` parameter table
+(exact defaults), the `Platform.MakeWithConfig(~pgConnection)` wiring + per-surface
+backend selection, VPC/ENI/NAT implications, Secrets/IAM, the A3 schema-migration
+Lambda, the change-feed relay (≥1-min latency), the AppSync→Lambda QueryDb read
+path, the `#AdvisoryLocks`/`#RowLocks` × direct-RDS/RDS-Proxy pooling knob, cost,
+and operational notes (`xid8` cursors on restore, deletion protection,
+greenfield-only). Honestly flags the not-yet-landed pieces (Aurora, RDS Proxy
+provisioning, the live AWS boundary) inline. Cross-linked to the platform guide,
+per-plugin deploy guide, live-updates guide, and the DynamoDB DCB adapter doc.
 
 ## Non-goals (v1)
 
