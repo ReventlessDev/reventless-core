@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-catalog",
-  "version": "1.0.0-alpha.110",
+  "version": "1.0.0-alpha.111",
   "description": "Online Shop Hybrid example — Catalog plugin (Category + Product/ProductDemand DCB slices)",
   "license": "Apache-2.0",
   "scripts": {

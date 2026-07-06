@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.15 (2026-07-06)
+
+### Features
+
+* **vscode-protocol:** add GraphOps — pure domain-graph operations ([8c67c08](https://github.com/ReventlessDev/reventless-core/commit/8c67c080ef229a51d429807aca15a7eba9675182))
+* **vscode-protocol:** focus/neighbourhood scoping moves into GraphOps ([eab1bfd](https://github.com/ReventlessDev/reventless-core/commit/eab1bfd2d0181bc052253385b191db311aa2b8dd))
+
+
 # 1.0.0-alpha.14 (2026-07-06)
 
 ### Bug Fixes
