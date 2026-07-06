@@ -296,10 +296,61 @@ binding it in a deploy-time maker.
       only when a subId is configured). `PG_URL`-gated (8 cases, green vs
       Postgres 16); dispatcher unit test covers routing + the no-subId empty
       connection.
-    - **Still deferred:** `@resolves`/`@resolvesMany` (cross-table field
-      resolvers — `byIds` engine method already exists for the batch case),
-      node resolver, auth-table pipeline (auth tables stay DynamoDB in the
-      first cut). Plugin-stack-mode provisioning (see B3.2b).
+    - **`@resolves` / `@resolvesMany` / `node` — design (2026-07-06), awaiting
+      go-ahead.** These differ from the primary surface: they are field
+      resolvers on **parent entity types** (not `Query`), and they read a
+      **different (target) read model** than the one they hang off. On DynamoDB
+      each gets its own data source on the target table; on Postgres they become
+      Invoke resolvers on the shared Lambda that dispatch against the **target's
+      already-registered `binding`** (the `bindings` dict is module-level and
+      holds every Postgres RM by name — cross-RM/cross-plugin lookup is free on
+      a monolithic platform where all RMs share one Lambda + DB).
+
+      **Payload extension** (`PgQueryResolver_Lambda.payload`): add `target`
+      (the target RM's binding key), `source` (the parent object, from
+      `ctx.source`), `sourceIdField` / `sourceIdsField`, `sourceSubId`
+      (`{kind:"field"|"arg", name}`), and `targetIdField`
+      (`"id"` | `{index, idField}`). New kinds `resolveOne` / `resolveMany` /
+      `node`; the deploy-time template bakes the target metadata from the
+      `idResolverConfig` / `idsResolverConfig`, and the Lambda pulls ops from
+      `bindings[target]`.
+
+      **Dispatch (all pure → mock-testable like a-2; underlying SQL already
+      covered by a-1):**
+      - `resolveOne` — key = `source[sourceIdField]`. Target lookup:
+        `targetIdField="id"` → `bindings[target].ops.load(key)` first row (with
+        `sourceSubId` → pick the row whose sub matches the field/arg value);
+        `{index,idField}` → `indexLookup(idField, key)` first. `resolvedField`
+        `Single` → item | null, `Multi` (index) → array.
+      - `resolveMany` — ids = `source[sourceIdsField]` →
+        `bindings[target].pushdowns.byIds(ids)` → array (reuses the existing
+        `byIds` engine method; missing ids drop out, matching BatchGet).
+      - `node` — one `node(id:ID!)` Query resolver → Invoke `{kind:"node", id}`.
+        Global id is `base64(typeName + ":" + localId)` (confirmed from
+        `nodeDecodeGlobalId`); the Lambda decodes it, maps `typeName →
+        readModelName` via a node-type map baked into the env config (from the
+        deploy-time `registerNodeType` calls), loads by `localId`, returns
+        `{...item, __typename: typeName, id: <original global id>}`. **Verified
+        non-invasive:** the DynamoDB `getItemById` returns the raw item id (no
+        Relay encoding), same as the Postgres getById — so no id-encoding change
+        is needed elsewhere; node is self-contained.
+
+      **Deploy wiring:** extend `QueryDbResolvers_Lambda.make` to emit the
+      `idResolvers` / `idsResolvers` (unit Invoke resolvers on `type_=name`,
+      field = `resolvedField`), and add a node step to
+      `PgQueryResolver_Builder.provision` (one `node` resolver + the node-type
+      map in the env config). `QueryEnginePostgres` needs **no new methods**
+      (`load` / `indexLookup` / `byIds` cover it).
+
+      **Open items to confirm at implementation:** the `target.tableName →
+      binding key` mapping (binding is keyed by capitalized spec name — likely
+      `tableName->capitalize`, verify against `getStorageResources`);
+      cross-plugin targets are monolithic-only (split/multi-Lambda would need
+      cross-Lambda calls — out of scope).
+
+    - **Deferred (unchanged):** auth-table pipeline (`@index` authorization —
+      auth tables stay DynamoDB in the first cut; admin-managed and tiny);
+      plugin-stack-mode provisioning (per-stack data-source naming, see B3.2b).
 - **B3.3 — live updates (deferred).** StateTopic assumes a DynamoDB stream
   ARN. Postgres options: (a) publish from the projection Lambda after
   `save` (simplest — the writer knows what changed), or (b) qdb triggers +
