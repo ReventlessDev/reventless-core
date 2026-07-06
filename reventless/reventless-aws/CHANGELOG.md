@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.177 (2026-07-06)
+
+### Features
+
+* **reventless-aws:** AppSync read path for Postgres read models (B3.2b) ([a6dd6cb](https://github.com/ReventlessDev/reventless-core/commit/a6dd6cbddfc65410bf96da49bb2603c88670aced))
+* **reventless-aws:** cross-table @resolves/[@resolves](https://github.com/resolves)Many + node resolvers for Postgres reads (B3.2c) ([713b6ab](https://github.com/ReventlessDev/reventless-core/commit/713b6ab736715209e7198b2b4ab609c5447adef5))
+* **reventless-postgres,reventless-aws:** items (sub-id connection) resolver for Postgres reads (B3.2c) ([2477220](https://github.com/ReventlessDev/reventless-core/commit/247722062913f5d0bcb5895b152f05033d8297d8))
+
+
 # 3.0.0-alpha.176 (2026-07-06)
 
 ### Bug Fixes

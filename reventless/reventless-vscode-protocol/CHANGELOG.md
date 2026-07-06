@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.13 (2026-07-06)
+
+### Features
+
+* **vscode-protocol:** domain-graph edges gain via + implicit provenance ([8a89931](https://github.com/ReventlessDev/reventless-core/commit/8a89931e887bd4944f0144a4b078037f32205eed))
+
+
 # 1.0.0-alpha.12 (2026-07-06)
 
 **Note:** Version bump only for package @reventlessdev/reventless-vscode-protocol
