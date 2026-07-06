@@ -258,15 +258,35 @@ binding it in a deploy-time maker.
     in-memory mock binding, no Postgres. **`items`** (sub-id connection) is
     deferred: it needs `SortKey_Filter` (still reventless-local-only) hoisted
     to core — do it when the deploy path issues that field.
-  - **B3.2b — deploy wiring (needs a live stack to validate).** Shared in-VPC
-    `PgQueryResolver` Lambda (`PgQueryResolverEntryPoint.mjs`, env config =
-    per-RM spec modules + one shared `pgConnection`, VPC/secret via
-    `QueryDbBackend.get()` — the EventCollector Lambda pattern) + one AppSync
-    Lambda data source, created once in `makePlatform` before construct; its
-    name flows into `QueryDbStorage_Postgres.make`'s `dataSourceName` (today
-    `""`) via a registry ref. `QueryDbResolvers_Lambda.res` emits the Invoke
-    templates; `QueryDbResolvers.Selectable` routes Postgres RMs to it instead
-    of `NoOp`.
+  - **B3.2b — deploy wiring** — ✅ **landed (2026-07-06), compile-validated;
+    AWS boundary unvalidated (no live stack), same as B3.0/B3.1.** Pieces:
+    - `PgQueryResolver_Builder.res` — the shared in-VPC `PgQueryResolver` Lambda
+      + one AppSync `AWS_LAMBDA` data source (role → invoke policy → data
+      source, mirroring `Platform_ComponentDefinitions_Lambda`), VPC/secret via
+      `QueryDbBackend.get()` (the EventCollector Lambda pattern). Holds a
+      **deferred** `dataSourceName` (`Output.fromPromise`) that `QueryDbStorage_
+      Postgres.make` returns for every Postgres RM (was `""`); `provision`
+      resolves it after construct. Env config (`QUERY_RESOLVER_CONFIG`) = shared
+      `pgConnection` + one baked handler per RM (specModule path from
+      `EventCollectorRuntime_Builder_Single.readModelInfos`, labelField/
+      includeIdParam from the resolver-binding registry).
+    - `PgQueryResolverEntryPoint.mjs` — cold-start: reads the config, builds one
+      pool + engine, dynamic-imports each spec (indexes/subIdField/stateSchema→
+      capability/authorization), registers a `binding` per RM. AppSync invokes
+      `handler`. Engine push-downs assigned positionally (verified against
+      compiled output).
+    - `QueryDbResolvers_Lambda.res` — Invoke-template unit resolvers per Query
+      field (getById, list, index, byIds), deferred into the schema-pushed
+      `resourcesMaker`; registers the binding entry.
+    - `QueryDbStorage_Postgres.make` → deferred data source name;
+      `QueryDbResolvers.Selectable` routes Postgres RMs to the Lambda maker
+      (was `NoOp`).
+    - `Platform.makePlatform` calls `PgQueryResolver_Builder.provision` after
+      `provisionPgChangeFeedRelay` (all plugins built → registries complete).
+    - **Deferred:** plugin-stack mode (`deployPlugin`) — needs a per-stack data
+      source name to avoid collisions on the shared API; only the monolithic
+      `makePlatform` path is wired. `items` (sub-id connection) still needs
+      `SortKey_Filter` hoisted (see B3.2a-2).
   - **B3.2c — long tail.** `@resolves`/`@resolvesMany`, node resolver, auth
     (auth tables stay DynamoDB in the first cut).
 - **B3.3 — live updates (deferred).** StateTopic assumes a DynamoDB stream

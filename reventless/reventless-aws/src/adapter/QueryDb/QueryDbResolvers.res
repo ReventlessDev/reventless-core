@@ -1,10 +1,11 @@
 module AppSync = QueryDbResolvers_AppSync
 module NoOp = QueryDbResolvers_NoOp
+module Lambda = QueryDbResolvers_Lambda
 
-// B3.1: Postgres-backed read models have no DynamoDB data source — suppress the
-// direct AppSync resolvers (their GraphQL fields stay unresolved until B3.2's
-// Lambda data source). DynamoDB-backed (incl. admin-exempt) read models keep the
-// full resolver set.
+// B3.2b: Postgres-backed read models have no DynamoDB data source — their
+// GraphQL Query fields are served by the shared PgQueryResolver Lambda data
+// source (`QueryDbResolvers_Lambda`, Invoke templates → PgQueryResolver_Lambda).
+// DynamoDB-backed (incl. admin-exempt) read models keep the direct resolver set.
 module Selectable = {
   type api = QueryDbResolvers_AppSync_NoOp.api
   type role = QueryDbResolvers_AppSync_NoOp.role
@@ -21,7 +22,7 @@ module Selectable = {
     ~opts,
   ) =>
     if QueryDbBackend.isPostgresFor(name) {
-      QueryDbResolvers_AppSync_NoOp.make(
+      QueryDbResolvers_Lambda.make(
         ~name,
         ~api,
         ~apiRole,

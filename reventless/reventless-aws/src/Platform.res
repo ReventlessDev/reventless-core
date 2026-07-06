@@ -1470,6 +1470,18 @@ module MakeWithConfig = (
     // built above, so the DcbBackend relay registry is complete).
     provisionPgChangeFeedRelay()
 
+    // B3.2b: provision the shared PgQueryResolver Lambda + AppSync data source for
+    // Postgres-backed read models (monolithic mode). Runs after construct so the
+    // resolver-binding registry (QueryDbResolvers_Lambda.make) and the ReadModel
+    // spec-module registry are complete; it fulfils the deferred `dataSourceName`
+    // the Postgres storage maker handed to the (schema-pushed) resolvers. App read
+    // model resolvers attach to the Domain API. Plugin-stack mode is deferred —
+    // it needs a per-stack data-source name to avoid collisions on the shared API.
+    switch QueryDbBackend.get() {
+    | Some(sel) => PgQueryResolver_Builder.provision(~api=domainApi, ~selection=sel, ~opts={})
+    | None => ()
+    }
+
     // Admin schema push is fired by preAdminResolversSchemaHook from inside
     // Admin.construct (with createResolvers gated on it). Only exports below.
     if Config.splitApi {

@@ -37,7 +37,11 @@ let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
   }
   {
     ReventlessCore.QueryDb_Adapter.resources: [],
-    dataSourceName: ""->Pulumi.Output.make,
+    // B3.2b: the shared PgQueryResolver Lambda data source. Deferred — resolved
+    // by PgQueryResolver_Builder.provision after every plugin is built (the
+    // resolvers that read it are created even later, inside the schema-pushed
+    // resourcesMaker). Same value for every Postgres read model.
+    dataSourceName: PgQueryResolver_Builder.dataSourceName,
     operations,
   }
 }
