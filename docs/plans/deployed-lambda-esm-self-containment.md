@@ -1,11 +1,13 @@
 # Plan: deployed-Lambda ESM self-containment (unblock the AWS runtime path)
 
-**Status**: Active (2026-07-06). Phase 1a (spike) + **1b (implementation) DONE**;
-**1c (real-AWS validation) is the remaining gate** — the code fix is landed but
-unproven on Lambda until a Rung-2/Rung-3 deploy runs. **Blocking** — the entire
-`reventless-aws` deployed-Lambda runtime stays presumed non-functional on real AWS
-until 1c is green. **Nature**: framework fix (deploy-time bundling + Lambda module
-resolution), followed by an optional consistency refactor.
+**Status**: Active (2026-07-06). Phase 1a (spike) + 1b (implementation) DONE;
+**1c Rung-2 GREEN on real AWS (2026-07-06)** — the migration Lambda cold-started
+in-VPC under `nodejs22.x`, resolved every bare specifier through the hook, ran
+`ensureSchema`, and returned `"ok"`. The blocker is lifted for the Postgres
+migration path. **Remaining**: Rung-3 (a real DynamoDB plugin: aggregate + read
+model, command→projection→query) to validate the *default* deployed path.
+**Nature**: framework fix (deploy-time bundling + Lambda module resolution),
+followed by an optional consistency refactor.
 
 ## Motivation — the bug (found via a real-AWS Rung-2 deploy, 2026-07-06)
 
@@ -183,13 +185,27 @@ transitive imports). Build green, all 185 `reventless-aws` tests pass.
 - Reventless layer left in place (still useful for CJS paths / size).
 
 ### 1c. Validate on real AWS (the whole point)
-- **Rung 2** — re-run the `PgConnection`-only harness; a green `pulumi up` proves
-  the migration Lambda fetches the secret and runs `ensureSchema` in-VPC.
-- **Rung 3** — deploy one real plugin (an aggregate + a read model, DynamoDB
+- **Rung 2 — GREEN (2026-07-06).** Reconstructed the throwaway `PgConnection`
+  harness (VPC + 2-AZ subnets + Secrets Manager interface endpoint + RDS + the A3
+  migration Lambda + Invocation) to `eu-west-1` stack `reventless/rung2-pgconnection/rung2`,
+  deployed against layer `reventless-aws-alpha:159` (alpha.178 — the first CI layer
+  to ship both `PgMigrationEntryPoint.mjs` and the fix). The `aws.lambda.Invocation`
+  **succeeded** where the pre-fix run failed the whole stack with
+  `ERR_MODULE_NOT_FOUND`. CloudWatch: `ensureSchema completed for reventless`;
+  payload `"ok"`; `FunctionError: None`; 127 ms (hook overhead negligible). This
+  confirms the three deploy-time unknowns from 1a: (1) `nodejs22.x` honours
+  `NODE_OPTIONS=--import`; (2) `@aws-sdk/*` resolves from the runtime dir via the
+  `/var/runtime/node_modules` fallback (the in-VPC secret fetch used it through the
+  SM endpoint); (3) cold-start cost is trivial. Stack destroyed after (~$0.50).
+  Harness kept out of git (`.git/info/exclude`), Pulumi cloud backend.
+  **Layer note:** the layer resolves runtime code by subpath, so it must ship the
+  entry point being deployed — a one-version-stale layer (158, pre-migration-entry)
+  would fail on a *missing subpath* even with the fix. CI publishes the layer from
+  the npm-published `reventless-aws`, so the entry point + fix reach the layer only
+  after that package version is released.
+- **Rung 3 — TODO.** Deploy one real plugin (an aggregate + a read model, DynamoDB
   backend) and drive command → projection → query end to end. This validates the
   *default* deployed path, not just Postgres.
-- Only after both are green is the deployed runtime actually validated for the
-  first time.
 
 ---
 
