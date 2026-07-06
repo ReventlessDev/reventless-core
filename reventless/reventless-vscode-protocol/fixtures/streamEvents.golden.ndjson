@@ -1,4 +1,4 @@
-{"event":"hello","protocol":9}
+{"event":"hello","protocol":10}
 {"event":"discoverStart"}
 {"event":"item","id":"f","kind":"file","label":"Foo"}
 {"event":"item","id":"f","parent":"p","kind":"test","label":"Foo","description":"a test","uri":"file:///x.res","range":{"start":{"line":1,"character":2},"end":{"line":3,"character":4}},"component":{"kind":"Aggregate","name":"Product"}}
@@ -27,3 +27,4 @@
 {"event":"platformLog","line":"hello"}
 {"event":"platformStop","code":0}
 {"event":"platformStop"}
+{"event":"graph","nodes":[],"edges":[{"from":"a","to":"b","kind":"triggers","via":["OrderPlaced"],"implicit":true}]}

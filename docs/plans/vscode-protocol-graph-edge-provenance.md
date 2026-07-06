@@ -1,6 +1,6 @@
 # Domain-graph edge provenance: `via` + `implicit` on the protocol `graphEdge`
 
-**Status:** Plan — not started
+**Status:** ✅ **Done (2026-07-06).** `graphEdge` gained optional `via: array<string>` + `implicit: bool`; `protocolVersion` bumped 9 → 10 with the v10 source-comment line. One sample case appended to `ProtocolSamples.res` (kept last, so the golden diff is a clean one-line addition + the expected `hello` `protocol` 9→10 bump); golden regenerated, all 93 round-trip + emit-golden tests green. `Protocol.gen.ts` now exports `via?: string[]` / `implicit?: boolean`. **sury regime confirmed non-strict** (§5 last bullet): a decode of a graph edge carrying an *unknown* extra key parsed successfully and dropped it — so the version bump is a soft floor (older decoders degrade gracefully, they don't reject). Generated artifacts (`Protocol.res.mjs`, `ProtocolSamples.res.mjs`, `fixtures/streamEvents.golden.ndjson`) rebuilt; **not yet committed** (awaiting review) — the `feat(vscode-protocol): …` commit drives the lerna version/changelog on release.
 **Owner:** Martin
 **Scope:** `reventless/reventless-vscode-protocol` (the public NDJSON graph contract) and its emitter/consumers within core (`reventless-gwt` graph emission).
 **Relates to:** `reventless/reventless-vscode-protocol/src/Protocol.res` (v9) · `reventless-gwt` `--format=vscode` graph events.

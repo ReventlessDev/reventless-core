@@ -64,7 +64,9 @@ let graphEdgeSchema = S.schema(s => ({
   from: s.m(S.string),
   to: s.m(S.string),
   kind: s.m(S.string),
-  label: s.m(S.option(S.string))
+  label: s.m(S.option(S.string)),
+  via: s.m(S.option(S.array(S.string))),
+  implicit: s.m(S.option(S.bool))
 }));
 
 let streamEventSchema = S.union([
@@ -205,7 +207,7 @@ function toJsonLine(e) {
   return Stdlib_Option.getOr(JSON.stringify(S.reverseConvertOrThrow(e, streamEventSchema)), "");
 }
 
-let protocolVersion = 9;
+let protocolVersion = 10;
 
 export {
   positionSchema,

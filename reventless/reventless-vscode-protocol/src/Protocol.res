@@ -49,8 +49,20 @@ type deadCodeFinding = {kind: string, plugin: string, component: string, detail:
 type graphNode = {id: string, kind: string, label: string, plugin: string}
 // `label` (optional) annotates the connection — e.g. the payload type crossing a
 // translation slice's boundary to/from an external system. Absent on ordinary edges.
+// `via` (optional) — the event type(s) that mediate an inferred producer→consumer
+// edge; structured + multi-valued, so it can't fold into the single-string `label`.
+// Absent on edges that aren't event-mediated.
+// `implicit` (optional) — true when the edge was inferred by cross-referencing
+// component metadata rather than declared explicitly. Absent ⇒ treated as declared.
 @genType @schema
-type graphEdge = {from: string, @as("to") to_: string, kind: string, label?: string}
+type graphEdge = {
+  from: string,
+  @as("to") to_: string,
+  kind: string,
+  label?: string,
+  via?: array<string>,
+  implicit?: bool,
+}
 
 // The watch + platform-runner stream as a flat, internally-tagged variant.
 // `discoverStart` carries an optional phantom field so it serialises as an object
@@ -111,8 +123,10 @@ type streamEvent =
 // v8: component definitions event (field schemas for command/event/read-side state).
 // v9: platformStop `code` is now a plain optional (was required `int | null`), so a
 //     signal-killed platform's stop event round-trips instead of failing to decode.
+// v10: domain-graph edges gained optional `via` (mediating event types) and
+//      `implicit` (inferred-vs-declared) — additive, older decoders ignore them.
 @genType
-let protocolVersion = 9
+let protocolVersion = 10
 
 // Decode + validate one NDJSON line. `None` for a malformed line or an unknown event
 // (a version-skewed CLI degrades gracefully — same effect as the old "ignore unknown").

@@ -302,6 +302,20 @@ let cases = [
     {
       event: "platformStop"
     }
+  ],
+  [
+    "graph edge with via + implicit",
+    {
+      event: "graph",
+      nodes: [],
+      edges: [{
+          from: "a",
+          to: "b",
+          kind: "triggers",
+          via: ["OrderPlaced"],
+          implicit: true
+        }]
+    }
   ]
 ];
 

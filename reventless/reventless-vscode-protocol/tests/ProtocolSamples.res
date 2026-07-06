@@ -93,4 +93,11 @@ let cases: array<(string, P.streamEvent)> = [
   ("platformLog", PlatformLog({line: "hello"})),
   ("platformStop with exit code", PlatformStop({code: 0})),
   ("platformStop absent (signal-killed)", PlatformStop({code: ?None})),
+  (
+    "graph edge with via + implicit",
+    Graph({
+      nodes: [],
+      edges: [{from: "a", to_: "b", kind: "triggers", via: ["OrderPlaced"], implicit: true}],
+    }),
+  ),
 ]
