@@ -426,6 +426,107 @@ globalThis.describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth"
       return Stdlib_JsError.throwWithMessage("missing query fields");
     }
   });
+  globalThis.test("systemCallable dual-auth extends to derived query fields (Items/ByIds/By<Index>)", () => {
+    let entry_permission = {
+      TAG: "AllowGroups",
+      _0: ["Admin"]
+    };
+    let entry_systemCallable = true;
+    let entry = {
+      singleFieldName: "p_Item",
+      listFieldName: "p_Items",
+      returnTypeName: "p_Item",
+      stateSchema: S.unknown,
+      authorization: undefined,
+      permission: entry_permission,
+      systemCallable: entry_systemCallable
+    };
+    let frag = makeFragment([], [
+      "p_ItemItems(id: ID!, first: Int): p_ItemConnection!",
+      "p_ItemsByIds(ids: [ID!]!): [p_Item]!",
+      "p_ItemByOwner(id: ID!, first: Int): p_ItemConnection!",
+      "q_Unrelated(id: ID!): String"
+    ]);
+    let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [], [entry]);
+    let parts = GraphQL_Stitcher$ReventlessCore.decode(aug);
+    parts.queries.forEach(field => {
+      if (field.includes("q_Unrelated")) {
+        globalThis.expect(field).not.toContain("@aws_iam");
+      } else {
+        globalThis.expect(field).toContain("@aws_iam");
+      }
+    });
+  });
+});
+
+globalThis.describe("AppSync_Adapter — type-level dual-auth", () => {
+  let makeFragmentWithTypes = (types, queryFields) => GraphQL_Stitcher$ReventlessCore.encode({
+    types: types,
+    mutations: [],
+    queries: queryFields,
+    subscriptions: []
+  });
+  let callableEntry_permission = {
+    TAG: "AllowGroups",
+    _0: ["Admin"]
+  };
+  let callableEntry_systemCallable = true;
+  let callableEntry = {
+    singleFieldName: "p_Item",
+    listFieldName: "p_Items",
+    returnTypeName: "p_Item",
+    stateSchema: S.unknown,
+    authorization: undefined,
+    permission: callableEntry_permission,
+    systemCallable: callableEntry_systemCallable
+  };
+  let types = [
+    "type p_Item implements Node {\n  id: ID!\n}",
+    "type p_ItemConnection {\n  edges: [p_ItemEdge!]!\n}",
+    "type p_ItemEdge {\n  node: p_Item!\n}",
+    "type p_ItemNested {\n  x: String\n}",
+    "type q_Sibling {\n  id: ID!\n}",
+    "input p_ItemItemsFilter {\n  eq: String\n}"
+  ];
+  globalThis.test("types prefixed by a callable entry's returnTypeName carry the multi-auth pair", () => {
+    let frag = makeFragmentWithTypes(types, ["p_Item(id: ID!): p_Item"]);
+    let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [], [callableEntry]);
+    let parts = GraphQL_Stitcher$ReventlessCore.decode(aug);
+    parts.types.forEach(decl => {
+      if (decl.startsWith("type p_Item")) {
+        globalThis.expect(decl).toContain("@aws_cognito_user_pools @aws_iam {");
+      } else {
+        globalThis.expect(decl).not.toContain("@aws_iam");
+      }
+    });
+  });
+  globalThis.test("without a systemCallable entry no type is stamped", () => {
+    let newrecord = {...callableEntry};
+    newrecord.systemCallable = false;
+    let frag = makeFragmentWithTypes(types, ["p_Item(id: ID!): p_Item"]);
+    let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [], [newrecord]);
+    GraphQL_Stitcher$ReventlessCore.decode(aug).types.forEach(decl => {
+      globalThis.expect(decl).not.toContain("@aws_iam");
+    });
+  });
+  globalThis.test("stampSharedIamTypes marks PageInfo + CommandResult members on the assembled SDL", () => {
+    let sdl = [
+      "interface Node {\n  id: ID!\n}",
+      "type PageInfo {\n  hasNextPage: Boolean!\n}",
+      "union CommandResult = CommandAccepted | CommandRejected | CommandPending",
+      "type CommandAccepted {\n  msgId: ID!\n}",
+      "type CommandRejected {\n  msgId: ID!\n}",
+      "type CommandPending {\n  msgId: ID!\n}",
+      "type Untouched {\n  id: ID!\n}"
+    ].join("\n\n");
+    let stamped = AppSync_Adapter$ReventlessAws.stampSharedIamTypes(sdl);
+    globalThis.expect(stamped).toContain("type PageInfo @aws_cognito_user_pools @aws_iam {");
+    globalThis.expect(stamped).toContain("type CommandAccepted @aws_cognito_user_pools @aws_iam {");
+    globalThis.expect(stamped).toContain("type CommandRejected @aws_cognito_user_pools @aws_iam {");
+    globalThis.expect(stamped).toContain("type CommandPending @aws_cognito_user_pools @aws_iam {");
+    globalThis.expect(stamped).toContain("type Untouched {");
+    globalThis.expect(stamped).toContain("union CommandResult = CommandAccepted | CommandRejected | CommandPending");
+  });
 });
 
 globalThis.describe("AppSync_Adapter.injectAwsAuthAll — ~iamFieldNames", () => {

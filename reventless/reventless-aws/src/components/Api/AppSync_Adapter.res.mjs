@@ -4,8 +4,10 @@ import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Nodecrypto from "node:crypto";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Effect$1 from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
@@ -215,9 +217,41 @@ function _formatDualAuthDirective(groups) {
   return cognito + ` @aws_iam`;
 }
 
+function _typeDeclName(decl) {
+  if (!decl.startsWith("type ")) {
+    return;
+  }
+  let rest = decl.slice(5, decl.length);
+  let i = rest.search(/[\s{]/);
+  let end = i !== -1 ? i : rest.length;
+  return rest.slice(0, end);
+}
+
+function _stampTypeDualAuth(decl) {
+  let i = Stdlib_String.indexOfOpt(decl, "{");
+  if (i !== undefined) {
+    return decl.slice(0, i) + "@aws_cognito_user_pools @aws_iam " + decl.slice(i, decl.length);
+  } else {
+    return decl;
+  }
+}
+
+let sharedIamTypeNames = [
+  "PageInfo",
+  "CommandAccepted",
+  "CommandRejected",
+  "CommandPending"
+];
+
+function stampSharedIamTypes(sdl) {
+  return Stdlib_Array.reduce(sharedIamTypeNames, sdl, (acc, name) => acc.replace(`type ` + name + ` {`, `type ` + name + ` @aws_cognito_user_pools @aws_iam {`));
+}
+
 function injectAwsAuth(fragment, mutationEntries, queryEntries) {
   let parts = GraphQL_Stitcher$ReventlessCore.decode(fragment);
   let iamFields = {};
+  let iamQueryFieldPrefixes = [];
+  let iamTypePrefixes = [];
   let mutationAuthMap = {};
   mutationEntries.forEach(entry => {
     if (Stdlib_Option.getOr(entry.systemCallable, false)) {
@@ -252,6 +286,9 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
     if (Stdlib_Option.getOr(entry.systemCallable, false)) {
       iamFields[entry.singleFieldName] = true;
       iamFields[entry.listFieldName] = true;
+      iamQueryFieldPrefixes.push(entry.singleFieldName);
+      iamQueryFieldPrefixes.push(entry.listFieldName);
+      iamTypePrefixes.push(entry.returnTypeName);
     }
     let match = entry.authorization;
     if (match !== undefined) {
@@ -287,7 +324,8 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
   let augmentedQueries = parts.queries.map(field => {
     let fieldName = GraphQL_Stitcher$ReventlessCore.extractLeadingName(field);
     let groups = queryAuthMap[fieldName];
-    if (Stdlib_Option.getOr(iamFields[fieldName], false)) {
+    let isIam = Stdlib_Option.getOr(iamFields[fieldName], false) || iamQueryFieldPrefixes.some(p => fieldName.startsWith(p));
+    if (isIam) {
       return field + ` ` + _formatDualAuthDirective(groups);
     } else if (groups !== undefined) {
       return field + ` ` + _formatGroupsDirective(groups);
@@ -295,10 +333,18 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
       return field;
     }
   });
+  let augmentedTypes = parts.types.map(decl => {
+    let name = _typeDeclName(decl);
+    if (name !== undefined && iamTypePrefixes.some(p => name.startsWith(p))) {
+      return _stampTypeDualAuth(decl);
+    } else {
+      return decl;
+    }
+  });
   let encoded = JSON.stringify(Object.fromEntries([
     [
       "types",
-      parts.types.map(prim => prim)
+      augmentedTypes.map(prim => prim)
     ],
     [
       "mutations",
@@ -398,7 +444,7 @@ function generateFragment(mutationEntries, queryEntries) {
 
 function updateSchema(api, baseFragment, pluginFragments) {
   let augmentedBaseFragment = injectAwsAuthAll(baseFragment, "Admin", undefined);
-  let sdl = GraphQL_Stitcher$ReventlessCore.stitch(augmentedBaseFragment, pluginFragments);
+  let sdl = stampSharedIamTypes(GraphQL_Stitcher$ReventlessCore.stitch(augmentedBaseFragment, pluginFragments));
   let resultPromise = {
     contents: Promise.resolve()
   };
@@ -426,6 +472,10 @@ export {
   _permissionToCognitoGroups,
   _formatGroupsDirective,
   _formatDualAuthDirective,
+  _typeDeclName,
+  _stampTypeDualAuth,
+  sharedIamTypeNames,
+  stampSharedIamTypes,
   injectAwsAuth,
   injectAwsAuthAll,
   makeApiResource,

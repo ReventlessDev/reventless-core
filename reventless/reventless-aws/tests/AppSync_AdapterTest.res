@@ -452,6 +452,118 @@ describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
     | _ => JsError.throwWithMessage("missing query fields")
     }
   })
+
+  testSync("systemCallable dual-auth extends to derived query fields (Items/ByIds/By<Index>)", () => {
+    let entry: ReventlessInfra.Api.querySchemaEntry = {
+      singleFieldName: "p_Item",
+      listFieldName: "p_Items",
+      returnTypeName: "p_Item",
+      stateSchema: S.unknown,
+      authorization: None,
+      permission: Reventless.Authorization.AllowGroups(["Admin"]),
+      systemCallable: true,
+    }
+    let frag = makeFragment(
+      [],
+      [
+        "p_ItemItems(id: ID!, first: Int): p_ItemConnection!",
+        "p_ItemsByIds(ids: [ID!]!): [p_Item]!",
+        "p_ItemByOwner(id: ID!, first: Int): p_ItemConnection!",
+        "q_Unrelated(id: ID!): String",
+      ],
+    )
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[], ~queryEntries=[entry])
+    let parts = decodeFragment(aug)
+    parts.queries->Array.forEach(field =>
+      if field->String.includes("q_Unrelated") {
+        expect(field)->not_->toContain("@aws_iam")
+      } else {
+        expect(field)->toContain("@aws_iam")
+      }
+    )
+  })
+})
+
+// ── Type-level dual-auth ─────────────────────────────────────────────────────
+//
+// On a multi-auth API a field directive alone is not enough: response shaping
+// walks the return TYPES (Connection → Edge → node → nested state types), each
+// of which is default-mode-only without its own directive. Types prefixed by a
+// systemCallable entry's returnTypeName get the bare multi-auth pair; shared
+// traversal types (PageInfo / CommandResult members) are stamped once on the
+// assembled SDL.
+
+describe("AppSync_Adapter — type-level dual-auth", () => {
+  let makeFragmentWithTypes = (types, queryFields) =>
+    ReventlessCore.GraphQL_Stitcher.encode({
+      types,
+      mutations: [],
+      queries: queryFields,
+      subscriptions: [],
+    })
+
+  let callableEntry: ReventlessInfra.Api.querySchemaEntry = {
+    singleFieldName: "p_Item",
+    listFieldName: "p_Items",
+    returnTypeName: "p_Item",
+    stateSchema: S.unknown,
+    authorization: None,
+    permission: Reventless.Authorization.AllowGroups(["Admin"]),
+    systemCallable: true,
+  }
+
+  let types = [
+    "type p_Item implements Node {\n  id: ID!\n}",
+    "type p_ItemConnection {\n  edges: [p_ItemEdge!]!\n}",
+    "type p_ItemEdge {\n  node: p_Item!\n}",
+    "type p_ItemNested {\n  x: String\n}",
+    "type q_Sibling {\n  id: ID!\n}",
+    "input p_ItemItemsFilter {\n  eq: String\n}",
+  ]
+
+  testSync("types prefixed by a callable entry's returnTypeName carry the multi-auth pair", () => {
+    let frag = makeFragmentWithTypes(types, ["p_Item(id: ID!): p_Item"])
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[], ~queryEntries=[callableEntry])
+    let parts = decodeFragment(aug)
+    parts.types->Array.forEach(decl =>
+      if decl->String.startsWith("type p_Item") {
+        expect(decl)->toContain("@aws_cognito_user_pools @aws_iam {")
+      } else {
+        // The sibling view's type and the (non-authorizable) input stay untouched.
+        expect(decl)->not_->toContain("@aws_iam")
+      }
+    )
+  })
+
+  testSync("without a systemCallable entry no type is stamped", () => {
+    let plainEntry: ReventlessInfra.Api.querySchemaEntry = {
+      ...callableEntry,
+      systemCallable: false,
+    }
+    let frag = makeFragmentWithTypes(types, ["p_Item(id: ID!): p_Item"])
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[], ~queryEntries=[plainEntry])
+    decodeFragment(aug).types->Array.forEach(decl => expect(decl)->not_->toContain("@aws_iam"))
+  })
+
+  testSync("stampSharedIamTypes marks PageInfo + CommandResult members on the assembled SDL", () => {
+    let sdl = [
+      "interface Node {\n  id: ID!\n}",
+      "type PageInfo {\n  hasNextPage: Boolean!\n}",
+      "union CommandResult = CommandAccepted | CommandRejected | CommandPending",
+      "type CommandAccepted {\n  msgId: ID!\n}",
+      "type CommandRejected {\n  msgId: ID!\n}",
+      "type CommandPending {\n  msgId: ID!\n}",
+      "type Untouched {\n  id: ID!\n}",
+    ]->Array.join("\n\n")
+    let stamped = AppSync_Adapter.stampSharedIamTypes(sdl)
+    expect(stamped)->toContain("type PageInfo @aws_cognito_user_pools @aws_iam {")
+    expect(stamped)->toContain("type CommandAccepted @aws_cognito_user_pools @aws_iam {")
+    expect(stamped)->toContain("type CommandRejected @aws_cognito_user_pools @aws_iam {")
+    expect(stamped)->toContain("type CommandPending @aws_cognito_user_pools @aws_iam {")
+    expect(stamped)->toContain("type Untouched {")
+    // The union declaration itself takes no directive.
+    expect(stamped)->toContain("union CommandResult = CommandAccepted | CommandRejected | CommandPending")
+  })
 })
 
 describe("AppSync_Adapter.injectAwsAuthAll — ~iamFieldNames", () => {

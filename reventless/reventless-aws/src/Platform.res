@@ -700,7 +700,7 @@ module MakeWithConfig = (
       let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
         ~baseFragment=adminBaseFragment,
         ~pluginFragments=[],
-      )
+      )->AppSync_Adapter.stampSharedIamTypes
       (targetApi, adminBarrier)
       ->Pulumi.Output.all2
       ->Pulumi.Output.flatMap(((api, _)) =>
@@ -928,7 +928,7 @@ module MakeWithConfig = (
               let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
                 ~baseFragment,
                 ~pluginFragments=allPluginFragments,
-              )
+              )->AppSync_Adapter.stampSharedIamTypes
               let currentHash = AppSync_Adapter.sha256Hex(sdl)
               let storedHash = switch tableNameOpt {
               | Some(tn) => await readSchemaHash(~tableName=tn, ~apiId)
@@ -1628,7 +1628,7 @@ module MakeWithConfig = (
         let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
           ~baseFragment,
           ~pluginFragments=fragments,
-        )
+        )->AppSync_Adapter.stampSharedIamTypes
         await AppSync_Adapter.getClient()->AppSync_Adapter.startSchemaCreationRetrying({
           apiId,
           definition: sdl,

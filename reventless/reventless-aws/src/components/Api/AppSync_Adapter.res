@@ -311,6 +311,55 @@ let _formatDualAuthDirective = (groups: option<array<string>>): string => {
   `${cognito} @aws_iam`
 }
 
+// ── Type-level dual-auth ─────────────────────────────────────────────────────
+// On a multi-auth API, object TYPES without auth directives are accessible only
+// via the default auth mode — a field-level `@aws_iam` admits the system caller
+// to the top-level field, but response shaping then walks the return types
+// (`…Connection` → `…Edge` → node type → nested state types) and dies with
+// "Not Authorized to access <field> on type <T>" one level in. Types reachable
+// from a systemCallable field therefore carry the bare multi-auth pair: the
+// group-less Cognito arm matches the pre-existing accessibility of an
+// undirectived type (any authenticated user; entry gating stays on the fields),
+// the IAM arm admits the traversal. Only `type` declarations take auth
+// directives (inputs/enums/interfaces do not).
+
+// The declared name of a `type …` SDL declaration; None for input/enum/union/etc.
+let _typeDeclName = (decl: string): option<string> =>
+  if decl->String.startsWith("type ") {
+    let rest = decl->String.slice(~start=5, ~end=decl->String.length)
+    let end = switch rest->String.search(%re("/[\s{]/")) {
+    | -1 => rest->String.length
+    | i => i
+    }
+    Some(rest->String.slice(~start=0, ~end))
+  } else {
+    None
+  }
+
+// Insert the multi-auth pair into a type declaration header (before its `{`).
+let _stampTypeDualAuth = (decl: string): string =>
+  switch decl->String.indexOfOpt("{") {
+  | Some(i) =>
+    decl->String.slice(~start=0, ~end=i) ++
+    "@aws_cognito_user_pools @aws_iam " ++
+    decl->String.slice(~start=i, ~end=decl->String.length)
+  | None => decl
+  }
+
+// Shared traversal types every callable surface reaches — `PageInfo` (relay
+// connections, injected by the stitcher) and the `CommandResult` members
+// (mutation returns, deduped across fragments by the stitcher). They must be
+// stamped exactly once on the ASSEMBLED SDL: stamping per-fragment would race
+// the stitcher's first-wins dedupe against unstamped copies from sibling
+// fragments. Unconditional — the API always configures AWS_IAM as an
+// additional provider, so the directive is always valid.
+let sharedIamTypeNames = ["PageInfo", "CommandAccepted", "CommandRejected", "CommandPending"]
+
+let stampSharedIamTypes = (sdl: string): string =>
+  sharedIamTypeNames->Array.reduce(sdl, (acc, name) =>
+    acc->String.replace(`type ${name} {`, `type ${name} @aws_cognito_user_pools @aws_iam {`)
+  )
+
 let injectAwsAuth = (
   fragment: Reventless.Plugin.apiSchemaFragment,
   ~mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
@@ -323,8 +372,15 @@ let injectAwsAuth = (
   // `authorization.group` per-entry single-group form.
   // Fields opted into deploy-time IAM invocation (dual-auth). Membership here
   // switches a field from the single-mode `@aws_auth` form to the multi-auth
-  // `@aws_cognito_user_pools(...) @aws_iam` form.
+  // `@aws_cognito_user_pools(...) @aws_iam` form. Query entries mark by PREFIX
+  // (single/list field name) because the generator derives further fields from
+  // them — `…Items` (sub-id), `…ByIds`, `…By<Index>` (GSI) — which a system
+  // caller (reconcile reads) uses too. Type declarations reachable from a
+  // callable entry are stamped by returnTypeName prefix (see the type-level
+  // dual-auth note above).
   let iamFields: Dict.t<bool> = Dict.make()
+  let iamQueryFieldPrefixes: array<string> = []
+  let iamTypePrefixes: array<string> = []
 
   let mutationAuthMap: Dict.t<array<string>> = Dict.make()
   mutationEntries->Array.forEach(entry => {
@@ -359,6 +415,9 @@ let injectAwsAuth = (
     if entry.systemCallable->Option.getOr(false) {
       iamFields->Dict.set(entry.singleFieldName, true)
       iamFields->Dict.set(entry.listFieldName, true)
+      iamQueryFieldPrefixes->Array.push(entry.singleFieldName)
+      iamQueryFieldPrefixes->Array.push(entry.listFieldName)
+      iamTypePrefixes->Array.push(entry.returnTypeName)
     }
     switch entry.authorization {
     | Some({group}) =>
@@ -396,7 +455,10 @@ let injectAwsAuth = (
   let augmentedQueries = parts.queries->Array.map(field => {
     let fieldName = ReventlessCore.GraphQL_Stitcher.extractLeadingName(field)
     let groups = queryAuthMap->Dict.get(fieldName)
-    if iamFields->Dict.get(fieldName)->Option.getOr(false) {
+    let isIam =
+      iamFields->Dict.get(fieldName)->Option.getOr(false) ||
+        iamQueryFieldPrefixes->Array.some(p => fieldName->String.startsWith(p))
+    if isIam {
       `${field} ${_formatDualAuthDirective(groups)}`
     } else {
       switch groups {
@@ -406,10 +468,21 @@ let injectAwsAuth = (
     }
   })
 
+  // Type-level dual-auth for every type the callable entries' responses reach —
+  // the node type, its Connection/Edge wrappers, and nested state types all
+  // share the entry's returnTypeName prefix.
+  let augmentedTypes = parts.types->Array.map(decl =>
+    switch _typeDeclName(decl) {
+    | Some(name) if iamTypePrefixes->Array.some(p => name->String.startsWith(p)) =>
+      _stampTypeDualAuth(decl)
+    | _ => decl
+    }
+  )
+
   let encoded =
     JSON.Encode.object(
       Dict.fromArray([
-        ("types", JSON.Encode.array(parts.types->Array.map(JSON.Encode.string))),
+        ("types", JSON.Encode.array(augmentedTypes->Array.map(JSON.Encode.string))),
         ("mutations", JSON.Encode.array(augmentedMutations->Array.map(JSON.Encode.string))),
         ("queries", JSON.Encode.array(augmentedQueries->Array.map(JSON.Encode.string))),
         (
@@ -546,7 +619,13 @@ let updateSchema = (
   // The base fragment contains core Plugin aggregate queries/mutations — all Admin-only.
   // Plugin fragments already have @aws_auth injected via generateFragment.
   let augmentedBaseFragment = injectAwsAuthAll(baseFragment, ~group="Admin")
-  let sdl = ReventlessCore.GraphQL_Stitcher.stitch(~baseFragment=augmentedBaseFragment, ~pluginFragments)
+  // Shared traversal types are stamped once on the assembled SDL (post-stitch,
+  // post-dedupe) — see stampSharedIamTypes.
+  let sdl =
+    ReventlessCore.GraphQL_Stitcher.stitch(
+      ~baseFragment=augmentedBaseFragment,
+      ~pluginFragments,
+    )->stampSharedIamTypes
   // Resolve the API ID from the Output chain. In mock mode (tests) and in Lambda runtime
   // (where the Output is backed by already-known values), this completes synchronously.
   // The resulting promise wraps the AppSync SDK call.
