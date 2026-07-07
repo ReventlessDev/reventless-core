@@ -29,7 +29,7 @@ Remaining (carved out — this plan is complete):
   [Backlog/dcb-fence-granularity-integration-test.md](../Backlog/dcb-fence-granularity-integration-test.md)
   (needs DynamoDB Local; the existing suite is marked PENDING REWRITE at its header).
 **Analysis**: [dcb-consistency-check-issues.md](../../analysis/dcb-consistency-check-issues.md) — Issue 4 (upgraded severity).
-**Sibling plans**: [dcb-fence-scope-alignment.md](../dcb-fence-scope-alignment.md) (Issue 1, cross-partition secondary tags), [dcb-hot-tag-fence-contention.md](../Backlog/dcb-hot-tag-fence-contention.md).
+**Sibling plans**: [dcb-fence-scope-alignment.md](../dcb-fence-scope-alignment.md) (Issue 1, cross-partition secondary tags), [dcb-hot-tag-fence-contention.md](dcb-hot-tag-fence-contention.md).
 
 ## Symptom (live, 2026-06-23)
 
@@ -114,7 +114,7 @@ appended after the slice's `after` — matching the local backends exactly.
 
 ## Non-goals
 
-- Hot-tag throughput / fence sharding ([dcb-hot-tag-fence-contention](../Backlog/dcb-hot-tag-fence-contention.md)).
+- Hot-tag throughput / fence sharding ([dcb-hot-tag-fence-contention](dcb-hot-tag-fence-contention.md)).
 - Migrating existing fence rows — fences are derived state; an alpha fence-row **wipe** is
   acceptable (cf. memory: prefer wipe over migration in alpha).
 - Per-clause `after` (Issue 6) — orthogonal; the global head stays.

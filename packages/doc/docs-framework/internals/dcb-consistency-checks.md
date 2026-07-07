@@ -243,6 +243,8 @@ The adapter classifies each tag of the condition. The guiding rule is **fence-sc
 | A tag in a **multi-tag (composite)** clause | conditional `Update` | assert **and** advance (composite reads cross partitions, so OCC needs the bump) |
 | An untagged field (e.g. `@noDcbTag customerId`) | — | no fence at all |
 
+**Composite partition keys are the exception to "one fence per tag".** When the partition is a `@compositePartitionTag` key (several fields joined into one composite value), the whole multi-tag clause collapses to a **single** fence on that composite value — `fence#<compositeValue>`, checked **and** advanced as one item — rather than one fence per member. This mirrors the read exactly (a composite partition is read as one `tag_composite` exact match) and keeps the fence as selective as the entity: fencing each member separately would put a shared fence on every low-cardinality member (e.g. a common prefix field), needlessly serialising *distinct* composite entities that merely share a member value.
+
 ### First writes — the folded creation guard
 
 When the decision-model read returned nothing, `after` is absent: there is no fence position to check against. A plain append would let two concurrent first-writers both create the same entity. Instead, at `after=None` the **partition-tag fence** becomes a conditional `Update` gated on `attribute_not_exists(pos#<type>)` over the slice's consumed **and** produced types, advancing `pos#<producedType>`. Two concurrent first-writers of the same `(producedType, partition)` collide on `attribute_not_exists(pos#<producedType>)`, so at most one commits; the loser conflicts and retries.

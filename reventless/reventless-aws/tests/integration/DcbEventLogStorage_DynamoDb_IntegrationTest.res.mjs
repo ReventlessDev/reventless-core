@@ -129,18 +129,20 @@ globalThis.describe("DCB DynamoDb integration — fence-scope = read-scope (Issu
     });
     let query = [
       {
+        eventTypes: ["OrderPlaced"],
         tags: [{
             key: "orderId",
             value: "O1"
           }]
       },
       {
+        eventTypes: ["CatalogProductSynced"],
         tags: [productTag]
       }
     ];
     let after = Stdlib_Option.getOr(await readAfter(table, query), "");
     globalThis.expect(after === "").toBe(false);
-    await DcbIntegrationHarness$ReventlessAws.setFence(table, productTag, after + "z");
+    await DcbIntegrationHarness$ReventlessAws.setFence(table, productTag, ["CatalogProductSynced"], after + "z");
     let r = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event("OrderPlaced", [
         {
           key: "orderId",
@@ -384,6 +386,7 @@ globalThis.describe("DCB DynamoDb integration — optimistic concurrency primiti
       }
     ];
     let query = [{
+        eventTypes: ["ProductDemandRecorded"],
         tags: tags
       }];
     let seedRes = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event("ProductDemandRecorded", tags)], {
@@ -400,7 +403,7 @@ globalThis.describe("DCB DynamoDb integration — optimistic concurrency primiti
     await DcbIntegrationHarness$ReventlessAws.setFence(table, {
       key: "productId",
       value: "p1"
-    }, after + "z");
+    }, ["ProductDemandRecorded"], after + "z");
     let r = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event("ProductDemandRecorded", tags)], {
       query: query,
       after: after
@@ -413,6 +416,77 @@ globalThis.describe("DCB DynamoDb integration — optimistic concurrency primiti
     globalThis.expect(isConflict(r)).toBe(true);
     let readResult = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(table, undefined)(query, undefined);
     globalThis.expect(readResult.events.length).toBe(1);
+  });
+});
+
+globalThis.describe("DCB DynamoDb integration — composite partition hot-fence fix", () => {
+  let specKeys = [
+    "environment",
+    "platformName",
+    "pluginName",
+    "resourceName"
+  ];
+  let specSeps = [
+    "/",
+    "/",
+    "/"
+  ];
+  let pt = {
+    TAG: "Composite",
+    _0: {
+      keys: specKeys,
+      seps: specSeps
+    }
+  };
+  let members = resourceName => [
+    {
+      key: "environment",
+      value: "prod"
+    },
+    {
+      key: "platformName",
+      value: "plat"
+    },
+    {
+      key: "pluginName",
+      value: "plug"
+    },
+    {
+      key: "resourceName",
+      value: resourceName
+    }
+  ];
+  globalThis.test("distinct composite entities sharing a prefix do NOT false-conflict", async () => {
+    let table = await DcbIntegrationHarness$ReventlessAws.freshTable();
+    let tagsA = members("resA");
+    let tagsB = members("resB");
+    let rA = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event("ResourceAdded", tagsA)], {
+      query: [{
+          tags: tagsA
+        }]
+    }, pt, undefined);
+    let rB = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event("ResourceAdded", tagsB)], {
+      query: [{
+          tags: tagsB
+        }]
+    }, pt, undefined);
+    globalThis.expect(isOk(rA)).toBe(true);
+    globalThis.expect(isOk(rB)).toBe(true);
+  });
+  globalThis.test("two first-writers of the SAME composite key still serialize (OCC preserved)", async () => {
+    let table = await DcbIntegrationHarness$ReventlessAws.freshTable();
+    let tags = members("resA");
+    let query = [{
+        tags: tags
+      }];
+    let r1 = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event("ResourceAdded", tags)], {
+      query: query
+    }, pt, undefined);
+    let r2 = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event("ResourceAdded", tags)], {
+      query: query
+    }, pt, undefined);
+    globalThis.expect(isOk(r1)).toBe(true);
+    globalThis.expect(isConflict(r2)).toBe(true);
   });
 });
 

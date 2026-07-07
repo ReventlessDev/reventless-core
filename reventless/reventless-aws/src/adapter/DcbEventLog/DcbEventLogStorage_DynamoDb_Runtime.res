@@ -915,20 +915,39 @@ let appendUnconditional = async (
   }
 }
 
+// A Composite partition fences on the WHOLE composite value, not on each member.
+// The synthetic fence tag is keyed on `getCompositePartitionKeyValue` — the same
+// value `derivePartitionKey` uses for the base-table `id` — so it is exactly as
+// selective as the entity's storage partition (and the `tag_composite` read
+// scope). Fencing per-member (the historical behaviour) gave every low-cardinality
+// member (e.g. `environment`, `platformName`) its own fence, which a deploy-time
+// fan-out sharing those prefixes turns into a hot partition → `TransactionConflict`
+// → `retries exhausted`; it also over-fenced (two DISTINCT composite entities
+// sharing a member value serialized needlessly). Plan:
+// docs/plans/Backlog/dcb-hot-tag-fence-contention.md § "Root-cause correction".
+let compositeFenceTagKey = "__dcb_composite__"
+
+let makeCompositeFenceTag = (
+  tags: array<Reventless.DcbTag.tag>,
+  spec: Reventless.DcbTag.compositePartitionSpec,
+): Reventless.DcbTag.tag => {
+  key: compositeFenceTagKey,
+  value: Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec),
+}
+
 // The partition tag(s) of a written event — the ONLY fences an append may BUMP.
 // A tag's fence must track exactly the partition-scoped events a single-tag read
 // of that tag observes (events are stored under `id="<partitionKey>:<value>"`),
 // so only the partition tag may advance it. Mirrors `derivePartitionKey`.
 //
-// For a Composite partition tag there is no single fence key that represents the
-// partition, so we keep the historical behaviour (treat every tag as a partition
-// tag) rather than risk under-fencing composite-partition slices.
+// A Composite partition collapses to a single synthetic composite fence tag (see
+// `makeCompositeFenceTag`) — one fence per composite entity, not one per member.
 let eventPartitionTags = (
   event: ReventlessCore.DcbEventLog_Adapter.rawStoredEvent,
   ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>,
 ): array<Reventless.DcbTag.tag> =>
   switch partitionTag {
-  | Some(Composite(_)) => event.tags
+  | Some(Composite(spec)) => [makeCompositeFenceTag(event.tags, spec)]
   | Some(Simple(pt)) =>
     switch event.tags->Array.find(t => t.key == pt.key) {
     | Some(t) => [t]
@@ -994,6 +1013,32 @@ let buildConditionalTransactItems = (
   ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>=?,
   ~crossPartitionTagKeys: array<string>=[],
 ): array<TransactWriteCommand.transactWriteItem> => {
+  // For a Composite partition, fold the multi-tag composite read clause into a
+  // single synthetic composite fence tag (`makeCompositeFenceTag`) so the rest of
+  // this function fences it exactly like a Simple partition — one fence per
+  // composite entity — instead of once per member (the hot-fence source). Only the
+  // FENCE view of the query is rewritten here; the read path (`readStream`) keeps
+  // the original member tags and its `tag_composite` GSI lookup. Gated on
+  // `Composite`: Simple-partition composite-read slices (e.g. RecordProductDemand's
+  // `{productId, orderId}` pair, where `productId` is a real independent partition)
+  // are left untouched. `@crossPartition` carriers are unaffected — they are
+  // handled by `crossPartitionEventTags` below, not by this composite clause.
+  let cond = switch partitionTag {
+  | Some(Composite(spec)) => {
+      ...cond,
+      query: cond.query->Array.map(qi =>
+        switch qi.tags {
+        | Some(clauseTags) if clauseTags->Array.length > 1 => {
+            ...qi,
+            tags: [makeCompositeFenceTag(clauseTags, spec)],
+          }
+        | _ => qi
+        }
+      ),
+    }
+  | _ => cond
+  }
+
   // The partitions this append writes into — the only fences it may BUMP
   // (partition-scoped tags only; cross-partition tags below override this).
   let partitionTags = collectEventPartitionTags(events, ~partitionTag)

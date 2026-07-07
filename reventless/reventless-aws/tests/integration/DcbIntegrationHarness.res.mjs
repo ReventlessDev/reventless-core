@@ -129,7 +129,7 @@ async function freshTable() {
   return await createDcbTable(`DcbItTest_` + counter.contents.toString());
 }
 
-async function setFence(table, tag, lastPosition) {
+async function setFence(table, tag, eventTypes, position) {
   let item = Object.fromEntries([
     [
       "id",
@@ -138,12 +138,11 @@ async function setFence(table, tag, lastPosition) {
     [
       "position",
       "FENCE"
-    ],
-    [
-      "lastPosition",
-      lastPosition
     ]
-  ]);
+  ].concat(eventTypes.map(et => [
+    DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.fenceTypeAttr(et),
+    position
+  ])));
   return await Util_DynamoDb_Runtime$ReventlessAws.put(table, item);
 }
 

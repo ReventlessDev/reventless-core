@@ -435,6 +435,97 @@ describe("Runtime.buildConditionalTransactItems — fence-scope = read-scope", (
   })
 })
 
+describe("Runtime.buildConditionalTransactItems — composite partition fences on ONE composite key", () => {
+  // SyncResource-style: @compositePartitionTag over {environment, platformName,
+  // pluginName}. The read is one exact `tag_composite` match, so the fence must be
+  // a SINGLE composite-key fence — not one per member. Per-member fencing made the
+  // low-cardinality prefix (`environment`, `platformName`) hot under a deploy
+  // fan-out. Plan: docs/plans/Backlog/dcb-hot-tag-fence-contention.md.
+  let event = (eventType, tags): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
+    eventType,
+    data: JSON.Object(Dict.make()),
+    tags,
+    meta: testMeta(),
+  }
+  let findFence = (
+    items: array<AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.transactWriteItem>,
+    fenceId,
+  ) =>
+    items->Array.find(it => {
+      let idOf = key => key->Dict.get("id") == Some(fenceId->JSON.Encode.string)
+      switch (it.update, it.conditionCheck) {
+      | (Some(u), _) => idOf(u.key)
+      | (_, Some(c)) => idOf(c.key)
+      | _ => false
+      }
+    })
+  let isUpdate = it =>
+    it->Option.flatMap(i => i.AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.update)->Option.isSome
+  let fenceIds = (items: array<AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.transactWriteItem>) =>
+    items
+    ->Array.filterMap(it => {
+      let idOf = key => key->Dict.get("id")->Option.flatMap(JSON.Decode.string)
+      switch (it.update, it.conditionCheck) {
+      | (Some(u), _) => idOf(u.key)
+      | (_, Some(c)) => idOf(c.key)
+      | _ => None
+      }
+    })
+    ->Array.filter(s => s->String.startsWith("fence#"))
+
+  let spec: Reventless.DcbTag.compositePartitionSpec = {
+    keys: ["environment", "platformName", "pluginName"],
+    seps: ["/", "/"],
+  }
+  let partitionTag = Some(Reventless.DcbTag.Composite(spec))
+  let members = [tag("environment", "prod"), tag("platformName", "plat"), tag("pluginName", "plug")]
+  let compositeFence = "fence#__dcb_composite__:prod/plat/plug"
+
+  describe("at after=Some (entity exists)", () => {
+    let resource = event("ResourceAdded", members)
+    let cond: Reventless.DcbTag.appendCondition = {
+      query: [{tags: members, eventTypes: ["ResourceAdded"]}],
+      after: "50",
+    }
+    let items = Runtime.buildConditionalTransactItems(table, [resource], cond, "100", ~partitionTag?)
+
+    testSync("the whole composite key is a single conditional Update", () => {
+      expect(isUpdate(findFence(items, compositeFence)))->toBe(true)
+    })
+
+    testSync("no per-member fence is emitted (the hot-fence regression)", () => {
+      expect(findFence(items, "fence#environment:prod")->Option.isSome)->toBe(false)
+      expect(findFence(items, "fence#platformName:plat")->Option.isSome)->toBe(false)
+      expect(findFence(items, "fence#pluginName:plug")->Option.isSome)->toBe(false)
+    })
+
+    testSync("exactly one fence item total (the composite fence, no members)", () => {
+      expect(fenceIds(items))->toEqual([compositeFence])
+    })
+  })
+
+  describe("at after=None (folded create guard)", () => {
+    let resource = event("ResourceAdded", members)
+    let cond: Reventless.DcbTag.appendCondition = {
+      query: [{tags: members, eventTypes: ["ResourceAdded"]}],
+    }
+    let items = Runtime.buildConditionalTransactItems(table, [resource], cond, "100", ~partitionTag?)
+
+    testSync("the composite fence is a create-guard Update gated on attribute_not_exists", () => {
+      let u =
+        findFence(items, compositeFence)
+        ->Option.flatMap(i => i.AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.update)
+        ->Option.getOrThrow
+      expect(u.conditionExpression)->toEqual(Some("attribute_not_exists(#c0)"))
+      expect(u.expressionAttributeValues->Option.flatMap(v => v->Dict.get(":after")))->toEqual(None)
+    })
+
+    testSync("still exactly one composite fence (no per-member create guards)", () => {
+      expect(fenceIds(items))->toEqual([compositeFence])
+    })
+  })
+})
+
 describe("Runtime.buildConditionalTransactItems — folded create guard (after=None)", () => {
   let event = (eventType, tags): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
     eventType,

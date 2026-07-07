@@ -695,10 +695,19 @@ async function appendUnconditional(table, events, partitionTag) {
   return await runTransactWrite(input, basePosition, "DCB append failed");
 }
 
+let compositeFenceTagKey = "__dcb_composite__";
+
+function makeCompositeFenceTag(tags, spec) {
+  return {
+    key: compositeFenceTagKey,
+    value: DcbTag$Reventless.getCompositePartitionKeyValue(tags, spec)
+  };
+}
+
 function eventPartitionTags(event, partitionTag) {
   if (partitionTag !== undefined) {
     if (partitionTag.TAG !== "Simple") {
-      return event.tags;
+      return [makeCompositeFenceTag(event.tags, partitionTag._0)];
     }
     let pt = partitionTag._0;
     let t = event.tags.find(t => t.key === pt.key);
@@ -753,6 +762,26 @@ function partitionTypesByTag(events, partitionTag) {
 
 function buildConditionalTransactItems(table, events, cond, basePosition, partitionTag, crossPartitionTagKeysOpt) {
   let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
+  let cond$1;
+  if (partitionTag !== undefined && partitionTag.TAG !== "Simple") {
+    let spec = partitionTag._0;
+    let newrecord = {...cond};
+    newrecord.query = cond.query.map(qi => {
+      let clauseTags = qi.tags;
+      if (clauseTags === undefined) {
+        return qi;
+      }
+      if (clauseTags.length <= 1) {
+        return qi;
+      }
+      let newrecord = {...qi};
+      newrecord.tags = [makeCompositeFenceTag(clauseTags, spec)];
+      return newrecord;
+    });
+    cond$1 = newrecord;
+  } else {
+    cond$1 = cond;
+  }
   let partitionTags = collectEventPartitionTags(events, partitionTag);
   let partitionKeySet = new Set();
   partitionTags.forEach(t => {
@@ -770,7 +799,7 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
       )[k], []);
   };
   let consumedMap = {};
-  cond.query.forEach(qi => {
+  cond$1.query.forEach(qi => {
     let match = qi.tags;
     let match$1 = qi.eventTypes;
     if (match !== undefined && match$1 !== undefined) {
@@ -785,7 +814,7 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
   let consumedTypesFor = t => Stdlib_Option.getOr(consumedMap[t.key + `:` + t.value], []);
   let compositeKeySet = new Set();
   let compositeQueryTags = [];
-  cond.query.forEach(qi => {
+  cond$1.query.forEach(qi => {
     let tags = qi.tags;
     if (tags !== undefined && tags.length > 1) {
       tags.forEach(tag => {
@@ -812,7 +841,7 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
       return;
     }
   };
-  cond.query.forEach(qi => {
+  cond$1.query.forEach(qi => {
     let tags = qi.tags;
     if (tags === undefined) {
       return;
@@ -821,7 +850,7 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
       if (tags.length <= 1) {
         return;
       }
-      let match = cond.after;
+      let match = cond$1.after;
       if (match !== undefined) {
         tags.forEach(pushUpdate);
         return;
@@ -833,7 +862,7 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
     if (crossPartitionTagKeys.includes(tag.key)) {
       return pushUpdate(tag);
     }
-    let match$1 = cond.after;
+    let match$1 = cond$1.after;
     if (match$1 !== undefined) {
       if (isPartition(tag) || isCompositeQueryTag(tag)) {
         return pushUpdate(tag);
@@ -853,7 +882,7 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
       return;
     }
   });
-  let match = cond.after;
+  let match = cond$1.after;
   if (match !== undefined) {
     
   } else {
@@ -864,7 +893,7 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
     bumpSeen.add(t.key + `:` + t.value);
   });
   let bumpTags = [];
-  let match$1 = cond.after;
+  let match$1 = cond$1.after;
   let candidateBumps = match$1 !== undefined ? partitionTags.concat(crossPartitionEventTags) : partitionTags.concat(compositeQueryTags.concat(crossPartitionEventTags));
   candidateBumps.forEach(tag => {
     let k = tag.key + `:` + tag.value;
@@ -881,7 +910,7 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
       return;
     } else {
       return {
-        Update: buildConditionalFenceUpdate(table.name, tag, consumedTypesFor(tag), producedTypes, basePosition, cond.after)
+        Update: buildConditionalFenceUpdate(table.name, tag, consumedTypesFor(tag), producedTypes, basePosition, cond$1.after)
       };
     }
   });
@@ -891,7 +920,7 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
       return;
     } else {
       return {
-        ConditionCheck: buildFenceConditionCheck(table.name, tag, consumedTypes, cond.after)
+        ConditionCheck: buildFenceConditionCheck(table.name, tag, consumedTypes, cond$1.after)
       };
     }
   });
@@ -1140,6 +1169,8 @@ export {
   buildEventPuts,
   runTransactWrite,
   appendUnconditional,
+  compositeFenceTagKey,
+  makeCompositeFenceTag,
   eventPartitionTags,
   collectEventPartitionTags,
   partitionTypesByTag,

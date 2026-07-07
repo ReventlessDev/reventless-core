@@ -2,7 +2,7 @@
 
 **Status**: In progress — core fix implemented + unit-tested (2026-06-20), composite handling resolved as **option B**. Remaining: live DynamoDB integration test + alpha fence-row wipe on deploy.
 **Analysis**: [dcb-consistency-check-issues.md](../analysis/dcb-consistency-check-issues.md)
-**Sibling plans**: [dcb-eventlog-primary-tag-partitioning.md](done/dcb-eventlog-primary-tag-partitioning.md), [dcb-strong-consistency-single-tag-reads.md](done/dcb-strong-consistency-single-tag-reads.md), [dcb-hot-tag-fence-contention.md](Backlog/dcb-hot-tag-fence-contention.md)
+**Sibling plans**: [dcb-eventlog-primary-tag-partitioning.md](done/dcb-eventlog-primary-tag-partitioning.md), [dcb-strong-consistency-single-tag-reads.md](done/dcb-strong-consistency-single-tag-reads.md), [dcb-hot-tag-fence-contention.md](done/dcb-hot-tag-fence-contention.md)
 
 ## Implemented (2026-06-20)
 
@@ -40,7 +40,7 @@ Result: once an event in a *different* partition bumps `fence#T`, a single-tag r
 
 ## Non-goals
 
-- Hot-tag throughput (covered by [dcb-hot-tag-fence-contention.md](dcb-hot-tag-fence-contention.md)).
+- Hot-tag throughput (covered by [dcb-hot-tag-fence-contention.md](done/dcb-hot-tag-fence-contention.md)).
 - Per-(tag, event-type) fences. Finer than needed and more items per transaction; the partition-scoped rule below is sufficient.
 - Migration of existing fence rows. Fences are derived state; a wipe of the alpha EventLog/fence rows is acceptable (cf. memory: prefer wipe over migration in alpha).
 

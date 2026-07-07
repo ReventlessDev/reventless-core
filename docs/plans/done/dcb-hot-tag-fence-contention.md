@@ -39,6 +39,126 @@ per-command consistency keys — so **§2 (selective fence bumping, mark them
 is higher-leverage than §1 sharding. The per-command consistency boundary is the
 entity id; the shared scope prefix never needs a fence.
 
+> **Superseded by the root-cause correction below (2026-07-07).** On tracing the
+> live workload through the *current* runtime, the hot fences are **not** loose
+> "scope tags" bumped by the (long-removed) `extraEventTags` path — they are the
+> **individual members of a `@compositePartitionTag` key**, each getting its own
+> fence. The right fix is a single composite fence per composite-partition entity,
+> not a per-tag opt-out annotation. §2/§3 do not address this mechanism. See
+> "Root-cause correction" below; it replaces the §1/§2/§3 recommendation for this
+> workload.
+
+## Root-cause correction (2026-07-07) — composite-partition per-member fencing
+
+The Problem section above (and §2/§3) was written against an older runtime whose
+`extraEventTags` path bumped a fence for *every* secondary event tag. **That path no
+longer exists** — analysis Issue 1's narrowing removed the blanket secondary-tag
+bump; today the only unconditional bumps (`bumpTags` in
+[`buildConditionalTransactItems`](../../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res)) are partition tags, composite-query tags, and
+cross-partition carriers. So the stale mechanism cannot be the culprit, and the
+§1/§2/§3 mitigations (all aimed at that mechanism) would not touch the hot path.
+
+**Actual mechanism.** The live workload's `SyncResource` / `SyncPlatform` / … slices
+(downstream `platform-inspector`) declare a **`@compositePartitionTag`** key over
+`{environment, platformName, pluginName, componentName, resourceName}`. Tracing one
+`SyncResource` command through the current runtime:
+
+- **Storage** writes each event under **one** base-table `id` = the full composite
+  value (`derivePartitionKey` → `DcbTag.getCompositePartitionKeyValue`). High
+  cardinality — one item per real resource. ✓
+- **Decision read** — `DcbTag.buildQueryFromCommand` emits **one composite (multi-tag)
+  clause** `[{tags: [environment, platformName, pluginName, componentName, resourceName]}]`,
+  which `executeQueryItemStream` routes to `queryByCompositeTagsStream` on the
+  `tag_composite` GSI — an **exact-match** on the full 5-part key. ✓
+- **Fence** — that same multi-tag clause is classified as a *composite query* clause,
+  so `buildConditionalTransactItems` pushes a **conditional fence Update on every
+  member tag**: `fence#environment:<v>`, `fence#platformName:<v>`,
+  `fence#pluginName:<v>`, `fence#componentName:<v>`, `fence#resourceName:<v>`. The
+  `eventPartitionTags` `Composite` branch (`| Some(Composite(_)) => event.tags`)
+  reinforces this — it treats every member as a partition tag for the bump path too.
+
+So **fence scope (5 per-member fences) is far wider than read scope (one exact
+composite match)** — an over-fencing bug that violates the Phase 0 fence-scope =
+read-scope invariant. In a deploy fan-out that syncs N resources under the same
+`environment` / `platformName` / `pluginName`, the three low-cardinality prefix
+members are conditionally written by **every** command in the burst →
+`fence#environment:prod` et al. go hot → `TransactionConflict` → the slice's 3-retry
+loop bottoms out → `retries exhausted` at the command bus. It is also **semantically
+wrong**: two *distinct* resources that merely share a prefix (same environment) needlessly serialize,
+even though they are different entities under different composite `id`s.
+
+**Fix — IMPLEMENTED (2026-07-07), code-only, no PPX / no republish.** Collapse the
+per-member fences into a **single composite fence** — but **only when `partitionTag`
+is `Composite`**:
+
+1. `eventPartitionTags`' `Composite` branch returns a *single synthetic composite
+   tag* (`{key: "<reserved>", value: compositeTagKey(memberTags)}`, mirroring the
+   `tag_composite` GSI value the read already uses) instead of all member tags.
+2. In `buildConditionalTransactItems`, when `partitionTag` is `Composite`, the
+   composite query clause maps to that one synthetic composite fence (check+bump at
+   `after=Some`; `attribute_not_exists` create guard at `after=None`) rather than
+   one Update per member. `producedTypesFor` / `partitionTypesByTag` already key off
+   `eventPartitionTags`, so they stay internally consistent with the synthetic tag.
+
+Effect: one fence per composite entity — as high-cardinality as the entity itself, so
+no hot low-cardinality members — and fence scope now equals the exact composite read
+scope, removing the false conflicts between distinct composite entities. `tag_composite`
+stays `ALL` (Phase 3), so composite reads are unaffected.
+
+**Why this is scoped to `Composite` only (do NOT generalise).** A *simple*-partition
+slice can also emit a composite (multi-tag) read that is **not** a composite partition
+— e.g. `RecordProductDemand` (`@partitionTag productId` + a `{productId, orderId}`
+pair read). There `productId` is a *real* storage partition another slice may read by,
+so its member fence must keep bumping independently. The genuine M:N reads
+(`PlaceOrder`'s `@ref productIds`) are already fanned into single-tag cross-partition
+clauses by `buildQueryFromCommand`, so they never hit the composite path. Gating the
+collapse on `partitionTag = Composite` touches only the true composite-partition case
+and leaves every online-shop read path byte-for-byte identical.
+
+**Implementation (shipped 2026-07-07).** Two edits in
+[`DcbEventLogStorage_DynamoDb_Runtime.res`](../../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res):
+(1) a `compositeFenceTagKey` / `makeCompositeFenceTag` helper + the `eventPartitionTags`
+`Composite` branch now returns `[makeCompositeFenceTag(event.tags, spec)]` (bump path);
+(2) `buildConditionalTransactItems` rewrites each multi-tag query clause to a single
+synthetic composite fence tag **when `partitionTag = Composite`** (check path), so the
+existing Simple-partition machinery fences it as one entity. The read path
+(`readStream`) is untouched — it keeps the member tags and its `tag_composite` GSI
+lookup. `@crossPartition` carriers are unaffected (handled by `crossPartitionEventTags`).
+
+**Tests (green).**
+- Unit (`DcbEventLogStorage_DynamoDb_RuntimeTest.res`, +5 cases; AWS suite 200 green):
+  a `Composite`-partition append builds **exactly one** composite fence item — a
+  conditional Update at `after=Some`, an `attribute_not_exists` create guard at
+  `after=None` — and **no** per-member fence; the `Simple`-partition composite-pair
+  case (RecordProductDemand shape) still check+bumps every member (regression guard,
+  pre-existing test, unchanged).
+- Integration (Phase 1 harness, +2 cases, green against DynamoDB Local): two
+  first-writers to *different* composite entities sharing the `environment`/`platform`/
+  `plugin` prefix **both succeed** (the hot-fence regression); two first-writers to the
+  *same* composite key still serialize — the second conflicts (OCC preserved). The
+  full integration suite is **13/13 green**: the same change also updated the
+  `H.setFence` harness to the per-type `pos#<eventType>` fence model (writing the
+  attribute a real conditional append checks) and gave the two conflict-expecting
+  scenarios explicit `eventTypes`, fixing the two previously-red cases that still
+  encoded the old scalar-`lastPosition` model.
+
+**Risk**: low–medium — confined to `DcbEventLogStorage_DynamoDb_Runtime.res` and gated
+on `Composite`; the `Simple`-partition composite-read regression guard is in place.
+
+**Live confirmation (passive, not a code requirement).** This change makes **no
+table/GSI schema change** — unlike Phase 3's projection down-project, it only changes
+*which* fence items get written. On an existing alpha table the fix is backward-tolerant:
+event rows are untouched (they were already stored under the composite `id`), old
+per-member `fence#environment:…` rows become orphaned but **inert** (the new code never
+reads or writes them), and the first conditional append seeds the
+`fence#__dcb_composite__:…` row on demand (`attribute_not_exists` → passes). So **no wipe
+is required for correctness.** A wipe is optional cleanup — it drops the dead per-member
+rows and gives a pristine table to validate against; per repo convention (wipe alpha over
+migration) it's the clean way to do that. The only genuinely-remaining step is to **deploy
+and re-observe** the `platform-inspector` deploy-sync burst on the next alpha release to
+confirm the `retries exhausted` cascade is gone — passive confirmation of behaviour the
+integration suite already proves against a real DynamoDB engine.
+
 ## Goals
 
 - Lift the per-tag-value throughput ceiling by an order of magnitude in the worst case.
@@ -152,8 +272,21 @@ Update [`docs/analysis/dcb-dynamodb-consistency-check.md`](../../analysis/dcb-dy
 
 ## Status
 
-Not started, but **no longer speculative** — the Step 1 profiling prerequisite is
-met by the 2026-07-07 deploy-sync evidence above (a real, reproducible production
-workload with identified hot fences and the exact `retries exhausted` symptom).
-Ready to implement §2/§3 (selective / opt-in fencing) against that workload when
-scheduled; §1 sharding remains profile-gated for the broader case.
+**DONE 2026-07-07 (single composite fence); committed `c2a123195`.** The root-cause
+trace (see "Root-cause correction") pinned the hot fences to **composite-partition
+per-member fencing**, not the stale `extraEventTags` path §2/§3 were written for. The
+fix — a **single composite fence gated on `partitionTag = Composite`**, code-only, no
+PPX/republish — is shipped in `DcbEventLogStorage_DynamoDb_Runtime.res` and proven
+end-to-end: the integration suite (13/13 green against a real DynamoDB engine) reproduces
+the exact regression — distinct composite entities sharing a low-cardinality prefix no
+longer conflict — and the AWS unit suite (200) pins the transaction shape. No table/GSI
+change and backward-tolerant, so **no alpha wipe is required**; the only follow-up is
+passive live confirmation on the next alpha deploy (re-observe the `platform-inspector`
+deploy-sync burst — see "Live confirmation" above).
+
+§1/§2/§3 are retained above as reference but are **superseded for this workload**:
+- §1 (sharding) — still the right tool for a genuinely-hot *single* consistency key;
+  not needed here (the composite fence is high-cardinality once collapsed). If a *different*
+  hot-fence shape ever surfaces, open a fresh evidence-gated item rather than reopening this.
+- §2/§3 (selective / opt-in fencing via PPX) — address a mechanism that no longer
+  exists; would not fix the composite-partition case.

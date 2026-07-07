@@ -1,10 +1,9 @@
-// ⚠️ PENDING REWRITE (dcb-fence-event-type-granularity): this suite still encodes
-// the OLD scalar-`lastPosition` fence + `create#…` create-guard model. The adapter
-// now uses PER-TYPE `pos#<eventType>` fence attributes with the create guard folded
-// in, so `H.setFence(~lastPosition=…)` seeding, the `create#…`-row assertions, and
-// the tag-only (no `eventTypes`) queries below must be reworked and re-run against
-// DynamoDB Local before they pass. Tracked as Test plan #2 in
-// docs/plans/dcb-fence-event-type-granularity.md. Not run by the default unit suite
+// Fence model: PER-TYPE `pos#<eventType>` attributes with the create guard folded
+// into the fence Update (dcb-fence-event-type-granularity). Conflict-expecting
+// scenarios name the consumed event type on each query clause (a tag-only clause
+// produces no fence check) and advance the fence via `H.setFence(~eventTypes,
+// ~position=…)`, which writes the matching `pos#<eventType>` attribute — the same
+// attribute a real conditional append checks. Not run by the default unit suite
 // (CI `pnpm test`), so it does not gate the build.
 //
 // DCB DynamoDB integration suite — exercises the real fence path against a
@@ -105,17 +104,23 @@ describe("DCB DynamoDb integration — fence-scope = read-scope (Issue 1 regress
     let table = await H.freshTable()
     let _ = await seed(table, event("CatalogProductSynced", [productTag]), ~partitionTag=simple("productId"))
 
-    // Order reads its decision model (after = the sync's position)…
-    let query: Reventless.DcbTag.query = [{tags: [tag("orderId", "O1")]}, {tags: [productTag]}]
+    // Order reads its decision model (after = the sync's position). Each clause
+    // names the event type it reads — the per-type fence model checks the
+    // consumed type's `pos#<type>`, so a tag-only clause would produce no fence
+    // check at all.
+    let query: Reventless.DcbTag.query = [
+      {tags: [tag("orderId", "O1")], eventTypes: ["OrderPlaced"]},
+      {tags: [productTag], eventTypes: ["CatalogProductSynced"]},
+    ]
     let after = (await readAfter(table, query))->Option.getOr("")
     expect(after == "")->toBe(false)
 
-    // …a concurrent re-sync advances fence#productId:P5 past `after`. We set the
-    // fence directly (rather than racing a second appendUnconditional) so the
-    // advance is deterministically > after — same-millisecond writers can
-    // otherwise tie on UUID order (analysis Issue 7). Appending "z" stays
-    // lexically greater than any real position.
-    let _ = await H.setFence(table, productTag, ~lastPosition=after ++ "z")
+    // …a concurrent re-sync advances fence#productId:P5's pos#CatalogProductSynced
+    // past `after`. We set the fence directly (rather than racing a second
+    // appendUnconditional) so the advance is deterministically > after —
+    // same-millisecond writers can otherwise tie on UUID order (analysis Issue 7).
+    // Appending "z" stays lexically greater than any real position.
+    let _ = await H.setFence(table, productTag, ~eventTypes=["CatalogProductSynced"], ~position=after ++ "z")
 
     // …so the now-stale order append must conflict on the productId fence.
     let r = await Runtime.appendConditional(
@@ -280,9 +285,11 @@ describe("DCB DynamoDb integration — optimistic concurrency primitives", () =>
 
   testAsync("a failed fence condition aborts the whole transaction (multi-tag atomicity)", async () => {
     let table = await H.freshTable()
-    // Composite slice: one multi-tag clause → both tags get check+bump.
+    // Composite slice: one multi-tag clause → both tags get check+bump. The
+    // clause names the consumed type so the per-type fence check has a `pos#<type>`
+    // to assert against.
     let tags = [tag("productId", "p1"), tag("orderId", "o1")]
-    let query: Reventless.DcbTag.query = [{tags: tags}]
+    let query: Reventless.DcbTag.query = [{tags: tags, eventTypes: ["ProductDemandRecorded"]}]
 
     // Seed one event so the next append rides after=Some.
     let seedRes = await Runtime.appendConditional(
@@ -296,9 +303,14 @@ describe("DCB DynamoDb integration — optimistic concurrency primitives", () =>
     let after = (await readAfter(table, query))->Option.getOr("")
     expect(after == "")->toBe(false)
 
-    // A concurrent writer advances ONLY the productId fence past `after`.
-    // Appending "z" keeps the position lexically greater than any real position.
-    let _ = await H.setFence(table, tag("productId", "p1"), ~lastPosition=after ++ "z")
+    // A concurrent writer advances ONLY the productId fence's pos#ProductDemandRecorded
+    // past `after`. Appending "z" keeps the position lexically greater than any real one.
+    let _ = await H.setFence(
+      table,
+      tag("productId", "p1"),
+      ~eventTypes=["ProductDemandRecorded"],
+      ~position=after ++ "z",
+    )
 
     let r = await Runtime.appendConditional(
       table,
@@ -312,5 +324,68 @@ describe("DCB DynamoDb integration — optimistic concurrency primitives", () =>
     // still returns exactly the one seeded event.
     let readResult = await Runtime.read(table)(~query)
     expect(readResult.events->Array.length)->toBe(1)
+  })
+})
+
+// A `@compositePartitionTag` slice (platform-inspector's SyncResource shape) fences
+// on the WHOLE composite key, not on each member. Distinct entities sharing a
+// low-cardinality prefix (environment/platformName/pluginName) must therefore NOT
+// serialize on that prefix — the deploy-fan-out hot-fence regression. Plan:
+// docs/plans/Backlog/dcb-hot-tag-fence-contention.md § "Root-cause correction".
+describe("DCB DynamoDb integration — composite partition hot-fence fix", () => {
+  let composite = (keys, seps): Reventless.DcbTag.derivedPartitionTag => Composite({keys, seps})
+  let specKeys = ["environment", "platformName", "pluginName", "resourceName"]
+  let specSeps = ["/", "/", "/"]
+  let pt = composite(specKeys, specSeps)
+  let members = resourceName => [
+    tag("environment", "prod"),
+    tag("platformName", "plat"),
+    tag("pluginName", "plug"),
+    tag("resourceName", resourceName),
+  ]
+
+  testAsync("distinct composite entities sharing a prefix do NOT false-conflict", async () => {
+    let table = await H.freshTable()
+    let tagsA = members("resA")
+    let tagsB = members("resB")
+    // Both are first-writers (after=None). They share environment/platformName/
+    // pluginName but are DIFFERENT composite entities → different composite fences.
+    let rA = await Runtime.appendConditional(
+      table,
+      [event("ResourceAdded", tagsA)],
+      {query: [{tags: tagsA}], after: ?None},
+      ~partitionTag=pt,
+    )
+    let rB = await Runtime.appendConditional(
+      table,
+      [event("ResourceAdded", tagsB)],
+      {query: [{tags: tagsB}], after: ?None},
+      ~partitionTag=pt,
+    )
+    // Pre-fix: rB conflicts on the shared `fence#environment:prod` create guard.
+    expect(isOk(rA))->toBe(true)
+    expect(isOk(rB))->toBe(true)
+  })
+
+  testAsync("two first-writers of the SAME composite key still serialize (OCC preserved)", async () => {
+    let table = await H.freshTable()
+    let tags = members("resA")
+    let query: Reventless.DcbTag.query = [{tags: tags}]
+    let r1 = await Runtime.appendConditional(
+      table,
+      [event("ResourceAdded", tags)],
+      {query, after: ?None},
+      ~partitionTag=pt,
+    )
+    let r2 = await Runtime.appendConditional(
+      table,
+      [event("ResourceAdded", tags)],
+      {query, after: ?None},
+      ~partitionTag=pt,
+    )
+    expect(isOk(r1))->toBe(true)
+    // The folded create guard (attribute_not_exists on the composite fence) rejects
+    // the second first-write of the same entity.
+    expect(isConflict(r2))->toBe(true)
   })
 })

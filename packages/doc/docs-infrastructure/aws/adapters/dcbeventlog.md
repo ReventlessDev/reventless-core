@@ -163,6 +163,12 @@ scoped to the **consumed** event types (`pos#<consumedType>`); the bump advances
 | Partition / cross-partition tag carried by a new event | `Update` (unconditional bump) | `SET pos#<producedType> = :new` |
 | First write to an entity (`after = None`, folded create guard) | `Update` on the partition fence | per consumed ∪ produced type: `attribute_not_exists(pos#<T>)` |
 
+A **`@compositePartitionTag`** partition is the exception to "one fence op per tag value":
+its member fields join into a single composite partition value, so the whole composite
+clause collapses to **one** fence on `fence#<compositeValue>` (check + bump), never one per
+member — keeping the fence as selective as the composite entity and matching the single
+`tag_composite` read.
+
 ```rescript
 // conditional fence (one consumed type shown): rejects if another writer of a
 // type this slice reads already advanced past :after

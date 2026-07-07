@@ -85,18 +85,29 @@ let freshTable = async () => {
   await createDcbTable(`DcbItTest_${counter.contents->Int.toString}`)
 }
 
-// Directly overwrite a fence sentinel's `lastPosition` — used to simulate a
-// concurrent writer having advanced a fence between a slice's read and append.
+// Directly advance a fence sentinel — used to simulate a concurrent writer having
+// bumped a fence between a slice's read and append. The fence model is per event
+// type (`pos#<eventType>` attributes, not a scalar `lastPosition`), so the caller
+// names the event type(s) whose position to set; each `pos#<eventType>` is written
+// to `position`, exactly as a real conditional append would advance them.
 let setFence = async (
   table: Util_DynamoDb_Runtime.resolvedTable,
   tag: Reventless.DcbTag.tag,
-  ~lastPosition: string,
+  ~eventTypes: array<string>,
+  ~position: string,
 ) => {
   let item =
-    Dict.fromArray([
-      ("id", s(DcbEventLogStorage_DynamoDb_Runtime.fencePartitionKey(tag))),
-      ("position", s("FENCE")),
-      ("lastPosition", s(lastPosition)),
-    ])->JSON.Encode.object
+    Array.concat(
+      [
+        ("id", s(DcbEventLogStorage_DynamoDb_Runtime.fencePartitionKey(tag))),
+        ("position", s("FENCE")),
+      ],
+      eventTypes->Array.map(et => (
+        DcbEventLogStorage_DynamoDb_Runtime.fenceTypeAttr(et),
+        s(position),
+      )),
+    )
+    ->Dict.fromArray
+    ->JSON.Encode.object
   await Util_DynamoDb_Runtime.put(table, item)
 }

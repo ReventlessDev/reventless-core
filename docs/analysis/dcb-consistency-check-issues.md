@@ -2,7 +2,7 @@
 
 **Date**: 2026-06-20
 **Scope**: correctness/robustness issues in the DCB optimistic-concurrency check enforced by the AWS `DcbEventLogStorage` adapter's per-tag fence sentinels. Companion to the historical options doc [dcb-dynamodb-consistency-check.md](dcb-dynamodb-consistency-check.md); this file is the live inventory.
-**Related**: plans [dcb-fence-scope-alignment.md](../plans/dcb-fence-scope-alignment.md), [dcb-eventlog-primary-tag-partitioning.md](../plans/done/dcb-eventlog-primary-tag-partitioning.md), [dcb-strong-consistency-single-tag-reads.md](../plans/done/dcb-strong-consistency-single-tag-reads.md), [dcb-hot-tag-fence-contention.md](../plans/Backlog/dcb-hot-tag-fence-contention.md), [dcb-monotonic-position-generation.md](../plans/Backlog/dcb-monotonic-position-generation.md)
+**Related**: plans [dcb-fence-scope-alignment.md](../plans/dcb-fence-scope-alignment.md), [dcb-eventlog-primary-tag-partitioning.md](../plans/done/dcb-eventlog-primary-tag-partitioning.md), [dcb-strong-consistency-single-tag-reads.md](../plans/done/dcb-strong-consistency-single-tag-reads.md), [dcb-hot-tag-fence-contention.md](../plans/done/dcb-hot-tag-fence-contention.md), [dcb-monotonic-position-generation.md](../plans/Backlog/dcb-monotonic-position-generation.md)
 
 ## How the check works (one paragraph)
 
@@ -179,7 +179,7 @@ The seeding/replay path ([`appendUnconditional`](../../reventless/reventless-aws
 
 ## Issue 10 — Hot-tag fence ceiling; retry exhaustion surfaces as `Conflict`
 
-A single fence item caps at ~500 conditional transactions/sec for that tag value (DynamoDB ~1000 WCU/partition, 2 WCU/transaction item). Concurrent writers contend on the same fence; the slice's 3-retry loop ([`StateChangeSlice_Callback`](../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res)) can bottom out under bursts and surface transient contention to the caller as a `Conflict`. Tracked: [`dcb-hot-tag-fence-contention`](../plans/Backlog/dcb-hot-tag-fence-contention.md) (fence sharding + selective bumping).
+A single fence item caps at ~500 conditional transactions/sec for that tag value (DynamoDB ~1000 WCU/partition, 2 WCU/transaction item). Concurrent writers contend on the same fence; the slice's 3-retry loop ([`StateChangeSlice_Callback`](../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res)) can bottom out under bursts and surface transient contention to the caller as a `Conflict`. Tracked: [`dcb-hot-tag-fence-contention`](../plans/done/dcb-hot-tag-fence-contention.md) (fence sharding + selective bumping).
 
 ---
 
@@ -444,8 +444,8 @@ Issue 1's fix swapped non-partition query tags from conditional `Update` → `Co
 - **Bound existence/availability reads.** Slices that only need "does ≥1 matching event exist" (PlaceOrder's availability check) don't need to stream the whole partition — a `Limit:1` Query (or a projection of just the key) per such clause. Would require the slice/framework to express "existence" vs "fold". High ROI where a read tag has many events.
 - **`ProjectionExpression` on decision reads.** RCU is charged by item size; the fold often needs only a few fields. Projecting just the decoded payload + `position` cuts RCU on large events (those with big payloads or many flattened meta/tag attributes).
 - **Make strong-consistency opt-in per slice.** Default eventually-consistent + rely on the fence-retry for the rare stale read; reserve `consistentRead` for high-contention slices. Halves read RCU on the common path. (Inverse of the [strong-consistency plan](../plans/done/dcb-strong-consistency-single-tag-reads.md)'s blanket choice.)
-- **Selective fence bumping (`#LookupOnly` tags)** — [`dcb-hot-tag-fence-contention`](../plans/Backlog/dcb-hot-tag-fence-contention.md) §2. Synergistic with Issue 1's fix (both reduce fence churn on read-only tags).
-- **Fence sharding** — [`dcb-hot-tag-fence-contention`](../plans/Backlog/dcb-hot-tag-fence-contention.md) §1; profile-gated, only if a fence is actually hot (lifts the ~500 transactions/sec/fence ceiling at +N× WCU).
+- **Selective fence bumping (`#LookupOnly` tags)** — [`dcb-hot-tag-fence-contention`](../plans/done/dcb-hot-tag-fence-contention.md) §2. Synergistic with Issue 1's fix (both reduce fence churn on read-only tags).
+- **Fence sharding** — [`dcb-hot-tag-fence-contention`](../plans/done/dcb-hot-tag-fence-contention.md) §1; profile-gated, only if a fence is actually hot (lifts the ~500 transactions/sec/fence ceiling at +N× WCU).
 
 **Net:** the cheapest high-impact wins are **(a) the decision-model cache** and **(b) removing the unused per-tag GSIs** — one cuts read RCU, the other cuts write RCU, and neither changes the slice contract. Everything else is workload-gated tuning.
 

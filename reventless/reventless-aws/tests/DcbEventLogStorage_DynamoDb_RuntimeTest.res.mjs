@@ -544,6 +544,115 @@ globalThis.describe("Runtime.buildConditionalTransactItems — fence-scope = rea
   });
 });
 
+globalThis.describe("Runtime.buildConditionalTransactItems — composite partition fences on ONE composite key", () => {
+  let event = (eventType, tags) => ({
+    eventType: eventType,
+    data: {},
+    tags: tags,
+    meta: testMeta()
+  });
+  let findFence = (items, fenceId) => items.find(it => {
+    let idOf = key => Primitive_object.equal(key["id"], fenceId);
+    let match = it.Update;
+    let match$1 = it.ConditionCheck;
+    if (match !== undefined) {
+      return idOf(match.Key);
+    } else if (match$1 !== undefined) {
+      return idOf(match$1.Key);
+    } else {
+      return false;
+    }
+  });
+  let isUpdate = it => Stdlib_Option.isSome(Stdlib_Option.flatMap(it, i => i.Update));
+  let fenceIds = items => Stdlib_Array.filterMap(items, it => {
+    let idOf = key => Stdlib_Option.flatMap(key["id"], Stdlib_JSON.Decode.string);
+    let match = it.Update;
+    let match$1 = it.ConditionCheck;
+    if (match !== undefined) {
+      return idOf(match.Key);
+    } else if (match$1 !== undefined) {
+      return idOf(match$1.Key);
+    } else {
+      return;
+    }
+  }).filter(s => s.startsWith("fence#"));
+  let spec_keys = [
+    "environment",
+    "platformName",
+    "pluginName"
+  ];
+  let spec_seps = [
+    "/",
+    "/"
+  ];
+  let spec = {
+    keys: spec_keys,
+    seps: spec_seps
+  };
+  let partitionTag = {
+    TAG: "Composite",
+    _0: spec
+  };
+  let members = [
+    {
+      key: "environment",
+      value: "prod"
+    },
+    {
+      key: "platformName",
+      value: "plat"
+    },
+    {
+      key: "pluginName",
+      value: "plug"
+    }
+  ];
+  let compositeFence = "fence#__dcb_composite__:prod/plat/plug";
+  globalThis.describe("at after=Some (entity exists)", () => {
+    let resource = event("ResourceAdded", members);
+    let cond_query = [{
+        eventTypes: ["ResourceAdded"],
+        tags: members
+      }];
+    let cond_after = "50";
+    let cond = {
+      query: cond_query,
+      after: cond_after
+    };
+    let items = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalTransactItems(table, [resource], cond, "100", partitionTag, undefined);
+    globalThis.test("the whole composite key is a single conditional Update", () => {
+      globalThis.expect(isUpdate(findFence(items, compositeFence))).toBe(true);
+    });
+    globalThis.test("no per-member fence is emitted (the hot-fence regression)", () => {
+      globalThis.expect(Stdlib_Option.isSome(findFence(items, "fence#environment:prod"))).toBe(false);
+      globalThis.expect(Stdlib_Option.isSome(findFence(items, "fence#platformName:plat"))).toBe(false);
+      globalThis.expect(Stdlib_Option.isSome(findFence(items, "fence#pluginName:plug"))).toBe(false);
+    });
+    globalThis.test("exactly one fence item total (the composite fence, no members)", () => {
+      globalThis.expect(fenceIds(items)).toEqual([compositeFence]);
+    });
+  });
+  globalThis.describe("at after=None (folded create guard)", () => {
+    let resource = event("ResourceAdded", members);
+    let cond_query = [{
+        eventTypes: ["ResourceAdded"],
+        tags: members
+      }];
+    let cond = {
+      query: cond_query
+    };
+    let items = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalTransactItems(table, [resource], cond, "100", partitionTag, undefined);
+    globalThis.test("the composite fence is a create-guard Update gated on attribute_not_exists", () => {
+      let u = Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(findFence(items, compositeFence), i => i.Update), undefined);
+      globalThis.expect(u.ConditionExpression).toEqual("attribute_not_exists(#c0)");
+      globalThis.expect(Stdlib_Option.flatMap(u.ExpressionAttributeValues, v => v[":after"])).toEqual(undefined);
+    });
+    globalThis.test("still exactly one composite fence (no per-member create guards)", () => {
+      globalThis.expect(fenceIds(items)).toEqual([compositeFence]);
+    });
+  });
+});
+
 globalThis.describe("Runtime.buildConditionalTransactItems — folded create guard (after=None)", () => {
   let event = (eventType, tags) => ({
     eventType: eventType,
