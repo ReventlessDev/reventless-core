@@ -11,9 +11,7 @@ import { decodeCommand$p as decodeCommandPrime } from "@reventlessdev/reventless
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 import {
   extractVariantNames,
-  extractTagKeysByEventType,
-  mergeTagKeysByEventType,
-  extractCrossPartitionTagKeys,
+  deriveEffectiveScope,
 } from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import { $$String as IdString } from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import { Make as dcbEventLogOperationsMake } from "@reventlessdev/reventless-core/src/components/DcbEventLog/DcbEventLog_Operations.res.mjs";
@@ -141,12 +139,19 @@ export async function buildHandlersForConfig(config, opts = {}) {
     })
   );
 
-  const producedSchemas = loadedSlices.map(({ patchedSpec }) => patchedSpec.eventSchema);
-  const tagKeysByEventType = mergeTagKeysByEventType(
-    producedSchemas.map(s => extractTagKeysByEventType(s))
-  );
-  const crossPartitionTagKeys = Array.from(
-    new Set(producedSchemas.flatMap(s => extractCrossPartitionTagKeys(s)))
+  // Single source of truth with Dcb_Builder.res: prefer slice-graph inference
+  // (which classifies cross-partition `@ref` reference reads), falling back to
+  // annotations only on ambiguity. Re-deriving from annotations alone here
+  // silently dropped inferred cross-partition reads, so every reference-guarded
+  // command was rejected on the deployed path — see
+  // docs/analysis/dcb-runtime-scope-annotation-drift.md.
+  const { crossPartitionTagKeys, tagKeysByEventType } = deriveEffectiveScope(
+    loadedSlices.map(({ patchedSpec }) => ({
+      name: patchedSpec.name,
+      commandSchema: patchedSpec.commandSchema,
+      consumedEventSchema: patchedSpec.consumedEventSchema,
+      eventSchema: patchedSpec.eventSchema,
+    }))
   );
 
   loadedSlices.forEach(({ patchedSpec, behaviorModule }) => {

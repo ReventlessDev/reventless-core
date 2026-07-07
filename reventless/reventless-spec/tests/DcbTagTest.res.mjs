@@ -44,7 +44,83 @@ globalThis.describe("DcbTag variant extraction (via variantTagName)", () => {
   });
 });
 
+let addCategoryCommandSchema = S.schema(s => ({
+  TAG: "AddCategory",
+  categoryId: s.m(S.string)
+}));
+
+let addCategoryConsumedSchema = S.schema(s => ({
+  TAG: "CategoryAdded",
+  categoryId: s.m(S.string)
+}));
+
+let categoryAddedEventSchema = S.schema(s => ({
+  TAG: "CategoryAdded",
+  categoryId: s.m(S.string)
+}));
+
+let addProductCommandSchema = S.schema(s => ({
+  TAG: "AddProduct",
+  productId: s.m(S.string),
+  categoryId: s.m(S.string)
+}));
+
+let addProductConsumedSchema = S.union([
+  S.schema(s => ({
+    TAG: "ProductAdded",
+    productId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "CategoryAdded",
+    categoryId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "CategoryArchived",
+    categoryId: s.m(S.string)
+  }))
+]);
+
+let productAddedEventSchema = S.schema(s => ({
+  TAG: "ProductAdded",
+  productId: s.m(S.string),
+  categoryId: s.m(S.string)
+}));
+
+let catalogSlices = [
+  {
+    name: "AddCategory",
+    commandSchema: addCategoryCommandSchema,
+    consumedEventSchema: addCategoryConsumedSchema,
+    eventSchema: categoryAddedEventSchema
+  },
+  {
+    name: "AddProduct",
+    commandSchema: addProductCommandSchema,
+    consumedEventSchema: addProductConsumedSchema,
+    eventSchema: productAddedEventSchema
+  }
+];
+
+globalThis.describe("DcbTag.deriveEffectiveScope (inference vs annotation drift)", () => {
+  globalThis.test("infers the cross-partition @ref key (categoryId) into the scope", () => {
+    globalThis.expect(DcbTag$Reventless.deriveEffectiveScope(catalogSlices).crossPartitionTagKeys).toEqual(["categoryId"]);
+  });
+  globalThis.test("indexes ProductAdded by its own partition only (categoryId is payload)", () => {
+    globalThis.expect(DcbTag$Reventless.deriveEffectiveScope(catalogSlices).tagKeysByEventType["ProductAdded"]).toEqual(["productId"]);
+  });
+  globalThis.test("annotation-only extraction misses it — the pre-fix runtime bug", () => {
+    globalThis.expect(DcbTag$Reventless.extractCrossPartitionTagKeys(productAddedEventSchema)).toEqual([]);
+  });
+});
+
 export {
   eventSchema,
+  addCategoryCommandSchema,
+  addCategoryConsumedSchema,
+  categoryAddedEventSchema,
+  addProductCommandSchema,
+  addProductConsumedSchema,
+  productAddedEventSchema,
+  catalogSlices,
 }
 /* eventSchema Not a pure module */

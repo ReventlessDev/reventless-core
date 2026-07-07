@@ -1,13 +1,31 @@
 # Plan: deployed-Lambda ESM self-containment (unblock the AWS runtime path)
 
-**Status**: Active (2026-07-06). Phase 1a (spike) + 1b (implementation) DONE;
-**1c Rung-2 GREEN on real AWS (2026-07-06)** — the migration Lambda cold-started
-in-VPC under `nodejs22.x`, resolved every bare specifier through the hook, ran
-`ensureSchema`, and returned `"ok"`. The blocker is lifted for the Postgres
-migration path. **Remaining**: Rung-3 (a real DynamoDB plugin: aggregate + read
-model, command→projection→query) to validate the *default* deployed path.
-**Nature**: framework fix (deploy-time bundling + Lambda module resolution),
-followed by an optional consistency refactor.
+**Status**: **COMPLETE — Rung-3 GREEN on real AWS (2026-07-07).** Phase 1a (spike)
++ 1b (implementation) DONE; 1c Rung-2 GREEN (2026-07-06, Postgres migration Lambda);
+**1c Rung-3 GREEN (2026-07-07)** — validated the *default* DynamoDB deployed path on
+the live `online-shop-hybrid` alpha stack (gitSha `8097bc4de`, deploy 16:53Z):
+- Post-fix heartbeat Lambdas cold-started clean (no `ERR_MODULE_NOT_FOUND` on any
+  post-fix Lambda).
+- Query path: `Catalog_Products` / `Ordering_Orders` list queries returned relay
+  data — query resolver Lambdas cold-start + resolve bare specifiers + hit DynamoDB.
+- **Write path**: `Catalog_AddCategory` → `CommandAccepted` (eventCount 1) →
+  projected → queryable via `Catalog_Categories` / `Catalog_Category(id)`. Full
+  command → DCB handler → EventLog → EventCollector projection → read model → query
+  round-trip; the DCB cmd-handler + projection Lambdas had not run since the deploy,
+  so this is genuine post-fix cold-start evidence. ESM self-containment on the
+  default deployed path is validated.
+
+The blocker is fully lifted for both the Postgres migration path (Rung-2) and the
+default DynamoDB path (Rung-3). **Nature**: framework fix (deploy-time bundling +
+Lambda module resolution), followed by an optional consistency refactor.
+
+> **Adjacent bug found while running Rung-3** (NOT an ESM issue): the DCB
+> cross-partition `@ref` reference-existence read is broken on the AWS runtime path
+> — deploy-time `DcbScopeInference` correctly infers `crossPartitionTagKeys`, but
+> `DcbCommandTopicEntryPoint.mjs` re-derives it from `@crossPartition` *annotations*
+> only, so inference-based references (e.g. `AddProduct.categoryId`) collapse to a
+> single composite decision-read clause and the command is always rejected
+> (`CategoryNotFound`). See `docs/analysis/dcb-runtime-scope-annotation-drift.md`.
 
 ## Motivation — the bug (found via a real-AWS Rung-2 deploy, 2026-07-06)
 

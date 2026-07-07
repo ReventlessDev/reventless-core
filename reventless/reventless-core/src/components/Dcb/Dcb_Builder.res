@@ -289,11 +289,21 @@ module Make = (
 
         // All-or-nothing: thread the derived scope only when every slice resolved.
         // An ambiguous boundary keeps the annotated values (no partial inference).
-        let useInferred = inferred.ambiguities->Array.length == 0
-        let effectiveCrossPartitionTagKeys =
-          useInferred ? inferred.crossPartitionTagKeys : crossPartitionTagKeys
-        let effectiveTagKeysByEventType =
-          useInferred ? inferred.tagKeysByEventType : tagKeysByEventType
+        // Both this builder and the deployed command-handler entry point
+        // (DcbCommandTopicEntryPoint.mjs) route through `DcbTag.deriveEffectiveScope`
+        // so the runtime decision query cannot drift from this scope — see
+        // docs/analysis/dcb-runtime-scope-annotation-drift.md.
+        let {
+          crossPartitionTagKeys: effectiveCrossPartitionTagKeys,
+          tagKeysByEventType: effectiveTagKeysByEventType,
+        } = Reventless.DcbTag.deriveEffectiveScope(
+          stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) => {
+            Reventless.DcbTag.name: Sc.Spec.name,
+            commandSchema: Sc.Spec.commandSchema->S.castToUnknown,
+            consumedEventSchema: Sc.Spec.consumedEventSchema->S.castToUnknown,
+            eventSchema: Sc.Spec.eventSchema->S.castToUnknown,
+          }),
+        )
 
         module DcbEventLog = DcbEventLog_Builder.Make(
           DcbEventLogStorage,

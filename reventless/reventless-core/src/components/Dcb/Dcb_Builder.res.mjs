@@ -167,9 +167,14 @@ function Make(DcbEventLogStorage) {
       let scopeIssues = DcbValidation$Reventless.validateScopeVsInference(scopeAnnotations, inferred);
       scopeIssues.contradictions.forEach(e => log.warn("Dcb_Builder", undefined, `DCB scope contradiction (` + e.sliceName + `): ` + e.message));
       scopeIssues.redundancies.forEach(e => log.info("Dcb_Builder", undefined, `DCB scope (` + e.sliceName + `): ` + e.message));
-      let useInferred = inferred.ambiguities.length === 0;
-      let effectiveCrossPartitionTagKeys = useInferred ? inferred.crossPartitionTagKeys : crossPartitionTagKeys;
-      let effectiveTagKeysByEventType = useInferred ? inferred.tagKeysByEventType : tagKeysByEventType;
+      let match = DcbTag$Reventless.deriveEffectiveScope(stateChangeSlices.map(Sc => ({
+        name: Sc.Spec.name,
+        commandSchema: Sc.Spec.commandSchema,
+        consumedEventSchema: Sc.Spec.consumedEventSchema,
+        eventSchema: Sc.Spec.eventSchema
+      })));
+      let effectiveTagKeysByEventType = match.tagKeysByEventType;
+      let effectiveCrossPartitionTagKeys = match.crossPartitionTagKeys;
       let DcbEventLog = DcbEventLog_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher);
       let dcbEventLog = DcbEventLog.make(name, indexes$1, partitionTag, effectiveCrossPartitionTagKeys, opts);
       Stdlib_Option.forEach(HooksConfig.hooks.onDcbEventLogCreated, hook => hook(dcbEventLog));

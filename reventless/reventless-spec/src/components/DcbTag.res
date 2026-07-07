@@ -989,6 +989,74 @@ let sliceShapeFromSchemas = (
   }
 }
 
+/** One slice's sury schemas — the input to `deriveEffectiveScope`. */
+type sliceSchemas = {
+  name: string,
+  commandSchema: S.t<unknown>,
+  consumedEventSchema: S.t<unknown>,
+  eventSchema: S.t<unknown>,
+}
+
+/**
+The DCB decision-read scope threaded into every StateChangeSlice callback:
+- `crossPartitionTagKeys` — keys whose scalar command tag must be fanned into its
+  own single-tag clause (a cross-entity reference read), and
+- `tagKeysByEventType` — each produced event type's *indexed* tag keys, so a
+  decision query drops vacuous (type, tag) clause combinations.
+*/
+type effectiveScope = {
+  crossPartitionTagKeys: array<string>,
+  tagKeysByEventType: dict<array<string>>,
+}
+
+/**
+Derives the effective DCB decision-read scope for one consistency boundary from
+its slices' schemas.
+
+Prefers the slice-graph inference (`DcbScopeInference.infer`) and falls back to
+the `@crossPartition` / tag *annotations* only when a slice's partition is
+ambiguous — all-or-nothing, matching `Dcb_Builder`. This is the **single source of
+truth** shared by the deploy-time builder (`Dcb_Builder.res`) and the deployed
+command-handler entry point (`DcbCommandTopicEntryPoint.mjs`): both call this so
+the runtime decision query cannot diverge from the storage/GSI scope. Before this
+existed the entry point re-derived scope from annotations alone, silently dropping
+inferred cross-partition reference reads — see
+`docs/analysis/dcb-runtime-scope-annotation-drift.md`.
+*/
+let deriveEffectiveScope = (slices: array<sliceSchemas>): effectiveScope => {
+  let producedSchemas = slices->Array.map(s => s.eventSchema)
+  let annotatedCross = {
+    let seen = Set.make()
+    producedSchemas
+    ->Array.flatMap(extractCrossPartitionTagKeys)
+    ->Array.filter(k =>
+      if seen->Set.has(k) {
+        false
+      } else {
+        seen->Set.add(k)
+        true
+      }
+    )
+  }
+  let annotatedTagKeys =
+    producedSchemas->Array.map(extractTagKeysByEventType)->mergeTagKeysByEventType
+  let shapes =
+    slices->Array.map(s =>
+      sliceShapeFromSchemas(
+        ~name=s.name,
+        ~commandSchema=s.commandSchema,
+        ~consumedEventSchema=s.consumedEventSchema,
+        ~eventSchema=s.eventSchema,
+      )
+    )
+  let inferred = DcbScopeInference.infer(shapes)
+  let useInferred = inferred.ambiguities->Array.length == 0
+  {
+    crossPartitionTagKeys: useInferred ? inferred.crossPartitionTagKeys : annotatedCross,
+    tagKeysByEventType: useInferred ? inferred.tagKeysByEventType : annotatedTagKeys,
+  }
+}
+
 /**
 Checks whether any single variant in a schema has multiple tagged fields.
 If so, a partition tag annotation is needed to disambiguate.

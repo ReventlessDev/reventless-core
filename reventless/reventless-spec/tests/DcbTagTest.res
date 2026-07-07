@@ -37,3 +37,60 @@ describe("DcbTag variant extraction (via variantTagName)", () => {
     expect(DcbTag.isVariantPayloadBearing(eventSchema, "Nope"))->toEqual(false)
   )
 })
+
+// Regression for the deploy/runtime scope drift: a cross-partition `@ref`
+// reference read (AddProduct.categoryId) must be *inferred* into the effective
+// scope that both Dcb_Builder and the deployed DcbCommandTopicEntryPoint thread —
+// re-deriving from `@crossPartition` annotations alone dropped it, so every
+// reference-guarded command was rejected on AWS.
+// See docs/analysis/dcb-runtime-scope-annotation-drift.md.
+
+@schema
+type addCategoryCommand = AddCategory({categoryId: string})
+@schema
+type addCategoryConsumed = CategoryAdded({categoryId: string})
+@schema
+type categoryAddedEvent = CategoryAdded({categoryId: string})
+
+@schema
+type addProductCommand = AddProduct({productId: string, categoryId: string})
+@schema
+type addProductConsumed =
+  | ProductAdded({productId: string})
+  | CategoryAdded({categoryId: string})
+  | CategoryArchived({categoryId: string})
+@schema
+type productAddedEvent = ProductAdded({productId: string, categoryId: string})
+
+let catalogSlices: array<DcbTag.sliceSchemas> = [
+  {
+    DcbTag.name: "AddCategory",
+    commandSchema: addCategoryCommandSchema->S.castToUnknown,
+    consumedEventSchema: addCategoryConsumedSchema->S.castToUnknown,
+    eventSchema: categoryAddedEventSchema->S.castToUnknown,
+  },
+  {
+    DcbTag.name: "AddProduct",
+    commandSchema: addProductCommandSchema->S.castToUnknown,
+    consumedEventSchema: addProductConsumedSchema->S.castToUnknown,
+    eventSchema: productAddedEventSchema->S.castToUnknown,
+  },
+]
+
+describe("DcbTag.deriveEffectiveScope (inference vs annotation drift)", () => {
+  testSync("infers the cross-partition @ref key (categoryId) into the scope", () =>
+    expect((DcbTag.deriveEffectiveScope(catalogSlices)).crossPartitionTagKeys)->toEqual([
+      "categoryId",
+    ])
+  )
+  testSync("indexes ProductAdded by its own partition only (categoryId is payload)", () =>
+    expect(
+      (DcbTag.deriveEffectiveScope(catalogSlices)).tagKeysByEventType->Dict.get("ProductAdded"),
+    )->toEqual(Some(["productId"]))
+  )
+  testSync("annotation-only extraction misses it — the pre-fix runtime bug", () =>
+    // No `@crossPartition` annotation exists (categoryId is `@ref`), so the old
+    // annotation-based derivation the entry point used yields [].
+    expect(DcbTag.extractCrossPartitionTagKeys(productAddedEventSchema->S.castToUnknown))->toEqual([])
+  )
+})

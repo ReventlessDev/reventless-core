@@ -8,6 +8,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as DcbScopeInference$Reventless from "./DcbScopeInference.res.mjs";
 
 let tagSchema = S.schema(s => ({
   key: s.m(S.string),
@@ -618,6 +619,27 @@ function sliceShapeFromSchemas(name, commandSchema, consumedEventSchema, eventSc
   };
 }
 
+function deriveEffectiveScope(slices) {
+  let producedSchemas = slices.map(s => s.eventSchema);
+  let seen = new Set();
+  let annotatedCross = producedSchemas.flatMap(extractCrossPartitionTagKeys).filter(k => {
+    if (seen.has(k)) {
+      return false;
+    } else {
+      seen.add(k);
+      return true;
+    }
+  });
+  let annotatedTagKeys = mergeTagKeysByEventType(producedSchemas.map(extractTagKeysByEventType));
+  let shapes = slices.map(s => sliceShapeFromSchemas(s.name, s.commandSchema, s.consumedEventSchema, s.eventSchema));
+  let inferred = DcbScopeInference$Reventless.infer(shapes);
+  let useInferred = inferred.ambiguities.length === 0;
+  return {
+    crossPartitionTagKeys: useInferred ? inferred.crossPartitionTagKeys : annotatedCross,
+    tagKeysByEventType: useInferred ? inferred.tagKeysByEventType : annotatedTagKeys
+  };
+}
+
 function hasMultiTagVariant(schema) {
   switch (schema.type) {
     case "object" :
@@ -866,6 +888,7 @@ export {
   eventShapesOfSchema,
   extractPartitionTagFields,
   sliceShapeFromSchemas,
+  deriveEffectiveScope,
   hasMultiTagVariant,
   findMultiTagVariantNames,
   extractCompositePartitionFieldsFromProperties,
