@@ -1,6 +1,6 @@
 # AppSync IAM dual-auth: type-level directives + derived query fields
 
-**Status:** Implemented 2026-07-07 (`91e01f82f`) — all three fix items + adapter tests landed; open: live SigV4 verification after the next alpha push/redeploy (acceptance item 4)
+**Status:** DONE + VERIFIED LIVE 2026-07-07 (`91e01f82f`, published `reventless-aws@3.0.0-alpha.180`). After redeploying the online-shop platform + inspector stacks, a SigV4 `Util_AppSync_Caller` read that previously returned `Not Authorized to access edges on type Platform_PlatformOverviewConnection` now returns `{"edges":[]}` (authorized), and the `Platform_SyncPlatform`/`Platform_SyncPlugin` mutations pass auth and write rows (PlatformOverview/ResourceInventory/PlatformHealthSummary populated). Acceptance items 1–4 met. A residual `SyncComponent`/`SyncResource` failure is DCB append contention, NOT auth — tracked in business `appsync-sync-mutation-fix-rollout.md`.
 **Owner:** Martin
 **Follows:** `done/appsync-iam-auth-for-deploy-callers.md` (field-level mechanism, `94037f17a`) and the `@@reventless.systemCallable` slice opt-in (`c5ed53730`).
 
