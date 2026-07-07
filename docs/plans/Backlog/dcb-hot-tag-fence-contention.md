@@ -13,6 +13,32 @@ Concurrent writers contending on the same fence trigger `TransactionConflict` (m
 
 The unconditional bumps for `extraEventTags` ([`Runtime.res:657-660`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L657-L660)) make this worse: every event tagged with hot value X bumps that fence, even when X was not part of the writer's query. So a slice that only cares about `orderId` but writes events tagged `customerId=hotCustomer` contributes to the `customerId=hotCustomer` fence's contention.
 
+## Triggering evidence (2026-07-07) — first real hot-fence workload
+
+A downstream **deploy-time sync workload** is the concrete case this plan's Step 1
+was waiting on. It fans out one per-entity append command per synced item (many per
+deploy) into a single DCB event log, and every command in the burst carries the same
+small set of **low-cardinality scope tags** (a deployment's `environment`, platform
+name, and plugin name are identical across the whole fan-out). So a handful of fences
+are bumped by *every* command in the burst — the exact `extraEventTags`
+unconditional-bump amplifier described above. Observed live:
+
+```
+append failed, retries exhausted: DCB append failed: Transaction cancelled …
+  [None, TransactionConflict, TransactionConflict, TransactionConflict, …]   (×many)
+```
+
+at the command bus — precisely the "outer 3-retry loop bottoms out →
+`conflict: retries exhausted`" cascade in the Problem section. The low-fan-out
+commands in the same deploy (one platform, few plugins) commit fine; the high-fan-out
+per-entity commands do not. This is real profiling data, not a synthetic benchmark.
+
+**Which mitigation fits:** the hot fences here are pure scope/lookup tags, not
+per-command consistency keys — so **§2 (selective fence bumping, mark them
+`#LookupOnly`)** or **§3 (declare the consistency tag set = just the per-entity id)**
+is higher-leverage than §1 sharding. The per-command consistency boundary is the
+entity id; the shared scope prefix never needs a fence.
+
 ## Goals
 
 - Lift the per-tag-value throughput ceiling by an order of magnitude in the worst case.
@@ -126,4 +152,8 @@ Update [`docs/analysis/dcb-dynamodb-consistency-check.md`](../../analysis/dcb-dy
 
 ## Status
 
-Not started. Profiling prerequisite (Step 1) blocks implementation.
+Not started, but **no longer speculative** — the Step 1 profiling prerequisite is
+met by the 2026-07-07 deploy-sync evidence above (a real, reproducible production
+workload with identified hot fences and the exact `retries exhausted` symptom).
+Ready to implement §2/§3 (selective / opt-in fencing) against that workload when
+scheduled; §1 sharding remains profile-gated for the broader case.

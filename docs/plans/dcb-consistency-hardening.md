@@ -17,7 +17,7 @@ Order = correctness → verification harness → durable cost wins → robustnes
 | 5 | Robustness guards | Issues 4, 5, 6, 9, 12 | Robustness | **5,12 done; 4,6,9 open** | — (detailed below) |
 | 5 | Drop vacuous query-clause type combos | Issue 14 | Cleanup | **done** | — (Phase 5 below) |
 | 5 | Opt-in strong reads | Perf/cost lever #3 | Cost | **yes** | — (detailed below) |
-| 6 | Hot-tag sharding / selective bump | Issue 10 | Throughput | no | [dcb-hot-tag-fence-contention](Backlog/dcb-hot-tag-fence-contention.md) |
+| 6 | Hot-tag sharding / selective bump | Issue 10 | Throughput | **evidence in (2026-07-07)** | [dcb-hot-tag-fence-contention](Backlog/dcb-hot-tag-fence-contention.md) |
 | 6 | Monotonic positions | Issue 7 | Cleanup | no | [dcb-monotonic-position-generation](Backlog/dcb-monotonic-position-generation.md) |
 | 7 | Cross-partition secondary-tag reads | Issue 13 | Capability | **done (source; mjs/CI pending ppx republish)** | [dcb-phase7-cross-partition-reads](done/dcb-phase7-cross-partition-reads.md) |
 
@@ -161,7 +161,7 @@ Shipped: eventual-first / strong-on-retry decision reads (core), a provider-neut
 ## Phase 6 — Profile-gated throughput & cleanup
 
 Already planned, run on evidence:
-- [dcb-hot-tag-fence-contention](Backlog/dcb-hot-tag-fence-contention.md) — selective bumping (§2, cost-saver, can ship early) then sharding (§1, profile-gated).
+- [dcb-hot-tag-fence-contention](Backlog/dcb-hot-tag-fence-contention.md) — selective bumping (§2, cost-saver, can ship early) then sharding (§1, profile-gated). **Profiling evidence landed 2026-07-07**: a downstream deploy-time sync workload bursts per-entity appends that all share the same low-cardinality scope tags → those fences go hot → `retries exhausted: TransactionConflict` at the command bus (observed live). First real workload for §2/§3; see the plan's "Triggering evidence" section.
 - [dcb-monotonic-position-generation](Backlog/dcb-monotonic-position-generation.md) — half-day cleanup, land any time someone is in `Runtime.res`.
 
 ## Phase 7 — Cross-partition secondary-tag reads (capability) — **IMPLEMENTED (2026-06-21, source; mjs/CI pending ppx republish)**
