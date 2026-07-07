@@ -103,4 +103,14 @@ Update [`docs/analysis/dcb-dynamodb-consistency-check.md`](../../analysis/dcb-dy
 
 ## Status
 
-Not started.
+**DONE (2026-07-08).** Shipped the HLC generator in
+[`DcbEventLogStorage_DynamoDb_Runtime.res`](../../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L6-L30):
+module-level `lastMs`/`counter` refs, format `<ms>-<6-digit counter>-<uuid>`. `generatePositionForBatch`
+was already order-safe under the new format (Step 2 — no change). Tests (Step 3): 4 cases in
+[`DcbEventLogStorage_DynamoDb_RuntimeTest.res`](../../../reventless/reventless-aws/tests/DcbEventLogStorage_DynamoDb_RuntimeTest.res)
+— rapid-sequence strict monotonicity, 6-digit counter segment, batch order, and old-format/new-format
+cross-sort — asserting byte-wise (DynamoDB) order without brittle fake-timer mocking. Verified (Step 4):
+full reventless-aws unit suite green at **204**, DCB integration suite green at **14** against DynamoDB
+Local (proves the new positions interoperate with the live fence comparisons). Docs (Step 5): analysis
+consistency issue #5 marked resolved. No migration — the ms prefix keeps its 13-digit width, so stored
+`<ms>-<uuid>` positions still sort by timestamp against new ones.

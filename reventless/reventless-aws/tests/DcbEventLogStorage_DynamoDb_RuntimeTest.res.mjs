@@ -855,6 +855,55 @@ globalThis.describe("Runtime.indexKeepsFullProjection", () => {
   });
 });
 
+globalThis.describe("Runtime.generatePosition — monotonic HLC positions", () => {
+  globalThis.test("a rapid sequence of positions is strictly increasing (lexical == commit order)", () => {
+    let positions = Stdlib_Array.fromInitializer(50, param => DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.generatePosition());
+    let strictlyIncreasing = true;
+    for (let i = 1, i_finish = positions.length; i < i_finish; ++i) {
+      let prev = positions[i - 1 | 0];
+      let curr = positions[i];
+      if (prev >= curr) {
+        strictlyIncreasing = false;
+      }
+    }
+    globalThis.expect(strictlyIncreasing).toBe(true);
+  });
+  globalThis.test("format carries a 6-digit counter segment between ms and uuid", () => {
+    let segments = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.generatePosition().split("-");
+    globalThis.expect(segments.length >= 3).toBe(true);
+    let counterSeg = segments[1];
+    globalThis.expect(counterSeg.length).toBe(6);
+  });
+  globalThis.test("generatePositionForBatch preserves order for same base, ascending index", () => {
+    let base = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.generatePosition();
+    let p0 = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.generatePositionForBatch(base, 0);
+    let p1 = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.generatePositionForBatch(base, 1);
+    let p2 = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.generatePositionForBatch(base, 2);
+    globalThis.expect(p0).toBe(base);
+    globalThis.expect(base < p1).toBe(true);
+    globalThis.expect(p1 < p2).toBe(true);
+  });
+  globalThis.test("old <ms>-<uuid> positions still sort by timestamp against new-format ones", () => {
+    let older = "1700000000000-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    let newer = "1700000000001-000000-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    let cmp = (a, b) => {
+      if (Primitive_object.lessthan(a, b)) {
+        return -1.0;
+      } else if (Primitive_object.greaterthan(a, b)) {
+        return 1.0;
+      } else {
+        return 0.0;
+      }
+    };
+    let sorted = [
+      newer,
+      older
+    ].toSorted(cmp);
+    globalThis.expect(sorted[0]).toBe(older);
+    globalThis.expect(sorted[1]).toBe(newer);
+  });
+});
+
 let Runtime;
 
 export {

@@ -20,10 +20,26 @@ import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.m
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 
+let lastMs = {
+  contents: 0.0
+};
+
+let counter = {
+  contents: 0
+};
+
 function generatePosition() {
-  let timestamp = new Date().getTime().toString();
+  let now = new Date().getTime();
+  if (now === lastMs.contents) {
+    counter.contents = counter.contents + 1 | 0;
+  } else {
+    lastMs.contents = now;
+    counter.contents = 0;
+  }
+  let ms = now.toString();
+  let counterStr = counter.contents.toString().padStart(6, "0");
   let uuid = Uuid.v4();
-  return timestamp + `-` + uuid;
+  return ms + `-` + counterStr + `-` + uuid;
 }
 
 function generatePositionForBatch(basePosition, index) {
@@ -1131,6 +1147,8 @@ function readStream(table, $staropt$star) {
 let transactWriteItemsLimit = 100;
 
 export {
+  lastMs,
+  counter,
   generatePosition,
   generatePositionForBatch,
   tagToAttributeName,

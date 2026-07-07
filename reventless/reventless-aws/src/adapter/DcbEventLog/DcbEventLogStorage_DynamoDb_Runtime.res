@@ -3,10 +3,33 @@ open AwsSdk.DynamoDb.DocumentClient
 
 // --- Position Generation ---
 
+// Hybrid-logical-clock minimal variant. The module-level refs live for the life of
+// a warm Lambda container (reset on cold start), giving strictly-monotonic positions
+// per call WITHIN a container: same-millisecond calls increment `counter`; a forward
+// tick resets it to 0. No cross-container coordination — two same-ms writers on
+// different containers both start at counter 0 and are ordered by the UUID tiebreaker
+// (best-effort, exactly as the old `<ms>-<uuid>` format was). Format:
+// `<ms>-<6-digit counter>-<uuid>`. Correctness never depends on this — fence
+// comparisons anchor to what a slice observed, and `TransactWriteItems` serialises
+// commits; this only makes reader/replay ordering predictable per container. Old
+// `<ms>-<uuid>` positions remain valid: the ms prefix keeps the same 13-digit width,
+// so cross-format comparison still orders by timestamp. See
+// docs/plans/done/dcb-monotonic-position-generation.md.
+let lastMs = ref(0.0)
+let counter = ref(0)
+
 let generatePosition = () => {
-  let timestamp = Date.make()->Date.getTime->Float.toString
+  let now = Date.make()->Date.getTime
+  if now == lastMs.contents {
+    counter := counter.contents + 1
+  } else {
+    lastMs := now
+    counter := 0
+  }
+  let ms = now->Float.toString
+  let counterStr = counter.contents->Int.toString->String.padStart(6, "0")
   let uuid = Uuid.v4()
-  `${timestamp}-${uuid}`
+  `${ms}-${counterStr}-${uuid}`
 }
 
 let generatePositionForBatch = (basePosition, index) => {

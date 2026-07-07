@@ -695,3 +695,52 @@ describe("Runtime.indexKeepsFullProjection", () => {
     expect(Runtime.indexKeepsFullProjection("tag_productId"))->toBe(false)
   })
 })
+
+describe("Runtime.generatePosition — monotonic HLC positions", () => {
+  testSync("a rapid sequence of positions is strictly increasing (lexical == commit order)", () => {
+    // Most of these land in the same millisecond (counter increments); the loop
+    // also crosses ms ticks (counter resets, ms prefix dominates). Either way the
+    // sequence must be strictly increasing under byte-wise (DynamoDB) string order.
+    let positions = Array.fromInitializer(~length=50, _ => Runtime.generatePosition())
+    let strictlyIncreasing = ref(true)
+    for i in 1 to Array.length(positions) - 1 {
+      let prev = positions->Array.getUnsafe(i - 1)
+      let curr = positions->Array.getUnsafe(i)
+      if !(prev < curr) {
+        strictlyIncreasing := false
+      }
+    }
+    expect(strictlyIncreasing.contents)->toBe(true)
+  })
+
+  testSync("format carries a 6-digit counter segment between ms and uuid", () => {
+    // `<ms>-<6-digit counter>-<uuid>`. Splitting on '-' yields [ms, counter, …uuid].
+    let segments = Runtime.generatePosition()->String.split("-")
+    expect(segments->Array.length >= 3)->toBe(true)
+    let counterSeg = segments->Array.getUnsafe(1)
+    expect(counterSeg->String.length)->toBe(6)
+  })
+
+  testSync("generatePositionForBatch preserves order for same base, ascending index", () => {
+    let base = Runtime.generatePosition()
+    let p0 = Runtime.generatePositionForBatch(base, 0)
+    let p1 = Runtime.generatePositionForBatch(base, 1)
+    let p2 = Runtime.generatePositionForBatch(base, 2)
+    // index 0 is the base itself; later batch items sort strictly after it, in order.
+    expect(p0)->toBe(base)
+    expect(base < p1)->toBe(true)
+    expect(p1 < p2)->toBe(true)
+  })
+
+  testSync("old <ms>-<uuid> positions still sort by timestamp against new-format ones", () => {
+    // Backwards compatibility: the ms prefix keeps the same 13-digit width, so an
+    // older position with a smaller ms sorts before a newer-format one regardless of
+    // the counter segment. Sorting an unsorted mix must recover timestamp order.
+    let older = "1700000000000-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" // old <ms>-<uuid>
+    let newer = "1700000000001-000000-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" // new <ms>-<ctr>-<uuid>
+    let cmp = (a, b) => a < b ? -1.0 : a > b ? 1.0 : 0.0
+    let sorted = [newer, older]->Array.toSorted(cmp)
+    expect(sorted->Array.getUnsafe(0))->toBe(older)
+    expect(sorted->Array.getUnsafe(1))->toBe(newer)
+  })
+})

@@ -18,7 +18,7 @@ Order = correctness → verification harness → durable cost wins → robustnes
 | 5 | Drop vacuous query-clause type combos | Issue 14 | Cleanup | **done** | — (Phase 5 below) |
 | 5 | Opt-in strong reads | Perf/cost lever #3 | Cost | **yes** | — (detailed below) |
 | 6 | Hot-fence contention (composite-partition per-member fencing) | Issue 10 | Throughput | **done 2026-07-07 (`c2a123195`); backward-tolerant, no wipe; passive live re-check on next deploy** | [dcb-hot-tag-fence-contention](done/dcb-hot-tag-fence-contention.md) |
-| 6 | Monotonic positions | Issue 7 | Cleanup | no | [dcb-monotonic-position-generation](Backlog/dcb-monotonic-position-generation.md) |
+| 6 | Monotonic positions | Issue 7 | Cleanup | **done 2026-07-08** | [dcb-monotonic-position-generation](done/dcb-monotonic-position-generation.md) |
 | 7 | Cross-partition secondary-tag reads | Issue 13 | Capability | **done (live on alpha — ppx alpha.51; scope threading verified `4d8327fad`/`f0a78392f`)** | [dcb-phase7-cross-partition-reads](done/dcb-phase7-cross-partition-reads.md) |
 
 ---
@@ -164,7 +164,7 @@ Shipped: eventual-first / strong-on-retry decision reads (core), a provider-neut
 
 Already planned, run on evidence:
 - [dcb-hot-tag-fence-contention](done/dcb-hot-tag-fence-contention.md) — **root cause corrected 2026-07-07**. Profiling evidence: a downstream deploy-time sync workload (`platform-inspector` `SyncResource`/…) bursts per-entity appends that share the same low-cardinality prefix → `retries exhausted: TransactionConflict` at the command bus (observed live). The trace pins the hot fences to **composite-partition (`@compositePartitionTag`) per-member fencing** — each member of the composite key gets its own fence, so the low-cardinality prefix members go hot — **not** the §2/§3 "loose scope tag" / `extraEventTags` mechanism (long removed). Fix **done 2026-07-07** (`c2a123195`, plan moved to `done/`): a **single composite fence gated on `partitionTag = Composite`** (code-only, no PPX/republish) in `DcbEventLogStorage_DynamoDb_Runtime.res`, proven by the integration suite (13/13 vs a real DynamoDB engine — reproduces the regression) + AWS unit suite (200). No table/GSI change and backward-tolerant, so **no alpha wipe is required**; the only follow-up is passive live confirmation (re-observe the `platform-inspector` deploy-sync burst on the next alpha release). See the plan's "Root-cause correction (2026-07-07)" section; §1/§2/§3 are retained but superseded for this workload.
-- [dcb-monotonic-position-generation](Backlog/dcb-monotonic-position-generation.md) — half-day cleanup, land any time someone is in `Runtime.res`.
+- [dcb-monotonic-position-generation](done/dcb-monotonic-position-generation.md) — **done 2026-07-08**. HLC generator (`<ms>-<6-digit counter>-<uuid>`), strictly monotonic per warm container, backwards-compatible (no wipe). AWS unit suite 204, DCB integration 14 green.
 
 ## Phase 7 — Cross-partition secondary-tag reads (capability) — **DONE / LIVE ON ALPHA**
 

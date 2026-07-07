@@ -51,7 +51,7 @@ The condition is enforced by **per-tag-value fence sentinels** in the same table
 **Caveats and footguns:**
 
 - ✓ **`appendUnconditional` no longer bypasses the fence system** (resolved 2026-05-10, [`docs/plans/done/dcb-append-unconditional-fence-bypass.md`](../plans/done/dcb-append-unconditional-fence-bypass.md)). The path now uses `TransactWriteItems` with one unconditional fence bump per event tag, so non-DCB writers (imports, seeding, replay) still keep DCB readers in sync. Trade-off: 2× WCU per item (same as the conditional path) and the same 100-item per-call cap.
-- ⚠ **Same-millisecond positions tie-break by UUID.** `${ms}-${uuidv4}` ([L6-10](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L6-L10)). Two writers at the same ms get arbitrary lexical order. This *no longer* causes correctness bugs (the fence is the consistency primitive, not position), but it does cause occasional spurious or missed conflict detections in `lastPosition <= :after` comparisons under heavy concurrency. Backlog: [`docs/plans/Backlog/dcb-monotonic-position-generation.md`](../plans/Backlog/dcb-monotonic-position-generation.md).
+- ✓ **Same-millisecond positions tie-break by UUID.** *(Resolved 2026-07-08.)* Was `${ms}-${uuidv4}`; now a Hybrid-Logical-Clock `${ms}-${6-digit counter}-${uuidv4}` ([L6-30](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L6-L30)) — strictly monotonic per call within a warm container. Never a correctness bug (the fence is the consistency primitive, not position); this removes the residual reader/replay-ordering smell. See issue #5 below.
 - ⚠ **A query-only fence touch raises false positives for unrelated readers.** If a writer queries `productId=X` to check existence but writes events tagged only with `customerId=Y`, the `productId=X` fence is still bumped (the conditional update commits). Future readers of `productId=X` see the bump and retry once — correct, just wasted work. This is inherent to fence-based OCC, not a bug.
 
 ### Performance assessment
@@ -217,11 +217,11 @@ Resolved by [`docs/plans/done/dcb-strong-consistency-single-tag-reads.md`](../pl
 
 **Resolution:** `appendConditional` now rejects tagless conditions up front ([L637-640](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L637-L640)) — there is no DynamoDB primitive that fences event-type-only invariants without a global lock. Scans still happen on the *read* path for tagless query items (see [`scanWithFilterStream`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L827-L897)) but never as a consistency primitive.
 
-### 5. Position ordering breaks ties by UUID [PARTIAL]
+### 5. Position ordering breaks ties by UUID [RESOLVED 2026-07-08]
 
-`generatePosition = ${ms}-${uuidv4}` ([L6-10](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L6-L10)). Same-millisecond writers get arbitrary lexical ordering. Combined with the non-atomic write, "events after `headPosition`" was not a well-defined set across concurrent writers.
+`generatePosition = ${ms}-${uuidv4}` (old format). Same-millisecond writers got arbitrary lexical ordering. Combined with the non-atomic write, "events after `headPosition`" was not a well-defined set across concurrent writers.
 
-**Resolution:** No longer corruption-causing — the fence is the consistency primitive, not position. Same-millisecond UUID tie-breaks can still cause occasional spurious or missed conflict detections in `lastPosition <= :after` comparisons under heavy concurrency. Backlog plan: [`docs/plans/Backlog/dcb-monotonic-position-generation.md`](../plans/Backlog/dcb-monotonic-position-generation.md).
+**Resolution:** Was never corruption-causing — the fence is the consistency primitive, not position. Fixed the residual cosmetic smell by moving to a Hybrid-Logical-Clock position generator: `${ms}-${6-digit counter}-${uuidv4}` ([L6-30](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L6-L30)). Module-level refs make positions strictly monotonic per call within a warm Lambda container (same-ms calls increment the counter; a forward tick resets it); cross-container same-ms writers still tie-break by UUID, but that no longer perturbs same-container reader/replay ordering. The ms prefix keeps its 13-digit width so old `${ms}-${uuid}` positions still sort by timestamp. Backwards-compatible, no migration. Plan: [`docs/plans/done/dcb-monotonic-position-generation.md`](../plans/done/dcb-monotonic-position-generation.md).
 
 ---
 
@@ -377,7 +377,7 @@ Ordered by recommended execution order. Rationale and cost reasoning follow.
 | 1 | [`dcb-dynamodb-atomic-append-integration-test`](../plans/done/dcb-dynamodb-atomic-append-integration-test.md) | **Verification — P0** | Medium (~3–5 d initial + ongoing CI maint) | Zero prod; marginal CI minutes. | Current correctness story rests on unit tests of `TransactWriteItems` *payload shape*, not real DynamoDB *behaviour*. Also the harness #2 needs. |
 | 2a | [`dcb-hot-tag-fence-contention`](../plans/done/dcb-hot-tag-fence-contention.md) §2 (selective bumping) | **Performance — P1 cost-saver** | Small–medium (PPX annotation + filter logic, ~3–5 d) | **Negative** — strips fence writes for `LookupOnly` tags. Per-command WCU drops proportional to LookupOnly tag count. | The cheapest sub-piece of #2. Ships independently of profiling. Pays back on every conditional append. |
 | 2b | [`dcb-hot-tag-fence-contention`](../plans/done/dcb-hot-tag-fence-contention.md) §1 (sharding) | **Performance ceiling — P1, profile-gated** | Large (~2–4 w incl. profiling, PPX, sharding, migration) | +N× WCU on hot fences (4-shard = 4× per-fence cost) — but unlocks N× throughput ceiling. Net cost-per-RPS roughly flat. | Structural throughput limit. Gate on profiling — if no fence is actually hot, defer indefinitely. |
-| 3 | [`dcb-monotonic-position-generation`](../plans/Backlog/dcb-monotonic-position-generation.md) | **Cleanup — P2** | Tiny (~½ d) | Zero. | No longer correctness-critical. Cheapest possible win — opportunistic, can land any time. |
+| 3 | [`dcb-monotonic-position-generation`](../plans/done/dcb-monotonic-position-generation.md) | **Cleanup — P2 — DONE 2026-07-08** | Tiny (~½ d) | Zero. | HLC generator shipped; strictly monotonic per warm container, backwards-compatible. |
 | 4 | [`dynamodb-batchwriteitem-25-chunking`](../plans/Backlog/dynamodb-batchwriteitem-25-chunking.md) | **Operational sharp edge — P2** | Small (~2–3 d) | Zero per-item; eliminates failed-call retry overhead on > 25 batches. | The DCB log no longer uses `BatchWriteItem` (closed 2026-05-10). Plan narrows to `QueryDb`'s read-model batch persistence. |
 | 5 | [`dcb-decision-model-projection-cache`](../plans/dcb-decision-model-projection-cache.md) | **Optimization — P3 cost-saver** | Medium–large (~1–2 w) | **Negative** — cache hit replaces O(events) RCU with ~1 RCU + delta. Scales with hit rate × event volume per query. | Pure optimization with no ceiling lift, but the *only* runtime-cost-positive item large enough to pay back its dev cost on hot warm-entity workloads. |
 
@@ -406,7 +406,7 @@ The "by priority" table above lists the canonical execution order driven by clas
 
 ### What can run in parallel
 
-- #4 (monotonic positions) is independent of everything else — can land at any point.
+- #4 (monotonic positions) — **DONE 2026-07-08** (was independent of everything else).
 - #3a (selective bumping) is independent of the storage adapter shape — only PPX + the `extraEventTags` filter. Can be developed concurrently with anything below the API line.
 - #6 (projection cache) is independent of the storage adapter — can be developed concurrently with anything below the API line.
 - #1 and #2 should be sequential (close the hole, then verify the whole atomic-append story).
