@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.180 (2026-07-07)
+
+### Bug Fixes
+
+* **reventless-aws:** type-level dual-auth + derived query fields for system callers ([91e01f8](https://github.com/ReventlessDev/reventless-core/commit/91e01f82f43f64f07e7eb0a4aaa8cf5dc77a916e))
+
+
 # 3.0.0-alpha.179 (2026-07-07)
 
 ### Bug Fixes

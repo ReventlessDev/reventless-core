@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.88 (2026-07-07)
+
+**Note:** Version bump only for package @reventlessdev/reventless-gwt
+
+
+
+
+
 # 1.0.0-alpha.87 (2026-07-07)
 
 * feat(vscode-protocol)!: typed kind vocabularies (protocol v11, PascalCase wire) ([c087e76](https://github.com/ReventlessDev/reventless-core/commit/c087e76b8e2ed02ba98e7b0ce5c63eed35b39878))
