@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.181 (2026-07-07)
+
+### Bug Fixes
+
+* **reventless-aws:** thread inferred DCB scope into the deployed command handler ([4d8327f](https://github.com/ReventlessDev/reventless-core/commit/4d8327fad8659a1cde8c36098c72392737437af1))
+
+
 # 3.0.0-alpha.180 (2026-07-07)
 
 ### Bug Fixes
