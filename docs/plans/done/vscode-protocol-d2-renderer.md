@@ -1,6 +1,6 @@
 # vscode-protocol: shared D2 renderer for the protocol graph (`DomainGraphD2`)
 
-**Status:** Implemented 2026-07-07, committed (`672f1a14f`, overrides `9983464a5`) — package build + 174 tests green, `check:d2-styles` in sync; awaiting alpha push → `alpha.17` publish, then step 6 (extension repo switches to the published import)
+**Status:** Done 2026-07-07 — package side committed (`672f1a14f`, overrides `9983464a5`); step 6 done in reventless-tools (`57d63f2`, consumes the cluster via the link overlay: local copies deleted, `DomainGraphD2.gen` imported from the package). The `alpha.17` publish rides the next core alpha push; tools release-mode install remains link-only until the npmjs migration (pre-existing, not D2-specific).
 **Owner:** Martin
 **Follows:** GraphOps move into this package (focus/neighbourhood scoping, `eab1bfd2d`) — same argument, same playbook.
 
