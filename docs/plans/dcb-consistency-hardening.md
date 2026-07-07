@@ -45,6 +45,8 @@ Implemented per [dcb-dynamodb-atomic-append-integration-test](done/dcb-dynamodb-
 
 Tagless-rejection and 100-item-limit round-trips are already covered by the unit suite (`DcbEventLogStorage_DynamoDb_RuntimeTest.res`), so they are not duplicated here.
 
+**Follow-on coverage since Phase 1** (the suite is the harness for every later phase, so it grew with them): the per-type `pos#<eventType>` fence rewrite (`dcb-fence-event-type-granularity`, `a20646f31`), the composite-partition hot-fence fix (Phase 6, `c2a123195`), and — **2026-07-08** — the per-type fence-granularity *live* regressions ([done/dcb-fence-granularity-integration-test](done/dcb-fence-granularity-integration-test.md)): interleaved distinct-type changes on one entity never wedge, and same-type concurrency still serializes. Suite green at **14 cases** against DynamoDB Local.
+
 Gate: Phases 2–3 must add their scenarios to this suite before merge.
 
 ## Phase 2 — Close the `after=None` create-race (Issue 2) — **DONE (2026-06-20)**

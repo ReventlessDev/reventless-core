@@ -389,3 +389,72 @@ describe("DCB DynamoDb integration — composite partition hot-fence fix", () =>
     expect(isConflict(r2))->toBe(true)
   })
 })
+
+// The fence is PER event type (`pos#<eventType>` attributes), not a single scalar
+// `lastPosition` per partition. So two slices consuming DIFFERENT types on the same
+// entity (e.g. price vs name changes on one productId) never contend, and an entity
+// never wedges into a permanent Conflict after one attribute changes. This is the
+// live proof of the per-type granularity fix (dcb-fence-event-type-granularity,
+// `a20646f31`); the unit suite only asserts the built transaction's shape.
+describe("DCB DynamoDb integration — per-type fence granularity", () => {
+  let productTag = tag("productId", "P")
+
+  // Change one attribute of P: read only its own event type on the partition, then
+  // append that type. Each type carries its own `pos#<type>` fence, so distinct
+  // attributes advance independently.
+  let change = async (table, ~eventType) => {
+    let query: Reventless.DcbTag.query = [{tags: [productTag], eventTypes: [eventType]}]
+    let after = await readAfter(table, query)
+    await Runtime.appendConditional(
+      table,
+      [event(eventType, [productTag])],
+      {query, after: ?after},
+      ~partitionTag=simple("productId"),
+    )
+  }
+
+  testAsync("interleaved distinct-type changes on one product all succeed (never wedges)", async () => {
+    let table = await H.freshTable()
+    let _ = await seed(table, event("ProductAdded", [productTag]), ~partitionTag=simple("productId"))
+
+    // Two rounds of interleaved price/name/description changes. Pre-fix, the first
+    // PriceChanged bumped the single partition fence, so the following NameChanged
+    // read a stale head and conflicted PERMANENTLY — the entity wedged after one edit.
+    let results = [
+      await change(table, ~eventType="PriceChanged"),
+      await change(table, ~eventType="NameChanged"),
+      await change(table, ~eventType="DescriptionChanged"),
+      await change(table, ~eventType="PriceChanged"),
+      await change(table, ~eventType="NameChanged"),
+    ]
+    expect(results->Array.every(isOk))->toBe(true)
+  })
+
+  testAsync("two concurrent SAME-type changes still serialize (per-type OCC preserved)", async () => {
+    let table = await H.freshTable()
+    let _ = await seed(table, event("ProductAdded", [productTag]), ~partitionTag=simple("productId"))
+    // Seed one NameChanged so both racers read the same after=Some head.
+    let _ = await change(table, ~eventType="NameChanged")
+
+    let query: Reventless.DcbTag.query = [{tags: [productTag], eventTypes: ["NameChanged"]}]
+    let after = await readAfter(table, query)
+    let rename = () =>
+      Runtime.appendConditional(
+        table,
+        [event("NameChanged", [productTag])],
+        {query, after: ?after},
+        ~partitionTag=simple("productId"),
+      )
+
+    // Per-type granularity must NOT weaken same-type OCC: two concurrent NameChanged
+    // at the same `pos#NameChanged` head → at most one commits, every non-winner
+    // conflicts. (DynamoDB may cancel both with a mutual TransactionConflict; the
+    // slice callback's retry loop makes exactly one win in prod.)
+    let results = await Promise.all([rename(), rename()])
+    let oks = results->Array.filter(isOk)->Array.length
+    let conflicts = results->Array.filter(isConflict)->Array.length
+    expect(oks <= 1)->toBe(true)
+    expect(oks + conflicts)->toBe(2)
+    expect(conflicts >= 1)->toBe(true)
+  })
+})

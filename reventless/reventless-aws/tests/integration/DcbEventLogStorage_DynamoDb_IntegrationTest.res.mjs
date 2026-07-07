@@ -490,6 +490,79 @@ globalThis.describe("DCB DynamoDb integration — composite partition hot-fence 
   });
 });
 
+globalThis.describe("DCB DynamoDb integration — per-type fence granularity", () => {
+  let productTag = {
+    key: "productId",
+    value: "P"
+  };
+  let change = async (table, eventType) => {
+    let query = [{
+        eventTypes: [eventType],
+        tags: [productTag]
+      }];
+    let after = await readAfter(table, query);
+    return await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event(eventType, [productTag])], {
+      query: query,
+      after: after
+    }, {
+      TAG: "Simple",
+      _0: {
+        key: "productId"
+      }
+    }, undefined);
+  };
+  globalThis.test("interleaved distinct-type changes on one product all succeed (never wedges)", async () => {
+    let table = await DcbIntegrationHarness$ReventlessAws.freshTable();
+    await seed(table, event("ProductAdded", [productTag]), {
+      TAG: "Simple",
+      _0: {
+        key: "productId"
+      }
+    });
+    let results = [
+      await change(table, "PriceChanged"),
+      await change(table, "NameChanged"),
+      await change(table, "DescriptionChanged"),
+      await change(table, "PriceChanged"),
+      await change(table, "NameChanged")
+    ];
+    globalThis.expect(results.every(isOk)).toBe(true);
+  });
+  globalThis.test("two concurrent SAME-type changes still serialize (per-type OCC preserved)", async () => {
+    let table = await DcbIntegrationHarness$ReventlessAws.freshTable();
+    await seed(table, event("ProductAdded", [productTag]), {
+      TAG: "Simple",
+      _0: {
+        key: "productId"
+      }
+    });
+    await change(table, "NameChanged");
+    let query = [{
+        eventTypes: ["NameChanged"],
+        tags: [productTag]
+      }];
+    let after = await readAfter(table, query);
+    let rename = () => DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event("NameChanged", [productTag])], {
+      query: query,
+      after: after
+    }, {
+      TAG: "Simple",
+      _0: {
+        key: "productId"
+      }
+    }, undefined);
+    let results = await Promise.all([
+      rename(),
+      rename()
+    ]);
+    let oks = results.filter(isOk).length;
+    let conflicts = results.filter(isConflict).length;
+    globalThis.expect(oks <= 1).toBe(true);
+    globalThis.expect(oks + conflicts | 0).toBe(2);
+    globalThis.expect(conflicts >= 1).toBe(true);
+  });
+});
+
 let H;
 
 let Runtime;
