@@ -2,12 +2,15 @@
 
 **Found:** 2026-07-07, while running the ESM Rung-3 validation on the live
 `online-shop-hybrid` alpha stack (gitSha `8097bc4de`).
-**Status:** **FIXED (uncommitted, 2026-07-07)** — shared `DcbTag.deriveEffectiveScope`
-now the single source of truth for both `Dcb_Builder.res` and
-`DcbCommandTopicEntryPoint.mjs`; regression test in `reventless-spec/tests/DcbTagTest.res`;
-verified on the real catalog specs (`crossPartitionTagKeys=["categoryId"]`). Reaches
-AWS on the next alpha push (republish + layer rebuild + redeploy); live re-check of
-`AddCategory → AddProduct` pending that deploy.
+**Status:** **FIXED + LIVE-VERIFIED (2026-07-07, commit `4d8327fad`).** Shared
+`DcbTag.deriveEffectiveScope` is now the single source of truth for both
+`Dcb_Builder.res` and `DcbCommandTopicEntryPoint.mjs`; regression test in
+`reventless-spec/tests/DcbTagTest.res`; verified on the real catalog specs
+(`crossPartitionTagKeys=["categoryId"]`). Deployed to alpha (`5cca64c7`, includes
+the fix) and re-checked live: `Catalog_AddCategory` → `Catalog_AddProduct` now
+returns `CommandAccepted` on the first attempt (was deterministic
+`CategoryNotFound`) and the product projects into `Catalog_Product` /
+`Catalog_Products`.
 **Severity:** High — every deployed DCB `StateChangeSlice` whose decision guard
 validates a **cross-partition `@ref` reference** (a reference to another entity's
 lifecycle) is broken on AWS: the referenced entity always reads as absent, so the
