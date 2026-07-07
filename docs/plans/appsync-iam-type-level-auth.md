@@ -1,6 +1,6 @@
 # AppSync IAM dual-auth: type-level directives + derived query fields
 
-**Status:** In progress — 2026-07-07
+**Status:** Implemented 2026-07-07 (`91e01f82f`) — all three fix items + adapter tests landed; open: live SigV4 verification after the next alpha push/redeploy (acceptance item 4)
 **Owner:** Martin
 **Follows:** `done/appsync-iam-auth-for-deploy-callers.md` (field-level mechanism, `94037f17a`) and the `@@reventless.systemCallable` slice opt-in (`c5ed53730`).
 

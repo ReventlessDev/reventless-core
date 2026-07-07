@@ -1,6 +1,6 @@
 # vscode-protocol: shared D2 renderer for the protocol graph (`DomainGraphD2`)
 
-**Status:** Implemented 2026-07-07 (uncommitted) — package build + 174 tests green, `check:d2-styles` in sync; needs commit + `alpha.17` publish for downstream consumers
+**Status:** Implemented 2026-07-07, committed (`672f1a14f`, overrides `9983464a5`) — package build + 174 tests green, `check:d2-styles` in sync; awaiting alpha push → `alpha.17` publish, then step 6 (extension repo switches to the published import)
 **Owner:** Martin
 **Follows:** GraphOps move into this package (focus/neighbourhood scoping, `eab1bfd2d`) — same argument, same playbook.
 
