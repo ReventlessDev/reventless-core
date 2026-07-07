@@ -33,3 +33,9 @@ export type {
   readCandidate as GraphOps_readCandidate,
   subgraph as GraphOps_subgraph,
 } from './GraphOps.gen';
+export type {legendEntry as D2Legend_legendEntry} from './D2Legend.gen';
+export type {
+  gEdge as DomainGraphD2_gEdge,
+  gNode as DomainGraphD2_gNode,
+  subgraph as DomainGraphD2_subgraph,
+} from './DomainGraphD2.gen';
