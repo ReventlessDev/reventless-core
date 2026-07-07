@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.57 (2026-07-07)
+
+### Bug Fixes
+
+* **reventless-aws:** fence composite-partition DCB slices on one composite key ([e5f2d95](https://github.com/ReventlessDev/reventless-core/commit/e5f2d95652d795e4dea60e28548f96100a997e78))
+
+
 # 1.0.0-alpha.56 (2026-07-06)
 
 **Note:** Version bump only for package doc
