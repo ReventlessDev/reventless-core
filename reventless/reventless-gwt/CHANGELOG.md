@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.87 (2026-07-07)
+
+* feat(vscode-protocol)!: typed kind vocabularies (protocol v11, PascalCase wire) ([c087e76](https://github.com/ReventlessDev/reventless-core/commit/c087e76b8e2ed02ba98e7b0ce5c63eed35b39878))
+
+### BREAKING CHANGES
+
+* every kind vocabulary is uniformly PascalCase on the wire
+(handles→Handles, file→File, …) and protocolVersion bumps to 11. The event
+envelope is unchanged; unknown kinds degrade gracefully. Consumers keying on
+kind strings must respell. The new minCompatibleProtocol/isCompatible exports
+pin the advisory (warn, don't refuse) compat policy.
+
+- GraphOps predicates/baseKind/isFqKind become exhaustive matches; read edges typed
+- gwt emitters construct variants (DomainGraph, FormatterVsCode, DomainDeadCode)
+- golden fixture regenerated; one appended Other* unknown-kind sample per typed field
+- fixes two sample values that never occurred on the wire (orphanEvent, notEqual)
+- BridgeDriftTest pins both hand-written genType bridges against src/*.gen.ts
+  (surfaced missing position/failLocation re-exports — added)
+- plan → docs/plans/done/vscode-protocol-hardening.md
+
+
+
 # 1.0.0-alpha.86 (2026-07-06)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt
