@@ -163,7 +163,7 @@ function emitDiscoveryItems(files) {
     let e = {
       event: "item",
       id: path,
-      kind: "file",
+      kind: "File",
       label: e_3,
       description: e_4,
       uri: e_5,
@@ -193,7 +193,7 @@ function emitDiscoveryItems(files) {
           event: "item",
           id: id,
           parent: e_1,
-          kind: "suite",
+          kind: "Suite",
           label: label,
           uri: e_5,
           range: e_6
@@ -216,7 +216,7 @@ function emitDiscoveryItems(files) {
         event: "item",
         id: testId,
         parent: e_1,
-        kind: "test",
+        kind: "Test",
         label: e_3,
         uri: e_5,
         range: e_6

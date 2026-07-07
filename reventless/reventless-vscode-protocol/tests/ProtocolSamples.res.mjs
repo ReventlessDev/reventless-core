@@ -32,7 +32,7 @@ let cases = [
     {
       event: "item",
       id: "f",
-      kind: "file",
+      kind: "File",
       label: "Foo"
     }
   ],
@@ -42,7 +42,7 @@ let cases = [
       event: "item",
       id: "f",
       parent: "p",
-      kind: "test",
+      kind: "Test",
       label: "Foo",
       description: "a test",
       uri: "file:///x.res",
@@ -172,7 +172,7 @@ let cases = [
       durationMs: 2.0,
       messages: [{
           message: "not equal",
-          kind: "notEqual",
+          kind: "EventsMismatch",
           expected: "1",
           actual: "2",
           location: {
@@ -205,7 +205,7 @@ let cases = [
     {
       event: "deadCode",
       findings: [{
-          kind: "orphanEvent",
+          kind: "OrphanEvent",
           plugin: "Catalog",
           component: "Product",
           detail: "unused"
@@ -225,7 +225,7 @@ let cases = [
       edges: [{
           from: "a",
           to: "b",
-          kind: "emits"
+          kind: "Emits"
         }]
     }
   ],
@@ -237,7 +237,7 @@ let cases = [
       edges: [{
           from: "a",
           to: "b",
-          kind: "translatesOut",
+          kind: "TranslatesOut",
           label: "Payload"
         }]
     }
@@ -311,9 +311,70 @@ let cases = [
       edges: [{
           from: "a",
           to: "b",
-          kind: "triggers",
+          kind: "Triggers",
           via: ["OrderPlaced"],
           implicit: true
+        }]
+    }
+  ],
+  [
+    "item with unknown kind",
+    {
+      event: "item",
+      id: "w",
+      kind: "workspace",
+      label: "W"
+    }
+  ],
+  [
+    "components with unknown kind",
+    {
+      event: "components",
+      components: [{
+          kind: "FutureKind",
+          name: "F",
+          dir: "/d"
+        }]
+    }
+  ],
+  [
+    "deadCode with unknown kind",
+    {
+      event: "deadCode",
+      findings: [{
+          kind: "OrphanCommand",
+          plugin: "P",
+          component: "C",
+          detail: "d"
+        }]
+    }
+  ],
+  [
+    "testFail with unknown assertion kind",
+    {
+      event: "testFail",
+      id: "t1",
+      durationMs: 1.0,
+      messages: [{
+          message: "boom",
+          kind: "FutureMismatch"
+        }]
+    }
+  ],
+  [
+    "graph with unknown node + edge kinds",
+    {
+      event: "graph",
+      nodes: [{
+          id: "n",
+          kind: "FutureNode",
+          label: "N",
+          plugin: "P"
+        }],
+      edges: [{
+          from: "a",
+          to: "b",
+          kind: "Annotates"
         }]
     }
   ]

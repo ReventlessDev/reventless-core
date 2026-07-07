@@ -28,15 +28,25 @@ describe("Protocol round-trip (toJsonLine -> parseStreamEvent)", () => {
   testSync("unknown extra keys on a known event are dropped (non-strict decode)", () =>
     expect(
       P.parseStreamEvent(
-        `{"event":"graph","nodes":[],"edges":[{"from":"a","to":"b","kind":"triggers","via":["X"],"implicit":true,"futureEdgeKey":0.5}],"futureTopKey":true}`,
+        `{"event":"graph","nodes":[],"edges":[{"from":"a","to":"b","kind":"Triggers","via":["X"],"implicit":true,"futureEdgeKey":0.5}],"futureTopKey":true}`,
       ),
     )->toEqual(
       Some(
         P.Graph({
           nodes: [],
-          edges: [{from: "a", to_: "b", kind: "triggers", via: ["X"], implicit: true}],
+          edges: [{from: "a", to_: "b", kind: Triggers, via: ["X"], implicit: true}],
         }),
       ),
     )
+  )
+
+  // The typed-kind skew guarantee: a kind string this package doesn't know decodes
+  // into the `Other*` catch-all (and re-serializes to the same string) instead of
+  // failing the event — pinned per typed field via the ProtocolSamples `Other*` cases
+  // above; this exercises the DECODE side from raw wire bytes.
+  testSync("an unknown kind decodes into the Other* catch-all", () =>
+    expect(
+      P.parseStreamEvent(`{"event":"item","id":"i","kind":"HoloDeck","label":"L"}`),
+    )->toEqual(Some(P.Item({id: "i", kind: OtherItemKind("HoloDeck"), label: "L"})))
   )
 })

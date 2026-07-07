@@ -6,27 +6,90 @@
 
 @genType type graphNode = Protocol.graphNode
 @genType type graphEdge = Protocol.graphEdge
+@genType type componentKind = Protocol.componentKind
+@genType type edgeKind = Protocol.edgeKind
+
+// The kind predicates are EXHAUSTIVE matches (no `_` wildcard) on purpose: adding a
+// kind to the protocol vocabulary must produce a compile error here, forcing a
+// decision instead of silently falling through.
 
 // A write-side box (Aggregate / StateChangeSlice) anchors a vertical slice.
-let isWriteSide = (kind: string): bool =>
+let isWriteSide = (kind: componentKind): bool =>
   switch kind {
-  | "Aggregate" | "StateChangeSlice" => true
-  | _ => false
+  | Aggregate | StateChangeSlice => true
+  | StateViewSlice
+  | StateViewSliceStream
+  | ReadModel
+  | ReadModelStream
+  | AutomationSlice
+  | InboundTranslationSlice
+  | OutboundTranslationSlice
+  | Extension
+  | ExtensionPoint
+  | Task
+  | Command
+  | Event
+  | ExternalSystem
+  | OtherKind(_) => false
   }
 
 // Command/event leaves are the nodes a write-side box pulls in.
-let isLeaf = (kind: string): bool => kind === "Command" || kind === "Event"
+let isLeaf = (kind: componentKind): bool =>
+  switch kind {
+  | Command | Event => true
+  | Aggregate
+  | StateChangeSlice
+  | StateViewSlice
+  | StateViewSliceStream
+  | ReadModel
+  | ReadModelStream
+  | AutomationSlice
+  | InboundTranslationSlice
+  | OutboundTranslationSlice
+  | Extension
+  | ExtensionPoint
+  | Task
+  | ExternalSystem
+  | OtherKind(_) => false
+  }
 
 // Read-side boxes (incl. their `Stream` variants) each anchor a read slice.
-let isReadSide = (kind: string): bool =>
+let isReadSide = (kind: componentKind): bool =>
   switch kind {
-  | "StateViewSlice" | "StateViewSliceStream" | "ReadModel" | "ReadModelStream" => true
-  | _ => false
+  | StateViewSlice | StateViewSliceStream | ReadModel | ReadModelStream => true
+  | Aggregate
+  | StateChangeSlice
+  | AutomationSlice
+  | InboundTranslationSlice
+  | OutboundTranslationSlice
+  | Extension
+  | ExtensionPoint
+  | Task
+  | Command
+  | Event
+  | ExternalSystem
+  | OtherKind(_) => false
   }
 
 // Only ownership edges (handles / emits) pull a leaf into a box — a DCB `reads` edge
 // connects an event to a *different* consuming slice and must not move it.
-let isOwnershipEdge = (kind: string): bool => kind === "handles" || kind === "emits"
+let isOwnershipEdge = (kind: edgeKind): bool =>
+  switch kind {
+  | Handles | Emits => true
+  | Projects
+  | Triggers
+  | Publishes
+  | Consumes
+  | DelegatesTo
+  | RoutesTo
+  | Feeds
+  | Reads
+  | ReadsCrossPartition
+  | TranslatesIn
+  | TranslatesOut
+  | Extends
+  | OtherEdgeKind(_) => false
+  }
 
 let addUnique = (m: Dict.t<array<string>>, k: string, v: string): unit =>
   switch m->Dict.get(k) {
@@ -168,7 +231,7 @@ let readEdgesToAdd = (
       out->Array.push({
         from: c.eventId,
         to_: c.sliceId,
-        kind: c.crossPartition ? "readsCrossPartition" : "reads",
+        kind: c.crossPartition ? ReadsCrossPartition : Reads,
       })
     }
   })
@@ -245,7 +308,7 @@ let focusView = (nodes: array<graphNode>, edges: array<graphEdge>, focusId: stri
       push(out, e.from, e.to_)
       push(inc, e.to_, e.from)
     })
-    let kindOf = id => byId->Dict.get(id)->Option.map(n => n.kind)
+    let kindOf = (id): option<componentKind> => byId->Dict.get(id)->Option.map(n => n.kind)
     let keep = Set.make()
     keep->Set.add(focusId)
 
@@ -274,10 +337,10 @@ let focusView = (nodes: array<graphNode>, edges: array<graphEdge>, focusId: stri
       }
     }
 
-    let stopAtEp = id => kindOf(id) == Some("ExtensionPoint")
+    let stopAtEp = id => kindOf(id) == Some(ExtensionPoint)
     switch focus.kind {
-    | "ExtensionPoint" =>
-      walk([out], id => kindOf(id) == Some("Extension"))
+    | ExtensionPoint =>
+      walk([out], id => kindOf(id) == Some(Extension))
       walk([inc], stopAtEp)
     | _ =>
       walk([out], stopAtEp) // descendants
@@ -293,9 +356,30 @@ let focusView = (nodes: array<graphNode>, edges: array<graphEdge>, focusId: stri
 
 // A component may surface in the graph under a `Stream` variant kind (a
 // `StateViewSliceStream` component becomes a `StateViewSlice` node, etc.), so kind
-// comparisons between an inventory and the graph ignore the `Stream` suffix.
+// comparisons between an inventory and the graph ignore the `Stream` suffix. The
+// known Stream kinds map exhaustively; an unknown kind keeps the suffix-strip
+// behavior (a future `FooStream` still compares equal to its `Foo`).
 @genType
-let baseKind = (k: string): string => k->String.replaceRegExp(%re("/Stream$/"), "")
+let baseKind = (k: componentKind): componentKind =>
+  switch k {
+  | StateViewSliceStream => StateViewSlice
+  | ReadModelStream => ReadModel
+  | OtherKind(s) =>
+    Protocol.componentKindOfString(s->String.replaceRegExp(%re("/Stream$/"), ""))
+  | Aggregate
+  | StateChangeSlice
+  | StateViewSlice
+  | ReadModel
+  | AutomationSlice
+  | InboundTranslationSlice
+  | OutboundTranslationSlice
+  | Extension
+  | ExtensionPoint
+  | Task
+  | Command
+  | Event
+  | ExternalSystem => k
+  }
 
 // Is `name` one of the dotted segments of `label`? EP/Extension graph labels are
 // fully-qualified (e.g. "Catalog.Products"); an inventory carries a single segment.
@@ -304,7 +388,24 @@ let isDottedSegment = (label: string, name: string): bool =>
   ("." ++ label ++ ".")->String.includes("." ++ name ++ ".")
 
 // EP/Extension nodes carry a dotted (fully-qualified) label; other kinds a bare name.
-let isFqKind = (kind: string): bool => kind === "ExtensionPoint" || kind === "Extension"
+let isFqKind = (kind: componentKind): bool =>
+  switch kind {
+  | ExtensionPoint | Extension => true
+  | Aggregate
+  | StateChangeSlice
+  | StateViewSlice
+  | StateViewSliceStream
+  | ReadModel
+  | ReadModelStream
+  | AutomationSlice
+  | InboundTranslationSlice
+  | OutboundTranslationSlice
+  | Task
+  | Command
+  | Event
+  | ExternalSystem
+  | OtherKind(_) => false
+  }
 
 // A command/event leaf adjacent to a component node — the host enriches these with
 // field rows / consumers / orphan flags after resolving them.
@@ -333,10 +434,10 @@ let cmdEvtForNode = (
         : None
     switch other {
     | Some(o) =>
-      if o.kind === "Command" {
-        cmds->Dict.set(o.id, o.label)
-      } else if o.kind === "Event" {
-        evts->Dict.set(o.id, o.label)
+      switch o.kind {
+      | Command => cmds->Dict.set(o.id, o.label)
+      | Event => evts->Dict.set(o.id, o.label)
+      | _ => ()
       }
     | None => ()
     }
@@ -357,7 +458,7 @@ let cmdEvtForNode = (
 @genType
 let graphNodeForComponent = (
   nodes: array<graphNode>,
-  kind: string,
+  kind: componentKind,
   name: string,
 ): option<graphNode> =>
   isFqKind(kind)
@@ -371,7 +472,7 @@ let graphNodeForComponent = (
 @genType
 let resolveComponentNodeId = (
   nodes: array<graphNode>,
-  kind: string,
+  kind: componentKind,
   name: string,
   fq: option<string>,
 ): option<string> => {

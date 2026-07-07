@@ -5,6 +5,69 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
 S.enableJson();
 
+let componentKindSchema = S.union([
+  S.literal("Aggregate"),
+  S.literal("StateChangeSlice"),
+  S.literal("StateViewSlice"),
+  S.literal("StateViewSliceStream"),
+  S.literal("ReadModel"),
+  S.literal("ReadModelStream"),
+  S.literal("AutomationSlice"),
+  S.literal("InboundTranslationSlice"),
+  S.literal("OutboundTranslationSlice"),
+  S.literal("Extension"),
+  S.literal("ExtensionPoint"),
+  S.literal("Task"),
+  S.literal("Command"),
+  S.literal("Event"),
+  S.literal("ExternalSystem"),
+  S.schema(s => (s.m(S.string)))
+]);
+
+let edgeKindSchema = S.union([
+  S.literal("Handles"),
+  S.literal("Emits"),
+  S.literal("Projects"),
+  S.literal("Triggers"),
+  S.literal("Publishes"),
+  S.literal("Consumes"),
+  S.literal("DelegatesTo"),
+  S.literal("RoutesTo"),
+  S.literal("Feeds"),
+  S.literal("Reads"),
+  S.literal("ReadsCrossPartition"),
+  S.literal("TranslatesIn"),
+  S.literal("TranslatesOut"),
+  S.literal("Extends"),
+  S.schema(s => (s.m(S.string)))
+]);
+
+let itemKindSchema = S.union([
+  S.literal("File"),
+  S.literal("Suite"),
+  S.literal("Test"),
+  S.schema(s => (s.m(S.string)))
+]);
+
+let assertionKindSchema = S.union([
+  S.literal("EventsMismatch"),
+  S.literal("ErrorMismatch"),
+  S.literal("StateMismatch"),
+  S.literal("NoEventExpected"),
+  S.literal("TodoMismatch"),
+  S.literal("AppendConditionMismatch"),
+  S.literal("TranslateError"),
+  S.literal("QueryRowsMismatch"),
+  S.literal("PublishedActionsMismatch"),
+  S.literal("Throw"),
+  S.schema(s => (s.m(S.string)))
+]);
+
+let deadCodeKindSchema = S.union([
+  S.literal("OrphanEvent"),
+  S.schema(s => (s.m(S.string)))
+]);
+
 let positionSchema = S.schema(s => ({
   line: s.m(S.int),
   character: s.m(S.int)
@@ -22,7 +85,7 @@ let failLocationSchema = S.schema(s => ({
 
 let failMessageSchema = S.schema(s => ({
   message: s.m(S.string),
-  kind: s.m(S.option(S.string)),
+  kind: s.m(S.option(assertionKindSchema)),
   expected: s.m(S.option(S.string)),
   actual: s.m(S.option(S.string)),
   location: s.m(S.option(failLocationSchema))
@@ -35,19 +98,19 @@ let packageInfoSchema = S.schema(s => ({
 }));
 
 let componentMetaSchema = S.schema(s => ({
-  kind: s.m(S.string),
+  kind: s.m(componentKindSchema),
   name: s.m(S.string)
 }));
 
 let componentRefSchema = S.schema(s => ({
-  kind: s.m(S.string),
+  kind: s.m(componentKindSchema),
   name: s.m(S.string),
   dir: s.m(S.string),
   files: s.m(S.option(S.array(S.string)))
 }));
 
 let deadCodeFindingSchema = S.schema(s => ({
-  kind: s.m(S.string),
+  kind: s.m(deadCodeKindSchema),
   plugin: s.m(S.string),
   component: s.m(S.string),
   detail: s.m(S.string)
@@ -55,7 +118,7 @@ let deadCodeFindingSchema = S.schema(s => ({
 
 let graphNodeSchema = S.schema(s => ({
   id: s.m(S.string),
-  kind: s.m(S.string),
+  kind: s.m(componentKindSchema),
   label: s.m(S.string),
   plugin: s.m(S.string)
 }));
@@ -63,7 +126,7 @@ let graphNodeSchema = S.schema(s => ({
 let graphEdgeSchema = S.schema(s => ({
   from: s.m(S.string),
   to: s.m(S.string),
-  kind: s.m(S.string),
+  kind: s.m(edgeKindSchema),
   label: s.m(S.option(S.string)),
   via: s.m(S.option(S.array(S.string))),
   implicit: s.m(S.option(S.bool))
@@ -82,7 +145,7 @@ let streamEventSchema = S.union([
     event: "item",
     id: s.m(S.string),
     parent: s.m(S.option(S.string)),
-    kind: s.m(S.string),
+    kind: s.m(itemKindSchema),
     label: s.m(S.string),
     description: s.m(S.option(S.string)),
     uri: s.m(S.option(S.string)),
@@ -193,6 +256,10 @@ let streamEventSchema = S.union([
   }))
 ]);
 
+function isCompatible(protocol) {
+  return protocol >= 11;
+}
+
 function parseStreamEvent(raw) {
   let v;
   try {
@@ -207,9 +274,16 @@ function toJsonLine(e) {
   return Stdlib_Option.getOr(JSON.stringify(S.reverseConvertOrThrow(e, streamEventSchema)), "");
 }
 
-let protocolVersion = 10;
+let protocolVersion = 11;
+
+let minCompatibleProtocol = 11;
 
 export {
+  componentKindSchema,
+  edgeKindSchema,
+  itemKindSchema,
+  assertionKindSchema,
+  deadCodeKindSchema,
   positionSchema,
   vsRangeSchema,
   failLocationSchema,
@@ -222,6 +296,8 @@ export {
   graphEdgeSchema,
   streamEventSchema,
   protocolVersion,
+  minCompatibleProtocol,
+  isCompatible,
   parseStreamEvent,
   toJsonLine,
 }

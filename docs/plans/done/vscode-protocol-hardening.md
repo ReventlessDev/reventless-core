@@ -1,6 +1,12 @@
 # vscode-protocol hardening: typed kinds (untagged variants, wire-compatible) · bridge drift check · version-compat policy
 
-**Status:** Backlog — not started
+**Status:** DONE (2026-07-07) — implemented with one deliberate deviation: all kind
+vocabularies were **respelled PascalCase on the wire** (protocol v11, a wire break)
+instead of keeping the shipped camelCase spellings. Decision by Martin during
+implementation: the protocol is alpha, compatibility is not a concern, and a uniform
+PascalCase wire removes every `@as` annotation (a nullary constructor's runtime repr
+IS its name string). §2/§6's byte-identical-golden constraint is superseded by that
+decision; everything else landed as planned. See §7 for the outcome record.
 **Scope:** `reventless/reventless-vscode-protocol` (`Protocol.res`, `GraphOps.res`), `reventless-gwt` (`DomainGraph.res` emitter and the other `streamEvent` emitters).
 **Relates to:** `Protocol.res` (v10) · the v10 edge-provenance plan (`docs/plans/vscode-protocol-graph-edge-provenance.md`, done) — same additive-evolution philosophy, applied to the *type layer* instead of the wire.
 
@@ -90,8 +96,57 @@ If any of the three fails, record why here and close as rejected — the `string
 ## 6. Acceptance criteria
 
 - Golden fixture: every pre-existing line byte-identical; appended unknown-value cases only.
+  *(Superseded — see status note: the golden was deliberately regenerated for the v11 PascalCase respell.)*
 - A `switch` over any typed kind without a wildcard compiles only when all cases (incl. the catch-all) are handled.
 - Round-trip test per typed field: known value → constructor; unknown value → `Other*`; both serialize back to the original string.
 - gwt emits the same NDJSON bytes as before the change for an identical platform.
+  *(Superseded — kinds respelled; the event envelope is unchanged.)*
 - Bridge drift test fails when a `@genType` type is added without extending both bridges.
 - One exported compat predicate/constant; no consumer-side hand-rolled version checks remain in the extension.
+
+## 7. Outcome record (2026-07-07)
+
+**§3 spike — GREEN on rescript 12.3.0 / sury 11.0.0-alpha.4 / genType:**
+1. Literal constructors + one `(string)` catch-all coexist in a single `@unboxed`
+   variant; pattern compilation checks literals first, catch-all last.
+2. sury `@schema` derivation round-trips byte-identically; an unknown string parses
+   into the catch-all; `Other*("X")` serializes as `"X"`.
+3. genType emits `"Aggregate" | … | string` — a literal union widening to `string`,
+   so TS consumers comparing plain strings keep compiling.
+4. Bonus: `%identity` string→kind conversion is total and sound (every case's runtime
+   repr is its wire string) — used at the emitter boundaries instead of hand-written
+   mapping switches.
+
+**Shipped (protocol v11):**
+- `Protocol.res`: five typed vocabularies — `componentKind` (ONE type shared by
+  `componentMeta.kind` / `componentRef.kind` / `graphNode.kind`: the 12
+  `Reventless.ComponentKind` folder names + graph-only `Command`/`Event`/
+  `ExternalSystem` + `OtherKind(string)`; resolves §4's open question — GraphOps
+  compares inventory kinds against node kinds, so a split type would fork the
+  vocabulary at that seam), `edgeKind` (14 + `OtherEdgeKind`), `itemKind`
+  (`File`/`Suite`/`Test` + `OtherItemKind`), `assertionKind` (the 10
+  `Outcome.kindName` spellings + `OtherAssertionKind`), `deadCodeKind`
+  (`OrphanEvent` + `OtherDeadCodeKind`). No `@as` anywhere — wire string =
+  constructor name. Identity converters exported for emitters.
+- `protocolVersion = 11`; §5.2 compat policy exported: `minCompatibleProtocol = 11` +
+  `isCompatible` (advisory — consumers warn, never refuse).
+- `GraphOps.res`: predicates, `baseKind`, `isFqKind` are exhaustive matches (no
+  wildcard); `readEdgesToAdd` constructs `Reads`/`ReadsCrossPartition`.
+- Emitters: `DomainGraph.res` constructs node/edge constructors (dedup key via
+  `edgeKindToString`); `FormatterVsCode.res` constructs `File`/`Suite`/`Test` and
+  converts `ComponentKind.folderName` / `Outcome.kindName` via identity;
+  `DomainDeadCode.finding.kind` is typed `deadCodeKind`.
+- Two pre-existing sample bugs surfaced by typing: the golden's deadCode kind was
+  `"orphanEvent"` (emitter says `OrphanEvent`) and its failMessage kind `"notEqual"`
+  (not in the `Outcome.kindName` vocabulary at all) — both fixed to real values.
+- Golden regenerated: kind respellings + `protocol:11` + five appended unknown-kind
+  (`Other*`) sample lines; round-trip test also pins unknown-kind decode from raw bytes.
+- §5.1 bridge drift test (`tests/BridgeDriftTest.res`): parses `export type` names
+  from `src/*.gen.ts`, asserts both hand-written bridges re-export every one
+  (negative-tested); also surfaced `position`/`failLocation` missing from both
+  bridges — added.
+
+**Not done here (consumer repo, reventless-tools):** the extension's kind→style maps
+(`DomainGraphD2.res` etc.), test-item kind handling, and the two hand-rolled
+`evt.protocol !== protocolVersion` checks in `extension.ts` (should become
+`!isCompatible(evt.protocol)`) must follow when the extension bumps to protocol v11.

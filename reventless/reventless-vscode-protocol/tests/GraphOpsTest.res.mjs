@@ -32,12 +32,12 @@ globalThis.describe("slicesForNodes", () => {
       {
         from: "Cmd",
         to: "Agg",
-        kind: "handles"
+        kind: "Handles"
       },
       {
         from: "Agg",
         to: "Evt",
-        kind: "emits"
+        kind: "Emits"
       }
     ];
     globalThis.expect(GraphOps$ReventlessVscodeProtocol.slicesForNodes(nodes, edges)).toEqual([
@@ -65,12 +65,12 @@ globalThis.describe("slicesForNodes", () => {
       {
         from: "Agg1",
         to: "Evt",
-        kind: "emits"
+        kind: "Emits"
       },
       {
         from: "Agg2",
         to: "Evt",
-        kind: "emits"
+        kind: "Emits"
       }
     ];
     globalThis.expect(GraphOps$ReventlessVscodeProtocol.slicesForNodes(nodes, edges)).toEqual([
@@ -92,7 +92,7 @@ globalThis.describe("slicesForNodes", () => {
     let edges = [{
         from: "Evt",
         to: "Agg",
-        kind: "reads"
+        kind: "Reads"
       }];
     globalThis.expect(GraphOps$ReventlessVscodeProtocol.slicesForNodes(nodes, edges)).toEqual([[
         "Agg",
@@ -127,12 +127,14 @@ globalThis.describe("kind/label helpers", () => {
       GraphOps$ReventlessVscodeProtocol.baseKind("ReadModelStream"),
       GraphOps$ReventlessVscodeProtocol.baseKind("StateViewSliceStream"),
       GraphOps$ReventlessVscodeProtocol.baseKind("Command"),
-      GraphOps$ReventlessVscodeProtocol.baseKind("StreamThing")
+      GraphOps$ReventlessVscodeProtocol.baseKind("StreamThing"),
+      GraphOps$ReventlessVscodeProtocol.baseKind("FutureKindStream")
     ]).toEqual([
       "ReadModel",
       "StateViewSlice",
       "Command",
-      "StreamThing"
+      "StreamThing",
+      "FutureKind"
     ]);
   });
   globalThis.test("isDottedSegment matches a whole dotted segment, not a substring", () => {
@@ -192,17 +194,17 @@ globalThis.describe("cmdEvtForNode", () => {
       {
         from: "c1",
         to: "Agg",
-        kind: "handles"
+        kind: "Handles"
       },
       {
         from: "Agg",
         to: "c2",
-        kind: "handles"
+        kind: "Handles"
       },
       {
         from: "Agg",
         to: "e1",
-        kind: "emits"
+        kind: "Emits"
       }
     ];
     let g = GraphOps$ReventlessVscodeProtocol.cmdEvtForNode(nodes, edges, "Agg");
@@ -230,12 +232,12 @@ globalThis.describe("propagateChapters", () => {
       {
         from: "Cmd",
         to: "Slice",
-        kind: "handles"
+        kind: "Handles"
       },
       {
         from: "Slice",
         to: "Evt",
-        kind: "emits"
+        kind: "Emits"
       }
     ];
     globalThis.expect(GraphOps$ReventlessVscodeProtocol.propagateChapters(nodes, edges, [[
@@ -264,7 +266,7 @@ globalThis.describe("propagateChapters", () => {
     let edges = [{
         from: "Slice",
         to: "RM",
-        kind: "projects"
+        kind: "Projects"
       }];
     globalThis.expect(GraphOps$ReventlessVscodeProtocol.propagateChapters(nodes, edges, [[
         "Slice",
@@ -284,12 +286,12 @@ globalThis.describe("propagateChapters", () => {
       {
         from: "A",
         to: "Evt",
-        kind: "emits"
+        kind: "Emits"
       },
       {
         from: "B",
         to: "Evt",
-        kind: "emits"
+        kind: "Emits"
       }
     ];
     globalThis.expect(GraphOps$ReventlessVscodeProtocol.propagateChapters(nodes, edges, [
@@ -324,7 +326,7 @@ globalThis.describe("propagateChapters", () => {
     let edges = [{
         from: "Slice",
         to: "Evt",
-        kind: "emits"
+        kind: "Emits"
       }];
     globalThis.expect(GraphOps$ReventlessVscodeProtocol.propagateChapters(nodes, edges, [])).toEqual([]);
   });
@@ -349,12 +351,12 @@ globalThis.describe("neighbourhood", () => {
       {
         from: "A",
         to: "B",
-        kind: "delegatesTo"
+        kind: "DelegatesTo"
       },
       {
         from: "C",
         to: "B",
-        kind: "consumes"
+        kind: "Consumes"
       }
     ];
     globalThis.expect(ids(GraphOps$ReventlessVscodeProtocol.neighbourhood(ns, es, "B"))).toEqual([
@@ -374,12 +376,12 @@ globalThis.describe("neighbourhood", () => {
       {
         from: "A",
         to: "B",
-        kind: "emits"
+        kind: "Emits"
       },
       {
         from: "B",
         to: "C",
-        kind: "emits"
+        kind: "Emits"
       }
     ];
     globalThis.expect(ids(GraphOps$ReventlessVscodeProtocol.neighbourhood(ns, es, "A"))).toEqual([
@@ -406,42 +408,42 @@ let chainEdges = [
   {
     from: "Catalog_AddProduct",
     to: "Catalog:AddProduct",
-    kind: "handles"
+    kind: "Handles"
   },
   {
     from: "Catalog:AddProduct",
     to: "Catalog.ProductAdded",
-    kind: "emits"
+    kind: "Emits"
   },
   {
     from: "Catalog.ProductAdded",
     to: "Catalog:ep:Catalog.Products",
-    kind: "feeds"
+    kind: "Feeds"
   },
   {
     from: "Catalog:ep:Catalog.Products",
     to: "Catalog.Products.ProductBecameAvailable",
-    kind: "publishes"
+    kind: "Publishes"
   },
   {
     from: "Catalog.Products.ProductBecameAvailable",
     to: "Ordering:ext:Catalog.Products",
-    kind: "consumes"
+    kind: "Consumes"
   },
   {
     from: "Ordering:ext:Catalog.Products",
     to: "Ordering:AvailableProducts",
-    kind: "delegatesTo"
+    kind: "DelegatesTo"
   },
   {
     from: "Ordering:AvailableProducts",
     to: "Ordering.ProductCached",
-    kind: "emits"
+    kind: "Emits"
   },
   {
     from: "Ordering.ProductCached",
     to: "Ordering:Catalogue",
-    kind: "projects"
+    kind: "Projects"
   }
 ];
 
@@ -524,22 +526,22 @@ globalThis.describe("focusView", () => {
       {
         from: "p:Slice1",
         to: "p.Event1",
-        kind: "emits"
+        kind: "Emits"
       },
       {
         from: "p.Event1",
         to: "p:View",
-        kind: "projects"
+        kind: "Projects"
       },
       {
         from: "p:Slice2",
         to: "p.Event2",
-        kind: "emits"
+        kind: "Emits"
       },
       {
         from: "p.Event2",
         to: "p:View",
-        kind: "projects"
+        kind: "Projects"
       }
     ];
     globalThis.expect(ids(GraphOps$ReventlessVscodeProtocol.focusView(ns, es, "p:Slice1"))).toEqual([
@@ -568,7 +570,7 @@ globalThis.describe("readEdgesToAdd", () => {
     let expected = [{
         from: "P.Evt",
         to: "P:Slice",
-        kind: "reads"
+        kind: "Reads"
       }];
     let crossPartition = false;
     globalThis.expect(GraphOps$ReventlessVscodeProtocol.readEdgesToAdd(nodes, [], [{
@@ -585,7 +587,7 @@ globalThis.describe("readEdgesToAdd", () => {
     let expected = [{
         from: "P.Evt",
         to: "P:Slice",
-        kind: "readsCrossPartition"
+        kind: "ReadsCrossPartition"
       }];
     let crossPartition = true;
     globalThis.expect(GraphOps$ReventlessVscodeProtocol.readEdgesToAdd(nodes, [], [{
@@ -611,7 +613,7 @@ globalThis.describe("readEdgesToAdd", () => {
     let edges = [{
         from: "P:Slice",
         to: "P.Evt",
-        kind: "projects"
+        kind: "Projects"
       }];
     let crossPartition = false;
     globalThis.expect(GraphOps$ReventlessVscodeProtocol.readEdgesToAdd(nodes, edges, [{
@@ -642,7 +644,7 @@ globalThis.describe("readEdgesToAdd", () => {
     let expected = [{
         from: "P.Evt",
         to: "P:Slice",
-        kind: "reads"
+        kind: "Reads"
       }];
     globalThis.expect(GraphOps$ReventlessVscodeProtocol.readEdgesToAdd(nodes, [], cands)).toEqual(expected);
   });

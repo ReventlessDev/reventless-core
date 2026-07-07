@@ -26,8 +26,13 @@
 // and "read models nothing resolves against" need data `pluginStructure` does not
 // carry (the EP declaration list / the id-resolver table) — deferred.
 
+// Finding kinds are the typed protocol vocabulary — constructing the variant here
+// (not a string literal) means a typo or rename is a compile error, and the emitter
+// forwards findings without conversion.
+module P = ReventlessVscodeProtocol.Protocol
+
 type finding = {
-  kind: string, // "OrphanEvent"
+  kind: P.deadCodeKind,
   pluginName: string, // plugin owning the producer
   componentName: string, // the producing aggregate / state-change slice
   detail: string, // the orphaned event type
@@ -76,7 +81,7 @@ let analyze = (
           | Some(_) => ()
           | None =>
             findings->Array.push({
-              kind: "OrphanEvent",
+              kind: OrphanEvent,
               pluginName,
               componentName: w.name,
               detail: evt,

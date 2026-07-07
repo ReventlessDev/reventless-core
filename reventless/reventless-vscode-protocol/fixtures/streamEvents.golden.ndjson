@@ -1,7 +1,7 @@
-{"event":"hello","protocol":10}
+{"event":"hello","protocol":11}
 {"event":"discoverStart"}
-{"event":"item","id":"f","kind":"file","label":"Foo"}
-{"event":"item","id":"f","parent":"p","kind":"test","label":"Foo","description":"a test","uri":"file:///x.res","range":{"start":{"line":1,"character":2},"end":{"line":3,"character":4}},"component":{"kind":"Aggregate","name":"Product"}}
+{"event":"item","id":"f","kind":"File","label":"Foo"}
+{"event":"item","id":"f","parent":"p","kind":"Test","label":"Foo","description":"a test","uri":"file:///x.res","range":{"start":{"line":1,"character":2},"end":{"line":3,"character":4}},"component":{"kind":"Aggregate","name":"Product"}}
 {"event":"packages","packages":[{"name":"p","dir":"/d","build":"rescript"}]}
 {"event":"components","components":[{"kind":"Aggregate","name":"Product","dir":"/d"}]}
 {"event":"components","components":[{"kind":"ReadModel","name":"Products","dir":"/d","files":["a.res","b.res"]}]}
@@ -14,12 +14,12 @@
 {"event":"testStart","id":"t1"}
 {"event":"testPass","id":"t1","durationMs":1}
 {"event":"testFail","id":"t1","durationMs":2,"messages":[{"message":"boom"}]}
-{"event":"testFail","id":"t1","durationMs":2,"messages":[{"message":"not equal","kind":"notEqual","expected":"1","actual":"2","location":{"uri":"file:///x.res","range":{"start":{"line":1,"character":2},"end":{"line":3,"character":4}}}}]}
+{"event":"testFail","id":"t1","durationMs":2,"messages":[{"message":"not equal","kind":"EventsMismatch","expected":"1","actual":"2","location":{"uri":"file:///x.res","range":{"start":{"line":1,"character":2},"end":{"line":3,"character":4}}}}]}
 {"event":"testSkip","id":"t1","reason":"todo"}
 {"event":"runEnd","passed":1,"failed":2,"skipped":3,"durationMs":4}
-{"event":"deadCode","findings":[{"kind":"orphanEvent","plugin":"Catalog","component":"Product","detail":"unused"}]}
-{"event":"graph","nodes":[{"id":"n","kind":"Event","label":"N","plugin":"Catalog"}],"edges":[{"from":"a","to":"b","kind":"emits"}]}
-{"event":"graph","nodes":[],"edges":[{"from":"a","to":"b","kind":"translatesOut","label":"Payload"}]}
+{"event":"deadCode","findings":[{"kind":"OrphanEvent","plugin":"Catalog","component":"Product","detail":"unused"}]}
+{"event":"graph","nodes":[{"id":"n","kind":"Event","label":"N","plugin":"Catalog"}],"edges":[{"from":"a","to":"b","kind":"Emits"}]}
+{"event":"graph","nodes":[],"edges":[{"from":"a","to":"b","kind":"TranslatesOut","label":"Payload"}]}
 {"event":"definitions","entries":[{"k":"v"}]}
 {"event":"platformStart","package":"p","dir":"/d","domainPort":4000,"platformPort":4001}
 {"event":"platformReady","domainEndpoint":"http://localhost:4000"}
@@ -27,4 +27,9 @@
 {"event":"platformLog","line":"hello"}
 {"event":"platformStop","code":0}
 {"event":"platformStop"}
-{"event":"graph","nodes":[],"edges":[{"from":"a","to":"b","kind":"triggers","via":["OrderPlaced"],"implicit":true}]}
+{"event":"graph","nodes":[],"edges":[{"from":"a","to":"b","kind":"Triggers","via":["OrderPlaced"],"implicit":true}]}
+{"event":"item","id":"w","kind":"workspace","label":"W"}
+{"event":"components","components":[{"kind":"FutureKind","name":"F","dir":"/d"}]}
+{"event":"deadCode","findings":[{"kind":"OrphanCommand","plugin":"P","component":"C","detail":"d"}]}
+{"event":"testFail","id":"t1","durationMs":1,"messages":[{"message":"boom","kind":"FutureMismatch"}]}
+{"event":"graph","nodes":[{"id":"n","kind":"FutureNode","label":"N","plugin":"P"}],"edges":[{"from":"a","to":"b","kind":"Annotates"}]}

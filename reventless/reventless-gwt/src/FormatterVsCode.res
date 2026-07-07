@@ -141,13 +141,15 @@ let emitDiscoveryItems = (files: array<(string, array<RunnerTypes.testResult>)>)
     }
     let component =
       ComponentMeta.componentOfTestFile(path)->Option.map((c): P.componentMeta => {
-        kind: c.kind,
+        // `ComponentKind.folderName` spellings ARE the typed vocabulary's constructor
+        // names, so the identity conversion lands every known kind on its constructor.
+        kind: P.componentKindOfString(c.kind),
         name: c.name,
       })
     emit(
       Item({
         id: fileId,
-        kind: "file",
+        kind: File,
         label: fileLabelOf(path),
         description: relativeToCwd(path),
         uri: fileUri,
@@ -174,7 +176,7 @@ let emitDiscoveryItems = (files: array<(string, array<RunnerTypes.testResult>)>)
               Item({
                 id,
                 parent,
-                kind: "suite",
+                kind: Suite,
                 label,
                 uri: ?loc->Option.map(l => uriOf(l.file)),
                 range: ?loc->Option.map(rangeOf),
@@ -197,7 +199,7 @@ let emitDiscoveryItems = (files: array<(string, array<RunnerTypes.testResult>)>)
         Item({
           id: testId,
           parent,
-          kind: "test",
+          kind: Test,
           label: t.name,
           uri: ?loc->Option.map(l => uriOf(l.file)),
           range: ?loc->Option.map(rangeOf),
@@ -225,7 +227,7 @@ let components = (comps: array<ComponentScan.component>) =>
     Components({
       components: comps->Array.map((c): P.componentRef => {
         dir: c.dir,
-        kind: c.kind,
+        kind: P.componentKindOfString(c.kind),
         name: c.name,
         files: c.files,
       }),
@@ -332,7 +334,10 @@ let messagePayload = (t: RunnerTypes.testResult): P.failMessage =>
     {
       message: hint.message,
       // The mismatch family — lets a client gate the apply-expected quick-fix.
-      kind: ?Some(Outcome.kindName(m)),
+      // `Outcome.kindName` stays string-returning (JUnit/JSON formatters consume it
+      // raw); its spellings are the assertionKind constructor names, so the identity
+      // conversion types it losslessly.
+      kind: ?Some(P.assertionKindOfString(Outcome.kindName(m))),
       expected: ?expected,
       actual: ?actual,
       location: ?location,

@@ -5,6 +5,9 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 
 function isWriteSide(kind) {
+  if (kind !== "Aggregate" && kind !== "ExternalSystem" && kind !== "StateChangeSlice" && kind !== "Event" && kind !== "StateViewSlice" && kind !== "Command" && kind !== "StateViewSliceStream" && kind !== "Task" && kind !== "ReadModel" && kind !== "ExtensionPoint" && kind !== "ReadModelStream" && kind !== "Extension" && kind !== "AutomationSlice" && kind !== "OutboundTranslationSlice" && kind !== "InboundTranslationSlice") {
+    return false;
+  }
   switch (kind) {
     case "Aggregate" :
     case "StateChangeSlice" :
@@ -15,19 +18,27 @@ function isWriteSide(kind) {
 }
 
 function isLeaf(kind) {
-  if (kind === "Command") {
-    return true;
-  } else {
-    return kind === "Event";
+  if (kind !== "Aggregate" && kind !== "ExternalSystem" && kind !== "StateChangeSlice" && kind !== "Event" && kind !== "StateViewSlice" && kind !== "Command" && kind !== "StateViewSliceStream" && kind !== "Task" && kind !== "ReadModel" && kind !== "ExtensionPoint" && kind !== "ReadModelStream" && kind !== "Extension" && kind !== "AutomationSlice" && kind !== "OutboundTranslationSlice" && kind !== "InboundTranslationSlice") {
+    return false;
+  }
+  switch (kind) {
+    case "Command" :
+    case "Event" :
+      return true;
+    default:
+      return false;
   }
 }
 
 function isReadSide(kind) {
+  if (kind !== "Aggregate" && kind !== "ExternalSystem" && kind !== "StateChangeSlice" && kind !== "Event" && kind !== "StateViewSlice" && kind !== "Command" && kind !== "StateViewSliceStream" && kind !== "Task" && kind !== "ReadModel" && kind !== "ExtensionPoint" && kind !== "ReadModelStream" && kind !== "Extension" && kind !== "AutomationSlice" && kind !== "OutboundTranslationSlice" && kind !== "InboundTranslationSlice") {
+    return false;
+  }
   switch (kind) {
-    case "ReadModel" :
-    case "ReadModelStream" :
     case "StateViewSlice" :
     case "StateViewSliceStream" :
+    case "ReadModel" :
+    case "ReadModelStream" :
       return true;
     default:
       return false;
@@ -35,10 +46,15 @@ function isReadSide(kind) {
 }
 
 function isOwnershipEdge(kind) {
-  if (kind === "handles") {
-    return true;
-  } else {
-    return kind === "emits";
+  if (kind !== "Handles" && kind !== "Extends" && kind !== "Emits" && kind !== "TranslatesOut" && kind !== "Projects" && kind !== "TranslatesIn" && kind !== "Triggers" && kind !== "ReadsCrossPartition" && kind !== "Publishes" && kind !== "Reads" && kind !== "Consumes" && kind !== "Feeds" && kind !== "DelegatesTo" && kind !== "RoutesTo") {
+    return false;
+  }
+  switch (kind) {
+    case "Handles" :
+    case "Emits" :
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -180,7 +196,7 @@ function readEdgesToAdd(nodes, edges, candidates) {
       out.push({
         from: c.eventId,
         to: c.sliceId,
-        kind: c.crossPartition ? "readsCrossPartition" : "reads"
+        kind: c.crossPartition ? "ReadsCrossPartition" : "Reads"
       });
       return;
     }
@@ -288,10 +304,14 @@ function focusView(nodes, edges, focusId) {
   };
   let stopAtEp = id => Primitive_object.equal(kindOf(id), "ExtensionPoint");
   let match = focus.kind;
-  if (match === "ExtensionPoint") {
+  let exit = 0;
+  if ((match === "ExtensionPoint" || match === "ReadModelStream" || match === "Extension" || match === "AutomationSlice" || match === "OutboundTranslationSlice" || match === "InboundTranslationSlice") && match === "ExtensionPoint") {
     walk([out], id => Primitive_object.equal(kindOf(id), "Extension"));
     walk([inc], stopAtEp);
   } else {
+    exit = 1;
+  }
+  if (exit === 1) {
     walk([out], stopAtEp);
     walk([inc], stopAtEp);
   }
@@ -308,7 +328,17 @@ function focusView(nodes, edges, focusId) {
 }
 
 function baseKind(k) {
-  return k.replace(/Stream$/, "");
+  if (k !== "Aggregate" && k !== "ExternalSystem" && k !== "StateChangeSlice" && k !== "Event" && k !== "StateViewSlice" && k !== "Command" && k !== "StateViewSliceStream" && k !== "Task" && k !== "ReadModel" && k !== "ExtensionPoint" && k !== "ReadModelStream" && k !== "Extension" && k !== "AutomationSlice" && k !== "OutboundTranslationSlice" && k !== "InboundTranslationSlice") {
+    return k.replace(/Stream$/, "");
+  }
+  switch (k) {
+    case "StateViewSliceStream" :
+      return "StateViewSlice";
+    case "ReadModelStream" :
+      return "ReadModel";
+    default:
+      return k;
+  }
 }
 
 function isDottedSegment(label, name) {
@@ -316,10 +346,15 @@ function isDottedSegment(label, name) {
 }
 
 function isFqKind(kind) {
-  if (kind === "ExtensionPoint") {
-    return true;
-  } else {
-    return kind === "Extension";
+  if (kind !== "Aggregate" && kind !== "ExternalSystem" && kind !== "StateChangeSlice" && kind !== "Event" && kind !== "StateViewSlice" && kind !== "Command" && kind !== "StateViewSliceStream" && kind !== "Task" && kind !== "ReadModel" && kind !== "ExtensionPoint" && kind !== "ReadModelStream" && kind !== "Extension" && kind !== "AutomationSlice" && kind !== "OutboundTranslationSlice" && kind !== "InboundTranslationSlice") {
+    return false;
+  }
+  switch (kind) {
+    case "Extension" :
+    case "ExtensionPoint" :
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -334,16 +369,22 @@ function cmdEvtForNode(nodes, edges, nodeId) {
     let other = e.from === nodeId ? byId[e.to] : (
         e.to === nodeId ? byId[e.from] : undefined
       );
-    if (other !== undefined) {
-      if (other.kind === "Command") {
+    if (other === undefined) {
+      return;
+    }
+    let match = other.kind;
+    if (match !== "Aggregate" && match !== "ExternalSystem" && match !== "StateChangeSlice" && match !== "Event" && match !== "StateViewSlice" && match !== "Command" && match !== "StateViewSliceStream" && match !== "Task" && match !== "ReadModel" && match !== "ExtensionPoint" && match !== "ReadModelStream" && match !== "Extension" && match !== "AutomationSlice" && match !== "OutboundTranslationSlice" && match !== "InboundTranslationSlice") {
+      return;
+    }
+    switch (match) {
+      case "Command" :
         cmds[other.id] = other.label;
         return;
-      } else if (other.kind === "Event") {
+      case "Event" :
         evts[other.id] = other.label;
         return;
-      } else {
+      default:
         return;
-      }
     }
   });
   let toLeaves = m => Object.entries(m).map(param => ({

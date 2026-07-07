@@ -4,6 +4,7 @@
 // LocalHost integration; here hand-built fixtures pin the edge wiring.
 
 open JestGlobals
+open ReventlessVscodeProtocol.Protocol
 
 let command = (~name, ~mutationField, ~apiExposed=None): Reventless.Plugin.commandDef => {
   name,
@@ -103,13 +104,13 @@ describe("DomainGraph.build", () => {
       ~stateViewSlices=[queryable(~name="OrderView", ~consumes=["Shop.Placed"])],
     )
     let g = DomainGraph.build(~structures=[("Shop", shop)])
-    expect(nodeKind(g, "Shop_Order_Place"))->toEqual(Some("Command"))
-    expect(nodeKind(g, "Shop:Order"))->toEqual(Some("Aggregate"))
-    expect(nodeKind(g, "Shop.Placed"))->toEqual(Some("Event"))
-    expect(nodeKind(g, "Shop:OrderView"))->toEqual(Some("StateViewSlice"))
-    expect(hasEdge(g, "Shop_Order_Place", "Shop:Order", "handles"))->toBe(true)
-    expect(hasEdge(g, "Shop:Order", "Shop.Placed", "emits"))->toBe(true)
-    expect(hasEdge(g, "Shop.Placed", "Shop:OrderView", "projects"))->toBe(true)
+    expect(nodeKind(g, "Shop_Order_Place"))->toEqual(Some(Command))
+    expect(nodeKind(g, "Shop:Order"))->toEqual(Some(Aggregate))
+    expect(nodeKind(g, "Shop.Placed"))->toEqual(Some(Event))
+    expect(nodeKind(g, "Shop:OrderView"))->toEqual(Some(StateViewSlice))
+    expect(hasEdge(g, "Shop_Order_Place", "Shop:Order", Handles))->toBe(true)
+    expect(hasEdge(g, "Shop:Order", "Shop.Placed", Emits))->toBe(true)
+    expect(hasEdge(g, "Shop.Placed", "Shop:OrderView", Projects))->toBe(true)
   })
 
   testPromise("payload-less events (in `events`, not producedEventTypes) still get an emitted node", async () => {
@@ -126,10 +127,10 @@ describe("DomainGraph.build", () => {
       ],
     )
     let g = DomainGraph.build(~structures=[("Catalog", shop)])
-    expect(nodeKind(g, "Catalog.Added"))->toEqual(Some("Event"))
-    expect(nodeKind(g, "Catalog.Archived"))->toEqual(Some("Event"))
-    expect(hasEdge(g, "Catalog:Category", "Catalog.Added", "emits"))->toBe(true)
-    expect(hasEdge(g, "Catalog:Category", "Catalog.Archived", "emits"))->toBe(true)
+    expect(nodeKind(g, "Catalog.Added"))->toEqual(Some(Event))
+    expect(nodeKind(g, "Catalog.Archived"))->toEqual(Some(Event))
+    expect(hasEdge(g, "Catalog:Category", "Catalog.Added", Emits))->toBe(true)
+    expect(hasEdge(g, "Catalog:Category", "Catalog.Archived", Emits))->toBe(true)
   })
 
   testPromise("a payload-less event also projects into the aggregate's linked view", async () => {
@@ -147,8 +148,8 @@ describe("DomainGraph.build", () => {
       ],
     )
     let g = DomainGraph.build(~structures=[("Catalog", shop)])
-    expect(hasEdge(g, "Catalog.Added", "Catalog:Categories", "projects"))->toBe(true)
-    expect(hasEdge(g, "Catalog.Archived", "Catalog:Categories", "projects"))->toBe(true)
+    expect(hasEdge(g, "Catalog.Added", "Catalog:Categories", Projects))->toBe(true)
+    expect(hasEdge(g, "Catalog.Archived", "Catalog:Categories", Projects))->toBe(true)
   })
 
   testPromise("an Internal StateViewSlice still gets a node + projects edge (dev graph shows it)", async () => {
@@ -162,8 +163,8 @@ describe("DomainGraph.build", () => {
       ],
     )
     let g = DomainGraph.build(~structures=[("Shop", shop)])
-    expect(nodeKind(g, "Shop:AvailableView"))->toEqual(Some("StateViewSlice"))
-    expect(hasEdge(g, "Shop.Placed", "Shop:AvailableView", "projects"))->toBe(true)
+    expect(nodeKind(g, "Shop:AvailableView"))->toEqual(Some(StateViewSlice))
+    expect(hasEdge(g, "Shop.Placed", "Shop:AvailableView", Projects))->toBe(true)
   })
 
   testPromise("classic linkedViews draws each produced event into the linked read model", async () => {
@@ -172,8 +173,8 @@ describe("DomainGraph.build", () => {
       ~readModels=[queryable(~name="Orders")],
     )
     let g = DomainGraph.build(~structures=[("Shop", shop)])
-    expect(hasEdge(g, "Shop.Placed", "Shop:Orders", "projects"))->toBe(true)
-    expect(hasEdge(g, "Shop.Shipped", "Shop:Orders", "projects"))->toBe(true)
+    expect(hasEdge(g, "Shop.Placed", "Shop:Orders", Projects))->toBe(true)
+    expect(hasEdge(g, "Shop.Shipped", "Shop:Orders", Projects))->toBe(true)
   })
 
   testPromise("automation slices are triggered by their consumed events", async () => {
@@ -182,8 +183,8 @@ describe("DomainGraph.build", () => {
       ~automationSlices=[automation(~name="Notify", ~consumes=["Shop.Placed"])],
     )
     let g = DomainGraph.build(~structures=[("Shop", shop)])
-    expect(nodeKind(g, "Shop:Notify"))->toEqual(Some("AutomationSlice"))
-    expect(hasEdge(g, "Shop.Placed", "Shop:Notify", "triggers"))->toBe(true)
+    expect(nodeKind(g, "Shop:Notify"))->toEqual(Some(AutomationSlice))
+    expect(hasEdge(g, "Shop.Placed", "Shop:Notify", Triggers))->toBe(true)
   })
 
   testPromise("an automation routes to the specific command it raises on its target", async () => {
@@ -206,9 +207,9 @@ describe("DomainGraph.build", () => {
       ],
     )
     let g = DomainGraph.build(~structures=[("Shop", shop)])
-    expect(hasEdge(g, "Shop:AutoShip", "Shop_Ship_ShipOrder", "delegatesTo"))->toBe(true)
+    expect(hasEdge(g, "Shop:AutoShip", "Shop_Ship_ShipOrder", DelegatesTo))->toBe(true)
     // Matched by name — the target's other command is not linked.
-    expect(hasEdge(g, "Shop:AutoShip", "Shop_Ship_Place", "delegatesTo"))->toBe(false)
+    expect(hasEdge(g, "Shop:AutoShip", "Shop_Ship_Place", DelegatesTo))->toBe(false)
   })
 
   testPromise("an inbound translation routes to the command it raises on its target", async () => {
@@ -223,8 +224,8 @@ describe("DomainGraph.build", () => {
       ],
     )
     let g = DomainGraph.build(~structures=[("Shop", shop)])
-    expect(nodeKind(g, "Shop:ImportProduct"))->toEqual(Some("InboundTranslationSlice"))
-    expect(hasEdge(g, "Shop:ImportProduct", "Shop_Product_Add", "delegatesTo"))->toBe(true)
+    expect(nodeKind(g, "Shop:ImportProduct"))->toEqual(Some(InboundTranslationSlice))
+    expect(hasEdge(g, "Shop:ImportProduct", "Shop_Product_Add", DelegatesTo))->toBe(true)
   })
 
   testPromise("an outbound translation with a target routes to the command it raises", async () => {
@@ -237,7 +238,7 @@ describe("DomainGraph.build", () => {
       ],
     )
     let g = DomainGraph.build(~structures=[("Shop", shop)])
-    expect(hasEdge(g, "Shop:ExportProduct", "Shop_Product_Sync", "delegatesTo"))->toBe(true)
+    expect(hasEdge(g, "Shop:ExportProduct", "Shop_Product_Sync", DelegatesTo))->toBe(true)
   })
 
   testPromise("an inbound translation naming an external system draws a box feeding it", async () => {
@@ -248,11 +249,11 @@ describe("DomainGraph.build", () => {
     )
     let g = DomainGraph.build(~structures=[("Shop", shop)])
     // External box: drawn OUTSIDE the plugin (plugin: "") with a stable "ext:<name>" id.
-    expect(nodeKind(g, "ext:SupplierFeed"))->toEqual(Some("ExternalSystem"))
+    expect(nodeKind(g, "ext:SupplierFeed"))->toEqual(Some(ExternalSystem))
     expect(g.nodes->Array.find(n => n.id == "ext:SupplierFeed")->Option.map(n => n.plugin))->toEqual(Some(""))
     // Inbound direction: external → slice (unlabelled — the arrowhead carries the meaning).
-    expect(hasEdge(g, "ext:SupplierFeed", "Shop:ImportProduct", "translatesIn"))->toBe(true)
-    expect(edgeLabel(g, "ext:SupplierFeed", "Shop:ImportProduct", "translatesIn"))->toEqual(None)
+    expect(hasEdge(g, "ext:SupplierFeed", "Shop:ImportProduct", TranslatesIn))->toBe(true)
+    expect(edgeLabel(g, "ext:SupplierFeed", "Shop:ImportProduct", TranslatesIn))->toEqual(None)
   })
 
   testPromise("an outbound translation naming an external system feeds the box", async () => {
@@ -262,10 +263,10 @@ describe("DomainGraph.build", () => {
       ],
     )
     let g = DomainGraph.build(~structures=[("Shop", shop)])
-    expect(nodeKind(g, "ext:EmailService"))->toEqual(Some("ExternalSystem"))
+    expect(nodeKind(g, "ext:EmailService"))->toEqual(Some(ExternalSystem))
     // Outbound direction: slice → external (unlabelled — the arrowhead carries the meaning).
-    expect(hasEdge(g, "Shop:SendEmail", "ext:EmailService", "translatesOut"))->toBe(true)
-    expect(edgeLabel(g, "Shop:SendEmail", "ext:EmailService", "translatesOut"))->toEqual(None)
+    expect(hasEdge(g, "Shop:SendEmail", "ext:EmailService", TranslatesOut))->toBe(true)
+    expect(edgeLabel(g, "Shop:SendEmail", "ext:EmailService", TranslatesOut))->toEqual(None)
   })
 
   testPromise("translation slices with no external system draw no box (opt-in)", async () => {
@@ -273,7 +274,7 @@ describe("DomainGraph.build", () => {
       ~inboundTranslationSlices=[inbound(~name="ImportProduct", ~target="Product")],
     )
     let g = DomainGraph.build(~structures=[("Shop", shop)])
-    expect(g.nodes->Array.some(n => n.kind == "ExternalSystem"))->toBe(false)
+    expect(g.nodes->Array.some(n => n.kind == ExternalSystem))->toBe(false)
   })
 
   testPromise("two slices naming the same external system share one deduped box", async () => {
@@ -290,8 +291,8 @@ describe("DomainGraph.build", () => {
     let g = DomainGraph.build(~structures=[("PluginA", a), ("PluginB", b)])
     // One shared box (per-platform dedup by name) with both an out- and an in-edge.
     expect(g.nodes->Array.filter(n => n.id == "ext:EmailService")->Array.length)->toBe(1)
-    expect(hasEdge(g, "PluginA:SendEmailA", "ext:EmailService", "translatesOut"))->toBe(true)
-    expect(hasEdge(g, "ext:EmailService", "PluginB:FromEmail", "translatesIn"))->toBe(true)
+    expect(hasEdge(g, "PluginA:SendEmailA", "ext:EmailService", TranslatesOut))->toBe(true)
+    expect(hasEdge(g, "ext:EmailService", "PluginB:FromEmail", TranslatesIn))->toBe(true)
   })
 
   testPromise("an event produced by two write-sides is one node with two emit edges", async () => {
@@ -303,8 +304,8 @@ describe("DomainGraph.build", () => {
     )
     let g = DomainGraph.build(~structures=[("Shop", shop)])
     expect(g.nodes->Array.filter(n => n.id == "Shop.Touched")->Array.length)->toBe(1)
-    expect(hasEdge(g, "Shop:A", "Shop.Touched", "emits"))->toBe(true)
-    expect(hasEdge(g, "Shop:B", "Shop.Touched", "emits"))->toBe(true)
+    expect(hasEdge(g, "Shop:A", "Shop.Touched", Emits))->toBe(true)
+    expect(hasEdge(g, "Shop:B", "Shop.Touched", Emits))->toBe(true)
   })
 
   testPromise("an extension renders the cross-plugin event flow EP→event→Extension→delegate", async () => {
@@ -321,11 +322,11 @@ describe("DomainGraph.build", () => {
     }
     let g = DomainGraph.build(~structures=[("Catalog", catalog)])
     // EP (owned by Ordering) publishes its event; the Catalog extension consumes it…
-    expect(nodeKind(g, "Ordering:ep:Ordering.Orders"))->toEqual(Some("ExtensionPoint"))
-    expect(hasEdge(g, "Ordering:ep:Ordering.Orders", "Ordering.Orders.ItemOrdered", "publishes"))->toBe(true)
-    expect(hasEdge(g, "Ordering.Orders.ItemOrdered", "Catalog:ext:Ordering.Orders", "consumes"))->toBe(true)
+    expect(nodeKind(g, "Ordering:ep:Ordering.Orders"))->toEqual(Some(ExtensionPoint))
+    expect(hasEdge(g, "Ordering:ep:Ordering.Orders", "Ordering.Orders.ItemOrdered", Publishes))->toBe(true)
+    expect(hasEdge(g, "Ordering.Orders.ItemOrdered", "Catalog:ext:Ordering.Orders", Consumes))->toBe(true)
     // …and delegates to ProductDemand.
-    expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog:ProductDemand", "delegatesTo"))->toBe(true)
+    expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog:ProductDemand", DelegatesTo))->toBe(true)
     // The protocol event is top-level (empty plugin) so it sits between the boxes…
     let protoEvent =
       g.nodes->Array.find(n => n.id == "Ordering.Orders.ItemOrdered")->Option.getOrThrow
@@ -360,12 +361,12 @@ describe("DomainGraph.build", () => {
     let g = DomainGraph.build(~structures=[("Catalog", catalog)])
     // Extension → the command it creates …
     expect(
-      hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog_ProductDemand_RecordDemand", "delegatesTo"),
+      hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog_ProductDemand_RecordDemand", DelegatesTo),
     )->toBe(true)
     // … the command is handled by the slice (so the full path is Extension → Command → slice) …
-    expect(hasEdge(g, "Catalog_ProductDemand_RecordDemand", "Catalog:ProductDemand", "handles"))->toBe(true)
+    expect(hasEdge(g, "Catalog_ProductDemand_RecordDemand", "Catalog:ProductDemand", Handles))->toBe(true)
     // … and the extension no longer points straight at the slice.
-    expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog:ProductDemand", "delegatesTo"))->toBe(false)
+    expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog:ProductDemand", DelegatesTo))->toBe(false)
   })
 
   testPromise("an extension with no commands falls back to delegating to the write-side", async () => {
@@ -380,7 +381,7 @@ describe("DomainGraph.build", () => {
       extensions: [extension],
     }
     let g = DomainGraph.build(~structures=[("Catalog", catalog)])
-    expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog:ProductDemand", "delegatesTo"))->toBe(true)
+    expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog:ProductDemand", DelegatesTo))->toBe(true)
   })
 
   testPromise("an owned extension point is fed by the producers of its source events", async () => {
@@ -405,14 +406,14 @@ describe("DomainGraph.build", () => {
       ~extensionPoints=[ep],
     )
     let g = DomainGraph.build(~structures=[("Catalog", catalog)])
-    expect(nodeKind(g, "Catalog:ep:Catalog.Products"))->toEqual(Some("ExtensionPoint"))
+    expect(nodeKind(g, "Catalog:ep:Catalog.Products"))->toEqual(Some(ExtensionPoint))
     // The producing write-side emits the source event…
-    expect(hasEdge(g, "Catalog:AddProduct", "Catalog.ProductAdded", "emits"))->toBe(true)
+    expect(hasEdge(g, "Catalog:AddProduct", "Catalog.ProductAdded", Emits))->toBe(true)
     // …which feeds the extension point — so EP focus reaches the producer.
-    expect(hasEdge(g, "Catalog.ProductAdded", "Catalog:ep:Catalog.Products", "feeds"))->toBe(true)
+    expect(hasEdge(g, "Catalog.ProductAdded", "Catalog:ep:Catalog.Products", Feeds))->toBe(true)
     // …but the EP has NO inbound command protocol (command = unit), so it routes
     // nothing: no backwards EP → Command edge mislabelling the producer's own command.
-    expect(hasEdge(g, "Catalog:ep:Catalog.Products", "Catalog_AddProduct", "routesTo"))->toBe(false)
+    expect(hasEdge(g, "Catalog:ep:Catalog.Products", "Catalog_AddProduct", RoutesTo))->toBe(false)
   })
 
   testPromise("an extension point with an inbound command protocol routes to its delegate's commands", async () => {
@@ -436,7 +437,7 @@ describe("DomainGraph.build", () => {
       ~extensionPoints=[ep],
     )
     let g = DomainGraph.build(~structures=[("Catalog", catalog)])
-    expect(hasEdge(g, "Catalog:ep:Catalog.Products", "Catalog_AddProduct", "routesTo"))->toBe(true)
-    expect(hasEdge(g, "Catalog_AddProduct", "Catalog:AddProduct", "handles"))->toBe(true)
+    expect(hasEdge(g, "Catalog:ep:Catalog.Products", "Catalog_AddProduct", RoutesTo))->toBe(true)
+    expect(hasEdge(g, "Catalog_AddProduct", "Catalog:AddProduct", Handles))->toBe(true)
   })
 })

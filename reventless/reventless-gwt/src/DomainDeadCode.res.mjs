@@ -63,7 +63,10 @@ function analyze(structures) {
   return findings;
 }
 
+let P;
+
 export {
+  P,
   analyze,
 }
 /* No side effect */

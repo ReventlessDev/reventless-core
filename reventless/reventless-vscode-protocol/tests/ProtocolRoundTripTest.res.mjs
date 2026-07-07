@@ -19,16 +19,24 @@ globalThis.describe("Protocol round-trip (toJsonLine -> parseStreamEvent)", () =
     globalThis.expect(Protocol$ReventlessVscodeProtocol.parseStreamEvent(`{"event":"somethingNewer","x":1}`)).toEqual(undefined);
   });
   globalThis.test("unknown extra keys on a known event are dropped (non-strict decode)", () => {
-    globalThis.expect(Protocol$ReventlessVscodeProtocol.parseStreamEvent(`{"event":"graph","nodes":[],"edges":[{"from":"a","to":"b","kind":"triggers","via":["X"],"implicit":true,"futureEdgeKey":0.5}],"futureTopKey":true}`)).toEqual({
+    globalThis.expect(Protocol$ReventlessVscodeProtocol.parseStreamEvent(`{"event":"graph","nodes":[],"edges":[{"from":"a","to":"b","kind":"Triggers","via":["X"],"implicit":true,"futureEdgeKey":0.5}],"futureTopKey":true}`)).toEqual({
       event: "graph",
       nodes: [],
       edges: [{
           from: "a",
           to: "b",
-          kind: "triggers",
+          kind: "Triggers",
           via: ["X"],
           implicit: true
         }]
+    });
+  });
+  globalThis.test("an unknown kind decodes into the Other* catch-all", () => {
+    globalThis.expect(Protocol$ReventlessVscodeProtocol.parseStreamEvent(`{"event":"item","id":"i","kind":"HoloDeck","label":"L"}`)).toEqual({
+      event: "item",
+      id: "i",
+      kind: "HoloDeck",
+      label: "L"
     });
   });
 });
