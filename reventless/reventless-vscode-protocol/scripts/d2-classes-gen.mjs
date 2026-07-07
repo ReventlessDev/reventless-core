@@ -75,6 +75,18 @@ const TOOLING_ONLY = {
   "slice-done": {
     style: { fill: "#DCFCE7", stroke: "#16A34A", "font-color": "#14532D", "border-radius": "10" },
   },
+  // Drift overlay (source↔deployed comparison): a node present only in the source
+  // graph ("added" — appears on the next deploy) vs only on the deployed platform
+  // ("removed" — the source no longer has it). Green/red dashed; the `-flow` variants
+  // are the connection-safe halves (d2 rejects `fill` on connections).
+  "drift-added": {
+    style: { fill: "#DCFCE7", stroke: "#16A34A", "font-color": "#14532D", "border-radius": "6", "stroke-dash": "3" },
+  },
+  "drift-removed": {
+    style: { fill: "#FEE2E2", stroke: "#DC2626", "font-color": "#7F1D1D", "border-radius": "6", "stroke-dash": "3" },
+  },
+  "drift-added-flow": { style: { stroke: "#16A34A", "font-color": "#14532D", "stroke-dash": "3" } },
+  "drift-removed-flow": { style: { stroke: "#DC2626", "font-color": "#7F1D1D", "stroke-dash": "3" } },
   // DCB read-edge (Phase 6.6): a consumedEvent read of a consistency boundary —
   // violet + dashed, distinct from the orange emit/event flow. The core graph omits
   // write-side DCB reads, so the graph views derive + draw these.

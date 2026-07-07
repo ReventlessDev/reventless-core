@@ -52,6 +52,16 @@ palette → tooling sync stops crossing a repo boundary entirely.
 6. Consumer side (extension repo): delete the local copies, import
    `.../src/DomainGraphD2.gen` like GraphOps — move, not copy.
 
+## Follow-up (same wave, 2026-07-07)
+
+`toD2` gained two opt-in override hooks for comparison overlays: `~nodeClass`
+(nodeId → class, replacing the kind-derived palette class) and `~edgeClass`
+((from, to, class), overriding the connection class per endpoint pair), plus four
+generator-authored palette classes (`drift-added`/`drift-removed` for shapes,
+`*-flow` twins for connections — d2 rejects `fill` on connections). Generic
+presentation hooks; what a consumer diffs to produce the overrides stays outside
+this package.
+
 ## Acceptance
 
 - `rescript build` + `pnpm test` green in the package; `check:d2-styles` in sync.

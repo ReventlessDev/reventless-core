@@ -142,12 +142,19 @@ let isImageKind = (kind: Protocol.componentKind): bool => kind == ExtensionPoint
 let imageDecl = (s: D2Shapes.t): string =>
   `shape: image; icon: ${q(s.uri)}; width: ${Int.toString(s.width)}; height: ${Int.toString(s.height)}`
 
-// → (d2 label, inside-braces declaration). Image kinds get an empty label.
-let nodeRender = (kind: Protocol.componentKind, label: string): (string, string) =>
+// → (d2 label, inside-braces declaration). Image kinds get an empty label; a class
+// override (drift overlay) replaces the kind's palette class — on image kinds it is
+// appended (the icon SVG ignores fill, but the container border still reads it).
+let nodeRender = (kind: Protocol.componentKind, label: string, ~override: option<string>): (
+  string,
+  string,
+) =>
   switch kind {
-  | ExtensionPoint => ("", imageDecl(D2Shapes.extensionPointIcon(label)))
-  | Extension => ("", imageDecl(D2Shapes.extensionIcon(label)))
-  | _ => (label, `class: ${nodeClassOf(kind)}`)
+  | ExtensionPoint =>
+    ("", imageDecl(D2Shapes.extensionPointIcon(label)) ++ override->Option.mapOr("", c => `; class: ${c}`))
+  | Extension =>
+    ("", imageDecl(D2Shapes.extensionIcon(label)) ++ override->Option.mapOr("", c => `; class: ${c}`))
+  | _ => (label, `class: ${override->Option.getOr(nodeClassOf(kind))}`)
   }
 
 // Focus scoping (`neighbourhood` — whole connected component — and `focusView` —
@@ -178,6 +185,11 @@ let nodeRender = (kind: Protocol.componentKind, label: string): (string, string)
 // `sliceClass` is a list of (sliceId, class) pairs giving each box its D2 class — the family
 // (`write-side`/`read-side`) optionally overlaid with a board-status colour
 // (`slice-inprogress`/`slice-done`). A sliceId absent here defaults to `write-side`.
+// `nodeClass` is a list of (nodeId, class) pairs (empty by default) REPLACING a node's
+// kind-derived palette class — the drift overlay recolours source-only / deployed-only
+// nodes this way (`drift-added`/`drift-removed`). `edgeClass` is the connection twin,
+// (from, to, class) triples keyed by endpoint pair (an override applies to every edge
+// between that pair) — drift uses the connection-safe `*-flow` classes.
 @genType
 let toD2 = (
   nodes: array<gNode>,
@@ -188,6 +200,8 @@ let toD2 = (
   ~allPlugins: array<string>=[],
   ~slices: array<(string, string)>=[],
   ~sliceClass: array<(string, string)>=[],
+  ~nodeClass: array<(string, string)>=[],
+  ~edgeClass: array<(string, string, string)>=[],
 ): string => {
   let lines = [classes, ""]
   if nodes->Array.length == 0 && allPlugins->Array.length == 0 {
@@ -324,8 +338,20 @@ let toD2 = (
       | _ => ()
       }
     )
+    let classById = Dict.make()
+    nodeClass->Array.forEach(((id, cls)) =>
+      if cls != "" {
+        classById->Dict.set(id, cls)
+      }
+    )
+    let classByPair = Dict.make()
+    edgeClass->Array.forEach(((from, to_, cls)) =>
+      if cls != "" {
+        classByPair->Dict.set(`${from}->${to_}`, cls)
+      }
+    )
     nodes->Array.forEach(n => {
-      let (lbl, decl) = nodeRender(n.kind, n.label)
+      let (lbl, decl) = nodeRender(n.kind, n.label, ~override=classById->Dict.get(n.id))
       // image-shape nodes ignore the d2 stroke-width focus, so skip it for them.
       let focus =
         !isImageKind(n.kind) && focusId == n.id ? "; style.stroke-width: 4; style.bold: true" : ""
@@ -333,9 +359,13 @@ let toD2 = (
     })
     lines->Array.push("")
     edges->Array.forEach(e => {
-      // Cross-plugin edges render dashed regardless of relation.
+      // Cross-plugin edges render dashed regardless of relation; an explicit
+      // (from, to) override (drift overlay) wins over both.
       let crossPlugin = pluginById->Dict.get(e.from) != pluginById->Dict.get(e.to_)
-      let cls = crossPlugin ? "cross-plugin" : edgeClassOf(e.kind)
+      let cls = switch classByPair->Dict.get(`${e.from}->${e.to_}`) {
+      | Some(cls) => cls
+      | None => crossPlugin ? "cross-plugin" : edgeClassOf(e.kind)
+      }
       let hot =
         focusId != "" && (e.from == focusId || e.to_ == focusId)
           ? "; style.stroke-width: 3; style.animated: true"

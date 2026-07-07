@@ -326,6 +326,40 @@ describe("toD2 slices", () => {
   })
 })
 
+describe("toD2 drift overrides", () => {
+  testSync("nodeClass replaces the palette class; edgeClass overrides the connection", () =>
+    expect(
+      missingFrom(
+        toD2(
+          nodes,
+          edges,
+          ~nodeClass=[("Catalog:Categories", "drift-removed")],
+          ~edgeClass=[("Catalog.Added", "Catalog:Categories", "drift-removed-flow")],
+        ),
+        [
+          `"Catalog"."Catalog:Categories": "Categories" { class: drift-removed }`,
+          `"Catalog"."Catalog.Added" -> "Catalog"."Catalog:Categories" { class: drift-removed-flow }`,
+          // untouched elements keep their kind-derived classes
+          `"Catalog"."Catalog:Category": "Category" { class: aggregate }`,
+        ],
+      ),
+    )->toEqual([])
+  )
+
+  testSync("with no overrides is unchanged (the override level is opt-in)", () =>
+    expect(toD2(nodes, edges, ~nodeClass=[], ~edgeClass=[]))->toEqual(toD2(nodes, edges))
+  )
+
+  testSync("the drift palette classes exist in the generated class block", () =>
+    expect(
+      missingFrom(
+        D2Classes.classes,
+        [`"drift-added"`, `"drift-removed"`, `"drift-added-flow"`, `"drift-removed-flow"`],
+      ),
+    )->toEqual([])
+  )
+})
+
 describe("toD2 plugin highlight", () => {
   testSync("outlines the highlighted plugin's container; empty leaves it unchanged", () =>
     expect((

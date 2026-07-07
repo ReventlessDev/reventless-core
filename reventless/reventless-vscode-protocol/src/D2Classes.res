@@ -24,6 +24,10 @@ let classes = `classes: {
   "read-side": { style: { fill: "#ECFDF5"; stroke: "#0D9488"; font-color: "#134E4A"; border-radius: 10 } }
   "slice-inprogress": { style: { fill: "#EFF6FF"; stroke: "#2563EB"; font-color: "#1E3A8A"; border-radius: 10; stroke-width: 2 } }
   "slice-done": { style: { fill: "#DCFCE7"; stroke: "#16A34A"; font-color: "#14532D"; border-radius: 10 } }
+  "drift-added": { style: { fill: "#DCFCE7"; stroke: "#16A34A"; font-color: "#14532D"; border-radius: 6; stroke-dash: 3 } }
+  "drift-removed": { style: { fill: "#FEE2E2"; stroke: "#DC2626"; font-color: "#7F1D1D"; border-radius: 6; stroke-dash: 3 } }
+  "drift-added-flow": { style: { stroke: "#16A34A"; font-color: "#14532D"; stroke-dash: 3 } }
+  "drift-removed-flow": { style: { stroke: "#DC2626"; font-color: "#7F1D1D"; stroke-dash: 3 } }
   "dcb-read": { style: { stroke: "#7C3AED"; font-color: "#7C3AED"; stroke-dash: 2 } }
   "dcb-read-xp": { style: { stroke: "#C026D3"; font-color: "#C026D3"; stroke-dash: 4 } }
   "command-flow": { style: { stroke: "#2563EB"; font-color: "#2563EB" } }
@@ -62,6 +66,10 @@ let swatchColor = (cls: string): string =>
   | "read-side" => "#0D9488"
   | "slice-inprogress" => "#2563EB"
   | "slice-done" => "#16A34A"
+  | "drift-added" => "#16A34A"
+  | "drift-removed" => "#DC2626"
+  | "drift-added-flow" => "#16A34A"
+  | "drift-removed-flow" => "#DC2626"
   | "dcb-read" => "#7C3AED"
   | "dcb-read-xp" => "#C026D3"
   | "command-flow" => "#2563EB"

@@ -4,6 +4,7 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Nodechild_process from "node:child_process";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as D2Classes$ReventlessVscodeProtocol from "../src/D2Classes.res.mjs";
 import * as DomainGraphD2$ReventlessVscodeProtocol from "../src/DomainGraphD2.res.mjs";
 
 let errCode = (e => (e && typeof e.code === 'string') ? e.code : undefined);
@@ -172,7 +173,7 @@ globalThis.describe("legend", () => {
 
 globalThis.describe("toD2", () => {
   globalThis.test("emits the class block + nodes grouped in per-plugin containers, classed edges", () => {
-    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, undefined, undefined), [
+    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), [
       "classes: {",
       `"Catalog"."Catalog:Category": "Category" { class: aggregate }`,
       `"Catalog"."Catalog.Added": "Added" { class: msg-event }`,
@@ -180,7 +181,7 @@ globalThis.describe("toD2", () => {
     ])).toEqual([]);
   });
   globalThis.test("an empty graph still produces valid D2 (class block + placeholder)", () => {
-    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2([], [], undefined, undefined, undefined, undefined, undefined, undefined), [
+    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2([], [], undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), [
       "classes: {",
       `empty: "No plugins loaded"`
     ])).toEqual([]);
@@ -191,7 +192,7 @@ globalThis.describe("toD2", () => {
         kind: "Event",
         label: `l"l`,
         plugin: "p"
-      }], [], undefined, undefined, undefined, undefined, undefined, undefined).includes("\"a\\\"b\": \"l\\\"l\"")).toBe(true);
+      }], [], undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined).includes("\"a\\\"b\": \"l\\\"l\"")).toBe(true);
   });
   globalThis.test("an external-system node renders outside the plugin; its boundary edge carries a label", () => {
     let nodes = [
@@ -214,7 +215,7 @@ globalThis.describe("toD2", () => {
         kind: "TranslatesOut",
         label: "Placed"
       }];
-    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, undefined, undefined), [
+    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), [
       `"ext:EmailService": "EmailService" { class: external-system`,
       `-> "ext:EmailService": "Placed" { class: cross-plugin`
     ])).toEqual([]);
@@ -237,13 +238,13 @@ globalThis.describe("toD2", () => {
         from: "Catalog.Added",
         to: "Catalog:Reserve",
         kind: "Reads"
-      }], undefined, undefined, undefined, undefined, undefined, undefined).includes(`"Catalog"."Catalog.Added" -> "Catalog"."Catalog:Reserve" { class: dcb-read }`)).toBe(true);
+      }], undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined).includes(`"Catalog"."Catalog.Added" -> "Catalog"."Catalog:Reserve" { class: dcb-read }`)).toBe(true);
   });
   globalThis.test("allPlugins declares an empty container for an element-less plugin", () => {
     globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, [
       "Catalog",
       "Billing"
-    ], undefined, undefined), [
+    ], undefined, undefined, undefined, undefined), [
       `"Billing": { }`,
       `"Catalog"."Catalog:Category"`
     ])).toEqual([]);
@@ -252,7 +253,7 @@ globalThis.describe("toD2", () => {
     let d2 = DomainGraphD2$ReventlessVscodeProtocol.toD2([], [], undefined, undefined, undefined, [
       "Catalog",
       "Ordering"
-    ], undefined, undefined);
+    ], undefined, undefined, undefined, undefined);
     globalThis.expect([
       missingFrom(d2, [
         `"Catalog": { }`,
@@ -268,13 +269,13 @@ globalThis.describe("toD2", () => {
 
 globalThis.describe("toD2 focus", () => {
   globalThis.test("thickens the focus node border, leaves others plain", () => {
-    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, "Catalog:Category", undefined, undefined, undefined, undefined, undefined), [
+    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, "Catalog:Category", undefined, undefined, undefined, undefined, undefined, undefined, undefined), [
       `"Catalog"."Catalog:Category": "Category" { class: aggregate; style.stroke-width: 4`,
       `"Catalog"."Catalog.Added": "Added" { class: msg-event }`
     ])).toEqual([]);
   });
   globalThis.test("highlights every edge touching the focus, leaves others plain", () => {
-    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, "Catalog:Category", undefined, undefined, undefined, undefined, undefined), [
+    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, "Catalog:Category", undefined, undefined, undefined, undefined, undefined, undefined, undefined), [
       `"Catalog"."Catalog_Category_Add" -> "Catalog"."Catalog:Category" { class: command-flow; style.stroke-width: 3; style.animated: true }`,
       `-> "Catalog"."Catalog.Added" { class: event-flow; style.stroke-width: 3`,
       `"Catalog"."Catalog.Added" -> "Catalog"."Catalog:Categories" { class: projection-flow }`
@@ -294,7 +295,7 @@ globalThis.describe("toD2 chapters", () => {
         "Catalog Management"
       ]
     ];
-    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, chapters, undefined, undefined, undefined, undefined), [
+    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, chapters, undefined, undefined, undefined, undefined, undefined, undefined), [
       `"Catalog"."Catalog Management": "Catalog Management" { class: chapter }`,
       `"Catalog"."Catalog Management"."Catalog:Category": "Category" { class: aggregate }`,
       `"Catalog"."Catalog Management"."Catalog_Category_Add" -> "Catalog"."Catalog Management"."Catalog:Category" { class: command-flow }`,
@@ -302,7 +303,7 @@ globalThis.describe("toD2 chapters", () => {
     ])).toEqual([]);
   });
   globalThis.test("with no chapters is unchanged (the chapter level is opt-in)", () => {
-    globalThis.expect(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, [], undefined, undefined, undefined, undefined)).toEqual(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, undefined, undefined));
+    globalThis.expect(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, [], undefined, undefined, undefined, undefined, undefined, undefined)).toEqual(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined));
   });
 });
 
@@ -322,7 +323,7 @@ globalThis.describe("toD2 slices", () => {
         "Catalog:Category::slice"
       ]
     ];
-    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, slices, undefined), [
+    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, slices, undefined, undefined, undefined), [
       `"Catalog"."Catalog:Category::slice": "" { class: write-side }`,
       `"Catalog"."Catalog:Category::slice"."Catalog:Category": "Category" { class: aggregate }`,
       `"Catalog"."Catalog:Category::slice"."Catalog_Category_Add" -> "Catalog"."Catalog:Category::slice"."Catalog:Category" { class: command-flow }`,
@@ -350,13 +351,13 @@ globalThis.describe("toD2 slices", () => {
         "Catalog:Category::slice"
       ]
     ];
-    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, chapters, undefined, undefined, slices, undefined), [
+    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, chapters, undefined, undefined, slices, undefined, undefined, undefined), [
       `"Catalog"."Catalog Management"."Catalog:Category::slice": "" { class: write-side }`,
       `"Catalog"."Catalog Management"."Catalog:Category::slice"."Catalog:Category": "Category" { class: aggregate }`
     ])).toEqual([]);
   });
   globalThis.test("with no slices is unchanged (the slice level is opt-in)", () => {
-    globalThis.expect(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, [], undefined)).toEqual(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, undefined, undefined));
+    globalThis.expect(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, [], undefined, undefined, undefined)).toEqual(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined));
   });
   globalThis.test("wraps a read-side node in a read-slice box (anchor only)", () => {
     let slices = [[
@@ -367,7 +368,7 @@ globalThis.describe("toD2 slices", () => {
         "Catalog:Categories::read-slice",
         "read-side"
       ]];
-    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, slices, sliceClass), [
+    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, slices, sliceClass, undefined, undefined), [
       `"Catalog"."Catalog:Categories::read-slice": "" { class: read-side }`,
       `"Catalog"."Catalog:Categories::read-slice"."Catalog:Categories": "Categories" { class: read-model }`
     ])).toEqual([]);
@@ -380,11 +381,11 @@ globalThis.describe("toD2 slices", () => {
     let done = DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, slices, [[
         "Catalog:Categories::read-slice",
         "slice-done"
-      ]]);
+      ]], undefined, undefined);
     let prog = DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, slices, [[
         "Catalog:Categories::read-slice",
         "slice-inprogress"
-      ]]);
+      ]], undefined, undefined);
     globalThis.expect([
       done.includes(`"Catalog"."Catalog:Categories::read-slice": "" { class: slice-done }`),
       prog.includes(`"Catalog"."Catalog:Categories::read-slice": "" { class: slice-inprogress }`)
@@ -398,15 +399,43 @@ globalThis.describe("toD2 slices", () => {
         "Catalog:Category",
         "Catalog:Category::slice"
       ]];
-    globalThis.expect(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, slices, undefined).includes(`"Catalog"."Catalog:Category::slice": "" { class: write-side }`)).toBe(true);
+    globalThis.expect(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, slices, undefined, undefined, undefined).includes(`"Catalog"."Catalog:Category::slice": "" { class: write-side }`)).toBe(true);
+  });
+});
+
+globalThis.describe("toD2 drift overrides", () => {
+  globalThis.test("nodeClass replaces the palette class; edgeClass overrides the connection", () => {
+    globalThis.expect(missingFrom(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, undefined, undefined, [[
+        "Catalog:Categories",
+        "drift-removed"
+      ]], [[
+        "Catalog.Added",
+        "Catalog:Categories",
+        "drift-removed-flow"
+      ]]), [
+      `"Catalog"."Catalog:Categories": "Categories" { class: drift-removed }`,
+      `"Catalog"."Catalog.Added" -> "Catalog"."Catalog:Categories" { class: drift-removed-flow }`,
+      `"Catalog"."Catalog:Category": "Category" { class: aggregate }`
+    ])).toEqual([]);
+  });
+  globalThis.test("with no overrides is unchanged (the override level is opt-in)", () => {
+    globalThis.expect(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, undefined, undefined, [], [])).toEqual(DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined));
+  });
+  globalThis.test("the drift palette classes exist in the generated class block", () => {
+    globalThis.expect(missingFrom(D2Classes$ReventlessVscodeProtocol.classes, [
+      `"drift-added"`,
+      `"drift-removed"`,
+      `"drift-added-flow"`,
+      `"drift-removed-flow"`
+    ])).toEqual([]);
   });
 });
 
 globalThis.describe("toD2 plugin highlight", () => {
   globalThis.test("outlines the highlighted plugin's container; empty leaves it unchanged", () => {
     globalThis.expect([
-      DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, "Catalog", undefined, undefined, undefined).includes(`"Catalog": { style.stroke-width: 4; style.bold: true }`),
-      DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, "", undefined, undefined, undefined) === DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, undefined, undefined)
+      DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, "Catalog", undefined, undefined, undefined, undefined, undefined).includes(`"Catalog": { style.stroke-width: 4; style.bold: true }`),
+      DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, "", undefined, undefined, undefined, undefined, undefined) === DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined)
     ]).toEqual([
       true,
       true
@@ -422,7 +451,7 @@ globalThis.describe("d2 binary smoke", () => {
         "-",
         "-"
       ], {
-        input: DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, "Catalog:Category", undefined, undefined, undefined, undefined, undefined),
+        input: DomainGraphD2$ReventlessVscodeProtocol.toD2(nodes, edges, "Catalog:Category", undefined, undefined, undefined, undefined, undefined, undefined, undefined),
         encoding: "utf8"
       });
     } catch (raw_exn) {

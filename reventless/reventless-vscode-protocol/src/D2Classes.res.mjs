@@ -11,6 +11,9 @@ function swatchColor(cls) {
       return "#7C3AED";
     case "dcb-read-xp" :
       return "#C026D3";
+    case "drift-removed" :
+    case "drift-removed-flow" :
+      return "#DC2626";
     case "boundary" :
     case "extension" :
     case "extension-point" :
@@ -24,6 +27,8 @@ function swatchColor(cls) {
     case "external-system" :
     case "side-effect" :
       return "#E11D48";
+    case "drift-added" :
+    case "drift-added-flow" :
     case "projection-flow" :
     case "read-model" :
     case "slice-done" :
@@ -63,6 +68,10 @@ let classes = `classes: {
   "read-side": { style: { fill: "#ECFDF5"; stroke: "#0D9488"; font-color: "#134E4A"; border-radius: 10 } }
   "slice-inprogress": { style: { fill: "#EFF6FF"; stroke: "#2563EB"; font-color: "#1E3A8A"; border-radius: 10; stroke-width: 2 } }
   "slice-done": { style: { fill: "#DCFCE7"; stroke: "#16A34A"; font-color: "#14532D"; border-radius: 10 } }
+  "drift-added": { style: { fill: "#DCFCE7"; stroke: "#16A34A"; font-color: "#14532D"; border-radius: 6; stroke-dash: 3 } }
+  "drift-removed": { style: { fill: "#FEE2E2"; stroke: "#DC2626"; font-color: "#7F1D1D"; border-radius: 6; stroke-dash: 3 } }
+  "drift-added-flow": { style: { stroke: "#16A34A"; font-color: "#14532D"; stroke-dash: 3 } }
+  "drift-removed-flow": { style: { stroke: "#DC2626"; font-color: "#7F1D1D"; stroke-dash: 3 } }
   "dcb-read": { style: { stroke: "#7C3AED"; font-color: "#7C3AED"; stroke-dash: 2 } }
   "dcb-read-xp": { style: { stroke: "#C026D3"; font-color: "#C026D3"; stroke-dash: 4 } }
   "command-flow": { style: { stroke: "#2563EB"; font-color: "#2563EB" } }
