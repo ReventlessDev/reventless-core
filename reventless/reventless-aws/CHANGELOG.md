@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.184 (2026-07-08)
+
+### Bug Fixes
+
+* **reventless-aws:** exclude internal rows from Platform_Plugins connection scan ([df14af2](https://github.com/ReventlessDev/reventless-core/commit/df14af2cbd70d49062f2afc03418cdbf18d151d6))
+
+
 # 3.0.0-alpha.183 (2026-07-08)
 
 ### Bug Fixes
