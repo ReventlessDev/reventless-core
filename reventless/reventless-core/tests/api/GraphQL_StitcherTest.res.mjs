@@ -89,6 +89,80 @@ type Mutation {
   globalThis.test("allows an unchanged re-push (same SDL)", () => {
     globalThis.expect(GraphQL_Stitcher$ReventlessCore.isCatastrophicSchemaShrink(fullSchemaSdl, fullSchemaSdl, 0.5)).toBe(false);
   });
+  globalThis.test("allows a purely additive push even below threshold cardinality", () => {
+    globalThis.expect(GraphQL_Stitcher$ReventlessCore.isCatastrophicSchemaShrink(collapsedSchemaSdl, fullSchemaSdl, 0.5)).toBe(false);
+  });
+  globalThis.test("includes Subscription fields when judging a shrink", () => {
+    globalThis.expect(GraphQL_Stitcher$ReventlessCore.isCatastrophicSchemaShrink(`type Query {
+  node(id: ID!): Node
+}
+
+type Mutation {
+  Ordering_placeOrder(input: OrderInput): Order
+}
+
+type Subscription {
+  onOrdering_Customer_Register: Customer
+  onOrdering_Customer_UpdateAddress: Customer
+  onCatalog_Product_Added: Product
+}`, `type Query {
+  node(id: ID!): Node
+}
+
+type Mutation {
+  Ordering_placeOrder(input: OrderInput): Order
+}`, 0.5)).toBe(true);
+  });
+});
+
+globalThis.describe("GraphQL_Stitcher.rootTypeFieldNames", () => {
+  globalThis.test("lists Mutation field names", () => {
+    globalThis.expect(GraphQL_Stitcher$ReventlessCore.rootTypeFieldNames(fullSchemaSdl, "Mutation")).toEqual([
+      "Platform_connectPlugin",
+      "Catalog_addProduct",
+      "Catalog_updateProduct",
+      "Ordering_placeOrder"
+    ]);
+  });
+  globalThis.test("strips args and @aws_auth directive lines", () => {
+    globalThis.expect(GraphQL_Stitcher$ReventlessCore.rootTypeFieldNames(authAnnotatedSdl, "Mutation")).toEqual([
+      "Platform_connectPlugin",
+      "Catalog_addProduct"
+    ]);
+  });
+  globalThis.test("missing type returns []", () => {
+    globalThis.expect(GraphQL_Stitcher$ReventlessCore.rootTypeFieldNames(fullSchemaSdl, "Subscription")).toEqual([]);
+  });
+});
+
+globalThis.describe("GraphQL_Stitcher.missingRootFields", () => {
+  globalThis.test("reports plugin fields absent from an admin-base clobber", () => {
+    let missing = GraphQL_Stitcher$ReventlessCore.missingRootFields(fullSchemaSdl, collapsedSchemaSdl);
+    globalThis.expect(missing.includes("Catalog_addProduct")).toBe(true);
+    globalThis.expect(missing.includes("Ordering_placeOrder")).toBe(true);
+    globalThis.expect(missing.includes("Ordering_orders")).toBe(true);
+  });
+  globalThis.test("empty when live schema is a superset (intact)", () => {
+    globalThis.expect(GraphQL_Stitcher$ReventlessCore.missingRootFields(fullSchemaSdl, fullSchemaSdl)).toEqual([]);
+  });
+  globalThis.test("detects an equal-cardinality field swap the count test misses", () => {
+    let swapped = `type Query {
+  node(id: ID!): Node
+  Platform_plugins: [Plugin]
+  Catalog_products: [Product]
+  Ordering_orders: [Order]
+}
+
+type Mutation {
+  Platform_connectPlugin(input: ConnectInput): ConnectResult
+  Catalog_addProduct(input: AddInput): Product
+  Catalog_updateProduct(input: UpdateInput): Product
+  Foreign_strayField(input: OrderInput): Order
+}`;
+    globalThis.expect(GraphQL_Stitcher$ReventlessCore.countRootTypeFields(swapped, "Mutation")).toBe(GraphQL_Stitcher$ReventlessCore.countRootTypeFields(fullSchemaSdl, "Mutation"));
+    let missing = GraphQL_Stitcher$ReventlessCore.missingRootFields(fullSchemaSdl, swapped);
+    globalThis.expect(missing.includes("Ordering_placeOrder")).toBe(true);
+  });
 });
 
 export {

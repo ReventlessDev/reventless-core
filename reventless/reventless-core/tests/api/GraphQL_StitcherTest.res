@@ -104,4 +104,97 @@ type Mutation {
       isCatastrophicSchemaShrink(~currentSdl=fullSchemaSdl, ~newSdl=fullSchemaSdl, ~threshold=0.5),
     )->toBe(false)
   })
+  testSync("allows a purely additive push even below threshold cardinality", () => {
+    // A tiny live schema growing into a big one drops nothing → never a clobber,
+    // regardless of the ratio.
+    expect(
+      isCatastrophicSchemaShrink(~currentSdl=collapsedSchemaSdl, ~newSdl=fullSchemaSdl, ~threshold=0.5),
+    )->toBe(false)
+  })
+  testSync("includes Subscription fields when judging a shrink", () => {
+    let withSubs = `type Query {
+  node(id: ID!): Node
+}
+
+type Mutation {
+  Ordering_placeOrder(input: OrderInput): Order
+}
+
+type Subscription {
+  onOrdering_Customer_Register: Customer
+  onOrdering_Customer_UpdateAddress: Customer
+  onCatalog_Product_Added: Product
+}`
+    // Dropping every Subscription field (and keeping Mutation/Query) is a shrink
+    // the Mutation+Query-only guard would have missed.
+    let subsGone = `type Query {
+  node(id: ID!): Node
+}
+
+type Mutation {
+  Ordering_placeOrder(input: OrderInput): Order
+}`
+    expect(
+      isCatastrophicSchemaShrink(~currentSdl=withSubs, ~newSdl=subsGone, ~threshold=0.5),
+    )->toBe(true)
+  })
+})
+
+describe("GraphQL_Stitcher.rootTypeFieldNames", () => {
+  testSync("lists Mutation field names", () => {
+    expect(rootTypeFieldNames(~sdl=fullSchemaSdl, ~typeName="Mutation"))->toEqual([
+      "Platform_connectPlugin",
+      "Catalog_addProduct",
+      "Catalog_updateProduct",
+      "Ordering_placeOrder",
+    ])
+  })
+  testSync("strips args and @aws_auth directive lines", () => {
+    expect(rootTypeFieldNames(~sdl=authAnnotatedSdl, ~typeName="Mutation"))->toEqual([
+      "Platform_connectPlugin",
+      "Catalog_addProduct",
+    ])
+  })
+  testSync("missing type returns []", () => {
+    expect(rootTypeFieldNames(~sdl=fullSchemaSdl, ~typeName="Subscription"))->toEqual([])
+  })
+})
+
+describe("GraphQL_Stitcher.missingRootFields", () => {
+  testSync("reports plugin fields absent from an admin-base clobber", () => {
+    // The alpha 2026-07-08 clobber: live schema is admin-base only. Every
+    // Catalog_*/Ordering_* field the deploy expects is missing → repair fires.
+    let missing = missingRootFields(~expectedSdl=fullSchemaSdl, ~liveSdl=collapsedSchemaSdl)
+    expect(missing->Array.includes("Catalog_addProduct"))->toBe(true)
+    expect(missing->Array.includes("Ordering_placeOrder"))->toBe(true)
+    expect(missing->Array.includes("Ordering_orders"))->toBe(true)
+  })
+  testSync("empty when live schema is a superset (intact)", () => {
+    expect(missingRootFields(~expectedSdl=fullSchemaSdl, ~liveSdl=fullSchemaSdl))->toEqual([])
+  })
+  testSync("detects an equal-cardinality field swap the count test misses", () => {
+    // Same number of root fields, but one Mutation field replaced by a foreign
+    // one — a swap. countRootTypeFields would report no drift; the name-set diff
+    // catches it.
+    let swapped = `type Query {
+  node(id: ID!): Node
+  Platform_plugins: [Plugin]
+  Catalog_products: [Product]
+  Ordering_orders: [Order]
+}
+
+type Mutation {
+  Platform_connectPlugin(input: ConnectInput): ConnectResult
+  Catalog_addProduct(input: AddInput): Product
+  Catalog_updateProduct(input: UpdateInput): Product
+  Foreign_strayField(input: OrderInput): Order
+}`
+    // Same count on both sides.
+    expect(countRootTypeFields(~sdl=swapped, ~typeName="Mutation"))->toBe(
+      countRootTypeFields(~sdl=fullSchemaSdl, ~typeName="Mutation"),
+    )
+    // But the expected Ordering_placeOrder is missing from the live (swapped) schema.
+    let missing = missingRootFields(~expectedSdl=fullSchemaSdl, ~liveSdl=swapped)
+    expect(missing->Array.includes("Ordering_placeOrder"))->toBe(true)
+  })
 })

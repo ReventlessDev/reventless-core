@@ -689,37 +689,56 @@ module MakeWithConfig = (
     //   - split mode: platformApi from splitApiOutputsRef
     //   - unified mode / not-yet-populated: domainApi
     preAdminResolversSchemaHook: (~adminBarrier) => {
-      let targetApi = switch splitApiOutputsRef.contents {
-      | Some({platformApi}) => platformApi
-      | None => domainApi
+      // The admin-base SDL stitches AdminApi.baseFragment with an EMPTY plugin
+      // list, and startSchemaCreation REPLACES the whole schema. In split mode
+      // the admin schema belongs on the PlatformApi ONLY — the DomainApi carries
+      // plugin fields (emptyBaseFragment). If we pushed the admin-base-only SDL
+      // to the DomainApi it would wipe every plugin field, leaving exactly the
+      // admin-base set (the alpha 2026-07-08 clobber). So in split mode we push
+      // ONLY when the PlatformApi is known; if the ref is not yet populated we
+      // SKIP (never fall back to domainApi). Unified mode legitimately shares one
+      // API, so an unpopulated ref there means domainApi.
+      let targetApiOpt = switch (Config.splitApi, splitApiOutputsRef.contents) {
+      | (_, Some({platformApi})) => Some(platformApi)
+      | (false, None) => Some(domainApi)
+      | (true, None) => None
       }
-      let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
-        ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
-        ~group="Admin",
-      )
-      let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
-        ~baseFragment=adminBaseFragment,
-        ~pluginFragments=[],
-      )->AppSync_Adapter.stampSharedIamTypes
-      (targetApi, adminBarrier)
-      ->Pulumi.Output.all2
-      ->Pulumi.Output.flatMap(((api, _)) =>
-        api.id->Pulumi.Output.flatMap(apiId => {
-          log.info(~comp="preAdminResolversSchemaHook", `Pushing admin schema to ${apiId}`)
-          let client = AppSync_Adapter.getClient()
-          client
-          ->AppSync_Adapter.startSchemaCreationRetrying({apiId, definition: sdl})
-          ->Promise.then(async _ => {
-            log.info(
-              ~comp="preAdminResolversSchemaHook",
-              "startSchemaCreation called, waiting for ACTIVE",
-            )
-            await AppSync_Adapter.waitForSchemaActive(client, apiId)
-            log.info(~comp="preAdminResolversSchemaHook", "schema is ACTIVE")
+      switch targetApiOpt {
+      | None =>
+        log.error(
+          ~comp="preAdminResolversSchemaHook",
+          "split mode but the PlatformApi is not available at hook time — SKIPPING the admin schema push to avoid clobbering the DomainApi (pushing admin-base here would wipe every plugin field)",
+        )
+        adminBarrier
+      | Some(targetApi) =>
+        let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
+          ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+          ~group="Admin",
+        )
+        let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
+          ~baseFragment=adminBaseFragment,
+          ~pluginFragments=[],
+        )->AppSync_Adapter.stampSharedIamTypes
+        (targetApi, adminBarrier)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.flatMap(((api, _)) =>
+          api.id->Pulumi.Output.flatMap(apiId => {
+            log.info(~comp="preAdminResolversSchemaHook", `Pushing admin schema to ${apiId}`)
+            let client = AppSync_Adapter.getClient()
+            client
+            ->AppSync_Adapter.startSchemaCreationRetrying({apiId, definition: sdl})
+            ->Promise.then(async _ => {
+              log.info(
+                ~comp="preAdminResolversSchemaHook",
+                "startSchemaCreation called, waiting for ACTIVE",
+              )
+              await AppSync_Adapter.waitForSchemaActive(client, apiId)
+              log.info(~comp="preAdminResolversSchemaHook", "schema is ACTIVE")
+            })
+            ->Pulumi.Output.fromPromise
           })
-          ->Pulumi.Output.fromPromise
-        })
-      )
+        )
+      }
     },
 
     // Accumulate fragments across independent plugin deployments: each plugin
@@ -957,26 +976,44 @@ module MakeWithConfig = (
                   ~sdl=s,
                   ~typeName="Subscription",
                 )
+              // Identity-aware drift check (not a bare count): the live schema is
+              // "intact" only when it is a SUPERSET of every root field we would
+              // push. Comparing name SETS heals equal-cardinality drift and field
+              // *swaps* — an admin-base clobber that leaves the DomainApi with the
+              // SAME number of root fields but the WRONG ones (admin-base instead
+              // of plugin fields) has a matching count yet is missing every
+              // expected plugin field, so a count test would wrongly skip.
+              let missingFields = ReventlessCore.GraphQL_Stitcher.missingRootFields(
+                ~expectedSdl=sdl,
+                ~liveSdl,
+              )
               let skipPush = switch storedHash {
               | Some(prev) if prev == currentHash =>
-                let expected = countRoots(sdl)
-                let live = countRoots(liveSdl)
                 if liveSdl == "" {
                   log.info(
                     ~comp="preResolversSchemaHook",
                     `hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`,
                   )
                   false
-                } else if live < expected {
+                } else if missingFields->Array.length > 0 {
                   log.info(
                     ~comp="preResolversSchemaHook",
-                    `hash matches but live schema drifted (${live->Int.toString} root field(s) live vs ${expected->Int.toString} expected) — forcing repair push`,
+                    `hash matches but live schema is missing ${missingFields
+                      ->Array.length
+                      ->Int.toString} expected root field(s) (e.g. ${missingFields
+                      ->Array.slice(~start=0, ~end=5)
+                      ->Array.join(", ")}) — forcing repair push`,
                   )
                   false
                 } else {
                   log.info(
                     ~comp="preResolversSchemaHook",
-                    `SDL unchanged (hash ${currentHash->String.slice(~start=0, ~end=12)}…) and live schema intact (${live->Int.toString} root fields); skipping push`,
+                    `SDL unchanged (hash ${currentHash->String.slice(
+                        ~start=0,
+                        ~end=12,
+                      )}…) and live schema is a superset of the expected root fields (${countRoots(
+                        liveSdl,
+                      )->Int.toString} live); skipping push`,
                   )
                   true
                 }

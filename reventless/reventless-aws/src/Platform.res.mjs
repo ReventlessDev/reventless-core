@@ -645,23 +645,12 @@ function MakeWithConfig(Config) {
           let client = AppSync_Adapter$ReventlessAws.getClient();
           let liveSdl = await AppSync_Adapter$ReventlessAws.getIntrospectionSdl(client, apiId);
           let countRoots = s => (GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Mutation") + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Query") | 0) + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Subscription") | 0;
-          let skipPush;
-          if (storedHash !== undefined && storedHash === currentHash) {
-            let expected = countRoots(sdl);
-            let live = countRoots(liveSdl);
-            if (liveSdl === "") {
-              log.info("preResolversSchemaHook", undefined, `hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`);
-              skipPush = false;
-            } else if (live < expected) {
-              log.info("preResolversSchemaHook", undefined, `hash matches but live schema drifted (` + live.toString() + ` root field(s) live vs ` + expected.toString() + ` expected) — forcing repair push`);
-              skipPush = false;
-            } else {
-              log.info("preResolversSchemaHook", undefined, `SDL unchanged (hash ` + currentHash.slice(0, 12) + `…) and live schema intact (` + live.toString() + ` root fields); skipping push`);
-              skipPush = true;
-            }
-          } else {
-            skipPush = false;
-          }
+          let missingFields = GraphQL_Stitcher$ReventlessCore.missingRootFields(sdl, liveSdl);
+          let skipPush = storedHash !== undefined && storedHash === currentHash ? (
+              liveSdl === "" ? (log.info("preResolversSchemaHook", undefined, `hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`), false) : (
+                  missingFields.length !== 0 ? (log.info("preResolversSchemaHook", undefined, `hash matches but live schema is missing ` + missingFields.length.toString() + ` expected root field(s) (e.g. ` + missingFields.slice(0, 5).join(", ") + `) — forcing repair push`), false) : (log.info("preResolversSchemaHook", undefined, `SDL unchanged (hash ` + currentHash.slice(0, 12) + `…) and live schema is a superset of the expected root fields (` + countRoots(liveSdl).toString() + ` live); skipping push`), true)
+                )
+            ) : false;
           if (!skipPush) {
             if (GraphQL_Stitcher$ReventlessCore.isCatastrophicSchemaShrink(liveSdl, sdl, deploySchemaShrinkThreshold)) {
               return log.error("preResolversSchemaHook", undefined, `ABORTED schema push for ` + apiId + `: stitched SDL (` + countRoots(sdl).toString() + ` root field(s)) would catastrophically shrink the live schema (` + countRoots(liveSdl).toString() + ` root field(s), threshold ` + deploySchemaShrinkThreshold.toString() + `) — refusing to clobber resolvers (likely a stale concurrent-deploy scan)`);
@@ -692,24 +681,30 @@ function MakeWithConfig(Config) {
   };
   let hooks_preAdminResolversSchemaHook = adminBarrier => {
     let match = splitApiOutputsRef.contents;
-    let targetApi = match !== undefined ? match.platformApi : domainApi;
-    let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", undefined);
-    let sdl = AppSync_Adapter$ReventlessAws.stampSharedIamTypes(GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []));
-    return Output$Pulumi.flatMap(Pulumi.all([
-      targetApi,
-      adminBarrier
-    ]), param => Output$Pulumi.flatMap(param[0].id, apiId => {
-      log.info("preAdminResolversSchemaHook", undefined, `Pushing admin schema to ` + apiId);
-      let client = AppSync_Adapter$ReventlessAws.getClient();
-      return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
-        apiId: apiId,
-        definition: sdl
-      }).then(async () => {
-        log.info("preAdminResolversSchemaHook", undefined, "startSchemaCreation called, waiting for ACTIVE");
-        await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
-        return log.info("preAdminResolversSchemaHook", undefined, "schema is ACTIVE");
-      });
-    }));
+    let targetApiOpt = match !== undefined ? match.platformApi : (
+        Config.splitApi ? undefined : domainApi
+      );
+    if (targetApiOpt !== undefined) {
+      let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", undefined);
+      let sdl = AppSync_Adapter$ReventlessAws.stampSharedIamTypes(GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []));
+      return Output$Pulumi.flatMap(Pulumi.all([
+        targetApiOpt,
+        adminBarrier
+      ]), param => Output$Pulumi.flatMap(param[0].id, apiId => {
+        log.info("preAdminResolversSchemaHook", undefined, `Pushing admin schema to ` + apiId);
+        let client = AppSync_Adapter$ReventlessAws.getClient();
+        return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
+          apiId: apiId,
+          definition: sdl
+        }).then(async () => {
+          log.info("preAdminResolversSchemaHook", undefined, "startSchemaCreation called, waiting for ACTIVE");
+          await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
+          return log.info("preAdminResolversSchemaHook", undefined, "schema is ACTIVE");
+        });
+      }));
+    }
+    log.error("preAdminResolversSchemaHook", undefined, "split mode but the PlatformApi is not available at hook time — SKIPPING the admin schema push to avoid clobbering the DomainApi (pushing admin-base here would wipe every plugin field)");
+    return adminBarrier;
   };
   let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), param.runtime, param.fieldNames, param.opts);
   let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(resolveHookedApi(), param.runtime, param.fieldNames, param.tags, param.opts);
@@ -1876,23 +1871,12 @@ function Make($star) {
           let client = AppSync_Adapter$ReventlessAws.getClient();
           let liveSdl = await AppSync_Adapter$ReventlessAws.getIntrospectionSdl(client, apiId);
           let countRoots = s => (GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Mutation") + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Query") | 0) + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Subscription") | 0;
-          let skipPush;
-          if (storedHash !== undefined && storedHash === currentHash) {
-            let expected = countRoots(sdl);
-            let live = countRoots(liveSdl);
-            if (liveSdl === "") {
-              log.info("preResolversSchemaHook", undefined, `hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`);
-              skipPush = false;
-            } else if (live < expected) {
-              log.info("preResolversSchemaHook", undefined, `hash matches but live schema drifted (` + live.toString() + ` root field(s) live vs ` + expected.toString() + ` expected) — forcing repair push`);
-              skipPush = false;
-            } else {
-              log.info("preResolversSchemaHook", undefined, `SDL unchanged (hash ` + currentHash.slice(0, 12) + `…) and live schema intact (` + live.toString() + ` root fields); skipping push`);
-              skipPush = true;
-            }
-          } else {
-            skipPush = false;
-          }
+          let missingFields = GraphQL_Stitcher$ReventlessCore.missingRootFields(sdl, liveSdl);
+          let skipPush = storedHash !== undefined && storedHash === currentHash ? (
+              liveSdl === "" ? (log.info("preResolversSchemaHook", undefined, `hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`), false) : (
+                  missingFields.length !== 0 ? (log.info("preResolversSchemaHook", undefined, `hash matches but live schema is missing ` + missingFields.length.toString() + ` expected root field(s) (e.g. ` + missingFields.slice(0, 5).join(", ") + `) — forcing repair push`), false) : (log.info("preResolversSchemaHook", undefined, `SDL unchanged (hash ` + currentHash.slice(0, 12) + `…) and live schema is a superset of the expected root fields (` + countRoots(liveSdl).toString() + ` live); skipping push`), true)
+                )
+            ) : false;
           if (!skipPush) {
             if (GraphQL_Stitcher$ReventlessCore.isCatastrophicSchemaShrink(liveSdl, sdl, deploySchemaShrinkThreshold)) {
               return log.error("preResolversSchemaHook", undefined, `ABORTED schema push for ` + apiId + `: stitched SDL (` + countRoots(sdl).toString() + ` root field(s)) would catastrophically shrink the live schema (` + countRoots(liveSdl).toString() + ` root field(s), threshold ` + deploySchemaShrinkThreshold.toString() + `) — refusing to clobber resolvers (likely a stale concurrent-deploy scan)`);
@@ -1923,24 +1907,28 @@ function Make($star) {
   };
   let hooks_preAdminResolversSchemaHook = adminBarrier => {
     let match = splitApiOutputsRef.contents;
-    let targetApi = match !== undefined ? match.platformApi : domainApi;
-    let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", undefined);
-    let sdl = AppSync_Adapter$ReventlessAws.stampSharedIamTypes(GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []));
-    return Output$Pulumi.flatMap(Pulumi.all([
-      targetApi,
-      adminBarrier
-    ]), param => Output$Pulumi.flatMap(param[0].id, apiId => {
-      log.info("preAdminResolversSchemaHook", undefined, `Pushing admin schema to ` + apiId);
-      let client = AppSync_Adapter$ReventlessAws.getClient();
-      return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
-        apiId: apiId,
-        definition: sdl
-      }).then(async () => {
-        log.info("preAdminResolversSchemaHook", undefined, "startSchemaCreation called, waiting for ACTIVE");
-        await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
-        return log.info("preAdminResolversSchemaHook", undefined, "schema is ACTIVE");
-      });
-    }));
+    let targetApiOpt = match !== undefined ? match.platformApi : undefined;
+    if (targetApiOpt !== undefined) {
+      let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", undefined);
+      let sdl = AppSync_Adapter$ReventlessAws.stampSharedIamTypes(GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []));
+      return Output$Pulumi.flatMap(Pulumi.all([
+        targetApiOpt,
+        adminBarrier
+      ]), param => Output$Pulumi.flatMap(param[0].id, apiId => {
+        log.info("preAdminResolversSchemaHook", undefined, `Pushing admin schema to ` + apiId);
+        let client = AppSync_Adapter$ReventlessAws.getClient();
+        return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
+          apiId: apiId,
+          definition: sdl
+        }).then(async () => {
+          log.info("preAdminResolversSchemaHook", undefined, "startSchemaCreation called, waiting for ACTIVE");
+          await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
+          return log.info("preAdminResolversSchemaHook", undefined, "schema is ACTIVE");
+        });
+      }));
+    }
+    log.error("preAdminResolversSchemaHook", undefined, "split mode but the PlatformApi is not available at hook time — SKIPPING the admin schema push to avoid clobbering the DomainApi (pushing admin-base here would wipe every plugin field)");
+    return adminBarrier;
   };
   let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), param.runtime, param.fieldNames, param.opts);
   let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(resolveHookedApi(), param.runtime, param.fieldNames, param.tags, param.opts);

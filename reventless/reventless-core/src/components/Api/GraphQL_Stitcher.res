@@ -218,21 +218,24 @@ let isIdentStart = (line: string): bool =>
   }
 
 /**
-Count the field definitions inside a root object type (`Mutation` / `Query`) of a
-full SDL string.
+List the field NAMES defined inside a root object type (`Mutation` / `Query` /
+`Subscription`) of a full SDL string.
 
-Used by the runtime schema-update circuit breaker (AdminEventCollectorEntryPoint)
-to detect a catastrophic shrink before pushing a new schema to AppSync. Heuristic
-but adequate for a shrink guard: root operation fields are flat single-line
-declarations (`name(args): T` or `name: T`), so we slice the `type <typeName> {
-… }` block at its first `{`/`}` and count indented lines that begin with an
-identifier character, ignoring directive-only lines (`@…`), comments (`#…`) and
-braces.
+This is the identity-aware primitive underlying every schema-clobber guard:
+`countRootTypeFields` is just its length, and the deploy-time repair / shrink
+guards compare the returned NAME SETS rather than cardinalities so they catch
+field *swaps* and equal-cardinality drift that a count comparison misses.
+
+Heuristic but adequate: root operation fields are flat single-line declarations
+(`name(args): T` or `name: T`), so we slice the `type <typeName> { … }` block at
+its first `{`/`}` and read the leading identifier of each indented line that
+begins with an identifier character, ignoring directive-only lines (`@…`),
+comments (`#…`) and braces.
 */
-let countRootTypeFields = (~sdl: string, ~typeName: string): int => {
+let rootTypeFieldNames = (~sdl: string, ~typeName: string): array<string> => {
   let marker = `type ${typeName}`
   switch sdl->String.indexOfOpt(marker) {
-  | None => 0
+  | None => []
   | Some(typeStart) =>
     let rest = sdl->String.slice(~start=typeStart)
     switch (rest->String.indexOfOpt("{"), rest->String.indexOfOpt("}")) {
@@ -240,32 +243,82 @@ let countRootTypeFields = (~sdl: string, ~typeName: string): int => {
       rest
       ->String.slice(~start=openIdx + 1, ~end=closeIdx)
       ->String.split("\n")
-      ->Array.filter(line => {
+      ->Array.filterMap(line => {
         let trimmed = line->String.trim
-        trimmed->String.length > 0 && isIdentStart(trimmed)
+        if trimmed->String.length > 0 && isIdentStart(trimmed) {
+          // `name(args): T` → extractLeadingName strips the arg list; `name: T`
+          // (no args) leaves a trailing colon on the token — drop it so a field
+          // reads the same whether or not it takes arguments.
+          let name = extractLeadingName(trimmed)
+          let name = name->String.endsWith(":")
+            ? name->String.slice(~start=0, ~end=name->String.length - 1)
+            : name
+          name->String.length > 0 ? Some(name) : None
+        } else {
+          None
+        }
       })
-      ->Array.length
-    | _ => 0
+    | _ => []
     }
   }
 }
 
 /**
+Count the field definitions inside a root object type (`Mutation` / `Query`) of a
+full SDL string. Length of `rootTypeFieldNames`.
+*/
+let countRootTypeFields = (~sdl: string, ~typeName: string): int =>
+  rootTypeFieldNames(~sdl, ~typeName)->Array.length
+
+// The three GraphQL root operation types every clobber guard reasons over.
+let rootTypeNames = ["Mutation", "Query", "Subscription"]
+
+/**
+Union of every root-operation field name across `Mutation` + `Query` +
+`Subscription`. The identity set the deploy-time repair and shrink guards diff.
+*/
+let allRootFieldNames = (~sdl: string): array<string> =>
+  rootTypeNames->Array.flatMap(typeName => rootTypeFieldNames(~sdl, ~typeName))
+
+/**
+Root-operation field names present in `expectedSdl` but MISSING from `liveSdl`
+(across Mutation + Query + Subscription). Non-empty ⇒ the live schema is not a
+superset of what we expect and a repair push is warranted — this heals field
+*swaps* and equal-cardinality drift that a bare count comparison would skip.
+*/
+let missingRootFields = (~expectedSdl: string, ~liveSdl: string): array<string> => {
+  let liveSet = allRootFieldNames(~sdl=liveSdl)->Set.fromArray
+  allRootFieldNames(~sdl=expectedSdl)->Array.filter(name => !(liveSet->Set.has(name)))
+}
+
+/**
 Decide whether replacing the live schema (`currentSdl`) with `newSdl` would drop
-so many root-type (`Mutation` + `Query`) fields that it is almost certainly a
+root-operation fields the pushing stack does not carry — i.e. an almost-certainly
 transient/incomplete stitch rather than an intentional removal.
 
-Returns `true` when the new root-field total is below `threshold` × the current
-total. When the current schema has no countable root fields (e.g. first deploy,
-or introspection was unavailable so `currentSdl` is empty) it returns `false` so
-the initial push always proceeds.
+Identity-based (across `Mutation` + `Query` + `Subscription`):
+- When `newSdl`'s field-name set is a SUPERSET of the live set — nothing is
+  dropped — it is purely additive (or unchanged) and never a clobber, so this
+  returns `false` even when the pushing stack is legitimately adding its own
+  fields.
+- Otherwise it falls back to the cardinality threshold on the union of the three
+  root types: `true` only when the new total drops below `threshold` × the
+  current total. A small intentional removal (above threshold) is allowed.
+
+When the current schema has no countable root fields (e.g. first deploy, or
+introspection was unavailable so `currentSdl` is empty) it returns `false` so the
+initial push always proceeds.
 */
 let isCatastrophicSchemaShrink = (~currentSdl: string, ~newSdl: string, ~threshold: float): bool => {
-  let current =
-    countRootTypeFields(~sdl=currentSdl, ~typeName="Mutation") +
-    countRootTypeFields(~sdl=currentSdl, ~typeName="Query")
-  let next =
-    countRootTypeFields(~sdl=newSdl, ~typeName="Mutation") +
-    countRootTypeFields(~sdl=newSdl, ~typeName="Query")
-  current > 0 && next->Int.toFloat < current->Int.toFloat *. threshold
+  let currentNames = allRootFieldNames(~sdl=currentSdl)
+  let newSet = allRootFieldNames(~sdl=newSdl)->Set.fromArray
+  let dropped = currentNames->Array.filter(name => !(newSet->Set.has(name)))
+  if dropped->Array.length == 0 {
+    // Additive or unchanged push — the new schema keeps every live field.
+    false
+  } else {
+    let current = currentNames->Array.length
+    let next = allRootFieldNames(~sdl=newSdl)->Array.length
+    current > 0 && next->Int.toFloat < current->Int.toFloat *. threshold
+  }
 }

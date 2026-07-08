@@ -124,6 +124,14 @@ the function injected as `updateApiSchema` in the `.mjs` entry point changed).
    new SDL drops below `threshold` × the live Mutation+Query field count.
    Threshold via `RUNTIME_SCHEMA_SHRINK_THRESHOLD` (default 0.5). An empty/
    unintrospectable current schema → no baseline → push proceeds (first deploy).
+   - *Update (2026-07-08, `54f58a10f`):* `isCatastrophicSchemaShrink` and
+     `countRootTypeFields` were made **identity-based** by the sibling plan
+     [`appsync-split-admin-schema-clobber.md`](appsync-split-admin-schema-clobber.md):
+     the guard now diffs field-name SETS across `Mutation + Query + Subscription`
+     (was a Mutation+Query cardinality ratio), never rejects a purely additive
+     push, and still falls back to the threshold on genuine drops. The runtime
+     entry point imports the shared compiled function, so this strengthens the
+     Fix D guard here with no `.mjs` change.
 5. **D.2 metric** — `emitShrinkRejectionMetric` writes a CloudWatch EMF log line
    (`Reventless/Runtime` namespace, `SchemaShrinkRejected` count, `ApiId`
    dimension). No PutMetricData call, SDK dep, or extra IAM needed — Lambda logs
