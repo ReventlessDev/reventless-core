@@ -59,6 +59,64 @@ let runOneAppSyncEvent: (string, JSON.t) => promise<JSON.t> = %raw(`
   }
 `)
 
+// Same as `runOneAppSyncEvent` but wires the composite-partition fixture
+// (EpCompositeSlice) through the real entry point. Proves the deployed path
+// derives and threads `partitionTag = Composite(...)` into the DynamoDB
+// `append` — the fix for the residual burst-contention bug.
+let runOneCompositeEvent: (string, JSON.t) => promise<JSON.t> = %raw(`
+  async (tableName, event) => {
+    const { buildHandlersForConfig } = await import(
+      "@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs"
+    );
+    const Effect = await import("effect/Effect");
+    const { tag: requestContextTag } = await import(
+      "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
+    );
+    const { commandOutcomeToJson } = await import(
+      "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs"
+    );
+
+    const loadModule = async (specifier) => {
+      if (specifier === "ep-composite://spec") return await import("./EpCompositeSlice.res.mjs");
+      if (specifier === "ep-composite://behavior") return await import("./EpCompositeSliceBehavior.res.mjs");
+      throw new Error("unknown test specifier: " + specifier);
+    };
+
+    const config = {
+      pluginName: "EpCompositePlugin",
+      dcbEventLogTableName: tableName,
+      stateChangeSliceModules: [{ spec: "ep-composite://spec", behavior: "ep-composite://behavior" }],
+      queueUrl: "https://sqs.eu-west-1.amazonaws.com/000000000000/ep-composite-queue",
+    };
+
+    const [, cmdGenHandler] = await buildHandlersForConfig(config, { loadModule });
+
+    const effect = cmdGenHandler(event)
+      .pipe(Effect.provideService(requestContextTag, { correlationId: "ep-composite" }));
+    const outcome = await Effect.runPromise(effect);
+    return commandOutcomeToJson(outcome);
+  }
+`)
+
+let buildAddResourceEvent = (~environment, ~resourceName): JSON.t => {
+  // `command` is the command type name as a plain string — the shape AppSync's
+  // direct-invoke resolver sends and `CommandGenerator.payload.command: string`
+  // expects.
+  let arguments = Dict.fromArray([
+    ("environment", environment->JSON.Encode.string),
+    ("resourceName", resourceName->JSON.Encode.string),
+  ])
+  let meta = Dict.fromArray([
+    ("user", "ep-composite"->JSON.Encode.string),
+    ("ip", JSON.Encode.null),
+  ])
+  Dict.fromArray([
+    ("command", "AddResource"->JSON.Encode.string),
+    ("arguments", arguments->JSON.Encode.object),
+    ("meta", meta->JSON.Encode.object),
+  ])->JSON.Encode.object
+}
+
 let buildAppSyncEvent = (widgetId): JSON.t => {
   // CommandGenerator payload: `{command, arguments, meta, identity?}` — the
   // exact shape AppSync's direct-invoke resolver sends (matches the resolver
@@ -96,6 +154,53 @@ describe("DcbCommandTopicEntryPoint integration", () => {
       // `CommandAccepted` so a future drift to silent-rejection also fails.
       let s = outcomeJson->JSON.stringifyAny->Option.getOr("<unserializable>")
       expect(s->String.includes("CommandAccepted"))->toBe(true)
+    },
+  )
+
+  // Residual composite-fence burst contention
+  // (docs/plans/dcb-composite-fence-residual-burst-contention.md).
+  //
+  // The entry point must derive `partitionTag = Composite(...)` and thread it
+  // into the DynamoDB `append`, so a `@compositePartitionTag` slice collapses to
+  // ONE synthetic composite fence per entity. Without the thread (the bug),
+  // `partitionTag` defaults to None, the collapse never fires, and each append
+  // fences on its individual members — the shared low-cardinality `environment`
+  // member then serialises/rejects distinct resources.
+  testAsync(
+    "composite-partition burst: distinct resources sharing a prefix all commit, only composite fences written",
+    async () => {
+      let table = await H.createDcbTableWithTagKeys(
+        "EpComposite_" ++ Date.now()->Float.toString,
+        ["environment", "resourceName"],
+      )
+      let env = "prod"
+      let resourceNames = ["res-a", "res-b", "res-c", "res-d", "res-e"]
+
+      // Concurrent burst — simulates the deploy-sync fan-out that surfaced the
+      // `retries exhausted` cascade on alpha.
+      let outcomes =
+        await resourceNames
+        ->Array.map(resourceName =>
+          runOneCompositeEvent(table.name, buildAddResourceEvent(~environment=env, ~resourceName))
+        )
+        ->Promise.all
+
+      // Every distinct composite entity must commit — none may conflict on the
+      // shared `environment` prefix.
+      outcomes->Array.forEach(outcomeJson => {
+        let s = outcomeJson->JSON.stringifyAny->Option.getOr("<unserializable>")
+        expect(s->String.includes("CommandAccepted"))->toBe(true)
+      })
+
+      // Mechanism-level proof: the only fence rows are the synthetic composite
+      // fences (`fence#__dcb_composite__:…`) — one per entity — with NO
+      // per-member `fence#environment:…` / `fence#resourceName:…` rows.
+      let fenceIds = await H.scanFenceIds(table)
+      let compositeFencePrefix = "fence#" ++ DcbEventLogStorage_DynamoDb_Runtime.compositeFenceTagKey
+      expect(fenceIds->Array.length)->toBe(resourceNames->Array.length)
+      fenceIds->Array.forEach(id => expect(id->String.startsWith(compositeFencePrefix))->toBe(true))
+
+      await H.deleteTable(table)
     },
   )
 })

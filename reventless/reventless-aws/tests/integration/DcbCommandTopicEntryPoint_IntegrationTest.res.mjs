@@ -2,6 +2,7 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbIntegrationHarness$ReventlessAws from "./DcbIntegrationHarness.res.mjs";
+import * as DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws from "../../src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
 
 let runOneAppSyncEvent = (async (tableName, event) => {
     const { buildHandlersForConfig } = await import(
@@ -35,6 +36,76 @@ let runOneAppSyncEvent = (async (tableName, event) => {
     const outcome = await Effect.runPromise(effect);
     return commandOutcomeToJson(outcome);
   });
+
+let runOneCompositeEvent = (async (tableName, event) => {
+    const { buildHandlersForConfig } = await import(
+      "@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs"
+    );
+    const Effect = await import("effect/Effect");
+    const { tag: requestContextTag } = await import(
+      "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
+    );
+    const { commandOutcomeToJson } = await import(
+      "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs"
+    );
+
+    const loadModule = async (specifier) => {
+      if (specifier === "ep-composite://spec") return await import("./EpCompositeSlice.res.mjs");
+      if (specifier === "ep-composite://behavior") return await import("./EpCompositeSliceBehavior.res.mjs");
+      throw new Error("unknown test specifier: " + specifier);
+    };
+
+    const config = {
+      pluginName: "EpCompositePlugin",
+      dcbEventLogTableName: tableName,
+      stateChangeSliceModules: [{ spec: "ep-composite://spec", behavior: "ep-composite://behavior" }],
+      queueUrl: "https://sqs.eu-west-1.amazonaws.com/000000000000/ep-composite-queue",
+    };
+
+    const [, cmdGenHandler] = await buildHandlersForConfig(config, { loadModule });
+
+    const effect = cmdGenHandler(event)
+      .pipe(Effect.provideService(requestContextTag, { correlationId: "ep-composite" }));
+    const outcome = await Effect.runPromise(effect);
+    return commandOutcomeToJson(outcome);
+  });
+
+function buildAddResourceEvent(environment, resourceName) {
+  let $$arguments = Object.fromEntries([
+    [
+      "environment",
+      environment
+    ],
+    [
+      "resourceName",
+      resourceName
+    ]
+  ]);
+  let meta = Object.fromEntries([
+    [
+      "user",
+      "ep-composite"
+    ],
+    [
+      "ip",
+      null
+    ]
+  ]);
+  return Object.fromEntries([
+    [
+      "command",
+      "AddResource"
+    ],
+    [
+      "arguments",
+      $$arguments
+    ],
+    [
+      "meta",
+      meta
+    ]
+  ]);
+}
 
 function buildAppSyncEvent(widgetId) {
   let command = Object.fromEntries([[
@@ -79,6 +150,31 @@ globalThis.describe("DcbCommandTopicEntryPoint integration", () => {
     let s = Stdlib_Option.getOr(JSON.stringify(outcomeJson), "<unserializable>");
     globalThis.expect(s.includes("CommandAccepted")).toBe(true);
   });
+  globalThis.test("composite-partition burst: distinct resources sharing a prefix all commit, only composite fences written", async () => {
+    let table = await DcbIntegrationHarness$ReventlessAws.createDcbTableWithTagKeys("EpComposite_" + Date.now().toString(), [
+      "environment",
+      "resourceName"
+    ]);
+    let resourceNames = [
+      "res-a",
+      "res-b",
+      "res-c",
+      "res-d",
+      "res-e"
+    ];
+    let outcomes = await Promise.all(resourceNames.map(resourceName => runOneCompositeEvent(table.name, buildAddResourceEvent("prod", resourceName))));
+    outcomes.forEach(outcomeJson => {
+      let s = Stdlib_Option.getOr(JSON.stringify(outcomeJson), "<unserializable>");
+      globalThis.expect(s.includes("CommandAccepted")).toBe(true);
+    });
+    let fenceIds = await DcbIntegrationHarness$ReventlessAws.scanFenceIds(table);
+    let compositeFencePrefix = "fence#" + DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.compositeFenceTagKey;
+    globalThis.expect(fenceIds.length).toBe(resourceNames.length);
+    fenceIds.forEach(id => {
+      globalThis.expect(id.startsWith(compositeFencePrefix)).toBe(true);
+    });
+    return await DcbIntegrationHarness$ReventlessAws.deleteTable(table);
+  });
 });
 
 let H;
@@ -86,6 +182,8 @@ let H;
 export {
   H,
   runOneAppSyncEvent,
+  runOneCompositeEvent,
+  buildAddResourceEvent,
   buildAppSyncEvent,
 }
 /* runOneAppSyncEvent Not a pure module */

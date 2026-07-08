@@ -73,6 +73,54 @@ let createDcbTable = async (tableName): Util_DynamoDb_Runtime.resolvedTable => {
   }
 }
 
+// Like `createDcbTable` but with a caller-supplied set of `tag_<key>` GSI names
+// plus `tag_composite`. Used by the composite-partition scenarios whose member
+// keys (e.g. `environment`, `resourceName`) are not in the default online-shop
+// `gsiNames` superset.
+let createDcbTableWithTagKeys = async (
+  tableName,
+  tagKeys: array<string>,
+): Util_DynamoDb_Runtime.resolvedTable => {
+  let indexNames =
+    tagKeys->Array.map(k => `tag_${k}`)->Array.concat(["tag_composite"])
+  let attributeDefinitions = Array.concat(
+    [attrDef("id"), attrDef("position")],
+    indexNames->Array.map(attrDef),
+  )
+  let input =
+    Dict.fromArray([
+      ("TableName", s(tableName)),
+      ("AttributeDefinitions", attributeDefinitions->JSON.Encode.array),
+      ("KeySchema", [keyEl("id", "HASH"), keyEl("position", "RANGE")]->JSON.Encode.array),
+      ("GlobalSecondaryIndexes", indexNames->Array.map(gsi)->JSON.Encode.array),
+      ("BillingMode", s("PAY_PER_REQUEST")),
+    ])->JSON.Encode.object
+  let _ = await send(createTableCommand(input))
+  {
+    Util_DynamoDb_Runtime.id: tableName,
+    name: tableName,
+    arn: `arn:aws:dynamodb:local:000000000000:table/${tableName}`,
+    hashKey: "id",
+  }
+}
+
+// Returns the `id`s of every fence sentinel row in the table (`id` begins with
+// `fence#`). Lets a test assert the fence *shape* directly — the mechanism-level
+// signal that the composite collapse fired (one `fence#__dcb_composite__:…` per
+// entity) rather than per-member `fence#<member>:…` rows.
+let scanFenceIds = async (table: Util_DynamoDb_Runtime.resolvedTable): array<string> => {
+  let items = await Util_DynamoDb_Runtime.scanStream({tableName: table.name})
+    ->Stream.runCollect
+    ->Effect.runPromise
+  items->Array.filterMap(item =>
+    item
+    ->JSON.Decode.object
+    ->Option.flatMap(obj => obj->Dict.get("id"))
+    ->Option.flatMap(JSON.Decode.string)
+    ->Option.flatMap(id => id->String.startsWith("fence#") ? Some(id) : None)
+  )
+}
+
 let deleteTable = async (table: Util_DynamoDb_Runtime.resolvedTable) => {
   let input = Dict.fromArray([("TableName", s(table.name))])->JSON.Encode.object
   let _ = await send(deleteTableCommand(input))

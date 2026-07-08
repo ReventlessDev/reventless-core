@@ -12,6 +12,7 @@ import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/Req
 import {
   extractVariantNames,
   deriveEffectiveScope,
+  derivePartitionTag,
 } from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import { $$String as IdString } from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import { Make as dcbEventLogOperationsMake } from "@reventlessdev/reventless-core/src/components/DcbEventLog/DcbEventLog_Operations.res.mjs";
@@ -89,47 +90,11 @@ function getIdStringSchema() {
 // can drive the real `cmdGenHandler` end-to-end against DynamoDB Local.
 export async function buildHandlersForConfig(config, opts = {}) {
   const loadModule = opts.loadModule ?? dynamicImport;
-  // `pgConnection`, when present in HANDLER_CONFIG, selects the Postgres DCB
-  // runtime (dcbEventLogTableName doubles as the `dcb_event.log_name`); absence
-  // keeps the DynamoDB path byte-identical. NB: this swaps only the *storage*
-  // ops — event propagation (within-plugin projections + cross-plugin SNS) is
-  // stream-driven on AWS and is handled separately by the change-feed relay
-  // (see docs/plans/aws-postgres-change-feed-bridge.md), not by this Lambda.
-  const rawStorageOps = config.pgConnection
-    ? (() => {
-        // C2: `lockStrategy` ("AdvisoryLocks" | "RowLocks") is the polyvariant's
-        // string name; `opsFor` defaults to "AdvisoryLocks" when it's absent.
-        const pgOps = pgDcbEventLogOpsFor(
-          config.pgConnection,
-          config.dcbEventLogTableName,
-          config.pgConnection.lockStrategy,
-        );
-        return { read: pgOps.read, append: pgOps.append, readStream: pgOps.readStream };
-      })()
-    : (() => {
-        const resolvedTable = { name: config.dcbEventLogTableName };
-        return {
-          read: read(resolvedTable),
-          append: append(resolvedTable),
-          readStream: readStream(resolvedTable),
-        };
-      })();
 
-  const handlersByType = {};
-  const sharedDcbEventLogOps = dcbEventLogOperationsMake({
-    name: config.pluginName,
-    // Mirrors DcbEventLog_Builder.res's `name ++ "DcbEventLog"` — the
-    // canonical service identity used by Plugin_Callback dispatch and the
-    // DcbEventLog_Operations meta.service normalisation in append.
-    serviceName: config.pluginName + "DcbEventLog",
-    storage: rawStorageOps,
-    publishJson: async (_name, _meta, _json) => {},
-  });
-
-  // Load all spec/behavior pairs first, then derive the per-plugin
-  // tagKeysByEventType / crossPartitionTagKeys across the produced event
-  // schemas — mirroring Dcb_Builder.res's build-time derivation — so the
-  // runtime slice callback receives the same values it would in-process.
+  // Load all spec/behavior pairs first. Both the decision-query scope
+  // (crossPartitionTagKeys / tagKeysByEventType) AND the storage `partitionTag`
+  // are derived from the produced event schemas, and the DynamoDB storage ops
+  // below must be built with them — so slices load before anything else.
   const loadedSlices = await Promise.all(
     config.stateChangeSliceModules.map(async ({ spec, behavior }) => {
       const specModule = await loadModule(spec);
@@ -153,6 +118,77 @@ export async function buildHandlersForConfig(config, opts = {}) {
       eventSchema: patchedSpec.eventSchema,
     }))
   );
+
+  // Derive the storage partition tag the SAME way Dcb_Builder.res does at
+  // deploy time (over the produced event schemas). This MUST reach the DynamoDB
+  // `append` — without it `partitionTag` defaults to `None`, the composite-fence
+  // collapse (gated on `Composite`) never fires, and a `@compositePartitionTag`
+  // slice writes one fence PER MEMBER instead of one synthetic composite fence.
+  // A deploy-time fan-out sharing low-cardinality members (environment, plugin,
+  // …) then turns those member fences hot → TransactionConflict → retries
+  // exhausted. The deploy-time adapter (DcbEventLogStorage_DynamoDb.make) already
+  // threads it; the deployed Lambda dropped it. See
+  // docs/plans/dcb-composite-fence-residual-burst-contention.md.
+  // `derivePartitionTag` throws only on a misconfigured spec, which the deploy
+  // would already have rejected; guard defensively so a runtime edge case
+  // degrades to the (old) untagged behaviour rather than crashing cold start.
+  let partitionTag = undefined;
+  try {
+    partitionTag = derivePartitionTag(
+      loadedSlices.map(({ patchedSpec }) => [
+        patchedSpec.name,
+        patchedSpec.moduleUrl ?? patchedSpec.name,
+        patchedSpec.eventSchema,
+      ])
+    );
+  } catch (err) {
+    log.warn("could not derive partitionTag; falling back to untagged fences: " + (err && err.message), { comp: "DcbCommandTopicRuntime" });
+  }
+
+  // `pgConnection`, when present in HANDLER_CONFIG, selects the Postgres DCB
+  // runtime (dcbEventLogTableName doubles as the `dcb_event.log_name`); absence
+  // keeps the DynamoDB path byte-identical. NB: this swaps only the *storage*
+  // ops — event propagation (within-plugin projections + cross-plugin SNS) is
+  // stream-driven on AWS and is handled separately by the change-feed relay
+  // (see docs/plans/aws-postgres-change-feed-bridge.md), not by this Lambda.
+  const rawStorageOps = config.pgConnection
+    ? (() => {
+        // C2: `lockStrategy` ("AdvisoryLocks" | "RowLocks") is the polyvariant's
+        // string name; `opsFor` defaults to "AdvisoryLocks" when it's absent.
+        const pgOps = pgDcbEventLogOpsFor(
+          config.pgConnection,
+          config.dcbEventLogTableName,
+          config.pgConnection.lockStrategy,
+        );
+        return { read: pgOps.read, append: pgOps.append, readStream: pgOps.readStream };
+      })()
+    : (() => {
+        const resolvedTable = { name: config.dcbEventLogTableName };
+        // Positional args match the ReScript-compiled signatures:
+        //   read(table, crossPartitionTagKeys)
+        //   append(table, partitionTag, crossPartitionTagKeys)
+        //   readStream(table, crossPartitionTagKeys)
+        // Threading partitionTag activates the composite-fence collapse; threading
+        // crossPartitionTagKeys routes single-tag `@crossPartition` reads to the
+        // per-tag GSI and bumps their fences on every carrier — matching the
+        // deploy-time adapter's storage ops exactly.
+        return {
+          read: read(resolvedTable, crossPartitionTagKeys),
+          append: append(resolvedTable, partitionTag, crossPartitionTagKeys),
+          readStream: readStream(resolvedTable, crossPartitionTagKeys),
+        };
+      })();
+
+  const handlersByType = {};
+  const sharedDcbEventLogOps = dcbEventLogOperationsMake({
+    name: config.pluginName,
+    // Mirrors DcbEventLog_Builder.res's `name ++ "DcbEventLog"` — the
+    // canonical service identity used by Plugin_Callback dispatch and the
+    // DcbEventLog_Operations meta.service normalisation in append.
+    serviceName: config.pluginName + "DcbEventLog",
+    storage: rawStorageOps,
+    publishJson: async (_name, _meta, _json) => {},
+  });
 
   loadedSlices.forEach(({ patchedSpec, behaviorModule }) => {
     const sliceCallback = stateChangeSliceCallbackMake(patchedSpec)(behaviorModule);
