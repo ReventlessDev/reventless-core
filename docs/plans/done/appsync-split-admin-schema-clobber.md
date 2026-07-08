@@ -5,12 +5,12 @@ onto the **DomainApi** in split-API mode, and make the deploy-time repair
 field-identity-aware so a clobbered DomainApi reliably heals on the next plugin
 deploy.
 
-Status: **implemented (A + B + C)** on `alpha`. Local build clean (zero
-warnings); reventless-core (499) and reventless-aws (204) suites green,
-`GraphQL_StitcherTest` extended to 18 cases (set-diff, equal-count swap, additive
-push, Subscription-inclusive shrink). **Alpha deploy verification still pending**
-— keep this plan here until the split-mode redeploy checks below pass, then move
-to `docs/plans/done/`.
+Status: **done (A + B + C)** on `alpha`. Local build clean (zero warnings);
+reventless-core (499) and reventless-aws (204) suites green, `GraphQL_StitcherTest`
+extended to 18 cases (set-diff, equal-count swap, additive push,
+Subscription-inclusive shrink). **Alpha deploy verified 2026-07-08** — split-mode
+DomainApi retains all plugin fields across a platform redeploy; no admin-base
+clobber.
 
 Sibling of
 [`appsync-runtime-schema-clobber-hardening.md`](appsync-runtime-schema-clobber-hardening.md),

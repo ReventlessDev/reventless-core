@@ -5,10 +5,10 @@ AppSync DomainApi schema with an incomplete SDL during plugin lifecycle churn,
 which orphans every field-attached resolver and surfaces as
 `NotFoundException: Type not found` on `pulumi refresh`.
 
-Status: implemented (A + D + **deploy-time repair**, see below) on `alpha`. Local
-build clean; reventless-core (396) and reventless-aws (104) test suites green.
-**Alpha deploy verification still pending** — keep this plan here until the
-multi-stack redeploy check below passes, then move to `docs/plans/done/`.
+Status: **done** (A + D + **deploy-time repair**, see below) on `alpha`. Local
+build clean; reventless-core and reventless-aws test suites green. **Alpha deploy
+verified 2026-07-08** — multi-stack redeploy retains both plugins' fields on the
+DomainApi; circuit breaker logs without firing on a normal deploy.
 
 ## Problem
 
