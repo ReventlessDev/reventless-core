@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.66 (2026-07-08)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-dcb-ordering-spec
+
+
+
+
+
 # 1.0.0-alpha.65 (2026-07-07)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-ordering-spec

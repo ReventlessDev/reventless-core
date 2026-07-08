@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.91 (2026-07-08)
+
+### Features
+
+* **reventless-core:** classify plugins by kind in the lifecycle read model ([64e3f22](https://github.com/ReventlessDev/reventless-core/commit/64e3f22b8114a771886b7c8ec023e95971413c0b))
+
+
 # 1.0.0-alpha.90 (2026-07-08)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt

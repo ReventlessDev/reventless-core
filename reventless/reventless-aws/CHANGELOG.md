@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.185 (2026-07-08)
+
+### Bug Fixes
+
+* **reventless-aws:** thread partitionTag into deployed DCB command Lambda append ([68f0859](https://github.com/ReventlessDev/reventless-core/commit/68f0859d3d5e44f6217a5dc0d8537cfec3d21194))
+
+
 # 3.0.0-alpha.184 (2026-07-08)
 
 ### Bug Fixes
