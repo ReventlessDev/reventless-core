@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.131 (2026-07-08)
+
+### Bug Fixes
+
+* **reventless-core:** composite DCB slices can read back their own events ([4604a91](https://github.com/ReventlessDev/reventless-core/commit/4604a9159fb8bf59b2191ad69fee6613c7f75cd9))
+
+
 # 3.0.0-alpha.130 (2026-07-08)
 
 ### Features
