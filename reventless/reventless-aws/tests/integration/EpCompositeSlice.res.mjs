@@ -3,25 +3,49 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
-let consumedEventSchema = S.schema(s => ({
-  TAG: "ResourceAdded",
-  environment: s.m(S.string),
-  resourceName: s.m(S.string)
-}));
+let consumedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "ResourceAdded",
+    environment: s.m(S.string),
+    resourceName: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ResourceTouched",
+    environment: s.m(S.string),
+    resourceName: s.m(S.string)
+  }))
+]);
 
-let commandSchema = S.schema(s => ({
-  TAG: "AddResource",
-  environment: s.m(DcbTag$Reventless.compositePartitionMember(0, "/")),
-  resourceName: s.m(DcbTag$Reventless.compositePartitionMember(1, "/"))
-}));
+let commandSchema = S.union([
+  S.schema(s => ({
+    TAG: "AddResource",
+    environment: s.m(DcbTag$Reventless.compositePartitionMember(0, "/")),
+    resourceName: s.m(DcbTag$Reventless.compositePartitionMember(1, "/"))
+  })),
+  S.schema(s => ({
+    TAG: "TouchResource",
+    environment: s.m(DcbTag$Reventless.compositePartitionMember(0, "/")),
+    resourceName: s.m(DcbTag$Reventless.compositePartitionMember(1, "/"))
+  }))
+]);
 
-let errorSchema = S.literal("AlreadyAdded");
+let errorSchema = S.union([
+  S.literal("AlreadyAdded"),
+  S.literal("NotFound")
+]);
 
-let eventSchema = S.schema(s => ({
-  TAG: "ResourceAdded",
-  environment: s.m(DcbTag$Reventless.compositePartitionMember(0, "/")),
-  resourceName: s.m(DcbTag$Reventless.compositePartitionMember(1, "/"))
-}));
+let eventSchema = S.union([
+  S.schema(s => ({
+    TAG: "ResourceAdded",
+    environment: s.m(DcbTag$Reventless.compositePartitionMember(0, "/")),
+    resourceName: s.m(DcbTag$Reventless.compositePartitionMember(1, "/"))
+  })),
+  S.schema(s => ({
+    TAG: "ResourceTouched",
+    environment: s.m(DcbTag$Reventless.compositePartitionMember(0, "/")),
+    resourceName: s.m(DcbTag$Reventless.compositePartitionMember(1, "/"))
+  }))
+]);
 
 function commandAuthorization(param) {
   return "AllowAnonymous";

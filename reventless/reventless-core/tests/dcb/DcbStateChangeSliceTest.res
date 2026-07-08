@@ -81,7 +81,7 @@ describe("StateChangeSlice_Callback:", () => {
       ))->toEqual(([Ok("ref-1")], 1, 1))
     })
 
-    testPromise("stored event has correct tags", async () => {
+    testPromise("stored event carries only its entity tags (no framework provenance tag)", async () => {
       let _ = await TestHandler.handleCommands(
         testDcbEventLog,
         Stream.fromIterable([
@@ -90,10 +90,11 @@ describe("StateChangeSlice_Callback:", () => {
       )->Effect.runPromise
       let storedEvent = mock.getEvents()->Array.getUnsafe(0)
 
-      expect(storedEvent.tags)->toEqual([
-        {Reventless.DcbTag.key: "itemId", value: "item-1"},
-        {Reventless.DcbTag.key: "originatorSlice", value: "TestStateChangeSlice"},
-      ])
+      // No `originatorSlice` (or any other) metadata tag is smuggled into the tag
+      // set — a stored event's tags are exactly its DCB entity tags, so the
+      // composite read/write keys stay aligned. See
+      // docs/analysis/dcb-event-provenance-and-metadata.md.
+      expect(storedEvent.tags)->toEqual([{Reventless.DcbTag.key: "itemId", value: "item-1"}])
     })
   })
 

@@ -124,7 +124,12 @@ let toItem = (
     item->Dict.set(attrName, tag.value->JSON.Encode.string)
   })
 
-  // Add composite tag attribute if multiple tags
+  // Add composite tag attribute if multiple tags. The tag set here is exactly the
+  // event's *entity* tags (no framework provenance tag is smuggled in — see
+  // docs/plans/done/dcb-composite-query-clause-fence-contention.md), so the stored
+  // `tag_composite` key is byte-identical to the key a composite decision read
+  // builds from the command's entity tags — the write/read match a composite
+  // slice's OCC depends on.
   if event.tags->Array.length > 1 {
     let composite = compositeTagKey(event.tags)
     item->Dict.set("tag_composite", composite->JSON.Encode.string)

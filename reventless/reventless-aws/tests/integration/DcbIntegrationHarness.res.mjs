@@ -168,6 +168,13 @@ async function scanFenceIds(table) {
   }));
 }
 
+async function scanEventTypes(table) {
+  let items = await Effect.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream({
+    TableName: table.name
+  })));
+  return Stdlib_Array.filterMap(items, item => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), obj => obj["event"]), Stdlib_JSON.Decode.string));
+}
+
 async function deleteTable(table) {
   let input = Object.fromEntries([[
       "TableName",
@@ -213,6 +220,7 @@ export {
   createDcbTable,
   createDcbTableWithTagKeys,
   scanFenceIds,
+  scanEventTypes,
   deleteTable,
   counter,
   freshTable,

@@ -201,23 +201,17 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
         1
       ]);
     });
-    globalThis.test("stored event has correct tags", async () => {
+    globalThis.test("stored event carries only its entity tags (no framework provenance tag)", async () => {
       await Effect.runPromise(TestHandler.handleCommands(undefined, undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
         })])));
       let storedEvent = mock.getEvents()[0];
-      globalThis.expect(storedEvent.tags).toEqual([
-        {
+      globalThis.expect(storedEvent.tags).toEqual([{
           key: "itemId",
           value: "item-1"
-        },
-        {
-          key: "originatorSlice",
-          value: "TestStateChangeSlice"
-        }
-      ]);
+        }]);
     });
   });
   globalThis.describe("handleCommands - decide returns Ok([])", () => {

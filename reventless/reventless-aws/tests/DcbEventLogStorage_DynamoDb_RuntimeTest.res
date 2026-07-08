@@ -526,6 +526,39 @@ describe("Runtime.buildConditionalTransactItems — composite partition fences o
   })
 })
 
+describe("Runtime.toItem — tag_composite is keyed on the event's entity tags", () => {
+  // Guards the composite write/read key alignment a composite-partition slice's OCC
+  // depends on: the stored `tag_composite` must equal the key a composite decision
+  // read builds from the command's entity tags (`compositeTagKey`). Historically an
+  // `originatorSlice` provenance tag was smuggled into the tag set and polluted this
+  // key, so a composite slice could never read back its own events. See
+  // docs/analysis/dcb-event-provenance-and-metadata.md and
+  // docs/plans/done/dcb-composite-query-clause-fence-contention.md.
+  let tagOf = (key, value): Reventless.DcbTag.tag => {key, value}
+  let entityTags = [
+    tagOf("environment", "prod"),
+    tagOf("platformName", "plat"),
+    tagOf("pluginName", "plug"),
+    tagOf("componentName", "compA"),
+    tagOf("resourceName", "r1"),
+  ]
+  let storedEvent: ReventlessCore.DcbEventLog_Adapter.rawStoredEvent = {
+    eventType: "ResourceAdded",
+    data: JSON.Object(Dict.make()),
+    tags: entityTags,
+    meta: testMeta(),
+  }
+  let storedComposite =
+    Runtime.toItem("100", storedEvent, ~recordedAt="2026-07-08T00:00:00Z")
+    ->JSON.Decode.object
+    ->Option.flatMap(o => o->Dict.get("tag_composite"))
+    ->Option.flatMap(JSON.Decode.string)
+
+  testSync("stored tag_composite equals the key a composite read would query", () => {
+    expect(storedComposite)->toEqual(Some(Runtime.compositeTagKey(entityTags)))
+  })
+})
+
 describe("Runtime.buildConditionalTransactItems — folded create guard (after=None)", () => {
   let event = (eventType, tags): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
     eventType,

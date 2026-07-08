@@ -18,8 +18,7 @@ open PulumiAws
 // ── Handler code ─────────────────────────────────────────────────────────────
 //
 // Receives SNS-via-SQS records (rawMessageDelivery=true → body IS the event JSON).
-// Publishes {position, eventType, payload, originatorSlice} to AppSync Events channel.
-// The "originatorSlice" tag is injected by StateChangeSlice_Callback.encodeEvent.
+// Publishes {position, eventType, payload} to AppSync Events channel.
 
 let makeHandlerCode = (~topicName: string): string => {
   // Mirrors StateTopic_AppSync.pathSegment: AppSync Events channel segments
@@ -72,8 +71,7 @@ export async function handler(event) {
       console.error("EventLogSubscription: failed to parse record body", record.body, e);
       continue;
     }
-    const originatorSlice = body.tags?.find(t => t.key === "originatorSlice")?.value;
-    const payload = { position: body.position, eventType: body.eventType, payload: body.data, originatorSlice: originatorSlice ?? null };
+    const payload = { position: body.position, eventType: body.eventType, payload: body.data };
     const reqBody = JSON.stringify({ id: record.messageId, channel: CHANNEL, events: [JSON.stringify(payload)] });
     const auth = await signedHeaders(url.hostname, "/event", reqBody);
     const res = await fetch(APPSYNC_ENDPOINT + "/event", {

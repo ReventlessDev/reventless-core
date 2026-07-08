@@ -29,7 +29,7 @@ function Make(Spec) {
       ]]);
     let readEventId = tags => {
       let ownTagValues = () => {
-        let vals = Stdlib_Array.reduce(tags.filter(t => t.key !== "originatorSlice"), [], (acc, t) => {
+        let vals = Stdlib_Array.reduce(tags, [], (acc, t) => {
           if (acc.includes(t.value)) {
             return acc;
           } else {
@@ -188,15 +188,11 @@ function Make(Spec) {
                 let baseTags = DcbTag$Reventless.extractTagsExpanded(Spec.eventSchema, e);
                 let keys = tagKeysByEventType[eventType];
                 let indexedTags = keys !== undefined ? baseTags.filter(t => keys.includes(t.key)) : baseTags;
-                let tags = indexedTags.concat([{
-                    key: "originatorSlice",
-                    value: Spec.name
-                  }]);
                 let meta = Message$ReventlessCore.deriveMeta(parentMeta, undefined);
                 return {
                   eventType: eventType,
                   data: match[1],
-                  tags: tags,
+                  tags: indexedTags,
                   meta: meta
                 };
               });

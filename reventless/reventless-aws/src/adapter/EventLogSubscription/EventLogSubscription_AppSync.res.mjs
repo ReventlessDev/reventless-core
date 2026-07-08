@@ -61,8 +61,7 @@ export async function handler(event) {
       console.error("EventLogSubscription: failed to parse record body", record.body, e);
       continue;
     }
-    const originatorSlice = body.tags?.find(t => t.key === "originatorSlice")?.value;
-    const payload = { position: body.position, eventType: body.eventType, payload: body.data, originatorSlice: originatorSlice ?? null };
+    const payload = { position: body.position, eventType: body.eventType, payload: body.data };
     const reqBody = JSON.stringify({ id: record.messageId, channel: CHANNEL, events: [JSON.stringify(payload)] });
     const auth = await signedHeaders(url.hostname, "/event", reqBody);
     const res = await fetch(APPSYNC_ENDPOINT + "/event", {

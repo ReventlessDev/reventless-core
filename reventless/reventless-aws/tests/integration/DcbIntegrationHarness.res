@@ -121,6 +121,21 @@ let scanFenceIds = async (table: Util_DynamoDb_Runtime.resolvedTable): array<str
   )
 }
 
+// Returns the `event` attribute of every stored event row (fence sentinels carry
+// no `event` attribute and are skipped). Lets a test assert which events actually
+// persisted — the signal that a composite slice could read back its own state.
+let scanEventTypes = async (table: Util_DynamoDb_Runtime.resolvedTable): array<string> => {
+  let items = await Util_DynamoDb_Runtime.scanStream({tableName: table.name})
+    ->Stream.runCollect
+    ->Effect.runPromise
+  items->Array.filterMap(item =>
+    item
+    ->JSON.Decode.object
+    ->Option.flatMap(obj => obj->Dict.get("event"))
+    ->Option.flatMap(JSON.Decode.string)
+  )
+}
+
 let deleteTable = async (table: Util_DynamoDb_Runtime.resolvedTable) => {
   let input = Dict.fromArray([("TableName", s(table.name))])->JSON.Encode.object
   let _ = await send(deleteTableCommand(input))

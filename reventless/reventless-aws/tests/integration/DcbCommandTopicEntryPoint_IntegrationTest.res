@@ -98,7 +98,7 @@ let runOneCompositeEvent: (string, JSON.t) => promise<JSON.t> = %raw(`
   }
 `)
 
-let buildAddResourceEvent = (~environment, ~resourceName): JSON.t => {
+let buildCompositeCommandEvent = (~command, ~environment, ~resourceName): JSON.t => {
   // `command` is the command type name as a plain string — the shape AppSync's
   // direct-invoke resolver sends and `CommandGenerator.payload.command: string`
   // expects.
@@ -111,11 +111,14 @@ let buildAddResourceEvent = (~environment, ~resourceName): JSON.t => {
     ("ip", JSON.Encode.null),
   ])
   Dict.fromArray([
-    ("command", "AddResource"->JSON.Encode.string),
+    ("command", command->JSON.Encode.string),
     ("arguments", arguments->JSON.Encode.object),
     ("meta", meta->JSON.Encode.object),
   ])->JSON.Encode.object
 }
+
+let buildAddResourceEvent = (~environment, ~resourceName): JSON.t =>
+  buildCompositeCommandEvent(~command="AddResource", ~environment, ~resourceName)
 
 let buildAppSyncEvent = (widgetId): JSON.t => {
   // CommandGenerator payload: `{command, arguments, meta, identity?}` — the
@@ -199,6 +202,56 @@ describe("DcbCommandTopicEntryPoint integration", () => {
       let compositeFencePrefix = "fence#" ++ DcbEventLogStorage_DynamoDb_Runtime.compositeFenceTagKey
       expect(fenceIds->Array.length)->toBe(resourceNames->Array.length)
       fenceIds->Array.forEach(id => expect(id->String.startsWith(compositeFencePrefix))->toBe(true))
+
+      await H.deleteTable(table)
+    },
+  )
+
+  // Composite read-back invariant
+  // (docs/plans/done/dcb-composite-query-clause-fence-contention.md).
+  //
+  // A composite-partition slice must be able to READ BACK its own events. The
+  // stored `tag_composite` key is computed from the event's tags; if the
+  // framework `originatorSlice` provenance tag (appended by
+  // StateChangeSlice_Callback.encodeEvent) leaks into that key, it diverges from
+  // the read key (built from the command's entity tags only) and the composite
+  // GSI read never matches — so a follow-up command reads empty state.
+  //
+  // `TouchResource` requires state `Added` (i.e. it must observe the prior
+  // `ResourceAdded`) to succeed. With the bug the read misses → state `Absent` →
+  // `NotFound` → CommandRejected. With the fix the read hits → `ResourceTouched`
+  // is produced → CommandAccepted and a second event persists.
+  testAsync(
+    "composite read-back: a follow-up command sees the slice's own prior event",
+    async () => {
+      let table = await H.createDcbTableWithTagKeys(
+        "EpCompositeRB_" ++ Date.now()->Float.toString,
+        ["environment", "resourceName"],
+      )
+      let env = "prod"
+      let res = "res-rb"
+
+      let addOutcome = await runOneCompositeEvent(
+        table.name,
+        buildCompositeCommandEvent(~command="AddResource", ~environment=env, ~resourceName=res),
+      )
+      expect(
+        addOutcome->JSON.stringifyAny->Option.getOr("")->String.includes("CommandAccepted"),
+      )->toBe(true)
+
+      let touchOutcome = await runOneCompositeEvent(
+        table.name,
+        buildCompositeCommandEvent(~command="TouchResource", ~environment=env, ~resourceName=res),
+      )
+      // The read must have observed the ResourceAdded — otherwise TouchResource
+      // rejects NotFound (the originatorSlice-in-tag_composite regression).
+      expect(
+        touchOutcome->JSON.stringifyAny->Option.getOr("")->String.includes("CommandAccepted"),
+      )->toBe(true)
+
+      // Both events persisted: ResourceAdded + ResourceTouched.
+      let events = await H.scanEventTypes(table)
+      expect(events->Array.toSorted(String.compare))->toEqual(["ResourceAdded", "ResourceTouched"])
 
       await H.deleteTable(table)
     },

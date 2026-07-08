@@ -61,8 +61,7 @@ let sourceCFields = (
 // Pushed via AppSync Events API. Admin / observability only.
 //
 // Returns (subscriptionFields, supportingTypes) — the supporting type is the
-// {DisplayName}EventLogEvent type that carries position, eventType, payload, and
-// the optional originatorSlice tag injected by StateChangeSlice_Callback.
+// {DisplayName}EventLogEvent type that carries position, eventType, and payload.
 
 let sourceAFieldsAndTypes = (
   ~eventLogEntries: array<eventLogSchemaEntry>,
@@ -76,7 +75,7 @@ let sourceAFieldsAndTypes = (
       seen->Set.add(n)
       fields->Array.push(`  on${n}EventLog_eventAppended: ${n}EventLogEvent`)
       types->Array.push(
-        `type ${n}EventLogEvent {\n  position: String!\n  eventType: String!\n  payload: AWSJSON!\n  originatorSlice: String\n}`,
+        `type ${n}EventLogEvent {\n  position: String!\n  eventType: String!\n  payload: AWSJSON!\n}`,
       )
     }
   })

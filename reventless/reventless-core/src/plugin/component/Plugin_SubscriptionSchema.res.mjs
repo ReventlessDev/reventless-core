@@ -41,7 +41,7 @@ function sourceAFieldsAndTypes(eventLogEntries) {
     if (!seen.has(n)) {
       seen.add(n);
       fields.push(`  on` + n + `EventLog_eventAppended: ` + n + `EventLogEvent`);
-      types.push(`type ` + n + `EventLogEvent {\n  position: String!\n  eventType: String!\n  payload: AWSJSON!\n  originatorSlice: String\n}`);
+      types.push(`type ` + n + `EventLogEvent {\n  position: String!\n  eventType: String!\n  payload: AWSJSON!\n}`);
       return;
     }
   });

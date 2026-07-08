@@ -54,7 +54,7 @@ let bridgeSourceA = (
   let ps = getPubSub()
   let yogaTopic = sourceATopic(displayName)
   // Push the raw event JSON directly — it already contains the event data.
-  // In-memory events don't carry a separate position/originatorSlice envelope.
+  // In-memory events don't carry a separate position envelope.
   subscribeToEvents(busTopicName, async (_service, _meta, json) => {
     ps->YG.pubSubPublish(yogaTopic, json)
   })

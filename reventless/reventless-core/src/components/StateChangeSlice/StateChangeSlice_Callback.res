@@ -61,8 +61,7 @@ module Make = (
     | Some(keys) => baseTags->Array.filter(t => keys->Array.includes(t.key))
     | None => baseTags
     }
-    let tags =
-      indexedTags->Array.concat([{Reventless.DcbTag.key: "originatorSlice", value: Spec.name}])
+    let tags = indexedTags
     // Inherit service from the triggering command — the DcbEventLog publish path
     // overrides service to `<name>DcbEventLog` for routing so EventCollector
     // subscriptions still match.
@@ -83,12 +82,8 @@ module Make = (
   // tag value(s) instead of logging no id.
   let readEventId = (tags: array<Reventless.DcbTag.tag>): option<string> => {
     let ownTagValues = () => {
-      // Skip the `originatorSlice` metadata tag that `encodeEvent` appends to
-      // every stored event — it's the producing slice's name, not an entity id.
       let vals =
-        tags
-        ->Array.filter((t: Reventless.DcbTag.tag) => t.key != "originatorSlice")
-        ->Array.reduce([], (acc, t: Reventless.DcbTag.tag) =>
+        tags->Array.reduce([], (acc, t: Reventless.DcbTag.tag) =>
           acc->Array.includes(t.value) ? acc : acc->Array.concat([t.value])
         )
       vals->Array.length == 0 ? None : Some(vals->Array.join(","))

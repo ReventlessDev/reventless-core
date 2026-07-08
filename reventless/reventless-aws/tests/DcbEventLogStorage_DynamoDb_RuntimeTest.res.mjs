@@ -653,6 +653,43 @@ globalThis.describe("Runtime.buildConditionalTransactItems — composite partiti
   });
 });
 
+globalThis.describe("Runtime.toItem — tag_composite is keyed on the event's entity tags", () => {
+  let entityTags = [
+    {
+      key: "environment",
+      value: "prod"
+    },
+    {
+      key: "platformName",
+      value: "plat"
+    },
+    {
+      key: "pluginName",
+      value: "plug"
+    },
+    {
+      key: "componentName",
+      value: "compA"
+    },
+    {
+      key: "resourceName",
+      value: "r1"
+    }
+  ];
+  let storedEvent_data = {};
+  let storedEvent_meta = testMeta();
+  let storedEvent = {
+    eventType: "ResourceAdded",
+    data: storedEvent_data,
+    tags: entityTags,
+    meta: storedEvent_meta
+  };
+  let storedComposite = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.toItem("100", storedEvent, undefined, "2026-07-08T00:00:00Z")), o => o["tag_composite"]), Stdlib_JSON.Decode.string);
+  globalThis.test("stored tag_composite equals the key a composite read would query", () => {
+    globalThis.expect(storedComposite).toEqual(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.compositeTagKey(entityTags));
+  });
+});
+
 globalThis.describe("Runtime.buildConditionalTransactItems — folded create guard (after=None)", () => {
   let event = (eventType, tags) => ({
     eventType: eventType,
