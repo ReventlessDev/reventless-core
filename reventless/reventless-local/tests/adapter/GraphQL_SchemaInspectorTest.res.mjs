@@ -7,6 +7,7 @@ import * as TestRunner$ReventlessLocal from "../../src/test/TestRunner.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as GraphQL_Server$ReventlessLocal from "../../src/adapter/GraphQL_Server.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
+import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/api/PluginBaseFragment.res.mjs";
 import * as GraphQL_SchemaInspector$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_SchemaInspector.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
@@ -547,6 +548,17 @@ globalThis.describe("GraphQL_SchemaInspector", () => {
       globalThis.expect(sdl.includes("type Query")).toBe(true);
       return GraphQL_Server$ReventlessLocal.reset();
     });
+  });
+});
+
+globalThis.describe("Plugin admin fragment — kind enum + kindEq filter", () => {
+  globalThis.test("Platform_Plugin exposes a PluginKind enum and Platform_Plugins gains kindEq", async () => {
+    let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], PluginBaseFragment$ReventlessCore.queryEntries);
+    let sdl = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment).sdlPreview;
+    globalThis.expect(sdl.includes("enum Platform_PluginKind")).toBe(true);
+    globalThis.expect(sdl.includes("PlatformInfrastructure")).toBe(true);
+    globalThis.expect(sdl.includes("kind: Platform_PluginKind!")).toBe(true);
+    globalThis.expect(sdl.includes("kindEq: String")).toBe(true);
   });
 });
 

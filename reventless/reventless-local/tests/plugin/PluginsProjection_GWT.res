@@ -27,6 +27,12 @@ describe("PluginsProjection:", () => {
     ->thenState(state)
   )
 
+  test("VersionConnected carries the plugin kind into the current row", () =>
+    givenEvents([])
+    ->whenEvent(VersionConnected(pluginDefinitionInfra))
+    ->thenState(display(pluginDefinitionInfra, Connected, []))
+  )
+
   test("A higher VersionConnected becomes the current row (supersession)", () =>
     givenEvents([VersionConnected(pluginDefinition)])
     ->whenEvent(VersionConnected(pluginDefinitionV2))

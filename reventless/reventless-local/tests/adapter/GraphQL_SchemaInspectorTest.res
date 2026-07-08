@@ -761,3 +761,26 @@ describe("GraphQL_SchemaInspector", () => {
     })
   })
 })
+
+// ── Plugin admin fragment: kind enum + connection filter (A1) ────────────────
+// Regression guard for the plugin-kind segregation surface: the Plugin lifecycle
+// read model carries `kind: pluginKind`, so the generated admin fragment must
+// expose it as a real GraphQL enum on Platform_Plugin, and the `@scan` opt-in on
+// the field must fold a `kindEq` equality filter into Platform_PluginFilter so the
+// admin console can page the main list vs the System/Infrastructure panel
+// server-side.
+describe("Plugin admin fragment — kind enum + kindEq filter", () => {
+  testPromise("Platform_Plugin exposes a PluginKind enum and Platform_Plugins gains kindEq", async () => {
+    let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+      ~mutationEntries=[],
+      ~queryEntries=ReventlessCore.PluginBaseFragment.queryEntries,
+    )
+    let sdl = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment).sdlPreview
+    // kind is a real enum on the Plugin type (auto-derived from the payload-less variant)
+    expect(sdl->String.includes("enum Platform_PluginKind"))->toBe(true)
+    expect(sdl->String.includes("PlatformInfrastructure"))->toBe(true)
+    expect(sdl->String.includes("kind: Platform_PluginKind!"))->toBe(true)
+    // @scan folds a server-side equality filter for the panel split
+    expect(sdl->String.includes("kindEq: String"))->toBe(true)
+  })
+})

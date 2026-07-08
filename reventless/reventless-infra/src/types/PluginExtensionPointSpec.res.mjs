@@ -89,6 +89,8 @@ let nameSchema = Plugin$Reventless.nameSchema;
 
 let versionSchema = Plugin$Reventless.versionSchema;
 
+let pluginKindSchema = Plugin$Reventless.pluginKindSchema;
+
 let extensionPointDefinitionSchema = Plugin$Reventless.extensionPointDefinitionSchema;
 
 let extensionDefinitionSchema = Plugin$Reventless.extensionDefinitionSchema;
@@ -161,6 +163,7 @@ export {
   name,
   nameSchema,
   versionSchema,
+  pluginKindSchema,
   extensionPointDefinitionSchema,
   extensionDefinitionSchema,
   dcbEventLogDefinitionSchema,

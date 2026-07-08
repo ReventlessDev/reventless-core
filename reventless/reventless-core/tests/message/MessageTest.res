@@ -44,6 +44,7 @@ describe("Message should", () => {
       uiFragments: None,
       structure: None,
       dcbEventLog: None,
+      kind: Domain,
     })
     let variantJson = variant->Message.encode(PluginSpec.commandSchema)
     let variantName = variantNameOfJson(variantJson)

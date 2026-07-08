@@ -74,6 +74,7 @@ function displayState(def, status, statusChange, otherConnectedVersions) {
   let base_uiFragments = def.uiFragments;
   let base_structure = def.structure;
   let base_dcbEventLog = def.dcbEventLog;
+  let base_kind = def.kind;
   let base_otherConnectedVersions = without(otherConnectedVersions, def.version);
   let base = {
     name: base_name,
@@ -89,6 +90,7 @@ function displayState(def, status, statusChange, otherConnectedVersions) {
     uiFragments: base_uiFragments,
     structure: base_structure,
     dcbEventLog: base_dcbEventLog,
+    kind: base_kind,
     otherConnectedVersions: base_otherConnectedVersions
   };
   let target = def.apiTarget;

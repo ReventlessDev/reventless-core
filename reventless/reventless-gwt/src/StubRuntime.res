@@ -50,4 +50,5 @@ let pluginDefinition: Reventless.Plugin.pluginDefinition = {
   uiFragments: None,
   structure: None,
   dcbEventLog: None,
+  kind: Domain,
 }

@@ -126,6 +126,14 @@ larger change (write paths + any readers of those co-located rows).
 
 - A deployed plugin can show `status: Disconnected` in the same read model — a
   reconcile/lifecycle question independent of the null-row serialization bug.
+  (For the platform case this is expected, not a fault: infrastructure has no
+  extension points to wire, so it never reaches `Connected` — see below.)
+- The platform also surfaces as a `Platform` row in the same `Platform_Plugins`
+  list — the inspector plugin is *named* `Platform` and registers via the normal
+  deploy **handshake** (not via `kind`; `kind` never drove this row). Resolved
+  (core-side) by the A1 change: plugins now carry a queryable `kind`, so the admin
+  console can segregate `PlatformInfrastructure` from domain plugins. Tracked in
+  [../platform-infrastructure-in-plugin-list.md](../platform-infrastructure-in-plugin-list.md).
 
 ## Acceptance
 

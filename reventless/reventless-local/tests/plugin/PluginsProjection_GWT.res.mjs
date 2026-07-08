@@ -25,6 +25,10 @@ PluginsProjectionTest.describe("PluginsProjection:", () => {
     TAG: "VersionConnected",
     _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
   }), Plugin_Fixtures$ReventlessLocal.state));
+  PluginsProjectionTest.test("VersionConnected carries the plugin kind into the current row", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([]), {
+    TAG: "VersionConnected",
+    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionInfra
+  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinitionInfra, "Connected", [])));
   PluginsProjectionTest.test("A higher VersionConnected becomes the current row (supersession)", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
       TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition

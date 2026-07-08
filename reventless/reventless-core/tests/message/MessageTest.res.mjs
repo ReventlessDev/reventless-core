@@ -43,7 +43,8 @@ globalThis.describe("Message should", () => {
         apiTarget: undefined,
         uiFragments: undefined,
         structure: undefined,
-        dcbEventLog: undefined
+        dcbEventLog: undefined,
+        kind: "Domain"
       }
     };
     let variantJson = Message$ReventlessCore.encode(variant, PluginSpec$ReventlessCore.commandSchema);

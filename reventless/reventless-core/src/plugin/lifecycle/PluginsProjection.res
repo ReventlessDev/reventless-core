@@ -58,6 +58,7 @@ let displayState = (
     uiFragments: def.uiFragments,
     structure: def.structure,
     dcbEventLog: def.dcbEventLog,
+    kind: def.kind,
     // The current version is never listed among the "other" connected versions.
     otherConnectedVersions: otherConnectedVersions->Util.without(def.version),
   }

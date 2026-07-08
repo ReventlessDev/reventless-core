@@ -687,6 +687,12 @@ module Make = (
             uiFragments,
             structure: pluginStructure,
             dcbEventLog: dcbEventLogDef,
+            // Business role from the deploy-time metadata registry (set via
+            // registerPluginMetadata). Unset → Domain. Rides the handshake to the
+            // plugin-lifecycle projection so the admin can segregate infrastructure.
+            kind: Plugin_Helpers.pluginMetadataRegistry.contents
+            ->Option.flatMap(m => m.kind)
+            ->Option.getOr(Plugin_Helpers.Domain),
           })
 
         // Bundled Plugin EventCollector reconstructs Extension_Operations at

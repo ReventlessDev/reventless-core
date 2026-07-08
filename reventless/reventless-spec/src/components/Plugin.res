@@ -7,6 +7,23 @@ type name = string
 type version = string
 
 /**
+Classifies the business role of a plugin, carried on `pluginDefinition` so the
+plugin-lifecycle read model can segregate infrastructure/commercial/marketplace
+plugins from domain plugins in the admin Plugins view. Absent (on definitions
+persisted before this field existed) is read as `Domain`.
+
+Canonical here in `reventless-spec` because `pluginDefinition` (a `@schema` type
+nested in the lifecycle Message union) needs the sury schema; `ReventlessCore.Plugin_BuiltHook`
+re-exports this same type for its deploy-time metadata registry.
+*/
+@schema
+type pluginKind =
+  | Domain
+  | PlatformInfrastructure
+  | Commercial
+  | Marketplace
+
+/**
 Describes an extension point exported by a plugin.
 Included in the plugin's `pluginDefinition` for use by the gateway / host.
 */
@@ -373,5 +390,10 @@ type pluginDefinition = {
   // subscriptions from this plugin's DCB topic → peer EventCollectors.
   // None for plugins without a DCB EventLog.
   dcbEventLog: @s.matches(dcbEventLogOptionSchema) option<dcbEventLogDefinition>,
+  // Business role of this plugin. Mandatory: `Domain` is the default kind, resolved once
+  // at the deploy-metadata → definition boundary (Plugin_Builder). PlatformInfrastructure
+  // plugins are segregated out of the admin Plugins list. Payload-less variant → serialises
+  // as a bare JSON string, so it is JSON-safe inside the lifecycle Message union without js_nullable.
+  kind: pluginKind,
 }
 

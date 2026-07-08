@@ -3,6 +3,13 @@
 import * as S from "sury/src/S.res.mjs";
 import * as SuryResMjs from "sury/src/Sury.res.mjs";
 
+let pluginKindSchema = S.union([
+  S.literal("Domain"),
+  S.literal("PlatformInfrastructure"),
+  S.literal("Commercial"),
+  S.literal("Marketplace")
+]);
+
 let extensionPointDefinitionSchema = S.schema(s => ({
   name: s.m(S.string),
   commandTopic: s.m(S.string),
@@ -204,7 +211,8 @@ let pluginDefinitionSchema = S.schema(s => ({
   apiTarget: s.m(stringOptionSchema),
   uiFragments: s.m(uiFragmentManifestOptionSchema),
   structure: s.m(pluginStructureOptionSchema),
-  dcbEventLog: s.m(dcbEventLogOptionSchema)
+  dcbEventLog: s.m(dcbEventLogOptionSchema),
+  kind: s.m(pluginKindSchema)
 }));
 
 let nameSchema = S.string;
@@ -214,6 +222,7 @@ let versionSchema = S.string;
 export {
   nameSchema,
   versionSchema,
+  pluginKindSchema,
   extensionPointDefinitionSchema,
   extensionDefinitionSchema,
   dcbEventLogDefinitionSchema,
@@ -248,4 +257,4 @@ export {
   platformEventGraphSchema,
   pluginDefinitionSchema,
 }
-/* extensionPointDefinitionSchema Not a pure module */
+/* pluginKindSchema Not a pure module */

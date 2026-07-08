@@ -15,10 +15,15 @@ let pluginDefinition: Reventless.Plugin.pluginDefinition = {
   uiFragments: None,
   structure: None,
   dcbEventLog: None,
+  kind: Domain,
 }
 
 // A higher version of the SAME plugin name — for supersession / rollback tests.
 let pluginDefinitionV2 = {...pluginDefinition, id: "name@2", version: "2"}
+
+// Infrastructure-kind definition (e.g. the platform inspector) — verifies the
+// business `kind` rides the handshake into the projected lifecycle row.
+let pluginDefinitionInfra = {...pluginDefinition, kind: PlatformInfrastructure}
 
 // Expected current-view row for a def + status + the OTHER currently-connected
 // versions (own version excluded). Reuses the projection's own builder so
@@ -58,4 +63,5 @@ let pluginDefinition2 = {
   uiFragments: None,
   structure: None,
   dcbEventLog: None,
+  kind: Domain,
 }

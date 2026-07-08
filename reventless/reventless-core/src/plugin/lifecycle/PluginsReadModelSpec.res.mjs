@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 let statusSchema = S.union([
   S.literal("Connected"),
@@ -27,10 +28,28 @@ let stateSchema = S.schema(s => ({
   uiFragments: s.m(Plugin$Reventless.uiFragmentManifestOptionSchema),
   structure: s.m(Plugin$Reventless.pluginStructureOptionSchema),
   dcbEventLog: s.m(Plugin$Reventless.dcbEventLogOptionSchema),
+  kind: s.m(Plugin$Reventless.pluginKindSchema),
   otherConnectedVersions: s.m(S.array(Plugin$Reventless.versionSchema))
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
+
+let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stateAnnotationsId, {
+  ids: [],
+  compositeIds: [],
+  subIds: [],
+  compositeSubIds: [],
+  indexes: [],
+  hidden: [],
+  summary: [],
+  drillTargets: [],
+  drillTargetKeys: [],
+  collapsed: [],
+  scan: ["kind"],
+  scanSort: [],
+  status: undefined,
+  visibility: undefined
+});
 
 let name = "Plugins";
 
@@ -48,9 +67,9 @@ export {
   name,
   Id,
   statusSchema,
-  stateSchema,
   config,
   subIdConfig,
+  stateSchema$1 as stateSchema,
   moduleUrl,
   authorization,
   visibility,

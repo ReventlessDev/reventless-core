@@ -879,7 +879,8 @@ function MakeWithConfig(Config) {
           apiTarget: undefined,
           uiFragments: param[6],
           structure: param[7],
-          dcbEventLog: undefined
+          dcbEventLog: undefined,
+          kind: "Domain"
         };
         dispatchPluginCommand(pluginName, {
           TAG: "Connect",
@@ -2505,7 +2506,8 @@ function Make($star) {
           apiTarget: undefined,
           uiFragments: param[6],
           structure: param[7],
-          dcbEventLog: undefined
+          dcbEventLog: undefined,
+          kind: "Domain"
         };
         dispatchPluginCommand(pluginName, {
           TAG: "Connect",

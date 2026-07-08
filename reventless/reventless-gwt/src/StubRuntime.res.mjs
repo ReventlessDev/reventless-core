@@ -34,7 +34,8 @@ let pluginDefinition = {
   apiTarget: undefined,
   uiFragments: undefined,
   structure: undefined,
-  dcbEventLog: undefined
+  dcbEventLog: undefined,
+  kind: "Domain"
 };
 
 let meta = {

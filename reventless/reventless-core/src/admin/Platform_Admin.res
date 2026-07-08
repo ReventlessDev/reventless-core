@@ -80,6 +80,7 @@ module Make = (
           uiFragments: None,
           structure: None,
           dcbEventLog: None,
+          kind: Domain,
         }
 
         module Callback = Admin_Callback.Make({

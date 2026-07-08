@@ -1018,6 +1018,7 @@ module MakeWithConfig = (
             uiFragments,
             structure: pluginStructure,
             dcbEventLog: None,
+            kind: Domain,
           }
           // Dispatch Connect(def) to the Plugin aggregate (id = plugin NAME).
           let _ = dispatchPluginCommand(

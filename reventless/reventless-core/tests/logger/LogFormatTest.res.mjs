@@ -76,7 +76,8 @@ globalThis.describe("LogFormat", () => {
             apiTarget: undefined,
             uiFragments: undefined,
             structure: undefined,
-            dcbEventLog: undefined
+            dcbEventLog: undefined,
+            kind: "Domain"
           }
         }
       ];
@@ -95,7 +96,7 @@ globalThis.describe("LogFormat", () => {
         commandJson: Message$ReventlessCore.encode(command, PluginSpec$ReventlessCore.commandSchema)
       }));
       let expected1 = `1/2: \x1b[1mHeartbeat\x1b[0m(0): {"command":{"TAG":"Heartbeat","_0":"0.0.0"},"meta":` + metaStr + `,"id":"0"}`;
-      let expected2 = `2/2: \x1b[1mConnect\x1b[0m(1): {"command":{"TAG":"Connect","_0":{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint","dcbSources":[]}],"eventCollector":"testEventCollector","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"uiFragments":null,"structure":null,"dcbEventLog":null}},"meta":` + metaStr + `,"id":"1"}`;
+      let expected2 = `2/2: \x1b[1mConnect\x1b[0m(1): {"command":{"TAG":"Connect","_0":{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint","dcbSources":[]}],"eventCollector":"testEventCollector","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"uiFragments":null,"structure":null,"dcbEventLog":null,"kind":"Domain"}},"meta":` + metaStr + `,"id":"1"}`;
       globalThis.expect(LogFormat$ReventlessCore.commandJsonsToLogMessages(arr)).toEqual([
         expected1,
         expected2

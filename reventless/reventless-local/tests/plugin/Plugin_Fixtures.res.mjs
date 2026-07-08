@@ -19,7 +19,8 @@ let pluginDefinition = {
   apiTarget: undefined,
   uiFragments: undefined,
   structure: undefined,
-  dcbEventLog: undefined
+  dcbEventLog: undefined,
+  kind: "Domain"
 };
 
 let pluginDefinitionV2 = {
@@ -34,7 +35,24 @@ let pluginDefinitionV2 = {
   apiTarget: pluginDefinition.apiTarget,
   uiFragments: pluginDefinition.uiFragments,
   structure: pluginDefinition.structure,
-  dcbEventLog: pluginDefinition.dcbEventLog
+  dcbEventLog: pluginDefinition.dcbEventLog,
+  kind: pluginDefinition.kind
+};
+
+let pluginDefinitionInfra = {
+  id: pluginDefinition.id,
+  name: pluginDefinition.name,
+  version: pluginDefinition.version,
+  extensionPoints: pluginDefinition.extensionPoints,
+  extensions: pluginDefinition.extensions,
+  eventCollector: pluginDefinition.eventCollector,
+  extensionProtocols: pluginDefinition.extensionProtocols,
+  apiSchemaFragment: pluginDefinition.apiSchemaFragment,
+  apiTarget: pluginDefinition.apiTarget,
+  uiFragments: pluginDefinition.uiFragments,
+  structure: pluginDefinition.structure,
+  dcbEventLog: pluginDefinition.dcbEventLog,
+  kind: "PlatformInfrastructure"
 };
 
 function display(def, status, otherConnectedVersions) {
@@ -65,7 +83,8 @@ let pluginDefinitionWithUI = {
   apiTarget: pluginDefinition.apiTarget,
   uiFragments: uiManifest,
   structure: pluginDefinition.structure,
-  dcbEventLog: pluginDefinition.dcbEventLog
+  dcbEventLog: pluginDefinition.dcbEventLog,
+  kind: pluginDefinition.kind
 };
 
 let extensionPointNames2 = ["Test.Test"];
@@ -86,7 +105,8 @@ let pluginDefinition2 = {
   apiTarget: undefined,
   uiFragments: undefined,
   structure: undefined,
-  dcbEventLog: undefined
+  dcbEventLog: undefined,
+  kind: "Domain"
 };
 
 let sc = TestFixtures$ReventlessGwt.statusChange;
@@ -95,6 +115,7 @@ export {
   sc,
   pluginDefinition,
   pluginDefinitionV2,
+  pluginDefinitionInfra,
   display,
   state,
   uiManifest,

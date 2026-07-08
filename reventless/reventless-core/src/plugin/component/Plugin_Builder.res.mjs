@@ -462,7 +462,8 @@ function Make(Spec) {
             apiTarget: capturedDeployTarget,
             uiFragments: uiFragments,
             structure: pluginStructure,
-            dcbEventLog: param[2]
+            dcbEventLog: param[2],
+            kind: Stdlib_Option.getOr(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.pluginMetadataRegistry.contents, m => m.kind), "Domain")
           }));
           let aggregateQueueUrls = {};
           Object.entries(aggregateResources).forEach(param => {

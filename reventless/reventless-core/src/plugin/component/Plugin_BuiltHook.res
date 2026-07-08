@@ -12,8 +12,11 @@
 // describe a plugin's role and origin.
 // ---------------------------------------------------------------------------
 
-/** Classifies the business role of a plugin. Absent defaults to Domain. */
-type pluginKind =
+/** Classifies the business role of a plugin. Absent defaults to Domain.
+    Aliases the canonical `@schema` enum in `reventless-spec` (`Reventless.Plugin.pluginKind`)
+    so the deploy-time metadata registry and the serialized `pluginDefinition` share one
+    type — no mapping needed where metadata flows onto the definition. */
+type pluginKind = Reventless.Plugin.pluginKind =
   | Domain
   | PlatformInfrastructure
   | Commercial
