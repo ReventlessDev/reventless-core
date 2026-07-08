@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.129 (2026-07-08)
+
+**Note:** Version bump only for package @reventlessdev/reventless-local
+
+
+
+
+
 # 3.0.0-alpha.128 (2026-07-07)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.145 (2026-07-08)
+
+### Bug Fixes
+
+* **reventless-aws:** stop admin-base schema clobber of split-mode DomainApi ([afce85f](https://github.com/ReventlessDev/reventless-core/commit/afce85fa57474735cea3dcb1c2a151c2d8804f0e))
+
+
 # 3.0.0-alpha.144 (2026-07-07)
 
 ### Bug Fixes
