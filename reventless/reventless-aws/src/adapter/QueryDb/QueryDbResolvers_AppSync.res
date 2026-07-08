@@ -57,6 +57,17 @@ export function response(ctx) {
 }
 `->Pulumi.Input.make
 
+/** The discriminator attribute whose absence marks an internal bookkeeping row for a
+    read model whose physical DynamoDB table co-hosts rows written outside the projection.
+    Only the Plugins admin RM has this: its table also holds `deploy-schema:*` /
+    `plugin-info:*` / `deploy-schema-hash:*` rows (Platform.res preResolversSchemaHook)
+    that carry no `name`. Returning `Some(attr)` makes the Connection Scan emit an
+    `attribute_exists(#attr)` filter so those rows never reach the non-null GraphQL schema.
+    `name` is the already-capitalized read-model name (spec name, e.g. "Plugins").
+    See docs/plans/platform-plugins-admin-connection-null-rows.md. */
+let internalRowRequiredAttr = (name: string): option<string> =>
+  name == "Plugins" ? Some("name") : None
+
 let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   ~name: string,
   ~api: api,
@@ -217,6 +228,15 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       )->Array.forEach(msg => log.warn(~comp="QueryDbResolvers_AppSync", msg))
     | None => ()
     }
+    // The Plugins admin RM's DynamoDB table co-hosts deploy-time infra rows
+    // (`deploy-schema:<name>`, `plugin-info:<name>`, `deploy-schema-hash:<apiId>`)
+    // written directly by the platform (Platform.res preResolversSchemaHook), not by
+    // the projection. Those rows carry no `name` attribute, so an unfiltered Scan
+    // resolves `name: String!` to null → non-null violation that nulls the entire
+    // Platform_PluginConnection. Exclude them with an `attribute_exists(#name)` filter
+    // (prefix-agnostic: real plugin rows always carry `name`, internal rows never do).
+    // See docs/plans/platform-plugins-admin-connection-null-rows.md.
+    let requireAttribute = internalRowRequiredAttr(name)
     let resolverAll = makeQueryResolver(
       ~resolverName=fieldNameForAll->String.capitalize,
       ~field=fieldNameForAll->Pulumi.Input.make,
@@ -226,6 +246,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~filterFields=filterFieldNames,
           ~rangeFields=rangeFieldNames,
           ~sortFields=sortFieldNames,
+          ~requireAttribute?,
         )
       } else {
         Resolver.Functions.listAllItems

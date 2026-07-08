@@ -58,6 +58,12 @@ export function response(ctx) {
 `;
 }
 
+function internalRowRequiredAttr(name) {
+  if (name === "Plugins") {
+    return "name";
+  }
+}
+
 function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolverConfigs, idsResolverConfigs, param, opts) {
   let name$1 = Stdlib_String.capitalize(name);
   let registryEntry = Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[name$1];
@@ -100,7 +106,8 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
       ).concat(Stdlib_Array.filterMap(indexes, param => param.subIdField));
       GraphQL_FragmentGenerator$ReventlessCore.validateScanSortAlignment(stateSchemaOpt, name$1, knownSortFields).forEach(msg => log.warn("QueryDbResolvers_AppSync", undefined, msg));
     }
-    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
+    let requireAttribute = internalRowRequiredAttr(name$1);
+    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
     let resolversByIndex = indexes.map(indexConfig => {
       let index = indexConfig.index;
       let stripLeadingBy = s => {
@@ -238,6 +245,7 @@ export {
   log,
   queryInterceptorConfig,
   interceptorCode,
+  internalRowRequiredAttr,
   make,
 }
 /* log Not a pure module */

@@ -430,7 +430,21 @@ let listAllItemsConnection = (
   ~filterFields: array<string>=[],
   ~rangeFields: array<string>=[],
   ~sortFields: array<string>=[],
+  // When set, emit an always-on `attribute_exists(#<attr>)` FilterExpression clause
+  // (ANDed with any client filters) so rows lacking that attribute never enter the
+  // Connection. Used for read models whose physical DynamoDB table co-hosts internal
+  // bookkeeping rows written outside the projection (e.g. the Plugins admin RM, whose
+  // table also holds `deploy-schema:*` / `plugin-info:*` rows with no `name`). Those
+  // rows would otherwise resolve `name`/`status`/`version` to null and violate the
+  // non-null GraphQL connection schema, nulling the whole connection.
+  ~requireAttribute: option<string>=?,
 ) => {
+  let requireAttributeClause = switch requireAttribute {
+  | Some(attr) => `
+  names['#${attr}'] = '${attr}';
+  parts.push('attribute_exists(#${attr})');`
+  | None => ""
+  }
   let filterClauses =
     filterFields
     ->Array.map(f => `
@@ -514,7 +528,7 @@ export function request(ctx) {
       return key;
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
-  }${filterClauses}${rangeClauses}
+  }${filterClauses}${rangeClauses}${requireAttributeClause}
   const req = {
     operation: 'Scan',
     limit: (ctx.args.first ?? 50),

@@ -360,10 +360,13 @@ export function request(ctx) {
 ` + resultResponseCode + `
 `;
 
-function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt) {
+function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt, requireAttribute) {
   let filterFields = filterFieldsOpt !== undefined ? filterFieldsOpt : [];
   let rangeFields = rangeFieldsOpt !== undefined ? rangeFieldsOpt : [];
   let sortFields = sortFieldsOpt !== undefined ? sortFieldsOpt : [];
+  let requireAttributeClause = requireAttribute !== undefined ? `
+  names['#` + requireAttribute + `'] = '` + requireAttribute + `';
+  parts.push('attribute_exists(#` + requireAttribute + `)');` : "";
   let filterClauses = filterFields.map(f => `
   if (filter.` + f + `Eq !== undefined && filter.` + f + `Eq !== null && filter.` + f + `Eq !== '') {
     names['#` + f + `'] = '` + f + `';
@@ -427,7 +430,7 @@ export function request(ctx) {
       return key;
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
-  }` + filterClauses + rangeClauses + `
+  }` + filterClauses + rangeClauses + requireAttributeClause + `
   const req = {
     operation: 'Scan',
     limit: (ctx.args.first ?? 50),
