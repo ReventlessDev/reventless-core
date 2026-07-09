@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.187 (2026-07-09)
+
+### Bug Fixes
+
+* **reventless-aws:** thread subIdConfig into deployed StateViewSlice projection runtime ([78ebf80](https://github.com/ReventlessDev/reventless-core/commit/78ebf8086406327a6d665d5dcf034630650c6803))
+
+
 # 3.0.0-alpha.186 (2026-07-08)
 
 ### Bug Fixes
