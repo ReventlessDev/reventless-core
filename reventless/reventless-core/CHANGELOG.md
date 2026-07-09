@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.148 (2026-07-09)
+
+### Bug Fixes
+
+* **reventless-core:** DCB StateChangeSlices expose one mutation per command constructor ([136fe93](https://github.com/ReventlessDev/reventless-core/commit/136fe93c56c2e5115eb60d792e9d5e9c07eecc2b))
+
+
 # 3.0.0-alpha.147 (2026-07-08)
 
 ### Bug Fixes
