@@ -36,6 +36,7 @@ let rowStateSchemaWithAnnotations =
       scan: ["status"],
       scanSort: ["name"],
       status: None,
+      groupBy: None,
       visibility: None,
     },
   )

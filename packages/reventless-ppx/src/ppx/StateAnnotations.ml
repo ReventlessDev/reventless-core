@@ -82,6 +82,22 @@ let strip_status_field_attr (attrs : attributes) =
     not (String.equal attr.attr_name.txt "status")
   ) attrs
 
+(* ── @groupBy attribute helpers ──
+   Marks the field a list view should section its rows by. AutoUI's list view
+   reads the marked field per row and groups rows sharing the same value.
+   At most one @groupBy per record; duplicates are reported in
+   [make_state_annotations_binding]. *)
+
+let has_group_by_field_attr (attrs : attributes) =
+  List.exists (fun (attr : attribute) ->
+    String.equal attr.attr_name.txt "groupBy"
+  ) attrs
+
+let strip_group_by_field_attr (attrs : attributes) =
+  List.filter (fun (attr : attribute) ->
+    not (String.equal attr.attr_name.txt "groupBy")
+  ) attrs
+
 let is_string_type (ct : core_type) =
   match ct.ptyp_desc with
   | Ptyp_constr ({ txt = Lident "string"; _ }, []) -> true
@@ -281,6 +297,30 @@ let strip_status_attrs (str : structure) : structure =
           | Ptype_record fields ->
             let new_fields = List.map (fun (ld : label_declaration) ->
               { ld with pld_attributes = strip_status_field_attr ld.pld_attributes }
+            ) fields in
+            { td with ptype_kind = Ptype_record new_fields }
+          | _ -> td
+      ) decls in
+      { item with pstr_desc = Pstr_type (rf, new_decls) }
+    | _ -> item
+  ) str
+
+(* ── @groupBy: structure-level strip ── *)
+
+(** Strip @groupBy attributes from @schema type state record fields. Mirrors
+    [strip_status_attrs]. *)
+let strip_group_by_attrs (str : structure) : structure =
+  List.map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (rf, decls) ->
+      let new_decls = List.map (fun (td : type_declaration) ->
+        if not (String.equal td.ptype_name.txt "state"
+                && Util.has_attr "schema" td.ptype_attributes) then td
+        else
+          match td.ptype_kind with
+          | Ptype_record fields ->
+            let new_fields = List.map (fun (ld : label_declaration) ->
+              { ld with pld_attributes = strip_group_by_field_attr ld.pld_attributes }
             ) fields in
             { td with ptype_kind = Ptype_record new_fields }
           | _ -> td
@@ -1148,10 +1188,22 @@ let make_state_annotations_binding ~loc ~visibility fields : structure_item opti
       Location.raise_errorf ~loc:loc2
         "duplicate @status annotation; only one field per state record may carry @status"
   in
+  let group_by_fields = List.filter_map (fun (ld : label_declaration) ->
+    if has_group_by_field_attr ld.pld_attributes then Some (ld.pld_name.txt, ld.pld_loc) else None
+  ) fields in
+  let group_by =
+    match group_by_fields with
+    | [] -> None
+    | [(name, _)] -> Some name
+    | (_, _) :: (_, loc2) :: _ ->
+      Location.raise_errorf ~loc:loc2
+        "duplicate @groupBy annotation; only one field per state record may carry @groupBy"
+  in
   if ids = [] && composite_ids = [] && sub_ids = [] && composite_sub_ids = []
      && indexes = [] && hidden = [] && summary = []
      && drill_targets = [] && drill_target_keys = [] && collapsed = []
-     && scan = [] && scan_sort = [] && status = None && visibility = None then None
+     && scan = [] && scan_sort = [] && status = None && group_by = None
+     && visibility = None then None
   else
     let ident lid =
       { pexp_desc = Pexp_ident { txt = lid; loc };
@@ -1166,6 +1218,17 @@ let make_state_annotations_binding ~loc ~visibility fields : structure_item opti
        (?:) field would require. *)
     let status_value =
       match status with
+      | None ->
+        { pexp_desc = Pexp_construct ({ txt = Lident "None"; loc }, None);
+          pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
+      | Some name ->
+        let str_lit =
+          { pexp_desc = Pexp_constant (Pconst_string (name, loc, None));
+            pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
+        { pexp_desc = Pexp_construct ({ txt = Lident "Some"; loc }, Some str_lit);
+          pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
+    let group_by_value =
+      match group_by with
       | None ->
         { pexp_desc = Pexp_construct ({ txt = Lident "None"; loc }, None);
           pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
@@ -1201,6 +1264,7 @@ let make_state_annotations_binding ~loc ~visibility fields : structure_item opti
             ({ txt = Lident "scan"; loc }, estr_array ~loc scan);
             ({ txt = Lident "scanSort"; loc }, estr_array ~loc scan_sort);
             ({ txt = Lident "status"; loc }, status_value);
+            ({ txt = Lident "groupBy"; loc }, group_by_value);
             ({ txt = Lident "visibility"; loc }, visibility_value) ],
           None);
         pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in

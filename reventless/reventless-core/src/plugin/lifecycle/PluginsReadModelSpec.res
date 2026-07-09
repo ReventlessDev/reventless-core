@@ -42,7 +42,9 @@ type state = {
   // @scan opts the field into server-side equality filtering so the connection gains
   // a `kindEq` filter — the panel split (main list vs System/Infrastructure) pages
   // correctly server-side rather than filtering a page client-side.
-  @scan kind: Reventless.Plugin.pluginKind,
+  // @groupBy tags this field as the list view's section key (emitted as
+  // `x-reventless-group-by`); AutoUI sections the admin Plugins view by kind.
+  @scan @groupBy kind: Reventless.Plugin.pluginKind,
   // Other versions of this name that are currently **Connected** — excludes this
   // row's own `version` (whose status is the `status` field above). Lets the
   // projection recompute which version is current (highest Connected) during a

@@ -47,6 +47,14 @@ type stateAnnotationSpec = {
   */
   status: option<string>,
   /**
+  Field annotated `@groupBy` on the state record (PPX-emitted). `Some(name)`
+  when one such annotation exists; the PPX errors on duplicate `@groupBy`
+  annotations within the same record. `SuryToJsonSchema.deriveObjectSchema`
+  emits `x-reventless-group-by: true` on the named field, which the UI's
+  list view reads to render rows in sections keyed on that field.
+  */
+  groupBy: option<string>,
+  /**
   Component-level visibility hint from `@@reventless.visibility(...)`.
   `Some("Internal")` when the file-level attribute is `Internal`; `None`
   (omitted) for the default `Public`. `SuryToJsonSchema.deriveObjectSchema`

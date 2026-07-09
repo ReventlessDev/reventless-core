@@ -96,6 +96,7 @@ let indexedStateSchemaWithAnnotations = S.Metadata.set(indexedStateSchema, State
   scan: [],
   scanSort: [],
   status: undefined,
+  groupBy: undefined,
   visibility: undefined
 });
 
@@ -119,6 +120,7 @@ let orderedStateSchemaWithAnnotations = S.Metadata.set(orderedStateSchema, State
   scan: [],
   scanSort: [],
   status: undefined,
+  groupBy: undefined,
   visibility: undefined
 });
 
@@ -143,6 +145,7 @@ let scanStateSchemaWithAnnotations = S.Metadata.set(scanStateSchema, StateAnnota
   scan: ["status"],
   scanSort: ["name"],
   status: undefined,
+  groupBy: undefined,
   visibility: undefined
 });
 

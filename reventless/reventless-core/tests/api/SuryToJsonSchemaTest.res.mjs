@@ -64,6 +64,7 @@ let emptySpec = {
   scan: emptySpec_scan,
   scanSort: emptySpec_scanSort,
   status: undefined,
+  groupBy: undefined,
   visibility: undefined
 };
 
@@ -100,6 +101,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -129,6 +131,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -161,6 +164,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -189,6 +193,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -217,6 +222,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -242,6 +248,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -267,6 +274,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -299,6 +307,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -334,6 +343,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -372,6 +382,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -400,6 +411,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -425,6 +437,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: ["status"],
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -457,6 +470,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: ["name"],
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -465,6 +479,39 @@ globalThis.describe("SuryToJsonSchema:", () => {
       globalThis.expect([
         Stdlib_Option.flatMap(Stdlib_Option.flatMap(nameSchema, s => getProperty(s, "x-reventless-scanSort")), Stdlib_JSON.Decode.bool),
         Stdlib_Option.flatMap(idSchema, s => getProperty(s, "x-reventless-scanSort"))
+      ]).toEqual([
+        true,
+        undefined
+      ]);
+    });
+    globalThis.test("emits x-reventless-group-by on the field named by groupBy", () => {
+      let schema = S.schema(s => ({
+        id: s.m(S.string),
+        kind: s.m(S.string)
+      }));
+      let schema$p = withSpec(schema, {
+        ids: emptySpec_ids,
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined,
+        groupBy: "kind",
+        visibility: undefined
+      });
+      let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
+      let kindSchema = getPropertyOf(json, "kind");
+      let idSchema = getPropertyOf(json, "id");
+      globalThis.expect([
+        Stdlib_Option.flatMap(Stdlib_Option.flatMap(kindSchema, s => getProperty(s, "x-reventless-group-by")), Stdlib_JSON.Decode.bool),
+        Stdlib_Option.flatMap(idSchema, s => getProperty(s, "x-reventless-group-by"))
       ]).toEqual([
         true,
         undefined
@@ -489,6 +536,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -520,6 +568,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: "Internal"
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -543,6 +592,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
@@ -606,6 +656,7 @@ globalThis.describe("SuryToJsonSchema:", () => {
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
         status: undefined,
+        groupBy: undefined,
         visibility: undefined
       });
       let native = S.toJSONSchema(schema$p);

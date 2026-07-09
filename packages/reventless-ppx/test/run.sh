@@ -793,6 +793,19 @@ type state = {
 }
 EOF
 
+# ─── Fixture: @groupBy (list-view section key) ────────────────────
+
+cat > "$PLUGIN/src/ReadModel/GroupByReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @id id: string,
+  @groupBy kind: string,
+  name: string,
+}
+EOF
+
 # ─── Fixture: @drillTarget + @collapsed (hierarchical rendering hints) ────
 
 cat > "$PLUGIN/src/ReadModel/DrillReadModel.res" <<'EOF'
@@ -1566,6 +1579,13 @@ assert_js_not_contains "$JS" '@scan'                 "@scan: annotation stripped
 assert_js_not_contains "$JS" '@scanSort'             "@scanSort: annotation stripped from output"
 
 echo ""
+echo "=== Test: @groupBy → metadata field populated ==="
+JS="$PLUGIN/src/ReadModel/GroupByReadModel.res.mjs"
+assert_js_contains "$JS" 'stateAnnotationsId'        "@groupBy: stateAnnotations metadata emitted"
+assert_js_contains "$JS" 'groupBy: "kind"'           "@groupBy: 'kind' recorded in groupBy field"
+assert_js_not_contains "$JS" '@groupBy'              "@groupBy: annotation stripped from output"
+
+echo ""
 echo "=== Test: @drillTarget + @collapsed → metadata fields populated ==="
 JS="$PLUGIN/src/ReadModel/DrillReadModel.res.mjs"
 assert_js_contains "$JS" 'stateAnnotationsId'              "@drillTarget/@collapsed: stateAnnotations metadata emitted"
@@ -1831,6 +1851,31 @@ else
   fi
 fi
 rm -f "$ERROR/src/ReadModel/HiddenSummaryConflictReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — duplicate @groupBy on same record ==="
+
+cat > "$ERROR/src/ReadModel/GroupByConflictReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @id id: string,
+  @groupBy kind: string,
+  @groupBy category: string,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "duplicate @groupBy" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "duplicate @groupBy annotation"; then
+    pass "duplicate @groupBy on same record → correct compile error"
+  else
+    fail "duplicate @groupBy" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/GroupByConflictReadModel.res"
 
 echo ""
 echo "=== Test: PPX error — @@reventless.visibility on an Aggregate ==="

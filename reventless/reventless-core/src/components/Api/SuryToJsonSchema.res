@@ -44,6 +44,11 @@ let mergeAnnotations = (
     if spec.summary->Array.includes(fieldName) {
       obj->Dict.set("x-reventless-summary", JSON.Encode.bool(true))
     }
+    switch spec.groupBy {
+    | Some(name) if name === fieldName =>
+      obj->Dict.set("x-reventless-group-by", JSON.Encode.bool(true))
+    | _ => ()
+    }
     switch spec.drillTargets->Array.find(((field, _)) => field === fieldName) {
     | Some((_, sliceName)) =>
       obj->Dict.set("x-reventless-drillTarget", JSON.Encode.string(sliceName))

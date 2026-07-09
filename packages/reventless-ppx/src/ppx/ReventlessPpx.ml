@@ -770,6 +770,7 @@ let transform (str : structure) : structure =
                       |> StateAnnotations.strip_drill_collapsed_attrs
                       |> StateAnnotations.strip_scan_attrs
                       |> StateAnnotations.strip_status_attrs
+                      |> StateAnnotations.strip_group_by_attrs
                  else body in
       let suffix =
         if not (Util.has_let_binding "moduleUrl" body) then

@@ -25,6 +25,7 @@ let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stat
   scan: [],
   scanSort: [],
   status: undefined,
+  groupBy: undefined,
   visibility: "Internal"
 });
 

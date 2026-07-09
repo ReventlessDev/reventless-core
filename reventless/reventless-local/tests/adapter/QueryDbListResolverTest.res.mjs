@@ -44,6 +44,7 @@ let rowStateSchemaWithAnnotations = S.Metadata.set(rowStateSchema, StateAnnotati
   scan: ["status"],
   scanSort: ["name"],
   status: undefined,
+  groupBy: undefined,
   visibility: undefined
 });
 

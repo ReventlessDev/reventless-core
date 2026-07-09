@@ -30,6 +30,7 @@ let emptySpec: Reventless.StateAnnotations.stateAnnotationSpec = {
   scan: [],
   scanSort: [],
   status: None,
+  groupBy: None,
   visibility: None,
 }
 
@@ -302,6 +303,25 @@ describe("SuryToJsonSchema:", () => {
         ->Option.flatMap(s => getProperty(s, "x-reventless-scanSort"))
         ->Option.flatMap(JSON.Decode.bool),
         idSchema->Option.flatMap(s => getProperty(s, "x-reventless-scanSort")),
+      ))->toEqual((Some(true), None))
+    })
+
+    testSync("emits x-reventless-group-by on the field named by groupBy", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "kind": s.matches(S.string),
+        }
+      )->S.castToUnknown
+      let schema' = schema->withSpec({...emptySpec, groupBy: Some("kind")})
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let kindSchema = getPropertyOf(json, "kind")
+      let idSchema = getPropertyOf(json, "id")
+      expect((
+        kindSchema
+        ->Option.flatMap(s => getProperty(s, "x-reventless-group-by"))
+        ->Option.flatMap(JSON.Decode.bool),
+        idSchema->Option.flatMap(s => getProperty(s, "x-reventless-group-by")),
       ))->toEqual((Some(true), None))
     })
 
