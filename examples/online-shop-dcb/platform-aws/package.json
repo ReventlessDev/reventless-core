@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-dcb-platform-aws",
   "private": true,
-  "version": "1.0.0-alpha.39",
+  "version": "1.0.0-alpha.40",
   "description": "Online Shop DCB — AWS platform deployment",
   "license": "Apache-2.0",
   "scripts": {
