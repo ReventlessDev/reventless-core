@@ -239,7 +239,7 @@ let registerDcb = (
   ensureCommandResultTypes(server)
   // Derive the constructor from the field name's trailing `_` segment (mirrors the
   // aggregate resolver). A single-command slice's `Plugin_Slice` resolves to its sole
-  // constructor (slice name == constructor); a multi-command slice's `Plugin_Slice_Ctor`
+  // constructor (slice name == constructor); a multi-command slice's `Plugin_Ctor`
   // resolves to `Ctor`. Position 0 was previously hardcoded, which dropped every
   // non-first constructor of a multi-command slice.
   let constructorNames = Reventless.DcbTag.extractAllVariantNames(commandSchema->Obj.magic)

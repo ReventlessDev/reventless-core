@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Naming.res.mjs";
 import * as TestRunner$ReventlessLocal from "../../src/test/TestRunner.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
@@ -578,29 +579,49 @@ globalThis.describe("DCB StateChangeSlice — one mutation per command construct
     let fieldNames = Api_Naming$ReventlessCore.sliceMutationFields("Catalog", "AddCategory", dcbSingleCommandSchema).map(param => param[0]);
     globalThis.expect(fieldNames).toEqual(["Catalog_AddCategory"]);
   });
-  globalThis.test("multi-command slice emits one field per constructor", async () => {
+  globalThis.test("multi-command slice emits one `${plugin}_${command}` field per constructor", async () => {
     let fieldNames = Api_Naming$ReventlessCore.sliceMutationFields("Ordering", "SyncCatalogProduct", dcbMultiCommandSchema).map(param => param[0]);
     globalThis.expect(fieldNames).toEqual([
-      "Ordering_SyncCatalogProduct_SyncNewProduct",
-      "Ordering_SyncCatalogProduct_ChangeSyncedPrice"
+      "Ordering_SyncNewProduct",
+      "Ordering_ChangeSyncedPrice"
     ]);
   });
-  globalThis.test("multi-command slice: both mutations carry their own args, plus both subscriptions", async () => {
+  globalThis.test("multi-command slice: both mutations carry their own args, plus both subscriptions (each ≤ 50 chars)", async () => {
     let fieldNames = Api_Naming$ReventlessCore.sliceMutationFields("Ordering", "SyncCatalogProduct", dcbMultiCommandSchema).map(param => param[0]);
     let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([{
         fieldNames: fieldNames,
         commandSchema: dcbMultiCommandSchema
       }], []);
     let sdl = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment).sdlPreview;
-    globalThis.expect(sdl.includes("Ordering_SyncCatalogProduct_SyncNewProduct(id: ID!, productId: ID!, name: String!, price: Float!)")).toBe(true);
-    globalThis.expect(sdl.includes("Ordering_SyncCatalogProduct_ChangeSyncedPrice(id: ID!, productId: ID!, price: Float!)")).toBe(true);
+    globalThis.expect(sdl.includes("Ordering_SyncNewProduct(id: ID!, productId: ID!, name: String!, price: Float!)")).toBe(true);
+    globalThis.expect(sdl.includes("Ordering_ChangeSyncedPrice(id: ID!, productId: ID!, price: Float!)")).toBe(true);
     let subs = Plugin_SubscriptionSchema$ReventlessCore.generate([{
         fieldNames: fieldNames,
         commandSchema: dcbMultiCommandSchema
       }], []);
     let subSdl = subs.subscriptionFields.join("\n");
-    globalThis.expect(subSdl.includes("onOrdering_SyncCatalogProduct_SyncNewProduct")).toBe(true);
-    globalThis.expect(subSdl.includes("onOrdering_SyncCatalogProduct_ChangeSyncedPrice")).toBe(true);
+    globalThis.expect(subSdl.includes("onOrdering_SyncNewProduct")).toBe(true);
+    globalThis.expect(subSdl.includes("onOrdering_ChangeSyncedPrice")).toBe(true);
+    subs.subscriptionFields.forEach(sub => {
+      let name = sub.trim().split("(")[0];
+      globalThis.expect(name.length <= 50).toBe(true);
+    });
+  });
+  globalThis.test("regression: a slice whose plugin+command overflow the 50-char cap fails at build, not at AppSync", async () => {
+    let field = Api_Naming$ReventlessCore.dcbCommandMutationField("PlatformIntegrationOrchestration", "RemoveExtensionWiring");
+    let raised;
+    try {
+      Api_Naming$ReventlessCore.assertSubscriptionNameFits(field);
+      raised = false;
+    } catch (raw_exn) {
+      let exn = Primitive_exceptions.internalToException(raw_exn);
+      if (exn.RE_EXN_ID === "JsExn") {
+        raised = true;
+      } else {
+        throw exn;
+      }
+    }
+    globalThis.expect(raised).toBe(true);
   });
 });
 

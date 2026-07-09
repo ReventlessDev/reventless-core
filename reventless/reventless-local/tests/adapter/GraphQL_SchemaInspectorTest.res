@@ -41,7 +41,7 @@ type unionCommand =
 // DCB StateChangeSlice command shapes for the per-constructor mutation fan-out.
 // A single-variant union models a single-command slice (must keep the byte-identical
 // `Plugin_Slice` field); a multi-variant union models a multi-command slice (must
-// expose one `Plugin_Slice_Ctor` field per constructor).
+// expose one `Plugin_Command` field per constructor).
 @schema
 type dcbSingleCommand =
   | AddCategory({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
@@ -802,21 +802,22 @@ describe("DCB StateChangeSlice — one mutation per command constructor", () => 
     expect(fieldNames)->toEqual(["Catalog_AddCategory"])
   })
 
-  testPromise("multi-command slice emits one field per constructor", async () => {
+  testPromise("multi-command slice emits one `${plugin}_${command}` field per constructor", async () => {
+    // The command constructor already names the operation; callers/plans expect
+    // `${plugin}_${command}` (e.g. Platform_SyncComponent / Platform_RemoveComponent),
+    // NOT the aggregate-style `${plugin}_${slice}_${command}` doubling — which both
+    // renamed the primary command and overflowed AppSync's subscription cap.
     let fieldNames =
       ReventlessCore.Api_Naming.sliceMutationFields(
         ~plugin="Ordering",
         ~slice="SyncCatalogProduct",
         ~commandSchema=dcbMultiCommandSchema->S.castToUnknown,
       )->Array.map(((f, _)) => f)
-    expect(fieldNames)->toEqual([
-      "Ordering_SyncCatalogProduct_SyncNewProduct",
-      "Ordering_SyncCatalogProduct_ChangeSyncedPrice",
-    ])
+    expect(fieldNames)->toEqual(["Ordering_SyncNewProduct", "Ordering_ChangeSyncedPrice"])
   })
 
   testPromise(
-    "multi-command slice: both mutations carry their own args, plus both subscriptions",
+    "multi-command slice: both mutations carry their own args, plus both subscriptions (each ≤ 50 chars)",
     async () => {
       let fieldNames =
         ReventlessCore.Api_Naming.sliceMutationFields(
@@ -834,12 +835,12 @@ describe("DCB StateChangeSlice — one mutation per command constructor", () => 
       // Each constructor's mutation carries that constructor's own argument shape.
       expect(
         sdl->String.includes(
-          "Ordering_SyncCatalogProduct_SyncNewProduct(id: ID!, productId: ID!, name: String!, price: Float!)",
+          "Ordering_SyncNewProduct(id: ID!, productId: ID!, name: String!, price: Float!)",
         ),
       )->toBe(true)
       expect(
         sdl->String.includes(
-          "Ordering_SyncCatalogProduct_ChangeSyncedPrice(id: ID!, productId: ID!, price: Float!)",
+          "Ordering_ChangeSyncedPrice(id: ID!, productId: ID!, price: Float!)",
         ),
       )->toBe(true)
 
@@ -849,8 +850,38 @@ describe("DCB StateChangeSlice — one mutation per command constructor", () => 
         ~eventLogEntries=[],
       )
       let subSdl = subs.subscriptionFields->Array.join("\n")
-      expect(subSdl->String.includes("onOrdering_SyncCatalogProduct_SyncNewProduct"))->toBe(true)
-      expect(subSdl->String.includes("onOrdering_SyncCatalogProduct_ChangeSyncedPrice"))->toBe(true)
+      expect(subSdl->String.includes("onOrdering_SyncNewProduct"))->toBe(true)
+      expect(subSdl->String.includes("onOrdering_ChangeSyncedPrice"))->toBe(true)
+
+      // Every emitted subscription field name stays within AppSync's 50-char cap.
+      subs.subscriptionFields->Array.forEach(sub => {
+        // `sub` is the full SDL line `  on<Field>(id: ID): CommandResult\n ...`;
+        // extract the leading `on<Field>` token to length-check the field name itself.
+        let name =
+          sub->String.trim->String.split("(")->Array.getUnsafe(0)
+        expect(name->String.length <= 50)->toBe(true)
+      })
+    },
+  )
+
+  testPromise(
+    "regression: a slice whose plugin+command overflow the 50-char cap fails at build, not at AppSync",
+    async () => {
+      // `on` + `Platform_SyncExtensionWiring_RemoveExtensionWiring` (the old doubled
+      // shape) was 52 chars → AppSync rejected the schema push with an opaque 500.
+      // A field long enough to overflow must now throw an actionable build-time error.
+      let longPlugin = "PlatformIntegrationOrchestration"
+      let field = ReventlessCore.Api_Naming.dcbCommandMutationField(
+        ~plugin=longPlugin,
+        ~command="RemoveExtensionWiring",
+      )
+      let raised = try {
+        let _ = ReventlessCore.Api_Naming.assertSubscriptionNameFits(~fieldName=field)
+        false
+      } catch {
+      | JsExn(_) => true
+      }
+      expect(raised)->toBe(true)
     },
   )
 })
