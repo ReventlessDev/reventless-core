@@ -9,11 +9,13 @@ import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/Req
 import { Make as eventLogOperationsMake } from "@reventlessdev/reventless-core/src/components/EventLog/EventLog_Operations.res.mjs";
 import { Make as aggregateCallbackMake } from "@reventlessdev/reventless-core/src/components/Aggregate/Aggregate_Callback.res.mjs";
 import { Make as commandTopicCallbackMake } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Callback.res.mjs";
-import { makeGenerateCommand } from "@reventlessdev/reventless-core/src/components/CommandGenerator/CommandGenerator_Callback.res.mjs";
+import { makeCommandGenerator } from "./CommandGeneratorEntryPoint_Ops.res.mjs";
 import { commandOutcomeToJson, runInlineAndCollect } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
-import { append, replay, replayStream, appendStream } from "@reventlessdev/reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res.mjs";
-import { opsFor as pgEventLogOpsFor } from "@reventlessdev/reventless-aws/src/adapter/EventLog/EventLogStorage_Postgres_Runtime.res.mjs";
 import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
+// Typed cold-start core — EventLog storage-ops selection/wiring, compiler-checked
+// against the framework signatures (see the module header and
+// docs/plans/minimize-lambda-entrypoint-mjs-shell.md).
+import { makeStorageOps } from "./AggregateEntryPoint_Ops.res.mjs";
 import { DynamoDBClient, ScanCommand } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 
@@ -127,24 +129,10 @@ async function checkPluginStatus(event) {
 // (all aggregates share one Postgres table, unlike DynamoDB's table-per-aggregate).
 function buildAggregateParts(specModule, behaviorModule, eventLogTableName, queueUrl, pgConnection) {
   const patchedSpec = patchSpecId(specModule);
-  let rawStorageOps;
-  if (pgConnection) {
-    const pgOps = pgEventLogOpsFor(pgConnection, eventLogTableName);
-    rawStorageOps = {
-      append: pgOps.append,
-      replay: pgOps.replay,
-      replayStream: pgOps.replayStream,
-      appendStream: pgOps.appendStream,
-    };
-  } else {
-    const resolvedTable = { name: eventLogTableName };
-    rawStorageOps = {
-      append: append(resolvedTable),
-      replay: replay(resolvedTable),
-      replayStream: replayStream(resolvedTable),
-      appendStream: appendStream(resolvedTable),
-    };
-  }
+  // Typed core: backend-specific EventLog storage ops (Postgres when pgConnection
+  // is present, else DynamoDB). Returns the full 6-field EventLog_Adapter.operations
+  // — the shell previously dropped latestSnapshot/writeSnapshot.
+  const rawStorageOps = makeStorageOps(eventLogTableName, pgConnection);
   const eventLogOps = eventLogOperationsMake(patchedSpec)({
     Spec: patchedSpec,
     EventTopic: { Spec: patchedSpec },
@@ -178,13 +166,11 @@ function buildCommandGeneratorHandler(parts, dispatchMode) {
   const publishJsonsAndWait = dispatchMode === "async"
     ? undefined
     : (jsons) => runInlineAndCollect(jsons, handleJsonCommands);
-  // Positional args after ReScript compiles labeled params:
-  //   (publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, stripIdFromParams)
-  // The `undefined` for `stripIdFromParams` must be passed explicitly here —
-  // omitting it shifts everything left, sending the schema object through the
-  // serviceName slot (string-concat then throws "Cannot convert object to
-  // primitive value" once the log line tries to print "CommandGenerator(<schema>)").
-  const generateCommand = makeGenerateCommand(publishJsons, publishJsonsAndWait, patchedSpec.name, patchedSpec.commandSchema, "Aggregate", undefined);
+  // Typed core (CommandGeneratorEntryPoint_Ops.res) pins the arg order and the
+  // componentKind/stripIdFromParams positions against the framework signature.
+  // stripIdFromParams=true matches the framework default the old shell relied on
+  // by passing `undefined`.
+  const generateCommand = makeCommandGenerator(publishJsons, publishJsonsAndWait, patchedSpec.name, patchedSpec.commandSchema, "Aggregate", true);
   return (event, _context) => {
     // Add identity fallback: use payload.identity if present, otherwise construct from meta.user.
     const identity = (event.identity != null && typeof event.identity === 'object')

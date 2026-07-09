@@ -7,22 +7,17 @@ import * as Chunk from "effect/Chunk";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import { patchSpecId, makeQueueRef, log, pluginName } from "./HandlerFactoryHelpers.mjs";
-import { decodeCommand$p as decodeCommandPrime } from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
-import {
-  extractVariantNames,
-  deriveEffectiveScope,
-  derivePartitionTag,
-} from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
-import { $$String as IdString } from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import { Make as dcbEventLogOperationsMake } from "@reventlessdev/reventless-core/src/components/DcbEventLog/DcbEventLog_Operations.res.mjs";
-import { Make as stateChangeSliceCallbackMake } from "@reventlessdev/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res.mjs";
-import { makeGenerateCommand } from "@reventlessdev/reventless-core/src/components/CommandGenerator/CommandGenerator_Callback.res.mjs";
+import { makeCommandGenerator } from "./CommandGeneratorEntryPoint_Ops.res.mjs";
 import { commandOutcomeToJson, runInlineAndCollect } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 import { json as jsonSchema } from "sury/src/S.res.mjs";
-import { read, append, readStream } from "@reventlessdev/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
-import { opsFor as pgDcbEventLogOpsFor } from "@reventlessdev/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_Postgres_Runtime.res.mjs";
 import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
+// Typed cold-start core — scope/partitionTag derivation, storage-ops wiring, and
+// per-slice handler building (functor + decode + handleCommands), all
+// compiler-checked against the framework signatures (see the module header and
+// docs/plans/minimize-lambda-entrypoint-mjs-shell.md).
+import { deriveScope, commandTypeNames, makeStorageOps, buildSliceHandler } from "./DcbCommandTopicEntryPoint_Ops.res.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
 
@@ -78,10 +73,6 @@ function extractCorrelationId(records) {
   return undefined;
 }
 
-function getIdStringSchema() {
-  return IdString.schema;
-}
-
 // Exported for tests: build the [sqsHandler, cmdGenHandler] pair from an
 // already-parsed `HANDLER_CONFIG` shape, with an injectable module loader.
 // In production, `buildHandler` below wraps this with the env-config + the
@@ -91,93 +82,32 @@ function getIdStringSchema() {
 export async function buildHandlersForConfig(config, opts = {}) {
   const loadModule = opts.loadModule ?? dynamicImport;
 
-  // Load all spec/behavior pairs first. Both the decision-query scope
-  // (crossPartitionTagKeys / tagKeysByEventType) AND the storage `partitionTag`
-  // are derived from the produced event schemas, and the DynamoDB storage ops
-  // below must be built with them — so slices load before anything else.
+  // Untyped boundary: dynamically import + id-patch the user Spec/Behavior
+  // modules. Their types are unknowable here — this is the one seam the typed
+  // core (below) cannot own, so it stays in the shell.
   const loadedSlices = await Promise.all(
     config.stateChangeSliceModules.map(async ({ spec, behavior }) => {
       const specModule = await loadModule(spec);
       const behaviorModule = await loadModule(behavior);
-      const patchedSpec = patchSpecId(specModule);
-      return { patchedSpec, behaviorModule };
+      return { patchedSpec: patchSpecId(specModule), behaviorModule };
     })
   );
 
-  // Single source of truth with Dcb_Builder.res: prefer slice-graph inference
-  // (which classifies cross-partition `@ref` reference reads), falling back to
-  // annotations only on ambiguity. Re-deriving from annotations alone here
-  // silently dropped inferred cross-partition reads, so every reference-guarded
-  // command was rejected on the deployed path — see
-  // docs/analysis/dcb-runtime-scope-annotation-drift.md.
-  const { crossPartitionTagKeys, tagKeysByEventType } = deriveEffectiveScope(
-    loadedSlices.map(({ patchedSpec }) => ({
-      name: patchedSpec.name,
-      commandSchema: patchedSpec.commandSchema,
-      consumedEventSchema: patchedSpec.consumedEventSchema,
-      eventSchema: patchedSpec.eventSchema,
-    }))
+  // Typed core: scope (crossPartitionTagKeys / tagKeysByEventType) + storage
+  // `partitionTag` derivation and backend-specific storage-ops wiring, all
+  // compiler-checked against the framework signatures — the single source of
+  // truth shared with Dcb_Builder.res. The two prod incidents this prevents are
+  // documented in DcbCommandTopicEntryPoint_Ops.res. `pgConnection`, when present
+  // in HANDLER_CONFIG, selects the Postgres backend (dcbEventLogTableName doubles
+  // as `dcb_event.log_name`); absence keeps the DynamoDB path byte-identical.
+  const specs = loadedSlices.map(({ patchedSpec }) => patchedSpec);
+  const scope = deriveScope(specs);
+  const { crossPartitionTagKeys, tagKeysByEventType } = scope;
+  const rawStorageOps = makeStorageOps(
+    config.dcbEventLogTableName,
+    config.pgConnection,
+    scope,
   );
-
-  // Derive the storage partition tag the SAME way Dcb_Builder.res does at
-  // deploy time (over the produced event schemas). This MUST reach the DynamoDB
-  // `append` — without it `partitionTag` defaults to `None`, the composite-fence
-  // collapse (gated on `Composite`) never fires, and a `@compositePartitionTag`
-  // slice writes one fence PER MEMBER instead of one synthetic composite fence.
-  // A deploy-time fan-out sharing low-cardinality members (environment, plugin,
-  // …) then turns those member fences hot → TransactionConflict → retries
-  // exhausted. The deploy-time adapter (DcbEventLogStorage_DynamoDb.make) already
-  // threads it; the deployed Lambda dropped it. See
-  // docs/plans/dcb-composite-fence-residual-burst-contention.md.
-  // `derivePartitionTag` throws only on a misconfigured spec, which the deploy
-  // would already have rejected; guard defensively so a runtime edge case
-  // degrades to the (old) untagged behaviour rather than crashing cold start.
-  let partitionTag = undefined;
-  try {
-    partitionTag = derivePartitionTag(
-      loadedSlices.map(({ patchedSpec }) => [
-        patchedSpec.name,
-        patchedSpec.moduleUrl ?? patchedSpec.name,
-        patchedSpec.eventSchema,
-      ])
-    );
-  } catch (err) {
-    log.warn("could not derive partitionTag; falling back to untagged fences: " + (err && err.message), { comp: "DcbCommandTopicRuntime" });
-  }
-
-  // `pgConnection`, when present in HANDLER_CONFIG, selects the Postgres DCB
-  // runtime (dcbEventLogTableName doubles as the `dcb_event.log_name`); absence
-  // keeps the DynamoDB path byte-identical. NB: this swaps only the *storage*
-  // ops — event propagation (within-plugin projections + cross-plugin SNS) is
-  // stream-driven on AWS and is handled separately by the change-feed relay
-  // (see docs/plans/aws-postgres-change-feed-bridge.md), not by this Lambda.
-  const rawStorageOps = config.pgConnection
-    ? (() => {
-        // C2: `lockStrategy` ("AdvisoryLocks" | "RowLocks") is the polyvariant's
-        // string name; `opsFor` defaults to "AdvisoryLocks" when it's absent.
-        const pgOps = pgDcbEventLogOpsFor(
-          config.pgConnection,
-          config.dcbEventLogTableName,
-          config.pgConnection.lockStrategy,
-        );
-        return { read: pgOps.read, append: pgOps.append, readStream: pgOps.readStream };
-      })()
-    : (() => {
-        const resolvedTable = { name: config.dcbEventLogTableName };
-        // Positional args match the ReScript-compiled signatures:
-        //   read(table, crossPartitionTagKeys)
-        //   append(table, partitionTag, crossPartitionTagKeys)
-        //   readStream(table, crossPartitionTagKeys)
-        // Threading partitionTag activates the composite-fence collapse; threading
-        // crossPartitionTagKeys routes single-tag `@crossPartition` reads to the
-        // per-tag GSI and bumps their fences on every carrier — matching the
-        // deploy-time adapter's storage ops exactly.
-        return {
-          read: read(resolvedTable, crossPartitionTagKeys),
-          append: append(resolvedTable, partitionTag, crossPartitionTagKeys),
-          readStream: readStream(resolvedTable, crossPartitionTagKeys),
-        };
-      })();
 
   const handlersByType = {};
   const sharedDcbEventLogOps = dcbEventLogOperationsMake({
@@ -191,35 +121,20 @@ export async function buildHandlersForConfig(config, opts = {}) {
   });
 
   loadedSlices.forEach(({ patchedSpec, behaviorModule }) => {
-    const sliceCallback = stateChangeSliceCallbackMake(patchedSpec)(behaviorModule);
-    const commandSchema = patchedSpec.commandSchema;
-    const typeNames = extractVariantNames(commandSchema);
-
-    const jsonHandler = stream => {
-      const decodedStream = Stream.flatMap(
-        Stream.mapEffect(stream, topicItem => Effect.sync(() => {
-          try {
-            const decoded = decodeCommandPrime(topicItem.command, getIdStringSchema(), commandSchema);
-            return { TAG: "Some", _0: { command: decoded, reference: topicItem.reference } };
-          } catch (_) {
-            return { TAG: "None", _0: 0 };
-          }
-        })),
-        opt => opt.TAG === "Some" ? Stream.make(opt._0) : Stream.empty
-      );
-      // Positional args match StateChangeSlice_Callback.res's compiled signature:
-      // (tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, dcbEventLog, stream).
-      return sliceCallback.handleCommands(
-        tagKeysByEventType,
-        crossPartitionTagKeys,
-        sharedDcbEventLogOps,
-        decodedStream,
-      );
-    };
-
-    typeNames.forEach(typeName => {
+    // Typed core: builds the slice callback (functor), the JSON→command decode,
+    // and the handleCommands invocation — all compiler-checked (was the fragile
+    // positional call this file's line-146 comment warned about; see the
+    // 2026-06-21 arity-drift incident referenced in the _Ops header).
+    const jsonHandler = buildSliceHandler(
+      patchedSpec,
+      behaviorModule,
+      tagKeysByEventType,
+      crossPartitionTagKeys,
+      sharedDcbEventLogOps,
+    );
+    for (const typeName of commandTypeNames(patchedSpec)) {
       handlersByType[typeName] = jsonHandler;
-    });
+    }
   });
 
   // Composite handler used by Route 2 (SQS event source) AND inline dispatch
@@ -251,20 +166,19 @@ export async function buildHandlersForConfig(config, opts = {}) {
 
   // Sync (default): inline-dispatch the command via the same composite handler
   // that Route 2 uses, so the AppSync resolver gets a typed Accepted/Rejected
-  // outcome. Async: undefined → makeGenerateCommand falls back to publishJsons
+  // outcome. Async: undefined → makeCommandGenerator falls back to publishJsons
   // and returns Pending. The schema is permissive (S.json) because AppSync has
   // already validated input against the SDL — per-slice schemas reapply inside
-  // the slice handlers via decodeCommandPrime.
+  // the typed core's buildSliceHandler decode.
   const publishJsonsAndWait = DISPATCH_MODE === "async"
     ? undefined
     : (jsons) => runInlineAndCollect(jsons, compositeJsonCommandsHandler);
 
-  // Positional args match CommandGenerator_Callback.makeGenerateCommand's
-  // ReScript-compiled signature: (publishJsons, publishJsonsAndWait,
-  // serviceName, commandSchema, componentKind, stripIdFromParams).
-  // stripIdFromParams=false: DCB slices may declare a literal `id` field as part
-  // of the command schema (composite partition keys etc.) — don't strip it.
-  const generateCommand = makeGenerateCommand(
+  // Typed core (CommandGeneratorEntryPoint_Ops.res) pins the arg order against
+  // the framework signature. stripIdFromParams=false: DCB slices may declare a
+  // literal `id` field as part of the command schema (composite partition keys
+  // etc.) — don't strip it.
+  const generateCommand = makeCommandGenerator(
     publishJsons,
     publishJsonsAndWait,
     config.pluginName,

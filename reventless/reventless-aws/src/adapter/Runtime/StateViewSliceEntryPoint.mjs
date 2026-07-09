@@ -6,10 +6,13 @@
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import { parseJsonOrThrow } from "sury/src/S.res.mjs";
-import { makeTableRef, log, pluginName } from "./HandlerFactoryHelpers.mjs";
+import { log, pluginName } from "./HandlerFactoryHelpers.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 import { handleAction } from "@reventlessdev/reventless-core/src/Projection.res.mjs";
-import { load, loadStream, save, saveBatch, count, $$delete, deleteBatch } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res.mjs";
+// Typed cold-start core — DynamoDB QueryDb ops, compiler-checked against the
+// framework signatures (see the module header and
+// docs/plans/minimize-lambda-entrypoint-mjs-shell.md).
+import { makeDynamoQueryDbOps } from "./QueryDbEntryPoint_Ops.res.mjs";
 import { opsFor as pgQdbOpsFor } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_Postgres_Runtime.res.mjs";
 import { withLiveUpdates } from "./StateTopicPublish.mjs";
 import { handleStreamEvent } from "@reventlessdev/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream_Runtime.res.mjs";
@@ -62,16 +65,7 @@ export function buildJsonEventsHandler(specModule, projectionModule, queryDbTabl
       subIdField,
     });
   } else {
-    const table = makeTableRef(queryDbTableName);
-    queryDbOps = {
-      load: load(table),
-      loadStream: loadStream(table),
-      save: save(table),
-      saveBatch: saveBatch(table),
-      count: count(table),
-      delete: $$delete(table),
-      deleteBatch: deleteBatch(table),
-    };
+    queryDbOps = makeDynamoQueryDbOps(queryDbTableName);
   }
   // Spec module exports `consumedEventSchema`; the `project` function lives in
   // the sibling projection module (`<Name>_Projection.res`).

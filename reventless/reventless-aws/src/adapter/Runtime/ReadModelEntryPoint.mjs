@@ -3,10 +3,13 @@
 // wires ReadModel_Callback.Make, builds handler map keyed by source URN.
 
 import * as Effect from "effect/Effect";
-import { patchSpecId, makeTableRef, log, pluginName } from "./HandlerFactoryHelpers.mjs";
+import { patchSpecId, log, pluginName } from "./HandlerFactoryHelpers.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 import { Make as readModelCallbackMake } from "@reventlessdev/reventless-core/src/components/ReadModel/ReadModel_Callback.res.mjs";
-import { load as qdbLoad, loadStream as qdbLoadStream, save as qdbSave, saveBatch as qdbSaveBatch, count as qdbCount, $$delete as qdbDelete, deleteBatch as qdbDeleteBatch } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res.mjs";
+// Typed cold-start core — DynamoDB QueryDb ops, compiler-checked against the
+// framework signatures (see the module header and
+// docs/plans/minimize-lambda-entrypoint-mjs-shell.md).
+import { makeDynamoQueryDbOps } from "./QueryDbEntryPoint_Ops.res.mjs";
 import { opsFor as pgQdbOpsFor } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_Postgres_Runtime.res.mjs";
 import { withLiveUpdates } from "./StateTopicPublish.mjs";
 import { handleStreamEvent } from "@reventlessdev/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream_Runtime.res.mjs";
@@ -99,18 +102,13 @@ function buildReadModelHandler(specModule, mappingsModule, queryDbTableName, pgC
       saveBatch: mkInjectIdSaveBatch(livePgOps.saveBatch),
     };
   } else {
-    const table = makeTableRef(queryDbTableName);
-    const rawSave = qdbSave(table);
-    const rawSaveBatch = qdbSaveBatch(table);
-
+    // Typed core builds the 7 DynamoDB QueryDb ops; the shell keeps the id-
+    // injection wrap on save/saveBatch (business logic, not framework-call drift).
+    const base = makeDynamoQueryDbOps(queryDbTableName);
     operations = {
-      load: qdbLoad(table),
-      loadStream: qdbLoadStream(table),
-      save: mkInjectIdSave(rawSave),
-      saveBatch: mkInjectIdSaveBatch(rawSaveBatch),
-      count: qdbCount(table),
-      delete: qdbDelete(table),
-      deleteBatch: qdbDeleteBatch(table),
+      ...base,
+      save: mkInjectIdSave(base.save),
+      saveBatch: mkInjectIdSaveBatch(base.saveBatch),
     };
   }
 
