@@ -242,19 +242,30 @@ function extractCorrelationId(records) {
 // variant (Aggregate_Builder_Single_Async) sets DISPATCH_MODE=async.
 const DISPATCH_MODE = process.env["DISPATCH_MODE"] === "async" ? "async" : "sync";
 
-async function buildAllHandlers() {
-  const configStr = process.env["HANDLER_CONFIG"] || '{"handlers":[]}';
-  const config = JSON.parse(configStr);
+// Exported for tests: build the [cmdTopicHandlers, cmdGenHandlers] pair from an
+// already-parsed `HANDLER_CONFIG` shape, with an injectable module loader. In
+// production, `buildAllHandlers` wraps this with the env config + the Lambda's
+// `/var/task/node_modules` dynamic import; the integration test injects a loader
+// returning pre-imported spec/behavior modules so it can drive the real
+// cmdGenHandler end-to-end against DynamoDB Local. (Mirrors the DCB entry point.)
+export async function buildHandlersForConfig(config, opts = {}) {
+  const loadModule = opts.loadModule ?? dynamicImport;
+  const dispatchMode = opts.dispatchMode ?? DISPATCH_MODE;
   const cmdTopicHandlers = {};
   const cmdGenHandlers = {};
-  await Promise.all(config.handlers.map(async h => {
-    const specModule = await dynamicImport(h.specModule);
-    const behaviorModule = await dynamicImport(h.behaviorModule);
+  await Promise.all((config.handlers || []).map(async h => {
+    const specModule = await loadModule(h.specModule);
+    const behaviorModule = await loadModule(h.behaviorModule);
     const parts = buildAggregateParts(specModule, behaviorModule, h.eventLogTable, h.queueUrl, h.pgConnection);
     cmdTopicHandlers[h.queueArn] = parts.sqsHandler;
-    cmdGenHandlers[specModule.name] = buildCommandGeneratorHandler(parts, DISPATCH_MODE);
+    cmdGenHandlers[specModule.name] = buildCommandGeneratorHandler(parts, dispatchMode);
   }));
   return [cmdTopicHandlers, cmdGenHandlers];
+}
+
+async function buildAllHandlers() {
+  const configStr = process.env["HANDLER_CONFIG"] || '{"handlers":[]}';
+  return buildHandlersForConfig(JSON.parse(configStr));
 }
 
 const initPromise = buildAllHandlers();
