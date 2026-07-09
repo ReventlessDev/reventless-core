@@ -237,12 +237,20 @@ let registerDcb = (
   ~server: GraphQL_ServerInstance.t,
 ) => {
   ensureCommandResultTypes(server)
-  let variantSchema = extractVariantSchema(commandSchema)
+  // Derive the constructor from the field name's trailing `_` segment (mirrors the
+  // aggregate resolver). A single-command slice's `Plugin_Slice` resolves to its sole
+  // constructor (slice name == constructor); a multi-command slice's `Plugin_Slice_Ctor`
+  // resolves to `Ctor`. Position 0 was previously hardcoded, which dropped every
+  // non-first constructor of a multi-command slice.
+  let constructorNames = Reventless.DcbTag.extractAllVariantNames(commandSchema->Obj.magic)
+  let variantIndex = variantIndexForField(commandSchema, ~field=fieldName)
+  let variantSchema = extractVariantSchema(commandSchema, ~index=variantIndex >= 0 ? variantIndex : 0)
   let sdlFields = [deriveSdlField(~fieldName, variantSchema)]
 
   // Extract TAG (variant constructor name) for routing
-  let constructorNames = Reventless.DcbTag.extractAllVariantNames(commandSchema->Obj.magic)
-  let tag = constructorNames->Array.get(0)->Option.getOr(fieldName)
+  let tag =
+    (variantIndex >= 0 ? constructorNames->Array.get(variantIndex) : constructorNames->Array.get(0))
+    ->Option.getOr(fieldName)
   let hasPayload = Reventless.DcbTag.isVariantPayloadBearing(commandSchema->Obj.magic, tag)
 
   let handlerRef = ref(None)

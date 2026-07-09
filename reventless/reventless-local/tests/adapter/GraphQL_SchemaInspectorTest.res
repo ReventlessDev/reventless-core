@@ -38,6 +38,23 @@ type unionCommand =
   | Create({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
   | Rename({itemId: @s.matches(Reventless.DcbTag.string) string, newName: string})
 
+// DCB StateChangeSlice command shapes for the per-constructor mutation fan-out.
+// A single-variant union models a single-command slice (must keep the byte-identical
+// `Plugin_Slice` field); a multi-variant union models a multi-command slice (must
+// expose one `Plugin_Slice_Ctor` field per constructor).
+@schema
+type dcbSingleCommand =
+  | AddCategory({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
+
+@schema
+type dcbMultiCommand =
+  | SyncNewProduct({
+      productId: @s.matches(Reventless.DcbTag.string) string,
+      name: string,
+      price: float,
+    })
+  | ChangeSyncedPrice({productId: @s.matches(Reventless.DcbTag.string) string, price: float})
+
 // State schemas exercising structural annotations (Phase 1 server capability)
 @schema
 type plainState = {
@@ -769,6 +786,75 @@ describe("GraphQL_SchemaInspector", () => {
 // the field must fold a `kindEq` equality filter into Platform_PluginFilter so the
 // admin console can page the main list vs the System/Infrastructure panel
 // server-side.
+// ── DCB StateChangeSlice: one mutation per command constructor ───────────────
+// A multi-command DCB slice must expose one GraphQL mutation per command
+// constructor (mirroring aggregates), each carrying its own argument shape and its
+// own subscription — not a single slice-named mutation that drops the extra
+// constructors. Single-command slices must stay byte-identical (no schema churn).
+describe("DCB StateChangeSlice — one mutation per command constructor", () => {
+  testPromise("single-command slice keeps the byte-identical Plugin_Slice field", async () => {
+    let fieldNames =
+      ReventlessCore.Api_Naming.sliceMutationFields(
+        ~plugin="Catalog",
+        ~slice="AddCategory",
+        ~commandSchema=dcbSingleCommandSchema->S.castToUnknown,
+      )->Array.map(((f, _)) => f)
+    expect(fieldNames)->toEqual(["Catalog_AddCategory"])
+  })
+
+  testPromise("multi-command slice emits one field per constructor", async () => {
+    let fieldNames =
+      ReventlessCore.Api_Naming.sliceMutationFields(
+        ~plugin="Ordering",
+        ~slice="SyncCatalogProduct",
+        ~commandSchema=dcbMultiCommandSchema->S.castToUnknown,
+      )->Array.map(((f, _)) => f)
+    expect(fieldNames)->toEqual([
+      "Ordering_SyncCatalogProduct_SyncNewProduct",
+      "Ordering_SyncCatalogProduct_ChangeSyncedPrice",
+    ])
+  })
+
+  testPromise(
+    "multi-command slice: both mutations carry their own args, plus both subscriptions",
+    async () => {
+      let fieldNames =
+        ReventlessCore.Api_Naming.sliceMutationFields(
+          ~plugin="Ordering",
+          ~slice="SyncCatalogProduct",
+          ~commandSchema=dcbMultiCommandSchema->S.castToUnknown,
+        )->Array.map(((f, _)) => f)
+      let commandSchema = dcbMultiCommandSchema->S.castToUnknown
+
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[{fieldNames, commandSchema}],
+        ~queryEntries=[],
+      )
+      let sdl = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment).sdlPreview
+      // Each constructor's mutation carries that constructor's own argument shape.
+      expect(
+        sdl->String.includes(
+          "Ordering_SyncCatalogProduct_SyncNewProduct(id: ID!, productId: ID!, name: String!, price: Float!)",
+        ),
+      )->toBe(true)
+      expect(
+        sdl->String.includes(
+          "Ordering_SyncCatalogProduct_ChangeSyncedPrice(id: ID!, productId: ID!, price: Float!)",
+        ),
+      )->toBe(true)
+
+      // Subscriptions fan out one-per-field over the same entry.
+      let subs = ReventlessCore.Plugin_SubscriptionSchema.generate(
+        ~mutationEntries=[{fieldNames, commandSchema}],
+        ~eventLogEntries=[],
+      )
+      let subSdl = subs.subscriptionFields->Array.join("\n")
+      expect(subSdl->String.includes("onOrdering_SyncCatalogProduct_SyncNewProduct"))->toBe(true)
+      expect(subSdl->String.includes("onOrdering_SyncCatalogProduct_ChangeSyncedPrice"))->toBe(true)
+    },
+  )
+})
+
 describe("Plugin admin fragment — kind enum + kindEq filter", () => {
   testPromise("Platform_Plugin exposes a PluginKind enum and Platform_Plugins gains kindEq", async () => {
     let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(

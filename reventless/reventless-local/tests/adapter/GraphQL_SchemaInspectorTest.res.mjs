@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Naming.res.mjs";
 import * as TestRunner$ReventlessLocal from "../../src/test/TestRunner.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as GraphQL_Server$ReventlessLocal from "../../src/adapter/GraphQL_Server.res.mjs";
@@ -10,6 +11,7 @@ import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/api/PluginBaseFragment.res.mjs";
 import * as GraphQL_SchemaInspector$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_SchemaInspector.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
+import * as Plugin_SubscriptionSchema$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_SubscriptionSchema.res.mjs";
 
 TestRunner$ReventlessLocal.setup();
 
@@ -41,6 +43,26 @@ let unionCommandSchema = S.union([
     TAG: "Rename",
     itemId: s.m(DcbTag$Reventless.string),
     newName: s.m(S.string)
+  }))
+]);
+
+let dcbSingleCommandSchema = S.schema(s => ({
+  TAG: "AddCategory",
+  categoryId: s.m(DcbTag$Reventless.string),
+  name: s.m(S.string)
+}));
+
+let dcbMultiCommandSchema = S.union([
+  S.schema(s => ({
+    TAG: "SyncNewProduct",
+    productId: s.m(DcbTag$Reventless.string),
+    name: s.m(S.string),
+    price: s.m(S.float)
+  })),
+  S.schema(s => ({
+    TAG: "ChangeSyncedPrice",
+    productId: s.m(DcbTag$Reventless.string),
+    price: s.m(S.float)
   }))
 ]);
 
@@ -551,6 +573,37 @@ globalThis.describe("GraphQL_SchemaInspector", () => {
   });
 });
 
+globalThis.describe("DCB StateChangeSlice — one mutation per command constructor", () => {
+  globalThis.test("single-command slice keeps the byte-identical Plugin_Slice field", async () => {
+    let fieldNames = Api_Naming$ReventlessCore.sliceMutationFields("Catalog", "AddCategory", dcbSingleCommandSchema).map(param => param[0]);
+    globalThis.expect(fieldNames).toEqual(["Catalog_AddCategory"]);
+  });
+  globalThis.test("multi-command slice emits one field per constructor", async () => {
+    let fieldNames = Api_Naming$ReventlessCore.sliceMutationFields("Ordering", "SyncCatalogProduct", dcbMultiCommandSchema).map(param => param[0]);
+    globalThis.expect(fieldNames).toEqual([
+      "Ordering_SyncCatalogProduct_SyncNewProduct",
+      "Ordering_SyncCatalogProduct_ChangeSyncedPrice"
+    ]);
+  });
+  globalThis.test("multi-command slice: both mutations carry their own args, plus both subscriptions", async () => {
+    let fieldNames = Api_Naming$ReventlessCore.sliceMutationFields("Ordering", "SyncCatalogProduct", dcbMultiCommandSchema).map(param => param[0]);
+    let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([{
+        fieldNames: fieldNames,
+        commandSchema: dcbMultiCommandSchema
+      }], []);
+    let sdl = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment).sdlPreview;
+    globalThis.expect(sdl.includes("Ordering_SyncCatalogProduct_SyncNewProduct(id: ID!, productId: ID!, name: String!, price: Float!)")).toBe(true);
+    globalThis.expect(sdl.includes("Ordering_SyncCatalogProduct_ChangeSyncedPrice(id: ID!, productId: ID!, price: Float!)")).toBe(true);
+    let subs = Plugin_SubscriptionSchema$ReventlessCore.generate([{
+        fieldNames: fieldNames,
+        commandSchema: dcbMultiCommandSchema
+      }], []);
+    let subSdl = subs.subscriptionFields.join("\n");
+    globalThis.expect(subSdl.includes("onOrdering_SyncCatalogProduct_SyncNewProduct")).toBe(true);
+    globalThis.expect(subSdl.includes("onOrdering_SyncCatalogProduct_ChangeSyncedPrice")).toBe(true);
+  });
+});
+
 globalThis.describe("Plugin admin fragment — kind enum + kindEq filter", () => {
   globalThis.test("Platform_Plugin exposes a PluginKind enum and Platform_Plugins gains kindEq", async () => {
     let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], PluginBaseFragment$ReventlessCore.queryEntries);
@@ -579,6 +632,8 @@ export {
   svStateSchema,
   addCommandSchema,
   unionCommandSchema,
+  dcbSingleCommandSchema,
+  dcbMultiCommandSchema,
   plainStateSchema,
   indexedStateSchema,
   indexedStateSchemaWithAnnotations,

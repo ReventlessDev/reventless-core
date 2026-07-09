@@ -198,10 +198,11 @@ function register(fields, commandSchema, commandAuthorization, server) {
 
 function registerDcb(fieldName, commandSchema, commandAuthorization, server) {
   ensureCommandResultTypes(server);
-  let variantSchema = extractVariantSchema(commandSchema, undefined);
-  let sdlFields = [deriveSdlField(fieldName, variantSchema)];
   let constructorNames = DcbTag$Reventless.extractAllVariantNames(commandSchema);
-  let tag = Stdlib_Option.getOr(constructorNames[0], fieldName);
+  let variantIndex = variantIndexForField(commandSchema, fieldName);
+  let variantSchema = extractVariantSchema(commandSchema, variantIndex >= 0 ? variantIndex : 0);
+  let sdlFields = [deriveSdlField(fieldName, variantSchema)];
+  let tag = Stdlib_Option.getOr(variantIndex >= 0 ? constructorNames[variantIndex] : constructorNames[0], fieldName);
   let hasPayload = DcbTag$Reventless.isVariantPayloadBearing(commandSchema, tag);
   let handlerRef = {
     contents: undefined

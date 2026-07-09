@@ -361,7 +361,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let consumed = match$1[1];
     return {
       name: SCS.Spec.name,
-      commands: extractCommandDefs(false, _variantName => Api_Naming$ReventlessCore.sliceMutationField(name, SCS.Spec.name), SCS.Spec.commandSchema),
+      commands: extractCommandDefs(false, variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), SCS.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: consumed,
       linkedViews: linkedSvsFor(produced),

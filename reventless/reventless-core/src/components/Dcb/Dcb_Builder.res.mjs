@@ -225,13 +225,13 @@ function Make(DcbEventLogStorage) {
         syncSlices.forEach(S => {
           let commandSchema = S.Spec.commandSchema;
           if (!ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
-            return registerResolver("Dcb", [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)], commandSchema, S.Spec.commandAuthorization);
+            return registerResolver("Dcb", Api_Naming$ReventlessCore.sliceMutationFields(name, S.Spec.name, commandSchema).map(param => param[0]), commandSchema, S.Spec.commandAuthorization);
           }
         });
         asyncSlices.forEach(S => {
           let commandSchema = S.Spec.commandSchema;
           if (!ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
-            return registerResolver("Dcb", [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)], commandSchema, S.Spec.commandAuthorization);
+            return registerResolver("Dcb", Api_Naming$ReventlessCore.sliceMutationFields(name, S.Spec.name, commandSchema).map(param => param[0]), commandSchema, S.Spec.commandAuthorization);
           }
         });
       }
@@ -243,9 +243,8 @@ function Make(DcbEventLogStorage) {
             if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
               return;
             }
-            let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name);
             let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, ops.publishJsonsAndWait, S.Spec.name, S.Spec.commandSchema, "StateChangeSlice", false);
-            bindHandler(fieldName, generateCommand);
+            Api_Naming$ReventlessCore.sliceMutationFields(name, S.Spec.name, commandSchema).forEach(param => bindHandler(param[0], generateCommand));
           });
         });
         if (asyncDcbCommandTopicOpt !== undefined) {
@@ -255,9 +254,8 @@ function Make(DcbEventLogStorage) {
               if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
                 return;
               }
-              let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name);
               let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(asyncOps.publishJsons, asyncOps.publishJsonsAndWait, S.Spec.name, S.Spec.commandSchema, "StateChangeSlice", false);
-              bindHandler(fieldName, generateCommand);
+              Api_Naming$ReventlessCore.sliceMutationFields(name, S.Spec.name, commandSchema).forEach(param => bindHandler(param[0], generateCommand));
             });
           });
         }
@@ -394,18 +392,13 @@ function Make(DcbEventLogStorage) {
       let asyncDcbResources = Object.values(asyncStateChangeSlicesOutputs).flatMap(outputs => outputs.resources);
       let inboundFieldNames = inboundTranslationSliceData.map(param => param[1]);
       let inboundSchemas = inboundTranslationSliceData.map(param => param[3]);
-      let dcbMutationData = Stdlib_Array.filterMap(stateChangeSlices, S => {
+      let dcbMutationData = stateChangeSlices.flatMap(S => {
         let commandSchema = S.Spec.commandSchema;
         if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
-          return;
+          return [];
+        } else {
+          return Api_Naming$ReventlessCore.sliceMutationFields(name, S.Spec.name, commandSchema);
         }
-        let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name);
-        let constructorNames = DcbTag$Reventless.extractAllVariantNames(S.Spec.commandSchema);
-        let tag = Stdlib_Option.getOr(constructorNames[0], S.Spec.name);
-        return [
-          fieldName,
-          tag
-        ];
       });
       let dcbFieldNames = dcbMutationData.map(param => param[0]);
       let dcbTags = dcbMutationData.map(param => param[1]);
@@ -458,18 +451,23 @@ function Make(DcbEventLogStorage) {
       };
       let mutationEntriesFromSlices = Stdlib_Array.filterMap(stateChangeSlices, S => {
         let commandSchema = S.Spec.commandSchema;
-        if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
+        let fieldSpecs = Api_Naming$ReventlessCore.sliceMutationFields(name, S.Spec.name, commandSchema);
+        if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema) || fieldSpecs.length === 0) {
           return;
         }
         let sliceDef = Stdlib_Option.flatMap(pluginStructure, s => s.stateChangeSlices.find(d => d.name === S.Spec.name));
-        let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name);
+        let commandAuthorization = S.Spec.commandAuthorization;
         let fieldPermissions = {};
-        let rule = permissionForFirstConstructor(commandSchema, S.Spec.commandAuthorization);
-        if (rule !== undefined) {
-          fieldPermissions[fieldName] = rule;
-        }
+        fieldSpecs.forEach(param => {
+          let ctor = param[1];
+          let hasPayload = DcbTag$Reventless.isVariantPayloadBearing(commandSchema, ctor);
+          let syntheticCmd = hasPayload ? ({
+              TAG: ctor
+            }) : ctor;
+          fieldPermissions[param[0]] = commandAuthorization(syntheticCmd);
+        });
         return {
-          fieldNames: [fieldName],
+          fieldNames: fieldSpecs.map(param => param[0]),
           commandSchema: commandSchema,
           fieldPermissions: fieldPermissions,
           systemCallable: systemCallableComponents.includes(S.Spec.name),

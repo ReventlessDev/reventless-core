@@ -1,3 +1,5 @@
+open ReventlessInfra.Api
+
 type queryNames = {
   singleFieldName: string,
   listFieldName: string,
@@ -38,6 +40,46 @@ let aggregateMutationField = (~plugin: string, ~aggregate: string, ~command: str
   `${plugin}_${aggregate}_${command}`
 
 let sliceMutationField = (~plugin: string, ~slice: string) => `${plugin}_${slice}`
+
+// DCB StateChangeSlice mutation fields — one per API-exposed command constructor,
+// mirroring the aggregate path (which emits one field per constructor). A slice whose
+// command union has a single API-exposed constructor keeps the byte-identical
+// `Plugin_Slice` name (no schema churn); a multi-command slice uses aggregate-style
+// `Plugin_Slice_Ctor` per constructor so the SDL generator and command resolvers
+// derive the constructor from the trailing `_` segment. @noApi variants are filtered
+// out. Returns [(fieldName, constructorName)] in declaration order.
+let sliceMutationFields = (
+  ~plugin: string,
+  ~slice: string,
+  ~commandSchema: S.t<unknown>,
+): array<(string, string)> => {
+  let allNames = Reventless.DcbTag.extractAllVariantNames(commandSchema->Obj.magic)
+  let filtered = ApiNoApiHelpers.filterNoApiVariants(allNames, commandSchema)
+  switch filtered {
+  | [] => []
+  | [single] => [(sliceMutationField(~plugin, ~slice), single)]
+  | _ =>
+    filtered->Array.map(ctor => (
+      aggregateMutationField(~plugin, ~aggregate=slice, ~command=ctor),
+      ctor,
+    ))
+  }
+}
+
+// The mutation field name for a single command constructor of a DCB StateChangeSlice,
+// consistent with `sliceMutationFields`: single-command slices resolve every variant
+// to the slice name, multi-command slices to the aggregate-style per-constructor name.
+let sliceMutationFieldFor = (
+  ~plugin: string,
+  ~slice: string,
+  ~commandSchema: S.t<unknown>,
+  ~variant: string,
+): string =>
+  if sliceMutationFields(~plugin, ~slice, ~commandSchema)->Array.length <= 1 {
+    sliceMutationField(~plugin, ~slice)
+  } else {
+    aggregateMutationField(~plugin, ~aggregate=slice, ~command=variant)
+  }
 
 // Pluralize via the singular stem so already-plural names normalise correctly:
 // "Orders" → "Order" → "Orders" (was "Orderses"); "Categories" → "Category" →

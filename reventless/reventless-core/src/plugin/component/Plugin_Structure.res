@@ -440,7 +440,13 @@ let make = (
         Reventless.Plugin.name: SCS.Spec.name,
         commands: extractCommandDefs(
           ~isAggregate=false,
-          ~mutationFieldFor=_variantName => Api_Naming.sliceMutationField(~plugin=name, ~slice=SCS.Spec.name),
+          ~mutationFieldFor=variantName =>
+            Api_Naming.sliceMutationFieldFor(
+              ~plugin=name,
+              ~slice=SCS.Spec.name,
+              ~commandSchema=SCS.Spec.commandSchema->S.castToUnknown,
+              ~variant=variantName,
+            ),
           SCS.Spec.commandSchema->S.castToUnknown,
         ),
         producedEventTypes: produced,

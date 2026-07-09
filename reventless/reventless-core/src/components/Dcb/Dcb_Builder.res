@@ -410,7 +410,11 @@ module Make = (
             if !(ApiNoApiHelpers.isNoApi(commandSchema)) {
               registerResolver(
                 ~kind=Dcb,
-                ~fields=[Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)],
+                ~fields=Api_Naming.sliceMutationFields(
+                  ~plugin=name,
+                  ~slice=S.Spec.name,
+                  ~commandSchema,
+                )->Array.map(((f, _)) => f),
                 ~commandSchema,
                 ~commandAuthorization=S.Spec.commandAuthorization->Obj.magic,
               )
@@ -423,7 +427,11 @@ module Make = (
             if !(ApiNoApiHelpers.isNoApi(commandSchema)) {
               registerResolver(
                 ~kind=Dcb,
-                ~fields=[Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)],
+                ~fields=Api_Naming.sliceMutationFields(
+                  ~plugin=name,
+                  ~slice=S.Spec.name,
+                  ~commandSchema,
+                )->Array.map(((f, _)) => f),
                 ~commandSchema,
                 ~commandAuthorization=S.Spec.commandAuthorization->Obj.magic,
               )
@@ -446,7 +454,8 @@ module Make = (
               ) => {
                 let commandSchema = S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema
                 if !(ApiNoApiHelpers.isNoApi(commandSchema)) {
-                  let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
+                  // One generateCommand backs every constructor's field — the TAG is
+                  // injected by the resolver per field, so a single binding suffices.
                   let generateCommand = CommandGenerator_Callback.makeGenerateCommand(
                     ~publishJsons=ops.publishJsons,
                     ~publishJsonsAndWait=?ops.publishJsonsAndWait,
@@ -455,7 +464,8 @@ module Make = (
                     ~componentKind=CommandGenerator_Callback.StateChangeSlice,
                     ~stripIdFromParams=false,
                   )
-                  bindHandler(~field=fieldName, ~generateCommand)
+                  Api_Naming.sliceMutationFields(~plugin=name, ~slice=S.Spec.name, ~commandSchema)
+                  ->Array.forEach(((fieldName, _)) => bindHandler(~field=fieldName, ~generateCommand))
                 }
               })
             })
@@ -471,7 +481,8 @@ module Make = (
                 ) => {
                   let commandSchema = S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema
                   if !(ApiNoApiHelpers.isNoApi(commandSchema)) {
-                    let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
+                    // One generateCommand backs every constructor's field — the TAG is
+                    // injected by the resolver per field, so a single binding suffices.
                     let generateCommand = CommandGenerator_Callback.makeGenerateCommand(
                       ~publishJsons=asyncOps.publishJsons,
                       ~publishJsonsAndWait=?asyncOps.publishJsonsAndWait,
@@ -480,7 +491,8 @@ module Make = (
                       ~componentKind=CommandGenerator_Callback.StateChangeSlice,
                       ~stripIdFromParams=false,
                     )
-                    bindHandler(~field=fieldName, ~generateCommand)
+                    Api_Naming.sliceMutationFields(~plugin=name, ~slice=S.Spec.name, ~commandSchema)
+                    ->Array.forEach(((fieldName, _)) => bindHandler(~field=fieldName, ~generateCommand))
                   }
                 })
               })
@@ -706,19 +718,19 @@ module Make = (
 
         // Collect DCB mutation field names + TAGs for AppSync resolver creation
         // (excludes @noApi slices — includes both sync and async)
+        // One (fieldName, TAG) pair per API-exposed command constructor. The AWS
+        // resolver layer (CommandGeneratorResolvers_AppSync.makeDcb) zips these into
+        // one resolver per field, each injecting its own constructor TAG into the
+        // Lambda payload — so a multi-command slice's every command is dispatchable.
         let dcbMutationData =
-          stateChangeSlices->Array.filterMap((
+          stateChangeSlices->Array.flatMap((
             module(S: StateChangeSlice.T),
           ) => {
             let commandSchema = S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema
             if ApiNoApiHelpers.isNoApi(commandSchema) {
-              None
+              []
             } else {
-              let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
-              let constructorNames =
-                Reventless.DcbTag.extractAllVariantNames(S.Spec.commandSchema->Obj.magic)
-              let tag = constructorNames->Array.get(0)->Option.getOr(S.Spec.name)
-              Some((fieldName, tag))
+              Api_Naming.sliceMutationFields(~plugin=name, ~slice=S.Spec.name, ~commandSchema)
             }
           })
         let dcbFieldNames = dcbMutationData->Array.map(((f, _)) => f)
@@ -812,24 +824,29 @@ module Make = (
             module(S: StateChangeSlice.T),
           ) => {
             let commandSchema = S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema
-            if ApiNoApiHelpers.isNoApi(commandSchema) {
+            let fieldSpecs =
+              Api_Naming.sliceMutationFields(~plugin=name, ~slice=S.Spec.name, ~commandSchema)
+            if ApiNoApiHelpers.isNoApi(commandSchema) || fieldSpecs->Array.length == 0 {
               None
             } else {
               let sliceDef =
                 pluginStructure->Option.flatMap(s =>
                   s.stateChangeSlices->Array.find(d => d.name == S.Spec.name)
                 )
-              let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
+              // One SDL field per constructor, each with its own constructor's args and
+              // its own per-constructor authorization rule.
+              let commandAuthorization: unknown => Reventless.Authorization.permission =
+                S.Spec.commandAuthorization->Obj.magic
               let fieldPermissions = Dict.make()
-              switch permissionForFirstConstructor(
-                ~commandSchema,
-                ~commandAuthorization=S.Spec.commandAuthorization->Obj.magic,
-              ) {
-              | Some(rule) => fieldPermissions->Dict.set(fieldName, rule)
-              | None => ()
-              }
+              fieldSpecs->Array.forEach(((fieldName, ctor)) => {
+                let hasPayload =
+                  Reventless.DcbTag.isVariantPayloadBearing(commandSchema->Obj.magic, ctor)
+                let syntheticCmd: unknown =
+                  hasPayload ? {"TAG": ctor}->Obj.magic : ctor->Obj.magic
+                fieldPermissions->Dict.set(fieldName, commandAuthorization(syntheticCmd))
+              })
               Some({
-                ReventlessInfra.Api.fieldNames: [fieldName],
+                ReventlessInfra.Api.fieldNames: fieldSpecs->Array.map(((f, _)) => f),
                 commandSchema,
                 fieldPermissions,
                 systemCallable: systemCallableComponents->Array.includes(S.Spec.name),
