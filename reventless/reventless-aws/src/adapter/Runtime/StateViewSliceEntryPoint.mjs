@@ -45,7 +45,7 @@ function groupBySource(records) {
 // `pgConnection`, when present, selects the Postgres QueryDb runtime for this
 // slice's view table (`queryDbTableName` is then the slice spec name, the shared
 // `qdb_<name>` discriminator). Absent → the DynamoDB path is byte-identical.
-function buildJsonEventsHandler(specModule, projectionModule, queryDbTableName, pgConnection, stateTopicName) {
+export function buildJsonEventsHandler(specModule, projectionModule, queryDbTableName, pgConnection, stateTopicName) {
   let queryDbOps;
   if (pgConnection) {
     const indexes = (specModule.config && specModule.config.indexes) || [];
@@ -92,7 +92,12 @@ function buildJsonEventsHandler(specModule, projectionModule, queryDbTableName, 
       actions => Stream.fromIterable(actions)
     ),
     action => Effect.map(
-      Effect.promise(() => handleAction(action, queryDbOps, undefined)),
+      // Thread the slice's `subIdConfig` (generated from `@subId`) so sub-id-dependent
+      // actions like `UpdateMultiState` can resolve the sort key. Dropping it here made
+      // every such action hit the `MissingSubIdConfig` guard and silently write nothing,
+      // while the test-harness callback path (which threads it) stayed green. `undefined`
+      // for slices without an `@subId` is correct — those never emit sub-id actions.
+      Effect.promise(() => handleAction(action, queryDbOps, specModule.subIdConfig)),
       _ => {}
     )
   );
