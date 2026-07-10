@@ -44,7 +44,16 @@ type state = {
   // correctly server-side rather than filtering a page client-side.
   // @groupBy tags this field as the list view's section key (emitted as
   // `x-reventless-group-by`); AutoUI sections the admin Plugins view by kind.
-  @scan @groupBy kind: Reventless.Plugin.pluginKind,
+  //
+  // **Nullable on purpose.** Rows projected before `kind` existed carry no `kind`
+  // attribute, and the deploy-time RedetectPlugin backfill only stamps a row on the
+  // owning plugin's next deploy. A non-null `PluginKind!` would make GraphQL null the
+  // entire `Platform_Plugins` query the moment a single kind-less row is returned
+  // (existing rows, a newly-connecting plugin before it's stamped, or an internal
+  // bookkeeping row). Optional here → nullable `Platform_PluginKind` in the SDL, so a
+  // blank kind degrades to a missing group (AutoListView's trailing group) instead of
+  // taking down the whole list. Backfill then upgrades blanks to real kinds.
+  @scan @groupBy kind: option<Reventless.Plugin.pluginKind>,
   // Other versions of this name that are currently **Connected** — excludes this
   // row's own `version` (whose status is the `status` field above). Lets the
   // projection recompute which version is current (highest Connected) during a
@@ -69,7 +78,7 @@ type queryResult = {
   uiFragments: option<Reventless.Plugin.uiFragmentManifest>,
   structure: option<Reventless.Plugin.pluginStructure>,
   dcbEventLog: option<Reventless.Plugin.dcbEventLogDefinition>,
-  kind: Reventless.Plugin.pluginKind,
+  kind: option<Reventless.Plugin.pluginKind>,
 }
 
 

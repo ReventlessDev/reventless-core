@@ -1,12 +1,14 @@
 # The platform shows up as a `Platform` row in the admin Plugins list
 
-**Status:** **A1 core surface + `kind` backfill mechanism implemented** (A1 2026-07-08;
-backfill 2026-07-10). Analysis 2026-07-08; mechanism corrected + Option-B precondition
-verified; A1 implemented (build clean, tests green). The 2026-07-10 follow-up gap (`kind`
-empty on existing rows) is now **resolved** by a deploy-time `RedetectPlugin` handshake
-re-trigger — see the resolution section at the bottom. Remaining: the admin-console panel
-split (UI repo) and the inspector-side reconcile filter (both downstream, now unblocked by
-the exposed + backfilled `kind`).
+**Status:** **A1 core surface + `kind` backfill mechanism + nullable-`kind` regression fix
+implemented** (A1 2026-07-08; backfill + nullable fix 2026-07-10). Analysis 2026-07-08;
+mechanism corrected + Option-B precondition verified; A1 implemented (build clean, tests
+green). The 2026-07-10 follow-up gap (`kind` empty on existing rows) is **resolved** by a
+deploy-time `RedetectPlugin` handshake re-trigger, and the follow-on regression (a non-null
+`PluginKind!` nulling the whole admin query on kind-less rows) is **resolved** by making the
+read/GraphQL `kind` nullable — see the two resolution sections at the bottom. Remaining: the
+admin-console panel split (UI repo) and the inspector-side reconcile filter (both downstream,
+now unblocked by the exposed + backfilled `kind`).
 **Area:** plugin-lifecycle read model / plugin deploy handshake / admin Plugins view
 **Related:** [done/platform-plugins-admin-connection-null-rows.md](done/platform-plugins-admin-connection-null-rows.md)
 (same admin `Platform_Plugins` surface — that one fixed internal *rows* leaking; this
@@ -397,3 +399,57 @@ all four packages build warning-free.
 **Ship note:** this rides a `reventless-aws` + `reventless-core` + `reventless-infra` republish; the
 backfill lands per plugin on its first deploy *after* this ships (business redeploys platform + each
 domain plugin once).
+
+### URGENT — non-nullable `kind` breaks the admin Plugins query (regression, 2026-07-10)
+
+`kind: Platform_PluginKind!` is **non-nullable**. After platform-aws was redeployed on core@150,
+the AutoUI read-model definitions now advertise `kind`, so the console's dynamic AutoListView query
+selects it — and because every existing lifecycle row has `kind = null` (no backfill possible), the
+resolver returns null for a non-nullable field and GraphQL **nulls the entire `Platform_Plugins`
+query**:
+
+```
+Cannot return null for non-nullable type: 'Platform_PluginKind'
+within parent 'Platform_Plugin' (/Platform_Plugins/edges[0]/node/kind)
+```
+
+So the admin Plugins page is **broken**, not merely ungrouped. This must be fixed **before** (or
+instead of relying on) the backfill: a single kind-less row — existing rows now, a
+newly-connecting plugin before it's stamped, or an internal bookkeeping row — takes down the whole
+query. **Priority fix:** make `kind` **nullable** (`Platform_PluginKind`, drop the `!`) and/or have
+the resolver/projection **default a missing `kind` to a safe value** (e.g. `Domain`, or leave null).
+Nullable is the more honest default (blank until backfilled; AutoListView already tolerates a
+missing group value → trailing group). The `mandatory-kind` decision in step 1 is what makes this
+non-null; revisit it for the *read/GraphQL* surface at minimum. Backfill (above) then upgrades
+blanks to real kinds, but is no longer load-bearing for correctness.
+
+### Resolution — `kind` made nullable on the read/GraphQL surface ✅ implemented 2026-07-10
+
+Took the nullable route (the honest default), leaving the *definition*'s `kind` mandatory. The
+change is confined to the read-model surface — the projection still always writes a real kind for
+new rows; `option` exists purely for rows persisted before `kind`:
+
+1. **`PluginsReadModelSpec.state.kind` → `option<Reventless.Plugin.pluginKind>`**
+   ([PluginsReadModelSpec.res:47](../../reventless/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res#L47)),
+   keeping the `@scan @groupBy` annotations (`scan: ["kind"]`, `groupBy: "kind"` still emit). The
+   sury field now encodes as `s.m(S.option(pluginKindSchema))` — the same optional shape as
+   `apiTarget`/`structure`/`uiFragments` — so the derived SDL field is nullable `Platform_PluginKind`
+   (no `!`). `queryResult.kind` mirrored to `option`.
+2. **`PluginsProjection.displayState` sets `kind: Some(def.kind)`**
+   ([PluginsProjection.res:64](../../reventless/reventless-core/src/plugin/lifecycle/PluginsProjection.res#L64)).
+   The definition still carries `kind` as a mandatory field, so a freshly projected row always has a
+   real kind; `None` only ever comes from a pre-`kind` persisted row.
+
+**Net effect:** a kind-less row now returns `null` for `kind` and GraphQL no longer collapses the
+whole `Platform_Plugins` query — AutoListView renders it as a trailing (ungrouped) section until the
+deploy-time RedetectPlugin backfill stamps a real kind on the plugin's next deploy. Backfill is now a
+progressive-enhancement, not a correctness prerequisite.
+
+**Verification:** all three packages build warning-free; `PluginsProjection_GWT` + `PluginBehavior_GWT`
+green (40); full suites reventless-core 500/500, reventless-local 488/488, reventless-aws 209/209. The
+GWT fixtures route through `displayState`, so the `Some(kind)` expectation is shared by construction —
+no fixture edits needed.
+
+**Ship note:** rides the same `reventless-core` republish as the backfill mechanism. Once
+platform-aws redeploys on this version the admin Plugins page renders again (with existing rows in the
+trailing group); each plugin's next deploy then moves it into its proper kind section.

@@ -28,7 +28,7 @@ let stateSchema = S.schema(s => ({
   uiFragments: s.m(Plugin$Reventless.uiFragmentManifestOptionSchema),
   structure: s.m(Plugin$Reventless.pluginStructureOptionSchema),
   dcbEventLog: s.m(Plugin$Reventless.dcbEventLogOptionSchema),
-  kind: s.m(Plugin$Reventless.pluginKindSchema),
+  kind: s.m(S.option(Plugin$Reventless.pluginKindSchema)),
   otherConnectedVersions: s.m(S.array(Plugin$Reventless.versionSchema))
 }));
 

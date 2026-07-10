@@ -58,7 +58,10 @@ let displayState = (
     uiFragments: def.uiFragments,
     structure: def.structure,
     dcbEventLog: def.dcbEventLog,
-    kind: def.kind,
+    // A freshly projected row always knows its kind (the definition carries it as a
+    // mandatory field). `option` here is purely for rows persisted before `kind`
+    // existed — see PluginsReadModelSpec.state.kind.
+    kind: Some(def.kind),
     // The current version is never listed among the "other" connected versions.
     otherConnectedVersions: otherConnectedVersions->Util.without(def.version),
   }
