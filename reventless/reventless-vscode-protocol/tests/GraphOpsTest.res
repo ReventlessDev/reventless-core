@@ -44,6 +44,21 @@ describe("slicesForNodes", () => {
     let edges = [e(~from="Evt", ~to_="Agg", ~kind=Reads)]
     expect(GraphOps.slicesForNodes(nodes, edges))->toEqual([("Agg", "Agg::slice")])
   })
+
+  testSync("tolerates a pre-v11 emitter's lowercase handles/emits wire kinds", () => {
+    // A pre-v11 core streams `"handles"`/`"emits"`, which the @unboxed decode surfaces
+    // as OtherEdgeKind. The box must still pull in the command/event leaf (version skew).
+    let nodes = [n(~id="Agg", ~kind=Aggregate), n(~id="Cmd", ~kind=Command), n(~id="Evt", ~kind=Event)]
+    let edges = [
+      e(~from="Cmd", ~to_="Agg", ~kind=OtherEdgeKind("handles")),
+      e(~from="Agg", ~to_="Evt", ~kind=OtherEdgeKind("emits")),
+    ]
+    expect(GraphOps.slicesForNodes(nodes, edges))->toEqual([
+      ("Agg", "Agg::slice"),
+      ("Cmd", "Agg::slice"),
+      ("Evt", "Agg::slice"),
+    ])
+  })
 })
 
 describe("readSlicesForNodes", () => {

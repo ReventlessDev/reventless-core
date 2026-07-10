@@ -99,6 +99,39 @@ globalThis.describe("slicesForNodes", () => {
         "Agg::slice"
       ]]);
   });
+  globalThis.test("tolerates a pre-v11 emitter's lowercase handles/emits wire kinds", () => {
+    let nodes = [
+      n("Agg", "Aggregate", undefined),
+      n("Cmd", "Command", undefined),
+      n("Evt", "Event", undefined)
+    ];
+    let edges = [
+      {
+        from: "Cmd",
+        to: "Agg",
+        kind: "handles"
+      },
+      {
+        from: "Agg",
+        to: "Evt",
+        kind: "emits"
+      }
+    ];
+    globalThis.expect(GraphOps$ReventlessVscodeProtocol.slicesForNodes(nodes, edges)).toEqual([
+      [
+        "Agg",
+        "Agg::slice"
+      ],
+      [
+        "Cmd",
+        "Agg::slice"
+      ],
+      [
+        "Evt",
+        "Agg::slice"
+      ]
+    ]);
+  });
 });
 
 globalThis.describe("readSlicesForNodes", () => {

@@ -46,15 +46,22 @@ function isReadSide(kind) {
 }
 
 function isOwnershipEdge(kind) {
-  if (kind !== "Handles" && kind !== "Extends" && kind !== "Emits" && kind !== "TranslatesOut" && kind !== "Projects" && kind !== "TranslatesIn" && kind !== "Triggers" && kind !== "ReadsCrossPartition" && kind !== "Publishes" && kind !== "Reads" && kind !== "Consumes" && kind !== "Feeds" && kind !== "DelegatesTo" && kind !== "RoutesTo") {
-    return false;
-  }
-  switch (kind) {
-    case "Handles" :
-    case "Emits" :
-      return true;
-    default:
-      return false;
+  if (kind === "Handles" || kind === "Extends" || kind === "Emits" || kind === "TranslatesOut" || kind === "Projects" || kind === "TranslatesIn" || kind === "Triggers" || kind === "ReadsCrossPartition" || kind === "Publishes" || kind === "Reads" || kind === "Consumes" || kind === "Feeds" || kind === "DelegatesTo" || kind === "RoutesTo") {
+    switch (kind) {
+      case "Handles" :
+      case "Emits" :
+        return true;
+      default:
+        return false;
+    }
+  } else {
+    switch (kind) {
+      case "emits" :
+      case "handles" :
+        return true;
+      default:
+        return false;
+    }
   }
 }
 

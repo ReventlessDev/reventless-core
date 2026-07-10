@@ -73,9 +73,16 @@ let isReadSide = (kind: componentKind): bool =>
 
 // Only ownership edges (handles / emits) pull a leaf into a box — a DCB `reads` edge
 // connects an event to a *different* consuming slice and must not move it.
+//
+// Version-skew tolerance: a pre-v11 emitter still on the lowercase wire vocabulary
+// serialises these edges as `"handles"`/`"emits"`, which the v11 `@unboxed` decode
+// surfaces (non-failing) as `OtherEdgeKind("handles"|"emits")`. Accept those legacy
+// spellings so a skewed emitter degrades to a correctly-boxed slice instead of
+// silently dropping the command/event leaf out of its StateChange box.
 let isOwnershipEdge = (kind: edgeKind): bool =>
   switch kind {
   | Handles | Emits => true
+  | OtherEdgeKind("handles" | "emits") => true
   | Projects
   | Triggers
   | Publishes
