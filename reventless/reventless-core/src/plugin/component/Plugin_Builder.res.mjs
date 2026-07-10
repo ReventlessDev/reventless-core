@@ -336,6 +336,7 @@ function Make(Spec) {
             commandTypes: DcbTag$Reventless.extractAllVariantNames(Ots.Spec.inboundCommandSchema),
             consumedEventTypes: DcbTag$Reventless.extractVariantNames(Ots.Spec.consumedEventSchema),
             targetName: Ots.Spec.targetName,
+            externalSystem: Ots.Spec.externalSystem,
             chapter: chapterByName[Ots.Spec.name]
           };
         });
@@ -343,6 +344,7 @@ function Make(Spec) {
           routingSchemas[Its.Spec.name] = {
             commandTypes: DcbTag$Reventless.extractAllVariantNames(Its.Spec.commandSchema),
             targetName: Its.Spec.targetName,
+            externalSystem: Its.Spec.externalSystem,
             chapter: chapterByName[Its.Spec.name]
           };
         });

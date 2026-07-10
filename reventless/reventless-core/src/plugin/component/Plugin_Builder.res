@@ -461,6 +461,8 @@ module Make = (
             commandTypes: extractTypes(Ots.Spec.inboundCommandSchema),
             // Outbound slices may have no target (option); pass it through.
             targetName: ?Ots.Spec.targetName,
+            // Foreign system this slice publishes to (option); drives the external box.
+            externalSystem: ?Ots.Spec.externalSystem,
             chapter: ?chapterFor(Ots.Spec.name),
           },
         )
@@ -473,6 +475,8 @@ module Make = (
           {
             commandTypes: extractTypes(Its.Spec.commandSchema),
             targetName: Its.Spec.targetName,
+            // Foreign system this slice receives from (option); drives the external box.
+            externalSystem: ?Its.Spec.externalSystem,
             chapter: ?chapterFor(Its.Spec.name),
           },
         )

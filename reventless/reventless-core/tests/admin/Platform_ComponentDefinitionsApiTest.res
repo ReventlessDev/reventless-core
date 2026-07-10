@@ -153,6 +153,61 @@ describe("encodePluginStructureEntry", () => {
   testSync("encodes writableDef events", () =>
     expect(json->String.includes("\"events\":[{\"name\":\"ProductAdded\""))->toEqual(true)
   )
+
+  // Translation-slice externalSystem: absent on the fixture above (both None), so it
+  // must serialize as null — the "no external box" case.
+  testSync("encodes None outbound externalSystem as null", () =>
+    expect(json->String.includes("\"inboundCommandTypes\":[\"Ship\"],\"externalSystem\":null"))->toEqual(
+      true,
+    )
+  )
+
+  testSync("encodes None inbound externalSystem as null", () =>
+    expect(json->String.includes("\"commandTypes\":[\"RecordPayment\"],\"externalSystem\":null"))->toEqual(
+      true,
+    )
+  )
+})
+
+// A deployed-graph consumer draws the external-system boundary box off this field, so
+// a slice whose spec sets `externalSystem = Some("X")` must surface "X" on the wire for
+// both directions — the round-trip the plan pins.
+describe("translation-slice externalSystem round-trip", () => {
+  let externalStructure: pluginStructure = {
+    ...structure,
+    outboundTranslationSlices: [
+      {
+        name: "ToShipper",
+        consumedEventTypes: ["OrderPlaced"],
+        inboundCommandTypes: ["Ship"],
+        targetName: None,
+        externalSystem: Some("ShipperGateway"),
+        chapter: None,
+      },
+    ],
+    inboundTranslationSlices: [
+      {
+        name: "FromBilling",
+        commandTypes: ["RecordPayment"],
+        targetName: "Order",
+        externalSystem: Some("BillingProvider"),
+        chapter: None,
+      },
+    ],
+  }
+  let externalJson =
+    Platform_ComponentDefinitionsApi.encodePluginStructureEntry(
+      ~pluginId="Catalog",
+      externalStructure,
+    )->JSON.stringify
+
+  testSync("surfaces Some outbound externalSystem as its inner string", () =>
+    expect(externalJson->String.includes("\"externalSystem\":\"ShipperGateway\""))->toEqual(true)
+  )
+
+  testSync("surfaces Some inbound externalSystem as its inner string", () =>
+    expect(externalJson->String.includes("\"externalSystem\":\"BillingProvider\""))->toEqual(true)
+  )
 })
 
 describe("visibility filtering (deployed AutoUI hides Internal)", () => {

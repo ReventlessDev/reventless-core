@@ -173,6 +173,54 @@ globalThis.describe("encodePluginStructureEntry", () => {
   globalThis.test("encodes writableDef events", () => {
     globalThis.expect(json.includes("\"events\":[{\"name\":\"ProductAdded\"")).toEqual(true);
   });
+  globalThis.test("encodes None outbound externalSystem as null", () => {
+    globalThis.expect(json.includes("\"inboundCommandTypes\":[\"Ship\"],\"externalSystem\":null")).toEqual(true);
+  });
+  globalThis.test("encodes None inbound externalSystem as null", () => {
+    globalThis.expect(json.includes("\"commandTypes\":[\"RecordPayment\"],\"externalSystem\":null")).toEqual(true);
+  });
+});
+
+globalThis.describe("translation-slice externalSystem round-trip", () => {
+  let externalStructure_readModels = structure_readModels;
+  let externalStructure_stateViewSlices = structure_stateViewSlices;
+  let externalStructure_stateChangeSlices = structure_stateChangeSlices;
+  let externalStructure_aggregates = structure_aggregates;
+  let externalStructure_automationSlices = structure_automationSlices;
+  let externalStructure_outboundTranslationSlices = [{
+      name: "ToShipper",
+      consumedEventTypes: ["OrderPlaced"],
+      inboundCommandTypes: ["Ship"],
+      targetName: undefined,
+      externalSystem: "ShipperGateway",
+      chapter: undefined
+    }];
+  let externalStructure_inboundTranslationSlices = [{
+      name: "FromBilling",
+      commandTypes: ["RecordPayment"],
+      targetName: "Order",
+      externalSystem: "BillingProvider",
+      chapter: undefined
+    }];
+  let externalStructure_extensions = structure_extensions;
+  let externalStructure = {
+    readModels: externalStructure_readModels,
+    stateViewSlices: externalStructure_stateViewSlices,
+    stateChangeSlices: externalStructure_stateChangeSlices,
+    aggregates: externalStructure_aggregates,
+    automationSlices: externalStructure_automationSlices,
+    outboundTranslationSlices: externalStructure_outboundTranslationSlices,
+    inboundTranslationSlices: externalStructure_inboundTranslationSlices,
+    extensions: externalStructure_extensions,
+    extensionPoints: undefined
+  };
+  let externalJson = JSON.stringify(Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry("Catalog", externalStructure));
+  globalThis.test("surfaces Some outbound externalSystem as its inner string", () => {
+    globalThis.expect(externalJson.includes("\"externalSystem\":\"ShipperGateway\"")).toEqual(true);
+  });
+  globalThis.test("surfaces Some inbound externalSystem as its inner string", () => {
+    globalThis.expect(externalJson.includes("\"externalSystem\":\"BillingProvider\"")).toEqual(true);
+  });
 });
 
 globalThis.describe("visibility filtering (deployed AutoUI hides Internal)", () => {

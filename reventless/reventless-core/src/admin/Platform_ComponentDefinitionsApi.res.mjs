@@ -213,6 +213,10 @@ function encodeOutboundTranslationSliceDef(o) {
       o.inboundCommandTypes.map(prim => prim)
     ],
     [
+      "externalSystem",
+      Stdlib_Option.mapOr(o.externalSystem, null, prim => prim)
+    ],
+    [
       "chapter",
       Stdlib_Option.mapOr(o.chapter, null, prim => prim)
     ]
@@ -228,6 +232,10 @@ function encodeInboundTranslationSliceDef(i) {
     [
       "commandTypes",
       i.commandTypes.map(prim => prim)
+    ],
+    [
+      "externalSystem",
+      Stdlib_Option.mapOr(i.externalSystem, null, prim => prim)
     ],
     [
       "chapter",

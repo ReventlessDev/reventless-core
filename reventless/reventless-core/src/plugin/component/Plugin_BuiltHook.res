@@ -78,6 +78,12 @@ type pluginDeployedSchema = {
   /** For routing slices (automation / inbound + outbound translation): the name
    of the writable component this slice routes its commands to. */
   targetName?: string,
+  /** For inbound / outbound translation slices: the foreign system this slice
+   integrates with, mirrored from the static `pluginStructure` for hook parity.
+   Drives the deployed graph's external-system boundary box. Absent when the slice
+   names no external system. See the translation-slice defs on
+   `Reventless.Plugin.pluginStructure`. */
+  externalSystem?: string,
   sharedBy?: array<string>,
   extensionPointName?: string,
   providerPlugin?: string,

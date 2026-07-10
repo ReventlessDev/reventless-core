@@ -111,6 +111,9 @@ let encodeOutboundTranslationSliceDef = (o: outboundTranslationSliceDef): JSON.t
     ("name", JSON.Encode.string(o.name)),
     ("consumedEventTypes", encodeStrings(o.consumedEventTypes)),
     ("inboundCommandTypes", encodeStrings(o.inboundCommandTypes)),
+    // Foreign system this slice publishes to — lets a deployed-graph consumer draw
+    // the external-system boundary box without workspace access. None → null.
+    ("externalSystem", o.externalSystem->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("chapter", o.chapter->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
   ])->JSON.Encode.object
 
@@ -118,6 +121,9 @@ let encodeInboundTranslationSliceDef = (i: inboundTranslationSliceDef): JSON.t =
   Dict.fromArray([
     ("name", JSON.Encode.string(i.name)),
     ("commandTypes", encodeStrings(i.commandTypes)),
+    // Foreign system this slice receives from — lets a deployed-graph consumer draw
+    // the external-system boundary box without workspace access. None → null.
+    ("externalSystem", i.externalSystem->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("chapter", i.chapter->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
   ])->JSON.Encode.object
 
