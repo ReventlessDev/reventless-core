@@ -1,9 +1,12 @@
 # The platform shows up as a `Platform` row in the admin Plugins list
 
-**Status:** **A1 core surface implemented** 2026-07-08 (analysis 2026-07-08; mechanism
-corrected + Option-B precondition verified; A1 implemented — build clean, tests green).
-Remaining: the admin-console panel split (UI repo) and the inspector-side reconcile
-filter (both downstream, now unblocked by the exposed `kind`).
+**Status:** **A1 core surface + `kind` backfill mechanism implemented** (A1 2026-07-08;
+backfill 2026-07-10). Analysis 2026-07-08; mechanism corrected + Option-B precondition
+verified; A1 implemented (build clean, tests green). The 2026-07-10 follow-up gap (`kind`
+empty on existing rows) is now **resolved** by a deploy-time `RedetectPlugin` handshake
+re-trigger — see the resolution section at the bottom. Remaining: the admin-console panel
+split (UI repo) and the inspector-side reconcile filter (both downstream, now unblocked by
+the exposed + backfilled `kind`).
 **Area:** plugin-lifecycle read model / plugin deploy handshake / admin Plugins view
 **Related:** [done/platform-plugins-admin-connection-null-rows.md](done/platform-plugins-admin-connection-null-rows.md)
 (same admin `Platform_Plugins` surface — that one fixed internal *rows* leaking; this
@@ -321,3 +324,76 @@ prior step is independently valid and warning-clean.
 - The reconcile never emits `Platform_RemovePlugin` for a `PlatformInfrastructure`
   entity.
 - Zero new compiler warnings.
+
+## Follow-up gap — no `kind` backfill onto existing lifecycle rows (found 2026-07-10)
+
+Downstream (business) shipped the `@groupBy` train (core@150) + the reventless-ui AutoListView
+grouping and redeployed platform-aws@150 cleanly (no decode/wipe — the RM survived). But the
+admin Plugins view still can't segregate, because **`kind` is empty on every existing lifecycle
+row** and there is no way to populate it:
+
+- Scanned the lifecycle event store (`PluginAggrEventLog`, 722 events): **zero `VersionConnected`
+  events carry `kind`** — Platform (341, latest 2026-07-05), Ordering (6), Catalog (6). So a
+  read-model **rebuild/replay cannot backfill** `kind` (the source events don't contain it; `kind`
+  is on the definition, and every serialized def predates it / hourly heartbeat reconnects reuse an
+  old cached def).
+- A plugin **redeploy does not re-emit** a fresh `Connect`/`VersionConnected` for an already-known
+  plugin (verified: a 2026-07-10 inspector redeploy produced no new lifecycle event). And Platform,
+  a non-heartbeating host, won't re-emit at all.
+
+This plan's acceptance assumed "a definition persisted before `kind` existed re-emits on the next
+deploy handshake" — empirically the handshake does **not** re-emit for known plugins, so `kind`
+never lands on the row. **Needs a core mechanism**, e.g.: (i) on deploy, force a `Connect` that
+re-serializes the current definition (with `kind`) even when already Connected; (ii) a one-shot
+admin/migration command stamping `kind` onto rows from live plugin metadata; or (iii) a dedicated
+`PluginKindSet` lifecycle event emitted on deploy. Business needs no further change once one ships.
+
+### Resolution — deploy-time re-detect that refreshes the stored definition ✅ implemented 2026-07-10
+
+**Constraint that reshaped the options (verified by code trace):** `kind` lives *only* inside each
+plugin's own `ConnectExtension.pluginDefinition`
+([PluginConnectExtension_Mapping.res:45-54](../../reventless/reventless-core/src/plugin/connect/PluginConnectExtension_Mapping.res#L45)).
+Admin's Plugin aggregate has **no independent source** of a plugin's kind, so options (ii)/(iii)
+*as worded* don't stand alone — the definition must still travel plugin→admin via the
+`ConnectPlugin(def)` handshake answer. Two idempotent no-ops blocked that on redeploy: `Heartbeat(v)`
+**and** `Connect(def)` both returned `Ok([])` for an already-`Connected` version. The synthetic
+deploy heartbeat *does* fire for every plugin (incl. the inspector named `Platform`) — it just
+no-oped.
+
+Chosen mechanism = a refined **(i)**: re-trigger the handshake on deploy + refresh the stored def
+by re-using `VersionConnected` (no new read-side event type). Decisions confirmed with the repo
+owner: explicit **`RedetectPlugin`** EP command (not meta-string sniffing) + **reuse
+`VersionConnected`** (not a new `VersionRefreshed`).
+
+1. **New EP command `RedetectPlugin(timeout)`**
+   ([PluginExtensionPointSpec.res:20](../../reventless/reventless-infra/src/types/PluginExtensionPointSpec.res#L20))
+   — deploy-only; carries the timeout so it also re-arms the disconnect schedule like a heartbeat.
+2. **New internal aggregate command `@noApi Redetect(version)`**
+   ([PluginSpec.res:15](../../reventless/reventless-core/src/plugin/lifecycle/PluginSpec.res#L15)).
+   `decide`: for a **Connected** version it re-emits `VersionDetected(v)` (heartbeat would keep-alive
+   no-op); unknown/disconnected detect exactly as a heartbeat; archived (Inactive/Retired) stay
+   admin-only ([PluginBehavior.res](../../reventless/reventless-core/src/plugin/lifecycle/PluginBehavior.res)).
+3. **`Connect(def)` now refreshes on change** — Connected + `definition == def` → `Ok([])`
+   (still idempotent); Connected + def changed → `Ok([VersionConnected(def)])`. Bare re-emit: the
+   version is already current so supersede stays empty; the projection's existing `UpdateWithDefault`
+   path recomputes the row (incl. `kind`) in place.
+4. **EP→aggregate mapping** routes `RedetectPlugin` → `Delegate.Redetect(version)` + re-arm schedule
+   ([PluginExtensionPoint_Plugin.res:153](../../reventless/reventless-core/src/plugin/connect/PluginExtensionPoint_Plugin.res#L153)).
+5. **Deploy fires `RedetectPlugin`** (not `Heartbeat`)
+   ([Platform.res:2123](../../reventless/reventless-aws/src/Platform.res#L2123)). Natural CloudWatch
+   heartbeats still fire `Heartbeat` — keep-alive semantics unchanged.
+
+**Net effect:** on the *next deploy of each plugin* (incl. `Platform`), the aggregate re-runs the
+handshake, the plugin re-answers with its current def (now carrying `kind`), and `VersionConnected`
+re-projects the row — backfilling `kind` with no migration code and no RM wipe. As a bonus the
+stored def now stays fresh on every redeploy (uiFragments, protocols), fixing a latent staleness
+beyond kind.
+
+**Tests (all green):** `PluginBehavior_GWT` — Redetect for connected/unknown/disconnected/retired +
+the Connect refresh (kind backfill); `PluginsProjection_GWT` — re-emitted `VersionConnected`
+refreshes kind on an existing row. Full suites: reventless-core 500/500, reventless-local 488/488;
+all four packages build warning-free.
+
+**Ship note:** this rides a `reventless-aws` + `reventless-core` + `reventless-infra` republish; the
+backfill lands per plugin on its first deploy *after* this ships (business redeploys platform + each
+domain plugin once).

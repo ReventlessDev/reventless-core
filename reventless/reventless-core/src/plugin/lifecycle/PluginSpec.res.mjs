@@ -10,6 +10,10 @@ let commandSchema = S.union([
     _0: s.m(Plugin$Reventless.versionSchema)
   })),
   S.schema(s => ({
+    TAG: "Redetect",
+    _0: s.m(Plugin$Reventless.versionSchema)
+  })),
+  S.schema(s => ({
     TAG: "Connect",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),
@@ -117,6 +121,7 @@ let errorSchema = S.union([
 
 let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
   "Heartbeat",
+  "Redetect",
   "Connect",
   "Disconnect",
   "ReportIncompatibility"

@@ -145,10 +145,24 @@ let decide = (state, command) =>
     | Some({status: Disconnected, definition}) => Ok(connectEvents(state, v, definition)) // reconnect
     | Some({status: Inactive | Retired}) => Ok([]) // not heartbeat-revivable (admin only)
     }
+  | Redetect(v) =>
+    // Deploy-time re-detect: unlike Heartbeat, a *connected* version re-runs the
+    // handshake (VersionDetected → ConnectPlugin → Connect) so the plugin re-answers
+    // with its current definition and Connect below refreshes the stored def. Unknown
+    // and disconnected versions detect exactly as a heartbeat would; archived versions
+    // stay admin-only.
+    switch state.known->Dict.get(v) {
+    | Some({status: Inactive | Retired}) => Ok([]) // archived — not re-detect-revivable
+    | None | Some({status: Connected | Disconnected}) => Ok([VersionDetected(v)])
+    }
   | Connect(def) =>
     let v = def.version
     switch state.known->Dict.get(v) {
-    | Some({status: Connected}) => Ok([]) // idempotent
+    // Idempotent when the definition is unchanged; when a redeploy carries a changed
+    // definition (e.g. a newly added `kind`, updated uiFragments/protocols) re-emit
+    // VersionConnected to overwrite the stored def and re-project the row. The version
+    // is already current, so connectEvents' supersede stays empty — a bare refresh.
+    | Some({status: Connected, definition}) => definition == def ? Ok([]) : Ok([VersionConnected(def)])
     | _ => Ok(connectEvents(state, v, def))
     }
   | Disconnect(v) =>

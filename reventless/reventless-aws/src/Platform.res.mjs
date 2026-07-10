@@ -1290,7 +1290,7 @@ function MakeWithConfig(Config) {
         let message_id = hbConfig.pluginId;
         let message_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, "DeployHeartbeat", undefined, undefined, undefined, undefined, undefined);
         let message_commandJson = S.reverseConvertToJsonOrThrow({
-          TAG: "Heartbeat",
+          TAG: "RedetectPlugin",
           _0: hbConfig.heartbeatTimeout
         }, PluginExtensionPointSpec$ReventlessInfra.commandSchema);
         let message = {
@@ -2491,7 +2491,7 @@ function Make($star) {
         let message_id = hbConfig.pluginId;
         let message_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, "DeployHeartbeat", undefined, undefined, undefined, undefined, undefined);
         let message_commandJson = S.reverseConvertToJsonOrThrow({
-          TAG: "Heartbeat",
+          TAG: "RedetectPlugin",
           _0: hbConfig.heartbeatTimeout
         }, PluginExtensionPointSpec$ReventlessInfra.commandSchema);
         let message = {

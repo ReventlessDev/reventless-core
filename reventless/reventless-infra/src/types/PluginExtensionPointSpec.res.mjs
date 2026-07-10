@@ -22,6 +22,10 @@ let commandSchema = S.union([
   S.schema(s => ({
     TAG: "ForwardCommand",
     _0: s.m(forwardCommandSchema)
+  })),
+  S.schema(s => ({
+    TAG: "RedetectPlugin",
+    _0: s.m(S.int)
   }))
 ]);
 

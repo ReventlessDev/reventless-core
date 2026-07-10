@@ -33,6 +33,15 @@ describe("PluginsProjection:", () => {
     ->thenState(display(pluginDefinitionInfra, Connected, []))
   )
 
+  test("A re-emitted VersionConnected refreshes kind on an existing row (deploy backfill)", () =>
+    // The deploy re-detect drives Connect with the current def; for a version already
+    // Connected with a kind-less (Domain) def, the refreshed VersionConnected overwrites
+    // the row's kind in place — same version, no new/other-connected version.
+    givenEvents([VersionConnected(pluginDefinition)])
+    ->whenEvent(VersionConnected(pluginDefinitionInfra))
+    ->thenState(display(pluginDefinitionInfra, Connected, []))
+  )
+
   test("A higher VersionConnected becomes the current row (supersession)", () =>
     givenEvents([VersionConnected(pluginDefinition)])
     ->whenEvent(VersionConnected(pluginDefinitionV2))

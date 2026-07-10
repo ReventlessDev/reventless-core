@@ -76,6 +76,62 @@ PluginTest.describe("PluginBehavior:", () => {
     TAG: "Heartbeat",
     _0: "1"
   })));
+  PluginTest.test("Redetect re-runs detection for an already-connected version", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }]), {
+    TAG: "Redetect",
+    _0: "1"
+  }), [{
+      TAG: "VersionDetected",
+      _0: "1"
+    }]));
+  PluginTest.test("Redetect for an unknown version detects like a heartbeat", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([]), {
+    TAG: "Redetect",
+    _0: "1"
+  }), [{
+      TAG: "VersionDetected",
+      _0: "1"
+    }]));
+  PluginTest.test("Redetect re-detects a disconnected version (drives a full reconnect handshake)", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
+    {
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    },
+    {
+      TAG: "VersionDisconnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }
+  ]), {
+    TAG: "Redetect",
+    _0: "1"
+  }), [{
+      TAG: "VersionDetected",
+      _0: "1"
+    }]));
+  PluginTest.test("Redetect does NOT revive a retired version (admin only)", () => PluginTest.thenNoEvent(PluginTest.whenCmd(PluginTest.givenEvents([
+    {
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    },
+    {
+      TAG: "VersionRetired",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }
+  ]), {
+    TAG: "Redetect",
+    _0: "1"
+  })));
+  PluginTest.test("Connect refreshes the stored definition when it changed (kind backfill)", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }]), {
+    TAG: "Connect",
+    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionInfra
+  }), [{
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionInfra
+    }]));
   PluginTest.test("Disconnect of the current version", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
       TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition

@@ -2120,15 +2120,19 @@ module MakeWithConfig = (
     | None => ()
     }
 
-    // Zero-downtime handover (Part 3.1): fire ONE synthetic heartbeat for the
+    // Zero-downtime handover (Part 3.1): fire ONE synthetic re-detect for the
     // just-deployed plugin so its new version runs the connect handshake within
     // seconds instead of waiting for the CloudWatch heartbeat rule's first
-    // natural tick (up to `heartbeatTimeout` minutes). Routes through the exact
-    // runtime heartbeat path — a `Heartbeat(timeout)` command (id = name@version)
-    // onto the EP FIFO command-topic queue — mirroring HeartbeatEntryPoint.mjs and
-    // reusing CommandTopicChannel_SQS_Runtime.publishJsons (correct FIFO
-    // message-group handling). If it no-ops (config missing / send fails) the
-    // handover still completes on the next natural heartbeat — graceful degradation.
+    // natural tick (up to `heartbeatTimeout` minutes). Uses `RedetectPlugin` rather
+    // than a keep-alive `Heartbeat` so an already-connected version re-runs the
+    // handshake and refreshes its stored definition on the lifecycle row (e.g. a
+    // newly added `kind`) — a plain heartbeat no-ops a connected version and would
+    // never re-serialize the def. Routes through the exact runtime path — a command
+    // (id = name@version) onto the EP FIFO command-topic queue — mirroring
+    // HeartbeatEntryPoint.mjs and reusing CommandTopicChannel_SQS_Runtime.publishJsons
+    // (correct FIFO message-group handling). If it no-ops (config missing / send
+    // fails) the handover still completes on the next natural heartbeat — graceful
+    // degradation.
     // heartbeatConfigRef holds the just-built plugin's config (deployPlugin builds
     // exactly one plugin per call, and registerHeartbeatConfig ran during P.make()).
     let hbConfig = PluginRuntime_Builder.heartbeatConfigRef.contents
@@ -2144,7 +2148,7 @@ module MakeWithConfig = (
             ~service=ReventlessInfra.PluginExtensionPointSpec.name,
             ~user="DeployHeartbeat",
           ),
-          commandJson: ReventlessInfra.PluginExtensionPointSpec.Heartbeat(
+          commandJson: ReventlessInfra.PluginExtensionPointSpec.RedetectPlugin(
             hbConfig.heartbeatTimeout,
           )->S.reverseConvertToJsonOrThrow(ReventlessInfra.PluginExtensionPointSpec.commandSchema),
         }

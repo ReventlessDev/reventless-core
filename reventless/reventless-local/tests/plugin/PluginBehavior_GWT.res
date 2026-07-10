@@ -43,6 +43,41 @@ describe("PluginBehavior:", () => {
     givenEvents([VersionConnected(pluginDefinition)])->whenCmd(Heartbeat("1"))->thenNoEvent
   )
 
+  // ── Deploy-time re-detect + definition refresh ─────────────────────────────
+  // Redetect (fired once per deploy) forces the handshake to run again — even for
+  // a connected version — so the plugin re-answers with its current definition and
+  // Connect refreshes the stored def (e.g. backfilling a newly added `kind`).
+  test("Redetect re-runs detection for an already-connected version", () =>
+    givenEvents([VersionConnected(pluginDefinition)])
+    ->whenCmd(Redetect("1"))
+    ->thenEvents([VersionDetected("1")])
+  )
+
+  test("Redetect for an unknown version detects like a heartbeat", () =>
+    givenEvents([])->whenCmd(Redetect("1"))->thenEvents([VersionDetected("1")])
+  )
+
+  test("Redetect re-detects a disconnected version (drives a full reconnect handshake)", () =>
+    givenEvents([VersionConnected(pluginDefinition), VersionDisconnected(pluginDefinition)])
+    ->whenCmd(Redetect("1"))
+    ->thenEvents([VersionDetected("1")])
+  )
+
+  test("Redetect does NOT revive a retired version (admin only)", () =>
+    givenEvents([VersionConnected(pluginDefinition), VersionRetired(pluginDefinition)])
+    ->whenCmd(Redetect("1"))
+    ->thenNoEvent
+  )
+
+  test("Connect refreshes the stored definition when it changed (kind backfill)", () =>
+    // Same version, but the redeployed def now carries kind PlatformInfrastructure
+    // where the stored one predated `kind` (Domain). Re-emit VersionConnected so the
+    // projected row picks up the new kind; no supersede (the version is still current).
+    givenEvents([VersionConnected(pluginDefinition)])
+    ->whenCmd(Connect(pluginDefinitionInfra))
+    ->thenEvents([VersionConnected(pluginDefinitionInfra)])
+  )
+
   // ── Disconnect / reconnect ─────────────────────────────────────────────────
   test("Disconnect of the current version", () =>
     givenEvents([VersionConnected(pluginDefinition)])

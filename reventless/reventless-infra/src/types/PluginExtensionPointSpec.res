@@ -18,6 +18,12 @@ type command =
   | ConnectPlugin(pluginDefinition)
   | DisconnectPlugin
   | ForwardCommand(forwardCommand)
+  // Deploy-time re-detect: fired once by `deployPlugin` on every (re)deploy. Unlike
+  // a keep-alive `Heartbeat`, this forces the connect handshake to run again for an
+  // already-connected version so its current definition (e.g. a newly added `kind`,
+  // updated uiFragments/protocols) is re-serialized onto the lifecycle row. Carries
+  // the timeout so it also re-arms the disconnect schedule like a heartbeat.
+  | RedetectPlugin(timeout)
 
 @schema
 type event =

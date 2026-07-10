@@ -10,6 +10,10 @@ open Reventless.Plugin
 @schema
 type command =
   | @noApi Heartbeat(version)
+  // Deploy-time re-detect (from RedetectPlugin). Forces the connect handshake to
+  // re-run for an already-connected version so its definition is refreshed on the
+  // row — unlike Heartbeat, which no-ops a connected keep-alive.
+  | @noApi Redetect(version)
   | @noApi Connect(pluginDefinition)
   | @noApi Disconnect(version)
   // Admin lifecycle commands — API-exposed (auto-derived admin mutations,

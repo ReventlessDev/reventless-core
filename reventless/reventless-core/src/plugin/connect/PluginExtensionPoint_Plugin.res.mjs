@@ -183,6 +183,26 @@ function Make(Spec) {
               _0: cmd._0
             }
           }];
+      case "RedetectPlugin" :
+        return [
+          {
+            TAG: "PublishCommand",
+            _0: Plugin$ReventlessCore.name(id),
+            _1: {
+              TAG: "Redetect",
+              _0: Plugin$ReventlessCore.version(id)
+            }
+          },
+          {
+            TAG: "HandleDirective",
+            _0: directiveHandler,
+            _1: {
+              TAG: "CreateDisconnectSchedule",
+              _0: id,
+              _1: cmd._0 + 2 | 0
+            }
+          }
+        ];
     }
   };
   let mapOutgoingEvent = (id, event, _meta, _queryEngine) => {

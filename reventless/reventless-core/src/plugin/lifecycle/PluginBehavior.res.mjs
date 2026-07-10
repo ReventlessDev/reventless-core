@@ -172,55 +172,94 @@ function decide(state, command) {
             _0: []
           };
       }
-    case "Connect" :
-      let def = command._0;
-      let v$1 = def.version;
+    case "Redetect" :
+      let v$1 = command._0;
       let match$1 = state.known[v$1];
-      if (match$1 !== undefined && match$1.status === "Connected") {
+      if (match$1 === undefined) {
         return {
           TAG: "Ok",
-          _0: []
+          _0: [{
+              TAG: "VersionDetected",
+              _0: v$1
+            }]
         };
+      }
+      switch (match$1.status) {
+        case "Connected" :
+        case "Disconnected" :
+          return {
+            TAG: "Ok",
+            _0: [{
+                TAG: "VersionDetected",
+                _0: v$1
+              }]
+          };
+        case "Inactive" :
+        case "Retired" :
+          return {
+            TAG: "Ok",
+            _0: []
+          };
+      }
+    case "Connect" :
+      let def = command._0;
+      let v$2 = def.version;
+      let match$2 = state.known[v$2];
+      if (match$2 !== undefined && match$2.status === "Connected") {
+        if (Primitive_object.equal(match$2.definition, def)) {
+          return {
+            TAG: "Ok",
+            _0: []
+          };
+        } else {
+          return {
+            TAG: "Ok",
+            _0: [{
+                TAG: "VersionConnected",
+                _0: def
+              }]
+          };
+        }
       } else {
         return {
           TAG: "Ok",
-          _0: connectEvents(state, v$1, def)
+          _0: connectEvents(state, v$2, def)
         };
       }
     case "Disconnect" :
-      let v$2 = command._0;
-      let match$2 = state.known[v$2];
-      if (match$2 === undefined) {
+      let v$3 = command._0;
+      let match$3 = state.known[v$3];
+      if (match$3 === undefined) {
         return {
           TAG: "Ok",
           _0: []
         };
       }
-      if (match$2.status !== "Connected") {
+      if (match$3.status !== "Connected") {
         return {
           TAG: "Ok",
           _0: []
         };
       }
-      let definition = match$2.definition;
+      let definition = match$3.definition;
       return {
         TAG: "Ok",
         _0: [{
             TAG: "VersionDisconnected",
             _0: definition
-          }].concat(uiDeregisterEvents(definition.id, definition.uiFragments)).concat(promoteEvents(state, v$2))
+          }].concat(uiDeregisterEvents(definition.id, definition.uiFragments)).concat(promoteEvents(state, v$3))
       };
     case "Activate" :
-      let v$3 = command._0;
-      let match$3 = state.known[v$3];
-      if (match$3 === undefined) {
+      let v$4 = command._0;
+      let match$4 = state.known[v$4];
+      if (match$4 === undefined) {
         return {
           TAG: "Error",
           _0: "UnknownVersion"
         };
       }
-      let definition$1 = match$3.definition;
-      switch (match$3.status) {
+      let definition$1 = match$4.definition;
+      switch (match$4.status) {
         case "Connected" :
           return {
             TAG: "Ok",
@@ -240,17 +279,17 @@ function decide(state, command) {
           _0: definition$1
         }].concat(uiRegisterEvents(definition$1.id, definition$1.uiFragments));
       let supersede;
-      if (currentAfterConnect(state.known, v$3) === v$3) {
+      if (currentAfterConnect(state.known, v$4) === v$4) {
         let c = state.current;
         if (c !== undefined) {
-          if (c !== v$3) {
-            let match$4 = state.known[c];
-            supersede = match$4 !== undefined ? [{
+          if (c !== v$4) {
+            let match$5 = state.known[c];
+            supersede = match$5 !== undefined ? [{
                   TAG: "VersionSuperseded",
                   _0: {
                     supersededVersion: c,
-                    supersededDefinition: match$4.definition,
-                    newVersion: v$3,
+                    supersededDefinition: match$5.definition,
+                    newVersion: v$4,
                     newDefinition: definition$1
                   }
                 }] : [];
@@ -269,16 +308,16 @@ function decide(state, command) {
       };
       break;
     case "Deactivate" :
-      let v$4 = command._0;
-      let match$5 = state.known[v$4];
-      if (match$5 === undefined) {
+      let v$5 = command._0;
+      let match$6 = state.known[v$5];
+      if (match$6 === undefined) {
         return {
           TAG: "Error",
           _0: "UnknownVersion"
         };
       }
-      let definition$2 = match$5.definition;
-      switch (match$5.status) {
+      let definition$2 = match$6.definition;
+      switch (match$6.status) {
         case "Connected" :
         case "Disconnected" :
           break;
@@ -294,7 +333,7 @@ function decide(state, command) {
         _0: [{
             TAG: "VersionDeactivated",
             _0: definition$2
-          }].concat(uiDeregisterEvents(definition$2.id, definition$2.uiFragments)).concat(promoteEvents(state, v$4))
+          }].concat(uiDeregisterEvents(definition$2.id, definition$2.uiFragments)).concat(promoteEvents(state, v$5))
       };
       break;
     case "ReportIncompatibility" :
@@ -306,16 +345,16 @@ function decide(state, command) {
           }]
       };
     case "Retire" :
-      let v$5 = command._0;
-      let match$6 = state.known[v$5];
-      if (match$6 === undefined) {
+      let v$6 = command._0;
+      let match$7 = state.known[v$6];
+      if (match$7 === undefined) {
         return {
           TAG: "Error",
           _0: "UnknownVersion"
         };
       }
-      let definition$3 = match$6.definition;
-      if (match$6.status === "Retired") {
+      let definition$3 = match$7.definition;
+      if (match$7.status === "Retired") {
         return {
           TAG: "Ok",
           _0: []
@@ -326,7 +365,7 @@ function decide(state, command) {
           _0: [{
               TAG: "VersionRetired",
               _0: definition$3
-            }].concat(uiDeregisterEvents(definition$3.id, definition$3.uiFragments)).concat(promoteEvents(state, v$5))
+            }].concat(uiDeregisterEvents(definition$3.id, definition$3.uiFragments)).concat(promoteEvents(state, v$6))
         };
       }
   }

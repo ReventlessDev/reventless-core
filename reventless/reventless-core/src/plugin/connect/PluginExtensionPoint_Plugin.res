@@ -150,6 +150,14 @@ module Make = (Spec: Spec) => {
           // 1 additional minute to allow additional latency
           HandleDirective(directiveHandler, CreateDisconnectSchedule(id, interval + 2)),
         ]
+      | RedetectPlugin(interval) => [
+          // Deploy-time re-detect: drive Redetect (not Heartbeat) so an already-connected
+          // version re-runs the handshake and refreshes its stored definition. Still
+          // re-arm the disconnect schedule exactly like a heartbeat so liveness tracking
+          // continues from the deploy moment.
+          PublishCommand(Plugin.name(id), Delegate.Redetect(Plugin.version(id))),
+          HandleDirective(directiveHandler, CreateDisconnectSchedule(id, interval + 2)),
+        ]
       | ConnectPlugin(pluginDefinition) =>
         // Validate protocol versions declared by the connecting plugin.
         // On mismatch, emit a ReportIncompatibility command so that an

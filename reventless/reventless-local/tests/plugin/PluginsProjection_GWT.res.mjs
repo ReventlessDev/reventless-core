@@ -29,6 +29,13 @@ PluginsProjectionTest.describe("PluginsProjection:", () => {
     TAG: "VersionConnected",
     _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionInfra
   }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinitionInfra, "Connected", [])));
+  PluginsProjectionTest.test("A re-emitted VersionConnected refreshes kind on an existing row (deploy backfill)", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }]), {
+    TAG: "VersionConnected",
+    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionInfra
+  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinitionInfra, "Connected", [])));
   PluginsProjectionTest.test("A higher VersionConnected becomes the current row (supersession)", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
       TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
