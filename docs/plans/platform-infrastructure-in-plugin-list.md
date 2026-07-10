@@ -453,3 +453,27 @@ no fixture edits needed.
 **Ship note:** rides the same `reventless-core` republish as the backfill mechanism. Once
 platform-aws redeploys on this version the admin Plugins page renders again (with existing rows in the
 trailing group); each plugin's next deploy then moves it into its proper kind section.
+
+### The nullable-`kind` fix (alpha.151) is a NO-OP — `SuryToJsonSchema` marks every field required (found 2026-07-10)
+
+Making `PluginsReadModelSpec.state.kind` `option<pluginKind>` did **not** produce a nullable SDL
+field. Live introspection after deploying alpha.151 still shows `kind: Platform_PluginKind!`. Root
+cause is upstream of the schema push (it is **not** the schema-push dedup — that hashes the whole
+SDL, so a real change would push): `SuryToJsonSchema.deriveObjectSchema` pushes **every** field
+into the JSON-schema `required` array unconditionally, with no optionality check:
+
+```rescript
+fields->Dict.toArray->Array.forEach(((fieldName, fieldType)) => {
+  ...
+  props->Dict.set(fieldName, withAnnotations)
+  required->Array.push(fieldName)   // ← no `S.option` check → `kind` still "required" → `PluginKind!`
+})
+```
+
+So `option<pluginKind>` is still emitted as `required` → the GraphQL field stays non-null → the
+generated SDL is byte-identical to before → the push dedup (correctly) skips. **Fix:** in
+`deriveObjectSchema`, only push a field to `required` when it is NOT optional (detect the
+`S.option`/nullable wrapper on `fieldType`), so optional read-model fields become nullable SDL
+fields. This is the real one-liner behind the "make `kind` nullable" intent; verify with a live
+introspection showing `kind: Platform_PluginKind` (no `!`). Framework-wide: today **no**
+`@schema` state field can be nullable in the generated API, which is a broader latent bug.
