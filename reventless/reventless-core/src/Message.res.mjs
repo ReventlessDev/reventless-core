@@ -44,11 +44,11 @@ function toCommandSchema$p(idSchema, commandSchema) {
 }
 
 function decodeEvent$p(json, idSchema, eventSchema) {
-  return S.parseJsonOrThrow(json, toEventSchema$p(idSchema, eventSchema));
+  return Message$Reventless.parseJsonTolerant(json, toEventSchema$p(idSchema, eventSchema));
 }
 
 function decodeCommand$p(json, idSchema, commandSchema) {
-  return S.parseJsonOrThrow(json, toCommandSchema$p(idSchema, commandSchema));
+  return Message$Reventless.parseJsonTolerant(json, toCommandSchema$p(idSchema, commandSchema));
 }
 
 function encodeEvent$p(event$p, idSchema, eventSchema) {
@@ -384,6 +384,10 @@ let statusChangeSchema = Message$Reventless.statusChangeSchema;
 
 let commandJsonSchema = Message$Reventless.commandJsonSchema;
 
+let fillMissingDefaults = Message$Reventless.fillMissingDefaults;
+
+let parseJsonTolerant = Message$Reventless.parseJsonTolerant;
+
 let decode = Message$Reventless.decode;
 
 let encode = Message$Reventless.encode;
@@ -397,6 +401,8 @@ export {
   contextSchema,
   statusChangeSchema,
   commandJsonSchema,
+  fillMissingDefaults,
+  parseJsonTolerant,
   decode,
   encode,
   InvalidEvent,

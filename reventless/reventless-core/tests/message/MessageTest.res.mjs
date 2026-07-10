@@ -89,6 +89,133 @@ globalThis.describe("Message should", () => {
     let eventId = Stdlib_Option.getOrThrow(Message$ReventlessCore.idOfEvent$pJson(eventJson$p), undefined);
     globalThis.expect(eventId).toBe("testId");
   });
+  globalThis.test("tolerantly decode a VersionConnected persisted before kind/structure fields existed", () => {
+    let def = {
+      id: "id",
+      name: "Ordering",
+      version: "1.0.0",
+      extensionPoints: [],
+      extensions: [],
+      eventCollector: "arn",
+      extensionProtocols: [],
+      apiSchemaFragment: undefined,
+      apiTarget: undefined,
+      uiFragments: undefined,
+      structure: {
+        readModels: [],
+        stateViewSlices: [],
+        stateChangeSlices: [],
+        aggregates: [{
+            name: "Order",
+            commands: [],
+            producedEventTypes: [],
+            consumedEventTypes: [],
+            linkedViews: [],
+            consistencyRead: undefined,
+            events: [],
+            chapter: undefined
+          }],
+        automationSlices: [],
+        outboundTranslationSlices: [],
+        inboundTranslationSlices: [],
+        extensions: [],
+        extensionPoints: undefined
+      },
+      dcbEventLog: undefined,
+      kind: "Domain"
+    };
+    let event$p_meta = {
+      service: "svc",
+      time: "t",
+      ip: "ip",
+      user: "u",
+      msgId: "m",
+      correlationId: "c"
+    };
+    let event$p_event = {
+      TAG: "VersionConnected",
+      _0: def
+    };
+    let event$p = {
+      id: "id",
+      meta: event$p_meta,
+      event: event$p_event
+    };
+    let json = Message$ReventlessCore.encodeEvent$p(event$p, S.string, PluginSpec$ReventlessCore.eventSchema);
+    let oldJson = (function(j){
+        var c = JSON.parse(JSON.stringify(j));
+        var d = c.event._0;
+        delete d.kind;
+        delete d.apiSchemaFragment;
+        var agg = d.structure.aggregates[0];
+        delete agg.events;
+        delete agg.chapter;
+        return c;
+      })(json);
+    let strictThrew;
+    try {
+      S.parseJsonOrThrow(oldJson, Message$ReventlessCore.toEventSchema$p(S.string, PluginSpec$ReventlessCore.eventSchema));
+      strictThrew = false;
+    } catch (exn) {
+      strictThrew = true;
+    }
+    globalThis.expect(strictThrew).toBe(true);
+    let decoded = Message$ReventlessCore.decodeEvent$p(oldJson, S.string, PluginSpec$ReventlessCore.eventSchema);
+    let d = decoded.event;
+    if (d.TAG === "VersionConnected") {
+      let d$1 = d._0;
+      let match = d$1.kind;
+      let tmp;
+      tmp = match === "Domain" ? "Domain" : "other";
+      globalThis.expect(tmp).toBe("Domain");
+      globalThis.expect(Stdlib_Option.isNone(d$1.apiSchemaFragment)).toBe(true);
+      let structure = Stdlib_Option.getOrThrow(d$1.structure, undefined);
+      let agg = structure.aggregates[0];
+      globalThis.expect(agg.events.length).toBe(0);
+      globalThis.expect(Stdlib_Option.isNone(agg.chapter)).toBe(true);
+      return;
+    }
+    globalThis.expect("wrong-variant").toBe("VersionConnected");
+  });
+  globalThis.test("Message.decode heals a VersionConnected variant missing kind (the replay path)", () => {
+    let def = {
+      id: "id",
+      name: "Ordering",
+      version: "1.0.0",
+      extensionPoints: [],
+      extensions: [],
+      eventCollector: "arn",
+      extensionProtocols: [],
+      apiSchemaFragment: undefined,
+      apiTarget: undefined,
+      uiFragments: undefined,
+      structure: undefined,
+      dcbEventLog: undefined,
+      kind: "Domain"
+    };
+    let variantJson = Message$ReventlessCore.encode({
+      TAG: "VersionConnected",
+      _0: def
+    }, PluginSpec$ReventlessCore.eventSchema);
+    let staleJson = (function(j){ var c = JSON.parse(JSON.stringify(j)); delete c._0.kind; return c; })(variantJson);
+    let strictThrew;
+    try {
+      S.parseJsonOrThrow(staleJson, PluginSpec$ReventlessCore.eventSchema);
+      strictThrew = false;
+    } catch (exn) {
+      strictThrew = true;
+    }
+    globalThis.expect(strictThrew).toBe(true);
+    let d = Message$ReventlessCore.decode(staleJson, PluginSpec$ReventlessCore.eventSchema);
+    if (d.TAG === "VersionConnected") {
+      let match = d._0.kind;
+      let tmp;
+      tmp = match === "Domain" ? "Domain" : "other";
+      globalThis.expect(tmp).toBe("Domain");
+      return;
+    }
+    globalThis.expect("wrong-variant").toBe("VersionConnected");
+  });
 });
 
 /*  Not a pure module */

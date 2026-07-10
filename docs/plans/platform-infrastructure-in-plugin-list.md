@@ -477,3 +477,95 @@ generated SDL is byte-identical to before → the push dedup (correctly) skips. 
 fields. This is the real one-liner behind the "make `kind` nullable" intent; verify with a live
 introspection showing `kind: Platform_PluginKind` (no `!`). Framework-wide: today **no**
 `@schema` state field can be nullable in the generated API, which is a broader latent bug.
+
+### Field additions to `pluginDefinition` BRICK the deployed Plugin lifecycle log (found 2026-07-11)
+
+The `js_nullable` (`T | null`) pattern on `pluginDefinition`/`pluginStructure` fields is
+**present-required on decode** (documented in `Plugin.res` — "a plugin definition persisted
+before this field existed must be reset/re-emitted"). Operationally that warning understates the
+blast radius: the Plugin lifecycle aggregate **rehydrates from its own event log**, so ONE
+pre-addition `VersionConnected(def)` event in the stream poisons decode for EVERY subsequent
+command on that aggregate instance — heartbeats, redetects, connects all die at
+`EventLog_Operations.decodeEvent`:
+
+```
+SuryError: Failed parsing at ["_0"]["structure"]["readModels"]["0"]["chapter"]:
+Expected string | null, received undefined
+```
+
+Observed on a deployed platform: the lifecycle rows froze the day `kind` became
+present-required (mandatory enum, alpha.149 era) and stayed frozen for ~3 weeks through dozens
+of redeploys — heartbeats were emitted and arrived (EP handler logs `EP→Plugin: Heartbeat(...)`
+every cycle) but never landed, so the stored defs (and `Plugins` read model) never advanced.
+Every later field addition (`chapter`, `externalSystem`, `apiExposed`, `commandTypes`) deepens
+the same hole. The "reset/re-emit" remedy in the doc comment has no supported mechanism.
+
+**Operational heal that worked** (until a durable fix exists): an additive event-log migration —
+scan the lifecycle log, and for each def-carrying event iteratively `S.parseOrThrow` the payload
+against the CURRENT `pluginDefinitionSchema`, inserting `null` where the reported path expects
+`T | null`, `[]` where it expects an array, and the documented default for mandatory enums
+(`kind`: `Domain`, `PlatformInfrastructure` for the inspector). Purely additive (never re-encode
+through the schema), backup originals first. 700 events healed in one pass; the next heartbeat
+re-ran the handshake and the lifecycle advanced.
+
+**Durable fix options** (pick one):
+1. Make decode absent-tolerant: a sury schema for these fields that decodes `undefined → None`
+   while still encoding `None → null` (the doc comment claims proven-impossible with current
+   sury primitives — revisit upstream, this is the root enabler).
+2. Tolerant event decode in `EventLog_Operations.decodeEvent`: on `received undefined` at an
+   option-typed path, treat as `None` instead of throwing (schema-migration-on-read).
+3. Ship the migration as a framework tool (`reventless migrate-lifecycle-log`) and make it a
+   documented step of any release that adds a `pluginDefinition` field.
+
+Until then, EVERY release note that touches `pluginDefinition`/`pluginStructure` fields must
+carry the migration warning — silent lifecycle freeze is the failure mode, with no error surfaced
+anywhere near the operator.
+
+### Resolution — tolerant event decode (durable fix option 2) ✅ implemented 2026-07-11
+
+Chose **option 2** (schema-migration-on-read at the decode boundary). Option 1 was first
+investigated and **empirically confirmed impossible** with the pinned `sury@11.0.0-alpha.4`
+public API: to make an object key absent-tolerant sury requires the field type to carry
+`undefined` ([`isOptional`](../../node_modules/sury/src/Sury.res.mjs#L76) checks
+`"undefined" in has`), and that same `undefined` then propagates into the reverse/output type
+where [`jsonableValidation`](../../node_modules/sury/src/Sury.res.mjs#L1278) rejects it inside a
+union variant. The forward-input and reverse-output types are one schema object for every
+combinator (`option`, `nullableAsOption`, `js_nullable`, `fieldOr`, `transform`), so none can
+decouple them — realizing option 1 would mean forking sury. The doc comment on `Plugin.res` holds.
+
+Implementation — the fix lives at the **central decoder** in reventless-spec
+([Message.res](../../reventless/reventless-spec/src/types/Message.res#L151)), because the
+aggregate-replay brick path is `EventLog_Operations.decodeEvent` → `Message.combineMessage` →
+**`Message.decode(Spec.eventSchema)`** — the spec `decode`, *not* the `decodeEvent'` envelope
+helper. Placing it there covers replay plus every other `Message.decode` caller (command
+generation, projections, read-model/state decode) in one spot:
+1. **`fillMissingDefaults` (`%raw` recursive schema-guided fill), in reventless-spec.** Walks the
+   *target sury schema* alongside the raw JSON and inserts, for any absent field, the value that
+   field's schema expects: `null` for a `T | null` union (`has.null`), `[]` for a missing array,
+   the first enum literal for a mandatory enum (`kind` → `Domain`), and a filled `{}` for a
+   missing nested object. It descends only into values actually present, matches tagged-union
+   members by their `TAG` const, is **purely additive** (clones via a JSON round-trip; never
+   re-encodes through the schema), and is **idempotent on valid data**. Uses sury's schema shape
+   directly (`object.items[]`, `array.additionalItems`, `union.anyOf`/`has`) — no error-path
+   string parsing.
+2. **`parseJsonTolerant` backs `decode` and `decodeEvent'` (spec).** Strict decode stays the fast
+   path (byte-for-byte unchanged for every current message); only when it *throws* do we fill +
+   retry once, and if the retry still fails we re-`throw` the **original** error so genuine
+   corruption still surfaces.
+3. **Core's memoized `decodeEvent'` / `decodeCommand'`** ([Message.res](../../reventless/reventless-core/src/Message.res))
+   reuse the included `parseJsonTolerant`, so the command-topic path (`CommandTopic_Callback` →
+   `decodeCommand'`, which decodes `Connect(def)`/`Redetect`) is tolerant too — no duplicated
+   heal logic. Because the Plugin lifecycle aggregate rehydrates from its own log, this unfreezes
+   it on the next heartbeat with **no migration code, no RM wipe, and no schema change** — future
+   `pluginDefinition`/`pluginStructure` field additions are absorbed automatically.
+
+**Tests:** two new `MessageTest` cases reproduce the production brick — one on the `decodeEvent'`
+envelope, one directly on **`Message.decode(eventSchema)`** (the exact `EventLog_Operations` replay
+call) — each asserting strict decode throws and tolerant decode heals (`kind → Domain`, missing
+array → `[]`, `T | null` → `None`). Full suites green: reventless-core 510/510, reventless-local
+488/488, reventless-aws 209/209; all four packages build warning-free.
+
+**Net effect on the "release note migration warning" above:** no longer load-bearing for
+correctness — a stale def-carrying event decodes on read. Options 1 (fork sury) and 3 (migration
+tool) remain documented alternatives but are unnecessary. The `SuryToJsonSchema` required-array
+NO-OP (previous section) is a **separate** SDL-nullability bug and is still open.

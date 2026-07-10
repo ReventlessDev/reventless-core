@@ -64,10 +64,16 @@ let toCommandSchema' = (idSchema, commandSchema) =>
     })
   )
 
+// Schema-migration-on-read: reuse the tolerant parse from `Reventless.Message`
+// (`parseJsonTolerant` / `fillMissingDefaults`, included above) so a message persisted
+// before a nested `@schema` field existed still decodes instead of bricking the
+// aggregate's log replay. These two entry points thread the memoized envelope schema;
+// `Reventless.Message.decode` (the other central decoder) is tolerant at the source.
+// See docs/plans/platform-infrastructure-in-plugin-list.md (durable fix option 2).
 let decodeEvent' = (json, idSchema, eventSchema) =>
-  json->S.parseJsonOrThrow(toEventSchema'(idSchema, eventSchema))
+  json->parseJsonTolerant(toEventSchema'(idSchema, eventSchema))
 let decodeCommand' = (json, idSchema, commandSchema) =>
-  json->S.parseJsonOrThrow(toCommandSchema'(idSchema, commandSchema))
+  json->parseJsonTolerant(toCommandSchema'(idSchema, commandSchema))
 
 let encodeEvent' = (event', idSchema, eventSchema) =>
   event'->S.reverseConvertToJsonOrThrow(toEventSchema'(idSchema, eventSchema))

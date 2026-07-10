@@ -35,7 +35,62 @@ let commandJsonSchema = S.schema(s => ({
   delay: s.m(S.option(S.int))
 }));
 
-let decode = S.parseJsonOrThrow;
+let fillMissingDefaults = (function(schema, json){
+  function isSchema(x){ return x && typeof x === "object" && typeof x.type === "string"; }
+  function firstConst(anyOf){ var m=(anyOf||[]).find(function(s){return s.const!==undefined;}); return m ? m.const : undefined; }
+  function fill(schema, value){
+    if(!isSchema(schema)) return value;
+    switch(schema.type){
+      case "object": {
+        if(value===undefined){ value={}; }
+        else if(value===null || typeof value!=="object" || Array.isArray(value)) return value;
+        var items=schema.items||[];
+        for(var i=0;i<items.length;i++){ var it=items[i]; value[it.location]=fill(it.schema, value[it.location]); }
+        return value;
+      }
+      case "array": {
+        if(Array.isArray(value)){ var el=schema.additionalItems; return isSchema(el) ? value.map(function(v){return fill(el,v);}) : value; }
+        if(value===undefined) return [];
+        return value;
+      }
+      case "union": {
+        var has=schema.has||{};
+        if(value===undefined){
+          if(has.null) return null;
+          var c=firstConst(schema.anyOf); if(c!==undefined) return c;
+          var obj=(schema.anyOf||[]).find(function(s){return s.type==="object";}); if(obj) return fill(obj,{});
+          return undefined;
+        }
+        if(value===null) return null;
+        var members=schema.anyOf||[];
+        if(Array.isArray(value)){ var a=members.find(function(s){return s.type==="array";}); return a ? fill(a,value) : value; }
+        if(typeof value==="object"){
+          var m=members.find(function(s){return s.type==="object" && (s.items||[]).some(function(it){return it.location==="TAG" && it.schema.const===value.TAG;});});
+          if(!m) m=members.find(function(s){return s.type==="object";});
+          return m ? fill(m,value) : value;
+        }
+        return value;
+      }
+      default: return value;
+    }
+  }
+  // Clone via JSON round-trip (json is already pure JSON) so the caller's value is never mutated.
+  return fill(schema, JSON.parse(JSON.stringify(json)));
+});
+
+function parseJsonTolerant(json, schema) {
+  try {
+    return S.parseJsonOrThrow(json, schema);
+  } catch (firstErr) {
+    try {
+      return S.parseJsonOrThrow(fillMissingDefaults(schema, json), schema);
+    } catch (exn) {
+      throw firstErr;
+    }
+  }
+}
+
+let decode = parseJsonTolerant;
 
 let encode = S.reverseConvertToJsonOrThrow;
 
@@ -50,7 +105,7 @@ function toEventSchema$p(idSchema, eventSchema) {
 }
 
 function decodeEvent$p(json, idSchema, eventSchema) {
-  return S.parseJsonOrThrow(json, toEventSchema$p(idSchema, eventSchema));
+  return parseJsonTolerant(json, toEventSchema$p(idSchema, eventSchema));
 }
 
 function variantNameOfJson(json) {
@@ -97,6 +152,8 @@ export {
   contextSchema,
   statusChangeSchema,
   commandJsonSchema,
+  fillMissingDefaults,
+  parseJsonTolerant,
   decode,
   encode,
   InvalidEvent,

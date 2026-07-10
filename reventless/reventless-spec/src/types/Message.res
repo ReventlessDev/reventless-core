@@ -140,15 +140,96 @@ type commandJson = {
   delay?: int,
 }
 
+// ── Schema-migration-on-read ──────────────────────────────────────────────────
+// Nested `@schema` types (notably `pluginDefinition`/`pluginStructure`) gain fields
+// over time — `kind`, `chapter`, `events`, `extensionPoints`, `apiExposed`, … Because
+// those types are JSON-encoded inside union-variant payloads, every optional field must
+// use the `js_nullable` (`T | null`) encoding: it is the only JSON-safe optional form,
+// since `S.option`/`nullableAsOption` carry `undefined`, which fails sury's
+// `jsonableValidation` inside a union variant. That encoding is *present-required on
+// decode*, so ONE message persisted before a field was added SuryError-bricks decode. For
+// an aggregate that rehydrates from its own event log (the Plugin lifecycle aggregate),
+// that single event then freezes EVERY later heartbeat/redetect/connect on that instance
+// — a silent lifecycle freeze with no error surfaced near the operator.
+//
+// We heal on read. Strict decode stays the fast path (unchanged for every current
+// message); only when it throws do we schema-guide the raw JSON and retry once. The fill
+// walks the target sury schema and inserts, for any absent field, the value that field's
+// schema expects: `null` for a `T | null` union (→ `None`), `[]` for a missing array, the
+// first variant of a mandatory enum (`kind` → `Domain`), and a filled `{}` for a missing
+// nested object. It descends only into values actually present, matches tagged-union
+// members by their `TAG` const, is purely additive (clones via a JSON round-trip; never
+// re-encodes through the schema), is idempotent on valid data, and falls back to the
+// ORIGINAL error when the fill doesn't resolve the failure — so genuine corruption still
+// surfaces. See docs/plans/platform-infrastructure-in-plugin-list.md (durable fix option 2).
+let fillMissingDefaults: (S.t<'a>, JSON.t) => JSON.t = %raw(`function(schema, json){
+  function isSchema(x){ return x && typeof x === "object" && typeof x.type === "string"; }
+  function firstConst(anyOf){ var m=(anyOf||[]).find(function(s){return s.const!==undefined;}); return m ? m.const : undefined; }
+  function fill(schema, value){
+    if(!isSchema(schema)) return value;
+    switch(schema.type){
+      case "object": {
+        if(value===undefined){ value={}; }
+        else if(value===null || typeof value!=="object" || Array.isArray(value)) return value;
+        var items=schema.items||[];
+        for(var i=0;i<items.length;i++){ var it=items[i]; value[it.location]=fill(it.schema, value[it.location]); }
+        return value;
+      }
+      case "array": {
+        if(Array.isArray(value)){ var el=schema.additionalItems; return isSchema(el) ? value.map(function(v){return fill(el,v);}) : value; }
+        if(value===undefined) return [];
+        return value;
+      }
+      case "union": {
+        var has=schema.has||{};
+        if(value===undefined){
+          if(has.null) return null;
+          var c=firstConst(schema.anyOf); if(c!==undefined) return c;
+          var obj=(schema.anyOf||[]).find(function(s){return s.type==="object";}); if(obj) return fill(obj,{});
+          return undefined;
+        }
+        if(value===null) return null;
+        var members=schema.anyOf||[];
+        if(Array.isArray(value)){ var a=members.find(function(s){return s.type==="array";}); return a ? fill(a,value) : value; }
+        if(typeof value==="object"){
+          var m=members.find(function(s){return s.type==="object" && (s.items||[]).some(function(it){return it.location==="TAG" && it.schema.const===value.TAG;});});
+          if(!m) m=members.find(function(s){return s.type==="object";});
+          return m ? fill(m,value) : value;
+        }
+        return value;
+      }
+      default: return value;
+    }
+  }
+  // Clone via JSON round-trip (json is already pure JSON) so the caller's value is never mutated.
+  return fill(schema, JSON.parse(JSON.stringify(json)));
+}`)
+
+// Strict parse with a single schema-migration-on-read retry (see fillMissingDefaults).
+let parseJsonTolerant = (json, schema) =>
+  switch json->S.parseJsonOrThrow(schema) {
+  | value => value
+  | exception firstErr =>
+    switch fillMissingDefaults(schema, json)->S.parseJsonOrThrow(schema) {
+    | value => value
+    | exception _ => throw(firstErr)
+    }
+  }
+
 /**
-Decode a JSON value into `'a` using a sury schema. Throws on parse failure.
+Decode a JSON value into `'a` using a sury schema.
+
+Strict decode is the fast path; on failure it applies a single schema-migration-on-read
+retry (see `fillMissingDefaults`) so a message persisted before a nested `@schema` field
+existed still decodes instead of bricking. Re-throws the original error if the fill does
+not resolve the failure.
 
 @example
 ```rescript
 let event = json->Message.decode(Category.eventSchema)
 ```
 */
-let decode = (json, schema: S.t<'a>) => json->S.parseJsonOrThrow(schema)
+let decode = (json, schema: S.t<'a>) => json->parseJsonTolerant(schema)
 
 /**
 Encode a value to JSON using a sury schema.
@@ -170,9 +251,11 @@ let toEventSchema' = (idSchema, eventSchema) =>
     event: s.field("event", eventSchema),
   })
 
-/** Decode a raw event JSON envelope into a typed `event'<'id, 'event>`. */
+/** Decode a raw event JSON envelope into a typed `event'<'id, 'event>`. Tolerant on
+    read (see `fillMissingDefaults`) so envelopes persisted before a nested field existed
+    still decode. */
 let decodeEvent' = (json, idSchema, eventSchema) =>
-  json->S.parseJsonOrThrow(toEventSchema'(idSchema, eventSchema))
+  json->parseJsonTolerant(toEventSchema'(idSchema, eventSchema))
 
 /** Extract the variant constructor name from a sury-encoded variant JSON. */
 let variantNameOfJson = json =>
