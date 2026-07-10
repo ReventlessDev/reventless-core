@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.151 (2026-07-10)
+
+### Bug Fixes
+
+* **plugin-lifecycle:** backfill plugin kind onto existing rows via deploy-time RedetectPlugin ([502dbd6](https://github.com/ReventlessDev/reventless-core/commit/502dbd65d1fdd5b8beae8a7b96df06dcfa32fe3e))
+* **plugin-lifecycle:** make read-model kind nullable so kind-less rows don't null the admin Plugins query ([671c4f6](https://github.com/ReventlessDev/reventless-core/commit/671c4f6cbbdde32a8dced7290fc8aa5b0063536f))
+
+
 # 3.0.0-alpha.150 (2026-07-10)
 
 ### Features

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.135 (2026-07-10)
+
+### Bug Fixes
+
+* **plugin-lifecycle:** backfill plugin kind onto existing rows via deploy-time RedetectPlugin ([502dbd6](https://github.com/ReventlessDev/reventless-core/commit/502dbd65d1fdd5b8beae8a7b96df06dcfa32fe3e))
+
+
 # 3.0.0-alpha.134 (2026-07-10)
 
 ### Features
