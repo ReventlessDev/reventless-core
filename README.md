@@ -4,12 +4,6 @@
 > APIs, package layouts, and on-disk formats can change without notice, and releases
 > may include **breaking changes** between versions. Pin exact versions and expect churn.
 
-> 🚧 **Known issue — apps can't be created or run from the published packages yet.**
-> Package publishing to the registry is currently broken, so the `@reventlessdev/*`
-> packages needed to scaffold and run a Reventless application aren't installable.
-> This is being worked on and should be resolved soon. In the meantime you can still
-> build and run the bundled [hybrid example](#-getting-started) **from source** in this repo.
-
 **Reventless is a spec-driven, event-sourced CQRS platform for serverless applications.**
 You describe your domain as commands, events, and projections in type-safe
 [ReScript](https://rescript-lang.org/); the framework provisions and wires the
@@ -55,12 +49,22 @@ This is a [pnpm](https://pnpm.io) + [Lerna](https://lerna.js.org) monorepo. Pack
 - [reventless-spec](reventless/reventless-spec/) — type specifications and interfaces
 - [reventless-core](reventless/reventless-core/) — core framework (provider-agnostic)
 - [reventless-aws](reventless/reventless-aws/) — AWS adapters (DynamoDB, Lambda, SQS, SNS, S3)
-- [reventless-local](reventless/reventless-local/) — local platform for local dev and testing
-- [reventless-infra](reventless/reventless-infra/), [reventless-interop](reventless/reventless-interop/), [reventless-gwt](reventless/reventless-gwt/)
+- [reventless-postgres](reventless/reventless-postgres/) — Postgres storage backend (classic + DCB event logs, query DB, change feed); connection-string only (RDS/Aurora, any managed provider, or a local container)
+- [reventless-local](reventless/reventless-local/) — local platform for dev and testing (in-memory or SQLite)
+- [reventless-infra](reventless/reventless-infra/) — infrastructure types shared across adapters
+- [reventless-interop](reventless/reventless-interop/) — versioned cross-plugin contract types and compatibility validation
+- [reventless-gwt](reventless/reventless-gwt/) — Given-When-Then test DSLs and CLI runner for slice testing
+- [reventless-vscode-protocol](reventless/reventless-vscode-protocol/) — shared NDJSON contract between the `reventless-gwt` CLI and the VS Code extension
+- [reventless-conventional-changelog](reventless/reventless-conventional-changelog/) — custom conventional-changelog preset
+- [reventless-layer-builder](reventless/reventless-layer-builder/) — AWS Lambda layer builder (private)
 
 ### ReScript bindings (`rescript/`)
 
-`rescript-aws-sdk`, `rescript-pulumi-aws`, `rescript-pulumi-pulumi`, `rescript-uuid`, `rescript-fast-csv`, `rescript-hash-object`, `rescript-node-streams`, `rescript-node-zlib`, `rescript-ssh2`, `rescript-graphql-yoga`, `rescript-moment` (shared with the UI repo).
+Bindings for JS/npm libraries used across the framework:
+
+- **AWS / infra:** `rescript-aws-sdk`, `rescript-pulumi-pulumi`, `rescript-pulumi-aws`, `rescript-pulumi-docker-build`, `rescript-pulumi-kubernetes`, `rescript-ssh2`
+- **APIs / SDKs:** `rescript-graphql-yoga`, `rescript-mcp-sdk`, `rescript-anthropic`, `rescript-effect`
+- **Utilities / testing:** `rescript-uuid`, `rescript-fast-csv`, `rescript-hash-object`, `rescript-node-streams`, `rescript-node-zlib`, `rescript-jest`, `rescript-moment` (shared with the UI repo)
 
 ### Examples (`examples/`)
 
@@ -126,9 +130,9 @@ To build everything instead of just the example: `pnpm run build`. To run the fu
 
 ### PPX binary
 
-Reventless uses a native ReScript PPX (`@reventlessdev/reventless-ppx`). Prebuilt per-platform binaries exist for **Linux x64**, **macOS arm64**, and **macOS x64** — but they live on a **private GitHub Packages registry**, so installing them needs a GitHub token with `read:packages` (set `GITHUB_TOKEN` in your environment; see [.npmrc](.npmrc)).
+Reventless uses a native ReScript PPX (`@reventlessdev/reventless-ppx`). Prebuilt per-platform binaries are published to the **public npm registry** as optional dependencies (`@reventlessdev/reventless-ppx-<platform>`) for **macOS arm64** and **Linux x64**, so they install automatically with `pnpm install` — **no authentication required**.
 
-**Without a token, or on a platform with no prebuilt (e.g. Linux arm64), `pnpm run setup` automatically builds the PPX from source** via `opam exec -- dune build` — this is the zero-config path and just needs the OCaml toolchain installed. Manual build:
+**On a platform with no prebuilt (e.g. macOS x64, Linux arm64), `pnpm run setup` automatically builds the PPX from source** via `opam exec -- dune build` — this is the zero-config path and just needs the OCaml toolchain installed. Manual build:
 
 ```bash
 (cd packages/reventless-ppx/src && opam exec -- dune build)
@@ -165,9 +169,9 @@ Reventless is an event-sourced CQRS framework designed for serverless infrastruc
 ```
 reventless-spec (foundation)
   ↓
-reventless (core framework + all bindings)
+reventless-core (provider-agnostic framework)
   ↓
-reventless-aws (AWS adapters)
+reventless-aws / reventless-postgres / reventless-local (storage & deployment adapters)
 ```
 
 ### Key Components
@@ -209,7 +213,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 - Making changes and submitting pull requests
 - Commit message conventions (Conventional Commits)
 - Package management with Lerna
-- Publishing packages to GitHub Registry
+- Publishing packages to the public npm registry
 
 For release process documentation, see [RELEASE.md](RELEASE.md).
 

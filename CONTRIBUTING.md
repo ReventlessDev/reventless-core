@@ -200,45 +200,46 @@ git push origin feature/your-feature-name
 
 ## Package Management with Lerna
 
-This project uses [Lerna 9.x](https://lerna.js.org/) to manage the monorepo. Lerna is a tool for managing JavaScript projects with multiple packages.
+This project uses [Lerna 8.x](https://lerna.js.org/) to manage versioning and publishing across the monorepo, on top of **pnpm workspaces** (day-to-day dependency and linking is handled by pnpm, not Lerna). Run Lerna via `pnpm exec lerna`.
 
 ### Common Lerna Commands
 
 | Command | Description |
 |---------|-------------|
-| `npx lerna ls` | List all packages in the monorepo |
-| `npx lerna clean` | Remove `node_modules` from all packages |
-| `npx lerna run <script>` | Run an npm script in all packages that have it |
-| `npx lerna exec <command>` | Run a command in all packages |
+| `pnpm exec lerna ls` | List all packages in the monorepo |
+| `pnpm exec lerna run <script>` | Run a package script in all packages that have it |
+| `pnpm exec lerna exec <command>` | Run a command in all packages |
+
+To remove build artifacts and `node_modules`, use `pnpm run clean` and `pnpm -r exec rm -rf node_modules` respectively.
 
 ### Creating a New Package
 
-Use the `lerna create` command to scaffold a new package:
+Packages are grouped into four workspace folders — **place a new package in the correct one** (see the [Packages table in the README](README.md#-packages)):
 
-```bash
-npx lerna create <package-name>
-```
+| Folder | For |
+|--------|-----|
+| `rescript/` | ReScript bindings for JS/npm libraries |
+| `reventless/` | Framework + extension packages |
+| `examples/` | Example applications |
+| `packages/` | Build tooling and documentation only |
 
-This will:
-- Create a new directory in `./packages/`
-- Bootstrap a `package.json` with appropriate defaults
-- Set up the package structure
+These are ReScript packages (each with a `rescript.json`), so the simplest path is to copy the closest existing sibling package into the right folder, rename it, and adjust its `package.json` / `rescript.json`. `pnpm install` then wires it into the workspace.
 
 ### Linking Local Packages
 
-To use a local package (`D`) as a dependency in another package (`A`):
+pnpm workspaces link local packages automatically. To depend on a local package `D` from another package `A`:
 
-1. Add `D` to the `dependencies` in `package.json` of `A` (match the version)
-2. Run `npm install` to link them
+1. Add `D` to the `dependencies` in `A`'s `package.json` using the workspace protocol: `"@reventlessdev/D": "workspace:*"`
+2. Run `pnpm install`
 
-npm will create symlinks so changes in `D` are immediately available in `A`.
+pnpm symlinks the workspace package so changes in `D` are immediately available in `A`. (For the cross-repo dev overlay used with the UI repo, see `pnpm run link:on` / `link:off`.)
 
 ### Versioning and Publishing
 
 #### Version Packages
 
 ```bash
-npx lerna version
+pnpm exec lerna version
 ```
 
 This will:
@@ -251,47 +252,36 @@ This will:
 #### Publish Packages
 
 ```bash
-npx lerna publish
+pnpm exec lerna publish
 ```
 
-This combines versioning and publishing in one command.
+This combines versioning and publishing in one command. In practice publishing runs automatically in CI — see [Making Releases](#making-releases) and [RELEASE.md](RELEASE.md).
 
 #### Pre-release Versions
 
 ```bash
-npx lerna version prerelease --preid beta   # Beta release
-npx lerna version prerelease --preid alpha  # Alpha release
+pnpm exec lerna version prerelease --preid beta   # Beta release
+pnpm exec lerna version prerelease --preid alpha  # Alpha release
 ```
 
 For detailed pre-release workflow and branch strategy, see [RELEASE.md](RELEASE.md#pre-release-versions).
 
 ### Dependency Management
 
-#### Add a Dependency to All Packages
+Dependencies are managed with **pnpm** (`lerna add` was removed in Lerna 7+):
 
 ```bash
-npx lerna add <package>[@version]
+# Add a dependency to a specific package
+pnpm --filter <package-name> add <package>[@version]
+
+# Add a dev dependency to the workspace root
+pnpm add -w -D <package>[@version]
+
+# Add a dependency to every package
+pnpm -r add <package>[@version]
 ```
 
-#### Add a Dependency to a Specific Package
-
-```bash
-npx lerna add <package>[@version] --scope=<package-name>
-```
-
-#### Update Dependencies
-
-Use the Lerna Update Wizard for bulk updates:
-
-```bash
-npm run update
-```
-
-Features:
-- Update dependencies across packages
-- Add new dependencies across packages
-- Deduplicate dependencies
-- Auto-generate Git branch & commit
+> **Note:** avoid running a bare `pnpm install` while the cross-repo dev overlay is active (`pnpm run link:status` to check) — it can pollute the lockfile. Use `pnpm run link:off` first.
 
 ## Making Releases
 
