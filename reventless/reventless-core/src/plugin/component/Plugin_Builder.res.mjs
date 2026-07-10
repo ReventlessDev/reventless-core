@@ -300,11 +300,6 @@ function Make(Spec) {
             schema: schema
           };
         });
-        let mapNames = (d, kind) => Object.keys(d).map(name => ({
-          name: name,
-          kind: kind,
-          schema: {}
-        }));
         let routingSchemas = {};
         automationSlices.forEach(As => {
           let consumedEventTypes = Belt_SetString.toArray(Belt_SetString.fromArray(As.Automation.mappings.flatMap(M => DcbTag$Reventless.extractVariantNames(M.sourceEventSchema))));
@@ -327,8 +322,21 @@ function Make(Spec) {
             targetName: Its.Spec.targetName
           };
         });
-        let routingComponents = (d, kind) => Object.keys(d).map(name => {
-          let schema = Stdlib_Option.getOr(routingSchemas[name], {});
+        let stateSchemas = {};
+        stateChangeSlices.forEach(Scs => {
+          stateSchemas[Scs.Spec.name] = {
+            commandTypes: DcbTag$Reventless.extractAllVariantNames(Scs.Spec.commandSchema),
+            eventTypes: DcbTag$Reventless.extractVariantNames(Scs.Spec.eventSchema),
+            consumedEventTypes: DcbTag$Reventless.extractVariantNames(Scs.Spec.consumedEventSchema)
+          };
+        });
+        stateViewSlices.forEach(Svs => {
+          stateSchemas[Svs.Spec.name] = {
+            consumedEventTypes: DcbTag$Reventless.extractVariantNames(Svs.Spec.consumedEventSchema)
+          };
+        });
+        let enrichedComponents = (d, kind, schemas) => Object.keys(d).map(name => {
+          let schema = Stdlib_Option.getOr(schemas[name], {});
           Plugin_Helpers$ReventlessCore.componentSchemaRegistry[name] = schema;
           return {
             name: name,
@@ -339,11 +347,11 @@ function Make(Spec) {
         let components = [
           aggregateComponents,
           readModelComponents,
-          mapNames(dcbResult.stateChangeSlicesOutputs, "StateChangeSlice"),
-          mapNames(dcbResult.stateViewSlicesOutputs, "StateViewSlice"),
-          routingComponents(dcbResult.automationSlicesOutputs, "AutomationSlice"),
-          routingComponents(dcbResult.outboundTranslationSlicesOutputs, "OutboundTranslationSlice"),
-          routingComponents(dcbResult.inboundTranslationSlicesOutputs, "InboundTranslationSlice")
+          enrichedComponents(dcbResult.stateChangeSlicesOutputs, "StateChangeSlice", stateSchemas),
+          enrichedComponents(dcbResult.stateViewSlicesOutputs, "StateViewSlice", stateSchemas),
+          enrichedComponents(dcbResult.automationSlicesOutputs, "AutomationSlice", routingSchemas),
+          enrichedComponents(dcbResult.outboundTranslationSlicesOutputs, "OutboundTranslationSlice", routingSchemas),
+          enrichedComponents(dcbResult.inboundTranslationSlicesOutputs, "InboundTranslationSlice", routingSchemas)
         ].flat();
         let hook = Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents;
         if (hook !== undefined) {

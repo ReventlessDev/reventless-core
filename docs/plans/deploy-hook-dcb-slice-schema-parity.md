@@ -174,3 +174,81 @@ downstream deps; then the consumer reads `c.schema.targetName` /
   (`Plugin_Structure`) is already complete and unchanged.
 - `StateChangeSlice` / `StateViewSlice` intentionally keep an empty schema — they
   have no routing target; this plan does not invent one for them.
+
+---
+
+## Addendum 2026-07-10 — second gap: StateChange/StateView **command/event** parity
+
+**Status:** Implemented + build-verified (uncommitted) — CHANGELOG + publish pending.
+Extends the same asymmetry this plan closes for routing slices to the two remaining
+DCB-slice kinds.
+
+**The gap.** The original plan deliberately kept the empty-schema `mapNames` for
+`StateChangeSlice` / `StateViewSlice` on the rationale that they "have no routing
+target." True — but they carry **command / event / consumed-event types**, and those
+are *also* dropped on the hook surface:
+
+- `StateChangeSlice` — write-side: has `commandSchema` (commands it handles) and
+  `eventSchema` (events it emits), plus `consumedEventTypes`. `Plugin_Structure.res`
+  `stateChangeDefs` (~`:435-458`) computes all of them; `Plugin_Builder`'s `mapNames`
+  emits `{}`.
+- `StateViewSlice` — read-side: has `consumedEventTypes` (the events it projects
+  from). `Plugin_Structure.res` `stateViewDefs` (~`:411-431`) computes it;
+  `Plugin_Builder`'s `mapNames` emits `{}`.
+
+So the onPluginBuilt/deployed hook (`pluginDeployedInfo.components[].schema`) exposes
+command/event types **only for aggregates + read-model query-fields + (post-this-plan)
+routing slices** — never for StateChange/StateView slices. Any consumer building an
+event/command inventory from the deploy hook therefore sees the write-side slices with
+no commands/events and the views with no consumed events. Since a typical DCB plugin is
+*mostly* StateChange/StateView slices, the consumer's inventory ends up nearly empty
+(only aggregates/automations surface types), which starves both the per-plugin
+Event-Modeling graph and any cross-plugin producer×consumer join built from it.
+
+**Why it matters beyond parity.** The `pluginDeployedSchema` on the hook is the
+*only* deploy-time channel for this data to a consumer that isn't reading the static
+`pluginStructure`. `Plugin_Structure` already has it (complete), but a hook consumer
+that reflects deployed components off the built/deployed hook cannot see it.
+
+**Approach (mirrors this plan's routing-slice fix).** Replace the empty-schema
+`mapNames` for `StateChangeSlice` / `StateViewSlice` with builders that iterate the
+in-scope module arrays (`stateChangeSlices` / `stateViewSlices`, already threaded into
+`Plugin_Builder.construct`) and populate a real `pluginDeployedSchema`:
+- StateChange → `{ commandTypes (from commandSchema), eventTypes (from eventSchema),
+  consumedEventTypes }` via the same `extractAllVariantNames` / `extractVariantNames`
+  helpers, **unqualified** (internal consistency with the aggregate/read-model entries
+  on this surface, as the routing-slice fix established).
+- StateView → `{ consumedEventTypes }`.
+Register both in `componentSchemaRegistry` so the *deployed* hook surfaces them too
+(same as aggregates/read-models/routing slices).
+
+**Risk:** additive and low — same shape as the routing-slice fix; consumers that
+ignore the fields are unaffected; the fields simply go from `[]`/absent to populated.
+
+**Downstream note (not core):** a consumer that projects these types into a read model
+via an idempotent "first-sync-only" upsert will need its own backfill/replay for
+components already synced before this lands — that is the consumer's concern, not this
+plan's.
+
+**Definition of done (addendum).**
+- [x] `Plugin_Builder` populates `commandTypes`/`eventTypes`/`consumedEventTypes` for
+      `StateChangeSlice` and `consumedEventTypes` for `StateViewSlice`, registered in
+      `componentSchemaRegistry`.
+- [x] Zero-regression build + suite.
+- [ ] CHANGELOG note (neutral: "plugin hooks now expose command/event/consumed-event
+      metadata for StateChange/StateView slices, completing DCB-slice hook parity").
+
+**Implementation (2026-07-10).** In `Plugin_Builder.res`, generalized the
+routing-slice `routingComponents` helper into `enrichedComponents(d, kind, schemas)`
+(takes the per-component schema dict as a parameter) and removed the now-unused
+empty-schema `mapNames`. Added a `stateSchemas` dict populated from the in-scope
+`stateChangeSlices` / `stateViewSlices` module arrays:
+- StateChange → `{ commandTypes (extractAllVariantNames commandSchema),
+  eventTypes (extractVariantNames eventSchema),
+  consumedEventTypes (extractVariantNames consumedEventSchema) }`.
+- StateView → `{ consumedEventTypes (extractVariantNames consumedEventSchema) }`.
+All five DCB-slice kinds now route through `enrichedComponents`, which registers
+each schema in `componentSchemaRegistry` (so the *deployed* hook surfaces it too).
+Type strings stay unqualified, matching the aggregate/read-model/routing-slice
+entries already on this surface. Build: `rescript build` exit 0, 369 modules, zero
+warnings; `tests/plugin` (62 tests) green.

@@ -398,14 +398,6 @@ module Make = (
         ({name: R.Spec.name, kind: "ReadModel", schema}: Plugin_Helpers.pluginBuiltComponent)
       })
 
-      let mapNames = (d: dict<_>, kind: string) =>
-        d
-        ->Dict.keysToArray
-        ->Array.map(name => {
-          let schema: Plugin_Helpers.pluginDeployedSchema = {}
-          ({Plugin_Helpers.name, kind, schema}: Plugin_Helpers.pluginBuiltComponent)
-        })
-
       // Routing slices (automation / inbound + outbound translation) expose their
       // command/event wiring and routing target on the hook surface, at parity
       // with aggregates and read models — mirroring the metadata Plugin_Structure
@@ -457,15 +449,44 @@ module Make = (
         )
       )
 
+      // StateChange / StateView slices carry no routing target, but they do carry
+      // command / event / consumed-event types. Surface those on the hook at parity
+      // with aggregates, read models, and routing slices — mirroring the metadata
+      // Plugin_Structure records on the static plugin def. Type strings stay
+      // unqualified to match the aggregate/read-model entries already on this same
+      // hook surface (Plugin_Structure additionally prefixes them with the plugin
+      // name).
+      let stateSchemas: Dict.t<Plugin_Helpers.pluginDeployedSchema> = Dict.make()
+      stateChangeSlices->Array.forEach((module(Scs: ReventlessInfra.StateChangeSlice.T)) =>
+        stateSchemas->Dict.set(
+          Scs.Spec.name,
+          {
+            commandTypes: extractTypes(Scs.Spec.commandSchema),
+            eventTypes: extractEventTypes(Scs.Spec.eventSchema->S.castToUnknown),
+            consumedEventTypes: extractEventTypes(Scs.Spec.consumedEventSchema->S.castToUnknown),
+          },
+        )
+      )
+      stateViewSlices->Array.forEach((module(Svs: ReventlessInfra.StateViewSlice.T)) =>
+        stateSchemas->Dict.set(
+          Svs.Spec.name,
+          {consumedEventTypes: extractEventTypes(Svs.Spec.consumedEventSchema->S.castToUnknown)},
+        )
+      )
+
       // Component set still derives from the DCB outputs dict (unchanged
       // membership); enrich + register the schema where a matching spec module
       // was found above, so the deployed hook surfaces it too (the built-hook
       // components carry it inline).
-      let routingComponents = (d: dict<_>, kind: string) =>
+      let enrichedComponents = (
+        d: dict<_>,
+        kind: string,
+        schemas: Dict.t<Plugin_Helpers.pluginDeployedSchema>,
+      ) =>
         d
         ->Dict.keysToArray
         ->Array.map(name => {
-          let schema = routingSchemas->Dict.get(name)->Option.getOr({})
+          let schema = schemas->Dict.get(name)->Option.getOr({})
           Plugin_Helpers.componentSchemaRegistry->Dict.set(name, schema)
           ({Plugin_Helpers.name, kind, schema}: Plugin_Helpers.pluginBuiltComponent)
         })
@@ -473,11 +494,19 @@ module Make = (
       let components = Array.flat([
         aggregateComponents,
         readModelComponents,
-        mapNames(dcbResult.stateChangeSlicesOutputs, "StateChangeSlice"),
-        mapNames(dcbResult.stateViewSlicesOutputs, "StateViewSlice"),
-        routingComponents(dcbResult.automationSlicesOutputs, "AutomationSlice"),
-        routingComponents(dcbResult.outboundTranslationSlicesOutputs, "OutboundTranslationSlice"),
-        routingComponents(dcbResult.inboundTranslationSlicesOutputs, "InboundTranslationSlice"),
+        enrichedComponents(dcbResult.stateChangeSlicesOutputs, "StateChangeSlice", stateSchemas),
+        enrichedComponents(dcbResult.stateViewSlicesOutputs, "StateViewSlice", stateSchemas),
+        enrichedComponents(dcbResult.automationSlicesOutputs, "AutomationSlice", routingSchemas),
+        enrichedComponents(
+          dcbResult.outboundTranslationSlicesOutputs,
+          "OutboundTranslationSlice",
+          routingSchemas,
+        ),
+        enrichedComponents(
+          dcbResult.inboundTranslationSlicesOutputs,
+          "InboundTranslationSlice",
+          routingSchemas,
+        ),
       ])
 
       switch Plugin_Helpers.onPluginBuiltHook.contents {
