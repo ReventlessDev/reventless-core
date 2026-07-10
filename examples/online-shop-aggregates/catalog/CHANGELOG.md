@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.125 (2026-07-10)
+
+### Features
+
+* **plugin-structure:** capture per-component chapter grouping for the deployed graph ([f9c88a9](https://github.com/ReventlessDev/reventless-core/commit/f9c88a9a48d8c032ffe23f9e5277caf12c29e85c))
+
+
 # 3.0.0-alpha.124 (2026-07-10)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.153 (2026-07-10)
+
+### Features
+
+* **plugin-structure:** capture per-component chapter grouping for the deployed graph ([f9c88a9](https://github.com/ReventlessDev/reventless-core/commit/f9c88a9a48d8c032ffe23f9e5277caf12c29e85c))
+* **plugin-structure:** carry translation-slice externalSystem into the deployed structure ([80c0cda](https://github.com/ReventlessDev/reventless-core/commit/80c0cda3b6d5fc6625d4b285f41505028f1dd06f))
+
+
 # 3.0.0-alpha.152 (2026-07-10)
 
 ### Features
