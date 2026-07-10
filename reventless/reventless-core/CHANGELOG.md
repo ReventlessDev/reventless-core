@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.152 (2026-07-10)
+
+### Features
+
+* **plugin-lifecycle:** expose command/event/consumed-event metadata on plugin hooks for StateChange/StateView slices ([194abf3](https://github.com/ReventlessDev/reventless-core/commit/194abf30460ae0140a7900d8ca67d671b15deb3a))
+
+
 # 3.0.0-alpha.151 (2026-07-10)
 
 ### Bug Fixes
