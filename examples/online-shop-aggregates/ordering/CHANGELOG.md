@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.123 (2026-07-10)
+
+### Features
+
+* **reventless-ppx:** add [@group](https://github.com/group)By state-field annotation → x-reventless-group-by ([9e7a7b2](https://github.com/ReventlessDev/reventless-core/commit/9e7a7b29e54fb4eda1c6a145c0e7b6dcf26940ee))
+
+
 # 3.0.0-alpha.122 (2026-07-09)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-ordering
