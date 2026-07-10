@@ -300,8 +300,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/reventless-aws
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.33
-        version: 3.0.0-alpha.33(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.36
+        version: 3.0.0-alpha.36(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -363,8 +363,8 @@ importers:
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.33
-        version: 3.0.0-alpha.33(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.36
+        version: 3.0.0-alpha.36(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
 
   examples/online-shop-dcb/catalog:
     dependencies:
@@ -561,8 +561,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/reventless-aws
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.33
-        version: 3.0.0-alpha.33(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.36
+        version: 3.0.0-alpha.36(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -627,8 +627,8 @@ importers:
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.33
-        version: 3.0.0-alpha.33(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.36
+        version: 3.0.0-alpha.36(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
 
   examples/online-shop-hybrid/catalog:
     dependencies:
@@ -825,8 +825,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/reventless-aws
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.33
-        version: 3.0.0-alpha.33(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.36
+        version: 3.0.0-alpha.36(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -888,8 +888,8 @@ importers:
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.33
-        version: 3.0.0-alpha.33(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.36
+        version: 3.0.0-alpha.36(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
 
   packages/doc:
     dependencies:
@@ -946,11 +946,11 @@ importers:
   packages/reventless-ppx:
     optionalDependencies:
       '@reventlessdev/reventless-ppx-darwin-arm64':
-        specifier: ^1.0.0-alpha.49
-        version: 1.0.0-alpha.49
+        specifier: ^1.0.0-alpha.52
+        version: 1.0.0-alpha.52
       '@reventlessdev/reventless-ppx-linux-x64':
-        specifier: ^1.0.0-alpha.49
-        version: 1.0.0-alpha.49
+        specifier: ^1.0.0-alpha.52
+        version: 1.0.0-alpha.52
 
   rescript/rescript-anthropic:
     dependencies:
@@ -4576,17 +4576,17 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@reventlessdev/reventless-host-shell@3.0.0-alpha.33':
-    resolution: {integrity: sha512-cbH+g4hoRkLskt4BiNymrb4InwVABsx6sb2M07B45c7CrR8hWixcfbXn3CbZa2GQ8uKS/rGEC+lBJf/hs7pwcQ==}
+  '@reventlessdev/reventless-host-shell@3.0.0-alpha.36':
+    resolution: {integrity: sha512-IctFQ/SLcgKcSDbisumm3B6RDlzmZ5eIhy7Ce+n0N3Nh9hiZms1GxH30Q172n/rNfffWjuN4pr8/IXrPueoSpw==}
     hasBin: true
 
-  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.49':
-    resolution: {integrity: sha512-bOlaZSEJ6Q6rHuMSP4jCjwISG37JK7Y3A9vSW6fJnKqJ0dBPZBQngs0Bqmbbd91Vq2BOi3VbDuqqAZR/lsniCg==}
+  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.52':
+    resolution: {integrity: sha512-6Kb5w4h0Ah+ft9aXuvGB8m/wFwGcSI3asOnKH2lFVIRW0roRNb0EJsJtXP2sVuL0f5SokyoNsIwiaRzRbzl8gw==}
     cpu: [arm64]
     os: [darwin]
 
-  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.49':
-    resolution: {integrity: sha512-pS+y24dpvo66uMFsWwfgPXSi9enyqNDYlw0QOVuL5ztomA1AmTfpeiiwCRERZGb4EnQdwtW/6IZKbpuH+i1LoQ==}
+  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.52':
+    resolution: {integrity: sha512-t07O3HuzX6gOTjU2l94Hi6D/UefZ2QIkbQ2YhqVypNS1B0E9vjphGcje0T43qdDC3/jR2RURQZHLFnITuG4nLg==}
     cpu: [x64]
     os: [linux]
 
@@ -17187,7 +17187,7 @@ snapshots:
   '@rescript/win32-x64@12.3.0':
     optional: true
 
-  '@reventlessdev/reventless-host-shell@3.0.0-alpha.33(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)':
+  '@reventlessdev/reventless-host-shell@3.0.0-alpha.36(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(node-fetch@2.7.0(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)':
     dependencies:
       '@aws-sdk/client-cognito-identity-provider': 3.1033.0
       '@module-federation/runtime': 0.18.4
@@ -17224,10 +17224,10 @@ snapshots:
       - vue-tsc
       - yaml
 
-  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.49':
+  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.52':
     optional: true
 
-  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.49':
+  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.52':
     optional: true
 
   '@rollup/rollup-android-arm-eabi@4.60.2':
