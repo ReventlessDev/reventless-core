@@ -4,6 +4,39 @@ import * as Nodepath from "node:path";
 import * as ComponentKind$Reventless from "../components/ComponentKind.res.mjs";
 import * as Generator_Node$Reventless from "./Generator_Node.res.mjs";
 
+function chapterOf(relPath) {
+  let segments = relPath.split("/");
+  if (segments.length < 2) {
+    return;
+  }
+  let first = segments[0];
+  if (first !== undefined && !ComponentKind$Reventless.isKindFolder(first)) {
+    return first;
+  }
+}
+
+function chaptersByStem(discovered) {
+  let byStem = {};
+  discovered.forEach(d => {
+    let ch = chapterOf(d.relPath);
+    if (ch !== undefined) {
+      byStem[d.stem] = ch;
+      return;
+    }
+  });
+  return Object.entries(byStem).toSorted((param, param$1) => {
+    let b = param$1[0];
+    let a = param[0];
+    if (a < b) {
+      return -1.0;
+    } else if (a > b) {
+      return 1.0;
+    } else {
+      return 0.0;
+    }
+  });
+}
+
 function isAlwaysExcludedDir(name) {
   if (name === "Plugin" || name === "tests") {
     return true;
@@ -151,6 +184,8 @@ let folderToComponentType = ComponentKind$Reventless.folderToKind;
 
 export {
   folderToComponentType,
+  chapterOf,
+  chaptersByStem,
   isAlwaysExcludedDir,
   matchesGlob,
   isExcluded,

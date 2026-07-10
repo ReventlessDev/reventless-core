@@ -40,6 +40,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~readModels=[module(AvailableProductsReadModel), module(CustomersReadModel), module(OrdersReadModel)],
     ~extensions=[module(Products_Extension)],
     ~extensionPoints=[module(Orders_ExtensionPointMapping)],
+    ~componentChapters=Dict.fromArray([("AvailableProducts", "CatalogProduct"), ("CatalogProduct", "CatalogProduct"), ("Customer", "Customer"), ("Customers", "Customer"), ("Order", "Order"), ("Orders", "Order")]),
   )
 
   let make = () =>

@@ -46,6 +46,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
     ~extensions=[module(Products_Extension)],
     ~extensionPoints=[module(Orders_ExtensionPointMapping)],
+    ~componentChapters=Dict.fromArray([("AutoShipOrder", "Order"), ("AvailableProducts", "CatalogProduct"), ("CancelOrder", "Order"), ("Customer", "Customer"), ("Customers", "Customer"), ("Orders", "Order"), ("PlaceOrder", "Order"), ("RefundOrder", "Order"), ("SendOrderConfirmation", "Order"), ("ShipOrder", "Order"), ("SyncCatalogProduct", "CatalogProduct")]),
   )
 
   let make = () =>

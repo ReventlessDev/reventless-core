@@ -72,6 +72,7 @@ let encodeQueryableDef = (r: queryableDef): JSON.t =>
     ("labelField", JSON.Encode.string(r.labelField)),
     ("searchableFields", encodeStrings(r.searchableFields)),
     ("statusField", r.statusField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+    ("chapter", r.chapter->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
   ])->JSON.Encode.object
 
 let encodeEventDef = (e: eventDef): JSON.t =>
@@ -94,6 +95,7 @@ let encodeWritableDef = (w: writableDef): JSON.t =>
     ("consumedEventTypes", encodeStrings(w.consumedEventTypes)),
     // Phase 6.3: emitted-event field schemas (None → [] on the wire).
     ("events", w.events->Array.map(encodeEventDef)->JSON.Encode.array),
+    ("chapter", w.chapter->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
   ])->JSON.Encode.object
 
 let encodeAutomationSliceDef = (a: automationSliceDef): JSON.t =>
@@ -101,6 +103,7 @@ let encodeAutomationSliceDef = (a: automationSliceDef): JSON.t =>
     ("name", JSON.Encode.string(a.name)),
     ("consumedEventTypes", encodeStrings(a.consumedEventTypes)),
     ("producedCommandTypes", encodeStrings(a.producedCommandTypes)),
+    ("chapter", a.chapter->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
   ])->JSON.Encode.object
 
 let encodeOutboundTranslationSliceDef = (o: outboundTranslationSliceDef): JSON.t =>
@@ -108,12 +111,14 @@ let encodeOutboundTranslationSliceDef = (o: outboundTranslationSliceDef): JSON.t
     ("name", JSON.Encode.string(o.name)),
     ("consumedEventTypes", encodeStrings(o.consumedEventTypes)),
     ("inboundCommandTypes", encodeStrings(o.inboundCommandTypes)),
+    ("chapter", o.chapter->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
   ])->JSON.Encode.object
 
 let encodeInboundTranslationSliceDef = (i: inboundTranslationSliceDef): JSON.t =>
   Dict.fromArray([
     ("name", JSON.Encode.string(i.name)),
     ("commandTypes", encodeStrings(i.commandTypes)),
+    ("chapter", i.chapter->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
   ])->JSON.Encode.object
 
 let encodeExtensionDef = (e: extensionDef): JSON.t =>

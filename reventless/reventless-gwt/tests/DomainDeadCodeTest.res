@@ -15,6 +15,7 @@ let writable = (~name, ~produces=[], ~consumes=[], ~linkedViews=[]): Reventless.
   linkedViews,
   consistencyRead: None,
   events: [],
+  chapter: None,
 }
 
 let queryable = (~name, ~consumes=[]): Reventless.Plugin.queryableDef => {
@@ -27,6 +28,7 @@ let queryable = (~name, ~consumes=[]): Reventless.Plugin.queryableDef => {
   searchableFields: [],
   statusField: None,
   visibility: None,
+  chapter: None,
 }
 
 let automation = (~name, ~consumes=[]): Reventless.Plugin.automationSliceDef => {
@@ -34,6 +36,7 @@ let automation = (~name, ~consumes=[]): Reventless.Plugin.automationSliceDef => 
   consumedEventTypes: consumes,
   producedCommandTypes: [],
   targetName: "",
+  chapter: None,
 }
 
 let structure = (

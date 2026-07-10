@@ -28,6 +28,7 @@ let qbl: queryableDef = {
   searchableFields: ["displayName"],
   statusField: None,
   visibility: None,
+  chapter: None,
 }
 
 let wbl: writableDef = {
@@ -38,6 +39,7 @@ let wbl: writableDef = {
   producedEventTypes: ["ProductAdded"],
   consumedEventTypes: [],
   events: [{name: "ProductAdded", schema: "{}", references: []}],
+  chapter: None,
 }
 
 let structure: pluginStructure = {
@@ -51,6 +53,7 @@ let structure: pluginStructure = {
       consumedEventTypes: ["StockLow"],
       producedCommandTypes: ["Restock"],
       targetName: "Product",
+      chapter: None,
     },
   ],
   outboundTranslationSlices: [
@@ -60,10 +63,17 @@ let structure: pluginStructure = {
       inboundCommandTypes: ["Ship"],
       targetName: None,
       externalSystem: None,
+      chapter: None,
     },
   ],
   inboundTranslationSlices: [
-    {name: "FromBilling", commandTypes: ["RecordPayment"], targetName: "Order", externalSystem: None},
+    {
+      name: "FromBilling",
+      commandTypes: ["RecordPayment"],
+      targetName: "Order",
+      externalSystem: None,
+      chapter: None,
+    },
   ],
   extensions: [
     {
@@ -159,6 +169,7 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
     searchableFields: ["name"],
     statusField: None,
     visibility: Some("Internal"),
+    chapter: None,
   }
   let mixed: pluginStructure = {
     ...structure,
@@ -199,6 +210,7 @@ describe("allowedStates + statusField populated", () => {
     searchableFields: ["name"],
     statusField: Some("status"),
     visibility: None,
+    chapter: None,
   }
 
   let wblWithStates: writableDef = {
@@ -209,6 +221,7 @@ describe("allowedStates + statusField populated", () => {
     producedEventTypes: [],
     consumedEventTypes: [],
     events: [],
+    chapter: None,
   }
 
   let structureWithStates: pluginStructure = {

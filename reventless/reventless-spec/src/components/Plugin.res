@@ -215,6 +215,20 @@ type queryableDef = {
   existed decode as `None` (Public).
   */
   visibility: @s.matches(stringOptionSchema) option<string>,
+  /**
+  Intra-plugin grouping band (the "chapter") this component belongs to, captured at
+  build time from its source folder by the plugin generator: the first path segment
+  under the plugin's `src/` that is not a recognised kind-folder
+  (`src/<Chapter>/…/<Component>.res` → `Some("<Chapter>")`; a component directly under a
+  kind-folder → `None`). Lets a consumer that renders the event graph from the
+  *deployed* plugin structure group components into chapter sub-containers identically
+  to the authoring tooling, with no workspace/disk access — the renderer already
+  supports the bands (`DomainGraphD2 ~chapters`); only this datum was missing on the
+  deployed side. `None` (absent) renders flat. js_nullable (T | null) keeps it JSON-safe
+  inside the lifecycle Message union; always written (None → null), so defs persisted
+  before this field existed must be reset/re-emitted. See [[deployed-chapter-grouping]].
+  */
+  chapter: @s.matches(stringOptionSchema) option<string>,
 }
 
 /**
@@ -244,6 +258,8 @@ type writableDef = {
   arrays; `[]` when there are none. The structure is re-derived on every build/
   deploy, so no persisted-data back-compat shim is needed. */
   events: array<eventDef>,
+  /** Chapter grouping band — see `queryableDef.chapter`. */
+  chapter: @s.matches(stringOptionSchema) option<string>,
 }
 
 @schema
@@ -252,6 +268,8 @@ type automationSliceDef = {
   consumedEventTypes: array<string>,
   producedCommandTypes: array<string>,
   targetName: string,
+  /** Chapter grouping band — see `queryableDef.chapter`. */
+  chapter: @s.matches(stringOptionSchema) option<string>,
 }
 
 @schema
@@ -262,6 +280,8 @@ type outboundTranslationSliceDef = {
   targetName: @s.matches(stringOptionSchema) option<string>,
   // Foreign system this slice publishes to — drives the external box (Event Graph).
   externalSystem: @s.matches(stringOptionSchema) option<string>,
+  /** Chapter grouping band — see `queryableDef.chapter`. */
+  chapter: @s.matches(stringOptionSchema) option<string>,
 }
 
 @schema
@@ -271,6 +291,8 @@ type inboundTranslationSliceDef = {
   targetName: string,
   // Foreign system this slice receives from — drives the external box (Event Graph).
   externalSystem: @s.matches(stringOptionSchema) option<string>,
+  /** Chapter grouping band — see `queryableDef.chapter`. */
+  chapter: @s.matches(stringOptionSchema) option<string>,
 }
 
 @schema

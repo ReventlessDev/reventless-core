@@ -13,7 +13,8 @@ function writable(name, producesOpt, consumesOpt, linkedViewsOpt) {
     consumedEventTypes: consumes,
     linkedViews: linkedViews,
     consistencyRead: undefined,
-    events: []
+    events: [],
+    chapter: undefined
   };
 }
 
@@ -28,7 +29,8 @@ function queryable(name, consumesOpt) {
     labelField: "id",
     searchableFields: [],
     statusField: undefined,
-    visibility: undefined
+    visibility: undefined,
+    chapter: undefined
   };
 }
 
@@ -38,7 +40,8 @@ function automation(name, consumesOpt) {
     name: name,
     consumedEventTypes: consumes,
     producedCommandTypes: [],
-    targetName: ""
+    targetName: "",
+    chapter: undefined
   };
 }
 

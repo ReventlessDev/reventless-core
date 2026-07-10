@@ -177,7 +177,7 @@ globalThis.describe("ReadModel visibility filter", () => {
 });
 
 globalThis.describe("Plugin_Structure.make — visibility tagging", () => {
-  let structure = Plugin_Structure$ReventlessCore.make("VisibilityPlugin", undefined, readModels, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+  let structure = Plugin_Structure$ReventlessCore.make("VisibilityPlugin", undefined, readModels, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
   globalThis.test("readModels carries both Public and Internal entries", () => {
     globalThis.expect(structure.readModels.length).toBe(2);
   });

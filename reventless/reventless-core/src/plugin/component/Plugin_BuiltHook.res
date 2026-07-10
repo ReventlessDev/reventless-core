@@ -88,6 +88,11 @@ type pluginDeployedSchema = {
   eventSchemas?: array<typeSchema>,
   /** Field-level schema for the state type. */
   stateSchema?: typeSchema,
+  /** Intra-plugin grouping band (the "chapter") this component belongs to, mirrored
+   from the static `pluginStructure` for parity on the hook surface. Absent when the
+   component carries no chapter (lives directly under a kind-folder). See
+   `Reventless.Plugin.queryableDef.chapter`. */
+  chapter?: string,
 }
 
 // ---------------------------------------------------------------------------

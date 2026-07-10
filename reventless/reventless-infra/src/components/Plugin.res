@@ -88,5 +88,6 @@ module type T = {
     ~inboundTranslationSlices: array<module(InboundTranslationSlice.T)>=?,
     ~extensions: array<module(Extension.Blueprint)>=?,
     ~extensionPoints: array<module(ExtensionPointMapping.Mapping)>=?,
+    ~componentChapters: dict<string>=?,
   ) => Reventless.Plugin.pluginStructure
 }

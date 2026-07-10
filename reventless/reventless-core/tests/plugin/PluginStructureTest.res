@@ -295,4 +295,38 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       )->toBe(None)
     })
   })
+
+  // The generator captures each component's chapter (source-folder grouping band)
+  // and passes it as ~componentChapters; Plugin_Structure looks it up by Spec.name
+  // and threads it onto every def, so a deployed-graph consumer can render chapter
+  // bands without workspace access. See docs/plans/deployed-chapter-grouping.md.
+  describe("componentChapters threading", () => {
+    let chaptered = Plugin_Structure.make(
+      ~name="TestPlugin",
+      ~stateChangeSlices=[module(PsPlaceOrderSlice), module(PsShipOrderSlice)],
+      ~stateViewSlices=[module(PsOrdersViewSlice)],
+      // PlaceOrder + Orders live under a chapter; ShipOrder does not.
+      ~componentChapters=Dict.fromArray([("PlaceOrder", "Order"), ("Orders", "Order")]),
+    )
+
+    testSync("a chaptered state-change slice carries Some(chapter)", () => {
+      let placeOrder = chaptered.stateChangeSlices->Array.getUnsafe(0)
+      expect(placeOrder.chapter)->toEqual(Some("Order"))
+    })
+
+    testSync("a chaptered state-view slice carries Some(chapter)", () => {
+      let orders = chaptered.stateViewSlices->Array.getUnsafe(0)
+      expect(orders.chapter)->toEqual(Some("Order"))
+    })
+
+    testSync("a component absent from the map carries None", () => {
+      let shipOrder = chaptered.stateChangeSlices->Array.getUnsafe(1)
+      expect(shipOrder.chapter)->toEqual(None)
+    })
+
+    testSync("no ~componentChapters → every def is chapterless (None)", () => {
+      let placeOrder = structure.stateChangeSlices->Array.getUnsafe(0)
+      expect(placeOrder.chapter)->toEqual(None)
+    })
+  })
 })

@@ -22,6 +22,53 @@ type discoveredFile = {stem: string, componentType: componentType, epGroup: opti
 
 let folderToComponentType = ComponentKind.folderToKind
 
+// The intra-plugin grouping band ("chapter") a file belongs to, derived from its
+// path relative to `src/`: the first directory segment that is not a recognised
+// kind-folder. `src/<Chapter>/<Kind>/<Component>.res` → `Some("<Chapter>")`; a file
+// directly under a kind-folder (`src/<Kind>/<Component>.res`) or at the src root →
+// `None`. Uses the single-source `ComponentKind.isKindFolder`, so a chapter read
+// here (build time, disk) agrees with the authoring tool's identical heuristic and
+// with a chapter reflected off the deployed plugin structure. See
+// docs/plans/deployed-chapter-grouping.md.
+let chapterOf = (relPath: string): option<string> => {
+  let segments = relPath->String.split("/")
+  // Need at least one directory segment before the filename.
+  if segments->Array.length < 2 {
+    None
+  } else {
+    switch segments->Array.get(0) {
+    | Some(first) if !ComponentKind.isKindFolder(first) => Some(first)
+    | _ => None
+    }
+  }
+}
+
+// Deduplicated (stem → chapter) pairs across the discovered files, sorted by stem
+// for deterministic codegen. Only files that carry a chapter are included; stems are
+// unique within a plugin (validated), so keying by stem cannot collide. Body files
+// (`_Behavior`, `_Projections`, …) share their component's chapter but are never
+// looked up by `Spec.name`, so their presence is harmless.
+let chaptersByStem = (discovered: array<discoveredFile>): array<(string, string)> => {
+  let byStem: Dict.t<string> = Dict.make()
+  discovered->Array.forEach(d =>
+    switch chapterOf(d.relPath) {
+    | Some(ch) => byStem->Dict.set(d.stem, ch)
+    | None => ()
+    }
+  )
+  byStem
+  ->Dict.toArray
+  ->Array.toSorted(((a, _), (b, _)) =>
+    if a < b {
+      -1.0
+    } else if a > b {
+      1.0
+    } else {
+      0.0
+    }
+  )
+}
+
 let isAlwaysExcludedDir = (name: string): bool =>
   name === "Plugin" || name === "tests" || name === "lib"
 

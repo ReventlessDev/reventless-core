@@ -39,7 +39,8 @@ let qbl = {
   labelField: "displayName",
   searchableFields: qbl_searchableFields,
   statusField: undefined,
-  visibility: undefined
+  visibility: undefined,
+  chapter: undefined
 };
 
 let wbl_commands = [cmd];
@@ -63,7 +64,8 @@ let wbl = {
   consumedEventTypes: wbl_consumedEventTypes,
   linkedViews: wbl_linkedViews,
   consistencyRead: undefined,
-  events: wbl_events
+  events: wbl_events,
+  chapter: undefined
 };
 
 let structure_readModels = [qbl];
@@ -78,7 +80,8 @@ let structure_automationSlices = [{
     name: "Restocker",
     consumedEventTypes: ["StockLow"],
     producedCommandTypes: ["Restock"],
-    targetName: "Product"
+    targetName: "Product",
+    chapter: undefined
   }];
 
 let structure_outboundTranslationSlices = [{
@@ -86,14 +89,16 @@ let structure_outboundTranslationSlices = [{
     consumedEventTypes: ["OrderPlaced"],
     inboundCommandTypes: ["Ship"],
     targetName: undefined,
-    externalSystem: undefined
+    externalSystem: undefined,
+    chapter: undefined
   }];
 
 let structure_inboundTranslationSlices = [{
     name: "FromBilling",
     commandTypes: ["RecordPayment"],
     targetName: "Order",
-    externalSystem: undefined
+    externalSystem: undefined,
+    chapter: undefined
   }];
 
 let structure_extensions = [{
@@ -184,7 +189,8 @@ globalThis.describe("visibility filtering (deployed AutoUI hides Internal)", () 
     labelField: "name",
     searchableFields: internalQbl_searchableFields,
     statusField: undefined,
-    visibility: internalQbl_visibility
+    visibility: internalQbl_visibility,
+    chapter: undefined
   };
   let mixed_readModels = [
     qbl,
@@ -245,7 +251,8 @@ globalThis.describe("allowedStates + statusField populated", () => {
     labelField: "name",
     searchableFields: qblWithStatus_searchableFields,
     statusField: qblWithStatus_statusField,
-    visibility: undefined
+    visibility: undefined,
+    chapter: undefined
   };
   let wblWithStates_commands = [cmdWithStates];
   let wblWithStates_producedEventTypes = [];
@@ -259,7 +266,8 @@ globalThis.describe("allowedStates + statusField populated", () => {
     consumedEventTypes: wblWithStates_consumedEventTypes,
     linkedViews: wblWithStates_linkedViews,
     consistencyRead: undefined,
-    events: wblWithStates_events
+    events: wblWithStates_events,
+    chapter: undefined
   };
   let structureWithStates_readModels = [qblWithStatus];
   let structureWithStates_stateViewSlices = [];

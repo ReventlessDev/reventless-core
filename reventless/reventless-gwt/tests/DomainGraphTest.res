@@ -19,7 +19,7 @@ let command = (~name, ~mutationField, ~apiExposed=None): Reventless.Plugin.comma
 
 let evt = (~name): Reventless.Plugin.eventDef => {name, schema: "", references: []}
 
-let writable = (~name, ~commands=[], ~produces=[], ~consumes=[], ~linkedViews=[], ~events=[]): Reventless.Plugin.writableDef => {
+let writable = (~name, ~commands=[], ~produces=[], ~consumes=[], ~linkedViews=[], ~events=[], ~chapter=None): Reventless.Plugin.writableDef => {
   name,
   commands,
   producedEventTypes: produces,
@@ -27,9 +27,10 @@ let writable = (~name, ~commands=[], ~produces=[], ~consumes=[], ~linkedViews=[]
   linkedViews,
   consistencyRead: None,
   events,
+  chapter,
 }
 
-let queryable = (~name, ~consumes=[], ~visibility=None): Reventless.Plugin.queryableDef => {
+let queryable = (~name, ~consumes=[], ~visibility=None, ~chapter=None): Reventless.Plugin.queryableDef => {
   name,
   queryField: "",
   schema: "",
@@ -39,28 +40,32 @@ let queryable = (~name, ~consumes=[], ~visibility=None): Reventless.Plugin.query
   searchableFields: [],
   statusField: None,
   visibility,
+  chapter,
 }
 
-let automation = (~name, ~consumes=[], ~produces=[], ~target=""): Reventless.Plugin.automationSliceDef => {
+let automation = (~name, ~consumes=[], ~produces=[], ~target="", ~chapter=None): Reventless.Plugin.automationSliceDef => {
   name,
   consumedEventTypes: consumes,
   producedCommandTypes: produces,
   targetName: target,
+  chapter,
 }
 
-let inbound = (~name, ~produces=[], ~target="", ~ext=None): Reventless.Plugin.inboundTranslationSliceDef => {
+let inbound = (~name, ~produces=[], ~target="", ~ext=None, ~chapter=None): Reventless.Plugin.inboundTranslationSliceDef => {
   name,
   commandTypes: produces,
   targetName: target,
   externalSystem: ext,
+  chapter,
 }
 
-let outbound = (~name, ~consumes=[], ~produces=[], ~target=None, ~ext=None): Reventless.Plugin.outboundTranslationSliceDef => {
+let outbound = (~name, ~consumes=[], ~produces=[], ~target=None, ~ext=None, ~chapter=None): Reventless.Plugin.outboundTranslationSliceDef => {
   name,
   consumedEventTypes: consumes,
   inboundCommandTypes: produces,
   targetName: target,
   externalSystem: ext,
+  chapter,
 }
 
 let structure = (

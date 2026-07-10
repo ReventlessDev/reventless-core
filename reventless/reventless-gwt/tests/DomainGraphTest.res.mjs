@@ -27,12 +27,13 @@ function evt(name) {
   };
 }
 
-function writable(name, commandsOpt, producesOpt, consumesOpt, linkedViewsOpt, eventsOpt) {
+function writable(name, commandsOpt, producesOpt, consumesOpt, linkedViewsOpt, eventsOpt, chapterOpt) {
   let commands = commandsOpt !== undefined ? commandsOpt : [];
   let produces = producesOpt !== undefined ? producesOpt : [];
   let consumes = consumesOpt !== undefined ? consumesOpt : [];
   let linkedViews = linkedViewsOpt !== undefined ? linkedViewsOpt : [];
   let events = eventsOpt !== undefined ? eventsOpt : [];
+  let chapter = chapterOpt !== undefined ? Primitive_option.valFromOption(chapterOpt) : undefined;
   return {
     name: name,
     commands: commands,
@@ -40,13 +41,15 @@ function writable(name, commandsOpt, producesOpt, consumesOpt, linkedViewsOpt, e
     consumedEventTypes: consumes,
     linkedViews: linkedViews,
     consistencyRead: undefined,
-    events: events
+    events: events,
+    chapter: chapter
   };
 }
 
-function queryable(name, consumesOpt, visibilityOpt) {
+function queryable(name, consumesOpt, visibilityOpt, chapterOpt) {
   let consumes = consumesOpt !== undefined ? consumesOpt : [];
   let visibility = visibilityOpt !== undefined ? Primitive_option.valFromOption(visibilityOpt) : undefined;
+  let chapter = chapterOpt !== undefined ? Primitive_option.valFromOption(chapterOpt) : undefined;
   return {
     name: name,
     queryField: "",
@@ -56,45 +59,52 @@ function queryable(name, consumesOpt, visibilityOpt) {
     labelField: "id",
     searchableFields: [],
     statusField: undefined,
-    visibility: visibility
+    visibility: visibility,
+    chapter: chapter
   };
 }
 
-function automation(name, consumesOpt, producesOpt, targetOpt) {
+function automation(name, consumesOpt, producesOpt, targetOpt, chapterOpt) {
   let consumes = consumesOpt !== undefined ? consumesOpt : [];
   let produces = producesOpt !== undefined ? producesOpt : [];
   let target = targetOpt !== undefined ? targetOpt : "";
+  let chapter = chapterOpt !== undefined ? Primitive_option.valFromOption(chapterOpt) : undefined;
   return {
     name: name,
     consumedEventTypes: consumes,
     producedCommandTypes: produces,
-    targetName: target
+    targetName: target,
+    chapter: chapter
   };
 }
 
-function inbound(name, producesOpt, targetOpt, extOpt) {
+function inbound(name, producesOpt, targetOpt, extOpt, chapterOpt) {
   let produces = producesOpt !== undefined ? producesOpt : [];
   let target = targetOpt !== undefined ? targetOpt : "";
   let ext = extOpt !== undefined ? Primitive_option.valFromOption(extOpt) : undefined;
+  let chapter = chapterOpt !== undefined ? Primitive_option.valFromOption(chapterOpt) : undefined;
   return {
     name: name,
     commandTypes: produces,
     targetName: target,
-    externalSystem: ext
+    externalSystem: ext,
+    chapter: chapter
   };
 }
 
-function outbound(name, consumesOpt, producesOpt, targetOpt, extOpt) {
+function outbound(name, consumesOpt, producesOpt, targetOpt, extOpt, chapterOpt) {
   let consumes = consumesOpt !== undefined ? consumesOpt : [];
   let produces = producesOpt !== undefined ? producesOpt : [];
   let target = targetOpt !== undefined ? Primitive_option.valFromOption(targetOpt) : undefined;
   let ext = extOpt !== undefined ? Primitive_option.valFromOption(extOpt) : undefined;
+  let chapter = chapterOpt !== undefined ? Primitive_option.valFromOption(chapterOpt) : undefined;
   return {
     name: name,
     consumedEventTypes: consumes,
     inboundCommandTypes: produces,
     targetName: target,
-    externalSystem: ext
+    externalSystem: ext,
+    chapter: chapter
   };
 }
 
@@ -146,7 +156,7 @@ function nodeKind(g, id) {
 
 globalThis.describe("DomainGraph.build", () => {
   globalThis.test("Command → Aggregate → Event → ReadModel (DCB consumedEventTypes)", async () => {
-    let shop = structure([writable("Order", [command("Place", "Shop_Order_Place", undefined)], ["Shop.Placed"], undefined, undefined, undefined)], undefined, [queryable("OrderView", ["Shop.Placed"], undefined)], undefined, undefined, undefined, undefined, undefined);
+    let shop = structure([writable("Order", [command("Place", "Shop_Order_Place", undefined)], ["Shop.Placed"], undefined, undefined, undefined, undefined)], undefined, [queryable("OrderView", ["Shop.Placed"], undefined, undefined)], undefined, undefined, undefined, undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -171,7 +181,7 @@ globalThis.describe("DomainGraph.build", () => {
           schema: "",
           references: []
         }
-      ])], undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+      ], undefined)], undefined, undefined, undefined, undefined, undefined, undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Catalog",
         shop
@@ -193,7 +203,7 @@ globalThis.describe("DomainGraph.build", () => {
           schema: "",
           references: []
         }
-      ])], undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+      ], undefined)], undefined, undefined, undefined, undefined, undefined, undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Catalog",
         shop
@@ -202,7 +212,7 @@ globalThis.describe("DomainGraph.build", () => {
     globalThis.expect(hasEdge(g, "Catalog.Archived", "Catalog:Categories", "Projects")).toBe(true);
   });
   globalThis.test("an Internal StateViewSlice still gets a node + projects edge (dev graph shows it)", async () => {
-    let shop = structure([writable("Order", undefined, ["Shop.Placed"], undefined, undefined, undefined)], undefined, [queryable("AvailableView", ["Shop.Placed"], "Internal")], undefined, undefined, undefined, undefined, undefined);
+    let shop = structure([writable("Order", undefined, ["Shop.Placed"], undefined, undefined, undefined, undefined)], undefined, [queryable("AvailableView", ["Shop.Placed"], "Internal", undefined)], undefined, undefined, undefined, undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -214,7 +224,7 @@ globalThis.describe("DomainGraph.build", () => {
     let shop = structure([writable("Order", undefined, [
         "Shop.Placed",
         "Shop.Shipped"
-      ], undefined, ["Orders"], undefined)], [queryable("Orders", undefined, undefined)], undefined, undefined, undefined, undefined, undefined, undefined);
+      ], undefined, ["Orders"], undefined, undefined)], [queryable("Orders", undefined, undefined, undefined)], undefined, undefined, undefined, undefined, undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -223,7 +233,7 @@ globalThis.describe("DomainGraph.build", () => {
     globalThis.expect(hasEdge(g, "Shop.Shipped", "Shop:Orders", "Projects")).toBe(true);
   });
   globalThis.test("automation slices are triggered by their consumed events", async () => {
-    let shop = structure([writable("Order", undefined, ["Shop.Placed"], undefined, undefined, undefined)], undefined, undefined, undefined, [automation("Notify", ["Shop.Placed"], undefined, undefined)], undefined, undefined, undefined);
+    let shop = structure([writable("Order", undefined, ["Shop.Placed"], undefined, undefined, undefined, undefined)], undefined, undefined, undefined, [automation("Notify", ["Shop.Placed"], undefined, undefined, undefined)], undefined, undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -235,7 +245,7 @@ globalThis.describe("DomainGraph.build", () => {
     let shop = structure(undefined, undefined, undefined, [writable("Ship", [
         command("ShipOrder", "Shop_Ship_ShipOrder", undefined),
         command("Place", "Shop_Ship_Place", undefined)
-      ], ["Shop.Shipped"], undefined, undefined, undefined)], [automation("AutoShip", ["Shop.Placed"], ["AutoShip.ShipOrder"], "Ship")], undefined, undefined, undefined);
+      ], ["Shop.Shipped"], undefined, undefined, undefined, undefined)], [automation("AutoShip", ["Shop.Placed"], ["AutoShip.ShipOrder"], "Ship", undefined)], undefined, undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -244,7 +254,7 @@ globalThis.describe("DomainGraph.build", () => {
     globalThis.expect(hasEdge(g, "Shop:AutoShip", "Shop_Ship_Place", "DelegatesTo")).toBe(false);
   });
   globalThis.test("an inbound translation routes to the command it raises on its target", async () => {
-    let shop = structure(undefined, undefined, undefined, [writable("Product", [command("Add", "Shop_Product_Add", undefined)], undefined, undefined, undefined, undefined)], undefined, undefined, [inbound("ImportProduct", ["ImportProduct.Add"], "Product", undefined)], undefined);
+    let shop = structure(undefined, undefined, undefined, [writable("Product", [command("Add", "Shop_Product_Add", undefined)], undefined, undefined, undefined, undefined, undefined)], undefined, undefined, [inbound("ImportProduct", ["ImportProduct.Add"], "Product", undefined, undefined)], undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -253,7 +263,7 @@ globalThis.describe("DomainGraph.build", () => {
     globalThis.expect(hasEdge(g, "Shop:ImportProduct", "Shop_Product_Add", "DelegatesTo")).toBe(true);
   });
   globalThis.test("an outbound translation with a target routes to the command it raises", async () => {
-    let shop = structure(undefined, undefined, undefined, [writable("Product", [command("Sync", "Shop_Product_Sync", undefined)], undefined, undefined, undefined, undefined)], undefined, [outbound("ExportProduct", ["Shop.Added"], ["ExportProduct.Sync"], "Product", undefined)], undefined, undefined);
+    let shop = structure(undefined, undefined, undefined, [writable("Product", [command("Sync", "Shop_Product_Sync", undefined)], undefined, undefined, undefined, undefined, undefined)], undefined, [outbound("ExportProduct", ["Shop.Added"], ["ExportProduct.Sync"], "Product", undefined, undefined)], undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -261,7 +271,7 @@ globalThis.describe("DomainGraph.build", () => {
     globalThis.expect(hasEdge(g, "Shop:ExportProduct", "Shop_Product_Sync", "DelegatesTo")).toBe(true);
   });
   globalThis.test("an inbound translation naming an external system draws a box feeding it", async () => {
-    let shop = structure(undefined, undefined, undefined, undefined, undefined, undefined, [inbound("ImportProduct", ["ImportProduct.Add"], "Product", "SupplierFeed")], undefined);
+    let shop = structure(undefined, undefined, undefined, undefined, undefined, undefined, [inbound("ImportProduct", ["ImportProduct.Add"], "Product", "SupplierFeed", undefined)], undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -272,7 +282,7 @@ globalThis.describe("DomainGraph.build", () => {
     globalThis.expect(edgeLabel(g, "ext:SupplierFeed", "Shop:ImportProduct", "TranslatesIn")).toEqual(undefined);
   });
   globalThis.test("an outbound translation naming an external system feeds the box", async () => {
-    let shop = structure(undefined, undefined, undefined, undefined, undefined, [outbound("SendEmail", ["Shop.Placed"], undefined, Primitive_option.some(undefined), "EmailService")], undefined, undefined);
+    let shop = structure(undefined, undefined, undefined, undefined, undefined, [outbound("SendEmail", ["Shop.Placed"], undefined, Primitive_option.some(undefined), "EmailService", undefined)], undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -282,7 +292,7 @@ globalThis.describe("DomainGraph.build", () => {
     globalThis.expect(edgeLabel(g, "Shop:SendEmail", "ext:EmailService", "TranslatesOut")).toEqual(undefined);
   });
   globalThis.test("translation slices with no external system draw no box (opt-in)", async () => {
-    let shop = structure(undefined, undefined, undefined, undefined, undefined, undefined, [inbound("ImportProduct", undefined, "Product", undefined)], undefined);
+    let shop = structure(undefined, undefined, undefined, undefined, undefined, undefined, [inbound("ImportProduct", undefined, "Product", undefined, undefined)], undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -290,8 +300,8 @@ globalThis.describe("DomainGraph.build", () => {
     globalThis.expect(g.nodes.some(n => n.kind === "ExternalSystem")).toBe(false);
   });
   globalThis.test("two slices naming the same external system share one deduped box", async () => {
-    let a = structure(undefined, undefined, undefined, undefined, undefined, [outbound("SendEmailA", ["A.X"], undefined, Primitive_option.some(undefined), "EmailService")], undefined, undefined);
-    let b = structure(undefined, undefined, undefined, undefined, undefined, undefined, [inbound("FromEmail", ["FromEmail.Record"], "Inbox", "EmailService")], undefined);
+    let a = structure(undefined, undefined, undefined, undefined, undefined, [outbound("SendEmailA", ["A.X"], undefined, Primitive_option.some(undefined), "EmailService", undefined)], undefined, undefined);
+    let b = structure(undefined, undefined, undefined, undefined, undefined, undefined, [inbound("FromEmail", ["FromEmail.Record"], "Inbox", "EmailService", undefined)], undefined);
     let g = DomainGraph$ReventlessGwt.build([
       [
         "PluginA",
@@ -308,8 +318,8 @@ globalThis.describe("DomainGraph.build", () => {
   });
   globalThis.test("an event produced by two write-sides is one node with two emit edges", async () => {
     let shop = structure([
-      writable("A", undefined, ["Shop.Touched"], undefined, undefined, undefined),
-      writable("B", undefined, ["Shop.Touched"], undefined, undefined, undefined)
+      writable("A", undefined, ["Shop.Touched"], undefined, undefined, undefined, undefined),
+      writable("B", undefined, ["Shop.Touched"], undefined, undefined, undefined, undefined)
     ], undefined, undefined, undefined, undefined, undefined, undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
@@ -329,7 +339,7 @@ globalThis.describe("DomainGraph.build", () => {
       eventTypes: extension_eventTypes,
       commandTypes: extension_commandTypes
     };
-    let init = structure([writable("ProductDemand", undefined, ["Catalog.Recorded"], undefined, undefined, undefined)], undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let init = structure([writable("ProductDemand", undefined, ["Catalog.Recorded"], undefined, undefined, undefined, undefined)], undefined, undefined, undefined, undefined, undefined, undefined, undefined);
     let catalog_readModels = init.readModels;
     let catalog_stateViewSlices = init.stateViewSlices;
     let catalog_stateChangeSlices = init.stateChangeSlices;
@@ -373,7 +383,7 @@ globalThis.describe("DomainGraph.build", () => {
       eventTypes: extension_eventTypes,
       commandTypes: extension_commandTypes
     };
-    let init = structure(undefined, undefined, undefined, [writable("ProductDemand", [command("RecordDemand", "Catalog_ProductDemand_RecordDemand", undefined)], ["Catalog.Recorded"], undefined, undefined, undefined)], undefined, undefined, undefined, undefined);
+    let init = structure(undefined, undefined, undefined, [writable("ProductDemand", [command("RecordDemand", "Catalog_ProductDemand_RecordDemand", undefined)], ["Catalog.Recorded"], undefined, undefined, undefined, undefined)], undefined, undefined, undefined, undefined);
     let catalog_readModels = init.readModels;
     let catalog_stateViewSlices = init.stateViewSlices;
     let catalog_stateChangeSlices = init.stateChangeSlices;
@@ -412,7 +422,7 @@ globalThis.describe("DomainGraph.build", () => {
       eventTypes: extension_eventTypes,
       commandTypes: extension_commandTypes
     };
-    let init = structure([writable("ProductDemand", undefined, ["Catalog.Recorded"], undefined, undefined, undefined)], undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let init = structure([writable("ProductDemand", undefined, ["Catalog.Recorded"], undefined, undefined, undefined, undefined)], undefined, undefined, undefined, undefined, undefined, undefined, undefined);
     let catalog_readModels = init.readModels;
     let catalog_stateViewSlices = init.stateViewSlices;
     let catalog_stateChangeSlices = init.stateChangeSlices;
@@ -449,7 +459,7 @@ globalThis.describe("DomainGraph.build", () => {
       sourceEventTypes: ep_sourceEventTypes,
       commandTypes: ep_commandTypes
     };
-    let catalog = structure(undefined, undefined, undefined, [writable("AddProduct", [command("AddProduct", "Catalog_AddProduct", undefined)], ["Catalog.ProductAdded"], undefined, undefined, undefined)], undefined, undefined, undefined, [ep]);
+    let catalog = structure(undefined, undefined, undefined, [writable("AddProduct", [command("AddProduct", "Catalog_AddProduct", undefined)], ["Catalog.ProductAdded"], undefined, undefined, undefined, undefined)], undefined, undefined, undefined, [ep]);
     let g = DomainGraph$ReventlessGwt.build([[
         "Catalog",
         catalog
@@ -469,7 +479,7 @@ globalThis.describe("DomainGraph.build", () => {
       sourceEventTypes: ep_sourceEventTypes,
       commandTypes: ep_commandTypes
     };
-    let catalog = structure(undefined, undefined, undefined, [writable("AddProduct", [command("AddProduct", "Catalog_AddProduct", undefined)], ["Catalog.ProductAdded"], undefined, undefined, undefined)], undefined, undefined, undefined, [ep]);
+    let catalog = structure(undefined, undefined, undefined, [writable("AddProduct", [command("AddProduct", "Catalog_AddProduct", undefined)], ["Catalog.ProductAdded"], undefined, undefined, undefined, undefined)], undefined, undefined, undefined, [ep]);
     let g = DomainGraph$ReventlessGwt.build([[
         "Catalog",
         catalog

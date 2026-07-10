@@ -195,7 +195,32 @@ function Make(Platform) {
       moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.moduleUrl,
       mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
       mapOutgoingEvent: Orders_ExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
-    }]);
+    }], Object.fromEntries([
+    [
+      "AvailableProducts",
+      "CatalogProduct"
+    ],
+    [
+      "CatalogProduct",
+      "CatalogProduct"
+    ],
+    [
+      "Customer",
+      "Customer"
+    ],
+    [
+      "Customers",
+      "Customer"
+    ],
+    [
+      "Order",
+      "Order"
+    ],
+    [
+      "Orders",
+      "Order"
+    ]
+  ]));
   let make = () => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [
     CatalogProductAggregate,
     CustomerAggregate,

@@ -293,7 +293,56 @@ function Make(Platform) {
       moduleUrl: Products_ExtensionPointMapping$CatalogPlugin.moduleUrl,
       mapIncomingCommand: Products_ExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
       mapOutgoingEvent: Products_ExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
-    }]);
+    }], Object.fromEntries([
+    [
+      "AddCategory",
+      "Category"
+    ],
+    [
+      "AddProduct",
+      "Product"
+    ],
+    [
+      "ArchiveCategory",
+      "Category"
+    ],
+    [
+      "Categories",
+      "Category"
+    ],
+    [
+      "ChangeProductDescription",
+      "Product"
+    ],
+    [
+      "ChangeProductName",
+      "Product"
+    ],
+    [
+      "ChangeProductPrice",
+      "Product"
+    ],
+    [
+      "ImportProduct",
+      "Product"
+    ],
+    [
+      "ProductDemand",
+      "Product"
+    ],
+    [
+      "Products",
+      "Product"
+    ],
+    [
+      "RecordProductDemand",
+      "ProductDemand"
+    ],
+    [
+      "RenameCategory",
+      "Category"
+    ]
+  ]));
   let make = () => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], undefined, undefined, [ImportProductsTask], [
     AddCategorySlice,
     AddProductSlice,

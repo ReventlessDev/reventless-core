@@ -269,6 +269,7 @@ let renderPluginStructureCall = (
   ~inboundTranslationSlices: array<string>,
   ~extensions: array<string>,
   ~extensionPoints: array<Pairing.extensionPointDef>,
+  ~componentChapters: array<(string, string)>,
 ): option<array<string>> => {
   // The structure call carries the EP *mapping* files (one per Delegate
   // connection), not the wrapped ExtensionPoint module — Plugin_Structure reads
@@ -336,6 +337,16 @@ let renderPluginStructureCall = (
     if epMappingStems->Array.length > 0 {
       let entries = epMappingStems->Array.map(s => "module(" ++ s ++ ")")
       ls->Array.push("    ~extensionPoints=[" ++ entries->Array.join(", ") ++ "],")
+    }
+    // Chapter grouping bands per component, captured from the source folder layout.
+    // Only emitted when at least one component lives under a chapter folder, so
+    // plugins with a flat `src/` keep a byte-identical generated Plugin.res.
+    if componentChapters->Array.length > 0 {
+      let entries =
+        componentChapters->Array.map(((stem, chapter)) =>
+          "(\"" ++ stem ++ "\", \"" ++ chapter ++ "\")"
+        )
+      ls->Array.push("    ~componentChapters=Dict.fromArray([" ++ entries->Array.join(", ") ++ "]),")
     }
     ls->Array.push("  )")
     Some(ls)
@@ -493,7 +504,11 @@ let renderAwsWrapper = (~compositionNamespace: string): string => {
 
 // ── Composition-variant render ───────────────────────────────────────────────
 
-let renderComposition = (~config: Config.config, ~resolved: Pairing.resolved): string => {
+let renderComposition = (
+  ~config: Config.config,
+  ~resolved: Pairing.resolved,
+  ~componentChapters: array<(string, string)>,
+): string => {
   let lines: array<string> = []
 
   // Header
@@ -616,6 +631,7 @@ let renderComposition = (~config: Config.config, ~resolved: Pairing.resolved): s
     ~inboundTranslationSlices=resolved.inboundTranslationSlices,
     ~extensions=resolved.extensions,
     ~extensionPoints=resolved.extensionPoints,
+    ~componentChapters,
   )
   let hasPluginStructure = pluginStructureLines->Option.isSome
   switch pluginStructureLines {
@@ -706,8 +722,28 @@ let render = (
 ): string => {
   validateUniqueSpecStems(~discovered)
   validateSliceTargets(~resolved)
+  // Chapter map, keyed by each component's spec stem (= its `Spec.name` for every
+  // graph-node kind, which is how `Plugin_Structure` looks the chapter up). Filtered
+  // to the actual component stems so body files (`_Behavior`, `_Projections`, …) —
+  // which `Discovery` also surfaces and which share their component's chapter — don't
+  // leak noise entries into the generated call. Tasks / extensions / extension points
+  // carry no chapter field, so they are excluded too.
+  let componentStems = Array.flat([
+    resolved.aggregates->Array.map(({spec}) => spec),
+    resolved.readModels->Array.map(({readModel}) => readModel),
+    resolved.stateChangeSlices,
+    resolved.stateViewSlices,
+    resolved.stateViewSlicesStream,
+    resolved.automationSlices,
+    resolved.outboundTranslationSlices,
+    resolved.inboundTranslationSlices,
+  ])
+  let componentChapters =
+    Discovery.chaptersByStem(discovered)->Array.filter(((stem, _)) =>
+      componentStems->Array.includes(stem)
+    )
   switch config.variant {
   | Aws({compositionNamespace}) => renderAwsWrapper(~compositionNamespace)
-  | Composition => renderComposition(~config, ~resolved)
+  | Composition => renderComposition(~config, ~resolved, ~componentChapters)
   }
 }

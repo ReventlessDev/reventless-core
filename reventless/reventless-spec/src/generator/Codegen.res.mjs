@@ -4,6 +4,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Pairing$Reventless from "./Pairing.res.mjs";
+import * as Discovery$Reventless from "./Discovery.res.mjs";
 
 function stripSuffix(s, suffix) {
   if (s.endsWith(suffix)) {
@@ -185,7 +186,7 @@ function renderTaskMakeParam(tasks) {
   return "      ~tasks=[" + entries.join(", ") + "],";
 }
 
-function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices, stateViewSlicesStream, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints) {
+function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices, stateViewSlicesStream, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints, componentChapters) {
   let epMappingStems = extensionPoints.flatMap(param => param.mappings);
   let hasComponents = aggregates.length !== 0 || readModels.length !== 0 || stateViewSlices.length !== 0 || stateViewSlicesStream.length !== 0 || stateChangeSlices.length !== 0 || automationSlices.length !== 0 || outboundTranslationSlices.length !== 0 || inboundTranslationSlices.length !== 0 || extensions.length !== 0 || epMappingStems.length !== 0;
   if (!hasComponents) {
@@ -236,6 +237,10 @@ function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices
   if (epMappingStems.length !== 0) {
     let entries$7 = epMappingStems.map(s => "module(" + s + ")");
     ls.push("    ~extensionPoints=[" + entries$7.join(", ") + "],");
+  }
+  if (componentChapters.length !== 0) {
+    let entries$8 = componentChapters.map(param => "(\"" + param[0] + "\", \"" + param[1] + "\")");
+    ls.push("    ~componentChapters=Dict.fromArray([" + entries$8.join(", ") + "]),");
   }
   ls.push("  )");
   return ls;
@@ -332,7 +337,7 @@ function renderAwsWrapper(compositionNamespace) {
   ].join("\n");
 }
 
-function renderComposition(config, resolved) {
+function renderComposition(config, resolved, componentChapters) {
   let lines = [];
   lines.push("// AUTO-GENERATED — do not edit. Run `npm run generate` to update.");
   lines.push("");
@@ -389,7 +394,7 @@ function renderComposition(config, resolved) {
     lines.push("  // Extensions");
     push(renderExtensions(resolved.extensions));
   }
-  let pluginStructureLines = renderPluginStructureCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateViewSlicesStream, resolved.stateChangeSlices, resolved.automationSlices, resolved.outboundTranslationSlices, resolved.inboundTranslationSlices, resolved.extensions, resolved.extensionPoints);
+  let pluginStructureLines = renderPluginStructureCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateViewSlicesStream, resolved.stateChangeSlices, resolved.automationSlices, resolved.outboundTranslationSlices, resolved.inboundTranslationSlices, resolved.extensions, resolved.extensionPoints, componentChapters);
   let hasPluginStructure = Stdlib_Option.isSome(pluginStructureLines);
   if (pluginStructureLines !== undefined) {
     pluginStructureLines.forEach(l => {
@@ -448,9 +453,20 @@ function renderComposition(config, resolved) {
 function render(config, resolved, discovered) {
   validateUniqueSpecStems(discovered);
   validateSliceTargets(resolved);
+  let componentStems = [
+    resolved.aggregates.map(param => param.spec),
+    resolved.readModels.map(param => param.readModel),
+    resolved.stateChangeSlices,
+    resolved.stateViewSlices,
+    resolved.stateViewSlicesStream,
+    resolved.automationSlices,
+    resolved.outboundTranslationSlices,
+    resolved.inboundTranslationSlices
+  ].flat();
+  let componentChapters = Discovery$Reventless.chaptersByStem(discovered).filter(param => componentStems.includes(param[0]));
   let match = config.variant;
   if (typeof match !== "object") {
-    return renderComposition(config, resolved);
+    return renderComposition(config, resolved, componentChapters);
   } else {
     return renderAwsWrapper(match.compositionNamespace);
   }

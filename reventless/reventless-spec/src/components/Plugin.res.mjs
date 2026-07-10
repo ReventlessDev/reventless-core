@@ -109,7 +109,8 @@ let queryableDefSchema = S.schema(s => ({
   labelField: s.m(S.string),
   searchableFields: s.m(S.array(S.string)),
   statusField: s.m(stringOptionSchema),
-  visibility: s.m(stringOptionSchema)
+  visibility: s.m(stringOptionSchema),
+  chapter: s.m(stringOptionSchema)
 }));
 
 let eventDefSchema = S.schema(s => ({
@@ -125,14 +126,16 @@ let writableDefSchema = S.schema(s => ({
   consumedEventTypes: s.m(S.array(S.string)),
   linkedViews: s.m(S.array(S.string)),
   consistencyRead: s.m(stringOptionSchema),
-  events: s.m(S.array(eventDefSchema))
+  events: s.m(S.array(eventDefSchema)),
+  chapter: s.m(stringOptionSchema)
 }));
 
 let automationSliceDefSchema = S.schema(s => ({
   name: s.m(S.string),
   consumedEventTypes: s.m(S.array(S.string)),
   producedCommandTypes: s.m(S.array(S.string)),
-  targetName: s.m(S.string)
+  targetName: s.m(S.string),
+  chapter: s.m(stringOptionSchema)
 }));
 
 let outboundTranslationSliceDefSchema = S.schema(s => ({
@@ -140,14 +143,16 @@ let outboundTranslationSliceDefSchema = S.schema(s => ({
   consumedEventTypes: s.m(S.array(S.string)),
   inboundCommandTypes: s.m(S.array(S.string)),
   targetName: s.m(stringOptionSchema),
-  externalSystem: s.m(stringOptionSchema)
+  externalSystem: s.m(stringOptionSchema),
+  chapter: s.m(stringOptionSchema)
 }));
 
 let inboundTranslationSliceDefSchema = S.schema(s => ({
   name: s.m(S.string),
   commandTypes: s.m(S.array(S.string)),
   targetName: s.m(S.string),
-  externalSystem: s.m(stringOptionSchema)
+  externalSystem: s.m(stringOptionSchema),
+  chapter: s.m(stringOptionSchema)
 }));
 
 let extensionDefSchema = S.schema(s => ({

@@ -89,7 +89,7 @@ function Make(Spec) {
         pages: pages
       };
     };
-    let makePluginDefinition = (name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt) => {
+    let makePluginDefinition = (name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt, componentChaptersOpt) => {
       let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
       let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
       let stateViewSlices = stateViewSlicesOpt !== undefined ? stateViewSlicesOpt : [];
@@ -99,7 +99,8 @@ function Make(Spec) {
       let inboundTranslationSlices = inboundTranslationSlicesOpt !== undefined ? inboundTranslationSlicesOpt : [];
       let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
-      return Plugin_Structure$ReventlessCore.make(name, aggregates, readModels, stateViewSlices, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints);
+      let componentChapters = componentChaptersOpt !== undefined ? componentChaptersOpt : ({});
+      return Plugin_Structure$ReventlessCore.make(name, aggregates, readModels, stateViewSlices, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints, componentChapters);
     };
     let make = (name, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, stateChangeSlicesOpt, stateViewSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, systemCallableComponentsOpt, uiFragments, pluginStructure, opts) => {
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
@@ -264,18 +265,36 @@ function Make(Spec) {
           allQueryDbs[param[0] + "Todo"] = param[1].queryDb;
         });
         let queryEngine = QueryEngineAdapter.make(allQueryDbs);
+        let chapterByName = {};
+        if (pluginStructure !== undefined) {
+          let put = (n, c) => {
+            if (c !== undefined) {
+              chapterByName[n] = c;
+              return;
+            }
+          };
+          pluginStructure.aggregates.forEach(d => put(d.name, d.chapter));
+          pluginStructure.readModels.forEach(d => put(d.name, d.chapter));
+          pluginStructure.stateChangeSlices.forEach(d => put(d.name, d.chapter));
+          pluginStructure.stateViewSlices.forEach(d => put(d.name, d.chapter));
+          pluginStructure.automationSlices.forEach(d => put(d.name, d.chapter));
+          pluginStructure.outboundTranslationSlices.forEach(d => put(d.name, d.chapter));
+          pluginStructure.inboundTranslationSlices.forEach(d => put(d.name, d.chapter));
+        }
         let aggregateComponents = aggregates.map(M => {
           let schema_commandTypes = DcbTag$Reventless.extractAllVariantNames(M.Spec.commandSchema);
           let schema_eventTypes = DcbTag$Reventless.extractAllVariantNames(M.Spec.eventSchema);
           let schema_errorTypes = DcbTag$Reventless.extractAllVariantNames(M.Spec.errorSchema);
           let schema_commandSchemas = [SchemaWalker$ReventlessCore.walk(M.Spec.name + ".command", M.Spec.commandSchema)];
           let schema_eventSchemas = [SchemaWalker$ReventlessCore.walk(M.Spec.name + ".event", M.Spec.eventSchema)];
+          let schema_chapter = chapterByName[M.Spec.name];
           let schema = {
             commandTypes: schema_commandTypes,
             eventTypes: schema_eventTypes,
             errorTypes: schema_errorTypes,
             commandSchemas: schema_commandSchemas,
-            eventSchemas: schema_eventSchemas
+            eventSchemas: schema_eventSchemas,
+            chapter: schema_chapter
           };
           Plugin_Helpers$ReventlessCore.componentSchemaRegistry[M.Spec.name] = schema;
           return {
@@ -290,8 +309,10 @@ function Make(Spec) {
             qn.singleFieldName,
             qn.listFieldName
           ];
+          let schema_chapter = chapterByName[R.Spec.name];
           let schema = {
-            queryFields: schema_queryFields
+            queryFields: schema_queryFields,
+            chapter: schema_chapter
           };
           Plugin_Helpers$ReventlessCore.componentSchemaRegistry[R.Spec.name] = schema;
           return {
@@ -306,20 +327,23 @@ function Make(Spec) {
           routingSchemas[As.Spec.name] = {
             consumedEventTypes: consumedEventTypes,
             producedCommandTypes: DcbTag$Reventless.extractAllVariantNames(As.Spec.commandSchema),
-            targetName: As.Spec.targetName
+            targetName: As.Spec.targetName,
+            chapter: chapterByName[As.Spec.name]
           };
         });
         outboundTranslationSlices.forEach(Ots => {
           routingSchemas[Ots.Spec.name] = {
             commandTypes: DcbTag$Reventless.extractAllVariantNames(Ots.Spec.inboundCommandSchema),
             consumedEventTypes: DcbTag$Reventless.extractVariantNames(Ots.Spec.consumedEventSchema),
-            targetName: Ots.Spec.targetName
+            targetName: Ots.Spec.targetName,
+            chapter: chapterByName[Ots.Spec.name]
           };
         });
         inboundTranslationSlices.forEach(Its => {
           routingSchemas[Its.Spec.name] = {
             commandTypes: DcbTag$Reventless.extractAllVariantNames(Its.Spec.commandSchema),
-            targetName: Its.Spec.targetName
+            targetName: Its.Spec.targetName,
+            chapter: chapterByName[Its.Spec.name]
           };
         });
         let stateSchemas = {};
@@ -327,12 +351,14 @@ function Make(Spec) {
           stateSchemas[Scs.Spec.name] = {
             commandTypes: DcbTag$Reventless.extractAllVariantNames(Scs.Spec.commandSchema),
             eventTypes: DcbTag$Reventless.extractVariantNames(Scs.Spec.eventSchema),
-            consumedEventTypes: DcbTag$Reventless.extractVariantNames(Scs.Spec.consumedEventSchema)
+            consumedEventTypes: DcbTag$Reventless.extractVariantNames(Scs.Spec.consumedEventSchema),
+            chapter: chapterByName[Scs.Spec.name]
           };
         });
         stateViewSlices.forEach(Svs => {
           stateSchemas[Svs.Spec.name] = {
-            consumedEventTypes: DcbTag$Reventless.extractVariantNames(Svs.Spec.consumedEventSchema)
+            consumedEventTypes: DcbTag$Reventless.extractVariantNames(Svs.Spec.consumedEventSchema),
+            chapter: chapterByName[Svs.Spec.name]
           };
         });
         let enrichedComponents = (d, kind, schemas) => Object.keys(d).map(name => {

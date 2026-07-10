@@ -67,7 +67,7 @@ function labelFieldsFromStateSchema(entityName, stateSchema) {
   }
 }
 
-function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt) {
+function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt, componentChaptersOpt) {
   let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
   let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
   let stateViewSlices = stateViewSlicesOpt !== undefined ? stateViewSlicesOpt : [];
@@ -77,6 +77,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   let inboundTranslationSlices = inboundTranslationSlicesOpt !== undefined ? inboundTranslationSlicesOpt : [];
   let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
   let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
+  let componentChapters = componentChaptersOpt !== undefined ? componentChaptersOpt : ({});
   let qualify = (prefix, names) => names.map(n => prefix + "." + n);
   let isCreateCommandName = name => [
     "Add",
@@ -333,7 +334,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       labelField: match[0],
       searchableFields: match[1],
       statusField: statusFieldFromStateSchema(stateSchema),
-      visibility: visibilityTag(R.Spec.visibility)
+      visibility: visibilityTag(R.Spec.visibility),
+      chapter: componentChapters[R.Spec.name]
     };
   });
   let stateViewDefs = stateViewSlices.map((SVS, i) => {
@@ -351,7 +353,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       labelField: match$1[0],
       searchableFields: match$1[1],
       statusField: statusFieldFromStateSchema(stateSchema),
-      visibility: visibilityTag(SVS.Spec.visibility)
+      visibility: visibilityTag(SVS.Spec.visibility),
+      chapter: componentChapters[SVS.Spec.name]
     };
   });
   let stateChangeDefs = stateChangeSlices.map((SCS, i) => {
@@ -366,7 +369,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       consumedEventTypes: consumed,
       linkedViews: linkedSvsFor(produced),
       consistencyRead: consistencyReadFor(consumed),
-      events: extractEventDefs(SCS.Spec.eventSchema)
+      events: extractEventDefs(SCS.Spec.eventSchema),
+      chapter: componentChapters[SCS.Spec.name]
     };
   });
   let aggregateDefs = aggregates.map((A, i) => {
@@ -379,7 +383,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       consumedEventTypes: [],
       linkedViews: linkedSvsFor(produced).concat(linkedReadModelsFor(A.Spec.name)),
       consistencyRead: undefined,
-      events: extractEventDefs(A.Spec.eventSchema)
+      events: extractEventDefs(A.Spec.eventSchema),
+      chapter: componentChapters[A.Spec.name]
     };
   });
   let automationSliceDefs = automationSlices.map(AS => {
@@ -388,7 +393,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       name: AS.Spec.name,
       consumedEventTypes: qualify(name, allConsumedVariants),
       producedCommandTypes: qualify(name, DcbTag$Reventless.extractAllVariantNames(AS.Spec.commandSchema)),
-      targetName: AS.Spec.targetName
+      targetName: AS.Spec.targetName,
+      chapter: componentChapters[AS.Spec.name]
     };
   });
   let outboundTranslationSliceDefs = outboundTranslationSlices.map(OTS => ({
@@ -396,13 +402,15 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     consumedEventTypes: qualify(name, DcbTag$Reventless.extractVariantNames(OTS.Spec.consumedEventSchema)),
     inboundCommandTypes: qualify(name, DcbTag$Reventless.extractAllVariantNames(OTS.Spec.inboundCommandSchema)),
     targetName: OTS.Spec.targetName,
-    externalSystem: OTS.Spec.externalSystem
+    externalSystem: OTS.Spec.externalSystem,
+    chapter: componentChapters[OTS.Spec.name]
   }));
   let inboundTranslationSliceDefs = inboundTranslationSlices.map(ITS => ({
     name: ITS.Spec.name,
     commandTypes: qualify(name, DcbTag$Reventless.extractAllVariantNames(ITS.Spec.commandSchema)),
     targetName: ITS.Spec.targetName,
-    externalSystem: ITS.Spec.externalSystem
+    externalSystem: ITS.Spec.externalSystem,
+    chapter: componentChapters[ITS.Spec.name]
   }));
   let extensionDefs = extensions.map(E => {
     let delegateNames = E.mappings.map(M => M.delegateName);

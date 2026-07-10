@@ -96,6 +96,7 @@ let pluginAggregate: writableDef = {
   linkedViews: ["Plugins"],
   consistencyRead: None,
   events: [],
+  chapter: None,
 }
 
 let pluginReadModel: queryableDef = {
@@ -110,6 +111,7 @@ let pluginReadModel: queryableDef = {
   searchableFields: ["name"],
   statusField: Some("status"),
   visibility: None,
+  chapter: None,
 }
 
 let structure: pluginStructure = {

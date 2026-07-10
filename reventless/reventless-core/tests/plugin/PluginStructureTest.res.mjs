@@ -183,7 +183,7 @@ let structure = Plugin_Structure$ReventlessCore.make("TestPlugin", undefined, un
 ], [
   PsPlaceOrderSlice,
   PsShipOrderSlice
-], undefined, undefined, undefined, undefined, undefined);
+], undefined, undefined, undefined, undefined, undefined, undefined);
 
 globalThis.describe("Plugin_Structure.make — Phase 2 graph fields", () => {
   globalThis.describe("stateChangeSlices", () => {
@@ -372,6 +372,37 @@ globalThis.describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       let ordersSchema = JSON.parse(structure.stateViewSlices[0].schema);
       let orderIdField = getPropertyOf(ordersSchema, "orderId");
       globalThis.expect(Stdlib_Option.flatMap(orderIdField, s => getProperty(s, "x-reventless-id"))).toBe(undefined);
+    });
+  });
+  globalThis.describe("componentChapters threading", () => {
+    let chaptered = Plugin_Structure$ReventlessCore.make("TestPlugin", undefined, undefined, [PsOrdersViewSlice], [
+      PsPlaceOrderSlice,
+      PsShipOrderSlice
+    ], undefined, undefined, undefined, undefined, undefined, Object.fromEntries([
+      [
+        "PlaceOrder",
+        "Order"
+      ],
+      [
+        "Orders",
+        "Order"
+      ]
+    ]));
+    globalThis.test("a chaptered state-change slice carries Some(chapter)", () => {
+      let placeOrder = chaptered.stateChangeSlices[0];
+      globalThis.expect(placeOrder.chapter).toEqual("Order");
+    });
+    globalThis.test("a chaptered state-view slice carries Some(chapter)", () => {
+      let orders = chaptered.stateViewSlices[0];
+      globalThis.expect(orders.chapter).toEqual("Order");
+    });
+    globalThis.test("a component absent from the map carries None", () => {
+      let shipOrder = chaptered.stateChangeSlices[1];
+      globalThis.expect(shipOrder.chapter).toEqual(undefined);
+    });
+    globalThis.test("no ~componentChapters → every def is chapterless (None)", () => {
+      let placeOrder = structure.stateChangeSlices[0];
+      globalThis.expect(placeOrder.chapter).toEqual(undefined);
     });
   });
 });

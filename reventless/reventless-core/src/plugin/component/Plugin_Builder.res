@@ -368,6 +368,30 @@ module Make = (
       // so only aggregates, read models, and DCB slice names are included.
 
       let extractTypes = schema => Reventless.DcbTag.extractAllVariantNames(schema)
+
+      // Chapter (intra-plugin grouping band) per component name, mirrored from the
+      // static pluginStructure so the hook surface reaches parity with it. The
+      // structure is the single source — it was populated by the generator's
+      // componentChapters map at makePluginDefinition time.
+      let chapterByName: Dict.t<string> = Dict.make()
+      switch pluginStructure {
+      | Some(ps) =>
+        let put = (n, c) =>
+          switch c {
+          | Some(ch) => chapterByName->Dict.set(n, ch)
+          | None => ()
+          }
+        ps.aggregates->Array.forEach(d => put(d.name, d.chapter))
+        ps.readModels->Array.forEach(d => put(d.name, d.chapter))
+        ps.stateChangeSlices->Array.forEach(d => put(d.name, d.chapter))
+        ps.stateViewSlices->Array.forEach(d => put(d.name, d.chapter))
+        ps.automationSlices->Array.forEach(d => put(d.name, d.chapter))
+        ps.outboundTranslationSlices->Array.forEach(d => put(d.name, d.chapter))
+        ps.inboundTranslationSlices->Array.forEach(d => put(d.name, d.chapter))
+      | None => ()
+      }
+      let chapterFor = (n: string): option<string> => chapterByName->Dict.get(n)
+
       // Build per-component schema data and register it for the deployed hook.
       let aggregateComponents = aggregates->Array.map((
         module(M: ReventlessInfra.Aggregate.T with type api = api),
@@ -382,6 +406,7 @@ module Make = (
           eventSchemas: [
             SchemaWalker.walk(M.Spec.name ++ ".event", M.Spec.eventSchema),
           ],
+          chapter: ?chapterFor(M.Spec.name),
         }
         Plugin_Helpers.componentSchemaRegistry->Dict.set(M.Spec.name, schema)
         ({name: M.Spec.name, kind: "Aggregate", schema}: Plugin_Helpers.pluginBuiltComponent)
@@ -393,6 +418,7 @@ module Make = (
         let qn = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
         let schema: Plugin_Helpers.pluginDeployedSchema = {
           queryFields: [qn.singleFieldName, qn.listFieldName],
+          chapter: ?chapterFor(R.Spec.name),
         }
         Plugin_Helpers.componentSchemaRegistry->Dict.set(R.Spec.name, schema)
         ({name: R.Spec.name, kind: "ReadModel", schema}: Plugin_Helpers.pluginBuiltComponent)
@@ -421,6 +447,7 @@ module Make = (
             consumedEventTypes,
             producedCommandTypes: extractTypes(As.Spec.commandSchema),
             targetName: As.Spec.targetName,
+            chapter: ?chapterFor(As.Spec.name),
           },
         )
       })
@@ -434,6 +461,7 @@ module Make = (
             commandTypes: extractTypes(Ots.Spec.inboundCommandSchema),
             // Outbound slices may have no target (option); pass it through.
             targetName: ?Ots.Spec.targetName,
+            chapter: ?chapterFor(Ots.Spec.name),
           },
         )
       )
@@ -445,6 +473,7 @@ module Make = (
           {
             commandTypes: extractTypes(Its.Spec.commandSchema),
             targetName: Its.Spec.targetName,
+            chapter: ?chapterFor(Its.Spec.name),
           },
         )
       )
@@ -464,13 +493,17 @@ module Make = (
             commandTypes: extractTypes(Scs.Spec.commandSchema),
             eventTypes: extractEventTypes(Scs.Spec.eventSchema->S.castToUnknown),
             consumedEventTypes: extractEventTypes(Scs.Spec.consumedEventSchema->S.castToUnknown),
+            chapter: ?chapterFor(Scs.Spec.name),
           },
         )
       )
       stateViewSlices->Array.forEach((module(Svs: ReventlessInfra.StateViewSlice.T)) =>
         stateSchemas->Dict.set(
           Svs.Spec.name,
-          {consumedEventTypes: extractEventTypes(Svs.Spec.consumedEventSchema->S.castToUnknown)},
+          {
+            consumedEventTypes: extractEventTypes(Svs.Spec.consumedEventSchema->S.castToUnknown),
+            chapter: ?chapterFor(Svs.Spec.name),
+          },
         )
       )
 
@@ -993,6 +1026,7 @@ module Make = (
     ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>=[],
     ~extensions: array<module(ReventlessInfra.Extension.Blueprint)>=[],
     ~extensionPoints: array<module(ReventlessInfra.ExtensionPointMapping.Mapping)>=[],
+    ~componentChapters: dict<string>=Dict.make(),
   ): Reventless.Plugin.pluginStructure =>
     Plugin_Structure.make(
       ~name,
@@ -1005,6 +1039,7 @@ module Make = (
       ~inboundTranslationSlices,
       ~extensions,
       ~extensionPoints,
+      ~componentChapters,
     )
 
   let make = (

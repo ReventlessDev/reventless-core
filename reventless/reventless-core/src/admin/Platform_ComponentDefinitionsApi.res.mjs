@@ -115,6 +115,10 @@ function encodeQueryableDef(r) {
     [
       "statusField",
       Stdlib_Option.mapOr(r.statusField, null, prim => prim)
+    ],
+    [
+      "chapter",
+      Stdlib_Option.mapOr(r.chapter, null, prim => prim)
     ]
   ]);
 }
@@ -165,6 +169,10 @@ function encodeWritableDef(w) {
     [
       "events",
       w.events.map(encodeEventDef)
+    ],
+    [
+      "chapter",
+      Stdlib_Option.mapOr(w.chapter, null, prim => prim)
     ]
   ]);
 }
@@ -182,6 +190,10 @@ function encodeAutomationSliceDef(a) {
     [
       "producedCommandTypes",
       a.producedCommandTypes.map(prim => prim)
+    ],
+    [
+      "chapter",
+      Stdlib_Option.mapOr(a.chapter, null, prim => prim)
     ]
   ]);
 }
@@ -199,6 +211,10 @@ function encodeOutboundTranslationSliceDef(o) {
     [
       "inboundCommandTypes",
       o.inboundCommandTypes.map(prim => prim)
+    ],
+    [
+      "chapter",
+      Stdlib_Option.mapOr(o.chapter, null, prim => prim)
     ]
   ]);
 }
@@ -212,6 +228,10 @@ function encodeInboundTranslationSliceDef(i) {
     [
       "commandTypes",
       i.commandTypes.map(prim => prim)
+    ],
+    [
+      "chapter",
+      Stdlib_Option.mapOr(i.chapter, null, prim => prim)
     ]
   ]);
 }

@@ -86,7 +86,15 @@ let make = (
   ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>=[],
   ~extensions: array<module(ReventlessInfra.Extension.Blueprint)>=[],
   ~extensionPoints: array<module(ReventlessInfra.ExtensionPointMapping.Mapping)>=[],
+  // Component name → chapter (intra-plugin grouping band), captured at build time
+  // from each component's source folder by the plugin generator. A component whose
+  // spec name has no entry (or lives directly under a kind-folder) carries no chapter
+  // and renders flat. Keyed by `Spec.name`, which equals the source filename stem for
+  // every graph-node kind, so the generator can build this map from the discovered
+  // file paths. See `Codegen.chapterOf` and docs/plans/deployed-chapter-grouping.md.
+  ~componentChapters: dict<string>=Dict.make(),
 ): Reventless.Plugin.pluginStructure => {
+  let chapterOf = (compName: string): option<string> => componentChapters->Dict.get(compName)
   // Event schemas: filter out payload-less variants — DCB event-type lookups
   // can't WHERE-clause on bare-string events, so the plugin graph mustn't
   // claim cross-component edges that the runtime can't honour.
@@ -405,6 +413,7 @@ let make = (
         searchableFields,
         statusField: statusFieldFromStateSchema(stateSchema),
         visibility: visibilityTag(R.Spec.visibility),
+        chapter: chapterOf(R.Spec.name),
       }: Reventless.Plugin.queryableDef)
     })
 
@@ -427,6 +436,7 @@ let make = (
         searchableFields,
         statusField: statusFieldFromStateSchema(stateSchema),
         visibility: visibilityTag(SVS.Spec.visibility),
+        chapter: chapterOf(SVS.Spec.name),
       }: Reventless.Plugin.queryableDef)
     })
 
@@ -454,6 +464,7 @@ let make = (
         linkedViews: linkedSvsFor(produced),
         consistencyRead: consistencyReadFor(consumed),
         events: extractEventDefs(SCS.Spec.eventSchema->S.castToUnknown),
+        chapter: chapterOf(SCS.Spec.name),
       }: Reventless.Plugin.writableDef)
     })
 
@@ -475,6 +486,7 @@ let make = (
         linkedViews: Array.concat(linkedSvsFor(produced), linkedReadModelsFor(A.Spec.name)),
         consistencyRead: None,
         events: extractEventDefs(A.Spec.eventSchema->S.castToUnknown),
+        chapter: chapterOf(A.Spec.name),
       }: Reventless.Plugin.writableDef)
     })
 
@@ -497,6 +509,7 @@ let make = (
         consumedEventTypes: qualify(~prefix=name, allConsumedVariants),
         producedCommandTypes: qualify(~prefix=name, commandVariantNames(AS.Spec.commandSchema)),
         targetName: AS.Spec.targetName,
+        chapter: chapterOf(AS.Spec.name),
       }: Reventless.Plugin.automationSliceDef)
     })
 
@@ -509,6 +522,7 @@ let make = (
       inboundCommandTypes: qualify(~prefix=name, commandVariantNames(OTS.Spec.inboundCommandSchema)),
       targetName: OTS.Spec.targetName,
       externalSystem: OTS.Spec.externalSystem,
+      chapter: chapterOf(OTS.Spec.name),
     }: Reventless.Plugin.outboundTranslationSliceDef))
 
   // ── Inbound translation slices ────────────────────────────────────────────
@@ -519,6 +533,7 @@ let make = (
       commandTypes: qualify(~prefix=name, commandVariantNames(ITS.Spec.commandSchema)),
       targetName: ITS.Spec.targetName,
       externalSystem: ITS.Spec.externalSystem,
+      chapter: chapterOf(ITS.Spec.name),
     }: Reventless.Plugin.inboundTranslationSliceDef))
 
   // ── Extensions ───────────────────────────────────────────────────────────

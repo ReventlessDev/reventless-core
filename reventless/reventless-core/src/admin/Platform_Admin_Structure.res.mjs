@@ -110,7 +110,8 @@ let pluginAggregate = {
   consumedEventTypes: pluginAggregate_consumedEventTypes,
   linkedViews: pluginAggregate_linkedViews,
   consistencyRead: undefined,
-  events: pluginAggregate_events
+  events: pluginAggregate_events,
+  chapter: undefined
 };
 
 let pluginReadModel_queryField = Api_Naming$ReventlessCore.adminField("Plugins");
@@ -134,7 +135,8 @@ let pluginReadModel = {
   labelField: "name",
   searchableFields: pluginReadModel_searchableFields,
   statusField: pluginReadModel_statusField,
-  visibility: undefined
+  visibility: undefined,
+  chapter: undefined
 };
 
 let structure_readModels = [pluginReadModel];
