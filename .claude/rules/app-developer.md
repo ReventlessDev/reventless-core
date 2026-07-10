@@ -80,6 +80,7 @@ The folder supplies the kind; the spec file never carries a kind suffix; body fi
   - `@resolves({table: "TableName", field: "fieldName"})` — cross-table single-ID resolver; generates `config.idResolvers` entry. Optional record keys: `via` (index name), `plugin`, `sourceSubId`, `subIdArg`.
   - `@resolvesMany({table: "TableName", field: "fieldName"})` — cross-table multi-ID resolver on `array<string>` fields; generates `config.idsResolvers` entry. Optional: `plugin`.
   - Note: `~to`/`~as` are ReScript reserved words; `@resolves`/`@resolvesMany` use **record** payload syntax `({key: "value"})`, NOT labeled-arg syntax
+  - **UI-hint field annotations** (schema-only; emitted as `x-reventless-*` extension properties on the read model's JSON Schema, consumed by AutoUI — no runtime/projection change): `@status` — marks the lifecycle-status field (codegen `queryableDef.statusField`, falls back to a field named `"status"`); `@groupBy` — the field the list view sections rows by (emits `x-reventless-group-by: true`; enum order = section order); `@summary` — always include the field in summary/list views; `@hidden` — suppress the field from summary/list views. `@status` and `@groupBy` are at most one per record (PPX errors on duplicates). Annotations stack (e.g. `@scan @groupBy kind`).
 
 ### PPX ordering
 

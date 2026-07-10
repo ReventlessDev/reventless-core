@@ -4,8 +4,9 @@ Spec describing the structural annotations declared on the fields of an
 `stateSchema` whenever a field carries a structural annotation (`@id`,
 `@compositeId`, `@subId`, `@compositeSubId`, `@index`), a visibility
 annotation (`@hidden`, `@summary`), a hierarchical-rendering annotation
-(`@drillTarget`, `@collapsed`), or a server-query opt-in annotation
-(`@scan`, `@scanSort`). Downstream consumers (UI, MCP, codegen) read the
+(`@drillTarget`, `@collapsed`), a server-query opt-in annotation
+(`@scan`, `@scanSort`), or a UI-list annotation (`@status`, `@groupBy`).
+Downstream consumers (UI, MCP, codegen) read the
 spec to surface field roles in JSON Schema as `x-reventless-*` extension
 properties.
 

@@ -381,6 +381,32 @@ The PPX emits the field name into `stateAnnotationSpec.status` (sury metadata at
 
 ---
 
+### `@groupBy` — section the list view by a field
+
+Use on a single `@schema type state` field in a ReadModel or StateViewSlice spec to mark the field the UI's list view should group rows by. AutoUI's list view renders the read model's rows in sections keyed on the annotated field, ordered by the field's `enum` declaration order when the field is an enum.
+
+```rescript
+@@reventless.spec
+
+@schema
+type kind = Domain | PlatformInfrastructure | Commercial | Marketplace
+
+@schema
+type state = {
+  pluginId: string,
+  name: string,
+  @groupBy kind: kind,
+}
+```
+
+The PPX emits the field name into `stateAnnotationSpec.groupBy` (sury metadata attached to the state schema), and `SuryToJsonSchema.deriveObjectSchema` stamps `x-reventless-group-by: true` on the named field of the read model's JSON Schema. The UI reads that extension property; there is no runtime or projection change — this is a schema hint only.
+
+**Section ordering:** when the group field is an enum, the UI orders sections by the enum's declaration order. To change the section order, reorder the enum constructors — no UI change required.
+
+**Constraint:** at most one `@groupBy` per state record. The PPX errors on duplicate annotations within the same record. Stacks with other field annotations (e.g. `@scan @groupBy kind: kind` makes the field both server-side filterable and the list section key).
+
+---
+
 ### `@allowedStates` — per-variant command state guard
 
 Use on individual command variants in an aggregate or DCB-slice `@schema type command` to declare which lifecycle states the command is meaningful in. The payload is an expression list of status-type constructor references. AutoUI hides the command on rows whose status isn't in the set.
