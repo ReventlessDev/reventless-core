@@ -32,12 +32,7 @@ let exportedTypeNames = (genTs: string): array<string> => {
 }
 
 // (module prefix, generated file) — extend when a new @genType module is added.
-let generatedModules = [
-  ("Protocol", "../src/Protocol.gen.ts"),
-  ("GraphOps", "../src/GraphOps.gen.ts"),
-  ("D2Legend", "../src/D2Legend.gen.ts"),
-  ("DomainGraphD2", "../src/DomainGraphD2.gen.ts"),
-]
+let generatedModules = [("Protocol", "../src/Protocol.gen.ts")]
 
 let bridges = [
   ("package root", "../ReventlessVscodeProtocol.gen.ts"),

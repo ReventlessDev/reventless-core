@@ -22,24 +22,10 @@ function exportedTypeNames(genTs) {
   });
 }
 
-let generatedModules = [
-  [
+let generatedModules = [[
     "Protocol",
     "../src/Protocol.gen.ts"
-  ],
-  [
-    "GraphOps",
-    "../src/GraphOps.gen.ts"
-  ],
-  [
-    "D2Legend",
-    "../src/D2Legend.gen.ts"
-  ],
-  [
-    "DomainGraphD2",
-    "../src/DomainGraphD2.gen.ts"
-  ]
-];
+  ]];
 
 let bridges = [
   [

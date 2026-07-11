@@ -7,8 +7,6 @@
     "build": "rescript build",
     "watch": "rescript build -w",
     "clean": "rescript clean && rm -rf lib",
-    "sync:d2-styles": "node scripts/d2-classes-gen.mjs",
-    "check:d2-styles": "node scripts/d2-classes-gen.mjs --check",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "dev": "NODE_OPTIONS='--experimental-vm-modules' jest --watchAll"
   },

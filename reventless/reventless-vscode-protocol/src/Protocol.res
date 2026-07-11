@@ -26,7 +26,7 @@ let () = S.enableJson()
 // names (single source of the component vocabulary), plus the graph-only kinds
 // (`Command` / `Event` / `ExternalSystem`). ONE type for `componentMeta.kind`,
 // `componentRef.kind` and `graphNode.kind`: an inventory kind is compared against a
-// graph-node kind (GraphOps component→node resolution), so a split type would fork
+// graph-node kind (inventory→graph-node resolution), so a split type would fork
 // the vocabulary and force conversions at that seam.
 @genType @schema @unboxed
 type componentKind =

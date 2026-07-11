@@ -23,19 +23,3 @@ export type {
   streamEvent as Protocol_streamEvent,
   vsRange as Protocol_vsRange,
 } from './src/Protocol.gen';
-export type {
-  componentKind as GraphOps_componentKind,
-  edgeKind as GraphOps_edgeKind,
-  graphEdge as GraphOps_graphEdge,
-  graphLeaf as GraphOps_graphLeaf,
-  graphNode as GraphOps_graphNode,
-  leafGroups as GraphOps_leafGroups,
-  readCandidate as GraphOps_readCandidate,
-  subgraph as GraphOps_subgraph,
-} from './src/GraphOps.gen';
-export type {legendEntry as D2Legend_legendEntry} from './src/D2Legend.gen';
-export type {
-  gEdge as DomainGraphD2_gEdge,
-  gNode as DomainGraphD2_gNode,
-  subgraph as DomainGraphD2_subgraph,
-} from './src/DomainGraphD2.gen';
