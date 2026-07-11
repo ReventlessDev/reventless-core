@@ -7,13 +7,22 @@ type t = {
   name: Pulumi.Output.t<string>,
 }
 
-type protocol = | @as("sqs") SQS | @as("sms") SMS | @as("lambda") Lambda
+type protocol =
+  | @as("sqs") SQS
+  | @as("sms") SMS
+  | @as("lambda") Lambda
+  | @as("email") Email
+  | @as("email-json") EmailJson
+  | @as("http") Http
+  | @as("https") Https
+  | @as("application") Application
 
 type args = {
   endpoint: Pulumi.Input.t<string>,
   topic: Pulumi.Input.t<string>,
   protocol: protocol,
-  rawMessageDelivery: Pulumi.Input.t<bool>,
+  // Only valid for the sqs/http(s) protocols; AWS rejects it for email/sms.
+  rawMessageDelivery?: Pulumi.Input.t<bool>,
 }
 
 @module("@pulumi/aws") @scope("sns") @new
