@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.73 (2026-07-11)
+
+### Bug Fixes
+
+* **plugin-lifecycle:** heal message decode of definitions persisted before a schema field existed ([6bb3e72](https://github.com/ReventlessDev/reventless-core/commit/6bb3e7259ad606a0f77fb670bcfc680256592003))
+
+
 # 3.0.0-alpha.72 (2026-07-10)
 
 ### Features

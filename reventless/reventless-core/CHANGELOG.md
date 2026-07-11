@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.154 (2026-07-11)
+
+### Bug Fixes
+
+* **plugin-lifecycle:** heal message decode of definitions persisted before a schema field existed ([6bb3e72](https://github.com/ReventlessDev/reventless-core/commit/6bb3e7259ad606a0f77fb670bcfc680256592003))
+### Features
+
+* **monitoring:** deploy-time Monitoring hook seam for provisioned execution units ([30f1c23](https://github.com/ReventlessDev/reventless-core/commit/30f1c23ba118805dae83af9115341f4aff6db92b))
+
+
 # 3.0.0-alpha.153 (2026-07-10)
 
 ### Features

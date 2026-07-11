@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.48 (2026-07-11)
+
+### Features
+
+* **monitoring:** deploy-time Monitoring hook seam for provisioned execution units ([30f1c23](https://github.com/ReventlessDev/reventless-core/commit/30f1c23ba118805dae83af9115341f4aff6db92b))
+
+
 # 2.4.0-alpha.47 (2026-07-08)
 
 ### Bug Fixes

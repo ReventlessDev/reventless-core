@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-vscode-protocol",
-  "version": "1.0.0-alpha.17",
+  "version": "1.0.0-alpha.18",
   "description": "Shared NDJSON contract (StreamEvent) between the reventless-gwt CLI (--format=vscode) and the reventless-vscode extension — a single sury @schema both emit and decode.",
   "license": "Apache-2.0",
   "scripts": {

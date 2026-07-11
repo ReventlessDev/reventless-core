@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.18 (2026-07-11)
+
+### Bug Fixes
+
+* **vscode-protocol:** tolerate pre-v11 lowercase edge kinds in slice boxing ([afb2439](https://github.com/ReventlessDev/reventless-core/commit/afb2439fd870ba5bc3224a6039020d26f342079b))
+
+
 # 1.0.0-alpha.17 (2026-07-07)
 
 ### Features
