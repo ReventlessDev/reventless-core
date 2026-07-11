@@ -4,7 +4,7 @@ import * as Plugin$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog
 
 function Make(Platform) {
   let Composition = Plugin$CatalogPlugin.Make(Platform);
-  let make = () => Composition.make(process.env.CATALOG_UI_BUNDLE_URL);
+  let make = () => Composition.make();
   return {
     Composition: Composition,
     make: make

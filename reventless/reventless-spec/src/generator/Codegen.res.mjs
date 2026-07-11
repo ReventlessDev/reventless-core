@@ -300,12 +300,16 @@ function renderMain(config) {
     "// AUTO-GENERATED — do not edit. Run `npm run generate` to update.",
     "// " + name + " plugin — AWS deployment.",
     "",
+    "ReventlessInfra.DeployBootstrap.run(PreDeploy)",
+    "",
     "module Platform = ReventlessAws.Platform.Make()",
     "module " + name + " = Plugin.Make(Platform)",
     "",
     "let default = Platform.deployPlugin(",
     "  ~plugin=module(" + name + "),",
     ")",
+    "",
+    "ReventlessInfra.DeployBootstrap.run(PostDeploy)",
     ""
   ].join("\n");
 }

@@ -458,12 +458,19 @@ let renderMain = (~config: Config.config): string => {
     "// AUTO-GENERATED — do not edit. Run `npm run generate` to update.",
     "// " ++ name ++ " plugin — AWS deployment.",
     "",
+    // Deploy-time bootstrap seam (no-op unless a package registers a
+    // contribution). PreDeploy runs before the platform/plugin graph builds.
+    "ReventlessInfra.DeployBootstrap.run(PreDeploy)",
+    "",
     "module Platform = ReventlessAws.Platform.Make()",
     "module " ++ name ++ " = Plugin.Make(Platform)",
     "",
     "let default = Platform.deployPlugin(",
     "  ~plugin=module(" ++ name ++ "),",
     ")",
+    "",
+    // PostDeploy runs after the graph is registered (exports, cross-stack output).
+    "ReventlessInfra.DeployBootstrap.run(PostDeploy)",
     "",
   ]->Array.join("\n")
 }

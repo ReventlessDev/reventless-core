@@ -4,7 +4,7 @@ import * as Plugin$OrderingPlugin from "@reventlessdev/online-shop-hybrid-orderi
 
 function Make(Platform) {
   let Composition = Plugin$OrderingPlugin.Make(Platform);
-  let make = () => Composition.make(process.env.ORDERING_UI_BUNDLE_URL);
+  let make = () => Composition.make();
   return {
     Composition: Composition,
     make: make

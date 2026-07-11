@@ -48,6 +48,17 @@ let registerStateChangeSliceSpec = (~specPath: string, ~behaviorPath: string) =>
   let _ = registeredSliceModulePaths->Array.push({specPath, behaviorPath})
 }
 
+/**
+Redundant with the seams that populate `dcbConfigRef` automatically:
+`pluginName` is set by `registerPluginName` (called from `Plugin_Builder.make`
+when the plugin builds), the DCB table name by `registerDcbTableName`, and slice
+module paths by `registerStateChangeSliceSpec` (from each slice's `moduleUrl`).
+No deploy program needs to call this. Kept only so any out-of-tree caller still
+compiles; slated for removal.
+*/
+@deprecated(
+  "pluginName is auto-registered by Plugin_Builder.make; use registerDcbTableName / registerStateChangeSliceSpec for the other fields. This call is unnecessary and will be removed."
+)
 let registerDcbConfig = (~pluginName, ~dcbTableName=?, ~stateChangeSliceModulePaths=[], ()) => {
   dcbConfigRef := {pluginName, dcbTableName, stateChangeSliceModulePaths}
   stateChangeSliceModulePaths->Array.length

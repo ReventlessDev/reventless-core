@@ -2,6 +2,9 @@
 
 import * as Plugin from "./Plugin.res.mjs";
 import * as Platform$ReventlessAws from "@reventlessdev/reventless-aws/src/Platform.res.mjs";
+import * as DeployBootstrap$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/DeployBootstrap.res.mjs";
+
+DeployBootstrap$ReventlessInfra.run("PreDeploy");
 
 let Platform = Platform$ReventlessAws.Make({});
 
@@ -11,9 +14,11 @@ let $$default = Platform.deployPlugin({
   make: Catalog.make
 }, undefined);
 
+DeployBootstrap$ReventlessInfra.run("PostDeploy");
+
 export {
   Platform,
   Catalog,
   $$default as default,
 }
-/* Platform Not a pure module */
+/*  Not a pure module */
