@@ -2,6 +2,7 @@
 
 import * as GraphqlYoga from "graphql-yoga";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as GraphQL_SubscriptionBridge$ReventlessGraphqlServer from "@reventlessdev/reventless-graphql-server/src/GraphQL_SubscriptionBridge.res.mjs";
 
 let pubSub = {
   contents: undefined
@@ -17,17 +18,9 @@ function getPubSub() {
   return ps$1;
 }
 
-function sourceATopic(displayName) {
-  return `on` + displayName + `EventLog_eventAppended`;
-}
-
-function sourceBTopic(returnTypeName) {
-  return `on` + returnTypeName + `_stateChanged`;
-}
-
 function bridgeSourceA(subscribeToEvents, displayName, busTopicName) {
   let ps = getPubSub();
-  let yogaTopic = sourceATopic(displayName);
+  let yogaTopic = GraphQL_SubscriptionBridge$ReventlessGraphqlServer.sourceATopic(displayName);
   subscribeToEvents(busTopicName, async (_service, _meta, json) => {
     ps.publish(yogaTopic, json);
   });
@@ -35,35 +28,22 @@ function bridgeSourceA(subscribeToEvents, displayName, busTopicName) {
 
 function bridgeSourceB(subscribeToStateChanges, readModelName, returnTypeName) {
   let ps = getPubSub();
-  let yogaTopic = sourceBTopic(returnTypeName);
+  let yogaTopic = GraphQL_SubscriptionBridge$ReventlessGraphqlServer.sourceBTopic(returnTypeName);
   subscribeToStateChanges(readModelName, state => {
     ps.publish(yogaTopic, state);
   });
 }
 
 function makeFieldResolver(topic) {
-  let ps = getPubSub();
-  return {
-    subscribe: (_root, _args, _ctx) => ps.subscribe(topic),
-    resolve: payload => payload
-  };
+  return GraphQL_SubscriptionBridge$ReventlessGraphqlServer.makeFieldResolver(getPubSub(), topic);
 }
 
 function registerAll(server, sdlFields, sourceAEntries, sourceBEntries) {
-  let cleanedFields = sdlFields.map(field => field.split("\n").filter(line => !line.includes("@aws_subscribe")).join("\n"));
-  let resolvers = {};
-  sourceAEntries.forEach(param => {
-    resolvers[param.fieldName] = makeFieldResolver(param.topic);
-  });
-  sourceBEntries.forEach(param => {
-    resolvers[param.fieldName] = makeFieldResolver(param.topic);
-  });
-  server.registerSubscriptions(cleanedFields, resolvers);
-  server.registerTypes(["scalar AWSJSON"]);
+  GraphQL_SubscriptionBridge$ReventlessGraphqlServer.registerAll(server, sdlFields, sourceAEntries, sourceBEntries, getPubSub());
 }
 
 function publish(topic, payload) {
-  getPubSub().publish(topic, payload);
+  GraphQL_SubscriptionBridge$ReventlessGraphqlServer.publish(getPubSub(), topic, payload);
 }
 
 function reset() {
@@ -72,8 +52,15 @@ function reset() {
 
 let YG;
 
+let Bridge;
+
+let sourceATopic = GraphQL_SubscriptionBridge$ReventlessGraphqlServer.sourceATopic;
+
+let sourceBTopic = GraphQL_SubscriptionBridge$ReventlessGraphqlServer.sourceBTopic;
+
 export {
   YG,
+  Bridge,
   pubSub,
   getPubSub,
   sourceATopic,

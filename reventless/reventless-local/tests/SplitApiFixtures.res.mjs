@@ -6,7 +6,7 @@ import * as TestRunner$ReventlessLocal from "../src/test/TestRunner.res.mjs";
 import * as GraphQL_Server$ReventlessLocal from "../src/adapter/GraphQL_Server.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/api/PluginBaseFragment.res.mjs";
-import * as GraphQL_ServerInstance$ReventlessLocal from "../src/adapter/GraphQL_ServerInstance.res.mjs";
+import * as GraphQL_ServerInstance$ReventlessGraphqlServer from "@reventlessdev/reventless-graphql-server/src/GraphQL_ServerInstance.res.mjs";
 
 TestRunner$ReventlessLocal.setup();
 
@@ -15,7 +15,7 @@ function extractSdlFieldName(sdlField) {
   return Stdlib_Option.getOr(Stdlib_Option.getOr(trimmed.split("(")[0], "").trim().split(":")[0], "").trim();
 }
 
-let adminGraphQL = GraphQL_ServerInstance$ReventlessLocal.make("GraphQL:Admin");
+let adminGraphQL = GraphQL_ServerInstance$ReventlessGraphqlServer.make("GraphQL:Admin");
 
 let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(true));
 

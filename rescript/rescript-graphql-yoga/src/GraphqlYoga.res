@@ -159,3 +159,26 @@ external createPubSub: unit => pubSub = "createPubSub"
  * without an intermediate binding for AsyncIterable.
  */
 @send external pubSubSubscribe: (pubSub, string) => 'a = "subscribe"
+
+// ─── graphql-ws WebSocket transport ───────────────────────────────────────
+
+/**
+ * A `ws` `WebSocketServer` instance, attached to an existing `http.Server`.
+ * Yoga's built-in subscription transport is SSE-over-POST; clients speaking
+ * the `graphql-ws` protocol (host-shell, AppSync clients) need an explicit
+ * WebSocket endpoint. Attach a `WebSocketServer` to the same HTTP server and
+ * hand it to `useServer` along with the live schema.
+ */
+type wsServer
+
+/** Construct a `ws` `WebSocketServer` bound to `server` at `path`. */
+@new @module("ws")
+external newWebSocketServer: {"server": httpServer, "path": string} => wsServer =
+  "WebSocketServer"
+
+/**
+ * Install the `graphql-ws` handler on a `WebSocketServer`, fanning out
+ * subscription events from `schema` to connected sockets.
+ */
+@module("graphql-ws/lib/use/ws")
+external wsUseServer: ({"schema": schema}, wsServer) => unit = "useServer"

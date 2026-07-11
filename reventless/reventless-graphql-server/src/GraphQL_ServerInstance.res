@@ -1,6 +1,8 @@
 // GraphQL server instance factory.
 // Creates independent server instances with isolated registries.
-// Used by Platform to create separate core and plugin servers in split mode.
+// A backend uses this to stand up one or more Yoga-backed servers from
+// stitched SDL fragments + a resolver map, with an optional graphql-ws
+// WebSocket endpoint for subscriptions.
 
 module YG = GraphqlYoga
 
@@ -13,13 +15,8 @@ type resolverFn = YG.resolverFn
 // protocol (e.g. host-shell, AppSync clients in prod) need an explicit
 // WebSocket endpoint. We attach a `WebSocketServer` to the same HTTP server
 // and hand it to `graphql-ws/lib/use/ws::useServer` along with the live
-// schema, which fans out subscription events to connected sockets.
-type wsServer
-@new @module("ws")
-external newWebSocketServer: {"server": YG.httpServer, "path": string} => wsServer =
-  "WebSocketServer"
-@module("graphql-ws/lib/use/ws")
-external wsUseServer: ({"schema": YG.schema}, wsServer) => unit = "useServer"
+// schema, which fans out subscription events to connected sockets. The `ws`
+// and `graphql-ws` externals live in the `GraphqlYoga` bindings.
 
 @val external processEnv: dict<string> = "process.env"
 let debug = processEnv->Dict.get("GRAPHQL_DEBUG")->Option.isSome
@@ -49,10 +46,9 @@ type t = {
   getQueryResolver: string => option<resolverFn>,
   // `~contextFactory` is the yoga context factory — when supplied, requests
   // run through it so resolvers see `ctx.identity`. Omit (or pass None) for
-  // unauthenticated servers. In-memory `Platform.res` wires
-  // `Auth_GraphqlContext.buildAuthContext` here so the admin server enforces
-  // the same bearer-token rules as the data server instead of leaving
-  // Platform_* queries / mutations wide open.
+  // unauthenticated servers. A backend wires its own auth/context factory
+  // here so the server enforces the same identity rules across every field
+  // instead of leaving queries / mutations wide open.
   start: (~port: int=?, ~contextFactory: YG.contextFactory=?, unit) => unit,
   stop: unit => unit,
   reset: unit => unit,
@@ -187,8 +183,8 @@ ${mutations}
       log.info(~comp=label, `listening on http://localhost:${port->Int.toString}/graphql`)
     )
     if subscriptionResolvers.contents->Dict.keysToArray->Array.length > 0 {
-      let wss = newWebSocketServer({"server": server, "path": "/graphql"})
-      wsUseServer({"schema": schema}, wss)
+      let wss = YG.newWebSocketServer({"server": server, "path": "/graphql"})
+      YG.wsUseServer({"schema": schema}, wss)
       log.info(~comp=label, `graphql-ws subscriptions on ws://localhost:${port->Int.toString}/graphql`)
     }
     activeServer.contents = Some(server)

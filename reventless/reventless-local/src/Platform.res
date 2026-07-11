@@ -21,7 +21,7 @@ let log = ReventlessCore.Logger.fromEnv()
 
 // Module-level ref to hold the platform GraphQL server instance in split mode.
 // Populated by makePlatform when splitApi=true.
-let platformGraphQLRef: ref<option<GraphQL_ServerInstance.t>> = ref(None)
+let platformGraphQLRef: ref<option<ReventlessGraphqlServer.GraphQL_ServerInstance.t>> = ref(None)
 let getPlatformGraphQL = () => platformGraphQLRef.contents
 
 // Module-level ref to hold the platform MCP server instance in split mode.
@@ -144,7 +144,7 @@ module MakeWithConfig = (
 
   // Track which GraphQL servers have had admin schema (Plugin queries/mutations) registered.
   // Prevents double-registration when makePlatform and deployPlugin both target the same server.
-  let adminRegisteredServers: ref<array<GraphQL_ServerInstance.t>> = ref([])
+  let adminRegisteredServers: ref<array<ReventlessGraphqlServer.GraphQL_ServerInstance.t>> = ref([])
 
   // Relay support record for domain QueryDbs (platform QueryDbs pass None).
   let domainRelaySupport: QueryDbResolvers_GraphQL.relaySupport = {
@@ -157,7 +157,7 @@ module MakeWithConfig = (
   // Resolve the active GraphQL server based on current deploy target.
   // In unified mode always routes to DomainGraphQL_Server (single server).
   // In split mode routes based on currentDeployTarget.
-  let resolveTargetGraphQL = (): GraphQL_ServerInstance.t =>
+  let resolveTargetGraphQL = (): ReventlessGraphqlServer.GraphQL_ServerInstance.t =>
     if !Config.splitApi {
       DomainGraphQL_Server.asInterface
     } else {

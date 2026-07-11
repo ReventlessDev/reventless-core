@@ -1,16 +1,16 @@
 // Fixtures for split API mode integration tests.
 // Tests the split routing logic directly using GraphQL_Server (singleton)
-// and GraphQL_ServerInstance (factory) without importing Platform or MCP,
+// and ReventlessGraphqlServer.GraphQL_ServerInstance (factory) without importing Platform or MCP,
 // which avoids ESM compatibility issues with Jest.
 //
 // This mirrors what Platform.makePlatform does in split mode:
-// - Admin schema → GraphQL_ServerInstance (isolated admin server)
+// - Admin schema → ReventlessGraphqlServer.GraphQL_ServerInstance (isolated admin server)
 // - Plugin schema → GraphQL_Server singleton (plugin server)
 
 let _ = TestRunner.setup()
 
 // Helper to extract resolver key from an SDL field string.
-// Mirrors GraphQL_ServerInstance.extractFieldName.
+// Mirrors ReventlessGraphqlServer.GraphQL_ServerInstance.extractFieldName.
 let extractSdlFieldName = (sdlField: string): string => {
   let trimmed = sdlField->String.trim
   trimmed
@@ -28,7 +28,7 @@ let extractSdlFieldName = (sdlField: string): string => {
 // Create admin GraphQL instance (mirrors Platform split mode)
 // ─────────────────────────────────────────────────────────────
 
-let adminGraphQL = GraphQL_ServerInstance.make(~label="GraphQL:Admin")
+let adminGraphQL = ReventlessGraphqlServer.GraphQL_ServerInstance.make(~label="GraphQL:Admin")
 
 // Build admin SDL — authoritative source for field names.
 let baseParts = ReventlessCore.GraphQL_Stitcher.decode(ReventlessCore.AdminApi.baseFragment(~cloner=true))

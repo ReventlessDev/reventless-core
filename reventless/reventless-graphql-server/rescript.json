@@ -1,0 +1,24 @@
+{
+  "name": "@reventlessdev/reventless-graphql-server",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "namespace": "ReventlessGraphqlServer",
+  "ppx-flags": [],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    }
+  ],
+  "dependencies": [
+    "@reventlessdev/rescript-graphql-yoga",
+    "@reventlessdev/reventless-core"
+  ],
+  "compiler-flags": [],
+  "suffix": ".res.mjs"
+}

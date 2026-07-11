@@ -153,7 +153,7 @@ let _dispatch = (req: nodeRequest, res: nodeResponse, yoga: YG.yoga, getSdl: uni
 // `Auth_GraphqlContext.buildAuthContext` flattens headers into a lowercase
 // dict, runs them through `LocalAuth.authenticate`, and attaches the
 // resolved identity to the resolver context. Lifted into its own module so
-// the split-mode admin server (`GraphQL_ServerInstance`) enforces the same
+// the split-mode admin server (`ReventlessGraphqlServer.GraphQL_ServerInstance`) enforces the same
 // bearer-token rules instead of leaving admin queries wide open.
 
 let buildAuthContext = Auth_GraphqlContext.buildAuthContext
@@ -301,7 +301,7 @@ ${mutations}
   base ++ subscriptionsSdl
 }
 
-// `~contextFactory` is accepted to satisfy the `GraphQL_ServerInstance.t`
+// `~contextFactory` is accepted to satisfy the `ReventlessGraphqlServer.GraphQL_ServerInstance.t`
 // interface but ignored — the data server always wires `buildAuthContext`
 // internally so the bearer-token rules + /__inmemory/login + /sdl dispatch
 // stay consistent across callers.
@@ -444,7 +444,7 @@ let printLiveSdl = () =>
   | None => log.info(~comp="GraphQL:Domain", "no active schema")
   }
 
-type diagnostics = GraphQL_ServerInstance.diagnostics
+type diagnostics = ReventlessGraphqlServer.GraphQL_ServerInstance.diagnostics
 
 let extractFieldName = (sdlField: string): string => {
   let trimmed = sdlField->String.trim
@@ -544,10 +544,10 @@ let printDiagnostics = () => {
   }
 }
 
-// -- GraphQL_ServerInstance.t interface ----------------------------------
-// Exposes this singleton as a GraphQL_ServerInstance.t for use by
+// -- ReventlessGraphqlServer.GraphQL_ServerInstance.t interface ----------------------------------
+// Exposes this singleton as a ReventlessGraphqlServer.GraphQL_ServerInstance.t for use by
 // resolveTargetGraphQL() in Platform.res (mirrors AWS resolveTargetApi() pattern).
-let asInterface: GraphQL_ServerInstance.t = {
+let asInterface: ReventlessGraphqlServer.GraphQL_ServerInstance.t = {
   registerMutations,
   registerQueries,
   registerSubscriptions,

@@ -1,7 +1,7 @@
 // Platform (admin-facing) in-memory GraphQL server — singleton.
 // Serves admin/core operations on a separate port in split mode (port 4001).
 //
-// Uses the same GraphQL_ServerInstance factory as the generic instance,
+// Uses the same ReventlessGraphqlServer.GraphQL_ServerInstance factory as the generic instance,
 // but is exposed as a named singleton so Platform.res can reference it
 // directly (mirroring the AWS PlatformAPI resource pattern).
 //
@@ -22,14 +22,14 @@
 // — without the wrapper, anonymous callers could trigger admin mutations
 // (Plugin_Activate / _Deactivate, etc.) just by hitting the platform port.
 
-let instance: GraphQL_ServerInstance.t = GraphQL_ServerInstance.make(~label="GraphQL:Platform")
+let instance: ReventlessGraphqlServer.GraphQL_ServerInstance.t = ReventlessGraphqlServer.GraphQL_ServerInstance.make(~label="GraphQL:Platform")
 
 // Wrap a resolver dict so every value enforces the Admin group. Keys are
 // preserved; resolvers fall through to the underlying instance once the
 // group check passes.
 let wrapAdmin = (
-  resolvers: dict<GraphQL_ServerInstance.resolverFn>,
-): dict<GraphQL_ServerInstance.resolverFn> => {
+  resolvers: dict<ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn>,
+): dict<ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn> => {
   let wrapped = Dict.make()
   resolvers->Dict.toArray->Array.forEach(((k, v)) =>
     wrapped->Dict.set(k, Auth_GraphqlContext.requireGroup(~group="Admin", v))
@@ -54,10 +54,10 @@ let getSchema = instance.getSchema
 let diagnostics = instance.diagnostics
 let printDiagnostics = instance.printDiagnostics
 
-// Expose as GraphQL_ServerInstance.t for resolveTargetGraphQL() in Platform.res.
+// Expose as ReventlessGraphqlServer.GraphQL_ServerInstance.t for resolveTargetGraphQL() in Platform.res.
 // `registerQueries` is the wrapped version so admin auth fires regardless of
 // whether callers reach the singleton directly or through `asInterface`.
-let asInterface: GraphQL_ServerInstance.t = {
+let asInterface: ReventlessGraphqlServer.GraphQL_ServerInstance.t = {
   registerMutations,
   registerQueries,
   registerSubscriptions,

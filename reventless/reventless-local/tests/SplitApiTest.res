@@ -3,11 +3,11 @@
 // with no cross-contamination.
 //
 // Tests the split routing pattern used by Platform.makePlatform(splitApi=true):
-// - Admin schema → GraphQL_ServerInstance (dedicated admin server)
+// - Admin schema → ReventlessGraphqlServer.GraphQL_ServerInstance (dedicated admin server)
 // - Plugin schema → GraphQL_Server singleton (default plugin server)
 //
 // MCP split is structurally identical (MCP_ServerInstance mirrors
-// GraphQL_ServerInstance) but is not tested here due to Jest ESM
+// ReventlessGraphqlServer.GraphQL_ServerInstance) but is not tested here due to Jest ESM
 // compatibility issues with the MCP SDK dependency chain.
 
 open JestGlobals

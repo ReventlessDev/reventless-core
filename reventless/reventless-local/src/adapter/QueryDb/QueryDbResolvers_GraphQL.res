@@ -57,7 +57,7 @@ module Make = (Bus: LocalBus.T) => {
   // -- Module-level server and relay refs ------------------------------------
   // Set by Platform.res before component construction runs so the make function
   // can pick up the correct target server and relay support (mirrors AWS ~api pattern).
-  let serverRef: ref<GraphQL_ServerInstance.t> = ref(DomainGraphQL_Server.asInterface)
+  let serverRef: ref<ReventlessGraphqlServer.GraphQL_ServerInstance.t> = ref(DomainGraphQL_Server.asInterface)
   let relayRef: ref<option<relaySupport>> = ref(Some({
     encodeGlobalId: DomainGraphQL_Server.encodeGlobalId,
     registerNodeType: DomainGraphQL_Server.registerNodeType,
@@ -183,7 +183,7 @@ module Make = (Bus: LocalBus.T) => {
     } else {
       `  ${singleQueryName}: ${returnTypeName}`
     }
-    let byIdResolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+    let byIdResolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
       switch await runInterceptor(~ctx, ~args) {
       | Deny(_) => JSON.Encode.null
       | Allow =>
@@ -222,9 +222,9 @@ module Make = (Bus: LocalBus.T) => {
     } else {
       []
     }
-    let byIdsResolverEntry: option<(string, GraphQL_ServerInstance.resolverFn)> =
+    let byIdsResolverEntry: option<(string, ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn)> =
       if includeIdParam && subIdField === None {
-        let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+        let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
           switch await runInterceptor(~ctx, ~args) {
           | Deny(_) => []->JSON.Encode.array
           | Allow =>
@@ -295,7 +295,7 @@ module Make = (Bus: LocalBus.T) => {
         }
       }
 
-    let (listSdl, listResolver): (array<string>, GraphQL_ServerInstance.resolverFn) = if connectionSpec {
+    let (listSdl, listResolver): (array<string>, ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn) = if connectionSpec {
       // Relay Connection spec format
       let filterTypeName = returnTypeName ++ "Filter"
       let orderByTypes = GraphQL_FragmentGenerator.deriveConnectionOrderByType(
@@ -315,7 +315,7 @@ module Make = (Bus: LocalBus.T) => {
           ~hasOrderBy,
         ),
       ]
-      let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+      let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
         switch await runInterceptor(~ctx, ~args) {
         | Deny(_) =>
           Obj.magic({
@@ -355,7 +355,7 @@ module Make = (Bus: LocalBus.T) => {
     } else {
       // Legacy AppSync-style format
       let sdl = [`  ${listQueryName}(nextToken: String, limit: Int): ${pluralTypeName}!`]
-      let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+      let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
         switch await runInterceptor(~ctx, ~args) {
         | Deny(_) => Obj.magic({"nextToken": Nullable.null, "scannedCount": 0, "items": []})
         | Allow =>
@@ -383,9 +383,9 @@ module Make = (Bus: LocalBus.T) => {
       [`  ${singleQueryName}Items(id: ID!, filter: ${filterTypeName}, first: Int, after: String, last: Int, before: String): ${connectionTypeName}!`]
     | None => []
     }
-    let itemsResolvers: array<(string, GraphQL_ServerInstance.resolverFn)> = switch subIdField {
+    let itemsResolvers: array<(string, ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn)> = switch subIdField {
     | Some(sf) =>
-      let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+      let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
         let emptyConn = Obj.magic({
           "edges": [],
           "pageInfo": {
@@ -498,12 +498,12 @@ module Make = (Bus: LocalBus.T) => {
     let indexSdlFields = indexes->Array.map((ic: Reventless.ReadModel.indexConfig) =>
       `  ${singleQueryName}By${cap(ic.index)}(${ic.index}: String!): [String]`
     )
-    let indexResolvers: array<(string, GraphQL_ServerInstance.resolverFn)> = indexes->Array.map(
+    let indexResolvers: array<(string, ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn)> = indexes->Array.map(
       (ic: Reventless.ReadModel.indexConfig) => {
         let index = ic.index
         let resolverName = singleQueryName ++ "By" ++ cap(index)
         let filterField = ic.idField->Option.getOr(index)
-        let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+        let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
           switch await runInterceptor(~ctx, ~args) {
           | Deny(_) => []->JSON.Encode.array
           | Allow =>

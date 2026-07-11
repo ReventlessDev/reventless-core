@@ -104,7 +104,7 @@ let capitalize = s =>
 
 let commandResultSdl = GraphQL_FragmentGenerator.commandResultSdlTypes->Array.join("\n\n")
 
-let ensureCommandResultTypes = (server: GraphQL_ServerInstance.t) => {
+let ensureCommandResultTypes = (server: ReventlessGraphqlServer.GraphQL_ServerInstance.t) => {
   if !(server.buildSdl()->String.includes("CommandAccepted")) {
     server.registerTypes(~sdlTypes=[commandResultSdl])
   }
@@ -167,7 +167,7 @@ let register = (
   ~fields: array<string>,
   ~commandSchema: S.t<unknown>,
   ~commandAuthorization: unknown => Reventless.Authorization.permission,
-  ~server: GraphQL_ServerInstance.t,
+  ~server: ReventlessGraphqlServer.GraphQL_ServerInstance.t,
 ) => {
   ensureCommandResultTypes(server)
   // Aggregate commands target a specific instance — prepend id: ID!
@@ -193,7 +193,7 @@ let register = (
     | _ => false
     }
     let commandName = extractCommandName(field)
-    let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+    let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
       switch handlerRef.contents {
       | Some(generateCommand) =>
         switch checkPluginStatus(~field) {
@@ -234,7 +234,7 @@ let registerDcb = (
   ~fieldName: string,
   ~commandSchema: S.t<unknown>,
   ~commandAuthorization: unknown => Reventless.Authorization.permission,
-  ~server: GraphQL_ServerInstance.t,
+  ~server: ReventlessGraphqlServer.GraphQL_ServerInstance.t,
 ) => {
   ensureCommandResultTypes(server)
   // Derive the constructor from the field name's trailing `_` segment (mirrors the
@@ -256,7 +256,7 @@ let registerDcb = (
   let handlerRef = ref(None)
   handlerRefs->Dict.set(fieldName, handlerRef)
 
-  let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+  let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
     switch handlerRef.contents {
     | Some(generateCommand) =>
       switch checkPluginStatus(~field=fieldName) {

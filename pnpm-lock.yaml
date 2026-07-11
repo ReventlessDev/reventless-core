@@ -1057,9 +1057,15 @@ importers:
       graphql:
         specifier: ^16.0.0
         version: 16.13.2
+      graphql-ws:
+        specifier: ^5.16.0
+        version: 5.16.2(graphql@16.13.2)
       graphql-yoga:
         specifier: ^5.21.0
         version: 5.21.0(graphql@16.13.2)
+      ws:
+        specifier: ^8.18.0
+        version: 8.20.0
     devDependencies:
       rescript:
         specifier: ^12.3.0
@@ -1328,6 +1334,19 @@ importers:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
+  reventless/reventless-graphql-server:
+    dependencies:
+      '@reventlessdev/rescript-graphql-yoga':
+        specifier: workspace:*
+        version: link:../../rescript/rescript-graphql-yoga
+      '@reventlessdev/reventless-core':
+        specifier: workspace:*
+        version: link:../reventless-core
+    devDependencies:
+      rescript:
+        specifier: ^12.3.0
+        version: 12.3.0
+
   reventless/reventless-gwt:
     dependencies:
       '@reventlessdev/rescript-effect':
@@ -1463,6 +1482,9 @@ importers:
       '@reventlessdev/reventless-core':
         specifier: workspace:*
         version: link:../reventless-core
+      '@reventlessdev/reventless-graphql-server':
+        specifier: workspace:*
+        version: link:../reventless-graphql-server
       '@reventlessdev/reventless-gwt':
         specifier: workspace:*
         version: link:../reventless-gwt
