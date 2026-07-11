@@ -1,114 +1,109 @@
-[![npm version](https://img.shields.io/npm/v/@reventlessdev/reventless-spec.svg?label=version)](https://www.npmjs.com/package/@reventlessdev/reventless-spec)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Changelog](https://img.shields.io/badge/📋-Changelog-blue)](./CHANGELOG.md)
+[![npm](https://img.shields.io/npm/v/@reventlessdev/reventless-spec.svg?label=npm)](https://www.npmjs.com/package/@reventlessdev/reventless-spec)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Docs](https://img.shields.io/badge/docs-reventless.dev-blue)](https://docs.reventless.dev)
 
-# `reventless-spec`
+# @reventlessdev/reventless-spec
 
-Specification types and interfaces for Reventless applications.
+> ⚠️ **Alpha.** APIs and on-disk formats can change without notice between releases.
+> Pin exact versions and expect breaking changes.
 
-## Usage
+The **specification layer** of [Reventless](https://docs.reventless.dev) — a
+spec-driven, event-sourced CQRS framework written in [ReScript](https://rescript-lang.org).
+This package holds the type specifications and module-type interfaces that the rest of the
+framework is built on: the contracts application domain code implements (commands, events,
+behaviors, projections) and the component-kind vocabulary the whole framework shares. It
+has **no** runtime, cloud, or storage dependency, so domain code can declare its shape
+against `reventless-spec` without pulling in an implementation. Modules are exposed under
+the `Reventless` namespace.
 
-- Add `@reventlessdev/reventless-spec` to your dependencies in `package.json`.
-- Add `@reventlessdev/reventless-spec` to your dependencies in `rescript.json`.
-- For general information see this monorepo's [readme](../../README.md)
+## What it provides
 
-## Installation
+ReScript modules, consumed by adding the package to your `rescript.json` `dependencies`.
 
-```bash
-npm install @reventlessdev/reventless-spec
-```
+**Domain contracts (`types/`)**
 
-Add to your `rescript.json`:
+- **`Message`** — the envelope metadata carried by every event and command (`meta`,
+  `event'<>`, `command'<>`), used for audit, correlation, tracing, and routing.
+- **`Behavior`** — the module type application code implements to define aggregate business
+  logic: `initialState`, `evolve(state, event)`, and `decide(command, state)`.
+- **`Projection`** — `Source` / `Target` module types describing a read model projected
+  from an aggregate's events.
+- **`Handler`** — function signatures for handling commands, events, and errors.
+- **`SideEffect`** — module type for an imperative side effect triggered by aggregate events
+  (read-only access to the query engine; emits no events).
+- **`StoredEvent`** — the logical envelope for an event as it lives in storage; single
+  source of truth for the on-disk event shape.
+- **`Authorization`** / **`Identity`** — provider-agnostic permission rules evaluated against
+  a resolved identity.
+- **`QueryEngine`** — typed filter values and operations for read-model queries.
+- **`Id`**, **`EventMapping`**, **`ReadConsistency`**, **`Schedule`**, **`Visibility`** —
+  supporting spec types for identifiers, event translation, consistency, scheduling, and
+  exposure.
 
-```json
-{
-  "bs-dependencies": ["@reventlessdev/reventless-spec"]
-}
-```
+**Component vocabulary (`components/`)**
 
----
+- **`ComponentKind`** — the single source of truth for the Reventless component-kind
+  vocabulary (aggregates, read models, tasks, extension points, DCB slices), including every
+  accepted folder spelling and body-file suffix.
+- Per-kind spec modules: `Aggregate`, `ReadModel`, `Task`, `ExtensionPoint`, `Plugin`, and
+  the DCB slices (`StateChangeSlice`, `StateViewSlice`, `AutomationSlice`,
+  `InboundTranslationSlice`, `OutboundTranslationSlice`), plus DCB tagging/validation helpers.
 
-## `generate-plugin` CLI
+**`generate-plugin` CLI**
 
-`reventless-spec` ships a `generate-plugin` binary that auto-generates `src/Plugin.res` from a plugin's folder structure. This eliminates the need to maintain a hand-authored composition root.
-
-### Setup
-
-Add to your plugin's `package.json`:
-
-```json
-{
-  "scripts": {
-    "generate": "generate-plugin src/",
-    "prebuild": "npm run generate",
-    "build": "rescript build"
-  }
-}
-```
-
-### Usage
+`reventless-spec` ships a `generate-plugin` binary that auto-generates `src/Plugin.res` from
+a plugin's folder structure, classifying `.res` files by their parent folder name — no
+hand-authored composition root required.
 
 ```bash
 generate-plugin src/          # generate src/Plugin.res from the src/ folder
-npm run build                 # prebuild runs generate automatically, then compiles
 ```
 
-### Folder conventions
+Wire it into your build via a `prebuild` script so it runs before `rescript build`. The
+generated `Plugin.res` is committed to git, so CI compiles it directly.
 
-The generator classifies `.res` files by their parent folder name. Chapter folders (e.g. `Product/`, `Customer/`) are transparent — only the leaf folder name matters.
+## Where it fits
 
-| Folder | Component |
-|---|---|
-| `Aggregate[s]` | Aggregate — must be paired with a `*Behavior.res` |
-| `ReadModel[s]` | Read model — must be paired with a `*Projections.res` |
-| `Task[s]` | Task |
-| `ExtensionPoint[s]` | Extension point mapping |
-| `Extension[s]` | Extension mapping |
-| `StateChange[s][Slice[s]]` | DCB StateChangeSlice |
-| `StateView[s][Slice[s]]` | DCB StateViewSlice |
-| `Automation[s][Slice[s]]` | DCB AutomationSlice |
-| `InboundTranslation[s][Slice[s]]` | DCB InboundTranslationSlice |
-| `OutboundTranslation[s][Slice[s]]` | DCB OutboundTranslationSlice |
+`reventless-spec` is the foundation package in the Reventless framework:
 
-Always excluded: `Plugin/`, `tests/`, `lib/`, `*Test.res`, `*Fixtures.res`.
+```
+reventless-spec (specifications)  ← this package
+  ↓
+reventless-core (provider-agnostic framework)
+  ↓
+reventless-aws / reventless-postgres / reventless-local (storage & deployment adapters)
+```
 
-### `plugin.json` (optional)
+- [`@reventlessdev/reventless-core`](https://www.npmjs.com/package/@reventlessdev/reventless-core)
+  builds on these specs to provide the runtime building blocks.
+- [`@reventlessdev/reventless-infra`](https://www.npmjs.com/package/@reventlessdev/reventless-infra)
+  layers deploy-time infrastructure types on top of the same specs.
 
-Place `src/plugin.json` to override defaults:
+You normally obtain `reventless-spec` transitively by scaffolding an app rather than
+installing it on its own.
+
+## Install
+
+```bash
+pnpm add @reventlessdev/reventless-spec
+```
+
+Then register it as a ReScript dependency in `rescript.json`:
 
 ```json
 {
-  "name": "Catalog",
-  "heartbeatInterval": 60,
-  "exclude": ["Product/StateChangeSlice/Experimental.res", "Analytics/**"]
+  "dependencies": ["@reventlessdev/reventless-spec"]
 }
 ```
 
-| Field | Default |
-|---|---|
-| `name` | Derived from `package.json` `"name"` — unscoped, hyphens/underscores → PascalCase |
-| `heartbeatInterval` | `60` |
-| `exclude` | `[]` — file paths or globs relative to `src/` |
+Requires ReScript `^12.3.0` (peer dependency).
 
-### Extension file convention
+## Links
 
-Each file in `Extension/` must expose its mapping as `module Mapping`:
+- 📚 Documentation — [docs.reventless.dev](https://docs.reventless.dev)
+- 📦 Repository — [ReventlessDev/reventless-core](https://github.com/ReventlessDev/reventless-core)
+- 📋 [Changelog](./CHANGELOG.md)
 
-```rescript
-// OrdersExtension.res
-open ReventlessInfra.ExtensionMapping
+## License
 
-module Mapping = {
-  module ExtensionPoint = OrderingSpec.OrdersExtensionPoint
-  module Delegate = ProductDemand
-  // ...
-}
-```
-
-The generator references it as `OrdersExtension.Mapping`.
-
-### Namespace note
-
-Plugin packages should use a **suffixed namespace** (e.g. `CatalogPlugin`, `OrderingPlugin`). Never use a bare name like `Ordering` — it shadows OCaml's built-in `Ordering` type used by comparisons.
-
-The generated `Plugin.res` is **committed to git** — CI compiles it directly without re-running the generator.
+[Apache-2.0](https://opensource.org/licenses/Apache-2.0)

@@ -1,26 +1,27 @@
-[![npm version](https://img.shields.io/npm/v/@reventlessdev/rescript-node-streams.svg?label=version)](https://www.npmjs.com/package/@reventlessdev/rescript-node-streams)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Changelog](https://img.shields.io/badge/📋-Changelog-blue)](./CHANGELOG.md)
+[![npm](https://img.shields.io/npm/v/@reventlessdev/rescript-node-streams.svg?label=npm)](https://www.npmjs.com/package/@reventlessdev/rescript-node-streams)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Docs](https://img.shields.io/badge/docs-reventless.dev-blue)](https://docs.reventless.dev)
 
-# `rescript-node-streams`
+# @reventlessdev/rescript-node-streams
+
+> ⚠️ **Alpha.** APIs can change without notice between releases.
+> Pin exact versions and expect breaking changes.
 
 ReScript bindings for [Node.js streams](https://nodejs.org/docs/latest-v12.x/api/stream.html).
 
-## Installation
+## Install
 
-1. Add `rescript-node-streams` to your dependencies in `package.json`:
-   ```bash
-   npm install rescript-node-streams
-   ```
+```bash
+pnpm add @reventlessdev/rescript-node-streams
+```
 
-2. Add `rescript-node-streams` to your dependencies in `rescript.json`:
-   ```json
-   {
-     "bs-dependencies": ["rescript-node-streams"]
-   }
-   ```
+Add it to your `rescript.json` dependencies:
 
-For general information see this monorepo's [readme](../../README.md).
+```json
+{
+  "dependencies": ["@reventlessdev/rescript-node-streams"]
+}
+```
 
 ## Stream Types
 
@@ -280,3 +281,13 @@ Common events across stream types:
 - Use `pipeline` functions for automatic cleanup and error handling
 - The `->ignore` at the end of event handler chains discards the returned stream value
 - Readable streams switch to "flowing mode" when `data` event handlers are attached
+
+## Links
+
+- 📚 Documentation — [docs.reventless.dev](https://docs.reventless.dev)
+- 📦 Repository — [ReventlessDev/reventless-core](https://github.com/ReventlessDev/reventless-core)
+- 📋 [Changelog](./CHANGELOG.md)
+
+## License
+
+[Apache-2.0](https://opensource.org/licenses/Apache-2.0)

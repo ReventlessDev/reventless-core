@@ -1,7 +1,11 @@
-[![npm version](https://img.shields.io/npm/v/@reventlessdev/rescript-pulumi-kubernetes.svg?label=version)](https://www.npmjs.com/package/@reventlessdev/rescript-pulumi-kubernetes)
+[![npm](https://img.shields.io/npm/v/@reventlessdev/rescript-pulumi-kubernetes.svg?label=npm)](https://www.npmjs.com/package/@reventlessdev/rescript-pulumi-kubernetes)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Docs](https://img.shields.io/badge/docs-reventless.dev-blue)](https://docs.reventless.dev)
 
-# `rescript-pulumi-kubernetes`
+# @reventlessdev/rescript-pulumi-kubernetes
+
+> ⚠️ **Alpha.** APIs can change without notice between releases.
+> Pin exact versions and expect breaking changes.
 
 ReScript bindings for [`@pulumi/kubernetes`](https://www.pulumi.com/registry/packages/kubernetes/api-docs/).
 
@@ -36,7 +40,7 @@ is the escape hatch that makes any custom resource usable without typings.
 
 - Add `@reventlessdev/rescript-pulumi-kubernetes` to your dependencies in
   `package.json`.
-- Add it to your `bs-dependencies` in `rescript.json`.
+- Add it to your `dependencies` in `rescript.json`.
 - For general information see this monorepo's [readme](../../README.md).
 
 ## Example
@@ -59,3 +63,13 @@ let ns = K8s.Core.Namespace.make(
 Every resource `make` ends with a trailing `()` (it terminates the optional
 labelled arguments), and every `args` field takes a `Pulumi.Input.t<_>`, so wrap
 plain values with `Pulumi.Input.make`.
+
+## Links
+
+- 📚 Documentation — [docs.reventless.dev](https://docs.reventless.dev)
+- 📦 Repository — [ReventlessDev/reventless-core](https://github.com/ReventlessDev/reventless-core)
+- 📋 [Changelog](./CHANGELOG.md)
+
+## License
+
+[Apache-2.0](https://opensource.org/licenses/Apache-2.0)

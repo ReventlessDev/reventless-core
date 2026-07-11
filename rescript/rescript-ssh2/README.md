@@ -1,28 +1,27 @@
-[![npm version](https://img.shields.io/npm/v/@reventlessdev/rescript-ssh2.svg?label=version)](https://www.npmjs.com/package/@reventlessdev/rescript-ssh2)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Changelog](https://img.shields.io/badge/📋-Changelog-blue)](./CHANGELOG.md)
+[![npm](https://img.shields.io/npm/v/@reventlessdev/rescript-ssh2.svg?label=npm)](https://www.npmjs.com/package/@reventlessdev/rescript-ssh2)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Docs](https://img.shields.io/badge/docs-reventless.dev-blue)](https://docs.reventless.dev)
 
-# `rescript-ssh2`
+# @reventlessdev/rescript-ssh2
+
+> ⚠️ **Alpha.** APIs can change without notice between releases.
+> Pin exact versions and expect breaking changes.
 
 ReScript bindings for [ssh2](https://github.com/mscdex/ssh2) - SSH2 client and server modules for Node.js.
 
-## Installation
-
-Add `rescript-ssh2` to your dependencies:
+## Install
 
 ```bash
-npm install rescript-ssh2
+pnpm add @reventlessdev/rescript-ssh2
 ```
 
-Add `rescript-ssh2` to your `rescript.json`:
+Add it to your `rescript.json` dependencies:
 
 ```json
 {
-  "bs-dependencies": ["rescript-ssh2"]
+  "dependencies": ["@reventlessdev/rescript-ssh2"]
 }
 ```
-
-For general information see this monorepo's [readme](../../README.md).
 
 ## API Overview
 
@@ -282,3 +281,13 @@ sftp->SSH2.onError(err => {
 
 - [ssh2 Documentation](https://github.com/mscdex/ssh2)
 - [ssh2 TypeScript Definitions](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/ssh2/index.d.ts)
+
+## Links
+
+- 📚 Documentation — [docs.reventless.dev](https://docs.reventless.dev)
+- 📦 Repository — [ReventlessDev/reventless-core](https://github.com/ReventlessDev/reventless-core)
+- 📋 [Changelog](./CHANGELOG.md)
+
+## License
+
+[Apache-2.0](https://opensource.org/licenses/Apache-2.0)

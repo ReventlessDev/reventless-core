@@ -1,4 +1,11 @@
+[![npm](https://img.shields.io/npm/v/@reventlessdev/rescript-jest.svg?label=npm)](https://www.npmjs.com/package/@reventlessdev/rescript-jest)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Docs](https://img.shields.io/badge/docs-reventless.dev-blue)](https://docs.reventless.dev)
+
 # @reventlessdev/rescript-jest
+
+> ⚠️ **Alpha.** APIs and on-disk formats can change without notice between releases.
+> Pin exact versions and expect breaking changes.
 
 Direct ReScript bindings to Jest's global APIs, with **throwing `expect`** and
 **native async test bodies**.
@@ -40,3 +47,13 @@ describe("widget", () => {
 `test` registers an **async** test; `testSync` a synchronous one. `beforeAll` /
 `afterAll` are synchronous; `beforeAllAsync` / `afterAllAsync` await a returned
 promise. Matchers are available both flat and under `module Expect`.
+
+## Links
+
+- 📚 Documentation — [docs.reventless.dev](https://docs.reventless.dev)
+- 📦 Repository — [ReventlessDev/reventless-core](https://github.com/ReventlessDev/reventless-core)
+- 📋 [Changelog](./CHANGELOG.md)
+
+## License
+
+[Apache-2.0](https://opensource.org/licenses/Apache-2.0)

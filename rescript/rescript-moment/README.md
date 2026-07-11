@@ -1,34 +1,42 @@
-[![npm version](https://img.shields.io/npm/v/@reventlessdev/rescript-moment.svg?label=version)](https://www.npmjs.com/package/@reventlessdev/rescript-moment)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Changelog](https://img.shields.io/badge/📋-Changelog-blue)](./CHANGELOG.md)
+[![npm](https://img.shields.io/npm/v/@reventlessdev/rescript-moment.svg?label=npm)](https://www.npmjs.com/package/@reventlessdev/rescript-moment)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Docs](https://img.shields.io/badge/docs-reventless.dev-blue)](https://docs.reventless.dev)
 
-# rescript-moment
+# @reventlessdev/rescript-moment
+
+> ⚠️ **Alpha.** APIs and on-disk formats can change without notice between releases.
+> Pin exact versions and expect breaking changes.
 
 ReScript bindings for [Moment.js](https://momentjs.com/).
 
 ## Installation
 
 ```bash
-npm install @reventless/rescript-moment moment
+pnpm add @reventlessdev/rescript-moment moment
 ```
 
 Add to your `rescript.json`:
 
 ```json
 {
-  "bs-dependencies": [
-    "@reventless/rescript-moment"
+  "dependencies": [
+    "@reventlessdev/rescript-moment"
   ]
 }
 ```
 
 ## Usage
 
-Import the module in your ReScript code:
+Import the modules in your ReScript code:
 
 ```rescript
 open MomentRe
+open MomentRe_Helpers
 ```
+
+The core bindings (`momentNow`, `momentWithDate`, `momentWithTimestampMS`, and the
+`Moment` / `Duration` submodules) live in `MomentRe`. The convenience constructors
+`moment`, `momentUtc`, and `momentWithUnix` live in `MomentRe_Helpers`, so open both.
 
 ### Creating Moments
 
@@ -43,7 +51,7 @@ let date = moment("2024-01-15")
 let dateWithFormat = moment(~format=["DD-MM-YYYY"], "15-01-2024")
 
 // From JavaScript Date
-let fromDate = momentWithDate(Js.Date.make())
+let fromDate = momentWithDate(Date.make())
 
 // From Unix timestamp (seconds)
 let fromUnix = momentWithUnix(1705276800)
@@ -233,3 +241,13 @@ This package is stable and maintained. New bindings are added as needed. Feel fr
 ## Deprecations
 
 Deprecated Moment.js methods (e.g. `moment().days` in favor of `moment().day`) are not included in this binding.
+
+## Links
+
+- 📚 Documentation — [docs.reventless.dev](https://docs.reventless.dev)
+- 📦 Repository — [ReventlessDev/reventless-core](https://github.com/ReventlessDev/reventless-core)
+- 📋 [Changelog](./CHANGELOG.md)
+
+## License
+
+[Apache-2.0](https://opensource.org/licenses/Apache-2.0)

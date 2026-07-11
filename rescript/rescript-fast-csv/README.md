@@ -1,15 +1,27 @@
-[![npm version](https://img.shields.io/npm/v/@reventlessdev/rescript-fast-csv.svg?label=version)](https://www.npmjs.com/package/@reventlessdev/rescript-fast-csv)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Changelog](https://img.shields.io/badge/📋-Changelog-blue)](./CHANGELOG.md)
+[![npm](https://img.shields.io/npm/v/@reventlessdev/rescript-fast-csv.svg?label=npm)](https://www.npmjs.com/package/@reventlessdev/rescript-fast-csv)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Docs](https://img.shields.io/badge/docs-reventless.dev-blue)](https://docs.reventless.dev)
 
-# `rescript-fast-csv`
+# @reventlessdev/rescript-fast-csv
+
+> ⚠️ **Alpha.** APIs and on-disk formats can change without notice between releases.
+> Pin exact versions and expect breaking changes.
 
 ReScript bindings for [fast-csv](https://github.com/C2FO/fast-csv), a fast and flexible CSV parsing library for Node.js.
 
-## Installation
-- Add `rescript-fast-csv` to your dependencies in `package.json`.
-- Add `rescript-fast-csv` to your dependencies in `rescript.json`.
-- For general information see this monorepo's [readme](../../README.md)
+## Install
+
+```bash
+pnpm add @reventlessdev/rescript-fast-csv
+```
+
+Add it to your `rescript.json` dependencies:
+
+```json
+{
+  "dependencies": ["@reventlessdev/rescript-fast-csv"]
+}
+```
 
 ## Core API
 
@@ -54,7 +66,7 @@ Configure the CSV parser behavior using the `Options.t` type:
 | `renameHeaders` | `bool` | `false` | Allow headers to be renamed |
 | `ignoreEmpty` | `bool` | `false` | Skip empty rows |
 | `comment` | `string` | `null` | Character that starts comment lines (skipped) |
-| `discardUnmappedColumns` | `bool` | `false` | Discard columns not in headers |
+| `discardUnmappedfolumns` | `bool` | `false` | Discard columns not in headers |
 | `strictColumnHandling` | `bool` | `false` | Throw error if row column count differs from headers |
 | `trim` | `bool` | `false` | Trim whitespace from both ends of fields |
 | `rtrim` | `bool` | `false` | Trim whitespace from right end of fields |
@@ -171,8 +183,8 @@ FastCSV.parseFile(
 ->FastCSV.validate((row, callback) => {
   // Check if required fields exist
   switch (Dict.get(row, "name"), Dict.get(row, "email"), Dict.get(row, "age")) {
-  | (Some(_), Some(_), Some(_)) => callback->FastCSV.toValid
-  | _ => callback->FastCSV.toInvalid("Missing required fields (name, email, age)")
+  | (Some(_), Some(_), Some(_)) => callback->FastCSV_Helpers.toValid
+  | _ => callback->FastCSV_Helpers.toInvalid("Missing required fields (name, email, age)")
   }
 })
 ->FastCSV.transform((row, callback) => {
@@ -185,7 +197,7 @@ FastCSV.parseFile(
   Dict.set(row, "email", String.toLowerCase(email))
   Dict.set(row, "name", String.trim(name))
 
-  callback->FastCSV.toValidTransformation(row)
+  callback->FastCSV_Helpers.toValidTransformation(row)
 })
 ->FastCSV.onData(row => {
   // Process each valid row
@@ -292,3 +304,13 @@ parseFile(~path="data.csv")
 - `toError(callback, reason)` - Mark validation as error
 - `toValidTransformation(callback, row)` - Complete transformation successfully
 - `toErrorTransformation(callback, reason)` - Mark transformation as failed
+
+## Links
+
+- 📚 Documentation — [docs.reventless.dev](https://docs.reventless.dev)
+- 📦 Repository — [ReventlessDev/reventless-core](https://github.com/ReventlessDev/reventless-core)
+- 📋 [Changelog](./CHANGELOG.md)
+
+## License
+
+[Apache-2.0](https://opensource.org/licenses/Apache-2.0)

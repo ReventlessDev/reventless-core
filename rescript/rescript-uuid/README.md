@@ -1,35 +1,38 @@
-[![npm version](https://img.shields.io/npm/v/@reventlessdev/rescript-uuid.svg?label=version)](https://www.npmjs.com/package/@reventlessdev/rescript-uuid)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Changelog](https://img.shields.io/badge/📋-Changelog-blue)](./CHANGELOG.md)
+[![npm](https://img.shields.io/npm/v/@reventlessdev/rescript-uuid.svg?label=npm)](https://www.npmjs.com/package/@reventlessdev/rescript-uuid)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Docs](https://img.shields.io/badge/docs-reventless.dev-blue)](https://docs.reventless.dev)
 
-# rescript-uuid
+# @reventlessdev/rescript-uuid
+
+> ⚠️ **Alpha.** APIs can change without notice between releases.
+> Pin exact versions and expect breaking changes.
 
 ReScript bindings for [uuid](https://github.com/uuidjs/uuid) - RFC4122 UUID generation.
 
 ## Installation
 
-1. Add `@reventless/rescript-uuid` to your dependencies in `package.json`:
+1. Add `@reventlessdev/rescript-uuid` to your dependencies in `package.json`:
 ```json
 {
   "dependencies": {
-    "@reventless/rescript-uuid": "^1.0.0",
+    "@reventlessdev/rescript-uuid": "^1.0.0",
     "uuid": "^9.0.0"
   }
 }
 ```
 
-2. Add `@reventless/rescript-uuid` to `bs-dependencies` in `rescript.json`:
+2. Add `@reventlessdev/rescript-uuid` to `dependencies` in `rescript.json`:
 ```json
 {
-  "bs-dependencies": [
-    "@reventless/rescript-uuid"
+  "dependencies": [
+    "@reventlessdev/rescript-uuid"
   ]
 }
 ```
 
 3. Install dependencies:
 ```bash
-npm install
+pnpm install
 ```
 
 For general information see this monorepo's [readme](../../README.md).
@@ -140,3 +143,12 @@ Js.Console.log2("v5 (custom namespace):", customId)
 - **v5** is preferred over **v3** when you need namespace-based UUIDs (SHA-1 vs MD5)
 - **v1** includes timestamp and MAC address, which may have privacy implications
 
+## Links
+
+- 📚 Documentation — [docs.reventless.dev](https://docs.reventless.dev)
+- 📦 Repository — [ReventlessDev/reventless-core](https://github.com/ReventlessDev/reventless-core)
+- 📋 [Changelog](./CHANGELOG.md)
+
+## License
+
+[Apache-2.0](https://opensource.org/licenses/Apache-2.0)
