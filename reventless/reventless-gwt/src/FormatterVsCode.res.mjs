@@ -8,7 +8,7 @@ import * as Hint$ReventlessGwt from "./Hint.res.mjs";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as ComponentMeta$ReventlessGwt from "./ComponentMeta.res.mjs";
 import * as RenderRescript$ReventlessGwt from "./RenderRescript.res.mjs";
-import * as Protocol$ReventlessVscodeProtocol from "@reventlessdev/reventless-vscode-protocol/src/Protocol.res.mjs";
+import * as Protocol$ReventlessDomainProtocol from "@reventlessdev/reventless-domain-protocol/src/Protocol.res.mjs";
 
 function write(s) {
   process.stdout.write(s);
@@ -19,7 +19,7 @@ function writeLine(s) {
 }
 
 function emit(e) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine(e);
   process.stdout.write(s + "\n");
 }
 
@@ -132,15 +132,15 @@ function locationOf(loc) {
 }
 
 function hello() {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "hello",
-    protocol: Protocol$ReventlessVscodeProtocol.protocolVersion
+    protocol: Protocol$ReventlessDomainProtocol.protocolVersion
   });
   process.stdout.write(s + "\n");
 }
 
 function discoverStart() {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "discoverStart"
   });
   process.stdout.write(s + "\n");
@@ -169,7 +169,7 @@ function emitDiscoveryItems(files) {
       uri: e_5,
       component: component
     };
-    let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+    let s = Protocol$ReventlessDomainProtocol.toJsonLine(e);
     process.stdout.write(s + "\n");
     let seenDescribes = {};
     param[1].forEach(t => {
@@ -198,7 +198,7 @@ function emitDiscoveryItems(files) {
           uri: e_5,
           range: e_6
         };
-        let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+        let s = Protocol$ReventlessDomainProtocol.toJsonLine(e);
         process.stdout.write(s + "\n");
       });
       let parent = t.describePath.length === 0 ? path : path + "::" + t.describePath.join("::");
@@ -221,14 +221,14 @@ function emitDiscoveryItems(files) {
         uri: e_5,
         range: e_6
       };
-      let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+      let s = Protocol$ReventlessDomainProtocol.toJsonLine(e);
       process.stdout.write(s + "\n");
     });
   });
 }
 
 function discoverEnd(total) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "discoverEnd",
     total: total
   });
@@ -244,7 +244,7 @@ function packages(pkgs) {
       build: p.build
     }))
   };
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine(e);
   process.stdout.write(s + "\n");
 }
 
@@ -258,7 +258,7 @@ function components(comps) {
       files: c.files
     }))
   };
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine(e);
   process.stdout.write(s + "\n");
 }
 
@@ -272,12 +272,12 @@ function deadCode(findings) {
       detail: f.detail
     }))
   };
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine(e);
   process.stdout.write(s + "\n");
 }
 
 function graph(g) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "graph",
     nodes: g.nodes,
     edges: g.edges
@@ -286,7 +286,7 @@ function graph(g) {
 }
 
 function definitions(entries) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "definitions",
     entries: entries
   });
@@ -294,7 +294,7 @@ function definitions(entries) {
 }
 
 function buildStart(pkg) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "buildStart",
     package: pkg
   });
@@ -302,7 +302,7 @@ function buildStart(pkg) {
 }
 
 function buildOk(pkg, durationMs) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "buildOk",
     package: pkg,
     durationMs: durationMs
@@ -311,7 +311,7 @@ function buildOk(pkg, durationMs) {
 }
 
 function buildFail(pkg, message) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "buildFail",
     package: pkg,
     message: message
@@ -320,7 +320,7 @@ function buildFail(pkg, message) {
 }
 
 function buildExternal(pkg) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "buildExternal",
     package: pkg
   });
@@ -328,7 +328,7 @@ function buildExternal(pkg) {
 }
 
 function platformStart($$package, dir, domainPort, platformPort) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "platformStart",
     package: $$package,
     dir: dir,
@@ -339,7 +339,7 @@ function platformStart($$package, dir, domainPort, platformPort) {
 }
 
 function platformReady(domainEndpoint) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "platformReady",
     domainEndpoint: domainEndpoint
   });
@@ -352,7 +352,7 @@ function domainEvent(payload) {
 }
 
 function platformLog(line) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "platformLog",
     line: line
   });
@@ -360,7 +360,7 @@ function platformLog(line) {
 }
 
 function platformStop(code) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "platformStop",
     code: code
   });
@@ -368,7 +368,7 @@ function platformStop(code) {
 }
 
 function runStart(total, filter) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "runStart",
     total: total,
     filter: filter
@@ -377,7 +377,7 @@ function runStart(total, filter) {
 }
 
 function testStart(id) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "testStart",
     id: id
   });
@@ -385,7 +385,7 @@ function testStart(id) {
 }
 
 function testPass(id, durationMs) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "testPass",
     id: id,
     durationMs: durationMs
@@ -394,7 +394,7 @@ function testPass(id, durationMs) {
 }
 
 function testSkip(id, reason) {
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "testSkip",
     id: id,
     reason: reason
@@ -481,12 +481,12 @@ function testFail(t, id) {
     durationMs: e_1,
     messages: e_2
   };
-  let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+  let s = Protocol$ReventlessDomainProtocol.toJsonLine(e);
   process.stdout.write(s + "\n");
 }
 
 function runEnd(s) {
-  let s$1 = Protocol$ReventlessVscodeProtocol.toJsonLine({
+  let s$1 = Protocol$ReventlessDomainProtocol.toJsonLine({
     event: "runEnd",
     passed: s.passed,
     failed: s.failed,
@@ -498,7 +498,7 @@ function runEnd(s) {
 
 let P;
 
-let protocolVersion = Protocol$ReventlessVscodeProtocol.protocolVersion;
+let protocolVersion = Protocol$ReventlessDomainProtocol.protocolVersion;
 
 export {
   P,

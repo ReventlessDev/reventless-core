@@ -1,9 +1,10 @@
-// Hand-written IN-PACKAGE genType type bridge (NOT generated — un-ignored in
-// .gitignore). When one module of this namespaced package references another's
-// genType types, genType emits an import of './ReventlessVscodeProtocol.gen' RELATIVE
-// TO src/ with `<Module>_`-prefixed names — the sibling of the package-root bridge,
-// which serves the cross-package form of the same convention. Type-only (erased at
-// runtime); the contract shape stays single-source in `Protocol.res`.
+// Hand-written cross-package genType type bridge (NOT generated). When another
+// package references this namespaced package's genType types, genType emits an import
+// of `@reventlessdev/reventless-domain-protocol/ReventlessDomainProtocol.gen` with
+// `Protocol_`-prefixed names. genType emits the per-module `src/Protocol.gen.ts` with
+// bare names, so this root file bridges the two — re-exporting under the expected
+// names. Type-only (erased at runtime); the contract shape stays single-source in
+// `src/Protocol.res`.
 export type {
   assertionKind as Protocol_assertionKind,
   componentKind as Protocol_componentKind,
@@ -21,4 +22,4 @@ export type {
   position as Protocol_position,
   streamEvent as Protocol_streamEvent,
   vsRange as Protocol_vsRange,
-} from './Protocol.gen';
+} from './src/Protocol.gen';

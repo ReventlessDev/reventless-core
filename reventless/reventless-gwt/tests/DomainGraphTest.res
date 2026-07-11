@@ -4,7 +4,7 @@
 // LocalHost integration; here hand-built fixtures pin the edge wiring.
 
 open JestGlobals
-open ReventlessVscodeProtocol.Protocol
+open ReventlessDomainProtocol.Protocol
 
 let command = (~name, ~mutationField, ~apiExposed=None): Reventless.Plugin.commandDef => {
   name,

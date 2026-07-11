@@ -23,7 +23,7 @@
     }
   ],
   "dependencies": [
-    "@reventlessdev/reventless-vscode-protocol",
+    "@reventlessdev/reventless-domain-protocol",
     "sury",
     "@reventlessdev/rescript-jest",
     "@reventlessdev/rescript-effect",

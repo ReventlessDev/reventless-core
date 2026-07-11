@@ -1,11 +1,11 @@
 {
-  "name": "@reventlessdev/reventless-vscode-protocol",
+  "name": "@reventlessdev/reventless-domain-protocol",
   "package-specs": {
     "module": "esmodule",
     "in-source": true
   },
   "suffix": ".res.mjs",
-  "namespace": "ReventlessVscodeProtocol",
+  "namespace": "ReventlessDomainProtocol",
   "ppx-flags": ["sury-ppx/bin"],
   "dependencies": ["sury"],
   "dev-dependencies": ["@reventlessdev/rescript-jest"],

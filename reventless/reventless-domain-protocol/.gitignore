@@ -5,4 +5,4 @@ node_modules/
 lib/
 src/*.res.js
 src/*.gen.ts
-!src/ReventlessVscodeProtocol.gen.ts
+!src/ReventlessDomainProtocol.gen.ts

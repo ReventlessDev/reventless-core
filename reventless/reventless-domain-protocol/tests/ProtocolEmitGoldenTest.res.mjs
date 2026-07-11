@@ -3,8 +3,8 @@
 import * as Nodefs from "node:fs";
 import * as Nodeurl from "node:url";
 import * as Nodepath from "node:path";
-import * as Protocol$ReventlessVscodeProtocol from "../src/Protocol.res.mjs";
-import * as ProtocolSamples$ReventlessVscodeProtocol from "./ProtocolSamples.res.mjs";
+import * as Protocol$ReventlessDomainProtocol from "../src/Protocol.res.mjs";
+import * as ProtocolSamples$ReventlessDomainProtocol from "./ProtocolSamples.res.mjs";
 
 let importMetaUrl = import.meta.url;
 
@@ -12,7 +12,7 @@ let testDir = Nodepath.dirname(Nodeurl.fileURLToPath(importMetaUrl));
 
 let goldenPath = Nodepath.join(testDir, "../fixtures/streamEvents.golden.ndjson");
 
-let emitted = ProtocolSamples$ReventlessVscodeProtocol.cases.map(param => Protocol$ReventlessVscodeProtocol.toJsonLine(param[1]));
+let emitted = ProtocolSamples$ReventlessDomainProtocol.cases.map(param => Protocol$ReventlessDomainProtocol.toJsonLine(param[1]));
 
 let match = process.env["UPDATE_GOLDEN"];
 
@@ -24,16 +24,16 @@ let goldenLines = Nodefs.readFileSync(goldenPath, "utf8").trimEnd().split("\n");
 
 globalThis.describe("Protocol emit golden (frozen NDJSON wire bytes)", () => {
   globalThis.test("fixture line count matches the sample set", () => {
-    globalThis.expect(goldenLines.length).toBe(ProtocolSamples$ReventlessVscodeProtocol.cases.length);
+    globalThis.expect(goldenLines.length).toBe(ProtocolSamples$ReventlessDomainProtocol.cases.length);
   });
-  ProtocolSamples$ReventlessVscodeProtocol.cases.forEach((param, i) => {
+  ProtocolSamples$ReventlessDomainProtocol.cases.forEach((param, i) => {
     let e = param[1];
     let name = param[0];
     globalThis.test(name + `: emits the exact golden bytes`, () => {
-      globalThis.expect(Protocol$ReventlessVscodeProtocol.toJsonLine(e)).toBe(goldenLines[i]);
+      globalThis.expect(Protocol$ReventlessDomainProtocol.toJsonLine(e)).toBe(goldenLines[i]);
     });
     globalThis.test(name + `: golden line decodes back to the variant`, () => {
-      globalThis.expect(Protocol$ReventlessVscodeProtocol.parseStreamEvent(goldenLines[i])).toEqual(e);
+      globalThis.expect(Protocol$ReventlessDomainProtocol.parseStreamEvent(goldenLines[i])).toEqual(e);
     });
   });
 });

@@ -30,11 +30,11 @@ let generatedModules = [[
 let bridges = [
   [
     "package root",
-    "../ReventlessVscodeProtocol.gen.ts"
+    "../ReventlessDomainProtocol.gen.ts"
   ],
   [
     "src/",
-    "../src/ReventlessVscodeProtocol.gen.ts"
+    "../src/ReventlessDomainProtocol.gen.ts"
   ]
 ];
 

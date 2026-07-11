@@ -50,7 +50,7 @@
           "private": false
         },
         {
-          "name": "@reventlessdev/reventless-vscode-protocol",
+          "name": "@reventlessdev/reventless-domain-protocol",
           "description": "Shared NDJSON contract (StreamEvent) between the reventless-gwt CLI (--format=vscode) and the reventless-vscode extension — a single sury @schema both emit and decode.",
           "private": false
         }

@@ -35,8 +35,8 @@ let exportedTypeNames = (genTs: string): array<string> => {
 let generatedModules = [("Protocol", "../src/Protocol.gen.ts")]
 
 let bridges = [
-  ("package root", "../ReventlessVscodeProtocol.gen.ts"),
-  ("src/", "../src/ReventlessVscodeProtocol.gen.ts"),
+  ("package root", "../ReventlessDomainProtocol.gen.ts"),
+  ("src/", "../src/ReventlessDomainProtocol.gen.ts"),
 ]
 
 describe("genType bridge drift (hand-written bridges re-export every generated type)", () => {

@@ -2,13 +2,13 @@
 // to a `TestRun` method call; field names mirror `TestItem` / `TestMessage` so the
 // extension needs no translation layer.
 //
-// The contract is the shared `@reventlessdev/reventless-vscode-protocol` `Protocol`
+// The contract is the shared `@reventlessdev/reventless-domain-protocol` `Protocol`
 // module — the SAME sury `@schema` the extension decodes with. Every event is built as
 // a `Protocol.streamEvent` variant and serialized via `Protocol.toJsonLine`, so a
 // `protocolVersion` bump or field change touches that one definition instead of
 // drifting between this emitter and the extension's decoder.
 
-module P = ReventlessVscodeProtocol.Protocol
+module P = ReventlessDomainProtocol.Protocol
 
 @val external processStdout: {"write": string => unit} = "process.stdout"
 let write = (s: string) => processStdout["write"](s)

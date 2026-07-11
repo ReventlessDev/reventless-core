@@ -29,7 +29,7 @@
 // Finding kinds are the typed protocol vocabulary — constructing the variant here
 // (not a string literal) means a typo or rename is a compile error, and the emitter
 // forwards findings without conversion.
-module P = ReventlessVscodeProtocol.Protocol
+module P = ReventlessDomainProtocol.Protocol
 
 type finding = {
   kind: P.deadCodeKind,

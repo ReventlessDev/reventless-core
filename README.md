@@ -54,7 +54,7 @@ This is a [pnpm](https://pnpm.io) + [Lerna](https://lerna.js.org) monorepo. Pack
 - [reventless-infra](reventless/reventless-infra/) — infrastructure types shared across adapters
 - [reventless-interop](reventless/reventless-interop/) — versioned cross-plugin contract types and compatibility validation
 - [reventless-gwt](reventless/reventless-gwt/) — Given-When-Then test DSLs and CLI runner for slice testing
-- [reventless-vscode-protocol](reventless/reventless-vscode-protocol/) — shared NDJSON contract between the `reventless-gwt` CLI and the VS Code extension
+- [reventless-domain-protocol](reventless/reventless-domain-protocol/) — shared NDJSON contract between the `reventless-gwt` CLI and the VS Code extension
 - [reventless-conventional-changelog](reventless/reventless-conventional-changelog/) — custom conventional-changelog preset
 - [reventless-layer-builder](reventless/reventless-layer-builder/) — AWS Lambda layer builder (private)
 
