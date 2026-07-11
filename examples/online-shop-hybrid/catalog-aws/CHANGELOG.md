@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.156 (2026-07-11)
+
+### Features
+
+* **infra:** add DeployBootstrap seam for generated deploy programs ([f0dc868](https://github.com/ReventlessDev/reventless-core/commit/f0dc8686396d21e7b39667eb0825b2e57fe4dabf))
+
+
 # 1.0.0-alpha.155 (2026-07-11)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog-aws
