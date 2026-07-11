@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.155 (2026-07-11)
+
+### Bug Fixes
+
+* **build:** mark tests as dev-only sources so dependents don't compile them ([28b3b1c](https://github.com/ReventlessDev/reventless-core/commit/28b3b1ccfeaafc1d7050a86ce2362f32e4299187))
+
+
 # 3.0.0-alpha.154 (2026-07-11)
 
 ### Bug Fixes
