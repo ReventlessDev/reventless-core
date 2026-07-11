@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.49 (2026-07-11)
+
+### Features
+
+* **pulumi-aws:** add email/https/application SNS subscription protocols ([9c70d81](https://github.com/ReventlessDev/reventless-core/commit/9c70d81a92b7f28023850114868142aca828f5ff))
+
+
 # 2.4.0-alpha.48 (2026-07-11)
 
 ### Features
