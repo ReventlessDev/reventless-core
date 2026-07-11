@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-gwt",
-  "version": "1.0.0-alpha.100",
+  "version": "1.0.0-alpha.101",
   "description": "Given-When-Then DSLs and CLI runner for Reventless slice testing",
   "license": "Apache-2.0",
   "bin": {
@@ -28,9 +28,9 @@
     "@reventlessdev/rescript-effect": "workspace:*",
     "@reventlessdev/rescript-jest": "workspace:*",
     "@reventlessdev/reventless-core": "workspace:*",
+    "@reventlessdev/reventless-domain-protocol": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "@reventlessdev/reventless-domain-protocol": "workspace:*",
     "chokidar": "^3.6.0",
     "picocolors": "^1.1.1",
     "sury": "11.0.0-alpha.4"
