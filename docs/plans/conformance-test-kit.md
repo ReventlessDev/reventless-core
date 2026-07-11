@@ -114,6 +114,26 @@ running the *same* scenarios as the local backends. Backend-specific tests
 (e.g. DynamoDB transaction-assembly internals, SQLite dialect details) stay
 where they are; the kit owns only backend-neutral behavior.
 
+### Runtime backend obligation: Monitoring seam
+
+Beyond the storage contracts above, a **runtime** backend (an implementation of
+`ReventlessCore.Runtime.environmentMaker`) carries one additional conformance
+rule from the deploy-time Monitoring seam (`docs/plans/monitoring-hook-seam.md`):
+
+- **Every execution unit a backend provisions MUST be announced exactly once via
+  `ReventlessCore.Monitoring.notify`**, with the `unitKind` role it plays, the
+  unit's static logical `~name`, and its `Adapter.resource`. A backend that also
+  provisions a dead-letter mechanism announces it with `DeadLetterSink`. Backends
+  that provision no compute unit (in-memory/local) call nothing.
+
+This is a static/structural rule, not a Jest suite: it is enforced at the
+provisioning choke point (`makeFromCodeAsset` gains a required `~unitKind`
+argument, so the compiler proves the sweep is exhaustive) rather than by a
+scenario. A behavioral check — register a recording backend in an example deploy
+and assert one `notify` per provisioned unit plus one `DeadLetterSink`, with
+`component.name` resolving to the unit's native name — belongs to the platform
+conformance track (C2), if that harness is ever built.
+
 ---
 
 ## Phasing

@@ -161,6 +161,7 @@ let finish = () =>
 
         let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
           ~name="AllAutomationSlices",
+          ~unitKind=ReventlessCore.Monitoring.Reactor,
           ~code,
           ~sourceCodeHash,
           ~envVars,

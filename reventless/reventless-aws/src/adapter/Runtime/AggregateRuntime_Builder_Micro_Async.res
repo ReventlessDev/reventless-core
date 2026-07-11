@@ -224,6 +224,7 @@ let finish = () =>
           let cmdTopicName = baseName ++ "CmdHandler"
           let cmdTopicRuntime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
             ~name=cmdTopicName,
+            ~unitKind=ReventlessCore.Monitoring.CommandHandler,
             ~code=cmdTopicCode,
             ~sourceCodeHash=cmdTopicSourceCodeHash,
             ~envVars=cmdTopicEnvVars,
@@ -254,6 +255,7 @@ let finish = () =>
             let cmdGenName = baseName ++ "CmdGen"
             let cmdGenRuntime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
               ~name=cmdGenName,
+              ~unitKind=ReventlessCore.Monitoring.CommandHandler,
               ~code=cmdGenCode,
               ~sourceCodeHash=cmdGenSourceCodeHash,
               ~envVars=cmdGenEnvVars,
@@ -298,6 +300,7 @@ let finish = () =>
             let evtMapperName = baseName ++ "EventMapper"
             let evtMapperRuntime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
               ~name=evtMapperName,
+              ~unitKind=ReventlessCore.Monitoring.CommandHandler,
               ~code=evtMapperCode,
               ~sourceCodeHash=evtMapperSourceCodeHash,
               ~envVars=evtMapperEnvVars,

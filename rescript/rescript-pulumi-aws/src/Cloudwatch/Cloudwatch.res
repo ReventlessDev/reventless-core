@@ -5,3 +5,4 @@ module EventRule = Cloudwatch_EventRule
 module EventTarget = Cloudwatch_EventTarget
 module LogGroup = Cloudwatch_LogGroup
 module LogMetricFilter = Cloudwatch_LogMetricFilter
+module MetricAlarm = Cloudwatch_MetricAlarm

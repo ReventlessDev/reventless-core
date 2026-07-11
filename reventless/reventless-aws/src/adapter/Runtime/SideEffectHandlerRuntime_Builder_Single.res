@@ -152,6 +152,7 @@ let finish = () =>
 
         let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
           ~name="AllSideEffectHandlers",
+          ~unitKind=ReventlessCore.Monitoring.Reactor,
           ~code,
           ~sourceCodeHash,
           ~envVars,

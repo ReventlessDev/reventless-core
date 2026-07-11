@@ -92,6 +92,7 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
 
       let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
         ~name,
+        ~unitKind=ReventlessCore.Monitoring.EventCollector,
         ~code,
         ~sourceCodeHash,
         ~envVars,

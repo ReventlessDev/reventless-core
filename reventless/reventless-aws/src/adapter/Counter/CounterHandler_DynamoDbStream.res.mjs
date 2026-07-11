@@ -37,7 +37,10 @@ function make(name, referencesName, referencesDb, countsName, countsDb, param, s
   let componentOpts = {
     parent: componentOpts_parent
   };
-  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, 1024, 30, undefined, undefined, undefined, undefined, undefined, componentOpts);
+  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, {
+    TAG: "Other",
+    _0: "Counter"
+  }, match.code, match.sourceCodeHash, envVars, 1024, 30, undefined, undefined, undefined, undefined, undefined, componentOpts);
   let lambda = runtime.parts.lambda;
   let subscribe = (sourceName, source) => Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, sourceName, source, opts);
   subscribe(referencesName, referencesStream);

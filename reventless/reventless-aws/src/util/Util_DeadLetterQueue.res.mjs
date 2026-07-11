@@ -8,7 +8,9 @@ import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda
 import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../adapter/AWS_Tags.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
+import * as Monitoring$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Monitoring/Monitoring.res.mjs";
 import * as Util_Bundle$ReventlessAws from "./Util_Bundle.res.mjs";
+import * as Util_Lambda$ReventlessAws from "./Util_Lambda.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "./Util_EventSourceMapping.res.mjs";
 
@@ -67,6 +69,8 @@ let handler = new (Aws.lambda.Function)(name, {
   },
   sourceCodeHash: sourceCodeHash
 }, opts);
+
+Monitoring$ReventlessCore.notify("DeadLetterSink", name, Util_Lambda$ReventlessAws.functionToResource(AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType), handler));
 
 let lambda = Pulumi.output(handler);
 

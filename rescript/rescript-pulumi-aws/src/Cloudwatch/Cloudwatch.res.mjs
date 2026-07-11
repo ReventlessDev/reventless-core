@@ -9,10 +9,13 @@ let LogGroup;
 
 let LogMetricFilter;
 
+let MetricAlarm;
+
 export {
   EventRule,
   EventTarget,
   LogGroup,
   LogMetricFilter,
+  MetricAlarm,
 }
 /* No side effect */

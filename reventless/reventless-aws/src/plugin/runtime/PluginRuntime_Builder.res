@@ -483,6 +483,7 @@ module Make = (
 
     let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
       ~name,
+      ~unitKind=ReventlessCore.Monitoring.EventCollector,
       ~code=codeOutput->Obj.magic,
       ~sourceCodeHash=sourceCodeHashOutput->Obj.magic,
       ~envVars,
@@ -760,6 +761,7 @@ module Make = (
 
       let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
         ~name,
+        ~unitKind=ReventlessCore.Monitoring.Scheduler,
         ~code,
         ~sourceCodeHash,
         ~envVars,

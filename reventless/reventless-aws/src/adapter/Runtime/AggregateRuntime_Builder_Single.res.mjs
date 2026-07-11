@@ -196,7 +196,7 @@ function finish() {
           subnetIds: pgSelection.subnetIds,
           securityGroupIds: [sgId]
         })) : undefined;
-      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAggregatesCmdHandler", match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, undefined, vpcConfig, opts);
+      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAggregatesCmdHandler", "CommandHandler", match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, undefined, vpcConfig, opts);
       if (pgSelection !== undefined) {
         pgSelection.connectionConfig.apply(cc => new (Aws.iam.RolePolicy)("AllAggregatesCmdHandler-pgSecret", {
           policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "AllAggregatesCmdHandler-pgSecretPolicy", [{

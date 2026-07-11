@@ -66,6 +66,10 @@ let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, part
 
 let makeFromCodeAsset: (
   ~name: string,
+  /** The monitoring role this execution unit plays. Every call site passes its
+      kind; `makeFromCodeAsset` announces the provisioned Lambda to the
+      `Monitoring` registry (no-op unless an extension registered a backend). */
+  ~unitKind: ReventlessCore.Monitoring.unitKind,
   ~code: Pulumi.Archive.t,
   ~sourceCodeHash: string,
   ~envVars: dict<Pulumi.Input.t<string>>=?,
@@ -86,6 +90,7 @@ let makeFromCodeAsset: (
   ~opts: Pulumi.ComponentResource.options=?,
 ) => ReventlessCore.Runtime.environment<parts> = (
   ~name,
+  ~unitKind,
   ~code,
   ~sourceCodeHash,
   ~envVars=Dict.make(),
@@ -253,12 +258,16 @@ let makeFromCodeAsset: (
     }
   })
 
+  let lambdaResource = lambda->Util.Lambda.functionToResource(~tags=tags->Pulumi.Output.fromInput)
+
+  // Announce the provisioned execution unit to the Monitoring registry. No-op
+  // unless a deploy program registered a backend via Monitoring.use — see
+  // docs/plans/monitoring-hook-seam.md.
+  ReventlessCore.Monitoring.notify(~kind=unitKind, ~name, ~component=lambdaResource)
+
   {
     parts: {lambda: lambda->Pulumi.Output.make, lambdaRole},
-    resources: [
-      lambda->Util.Lambda.functionToResource(~tags=tags->Pulumi.Output.fromInput),
-      Util_IAM_Role.toResource(lambdaRole),
-    ],
+    resources: [lambdaResource, Util_IAM_Role.toResource(lambdaRole)],
   }
 }
 

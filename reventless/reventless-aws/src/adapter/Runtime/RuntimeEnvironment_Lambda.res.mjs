@@ -13,6 +13,7 @@ import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Runtime$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/Runtime.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
+import * as Monitoring$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Monitoring/Monitoring.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Lambda$ReventlessAws from "../../util/Util_Lambda.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
@@ -42,7 +43,7 @@ function make(name, handler, memorySizeOpt, timeoutOpt, opts) {
   };
 }
 
-function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt, timeoutOpt, reservedConcurrency, ephemeralStorageMb, logRetentionDays, dcbMetricsOpt, vpcConfig, opts) {
+function makeFromCodeAsset(name, unitKind, code, sourceCodeHash, envVarsOpt, memorySizeOpt, timeoutOpt, reservedConcurrency, ephemeralStorageMb, logRetentionDays, dcbMetricsOpt, vpcConfig, opts) {
   let envVars = envVarsOpt !== undefined ? envVarsOpt : ({});
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : Runtime$ReventlessCore.CommandHandlerDefaults.memorySize;
   let timeout = timeoutOpt !== undefined ? timeoutOpt : Runtime$ReventlessCore.CommandHandlerDefaults.timeout;
@@ -143,13 +144,15 @@ function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt
       return;
     }
   });
+  let lambdaResource = Util_Lambda$ReventlessAws.functionToResource(tags, lambda);
+  Monitoring$ReventlessCore.notify(unitKind, name, lambdaResource);
   return {
     parts: {
       lambda: Pulumi.output(lambda),
       lambdaRole: lambdaRole
     },
     resources: [
-      Util_Lambda$ReventlessAws.functionToResource(tags, lambda),
+      lambdaResource,
       Util_IAM_Role$ReventlessAws.toResource(lambdaRole)
     ]
   };

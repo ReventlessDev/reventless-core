@@ -70,6 +70,17 @@ let handler = Lambda.Function.make(
   ~opts,
 )
 
+// Second Monitoring provisioning site (§2): the dead-letter mechanism. Role-based
+// kind, mechanism-agnostic resource — no-op unless a backend is registered.
+ReventlessCore.Monitoring.notify(
+  ~kind=DeadLetterSink,
+  ~name,
+  ~component=Util_Lambda.functionToResource(
+    handler,
+    ~tags=AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType)->Pulumi.Output.fromInput,
+  ),
+)
+
 let lambda = handler->Pulumi.Output.make
 
 let _subscription = Util_EventSourceMapping.subscribeSqs(~lambda, ~name, ~queue, ~opts)

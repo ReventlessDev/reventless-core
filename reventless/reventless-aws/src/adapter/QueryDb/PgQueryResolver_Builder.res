@@ -177,6 +177,7 @@ let provision = (
 
     let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
       ~name,
+      ~unitKind=ReventlessCore.Monitoring.Other("QueryResolver"),
       ~code,
       ~sourceCodeHash,
       ~envVars,

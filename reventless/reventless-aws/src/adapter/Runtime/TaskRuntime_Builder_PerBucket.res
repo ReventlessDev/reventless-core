@@ -73,6 +73,7 @@ let forBucketCallback = (
 
   let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
     ~name=fullName,
+    ~unitKind=ReventlessCore.Monitoring.Task,
     ~code,
     ~sourceCodeHash,
     ~envVars,

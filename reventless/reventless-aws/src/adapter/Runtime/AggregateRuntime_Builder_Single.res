@@ -311,6 +311,7 @@ let finish = () =>
 
         let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
           ~name="AllAggregatesCmdHandler",
+          ~unitKind=ReventlessCore.Monitoring.CommandHandler,
           ~code,
           ~sourceCodeHash,
           ~envVars,

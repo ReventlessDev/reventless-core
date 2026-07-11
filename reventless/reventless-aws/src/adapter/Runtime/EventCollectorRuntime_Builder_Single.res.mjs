@@ -158,7 +158,7 @@ function finish() {
           subnetIds: qdbSelection.subnetIds,
           securityGroupIds: [sgId]
         })) : undefined;
-      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllReadModels", match$1.code, match$1.sourceCodeHash, envVars, match[0], match[1], undefined, undefined, undefined, undefined, vpcConfig, opts);
+      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllReadModels", "EventCollector", match$1.code, match$1.sourceCodeHash, envVars, match[0], match[1], undefined, undefined, undefined, undefined, vpcConfig, opts);
       if (qdbSelection !== undefined && anyPgBacked) {
         qdbSelection.connectionConfig.apply(cc => new (Aws.iam.RolePolicy)("AllReadModels-pgSecret", {
           policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "AllReadModels-pgSecretPolicy", [{

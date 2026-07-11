@@ -102,6 +102,7 @@ let forCommandTopic = (
 
   let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
     ~name,
+    ~unitKind=ReventlessCore.Monitoring.CommandHandler,
     ~code,
     ~sourceCodeHash,
     ~envVars,

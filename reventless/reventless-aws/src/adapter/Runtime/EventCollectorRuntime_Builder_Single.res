@@ -283,6 +283,7 @@ let finish = () =>
 
         let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
           ~name="AllReadModels",
+          ~unitKind=ReventlessCore.Monitoring.EventCollector,
           ~code,
           ~sourceCodeHash,
           ~envVars,
