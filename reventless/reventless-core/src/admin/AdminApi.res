@@ -25,6 +25,50 @@ let mutationEntries = (~cloner: bool) => {
 
 let queryEntries = PluginBaseFragment.queryEntries
 
+// ApiFragmentRegistry admin mutations — the real GraphQL surface of the ApiFragmentRegistry
+// StateChangeSlice: the plugin / standalone-service deploy calls `Platform_RegisterApiFragment` /
+// `Platform_DeregisterApiFragment` as a SigV4 system caller. Field names + arg SDL + the nested
+// `fragment` input type are derived from the slice's `commandSchema` via the SAME
+// `Api_Naming.sliceMutationFields` (admin "Platform" prefix) + `GraphQL_FragmentGenerator` path
+// that the DCB builder uses, so the field declared here in the STATIC admin base is byte-identical
+// to the one the DCB resolver binds to (`RecordApiFragmentPush` is `@noApi`, filtered out).
+//
+// These live in `baseFragment` ONLY, never in the shared `mutationEntries`: only the static base is
+// pushed to AppSync (`Platform.res` preAdminResolversSchemaHook), whereas the constructed admin
+// fragment (`Platform_Admin.construct`) already carries them via `dcbResult.mutationEntries`. Adding
+// them to `mutationEntries` — which feeds both — would duplicate the fields in the constructed
+// fragment. They are folded into `baseFragment`'s own `generate` call (not a separate one) so its
+// shared `seenTypes` dedups the shared `CommandResult` type family instead of re-emitting it.
+let apiFragmentRegistryMutationEntries: array<mutationSchemaEntry> = {
+  let commandSchema = ApiFragmentRegistry.commandSchema->S.castToUnknown
+  let fieldSpecs = Api_Naming.sliceMutationFields(
+    ~plugin="Platform",
+    ~slice=ApiFragmentRegistry.name,
+    ~commandSchema,
+  )
+  if fieldSpecs->Array.length === 0 {
+    []
+  } else {
+    [
+      {
+        ReventlessInfra.Api.fieldNames: fieldSpecs->Array.map(((f, _)) => f),
+        commandSchema,
+      },
+    ]
+  }
+}
+
+// Admin fields a deploy-time system caller (machine credentials — SigV4/IAM on AWS) invokes: the
+// two ApiFragmentRegistry mutations (the deploy's register/deregister write path) and
+// `Platform_ApiFragments` (the deploy waiter's push-status poll). Provider-neutral by design — the
+// AWS adapter threads these into `injectAwsAuthAll`'s `~iamFieldNames` so only these fields carry
+// the dual-auth (`@aws_cognito_user_pools @aws_iam`) directive; every other admin field stays
+// Cognito-only. Derived from the same mutation entries so the names never drift from the SDL.
+let systemCallerFieldNames =
+  apiFragmentRegistryMutationEntries
+  ->Array.flatMap(e => e.fieldNames)
+  ->Array.concat([Platform_ApiFragmentsApi.queryFieldName])
+
 // UIFragment lifecycle Source C subscriptions.
 // Mutations are called by the backend when UIFragment events occur; the
 // subscription→mutation fan-in is carried as neutral `subscriptionSource`
@@ -77,7 +121,10 @@ let pluginStatusSubscriptionSource: GraphQL_Stitcher.subscriptionSource = {
 }
 
 let baseFragment = (~cloner: bool) => {
-  let base = GraphQL_FragmentGenerator.generate(~mutationEntries=mutationEntries(~cloner), ~queryEntries)
+  let base = GraphQL_FragmentGenerator.generate(
+    ~mutationEntries=Array.concat(mutationEntries(~cloner), apiFragmentRegistryMutationEntries),
+    ~queryEntries,
+  )
   let parts = GraphQL_Stitcher.decode(base)
   // Source C subscriptions for the admin Plugin aggregate mutations.
   // The standard auto-resolver flow (CommandGeneratorResolvers_AppSync.make)

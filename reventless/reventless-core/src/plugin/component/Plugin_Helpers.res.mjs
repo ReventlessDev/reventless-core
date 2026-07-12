@@ -473,6 +473,10 @@ let noHooks_apiRole = {
   contents: undefined
 };
 
+let noHooks_adminApi = {
+  contents: undefined
+};
+
 let noHooks_deployTarget = {
   contents: "Domain"
 };
@@ -483,6 +487,7 @@ let noHooks = {
   schedulerRoleUrn: noHooks_schedulerRoleUrn,
   api: noHooks_api,
   apiRole: noHooks_apiRole,
+  adminApi: noHooks_adminApi,
   deployTarget: noHooks_deployTarget
 };
 

@@ -14,7 +14,9 @@ let sdlTypes: array<string> = [
   `type Platform_ApiFragmentEntry {\n  pluginId: String!\n  apiTarget: String!\n  pushStatus: String!\n  pushMessage: String!\n  pushedAt: String!\n  registeredAt: String!\n  updatedAt: String!\n}`,
 ]
 
-let sdlQueryField: string = `  Platform_ApiFragments: [Platform_ApiFragmentEntry!]!`
+let queryFieldName: string = "Platform_ApiFragments"
+
+let sdlQueryField: string = `  ${queryFieldName}: [Platform_ApiFragmentEntry!]!`
 
 let encodeApiFragmentEntry = (entry: ApiFragments.state): JSON.t =>
   Dict.fromArray([

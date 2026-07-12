@@ -78,7 +78,9 @@ let emptyResult = {
 
 function Make(DcbEventLogStorage) {
   return DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => (RuntimeBuilder => (HooksConfig => {
-    let construct = (name, childName, environmentOpt, platformNameOpt, aggregateEventTopicsOpt, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponentsOpt, pluginStructure, opts) => {
+    let construct = (name, childName, apiNamePrefixOpt, onAdminApiOpt, environmentOpt, platformNameOpt, aggregateEventTopicsOpt, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponentsOpt, pluginStructure, opts) => {
+      let apiNamePrefix = apiNamePrefixOpt !== undefined ? apiNamePrefixOpt : name;
+      let onAdminApi = onAdminApiOpt !== undefined ? onAdminApiOpt : false;
       let environment = environmentOpt !== undefined ? environmentOpt : "";
       let platformName = platformNameOpt !== undefined ? platformNameOpt : "";
       let aggregateEventTopics = aggregateEventTopicsOpt !== undefined ? aggregateEventTopicsOpt : ({});
@@ -225,13 +227,13 @@ function Make(DcbEventLogStorage) {
         syncSlices.forEach(S => {
           let commandSchema = S.Spec.commandSchema;
           if (!ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
-            return registerResolver("Dcb", Api_Naming$ReventlessCore.sliceMutationFields(name, S.Spec.name, commandSchema).map(param => param[0]), commandSchema, S.Spec.commandAuthorization);
+            return registerResolver("Dcb", Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).map(param => param[0]), commandSchema, S.Spec.commandAuthorization);
           }
         });
         asyncSlices.forEach(S => {
           let commandSchema = S.Spec.commandSchema;
           if (!ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
-            return registerResolver("Dcb", Api_Naming$ReventlessCore.sliceMutationFields(name, S.Spec.name, commandSchema).map(param => param[0]), commandSchema, S.Spec.commandAuthorization);
+            return registerResolver("Dcb", Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).map(param => param[0]), commandSchema, S.Spec.commandAuthorization);
           }
         });
       }
@@ -244,7 +246,7 @@ function Make(DcbEventLogStorage) {
               return;
             }
             let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(ops.publishJsons, ops.publishJsonsAndWait, S.Spec.name, S.Spec.commandSchema, "StateChangeSlice", false);
-            Api_Naming$ReventlessCore.sliceMutationFields(name, S.Spec.name, commandSchema).forEach(param => bindHandler(param[0], generateCommand));
+            Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).forEach(param => bindHandler(param[0], generateCommand));
           });
         });
         if (asyncDcbCommandTopicOpt !== undefined) {
@@ -255,7 +257,7 @@ function Make(DcbEventLogStorage) {
                 return;
               }
               let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(asyncOps.publishJsons, asyncOps.publishJsonsAndWait, S.Spec.name, S.Spec.commandSchema, "StateChangeSlice", false);
-              Api_Naming$ReventlessCore.sliceMutationFields(name, S.Spec.name, commandSchema).forEach(param => bindHandler(param[0], generateCommand));
+              Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema).forEach(param => bindHandler(param[0], generateCommand));
             });
           });
         }
@@ -397,7 +399,7 @@ function Make(DcbEventLogStorage) {
         if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
           return [];
         } else {
-          return Api_Naming$ReventlessCore.sliceMutationFields(name, S.Spec.name, commandSchema);
+          return Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema);
         }
       });
       let dcbFieldNames = dcbMutationData.map(param => param[0]);
@@ -424,6 +426,7 @@ function Make(DcbEventLogStorage) {
             runtime: runtime,
             fieldNames: dcbFieldNames,
             tags: dcbTags,
+            onAdminApi: onAdminApi,
             opts: opts
           });
         }
@@ -451,7 +454,7 @@ function Make(DcbEventLogStorage) {
       };
       let mutationEntriesFromSlices = Stdlib_Array.filterMap(stateChangeSlices, S => {
         let commandSchema = S.Spec.commandSchema;
-        let fieldSpecs = Api_Naming$ReventlessCore.sliceMutationFields(name, S.Spec.name, commandSchema);
+        let fieldSpecs = Api_Naming$ReventlessCore.sliceMutationFields(apiNamePrefix, S.Spec.name, commandSchema);
         if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema) || fieldSpecs.length === 0) {
           return;
         }

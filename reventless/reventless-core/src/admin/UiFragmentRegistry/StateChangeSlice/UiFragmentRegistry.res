@@ -18,7 +18,13 @@ open Reventless.Plugin
 // `at` is the registration timestamp, stamped from the incoming command meta by the EP mapping
 // — the StateViewSlice projection has no event meta, so time must ride the payload. Inline
 // records let the ppx auto-tag `pluginId` (scoping the decision read to one plugin name).
-@schema
+//
+// Whole-command `@noApi`: this registry has NO GraphQL surface — commands are driven by the
+// plugin runtime's connect/disconnect handshake and routed here by the admin
+// PluginExtensionPoint mapping (AWS) / direct admin-DCB dispatch (local), never by a mutation.
+// Without this marker the DCB builder would emit orphaned `Platform_RegisterUiFragment`
+// resolvers against a schema that never declares those fields.
+@noApi @schema
 type command =
   | RegisterUiFragment({pluginId: string, manifest: uiFragmentManifest, at: string})
   | DeregisterUiFragment({pluginId: string})

@@ -223,6 +223,8 @@ module MakeWithConfig = (
     schedulerRoleUrn: ref(Pulumi.Output.make("")),
     api: ref(None),
     apiRole: ref(None),
+    // In-memory has a single schema (no split Domain/Platform API), so admin resolvers share `api`.
+    adminApi: ref(None),
     deployTarget: ref("Domain"),
     // Phase 1: register SDL + resolver stub synchronously.
     // Pass the resolved server so the correct target (domain or platform) receives the schema.

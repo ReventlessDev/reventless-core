@@ -421,6 +421,9 @@ function MakeWithConfig(Config) {
   let hooks_apiRole = {
     contents: undefined
   };
+  let hooks_adminApi = {
+    contents: undefined
+  };
   let hooks_deployTarget = {
     contents: "Domain"
   };
@@ -436,6 +439,7 @@ function MakeWithConfig(Config) {
     schedulerRoleUrn: hooks_schedulerRoleUrn,
     api: hooks_api,
     apiRole: hooks_apiRole,
+    adminApi: hooks_adminApi,
     deployTarget: hooks_deployTarget
   };
   let AggregateMaker = Aggregate_Builder$ReventlessLocal.MakeWithHooks(Bus)({
@@ -2210,6 +2214,9 @@ function Make($star) {
   let hooks_apiRole = {
     contents: undefined
   };
+  let hooks_adminApi = {
+    contents: undefined
+  };
   let hooks_deployTarget = {
     contents: "Domain"
   };
@@ -2225,6 +2232,7 @@ function Make($star) {
     schedulerRoleUrn: hooks_schedulerRoleUrn,
     api: hooks_api,
     apiRole: hooks_apiRole,
+    adminApi: hooks_adminApi,
     deployTarget: hooks_deployTarget
   };
   let AggregateMaker = Aggregate_Builder$ReventlessLocal.MakeWithHooks(Bus)({

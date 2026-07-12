@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "../components/Api/GraphQL_Stitcher.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "../plugin/api/PluginBaseFragment.res.mjs";
+import * as ApiFragmentRegistry$ReventlessCore from "./ApiFragmentRegistry/StateChangeSlice/ApiFragmentRegistry.res.mjs";
 import * as Platform_UIFragmentsApi$ReventlessCore from "./Platform_UIFragmentsApi.res.mjs";
 import * as Platform_ApiFragmentsApi$ReventlessCore from "./Platform_ApiFragmentsApi.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../components/Api/GraphQL_FragmentGenerator.res.mjs";
@@ -31,6 +32,15 @@ function mutationEntries(cloner) {
     return PluginBaseFragment$ReventlessCore.pluginAggregateMutationEntries;
   }
 }
+
+let fieldSpecs = Api_Naming$ReventlessCore.sliceMutationFields("Platform", ApiFragmentRegistry$ReventlessCore.name, ApiFragmentRegistry$ReventlessCore.commandSchema);
+
+let apiFragmentRegistryMutationEntries = fieldSpecs.length === 0 ? [] : [{
+      fieldNames: fieldSpecs.map(param => param[0]),
+      commandSchema: ApiFragmentRegistry$ReventlessCore.commandSchema
+    }];
+
+let systemCallerFieldNames = apiFragmentRegistryMutationEntries.flatMap(e => e.fieldNames).concat([Platform_ApiFragmentsApi$ReventlessCore.queryFieldName]);
 
 let uiFragmentSubscriptionTypes = [
   `enum UIFragmentChangeKind {\n  Registered\n  Updated\n  Deregistered\n}`,
@@ -73,7 +83,7 @@ let pluginStatusSubscriptionSource = {
 };
 
 function baseFragment(cloner) {
-  let base = GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries(cloner), PluginBaseFragment$ReventlessCore.queryEntries);
+  let base = GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries(cloner).concat(apiFragmentRegistryMutationEntries), PluginBaseFragment$ReventlessCore.queryEntries);
   let parts = GraphQL_Stitcher$ReventlessCore.decode(base);
   let match = Plugin_SubscriptionSchema$ReventlessCore.sourceCFields(PluginBaseFragment$ReventlessCore.pluginAggregateMutationEntries);
   return GraphQL_Stitcher$ReventlessCore.encode({
@@ -102,6 +112,8 @@ export {
   cloneMutationEntry,
   mutationEntries,
   queryEntries,
+  apiFragmentRegistryMutationEntries,
+  systemCallerFieldNames,
   uiFragmentSubscriptionTypes,
   uiFragmentMutationFields,
   uiFragmentSubscriptionField,

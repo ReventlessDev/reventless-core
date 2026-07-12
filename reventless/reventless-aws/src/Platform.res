@@ -667,11 +667,24 @@ module MakeWithConfig = (
   // targetApi that was set before plugin.make() and is never reset.
   let hooksApiRef: ref<option<ReventlessCore.Plugin_Helpers.hookedValue<unknown>>> = ref(None)
   let hooksApiRoleRef: ref<option<ReventlessCore.Plugin_Helpers.hookedValue<unknown>>> = ref(None)
+  // Admin DCB mutation resolvers bind here (the Platform API in split mode). Set by
+  // makePlatform / deployPlatform once the Platform API resource exists. Distinct from hooksApiRef
+  // because both are read in *deferred* callbacks — admin resolvers need the Platform API while the
+  // plugins built afterwards read hooksApiRef (Domain/deploy-target). See platformHooks.adminApi.
+  let hooksAdminApiRef: ref<option<ReventlessCore.Plugin_Helpers.hookedValue<unknown>>> = ref(None)
 
   let resolveHookedApi = (): Types.AppSync.api =>
     switch hooksApiRef.contents {
     | Some({val}) => Obj.magic(val)
     | None => resolveTargetApi()
+    }
+
+  // Admin DCB resolvers resolve to the Platform API when it has been recorded; otherwise fall back
+  // to the same api plugins use (unified mode, or before the split Platform API exists).
+  let resolveAdminHookedApi = (): Types.AppSync.api =>
+    switch hooksAdminApiRef.contents {
+    | Some({val}) => Obj.magic(val)
+    | None => resolveHookedApi()
     }
 
   let hooks: ReventlessCore.Plugin_Helpers.platformHooks = {
@@ -682,6 +695,7 @@ module MakeWithConfig = (
     schedulerRoleUrn: ref(Pulumi.Output.make("")),
     api: hooksApiRef,
     apiRole: hooksApiRoleRef,
+    adminApi: hooksAdminApiRef,
     deployTarget: ref("Domain"),
     inboundAppSyncResolverHook: ({runtime, fieldNames, externalInputSchemas: _, opts}) => {
       let runtimeTyped: ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> =
@@ -693,11 +707,12 @@ module MakeWithConfig = (
         ~opts,
       )
     },
-    dcbAppSyncResolverHook: ({runtime, fieldNames, tags, opts}) => {
+    dcbAppSyncResolverHook: ({runtime, fieldNames, tags, onAdminApi, opts}) => {
       let runtimeTyped: ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> =
         runtime->asLambdaRuntime
       CommandGeneratorResolvers_AppSync.makeDcb(
-        ~api=resolveHookedApi(),
+        // Admin slices bind on the Platform API (split mode); plugins on the deploy-target api.
+        ~api=onAdminApi ? resolveAdminHookedApi() : resolveHookedApi(),
         ~runtime=runtimeTyped,
         ~fieldNames,
         ~tags,
@@ -742,6 +757,10 @@ module MakeWithConfig = (
         let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
           ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
           ~group="Admin",
+          // The ApiFragmentRegistry register/deregister mutations + the Platform_ApiFragments
+          // status query are invoked by the plugin/standalone deploy as a SigV4 system caller, so
+          // they carry the dual-auth (@aws_cognito_user_pools @aws_iam) directive.
+          ~iamFieldNames=ReventlessCore.AdminApi.systemCallerFieldNames,
         )
         let sdl = AppSync_Adapter.stitchWithAwsDirectives(
           ~baseFragment=adminBaseFragment,
@@ -961,6 +980,7 @@ module MakeWithConfig = (
                 AppSync_Adapter.injectAwsAuthAll(
                   ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
                   ~group="Admin",
+                  ~iamFieldNames=ReventlessCore.AdminApi.systemCallerFieldNames,
                 )
               | Domain =>
                 if Config.splitApi {
@@ -1443,6 +1463,11 @@ module MakeWithConfig = (
       (domainApi, domainApiRole)
     }
 
+    // Admin DCB mutation resolvers bind to the Platform API (split mode) or the shared api
+    // (unified). Recorded now that the Platform API resource exists, so the admin's deferred
+    // dcbConnectFn (via ~onAdminApi) targets it rather than the Domain/deploy-target hooksApiRef.
+    hooks.adminApi := Some(platformApi->wrapHookedValue)
+
     // Update splitApiOutputsRef and apiConfig with the now-known Platform API.
     if Config.splitApi {
       splitApiOutputsRef := Some({platformApi, platformApiRole})
@@ -1506,6 +1531,24 @@ module MakeWithConfig = (
         Platform_UIFragments_Lambda.make(
           ~api=platformApi,
           ~uiFragmentRegistryTableName=r.name,
+          ~opts={},
+        )
+      | None => ()
+      }
+    | None => ()
+    }
+
+    // Mount the Platform_ApiFragments Lambda resolver — scans the ApiFragments
+    // StateViewSlice table and returns the push-status row per plugin (the deploy
+    // waiter polls this). The query field is in the pushed admin base but was
+    // unresolved on AWS until now.
+    switch admin.stateViewSlicesOutputs->Dict.get("ApiFragments") {
+    | Some(rm) =>
+      switch rm.queryDb.resources->Array.get(0) {
+      | Some(r) =>
+        Platform_ApiFragments_Lambda.make(
+          ~api=platformApi,
+          ~apiFragmentRegistryTableName=r.name,
           ~opts={},
         )
       | None => ()
@@ -1608,6 +1651,11 @@ module MakeWithConfig = (
       (domainApi, domainApiRole)
     }
 
+    // Admin DCB mutation resolvers bind to the Platform API (split mode) or the shared api
+    // (unified). Recorded now that the Platform API resource exists, so the admin's deferred
+    // dcbConnectFn (via ~onAdminApi) targets it rather than the Domain/deploy-target hooksApiRef.
+    hooks.adminApi := Some(platformApi->wrapHookedValue)
+
     // Update splitApiOutputsRef and apiConfig with the now-known Platform API.
     if Config.splitApi {
       splitApiOutputsRef := Some({platformApi, platformApiRole})
@@ -1669,6 +1717,7 @@ module MakeWithConfig = (
           AppSync_Adapter.injectAwsAuthAll(
             ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
             ~group="Admin",
+            ~iamFieldNames=ReventlessCore.AdminApi.systemCallerFieldNames,
           )
         }
         let sdl = AppSync_Adapter.stitchWithAwsDirectives(
@@ -1793,6 +1842,24 @@ module MakeWithConfig = (
         Platform_UIFragments_Lambda.make(
           ~api=platformApi,
           ~uiFragmentRegistryTableName=r.name,
+          ~opts={},
+        )
+      | None => ()
+      }
+    | None => ()
+    }
+
+    // Mount the Platform_ApiFragments Lambda resolver — scans the ApiFragments
+    // StateViewSlice table and returns the push-status row per plugin (the deploy
+    // waiter polls this). The query field is in the pushed admin base but was
+    // unresolved on AWS until now.
+    switch admin.stateViewSlicesOutputs->Dict.get("ApiFragments") {
+    | Some(rm) =>
+      switch rm.queryDb.resources->Array.get(0) {
+      | Some(r) =>
+        Platform_ApiFragments_Lambda.make(
+          ~api=platformApi,
+          ~apiFragmentRegistryTableName=r.name,
           ~opts={},
         )
       | None => ()

@@ -78,6 +78,7 @@ import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/revent
 import * as Platform_UIFragments_Lambda$ReventlessAws from "./adapter/Api/Platform_UIFragments_Lambda.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as EventLogSubscription_AppSync$ReventlessAws from "./adapter/EventLogSubscription/EventLogSubscription_AppSync.res.mjs";
+import * as Platform_ApiFragments_Lambda$ReventlessAws from "./adapter/Api/Platform_ApiFragments_Lambda.res.mjs";
 import * as UiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry_Behavior.res.mjs";
 import * as ApiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/ApiFragmentRegistry/StateChangeSlice/ApiFragmentRegistry_Behavior.res.mjs";
 import * as CommandTopicChannel_SQS_Async$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
@@ -544,12 +545,23 @@ function MakeWithConfig(Config) {
   let hooksApiRoleRef = {
     contents: undefined
   };
+  let hooksAdminApiRef = {
+    contents: undefined
+  };
   let resolveHookedApi = () => {
     let match = hooksApiRef.contents;
     if (match !== undefined) {
       return match.val;
     } else {
       return resolveTargetApi();
+    }
+  };
+  let resolveAdminHookedApi = () => {
+    let match = hooksAdminApiRef.contents;
+    if (match !== undefined) {
+      return match.val;
+    } else {
+      return resolveHookedApi();
     }
   };
   let hooks_subscriptionInfraHook = Stdlib_Option.map(domainEventsApiOpt, eventsApi => (params => {
@@ -706,7 +718,9 @@ function MakeWithConfig(Config) {
       return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => {
         let runSchemaPush = () => writeAndScanFragments().then(async allPluginFragments => {
           let baseFragment;
-          baseFragment = capturedDeployTarget === "Domain" && Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", undefined);
+          baseFragment = capturedDeployTarget === "Domain" ? (
+              Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", undefined)
+            ) : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", AdminApi$ReventlessCore.systemCallerFieldNames);
           let sdl = AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(baseFragment, allPluginFragments);
           let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
           let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
@@ -753,7 +767,7 @@ function MakeWithConfig(Config) {
         Config.splitApi ? undefined : domainApi
       );
     if (targetApiOpt !== undefined) {
-      let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", undefined);
+      let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", AdminApi$ReventlessCore.systemCallerFieldNames);
       let sdl = AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(adminBaseFragment, []);
       return Output$Pulumi.flatMap(Pulumi.all([
         targetApiOpt,
@@ -775,7 +789,7 @@ function MakeWithConfig(Config) {
     return adminBarrier;
   };
   let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), param.runtime, param.fieldNames, param.opts);
-  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(resolveHookedApi(), param.runtime, param.fieldNames, param.tags, param.opts);
+  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(param.onAdminApi ? resolveAdminHookedApi() : resolveHookedApi(), param.runtime, param.fieldNames, param.tags, param.opts);
   let hooks_onDcbEventLogCreated = dcbEventLogUnknown => {
     if (DcbBackend$ReventlessAws.isPostgres()) {
       return;
@@ -828,6 +842,7 @@ function MakeWithConfig(Config) {
     schedulerRoleUrn: hooks_schedulerRoleUrn,
     api: hooksApiRef,
     apiRole: hooksApiRoleRef,
+    adminApi: hooksAdminApiRef,
     deployTarget: hooks_deployTarget
   };
   let PluginBuilderImpl = Plugin$ReventlessAws.Make({
@@ -1006,6 +1021,7 @@ function MakeWithConfig(Config) {
       ];
     let platformApiRole = match[1];
     let platformApi = match[0];
+    hooksAdminApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(platformApi);
     if (Config.splitApi) {
       splitApiOutputsRef.contents = {
         platformApi: platformApi,
@@ -1043,6 +1059,13 @@ function MakeWithConfig(Config) {
         Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
       }
     }
+    let rm$1 = admin.stateViewSlicesOutputs["ApiFragments"];
+    if (rm$1 !== undefined) {
+      let r$2 = rm$1.queryDb.resources[0];
+      if (r$2 !== undefined) {
+        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, {});
+      }
+    }
     let pluginComponents = plugins.map(plugin => plugin.make());
     let pluginComponent = pluginComponents[0];
     if (pluginComponent !== undefined) {
@@ -1078,6 +1101,7 @@ function MakeWithConfig(Config) {
       ];
     let platformApiRole = match[1];
     let platformApi = match[0];
+    hooksAdminApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(platformApi);
     if (Config.splitApi) {
       splitApiOutputsRef.contents = {
         platformApi: platformApi,
@@ -1117,7 +1141,7 @@ function MakeWithConfig(Config) {
           return;
         }
       });
-      let baseFragment = Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", undefined);
+      let baseFragment = Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", AdminApi$ReventlessCore.systemCallerFieldNames);
       let sdl = AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(baseFragment, fragments);
       return await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(AppSync_Adapter$ReventlessAws.getClient(), {
         apiId: apiId,
@@ -1173,6 +1197,13 @@ function MakeWithConfig(Config) {
       let r$1 = rm.queryDb.resources[0];
       if (r$1 !== undefined) {
         Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
+      }
+    }
+    let rm$1 = admin.stateViewSlicesOutputs["ApiFragments"];
+    if (rm$1 !== undefined) {
+      let r$2 = rm$1.queryDb.resources[0];
+      if (r$2 !== undefined) {
+        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, {});
       }
     }
     if (Config.splitApi) {
@@ -1825,12 +1856,23 @@ function Make($star) {
   let hooksApiRoleRef = {
     contents: undefined
   };
+  let hooksAdminApiRef = {
+    contents: undefined
+  };
   let resolveHookedApi = () => {
     let match = hooksApiRef.contents;
     if (match !== undefined) {
       return match.val;
     } else {
       return resolveTargetApi();
+    }
+  };
+  let resolveAdminHookedApi = () => {
+    let match = hooksAdminApiRef.contents;
+    if (match !== undefined) {
+      return match.val;
+    } else {
+      return resolveHookedApi();
     }
   };
   let hooks_subscriptionInfraHook = Stdlib_Option.map(domainEventsApiOpt, eventsApi => (params => {
@@ -1987,7 +2029,7 @@ function Make($star) {
       return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => {
         let runSchemaPush = () => writeAndScanFragments().then(async allPluginFragments => {
           let baseFragment;
-          baseFragment = capturedDeployTarget === "Domain" ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", undefined);
+          baseFragment = capturedDeployTarget === "Domain" ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", AdminApi$ReventlessCore.systemCallerFieldNames);
           let sdl = AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(baseFragment, allPluginFragments);
           let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
           let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
@@ -2032,7 +2074,7 @@ function Make($star) {
     let match = splitApiOutputsRef.contents;
     let targetApiOpt = match !== undefined ? match.platformApi : undefined;
     if (targetApiOpt !== undefined) {
-      let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", undefined);
+      let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", AdminApi$ReventlessCore.systemCallerFieldNames);
       let sdl = AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(adminBaseFragment, []);
       return Output$Pulumi.flatMap(Pulumi.all([
         targetApiOpt,
@@ -2054,7 +2096,7 @@ function Make($star) {
     return adminBarrier;
   };
   let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), param.runtime, param.fieldNames, param.opts);
-  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(resolveHookedApi(), param.runtime, param.fieldNames, param.tags, param.opts);
+  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(param.onAdminApi ? resolveAdminHookedApi() : resolveHookedApi(), param.runtime, param.fieldNames, param.tags, param.opts);
   let hooks_onDcbEventLogCreated = dcbEventLogUnknown => {
     if (DcbBackend$ReventlessAws.isPostgres()) {
       return;
@@ -2107,6 +2149,7 @@ function Make($star) {
     schedulerRoleUrn: hooks_schedulerRoleUrn,
     api: hooksApiRef,
     apiRole: hooksApiRoleRef,
+    adminApi: hooksAdminApiRef,
     deployTarget: hooks_deployTarget
   };
   let PluginBuilderImpl = Plugin$ReventlessAws.Make({
@@ -2282,6 +2325,7 @@ function Make($star) {
     let match = AppSync_Adapter$ReventlessAws.makeApiResource("PlatformApi", {});
     let platformApiRole = match[1];
     let platformApi = match[0];
+    hooksAdminApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(platformApi);
     splitApiOutputsRef.contents = {
       platformApi: platformApi,
       platformApiRole: platformApiRole
@@ -2317,6 +2361,13 @@ function Make($star) {
         Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
       }
     }
+    let rm$1 = admin.stateViewSlicesOutputs["ApiFragments"];
+    if (rm$1 !== undefined) {
+      let r$2 = rm$1.queryDb.resources[0];
+      if (r$2 !== undefined) {
+        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, {});
+      }
+    }
     let pluginComponents = plugins.map(plugin => plugin.make());
     let pluginComponent = pluginComponents[0];
     if (pluginComponent !== undefined) {
@@ -2343,6 +2394,7 @@ function Make($star) {
     let match = AppSync_Adapter$ReventlessAws.makeApiResource("PlatformApi", {});
     let platformApiRole = match[1];
     let platformApi = match[0];
+    hooksAdminApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(platformApi);
     splitApiOutputsRef.contents = {
       platformApi: platformApi,
       platformApiRole: platformApiRole
@@ -2435,6 +2487,13 @@ function Make($star) {
       let r$1 = rm.queryDb.resources[0];
       if (r$1 !== undefined) {
         Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
+      }
+    }
+    let rm$1 = admin.stateViewSlicesOutputs["ApiFragments"];
+    if (rm$1 !== undefined) {
+      let r$2 = rm$1.queryDb.resources[0];
+      if (r$2 !== undefined) {
+        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, {});
       }
     }
     Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));

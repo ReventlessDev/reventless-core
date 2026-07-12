@@ -355,8 +355,145 @@ publish/subscribe topic + service stamp verified; envelope decode verified. Note
     Register/Deregister *mutations* + deploy caller (2d); the local schema *build* still comes
     from resolver registration (registry-as-source is scope 2).
 
-**Remaining work:** Phase 2 increments 2d (Register/Deregister mutations + IAM-callable bootstrap
-SDL + AWS status-query resolver) and 2e (AWS reactive single writer), Phases 3–4.
+**Design for 2d–2e (AWS side, from the seam map 2026-07-12) — NOT yet built:**
+
+The whole AWS side is deploy-time Pulumi wiring (AppSync/Lambda/DynamoDB) and **cannot be
+validated locally** the way 2a–2c were — the only real validation is an actual AWS deploy (an
+alpha push auto-deploys the hybrid example + rebuilds the layer). 2d and 2e are intertwined (the
+mutations are inert until 2e's reactive push consumes the registry), so they are one AWS cluster
+sharing that deploy-validation path. Until a deploy, these increments are compile-validated only.
+
+- **2d de-risk COMPLETE (2026-07-12) — approach chosen: API-expose the slice** (user-confirmed).
+  The seam map answered the "hard part" (step 4): the admin DCB command-handler Lambda's ARN is
+  **not** reachable from the bootstrap admin-API wiring — it lives only as `runtime.parts.lambda`
+  inside the DCB builder's `connect` callback (`Dcb_Builder.res:755`), never surfaced in any
+  `outputs` record. So do *not* try to bind a hand-written resolver to it. Instead reuse the
+  existing plugin-DCB seam verbatim by making the `ApiFragmentRegistry` slice API-visible: the
+  `if dcbFieldNames->Array.length > 0` gate then fires `dcbAppSyncResolverHook` → `makeDcb`, which
+  binds a `DcbMutation` DataSource to the **admin** Lambda's ARN (from `runtime.parts.lambda`) with
+  `invokeDcbMutation(tag)` resolvers; the shared `DcbCommandTopicEntryPoint.mjs` already routes the
+  `{command, arguments}` payload by TAG. Zero net-new DataSource/ARN plumbing.
+
+  Two facts the seam map surfaced that shape the implementation:
+  - **Only the static `AdminApi.baseFragment` is pushed** to AppSync (`Platform.res:742-757`,
+    `StartSchemaCreation` whole-replace with `pluginFragments=[]`); the constructed `adminFragment`
+    is never pushed on AWS. So the mutation SDL must be declared in `AdminApi.baseFragment`, and the
+    auto-bound resolver field names must **match** it exactly, or CreateResolver fails.
+  - **Naming reconciliation.** DCB auto-naming is `${plugin}_${command}` with `plugin="Admin"` →
+    `Admin_RegisterApiFragment`, but the admin API convention is `Platform_*`
+    (`adminField(n) = "Platform_${n}"`). Fix: thread an `~apiNamePrefix` (default `name`) through
+    `Dcb_Builder`'s StateChangeSlice mutation-naming sites; the admin builder passes `"Platform"`,
+    so `dcbCommandMutationField(~plugin="Platform", …)` = `Platform_RegisterApiFragment`, byte-equal
+    to `adminField("RegisterApiFragment")`. Plugins are unaffected (default prefix).
+
+  **Coherence fix (found during de-risk, widens 2d):** the admin StateChangeSlices carry **no**
+  `@noApi` today, so on AWS they would already generate orphaned `Admin_Register*` resolvers against
+  a schema lacking those fields — the admin-DCB GraphQL surface has simply never been
+  deploy-validated (Phase 1/2b were in-memory-only). 2d makes it coherent for the first time:
+  - `UiFragmentRegistry` command → **whole-command `@noApi`** (connect/handshake-driven, no GraphQL
+    surface by design). Fixes the shipped Phase-1 slice's latent AWS breakage.
+  - `ApiFragmentRegistry.RecordApiFragmentPush` → **variant-level `@noApi`** (internal single-writer
+    write-back). `RegisterApiFragment`/`DeregisterApiFragment` stay exposed → two `Platform_*`
+    mutations.
+
+  Concrete steps:
+  1. `@noApi` markers as above (core slices).
+  2. `Dcb_Builder`: add `~apiNamePrefix=name`; use it in the StateChangeSlice mutation-naming
+     sites. `Platform_Admin.construct` passes `~apiNamePrefix="Platform"` +
+     `~systemCallableComponents=["ApiFragmentRegistry"]`.
+  3. `AdminApi.res`: add ApiFragmentRegistry Register/Deregister as a `mutationSchemaEntry`
+     (field names via `adminField`, commandSchema-driven so args + `Platform_ApiFragmentInput` input
+     type + `CommandResult!` return are generated), appended to `mutationEntries` → lands in
+     `baseFragment`. Mirrors `PluginBaseFragment.pluginAggregateMutationEntries`.
+  4. `reventless-aws/src/Platform.res`: thread
+     `~iamFieldNames=["Platform_RegisterApiFragment","Platform_DeregisterApiFragment","Platform_ApiFragments"]`
+     into the bootstrap `injectAwsAuthAll` (currently none) for SigV4 dual-auth; repoint
+     `hooksApiRef → platformApi` around `Admin.construct` (split mode) so admin DCB resolvers land
+     on the Platform API, not the Domain API; clone `Platform_UIFragments_Lambda.res` →
+     `Platform_ApiFragments_Lambda.res` (env `API_FRAGMENT_RM_TABLE`, `dynamodb:Scan`, encode via
+     `Platform_ApiFragmentsApi`), mount at both admin sites keyed on
+     `stateViewSlicesOutputs["ApiFragments"]`.
+
+  Validation net: the **local platform** exercises the core parts (SDL generation, `@noApi`, prefix
+  threading, exposure coherence) via a live boot; the AWS-only parts (iamFieldNames, hooksApiRef,
+  status Lambda) are compile-validated until a deploy.
+- **2e — AWS reactive single writer.** Retarget `mkUpdateApiSchema`
+  (`AdminEventCollectorEntryPoint.mjs`) to trigger on `ApiFragment*` events, fold the registry by
+  target, stitch per target (a small generic `planPushes` in core: split → per-target push,
+  unified → one API all fragments), push via `updateSchema`, and dispatch `RecordApiFragmentPush`
+  with the outcome. The shrink guard stays as defense-in-depth.
+- **Deploy caller is Phase 3, not 2d.** `Util_AppSync_Caller.sendMutation`/`sendQuery` already
+  support nested-object args + SigV4 signing (no changes needed); the invocation site in the
+  plugin deploy flow is Phase 3.
+
+**Increment 2d — IMPLEMENTED (core + AWS-mechanical), local-validated (this session):**
+
+- **Core (built zero-warning, live-boot validated on the hybrid example, in-memory):**
+  - `@noApi` coherence fix: `UiFragmentRegistry` command carries **whole-command `@noApi`**
+    (connect/handshake-driven, no GraphQL surface); `ApiFragmentRegistry.RecordApiFragmentPush`
+    carries **variant-level `@noApi`** (internal single-writer write-back). This also removes the
+    latent orphaned-`Admin_Register*`-resolver hazard the never-deploy-validated admin-DCB path
+    carried for the shipped Phase-1 UI slice.
+  - `Dcb_Builder.construct` gains `~apiNamePrefix=name`, threaded into all six StateChangeSlice
+    mutation-naming sites; `Platform_Admin.construct` passes `~apiNamePrefix="Platform"` +
+    `~systemCallableComponents=["ApiFragmentRegistry"]`. Plugins unaffected (default prefix).
+  - `AdminApi.apiFragmentRegistryMutationEntries` (derived from the slice `commandSchema` via the
+    same `sliceMutationFields` call, admin `Platform` prefix) folded into `baseFragment`'s own
+    `generate` call — NOT the shared `mutationEntries` (the constructed admin fragment gets them
+    from `dcbResult.mutationEntries`; the fold keeps the shared `seenTypes` from re-emitting the
+    `CommandResult` family, avoiding duplicate type defs). `AdminApi.systemCallerFieldNames` +
+    `Platform_ApiFragmentsApi.queryFieldName` exported for the AWS adapter.
+  - **Live boot proof:** Platform API exposes `Platform_RegisterApiFragment` /
+    `Platform_DeregisterApiFragment` (byte-aligned `Platform_*` naming) + `Platform_ApiFragments`,
+    with **no duplicate fields/types**, no `Platform_RegisterUiFragment` (UI slice `@noApi`), admin
+    auth-gating intact, and connect-time `RegisterApiFragment` dispatch still works for
+    Catalog/Ordering. Local fragment GWTs 24/24 green; core `GraphQL_StitcherTest` admin-base
+    "no provider directives" guard still satisfied (added mutations are neutral SDL).
+
+- **AWS-mechanical (built zero-warning, compile-validated only — needs a deploy):**
+  - `~iamFieldNames=AdminApi.systemCallerFieldNames` threaded into all four admin-base
+    `injectAwsAuthAll` sites (bootstrap + Platform-target + unified-Domain + makePlatform-unified).
+  - `Platform_ApiFragments_Lambda.res` cloned from the UI one (env `API_FRAGMENT_RM_TABLE`,
+    `dynamodb:Scan`, status-only projection matching `Platform_ApiFragmentsApi`), mounted at both
+    admin sites keyed on `stateViewSlicesOutputs["ApiFragments"]`.
+
+- **2d `hooksApiRef → platformApi` for the admin DCB resolver — IMPLEMENTED (built zero-warning
+  across core/aws/local; deploy-validated).** The seam analysis confirmed this is NOT a mechanical
+  edit: `makePlatform` sets `hooks.api := domainApi` and its plugins (built after `Admin.construct`)
+  read that same ref in *deferred* callbacks, while the admin DCB resolver hook reads `hooks.api`
+  in a deferred callback too but needs `platformApi` in split mode — so a global flip or a
+  set/reset around `Admin.construct` can't work. (The admin *aggregate* resolvers dodge this: on AWS
+  `mutationResolverHook` is `None`, so they bind via the CommandGenerator auto-flow using the `~api`
+  passed to `Admin.construct`.) Implemented as a **dedicated admin-api capture**: `dcbAppSyncResolverParams`
+  gains `onAdminApi: bool`; `platformHooks` gains an `adminApi` ref; `Dcb_Builder.construct` gains
+  `~onAdminApi=false` (admin passes `true`) threaded into the hook payload; the AWS
+  `dcbAppSyncResolverHook` binds `makeDcb(~api = onAdminApi ? resolveAdminHookedApi() : resolveHookedApi())`,
+  and `makePlatform`/`deployPlatform` set `hooks.adminApi := Some(platformApi)` once the Platform API
+  resource exists. Plugins are unaffected (`onAdminApi=false` → `hooks.api` as before). Local carries
+  an inert `adminApi: ref(None)` (single in-memory schema). Fixes the split-mode
+  `CreateResolver(Platform_RegisterApiFragment)`-on-DomainApi failure. (The shipped UI slice had the
+  same latent misroute; removed by its `@noApi` marker.)
+
+- **2e core `planPushes` — IMPLEMENTED + unit-tested (`GraphQL_PushPlannerTest` 4/4 green).**
+  `GraphQL_PushPlanner.planPushes(~adminBase, ~fragments, ~splitApi)` groups registered fragments by
+  `apiTarget` and returns one stitched neutral-SDL push plan per API, encoding the same base-selection
+  rules as the deploy-time push (split → Platform API = admin base + Platform frags, Domain API =
+  empty base + Domain frags; unified → one API = admin base + all frags). Provider-neutral (the AWS
+  adapter injects `@aws_subscribe` per plan and maps `PlatformApi`/`DomainApi` → the AppSync ids).
+
+**Remaining work:**
+- **2e mjs reactive handler + deploy-time config (Phase-3-validated).** The AdminEventCollector
+  handler must react to `ApiFragment*` events, scan the `ApiFragments` table into
+  `planPushes`-shaped `targetedFragment`s, push each plan (`injectAwsSubscribe` + shrink guard +
+  `updateAppSyncSchema`) to the matching API id, and dispatch `RecordApiFragmentPush` onto the admin
+  DCB command topic. This is **additive** — the existing `mkUpdateApiSchema` (DoConnect →
+  `deploy-schema:*` → single Domain API) stays until Phase 4. It cannot be exercised until Phase 3:
+  on AWS in Phase 2 nothing calls `RegisterApiFragment`, so no `ApiFragment*` events fire. Open
+  prerequisites: new Lambda config (platform api id, `ApiFragments` table name, admin DCB command
+  topic URL, `splitApi`) and **confirming how `ApiFragment*` events reach the AdminEventCollector**
+  (admin DcbEventLog topic subscription). Best implemented alongside the Phase-3 deploy caller so it
+  is deploy-validated as a unit.
+- Phases 3–4.
 
 ## Phasing
 

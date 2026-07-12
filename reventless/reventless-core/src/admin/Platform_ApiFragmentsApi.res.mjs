@@ -6,6 +6,10 @@ import * as Plugin$ReventlessCore from "../plugin/component/Plugin.res.mjs";
 
 let sdlTypes = [`type Platform_ApiFragmentEntry {\n  pluginId: String!\n  apiTarget: String!\n  pushStatus: String!\n  pushMessage: String!\n  pushedAt: String!\n  registeredAt: String!\n  updatedAt: String!\n}`];
 
+let queryFieldName = "Platform_ApiFragments";
+
+let sdlQueryField = `  ` + queryFieldName + `: [Platform_ApiFragmentEntry!]!`;
+
 function encodeApiFragmentEntry(entry) {
   return Object.fromEntries([
     [
@@ -39,10 +43,9 @@ function encodeApiFragmentEntry(entry) {
   ]);
 }
 
-let sdlQueryField = `  Platform_ApiFragments: [Platform_ApiFragmentEntry!]!`;
-
 export {
   sdlTypes,
+  queryFieldName,
   sdlQueryField,
   encodeApiFragmentEntry,
 }

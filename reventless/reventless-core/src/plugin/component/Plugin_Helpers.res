@@ -847,6 +847,11 @@ type dcbAppSyncResolverParams = {
   runtime: Runtime.environment<unknown>,
   fieldNames: array<string>,
   tags: array<string>,
+  // True when the slice belongs to the platform admin build (Platform_Admin.construct). In split
+  // mode admin resolvers live on the Platform API, so the provider hook binds them to `hooks.adminApi`
+  // instead of `hooks.api` (which is the deploy-target/Domain API and is read in the same deferred
+  // callback by plugin builds). See platformHooks.adminApi.
+  onAdminApi: bool,
   opts: Pulumi.ComponentResource.options,
 }
 
@@ -970,6 +975,12 @@ type platformHooks = {
   schedulerRoleUrn: ref<Pulumi.Output.t<string>>,
   api: ref<option<hookedValue<unknown>>>,
   apiRole: ref<option<hookedValue<unknown>>>,
+  // The API admin resolvers bind to (split mode: the Platform API; unified: same as `api`).
+  // Populated by makePlatform once the Platform API resource exists, and read — via the
+  // `onAdminApi` payload flag — by the DCB resolver hook so admin DCB mutations land on the
+  // Platform API even though `api` (read in the same deferred callback by plugin builds) points at
+  // the Domain/deploy-target API. `None` on platforms with no separate admin API (in-memory).
+  adminApi: ref<option<hookedValue<unknown>>>,
   // Current deploy target, set by deployPlugin before plugin.make() is called.
   // "Domain" (default) → resolvers/schema go to the DomainApi.
   // "Platform" → resolvers/schema go to the PlatformApi.
@@ -985,6 +996,7 @@ let noHooks: platformHooks = {
   schedulerRoleUrn: ref(Pulumi.Output.make("")),
   api: ref(None),
   apiRole: ref(None),
+  adminApi: ref(None),
   deployTarget: ref("Domain"),
 }
 

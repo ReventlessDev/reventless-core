@@ -68,6 +68,15 @@ module Make = (
   let construct = (
     ~name: string,
     ~childName: string,
+    // API mutation-field prefix for a slice's GraphQL command fields. Defaults to `name`
+    // (`${plugin}_${command}`), so plugins are unchanged. The admin builder passes "Platform"
+    // so its exposed slice commands render as `Platform_RegisterApiFragment` — byte-equal to
+    // `Api_Naming.adminField("RegisterApiFragment")`, keeping the hand-declared admin SDL and
+    // the auto-bound DCB resolver field names aligned.
+    ~apiNamePrefix: string=name,
+    // True for the platform admin build — routes the DCB mutation resolvers to the Platform API
+    // (via the provider hook's `hooks.adminApi`) in split mode. Plugins leave it false.
+    ~onAdminApi: bool=false,
     ~environment: string="",
     ~platformName: string="",
     ~aggregateEventTopics: EventTopic.allOutputs=Dict.make(),
@@ -411,7 +420,7 @@ module Make = (
               registerResolver(
                 ~kind=Dcb,
                 ~fields=Api_Naming.sliceMutationFields(
-                  ~plugin=name,
+                  ~plugin=apiNamePrefix,
                   ~slice=S.Spec.name,
                   ~commandSchema,
                 )->Array.map(((f, _)) => f),
@@ -428,7 +437,7 @@ module Make = (
               registerResolver(
                 ~kind=Dcb,
                 ~fields=Api_Naming.sliceMutationFields(
-                  ~plugin=name,
+                  ~plugin=apiNamePrefix,
                   ~slice=S.Spec.name,
                   ~commandSchema,
                 )->Array.map(((f, _)) => f),
@@ -464,7 +473,7 @@ module Make = (
                     ~componentKind=CommandGenerator_Callback.StateChangeSlice,
                     ~stripIdFromParams=false,
                   )
-                  Api_Naming.sliceMutationFields(~plugin=name, ~slice=S.Spec.name, ~commandSchema)
+                  Api_Naming.sliceMutationFields(~plugin=apiNamePrefix, ~slice=S.Spec.name, ~commandSchema)
                   ->Array.forEach(((fieldName, _)) => bindHandler(~field=fieldName, ~generateCommand))
                 }
               })
@@ -491,7 +500,7 @@ module Make = (
                       ~componentKind=CommandGenerator_Callback.StateChangeSlice,
                       ~stripIdFromParams=false,
                     )
-                    Api_Naming.sliceMutationFields(~plugin=name, ~slice=S.Spec.name, ~commandSchema)
+                    Api_Naming.sliceMutationFields(~plugin=apiNamePrefix, ~slice=S.Spec.name, ~commandSchema)
                     ->Array.forEach(((fieldName, _)) => bindHandler(~field=fieldName, ~generateCommand))
                   }
                 })
@@ -730,7 +739,7 @@ module Make = (
             if ApiNoApiHelpers.isNoApi(commandSchema) {
               []
             } else {
-              Api_Naming.sliceMutationFields(~plugin=name, ~slice=S.Spec.name, ~commandSchema)
+              Api_Naming.sliceMutationFields(~plugin=apiNamePrefix, ~slice=S.Spec.name, ~commandSchema)
             }
           })
         let dcbFieldNames = dcbMutationData->Array.map(((f, _)) => f)
@@ -759,6 +768,7 @@ module Make = (
                 runtime: runtime->Obj.magic,
                 fieldNames: dcbFieldNames,
                 tags: dcbTags,
+                onAdminApi,
                 opts,
               })
             | None => ()
@@ -825,7 +835,7 @@ module Make = (
           ) => {
             let commandSchema = S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema
             let fieldSpecs =
-              Api_Naming.sliceMutationFields(~plugin=name, ~slice=S.Spec.name, ~commandSchema)
+              Api_Naming.sliceMutationFields(~plugin=apiNamePrefix, ~slice=S.Spec.name, ~commandSchema)
             if ApiNoApiHelpers.isNoApi(commandSchema) || fieldSpecs->Array.length == 0 {
               None
             } else {

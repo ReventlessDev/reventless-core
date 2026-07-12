@@ -30,11 +30,16 @@ open Reventless.Plugin
 // A plugin assigned to the Platform API (e.g. a platform inspector) stitches into the
 // Platform-API schema, not the Domain-API one; the single-writer push automation groups
 // fragments by this target and maintains one cumulative schema per API.
+// `RegisterApiFragment` / `DeregisterApiFragment` ARE the GraphQL surface — the deploy calls them
+// as a SigV4 system caller against the Platform API (exposed as `Platform_RegisterApiFragment` /
+// `Platform_DeregisterApiFragment`). `RecordApiFragmentPush` is `@noApi`: it is the internal
+// write-back of the single-writer schema-push automation, dispatched platform-side, never by a
+// GraphQL caller.
 @schema
 type command =
   | RegisterApiFragment({pluginId: string, fragment: apiSchemaFragment, apiTarget: apiTarget, at: string})
   | DeregisterApiFragment({pluginId: string})
-  | RecordApiFragmentPush({pluginId: string, ok: bool, message: string, at: string})
+  | @noApi RecordApiFragmentPush({pluginId: string, ok: bool, message: string, at: string})
 
 // The registry never rejects (idempotent register/deregister/record); this variant is
 // never returned.

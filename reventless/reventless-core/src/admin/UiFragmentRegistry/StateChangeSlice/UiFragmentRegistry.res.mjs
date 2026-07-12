@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
+import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 
 let commandSchema = S.union([
   S.schema(s => ({
@@ -39,6 +40,8 @@ let eventSchema = S.union([
   }))
 ]);
 
+let commandSchema$1 = Api$ReventlessInfra.markNoApi(commandSchema);
+
 function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
@@ -56,10 +59,10 @@ let readConsistency = "EscalateOnRetry";
 export {
   name,
   Id,
-  commandSchema,
   errorSchema,
   eventSchema,
   consumedEventSchema,
+  commandSchema$1 as commandSchema,
   moduleUrl,
   commandAuthorization,
   readConsistency,
