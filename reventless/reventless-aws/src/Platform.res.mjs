@@ -74,6 +74,7 @@ import * as Aggregate_Builder_Single$ReventlessAws from "./components/Aggregate_
 import * as ApiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/ApiFragmentRegistry/StateViewSlice/ApiFragments_Projection.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChangeSlice_Builder.res.mjs";
+import * as ApiFragmentDeregistration$ReventlessAws from "./adapter/Api/ApiFragmentDeregistration.res.mjs";
 import * as EventCollectorChannel_SQS$ReventlessAws from "./adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
 import * as PgChangeFeedRelay_Builder$ReventlessAws from "./adapter/Postgres/PgChangeFeedRelay_Builder.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
@@ -622,8 +623,9 @@ function MakeWithConfig(Config) {
       let match = apiConfigRef.contents;
       let platformApi = match !== undefined ? match.platformApi : domainApi;
       let region = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
-      return Output$Pulumi.flatMap(Output$Pulumi.flatMap(platformApi, api => api.uris), uris => {
-        let endpoint = uris.GRAPHQL;
+      let endpointOutput = Output$Pulumi.flatMap(platformApi, api => api.uris).apply(uris => uris.GRAPHQL);
+      ApiFragmentDeregistration$ReventlessAws.make(name + `ApiFragmentRegistration`, name, endpointOutput, region, undefined);
+      return Output$Pulumi.flatMap(endpointOutput, endpoint => {
         let run = async () => {
           let at = new Date().toISOString();
           let variables = {
@@ -2006,8 +2008,9 @@ function Make($star) {
       let match = apiConfigRef.contents;
       let platformApi = match !== undefined ? match.platformApi : domainApi;
       let region = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
-      return Output$Pulumi.flatMap(Output$Pulumi.flatMap(platformApi, api => api.uris), uris => {
-        let endpoint = uris.GRAPHQL;
+      let endpointOutput = Output$Pulumi.flatMap(platformApi, api => api.uris).apply(uris => uris.GRAPHQL);
+      ApiFragmentDeregistration$ReventlessAws.make(name + `ApiFragmentRegistration`, name, endpointOutput, region, undefined);
+      return Output$Pulumi.flatMap(endpointOutput, endpoint => {
         let run = async () => {
           let at = new Date().toISOString();
           let variables = {

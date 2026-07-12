@@ -761,10 +761,22 @@ module MakeWithConfig = (
     }
     let region =
       Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown")
-    platformApi
-    ->Pulumi.Output.flatMap(api => api.uris)
-    ->Pulumi.Output.flatMap(uris => {
-      let endpoint = uris.graphQL
+    let endpointOutput =
+      platformApi
+      ->Pulumi.Output.flatMap(api => api.uris)
+      ->Pulumi.Output.apply(uris => uris.graphQL)
+    // Deregister-on-destroy: a dynamic resource whose `delete` handler sends
+    // Platform_DeregisterApiFragment when the plugin stack is destroyed (final
+    // retirement). It never replaces on a version bump, so supersession does NOT
+    // deregister — only a genuine `pulumi destroy` removes the fields.
+    let _ = ApiFragmentDeregistration.make(
+      ~name=`${name}ApiFragmentRegistration`,
+      ~pluginId=name,
+      ~endpoint=endpointOutput->Pulumi.Output.asInput,
+      ~region,
+    )
+    endpointOutput
+    ->Pulumi.Output.flatMap(endpoint => {
       let run = async () => {
         let at = Date.make()->Date.toISOString
         let variables = {

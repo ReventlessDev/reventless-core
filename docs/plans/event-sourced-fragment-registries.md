@@ -566,15 +566,27 @@ AWS until the deploy caller lands, so no `ApiFragment*` events fire yet).
   compile-validated only — real validation is the alpha deploy that also exercises 2e (the first
   `RegisterApiFragment` call fires the first `ApiFragment*` event → the 2e reactive push).
 
+**Phase 3 tail — destroy-path deregistration — IMPLEMENTED (this session), compile-validated
+(exercised only by a real `pulumi destroy`).** New `ApiFragmentDeregistration.res` — a Pulumi
+**dynamic provider** (precedent: `AppSync_Resolver_Retrying.res`) created per plugin inside
+`registerFragmentViaApi` (plugin-stack mode). `create`/`update` are no-ops; `delete` sends
+`Platform_DeregisterApiFragment` on stack teardown, whose event triggers the 2e reactive push to
+re-stitch without the plugin's fields. Key decisions:
+  - **Serialization-safe:** the provider closure is serialised into stack state, so it must not
+    statically capture the AWS SDK (the CJS/ESM serialiser hazard the resolver provider documents).
+    The `delete` handler `dynImport`s `Util_AppSync_Caller` at invocation — only the string
+    specifier lands in state — reusing the proven SigV4 `sendMutation` instead of re-implementing it.
+  - **Version supersession must NOT deregister:** `diff` always returns `changes:false, replaces:[]`,
+    so a version bump updates in place (no delete); only a genuine `pulumi destroy` fires `delete`.
+  - **Carrier via id:** Pulumi passes outputs (possibly undefined) to `delete`, so the resource id
+    encodes `pluginId|region|endpoint`; `delete` decodes it (falls back to props).
+  - **Best-effort:** `delete` swallows errors — on a full teardown the platform API may already be
+    gone, and a destroy must not fail because deregistration couldn't reach it.
+Validated: aws builds zero-warning; suites green (aws 216). Ordering note: not forced relative to
+resolver deletion — the transient inconsistency during a dying stack's teardown is harmless (this
+plugin's resolvers are being deleted anyway; other plugins unaffected).
+
 **Remaining work:**
-- **Phase 3 tail — destroy-path deregistration (deferred to a follow-up).** On `pulumi destroy`
-  of a plugin stack, send `DeregisterApiFragment` before the resolvers are torn down. No
-  GraphQL-mutation-on-destroy precedent exists; the mechanism is a Pulumi **dynamic provider with
-  a `delete` handler** (precedent: `AppSync_Resolver_Retrying.res`) that `dependsOn` the resolver
-  resources (so Pulumi deletes it first) and calls `sendMutation("Platform_DeregisterApiFragment")`
-  from `delete`, encoding endpoint/region/pluginId into the resource id (delete handlers receive
-  outputs, not inputs). Independent of the register path and separately deploy-validated (a destroy
-  is a distinct operation); the retirement gap it closes is blessed-acceptable staleness until then.
 - Phase 4 — cutover + cleanup (retire `deploy-schema:*` keyspace, lease, hash rows, legacy
   `mkUpdateApiSchema`; decide whether `makePlatform`'s direct-push path is retired or kept; dedup
   the `injectAwsAuthAll`/`stampSharedIamTypes` copies if any linger).
