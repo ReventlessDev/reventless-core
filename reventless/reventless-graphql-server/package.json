@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-graphql-server",
-  "version": "1.0.0-alpha.5",
+  "version": "1.0.0-alpha.6",
   "description": "Transport-neutral GraphQL server runtime for Reventless: schema-from-fragments, resolver registration, an HTTP + graphql-ws listener, and a subscription fan-out bridge with a pluggable PubSub backend",
   "license": "Apache-2.0",
   "scripts": {

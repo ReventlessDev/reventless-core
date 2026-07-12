@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.200 (2026-07-12)
+
+### Bug Fixes
+
+* **admin:** fix admin-DCB-on-AWS deploy — Output-in-option corruption + orphan resolvers ([edde07d](https://github.com/ReventlessDev/reventless-core/commit/edde07d1d7a89a47a7496d46fbf83fbadffa74a9))
+
+
 # 3.0.0-alpha.199 (2026-07-12)
 
 ### Bug Fixes
