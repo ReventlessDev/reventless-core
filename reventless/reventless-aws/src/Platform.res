@@ -1691,6 +1691,7 @@ module MakeWithConfig = (
         Platform_UIFragments_Lambda.make(
           ~api=platformApi,
           ~uiFragmentRegistryTableName=r.name,
+          ~schemaReady=admin.adminSchemaPushed,
           ~opts={},
         )
       | None => ()
@@ -1709,6 +1710,7 @@ module MakeWithConfig = (
         Platform_ApiFragments_Lambda.make(
           ~api=platformApi,
           ~apiFragmentRegistryTableName=r.name,
+          ~schemaReady=admin.adminSchemaPushed,
           ~opts={},
         )
       | None => ()
@@ -2014,6 +2016,7 @@ module MakeWithConfig = (
         Platform_UIFragments_Lambda.make(
           ~api=platformApi,
           ~uiFragmentRegistryTableName=r.name,
+          ~schemaReady=admin.adminSchemaPushed,
           ~opts={},
         )
       | None => ()
@@ -2032,6 +2035,7 @@ module MakeWithConfig = (
         Platform_ApiFragments_Lambda.make(
           ~api=platformApi,
           ~apiFragmentRegistryTableName=r.name,
+          ~schemaReady=admin.adminSchemaPushed,
           ~opts={},
         )
       | None => ()

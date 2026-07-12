@@ -235,7 +235,8 @@ function Make(RuntimeEnvironment) {
         stateViewSlicesOutputs: dcbResult.stateViewSlicesOutputs,
         automationSlicesOutputs: dcbResult.automationSlicesOutputs,
         outboundTranslationSlicesOutputs: dcbResult.outboundTranslationSlicesOutputs,
-        inboundTranslationSlicesOutputs: dcbResult.inboundTranslationSlicesOutputs
+        inboundTranslationSlicesOutputs: dcbResult.inboundTranslationSlicesOutputs,
+        adminSchemaPushed: adminSchemaPushed
       };
     };
     return {

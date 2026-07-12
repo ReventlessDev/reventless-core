@@ -19,6 +19,14 @@ type outputs = {
   automationSlicesOutputs: dict<AutomationSlice.outputs>,
   outboundTranslationSlicesOutputs: dict<OutboundTranslationSlice.outputs>,
   inboundTranslationSlicesOutputs: dict<InboundTranslationSlice.outputs>,
+  // Resolves once the admin-base schema push (preAdminResolversSchemaHook) has
+  // completed and the AppSync API is ACTIVE — an already-resolved Output when no
+  // hook is supplied (in-memory). Platform.res gates the Lambda-backed admin
+  // status-query resolvers (Platform_UIFragments / Platform_ApiFragments), which
+  // are mounted outside construct, on this so their CreateResolver calls don't
+  // race StartSchemaCreation on a first-ever-deployed field (the 2026-07-12
+  // Platform_ApiFragments "No field named ... on type Query" clobber).
+  adminSchemaPushed: Pulumi.Output.t<unit>,
 }
 
 module Make = (
@@ -434,6 +442,7 @@ module Make = (
       automationSlicesOutputs: dcbResult.automationSlicesOutputs,
       outboundTranslationSlicesOutputs: dcbResult.outboundTranslationSlicesOutputs,
       inboundTranslationSlicesOutputs: dcbResult.inboundTranslationSlicesOutputs,
+      adminSchemaPushed,
     }
   }
 }

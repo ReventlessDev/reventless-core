@@ -1134,14 +1134,14 @@ function MakeWithConfig(Config) {
     if (rm !== undefined) {
       let r$1 = rm.queryDb.resources[0];
       if (r$1 !== undefined) {
-        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
+        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, admin.adminSchemaPushed, {});
       }
     }
     let rm$1 = admin.stateViewSlicesOutputs["ApiFragments"];
     if (rm$1 !== undefined) {
       let r$2 = rm$1.queryDb.resources[0];
       if (r$2 !== undefined) {
-        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, {});
+        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, admin.adminSchemaPushed, {});
       }
     }
     let pluginComponents = plugins.map(plugin => plugin.make());
@@ -1274,14 +1274,14 @@ function MakeWithConfig(Config) {
     if (rm !== undefined) {
       let r$1 = rm.queryDb.resources[0];
       if (r$1 !== undefined) {
-        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
+        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, admin.adminSchemaPushed, {});
       }
     }
     let rm$1 = admin.stateViewSlicesOutputs["ApiFragments"];
     if (rm$1 !== undefined) {
       let r$2 = rm$1.queryDb.resources[0];
       if (r$2 !== undefined) {
-        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, {});
+        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, admin.adminSchemaPushed, {});
       }
     }
     if (Config.splitApi) {
@@ -2510,14 +2510,14 @@ function Make($star) {
     if (rm !== undefined) {
       let r$1 = rm.queryDb.resources[0];
       if (r$1 !== undefined) {
-        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
+        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, admin.adminSchemaPushed, {});
       }
     }
     let rm$1 = admin.stateViewSlicesOutputs["ApiFragments"];
     if (rm$1 !== undefined) {
       let r$2 = rm$1.queryDb.resources[0];
       if (r$2 !== undefined) {
-        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, {});
+        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, admin.adminSchemaPushed, {});
       }
     }
     let pluginComponents = plugins.map(plugin => plugin.make());
@@ -2638,14 +2638,14 @@ function Make($star) {
     if (rm !== undefined) {
       let r$1 = rm.queryDb.resources[0];
       if (r$1 !== undefined) {
-        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
+        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, admin.adminSchemaPushed, {});
       }
     }
     let rm$1 = admin.stateViewSlicesOutputs["ApiFragments"];
     if (rm$1 !== undefined) {
       let r$2 = rm$1.queryDb.resources[0];
       if (r$2 !== undefined) {
-        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, {});
+        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, admin.adminSchemaPushed, {});
       }
     }
     Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));

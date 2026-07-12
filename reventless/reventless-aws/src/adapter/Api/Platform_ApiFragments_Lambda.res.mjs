@@ -68,7 +68,7 @@ export function response(ctx) {
 }
 `;
 
-function make(api, apiFragmentRegistryTableName, opts) {
+function make(api, apiFragmentRegistryTableName, schemaReady, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let name = "PlatformApiFragments";
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Lambda", Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
@@ -191,7 +191,7 @@ export async function handler() {
     },
     serviceRoleArn: dataSourceRole.arn
   }, opts$1);
-  AppSync_Resolver_Native$ReventlessAws.makeUnitJsResolver(name + "Resolver", api, dataSource.name, "Query", "Platform_ApiFragments", resolverCode, opts$1);
+  schemaReady.apply(() => AppSync_Resolver_Native$ReventlessAws.makeUnitJsResolver(name + "Resolver", api, dataSource.name, "Query", "Platform_ApiFragments", resolverCode, opts$1));
 }
 
 export {

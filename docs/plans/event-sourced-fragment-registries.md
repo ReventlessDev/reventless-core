@@ -586,6 +586,40 @@ Validated: aws builds zero-warning; suites green (aws 216). Ordering note: not f
 resolver deletion — the transient inconsistency during a dying stack's teardown is harmless (this
 plugin's resolvers are being deleted anyway; other plugins unaffected).
 
+**Deploy validation #1 (2026-07-13) — FAILED then FIXED (fix compile/test-validated, re-deploy
+pending).** The first alpha push that deploys 2b–2e + Phase 3 together (the whole new path) ran the
+staged `deployPlatform` job and **failed at "Deploy Platform"** — one Pulumi error:
+
+```
+aws-native:appsync:Resolver PlatformApiFragmentsResolver creating failed
+  error: operation CREATE failed with "NotFound":
+  No field named Platform_ApiFragments found on type Query
+```
+
+Everything else came up (the `ApiFragmentRegistry`/`ApiFragments` + `UiFragmentRegistry`/`UiFragments`
+slices, `AdminDcb` command topic, `Admin` DcbEventLog + EventTopic + 2nd-reader EventCollector,
+tables, the `Platform_ApiFragments` Lambda + DataSource). **Root cause:** the two Lambda-backed admin
+status-query resolvers (`Platform_UIFragments`, `Platform_ApiFragments`) are mounted from
+`Platform.res` *outside* `Platform_Admin.construct`, so — unlike the admin DCB resolvers, which chain
+behind `adminSchemaPushed` — their `CreateResolver` was **not gated on the bootstrap schema push**
+(`preAdminResolversSchemaHook`). Because `Platform_ApiFragments` is a first-ever-deployed field, the
+ungated `CreateResolver` raced `StartSchemaCreation` and ran before the field was ACTIVE →
+`NotFound`. `Platform_UIFragments` had the identical latent bug but survived only because its field
+predated this deploy (already ACTIVE from a prior push). The DCB mutation resolvers
+(`Platform_RegisterApiFragment`/`Deregister`) were correctly gated and never reached (Pulumi aborted
+first) — so this was the sole seam, exactly the "resolver field names must match the pushed
+`baseFragment` or CreateResolver fails" hazard the 2d seam map flagged, but the missing piece was
+*timing* (gating), not the field being absent from `baseFragment` (it is present, [AdminApi.res:147]).
+
+**Fix:** `Platform_Admin.construct` now returns `adminSchemaPushed: Pulumi.Output.t<unit>` (the push
+Output; an already-resolved unit in-memory). Both `Platform_UIFragments_Lambda.make` and
+`Platform_ApiFragments_Lambda.make` gain a `~schemaReady` param and create their resolver inside
+`schemaReady->Pulumi.Output.apply(...)` (mirroring the admin DCB resolvers' gate); `Platform.res`
+passes `~schemaReady=admin.adminSchemaPushed` at all four mount sites. Validated: core builds
+zero-warning, aws 216 / local 508 green. Like the rest of the AWS deploy path this is
+compile/test-validated only — **re-validation is the next alpha push** (should get past this resolver;
+watch for the first real `RegisterApiFragment` → `ApiFragment*` event → 2e reactive push).
+
 **Remaining work:**
 - Phase 4 — cutover + cleanup (retire `deploy-schema:*` keyspace, lease, hash rows, legacy
   `mkUpdateApiSchema`; decide whether `makePlatform`'s direct-push path is retired or kept; dedup

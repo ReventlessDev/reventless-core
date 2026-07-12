@@ -90,6 +90,11 @@ export function response(ctx) {
 let make = (
   ~api: Pulumi.Output.t<AppSync.GraphQLApi.t>,
   ~uiFragmentRegistryTableName: Pulumi.Output.t<string>,
+  // Resolves when the admin-base schema push has completed and the API is ACTIVE
+  // (Platform_Admin.adminSchemaPushed). CreateResolver is gated on it so it never
+  // races StartSchemaCreation — the same first-deploy race that clobbered
+  // Platform_ApiFragments; harmless here today only because the field predates it.
+  ~schemaReady: Pulumi.Output.t<unit>,
   ~opts: Pulumi.ComponentResource.options,
 ) => {
   let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
@@ -223,13 +228,18 @@ let make = (
     ~opts=Some(opts),
   )
 
-  let _resolver = AppSync_Resolver_Native.makeUnitJsResolver(
-    ~name=name ++ "Resolver",
-    ~api,
-    ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
-    ~type_="Query"->Pulumi.Input.make,
-    ~field="Platform_UIFragments"->Pulumi.Input.make,
-    ~code=resolverCode,
-    ~opts,
-  )
+  // Create the resolver only after the admin schema push is ACTIVE — otherwise
+  // CreateResolver races StartSchemaCreation the first time this field ships.
+  let _resolver =
+    schemaReady->Pulumi.Output.apply(() =>
+      AppSync_Resolver_Native.makeUnitJsResolver(
+        ~name=name ++ "Resolver",
+        ~api,
+        ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
+        ~type_="Query"->Pulumi.Input.make,
+        ~field="Platform_UIFragments"->Pulumi.Input.make,
+        ~code=resolverCode,
+        ~opts,
+      )
+    )
 }
