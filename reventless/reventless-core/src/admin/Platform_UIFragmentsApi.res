@@ -44,7 +44,7 @@ let encodePage = (p: pageManifestEntry): JSON.t =>
     ("requiredAccess", p.requiredAccess->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
   ])->JSON.Encode.object
 
-let encodeUIFragmentEntry = (entry: UIFragmentRegistryReadModelSpec.state): JSON.t =>
+let encodeUIFragmentEntry = (entry: UiFragments.state): JSON.t =>
   Dict.fromArray([
     ("pluginId", JSON.Encode.string(Plugin.name(entry.pluginId))),
     ("remoteEntryUrl", JSON.Encode.string(entry.remoteEntryUrl)),

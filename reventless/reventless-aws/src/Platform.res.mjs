@@ -1014,7 +1014,7 @@ function MakeWithConfig(Config) {
         AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(r.name);
       }
     }
-    let rm = admin.readModelsOutputs["UIFragmentRegistry"];
+    let rm = admin.stateViewSlicesOutputs["UiFragments"];
     if (rm !== undefined) {
       let r$1 = rm.queryDb.resources[0];
       if (r$1 !== undefined) {
@@ -1143,7 +1143,7 @@ function MakeWithConfig(Config) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
       Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
     }
-    let rm = admin.readModelsOutputs["UIFragmentRegistry"];
+    let rm = admin.stateViewSlicesOutputs["UiFragments"];
     if (rm !== undefined) {
       let r$1 = rm.queryDb.resources[0];
       if (r$1 !== undefined) {
@@ -2264,7 +2264,7 @@ function Make($star) {
         AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(r.name);
       }
     }
-    let rm = admin.readModelsOutputs["UIFragmentRegistry"];
+    let rm = admin.stateViewSlicesOutputs["UiFragments"];
     if (rm !== undefined) {
       let r$1 = rm.queryDb.resources[0];
       if (r$1 !== undefined) {
@@ -2381,7 +2381,7 @@ function Make($star) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
       Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
     }
-    let rm = admin.readModelsOutputs["UIFragmentRegistry"];
+    let rm = admin.stateViewSlicesOutputs["UiFragments"];
     if (rm !== undefined) {
       let r$1 = rm.queryDb.resources[0];
       if (r$1 !== undefined) {

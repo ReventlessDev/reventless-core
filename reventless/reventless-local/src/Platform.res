@@ -888,6 +888,37 @@ module MakeWithConfig = (
     Bus.dispatchCommand(pluginCmdTopicKey, ReventlessCore.CommandTopic.encodeCommandJson(cmdJson))
   }
 
+  // Bus key for the admin PluginExtensionPoint ("Core.Plugin") command topic, derived exactly
+  // as ExtensionPoint_Builder + CommandTopic_Builder name the channel:
+  // "Core.Plugin" -> replace(".") -> "CorePlugin" -> +ExtPoint -> +CmdTopic.
+  let adminEpCmdTopicKey = {
+    module CT = ReventlessCore.ComponentType
+    ReventlessInfra.PluginExtensionPointSpec.name
+    ->String.replace(".", "")
+    ->CT.name(CT.ExtensionPoint)
+    ->CT.name(CT.CommandTopic)
+  }
+
+  // Dispatch a command to the admin PluginExtensionPoint command topic in-process. The EP
+  // handler fans it through the EP mappings (mapping 1 -> Plugin aggregate, mapping 2 ->
+  // UiFragmentRegistry slice). Used to route the UI-fragment manifest through the same EP the
+  // real handshake uses — local otherwise dispatches Connect straight to the aggregate,
+  // bypassing the EP, so the UiFragments StateViewSlice would never populate. `id` is the EP
+  // transport id (name@version); the mappings translate to the bare plugin name.
+  let dispatchAdminEpCommand = (
+    ~id: string,
+    ~command: ReventlessInfra.PluginExtensionPointSpec.command,
+  ) => {
+    let cmdJson: Reventless.Message.commandJson = {
+      id,
+      meta: ReventlessCore.Message.generateMeta(~service=ReventlessInfra.PluginExtensionPointSpec.name),
+      commandJson: command->S.reverseConvertToJsonOrThrow(
+        ReventlessInfra.PluginExtensionPointSpec.commandSchema,
+      ),
+    }
+    Bus.dispatchCommand(adminEpCmdTopicKey, ReventlessCore.CommandTopic.encodeCommandJson(cmdJson))
+  }
+
   // Subscription topics for the admin live-update channels.
   let pluginStatusSubTopic = "onPluginStatusChange"
   let uiFragmentSubTopic = "onUIFragmentChange"
@@ -1037,6 +1068,17 @@ module MakeWithConfig = (
             ~pluginName,
             ~command=ReventlessCore.PluginSpec.Connect(pluginDefinition),
           )
+          // Route the UI-fragment manifest through the admin EP (as the real handshake does),
+          // so the UiFragmentRegistry slice + UiFragments StateViewSlice populate in-process.
+          // id is the name@version transport id; the EP mapping keys the registry by bare name.
+          switch uiFragments {
+          | Some(manifest) =>
+            let _ = dispatchAdminEpCommand(
+              ~id,
+              ~command=ReventlessInfra.PluginExtensionPointSpec.RegisterUiFragment(manifest),
+            )
+          | None => ()
+          }
         })
     })
   }
@@ -1467,7 +1509,7 @@ module MakeWithConfig = (
     )
 
     let pluginQueryDbName = ReventlessCore.PluginsReadModelSpec.name
-    let uiFragmentQueryDbName = ReventlessCore.UIFragmentRegistryReadModelSpec.name
+    let uiFragmentQueryDbName = ReventlessCore.UiFragments.name
 
     // Wire the per-mutation plugin-status gate (Part 2.3 of the resolver plan).
     // Resolves at call-time so updates to Plugin RM status are reflected immediately.
@@ -1634,9 +1676,7 @@ module MakeWithConfig = (
         // fragments — mirrors the dedup in Platform_UIFragments_Lambda.res.
         let latestByName = Dict.make()
         items->Array.forEach(item =>
-          switch item->S.parseOrThrow(
-            ReventlessCore.UIFragmentRegistryReadModelSpec.stateSchema,
-          ) {
+          switch item->S.parseOrThrow(ReventlessCore.UiFragments.stateSchema) {
           | state =>
             let name = ReventlessCore.Plugin.name(state.pluginId)
             let version = ReventlessCore.Plugin.version(state.pluginId)
@@ -2117,17 +2157,13 @@ module MakeWithConfig = (
       queryResolvers->Dict.set(
         "Platform_UIFragments",
         async (_root, _args, _ctx): JSON.t => {
-          let items = switch Bus.getQueryDbScan(
-            ReventlessCore.UIFragmentRegistryReadModelSpec.name,
-          ) {
+          let items = switch Bus.getQueryDbScan(ReventlessCore.UiFragments.name) {
           | Some(scanAll) => scanAll()
           | None => []
           }
           items
           ->Array.filterMap(item =>
-            switch item->S.parseOrThrow(
-              ReventlessCore.UIFragmentRegistryReadModelSpec.stateSchema,
-            ) {
+            switch item->S.parseOrThrow(ReventlessCore.UiFragments.stateSchema) {
             | state =>
               Some(ReventlessCore.Platform_UIFragmentsApi.encodeUIFragmentEntry(state))
             | exception _ => None

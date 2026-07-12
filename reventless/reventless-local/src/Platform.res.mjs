@@ -29,6 +29,7 @@ import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as BackendState$ReventlessLocal from "./adapter/BackendState.res.mjs";
+import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "./adapter/SqliteDriver.res.mjs";
 import * as Task_Builder$ReventlessLocal from "./components/Task_Builder.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
@@ -73,6 +74,7 @@ import * as LocalScheduledPublisher$ReventlessLocal from "./adapter/Scheduler/Lo
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
 import * as LocalCommandTopicChannel$ReventlessLocal from "./adapter/CommandTopic/LocalCommandTopicChannel.res.mjs";
 import * as LocalEventTopicPublisher$ReventlessLocal from "./adapter/EventTopic/LocalEventTopicPublisher.res.mjs";
+import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateChangeSlice_Builder.res.mjs";
 import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
@@ -830,6 +832,17 @@ function MakeWithConfig(Config) {
     };
     return Bus.dispatchCommand(pluginCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
   };
+  let adminEpCmdTopicKey = ComponentType$ReventlessCore.name(ComponentType$ReventlessCore.name(PluginExtensionPointSpec$ReventlessInfra.name.replace(".", ""), "ExtensionPoint"), "CommandTopic");
+  let dispatchAdminEpCommand = (id, command) => {
+    let cmdJson_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, PluginExtensionPointSpec$ReventlessInfra.commandSchema);
+    let cmdJson = {
+      id: id,
+      meta: cmdJson_meta,
+      commandJson: cmdJson_commandJson
+    };
+    return Bus.dispatchCommand(adminEpCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
+  };
   let pluginStatusSubTopic = "onPluginStatusChange";
   let uiFragmentSubTopic = "onUIFragmentChange";
   let pluginEventsSubscribed = {
@@ -906,6 +919,7 @@ function MakeWithConfig(Config) {
         outputs.uiFragments,
         outputs.pluginStructure
       ]).apply(param => {
+        let uiFragments = param[6];
         let id = param[0];
         let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
         let pluginDefinition = {
@@ -932,7 +946,7 @@ function MakeWithConfig(Config) {
           extensionProtocols: [],
           apiSchemaFragment: param[5],
           apiTarget: undefined,
-          uiFragments: param[6],
+          uiFragments: uiFragments,
           structure: param[7],
           dcbEventLog: undefined,
           kind: "Domain"
@@ -941,6 +955,13 @@ function MakeWithConfig(Config) {
           TAG: "Connect",
           _0: pluginDefinition
         });
+        if (uiFragments !== undefined) {
+          dispatchAdminEpCommand(id, {
+            TAG: "RegisterUiFragment",
+            _0: uiFragments
+          });
+          return;
+        }
       });
     });
   };
@@ -1371,13 +1392,13 @@ function MakeWithConfig(Config) {
       });
     };
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
-      let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
+      let scanAll = Bus.getQueryDbScan(UiFragments$ReventlessCore.name);
       let items = scanAll !== undefined ? scanAll() : [];
       let latestByName = {};
       items.forEach(item => {
         let state;
         try {
-          state = S.parseOrThrow(item, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
+          state = S.parseOrThrow(item, UiFragments$ReventlessCore.stateSchema);
         } catch (exn) {
           return;
         }
@@ -1688,12 +1709,12 @@ function MakeWithConfig(Config) {
       queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
       queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
       queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
-        let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
+        let scanAll = Bus.getQueryDbScan(UiFragments$ReventlessCore.name);
         let items = scanAll !== undefined ? scanAll() : [];
         return Stdlib_Array.filterMap(items, item => {
           let state;
           try {
-            state = S.parseOrThrow(item, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
+            state = S.parseOrThrow(item, UiFragments$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }
@@ -2508,6 +2529,17 @@ function Make($star) {
     };
     return Bus.dispatchCommand(pluginCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
   };
+  let adminEpCmdTopicKey = ComponentType$ReventlessCore.name(ComponentType$ReventlessCore.name(PluginExtensionPointSpec$ReventlessInfra.name.replace(".", ""), "ExtensionPoint"), "CommandTopic");
+  let dispatchAdminEpCommand = (id, command) => {
+    let cmdJson_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, PluginExtensionPointSpec$ReventlessInfra.commandSchema);
+    let cmdJson = {
+      id: id,
+      meta: cmdJson_meta,
+      commandJson: cmdJson_commandJson
+    };
+    return Bus.dispatchCommand(adminEpCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
+  };
   let pluginStatusSubTopic = "onPluginStatusChange";
   let uiFragmentSubTopic = "onUIFragmentChange";
   let pluginEventsSubscribed = {
@@ -2584,6 +2616,7 @@ function Make($star) {
         outputs.uiFragments,
         outputs.pluginStructure
       ]).apply(param => {
+        let uiFragments = param[6];
         let id = param[0];
         let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
         let pluginDefinition = {
@@ -2610,7 +2643,7 @@ function Make($star) {
           extensionProtocols: [],
           apiSchemaFragment: param[5],
           apiTarget: undefined,
-          uiFragments: param[6],
+          uiFragments: uiFragments,
           structure: param[7],
           dcbEventLog: undefined,
           kind: "Domain"
@@ -2619,6 +2652,13 @@ function Make($star) {
           TAG: "Connect",
           _0: pluginDefinition
         });
+        if (uiFragments !== undefined) {
+          dispatchAdminEpCommand(id, {
+            TAG: "RegisterUiFragment",
+            _0: uiFragments
+          });
+          return;
+        }
       });
     });
   };
@@ -3044,13 +3084,13 @@ function Make($star) {
       });
     };
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
-      let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
+      let scanAll = Bus.getQueryDbScan(UiFragments$ReventlessCore.name);
       let items = scanAll !== undefined ? scanAll() : [];
       let latestByName = {};
       items.forEach(item => {
         let state;
         try {
-          state = S.parseOrThrow(item, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
+          state = S.parseOrThrow(item, UiFragments$ReventlessCore.stateSchema);
         } catch (exn) {
           return;
         }
@@ -3352,12 +3392,12 @@ function Make($star) {
       queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
       queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
       queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
-        let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
+        let scanAll = Bus.getQueryDbScan(UiFragments$ReventlessCore.name);
         let items = scanAll !== undefined ? scanAll() : [];
         return Stdlib_Array.filterMap(items, item => {
           let state;
           try {
-            state = S.parseOrThrow(item, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
+            state = S.parseOrThrow(item, UiFragments$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }

@@ -25,7 +25,7 @@ let page: pageManifestEntry = {
   requiredAccess: Some("admin"),
 }
 
-let state: UIFragmentRegistryReadModelSpec.state = {
+let state: UiFragments.state = {
   pluginId: "Catalog",
   remoteEntryUrl: "https://cdn.example.com/catalog@1.0/remoteEntry.js",
   panels: [panel],

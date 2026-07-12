@@ -1503,7 +1503,7 @@ module MakeWithConfig = (
 
     // Mount the Platform_UIFragments Lambda resolver — scans the UIFragmentRegistry
     // table provisioned above and returns one entry per registered plugin UI.
-    switch admin.readModelsOutputs->Dict.get("UIFragmentRegistry") {
+    switch admin.stateViewSlicesOutputs->Dict.get("UiFragments") {
     | Some(rm) =>
       switch rm.queryDb.resources->Array.get(0) {
       | Some(r) =>
@@ -1792,7 +1792,7 @@ module MakeWithConfig = (
 
     // Mount the Platform_UIFragments Lambda resolver — scans the UIFragmentRegistry
     // table provisioned above and returns one entry per registered plugin UI.
-    switch admin.readModelsOutputs->Dict.get("UIFragmentRegistry") {
+    switch admin.stateViewSlicesOutputs->Dict.get("UiFragments") {
     | Some(rm) =>
       switch rm.queryDb.resources->Array.get(0) {
       | Some(r) =>
