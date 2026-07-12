@@ -481,19 +481,72 @@ sharing that deploy-validation path. Until a deploy, these increments are compil
   empty base + Domain frags; unified → one API = admin base + all frags). Provider-neutral (the AWS
   adapter injects `@aws_subscribe` per plan and maps `PlatformApi`/`DomainApi` → the AppSync ids).
 
+**Increment 2e — IMPLEMENTED (core + AWS-mechanical), compile-validated + unit-tested
+(this session). Deploy-validation pends Phase 3** (nothing calls `RegisterApiFragment` on
+AWS until the deploy caller lands, so no `ApiFragment*` events fire yet).
+
+- **Linchpin resolved — how `ApiFragment*` events reach the AdminEventCollector.** The admin
+  DcbEventLog has **no SNS topic** on AWS; its "EventTopic" is the DcbEventLog table's **DynamoDB
+  stream**, and the admin EC was subscribed only to the Plugin ExtensionPoint's SNS topic (Plugin
+  *aggregate* events), never to the DCB-slice stream — so the DCB-slice→admin-EC path had never
+  existed on AWS (Phase 1/2b were in-memory only; the `AllStateViewSlices` projection Lambda was the
+  stream's sole consumer). **Fix (user-chosen: admin EC as 2nd stream reader):** thread
+  `dcbResult.dcbEventLogOutputs.eventTopic` into the admin EC's `~eventTopics`
+  (`Platform_Admin.res`, copied dict so the shared aggregate outputs stay untouched) — the
+  EventCollector channel already provisions the DynamoDB-stream EventSourceMapping + read IAM. Known
+  constraint: DynamoDB streams allow ~2 concurrent shard readers; `AllStateViewSlices` + admin EC =
+  the limit, no headroom for a third consumer (would need SNS/Kinesis fan-out).
+- **Reactive single writer, ADDITIVE** (the legacy connect-driven `mkUpdateApiSchema`,
+  `deploy-schema:*` → single Domain API, stays until Phase 4). On any `ApiFragmentRegistered` /
+  `Updated` / `Deregistered` stream event (NOT `ApiFragmentPushRecorded` — avoids the write-back
+  loop; `UiFragment*` ignored by prefix), the admin EC re-folds the registry and pushes one
+  AppSync-decorated schema per target API, then dispatches `RecordApiFragmentPush` per triggering
+  plugin onto the admin DCB command topic. The `handler` splits records: DcbEventLog **stream**
+  records drive the reactive push; everything else (Plugin-aggregate lifecycle SNS→SQS) still goes
+  to the plugin callback (which has no handler for DCB-slice events). Non-admin ECs and
+  all-at-once `makePlatform` keep the config placeholders → the reactive push stays dormant.
+- **Consistency:** the RM scan of `ApiFragments` races the (separate) `AllStateViewSlices`
+  projection consumer, so the triggering batch's own fragment payloads (carried in the stream
+  records) are **overlaid** on the scan (Register/Update set, Deregister removes) — the plan's
+  "stitch from consistent state, not an eventually-consistent RM scan", scoped to the batch.
+- **Push decoration = deploy-path parity.** New runtime-pure
+  `AppSync_SdlDecorate.planAwsPushes(~rawAdminBase, ~iamFieldNames, ~fragments, ~splitApi)` reuses
+  core `GraphQL_PushPlanner.planPushes` for base-selection + stitch, then applies the AppSync
+  dialect exactly as the deploy path's `stitchWithAwsDirectives`: the admin base is auth-decorated
+  (`injectAwsAuthAll` group "Admin" + dual-auth on `AdminApi.systemCallerFieldNames`) *before*
+  stitch, `@aws_subscribe` from the neutral `subscriptionSources`, and shared traversal types
+  stamped on the assembled SDL. Plugin fragments already carry their own per-field `@aws_auth`
+  (baked at `generateFragment`), so they stitch in as-is. `injectAwsAuthAll` + `stampSharedIamTypes`
+  moved into runtime-pure `AppSync_SdlDecorate`; `AppSync_Adapter` now delegates to them (no
+  Pulumi in the runtime graph). **Unit-tested** (`AppSync_SdlDecorateTest`, +2 cases): split-mode
+  Platform/Domain separation, dual-auth on system-caller fields, shared-type stamping, unified mode.
+- **Deploy-time config (deployPlatform only — the staged path where `RegisterApiFragment` fires;
+  `makePlatform` builds the full schema at deploy time and never calls it).** Four new
+  `HANDLER_CONFIG` fields threaded via `registerConfig` at `Platform.res:1807` (read lazily by
+  `forPluginEventCollector`, so post-`Admin.construct` values are available): `platformApiId`
+  (`platformApi.id`; unified → domain id), `apiFragmentRegistryTableName`
+  (`admin.stateViewSlicesOutputs["ApiFragments"].queryDb.resources[0].name`), `adminDcbCmdTopicUrl`
+  (`AutomationSliceRuntime_Builder_Single.getDcbQueueUrl()`, captured by `onDcbCommandTopicCreated`
+  during construct), `splitApi`. New admin-EC IAM: `dynamodb:Scan` on the ApiFragments table +
+  `sqs:SendMessage` on the admin DCB command topic (URL→ARN); AppSync `StartSchemaCreation` /
+  `GetIntrospectionSchema` already granted on `AllResources` (covers the Platform API).
+- **Validation net:** compile zero-warning across core/aws/local; suites green (core 528, aws 216
+  incl. the 2 new `planAwsPushes` cases, local 508). The whole AWS reactive path (stream ESM,
+  IAM, config threading, mjs handler) is compile-validated only — real validation is a deploy, and
+  it is inert until Phase 3 supplies a `RegisterApiFragment` caller. Build it deploy-validated as a
+  unit with the Phase-3 deploy caller.
+
 **Remaining work:**
-- **2e mjs reactive handler + deploy-time config (Phase-3-validated).** The AdminEventCollector
-  handler must react to `ApiFragment*` events, scan the `ApiFragments` table into
-  `planPushes`-shaped `targetedFragment`s, push each plan (`injectAwsSubscribe` + shrink guard +
-  `updateAppSyncSchema`) to the matching API id, and dispatch `RecordApiFragmentPush` onto the admin
-  DCB command topic. This is **additive** — the existing `mkUpdateApiSchema` (DoConnect →
-  `deploy-schema:*` → single Domain API) stays until Phase 4. It cannot be exercised until Phase 3:
-  on AWS in Phase 2 nothing calls `RegisterApiFragment`, so no `ApiFragment*` events fire. Open
-  prerequisites: new Lambda config (platform api id, `ApiFragments` table name, admin DCB command
-  topic URL, `splitApi`) and **confirming how `ApiFragment*` events reach the AdminEventCollector**
-  (admin DcbEventLog topic subscription). Best implemented alongside the Phase-3 deploy caller so it
-  is deploy-validated as a unit.
-- Phases 3–4.
+- **Phase 3 — deploy caller + waiter** (validates 2e on the same alpha push). Replace the
+  `preResolversSchemaHook` body (`Plugin_Builder.res:585` seam): `deployPlugin` sends
+  `Util_AppSync_Caller.sendMutation` `Platform_RegisterApiFragment(name, fragment, apiTarget)`
+  (SigV4, targeting the Platform API endpoint/id resolvable in the plugin deploy flow), then a
+  `sendQuery` waiter polling `Platform_ApiFragments` push status (surfacing stitch errors) before
+  resolver creation — preserving the `schemaPushed` Output gate semantics. Destroy-path sends
+  `DeregisterApiFragment`. `Util_AppSync_Caller` needs no changes (SigV4 + nested-object args +
+  enum sentinel already support it; zero call sites today).
+- Phase 4 — cutover + cleanup (retire `deploy-schema:*` keyspace, lease, hash rows, legacy
+  `mkUpdateApiSchema`; dedup the `injectAwsAuthAll`/`stampSharedIamTypes` copies if any linger).
 
 ## Phasing
 

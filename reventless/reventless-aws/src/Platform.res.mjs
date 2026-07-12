@@ -1187,7 +1187,7 @@ function MakeWithConfig(Config) {
         return Pulumi.output("NOT_AVAILABLE");
       }
     });
-    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, pluginSchemaPersistenceTable.name, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, Config.cloner, undefined);
+    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, pluginSchemaPersistenceTable.name, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, Config.cloner, Output$Pulumi.flatMap(platformApi, api => api.id), Stdlib_Option.map(Stdlib_Option.flatMap(admin.stateViewSlicesOutputs["ApiFragments"], rm => rm.queryDb.resources[0]), r => r.name), AutomationSliceRuntime_Builder_Single$ReventlessAws.getDcbQueueUrl(), Config.splitApi, undefined);
     if (pluginReadModelTableName !== undefined) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
       Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
@@ -2477,7 +2477,7 @@ function Make($star) {
         return Pulumi.output("NOT_AVAILABLE");
       }
     });
-    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, pluginSchemaPersistenceTable.name, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, false, undefined);
+    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, pluginSchemaPersistenceTable.name, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, false, Output$Pulumi.flatMap(platformApi, api => api.id), Stdlib_Option.map(Stdlib_Option.flatMap(admin.stateViewSlicesOutputs["ApiFragments"], rm => rm.queryDb.resources[0]), r => r.name), AutomationSliceRuntime_Builder_Single$ReventlessAws.getDcbQueueUrl(), true, undefined);
     if (pluginReadModelTableName !== undefined) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
       Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});

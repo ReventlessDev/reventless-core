@@ -16,6 +16,10 @@ let bundledInfos: dict<sliceInfo> = Dict.make()
 
 let dcbQueueUrlRef: ref<option<Pulumi.Output.t<string>>> = ref(None)
 let setDcbQueueUrl = url => dcbQueueUrlRef := Some(url)
+// The admin/plugin DCB command-topic FIFO URL captured by the
+// onDcbCommandTopicCreated hook. Read by the admin EventCollector's reactive
+// ApiFragmentRegistry push (2e) to dispatch RecordApiFragmentPush.
+let getDcbQueueUrl = () => dcbQueueUrlRef.contents
 
 let registerAutomationSlice = (
   ~name,

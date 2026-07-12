@@ -4,7 +4,6 @@ import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Nodecrypto from "node:crypto";
-import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
@@ -237,17 +236,6 @@ function _stampTypeDualAuth(decl) {
   }
 }
 
-let sharedIamTypeNames = [
-  "PageInfo",
-  "CommandAccepted",
-  "CommandRejected",
-  "CommandPending"
-];
-
-function stampSharedIamTypes(sdl) {
-  return Stdlib_Array.reduce(sharedIamTypeNames, sdl, (acc, name) => acc.replace(`type ` + name + ` {`, `type ` + name + ` @aws_cognito_user_pools @aws_iam {`));
-}
-
 function injectAwsAuth(fragment, mutationEntries, queryEntries) {
   let parts = GraphQL_Stitcher$ReventlessCore.decode(fragment);
   let iamFields = {};
@@ -353,34 +341,12 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
 
 function injectAwsAuthAll(fragment, group, iamFieldNamesOpt) {
   let iamFieldNames = iamFieldNamesOpt !== undefined ? iamFieldNamesOpt : [];
-  let parts = GraphQL_Stitcher$ReventlessCore.decode(fragment);
-  let augmentedMutations = parts.mutations.map(field => {
-    if (iamFieldNames.includes(GraphQL_Stitcher$ReventlessCore.extractLeadingName(field))) {
-      return field + `\n    ` + _formatDualAuthDirective([group]);
-    } else {
-      return field + `\n    @aws_auth(cognito_groups: ["` + group + `"])`;
-    }
-  });
-  let augmentedQueries = parts.queries.map(field => {
-    if (iamFieldNames.includes(GraphQL_Stitcher$ReventlessCore.extractLeadingName(field))) {
-      return field + ` ` + _formatDualAuthDirective([group]);
-    } else {
-      return field + ` @aws_auth(cognito_groups: ["` + group + `"])`;
-    }
-  });
-  let augmentedSubscriptions = parts.subscriptions.map(field => field + `\n    @aws_auth(cognito_groups: ["` + group + `"])`);
-  return GraphQL_Stitcher$ReventlessCore.encode({
-    types: parts.types,
-    mutations: augmentedMutations,
-    queries: augmentedQueries,
-    subscriptions: augmentedSubscriptions,
-    subscriptionSources: parts.subscriptionSources
-  });
+  return AppSync_SdlDecorate$ReventlessAws.injectAwsAuthAll(fragment, group, iamFieldNames);
 }
 
 function stitchWithAwsDirectives(baseFragment, pluginFragments) {
   let sources = GraphQL_Stitcher$ReventlessCore.collectSubscriptionSources(baseFragment, pluginFragments);
-  return stampSharedIamTypes(AppSync_SdlDecorate$ReventlessAws.injectAwsSubscribe(GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, pluginFragments), sources));
+  return AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes(AppSync_SdlDecorate$ReventlessAws.injectAwsSubscribe(GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, pluginFragments), sources));
 }
 
 function makeApiResource(name, opts) {
@@ -432,6 +398,8 @@ function updateSchema(api, baseFragment, pluginFragments) {
   return resultPromise.contents;
 }
 
+let stampSharedIamTypes = AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes;
+
 export {
   log,
   sha256Hex,
@@ -450,7 +418,6 @@ export {
   _formatDualAuthDirective,
   _typeDeclName,
   _stampTypeDualAuth,
-  sharedIamTypeNames,
   stampSharedIamTypes,
   injectAwsAuth,
   injectAwsAuthAll,

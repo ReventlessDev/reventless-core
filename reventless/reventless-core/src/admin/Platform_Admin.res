@@ -371,6 +371,19 @@ module Make = (
 
         let aggregatesOutputs = addEventMappers(allEventTopics, queryEngine)
         let eventTopics = aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames)
+        // 2e: also subscribe the admin EventCollector to the admin DcbEventLog's
+        // event topic (a DynamoDB stream on AWS) so the reactive ApiFragmentRegistry
+        // single writer receives ApiFragment* events. The EventCollector channel
+        // already provisions the stream subscription + read IAM for stream-backed
+        // event-topic resources. Copy the filtered dict so the shared aggregate
+        // outputs stay untouched.
+        let eventTopics = switch dcbResult.dcbEventLogOutputs {
+        | Some(dcbOutputs) =>
+          let augmented = eventTopics->Dict.copy
+          augmented->Dict.set(name ++ "DcbEventLog", dcbOutputs.eventTopic)
+          augmented
+        | None => eventTopics
+        }
 
         module EventCollectorHelper = MakeEventCollectorHelper(
           RuntimeEnvironment,

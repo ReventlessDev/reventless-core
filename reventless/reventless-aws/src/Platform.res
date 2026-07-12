@@ -1813,6 +1813,18 @@ module MakeWithConfig = (
       ~pluginSchemaPersistenceTableName=pluginSchemaPersistenceTable.name,
       ~schedulerRoleArn=hooks.schedulerRoleUrn.contents,
       ~clonerEnabled=Config.cloner,
+      // 2e: the reactive ApiFragmentRegistry single writer (admin EventCollector).
+      // The Platform AppSync id it pushes Platform-target fragments to (unified →
+      // domainApi, since platformApi == domainApi); the ApiFragments StateViewSlice
+      // table it re-folds from; the admin DCB command-topic FIFO URL it dispatches
+      // RecordApiFragmentPush to (captured during Admin.construct); and the mode flag.
+      ~platformApiId=platformApi->Pulumi.Output.flatMap(api => api.id),
+      ~apiFragmentRegistryTableName=?admin.stateViewSlicesOutputs
+      ->Dict.get("ApiFragments")
+      ->Option.flatMap(rm => rm.queryDb.resources->Array.get(0))
+      ->Option.map(r => r.name),
+      ~adminDcbCmdTopicUrl=?AutomationSliceRuntime_Builder_Single.getDcbQueueUrl(),
+      ~splitApi=Config.splitApi,
       (),
     )
 

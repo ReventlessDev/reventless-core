@@ -169,6 +169,15 @@ function Make(RuntimeEnvironment) {
         let aggregateNames = Stdlib_Array.reduce(extensionPointsOutputs.map(extensionPointOutputs => Belt_SetString.fromArray(extensionPointOutputs.aggregateNames)), undefined, Belt_SetString.union);
         let aggregatesOutputs = Builder_Helpers$ReventlessCore.addEventMappers(aggregateEventTopics, queryEngine);
         let eventTopics = Aggregate$ReventlessCore.filterEventTopics(aggregatesOutputs, aggregateNames);
+        let dcbOutputs = dcbResult.dcbEventLogOutputs;
+        let eventTopics$1;
+        if (dcbOutputs !== undefined) {
+          let augmented = Object.assign({}, eventTopics);
+          augmented[name + "DcbEventLog"] = dcbOutputs.eventTopic;
+          eventTopics$1 = augmented;
+        } else {
+          eventTopics$1 = eventTopics;
+        }
         let AdminEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
         let make = (name, eventTopics, opts) => {
           let eventCollector = AdminEventCollector.make(name, eventTopics, opts);
@@ -203,9 +212,9 @@ function Make(RuntimeEnvironment) {
             AdminRuntimeBuilder.forPluginEventCollector(handler, eventTopics, resources, undefined, undefined, eventCollector);
           });
         };
-        let match$1 = make(name, eventTopics, opts);
+        let match$1 = make(name, eventTopics$1, opts);
         let eventCollector = match$1[0];
-        Output$Pulumi.flatMap(Pulumi.all(match[1]), extensionPointsOutgoingJsonEventsHandlers => connect(eventCollector, eventTopics, extensionPointsOutputs, extensionPointsOutgoingJsonEventsHandlers));
+        Output$Pulumi.flatMap(Pulumi.all(match[1]), extensionPointsOutgoingJsonEventsHandlers => connect(eventCollector, eventTopics$1, extensionPointsOutputs, extensionPointsOutgoingJsonEventsHandlers));
         Stdlib_Option.forEach(dcbResult.dcbRuntimeSetup, dcbRuntimeSetup => dcbRuntimeSetup());
         return extensionPointsOutputs;
       });

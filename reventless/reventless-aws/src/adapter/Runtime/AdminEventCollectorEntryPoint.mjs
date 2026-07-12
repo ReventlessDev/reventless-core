@@ -85,8 +85,8 @@ import {
   isCatastrophicSchemaShrink,
   collectSubscriptionSources,
 } from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
-import { injectAwsSubscribe } from "@reventlessdev/reventless-aws/src/components/Api/AppSync_SdlDecorate.res.mjs";
-import { baseFragment as adminBaseFragment } from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
+import { injectAwsSubscribe, planAwsPushes } from "@reventlessdev/reventless-aws/src/components/Api/AppSync_SdlDecorate.res.mjs";
+import { baseFragment as adminBaseFragment, systemCallerFieldNames } from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 
 // The Plugin RM state schema uses `@s.matches(_jsNullable …)` for many
@@ -170,6 +170,13 @@ function parseHandlerConfig(rawJson) {
   // Optional fields with empty defaults — admin context omits them entirely.
   if (config.readModelQueueUrls === undefined) config.readModelQueueUrls = {};
   if (config.readModelNamesForSourceName === undefined) config.readModelNamesForSourceName = {};
+  // Reactive ApiFragmentRegistry single-writer (2e) — only the admin EventCollector
+  // carries a real registry table + admin DCB command topic; plugin ECs default to
+  // placeholders which disable the reactive push.
+  if (config.apiFragmentRegistryTableName === undefined) config.apiFragmentRegistryTableName = "NOT_AVAILABLE";
+  if (config.platformApiId === undefined) config.platformApiId = "NOT_AVAILABLE";
+  if (config.adminDcbCmdTopicUrl === undefined) config.adminDcbCmdTopicUrl = "";
+  if (config.splitApi === undefined) config.splitApi = false;
   // Per-extension defaults so older serialisers (or partial admin configs) keep working.
   for (const ext of config.extensions) {
     if (!Array.isArray(ext.aggregateNames)) ext.aggregateNames = [];
@@ -545,6 +552,183 @@ function mkUpdateApiSchema(schemaTableName, apiId, clonerEnabled) {
   };
 }
 
+// ── Reactive ApiFragmentRegistry single writer (Plan 2e) ─────────────────────
+// The admin EventCollector is (as of 2e) also subscribed to the admin DcbEventLog
+// DynamoDB stream. On any ApiFragmentRegistered / ApiFragmentUpdated /
+// ApiFragmentDeregistered event, re-fold the ApiFragmentRegistry, stitch one
+// AppSync-decorated schema per target API (via the runtime-pure
+// AppSync_SdlDecorate.planAwsPushes — identical decoration to the deploy path),
+// push each with the shrink guard, and write the outcome back with
+// RecordApiFragmentPush onto the admin DCB command topic. This is ADDITIVE — the
+// legacy connect-driven mkUpdateApiSchema (deploy-schema:* → single Domain API)
+// stays until Plan Phase 4. ApiFragmentPushRecorded is intentionally NOT a
+// trigger (the write-back would otherwise loop); UiFragment* events on the same
+// stream are ignored (different prefix).
+
+const reactiveTriggerTags = new Set([
+  "ApiFragmentRegistered",
+  "ApiFragmentUpdated",
+  "ApiFragmentDeregistered",
+]);
+
+function isDynamoStreamRecord(r) {
+  return !!r && (r.eventSource === "aws:dynamodb" || r.EventSource === "aws:dynamodb");
+}
+
+// Read a DynamoDB attribute-value string, tolerating both the raw stream shape
+// ({S: "..."}) and an already-unmarshalled plain string.
+function avString(av) {
+  if (av == null) return undefined;
+  if (typeof av === "string") return av;
+  if (typeof av.S === "string") return av.S;
+  return undefined;
+}
+
+// Pull the {encoded, protocol} fragment out of an event's `data` attribute
+// (raw {M:{...}} or unmarshalled object), reading the named fragment field
+// (`fragment` for Registered, `newFragment` for Updated).
+function readFragmentField(dataAv, fieldName) {
+  const data = dataAv && dataAv.M ? dataAv.M : dataAv;
+  if (!data || typeof data !== "object") return null;
+  const fragAv = data[fieldName];
+  const frag = fragAv && fragAv.M ? fragAv.M : fragAv;
+  if (!frag || typeof frag !== "object") return null;
+  const encoded = avString(frag.encoded);
+  if (typeof encoded !== "string" || encoded.length === 0) return null;
+  return { encoded, protocol: avString(frag.protocol) || "graphql" };
+}
+
+// Scan the raw stream records for ApiFragment* trigger events; return one entry
+// per event carrying the pluginId and the fragment override the event asserts
+// (or {remove:true} for a deregistration). The override lets the push reflect
+// the just-happened change even if the ApiFragments projection (a separate
+// stream consumer) hasn't caught up yet — the plan's "stitch from consistent
+// state, not an eventually-consistent RM scan".
+function detectApiFragmentTriggers(records) {
+  const out = [];
+  for (const r of records || []) {
+    if (!isDynamoStreamRecord(r)) continue;
+    const img = r.dynamodb && r.dynamodb.NewImage;
+    if (!img) continue;
+    const tag = avString(img.event);
+    if (!tag || !reactiveTriggerTags.has(tag)) continue;
+    const dataAv = img.data;
+    const dataObj = dataAv && dataAv.M ? dataAv.M : dataAv;
+    let pluginId =
+      (dataObj && dataObj.pluginId && avString(dataObj.pluginId)) || avString(img.tag_pluginId);
+    if (!pluginId) continue;
+    if (tag === "ApiFragmentDeregistered") {
+      out.push({ pluginId, remove: true });
+    } else {
+      const fieldName = tag === "ApiFragmentUpdated" ? "newFragment" : "fragment";
+      const frag = readFragmentField(dataAv, fieldName);
+      const target = (dataObj && avString(dataObj.apiTarget)) === "Platform" ? "Platform" : "Domain";
+      out.push(frag ? { pluginId, encoded: frag.encoded, protocol: frag.protocol, target } : { pluginId });
+    }
+  }
+  return out;
+}
+
+// Enqueue one RecordApiFragmentPush per distinct triggering plugin onto the admin
+// DCB command topic (FIFO, MessageGroupId = pluginId). RecordApiFragmentPush is
+// @noApi and idempotent — a no-op in the slice behaviour if the plugin was
+// deregistered in the meantime.
+async function recordPushOutcomes(recordPublisher, pluginIds, ok, message) {
+  if (!recordPublisher || pluginIds.length === 0) return;
+  const at = new Date().toISOString();
+  const commandJsons = pluginIds.map((pluginId) => ({
+    id: pluginId,
+    // toMessageBody re-stamps msgId (uuid) + time (now); service + correlationId are required.
+    meta: { service: "AdminEventCollector", time: at, msgId: "pending", correlationId: pluginId },
+    commandJson: { TAG: "RecordApiFragmentPush", pluginId, ok, message, at },
+  }));
+  try {
+    await recordPublisher(commandJsons);
+  } catch (e) {
+    log.error(`RecordApiFragmentPush dispatch failed: ${(e && e.message) || e}`, { comp: "reactiveApiPush" });
+  }
+}
+
+function mkReactiveApiSchemaPush(config) {
+  const tableName = config.apiFragmentRegistryTableName;
+  const adminDcbUrl = config.adminDcbCmdTopicUrl;
+  // Only the admin EventCollector carries a real registry table + admin DCB topic.
+  if (!tableName || tableName === "NOT_AVAILABLE" || !adminDcbUrl || adminDcbUrl === "NOT_AVAILABLE") {
+    return undefined;
+  }
+  const domainApiId = config.appSyncApiId;
+  // In unified mode platformApiId is unset/"NOT_AVAILABLE" and every plan targets the Domain API.
+  const platformApiId =
+    config.platformApiId && config.platformApiId !== "NOT_AVAILABLE"
+      ? config.platformApiId
+      : domainApiId;
+  const splitApi = !!config.splitApi;
+  const clonerEnabled = config.clonerEnabled || false;
+  const recordPublisher = sqsPublishJsons(makeQueueRef(adminDcbUrl), "SQS_FIFO");
+
+  return async (triggers) => {
+    const pluginIds = [...new Set(triggers.map((t) => t.pluginId))];
+    // 1. Fold the registry: RM scan for all plugins, overlaid with this batch's
+    //    own asserted fragments (closes the projection-lag race for the trigger).
+    const byId = new Map();
+    try {
+      const rows = await scanByTableName(tableName, [], 1000);
+      for (const row of rows) {
+        if (!row || typeof row.pluginId !== "string" || typeof row.encoded !== "string" || !row.encoded) continue;
+        byId.set(row.pluginId, {
+          encoded: row.encoded,
+          protocol: typeof row.protocol === "string" ? row.protocol : "graphql",
+          target: row.apiTarget === "Platform" ? "Platform" : "Domain",
+        });
+      }
+    } catch (e) {
+      const msg = `ApiFragments scan failed: ${(e && e.message) || e}`;
+      log.error(msg, { comp: "reactiveApiPush" });
+      await recordPushOutcomes(recordPublisher, pluginIds, false, msg);
+      return;
+    }
+    for (const t of triggers) {
+      if (t.remove) byId.delete(t.pluginId);
+      else if (t.encoded) byId.set(t.pluginId, { encoded: t.encoded, protocol: t.protocol, target: t.target });
+    }
+    const fragments = [...byId.values()];
+
+    // 2. Plan one AWS-decorated push per target API.
+    const rawAdminBase = adminBaseFragment(clonerEnabled);
+    const plans = planAwsPushes(rawAdminBase, systemCallerFieldNames, fragments, splitApi);
+
+    // 3. Push each plan behind the shrink guard.
+    let ok = true;
+    let message = "";
+    for (const plan of plans) {
+      const apiId = plan.api === "PlatformApi" ? platformApiId : domainApiId;
+      if (!apiId || apiId === "NOT_AVAILABLE") continue;
+      const threshold = parseShrinkThreshold(process.env["RUNTIME_SCHEMA_SHRINK_THRESHOLD"]);
+      const currentSdl = await getCurrentSchemaSdl(apiId);
+      if (isCatastrophicSchemaShrink(currentSdl, plan.sdl, threshold)) {
+        const cur = countRootTypeFields(currentSdl, "Mutation") + countRootTypeFields(currentSdl, "Query");
+        const nw = countRootTypeFields(plan.sdl, "Mutation") + countRootTypeFields(plan.sdl, "Query");
+        log.error(`ABORTED reactive push for ${plan.api} (${apiId}): ${nw} root field(s) vs ${cur} live (threshold ${threshold}).`, { comp: "reactiveApiPush" });
+        emitShrinkRejectionMetric(apiId, cur, nw);
+        ok = false;
+        message = `shrink guard aborted push for ${plan.api}`;
+        continue;
+      }
+      try {
+        await updateAppSyncSchema(apiId, plan.sdl);
+        log.info(`reactive schema push OK: ${plan.api} (${apiId})`, { comp: "reactiveApiPush" });
+      } catch (e) {
+        ok = false;
+        message = (e && e.message) || String(e);
+        log.error(`reactive schema push FAILED: ${plan.api} (${apiId}): ${message}`, { comp: "reactiveApiPush" });
+      }
+    }
+
+    // 4. Write the outcome back per triggering plugin (the deploy waiter polls this).
+    await recordPushOutcomes(recordPublisher, pluginIds, ok, message);
+  };
+}
+
 function buildPublishToAggregates(map) {
   const out = {};
   for (const [aggName, envVarName] of Object.entries(map || {})) {
@@ -669,6 +853,8 @@ async function buildHandler() {
     config.appSyncApiId,
     config.clonerEnabled,
   );
+
+  const reactiveApiSchemaPush = mkReactiveApiSchemaPush(config);
 
   const manageSubscriptionsFn = mkManageSubscriptions(config.pluginReadModelTableName);
 
@@ -887,17 +1073,33 @@ async function buildHandler() {
   // level, so the modest extra init latency is paid only on true cold starts.
   await reconcileSubscriptionsOnce(config.pluginReadModelTableName, manageSubscriptionsFn);
 
-  return handleDynamoDbOrSqsEvent(makeQueueRef(config.queueUrl), callback.handleJsonEvents);
+  const sqsHandler = handleDynamoDbOrSqsEvent(makeQueueRef(config.queueUrl), callback.handleJsonEvents);
+  return { sqsHandler, reactiveApiSchemaPush };
 }
 
-const sqsHandlerPromise = buildHandler();
+const handlerBundlePromise = buildHandler();
 
 export async function handler(event, context) {
   _currentRequestId = context?.awsRequestId || "unknown";
   const records = event.Records || [];
   const correlationId = extractCorrelationId(records);
   log.debug("processing " + records.length.toString() + " record(s)", { comp: "PluginEventCollectorRuntime" });
-  const sqsHandler = await sqsHandlerPromise;
-  await runEffect(correlationId, sqsHandler(event, context));
+  const { sqsHandler, reactiveApiSchemaPush } = await handlerBundlePromise;
+  if (reactiveApiSchemaPush) {
+    // Admin EC: DcbEventLog stream records drive the reactive ApiFragmentRegistry
+    // push; everything else (Plugin-aggregate lifecycle delivered SNS→SQS) goes to
+    // the plugin callback as before. Splitting keeps unrelated DCB-slice stream
+    // events out of the callback, which has no handler for them. (A Lambda batch
+    // is single-source, so in practice exactly one branch has records.)
+    const streamRecords = records.filter(isDynamoStreamRecord);
+    const otherRecords = records.filter((r) => !isDynamoStreamRecord(r));
+    if (otherRecords.length > 0) {
+      await runEffect(correlationId, sqsHandler({ ...event, Records: otherRecords }, context));
+    }
+    const triggers = detectApiFragmentTriggers(streamRecords);
+    if (triggers.length > 0) await reactiveApiSchemaPush(triggers);
+  } else {
+    await runEffect(correlationId, sqsHandler(event, context));
+  }
   return "";
 }

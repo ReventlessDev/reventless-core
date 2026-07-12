@@ -93,3 +93,65 @@ describe("AppSync_Adapter.stitchWithAwsDirectives", () => {
     expect(sdl)->toContain(`@aws_subscribe(mutations: ["Catalog_AddProduct"])`)
   })
 })
+
+describe("AppSync_SdlDecorate.planAwsPushes", () => {
+  // Neutral admin base: a system-callable mutation + a shared traversal type.
+  let rawAdminBase = ReventlessCore.GraphQL_Stitcher.encode({
+    types: [`type CommandAccepted {\n  id: ID!\n}`],
+    mutations: [`  Platform_RegisterApiFragment(input: ApiFragmentInput): CommandResult`],
+    queries: [],
+    subscriptions: [],
+    subscriptionSources: [],
+  })
+  let iamFieldNames = ["Platform_RegisterApiFragment"]
+  let mkFrag = (~mutation, ~target): AppSync_SdlDecorate.targetedFragmentInput => {
+    encoded: ReventlessCore.GraphQL_Stitcher.encode({
+      types: [],
+      mutations: [mutation],
+      queries: [],
+      subscriptions: [],
+      subscriptionSources: [],
+    }).encoded,
+    protocol: "graphql",
+    target,
+  }
+  let platformFrag = mkFrag(~mutation=`  Inspector_Ping: CommandResult`, ~target="Platform")
+  let domainFrag = mkFrag(~mutation=`  Catalog_AddProduct(input: AddInput): CommandResult`, ~target="Domain")
+
+  testSync("split mode: Platform API carries admin base (dual-auth) + Platform frags; Domain API excludes the admin base", () => {
+    let plans = AppSync_SdlDecorate.planAwsPushes(
+      ~rawAdminBase,
+      ~iamFieldNames,
+      ~fragments=[platformFrag, domainFrag],
+      ~splitApi=true,
+    )
+    expect(plans->Array.length)->toBe(2)
+    let platformPlan = plans->Array.find(p => p.api == "PlatformApi")->Option.getOrThrow
+    let domainPlan = plans->Array.find(p => p.api == "DomainApi")->Option.getOrThrow
+    // Admin base mutation lands on the Platform API with dual-auth (system caller).
+    expect(platformPlan.sdl)->toContain("Platform_RegisterApiFragment")
+    expect(platformPlan.sdl)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"]) @aws_iam`)
+    // Platform-target plugin field present on the Platform API.
+    expect(platformPlan.sdl)->toContain("Inspector_Ping")
+    // Shared traversal type stamped once on the assembled SDL.
+    expect(platformPlan.sdl)->toContain(`type CommandAccepted @aws_cognito_user_pools @aws_iam {`)
+    // Domain-target field on the Domain API; admin base absent (empty base in split mode).
+    expect(domainPlan.sdl)->toContain("Catalog_AddProduct")
+    expect(domainPlan.sdl->String.includes("Platform_RegisterApiFragment"))->toBe(false)
+  })
+
+  testSync("unified mode: a single Domain API carries admin base + all frags", () => {
+    let plans = AppSync_SdlDecorate.planAwsPushes(
+      ~rawAdminBase,
+      ~iamFieldNames,
+      ~fragments=[platformFrag, domainFrag],
+      ~splitApi=false,
+    )
+    expect(plans->Array.length)->toBe(1)
+    let plan = plans->Array.getUnsafe(0)
+    expect(plan.api)->toBe("DomainApi")
+    expect(plan.sdl)->toContain("Platform_RegisterApiFragment")
+    expect(plan.sdl)->toContain("Inspector_Ping")
+    expect(plan.sdl)->toContain("Catalog_AddProduct")
+  })
+})

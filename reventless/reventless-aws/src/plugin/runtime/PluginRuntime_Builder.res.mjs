@@ -30,7 +30,11 @@ let configRef = {
     schedulerQueueArn: undefined,
     schedulerQueueName: undefined,
     appSyncApiId: undefined,
-    clonerEnabled: false
+    clonerEnabled: false,
+    platformApiId: undefined,
+    apiFragmentRegistryTableName: undefined,
+    adminDcbCmdTopicUrl: undefined,
+    splitApi: false
   }
 };
 
@@ -104,8 +108,9 @@ function setStateChangesConfig(sync, async, param) {
   });
 }
 
-function registerConfig(eventTopicArn, pluginReadModelTableName, pluginSchemaPersistenceTableName, schedulerRoleArn, schedulerQueueArn, schedulerQueueName, appSyncApiId, clonerEnabledOpt, param) {
+function registerConfig(eventTopicArn, pluginReadModelTableName, pluginSchemaPersistenceTableName, schedulerRoleArn, schedulerQueueArn, schedulerQueueName, appSyncApiId, clonerEnabledOpt, platformApiId, apiFragmentRegistryTableName, adminDcbCmdTopicUrl, splitApiOpt, param) {
   let clonerEnabled = clonerEnabledOpt !== undefined ? clonerEnabledOpt : false;
+  let splitApi = splitApiOpt !== undefined ? splitApiOpt : false;
   configRef.contents = {
     eventTopicArn: eventTopicArn,
     pluginReadModelTableName: pluginReadModelTableName,
@@ -114,7 +119,11 @@ function registerConfig(eventTopicArn, pluginReadModelTableName, pluginSchemaPer
     schedulerQueueArn: schedulerQueueArn,
     schedulerQueueName: schedulerQueueName,
     appSyncApiId: appSyncApiId,
-    clonerEnabled: clonerEnabled
+    clonerEnabled: clonerEnabled,
+    platformApiId: platformApiId,
+    apiFragmentRegistryTableName: apiFragmentRegistryTableName,
+    adminDcbCmdTopicUrl: adminDcbCmdTopicUrl,
+    splitApi: splitApi
   };
 }
 
@@ -201,7 +210,10 @@ function Make(EventCollectorChannel) {
       outputOrPlaceholder(config.schedulerQueueName),
       outputOrPlaceholder(config.appSyncApiId),
       epEventTopicArnsOutput,
-      outputOrPlaceholder(config.pluginSchemaPersistenceTableName)
+      outputOrPlaceholder(config.pluginSchemaPersistenceTableName),
+      outputOrPlaceholder(config.platformApiId),
+      outputOrPlaceholder(config.apiFragmentRegistryTableName),
+      outputOrPlaceholder(config.adminDcbCmdTopicUrl)
     ]).apply(values => {
       let queueUrl = values[0];
       let pluginEpCmdTopicUrl = values[1];
@@ -213,6 +225,9 @@ function Make(EventCollectorChannel) {
       let appSyncApiId = values[7];
       let epEventTopicArns = values[8];
       let schemaPersistenceTable = values[9];
+      let platformApiId = values[10];
+      let apiFragmentRegistryTable = values[11];
+      let adminDcbCmdTopicUrl = values[12];
       let dict = {};
       dict["queueUrl"] = queueUrl;
       dict["pluginExtensionPointCmdTopicUrl"] = pluginEpCmdTopicUrl;
@@ -220,6 +235,10 @@ function Make(EventCollectorChannel) {
       dict["pluginReadModelTableName"] = rmTable;
       dict["pluginSchemaPersistenceTableName"] = schemaPersistenceTable;
       dict["appSyncApiId"] = appSyncApiId;
+      dict["platformApiId"] = platformApiId;
+      dict["apiFragmentRegistryTableName"] = apiFragmentRegistryTable;
+      dict["adminDcbCmdTopicUrl"] = adminDcbCmdTopicUrl;
+      dict["splitApi"] = config.splitApi;
       dict["clonerEnabled"] = config.clonerEnabled;
       dict["schedulerRoleArn"] = schedRoleArn;
       dict["schedulerQueueArn"] = schedQueueArn;
@@ -374,6 +393,45 @@ function Make(EventCollectorChannel) {
           }])));
         new (Aws.iam.RolePolicy)(name + `-pluginSchemaScan`, {
           policy: policyJson$1,
+          role: runtime.parts.lambdaRole.id
+        });
+      }
+      let tableOutput = config.apiFragmentRegistryTableName;
+      if (tableOutput !== undefined) {
+        let policyJson$2 = tableOutput.apply(tableName => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `ApiFragmentsScanPolicy`, [{
+            Sid: "AllowAdminScanApiFragments",
+            Effect: "Allow",
+            Action: ["dynamodb:Scan"],
+            Resource: "arn:aws:dynamodb:*:*:table/" + tableName
+          }])));
+        new (Aws.iam.RolePolicy)(name + `-apiFragmentsScan`, {
+          policy: policyJson$2,
+          role: runtime.parts.lambdaRole.id
+        });
+      }
+      let urlOutput = config.adminDcbCmdTopicUrl;
+      if (urlOutput !== undefined) {
+        let policyJson$3 = urlOutput.apply(url => {
+          let match = url.split("/");
+          let arn;
+          if (match.length !== 5) {
+            arn = url;
+          } else {
+            let host = match[2];
+            let acct = match[3];
+            let qn = match[4];
+            let region = Stdlib_Option.getOr(host.split(".")[1], "eu-west-1");
+            arn = `arn:aws:sqs:` + region + `:` + acct + `:` + qn;
+          }
+          return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `AdminDcbSendPolicy`, [{
+              Sid: "AllowAdminDispatchRecordApiFragmentPush",
+              Effect: "Allow",
+              Action: ["sqs:SendMessage"],
+              Resource: arn
+            }]));
+        });
+        new (Aws.iam.RolePolicy)(name + `-adminDcbSend`, {
+          policy: policyJson$3,
           role: runtime.parts.lambdaRole.id
         });
       }

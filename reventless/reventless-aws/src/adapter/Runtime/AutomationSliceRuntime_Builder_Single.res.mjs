@@ -22,6 +22,10 @@ function setDcbQueueUrl(url) {
   dcbQueueUrlRef.contents = url;
 }
 
+function getDcbQueueUrl() {
+  return dcbQueueUrlRef.contents;
+}
+
 function registerAutomationSlice(name, specModulePath, callbackTypeOpt, queryDbTableName) {
   let callbackType = callbackTypeOpt !== undefined ? callbackTypeOpt : "automation";
   bundledInfos[name] = {
@@ -137,6 +141,7 @@ export {
   bundledInfos,
   dcbQueueUrlRef,
   setDcbQueueUrl,
+  getDcbQueueUrl,
   registerAutomationSlice,
   storedSpecs,
   grandParent,

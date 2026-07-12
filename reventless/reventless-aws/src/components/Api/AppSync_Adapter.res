@@ -353,12 +353,9 @@ let _stampTypeDualAuth = (decl: string): string =>
 // the stitcher's first-wins dedupe against unstamped copies from sibling
 // fragments. Unconditional — the API always configures AWS_IAM as an
 // additional provider, so the directive is always valid.
-let sharedIamTypeNames = ["PageInfo", "CommandAccepted", "CommandRejected", "CommandPending"]
-
-let stampSharedIamTypes = (sdl: string): string =>
-  sharedIamTypeNames->Array.reduce(sdl, (acc, name) =>
-    acc->String.replace(`type ${name} {`, `type ${name} @aws_cognito_user_pools @aws_iam {`)
-  )
+// Canonical definition lives in the runtime-pure AppSync_SdlDecorate so the
+// bundled AdminEventCollector Lambda's reactive push decorates identically.
+let stampSharedIamTypes = AppSync_SdlDecorate.stampSharedIamTypes
 
 let injectAwsAuth = (
   fragment: Reventless.Plugin.apiSchemaFragment,
@@ -496,36 +493,15 @@ let injectAwsAuth = (
 // ["<group>"]) @aws_iam` instead of the single-mode `@aws_auth(...)`, keeping
 // the same Cognito group gating while also admitting the SigV4 system caller.
 // Subscriptions are never IAM-marked (the deploy caller does not subscribe).
+// Canonical definition lives in the runtime-pure AppSync_SdlDecorate so the
+// bundled AdminEventCollector Lambda's reactive push decorates the admin base
+// identically to this deploy path. Eta-expanded to preserve the optional arg.
 let injectAwsAuthAll = (
   fragment: Reventless.Plugin.apiSchemaFragment,
   ~group: string,
   ~iamFieldNames: array<string>=[],
-): Reventless.Plugin.apiSchemaFragment => {
-  let parts = ReventlessCore.GraphQL_Stitcher.decode(fragment)
-  let isIam = (field: string): bool =>
-    iamFieldNames->Array.includes(ReventlessCore.GraphQL_Stitcher.extractLeadingName(field))
-
-  let augmentedMutations = parts.mutations->Array.map(field =>
-    isIam(field)
-      ? `${field}\n    ${_formatDualAuthDirective(Some([group]))}`
-      : `${field}\n    @aws_auth(cognito_groups: ["${group}"])`
-  )
-  let augmentedQueries = parts.queries->Array.map(field =>
-    isIam(field)
-      ? `${field} ${_formatDualAuthDirective(Some([group]))}`
-      : `${field} @aws_auth(cognito_groups: ["${group}"])`
-  )
-  let augmentedSubscriptions = parts.subscriptions->Array.map(field =>
-    `${field}\n    @aws_auth(cognito_groups: ["${group}"])`
-  )
-
-  ReventlessCore.GraphQL_Stitcher.encode({
-    ...parts,
-    mutations: augmentedMutations,
-    queries: augmentedQueries,
-    subscriptions: augmentedSubscriptions,
-  })
-}
+): Reventless.Plugin.apiSchemaFragment =>
+  AppSync_SdlDecorate.injectAwsAuthAll(fragment, ~group, ~iamFieldNames)
 
 /**
 Stitch base + plugin fragments and decorate the assembled SDL with the AppSync
