@@ -31,45 +31,73 @@ Test.describe("ApiFragmentRegistry StateChangeSlice", () => {
     TAG: "RegisterApiFragment",
     pluginId: "p1",
     fragment: fragment1,
+    apiTarget: "Domain",
     at: "t0"
   }), {
     TAG: "ApiFragmentRegistered",
     pluginId: "p1",
     fragment: fragment1,
+    apiTarget: "Domain",
     at: "t0"
   }));
-  Test.test("re-registering an identical fragment is idempotent (no event)", () => Test.thenNoEvent(Test.whenCmd(Test.givenEvents([{
+  Test.test("re-registering an identical fragment + target is idempotent (no event)", () => Test.thenNoEvent(Test.whenCmd(Test.givenEvents([{
       TAG: "ApiFragmentRegistered",
       pluginId: "p1",
       fragment: fragment1,
+      apiTarget: "Domain",
       at: "t0"
     }]), {
     TAG: "RegisterApiFragment",
     pluginId: "p1",
     fragment: fragment1,
+    apiTarget: "Domain",
     at: "t1"
   })));
   Test.test("registering a changed fragment emits ApiFragmentUpdated (version supersession)", () => Test.thenEvent(Test.whenCmd(Test.givenEvents([{
       TAG: "ApiFragmentRegistered",
       pluginId: "p1",
       fragment: fragment1,
+      apiTarget: "Domain",
       at: "t0"
     }]), {
     TAG: "RegisterApiFragment",
     pluginId: "p1",
     fragment: fragment2,
+    apiTarget: "Domain",
     at: "t1"
   }), {
     TAG: "ApiFragmentUpdated",
     pluginId: "p1",
     previousFragment: fragment1,
     newFragment: fragment2,
+    apiTarget: "Domain",
+    at: "t1"
+  }));
+  Test.test("retargeting a plugin with an identical fragment emits ApiFragmentUpdated", () => Test.thenEvent(Test.whenCmd(Test.givenEvents([{
+      TAG: "ApiFragmentRegistered",
+      pluginId: "p1",
+      fragment: fragment1,
+      apiTarget: "Domain",
+      at: "t0"
+    }]), {
+    TAG: "RegisterApiFragment",
+    pluginId: "p1",
+    fragment: fragment1,
+    apiTarget: "Platform",
+    at: "t1"
+  }), {
+    TAG: "ApiFragmentUpdated",
+    pluginId: "p1",
+    previousFragment: fragment1,
+    newFragment: fragment1,
+    apiTarget: "Platform",
     at: "t1"
   }));
   Test.test("deregister emits ApiFragmentDeregistered", () => Test.thenEvent(Test.whenCmd(Test.givenEvents([{
       TAG: "ApiFragmentRegistered",
       pluginId: "p1",
       fragment: fragment1,
+      apiTarget: "Domain",
       at: "t0"
     }]), {
     TAG: "DeregisterApiFragment",
@@ -86,6 +114,7 @@ Test.describe("ApiFragmentRegistry StateChangeSlice", () => {
       TAG: "ApiFragmentRegistered",
       pluginId: "p1",
       fragment: fragment1,
+      apiTarget: "Domain",
       at: "t0"
     }]), {
     TAG: "RecordApiFragmentPush",
@@ -105,6 +134,7 @@ Test.describe("ApiFragmentRegistry StateChangeSlice", () => {
       TAG: "ApiFragmentRegistered",
       pluginId: "p1",
       fragment: fragment1,
+      apiTarget: "Domain",
       at: "t0"
     },
     {
@@ -126,6 +156,7 @@ Test.describe("ApiFragmentRegistry StateChangeSlice", () => {
       TAG: "ApiFragmentRegistered",
       pluginId: "p1",
       fragment: fragment1,
+      apiTarget: "Domain",
       at: "t0"
     },
     {

@@ -25,9 +25,14 @@ open Reventless.Plugin
 // ride the payload. Inline records let the ppx auto-tag `pluginId` (scoping the decision
 // read to one plugin name). `message` is a plain string ("" = none) — option fields in
 // variant payloads don't survive the T|null wire contract cleanly.
+//
+// `apiTarget` is the API this plugin's fields belong to — Domain (the default) or Platform.
+// A plugin assigned to the Platform API (e.g. a platform inspector) stitches into the
+// Platform-API schema, not the Domain-API one; the single-writer push automation groups
+// fragments by this target and maintains one cumulative schema per API.
 @schema
 type command =
-  | RegisterApiFragment({pluginId: string, fragment: apiSchemaFragment, at: string})
+  | RegisterApiFragment({pluginId: string, fragment: apiSchemaFragment, apiTarget: apiTarget, at: string})
   | DeregisterApiFragment({pluginId: string})
   | RecordApiFragmentPush({pluginId: string, ok: bool, message: string, at: string})
 
@@ -38,11 +43,12 @@ type error = | RegistryError
 
 @schema
 type event =
-  | ApiFragmentRegistered({pluginId: string, fragment: apiSchemaFragment, at: string})
+  | ApiFragmentRegistered({pluginId: string, fragment: apiSchemaFragment, apiTarget: apiTarget, at: string})
   | ApiFragmentUpdated({
       pluginId: string,
       previousFragment: apiSchemaFragment,
       newFragment: apiSchemaFragment,
+      apiTarget: apiTarget,
       at: string,
     })
   | ApiFragmentDeregistered({pluginId: string})

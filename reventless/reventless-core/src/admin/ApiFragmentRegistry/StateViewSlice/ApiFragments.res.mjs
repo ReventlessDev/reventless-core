@@ -9,6 +9,7 @@ let stateSchema = S.schema(s => ({
   pluginId: s.m(S.string),
   encoded: s.m(S.string),
   protocol: s.m(S.string),
+  apiTarget: s.m(Plugin$Reventless.apiTargetSchema),
   registeredAt: s.m(S.string),
   updatedAt: s.m(S.string),
   pushStatus: s.m(S.string),
@@ -21,6 +22,7 @@ let consumedEventSchema = S.union([
     TAG: "ApiFragmentRegistered",
     pluginId: s.m(DcbTag$Reventless.string),
     fragment: s.m(Plugin$Reventless.apiSchemaFragmentSchema),
+    apiTarget: s.m(Plugin$Reventless.apiTargetSchema),
     at: s.m(S.string)
   })),
   S.schema(s => ({
@@ -28,6 +30,7 @@ let consumedEventSchema = S.union([
     pluginId: s.m(DcbTag$Reventless.string),
     previousFragment: s.m(Plugin$Reventless.apiSchemaFragmentSchema),
     newFragment: s.m(Plugin$Reventless.apiSchemaFragmentSchema),
+    apiTarget: s.m(Plugin$Reventless.apiTargetSchema),
     at: s.m(S.string)
   })),
   S.schema(s => ({

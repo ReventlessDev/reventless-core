@@ -2,6 +2,7 @@
 // fragment registry replacing the deploy-schema:* keyspace —
 // event-sourced-fragment-registries plan).
 open ReventlessCore
+open Reventless.Plugin // Domain / Platform constructors of apiTarget
 
 module Test = ReventlessGwt.Behavior_GWT.Make(ApiFragmentRegistry, ApiFragmentRegistry_Behavior)
 open Test
@@ -20,31 +21,46 @@ let fragment2: Reventless.Plugin.apiSchemaFragment = {
 describe("ApiFragmentRegistry StateChangeSlice", () => {
   test("register on empty state emits ApiFragmentRegistered", () =>
     givenEvents([])
-    ->whenCmd(RegisterApiFragment({pluginId: "p1", fragment: fragment1, at: "t0"}))
-    ->thenEvent(ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, at: "t0"}))
+    ->whenCmd(RegisterApiFragment({pluginId: "p1", fragment: fragment1, apiTarget: Domain, at: "t0"}))
+    ->thenEvent(ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: Domain, at: "t0"}))
   )
 
-  test("re-registering an identical fragment is idempotent (no event)", () =>
-    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, at: "t0"})])
-    ->whenCmd(RegisterApiFragment({pluginId: "p1", fragment: fragment1, at: "t1"}))
+  test("re-registering an identical fragment + target is idempotent (no event)", () =>
+    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: Domain, at: "t0"})])
+    ->whenCmd(RegisterApiFragment({pluginId: "p1", fragment: fragment1, apiTarget: Domain, at: "t1"}))
     ->thenNoEvent
   )
 
   test("registering a changed fragment emits ApiFragmentUpdated (version supersession)", () =>
-    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, at: "t0"})])
-    ->whenCmd(RegisterApiFragment({pluginId: "p1", fragment: fragment2, at: "t1"}))
+    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: Domain, at: "t0"})])
+    ->whenCmd(RegisterApiFragment({pluginId: "p1", fragment: fragment2, apiTarget: Domain, at: "t1"}))
     ->thenEvent(
       ApiFragmentUpdated({
         pluginId: "p1",
         previousFragment: fragment1,
         newFragment: fragment2,
+        apiTarget: Domain,
+        at: "t1",
+      }),
+    )
+  )
+
+  test("retargeting a plugin with an identical fragment emits ApiFragmentUpdated", () =>
+    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: Domain, at: "t0"})])
+    ->whenCmd(RegisterApiFragment({pluginId: "p1", fragment: fragment1, apiTarget: Platform, at: "t1"}))
+    ->thenEvent(
+      ApiFragmentUpdated({
+        pluginId: "p1",
+        previousFragment: fragment1,
+        newFragment: fragment1,
+        apiTarget: Platform,
         at: "t1",
       }),
     )
   )
 
   test("deregister emits ApiFragmentDeregistered", () =>
-    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, at: "t0"})])
+    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: Domain, at: "t0"})])
     ->whenCmd(DeregisterApiFragment({pluginId: "p1"}))
     ->thenEvent(ApiFragmentDeregistered({pluginId: "p1"}))
   )
@@ -56,14 +72,14 @@ describe("ApiFragmentRegistry StateChangeSlice", () => {
   )
 
   test("recording a push outcome emits ApiFragmentPushRecorded", () =>
-    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, at: "t0"})])
+    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: Domain, at: "t0"})])
     ->whenCmd(RecordApiFragmentPush({pluginId: "p1", ok: true, message: "", at: "t1"}))
     ->thenEvent(ApiFragmentPushRecorded({pluginId: "p1", ok: true, message: "", at: "t1"}))
   )
 
   test("redelivering an identical push record is idempotent (no event)", () =>
     givenEvents([
-      ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, at: "t0"}),
+      ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: Domain, at: "t0"}),
       ApiFragmentPushRecorded({pluginId: "p1", ok: true, message: "", at: "t1"}),
     ])
     ->whenCmd(RecordApiFragmentPush({pluginId: "p1", ok: true, message: "", at: "t1"}))
@@ -72,7 +88,7 @@ describe("ApiFragmentRegistry StateChangeSlice", () => {
 
   test("a later distinct push outcome is recorded again", () =>
     givenEvents([
-      ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, at: "t0"}),
+      ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: Domain, at: "t0"}),
       ApiFragmentPushRecorded({pluginId: "p1", ok: true, message: "", at: "t1"}),
     ])
     ->whenCmd(RecordApiFragmentPush({pluginId: "p1", ok: false, message: "stitch failed", at: "t2"}))

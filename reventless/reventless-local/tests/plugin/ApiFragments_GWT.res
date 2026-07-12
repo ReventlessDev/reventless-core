@@ -2,6 +2,7 @@
 // per plugin name plus push status, replacing the deploy-schema:* rows as the durable
 // stitch source (event-sourced-fragment-registries plan).
 open ReventlessCore
+module P = Reventless.Plugin // P.Domain / P.Platform — avoid opening apiSchemaFragment's labels
 
 module Test = ReventlessGwt.Projection_GWT.Make(ApiFragments, ApiFragments_Projection)
 open Test
@@ -21,6 +22,7 @@ let registeredState: ApiFragments.state = {
   pluginId: "p1",
   encoded: fragment1.encoded,
   protocol: fragment1.protocol,
+  apiTarget: P.Domain,
   registeredAt: "t0",
   updatedAt: "t0",
   pushStatus: "pending",
@@ -31,18 +33,18 @@ let registeredState: ApiFragments.state = {
 describe("ApiFragments StateViewSlice projection", () => {
   test("ApiFragmentRegistered creates the row pending (registeredAt = updatedAt = event time)", () =>
     givenEvents([])
-    ->whenEvent(ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, at: "t0"}))
+    ->whenEvent(ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: P.Domain, at: "t0"}))
     ->thenStateWithId("p1", registeredState)
   )
 
   test("ApiFragmentPushRecorded(ok) marks the row ok with the push time", () =>
-    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, at: "t0"})])
+    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: P.Domain, at: "t0"})])
     ->whenEvent(ApiFragmentPushRecorded({pluginId: "p1", ok: true, message: "", at: "t1"}))
     ->thenStateWithId("p1", {...registeredState, pushStatus: "ok", pushedAt: "t1"})
   )
 
   test("ApiFragmentPushRecorded(error) carries the message", () =>
-    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, at: "t0"})])
+    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: P.Domain, at: "t0"})])
     ->whenEvent(
       ApiFragmentPushRecorded({pluginId: "p1", ok: false, message: "stitch failed", at: "t1"}),
     )
@@ -54,11 +56,17 @@ describe("ApiFragments StateViewSlice projection", () => {
 
   test("ApiFragmentUpdated replaces the fragment and resets the row to pending", () =>
     givenEvents([
-      ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, at: "t0"}),
+      ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: P.Domain, at: "t0"}),
       ApiFragmentPushRecorded({pluginId: "p1", ok: true, message: "", at: "t1"}),
     ])
     ->whenEvent(
-      ApiFragmentUpdated({pluginId: "p1", previousFragment: fragment1, newFragment: fragment2, at: "t2"}),
+      ApiFragmentUpdated({
+        pluginId: "p1",
+        previousFragment: fragment1,
+        newFragment: fragment2,
+        apiTarget: P.Domain,
+        at: "t2",
+      }),
     )
     ->thenStateWithId(
       "p1",
@@ -73,8 +81,22 @@ describe("ApiFragments StateViewSlice projection", () => {
     )
   )
 
+  test("ApiFragmentUpdated carrying a new target moves the row to that API", () =>
+    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: P.Domain, at: "t0"})])
+    ->whenEvent(
+      ApiFragmentUpdated({
+        pluginId: "p1",
+        previousFragment: fragment1,
+        newFragment: fragment1,
+        apiTarget: P.Platform,
+        at: "t1",
+      }),
+    )
+    ->thenStateWithId("p1", {...registeredState, apiTarget: P.Platform, updatedAt: "t1"})
+  )
+
   test("ApiFragmentDeregistered removes the row", () =>
-    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, at: "t0"})])
+    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: P.Domain, at: "t0"})])
     ->whenEvent(ApiFragmentDeregistered({pluginId: "p1"}))
     ->thenNoState
   )

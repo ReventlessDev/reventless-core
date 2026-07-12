@@ -5,13 +5,14 @@
 // row (a push recorded after deregistration) is a no-op by Update semantics.
 let project = event =>
   switch event {
-  | ApiFragmentRegistered({pluginId, fragment, at}) => [
+  | ApiFragmentRegistered({pluginId, fragment, apiTarget, at}) => [
       Set(
         pluginId,
         {
           pluginId,
           encoded: fragment.encoded,
           protocol: fragment.protocol,
+          apiTarget,
           registeredAt: at,
           updatedAt: at,
           pushStatus: "pending",
@@ -20,13 +21,14 @@ let project = event =>
         },
       ),
     ]
-  | ApiFragmentUpdated({pluginId, newFragment, at}) => [
+  | ApiFragmentUpdated({pluginId, newFragment, apiTarget, at}) => [
       Update(
         pluginId,
         state => {
           ...state,
           encoded: newFragment.encoded,
           protocol: newFragment.protocol,
+          apiTarget,
           updatedAt: at,
           pushStatus: "pending",
           pushMessage: "",

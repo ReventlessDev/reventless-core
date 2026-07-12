@@ -273,8 +273,49 @@ publish/subscribe topic + service stamp verified; envelope decode verified. Note
     surface (2d), the local in-process dispatch, and the deploy caller (Phase 3) come
     later; the automation (2c) is the first consumer.
 
-**Remaining work:** Phase 2 increments 2c–2e (single-writer automation,
-bootstrap SDL mutations, runtime re-stitcher retarget), Phases 3–4.
+- **Increment 2b-fix — `apiTarget` dimension.** The Platform API is not admin-only: plugins
+  can be assigned `apiTarget = Platform` (e.g. a platform inspector) and contribute fields to
+  the Platform-API schema alongside the admin base, exactly as Domain-target plugins do to the
+  Domain API (the current push already splits this via the `deploy-schema:` vs
+  `deploy-schema-platform:` keyspaces). So the registry is **per-target**: a new
+  `@schema type apiTarget = Domain | Platform` in `Reventless.Plugin` (spec, serializes as the
+  bare string), threaded through `RegisterApiFragment` and the Registered/Updated events, the
+  behavior's registry entry (idempotency now compares fragment AND target — a same-SDL retarget
+  is a real `ApiFragmentUpdated`, moving the fields between APIs), and the `ApiFragments` view
+  row. The single writer (2c) groups fragments by target and maintains **one cumulative schema
+  per API** (Platform API = admin base + Platform-target fragments; Domain API = empty/admin
+  base + Domain-target fragments) — replacing both deploy-schema keyspaces. Two extra GWT cases
+  cover retargeting.
+
+- **Bootstrap-push decision (recorded):** the bootstrap admin-base push STAYS and is not
+  replaced by a declarative Pulumi `GraphQLSchema` resource. Reason: the Platform API is itself
+  a cumulative/stitched schema (admin base is the *seed*, grown by Platform-target plugins), so
+  a declaratively-owned schema would drift against those plugins' whole-replace pushes — the
+  same conflict as unified mode. The bootstrap is irreducible for two reasons now: (1) the
+  chicken-and-egg (the registration mutation must exist before any plugin can call it) and
+  (2) the admin base is a growing schema's seed, not a static artifact.
+
+**Decisions for 2c–2e (user, 2026-07-12):**
+
+- **Unified mode is kept.** The single writer branches on split/unified: split → group
+  fragments by `apiTarget` and push two schemas (Platform API = admin base + Platform-target
+  fragments; Domain API = empty base + Domain-target fragments); unified → one API, stitch
+  admin base + all fragments regardless of target.
+- **The deploy waiter polls a status query**, not schema introspection. So the bootstrap seed
+  SDL gains — alongside the `RegisterApiFragment`/`DeregisterApiFragment` mutations — an
+  IAM-callable status query over the registry (`Platform_ApiFragments`, exposing
+  `pushStatus`/`pushMessage`/`pushedAt` per plugin) that the deploy reads to confirm ACTIVE /
+  surface a stitch error.
+- **Single writer = the generalized runtime re-stitcher** (not an AutomationSlice — its
+  `process` is sync, single-event, command-only). 2c and 2e are therefore the same code path:
+  a platform-hosted subscriber on the admin DcbEventLog that, on any `ApiFragment*` event,
+  re-folds the registry, stitches per target, calls `Api_Adapter.Provider.updateSchema`, and
+  emits `RecordApiFragmentPush`. Generic orchestration in core; only `updateSchema` (AppSync
+  push vs. local in-process rebuild) and the hosting (AdminEventCollector Lambda vs. in-process
+  bus subscriber) are provider-specific.
+
+**Remaining work:** Phase 2 increments 2c–2e (single-writer subscriber + bootstrap SDL
+mutations + status query + runtime re-stitcher retarget), Phases 3–4.
 
 ## Phasing
 

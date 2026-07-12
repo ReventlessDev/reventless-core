@@ -14,6 +14,7 @@ function project(event) {
             pluginId: pluginId,
             encoded: fragment.encoded,
             protocol: fragment.protocol,
+            apiTarget: event.apiTarget,
             registeredAt: at,
             updatedAt: at,
             pushStatus: "pending",
@@ -23,6 +24,7 @@ function project(event) {
         }];
     case "ApiFragmentUpdated" :
       let at$1 = event.at;
+      let apiTarget = event.apiTarget;
       let newFragment = event.newFragment;
       return [{
           TAG: "Update",
@@ -31,6 +33,7 @@ function project(event) {
             pluginId: state.pluginId,
             encoded: newFragment.encoded,
             protocol: newFragment.protocol,
+            apiTarget: apiTarget,
             registeredAt: state.registeredAt,
             updatedAt: at$1,
             pushStatus: "pending",
@@ -54,6 +57,7 @@ function project(event) {
             pluginId: state.pluginId,
             encoded: state.encoded,
             protocol: state.protocol,
+            apiTarget: state.apiTarget,
             registeredAt: state.registeredAt,
             updatedAt: state.updatedAt,
             pushStatus: ok ? "ok" : "error",

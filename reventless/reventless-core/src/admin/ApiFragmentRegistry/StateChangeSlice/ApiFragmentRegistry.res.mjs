@@ -9,6 +9,7 @@ let commandSchema = S.union([
     TAG: "RegisterApiFragment",
     pluginId: s.m(DcbTag$Reventless.string),
     fragment: s.m(Plugin$Reventless.apiSchemaFragmentSchema),
+    apiTarget: s.m(Plugin$Reventless.apiTargetSchema),
     at: s.m(S.string)
   })),
   S.schema(s => ({
@@ -31,6 +32,7 @@ let eventSchema = S.union([
     TAG: "ApiFragmentRegistered",
     pluginId: s.m(DcbTag$Reventless.string),
     fragment: s.m(Plugin$Reventless.apiSchemaFragmentSchema),
+    apiTarget: s.m(Plugin$Reventless.apiTargetSchema),
     at: s.m(S.string)
   })),
   S.schema(s => ({
@@ -38,6 +40,7 @@ let eventSchema = S.union([
     pluginId: s.m(DcbTag$Reventless.string),
     previousFragment: s.m(Plugin$Reventless.apiSchemaFragmentSchema),
     newFragment: s.m(Plugin$Reventless.apiSchemaFragmentSchema),
+    apiTarget: s.m(Plugin$Reventless.apiTargetSchema),
     at: s.m(S.string)
   })),
   S.schema(s => ({

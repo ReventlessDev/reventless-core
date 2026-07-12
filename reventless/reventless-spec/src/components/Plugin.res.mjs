@@ -38,6 +38,11 @@ let apiSchemaFragmentSchema = S.schema(s => ({
   protocol: s.m(S.string)
 }));
 
+let apiTargetSchema = S.union([
+  S.literal("Domain"),
+  S.literal("Platform")
+]);
+
 let apiSchemaFragmentOptionSchema = SuryResMjs.js_nullable(apiSchemaFragmentSchema);
 
 let dcbEventLogOptionSchema = SuryResMjs.js_nullable(dcbEventLogDefinitionSchema);
@@ -232,6 +237,7 @@ export {
   dcbEventLogDefinitionSchema,
   extensionProtocolSchema,
   apiSchemaFragmentSchema,
+  apiTargetSchema,
   apiSchemaFragmentOptionSchema,
   dcbEventLogOptionSchema,
   stringOptionSchema,

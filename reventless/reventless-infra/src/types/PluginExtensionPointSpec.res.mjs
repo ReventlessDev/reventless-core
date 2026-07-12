@@ -109,6 +109,8 @@ let extensionProtocolSchema = Plugin$Reventless.extensionProtocolSchema;
 
 let apiSchemaFragmentSchema = Plugin$Reventless.apiSchemaFragmentSchema;
 
+let apiTargetSchema = Plugin$Reventless.apiTargetSchema;
+
 let apiSchemaFragmentOptionSchema = Plugin$Reventless.apiSchemaFragmentOptionSchema;
 
 let dcbEventLogOptionSchema = Plugin$Reventless.dcbEventLogOptionSchema;
@@ -177,6 +179,7 @@ export {
   dcbEventLogDefinitionSchema,
   extensionProtocolSchema,
   apiSchemaFragmentSchema,
+  apiTargetSchema,
   apiSchemaFragmentOptionSchema,
   dcbEventLogOptionSchema,
   stringOptionSchema,

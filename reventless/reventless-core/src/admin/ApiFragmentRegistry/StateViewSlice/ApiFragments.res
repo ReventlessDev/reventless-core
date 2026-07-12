@@ -14,6 +14,7 @@ type state = {
   pluginId: string,
   encoded: string,
   protocol: string,
+  apiTarget: Reventless.Plugin.apiTarget,
   registeredAt: string,
   updatedAt: string,
   pushStatus: string,
@@ -26,11 +27,17 @@ type state = {
 // byte-identically and the ppx auto-tags `pluginId`.
 @schema
 type consumedEvent =
-  | ApiFragmentRegistered({pluginId: string, fragment: Reventless.Plugin.apiSchemaFragment, at: string})
+  | ApiFragmentRegistered({
+      pluginId: string,
+      fragment: Reventless.Plugin.apiSchemaFragment,
+      apiTarget: Reventless.Plugin.apiTarget,
+      at: string,
+    })
   | ApiFragmentUpdated({
       pluginId: string,
       previousFragment: Reventless.Plugin.apiSchemaFragment,
       newFragment: Reventless.Plugin.apiSchemaFragment,
+      apiTarget: Reventless.Plugin.apiTarget,
       at: string,
     })
   | ApiFragmentDeregistered({pluginId: string})

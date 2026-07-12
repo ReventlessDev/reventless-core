@@ -8,11 +8,13 @@ function evolve(state, event) {
     case "ApiFragmentRegistered" :
       return {
         fragment: event.fragment,
+        apiTarget: event.apiTarget,
         lastPush: undefined
       };
     case "ApiFragmentUpdated" :
       return {
         fragment: event.newFragment,
+        apiTarget: event.apiTarget,
         lastPush: undefined
       };
     case "ApiFragmentDeregistered" :
@@ -23,6 +25,7 @@ function evolve(state, event) {
       let ok = event.ok;
       return Stdlib_Option.map(state, entry => ({
         fragment: entry.fragment,
+        apiTarget: entry.apiTarget,
         lastPush: [
           ok,
           message,
@@ -36,6 +39,7 @@ function decide(state, command) {
   switch (command.TAG) {
     case "RegisterApiFragment" :
       let at = command.at;
+      let apiTarget = command.apiTarget;
       let fragment = command.fragment;
       let pluginId = command.pluginId;
       if (state === undefined) {
@@ -45,12 +49,13 @@ function decide(state, command) {
               TAG: "ApiFragmentRegistered",
               pluginId: pluginId,
               fragment: fragment,
+              apiTarget: apiTarget,
               at: at
             }]
         };
       }
       let current = state.fragment;
-      if (Primitive_object.equal(current, fragment)) {
+      if (Primitive_object.equal(current, fragment) && state.apiTarget === apiTarget) {
         return {
           TAG: "Ok",
           _0: []
@@ -63,6 +68,7 @@ function decide(state, command) {
               pluginId: pluginId,
               previousFragment: current,
               newFragment: fragment,
+              apiTarget: apiTarget,
               at: at
             }]
         };

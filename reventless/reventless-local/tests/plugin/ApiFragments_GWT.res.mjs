@@ -27,6 +27,7 @@ let registeredState = {
   pluginId: "p1",
   encoded: `{"types":["type Catalog_Product { id: ID! }"],"mutations":[],"queries":[],"subscriptions":[],"subscriptionSources":[]}`,
   protocol: "graphql",
+  apiTarget: "Domain",
   registeredAt: "t0",
   updatedAt: "t0",
   pushStatus: "pending",
@@ -39,12 +40,14 @@ Test.describe("ApiFragments StateViewSlice projection", () => {
     TAG: "ApiFragmentRegistered",
     pluginId: "p1",
     fragment: fragment1,
+    apiTarget: "Domain",
     at: "t0"
   }), "p1", registeredState));
   Test.test("ApiFragmentPushRecorded(ok) marks the row ok with the push time", undefined, () => Test.thenStateWithId(Test.whenEvent(Test.givenEvents([{
       TAG: "ApiFragmentRegistered",
       pluginId: "p1",
       fragment: fragment1,
+      apiTarget: "Domain",
       at: "t0"
     }]), {
     TAG: "ApiFragmentPushRecorded",
@@ -56,6 +59,7 @@ Test.describe("ApiFragments StateViewSlice projection", () => {
     pluginId: "p1",
     encoded: `{"types":["type Catalog_Product { id: ID! }"],"mutations":[],"queries":[],"subscriptions":[],"subscriptionSources":[]}`,
     protocol: "graphql",
+    apiTarget: "Domain",
     registeredAt: "t0",
     updatedAt: "t0",
     pushStatus: "ok",
@@ -66,6 +70,7 @@ Test.describe("ApiFragments StateViewSlice projection", () => {
       TAG: "ApiFragmentRegistered",
       pluginId: "p1",
       fragment: fragment1,
+      apiTarget: "Domain",
       at: "t0"
     }]), {
     TAG: "ApiFragmentPushRecorded",
@@ -77,6 +82,7 @@ Test.describe("ApiFragments StateViewSlice projection", () => {
     pluginId: "p1",
     encoded: `{"types":["type Catalog_Product { id: ID! }"],"mutations":[],"queries":[],"subscriptions":[],"subscriptionSources":[]}`,
     protocol: "graphql",
+    apiTarget: "Domain",
     registeredAt: "t0",
     updatedAt: "t0",
     pushStatus: "error",
@@ -88,6 +94,7 @@ Test.describe("ApiFragments StateViewSlice projection", () => {
       TAG: "ApiFragmentRegistered",
       pluginId: "p1",
       fragment: fragment1,
+      apiTarget: "Domain",
       at: "t0"
     },
     {
@@ -102,21 +109,48 @@ Test.describe("ApiFragments StateViewSlice projection", () => {
     pluginId: "p1",
     previousFragment: fragment1,
     newFragment: fragment2,
+    apiTarget: "Domain",
     at: "t2"
   }), "p1", {
     pluginId: "p1",
     encoded: `{"types":["type Catalog_Product { id: ID!\\n  name: String! }"],"mutations":[],"queries":[],"subscriptions":[],"subscriptionSources":[]}`,
     protocol: "graphql",
+    apiTarget: "Domain",
     registeredAt: "t0",
     updatedAt: "t2",
     pushStatus: "pending",
     pushMessage: "",
     pushedAt: "t1"
   }));
+  Test.test("ApiFragmentUpdated carrying a new target moves the row to that API", undefined, () => Test.thenStateWithId(Test.whenEvent(Test.givenEvents([{
+      TAG: "ApiFragmentRegistered",
+      pluginId: "p1",
+      fragment: fragment1,
+      apiTarget: "Domain",
+      at: "t0"
+    }]), {
+    TAG: "ApiFragmentUpdated",
+    pluginId: "p1",
+    previousFragment: fragment1,
+    newFragment: fragment1,
+    apiTarget: "Platform",
+    at: "t1"
+  }), "p1", {
+    pluginId: "p1",
+    encoded: `{"types":["type Catalog_Product { id: ID! }"],"mutations":[],"queries":[],"subscriptions":[],"subscriptionSources":[]}`,
+    protocol: "graphql",
+    apiTarget: "Platform",
+    registeredAt: "t0",
+    updatedAt: "t1",
+    pushStatus: "pending",
+    pushMessage: "",
+    pushedAt: ""
+  }));
   Test.test("ApiFragmentDeregistered removes the row", undefined, () => Test.thenNoState(Test.whenEvent(Test.givenEvents([{
       TAG: "ApiFragmentRegistered",
       pluginId: "p1",
       fragment: fragment1,
+      apiTarget: "Domain",
       at: "t0"
     }]), {
     TAG: "ApiFragmentDeregistered",
@@ -124,7 +158,10 @@ Test.describe("ApiFragments StateViewSlice projection", () => {
   })));
 });
 
+let P;
+
 export {
+  P,
   Test,
   fragment1,
   fragment2,

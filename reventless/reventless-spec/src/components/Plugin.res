@@ -92,6 +92,16 @@ Encoded as JSON for transport; protocol identifies the schema format (e.g. "grap
 @schema
 type apiSchemaFragment = {encoded: string, protocol: string}
 
+/**
+The API a plugin's GraphQL fields are stitched into: the Domain API (the default —
+application plugins) or the Platform API (platform-level plugins such as an inspector,
+which contribute fields alongside the admin base). Serializes as the bare string
+"Domain" / "Platform". Consumed by the schema-fragment registry to maintain one
+cumulative schema per API.
+*/
+@schema
+type apiTarget = Domain | Platform
+
 // Sury's nullableAsOption creates T | undefined | null which fails jsonableValidation
 // inside union variant payloads. js_nullable creates T | null (no undefined) which is
 // JSON-safe and passes jsonableValidation in all contexts.
