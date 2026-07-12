@@ -113,6 +113,9 @@ module MakeWithConfig = (
     // Lambda (DynamoDB scan) — keep it off the Postgres selection like the other
     // admin stores.
     QueryDbBackend.exempt(ReventlessCore.UiFragments.name)
+    // The ApiFragments StateViewSlice is the durable source of the schema-push
+    // automation and the runtime re-stitcher — admin store, off Postgres too.
+    QueryDbBackend.exempt(ReventlessCore.ApiFragments.name)
   })
   type api = Types.AppSync.api
   type role = Types.AppSync.role
@@ -581,6 +584,14 @@ module MakeWithConfig = (
   module UiFragmentsViewSlice = StateViewSlice.Make(
     ReventlessCore.UiFragments,
     ReventlessCore.UiFragments_Projection,
+  )
+  module ApiFragmentRegistrySlice = StateChangeSlice.Make(
+    ReventlessCore.ApiFragmentRegistry,
+    ReventlessCore.ApiFragmentRegistry_Behavior,
+  )
+  module ApiFragmentsViewSlice = StateViewSlice.Make(
+    ReventlessCore.ApiFragments,
+    ReventlessCore.ApiFragments_Projection,
   )
 
   // Empty base fragment — no types, no mutations, no queries.
@@ -1458,8 +1469,8 @@ module MakeWithConfig = (
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=platformApi,
       ~apiRole=platformApiRole,
-      ~stateChangeSlices=[module(UiFragmentRegistrySlice)],
-      ~stateViewSlices=[module(UiFragmentsViewSlice)],
+      ~stateChangeSlices=[module(UiFragmentRegistrySlice), module(ApiFragmentRegistrySlice)],
+      ~stateViewSlices=[module(UiFragmentsViewSlice), module(ApiFragmentsViewSlice)],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],
@@ -1682,8 +1693,8 @@ module MakeWithConfig = (
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=platformApi,
       ~apiRole=platformApiRole,
-      ~stateChangeSlices=[module(UiFragmentRegistrySlice)],
-      ~stateViewSlices=[module(UiFragmentsViewSlice)],
+      ~stateChangeSlices=[module(UiFragmentRegistrySlice), module(ApiFragmentRegistrySlice)],
+      ~stateViewSlices=[module(UiFragmentsViewSlice), module(ApiFragmentsViewSlice)],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],

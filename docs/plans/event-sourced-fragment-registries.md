@@ -250,7 +250,30 @@ publish/subscribe topic + service stamp verified; envelope decode verified. Note
     (in-memory) — both yoga APIs build from neutral SDL, subscription fields introspect
     on both, `Platform_UIFragments` serves the Catalog fragment with Admin gating intact.
 
-**Remaining work:** Phase 2 increments 2b–2e (registry slices, single-writer automation,
+- **Increment 2b (this commit) — the ApiFragmentRegistry as admin DCB slices**, mirroring
+  Phase 1's UiFragmentRegistry pattern:
+  - `ApiFragmentRegistry` StateChangeSlice + `ApiFragments` StateViewSlice under
+    `reventless-core/src/admin/ApiFragmentRegistry/`; wired into all five `Admin.construct`
+    sites (2 AWS, 3 local) alongside the UI slices — first time two StateChangeSlices share
+    the admin DCB command topic / DcbEventLog; `QueryDbBackend.exempt(ApiFragments.name)`
+    on AWS (admin store, off Postgres).
+  - Commands `RegisterApiFragment` / `DeregisterApiFragment` / **`RecordApiFragmentPush`**
+    (the single-writer automation's write-back of the push outcome, added here so the slice
+    contract is complete before the automation lands) → events `ApiFragmentRegistered` /
+    `ApiFragmentUpdated` / `ApiFragmentDeregistered` / `ApiFragmentPushRecorded`. Name-keyed
+    (bare plugin name), fully idempotent incl. at-least-once redelivery of push records
+    (deduped on the full (ok, message, at) payload).
+  - View state: `{pluginId, encoded, protocol, registeredAt, updatedAt, pushStatus
+    (pending|ok|error), pushMessage, pushedAt}` — plain strings, no option fields in
+    variant payloads (avoids the js_nullable T|null wire hazard); a fragment change resets
+    the row to `pending`.
+  - GWT coverage: `ApiFragmentRegistry_GWT` (9 cases) + `ApiFragments_GWT` (5 cases) in
+    reventless-local/tests/plugin/.
+  - NOT in this increment: nothing populates the registry yet — the GraphQL mutation
+    surface (2d), the local in-process dispatch, and the deploy caller (Phase 3) come
+    later; the automation (2c) is the first consumer.
+
+**Remaining work:** Phase 2 increments 2c–2e (single-writer automation,
 bootstrap SDL mutations, runtime re-stitcher retarget), Phases 3–4.
 
 ## Phasing
