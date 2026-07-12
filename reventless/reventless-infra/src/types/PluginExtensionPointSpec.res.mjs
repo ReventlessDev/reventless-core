@@ -24,6 +24,10 @@ let commandSchema = S.union([
     _0: s.m(forwardCommandSchema)
   })),
   S.schema(s => ({
+    TAG: "RegisterUiFragment",
+    _0: s.m(Plugin$Reventless.uiFragmentManifestSchema)
+  })),
+  S.schema(s => ({
     TAG: "RedetectPlugin",
     _0: s.m(S.int)
   }))

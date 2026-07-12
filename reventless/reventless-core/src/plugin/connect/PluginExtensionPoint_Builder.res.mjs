@@ -3,12 +3,16 @@
 import * as ExtensionPoint_Builder$ReventlessCore from "../../components/ExtensionPoint/ExtensionPoint_Builder.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import * as PluginExtensionPoint_Plugin$ReventlessCore from "./PluginExtensionPoint_Plugin.res.mjs";
+import * as PluginExtensionPoint_UiFragment$ReventlessCore from "./PluginExtensionPoint_UiFragment.res.mjs";
 
 function Make(Spec) {
   return RuntimeEnvironment => (CommandTopicChannel => (EventTopicAdapter => (ExtensionPointRuntimeBuilder => {
     let PluginMappingInstance = PluginExtensionPoint_Plugin$ReventlessCore.Make(Spec);
     let name = PluginMappingInstance.Mapping.delegateName;
-    let mappings = [PluginMappingInstance.Mapping];
+    let mappings = [
+      PluginMappingInstance.Mapping,
+      PluginExtensionPoint_UiFragment$ReventlessCore.Mapping
+    ];
     let Mappings = {
       name: name,
       moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,

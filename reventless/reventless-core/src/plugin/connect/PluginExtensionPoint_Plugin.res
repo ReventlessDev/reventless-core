@@ -191,6 +191,9 @@ module Make = (Spec: Spec) => {
           HandleDirective(directiveHandler, DeleteDisconnectSchedule(id)),
         ]
       | ForwardCommand(forwardCommand) => [HandleDirective(directiveHandler, ForwardCommand(forwardCommand))]
+      // Routed to the UiFragmentRegistry slice by the sibling UI-fragment mapping, not the
+      // Plugin aggregate — a no-op here.
+      | RegisterUiFragment(_) => []
       }
 
     let mapOutgoingEvent = Some(

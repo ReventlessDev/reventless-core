@@ -634,6 +634,18 @@ module MakeWithConfig = (
       StateViewSliceMaker.Make(Spec, Projection)
   }
 
+  // Admin UI-fragment registry slices (docs/plans/event-sourced-fragment-registries.md): the
+  // platform UI-fragment registry hosted as admin DCB slices sharing the admin DcbEventLog.
+  // Built once and passed into Admin.construct below.
+  module UiFragmentRegistrySlice = StateChangeSlice.Make(
+    ReventlessCore.UiFragmentRegistry,
+    ReventlessCore.UiFragmentRegistry_Behavior,
+  )
+  module UiFragmentsViewSlice = StateViewSlice.Make(
+    ReventlessCore.UiFragments,
+    ReventlessCore.UiFragments_Projection,
+  )
+
   // In-memory has no DynamoDB streams — stream variant is identical to plain StateViewSlice.
   module StateViewSliceStream = {
     module Make = (
@@ -1326,8 +1338,8 @@ module MakeWithConfig = (
       ~resourceNaming=LocalPluginSpec.resourceNaming,
       ~api=(),
       ~apiRole=(),
-      ~stateChangeSlices=[],
-      ~stateViewSlices=[],
+      ~stateChangeSlices=[module(UiFragmentRegistrySlice)],
+      ~stateViewSlices=[module(UiFragmentsViewSlice)],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],
@@ -1892,8 +1904,8 @@ module MakeWithConfig = (
       ~resourceNaming=LocalPluginSpec.resourceNaming,
       ~api=(),
       ~apiRole=(),
-      ~stateChangeSlices=[],
-      ~stateViewSlices=[],
+      ~stateChangeSlices=[module(UiFragmentRegistrySlice)],
+      ~stateViewSlices=[module(UiFragmentsViewSlice)],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],
@@ -2058,8 +2070,8 @@ module MakeWithConfig = (
       ~resourceNaming=LocalPluginSpec.resourceNaming,
       ~api=(),
       ~apiRole=(),
-      ~stateChangeSlices=[],
-      ~stateViewSlices=[],
+      ~stateChangeSlices=[module(UiFragmentRegistrySlice)],
+      ~stateViewSlices=[module(UiFragmentsViewSlice)],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],

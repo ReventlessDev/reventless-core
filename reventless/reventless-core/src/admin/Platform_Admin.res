@@ -150,6 +150,19 @@ module Make = (
       ~opts,
     )
 
+    // Register admin DCB StateChangeSlice publish functions in publishToAggregates so an
+    // ExtensionPointMapping whose Delegate is an admin slice (e.g. the UI-fragment mapping →
+    // UiFragmentRegistry) can dispatch commands to it. Mirrors Plugin_Builder's merge; admin
+    // slices share the single admin DCB command topic (same publishJsons). Absent when no
+    // StateChangeSlice was passed (dcbPublishJsons = None) — the historical empty-slice case.
+    switch dcbResult.dcbPublishJsons {
+    | Some(slicePublishJsons) =>
+      stateChangeSlices->Array.forEach((module(Sc: ReventlessInfra.StateChangeSlice.T)) =>
+        publishToAggregates->Dict.set(Sc.Spec.name, slicePublishJsons)
+      )
+    | None => ()
+    }
+
     // Admin schema — composed from actual config. `AdminApi.mutationEntries`
     // already includes the auto-derived `Platform_Plugin_Activate`/`Deactivate`
     // entries (via `PluginBaseFragment.pluginAggregateMutationEntries`) so the

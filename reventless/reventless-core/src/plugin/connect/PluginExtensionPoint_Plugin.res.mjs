@@ -183,6 +183,8 @@ function Make(Spec) {
               _0: cmd._0
             }
           }];
+      case "RegisterUiFragment" :
+        return [];
       case "RedetectPlugin" :
         return [
           {

@@ -567,6 +567,19 @@ module MakeWithConfig = (
   }
   module InboundTranslationSlice = InboundTranslationSlice_Builder.Make(ApiConfig)
 
+  // Admin UI-fragment registry slices (docs/plans/event-sourced-fragment-registries.md): the
+  // platform UI-fragment registry hosted as admin DCB slices sharing the admin DcbEventLog.
+  // Built once at platform-module level and passed into Admin.construct below (registers the
+  // slice's command handler exactly once).
+  module UiFragmentRegistrySlice = StateChangeSlice.Make(
+    ReventlessCore.UiFragmentRegistry,
+    ReventlessCore.UiFragmentRegistry_Behavior,
+  )
+  module UiFragmentsViewSlice = StateViewSlice.Make(
+    ReventlessCore.UiFragments,
+    ReventlessCore.UiFragments_Projection,
+  )
+
   // Empty base fragment — no types, no mutations, no queries.
   // Used by the plugin Api in split mode so plugin schema has no core fields.
   let emptyBaseFragment = ReventlessCore.GraphQL_Stitcher.encode({
@@ -1461,8 +1474,8 @@ module MakeWithConfig = (
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=platformApi,
       ~apiRole=platformApiRole,
-      ~stateChangeSlices=[],
-      ~stateViewSlices=[],
+      ~stateChangeSlices=[module(UiFragmentRegistrySlice)],
+      ~stateViewSlices=[module(UiFragmentsViewSlice)],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],
@@ -1687,8 +1700,8 @@ module MakeWithConfig = (
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=platformApi,
       ~apiRole=platformApiRole,
-      ~stateChangeSlices=[],
-      ~stateViewSlices=[],
+      ~stateChangeSlices=[module(UiFragmentRegistrySlice)],
+      ~stateViewSlices=[module(UiFragmentsViewSlice)],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],

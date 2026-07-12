@@ -25,6 +25,7 @@ import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/p
 import * as UserStore$ReventlessLocal from "./adapter/Auth/UserStore.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
 import * as TestRunner$ReventlessLocal from "./test/TestRunner.res.mjs";
+import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as BackendState$ReventlessLocal from "./adapter/BackendState.res.mjs";
@@ -48,6 +49,7 @@ import * as LocalClonerRunner$ReventlessLocal from "./adapter/Cloner/LocalCloner
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/api/PluginBaseFragment.res.mjs";
 import * as ProjectionPending$ReventlessLocal from "./adapter/ProjectionPending.res.mjs";
 import * as ReadModel_Builder$ReventlessLocal from "./components/ReadModel_Builder.res.mjs";
+import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
 import * as PlatformMCP_Server$ReventlessLocal from "./adapter/PlatformMCP_Server.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./adapter/Auth/Auth_GraphqlContext.res.mjs";
 import * as LocalQueryDbStorage$ReventlessLocal from "./adapter/QueryDb/LocalQueryDbStorage.res.mjs";
@@ -58,6 +60,7 @@ import * as EventPublish_Callback$ReventlessCore from "@reventlessdev/reventless
 import * as LocalGraphQL_Adapter$ReventlessLocal from "./adapter/Api/LocalGraphQL_Adapter.res.mjs";
 import * as ProjectionCheckpoint$ReventlessLocal from "./adapter/ProjectionCheckpoint.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
+import * as UiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments_Projection.res.mjs";
 import * as EventLogStorage_Sqlite$ReventlessLocal from "./adapter/EventLog/EventLogStorage_Sqlite.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessLocal from "./components/ExtensionPoint_Builder.res.mjs";
 import * as PlatformGraphQL_Server$ReventlessLocal from "./adapter/PlatformGraphQL_Server.res.mjs";
@@ -74,6 +77,7 @@ import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateCha
 import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
+import * as UiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry_Behavior.res.mjs";
 import * as UIFragmentRegistryReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UIFragmentRegistryReadModelSpec.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessLocal from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as Platform_ComponentDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_ComponentDefinitionsApi.res.mjs";
@@ -578,6 +582,57 @@ function MakeWithConfig(Config) {
   let StateViewSlice = {
     Make: Make$7
   };
+  let Spec = {
+    name: UiFragmentRegistry$ReventlessCore.name,
+    moduleUrl: UiFragmentRegistry$ReventlessCore.moduleUrl,
+    Id: Id$Reventless.$$String,
+    consumedEventSchema: UiFragmentRegistry$ReventlessCore.consumedEventSchema,
+    errorSchema: UiFragmentRegistry$ReventlessCore.errorSchema,
+    eventSchema: UiFragmentRegistry$ReventlessCore.eventSchema,
+    commandSchema: UiFragmentRegistry$ReventlessCore.commandSchema,
+    commandAuthorization: UiFragmentRegistry$ReventlessCore.commandAuthorization,
+    readConsistency: UiFragmentRegistry$ReventlessCore.readConsistency
+  };
+  let Behavior = {
+    initialState: undefined,
+    evolve: UiFragmentRegistry_Behavior$ReventlessCore.evolve,
+    decide: UiFragmentRegistry_Behavior$ReventlessCore.decide,
+    moduleUrl: UiFragmentRegistry_Behavior$ReventlessCore.moduleUrl
+  };
+  let $$let = StateChangeSlice_Builder$ReventlessLocal.Make(Spec)(Behavior);
+  let UiFragmentRegistrySlice_Spec = $$let.Spec;
+  let UiFragmentRegistrySlice_Behavior = $$let.Behavior;
+  let UiFragmentRegistrySlice_isAsync = $$let.isAsync;
+  let UiFragmentRegistrySlice_make = $$let.make;
+  let UiFragmentRegistrySlice = {
+    Spec: UiFragmentRegistrySlice_Spec,
+    Behavior: UiFragmentRegistrySlice_Behavior,
+    isAsync: UiFragmentRegistrySlice_isAsync,
+    make: UiFragmentRegistrySlice_make
+  };
+  let Spec$1 = {
+    name: UiFragments$ReventlessCore.name,
+    moduleUrl: UiFragments$ReventlessCore.moduleUrl,
+    stateSchema: UiFragments$ReventlessCore.stateSchema,
+    consumedEventSchema: UiFragments$ReventlessCore.consumedEventSchema,
+    config: UiFragments$ReventlessCore.config,
+    subIdConfig: undefined,
+    authorization: UiFragments$ReventlessCore.authorization,
+    visibility: UiFragments$ReventlessCore.visibility
+  };
+  let Projection = {
+    project: UiFragments_Projection$ReventlessCore.project,
+    moduleUrl: UiFragments_Projection$ReventlessCore.moduleUrl
+  };
+  let $$let$1 = StateViewSliceMaker.Make(Spec$1)(Projection);
+  let UiFragmentsViewSlice_Spec = $$let$1.Spec;
+  let UiFragmentsViewSlice_Projection = $$let$1.Projection;
+  let UiFragmentsViewSlice_make = $$let$1.make;
+  let UiFragmentsViewSlice = {
+    Spec: UiFragmentsViewSlice_Spec,
+    Projection: UiFragmentsViewSlice_Projection,
+    make: UiFragmentsViewSlice_make
+  };
   let Make$8 = Spec => (Projection => {
     let $$let = StateViewSliceMaker.Make(Spec)(Projection);
     return {
@@ -647,7 +702,7 @@ function MakeWithConfig(Config) {
   };
   let EventCollectorChannel = LocalEventCollectorChannel$ReventlessLocal.Make(Bus);
   let QE = LocalQueryEngine$ReventlessLocal.Make(Bus);
-  let $$let = AggregateMaker.Make({
+  let $$let$2 = AggregateMaker.Make({
     Id: Id$Reventless.$$String,
     name: PluginSpec$ReventlessCore.name,
     eventSchema: PluginSpec$ReventlessCore.eventSchema,
@@ -666,11 +721,11 @@ function MakeWithConfig(Config) {
     Id: Id$Reventless.$$String,
     commandSchema: PluginSpec$ReventlessCore.commandSchema
   }));
-  let LocalPluginAggregate_Spec = $$let.Spec;
-  let LocalPluginAggregate_make = $$let.make;
-  let LocalPluginAggregate_outputs = $$let.outputs;
-  let LocalPluginAggregate_operations = $$let.operations;
-  let LocalPluginAggregate_finish = $$let.finish;
+  let LocalPluginAggregate_Spec = $$let$2.Spec;
+  let LocalPluginAggregate_make = $$let$2.make;
+  let LocalPluginAggregate_outputs = $$let$2.outputs;
+  let LocalPluginAggregate_operations = $$let$2.operations;
+  let LocalPluginAggregate_finish = $$let$2.finish;
   let LocalPluginAggregate = {
     Spec: LocalPluginAggregate_Spec,
     make: LocalPluginAggregate_make,
@@ -692,8 +747,8 @@ function MakeWithConfig(Config) {
     authorization: PluginsReadModelSpec$ReventlessCore.authorization,
     visibility: PluginsReadModelSpec$ReventlessCore.visibility
   })(PluginsReadModelMappings);
-  let $$let$1 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
-  let $$let$2 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
+  let $$let$3 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
+  let $$let$4 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
   let Admin = Platform_Admin$ReventlessCore.Make({
     make: LocalRuntimeEnvironment$ReventlessLocal.make,
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
@@ -709,9 +764,9 @@ function MakeWithConfig(Config) {
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(EventCollectorChannel))(LocalDcbEventLogStorage$ReventlessLocal.Make(Bus))(LocalEventTopicPublisher$ReventlessLocal.Make(Bus))({
-    make: $$let$1.make
+    make: $$let$3.make
   })({
-    make: $$let$2.make
+    make: $$let$4.make
   })({
     silent: Config.silent,
     splitApi: Config.splitApi,
@@ -1130,7 +1185,7 @@ function MakeWithConfig(Config) {
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
         finish: PluginsReadModel.finish
-      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
+      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -1503,7 +1558,7 @@ function MakeWithConfig(Config) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    Admin.construct(version, [], [], [], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
+    Admin.construct(version, [], [], [], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     currentDeployTarget.contents = "Platform";
     let adminGraphQL = resolveTargetGraphQL();
     let adminMCP = resolveTargetMCP();
@@ -1609,7 +1664,7 @@ function MakeWithConfig(Config) {
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
         finish: PluginsReadModel.finish
-      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
+      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -2206,6 +2261,57 @@ function Make($star) {
   let StateViewSlice = {
     Make: Make$8
   };
+  let Spec = {
+    name: UiFragmentRegistry$ReventlessCore.name,
+    moduleUrl: UiFragmentRegistry$ReventlessCore.moduleUrl,
+    Id: Id$Reventless.$$String,
+    consumedEventSchema: UiFragmentRegistry$ReventlessCore.consumedEventSchema,
+    errorSchema: UiFragmentRegistry$ReventlessCore.errorSchema,
+    eventSchema: UiFragmentRegistry$ReventlessCore.eventSchema,
+    commandSchema: UiFragmentRegistry$ReventlessCore.commandSchema,
+    commandAuthorization: UiFragmentRegistry$ReventlessCore.commandAuthorization,
+    readConsistency: UiFragmentRegistry$ReventlessCore.readConsistency
+  };
+  let Behavior = {
+    initialState: undefined,
+    evolve: UiFragmentRegistry_Behavior$ReventlessCore.evolve,
+    decide: UiFragmentRegistry_Behavior$ReventlessCore.decide,
+    moduleUrl: UiFragmentRegistry_Behavior$ReventlessCore.moduleUrl
+  };
+  let $$let = StateChangeSlice_Builder$ReventlessLocal.Make(Spec)(Behavior);
+  let UiFragmentRegistrySlice_Spec = $$let.Spec;
+  let UiFragmentRegistrySlice_Behavior = $$let.Behavior;
+  let UiFragmentRegistrySlice_isAsync = $$let.isAsync;
+  let UiFragmentRegistrySlice_make = $$let.make;
+  let UiFragmentRegistrySlice = {
+    Spec: UiFragmentRegistrySlice_Spec,
+    Behavior: UiFragmentRegistrySlice_Behavior,
+    isAsync: UiFragmentRegistrySlice_isAsync,
+    make: UiFragmentRegistrySlice_make
+  };
+  let Spec$1 = {
+    name: UiFragments$ReventlessCore.name,
+    moduleUrl: UiFragments$ReventlessCore.moduleUrl,
+    stateSchema: UiFragments$ReventlessCore.stateSchema,
+    consumedEventSchema: UiFragments$ReventlessCore.consumedEventSchema,
+    config: UiFragments$ReventlessCore.config,
+    subIdConfig: undefined,
+    authorization: UiFragments$ReventlessCore.authorization,
+    visibility: UiFragments$ReventlessCore.visibility
+  };
+  let Projection = {
+    project: UiFragments_Projection$ReventlessCore.project,
+    moduleUrl: UiFragments_Projection$ReventlessCore.moduleUrl
+  };
+  let $$let$1 = StateViewSliceMaker.Make(Spec$1)(Projection);
+  let UiFragmentsViewSlice_Spec = $$let$1.Spec;
+  let UiFragmentsViewSlice_Projection = $$let$1.Projection;
+  let UiFragmentsViewSlice_make = $$let$1.make;
+  let UiFragmentsViewSlice = {
+    Spec: UiFragmentsViewSlice_Spec,
+    Projection: UiFragmentsViewSlice_Projection,
+    make: UiFragmentsViewSlice_make
+  };
   let Make$9 = Spec => (Projection => {
     let $$let = StateViewSliceMaker.Make(Spec)(Projection);
     return {
@@ -2274,7 +2380,7 @@ function Make($star) {
   };
   let EventCollectorChannel = LocalEventCollectorChannel$ReventlessLocal.Make(Bus);
   let QE = LocalQueryEngine$ReventlessLocal.Make(Bus);
-  let $$let = AggregateMaker.Make({
+  let $$let$2 = AggregateMaker.Make({
     Id: Id$Reventless.$$String,
     name: PluginSpec$ReventlessCore.name,
     eventSchema: PluginSpec$ReventlessCore.eventSchema,
@@ -2293,11 +2399,11 @@ function Make($star) {
     Id: Id$Reventless.$$String,
     commandSchema: PluginSpec$ReventlessCore.commandSchema
   }));
-  let LocalPluginAggregate_Spec = $$let.Spec;
-  let LocalPluginAggregate_make = $$let.make;
-  let LocalPluginAggregate_outputs = $$let.outputs;
-  let LocalPluginAggregate_operations = $$let.operations;
-  let LocalPluginAggregate_finish = $$let.finish;
+  let LocalPluginAggregate_Spec = $$let$2.Spec;
+  let LocalPluginAggregate_make = $$let$2.make;
+  let LocalPluginAggregate_outputs = $$let$2.outputs;
+  let LocalPluginAggregate_operations = $$let$2.operations;
+  let LocalPluginAggregate_finish = $$let$2.finish;
   let LocalPluginAggregate = {
     Spec: LocalPluginAggregate_Spec,
     make: LocalPluginAggregate_make,
@@ -2319,8 +2425,8 @@ function Make($star) {
     authorization: PluginsReadModelSpec$ReventlessCore.authorization,
     visibility: PluginsReadModelSpec$ReventlessCore.visibility
   })(PluginsReadModelMappings);
-  let $$let$1 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
-  let $$let$2 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
+  let $$let$3 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
+  let $$let$4 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
   let Admin = Platform_Admin$ReventlessCore.Make({
     make: LocalRuntimeEnvironment$ReventlessLocal.make,
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
@@ -2336,9 +2442,9 @@ function Make($star) {
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(EventCollectorChannel))(LocalDcbEventLogStorage$ReventlessLocal.Make(Bus))(LocalEventTopicPublisher$ReventlessLocal.Make(Bus))({
-    make: $$let$1.make
+    make: $$let$3.make
   })({
-    make: $$let$2.make
+    make: $$let$4.make
   })({
     silent: false,
     splitApi: true,
@@ -2752,7 +2858,7 @@ function Make($star) {
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
         finish: PluginsReadModel.finish
-      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
+      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -3118,7 +3224,7 @@ function Make($star) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    Admin.construct(version, [], [], [], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
+    Admin.construct(version, [], [], [], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     currentDeployTarget.contents = "Platform";
     let adminGraphQL = resolveTargetGraphQL();
     let adminMCP = resolveTargetMCP();
@@ -3222,7 +3328,7 @@ function Make($star) {
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
         finish: PluginsReadModel.finish
-      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
+      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep

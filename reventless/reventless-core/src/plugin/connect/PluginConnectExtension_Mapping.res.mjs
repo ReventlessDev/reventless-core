@@ -8,21 +8,41 @@ function Make(Spec) {
   let mapIncomingEvent = (pluginId, event, _meta, _pluginDef, _queryEngine) => {
     let pluginDefinition = Spec.pluginDefinition;
     let id = pluginDefinition.id;
-    if (typeof event !== "object") {
-      if (pluginId === id) {
-        return [{
-            TAG: "PublishExtensionPointCommand",
-            _0: id,
-            _1: {
-              TAG: "ConnectPlugin",
-              _0: pluginDefinition
-            }
-          }];
-      } else {
-        return [];
-      }
-    } else {
+    if (typeof event === "object") {
       return [];
+    }
+    if (pluginId !== id) {
+      return [];
+    }
+    let manifest = pluginDefinition.uiFragments;
+    if (manifest !== undefined) {
+      return [
+        {
+          TAG: "PublishExtensionPointCommand",
+          _0: id,
+          _1: {
+            TAG: "ConnectPlugin",
+            _0: pluginDefinition
+          }
+        },
+        {
+          TAG: "PublishExtensionPointCommand",
+          _0: id,
+          _1: {
+            TAG: "RegisterUiFragment",
+            _0: manifest
+          }
+        }
+      ];
+    } else {
+      return [{
+          TAG: "PublishExtensionPointCommand",
+          _0: id,
+          _1: {
+            TAG: "ConnectPlugin",
+            _0: pluginDefinition
+          }
+        }];
     }
   };
   let $$let = ExtensionMapping$ReventlessInfra.NoDelegate.Id;

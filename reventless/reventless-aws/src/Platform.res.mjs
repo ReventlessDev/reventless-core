@@ -27,6 +27,7 @@ import * as ReadModel$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
 import * as Plugin_Stack$ReventlessAws from "./plugin/stack/Plugin_Stack.res.mjs";
+import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_DynamoDb$ReventlessAws from "./util/Util_DynamoDb.res.mjs";
 import * as Platform_Casts$ReventlessAws from "./Platform_Casts.res.mjs";
@@ -50,6 +51,7 @@ import * as DcbEventLogStorage$ReventlessAws from "./adapter/DcbEventLog/DcbEven
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsProjection.res.mjs";
 import * as StateTopic_AppSync$ReventlessAws from "./adapter/StateTopic/StateTopic_AppSync.res.mjs";
+import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
 import * as ClonerRunner_Fargate$ReventlessAws from "./plugin/cloner/ClonerRunner_Fargate.res.mjs";
 import * as QueryEngine_DynamoDb$ReventlessAws from "./adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs";
@@ -62,6 +64,7 @@ import * as AutomationSlice_Builder$ReventlessAws from "./components/AutomationS
 import * as EventTopicPublisher_SNS$ReventlessAws from "./adapter/EventTopic/EventTopicPublisher_SNS.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as PgQueryResolver_Builder$ReventlessAws from "./adapter/QueryDb/PgQueryResolver_Builder.res.mjs";
+import * as UiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments_Projection.res.mjs";
 import * as Aggregate_Builder_Single$ReventlessAws from "./components/Aggregate_Builder_Single.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChangeSlice_Builder.res.mjs";
@@ -72,6 +75,7 @@ import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/revent
 import * as Platform_UIFragments_Lambda$ReventlessAws from "./adapter/Api/Platform_UIFragments_Lambda.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as EventLogSubscription_AppSync$ReventlessAws from "./adapter/EventLogSubscription/EventLogSubscription_AppSync.res.mjs";
+import * as UiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry_Behavior.res.mjs";
 import * as CommandTopicChannel_SQS_Async$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./plugin/stack/Plugin_ExtensionPoint_Builder.res.mjs";
 import * as QueryDbStorage_DynamoDbStream$ReventlessAws from "./adapter/QueryDb/QueryDbStorage_DynamoDbStream.res.mjs";
@@ -413,17 +417,48 @@ function MakeWithConfig(Config) {
     MakeAsync: MakeAsync$1
   };
   let include = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let Make$7 = include.Make;
   let include$1 = StateViewSlice_Builder_Stream$ReventlessAws.Make(ApiConfig);
   let include$2 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let include$3 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let InboundTranslationSlice = InboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let Spec = {
+    name: UiFragmentRegistry$ReventlessCore.name,
+    moduleUrl: UiFragmentRegistry$ReventlessCore.moduleUrl,
+    Id: Id$Reventless.$$String,
+    consumedEventSchema: UiFragmentRegistry$ReventlessCore.consumedEventSchema,
+    errorSchema: UiFragmentRegistry$ReventlessCore.errorSchema,
+    eventSchema: UiFragmentRegistry$ReventlessCore.eventSchema,
+    commandSchema: UiFragmentRegistry$ReventlessCore.commandSchema,
+    commandAuthorization: UiFragmentRegistry$ReventlessCore.commandAuthorization,
+    readConsistency: UiFragmentRegistry$ReventlessCore.readConsistency
+  };
+  let UiFragmentRegistrySlice = StateChangeSlice_Builder$ReventlessAws.Make(Spec)({
+    initialState: undefined,
+    evolve: UiFragmentRegistry_Behavior$ReventlessCore.evolve,
+    decide: UiFragmentRegistry_Behavior$ReventlessCore.decide,
+    moduleUrl: UiFragmentRegistry_Behavior$ReventlessCore.moduleUrl
+  });
+  let UiFragmentsViewSlice = Make$7({
+    name: UiFragments$ReventlessCore.name,
+    moduleUrl: UiFragments$ReventlessCore.moduleUrl,
+    stateSchema: UiFragments$ReventlessCore.stateSchema,
+    consumedEventSchema: UiFragments$ReventlessCore.consumedEventSchema,
+    config: UiFragments$ReventlessCore.config,
+    subIdConfig: undefined,
+    authorization: UiFragments$ReventlessCore.authorization,
+    visibility: UiFragments$ReventlessCore.visibility
+  })({
+    project: UiFragments_Projection$ReventlessCore.project,
+    moduleUrl: UiFragments_Projection$ReventlessCore.moduleUrl
+  });
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: [],
     queries: [],
     subscriptions: []
   });
-  let Make$7 = FragmentConfig => {
+  let Make$8 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make({
       makeApiResource: AppSync_Adapter$ReventlessAws.makeApiResource,
       generateFragment: AppSync_Adapter$ReventlessAws.generateFragment,
@@ -436,7 +471,7 @@ function MakeWithConfig(Config) {
     };
   };
   let Api = {
-    Make: Make$7
+    Make: Make$8
   };
   let deploySchemaHashPrefix = "deploy-schema-hash:";
   let readSchemaHash = async (tableName, apiId) => {
@@ -970,7 +1005,7 @@ function MakeWithConfig(Config) {
     let admin = Admin.construct(version, [], [PluginAggregate], [
       PluginReadModel,
       UIFragmentRegistryReadModel
-    ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
+    ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     let pluginRm = admin.readModelsOutputs["Plugins"];
     if (pluginRm !== undefined) {
       let r = pluginRm.queryDb.resources[0];
@@ -1074,7 +1109,7 @@ function MakeWithConfig(Config) {
     let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [
       PluginReadModel,
       UIFragmentRegistryReadModel
-    ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
+    ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     let pluginRm = admin.readModelsOutputs["Plugins"];
     let pluginReadModelTableName;
     if (pluginRm !== undefined) {
@@ -1321,7 +1356,7 @@ function MakeWithConfig(Config) {
     Counter: Counter,
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: {
-      Make: include.Make
+      Make: Make$7
     },
     StateViewSliceStream: {
       Make: include$1.Make
@@ -1640,17 +1675,48 @@ function Make($star) {
     MakeAsync: MakeAsync$1
   };
   let include = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let Make$8 = include.Make;
   let include$1 = StateViewSlice_Builder_Stream$ReventlessAws.Make(ApiConfig);
   let include$2 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let include$3 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let InboundTranslationSlice = InboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let Spec = {
+    name: UiFragmentRegistry$ReventlessCore.name,
+    moduleUrl: UiFragmentRegistry$ReventlessCore.moduleUrl,
+    Id: Id$Reventless.$$String,
+    consumedEventSchema: UiFragmentRegistry$ReventlessCore.consumedEventSchema,
+    errorSchema: UiFragmentRegistry$ReventlessCore.errorSchema,
+    eventSchema: UiFragmentRegistry$ReventlessCore.eventSchema,
+    commandSchema: UiFragmentRegistry$ReventlessCore.commandSchema,
+    commandAuthorization: UiFragmentRegistry$ReventlessCore.commandAuthorization,
+    readConsistency: UiFragmentRegistry$ReventlessCore.readConsistency
+  };
+  let UiFragmentRegistrySlice = StateChangeSlice_Builder$ReventlessAws.Make(Spec)({
+    initialState: undefined,
+    evolve: UiFragmentRegistry_Behavior$ReventlessCore.evolve,
+    decide: UiFragmentRegistry_Behavior$ReventlessCore.decide,
+    moduleUrl: UiFragmentRegistry_Behavior$ReventlessCore.moduleUrl
+  });
+  let UiFragmentsViewSlice = Make$8({
+    name: UiFragments$ReventlessCore.name,
+    moduleUrl: UiFragments$ReventlessCore.moduleUrl,
+    stateSchema: UiFragments$ReventlessCore.stateSchema,
+    consumedEventSchema: UiFragments$ReventlessCore.consumedEventSchema,
+    config: UiFragments$ReventlessCore.config,
+    subIdConfig: undefined,
+    authorization: UiFragments$ReventlessCore.authorization,
+    visibility: UiFragments$ReventlessCore.visibility
+  })({
+    project: UiFragments_Projection$ReventlessCore.project,
+    moduleUrl: UiFragments_Projection$ReventlessCore.moduleUrl
+  });
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: [],
     queries: [],
     subscriptions: []
   });
-  let Make$8 = FragmentConfig => {
+  let Make$9 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make({
       makeApiResource: AppSync_Adapter$ReventlessAws.makeApiResource,
       generateFragment: AppSync_Adapter$ReventlessAws.generateFragment,
@@ -1662,7 +1728,7 @@ function Make($star) {
     };
   };
   let Api = {
-    Make: Make$8
+    Make: Make$9
   };
   let deploySchemaHashPrefix = "deploy-schema-hash:";
   let readSchemaHash = async (tableName, apiId) => {
@@ -2189,7 +2255,7 @@ function Make($star) {
     let admin = Admin.construct(version, [], [PluginAggregate], [
       PluginReadModel,
       UIFragmentRegistryReadModel
-    ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
+    ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     let pluginRm = admin.readModelsOutputs["Plugins"];
     if (pluginRm !== undefined) {
       let r = pluginRm.queryDb.resources[0];
@@ -2281,7 +2347,7 @@ function Make($star) {
     let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [
       PluginReadModel,
       UIFragmentRegistryReadModel
-    ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
+    ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     let pluginRm = admin.readModelsOutputs["Plugins"];
     let pluginReadModelTableName;
     if (pluginRm !== undefined) {
@@ -2511,7 +2577,7 @@ function Make($star) {
     return Pulumi$Pulumi.getOutputs();
   };
   let StateViewSlice = {
-    Make: include.Make
+    Make: Make$8
   };
   let StateViewSliceStream = {
     Make: include$1.Make

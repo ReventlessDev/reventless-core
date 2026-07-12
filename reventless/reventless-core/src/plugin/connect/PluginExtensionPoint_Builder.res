@@ -26,7 +26,13 @@ module Make = (
 
     let name = PluginMappingInstance.Mapping.delegateName
     let moduleUrl = PluginExtensionPointSpec.moduleUrl
-    let mappings: array<module(Mapping)> = [module(PluginMappingInstance.Mapping)]
+    // The UI-fragment mapping routes RegisterUiFragment / (Disconnect →) DeregisterUiFragment to
+    // the admin UiFragmentRegistry slice; the Plugin mapping keeps the lifecycle. Both run per
+    // incoming command (ExtensionPoint_Callback fans commands through all mappings).
+    let mappings: array<module(Mapping)> = [
+      module(PluginMappingInstance.Mapping),
+      module(PluginExtensionPoint_UiFragment.Mapping),
+    ]
   }
   include ExtensionPoint_Builder.Make(
     PluginExtensionPointSpec,

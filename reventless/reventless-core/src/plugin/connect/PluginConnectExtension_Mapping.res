@@ -46,12 +46,30 @@ module Make = (Spec: Spec) => {
         let id = pluginDefinition.id
 
         switch event {
-        | PluginExtensionPointSpec.UnknownPluginDetected if pluginId == id => [
-            PublishExtensionPointCommand(
-              id,
-              PluginExtensionPointSpec.ConnectPlugin(pluginDefinition),
-            ),
-          ]
+        // Answer the handshake, and — when this plugin ships a UI-fragment manifest — register
+        // it with the admin UiFragmentRegistry slice in the same step (the admin EP's
+        // UI-fragment mapping routes RegisterUiFragment to the slice). Nested switch (not
+        // Array.concat) so the outer branch's expected type disambiguates the bare
+        // PublishExtensionPointCommand constructor.
+        | PluginExtensionPointSpec.UnknownPluginDetected if pluginId == id =>
+          switch pluginDefinition.uiFragments {
+          | Some(manifest) => [
+              PublishExtensionPointCommand(
+                id,
+                PluginExtensionPointSpec.ConnectPlugin(pluginDefinition),
+              ),
+              PublishExtensionPointCommand(
+                id,
+                PluginExtensionPointSpec.RegisterUiFragment(manifest),
+              ),
+            ]
+          | None => [
+              PublishExtensionPointCommand(
+                id,
+                PluginExtensionPointSpec.ConnectPlugin(pluginDefinition),
+              ),
+            ]
+          }
         // PluginConnected / PluginReconnected / PluginDeactivated for peer
         // plugins used to call DoConnectPlugin / DoDisconnectPlugin here so
         // each plugin's EC Lambda could subscribe / unsubscribe its own
