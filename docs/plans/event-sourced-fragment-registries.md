@@ -536,17 +536,48 @@ AWS until the deploy caller lands, so no `ApiFragment*` events fire yet).
   it is inert until Phase 3 supplies a `RegisterApiFragment` caller. Build it deploy-validated as a
   unit with the Phase-3 deploy caller.
 
+**Phase 3 — deploy caller + waiter — IMPLEMENTED (this session), compile-validated
+(deploy-validated together with 2e on the next alpha push).**
+
+- **Gated on `platformStackRef`, not a wholesale hook replacement.** `preResolversSchemaHook`
+  fires in BOTH `makePlatform` (all-at-once, `platformStackRef=None`, reactive writer dormant) and
+  `deployPlugin` (staged, `platformStackRef=Some`, 2e wired). Replacing the body outright would
+  break `makePlatform` (fragments would register but never push). So: `Some(_)` → new
+  `registerFragmentViaApi`; `None` → the old direct deploy-time stitch+push **unchanged** (retired
+  for `makePlatform` only in Phase 4, if at all). The `registerFragmentViaApi` helper +
+  `waitForApiFragmentPush` live before the hooks record in `Platform.res`.
+- **The caller** (`registerFragmentViaApi`, returns the `schemaPushed` Output gate): resolves the
+  Platform API endpoint (`apiConfigRef.platformApi.uris.graphQL`) + region, then
+  `Util_AppSync_Caller.sendMutation("Platform_RegisterApiFragment", {id, pluginId, fragment:{encoded,
+  protocol}, apiTarget: <graphqlEnum>, at})` (SigV4). Exact SDL from the generator:
+  `Platform_RegisterApiFragment(id: ID!, pluginId: ID!, fragment: <input>!, apiTarget: <enum>!,
+  at: String!): CommandResult!` — `id: ID!` is unconditionally prepended by
+  `GraphQL_FragmentGenerator` (set to the pluginId); `apiTarget` is a generated GraphQL **enum**
+  (passed via `graphqlEnum` so it renders unquoted). Registry keyed by bare plugin **name**.
+- **The waiter** disambiguates the common idempotent-redeploy case from a real change without a
+  false timeout: `sendMutation` now **returns its result** (safe — zero prior callers), and the
+  caller reads the `CommandResult` selection — `CommandRejected` → fail the deploy;
+  `CommandAccepted{eventCount:0}` → idempotent no-op (fields already live) → proceed immediately;
+  `eventCount>0` → poll `Platform_ApiFragments` (no-arg query, filter client-side by pluginId)
+  until a **fresh** push (`pushedAt >= our registration `at``, beating the stale-`ok` race) shows
+  `ok` (proceed) or `error` (fail with `pushMessage`); ~3-min timeout. Preserves the resolver-
+  creation ordering gate (`Plugin_Builder.res:585` → `all3`/`all6`).
+- Validated: aws builds zero-warning; suites green (aws 216). The whole SigV4 path is
+  compile-validated only — real validation is the alpha deploy that also exercises 2e (the first
+  `RegisterApiFragment` call fires the first `ApiFragment*` event → the 2e reactive push).
+
 **Remaining work:**
-- **Phase 3 — deploy caller + waiter** (validates 2e on the same alpha push). Replace the
-  `preResolversSchemaHook` body (`Plugin_Builder.res:585` seam): `deployPlugin` sends
-  `Util_AppSync_Caller.sendMutation` `Platform_RegisterApiFragment(name, fragment, apiTarget)`
-  (SigV4, targeting the Platform API endpoint/id resolvable in the plugin deploy flow), then a
-  `sendQuery` waiter polling `Platform_ApiFragments` push status (surfacing stitch errors) before
-  resolver creation — preserving the `schemaPushed` Output gate semantics. Destroy-path sends
-  `DeregisterApiFragment`. `Util_AppSync_Caller` needs no changes (SigV4 + nested-object args +
-  enum sentinel already support it; zero call sites today).
+- **Phase 3 tail — destroy-path deregistration (deferred to a follow-up).** On `pulumi destroy`
+  of a plugin stack, send `DeregisterApiFragment` before the resolvers are torn down. No
+  GraphQL-mutation-on-destroy precedent exists; the mechanism is a Pulumi **dynamic provider with
+  a `delete` handler** (precedent: `AppSync_Resolver_Retrying.res`) that `dependsOn` the resolver
+  resources (so Pulumi deletes it first) and calls `sendMutation("Platform_DeregisterApiFragment")`
+  from `delete`, encoding endpoint/region/pluginId into the resource id (delete handlers receive
+  outputs, not inputs). Independent of the register path and separately deploy-validated (a destroy
+  is a distinct operation); the retirement gap it closes is blessed-acceptable staleness until then.
 - Phase 4 — cutover + cleanup (retire `deploy-schema:*` keyspace, lease, hash rows, legacy
-  `mkUpdateApiSchema`; dedup the `injectAwsAuthAll`/`stampSharedIamTypes` copies if any linger).
+  `mkUpdateApiSchema`; decide whether `makePlatform`'s direct-push path is retired or kept; dedup
+  the `injectAwsAuthAll`/`stampSharedIamTypes` copies if any linger).
 
 ## Phasing
 

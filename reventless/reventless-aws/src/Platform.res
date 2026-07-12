@@ -687,6 +687,140 @@ module MakeWithConfig = (
     | None => resolveHookedApi()
     }
 
+  // ── Phase 3: staged-deploy API-fragment registration ────────────────────────
+  // When a plugin deploys against an ALREADY-RUNNING platform (plugin-stack mode),
+  // it registers its API-schema fragment with the platform via the Platform API
+  // (SigV4 system caller) instead of writing deploy-schema:* rows and pushing the
+  // schema itself. The platform-side reactive single writer (Plan 2e) stitches and
+  // pushes; this waits on the push status so resolver creation (gated on the
+  // returned Output) proceeds only once the plugin's fields are ACTIVE — or fails
+  // with the stitch error. Used only in plugin-stack mode; makePlatform (all-at-once)
+  // keeps the direct deploy-time push (the reactive writer is dormant there).
+  @val external registerWaiterSetTimeout: (unit => unit, int) => unit = "setTimeout"
+  let deployWaiterDelay = (ms: int): promise<unit> =>
+    Promise.make((resolve, _) => registerWaiterSetTimeout(() => resolve(), ms))
+
+  // Poll the platform's Platform_ApiFragments status query until the plugin's row
+  // shows a push that landed at/after our registration time (`sinceAt`) — a fresh
+  // "ok" means our fields are live; a fresh "error" surfaces the stitch failure. An
+  // older "ok" is a stale prior deploy's and is ignored (ISO strings sort lexically).
+  let waitForApiFragmentPush = async (~endpoint, ~region, ~pluginId, ~sinceAt) => {
+    let query = "query { Platform_ApiFragments { pluginId pushStatus pushMessage pushedAt } }"
+    let maxAttempts = 90 // ~3 min at 2s intervals
+    let rec loop = async attempt =>
+      if attempt >= maxAttempts {
+        JsError.throwWithMessage(
+          `Timed out (>3min) waiting for the platform to push ${pluginId}'s API fragment — check the AdminEventCollector Lambda logs.`,
+        )
+      } else {
+        let data = await Util_AppSync_Caller.sendQuery(~endpoint, ~region, ~queryString=query)
+        let row =
+          data
+          ->Option.flatMap(JSON.Decode.object)
+          ->Option.flatMap(d => d->Dict.get("Platform_ApiFragments"))
+          ->Option.flatMap(JSON.Decode.array)
+          ->Option.getOr([])
+          ->Array.find(entry =>
+            entry
+            ->JSON.Decode.object
+            ->Option.flatMap(e => e->Dict.get("pluginId"))
+            ->Option.flatMap(JSON.Decode.string) == Some(pluginId)
+          )
+          ->Option.flatMap(JSON.Decode.object)
+        switch row {
+        | Some(e) =>
+          let field = k => e->Dict.get(k)->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+          let status = field("pushStatus")
+          let fresh = field("pushedAt") >= sinceAt
+          if fresh && status == "ok" {
+            log.info(~comp="registerFragmentViaApi", `${pluginId} schema push confirmed ACTIVE`)
+          } else if fresh && status == "error" {
+            JsError.throwWithMessage(`Schema push failed for ${pluginId}: ${field("pushMessage")}`)
+          } else {
+            await deployWaiterDelay(2000)
+            await loop(attempt + 1)
+          }
+        | None =>
+          await deployWaiterDelay(2000)
+          await loop(attempt + 1)
+        }
+      }
+    await loop(0)
+  }
+
+  let registerFragmentViaApi = (
+    ~name: string,
+    ~fragment: Reventless.Plugin.apiSchemaFragment,
+    ~apiTargetName: string,
+  ): Pulumi.Output.t<unit> => {
+    // Platform_RegisterApiFragment is an admin systemCallable mutation on the Platform
+    // API (regardless of the plugin's apiTarget, which is passed as the enum argument).
+    let platformApi = switch apiConfigRef.contents {
+    | Some({platformApi}) => platformApi
+    | None => domainApi
+    }
+    let region =
+      Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown")
+    platformApi
+    ->Pulumi.Output.flatMap(api => api.uris)
+    ->Pulumi.Output.flatMap(uris => {
+      let endpoint = uris.graphQL
+      let run = async () => {
+        let at = Date.make()->Date.toISOString
+        let variables = {
+          "id": name,
+          "pluginId": name,
+          "fragment": {"encoded": fragment.encoded, "protocol": fragment.protocol},
+          "apiTarget": Util_AppSync_Caller.graphqlEnum(apiTargetName),
+          "at": at,
+        }
+        let selection = "{ __typename ... on CommandAccepted { eventCount } ... on CommandRejected { errorCode errorDetail } }"
+        log.info(
+          ~comp="registerFragmentViaApi",
+          `Registering API fragment for ${name} (${apiTargetName}) via ${endpoint}`,
+        )
+        let result = await Util_AppSync_Caller.sendMutation(
+          ~endpoint,
+          ~region,
+          ~mutation="Platform_RegisterApiFragment",
+          ~selection,
+          ~variables,
+        )
+        let outcome =
+          result
+          ->Option.flatMap(JSON.Decode.object)
+          ->Option.flatMap(d => d->Dict.get("Platform_RegisterApiFragment"))
+          ->Option.flatMap(JSON.Decode.object)
+        switch outcome {
+        | Some(cmd) =>
+          let typename =
+            cmd->Dict.get("__typename")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+          switch typename {
+          | "CommandRejected" =>
+            let code =
+              cmd->Dict.get("errorCode")->Option.flatMap(JSON.Decode.string)->Option.getOr("unknown")
+            JsError.throwWithMessage(`RegisterApiFragment rejected for ${name}: ${code}`)
+          | "CommandAccepted" =>
+            // eventCount 0 ⇒ idempotent no-op (unchanged fragment) — fields already live,
+            // proceed without waiting; >0 ⇒ a real change, wait for the reactive push.
+            let eventCount =
+              cmd->Dict.get("eventCount")->Option.flatMap(JSON.Decode.float)->Option.getOr(0.0)
+            if eventCount > 0.0 {
+              await waitForApiFragmentPush(~endpoint, ~region, ~pluginId=name, ~sinceAt=at)
+            } else {
+              log.info(~comp="registerFragmentViaApi", `${name} fragment unchanged — no push needed`)
+            }
+          | _ => await waitForApiFragmentPush(~endpoint, ~region, ~pluginId=name, ~sinceAt=at)
+          }
+        | None =>
+          // Unparseable result (mutation may have failed) — fall back to polling.
+          await waitForApiFragmentPush(~endpoint, ~region, ~pluginId=name, ~sinceAt=at)
+        }
+      }
+      run()->Pulumi.Output.fromPromise
+    })
+  }
+
   let hooks: ReventlessCore.Plugin_Helpers.platformHooks = {
     // AWS uses Interstack for admin extension points — leave ref at empty dict.
     adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
@@ -802,6 +936,19 @@ module MakeWithConfig = (
       // Capture deploy target synchronously — deployPlugin resets currentDeployTarget to
       // Domain after P.make() returns, before any Pulumi.Output async callbacks run.
       let capturedDeployTarget = currentDeployTarget.contents
+
+      switch platformStackRef {
+      | Some(_) =>
+        // Phase 3 — staged deploy against a running platform (deployPlugin): register the
+        // fragment via the Platform API; the reactive single writer (2e) stitches + pushes.
+        let apiTargetName = switch capturedDeployTarget {
+        | Domain => "Domain"
+        | Platform => "Platform"
+        }
+        registerFragmentViaApi(~name, ~fragment=pluginFragment, ~apiTargetName)
+      | None =>
+        // All-at-once (makePlatform): platform + plugins deploy in one stack, so the
+        // reactive writer is dormant — keep the direct deploy-time stitch + push below.
 
       // Select DynamoDB key prefix and target AppSync API based on the current deploy target.
       // Domain plugins use "deploy-schema:" and the Domain API (default behaviour).
@@ -1136,6 +1283,7 @@ module MakeWithConfig = (
           })
         )
       })
+      }
     },
     // DCB EventLog created hook — extracts DynamoDB table name for DCB CommandTopic Lambda handler.
     // Postgres-backed DCB logs (B2.3c) create no table, so there is no resource to read:

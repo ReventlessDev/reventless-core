@@ -12,7 +12,9 @@ import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output
 import * as Pulumi$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Pulumi.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Plugin$ReventlessAws from "./components/Plugin.res.mjs";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
@@ -53,6 +55,7 @@ import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-inf
 import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsProjection.res.mjs";
 import * as StateTopic_AppSync$ReventlessAws from "./adapter/StateTopic/StateTopic_AppSync.res.mjs";
 import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
+import * as Util_AppSync_Caller$ReventlessAws from "./util/Util_AppSync_Caller.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
 import * as ApiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/ApiFragmentRegistry/StateChangeSlice/ApiFragmentRegistry.res.mjs";
 import * as ClonerRunner_Fargate$ReventlessAws from "./plugin/cloner/ClonerRunner_Fargate.res.mjs";
@@ -564,6 +567,34 @@ function MakeWithConfig(Config) {
       return resolveHookedApi();
     }
   };
+  let deployWaiterDelay = ms => new Promise((resolve, param) => {
+    setTimeout(() => resolve(), ms);
+  });
+  let waitForApiFragmentPush = async (endpoint, region, pluginId, sinceAt) => {
+    let loop = async attempt => {
+      if (attempt >= 90) {
+        return Stdlib_JsError.throwWithMessage(`Timed out (>3min) waiting for the platform to push ` + pluginId + `'s API fragment — check the AdminEventCollector Lambda logs.`);
+      }
+      let data = await Util_AppSync_Caller$ReventlessAws.sendQuery(endpoint, region, "query { Platform_ApiFragments { pluginId pushStatus pushMessage pushedAt } }");
+      let row = Stdlib_Option.flatMap(Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(data, Stdlib_JSON.Decode.object), d => d["Platform_ApiFragments"]), Stdlib_JSON.Decode.array), []).find(entry => Primitive_object.equal(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(entry), e => e["pluginId"]), Stdlib_JSON.Decode.string), pluginId)), Stdlib_JSON.Decode.object);
+      if (row !== undefined) {
+        let field = k => Stdlib_Option.getOr(Stdlib_Option.flatMap(row[k], Stdlib_JSON.Decode.string), "");
+        let status = field("pushStatus");
+        let fresh = field("pushedAt") >= sinceAt;
+        if (fresh && status === "ok") {
+          return log.info("registerFragmentViaApi", undefined, pluginId + ` schema push confirmed ACTIVE`);
+        } else if (fresh && status === "error") {
+          return Stdlib_JsError.throwWithMessage(`Schema push failed for ` + pluginId + `: ` + field("pushMessage"));
+        } else {
+          await deployWaiterDelay(2000);
+          return await loop(attempt + 1 | 0);
+        }
+      }
+      await deployWaiterDelay(2000);
+      return await loop(attempt + 1 | 0);
+    };
+    return await loop(0);
+  };
   let hooks_subscriptionInfraHook = Stdlib_Option.map(domainEventsApiOpt, eventsApi => (params => {
     let allEventTopics = params.allEventTopics;
     let allQueryDbs = params.allQueryDbs;
@@ -585,22 +616,67 @@ function MakeWithConfig(Config) {
   let hooks_preResolversSchemaHook = (name, version, pluginFragment) => {
     log.info("preResolversSchemaHook", undefined, `Pushing schema for plugin ` + name + `@` + version + ` to AppSync`);
     let capturedDeployTarget = currentDeployTarget.contents;
-    let match;
+    if (platformStackRef !== undefined) {
+      let apiTargetName;
+      apiTargetName = capturedDeployTarget === "Domain" ? "Domain" : "Platform";
+      let match = apiConfigRef.contents;
+      let platformApi = match !== undefined ? match.platformApi : domainApi;
+      let region = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
+      return Output$Pulumi.flatMap(Output$Pulumi.flatMap(platformApi, api => api.uris), uris => {
+        let endpoint = uris.GRAPHQL;
+        let run = async () => {
+          let at = new Date().toISOString();
+          let variables = {
+            id: name,
+            pluginId: name,
+            fragment: {
+              encoded: pluginFragment.encoded,
+              protocol: pluginFragment.protocol
+            },
+            apiTarget: Util_AppSync_Caller$ReventlessAws.graphqlEnum(apiTargetName),
+            at: at
+          };
+          log.info("registerFragmentViaApi", undefined, `Registering API fragment for ` + name + ` (` + apiTargetName + `) via ` + endpoint);
+          let result = await Util_AppSync_Caller$ReventlessAws.sendMutation(endpoint, region, "Platform_RegisterApiFragment", "{ __typename ... on CommandAccepted { eventCount } ... on CommandRejected { errorCode errorDetail } }", variables);
+          let outcome = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(result, Stdlib_JSON.Decode.object), d => d["Platform_RegisterApiFragment"]), Stdlib_JSON.Decode.object);
+          if (outcome === undefined) {
+            return await waitForApiFragmentPush(endpoint, region, name, at);
+          }
+          let typename = Stdlib_Option.getOr(Stdlib_Option.flatMap(outcome["__typename"], Stdlib_JSON.Decode.string), "");
+          switch (typename) {
+            case "CommandAccepted" :
+              let eventCount = Stdlib_Option.getOr(Stdlib_Option.flatMap(outcome["eventCount"], Stdlib_JSON.Decode.float), 0.0);
+              if (eventCount > 0.0) {
+                return await waitForApiFragmentPush(endpoint, region, name, at);
+              } else {
+                return log.info("registerFragmentViaApi", undefined, name + ` fragment unchanged — no push needed`);
+              }
+            case "CommandRejected" :
+              let code = Stdlib_Option.getOr(Stdlib_Option.flatMap(outcome["errorCode"], Stdlib_JSON.Decode.string), "unknown");
+              return Stdlib_JsError.throwWithMessage(`RegisterApiFragment rejected for ` + name + `: ` + code);
+            default:
+              return await waitForApiFragmentPush(endpoint, region, name, at);
+          }
+        };
+        return run();
+      });
+    }
+    let match$1;
     if (capturedDeployTarget === "Domain") {
-      match = [
+      match$1 = [
         "deploy-schema:",
         domainApi
       ];
     } else {
-      let match$1 = apiConfigRef.contents;
-      let api = match$1 !== undefined ? match$1.platformApi : domainApi;
-      match = [
+      let match$2 = apiConfigRef.contents;
+      let api = match$2 !== undefined ? match$2.platformApi : domainApi;
+      match$1 = [
         "deploy-schema-platform:",
         api
       ];
     }
-    let targetApi = match[1];
-    let schemaPrefix = match[0];
+    let targetApi = match$1[1];
+    let schemaPrefix = match$1[0];
     let readStackRefString = (stackRef, key) => {
       let direct = stackRef.getOutput(key);
       let defaultOutput = stackRef.getOutput("default");
@@ -1875,6 +1951,34 @@ function Make($star) {
       return resolveHookedApi();
     }
   };
+  let deployWaiterDelay = ms => new Promise((resolve, param) => {
+    setTimeout(() => resolve(), ms);
+  });
+  let waitForApiFragmentPush = async (endpoint, region, pluginId, sinceAt) => {
+    let loop = async attempt => {
+      if (attempt >= 90) {
+        return Stdlib_JsError.throwWithMessage(`Timed out (>3min) waiting for the platform to push ` + pluginId + `'s API fragment — check the AdminEventCollector Lambda logs.`);
+      }
+      let data = await Util_AppSync_Caller$ReventlessAws.sendQuery(endpoint, region, "query { Platform_ApiFragments { pluginId pushStatus pushMessage pushedAt } }");
+      let row = Stdlib_Option.flatMap(Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(data, Stdlib_JSON.Decode.object), d => d["Platform_ApiFragments"]), Stdlib_JSON.Decode.array), []).find(entry => Primitive_object.equal(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(entry), e => e["pluginId"]), Stdlib_JSON.Decode.string), pluginId)), Stdlib_JSON.Decode.object);
+      if (row !== undefined) {
+        let field = k => Stdlib_Option.getOr(Stdlib_Option.flatMap(row[k], Stdlib_JSON.Decode.string), "");
+        let status = field("pushStatus");
+        let fresh = field("pushedAt") >= sinceAt;
+        if (fresh && status === "ok") {
+          return log.info("registerFragmentViaApi", undefined, pluginId + ` schema push confirmed ACTIVE`);
+        } else if (fresh && status === "error") {
+          return Stdlib_JsError.throwWithMessage(`Schema push failed for ` + pluginId + `: ` + field("pushMessage"));
+        } else {
+          await deployWaiterDelay(2000);
+          return await loop(attempt + 1 | 0);
+        }
+      }
+      await deployWaiterDelay(2000);
+      return await loop(attempt + 1 | 0);
+    };
+    return await loop(0);
+  };
   let hooks_subscriptionInfraHook = Stdlib_Option.map(domainEventsApiOpt, eventsApi => (params => {
     let allEventTopics = params.allEventTopics;
     let allQueryDbs = params.allQueryDbs;
@@ -1896,22 +2000,67 @@ function Make($star) {
   let hooks_preResolversSchemaHook = (name, version, pluginFragment) => {
     log.info("preResolversSchemaHook", undefined, `Pushing schema for plugin ` + name + `@` + version + ` to AppSync`);
     let capturedDeployTarget = currentDeployTarget.contents;
-    let match;
+    if (platformStackRef !== undefined) {
+      let apiTargetName;
+      apiTargetName = capturedDeployTarget === "Domain" ? "Domain" : "Platform";
+      let match = apiConfigRef.contents;
+      let platformApi = match !== undefined ? match.platformApi : domainApi;
+      let region = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
+      return Output$Pulumi.flatMap(Output$Pulumi.flatMap(platformApi, api => api.uris), uris => {
+        let endpoint = uris.GRAPHQL;
+        let run = async () => {
+          let at = new Date().toISOString();
+          let variables = {
+            id: name,
+            pluginId: name,
+            fragment: {
+              encoded: pluginFragment.encoded,
+              protocol: pluginFragment.protocol
+            },
+            apiTarget: Util_AppSync_Caller$ReventlessAws.graphqlEnum(apiTargetName),
+            at: at
+          };
+          log.info("registerFragmentViaApi", undefined, `Registering API fragment for ` + name + ` (` + apiTargetName + `) via ` + endpoint);
+          let result = await Util_AppSync_Caller$ReventlessAws.sendMutation(endpoint, region, "Platform_RegisterApiFragment", "{ __typename ... on CommandAccepted { eventCount } ... on CommandRejected { errorCode errorDetail } }", variables);
+          let outcome = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(result, Stdlib_JSON.Decode.object), d => d["Platform_RegisterApiFragment"]), Stdlib_JSON.Decode.object);
+          if (outcome === undefined) {
+            return await waitForApiFragmentPush(endpoint, region, name, at);
+          }
+          let typename = Stdlib_Option.getOr(Stdlib_Option.flatMap(outcome["__typename"], Stdlib_JSON.Decode.string), "");
+          switch (typename) {
+            case "CommandAccepted" :
+              let eventCount = Stdlib_Option.getOr(Stdlib_Option.flatMap(outcome["eventCount"], Stdlib_JSON.Decode.float), 0.0);
+              if (eventCount > 0.0) {
+                return await waitForApiFragmentPush(endpoint, region, name, at);
+              } else {
+                return log.info("registerFragmentViaApi", undefined, name + ` fragment unchanged — no push needed`);
+              }
+            case "CommandRejected" :
+              let code = Stdlib_Option.getOr(Stdlib_Option.flatMap(outcome["errorCode"], Stdlib_JSON.Decode.string), "unknown");
+              return Stdlib_JsError.throwWithMessage(`RegisterApiFragment rejected for ` + name + `: ` + code);
+            default:
+              return await waitForApiFragmentPush(endpoint, region, name, at);
+          }
+        };
+        return run();
+      });
+    }
+    let match$1;
     if (capturedDeployTarget === "Domain") {
-      match = [
+      match$1 = [
         "deploy-schema:",
         domainApi
       ];
     } else {
-      let match$1 = apiConfigRef.contents;
-      let api = match$1 !== undefined ? match$1.platformApi : domainApi;
-      match = [
+      let match$2 = apiConfigRef.contents;
+      let api = match$2 !== undefined ? match$2.platformApi : domainApi;
+      match$1 = [
         "deploy-schema-platform:",
         api
       ];
     }
-    let targetApi = match[1];
-    let schemaPrefix = match[0];
+    let targetApi = match$1[1];
+    let schemaPrefix = match$1[0];
     let readStackRefString = (stackRef, key) => {
       let direct = stackRef.getOutput(key);
       let defaultOutput = stackRef.getOutput("default");

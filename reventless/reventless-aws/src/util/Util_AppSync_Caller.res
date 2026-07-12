@@ -225,9 +225,17 @@ let sendMutation = async (
   let response = await fetch(endpoint, {method: "POST", headers: signed.headers, body: signed.body})
 
   let json = await response->responseJson
-  switch json->JSON.Decode.object->Option.flatMap(d => d->Dict.get("errors")) {
-  | Some(errors) =>
-    log.error(~comp="Util_AppSync_Caller", ~data=errors, `${mutation} errors`)
-  | None => ()
+  // Returns the `data` object (or None on GraphQL errors) so a caller can inspect
+  // the result — e.g. the deploy-time RegisterApiFragment caller reads the
+  // CommandResult __typename / eventCount to decide whether to wait for a push.
+  switch json->JSON.Decode.object {
+  | Some(d) =>
+    switch d->Dict.get("errors") {
+    | Some(errors) =>
+      log.error(~comp="Util_AppSync_Caller", ~data=errors, `${mutation} errors`)
+      None
+    | None => d->Dict.get("data")
+    }
+  | None => None
   }
 }
