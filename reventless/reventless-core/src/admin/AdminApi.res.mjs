@@ -5,6 +5,7 @@ import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs
 import * as GraphQL_Stitcher$ReventlessCore from "../components/Api/GraphQL_Stitcher.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "../plugin/api/PluginBaseFragment.res.mjs";
 import * as Platform_UIFragmentsApi$ReventlessCore from "./Platform_UIFragmentsApi.res.mjs";
+import * as Platform_ApiFragmentsApi$ReventlessCore from "./Platform_ApiFragmentsApi.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../components/Api/GraphQL_FragmentGenerator.res.mjs";
 import * as Plugin_SubscriptionSchema$ReventlessCore from "../plugin/component/Plugin_SubscriptionSchema.res.mjs";
 import * as Platform_ComponentDefinitionsApi$ReventlessCore from "./Platform_ComponentDefinitionsApi.res.mjs";
@@ -76,11 +77,12 @@ function baseFragment(cloner) {
   let parts = GraphQL_Stitcher$ReventlessCore.decode(base);
   let match = Plugin_SubscriptionSchema$ReventlessCore.sourceCFields(PluginBaseFragment$ReventlessCore.pluginAggregateMutationEntries);
   return GraphQL_Stitcher$ReventlessCore.encode({
-    types: parts.types.concat(uiFragmentSubscriptionTypes).concat(pluginStatusSubscriptionTypes).concat(Platform_ComponentDefinitionsApi$ReventlessCore.sdlTypes).concat(Platform_UIFragmentsApi$ReventlessCore.sdlTypes),
+    types: parts.types.concat(uiFragmentSubscriptionTypes).concat(pluginStatusSubscriptionTypes).concat(Platform_ComponentDefinitionsApi$ReventlessCore.sdlTypes).concat(Platform_UIFragmentsApi$ReventlessCore.sdlTypes).concat(Platform_ApiFragmentsApi$ReventlessCore.sdlTypes),
     mutations: parts.mutations.concat(uiFragmentMutationFields).concat(pluginStatusMutationFields),
     queries: parts.queries.concat([
       Platform_ComponentDefinitionsApi$ReventlessCore.sdlQueryField,
-      Platform_UIFragmentsApi$ReventlessCore.sdlQueryField
+      Platform_UIFragmentsApi$ReventlessCore.sdlQueryField,
+      Platform_ApiFragmentsApi$ReventlessCore.sdlQueryField
     ]),
     subscriptions: [
       uiFragmentSubscriptionField,

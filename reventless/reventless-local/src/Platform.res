@@ -61,6 +61,22 @@ let decodeUiFragmentRegistryEventEnvelope = (
   | exception _ => None
   }
 
+// Same envelope shape for the ApiFragmentRegistry slice's events on the shared
+// admin DcbEventLog topic. Returns None for envelopes of other admin slices
+// (schema mismatch), so a single subscriber can try both decoders.
+let decodeApiFragmentRegistryEventEnvelope = (
+  eventJson: JSON.t,
+): option<ReventlessCore.ApiFragmentRegistry.event> =>
+  switch eventJson
+  ->JSON.Decode.object
+  ->Option.flatMap(d => d->Dict.get("event"))
+  ->Option.map(payload =>
+    payload->S.parseJsonOrThrow(ReventlessCore.ApiFragmentRegistry.eventSchema)
+  ) {
+  | result => result
+  | exception _ => None
+  }
+
 // Configurable platform — set silent=true to suppress diagnostic warnings in tests,
 // splitApi=true to serve core and plugin APIs on separate ports,
 // backend=Backend.Sqlite({...}) to opt into file-backed SQLite persistence.
@@ -916,6 +932,45 @@ module MakeWithConfig = (
     Bus.dispatchCommand(adminDcbCmdTopicKey, ReventlessCore.CommandTopic.encodeCommandJson(cmdJson))
   }
 
+  // Same in-process path for the ApiFragmentRegistry slice (the API-schema
+  // fragment registry). On the real platform the deploy is the caller (SigV4
+  // RegisterApiFragment mutation); locally we dispatch straight to the shared
+  // admin DCB command topic, the analogue used for the UI registry above.
+  let dispatchApiFragmentCommand = (
+    ~pluginName: string,
+    ~command: ReventlessCore.ApiFragmentRegistry.command,
+  ) => {
+    let cmdJson: Reventless.Message.commandJson = {
+      id: pluginName,
+      meta: ReventlessCore.Message.generateMeta(~service=ReventlessCore.ApiFragmentRegistry.name),
+      commandJson: command->S.reverseConvertToJsonOrThrow(
+        ReventlessCore.ApiFragmentRegistry.commandSchema,
+      ),
+    }
+    Bus.dispatchCommand(adminDcbCmdTopicKey, ReventlessCore.CommandTopic.encodeCommandJson(cmdJson))
+  }
+
+  // Platform_ApiFragments status-query resolver — scans the ApiFragments
+  // StateViewSlice QueryDb (populated by the ApiFragmentRegistry slice's
+  // projection) and encodes via the shared Platform_ApiFragmentsApi encoder, so
+  // the deploy-facing status shape matches AWS. Keyed by bare plugin name (one
+  // row per plugin), so no version collapse is needed. Registered at each admin
+  // server site below.
+  let apiFragmentsQueryResolver = async (_root, _args, _ctx): JSON.t => {
+    let items = switch Bus.getQueryDbScan(ReventlessCore.ApiFragments.name) {
+    | Some(scanAll) => scanAll()
+    | None => []
+    }
+    items
+    ->Array.filterMap(item =>
+      switch item->S.parseOrThrow(ReventlessCore.ApiFragments.stateSchema) {
+      | state => Some(ReventlessCore.Platform_ApiFragmentsApi.encodeApiFragmentEntry(state))
+      | exception _ => None
+      }
+    )
+    ->JSON.Encode.array
+  }
+
   // Subscription topics for the admin live-update channels.
   let pluginStatusSubTopic = "onPluginStatusChange"
   let uiFragmentSubTopic = "onUIFragmentChange"
@@ -1004,6 +1059,29 @@ module MakeWithConfig = (
             )
           | Some(UiFragmentDeregistered({pluginId})) =>
             publishUIFragment(~name=pluginId, ~changeKind="Deregistered", ~manifest=JSON.Encode.null)
+          | None => ()
+          }
+          // Local single writer for the API-schema fragment registry. On AWS the
+          // subscriber stitches + pushes the schema then records the outcome; on
+          // local the plugin's fields are already served by resolver registration,
+          // so the "push" is a no-op and we simply record success — the honest
+          // status for an in-process schema. Only Registered/Updated trigger a
+          // record (never PushRecorded — no re-entrant loop) and the record's own
+          // event decodes here as a no-op.
+          switch decodeApiFragmentRegistryEventEnvelope(eventJson) {
+          | Some(ApiFragmentRegistered({pluginId}))
+          | Some(ApiFragmentUpdated({pluginId})) =>
+            let _ = dispatchApiFragmentCommand(
+              ~pluginName=pluginId,
+              ~command=ReventlessCore.ApiFragmentRegistry.RecordApiFragmentPush({
+                pluginId,
+                ok: true,
+                message: "",
+                at: Date.make()->Date.toISOString,
+              }),
+            )
+          | Some(ApiFragmentDeregistered(_))
+          | Some(ApiFragmentPushRecorded(_))
           | None => ()
           }
         }
@@ -1096,6 +1174,25 @@ module MakeWithConfig = (
               ~command=ReventlessCore.UiFragmentRegistry.RegisterUiFragment({
                 pluginId: pluginName,
                 manifest,
+                at: Date.make()->Date.toISOString,
+              }),
+            )
+          | None => ()
+          }
+          // Register the API-schema fragment with the ApiFragmentRegistry slice.
+          // On the real platform the deploy sends this as a SigV4 caller; locally
+          // connect stands in. apiTarget is Domain (mirrors pluginDefinition.kind
+          // = Domain / apiTarget = None above — the local platform has no
+          // Platform-target plugins). The subscriber below records the push as ok,
+          // since the fields are already served in-process by resolver registration.
+          switch apiSchemaFragment {
+          | Some(fragment) =>
+            let _ = dispatchApiFragmentCommand(
+              ~pluginName,
+              ~command=ReventlessCore.ApiFragmentRegistry.RegisterApiFragment({
+                pluginId: pluginName,
+                fragment,
+                apiTarget: Domain,
                 at: Date.make()->Date.toISOString,
               }),
             )
@@ -1689,6 +1786,7 @@ module MakeWithConfig = (
         ->JSON.Encode.array
       },
     )
+    queryResolvers->Dict.set("Platform_ApiFragments", apiFragmentsQueryResolver)
 
     // Composite-key / index admin query fields. Live loads from the seeded QueryDb stores.
     registerAdminItemsAndIndexResolvers(~queryResolvers, ~live=true)
@@ -1970,6 +2068,7 @@ module MakeWithConfig = (
       "Platform_UIFragments",
       async (_root, _args, _ctx): JSON.t => JSON.Encode.array([]),
     )
+    queryResolvers->Dict.set("Platform_ApiFragments", apiFragmentsQueryResolver)
     // Composite-key / index admin query fields — empty stubs in the platform-only
     // path (no plugins connected → no QueryDb seeded).
     registerAdminItemsAndIndexResolvers(~queryResolvers, ~live=false)
@@ -2165,6 +2264,7 @@ module MakeWithConfig = (
           ->JSON.Encode.array
         },
       )
+      queryResolvers->Dict.set("Platform_ApiFragments", apiFragmentsQueryResolver)
       // Platform_ComponentDefinitions resolver — SDL is already stitched into baseParts via
       // AdminApi.baseFragment so we register only the resolver here. Uses the shared
       // encoder so the dynamic-plugin admin server emits the same canonical shape as

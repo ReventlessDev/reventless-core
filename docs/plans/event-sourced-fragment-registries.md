@@ -313,9 +313,50 @@ publish/subscribe topic + service stamp verified; envelope decode verified. Note
   emits `RecordApiFragmentPush`. Generic orchestration in core; only `updateSchema` (AppSync
   push vs. local in-process rebuild) and the hosting (AdminEventCollector Lambda vs. in-process
   bus subscriber) are provider-specific.
+- **Local harmonizes the registry contract, not the schema build (scope 1, revised
+  2026-07-12).** Investigation of `DomainGraphQL_Server.rebuildSchema` disproved the original
+  scope-1 premise: on local the Query/Mutation/Subscription **fields come from resolver
+  registration** (`CommandGeneratorResolvers_GraphQL`/`QueryDbResolvers_GraphQL` register each
+  field *together with its resolver function* at plugin construction — graphql-yoga couples
+  `typeDefs`+`resolvers`); `rebuildSchema` only merges the fragment's *types*. So the
+  `apiSchemaFragment` is not the field source on local, and making the registry drive the local
+  schema *build* would require decoupling field-SDL from resolver registration — a local-internals
+  refactor that belongs to scope 2. **Phase 2 local scope:** (a) `connectPlugin` dispatches
+  `RegisterApiFragment(fragment, Domain)` so the registry is real in-process; (b) a local
+  single-writer subscriber on the admin DcbEventLog reacts to `ApiFragment*` events and dispatches
+  `RecordApiFragmentPush(ok=true)` — the "push" is a no-op locally because the fields are already
+  served by resolver registration, so recording success is honest and avoids a redundant rebuild;
+  (c) a shared `Platform_ApiFragments` status query resolves on local by scanning the ApiFragments
+  view. Uniform in *shape* (register → subscriber → record) and in the registry/status contract;
+  the actual reactive schema *build* is AWS-only in Phase 2.
+- **SCOPE 2 — FOLLOW-UP (deferred, do NOT fold into Phase 2):** harmonize the local schema build
+  + deploy lifecycle to mirror AWS — decouple field-SDL from resolver registration so the registry
+  drives the local schema, and stage separate platform-deploy then per-plugin-deploy phases
+  instead of `makePlatform(~plugins=[…])` constructing everything at once. Valuable for test
+  fidelity; a substantial reventless-local refactor, tracked in
+  `docs/plans/Backlog/harmonize-local-deploy-lifecycle.md`.
 
-**Remaining work:** Phase 2 increments 2c–2e (single-writer subscriber + bootstrap SDL
-mutations + status query + runtime re-stitcher retarget), Phases 3–4.
+- **Increment 2c (this commit) — local registry population + status query (scope 1).**
+  - Core: `Platform_ApiFragmentsApi.res` — shared SDL type + `Platform_ApiFragments` query
+    field + status-only encoder over `ApiFragments.state` (pluginId, apiTarget, pushStatus,
+    pushMessage, pushedAt, registeredAt, updatedAt — NOT the encoded SDL). The query field +
+    type join `AdminApi.baseFragment`, so they're in the admin schema on both platforms (and
+    the bootstrap seed). Golden encoder test pins the wire shape.
+  - Local: `connectPlugin` dispatches `RegisterApiFragment(fragment, Domain)` (mirroring
+    `dispatchUiFragmentCommand`); a record-ok single-writer subscriber on the admin DcbEventLog
+    reacts to `ApiFragmentRegistered`/`Updated` and dispatches `RecordApiFragmentPush(ok=true)`
+    (the push is a no-op locally — fields already served by resolver registration — so success
+    is honest; no re-entrant loop since `PushRecorded` is ignored); the `Platform_ApiFragments`
+    resolver scans the `ApiFragments` view at all three admin server sites.
+  - Validated live (hybrid, in-memory): `Platform_ApiFragments` returns Catalog + Ordering with
+    `apiTarget:"Domain"`, `pushStatus:"ok"`; UI query + domain plugin fields intact; zero boot
+    errors. Suites green: core 517 (+7), aws 214, local 508.
+  - NOT here: the AWS resolver for `Platform_ApiFragments` and the reactive push (2e); the
+    Register/Deregister *mutations* + deploy caller (2d); the local schema *build* still comes
+    from resolver registration (registry-as-source is scope 2).
+
+**Remaining work:** Phase 2 increments 2d (Register/Deregister mutations + IAM-callable bootstrap
+SDL + AWS status-query resolver) and 2e (AWS reactive single writer), Phases 3–4.
 
 ## Phasing
 

@@ -74,6 +74,7 @@ import * as LocalDcbEventLogStorage$ReventlessLocal from "./adapter/DcbEventLog/
 import * as LocalRuntimeEnvironment$ReventlessLocal from "./adapter/Runtime/LocalRuntimeEnvironment.res.mjs";
 import * as LocalScheduledPublisher$ReventlessLocal from "./adapter/Scheduler/LocalScheduledPublisher.res.mjs";
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
+import * as Platform_ApiFragmentsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_ApiFragmentsApi.res.mjs";
 import * as LocalCommandTopicChannel$ReventlessLocal from "./adapter/CommandTopic/LocalCommandTopicChannel.res.mjs";
 import * as LocalEventTopicPublisher$ReventlessLocal from "./adapter/EventTopic/LocalEventTopicPublisher.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateChangeSlice_Builder.res.mjs";
@@ -116,6 +117,14 @@ function decodePluginEventEnvelope(eventJson) {
 function decodeUiFragmentRegistryEventEnvelope(eventJson) {
   try {
     return Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson), d => d["event"]), payload => S.parseJsonOrThrow(payload, UiFragmentRegistry$ReventlessCore.eventSchema));
+  } catch (exn) {
+    return;
+  }
+}
+
+function decodeApiFragmentRegistryEventEnvelope(eventJson) {
+  try {
+    return Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson), d => d["event"]), payload => S.parseJsonOrThrow(payload, ApiFragmentRegistry$ReventlessCore.eventSchema));
   } catch (exn) {
     return;
   }
@@ -890,6 +899,29 @@ function MakeWithConfig(Config) {
     };
     return Bus.dispatchCommand(adminDcbCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
   };
+  let dispatchApiFragmentCommand = (pluginName, command) => {
+    let cmdJson_meta = Message$ReventlessCore.generateMeta(ApiFragmentRegistry$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, ApiFragmentRegistry$ReventlessCore.commandSchema);
+    let cmdJson = {
+      id: pluginName,
+      meta: cmdJson_meta,
+      commandJson: cmdJson_commandJson
+    };
+    return Bus.dispatchCommand(adminDcbCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
+  };
+  let apiFragmentsQueryResolver = async (_root, _args, _ctx) => {
+    let scanAll = Bus.getQueryDbScan(ApiFragments$ReventlessCore.name);
+    let items = scanAll !== undefined ? scanAll() : [];
+    return Stdlib_Array.filterMap(items, item => {
+      let state;
+      try {
+        state = S.parseOrThrow(item, ApiFragments$ReventlessCore.stateSchema);
+      } catch (exn) {
+        return;
+      }
+      return Platform_ApiFragmentsApi$ReventlessCore.encodeApiFragmentEntry(state);
+    });
+  };
   let pluginStatusSubTopic = "onPluginStatusChange";
   let uiFragmentSubTopic = "onUIFragmentChange";
   let adminDcbEventTopicKey = ComponentType$ReventlessCore.name("Admin", "EventTopic");
@@ -950,17 +982,39 @@ function MakeWithConfig(Config) {
         return;
       }
       let match = decodeUiFragmentRegistryEventEnvelope(eventJson);
-      if (match === undefined) {
+      if (match !== undefined) {
+        switch (match.TAG) {
+          case "UiFragmentRegistered" :
+            publishUIFragment(match.pluginId, "Registered", S.reverseConvertToJsonOrThrow(match.manifest, Plugin$Reventless.uiFragmentManifestSchema));
+            break;
+          case "UiFragmentUpdated" :
+            publishUIFragment(match.pluginId, "Updated", S.reverseConvertToJsonOrThrow(match.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
+            break;
+          case "UiFragmentDeregistered" :
+            publishUIFragment(match.pluginId, "Deregistered", null);
+            break;
+        }
+      }
+      let match$1 = decodeApiFragmentRegistryEventEnvelope(eventJson);
+      if (match$1 === undefined) {
         return;
       }
-      switch (match.TAG) {
-        case "UiFragmentRegistered" :
-          return publishUIFragment(match.pluginId, "Registered", S.reverseConvertToJsonOrThrow(match.manifest, Plugin$Reventless.uiFragmentManifestSchema));
-        case "UiFragmentUpdated" :
-          return publishUIFragment(match.pluginId, "Updated", S.reverseConvertToJsonOrThrow(match.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
-        case "UiFragmentDeregistered" :
-          return publishUIFragment(match.pluginId, "Deregistered", null);
+      switch (match$1.TAG) {
+        case "ApiFragmentRegistered" :
+        case "ApiFragmentUpdated" :
+          break;
+        case "ApiFragmentDeregistered" :
+        case "ApiFragmentPushRecorded" :
+          return;
       }
+      let pluginId = match$1.pluginId;
+      dispatchApiFragmentCommand(pluginId, {
+        TAG: "RecordApiFragmentPush",
+        pluginId: pluginId,
+        ok: true,
+        message: "",
+        at: new Date().toISOString()
+      });
     });
   };
   let connectPlugin = pluginComponents => {
@@ -977,6 +1031,7 @@ function MakeWithConfig(Config) {
         outputs.pluginStructure
       ]).apply(param => {
         let uiFragments = param[6];
+        let apiSchemaFragment = param[5];
         let id = param[0];
         let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
         let pluginDefinition = {
@@ -1001,7 +1056,7 @@ function MakeWithConfig(Config) {
           }),
           eventCollector: param[2].name,
           extensionProtocols: [],
-          apiSchemaFragment: param[5],
+          apiSchemaFragment: apiSchemaFragment,
           apiTarget: undefined,
           structure: param[7],
           dcbEventLog: undefined,
@@ -1016,6 +1071,15 @@ function MakeWithConfig(Config) {
             TAG: "RegisterUiFragment",
             pluginId: pluginName,
             manifest: uiFragments,
+            at: new Date().toISOString()
+          });
+        }
+        if (apiSchemaFragment !== undefined) {
+          dispatchApiFragmentCommand(pluginName, {
+            TAG: "RegisterApiFragment",
+            pluginId: pluginName,
+            fragment: apiSchemaFragment,
+            apiTarget: "Domain",
             at: new Date().toISOString()
           });
           return;
@@ -1448,6 +1512,7 @@ function MakeWithConfig(Config) {
       });
       return Object.values(latestByName).map(param => Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(param[1]));
     };
+    queryResolvers["Platform_ApiFragments"] = apiFragmentsQueryResolver;
     registerAdminItemsAndIndexResolvers(queryResolvers, true);
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let argId = args => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
@@ -1627,6 +1692,7 @@ function MakeWithConfig(Config) {
     queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
     queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => [];
+    queryResolvers["Platform_ApiFragments"] = apiFragmentsQueryResolver;
     registerAdminItemsAndIndexResolvers(queryResolvers, false);
     adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
@@ -1764,6 +1830,7 @@ function MakeWithConfig(Config) {
           return Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(state);
         });
       };
+      queryResolvers["Platform_ApiFragments"] = apiFragmentsQueryResolver;
       queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
       registerAdminItemsAndIndexResolvers(queryResolvers, true);
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
@@ -2620,6 +2687,29 @@ function Make($star) {
     };
     return Bus.dispatchCommand(adminDcbCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
   };
+  let dispatchApiFragmentCommand = (pluginName, command) => {
+    let cmdJson_meta = Message$ReventlessCore.generateMeta(ApiFragmentRegistry$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, ApiFragmentRegistry$ReventlessCore.commandSchema);
+    let cmdJson = {
+      id: pluginName,
+      meta: cmdJson_meta,
+      commandJson: cmdJson_commandJson
+    };
+    return Bus.dispatchCommand(adminDcbCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
+  };
+  let apiFragmentsQueryResolver = async (_root, _args, _ctx) => {
+    let scanAll = Bus.getQueryDbScan(ApiFragments$ReventlessCore.name);
+    let items = scanAll !== undefined ? scanAll() : [];
+    return Stdlib_Array.filterMap(items, item => {
+      let state;
+      try {
+        state = S.parseOrThrow(item, ApiFragments$ReventlessCore.stateSchema);
+      } catch (exn) {
+        return;
+      }
+      return Platform_ApiFragmentsApi$ReventlessCore.encodeApiFragmentEntry(state);
+    });
+  };
   let pluginStatusSubTopic = "onPluginStatusChange";
   let uiFragmentSubTopic = "onUIFragmentChange";
   let adminDcbEventTopicKey = ComponentType$ReventlessCore.name("Admin", "EventTopic");
@@ -2680,17 +2770,39 @@ function Make($star) {
         return;
       }
       let match = decodeUiFragmentRegistryEventEnvelope(eventJson);
-      if (match === undefined) {
+      if (match !== undefined) {
+        switch (match.TAG) {
+          case "UiFragmentRegistered" :
+            publishUIFragment(match.pluginId, "Registered", S.reverseConvertToJsonOrThrow(match.manifest, Plugin$Reventless.uiFragmentManifestSchema));
+            break;
+          case "UiFragmentUpdated" :
+            publishUIFragment(match.pluginId, "Updated", S.reverseConvertToJsonOrThrow(match.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
+            break;
+          case "UiFragmentDeregistered" :
+            publishUIFragment(match.pluginId, "Deregistered", null);
+            break;
+        }
+      }
+      let match$1 = decodeApiFragmentRegistryEventEnvelope(eventJson);
+      if (match$1 === undefined) {
         return;
       }
-      switch (match.TAG) {
-        case "UiFragmentRegistered" :
-          return publishUIFragment(match.pluginId, "Registered", S.reverseConvertToJsonOrThrow(match.manifest, Plugin$Reventless.uiFragmentManifestSchema));
-        case "UiFragmentUpdated" :
-          return publishUIFragment(match.pluginId, "Updated", S.reverseConvertToJsonOrThrow(match.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
-        case "UiFragmentDeregistered" :
-          return publishUIFragment(match.pluginId, "Deregistered", null);
+      switch (match$1.TAG) {
+        case "ApiFragmentRegistered" :
+        case "ApiFragmentUpdated" :
+          break;
+        case "ApiFragmentDeregistered" :
+        case "ApiFragmentPushRecorded" :
+          return;
       }
+      let pluginId = match$1.pluginId;
+      dispatchApiFragmentCommand(pluginId, {
+        TAG: "RecordApiFragmentPush",
+        pluginId: pluginId,
+        ok: true,
+        message: "",
+        at: new Date().toISOString()
+      });
     });
   };
   let connectPlugin = pluginComponents => {
@@ -2707,6 +2819,7 @@ function Make($star) {
         outputs.pluginStructure
       ]).apply(param => {
         let uiFragments = param[6];
+        let apiSchemaFragment = param[5];
         let id = param[0];
         let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
         let pluginDefinition = {
@@ -2731,7 +2844,7 @@ function Make($star) {
           }),
           eventCollector: param[2].name,
           extensionProtocols: [],
-          apiSchemaFragment: param[5],
+          apiSchemaFragment: apiSchemaFragment,
           apiTarget: undefined,
           structure: param[7],
           dcbEventLog: undefined,
@@ -2746,6 +2859,15 @@ function Make($star) {
             TAG: "RegisterUiFragment",
             pluginId: pluginName,
             manifest: uiFragments,
+            at: new Date().toISOString()
+          });
+        }
+        if (apiSchemaFragment !== undefined) {
+          dispatchApiFragmentCommand(pluginName, {
+            TAG: "RegisterApiFragment",
+            pluginId: pluginName,
+            fragment: apiSchemaFragment,
+            apiTarget: "Domain",
             at: new Date().toISOString()
           });
           return;
@@ -3173,6 +3295,7 @@ function Make($star) {
       });
       return Object.values(latestByName).map(param => Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(param[1]));
     };
+    queryResolvers["Platform_ApiFragments"] = apiFragmentsQueryResolver;
     registerAdminItemsAndIndexResolvers(queryResolvers, true);
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let argId = args => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
@@ -3345,6 +3468,7 @@ function Make($star) {
     queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
     queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => [];
+    queryResolvers["Platform_ApiFragments"] = apiFragmentsQueryResolver;
     registerAdminItemsAndIndexResolvers(queryResolvers, false);
     adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
@@ -3480,6 +3604,7 @@ function Make($star) {
           return Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(state);
         });
       };
+      queryResolvers["Platform_ApiFragments"] = apiFragmentsQueryResolver;
       queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
       registerAdminItemsAndIndexResolvers(queryResolvers, true);
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
@@ -3576,6 +3701,7 @@ export {
   platformMCPRef,
   decodePluginEventEnvelope,
   decodeUiFragmentRegistryEventEnvelope,
+  decodeApiFragmentRegistryEventEnvelope,
   MakeWithConfig,
   Make,
 }
