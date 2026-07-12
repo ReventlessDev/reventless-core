@@ -453,7 +453,8 @@ function MakeWithConfig(Config) {
     types: [],
     mutations: [],
     queries: [],
-    subscriptions: []
+    subscriptions: [],
+    subscriptionSources: []
   });
   let Make$8 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make({
@@ -671,7 +672,7 @@ function MakeWithConfig(Config) {
         let runSchemaPush = () => writeAndScanFragments().then(async allPluginFragments => {
           let baseFragment;
           baseFragment = capturedDeployTarget === "Domain" && Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", undefined);
-          let sdl = AppSync_Adapter$ReventlessAws.stampSharedIamTypes(GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments));
+          let sdl = AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(baseFragment, allPluginFragments);
           let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
           let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
           let client = AppSync_Adapter$ReventlessAws.getClient();
@@ -718,7 +719,7 @@ function MakeWithConfig(Config) {
       );
     if (targetApiOpt !== undefined) {
       let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", undefined);
-      let sdl = AppSync_Adapter$ReventlessAws.stampSharedIamTypes(GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []));
+      let sdl = AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(adminBaseFragment, []);
       return Output$Pulumi.flatMap(Pulumi.all([
         targetApiOpt,
         adminBarrier
@@ -1076,7 +1077,7 @@ function MakeWithConfig(Config) {
         }
       });
       let baseFragment = Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", undefined);
-      let sdl = AppSync_Adapter$ReventlessAws.stampSharedIamTypes(GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, fragments));
+      let sdl = AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(baseFragment, fragments);
       return await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(AppSync_Adapter$ReventlessAws.getClient(), {
         apiId: apiId,
         definition: sdl
@@ -1691,7 +1692,8 @@ function Make($star) {
     types: [],
     mutations: [],
     queries: [],
-    subscriptions: []
+    subscriptions: [],
+    subscriptionSources: []
   });
   let Make$9 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make({
@@ -1908,7 +1910,7 @@ function Make($star) {
         let runSchemaPush = () => writeAndScanFragments().then(async allPluginFragments => {
           let baseFragment;
           baseFragment = capturedDeployTarget === "Domain" ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", undefined);
-          let sdl = AppSync_Adapter$ReventlessAws.stampSharedIamTypes(GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments));
+          let sdl = AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(baseFragment, allPluginFragments);
           let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
           let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
           let client = AppSync_Adapter$ReventlessAws.getClient();
@@ -1953,7 +1955,7 @@ function Make($star) {
     let targetApiOpt = match !== undefined ? match.platformApi : undefined;
     if (targetApiOpt !== undefined) {
       let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", undefined);
-      let sdl = AppSync_Adapter$ReventlessAws.stampSharedIamTypes(GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []));
+      let sdl = AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(adminBaseFragment, []);
       return Output$Pulumi.flatMap(Pulumi.all([
         targetApiOpt,
         adminBarrier
@@ -2294,7 +2296,7 @@ function Make($star) {
           return;
         }
       });
-      let sdl = AppSync_Adapter$ReventlessAws.stampSharedIamTypes(GraphQL_Stitcher$ReventlessCore.stitch(emptyBaseFragment, fragments));
+      let sdl = AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(emptyBaseFragment, fragments);
       return await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(AppSync_Adapter$ReventlessAws.getClient(), {
         apiId: apiId,
         definition: sdl

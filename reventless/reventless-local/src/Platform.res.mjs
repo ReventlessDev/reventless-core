@@ -683,7 +683,8 @@ function MakeWithConfig(Config) {
     types: [],
     mutations: [],
     queries: [],
-    subscriptions: []
+    subscriptions: [],
+    subscriptionSources: []
   });
   let Make$12 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make(LocalGraphQL_Adapter$ReventlessLocal);
@@ -1472,8 +1473,8 @@ function MakeWithConfig(Config) {
     platformGraphQL.registerMutations(adminMutationSdl(baseParts.mutations), mutationResolvers);
     adminRegisteredServers.contents.push(platformGraphQL);
     platformGraphQL.registerSubscriptions([
-      "  onUIFragmentChange: UIFragmentChangeEvent",
-      "  onPluginStatusChange: PluginStatusChangeEvent"
+      AdminApi$ReventlessCore.uiFragmentSubscriptionField,
+      AdminApi$ReventlessCore.pluginStatusSubscriptionField
     ], Object.fromEntries([
       [
         "onUIFragmentChange",
@@ -2344,7 +2345,8 @@ function Make($star) {
     types: [],
     mutations: [],
     queries: [],
-    subscriptions: []
+    subscriptions: [],
+    subscriptionSources: []
   });
   let Make$13 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make(LocalGraphQL_Adapter$ReventlessLocal);
@@ -3127,8 +3129,8 @@ function Make($star) {
     platformGraphQL.registerMutations(adminMutationSdl(baseParts.mutations), mutationResolvers);
     adminRegisteredServers.contents.push(platformGraphQL);
     platformGraphQL.registerSubscriptions([
-      "  onUIFragmentChange: UIFragmentChangeEvent",
-      "  onPluginStatusChange: PluginStatusChangeEvent"
+      AdminApi$ReventlessCore.uiFragmentSubscriptionField,
+      AdminApi$ReventlessCore.pluginStatusSubscriptionField
     ], Object.fromEntries([
       [
         "onUIFragmentChange",

@@ -17,7 +17,6 @@ function makeFieldResolver(pubSub, topic) {
 }
 
 function registerAll(server, sdlFields, sourceAEntries, sourceBEntries, pubSub) {
-  let cleanedFields = sdlFields.map(field => field.split("\n").filter(line => !line.includes("@aws_subscribe")).join("\n"));
   let resolvers = {};
   sourceAEntries.forEach(param => {
     resolvers[param.fieldName] = makeFieldResolver(pubSub, param.topic);
@@ -25,7 +24,7 @@ function registerAll(server, sdlFields, sourceAEntries, sourceBEntries, pubSub) 
   sourceBEntries.forEach(param => {
     resolvers[param.fieldName] = makeFieldResolver(pubSub, param.topic);
   });
-  server.registerSubscriptions(cleanedFields, resolvers);
+  server.registerSubscriptions(sdlFields, resolvers);
   server.registerTypes(["scalar AWSJSON"]);
 }
 

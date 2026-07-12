@@ -590,6 +590,7 @@ module MakeWithConfig = (
     mutations: [],
     queries: [],
     subscriptions: [],
+    subscriptionSources: [],
   })
 
   module Api = {
@@ -731,10 +732,10 @@ module MakeWithConfig = (
           ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
           ~group="Admin",
         )
-        let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
+        let sdl = AppSync_Adapter.stitchWithAwsDirectives(
           ~baseFragment=adminBaseFragment,
           ~pluginFragments=[],
-        )->AppSync_Adapter.stampSharedIamTypes
+        )
         (targetApi, adminBarrier)
         ->Pulumi.Output.all2
         ->Pulumi.Output.flatMap(((api, _)) =>
@@ -960,10 +961,10 @@ module MakeWithConfig = (
                   )
                 }
               }
-              let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
+              let sdl = AppSync_Adapter.stitchWithAwsDirectives(
                 ~baseFragment,
                 ~pluginFragments=allPluginFragments,
-              )->AppSync_Adapter.stampSharedIamTypes
+              )
               let currentHash = AppSync_Adapter.sha256Hex(sdl)
               let storedHash = switch tableNameOpt {
               | Some(tn) => await readSchemaHash(~tableName=tn, ~apiId)
@@ -1659,10 +1660,10 @@ module MakeWithConfig = (
             ~group="Admin",
           )
         }
-        let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
+        let sdl = AppSync_Adapter.stitchWithAwsDirectives(
           ~baseFragment,
           ~pluginFragments=fragments,
-        )->AppSync_Adapter.stampSharedIamTypes
+        )
         await AppSync_Adapter.getClient()->AppSync_Adapter.startSchemaCreationRetrying({
           apiId,
           definition: sdl,

@@ -6,8 +6,11 @@
 open ReventlessInfra.Api
 
 // ── Source C: mutation-triggered subscriptions ────────────────────────────────
-// One field per command variant. Fires when the mutation is ACCEPTED by AppSync.
-// Uses @aws_subscribe — no additional infrastructure is needed.
+// One field per command variant. Fires when the mutation is accepted.
+// The SDL emitted here is provider-neutral; the subscription→mutation link is
+// carried as structured `subscriptionSource` metadata on the fragment. Each
+// provider adds its own wiring (AppSync appends `@aws_subscribe` at push time;
+// the local platform routes its PubSub bridge from the same metadata).
 //
 // Generated from the same mutation entries as the query/mutation SDL so that
 // field names and argument types are always in sync.
@@ -23,8 +26,13 @@ open ReventlessInfra.Api
 // return type, so the subscription field has to declare CommandResult as well.
 let sourceCFields = (
   ~mutationEntries: array<mutationSchemaEntry>,
-): array<string> => {
+): (array<string>, array<GraphQL_Stitcher.subscriptionSource>) => {
   let fields: array<string> = []
+  let sources: array<GraphQL_Stitcher.subscriptionSource> = []
+  let pushField = (fieldName: string) => {
+    fields->Array.push(`  on${fieldName}(id: ID): CommandResult`)
+    sources->Array.push({GraphQL_Stitcher.field: `on${fieldName}`, mutations: [fieldName]})
+  }
   mutationEntries->Array.forEach(entry => {
     let schema = entry.commandSchema
     switch schema {
@@ -32,20 +40,18 @@ let sourceCFields = (
       anyOf->Array.forEachWithIndex((_, i) => {
         let fieldName = entry.fieldNames->Array.get(i)->Option.getOr("")
         if fieldName->String.length > 0 {
-          let sub = `  on${fieldName}(id: ID): CommandResult\n    @aws_subscribe(mutations: ["${fieldName}"])`
-          fields->Array.push(sub)
+          pushField(fieldName)
         }
       })
     | Object(_) =>
       let fieldName = entry.fieldNames->Array.get(0)->Option.getOr("")
       if fieldName->String.length > 0 {
-        let sub = `  on${fieldName}(id: ID): CommandResult\n    @aws_subscribe(mutations: ["${fieldName}"])`
-        fields->Array.push(sub)
+        pushField(fieldName)
       }
     | _ => ()
     }
   })
-  fields
+  (fields, sources)
 }
 
 // ── Source B: state-change subscriptions ─────────────────────────────────────
@@ -87,16 +93,20 @@ let sourceAFieldsAndTypes = (
 type result = {
   subscriptionFields: array<string>,
   extraTypes: array<string>,
+  subscriptionSources: array<GraphQL_Stitcher.subscriptionSource>,
 }
 
 let generate = (
   ~mutationEntries: array<mutationSchemaEntry>,
   ~eventLogEntries: array<eventLogSchemaEntry>,
 ): result => {
-  let cFields = sourceCFields(~mutationEntries)
+  let (cFields, cSources) = sourceCFields(~mutationEntries)
   let (aFields, aTypes) = sourceAFieldsAndTypes(~eventLogEntries)
+  // Source A fields carry no source mapping — they are pushed via the
+  // provider's events channel, not triggered by a mutation.
   {
     subscriptionFields: Array.flat([cFields, aFields]),
     extraTypes: aTypes,
+    subscriptionSources: cSources,
   }
 }

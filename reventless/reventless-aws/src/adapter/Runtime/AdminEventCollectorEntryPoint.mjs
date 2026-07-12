@@ -83,7 +83,9 @@ import {
   decode as decodeFragment,
   countRootTypeFields,
   isCatastrophicSchemaShrink,
+  collectSubscriptionSources,
 } from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
+import { injectAwsSubscribe } from "@reventlessdev/reventless-aws/src/components/Api/AppSync_SdlDecorate.res.mjs";
 import { baseFragment as adminBaseFragment } from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 
@@ -518,8 +520,14 @@ function mkUpdateApiSchema(schemaTableName, apiId, clonerEnabled) {
       fragments = resolved.map((json) => json && json.apiSchemaFragment).filter(Boolean);
       log.warn(`PluginSchemaPersistence table unavailable — falling back to ${fragments.length} Connected Plugin RM fragment(s)`, { comp: "updateApiSchema" });
     }
-    const adminBase = injectAwsAuthAll(adminBaseFragment(clonerEnabled || false), "Admin");
-    const sdl = graphqlStitch(adminBase, fragments);
+    const rawAdminBase = adminBaseFragment(clonerEnabled || false);
+    const adminBase = injectAwsAuthAll(rawAdminBase, "Admin");
+    // Core fragments are dialect-neutral — append @aws_subscribe from the
+    // structured subscription→mutation metadata (collected from the raw admin
+    // base + plugin fragments) onto the stitched SDL, mirroring the deploy
+    // path's stitchWithAwsDirectives.
+    const subscriptionSources = collectSubscriptionSources(rawAdminBase, fragments);
+    const sdl = injectAwsSubscribe(graphqlStitch(adminBase, fragments), subscriptionSources);
 
     // Shrink guard — never let a transient/incomplete stitch clobber the live schema.
     const threshold = parseShrinkThreshold(process.env["RUNTIME_SCHEMA_SHRINK_THRESHOLD"]);

@@ -5,6 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as SchemaType$ReventlessCore from "./SchemaType.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
+import * as GraphQL_Stitcher$ReventlessCore from "./GraphQL_Stitcher.res.mjs";
 
 let commandResultSdlTypes = [
   `union CommandResult = CommandAccepted | CommandRejected | CommandPending`,
@@ -453,28 +454,13 @@ function generate(mutationEntries, queryEntries) {
       types.push(t);
     });
   }
-  let encoded = JSON.stringify(Object.fromEntries([
-    [
-      "types",
-      types.map(prim => prim)
-    ],
-    [
-      "mutations",
-      mutations.map(prim => prim)
-    ],
-    [
-      "queries",
-      queries.map(prim => prim)
-    ],
-    [
-      "subscriptions",
-      []
-    ]
-  ]));
-  return {
-    encoded: encoded,
-    protocol: "graphql"
-  };
+  return GraphQL_Stitcher$ReventlessCore.encode({
+    types: types,
+    mutations: mutations,
+    queries: queries,
+    subscriptions: [],
+    subscriptionSources: []
+  });
 }
 
 export {

@@ -54,8 +54,9 @@ type subscriptionEntry = {
  *   The bus→PubSub bridge for each source must already be wired (by the
  *   backend) so the topics carry payloads before this registers subscribers.
  *
- * `sdlFields`: the `subscriptions` SDL field strings from the plugin fragment
- *   (after stripping `@aws_subscribe` directives — not valid in yoga).
+ * `sdlFields`: the `subscriptions` SDL field strings from the plugin fragment.
+ *   Core emits provider-neutral subscription SDL (no provider directives), so
+ *   the fields register as-is.
  *
  * `pubSub`: the backend's PubSub instance; the resolvers subscribe on it.
  */
@@ -66,12 +67,6 @@ let registerAll = (
   ~sourceBEntries: array<subscriptionEntry>,
   ~pubSub: YG.pubSub,
 ) => {
-  // Strip @aws_subscribe directives — only valid in AppSync, not yoga
-  let cleanedFields =
-    sdlFields->Array.map(field =>
-      field->String.split("\n")->Array.filter(line => !(line->String.includes("@aws_subscribe")))->Array.join("\n")
-    )
-
   let resolvers: dict<YG.resolverFn> = Dict.make()
 
   sourceAEntries->Array.forEach(({fieldName, topic}) => {
@@ -81,7 +76,7 @@ let registerAll = (
     resolvers->Dict.set(fieldName, makeFieldResolver(~pubSub, topic))
   })
 
-  server.registerSubscriptions(~sdlFields=cleanedFields, ~resolvers)
+  server.registerSubscriptions(~sdlFields, ~resolvers)
 
   // Inject scalar AWSJSON so yoga accepts it in Source A event log types
   server.registerTypes(~sdlTypes=["scalar AWSJSON"])

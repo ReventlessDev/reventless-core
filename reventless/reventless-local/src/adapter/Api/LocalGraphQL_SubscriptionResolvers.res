@@ -2,8 +2,8 @@
 // In-process wiring of the local event bus into the promoted, transport-neutral
 // GraphQL subscription bridge (`ReventlessGraphqlServer.GraphQL_SubscriptionBridge`).
 //
-// The generic pieces — topic naming, the field-resolver builder, `registerAll`,
-// and the `@aws_subscribe` stripping — live in core-adjacent
+// The generic pieces — topic naming, the field-resolver builder, and
+// `registerAll` — live in core-adjacent
 // `GraphQL_SubscriptionBridge`, parameterized over a PubSub instance. This
 // module supplies the in-process `GraphqlYoga.createPubSub()` singleton and the
 // Bus→PubSub glue that is specific to the local in-process backend:
@@ -101,7 +101,7 @@ type subscriptionEntry = Bridge.subscriptionEntry = {
  *   Bridge must already be wired via bridgeSourceB before calling this.
  *
  * `sdlFields`: the `subscriptions` SDL field strings from the plugin fragment
- *   (after stripping `@aws_subscribe` directives — not valid in yoga).
+ *   (provider-neutral — registered as-is).
  */
 let registerAll = (
   ~server: ReventlessGraphqlServer.GraphQL_ServerInstance.t,

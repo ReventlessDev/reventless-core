@@ -4,32 +4,40 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
 function sourceCFields(mutationEntries) {
   let fields = [];
+  let sources = [];
+  let pushField = fieldName => {
+    fields.push(`  on` + fieldName + `(id: ID): CommandResult`);
+    sources.push({
+      field: `on` + fieldName,
+      mutations: [fieldName]
+    });
+  };
   mutationEntries.forEach(entry => {
     let schema = entry.commandSchema;
     switch (schema.type) {
       case "object" :
         let fieldName = Stdlib_Option.getOr(entry.fieldNames[0], "");
-        if (fieldName.length <= 0) {
+        if (fieldName.length > 0) {
+          return pushField(fieldName);
+        } else {
           return;
         }
-        let sub = `  on` + fieldName + `(id: ID): CommandResult\n    @aws_subscribe(mutations: ["` + fieldName + `"])`;
-        fields.push(sub);
-        return;
       case "union" :
         schema.anyOf.forEach((param, i) => {
           let fieldName = Stdlib_Option.getOr(entry.fieldNames[i], "");
-          if (fieldName.length <= 0) {
-            return;
+          if (fieldName.length > 0) {
+            return pushField(fieldName);
           }
-          let sub = `  on` + fieldName + `(id: ID): CommandResult\n    @aws_subscribe(mutations: ["` + fieldName + `"])`;
-          fields.push(sub);
         });
         return;
       default:
         return;
     }
   });
-  return fields;
+  return [
+    fields,
+    sources
+  ];
 }
 
 function sourceAFieldsAndTypes(eventLogEntries) {
@@ -52,14 +60,15 @@ function sourceAFieldsAndTypes(eventLogEntries) {
 }
 
 function generate(mutationEntries, eventLogEntries) {
-  let cFields = sourceCFields(mutationEntries);
-  let match = sourceAFieldsAndTypes(eventLogEntries);
+  let match = sourceCFields(mutationEntries);
+  let match$1 = sourceAFieldsAndTypes(eventLogEntries);
   return {
     subscriptionFields: [
-      cFields,
-      match[0]
+      match[0],
+      match$1[0]
     ].flat(),
-    extraTypes: match[1]
+    extraTypes: match$1[1],
+    subscriptionSources: match[1]
   };
 }
 

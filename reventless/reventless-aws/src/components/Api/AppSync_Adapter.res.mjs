@@ -21,6 +21,7 @@ import * as Auth_Cognito$ReventlessAws from "../../adapter/Auth/Auth_Cognito.res
 import * as AppSync_Error$ReventlessAws from "../../errors/AppSync_Error.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
+import * as AppSync_SdlDecorate$ReventlessAws from "./AppSync_SdlDecorate.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
@@ -341,28 +342,13 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
       return decl;
     }
   });
-  let encoded = JSON.stringify(Object.fromEntries([
-    [
-      "types",
-      augmentedTypes.map(prim => prim)
-    ],
-    [
-      "mutations",
-      augmentedMutations.map(prim => prim)
-    ],
-    [
-      "queries",
-      augmentedQueries.map(prim => prim)
-    ],
-    [
-      "subscriptions",
-      parts.subscriptions.map(prim => prim)
-    ]
-  ]));
-  return {
-    encoded: encoded,
-    protocol: "graphql"
-  };
+  return GraphQL_Stitcher$ReventlessCore.encode({
+    types: augmentedTypes,
+    mutations: augmentedMutations,
+    queries: augmentedQueries,
+    subscriptions: parts.subscriptions,
+    subscriptionSources: parts.subscriptionSources
+  });
 }
 
 function injectAwsAuthAll(fragment, group, iamFieldNamesOpt) {
@@ -383,28 +369,18 @@ function injectAwsAuthAll(fragment, group, iamFieldNamesOpt) {
     }
   });
   let augmentedSubscriptions = parts.subscriptions.map(field => field + `\n    @aws_auth(cognito_groups: ["` + group + `"])`);
-  let encoded = JSON.stringify(Object.fromEntries([
-    [
-      "types",
-      parts.types.map(prim => prim)
-    ],
-    [
-      "mutations",
-      augmentedMutations.map(prim => prim)
-    ],
-    [
-      "queries",
-      augmentedQueries.map(prim => prim)
-    ],
-    [
-      "subscriptions",
-      augmentedSubscriptions.map(prim => prim)
-    ]
-  ]));
-  return {
-    encoded: encoded,
-    protocol: "graphql"
-  };
+  return GraphQL_Stitcher$ReventlessCore.encode({
+    types: parts.types,
+    mutations: augmentedMutations,
+    queries: augmentedQueries,
+    subscriptions: augmentedSubscriptions,
+    subscriptionSources: parts.subscriptionSources
+  });
+}
+
+function stitchWithAwsDirectives(baseFragment, pluginFragments) {
+  let sources = GraphQL_Stitcher$ReventlessCore.collectSubscriptionSources(baseFragment, pluginFragments);
+  return stampSharedIamTypes(AppSync_SdlDecorate$ReventlessAws.injectAwsSubscribe(GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, pluginFragments), sources));
 }
 
 function makeApiResource(name, opts) {
@@ -444,7 +420,7 @@ function generateFragment(mutationEntries, queryEntries) {
 
 function updateSchema(api, baseFragment, pluginFragments) {
   let augmentedBaseFragment = injectAwsAuthAll(baseFragment, "Admin", undefined);
-  let sdl = stampSharedIamTypes(GraphQL_Stitcher$ReventlessCore.stitch(augmentedBaseFragment, pluginFragments));
+  let sdl = stitchWithAwsDirectives(augmentedBaseFragment, pluginFragments);
   let resultPromise = {
     contents: Promise.resolve()
   };
@@ -478,6 +454,7 @@ export {
   stampSharedIamTypes,
   injectAwsAuth,
   injectAwsAuthAll,
+  stitchWithAwsDirectives,
   makeApiResource,
   generateFragment,
   updateSchema,

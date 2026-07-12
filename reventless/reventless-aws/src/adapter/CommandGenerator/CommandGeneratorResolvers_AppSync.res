@@ -146,7 +146,8 @@ let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, Util.Lambd
   })
 
   // Source C: create Subscription.onX resolver for each mutation field.
-  // @aws_subscribe in the SDL (emitted by Plugin_SubscriptionSchema) handles
+  // @aws_subscribe in the pushed SDL (appended by AppSync_SdlDecorate from the
+  // fragment's subscription-source metadata) handles
   // delivery. AWS requires a dataSourceName even on UNIT subscription resolvers,
   // so we reuse the mutation's data source (its code never executes for subs).
   CommandSubscriptionResolvers_AppSync.make(

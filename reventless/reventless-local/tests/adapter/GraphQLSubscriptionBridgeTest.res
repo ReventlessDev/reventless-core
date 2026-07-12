@@ -7,8 +7,9 @@
 // **explicitly injected** in-process PubSub (never the local singleton) to
 // prove the parameterized-PubSub seam is behavior-preserving:
 //
-//   1. registerAll builds the subscription SDL on a fresh GraphQL_ServerInstance,
-//      strips @aws_subscribe, and injects `scalar AWSJSON`.
+//   1. registerAll builds the subscription SDL on a fresh GraphQL_ServerInstance
+//      (fields register as-is — core SDL is provider-neutral) and injects
+//      `scalar AWSJSON`.
 //   2. A resolver from makeFieldResolver, subscribed on the injected PubSub,
 //      receives a payload published via Bridge.publish on that same PubSub.
 
@@ -53,12 +54,12 @@ let yieldTick = (): promise<unit> =>
   })
 
 describe("GraphQL_SubscriptionBridge — injected PubSub seam", () => {
-  testSync("registerAll builds subscription SDL, strips @aws_subscribe, injects AWSJSON", () => {
+  testSync("registerAll builds subscription SDL as-is and injects AWSJSON", () => {
     let pubSub = GraphqlYoga.createPubSub()
     let server = Server.make(~label="SeamTest")
 
-    let sdlField =
-      "onCatalogProduct_stateChanged: CatalogProduct\n    @aws_subscribe(mutations: [\"addProduct\"])"
+    // Core emits provider-neutral subscription SDL — no directives to strip.
+    let sdlField = "onCatalogProduct_stateChanged: CatalogProduct"
 
     Bridge.registerAll(
       ~server,
@@ -71,8 +72,6 @@ describe("GraphQL_SubscriptionBridge — injected PubSub seam", () => {
     let sdl = server.buildSdl()
     expect(sdl->String.includes("type Subscription"))->toBe(true)
     expect(sdl->String.includes("onCatalogProduct_stateChanged"))->toBe(true)
-    // @aws_subscribe is AppSync-only and must be stripped for yoga.
-    expect(sdl->String.includes("@aws_subscribe"))->toBe(false)
     // AWSJSON scalar injected so yoga accepts AppSync-derived event log types.
     expect(sdl->String.includes("scalar AWSJSON"))->toBe(true)
   })

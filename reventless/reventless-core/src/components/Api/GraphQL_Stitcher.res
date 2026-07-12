@@ -4,12 +4,32 @@
 
 let log = Logger.fromEnv()
 
+// Neutral subscription→mutation source mapping. Core emits provider-free
+// subscription SDL; this record carries which mutation(s) feed a subscription
+// field so each provider can wire its own dialect (AppSync appends
+// `@aws_subscribe(mutations: [...])` at push time; the local platform routes
+// its PubSub bridge from the same mapping). Supports many-mutations-to-one
+// fan-in (e.g. onUIFragmentChange ← three Platform_UIFragment* mutations).
+type subscriptionSource = {
+  field: string,
+  mutations: array<string>,
+}
+
 type fragmentParts = {
   types: array<string>,
   mutations: array<string>,
   queries: array<string>,
   subscriptions: array<string>,
+  subscriptionSources: array<subscriptionSource>,
 }
+
+let encodeSubscriptionSource = (source: subscriptionSource): JSON.t =>
+  JSON.Encode.object(
+    Dict.fromArray([
+      ("field", JSON.Encode.string(source.field)),
+      ("mutations", JSON.Encode.array(source.mutations->Array.map(JSON.Encode.string))),
+    ]),
+  )
 
 let encode = (parts: fragmentParts): Reventless.Plugin.apiSchemaFragment => {
   let encoded =
@@ -19,6 +39,10 @@ let encode = (parts: fragmentParts): Reventless.Plugin.apiSchemaFragment => {
         ("mutations", JSON.Encode.array(parts.mutations->Array.map(JSON.Encode.string))),
         ("queries", JSON.Encode.array(parts.queries->Array.map(JSON.Encode.string))),
         ("subscriptions", JSON.Encode.array(parts.subscriptions->Array.map(JSON.Encode.string))),
+        (
+          "subscriptionSources",
+          JSON.Encode.array(parts.subscriptionSources->Array.map(encodeSubscriptionSource)),
+        ),
       ]),
     )->JSON.stringify
   {Reventless.Plugin.encoded, protocol: "graphql"}
@@ -26,7 +50,7 @@ let encode = (parts: fragmentParts): Reventless.Plugin.apiSchemaFragment => {
 
 let decode = (fragment: Reventless.Plugin.apiSchemaFragment): fragmentParts => {
   switch fragment.encoded->JSON.parseOrThrow->JSON.Decode.object {
-  | None => {types: [], mutations: [], queries: [], subscriptions: []}
+  | None => {types: [], mutations: [], queries: [], subscriptions: [], subscriptionSources: []}
   | Some(dict) =>
     let getString = (key): array<string> =>
       switch dict->Dict.get(key) {
@@ -39,13 +63,60 @@ let decode = (fragment: Reventless.Plugin.apiSchemaFragment): fragmentParts => {
         )
       | _ => []
       }
+    // Tolerant of fragments encoded before the field existed — default [].
+    let subscriptionSources = switch dict->Dict.get("subscriptionSources") {
+    | Some(JSON.Array(arr)) =>
+      arr->Array.filterMap(j =>
+        j
+        ->JSON.Decode.object
+        ->Option.flatMap(obj => {
+          let field = obj->Dict.get("field")->Option.flatMap(JSON.Decode.string)
+          let mutations = switch obj->Dict.get("mutations") {
+          | Some(JSON.Array(ms)) =>
+            ms->Array.filterMap(m =>
+              switch m {
+              | JSON.String(s) => Some(s)
+              | _ => None
+              }
+            )
+          | _ => []
+          }
+          field->Option.map(field => {field, mutations})
+        })
+      )
+    | _ => []
+    }
     {
       types: getString("types"),
       mutations: getString("mutations"),
       queries: getString("queries"),
       subscriptions: getString("subscriptions"),
+      subscriptionSources,
     }
   }
+}
+
+/**
+Union of the subscription→mutation source mappings across a base fragment and
+all plugin fragments, deduped by subscription field name (first wins — matching
+`stitch`'s first-wins field dedupe). Providers use this to decorate or wire the
+STITCHED schema's subscription fields.
+*/
+let collectSubscriptionSources = (
+  ~baseFragment: Reventless.Plugin.apiSchemaFragment,
+  ~pluginFragments: array<Reventless.Plugin.apiSchemaFragment>,
+): array<subscriptionSource> => {
+  let seen: Set.t<string> = Set.make()
+  Array.concat([baseFragment], pluginFragments)
+  ->Array.flatMap(fragment => decode(fragment).subscriptionSources)
+  ->Array.filter(source =>
+    if seen->Set.has(source.field) {
+      false
+    } else {
+      seen->Set.add(source.field)
+      true
+    }
+  )
 }
 
 // Extract the first identifier from a SDL field/type string.

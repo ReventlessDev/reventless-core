@@ -42,7 +42,18 @@ let uiFragmentMutationFields = [
   `  Platform_UIFragmentDeregistered(pluginId: ID!): UIFragmentChangeEvent`
 ];
 
-let uiFragmentSubscriptionField = `  onUIFragmentChange: UIFragmentChangeEvent\n    @aws_subscribe(mutations: ["Platform_UIFragmentRegistered", "Platform_UIFragmentUpdated", "Platform_UIFragmentDeregistered"])`;
+let uiFragmentSubscriptionField = `  onUIFragmentChange: UIFragmentChangeEvent`;
+
+let uiFragmentSubscriptionSource_mutations = [
+  "Platform_UIFragmentRegistered",
+  "Platform_UIFragmentUpdated",
+  "Platform_UIFragmentDeregistered"
+];
+
+let uiFragmentSubscriptionSource = {
+  field: "onUIFragmentChange",
+  mutations: uiFragmentSubscriptionSource_mutations
+};
 
 let pluginStatusSubscriptionTypes = [
   `enum PluginStatus {\n  Connected\n  Disconnected\n  Inactive\n  Retired\n}`,
@@ -51,12 +62,19 @@ let pluginStatusSubscriptionTypes = [
 
 let pluginStatusMutationFields = [`  Platform_PluginStatusChanged(pluginId: ID!, status: PluginStatus!): PluginStatusChangeEvent`];
 
-let pluginStatusSubscriptionField = `  onPluginStatusChange: PluginStatusChangeEvent\n    @aws_subscribe(mutations: ["Platform_PluginStatusChanged"])`;
+let pluginStatusSubscriptionField = `  onPluginStatusChange: PluginStatusChangeEvent`;
+
+let pluginStatusSubscriptionSource_mutations = ["Platform_PluginStatusChanged"];
+
+let pluginStatusSubscriptionSource = {
+  field: "onPluginStatusChange",
+  mutations: pluginStatusSubscriptionSource_mutations
+};
 
 function baseFragment(cloner) {
   let base = GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries(cloner), PluginBaseFragment$ReventlessCore.queryEntries);
   let parts = GraphQL_Stitcher$ReventlessCore.decode(base);
-  let pluginAggregateSubscriptionFields = Plugin_SubscriptionSchema$ReventlessCore.sourceCFields(PluginBaseFragment$ReventlessCore.pluginAggregateMutationEntries);
+  let match = Plugin_SubscriptionSchema$ReventlessCore.sourceCFields(PluginBaseFragment$ReventlessCore.pluginAggregateMutationEntries);
   return GraphQL_Stitcher$ReventlessCore.encode({
     types: parts.types.concat(uiFragmentSubscriptionTypes).concat(pluginStatusSubscriptionTypes).concat(Platform_ComponentDefinitionsApi$ReventlessCore.sdlTypes).concat(Platform_UIFragmentsApi$ReventlessCore.sdlTypes),
     mutations: parts.mutations.concat(uiFragmentMutationFields).concat(pluginStatusMutationFields),
@@ -67,7 +85,11 @@ function baseFragment(cloner) {
     subscriptions: [
       uiFragmentSubscriptionField,
       pluginStatusSubscriptionField
-    ].concat(pluginAggregateSubscriptionFields)
+    ].concat(match[0]),
+    subscriptionSources: [
+      uiFragmentSubscriptionSource,
+      pluginStatusSubscriptionSource
+    ].concat(match[1])
   });
 }
 
@@ -81,9 +103,11 @@ export {
   uiFragmentSubscriptionTypes,
   uiFragmentMutationFields,
   uiFragmentSubscriptionField,
+  uiFragmentSubscriptionSource,
   pluginStatusSubscriptionTypes,
   pluginStatusMutationFields,
   pluginStatusSubscriptionField,
+  pluginStatusSubscriptionSource,
   baseFragment,
 }
 /* cloneArgsSchema Not a pure module */

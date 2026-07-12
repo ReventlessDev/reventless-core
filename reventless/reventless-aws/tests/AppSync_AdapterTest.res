@@ -140,6 +140,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
       mutations: mutationFields,
       queries: queryFields,
       subscriptions: [],
+      subscriptionSources: [],
     })
 
   let mutationEntry = (
@@ -361,6 +362,7 @@ describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
       mutations: mutationFields,
       queries: queryFields,
       subscriptions: [],
+      subscriptionSources: [],
     })
 
   testSync("systemCallable mutation with a group emits @aws_cognito_user_pools + @aws_iam", () => {
@@ -500,6 +502,7 @@ describe("AppSync_Adapter — type-level dual-auth", () => {
       mutations: [],
       queries: queryFields,
       subscriptions: [],
+      subscriptionSources: [],
     })
 
   let callableEntry: ReventlessInfra.Api.querySchemaEntry = {
@@ -606,6 +609,7 @@ describe("Split mode — empty base fragment", () => {
       mutations: [],
       queries: [],
       subscriptions: [],
+      subscriptionSources: [],
     })
     let parts = decodeFragment(emptyFragment)
     expect(parts.types)->toHaveLength(0)
@@ -619,12 +623,14 @@ describe("Split mode — empty base fragment", () => {
       mutations: [],
       queries: [],
       subscriptions: [],
+      subscriptionSources: [],
     })
     let pluginFragment = ReventlessCore.GraphQL_Stitcher.encode({
       types: [`type MyPlugin_Item { id: ID! }`],
       mutations: [`MyPlugin_Item_Create(id: ID!): String`],
       queries: [`MyPlugin_Item(id: ID!): MyPlugin_Item`],
       subscriptions: [],
+      subscriptionSources: [],
     })
     let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
       ~baseFragment=emptyBase,

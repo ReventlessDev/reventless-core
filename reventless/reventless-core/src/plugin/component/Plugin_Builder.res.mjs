@@ -228,7 +228,8 @@ function Make(Spec) {
           types: parts.types.concat(subResult.extraTypes),
           mutations: parts.mutations,
           queries: parts.queries,
-          subscriptions: subResult.subscriptionFields
+          subscriptions: subResult.subscriptionFields,
+          subscriptionSources: subResult.subscriptionSources
         });
         Stdlib_Option.forEach(Spec.hooks.schemaTypeRegistrationHook, registerTypes => {
           let parts = GraphQL_Stitcher$ReventlessCore.decode(apiSchemaFragment);

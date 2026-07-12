@@ -219,7 +219,39 @@ publish/subscribe topic + service stamp verified; envelope decode verified. Note
   and it caught two real defects (see below), so treat a live boot + `Platform_UIFragments`
   query as the required gate for the remaining phases too.
 
-**Remaining work:** Phases 2–4 unstarted.
+**Phase 2 — IN PROGRESS:**
+
+- **Increment 2a (this commit) — dialect neutralization** (the plan's "@aws_subscribe moves
+  out of core" work item, done first so the registry/automation push path is built on
+  neutral SDL):
+  - `GraphQL_Stitcher.fragmentParts` gains `subscriptionSources: array<{field, mutations}>`
+    — the neutral subscription→mutation carrier (encode/decode round-trip it; decode
+    tolerates pre-existing fragments; `collectSubscriptionSources` unions across fragments,
+    first-wins per field, matching `stitch`'s dedupe). The fan-in case
+    (`onUIFragmentChange` ← three mutations) that is NOT derivable from field names is
+    carried explicitly.
+  - Core emits neutral SDL: `Plugin_SubscriptionSchema.sourceCFields` returns
+    `(fields, sources)`; `AdminApi` subscription constants are directive-free with
+    exported `*SubscriptionSource` records; `GraphQL_FragmentGenerator` and the two
+    `AppSync_Adapter` injectors re-encode via `GraphQL_Stitcher.encode` so the metadata
+    survives decoration.
+  - AWS adds its dialect at push time: new **runtime-pure** `AppSync_SdlDecorate.res`
+    (`injectAwsSubscribe` on the stitched SDL's Subscription block) — kept out of
+    `AppSync_Adapter` so `AdminEventCollectorEntryPoint.mjs` can import it without
+    re-introducing the @pulumi runtime-graph leak. All four ReScript push sites now go
+    through one `AppSync_Adapter.stitchWithAwsDirectives` (collect → stitch →
+    injectAwsSubscribe → stampSharedIamTypes); the mjs runtime re-stitcher mirrors it.
+  - Local stripping deleted: `GraphQL_SubscriptionBridge` registers fields as-is; the
+    local admin subscription registration now reuses the (neutral) `AdminApi` field
+    constants instead of hand-duplicated strings.
+  - Validated: full builds zero-warning; core 517 / aws 214 / local 492 tests green
+    (new: stitcher subscriptionSources suite incl. a no-provider-directives guard on the
+    admin base fragment; `AppSync_SdlDecorateTest`); live boot of the hybrid example
+    (in-memory) — both yoga APIs build from neutral SDL, subscription fields introspect
+    on both, `Platform_UIFragments` serves the Catalog fragment with Admin gating intact.
+
+**Remaining work:** Phase 2 increments 2b–2e (registry slices, single-writer automation,
+bootstrap SDL mutations, runtime re-stitcher retarget), Phases 3–4.
 
 ## Phasing
 

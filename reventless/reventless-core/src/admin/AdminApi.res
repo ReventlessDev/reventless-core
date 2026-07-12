@@ -26,8 +26,10 @@ let mutationEntries = (~cloner: bool) => {
 let queryEntries = PluginBaseFragment.queryEntries
 
 // UIFragment lifecycle Source C subscriptions.
-// Mutations are called by the backend when UIFragment events occur;
-// AppSync routes via @aws_subscribe to onUIFragmentChange subscribers.
+// Mutations are called by the backend when UIFragment events occur; the
+// subscription→mutation fan-in is carried as neutral `subscriptionSource`
+// metadata (providers add their own routing — AppSync via `@aws_subscribe`
+// appended at push time, the local platform via its PubSub bridge).
 // manifest is serialised as a JSON string (String scalar, not AWSJSON).
 
 let uiFragmentSubscriptionTypes = [
@@ -41,12 +43,21 @@ let uiFragmentMutationFields = [
   `  Platform_UIFragmentDeregistered(pluginId: ID!): UIFragmentChangeEvent`,
 ]
 
-let uiFragmentSubscriptionField = `  onUIFragmentChange: UIFragmentChangeEvent\n    @aws_subscribe(mutations: ["Platform_UIFragmentRegistered", "Platform_UIFragmentUpdated", "Platform_UIFragmentDeregistered"])`
+let uiFragmentSubscriptionField = `  onUIFragmentChange: UIFragmentChangeEvent`
+
+let uiFragmentSubscriptionSource: GraphQL_Stitcher.subscriptionSource = {
+  field: "onUIFragmentChange",
+  mutations: [
+    "Platform_UIFragmentRegistered",
+    "Platform_UIFragmentUpdated",
+    "Platform_UIFragmentDeregistered",
+  ],
+}
 
 // Plugin lifecycle Source C subscription. Mirrors the UIFragment pattern: the
 // platform invokes `Platform_PluginStatusChanged` after writing the new status
-// to the Plugin read model; AppSync routes that mutation via `@aws_subscribe`
-// to live `onPluginStatusChange` subscribers (host shell). The status enum
+// to the Plugin read model; the provider routes that mutation to live
+// `onPluginStatusChange` subscribers (host shell). The status enum
 // matches `PluginsReadModelSpec.status` so consumers can mirror tier 1 / tier 2
 // transitions exactly.
 let pluginStatusSubscriptionTypes = [
@@ -58,7 +69,12 @@ let pluginStatusMutationFields = [
   `  Platform_PluginStatusChanged(pluginId: ID!, status: PluginStatus!): PluginStatusChangeEvent`,
 ]
 
-let pluginStatusSubscriptionField = `  onPluginStatusChange: PluginStatusChangeEvent\n    @aws_subscribe(mutations: ["Platform_PluginStatusChanged"])`
+let pluginStatusSubscriptionField = `  onPluginStatusChange: PluginStatusChangeEvent`
+
+let pluginStatusSubscriptionSource: GraphQL_Stitcher.subscriptionSource = {
+  field: "onPluginStatusChange",
+  mutations: ["Platform_PluginStatusChanged"],
+}
 
 let baseFragment = (~cloner: bool) => {
   let base = GraphQL_FragmentGenerator.generate(~mutationEntries=mutationEntries(~cloner), ~queryEntries)
@@ -67,7 +83,7 @@ let baseFragment = (~cloner: bool) => {
   // The standard auto-resolver flow (CommandGeneratorResolvers_AppSync.make)
   // always creates a Subscription.onX resolver per mutation field; without the
   // matching SDL fields, AppSync's CreateResolver fails with "Type not found".
-  let pluginAggregateSubscriptionFields =
+  let (pluginAggregateSubscriptionFields, pluginAggregateSubscriptionSources) =
     Plugin_SubscriptionSchema.sourceCFields(~mutationEntries=PluginBaseFragment.pluginAggregateMutationEntries)
   GraphQL_Stitcher.encode({
     types: parts.types
@@ -84,5 +100,7 @@ let baseFragment = (~cloner: bool) => {
     ->Array.concat(pluginStatusMutationFields),
     subscriptions: [uiFragmentSubscriptionField, pluginStatusSubscriptionField]
     ->Array.concat(pluginAggregateSubscriptionFields),
+    subscriptionSources: [uiFragmentSubscriptionSource, pluginStatusSubscriptionSource]
+    ->Array.concat(pluginAggregateSubscriptionSources),
   })
 }

@@ -598,15 +598,11 @@ let generate = (
     commandResultSdlTypes->Array.forEach(t => types->Array.push(t))
   }
 
-  let encoded =
-    JSON.Encode.object(
-      Dict.fromArray([
-        ("types", JSON.Encode.array(types->Array.map(JSON.Encode.string))),
-        ("mutations", JSON.Encode.array(mutations->Array.map(JSON.Encode.string))),
-        ("queries", JSON.Encode.array(queries->Array.map(JSON.Encode.string))),
-        ("subscriptions", JSON.Encode.array([])),
-      ]),
-    )->JSON.stringify
-
-  {Reventless.Plugin.encoded, protocol: "graphql"}
+  GraphQL_Stitcher.encode({
+    types,
+    mutations,
+    queries,
+    subscriptions: [],
+    subscriptionSources: [],
+  })
 }

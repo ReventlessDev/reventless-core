@@ -703,6 +703,7 @@ module MakeWithConfig = (
     mutations: [],
     queries: [],
     subscriptions: [],
+    subscriptionSources: [],
   })
 
   module Api = {
@@ -1804,10 +1805,11 @@ module MakeWithConfig = (
     )
     adminRegisteredServers.contents->Array.push(platformGraphQL)
     // Register onUIFragmentChange + onPluginStatusChange subscriptions (Source C).
+    // The SDL field constants are provider-neutral, shared with the AWS path.
     platformGraphQL.registerSubscriptions(
       ~sdlFields=[
-        "  onUIFragmentChange: UIFragmentChangeEvent",
-        "  onPluginStatusChange: PluginStatusChangeEvent",
+        ReventlessCore.AdminApi.uiFragmentSubscriptionField,
+        ReventlessCore.AdminApi.pluginStatusSubscriptionField,
       ],
       ~resolvers=Dict.fromArray([
         (

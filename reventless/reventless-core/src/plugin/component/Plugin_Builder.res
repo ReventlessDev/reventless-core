@@ -295,6 +295,7 @@ module Make = (
         ...parts,
         types: Array.concat(parts.types, subResult.extraTypes),
         subscriptions: subResult.subscriptionFields,
+        subscriptionSources: subResult.subscriptionSources,
       })
     }
 

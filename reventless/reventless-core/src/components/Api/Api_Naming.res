@@ -49,7 +49,7 @@ let sliceMutationField = (~plugin: string, ~slice: string) => `${plugin}_${slice
 let dcbCommandMutationField = (~plugin: string, ~command: string) => `${plugin}_${command}`
 
 // AppSync hard limit: subscription field names may be at most 50 chars. Each mutation
-// field `f` produces a `@aws_subscribe` subscription `on${f}` (see
+// field `f` produces a mutation-sourced subscription `on${f}` (see
 // Plugin_SubscriptionSchema.sourceCFields), so the real cap on a mutation field is 48.
 // Fail at build with an actionable message rather than letting AppSync reject the
 // schema push at deploy time with an opaque 500.

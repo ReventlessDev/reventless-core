@@ -103,7 +103,8 @@ globalThis.describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifti
     types: [],
     mutations: mutationFields,
     queries: queryFields,
-    subscriptions: []
+    subscriptions: [],
+    subscriptionSources: []
   });
   let mutationEntry = (fieldNames, fieldPermissions) => ({
     fieldNames: fieldNames,
@@ -287,7 +288,8 @@ globalThis.describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth"
     types: [],
     mutations: mutationFields,
     queries: queryFields,
-    subscriptions: []
+    subscriptions: [],
+    subscriptionSources: []
   });
   globalThis.test("systemCallable mutation with a group emits @aws_cognito_user_pools + @aws_iam", () => {
     let entry_fieldNames = ["p_Sync"];
@@ -464,7 +466,8 @@ globalThis.describe("AppSync_Adapter — type-level dual-auth", () => {
     types: types,
     mutations: [],
     queries: queryFields,
-    subscriptions: []
+    subscriptions: [],
+    subscriptionSources: []
   });
   let callableEntry_permission = {
     TAG: "AllowGroups",
@@ -565,7 +568,8 @@ globalThis.describe("Split mode — empty base fragment", () => {
       types: [],
       mutations: [],
       queries: [],
-      subscriptions: []
+      subscriptions: [],
+      subscriptionSources: []
     });
     let parts = GraphQL_Stitcher$ReventlessCore.decode(emptyFragment);
     globalThis.expect(parts.types).toHaveLength(0);
@@ -577,13 +581,15 @@ globalThis.describe("Split mode — empty base fragment", () => {
       types: [],
       mutations: [],
       queries: [],
-      subscriptions: []
+      subscriptions: [],
+      subscriptionSources: []
     });
     let pluginFragment = GraphQL_Stitcher$ReventlessCore.encode({
       types: [`type MyPlugin_Item { id: ID! }`],
       mutations: [`MyPlugin_Item_Create(id: ID!): String`],
       queries: [`MyPlugin_Item(id: ID!): MyPlugin_Item`],
-      subscriptions: []
+      subscriptions: [],
+      subscriptionSources: []
     });
     let sdl = GraphQL_Stitcher$ReventlessCore.stitch(emptyBase, [pluginFragment]);
     globalThis.expect(sdl).toContain("MyPlugin_Item_Create");

@@ -34,17 +34,16 @@ function yieldTick() {
 }
 
 globalThis.describe("GraphQL_SubscriptionBridge — injected PubSub seam", () => {
-  globalThis.test("registerAll builds subscription SDL, strips @aws_subscribe, injects AWSJSON", () => {
+  globalThis.test("registerAll builds subscription SDL as-is and injects AWSJSON", () => {
     let pubSub = GraphqlYoga.createPubSub();
     let server = GraphQL_ServerInstance$ReventlessGraphqlServer.make("SeamTest");
-    GraphQL_SubscriptionBridge$ReventlessGraphqlServer.registerAll(server, ["onCatalogProduct_stateChanged: CatalogProduct\n    @aws_subscribe(mutations: [\"addProduct\"])"], [], [{
+    GraphQL_SubscriptionBridge$ReventlessGraphqlServer.registerAll(server, ["onCatalogProduct_stateChanged: CatalogProduct"], [], [{
         fieldName: "onCatalogProduct_stateChanged",
         topic: "onCatalogProduct_stateChanged"
       }], pubSub);
     let sdl = server.buildSdl();
     globalThis.expect(sdl.includes("type Subscription")).toBe(true);
     globalThis.expect(sdl.includes("onCatalogProduct_stateChanged")).toBe(true);
-    globalThis.expect(sdl.includes("@aws_subscribe")).toBe(false);
     globalThis.expect(sdl.includes("scalar AWSJSON")).toBe(true);
   });
   globalThis.test("makeFieldResolver + publish deliver over the injected PubSub", async () => {

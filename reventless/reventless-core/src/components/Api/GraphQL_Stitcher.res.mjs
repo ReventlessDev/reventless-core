@@ -8,6 +8,19 @@ import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
+function encodeSubscriptionSource(source) {
+  return Object.fromEntries([
+    [
+      "field",
+      source.field
+    ],
+    [
+      "mutations",
+      source.mutations.map(prim => prim)
+    ]
+  ]);
+}
+
 function encode(parts) {
   let encoded = JSON.stringify(Object.fromEntries([
     [
@@ -25,6 +38,10 @@ function encode(parts) {
     [
       "subscriptions",
       parts.subscriptions.map(prim => prim)
+    ],
+    [
+      "subscriptionSources",
+      parts.subscriptionSources.map(encodeSubscriptionSource)
     ]
   ]));
   return {
@@ -40,7 +57,8 @@ function decode(fragment) {
       types: [],
       mutations: [],
       queries: [],
-      subscriptions: []
+      subscriptions: [],
+      subscriptionSources: []
     };
   }
   let getString = key => {
@@ -59,12 +77,43 @@ function decode(fragment) {
       return [];
     }
   };
+  let match = dict["subscriptionSources"];
+  let subscriptionSources = match !== undefined ? (
+      Array.isArray(match) ? Stdlib_Array.filterMap(match, j => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(j), obj => {
+          let field = Stdlib_Option.flatMap(obj["field"], Stdlib_JSON.Decode.string);
+          let match = obj["mutations"];
+          let mutations = match !== undefined ? (
+              Array.isArray(match) ? Stdlib_Array.filterMap(match, m => {
+                  if (typeof m === "string") {
+                    return m;
+                  }
+                }) : []
+            ) : [];
+          return Stdlib_Option.map(field, field => ({
+            field: field,
+            mutations: mutations
+          }));
+        })) : []
+    ) : [];
   return {
     types: getString("types"),
     mutations: getString("mutations"),
     queries: getString("queries"),
-    subscriptions: getString("subscriptions")
+    subscriptions: getString("subscriptions"),
+    subscriptionSources: subscriptionSources
   };
+}
+
+function collectSubscriptionSources(baseFragment, pluginFragments) {
+  let seen = new Set();
+  return [baseFragment].concat(pluginFragments).flatMap(fragment => decode(fragment).subscriptionSources).filter(source => {
+    if (seen.has(source.field)) {
+      return false;
+    } else {
+      seen.add(source.field);
+      return true;
+    }
+  });
 }
 
 function extractLeadingName(str) {
@@ -252,8 +301,10 @@ function isCatastrophicSchemaShrink(currentSdl, newSdl, threshold) {
 
 export {
   log,
+  encodeSubscriptionSource,
   encode,
   decode,
+  collectSubscriptionSources,
   extractLeadingName,
   relayBaseTypes,
   relayBaseQueries,

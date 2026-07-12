@@ -479,20 +479,12 @@ let injectAwsAuth = (
     }
   )
 
-  let encoded =
-    JSON.Encode.object(
-      Dict.fromArray([
-        ("types", JSON.Encode.array(augmentedTypes->Array.map(JSON.Encode.string))),
-        ("mutations", JSON.Encode.array(augmentedMutations->Array.map(JSON.Encode.string))),
-        ("queries", JSON.Encode.array(augmentedQueries->Array.map(JSON.Encode.string))),
-        (
-          "subscriptions",
-          JSON.Encode.array(parts.subscriptions->Array.map(JSON.Encode.string)),
-        ),
-      ]),
-    )->JSON.stringify
-
-  {Reventless.Plugin.encoded, protocol: "graphql"}
+  ReventlessCore.GraphQL_Stitcher.encode({
+    ...parts,
+    types: augmentedTypes,
+    mutations: augmentedMutations,
+    queries: augmentedQueries,
+  })
 }
 
 // Injects @aws_auth with the given group on ALL mutation, query, and subscription
@@ -527,20 +519,33 @@ let injectAwsAuthAll = (
     `${field}\n    @aws_auth(cognito_groups: ["${group}"])`
   )
 
-  let encoded =
-    JSON.Encode.object(
-      Dict.fromArray([
-        ("types", JSON.Encode.array(parts.types->Array.map(JSON.Encode.string))),
-        ("mutations", JSON.Encode.array(augmentedMutations->Array.map(JSON.Encode.string))),
-        ("queries", JSON.Encode.array(augmentedQueries->Array.map(JSON.Encode.string))),
-        (
-          "subscriptions",
-          JSON.Encode.array(augmentedSubscriptions->Array.map(JSON.Encode.string)),
-        ),
-      ]),
-    )->JSON.stringify
+  ReventlessCore.GraphQL_Stitcher.encode({
+    ...parts,
+    mutations: augmentedMutations,
+    queries: augmentedQueries,
+    subscriptions: augmentedSubscriptions,
+  })
+}
 
-  {Reventless.Plugin.encoded, protocol: "graphql"}
+/**
+Stitch base + plugin fragments and decorate the assembled SDL with the AppSync
+dialect: `@aws_subscribe` on mutation-sourced subscription fields (from the
+fragments' neutral `subscriptionSources` metadata — core no longer emits the
+directive) and `@aws_cognito_user_pools @aws_iam` on the shared traversal
+types. Every AWS schema push assembles its SDL through here so the dialect is
+applied uniformly.
+*/
+let stitchWithAwsDirectives = (
+  ~baseFragment: Reventless.Plugin.apiSchemaFragment,
+  ~pluginFragments: array<Reventless.Plugin.apiSchemaFragment>,
+): string => {
+  let sources = ReventlessCore.GraphQL_Stitcher.collectSubscriptionSources(
+    ~baseFragment,
+    ~pluginFragments,
+  )
+  ReventlessCore.GraphQL_Stitcher.stitch(~baseFragment, ~pluginFragments)
+  ->AppSync_SdlDecorate.injectAwsSubscribe(~sources)
+  ->stampSharedIamTypes
 }
 
 // ── Provider implementation ────────────────────────────────────────────────
@@ -619,13 +624,9 @@ let updateSchema = (
   // The base fragment contains core Plugin aggregate queries/mutations — all Admin-only.
   // Plugin fragments already have @aws_auth injected via generateFragment.
   let augmentedBaseFragment = injectAwsAuthAll(baseFragment, ~group="Admin")
-  // Shared traversal types are stamped once on the assembled SDL (post-stitch,
-  // post-dedupe) — see stampSharedIamTypes.
-  let sdl =
-    ReventlessCore.GraphQL_Stitcher.stitch(
-      ~baseFragment=augmentedBaseFragment,
-      ~pluginFragments,
-    )->stampSharedIamTypes
+  // Shared traversal types + @aws_subscribe are stamped once on the assembled
+  // SDL (post-stitch, post-dedupe) — see stitchWithAwsDirectives.
+  let sdl = stitchWithAwsDirectives(~baseFragment=augmentedBaseFragment, ~pluginFragments)
   // Resolve the API ID from the Output chain. In mock mode (tests) and in Lambda runtime
   // (where the Output is backed by already-known values), this completes synchronously.
   // The resulting promise wraps the AppSync SDK call.
