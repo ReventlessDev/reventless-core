@@ -44,6 +44,23 @@ let decodePluginEventEnvelope = (eventJson: JSON.t): option<ReventlessCore.Plugi
   | exception _ => None
   }
 
+// Decode a UiFragmentRegistry slice event from the admin DcbEventLog's published
+// bus envelope — same {id, meta, event} shape as the aggregate topic above
+// (DcbEventLog_Operations publishes via Message.composeEventJson'). Top-level,
+// not inside the functor, so the decode is unit-testable.
+let decodeUiFragmentRegistryEventEnvelope = (
+  eventJson: JSON.t,
+): option<ReventlessCore.UiFragmentRegistry.event> =>
+  switch eventJson
+  ->JSON.Decode.object
+  ->Option.flatMap(d => d->Dict.get("event"))
+  ->Option.map(payload =>
+    payload->S.parseJsonOrThrow(ReventlessCore.UiFragmentRegistry.eventSchema)
+  ) {
+  | result => result
+  | exception _ => None
+  }
+
 // Configurable platform — set silent=true to suppress diagnostic warnings in tests,
 // splitApi=true to serve core and plugin APIs on separate ports,
 // backend=Backend.Sqlite({...}) to opt into file-backed SQLite persistence.
@@ -821,35 +838,6 @@ module MakeWithConfig = (
   // by dispatching a synthetic `Connect(pluginDefinition)` to LocalPluginAggregate
   // (see connectPlugin).
 
-  // UIFragmentRegistry QueryDb store ops — initialized lazily on first seed call.
-  let uiFragmentQueryDbOpsRef: ref<option<ReventlessCore.QueryDb_Adapter.operations>> = ref(None)
-
-  // Backend-aware storage for the UIFragment registry — the same functor every
-  // other read model uses. Replaces a hand-rolled memory-only store that ignored
-  // BackendState, so the registry now persists under SQLite too.
-  module UIFragmentStorage = LocalQueryDbStorage.Make(Bus)
-
-  let ensureUIFragmentRegistryQueryDbStore = () => {
-    switch uiFragmentQueryDbOpsRef.contents {
-    | Some(ops) => ops
-    | None =>
-      let name = ReventlessCore.UIFragmentRegistryReadModelSpec.name
-      // `make` registers the ops (and scan/stream) with the Bus for the active
-      // backend; retrieve them synchronously via getQueryDb rather than resolving
-      // the Pulumi Output.
-      let _ = UIFragmentStorage.make(
-        ~name,
-        ~indexes=[],
-        ~api=(),
-        ~apiRole=(),
-        ~opts=({}: Pulumi.CustomResourceOptions.t),
-      )
-      let ops = Bus.getQueryDb(name)->Option.getOrThrow
-      uiFragmentQueryDbOpsRef := Some(ops)
-      ops
-    }
-  }
-
   // In-memory store for plugin structures, keyed by plugin ID.
   let pluginStructuresStore: ref<dict<Reventless.Plugin.pluginStructure>> = ref(Dict.make())
 
@@ -888,43 +876,56 @@ module MakeWithConfig = (
     Bus.dispatchCommand(pluginCmdTopicKey, ReventlessCore.CommandTopic.encodeCommandJson(cmdJson))
   }
 
-  // Bus key for the admin PluginExtensionPoint ("Core.Plugin") command topic, derived exactly
-  // as ExtensionPoint_Builder + CommandTopic_Builder name the channel:
-  // "Core.Plugin" -> replace(".") -> "CorePlugin" -> +ExtPoint -> +CmdTopic.
-  let adminEpCmdTopicKey = {
+  // Bus key for the shared admin DCB command topic, derived exactly as
+  // Dcb_Builder + CommandTopic_Builder name the channel:
+  // "Admin" -> +"Dcb" -> +CmdTopic ("AdminDcbCmdTopic").
+  let adminDcbCmdTopicKey = {
     module CT = ReventlessCore.ComponentType
-    ReventlessInfra.PluginExtensionPointSpec.name
-    ->String.replace(".", "")
-    ->CT.name(CT.ExtensionPoint)
-    ->CT.name(CT.CommandTopic)
+    "AdminDcb"->CT.name(CT.CommandTopic)
   }
 
-  // Dispatch a command to the admin PluginExtensionPoint command topic in-process. The EP
-  // handler fans it through the EP mappings (mapping 1 -> Plugin aggregate, mapping 2 ->
-  // UiFragmentRegistry slice). Used to route the UI-fragment manifest through the same EP the
-  // real handshake uses — local otherwise dispatches Connect straight to the aggregate,
-  // bypassing the EP, so the UiFragments StateViewSlice would never populate. `id` is the EP
-  // transport id (name@version); the mappings translate to the bare plugin name.
-  let dispatchAdminEpCommand = (
-    ~id: string,
-    ~command: ReventlessInfra.PluginExtensionPointSpec.command,
+  // Dispatch a UiFragmentRegistry slice command in-process via the shared admin
+  // DCB command topic. The DCB filtering handler routes by the command's variant
+  // tag to the slice handler registered by Admin.construct's DcbBuilder. The real
+  // platform routes RegisterUiFragment through the admin PluginExtensionPoint's
+  // UI-fragment mapping; the local platform has no admin EP component (Connect is
+  // likewise dispatched straight to the Plugin aggregate), so this is the local
+  // analogue of that mapping's PublishCommand. Keyed by bare plugin NAME —
+  // dispatchCommand parks until the slice handler registers, so call-before-wire
+  // is safe.
+  let dispatchUiFragmentCommand = (
+    ~pluginName: string,
+    ~command: ReventlessCore.UiFragmentRegistry.command,
   ) => {
     let cmdJson: Reventless.Message.commandJson = {
-      id,
-      meta: ReventlessCore.Message.generateMeta(~service=ReventlessInfra.PluginExtensionPointSpec.name),
+      id: pluginName,
+      meta: ReventlessCore.Message.generateMeta(~service=ReventlessCore.UiFragmentRegistry.name),
       commandJson: command->S.reverseConvertToJsonOrThrow(
-        ReventlessInfra.PluginExtensionPointSpec.commandSchema,
+        ReventlessCore.UiFragmentRegistry.commandSchema,
       ),
     }
-    Bus.dispatchCommand(adminEpCmdTopicKey, ReventlessCore.CommandTopic.encodeCommandJson(cmdJson))
+    Bus.dispatchCommand(adminDcbCmdTopicKey, ReventlessCore.CommandTopic.encodeCommandJson(cmdJson))
   }
 
   // Subscription topics for the admin live-update channels.
   let pluginStatusSubTopic = "onPluginStatusChange"
   let uiFragmentSubTopic = "onUIFragmentChange"
 
-  // Relocated Source-C emission: subscribe to the Plugin aggregate's event topic and
-  // fan each lifecycle event out to the matching GraphQL subscription. Status now
+  // Bus key + service identity of the admin DcbEventLog's event topic. The
+  // Platform_Admin construct name is "Admin"; DcbEventLog_Builder hands that name
+  // to EventTopic_Builder, whose publisher registers under `<name>EventTopic`,
+  // and DcbEventLog_Operations stamps every published event's meta.service with
+  // `<name>DcbEventLog`.
+  let adminDcbEventTopicKey = {
+    module CT = ReventlessCore.ComponentType
+    "Admin"->CT.name(CT.EventTopic)
+  }
+  let adminDcbServiceName = "AdminDcbEventLog"
+
+  // Relocated Source-C emission: subscribe to the Plugin aggregate's event topic
+  // (lifecycle status) and the admin DcbEventLog event topic (UiFragmentRegistry
+  // slice events — the Plugin aggregate no longer emits UIFragment* events) and
+  // fan each event out to the matching GraphQL subscription. Status
   // flows from folding aggregate events (Connect / Activate / Deactivate / Retire),
   // not from direct QueryDb writes, so the subscription emission lives here rather
   // than inside the mutation resolvers. Idempotent: registered once per platform
@@ -966,37 +967,45 @@ module MakeWithConfig = (
         | Some(VersionDisconnected(def)) => publishStatus(~name=def.name, ~status="Disconnected")
         | Some(VersionDeactivated(def)) => publishStatus(~name=def.name, ~status="Inactive")
         | Some(VersionRetired(def)) => publishStatus(~name=def.name, ~status="Retired")
-        | Some(UIFragmentRegistered(data)) =>
-          publishUIFragment(
-            ~name=ReventlessCore.Plugin.name(data.pluginId),
-            ~changeKind="Registered",
-            ~manifest=manifestJson(data.manifest),
-          )
-        | Some(UIFragmentUpdated(data)) =>
-          publishUIFragment(
-            ~name=ReventlessCore.Plugin.name(data.pluginId),
-            ~changeKind="Updated",
-            ~manifest=manifestJson(data.newManifest),
-          )
-        | Some(UIFragmentDeregistered(data)) =>
-          publishUIFragment(
-            ~name=ReventlessCore.Plugin.name(data.pluginId),
-            ~changeKind="Deregistered",
-            ~manifest=JSON.Encode.null,
-          )
         | Some(VersionDetected(_))
         | Some(VersionSuperseded(_))
         | Some(IncompatiblePluginDetected(_))
         | None => ()
         }
       })
+      // UI-fragment live updates — sourced from the UiFragmentRegistry slice's
+      // events on the shared admin DcbEventLog topic. The slice's `pluginId` is
+      // already the bare plugin name (the EP mapping keys the registry by name).
+      // The service guard keeps this decoder scoped to DcbEventLog-published
+      // envelopes as further admin slices join the shared log.
+      Bus.subscribeToEvents(adminDcbEventTopicKey, async (service, _meta, eventJson) =>
+        if service == adminDcbServiceName {
+          switch decodeUiFragmentRegistryEventEnvelope(eventJson) {
+          | Some(UiFragmentRegistered({pluginId, manifest})) =>
+            publishUIFragment(
+              ~name=pluginId,
+              ~changeKind="Registered",
+              ~manifest=manifestJson(manifest),
+            )
+          | Some(UiFragmentUpdated({pluginId, newManifest})) =>
+            publishUIFragment(
+              ~name=pluginId,
+              ~changeKind="Updated",
+              ~manifest=manifestJson(newManifest),
+            )
+          | Some(UiFragmentDeregistered({pluginId})) =>
+            publishUIFragment(~name=pluginId, ~changeKind="Deregistered", ~manifest=JSON.Encode.null)
+          | None => ()
+          }
+        }
+      )
     }
 
   // Drive the admin Plugin read models the same way AWS does: build a
   // `pluginDefinition` from the constructed plugin component outputs and dispatch a
   // synthetic `Connect(def)` to LocalPluginAggregate, keyed by the plugin NAME (the
   // Plugin aggregate is name-keyed). The Plugin aggregate emits `VersionConnected`
-  // (+ `UIFragmentRegistered` / `VersionSuperseded`) on its event topic; the real
+  // (+ `VersionSuperseded`) on its event topic; the real
   // PluginsProjection subscription (registered by
   // Admin.construct ~readModels) folds those events into the "Plugins" current view
   // QueryDb store. This replaces the previous
@@ -1058,7 +1067,6 @@ module MakeWithConfig = (
             extensionProtocols: [],
             apiSchemaFragment,
             apiTarget: None,
-            uiFragments,
             structure: pluginStructure,
             dcbEventLog: None,
             kind: Domain,
@@ -1068,45 +1076,20 @@ module MakeWithConfig = (
             ~pluginName,
             ~command=ReventlessCore.PluginSpec.Connect(pluginDefinition),
           )
-          // Route the UI-fragment manifest through the admin EP (as the real handshake does),
-          // so the UiFragmentRegistry slice + UiFragments StateViewSlice populate in-process.
-          // id is the name@version transport id; the EP mapping keys the registry by bare name.
+          // Register the UI-fragment manifest with the UiFragmentRegistry slice
+          // (via the shared admin DCB command topic), so the UiFragments
+          // StateViewSlice populates in-process. `at` mirrors the EP mapping's
+          // command-meta timestamp threading.
           switch uiFragments {
           | Some(manifest) =>
-            let _ = dispatchAdminEpCommand(
-              ~id,
-              ~command=ReventlessInfra.PluginExtensionPointSpec.RegisterUiFragment(manifest),
+            let _ = dispatchUiFragmentCommand(
+              ~pluginName,
+              ~command=ReventlessCore.UiFragmentRegistry.RegisterUiFragment({
+                pluginId: pluginName,
+                manifest,
+                at: Date.make()->Date.toISOString,
+              }),
             )
-          | None => ()
-          }
-        })
-    })
-  }
-
-  // Seed the UIFragmentRegistry QueryDb from plugin outputs that carry a uiFragments manifest.
-  let seedUIFragmentRegistryQueryDb = (~pluginComponents: array<ReventlessCore.Plugin.component>) => {
-    let uiFragmentOps = ensureUIFragmentRegistryQueryDbStore()
-    pluginComponents->Array.forEach(plugin => {
-      let outputs: ReventlessInfra.Plugin.outputs = plugin->ReventlessCore.Component.outputs
-      let _ =
-        (outputs.id, outputs.uiFragments)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((id, uiFragments)) => {
-          switch uiFragments {
-          | Some(manifest) =>
-            let state: ReventlessCore.UIFragmentRegistryReadModelSpec.state = {
-              pluginId: id,
-              remoteEntryUrl: manifest.remoteEntryUrl,
-              panels: manifest.panels,
-              pages: manifest.pages,
-              registeredAt: Date.make()->Date.toISOString,
-              updatedAt: Date.make()->Date.toISOString,
-            }
-            let entry =
-              state->S.reverseConvertToJsonOrThrow(
-                ReventlessCore.UIFragmentRegistryReadModelSpec.stateSchema,
-              )
-            let _ = uiFragmentOps.save(id, entry, Any, None)
           | None => ()
           }
         })
@@ -1463,7 +1446,6 @@ module MakeWithConfig = (
     // chains, so deferring their invocation changes no synchronous contract.
     let seedAdminStores = () => {
       connectPlugin(~pluginComponents=plugins)
-      seedUIFragmentRegistryQueryDb(~pluginComponents=plugins)
       seedPluginStructuresStore(~pluginComponents=plugins)
     }
     switch (projectionCatchup, pgProjectionCatchup) {
@@ -1659,10 +1641,10 @@ module MakeWithConfig = (
       },
     )
 
-    // Platform_UIFragments resolver — reads the seeded UIFragmentRegistry QueryDb
-    // (same store the admin UIFragment / UIFragments queries scan) and encodes via
-    // the shared Platform_UIFragmentsApi encoder so AWS and in-memory return the
-    // same JSON shape.
+    // Platform_UIFragments resolver — reads the UiFragments StateViewSlice
+    // QueryDb (populated by the UiFragmentRegistry slice's projection) and
+    // encodes via the shared Platform_UIFragmentsApi encoder so AWS and
+    // in-memory return the same JSON shape.
     queryResolvers->Dict.set(
       "Platform_UIFragments",
       async (_root, _args, _ctx): JSON.t => {
@@ -1670,10 +1652,10 @@ module MakeWithConfig = (
         | Some(scanAll) => scanAll()
         | None => []
         }
-        // Collapse to one entry per plugin name (highest version). UIFragmentRegistry
-        // accumulates a row per deployed version and has no lifecycle status of its
-        // own, so without this a redeployed federation plugin surfaces duplicate
-        // fragments — mirrors the dedup in Platform_UIFragments_Lambda.res.
+        // Collapse to one entry per plugin name (highest version). The registry is
+        // keyed by bare plugin name now (a no-op collapse), but rows persisted by
+        // the pre-slice registry were keyed name@version — keep the dedup so a
+        // mixed store never surfaces duplicates (mirrors Platform_UIFragments_Lambda.res).
         let latestByName = Dict.make()
         items->Array.forEach(item =>
           switch item->S.parseOrThrow(ReventlessCore.UiFragments.stateSchema) {
@@ -1782,8 +1764,9 @@ module MakeWithConfig = (
       }
     )
     // UIFragment admin mutations — explicit admin-triggered fragment changes still
-    // publish onUIFragmentChange directly (aggregate-driven fragment changes are
-    // emitted by subscribeToPluginEvents). uiFragmentSubTopic is the shared topic.
+    // publish onUIFragmentChange directly (slice-driven fragment changes are
+    // emitted by subscribeToPluginEvents' admin-DCB subscription). uiFragmentSubTopic
+    // is the shared topic.
     let makeUIEvent = (~pluginId, ~changeKind, ~manifest) =>
       JSON.Encode.object(
         Dict.fromArray([
@@ -2151,9 +2134,9 @@ module MakeWithConfig = (
       queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args, _ctx): JSON.t =>
         connectionResponse([])
       )
-      // Platform_UIFragments — single-plugin path. Seeded by
-      // seedUIFragmentRegistryQueryDb below if the plugin component carries
-      // a uiFragments manifest, otherwise scans an empty store.
+      // Platform_UIFragments — single-plugin path. Populated by the
+      // UiFragments StateViewSlice when the plugin registers a manifest through
+      // the admin EP (connectPlugin below), otherwise scans an empty store.
       queryResolvers->Dict.set(
         "Platform_UIFragments",
         async (_root, _args, _ctx): JSON.t => {
@@ -2252,7 +2235,6 @@ module MakeWithConfig = (
     // Drive the admin Plugin read models via synthetic Connect dispatch through
     // LocalPluginAggregate (replaces the old direct-write seed).
     connectPlugin(~pluginComponents=[pluginComponent])
-    seedUIFragmentRegistryQueryDb(~pluginComponents=[pluginComponent])
     seedPluginStructuresStore(~pluginComponents=[pluginComponent])
 
     // Fire onPluginDeployed hooks so subscribers learn about this plugin.

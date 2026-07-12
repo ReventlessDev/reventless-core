@@ -214,7 +214,6 @@ let pluginDefinitionSchema = S.schema(s => ({
   extensionProtocols: s.m(S.array(extensionProtocolSchema)),
   apiSchemaFragment: s.m(apiSchemaFragmentOptionSchema),
   apiTarget: s.m(stringOptionSchema),
-  uiFragments: s.m(uiFragmentManifestOptionSchema),
   structure: s.m(pluginStructureOptionSchema),
   dcbEventLog: s.m(dcbEventLogOptionSchema),
   kind: s.m(pluginKindSchema)

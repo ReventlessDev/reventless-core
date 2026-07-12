@@ -53,7 +53,6 @@ import * as ReadModel_Builder$ReventlessLocal from "./components/ReadModel_Build
 import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
 import * as PlatformMCP_Server$ReventlessLocal from "./adapter/PlatformMCP_Server.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./adapter/Auth/Auth_GraphqlContext.res.mjs";
-import * as LocalQueryDbStorage$ReventlessLocal from "./adapter/QueryDb/LocalQueryDbStorage.res.mjs";
 import * as PgProjectionCatchup$ReventlessLocal from "./adapter/PgProjectionCatchup.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
 import * as DomainGraphQL_Server$ReventlessLocal from "./adapter/DomainGraphQL_Server.res.mjs";
@@ -74,13 +73,11 @@ import * as LocalScheduledPublisher$ReventlessLocal from "./adapter/Scheduler/Lo
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
 import * as LocalCommandTopicChannel$ReventlessLocal from "./adapter/CommandTopic/LocalCommandTopicChannel.res.mjs";
 import * as LocalEventTopicPublisher$ReventlessLocal from "./adapter/EventTopic/LocalEventTopicPublisher.res.mjs";
-import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateChangeSlice_Builder.res.mjs";
 import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
 import * as UiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry_Behavior.res.mjs";
-import * as UIFragmentRegistryReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UIFragmentRegistryReadModelSpec.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessLocal from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as Platform_ComponentDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_ComponentDefinitionsApi.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessLocal from "./components/OutboundTranslationSlice_Builder.res.mjs";
@@ -107,6 +104,14 @@ let platformMCPRef = {
 function decodePluginEventEnvelope(eventJson) {
   try {
     return Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson), d => d["event"]), payload => S.parseJsonOrThrow(payload, PluginSpec$ReventlessCore.eventSchema));
+  } catch (exn) {
+    return;
+  }
+}
+
+function decodeUiFragmentRegistryEventEnvelope(eventJson) {
+  try {
+    return Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson), d => d["event"]), payload => S.parseJsonOrThrow(payload, UiFragmentRegistry$ReventlessCore.eventSchema));
   } catch (exn) {
     return;
   }
@@ -788,20 +793,6 @@ function MakeWithConfig(Config) {
   let domainMcpPort = resolvePort("REVENTLESS_DOMAIN_MCP_PORT", 3001);
   let platformPort = resolvePort("REVENTLESS_PLATFORM_PORT", 4001);
   let platformMcpPort = resolvePort("REVENTLESS_PLATFORM_MCP_PORT", 3002);
-  let uiFragmentQueryDbOpsRef = {
-    contents: undefined
-  };
-  let UIFragmentStorage = LocalQueryDbStorage$ReventlessLocal.Make(Bus);
-  let ensureUIFragmentRegistryQueryDbStore = () => {
-    let ops = uiFragmentQueryDbOpsRef.contents;
-    if (ops !== undefined) {
-      return ops;
-    }
-    UIFragmentStorage.make(UIFragmentRegistryReadModelSpec$ReventlessCore.name, [], undefined, undefined, undefined, undefined, {});
-    let ops$1 = Stdlib_Option.getOrThrow(Bus.getQueryDb(UIFragmentRegistryReadModelSpec$ReventlessCore.name), undefined);
-    uiFragmentQueryDbOpsRef.contents = ops$1;
-    return ops$1;
-  };
   let pluginStructuresStore = {
     contents: {}
   };
@@ -832,19 +823,20 @@ function MakeWithConfig(Config) {
     };
     return Bus.dispatchCommand(pluginCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
   };
-  let adminEpCmdTopicKey = ComponentType$ReventlessCore.name(ComponentType$ReventlessCore.name(PluginExtensionPointSpec$ReventlessInfra.name.replace(".", ""), "ExtensionPoint"), "CommandTopic");
-  let dispatchAdminEpCommand = (id, command) => {
-    let cmdJson_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
-    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, PluginExtensionPointSpec$ReventlessInfra.commandSchema);
+  let adminDcbCmdTopicKey = ComponentType$ReventlessCore.name("AdminDcb", "CommandTopic");
+  let dispatchUiFragmentCommand = (pluginName, command) => {
+    let cmdJson_meta = Message$ReventlessCore.generateMeta(UiFragmentRegistry$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, UiFragmentRegistry$ReventlessCore.commandSchema);
     let cmdJson = {
-      id: id,
+      id: pluginName,
       meta: cmdJson_meta,
       commandJson: cmdJson_commandJson
     };
-    return Bus.dispatchCommand(adminEpCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
+    return Bus.dispatchCommand(adminDcbCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
   };
   let pluginStatusSubTopic = "onPluginStatusChange";
   let uiFragmentSubTopic = "onUIFragmentChange";
+  let adminDcbEventTopicKey = ComponentType$ReventlessCore.name("Admin", "EventTopic");
   let pluginEventsSubscribed = {
     contents: false
   };
@@ -893,16 +885,25 @@ function MakeWithConfig(Config) {
         case "VersionSuperseded" :
         case "IncompatiblePluginDetected" :
           return;
-        case "UIFragmentRegistered" :
-          let data = match._0;
-          return publishUIFragment(Plugin$ReventlessCore.name(data.pluginId), "Registered", S.reverseConvertToJsonOrThrow(data.manifest, Plugin$Reventless.uiFragmentManifestSchema));
-        case "UIFragmentUpdated" :
-          let data$1 = match._0;
-          return publishUIFragment(Plugin$ReventlessCore.name(data$1.pluginId), "Updated", S.reverseConvertToJsonOrThrow(data$1.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
-        case "UIFragmentDeregistered" :
-          return publishUIFragment(Plugin$ReventlessCore.name(match._0.pluginId), "Deregistered", null);
         default:
           return publishStatus(match._0.name, "Connected");
+      }
+    });
+    Bus.subscribeToEvents(adminDcbEventTopicKey, async (service, _meta, eventJson) => {
+      if (service !== "AdminDcbEventLog") {
+        return;
+      }
+      let match = decodeUiFragmentRegistryEventEnvelope(eventJson);
+      if (match === undefined) {
+        return;
+      }
+      switch (match.TAG) {
+        case "UiFragmentRegistered" :
+          return publishUIFragment(match.pluginId, "Registered", S.reverseConvertToJsonOrThrow(match.manifest, Plugin$Reventless.uiFragmentManifestSchema));
+        case "UiFragmentUpdated" :
+          return publishUIFragment(match.pluginId, "Updated", S.reverseConvertToJsonOrThrow(match.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
+        case "UiFragmentDeregistered" :
+          return publishUIFragment(match.pluginId, "Deregistered", null);
       }
     });
   };
@@ -946,7 +947,6 @@ function MakeWithConfig(Config) {
           extensionProtocols: [],
           apiSchemaFragment: param[5],
           apiTarget: undefined,
-          uiFragments: uiFragments,
           structure: param[7],
           dcbEventLog: undefined,
           kind: "Domain"
@@ -956,43 +956,14 @@ function MakeWithConfig(Config) {
           _0: pluginDefinition
         });
         if (uiFragments !== undefined) {
-          dispatchAdminEpCommand(id, {
+          dispatchUiFragmentCommand(pluginName, {
             TAG: "RegisterUiFragment",
-            _0: uiFragments
+            pluginId: pluginName,
+            manifest: uiFragments,
+            at: new Date().toISOString()
           });
           return;
         }
-      });
-    });
-  };
-  let seedUIFragmentRegistryQueryDb = pluginComponents => {
-    let uiFragmentOps = ensureUIFragmentRegistryQueryDbStore();
-    pluginComponents.forEach(plugin => {
-      let outputs = Component$ReventlessCore.outputs(plugin);
-      Pulumi.all([
-        outputs.id,
-        outputs.uiFragments
-      ]).apply(param => {
-        let uiFragments = param[1];
-        if (uiFragments === undefined) {
-          return;
-        }
-        let id = param[0];
-        let state_remoteEntryUrl = uiFragments.remoteEntryUrl;
-        let state_panels = uiFragments.panels;
-        let state_pages = uiFragments.pages;
-        let state_registeredAt = new Date().toISOString();
-        let state_updatedAt = new Date().toISOString();
-        let state = {
-          pluginId: id,
-          remoteEntryUrl: state_remoteEntryUrl,
-          panels: state_panels,
-          pages: state_pages,
-          registeredAt: state_registeredAt,
-          updatedAt: state_updatedAt
-        };
-        let entry = S.reverseConvertToJsonOrThrow(state, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
-        uiFragmentOps.save(id, entry, "Any", undefined);
       });
     });
   };
@@ -1248,17 +1219,13 @@ function MakeWithConfig(Config) {
       adminResources: []
     });
     subscribeToPluginEvents();
-    let seedAdminStores = () => {
-      connectPlugin(plugins$1);
-      seedUIFragmentRegistryQueryDb(plugins$1);
-      seedPluginStructuresStore(plugins$1);
-    };
     if (projectionCatchup !== undefined) {
       Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], projectionCatchup[2], () => Bus.projectionCatchupHandlers()), e => {
         console.error("[Platform] projection catch-up failed:", e);
         return Promise.resolve();
       }).then(() => {
-        seedAdminStores();
+        connectPlugin(plugins$1);
+        seedPluginStructuresStore(plugins$1);
         return Promise.resolve();
       });
     } else if (pgProjectionCatchup !== undefined) {
@@ -1267,11 +1234,13 @@ function MakeWithConfig(Config) {
         console.error("[Platform] postgres projection catch-up failed:", e);
         return Promise.resolve();
       }).then(() => {
-        seedAdminStores();
+        connectPlugin(plugins$1);
+        seedPluginStructuresStore(plugins$1);
         return Promise.resolve();
       });
     } else {
-      seedAdminStores();
+      connectPlugin(plugins$1);
+      seedPluginStructuresStore(plugins$1);
     }
     pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure;
     CommandGeneratorResolvers_GraphQL$ReventlessLocal.setPluginStatusGate(field => {
@@ -1770,7 +1739,6 @@ function MakeWithConfig(Config) {
     StateViewSliceMaker.QueryDbResolvers.relayRef.contents = domainRelaySupport;
     subscribeToPluginEvents();
     connectPlugin([pluginComponent]);
-    seedUIFragmentRegistryQueryDb([pluginComponent]);
     seedPluginStructuresStore([pluginComponent]);
     let deployedPluginOutputs = [Component$ReventlessCore.outputs(pluginComponent)];
     firePluginDeployedHooks(builtInfos.contents, deployedPluginOutputs);
@@ -2485,20 +2453,6 @@ function Make($star) {
   let domainMcpPort = resolvePort("REVENTLESS_DOMAIN_MCP_PORT", 3001);
   let platformPort = resolvePort("REVENTLESS_PLATFORM_PORT", 4001);
   let platformMcpPort = resolvePort("REVENTLESS_PLATFORM_MCP_PORT", 3002);
-  let uiFragmentQueryDbOpsRef = {
-    contents: undefined
-  };
-  let UIFragmentStorage = LocalQueryDbStorage$ReventlessLocal.Make(Bus);
-  let ensureUIFragmentRegistryQueryDbStore = () => {
-    let ops = uiFragmentQueryDbOpsRef.contents;
-    if (ops !== undefined) {
-      return ops;
-    }
-    UIFragmentStorage.make(UIFragmentRegistryReadModelSpec$ReventlessCore.name, [], undefined, undefined, undefined, undefined, {});
-    let ops$1 = Stdlib_Option.getOrThrow(Bus.getQueryDb(UIFragmentRegistryReadModelSpec$ReventlessCore.name), undefined);
-    uiFragmentQueryDbOpsRef.contents = ops$1;
-    return ops$1;
-  };
   let pluginStructuresStore = {
     contents: {}
   };
@@ -2529,19 +2483,20 @@ function Make($star) {
     };
     return Bus.dispatchCommand(pluginCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
   };
-  let adminEpCmdTopicKey = ComponentType$ReventlessCore.name(ComponentType$ReventlessCore.name(PluginExtensionPointSpec$ReventlessInfra.name.replace(".", ""), "ExtensionPoint"), "CommandTopic");
-  let dispatchAdminEpCommand = (id, command) => {
-    let cmdJson_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
-    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, PluginExtensionPointSpec$ReventlessInfra.commandSchema);
+  let adminDcbCmdTopicKey = ComponentType$ReventlessCore.name("AdminDcb", "CommandTopic");
+  let dispatchUiFragmentCommand = (pluginName, command) => {
+    let cmdJson_meta = Message$ReventlessCore.generateMeta(UiFragmentRegistry$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, UiFragmentRegistry$ReventlessCore.commandSchema);
     let cmdJson = {
-      id: id,
+      id: pluginName,
       meta: cmdJson_meta,
       commandJson: cmdJson_commandJson
     };
-    return Bus.dispatchCommand(adminEpCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
+    return Bus.dispatchCommand(adminDcbCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
   };
   let pluginStatusSubTopic = "onPluginStatusChange";
   let uiFragmentSubTopic = "onUIFragmentChange";
+  let adminDcbEventTopicKey = ComponentType$ReventlessCore.name("Admin", "EventTopic");
   let pluginEventsSubscribed = {
     contents: false
   };
@@ -2590,16 +2545,25 @@ function Make($star) {
         case "VersionSuperseded" :
         case "IncompatiblePluginDetected" :
           return;
-        case "UIFragmentRegistered" :
-          let data = match._0;
-          return publishUIFragment(Plugin$ReventlessCore.name(data.pluginId), "Registered", S.reverseConvertToJsonOrThrow(data.manifest, Plugin$Reventless.uiFragmentManifestSchema));
-        case "UIFragmentUpdated" :
-          let data$1 = match._0;
-          return publishUIFragment(Plugin$ReventlessCore.name(data$1.pluginId), "Updated", S.reverseConvertToJsonOrThrow(data$1.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
-        case "UIFragmentDeregistered" :
-          return publishUIFragment(Plugin$ReventlessCore.name(match._0.pluginId), "Deregistered", null);
         default:
           return publishStatus(match._0.name, "Connected");
+      }
+    });
+    Bus.subscribeToEvents(adminDcbEventTopicKey, async (service, _meta, eventJson) => {
+      if (service !== "AdminDcbEventLog") {
+        return;
+      }
+      let match = decodeUiFragmentRegistryEventEnvelope(eventJson);
+      if (match === undefined) {
+        return;
+      }
+      switch (match.TAG) {
+        case "UiFragmentRegistered" :
+          return publishUIFragment(match.pluginId, "Registered", S.reverseConvertToJsonOrThrow(match.manifest, Plugin$Reventless.uiFragmentManifestSchema));
+        case "UiFragmentUpdated" :
+          return publishUIFragment(match.pluginId, "Updated", S.reverseConvertToJsonOrThrow(match.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
+        case "UiFragmentDeregistered" :
+          return publishUIFragment(match.pluginId, "Deregistered", null);
       }
     });
   };
@@ -2643,7 +2607,6 @@ function Make($star) {
           extensionProtocols: [],
           apiSchemaFragment: param[5],
           apiTarget: undefined,
-          uiFragments: uiFragments,
           structure: param[7],
           dcbEventLog: undefined,
           kind: "Domain"
@@ -2653,43 +2616,14 @@ function Make($star) {
           _0: pluginDefinition
         });
         if (uiFragments !== undefined) {
-          dispatchAdminEpCommand(id, {
+          dispatchUiFragmentCommand(pluginName, {
             TAG: "RegisterUiFragment",
-            _0: uiFragments
+            pluginId: pluginName,
+            manifest: uiFragments,
+            at: new Date().toISOString()
           });
           return;
         }
-      });
-    });
-  };
-  let seedUIFragmentRegistryQueryDb = pluginComponents => {
-    let uiFragmentOps = ensureUIFragmentRegistryQueryDbStore();
-    pluginComponents.forEach(plugin => {
-      let outputs = Component$ReventlessCore.outputs(plugin);
-      Pulumi.all([
-        outputs.id,
-        outputs.uiFragments
-      ]).apply(param => {
-        let uiFragments = param[1];
-        if (uiFragments === undefined) {
-          return;
-        }
-        let id = param[0];
-        let state_remoteEntryUrl = uiFragments.remoteEntryUrl;
-        let state_panels = uiFragments.panels;
-        let state_pages = uiFragments.pages;
-        let state_registeredAt = new Date().toISOString();
-        let state_updatedAt = new Date().toISOString();
-        let state = {
-          pluginId: id,
-          remoteEntryUrl: state_remoteEntryUrl,
-          panels: state_panels,
-          pages: state_pages,
-          registeredAt: state_registeredAt,
-          updatedAt: state_updatedAt
-        };
-        let entry = S.reverseConvertToJsonOrThrow(state, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
-        uiFragmentOps.save(id, entry, "Any", undefined);
       });
     });
   };
@@ -2940,17 +2874,13 @@ function Make($star) {
       adminResources: []
     });
     subscribeToPluginEvents();
-    let seedAdminStores = () => {
-      connectPlugin(plugins$1);
-      seedUIFragmentRegistryQueryDb(plugins$1);
-      seedPluginStructuresStore(plugins$1);
-    };
     if (projectionCatchup !== undefined) {
       Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], projectionCatchup[2], () => Bus.projectionCatchupHandlers()), e => {
         console.error("[Platform] projection catch-up failed:", e);
         return Promise.resolve();
       }).then(() => {
-        seedAdminStores();
+        connectPlugin(plugins$1);
+        seedPluginStructuresStore(plugins$1);
         return Promise.resolve();
       });
     } else if (pgProjectionCatchup !== undefined) {
@@ -2959,11 +2889,13 @@ function Make($star) {
         console.error("[Platform] postgres projection catch-up failed:", e);
         return Promise.resolve();
       }).then(() => {
-        seedAdminStores();
+        connectPlugin(plugins$1);
+        seedPluginStructuresStore(plugins$1);
         return Promise.resolve();
       });
     } else {
-      seedAdminStores();
+      connectPlugin(plugins$1);
+      seedPluginStructuresStore(plugins$1);
     }
     pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure;
     CommandGeneratorResolvers_GraphQL$ReventlessLocal.setPluginStatusGate(field => {
@@ -3453,7 +3385,6 @@ function Make($star) {
     StateViewSliceMaker.QueryDbResolvers.relayRef.contents = domainRelaySupport;
     subscribeToPluginEvents();
     connectPlugin([pluginComponent]);
-    seedUIFragmentRegistryQueryDb([pluginComponent]);
     seedPluginStructuresStore([pluginComponent]);
     let deployedPluginOutputs = [Component$ReventlessCore.outputs(pluginComponent)];
     firePluginDeployedHooks(builtInfos.contents, deployedPluginOutputs);
@@ -3500,6 +3431,7 @@ export {
   getPlatformGraphQL,
   platformMCPRef,
   decodePluginEventEnvelope,
+  decodeUiFragmentRegistryEventEnvelope,
   MakeWithConfig,
   Make,
 }

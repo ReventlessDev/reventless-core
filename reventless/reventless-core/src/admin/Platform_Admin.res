@@ -77,7 +77,6 @@ module Make = (
           extensionProtocols: [],
           apiSchemaFragment: None,
           apiTarget: None,
-          uiFragments: None,
           structure: None,
           dcbEventLog: None,
           kind: Domain,

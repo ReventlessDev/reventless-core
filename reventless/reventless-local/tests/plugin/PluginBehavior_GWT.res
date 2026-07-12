@@ -160,22 +160,6 @@ describe("PluginBehavior:", () => {
     ->thenEvents([IncompatiblePluginDetected(pluginDefinition)])
   )
 
-  // ── UI fragments ────────────────────────────────────────────────────────────
-  test("Connect with UI fragments emits UIFragmentRegistered", () =>
-    givenEvents([VersionDetected("1")])
-    ->whenCmd(Connect(pluginDefinitionWithUI))
-    ->thenEvents([
-      VersionConnected(pluginDefinitionWithUI),
-      UIFragmentRegistered({pluginId: pluginDefinitionWithUI.id, manifest: uiManifest}),
-    ])
-  )
-
-  test("Disconnect with UI fragments emits UIFragmentDeregistered", () =>
-    givenEvents([VersionConnected(pluginDefinitionWithUI)])
-    ->whenCmd(Disconnect("1"))
-    ->thenEvents([
-      VersionDisconnected(pluginDefinitionWithUI),
-      UIFragmentDeregistered({pluginId: pluginDefinitionWithUI.id}),
-    ])
-  )
+  // UI-fragment registration no longer rides the Plugin aggregate — the
+  // UiFragmentRegistry StateChangeSlice owns it (see UiFragmentRegistry_GWT).
 })

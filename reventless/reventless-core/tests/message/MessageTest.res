@@ -41,7 +41,6 @@ describe("Message should", () => {
       extensionProtocols: [],
       apiSchemaFragment: None,
       apiTarget: None,
-      uiFragments: None,
       structure: None,
       dcbEventLog: None,
       kind: Domain,
@@ -110,7 +109,6 @@ describe("Message should", () => {
       extensionProtocols: [],
       apiSchemaFragment: None,
       apiTarget: None,
-      uiFragments: None,
       structure: Some({
         readModels: [],
         stateViewSlices: [],
@@ -209,7 +207,6 @@ describe("Message should", () => {
       extensionProtocols: [],
       apiSchemaFragment: None,
       apiTarget: None,
-      uiFragments: None,
       structure: None,
       dcbEventLog: None,
       kind: Domain,

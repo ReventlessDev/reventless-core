@@ -38,18 +38,6 @@ let snapshot = None
 
 let atomicCounter = None
 
-let uiRegisterEvents = (pluginId, manifest) =>
-  switch manifest {
-  | None => []
-  | Some(manifest) => [(UIFragmentRegistered({pluginId, manifest}): event)]
-  }
-
-let uiDeregisterEvents = (pluginId, manifest) =>
-  switch manifest {
-  | None => []
-  | Some(_) => [(UIFragmentDeregistered({pluginId: pluginId}): event)]
-  }
-
 // Highest version with status Connected, or None.
 let highestConnected = (known: dict<knownVersion>): option<version> =>
   known
@@ -93,11 +81,11 @@ let currentAfterConnect = (known, v) =>
   | Some(h) => Plugin.compareVersions(v, h) >= 0 ? v : h
   }
 
-// Events emitted when `v` (with `def`) becomes Connected: the VersionConnected +
-// UI register, plus a VersionSuperseded record when `v` takes over from a
+// Events emitted when `v` (with `def`) becomes Connected: the VersionConnected,
+// plus a VersionSuperseded record when `v` takes over from a
 // different current version.
 let connectEvents = (state: state, v: version, def: pluginDefinition): array<event> => {
-  let base = Array.concat([VersionConnected(def)], uiRegisterEvents(def.id, def.uiFragments))
+  let base = [VersionConnected(def)]
   let supersede = if currentAfterConnect(state.known, v) == v {
     switch state.current {
     | Some(c) if c != v =>
@@ -159,7 +147,7 @@ let decide = (state, command) =>
     let v = def.version
     switch state.known->Dict.get(v) {
     // Idempotent when the definition is unchanged; when a redeploy carries a changed
-    // definition (e.g. a newly added `kind`, updated uiFragments/protocols) re-emit
+    // definition (e.g. a newly added `kind`, updated protocols) re-emit
     // VersionConnected to overwrite the stored def and re-project the row. The version
     // is already current, so connectEvents' supersede stays empty — a bare refresh.
     | Some({status: Connected, definition}) => definition == def ? Ok([]) : Ok([VersionConnected(def)])
@@ -168,24 +156,13 @@ let decide = (state, command) =>
   | Disconnect(v) =>
     switch state.known->Dict.get(v) {
     | Some({status: Connected, definition}) =>
-      Ok(
-        Array.concat(
-          Array.concat(
-            [VersionDisconnected(definition)],
-            uiDeregisterEvents(definition.id, definition.uiFragments),
-          ),
-          promoteEvents(state, v),
-        ),
-      )
+      Ok(Array.concat([VersionDisconnected(definition)], promoteEvents(state, v)))
     | _ => Ok([]) // not connected / unknown → tolerate stray disconnect
     }
   | Activate(v) =>
     switch state.known->Dict.get(v) {
     | Some({status: Inactive | Retired, definition}) =>
-      let base = Array.concat(
-        [VersionActivated(definition)],
-        uiRegisterEvents(definition.id, definition.uiFragments),
-      )
+      let base = [VersionActivated(definition)]
       let supersede = if currentAfterConnect(state.known, v) == v {
         switch state.current {
         | Some(c) if c != v =>
@@ -213,15 +190,7 @@ let decide = (state, command) =>
   | Deactivate(v) =>
     switch state.known->Dict.get(v) {
     | Some({status: Connected | Disconnected, definition}) =>
-      Ok(
-        Array.concat(
-          Array.concat(
-            [VersionDeactivated(definition)],
-            uiDeregisterEvents(definition.id, definition.uiFragments),
-          ),
-          promoteEvents(state, v),
-        ),
-      )
+      Ok(Array.concat([VersionDeactivated(definition)], promoteEvents(state, v)))
     | Some({status: Inactive | Retired}) => Ok([]) // idempotent / archived no-op
     | None => Error(UnknownVersion)
     }
@@ -229,15 +198,7 @@ let decide = (state, command) =>
     switch state.known->Dict.get(v) {
     | Some({status: Retired}) => Ok([]) // idempotent
     | Some({definition}) =>
-      Ok(
-        Array.concat(
-          Array.concat(
-            [VersionRetired(definition)],
-            uiDeregisterEvents(definition.id, definition.uiFragments),
-          ),
-          promoteEvents(state, v),
-        ),
-      )
+      Ok(Array.concat([VersionRetired(definition)], promoteEvents(state, v)))
     | None => Error(UnknownVersion)
     }
   | ReportIncompatibility(def) => Ok([IncompatiblePluginDetected(def)])
@@ -262,9 +223,6 @@ let evolve = (state: state, event) => {
   | VersionDetected(_)
   | VersionSuperseded(_)
   | VersionPromoted(_)
-  | IncompatiblePluginDetected(_)
-  | UIFragmentRegistered(_)
-  | UIFragmentUpdated(_)
-  | UIFragmentDeregistered(_) => state
+  | IncompatiblePluginDetected(_) => state
   }
 }

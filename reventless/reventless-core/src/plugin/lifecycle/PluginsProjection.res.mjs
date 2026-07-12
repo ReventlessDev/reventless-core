@@ -71,7 +71,6 @@ function displayState(def, status, statusChange, otherConnectedVersions) {
   let base_extensionNames = def.extensions.map(extension => extension.extensionPointName);
   let base_extensions = def.extensions;
   let base_apiSchemaFragment = def.apiSchemaFragment;
-  let base_uiFragments = def.uiFragments;
   let base_structure = def.structure;
   let base_dcbEventLog = def.dcbEventLog;
   let base_kind = def.kind;
@@ -87,7 +86,6 @@ function displayState(def, status, statusChange, otherConnectedVersions) {
     status: status,
     statusChange: statusChange,
     apiSchemaFragment: base_apiSchemaFragment,
-    uiFragments: base_uiFragments,
     structure: base_structure,
     dcbEventLog: base_dcbEventLog,
     kind: base_kind,

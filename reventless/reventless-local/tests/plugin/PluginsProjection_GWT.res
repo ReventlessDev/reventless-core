@@ -86,18 +86,6 @@ describe("PluginsProjection:", () => {
     ->thenState(display(pluginDefinition, Retired, []))
   )
 
-  test("UIFragmentRegistered is ignored by the current view", () =>
-    givenEvents([VersionConnected(pluginDefinition)])
-    ->whenEvent(UIFragmentRegistered({pluginId: pluginDefinition.id, manifest: uiManifest}))
-    ->thenState(state)
-  )
-
-  test("UIFragmentDeregistered is ignored by the current view", () =>
-    givenEvents([VersionConnected(pluginDefinition)])
-    ->whenEvent(UIFragmentDeregistered({pluginId: pluginDefinition.id}))
-    ->thenState(state)
-  )
-
   test("IncompatiblePluginDetected leaves a connected row unchanged", () =>
     givenEvents([VersionConnected(pluginDefinition)])
     ->whenEvent(IncompatiblePluginDetected(pluginDefinition))

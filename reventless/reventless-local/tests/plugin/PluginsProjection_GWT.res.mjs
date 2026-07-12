@@ -92,25 +92,6 @@ PluginsProjectionTest.describe("PluginsProjection:", () => {
     TAG: "VersionRetired",
     _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
   }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinition, "Retired", [])));
-  PluginsProjectionTest.test("UIFragmentRegistered is ignored by the current view", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
-      TAG: "VersionConnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }]), {
-    TAG: "UIFragmentRegistered",
-    _0: {
-      pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinition.id,
-      manifest: Plugin_Fixtures$ReventlessLocal.uiManifest
-    }
-  }), Plugin_Fixtures$ReventlessLocal.state));
-  PluginsProjectionTest.test("UIFragmentDeregistered is ignored by the current view", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
-      TAG: "VersionConnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }]), {
-    TAG: "UIFragmentDeregistered",
-    _0: {
-      pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinition.id
-    }
-  }), Plugin_Fixtures$ReventlessLocal.state));
   PluginsProjectionTest.test("IncompatiblePluginDetected leaves a connected row unchanged", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
       TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition

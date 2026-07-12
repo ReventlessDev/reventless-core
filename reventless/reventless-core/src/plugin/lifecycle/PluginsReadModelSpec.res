@@ -28,7 +28,6 @@ type state = {
   // API target for split-API schema routing. Absent/None means "Domain" (backward compat).
   // "Platform" → excluded from DomainApi runtime schema stitching in updateApiSchema.
   apiTarget?: string,
-  uiFragments: @s.matches(Reventless.Plugin.uiFragmentManifestOptionSchema) option<Reventless.Plugin.uiFragmentManifest>,
   // Plugin structure (component metadata) — surfaced via Platform_ComponentDefinitions.
   // None for older plugins whose protocol version did not carry the field.
   structure: @s.matches(Reventless.Plugin.pluginStructureOptionSchema) option<Reventless.Plugin.pluginStructure>,
@@ -75,7 +74,6 @@ type queryResult = {
   status: status,
   apiSchemaFragment: option<Reventless.Plugin.apiSchemaFragment>,
   apiTarget?: string,
-  uiFragments: option<Reventless.Plugin.uiFragmentManifest>,
   structure: option<Reventless.Plugin.pluginStructure>,
   dcbEventLog: option<Reventless.Plugin.dcbEventLogDefinition>,
   kind: option<Reventless.Plugin.pluginKind>,

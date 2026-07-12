@@ -44,7 +44,6 @@ function Make(RuntimeEnvironment) {
             extensionProtocols: [],
             apiSchemaFragment: undefined,
             apiTarget: undefined,
-            uiFragments: undefined,
             structure: undefined,
             dcbEventLog: undefined,
             kind: "Domain"
@@ -192,7 +191,6 @@ function Make(RuntimeEnvironment) {
               extensionProtocols: [],
               apiSchemaFragment: undefined,
               apiTarget: undefined,
-              uiFragments: undefined,
               structure: undefined,
               dcbEventLog: undefined,
               kind: "Domain"

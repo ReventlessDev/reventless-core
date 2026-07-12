@@ -26,19 +26,6 @@ type command =
   // automatic `Superseded` transition (which is decided, not commanded).
   | Retire(version)
 
-@schema
-type uiFragmentRegisteredData = {pluginId: string, manifest: uiFragmentManifest}
-
-@schema
-type uiFragmentUpdatedData = {
-  pluginId: string,
-  previousManifest: uiFragmentManifest,
-  newManifest: uiFragmentManifest,
-}
-
-@schema
-type uiFragmentDeregisteredData = {pluginId: string}
-
 // Carries both the superseded and the superseding version's full definition —
 // a deterministic trigger for version-to-version schema/data migrations
 // (analysis §6.2.4).
@@ -72,11 +59,6 @@ type event =
   | VersionRetired(pluginDefinition)
   // Protocol incompatibility recorded at connect; connection still proceeds.
   | IncompatiblePluginDetected(pluginDefinition)
-  // UI fragment lifecycle events — emitted alongside connect/disconnect/(de)activate
-  // when the plugin's pluginDefinition.uiFragments is set.
-  | UIFragmentRegistered(uiFragmentRegisteredData)
-  | UIFragmentUpdated(uiFragmentUpdatedData)
-  | UIFragmentDeregistered(uiFragmentDeregisteredData)
 
 @schema
 type error =

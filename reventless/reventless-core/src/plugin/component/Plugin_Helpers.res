@@ -146,6 +146,12 @@ type eventCollectorContext = {
   // Pre-serialised JSON of the pluginDefinition (sury-encoded then JSON.stringify).
   // Output because it's assembled from resolved component outputs at deploy time.
   pluginDefinitionJson: Pulumi.Output.t<string>,
+  // Pre-serialised JSON of the plugin's UI-fragment manifest ("null" when the
+  // plugin ships none). Shipped as its own asset next to pluginDefinition.json —
+  // the manifest no longer rides pluginDefinition (the UiFragmentRegistry slice
+  // owns fragment state); the bundled Connect extension needs it at cold start
+  // to emit RegisterUiFragment in the handshake answer.
+  uiFragmentsJson: Pulumi.Output.t<string>,
   // Outgoing EPs whose events this Lambda's mapping handles. Admin Lambda: 1
   // entry (its own Plugin EP). Plugin Lambda: 0 (plugins don't process their own
   // EP outgoing events here).
@@ -368,6 +374,7 @@ let extractExtensionDefinitions = (extensionsOutputs: array<Extension.outputs>) 
 
 let createConnectPluginExtension = (
   ~pluginDefinition,
+  ~uiFragments: option<Reventless.Plugin.uiFragmentManifest>,
   ~publishToPluginExtensionPoint,
   ~publishToAggregates,
   ~readModelNamesForSourceName,
@@ -379,6 +386,7 @@ let createConnectPluginExtension = (
   ->Pulumi.Output.apply(pluginDefinition => {
     module ConnectPluginExtension = PluginConnectExtension_Builder.Make({
       let pluginDefinition = pluginDefinition
+      let uiFragments = uiFragments
     })
     let connectPluginExtension = ConnectPluginExtension.make(
       ~publishToPluginExtensionPoint,
@@ -472,6 +480,10 @@ module MakeEventCollectorHelper = (
     ~extensionsOutputs: array<Extension.outputs>,
     ~pluginExtensionPointUnwrapped: option<ReventlessInterop.ExtensionPoint.resolvedOutputs>=?,
     ~pluginDefinition,
+    // The plugin's UI-fragment manifest — serialised into the per-plugin
+    // eventCollectorContext (uiFragmentsJson) so the AWS adapter ships it as a
+    // uiFragments.json asset for the bundled Connect extension's cold start.
+    ~uiFragments: option<Reventless.Plugin.uiFragmentManifest>=None,
     ~connectPluginExtensionIncomingEventHandler: option<Pulumi.Output.t<Pulumi.Output.t<Plugin_Callback.jsonEventsHandler>>>=?,
     ~extensionsHandlers,
     ~extensionPointsHandlers,
@@ -589,6 +601,11 @@ module MakeEventCollectorHelper = (
         ->S.reverseConvertToJsonOrThrow(Reventless.Plugin.pluginDefinitionSchema)
         ->JSON.stringify
         ->Pulumi.Output.make
+      let uiFragmentsJson =
+        uiFragments
+        ->S.reverseConvertToJsonOrThrow(Reventless.Plugin.uiFragmentManifestOptionSchema)
+        ->JSON.stringify
+        ->Pulumi.Output.make
       let pluginExtensionPointCmdTopicUrl = switch pluginExtensionPointUnwrapped {
       | Some(unwrapped) =>
         switch unwrapped.commandTopic.resources->Array.get(0) {
@@ -680,6 +697,7 @@ module MakeEventCollectorHelper = (
         ~componentName=ecName,
         ~context={
           pluginDefinitionJson,
+          uiFragmentsJson,
           extensionPoints: extensionPointEntries,
           connectExtension,
           extensions,

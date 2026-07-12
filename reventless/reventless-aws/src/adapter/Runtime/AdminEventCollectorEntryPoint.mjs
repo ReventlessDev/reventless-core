@@ -582,6 +582,19 @@ function loadPluginDefinition() {
   }
 }
 
+// The plugin's UI-fragment manifest — shipped as its own asset since the
+// manifest no longer rides pluginDefinition (the UiFragmentRegistry slice owns
+// fragment state). Contains JSON `null` for plugins without a UI; tolerate a
+// missing file (archives built before the asset existed) the same way.
+function loadUiFragments() {
+  try {
+    const raw = readFileSync(new URL("./uiFragments.json", `file://${process.cwd()}/`), "utf-8");
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
 // Cross-plugin spec packages (e.g. "@reventlessdev/online-shop-hybrid-catalog-spec")
 // are bundled into the function asset under /var/task/node_modules/ by
 // PluginRuntime_Builder.forPluginEventCollector. This entry-point file, however,
@@ -731,10 +744,13 @@ async function buildHandler() {
     const specMod = patchSpecId(await importFromAsset(ext.specModule));
     const mappingsMod = await importFromAsset(ext.mappingsModule);
     // After Phase 3 of plugin-eventcollector-runtime-rewire, the Connect
-    // extension Spec carries only pluginDefinition — cross-plugin subscribe /
-    // unsubscribe directives moved to admin's manageSubscriptions hook.
+    // extension Spec carries pluginDefinition plus the plugin's UI-fragment
+    // manifest (its own asset) — cross-plugin subscribe / unsubscribe
+    // directives moved to admin's manageSubscriptions hook. ReScript None
+    // compiles to `undefined`, so map the asset's JSON null accordingly.
     const extBuilder = mappingsMod.Make({
       pluginDefinition,
+      uiFragments: loadUiFragments() ?? undefined,
     });
     // PluginConnectExtension_Builder.Make returns a module exposing:
     //   - ConnectPluginMapping  (single mapping)

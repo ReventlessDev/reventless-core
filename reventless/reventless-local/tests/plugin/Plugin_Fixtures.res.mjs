@@ -17,7 +17,6 @@ let pluginDefinition = {
   extensionProtocols: [],
   apiSchemaFragment: undefined,
   apiTarget: undefined,
-  uiFragments: undefined,
   structure: undefined,
   dcbEventLog: undefined,
   kind: "Domain"
@@ -33,7 +32,6 @@ let pluginDefinitionV2 = {
   extensionProtocols: pluginDefinition.extensionProtocols,
   apiSchemaFragment: pluginDefinition.apiSchemaFragment,
   apiTarget: pluginDefinition.apiTarget,
-  uiFragments: pluginDefinition.uiFragments,
   structure: pluginDefinition.structure,
   dcbEventLog: pluginDefinition.dcbEventLog,
   kind: pluginDefinition.kind
@@ -49,7 +47,6 @@ let pluginDefinitionInfra = {
   extensionProtocols: pluginDefinition.extensionProtocols,
   apiSchemaFragment: pluginDefinition.apiSchemaFragment,
   apiTarget: pluginDefinition.apiTarget,
-  uiFragments: pluginDefinition.uiFragments,
   structure: pluginDefinition.structure,
   dcbEventLog: pluginDefinition.dcbEventLog,
   kind: "PlatformInfrastructure"
@@ -71,22 +68,6 @@ let uiManifest = {
   pages: uiManifest_pages
 };
 
-let pluginDefinitionWithUI = {
-  id: pluginDefinition.id,
-  name: pluginDefinition.name,
-  version: pluginDefinition.version,
-  extensionPoints: pluginDefinition.extensionPoints,
-  extensions: pluginDefinition.extensions,
-  eventCollector: pluginDefinition.eventCollector,
-  extensionProtocols: pluginDefinition.extensionProtocols,
-  apiSchemaFragment: pluginDefinition.apiSchemaFragment,
-  apiTarget: pluginDefinition.apiTarget,
-  uiFragments: uiManifest,
-  structure: pluginDefinition.structure,
-  dcbEventLog: pluginDefinition.dcbEventLog,
-  kind: pluginDefinition.kind
-};
-
 let extensionPointNames2 = ["Test.Test"];
 
 let pluginDefinition2 = {
@@ -103,7 +84,6 @@ let pluginDefinition2 = {
   extensionProtocols: [],
   apiSchemaFragment: undefined,
   apiTarget: undefined,
-  uiFragments: undefined,
   structure: undefined,
   dcbEventLog: undefined,
   kind: "Domain"
@@ -119,7 +99,6 @@ export {
   display,
   state,
   uiManifest,
-  pluginDefinitionWithUI,
   extensionPointNames2,
   pluginDefinition2,
 }

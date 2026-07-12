@@ -215,6 +215,8 @@ function Make(Spec) {
             _0: Plugin$ReventlessCore.makeId(id, event._0),
             _1: "UnknownPluginDetected"
           }];
+      case "VersionSuperseded" :
+        return [];
       case "VersionConnected" :
       case "VersionPromoted" :
         break;
@@ -298,8 +300,6 @@ function Make(Spec) {
               _0: pluginDefinition$4
             }
           }];
-      default:
-        return [];
     }
     let pluginDefinition$5 = event._0;
     return [

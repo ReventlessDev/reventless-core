@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Plugin$ReventlessCore from "./Plugin.res.mjs";
@@ -496,7 +497,6 @@ function Make(Spec) {
             extensionProtocols: [],
             apiSchemaFragment: apiSchemaFragment,
             apiTarget: capturedDeployTarget,
-            uiFragments: uiFragments,
             structure: pluginStructure,
             dcbEventLog: param[2],
             kind: Stdlib_Option.getOr(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.pluginMetadataRegistry.contents, m => m.kind), "Domain")
@@ -528,10 +528,10 @@ function Make(Spec) {
             readModelQueueUrls[param[0]] = urlOutput;
           });
           if (coreSetup !== undefined) {
-            let match$4 = Plugin_Helpers$ReventlessCore.createConnectPluginExtension(pluginDefinition, publishToPluginExtensionPoint, publishToAggregates, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
-            EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, coreSetup[0], pluginDefinition, match$4[1], extensionsHandlers, extensionPointsHandlers, match$4[0], extensionRegistryInfos, match$1[2], aggregateQueueUrls, readModelQueueUrls, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName);
+            let match$4 = Plugin_Helpers$ReventlessCore.createConnectPluginExtension(pluginDefinition, uiFragments, publishToPluginExtensionPoint, publishToAggregates, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
+            EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, coreSetup[0], pluginDefinition, Primitive_option.some(uiFragments), match$4[1], extensionsHandlers, extensionPointsHandlers, match$4[0], extensionRegistryInfos, match$1[2], aggregateQueueUrls, readModelQueueUrls, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName);
           } else {
-            EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, undefined, pluginDefinition, undefined, extensionsHandlers, extensionPointsHandlers, undefined, extensionRegistryInfos, undefined, aggregateQueueUrls, readModelQueueUrls, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName);
+            EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, undefined, pluginDefinition, Primitive_option.some(uiFragments), undefined, extensionsHandlers, extensionPointsHandlers, undefined, extensionRegistryInfos, undefined, aggregateQueueUrls, readModelQueueUrls, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName);
           }
           let tasksOutputs = Plugin_Helpers$ReventlessCore.createTasks(tasks, aggregatesOutputs, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, Spec.resourceNaming, opts);
           let resolvers = Plugin_Helpers$ReventlessCore.createResolvers(allQueryDbs);

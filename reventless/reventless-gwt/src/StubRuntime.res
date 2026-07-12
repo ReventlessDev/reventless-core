@@ -47,7 +47,6 @@ let pluginDefinition: Reventless.Plugin.pluginDefinition = {
   extensionProtocols: [],
   apiSchemaFragment: None,
   apiTarget: None,
-  uiFragments: None,
   structure: None,
   dcbEventLog: None,
   kind: Domain,

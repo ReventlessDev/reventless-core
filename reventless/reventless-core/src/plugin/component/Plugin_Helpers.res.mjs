@@ -11,6 +11,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as Task$ReventlessCore from "../../components/Task/Task.res.mjs";
@@ -222,10 +223,11 @@ function extractExtensionDefinitions(extensionsOutputs) {
   }));
 }
 
-function createConnectPluginExtension(pluginDefinition, publishToPluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts) {
+function createConnectPluginExtension(pluginDefinition, uiFragments, publishToPluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts) {
   return Output$Pulumi.unzip(pluginDefinition.apply(pluginDefinition => {
     let ConnectPluginExtension = PluginConnectExtension_Builder$ReventlessCore.Make({
-      pluginDefinition: pluginDefinition
+      pluginDefinition: pluginDefinition,
+      uiFragments: uiFragments
     });
     let connectPluginExtension = ConnectPluginExtension.make(publishToPluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
     let connectPluginExtensionOutputs = Component$ReventlessCore.outputs(connectPluginExtension);
@@ -264,7 +266,8 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
         eventCollectorUrn
       ];
     };
-    let connect = (eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, pluginExtensionPointUnwrapped, pluginDefinition, connectPluginExtensionIncomingEventHandler, extensionsHandlers, extensionPointsHandlers, connectPluginExtensionOutputs, extensionRegistryInfosOpt, extensionPointRegistryInfosOpt, aggregateQueueUrlsOpt, readModelQueueUrlsOpt, readModelNamesForSourceNameOpt) => {
+    let connect = (eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, pluginExtensionPointUnwrapped, pluginDefinition, uiFragmentsOpt, connectPluginExtensionIncomingEventHandler, extensionsHandlers, extensionPointsHandlers, connectPluginExtensionOutputs, extensionRegistryInfosOpt, extensionPointRegistryInfosOpt, aggregateQueueUrlsOpt, readModelQueueUrlsOpt, readModelNamesForSourceNameOpt) => {
+      let uiFragments = uiFragmentsOpt !== undefined ? Primitive_option.valFromOption(uiFragmentsOpt) : undefined;
       let extensionRegistryInfos = extensionRegistryInfosOpt !== undefined ? extensionRegistryInfosOpt : [];
       let extensionPointRegistryInfos = extensionPointRegistryInfosOpt !== undefined ? extensionPointRegistryInfosOpt : [];
       let aggregateQueueUrls = aggregateQueueUrlsOpt !== undefined ? aggregateQueueUrlsOpt : ({});
@@ -314,6 +317,7 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
         let ecResource = Component$ReventlessCore.toPulumiResource(eventCollector);
         let ecName = ComponentType$ReventlessCore.nameOpt(ecResource.__name, EventCollector$ReventlessCore.componentType);
         let pluginDefinitionJson = Pulumi.output(JSON.stringify(S.reverseConvertToJsonOrThrow(pluginDefinition, Plugin$Reventless.pluginDefinitionSchema)));
+        let uiFragmentsJson = Pulumi.output(JSON.stringify(S.reverseConvertToJsonOrThrow(uiFragments, Plugin$Reventless.uiFragmentManifestOptionSchema)));
         let pluginExtensionPointCmdTopicUrl;
         if (pluginExtensionPointUnwrapped !== undefined) {
           let r = pluginExtensionPointUnwrapped.commandTopic.resources[0];
@@ -370,6 +374,7 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
           }) : [];
         registerEventCollectorContext(ecName, {
           pluginDefinitionJson: pluginDefinitionJson,
+          uiFragmentsJson: uiFragmentsJson,
           extensionPoints: extensionPointEntries,
           connectExtension: connectExtension,
           extensions: extensions,

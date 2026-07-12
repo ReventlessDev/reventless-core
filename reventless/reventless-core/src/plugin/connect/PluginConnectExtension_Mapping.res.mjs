@@ -14,7 +14,7 @@ function Make(Spec) {
     if (pluginId !== id) {
       return [];
     }
-    let manifest = pluginDefinition.uiFragments;
+    let manifest = Spec.uiFragments;
     if (manifest !== undefined) {
       return [
         {

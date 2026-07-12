@@ -1,7 +1,7 @@
 // AWS resolver for the `Platform_UIFragments` admin GraphQL query.
 //
-// Backed by a Lambda DataSource that scans the UIFragmentRegistry read model
-// (one item per plugin whose pluginDefinition carries a uiFragments manifest).
+// Backed by a Lambda DataSource that scans the UiFragments StateViewSlice table
+// (one item per plugin with a registered UI-fragment manifest).
 // The persisted state is sury-encoded with the same shape the in-memory adapter's
 // `Platform_UIFragmentsApi.encodeUIFragmentEntry` produces (null-encoded options,
 // nested panel/page objects), so the handler simply returns the rows as-is.
@@ -34,11 +34,11 @@ export async function handler() {
   } while (exclusiveStartKey);
 
   // Platform invariant: one version per plugin at a time, so the UI sees just
-  // the bare plugin name (mirrors ReventlessCore.Plugin.name). UIFragmentRegistry
-  // accumulates one row per deployed plugin version and carries no lifecycle
-  // status of its own, so without deduping a redeployed federation plugin would
-  // surface duplicate fragments. Collapse to the highest version per plugin name
-  // (mirrors ReventlessCore.Plugin.compareVersions).
+  // the bare plugin name (mirrors ReventlessCore.Plugin.name). The registry is
+  // keyed by bare plugin name (a no-op for the split below), but rows persisted
+  // by the pre-slice registry were keyed name@version — keep the collapse to the
+  // highest version per plugin name (mirrors ReventlessCore.Plugin.compareVersions)
+  // so a mixed table never surfaces duplicate fragments.
   const cmpVer = (a, b) => {
     const pa = String(a).replace(/[-+]/g, ".").split(".");
     const pb = String(b).replace(/[-+]/g, ".").split(".");
@@ -117,7 +117,7 @@ let make = (
                 resources: Resource("arn:aws:logs:*:*:*"),
               },
               {
-                sid: "AllowScanUIFragmentRegistryRm",
+                sid: "AllowScanUiFragmentsTable",
                 effect: Allow,
                 actions: Actions(["dynamodb:Scan"]),
                 resources: Resource("arn:aws:dynamodb:*:*:table/" ++ tableName),

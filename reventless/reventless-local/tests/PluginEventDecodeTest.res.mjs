@@ -6,6 +6,7 @@ import * as Platform$ReventlessLocal from "../src/Platform.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as TestRunner$ReventlessLocal from "../src/test/TestRunner.res.mjs";
 import * as Plugin_Fixtures$ReventlessLocal from "./plugin/Plugin_Fixtures.res.mjs";
+import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
 
 TestRunner$ReventlessLocal.setup();
 
@@ -50,6 +51,38 @@ globalThis.describe("Platform.decodePluginEventEnvelope", () => {
     globalThis.expect(Platform$ReventlessLocal.decodePluginEventEnvelope(bare)).toEqual(undefined);
     globalThis.expect(Platform$ReventlessLocal.decodePluginEventEnvelope("junk")).toEqual(undefined);
     globalThis.expect(Platform$ReventlessLocal.decodePluginEventEnvelope(Object.fromEntries([[
+        "event",
+        {}
+      ]]))).toEqual(undefined);
+  });
+});
+
+globalThis.describe("Platform.decodeUiFragmentRegistryEventEnvelope", () => {
+  let dcbMeta = Message$ReventlessCore.generateMeta("AdminDcbEventLog", undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+  let dcbEnvelopeOf = event => {
+    let json = S.reverseConvertToJsonOrThrow(event, UiFragmentRegistry$ReventlessCore.eventSchema);
+    let match = Message$ReventlessCore.splitMessage(json);
+    return Message$ReventlessCore.composeEventJson$p("Catalog", dcbMeta, Message$ReventlessCore.combineMessage(match[0], match[1]));
+  };
+  globalThis.test("decodes a UiFragmentRegistered event from the published envelope", () => {
+    let event = {
+      TAG: "UiFragmentRegistered",
+      pluginId: "Catalog",
+      manifest: Plugin_Fixtures$ReventlessLocal.uiManifest,
+      at: "t0"
+    };
+    globalThis.expect(Platform$ReventlessLocal.decodeUiFragmentRegistryEventEnvelope(dcbEnvelopeOf(event))).toEqual(event);
+  });
+  globalThis.test("decodes a UiFragmentDeregistered event", () => {
+    let event = {
+      TAG: "UiFragmentDeregistered",
+      pluginId: "Catalog"
+    };
+    globalThis.expect(Platform$ReventlessLocal.decodeUiFragmentRegistryEventEnvelope(dcbEnvelopeOf(event))).toEqual(event);
+  });
+  globalThis.test("returns None for malformed input", () => {
+    globalThis.expect(Platform$ReventlessLocal.decodeUiFragmentRegistryEventEnvelope("junk")).toEqual(undefined);
+    globalThis.expect(Platform$ReventlessLocal.decodeUiFragmentRegistryEventEnvelope(Object.fromEntries([[
         "event",
         {}
       ]]))).toEqual(undefined);

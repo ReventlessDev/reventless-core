@@ -13,7 +13,7 @@
 //     Postgres-backed handlers' HANDLER_CONFIG entries and put the projection
 //     Lambdas in-VPC with secret access.
 //
-// ADMIN EXEMPTION: platform/admin read models (Plugins, UIFragmentRegistry, …)
+// ADMIN EXEMPTION: platform/admin stores (Plugins, UiFragments, …)
 // stay on DynamoDB even when Postgres is selected. Deploy-time consumers (the
 // AppSync schema-clobber guard's Plugin-RM scan, `PLUGIN_RM_TABLE_NAME` gates,
 // retire hooks) query these tables during `pulumi up` — from outside the VPC —

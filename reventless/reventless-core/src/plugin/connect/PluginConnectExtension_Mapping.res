@@ -20,6 +20,10 @@ module ExtensionMapping = ReventlessInfra.ExtensionMapping
 
 module type Spec = {
   let pluginDefinition: Reventless.Plugin.pluginDefinition
+  // The plugin's UI-fragment manifest (no longer carried on pluginDefinition —
+  // the UiFragmentRegistry slice owns fragment state; the definition keeps
+  // lifecycle only). None for pure backend plugins.
+  let uiFragments: option<Reventless.Plugin.uiFragmentManifest>
 }
 
 module Make = (Spec: Spec) => {
@@ -52,7 +56,7 @@ module Make = (Spec: Spec) => {
         // Array.concat) so the outer branch's expected type disambiguates the bare
         // PublishExtensionPointCommand constructor.
         | PluginExtensionPointSpec.UnknownPluginDetected if pluginId == id =>
-          switch pluginDefinition.uiFragments {
+          switch Spec.uiFragments {
           | Some(manifest) => [
               PublishExtensionPointCommand(
                 id,

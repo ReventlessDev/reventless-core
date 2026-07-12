@@ -403,8 +403,6 @@ type pluginDefinition = {
   // Uses @s.matches(stringOptionSchema) — js_nullable creates string | null (not string | undefined),
   // which passes sury's jsonableValidation inside union variant payloads.
   apiTarget: @s.matches(stringOptionSchema) option<string>,
-  // UI fragment manifest contributed by this plugin (optional, absent for pure backend plugins).
-  uiFragments: @s.matches(uiFragmentManifestOptionSchema) option<uiFragmentManifest>,
   // Component graph metadata — populated by makePluginDefinition; absent for older protocol versions.
   structure: @s.matches(pluginStructureOptionSchema) option<pluginStructure>,
   // DCB EventLog definition for plugins that bundle a DcbEventLog component.

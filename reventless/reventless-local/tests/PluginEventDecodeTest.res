@@ -49,3 +49,50 @@ describe("Platform.decodePluginEventEnvelope", () => {
     )->toEqual(None)
   })
 })
+
+// The onUIFragmentChange Source-C emission decodes UiFragmentRegistry slice
+// events from the admin DcbEventLog's published envelope — the exact shape
+// DcbEventLog_Operations produces: composeEventJson'(entityId, meta,
+// combineMessage(eventType, data)).
+describe("Platform.decodeUiFragmentRegistryEventEnvelope", () => {
+  let dcbMeta = ReventlessCore.Message.generateMeta(~service="AdminDcbEventLog")
+
+  let dcbEnvelopeOf = (event: ReventlessCore.UiFragmentRegistry.event) => {
+    let json = event->S.reverseConvertToJsonOrThrow(ReventlessCore.UiFragmentRegistry.eventSchema)
+    let (eventType, data) = json->ReventlessCore.Message.splitMessage
+    ReventlessCore.Message.composeEventJson'(
+      "Catalog",
+      dcbMeta,
+      ReventlessCore.Message.combineMessage(eventType, data),
+    )
+  }
+
+  testSync("decodes a UiFragmentRegistered event from the published envelope", () => {
+    let event = ReventlessCore.UiFragmentRegistry.UiFragmentRegistered({
+      pluginId: "Catalog",
+      manifest: Plugin_Fixtures.uiManifest,
+      at: "t0",
+    })
+    expect(Platform.decodeUiFragmentRegistryEventEnvelope(dcbEnvelopeOf(event)))->toEqual(
+      Some(event),
+    )
+  })
+
+  testSync("decodes a UiFragmentDeregistered event", () => {
+    let event = ReventlessCore.UiFragmentRegistry.UiFragmentDeregistered({pluginId: "Catalog"})
+    expect(Platform.decodeUiFragmentRegistryEventEnvelope(dcbEnvelopeOf(event)))->toEqual(
+      Some(event),
+    )
+  })
+
+  testSync("returns None for malformed input", () => {
+    expect(
+      Platform.decodeUiFragmentRegistryEventEnvelope(JSON.Encode.string("junk")),
+    )->toEqual(None)
+    expect(
+      Platform.decodeUiFragmentRegistryEventEnvelope(
+        JSON.Encode.object(Dict.fromArray([("event", JSON.Encode.object(Dict.make()))])),
+      ),
+    )->toEqual(None)
+  })
+})

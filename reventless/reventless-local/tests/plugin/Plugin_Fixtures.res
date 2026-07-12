@@ -12,7 +12,6 @@ let pluginDefinition: Reventless.Plugin.pluginDefinition = {
   extensionProtocols: [],
   apiSchemaFragment: None,
   apiTarget: None,
-  uiFragments: None,
   structure: None,
   dcbEventLog: None,
   kind: Domain,
@@ -40,11 +39,6 @@ let uiManifest: Reventless.Plugin.uiFragmentManifest = {
   pages: [],
 }
 
-let pluginDefinitionWithUI = {
-  ...pluginDefinition,
-  uiFragments: Some(uiManifest),
-}
-
 let extensionPointNames2 = ["Test.Test"]
 let pluginDefinition2 = {
   Reventless.Plugin.id: "name2@1",
@@ -60,7 +54,6 @@ let pluginDefinition2 = {
   extensionProtocols: [],
   apiSchemaFragment: None,
   apiTarget: None,
-  uiFragments: None,
   structure: None,
   dcbEventLog: None,
   kind: Domain,

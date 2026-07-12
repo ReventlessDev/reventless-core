@@ -292,43 +292,6 @@ PluginTest.describe("PluginBehavior:", () => {
       TAG: "IncompatiblePluginDetected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
     }]));
-  PluginTest.test("Connect with UI fragments emits UIFragmentRegistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
-      TAG: "VersionDetected",
-      _0: "1"
-    }]), {
-    TAG: "Connect",
-    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-  }), [
-    {
-      TAG: "VersionConnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    },
-    {
-      TAG: "UIFragmentRegistered",
-      _0: {
-        pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI.id,
-        manifest: Plugin_Fixtures$ReventlessLocal.uiManifest
-      }
-    }
-  ]));
-  PluginTest.test("Disconnect with UI fragments emits UIFragmentDeregistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
-      TAG: "VersionConnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    }]), {
-    TAG: "Disconnect",
-    _0: "1"
-  }), [
-    {
-      TAG: "VersionDisconnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    },
-    {
-      TAG: "UIFragmentDeregistered",
-      _0: {
-        pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI.id
-      }
-    }
-  ]));
 });
 
 export {

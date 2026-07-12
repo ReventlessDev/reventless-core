@@ -155,13 +155,15 @@ module Make = (
     // Stable JSON literal — matches Reventless.Plugin.pluginDefinitionSchema
     // (optional fields encoded as null via js_nullable).
     let fakePluginDefinitionJson =
-      `{"id":"Admin@INTERNAL","name":"Admin","version":"INTERNAL","extensionPoints":[],"extensions":[],"eventCollector":"NOT-SET","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"uiFragments":null,"structure":null}`->Pulumi.Output.make
+      `{"id":"Admin@INTERNAL","name":"Admin","version":"INTERNAL","extensionPoints":[],"extensions":[],"eventCollector":"NOT-SET","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"structure":null}`->Pulumi.Output.make
     let adminEpEventTopicArn = switch config.eventTopicArn {
     | Some(arn) => arn
     | None => Pulumi.Output.make("NOT_AVAILABLE")
     }
     {
       pluginDefinitionJson: fakePluginDefinitionJson,
+      // Admin ships no UI-fragment manifest.
+      uiFragmentsJson: "null"->Pulumi.Output.make,
       extensionPoints: [
         {
           specModule: ReventlessCore.Plugin_Helpers.adminPluginExtensionPointSpecModule,
@@ -480,9 +482,15 @@ module Make = (
     // is identity at runtime, so the Output unwraps correctly inside the
     // Lambda Function args.
     let bundleOutput =
-      context.pluginDefinitionJson->Pulumi.Output.apply(pluginDefinitionJson => {
+      (context.pluginDefinitionJson, context.uiFragmentsJson)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((pluginDefinitionJson, uiFragmentsJson)) => {
         let extraStringAssets = Dict.make()
         extraStringAssets->Dict.set("pluginDefinition.json", pluginDefinitionJson)
+        // The UI-fragment manifest no longer rides pluginDefinition — ship it as
+        // its own asset ("null" for plugins without a UI) so the bundled Connect
+        // extension can emit RegisterUiFragment in the handshake answer.
+        extraStringAssets->Dict.set("uiFragments.json", uiFragmentsJson)
         Util_Bundle.buildCodeArchive(
           ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs",
           ~packageDirs,

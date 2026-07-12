@@ -109,7 +109,10 @@ module MakeWithConfig = (
       subnetIds: pg.subnetIds,
     })
     QueryDbBackend.exempt(ReventlessCore.PluginsReadModelSpec.name)
-    QueryDbBackend.exempt(ReventlessCore.UIFragmentRegistryReadModelSpec.name)
+    // The UiFragments StateViewSlice table is scanned by the Platform_UIFragments
+    // Lambda (DynamoDB scan) — keep it off the Postgres selection like the other
+    // admin stores.
+    QueryDbBackend.exempt(ReventlessCore.UiFragments.name)
   })
   type api = Types.AppSync.api
   type role = Types.AppSync.role
@@ -1284,23 +1287,6 @@ module MakeWithConfig = (
     PluginReadModelMappings,
   )
 
-  // Admin-internal UIFragmentRegistry read model — projects UIFragmentRegistered/
-  // Updated/Deregistered events from the Plugin aggregate into a DynamoDB table the
-  // Platform_UIFragments admin query Lambda scans.
-  module UIFragmentRegistryReadModelMappings: Reventless.Projection.Mappings
-    with module Target := ReventlessCore.UIFragmentRegistryReadModelSpec = {
-    module M = ReventlessCore.UIFragmentRegistryProjection.Mappings
-    module type Mapping = M.Mapping
-    // See PluginReadModelMappings.moduleUrl note above.
-    let moduleUrl: string = ReventlessCore.UIFragmentRegistryProjection.moduleUrl
-    let mappings: array<module(Mapping)> = ReventlessCore.UIFragmentRegistryProjection.mappings
-  }
-
-  module UIFragmentRegistryReadModel = ReadModel_Builder_NoResolver_Stream.Make(
-    ReventlessCore.UIFragmentRegistryReadModelSpec,
-    UIFragmentRegistryReadModelMappings,
-  )
-
   module type PluginMaker = {
     let make: unit => Plugin.component
   }
@@ -1466,10 +1452,7 @@ module MakeWithConfig = (
       ~version,
       ~extensionPoints=[],
       ~aggregates=[module(PluginAggregate)],
-      ~readModels=[
-        module(PluginReadModel),
-        module(UIFragmentRegistryReadModel),
-      ],
+      ~readModels=[module(PluginReadModel)],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=platformApi,
@@ -1501,8 +1484,9 @@ module MakeWithConfig = (
     | None => ()
     }
 
-    // Mount the Platform_UIFragments Lambda resolver — scans the UIFragmentRegistry
-    // table provisioned above and returns one entry per registered plugin UI.
+    // Mount the Platform_UIFragments Lambda resolver — scans the UiFragments
+    // StateViewSlice table provisioned above and returns one entry per registered
+    // plugin UI.
     switch admin.stateViewSlicesOutputs->Dict.get("UiFragments") {
     | Some(rm) =>
       switch rm.queryDb.resources->Array.get(0) {
@@ -1692,10 +1676,7 @@ module MakeWithConfig = (
       ~version,
       ~extensionPoints=[module(PluginExtensionPoint)],
       ~aggregates=[module(PluginAggregate)],
-      ~readModels=[
-        module(PluginReadModel),
-        module(UIFragmentRegistryReadModel),
-      ],
+      ~readModels=[module(PluginReadModel)],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=platformApi,
@@ -1790,8 +1771,9 @@ module MakeWithConfig = (
     | None => ()
     }
 
-    // Mount the Platform_UIFragments Lambda resolver — scans the UIFragmentRegistry
-    // table provisioned above and returns one entry per registered plugin UI.
+    // Mount the Platform_UIFragments Lambda resolver — scans the UiFragments
+    // StateViewSlice table provisioned above and returns one entry per registered
+    // plugin UI.
     switch admin.stateViewSlicesOutputs->Dict.get("UiFragments") {
     | Some(rm) =>
       switch rm.queryDb.resources->Array.get(0) {

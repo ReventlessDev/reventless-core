@@ -18,13 +18,12 @@ let pluginExcludeFields: array<string> = [
 
 // Additional fields the SDL exposes but the Plugin list view should NOT
 // surface — they're option-of-nested-object types (e.g. apiSchemaFragment,
-// uiFragments, structure) which AutoUI currently renders as scalar columns
+// structure) which AutoUI currently renders as scalar columns
 // and queries without a sub-selection, failing schema validation. Other
-// callers (host-shell's Platform_ComponentDefinitions / Platform_UIFragments)
-// keep querying them via dedicated fields and resolver paths.
+// callers (host-shell's Platform_ComponentDefinitions) keep querying them via
+// dedicated fields and resolver paths.
 let pluginUIOnlyExcludeFields: array<string> = pluginExcludeFields->Array.concat([
   "apiSchemaFragment",
-  "uiFragments",
   "structure",
 ])
 
@@ -40,10 +39,10 @@ let pluginUIOnlyExcludeFields: array<string> = pluginExcludeFields->Array.concat
 let indexQueriesOfConfig = (config: Reventless.ReadModel.config) =>
   config.indexes->Array.length > 0 ? Some(config.indexes) : None
 
-// The UIFragmentRegistry read model is queried exclusively via the explicit
+// The UiFragments StateViewSlice is queried exclusively via the explicit
 // flat `Platform_UIFragments: [Platform_UIFragmentEntry!]!` field declared in
 // `Platform_UIFragmentsApi.res` (and resolved by `Platform_UIFragments_Lambda.res`
-// on AWS / the seeded QueryDb in-memory). Reintroducing an auto-generated
+// on AWS / the slice QueryDb in-memory). Reintroducing an auto-generated
 // connection field here collides with that name on SDL composition.
 let queryEntries: array<querySchemaEntry> = [
   {

@@ -41,7 +41,6 @@ globalThis.describe("Message should", () => {
         extensionProtocols: [],
         apiSchemaFragment: undefined,
         apiTarget: undefined,
-        uiFragments: undefined,
         structure: undefined,
         dcbEventLog: undefined,
         kind: "Domain"
@@ -100,7 +99,6 @@ globalThis.describe("Message should", () => {
       extensionProtocols: [],
       apiSchemaFragment: undefined,
       apiTarget: undefined,
-      uiFragments: undefined,
       structure: {
         readModels: [],
         stateViewSlices: [],
@@ -188,7 +186,6 @@ globalThis.describe("Message should", () => {
       extensionProtocols: [],
       apiSchemaFragment: undefined,
       apiTarget: undefined,
-      uiFragments: undefined,
       structure: undefined,
       dcbEventLog: undefined,
       kind: "Domain"

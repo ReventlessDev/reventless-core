@@ -20,7 +20,6 @@ let pluginExcludeFields = [
 
 let pluginUIOnlyExcludeFields = pluginExcludeFields.concat([
   "apiSchemaFragment",
-  "uiFragments",
   "structure"
 ]);
 

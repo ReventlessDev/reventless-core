@@ -136,11 +136,12 @@ function Make(EventCollectorChannel) {
   };
   let synthesizeAdminContext = () => {
     let config = configRef.contents;
-    let fakePluginDefinitionJson = Pulumi.output(`{"id":"Admin@INTERNAL","name":"Admin","version":"INTERNAL","extensionPoints":[],"extensions":[],"eventCollector":"NOT-SET","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"uiFragments":null,"structure":null}`);
+    let fakePluginDefinitionJson = Pulumi.output(`{"id":"Admin@INTERNAL","name":"Admin","version":"INTERNAL","extensionPoints":[],"extensions":[],"eventCollector":"NOT-SET","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"structure":null}`);
     let arn = config.eventTopicArn;
     let adminEpEventTopicArn = arn !== undefined ? arn : Pulumi.output("NOT_AVAILABLE");
     return {
       pluginDefinitionJson: fakePluginDefinitionJson,
+      uiFragmentsJson: Pulumi.output("null"),
       extensionPoints: [{
           specModule: Plugin_Helpers$ReventlessCore.adminPluginExtensionPointSpecModule,
           mappingsModule: Plugin_Helpers$ReventlessCore.adminPluginExtensionPointMappingsModule,
@@ -305,9 +306,13 @@ function Make(EventCollectorChannel) {
     }
     packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws");
     packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-core");
-    let bundleOutput = context.pluginDefinitionJson.apply(pluginDefinitionJson => {
+    let bundleOutput = Pulumi.all([
+      context.pluginDefinitionJson,
+      context.uiFragmentsJson
+    ]).apply(param => {
       let extraStringAssets = {};
-      extraStringAssets["pluginDefinition.json"] = pluginDefinitionJson;
+      extraStringAssets["pluginDefinition.json"] = param[0];
+      extraStringAssets["uiFragments.json"] = param[1];
       return Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs", packageDirs, extraStringAssets);
     });
     let codeOutput = bundleOutput.apply(b => b.code);

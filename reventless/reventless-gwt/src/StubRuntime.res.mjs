@@ -32,7 +32,6 @@ let pluginDefinition = {
   extensionProtocols: [],
   apiSchemaFragment: undefined,
   apiTarget: undefined,
-  uiFragments: undefined,
   structure: undefined,
   dcbEventLog: undefined,
   kind: "Domain"

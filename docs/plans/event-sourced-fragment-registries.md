@@ -140,6 +140,87 @@ A standalone Pulumi program contributing SDL fields calls the same `systemCallab
 participate in every subsequent stitch with full lifecycle handling. This subsumes the
 public-API goal of the superseded plan.
 
+## Implementation status (updated 2026-07-12)
+
+**Phase 1 (UiFragmentRegistry) — COMPLETE:**
+
+- **Committed `711581e77`** — the registry as admin DCB slices + command path:
+  `UiFragmentRegistry` StateChangeSlice + `UiFragments` StateViewSlice under
+  `reventless-core/src/admin/UiFragmentRegistry/`; wired into `Admin.construct` on both
+  platforms (this stands up the **first-ever admin DcbEventLog** — the `~stateChangeSlices`/
+  `~stateViewSlices` args, previously always `[]`, plus the `dcbPublishJsons →
+  publishToAggregates` merge in `Platform_Admin`); a `RegisterUiFragment` command on
+  `PluginExtensionPointSpec`; a **second EP mapping** (`Delegate` = the slice — a
+  StateChangeSlice Spec structurally satisfies `Aggregate.Spec`) routing
+  `RegisterUiFragment`→register and `DisconnectPlugin`→deregister; the connect extension emits
+  `RegisterUiFragment` alongside `ConnectPlugin`.
+- **Committed `7a47533ac`** — `Platform_UIFragments` retargeted to the new `UiFragments` table
+  (encoder + in-memory resolvers + AWS Lambda mounts); local `connectPlugin` routes the
+  manifest through the admin EP so the slice populates in-process; slice GWT tests.
+- **Increment 5+6 (this commit)** — the old path removed wholesale:
+  - `UIFragmentRegistered/Updated/Deregistered` dropped from the Plugin aggregate
+    (`PluginSpec`/`PluginBehavior`/`PluginsProjection`/EP outgoing mapping); `uiFragments`
+    dropped from `pluginDefinition` AND from `PluginsReadModelSpec` — lifecycle only now.
+  - The manifest reaches the Connect extension via a new `Spec.uiFragments` field:
+    deploy-time threading from `builderOutputs.uiFragments`; on AWS shipped as a new
+    `uiFragments.json` asset next to `pluginDefinition.json` (eventCollectorContext gained
+    `uiFragmentsJson`; `AdminEventCollectorEntryPoint.mjs` loads it, tolerating absence).
+    `Plugin.make(~uiFragments)` API and generated example `Plugin.res` files unchanged.
+  - Old `UIFragmentRegistryReadModelSpec`/`UIFragmentRegistryProjection` deleted; AWS
+    `UIFragmentRegistryReadModel` wiring removed (`UiFragments` slice takes the Postgres
+    admin exemption); local seed store (`seedUIFragmentRegistryQueryDb`) removed.
+  - Local `onUIFragmentChange` re-sourced from the UiFragmentRegistry slice's events on the
+    admin DcbEventLog bus topic (`AdminEventTopic`, service `AdminDcbEventLog`);
+    `decodeUiFragmentRegistryEventEnvelope` is top-level + regression-tested.
+  - Old GWTs deleted (coverage already ported: `UiFragmentRegistry_GWT` + `UiFragments_GWT`);
+    UIFragment cases stripped from `PluginBehavior_GWT`/`PluginsProjection_GWT`/fixtures.
+
+**Defects found by end-to-end verification (fixed in increment 5+6):**
+
+- The prior increment's local EP dispatch was dead code: the local platform constructs **no
+  admin Plugin EP component** (`Admin.construct(~extensionPoints=[])`), so `RegisterUiFragment`
+  parked forever in the LocalBus pending queue and the slice never populated. Local now
+  dispatches the slice command directly to the shared admin DCB command topic
+  (`AdminDcbCmdTopic`, routed by command tag) — the local analogue of the EP mapping, mirroring
+  how `Connect` already bypasses the EP in-process. (Local deregistration-on-disconnect is moot:
+  plugins share the platform process lifetime.)
+- `StateChangeSlice_Callback.encodeEvent` serialized produced events with `JSON.stringifyAny`
+  (runtime representation) instead of the event schema — `None` option fields (e.g. the
+  manifest's `requiredAccess`) were dropped from the payload, and the consumer-side
+  `DcbDecode` (js_nullable expects `T | null`, rejects missing) discarded the event as schema
+  drift. Now encodes via `S.reverseConvertToJsonOrThrow(Spec.eventSchema)`, symmetric with the
+  Aggregate path's `Message.encode`. This latent bug affected any DCB slice event carrying
+  option fields.
+
+**End-to-end validated** (hybrid example, in-memory, `CATALOG_UI_BUNDLE_URL` set):
+`Platform_UIFragments` returns the Catalog fragment from the slice path; admin-DCB
+publish/subscribe topic + service stamp verified; envelope decode verified. Note the entry
+`pluginId` is now the bare plugin name (registry keyed by name), no longer `name@version`.
+
+**Decisions / refinements made during implementation (deviations from the plan text):**
+
+- **Admin hosting is DCB slices** (user-confirmed): the plan assumed slices are freely
+  available as platform components, but every existing admin component was aggregate+RM and
+  the DcbBuilder path was dormant. Confirmed viable; Phase 1 stands up the admin DcbEventLog
+  now (so the plan's "low risk" label for Phase 1 was optimistic).
+- **Deregistration rides `DisconnectPlugin`** through the second EP mapping — no automation
+  slice (honours "composition stays lazy / no automation"). The disconnect schedule already
+  sends `DisconnectPlugin` on heartbeat timeout, so timeout and graceful disconnect both
+  deregister. (Known gap kept for now: admin `Deactivate`/`Retire` don't flow through the EP,
+  so they don't deregister — acceptable per the analysis's blessed UI staleness.)
+- **Timestamps ride the command `at` field** — a StateViewSlice `project` gets no event meta,
+  so `registeredAt`/`updatedAt` are threaded from the incoming command's `meta.time` by the EP
+  mapping.
+- **`uiFragments` no longer rides `pluginDefinition`** (dropped in increment 5); the connect
+  extension reads it from its own `Spec.uiFragments` field instead.
+- **Validation boundary:** Jest cannot import/boot the real `Platform` (ESM), so there is no
+  in-process end-to-end query proof in Jest — only slice-logic GWT tests + the full build.
+  True end-to-end is booting an example platform / a deploy — increment 5+6 did exactly that
+  and it caught two real defects (see below), so treat a live boot + `Platform_UIFragments`
+  query as the required gate for the remaining phases too.
+
+**Remaining work:** Phases 2–4 unstarted.
+
 ## Phasing
 
 1. **UiFragmentRegistry extraction** (low risk, no deploy waiter): introduce the slices,

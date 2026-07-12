@@ -34,7 +34,12 @@ module Make = (
     ~tagKeysByEventType: Dict.t<array<string>>,
     event: Spec.event,
   ): ReventlessInfra.DcbEventLog.rawEvent => {
-    let json = event->JSON.stringifyAny->Option.getOrThrow->JSON.parseOrThrow
+    // Encode through the event schema (like the Aggregate path's Message.encode),
+    // NOT JSON.stringifyAny: the runtime representation drops `None` option
+    // fields entirely, while the consumer side (DcbDecode) parses with the sury
+    // schema — a js_nullable option field would reject the missing key and the
+    // event would be dropped as schema drift.
+    let json = event->S.reverseConvertToJsonOrThrow(Spec.eventSchema)
     let (eventType, data) = json->Message.splitMessage
     // Use `extractTagsExpanded` (not `extractTags`) so per-element tags on
     // `array<string>` fields are emitted — e.g. OrderPlaced's

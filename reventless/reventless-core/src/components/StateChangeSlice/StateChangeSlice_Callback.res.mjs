@@ -182,7 +182,7 @@ function Make(Spec) {
               }
               let rawEvents = newEvents$1.map(e => {
                 let parentMeta = command$p.meta;
-                let json = JSON.parse(Stdlib_Option.getOrThrow(JSON.stringify(e), undefined));
+                let json = S.reverseConvertToJsonOrThrow(e, Spec.eventSchema);
                 let match = Message$ReventlessCore.splitMessage(json);
                 let eventType = match[0];
                 let baseTags = DcbTag$Reventless.extractTagsExpanded(Spec.eventSchema, e);

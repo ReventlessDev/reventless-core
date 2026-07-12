@@ -55,7 +55,6 @@ let displayState = (
     status,
     statusChange,
     apiSchemaFragment: def.apiSchemaFragment,
-    uiFragments: def.uiFragments,
     structure: def.structure,
     dcbEventLog: def.dcbEventLog,
     // A freshly projected row always knows its kind (the definition carries it as a
@@ -78,14 +77,11 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
     let project = ({event, id, meta: {time, user: ?user}}) => {
       let statusChange = {at: time, by: user->Option.getOr("")}
       switch event {
-      // Handshake trigger, supersession record, incompatibility and UI-fragment
+      // Handshake trigger, supersession record and incompatibility
       // events do not change which version is current.
       | PluginSpec.VersionDetected(_)
       | VersionSuperseded(_)
-      | IncompatiblePluginDetected(_)
-      | UIFragmentRegistered(_)
-      | UIFragmentUpdated(_)
-      | UIFragmentDeregistered(_) =>
+      | IncompatiblePluginDetected(_) =>
         Reventless.Projection.Ignore
 
       // A version became live. It becomes current iff it is the highest

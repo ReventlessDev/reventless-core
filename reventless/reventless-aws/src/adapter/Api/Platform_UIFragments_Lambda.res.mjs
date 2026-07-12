@@ -40,11 +40,11 @@ export async function handler() {
   } while (exclusiveStartKey);
 
   // Platform invariant: one version per plugin at a time, so the UI sees just
-  // the bare plugin name (mirrors ReventlessCore.Plugin.name). UIFragmentRegistry
-  // accumulates one row per deployed plugin version and carries no lifecycle
-  // status of its own, so without deduping a redeployed federation plugin would
-  // surface duplicate fragments. Collapse to the highest version per plugin name
-  // (mirrors ReventlessCore.Plugin.compareVersions).
+  // the bare plugin name (mirrors ReventlessCore.Plugin.name). The registry is
+  // keyed by bare plugin name (a no-op for the split below), but rows persisted
+  // by the pre-slice registry were keyed name@version — keep the collapse to the
+  // highest version per plugin name (mirrors ReventlessCore.Plugin.compareVersions)
+  // so a mixed table never surfaces duplicate fragments.
   const cmpVer = (a, b) => {
     const pa = String(a).replace(/[-+]/g, ".").split(".");
     const pb = String(b).replace(/[-+]/g, ".").split(".");
@@ -108,7 +108,7 @@ function make(api, uiFragmentRegistryTableName, opts) {
           Resource: "arn:aws:logs:*:*:*"
         },
         {
-          Sid: "AllowScanUIFragmentRegistryRm",
+          Sid: "AllowScanUiFragmentsTable",
           Effect: "Allow",
           Action: ["dynamodb:Scan"],
           Resource: "arn:aws:dynamodb:*:*:table/" + tableName
@@ -143,11 +143,11 @@ export async function handler() {
   } while (exclusiveStartKey);
 
   // Platform invariant: one version per plugin at a time, so the UI sees just
-  // the bare plugin name (mirrors ReventlessCore.Plugin.name). UIFragmentRegistry
-  // accumulates one row per deployed plugin version and carries no lifecycle
-  // status of its own, so without deduping a redeployed federation plugin would
-  // surface duplicate fragments. Collapse to the highest version per plugin name
-  // (mirrors ReventlessCore.Plugin.compareVersions).
+  // the bare plugin name (mirrors ReventlessCore.Plugin.name). The registry is
+  // keyed by bare plugin name (a no-op for the split below), but rows persisted
+  // by the pre-slice registry were keyed name@version — keep the collapse to the
+  // highest version per plugin name (mirrors ReventlessCore.Plugin.compareVersions)
+  // so a mixed table never surfaces duplicate fragments.
   const cmpVer = (a, b) => {
     const pa = String(a).replace(/[-+]/g, ".").split(".");
     const pb = String(b).replace(/[-+]/g, ".").split(".");

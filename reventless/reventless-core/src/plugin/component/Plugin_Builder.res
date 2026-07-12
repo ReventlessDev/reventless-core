@@ -750,7 +750,6 @@ module Make = (
             extensionProtocols: [],
             apiSchemaFragment: Some(apiSchemaFragment),
             apiTarget: Some(capturedDeployTarget),
-            uiFragments,
             structure: pluginStructure,
             dcbEventLog: dcbEventLogDef,
             // Business role from the deploy-time metadata registry (set via
@@ -807,6 +806,7 @@ module Make = (
               connectPluginExtensionIncomingEventHandler,
             ) = createConnectPluginExtension(
               ~pluginDefinition,
+              ~uiFragments,
               ~publishToPluginExtensionPoint,
               ~publishToAggregates,
               ~readModelNamesForSourceName,
@@ -821,6 +821,7 @@ module Make = (
               ~extensionsOutputs,
               ~pluginExtensionPointUnwrapped,
               ~pluginDefinition,
+              ~uiFragments,
               ~connectPluginExtensionIncomingEventHandler,
               ~extensionsHandlers,
               ~extensionPointsHandlers,
@@ -840,6 +841,7 @@ module Make = (
             ~extensionPointsOutputs,
             ~extensionsOutputs,
             ~pluginDefinition,
+            ~uiFragments,
             ~extensionsHandlers,
             ~extensionPointsHandlers,
             ~extensionRegistryInfos,
