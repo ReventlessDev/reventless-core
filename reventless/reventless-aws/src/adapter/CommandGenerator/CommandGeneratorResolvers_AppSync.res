@@ -174,6 +174,12 @@ let makeDcb = (
   ~runtime: ReventlessCore.Runtime.environment<runtimeParts>,
   ~fieldNames: array<string>,
   ~tags: array<string>,
+  // Admin (onAdminApi) DCB slices expose ONLY their mutation fields (declared in the
+  // static AdminApi.baseFragment). The static base does NOT declare their `on<Field>`
+  // subscription counterparts, so creating Source-C subscription resolvers would fail
+  // with CreateResolver NotFound. Suppress subscriptions for admin; plugins keep them
+  // (their generated fragment declares the matching subscription fields).
+  ~onAdminApi: bool=false,
   ~opts: Pulumi.ComponentResource.options,
 ) => {
   let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
@@ -242,11 +248,14 @@ let makeDcb = (
     )
   })
 
-  // Source C: create Subscription.onX resolver for each DCB mutation field.
-  CommandSubscriptionResolvers_AppSync.make(
-    ~api,
-    ~mutationFields=fieldNames,
-    ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
-    ~opts,
-  )
+  // Source C: create Subscription.onX resolver for each DCB mutation field — skipped
+  // for admin slices, whose static base declares no such subscription fields.
+  if !onAdminApi {
+    CommandSubscriptionResolvers_AppSync.make(
+      ~api,
+      ~mutationFields=fieldNames,
+      ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
+      ~opts,
+    )
+  }
 }

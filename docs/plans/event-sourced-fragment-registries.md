@@ -620,6 +620,56 @@ zero-warning, aws 216 / local 508 green. Like the rest of the AWS deploy path th
 compile/test-validated only — **re-validation is the next alpha push** (should get past this resolver;
 watch for the first real `RegisterApiFragment` → `ApiFragment*` event → 2e reactive push).
 
+**Deploy validation #2 (2026-07-13) — got past #1's resolver, hit two DEEPER bugs, both
+FIXED (fix compile/test/local-boot-validated, re-deploy pending).** With the schema-push gate
+in place, `PlatformApiFragmentsResolver` + `Platform_RegisterApiFragment` created successfully —
+but the admin-DCB-on-AWS GraphQL surface (never deploy-validated before) failed with **9 errored**:
+
+- **Bug A (fatal `TypeError: tableOutput.apply is not a function`)** in the 2e reactive-push config
+  threading (`PluginRuntime_Builder.forPluginEventCollector`). Root cause (runtime-traced): the
+  config field `apiFragmentRegistryTableName: option<Pulumi.Output.t<string>>` is the forbidden
+  `option<Output>` pattern (CLAUDE.md code smells). The producer at `Platform.res` built it with
+  `->Option.map(r => r.name)`; the generic `Option.map` body runs `Primitive_option.some(r.name)`,
+  and because a Pulumi Output lifts arbitrary property access, `some` inspects
+  `.BS_PRIVATE_NESTED_SOME_NONE`, mis-classifies the Output as a nested option, and stores the
+  sentinel `{BS_PRIVATE_NESTED_SOME_NONE: 0}` instead of the Output — so the consumer's `.apply`
+  crashes. (`pluginReadModelTableName`, same type, dodges it via a plain ternary producer.)
+  **Fix:** replace the `Option.map` producer with a `switch … { Some(r) => Some(r.name) | None => None }`
+  — the `Some(r.name)` LITERAL compiles unboxed (bare `r.name`), preserving the Output. **Verified at
+  the compiled level:** the `.mjs` now emits `r$1 !== undefined ? r$1.name : undefined` (the safe
+  form). The other two `option<Output>` fields (`platformApiId`, `adminDcbCmdTopicUrl`) come from
+  bare/literal `Some` and are not corrupted (left as-is; the pattern remains a latent trap, noted).
+
+- **Bug B (8 orphan resolvers)** — the admin DCB slices auto-generate resolvers absent from the
+  pushed **static** `AdminApi.baseFragment`: StateView query resolvers (`Admin_{Ui,Api}Fragment(s)` /
+  `…ByIds`, on type Query) and DCB command-subscription resolvers (`onPlatform_{Register,Deregister}ApiFragment`,
+  on type Subscription). Normal plugins never hit this (they push a fragment *generated from the same
+  entries* as their resolvers); the admin path pushes a hand-curated static base while creating
+  resolvers for everything. The intended admin surface is ONLY the two `Platform_*` mutations (the
+  views are served by the dedicated `Platform_{UI,Api}Fragments` Lambda resolvers). **Fix — suppress,
+  platform-appropriately:**
+  - Queries: skip merging the admin DCB StateView slices into `allQueryDbs` (→ `createResolvers`) in
+    `Platform_Admin` **only when `preAdminResolversSchemaHook` is `Some`** (static-push platform = AWS).
+    On the local platform (hook = `None`) the schema is built FROM those registrations, so they stay
+    coupled and must be merged — gating on the hook keeps local self-consistent. (An earlier attempt to
+    gate this in the shared `Dcb_Builder` on `onAdminApi` broke local schema assembly with a dangling
+    `StringConnection` type — caught by the local live boot — and was reverted.)
+  - Subscriptions: gate `CommandSubscriptionResolvers_AppSync.make` on `!onAdminApi` in `makeDcb`
+    (AWS-only path; `onAdminApi` is already threaded through the DCB resolver hook). Plugins keep their
+    subscriptions (their generated fragment declares the matching fields).
+
+  **Audit (resolver/schema symmetry):** after the fix, every admin resolver created on AWS has a
+  matching field in the pushed `baseFragment` — the two `Platform_*` mutations, the two `Platform_*`
+  Lambda queries, the Plugins RM queries + Plugin-aggregate mutations; `Admin_*` queries and
+  `onPlatform_*` subscriptions are suppressed; `RecordApiFragmentPush` stays `@noApi`;
+  `dcbEventLogEntries` only feed the unpushed constructed fragment (no orphan). Symmetry holds.
+
+  **Validation:** core 528 / aws 216 / local 508 green, zero-warning; **local live boot** (in-memory
+  hybrid) boots clean, serves `Platform_ApiFragments` + `Platform_UIFragments` (auth-gated → resolvers
+  live), no `onPlatform_*` subscriptions. The AWS-only suppression (queries) + Bug A are compile-validated
+  only — **re-validation is the next alpha push** (should clear all 9 errors and let the first real
+  `RegisterApiFragment` → `ApiFragment*` event → 2e reactive push fire).
+
 **Remaining work:**
 - Phase 4 — cutover + cleanup (retire `deploy-schema:*` keyspace, lease, hash rows, legacy
   `mkUpdateApiSchema`; decide whether `makePlatform`'s direct-push path is retired or kept; dedup

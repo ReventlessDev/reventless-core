@@ -131,9 +131,12 @@ function Make(RuntimeEnvironment) {
       });
       let readModelsOutputs = Builder_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, aggregateEventTopics, opts);
       let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);
-      Object.entries(dcbResult.stateViewSlicesOutputs).forEach(param => {
-        allQueryDbs[param[0]] = param[1].queryDb;
-      });
+      let staticSchemaPush = Stdlib_Option.isSome(Config.hooks.preAdminResolversSchemaHook);
+      if (!staticSchemaPush) {
+        Object.entries(dcbResult.stateViewSlicesOutputs).forEach(param => {
+          allQueryDbs[param[0]] = param[1].queryDb;
+        });
+      }
       Object.entries(dcbResult.inboundTranslationSlicesOutputs).forEach(param => {
         allQueryDbs[param[0]] = param[1].queryDb;
       });

@@ -862,6 +862,7 @@ module MakeWithConfig = (
         ~runtime=runtimeTyped,
         ~fieldNames,
         ~tags,
+        ~onAdminApi,
         ~opts,
       )
     },
@@ -1981,10 +1982,21 @@ module MakeWithConfig = (
       // table it re-folds from; the admin DCB command-topic FIFO URL it dispatches
       // RecordApiFragmentPush to (captured during Admin.construct); and the mode flag.
       ~platformApiId=platformApi->Pulumi.Output.flatMap(api => api.id),
-      ~apiFragmentRegistryTableName=?admin.stateViewSlicesOutputs
+      // NB: must NOT be `->Option.map(r => r.name)`. `apiFragmentRegistryTableName`
+      // is `option<Pulumi.Output.t<string>>` (the forbidden pattern, CLAUDE.md code
+      // smells). The generic `Option.map` body runs `Primitive_option.some(r.name)`,
+      // and because a Pulumi Output lifts arbitrary property access, `some` inspects
+      // `.BS_PRIVATE_NESTED_SOME_NONE`, mis-reads the Output as a nested option, and
+      // stores the sentinel `{BS_PRIVATE_NESTED_SOME_NONE: 0}` instead of the Output —
+      // so the consumer's `tableOutput->Pulumi.Output.apply` crashes with
+      // "apply is not a function". A `Some(r.name)` LITERAL compiles unboxed (bare
+      // r.name), preserving the Output — the same dodge `pluginReadModelTableName` uses.
+      ~apiFragmentRegistryTableName=?switch admin.stateViewSlicesOutputs
       ->Dict.get("ApiFragments")
-      ->Option.flatMap(rm => rm.queryDb.resources->Array.get(0))
-      ->Option.map(r => r.name),
+      ->Option.flatMap(rm => rm.queryDb.resources->Array.get(0)) {
+      | Some(r) => Some(r.name)
+      | None => None
+      },
       ~adminDcbCmdTopicUrl=?AutomationSliceRuntime_Builder_Single.getDcbQueueUrl(),
       ~splitApi=Config.splitApi,
       (),

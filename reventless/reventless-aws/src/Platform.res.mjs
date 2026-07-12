@@ -867,7 +867,10 @@ function MakeWithConfig(Config) {
     return adminBarrier;
   };
   let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), param.runtime, param.fieldNames, param.opts);
-  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(param.onAdminApi ? resolveAdminHookedApi() : resolveHookedApi(), param.runtime, param.fieldNames, param.tags, param.opts);
+  let hooks_dcbAppSyncResolverHook = param => {
+    let onAdminApi = param.onAdminApi;
+    CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(onAdminApi ? resolveAdminHookedApi() : resolveHookedApi(), param.runtime, param.fieldNames, param.tags, onAdminApi, param.opts);
+  };
   let hooks_onDcbEventLogCreated = dcbEventLogUnknown => {
     if (DcbBackend$ReventlessAws.isPostgres()) {
       return;
@@ -1265,23 +1268,24 @@ function MakeWithConfig(Config) {
         return Pulumi.output("NOT_AVAILABLE");
       }
     });
-    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, pluginSchemaPersistenceTable.name, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, Config.cloner, Output$Pulumi.flatMap(platformApi, api => api.id), Stdlib_Option.map(Stdlib_Option.flatMap(admin.stateViewSlicesOutputs["ApiFragments"], rm => rm.queryDb.resources[0]), r => r.name), AutomationSliceRuntime_Builder_Single$ReventlessAws.getDcbQueueUrl(), Config.splitApi, undefined);
+    let r$1 = Stdlib_Option.flatMap(admin.stateViewSlicesOutputs["ApiFragments"], rm => rm.queryDb.resources[0]);
+    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, pluginSchemaPersistenceTable.name, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, Config.cloner, Output$Pulumi.flatMap(platformApi, api => api.id), r$1 !== undefined ? r$1.name : undefined, AutomationSliceRuntime_Builder_Single$ReventlessAws.getDcbQueueUrl(), Config.splitApi, undefined);
     if (pluginReadModelTableName !== undefined) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
       Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
     }
     let rm = admin.stateViewSlicesOutputs["UiFragments"];
     if (rm !== undefined) {
-      let r$1 = rm.queryDb.resources[0];
-      if (r$1 !== undefined) {
-        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, admin.adminSchemaPushed, {});
+      let r$2 = rm.queryDb.resources[0];
+      if (r$2 !== undefined) {
+        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, admin.adminSchemaPushed, {});
       }
     }
     let rm$1 = admin.stateViewSlicesOutputs["ApiFragments"];
     if (rm$1 !== undefined) {
-      let r$2 = rm$1.queryDb.resources[0];
-      if (r$2 !== undefined) {
-        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, admin.adminSchemaPushed, {});
+      let r$3 = rm$1.queryDb.resources[0];
+      if (r$3 !== undefined) {
+        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$3.name, admin.adminSchemaPushed, {});
       }
     }
     if (Config.splitApi) {
@@ -2248,7 +2252,10 @@ function Make($star) {
     return adminBarrier;
   };
   let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), param.runtime, param.fieldNames, param.opts);
-  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(param.onAdminApi ? resolveAdminHookedApi() : resolveHookedApi(), param.runtime, param.fieldNames, param.tags, param.opts);
+  let hooks_dcbAppSyncResolverHook = param => {
+    let onAdminApi = param.onAdminApi;
+    CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(onAdminApi ? resolveAdminHookedApi() : resolveHookedApi(), param.runtime, param.fieldNames, param.tags, onAdminApi, param.opts);
+  };
   let hooks_onDcbEventLogCreated = dcbEventLogUnknown => {
     if (DcbBackend$ReventlessAws.isPostgres()) {
       return;
@@ -2629,23 +2636,24 @@ function Make($star) {
         return Pulumi.output("NOT_AVAILABLE");
       }
     });
-    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, pluginSchemaPersistenceTable.name, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, false, Output$Pulumi.flatMap(platformApi, api => api.id), Stdlib_Option.map(Stdlib_Option.flatMap(admin.stateViewSlicesOutputs["ApiFragments"], rm => rm.queryDb.resources[0]), r => r.name), AutomationSliceRuntime_Builder_Single$ReventlessAws.getDcbQueueUrl(), true, undefined);
+    let r$1 = Stdlib_Option.flatMap(admin.stateViewSlicesOutputs["ApiFragments"], rm => rm.queryDb.resources[0]);
+    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, pluginSchemaPersistenceTable.name, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, false, Output$Pulumi.flatMap(platformApi, api => api.id), r$1 !== undefined ? r$1.name : undefined, AutomationSliceRuntime_Builder_Single$ReventlessAws.getDcbQueueUrl(), true, undefined);
     if (pluginReadModelTableName !== undefined) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
       Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
     }
     let rm = admin.stateViewSlicesOutputs["UiFragments"];
     if (rm !== undefined) {
-      let r$1 = rm.queryDb.resources[0];
-      if (r$1 !== undefined) {
-        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, admin.adminSchemaPushed, {});
+      let r$2 = rm.queryDb.resources[0];
+      if (r$2 !== undefined) {
+        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, admin.adminSchemaPushed, {});
       }
     }
     let rm$1 = admin.stateViewSlicesOutputs["ApiFragments"];
     if (rm$1 !== undefined) {
-      let r$2 = rm$1.queryDb.resources[0];
-      if (r$2 !== undefined) {
-        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$2.name, admin.adminSchemaPushed, {});
+      let r$3 = rm$1.queryDb.resources[0];
+      if (r$3 !== undefined) {
+        Platform_ApiFragments_Lambda$ReventlessAws.make(platformApi, r$3.name, admin.adminSchemaPushed, {});
       }
     }
     Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));

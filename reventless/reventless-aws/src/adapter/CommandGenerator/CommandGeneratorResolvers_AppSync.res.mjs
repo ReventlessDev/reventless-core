@@ -85,7 +85,8 @@ function make(name, api, fields, param, runtime, resources, opts) {
   };
 }
 
-function makeDcb(api, runtime, fieldNames, tags, opts) {
+function makeDcb(api, runtime, fieldNames, tags, onAdminApiOpt, opts) {
+  let onAdminApi = onAdminApiOpt !== undefined ? onAdminApiOpt : false;
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let lambda = runtime.parts.lambda;
   let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy("DcbMutationDS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts$1);
@@ -115,7 +116,9 @@ function makeDcb(api, runtime, fieldNames, tags, opts) {
     let fieldName = param[0];
     AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(Stdlib_String.capitalize(fieldName), api, dataSource.name, "Mutation", fieldName, AppSync_Resolver_Functions$PulumiAws.invokeDcbMutation(param[1]), opts$1);
   });
-  CommandSubscriptionResolvers_AppSync$ReventlessAws.make(api, fieldNames, dataSource.name, opts$1);
+  if (!onAdminApi) {
+    return CommandSubscriptionResolvers_AppSync$ReventlessAws.make(api, fieldNames, dataSource.name, opts$1);
+  }
 }
 
 export {

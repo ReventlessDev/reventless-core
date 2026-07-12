@@ -277,9 +277,22 @@ module Make = (
     // Merge DCB StateViewSlice / InboundTranslation QueryDbs into allQueryDbs so the
     // resolver-makers wired below also cover admin DCB slice fields (mirrors the
     // plugin-side merge at Plugin_Builder.res).
-    dcbResult.stateViewSlicesOutputs
-    ->Dict.toArray
-    ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k, v.queryDb))
+    //
+    // BUT skip the StateViewSlice merge on a static-schema-push platform (AWS, where
+    // preAdminResolversSchemaHook is Some): there the pushed schema is the static
+    // AdminApi.baseFragment, which does NOT declare the auto `<prefix>_<Slice>` query
+    // fields — so creating their resolvers would fail CreateResolver with
+    // "No field named Admin_<Slice> on type Query". The admin StateView slices are
+    // internal registries whose real query surface is served by dedicated Lambda
+    // resolvers (Platform_UIFragments / Platform_ApiFragments), so no auto query
+    // resolver is wanted on AWS anyway. On the local platform (hook = None) the schema
+    // is built FROM these registrations, so they stay coupled and must be merged.
+    let staticSchemaPush = Config.hooks.preAdminResolversSchemaHook->Option.isSome
+    if !staticSchemaPush {
+      dcbResult.stateViewSlicesOutputs
+      ->Dict.toArray
+      ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k, v.queryDb))
+    }
     dcbResult.inboundTranslationSlicesOutputs
     ->Dict.toArray
     ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k, v.queryDb))
