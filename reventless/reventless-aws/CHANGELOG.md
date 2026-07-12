@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.198 (2026-07-12)
+
+### Features
+
+* **admin:** event-source the API fragment registry as admin DCB slices (Phase 2b) ([3fc40d2](https://github.com/ReventlessDev/reventless-core/commit/3fc40d247c54bf66ed84d625959f08299aa04a98))
+* **admin:** event-source the UI fragment registry as admin DCB slices ([711581e](https://github.com/ReventlessDev/reventless-core/commit/711581e77c626e7d0fc35db8ec351f62a70bd8f2))
+* **admin:** expose the API fragment registry as system-callable mutations (Phase 2d) ([8b1ec49](https://github.com/ReventlessDev/reventless-core/commit/8b1ec49813e67f303bc86d60470c9b95d2a8408e))
+* **admin:** react to ApiFragment* events with a schema single writer (Phase 2e) ([59f9e46](https://github.com/ReventlessDev/reventless-core/commit/59f9e46c154d8ca2a34537974722014fc279de3e))
+* **admin:** retire the Plugin-aggregate UI-fragment path in favour of the registry slices ([1dbc708](https://github.com/ReventlessDev/reventless-core/commit/1dbc708e7439b34ff970cc3d963d7835a8c6fd48))
+* **admin:** serve Platform_UIFragments from the new UiFragmentRegistry slices ([7a47533](https://github.com/ReventlessDev/reventless-core/commit/7a47533acc95977fbeeb6375e94449056b655abc))
+* **api:** neutralize core-emitted SDL — [@aws](https://github.com/aws)_subscribe moves to the AWS adapter (Phase 2a) ([9b27ec8](https://github.com/ReventlessDev/reventless-core/commit/9b27ec8f6ab2b7453b1c50b9891e89781ec3b31a))
+* **deploy:** deregister API fragments on plugin-stack destroy (Phase 3 tail) ([4a10614](https://github.com/ReventlessDev/reventless-core/commit/4a10614e785359ca4c8021da9813c3d485abe9ca))
+* **deploy:** register API fragments via the Platform API on staged deploys (Phase 3) ([7ddb045](https://github.com/ReventlessDev/reventless-core/commit/7ddb045392380497494a0109712e7a10008f9207))
+
+
 # 3.0.0-alpha.197 (2026-07-11)
 
 ### Features

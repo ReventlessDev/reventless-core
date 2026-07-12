@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.76 (2026-07-12)
+
+### Features
+
+* **admin:** make the API fragment registry per-target (Domain | Platform) ([30491a9](https://github.com/ReventlessDev/reventless-core/commit/30491a9e14b4236c98cc756efb6de68ede1e77d7))
+* **admin:** retire the Plugin-aggregate UI-fragment path in favour of the registry slices ([1dbc708](https://github.com/ReventlessDev/reventless-core/commit/1dbc708e7439b34ff970cc3d963d7835a8c6fd48))
+
+
 # 3.0.0-alpha.75 (2026-07-11)
 
 ### Features

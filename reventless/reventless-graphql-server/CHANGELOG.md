@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.4 (2026-07-12)
+
+### Features
+
+* **api:** neutralize core-emitted SDL — [@aws](https://github.com/aws)_subscribe moves to the AWS adapter (Phase 2a) ([9b27ec8](https://github.com/ReventlessDev/reventless-core/commit/9b27ec8f6ab2b7453b1c50b9891e89781ec3b31a))
+
+
 # 1.0.0-alpha.3 (2026-07-11)
 
 **Note:** Version bump only for package @reventlessdev/reventless-graphql-server
