@@ -30,8 +30,16 @@ let sourceCFields = (
   let fields: array<string> = []
   let sources: array<GraphQL_Stitcher.subscriptionSource> = []
   let pushField = (fieldName: string) => {
-    fields->Array.push(`  on${fieldName}(id: ID): CommandResult`)
-    sources->Array.push({GraphQL_Stitcher.field: `on${fieldName}`, mutations: [fieldName]})
+    // AppSync caps subscription field names at 50 chars. A mutation whose `on<field>`
+    // Source-C subscription would exceed that (e.g. the admin-aggregate-convention
+    // `Platform_ApiFragmentRegistry_DeregisterApiFragment` → 52) simply gets NO
+    // mutation-triggered subscription — the field is dropped here so the pushed SDL stays
+    // valid, and the resolver side (CommandSubscriptionResolvers) applies the same gate so
+    // no orphan resolver is created. Plugin mutations are far under the cap and unaffected.
+    if `on${fieldName}`->String.length <= Api_Naming.appSyncSubscriptionMaxLen {
+      fields->Array.push(`  on${fieldName}(id: ID): CommandResult`)
+      sources->Array.push({GraphQL_Stitcher.field: `on${fieldName}`, mutations: [fieldName]})
+    }
   }
   mutationEntries->Array.forEach(entry => {
     let schema = entry.commandSchema

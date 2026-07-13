@@ -150,9 +150,18 @@ let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, Util.Lambd
   // fragment's subscription-source metadata) handles
   // delivery. AWS requires a dataSourceName even on UNIT subscription resolvers,
   // so we reuse the mutation's data source (its code never executes for subs).
+  //
+  // Skip fields whose `on<field>` subscription name exceeds AppSync's 50-char cap — the
+  // pushed SDL drops those Source-C subscription fields (Plugin_SubscriptionSchema.sourceCFields
+  // applies the SAME gate), so creating their resolvers would fail CreateResolver NotFound
+  // (e.g. the admin-aggregate `Platform_ApiFragmentRegistry_DeregisterApiFragment` → 52 chars).
+  let subscribableFields =
+    fields->Array.filter(field =>
+      `on${field}`->String.length <= ReventlessCore.Api_Naming.appSyncSubscriptionMaxLen
+    )
   CommandSubscriptionResolvers_AppSync.make(
     ~api,
-    ~mutationFields=fields,
+    ~mutationFields=subscribableFields,
     ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
     ~opts,
   )

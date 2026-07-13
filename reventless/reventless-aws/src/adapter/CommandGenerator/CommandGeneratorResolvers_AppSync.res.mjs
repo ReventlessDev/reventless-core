@@ -11,6 +11,7 @@ import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
+import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Naming.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
@@ -78,7 +79,8 @@ function make(name, api, fields, param, runtime, resources, opts) {
     let commandName = Stdlib_String.capitalize(Stdlib_Option.getOr(parts[parts.length - 1 | 0], field));
     return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(Stdlib_String.capitalize(field), api, dataSource.name, "Mutation", field, AppSync_Resolver_Functions$PulumiAws.invokeCommandGenerator(commandName), opts$1);
   });
-  CommandSubscriptionResolvers_AppSync$ReventlessAws.make(api, fields, dataSource.name, opts$1);
+  let subscribableFields = fields.filter(field => (`on` + field).length <= Api_Naming$ReventlessCore.appSyncSubscriptionMaxLen);
+  CommandSubscriptionResolvers_AppSync$ReventlessAws.make(api, subscribableFields, dataSource.name, opts$1);
   let resources$1 = resolvers.map(Util_AppSync$ReventlessAws.toResourceNative);
   return {
     resources: resources$1

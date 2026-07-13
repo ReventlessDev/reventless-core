@@ -925,6 +925,23 @@ stays `@noApi`; the ApiFragments RM emits no auto resolvers. Validated: core/aws
 local live boot clean (`Platform_ApiFragments` ok, mutations exposed, no duplicate-field error).
 Re-validation is the next alpha push.
 
+**Deploy validation #6 (2026-07-13) — #5's query orphans cleared; hit the AppSync
+subscription-field-name 50-char cap; root-caused + FIXED (compile/local-boot-validated,
+re-deploy pending).** With #5's fixes the query orphans were gone, but the bootstrap schema push
+was rejected: `Schema creation failed … The subscription field name is too long. Max characters
+allowed: 50`. The admin-aggregate-convention mutation name (decision A) makes the auto Source-C
+subscription `onPlatform_ApiFragmentRegistry_DeregisterApiFragment` **52 chars** (Register is 50) —
+over AppSync's cap. #5's Fix 2 (declaring these subscriptions in `baseFragment`) therefore produced
+an INVALID schema, so the push was rejected and the resolvers then `NotFound`. These Source-C
+subscriptions are unwanted anyway (system-caller mutations — nobody subscribes). **Fix:**
+`Plugin_SubscriptionSchema.sourceCFields` and the aggregate-path `CommandGeneratorResolvers_AppSync`
+Source-C resolver creation both **skip** any mutation whose `on<field>` exceeds
+`Api_Naming.appSyncSubscriptionMaxLen` (50) — SDL and resolvers stay consistent (no orphan), the
+52-char Deregister subscription is dropped, the 50-char Register stays (AppSync's stated max is 50
+inclusive). The `<= 50` gate matches the framework's existing `assertSubscriptionNameFits`, so user
+plugins with legitimate 50-char subscriptions are NOT regressed. Validated: core/aws/local build
+zero-warning; local live boot clean. Re-validation is the next alpha push.
+
 **Remaining work:**
 - **Deploy-validate the whole AWS path on an alpha push** — the SideEffect writer, IAM, env injection,
   `finish()` sequencing, stream subscription, and the deploy caller/waiter are all compile-only. Watch:
