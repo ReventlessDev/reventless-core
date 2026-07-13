@@ -972,13 +972,58 @@ idempotent branch — so the mutation-fires → `ApiSchemaComputed` → SideEffe
 `pushStatus:ok` path is STILL not driven on AWS. Closing that needs a deploy where a fragment actually
 changes (e.g. touch a catalog query field) to force `eventCount>0` and the real waiter poll.
 
+**Deploy validation #9 (2026-07-13) — reactive push exercised for the first time (forced via a
+catalog `sku` fragment change); surfaced + FIXED a runtime `Source` erasure that crashed the
+SideEffect Lambda; re-validation pending.** Adding `sku` to the catalog `Products` read model changed
+its SDL fragment, so `registerFragmentViaApi` got `eventCount > 0` (no longer the no-op branch) and the
+waiter engaged — then timed out (>3min). CloudWatch (`/aws/lambda/AllSideEffectHandlers-*`) showed the
+Lambda crashing at **cold start** (`buildAllHandlers` → `SideEffectHandler_Callback.Make`) with
+`TypeError: Cannot read properties of undefined (reading 'eventSchema')` on every invocation, so the
+push never ran and `pushStatus` never recorded. **Root cause:** `SideEffectHandler_Callback.Make`
+reads `Source.{name,eventSchema,Id}` reflectively off the imported SideEffect module, but
+`ApiSchemaPush.res` used `Source` only at the TYPE level, so ReScript dead-shook the bare
+`module Source = ReventlessCore.ApiFragmentRegistrySpec` alias to `let Source;` (undefined) — the
+cross-module reflection is invisible to its optimiser (deploy-time was fine because `Platform.res`
+inlined the values; only the runtime `import * as` path got undefined). **Fix, part 1 (`57a61d98f`,
+pushed):** materialised the outer `Source` binding, so `Make` no longer crashes on `Source.eventSchema`.
+
+**Deploy validation #10 (2026-07-13) — part-1 fix confirmed working; surfaced a SECOND, deeper facet
+of the same erasure (`Source.Id`), FIXED (re-validation pending).** With part 1 the SideEffect Lambda
+built successfully and began handling events (CloudWatch: `"handling event from source
+ApiFragmentRegistry: ApiSchemaComputed"`), but the waiter still timed out. The push never recorded
+because the per-event decode threw `"Cannot read properties of undefined (reading 'schema')"` —
+`SideEffectHandler_Callback` reads `Source.Id.schema` on the id-bearing registry events, and
+`ApiFragmentRegistrySpec`'s own `@@reventless.spec`-injected `module Id` is likewise type-only-used, so
+it too compiles to `let Id;` (undefined); an aliased `module Id` in Source inherits/re-emits
+`Id: undefined`. **This is a LATENT FRAMEWORK BUG, not specific to this plan:** EVERY SideEffect compiles
+`Source.Id` to `undefined` (verified on the `Order_EmailNotification` example) — it never surfaced
+because no SideEffect with an id-bearing event had ever been runtime-triggered before; ApiSchemaPush is
+the first. Deploy-time avoids it because `Platform.res` hand-wires `Id: Id$Reventless.$$String`.
+**Fix, part 2 (this follow-up):** build `ApiSchemaPush.Source` explicitly — forward `name`/`eventSchema`
+(real spec exports), keep type transparency via `type event = Spec.event` /
+`type fragmentSnapshotEntry = Spec.fragmentSnapshotEntry`, and materialise Id with
+`module Id = { include Reventless.Id.String }` (a bare alias stays `undefined`; `include` emits the real
+`{schema,make,makeFromString,toString,cmp}` object). Compiled Source now carries real `name`,
+`eventSchema`, AND `Id`. `ApiSchemaPushTest` extended to 3/3 (adds a `Source.Id` round-trip guard).
+Follow-up TODO logged: fix the framework so SideEffect `Source.Id` isn't erased for everyone (candidates:
+the SideEffect builder, `SideEffectHandler_Callback` defensively, or the `@@reventless.spec` PPX).
+**Alpha drift left by the crash:** the aggregate committed
+`ApiFragmentUpdated` (Catalog, with `sku`, event-log pos 4) while the push crashed, so live AppSync
+never got `sku` and `pushStatus` is stuck. A plain redeploy would re-send the same sku-fragment →
+`eventCount 0` → false-green. **`sku` reverted (`3066c36cd`)** — itself a fragment change, so the next
+deploy re-triggers `eventCount > 0` against the fixed push; also cleans the probe and converges the
+aggregate back to live's no-sku state.
+
 **Remaining work:**
-- **Fully deploy-validate the reactive push** — the SideEffect writer, `finish()` sequencing, stream
-  subscription, and the `eventCount>0` waiter poll are still compile-only (validation #8 hit the
-  no-op branch). Watch: a *changed* fragment → aggregate `ApiSchemaComputed` → the ApiSchemaPush
-  SideEffect Lambda pushes per-target + records → the waiter sees `pushStatus:ok`; and no
-  concurrent-push `Schema is currently being altered` under a 2-plugin deploy (bounded retry as
-  backstop). The IAM/env-injection/caller half of this bullet is now validated (#8).
+- **Re-validate the reactive push on the next alpha push** (with fix `57a61d98f` + revert `3066c36cd`):
+  catalog fragment change → `ApiSchemaComputed` → the *fixed* ApiSchemaPush SideEffect runs → introspect
+  + `updateAppSyncSchema` per target + `recordPushOutcomes`/`RecordApiFragmentPush` write-back → the
+  waiter sees `pushStatus:ok`; no `Schema is currently being altered` under the 2-plugin deploy. NOTE:
+  the push runtime's downstream calls (AppSync introspection/`StartSchemaCreation` IAM, the command-topic
+  URL config, the `RecordApiFragmentPush` dispatch) are all exercised for the FIRST time here — expect
+  the possibility of further IAM/config rungs beyond the Source fix. The IAM/env/caller half (register +
+  waiter reachability) is validated (#8); the SideEffect-fires-without-crashing half is fixed but not yet
+  green on AWS.
 - **Cleanup (Phase-4, deploy-validated):** DELETE the inert mjs `mkReactiveApiSchemaPush` +
   `detectApiFragmentTriggers` + the 2e `registerConfig` threading + the Platform_Admin 2nd-stream-reader
   augmentation.

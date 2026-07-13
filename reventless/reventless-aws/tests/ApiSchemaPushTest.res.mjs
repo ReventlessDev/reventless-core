@@ -11,6 +11,10 @@ globalThis.describe("ApiSchemaPush SideEffect Source (runtime materialisation)",
     let tags = DcbTag$Reventless.extractAllVariantNames(ApiSchemaPush$ReventlessAws.Source.eventSchema);
     globalThis.expect(tags).toContain("ApiSchemaComputed");
   });
+  globalThis.test("Source.Id is a live module — the reflective id round-trip does not crash", () => {
+    let id = ApiSchemaPush$ReventlessAws.Source.Id.makeFromString("registry");
+    globalThis.expect(ApiSchemaPush$ReventlessAws.Source.Id.toString(id)).toBe("registry");
+  });
 });
 
 /*  Not a pure module */

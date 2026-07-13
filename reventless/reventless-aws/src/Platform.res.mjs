@@ -1288,7 +1288,7 @@ function MakeWithConfig(Config) {
       AdminApiSchemaPushHandler.make("AdminApiSchemaPush", [{
           Source: {
             name: ApiSchemaPush$ReventlessAws.Source.name,
-            Id: Id$Reventless.$$String,
+            Id: ApiSchemaPush$ReventlessAws.Source.Id,
             eventSchema: ApiSchemaPush$ReventlessAws.Source.eventSchema
           },
           moduleUrl: ApiSchemaPush$ReventlessAws.moduleUrl,
@@ -2708,7 +2708,7 @@ function Make($star) {
       AdminApiSchemaPushHandler.make("AdminApiSchemaPush", [{
           Source: {
             name: ApiSchemaPush$ReventlessAws.Source.name,
-            Id: Id$Reventless.$$String,
+            Id: ApiSchemaPush$ReventlessAws.Source.Id,
             eventSchema: ApiSchemaPush$ReventlessAws.Source.eventSchema
           },
           moduleUrl: ApiSchemaPush$ReventlessAws.moduleUrl,

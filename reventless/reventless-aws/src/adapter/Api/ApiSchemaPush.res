@@ -14,15 +14,31 @@
 // is loaded via dynamic import so no @aws-sdk / provider code is statically captured
 // beyond what the SideEffectHandler Lambda already bundles (runtime-purity — see
 // reference_pulumi_leaks_into_lambda_runtime_graph).
-// `include` (not a bare `module Source = …` alias) is deliberate. SideEffectHandler_Callback
-// reads Source.{name,eventSchema,Id} reflectively off this module's compiled export at cold
-// start, but ApiSchemaPush only uses Source at the TYPE level (Source.event, Source.Id.t,
-// Source.fragmentSnapshotEntry) — a bare module alias is dead-shaken by ReScript to
-// `let Source;` (undefined), crashing the handler with "Cannot read properties of undefined
-// (reading 'eventSchema')". `include` materialises the module's runtime values into the export
-// while keeping full type transparency for the pattern match below.
+module Spec = ReventlessCore.ApiFragmentRegistrySpec
+
+// Source is built EXPLICITLY rather than aliasing/including the spec. SideEffectHandler_Callback
+// reads Source.{name,eventSchema,Id.schema} reflectively off this module's compiled export at
+// Lambda cold start, but the spec uses these only at the TYPE level, so ReScript dead-shakes
+// them: a bare `module Source = Spec` alias erases the whole binding to `let Source;`, and even
+// the spec's own @@reventless.spec-injected `module Id` compiles to `let Id;` (undefined) — the
+// cross-module runtime reflection is invisible to ReScript's optimiser (deploy-time is fine
+// because Platform.res hand-wires these values). Both surfaced on deploy as "Cannot read
+// properties of undefined (reading 'eventSchema' / 'schema')". Forwarding name/eventSchema (real
+// spec exports) and re-binding Id (String — the singleton registry id, matching Platform.res's
+// hand-wiring) materialises all three, while the type aliases keep full transparency for the
+// pattern match below.
 module Source = {
-  include ReventlessCore.ApiFragmentRegistrySpec
+  type event = Spec.event
+  type fragmentSnapshotEntry = Spec.fragmentSnapshotEntry
+  // `include` (not `module Id = Reventless.Id.String`) — a bare module alias compiles to
+  // `Id: undefined` in the Source record (Id is only type-projected via Source.Id.t), and
+  // SideEffectHandler_Callback's `Source.Id.schema` reflective read crashes at cold start.
+  // `include` materialises the Id module's runtime values into the record.
+  module Id = {
+    include Reventless.Id.String
+  }
+  let name = Spec.name
+  let eventSchema = Spec.eventSchema
 }
 
 let moduleUrl: string = %raw(`import.meta.url`)

@@ -21,4 +21,12 @@ describe("ApiSchemaPush SideEffect Source (runtime materialisation)", () => {
     let tags = Reventless.DcbTag.extractAllVariantNames(ApiSchemaPush.Source.eventSchema)
     expect(tags)->toContain("ApiSchemaComputed")
   })
+
+  testSync("Source.Id is a live module — the reflective id round-trip does not crash", () => {
+    // SideEffectHandler_Callback reads `Source.Id.schema` on the id-bearing registry events.
+    // A bare `module Id` alias compiles to `Id: undefined` in the Source record, so any access
+    // (makeFromString/toString/schema) throws "reading 'schema'"/undefined on a regression.
+    let id = "registry"->ApiSchemaPush.Source.Id.makeFromString
+    expect(id->ApiSchemaPush.Source.Id.toString)->toBe("registry")
+  })
 })
