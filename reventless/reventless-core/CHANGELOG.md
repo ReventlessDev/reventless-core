@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.160 (2026-07-13)
+
+### Bug Fixes
+
+* **api:** dual-auth arg-less IAM fields — extractLeadingName dropped the trailing colon ([ea34da2](https://github.com/ReventlessDev/reventless-core/commit/ea34da229164db63988ad035138c17ba9134ac55))
+
+
 # 3.0.0-alpha.159 (2026-07-12)
 
 ### Bug Fixes
