@@ -132,6 +132,12 @@ let baseFragment = (~cloner: bool) => {
   // matching SDL fields, AppSync's CreateResolver fails with "Type not found".
   let (pluginAggregateSubscriptionFields, pluginAggregateSubscriptionSources) =
     Plugin_SubscriptionSchema.sourceCFields(~mutationEntries=PluginBaseFragment.pluginAggregateMutationEntries)
+  // The ApiFragmentRegistry aggregate's mutations go through the same CommandGenerator
+  // auto-flow, which creates an `on<field>` subscription resolver per mutation. On the
+  // static-push platform (AWS) those resolvers orphan unless the fields are declared in the
+  // pushed baseFragment — so generate them here too, symmetric with the Plugin aggregate.
+  let (apiFragmentAggregateSubscriptionFields, apiFragmentAggregateSubscriptionSources) =
+    Plugin_SubscriptionSchema.sourceCFields(~mutationEntries=apiFragmentRegistryMutationEntries)
   GraphQL_Stitcher.encode({
     types: parts.types
     ->Array.concat(uiFragmentSubscriptionTypes)
@@ -151,8 +157,10 @@ let baseFragment = (~cloner: bool) => {
     ->Array.concat(uiFragmentMutationFields)
     ->Array.concat(pluginStatusMutationFields),
     subscriptions: [uiFragmentSubscriptionField, pluginStatusSubscriptionField]
-    ->Array.concat(pluginAggregateSubscriptionFields),
+    ->Array.concat(pluginAggregateSubscriptionFields)
+    ->Array.concat(apiFragmentAggregateSubscriptionFields),
     subscriptionSources: [uiFragmentSubscriptionSource, pluginStatusSubscriptionSource]
-    ->Array.concat(pluginAggregateSubscriptionSources),
+    ->Array.concat(pluginAggregateSubscriptionSources)
+    ->Array.concat(apiFragmentAggregateSubscriptionSources),
   })
 }

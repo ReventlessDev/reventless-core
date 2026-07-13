@@ -1499,7 +1499,13 @@ module MakeWithConfig = (
     let moduleUrl: string = ReventlessCore.ApiFragmentsProjection.moduleUrl
     let mappings: array<module(Mapping)> = ReventlessCore.ApiFragmentsProjection.mappings
   }
-  module ApiFragmentsReadModel = ReadModel_Builder_Single_Stream.Make(
+  // NoResolver builder: the ApiFragments RM's query surface is the dedicated
+  // Platform_ApiFragments Lambda (declared in baseFragment), NOT an auto-generated
+  // Connection resolver — so it must not emit AppSync query resolvers (they'd orphan
+  // against the static pushed baseFragment: "No field named apiFragments on type Query").
+  // Still stream-projects the table from the aggregate's event stream. Mirrors local's
+  // MakeNoResolver.
+  module ApiFragmentsReadModel = ReadModel_Builder_NoResolver_Stream.Make(
     ReventlessCore.ApiFragmentsReadModelSpec,
     ApiFragmentsReadModelMappings,
   )

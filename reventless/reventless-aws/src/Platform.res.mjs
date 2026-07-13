@@ -101,6 +101,7 @@ import * as CommandGeneratorResolvers_AppSync$ReventlessAws from "./adapter/Comm
 import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "./adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.mjs";
 import * as InboundTranslationResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res.mjs";
 import * as PluginExtensionPointRuntime_Builder$ReventlessAws from "./plugin/runtime/PluginExtensionPointRuntime_Builder.res.mjs";
+import * as ReadModel_Builder_NoResolver_Stream$ReventlessAws from "./components/ReadModel_Builder_NoResolver_Stream.res.mjs";
 import * as EventCollectorRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/EventCollectorRuntime_Builder_Single.res.mjs";
 import * as Platform_ComponentDefinitions_Lambda$ReventlessAws from "./adapter/Api/Platform_ComponentDefinitions_Lambda.res.mjs";
 import * as StateViewSliceRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/StateViewSliceRuntime_Builder_Single.res.mjs";
@@ -983,7 +984,7 @@ function MakeWithConfig(Config) {
     moduleUrl: ApiFragmentsProjection$ReventlessCore.moduleUrl,
     mappings: ApiFragmentsProjection$ReventlessCore.mappings
   };
-  let ApiFragmentsReadModel = ReadModel_Builder_Single_Stream$ReventlessAws.Make({
+  let ApiFragmentsReadModel = ReadModel_Builder_NoResolver_Stream$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: ApiFragmentsReadModelSpec$ReventlessCore.name,
     moduleUrl: ApiFragmentsReadModelSpec$ReventlessCore.moduleUrl,
@@ -2420,7 +2421,7 @@ function Make($star) {
     moduleUrl: ApiFragmentsProjection$ReventlessCore.moduleUrl,
     mappings: ApiFragmentsProjection$ReventlessCore.mappings
   };
-  let ApiFragmentsReadModel = ReadModel_Builder_Single_Stream$ReventlessAws.Make({
+  let ApiFragmentsReadModel = ReadModel_Builder_NoResolver_Stream$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: ApiFragmentsReadModelSpec$ReventlessCore.name,
     moduleUrl: ApiFragmentsReadModelSpec$ReventlessCore.moduleUrl,

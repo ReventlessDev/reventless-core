@@ -93,6 +93,7 @@ function baseFragment(cloner) {
   let base = GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries(cloner), PluginBaseFragment$ReventlessCore.queryEntries);
   let parts = GraphQL_Stitcher$ReventlessCore.decode(base);
   let match = Plugin_SubscriptionSchema$ReventlessCore.sourceCFields(PluginBaseFragment$ReventlessCore.pluginAggregateMutationEntries);
+  let match$1 = Plugin_SubscriptionSchema$ReventlessCore.sourceCFields(apiFragmentRegistryMutationEntries);
   return GraphQL_Stitcher$ReventlessCore.encode({
     types: parts.types.concat(uiFragmentSubscriptionTypes).concat(pluginStatusSubscriptionTypes).concat(Platform_ComponentDefinitionsApi$ReventlessCore.sdlTypes).concat(Platform_UIFragmentsApi$ReventlessCore.sdlTypes).concat(Platform_ApiFragmentsApi$ReventlessCore.sdlTypes),
     mutations: parts.mutations.concat(uiFragmentMutationFields).concat(pluginStatusMutationFields),
@@ -104,11 +105,11 @@ function baseFragment(cloner) {
     subscriptions: [
       uiFragmentSubscriptionField,
       pluginStatusSubscriptionField
-    ].concat(match[0]),
+    ].concat(match[0]).concat(match$1[0]),
     subscriptionSources: [
       uiFragmentSubscriptionSource,
       pluginStatusSubscriptionSource
-    ].concat(match[1])
+    ].concat(match[1]).concat(match$1[1])
   });
 }
 

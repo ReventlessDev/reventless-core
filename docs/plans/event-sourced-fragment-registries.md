@@ -900,6 +900,31 @@ wiring blocked on unverifiable gaps (below).**
     deploy-validated Phase-4 cleanup rather than risked blind. The Platform_Admin admin-EC-2nd-stream-reader
     augmentation + the 2e `registerConfig` fields are likewise now dead but benign; left for the same pass.
 
+**Deploy validation #5 (2026-07-13) — Deploy Platform FAILED with orphan resolvers (the
+aggregate-path analogue of #2's Bug B); root-caused + FIXED (compile/local-boot-validated,
+re-deploy pending).** The first deploy of the aggregate rework got as far as creating the
+`ApiFragmentRegistryAggrEventLog` table, then `Pulumi up` failed on the admin GraphQL surface with
+two classes of orphan resolvers — fields the auto-flow creates but the pushed static
+`AdminApi.baseFragment` doesn't declare:
+- **Query:** `apiFragments` / `ApiFragmentss` / `ApiFragmentssByIds` — the AWS `ApiFragmentsReadModel`
+  used the resolver-generating `ReadModel_Builder_Single_Stream`, auto-naming Connection query fields
+  (no `queryFieldNamesRegistry` entry → the `name`/`name++"s"` fallback) that aren't in `baseFragment`
+  (its real surface is the dedicated `Platform_ApiFragments` Lambda). Local dodged it via `MakeNoResolver`.
+  **Fix:** AWS uses `ReadModel_Builder_NoResolver_Stream` (purpose-built for admin RMs served by a custom
+  Lambda — stream-projects the table, creates NO AppSync resolvers), mirroring local.
+- **Subscription:** `onPlatform_ApiFragmentRegistry_{Register,Deregister}ApiFragment` — the aggregate
+  mutations go through the CommandGenerator auto-flow, which creates an `on<field>` subscription resolver
+  per mutation; `baseFragment` declared these only for the Plugin aggregate. **Fix:** run
+  `Plugin_SubscriptionSchema.sourceCFields` over `apiFragmentRegistryMutationEntries` too and fold the
+  fields/sources into `baseFragment`, symmetric with the Plugin aggregate.
+
+Audit: after the fix every admin resolver created on AWS has a matching `baseFragment` field — the two
+`Platform_ApiFragmentRegistry_*` mutations + their `on*` subscriptions, the `Platform_ApiFragments`
+Lambda query, the Plugins RM queries + Plugin-aggregate mutations/subscriptions; `RecordApiFragmentPush`
+stays `@noApi`; the ApiFragments RM emits no auto resolvers. Validated: core/aws/local build zero-warning;
+local live boot clean (`Platform_ApiFragments` ok, mutations exposed, no duplicate-field error).
+Re-validation is the next alpha push.
+
 **Remaining work:**
 - **Deploy-validate the whole AWS path on an alpha push** — the SideEffect writer, IAM, env injection,
   `finish()` sequencing, stream subscription, and the deploy caller/waiter are all compile-only. Watch:
