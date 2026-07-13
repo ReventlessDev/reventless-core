@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.203 (2026-07-13)
+
+### Bug Fixes
+
+* **admin:** orphan resolvers on the ApiFragmentRegistry aggregate deploy (deploy [#5](https://github.com/ReventlessDev/reventless-core/issues/5)) ([9572344](https://github.com/ReventlessDev/reventless-core/commit/95723443bad8ae8143ceaea209827ee5bd4d0ae5)), closes [#2](https://github.com/ReventlessDev/reventless-core/issues/2)
+
+
 # 3.0.0-alpha.202 (2026-07-13)
 
 ### Features
