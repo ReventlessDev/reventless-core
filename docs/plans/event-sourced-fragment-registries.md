@@ -800,8 +800,27 @@ becomes the constant `"registry"` (was the pluginId); `pluginId` stays a payload
 2. ~~Reading aggregate state from the mjs~~ — **MOOT**: the chosen writer design computes the schema
    in the behavior and pushes via a `SideEffect`, so there is no mjs aggregate read (see § Reactive
    writer design).
-3. Mutation naming must stay byte-identical `Platform_RegisterApiFragment` / `Platform_DeregisterApiFragment`
-   (so the deploy caller SDL is unchanged) via `adminField`.
+3. Mutation naming — **RESOLVED (2026-07-13, found while implementing).** The aggregate resolver path
+   (`Plugin_Helpers.registerAdminAggregateMutations`) names admin-aggregate mutation fields
+   `adminField(Spec.name ++ "_" ++ cname)` → **`Platform_ApiFragmentRegistry_RegisterApiFragment`**,
+   NOT the slice path's `Platform_RegisterApiFragment` (`sliceMutationFields(~plugin="Platform")`,
+   no aggregate-name segment). So the aggregate path does **not** preserve the byte-identical name.
+   The SDL entry (`AdminApi.apiFragmentRegistryMutationEntries`) and the resolver must agree, or
+   AWS `CreateResolver` fails — DECISION (2026-07-13, user): **(A) accept the rename.**
+   - **(A) [CHOSEN] Accept the aggregate-convention name** `Platform_ApiFragmentRegistry_{Register,Deregister}ApiFragment`
+     — regenerate `apiFragmentRegistryMutationEntries` from that convention (SDL follows), update the
+     Phase-3 deploy caller (`registerFragmentViaApi` mutation name) + `systemCallerFieldNames` follow
+     automatically. Simplest; changes a deploy-facing mutation name (no external callers but ours).
+   - **(B) Preserve byte-identical `Platform_RegisterApiFragment`** — add a per-aggregate name-prefix
+     override to `registerAdminAggregateMutations`/`aggregateMutationFieldsRegistry` (mirrors the DCB
+     path's `~apiNamePrefix`) so this aggregate's commands render without the aggregate-name segment.
+     More core surgery; deploy caller unchanged.
+
+**Implementation note (2026-07-13):** the slice→aggregate rewire + the **local** SideEffect writer are
+**inseparable for a working local boot** — the current local single-writer decodes slice events off the
+admin DcbEventLog; once ApiFragmentRegistry is an aggregate, `RecordApiFragmentPush` only fires if the
+writer is re-sourced onto the aggregate's events (the SideEffect). So the rewire + local SideEffect must
+land as ONE unit (a first attempt was reverted to keep the tree green after the foundation commit).
 
 **Build order:** (1) aggregate spec+behavior, (2) RM, (3) rewire `Admin.construct`
 (slices→`~aggregates`/`~readModels`), (4) **reactive writer per § Reactive writer design** (behavior
