@@ -1,11 +1,20 @@
 # Push-free schema composition via merged APIs (AppSync Merged APIs + yoga)
 
 **Status:** Analysis
-**Date:** 2026-07-13
-**Relates to:** [docs/plans/event-sourced-fragment-registries.md](../plans/event-sourced-fragment-registries.md)
+**Date:** 2026-07-13 (updated 2026-07-14)
+**Relates to:** [docs/plans/done/event-sourced-fragment-registries.md](../plans/done/event-sourced-fragment-registries.md)
 (the "Alternative design" section names AppSync Merged APIs as the out-of-scope push-free option);
 [docs/analysis/fragment-registry-architecture.md](./fragment-registry-architecture.md) (§ 10–11 —
 bootstrap push anatomy + provider-dialect audit).
+**Update (2026-07-14):** the referenced plan is now **complete and deploy-validated** — all four
+phases, including the Phase-4 `deploy-schema:*` retirement/cutover, landed green on alpha (commit
+`af21a47f1`, plan moved to `docs/plans/done/`). The whole-replace stitch-and-push path therefore
+**ships today**. That removes the "pivot before Phase 4" branch this analysis originally weighed
+(§ 13): merged APIs are now unambiguously a **successor architecture** to a working push-based path,
+not a mid-flight redirection. The feasibility findings and the merge-model design (§§ 2–12) are
+unchanged; only the sequencing framing (§ 8, § 13) is affected.
+**Plan:** [docs/plans/merged-api-push-free-composition.md](../plans/merged-api-push-free-composition.md)
+(created 2026-07-14 from this analysis; Phase 0 spike is the go/no-go gate).
 **Question:** Is a *push-free* architecture feasible — where each plugin is an independently
 deployed sub-graph and the platform **merges** rather than **stitch-and-whole-replace-pushes** the
 schema — on **AWS** (AppSync Merged APIs) and on the **graphql-yoga** local platform? Pros, cons,
@@ -207,11 +216,13 @@ conceptual gap (AWS composes independent APIs; local composes registrations into
 
 ## 7. Cons / risks / consequences
 
-1. **Large blast radius; supersedes in-flight work.** This is a different architecture, not an
+1. **Large blast radius; supersedes now-shipped work.** This is a different architecture, not an
    increment. It would retire `GraphQL_Stitcher`'s push role, `Api_Adapter.updateSchema`, the
-   ApiFragmentRegistry aggregate, the reactive push, and the deploy caller/waiter — much of Phases 2–3
-   already built and deploy-validated. Pivoting now discards that; landing the current plan first and
-   revisiting means building machinery you intend to delete.
+   ApiFragmentRegistry aggregate, the reactive push, and the deploy caller/waiter — **all of which
+   are now built, landed, and deploy-validated** (the plan completed 2026-07-14; the header note).
+   Adopting merged APIs means *deleting* that shipped machinery, not avoiding building it — the
+   "build-then-delete" concern from the original draft is resolved: the push path exists and works,
+   so this is a clean successor migration off a known-good baseline rather than a mid-flight pivot.
 2. **New Pulumi bindings + resource model** (`SourceApiAssociation`, merged API) — net-new binding
    and deploy-topology work, plus the per-plugin-owns-an-API restructuring of plugin stacks.
 3. **Shared-type discipline is now load-bearing** — codegen must emit shared types canonically and
@@ -230,13 +241,16 @@ conceptual gap (AWS composes independent APIs; local composes registrations into
 9. **UI fragments are unaffected** — the `UiFragmentRegistry` is runtime-connect-driven and is *not*
    a schema push (it feeds the host-shell manifest), so none of this simplifies it; it stays as-is.
 
-## 8. Impact on the in-flight plan
+## 8. Impact on the (now-shipped) plan
 
-**Superseded (API side) if adopted:** the ApiFragmentRegistry component (aggregate or slice), the
-reactive single-writer (mjs/SideEffect), the deploy caller + `Platform_ApiFragments` status query +
-waiter, the singleton-aggregate consistency reasoning, and `Api_Adapter.updateSchema` / the runtime
-re-stitcher as the push path. The `deploy-schema:*` keyspace and guards were already slated for
-deletion in Phase 4.
+The referenced plan is **complete** (all four phases deploy-validated on alpha, 2026-07-14). So this
+section reads as "what a merged-API migration would *undo*," not "what it would pre-empt."
+
+**Superseded (API side) if adopted:** the ApiFragmentRegistry component (the singleton aggregate that
+shipped), the reactive single-writer (mjs/SideEffect), the deploy caller + `Platform_ApiFragments`
+status query + waiter, the singleton-aggregate consistency reasoning, and `Api_Adapter.updateSchema` /
+the runtime re-stitcher as the push path. The `deploy-schema:*` keyspace and its guards — already
+**deleted** as part of the Phase-4 cutover (commit `549afe73c`) — do not return under merge.
 
 **Still needed / still useful:** neutral-SDL emission + dialect-additive providers (increment 2a) —
 each source API's schema should still be neutral SDL that the AWS side decorates and the local side
@@ -252,7 +266,7 @@ a strict shared-type/subscription contract as the main design risk.
 ## 9. Fragment registry under merged composition — aggregate, DCB, or neither?
 
 The question the merge model forces: if the whole-replace push disappears, what happens to the
-`ApiFragmentRegistry` the in-flight plan builds — does it become an aggregate, DCB slices, or
+`ApiFragmentRegistry` the now-shipped plan built — does it become an aggregate, DCB slices, or
 nothing?
 
 **It is retired on the API side, not re-answered.** The registry exists to hold two things, and
@@ -474,10 +488,12 @@ Suggested path if pursued:
    Domain merged API — to validate the three behaviors the docs leave least certain for *this*
    codebase: shared-type merge (Relay + IAM types via `@canonical`/stub), per-plugin Source-C
    subscription merge, and Cognito+IAM dual-auth via merged secondary auth mode.
-2. **Decide sequencing vs the current plan.** Either (i) land `event-sourced-fragment-registries.md`
-   now for a working AWS path and treat merged APIs as the successor architecture, or (ii) pivot
-   before Phase 4 to avoid building the reactive-push/deploy-waiter machinery merged APIs would
-   delete. The spike's outcome should drive this.
+2. **Sequencing is already decided by events.** The original draft weighed (i) landing
+   `event-sourced-fragment-registries.md` first vs (ii) pivoting before Phase 4 to skip building the
+   reactive-push/deploy-waiter machinery. Outcome (i) happened — the plan **landed and deploy-validated
+   on 2026-07-14** — so option (ii) is moot. The live question is now purely *whether and when to
+   migrate off* the shipped push path to merged APIs; the spike's outcome should drive that, with no
+   time pressure since the current path works.
 3. **Do local option (b) alongside scope-2** so both platforms share the plugin=subgraph model rather
    than diverging.
 
