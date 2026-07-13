@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.136 (2026-07-13)
+
+### Features
+
+* **catalog:** add optional sku to Products read model ([a67c384](https://github.com/ReventlessDev/reventless-core/commit/a67c38429eec63e2c2f0781636dca0a0621b280a)), closes [#8](https://github.com/ReventlessDev/reventless-core/issues/8)
+
+
 # 1.0.0-alpha.135 (2026-07-13)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog

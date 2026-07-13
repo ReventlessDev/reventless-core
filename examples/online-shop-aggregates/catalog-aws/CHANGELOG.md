@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.59 (2026-07-13)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog-aws
+
+
+
+
+
 # 1.0.0-alpha.58 (2026-07-13)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog-aws
