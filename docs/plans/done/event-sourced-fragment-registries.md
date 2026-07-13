@@ -1,7 +1,7 @@
 # Event-sourced fragment registries (API schema + UI)
 
-**Status:** Plan
-**Date:** 2026-07-12
+**Status:** COMPLETE (all phases done + deploy-validated 2026-07-14; deploy run `29292377065`)
+**Date:** 2026-07-12 → completed 2026-07-14
 **Analysis:** [docs/analysis/fragment-registry-architecture.md](../analysis/fragment-registry-architecture.md)
 **Supersedes:** `schema-fragment-push-public-api.md` (extraction of the deploy-time push
 into a public function — retired; the use case it served is solved more directly here,
@@ -1092,8 +1092,12 @@ mutations present), ApiFragmentRegistry aggregate registers Catalog/Ordering fra
 only) — re-validation is a targeted local `pulumi up --target <adminEC-urn>` + a catalog-aws
 reactive-push run, on the pushed+green baseline.
 
-**Phase 4b — legacy `deploy-schema:*` retirement — DONE (2026-07-14, this session), compile +
-test + local-boot validated; AWS deploy-validation pends an alpha push.** Decision (user, 2026-07-14):
+**Phase 4b — legacy `deploy-schema:*` retirement — DONE + DEPLOY-VALIDATED (2026-07-14).** Committed
+`549afe73c`; the alpha push went green end-to-end (Release ✓ → Build Lambda Layer ✓ → **Deploy Online
+Shop Hybrid ✓**, run `29292377065`) — the staged `deployPlatform` + `deployPlugin` path deploys cleanly
+after the ~1.7k-LOC removal, confirming the retired machinery was dead weight and the register→SideEffect
+path is the intact single writer (fragments unchanged from #12 → waiter took the idempotent no-op branch).
+Decision (user, 2026-07-14):
 after finding that AWS `makePlatform(~plugins=[…])` — the sole `None`-branch deploy-schema pusher — is
 used by **zero examples** (every `platform-aws` uses `deployPlatform` with no plugins; every plugin uses
 `deployPlugin`), so the deploy-schema push path has zero deploy coverage, and that migrating it to
@@ -1122,12 +1126,17 @@ core/aws build zero-warning; both hybrid `platform-aws`+`catalog-aws` (staged pa
 reventless-*local* `makePlatform`, unaffected). AWS-only — real validation is the next alpha push (the
 staged register→SideEffect path is untouched, so no functional change is expected there).
 
-**Remaining work:**
-- **Push the four fixes so CI republishes + redeploys consistently** — the local `pulumi up`s deployed
-  local builds of bugs #3 (`de6c7b39b`, committed) and #4 (record msgId, this commit) to real AWS; the
-  published npm/layer packages don't have them yet, so a future CI deploy from published packages would
-  regress until these land. Bugs #1/#2 (`57a61d98f`/`e64eeae9f`) are already pushed. After the push, a
-  CI deploy with unchanged fragments is a clean no-op (validation #12 already drove the push green).
+**Remaining work — NONE (plan complete 2026-07-14).** All phases done and deploy-validated; moved to
+`docs/plans/done/`. Two follow-ups tracked SEPARATELY (out of this plan's scope): the local
+deploy-lifecycle harmonization (`docs/plans/Backlog/harmonize-local-deploy-lifecycle.md`, "SCOPE 2"), and
+the framework-wide SideEffect `Source.Id` erasure (a general builder/PPX bug surfaced at validation #10,
+worked around here by materialising `ApiSchemaPush.Source.Id` — see § validation #10). Historical
+remaining-work notes below are retained for the record.
+
+- ~~**Push the four fixes so CI republishes + redeploys consistently**~~ — DONE (2026-07-14). Bugs #3
+  (`de6c7b39b`) + #4 (`af122fa37`) + the Phase-4 cleanup (`549afe73c`) pushed; Release republished the
+  packages/layer and Deploy Online Shop Hybrid went green (run `29292377065`). Bugs #1/#2
+  (`57a61d98f`/`e64eeae9f`) were already pushed.
 - ~~Re-validate the reactive push~~ — DONE (validation #12).
 - (superseded) Original re-validation note (with fixes `57a61d98f` + Source.Id + the
   cmd-topic-URL `switch` fix, and revert `3066c36cd`):
