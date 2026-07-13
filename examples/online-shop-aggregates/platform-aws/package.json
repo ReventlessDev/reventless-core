@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-platform-aws",
   "private": true,
-  "version": "1.0.0-alpha.59",
+  "version": "1.0.0-alpha.60",
   "description": "Online Shop Aggregates — AWS platform deployment",
   "license": "Apache-2.0",
   "scripts": {

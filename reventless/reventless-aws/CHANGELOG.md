@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.209 (2026-07-13)
+
+### Bug Fixes
+
+* **admin:** resolve ApiSchemaPush cmd-topic URL via switch, not option<Output> ([de6c7b3](https://github.com/ReventlessDev/reventless-core/commit/de6c7b39be732d7def8667004e80fa78c31b7772)), closes [#11](https://github.com/ReventlessDev/reventless-core/issues/11)
+* **admin:** unique + SQS-safe msgId for RecordApiFragmentPush write-back ([af122fa](https://github.com/ReventlessDev/reventless-core/commit/af122fa37c4a337e1cd5b8eccc0d0c4d069403a1)), closes [#12](https://github.com/ReventlessDev/reventless-core/issues/12)
+
+
 # 3.0.0-alpha.208 (2026-07-13)
 
 ### Bug Fixes
