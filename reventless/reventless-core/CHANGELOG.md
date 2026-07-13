@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.163 (2026-07-13)
+
+### Bug Fixes
+
+* **admin:** skip over-long Source-C subscriptions on the ApiFragmentRegistry aggregate (deploy [#6](https://github.com/ReventlessDev/reventless-core/issues/6)) ([0977120](https://github.com/ReventlessDev/reventless-core/commit/0977120d5c6cb2331d9384747d136fe99855690e))
+
+
 # 3.0.0-alpha.162 (2026-07-13)
 
 ### Bug Fixes
