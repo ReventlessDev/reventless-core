@@ -698,10 +698,293 @@ Compile-validated for the SigV4 auth path — **re-validation is the next alpha 
 waiter authorize, confirm ACTIVE, and complete the plugin deploys — the first true end-to-end run of
 register → 2e reactive push → waiter).
 
+**Deploy validation #4 (2026-07-13) — FULL DEPLOY GREEN; but the 2e reactive push is
+erroring underneath, and the fix is an architecture change (ApiFragmentRegistry: DCB slice →
+singleton aggregate).** With #3's `extractLeadingName` fix, the whole deploy went green —
+**Deploy Platform ✅ + Deploy Plugin (catalog) ✅ + Deploy Plugin (ordering) ✅** — the first
+end-to-end run: platform + admin-DCB surface + both plugins registering their fragments via SigV4.
+
+**But green was partly masking.** Scanning the `ApiFragments` registry table on AWS shows
+`pushStatus: error` for both plugins:
+- Ordering: `Schema is currently being altered` (AppSync API-lock: concurrent pushes racing)
+- Catalog: `shrink guard aborted push for DomainApi` (assembled 21 root fields vs 57 live)
+
+The deploy still passed because (a) the fragments were already registered by #3's *successful
+mutations* (only #3's status *query* had failed), so this run hit the waiter's idempotent
+`CommandAccepted{eventCount:0}` → `fragment unchanged, no push` shortcut and never polled
+`pushStatus`; and (b) the Domain API schema is correct (57 fields) because the **legacy
+`mkUpdateApiSchema` push** (kept until Phase 4) is still doing the real work. So a real fragment
+*change* would fail the waiter (`pushStatus:error`).
+
+**Root cause (investigated, decisive):** the registry *content* is complete and correct — a full
+fold = 44 root fields = exactly the live 45 minus the stitcher's auto-injected relay `node`
+(field-name diff: only `node` in live-not-registry, nothing registry-not-live). The failure is:
+- **partial assembly:** the reactive push folds the registry by scanning the `ApiFragments`
+  **view**, which a *separate, lagging* consumer (`AllStateViewSlices` projection) maintains. On
+  near-simultaneous multi-plugin deploys, a peer's freshly-registered row isn't in the view yet →
+  the fold drops it → whole-schema-replace would shrink → guard aborts (correctly).
+- **concurrency:** each plugin's event triggers its own push; two `StartSchemaCreation` calls race
+  the AppSync API lock.
+
+Neither is a registry-content problem. The plan already prescribed the answer — *"stitch from
+consistent state (event fold), NOT an eventually-consistent RM scan"* — but the implementation does
+the RM scan it warned against.
+
+**Rejected fix — retry + timeout (symptom-fighting).** A first attempt added a re-fold/re-push
+retry loop with backoff and bumped the admin EC Lambda timeout to fit it. This fights the lagging
+read with time and has no principled ceiling (projection lag is unbounded). Reverted.
+
+**Rejected fix — Option A: fold the DcbEventLog via a cross-partition scan.** Reading the *log*
+(written synchronously by the command) instead of the *view* (written by the lagging projection)
+removes the projection dependency and shrinks staleness to DynamoDB's own sub-second scan window.
+But: (1) a strongly-consistent read exists only **per single partition** (DynamoDB constraint —
+`DcbEventLogStorage`'s `buildQueryByPartitionKeyInput ~strongConsistency`; GSIs/scans cannot),
+and the registry is one partition *per plugin*, so a global read stays bounded-eventual; and (2)
+**performance** — it's a **full-table `Scan` on every push**, and the log is append-only and
+grows forever (`RecordApiFragmentPush` writes one event *per push* — exactly the events the fold
+discards — and `Scan` pays RCU to read every item before filtering). Cost/latency grow unbounded.
+Rejected on the scan-scaling ground alone.
+
+**CHOSEN FIX — model `ApiFragmentRegistry` as a SINGLETON AGGREGATE (not per-plugin DCB slice).**
+An aggregate is a single consistency boundary with a single event stream. Keyed by a **fixed
+constant id** (e.g. `"registry"`) — `pluginId` becomes a payload field, NOT the id — the *whole*
+registry lives in **one partition**, so reading it is a single **strongly-consistent `id=:pk`
+read** (exactly the slice's own decision-read pattern, now covering everything) **+ snapshot →
+O(recent), bounded**. This fixes consistency *and* performance instead of trading them:
+
+| | DCB slice + fold log (Option A) | Singleton aggregate (chosen) |
+|---|---|---|
+| Global read consistency | bounded-eventual (cross-partition) | **strong** (one partition) |
+| Read cost per push | full scan, grows forever | snapshot + tail, **bounded** |
+| Write model | independent per plugin | serialized on one aggregate (fine at deploy freq) |
+| `systemCallable` | native (slice attr) | via `systemCallerFieldNames` → `injectAwsAuthAll` |
+
+Why DCB was originally chosen (independent per-plugin *writes*) optimized the wrong side: the
+**stitch is a whole-registry read**, and an aggregate serves that directly; deploy-frequency writes
+don't need per-plugin write independence.
+
+**Component layout — mirrors the existing admin `Plugin` aggregate + `Plugins` RM:**
+- **`ApiFragmentRegistry` aggregate** (replaces `.../StateChangeSlice/`): singleton, fixed id;
+  `state = Dict<pluginId, {encoded, protocol, apiTarget, pushStatus, pushMessage, pushedAt,
+  registeredAt, updatedAt}>`; commands `RegisterApiFragment` / `DeregisterApiFragment` (API-exposed,
+  IAM) / `@noApi RecordApiFragmentPush`; events `ApiFragment{Registered,Updated,Deregistered,
+  PushRecorded}`. Behavior folds the whole map, idempotency by comparing `state[pluginId]`, retarget
+  is one in-state move. `@noApi` on a variant is proven on aggregates (`Plugin` uses `@noApi
+  Heartbeat`).
+- **`ApiFragments` read model** (replaces `.../StateViewSlice/`): projection off the aggregate;
+  per-plugin status rows for the `Platform_ApiFragments` query.
+- **Reactive push** — **SUPERSEDED** by the chosen "behavior-computed schema + bespoke SideEffect
+  push" design (see § Reactive writer design below). The originally-planned mjs approach (on any
+  `ApiFragment*` event, single-partition `id="registry"` `ConsistentRead` fold → stitch per target →
+  push) is *not* built; the behavior computes the schema and a `SideEffect` performs the push
+  instead. Everything else in this component layout stands.
+
+**Three things this SIMPLIFIES (removes more than it adds):**
+1. **GraphQL exposure** — the aggregate's mutations go through the existing admin-aggregate path
+   (`registerAdminAggregateMutations` → `pluginAggregateMutationEntries` → `baseFragment`), resolved
+   by the standard CommandGenerator flow (`mutationResolverHook=None`). So **all of 2d's
+   DCB-resolver-hook machinery disappears**: no `~apiNamePrefix`, no `~onAdminApi` routing, no
+   `DcbMutation` datasource. IAM = add the two field names to `systemCallerFieldNames`.
+2. **Trigger path** — aggregate events reach the admin EC via the normal aggregate event topic
+   (SNS→SQS), so the **2e "admin EC as 2nd DynamoDB-stream reader"** (with its ~2-concurrent-shard
+   limit) goes away.
+3. **No retry/skip machinery** — the consistent read makes it unnecessary.
+
+**Status query & deploy caller:** `Platform_ApiFragments` reads the `ApiFragments` RM (eventual is
+fine — the waiter polls). Deploy caller (`registerFragmentViaApi`): the mutation `id: ID!` arg
+becomes the constant `"registry"` (was the pluginId); `pluginId` stays a payload field.
+
+**Open points to verify while building:**
+1. Singleton routing — how the mutation→command sets `id` to the constant (generator takes `id`
+   from an arg we fix to `"registry"`, vs derived). Load-bearing detail.
+2. ~~Reading aggregate state from the mjs~~ — **MOOT**: the chosen writer design computes the schema
+   in the behavior and pushes via a `SideEffect`, so there is no mjs aggregate read (see § Reactive
+   writer design).
+3. Mutation naming must stay byte-identical `Platform_RegisterApiFragment` / `Platform_DeregisterApiFragment`
+   (so the deploy caller SDL is unchanged) via `adminField`.
+
+**Build order:** (1) aggregate spec+behavior, (2) RM, (3) rewire `Admin.construct`
+(slices→`~aggregates`/`~readModels`), (4) **reactive writer per § Reactive writer design** (behavior
+emits `ApiSchemaComputed` + bespoke `SideEffect` push — replaces "reactive push reads aggregate"),
+(5) deploy caller + IAM, (6) tests — building + live-booting locally at each step. Deploy-validate on
+alpha at the end.
+
+**What gets deleted in this rework:** `ApiFragmentRegistry/StateChangeSlice/*` +
+`ApiFragments/StateViewSlice/*`; the 2d slice-resolver hook threading (`~apiNamePrefix`,
+`~onAdminApi`, `DcbMutation` binding) *for the ApiFragment path*; the reactive push's view-scan +
+retry attempt. (The `UiFragmentRegistry` slice is out of scope here — it's connect-driven, has no
+whole-registry stitch read, and stays a slice. So the admin DcbEventLog + DCB-resolver path remains
+for it; this rework removes only the ApiFragment usage of it. Reassess whether the admin DcbEventLog
+is still worth it once only UiFragment uses it.)
+
 **Remaining work:**
+- **API-registry aggregate rework** (above) — supersedes the slice-based ApiFragmentRegistry; land + deploy-validate before Phase 4.
+- **Reactive writer = behavior-computed schema + bespoke SideEffect push** (CHOSEN 2026-07-13, see
+  § Reactive writer design) — the reactive-push mechanism for the aggregate rework; build per its
+  build order.
 - Phase 4 — cutover + cleanup (retire `deploy-schema:*` keyspace, lease, hash rows, legacy
   `mkUpdateApiSchema`; decide whether `makePlatform`'s direct-push path is retired or kept; dedup
   the `injectAwsAuthAll`/`stampSharedIamTypes` copies if any linger).
+
+## Reactive writer design — behavior-computed schema + bespoke SideEffect push (CHOSEN 2026-07-13)
+
+**Status: CHOSEN — adopted over the CHOSEN-FIX's mjs-read reactive push** (decision 2026-07-13,
+after the recommendation to finish this plan the framework-native way rather than pivot to merged
+APIs — see [docs/analysis/merged-api-push-free-approach.md](../analysis/merged-api-push-free-approach.md)).
+This **keeps** everything else from the singleton-aggregate CHOSEN FIX (the aggregate, the
+`ApiFragments` RM, the standard-aggregate GraphQL exposure, the `Platform_ApiFragments` status
+query, the deploy caller + waiter) and **replaces only the reactive-push mechanism**: the mjs
+"read aggregate state + fold + stitch + push" (CHOSEN-FIX open point #2) is superseded by
+"behavior computes the schema → bespoke `SideEffect` pushes it." It attacks the two things that
+remained hand-rolled after the aggregate rework: the mjs reads aggregate state by hand, and the
+writer is a bespoke AWS `.mjs` subscriber rather than a framework building block — the same
+parallel-mechanism smell this whole plan set out to remove for `deploy-schema:*`.
+
+**The shape:**
+
+1. **The aggregate behavior emits the consistent fragment snapshot.** On `RegisterApiFragment` /
+   `DeregisterApiFragment`, the behavior emits a second event `ApiSchemaComputed{ snapshot }`
+   alongside the `ApiFragment{Registered,Updated,Deregistered}` fact, where `snapshot` is the
+   **whole registry after this change** — the per-plugin `{pluginId, encoded, protocol, apiTarget}`
+   set folded from the aggregate's own consistent single-partition state at command-handling time.
+   This is what carries "stitch from consistent state, not an eventually-consistent read" to the
+   push handler **without a hand-rolled `ConsistentRead` in the mjs** — open point #2 disappears,
+   and deploy-#4's false `shrink guard aborted` (a lagging-read artifact) cannot recur.
+   *Refinement (2026-07-13, found while implementing):* the behavior does **not** run the stitch
+   (`GraphQL_PushPlanner.planPushes` needs `~splitApi` + `~adminBase`, which are deploy/platform
+   concerns an aggregate behavior can't cleanly obtain), so it emits the fragment **snapshot**, not
+   final SDL. The stitch (`planPushes`), AWS decoration, the catastrophic-shrink guard (compared
+   against live introspection — provider-specific), and the push all live in the SideEffect, which
+   has `splitApi`/`adminBase`/`apiId`/`region` from its deploy config. The behavior stays free of
+   deploy config; the event stays neutral (a fragment set, no provider dialect).
+2. **A bespoke SideEffect performs the push.** A `SideEffect.T` (`Source = ApiFragmentRegistry`)
+   reacts to `ApiSchemaComputed` and calls the push. Hosted by a `SideEffectHandler` (existing
+   component; `reventless-core/src/components/SideEffectHandler/`) wired into the admin platform —
+   giving standard event-topic subscription (SNS→SQS on AWS, in-process on local) and
+   provider-agnostic hosting for free. This **replaces both the bespoke mjs writer and the
+   CHOSEN-FIX "admin EC as 2nd DynamoDB-stream reader" hack** (aggregate events flow through the
+   normal aggregate event topic, so the ~2-concurrent-shard stream-reader limit goes away too).
+
+**Provider-specificity stays localized — no generic framework injection.** The push is
+provider-specific, but the framework's generic `SideEffect.T` context (`(id, meta, event,
+queryEngine)`) is **left untouched** — we do NOT add a schema-push capability to it. Because this
+is one bespoke side effect written for exactly this job, it **self-acquires** what it needs:
+
+- **Provider selection is by module, not injection.** An **AWS** side-effect module (in
+  `reventless-aws`) whose `execute` runs `GraphQL_PushPlanner.planPushes(~adminBase, ~fragments=snapshot,
+  ~splitApi)` (base+splitApi from its deploy config), applies the `@aws_*` dialect + shrink guard via
+  `AppSync_SdlDecorate.planAwsPushes`, and calls the runtime-pure `updateSchema`; a **local** module
+  that **no-ops** the push (fields already served by resolver registration). The admin wiring selects
+  the provider-appropriate module — the same pattern the existing provider adapters already use.
+  Neutral-SDL discipline (increment 2a) holds: the event carries a neutral fragment snapshot; the AWS
+  module does all provider-specific stitch/decoration at push time.
+- **Outcome write-back needs no `execute` generalization either.** `SideEffectHandler.make`
+  already provisions `~allCommandTopics`, so the bespoke module publishes `RecordApiFragmentPush`
+  to the admin command topic itself (URL from runtime env). So neither of the two framework
+  extensions previously floated (inject a provider port; let `execute` return `taskAction`s) is
+  required — both collapse into "this one module wires its own two capabilities."
+
+**The one discipline: runtime-purity (else the `@pulumi`-in-Lambda-runtime leak returns).** Every
+capability the module self-acquires must be **runtime-pure** — API id, region, and command-topic
+URL read from **env/config at runtime** (exactly as the mjs's `HANDLER_CONFIG` does today), and the
+AWS push is the runtime-pure `AppSync` path. The module must **not** close over a deploy-time
+Pulumi `Output` — that is precisely why `AppSync_SdlDecorate.res` was carved out runtime-pure so
+the mjs could import it (`reference_pulumi_leaks_into_lambda_runtime_graph`). No serializer hazard
+here: unlike the `ApiFragmentDeregistration.res` dynamic provider (closure serialized into stack
+state), a `SideEffectHandler` Lambda loads compiled modules normally, so an env read inside
+`execute` is the clean mechanism.
+
+**Component layout (delta from the CHOSEN FIX):**
+- `ApiFragmentRegistry` aggregate (unchanged from CHOSEN FIX) — plus behavior emits
+  `ApiSchemaComputed{snapshot}` (the consistent per-plugin fragment set after the change); no
+  in-behavior stitch or shrink guard (those live in the SideEffect, which has `splitApi`/`adminBase`).
+- `ApiFragments` read model (unchanged) — status rows for `Platform_ApiFragments`.
+- **New:** an admin `SideEffectHandler` hosting the provider-specific push module
+  (`ApiSchemaPush` AWS vs local), wired in `Platform_Admin.construct` and subscribed to the
+  `ApiFragmentRegistry` event topic.
+- **Deleted vs CHOSEN FIX:** the mjs reactive writer (`mkUpdateApiSchema` retarget), its
+  single-partition `ConsistentRead` fold + EventLog-table-name config threading, and the admin-EC
+  2nd-stream-reader wiring.
+
+**AppSync concurrent-push API-lock race — solvable (deploy-#4 Ordering `Schema is currently
+being altered`).** The pushes don't conflict semantically — each is a whole-registry stitch
+monotone toward the same target, so the last correct push wins; it's a serialization/coalescing
+problem, not a content one. The singleton aggregate makes the clean fix available: **all registry
+events come from one aggregate id (`"registry"`)**, so a **single-concurrency writer** (reserved
+concurrency = 1 on the push handler — note `SideEffectHandler.make` doesn't expose that knob today,
+small addition) makes two in-flight `StartSchemaCreation` calls structurally impossible. Add
+**per-batch coalescing** (fold once, push the highest-sequence event, not per-record). Keep
+**bounded retry on `Schema is currently being altered`** as a backstop for residual races (the
+legacy `mkUpdateApiSchema` still pushing during the transition; a standalone-service push) — this
+is *not* the plan's rejected lagging-read retry (that had no ceiling; the API lock clears in
+seconds). One guardrail: **a retry/reorder must push latest-folded state, never re-push a stale
+payload** (else push A [catalog-only] landing after push B [catalog+ordering] shrinks the schema).
+
+*Race/ordering — DECISION (2026-07-13).* Because `ApiSchemaComputed` carries a point-in-time
+snapshot, a stale snapshot pushed after a fresh one would shrink the schema, so the push handler is
+made **serialized + in-order + coalescing**:
+- **Serialized in-order:** all registry events share one aggregate id, so the push handler's queue
+  uses a single **FIFO `MessageGroupId` = the registry id**, with **reserved concurrency = 1** as
+  belt-and-suspenders → at most one `StartSchemaCreation` in flight, processed in emit order, so the
+  last snapshot pushed is always the latest.
+- **Per-batch coalescing:** within one invocation, fold once and push the highest-sequence
+  `ApiSchemaComputed`, skipping superseded ones.
+- **Bounded retry** on `Schema is currently being altered` stays as a backstop for residual races
+  (the legacy `mkUpdateApiSchema` during the transition; a standalone-service push).
+- **Fallback** if making the admin push path FIFO proves too invasive: treat `ApiSchemaComputed` as
+  a bare trigger and **re-fold the latest strongly-consistent single-partition state at push time**
+  (cheap — one aggregate partition). This reintroduces a read but is unconditionally reorder-safe;
+  choose it only if FIFO wiring is impractical.
+
+*Push-free option (out of scope, named for completeness):* AppSync **Merged APIs** (each plugin
+owns a source API; AppSync merges) eliminates whole-replace and the shared lock entirely, making
+the race impossible rather than serialized away — but replaces `GraphQL_Stitcher` + `updateSchema`
+wholesale (a much larger re-architecture, not this plan).
+
+**Accepted trade-off:** `ApiSchemaComputed` carries the whole cumulative neutral SDL (O(all
+plugins)) and is written per change — storing a *derived* artifact in the event log (mild ES smell;
+contrast the mjs approach, where the full schema stays transient and only the small per-plugin
+fragment is stored). Accepted at deploy-frequency write volume and bounded schema size (well under
+the event-payload budget); the payoff is that consistency + the shrink guard become framework-native
+and the bespoke mjs + 2nd-stream-reader hack both disappear. Local pays a written-then-ignored blob
+(push is a no-op there).
+
+**Open points to verify while building:**
+1. Emitting two events from one command handler (the `ApiFragment*` fact + `ApiSchemaComputed`) —
+   confirm the aggregate path serializes both under one decision, and that `ApiSchemaComputed`
+   does not itself re-trigger a recompute loop (it is not a fragment-changing event; the behavior
+   ignores it).
+2. Admin hosting precedent: `Task`/`SideEffectHandler` are today plugin components wired by the
+   generator into `Plugin.res`; standing one up inside `Platform_Admin.construct` is net-new
+   (though `SideEffectHandler.make` is directly callable). Confirm the admin `SideEffectHandler`
+   subscribes to the `ApiFragmentRegistry` aggregate event topic and that its queue can carry a FIFO
+   `MessageGroupId` + reserved-concurrency=1 (the race/ordering decision above).
+3. The bespoke module ignores the injected `queryEngine` and self-wires push + publish from env —
+   acceptable for a platform component, but be explicit that `SideEffectHandler` is used here for
+   event-subscription + provider-agnostic hosting, not for its generic injected context.
+4. Shrink-guard state: the behavior holds the prior computed field-count (or a hash) in aggregate
+   state to make the guard a pure in-behavior invariant; confirm this survives snapshot/replay.
+
+**Build order (chosen writer design):**
+1. **Aggregate behavior** — emit `ApiSchemaComputed{neutralSdl}` as a second event on
+   `RegisterApiFragment`/`DeregisterApiFragment`; fold the whole map via `GraphQL_PushPlanner.planPushes`
+   (already unit-tested), stamp the shrink-guard field-count into state; behavior ignores
+   `ApiSchemaComputed`/`ApiFragmentPushRecorded` (no recompute loop). GWT-cover the two-event emit +
+   the shrink-guard invariant.
+2. **Bespoke push module** — `ApiSchemaPush` `SideEffect.T` (`Source = ApiFragmentRegistry`), two
+   provider builds: AWS (`reventless-aws`, `execute` decorates via `AppSync_SdlDecorate` + runtime-pure
+   `updateSchema`, reads `platformApiId`/region/cmd-topic-URL from env) and local (`reventless-local`,
+   no-op push, still publishes `RecordApiFragmentPush(ok=true)`).
+3. **Wire the admin `SideEffectHandler`** in `Platform_Admin.construct`, subscribed to the aggregate
+   event topic; select the provider module per platform; queue = FIFO group `"registry"` + reserved
+   concurrency 1; per-batch coalesce.
+4. **Delete** the mjs reactive writer (`mkUpdateApiSchema` retarget), its `ConsistentRead` fold +
+   EventLog-table-name config threading, and the admin-EC 2nd-stream-reader wiring.
+5. **Local live-boot** at each step (hybrid example, in-memory): register → `ApiSchemaComputed` →
+   SideEffect no-op push → `RecordApiFragmentPush` → `Platform_ApiFragments` shows `ok`.
+6. **Deploy-validate on alpha** together with the deploy caller + waiter (Phase 3), watching the
+   first real `RegisterApiFragment` → `ApiSchemaComputed` → SideEffect push → ACTIVE → waiter pass,
+   and confirming no concurrent-push `Schema is currently being altered` under a 2-plugin deploy.
 
 ## Phasing
 
