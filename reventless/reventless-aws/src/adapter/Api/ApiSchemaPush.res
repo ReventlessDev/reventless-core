@@ -14,7 +14,16 @@
 // is loaded via dynamic import so no @aws-sdk / provider code is statically captured
 // beyond what the SideEffectHandler Lambda already bundles (runtime-purity — see
 // reference_pulumi_leaks_into_lambda_runtime_graph).
-module Source = ReventlessCore.ApiFragmentRegistrySpec
+// `include` (not a bare `module Source = …` alias) is deliberate. SideEffectHandler_Callback
+// reads Source.{name,eventSchema,Id} reflectively off this module's compiled export at cold
+// start, but ApiSchemaPush only uses Source at the TYPE level (Source.event, Source.Id.t,
+// Source.fragmentSnapshotEntry) — a bare module alias is dead-shaken by ReScript to
+// `let Source;` (undefined), crashing the handler with "Cannot read properties of undefined
+// (reading 'eventSchema')". `include` materialises the module's runtime values into the export
+// while keeping full type transparency for the pattern match below.
+module Source = {
+  include ReventlessCore.ApiFragmentRegistrySpec
+}
 
 let moduleUrl: string = %raw(`import.meta.url`)
 
