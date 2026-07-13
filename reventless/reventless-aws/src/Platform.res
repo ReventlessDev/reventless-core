@@ -1960,18 +1960,26 @@ module MakeWithConfig = (
     // deploy caller fires RegisterApiFragment); makePlatform pushes the schema directly.
     let apiSchemaPushEventTopics = ReventlessCore.Aggregate.allEventTopics(admin.aggregatesOutputs)
     let apiSchemaPushCmdTopics = ReventlessCore.Aggregate.allCommandTopics(admin.aggregatesOutputs)
-    let apiSchemaPushCmdTopicUrl =
-      admin.aggregatesOutputs
-      ->Dict.get(ReventlessCore.ApiFragmentRegistrySpec.name)
-      ->Option.map(agg =>
-        agg.commandTopic->Pulumi.Output.flatMap(ct =>
-          switch ct.resources->Array.get(0) {
-          | Some(r) => r.id
-          | None => Pulumi.Output.make("")
-          }
-        )
+    // MUST be a `switch`, NOT `->Option.map(...)->Option.getOr(...)`. The map/getOr form
+    // materialises an `option<Pulumi.Output.t<string>>`, and wrapping a Pulumi Output in a
+    // ReScript option collapses the nested Output to `undefined` at runtime (the documented
+    // "option(Pulumi.Output.t) doesn't work" pitfall). That made API_SCHEMA_PUSH_CMD_TOPIC_URL
+    // resolve to undefined → Pulumi dropped the env var → the ApiSchemaPush runtime logged
+    // "no command-topic URL configured — skipping" and never pushed/recorded, so the deploy
+    // waiter timed out. Verified via local `pulumi preview`: map/getOr → isValidOutput=false;
+    // switch → isValidOutput=true.
+    let apiSchemaPushCmdTopicUrl = switch admin.aggregatesOutputs->Dict.get(
+      ReventlessCore.ApiFragmentRegistrySpec.name,
+    ) {
+    | Some(agg) =>
+      agg.commandTopic->Pulumi.Output.flatMap(ct =>
+        switch ct.resources->Array.get(0) {
+        | Some(r) => r.id
+        | None => Pulumi.Output.make("")
+        }
       )
-      ->Option.getOr(Pulumi.Output.make(""))
+    | None => Pulumi.Output.make("")
+    }
     let apiSchemaPushEnv = Dict.fromArray([
       ("API_SCHEMA_PUSH_DOMAIN_API_ID", domainApiId->Pulumi.Output.asInput),
       (

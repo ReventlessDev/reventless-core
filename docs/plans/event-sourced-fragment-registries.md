@@ -1014,8 +1014,26 @@ never got `sku` and `pushStatus` is stuck. A plain redeploy would re-send the sa
 deploy re-triggers `eventCount > 0` against the fixed push; also cleans the probe and converges the
 aggregate back to live's no-sku state.
 
+**Deploy validation #11 (2026-07-13) — parts 1+2 confirmed working on AWS; found + FIXED a THIRD
+bug (the reactive-push config gap), diagnosed with a LOCAL `pulumi preview`.** With the Source/Source.Id
+fixes the SideEffect Lambda built and handled events on AWS, but the waiter still timed out — the push
+runtime logged `"no command-topic URL configured — skipping"` and returned before pushing/recording.
+The deployed Lambda was missing `API_SCHEMA_PUSH_CMD_TOPIC_URL` (the other four `API_SCHEMA_PUSH_*` vars
+were set; AppSync IAM + the SQS-send grant to the command-topic queue were both present). **Root cause,
+pinned via local `pulumi preview` of `platform-aws` (no CI needed):** the env derivation at
+`Platform.res` used `admin.aggregatesOutputs->Dict.get(name)->Option.map(agg => …Output…)->Option.getOr(…)`.
+The registry was found and its command topic had a valid resource with a valid `id` Output — but the
+`->Option.map(...)->Option.getOr(...)` chain materialises an `option<Pulumi.Output.t<string>>`, and
+wrapping a Pulumi Output in a ReScript option collapses the nested Output to `undefined` at runtime (the
+documented "`option(Pulumi.Output.t)` doesn't work" pitfall). `undefined` → Pulumi drops the env var →
+the push is skipped. **Fix:** rewrite the derivation as a `switch` (no `option<Output>`). Verified in
+the same local preview: map/getOr → `cmdTopicUrl isValidOutput=false`; `switch` → `isValidOutput=true`.
+Local `pulumi preview` is now the fast diagnosis loop; a full local `up` is not clean (drags unrelated
+host-ui bundle S3 churn), so the actual apply still goes through CI.
+
 **Remaining work:**
-- **Re-validate the reactive push on the next alpha push** (with fix `57a61d98f` + revert `3066c36cd`):
+- **Re-validate the reactive push on the next alpha push** (with fixes `57a61d98f` + Source.Id + the
+  cmd-topic-URL `switch` fix, and revert `3066c36cd`):
   catalog fragment change → `ApiSchemaComputed` → the *fixed* ApiSchemaPush SideEffect runs → introspect
   + `updateAppSyncSchema` per target + `recordPushOutcomes`/`RecordApiFragmentPush` write-back → the
   waiter sees `pushStatus:ok`; no `Schema is currently being altered` under the 2-plugin deploy. NOTE:

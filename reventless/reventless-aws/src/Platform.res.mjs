@@ -1250,14 +1250,15 @@ function MakeWithConfig(Config) {
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     let apiSchemaPushEventTopics = Aggregate$ReventlessCore.allEventTopics(admin.aggregatesOutputs);
     let apiSchemaPushCmdTopics = Aggregate$ReventlessCore.allCommandTopics(admin.aggregatesOutputs);
-    let apiSchemaPushCmdTopicUrl = Stdlib_Option.getOr(Stdlib_Option.map(admin.aggregatesOutputs[ApiFragmentRegistrySpec$ReventlessCore.name], agg => Output$Pulumi.flatMap(agg.commandTopic, ct => {
-      let r = ct.resources[0];
-      if (r !== undefined) {
-        return r.id;
-      } else {
-        return Pulumi.output("");
-      }
-    })), Pulumi.output(""));
+    let agg = admin.aggregatesOutputs[ApiFragmentRegistrySpec$ReventlessCore.name];
+    let apiSchemaPushCmdTopicUrl = agg !== undefined ? Output$Pulumi.flatMap(agg.commandTopic, ct => {
+        let r = ct.resources[0];
+        if (r !== undefined) {
+          return r.id;
+        } else {
+          return Pulumi.output("");
+        }
+      }) : Pulumi.output("");
     let apiSchemaPushEnv = Object.fromEntries([
       [
         "API_SCHEMA_PUSH_DOMAIN_API_ID",
@@ -2670,14 +2671,15 @@ function Make($star) {
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     let apiSchemaPushEventTopics = Aggregate$ReventlessCore.allEventTopics(admin.aggregatesOutputs);
     let apiSchemaPushCmdTopics = Aggregate$ReventlessCore.allCommandTopics(admin.aggregatesOutputs);
-    let apiSchemaPushCmdTopicUrl = Stdlib_Option.getOr(Stdlib_Option.map(admin.aggregatesOutputs[ApiFragmentRegistrySpec$ReventlessCore.name], agg => Output$Pulumi.flatMap(agg.commandTopic, ct => {
-      let r = ct.resources[0];
-      if (r !== undefined) {
-        return r.id;
-      } else {
-        return Pulumi.output("");
-      }
-    })), Pulumi.output(""));
+    let agg = admin.aggregatesOutputs[ApiFragmentRegistrySpec$ReventlessCore.name];
+    let apiSchemaPushCmdTopicUrl = agg !== undefined ? Output$Pulumi.flatMap(agg.commandTopic, ct => {
+        let r = ct.resources[0];
+        if (r !== undefined) {
+          return r.id;
+        } else {
+          return Pulumi.output("");
+        }
+      }) : Pulumi.output("");
     let apiSchemaPushEnv = Object.fromEntries([
       [
         "API_SCHEMA_PUSH_DOMAIN_API_ID",
