@@ -17,4 +17,5 @@ type state = {
   description: string,
   price: float,
   categoryId: string,
+  sku: option<string>,
 }

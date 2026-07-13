@@ -8,7 +8,7 @@ describe("Products StateViewSliceStream", () => {
     )
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: 999.99, categoryId: "cat1"},
+      {productId: "p1", name: "Laptop", description: "x", price: 999.99, categoryId: "cat1", sku: None},
     )
   )
 
@@ -19,7 +19,7 @@ describe("Products StateViewSliceStream", () => {
     ->whenEvent(ProductNameChanged({productId: "p1", name: "Gaming Laptop"}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Gaming Laptop", description: "x", price: 999.99, categoryId: "cat1"},
+      {productId: "p1", name: "Gaming Laptop", description: "x", price: 999.99, categoryId: "cat1", sku: None},
     )
   )
 
@@ -30,7 +30,7 @@ describe("Products StateViewSliceStream", () => {
     ->whenEvent(ProductDescriptionChanged({productId: "p1", description: "high-end"}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "high-end", price: 999.99, categoryId: "cat1"},
+      {productId: "p1", name: "Laptop", description: "high-end", price: 999.99, categoryId: "cat1", sku: None},
     )
   )
 
@@ -41,7 +41,7 @@ describe("Products StateViewSliceStream", () => {
     ->whenEvent(ProductPriceChanged({productId: "p1", price: 899.99}))
     ->thenStateWithId(
       "p1",
-      {productId: "p1", name: "Laptop", description: "x", price: 899.99, categoryId: "cat1"},
+      {productId: "p1", name: "Laptop", description: "x", price: 899.99, categoryId: "cat1", sku: None},
     )
   )
 })

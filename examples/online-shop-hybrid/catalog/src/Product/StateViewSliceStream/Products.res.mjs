@@ -34,7 +34,8 @@ let stateSchema = S.schema(s => ({
   name: s.m(S.string),
   description: s.m(S.string),
   price: s.m(S.float),
-  categoryId: s.m(S.string)
+  categoryId: s.m(S.string),
+  sku: s.m(S.option(S.string))
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
