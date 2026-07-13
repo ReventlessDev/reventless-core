@@ -959,12 +959,26 @@ push) listed `PageInfo` + the `CommandResult` members but NOT `Platform_ApiFragm
 builds zero-warning, SdlDecorate suite 10/10. Compile/test-validated only (the `@aws_iam` path can't be
 exercised locally) — re-validation is the next alpha push.
 
+**Deploy validation #8 (2026-07-13) — GREEN end to end; the IAM `Unauthorized` regression is
+FIXED and the register/waiter path runs clean, BUT the full reactive push was NOT exercised (both
+fragments unchanged → idempotent no-op branch).** With #7's `Platform_ApiFragmentEntry` type-level
+`@aws_iam` fix, **Deploy Platform + Deploy Plugin (catalog) + Deploy Plugin (ordering) all GREEN.**
+The plugin waiter no longer returns `Unauthorized` — the SigV4 caller now traverses
+`Platform_ApiFragmentEntry`'s fields. Log evidence (both plugins):
+`"Registering API fragment for Catalog (Domain) via …appsync-api…/graphql"` then
+`"Catalog fragment unchanged — no push needed"`. Because the fragments were unchanged from a prior
+(failed-later) deploy attempt, `registerFragmentViaApi` took the client-side-unchanged / `eventCount==0`
+idempotent branch — so the mutation-fires → `ApiSchemaComputed` → SideEffect push → waiter-polls-until
+`pushStatus:ok` path is STILL not driven on AWS. Closing that needs a deploy where a fragment actually
+changes (e.g. touch a catalog query field) to force `eventCount>0` and the real waiter poll.
+
 **Remaining work:**
-- **Deploy-validate the whole AWS path on an alpha push** — the SideEffect writer, IAM, env injection,
-  `finish()` sequencing, stream subscription, and the deploy caller/waiter are all compile-only. Watch:
-  the first `RegisterApiFragment` → aggregate `ApiSchemaComputed` → the ApiSchemaPush SideEffect Lambda
-  pushes per-target + records → the waiter sees `pushStatus:ok`; and no concurrent-push `Schema is
-  currently being altered` under a 2-plugin deploy (bounded retry as backstop).
+- **Fully deploy-validate the reactive push** — the SideEffect writer, `finish()` sequencing, stream
+  subscription, and the `eventCount>0` waiter poll are still compile-only (validation #8 hit the
+  no-op branch). Watch: a *changed* fragment → aggregate `ApiSchemaComputed` → the ApiSchemaPush
+  SideEffect Lambda pushes per-target + records → the waiter sees `pushStatus:ok`; and no
+  concurrent-push `Schema is currently being altered` under a 2-plugin deploy (bounded retry as
+  backstop). The IAM/env-injection/caller half of this bullet is now validated (#8).
 - **Cleanup (Phase-4, deploy-validated):** DELETE the inert mjs `mkReactiveApiSchemaPush` +
   `detectApiFragmentTriggers` + the 2e `registerConfig` threading + the Platform_Admin 2nd-stream-reader
   augmentation.
@@ -972,12 +986,26 @@ exercised locally) — re-validation is the next alpha push.
   incl. the multi-plugin whole-registry snapshot, idempotent re-register/deregister/redelivery, retarget,
   and RecordApiFragmentPush emitting NO snapshot) + `ApiFragmentsProjection_GWT` (7 cases incl.
   `ApiSchemaComputed` is ignored, push-status ok/error, retarget, deregister-removes). 18/18 green; the
-  superseded slice GWTs (`ApiFragmentRegistry_GWT`/`ApiFragments_GWT`) were removed. The old slice `.res`
-  files themselves (now fully unreferenced, still compiling) are deleted in the same deploy-validated
-  cleanup as the inert mjs.
-- Phase 4 — cutover + cleanup (retire `deploy-schema:*` keyspace, lease, hash rows, legacy
-  `mkUpdateApiSchema`; decide whether `makePlatform`'s direct-push path is retired or kept; dedup
-  the `injectAwsAuthAll`/`stampSharedIamTypes` copies if any linger).
+  superseded slice GWTs (`ApiFragmentRegistry_GWT`/`ApiFragments_GWT`) were removed.
+- **Superseded slice `.res` files — DELETED (2026-07-13, this session).** The four dead files under
+  `src/admin/ApiFragmentRegistry/StateChangeSlice/` (`ApiFragmentRegistry.res` + `_Behavior.res`) and
+  `StateViewSlice/` (`ApiFragments.res` + `_Projection.res`), plus their tracked `.res.mjs`, were
+  `git rm`'d — verified zero references anywhere (res/mjs/json) before removal; the aggregate files at
+  the folder root (`ApiFragmentRegistrySpec/Behavior`, `ApiFragmentsProjection/ReadModelSpec`) are the
+  live components and stay. reventless-core rebuilds zero-warning; no downstream ref, so aws/local
+  unaffected.
+- **⚠️ SEQUENCING GATE (discovered validation #8): the `deploy-schema:*` / `mkUpdateApiSchema`
+  retirement below MUST wait until the reactive push is deploy-validated with a real fragment change.**
+  Validation #8 proved the reactive push has never actually run on AWS (both plugins took the
+  idempotent no-op branch), so `mkUpdateApiSchema` is still the ONLY proven schema-push path. Removing
+  it now would leave deploys with no working pusher. Do the reactive-push validation (remaining bullet 1)
+  FIRST, then retire.
+- Phase 4 — cutover + cleanup, GATED on the reactive-push validation above: retire `deploy-schema:*`
+  keyspace, lease, hash rows, legacy `mkUpdateApiSchema`; delete the inert 2e mjs (`mkReactiveApiSchemaPush`
+  + `detectApiFragmentTriggers` in `AdminEventCollectorEntryPoint.mjs`) + the 2e `registerConfig` threading
+  (`Platform.res` + `PluginRuntime_Builder.res`) + the `Platform_Admin` 2nd-stream-reader augmentation;
+  decide whether `makePlatform`'s direct-push path is retired or kept; dedup the
+  `injectAwsAuthAll`/`stampSharedIamTypes` copies if any linger.
 
 ## Reactive writer design — behavior-computed schema + bespoke SideEffect push (CHOSEN 2026-07-13)
 
