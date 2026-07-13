@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.205 (2026-07-13)
+
+### Bug Fixes
+
+* **admin:** type-level [@aws](https://github.com/aws)_iam on Platform_ApiFragmentEntry for the SigV4 waiter (deploy [#7](https://github.com/ReventlessDev/reventless-core/issues/7)) ([927a93b](https://github.com/ReventlessDev/reventless-core/commit/927a93b550f9f3f56dca93810cafa9575663a0e9))
+
+
 # 3.0.0-alpha.204 (2026-07-13)
 
 ### Bug Fixes
