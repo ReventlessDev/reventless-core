@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.208 (2026-07-13)
+
+### Bug Fixes
+
+* **admin:** materialise ApiSchemaPush Source.Id at runtime (part 2) ([e64eeae](https://github.com/ReventlessDev/reventless-core/commit/e64eeae9fd08c03dcadf600aac733840790772e4)), closes [#9](https://github.com/ReventlessDev/reventless-core/issues/9) [#10](https://github.com/ReventlessDev/reventless-core/issues/10)
+
+
 # 3.0.0-alpha.207 (2026-07-13)
 
 ### Bug Fixes
