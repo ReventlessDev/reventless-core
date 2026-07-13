@@ -134,7 +134,14 @@ async function recordPushOutcomes(cmdTopicUrl, pluginIds, ok, message) {
   const at = new Date().toISOString();
   const commandJsons = pluginIds.map((pluginId) => ({
     id: "registry",
-    meta: { service: "ApiFragmentRegistry", time: at, msgId: "pending", correlationId: pluginId },
+    // msgId MUST be unique per message: it becomes the SQS SendMessageBatch entry Id (and the
+    // FIFO MessageDeduplicationId). A shared placeholder made every entry collide in one batch
+    // ("Id pending repeated" → the whole write-back failed → the deploy waiter timed out even
+    // though the schema push itself succeeded). pluginId is unique per message; `at` keeps it
+    // unique across pushes (and gives distinct FIFO dedup ids so a later re-push isn't dropped).
+    // Sanitize: an SQS batch-entry Id only allows [A-Za-z0-9_-] (≤80 chars), so the ISO
+    // timestamp's `:`/`.` must be replaced or SQS rejects the whole batch.
+    meta: { service: "ApiFragmentRegistry", time: at, msgId: `push-${pluginId}-${at}`.replace(/[^A-Za-z0-9_-]/g, "-"), correlationId: pluginId },
     commandJson: { TAG: "RecordApiFragmentPush", pluginId, ok, message, at },
   }));
   try {

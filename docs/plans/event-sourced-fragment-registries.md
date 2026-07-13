@@ -1031,8 +1031,33 @@ the same local preview: map/getOr → `cmdTopicUrl isValidOutput=false`; `switch
 Local `pulumi preview` is now the fast diagnosis loop; a full local `up` is not clean (drags unrelated
 host-ui bundle S3 churn), so the actual apply still goes through CI.
 
+**Deploy validation #12 (2026-07-13) — FULL reactive push VALIDATED END-TO-END on real AWS via local
+`pulumi up`.** Deployed the cmd-topic-URL fix to the `AllSideEffectHandlers` Lambda with a targeted
+local `pulumi up --target <lambda-urn>` (surgical, avoids the host-ui bundle churn a full up drags in;
+verified `API_SCHEMA_PUSH_CMD_TOPIC_URL` now set on the real Lambda). Then triggered a real push by
+locally `pulumi up`-ing `catalog-aws` with an additive fragment change. This surfaced + FIXED a FOURTH
+bug in the write-back (`ApiSchemaPush_Runtime.mjs recordPushOutcomes`): every RecordApiFragmentPush
+message used a shared placeholder `msgId: "pending"`, which becomes the SQS `SendMessageBatch` entry Id
+(and FIFO dedup id) — duplicate ids in one batch → `"Id pending repeated"` → the whole write-back failed
+→ waiter timed out **even though the schema push itself succeeded** (`schema push OK` on both APIs). Fix
+part A: unique `msgId` per plugin (`push-${pluginId}-${at}`). That then hit `"A batch entry id can only
+contain [A-Za-z0-9_-]"` because the ISO `at` has `:`/`.` — fix part B: `.replace(/[^A-Za-z0-9_-]/g,"-")`.
+**Final result:** `catalog-aws` deploy logged `"Catalog schema push confirmed ACTIVE"` (waiter passed, no
+timeout) and the `ApiFragments` read model shows BOTH plugins `pushStatus:"ok"`. The whole path —
+register (`eventCount>0`) → `ApiSchemaComputed` → SideEffect (Source + Source.Id materialised) → schema
+push (cmd-topic URL via `switch`) → RecordApiFragmentPush (unique+sanitized msgId) → waiter — is proven
+on real AWS. The additive probe (`sku`/`barcode`) was reverted in the same catalog deploy (object-type
+fields don't reduce root Query/Mutation counts, so the shrink guard — 50% root-field threshold — doesn't
+trip); example is clean; live schema, aggregate, and read model are all consistent.
+
 **Remaining work:**
-- **Re-validate the reactive push on the next alpha push** (with fixes `57a61d98f` + Source.Id + the
+- **Push the four fixes so CI republishes + redeploys consistently** — the local `pulumi up`s deployed
+  local builds of bugs #3 (`de6c7b39b`, committed) and #4 (record msgId, this commit) to real AWS; the
+  published npm/layer packages don't have them yet, so a future CI deploy from published packages would
+  regress until these land. Bugs #1/#2 (`57a61d98f`/`e64eeae9f`) are already pushed. After the push, a
+  CI deploy with unchanged fragments is a clean no-op (validation #12 already drove the push green).
+- ~~Re-validate the reactive push~~ — DONE (validation #12).
+- (superseded) Original re-validation note (with fixes `57a61d98f` + Source.Id + the
   cmd-topic-URL `switch` fix, and revert `3066c36cd`):
   catalog fragment change → `ApiSchemaComputed` → the *fixed* ApiSchemaPush SideEffect runs → introspect
   + `updateAppSyncSchema` per target + `recordPushOutcomes`/`RecordApiFragmentPush` write-back → the
