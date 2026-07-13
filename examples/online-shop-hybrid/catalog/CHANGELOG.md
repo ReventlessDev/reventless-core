@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.137 (2026-07-13)
+
+### Reverts
+
+* Revert "feat(catalog): add optional sku to Products read model" ([3066c36](https://github.com/ReventlessDev/reventless-core/commit/3066c36cdd09d7d2daca1aeff8c32d3faebf1d76))
+
+
 # 1.0.0-alpha.136 (2026-07-13)
 
 ### Features

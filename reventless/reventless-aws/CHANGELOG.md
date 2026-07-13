@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.207 (2026-07-13)
+
+### Bug Fixes
+
+* **admin:** materialise ApiSchemaPush SideEffect Source at runtime ([57a61d9](https://github.com/ReventlessDev/reventless-core/commit/57a61d98fa11dfe3de188cc299c89abdeea41457))
+
+
 # 3.0.0-alpha.206 (2026-07-13)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
