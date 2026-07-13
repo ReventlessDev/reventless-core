@@ -99,7 +99,7 @@ let sideEffects = [{
     execute: execute
   }];
 
-let seh = SEHBuilder.make("TestSEH", sideEffects, allEventTopics, Pulumi.output({}), undefined, TestFixtures$ReventlessLocal.mockQueryEngine, TestFixtures$ReventlessLocal.mockScheduler, TestFixtures$ReventlessLocal.mockResourceNaming, undefined, undefined, undefined);
+let seh = SEHBuilder.make("TestSEH", sideEffects, allEventTopics, Pulumi.output({}), undefined, TestFixtures$ReventlessLocal.mockQueryEngine, TestFixtures$ReventlessLocal.mockScheduler, TestFixtures$ReventlessLocal.mockResourceNaming, undefined, undefined, undefined, undefined);
 
 let testMeta = TestFixtures$ReventlessLocal.makeTestMeta("TestSEHSource");
 

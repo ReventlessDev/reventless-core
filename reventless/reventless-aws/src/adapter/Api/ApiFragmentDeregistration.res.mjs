@@ -27,7 +27,7 @@ function decodeId(id) {
 
 let sendDeregister = (async function (variables, endpoint, region) {
     const mod = await import("@reventlessdev/reventless-aws/src/util/Util_AppSync_Caller.res.mjs");
-    await mod.sendMutation(endpoint, region, "Platform_DeregisterApiFragment", "{ __typename }", variables);
+    await mod.sendMutation(endpoint, region, "Platform_ApiFragmentRegistry_DeregisterApiFragment", "{ __typename }", variables);
   });
 
 let errMessage = ((e) => (e && e.message) ? String(e.message) : String(e));
@@ -59,7 +59,7 @@ async function delete_(id, props) {
   let variables = Object.fromEntries([
     [
       "id",
-      carrier.pluginId
+      "registry"
     ],
     [
       "pluginId",

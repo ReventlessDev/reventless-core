@@ -34,10 +34,13 @@ function Make($star) {
     forEventCollector: SideEffectHandlerRuntime_Builder_Single$ReventlessAws.forEventCollector,
     finish: SideEffectHandlerRuntime_Builder_Single$ReventlessAws.finish
   });
-  let make = (name, sideEffects, allEventTopics, allCommandTopics, targets, queryEngine, scheduler, resourceNaming, memorySize, timeout, opts) => {
-    let component = Inner.make(name, sideEffects, allEventTopics, allCommandTopics, targets, queryEngine, scheduler, resourceNaming, memorySize, timeout, opts);
+  let make = (name, sideEffects, allEventTopics, allCommandTopics, targets, queryEngine, scheduler, resourceNaming, memorySize, timeout, extraEnvVars, opts) => {
+    let component = Inner.make(name, sideEffects, allEventTopics, allCommandTopics, targets, queryEngine, scheduler, resourceNaming, memorySize, timeout, undefined, opts);
     let sideEffectModulePaths = sideEffects.map(SE => Util_Bundle$ReventlessAws.getModuleSpecifier(SE.moduleUrl));
     SideEffectHandlerRuntime_Builder_Single$ReventlessAws.registerSideEffectHandler(name, sideEffectModulePaths);
+    if (extraEnvVars !== undefined) {
+      SideEffectHandlerRuntime_Builder_Single$ReventlessAws.registerExtraEnv(extraEnvVars);
+    }
     return component;
   };
   return {

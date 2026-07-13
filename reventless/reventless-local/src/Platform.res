@@ -61,17 +61,18 @@ let decodeUiFragmentRegistryEventEnvelope = (
   | exception _ => None
   }
 
-// Same envelope shape for the ApiFragmentRegistry slice's events on the shared
-// admin DcbEventLog topic. Returns None for envelopes of other admin slices
-// (schema mismatch), so a single subscriber can try both decoders.
+// Same {id, meta, event} envelope for the ApiFragmentRegistry singleton aggregate's
+// events on its own aggregate event topic (the registry is an aggregate now, not a
+// DCB slice — its events no longer ride the admin DcbEventLog). Top-level so the
+// decode is unit-testable.
 let decodeApiFragmentRegistryEventEnvelope = (
   eventJson: JSON.t,
-): option<ReventlessCore.ApiFragmentRegistry.event> =>
+): option<ReventlessCore.ApiFragmentRegistrySpec.event> =>
   switch eventJson
   ->JSON.Decode.object
   ->Option.flatMap(d => d->Dict.get("event"))
   ->Option.map(payload =>
-    payload->S.parseJsonOrThrow(ReventlessCore.ApiFragmentRegistry.eventSchema)
+    payload->S.parseJsonOrThrow(ReventlessCore.ApiFragmentRegistrySpec.eventSchema)
   ) {
   | result => result
   | exception _ => None
@@ -669,9 +670,10 @@ module MakeWithConfig = (
       StateViewSliceMaker.Make(Spec, Projection)
   }
 
-  // Admin fragment registry slices (docs/plans/event-sourced-fragment-registries.md): the
-  // platform UI- and API-fragment registries hosted as admin DCB slices sharing the admin
-  // DcbEventLog. Built once and passed into Admin.construct below.
+  // Admin UI-fragment registry (docs/plans/event-sourced-fragment-registries.md): the
+  // platform UI-fragment registry hosted as an admin DCB slice on the admin DcbEventLog.
+  // Built once and passed into Admin.construct below. (The API-fragment registry is a
+  // singleton aggregate — see LocalApiFragmentRegistryAggregate — not a slice.)
   module UiFragmentRegistrySlice = StateChangeSlice.Make(
     ReventlessCore.UiFragmentRegistry,
     ReventlessCore.UiFragmentRegistry_Behavior,
@@ -679,14 +681,6 @@ module MakeWithConfig = (
   module UiFragmentsViewSlice = StateViewSlice.Make(
     ReventlessCore.UiFragments,
     ReventlessCore.UiFragments_Projection,
-  )
-  module ApiFragmentRegistrySlice = StateChangeSlice.Make(
-    ReventlessCore.ApiFragmentRegistry,
-    ReventlessCore.ApiFragmentRegistry_Behavior,
-  )
-  module ApiFragmentsViewSlice = StateViewSlice.Make(
-    ReventlessCore.ApiFragments,
-    ReventlessCore.ApiFragments_Projection,
   )
 
   // In-memory has no DynamoDB streams — stream variant is identical to plain StateViewSlice.
@@ -801,6 +795,32 @@ module MakeWithConfig = (
   module PluginsReadModel = ReadModelMaker.MakeNoResolver(
     ReventlessCore.PluginsReadModelSpec,
     PluginsReadModelMappings,
+  )
+
+  // Admin-internal ApiFragmentRegistry singleton aggregate — the platform API-schema
+  // fragment registry (docs/plans/event-sourced-fragment-registries.md). Threaded into
+  // Admin.construct's ~aggregates so registerAdminAggregateMutations wires
+  // Platform_ApiFragmentRegistry_RegisterApiFragment / _DeregisterApiFragment through the
+  // standard CommandGenerator auto-flow. RecordApiFragmentPush carries `@noApi`.
+  module LocalApiFragmentRegistryAggregate: ReventlessInfra.Aggregate.T
+    with type api = unit = AggregateMaker.Make(
+    ReventlessCore.ApiFragmentRegistrySpec,
+    ReventlessCore.ApiFragmentRegistryBehavior,
+    ReventlessInfra.NoEventMappings.Make(ReventlessCore.ApiFragmentRegistrySpec),
+  )
+
+  // Admin ApiFragments read model — per-plugin status rows off the aggregate's event
+  // topic, backing the Platform_ApiFragments status query.
+  module ApiFragmentsReadModelMappings: Reventless.Projection.Mappings
+    with module Target := ReventlessCore.ApiFragmentsReadModelSpec = {
+    module M = ReventlessCore.ApiFragmentsProjection.Mappings
+    module type Mapping = M.Mapping
+    let moduleUrl: string = ReventlessCore.ApiFragmentsProjection.moduleUrl
+    let mappings: array<module(Mapping)> = ReventlessCore.ApiFragmentsProjection.mappings
+  }
+  module ApiFragmentsReadModel = ReadModelMaker.MakeNoResolver(
+    ReventlessCore.ApiFragmentsReadModelSpec,
+    ApiFragmentsReadModelMappings,
   )
 
 
@@ -934,38 +954,50 @@ module MakeWithConfig = (
     Bus.dispatchCommand(adminDcbCmdTopicKey, ReventlessCore.CommandTopic.encodeCommandJson(cmdJson))
   }
 
-  // Same in-process path for the ApiFragmentRegistry slice (the API-schema
-  // fragment registry). On the real platform the deploy is the caller (SigV4
-  // RegisterApiFragment mutation); locally we dispatch straight to the shared
-  // admin DCB command topic, the analogue used for the UI registry above.
-  let dispatchApiFragmentCommand = (
-    ~pluginName: string,
-    ~command: ReventlessCore.ApiFragmentRegistry.command,
-  ) => {
+  // The ApiFragmentRegistry is a SINGLETON aggregate now (not a DCB slice): the
+  // whole registry lives on one aggregate instance keyed by a fixed id, so a
+  // fragment change reads the whole registry from one consistency boundary. Its
+  // commands ride the aggregate command topic (name-derived, like the Plugin
+  // aggregate above) and its events its own aggregate event topic.
+  let apiFragmentRegistryId = "registry"
+  let apiFragmentRegistryCmdTopicKey =
+    ReventlessCore.ApiFragmentRegistrySpec.name ++ "Aggr" ++ "CmdTopic"
+  let apiFragmentRegistryEventTopicKey =
+    ReventlessCore.ApiFragmentRegistrySpec.name ++ "Aggr" ++ "EventTopic"
+
+  // Dispatch an ApiFragmentRegistry aggregate command in-process. On the real
+  // platform the deploy is the caller (SigV4 Platform_ApiFragmentRegistry_*
+  // mutation); locally we dispatch straight to the aggregate command topic. The
+  // aggregate id is the fixed singleton constant — `pluginId` is a payload field.
+  let dispatchApiFragmentCommand = (~command: ReventlessCore.ApiFragmentRegistrySpec.command) => {
     let cmdJson: Reventless.Message.commandJson = {
-      id: pluginName,
-      meta: ReventlessCore.Message.generateMeta(~service=ReventlessCore.ApiFragmentRegistry.name),
+      id: apiFragmentRegistryId,
+      meta: ReventlessCore.Message.generateMeta(
+        ~service=ReventlessCore.ApiFragmentRegistrySpec.name,
+      ),
       commandJson: command->S.reverseConvertToJsonOrThrow(
-        ReventlessCore.ApiFragmentRegistry.commandSchema,
+        ReventlessCore.ApiFragmentRegistrySpec.commandSchema,
       ),
     }
-    Bus.dispatchCommand(adminDcbCmdTopicKey, ReventlessCore.CommandTopic.encodeCommandJson(cmdJson))
+    Bus.dispatchCommand(
+      apiFragmentRegistryCmdTopicKey,
+      ReventlessCore.CommandTopic.encodeCommandJson(cmdJson),
+    )
   }
 
-  // Platform_ApiFragments status-query resolver — scans the ApiFragments
-  // StateViewSlice QueryDb (populated by the ApiFragmentRegistry slice's
-  // projection) and encodes via the shared Platform_ApiFragmentsApi encoder, so
-  // the deploy-facing status shape matches AWS. Keyed by bare plugin name (one
-  // row per plugin), so no version collapse is needed. Registered at each admin
-  // server site below.
+  // Platform_ApiFragments status-query resolver — scans the ApiFragments read
+  // model (populated by the ApiFragmentRegistry aggregate's projection) and
+  // encodes via the shared Platform_ApiFragmentsApi encoder, so the deploy-facing
+  // status shape matches AWS. Keyed by bare plugin name (one row per plugin).
+  // Registered at each admin server site below.
   let apiFragmentsQueryResolver = async (_root, _args, _ctx): JSON.t => {
-    let items = switch Bus.getQueryDbScan(ReventlessCore.ApiFragments.name) {
+    let items = switch Bus.getQueryDbScan(ReventlessCore.ApiFragmentsReadModelSpec.name) {
     | Some(scanAll) => scanAll()
     | None => []
     }
     items
     ->Array.filterMap(item =>
-      switch item->S.parseOrThrow(ReventlessCore.ApiFragments.stateSchema) {
+      switch item->S.parseOrThrow(ReventlessCore.ApiFragmentsReadModelSpec.stateSchema) {
       | state => Some(ReventlessCore.Platform_ApiFragmentsApi.encodeApiFragmentEntry(state))
       | exception _ => None
       }
@@ -1063,29 +1095,33 @@ module MakeWithConfig = (
             publishUIFragment(~name=pluginId, ~changeKind="Deregistered", ~manifest=JSON.Encode.null)
           | None => ()
           }
-          // Local single writer for the API-schema fragment registry. On AWS the
-          // subscriber stitches + pushes the schema then records the outcome; on
-          // local the plugin's fields are already served by resolver registration,
-          // so the "push" is a no-op and we simply record success — the honest
-          // status for an in-process schema. Only Registered/Updated trigger a
-          // record (never PushRecorded — no re-entrant loop) and the record's own
-          // event decodes here as a no-op.
-          switch decodeApiFragmentRegistryEventEnvelope(eventJson) {
-          | Some(ApiFragmentRegistered({pluginId}))
-          | Some(ApiFragmentUpdated({pluginId})) =>
-            let _ = dispatchApiFragmentCommand(
-              ~pluginName=pluginId,
-              ~command=ReventlessCore.ApiFragmentRegistry.RecordApiFragmentPush({
-                pluginId,
-                ok: true,
-                message: "",
-                at: Date.make()->Date.toISOString,
-              }),
-            )
-          | Some(ApiFragmentDeregistered(_))
-          | Some(ApiFragmentPushRecorded(_))
-          | None => ()
-          }
+        }
+      )
+      // Local single writer for the API-schema fragment registry — the analogue of
+      // the AWS ApiSchemaPush SideEffect. Sourced from the ApiFragmentRegistry
+      // aggregate's own event topic (the registry is an aggregate now). On AWS the
+      // SideEffect stitches + pushes the schema then records the outcome; on local
+      // the plugin's fields are already served by resolver registration, so the
+      // "push" is a no-op and we simply record success — the honest status for an
+      // in-process schema. Only Registered/Updated trigger a record (never
+      // PushRecorded — no re-entrant loop; ApiSchemaComputed is the AWS push trigger
+      // and is a no-op here).
+      Bus.subscribeToEvents(apiFragmentRegistryEventTopicKey, async (_service, _meta, eventJson) =>
+        switch decodeApiFragmentRegistryEventEnvelope(eventJson) {
+        | Some(ApiFragmentRegistered({pluginId}))
+        | Some(ApiFragmentUpdated({pluginId})) =>
+          let _ = dispatchApiFragmentCommand(
+            ~command=ReventlessCore.ApiFragmentRegistrySpec.RecordApiFragmentPush({
+              pluginId,
+              ok: true,
+              message: "",
+              at: Date.make()->Date.toISOString,
+            }),
+          )
+        | Some(ApiFragmentDeregistered(_))
+        | Some(ApiFragmentPushRecorded(_))
+        | Some(ApiSchemaComputed(_))
+        | None => ()
         }
       )
     }
@@ -1181,7 +1217,7 @@ module MakeWithConfig = (
             )
           | None => ()
           }
-          // Register the API-schema fragment with the ApiFragmentRegistry slice.
+          // Register the API-schema fragment with the ApiFragmentRegistry aggregate.
           // On the real platform the deploy sends this as a SigV4 caller; locally
           // connect stands in. apiTarget is Domain (mirrors pluginDefinition.kind
           // = Domain / apiTarget = None above — the local platform has no
@@ -1190,8 +1226,7 @@ module MakeWithConfig = (
           switch apiSchemaFragment {
           | Some(fragment) =>
             let _ = dispatchApiFragmentCommand(
-              ~pluginName,
-              ~command=ReventlessCore.ApiFragmentRegistry.RegisterApiFragment({
+              ~command=ReventlessCore.ApiFragmentRegistrySpec.RegisterApiFragment({
                 pluginId: pluginName,
                 fragment,
                 apiTarget: Domain,
@@ -1465,14 +1500,14 @@ module MakeWithConfig = (
     let admin = Admin.construct(
       ~version,
       ~extensionPoints=[],
-      ~aggregates=[module(LocalPluginAggregate)],
-      ~readModels=[module(PluginsReadModel)],
+      ~aggregates=[module(LocalPluginAggregate), module(LocalApiFragmentRegistryAggregate)],
+      ~readModels=[module(PluginsReadModel), module(ApiFragmentsReadModel)],
       ~scheduler,
       ~resourceNaming=LocalPluginSpec.resourceNaming,
       ~api=(),
       ~apiRole=(),
-      ~stateChangeSlices=[module(UiFragmentRegistrySlice), module(ApiFragmentRegistrySlice)],
-      ~stateViewSlices=[module(UiFragmentsViewSlice), module(ApiFragmentsViewSlice)],
+      ~stateChangeSlices=[module(UiFragmentRegistrySlice)],
+      ~stateViewSlices=[module(UiFragmentsViewSlice)],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],
@@ -2031,14 +2066,14 @@ module MakeWithConfig = (
     let _admin = Admin.construct(
       ~version,
       ~extensionPoints=[],
-      ~aggregates=[],
-      ~readModels=[],
+      ~aggregates=[module(LocalApiFragmentRegistryAggregate)],
+      ~readModels=[module(ApiFragmentsReadModel)],
       ~scheduler,
       ~resourceNaming=LocalPluginSpec.resourceNaming,
       ~api=(),
       ~apiRole=(),
-      ~stateChangeSlices=[module(UiFragmentRegistrySlice), module(ApiFragmentRegistrySlice)],
-      ~stateViewSlices=[module(UiFragmentsViewSlice), module(ApiFragmentsViewSlice)],
+      ~stateChangeSlices=[module(UiFragmentRegistrySlice)],
+      ~stateViewSlices=[module(UiFragmentsViewSlice)],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],
@@ -2198,14 +2233,14 @@ module MakeWithConfig = (
     let admin = Admin.construct(
       ~version="",
       ~extensionPoints=[],
-      ~aggregates=[module(LocalPluginAggregate)],
-      ~readModels=[module(PluginsReadModel)],
+      ~aggregates=[module(LocalPluginAggregate), module(LocalApiFragmentRegistryAggregate)],
+      ~readModels=[module(PluginsReadModel), module(ApiFragmentsReadModel)],
       ~scheduler,
       ~resourceNaming=LocalPluginSpec.resourceNaming,
       ~api=(),
       ~apiRole=(),
-      ~stateChangeSlices=[module(UiFragmentRegistrySlice), module(ApiFragmentRegistrySlice)],
-      ~stateViewSlices=[module(UiFragmentsViewSlice), module(ApiFragmentsViewSlice)],
+      ~stateChangeSlices=[module(UiFragmentRegistrySlice)],
+      ~stateViewSlices=[module(UiFragmentsViewSlice)],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],

@@ -94,6 +94,9 @@ module Make = (
     ~resourceNaming,
     ~memorySize=2048,
     ~timeout=180,
+    // Provider-specific adapters (e.g. the AWS runtime builder) inject extra Lambda
+    // env vars via their own side-registry; the generic builder ignores them.
+    ~extraEnvVars as _=?,
     ~opts=?,
   ) => {
     Component.make(

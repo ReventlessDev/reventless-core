@@ -36,7 +36,7 @@ function Make(Spec) {
       }));
       let publishCommands = (aggregateName, cmdJsons) => Stdlib_Option.getOrThrow(publishToAggregates[aggregateName], undefined)(cmdJsons);
       let config = Spec.setup(queryEngine, queryBucketName, opts);
-      let sideEffectHandler = Stdlib_Option.map(config.sideEffects, sideEffects => SpecificSideEffectHandler.make(extra$1, sideEffects, Aggregate$ReventlessCore.allEventTopics(allAggregates), allCommandTopics, undefined, queryEngine, scheduler, resourceNaming, undefined, undefined, opts));
+      let sideEffectHandler = Stdlib_Option.map(config.sideEffects, sideEffects => SpecificSideEffectHandler.make(extra$1, sideEffects, Aggregate$ReventlessCore.allEventTopics(allAggregates), allCommandTopics, undefined, queryEngine, scheduler, resourceNaming, undefined, undefined, undefined, opts));
       let taskActionsHandler = (taskActions, operations) => Util_Promise$ReventlessCore.toUnit(Promise.all(taskActions.map(async taskAction => {
         switch (taskAction.TAG) {
           case "PublishCommands" :

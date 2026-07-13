@@ -152,10 +152,6 @@ module Make = (
       // hand-declared admin SDL (`AdminApi.baseFragment`, via `Api_Naming.adminField`) so the
       // auto-bound DCB resolver targets the exact field name that is pushed to the schema.
       ~apiNamePrefix="Platform",
-      // The API-schema registry's Register/Deregister mutations are invoked by the plugin/standalone
-      // deploy as a SigV4 system caller — mark them systemCallable so the AWS provider stamps the
-      // dual-auth (`@aws_cognito_user_pools @aws_iam`) directive on the constructed fragment entries.
-      ~systemCallableComponents=["ApiFragmentRegistry"],
       // Admin DCB mutation resolvers bind to the Platform API (split mode), not the deploy-target
       // Domain API — routes the provider hook to `hooks.adminApi`.
       ~onAdminApi=true,

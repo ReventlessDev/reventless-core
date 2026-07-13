@@ -15,6 +15,15 @@ let sideEffectInfos: dict<sideEffectInfo> = Dict.make()
 let registerSideEffectHandler = (~sideEffectHandlerName, ~sideEffectModulePaths) =>
   sideEffectInfos->Dict.set(sideEffectHandlerName, {sideEffectModulePaths: sideEffectModulePaths})
 
+// Extra Lambda env vars contributed by bespoke side effects (e.g. admin ApiSchemaPush).
+// The shared "AllSideEffectHandlers" Lambda is built once in finish(); all registered
+// entries are merged onto its env there. Deploy-derived config only — never overrides
+// HANDLER_CONFIG.
+let extraEnvVarsAll: dict<Pulumi.Input.t<string>> = Dict.make()
+
+let registerExtraEnv = (~extraEnvVars: dict<Pulumi.Input.t<string>>) =>
+  extraEnvVars->Dict.forEachWithKey((v, k) => extraEnvVarsAll->Dict.set(k, v))
+
 type storedSpec = {
   componentName: string,
   parentResource: Pulumi.Resource.t,
@@ -143,6 +152,12 @@ let finish = () =>
 
         let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
         envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
+        // Merge bespoke side-effect config (never overrides HANDLER_CONFIG).
+        extraEnvVarsAll->Dict.forEachWithKey((v, k) =>
+          if k != "HANDLER_CONFIG" {
+            envVars->Dict.set(k, v)
+          }
+        )
 
         // Build AssetArchive: static re-export + user packages
         let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
@@ -160,6 +175,38 @@ let finish = () =>
           ~timeout=maxTimeout,
           ~opts,
         )
+
+        // The admin ApiSchemaPush side effect (the only extra-env contributor) pushes the
+        // stitched schema to AppSync via StartSchemaCreation and reads the live schema for
+        // the shrink guard. Grant those AppSync perms to the shared side-effect-handler
+        // Lambda role ONLY when a bespoke side effect registered config — Task-only
+        // deployments keep the narrow default perimeter. Mirrors the admin EventCollector's
+        // AllowAdminStartSchemaCreation grant (PluginRuntime_Builder).
+        if extraEnvVarsAll->Dict.keysToArray->Array.length > 0 {
+          let _ = PulumiAws.IAM.RolePolicy.make(
+            ~name="AllSideEffectHandlers-appsyncSchemaPush",
+            ~args={
+              policy: PulumiAws.PolicyDocument.make(
+                ~id="AllSideEffectHandlersAppsyncSchemaPushPolicy",
+                ~statements=[
+                  {
+                    sid: "AllowSideEffectStartSchemaCreation",
+                    effect: Allow,
+                    actions: Actions([
+                      "appsync:StartSchemaCreation",
+                      "appsync:GetSchemaCreationStatus",
+                      "appsync:GetIntrospectionSchema",
+                    ]),
+                    resources: AllResources,
+                  },
+                ],
+              )
+              ->PulumiAws.PolicyDocument.toJsonString
+              ->Pulumi.Input.make,
+              role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+            },
+          )
+        }
 
         let channelSpecs = storedSpecs->Array.map(({channelSpec}) => channelSpec)
         let _connectResources = EventCollectorChannel.connect(

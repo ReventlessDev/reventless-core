@@ -14,7 +14,7 @@ import * as SideEffectHandler_Callback$ReventlessCore from "./SideEffectHandler_
 
 function Make(RuntimeEnvironment) {
   return EventCollectorChannel => (SpecificEventCollector => (EventCollectorRuntimeBuilder => {
-    let make = (name, sideEffects, allEventTopics, allCommandTopics, targets, queryEngine, scheduler, resourceNaming, memorySizeOpt, timeoutOpt, opts) => {
+    let make = (name, sideEffects, allEventTopics, allCommandTopics, targets, queryEngine, scheduler, resourceNaming, memorySizeOpt, timeoutOpt, param, opts) => {
       let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
       let timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(SideEffectHandler$ReventlessCore.componentType), name, (extra, extra$1) => {

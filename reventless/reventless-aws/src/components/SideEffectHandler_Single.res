@@ -22,6 +22,7 @@ module Make = (): ReventlessCore.SideEffectHandler.T => {
     ~resourceNaming,
     ~memorySize=?,
     ~timeout=?,
+    ~extraEnvVars=?,
     ~opts=?,
   ) => {
     let component = Inner.make(
@@ -48,6 +49,13 @@ module Make = (): ReventlessCore.SideEffectHandler.T => {
       ~sideEffectHandlerName=name,
       ~sideEffectModulePaths,
     )
+
+    // Bespoke side effects (e.g. admin ApiSchemaPush) inject deploy-derived config as
+    // extra Lambda env vars, merged onto the shared side-effect-handler Lambda in finish().
+    switch extraEnvVars {
+    | Some(env) => EventCollectorRuntimeBuilder.registerExtraEnv(~extraEnvVars=env)
+    | None => ()
+    }
 
     component
   }

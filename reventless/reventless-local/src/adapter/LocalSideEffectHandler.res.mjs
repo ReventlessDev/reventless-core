@@ -5,7 +5,7 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as SideEffectHandler$ReventlessCore from "@reventlessdev/reventless-core/src/components/SideEffectHandler/SideEffectHandler.res.mjs";
 
-function make(name, param, param$1, param$2, param$3, param$4, scheduler, param$5, param$6, param$7, opts) {
+function make(name, param, param$1, param$2, param$3, param$4, scheduler, param$5, param$6, param$7, param$8, opts) {
   let noopEnqueueEvent = async (param, param$1, param$2) => {};
   let ops_createSchedule = async schedule => await scheduler.createSchedule([], schedule);
   let ops_deleteSchedule = async scheduleName => await scheduler.deleteSchedule([], scheduleName);

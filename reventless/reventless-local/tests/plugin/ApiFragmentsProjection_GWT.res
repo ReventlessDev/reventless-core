@@ -1,12 +1,13 @@
-// StateViewSlice projection GWT for the ApiFragments read side — the current fragment
-// per plugin name plus push status, replacing the deploy-schema:* rows as the durable
-// stitch source (event-sourced-fragment-registries plan).
+// Projection GWT for the ApiFragments read model — one row per plugin name holding the
+// current fragment + push status, projected off the ApiFragmentRegistry aggregate's events
+// (event-sourced-fragment-registries plan). Keyed by the payload pluginId (not the singleton
+// aggregate id). ApiSchemaComputed is the reactive-push trigger only — it must NOT touch a row.
 open ReventlessCore
 module P = Reventless.Plugin // P.Domain / P.Platform — avoid opening apiSchemaFragment's labels
 
-module Test = ReventlessGwt.Projection_GWT.Make(ApiFragments, ApiFragments_Projection)
+module Test = ReventlessGwt.MultiSourceProjection_GWT.Make(ApiFragmentsProjection.ApiFragmentsMapping)
 open Test
-open ApiFragments
+open ApiFragmentRegistrySpec
 
 let fragment1: Reventless.Plugin.apiSchemaFragment = {
   encoded: `{"types":["type Catalog_Product { id: ID! }"],"mutations":[],"queries":[],"subscriptions":[],"subscriptionSources":[]}`,
@@ -18,7 +19,7 @@ let fragment2: Reventless.Plugin.apiSchemaFragment = {
   protocol: "graphql",
 }
 
-let registeredState: ApiFragments.state = {
+let registeredState: ApiFragmentsReadModelSpec.state = {
   pluginId: "p1",
   encoded: fragment1.encoded,
   protocol: fragment1.protocol,
@@ -30,10 +31,16 @@ let registeredState: ApiFragments.state = {
   pushedAt: "",
 }
 
-describe("ApiFragments StateViewSlice projection", () => {
-  test("ApiFragmentRegistered creates the row pending (registeredAt = updatedAt = event time)", () =>
+describe("ApiFragments projection", () => {
+  test("ApiFragmentRegistered creates the row pending (registeredAt = updatedAt = event `at`)", () =>
     givenEvents([])
     ->whenEvent(ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: P.Domain, at: "t0"}))
+    ->thenStateWithId("p1", registeredState)
+  )
+
+  test("ApiSchemaComputed is ignored (no row change)", () =>
+    givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: P.Domain, at: "t0"})])
+    ->whenEvent(ApiSchemaComputed({snapshot: []}))
     ->thenStateWithId("p1", registeredState)
   )
 
@@ -45,9 +52,7 @@ describe("ApiFragments StateViewSlice projection", () => {
 
   test("ApiFragmentPushRecorded(error) carries the message", () =>
     givenEvents([ApiFragmentRegistered({pluginId: "p1", fragment: fragment1, apiTarget: P.Domain, at: "t0"})])
-    ->whenEvent(
-      ApiFragmentPushRecorded({pluginId: "p1", ok: false, message: "stitch failed", at: "t1"}),
-    )
+    ->whenEvent(ApiFragmentPushRecorded({pluginId: "p1", ok: false, message: "stitch failed", at: "t1"}))
     ->thenStateWithId(
       "p1",
       {...registeredState, pushStatus: "error", pushMessage: "stitch failed", pushedAt: "t1"},

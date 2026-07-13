@@ -25,6 +25,11 @@ module type T = {
     ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
     ~memorySize: int=?,
     ~timeout: int=?,
+    // Extra environment variables merged onto the side-effect-handler Lambda — used
+    // by bespoke platform side effects (e.g. the admin ApiSchemaPush) to carry
+    // deploy-derived config (API ids, command-topic URLs) that `execute` reads at
+    // runtime. Ignored by adapters that don't provision a real Lambda (in-memory).
+    ~extraEnvVars: dict<Pulumi.Input.t<string>>=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

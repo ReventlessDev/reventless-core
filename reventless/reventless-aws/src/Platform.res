@@ -113,9 +113,9 @@ module MakeWithConfig = (
     // Lambda (DynamoDB scan) — keep it off the Postgres selection like the other
     // admin stores.
     QueryDbBackend.exempt(ReventlessCore.UiFragments.name)
-    // The ApiFragments StateViewSlice is the durable source of the schema-push
-    // automation and the runtime re-stitcher — admin store, off Postgres too.
-    QueryDbBackend.exempt(ReventlessCore.ApiFragments.name)
+    // The ApiFragments read model backs the Platform_ApiFragments status query
+    // (DynamoDB scan) and the schema-push SideEffect — admin store, off Postgres too.
+    QueryDbBackend.exempt(ReventlessCore.ApiFragmentsReadModelSpec.name)
   })
   type api = Types.AppSync.api
   type role = Types.AppSync.role
@@ -585,14 +585,8 @@ module MakeWithConfig = (
     ReventlessCore.UiFragments,
     ReventlessCore.UiFragments_Projection,
   )
-  module ApiFragmentRegistrySlice = StateChangeSlice.Make(
-    ReventlessCore.ApiFragmentRegistry,
-    ReventlessCore.ApiFragmentRegistry_Behavior,
-  )
-  module ApiFragmentsViewSlice = StateViewSlice.Make(
-    ReventlessCore.ApiFragments,
-    ReventlessCore.ApiFragments_Projection,
-  )
+  // The API-fragment registry is a SINGLETON AGGREGATE now (not a DCB slice) — see
+  // ApiFragmentRegistryAggregate / ApiFragmentsReadModel below.
 
   // Empty base fragment — no types, no mutations, no queries.
   // Used by the plugin Api in split mode so plugin schema has no core fields.
@@ -779,8 +773,10 @@ module MakeWithConfig = (
     ->Pulumi.Output.flatMap(endpoint => {
       let run = async () => {
         let at = Date.make()->Date.toISOString
+        // The registry is a SINGLETON aggregate — the mutation `id` arg is the fixed
+        // constant, `pluginId` (a payload field) carries the plugin name.
         let variables = {
-          "id": name,
+          "id": "registry",
           "pluginId": name,
           "fragment": {"encoded": fragment.encoded, "protocol": fragment.protocol},
           "apiTarget": Util_AppSync_Caller.graphqlEnum(apiTargetName),
@@ -794,14 +790,14 @@ module MakeWithConfig = (
         let result = await Util_AppSync_Caller.sendMutation(
           ~endpoint,
           ~region,
-          ~mutation="Platform_RegisterApiFragment",
+          ~mutation="Platform_ApiFragmentRegistry_RegisterApiFragment",
           ~selection,
           ~variables,
         )
         let outcome =
           result
           ->Option.flatMap(JSON.Decode.object)
-          ->Option.flatMap(d => d->Dict.get("Platform_RegisterApiFragment"))
+          ->Option.flatMap(d => d->Dict.get("Platform_ApiFragmentRegistry_RegisterApiFragment"))
           ->Option.flatMap(JSON.Decode.object)
         switch outcome {
         | Some(cmd) =>
@@ -1480,6 +1476,43 @@ module MakeWithConfig = (
     PluginReadModelMappings,
   )
 
+  // Admin-internal ApiFragmentRegistry singleton aggregate — the platform API-schema
+  // fragment registry (docs/plans/event-sourced-fragment-registries.md). Threaded into
+  // Admin.construct's ~aggregates so registerAdminAggregateMutations wires
+  // Platform_ApiFragmentRegistry_RegisterApiFragment / _DeregisterApiFragment via the
+  // standard CommandGenerator auto-flow (RecordApiFragmentPush carries `@noApi`). IAM
+  // dual-auth for the SigV4 deploy caller comes from AdminApi.systemCallerFieldNames.
+  module ApiFragmentRegistryAggregate: (
+    ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
+  ) = Aggregate_Builder_Single.Make(
+    ReventlessCore.ApiFragmentRegistrySpec,
+    ReventlessCore.ApiFragmentRegistryBehavior,
+    ReventlessInfra.NoEventMappings.Make(ReventlessCore.ApiFragmentRegistrySpec),
+  )
+
+  // Admin ApiFragments read model — per-plugin status rows off the aggregate's event
+  // topic (DynamoDB stream), backing the Platform_ApiFragments status query.
+  module ApiFragmentsReadModelMappings: Reventless.Projection.Mappings
+    with module Target := ReventlessCore.ApiFragmentsReadModelSpec = {
+    module M = ReventlessCore.ApiFragmentsProjection.Mappings
+    module type Mapping = M.Mapping
+    let moduleUrl: string = ReventlessCore.ApiFragmentsProjection.moduleUrl
+    let mappings: array<module(Mapping)> = ReventlessCore.ApiFragmentsProjection.mappings
+  }
+  module ApiFragmentsReadModel = ReadModel_Builder_Single_Stream.Make(
+    ReventlessCore.ApiFragmentsReadModelSpec,
+    ApiFragmentsReadModelMappings,
+  )
+
+  // Admin SideEffectHandler hosting the reactive schema-push side effect (ApiSchemaPush).
+  // Subscribes to the ApiFragmentRegistry aggregate's DynamoDB stream (single-shard for a
+  // singleton → naturally serialized, no concurrent StartSchemaCreation) and, on each
+  // ApiSchemaComputed, stitches + pushes the schema per target API, then records the
+  // outcome via RecordApiFragmentPush. Wired in deployPlatform (the staged path where the
+  // deploy caller fires RegisterApiFragment); makePlatform builds the schema directly and
+  // never triggers it.
+  module AdminApiSchemaPushHandler = SideEffectHandler_Single.Make()
+
   module type PluginMaker = {
     let make: unit => Plugin.component
   }
@@ -1649,14 +1682,14 @@ module MakeWithConfig = (
     let admin = Admin.construct(
       ~version,
       ~extensionPoints=[],
-      ~aggregates=[module(PluginAggregate)],
-      ~readModels=[module(PluginReadModel)],
+      ~aggregates=[module(PluginAggregate), module(ApiFragmentRegistryAggregate)],
+      ~readModels=[module(PluginReadModel), module(ApiFragmentsReadModel)],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=platformApi,
       ~apiRole=platformApiRole,
-      ~stateChangeSlices=[module(UiFragmentRegistrySlice), module(ApiFragmentRegistrySlice)],
-      ~stateViewSlices=[module(UiFragmentsViewSlice), module(ApiFragmentsViewSlice)],
+      ~stateChangeSlices=[module(UiFragmentRegistrySlice)],
+      ~stateViewSlices=[module(UiFragmentsViewSlice)],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],
@@ -1704,7 +1737,7 @@ module MakeWithConfig = (
     // StateViewSlice table and returns the push-status row per plugin (the deploy
     // waiter polls this). The query field is in the pushed admin base but was
     // unresolved on AWS until now.
-    switch admin.stateViewSlicesOutputs->Dict.get("ApiFragments") {
+    switch admin.readModelsOutputs->Dict.get("ApiFragments") {
     | Some(rm) =>
       switch rm.queryDb.resources->Array.get(0) {
       | Some(r) =>
@@ -1899,18 +1932,83 @@ module MakeWithConfig = (
     let admin = Admin.construct(
       ~version,
       ~extensionPoints=[module(PluginExtensionPoint)],
-      ~aggregates=[module(PluginAggregate)],
-      ~readModels=[module(PluginReadModel)],
+      ~aggregates=[module(PluginAggregate), module(ApiFragmentRegistryAggregate)],
+      ~readModels=[module(PluginReadModel), module(ApiFragmentsReadModel)],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=platformApi,
       ~apiRole=platformApiRole,
-      ~stateChangeSlices=[module(UiFragmentRegistrySlice), module(ApiFragmentRegistrySlice)],
-      ~stateViewSlices=[module(UiFragmentsViewSlice), module(ApiFragmentsViewSlice)],
+      ~stateChangeSlices=[module(UiFragmentRegistrySlice)],
+      ~stateViewSlices=[module(UiFragmentsViewSlice)],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],
     )
+
+    // Reactive schema-push SideEffect (docs/plans/event-sourced-fragment-registries.md §
+    // Reactive writer design). Host ApiSchemaPush on an admin SideEffectHandler subscribed to
+    // the ApiFragmentRegistry aggregate's event topic (its DynamoDB stream). Deploy-derived
+    // config the runtime-pure push reads at invocation time is injected as Lambda env
+    // (~extraEnvVars); ~targets grants SQS send to the aggregate command topic (for the
+    // RecordApiFragmentPush write-back). Only in deployPlatform (the staged path where the
+    // deploy caller fires RegisterApiFragment); makePlatform pushes the schema directly.
+    let apiSchemaPushEventTopics = ReventlessCore.Aggregate.allEventTopics(admin.aggregatesOutputs)
+    let apiSchemaPushCmdTopics = ReventlessCore.Aggregate.allCommandTopics(admin.aggregatesOutputs)
+    let apiSchemaPushCmdTopicUrl =
+      admin.aggregatesOutputs
+      ->Dict.get(ReventlessCore.ApiFragmentRegistrySpec.name)
+      ->Option.map(agg =>
+        agg.commandTopic->Pulumi.Output.flatMap(ct =>
+          switch ct.resources->Array.get(0) {
+          | Some(r) => r.id
+          | None => Pulumi.Output.make("")
+          }
+        )
+      )
+      ->Option.getOr(Pulumi.Output.make(""))
+    let apiSchemaPushEnv = Dict.fromArray([
+      ("API_SCHEMA_PUSH_DOMAIN_API_ID", domainApiId->Pulumi.Output.asInput),
+      (
+        "API_SCHEMA_PUSH_PLATFORM_API_ID",
+        platformApi->Pulumi.Output.flatMap(api => api.id)->Pulumi.Output.asInput,
+      ),
+      (
+        "API_SCHEMA_PUSH_SPLIT_API",
+        Pulumi.Output.make(Config.splitApi ? "true" : "false")->Pulumi.Output.asInput,
+      ),
+      (
+        "API_SCHEMA_PUSH_CLONER",
+        Pulumi.Output.make(Config.cloner ? "true" : "false")->Pulumi.Output.asInput,
+      ),
+      ("API_SCHEMA_PUSH_CMD_TOPIC_URL", apiSchemaPushCmdTopicUrl->Pulumi.Output.asInput),
+    ])
+    // ApiSchemaPush ignores the injected queryEngine (it self-wires push + write-back from
+    // env); an empty one satisfies the SideEffectHandler contract. `scheduler`/`queryEngine`
+    // are Outputs, so make() runs inside their apply; finish() (which builds the shared
+    // Lambda from the registered handlers) is registered on apiSchemaPushCmdTopics
+    // immediately after make() so it runs AFTER make's own deferred forEventCollector apply
+    // on that same Output (Pulumi runs same-Output apply callbacks in registration order).
+    let apiSchemaPushQueryEngine = QueryEngine.DynamoDb.make(Dict.make())
+    let _ =
+      (scheduler, apiSchemaPushQueryEngine)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((sched, qe)) => {
+        let _ = AdminApiSchemaPushHandler.make(
+          ~name="AdminApiSchemaPush",
+          ~sideEffects=[module(ApiSchemaPush)],
+          ~allEventTopics=apiSchemaPushEventTopics,
+          ~allCommandTopics=apiSchemaPushCmdTopics,
+          ~targets=[ReventlessCore.ApiFragmentRegistrySpec.name],
+          ~queryEngine=qe,
+          ~scheduler=sched,
+          ~resourceNaming=Util_ResourceNaming.operations,
+          ~extraEnvVars=apiSchemaPushEnv,
+          ~opts={},
+        )
+        let _ = apiSchemaPushCmdTopics->Pulumi.Output.apply(_ =>
+          SideEffectHandlerRuntime_Builder_Single.finish()
+        )
+      })
 
     // Extract Plugin RM table name as Output.t<string>.
     // IMPORTANT: Do NOT use option<Pulumi.Output.t<…>> — Pulumi Outputs use property
@@ -1991,7 +2089,7 @@ module MakeWithConfig = (
       // so the consumer's `tableOutput->Pulumi.Output.apply` crashes with
       // "apply is not a function". A `Some(r.name)` LITERAL compiles unboxed (bare
       // r.name), preserving the Output — the same dodge `pluginReadModelTableName` uses.
-      ~apiFragmentRegistryTableName=?switch admin.stateViewSlicesOutputs
+      ~apiFragmentRegistryTableName=?switch admin.readModelsOutputs
       ->Dict.get("ApiFragments")
       ->Option.flatMap(rm => rm.queryDb.resources->Array.get(0)) {
       | Some(r) => Some(r.name)
@@ -2040,7 +2138,7 @@ module MakeWithConfig = (
     // StateViewSlice table and returns the push-status row per plugin (the deploy
     // waiter polls this). The query field is in the pushed admin base but was
     // unresolved on AWS until now.
-    switch admin.stateViewSlicesOutputs->Dict.get("ApiFragments") {
+    switch admin.readModelsOutputs->Dict.get("ApiFragments") {
     | Some(rm) =>
       switch rm.queryDb.resources->Array.get(0) {
       | Some(r) =>

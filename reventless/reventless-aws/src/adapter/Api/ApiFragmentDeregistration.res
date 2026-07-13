@@ -44,7 +44,7 @@ let decodeId = (id: string): option<providerInputs> =>
 let sendDeregister: (JSON.t, string, string) => promise<unit> = %raw(`
   async function (variables, endpoint, region) {
     const mod = await import("@reventlessdev/reventless-aws/src/util/Util_AppSync_Caller.res.mjs");
-    await mod.sendMutation(endpoint, region, "Platform_DeregisterApiFragment", "{ __typename }", variables);
+    await mod.sendMutation(endpoint, region, "Platform_ApiFragmentRegistry_DeregisterApiFragment", "{ __typename }", variables);
   }
 `)
 
@@ -75,9 +75,10 @@ let delete_ = async (id: string, props: providerInputs): unit => {
   }
   let variables =
     Dict.fromArray([
-      // Platform_DeregisterApiFragment(id: ID!, pluginId: ID!) — id is the
-      // generator-prepended arg (unused server-side); pass the pluginId for both.
-      ("id", JSON.Encode.string(carrier.pluginId)),
+      // Platform_ApiFragmentRegistry_DeregisterApiFragment(id: ID!, pluginId: ID!) — the
+      // registry is a SINGLETON aggregate, so `id` is the fixed constant; `pluginId`
+      // (payload) names the plugin whose fragment is removed.
+      ("id", JSON.Encode.string("registry")),
       ("pluginId", JSON.Encode.string(carrier.pluginId)),
     ])->JSON.Encode.object
   // Best-effort: on a full teardown the platform API may already be gone, and a

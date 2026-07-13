@@ -26,7 +26,6 @@ import * as UserStore$ReventlessLocal from "./adapter/Auth/UserStore.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
 import * as TestRunner$ReventlessLocal from "./test/TestRunner.res.mjs";
 import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments.res.mjs";
-import * as ApiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/ApiFragmentRegistry/StateViewSlice/ApiFragments.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as BackendState$ReventlessLocal from "./adapter/BackendState.res.mjs";
@@ -52,7 +51,6 @@ import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-co
 import * as ProjectionPending$ReventlessLocal from "./adapter/ProjectionPending.res.mjs";
 import * as ReadModel_Builder$ReventlessLocal from "./components/ReadModel_Builder.res.mjs";
 import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
-import * as ApiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/ApiFragmentRegistry/StateChangeSlice/ApiFragmentRegistry.res.mjs";
 import * as PlatformMCP_Server$ReventlessLocal from "./adapter/PlatformMCP_Server.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./adapter/Auth/Auth_GraphqlContext.res.mjs";
 import * as PgProjectionCatchup$ReventlessLocal from "./adapter/PgProjectionCatchup.res.mjs";
@@ -61,9 +59,10 @@ import * as DomainGraphQL_Server$ReventlessLocal from "./adapter/DomainGraphQL_S
 import * as EventPublish_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventLog/EventPublish_Callback.res.mjs";
 import * as LocalGraphQL_Adapter$ReventlessLocal from "./adapter/Api/LocalGraphQL_Adapter.res.mjs";
 import * as ProjectionCheckpoint$ReventlessLocal from "./adapter/ProjectionCheckpoint.res.mjs";
+import * as ApiFragmentsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/ApiFragmentRegistry/ApiFragmentsProjection.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as UiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments_Projection.res.mjs";
-import * as ApiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/ApiFragmentRegistry/StateViewSlice/ApiFragments_Projection.res.mjs";
+import * as ApiFragmentRegistrySpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/ApiFragmentRegistry/ApiFragmentRegistrySpec.res.mjs";
 import * as EventLogStorage_Sqlite$ReventlessLocal from "./adapter/EventLog/EventLogStorage_Sqlite.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessLocal from "./components/ExtensionPoint_Builder.res.mjs";
 import * as PlatformGraphQL_Server$ReventlessLocal from "./adapter/PlatformGraphQL_Server.res.mjs";
@@ -75,14 +74,15 @@ import * as LocalRuntimeEnvironment$ReventlessLocal from "./adapter/Runtime/Loca
 import * as LocalScheduledPublisher$ReventlessLocal from "./adapter/Scheduler/LocalScheduledPublisher.res.mjs";
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
 import * as Platform_ApiFragmentsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_ApiFragmentsApi.res.mjs";
+import * as ApiFragmentsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/ApiFragmentRegistry/ApiFragmentsReadModelSpec.res.mjs";
 import * as LocalCommandTopicChannel$ReventlessLocal from "./adapter/CommandTopic/LocalCommandTopicChannel.res.mjs";
 import * as LocalEventTopicPublisher$ReventlessLocal from "./adapter/EventTopic/LocalEventTopicPublisher.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateChangeSlice_Builder.res.mjs";
 import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
+import * as ApiFragmentRegistryBehavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/ApiFragmentRegistry/ApiFragmentRegistryBehavior.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
 import * as UiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry_Behavior.res.mjs";
-import * as ApiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/ApiFragmentRegistry/StateChangeSlice/ApiFragmentRegistry_Behavior.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessLocal from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as Platform_ComponentDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_ComponentDefinitionsApi.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessLocal from "./components/OutboundTranslationSlice_Builder.res.mjs";
@@ -124,7 +124,7 @@ function decodeUiFragmentRegistryEventEnvelope(eventJson) {
 
 function decodeApiFragmentRegistryEventEnvelope(eventJson) {
   try {
-    return Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson), d => d["event"]), payload => S.parseJsonOrThrow(payload, ApiFragmentRegistry$ReventlessCore.eventSchema));
+    return Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson), d => d["event"]), payload => S.parseJsonOrThrow(payload, ApiFragmentRegistrySpec$ReventlessCore.eventSchema));
   } catch (exn) {
     return;
   }
@@ -657,57 +657,6 @@ function MakeWithConfig(Config) {
     Projection: UiFragmentsViewSlice_Projection,
     make: UiFragmentsViewSlice_make
   };
-  let Spec$2 = {
-    name: ApiFragmentRegistry$ReventlessCore.name,
-    moduleUrl: ApiFragmentRegistry$ReventlessCore.moduleUrl,
-    Id: Id$Reventless.$$String,
-    consumedEventSchema: ApiFragmentRegistry$ReventlessCore.consumedEventSchema,
-    errorSchema: ApiFragmentRegistry$ReventlessCore.errorSchema,
-    eventSchema: ApiFragmentRegistry$ReventlessCore.eventSchema,
-    commandSchema: ApiFragmentRegistry$ReventlessCore.commandSchema,
-    commandAuthorization: ApiFragmentRegistry$ReventlessCore.commandAuthorization,
-    readConsistency: ApiFragmentRegistry$ReventlessCore.readConsistency
-  };
-  let Behavior$1 = {
-    initialState: undefined,
-    evolve: ApiFragmentRegistry_Behavior$ReventlessCore.evolve,
-    decide: ApiFragmentRegistry_Behavior$ReventlessCore.decide,
-    moduleUrl: ApiFragmentRegistry_Behavior$ReventlessCore.moduleUrl
-  };
-  let $$let$2 = StateChangeSlice_Builder$ReventlessLocal.Make(Spec$2)(Behavior$1);
-  let ApiFragmentRegistrySlice_Spec = $$let$2.Spec;
-  let ApiFragmentRegistrySlice_Behavior = $$let$2.Behavior;
-  let ApiFragmentRegistrySlice_isAsync = $$let$2.isAsync;
-  let ApiFragmentRegistrySlice_make = $$let$2.make;
-  let ApiFragmentRegistrySlice = {
-    Spec: ApiFragmentRegistrySlice_Spec,
-    Behavior: ApiFragmentRegistrySlice_Behavior,
-    isAsync: ApiFragmentRegistrySlice_isAsync,
-    make: ApiFragmentRegistrySlice_make
-  };
-  let Spec$3 = {
-    name: ApiFragments$ReventlessCore.name,
-    moduleUrl: ApiFragments$ReventlessCore.moduleUrl,
-    stateSchema: ApiFragments$ReventlessCore.stateSchema,
-    consumedEventSchema: ApiFragments$ReventlessCore.consumedEventSchema,
-    config: ApiFragments$ReventlessCore.config,
-    subIdConfig: undefined,
-    authorization: ApiFragments$ReventlessCore.authorization,
-    visibility: ApiFragments$ReventlessCore.visibility
-  };
-  let Projection$1 = {
-    project: ApiFragments_Projection$ReventlessCore.project,
-    moduleUrl: ApiFragments_Projection$ReventlessCore.moduleUrl
-  };
-  let $$let$3 = StateViewSliceMaker.Make(Spec$3)(Projection$1);
-  let ApiFragmentsViewSlice_Spec = $$let$3.Spec;
-  let ApiFragmentsViewSlice_Projection = $$let$3.Projection;
-  let ApiFragmentsViewSlice_make = $$let$3.make;
-  let ApiFragmentsViewSlice = {
-    Spec: ApiFragmentsViewSlice_Spec,
-    Projection: ApiFragmentsViewSlice_Projection,
-    make: ApiFragmentsViewSlice_make
-  };
   let Make$8 = Spec => (Projection => {
     let $$let = StateViewSliceMaker.Make(Spec)(Projection);
     return {
@@ -778,7 +727,7 @@ function MakeWithConfig(Config) {
   };
   let EventCollectorChannel = LocalEventCollectorChannel$ReventlessLocal.Make(Bus);
   let QE = LocalQueryEngine$ReventlessLocal.Make(Bus);
-  let $$let$4 = AggregateMaker.Make({
+  let $$let$2 = AggregateMaker.Make({
     Id: Id$Reventless.$$String,
     name: PluginSpec$ReventlessCore.name,
     eventSchema: PluginSpec$ReventlessCore.eventSchema,
@@ -797,11 +746,11 @@ function MakeWithConfig(Config) {
     Id: Id$Reventless.$$String,
     commandSchema: PluginSpec$ReventlessCore.commandSchema
   }));
-  let LocalPluginAggregate_Spec = $$let$4.Spec;
-  let LocalPluginAggregate_make = $$let$4.make;
-  let LocalPluginAggregate_outputs = $$let$4.outputs;
-  let LocalPluginAggregate_operations = $$let$4.operations;
-  let LocalPluginAggregate_finish = $$let$4.finish;
+  let LocalPluginAggregate_Spec = $$let$2.Spec;
+  let LocalPluginAggregate_make = $$let$2.make;
+  let LocalPluginAggregate_outputs = $$let$2.outputs;
+  let LocalPluginAggregate_operations = $$let$2.operations;
+  let LocalPluginAggregate_finish = $$let$2.finish;
   let LocalPluginAggregate = {
     Spec: LocalPluginAggregate_Spec,
     make: LocalPluginAggregate_make,
@@ -823,8 +772,53 @@ function MakeWithConfig(Config) {
     authorization: PluginsReadModelSpec$ReventlessCore.authorization,
     visibility: PluginsReadModelSpec$ReventlessCore.visibility
   })(PluginsReadModelMappings);
+  let $$let$3 = AggregateMaker.Make({
+    Id: Id$Reventless.$$String,
+    name: ApiFragmentRegistrySpec$ReventlessCore.name,
+    eventSchema: ApiFragmentRegistrySpec$ReventlessCore.eventSchema,
+    errorSchema: ApiFragmentRegistrySpec$ReventlessCore.errorSchema,
+    commandSchema: ApiFragmentRegistrySpec$ReventlessCore.commandSchema,
+    moduleUrl: ApiFragmentRegistrySpec$ReventlessCore.moduleUrl,
+    commandAuthorization: ApiFragmentRegistrySpec$ReventlessCore.commandAuthorization
+  })({
+    initialState: ApiFragmentRegistryBehavior$ReventlessCore.initialState,
+    evolve: ApiFragmentRegistryBehavior$ReventlessCore.evolve,
+    decide: ApiFragmentRegistryBehavior$ReventlessCore.decide,
+    snapshot: undefined,
+    moduleUrl: ApiFragmentRegistryBehavior$ReventlessCore.moduleUrl
+  })(NoEventMappings$ReventlessInfra.Make({
+    name: ApiFragmentRegistrySpec$ReventlessCore.name,
+    Id: Id$Reventless.$$String,
+    commandSchema: ApiFragmentRegistrySpec$ReventlessCore.commandSchema
+  }));
+  let LocalApiFragmentRegistryAggregate_Spec = $$let$3.Spec;
+  let LocalApiFragmentRegistryAggregate_make = $$let$3.make;
+  let LocalApiFragmentRegistryAggregate_outputs = $$let$3.outputs;
+  let LocalApiFragmentRegistryAggregate_operations = $$let$3.operations;
+  let LocalApiFragmentRegistryAggregate_finish = $$let$3.finish;
+  let LocalApiFragmentRegistryAggregate = {
+    Spec: LocalApiFragmentRegistryAggregate_Spec,
+    make: LocalApiFragmentRegistryAggregate_make,
+    outputs: LocalApiFragmentRegistryAggregate_outputs,
+    operations: LocalApiFragmentRegistryAggregate_operations,
+    finish: LocalApiFragmentRegistryAggregate_finish
+  };
+  let ApiFragmentsReadModelMappings = {
+    moduleUrl: ApiFragmentsProjection$ReventlessCore.moduleUrl,
+    mappings: ApiFragmentsProjection$ReventlessCore.mappings
+  };
+  let ApiFragmentsReadModel = ReadModelMaker.MakeNoResolver({
+    Id: Id$Reventless.$$String,
+    name: ApiFragmentsReadModelSpec$ReventlessCore.name,
+    moduleUrl: ApiFragmentsReadModelSpec$ReventlessCore.moduleUrl,
+    stateSchema: ApiFragmentsReadModelSpec$ReventlessCore.stateSchema,
+    config: ApiFragmentsReadModelSpec$ReventlessCore.config,
+    subIdConfig: undefined,
+    authorization: ApiFragmentsReadModelSpec$ReventlessCore.authorization,
+    visibility: ApiFragmentsReadModelSpec$ReventlessCore.visibility
+  })(ApiFragmentsReadModelMappings);
+  let $$let$4 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
   let $$let$5 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
-  let $$let$6 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
   let Admin = Platform_Admin$ReventlessCore.Make({
     make: LocalRuntimeEnvironment$ReventlessLocal.make,
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
@@ -840,9 +834,9 @@ function MakeWithConfig(Config) {
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(EventCollectorChannel))(LocalDcbEventLogStorage$ReventlessLocal.Make(Bus))(LocalEventTopicPublisher$ReventlessLocal.Make(Bus))({
-    make: $$let$5.make
+    make: $$let$4.make
   })({
-    make: $$let$6.make
+    make: $$let$5.make
   })({
     silent: Config.silent,
     splitApi: Config.splitApi,
@@ -903,23 +897,25 @@ function MakeWithConfig(Config) {
     };
     return Bus.dispatchCommand(adminDcbCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
   };
-  let dispatchApiFragmentCommand = (pluginName, command) => {
-    let cmdJson_meta = Message$ReventlessCore.generateMeta(ApiFragmentRegistry$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
-    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, ApiFragmentRegistry$ReventlessCore.commandSchema);
+  let apiFragmentRegistryCmdTopicKey = ApiFragmentRegistrySpec$ReventlessCore.name + "AggrCmdTopic";
+  let apiFragmentRegistryEventTopicKey = ApiFragmentRegistrySpec$ReventlessCore.name + "AggrEventTopic";
+  let dispatchApiFragmentCommand = command => {
+    let cmdJson_meta = Message$ReventlessCore.generateMeta(ApiFragmentRegistrySpec$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, ApiFragmentRegistrySpec$ReventlessCore.commandSchema);
     let cmdJson = {
-      id: pluginName,
+      id: "registry",
       meta: cmdJson_meta,
       commandJson: cmdJson_commandJson
     };
-    return Bus.dispatchCommand(adminDcbCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
+    return Bus.dispatchCommand(apiFragmentRegistryCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
   };
   let apiFragmentsQueryResolver = async (_root, _args, _ctx) => {
-    let scanAll = Bus.getQueryDbScan(ApiFragments$ReventlessCore.name);
+    let scanAll = Bus.getQueryDbScan(ApiFragmentsReadModelSpec$ReventlessCore.name);
     let items = scanAll !== undefined ? scanAll() : [];
     return Stdlib_Array.filterMap(items, item => {
       let state;
       try {
-        state = S.parseOrThrow(item, ApiFragments$ReventlessCore.stateSchema);
+        state = S.parseOrThrow(item, ApiFragmentsReadModelSpec$ReventlessCore.stateSchema);
       } catch (exn) {
         return;
       }
@@ -986,35 +982,33 @@ function MakeWithConfig(Config) {
         return;
       }
       let match = decodeUiFragmentRegistryEventEnvelope(eventJson);
-      if (match !== undefined) {
-        switch (match.TAG) {
-          case "UiFragmentRegistered" :
-            publishUIFragment(match.pluginId, "Registered", S.reverseConvertToJsonOrThrow(match.manifest, Plugin$Reventless.uiFragmentManifestSchema));
-            break;
-          case "UiFragmentUpdated" :
-            publishUIFragment(match.pluginId, "Updated", S.reverseConvertToJsonOrThrow(match.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
-            break;
-          case "UiFragmentDeregistered" :
-            publishUIFragment(match.pluginId, "Deregistered", null);
-            break;
-        }
-      }
-      let match$1 = decodeApiFragmentRegistryEventEnvelope(eventJson);
-      if (match$1 === undefined) {
+      if (match === undefined) {
         return;
       }
-      switch (match$1.TAG) {
+      switch (match.TAG) {
+        case "UiFragmentRegistered" :
+          return publishUIFragment(match.pluginId, "Registered", S.reverseConvertToJsonOrThrow(match.manifest, Plugin$Reventless.uiFragmentManifestSchema));
+        case "UiFragmentUpdated" :
+          return publishUIFragment(match.pluginId, "Updated", S.reverseConvertToJsonOrThrow(match.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
+        case "UiFragmentDeregistered" :
+          return publishUIFragment(match.pluginId, "Deregistered", null);
+      }
+    });
+    Bus.subscribeToEvents(apiFragmentRegistryEventTopicKey, async (_service, _meta, eventJson) => {
+      let match = decodeApiFragmentRegistryEventEnvelope(eventJson);
+      if (match === undefined) {
+        return;
+      }
+      switch (match.TAG) {
         case "ApiFragmentRegistered" :
         case "ApiFragmentUpdated" :
           break;
-        case "ApiFragmentDeregistered" :
-        case "ApiFragmentPushRecorded" :
+        default:
           return;
       }
-      let pluginId = match$1.pluginId;
-      dispatchApiFragmentCommand(pluginId, {
+      dispatchApiFragmentCommand({
         TAG: "RecordApiFragmentPush",
-        pluginId: pluginId,
+        pluginId: match.pluginId,
         ok: true,
         message: "",
         at: new Date().toISOString()
@@ -1079,7 +1073,7 @@ function MakeWithConfig(Config) {
           });
         }
         if (apiSchemaFragment !== undefined) {
-          dispatchApiFragmentCommand(pluginName, {
+          dispatchApiFragmentCommand({
             TAG: "RegisterApiFragment",
             pluginId: pluginName,
             fragment: apiSchemaFragment,
@@ -1293,7 +1287,11 @@ function MakeWithConfig(Config) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct(version, [], [LocalPluginAggregate], [{
+    let admin = Admin.construct(version, [], [
+      LocalPluginAggregate,
+      LocalApiFragmentRegistryAggregate
+    ], [
+      {
         Spec: PluginsReadModel.Spec,
         sourceNames: PluginsReadModel.sourceNames,
         consumedEventNames: PluginsReadModel.consumedEventNames,
@@ -1301,13 +1299,17 @@ function MakeWithConfig(Config) {
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
         finish: PluginsReadModel.finish
-      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [
-      UiFragmentRegistrySlice,
-      ApiFragmentRegistrySlice
-    ], [
-      UiFragmentsViewSlice,
-      ApiFragmentsViewSlice
-    ], [], [], []);
+      },
+      {
+        Spec: ApiFragmentsReadModel.Spec,
+        sourceNames: ApiFragmentsReadModel.sourceNames,
+        consumedEventNames: ApiFragmentsReadModel.consumedEventNames,
+        make: ApiFragmentsReadModel.make,
+        outputs: ApiFragmentsReadModel.outputs,
+        operations: ApiFragmentsReadModel.operations,
+        finish: ApiFragmentsReadModel.finish
+      }
+    ], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -1679,13 +1681,15 @@ function MakeWithConfig(Config) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    Admin.construct(version, [], [], [], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [
-      UiFragmentRegistrySlice,
-      ApiFragmentRegistrySlice
-    ], [
-      UiFragmentsViewSlice,
-      ApiFragmentsViewSlice
-    ], [], [], []);
+    Admin.construct(version, [], [LocalApiFragmentRegistryAggregate], [{
+        Spec: ApiFragmentsReadModel.Spec,
+        sourceNames: ApiFragmentsReadModel.sourceNames,
+        consumedEventNames: ApiFragmentsReadModel.consumedEventNames,
+        make: ApiFragmentsReadModel.make,
+        outputs: ApiFragmentsReadModel.outputs,
+        operations: ApiFragmentsReadModel.operations,
+        finish: ApiFragmentsReadModel.finish
+      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     currentDeployTarget.contents = "Platform";
     let adminGraphQL = resolveTargetGraphQL();
     let adminMCP = resolveTargetMCP();
@@ -1784,7 +1788,11 @@ function MakeWithConfig(Config) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct("", [], [LocalPluginAggregate], [{
+    let admin = Admin.construct("", [], [
+      LocalPluginAggregate,
+      LocalApiFragmentRegistryAggregate
+    ], [
+      {
         Spec: PluginsReadModel.Spec,
         sourceNames: PluginsReadModel.sourceNames,
         consumedEventNames: PluginsReadModel.consumedEventNames,
@@ -1792,13 +1800,17 @@ function MakeWithConfig(Config) {
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
         finish: PluginsReadModel.finish
-      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [
-      UiFragmentRegistrySlice,
-      ApiFragmentRegistrySlice
-    ], [
-      UiFragmentsViewSlice,
-      ApiFragmentsViewSlice
-    ], [], [], []);
+      },
+      {
+        Spec: ApiFragmentsReadModel.Spec,
+        sourceNames: ApiFragmentsReadModel.sourceNames,
+        consumedEventNames: ApiFragmentsReadModel.consumedEventNames,
+        make: ApiFragmentsReadModel.make,
+        outputs: ApiFragmentsReadModel.outputs,
+        operations: ApiFragmentsReadModel.operations,
+        finish: ApiFragmentsReadModel.finish
+      }
+    ], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -2450,57 +2462,6 @@ function Make($star) {
     Projection: UiFragmentsViewSlice_Projection,
     make: UiFragmentsViewSlice_make
   };
-  let Spec$2 = {
-    name: ApiFragmentRegistry$ReventlessCore.name,
-    moduleUrl: ApiFragmentRegistry$ReventlessCore.moduleUrl,
-    Id: Id$Reventless.$$String,
-    consumedEventSchema: ApiFragmentRegistry$ReventlessCore.consumedEventSchema,
-    errorSchema: ApiFragmentRegistry$ReventlessCore.errorSchema,
-    eventSchema: ApiFragmentRegistry$ReventlessCore.eventSchema,
-    commandSchema: ApiFragmentRegistry$ReventlessCore.commandSchema,
-    commandAuthorization: ApiFragmentRegistry$ReventlessCore.commandAuthorization,
-    readConsistency: ApiFragmentRegistry$ReventlessCore.readConsistency
-  };
-  let Behavior$1 = {
-    initialState: undefined,
-    evolve: ApiFragmentRegistry_Behavior$ReventlessCore.evolve,
-    decide: ApiFragmentRegistry_Behavior$ReventlessCore.decide,
-    moduleUrl: ApiFragmentRegistry_Behavior$ReventlessCore.moduleUrl
-  };
-  let $$let$2 = StateChangeSlice_Builder$ReventlessLocal.Make(Spec$2)(Behavior$1);
-  let ApiFragmentRegistrySlice_Spec = $$let$2.Spec;
-  let ApiFragmentRegistrySlice_Behavior = $$let$2.Behavior;
-  let ApiFragmentRegistrySlice_isAsync = $$let$2.isAsync;
-  let ApiFragmentRegistrySlice_make = $$let$2.make;
-  let ApiFragmentRegistrySlice = {
-    Spec: ApiFragmentRegistrySlice_Spec,
-    Behavior: ApiFragmentRegistrySlice_Behavior,
-    isAsync: ApiFragmentRegistrySlice_isAsync,
-    make: ApiFragmentRegistrySlice_make
-  };
-  let Spec$3 = {
-    name: ApiFragments$ReventlessCore.name,
-    moduleUrl: ApiFragments$ReventlessCore.moduleUrl,
-    stateSchema: ApiFragments$ReventlessCore.stateSchema,
-    consumedEventSchema: ApiFragments$ReventlessCore.consumedEventSchema,
-    config: ApiFragments$ReventlessCore.config,
-    subIdConfig: undefined,
-    authorization: ApiFragments$ReventlessCore.authorization,
-    visibility: ApiFragments$ReventlessCore.visibility
-  };
-  let Projection$1 = {
-    project: ApiFragments_Projection$ReventlessCore.project,
-    moduleUrl: ApiFragments_Projection$ReventlessCore.moduleUrl
-  };
-  let $$let$3 = StateViewSliceMaker.Make(Spec$3)(Projection$1);
-  let ApiFragmentsViewSlice_Spec = $$let$3.Spec;
-  let ApiFragmentsViewSlice_Projection = $$let$3.Projection;
-  let ApiFragmentsViewSlice_make = $$let$3.make;
-  let ApiFragmentsViewSlice = {
-    Spec: ApiFragmentsViewSlice_Spec,
-    Projection: ApiFragmentsViewSlice_Projection,
-    make: ApiFragmentsViewSlice_make
-  };
   let Make$9 = Spec => (Projection => {
     let $$let = StateViewSliceMaker.Make(Spec)(Projection);
     return {
@@ -2570,7 +2531,7 @@ function Make($star) {
   };
   let EventCollectorChannel = LocalEventCollectorChannel$ReventlessLocal.Make(Bus);
   let QE = LocalQueryEngine$ReventlessLocal.Make(Bus);
-  let $$let$4 = AggregateMaker.Make({
+  let $$let$2 = AggregateMaker.Make({
     Id: Id$Reventless.$$String,
     name: PluginSpec$ReventlessCore.name,
     eventSchema: PluginSpec$ReventlessCore.eventSchema,
@@ -2589,11 +2550,11 @@ function Make($star) {
     Id: Id$Reventless.$$String,
     commandSchema: PluginSpec$ReventlessCore.commandSchema
   }));
-  let LocalPluginAggregate_Spec = $$let$4.Spec;
-  let LocalPluginAggregate_make = $$let$4.make;
-  let LocalPluginAggregate_outputs = $$let$4.outputs;
-  let LocalPluginAggregate_operations = $$let$4.operations;
-  let LocalPluginAggregate_finish = $$let$4.finish;
+  let LocalPluginAggregate_Spec = $$let$2.Spec;
+  let LocalPluginAggregate_make = $$let$2.make;
+  let LocalPluginAggregate_outputs = $$let$2.outputs;
+  let LocalPluginAggregate_operations = $$let$2.operations;
+  let LocalPluginAggregate_finish = $$let$2.finish;
   let LocalPluginAggregate = {
     Spec: LocalPluginAggregate_Spec,
     make: LocalPluginAggregate_make,
@@ -2615,8 +2576,53 @@ function Make($star) {
     authorization: PluginsReadModelSpec$ReventlessCore.authorization,
     visibility: PluginsReadModelSpec$ReventlessCore.visibility
   })(PluginsReadModelMappings);
+  let $$let$3 = AggregateMaker.Make({
+    Id: Id$Reventless.$$String,
+    name: ApiFragmentRegistrySpec$ReventlessCore.name,
+    eventSchema: ApiFragmentRegistrySpec$ReventlessCore.eventSchema,
+    errorSchema: ApiFragmentRegistrySpec$ReventlessCore.errorSchema,
+    commandSchema: ApiFragmentRegistrySpec$ReventlessCore.commandSchema,
+    moduleUrl: ApiFragmentRegistrySpec$ReventlessCore.moduleUrl,
+    commandAuthorization: ApiFragmentRegistrySpec$ReventlessCore.commandAuthorization
+  })({
+    initialState: ApiFragmentRegistryBehavior$ReventlessCore.initialState,
+    evolve: ApiFragmentRegistryBehavior$ReventlessCore.evolve,
+    decide: ApiFragmentRegistryBehavior$ReventlessCore.decide,
+    snapshot: undefined,
+    moduleUrl: ApiFragmentRegistryBehavior$ReventlessCore.moduleUrl
+  })(NoEventMappings$ReventlessInfra.Make({
+    name: ApiFragmentRegistrySpec$ReventlessCore.name,
+    Id: Id$Reventless.$$String,
+    commandSchema: ApiFragmentRegistrySpec$ReventlessCore.commandSchema
+  }));
+  let LocalApiFragmentRegistryAggregate_Spec = $$let$3.Spec;
+  let LocalApiFragmentRegistryAggregate_make = $$let$3.make;
+  let LocalApiFragmentRegistryAggregate_outputs = $$let$3.outputs;
+  let LocalApiFragmentRegistryAggregate_operations = $$let$3.operations;
+  let LocalApiFragmentRegistryAggregate_finish = $$let$3.finish;
+  let LocalApiFragmentRegistryAggregate = {
+    Spec: LocalApiFragmentRegistryAggregate_Spec,
+    make: LocalApiFragmentRegistryAggregate_make,
+    outputs: LocalApiFragmentRegistryAggregate_outputs,
+    operations: LocalApiFragmentRegistryAggregate_operations,
+    finish: LocalApiFragmentRegistryAggregate_finish
+  };
+  let ApiFragmentsReadModelMappings = {
+    moduleUrl: ApiFragmentsProjection$ReventlessCore.moduleUrl,
+    mappings: ApiFragmentsProjection$ReventlessCore.mappings
+  };
+  let ApiFragmentsReadModel = ReadModelMaker.MakeNoResolver({
+    Id: Id$Reventless.$$String,
+    name: ApiFragmentsReadModelSpec$ReventlessCore.name,
+    moduleUrl: ApiFragmentsReadModelSpec$ReventlessCore.moduleUrl,
+    stateSchema: ApiFragmentsReadModelSpec$ReventlessCore.stateSchema,
+    config: ApiFragmentsReadModelSpec$ReventlessCore.config,
+    subIdConfig: undefined,
+    authorization: ApiFragmentsReadModelSpec$ReventlessCore.authorization,
+    visibility: ApiFragmentsReadModelSpec$ReventlessCore.visibility
+  })(ApiFragmentsReadModelMappings);
+  let $$let$4 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
   let $$let$5 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
-  let $$let$6 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
   let Admin = Platform_Admin$ReventlessCore.Make({
     make: LocalRuntimeEnvironment$ReventlessLocal.make,
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
@@ -2632,9 +2638,9 @@ function Make($star) {
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(EventCollectorChannel))(LocalDcbEventLogStorage$ReventlessLocal.Make(Bus))(LocalEventTopicPublisher$ReventlessLocal.Make(Bus))({
-    make: $$let$5.make
+    make: $$let$4.make
   })({
-    make: $$let$6.make
+    make: $$let$5.make
   })({
     silent: false,
     splitApi: true,
@@ -2695,23 +2701,25 @@ function Make($star) {
     };
     return Bus.dispatchCommand(adminDcbCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
   };
-  let dispatchApiFragmentCommand = (pluginName, command) => {
-    let cmdJson_meta = Message$ReventlessCore.generateMeta(ApiFragmentRegistry$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
-    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, ApiFragmentRegistry$ReventlessCore.commandSchema);
+  let apiFragmentRegistryCmdTopicKey = ApiFragmentRegistrySpec$ReventlessCore.name + "AggrCmdTopic";
+  let apiFragmentRegistryEventTopicKey = ApiFragmentRegistrySpec$ReventlessCore.name + "AggrEventTopic";
+  let dispatchApiFragmentCommand = command => {
+    let cmdJson_meta = Message$ReventlessCore.generateMeta(ApiFragmentRegistrySpec$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, ApiFragmentRegistrySpec$ReventlessCore.commandSchema);
     let cmdJson = {
-      id: pluginName,
+      id: "registry",
       meta: cmdJson_meta,
       commandJson: cmdJson_commandJson
     };
-    return Bus.dispatchCommand(adminDcbCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
+    return Bus.dispatchCommand(apiFragmentRegistryCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
   };
   let apiFragmentsQueryResolver = async (_root, _args, _ctx) => {
-    let scanAll = Bus.getQueryDbScan(ApiFragments$ReventlessCore.name);
+    let scanAll = Bus.getQueryDbScan(ApiFragmentsReadModelSpec$ReventlessCore.name);
     let items = scanAll !== undefined ? scanAll() : [];
     return Stdlib_Array.filterMap(items, item => {
       let state;
       try {
-        state = S.parseOrThrow(item, ApiFragments$ReventlessCore.stateSchema);
+        state = S.parseOrThrow(item, ApiFragmentsReadModelSpec$ReventlessCore.stateSchema);
       } catch (exn) {
         return;
       }
@@ -2778,35 +2786,33 @@ function Make($star) {
         return;
       }
       let match = decodeUiFragmentRegistryEventEnvelope(eventJson);
-      if (match !== undefined) {
-        switch (match.TAG) {
-          case "UiFragmentRegistered" :
-            publishUIFragment(match.pluginId, "Registered", S.reverseConvertToJsonOrThrow(match.manifest, Plugin$Reventless.uiFragmentManifestSchema));
-            break;
-          case "UiFragmentUpdated" :
-            publishUIFragment(match.pluginId, "Updated", S.reverseConvertToJsonOrThrow(match.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
-            break;
-          case "UiFragmentDeregistered" :
-            publishUIFragment(match.pluginId, "Deregistered", null);
-            break;
-        }
-      }
-      let match$1 = decodeApiFragmentRegistryEventEnvelope(eventJson);
-      if (match$1 === undefined) {
+      if (match === undefined) {
         return;
       }
-      switch (match$1.TAG) {
+      switch (match.TAG) {
+        case "UiFragmentRegistered" :
+          return publishUIFragment(match.pluginId, "Registered", S.reverseConvertToJsonOrThrow(match.manifest, Plugin$Reventless.uiFragmentManifestSchema));
+        case "UiFragmentUpdated" :
+          return publishUIFragment(match.pluginId, "Updated", S.reverseConvertToJsonOrThrow(match.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
+        case "UiFragmentDeregistered" :
+          return publishUIFragment(match.pluginId, "Deregistered", null);
+      }
+    });
+    Bus.subscribeToEvents(apiFragmentRegistryEventTopicKey, async (_service, _meta, eventJson) => {
+      let match = decodeApiFragmentRegistryEventEnvelope(eventJson);
+      if (match === undefined) {
+        return;
+      }
+      switch (match.TAG) {
         case "ApiFragmentRegistered" :
         case "ApiFragmentUpdated" :
           break;
-        case "ApiFragmentDeregistered" :
-        case "ApiFragmentPushRecorded" :
+        default:
           return;
       }
-      let pluginId = match$1.pluginId;
-      dispatchApiFragmentCommand(pluginId, {
+      dispatchApiFragmentCommand({
         TAG: "RecordApiFragmentPush",
-        pluginId: pluginId,
+        pluginId: match.pluginId,
         ok: true,
         message: "",
         at: new Date().toISOString()
@@ -2871,7 +2877,7 @@ function Make($star) {
           });
         }
         if (apiSchemaFragment !== undefined) {
-          dispatchApiFragmentCommand(pluginName, {
+          dispatchApiFragmentCommand({
             TAG: "RegisterApiFragment",
             pluginId: pluginName,
             fragment: apiSchemaFragment,
@@ -3080,7 +3086,11 @@ function Make($star) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct(version, [], [LocalPluginAggregate], [{
+    let admin = Admin.construct(version, [], [
+      LocalPluginAggregate,
+      LocalApiFragmentRegistryAggregate
+    ], [
+      {
         Spec: PluginsReadModel.Spec,
         sourceNames: PluginsReadModel.sourceNames,
         consumedEventNames: PluginsReadModel.consumedEventNames,
@@ -3088,13 +3098,17 @@ function Make($star) {
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
         finish: PluginsReadModel.finish
-      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [
-      UiFragmentRegistrySlice,
-      ApiFragmentRegistrySlice
-    ], [
-      UiFragmentsViewSlice,
-      ApiFragmentsViewSlice
-    ], [], [], []);
+      },
+      {
+        Spec: ApiFragmentsReadModel.Spec,
+        sourceNames: ApiFragmentsReadModel.sourceNames,
+        consumedEventNames: ApiFragmentsReadModel.consumedEventNames,
+        make: ApiFragmentsReadModel.make,
+        outputs: ApiFragmentsReadModel.outputs,
+        operations: ApiFragmentsReadModel.operations,
+        finish: ApiFragmentsReadModel.finish
+      }
+    ], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -3459,13 +3473,15 @@ function Make($star) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    Admin.construct(version, [], [], [], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [
-      UiFragmentRegistrySlice,
-      ApiFragmentRegistrySlice
-    ], [
-      UiFragmentsViewSlice,
-      ApiFragmentsViewSlice
-    ], [], [], []);
+    Admin.construct(version, [], [LocalApiFragmentRegistryAggregate], [{
+        Spec: ApiFragmentsReadModel.Spec,
+        sourceNames: ApiFragmentsReadModel.sourceNames,
+        consumedEventNames: ApiFragmentsReadModel.consumedEventNames,
+        make: ApiFragmentsReadModel.make,
+        outputs: ApiFragmentsReadModel.outputs,
+        operations: ApiFragmentsReadModel.operations,
+        finish: ApiFragmentsReadModel.finish
+      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     currentDeployTarget.contents = "Platform";
     let adminGraphQL = resolveTargetGraphQL();
     let adminMCP = resolveTargetMCP();
@@ -3562,7 +3578,11 @@ function Make($star) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct("", [], [LocalPluginAggregate], [{
+    let admin = Admin.construct("", [], [
+      LocalPluginAggregate,
+      LocalApiFragmentRegistryAggregate
+    ], [
+      {
         Spec: PluginsReadModel.Spec,
         sourceNames: PluginsReadModel.sourceNames,
         consumedEventNames: PluginsReadModel.consumedEventNames,
@@ -3570,13 +3590,17 @@ function Make($star) {
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
         finish: PluginsReadModel.finish
-      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [
-      UiFragmentRegistrySlice,
-      ApiFragmentRegistrySlice
-    ], [
-      UiFragmentsViewSlice,
-      ApiFragmentsViewSlice
-    ], [], [], []);
+      },
+      {
+        Spec: ApiFragmentsReadModel.Spec,
+        sourceNames: ApiFragmentsReadModel.sourceNames,
+        consumedEventNames: ApiFragmentsReadModel.consumedEventNames,
+        make: ApiFragmentsReadModel.make,
+        outputs: ApiFragmentsReadModel.outputs,
+        operations: ApiFragmentsReadModel.operations,
+        finish: ApiFragmentsReadModel.finish
+      }
+    ], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [UiFragmentRegistrySlice], [UiFragmentsViewSlice], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep

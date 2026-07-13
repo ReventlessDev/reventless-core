@@ -836,11 +836,86 @@ whole-registry stitch read, and stays a slice. So the admin DcbEventLog + DCB-re
 for it; this rework removes only the ApiFragment usage of it. Reassess whether the admin DcbEventLog
 is still worth it once only UiFragment uses it.)
 
+**Aggregate rework — IN PROGRESS (2026-07-13, this session). Core + local DONE + LOCAL-BOOT
+VALIDATED; AWS mechanical DONE (compile-only); AWS SideEffect writer PARTIALLY built (compile-only),
+wiring blocked on unverifiable gaps (below).**
+
+- **Core (built zero-warning):** `AdminApi.apiFragmentRegistryMutationEntries` now derives from the
+  `ApiFragmentRegistrySpec` *aggregate* command schema (`Platform_ApiFragmentRegistry_{Register,
+  Deregister}ApiFragment`, decision A) and folds into the SHARED `AdminApi.mutationEntries` (like the
+  Plugin aggregate) — feeding both the constructed admin fragment and the pushed `baseFragment`;
+  removed the slice-only `baseFragment`-concat + the `~systemCallableComponents=["ApiFragmentRegistry"]`
+  DCB arg (aggregate mutations get IAM via the unchanged `systemCallerFieldNames` → `injectAwsAuthAll`).
+  `Platform_ApiFragmentsApi.encodeApiFragmentEntry` retargeted to `ApiFragmentsReadModelSpec.state`.
+- **Local (built zero-warning + LIVE-BOOT VALIDATED, hybrid in-memory):** slice defs → aggregate
+  (`LocalApiFragmentRegistryAggregate` via `AggregateMaker.Make`) + read model (`ApiFragmentsReadModel`
+  via `ReadModelMaker.MakeNoResolver`) at all three `Admin.construct` sites (moved out of
+  `~stateChangeSlices`/`~stateViewSlices` into `~aggregates`/`~readModels`); `dispatchApiFragmentCommand`
+  targets the aggregate command topic with the **singleton id `"registry"`** (pluginId is payload);
+  the in-process single-writer re-sourced onto the **aggregate event topic** (`ApiFragmentRegistry`),
+  recording ok on `ApiFragmentRegistered`/`Updated` (the local no-op-push analogue — `LocalSideEffectHandler`
+  is a stub, so a local SideEffectHandler is not viable; the subscriber IS the local writer); status
+  resolver scans `ApiFragmentsReadModelSpec`. **Boot proof:** `Platform_ApiFragments` returns Catalog +
+  Ordering `pushStatus:"ok"`; `Platform_ApiFragmentRegistry_RegisterApiFragment`/`_DeregisterApiFragment`
+  exposed on the platform Mutation (byte-aligned, decision A); `Aggregate(ApiFragmentRegistry)` appends
+  `id=registry`.
+- **AWS mechanical (built zero-warning, compile-only):** slice defs → `ApiFragmentRegistryAggregate`
+  (`Aggregate_Builder_Single.Make`) + `ApiFragmentsReadModel` (`ReadModel_Builder_Single_Stream.Make`)
+  at both construct sites; `QueryDbBackend.exempt(ApiFragmentsReadModelSpec.name)`; the two
+  `Platform_ApiFragments_Lambda` status-Lambda mounts + the (now-dead) config-threading lookup re-keyed
+  `stateViewSlicesOutputs["ApiFragments"]` → `readModelsOutputs["ApiFragments"]`; deploy caller
+  (`registerFragmentViaApi`) + `ApiFragmentDeregistration` provider use the aggregate mutation names +
+  singleton `id="registry"`.
+- **AWS SideEffect writer — SCAFFOLDED (compile-only, additive/unwired):**
+  - `ApiSchemaPush.res` (`reventless-aws/src/adapter/Api/`) — `SideEffect.T`, `Source =
+    ApiFragmentRegistrySpec`; `execute` on `ApiSchemaComputed({snapshot})` dyn-imports and calls
+    `ApiSchemaPush_Runtime.mjs`.
+  - `ApiSchemaPush_Runtime.mjs` (`.../Runtime/`) — runtime-pure `pushApiSchema(snapshot)`: folds
+    fragments straight from the consistent snapshot (NO scan), `planAwsPushes` per target, shrink guard,
+    `updateAppSyncSchema`, then `RecordApiFragmentPush` per plugin onto the aggregate command topic
+    (FIFO, id `"registry"`); reads config from env.
+  - Env-injection plumbing: `SideEffectHandler.T.make` gains `~extraEnvVars`; core builder +
+    `LocalSideEffectHandler` ignore it; AWS `SideEffectHandler_Single` + `SideEffectHandlerRuntime_Builder_Single`
+    add a `registerExtraEnv` side-registry merged onto the shared Lambda env in `finish()` (backward-compatible
+    for Tasks).
+  - **WIRED (compile-only, this session).** The admin `SideEffectHandler_Single`
+    (`AdminApiSchemaPushHandler`) is instantiated in `deployPlatform` after `Admin.construct`, subscribed
+    to the ApiFragmentRegistry aggregate's event topic (its DynamoDB stream — single-shard for a singleton
+    → naturally serialized, no self-race), with `~targets=[ApiFragmentRegistry]` (grants SQS send to the
+    aggregate command topic for the `RecordApiFragmentPush` write-back) and `~extraEnvVars` = domain/platform
+    API ids + splitApi + cloner + the aggregate command-topic URL. The four gaps found this session are
+    closed: (1) queryEngine → `QueryEngine.DynamoDb.make(Dict.make())` (ApiSchemaPush ignores it);
+    (2) `finish()` → an explicit `SideEffectHandlerRuntime_Builder_Single.finish()` registered on
+    `apiSchemaPushCmdTopics` immediately after `make()` (same-Output apply FIFO ⇒ runs after the handler's
+    deferred `forEventCollector`); (3) AppSync IAM → a `RolePolicy` (`StartSchemaCreation`/
+    `GetSchemaCreationStatus`/`GetIntrospectionSchema`) attached to the shared side-effect-handler Lambda
+    role in `finish()`, gated on `extraEnvVarsAll` being non-empty so Task-only deploys keep the narrow
+    perimeter; (4) cmd-topic URL from `admin.aggregatesOutputs["ApiFragmentRegistry"].commandTopic`.
+    `ApiSchemaPush_Runtime.mjs` also gained a bounded retry on the AppSync API-lock (`Schema is currently
+    being altered`) as the plan-specified cross-writer backstop.
+  - **The legacy mjs `mkReactiveApiSchemaPush` is now INERT and LEFT IN PLACE** (verified: the admin EC
+    subscribes to the plugin-EP SNS topic + the admin-DcbEventLog stream, NOT the ApiFragmentRegistry
+    aggregate's stream — which isn't EP-referenced — so `detectApiFragmentTriggers` never sees these events;
+    no double-push). Deleting it is surgery on the deploy-critical connect callback, so it's deferred to a
+    deploy-validated Phase-4 cleanup rather than risked blind. The Platform_Admin admin-EC-2nd-stream-reader
+    augmentation + the 2e `registerConfig` fields are likewise now dead but benign; left for the same pass.
+
 **Remaining work:**
-- **API-registry aggregate rework** (above) — supersedes the slice-based ApiFragmentRegistry; land + deploy-validate before Phase 4.
-- **Reactive writer = behavior-computed schema + bespoke SideEffect push** (CHOSEN 2026-07-13, see
-  § Reactive writer design) — the reactive-push mechanism for the aggregate rework; build per its
-  build order.
+- **Deploy-validate the whole AWS path on an alpha push** — the SideEffect writer, IAM, env injection,
+  `finish()` sequencing, stream subscription, and the deploy caller/waiter are all compile-only. Watch:
+  the first `RegisterApiFragment` → aggregate `ApiSchemaComputed` → the ApiSchemaPush SideEffect Lambda
+  pushes per-target + records → the waiter sees `pushStatus:ok`; and no concurrent-push `Schema is
+  currently being altered` under a 2-plugin deploy (bounded retry as backstop).
+- **Cleanup (Phase-4, deploy-validated):** DELETE the inert mjs `mkReactiveApiSchemaPush` +
+  `detectApiFragmentTriggers` + the 2e `registerConfig` threading + the Platform_Admin 2nd-stream-reader
+  augmentation.
+- **GWT tests — DONE.** `ApiFragmentRegistryBehavior_GWT` (11 cases: two-event `ApiSchemaComputed` emit
+  incl. the multi-plugin whole-registry snapshot, idempotent re-register/deregister/redelivery, retarget,
+  and RecordApiFragmentPush emitting NO snapshot) + `ApiFragmentsProjection_GWT` (7 cases incl.
+  `ApiSchemaComputed` is ignored, push-status ok/error, retarget, deregister-removes). 18/18 green; the
+  superseded slice GWTs (`ApiFragmentRegistry_GWT`/`ApiFragments_GWT`) were removed. The old slice `.res`
+  files themselves (now fully unreferenced, still compiling) are deleted in the same deploy-validated
+  cleanup as the inert mjs.
 - Phase 4 — cutover + cleanup (retire `deploy-schema:*` keyspace, lease, hash rows, legacy
   `mkUpdateApiSchema`; decide whether `makePlatform`'s direct-push path is retired or kept; dedup
   the `injectAwsAuthAll`/`stampSharedIamTypes` copies if any linger).

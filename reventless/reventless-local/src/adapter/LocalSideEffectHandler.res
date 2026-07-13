@@ -16,6 +16,7 @@ let make = (
   ~resourceNaming as _,
   ~memorySize as _=?,
   ~timeout as _=?,
+  ~extraEnvVars as _=?,
   ~opts=?,
 ): ReventlessCore.SideEffectHandler.component => {
   let noopEnqueueEvent: ReventlessInfra.EventCollector.enqueueEvent = async (_, _, _) => ()

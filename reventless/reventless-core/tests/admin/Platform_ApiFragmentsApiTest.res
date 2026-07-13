@@ -5,7 +5,7 @@
 
 open JestGlobals
 
-let state: ApiFragments.state = {
+let state: ApiFragmentsReadModelSpec.state = {
   pluginId: "Catalog",
   encoded: `{"types":[],"mutations":[],"queries":[],"subscriptions":[],"subscriptionSources":[]}`,
   protocol: "graphql",
