@@ -36,8 +36,7 @@ describe("Products StateViewSliceStream", () => {
     name: "Laptop",
     description: "x",
     price: 999.99,
-    categoryId: "cat1",
-    sku: undefined
+    categoryId: "cat1"
   }));
   test("ProductNameChanged updates the name", undefined, () => thenStateWithId(whenEvent(givenEvents([{
       TAG: "ProductAdded",
@@ -55,8 +54,7 @@ describe("Products StateViewSliceStream", () => {
     name: "Gaming Laptop",
     description: "x",
     price: 999.99,
-    categoryId: "cat1",
-    sku: undefined
+    categoryId: "cat1"
   }));
   test("ProductDescriptionChanged updates the description", undefined, () => thenStateWithId(whenEvent(givenEvents([{
       TAG: "ProductAdded",
@@ -74,8 +72,7 @@ describe("Products StateViewSliceStream", () => {
     name: "Laptop",
     description: "high-end",
     price: 999.99,
-    categoryId: "cat1",
-    sku: undefined
+    categoryId: "cat1"
   }));
   test("ProductPriceChanged updates the price", undefined, () => thenStateWithId(whenEvent(givenEvents([{
       TAG: "ProductAdded",
@@ -93,8 +90,7 @@ describe("Products StateViewSliceStream", () => {
     name: "Laptop",
     description: "x",
     price: 899.99,
-    categoryId: "cat1",
-    sku: undefined
+    categoryId: "cat1"
   }));
 });
 

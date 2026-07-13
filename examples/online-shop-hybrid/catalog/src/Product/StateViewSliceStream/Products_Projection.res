@@ -3,7 +3,7 @@
 let project = event =>
   switch event {
   | ProductAdded({productId, name, description, price, categoryId}) => [
-      Set(productId, {productId, name, description, price, categoryId, sku: None}),
+      Set(productId, {productId, name, description, price, categoryId}),
     ]
   | ProductNameChanged({productId, name}) => [Update(productId, state => {...state, name})]
   | ProductDescriptionChanged({productId, description}) => [
