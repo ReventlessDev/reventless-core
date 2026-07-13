@@ -134,7 +134,13 @@ let extractLeadingName = (str: string): string => {
   } else {
     trimmed
   }
-  // Split on "(" first to remove arg list, then on " " and "{" for the name
+  // Split on "(" first to remove arg list, then on " ", "{", and ":" for the name.
+  // The ":" split is load-bearing for ARG-LESS fields: `Foo: [Bar!]!` has no "(" to
+  // cleave the type off, and no space before the colon, so without it the name comes
+  // back as `Foo:` (trailing colon) and fails exact-match lookups like iamFieldNames
+  // — which is what dropped @aws_iam from the arg-less Platform_ApiFragments query and
+  // 401'd the deploy waiter. Fields WITH args already lost their type via split("("),
+  // so the ":" split is a harmless no-op for them.
   afterType
   ->String.split("(")
   ->Array.get(0)
@@ -145,6 +151,10 @@ let extractLeadingName = (str: string): string => {
   ->Option.getOr("")
   ->String.trim
   ->String.split("{")
+  ->Array.get(0)
+  ->Option.getOr("")
+  ->String.trim
+  ->String.split(":")
   ->Array.get(0)
   ->Option.getOr("")
   ->String.trim

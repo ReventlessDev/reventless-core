@@ -670,6 +670,34 @@ but the admin-DCB-on-AWS GraphQL surface (never deploy-validated before) failed 
   only — **re-validation is the next alpha push** (should clear all 9 errors and let the first real
   `RegisterApiFragment` → `ApiFragment*` event → 2e reactive push fire).
 
+**Deploy validation #3 (2026-07-13) — Deploy Platform GREEN (all 9 of #2 cleared); failure
+moved forward to the plugin waiter, root-caused to a one-line core bug, FIXED.** With #2's fixes,
+**Deploy Platform succeeded** — the admin DCB slices deployed cleanly, `Platform_RegisterApiFragment`
++ the `Platform_ApiFragments` resolver created, no orphan resolvers. The plugin deploys (catalog +
+ordering) then failed at the **Phase-3 waiter**: each plugin's SigV4 `RegisterApiFragment` mutation
+succeeded (`CommandAccepted`), but the waiter's SigV4 poll of `Platform_ApiFragments` returned
+`Unauthorized: Not Authorized to access Platform_ApiFragments on type Query` on every attempt →
+~3-min timeout → deploy fail.
+
+**Root cause (one line, in core `GraphQL_Stitcher.extractLeadingName`):** the IAM caller could invoke
+the register *mutation* but not the status *query*, because the query field never received the
+`@aws_iam` dual-auth directive. `injectAwsAuthAll` decides IAM-eligibility via
+`isIam(field) = iamFieldNames->includes(extractLeadingName(field))`. `extractLeadingName` split on
+`(`, ` `, and `{` but **not `:`** — so a field WITH args (`Platform_RegisterApiFragment(…): …`)
+extracted cleanly (the `(` cleaves the name), while an **arg-less** field
+(`Platform_ApiFragments: […]`) came back as `Platform_ApiFragments:` (trailing colon) and failed the
+exact-match against `systemCallerFieldNames`. So the arg-less status query stayed Cognito-only and
+401'd the SigV4 waiter — in EVERY push path (bootstrap + the 2e reactive push both call
+`injectAwsAuthAll`). The existing tests only covered an IAM field *with args*, so the bug shipped.
+**Fix:** add a `->String.split(":")` step to `extractLeadingName` (a no-op for arg-full fields, which
+already lost their type at `split("(")`; and for type defs, which lose it at `split("{")`). Regression
+test added (`AppSync_SdlDecorateTest`): an arg-less query named in `iamFieldNames` gets `@aws_iam`,
+an arg-full IAM mutation still does, and a non-IAM query stays Cognito-only. Validated: core 528 /
+aws 216(+1) green, zero-warning; `extractLeadingName` unit-checked on query/mutation/type/input forms.
+Compile-validated for the SigV4 auth path — **re-validation is the next alpha push** (should let the
+waiter authorize, confirm ACTIVE, and complete the plugin deploys — the first true end-to-end run of
+register → 2e reactive push → waiter).
+
 **Remaining work:**
 - Phase 4 — cutover + cleanup (retire `deploy-schema:*` keyspace, lease, hash rows, legacy
   `mkUpdateApiSchema`; decide whether `makePlatform`'s direct-push path is retired or kept; dedup

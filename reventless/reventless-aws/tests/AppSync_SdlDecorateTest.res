@@ -94,6 +94,38 @@ describe("AppSync_Adapter.stitchWithAwsDirectives", () => {
   })
 })
 
+describe("AppSync_SdlDecorate.injectAwsAuthAll", () => {
+  // Regression: an ARG-LESS field named in iamFieldNames must still get @aws_iam.
+  // extractLeadingName used to return `Platform_ApiFragments:` (trailing colon) for
+  // arg-less fields, so isIam missed it and the field stayed Cognito-only — which
+  // 401'd the deploy waiter's SigV4 poll of Platform_ApiFragments on real AWS.
+  testSync("dual-auths an arg-less query field named in iamFieldNames", () => {
+    let base = ReventlessCore.GraphQL_Stitcher.encode({
+      types: [],
+      mutations: [`  Platform_RegisterApiFragment(input: In): CommandResult`],
+      queries: [`  Platform_ApiFragments: [Entry!]!`, `  Other_Query: Int`],
+      subscriptions: [],
+      subscriptionSources: [],
+    })
+    let decorated = AppSync_SdlDecorate.injectAwsAuthAll(
+      base,
+      ~group="Admin",
+      ~iamFieldNames=["Platform_RegisterApiFragment", "Platform_ApiFragments"],
+    )
+    let parts = ReventlessCore.GraphQL_Stitcher.decode(decorated)
+    let queryField = name =>
+      parts.queries->Array.find(q => q->String.includes(name))->Option.getOrThrow
+    // The arg-less IAM query gets dual-auth.
+    expect(queryField("Platform_ApiFragments"))->toContain("@aws_iam")
+    // The arg-full IAM mutation still does too.
+    expect(parts.mutations->Array.getUnsafe(0))->toContain("@aws_iam")
+    // A query NOT in iamFieldNames stays Cognito-only.
+    let other = queryField("Other_Query")
+    expect(other)->toContain(`@aws_auth(cognito_groups: ["Admin"])`)
+    expect(other->String.includes("@aws_iam"))->toBe(false)
+  })
+})
+
 describe("AppSync_SdlDecorate.planAwsPushes", () => {
   // Neutral admin base: a system-callable mutation + a shared traversal type.
   let rawAdminBase = ReventlessCore.GraphQL_Stitcher.encode({

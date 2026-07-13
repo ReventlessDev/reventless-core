@@ -89,6 +89,32 @@ globalThis.describe("AppSync_Adapter.stitchWithAwsDirectives", () => {
   });
 });
 
+globalThis.describe("AppSync_SdlDecorate.injectAwsAuthAll", () => {
+  globalThis.test("dual-auths an arg-less query field named in iamFieldNames", () => {
+    let base = GraphQL_Stitcher$ReventlessCore.encode({
+      types: [],
+      mutations: [`  Platform_RegisterApiFragment(input: In): CommandResult`],
+      queries: [
+        `  Platform_ApiFragments: [Entry!]!`,
+        `  Other_Query: Int`
+      ],
+      subscriptions: [],
+      subscriptionSources: []
+    });
+    let decorated = AppSync_SdlDecorate$ReventlessAws.injectAwsAuthAll(base, "Admin", [
+      "Platform_RegisterApiFragment",
+      "Platform_ApiFragments"
+    ]);
+    let parts = GraphQL_Stitcher$ReventlessCore.decode(decorated);
+    let queryField = name => Stdlib_Option.getOrThrow(parts.queries.find(q => q.includes(name)), undefined);
+    globalThis.expect(queryField("Platform_ApiFragments")).toContain("@aws_iam");
+    globalThis.expect(parts.mutations[0]).toContain("@aws_iam");
+    let other = queryField("Other_Query");
+    globalThis.expect(other).toContain(`@aws_auth(cognito_groups: ["Admin"])`);
+    globalThis.expect(other.includes("@aws_iam")).toBe(false);
+  });
+});
+
 globalThis.describe("AppSync_SdlDecorate.planAwsPushes", () => {
   let rawAdminBase = GraphQL_Stitcher$ReventlessCore.encode({
     types: [`type CommandAccepted {\n  id: ID!\n}`],

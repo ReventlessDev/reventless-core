@@ -121,7 +121,7 @@ function extractLeadingName(str) {
   let afterType = trimmed.startsWith("type ") || trimmed.startsWith("enum ") ? trimmed.slice(5, trimmed.length).trim() : (
       trimmed.startsWith("input ") ? trimmed.slice(6, trimmed.length).trim() : trimmed
     );
-  return Stdlib_Option.getOr(Stdlib_Option.getOr(Stdlib_Option.getOr(afterType.split("(")[0], "").trim().split(" ")[0], "").trim().split("{")[0], "").trim();
+  return Stdlib_Option.getOr(Stdlib_Option.getOr(Stdlib_Option.getOr(Stdlib_Option.getOr(afterType.split("(")[0], "").trim().split(" ")[0], "").trim().split("{")[0], "").trim().split(":")[0], "").trim();
 }
 
 let relayBaseTypes = [
