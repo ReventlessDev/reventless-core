@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.161 (2026-07-13)
+
+### Features
+
+* **admin:** ApiFragmentRegistry singleton aggregate + ApiFragments read model (foundation) ([3203512](https://github.com/ReventlessDev/reventless-core/commit/3203512f8b312e7ce6361ffb7a89e6659364dcb8)), closes [#4](https://github.com/ReventlessDev/reventless-core/issues/4)
+* **admin:** ApiFragmentRegistry slice→singleton-aggregate + reactive schema-push SideEffect ([cf70903](https://github.com/ReventlessDev/reventless-core/commit/cf709033f0d822248ebbcfe3fe6b4019b3c1e8a0)), closes [#4](https://github.com/ReventlessDev/reventless-core/issues/4)
+
+
 # 3.0.0-alpha.160 (2026-07-13)
 
 ### Bug Fixes

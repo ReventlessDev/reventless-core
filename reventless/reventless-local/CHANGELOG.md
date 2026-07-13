@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.147 (2026-07-13)
+
+### Features
+
+* **admin:** ApiFragmentRegistry slice→singleton-aggregate + reactive schema-push SideEffect ([cf70903](https://github.com/ReventlessDev/reventless-core/commit/cf709033f0d822248ebbcfe3fe6b4019b3c1e8a0)), closes [#4](https://github.com/ReventlessDev/reventless-core/issues/4)
+
+
 # 3.0.0-alpha.146 (2026-07-13)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local
