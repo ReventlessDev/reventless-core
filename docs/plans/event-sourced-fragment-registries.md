@@ -942,6 +942,23 @@ inclusive). The `<= 50` gate matches the framework's existing `assertSubscriptio
 plugins with legitimate 50-char subscriptions are NOT regressed. Validated: core/aws/local build
 zero-warning; local live boot clean. Re-validation is the next alpha push.
 
+**Deploy validation #7 (2026-07-13) — Deploy Platform GREEN; failure moved forward to the
+plugin waiter; root-caused to a one-line IAM gap, FIXED (compile/test-validated, re-deploy
+pending).** With #6's fix **Deploy Platform succeeded** (valid schema push, admin-DCB surface + the
+`AllSideEffectHandlers` Lambda + `ApiFragmentRegistry` aggregate all created). The plugin deploys
+(catalog + ordering) then failed at the **Phase-3 waiter**: the SigV4 poll of `Platform_ApiFragments`
+returned `Unauthorized: Not Authorized to access pluginId on type Platform_ApiFragmentEntry` (and each
+other field). The IAM caller could reach the *query field* (it carries `@aws_iam` via
+`systemCallerFieldNames`) but not the *fields of the returned object type* — AppSync needs the
+**type-level** `@aws_iam` on `Platform_ApiFragmentEntry`, exactly like the `CommandResult` members the
+mutation callers traverse. **Root cause:** `AppSync_SdlDecorate.sharedIamTypeNames` (stamped with
+`@aws_cognito_user_pools @aws_iam` on the assembled SDL by both the bootstrap push and the reactive
+push) listed `PageInfo` + the `CommandResult` members but NOT `Platform_ApiFragmentEntry`. **Fix:** add
+`Platform_ApiFragmentEntry` to `sharedIamTypeNames` (one line). Regression tests added
+(`AppSync_SdlDecorateTest`: the entry type + the CommandResult members get dual-auth). Validated: aws
+builds zero-warning, SdlDecorate suite 10/10. Compile/test-validated only (the `@aws_iam` path can't be
+exercised locally) — re-validation is the next alpha push.
+
 **Remaining work:**
 - **Deploy-validate the whole AWS path on an alpha push** — the SideEffect writer, IAM, env injection,
   `finish()` sequencing, stream subscription, and the deploy caller/waiter are all compile-only. Watch:

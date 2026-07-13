@@ -166,6 +166,17 @@ globalThis.describe("AppSync_SdlDecorate.planAwsPushes", () => {
   });
 });
 
+globalThis.describe("AppSync_SdlDecorate.stampSharedIamTypes", () => {
+  globalThis.test("stamps Platform_ApiFragmentEntry with dual-auth", () => {
+    let sdl = AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes("type Platform_ApiFragmentEntry {\n  pluginId: String!\n  pushStatus: String!\n}");
+    globalThis.expect(sdl).toContain("type Platform_ApiFragmentEntry @aws_cognito_user_pools @aws_iam {");
+  });
+  globalThis.test("still stamps the CommandResult members", () => {
+    let sdl = AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes("type CommandAccepted {\n  id: ID!\n}");
+    globalThis.expect(sdl).toContain("type CommandAccepted @aws_cognito_user_pools @aws_iam {");
+  });
+});
+
 export {
   sources,
   stitchedSdl,

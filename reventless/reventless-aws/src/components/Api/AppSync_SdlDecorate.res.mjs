@@ -80,7 +80,8 @@ let sharedIamTypeNames = [
   "PageInfo",
   "CommandAccepted",
   "CommandRejected",
-  "CommandPending"
+  "CommandPending",
+  "Platform_ApiFragmentEntry"
 ];
 
 function stampSharedIamTypes(sdl) {

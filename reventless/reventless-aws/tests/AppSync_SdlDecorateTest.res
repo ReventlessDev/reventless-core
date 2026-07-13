@@ -187,3 +187,21 @@ describe("AppSync_SdlDecorate.planAwsPushes", () => {
     expect(plan.sdl)->toContain("Catalog_AddProduct")
   })
 })
+
+describe("AppSync_SdlDecorate.stampSharedIamTypes", () => {
+  // Regression: the deploy waiter polls the IAM-callable Platform_ApiFragments query via
+  // SigV4; its return type Platform_ApiFragmentEntry must carry the type-level @aws_iam or
+  // the SigV4 caller reaches the query field but gets "Not Authorized to access <field> on
+  // type Platform_ApiFragmentEntry" (deploy validation #7).
+  testSync("stamps Platform_ApiFragmentEntry with dual-auth", () => {
+    let sdl = AppSync_SdlDecorate.stampSharedIamTypes(
+      "type Platform_ApiFragmentEntry {\n  pluginId: String!\n  pushStatus: String!\n}",
+    )
+    expect(sdl)->toContain("type Platform_ApiFragmentEntry @aws_cognito_user_pools @aws_iam {")
+  })
+
+  testSync("still stamps the CommandResult members", () => {
+    let sdl = AppSync_SdlDecorate.stampSharedIamTypes("type CommandAccepted {\n  id: ID!\n}")
+    expect(sdl)->toContain("type CommandAccepted @aws_cognito_user_pools @aws_iam {")
+  })
+})

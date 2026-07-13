@@ -119,11 +119,20 @@ let injectAwsAuthAll = (
 }
 
 // Shared traversal types every callable surface reaches — `PageInfo` (relay
-// connections, injected by the stitcher) and the `CommandResult` members
-// (mutation returns, deduped across fragments by the stitcher). Stamped once on
-// the ASSEMBLED SDL: per-fragment stamping would race the stitcher's first-wins
-// dedupe against unstamped sibling copies.
-let sharedIamTypeNames = ["PageInfo", "CommandAccepted", "CommandRejected", "CommandPending"]
+// connections, injected by the stitcher), the `CommandResult` members (mutation
+// returns, deduped across fragments by the stitcher), and `Platform_ApiFragmentEntry`
+// (the return type of the IAM-callable `Platform_ApiFragments` status query the deploy
+// waiter polls via SigV4 — without the type-level `@aws_iam` the SigV4 caller reaches the
+// query field but is "Not Authorized to access <field> on type Platform_ApiFragmentEntry").
+// Stamped once on the ASSEMBLED SDL: per-fragment stamping would race the stitcher's
+// first-wins dedupe against unstamped sibling copies.
+let sharedIamTypeNames = [
+  "PageInfo",
+  "CommandAccepted",
+  "CommandRejected",
+  "CommandPending",
+  "Platform_ApiFragmentEntry",
+]
 
 let stampSharedIamTypes = (sdl: string): string =>
   sharedIamTypeNames->Array.reduce(sdl, (acc, name) =>
