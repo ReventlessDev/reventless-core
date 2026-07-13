@@ -1050,6 +1050,78 @@ on real AWS. The additive probe (`sku`/`barcode`) was reverted in the same catal
 fields don't reduce root Query/Mutation counts, so the shrink guard — 50% root-field threshold — doesn't
 trip); example is clean; live schema, aggregate, and read model are all consistent.
 
+**Phase 4a — inert 2e reactive-push removal — DONE (2026-07-14, this session), compile +
+local-boot validated; deploy-validation deferred to a pushed+green baseline.** Removed the two
+correctness-coupled halves of the inert 2e path (they must go together — see below):
+- `AdminEventCollectorEntryPoint.mjs`: deleted `mkReactiveApiSchemaPush` + `detectApiFragmentTriggers`
+  + `recordPushOutcomes` + the reactive-only helpers (`reactiveTriggerTags`, `isDynamoStreamRecord`,
+  `avString`, `readFragmentField`) + the reactive-only imports (`planAwsPushes`, `systemCallerFieldNames`).
+  `buildHandler` no longer builds/returns `reactiveApiSchemaPush`; the `handler` collapses to the single
+  `runEffect(correlationId, sqsHandler(event, context))` path (the stream-vs-other record split is gone).
+  Kept the shared helpers `mkUpdateApiSchema` still uses (`adminBaseFragment`, `injectAwsSubscribe`,
+  `collectSubscriptionSources`, `scanByTableName`, shrink-guard fns) — the **legacy** connect-driven
+  push is untouched (retired in 4b). `node --check` clean; no dangling refs.
+- `Platform_Admin.res`: removed the admin-EC **2nd-stream-reader** augmentation (the
+  `dcbResult.dcbEventLogOutputs` → `Dict.set(name ++ "DcbEventLog", …)` block); the admin EC now
+  subscribes only to its aggregate event topics. This is **required, not optional**: with the mjs split
+  gone, if the admin EC still received DcbEventLog stream records they'd fall through to the plugin
+  callback (which has no handler for DCB-slice events). Safe because the remaining DcbEventLog slice
+  (UiFragmentRegistry) is consumed by the `AllStateViewSlices` projection, and ApiFragment events now
+  live on the ApiFragmentRegistry **aggregate** event topic (the validated ApiSchemaPush SideEffect
+  subscription at `Platform.res` `apiSchemaPushEventTopics` — left untouched). Frees a DynamoDB-stream
+  reader slot.
+
+Also removed the dead 2e config plumbing (completes 4a): the 4 config fields
+(`platformApiId`/`apiFragmentRegistryTableName`/`adminDcbCmdTopicUrl`/`splitApi`) from
+`PluginRuntime_Builder.adminConfig` + `registerConfig` + the `Platform.res` call site; their three
+trailing positional `Pulumi.Output.all` slots (indices 10–12 — trailing, so 0–9 need no re-indexing) +
+the `getUnsafe` reads + the `HANDLER_CONFIG` dict-sets; the two now-unused admin-EC IAM grants (Scan on
+ApiFragments, SendMessage on admin DCB topic); and the matching `parseHandlerConfig` defaults in the mjs.
+The validated ApiSchemaPush SideEffect has its own IAM/env, so the admin EC no longer needs any of it.
+
+Corrections to the removal map above (line numbers had drifted; worked from actual code): `Platform.res`
+line ~2243 `~dcbEventLogOutputs=admin.dcbEventLogOutputs` is `exportPlatformOutputs` (cross-stack export
+of the still-live admin DcbEventLog — **kept**), NOT the 2nd-stream-reader; the reader augmentation was
+entirely inside `Platform_Admin.res`. `PluginRuntime_Builder.registerConfig` is NOT 2e-only (it threads
+the legacy admin-EC config too), so the function stays — only its 4 2e args were removed.
+
+Validated: core/aws/local build zero-warning; hybrid example live boot (in-memory) clean — both APIs
+listen, admin surface intact (`Platform_{UI,Api}Fragments` queries + `Platform_ApiFragmentRegistry_*`
+mutations present), ApiFragmentRegistry aggregate registers Catalog/Ordering fragments. The mjs / 2nd-reader
+/ config-plumbing removal is AWS-deploy-time+runtime and can't be locally exercised (compile-validated
+only) — re-validation is a targeted local `pulumi up --target <adminEC-urn>` + a catalog-aws
+reactive-push run, on the pushed+green baseline.
+
+**Phase 4b — legacy `deploy-schema:*` retirement — DONE (2026-07-14, this session), compile +
+test + local-boot validated; AWS deploy-validation pends an alpha push.** Decision (user, 2026-07-14):
+after finding that AWS `makePlatform(~plugins=[…])` — the sole `None`-branch deploy-schema pusher — is
+used by **zero examples** (every `platform-aws` uses `deployPlatform` with no plugins; every plugin uses
+`deployPlugin`), so the deploy-schema push path has zero deploy coverage, and that migrating it to
+register+SideEffect would require solving the in-stack deploy⇄connect circularity for an unvalidatable
+path, **retire the push path** rather than migrate: staged `deployPlatform` + `deployPlugin` (register +
+reactive ApiSchemaPush SideEffect) is the sole AWS deploy path. Removed:
+- **Platform.res:** the `preResolversSchemaHook` `None`-branch (deploy-schema write + paginated scan +
+  stitch + shrink guard) → now a fail-fast (`makePlatform`-with-plugins unsupported on AWS; the `Some`
+  staged `registerFragmentViaApi` branch is untouched); the deploy-time connect-scan `updateApiSchema`
+  closure → `None`; the `deploySchema{,Platform,Hash}Prefix` + `readSchemaHash`/`writeSchemaHash` (hash
+  rows) + `deploySchemaShrinkThreshold`; the `pluginSchemaPersistenceTable` DynamoDB table + its export.
+- **AppSync_Adapter.res:** `withSchemaPushLock` (the cross-stack schema-push **lease**) — the
+  single-writer SideEffect makes it obsolete.
+- **AdminEventCollectorEntryPoint.mjs:** `mkUpdateApiSchema` (the runtime connect-driven re-stitcher) +
+  `collectDeploySchemaFragments` + `DEPLOY_SCHEMA_PREFIX` + the five now-dead push helpers
+  (`injectAwsAuthAll`, `updateAppSyncSchema`, `getCurrentSchemaSdl`, `parseShrinkThreshold`,
+  `emitShrinkRejectionMetric`) + their imports; admin Plugin-EP wired `updateApiSchema: undefined`. The
+  core `updateApiSchema` option-hook plumbing stays inert (always `None`/`undefined`) — no core surgery.
+- **PluginRuntime_Builder.res:** `pluginSchemaPersistenceTableName` config field + positional
+  `Output.all` slot + `HANDLER_CONFIG` entry + the `pluginSchemaScan` IAM grant.
+
+Net −1721 LOC. Also fixed a **pre-existing** red test (`MCP_LambdaTest` — stale tool counts 3/4 from the
+aggregate rework that added the two `Platform_ApiFragmentRegistry_*` admin mutations; now 5/6). Validated:
+core/aws build zero-warning; both hybrid `platform-aws`+`catalog-aws` (staged path) build zero-warning;
+**aws suite 222/222 green**; hybrid local boot clean (admin mutation/query surface intact; local uses
+reventless-*local* `makePlatform`, unaffected). AWS-only — real validation is the next alpha push (the
+staged register→SideEffect path is untouched, so no functional change is expected there).
+
 **Remaining work:**
 - **Push the four fixes so CI republishes + redeploys consistently** — the local `pulumi up`s deployed
   local builds of bugs #3 (`de6c7b39b`, committed) and #4 (record msgId, this commit) to real AWS; the
@@ -1082,18 +1154,42 @@ trip); example is clean; live schema, aggregate, and read model are all consiste
   the folder root (`ApiFragmentRegistrySpec/Behavior`, `ApiFragmentsProjection/ReadModelSpec`) are the
   live components and stay. reventless-core rebuilds zero-warning; no downstream ref, so aws/local
   unaffected.
-- **⚠️ SEQUENCING GATE (discovered validation #8): the `deploy-schema:*` / `mkUpdateApiSchema`
-  retirement below MUST wait until the reactive push is deploy-validated with a real fragment change.**
-  Validation #8 proved the reactive push has never actually run on AWS (both plugins took the
-  idempotent no-op branch), so `mkUpdateApiSchema` is still the ONLY proven schema-push path. Removing
-  it now would leave deploys with no working pusher. Do the reactive-push validation (remaining bullet 1)
-  FIRST, then retire.
-- Phase 4 — cutover + cleanup, GATED on the reactive-push validation above: retire `deploy-schema:*`
-  keyspace, lease, hash rows, legacy `mkUpdateApiSchema`; delete the inert 2e mjs (`mkReactiveApiSchemaPush`
-  + `detectApiFragmentTriggers` in `AdminEventCollectorEntryPoint.mjs`) + the 2e `registerConfig` threading
-  (`Platform.res` + `PluginRuntime_Builder.res`) + the `Platform_Admin` 2nd-stream-reader augmentation;
-  decide whether `makePlatform`'s direct-push path is retired or kept; dedup the
-  `injectAwsAuthAll`/`stampSharedIamTypes` copies if any linger.
+- **⚠️ SEQUENCING GATE — CLEARED (validation #12 ran the reactive push end-to-end; 4a+4b done
+  2026-07-14).** The gate below required the reactive push be deploy-validated with a real fragment
+  change before retiring `deploy-schema:*` / `mkUpdateApiSchema`. Validation #12 did exactly that, so
+  the retirement proceeded (Phase 4b above). Original note retained for history: *Validation #8 proved
+  the reactive push had never actually run on AWS (both plugins took the idempotent no-op branch), so
+  `mkUpdateApiSchema` was then the ONLY proven schema-push path.*
+- **Phase 4 cleanup — DONE by 4a+4b above (2026-07-14).** The 2e removal map below is retained for
+  history; line numbers had drifted by execution time (see 4a's "Corrections to the removal map"). Precise
+  removal map for the inert 2e path (as originally written 2026-07-13):
+  - `AdminEventCollectorEntryPoint.mjs`: `detectApiFragmentTriggers` (def ~607) + `mkReactiveApiSchemaPush`
+    (def ~652) + their calls (`reactiveApiSchemaPush = mkReactiveApiSchemaPush(config)` ~857; `triggers =
+    detectApiFragmentTriggers(streamRecords)` + `if (triggers.length) await reactiveApiSchemaPush(triggers)`
+    ~1099-1100) + the whole `isDynamoStreamRecord` **streamRecords branch** (the admin EC's DcbEventLog
+    2nd-reader existed ONLY to feed this inert push; ApiFragment events now live on the aggregate's
+    AggrEventLog stream, read by the ApiSchemaPush SideEffect + the ApiFragments RM's own stream reader).
+  - `Platform.res:2082` `PluginRuntime_Builder.registerConfig(...)` + `PluginRuntime_Builder.res:111`
+    `let registerConfig`.
+  - `Platform.res:2243` `~dcbEventLogOutputs=admin.dcbEventLogOutputs` (the 2nd-stream-reader) + the
+    corresponding `Platform_Admin.res` threading — this frees a DynamoDB-stream reader slot (the
+    "~2 concurrent readers" constraint the 2e linchpin noted).
+  - **DO NOT TOUCH** `Platform.res:1961/2013` `apiSchemaPushEventTopics = allEventTopics(admin.aggregatesOutputs)`
+    / `~allEventTopics=apiSchemaPushEventTopics` — that is the VALIDATED SideEffect's aggregate-event-topic
+    subscription, not 2e wiring. Conflating them breaks the push proven in validation #12.
+  - Execute on a clean pushed+green baseline, then deploy-validate the AdminEventCollector Lambda (targeted
+    local `pulumi up --target <adminEC-urn>` — see [[reference_local_pulumi_preview_diagnosis]]) AND re-run
+    the catalog-aws reactive-push validation to confirm neither path regressed.
+- ~~Phase 4 — cutover + cleanup~~ — **DONE (2026-07-14, Phase 4a + 4b above).** Retired `deploy-schema:*`
+  keyspace, lease (`withSchemaPushLock`), hash rows, legacy `mkUpdateApiSchema`; deleted the inert 2e mjs
+  (`mkReactiveApiSchemaPush` + `detectApiFragmentTriggers`) + the 2e `registerConfig` threading + the
+  `Platform_Admin` 2nd-stream-reader augmentation. `makePlatform` direct-push decision: **retired** (its
+  all-at-once-with-plugins path was unused/untested on AWS). Remaining tail: the last `deploy-schema` /
+  `plugin-info` filter comments in `QueryDbResolvers_AppSync.res` are now moot (the Plugins RM table no
+  longer holds those rows) but the defensive filter is harmless — left as-is; dedup of any residual
+  `injectAwsAuthAll`/`stampSharedIamTypes` copies not needed (single runtime-pure home in
+  `AppSync_SdlDecorate`). Only outstanding item: push the four fixes + this cleanup and let an alpha
+  deploy re-validate the staged path (unchanged) end-to-end.
 
 ## Reactive writer design — behavior-computed schema + bespoke SideEffect push (CHOSEN 2026-07-13)
 

@@ -387,20 +387,13 @@ module Make = (
           ->Array.reduce(Belt.Set.String.empty, (acc, names) => acc->Belt.Set.String.union(names))
 
         let aggregatesOutputs = addEventMappers(allEventTopics, queryEngine)
+        // The admin EventCollector subscribes only to the aggregate event topics
+        // filtered by its extension-point aggregate names. It is NOT a reader of the
+        // admin DcbEventLog stream: ApiFragmentRegistry is now a singleton aggregate
+        // (its reactive push is the ApiSchemaPush SideEffect on the aggregate event
+        // topic), and the remaining DcbEventLog slice (UiFragmentRegistry) is consumed
+        // by the AllStateViewSlices projection, not here.
         let eventTopics = aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames)
-        // 2e: also subscribe the admin EventCollector to the admin DcbEventLog's
-        // event topic (a DynamoDB stream on AWS) so the reactive ApiFragmentRegistry
-        // single writer receives ApiFragment* events. The EventCollector channel
-        // already provisions the stream subscription + read IAM for stream-backed
-        // event-topic resources. Copy the filtered dict so the shared aggregate
-        // outputs stay untouched.
-        let eventTopics = switch dcbResult.dcbEventLogOutputs {
-        | Some(dcbOutputs) =>
-          let augmented = eventTopics->Dict.copy
-          augmented->Dict.set(name ++ "DcbEventLog", dcbOutputs.eventTopic)
-          augmented
-        | None => eventTopics
-        }
 
         module EventCollectorHelper = MakeEventCollectorHelper(
           RuntimeEnvironment,

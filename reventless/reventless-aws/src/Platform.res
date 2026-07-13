@@ -17,14 +17,6 @@ let log = ReventlessCore.Logger.fromEnv()
 // runtime RUNTIME_SCHEMA_SHRINK_THRESHOLD in AdminEventCollectorEntryPoint.mjs).
 // A push whose stitched SDL has fewer than (threshold × live) root fields is
 // refused as a likely stale concurrent-deploy stitch. Default 0.5; override via
-// DEPLOY_SCHEMA_SHRINK_THRESHOLD; values outside (0, 1) fall back to the default.
-@val @scope("process") external processEnv: Dict.t<string> = "env"
-let deploySchemaShrinkThreshold: float =
-  switch processEnv->Dict.get("DEPLOY_SCHEMA_SHRINK_THRESHOLD")->Option.flatMap(Float.fromString) {
-  | Some(n) if n > 0. && n < 1. => n
-  | _ => 0.5
-  }
-
 // API config ref — populated during MakeWithConfig so slice builders
 // can access api/apiRole outside the functor constraint.
 //
@@ -622,34 +614,6 @@ module MakeWithConfig = (
 
   // AWS platform hooks — all AWS-specific callbacks defined as a record.
   // In-memory hooks (mutationResolverHook etc.) are absent (optional = None).
-  let deploySchemaPrefix = "deploy-schema:"
-  let deploySchemaPlatformPrefix = "deploy-schema-platform:"
-  let deploySchemaHashPrefix = "deploy-schema-hash:"
-
-  let readSchemaHash = async (~tableName: string, ~apiId: string): option<string> => {
-    open AwsSdk.DynamoDb.DocumentClient
-    let key = Dict.fromArray([("id", `${deploySchemaHashPrefix}${apiId}`->JSON.Encode.string)])
-    try {
-      let result = await GetCommand.send(GetCommand.make({GetCommand.tableName, key}))
-      result.item
-      ->Option.flatMap(item => item->JSON.Decode.object)
-      ->Option.flatMap(d => d->Dict.get("hash"))
-      ->Option.flatMap(v => v->JSON.Decode.string)
-    } catch {
-    | _ => None
-    }
-  }
-
-  let writeSchemaHash = async (~tableName: string, ~apiId: string, ~hash: string): unit => {
-    open AwsSdk.DynamoDb.DocumentClient
-    let item =
-      Dict.fromArray([
-        ("id", `${deploySchemaHashPrefix}${apiId}`->JSON.Encode.string),
-        ("hash", hash->JSON.Encode.string),
-      ])->JSON.Encode.object
-    let _ = await PutCommand.send(PutCommand.make({PutCommand.tableName, item}))
-  }
-
   // (Deploy-time retire hook removed: supersession is now decided by the
   // name-keyed Plugin aggregate (VersionSuperseded) — no RM scan drives a command.)
 
@@ -931,11 +895,11 @@ module MakeWithConfig = (
       }
     },
 
-    // Accumulate fragments across independent plugin deployments: each plugin
-    // writes its fragment to the Plugin RM table (keyed "deploy-schema:<name>")
-    // at deploy time. The hook then scans for ALL deploy-schema entries and
-    // stitches them together — ensuring the schema is cumulative rather than
-    // overwritten by each plugin deployment.
+    // Staged deploy (deployPlugin against a running platform): register the
+    // plugin's fragment via the Platform API (SigV4); the reactive ApiSchemaPush
+    // SideEffect stitches + pushes cumulatively. The legacy all-at-once
+    // deploy-schema:* write+scan+push path was retired in Phase 4b (makePlatform
+    // with plugins is no longer supported on AWS).
     preResolversSchemaHook: (~name, ~version, pluginFragment) => {
       log.info(
         ~comp="preResolversSchemaHook",
@@ -956,342 +920,14 @@ module MakeWithConfig = (
         }
         registerFragmentViaApi(~name, ~fragment=pluginFragment, ~apiTargetName)
       | None =>
-        // All-at-once (makePlatform): platform + plugins deploy in one stack, so the
-        // reactive writer is dormant — keep the direct deploy-time stitch + push below.
-
-      // Select DynamoDB key prefix and target AppSync API based on the current deploy target.
-      // Domain plugins use "deploy-schema:" and the Domain API (default behaviour).
-      // Platform plugins use a separate "deploy-schema-platform:" namespace and the Core API,
-      // so their cumulative schema is kept independent from the Domain API's schema.
-      let (schemaPrefix, targetApi) = switch capturedDeployTarget {
-      | Domain => (deploySchemaPrefix, domainApi)
-      | Platform =>
-        let api = switch apiConfigRef.contents {
-        | Some({platformApi}) => platformApi
-        | None => domainApi // fallback: Core API not yet constructed
-        }
-        (deploySchemaPlatformPrefix, api)
-      }
-
-      // Read a string output from the platform StackReference, falling back to
-      // the bundled "default" output object if the named export is not present
-      // (matches the layout Pulumi emits when a stack uses a single default
-      // export rather than per-key exports).
-      let readStackRefString = (stackRef, key) => {
-        let direct: Pulumi.Output.t<option<JSON.t>> =
-          stackRef->Pulumi.StackReference.getOutput(key)
-        let defaultOutput: Pulumi.Output.t<option<JSON.t>> =
-          stackRef->Pulumi.StackReference.getOutput("default")
-        (direct, defaultOutput)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((direct, default)) =>
-          switch direct->Option.flatMap(v => v->JSON.Decode.string) {
-          | Some(name) => Some(name)
-          | None =>
-            default
-            ->Option.flatMap(d => d->JSON.Decode.object)
-            ->Option.flatMap(d => d->Dict.get(key))
-            ->Option.flatMap(v => v->JSON.Decode.string)
-          }
+        // makePlatform(~plugins=[…]) all-at-once deploy-schema push retired in Phase 4b.
+        // Staged deployPlatform + deployPlugin (register + reactive SideEffect push) is the
+        // sole supported AWS deploy path. deployPlatform deploys no plugins, so this hook only
+        // fires for makePlatform-with-plugins — no longer supported on AWS.
+        failwith(
+          "makePlatform(~plugins=[…]) is no longer supported on AWS — deploy the platform with " ++
+          "deployPlatform and each plugin with deployPlugin (staged register + reactive push).",
         )
-      }
-
-      // Prefer the dedicated PluginSchemaPersistence table (post-platform-fix);
-      // fall back to the Plugin RM table for backward compatibility with
-      // platforms deployed before the schema-persistence table existed. The
-      // Plugin RM table must not be reused for new schema-fragment writes —
-      // doing so leaks deploy-schema rows through the Platform_Plugins AppSync
-      // Connection resolver.
-      let schemaPersistenceTableNameOutput: Pulumi.Output.t<option<string>> = switch platformStackRef {
-      | Some(stackRef) =>
-        (
-          readStackRefString(stackRef, "pluginSchemaPersistenceTableName"),
-          readStackRefString(stackRef, "pluginRmTableName"),
-        )
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((dedicated, legacy)) =>
-          switch dedicated {
-          | Some(_) as s => s
-          | None => legacy
-          }
-        )
-      | None => Pulumi.Output.make(None)
-      }
-
-      schemaPersistenceTableNameOutput
-      ->Pulumi.Output.flatMap(tableNameOpt => {
-        // Write this plugin's fragment to DynamoDB, then scan all deploy-schema
-        // entries to collect every deployed plugin's fragment.
-        let writeAndScanFragments = () =>
-          switch tableNameOpt {
-          | None =>
-            log.info(
-              ~comp="preResolversSchemaHook",
-              "No pluginSchemaPersistenceTableName / pluginRmTableName — skipping fragment persistence",
-            )
-            Promise.resolve([pluginFragment])
-          | Some(tableName) =>
-            open AwsSdk.DynamoDb.DocumentClient
-            // Write this plugin's fragment so subsequent plugin deployments find it.
-            let deployItem =
-              Dict.fromArray([
-                ("id", `${schemaPrefix}${name}`->JSON.Encode.string),
-                ("fragment", pluginFragment.encoded->JSON.Encode.string),
-              ])->JSON.Encode.object
-            log.info(
-              ~comp="preResolversSchemaHook",
-              `Writing deploy-schema entry for ${name} to ${tableName}`,
-            )
-            // Paginated scan — accumulate every deploy-schema entry across pages.
-            // A single ScanCommand returns at most 1 MB before yielding a
-            // LastEvaluatedKey; loop until the table is exhausted so a platform
-            // with many plugin fragments never stitches a partial schema.
-            let scanAllDeploySchemaItems = async () => {
-              let allItems = []
-              let startKey = ref(None)
-              let more = ref(true)
-              while more.contents {
-                let result = await ScanCommand.send(
-                  ScanCommand.make({
-                    ScanCommand.tableName: tableName,
-                    filterExpression: "begins_with(#id, :prefix)",
-                    expressionAttributeNames: Dict.fromArray([("#id", "id")]),
-                    expressionAttributeValues: Dict.fromArray([
-                      (":prefix", schemaPrefix->JSON.Encode.string),
-                    ]),
-                    exclusiveStartKey: ?startKey.contents,
-                  }),
-                )
-                result.items->Option.getOr([])->Array.forEach(item => allItems->Array.push(item))
-                switch result.lastEvaluatedKey {
-                | Some(_) as k => startKey := k
-                | None => more := false
-                }
-              }
-              allItems
-            }
-
-            PutCommand.send(PutCommand.make({PutCommand.tableName: tableName, item: deployItem}))
-            ->Promise.then(_ => {
-              // Scan for all deploy-schema entries from previously deployed plugins.
-              log.info(
-                ~comp="preResolversSchemaHook",
-                `Scanning ${tableName} for deploy-schema entries`,
-              )
-              scanAllDeploySchemaItems()
-            })
-            ->Promise.then(items => {
-              let fragments = items->Array.filterMap(item => {
-                try {
-                  let obj = item->JSON.stringify->JSON.parseOrThrow
-                  switch obj->JSON.Decode.object->Option.flatMap(d => d->Dict.get("fragment")) {
-                  | Some(fragmentJson) =>
-                    switch fragmentJson->JSON.Decode.string {
-                    | Some(encoded) =>
-                      Some({Reventless.Plugin.encoded, protocol: "graphql"})
-                    | None => None
-                    }
-                  | None => None
-                  }
-                } catch {
-                | _ => None
-                }
-              })
-              log.info(
-                ~comp="preResolversSchemaHook",
-                `Found ${fragments->Array.length->Int.toString} deploy-schema entries`,
-              )
-              Promise.resolve(fragments)
-            })
-            ->Promise.catch(err => {
-              let msg =
-                err
-                ->JsExn.fromException
-                ->Option.flatMap(JsExn.message)
-                ->Option.getOr("unknown")
-              log.info(
-                ~comp="preResolversSchemaHook",
-                `DynamoDB write/scan failed (${msg}) — using current plugin only`,
-              )
-              Promise.resolve([pluginFragment])
-            })
-          }
-
-        targetApi->Pulumi.Output.flatMap(api =>
-          api.id->Pulumi.Output.flatMap(apiId => {
-            // Serialise write-row → scan → stitch → push under the shared
-            // schema-push lease so a concurrent peer's stale scan can't clobber
-            // this stack's fields (see AppSync_Adapter.withSchemaPushLock).
-            let runSchemaPush = () => {
-            writeAndScanFragments()
-            ->Promise.then(async allPluginFragments => {
-              // Base fragment selection:
-              // - Platform target: always include admin base (the Core API owns admin ops).
-              // - Domain target, split mode: empty base (admin lives on Core API).
-              // - Domain target, unified mode: include admin base (single API has everything).
-              // Use capturedDeployTarget (set synchronously above) — currentDeployTarget has
-              // been reset to Domain by deployPlugin before this async callback runs.
-              let baseFragment = switch capturedDeployTarget {
-              | Platform =>
-                AppSync_Adapter.injectAwsAuthAll(
-                  ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
-                  ~group="Admin",
-                  ~iamFieldNames=ReventlessCore.AdminApi.systemCallerFieldNames,
-                )
-              | Domain =>
-                if Config.splitApi {
-                  emptyBaseFragment
-                } else {
-                  AppSync_Adapter.injectAwsAuthAll(
-                    ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
-                    ~group="Admin",
-                  )
-                }
-              }
-              let sdl = AppSync_Adapter.stitchWithAwsDirectives(
-                ~baseFragment,
-                ~pluginFragments=allPluginFragments,
-              )
-              let currentHash = AppSync_Adapter.sha256Hex(sdl)
-              let storedHash = switch tableNameOpt {
-              | Some(tn) => await readSchemaHash(~tableName=tn, ~apiId)
-              | None => None
-              }
-              let client = AppSync_Adapter.getClient()
-
-              // Introspect the live schema once — reused for the hash-match
-              // drift/repair check and the catastrophic-shrink guard on the push.
-              let liveSdl = await AppSync_Adapter.getIntrospectionSdl(client, apiId)
-
-              // The stored hash records what the DEPLOY last pushed. A runtime
-              // re-stitch (mkUpdateApiSchema) can clobber the live schema
-              // out-of-band WITHOUT updating this hash, so a matching hash does
-              // not guarantee the live schema is intact. Before trusting the
-              // hash to skip the push, introspect the live schema and confirm it
-              // still carries at least as many root-type (Mutation + Query +
-              // Subscription) fields as the SDL we would push. If it has drifted
-              // (shrunk) — or cannot be introspected despite a stored hash, which
-              // means a real failure rather than a first deploy — force the
-              // repair push so a clobbered schema heals on the next deploy.
-              let countRoots = s =>
-                ReventlessCore.GraphQL_Stitcher.countRootTypeFields(~sdl=s, ~typeName="Mutation") +
-                ReventlessCore.GraphQL_Stitcher.countRootTypeFields(~sdl=s, ~typeName="Query") +
-                ReventlessCore.GraphQL_Stitcher.countRootTypeFields(
-                  ~sdl=s,
-                  ~typeName="Subscription",
-                )
-              // Identity-aware drift check (not a bare count): the live schema is
-              // "intact" only when it is a SUPERSET of every root field we would
-              // push. Comparing name SETS heals equal-cardinality drift and field
-              // *swaps* — an admin-base clobber that leaves the DomainApi with the
-              // SAME number of root fields but the WRONG ones (admin-base instead
-              // of plugin fields) has a matching count yet is missing every
-              // expected plugin field, so a count test would wrongly skip.
-              let missingFields = ReventlessCore.GraphQL_Stitcher.missingRootFields(
-                ~expectedSdl=sdl,
-                ~liveSdl,
-              )
-              let skipPush = switch storedHash {
-              | Some(prev) if prev == currentHash =>
-                if liveSdl == "" {
-                  log.info(
-                    ~comp="preResolversSchemaHook",
-                    `hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`,
-                  )
-                  false
-                } else if missingFields->Array.length > 0 {
-                  log.info(
-                    ~comp="preResolversSchemaHook",
-                    `hash matches but live schema is missing ${missingFields
-                      ->Array.length
-                      ->Int.toString} expected root field(s) (e.g. ${missingFields
-                      ->Array.slice(~start=0, ~end=5)
-                      ->Array.join(", ")}) — forcing repair push`,
-                  )
-                  false
-                } else {
-                  log.info(
-                    ~comp="preResolversSchemaHook",
-                    `SDL unchanged (hash ${currentHash->String.slice(
-                        ~start=0,
-                        ~end=12,
-                      )}…) and live schema is a superset of the expected root fields (${countRoots(
-                        liveSdl,
-                      )->Int.toString} live); skipping push`,
-                  )
-                  true
-                }
-              | _ => false
-              }
-              if !skipPush {
-                // Shrink guard — deploy-time counterpart of the runtime
-                // mkUpdateApiSchema guard (AdminEventCollectorEntryPoint.mjs).
-                // Plugin/service stacks share one AppSync API and StartSchemaCreation
-                // REPLACES the whole schema. A concurrent peer that scanned the
-                // deploy-schema table before this stack wrote its fragment row
-                // stitches an SDL missing this stack's fields; pushing it would drop
-                // the live fields and orphan their resolvers (NotFoundException: No
-                // field named X). Refuse a push that would catastrophically shrink
-                // the live schema — the field-owner's own deploy (whose scan includes
-                // its freshly-written row) pushes the complete set.
-                // isCatastrophicSchemaShrink returns false when the live schema is
-                // empty (first deploy / introspection unavailable), so the initial
-                // push still proceeds.
-                if (
-                  ReventlessCore.GraphQL_Stitcher.isCatastrophicSchemaShrink(
-                    ~currentSdl=liveSdl,
-                    ~newSdl=sdl,
-                    ~threshold=deploySchemaShrinkThreshold,
-                  )
-                ) {
-                  log.error(
-                    ~comp="preResolversSchemaHook",
-                    `ABORTED schema push for ${apiId}: stitched SDL (${countRoots(
-                        sdl,
-                      )->Int.toString} root field(s)) would catastrophically shrink the live schema (${countRoots(
-                        liveSdl,
-                      )->Int.toString} root field(s), threshold ${deploySchemaShrinkThreshold->Float.toString}) — refusing to clobber resolvers (likely a stale concurrent-deploy scan)`,
-                  )
-                } else {
-                  log.info(
-                    ~comp="preResolversSchemaHook",
-                    `Pushing schema to API ${apiId} (${allPluginFragments->Array.length->Int.toString} plugin fragments, new hash: ${currentHash->String.slice(~start=0, ~end=12)}…)`,
-                  )
-                  await client->AppSync_Adapter.startSchemaCreationRetrying({
-                    apiId,
-                    definition: sdl,
-                  })
-                  log.info(
-                    ~comp="preResolversSchemaHook",
-                    "startSchemaCreation called, waiting for ACTIVE",
-                  )
-                  await AppSync_Adapter.waitForSchemaActive(client, apiId)
-                  log.info(~comp="preResolversSchemaHook", "Schema is ACTIVE")
-                  switch tableNameOpt {
-                  | Some(tn) =>
-                    await writeSchemaHash(~tableName=tn, ~apiId, ~hash=currentHash)
-                  | None => ()
-                  }
-                }
-              }
-
-              // No deploy-time retire scan: the name-keyed Plugin aggregate
-              // decides supersession itself (VersionSuperseded) when the new
-              // version connects, so the manifest carries only the current
-              // version without any RM-read-driven command.
-            })
-            }
-
-            (
-              switch tableNameOpt {
-              | Some(tableName) =>
-                AppSync_Adapter.withSchemaPushLock(~tableName, ~apiId, runSchemaPush)
-              | None => runSchemaPush()
-              }
-            )->Pulumi.Output.fromPromise
-          })
-        )
-      })
       }
     },
     // DCB EventLog created hook — extracts DynamoDB table name for DCB CommandTopic Lambda handler.
@@ -1890,47 +1526,9 @@ module MakeWithConfig = (
       // (Heartbeat, ForwardCommand). None here keeps the deploy-time path
       // unchanged; the .mjs entry point supplies a real implementation.
       let manageSubscriptions = None
-      let updateApiSchema = Some(async (queryEngine: Reventless.QueryEngine.operations) => {
-        open Reventless.QueryEngine.Filter
-        let apiId = domainApiId->Pulumi.Output.get
-        let plugins = await queryEngine.scan(
-          ~readModelName="Plugins",
-          ~filterConfigs=[("status", Contains, String("Connected"))],
-          ~limit=1000,
-        )
-        let fragments = plugins->Array.filterMap(json =>
-          try {
-            let state = json->S.parseOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema)
-            // Exclude Platform-target plugins — their schema belongs on the PlatformApi,
-            // not the DomainApi. Absent apiTarget defaults to "Domain".
-            switch state.apiTarget {
-            | Some("Platform") => None
-            | _ => state.apiSchemaFragment
-            }
-          } catch {
-          | _ => None
-          }
-        )
-        // In split mode, the plugin API only has plugin schema (admin is on the core API).
-        // In unified mode, stitch admin + plugins into the single shared API.
-        let baseFragment = if Config.splitApi {
-          emptyBaseFragment
-        } else {
-          AppSync_Adapter.injectAwsAuthAll(
-            ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
-            ~group="Admin",
-            ~iamFieldNames=ReventlessCore.AdminApi.systemCallerFieldNames,
-          )
-        }
-        let sdl = AppSync_Adapter.stitchWithAwsDirectives(
-          ~baseFragment,
-          ~pluginFragments=fragments,
-        )
-        await AppSync_Adapter.getClient()->AppSync_Adapter.startSchemaCreationRetrying({
-          apiId,
-          definition: sdl,
-        })
-      })
+      // Runtime connect-driven schema self-heal retired in Phase 4b — the reactive
+      // ApiSchemaPush SideEffect (on ApiFragmentRegistry events) is the single writer.
+      let updateApiSchema = None
     })
 
     // Phase 2: Admin resolvers go on the Platform API (platformApi) in split mode,
@@ -2037,19 +1635,6 @@ module MakeWithConfig = (
     | None => None
     }
 
-    // Dedicated DynamoDB table for deploy-time schema-fragment persistence
-    // (deploy-schema:<name>, deploy-schema-platform:<name>, deploy-schema-hash:<apiId>).
-    // Previously these infrastructure rows shared the Plugin RM table, which
-    // caused them to leak through Platform_Plugins' auto-generated AppSync
-    // Connection resolver (an unfiltered Scan). Hosting them on their own
-    // table keeps Plugin RM = Plugin aggregate entities only and restores
-    // parity with the in-memory adapter (which has no preResolversSchemaHook).
-    let pluginSchemaPersistenceTable = Util.DynamoDb.makeTable(
-      "PluginSchemaPersistence",
-      ~attributes=[{name: "id", type_: "S"}],
-      ~opts={},
-    )
-
     PluginExtensionPointRuntime_Builder.registerPluginExtensionPoint(
       ~pluginReadModelTableName?,
       ~schedulerRoleArn=hooks.schedulerRoleUrn.contents,
@@ -2083,34 +1668,8 @@ module MakeWithConfig = (
       ~eventTopicArn=pluginEpEventTopicArn,
       ~appSyncApiId=domainApiId,
       ~pluginReadModelTableName?,
-      // Runtime schema stitch reads deploy-time fragments from this durable table
-      // rather than the lifecycle-volatile Plugin RM Connected rows.
-      ~pluginSchemaPersistenceTableName=pluginSchemaPersistenceTable.name,
       ~schedulerRoleArn=hooks.schedulerRoleUrn.contents,
       ~clonerEnabled=Config.cloner,
-      // 2e: the reactive ApiFragmentRegistry single writer (admin EventCollector).
-      // The Platform AppSync id it pushes Platform-target fragments to (unified →
-      // domainApi, since platformApi == domainApi); the ApiFragments StateViewSlice
-      // table it re-folds from; the admin DCB command-topic FIFO URL it dispatches
-      // RecordApiFragmentPush to (captured during Admin.construct); and the mode flag.
-      ~platformApiId=platformApi->Pulumi.Output.flatMap(api => api.id),
-      // NB: must NOT be `->Option.map(r => r.name)`. `apiFragmentRegistryTableName`
-      // is `option<Pulumi.Output.t<string>>` (the forbidden pattern, CLAUDE.md code
-      // smells). The generic `Option.map` body runs `Primitive_option.some(r.name)`,
-      // and because a Pulumi Output lifts arbitrary property access, `some` inspects
-      // `.BS_PRIVATE_NESTED_SOME_NONE`, mis-reads the Output as a nested option, and
-      // stores the sentinel `{BS_PRIVATE_NESTED_SOME_NONE: 0}` instead of the Output —
-      // so the consumer's `tableOutput->Pulumi.Output.apply` crashes with
-      // "apply is not a function". A `Some(r.name)` LITERAL compiles unboxed (bare
-      // r.name), preserving the Output — the same dodge `pluginReadModelTableName` uses.
-      ~apiFragmentRegistryTableName=?switch admin.readModelsOutputs
-      ->Dict.get("ApiFragments")
-      ->Option.flatMap(rm => rm.queryDb.resources->Array.get(0)) {
-      | Some(r) => Some(r.name)
-      | None => None
-      },
-      ~adminDcbCmdTopicUrl=?AutomationSliceRuntime_Builder_Single.getDcbQueueUrl(),
-      ~splitApi=Config.splitApi,
       (),
     )
 
@@ -2222,14 +1781,6 @@ module MakeWithConfig = (
     | Some(tableName) => Pulumi.Pulumi.export("pluginRmTableName", tableName)
     | None => ()
     }
-
-    // Export the dedicated schema-persistence table name. preResolversSchemaHook
-    // prefers this over pluginRmTableName so deploy-schema rows no longer share
-    // the Plugin RM table.
-    Pulumi.Pulumi.export(
-      "pluginSchemaPersistenceTableName",
-      pluginSchemaPersistenceTable.name,
-    )
 
     // (No pluginAggrCmdTopicUrl export: the deploy-time retire hook that
     // published Retire commands to the Plugin aggregate queue is gone —

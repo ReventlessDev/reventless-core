@@ -10,15 +10,12 @@ import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Effect$1 from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as ClientAppsync from "@aws-sdk/client-appsync";
 import * as Auth_Cognito$ReventlessAws from "../../adapter/Auth/Auth_Cognito.res.mjs";
 import * as AppSync_Error$ReventlessAws from "../../errors/AppSync_Error.res.mjs";
-import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as AppSync_SdlDecorate$ReventlessAws from "./AppSync_SdlDecorate.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
@@ -88,84 +85,6 @@ function deploySchemaWithRetry(client, apiId, definition) {
     apiId: apiId,
     definition: definition
   })).then(param => Promise.resolve())), AppSync_Error$ReventlessAws.retrySchedule);
-}
-
-function schemaLockSleep(ms) {
-  return new Promise((resolve, param) => {
-    setTimeout(() => resolve(), ms);
-  });
-}
-
-let _schemaLockCounter = {
-  contents: 0
-};
-
-async function withSchemaPushLock(tableName, apiId, leaseMsOpt, maxWaitMsOpt, fn) {
-  let leaseMs = leaseMsOpt !== undefined ? leaseMsOpt : 120000;
-  let maxWaitMs = maxWaitMsOpt !== undefined ? maxWaitMsOpt : 180000;
-  let lockId = `schema-push-lock:` + apiId;
-  _schemaLockCounter.contents = _schemaLockCounter.contents + 1 | 0;
-  let holder = apiId + `#` + Date.now().toString() + `#` + _schemaLockCounter.contents.toString();
-  let acquire = async () => {
-    let deadline = Date.now() + maxWaitMs;
-    let acquired = false;
-    while (!acquired) {
-      let now = Date.now();
-      let ok = await Stdlib_Promise.$$catch(DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
-        Item: Object.fromEntries([
-          [
-            "id",
-            lockId
-          ],
-          [
-            "holder",
-            holder
-          ],
-          [
-            "expiresAt",
-            now + leaseMs
-          ]
-        ]),
-        TableName: tableName,
-        ConditionExpression: "attribute_not_exists(id) OR expiresAt < :now",
-        ExpressionAttributeValues: Object.fromEntries([[
-            ":now",
-            now
-          ]])
-      })).then(param => true), param => Promise.resolve(false));
-      if (ok) {
-        acquired = true;
-      } else if (Date.now() > deadline) {
-        log.warn("AppSync_Adapter", undefined, `schema-push lock for ` + apiId + ` not acquired within ` + maxWaitMs.toString() + `ms — proceeding best-effort`);
-        acquired = true;
-      } else {
-        await schemaLockSleep(1000);
-      }
-    };
-  };
-  let release = async () => {
-    await Stdlib_Promise.$$catch(DynamoDb_DocumentClient$AwsSdk.DeleteCommand.send(new LibDynamodb.DeleteCommand({
-      TableName: tableName,
-      Key: Object.fromEntries([[
-          "id",
-          lockId
-        ]]),
-      ConditionExpression: "holder = :holder",
-      ExpressionAttributeValues: Object.fromEntries([[
-          ":holder",
-          holder
-        ]])
-    })).then(param => {}), param => Promise.resolve());
-  };
-  await acquire();
-  try {
-    let r = await fn();
-    await release();
-    return r;
-  } catch (exn) {
-    await release();
-    throw exn;
-  }
 }
 
 let _client = {
@@ -408,9 +327,6 @@ export {
   waitForSchemaActive,
   getIntrospectionSdl,
   deploySchemaWithRetry,
-  schemaLockSleep,
-  _schemaLockCounter,
-  withSchemaPushLock,
   _client,
   getClient,
   _permissionToCognitoGroups,

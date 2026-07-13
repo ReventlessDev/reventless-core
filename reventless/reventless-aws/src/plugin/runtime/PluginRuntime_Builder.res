@@ -3,38 +3,21 @@ let log = ReventlessCore.Logger.fromEnv()
 type adminConfig = {
   eventTopicArn: option<Pulumi.Output.t<string>>,
   pluginReadModelTableName: option<Pulumi.Output.t<string>>,
-  // Dedicated PluginSchemaPersistence table holding deploy-time SDL fragments
-  // (rows keyed "deploy-schema:<name>"). The runtime schema stitch reads this
-  // durable source instead of the lifecycle-volatile Plugin RM Connected rows.
-  pluginSchemaPersistenceTableName: option<Pulumi.Output.t<string>>,
   schedulerRoleArn: option<Pulumi.Output.t<string>>,
   schedulerQueueArn: option<Pulumi.Output.t<string>>,
   schedulerQueueName: option<Pulumi.Output.t<string>>,
   appSyncApiId: option<Pulumi.Output.t<string>>,
   clonerEnabled: bool,
-  // Reactive ApiFragmentRegistry single writer (2e), admin EventCollector only:
-  // the Platform AppSync id (split mode; unified → same as appSyncApiId), the
-  // ApiFragments StateViewSlice table it scans, the admin DCB command-topic FIFO
-  // URL it dispatches RecordApiFragmentPush to, and the split/unified mode flag.
-  platformApiId: option<Pulumi.Output.t<string>>,
-  apiFragmentRegistryTableName: option<Pulumi.Output.t<string>>,
-  adminDcbCmdTopicUrl: option<Pulumi.Output.t<string>>,
-  splitApi: bool,
 }
 
 let configRef: ref<adminConfig> = ref({
   eventTopicArn: None,
   pluginReadModelTableName: None,
-  pluginSchemaPersistenceTableName: None,
   schedulerRoleArn: None,
   schedulerQueueArn: None,
   schedulerQueueName: None,
   appSyncApiId: None,
   clonerEnabled: false,
-  platformApiId: None,
-  apiFragmentRegistryTableName: None,
-  adminDcbCmdTopicUrl: None,
-  splitApi: false,
 })
 
 type sliceModulePaths = {
@@ -111,31 +94,21 @@ let setStateChangesConfig = (~sync=?, ~async=?, ()) => {
 let registerConfig = (
   ~eventTopicArn=?,
   ~pluginReadModelTableName=?,
-  ~pluginSchemaPersistenceTableName=?,
   ~schedulerRoleArn=?,
   ~schedulerQueueArn=?,
   ~schedulerQueueName=?,
   ~appSyncApiId=?,
   ~clonerEnabled=false,
-  ~platformApiId=?,
-  ~apiFragmentRegistryTableName=?,
-  ~adminDcbCmdTopicUrl=?,
-  ~splitApi=false,
   (),
 ) =>
   configRef := {
     eventTopicArn,
     pluginReadModelTableName,
-    pluginSchemaPersistenceTableName,
     schedulerRoleArn,
     schedulerQueueArn,
     schedulerQueueName,
     appSyncApiId,
     clonerEnabled,
-    platformApiId,
-    apiFragmentRegistryTableName,
-    adminDcbCmdTopicUrl,
-    splitApi,
   }
 
 // PluginRuntime_Builder is a functor so that the caller can inject the EventCollectorChannel
@@ -318,10 +291,6 @@ module Make = (
         config.schedulerQueueName->outputOrPlaceholder->Obj.magic,
         config.appSyncApiId->outputOrPlaceholder->Obj.magic,
         epEventTopicArnsOutput->Pulumi.Output.asInput->Obj.magic,
-        config.pluginSchemaPersistenceTableName->outputOrPlaceholder->Obj.magic,
-        config.platformApiId->outputOrPlaceholder->Obj.magic,
-        config.apiFragmentRegistryTableName->outputOrPlaceholder->Obj.magic,
-        config.adminDcbCmdTopicUrl->outputOrPlaceholder->Obj.magic,
       ])
       ->Pulumi.Output.apply(values => {
         let queueUrl = values->Array.getUnsafe(0)
@@ -333,27 +302,13 @@ module Make = (
         let schedQueueName = values->Array.getUnsafe(6)
         let appSyncApiId = values->Array.getUnsafe(7)
         let epEventTopicArns: array<string> = Obj.magic(values->Array.getUnsafe(8))
-        let schemaPersistenceTable = values->Array.getUnsafe(9)
-        let platformApiId = values->Array.getUnsafe(10)
-        let apiFragmentRegistryTable = values->Array.getUnsafe(11)
-        let adminDcbCmdTopicUrl = values->Array.getUnsafe(12)
 
         let dict = Dict.make()
         dict->Dict.set("queueUrl", JSON.Encode.string(queueUrl))
         dict->Dict.set("pluginExtensionPointCmdTopicUrl", JSON.Encode.string(pluginEpCmdTopicUrl))
         dict->Dict.set("eventTopicArn", JSON.Encode.string(topLevelEventTopicArn))
         dict->Dict.set("pluginReadModelTableName", JSON.Encode.string(rmTable))
-        dict->Dict.set(
-          "pluginSchemaPersistenceTableName",
-          JSON.Encode.string(schemaPersistenceTable),
-        )
         dict->Dict.set("appSyncApiId", JSON.Encode.string(appSyncApiId))
-        // Reactive ApiFragmentRegistry single writer (2e) — placeholders for
-        // plugin ECs / all-at-once platforms disable it in the mjs.
-        dict->Dict.set("platformApiId", JSON.Encode.string(platformApiId))
-        dict->Dict.set("apiFragmentRegistryTableName", JSON.Encode.string(apiFragmentRegistryTable))
-        dict->Dict.set("adminDcbCmdTopicUrl", JSON.Encode.string(adminDcbCmdTopicUrl))
-        dict->Dict.set("splitApi", JSON.Encode.bool(config.splitApi))
         dict->Dict.set("clonerEnabled", JSON.Encode.bool(config.clonerEnabled))
         dict->Dict.set("schedulerRoleArn", JSON.Encode.string(schedRoleArn))
         dict->Dict.set("schedulerQueueArn", JSON.Encode.string(schedQueueArn))
@@ -643,100 +598,6 @@ module Make = (
       | None => ()
       }
 
-      // mkUpdateApiSchema reads each plugin's deploy-time SDL fragment from the
-      // dedicated PluginSchemaPersistence table (deploy-schema:<name> rows) to
-      // re-stitch the live schema. Grant Scan on that table too — it is owned by
-      // Platform.res, so the admin EC's default policy includes no perms on it.
-      switch config.pluginSchemaPersistenceTableName {
-      | Some(schemaTableOutput) =>
-        let policyJson =
-          schemaTableOutput->Pulumi.Output.apply(tableName =>
-            PulumiAws.PolicyDocument.make(
-              ~id=`${name}PluginSchemaScanPolicy`,
-              ~statements=[
-                {
-                  sid: "AllowAdminScanPluginSchemaPersistence",
-                  effect: Allow,
-                  actions: Actions(["dynamodb:Scan"]),
-                  resources: Resource("arn:aws:dynamodb:*:*:table/" ++ tableName),
-                },
-              ],
-            )->PulumiAws.PolicyDocument.toJsonString
-          )
-        let _ = PulumiAws.IAM.RolePolicy.make(
-          ~name=`${name}-pluginSchemaScan`,
-          ~args={
-            policy: policyJson->Pulumi.Output.asInput,
-            role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
-          },
-        )
-      | None => ()
-      }
-
-      // 2e: the reactive ApiFragmentRegistry single writer scans the ApiFragments
-      // StateViewSlice table to re-fold the registry on each ApiFragment* event.
-      // The table is owned by the admin DcbBuilder, so grant Scan explicitly.
-      switch config.apiFragmentRegistryTableName {
-      | Some(tableOutput) =>
-        let policyJson =
-          tableOutput->Pulumi.Output.apply(tableName =>
-            PulumiAws.PolicyDocument.make(
-              ~id=`${name}ApiFragmentsScanPolicy`,
-              ~statements=[
-                {
-                  sid: "AllowAdminScanApiFragments",
-                  effect: Allow,
-                  actions: Actions(["dynamodb:Scan"]),
-                  resources: Resource("arn:aws:dynamodb:*:*:table/" ++ tableName),
-                },
-              ],
-            )->PulumiAws.PolicyDocument.toJsonString
-          )
-        let _ = PulumiAws.IAM.RolePolicy.make(
-          ~name=`${name}-apiFragmentsScan`,
-          ~args={
-            policy: policyJson->Pulumi.Output.asInput,
-            role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
-          },
-        )
-      | None => ()
-      }
-
-      // 2e: the reactive push writes the outcome back with RecordApiFragmentPush,
-      // dispatched onto the admin DCB command-topic FIFO queue — grant
-      // sqs:SendMessage on it (queue URL → ARN, same derivation as
-      // publishToAggregates below).
-      switch config.adminDcbCmdTopicUrl {
-      | Some(urlOutput) =>
-        let policyJson =
-          urlOutput->Pulumi.Output.apply(url => {
-            let arn = switch url->String.split("/") {
-            | [_, _, host, acct, qn] =>
-              let region = host->String.split(".")->Array.get(1)->Option.getOr("eu-west-1")
-              `arn:aws:sqs:${region}:${acct}:${qn}`
-            | _ => url
-            }
-            PulumiAws.PolicyDocument.make(
-              ~id=`${name}AdminDcbSendPolicy`,
-              ~statements=[
-                {
-                  sid: "AllowAdminDispatchRecordApiFragmentPush",
-                  effect: Allow,
-                  actions: Actions(["sqs:SendMessage"]),
-                  resources: Resource(arn),
-                },
-              ],
-            )->PulumiAws.PolicyDocument.toJsonString
-          })
-        let _ = PulumiAws.IAM.RolePolicy.make(
-          ~name=`${name}-adminDcbSend`,
-          ~args={
-            policy: policyJson->Pulumi.Output.asInput,
-            role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
-          },
-        )
-      | None => ()
-      }
     }
 
     // Plugin EC sqs:SendMessage grants on the aggregate / StateChangeSlice
