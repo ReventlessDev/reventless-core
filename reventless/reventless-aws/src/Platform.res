@@ -53,15 +53,16 @@ let getSplitApiOutputs = () => splitApiOutputsRef.contents
 module MakeWithConfig = (
   Config: {
     let splitApi: bool
-    /** Merged-API composition (docs/plans/merged-api-push-free-composition.md,
-        Phase 3). When `true`, the platform creates AppSync MERGED APIs and the
-        platform-owned APIs become ordinary SOURCE APIs with declarative
-        schemas: no fragment registration, no reactive schema push. Plugin
-        stacks (deployPlugin) create their own source API and associate it
-        against the platform's exported merged-API ARN. `false` (default until
-        the Phase-5 cutover) keeps the shipped push path. Supported with
-        deployPlatform + deployPlugin (makePlatform predates the merge path);
-        all stacks of one platform must agree on this flag. */
+    /** Merged-API composition (docs/plans/merged-api-push-free-composition.md).
+        `true` (the default — `Make()` sets it): the platform creates AppSync
+        MERGED APIs and the platform-owned APIs are ordinary SOURCE APIs with
+        declarative schemas; plugin stacks (deployPlugin) create their own
+        source API and associate it against the platform's exported merged-API
+        ARN. No fragment registration, no reactive schema push. `false` keeps
+        the legacy push path until its Phase-5 retirement — switching an
+        already-deployed platform in either direction requires wiping its
+        stacks. Supported with deployPlatform + deployPlugin (makePlatform
+        predates the merge path); all stacks of one platform must agree. */
     let mergedApi: bool
     let cloner: bool
     let commandHandlerConfig: ReventlessCore.Runtime.commandHandlerConfigs
@@ -121,6 +122,8 @@ module MakeWithConfig = (
     // (DynamoDB scan) and the schema-push SideEffect — admin store, off Postgres too.
     QueryDbBackend.exempt(ReventlessCore.ApiFragmentsReadModelSpec.name)
   })
+  let mergedApiMode = Config.mergedApi
+
   type api = Types.AppSync.api
   type role = Types.AppSync.role
   type apiTarget = Domain | Platform
@@ -196,7 +199,7 @@ module MakeWithConfig = (
 
   let (domainApi, domainApiRole, platformApi, platformApiRole) = switch platformStackRef {
   | None =>
-    let (api, role) = if Config.mergedApi {
+    let (api, role) = if mergedApiMode {
       // Merged mode: the Domain API is an ordinary GRAPHQL source API with a
       // DECLARATIVE schema. Unified: it carries the admin base (the canonical
       // document). Split: it carries only the relay base + `node`; the admin
@@ -315,7 +318,7 @@ module MakeWithConfig = (
         makePhantomRole(platformApiRoleArn)
       })
 
-    if Config.mergedApi {
+    if mergedApiMode {
       // Merged mode (merged-api plan, Phase 4): the plugin stack owns a real
       // SOURCE API — the single writer for its subgraph schema and resolvers.
       // It fills all four API slots (resolver wiring is target-agnostic here;
@@ -944,7 +947,7 @@ module MakeWithConfig = (
     //   - split mode: platformApi from splitApiOutputsRef
     //   - unified mode / not-yet-populated: domainApi
     preAdminResolversSchemaHook: (~adminBarrier) =>
-      if Config.mergedApi {
+      if mergedApiMode {
         // Merged mode: the admin base SDL is DECLARATIVE on the source API
         // resource (makeSourceApiResource) — the provider runs
         // StartSchemaCreation + poll before the resource resolves, so admin
@@ -1014,7 +1017,7 @@ module MakeWithConfig = (
     // deploy-schema:* write+scan+push path was retired in Phase 4b (makePlatform
     // with plugins is no longer supported on AWS).
     preResolversSchemaHook: (~name, ~version, pluginFragment) =>
-      if Config.mergedApi {
+      if mergedApiMode {
         // Merged mode (merged-api plan, Phase 4): push the plugin's standalone
         // subgraph document to the plugin's OWN source API — a single writer
         // by construction, so no SigV4 registration, no reactive stitcher, no
@@ -1426,7 +1429,7 @@ module MakeWithConfig = (
   // In unified mode, makePlatform is a no-op (schema stitching handled by events).
   let makePlatform = (~version, ~plugins: array<module(PluginMaker)>) => {
     log.info(~comp="Platform", `v${version}`)
-    if Config.mergedApi {
+    if mergedApiMode {
       // Merged-API composition is wired in deployPlatform only (the sole
       // supported staged AWS deploy path) — makePlatform predates it.
       failwith(
@@ -1649,7 +1652,7 @@ module MakeWithConfig = (
     // On the merge path the Platform API is an ordinary GRAPHQL source API
     // carrying the admin canonical document declaratively.
     let (platformApi, platformApiRole) = if Config.splitApi {
-      if Config.mergedApi {
+      if mergedApiMode {
         AppSync_Adapter.makeSourceApiResource(~name="PlatformApi", ~schema=adminSourceSdl(), ~opts={})
       } else {
         AppSync_Adapter.makeApiResource(~name="PlatformApi", ~opts={})
@@ -1663,7 +1666,7 @@ module MakeWithConfig = (
     // Plugin stacks associate their own source APIs against the exported
     // merged-API ARN (Phase 4); `pulumi destroy` of a plugin stack deletes
     // its association — retirement by construction.
-    let mergedOutputs = if Config.mergedApi {
+    let mergedOutputs = if mergedApiMode {
       AppSync_MergedApi.assertCompatiblePrimaryAuth(
         ~sourceMode=AppSync_MergedApi.authenticationTypeName(
           AppSync_Adapter.primaryAuthenticationType,
@@ -2311,7 +2314,7 @@ module MakeWithConfig = (
     // 409s (AWS serializes association creates per merged API) surface as a
     // deploy failure — retry concurrent FIRST-TIME plugin deploys; steady-
     // state schema updates never re-create the association.
-    switch (Config.mergedApi, platformStackRef) {
+    switch (mergedApiMode, platformStackRef) {
     | (true, Some(stackRef)) =>
       let defaultOutput: Pulumi.Output.t<option<JSON.t>> =
         stackRef->Pulumi.StackReference.getOutput("default")
@@ -2472,7 +2475,7 @@ module Make = (): (
 ) => {
   include MakeWithConfig({
     let splitApi = true
-    let mergedApi = false
+    let mergedApi = true
     let cloner = false
     let commandHandlerConfig: ReventlessCore.Runtime.commandHandlerConfigs = {}
     let pgConnection = None

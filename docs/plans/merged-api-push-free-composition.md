@@ -1,9 +1,11 @@
 # Push-free schema composition via merged APIs
 
-**Status:** IN PROGRESS — Phases 0–4 done 2026-07-14 (Phase 0 spike **GO**; Phase 1
-bindings; Phase 2 merge-path codegen; Phase 3 platform stack; Phase 4 plugin stack —
-both behind the `mergedApi` flag, preview-validated). Next: Phase 5 (cutover: flip the
-CI example to merged mode, validate end-to-end, retire the push machinery).
+**Status:** IN PROGRESS — Phases 0–4 done 2026-07-14; **Phase 5 cutover executed
+2026-07-14**: alpha stacks wiped + redeployed merged-mode from the local build,
+E2E-validated on real AWS (both auth modes, all associations MERGE_SUCCESS, both
+plugins Connected), and the deploy default flipped (`Make()` → `mergedApi = true`).
+Remaining: push → CI-green confirmation, then retire the push machinery; `node`
+resolver dispatch tracked as an open item.
 **Date:** 2026-07-14
 **Analysis:** [docs/analysis/merged-api-push-free-approach.md](../analysis/merged-api-push-free-approach.md)
 **Succeeds:** [docs/plans/done/event-sourced-fragment-registries.md](done/event-sourced-fragment-registries.md)
@@ -293,16 +295,60 @@ GraphQLApi (source, schema-less; user pool from the platform's cognito* exports)
 
 ## Phase 5 — Cutover + retire the push machinery
 
-Once a full merged-mode deploy of the CI example is green end-to-end (deploy → mutation →
-subscription → query through the merged endpoint, both auth modes):
+**Cutover EXECUTED + validated on real AWS 2026-07-14** (retirement still pending, below):
 
-- Flip the deploy default to merged mode; wipe alpha stacks (no migration code).
+- **Cutover mechanism = the default flip**: `Platform.Make()` now sets
+  `mergedApi = true`, so every generated deploy program (generate-plugin owns
+  Main.res and cannot express MakeWithConfig) is merged-mode by default. No
+  per-stack config override exists — only alpha stacks of the hybrid example
+  were deployed, so there was nothing to scope a gradual flip away from; the
+  legacy push path remains reachable solely via explicit
+  `MakeWithConfig({let mergedApi = false})` until retirement deletes it.
+  (A transient `platform:mergedApi` stack-YAML override was used to stage the
+  first merged deploys and was removed the same day.)
+- **Alpha wiped** (all three stacks destroyed — also load-bearing, not just the
+  data convention: an in-place flip would let the old plugin stacks'
+  `ApiFragmentDeregistration` providers fire deregisters on removal → the still-
+  deployed reactive push would clobber the new declarative source schemas).
+  Recurring destroy nuisance: SQS QueuePolicy deletes race their parent queue
+  ("couldn't find resource") — retry the destroy / `pulumi state delete` the
+  orphan policy.
+- **Merged-mode deploys green** (platform 188 res / catalog 141 / ordering 160,
+  zero errors; plugin subgraph push→ACTIVE ~2 s; all four associations
+  MERGE_SUCCESS — the in-deploy merge gates passed).
+- **E2E through the merged endpoints, both auth modes:**
+  - merged Domain schema composes both plugins + relay base + `node`; per-field
+    `@aws_auth(cognito_groups)` and `@aws_subscribe` (rewired to merged mutation
+    names) survive; no-auth → UnauthorizedException;
+  - Cognito: `Catalog_AddCategory` → CommandAccepted → `Catalog_Categories`
+    serves the projected row ~10 s later; `Ordering_Customer_Register` →
+    CommandAccepted through the same endpoint;
+  - IAM: SigV4 (`Util_AppSync_Caller`) reached the `@aws_iam`-stamped
+    `Platform_ApiFragments` through the Platform merged endpoint (empty — correct,
+    nothing registers fragments in merged mode);
+  - both plugins reach `Connected` (runtime connect handshake unaffected);
+  - live WebSocket subscription not re-tested (Phase-0 spike covered it;
+    directives verified in the merged introspection).
+- **Confirmed open item:** `node()` returns null on the Domain merged API — the
+  relay-base source carries the field but no resolver is provisioned on the
+  domain side in merged mode, and concrete types need the per-type field-resolver
+  dispatch (Phase-0 option (c) codegen). Track as its own work item; not a
+  blocker for the composition path.
+- **Deployed from the LOCAL build** — alpha now drifts from published packages
+  until the next alpha push republishes + CI redeploys (also restores the host-UI
+  custom domain, absent in local deploys). Push before relying on CI deploys.
+
+**Remaining Phase-5 retirement (after CI confirms green on push):**
+
+- ~~Flip the deploy default to merged mode~~ **DONE 2026-07-14** — `Make()` sets
+  `mergedApi = true` (preview-verified consistent with the deployed merged alpha).
 - Retire: the ApiFragmentRegistry aggregate + ApiFragments RM, the reactive
   ApiSchemaPush SideEffect, the deploy caller + `Platform_ApiFragments` status query +
   waiter, `Api_Adapter.updateSchema` as the AWS push path, and the runtime re-stitcher's
   push role. (`GraphQL_Stitcher` remains only if the local platform still composes with it
   — see Phase 6.)
 - The UiFragmentRegistry and Plugin aggregate are untouched.
+- Resolve the `node` resolver dispatch open item (above).
 
 ## Phase 6 — Local parity (option b, alongside scope-2)
 
