@@ -607,18 +607,20 @@ globalThis.describe("Split mode — empty base fragment", () => {
 });
 
 globalThis.describe("Merged mode — canonical source documents", () => {
-  let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
+  let domainBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: [],
-    queries: [],
+    queries: ["  Platform_ping: String"],
     subscriptions: [],
     subscriptionSources: []
   });
   let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", undefined);
-  let adminSourceSdl = AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(baseFragment, []));
-  let relayBaseSourceSdl = AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(emptyBaseFragment, []));
-  globalThis.test("admin source document carries the global node query", () => {
-    globalThis.expect(adminSourceSdl).toContain("node(id: ID!): Node");
+  let adminSourceSdl = AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(baseFragment));
+  let domainBaseSourceSdl = AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(domainBaseFragment));
+  globalThis.test("no AWS source document carries the global node query (dropped — see plan)", () => {
+    globalThis.expect(adminSourceSdl).not.toContain("node(id: ID!): Node");
+    globalThis.expect(domainBaseSourceSdl).not.toContain("node(id: ID!): Node");
+    globalThis.expect(adminSourceSdl).toContain("interface Node");
   });
   globalThis.test("admin source document stamps @canonical on the shared traversal types", () => {
     globalThis.expect(adminSourceSdl).toContain("type PageInfo @aws_cognito_user_pools @aws_iam @canonical {");
@@ -630,12 +632,12 @@ globalThis.describe("Merged mode — canonical source documents", () => {
     globalThis.expect(adminSourceSdl).toContain("Platform_Plugin");
     globalThis.expect(adminSourceSdl).toContain("type PageInfo @aws_cognito_user_pools @aws_iam");
   });
-  globalThis.test("relay-base source document (split-mode Domain source) is node + relay types only", () => {
-    globalThis.expect(relayBaseSourceSdl).toContain("node(id: ID!): Node");
-    globalThis.expect(relayBaseSourceSdl).toContain("interface Node @canonical {");
-    globalThis.expect(relayBaseSourceSdl).toContain("type PageInfo");
-    globalThis.expect(relayBaseSourceSdl).not.toContain("Platform_Plugin");
-    globalThis.expect(relayBaseSourceSdl).not.toContain("union CommandResult");
+  globalThis.test("Domain base source document (split mode) is relay types + Platform_ping only", () => {
+    globalThis.expect(domainBaseSourceSdl).toContain("Platform_ping: String");
+    globalThis.expect(domainBaseSourceSdl).toContain("interface Node @canonical {");
+    globalThis.expect(domainBaseSourceSdl).toContain("type PageInfo");
+    globalThis.expect(domainBaseSourceSdl).not.toContain("Platform_Plugin");
+    globalThis.expect(domainBaseSourceSdl).not.toContain("union CommandResult");
   });
   let pluginFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [

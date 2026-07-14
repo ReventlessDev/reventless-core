@@ -263,11 +263,6 @@ function injectAwsAuthAll(fragment, group, iamFieldNamesOpt) {
   return AppSync_SdlDecorate$ReventlessAws.injectAwsAuthAll(fragment, group, iamFieldNames);
 }
 
-function stitchWithAwsDirectives(baseFragment, pluginFragments) {
-  let sources = GraphQL_Stitcher$ReventlessCore.collectSubscriptionSources(baseFragment, pluginFragments);
-  return AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes(AppSync_SdlDecorate$ReventlessAws.injectAwsSubscribe(GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, pluginFragments), sources));
-}
-
 function stitchStandaloneWithAwsDirectives(fragment) {
   let sources = GraphQL_Stitcher$ReventlessCore.collectSubscriptionSources(fragment, []);
   return AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes(AppSync_SdlDecorate$ReventlessAws.injectAwsSubscribe(GraphQL_Stitcher$ReventlessCore.stitchStandalone(fragment), sources));
@@ -342,7 +337,6 @@ export {
   stampSharedIamTypes,
   injectAwsAuth,
   injectAwsAuthAll,
-  stitchWithAwsDirectives,
   stitchStandaloneWithAwsDirectives,
   primaryAuthenticationType,
   _makeApiResourceWith,

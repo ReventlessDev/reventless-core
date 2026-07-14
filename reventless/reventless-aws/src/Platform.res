@@ -123,22 +123,29 @@ module MakeWithConfig = (
   // Empty base fragment — no types, no mutations, no queries. Used by the
   // plugin Api in split mode (so plugin schema has no core fields) and as the
   // base of the split-mode Domain source document below.
-  let emptyBaseFragment = ReventlessCore.GraphQL_Stitcher.encode({
+  // Split-mode Domain base fragment. No component fields — the Domain merged
+  // API's fields come from plugin sources; this document only anchors the
+  // canonical relay base types. `Platform_ping` exists because a GraphQL
+  // schema cannot have an empty Query type (unresolved → null; spike
+  // precedent). The global `node` query is NOT emitted on AWS — see the
+  // "Relay node resolution" section of the merged-api plan (never resolved on
+  // any deployed AWS platform, zero consumers; the Node interface and global
+  // IDs stay).
+  let domainBaseFragment = ReventlessCore.GraphQL_Stitcher.encode({
     types: [],
     mutations: [],
-    queries: [],
+    queries: ["  Platform_ping: String"],
     subscriptions: [],
     subscriptionSources: [],
   })
 
   // The canonical base document for a merged API's platform-owned source:
-  // stitched with an EMPTY plugin list (the stitch injects the relay base
-  // types and the global `node` query — only these canonical documents carry
-  // `node`), AWS-dialect decorated, and `@canonical`-stamped so the platform-
-  // owned shared types win over every plugin source's standalone copy
-  // (divergence is shadowed, not MERGE_FAILED — Phase-0 finding 1).
+  // rendered standalone (relay base types included, no global `node` query),
+  // AWS-dialect decorated, and `@canonical`-stamped so the platform-owned
+  // shared types win over every plugin source's standalone copy (divergence
+  // is shadowed, not MERGE_FAILED — Phase-0 finding 1).
   let assembleCanonicalSourceSdl = (~baseFragment): string =>
-    AppSync_Adapter.stitchWithAwsDirectives(~baseFragment, ~pluginFragments=[])
+    AppSync_Adapter.stitchStandaloneWithAwsDirectives(~fragment=baseFragment)
     ->AppSync_SdlDecorate.stampCanonicalTypes
 
   // Admin base as a source-API document — auth-decorated (all fields Admin,
@@ -152,18 +159,18 @@ module MakeWithConfig = (
       ),
     )
 
-  // Split-mode Domain source document: relay base + `node` only — the Domain
-  // merged API's canonical owner (plugin fields come from plugin sources).
-  let relayBaseSourceSdl = (): string => assembleCanonicalSourceSdl(~baseFragment=emptyBaseFragment)
+  // Split-mode Domain source document: relay base types + Platform_ping — the
+  // Domain merged API's canonical owner (plugin fields come from plugin sources).
+  let domainBaseSourceSdl = (): string => assembleCanonicalSourceSdl(~baseFragment=domainBaseFragment)
 
   let (domainApi, domainApiRole, platformApi, platformApiRole) = switch platformStackRef {
   | None =>
     // The Domain API is an ordinary GRAPHQL source API with a DECLARATIVE
     // schema. Unified: it carries the admin base (the canonical document).
-    // Split: it carries only the relay base + `node`; the admin base lives on
+    // Split: it carries only the relay base document; the admin base lives on
     // the Platform source API created in deployPlatform.
     let schema = if Config.splitApi {
-      relayBaseSourceSdl()
+      domainBaseSourceSdl()
     } else {
       adminSourceSdl()
     }
@@ -541,7 +548,7 @@ module MakeWithConfig = (
     ReventlessCore.UiFragments,
     ReventlessCore.UiFragments_Projection,
   )
-  // (emptyBaseFragment — the split-mode Domain source base — is defined above,
+  // (domainBaseFragment — the split-mode Domain source base — is defined above,
   // next to the merged-mode source SDL assembly that uses it.)
 
   // ── Typed identity casts — see Platform_Casts.res for rationale ─────────
@@ -1672,19 +1679,10 @@ module MakeWithConfig = (
     provisionPgChangeFeedRelay()
 
     // B3.2b/c: provision this plugin stack's PgQueryResolver Lambda + AppSync data
-    // source for its Postgres-backed read models (registered during P.make()). App
-    // read model resolvers attach to the Domain API. Per-plugin Lambda + auto-named
-    // data source, so plugin stacks don't collide. The node(id) resolver is skipped
-    // in plugin-stack mode — it's a single shared Query.node field only one stack
-    // may own (monolithic-only; see PgQueryResolver_Builder.provision).
+    // source for its Postgres-backed read models (registered during P.make()).
+    // Resolvers attach to this plugin's own source API.
     switch QueryDbBackend.get() {
-    | Some(sel) =>
-      PgQueryResolver_Builder.provision(
-        ~api=domainApi,
-        ~selection=sel,
-        ~opts={},
-        ~createNodeResolver=false,
-      )
+    | Some(sel) => PgQueryResolver_Builder.provision(~api=domainApi, ~selection=sel, ~opts={})
     | None => ()
     }
 

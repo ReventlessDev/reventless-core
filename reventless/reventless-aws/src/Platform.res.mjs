@@ -140,16 +140,16 @@ function MakeWithConfig(Config) {
     contents: "Domain"
   };
   let platformStackRef = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack));
-  let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
+  let domainBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: [],
-    queries: [],
+    queries: ["  Platform_ping: String"],
     subscriptions: [],
     subscriptionSources: []
   });
   let adminSourceSdl = () => {
     let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", undefined);
-    return AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(baseFragment, []));
+    return AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(baseFragment));
   };
   let match;
   if (platformStackRef !== undefined) {
@@ -182,7 +182,7 @@ function MakeWithConfig(Config) {
       role
     ];
   } else {
-    let schema = Config.splitApi ? AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(emptyBaseFragment, [])) : adminSourceSdl();
+    let schema = Config.splitApi ? AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(domainBaseFragment)) : adminSourceSdl();
     let match$2 = AppSync_Adapter$ReventlessAws.makeSourceApiResource("DomainApi", schema, {});
     let role$1 = match$2[1];
     let api$1 = match$2[0];
@@ -1009,7 +1009,7 @@ function MakeWithConfig(Config) {
     provisionPgChangeFeedRelay();
     let sel = QueryDbBackend$ReventlessAws.get();
     if (sel !== undefined) {
-      PgQueryResolver_Builder$ReventlessAws.provision(domainApi, sel, {}, false);
+      PgQueryResolver_Builder$ReventlessAws.provision(domainApi, sel, {});
     }
     let hbConfig = PluginRuntime_Builder$ReventlessAws.heartbeatConfigRef.contents;
     let match = IndexJs.isDryRun();
@@ -1112,16 +1112,16 @@ function Make($star) {
     contents: "Domain"
   };
   let platformStackRef = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack));
-  let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
+  let domainBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: [],
-    queries: [],
+    queries: ["  Platform_ping: String"],
     subscriptions: [],
     subscriptionSources: []
   });
   let adminSourceSdl = () => {
     let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", undefined);
-    return AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(baseFragment, []));
+    return AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(baseFragment));
   };
   let match;
   if (platformStackRef !== undefined) {
@@ -1154,7 +1154,7 @@ function Make($star) {
       role
     ];
   } else {
-    let schema = AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(emptyBaseFragment, []));
+    let schema = AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(domainBaseFragment));
     let match$2 = AppSync_Adapter$ReventlessAws.makeSourceApiResource("DomainApi", schema, {});
     let role$1 = match$2[1];
     let api$1 = match$2[0];
@@ -1958,7 +1958,7 @@ function Make($star) {
     provisionPgChangeFeedRelay();
     let sel = QueryDbBackend$ReventlessAws.get();
     if (sel !== undefined) {
-      PgQueryResolver_Builder$ReventlessAws.provision(domainApi, sel, {}, false);
+      PgQueryResolver_Builder$ReventlessAws.provision(domainApi, sel, {});
     }
     let hbConfig = PluginRuntime_Builder$ReventlessAws.heartbeatConfigRef.contents;
     let match = IndexJs.isDryRun();

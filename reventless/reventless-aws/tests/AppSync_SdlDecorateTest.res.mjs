@@ -61,10 +61,10 @@ globalThis.describe("AppSync_SdlDecorate.injectAwsSubscribe", () => {
   });
 });
 
-globalThis.describe("AppSync_Adapter.stitchWithAwsDirectives", () => {
-  globalThis.test("assembles neutral fragments into AWS-dialect SDL", () => {
-    let baseFragment = GraphQL_Stitcher$ReventlessCore.encode({
-      types: [],
+globalThis.describe("AppSync_Adapter.stitchStandaloneWithAwsDirectives", () => {
+  globalThis.test("assembles a neutral fragment into an AWS-dialect standalone document", () => {
+    let fragment = GraphQL_Stitcher$ReventlessCore.encode({
+      types: [`type PluginStatusChangeEvent {\n  pluginId: ID!\n}`],
       mutations: [`  Platform_PluginStatusChanged(pluginId: ID!, status: PluginStatus!): PluginStatusChangeEvent`],
       queries: [],
       subscriptions: [`  onPluginStatusChange: PluginStatusChangeEvent`],
@@ -73,19 +73,9 @@ globalThis.describe("AppSync_Adapter.stitchWithAwsDirectives", () => {
           mutations: ["Platform_PluginStatusChanged"]
         }]
     });
-    let pluginFragment = GraphQL_Stitcher$ReventlessCore.encode({
-      types: [`type PluginStatusChangeEvent {\n  pluginId: ID!\n}`],
-      mutations: [`  Catalog_AddProduct(input: AddInput): CommandResult`],
-      queries: [],
-      subscriptions: [`  onCatalog_AddProduct(id: ID): CommandResult`],
-      subscriptionSources: [{
-          field: "onCatalog_AddProduct",
-          mutations: ["Catalog_AddProduct"]
-        }]
-    });
-    let sdl = AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(baseFragment, [pluginFragment]);
+    let sdl = AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(fragment);
     globalThis.expect(sdl).toContain(`@aws_subscribe(mutations: ["Platform_PluginStatusChanged"])`);
-    globalThis.expect(sdl).toContain(`@aws_subscribe(mutations: ["Catalog_AddProduct"])`);
+    globalThis.expect(sdl).not.toContain("node(id: ID!): Node");
   });
 });
 

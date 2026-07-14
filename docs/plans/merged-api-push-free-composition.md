@@ -1,9 +1,9 @@
 # Push-free schema composition via merged APIs
 
 **Status:** IN PROGRESS — Phases 0–5 **done** 2026-07-14 (cutover pushed + CI-green;
-push machinery retired across all four packages and the retirement applied to the
-live alpha platform). Remaining: the `node` resolver dispatch open item and Phase 6
-(local parity).
+push machinery retired across all four packages and applied to the live alpha
+platform; the Relay `node` open item resolved by dropping the root field on AWS —
+see the resolution section). Remaining: Phase 6 (local parity).
 **Date:** 2026-07-14
 **Analysis:** [docs/analysis/merged-api-push-free-approach.md](../analysis/merged-api-push-free-approach.md)
 **Succeeds:** [docs/plans/done/event-sourced-fragment-registries.md](done/event-sourced-fragment-registries.md)
@@ -29,7 +29,7 @@ the migration.
 
 | Decision | Choice | Analysis ref |
 |---|---|---|
-| Relay `node` | **DECIDED (Phase 0): field-resolver indirection (c) — confirmed working on AWS**; fallback (a) not needed; (b) remains rejected | § 12 + Phase 0 results |
+| Relay `node` | **REVISED post-retirement: root field dropped on AWS (fallback (a))** — Phase 0 proved (c) *feasible*, but the retirement investigation showed `node()` never worked on deployed AWS and has zero consumers; `Node` interface + global IDs stay (see "Relay `node` resolution" below) | § 12 + Phase 0 + resolution section |
 | Fragment registry under merge | **retired on the API side — neither aggregate nor slice**; no thin DCB ledger unless a concrete discovery/audit need appears | § 9 |
 | UiFragmentRegistry | **unchanged** — runtime-connect-driven, not a schema push | § 9 |
 | Plugin aggregate | **unchanged** — lifecycle only | § 9 |
@@ -369,7 +369,59 @@ published, layer rebuilt, CI redeploy kept all associations MERGE_SUCCESS):
   45 resources deleted (one SQS QueuePolicy-race retry), admin source schema
   shrank declaratively, auto-merge kept all four associations MERGE_SUCCESS,
   registry fields gone from the merged schema, plugin stacks resource-neutral.
-- Still open: the `node` resolver dispatch item (above) and Phase 6.
+- Still open: Phase 6. (`node` resolved below.)
+
+## Relay `node` resolution — root field DROPPED on AWS (2026-07-14)
+
+The Phase-0 decision adopted option (c) (thin canonical stub + field resolvers on
+the owning source) on **feasibility** grounds. The retirement investigation
+changed the cost/benefit picture with three findings:
+
+1. **`node()` never worked on deployed AWS — including the entire push era.**
+   `NodeResolver_AppSync` (a pipeline resolver decoding the global ID and routing
+   to the right DynamoDB data source) was written and every read model registered
+   its type into it at deploy time, but the final `make()` that would create the
+   resolver was **never called anywhere**. Every deployed AWS platform has served
+   `node()` as null since the field existed. (The Postgres path had a gated
+   `createNodeResolver` variant — monolithic-only, likewise not exercised by any
+   deployed stack.) The merged cutover therefore did not regress anything.
+2. **Zero consumers.** reventless-ui (host shell + AutoUI) fetches exclusively
+   through the typed surface — plural connections, single-ID queries, `ByIds`
+   batches, and the `@resolves`/`@resolvesMany` cross-table hops. Nothing queries
+   `node(`. That nobody ever noticed finding 1 is itself the evidence.
+3. **Merged composition made (c) structurally expensive.** On the old single API
+   the pipeline resolver would have worked (every table reachable from one API).
+   Under merged APIs the `node` field lives in the platform-owned canonical
+   source while the data lives in plugin stacks, so a real implementation needs
+   either dynamic cross-stack data-source registration (re-creating exactly the
+   registry coordination this plan retired) or per-FIELD resolvers on every
+   plugin source for every node-reachable type (the stub only carries
+   `id`/`__typename`) — a large codegen + resolver-count investment.
+
+What `node()` *would* buy if implemented: Relay-client refetch/cache
+normalization (relevant only if the UI moves to a Relay-style client), universal
+"resolve any global ID" deep links (today served type-explicitly by
+`@resolves`/`@resolvesMany`), and a generic fetch-by-ID tool for agents (MCP
+currently generates typed per-read-model resources instead). All plausible,
+none present.
+
+**Decision:** a root field should either work or not exist. On AWS the canonical
+documents no longer emit `node(id: ID!): Node` (both the admin document and the
+split-mode Domain base document assemble via the standalone/subgraph path). The
+**`Node` interface and global IDs stay** — they cost nothing and are exactly
+what makes a future `node()` (or client-side normalization) possible without a
+schema migration. The split-mode Domain base source carries a minimal
+`Platform_ping: String` query field instead (a GraphQL schema cannot have an
+empty Query type; unresolved → null, spike precedent). The local platform keeps
+its working in-process `node()` (its resolver is self-contained in
+`DomainGraphQL_Server`). Dead code deleted with the decision:
+`NodeResolver_AppSync` + its type registration + the node pipeline functions in
+the `rescript-pulumi-aws` resolver bindings, and the Postgres deploy-time node
+resolver creation (`createNodeResolver`/`nodeResolverCode`; the Pg Lambda's
+self-contained runtime `handleNode` stays inert pending a future consumer).
+**Revisit trigger:** a real consumer (Relay client adoption, generic deep links,
+agent generic-fetch) — then implement (c) scoped to the types that need it, not
+everything.
 
 ## Phase 6 — Local parity (option b, alongside scope-2)
 

@@ -432,32 +432,16 @@ let injectAwsAuthAll = (
   AppSync_SdlDecorate.injectAwsAuthAll(fragment, ~group, ~iamFieldNames)
 
 /**
-Stitch base + plugin fragments and decorate the assembled SDL with the AppSync
-dialect: `@aws_subscribe` on mutation-sourced subscription fields (from the
-fragments' neutral `subscriptionSources` metadata — core no longer emits the
-directive) and `@aws_cognito_user_pools @aws_iam` on the shared traversal
-types. Every AWS schema push assembles its SDL through here so the dialect is
-applied uniformly.
-*/
-let stitchWithAwsDirectives = (
-  ~baseFragment: Reventless.Plugin.apiSchemaFragment,
-  ~pluginFragments: array<Reventless.Plugin.apiSchemaFragment>,
-): string => {
-  let sources = ReventlessCore.GraphQL_Stitcher.collectSubscriptionSources(
-    ~baseFragment,
-    ~pluginFragments,
-  )
-  ReventlessCore.GraphQL_Stitcher.stitch(~baseFragment, ~pluginFragments)
-  ->AppSync_SdlDecorate.injectAwsSubscribe(~sources)
-  ->stampSharedIamTypes
-}
-
-/**
-Merged-mode plugin subgraph document: one fragment rendered standalone
-(relay base types included, global `node` omitted — only the platform's
-canonical base document carries `node`), with the same AppSync dialect as
-`stitchWithAwsDirectives`. No `@canonical` stamps — plugin subgraphs stay
-unstamped; the admin source's canonical definitions win on merge.
+One source-API document rendered standalone (relay base types included; the
+global `node` query is not emitted on AWS — see the merged-api plan's "Relay
+node resolution" section), decorated with the AppSync dialect:
+`@aws_subscribe` on mutation-sourced subscription fields (from the fragment's
+neutral `subscriptionSources` metadata) and `@aws_cognito_user_pools @aws_iam`
+on the shared traversal types. Every AWS source-API document — the platform's
+canonical documents and each plugin's subgraph — assembles through here so the
+dialect is applied uniformly. No `@canonical` stamps here — the platform adds
+them to its canonical documents only; plugin subgraphs stay unstamped and the
+canonical definitions win on merge.
 */
 let stitchStandaloneWithAwsDirectives = (
   ~fragment: Reventless.Plugin.apiSchemaFragment,

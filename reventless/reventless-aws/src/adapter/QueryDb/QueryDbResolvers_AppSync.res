@@ -105,17 +105,6 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   | None => true
   }
 
-  // Resolve returnTypeName for Relay Node type registry
-  let returnTypeName = switch registryEntry {
-  | Some({returnTypeName: rt}) => rt
-  | None => name
-  }
-
-  // Register entity type in the Relay Node type registry for node(id: ID!) resolution
-  if includeIdParam {
-    NodeResolver_AppSync.registerNodeType(~typeName=returnTypeName, ~dataSourceName)
-  }
-
   // Creates either a unit resolver (no interceptor) or a pipeline resolver
   // (interceptor Lambda → DynamoDB query) depending on queryInterceptorConfig.
   let makeQueryResolver = (~resolverName, ~field, ~code) =>

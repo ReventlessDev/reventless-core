@@ -13,7 +13,6 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as PgConnection$ReventlessAws from "../Postgres/PgConnection.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
-import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorRuntime_Builder_Single$ReventlessAws from "../Runtime/EventCollectorRuntime_Builder_Single.res.mjs";
 
@@ -47,35 +46,11 @@ function bool(b) {
   }
 }
 
-let nodeResolverCode = `import { util } from '@aws-appsync/utils';
-export function request(ctx) {
-  const id = ctx.identity;
-  return {
-    operation: 'Invoke',
-    payload: {
-      readModelName: '',
-      kind: 'node',
-      arguments: ctx.args,
-      identity: id != null && id.sub != null
-        ? { userId: id.sub, username: id.username, groups: id.claims?.['cognito:groups'] ?? [], claims: id.claims, provider: 'Cognito' }
-        : id != null
-          ? { userArn: id.userArn ?? null, accountId: id.accountId ?? null, username: id.username ?? null, provider: 'IAM' }
-          : null
-    }
-  };
-}
-export function response(ctx) {
-  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  return ctx.result;
-}
-`;
-
 function pgConnectionJson(cc) {
   return JSON.stringify(PgConnection$ReventlessAws.connectionConfigToJson(undefined, cc));
 }
 
-function provision(api, selection, opts, createNodeResolverOpt) {
-  let createNodeResolver = createNodeResolverOpt !== undefined ? createNodeResolverOpt : true;
+function provision(api, selection, opts) {
   let handlers = Stdlib_Array.filterMap(Object.values(entries), entry => {
     let info = EventCollectorRuntime_Builder_Single$ReventlessAws.readModelInfos[entry.readModelName];
     if (info !== undefined && info.pgBacked) {
@@ -147,9 +122,6 @@ function provision(api, selection, opts, createNodeResolverOpt) {
     },
     serviceRoleArn: dataSourceRole.arn
   }, customOpts);
-  if (createNodeResolver && Object.entries(nodeTypes).length !== 0) {
-    AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name + "NodeResolver", api, dataSource.name, "Query", "node", nodeResolverCode, customOpts);
-  }
   dataSource.name.apply(n => resolveDataSourceName.contents(n));
   log.info("PgQueryResolver_Builder", undefined, `provisioned for ` + handlers.length.toString() + ` read model(s)`);
 }
@@ -166,7 +138,6 @@ export {
   nodeTypes,
   registerNodeType,
   bool,
-  nodeResolverCode,
   pgConnectionJson,
   provision,
 }

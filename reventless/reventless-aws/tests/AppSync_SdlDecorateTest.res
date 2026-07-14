@@ -67,10 +67,10 @@ describe("AppSync_SdlDecorate.injectAwsSubscribe", () => {
   })
 })
 
-describe("AppSync_Adapter.stitchWithAwsDirectives", () => {
-  testSync("assembles neutral fragments into AWS-dialect SDL", () => {
-    let baseFragment = ReventlessCore.GraphQL_Stitcher.encode({
-      types: [],
+describe("AppSync_Adapter.stitchStandaloneWithAwsDirectives", () => {
+  testSync("assembles a neutral fragment into an AWS-dialect standalone document", () => {
+    let fragment = ReventlessCore.GraphQL_Stitcher.encode({
+      types: [`type PluginStatusChangeEvent {\n  pluginId: ID!\n}`],
       mutations: [`  Platform_PluginStatusChanged(pluginId: ID!, status: PluginStatus!): PluginStatusChangeEvent`],
       queries: [],
       subscriptions: [`  onPluginStatusChange: PluginStatusChangeEvent`],
@@ -78,19 +78,11 @@ describe("AppSync_Adapter.stitchWithAwsDirectives", () => {
         {field: "onPluginStatusChange", mutations: ["Platform_PluginStatusChanged"]},
       ],
     })
-    let pluginFragment = ReventlessCore.GraphQL_Stitcher.encode({
-      types: [`type PluginStatusChangeEvent {\n  pluginId: ID!\n}`],
-      mutations: [`  Catalog_AddProduct(input: AddInput): CommandResult`],
-      queries: [],
-      subscriptions: [`  onCatalog_AddProduct(id: ID): CommandResult`],
-      subscriptionSources: [{field: "onCatalog_AddProduct", mutations: ["Catalog_AddProduct"]}],
-    })
-    let sdl = AppSync_Adapter.stitchWithAwsDirectives(
-      ~baseFragment,
-      ~pluginFragments=[pluginFragment],
-    )
+    let sdl = AppSync_Adapter.stitchStandaloneWithAwsDirectives(~fragment)
     expect(sdl)->toContain(`@aws_subscribe(mutations: ["Platform_PluginStatusChanged"])`)
-    expect(sdl)->toContain(`@aws_subscribe(mutations: ["Catalog_AddProduct"])`)
+    // Standalone documents never carry the global node query (dropped on AWS —
+    // see the merged-api plan's Relay node resolution).
+    expect(sdl)->not_->toContain("node(id: ID!): Node")
   })
 })
 

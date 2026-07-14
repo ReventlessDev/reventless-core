@@ -663,13 +663,15 @@ describe("Split mode — empty base fragment", () => {
 
 describe("Merged mode — canonical source documents", () => {
   let assembleCanonicalSourceSdl = (~baseFragment) =>
-    AppSync_Adapter.stitchWithAwsDirectives(~baseFragment, ~pluginFragments=[])
+    AppSync_Adapter.stitchStandaloneWithAwsDirectives(~fragment=baseFragment)
     ->AppSync_SdlDecorate.stampCanonicalTypes
 
-  let emptyBaseFragment = ReventlessCore.GraphQL_Stitcher.encode({
+  // Mirrors Platform.res's domainBaseFragment: no component fields, one
+  // Platform_ping so the Query type is non-empty.
+  let domainBaseFragment = ReventlessCore.GraphQL_Stitcher.encode({
     types: [],
     mutations: [],
-    queries: [],
+    queries: ["  Platform_ping: String"],
     subscriptions: [],
     subscriptionSources: [],
   })
@@ -681,10 +683,14 @@ describe("Merged mode — canonical source documents", () => {
     ),
   )
 
-  let relayBaseSourceSdl = assembleCanonicalSourceSdl(~baseFragment=emptyBaseFragment)
+  let domainBaseSourceSdl = assembleCanonicalSourceSdl(~baseFragment=domainBaseFragment)
 
-  testSync("admin source document carries the global node query", () => {
-    expect(adminSourceSdl)->toContain("node(id: ID!): Node")
+  testSync("no AWS source document carries the global node query (dropped — see plan)", () => {
+    expect(adminSourceSdl)->not_->toContain("node(id: ID!): Node")
+    expect(domainBaseSourceSdl)->not_->toContain("node(id: ID!): Node")
+    // The Node interface and global IDs stay — they are what makes a future
+    // node() possible without a schema migration.
+    expect(adminSourceSdl)->toContain("interface Node")
   })
 
   testSync("admin source document stamps @canonical on the shared traversal types", () => {
@@ -704,14 +710,14 @@ describe("Merged mode — canonical source documents", () => {
     expect(adminSourceSdl)->toContain("type PageInfo @aws_cognito_user_pools @aws_iam")
   })
 
-  testSync("relay-base source document (split-mode Domain source) is node + relay types only", () => {
-    expect(relayBaseSourceSdl)->toContain("node(id: ID!): Node")
-    expect(relayBaseSourceSdl)->toContain("interface Node @canonical {")
-    expect(relayBaseSourceSdl)->toContain("type PageInfo")
+  testSync("Domain base source document (split mode) is relay types + Platform_ping only", () => {
+    expect(domainBaseSourceSdl)->toContain("Platform_ping: String")
+    expect(domainBaseSourceSdl)->toContain("interface Node @canonical {")
+    expect(domainBaseSourceSdl)->toContain("type PageInfo")
     // No admin or plugin fields on the split-mode Domain source.
-    expect(relayBaseSourceSdl)->not_->toContain("Platform_Plugin")
+    expect(domainBaseSourceSdl)->not_->toContain("Platform_Plugin")
     // No mutations → no CommandResult family on this source.
-    expect(relayBaseSourceSdl)->not_->toContain("union CommandResult")
+    expect(domainBaseSourceSdl)->not_->toContain("union CommandResult")
   })
 
   // Phase 4: the plugin-stack subgraph document pushed to the plugin's own

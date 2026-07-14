@@ -53,30 +53,10 @@ let registerNodeType = (~typeName: string, ~readModelName: string): unit =>
 // -- Provision --------------------------------------------------------------
 let bool = b => b ? "true" : "false"
 
-// One `node(id: ID!)` resolver on the shared data source → Invoke {kind:"node"}.
-let nodeResolverCode =
-  `import { util } from '@aws-appsync/utils';
-export function request(ctx) {
-  const id = ctx.identity;
-  return {
-    operation: 'Invoke',
-    payload: {
-      readModelName: '',
-      kind: 'node',
-      arguments: ctx.args,
-      identity: id != null && id.sub != null
-        ? { userId: id.sub, username: id.username, groups: id.claims?.['cognito:groups'] ?? [], claims: id.claims, provider: 'Cognito' }
-        : id != null
-          ? { userArn: id.userArn ?? null, accountId: id.accountId ?? null, username: id.username ?? null, provider: 'IAM' }
-          : null
-    }
-  };
-}
-export function response(ctx) {
-  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  return ctx.result;
-}
-`->Pulumi.Input.make
+// (The shared `node(id: ID!)` resolver was removed with the Relay-node
+// resolution of the merged-api plan: the root field is no longer emitted on
+// AWS. The Pg Lambda's runtime `handleNode` + the nodeTypes env plumbing stay
+// inert pending a future consumer.)
 
 // Serialize the shared connection config into the env-config JSON (same shape
 // EventCollectorRuntime_Builder_Single bakes into HANDLER_CONFIG).
@@ -87,13 +67,6 @@ let provision = (
   ~api: Pulumi.Output.t<AppSync.GraphQLApi.t>,
   ~selection: QueryDbBackend.selection,
   ~opts: Pulumi.ComponentResource.options,
-  // The shared node(id) resolver is a single resolver on the API's Query.node
-  // field. In plugin-stack mode each plugin stack deploys independently onto one
-  // shared API, so only ONE stack may own that field — and a per-plugin node
-  // resolver only knows its own plugin's types anyway. So node is provisioned in
-  // monolithic mode only; plugin stacks pass false. (Node is not wired on the
-  // DynamoDB path either — it stays a monolithic-only capability for now.)
-  ~createNodeResolver: bool=true,
 ): unit => {
   // Join the resolver-binding registry (labelField/includeIdParam) with the
   // ReadModel runtime registry (specModulePath, pgBacked). Only read models
@@ -256,22 +229,6 @@ let provision = (
       },
       ~opts=Some(customOpts),
     )
-
-    // Shared node(id) resolver (B3.2c) — one for the whole API, dispatched by
-    // typeName in the Lambda. Only when some entity registered a node type
-    // (else the `node` field isn't in the schema) AND in monolithic mode
-    // (plugin stacks would collide on the single Query.node field).
-    if createNodeResolver && nodeTypes->Dict.toArray->Array.length > 0 {
-      let _nodeResolver = AppSync_Resolver_Retrying.makeUnitJsResolver(
-        ~name=name ++ "NodeResolver",
-        ~api,
-        ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
-        ~type_="Query"->Pulumi.Input.make,
-        ~field="node"->Pulumi.Input.make,
-        ~code=nodeResolverCode,
-        ~opts=customOpts,
-      )
-    }
 
     // Fulfil the deferred name the Postgres storage maker handed to resolvers.
     let _ = dataSource.name->Pulumi.Output.apply(n => resolveDataSourceName.contents(n))

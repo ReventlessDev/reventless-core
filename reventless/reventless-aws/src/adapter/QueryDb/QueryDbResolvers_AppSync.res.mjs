@@ -11,7 +11,6 @@ import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";
 import * as Util_QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_QueryDb.res.mjs";
 import * as AppSync_DataSource$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_DataSource.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
-import * as NodeResolver_AppSync$ReventlessAws from "./NodeResolver_AppSync.res.mjs";
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
@@ -70,10 +69,6 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
   let fieldNameForSingle = registryEntry !== undefined ? registryEntry.singleFieldName : AppSync_Resolver_Functions$PulumiAws.uncapitalize(name$1);
   let includeIdParam = registryEntry !== undefined ? registryEntry.includeIdParam : true;
   let connectionSpec = registryEntry !== undefined ? registryEntry.connectionSpec : true;
-  let returnTypeName = registryEntry !== undefined ? registryEntry.returnTypeName : name$1;
-  if (includeIdParam) {
-    NodeResolver_AppSync$ReventlessAws.registerNodeType(returnTypeName, dataSourceName);
-  }
   let makeQueryResolver = (resolverName, field, code) => {
     let match = queryInterceptorConfig.contents;
     if (match === undefined) {
