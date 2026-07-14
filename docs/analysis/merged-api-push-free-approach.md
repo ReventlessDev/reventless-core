@@ -13,7 +13,7 @@ phases, including the Phase-4 `deploy-schema:*` retirement/cutover, landed green
 (§ 13): merged APIs are now unambiguously a **successor architecture** to a working push-based path,
 not a mid-flight redirection. The feasibility findings and the merge-model design (§§ 2–12) are
 unchanged; only the sequencing framing (§ 8, § 13) is affected.
-**Plan:** [docs/plans/merged-api-push-free-composition.md](../plans/merged-api-push-free-composition.md)
+**Plan:** [docs/plans/done/merged-api-push-free-composition.md](../plans/done/merged-api-push-free-composition.md)
 (created 2026-07-14 from this analysis; Phase 0 spike is the go/no-go gate).
 **Question:** Is a *push-free* architecture feasible — where each plugin is an independently
 deployed sub-graph and the platform **merges** rather than **stitch-and-whole-replace-pushes** the

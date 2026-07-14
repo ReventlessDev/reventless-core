@@ -100,15 +100,15 @@ let capitalize = s =>
 // the AWS stitched schema and the in-memory graphql-yoga server agree on the
 // CommandResult shape. We join the 4 declarations into a single SDL block for
 // the in-memory server's registerTypes API.
-// Registered once per server (guards against duplicate registration after reset).
+// Registered unconditionally: registerTypes dedupes identical blocks, so on
+// the scoped domain server every plugin scope gets its own copy (keeping each
+// subgraph standalone-valid, mirroring the AWS source-API SDL) while repeat
+// registrations within one scope/instance collapse to a single definition.
 
 let commandResultSdl = GraphQL_FragmentGenerator.commandResultSdlTypes->Array.join("\n\n")
 
-let ensureCommandResultTypes = (server: ReventlessGraphqlServer.GraphQL_ServerInstance.t) => {
-  if !(server.buildSdl()->String.includes("CommandAccepted")) {
-    server.registerTypes(~sdlTypes=[commandResultSdl])
-  }
-}
+let ensureCommandResultTypes = (server: ReventlessGraphqlServer.GraphQL_ServerInstance.t) =>
+  server.registerTypes(~sdlTypes=[commandResultSdl])
 
 // Re-export the shared encoder. Source of truth is
 // CommandTopic_Helpers.commandOutcomeToJson — same encoder is also reused by

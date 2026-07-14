@@ -106,9 +106,7 @@ function capitalize(s) {
 let commandResultSdl = GraphQL_FragmentGenerator$ReventlessCore.commandResultSdlTypes.join("\n\n");
 
 function ensureCommandResultTypes(server) {
-  if (!server.buildSdl().includes("CommandAccepted")) {
-    return server.registerTypes([commandResultSdl]);
-  }
+  server.registerTypes([commandResultSdl]);
 }
 
 function extractCommandName(fieldName) {
@@ -143,7 +141,7 @@ function deriveSdlField(fieldName, variantSchema) {
 let handlerRefs = {};
 
 function register(fields, commandSchema, commandAuthorization, server) {
-  ensureCommandResultTypes(server);
+  server.registerTypes([commandResultSdl]);
   let sdlFields = fields.map(field => {
     let variantIndex = variantIndexForField(commandSchema, field);
     let sdl = deriveSdlField(field, extractVariantSchema(commandSchema, variantIndex));
@@ -197,7 +195,7 @@ function register(fields, commandSchema, commandAuthorization, server) {
 }
 
 function registerDcb(fieldName, commandSchema, commandAuthorization, server) {
-  ensureCommandResultTypes(server);
+  server.registerTypes([commandResultSdl]);
   let constructorNames = DcbTag$Reventless.extractAllVariantNames(commandSchema);
   let variantIndex = variantIndexForField(commandSchema, fieldName);
   let variantSchema = extractVariantSchema(commandSchema, variantIndex >= 0 ? variantIndex : 0);

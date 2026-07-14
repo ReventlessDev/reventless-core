@@ -1,5 +1,5 @@
 // AppSync_MergedApi — merged-API construction for the push-free composition
-// path (docs/plans/merged-api-push-free-composition.md, Phase 3).
+// path (docs/plans/done/merged-api-push-free-composition.md, Phase 3).
 //
 // A merged API carries no schema of its own: source APIs contribute theirs via
 // SourceApiAssociation and AWS composes the merged endpoint. The platform

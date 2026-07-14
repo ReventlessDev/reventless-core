@@ -1,9 +1,12 @@
 # Push-free schema composition via merged APIs
 
-**Status:** IN PROGRESS — Phases 0–5 **done** 2026-07-14 (cutover pushed + CI-green;
-push machinery retired across all four packages and applied to the live alpha
-platform; the Relay `node` open item resolved by dropping the root field on AWS —
-see the resolution section). Remaining: Phase 6 (local parity).
+**Status:** COMPLETE 2026-07-14 — all phases done. Phases 0–5: cutover pushed +
+CI-green, push machinery retired across all four packages and applied to the live
+alpha platform; Relay `node` open item resolved by dropping the root field on AWS
+(see the resolution section); Phase 6: local plugin=subgraph composition landed.
+Follow-ups live in "Risks / open points" (quota increase pending; association-409
+backoff documented-only; below-root auth granularity check when real read models
+land).
 **Date:** 2026-07-14
 **Analysis:** [docs/analysis/merged-api-push-free-approach.md](../analysis/merged-api-push-free-approach.md)
 **Succeeds:** [docs/plans/done/event-sourced-fragment-registries.md](done/event-sourced-fragment-registries.md)
@@ -425,17 +428,46 @@ everything.
 
 ## Phase 6 — Local parity (option b, alongside scope-2)
 
-Model each plugin as an independent executable subschema composed via `@graphql-tools`
-(`mergeSchemas`/`stitchSchemas`), so both platforms share the plugin=subgraph,
-platform=merge model:
+**DONE 2026-07-14.** Each plugin is now an independent subschema on the local domain
+server, composed at start — both platforms share the plugin=subgraph, platform=merge
+model:
 
-- Requires lifting resolver closures out of the `DomainGraphQL_Server` module-level
-  singleton — exactly the scope-2 decoupling in
-  `Backlog/harmonize-local-deploy-lifecycle.md`; do them together.
-- Preserve request-context propagation across subschemas (auth is resolver/context-layer,
-  `Auth_GraphqlContext.res`).
-- Local keeps its natively push-free behavior throughout; this phase is fidelity, not
-  feasibility, and can trail Phase 5 without blocking it.
+- `DomainGraphQL_Server` replaced its flat module-singleton registries with
+  **per-scope buckets** (`setScope`/`resetScope`/`relabelScope`, default scope
+  `"platform"`; scope functions are DomainGraphQL_Server-only — the shared
+  `GraphQL_ServerInstance.t` interface is unchanged). Platform.res scopes each
+  plugin's construction (token → construct → relabel to the plugin name) in both
+  `makePlatform` and `deployPlugin`; admin/platform registrations stay in the
+  platform bucket. This is the scope-2 "lift out of the singleton" decoupling —
+  registrations are now plugin-attributed and per-plugin resettable.
+- **Standalone validation per plugin bucket** (mirrors AWS source-API validity):
+  each plugin bucket is seeded with the relay base types (as `stitchStandalone`
+  embeds them per subgraph) and its document is built + `createSchema`-checked in
+  isolation before composition — failure names the plugin
+  (`Plugin "<name>" subgraph document is not valid standalone: …`), exactly the
+  attribution a failed plugin-stack deploy gives on AWS.
+- **Composition = @graphql-tools merge**: the final schema is built with
+  `createSchemaMulti` (new array-form binding in rescript-graphql-yoga —
+  makeExecutableSchema's `typeDefs`/`resolvers` arrays, i.e.
+  mergeTypeDefs/mergeResolvers) from one document + one resolver map per bucket.
+  Identical shared-type copies dedupe; a same-field/different-type conflict throws
+  (`Cross-plugin schema merge failed (mirrors AWS MERGE_FAILED): …`) — the same
+  conflict semantics the Phase-0 spike measured on AWS (disjoint-field same-name
+  types union silently there too). Shared CommandResult copies register per scope
+  (the old global once-only guard is gone).
+- Request-context propagation unchanged by construction: one yoga server, one
+  `buildAuthContext` — no stitching gateway, no delegation layer (the plan's
+  context risk applied to the `stitchSchemas` variant; merge avoids it). Local
+  keeps its in-process `node()` (platform bucket).
+- Validated: monorepo 181 suites / 1 236 tests green (5 new subschema tests:
+  compose + cross-bucket resolution, standalone failure names the plugin,
+  merge-conflict failure, reset, platform-only-type leakage caught standalone);
+  hybrid platform-local live-boot green (login, `Platform_Plugins` Connected ×2,
+  domain query through the composed schema).
+- `Backlog/harmonize-local-deploy-lifecycle.md` is superseded: its
+  register→push→wait staging mechanics were retired with the push machinery, and
+  the "one mental model" value it argued for is delivered by this phase (see the
+  note in that file).
 
 ## Risks / open points
 

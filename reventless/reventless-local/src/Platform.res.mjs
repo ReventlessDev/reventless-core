@@ -145,6 +145,22 @@ function MakeWithConfig(Config) {
   let currentDeployTarget = {
     contents: "Domain"
   };
+  let pluginScopeCounter = {
+    contents: 0
+  };
+  let buildPluginInScope = (makePlugin, builtInfos) => {
+    pluginScopeCounter.contents = pluginScopeCounter.contents + 1 | 0;
+    let scopeToken = `plugin-` + pluginScopeCounter.contents.toString();
+    DomainGraphQL_Server$ReventlessLocal.setScope(scopeToken);
+    let countBefore = builtInfos.contents.length;
+    let component = makePlugin();
+    let info = builtInfos.contents[countBefore];
+    if (info !== undefined) {
+      DomainGraphQL_Server$ReventlessLocal.relabelScope(scopeToken, info.name);
+    }
+    DomainGraphQL_Server$ReventlessLocal.resetScope();
+    return component;
+  };
   let adminRegisteredServers = {
     contents: []
   };
@@ -1176,7 +1192,7 @@ function MakeWithConfig(Config) {
       Stdlib_Option.forEach(existingBuiltHook, h => h(info));
       builtInfos.contents.push(info);
     });
-    let plugins$1 = plugins.map(plugin => plugin.make());
+    let plugins$1 = plugins.map(plugin => buildPluginInScope(plugin.make, builtInfos));
     Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
     let allPluginOutputs = plugins$1.map(Component$ReventlessCore.outputs);
     firePluginDeployedHooks(builtInfos.contents, allPluginOutputs);
@@ -1652,7 +1668,7 @@ function MakeWithConfig(Config) {
       Stdlib_Option.forEach(existingBuiltHook, h => h(info));
       builtInfos.contents.push(info);
     });
-    let pluginComponent = plugin.make();
+    let pluginComponent = buildPluginInScope(plugin.make, builtInfos);
     Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
     let adminGraphQL = resolveTargetGraphQL();
     if (!adminRegisteredServers.contents.some(s => s === adminGraphQL)) {
@@ -1797,6 +1813,22 @@ function Make($star) {
   });
   let currentDeployTarget = {
     contents: "Domain"
+  };
+  let pluginScopeCounter = {
+    contents: 0
+  };
+  let buildPluginInScope = (makePlugin, builtInfos) => {
+    pluginScopeCounter.contents = pluginScopeCounter.contents + 1 | 0;
+    let scopeToken = `plugin-` + pluginScopeCounter.contents.toString();
+    DomainGraphQL_Server$ReventlessLocal.setScope(scopeToken);
+    let countBefore = builtInfos.contents.length;
+    let component = makePlugin();
+    let info = builtInfos.contents[countBefore];
+    if (info !== undefined) {
+      DomainGraphQL_Server$ReventlessLocal.relabelScope(scopeToken, info.name);
+    }
+    DomainGraphQL_Server$ReventlessLocal.resetScope();
+    return component;
   };
   let adminRegisteredServers = {
     contents: []
@@ -2818,7 +2850,7 @@ function Make($star) {
       Stdlib_Option.forEach(existingBuiltHook, h => h(info));
       builtInfos.contents.push(info);
     });
-    let plugins$1 = plugins.map(plugin => plugin.make());
+    let plugins$1 = plugins.map(plugin => buildPluginInScope(plugin.make, builtInfos));
     Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
     let allPluginOutputs = plugins$1.map(Component$ReventlessCore.outputs);
     firePluginDeployedHooks(builtInfos.contents, allPluginOutputs);
@@ -3285,7 +3317,7 @@ function Make($star) {
       Stdlib_Option.forEach(existingBuiltHook, h => h(info));
       builtInfos.contents.push(info);
     });
-    let pluginComponent = plugin.make();
+    let pluginComponent = buildPluginInScope(plugin.make, builtInfos);
     Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
     let adminGraphQL = resolveTargetGraphQL();
     if (!adminRegisteredServers.contents.some(s => s === adminGraphQL)) {

@@ -3,7 +3,7 @@
 // SourceApiAssociation linking them under AUTO_MERGE. Not executed at deploy
 // time — it keeps the three binding surfaces type-checked together.
 // Validated on real AWS by the Phase-0 spike of
-// docs/plans/merged-api-push-free-composition.md.
+// docs/plans/done/merged-api-push-free-composition.md.
 
 let mergedExecRole = IAM.Role.make(
   ~name="example-merged-exec-role",

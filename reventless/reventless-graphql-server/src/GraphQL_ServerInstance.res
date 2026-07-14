@@ -101,8 +101,15 @@ let make = (~label: string="GraphQL"): t => {
     )
   }
 
+  // Identical type blocks dedupe: shared-type registrations (e.g. the
+  // CommandResult union family) may be repeated by every component that needs
+  // them; a duplicate definition in one document would fail createSchema.
   let registerTypes = (~sdlTypes: array<string>) => {
-    typeDefinitions.contents = typeDefinitions.contents->Array.concat(sdlTypes)
+    sdlTypes->Array.forEach(t =>
+      if !(typeDefinitions.contents->Array.includes(t)) {
+        typeDefinitions.contents->Array.push(t)
+      }
+    )
   }
 
   let getMutationResolver = (fieldName: string): option<resolverFn> =>

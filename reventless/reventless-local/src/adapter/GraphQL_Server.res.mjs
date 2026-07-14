@@ -26,19 +26,25 @@ let encodeGlobalId = DomainGraphQL_Server$ReventlessLocal.encodeGlobalId;
 
 let decodeGlobalId = DomainGraphQL_Server$ReventlessLocal.decodeGlobalId;
 
-let mutationResolvers = DomainGraphQL_Server$ReventlessLocal.mutationResolvers;
+let platformScope = DomainGraphQL_Server$ReventlessLocal.platformScope;
 
-let queryResolvers = DomainGraphQL_Server$ReventlessLocal.queryResolvers;
+let makeBucket = DomainGraphQL_Server$ReventlessLocal.makeBucket;
 
-let subscriptionResolvers = DomainGraphQL_Server$ReventlessLocal.subscriptionResolvers;
+let buckets = DomainGraphQL_Server$ReventlessLocal.buckets;
 
-let mutationFields = DomainGraphQL_Server$ReventlessLocal.mutationFields;
+let currentScope = DomainGraphQL_Server$ReventlessLocal.currentScope;
 
-let queryFields = DomainGraphQL_Server$ReventlessLocal.queryFields;
+let bucketFor = DomainGraphQL_Server$ReventlessLocal.bucketFor;
 
-let subscriptionFields = DomainGraphQL_Server$ReventlessLocal.subscriptionFields;
+let currentBucket = DomainGraphQL_Server$ReventlessLocal.currentBucket;
 
-let typeDefinitions = DomainGraphQL_Server$ReventlessLocal.typeDefinitions;
+let setScope = DomainGraphQL_Server$ReventlessLocal.setScope;
+
+let resetScope = DomainGraphQL_Server$ReventlessLocal.resetScope;
+
+let relabelScope = DomainGraphQL_Server$ReventlessLocal.relabelScope;
+
+let orderedBuckets = DomainGraphQL_Server$ReventlessLocal.orderedBuckets;
 
 let registerMutations = DomainGraphQL_Server$ReventlessLocal.registerMutations;
 
@@ -70,7 +76,19 @@ let activeSchema = DomainGraphQL_Server$ReventlessLocal.activeSchema;
 
 let lastFullSdl = DomainGraphQL_Server$ReventlessLocal.lastFullSdl;
 
+let assembleBucketSdl = DomainGraphQL_Server$ReventlessLocal.assembleBucketSdl;
+
+let buildScopeSdl = DomainGraphQL_Server$ReventlessLocal.buildScopeSdl;
+
 let buildSdl = DomainGraphQL_Server$ReventlessLocal.buildSdl;
+
+let exnMessage = DomainGraphQL_Server$ReventlessLocal.exnMessage;
+
+let scopeResolverMap = DomainGraphQL_Server$ReventlessLocal.scopeResolverMap;
+
+let scopeHasFields = DomainGraphQL_Server$ReventlessLocal.scopeHasFields;
+
+let composeSchema = DomainGraphQL_Server$ReventlessLocal.composeSchema;
 
 let start = DomainGraphQL_Server$ReventlessLocal.start;
 
@@ -111,13 +129,16 @@ export {
   buildAuthContext,
   encodeGlobalId,
   decodeGlobalId,
-  mutationResolvers,
-  queryResolvers,
-  subscriptionResolvers,
-  mutationFields,
-  queryFields,
-  subscriptionFields,
-  typeDefinitions,
+  platformScope,
+  makeBucket,
+  buckets,
+  currentScope,
+  bucketFor,
+  currentBucket,
+  setScope,
+  resetScope,
+  relabelScope,
+  orderedBuckets,
   registerMutations,
   registerQueries,
   registerSubscriptions,
@@ -133,7 +154,13 @@ export {
   activeServer,
   activeSchema,
   lastFullSdl,
+  assembleBucketSdl,
+  buildScopeSdl,
   buildSdl,
+  exnMessage,
+  scopeResolverMap,
+  scopeHasFields,
+  composeSchema,
   start,
   stop,
   reset,

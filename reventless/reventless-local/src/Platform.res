@@ -159,6 +159,30 @@ module MakeWithConfig = (
   // Domain = plugin-facing (default); Platform = admin/core (split mode).
   let currentDeployTarget: ref<apiTarget> = ref(Domain)
 
+  // Plugin=subgraph scoping (mirrors the AWS plugin=source-API model): each
+  // plugin's construction runs inside its own DomainGraphQL_Server scope so
+  // its GraphQL registrations form a standalone subgraph, validated in
+  // isolation and composed at start(). The plugin name is only known after
+  // construction (via the synchronous plugin-built hook), so the scope opens
+  // under a unique token and is relabeled to the plugin name afterwards.
+  let pluginScopeCounter = ref(0)
+  let buildPluginInScope = (
+    ~makePlugin: unit => ReventlessCore.Plugin.component,
+    ~builtInfos: ref<array<ReventlessCore.Plugin_Helpers.pluginBuiltInfo>>,
+  ): ReventlessCore.Plugin.component => {
+    pluginScopeCounter.contents = pluginScopeCounter.contents + 1
+    let scopeToken = `plugin-${pluginScopeCounter.contents->Int.toString}`
+    DomainGraphQL_Server.setScope(scopeToken)
+    let countBefore = builtInfos.contents->Array.length
+    let component = makePlugin()
+    switch builtInfos.contents->Array.get(countBefore) {
+    | Some(info) => DomainGraphQL_Server.relabelScope(~from=scopeToken, ~to_=info.name)
+    | None => ()
+    }
+    DomainGraphQL_Server.resetScope()
+    component
+  }
+
   // Track which GraphQL servers have had admin schema (Plugin queries/mutations) registered.
   // Prevents double-registration when makePlatform and deployPlugin both target the same server.
   let adminRegisteredServers: ref<array<ReventlessGraphqlServer.GraphQL_ServerInstance.t>> = ref([])
@@ -1361,10 +1385,12 @@ module MakeWithConfig = (
       builtInfos.contents->Array.push(info)
     })
 
-    // Build each plugin.
+    // Build each plugin inside its own DomainGraphQL_Server scope so its
+    // GraphQL registrations form a standalone subgraph (plugin=subgraph,
+    // platform=merge — mirrors the AWS source-API model).
     let plugins = plugins->Array.map(plugin => {
       module P = unpack(plugin)
-      P.make()
+      buildPluginInScope(~makePlugin=P.make, ~builtInfos)
     })
 
     // Restore original hook and fire deployed hooks synchronously.
@@ -2085,8 +2111,12 @@ module MakeWithConfig = (
       builtInfos.contents->Array.push(info)
     })
 
+    // Construct the plugin inside its own DomainGraphQL_Server scope
+    // (plugin=subgraph — see buildPluginInScope). Registrations targeting the
+    // platform server (apiTarget=Platform in split mode) are unaffected:
+    // scopes only exist on DomainGraphQL_Server.
     module P = unpack(plugin)
-    let pluginComponent = P.make()
+    let pluginComponent = buildPluginInScope(~makePlugin=P.make, ~builtInfos)
 
     ReventlessCore.Plugin_Helpers.onPluginBuiltHook.contents = existingBuiltHook
 

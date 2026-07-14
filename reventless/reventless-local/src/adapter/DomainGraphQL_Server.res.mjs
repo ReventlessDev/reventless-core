@@ -3,11 +3,16 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Http from "http";
 import * as Graphql from "graphql";
+import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as GraphqlYoga from "graphql-yoga";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as LocalAuth$ReventlessLocal from "./Auth/LocalAuth.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
@@ -140,65 +145,134 @@ function decodeGlobalId(globalId) {
   }
 }
 
-let mutationResolvers = {
+let platformScope = "platform";
+
+function makeBucket(scope) {
+  return {
+    mutationFields: [],
+    queryFields: [],
+    subscriptionFields: [],
+    typeDefinitions: scope === platformScope ? [] : GraphQL_Stitcher$ReventlessCore.relayBaseTypes.slice(),
+    mutationResolvers: {},
+    queryResolvers: {},
+    subscriptionResolvers: {}
+  };
+}
+
+let buckets = {
   contents: {}
 };
 
-let queryResolvers = {
-  contents: {}
+let currentScope = {
+  contents: platformScope
 };
 
-let subscriptionResolvers = {
-  contents: {}
-};
+function bucketFor(scope) {
+  let b = buckets.contents[scope];
+  if (b !== undefined) {
+    return b;
+  }
+  let b$1 = makeBucket(scope);
+  buckets.contents[scope] = b$1;
+  return b$1;
+}
 
-let mutationFields = {
-  contents: []
-};
+function currentBucket() {
+  return bucketFor(currentScope.contents);
+}
 
-let queryFields = {
-  contents: []
-};
+function setScope(name) {
+  currentScope.contents = name;
+  bucketFor(name);
+}
 
-let subscriptionFields = {
-  contents: []
-};
+function resetScope() {
+  currentScope.contents = platformScope;
+}
 
-let typeDefinitions = {
-  contents: []
-};
+function relabelScope(from, to_) {
+  if (from === to_) {
+    return;
+  }
+  let b = buckets.contents[from];
+  if (b === undefined) {
+    return;
+  }
+  Stdlib_Dict.$$delete(buckets.contents, from);
+  let existing = buckets.contents[to_];
+  if (existing !== undefined) {
+    existing.mutationFields = existing.mutationFields.concat(b.mutationFields);
+    existing.queryFields = existing.queryFields.concat(b.queryFields);
+    existing.subscriptionFields = existing.subscriptionFields.concat(b.subscriptionFields);
+    b.typeDefinitions.forEach(t => {
+      if (!existing.typeDefinitions.includes(t)) {
+        existing.typeDefinitions.push(t);
+        return;
+      }
+    });
+    Object.entries(b.mutationResolvers).forEach(param => {
+      existing.mutationResolvers[param[0]] = param[1];
+    });
+    Object.entries(b.queryResolvers).forEach(param => {
+      existing.queryResolvers[param[0]] = param[1];
+    });
+    Object.entries(b.subscriptionResolvers).forEach(param => {
+      existing.subscriptionResolvers[param[0]] = param[1];
+    });
+  } else {
+    buckets.contents[to_] = b;
+  }
+  if (currentScope.contents === from) {
+    currentScope.contents = to_;
+    return;
+  }
+}
+
+function orderedBuckets() {
+  let entries = Object.entries(buckets.contents);
+  return entries.filter(param => param[0] === platformScope).concat(entries.filter(param => param[0] !== platformScope));
+}
 
 function registerMutations(sdlFields, resolvers) {
-  mutationFields.contents = mutationFields.contents.concat(sdlFields);
+  let b = bucketFor(currentScope.contents);
+  b.mutationFields = b.mutationFields.concat(sdlFields);
   Object.entries(resolvers).forEach(param => {
-    mutationResolvers.contents[param[0]] = param[1];
+    b.mutationResolvers[param[0]] = param[1];
   });
 }
 
 function registerQueries(sdlFields, resolvers) {
-  queryFields.contents = queryFields.contents.concat(sdlFields);
+  let b = bucketFor(currentScope.contents);
+  b.queryFields = b.queryFields.concat(sdlFields);
   Object.entries(resolvers).forEach(param => {
-    queryResolvers.contents[param[0]] = param[1];
+    b.queryResolvers[param[0]] = param[1];
   });
 }
 
 function registerSubscriptions(sdlFields, resolvers) {
-  subscriptionFields.contents = subscriptionFields.contents.concat(sdlFields);
+  let b = bucketFor(currentScope.contents);
+  b.subscriptionFields = b.subscriptionFields.concat(sdlFields);
   Object.entries(resolvers).forEach(param => {
-    subscriptionResolvers.contents[param[0]] = param[1];
+    b.subscriptionResolvers[param[0]] = param[1];
   });
 }
 
 function getMutationResolver(fieldName) {
-  return mutationResolvers.contents[fieldName];
+  return Stdlib_Array.findMap(Object.values(buckets.contents), b => b.mutationResolvers[fieldName]);
 }
 
 function getQueryResolver(fieldName) {
-  return queryResolvers.contents[fieldName];
+  return Stdlib_Array.findMap(Object.values(buckets.contents), b => b.queryResolvers[fieldName]);
 }
 
 function registerTypes(sdlTypes) {
-  typeDefinitions.contents = typeDefinitions.contents.concat(sdlTypes);
+  let b = bucketFor(currentScope.contents);
+  sdlTypes.forEach(t => {
+    if (!b.typeDefinitions.includes(t)) {
+      b.typeDefinitions.push(t);
+      return;
+    }
+  });
 }
 
 let nodeTypeRegistry = {
@@ -255,39 +329,130 @@ let lastFullSdl = {
   contents: undefined
 };
 
-function buildSdl() {
-  let typesSdl = typeDefinitions.contents.length !== 0 ? typeDefinitions.contents.join("\n\n") : "";
-  let mutations = mutationFields.contents.length !== 0 ? mutationFields.contents.join("\n") : "  _noop: String";
-  let queries = queryFields.contents.length !== 0 ? queryFields.contents.join("\n") : "  _noop: String";
-  let queriesMutationsSdl = `type Query {
-` + queries + `
+function assembleBucketSdl(typeDefinitions, queryFields, mutationFields, subscriptionFields, withRootDefaults) {
+  let sections = [];
+  if (typeDefinitions.length !== 0) {
+    sections.push(typeDefinitions.join("\n\n"));
+  }
+  if (withRootDefaults || queryFields.length !== 0) {
+    let queries = queryFields.length !== 0 ? queryFields.join("\n") : "  _noop: String";
+    sections.push(`type Query {\n` + queries + `\n}`);
+  }
+  if (withRootDefaults || mutationFields.length !== 0) {
+    let mutations = mutationFields.length !== 0 ? mutationFields.join("\n") : "  _noop: String";
+    sections.push(`type Mutation {\n` + mutations + `\n}`);
+  }
+  if (subscriptionFields.length !== 0) {
+    sections.push(`type Subscription {\n` + subscriptionFields.join("\n") + `\n}`);
+  }
+  return sections.join("\n\n");
 }
-type Mutation {
-` + mutations + `
-}`;
-  let subscriptionsSdl = subscriptionFields.contents.length !== 0 ? `\n\ntype Subscription {\n` + subscriptionFields.contents.join("\n") + `\n}` : "";
-  let base = typesSdl.length > 0 ? typesSdl + "\n\n" + queriesMutationsSdl : queriesMutationsSdl;
-  return base + subscriptionsSdl;
+
+function buildScopeSdl(b) {
+  return assembleBucketSdl(b.typeDefinitions, b.queryFields, b.mutationFields, b.subscriptionFields, false);
+}
+
+function buildSdl() {
+  let seenTypes = new Set();
+  let allTypes = [];
+  let allQueries = [];
+  let allMutations = [];
+  let allSubscriptions = [];
+  orderedBuckets().forEach(param => {
+    let b = param[1];
+    b.typeDefinitions.forEach(t => {
+      if (!seenTypes.has(t)) {
+        seenTypes.add(t);
+        allTypes.push(t);
+        return;
+      }
+    });
+    allQueries.push(...b.queryFields);
+    allMutations.push(...b.mutationFields);
+    allSubscriptions.push(...b.subscriptionFields);
+  });
+  return assembleBucketSdl(allTypes, allQueries, allMutations, allSubscriptions, true);
+}
+
+function exnMessage(exn) {
+  return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown error");
+}
+
+function scopeResolverMap(b, withRootDefaults) {
+  let resolvers = {};
+  if (withRootDefaults || Object.keys(b.queryResolvers).length !== 0) {
+    resolvers["Query"] = b.queryResolvers;
+  }
+  if (withRootDefaults || Object.keys(b.mutationResolvers).length !== 0) {
+    resolvers["Mutation"] = b.mutationResolvers;
+  }
+  if (Object.keys(b.subscriptionResolvers).length !== 0) {
+    resolvers["Subscription"] = b.subscriptionResolvers;
+  }
+  return resolvers;
+}
+
+function scopeHasFields(b) {
+  if (b.mutationFields.length !== 0 || b.queryFields.length !== 0) {
+    return true;
+  } else {
+    return b.subscriptionFields.length !== 0;
+  }
+}
+
+function composeSchema() {
+  orderedBuckets().forEach(param => {
+    let b = param[1];
+    let scope = param[0];
+    if (!(scope !== platformScope && scopeHasFields(b))) {
+      return;
+    }
+    let doc = buildScopeSdl(b);
+    try {
+      GraphqlYoga.createSchema({
+        typeDefs: doc,
+        resolvers: scopeResolverMap(b, false)
+      });
+      return;
+    } catch (raw_e) {
+      let e = Primitive_exceptions.internalToException(raw_e);
+      return Stdlib_JsError.throwWithMessage(`Plugin "` + scope + `" subgraph document is not valid standalone: ` + exnMessage(e));
+    }
+  });
+  let platformBucket = bucketFor(platformScope);
+  let docs = [assembleBucketSdl(platformBucket.typeDefinitions, platformBucket.queryFields, platformBucket.mutationFields, platformBucket.subscriptionFields, true)];
+  let resolverMaps = [scopeResolverMap(platformBucket, true)];
+  orderedBuckets().forEach(param => {
+    if (param[0] === platformScope) {
+      return;
+    }
+    let b = param[1];
+    let doc = buildScopeSdl(b);
+    if (doc.length > 0) {
+      docs.push(doc);
+      resolverMaps.push(scopeResolverMap(b, false));
+      return;
+    }
+  });
+  try {
+    return GraphqlYoga.createSchema({
+      typeDefs: docs,
+      resolvers: resolverMaps
+    });
+  } catch (raw_e) {
+    let e = Primitive_exceptions.internalToException(raw_e);
+    return Stdlib_JsError.throwWithMessage(`Cross-plugin schema merge failed (mirrors AWS MERGE_FAILED): ` + exnMessage(e));
+  }
 }
 
 function start(portOpt, param, param$1) {
   let port = portOpt !== undefined ? portOpt : 4000;
   let match = buildNodeResolver();
   if (match !== undefined) {
-    queryResolvers.contents[match[0]] = match[1];
+    bucketFor(platformScope).queryResolvers[match[0]] = match[1];
   }
-  let resolvers = {};
-  resolvers["Query"] = queryResolvers.contents;
-  resolvers["Mutation"] = mutationResolvers.contents;
-  if (Object.keys(subscriptionResolvers.contents).length !== 0) {
-    resolvers["Subscription"] = subscriptionResolvers.contents;
-  }
-  let sdl = buildSdl();
-  lastFullSdl.contents = sdl;
-  let schema = GraphqlYoga.createSchema({
-    typeDefs: sdl,
-    resolvers: resolvers
-  });
+  lastFullSdl.contents = buildSdl();
+  let schema = composeSchema();
   activeSchema.contents = Primitive_option.some(schema);
   let yoga = GraphqlYoga.createYoga({
     schema: schema,
@@ -320,13 +485,8 @@ function stop() {
 }
 
 function reset() {
-  mutationResolvers.contents = {};
-  queryResolvers.contents = {};
-  subscriptionResolvers.contents = {};
-  mutationFields.contents = [];
-  queryFields.contents = [];
-  subscriptionFields.contents = [];
-  typeDefinitions.contents = [];
+  buckets.contents = {};
+  currentScope.contents = platformScope;
   nodeTypeRegistry.contents = {};
   nodeResolverCallback.contents = undefined;
   activeSchema.contents = undefined;
@@ -339,8 +499,8 @@ function getRegisteredSdl() {
 
 function getRegisteredResolverNames() {
   return {
-    mutations: Object.keys(mutationResolvers.contents),
-    queries: Object.keys(queryResolvers.contents)
+    mutations: orderedBuckets().flatMap(param => Object.keys(param[1].mutationResolvers)),
+    queries: orderedBuckets().flatMap(param => Object.keys(param[1].queryResolvers))
   };
 }
 
@@ -373,10 +533,11 @@ function extractFieldName(sdlField) {
 }
 
 function diagnostics() {
-  let mutFieldNames = mutationFields.contents.map(extractFieldName).filter(n => n !== "_noop");
-  let queryFieldNames = queryFields.contents.map(extractFieldName).filter(n => n !== "_noop");
-  let mutResolverNames = Object.keys(mutationResolvers.contents);
-  let queryResolverNames = Object.keys(queryResolvers.contents);
+  let allBuckets = orderedBuckets().map(param => param[1]);
+  let mutFieldNames = allBuckets.flatMap(b => b.mutationFields).map(extractFieldName).filter(n => n !== "_noop");
+  let queryFieldNames = allBuckets.flatMap(b => b.queryFields).map(extractFieldName).filter(n => n !== "_noop");
+  let mutResolverNames = allBuckets.flatMap(b => Object.keys(b.mutationResolvers));
+  let queryResolverNames = allBuckets.flatMap(b => Object.keys(b.queryResolvers));
   let mismatches = [];
   let mutResolverSet = new Set(mutResolverNames);
   mutFieldNames.forEach(name => {
@@ -406,7 +567,17 @@ function diagnostics() {
       return;
     }
   });
-  let typeNames = typeDefinitions.contents.map(GraphQL_Stitcher$ReventlessCore.extractLeadingName);
+  let seenTypeBlocks = new Set();
+  let typeNames = [];
+  allBuckets.forEach(b => {
+    b.typeDefinitions.forEach(t => {
+      if (!seenTypeBlocks.has(t)) {
+        seenTypeBlocks.add(t);
+        typeNames.push(GraphQL_Stitcher$ReventlessCore.extractLeadingName(t));
+        return;
+      }
+    });
+  });
   return {
     registeredTypeDefinitions: typeNames,
     registeredMutationFields: mutFieldNames,
@@ -485,13 +656,16 @@ export {
   buildAuthContext,
   encodeGlobalId,
   decodeGlobalId,
-  mutationResolvers,
-  queryResolvers,
-  subscriptionResolvers,
-  mutationFields,
-  queryFields,
-  subscriptionFields,
-  typeDefinitions,
+  platformScope,
+  makeBucket,
+  buckets,
+  currentScope,
+  bucketFor,
+  currentBucket,
+  setScope,
+  resetScope,
+  relabelScope,
+  orderedBuckets,
   registerMutations,
   registerQueries,
   registerSubscriptions,
@@ -507,7 +681,13 @@ export {
   activeServer,
   activeSchema,
   lastFullSdl,
+  assembleBucketSdl,
+  buildScopeSdl,
   buildSdl,
+  exnMessage,
+  scopeResolverMap,
+  scopeHasFields,
+  composeSchema,
   start,
   stop,
   reset,

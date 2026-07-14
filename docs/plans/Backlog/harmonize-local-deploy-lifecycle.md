@@ -1,9 +1,22 @@
 # Harmonize the local deploy lifecycle with AWS
 
-**Status:** Backlog
+**Status:** SUPERSEDED 2026-07-14 by
+[docs/plans/done/merged-api-push-free-composition.md](../done/merged-api-push-free-composition.md)
+(Phase 6). The staged register→push→wait mechanics this proposal mirrors were
+RETIRED with the push machinery — there is no fragment registration, no reactive
+push, and no deploy waiter on AWS anymore. What remained of the goal ("one mental
+model for how a platform/plugin comes up") is delivered by Phase 6: on both
+platforms each plugin is an independent, standalone-validated subgraph and the
+platform composes them (AWS: source APIs + AUTO_MERGE; local: per-plugin
+subschema buckets merged at start, with per-plugin validation and
+merge-conflict attribution). The residual idea below — running local plugin
+deploys as separately-timed stages against an already-running server — has no
+remaining production analogue to mirror (AWS plugin deploys don't stage against
+the platform's schema anymore; they own their source API) and the local platform
+is single-process, so it is retired rather than deferred.
 **Origin:** Spun off from `docs/plans/event-sourced-fragment-registries.md` (Phase 2, scope 2)
 during the schema-fragment-registry work (2026-07-12). Scope 1 (uniform reactive
-registry-driven schema push on local) was done in Phase 2; this is the deferred scope 2.
+registry-driven schema push on local) was done in Phase 2; this was the deferred scope 2.
 
 ## Problem
 

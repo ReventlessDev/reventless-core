@@ -48,6 +48,20 @@ external createSchema: {
   "resolvers": dict<dict<resolverFn>>,
 } => schema = "createSchema"
 
+/**
+ * Multi-document variant of `createSchema`. graphql-yoga's `createSchema` is a
+ * re-export of `@graphql-tools/schema` `makeExecutableSchema`, which accepts
+ * arrays for both `typeDefs` and `resolvers` and composes them with
+ * `mergeTypeDefs` / `mergeResolvers` semantics: identical duplicate type
+ * definitions dedupe, conflicting same-named definitions throw naming the
+ * offending type. Used to compose one schema from per-subgraph documents.
+ */
+@module("graphql-yoga")
+external createSchemaMulti: {
+  "typeDefs": array<string>,
+  "resolvers": array<dict<dict<resolverFn>>>,
+} => schema = "createSchema"
+
 // ─── Server creation ───────────────────────────────────────────────────────
 
 /**

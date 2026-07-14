@@ -69,7 +69,12 @@ function make(labelOpt) {
     });
   };
   let registerTypes = sdlTypes => {
-    typeDefinitions.contents = typeDefinitions.contents.concat(sdlTypes);
+    sdlTypes.forEach(t => {
+      if (!typeDefinitions.contents.includes(t)) {
+        typeDefinitions.contents.push(t);
+        return;
+      }
+    });
   };
   let getMutationResolver = fieldName => mutationResolvers.contents[fieldName];
   let getQueryResolver = fieldName => queryResolvers.contents[fieldName];

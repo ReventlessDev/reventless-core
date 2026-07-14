@@ -184,44 +184,155 @@ let decodeGlobalId = (globalId: string): option<(string, string)> =>
   | _ => None
   }
 
-// -- Registry --------------------------------------------------------------
+// -- Scoped registry ---------------------------------------------------------
+// Mirrors the AWS plugin=source-API, platform=merged-API model: every
+// registration lands in the bucket of the *current scope*. The default
+// "platform" scope holds admin/base registrations; Platform.res wraps each
+// plugin's construction in its own scope (setScope/relabelScope/resetScope)
+// so a plugin's SDL fragment + resolvers form a standalone subgraph that is
+// validated in isolation and composed at start().
 
-let mutationResolvers: ref<dict<resolverFn>> = ref(Dict.make())
-let queryResolvers: ref<dict<resolverFn>> = ref(Dict.make())
-let subscriptionResolvers: ref<dict<resolverFn>> = ref(Dict.make())
+let platformScope = "platform"
 
-let mutationFields: ref<array<string>> = ref([])
-let queryFields: ref<array<string>> = ref([])
-let subscriptionFields: ref<array<string>> = ref([])
-let typeDefinitions: ref<array<string>> = ref([])
+type bucket = {
+  mutable mutationFields: array<string>,
+  mutable queryFields: array<string>,
+  mutable subscriptionFields: array<string>,
+  mutable typeDefinitions: array<string>,
+  mutationResolvers: dict<resolverFn>,
+  queryResolvers: dict<resolverFn>,
+  subscriptionResolvers: dict<resolverFn>,
+}
+
+let makeBucket = (~scope: string): bucket => {
+  mutationFields: [],
+  queryFields: [],
+  subscriptionFields: [],
+  // Non-platform (plugin) buckets are seeded with the Relay base types so
+  // their standalone documents are self-contained — mirrors the AWS path
+  // where stitchStandalone embeds the shared types in every subgraph SDL.
+  // Identical copies dedupe in the final merge.
+  typeDefinitions: scope == platformScope
+    ? []
+    : ReventlessCore.GraphQL_Stitcher.relayBaseTypes->Array.copy,
+  mutationResolvers: Dict.make(),
+  queryResolvers: Dict.make(),
+  subscriptionResolvers: Dict.make(),
+}
+
+// Insertion order = composition order (platform bucket is forced first in
+// orderedBuckets regardless of creation order).
+let buckets: ref<dict<bucket>> = ref(Dict.make())
+let currentScope: ref<string> = ref(platformScope)
+
+let bucketFor = (scope: string): bucket =>
+  switch buckets.contents->Dict.get(scope) {
+  | Some(b) => b
+  | None =>
+    let b = makeBucket(~scope)
+    buckets.contents->Dict.set(scope, b)
+    b
+  }
+
+let currentBucket = () => bucketFor(currentScope.contents)
+
+/** Route subsequent registrations into the named scope's bucket. */
+let setScope = (name: string) => {
+  currentScope.contents = name
+  let _ = bucketFor(name)
+}
+
+/** Route subsequent registrations back into the default "platform" bucket. */
+let resetScope = () => currentScope.contents = platformScope
+
+/** Rename a scope bucket. Platform.res scopes a plugin's construction with a
+    token (the plugin name is only known after construction) and relabels the
+    bucket to the plugin name afterwards. Merges into `to_` if it exists. */
+let relabelScope = (~from: string, ~to_: string) =>
+  if from != to_ {
+    switch buckets.contents->Dict.get(from) {
+    | None => ()
+    | Some(b) =>
+      buckets.contents->Dict.delete(from)
+      switch buckets.contents->Dict.get(to_) {
+      | None => buckets.contents->Dict.set(to_, b)
+      | Some(existing) =>
+        existing.mutationFields = existing.mutationFields->Array.concat(b.mutationFields)
+        existing.queryFields = existing.queryFields->Array.concat(b.queryFields)
+        existing.subscriptionFields =
+          existing.subscriptionFields->Array.concat(b.subscriptionFields)
+        b.typeDefinitions->Array.forEach(t =>
+          if !(existing.typeDefinitions->Array.includes(t)) {
+            existing.typeDefinitions->Array.push(t)
+          }
+        )
+        b.mutationResolvers
+        ->Dict.toArray
+        ->Array.forEach(((k, v)) => existing.mutationResolvers->Dict.set(k, v))
+        b.queryResolvers
+        ->Dict.toArray
+        ->Array.forEach(((k, v)) => existing.queryResolvers->Dict.set(k, v))
+        b.subscriptionResolvers
+        ->Dict.toArray
+        ->Array.forEach(((k, v)) => existing.subscriptionResolvers->Dict.set(k, v))
+      }
+      if currentScope.contents == from {
+        currentScope.contents = to_
+      }
+    }
+  }
+
+// Platform bucket first, then the plugin buckets in creation order.
+let orderedBuckets = (): array<(string, bucket)> => {
+  let entries = buckets.contents->Dict.toArray
+  entries
+  ->Array.filter(((scope, _)) => scope == platformScope)
+  ->Array.concat(entries->Array.filter(((scope, _)) => scope != platformScope))
+}
 
 let registerMutations = (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => {
-  mutationFields.contents = mutationFields.contents->Array.concat(sdlFields)
-  resolvers->Dict.toArray->Array.forEach(((k, v)) => mutationResolvers.contents->Dict.set(k, v))
+  let b = currentBucket()
+  b.mutationFields = b.mutationFields->Array.concat(sdlFields)
+  resolvers->Dict.toArray->Array.forEach(((k, v)) => b.mutationResolvers->Dict.set(k, v))
 }
 
 let registerQueries = (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => {
-  queryFields.contents = queryFields.contents->Array.concat(sdlFields)
-  resolvers->Dict.toArray->Array.forEach(((k, v)) => queryResolvers.contents->Dict.set(k, v))
+  let b = currentBucket()
+  b.queryFields = b.queryFields->Array.concat(sdlFields)
+  resolvers->Dict.toArray->Array.forEach(((k, v)) => b.queryResolvers->Dict.set(k, v))
 }
 
 let registerSubscriptions = (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => {
-  subscriptionFields.contents = subscriptionFields.contents->Array.concat(sdlFields)
-  resolvers->Dict.toArray->Array.forEach(((k, v)) =>
-    subscriptionResolvers.contents->Dict.set(k, v)
-  )
+  let b = currentBucket()
+  b.subscriptionFields = b.subscriptionFields->Array.concat(sdlFields)
+  resolvers->Dict.toArray->Array.forEach(((k, v)) => b.subscriptionResolvers->Dict.set(k, v))
 }
 
-/** Look up a registered mutation resolver by field name (used by MCP_Server). */
+/** Look up a registered mutation resolver by field name (used by MCP_Server).
+    Searches all scope buckets. */
 let getMutationResolver = (fieldName: string): option<resolverFn> =>
-  mutationResolvers.contents->Dict.get(fieldName)
+  buckets.contents
+  ->Dict.valuesToArray
+  ->Array.findMap(b => b.mutationResolvers->Dict.get(fieldName))
 
-/** Look up a registered query resolver by field name (used by MCP_Server). */
+/** Look up a registered query resolver by field name (used by MCP_Server).
+    Searches all scope buckets. */
 let getQueryResolver = (fieldName: string): option<resolverFn> =>
-  queryResolvers.contents->Dict.get(fieldName)
+  buckets.contents
+  ->Dict.valuesToArray
+  ->Array.findMap(b => b.queryResolvers->Dict.get(fieldName))
 
-let registerTypes = (~sdlTypes: array<string>) =>
-  typeDefinitions.contents = typeDefinitions.contents->Array.concat(sdlTypes)
+// Identical type blocks dedupe within a bucket, so shared-type registrations
+// (CommandResult union family, Relay base types) can be repeated per scope —
+// each plugin bucket carries its own copy and stays standalone-valid.
+let registerTypes = (~sdlTypes: array<string>) => {
+  let b = currentBucket()
+  sdlTypes->Array.forEach(t =>
+    if !(b.typeDefinitions->Array.includes(t)) {
+      b.typeDefinitions->Array.push(t)
+    }
+  )
+}
 
 // -- Relay Node type registry -----------------------------------------------
 // Maps GraphQL type names to QueryDb component names for node(id: ID!) resolution.
@@ -271,54 +382,176 @@ let activeServer: ref<option<YG.httpServer>> = ref(None)
 let activeSchema: ref<option<YG.schema>> = ref(None)
 let lastFullSdl: ref<option<string>> = ref(None)
 
-let buildSdl = () => {
-  let typesSdl = typeDefinitions.contents->Array.length > 0
-    ? typeDefinitions.contents->Array.join("\n\n")
-    : ""
-  let mutations =
-    mutationFields.contents->Array.length > 0
-      ? mutationFields.contents->Array.join("\n")
-      : "  _noop: String"
-  let queries =
-    queryFields.contents->Array.length > 0
-      ? queryFields.contents->Array.join("\n")
-      : "  _noop: String"
-  let queriesMutationsSdl = `type Query {
-${queries}
+// Shared SDL assembly for one bucket. `withRootDefaults` keeps the historical
+// behavior of always emitting Query/Mutation (with a `_noop` placeholder when
+// empty) — required for the platform bucket so the composed schema always has
+// a Query type. Plugin buckets omit empty root types (their standalone
+// documents mirror an AWS source-API schema).
+let assembleBucketSdl = (
+  ~typeDefinitions: array<string>,
+  ~queryFields: array<string>,
+  ~mutationFields: array<string>,
+  ~subscriptionFields: array<string>,
+  ~withRootDefaults: bool,
+): string => {
+  let sections = []
+  if typeDefinitions->Array.length > 0 {
+    sections->Array.push(typeDefinitions->Array.join("\n\n"))
+  }
+  if withRootDefaults || queryFields->Array.length > 0 {
+    let queries =
+      queryFields->Array.length > 0 ? queryFields->Array.join("\n") : "  _noop: String"
+    sections->Array.push(`type Query {\n${queries}\n}`)
+  }
+  if withRootDefaults || mutationFields->Array.length > 0 {
+    let mutations =
+      mutationFields->Array.length > 0 ? mutationFields->Array.join("\n") : "  _noop: String"
+    sections->Array.push(`type Mutation {\n${mutations}\n}`)
+  }
+  if subscriptionFields->Array.length > 0 {
+    sections->Array.push(`type Subscription {\n${subscriptionFields->Array.join("\n")}\n}`)
+  }
+  sections->Array.join("\n\n")
 }
-type Mutation {
-${mutations}
-}`
-  let subscriptionsSdl =
-    subscriptionFields.contents->Array.length > 0
-      ? `\n\ntype Subscription {\n${subscriptionFields.contents->Array.join("\n")}\n}`
-      : ""
-  let base =
-    typesSdl->String.length > 0
-      ? typesSdl ++ "\n\n" ++ queriesMutationsSdl
-      : queriesMutationsSdl
-  base ++ subscriptionsSdl
+
+// Standalone subgraph document for a plugin bucket (empty root types omitted).
+let buildScopeSdl = (b: bucket): string =>
+  assembleBucketSdl(
+    ~typeDefinitions=b.typeDefinitions,
+    ~queryFields=b.queryFields,
+    ~mutationFields=b.mutationFields,
+    ~subscriptionFields=b.subscriptionFields,
+    ~withRootDefaults=false,
+  )
+
+// Aggregated SDL across all buckets (diagnostics / registered-SDL view).
+// Identical type blocks registered in multiple buckets appear once.
+let buildSdl = () => {
+  let seenTypes = Set.make()
+  let allTypes: array<string> = []
+  let allQueries: array<string> = []
+  let allMutations: array<string> = []
+  let allSubscriptions: array<string> = []
+  orderedBuckets()->Array.forEach(((_, b)) => {
+    b.typeDefinitions->Array.forEach(t =>
+      if !(seenTypes->Set.has(t)) {
+        seenTypes->Set.add(t)
+        allTypes->Array.push(t)
+      }
+    )
+    allQueries->Array.pushMany(b.queryFields)
+    allMutations->Array.pushMany(b.mutationFields)
+    allSubscriptions->Array.pushMany(b.subscriptionFields)
+  })
+  assembleBucketSdl(
+    ~typeDefinitions=allTypes,
+    ~queryFields=allQueries,
+    ~mutationFields=allMutations,
+    ~subscriptionFields=allSubscriptions,
+    ~withRootDefaults=true,
+  )
 }
 
 // `~contextFactory` is accepted to satisfy the `ReventlessGraphqlServer.GraphQL_ServerInstance.t`
 // interface but ignored — the data server always wires `buildAuthContext`
 // internally so the bearer-token rules + /__inmemory/login + /sdl dispatch
 // stay consistent across callers.
+let exnMessage = (exn: exn): string =>
+  exn
+  ->JsExn.fromException
+  ->Option.flatMap(JsExn.message)
+  ->Option.getOr("unknown error")
+
+// Per-bucket root resolver map ({Query, Mutation, Subscription} — empty roots
+// omitted except for the platform bucket which always carries Query/Mutation,
+// matching its `_noop` root defaults).
+let scopeResolverMap = (b: bucket, ~withRootDefaults: bool): dict<dict<resolverFn>> => {
+  let resolvers = Dict.make()
+  if withRootDefaults || b.queryResolvers->Dict.keysToArray->Array.length > 0 {
+    resolvers->Dict.set("Query", b.queryResolvers)
+  }
+  if withRootDefaults || b.mutationResolvers->Dict.keysToArray->Array.length > 0 {
+    resolvers->Dict.set("Mutation", b.mutationResolvers)
+  }
+  if b.subscriptionResolvers->Dict.keysToArray->Array.length > 0 {
+    resolvers->Dict.set("Subscription", b.subscriptionResolvers)
+  }
+  resolvers
+}
+
+let scopeHasFields = (b: bucket): bool =>
+  b.mutationFields->Array.length > 0 ||
+  b.queryFields->Array.length > 0 ||
+  b.subscriptionFields->Array.length > 0
+
+/** Validate every plugin bucket's standalone document, then compose the final
+    schema from one document + one resolver map per bucket (platform first) via
+    graphql-tools merge semantics — mirrors AWS source-API validation followed
+    by the merged-API build. Exposed for start() and tests. */
+let composeSchema = (): YG.schema => {
+  // Standalone validation per plugin bucket — a plugin whose document
+  // references types it does not define itself fails HERE, with attribution,
+  // before the cross-plugin merge (mirrors AWS: each source API schema must
+  // be valid standalone).
+  orderedBuckets()->Array.forEach(((scope, b)) =>
+    if scope != platformScope && scopeHasFields(b) {
+      let doc = buildScopeSdl(b)
+      try {
+        let _ = YG.createSchema({
+          "typeDefs": doc,
+          "resolvers": scopeResolverMap(b, ~withRootDefaults=false),
+        })
+      } catch {
+      | e =>
+        JsError.throwWithMessage(
+          `Plugin "${scope}" subgraph document is not valid standalone: ${exnMessage(e)}`,
+        )
+      }
+    }
+  )
+
+  // Composition — graphql-tools mergeTypeDefs/mergeResolvers semantics:
+  // identical duplicate type definitions dedupe; conflicting same-named
+  // definitions throw naming the type (the local equivalent of MERGE_FAILED).
+  let platformBucket = bucketFor(platformScope)
+  let docs = [
+    assembleBucketSdl(
+      ~typeDefinitions=platformBucket.typeDefinitions,
+      ~queryFields=platformBucket.queryFields,
+      ~mutationFields=platformBucket.mutationFields,
+      ~subscriptionFields=platformBucket.subscriptionFields,
+      ~withRootDefaults=true,
+    ),
+  ]
+  let resolverMaps = [scopeResolverMap(platformBucket, ~withRootDefaults=true)]
+  orderedBuckets()->Array.forEach(((scope, b)) =>
+    if scope != platformScope {
+      let doc = buildScopeSdl(b)
+      if doc->String.length > 0 {
+        docs->Array.push(doc)
+        resolverMaps->Array.push(scopeResolverMap(b, ~withRootDefaults=false))
+      }
+    }
+  )
+  try {
+    YG.createSchemaMulti({"typeDefs": docs, "resolvers": resolverMaps})
+  } catch {
+  | e =>
+    JsError.throwWithMessage(
+      `Cross-plugin schema merge failed (mirrors AWS MERGE_FAILED): ${exnMessage(e)}`,
+    )
+  }
+}
+
 let start = (~port: int=4000, ~contextFactory as _: option<YG.contextFactory>=?, ()) => {
-  // Register node resolver if callback is set
+  // Register node resolver if callback is set — the node()/Node registry is
+  // platform-owned (local keeps its working in-process node()).
   switch buildNodeResolver() {
-  | Some((name, resolver)) => queryResolvers.contents->Dict.set(name, resolver)
+  | Some((name, resolver)) => bucketFor(platformScope).queryResolvers->Dict.set(name, resolver)
   | None => ()
   }
-  let resolvers = Dict.make()
-  resolvers->Dict.set("Query", queryResolvers.contents)
-  resolvers->Dict.set("Mutation", mutationResolvers.contents)
-  if subscriptionResolvers.contents->Dict.keysToArray->Array.length > 0 {
-    resolvers->Dict.set("Subscription", subscriptionResolvers.contents)
-  }
-  let sdl = buildSdl()
-  lastFullSdl.contents = Some(sdl)
-  let schema = YG.createSchema({"typeDefs": sdl, "resolvers": resolvers})
+  lastFullSdl.contents = Some(buildSdl())
+  let schema = composeSchema()
   activeSchema.contents = Some(schema)
   let yoga = YG.createYogaWithContext({
     "schema": schema,
@@ -349,15 +582,11 @@ let stop = () =>
   | None => ()
   }
 
-// Reset registry state (call between isolated test suites).
+// Reset registry state (call between isolated test suites). Clears all scope
+// buckets and restores the default "platform" scope.
 let reset = () => {
-  mutationResolvers.contents = Dict.make()
-  queryResolvers.contents = Dict.make()
-  subscriptionResolvers.contents = Dict.make()
-  mutationFields.contents = []
-  queryFields.contents = []
-  subscriptionFields.contents = []
-  typeDefinitions.contents = []
+  buckets.contents = Dict.make()
+  currentScope.contents = platformScope
   nodeTypeRegistry.contents = Dict.make()
   nodeResolverCallback.contents = None
   activeSchema.contents = None
@@ -371,8 +600,8 @@ let getRegisteredSdl = () => buildSdl()
 type resolverNames = {mutations: array<string>, queries: array<string>}
 
 let getRegisteredResolverNames = (): resolverNames => {
-  mutations: mutationResolvers.contents->Dict.keysToArray,
-  queries: queryResolvers.contents->Dict.keysToArray,
+  mutations: orderedBuckets()->Array.flatMap(((_, b)) => b.mutationResolvers->Dict.keysToArray),
+  queries: orderedBuckets()->Array.flatMap(((_, b)) => b.queryResolvers->Dict.keysToArray),
 }
 
 let getFullSdl = () => lastFullSdl.contents
@@ -405,12 +634,19 @@ let extractFieldName = (sdlField: string): string => {
 }
 
 let diagnostics = (): diagnostics => {
+  let allBuckets = orderedBuckets()->Array.map(((_, b)) => b)
   let mutFieldNames =
-    mutationFields.contents->Array.map(extractFieldName)->Array.filter(n => n != "_noop")
+    allBuckets
+    ->Array.flatMap(b => b.mutationFields)
+    ->Array.map(extractFieldName)
+    ->Array.filter(n => n != "_noop")
   let queryFieldNames =
-    queryFields.contents->Array.map(extractFieldName)->Array.filter(n => n != "_noop")
-  let mutResolverNames = mutationResolvers.contents->Dict.keysToArray
-  let queryResolverNames = queryResolvers.contents->Dict.keysToArray
+    allBuckets
+    ->Array.flatMap(b => b.queryFields)
+    ->Array.map(extractFieldName)
+    ->Array.filter(n => n != "_noop")
+  let mutResolverNames = allBuckets->Array.flatMap(b => b.mutationResolvers->Dict.keysToArray)
+  let queryResolverNames = allBuckets->Array.flatMap(b => b.queryResolvers->Dict.keysToArray)
 
   let mismatches: array<string> = []
 
@@ -442,7 +678,18 @@ let diagnostics = (): diagnostics => {
     }
   )
 
-  let typeNames = typeDefinitions.contents->Array.map(ReventlessCore.GraphQL_Stitcher.extractLeadingName)
+  // Identical type blocks registered in multiple scopes count once (they
+  // dedupe in the composed schema).
+  let seenTypeBlocks = Set.make()
+  let typeNames: array<string> = []
+  allBuckets->Array.forEach(b =>
+    b.typeDefinitions->Array.forEach(t =>
+      if !(seenTypeBlocks->Set.has(t)) {
+        seenTypeBlocks->Set.add(t)
+        typeNames->Array.push(ReventlessCore.GraphQL_Stitcher.extractLeadingName(t))
+      }
+    )
+  )
 
   {
     registeredTypeDefinitions: typeNames,
