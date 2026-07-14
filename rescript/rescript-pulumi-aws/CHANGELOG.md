@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.53 (2026-07-14)
+
+### Features
+
+* surface masked GraphQL resolver errors server-side (local + AWS) ([b3bca51](https://github.com/ReventlessDev/reventless-core/commit/b3bca51b539e40c604b3db338d570de6215ea837))
+
+
 # 2.4.0-alpha.52 (2026-07-14)
 
 ### Features

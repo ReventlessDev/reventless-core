@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.114 (2026-07-14)
+
+### Bug Fixes
+
+* show debug logs on the local platform (both launch paths) ([81837d7](https://github.com/ReventlessDev/reventless-core/commit/81837d7e02abe1065a722b43b195adef2c836794))
+### Features
+
+* **core:** thread ~comp through Projection.handleAction for attributed action logging ([fa32d93](https://github.com/ReventlessDev/reventless-core/commit/fa32d93dedabea1b1f655f01a4ea769a5908b143))
+
+
 # 1.0.0-alpha.113 (2026-07-14)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt

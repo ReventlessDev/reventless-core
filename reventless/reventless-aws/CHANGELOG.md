@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.212 (2026-07-14)
+
+### Bug Fixes
+
+* **aws:** create EC publishToAggregates SendMessage grants — cross-plugin extension→DCB publishes no longer AccessDenied ([c2126df](https://github.com/ReventlessDev/reventless-core/commit/c2126df0b9af4a79a980f2668ffc18a7760ef4c3))
+* **aws:** create heartbeat SendMessage grant at top level; document the pulumi.all side-channel gotcha ([6ffa06a](https://github.com/ReventlessDev/reventless-core/commit/6ffa06ac87070af4027ba5753ac7c2cb216a76d0))
+* **aws:** filter Internal read models from Platform_ComponentDefinitions ([fda1a81](https://github.com/ReventlessDev/reventless-core/commit/fda1a81f420f64bf4bdf3c988f84829719ffc0d1))
+### Features
+
+* **core:** thread ~comp through Projection.handleAction for attributed action logging ([fa32d93](https://github.com/ReventlessDev/reventless-core/commit/fa32d93dedabea1b1f655f01a4ea769a5908b143))
+* surface masked GraphQL resolver errors server-side (local + AWS) ([b3bca51](https://github.com/ReventlessDev/reventless-core/commit/b3bca51b539e40c604b3db338d570de6215ea837))
+
+
 # 3.0.0-alpha.211 (2026-07-14)
 
 ### Features
