@@ -230,8 +230,17 @@ conceptual gap (AWS composes independent APIs; local composes registrations into
    stitcher's forgiving dedupe is replaced by AWS's strict merge.
 4. **Subscription fan-in colocation constraint** — a real expressiveness limit; needs an audit and
    possibly a schema restructuring for any cross-plugin subscription.
-5. **10-source-API ceiling** — a scaling limit with no analog today; needs limit increases or a
-   bounded-plugins-per-merged-API design.
+5. **Source-API ceiling (default 10 per Merged API)** — a scaling limit with no analog today. Under
+   the naïve 1-plugin = 1-source-API mapping this caps plugins-per-platform, but it is a **soft,
+   adjustable service quota**, not a hard wall: AWS quota `Source API associations per Merged API`
+   (code `L-3B7F188C`), default 10, **Adjustable: Yes**
+   ([AWS General Reference — AppSync quotas](https://docs.aws.amazon.com/general/latest/gr/appsync.html);
+   increase via [Service Quotas](https://console.aws.amazon.com/servicequotas/home/services/appsync/quotas/L-3B7F188C)).
+   Mitigations: (a) request a quota increase — the primary lever; (b) a bounded-plugins-per-merged-API
+   design that groups several plugins behind one source API so the ceiling counts *source APIs*, not
+   *plugins* — at the cost of some plugin-deploy isolation (grouped plugins share a source API and lose
+   independent-deploy granularity). Because the quota is adjustable, there is **no hard N-plugin
+   platform limit**; grouping is only the fallback if you outgrow the granted ceiling.
 6. **Async merge failure surface** — a new waiter/health model on association status; and a source
    API whose merge fails is live-but-unmerged (its fields silently absent from the endpoint until
    fixed).

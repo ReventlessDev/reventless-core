@@ -1,6 +1,7 @@
 # Push-free schema composition via merged APIs
 
-**Status:** PLANNED (Phase 0 spike is the go/no-go gate)
+**Status:** IN PROGRESS — Phase 0 spike executed 2026-07-14: **GO** (all four gates
+validated on real AWS; findings + the `node` decision recorded in Phase 0 below)
 **Date:** 2026-07-14
 **Analysis:** [docs/analysis/merged-api-push-free-approach.md](../analysis/merged-api-push-free-approach.md)
 **Succeeds:** [docs/plans/done/event-sourced-fragment-registries.md](done/event-sourced-fragment-registries.md)
@@ -26,7 +27,7 @@ the migration.
 
 | Decision | Choice | Analysis ref |
 |---|---|---|
-| Relay `node` | prototype **field-resolver indirection (c)**; fall back to **drop global `node` (a)**; never **(b)** admin-owns-all-data-sources | § 12 |
+| Relay `node` | **DECIDED (Phase 0): field-resolver indirection (c) — confirmed working on AWS**; fallback (a) not needed; (b) remains rejected | § 12 + Phase 0 results |
 | Fragment registry under merge | **retired on the API side — neither aggregate nor slice**; no thin DCB ledger unless a concrete discovery/audit need appears | § 9 |
 | UiFragmentRegistry | **unchanged** — runtime-connect-driven, not a schema push | § 9 |
 | Plugin aggregate | **unchanged** — lifecycle only | § 9 |
@@ -66,22 +67,102 @@ limit-increase request early if the spike passes).
 **Exit criteria:** all four validated (with the `node` decision recorded in this plan), or
 the plan moves to `docs/plans/Backlog/` with the blocking finding documented.
 
+### Phase 0 results (executed 2026-07-14, eu-west-1, alpha account) — **GO**
+
+Spike shape: one Domain merged API (Cognito primary + IAM secondary,
+`mergedApiExecutionRole` with `appsync:SourceGraphQL` + `appsync:StartSchemaMerge`) ←
+admin source API (canonical shared types, `node`, `Platform_ping @aws_iam
+@aws_cognito_user_pools`) + two plugin source APIs (Product / Order; own mutation returning
+`CommandResult`, own Source-C subscription; NONE data sources, APPSYNC_JS resolvers).
+Shared types mirrored the real emission (`GraphQL_FragmentGenerator.commandResultSdlTypes`
++ `Node`/`PageInfo`). Throwaway Pulumi TS program (classic `@pulumi/aws` v7); stack
+destroyed after validation.
+
+1. **Shared-type merge — PASS, with a semantics correction.** Identical copies +
+   `@canonical` on the admin defs merged cleanly (`@canonical` accepted by
+   `StartSchemaCreation` with no directive declaration needed). **`@canonical` SHADOWS
+   divergent non-canonical copies instead of failing the merge**: flipping plugin B's
+   `CommandAccepted.eventCount` to `String` kept the association `MERGE_SUCCESS` and the
+   merged schema on the canonical `Int!`. A true `MERGE_FAILED` needs two *non-canonical*
+   conflicting definitions (provoked with a `SharedThing` type in A=`Int` vs B=`String!`):
+   only the later-merging association failed, admin + the other plugin stayed green, and
+   the detail is precise (`Unable to resolve conflict on object with name SharedThing.x:
+   Merging is not supported for fields with different types.`). Consequence for Phase 2:
+   plugin-emitted copies of admin-owned shared types cannot break the merge — the
+   canonical/reference-only discipline is for cleanliness, not merge safety; the real
+   `MERGE_FAILED` surface is same-named non-shared types across plugins (already mitigated
+   by plugin-prefix naming conventions).
+2. **Relay `node` via field-resolver indirection (c) — PASS, low ceremony.** Admin's thin
+   `node` resolver (NONE data source) returned `{id, __typename}` stubs for types the
+   admin schema does not define; `node(id:"Product:77") { ... on Product { name } }` and
+   the `Order` equivalent both resolved the concrete fields through the **owning plugin's
+   field resolvers, cross-source**, via the merged execution role. **Decision: (c) is
+   adopted.** Codegen cost: entity fields reachable through `node` need field resolvers in
+   the owning source API (the stub only carries `id`/`__typename`); the per-type dispatch
+   convention is Phase-2/4 design work.
+3. **Per-plugin Source-C subscriptions — PASS.** Both plugins' `on<Mutation>(id: ID):
+   CommandResult @aws_subscribe` fields merged and fired end-to-end over the merged
+   realtime endpoint (Cognito WebSocket, union payload intact, no subscription resolvers
+   needed).
+4. **Cognito + IAM dual auth — PASS, exact semantics preserved.** SigV4 and Cognito both
+   reached the `@aws_iam @aws_cognito_user_pools` field through the merged endpoint; IAM
+   was correctly denied (`Unauthorized`) on Cognito-only fields — per-field multi-auth
+   directives survive the merge verbatim (confirmed in the merged introspection SDL).
+
+Operational findings:
+
+- **Association creation is serialized per merged API**: concurrent
+  `AssociateSourceGraphqlApi` calls 409 (`ConcurrentModificationException`). Creation-time
+  only (not per schema change); plugin stacks must retry-with-backoff on 409 — for
+  first-deploy concurrency of N new plugins — or the platform docs note it. The spike
+  serialized via `dependsOn`.
+- **Auto-merge fires on source schema updates within seconds** (~12 s from schema update
+  to the new field serving on the merged endpoint). A canonical-shadowed divergence is a
+  **silent no-op** (no status change, no `lastSuccessfulMergeDate` bump). Conflict
+  detection on a real conflict was also ~seconds (`MERGE_SCHEDULED` → `MERGE_FAILED`).
+- **`MERGE_FAILED` leaves the last-good merged schema serving** — the failed source's
+  previously-merged fields keep working (stale, not vanished); only the new change is
+  withheld. Recovery after reverting the conflict: `MERGE_SUCCESS` in ~11 s (auto).
+- **Quota**: `L-3B7F188C` "Source API associations per Merged API", default 10,
+  adjustable; increase to 25 filed 2026-07-14 (request
+  `a4a902220b0948fe86001c77c8e5f74cemYQeVH7`, status PENDING).
+- Classic `@pulumi/aws` already covers everything Phase 1 needs: `GraphQLApi.apiType` /
+  `mergedApiExecutionRoleArn`, inline `schema` on the source `GraphQLApi` (declarative —
+  provider runs `StartSchemaCreation` + poll internally), and
+  `aws.appsync.SourceApiAssociation` (arg is `sourceApiAssociationConfigs: [{mergeType}]`,
+  plural). The separate `GraphQLSchema` resource sketch in Phase 1 can collapse onto the
+  existing `GraphQLApi` binding's `schema` field.
+- The `@aws_subscribe` colocation audit (Phase 2 precondition) was completed alongside the
+  spike: the only fan-ins are admin-owned (`onUIFragmentChange` ← 3
+  `Platform_UIFragment*`, `onPluginStatusChange` ← `Platform_PluginStatusChanged`, all in
+  the admin source) and per-plugin Source-C fields (own mutations by construction). **No
+  cross-source fan-in exists.**
+
 ## Phase 1 — Pulumi bindings (`rescript-pulumi-aws`)
 
-Net-new bindings (grep-confirmed absent; analysis § 11):
+Net-new bindings (grep-confirmed absent; analysis § 11). Phase 0 confirmed the classic
+`@pulumi/aws` provider covers all of these (see Phase 0 operational findings), so this
+phase is pure ReScript binding work against known-good provider surface:
 
-- Extend `GraphQLApi` with `apiType` (`GRAPHQL` | `MERGED`) + `mergedApiExecutionRole`.
-- `aws.appsync.GraphQLSchema` — the declarative per-source-API schema resource (replaces
-  imperative `StartSchemaCreation`; viable again because each source API is single-owner —
-  analysis § 10).
-- `aws.appsync.SourceApiAssociation` — `mergeType`, `mergedApiIdentifier`,
-  `sourceApiIdentifier`. Consider the `aws-native` Cloud Control resource, consistent with
-  the existing `aws-native:appsync:Resolver` use on the admin path.
-- Association-status poll helper (read `MERGED` / `MERGE_FAILED` + detail) for
-  failing-loudly in deploy output.
+- ~~Extend `GraphQLApi` with `apiType` (`GRAPHQL` | `MERGED`) + `mergedApiExecutionRole`.~~
+  **DONE 2026-07-14** — `AppSync_GraphQLApi.res` gained `apiType` +
+  `mergedApiExecutionRoleArn`.
+- ~~`aws.appsync.GraphQLSchema` — the declarative per-source-API schema resource~~
+  **Collapsed onto the existing binding**: the classic provider's `GraphQLApi.schema`
+  field IS the declarative schema (provider runs `StartSchemaCreation` + poll
+  internally — spike-validated), and the binding already had it. No separate resource
+  needed.
+- ~~`aws.appsync.SourceApiAssociation`~~ **DONE 2026-07-14** —
+  `AppSync_SourceApiAssociation.res` (classic provider, not `aws-native`: the spike
+  validated the classic resource end-to-end; arg is `sourceApiAssociationConfigs`
+  plural). Doc comment carries the create-time 409-serialization caveat.
+- Association-status poll helper (read `MERGE_SUCCESS` / `MERGE_FAILED` + detail) for
+  failing-loudly in deploy output — **moved to Phase 3/4**: it is an AppSync **SDK**
+  call (`GetSourceApiAssociation`), and the `@aws-sdk/client-appsync` bindings live in
+  `reventless-aws` (`AppSync_Adapter.res` precedent), not in the Pulumi binding package.
 
-Each binding gets a minimal example under the binding package (untracked outputs per repo
-convention).
+Compile-only example `src/example/MergedApiExample.res` (untracked outputs per repo
+convention) exercises all three surfaces together; package builds with zero warnings.
 
 ## Phase 2 — Codegen: canonical shared types + colocation audit
 
@@ -91,10 +172,9 @@ convention).
   owns `PageInfo` + IAM-stamped shared types).
 - `GraphQL_Stitcher`'s leading-name dedupe is no longer the merge mechanism — its stitch
   role ends at cutover (Phase 5); until then both paths coexist behind the deploy flag.
-- **Audit every `@aws_subscribe` producer** for cross-source fan-in
-  (`AdminApi.res` fan-in is safe — colocated; `Plugin_SubscriptionSchema` Source-C
-  subscriptions are safe by construction). Any cross-plugin fan-in found → restructure or
-  document as unsupported before Phase 4.
+- ~~**Audit every `@aws_subscribe` producer** for cross-source fan-in~~ **DONE in
+  Phase 0**: only admin-owned fan-ins (colocated in the admin source) and per-plugin
+  Source-C fields exist — no cross-source fan-in; nothing to restructure.
 - Neutral-SDL emission (shipped increment 2a) is reused as-is: source-API SDL = neutral SDL
   + AWS dialect decoration.
 
@@ -160,15 +240,24 @@ platform=merge model:
 
 ## Risks / open points
 
-1. **10-source-API default cap** — limit increase filed after the spike; if AWS caps hard,
-   a bounded-plugins-per-merged-API design is needed (open point).
-2. **`MERGE_FAILED` is silent at runtime** — a failed source is live-but-unmerged. The
-   deploy-time poll catches deploy-caused failures; consider surfacing association health
-   on the platform later (explicitly *not* a registry component — analysis § 9).
+1. **10-source-API default cap** — increase to 25 filed 2026-07-14 (PENDING; Phase 0
+   findings). If AWS caps hard, a bounded-plugins-per-merged-API design is needed (open
+   point).
+2. **`MERGE_FAILED` is silent at runtime** — Phase 0 refined this: the failed source's
+   *previously merged* fields keep serving from the last-good merged schema (stale, not
+   vanished); only the new change is withheld. The deploy-time poll catches deploy-caused
+   failures; consider surfacing association health on the platform later (explicitly
+   *not* a registry component — analysis § 9).
 3. **Coarse non-top-level auth** on the merged endpoint (per-source-ARN below the root) —
-   validate against the authorization model during the spike; `@hidden` is the escape
-   hatch.
-4. **Relay `node`** — the one place merge is strictly less expressive than the stitcher;
-   gated in Phase 0.
+   Phase 0 confirmed root-field multi-auth directives merge and enforce exactly (incl.
+   deny); below-root granularity still needs a check against the authorization model when
+   real read models land (Phase 4); `@hidden` is the escape hatch.
+4. ~~**Relay `node`**~~ — resolved in Phase 0: option (c) confirmed; the merged model is
+   no longer less expressive than the stitcher for anything Reventless emits.
 5. **Both paths coexist during Phases 2–4** — codegen must emit correct SDL for both the
-   stitch path and the canonical/reference-only merge path until cutover.
+   stitch path and the canonical/reference-only merge path until cutover. Softened by the
+   Phase-0 finding that canonical shadowing makes shared-type drift merge-safe.
+6. **Association creation 409s under concurrency** (Phase 0 finding) — first-time
+   `AssociateSourceGraphqlApi` calls against one merged API are serialized by AWS;
+   concurrent *initial* plugin deploys need retry-with-backoff in the association step
+   (steady-state schema updates are unaffected).
