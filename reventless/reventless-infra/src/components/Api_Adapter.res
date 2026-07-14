@@ -26,14 +26,4 @@ module type Provider = {
     ~mutationEntries: array<Api.mutationSchemaEntry>,
     ~queryEntries: array<Api.querySchemaEntry>,
   ) => Reventless.Plugin.apiSchemaFragment
-
-  /**
-  Rebuild and publish the full stitched schema whenever the set of plugin
-  fragments changes (e.g. on `Connected` / `Disconnected` Plugin events).
-  */
-  let updateSchema: (
-    ~api: Pulumi.Output.t<api>,
-    ~baseFragment: Reventless.Plugin.apiSchemaFragment,
-    ~pluginFragments: array<Reventless.Plugin.apiSchemaFragment>,
-  ) => promise<unit>
 }

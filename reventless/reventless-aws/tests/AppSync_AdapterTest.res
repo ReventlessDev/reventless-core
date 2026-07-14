@@ -678,7 +678,6 @@ describe("Merged mode — canonical source documents", () => {
     ~baseFragment=AppSync_Adapter.injectAwsAuthAll(
       ReventlessCore.AdminApi.baseFragment(~cloner=false),
       ~group="Admin",
-      ~iamFieldNames=ReventlessCore.AdminApi.systemCallerFieldNames,
     ),
   )
 
@@ -697,9 +696,12 @@ describe("Merged mode — canonical source documents", () => {
     )
   })
 
-  testSync("admin source document keeps admin fields and dual-auth stamps", () => {
+  testSync("admin source document keeps admin fields and shared-type IAM stamps", () => {
     expect(adminSourceSdl)->toContain("Platform_Plugin")
-    expect(adminSourceSdl)->toContain("@aws_iam")
+    // Type-level dual-auth on the shared traversal types (stampSharedIamTypes);
+    // no FIELD carries @aws_iam anymore — the SigV4 register/deregister surface
+    // died with the fragment registry.
+    expect(adminSourceSdl)->toContain("type PageInfo @aws_cognito_user_pools @aws_iam")
   })
 
   testSync("relay-base source document (split-mode Domain source) is node + relay types only", () => {

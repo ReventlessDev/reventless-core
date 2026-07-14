@@ -94,58 +94,6 @@ let rec waitForSchemaActive = async (client, apiId, ~maxAttempts=30, ~attempt=0)
   }
 }
 
-// GetIntrospectionSchema — fetch the live schema as an SDL string. Used by the
-// deploy-time drift check in preResolversSchemaHook to detect a live schema that
-// was clobbered out-of-band by a runtime re-stitch (the stored deploy hash does
-// not reflect such clobbers). Returns "" when the API has no schema or when
-// introspection fails — the caller decides how to treat an empty result.
-type getIntrospectionSchemaInput = {apiId: string, format: string}
-type getIntrospectionSchemaCommand
-type schemaBlob
-type getIntrospectionSchemaResult = {schema: option<schemaBlob>}
-
-@module("@aws-sdk/client-appsync") @new
-external makeGetIntrospectionSchemaCommand: getIntrospectionSchemaInput => getIntrospectionSchemaCommand =
-  "GetIntrospectionSchemaCommand"
-
-@send
-external sendGetIntrospection: (
-  appSyncClient,
-  getIntrospectionSchemaCommand,
-) => promise<getIntrospectionSchemaResult> = "send"
-
-// resp.schema is a Uint8Array of the SDL text; decode it to UTF-8.
-type nodeBuffer
-@val @scope("Buffer") external bufferFrom: schemaBlob => nodeBuffer = "from"
-@send external bufferToString: (nodeBuffer, string) => string = "toString"
-
-let getIntrospectionSdl = async (client: appSyncClient, apiId: string): string => {
-  try {
-    let resp = await client->sendGetIntrospection(
-      {apiId, format: "SDL"}->makeGetIntrospectionSchemaCommand,
-    )
-    switch resp.schema {
-    | Some(blob) => bufferFrom(blob)->bufferToString("utf-8")
-    | None => ""
-    }
-  } catch {
-  | exn =>
-    let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-    log.warn(~comp="AppSync_Adapter", `getIntrospectionSdl failed for ${apiId}: ${msg}`)
-    ""
-  }
-}
-
-let deploySchemaWithRetry = (
-  client: appSyncClient,
-  apiId: string,
-  definition: string,
-): Effect.t<unit, AppSync_Error.t, unit> =>
-  Effect.tryPromise(
-    ~catch=AppSync_Error.classify,
-    () => startSchemaCreation(client, {apiId, definition})->Promise.then(_ => Promise.resolve()),
-  )->Effect.retry(AppSync_Error.retrySchedule)
-
 // Lazy singleton AppSync client (runtime only)
 let _client: ref<option<appSyncClient>> = ref(None)
 let getClient = () =>
@@ -634,30 +582,6 @@ let generateFragment = (
   injectAwsAuth(fragment, ~mutationEntries, ~queryEntries)
 }
 
-let updateSchema = (
-  ~api: Pulumi.Output.t<api>,
-  ~baseFragment: Reventless.Plugin.apiSchemaFragment,
-  ~pluginFragments: array<Reventless.Plugin.apiSchemaFragment>,
-): promise<unit> => {
-  // Inject @aws_auth(cognito_groups: ["Admin"]) into all base fragment fields.
-  // The base fragment contains core Plugin aggregate queries/mutations — all Admin-only.
-  // Plugin fragments already have @aws_auth injected via generateFragment.
-  let augmentedBaseFragment = injectAwsAuthAll(baseFragment, ~group="Admin")
-  // Shared traversal types + @aws_subscribe are stamped once on the assembled
-  // SDL (post-stitch, post-dedupe) — see stitchWithAwsDirectives.
-  let sdl = stitchWithAwsDirectives(~baseFragment=augmentedBaseFragment, ~pluginFragments)
-  // Resolve the API ID from the Output chain. In mock mode (tests) and in Lambda runtime
-  // (where the Output is backed by already-known values), this completes synchronously.
-  // The resulting promise wraps the AppSync SDK call.
-  let resultPromise: ref<promise<unit>> = ref(Promise.resolve())
-  let _ =
-    api
-    ->Pulumi.Output.apply(graphQLApi =>
-      graphQLApi.id->Pulumi.Output.apply(apiId => {
-        let effect = deploySchemaWithRetry(getClient(), apiId, sdl)
-        let p = effect->Effect.runPromise
-        resultPromise.contents = p
-      })
-    )
-  resultPromise.contents
-}
+// (updateSchema — the whole-replace stitched-schema push — was retired with
+// the merged-API cutover; every source API owns its schema declaratively or
+// via its own single-writer subgraph push in preResolversSchemaHook.)

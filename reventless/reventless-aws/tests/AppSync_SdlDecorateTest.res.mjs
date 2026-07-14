@@ -115,63 +115,8 @@ globalThis.describe("AppSync_SdlDecorate.injectAwsAuthAll", () => {
   });
 });
 
-globalThis.describe("AppSync_SdlDecorate.planAwsPushes", () => {
-  let rawAdminBase = GraphQL_Stitcher$ReventlessCore.encode({
-    types: [`type CommandAccepted {\n  id: ID!\n}`],
-    mutations: [`  Platform_RegisterApiFragment(input: ApiFragmentInput): CommandResult`],
-    queries: [],
-    subscriptions: [],
-    subscriptionSources: []
-  });
-  let iamFieldNames = ["Platform_RegisterApiFragment"];
-  let mkFrag = (mutation, target) => ({
-    encoded: GraphQL_Stitcher$ReventlessCore.encode({
-      types: [],
-      mutations: [mutation],
-      queries: [],
-      subscriptions: [],
-      subscriptionSources: []
-    }).encoded,
-    protocol: "graphql",
-    target: target
-  });
-  let platformFrag = mkFrag(`  Inspector_Ping: CommandResult`, "Platform");
-  let domainFrag = mkFrag(`  Catalog_AddProduct(input: AddInput): CommandResult`, "Domain");
-  globalThis.test("split mode: Platform API carries admin base (dual-auth) + Platform frags; Domain API excludes the admin base", () => {
-    let plans = AppSync_SdlDecorate$ReventlessAws.planAwsPushes(rawAdminBase, iamFieldNames, [
-      platformFrag,
-      domainFrag
-    ], true);
-    globalThis.expect(plans.length).toBe(2);
-    let platformPlan = Stdlib_Option.getOrThrow(plans.find(p => p.api === "PlatformApi"), undefined);
-    let domainPlan = Stdlib_Option.getOrThrow(plans.find(p => p.api === "DomainApi"), undefined);
-    globalThis.expect(platformPlan.sdl).toContain("Platform_RegisterApiFragment");
-    globalThis.expect(platformPlan.sdl).toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"]) @aws_iam`);
-    globalThis.expect(platformPlan.sdl).toContain("Inspector_Ping");
-    globalThis.expect(platformPlan.sdl).toContain(`type CommandAccepted @aws_cognito_user_pools @aws_iam {`);
-    globalThis.expect(domainPlan.sdl).toContain("Catalog_AddProduct");
-    globalThis.expect(domainPlan.sdl.includes("Platform_RegisterApiFragment")).toBe(false);
-  });
-  globalThis.test("unified mode: a single Domain API carries admin base + all frags", () => {
-    let plans = AppSync_SdlDecorate$ReventlessAws.planAwsPushes(rawAdminBase, iamFieldNames, [
-      platformFrag,
-      domainFrag
-    ], false);
-    globalThis.expect(plans.length).toBe(1);
-    let plan = plans[0];
-    globalThis.expect(plan.api).toBe("DomainApi");
-    globalThis.expect(plan.sdl).toContain("Platform_RegisterApiFragment");
-    globalThis.expect(plan.sdl).toContain("Inspector_Ping");
-    globalThis.expect(plan.sdl).toContain("Catalog_AddProduct");
-  });
-});
-
 globalThis.describe("AppSync_SdlDecorate.stampSharedIamTypes", () => {
-  globalThis.test("stamps Platform_ApiFragmentEntry with dual-auth", () => {
-    let sdl = AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes("type Platform_ApiFragmentEntry {\n  pluginId: String!\n  pushStatus: String!\n}");
-    globalThis.expect(sdl).toContain("type Platform_ApiFragmentEntry @aws_cognito_user_pools @aws_iam {");
-  });
-  globalThis.test("still stamps the CommandResult members", () => {
+  globalThis.test("stamps the CommandResult members", () => {
     let sdl = AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes("type CommandAccepted {\n  id: ID!\n}");
     globalThis.expect(sdl).toContain("type CommandAccepted @aws_cognito_user_pools @aws_iam {");
   });

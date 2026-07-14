@@ -1,9 +1,8 @@
 // LocalGraphQL_Adapter — implements ReventlessInfra.Api_Adapter.Provider for
 // the in-memory graphql-yoga server.
 //
-// makeApiResource: no-op (server lifecycle is managed by DomainGraphQL_Server.start/rebuildSchema)
+// makeApiResource: no-op (server lifecycle is managed by DomainGraphQL_Server.start)
 // generateFragment: delegates to ReventlessCore.GraphQL_FragmentGenerator
-// updateSchema: rebuilds the stitched SDL via DomainGraphQL_Server.rebuildSchema
 
 type api = unit
 type role = unit
@@ -18,12 +17,3 @@ let generateFragment = (
   ~queryEntries: array<ReventlessInfra.Api.querySchemaEntry>,
 ): Reventless.Plugin.apiSchemaFragment =>
   ReventlessCore.GraphQL_FragmentGenerator.generate(~mutationEntries, ~queryEntries)
-
-let updateSchema = (
-  ~api as _: Pulumi.Output.t<api>,
-  ~baseFragment: Reventless.Plugin.apiSchemaFragment,
-  ~pluginFragments: array<Reventless.Plugin.apiSchemaFragment>,
-): promise<unit> => {
-  DomainGraphQL_Server.rebuildSchema(~baseFragment, ~pluginFragments)
-  Promise.resolve()
-}

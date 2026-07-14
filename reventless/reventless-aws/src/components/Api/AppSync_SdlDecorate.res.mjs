@@ -3,7 +3,6 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
-import * as GraphQL_PushPlanner$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_PushPlanner.res.mjs";
 
 function injectAwsSubscribe(sdl, sources) {
   if (sources.length === 0) {
@@ -80,8 +79,7 @@ let sharedIamTypeNames = [
   "PageInfo",
   "CommandAccepted",
   "CommandRejected",
-  "CommandPending",
-  "Platform_ApiFragmentEntry"
+  "CommandPending"
 ];
 
 function stampSharedIamTypes(sdl) {
@@ -125,33 +123,6 @@ function stampCanonicalTypes(sdl) {
   }).join("\n");
 }
 
-function planAwsPushes(rawAdminBase, iamFieldNames, fragments, splitApi) {
-  let authBase = injectAwsAuthAll(rawAdminBase, "Admin", iamFieldNames);
-  let targeted = fragments.map(f => {
-    let match = f.target;
-    let tmp = match === "Platform" ? "Platform" : "Domain";
-    return {
-      fragment: {
-        encoded: f.encoded,
-        protocol: f.protocol
-      },
-      target: tmp
-    };
-  });
-  let allFrags = targeted.map(t => t.fragment);
-  let sources = GraphQL_Stitcher$ReventlessCore.collectSubscriptionSources(rawAdminBase, allFrags);
-  return GraphQL_PushPlanner$ReventlessCore.planPushes(authBase, targeted, splitApi).map(plan => {
-    let sdl = stampSharedIamTypes(injectAwsSubscribe(plan.sdl, sources));
-    let match = plan.api;
-    let api;
-    api = match === "DomainApi" ? "DomainApi" : "PlatformApi";
-    return {
-      api: api,
-      sdl: sdl
-    };
-  });
-}
-
 export {
   injectAwsSubscribe,
   formatDualAuthDirective,
@@ -160,6 +131,5 @@ export {
   stampSharedIamTypes,
   canonicalTypeNames,
   stampCanonicalTypes,
-  planAwsPushes,
 }
 /* GraphQL_Stitcher-ReventlessCore Not a pure module */

@@ -319,56 +319,6 @@ function stop() {
   }
 }
 
-function rebuildSchema(baseFragment, pluginFragments) {
-  stop();
-  let allFragments = [baseFragment].concat(pluginFragments);
-  let fragmentTypes = allFragments.flatMap(frag => GraphQL_Stitcher$ReventlessCore.decode(frag).types);
-  let existingNames = new Set(typeDefinitions.contents.map(GraphQL_Stitcher$ReventlessCore.extractLeadingName));
-  fragmentTypes.forEach(typeDef => {
-    let name = GraphQL_Stitcher$ReventlessCore.extractLeadingName(typeDef);
-    if (!existingNames.has(name)) {
-      typeDefinitions.contents.push(typeDef);
-      existingNames.add(name);
-      return;
-    }
-  });
-  let match = buildNodeResolver();
-  if (match !== undefined) {
-    queryResolvers.contents[match[0]] = match[1];
-  }
-  let fullSdl = buildSdl();
-  lastFullSdl.contents = fullSdl;
-  let resolvers = {};
-  resolvers["Query"] = queryResolvers.contents;
-  resolvers["Mutation"] = mutationResolvers.contents;
-  if (Object.keys(subscriptionResolvers.contents).length !== 0) {
-    resolvers["Subscription"] = subscriptionResolvers.contents;
-  }
-  let schema = GraphqlYoga.createSchema({
-    typeDefs: fullSdl,
-    resolvers: resolvers
-  });
-  activeSchema.contents = Primitive_option.some(schema);
-  let yoga = GraphqlYoga.createYoga({
-    schema: schema,
-    graphiql: true,
-    logging: debug,
-    maskedErrors: !debug,
-    context: Auth_GraphqlContext$ReventlessLocal.buildAuthContext
-  });
-  let getSdl = () => {
-    let s = activeSchema.contents;
-    if (s !== undefined) {
-      return Graphql.printSchema(Primitive_option.valFromOption(s));
-    } else {
-      return Stdlib_Option.getOr(lastFullSdl.contents, "");
-    }
-  };
-  let server = Http.createServer((req, res) => _dispatch(req, res, yoga, getSdl));
-  server.listen(4000, () => log.info("GraphQL:Domain", undefined, "rebuilt schema - http://localhost:4000/graphql (SDL: /sdl)"));
-  activeServer.contents = Primitive_option.some(server);
-}
-
 function reset() {
   mutationResolvers.contents = {};
   queryResolvers.contents = {};
@@ -560,7 +510,6 @@ export {
   buildSdl,
   start,
   stop,
-  rebuildSchema,
   reset,
   getRegisteredSdl,
   getRegisteredResolverNames,

@@ -45,9 +45,6 @@ module App = CatalogPlugin.Make(Platform)
 ```
 */
 
-// Type alias to avoid shadowing by the nested `module Api` inside Platform.T.
-type apiComponent = Api.component
-
 // Type alias so `deployPlugin` can reference `Plugin.outputs` inside module type T,
 // where `module Plugin: Plugin.T` shadows the package-level Plugin module.
 type pluginOutputs = Plugin.outputs
@@ -208,13 +205,6 @@ module type T = {
       Spec: Reventless.InboundTranslationSlice.Spec,
       Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec,
     ) => InboundTranslationSlice.T with module Spec = Spec
-  }
-
-  /** Factory for the API (GraphQL) component. */
-  module Api: {
-    module Make: (Config: {
-      let baseFragment: Api.schemaFragment
-    }) => Api.T
   }
 
   /** Whether this platform supports MCP (Model Context Protocol) for AI agent access.

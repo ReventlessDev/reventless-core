@@ -614,7 +614,7 @@ globalThis.describe("Merged mode — canonical source documents", () => {
     subscriptions: [],
     subscriptionSources: []
   });
-  let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", AdminApi$ReventlessCore.systemCallerFieldNames);
+  let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", undefined);
   let adminSourceSdl = AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(baseFragment, []));
   let relayBaseSourceSdl = AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(emptyBaseFragment, []));
   globalThis.test("admin source document carries the global node query", () => {
@@ -626,9 +626,9 @@ globalThis.describe("Merged mode — canonical source documents", () => {
     globalThis.expect(adminSourceSdl).toContain("union CommandResult @canonical =");
     globalThis.expect(adminSourceSdl).toContain("type CommandAccepted @aws_cognito_user_pools @aws_iam @canonical {");
   });
-  globalThis.test("admin source document keeps admin fields and dual-auth stamps", () => {
+  globalThis.test("admin source document keeps admin fields and shared-type IAM stamps", () => {
     globalThis.expect(adminSourceSdl).toContain("Platform_Plugin");
-    globalThis.expect(adminSourceSdl).toContain("@aws_iam");
+    globalThis.expect(adminSourceSdl).toContain("type PageInfo @aws_cognito_user_pools @aws_iam");
   });
   globalThis.test("relay-base source document (split-mode Domain source) is node + relay types only", () => {
     globalThis.expect(relayBaseSourceSdl).toContain("node(id: ID!): Node");

@@ -1,11 +1,9 @@
 # Push-free schema composition via merged APIs
 
-**Status:** IN PROGRESS — Phases 0–4 done 2026-07-14; **Phase 5 cutover executed
-2026-07-14**: alpha stacks wiped + redeployed merged-mode from the local build,
-E2E-validated on real AWS (both auth modes, all associations MERGE_SUCCESS, both
-plugins Connected), and the deploy default flipped (`Make()` → `mergedApi = true`).
-Remaining: push → CI-green confirmation, then retire the push machinery; `node`
-resolver dispatch tracked as an open item.
+**Status:** IN PROGRESS — Phases 0–5 **done** 2026-07-14 (cutover pushed + CI-green;
+push machinery retired across all four packages and the retirement applied to the
+live alpha platform). Remaining: the `node` resolver dispatch open item and Phase 6
+(local parity).
 **Date:** 2026-07-14
 **Analysis:** [docs/analysis/merged-api-push-free-approach.md](../analysis/merged-api-push-free-approach.md)
 **Succeeds:** [docs/plans/done/event-sourced-fragment-registries.md](done/event-sourced-fragment-registries.md)
@@ -338,17 +336,40 @@ GraphQLApi (source, schema-less; user pool from the platform's cognito* exports)
   until the next alpha push republishes + CI redeploys (also restores the host-UI
   custom domain, absent in local deploys). Push before relying on CI deploys.
 
-**Remaining Phase-5 retirement (after CI confirms green on push):**
+**Phase-5 retirement — DONE 2026-07-14** (after the cutover push went CI-green: Release
+published, layer rebuilt, CI redeploy kept all associations MERGE_SUCCESS):
 
-- ~~Flip the deploy default to merged mode~~ **DONE 2026-07-14** — `Make()` sets
-  `mergedApi = true` (preview-verified consistent with the deployed merged alpha).
-- Retire: the ApiFragmentRegistry aggregate + ApiFragments RM, the reactive
-  ApiSchemaPush SideEffect, the deploy caller + `Platform_ApiFragments` status query +
-  waiter, `Api_Adapter.updateSchema` as the AWS push path, and the runtime re-stitcher's
-  push role. (`GraphQL_Stitcher` remains only if the local platform still composes with it
-  — see Phase 6.)
-- The UiFragmentRegistry and Plugin aggregate are untouched.
-- Resolve the `node` resolver dispatch open item (above).
+- ~~Flip the deploy default~~ — `Make()` sets `mergedApi = true`; the `mergedApi`
+  flag itself was then REMOVED (merged is the only path; `makePlatform` on AWS is a
+  loud failwith pointing at deployPlatform/deployPlugin).
+- ~~Retire the push machinery~~ — deleted across four packages (~2 800 net lines):
+  - core: `ApiFragmentRegistry/` (aggregate + RM specs/behavior/projection),
+    `Platform_ApiFragmentsApi`, `GraphQL_PushPlanner`, the `Api_Builder`/
+    `Api_Operations`/`updateSchema` component chain (dead since Plugin_Builder only
+    uses `generateFragment`), the stitcher's schema-clobber guard family
+    (`rootTypeFieldNames`/`isCatastrophicSchemaShrink` — single writers need no
+    shrink guard), AdminApi's registry mutation entries + `systemCallerFieldNames`.
+  - infra: `module Api` dropped from `Platform.T`; `updateSchema` dropped from
+    `Api_Adapter.Provider` (live surface = `generateFragment`).
+  - aws: `ApiSchemaPush` (+ its runtime .mjs + SideEffectHandler wiring + the whole
+    AllSideEffectHandlers Lambda — ApiSchemaPush was its only occupant),
+    `ApiFragmentDeregistration`, `Platform_ApiFragments_Lambda`,
+    `registerFragmentViaApi` + waiter, `planAwsPushes`, adapter
+    `updateSchema`/`deploySchemaWithRetry`/`getIntrospectionSdl`, phantom
+    API/StackReference plumbing (plugin stacks always own a source API now).
+  - local: registry mirror wiring (LocalApiFragmentRegistryAggregate, ApiFragments
+    RM, dispatch/resolver/self-heal blocks, deploy-time RegisterApiFragment),
+    `LocalGraphQL_Adapter.updateSchema`, `DomainGraphQL_Server.rebuildSchema`.
+- The UiFragmentRegistry and Plugin aggregate are untouched. `GraphQL_Stitcher`
+  keeps `stitch`/`stitchStandalone`/`encode`/`decode` (canonical/subgraph document
+  assembly) — the local platform composes in-process (Phase 6 unchanged).
+- **Validated:** monorepo build zero warnings; 180 suites / 1 231 tests green;
+  hybrid local platform live-boots (login + `Platform_UIFragments` +
+  `Platform_Plugins` Connected); retirement applied to the live alpha platform —
+  45 resources deleted (one SQS QueuePolicy-race retry), admin source schema
+  shrank declaratively, auto-merge kept all four associations MERGE_SUCCESS,
+  registry fields gone from the merged schema, plugin stacks resource-neutral.
+- Still open: the `node` resolver dispatch item (above) and Phase 6.
 
 ## Phase 6 — Local parity (option b, alongside scope-2)
 

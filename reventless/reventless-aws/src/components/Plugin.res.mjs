@@ -28,8 +28,7 @@ function Make(HooksConfig) {
     hooks: HooksConfig.hooks
   })({})({
     makeApiResource: AppSync_Adapter$ReventlessAws.makeApiResource,
-    generateFragment: AppSync_Adapter$ReventlessAws.generateFragment,
-    updateSchema: AppSync_Adapter$ReventlessAws.updateSchema
+    generateFragment: AppSync_Adapter$ReventlessAws.generateFragment
   })({
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,

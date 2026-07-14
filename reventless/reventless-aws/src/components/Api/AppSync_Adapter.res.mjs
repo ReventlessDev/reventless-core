@@ -4,14 +4,12 @@ import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Nodecrypto from "node:crypto";
-import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Effect$1 from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as ClientAppsync from "@aws-sdk/client-appsync";
 import * as Auth_Cognito$ReventlessAws from "../../adapter/Auth/Auth_Cognito.res.mjs";
@@ -58,33 +56,6 @@ async function waitForSchemaActive(client, apiId, maxAttemptsOpt, attemptOpt) {
         return await waitForSchemaActive(client, apiId, maxAttempts, attempt + 1 | 0);
       }
   }
-}
-
-async function getIntrospectionSdl(client, apiId) {
-  try {
-    let resp = await client.send(new ClientAppsync.GetIntrospectionSchemaCommand({
-      apiId: apiId,
-      format: "SDL"
-    }));
-    let blob = resp.schema;
-    if (blob !== undefined) {
-      return Buffer.from(Primitive_option.valFromOption(blob)).toString("utf-8");
-    } else {
-      return "";
-    }
-  } catch (raw_exn) {
-    let exn = Primitive_exceptions.internalToException(raw_exn);
-    let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-    log.warn("AppSync_Adapter", undefined, `getIntrospectionSdl failed for ` + apiId + `: ` + msg);
-    return "";
-  }
-}
-
-function deploySchemaWithRetry(client, apiId, definition) {
-  return Effect$1.retry(Effect.tryPromise(AppSync_Error$ReventlessAws.classify, () => client.send(new ClientAppsync.StartSchemaCreationCommand({
-    apiId: apiId,
-    definition: definition
-  })).then(param => Promise.resolve())), AppSync_Error$ReventlessAws.retrySchedule);
 }
 
 let _client = {
@@ -350,20 +321,6 @@ function generateFragment(mutationEntries, queryEntries) {
   return injectAwsAuth(fragment, mutationEntries, queryEntries);
 }
 
-function updateSchema(api, baseFragment, pluginFragments) {
-  let augmentedBaseFragment = injectAwsAuthAll(baseFragment, "Admin", undefined);
-  let sdl = stitchWithAwsDirectives(augmentedBaseFragment, pluginFragments);
-  let resultPromise = {
-    contents: Promise.resolve()
-  };
-  api.apply(graphQLApi => graphQLApi.id.apply(apiId => {
-    let effect = deploySchemaWithRetry(getClient(), apiId, sdl);
-    let p = Effect$1.runPromise(effect);
-    resultPromise.contents = p;
-  }));
-  return resultPromise.contents;
-}
-
 let stampSharedIamTypes = AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes;
 
 let primaryAuthenticationType = "AMAZON_COGNITO_USER_POOLS";
@@ -374,8 +331,6 @@ export {
   startSchemaCreation,
   startSchemaCreationRetrying,
   waitForSchemaActive,
-  getIntrospectionSdl,
-  deploySchemaWithRetry,
   _client,
   getClient,
   waitForMergeSuccess,
@@ -395,6 +350,5 @@ export {
   makeSourceApiResource,
   makePluginSourceApiResource,
   generateFragment,
-  updateSchema,
 }
 /* log Not a pure module */

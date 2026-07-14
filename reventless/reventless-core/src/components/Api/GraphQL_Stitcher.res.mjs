@@ -3,7 +3,6 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
@@ -226,88 +225,6 @@ function stitchStandalone(fragment) {
   return assembleSdl([fragment], false);
 }
 
-function isIdentStart(line) {
-  let c = line.codePointAt(0);
-  if (c !== undefined) {
-    if (c >= 65 && c <= 90 || c >= 97 && c <= 122) {
-      return true;
-    } else {
-      return c === 95;
-    }
-  } else {
-    return false;
-  }
-}
-
-function rootTypeFieldNames(sdl, typeName) {
-  let marker = `type ` + typeName;
-  let typeStart = Stdlib_String.indexOfOpt(sdl, marker);
-  if (typeStart === undefined) {
-    return [];
-  }
-  let rest = sdl.slice(typeStart);
-  let match = Stdlib_String.indexOfOpt(rest, "{");
-  let match$1 = Stdlib_String.indexOfOpt(rest, "}");
-  if (match !== undefined) {
-    if (match$1 !== undefined) {
-      if (match$1 > match) {
-        return Stdlib_Array.filterMap(rest.slice(match + 1 | 0, match$1).split("\n"), line => {
-          let trimmed = line.trim();
-          if (!(trimmed.length > 0 && isIdentStart(trimmed))) {
-            return;
-          }
-          let name = extractLeadingName(trimmed);
-          let name$1 = name.endsWith(":") ? name.slice(0, name.length - 1 | 0) : name;
-          if (name$1.length > 0) {
-            return name$1;
-          }
-        });
-      } else {
-        return [];
-      }
-    } else {
-      return [];
-    }
-  } else {
-    return [];
-  }
-}
-
-function countRootTypeFields(sdl, typeName) {
-  return rootTypeFieldNames(sdl, typeName).length;
-}
-
-let rootTypeNames = [
-  "Mutation",
-  "Query",
-  "Subscription"
-];
-
-function allRootFieldNames(sdl) {
-  return rootTypeNames.flatMap(typeName => rootTypeFieldNames(sdl, typeName));
-}
-
-function missingRootFields(expectedSdl, liveSdl) {
-  let liveSet = new Set(allRootFieldNames(liveSdl));
-  return allRootFieldNames(expectedSdl).filter(name => !liveSet.has(name));
-}
-
-function isCatastrophicSchemaShrink(currentSdl, newSdl, threshold) {
-  let currentNames = allRootFieldNames(currentSdl);
-  let newSet = new Set(allRootFieldNames(newSdl));
-  let dropped = currentNames.filter(name => !newSet.has(name));
-  if (dropped.length === 0) {
-    return false;
-  }
-  let current = currentNames.length;
-  let next = allRootFieldNames(newSdl).length;
-  if (current > 0) {
-    return next < current * threshold;
-  } else {
-    return false;
-  }
-}
-
 export {
   log,
   encodeSubscriptionSource,
@@ -320,12 +237,5 @@ export {
   assembleSdl,
   stitch,
   stitchStandalone,
-  isIdentStart,
-  rootTypeFieldNames,
-  countRootTypeFields,
-  rootTypeNames,
-  allRootFieldNames,
-  missingRootFields,
-  isCatastrophicSchemaShrink,
 }
 /* log Not a pure module */

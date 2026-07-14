@@ -15,7 +15,7 @@ let sideEffectInfos: dict<sideEffectInfo> = Dict.make()
 let registerSideEffectHandler = (~sideEffectHandlerName, ~sideEffectModulePaths) =>
   sideEffectInfos->Dict.set(sideEffectHandlerName, {sideEffectModulePaths: sideEffectModulePaths})
 
-// Extra Lambda env vars contributed by bespoke side effects (e.g. admin ApiSchemaPush).
+// Extra Lambda env vars contributed by bespoke side effects.
 // The shared "AllSideEffectHandlers" Lambda is built once in finish(); all registered
 // entries are merged onto its env there. Deploy-derived config only — never overrides
 // HANDLER_CONFIG.
@@ -176,12 +176,11 @@ let finish = () =>
           ~opts,
         )
 
-        // The admin ApiSchemaPush side effect (the only extra-env contributor) pushes the
-        // stitched schema to AppSync via StartSchemaCreation and reads the live schema for
-        // the shrink guard. Grant those AppSync perms to the shared side-effect-handler
-        // Lambda role ONLY when a bespoke side effect registered config — Task-only
-        // deployments keep the narrow default perimeter. Mirrors the admin EventCollector's
-        // AllowAdminStartSchemaCreation grant (PluginRuntime_Builder).
+        // Grant AppSync schema perms to the shared side-effect-handler Lambda
+        // role ONLY when a bespoke side effect registered extra-env config —
+        // Task-only deployments keep the narrow default perimeter. (The last
+        // such contributor, the admin ApiSchemaPush, was retired with the
+        // merged-API cutover; the mechanism stays for future bespoke effects.)
         if extraEnvVarsAll->Dict.keysToArray->Array.length > 0 {
           let _ = PulumiAws.IAM.RolePolicy.make(
             ~name="AllSideEffectHandlers-appsyncSchemaPush",

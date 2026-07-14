@@ -6,11 +6,11 @@ import * as MCP_Lambda$ReventlessAws from "../src/adapter/Mcp/MCP_Lambda.res.mjs
 globalThis.describe("MCP_Lambda.generateAdminConfig", () => {
   globalThis.test("produces tools from admin mutation entries (no cloner)", () => {
     let config = MCP_Lambda$ReventlessAws.generateAdminConfig("test", "1.0.0", false, undefined, undefined);
-    globalThis.expect(config.tools).toHaveLength(5);
+    globalThis.expect(config.tools).toHaveLength(3);
   });
   globalThis.test("produces additional clone tool when cloner=true", () => {
     let config = MCP_Lambda$ReventlessAws.generateAdminConfig("test", "1.0.0", true, undefined, undefined);
-    globalThis.expect(config.tools).toHaveLength(6);
+    globalThis.expect(config.tools).toHaveLength(4);
   });
   globalThis.test("produces resources from admin query entries", () => {
     let config = MCP_Lambda$ReventlessAws.generateAdminConfig("test", "1.0.0", undefined, undefined, undefined);

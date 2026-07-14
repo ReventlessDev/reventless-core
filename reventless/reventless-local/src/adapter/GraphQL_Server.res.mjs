@@ -76,8 +76,6 @@ let start = DomainGraphQL_Server$ReventlessLocal.start;
 
 let stop = DomainGraphQL_Server$ReventlessLocal.stop;
 
-let rebuildSchema = DomainGraphQL_Server$ReventlessLocal.rebuildSchema;
-
 let reset = DomainGraphQL_Server$ReventlessLocal.reset;
 
 let getRegisteredSdl = DomainGraphQL_Server$ReventlessLocal.getRegisteredSdl;
@@ -138,7 +136,6 @@ export {
   buildSdl,
   start,
   stop,
-  rebuildSchema,
   reset,
   getRegisteredSdl,
   getRegisteredResolverNames,

@@ -112,28 +112,9 @@ type eventLogSchemaEntry = {
   eventSchema: S.t<unknown>,
 }
 
-/**
-Deploy-time outputs produced when an `Api` component is provisioned.
-- `apiId` — the cloud API resource identifier (e.g. AppSync API ID)
-*/
-type outputs = {
-  apiId: Pulumi.Output.t<string>,
-}
-
-/**
-Runtime operations for the `Api` component.
-- `updateSchema` — rebuild the stitched schema from the current plugin fragments
-*/
-type operations = {
-  updateSchema: array<Reventless.Plugin.apiSchemaFragment> => promise<unit>,
-}
-
-type t
-type component = Component.t<t, outputs, operations>
-
-/**
-Module type produced by `Platform.Api.Make(Config)`.
-*/
-module type T = {
-  let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
-}
+// (The Api component contract — outputs/operations/`module type T` and the
+// whole `updateSchema` push chain — was retired with the merged-API cutover:
+// AWS composes source APIs via SourceApiAssociation and the local platform
+// composes in-process; nothing rebuilds a stitched schema at runtime. The
+// schema-entry types above remain the live surface, consumed by
+// `Api_Adapter.Provider.generateFragment` and the MCP/AutoUI generators.)

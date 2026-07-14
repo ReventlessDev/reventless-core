@@ -8,7 +8,6 @@
 //   - Relay Global ID encoding/decoding (encodeGlobalId / decodeGlobalId)
 //   - Node type registry (registerNodeType / registerNodeResolverCallback)
 //   - /sdl HTTP endpoint for Relay compiler
-//   - rebuildSchema for schema stitching
 //
 // Note: the old setRegistrationTarget redirect hack has been removed. Routing
 // to the platform server is now done explicitly via resolveTargetGraphQL() in
@@ -119,7 +118,7 @@ let _isInvalidBearer = (req: nodeRequest): bool =>
   | _ => false
   }
 
-// Shared dispatch for start() and rebuildSchema(). Order matters: built-in
+// Shared dispatch for start(). Order matters: built-in
 // endpoints win over the yoga catch-all so they aren't shadowed by graphql.
 let _dispatch = (req: nodeRequest, res: nodeResponse, yoga: YG.yoga, getSdl: unit => string): unit => {
   // Strip query string before path matching.
@@ -349,60 +348,6 @@ let stop = () =>
     activeSchema.contents = None
   | None => ()
   }
-
-// Rebuild the server schema by stitching plugin fragments with registered resolvers.
-// Merges any additional type definitions from fragments into the type registry,
-// then uses buildSdl() which includes types + Query + Mutation.
-// Stops the existing server and restarts with the new SDL.
-let rebuildSchema = (
-  ~baseFragment: Reventless.Plugin.apiSchemaFragment,
-  ~pluginFragments: array<Reventless.Plugin.apiSchemaFragment>,
-) => {
-  stop()
-  // Merge any fragment types not already registered via the hook
-  let allFragments = Array.concat([baseFragment], pluginFragments)
-  let fragmentTypes = allFragments->Array.flatMap(frag => ReventlessCore.GraphQL_Stitcher.decode(frag).types)
-  let existingNames = Set.fromArray(typeDefinitions.contents->Array.map(ReventlessCore.GraphQL_Stitcher.extractLeadingName))
-  fragmentTypes->Array.forEach(typeDef => {
-    let name = ReventlessCore.GraphQL_Stitcher.extractLeadingName(typeDef)
-    if !(existingNames->Set.has(name)) {
-      typeDefinitions.contents->Array.push(typeDef)
-      existingNames->Set.add(name)
-    }
-  })
-  // Register node resolver if callback is set
-  switch buildNodeResolver() {
-  | Some((name, resolver)) => queryResolvers.contents->Dict.set(name, resolver)
-  | None => ()
-  }
-  let fullSdl = buildSdl()
-  lastFullSdl.contents = Some(fullSdl)
-  let resolvers = Dict.make()
-  resolvers->Dict.set("Query", queryResolvers.contents)
-  resolvers->Dict.set("Mutation", mutationResolvers.contents)
-  if subscriptionResolvers.contents->Dict.keysToArray->Array.length > 0 {
-    resolvers->Dict.set("Subscription", subscriptionResolvers.contents)
-  }
-  let schema = YG.createSchema({"typeDefs": fullSdl, "resolvers": resolvers})
-  activeSchema.contents = Some(schema)
-  let yoga = YG.createYogaWithContext({
-    "schema": schema,
-    "graphiql": true,
-    "logging": debug,
-    "maskedErrors": !debug,
-    "context": buildAuthContext,
-  })
-  let getSdl = () =>
-    switch activeSchema.contents {
-    | Some(s) => YG.printSchema(s)
-    | None => lastFullSdl.contents->Option.getOr("")
-    }
-  let server = createServerWithHandler((req, res) => _dispatch(req, res, yoga, getSdl))
-  server->YG.listen(4000, () =>
-    log.info(~comp="GraphQL:Domain", "rebuilt schema - http://localhost:4000/graphql (SDL: /sdl)")
-  )
-  activeServer.contents = Some(server)
-}
 
 // Reset registry state (call between isolated test suites).
 let reset = () => {

@@ -119,19 +119,14 @@ let injectAwsAuthAll = (
 }
 
 // Shared traversal types every callable surface reaches — `PageInfo` (relay
-// connections, injected by the stitcher), the `CommandResult` members (mutation
-// returns, deduped across fragments by the stitcher), and `Platform_ApiFragmentEntry`
-// (the return type of the IAM-callable `Platform_ApiFragments` status query the deploy
-// waiter polls via SigV4 — without the type-level `@aws_iam` the SigV4 caller reaches the
-// query field but is "Not Authorized to access <field> on type Platform_ApiFragmentEntry").
-// Stamped once on the ASSEMBLED SDL: per-fragment stamping would race the stitcher's
-// first-wins dedupe against unstamped sibling copies.
+// connections, injected by the stitcher) and the `CommandResult` members
+// (mutation returns). Stamped once on the ASSEMBLED SDL so an IAM system
+// caller (`@@reventless.systemCallable` fields) can traverse them.
 let sharedIamTypeNames = [
   "PageInfo",
   "CommandAccepted",
   "CommandRejected",
   "CommandPending",
-  "Platform_ApiFragmentEntry",
 ]
 
 let stampSharedIamTypes = (sdl: string): string =>
@@ -186,60 +181,6 @@ let stampCanonicalTypes = (sdl: string): string =>
   })
   ->Array.join("\n")
 
-// ── Reactive push planner (runtime-pure) ─────────────────────────────────────
-// The AWS-decorated counterpart of core `GraphQL_PushPlanner.planPushes`: given
-// the fragments currently in the ApiFragmentRegistry (each tagged with its target
-// API, as the bare string "Domain" / "Platform"), it produces one fully
-// AppSync-decorated SDL push plan per API. It reuses the core planner for the
-// neutral base-selection + stitch, then applies the AppSync dialect exactly as the
-// deploy path's `stitchWithAwsDirectives`:
-//   - the admin base is auth-decorated (group "Admin" + dual-auth on the system-
-//     caller field names) BEFORE stitching, so the Platform/unified base carries
-//     @aws_auth/@aws_iam (the empty Domain-split base needs none);
-//   - @aws_subscribe is injected from the neutral subscriptionSources metadata;
-//   - the shared traversal types are stamped once on the assembled SDL.
-// Plugin fragments already carry their own per-field @aws_auth (baked at
-// generateFragment time), so they stitch in as-is. `api` comes back as the bare
-// string "PlatformApi" / "DomainApi" for the mjs to map onto the AppSync ids.
-type targetedFragmentInput = {
-  encoded: string,
-  protocol: string,
-  // "Domain" | "Platform" — the bare-string runtime form of Reventless.Plugin.apiTarget.
-  target: string,
-}
-
-type awsPushPlan = {
-  // "PlatformApi" | "DomainApi" — the bare-string runtime form of GraphQL_PushPlanner.planTarget.
-  api: string,
-  sdl: string,
-}
-
-let planAwsPushes = (
-  ~rawAdminBase: Reventless.Plugin.apiSchemaFragment,
-  ~iamFieldNames: array<string>,
-  ~fragments: array<targetedFragmentInput>,
-  ~splitApi: bool,
-): array<awsPushPlan> => {
-  let authBase = injectAwsAuthAll(rawAdminBase, ~group="Admin", ~iamFieldNames)
-  let targeted = fragments->Array.map((f): ReventlessCore.GraphQL_PushPlanner.targetedFragment => {
-    fragment: {encoded: f.encoded, protocol: f.protocol},
-    target: switch f.target {
-    | "Platform" => Platform
-    | _ => Domain
-    },
-  })
-  let allFrags = targeted->Array.map(t => t.fragment)
-  let sources = ReventlessCore.GraphQL_Stitcher.collectSubscriptionSources(
-    ~baseFragment=rawAdminBase,
-    ~pluginFragments=allFrags,
-  )
-  ReventlessCore.GraphQL_PushPlanner.planPushes(~adminBase=authBase, ~fragments=targeted, ~splitApi)
-  ->Array.map(plan => {
-    let sdl = plan.sdl->injectAwsSubscribe(~sources)->stampSharedIamTypes
-    let api = switch plan.api {
-    | PlatformApi => "PlatformApi"
-    | DomainApi => "DomainApi"
-    }
-    {api, sdl}
-  })
-}
+// (The reactive push planner — planAwsPushes, the AWS counterpart of core
+// GraphQL_PushPlanner — was retired with the merged-API cutover: source APIs
+// are single writers, AWS composes the merged endpoint, nothing re-stitches.)

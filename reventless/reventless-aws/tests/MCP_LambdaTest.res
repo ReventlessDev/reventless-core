@@ -7,9 +7,8 @@ describe("MCP_Lambda.generateAdminConfig", () => {
       ~serverVersion="1.0.0",
       ~cloner=false,
     )
-    // Admin has Plugin_Activate, Plugin_Deactivate, Plugin_Retire +
-    // ApiFragmentRegistry_Register/DeregisterApiFragment mutations
-    expect(config.tools)->toHaveLength(5)
+    // Admin has Plugin_Activate, Plugin_Deactivate, Plugin_Retire
+    expect(config.tools)->toHaveLength(3)
   })
 
   testSync("produces additional clone tool when cloner=true", () => {
@@ -18,9 +17,8 @@ describe("MCP_Lambda.generateAdminConfig", () => {
       ~serverVersion="1.0.0",
       ~cloner=true,
     )
-    // Plugin_Activate, Plugin_Deactivate, Plugin_Retire,
-    // ApiFragmentRegistry_Register/DeregisterApiFragment, Clone
-    expect(config.tools)->toHaveLength(6)
+    // Plugin_Activate, Plugin_Deactivate, Plugin_Retire, Clone
+    expect(config.tools)->toHaveLength(4)
   })
 
   testSync("produces resources from admin query entries", () => {
