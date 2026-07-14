@@ -165,8 +165,18 @@ let emit = (
 
 // ─── Logger.t (record-based API) ─────────────────────────────────────────────
 
-let makeLogger = (~minLevel=Info): t => {
-  let shouldLog = l => levelToInt(l) >= levelToInt(minLevel)
+// Platform-tunable default minimum level, used when LOG_LEVEL is unset. Lives
+// here (not in EffectLogger) so it is the single source of truth for BOTH logger
+// paths — the record logger below and EffectLogger, which re-exports
+// `setDefaultMinLevel`. A platform may lower it (e.g. reventless-local sets
+// Debug); the framework default is Info.
+let defaultMinLevel = ref(Info)
+let setDefaultMinLevel = (l: level) => defaultMinLevel := l
+
+// Build a logger from a per-call predicate. `shouldLog` is evaluated on every
+// emit, so a logger created at module-init time still reflects a platform
+// default set later (and a live LOG_LEVEL) instead of baking the level in once.
+let makeLoggerWith = (shouldLog: level => bool): t => {
   let log = (level, ~comp=?, ~data=?, msg) =>
     if shouldLog(level) {
       let dataStr = data->Option.map(d => ` ${d->JSON.stringify}`)->Option.getOr("")
@@ -184,6 +194,11 @@ let makeLogger = (~minLevel=Info): t => {
   }
 }
 
+// Fixed-level logger — the level is baked at creation. Used by tests that assert
+// a specific minimum regardless of env/platform default.
+let makeLogger = (~minLevel=Info): t =>
+  makeLoggerWith(l => levelToInt(l) >= levelToInt(minLevel))
+
 let silent: t = {
   debug: (~comp as _=?, ~data as _=?, _) => (),
   info: (~comp as _=?, ~data as _=?, _) => (),
@@ -192,15 +207,30 @@ let silent: t = {
   debugLazy: (~comp as _=?, _) => (),
 }
 
-// Reads LOG_LEVEL from process.env and returns a configured logger.
-// Call once at module top-level or startup — not inside hot loops.
+// Active minimum level: explicit LOG_LEVEL wins, else the platform default.
+// None ⇒ silent (suppress everything). Re-read per call — LOG_LEVEL via the
+// process.env external, the platform default via `defaultMinLevel`.
+let effectiveMin = (): option<level> =>
+  switch _logLevel {
+  | Some("silent") => None
+  | Some("debug") => Some(Debug)
+  | Some("info") => Some(Info)
+  | Some("warn") => Some(Warn)
+  | Some("error") => Some(Error)
+  | Some(_) => Some(Info) // unrecognized value ⇒ Info (unchanged behavior)
+  | None => Some(defaultMinLevel.contents)
+  }
+
+// Reads LOG_LEVEL from process.env on every call and honors the platform default
+// when unset. Safe to call at module top-level: the returned logger evaluates the
+// level lazily, so a platform lowering the default afterwards (e.g.
+// reventless-local → Debug) takes effect for loggers already constructed.
 // LOG_LEVEL=silent disables all output (used by the reventless-gwt CLI so
 // framework diagnostics don't interleave with NDJSON / TAP / JUnit streams).
 let fromEnv = (): t =>
-  switch _logLevel {
-  | Some("silent") => silent
-  | Some("debug") => makeLogger(~minLevel=Debug)
-  | Some("warn") => makeLogger(~minLevel=Warn)
-  | Some("error") => makeLogger(~minLevel=Error)
-  | _ => makeLogger(~minLevel=Info)
-  }
+  makeLoggerWith(l =>
+    switch effectiveMin() {
+    | None => false
+    | Some(min) => levelToInt(l) >= levelToInt(min)
+    }
+  )

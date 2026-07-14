@@ -68,8 +68,10 @@ external _withMinimumLogLevel: (Effect.t<'a, 'e, 'r>, effectLogLevel) => Effect.
 
 // Minimum level used when LOG_LEVEL is unset. Framework default is Info; a platform
 // may lower it (e.g. the in-memory dev platform sets Debug) via setDefaultMinLevel.
-let _defaultMin = ref(Logger.Info)
-let setDefaultMinLevel = (l: Logger.level) => _defaultMin := l
+// The ref lives in Logger (single source of truth) so both the record logger
+// (Logger.fromEnv) and this Effect logger share one platform default; re-exported
+// here so existing `EffectLogger.setDefaultMinLevel` callers keep working.
+let setDefaultMinLevel = Logger.setDefaultMinLevel
 
 // Resolve the active minimum: explicit LOG_LEVEL wins, else the platform default.
 let _effectMin = (): effectLogLevel =>
@@ -80,7 +82,7 @@ let _effectMin = (): effectLogLevel =>
   | Some("warn") => _llWarning
   | Some("error") => _llError
   | _ =>
-    switch _defaultMin.contents {
+    switch Logger.defaultMinLevel.contents {
     | Logger.Debug => _llDebug
     | Logger.Info => _llInfo
     | Logger.Warn => _llWarning

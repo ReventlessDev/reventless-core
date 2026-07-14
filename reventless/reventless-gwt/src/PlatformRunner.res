@@ -11,6 +11,8 @@
 
 let tapSentinel = "@@RVLESS_EVT@@ "
 
+@val external _envLogLevel: option<string> = "process.env.LOG_LEVEL"
+
 type lineClass =
   | Domain(JSON.t) // a tap line; the parsed `{event:"domainEvent",…}` payload
   | Ready // the Domain GraphQL server's "listening on …" line
@@ -110,6 +112,18 @@ let run = async (
     let pPort = ports->Array.getUnsafe(1)
     let dMcp = ports->Array.getUnsafe(2)
     let pMcp = ports->Array.getUnsafe(3)
+    // The gwt bin defaults LOG_LEVEL=silent so its OWN stdout stays pure NDJSON;
+    // the platform child is a separate process whose stdout we parse, so it needs
+    // real logs — the "listening on" line drives readiness and the rest becomes
+    // platformLog. Default it to the local platform's own verbosity (debug — same
+    // as `pnpm run serve`, which relies on reventless-local's Debug default), so
+    // projection/action debug lines surface in the runner log. An explicit
+    // LOG_LEVEL the developer set (anything but the bin's silent default) is
+    // honored, so `LOG_LEVEL=info` still quietens it.
+    let childLogLevel = switch _envLogLevel {
+    | Some(l) if l != "silent" && l != "" => l
+    | _ => "debug"
+    }
     let env = Dict.fromArray([
       ("REVENTLESS_EVENT_TAP", "ndjson"),
       ("REVENTLESS_LOCAL_BACKEND", backend),
@@ -118,11 +132,7 @@ let run = async (
       ("REVENTLESS_DOMAIN_MCP_PORT", Int.toString(dMcp)),
       ("REVENTLESS_PLATFORM_MCP_PORT", Int.toString(pMcp)),
       ("NODE_OPTIONS", "--disable-warning=ExperimentalWarning"),
-      // The gwt bin defaults LOG_LEVEL=silent so its OWN stdout stays pure NDJSON;
-      // the platform child is a separate process whose stdout we parse, so it needs
-      // real logs — the "listening on" line drives readiness and the rest becomes
-      // platformLog. Override the inherited silent.
-      ("LOG_LEVEL", "info"),
+      ("LOG_LEVEL", childLogLevel),
       // The child's stdout is a pipe (we line-parse it), so the framework's sink
       // detection would auto-pick JSON (non-TTY). But every consumer of `onLog`
       // renders ANSI — the CLI forwards to the developer's terminal, the extension

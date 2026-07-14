@@ -26,14 +26,6 @@ function _messageToString(msg) {
   }
 }
 
-let _defaultMin = {
-  contents: "Info"
-};
-
-function setDefaultMinLevel(l) {
-  _defaultMin.contents = l;
-}
-
 function _effectMin() {
   let match = process.env.LOG_LEVEL;
   if (match !== undefined) {
@@ -50,7 +42,7 @@ function _effectMin() {
         return LogLevel.Warning;
     }
   }
-  let match$1 = _defaultMin.contents;
+  let match$1 = Logger$ReventlessCore.defaultMinLevel.contents;
   switch (match$1) {
     case "Debug" :
       return LogLevel.Debug;
@@ -155,9 +147,10 @@ function logDebug(comp, detail, msg) {
   return Logger.withMinimumLogLevel(_annotate(Effect.logDebug(msg), comp, detail), _effectMin());
 }
 
+let setDefaultMinLevel = Logger$ReventlessCore.setDefaultMinLevel;
+
 export {
   _messageToString,
-  _defaultMin,
   setDefaultMinLevel,
   _effectMin,
   ordinalToLevel,

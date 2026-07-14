@@ -80,6 +80,8 @@ async function run(roots, backend, fixedPortsOpt, callbacks) {
     let pPort = ports[1];
     let dMcp = ports[2];
     let pMcp = ports[3];
+    let l = process.env.LOG_LEVEL;
+    let childLogLevel = l !== undefined && l !== "silent" && l !== "" ? l : "debug";
     let env = Object.fromEntries([
       [
         "REVENTLESS_EVENT_TAP",
@@ -111,7 +113,7 @@ async function run(roots, backend, fixedPortsOpt, callbacks) {
       ],
       [
         "LOG_LEVEL",
-        "info"
+        childLogLevel
       ],
       [
         "REVENTLESS_LOG_FORMAT",

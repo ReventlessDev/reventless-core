@@ -142,9 +142,15 @@ function emit(level, comp, plugin, detail, annotations, msg) {
   }
 }
 
-function makeLogger(minLevelOpt) {
-  let minLevel = minLevelOpt !== undefined ? minLevelOpt : "Info";
-  let shouldLog = l => levelToInt(l) >= levelToInt(minLevel);
+let defaultMinLevel = {
+  contents: "Info"
+};
+
+function setDefaultMinLevel(l) {
+  defaultMinLevel.contents = l;
+}
+
+function makeLoggerWith(shouldLog) {
   let log = (level, comp, data, msg) => {
     if (!shouldLog(level)) {
       return;
@@ -163,6 +169,11 @@ function makeLogger(minLevelOpt) {
       }
     }
   };
+}
+
+function makeLogger(minLevelOpt) {
+  let minLevel = minLevelOpt !== undefined ? minLevelOpt : "Info";
+  return makeLoggerWith(l => levelToInt(l) >= levelToInt(minLevel));
 }
 
 function silent_debug(param, param$1, param$2) {
@@ -193,23 +204,34 @@ let silent = {
   debugLazy: silent_debugLazy
 };
 
-function fromEnv() {
+function effectiveMin() {
   let match = process.env.LOG_LEVEL;
   if (match === undefined) {
-    return makeLogger("Info");
+    return defaultMinLevel.contents;
   }
   switch (match) {
     case "debug" :
-      return makeLogger("Debug");
+      return "Debug";
     case "error" :
-      return makeLogger("Error");
+      return "Error";
     case "silent" :
-      return silent;
+      return;
     case "warn" :
-      return makeLogger("Warn");
+      return "Warn";
     default:
-      return makeLogger("Info");
+      return "Info";
   }
+}
+
+function fromEnv() {
+  return makeLoggerWith(l => {
+    let min = effectiveMin();
+    if (min !== undefined) {
+      return levelToInt(l) >= levelToInt(min);
+    } else {
+      return false;
+    }
+  });
 }
 
 let currentPluginName = LogPrefix$Reventless.currentPluginName;
@@ -241,8 +263,12 @@ export {
   fmtPlainPrefix,
   resolvePlugin,
   emit,
+  defaultMinLevel,
+  setDefaultMinLevel,
+  makeLoggerWith,
   makeLogger,
   silent,
+  effectiveMin,
   fromEnv,
 }
 /* s Not a pure module */
