@@ -45,9 +45,9 @@ function Make(Projection) {
   let deleteSubState = (store, id, subId, getSubId) => {
     store[id] = Stdlib_Option.getOr(Stdlib_Option.map(store[id], states => states.filter(state => Primitive_object.notequal(getSubId(state), subId))), []);
   };
+  let handleActions = (actions, operations) => Projection$ReventlessCore.handleActions(undefined, actions, operations, Projection.subIdConfig);
   let update = async (store, events$p) => {
-    let actions = events$p.map(event$p => Projection.project(event$p));
-    await Projection$ReventlessCore.handleActions(actions, {
+    await handleActions(events$p.map(event$p => Projection.project(event$p)), {
       load: extra => Promise.resolve({
         TAG: "Ok",
         _0: states(store, extra)
@@ -163,7 +163,7 @@ function Make(Projection) {
           _0: undefined
         });
       }
-    }, Projection.subIdConfig);
+    });
     if (Projection.subIdConfig !== undefined) {
       return Stdlib_Dict.mapValues(store, states => states.toSorted((state1, state2) => Primitive_string.compare(getSubId(state1), getSubId(state2))));
     } else {

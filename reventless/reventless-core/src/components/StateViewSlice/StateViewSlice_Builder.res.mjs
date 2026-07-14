@@ -94,7 +94,7 @@ function Make(RuntimeEnvironment) {
               let fieldsStr = f === "" ? "" : `({` + f + `})`;
               Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, dataDict, `handling event ` + idxStr + `/` + total + `: ` + LogFormat$ReventlessCore.bold(eventType) + fieldsStr + ` ` + actionsStr));
               return actions;
-            }).flat(), Effect.succeed(), (acc, action) => Effect.flatMap(acc, () => Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(action, projectionOps, Spec.subIdConfig)), param => {})));
+            }).flat(), Effect.succeed(), (acc, action) => Effect.flatMap(acc, () => Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(comp, action, projectionOps, Spec.subIdConfig)), param => {})));
           });
           let handler = SpecificEventCollector.makeHandler(ec, jsonEventsHandler);
           let resources = Component$ReventlessCore.outputs(queryDb).resources;

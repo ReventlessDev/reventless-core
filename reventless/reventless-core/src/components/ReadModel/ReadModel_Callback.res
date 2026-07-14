@@ -39,7 +39,7 @@ module Make = (
           _ => {
             let action = Projection.rewriteAction(action, ReadModelSpec.stateSchema)
             Effect.promise(
-              () => Projection.handleAction(action, Spec.operations, ReadModelSpec.subIdConfig),
+              () => Projection.handleAction(~comp, action, Spec.operations, ReadModelSpec.subIdConfig),
             )->Effect.map(_ => ())
           },
         )

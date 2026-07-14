@@ -130,7 +130,7 @@ module Make = (
               ->Array.reduce(Effect.succeed(), (acc, action) =>
                 acc->Effect.flatMap(_ =>
                   Effect.promise(() =>
-                    FrameworkProjection.handleAction(action, projectionOps, Spec.subIdConfig)
+                    FrameworkProjection.handleAction(~comp, action, projectionOps, Spec.subIdConfig)
                   )->Effect.map(_ => ())
                 )
               )

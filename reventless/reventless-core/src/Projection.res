@@ -133,10 +133,16 @@ let statesToString: array<'a> => string = states =>
   states->Array.map(stateToString)->Array.joinUnsafe(", ")
 
 let handleAction = async (
+  ~comp="Projection",
   action,
   {QueryDb.loadStream: loadStream, save, saveBatch, delete, deleteBatch} as operations,
   subIdConfig,
 ) => {
+  // Log each applied action at Debug with the full state it creates/changes,
+  // attributed to the owning component. Debug-lazy so the state is only
+  // serialized when debug logging is enabled; shadows the module-level
+  // `logAction` to carry the threaded `~comp` and the `handling action:` prefix.
+  let logAction = makeStr => log.debugLazy(~comp, () => `handling action: ${makeStr()}`)
   let loadAtMost = (n, id) =>
     loadStream(id)
     ->Stream.take(n)
@@ -210,7 +216,6 @@ let handleAction = async (
     | Error(err) => Error(err)
     }
   | UpdateWithDefault(id, default, update) =>
-    logAction(() => `UpdateWithDefault(${id}, loading ...`)
     switch await loadAtMost(2, id) {
     | Ok(states) =>
       switch states {
@@ -424,19 +429,19 @@ let optimizeActions = actions => {
   })
 }
 
-let handleActions = async (actions, operations, subIdConfig) => {
+let handleActions = async (~comp="Projection", actions, operations, subIdConfig) => {
   let handleActionsForId = async (actions, id) => {
     let actionCount = actions->Array.length
     if actionCount > 1 {
       log.debug(
-        ~comp="Projection",
+        ~comp,
         `handleActions: optimizing ${actionCount->Int.toString} actions for id=${id}`,
       )
     }
 
     let optimizedActions = optimizeActions(actions)
     let optimizedActionCount = optimizedActions->Array.length
-    log.info(~comp="Projection", `handleActions: id=${id} actions=${optimizedActionCount->Int.toString}`)
+    log.debug(~comp, `handleActions: id=${id} actions=${optimizedActionCount->Int.toString}`)
 
     // FIXME: handle errors!
     await optimizedActions->Array.reduce(Ok()->Promise.resolve, async (p, action) => {
@@ -444,11 +449,11 @@ let handleActions = async (actions, operations, subIdConfig) => {
       | Ok() => ()
       | Error(err) =>
         log.error(
-          ~comp="Projection",
+          ~comp,
           `storage error: ${err->Message.encode(ReventlessInfra.QueryDb.storageErrorSchema)->JSON.stringify}`,
         )
       }
-      await action->handleAction(operations, subIdConfig)
+      await action->handleAction(~comp, operations, subIdConfig)
     })
   }
 

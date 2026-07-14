@@ -31,7 +31,7 @@ function Make(ReadModelSpec) {
         return actions;
       }).flat(), Effect.succeed(), (acc, action) => Effect.flatMap(acc, () => {
         let action$1 = Projection$ReventlessCore.rewriteAction(action, ReadModelSpec.stateSchema);
-        return Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(action$1, Spec.operations, ReadModelSpec.subIdConfig)), param => {});
+        return Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(comp, action$1, Spec.operations, ReadModelSpec.subIdConfig)), param => {});
       }));
     });
     return {

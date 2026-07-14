@@ -202,10 +202,12 @@ function statesToString(states) {
   return states.map(stateToString).join(", ");
 }
 
-async function handleAction(action, operations, subIdConfig) {
+async function handleAction($staropt$star, action, operations, subIdConfig) {
   let saveBatch = operations.saveBatch;
   let save = operations.save;
   let loadStream = operations.loadStream;
+  let comp = $staropt$star !== undefined ? $staropt$star : "Projection";
+  let logAction = makeStr => log.debugLazy(comp, () => `handling action: ` + makeStr());
   let loadAtMost = (n, id) => Effect.runPromise(Effect.catchAll(Effect.map(Stream.runCollect(Stream$1.take(loadStream(id), n)), states => ({
     TAG: "Ok",
     _0: states
@@ -221,7 +223,7 @@ async function handleAction(action, operations, subIdConfig) {
     _0: e
   })));
   if (typeof action !== "object") {
-    log.debugLazy("Projection", () => "Ignore");
+    logAction(() => "Ignore");
     return {
       TAG: "Ok",
       _0: undefined
@@ -231,7 +233,7 @@ async function handleAction(action, operations, subIdConfig) {
     case "Create" :
       let state = action._1;
       let id = action._0;
-      log.debugLazy("Projection", () => `Create(` + id + `, ` + stateToString(state) + `)`);
+      logAction(() => `Create(` + id + `, ` + stateToString(state) + `)`);
       return await save(id, state, "Init", undefined);
     case "CreateMany" :
       let batch = action._0.map(param => [
@@ -239,7 +241,7 @@ async function handleAction(action, operations, subIdConfig) {
         param[1],
         undefined
       ]);
-      log.debugLazy("Projection", () => `CreateMany(` + batch.map(param => `(` + param[0] + `,` + stateToString(param[1]) + `)`).join(", ") + `)`);
+      logAction(() => `CreateMany(` + batch.map(param => `(` + param[0] + `,` + stateToString(param[1]) + `)`).join(", ") + `)`);
       return await saveBatch(batch);
     case "Update" :
       let id$1 = action._0;
@@ -254,13 +256,13 @@ async function handleAction(action, operations, subIdConfig) {
       let len = states$1.length;
       if (len !== 1) {
         if (len !== 0) {
-          log.debugLazy("Projection", () => `Update Error: Multiple oldStates for ` + id$1 + `)`);
+          logAction(() => `Update Error: Multiple oldStates for ` + id$1 + `)`);
           return {
             TAG: "Error",
             _0: "StaleState"
           };
         } else {
-          log.debugLazy("Projection", () => `Update Error: No oldState for ` + id$1 + `)`);
+          logAction(() => `Update Error: No oldState for ` + id$1 + `)`);
           return {
             TAG: "Error",
             _0: "StaleState"
@@ -269,35 +271,34 @@ async function handleAction(action, operations, subIdConfig) {
       }
       let oldState = states$1[0];
       let newState = action._1(oldState);
-      log.debugLazy("Projection", () => `Update(` + id$1 + `, ` + stateToString(oldState) + ` => ` + stateToString(newState) + `)`);
+      logAction(() => `Update(` + id$1 + `, ` + stateToString(oldState) + ` => ` + stateToString(newState) + `)`);
       return await save(id$1, newState, "Overwrite", undefined);
     case "UpdateWithDefault" :
       let $$default = action._1;
       let id$2 = action._0;
-      log.debugLazy("Projection", () => `UpdateWithDefault(` + id$2 + `, loading ...`);
       let states$2 = await loadAtMost(2, id$2);
       if (states$2.TAG === "Ok") {
         let states$3 = states$2._0;
         let len$1 = states$3.length;
         if (len$1 !== 1) {
           if (len$1 !== 0) {
-            log.debugLazy("Projection", () => `UpdateWithDefault Error: Multiple oldStates for ` + id$2 + `)`);
+            logAction(() => `UpdateWithDefault Error: Multiple oldStates for ` + id$2 + `)`);
             return {
               TAG: "Error",
               _0: "StaleState"
             };
           } else {
-            log.debugLazy("Projection", () => `UpdateWithDefault(` + id$2 + `, default: ` + stateToString($$default) + `)`);
+            logAction(() => `UpdateWithDefault(` + id$2 + `, default: ` + stateToString($$default) + `)`);
             return await save(id$2, $$default, "Init", undefined);
           }
         }
         let oldState$1 = states$3[0];
         let newState$1 = action._2(oldState$1);
-        log.debugLazy("Projection", () => `UpdateWithDefault(` + id$2 + `, ` + stateToString(oldState$1) + ` => ` + stateToString(newState$1) + `)`);
+        logAction(() => `UpdateWithDefault(` + id$2 + `, ` + stateToString(oldState$1) + ` => ` + stateToString(newState$1) + `)`);
         return await save(id$2, newState$1, "Overwrite", undefined);
       }
       let err = states$2._0;
-      log.debugLazy("Projection", () => `UpdateWithDefault Error: Couldn't load oldState(s) for ` + id$2 + `: ` + QueryDb$ReventlessCore.storageErrorToString(err) + `)`);
+      logAction(() => `UpdateWithDefault Error: Couldn't load oldState(s) for ` + id$2 + `: ` + QueryDb$ReventlessCore.storageErrorToString(err) + `)`);
       return {
         TAG: "Error",
         _0: err
@@ -305,7 +306,7 @@ async function handleAction(action, operations, subIdConfig) {
     case "Set" :
       let state$1 = action._1;
       let id$3 = action._0;
-      log.debugLazy("Projection", () => `Set(` + id$3 + `, ` + stateToString(state$1) + `)`);
+      logAction(() => `Set(` + id$3 + `, ` + stateToString(state$1) + `)`);
       return await save(id$3, state$1, "Any", undefined);
     case "SetMany" :
       let set = action._1;
@@ -314,15 +315,15 @@ async function handleAction(action, operations, subIdConfig) {
         set(id),
         undefined
       ]);
-      log.debugLazy("Projection", () => `SetMany(` + batch$1.map(param => `(` + param[0] + `,` + stateToString(param[1]) + `)`).join(", ") + `)`);
+      logAction(() => `SetMany(` + batch$1.map(param => `(` + param[0] + `,` + stateToString(param[1]) + `)`).join(", ") + `)`);
       return await saveBatch(batch$1);
     case "Delete" :
       let id$4 = action._0;
-      log.debugLazy("Projection", () => `Delete(` + id$4 + `)`);
+      logAction(() => `Delete(` + id$4 + `)`);
       return await operations.delete(id$4, undefined);
     case "DeleteMany" :
       let ids = action._0;
-      log.debugLazy("Projection", () => `DeleteMany(` + ids.join(", ") + `)`);
+      logAction(() => `DeleteMany(` + ids.join(", ") + `)`);
       return await operations.deleteBatch(ids.map(id => [
         id,
         undefined
@@ -330,7 +331,7 @@ async function handleAction(action, operations, subIdConfig) {
     case "CreateMultiState" :
       let states$4 = action._1;
       let id$5 = action._0;
-      log.debugLazy("Projection", () => `CreateMultiState(` + id$5 + `, ` + states$4.map(stateToString).join(", ") + `)`);
+      logAction(() => `CreateMultiState(` + id$5 + `, ` + states$4.map(stateToString).join(", ") + `)`);
       let len$2 = states$4.length;
       if (len$2 !== 1) {
         if (len$2 === 0) {
@@ -359,19 +360,19 @@ async function handleAction(action, operations, subIdConfig) {
         }
       } else if (subIdConfig !== undefined) {
         let err$1 = match._0;
-        log.debugLazy("Projection", () => `UpdateMultiState Error: Couldn't load states for ` + id$6 + `: ` + QueryDb$ReventlessCore.storageErrorToString(err$1) + `)`);
+        logAction(() => `UpdateMultiState Error: Couldn't load states for ` + id$6 + `: ` + QueryDb$ReventlessCore.storageErrorToString(err$1) + `)`);
         return {
           TAG: "Error",
           _0: err$1
         };
       }
-      log.debugLazy("Projection", () => "UpdateMultiState Error: Missing SubIdConfig !");
+      logAction(() => "UpdateMultiState Error: Missing SubIdConfig !");
       return {
         TAG: "Error",
         _0: "MissingSubIdConfig"
       };
     default:
-      log.debugLazy("Projection", () => "Error: projection action not supported");
+      logAction(() => "Error: projection action not supported");
       return {
         TAG: "Error",
         _0: {
@@ -668,24 +669,25 @@ function optimizeActions(actions) {
   });
 }
 
-async function handleActions(actions, operations, subIdConfig) {
+async function handleActions(compOpt, actions, operations, subIdConfig) {
+  let comp = compOpt !== undefined ? compOpt : "Projection";
   let handleActionsForId = async (actions, id) => {
     let actionCount = actions.length;
     if (actionCount > 1) {
-      log.debug("Projection", undefined, `handleActions: optimizing ` + actionCount.toString() + ` actions for id=` + id);
+      log.debug(comp, undefined, `handleActions: optimizing ` + actionCount.toString() + ` actions for id=` + id);
     }
     let optimizedActions = optimizeActions(actions);
     let optimizedActionCount = optimizedActions.length;
-    log.info("Projection", undefined, `handleActions: id=` + id + ` actions=` + optimizedActionCount.toString());
+    log.debug(comp, undefined, `handleActions: id=` + id + ` actions=` + optimizedActionCount.toString());
     return await Stdlib_Array.reduce(optimizedActions, Promise.resolve({
       TAG: "Ok",
       _0: undefined
     }), async (p, action) => {
       let err = await p;
       if (err.TAG !== "Ok") {
-        log.error("Projection", undefined, `storage error: ` + JSON.stringify(Message$ReventlessCore.encode(err._0, QueryDb$ReventlessInfra.storageErrorSchema)));
+        log.error(comp, undefined, `storage error: ` + JSON.stringify(Message$ReventlessCore.encode(err._0, QueryDb$ReventlessInfra.storageErrorSchema)));
       }
-      return await handleAction(action, operations, subIdConfig);
+      return await handleAction(comp, action, operations, subIdConfig);
     });
   };
   let results = await Promise.all(groupActionsById(actions).map(param => handleActionsForId(param[1], param[0])));

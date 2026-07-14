@@ -59,9 +59,10 @@ function Make(Spec) {
     let deleteSubState = (store, id, subId, getSubId) => {
       store[id] = Stdlib_Option.getOr(Stdlib_Option.map(store[id], states => states.filter(state => Primitive_object.notequal(getSubId(state), subId))), []);
     };
+    let runActions = (actions, operations) => Projection$ReventlessCore.handleActions(undefined, actions, operations, Spec.subIdConfig);
     let update = async (store, events) => {
       let actions = events.map(ev => Projection.project(ev)).flat();
-      await Projection$ReventlessCore.handleActions(actions, {
+      await runActions(actions, {
         load: extra => Promise.resolve({
           TAG: "Ok",
           _0: states(store, extra)
@@ -177,7 +178,7 @@ function Make(Spec) {
             _0: undefined
           });
         }
-      }, Spec.subIdConfig);
+      });
       if (Spec.subIdConfig !== undefined) {
         return Stdlib_Dict.mapValues(store, states => states.toSorted((s1, s2) => Primitive_string.compare(getSubId(s1), getSubId(s2))));
       } else {

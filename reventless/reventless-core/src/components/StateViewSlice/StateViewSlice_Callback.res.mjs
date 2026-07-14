@@ -38,7 +38,7 @@ function Make(Spec) {
       if (skipped > 0) {
         Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `skipped=` + skipped.toString() + ` events (decode mismatch)`));
       }
-      return await Projection$ReventlessCore.handleActions(allActions, queryDbOps, Spec.subIdConfig);
+      return await Projection$ReventlessCore.handleActions(comp, allActions, queryDbOps, Spec.subIdConfig);
     };
     return {
       Spec: Spec,

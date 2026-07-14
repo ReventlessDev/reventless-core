@@ -91,7 +91,10 @@ export function buildJsonEventsHandler(specModule, projectionModule, queryDbTabl
       // every such action hit the `MissingSubIdConfig` guard and silently write nothing,
       // while the test-harness callback path (which threads it) stayed green. `undefined`
       // for slices without an `@subId` is correct — those never emit sub-id actions.
-      Effect.promise(() => handleAction(action, queryDbOps, specModule.subIdConfig)),
+      // First positional arg is the compiled `~comp=` optional (attribution
+      // for Projection.handleAction's debug-lazy action log) — the slice's
+      // spec name. Compiled shape: (comp, action, operations, subIdConfig).
+      Effect.promise(() => handleAction(specModule.name, action, queryDbOps, specModule.subIdConfig)),
       _ => {}
     )
   );
