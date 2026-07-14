@@ -623,19 +623,21 @@ module Make = (
       )
     )
     // One RolePolicy per extension target, each derived through a SINGLE
-    // `.apply` on that target's queue-URL Output — deliberately avoiding
-    // `Pulumi.Output.all`, which mis-resolves the DCB path's
-    // operations-gated Output to the historic nested-option sentinel even
-    // though a direct `.apply` on the same Output delivers the real URL.
-    // RolePolicy creation happens at TOP LEVEL: calling `RolePolicy.make`
-    // inside a `Pulumi.Output.apply` callback does not reliably register the
-    // resource with the engine (verified: the previous inside-apply variant
-    // existed on no collector role in the account). Dict values are
-    // heterogeneous at runtime — plain resolved URL strings for aggregate
-    // targets, Outputs for DCB-slice targets; anything else (a legacy
-    // sentinel object) is skipped. Inside the apply a non-string URL falls
-    // back to a benign placeholder ARN so the policy document stays valid
-    // (IAM rejects empty/na Resource entries with MalformedPolicyDocument).
+    // `.apply` on that target's queue-URL Output. `Pulumi.Output.all` is
+    // deliberately NOT used here: the DCB slice's URL is an `.apply`-lifted
+    // Output (Dcb_Builder reads the queue id via `operations.apply(_ =>
+    // resources[0].id)`), and `Pulumi.Output.all` mis-resolves such lifted
+    // Outputs to the `{BS_PRIVATE_NESTED_SOME_NONE: 0}` sentinel (both at
+    // preview and up) while a direct `.apply` on the same Output resolves the
+    // real URL — verified by deploying both variants. RolePolicy creation
+    // happens at TOP LEVEL: calling `RolePolicy.make` inside a
+    // `Pulumi.Output.apply` callback does not reliably register the resource
+    // (the previous inside-apply variant existed on no collector role in the
+    // account). Dict values are heterogeneous at runtime — plain resolved URL
+    // strings for aggregate targets, Outputs for DCB-slice targets; anything
+    // else is skipped. Inside the apply a non-string URL falls back to a
+    // benign placeholder ARN so the policy document stays valid (IAM rejects
+    // empty Resource entries with MalformedPolicyDocument).
     // See docs/analysis/ec-publish-to-aggregates-grant-broken.md.
     aggregateNameSet
     ->Dict.keysToArray

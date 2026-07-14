@@ -27,29 +27,28 @@ function make(name, remoteChannel, timeout, runtime, opts) {
   let lambda = runtime.parts.lambda;
   let lambdaRole = runtime.parts.lambdaRole;
   let coreSqsQueue = Util_SQS$ReventlessAws.findResolvedResource(remoteChannel.resources);
+  let heartbeatLambdaSendMessagePolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
+      Sid: "AllowLambdaToSendSQS",
+      Effect: "Allow",
+      Action: "sqs:SendMessage",
+      Resource: coreSqsQueue.urn
+    }]);
+  new (Aws.iam.RolePolicy)(name + "RolePolicy", {
+    policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "Policy", [
+      Lambda$PulumiAws.defaultLoggingPolicyDocument,
+      heartbeatLambdaSendMessagePolicyDocument
+    ]),
+    role: lambdaRole.id
+  });
   Pulumi.all([
     Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
-    Output$Pulumi.flatMap(lambda, lambda => lambda.name),
-    lambdaRole.id
+    Output$Pulumi.flatMap(lambda, lambda => lambda.name)
   ]).apply(param => {
     new (Aws.lambda.Permission)(name, {
       action: "lambda:InvokeFunction",
       function: param[1],
       principal: AWS$ReventlessAws.CloudwatchEventRule.principal
     }, opts$1);
-    let heartbeatLambdaSendMessagePolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
-        Sid: "AllowLambdaToSendSQS",
-        Effect: "Allow",
-        Action: "sqs:SendMessage",
-        Resource: coreSqsQueue.urn
-      }]);
-    new (Aws.iam.RolePolicy)(name + "RolePolicy", {
-      policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "Policy", [
-        Lambda$PulumiAws.defaultLoggingPolicyDocument,
-        heartbeatLambdaSendMessagePolicyDocument
-      ]),
-      role: param[2]
-    });
     new (Aws.cloudwatch.EventTarget)(name, {
       rule: Cloudwatch_EventTarget$PulumiAws.Rule.ofEventRule(cloudwatchEventRule),
       arn: param[0]

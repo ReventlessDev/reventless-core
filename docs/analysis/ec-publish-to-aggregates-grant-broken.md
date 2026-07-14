@@ -2,7 +2,7 @@
 
 **Date**: 2026-07-14 (resolved same day)
 **Scope**: deploy-time IAM bug that prevents a cross-plugin **Extension → DCB StateChangeSlice** command publish. On the deployed `online-shop-hybrid` example, this made **Place Order** fail with *"These products aren't available yet: Prod 1."* Two distinct root causes.
-**Status**: **RESOLVED** — fix implemented in `Dcb_Builder.res` + `PluginRuntime_Builder.res` and E2E-validated on alpha (eu-west-1): grants live on both plugin collectors, product-add → cross-plugin sync → place-order verified working end-to-end. See § Resolution at the bottom.
+**Status**: **RESOLVED** — fix implemented in `Dcb_Builder.res` + `PluginRuntime_Builder.res` (+ heartbeat runner) and E2E-validated on alpha (eu-west-1): grants live on both plugin collectors, product-add → cross-plugin sync → place-order verified working end-to-end. See § Resolution and § Follow-ups.
 **Related**: [[feedback_option_proxy]] convention (never wrap a Pulumi Output in a ReScript `option`) — this bug is that anti-pattern manifesting. Memory: `reference_ec_publish_to_aggregates_grant_broken`.
 
 ---
@@ -143,7 +143,17 @@ Three coordinated changes:
 - Flow: `Catalog_AddProduct` (CommandAccepted) → collector log `EP→SyncCatalogProduct: SyncNewProduct(…)` with **no AccessDenied** → `CatalogProductSynced` in `OrderingDcbEventLog` → `AvailableProducts` row projected → `Ordering_PlaceOrder` → **CommandAccepted**, `Orders` row `status: Placed`.
 - Auth for the E2E run: temporary Cognito user (`e2e-verify`), deleted afterwards.
 
-**Still open (out of scope here):**
-- `CatalogPluginHeartbeat → CorePluginExtPointCmdTopic` AccessDenied — different code path (heartbeat runner grant on a cross-stack remote-channel ARN), still unfixed.
-- The `pulumi.all`-vs-`.apply` divergence on operations-gated Outputs deserves its own minimal repro — other `Pulumi.Output.all` call sites over component-derived Outputs may harbor the same latent issue.
-- Pre-existing `option<Pulumi.Output.t<…>>` fields elsewhere (`dcbPublishJsons`, `adminConfig`, `heartbeatConfig.epQueueUrl`) still violate the convention and should be migrated opportunistically.
+## Follow-ups (addressed 2026-07-14)
+
+### Heartbeat grant — same anti-pattern, now fixed
+
+`HeartbeatRunner_CloudWatchEvents.res` created its `AllowLambdaToSendSQS` RolePolicy (grant on `CorePluginExtPointCmdTopic`) **inside** a `Pulumi.Output.apply` — the same non-registration anti-pattern. It intermittently left `CatalogPluginHeartbeat` without the grant (observed AccessDenied at 08:46 on the CI deploy; self-healed on a later `up`). Fixed by creating the RolePolicy at **top level**: `coreSqsQueue.urn` is an already-resolved ARN string from the `resolvedResource` remote channel and `lambdaRole.id` is an Output, so neither needs an apply; the Lambda `Permission` + CloudWatch `EventTarget` (which genuinely need the resolved Lambda arn/name) stay in an apply. Verified on catalog-aws: grant present with the correct ARN, heartbeat invocation clean.
+
+### The `pulumi.all`-vs-`.apply` divergence — characterized
+
+Reproduced with the current (option-free) source, in one preview run: `Pulumi.Output.all([o])` resolved the DCB URL Output `o` to the `{BS_PRIVATE_NESTED_SOME_NONE: 0}` sentinel, while a direct `o->apply(f)` was correctly treated as unknown-until-`up` (and on `up` resolves to the real URL). Root of it: `flatMap`/`map`/`unwrap` are **all just `.apply`** at runtime (the `%identity` unwrap is compiled away), so there is no literal nested `Output<Output>`. The fragility is specific to how `dcbCommandTopicQueueUrl` is built — `Component.operations->apply(_ops => Component.outputs.resources[0].id)` **ignores the `operations` payload and reads `Component.outputs` as a synchronous side channel inside the callback**, gated on `operations` only for timing. `Pulumi.Output.all` schedules that callback at a different point in the resolution graph than a direct `.apply`, where the side-channel read still returns the sentinel. **Rule: a value built from a gated side-channel read must be consumed with a direct per-item `.apply`, never batched through `Pulumi.Output.all`/`all2`.** Audit result: the other lifted-output builders (`Plugin_Helpers` `extractExtensionPointDefinitions`, `extensionPointEntries`) use the *clean* pattern — `topicOutput->flatMap(({resources}) => resources[0].id)`, where the id flows through the output's own resolved payload — and work correctly through `all2`; the EC grant was the only consumer of the fragile side-channel output through `all`, and it is fixed.
+
+## Still open
+
+- Pre-existing `option<Pulumi.Output.t<…>>` fields elsewhere (`dcbPublishJsons`, `adminConfig` in `PluginRuntime_Builder`, `heartbeatConfig.epQueueUrl`) still violate the [[feedback_option_proxy]] convention and should be migrated opportunistically.
+- A cleaner long-term fix for `dcbCommandTopicQueueUrl` would surface a genuine `Output<{resources}>` payload for the DCB command topic (like the extension-point path) so the URL flows through the output rather than a gated side-channel read — removing the "must not batch through `all`" constraint entirely.

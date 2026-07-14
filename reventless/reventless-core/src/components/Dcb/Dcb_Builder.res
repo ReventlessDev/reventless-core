@@ -964,18 +964,23 @@ module Make = (
           )
 
         // Derive the DCB command topic's queue URL *after* the component's
-        // construct has completed. Reading `resources[0].id` synchronously here
-        // is timing-fragile: in some runs the SQS Queue's `.id` is not yet a
-        // real Output in this window and the captured value degenerates to the
-        // `{BS_PRIVATE_NESTED_SOME_NONE: 0}` nested-option sentinel, which then
-        // flows through publishToAggregates and silently breaks the Plugin
-        // EventCollector's sqs:SendMessage grant on this queue (cross-plugin
-        // extension → DCB-slice publishes fail with IAM AccessDenied). Gating
-        // the read on `Component.operations` — an Output that resolves only
-        // after construct has stored the real resources — makes `r.id` a
-        // resolvable queue-URL Output in every run. Mirrors how
-        // `dcbPublishJsons` reads through `Component.operations` above.
-        // See docs/analysis/ec-publish-to-aggregates-grant-broken.md.
+        // construct has stored its real resources. This reads `Component.outputs`
+        // as a synchronous side channel inside a callback gated on a DIFFERENT
+        // output (`Component.operations`, which resolves only post-construct) —
+        // reading `resources[0].id` at build time instead captured the SQS
+        // Queue's not-yet-resolved `.id`, which degenerated to the
+        // `{BS_PRIVATE_NESTED_SOME_NONE: 0}` nested-option sentinel and silently
+        // broke the Plugin EventCollector's sqs:SendMessage grant (cross-plugin
+        // extension → DCB-slice publishes → IAM AccessDenied).
+        //
+        // CONSUMER CONSTRAINT: because the value comes from that gated
+        // side-channel read (not from the `operations` payload itself), it must
+        // be resolved with a direct `.apply`, NOT batched through
+        // `Pulumi.Output.all`/`all2` — `all` invokes the callback at a different
+        // point in the graph where the side-channel read still yields the
+        // sentinel (verified on both preview and up). The EC grant builder
+        // therefore resolves it per-target. See
+        // docs/analysis/ec-publish-to-aggregates-grant-broken.md.
         let dcbCommandTopicQueueUrl =
           dcbCommandTopic
           ->Component.operations
