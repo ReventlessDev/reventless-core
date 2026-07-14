@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.51 (2026-07-14)
+
+### Features
+
+* **pulumi-aws:** AppSync Merged API bindings (apiType, mergedApiExecutionRoleArn, SourceApiAssociation) ([f020e87](https://github.com/ReventlessDev/reventless-core/commit/f020e871fdd1f5ae3a0395eb73bc24589139e40e))
+
+
 # 2.4.0-alpha.50 (2026-07-11)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws

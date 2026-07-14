@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.210 (2026-07-14)
+
+### Features
+
+* **api:** merge-path codegen — stitchStandalone subgraph SDL + [@canonical](https://github.com/canonical) stamping (Phase 2) ([02ae93b](https://github.com/ReventlessDev/reventless-core/commit/02ae93b1c84a116ae47fb656cab17858a5df2c97))
+* **aws:** merged-API platform stack — merged APIs + admin canonical source behind mergedApi flag (Phase 3) ([9dd7629](https://github.com/ReventlessDev/reventless-core/commit/9dd7629332736d7aeab5e07a356ebc701f06b416))
+* **aws:** merged-API plugin stack — own source API + association behind mergedApi flag (Phase 4) ([f6b6eb7](https://github.com/ReventlessDev/reventless-core/commit/f6b6eb7999e50391144eb5105f958a260f202011))
+
+
 # 3.0.0-alpha.209 (2026-07-13)
 
 ### Bug Fixes

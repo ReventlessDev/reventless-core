@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.166 (2026-07-14)
+
+### Features
+
+* **api:** merge-path codegen — stitchStandalone subgraph SDL + [@canonical](https://github.com/canonical) stamping (Phase 2) ([02ae93b](https://github.com/ReventlessDev/reventless-core/commit/02ae93b1c84a116ae47fb656cab17858a5df2c97))
+
+
 # 3.0.0-alpha.165 (2026-07-13)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core
