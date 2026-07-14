@@ -261,3 +261,35 @@ describe("GraphQL_Stitcher.subscriptionSources", () => {
     expect(fields->Array.includes("onPluginStatusChange"))->toBe(true)
   })
 })
+
+describe("GraphQL_Stitcher.stitchStandalone", () => {
+  let pluginFragment = encode({
+    types: [
+      `type Product implements Node {\n  id: ID!\n  name: String\n}`,
+      `union CommandResult = CommandAccepted | CommandRejected | CommandPending`,
+    ],
+    mutations: [`  Catalog_AddProduct(input: AddInput): CommandResult`],
+    queries: [`  Catalog_products: [Product]`],
+    subscriptions: [`  onCatalog_AddProduct(id: ID): CommandResult`],
+    subscriptionSources: [{field: "onCatalog_AddProduct", mutations: ["Catalog_AddProduct"]}],
+  })
+
+  testSync("renders a self-contained subgraph document with relay base types", () => {
+    let sdl = stitchStandalone(~fragment=pluginFragment)
+    expect(sdl)->toContain("interface Node {")
+    expect(sdl)->toContain("type PageInfo {")
+    expect(sdl)->toContain("type Product implements Node {")
+    expect(sdl)->toContain("Catalog_AddProduct(input: AddInput): CommandResult")
+    expect(sdl)->toContain("onCatalog_AddProduct(id: ID): CommandResult")
+  })
+
+  testSync("omits the global node query (the canonical base document owns it)", () => {
+    let sdl = stitchStandalone(~fragment=pluginFragment)
+    expect(sdl->String.includes("node(id: ID!): Node"))->toBe(false)
+  })
+
+  testSync("stitch keeps injecting the global node query (whole-schema path unchanged)", () => {
+    let sdl = stitch(~baseFragment=pluginFragment, ~pluginFragments=[])
+    expect(sdl)->toContain("node(id: ID!): Node")
+  })
+})

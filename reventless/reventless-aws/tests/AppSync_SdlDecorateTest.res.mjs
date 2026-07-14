@@ -177,6 +177,26 @@ globalThis.describe("AppSync_SdlDecorate.stampSharedIamTypes", () => {
   });
 });
 
+globalThis.describe("AppSync_SdlDecorate.stampCanonicalTypes", () => {
+  globalThis.test("stamps shared object types, the Node interface, and the CommandResult union", () => {
+    let sdl = AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes("interface Node {\n  id: ID!\n}\n\ntype PageInfo {\n  hasNextPage: Boolean!\n}\n\nunion CommandResult = CommandAccepted | CommandRejected | CommandPending\n\ntype CommandAccepted {\n  msgId: ID!\n}");
+    globalThis.expect(sdl).toContain("interface Node @canonical {");
+    globalThis.expect(sdl).toContain("type PageInfo @canonical {");
+    globalThis.expect(sdl).toContain("union CommandResult @canonical = CommandAccepted");
+    globalThis.expect(sdl).toContain("type CommandAccepted @canonical {");
+  });
+  globalThis.test("composes after stampSharedIamTypes and leaves other types alone", () => {
+    let sdl = AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes("type PageInfo {\n  hasNextPage: Boolean!\n}\n\ntype Product {\n  id: ID!\n}"));
+    globalThis.expect(sdl).toContain("type PageInfo @aws_cognito_user_pools @aws_iam @canonical {");
+    globalThis.expect(sdl).toContain("type Product {");
+    globalThis.expect(sdl.includes("type Product @canonical")).toBe(false);
+  });
+  globalThis.test("is idempotent", () => {
+    let once = AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes("type PageInfo {\n  x: Int\n}");
+    globalThis.expect(AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(once)).toBe(once);
+  });
+});
+
 export {
   sources,
   stitchedSdl,

@@ -139,6 +139,53 @@ let stampSharedIamTypes = (sdl: string): string =>
     acc->String.replace(`type ${name} {`, `type ${name} @aws_cognito_user_pools @aws_iam {`)
   )
 
+// ── Merged-API canonical stamping ─────────────────────────────────────────────
+// Under AppSync Merged APIs the admin source API owns the shared traversal
+// types; `@canonical` makes its definition win over every plugin source's copy
+// (plugin copies must still exist — a source schema has to be valid standalone).
+// Spike-validated (plan Phase 0): a divergent non-canonical copy is SHADOWED by
+// the canonical definition, not a MERGE_FAILED — so this stamp is what keeps
+// shared-type evolution single-owner. Applied only to the ADMIN source SDL on
+// the merge path; plugin subgraph documents stay unstamped.
+
+// Object types the admin source owns canonically. `interface Node` and
+// `union CommandResult` are handled structurally below (their def lines don't
+// start with `type `).
+let canonicalTypeNames = ["PageInfo", "CommandAccepted", "CommandRejected", "CommandPending"]
+
+let stampCanonicalTypes = (sdl: string): string =>
+  sdl
+  ->String.split("\n")
+  ->Array.map(line => {
+    let isObjectDef = canonicalTypeNames->Array.some(name => line->String.startsWith(`type ${name} `))
+    let isNodeDef = line->String.startsWith("interface Node ") || line->String.startsWith("interface Node{")
+    let isUnionDef = line->String.startsWith("union CommandResult ") || line->String.startsWith("union CommandResult=")
+    if line->String.includes("@canonical") {
+      line
+    } else if isObjectDef || isNodeDef {
+      // Insert before the opening brace so it composes with earlier stamps
+      // (e.g. `type PageInfo @aws_cognito_user_pools @aws_iam {`).
+      switch line->String.indexOfOpt("{") {
+      | Some(braceIdx) =>
+        let head = line->String.slice(~start=0, ~end=braceIdx)->String.trimEnd
+        let tail = line->String.slice(~start=braceIdx)
+        `${head} @canonical ${tail}`
+      | None => line
+      }
+    } else if isUnionDef {
+      switch line->String.indexOfOpt("=") {
+      | Some(eqIdx) =>
+        let head = line->String.slice(~start=0, ~end=eqIdx)->String.trimEnd
+        let tail = line->String.slice(~start=eqIdx)
+        `${head} @canonical ${tail}`
+      | None => line
+      }
+    } else {
+      line
+    }
+  })
+  ->Array.join("\n")
+
 // ── Reactive push planner (runtime-pure) ─────────────────────────────────────
 // The AWS-decorated counterpart of core `GraphQL_PushPlanner.planPushes`: given
 // the fragments currently in the ApiFragmentRegistry (each tagged with its target

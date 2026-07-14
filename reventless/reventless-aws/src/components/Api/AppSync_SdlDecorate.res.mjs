@@ -88,6 +88,43 @@ function stampSharedIamTypes(sdl) {
   return Stdlib_Array.reduce(sharedIamTypeNames, sdl, (acc, name) => acc.replace(`type ` + name + ` {`, `type ` + name + ` @aws_cognito_user_pools @aws_iam {`));
 }
 
+let canonicalTypeNames = [
+  "PageInfo",
+  "CommandAccepted",
+  "CommandRejected",
+  "CommandPending"
+];
+
+function stampCanonicalTypes(sdl) {
+  return sdl.split("\n").map(line => {
+    let isObjectDef = canonicalTypeNames.some(name => line.startsWith(`type ` + name + ` `));
+    let isNodeDef = line.startsWith("interface Node ") || line.startsWith("interface Node{");
+    let isUnionDef = line.startsWith("union CommandResult ") || line.startsWith("union CommandResult=");
+    if (line.includes("@canonical")) {
+      return line;
+    }
+    if (isObjectDef || isNodeDef) {
+      let braceIdx = Stdlib_String.indexOfOpt(line, "{");
+      if (braceIdx === undefined) {
+        return line;
+      }
+      let head = line.slice(0, braceIdx).trimEnd();
+      let tail = line.slice(braceIdx);
+      return head + ` @canonical ` + tail;
+    }
+    if (!isUnionDef) {
+      return line;
+    }
+    let eqIdx = Stdlib_String.indexOfOpt(line, "=");
+    if (eqIdx === undefined) {
+      return line;
+    }
+    let head$1 = line.slice(0, eqIdx).trimEnd();
+    let tail$1 = line.slice(eqIdx);
+    return head$1 + ` @canonical ` + tail$1;
+  }).join("\n");
+}
+
 function planAwsPushes(rawAdminBase, iamFieldNames, fragments, splitApi) {
   let authBase = injectAwsAuthAll(rawAdminBase, "Admin", iamFieldNames);
   let targeted = fragments.map(f => {
@@ -121,6 +158,8 @@ export {
   injectAwsAuthAll,
   sharedIamTypeNames,
   stampSharedIamTypes,
+  canonicalTypeNames,
+  stampCanonicalTypes,
   planAwsPushes,
 }
 /* GraphQL_Stitcher-ReventlessCore Not a pure module */

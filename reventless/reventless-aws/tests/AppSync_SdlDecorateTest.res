@@ -205,3 +205,30 @@ describe("AppSync_SdlDecorate.stampSharedIamTypes", () => {
     expect(sdl)->toContain("type CommandAccepted @aws_cognito_user_pools @aws_iam {")
   })
 })
+
+describe("AppSync_SdlDecorate.stampCanonicalTypes", () => {
+  testSync("stamps shared object types, the Node interface, and the CommandResult union", () => {
+    let sdl = AppSync_SdlDecorate.stampCanonicalTypes(
+      "interface Node {\n  id: ID!\n}\n\ntype PageInfo {\n  hasNextPage: Boolean!\n}\n\nunion CommandResult = CommandAccepted | CommandRejected | CommandPending\n\ntype CommandAccepted {\n  msgId: ID!\n}",
+    )
+    expect(sdl)->toContain("interface Node @canonical {")
+    expect(sdl)->toContain("type PageInfo @canonical {")
+    expect(sdl)->toContain("union CommandResult @canonical = CommandAccepted")
+    expect(sdl)->toContain("type CommandAccepted @canonical {")
+  })
+
+  testSync("composes after stampSharedIamTypes and leaves other types alone", () => {
+    let sdl =
+      AppSync_SdlDecorate.stampSharedIamTypes(
+        "type PageInfo {\n  hasNextPage: Boolean!\n}\n\ntype Product {\n  id: ID!\n}",
+      )->AppSync_SdlDecorate.stampCanonicalTypes
+    expect(sdl)->toContain("type PageInfo @aws_cognito_user_pools @aws_iam @canonical {")
+    expect(sdl)->toContain("type Product {")
+    expect(sdl->String.includes("type Product @canonical"))->toBe(false)
+  })
+
+  testSync("is idempotent", () => {
+    let once = AppSync_SdlDecorate.stampCanonicalTypes("type PageInfo {\n  x: Int\n}")
+    expect(AppSync_SdlDecorate.stampCanonicalTypes(once))->toBe(once)
+  })
+})

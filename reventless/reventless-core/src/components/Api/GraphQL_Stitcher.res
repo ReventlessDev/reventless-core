@@ -172,21 +172,23 @@ let relayBaseQueries = [
 ]
 
 /**
-Stitch a base fragment with plugin fragments into a complete GraphQL SDL string.
+Assemble fragments into a complete GraphQL SDL string.
 
-- Base fragment is always first (defines core types + Plugin mutations/queries).
-- Plugin fragments add their own types, mutations, and queries.
+- Fragments are processed in order (first wins on collisions).
 - Collision detection: duplicate type definitions and field names are logged and skipped.
-- Relay base types (Node interface, PageInfo) and node query are always injected.
+- Relay base types (Node interface, PageInfo) are always injected; the global
+  `node` query only when `includeGlobalNodeQuery` (stitched schemas yes,
+  standalone subgraph documents no).
 
 Returns the full SDL string ready for use with AppSync or graphql-yoga.
+Public entry points: `stitch` (base + plugins, the whole-schema path) and
+`stitchStandalone` (one fragment as a self-contained subgraph document).
 */
-let stitch = (
-  ~baseFragment: Reventless.Plugin.apiSchemaFragment,
-  ~pluginFragments: array<Reventless.Plugin.apiSchemaFragment>,
+let assembleSdl = (
+  ~fragments: array<Reventless.Plugin.apiSchemaFragment>,
+  ~includeGlobalNodeQuery: bool,
 ): string => {
-  let allFragments = Array.concat([baseFragment], pluginFragments)
-  let parts = allFragments->Array.map(decode)
+  let parts = fragments->Array.map(decode)
 
   // Collect all type definitions — detect collisions by type name
   // Start with Relay base types (Node interface, PageInfo)
@@ -229,14 +231,18 @@ let stitch = (
   )
 
   // Collect all query fields — detect collisions by field name
-  // Start with Relay node query
+  // Start with Relay node query (single-resolver-owned: omitted from
+  // standalone subgraph documents, where the platform's canonical source
+  // owns the global `node` field)
   let seenQueryFields: Set.t<string> = Set.make()
   let allQueries: array<string> = []
-  relayBaseQueries->Array.forEach(field => {
-    let fieldName = extractLeadingName(field)
-    seenQueryFields->Set.add(fieldName)
-    allQueries->Array.push(field)
-  })
+  if includeGlobalNodeQuery {
+    relayBaseQueries->Array.forEach(field => {
+      let fieldName = extractLeadingName(field)
+      seenQueryFields->Set.add(fieldName)
+      allQueries->Array.push(field)
+    })
+  }
 
   parts->Array.forEach(({queries}) =>
     queries->Array.forEach(field => {
@@ -290,6 +296,26 @@ let stitch = (
     )
   sdlParts->Array.join("\n\n")
 }
+
+let stitch = (
+  ~baseFragment: Reventless.Plugin.apiSchemaFragment,
+  ~pluginFragments: array<Reventless.Plugin.apiSchemaFragment>,
+): string =>
+  assembleSdl(
+    ~fragments=Array.concat([baseFragment], pluginFragments),
+    ~includeGlobalNodeQuery=true,
+  )
+
+/**
+Render ONE fragment as a standalone schema document for merge-based
+composition (plugin = subgraph, platform = merge). The relay base types are
+included so the document is self-contained and valid on its own; the global
+`node(id: ID!)` root query is omitted — exactly one source (the platform's
+canonical one) may own that field's resolver, so only the canonical base
+document carries it (via `stitch`).
+*/
+let stitchStandalone = (~fragment: Reventless.Plugin.apiSchemaFragment): string =>
+  assembleSdl(~fragments=[fragment], ~includeGlobalNodeQuery=false)
 
 let isIdentStart = (line: string): bool =>
   switch line->String.codePointAt(0) {

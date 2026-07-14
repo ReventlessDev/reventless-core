@@ -132,9 +132,8 @@ let relayBaseTypes = [
 
 let relayBaseQueries = [`  node(id: ID!): Node`];
 
-function stitch(baseFragment, pluginFragments) {
-  let allFragments = [baseFragment].concat(pluginFragments);
-  let parts = allFragments.map(decode);
+function assembleSdl(fragments, includeGlobalNodeQuery) {
+  let parts = fragments.map(decode);
   let seenTypeNames = new Set();
   let allTypes = [];
   relayBaseTypes.forEach(typeDef => {
@@ -173,11 +172,13 @@ function stitch(baseFragment, pluginFragments) {
   });
   let seenQueryFields = new Set();
   let allQueries = [];
-  relayBaseQueries.forEach(field => {
-    let fieldName = extractLeadingName(field);
-    seenQueryFields.add(fieldName);
-    allQueries.push(field);
-  });
+  if (includeGlobalNodeQuery) {
+    relayBaseQueries.forEach(field => {
+      let fieldName = extractLeadingName(field);
+      seenQueryFields.add(fieldName);
+      allQueries.push(field);
+    });
+  }
   parts.forEach(param => {
     param.queries.forEach(field => {
       let fieldName = extractLeadingName(field);
@@ -215,6 +216,14 @@ function stitch(baseFragment, pluginFragments) {
     subscriptionsSdl
   ], x => x);
   return sdlParts.join("\n\n");
+}
+
+function stitch(baseFragment, pluginFragments) {
+  return assembleSdl([baseFragment].concat(pluginFragments), true);
+}
+
+function stitchStandalone(fragment) {
+  return assembleSdl([fragment], false);
 }
 
 function isIdentStart(line) {
@@ -308,7 +317,9 @@ export {
   extractLeadingName,
   relayBaseTypes,
   relayBaseQueries,
+  assembleSdl,
   stitch,
+  stitchStandalone,
   isIdentStart,
   rootTypeFieldNames,
   countRootTypeFields,

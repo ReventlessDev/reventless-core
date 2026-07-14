@@ -240,6 +240,38 @@ globalThis.describe("GraphQL_Stitcher.subscriptionSources", () => {
   });
 });
 
+globalThis.describe("GraphQL_Stitcher.stitchStandalone", () => {
+  let pluginFragment = GraphQL_Stitcher$ReventlessCore.encode({
+    types: [
+      `type Product implements Node {\n  id: ID!\n  name: String\n}`,
+      `union CommandResult = CommandAccepted | CommandRejected | CommandPending`
+    ],
+    mutations: [`  Catalog_AddProduct(input: AddInput): CommandResult`],
+    queries: [`  Catalog_products: [Product]`],
+    subscriptions: [`  onCatalog_AddProduct(id: ID): CommandResult`],
+    subscriptionSources: [{
+        field: "onCatalog_AddProduct",
+        mutations: ["Catalog_AddProduct"]
+      }]
+  });
+  globalThis.test("renders a self-contained subgraph document with relay base types", () => {
+    let sdl = GraphQL_Stitcher$ReventlessCore.stitchStandalone(pluginFragment);
+    globalThis.expect(sdl).toContain("interface Node {");
+    globalThis.expect(sdl).toContain("type PageInfo {");
+    globalThis.expect(sdl).toContain("type Product implements Node {");
+    globalThis.expect(sdl).toContain("Catalog_AddProduct(input: AddInput): CommandResult");
+    globalThis.expect(sdl).toContain("onCatalog_AddProduct(id: ID): CommandResult");
+  });
+  globalThis.test("omits the global node query (the canonical base document owns it)", () => {
+    let sdl = GraphQL_Stitcher$ReventlessCore.stitchStandalone(pluginFragment);
+    globalThis.expect(sdl.includes("node(id: ID!): Node")).toBe(false);
+  });
+  globalThis.test("stitch keeps injecting the global node query (whole-schema path unchanged)", () => {
+    let sdl = GraphQL_Stitcher$ReventlessCore.stitch(pluginFragment, []);
+    globalThis.expect(sdl).toContain("node(id: ID!): Node");
+  });
+});
+
 export {
   fullSchemaSdl,
   collapsedSchemaSdl,

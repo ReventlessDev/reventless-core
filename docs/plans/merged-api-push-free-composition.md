@@ -166,10 +166,25 @@ convention) exercises all three surfaces together; package builds with zero warn
 
 ## Phase 2 — Codegen: canonical shared types + colocation audit
 
-- `GraphQL_FragmentGenerator`: stop stamping the `CommandResult` family into every
-  mutation-bearing fragment; emit it **once** (admin, `@canonical`) and reference-only in
-  plugin SDL. Same for Relay base types (`stampSharedIamTypes` retires; the admin source
-  owns `PageInfo` + IAM-stamped shared types).
+- ~~stop stamping the `CommandResult` family into every mutation-bearing fragment /
+  reference-only in plugin SDL~~ **Inverted by the Phase-0 findings**: every source API
+  schema must be **valid standalone** (`StartSchemaCreation` rejects a document that
+  references undefined types), so plugin sources **keep** their identical copies of the
+  shared types — `GraphQL_FragmentGenerator` needs **no change**. Ownership is expressed
+  on the admin side instead: `@canonical` on the admin source's copies makes them win
+  over any plugin copy (divergence is shadowed, not failed — spike-validated).
+  **DONE 2026-07-14:**
+  - core `GraphQL_Stitcher.stitchStandalone(~fragment)` — renders one fragment as a
+    self-contained subgraph document (relay base types included, global `node` query
+    omitted; only the canonical base document carries `node`). `stitch` is unchanged
+    (both delegate to the same assembly).
+  - `reventless-aws` `AppSync_SdlDecorate.stampCanonicalTypes` — stamps `@canonical` on
+    `PageInfo`, the `CommandAccepted/Rejected/Pending` types, `interface Node`, and
+    `union CommandResult`; composes after `stampSharedIamTypes`; admin-source-SDL only.
+  - Tests in `GraphQL_StitcherTest` + `AppSync_SdlDecorateTest`.
+  Per-source SDL assembly for real deploys (admin = `stitch` of the auth-decorated base
+  + `stampCanonicalTypes`; plugin = `stitchStandalone` + `injectAwsSubscribe` with its
+  own sources) is wired in Phases 3–4 where the stacks consume it.
 - `GraphQL_Stitcher`'s leading-name dedupe is no longer the merge mechanism — its stitch
   role ends at cutover (Phase 5); until then both paths coexist behind the deploy flag.
 - ~~**Audit every `@aws_subscribe` producer** for cross-source fan-in~~ **DONE in
