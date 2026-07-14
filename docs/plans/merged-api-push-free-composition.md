@@ -1,8 +1,9 @@
 # Push-free schema composition via merged APIs
 
-**Status:** IN PROGRESS — Phases 0–3 done 2026-07-14 (Phase 0 spike **GO**; Phase 1
-bindings; Phase 2 merge-path codegen; Phase 3 platform stack behind the `mergedApi`
-flag, preview-validated). Next: Phase 4 (plugin stack).
+**Status:** IN PROGRESS — Phases 0–4 done 2026-07-14 (Phase 0 spike **GO**; Phase 1
+bindings; Phase 2 merge-path codegen; Phase 3 platform stack; Phase 4 plugin stack —
+both behind the `mergedApi` flag, preview-validated). Next: Phase 5 (cutover: flip the
+CI example to merged mode, validate end-to-end, retire the push machinery).
 **Date:** 2026-07-14
 **Analysis:** [docs/analysis/merged-api-push-free-approach.md](../analysis/merged-api-push-free-approach.md)
 **Succeeds:** [docs/plans/done/event-sourced-fragment-registries.md](done/event-sourced-fragment-registries.md)
@@ -241,22 +242,54 @@ must agree on the flag.
 
 ## Phase 4 — Plugin stack: own source API + association
 
-Per-plugin (and per-standalone-service) stack shape (analysis § 11):
+**DONE 2026-07-14** — same `mergedApi` flag as Phase 3; the push path stays the
+default and is byte-identical when the flag is off (preview-verified).
+
+Realized stack shape (one timing correction vs the sketch: the plugin's fragment is
+only computable during `P.make()`, so the source API is created schema-less and the
+subgraph document is pushed by the hook — the plugin's own API is a single writer by
+construction, so this push has none of the old path's coordination problems):
 
 ```
-GraphQLApi (source) → GraphQLSchema (own neutral SDL + dialect)
-  → DataSources/Functions/Resolvers (depend on GraphQLSchema — intra-stack ordering)
-  → SourceApiAssociation (AUTO_MERGE, depends on schema + resolvers)
-  → association-status poll (fail deploy loudly on MERGE_FAILED)
+GraphQLApi (source, schema-less; user pool from the platform's cognito* exports)
+  → preResolversSchemaHook pushes stitchStandaloneWithAwsDirectives(fragment)
+    to the OWN source API (StartSchemaCreation + ACTIVE poll)
+  → DataSources/Resolvers chain on the returned Output (unchanged mechanism —
+    the schemaPushed gate is now intra-stack, no cross-stack handshake)
+  → SourceApiAssociation (AUTO_MERGE, sequenced behind the schema push;
+    merged API referenced by the platform's domainMergedApiArn /
+    platformMergedApiArn export, selected by ~apiTarget)
+  → mergeStatusGateWith poll folded into the `sourceApiAssociationId` export
+    (MERGE_FAILED fails the deploy with AWS's status detail)
 ```
 
-- Removes from the plugin deploy: fragment computation, the SigV4 caller
-  (`registerFragmentViaApi`), the `ApiFragmentDeregistration` destroy-path dynamic
-  provider, and the push waiter. The `schemaPushed` cross-stack gate becomes an ordinary
-  intra-stack resource dependency.
-- `pulumi destroy` deletes the association + source API — retirement by construction.
-- Gate behind a deploy-mode flag so the shipped push path remains the default until
-  Phase 5; `examples/online-shop-hybrid` (the CI-deployed stack) is the validation target.
+- In merged plugin mode the own source API fills all four API slots the push path
+  fills with StackReference phantoms — resolver/data-source wiring is untouched and
+  re-targets automatically. The Cognito pool comes from the platform's
+  `cognitoUserPoolId`/`cognitoRegion` exports (no pool/client provisioning in plugin
+  stacks); the `mergedApiPrimaryAuth` contract is asserted where the association is
+  created (fails loudly, incl. when the platform stack isn't merged-deployed yet).
+- Skipped on the merge path: `registerFragmentViaApi` (SigV4), the
+  `ApiFragmentDeregistration` destroy-path provider, the `Platform_ApiFragments`
+  waiter, and the introspection drift check. `pulumi destroy` deletes the
+  association + source API — retirement by construction.
+- New exports: `pluginSourceApiId`, `pluginSourceApiEndpoint`,
+  `sourceApiAssociationId` (gated on the merge poll).
+- Association 409s under first-deploy concurrency surface as a deploy failure to
+  retry (documented on the binding + in Platform.res) — no in-provider backoff.
+- Validated: 234 reventless-aws tests (incl. subgraph-document shape: relay types,
+  no `node`, `@aws_subscribe`, no `@canonical`); `pulumi preview` of
+  `catalog-aws` — merged mode plans the own source API + role, re-targets the
+  DataSources' `apiId`, provisions no pool/client, performs no SigV4 registration,
+  and fails loudly on the missing merged exports (alpha's platform is push-mode);
+  flag-off preview is API-surface neutral.
+- **Open items for Phase 5:** (a) full happy-path association can only be exercised
+  against a merged-deployed platform — the CI example flip is that validation;
+  (b) `node` cross-source field resolution (Phase-0 option (c)) needs the per-type
+  field-resolver dispatch on plugin sources — track as part of the cutover checks;
+  (c) on FIRST deploy the association may briefly serve fields whose resolvers are
+  still attaching (association depends on schema, not resolvers) — masked in
+  practice by the plugin connect handshake gating Active status.
 
 ## Phase 5 — Cutover + retire the push machinery
 

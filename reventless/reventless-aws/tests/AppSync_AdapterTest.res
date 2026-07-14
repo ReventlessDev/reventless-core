@@ -711,6 +711,37 @@ describe("Merged mode — canonical source documents", () => {
     // No mutations → no CommandResult family on this source.
     expect(relayBaseSourceSdl)->not_->toContain("union CommandResult")
   })
+
+  // Phase 4: the plugin-stack subgraph document pushed to the plugin's own
+  // source API.
+  let pluginFragment = ReventlessCore.GraphQL_Stitcher.encode({
+    types: [
+      "type MyPlugin_Item implements Node {\n  id: ID!\n  name: String!\n}",
+      "type CommandAccepted {\n  msgId: ID!\n  eventCount: Int!\n}",
+    ],
+    mutations: ["MyPlugin_Item_Create(name: String!): CommandResult"],
+    queries: ["MyPlugin_Item(id: ID!): MyPlugin_Item"],
+    subscriptions: ["onMyPlugin_Item_Create(id: ID): CommandResult"],
+    subscriptionSources: [
+      {field: "onMyPlugin_Item_Create", mutations: ["MyPlugin_Item_Create"]},
+    ],
+  })
+
+  testSync("plugin subgraph document is standalone: relay types included, node omitted", () => {
+    let sdl = AppSync_Adapter.stitchStandaloneWithAwsDirectives(~fragment=pluginFragment)
+    expect(sdl)->toContain("interface Node")
+    expect(sdl)->toContain("type PageInfo")
+    expect(sdl)->toContain("MyPlugin_Item_Create")
+    expect(sdl)->not_->toContain("node(id: ID!): Node")
+  })
+
+  testSync("plugin subgraph document carries @aws_subscribe + shared-type IAM stamps, no @canonical", () => {
+    let sdl = AppSync_Adapter.stitchStandaloneWithAwsDirectives(~fragment=pluginFragment)
+    expect(sdl)->toContain(`@aws_subscribe(mutations: ["MyPlugin_Item_Create"])`)
+    expect(sdl)->toContain("type CommandAccepted @aws_cognito_user_pools @aws_iam {")
+    // Plugin subgraphs stay unstamped — the admin source's canonical defs win.
+    expect(sdl)->not_->toContain("@canonical")
+  })
 })
 
 // ── waitForMergeSuccess — association merge-status poll ─────────────────────

@@ -637,6 +637,32 @@ globalThis.describe("Merged mode — canonical source documents", () => {
     globalThis.expect(relayBaseSourceSdl).not.toContain("Platform_Plugin");
     globalThis.expect(relayBaseSourceSdl).not.toContain("union CommandResult");
   });
+  let pluginFragment = GraphQL_Stitcher$ReventlessCore.encode({
+    types: [
+      "type MyPlugin_Item implements Node {\n  id: ID!\n  name: String!\n}",
+      "type CommandAccepted {\n  msgId: ID!\n  eventCount: Int!\n}"
+    ],
+    mutations: ["MyPlugin_Item_Create(name: String!): CommandResult"],
+    queries: ["MyPlugin_Item(id: ID!): MyPlugin_Item"],
+    subscriptions: ["onMyPlugin_Item_Create(id: ID): CommandResult"],
+    subscriptionSources: [{
+        field: "onMyPlugin_Item_Create",
+        mutations: ["MyPlugin_Item_Create"]
+      }]
+  });
+  globalThis.test("plugin subgraph document is standalone: relay types included, node omitted", () => {
+    let sdl = AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(pluginFragment);
+    globalThis.expect(sdl).toContain("interface Node");
+    globalThis.expect(sdl).toContain("type PageInfo");
+    globalThis.expect(sdl).toContain("MyPlugin_Item_Create");
+    globalThis.expect(sdl).not.toContain("node(id: ID!): Node");
+  });
+  globalThis.test("plugin subgraph document carries @aws_subscribe + shared-type IAM stamps, no @canonical", () => {
+    let sdl = AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(pluginFragment);
+    globalThis.expect(sdl).toContain(`@aws_subscribe(mutations: ["MyPlugin_Item_Create"])`);
+    globalThis.expect(sdl).toContain("type CommandAccepted @aws_cognito_user_pools @aws_iam {");
+    globalThis.expect(sdl).not.toContain("@canonical");
+  });
 });
 
 globalThis.describe("AppSync_Adapter.waitForMergeSuccess", () => {

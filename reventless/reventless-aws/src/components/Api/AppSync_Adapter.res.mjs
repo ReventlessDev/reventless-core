@@ -297,7 +297,12 @@ function stitchWithAwsDirectives(baseFragment, pluginFragments) {
   return AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes(AppSync_SdlDecorate$ReventlessAws.injectAwsSubscribe(GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, pluginFragments), sources));
 }
 
-function _makeApiResourceWith(name, schema, opts) {
+function stitchStandaloneWithAwsDirectives(fragment) {
+  let sources = GraphQL_Stitcher$ReventlessCore.collectSubscriptionSources(fragment, []);
+  return AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes(AppSync_SdlDecorate$ReventlessAws.injectAwsSubscribe(GraphQL_Stitcher$ReventlessCore.stitchStandalone(fragment), sources));
+}
+
+function _makeApiResourceWith(name, schema, userPoolConfig, opts) {
   let customOpts_parent = opts.parent;
   let customOpts = {
     parent: customOpts_parent
@@ -305,12 +310,11 @@ function _makeApiResourceWith(name, schema, opts) {
   let iamRole = new (Aws.iam.Role)(name + `-appsync-role`, {
     assumeRolePolicy: `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`
   }, customOpts);
-  let authConfigOut = Auth_Cognito$ReventlessAws.make(name + `-auth`, undefined);
-  let userPoolConfigOut = authConfigOut.apply(c => ({
-    userPoolId: c.userPoolId,
-    defaultAction: "ALLOW",
-    awsRegion: c.region
-  }));
+  let userPoolConfigOut = userPoolConfig !== undefined ? userPoolConfig : Auth_Cognito$ReventlessAws.make(name + `-auth`, undefined).apply(c => ({
+      userPoolId: c.userPoolId,
+      defaultAction: "ALLOW",
+      awsRegion: c.region
+    }));
   let apiArgs_schema = Stdlib_Option.map(schema, prim => prim);
   let apiArgs_userPoolConfig = userPoolConfigOut;
   let apiArgs_additionalAuthenticationProviders = [{
@@ -330,11 +334,15 @@ function _makeApiResourceWith(name, schema, opts) {
 }
 
 function makeApiResource(name, opts) {
-  return _makeApiResourceWith(name, undefined, opts);
+  return _makeApiResourceWith(name, undefined, undefined, opts);
 }
 
 function makeSourceApiResource(name, schema, opts) {
-  return _makeApiResourceWith(name, schema, opts);
+  return _makeApiResourceWith(name, schema, undefined, opts);
+}
+
+function makePluginSourceApiResource(name, userPoolConfig, opts) {
+  return _makeApiResourceWith(name, undefined, userPoolConfig, opts);
 }
 
 function generateFragment(mutationEntries, queryEntries) {
@@ -380,10 +388,12 @@ export {
   injectAwsAuth,
   injectAwsAuthAll,
   stitchWithAwsDirectives,
+  stitchStandaloneWithAwsDirectives,
   primaryAuthenticationType,
   _makeApiResourceWith,
   makeApiResource,
   makeSourceApiResource,
+  makePluginSourceApiResource,
   generateFragment,
   updateSchema,
 }

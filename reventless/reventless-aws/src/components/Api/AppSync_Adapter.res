@@ -504,6 +504,25 @@ let stitchWithAwsDirectives = (
   ->stampSharedIamTypes
 }
 
+/**
+Merged-mode plugin subgraph document: one fragment rendered standalone
+(relay base types included, global `node` omitted — only the platform's
+canonical base document carries `node`), with the same AppSync dialect as
+`stitchWithAwsDirectives`. No `@canonical` stamps — plugin subgraphs stay
+unstamped; the admin source's canonical definitions win on merge.
+*/
+let stitchStandaloneWithAwsDirectives = (
+  ~fragment: Reventless.Plugin.apiSchemaFragment,
+): string => {
+  let sources = ReventlessCore.GraphQL_Stitcher.collectSubscriptionSources(
+    ~baseFragment=fragment,
+    ~pluginFragments=[],
+  )
+  ReventlessCore.GraphQL_Stitcher.stitchStandalone(~fragment)
+  ->AppSync_SdlDecorate.injectAwsSubscribe(~sources)
+  ->stampSharedIamTypes
+}
+
 // ── Provider implementation ────────────────────────────────────────────────
 
 type api = AppSync.GraphQLApi.t
@@ -518,6 +537,7 @@ let primaryAuthenticationType = AppSync.GraphQLApi.AMAZON_COGNITO_USER_POOLS
 let _makeApiResourceWith = (
   ~name: string,
   ~schema: option<string>,
+  ~userPoolConfig: option<Pulumi.Output.t<AppSync.GraphQLApi.userPoolConfig>>,
   ~opts: Pulumi.ComponentResource.options,
 ): (Pulumi.Output.t<api>, Pulumi.Output.t<role>) => {
   let customOpts: Pulumi.CustomResourceOptions.t = {
@@ -534,13 +554,16 @@ let _makeApiResourceWith = (
     ~opts=Some(customOpts),
   )
 
-  // Resolve the Cognito UserPool — cached inside Platform_Stack, so calling
-  // from each API call site (DomainApi, PlatformApi) is safe. Returned as a
-  // single Output that yields the {userPoolId, awsRegion, defaultAction}
-  // record AppSync expects.
-  let authConfigOut = Auth_Cognito.make(~name=`${name}-auth`)
-  let userPoolConfigOut =
-    authConfigOut->Pulumi.Output.apply((c: Auth_Cognito.authConfig) =>
+  // Resolve the Cognito UserPool — either supplied by the caller (plugin-stack
+  // source APIs read it from the platform's StackReference exports so they
+  // never provision pool/client resources of their own) or resolved via
+  // Auth_Cognito (cached inside Platform_Stack, so calling from each API call
+  // site — DomainApi, PlatformApi — is safe). A single Output yielding the
+  // {userPoolId, awsRegion, defaultAction} record AppSync expects.
+  let userPoolConfigOut = switch userPoolConfig {
+  | Some(config) => config
+  | None =>
+    Auth_Cognito.make(~name=`${name}-auth`)->Pulumi.Output.apply((c: Auth_Cognito.authConfig) =>
       (
         {
           userPoolId: c.userPoolId,
@@ -549,6 +572,7 @@ let _makeApiResourceWith = (
         }: AppSync.GraphQLApi.userPoolConfig
       )
     )
+  }
 
   // Cognito as primary auth, AWS_IAM as additional provider for
   // server-to-server lambdas (heartbeat, Plugin_Connected emission) signed via
@@ -574,7 +598,7 @@ let makeApiResource = (
   ~name: string,
   ~opts: Pulumi.ComponentResource.options,
 ): (Pulumi.Output.t<api>, Pulumi.Output.t<role>) =>
-  _makeApiResourceWith(~name, ~schema=None, ~opts)
+  _makeApiResourceWith(~name, ~schema=None, ~userPoolConfig=None, ~opts)
 
 // Merged-mode source API: same auth shape as makeApiResource but with a
 // DECLARATIVE inline schema — the provider runs StartSchemaCreation + poll
@@ -587,7 +611,20 @@ let makeSourceApiResource = (
   ~schema: string,
   ~opts: Pulumi.ComponentResource.options,
 ): (Pulumi.Output.t<api>, Pulumi.Output.t<role>) =>
-  _makeApiResourceWith(~name, ~schema=Some(schema), ~opts)
+  _makeApiResourceWith(~name, ~schema=Some(schema), ~userPoolConfig=None, ~opts)
+
+// Merged-mode PLUGIN source API: schema-less at creation (the plugin's
+// standalone subgraph document is only computable during P.make(), so
+// preResolversSchemaHook pushes it — the plugin's own API is a single writer
+// by construction). The user pool comes from the platform's StackReference
+// exports so the merged endpoint's Cognito primary auth matches across every
+// source API without the plugin stack provisioning pool/client resources.
+let makePluginSourceApiResource = (
+  ~name: string,
+  ~userPoolConfig: Pulumi.Output.t<AppSync.GraphQLApi.userPoolConfig>,
+  ~opts: Pulumi.ComponentResource.options,
+): (Pulumi.Output.t<api>, Pulumi.Output.t<role>) =>
+  _makeApiResourceWith(~name, ~schema=None, ~userPoolConfig=Some(userPoolConfig), ~opts)
 
 let generateFragment = (
   ~mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,

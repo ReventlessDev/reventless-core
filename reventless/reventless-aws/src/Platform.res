@@ -57,9 +57,10 @@ module MakeWithConfig = (
         Phase 3). When `true`, the platform creates AppSync MERGED APIs and the
         platform-owned APIs become ordinary SOURCE APIs with declarative
         schemas: no fragment registration, no reactive schema push. Plugin
-        stacks then associate their own source APIs against the exported
-        merged-API ARN (Phase 4). `false` (default until the Phase-5 cutover)
-        keeps the shipped push path. Supported with `deployPlatform` only —
+        stacks (deployPlugin) create their own source API and associate it
+        against the platform's exported merged-API ARN. `false` (default until
+        the Phase-5 cutover) keeps the shipped push path. Supported with
+        deployPlatform + deployPlugin (makePlatform predates the merge path);
         all stacks of one platform must agree on this flag. */
     let mergedApi: bool
     let cloner: bool
@@ -314,7 +315,51 @@ module MakeWithConfig = (
         makePhantomRole(platformApiRoleArn)
       })
 
-    (phantomApi, phantomRole, phantomPlatformApi, phantomPlatformRole)
+    if Config.mergedApi {
+      // Merged mode (merged-api plan, Phase 4): the plugin stack owns a real
+      // SOURCE API — the single writer for its subgraph schema and resolvers.
+      // It fills all four API slots (resolver wiring is target-agnostic here;
+      // apiTarget only decides WHICH merged API the association in
+      // deployPlugin points at). The user pool comes from the platform's
+      // exports so Cognito primary auth matches across all sources of the
+      // merged endpoint — the plugin stack provisions no pool/client.
+      let cognitoPoolIdOutput: Pulumi.Output.t<option<string>> =
+        stackRef->Pulumi.StackReference.getOutput("cognitoUserPoolId")
+      let cognitoRegionOutput: Pulumi.Output.t<option<string>> =
+        stackRef->Pulumi.StackReference.getOutput("cognitoRegion")
+      let userPoolConfig =
+        (cognitoPoolIdOutput, cognitoRegionOutput, defaultOutput)
+        ->Pulumi.Output.all3
+        ->Pulumi.Output.apply(((directPoolId, directRegion, default)) => {
+          let getFromDefault = key =>
+            default
+            ->Option.flatMap(d => d->JSON.Decode.object)
+            ->Option.flatMap(d => d->Dict.get(key))
+            ->Option.flatMap(v => v->JSON.Decode.string)
+          let userPoolId =
+            directPoolId
+            ->Option.orElse(getFromDefault("cognitoUserPoolId"))
+            ->Option.getOrThrow(
+              ~message="Platform stack does not export 'cognitoUserPoolId' — redeploy the platform stack first",
+            )
+          let awsRegion = directRegion->Option.orElse(getFromDefault("cognitoRegion"))
+          (
+            {
+              userPoolId,
+              ?awsRegion,
+              defaultAction: PulumiAws.AppSync.GraphQLApi.ALLOW,
+            }: PulumiAws.AppSync.GraphQLApi.userPoolConfig
+          )
+        })
+      let (api, role) = AppSync_Adapter.makePluginSourceApiResource(
+        ~name="PluginSourceApi",
+        ~userPoolConfig,
+        ~opts={},
+      )
+      (api, role, api, role)
+    } else {
+      (phantomApi, phantomRole, phantomPlatformApi, phantomPlatformRole)
+    }
   }
 
   // Expose api/apiRole as Platform.T value bindings so DCB slice builders
@@ -685,6 +730,12 @@ module MakeWithConfig = (
   // plugins built afterwards read hooksApiRef (Domain/deploy-target). See platformHooks.adminApi.
   let hooksAdminApiRef: ref<option<ReventlessCore.Plugin_Helpers.hookedValue<unknown>>> = ref(None)
 
+  // Merged mode (plugin stack): the subgraph schema-push Output produced by
+  // preResolversSchemaHook, captured so deployPlugin can sequence the
+  // SourceApiAssociation behind it (the association's initial merge needs the
+  // source schema to exist on the plugin's source API).
+  let mergedSchemaPushedRef: ref<option<Pulumi.Output.t<unit>>> = ref(None)
+
   let resolveHookedApi = (): Types.AppSync.api =>
     switch hooksApiRef.contents {
     | Some({val}) => Obj.magic(val)
@@ -962,7 +1013,37 @@ module MakeWithConfig = (
     // SideEffect stitches + pushes cumulatively. The legacy all-at-once
     // deploy-schema:* write+scan+push path was retired in Phase 4b (makePlatform
     // with plugins is no longer supported on AWS).
-    preResolversSchemaHook: (~name, ~version, pluginFragment) => {
+    preResolversSchemaHook: (~name, ~version, pluginFragment) =>
+      if Config.mergedApi {
+        // Merged mode (merged-api plan, Phase 4): push the plugin's standalone
+        // subgraph document to the plugin's OWN source API — a single writer
+        // by construction, so no SigV4 registration, no reactive stitcher, no
+        // waiter, no drift check, no destroy-path deregistration. The returned
+        // Output gates resolver creation (as on the push path) and deployPlugin
+        // additionally sequences the SourceApiAssociation behind it (the
+        // initial merge needs the source schema present). Under AUTO_MERGE
+        // every later schema update here re-merges automatically.
+        let sdl = AppSync_Adapter.stitchStandaloneWithAwsDirectives(~fragment=pluginFragment)
+        let pushed =
+          domainApi->Pulumi.Output.flatMap(api =>
+            api.id->Pulumi.Output.flatMap(apiId => {
+              log.info(
+                ~comp="preResolversSchemaHook",
+                `Pushing subgraph schema for ${name}@${version} to source API ${apiId}`,
+              )
+              let client = AppSync_Adapter.getClient()
+              client
+              ->AppSync_Adapter.startSchemaCreationRetrying({apiId, definition: sdl})
+              ->Promise.then(async _ => {
+                await AppSync_Adapter.waitForSchemaActive(client, apiId)
+                log.info(~comp="preResolversSchemaHook", "subgraph schema is ACTIVE")
+              })
+              ->Pulumi.Output.fromPromise
+            })
+          )
+        mergedSchemaPushedRef := Some(pushed)
+        pushed
+      } else {
       log.info(
         ~comp="preResolversSchemaHook",
         `Pushing schema for plugin ${name}@${version} to AppSync`,
@@ -991,7 +1072,7 @@ module MakeWithConfig = (
           "deployPlatform and each plugin with deployPlugin (staged register + reactive push).",
         )
       }
-    },
+      },
     // DCB EventLog created hook — extracts DynamoDB table name for DCB CommandTopic Lambda handler.
     // Postgres-backed DCB logs (B2.3c) create no table, so there is no resource to read:
     // the DCB command Lambda derives its `dcb_event.log_name` from the plugin name and
@@ -2186,16 +2267,6 @@ module MakeWithConfig = (
   let startServers = () => ()
 
   let deployPlugin = (~plugin: module(PluginMaker), ~apiTarget=Domain) => {
-    if Config.mergedApi {
-      // Phase 4 of the merged-api plan wires plugin stacks (own source API +
-      // SourceApiAssociation). Until then a merged-mode plugin deploy would
-      // fall through to the push path (SigV4 fragment registration) and
-      // clobber the declarative source schemas — fail loudly instead.
-      failwith(
-        "mergedApi plugin deploys are not wired yet (merged-api plan, Phase 4) — deploy plugins " ++
-        "with the push path (mergedApi=false) until Phase 4 lands.",
-      )
-    }
     log.info(
       ~comp="Platform:deployPlugin",
       `target=${switch apiTarget {
@@ -2231,6 +2302,97 @@ module MakeWithConfig = (
     // Export plugin outputs (plugin, tasks, eventMappers, extensionPoints) for cross-stack access.
     let pluginOutputs = pluginComponent->ReventlessCore.Component.outputs
     ReventlessCore.Plugin_Helpers.exportPluginOutputs(pluginOutputs)
+
+    // ── Merged-API association (merged-api plan, Phase 4) ───────────────────
+    // Associate this plugin's source API with the platform's merged API —
+    // this replaces the SigV4 RegisterApiFragment handshake + reactive push +
+    // waiter as the schema-composition mechanism. `pulumi destroy` deletes
+    // the association + source API: retirement by construction. Create-time
+    // 409s (AWS serializes association creates per merged API) surface as a
+    // deploy failure — retry concurrent FIRST-TIME plugin deploys; steady-
+    // state schema updates never re-create the association.
+    switch (Config.mergedApi, platformStackRef) {
+    | (true, Some(stackRef)) =>
+      let defaultOutput: Pulumi.Output.t<option<JSON.t>> =
+        stackRef->Pulumi.StackReference.getOutput("default")
+      let getMergedExport = (key: string): Pulumi.Output.t<string> => {
+        let direct: Pulumi.Output.t<option<string>> =
+          stackRef->Pulumi.StackReference.getOutput(key)
+        (direct, defaultOutput)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((direct, default)) =>
+          switch direct {
+          | Some(v) => v
+          | None =>
+            default
+            ->Option.flatMap(d => d->JSON.Decode.object)
+            ->Option.flatMap(d => d->Dict.get(key))
+            ->Option.flatMap(v => v->JSON.Decode.string)
+            ->Option.getOrThrow(
+              ~message=`Platform stack does not export '${key}' — deploy the platform with mergedApi=true first`,
+            )
+          }
+        )
+      }
+      // apiTarget collapses to "which merged API ARN the association points at".
+      let mergedApiArn = switch apiTarget {
+      | Domain => getMergedExport("domainMergedApiArn")
+      | Platform => getMergedExport("platformMergedApiArn")
+      }
+      // Primary-auth contract check (checked invariant, not a convention) —
+      // folded into the ARN the association consumes so it always runs.
+      let checkedMergedApiArn =
+        (mergedApiArn, getMergedExport("mergedApiPrimaryAuth"))
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((arn, mergedMode)) => {
+          AppSync_MergedApi.assertCompatiblePrimaryAuth(
+            ~sourceMode=AppSync_MergedApi.authenticationTypeName(
+              AppSync_Adapter.primaryAuthenticationType,
+            ),
+            ~mergedMode,
+          )
+          arn
+        })
+      // Sequence the association behind the subgraph schema push (the
+      // intra-stack replacement of the schemaPushed cross-stack gate).
+      let schemaPushed = switch mergedSchemaPushedRef.contents {
+      | Some(pushed) => pushed
+      | None => Pulumi.Output.make()
+      }
+      let arnAfterSchemaPush =
+        (checkedMergedApiArn, schemaPushed)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((arn, _)) => arn)
+      let association = AppSync_MergedApi.associateSourceWithMergedArn(
+        ~name="PluginSourceAssociation",
+        ~mergedApiArn=arnAfterSchemaPush,
+        ~sourceApi=domainApi,
+        ~opts={},
+      )
+      // Fail the deploy loudly on MERGE_FAILED — the gate is folded into the
+      // exported association id so it is always consumed.
+      let mergeGate = AppSync_MergedApi.mergeStatusGateWith(
+        ~mergedApiIdentifier=checkedMergedApiArn,
+        ~association,
+      )
+      Pulumi.Pulumi.export(
+        "sourceApiAssociationId",
+        (association.associationId, mergeGate)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((id, _)) => id),
+      )
+      Pulumi.Pulumi.export(
+        "pluginSourceApiId",
+        domainApi->Pulumi.Output.flatMap(api => api.id),
+      )
+      Pulumi.Pulumi.export(
+        "pluginSourceApiEndpoint",
+        domainApi->Pulumi.Output.flatMap(api =>
+          api.uris->Pulumi.Output.apply(uris => uris.graphQL)
+        ),
+      )
+    | _ => ()
+    }
 
     // B2.3d: provision the Postgres change-feed relay (plugin-stack mode — this
     // plugin's Postgres DCB log(s) + collector queue were registered during P.make()).

@@ -84,11 +84,29 @@ function associateSource(name, mergedApi, sourceApi, opts) {
   }, customOpts);
 }
 
-function mergeStatusGate(mergedApi, association) {
+function associateSourceWithMergedArn(name, mergedApiArn, sourceApi, opts) {
+  let customOpts_parent = opts.parent;
+  let customOpts = {
+    parent: customOpts_parent
+  };
+  return new (Aws.appsync.SourceApiAssociation)(name, {
+    mergedApiArn: mergedApiArn,
+    sourceApiId: Output$Pulumi.flatMap(sourceApi, a => a.id),
+    sourceApiAssociationConfigs: [{
+        mergeType: "AUTO_MERGE"
+      }]
+  }, customOpts);
+}
+
+function mergeStatusGateWith(mergedApiIdentifier, association) {
   return Output$Pulumi.flatMap(Pulumi.all([
-    Output$Pulumi.flatMap(mergedApi.api, a => a.id),
+    mergedApiIdentifier,
     association.associationId
   ]), param => AppSync_Adapter$ReventlessAws.waitForMergeSuccess(AppSync_Adapter$ReventlessAws.getClient(), param[1], param[0], undefined, undefined, undefined));
+}
+
+function mergeStatusGate(mergedApi, association) {
+  return mergeStatusGateWith(Output$Pulumi.flatMap(mergedApi.api, a => a.id), association);
 }
 
 export {
@@ -97,6 +115,8 @@ export {
   assertCompatiblePrimaryAuth,
   make,
   associateSource,
+  associateSourceWithMergedArn,
+  mergeStatusGateWith,
   mergeStatusGate,
 }
 /* primaryAuthMode Not a pure module */

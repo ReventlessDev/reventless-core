@@ -231,27 +231,56 @@ function MakeWithConfig(Config) {
       let getFromDefault = key => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d[key]), v => Stdlib_JSON.Decode.string(v));
       return makePhantomRole(Stdlib_Option.getOrThrow(Stdlib_Option.orElse(param[0], getFromDefault("platformApiRoleArn")), undefined));
     });
-    match = [
-      phantomApi,
-      phantomRole,
-      phantomPlatformApi,
-      phantomPlatformRole
-    ];
+    if (Config.mergedApi) {
+      let cognitoPoolIdOutput = stackRef.getOutput("cognitoUserPoolId");
+      let cognitoRegionOutput = stackRef.getOutput("cognitoRegion");
+      let userPoolConfig = Pulumi.all([
+        cognitoPoolIdOutput,
+        cognitoRegionOutput,
+        defaultOutput
+      ]).apply(param => {
+        let $$default = param[2];
+        let getFromDefault = key => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d[key]), v => Stdlib_JSON.Decode.string(v));
+        let userPoolId = Stdlib_Option.getOrThrow(Stdlib_Option.orElse(param[0], getFromDefault("cognitoUserPoolId")), "Platform stack does not export 'cognitoUserPoolId' — redeploy the platform stack first");
+        let awsRegion = Stdlib_Option.orElse(param[1], getFromDefault("cognitoRegion"));
+        return {
+          userPoolId: userPoolId,
+          defaultAction: "ALLOW",
+          awsRegion: awsRegion
+        };
+      });
+      let match$1 = AppSync_Adapter$ReventlessAws.makePluginSourceApiResource("PluginSourceApi", userPoolConfig, {});
+      let role = match$1[1];
+      let api = match$1[0];
+      match = [
+        api,
+        role,
+        api,
+        role
+      ];
+    } else {
+      match = [
+        phantomApi,
+        phantomRole,
+        phantomPlatformApi,
+        phantomPlatformRole
+      ];
+    }
   } else {
-    let match$1;
+    let match$2;
     if (Config.mergedApi) {
       let schema = Config.splitApi ? AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(emptyBaseFragment, [])) : adminSourceSdl();
-      match$1 = AppSync_Adapter$ReventlessAws.makeSourceApiResource("DomainApi", schema, {});
+      match$2 = AppSync_Adapter$ReventlessAws.makeSourceApiResource("DomainApi", schema, {});
     } else {
-      match$1 = AppSync_Adapter$ReventlessAws.makeApiResource("DomainApi", {});
+      match$2 = AppSync_Adapter$ReventlessAws.makeApiResource("DomainApi", {});
     }
-    let role = match$1[1];
-    let api = match$1[0];
+    let role$1 = match$2[1];
+    let api$1 = match$2[0];
     match = [
-      api,
-      role,
-      api,
-      role
+      api$1,
+      role$1,
+      api$1,
+      role$1
     ];
   }
   let domainApiRole = match[1];
@@ -283,7 +312,7 @@ function MakeWithConfig(Config) {
       http: dnsHttp
     }));
     let api_name = Pulumi.output("");
-    let api$1 = {
+    let api$2 = {
       apiId: api_apiId,
       apiArn: api_apiArn,
       dns: api_dns,
@@ -291,7 +320,7 @@ function MakeWithConfig(Config) {
     };
     domainEventsApiOpt = {
       name: "DomainEventsApi",
-      api: api$1,
+      api: api$2,
       defaultNamespace: undefined
     };
   } else {
@@ -495,6 +524,9 @@ function MakeWithConfig(Config) {
   let hooksAdminApiRef = {
     contents: undefined
   };
+  let mergedSchemaPushedRef = {
+    contents: undefined
+  };
   let resolveHookedApi = () => {
     let match = hooksApiRef.contents;
     if (match !== undefined) {
@@ -558,6 +590,22 @@ function MakeWithConfig(Config) {
     StateTopic_AppSync$ReventlessAws.finish(eventsApi, {});
   }));
   let hooks_preResolversSchemaHook = (name, version, pluginFragment) => {
+    if (Config.mergedApi) {
+      let sdl = AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(pluginFragment);
+      let pushed = Output$Pulumi.flatMap(domainApi, api => Output$Pulumi.flatMap(api.id, apiId => {
+        log.info("preResolversSchemaHook", undefined, `Pushing subgraph schema for ` + name + `@` + version + ` to source API ` + apiId);
+        let client = AppSync_Adapter$ReventlessAws.getClient();
+        return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
+          apiId: apiId,
+          definition: sdl
+        }).then(async () => {
+          await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
+          return log.info("preResolversSchemaHook", undefined, "subgraph schema is ACTIVE");
+        });
+      }));
+      mergedSchemaPushedRef.contents = pushed;
+      return pushed;
+    }
     log.info("preResolversSchemaHook", undefined, `Pushing schema for plugin ` + name + `@` + version + ` to AppSync`);
     let capturedDeployTarget = currentDeployTarget.contents;
     if (platformStackRef === undefined) {
@@ -1293,9 +1341,6 @@ function MakeWithConfig(Config) {
   let startServers = () => {};
   let deployPlugin = (plugin, apiTargetOpt) => {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
-    if (Config.mergedApi) {
-      Pervasives.failwith("mergedApi plugin deploys are not wired yet (merged-api plan, Phase 4) — deploy plugins with the push path (mergedApi=false) until Phase 4 lands.");
-    }
     let tmp;
     tmp = apiTarget === "Domain" ? "Domain" : "Platform";
     log.info("Platform:deployPlugin", undefined, `target=` + tmp);
@@ -1314,6 +1359,47 @@ function MakeWithConfig(Config) {
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
+    if (Config.mergedApi && platformStackRef !== undefined) {
+      let stackRef = Primitive_option.valFromOption(platformStackRef);
+      let defaultOutput = stackRef.getOutput("default");
+      let getMergedExport = key => {
+        let direct = stackRef.getOutput(key);
+        return Pulumi.all([
+          direct,
+          defaultOutput
+        ]).apply(param => {
+          let direct = param[0];
+          if (direct !== undefined) {
+            return direct;
+          } else {
+            return Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(param[1], d => Stdlib_JSON.Decode.object(d)), d => d[key]), v => Stdlib_JSON.Decode.string(v)), `Platform stack does not export '` + key + `' — deploy the platform with mergedApi=true first`);
+          }
+        });
+      };
+      let mergedApiArn;
+      mergedApiArn = apiTarget === "Domain" ? getMergedExport("domainMergedApiArn") : getMergedExport("platformMergedApiArn");
+      let checkedMergedApiArn = Pulumi.all([
+        mergedApiArn,
+        getMergedExport("mergedApiPrimaryAuth")
+      ]).apply(param => {
+        AppSync_MergedApi$ReventlessAws.assertCompatiblePrimaryAuth(AppSync_MergedApi$ReventlessAws.authenticationTypeName(AppSync_Adapter$ReventlessAws.primaryAuthenticationType), param[1]);
+        return param[0];
+      });
+      let pushed = mergedSchemaPushedRef.contents;
+      let schemaPushed = pushed !== undefined ? pushed : Pulumi.output();
+      let arnAfterSchemaPush = Pulumi.all([
+        checkedMergedApiArn,
+        schemaPushed
+      ]).apply(param => param[0]);
+      let association = AppSync_MergedApi$ReventlessAws.associateSourceWithMergedArn("PluginSourceAssociation", arnAfterSchemaPush, domainApi, {});
+      let mergeGate = AppSync_MergedApi$ReventlessAws.mergeStatusGateWith(checkedMergedApiArn, association);
+      Pulumi$Pulumi.$$export("sourceApiAssociationId", Pulumi.all([
+        association.associationId,
+        mergeGate
+      ]).apply(param => param[0]));
+      Pulumi$Pulumi.$$export("pluginSourceApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
+      Pulumi$Pulumi.$$export("pluginSourceApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
+    }
     provisionPgChangeFeedRelay();
     let sel = QueryDbBackend$ReventlessAws.get();
     if (sel !== undefined) {

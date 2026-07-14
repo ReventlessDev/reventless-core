@@ -155,24 +155,64 @@ let associateSource = (
   )
 }
 
+/** Associate a source API against a merged API referenced by ARN — the
+    plugin-stack form, where the merged API is not a resource in this stack
+    but the platform's `domainMergedApiArn` / `platformMergedApiArn`
+    StackReference export. Same AUTO_MERGE + create-time 409 caveat as
+    `associateSource`. */
+let associateSourceWithMergedArn = (
+  ~name: string,
+  ~mergedApiArn: Pulumi.Output.t<string>,
+  ~sourceApi: Pulumi.Output.t<AppSync.GraphQLApi.t>,
+  ~opts: Pulumi.ComponentResource.options,
+): AppSync.SourceApiAssociation.t => {
+  let customOpts: Pulumi.CustomResourceOptions.t = {
+    parent: ?opts.parent,
+  }
+  AppSync.SourceApiAssociation.make(
+    ~name,
+    ~args={
+      mergedApiArn: mergedApiArn->Pulumi.Output.asInput,
+      sourceApiId: sourceApi
+      ->Pulumi.Output.flatMap((a: AppSync.GraphQLApi.t) => a.id)
+      ->Pulumi.Output.asInput,
+      sourceApiAssociationConfigs: [
+        (
+          {
+            mergeType: AppSync.SourceApiAssociation.AUTO_MERGE->Pulumi.Input.make,
+          }: AppSync.SourceApiAssociation.sourceApiAssociationConfig
+        )->Pulumi.Input.make,
+      ]->Pulumi.Input.make,
+    },
+    ~opts=Some(customOpts),
+  )
+}
+
 /** Deploy-time merge gate: resolves once the association reports
     MERGE_SUCCESS, fails the deploy loudly (with AWS's status detail) on
     MERGE_FAILED. Fold the returned Output into an exported value so it is
     consumed — a MERGE_FAILED then fails `pulumi up` instead of silently
-    serving the last-good merged schema (Phase-0 operational finding). */
+    serving the last-good merged schema (Phase-0 operational finding).
+    `mergedApiIdentifier` accepts the merged API's id or ARN. */
+let mergeStatusGateWith = (
+  ~mergedApiIdentifier: Pulumi.Output.t<string>,
+  ~association: AppSync.SourceApiAssociation.t,
+): Pulumi.Output.t<unit> =>
+  (mergedApiIdentifier, association.associationId)
+  ->Pulumi.Output.all2
+  ->Pulumi.Output.flatMap(((identifier, associationId)) =>
+    AppSync_Adapter.waitForMergeSuccess(
+      AppSync_Adapter.getClient(),
+      ~associationId,
+      ~mergedApiIdentifier=identifier,
+    )->Pulumi.Output.fromPromise
+  )
+
 let mergeStatusGate = (
   ~mergedApi: t,
   ~association: AppSync.SourceApiAssociation.t,
 ): Pulumi.Output.t<unit> =>
-  (
-    mergedApi.api->Pulumi.Output.flatMap((a: AppSync.GraphQLApi.t) => a.id),
-    association.associationId,
-  )
-  ->Pulumi.Output.all2
-  ->Pulumi.Output.flatMap(((mergedApiId, associationId)) =>
-    AppSync_Adapter.waitForMergeSuccess(
-      AppSync_Adapter.getClient(),
-      ~associationId,
-      ~mergedApiIdentifier=mergedApiId,
-    )->Pulumi.Output.fromPromise
+  mergeStatusGateWith(
+    ~mergedApiIdentifier=mergedApi.api->Pulumi.Output.flatMap((a: AppSync.GraphQLApi.t) => a.id),
+    ~association,
   )
