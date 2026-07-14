@@ -652,3 +652,148 @@ describe("Split mode — empty base fragment", () => {
     expect(sdl)->toContain("Platform_Plugin")
   })
 })
+
+// ── Merged mode — canonical source documents ─────────────────────────────────
+//
+// On the merge path (merged-api-push-free-composition, Phase 3) the platform-
+// owned source APIs carry their schemas DECLARATIVELY: the admin base (or, in
+// split mode, the bare relay base) stitched with an empty plugin list and
+// stamped @canonical. These tests pin the assembled documents' load-bearing
+// properties; Platform.res composes exactly this pipeline.
+
+describe("Merged mode — canonical source documents", () => {
+  let assembleCanonicalSourceSdl = (~baseFragment) =>
+    AppSync_Adapter.stitchWithAwsDirectives(~baseFragment, ~pluginFragments=[])
+    ->AppSync_SdlDecorate.stampCanonicalTypes
+
+  let emptyBaseFragment = ReventlessCore.GraphQL_Stitcher.encode({
+    types: [],
+    mutations: [],
+    queries: [],
+    subscriptions: [],
+    subscriptionSources: [],
+  })
+
+  let adminSourceSdl = assembleCanonicalSourceSdl(
+    ~baseFragment=AppSync_Adapter.injectAwsAuthAll(
+      ReventlessCore.AdminApi.baseFragment(~cloner=false),
+      ~group="Admin",
+      ~iamFieldNames=ReventlessCore.AdminApi.systemCallerFieldNames,
+    ),
+  )
+
+  let relayBaseSourceSdl = assembleCanonicalSourceSdl(~baseFragment=emptyBaseFragment)
+
+  testSync("admin source document carries the global node query", () => {
+    expect(adminSourceSdl)->toContain("node(id: ID!): Node")
+  })
+
+  testSync("admin source document stamps @canonical on the shared traversal types", () => {
+    expect(adminSourceSdl)->toContain("type PageInfo @aws_cognito_user_pools @aws_iam @canonical {")
+    expect(adminSourceSdl)->toContain("interface Node @canonical {")
+    expect(adminSourceSdl)->toContain("union CommandResult @canonical =")
+    expect(adminSourceSdl)->toContain(
+      "type CommandAccepted @aws_cognito_user_pools @aws_iam @canonical {",
+    )
+  })
+
+  testSync("admin source document keeps admin fields and dual-auth stamps", () => {
+    expect(adminSourceSdl)->toContain("Platform_Plugin")
+    expect(adminSourceSdl)->toContain("@aws_iam")
+  })
+
+  testSync("relay-base source document (split-mode Domain source) is node + relay types only", () => {
+    expect(relayBaseSourceSdl)->toContain("node(id: ID!): Node")
+    expect(relayBaseSourceSdl)->toContain("interface Node @canonical {")
+    expect(relayBaseSourceSdl)->toContain("type PageInfo")
+    // No admin or plugin fields on the split-mode Domain source.
+    expect(relayBaseSourceSdl)->not_->toContain("Platform_Plugin")
+    // No mutations → no CommandResult family on this source.
+    expect(relayBaseSourceSdl)->not_->toContain("union CommandResult")
+  })
+})
+
+// ── waitForMergeSuccess — association merge-status poll ─────────────────────
+
+describe("AppSync_Adapter.waitForMergeSuccess", () => {
+  // Fake AppSync client: `send` yields the canned responses in order and
+  // repeats the last one when the poll outruns the script.
+  let makeFakeClient = (
+    responses: array<AppSync_Adapter.getSourceApiAssociationResult>,
+  ): AppSync_Adapter.appSyncClient => {
+    let i = ref(0)
+    let fake = {
+      "send": _cmd => {
+        let idx = Math.Int.min(i.contents, responses->Array.length - 1)
+        i := i.contents + 1
+        Promise.resolve(responses->Array.getUnsafe(idx))
+      },
+    }
+    fake->Obj.magic
+  }
+
+  let response = (~status, ~detail=?): AppSync_Adapter.getSourceApiAssociationResult => {
+    sourceApiAssociation: Some({
+      sourceApiAssociationStatus: Some(status),
+      sourceApiAssociationStatusDetail: detail,
+    }),
+  }
+
+  test("resolves once the association reports MERGE_SUCCESS", async () => {
+    let client = makeFakeClient([
+      response(~status="MERGE_SCHEDULED"),
+      response(~status="MERGE_IN_PROGRESS"),
+      response(~status="MERGE_SUCCESS"),
+    ])
+    await AppSync_Adapter.waitForMergeSuccess(
+      client,
+      ~associationId="assoc-1",
+      ~mergedApiIdentifier="merged-1",
+      ~delayMs=1,
+    )
+  })
+
+  test("throws with the AWS status detail on MERGE_FAILED", async () => {
+    let client = makeFakeClient([
+      response(
+        ~status="MERGE_FAILED",
+        ~detail="Unable to resolve conflict on object with name SharedThing.x",
+      ),
+    ])
+    let message = ref("")
+    try {
+      await AppSync_Adapter.waitForMergeSuccess(
+        client,
+        ~associationId="assoc-1",
+        ~mergedApiIdentifier="merged-1",
+        ~delayMs=1,
+      )
+    } catch {
+    | exn =>
+      message :=
+        exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("(no message)")
+    }
+    expect(message.contents)->toContain("MERGE_FAILED")
+    expect(message.contents)->toContain("SharedThing.x")
+  })
+
+  test("times out after maxAttempts on a status that never settles", async () => {
+    let client = makeFakeClient([response(~status="MERGE_IN_PROGRESS")])
+    let message = ref("")
+    try {
+      await AppSync_Adapter.waitForMergeSuccess(
+        client,
+        ~associationId="assoc-1",
+        ~mergedApiIdentifier="merged-1",
+        ~maxAttempts=2,
+        ~delayMs=1,
+      )
+    } catch {
+    | exn =>
+      message :=
+        exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("(no message)")
+    }
+    expect(message.contents)->toContain("timed out")
+    expect(message.contents)->toContain("MERGE_IN_PROGRESS")
+  })
+})

@@ -101,6 +101,35 @@ function getClient() {
   return c$1;
 }
 
+async function waitForMergeSuccess(client, associationId, mergedApiIdentifier, maxAttemptsOpt, attemptOpt, delayMsOpt) {
+  let maxAttempts = maxAttemptsOpt !== undefined ? maxAttemptsOpt : 60;
+  let attempt = attemptOpt !== undefined ? attemptOpt : 0;
+  let delayMs = delayMsOpt !== undefined ? delayMsOpt : 2000;
+  let result = await client.send(new ClientAppsync.GetSourceApiAssociationCommand({
+    associationId: associationId,
+    mergedApiIdentifier: mergedApiIdentifier
+  }));
+  let status = Stdlib_Option.getOr(Stdlib_Option.flatMap(result.sourceApiAssociation, a => a.sourceApiAssociationStatus), "(no status)");
+  let detail = Stdlib_Option.getOr(Stdlib_Option.flatMap(result.sourceApiAssociation, a => a.sourceApiAssociationStatusDetail), "(no details)");
+  switch (status) {
+    case "AUTO_MERGE_SCHEDULE_FAILED" :
+    case "MERGE_FAILED" :
+      break;
+    case "MERGE_SUCCESS" :
+      return;
+    default:
+      if (attempt >= maxAttempts) {
+        return Stdlib_JsError.throwWithMessage(`Source API association ` + associationId + ` merge timed out after ` + maxAttempts.toString() + ` attempts (status: ` + status + `)`);
+      } else {
+        await new Promise((resolve, param) => {
+          setTimeout(resolve, delayMs);
+        });
+        return await waitForMergeSuccess(client, associationId, mergedApiIdentifier, maxAttempts, attempt + 1 | 0, delayMs);
+      }
+  }
+  return Stdlib_JsError.throwWithMessage(`Source API association ` + associationId + ` on ` + mergedApiIdentifier + ` failed to merge (` + status + `): ` + detail);
+}
+
 function _permissionToCognitoGroups(permission) {
   if (typeof permission !== "object") {
     switch (permission) {
@@ -268,7 +297,7 @@ function stitchWithAwsDirectives(baseFragment, pluginFragments) {
   return AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes(AppSync_SdlDecorate$ReventlessAws.injectAwsSubscribe(GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, pluginFragments), sources));
 }
 
-function makeApiResource(name, opts) {
+function _makeApiResourceWith(name, schema, opts) {
   let customOpts_parent = opts.parent;
   let customOpts = {
     parent: customOpts_parent
@@ -282,12 +311,14 @@ function makeApiResource(name, opts) {
     defaultAction: "ALLOW",
     awsRegion: c.region
   }));
+  let apiArgs_schema = Stdlib_Option.map(schema, prim => prim);
   let apiArgs_userPoolConfig = userPoolConfigOut;
   let apiArgs_additionalAuthenticationProviders = [{
       authenticationType: "AWS_IAM"
     }];
   let apiArgs = {
     authenticationType: "AMAZON_COGNITO_USER_POOLS",
+    schema: apiArgs_schema,
     userPoolConfig: apiArgs_userPoolConfig,
     additionalAuthenticationProviders: apiArgs_additionalAuthenticationProviders
   };
@@ -296,6 +327,14 @@ function makeApiResource(name, opts) {
     Pulumi.output(graphQLApi),
     Pulumi.output(iamRole)
   ];
+}
+
+function makeApiResource(name, opts) {
+  return _makeApiResourceWith(name, undefined, opts);
+}
+
+function makeSourceApiResource(name, schema, opts) {
+  return _makeApiResourceWith(name, schema, opts);
 }
 
 function generateFragment(mutationEntries, queryEntries) {
@@ -319,6 +358,8 @@ function updateSchema(api, baseFragment, pluginFragments) {
 
 let stampSharedIamTypes = AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes;
 
+let primaryAuthenticationType = "AMAZON_COGNITO_USER_POOLS";
+
 export {
   log,
   sha256Hex,
@@ -329,6 +370,7 @@ export {
   deploySchemaWithRetry,
   _client,
   getClient,
+  waitForMergeSuccess,
   _permissionToCognitoGroups,
   _formatGroupsDirective,
   _formatDualAuthDirective,
@@ -338,7 +380,10 @@ export {
   injectAwsAuth,
   injectAwsAuthAll,
   stitchWithAwsDirectives,
+  primaryAuthenticationType,
+  _makeApiResourceWith,
   makeApiResource,
+  makeSourceApiResource,
   generateFragment,
   updateSchema,
 }

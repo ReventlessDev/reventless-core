@@ -1,7 +1,8 @@
 # Push-free schema composition via merged APIs
 
-**Status:** IN PROGRESS — Phase 0 spike executed 2026-07-14: **GO** (all four gates
-validated on real AWS; findings + the `node` decision recorded in Phase 0 below)
+**Status:** IN PROGRESS — Phases 0–3 done 2026-07-14 (Phase 0 spike **GO**; Phase 1
+bindings; Phase 2 merge-path codegen; Phase 3 platform stack behind the `mergedApi`
+flag, preview-validated). Next: Phase 4 (plugin stack).
 **Date:** 2026-07-14
 **Analysis:** [docs/analysis/merged-api-push-free-approach.md](../analysis/merged-api-push-free-approach.md)
 **Succeeds:** [docs/plans/done/event-sourced-fragment-registries.md](done/event-sourced-fragment-registries.md)
@@ -195,17 +196,48 @@ convention) exercises all three surfaces together; package builds with zero warn
 
 ## Phase 3 — Platform stack: merged APIs + admin as canonical source
 
-- Platform stack creates the **Domain merged API** (+ **Platform merged API** in split
-  mode), each with `mergedApiExecutionRole` (`appsync:SourceGraphQL` on associated sources).
-- The admin base becomes an ordinary **source API** — `GraphQLApi` + declarative
-  `GraphQLSchema` + resolvers — canonical owner of shared types, `Platform_*` fields,
-  Plugins RM queries, and (per the Phase-0 decision) the `node` field. Its
-  `SourceApiAssociation` targets the Platform merged API.
-- **StackReference** exports the merged API ARN(s) + primary-auth contract for plugin
-  stacks — this replaces the SigV4 `RegisterApiFragment` handshake as the cross-stack
-  wiring.
-- Merged-API auth: Cognito primary + IAM secondary (spike-validated); source APIs must use
-  a compatible primary mode — encode that as a checked invariant, not a convention.
+**DONE 2026-07-14** — all behind a new `mergedApi: bool` on `Platform.MakeWithConfig`
+(reventless-aws; default `false` in `Make()` — the push path stays the default until
+Phase 5). Supported with `deployPlatform` only; `makePlatform` and `deployPlugin` fail
+loudly under the flag (`deployPlugin` unlocks in Phase 4). All stacks of one platform
+must agree on the flag.
+
+- ~~Domain merged API (+ Platform merged API in split mode) with execution role~~ —
+  `AppSync_MergedApi.res` (components/Api): merged `GraphQLApi` (Cognito primary + IAM
+  secondary via `Auth_Cognito`, `apiType: MERGED`) + `merge-exec-role`
+  (`appsync:SourceGraphQL` + `appsync:StartSchemaMerge`; unscoped resources — source
+  APIs associate later from independent plugin stacks, so their ARNs can't be
+  enumerated at platform-deploy time), `associateSource` (AUTO_MERGE), and
+  `mergeStatusGate`.
+- ~~Admin base as ordinary source API with declarative schema~~ —
+  `AppSync_Adapter.makeSourceApiResource(~schema)` puts the SDL inline on the
+  `GraphQLApi` resource (the Phase-1 finding: `schema` IS the declarative
+  GraphQLSchema); the provider's internal StartSchemaCreation+poll orders resolvers
+  after schema-ACTIVE, so `preAdminResolversSchemaHook` simply returns the barrier in
+  merged mode (no push). Admin source SDL = push-path assembly + `stampCanonicalTypes`.
+- **Split-mode addition the plan hadn't spelled out:** the Domain merged API also needs
+  a platform-owned canonical source (relay base types + the global `node` query —
+  plugin subgraphs omit both). The existing `DomainApi` resource carries this
+  relay-base document declaratively; the admin document goes on `PlatformApi` →
+  Platform merged API. Unified mode: single source carries the admin document → Domain
+  merged API.
+- ~~StackReference exports~~ — `domainMergedApi{Arn,Id,Endpoint}`,
+  `platformMergedApi{Arn,Id,Endpoint}` (== domain in unified mode), and
+  `mergedApiPrimaryAuth` (the primary-auth contract). The ARN exports are folded
+  through the merge-status gate (`GetSourceApiAssociation` poll, SDK helper
+  `AppSync_Adapter.waitForMergeSuccess` — the association-status helper deferred from
+  Phase 1 landed here): `MERGE_FAILED` fails `pulumi up` with AWS's status detail.
+- ~~Primary-auth invariant~~ — `AppSync_Adapter.primaryAuthenticationType` constant +
+  `AppSync_MergedApi.assertCompatiblePrimaryAuth`, asserted where associations are
+  created; plugin stacks re-assert against the `mergedApiPrimaryAuth` export (Phase 4).
+- Client-facing endpoints (host-UI `config.json`, `onPlatformDeployed`) resolve to the
+  **merged** endpoints under the flag; the source-API exports stay unchanged for
+  coexisting push-path stacks.
+- Validated: reventless-aws unit tests (canonical source documents, merge poll) + local
+  `pulumi preview` of `examples/online-shop-hybrid/platform-aws` against alpha in both
+  modes — flag off: zero API-surface changes (pure refactor); flag on: exactly the
+  8 new resources (2 merged APIs, 2 exec roles, 2 policies, 2 associations) +
+  `+schema` on both source APIs + merged endpoints in `config.json`.
 
 ## Phase 4 — Plugin stack: own source API + association
 

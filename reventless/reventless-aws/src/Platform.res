@@ -9,7 +9,9 @@
 //   module App = MyPlugin.Make(Platform)
 //
 // Custom config:
-//   module Platform = Platform.MakeWithConfig({let splitApi = false; let cloner = true})
+//   module Platform = Platform.MakeWithConfig({
+//     let splitApi = false; let mergedApi = false; let cloner = true
+//   })
 
 let log = ReventlessCore.Logger.fromEnv()
 
@@ -51,6 +53,15 @@ let getSplitApiOutputs = () => splitApiOutputsRef.contents
 module MakeWithConfig = (
   Config: {
     let splitApi: bool
+    /** Merged-API composition (docs/plans/merged-api-push-free-composition.md,
+        Phase 3). When `true`, the platform creates AppSync MERGED APIs and the
+        platform-owned APIs become ordinary SOURCE APIs with declarative
+        schemas: no fragment registration, no reactive schema push. Plugin
+        stacks then associate their own source APIs against the exported
+        merged-API ARN (Phase 4). `false` (default until the Phase-5 cutover)
+        keeps the shipped push path. Supported with `deployPlatform` only —
+        all stacks of one platform must agree on this flag. */
+    let mergedApi: bool
     let cloner: bool
     let commandHandlerConfig: ReventlessCore.Runtime.commandHandlerConfigs
     /** B2.3c platform toggle. When `Some`, every DCB EventLog is Postgres-backed
@@ -145,9 +156,59 @@ module MakeWithConfig = (
     }: PulumiAws.IAM.Role.t)
   }
 
+  // ── Merged-mode source SDL assembly (merged-api plan, Phase 3) ────────────
+  // Empty base fragment — no types, no mutations, no queries. Used by the
+  // plugin Api in split mode (so plugin schema has no core fields) and as the
+  // base of the split-mode Domain source document below.
+  let emptyBaseFragment = ReventlessCore.GraphQL_Stitcher.encode({
+    types: [],
+    mutations: [],
+    queries: [],
+    subscriptions: [],
+    subscriptionSources: [],
+  })
+
+  // The canonical base document for a merged API's platform-owned source:
+  // stitched with an EMPTY plugin list (the stitch injects the relay base
+  // types and the global `node` query — only these canonical documents carry
+  // `node`), AWS-dialect decorated, and `@canonical`-stamped so the platform-
+  // owned shared types win over every plugin source's standalone copy
+  // (divergence is shadowed, not MERGE_FAILED — Phase-0 finding 1).
+  let assembleCanonicalSourceSdl = (~baseFragment): string =>
+    AppSync_Adapter.stitchWithAwsDirectives(~baseFragment, ~pluginFragments=[])
+    ->AppSync_SdlDecorate.stampCanonicalTypes
+
+  // Admin base as a source-API document — same assembly as the push path's
+  // preAdminResolversSchemaHook, plus the canonical stamp.
+  let adminSourceSdl = (): string =>
+    assembleCanonicalSourceSdl(
+      ~baseFragment=AppSync_Adapter.injectAwsAuthAll(
+        ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+        ~group="Admin",
+        ~iamFieldNames=ReventlessCore.AdminApi.systemCallerFieldNames,
+      ),
+    )
+
+  // Split-mode Domain source document: relay base + `node` only — the Domain
+  // merged API's canonical owner (plugin fields come from plugin sources).
+  let relayBaseSourceSdl = (): string => assembleCanonicalSourceSdl(~baseFragment=emptyBaseFragment)
+
   let (domainApi, domainApiRole, platformApi, platformApiRole) = switch platformStackRef {
   | None =>
-    let (api, role) = AppSync_Adapter.makeApiResource(~name="DomainApi", ~opts={})
+    let (api, role) = if Config.mergedApi {
+      // Merged mode: the Domain API is an ordinary GRAPHQL source API with a
+      // DECLARATIVE schema. Unified: it carries the admin base (the canonical
+      // document). Split: it carries only the relay base + `node`; the admin
+      // base lives on the Platform source API created in deployPlatform.
+      let schema = if Config.splitApi {
+        relayBaseSourceSdl()
+      } else {
+        adminSourceSdl()
+      }
+      AppSync_Adapter.makeSourceApiResource(~name="DomainApi", ~schema, ~opts={})
+    } else {
+      AppSync_Adapter.makeApiResource(~name="DomainApi", ~opts={})
+    }
     // In platform/monolithic mode the platform API is not yet known — it is created
     // during deployPlatform/makePlatform and the ref is updated there.
     (api, role, api, role)
@@ -580,15 +641,8 @@ module MakeWithConfig = (
   // The API-fragment registry is a SINGLETON AGGREGATE now (not a DCB slice) — see
   // ApiFragmentRegistryAggregate / ApiFragmentsReadModel below.
 
-  // Empty base fragment — no types, no mutations, no queries.
-  // Used by the plugin Api in split mode so plugin schema has no core fields.
-  let emptyBaseFragment = ReventlessCore.GraphQL_Stitcher.encode({
-    types: [],
-    mutations: [],
-    queries: [],
-    subscriptions: [],
-    subscriptionSources: [],
-  })
+  // (emptyBaseFragment — the empty split-mode plugin base — is defined above,
+  // next to the merged-mode source SDL assembly that shares it.)
 
   module Api = {
     module Make = (
@@ -838,62 +892,70 @@ module MakeWithConfig = (
     // makePlatform / deployPlatform before Admin.construct fires, is visible):
     //   - split mode: platformApi from splitApiOutputsRef
     //   - unified mode / not-yet-populated: domainApi
-    preAdminResolversSchemaHook: (~adminBarrier) => {
-      // The admin-base SDL stitches AdminApi.baseFragment with an EMPTY plugin
-      // list, and startSchemaCreation REPLACES the whole schema. In split mode
-      // the admin schema belongs on the PlatformApi ONLY — the DomainApi carries
-      // plugin fields (emptyBaseFragment). If we pushed the admin-base-only SDL
-      // to the DomainApi it would wipe every plugin field, leaving exactly the
-      // admin-base set (the alpha 2026-07-08 clobber). So in split mode we push
-      // ONLY when the PlatformApi is known; if the ref is not yet populated we
-      // SKIP (never fall back to domainApi). Unified mode legitimately shares one
-      // API, so an unpopulated ref there means domainApi.
-      let targetApiOpt = switch (Config.splitApi, splitApiOutputsRef.contents) {
-      | (_, Some({platformApi})) => Some(platformApi)
-      | (false, None) => Some(domainApi)
-      | (true, None) => None
-      }
-      switch targetApiOpt {
-      | None =>
-        log.error(
-          ~comp="preAdminResolversSchemaHook",
-          "split mode but the PlatformApi is not available at hook time — SKIPPING the admin schema push to avoid clobbering the DomainApi (pushing admin-base here would wipe every plugin field)",
-        )
+    preAdminResolversSchemaHook: (~adminBarrier) =>
+      if Config.mergedApi {
+        // Merged mode: the admin base SDL is DECLARATIVE on the source API
+        // resource (makeSourceApiResource) — the provider runs
+        // StartSchemaCreation + poll before the resource resolves, so admin
+        // resolvers chained on the API are already ordered after the schema
+        // is ACTIVE. No push.
         adminBarrier
-      | Some(targetApi) =>
-        let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
-          ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
-          ~group="Admin",
-          // The ApiFragmentRegistry register/deregister mutations + the Platform_ApiFragments
-          // status query are invoked by the plugin/standalone deploy as a SigV4 system caller, so
-          // they carry the dual-auth (@aws_cognito_user_pools @aws_iam) directive.
-          ~iamFieldNames=ReventlessCore.AdminApi.systemCallerFieldNames,
-        )
-        let sdl = AppSync_Adapter.stitchWithAwsDirectives(
-          ~baseFragment=adminBaseFragment,
-          ~pluginFragments=[],
-        )
-        (targetApi, adminBarrier)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.flatMap(((api, _)) =>
-          api.id->Pulumi.Output.flatMap(apiId => {
-            log.info(~comp="preAdminResolversSchemaHook", `Pushing admin schema to ${apiId}`)
-            let client = AppSync_Adapter.getClient()
-            client
-            ->AppSync_Adapter.startSchemaCreationRetrying({apiId, definition: sdl})
-            ->Promise.then(async _ => {
-              log.info(
-                ~comp="preAdminResolversSchemaHook",
-                "startSchemaCreation called, waiting for ACTIVE",
-              )
-              await AppSync_Adapter.waitForSchemaActive(client, apiId)
-              log.info(~comp="preAdminResolversSchemaHook", "schema is ACTIVE")
+      } else {
+        // The admin-base SDL stitches AdminApi.baseFragment with an EMPTY plugin
+        // list, and startSchemaCreation REPLACES the whole schema. In split mode
+        // the admin schema belongs on the PlatformApi ONLY — the DomainApi carries
+        // plugin fields (emptyBaseFragment). If we pushed the admin-base-only SDL
+        // to the DomainApi it would wipe every plugin field, leaving exactly the
+        // admin-base set (the alpha 2026-07-08 clobber). So in split mode we push
+        // ONLY when the PlatformApi is known; if the ref is not yet populated we
+        // SKIP (never fall back to domainApi). Unified mode legitimately shares one
+        // API, so an unpopulated ref there means domainApi.
+        let targetApiOpt = switch (Config.splitApi, splitApiOutputsRef.contents) {
+        | (_, Some({platformApi})) => Some(platformApi)
+        | (false, None) => Some(domainApi)
+        | (true, None) => None
+        }
+        switch targetApiOpt {
+        | None =>
+          log.error(
+            ~comp="preAdminResolversSchemaHook",
+            "split mode but the PlatformApi is not available at hook time — SKIPPING the admin schema push to avoid clobbering the DomainApi (pushing admin-base here would wipe every plugin field)",
+          )
+          adminBarrier
+        | Some(targetApi) =>
+          let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
+            ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+            ~group="Admin",
+            // The ApiFragmentRegistry register/deregister mutations + the Platform_ApiFragments
+            // status query are invoked by the plugin/standalone deploy as a SigV4 system caller, so
+            // they carry the dual-auth (@aws_cognito_user_pools @aws_iam) directive.
+            ~iamFieldNames=ReventlessCore.AdminApi.systemCallerFieldNames,
+          )
+          let sdl = AppSync_Adapter.stitchWithAwsDirectives(
+            ~baseFragment=adminBaseFragment,
+            ~pluginFragments=[],
+          )
+          (targetApi, adminBarrier)
+          ->Pulumi.Output.all2
+          ->Pulumi.Output.flatMap(((api, _)) =>
+            api.id->Pulumi.Output.flatMap(apiId => {
+              log.info(~comp="preAdminResolversSchemaHook", `Pushing admin schema to ${apiId}`)
+              let client = AppSync_Adapter.getClient()
+              client
+              ->AppSync_Adapter.startSchemaCreationRetrying({apiId, definition: sdl})
+              ->Promise.then(async _ => {
+                log.info(
+                  ~comp="preAdminResolversSchemaHook",
+                  "startSchemaCreation called, waiting for ACTIVE",
+                )
+                await AppSync_Adapter.waitForSchemaActive(client, apiId)
+                log.info(~comp="preAdminResolversSchemaHook", "schema is ACTIVE")
+              })
+              ->Pulumi.Output.fromPromise
             })
-            ->Pulumi.Output.fromPromise
-          })
-        )
-      }
-    },
+          )
+        }
+      },
 
     // Staged deploy (deployPlugin against a running platform): register the
     // plugin's fragment via the Platform API (SigV4); the reactive ApiSchemaPush
@@ -1283,6 +1345,14 @@ module MakeWithConfig = (
   // In unified mode, makePlatform is a no-op (schema stitching handled by events).
   let makePlatform = (~version, ~plugins: array<module(PluginMaker)>) => {
     log.info(~comp="Platform", `v${version}`)
+    if Config.mergedApi {
+      // Merged-API composition is wired in deployPlatform only (the sole
+      // supported staged AWS deploy path) — makePlatform predates it.
+      failwith(
+        "mergedApi mode is supported with deployPlatform only — deploy the platform with " ++
+        "deployPlatform and each plugin with deployPlugin.",
+      )
+    }
     // Create scheduler and populate platform context refs so Plugin_Builder
     // can read them without app plugins having to pass them through.
     let scheduler = makeScheduler()
@@ -1473,6 +1543,18 @@ module MakeWithConfig = (
     bundleVersion: string,
   }
 
+  // Merged-mode outputs of deployPlatform — the merged API(s), plus the
+  // deploy-time merge gates (Outputs that resolve on MERGE_SUCCESS and fail
+  // the deploy on MERGE_FAILED; folded into the ARN exports so they are
+  // consumed). platformMerged == domainMerged in unified mode, mirroring the
+  // platformApi/domainApi convention.
+  type mergedApiOutputs = {
+    domainMerged: AppSync_MergedApi.t,
+    platformMerged: AppSync_MergedApi.t,
+    domainMergeGate: Pulumi.Output.t<unit>,
+    platformMergeGate: Pulumi.Output.t<unit>,
+  }
+
   let deployPlatform = (~version, ~hostUiBundle: option<hostUiBundleConfig>=?) => {
     log.info(~comp="Platform:deployPlatform", `v${version}`)
     let scheduler = makeScheduler()
@@ -1483,10 +1565,77 @@ module MakeWithConfig = (
     // Phase 2: create the Platform API resource early — before Admin.construct —
     // so admin resolvers are attached to the correct API in split mode.
     // In unified mode this is the same resource as the Domain API.
+    // On the merge path the Platform API is an ordinary GRAPHQL source API
+    // carrying the admin canonical document declaratively.
     let (platformApi, platformApiRole) = if Config.splitApi {
-      AppSync_Adapter.makeApiResource(~name="PlatformApi", ~opts={})
+      if Config.mergedApi {
+        AppSync_Adapter.makeSourceApiResource(~name="PlatformApi", ~schema=adminSourceSdl(), ~opts={})
+      } else {
+        AppSync_Adapter.makeApiResource(~name="PlatformApi", ~opts={})
+      }
     } else {
       (domainApi, domainApiRole)
+    }
+
+    // ── Merged-API composition (merged-api plan, Phase 3) ──────────────────
+    // Create the merged API(s) and associate the platform-owned source(s).
+    // Plugin stacks associate their own source APIs against the exported
+    // merged-API ARN (Phase 4); `pulumi destroy` of a plugin stack deletes
+    // its association — retirement by construction.
+    let mergedOutputs = if Config.mergedApi {
+      AppSync_MergedApi.assertCompatiblePrimaryAuth(
+        ~sourceMode=AppSync_MergedApi.authenticationTypeName(
+          AppSync_Adapter.primaryAuthenticationType,
+        ),
+        ~mergedMode=AppSync_MergedApi.primaryAuthMode,
+      )
+      let domainMerged = AppSync_MergedApi.make(~name="DomainMergedApi", ~opts={})
+      if Config.splitApi {
+        // Split: admin source → Platform merged API; the relay-base Domain
+        // source (the Domain merged API's canonical owner) → Domain merged.
+        let platformMerged = AppSync_MergedApi.make(~name="PlatformMergedApi", ~opts={})
+        let platformAssoc = AppSync_MergedApi.associateSource(
+          ~name="PlatformAdminSourceAssociation",
+          ~mergedApi=platformMerged,
+          ~sourceApi=platformApi,
+          ~opts={},
+        )
+        let domainAssoc = AppSync_MergedApi.associateSource(
+          ~name="DomainBaseSourceAssociation",
+          ~mergedApi=domainMerged,
+          ~sourceApi=domainApi,
+          ~opts={},
+        )
+        Some({
+          domainMerged,
+          platformMerged,
+          domainMergeGate: AppSync_MergedApi.mergeStatusGate(
+            ~mergedApi=domainMerged,
+            ~association=domainAssoc,
+          ),
+          platformMergeGate: AppSync_MergedApi.mergeStatusGate(
+            ~mergedApi=platformMerged,
+            ~association=platformAssoc,
+          ),
+        })
+      } else {
+        // Unified: the single source API carries the admin canonical document.
+        let assoc = AppSync_MergedApi.associateSource(
+          ~name="DomainAdminSourceAssociation",
+          ~mergedApi=domainMerged,
+          ~sourceApi=domainApi,
+          ~opts={},
+        )
+        let gate = AppSync_MergedApi.mergeStatusGate(~mergedApi=domainMerged, ~association=assoc)
+        Some({
+          domainMerged,
+          platformMerged: domainMerged,
+          domainMergeGate: gate,
+          platformMergeGate: gate,
+        })
+      }
+    } else {
+      None
     }
 
     // Admin DCB mutation resolvers bind to the Platform API (split mode) or the shared api
@@ -1764,6 +1913,44 @@ module MakeWithConfig = (
     )
     Pulumi.Pulumi.export("domainApiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
 
+    // Merged-API exports — plugin stacks associate their source APIs against
+    // these ARNs (this replaces the SigV4 RegisterApiFragment handshake as the
+    // cross-stack wiring on the merge path), and `mergedApiPrimaryAuth` is the
+    // primary-auth contract source APIs must match. The ARN exports are gated
+    // on the merge-status poll so a MERGE_FAILED fails the deploy loudly
+    // instead of silently serving the last-good merged schema.
+    switch mergedOutputs {
+    | Some({domainMerged, platformMerged, domainMergeGate, platformMergeGate}) =>
+      let mergeGatedArn = (merged: AppSync_MergedApi.t, gate: Pulumi.Output.t<unit>) =>
+        (
+          merged.api->Pulumi.Output.flatMap((api: PulumiAws.AppSync.GraphQLApi.t) => api.arn),
+          gate,
+        )
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((arn, _)) => arn)
+      let mergedEndpoint = (merged: AppSync_MergedApi.t) =>
+        merged.api->Pulumi.Output.flatMap((api: PulumiAws.AppSync.GraphQLApi.t) =>
+          api.uris->Pulumi.Output.apply(uris => uris.graphQL)
+        )
+      Pulumi.Pulumi.export("domainMergedApiArn", mergeGatedArn(domainMerged, domainMergeGate))
+      Pulumi.Pulumi.export(
+        "domainMergedApiId",
+        domainMerged.api->Pulumi.Output.flatMap((api: PulumiAws.AppSync.GraphQLApi.t) => api.id),
+      )
+      Pulumi.Pulumi.export("domainMergedApiEndpoint", mergedEndpoint(domainMerged))
+      Pulumi.Pulumi.export("platformMergedApiArn", mergeGatedArn(platformMerged, platformMergeGate))
+      Pulumi.Pulumi.export(
+        "platformMergedApiId",
+        platformMerged.api->Pulumi.Output.flatMap((api: PulumiAws.AppSync.GraphQLApi.t) => api.id),
+      )
+      Pulumi.Pulumi.export("platformMergedApiEndpoint", mergedEndpoint(platformMerged))
+      Pulumi.Pulumi.export(
+        "mergedApiPrimaryAuth",
+        Pulumi.Output.make(AppSync_MergedApi.primaryAuthMode),
+      )
+    | None => ()
+    }
+
     // Events API exports — consumed by plugin stacks to wire Source B (StateTopic) Lambdas.
     switch domainEventsApiOpt {
     | Some(eventsApi) =>
@@ -1800,11 +1987,22 @@ module MakeWithConfig = (
     )
 
     // Fire onPlatformDeployed hook with resolved platform metadata.
-    let resolvedDomainApiEndpoint = domainApi->Pulumi.Output.flatMap(api =>
+    // Client-facing endpoints: on the merge path clients query the MERGED
+    // endpoints (the source-API endpoints stay exported for coexisting
+    // push-path stacks) — these also feed the host-UI config.json below.
+    let clientDomainApi = switch mergedOutputs {
+    | Some({domainMerged}) => domainMerged.api
+    | None => domainApi
+    }
+    let clientPlatformApi = switch mergedOutputs {
+    | Some({platformMerged}) => platformMerged.api
+    | None => platformApi
+    }
+    let resolvedDomainApiEndpoint = clientDomainApi->Pulumi.Output.flatMap(api =>
       api.uris->Pulumi.Output.apply(uris => uris.graphQL)
     )
     let resolvedDomainApiRoleArn = domainApiRole->Pulumi.Output.flatMap(role => role.arn)
-    let resolvedPlatformApiEndpoint = platformApi->Pulumi.Output.flatMap(api =>
+    let resolvedPlatformApiEndpoint = clientPlatformApi->Pulumi.Output.flatMap(api =>
       api.uris->Pulumi.Output.apply(uris => uris.graphQL)
     )
     let resolvedPlatformApiRoleArn = platformApiRole->Pulumi.Output.flatMap(role => role.arn)
@@ -1988,6 +2186,16 @@ module MakeWithConfig = (
   let startServers = () => ()
 
   let deployPlugin = (~plugin: module(PluginMaker), ~apiTarget=Domain) => {
+    if Config.mergedApi {
+      // Phase 4 of the merged-api plan wires plugin stacks (own source API +
+      // SourceApiAssociation). Until then a merged-mode plugin deploy would
+      // fall through to the push path (SigV4 fragment registration) and
+      // clobber the declarative source schemas — fail loudly instead.
+      failwith(
+        "mergedApi plugin deploys are not wired yet (merged-api plan, Phase 4) — deploy plugins " ++
+        "with the push path (mergedApi=false) until Phase 4 lands.",
+      )
+    }
     log.info(
       ~comp="Platform:deployPlugin",
       `target=${switch apiTarget {
@@ -2102,6 +2310,7 @@ module Make = (): (
 ) => {
   include MakeWithConfig({
     let splitApi = true
+    let mergedApi = false
     let cloner = false
     let commandHandlerConfig: ReventlessCore.Runtime.commandHandlerConfigs = {}
     let pgConnection = None

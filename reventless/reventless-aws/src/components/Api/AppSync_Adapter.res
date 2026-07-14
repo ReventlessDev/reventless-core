@@ -157,6 +157,77 @@ let getClient = () =>
     c
   }
 
+// ── GetSourceApiAssociation — merged-API association status poll ──────────
+// Merged-API deploys must fail loudly on MERGE_FAILED (plan
+// merged-api-push-free-composition, Phase 0 finding: a failed merge silently
+// keeps the last-good merged schema serving). After creating a
+// SourceApiAssociation, poll until the initial merge lands.
+type getSourceApiAssociationInput = {
+  associationId: string,
+  mergedApiIdentifier: string,
+}
+type getSourceApiAssociationCommand
+type sourceApiAssociationSummary = {
+  sourceApiAssociationStatus: option<string>,
+  sourceApiAssociationStatusDetail: option<string>,
+}
+type getSourceApiAssociationResult = {sourceApiAssociation: option<sourceApiAssociationSummary>}
+
+@module("@aws-sdk/client-appsync") @new
+external makeGetSourceApiAssociationCommand: getSourceApiAssociationInput => getSourceApiAssociationCommand =
+  "GetSourceApiAssociationCommand"
+
+@send
+external sendGetSourceApiAssociation: (
+  appSyncClient,
+  getSourceApiAssociationCommand,
+) => promise<getSourceApiAssociationResult> = "send"
+
+// Poll until the association reports MERGE_SUCCESS; throw with the AWS status
+// detail on MERGE_FAILED / AUTO_MERGE_SCHEDULE_FAILED. Auto-merge lands in
+// ~12 s (spike-measured), so 60 × 2 s bounds the wait at two minutes.
+let rec waitForMergeSuccess = async (
+  client: appSyncClient,
+  ~associationId: string,
+  ~mergedApiIdentifier: string,
+  ~maxAttempts=60,
+  ~attempt=0,
+  ~delayMs=2000,
+) => {
+  let result = await client->sendGetSourceApiAssociation(
+    {associationId, mergedApiIdentifier}->makeGetSourceApiAssociationCommand,
+  )
+  let status =
+    result.sourceApiAssociation
+    ->Option.flatMap(a => a.sourceApiAssociationStatus)
+    ->Option.getOr("(no status)")
+  let detail =
+    result.sourceApiAssociation
+    ->Option.flatMap(a => a.sourceApiAssociationStatusDetail)
+    ->Option.getOr("(no details)")
+  switch status {
+  | "MERGE_SUCCESS" => ()
+  | "MERGE_FAILED" | "AUTO_MERGE_SCHEDULE_FAILED" =>
+    JsError.throwWithMessage(
+      `Source API association ${associationId} on ${mergedApiIdentifier} failed to merge (${status}): ${detail}`,
+    )
+  | _ if attempt >= maxAttempts =>
+    JsError.throwWithMessage(
+      `Source API association ${associationId} merge timed out after ${maxAttempts->Int.toString} attempts (status: ${status})`,
+    )
+  | _ =>
+    await Promise.make((resolve, _) => setTimeout(resolve, delayMs)->ignore)
+    await waitForMergeSuccess(
+      client,
+      ~associationId,
+      ~mergedApiIdentifier,
+      ~maxAttempts,
+      ~attempt=attempt + 1,
+      ~delayMs,
+    )
+  }
+}
+
 // ── @aws_auth directive injection ─────────────────────────────────────────
 // Injects @aws_auth(cognito_groups: [...]) directives into SDL field strings
 // based on authorization metadata from schema entries.
@@ -438,8 +509,15 @@ let stitchWithAwsDirectives = (
 type api = AppSync.GraphQLApi.t
 type role = IAM.Role.t
 
-let makeApiResource = (
+// Primary authentication mode every platform-created AppSync API uses. A
+// merged API and its source APIs must share this primary mode — exported via
+// StackReference (`mergedApiPrimaryAuth`) and asserted where associations are
+// created (AppSync_MergedApi.assertCompatiblePrimaryAuth).
+let primaryAuthenticationType = AppSync.GraphQLApi.AMAZON_COGNITO_USER_POOLS
+
+let _makeApiResourceWith = (
   ~name: string,
+  ~schema: option<string>,
   ~opts: Pulumi.ComponentResource.options,
 ): (Pulumi.Output.t<api>, Pulumi.Output.t<role>) => {
   let customOpts: Pulumi.CustomResourceOptions.t = {
@@ -476,8 +554,7 @@ let makeApiResource = (
   // server-to-server lambdas (heartbeat, Plugin_Connected emission) signed via
   // the existing IAM role.
   let apiArgs: AppSync.GraphQLApi.args = {
-    authenticationType: AppSync.GraphQLApi
-    .AMAZON_COGNITO_USER_POOLS->Pulumi.Input.make,
+    authenticationType: primaryAuthenticationType->Pulumi.Input.make,
     userPoolConfig: userPoolConfigOut->Pulumi.Output.asInput,
     additionalAuthenticationProviders: [
       (
@@ -486,11 +563,31 @@ let makeApiResource = (
         }: AppSync.GraphQLApi.additionalAuthenticationProvider
       )->Pulumi.Input.make,
     ]->Pulumi.Input.make,
+    schema: ?(schema->Option.map(Pulumi.Input.make)),
   }
   let graphQLApi = AppSync.GraphQLApi.make(~name, ~args=apiArgs, ~opts=Some(customOpts))
 
   (graphQLApi->Pulumi.Output.make, iamRole->Pulumi.Output.make)
 }
+
+let makeApiResource = (
+  ~name: string,
+  ~opts: Pulumi.ComponentResource.options,
+): (Pulumi.Output.t<api>, Pulumi.Output.t<role>) =>
+  _makeApiResourceWith(~name, ~schema=None, ~opts)
+
+// Merged-mode source API: same auth shape as makeApiResource but with a
+// DECLARATIVE inline schema — the provider runs StartSchemaCreation + poll
+// before the resource resolves, so resolvers chained on the API are ordered
+// after the schema is ACTIVE without the push-path hook machinery. Not part
+// of the Api_Adapter.Provider interface (Platform.res calls it directly on
+// the merge path).
+let makeSourceApiResource = (
+  ~name: string,
+  ~schema: string,
+  ~opts: Pulumi.ComponentResource.options,
+): (Pulumi.Output.t<api>, Pulumi.Output.t<role>) =>
+  _makeApiResourceWith(~name, ~schema=Some(schema), ~opts)
 
 let generateFragment = (
   ~mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,

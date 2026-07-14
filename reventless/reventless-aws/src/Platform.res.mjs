@@ -42,6 +42,7 @@ import * as PgProjectionFeed$ReventlessAws from "./adapter/Postgres/PgProjection
 import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs";
 import * as IndexJs from "@pulumi/pulumi/runtime/index.js";
 import * as AppSync_EventsApi$ReventlessAws from "./adapter/Api/AppSync_EventsApi.res.mjs";
+import * as AppSync_MergedApi$ReventlessAws from "./components/Api/AppSync_MergedApi.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as Util_HostUiDomain$ReventlessAws from "./util/Util_HostUiDomain.res.mjs";
@@ -49,6 +50,7 @@ import * as DcbEventLogStorage$ReventlessAws from "./adapter/DcbEventLog/DcbEven
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsProjection.res.mjs";
 import * as StateTopic_AppSync$ReventlessAws from "./adapter/StateTopic/StateTopic_AppSync.res.mjs";
+import * as AppSync_SdlDecorate$ReventlessAws from "./components/Api/AppSync_SdlDecorate.res.mjs";
 import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
 import * as Util_AppSync_Caller$ReventlessAws from "./util/Util_AppSync_Caller.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
@@ -170,6 +172,17 @@ function MakeWithConfig(Config) {
       id: Pulumi.output(roleName)
     };
   };
+  let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
+    types: [],
+    mutations: [],
+    queries: [],
+    subscriptions: [],
+    subscriptionSources: []
+  });
+  let adminSourceSdl = () => {
+    let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", AdminApi$ReventlessCore.systemCallerFieldNames);
+    return AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(baseFragment, []));
+  };
   let match;
   if (platformStackRef !== undefined) {
     let stackRef = Primitive_option.valFromOption(platformStackRef);
@@ -225,7 +238,13 @@ function MakeWithConfig(Config) {
       phantomPlatformRole
     ];
   } else {
-    let match$1 = AppSync_Adapter$ReventlessAws.makeApiResource("DomainApi", {});
+    let match$1;
+    if (Config.mergedApi) {
+      let schema = Config.splitApi ? AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchWithAwsDirectives(emptyBaseFragment, [])) : adminSourceSdl();
+      match$1 = AppSync_Adapter$ReventlessAws.makeSourceApiResource("DomainApi", schema, {});
+    } else {
+      match$1 = AppSync_Adapter$ReventlessAws.makeApiResource("DomainApi", {});
+    }
     let role = match$1[1];
     let api = match$1[0];
     match = [
@@ -452,13 +471,6 @@ function MakeWithConfig(Config) {
     project: UiFragments_Projection$ReventlessCore.project,
     moduleUrl: UiFragments_Projection$ReventlessCore.moduleUrl
   });
-  let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
-    types: [],
-    mutations: [],
-    queries: [],
-    subscriptions: [],
-    subscriptionSources: []
-  });
   let Make$8 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make({
       makeApiResource: AppSync_Adapter$ReventlessAws.makeApiResource,
@@ -597,6 +609,9 @@ function MakeWithConfig(Config) {
     });
   };
   let hooks_preAdminResolversSchemaHook = adminBarrier => {
+    if (Config.mergedApi) {
+      return adminBarrier;
+    }
     let match = splitApiOutputsRef.contents;
     let targetApiOpt = match !== undefined ? match.platformApi : (
         Config.splitApi ? undefined : domainApi
@@ -883,6 +898,9 @@ function MakeWithConfig(Config) {
   };
   let makePlatform = (version, plugins) => {
     log.info("Platform", undefined, `v` + version);
+    if (Config.mergedApi) {
+      Pervasives.failwith("mergedApi mode is supported with deployPlatform only — deploy the platform with deployPlatform and each plugin with deployPlugin.");
+    }
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
@@ -967,12 +985,41 @@ function MakeWithConfig(Config) {
     hooks_scheduler.contents = scheduler;
     hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
     hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
-    let match = Config.splitApi ? AppSync_Adapter$ReventlessAws.makeApiResource("PlatformApi", {}) : [
+    let match = Config.splitApi ? (
+        Config.mergedApi ? AppSync_Adapter$ReventlessAws.makeSourceApiResource("PlatformApi", adminSourceSdl(), {}) : AppSync_Adapter$ReventlessAws.makeApiResource("PlatformApi", {})
+      ) : [
         domainApi,
         domainApiRole
       ];
     let platformApiRole = match[1];
     let platformApi = match[0];
+    let mergedOutputs;
+    if (Config.mergedApi) {
+      AppSync_MergedApi$ReventlessAws.assertCompatiblePrimaryAuth(AppSync_MergedApi$ReventlessAws.authenticationTypeName(AppSync_Adapter$ReventlessAws.primaryAuthenticationType), AppSync_MergedApi$ReventlessAws.primaryAuthMode);
+      let domainMerged = AppSync_MergedApi$ReventlessAws.make("DomainMergedApi", {});
+      if (Config.splitApi) {
+        let platformMerged = AppSync_MergedApi$ReventlessAws.make("PlatformMergedApi", {});
+        let platformAssoc = AppSync_MergedApi$ReventlessAws.associateSource("PlatformAdminSourceAssociation", platformMerged, platformApi, {});
+        let domainAssoc = AppSync_MergedApi$ReventlessAws.associateSource("DomainBaseSourceAssociation", domainMerged, domainApi, {});
+        mergedOutputs = {
+          domainMerged: domainMerged,
+          platformMerged: platformMerged,
+          domainMergeGate: AppSync_MergedApi$ReventlessAws.mergeStatusGate(domainMerged, domainAssoc),
+          platformMergeGate: AppSync_MergedApi$ReventlessAws.mergeStatusGate(platformMerged, platformAssoc)
+        };
+      } else {
+        let assoc = AppSync_MergedApi$ReventlessAws.associateSource("DomainAdminSourceAssociation", domainMerged, domainApi, {});
+        let gate = AppSync_MergedApi$ReventlessAws.mergeStatusGate(domainMerged, assoc);
+        mergedOutputs = {
+          domainMerged: domainMerged,
+          platformMerged: domainMerged,
+          domainMergeGate: gate,
+          platformMergeGate: gate
+        };
+      }
+    } else {
+      mergedOutputs = undefined;
+    }
     hooksAdminApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(platformApi);
     if (Config.splitApi) {
       splitApiOutputsRef.contents = {
@@ -1105,6 +1152,22 @@ function MakeWithConfig(Config) {
     Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
     Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
+    if (mergedOutputs !== undefined) {
+      let platformMerged$1 = mergedOutputs.platformMerged;
+      let domainMerged$1 = mergedOutputs.domainMerged;
+      let mergeGatedArn = (merged, gate) => Pulumi.all([
+        Output$Pulumi.flatMap(merged.api, api => api.arn),
+        gate
+      ]).apply(param => param[0]);
+      let mergedEndpoint = merged => Output$Pulumi.flatMap(merged.api, api => api.uris.apply(uris => uris.GRAPHQL));
+      Pulumi$Pulumi.$$export("domainMergedApiArn", mergeGatedArn(domainMerged$1, mergedOutputs.domainMergeGate));
+      Pulumi$Pulumi.$$export("domainMergedApiId", Output$Pulumi.flatMap(domainMerged$1.api, api => api.id));
+      Pulumi$Pulumi.$$export("domainMergedApiEndpoint", mergedEndpoint(domainMerged$1));
+      Pulumi$Pulumi.$$export("platformMergedApiArn", mergeGatedArn(platformMerged$1, mergedOutputs.platformMergeGate));
+      Pulumi$Pulumi.$$export("platformMergedApiId", Output$Pulumi.flatMap(platformMerged$1.api, api => api.id));
+      Pulumi$Pulumi.$$export("platformMergedApiEndpoint", mergedEndpoint(platformMerged$1));
+      Pulumi$Pulumi.$$export("mergedApiPrimaryAuth", Pulumi.output(AppSync_MergedApi$ReventlessAws.primaryAuthMode));
+    }
     if (domainEventsApiOpt !== undefined) {
       Pulumi$Pulumi.$$export("eventsApiArn", domainEventsApiOpt.api.apiArn);
       Pulumi$Pulumi.$$export("eventsApiDns", domainEventsApiOpt.api.dns.apply(dns => Stdlib_Option.getOr(dns.http, "")));
@@ -1113,9 +1176,11 @@ function MakeWithConfig(Config) {
       Pulumi$Pulumi.$$export("pluginRmTableName", pluginReadModelTableName);
     }
     Plugin_Helpers$ReventlessCore.exportPlatformOutputs(admin.extensionPointsOutputs, admin.aggregatesOutputs, admin.readModelsOutputs, admin.dcbEventLogOutputs, admin.stateChangeSlicesOutputs, admin.stateViewSlicesOutputs, admin.automationSlicesOutputs, admin.outboundTranslationSlicesOutputs, admin.inboundTranslationSlicesOutputs);
-    let resolvedDomainApiEndpoint = Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL));
+    let clientDomainApi = mergedOutputs !== undefined ? mergedOutputs.domainMerged.api : domainApi;
+    let clientPlatformApi = mergedOutputs !== undefined ? mergedOutputs.platformMerged.api : platformApi;
+    let resolvedDomainApiEndpoint = Output$Pulumi.flatMap(clientDomainApi, api => api.uris.apply(uris => uris.GRAPHQL));
     let resolvedDomainApiRoleArn = Output$Pulumi.flatMap(domainApiRole, role => role.arn);
-    let resolvedPlatformApiEndpoint = Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL));
+    let resolvedPlatformApiEndpoint = Output$Pulumi.flatMap(clientPlatformApi, api => api.uris.apply(uris => uris.GRAPHQL));
     let resolvedPlatformApiRoleArn = Output$Pulumi.flatMap(platformApiRole, role => role.arn);
     let adminResourcesOutput = Pulumi.all(Object.values(admin.aggregatesOutputs).map(agg => Aggregate$ReventlessCore.toResolvedOutputs(agg).apply(r => [
       r.eventLog.resources,
@@ -1228,6 +1293,9 @@ function MakeWithConfig(Config) {
   let startServers = () => {};
   let deployPlugin = (plugin, apiTargetOpt) => {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
+    if (Config.mergedApi) {
+      Pervasives.failwith("mergedApi plugin deploys are not wired yet (merged-api plan, Phase 4) — deploy plugins with the push path (mergedApi=false) until Phase 4 lands.");
+    }
     let tmp;
     tmp = apiTarget === "Domain" ? "Domain" : "Platform";
     log.info("Platform:deployPlugin", undefined, `target=` + tmp);
@@ -1371,6 +1439,13 @@ function Make($star) {
       id: Pulumi.output(roleName)
     };
   };
+  let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
+    types: [],
+    mutations: [],
+    queries: [],
+    subscriptions: [],
+    subscriptionSources: []
+  });
   let match;
   if (platformStackRef !== undefined) {
     let stackRef = Primitive_option.valFromOption(platformStackRef);
@@ -1652,13 +1727,6 @@ function Make($star) {
   })({
     project: UiFragments_Projection$ReventlessCore.project,
     moduleUrl: UiFragments_Projection$ReventlessCore.moduleUrl
-  });
-  let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
-    types: [],
-    mutations: [],
-    queries: [],
-    subscriptions: [],
-    subscriptionSources: []
   });
   let Make$9 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make({
@@ -2157,6 +2225,7 @@ function Make($star) {
     let match = AppSync_Adapter$ReventlessAws.makeApiResource("PlatformApi", {});
     let platformApiRole = match[1];
     let platformApi = match[0];
+    let mergedOutputs;
     hooksAdminApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(platformApi);
     splitApiOutputsRef.contents = {
       platformApi: platformApi,
@@ -2281,6 +2350,22 @@ function Make($star) {
     Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
     Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
+    if (mergedOutputs !== undefined) {
+      let platformMerged = mergedOutputs.platformMerged;
+      let domainMerged = mergedOutputs.domainMerged;
+      let mergeGatedArn = (merged, gate) => Pulumi.all([
+        Output$Pulumi.flatMap(merged.api, api => api.arn),
+        gate
+      ]).apply(param => param[0]);
+      let mergedEndpoint = merged => Output$Pulumi.flatMap(merged.api, api => api.uris.apply(uris => uris.GRAPHQL));
+      Pulumi$Pulumi.$$export("domainMergedApiArn", mergeGatedArn(domainMerged, mergedOutputs.domainMergeGate));
+      Pulumi$Pulumi.$$export("domainMergedApiId", Output$Pulumi.flatMap(domainMerged.api, api => api.id));
+      Pulumi$Pulumi.$$export("domainMergedApiEndpoint", mergedEndpoint(domainMerged));
+      Pulumi$Pulumi.$$export("platformMergedApiArn", mergeGatedArn(platformMerged, mergedOutputs.platformMergeGate));
+      Pulumi$Pulumi.$$export("platformMergedApiId", Output$Pulumi.flatMap(platformMerged.api, api => api.id));
+      Pulumi$Pulumi.$$export("platformMergedApiEndpoint", mergedEndpoint(platformMerged));
+      Pulumi$Pulumi.$$export("mergedApiPrimaryAuth", Pulumi.output(AppSync_MergedApi$ReventlessAws.primaryAuthMode));
+    }
     if (domainEventsApiOpt !== undefined) {
       Pulumi$Pulumi.$$export("eventsApiArn", domainEventsApiOpt.api.apiArn);
       Pulumi$Pulumi.$$export("eventsApiDns", domainEventsApiOpt.api.dns.apply(dns => Stdlib_Option.getOr(dns.http, "")));
@@ -2289,9 +2374,11 @@ function Make($star) {
       Pulumi$Pulumi.$$export("pluginRmTableName", pluginReadModelTableName);
     }
     Plugin_Helpers$ReventlessCore.exportPlatformOutputs(admin.extensionPointsOutputs, admin.aggregatesOutputs, admin.readModelsOutputs, admin.dcbEventLogOutputs, admin.stateChangeSlicesOutputs, admin.stateViewSlicesOutputs, admin.automationSlicesOutputs, admin.outboundTranslationSlicesOutputs, admin.inboundTranslationSlicesOutputs);
-    let resolvedDomainApiEndpoint = Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL));
+    let clientDomainApi = mergedOutputs !== undefined ? mergedOutputs.domainMerged.api : domainApi;
+    let clientPlatformApi = mergedOutputs !== undefined ? mergedOutputs.platformMerged.api : platformApi;
+    let resolvedDomainApiEndpoint = Output$Pulumi.flatMap(clientDomainApi, api => api.uris.apply(uris => uris.GRAPHQL));
     let resolvedDomainApiRoleArn = Output$Pulumi.flatMap(domainApiRole, role => role.arn);
-    let resolvedPlatformApiEndpoint = Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL));
+    let resolvedPlatformApiEndpoint = Output$Pulumi.flatMap(clientPlatformApi, api => api.uris.apply(uris => uris.GRAPHQL));
     let resolvedPlatformApiRoleArn = Output$Pulumi.flatMap(platformApiRole, role => role.arn);
     let adminResourcesOutput = Pulumi.all(Object.values(admin.aggregatesOutputs).map(agg => Aggregate$ReventlessCore.toResolvedOutputs(agg).apply(r => [
       r.eventLog.resources,
