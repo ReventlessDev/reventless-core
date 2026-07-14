@@ -486,6 +486,24 @@ let _makeApiResourceWith = (
     ~opts=Some(customOpts),
   )
 
+  // Let AppSync push field-resolver errors to CloudWatch. The API's own service
+  // role is already assumable by appsync.amazonaws.com, so attach the AWS-managed
+  // push policy to it and reuse it as the logging role. `fieldLogLevel = ERROR`
+  // (below) then captures resolver failures AppSync otherwise swallows into the
+  // client's `errors[]` — e.g. a non-null coercion on a stale read-model row.
+  let _appsyncCwLogsAttachment = IAM.RolePolicyAttachment.make(
+    ~name=`${name}-appsync-cwlogs`,
+    ~args={
+      role: iamRole.name->Pulumi.Output.asInput,
+      policyArn: "arn:aws:iam::aws:policy/service-role/AWSAppSyncPushToCloudWatchLogs"->Pulumi.Input.make,
+    },
+    ~opts=Some(customOpts),
+  )
+  let appsyncLogConfig: AppSync.GraphQLApi.logConfig = {
+    cloudwatchLogsRoleArn: iamRole.arn->Pulumi.Output.asInput,
+    fieldLogLevel: AppSync.GraphQLApi.ERROR->Pulumi.Input.make,
+  }
+
   // Resolve the Cognito UserPool — either supplied by the caller (plugin-stack
   // source APIs read it from the platform's StackReference exports so they
   // never provision pool/client resources of their own) or resolved via
@@ -520,6 +538,7 @@ let _makeApiResourceWith = (
       )->Pulumi.Input.make,
     ]->Pulumi.Input.make,
     schema: ?(schema->Option.map(Pulumi.Input.make)),
+    logConfig: appsyncLogConfig->Pulumi.Input.make,
   }
   let graphQLApi = AppSync.GraphQLApi.make(~name, ~args=apiArgs, ~opts=Some(customOpts))
 

@@ -100,11 +100,36 @@ type initialContext = JSON.t
  */
 type contextFactory = initialContext => promise<JSON.t>
 
+// graphql-yoga's `logging` option accepts a boolean, a level string, or a logger
+// object with these four methods (variadic in JS). Yoga passes a plain string to
+// debug/info/warn, and — crucially — the *original* Error object to `error` when
+// it masks a resolver failure (see graphql-yoga error.js `handleError`: on mask
+// it calls `logger.error(error)`). Taking the object form lets a server route
+// yoga's error/warn output into the framework logger unconditionally while
+// keeping verbose debug/info opt-in — so a masked resolver error is never
+// swallowed even when the response is masked.
+type logArg // opaque: a string or an Error object, depending on the call site
+type yogaLogger = {
+  debug: logArg => unit,
+  info: logArg => unit,
+  warn: logArg => unit,
+  error: logArg => unit,
+}
+
+// Best-effort stringify of a yoga log argument: prefer an Error's stack, then its
+// message, then a plain string / JSON. Never throws.
+let logArgToString: logArg => string = %raw(`function (a) {
+  if (a && a.stack) return String(a.stack);
+  if (a && a.message) return String(a.message);
+  if (typeof a === "string") return a;
+  try { return JSON.stringify(a); } catch (_) { return String(a); }
+}`)
+
 @module("graphql-yoga")
 external createYoga: {
   "schema": schema,
   "graphiql": bool,
-  "logging": bool,
+  "logging": yogaLogger,
   "maskedErrors": bool,
 } => yoga = "createYoga"
 
@@ -118,7 +143,7 @@ external createYoga: {
 external createYogaWithContext: {
   "schema": schema,
   "graphiql": bool,
-  "logging": bool,
+  "logging": yogaLogger,
   "maskedErrors": bool,
   "context": contextFactory,
 } => yoga = "createYoga"

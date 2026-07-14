@@ -553,10 +553,20 @@ let start = (~port: int=4000, ~contextFactory as _: option<YG.contextFactory>=?,
   lastFullSdl.contents = Some(buildSdl())
   let schema = composeSchema()
   activeSchema.contents = Some(schema)
+  // Route yoga's own logging into the framework logger. error/warn ALWAYS surface
+  // (so a masked resolver failure — which yoga reports via logger.error with the
+  // original Error even when the client response is masked — is never swallowed
+  // again), while verbose debug/info stay gated on GRAPHQL_DEBUG.
+  let yogaLogging: YG.yogaLogger = {
+    debug: a => if debug { log.debug(~comp="GraphQL:Domain", YG.logArgToString(a)) },
+    info: a => if debug { log.info(~comp="GraphQL:Domain", YG.logArgToString(a)) },
+    warn: a => log.warn(~comp="GraphQL:Domain", YG.logArgToString(a)),
+    error: a => log.error(~comp="GraphQL:Domain", YG.logArgToString(a)),
+  }
   let yoga = YG.createYogaWithContext({
     "schema": schema,
     "graphiql": true,
-    "logging": debug,
+    "logging": yogaLogging,
     "maskedErrors": !debug,
     "context": buildAuthContext,
   })

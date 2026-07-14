@@ -2,7 +2,8 @@
 
 import * as Ws from "ws";
 import * as Http from "http";
-import * as GraphqlYoga from "graphql-yoga";
+import * as GraphqlYoga from "@reventlessdev/rescript-graphql-yoga/src/GraphqlYoga.res.mjs";
+import * as GraphqlYoga$1 from "graphql-yoga";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
@@ -111,21 +112,39 @@ type Mutation {
     }
     let sdl = buildSdl();
     lastFullSdl.contents = sdl;
-    let schema = GraphqlYoga.createSchema({
+    let schema = GraphqlYoga$1.createSchema({
       typeDefs: sdl,
       resolvers: resolvers
     });
     activeSchema.contents = Primitive_option.some(schema);
-    let yoga = contextFactory !== undefined ? GraphqlYoga.createYoga({
+    let yogaLogging_debug = a => {
+      if (debug) {
+        return log.debug(label, undefined, GraphqlYoga.logArgToString(a));
+      }
+    };
+    let yogaLogging_info = a => {
+      if (debug) {
+        return log.info(label, undefined, GraphqlYoga.logArgToString(a));
+      }
+    };
+    let yogaLogging_warn = a => log.warn(label, undefined, GraphqlYoga.logArgToString(a));
+    let yogaLogging_error = a => log.error(label, undefined, GraphqlYoga.logArgToString(a));
+    let yogaLogging = {
+      debug: yogaLogging_debug,
+      info: yogaLogging_info,
+      warn: yogaLogging_warn,
+      error: yogaLogging_error
+    };
+    let yoga = contextFactory !== undefined ? GraphqlYoga$1.createYoga({
         schema: schema,
         graphiql: true,
-        logging: debug,
+        logging: yogaLogging,
         maskedErrors: !debug,
         context: contextFactory
-      }) : GraphqlYoga.createYoga({
+      }) : GraphqlYoga$1.createYoga({
         schema: schema,
         graphiql: true,
-        logging: debug,
+        logging: yogaLogging,
         maskedErrors: !debug
       });
     let server = Http.createServer(yoga);

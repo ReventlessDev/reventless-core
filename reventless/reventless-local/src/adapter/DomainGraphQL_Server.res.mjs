@@ -3,11 +3,12 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Http from "http";
 import * as Graphql from "graphql";
+import * as GraphqlYoga from "@reventlessdev/rescript-graphql-yoga/src/GraphqlYoga.res.mjs";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
-import * as GraphqlYoga from "graphql-yoga";
+import * as GraphqlYoga$1 from "graphql-yoga";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
@@ -409,7 +410,7 @@ function composeSchema() {
     }
     let doc = buildScopeSdl(b);
     try {
-      GraphqlYoga.createSchema({
+      GraphqlYoga$1.createSchema({
         typeDefs: doc,
         resolvers: scopeResolverMap(b, false)
       });
@@ -435,7 +436,7 @@ function composeSchema() {
     }
   });
   try {
-    return GraphqlYoga.createSchema({
+    return GraphqlYoga$1.createSchema({
       typeDefs: docs,
       resolvers: resolverMaps
     });
@@ -454,10 +455,28 @@ function start(portOpt, param, param$1) {
   lastFullSdl.contents = buildSdl();
   let schema = composeSchema();
   activeSchema.contents = Primitive_option.some(schema);
-  let yoga = GraphqlYoga.createYoga({
+  let yogaLogging_debug = a => {
+    if (debug) {
+      return log.debug("GraphQL:Domain", undefined, GraphqlYoga.logArgToString(a));
+    }
+  };
+  let yogaLogging_info = a => {
+    if (debug) {
+      return log.info("GraphQL:Domain", undefined, GraphqlYoga.logArgToString(a));
+    }
+  };
+  let yogaLogging_warn = a => log.warn("GraphQL:Domain", undefined, GraphqlYoga.logArgToString(a));
+  let yogaLogging_error = a => log.error("GraphQL:Domain", undefined, GraphqlYoga.logArgToString(a));
+  let yogaLogging = {
+    debug: yogaLogging_debug,
+    info: yogaLogging_info,
+    warn: yogaLogging_warn,
+    error: yogaLogging_error
+  };
+  let yoga = GraphqlYoga$1.createYoga({
     schema: schema,
     graphiql: true,
-    logging: debug,
+    logging: yogaLogging,
     maskedErrors: !debug,
     context: Auth_GraphqlContext$ReventlessLocal.buildAuthContext
   });

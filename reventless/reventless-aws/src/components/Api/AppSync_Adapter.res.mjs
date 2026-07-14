@@ -276,6 +276,15 @@ function _makeApiResourceWith(name, schema, userPoolConfig, opts) {
   let iamRole = new (Aws.iam.Role)(name + `-appsync-role`, {
     assumeRolePolicy: `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`
   }, customOpts);
+  new (Aws.iam.RolePolicyAttachment)(name + `-appsync-cwlogs`, {
+    policyArn: "arn:aws:iam::aws:policy/service-role/AWSAppSyncPushToCloudWatchLogs",
+    role: iamRole.name
+  }, customOpts);
+  let appsyncLogConfig_cloudwatchLogsRoleArn = iamRole.arn;
+  let appsyncLogConfig = {
+    cloudwatchLogsRoleArn: appsyncLogConfig_cloudwatchLogsRoleArn,
+    fieldLogLevel: "ERROR"
+  };
   let userPoolConfigOut = userPoolConfig !== undefined ? userPoolConfig : Auth_Cognito$ReventlessAws.make(name + `-auth`, undefined).apply(c => ({
       userPoolId: c.userPoolId,
       defaultAction: "ALLOW",
@@ -286,11 +295,13 @@ function _makeApiResourceWith(name, schema, userPoolConfig, opts) {
   let apiArgs_additionalAuthenticationProviders = [{
       authenticationType: "AWS_IAM"
     }];
+  let apiArgs_logConfig = appsyncLogConfig;
   let apiArgs = {
     authenticationType: "AMAZON_COGNITO_USER_POOLS",
     schema: apiArgs_schema,
     userPoolConfig: apiArgs_userPoolConfig,
-    additionalAuthenticationProviders: apiArgs_additionalAuthenticationProviders
+    additionalAuthenticationProviders: apiArgs_additionalAuthenticationProviders,
+    logConfig: apiArgs_logConfig
   };
   let graphQLApi = new (Aws.appsync.GraphQLApi)(name, apiArgs, customOpts);
   return [

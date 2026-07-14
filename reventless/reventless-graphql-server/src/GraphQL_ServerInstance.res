@@ -168,12 +168,22 @@ ${mutations}
     lastFullSdl.contents = Some(sdl)
     let schema = YG.createSchema({"typeDefs": sdl, "resolvers": resolvers})
     activeSchema.contents = Some(schema)
+    // Route yoga's own logging into the framework logger. error/warn ALWAYS
+    // surface (so a masked resolver failure — which yoga reports via logger.error
+    // with the original Error even when the client response is masked — is never
+    // swallowed), while verbose debug/info stay gated on GRAPHQL_DEBUG.
+    let yogaLogging: YG.yogaLogger = {
+      debug: a => if debug { log.debug(~comp=label, YG.logArgToString(a)) },
+      info: a => if debug { log.info(~comp=label, YG.logArgToString(a)) },
+      warn: a => log.warn(~comp=label, YG.logArgToString(a)),
+      error: a => log.error(~comp=label, YG.logArgToString(a)),
+    }
     let yoga = switch contextFactory {
     | Some(ctx) =>
       YG.createYogaWithContext({
         "schema": schema,
         "graphiql": true,
-        "logging": debug,
+        "logging": yogaLogging,
         "maskedErrors": !debug,
         "context": ctx,
       })
@@ -181,7 +191,7 @@ ${mutations}
       YG.createYoga({
         "schema": schema,
         "graphiql": true,
-        "logging": debug,
+        "logging": yogaLogging,
         "maskedErrors": !debug,
       })
     }

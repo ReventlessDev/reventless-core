@@ -42,6 +42,25 @@ type additionalAuthenticationProvider = {
   userPoolConfig?: Pulumi.Input.t<userPoolConfig>,
 }
 
+/** Field-level CloudWatch log verbosity for resolver execution. `ERROR` logs
+    only field/resolver errors (e.g. a non-null coercion on a stale read-model
+    row) — the server-side capture point that AppSync otherwise swallows into the
+    client's `errors[]`; `ALL` also logs request-level tracing (high volume). */
+type fieldLogLevel =
+  | NONE
+  | ERROR
+  | ALL
+
+/** CloudWatch logging config. `cloudwatchLogsRoleArn` must be an IAM role
+    assumable by `appsync.amazonaws.com` carrying `AWSAppSyncPushToCloudWatchLogs`.
+    Resolvers run on the SOURCE APIs under the merged-API topology, so set this on
+    the source APIs to capture field-resolver errors. */
+type logConfig = {
+  cloudwatchLogsRoleArn: Pulumi.Input.t<string>,
+  fieldLogLevel: Pulumi.Input.t<fieldLogLevel>,
+  excludeVerboseContent?: Pulumi.Input.t<bool>,
+}
+
 type args = {
   authenticationType: Pulumi.Input.t<authenticationType>,
   name?: Pulumi.Input.t<string>,
@@ -52,6 +71,7 @@ type args = {
   >,
   apiType?: Pulumi.Input.t<apiType>,
   mergedApiExecutionRoleArn?: Pulumi.Input.t<string>,
+  logConfig?: Pulumi.Input.t<logConfig>,
 }
 
 @module("@pulumi/aws") @scope("appsync") @new
