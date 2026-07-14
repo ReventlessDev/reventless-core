@@ -510,12 +510,9 @@ function Make(Spec) {
               return;
             }
           });
-          let url = dcbResult.dcbCommandTopicQueueUrl;
-          if (url !== undefined) {
-            stateChangeSlices.forEach(Sc => {
-              aggregateQueueUrls[Sc.Spec.name] = url;
-            });
-          }
+          stateChangeSlices.forEach(Sc => {
+            aggregateQueueUrls[Sc.Spec.name] = dcbResult.dcbCommandTopicQueueUrl;
+          });
           let readModelQueueUrls = {};
           Object.entries(readModelsOutputs).forEach(param => {
             let urlOutput = Output$Pulumi.flatMap(param[1].eventCollector, ecOutputs => {

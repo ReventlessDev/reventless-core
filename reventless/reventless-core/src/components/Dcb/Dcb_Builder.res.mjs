@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
+import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
@@ -55,6 +56,8 @@ let emptyResult_outboundTranslationSlicesOutputs = {};
 
 let emptyResult_inboundTranslationSlicesOutputs = {};
 
+let emptyResult_dcbCommandTopicQueueUrl = Pulumi.output("");
+
 let emptyResult_mutationEntries = [];
 
 let emptyResult_queryEntries = [];
@@ -70,7 +73,7 @@ let emptyResult = {
   inboundTranslationSlicesOutputs: emptyResult_inboundTranslationSlicesOutputs,
   dcbRuntimeSetup: undefined,
   dcbPublishJsons: undefined,
-  dcbCommandTopicQueueUrl: undefined,
+  dcbCommandTopicQueueUrl: emptyResult_dcbCommandTopicQueueUrl,
   mutationEntries: emptyResult_mutationEntries,
   queryEntries: emptyResult_queryEntries,
   eventLogEntries: emptyResult_eventLogEntries
@@ -544,9 +547,15 @@ function Make(DcbEventLogStorage) {
         };
       });
       let allProducedSchemas = stateChangeSlices.map(Sc => Sc.Spec.eventSchema);
-      let outputs = Component$ReventlessCore.outputs(dcbCommandTopic);
-      let r = outputs.resources[0];
-      let dcbCommandTopicQueueUrl = r !== undefined ? r.id : undefined;
+      let dcbCommandTopicQueueUrl = Output$Pulumi.flatMap(Component$ReventlessCore.operations(dcbCommandTopic), _ops => {
+        let outputs = Component$ReventlessCore.outputs(dcbCommandTopic);
+        let r = outputs.resources[0];
+        if (r !== undefined) {
+          return r.id;
+        } else {
+          return Pulumi.output("");
+        }
+      });
       return {
         dcbEventLogOutputs: Component$ReventlessCore.outputs(dcbEventLog),
         stateChangeSlicesOutputs: Object.fromEntries(Object.entries(stateChangeSlicesOutputs).concat(Object.entries(asyncStateChangeSlicesOutputs))),

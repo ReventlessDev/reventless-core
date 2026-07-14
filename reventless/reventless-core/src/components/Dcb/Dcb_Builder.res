@@ -35,8 +35,15 @@ type dcbResult = {
   dcbPublishJsons: option<Pulumi.Output.t<CommandTopic.publishJsons>>,
   // SQS URL of the DCB command topic — shared by all StateChangeSlices in this
   // plugin. Surfaced so the bundled Plugin EventCollector Lambda can dispatch
-  // PublishStateChangeSliceCommand actions from user extensions to the right queue.
-  dcbCommandTopicQueueUrl: option<Pulumi.Output.t<string>>,
+  // PublishStateChangeSliceCommand actions from user extensions to the right
+  // queue. Resolves to "" when the plugin has no DCB slices — deliberately NOT
+  // option<Pulumi.Output.t<string>> (that combination is a repo-wide
+  // anti-pattern; it minted the nested-option sentinel that broke the
+  // collector's SendMessage grant). The Output is gated on the topic's
+  // `Component.operations`, so it resolves only after the topic finished
+  // constructing — see the construction site and
+  // docs/analysis/ec-publish-to-aggregates-grant-broken.md.
+  dcbCommandTopicQueueUrl: Pulumi.Output.t<string>,
   mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
   queryEntries: array<ReventlessInfra.Api.querySchemaEntry>,
   eventLogEntries: array<ReventlessInfra.Api.eventLogSchemaEntry>,
@@ -51,7 +58,7 @@ let emptyResult: dcbResult = {
   inboundTranslationSlicesOutputs: Dict.make(),
   dcbRuntimeSetup: None,
   dcbPublishJsons: None,
-  dcbCommandTopicQueueUrl: None,
+  dcbCommandTopicQueueUrl: Pulumi.Output.make(""),
   mutationEntries: [],
   queryEntries: [],
   eventLogEntries: [],
@@ -956,24 +963,29 @@ module Make = (
             Sc.Spec.eventSchema->S.castToUnknown
           )
 
-        // NB: don't use `Option.map(r => r.id)` here — Stdlib_Option.map has a
-        // generic `'a => 'b` signature, so it wraps the lambda's return value
-        // via Caml_option.some(...). The static type of r.id is
-        // Pulumi.Output.t<string>, but a Pulumi Output is a JS object whose
-        // .id getter can resolve to undefined during early CustomResource
-        // construction; Caml_option.some(undefined) returns the nested-
-        // option sentinel `{BS_PRIVATE_NESTED_SOME_NONE: 0}`, which then
-        // flows through publishToAggregates into Lambda env vars and
-        // Pulumi's type checker rejects it (expected string, got object).
-        // The explicit switch keeps r.id's static type (non-option), so the
-        // `Some(r.id)` construction is identity-compiled — no wrapping.
-        let dcbCommandTopicQueueUrl = {
-          let outputs: CommandTopic.outputs = dcbCommandTopic->Component.outputs->Obj.magic
-          switch outputs.resources->Array.get(0) {
-          | Some(r) => Some(r.id)
-          | None => None
-          }
-        }
+        // Derive the DCB command topic's queue URL *after* the component's
+        // construct has completed. Reading `resources[0].id` synchronously here
+        // is timing-fragile: in some runs the SQS Queue's `.id` is not yet a
+        // real Output in this window and the captured value degenerates to the
+        // `{BS_PRIVATE_NESTED_SOME_NONE: 0}` nested-option sentinel, which then
+        // flows through publishToAggregates and silently breaks the Plugin
+        // EventCollector's sqs:SendMessage grant on this queue (cross-plugin
+        // extension → DCB-slice publishes fail with IAM AccessDenied). Gating
+        // the read on `Component.operations` — an Output that resolves only
+        // after construct has stored the real resources — makes `r.id` a
+        // resolvable queue-URL Output in every run. Mirrors how
+        // `dcbPublishJsons` reads through `Component.operations` above.
+        // See docs/analysis/ec-publish-to-aggregates-grant-broken.md.
+        let dcbCommandTopicQueueUrl =
+          dcbCommandTopic
+          ->Component.operations
+          ->Pulumi.Output.flatMap(_ops => {
+            let outputs: CommandTopic.outputs = dcbCommandTopic->Component.outputs->Obj.magic
+            switch outputs.resources->Array.get(0) {
+            | Some(r) => r.id
+            | None => Pulumi.Output.make("")
+            }
+          })
         {
           dcbEventLogOutputs: Some(dcbEventLog->Component.outputs),
           stateChangeSlicesOutputs: Dict.fromArray(

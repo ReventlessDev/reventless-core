@@ -776,13 +776,11 @@ module Make = (
         // All DCB StateChangeSlices share the same dcb command topic — map
         // every slice name to that single URL so PublishStateChangeSliceCommand
         // routes correctly regardless of which slice the extension targets.
-        switch dcbResult.dcbCommandTopicQueueUrl {
-        | Some(url) =>
-          stateChangeSlices->Array.forEach((module(Sc: StateChangeSlice.T)) =>
-            aggregateQueueUrls->Dict.set(Sc.Spec.name, url)
-          )
-        | None => ()
-        }
+        // (No-op when the plugin has no DCB slices: the list is empty and the
+        // URL Output resolves to "".)
+        stateChangeSlices->Array.forEach((module(Sc: StateChangeSlice.T)) =>
+          aggregateQueueUrls->Dict.set(Sc.Spec.name, dcbResult.dcbCommandTopicQueueUrl)
+        )
 
         // Per-RM EventCollector SQS URL — populated only for plugins that
         // expose RMs the bundled handler may enqueue events into directly.
