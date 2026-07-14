@@ -65,6 +65,16 @@ export async function handler() {
     }
     return 0;
   };
+  // The persisted structure carries Internal ReadModels / StateViewSlices for
+  // developer tooling; they must stay out of the deployed AutoUI. Mirror
+  // ReventlessCore.Platform_ComponentDefinitionsApi.isPublicQueryable here on the
+  // read path (the persisted structure is pre-filter — it is NOT re-encoded).
+  const isPublicQueryable = (q) => q?.visibility !== "Internal";
+  const filterStructure = (s) => ({
+    ...s,
+    readModels: (s.readModels ?? []).filter(isPublicQueryable),
+    stateViewSlices: (s.stateViewSlices ?? []).filter(isPublicQueryable),
+  });
   const latestByName = new Map();
   for (const item of items) {
     if (!item || !item.structure) continue;
@@ -72,7 +82,7 @@ export async function handler() {
     const version = String(item.name).split("@")[1] ?? "";
     const prev = latestByName.get(name);
     if (!prev || cmpVer(version, prev.version) > 0) {
-      latestByName.set(name, { version, entry: { pluginId: name, ...item.structure } });
+      latestByName.set(name, { version, entry: { pluginId: name, ...filterStructure(item.structure) } });
     }
   }
   const userEntries = [...latestByName.values()].map(v => v.entry);
