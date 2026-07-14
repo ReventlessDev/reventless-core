@@ -9,10 +9,13 @@ let $$Function;
 
 let Resolver;
 
+let SourceApiAssociation;
+
 export {
   GraphQLApi,
   DataSource,
   $$Function,
   Resolver,
+  SourceApiAssociation,
 }
 /* No side effect */

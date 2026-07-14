@@ -25,6 +25,15 @@ type authenticationType =
   | AMAZON_COGNITO_USER_POOLS
   | OPENID_CONNECT
 
+/** `MERGED` turns the API into an AppSync Merged API: it carries no schema of
+    its own — source APIs contribute theirs via `AppSync.SourceApiAssociation`
+    and AWS composes the merged endpoint. Requires `mergedApiExecutionRoleArn`
+    (`appsync:SourceGraphQL` on the associated source APIs; also
+    `appsync:StartSchemaMerge` when associations use `MANUAL_MERGE`). */
+type apiType =
+  | GRAPHQL
+  | MERGED
+
 /** Entry of the `additionalAuthenticationProviders` array — minimal shape
     covering the IAM and Cognito cases used by the Reventless platform.
     Extend with `openidConnectConfig` / `lambdaAuthorizerConfig` if needed. */
@@ -41,6 +50,8 @@ type args = {
   additionalAuthenticationProviders?: Pulumi.Input.t<
     array<Pulumi.Input.t<additionalAuthenticationProvider>>,
   >,
+  apiType?: Pulumi.Input.t<apiType>,
+  mergedApiExecutionRoleArn?: Pulumi.Input.t<string>,
 }
 
 @module("@pulumi/aws") @scope("appsync") @new
