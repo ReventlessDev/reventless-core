@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.21 (2026-07-14)
+
+### Features
+
+* **local:** plugin=subgraph composition — per-plugin subschemas merged at start (Phase 6, plan complete) ([40f44c5](https://github.com/ReventlessDev/reventless-core/commit/40f44c5c6aa32fbbd64f362841cf41ba4e2fc2e0))
+
+
 # 1.0.0-alpha.20 (2026-07-11)
 
 **Note:** Version bump only for package @reventlessdev/rescript-graphql-yoga
