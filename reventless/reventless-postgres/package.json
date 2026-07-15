@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-postgres",
-  "version": "3.0.0-alpha.32",
+  "version": "3.0.0-alpha.33",
   "description": "Postgres storage backend for Reventless (classic + DCB event logs, query DB, change feed). Connection-string only — RDS/Aurora, any managed provider, or a local container.",
   "license": "Apache-2.0",
   "scripts": {

@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-gwt",
-  "version": "1.0.0-alpha.114",
+  "version": "1.0.0-alpha.115",
   "description": "Given-When-Then DSLs and CLI runner for Reventless slice testing",
   "license": "Apache-2.0",
   "bin": {

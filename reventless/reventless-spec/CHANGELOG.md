@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.77 (2026-07-15)
+
+### Performance Improvements
+
+* **spec:** reverse-convert DcbTag extraction instead of stringify round-trip ([4311c7b](https://github.com/ReventlessDev/reventless-core/commit/4311c7b863f99e582911ced529d77dca7cc36381))
+
+
 # 3.0.0-alpha.76 (2026-07-12)
 
 ### Features
