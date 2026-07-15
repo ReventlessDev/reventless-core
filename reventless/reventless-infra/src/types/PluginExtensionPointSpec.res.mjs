@@ -159,12 +159,6 @@ let pluginStructureSchema = Plugin$Reventless.pluginStructureSchema;
 
 let pluginStructureOptionSchema = Plugin$Reventless.pluginStructureOptionSchema;
 
-let graphNodeSchema = Plugin$Reventless.graphNodeSchema;
-
-let graphEdgeSchema = Plugin$Reventless.graphEdgeSchema;
-
-let platformEventGraphSchema = Plugin$Reventless.platformEventGraphSchema;
-
 let pluginDefinitionSchema = Plugin$Reventless.pluginDefinitionSchema;
 
 let timeoutSchema = S.int;
@@ -204,9 +198,6 @@ export {
   extensionPointDefArrayOptionSchema,
   pluginStructureSchema,
   pluginStructureOptionSchema,
-  graphNodeSchema,
-  graphEdgeSchema,
-  platformEventGraphSchema,
   pluginDefinitionSchema,
   timeoutSchema,
   forwardCommandSchema,

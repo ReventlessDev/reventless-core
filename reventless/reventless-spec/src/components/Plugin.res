@@ -368,23 +368,6 @@ type pluginStructure = {
 
 let pluginStructureOptionSchema = _jsNullable(pluginStructureSchema, ())
 
-// ── Event graph types (cross-plugin component graph) ──────────────────────────
-
-@schema
-type graphNode = {pluginName: string, componentName: string, kind: string}
-
-@schema
-type graphEdge = {
-  source: graphNode,
-  target: graphNode,
-  mechanism: string,
-  viaEvents: array<string>,
-  implicit: bool,
-}
-
-@schema
-type platformEventGraph = {nodes: array<graphNode>, edges: array<graphEdge>}
-
 /**
 The self-description of a deployed plugin, persisted in the plugin's event store.
 

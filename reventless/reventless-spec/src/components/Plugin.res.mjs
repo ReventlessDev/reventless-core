@@ -190,25 +190,6 @@ let pluginStructureSchema = S.schema(s => ({
 
 let pluginStructureOptionSchema = SuryResMjs.js_nullable(pluginStructureSchema);
 
-let graphNodeSchema = S.schema(s => ({
-  pluginName: s.m(S.string),
-  componentName: s.m(S.string),
-  kind: s.m(S.string)
-}));
-
-let graphEdgeSchema = S.schema(s => ({
-  source: s.m(graphNodeSchema),
-  target: s.m(graphNodeSchema),
-  mechanism: s.m(S.string),
-  viaEvents: s.m(S.array(S.string)),
-  implicit: s.m(S.bool)
-}));
-
-let platformEventGraphSchema = S.schema(s => ({
-  nodes: s.m(S.array(graphNodeSchema)),
-  edges: s.m(S.array(graphEdgeSchema))
-}));
-
 let pluginDefinitionSchema = S.schema(s => ({
   id: s.m(S.string),
   name: s.m(S.string),
@@ -262,9 +243,6 @@ export {
   extensionPointDefArrayOptionSchema,
   pluginStructureSchema,
   pluginStructureOptionSchema,
-  graphNodeSchema,
-  graphEdgeSchema,
-  platformEventGraphSchema,
   pluginDefinitionSchema,
 }
 /* pluginKindSchema Not a pure module */
