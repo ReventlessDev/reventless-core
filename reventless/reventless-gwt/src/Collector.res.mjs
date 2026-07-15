@@ -191,6 +191,15 @@ function captureLocation(skip) {
   };
 }
 
+let asSink_test = push;
+
+let asSink = {
+  describe: pushDescribe,
+  todo: pushTodo,
+  captureLocation: captureLocation,
+  test: asSink_test
+};
+
 export {
   active,
   describeStack,
@@ -214,5 +223,6 @@ export {
   drain,
   parseFrame,
   captureLocation,
+  asSink,
 }
 /* No side effect */

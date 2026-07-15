@@ -11,11 +11,9 @@
 
 type status = Skipped | Runnable | Only
 
-type location = {
-  file: string,
-  line: int,
-  column: int,
-}
+// Source location shape is shared with `RunnerHook` so this collector can be
+// exposed as a `RunnerHook.sink` without a conversion layer.
+type location = RunnerHook.location
 
 type entry = {
   id: string,
@@ -209,4 +207,16 @@ let captureLocation = (skip: int): option<location> => {
       }
     find(skip + 1)
   }
+}
+
+// Expose this collector as a `RunnerHook.sink` so a driver can route `JestBind`
+// registrations here. `captureLocation` is bound directly (no wrapper closure)
+// so the stack depth `JestBind` skips when capturing the caller's location is
+// unchanged from calling `captureLocation` inline.
+let asSink: RunnerHook.sink = {
+  describe: pushDescribe,
+  todo: pushTodo,
+  captureLocation,
+  test: (~slice=?, ~location=?, ~timeout=?, name, body) =>
+    push(~slice?, ~location?, ~timeout?, name, body),
 }

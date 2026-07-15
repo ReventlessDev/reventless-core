@@ -3,7 +3,7 @@
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Hint$ReventlessGwt from "./Hint.res.mjs";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
-import * as Collector$ReventlessGwt from "./Collector.res.mjs";
+import * as RunnerHook$ReventlessGwt from "./RunnerHook.res.mjs";
 
 function assertOutcome(slice, outcome) {
   if (outcome.TAG === "Ok") {
@@ -15,8 +15,9 @@ function assertOutcome(slice, outcome) {
 }
 
 function describe(label, body) {
-  if (Collector$ReventlessGwt.isActive()) {
-    return Collector$ReventlessGwt.pushDescribe(label, body);
+  let sink = RunnerHook$ReventlessGwt.get();
+  if (sink !== undefined) {
+    return sink.describe(label, body);
   } else {
     globalThis.describe(label, body);
     return;
@@ -24,8 +25,9 @@ function describe(label, body) {
 }
 
 function todo(label) {
-  if (Collector$ReventlessGwt.isActive()) {
-    return Collector$ReventlessGwt.pushTodo(label);
+  let sink = RunnerHook$ReventlessGwt.get();
+  if (sink !== undefined) {
+    return sink.todo(label);
   } else {
     globalThis.test.todo(label);
     return;
@@ -33,15 +35,17 @@ function todo(label) {
 }
 
 function test(slice, name, body) {
-  if (Collector$ReventlessGwt.isActive()) {
-    let location = Collector$ReventlessGwt.captureLocation(1);
-    return Collector$ReventlessGwt.push(slice, location, undefined, name, () => Promise.resolve(body()));
+  let sink = RunnerHook$ReventlessGwt.get();
+  if (sink !== undefined) {
+    let location = sink.captureLocation(1);
+    return sink.test(slice, location, undefined, name, () => Promise.resolve(body()));
   }
   globalThis.test(name, () => assertOutcome(slice, body()));
 }
 
 function testPromise(slice, name, timeout, body) {
-  if (!Collector$ReventlessGwt.isActive()) {
+  let sink = RunnerHook$ReventlessGwt.get();
+  if (sink === undefined) {
     if (timeout !== undefined) {
       globalThis.test(name, async () => assertOutcome(slice, await body()), timeout);
     } else {
@@ -49,8 +53,8 @@ function testPromise(slice, name, timeout, body) {
     }
     return;
   }
-  let location = Collector$ReventlessGwt.captureLocation(1);
-  Collector$ReventlessGwt.push(slice, location, timeout, name, body);
+  let location = sink.captureLocation(1);
+  sink.test(slice, location, timeout, name, body);
 }
 
 export {

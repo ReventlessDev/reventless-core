@@ -100,7 +100,7 @@ let locateInSource = (mjsPath: string, label: string): option<Collector.location
             if col < 0 {
               find(i + 1)
             } else {
-              Some({Collector.file: resPath, line: i + 1, column: col})
+              Some({RunnerHook.file: resPath, line: i + 1, column: col})
             }
           }
         find(0)

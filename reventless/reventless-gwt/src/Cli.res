@@ -309,6 +309,7 @@ let runEntry = async (entry: Collector.entry): RunnerTypes.testResult => {
 
 let loadAndCollect = async (path: string): array<Collector.entry> => {
   Collector.activate()
+  RunnerHook.register(Collector.asSink)
   Collector.setCurrentFile(path)
   try {
     await Loader.loadFile(path)

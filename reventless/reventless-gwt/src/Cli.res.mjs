@@ -17,6 +17,7 @@ import * as Collector$ReventlessGwt from "./Collector.res.mjs";
 import * as Discovery$ReventlessGwt from "./Discovery.res.mjs";
 import * as LocalHost$ReventlessGwt from "./LocalHost.res.mjs";
 import * as ExnMessage$ReventlessGwt from "./ExnMessage.res.mjs";
+import * as RunnerHook$ReventlessGwt from "./RunnerHook.res.mjs";
 import * as DomainGraph$ReventlessGwt from "./DomainGraph.res.mjs";
 import * as PackageScan$ReventlessGwt from "./PackageScan.res.mjs";
 import * as RunnerTypes$ReventlessGwt from "./RunnerTypes.res.mjs";
@@ -399,6 +400,7 @@ async function runEntry(entry) {
 
 async function loadAndCollect(path) {
   Collector$ReventlessGwt.activate();
+  RunnerHook$ReventlessGwt.register(Collector$ReventlessGwt.asSink);
   Collector$ReventlessGwt.setCurrentFile(path);
   try {
     await Loader$ReventlessGwt.loadFile(path);
