@@ -202,8 +202,7 @@ function extractTagsFromJson(schema, json) {
 }
 
 function extractTags(schema, value) {
-  let json = JSON.parse(Stdlib_Option.getOrThrow(JSON.stringify(value), undefined));
-  return extractTagsFromJson(schema, json);
+  return extractTagsFromJson(schema, S.reverseConvertToJsonOrThrow(value, schema));
 }
 
 function extractVariantNames(schema) {
@@ -345,8 +344,7 @@ function extractTagsFromJsonExpanded(schema, json) {
 }
 
 function extractTagsExpanded(schema, value) {
-  let json = JSON.parse(Stdlib_Option.getOrThrow(JSON.stringify(value), undefined));
-  return extractTagsFromJsonExpanded(schema, json);
+  return extractTagsFromJsonExpanded(schema, S.reverseConvertToJsonOrThrow(value, schema));
 }
 
 function hasTaggedArrayFields(schema) {

@@ -1,8 +1,11 @@
 # Plan: Quality & Performance Hardening (gwt runner, runtime packages, spec generator, protocol)
 
-**Status**: In progress — derived from a five-pass quality review of the toolchain (2026-07-02); line refs to the tree of that date.
+**Status**: In progress (updated 2026-07-15) — derived from a five-pass quality review of the toolchain (2026-07-02); line refs to the tree of that date.
+
+**Current state:** **Phase A (correctness) fully complete (A1–A9).** **Phase B (performance) complete except two deferred tails** — B5 persisted-data versioning (aggregate snapshots split out to [aggregate-snapshotting.md](aggregate-snapshotting.md); projection checkpoints for both axes landed) and B6's layer-builder build-time allocation cuts (deliberately deferred — low value; the `DcbTag` tag-extraction reshape landed 2026-07-15). **Phase C: C1 done; C2/C3/C4 partial** — remaining C4: `registerAdminSchema` triplication, `Util_Adapter` merge, interop namespace collisions, dead `silent` flag, hardcoded `Platform` ports, and folding `FormatterJson`/`FormatterVsCode` onto a shared vocabulary + the opt-in JUnit rendering change. **Phase D: D1/D2 partial; D3 (benchmarks) and D4 (runner robustness) not started** — remaining D1: layer-builder post-process failure-propagation / rescript-dependency-guard / zip-size tests, `extractTargetName` edge cases, and the full generator integration test. See the per-phase Status column below and the progress log for detail.
 
 **Progress log:**
+- 2026-07-15 — **B6 tag-extraction reshape done; layer-builder allocs deferred** (spec). Replaced the per-message `value->JSON.stringifyAny->getOrThrow->JSON.parseOrThrow` round-trip in `DcbTag.extractTags`/`extractTagsExpanded` with the schema-aware `value->S.reverseConvertToJsonOrThrow(schema)` — no longer serializes the whole event to a string and reparses it on every tag extraction (the hottest DCB append/read path). The swap was gated behind a new parity suite (`DcbTagExtractParityTest`, 6 cases) that builds the JSON both ways and asserts `extractTagsFromJson`/`extractTagsFromJsonExpanded` agree across scalar/int/array tags, `stringForKey` overrides, payload-less variants, and plain-object (non-union) events — plus the concrete expected tags. The suite also pins a **latent-bug fix the swap delivers for free**: an `@as`-renamed tagged field (`@as("category_id") categoryId`) was invisible to the old stringify path (which emitted the *runtime* key while the walker keys tags off the schema's *serialized* property name) and now resolves correctly — no live DCB tag field uses `@as`, so it is a fix with no behavior change in practice. **Verified**: spec 9 suites / 98, whole monorepo **231 suites / 1788 green** (all core/local/aws DCB paths + every example GWT runner), zero warnings. **Deferred, with rationale**: (1) the variant-index memoization ("index variants by TAG once per schema") — the residual cost is an `anyOf` linear scan over a handful of variants, so adding a module-level mutable weak cache to this correctness-critical file isn't worth the risk once the string round-trip (the real allocation) is gone; (2) the layer-builder allocation cuts — `predIsNecessary`'s double subtree walk and serial Pacote extraction are **build-time** (once per Lambda-layer build), the plan's `Lru.res:38` line ref is stale (no `Lru` module exists), and parallelizing registry extraction would churn the deploy path of a thinly-tested package for marginal gain.
 - 2026-07-04 — **C1/D1 done — emit-side golden NDJSON fixture** (protocol). Closed the last deferred C1 item (cross-listed in D1's protocol tests): *"Emit-side golden NDJSON fixture generated from FormatterVsCode, published with the package so consumers can replay it against their decoders in their own CI."* The C1 round-trip suite already proves every `streamEvent` variant **decodes**; this freezes the exact emitted **bytes** so a serialization change that still round-trips (field reorder, key rename, number formatting) surfaces as a golden diff instead of silently breaking byte-pinned consumers. **(1) Single-sourced samples**: extracted the round-trip test's inline 29-case variant table into `tests/ProtocolSamples.res` (a non-`*Test` helper module, so jest doesn't run it as a suite) and pointed `ProtocolRoundTripTest` at it — round-trip + golden now provably cover the *same* set, and the array order is the fixture's line order. **(2) Published artifact**: `fixtures/streamEvents.golden.ndjson` (one `toJsonLine` line per sample) lives **outside** the npmignored `tests/`, so `npm pack` ships it (2.2kB, verified) for external decoders (the VS Code extension, other tooling) to replay in their own CI. **(3) `ProtocolEmitGoldenTest`**: byte-pins `toJsonLine(sample) == goldenLine` and re-asserts `parseStreamEvent(goldenLine) == Some(sample)` for all 29 variants, plus a line-count guard; a `UPDATE_GOLDEN=1 pnpm test` affordance rewrites the fixture from current emit output (runs at import, before the assertions) for reviewable regeneration after an intentional wire change. The generated fixture confirms the tricky shapes on the wire: `discoverStart`→`{"event":"discoverStart"}` (phantom `_unused` omitted), `platformStop` signal-kill→`{"event":"platformStop"}` (absent `code`, the v9 fix), the `@as("to")` edge field→`"to"`, and `1.0`→`1`. **Verified**: protocol **2 suites / 90 tests** green against the *frozen* fixture (no `UPDATE_GOLDEN`), clean build zero warnings; `npm pack --dry-run` lists the fixture. **D1 remaining:** layer-builder post-process failure-propagation / rescript-dependency-guard / zip-size tests, `extractTargetName` edge cases, the full generator integration test.
 - 2026-07-03 — **B5 rescoped — aggregate snapshots moved to the backlog plan** (docs only). The deferred B5 sub-item "aggregate snapshots (LRU delta-seed port)" and the optional persisted snapshot table were merged into the existing [aggregate-snapshotting.md](aggregate-snapshotting.md) (since moved out of Backlog — now in progress), which was rewritten from its DynamoDB-only, hard-profile-gated draft into the single home for aggregate replay-cost work: Phase 1 = the in-process LRU delta-seed (always-on, no config, no storage change — folds own produced events instead of a delta read, so `replayStream` needs no offset for it), Phase 2 = persisted snapshots as a per-aggregate **opt-in** (`Behavior.T.snapshot: option<Snapshot.config>` with `interval` + `stateSchema`, PPX-injected `None` default — needs a reventless-ppx republish — plus `@@reventless.snapshots(N)` sugar) implemented by **all three EventLog backends** (local InMemory dict, local SQLite `snapshot` table, DynamoDB same-table side key) behind new `latestSnapshot`/`writeSnapshot` ops + `replayStream(~afterSeq=?)`, with a `SchemaWalker`-hash validity gate. **B5's remaining scope is persisted-data versioning only** (the snapshot table's migration story references that decision).
 - 2026-07-03 — **B5 partial done — DCB-axis projection catch-up (SQLite); Source-C subscriber fix** (local/core). Two commits. **(1) Pre-existing bug fix (0f24dc129)**, found (and baseline-confirmed) during the B5 smoke: `subscribeToPluginEvents`' Source-C emission decoded the whole published envelope `{id, meta, event}` with the bare Plugin **event** schema — sury's convert mode "succeeded" and then threw `TypeError … reading 'name'` on every variant's payload access (swallowed by the A5 guard), so the `onPluginStatusChange`/`onUIFragmentChange` GraphQL subscription emissions **never fired** on the local platform. New top-level `Platform.decodePluginEventEnvelope` parses the payload under `"event"` strictly and degrades to `None`; verified live (the two per-startup TypeErrors are gone) + 3 unit tests (`PluginEventDecodeTest`). **(2) DCB axis (this commit)** — extends the checkpoint machinery to the second persisted log: `dcb_event` rowids feed **StateViewSlice** (and stream) projections. `projection_checkpoint` now holds one row per collector per axis (`<name>` = aggregate, `dcb:<name>` = DCB); `ProjectionPending` is axis-tagged (msgIds stay the global key — resolution needs no axis); `DcbEventLogStorage_Sqlite.append` records each event's rowid **immediately after its insert** (before the interleaved `dcb_tag` inserts move `last_insert_rowid()`); and since the DCB publish path (`DcbEventLog_Operations`) already fires the same `afterPublish` hook but with **bare** `{TAG,…}` payloads (no msgId inline), `EventPublish_Callback.publishedEvent` gained an additive optional `metas?: array<meta>` (parallel to eventsJson) that the DCB publisher populates — the Platform hook reads msgIds from `metas` when present, else from the flat aggregate shape. Catch-up runs **both axes per handler** (each range in rowid order; DCB envelope = `{id: first-tag-value ?? logName, meta: meta column, event: combineMessage(event_type, data)}` — publish-path parity, first tag via a `MIN(rowid)` subquery on `dcb_tag`); `StateViewSlice_Builder` switched to the `MakeProjection` channel so its collectors register for catch-up; cross-axis delivery is safe because projections dispatch by `meta.service` (foreign-axis events no-op). **DCB bulk seeds** (`Operations.appendStream` — append without publish) share the storage append, so their pending entries pin the DCB watermark for that session and the **next startup's catch-up delivers the seeded events to the projections** — reconciling views with the log (documented; the aggregate axis instead skips tracking on its storage appendStream). **Verified**: `ProjectionCheckpointTest` now **10 tests** (+ tag-derived entityId & exactly-once DCB delivery, axis-independent watermarks); local **71 suites / 464**, core **480**, aws **133**, gwt **27/195**, DCB example runner **51/0** — all green, zero warnings; and a live DCB crash-recovery smoke on `online-shop-dcb` under SQLite: AddProduct + PlaceOrder (auto-shipped) → both axes' rows advanced (agg 2 / dcb 4) → hard-kill → `DELETE FROM qdb_Orders` + rewind `dcb:` rows to 2 → restart → `delivering 2 missed dcb event(s) (positions 2..4]` to all 8 collectors and the order **reappears as Shipped**. **Deferred (rest of B5)**: aggregate snapshots (LRU delta-seed port), persisted-data versioning (`PRAGMA user_version` or delete the vestigial fields).
@@ -47,31 +50,83 @@
 
 Order = correctness → performance → structure → tests/infra. Correctness leads because several bugs silently lose or corrupt data (a hung bus topic, a duplicated projection action, a generator that emits non-compiling plugins). The performance phase implements one idea at every layer: **key work on what changed** — the change signal (watch path, package build event, slice content) already exists everywhere and is currently discarded. Structure (dedup/contract consolidation) is behavior-preserving and goes last among code phases. Tests for each fix land with the fix; net-new harnesses are Phase D.
 
-| Phase | Item | Package | Class |
-|---|---|---|---|
-| A1 | Stale-code watch re-runs (ESM cache) | gwt | Correctness |
-| A2 | Rerun race + missing test timeout + signal handling | gwt | Correctness |
-| A3 | Process/build lifecycle fixes | gwt | Correctness |
-| A4 | Watch fidelity fixes (bursts, ignores, discovery) | gwt | Correctness |
-| A5 | LocalBus subscriber-failure hang | local | Correctness |
-| A6 | Conflict misclassification + backend parity | local/core | Correctness |
-| A7 | Projection + CommandPublisher bugs | core | Correctness |
-| A8 | Spec generator + DCB validation gaps | spec | Correctness |
-| A9 | Interop SemVer + layer-builder failure modes | interop/layer-builder | Correctness |
-| B1 | Affected-set test re-runs + incremental discovery | gwt | Performance |
-| B2 | Content-hash module cache (or worker-per-run) | gwt | Performance |
-| B3 | Per-plugin graph reload + misc runner perf | gwt | Performance |
-| B4 | Query push-down into SQLite + in-memory indexes | local | Performance |
-| B5 | Projection checkpoints + aggregate snapshots | local/core | Performance |
-| B6 | Hot-path allocations | core/spec | Performance |
-| C1 | Protocol package: graph types, kinds, version export | protocol | Contract |
-| C2 | `ComponentKind` single source | spec/protocol | Structure |
-| C3 | Shared tooling modules | new/spec | Structure |
-| C4 | Package-internal dedup | gwt/core/local | Structure |
-| D1 | Test suites for untested packages | spec/protocol/layer-builder | Tests |
-| D2 | Targeted regression tests | all | Tests |
-| D3 | Benchmark harness + timing events | gwt/local | Infra |
-| D4 | Runner robustness (cancel, retries, readiness) | gwt | Infra |
+| Phase | Item | Package | Class | Status |
+|---|---|---|---|---|
+| A1 | Stale-code watch re-runs (ESM cache) | gwt | Correctness | ✅ done |
+| A2 | Rerun race + missing test timeout + signal handling | gwt | Correctness | ✅ done |
+| A3 | Process/build lifecycle fixes | gwt | Correctness | ✅ done |
+| A4 | Watch fidelity fixes (bursts, ignores, discovery) | gwt | Correctness | ✅ done |
+| A5 | LocalBus subscriber-failure hang | local | Correctness | ✅ done |
+| A6 | Conflict misclassification + backend parity | local/core | Correctness | ✅ done |
+| A7 | Projection + CommandPublisher bugs | core | Correctness | ✅ done |
+| A8 | Spec generator + DCB validation gaps | spec | Correctness | ✅ done |
+| A9 | Interop SemVer + layer-builder failure modes | interop/layer-builder | Correctness | ✅ done |
+| B1 | Affected-set test re-runs + incremental discovery | gwt | Performance | ✅ done |
+| B2 | Content-hash module cache (or worker-per-run) | gwt | Performance | ✅ done (worker-per-run) |
+| B3 | Per-plugin graph reload + misc runner perf | gwt | Performance | ✅ done |
+| B4 | Query push-down into SQLite + in-memory indexes | local | Performance | ✅ done |
+| B5 | Projection checkpoints + aggregate snapshots | local/core | Performance | 🟡 partial — checkpoints (both axes) done; snapshots → [aggregate-snapshotting.md](aggregate-snapshotting.md); persisted-data versioning remaining |
+| B6 | Hot-path allocations | core/spec | Performance | 🟡 core cuts + `DcbTag` reshape done; layer-builder build-time allocs deferred (low value) |
+| C1 | Protocol package: graph types, kinds, version export | protocol | Contract | ✅ done |
+| C2 | `ComponentKind` single source | spec/protocol | Structure | 🟡 partial — folder-axis unified; serialized category records + protocol kind variants remain |
+| C3 | Shared tooling modules | new/spec | Structure | 🟡 partial — `PluginName` unified; shared `FsWalk`/`Debounce`/etc. + packaging decision remain |
+| C4 | Package-internal dedup | gwt/core/local | Structure | 🟡 partial — see Status header for remaining items |
+| D1 | Test suites for untested packages | spec/protocol/layer-builder | Tests | 🟡 partial — spec/protocol/layer-builder harnesses up; failure-prop + generator integration remain |
+| D2 | Targeted regression tests | all | Tests | 🟡 partial — formatter goldens done; broader regression list ongoing |
+| D3 | Benchmark harness + timing events | gwt/local | Infra | ⬜ not started |
+| D4 | Runner robustness (cancel, retries, readiness) | gwt | Infra | ⬜ not started |
+
+---
+
+## Open topics (remaining work)
+
+*Consolidated 2026-07-15 from the progress log. Phases A1–A9, B1–B4, and C1 are fully done. The Phase A–D sections further below describe the original findings in full; this section tracks only what is still open, with the current scope of each.*
+
+### B5 — Persisted-data versioning
+
+Versioning is **not** a per-backend afterthought — it splits into two axes, and only one of them is engine-specific:
+
+- **Data / event-schema version — backend-agnostic (the general approach).** The version stamp travels with the data in the event / export envelope, independent of storage engine, so one upcasting path serves every backend (local InMemory export, SQLite, DynamoDB, Postgres) identically. The hooks already exist but are inert: `Message.flatJsonToStoredEvent` threads `schemaVersion` through unused, and `ExportMeta.version` is frozen and never read by `Compat.validateAndProject`. The real design belongs here — a single version-keyed projection/upcast step, not copies per backend. A SQLite-only `PRAGMA user_version` scheme does nothing for this axis.
+- **Storage-layout version — engine-specific, behind a common seam.** Recording "which table/key layout this store is on" and running structural migrations is inherently per-engine: SQLite `PRAGMA user_version`, DynamoDB a metadata/sentinel item, Postgres a migrations table; InMemory has no persistence, so no marker. These belong behind one small `StorageVersion` interface (read current / set / migrate) with per-backend implementations — not a `PRAGMA`-shaped API leaked into shared code. Today the only migration anywhere is a try/catch `ALTER TABLE` (`QueryDbStorage_Sqlite.res:49-52`).
+- **Decision to make:** introduce versioning on both axes, or delete the vestigial fields (`schemaVersion`, `ExportMeta.version`) if we commit to wipe-over-migrate for local data. The snapshot table's migration story in [aggregate-snapshotting.md](aggregate-snapshotting.md) depends on this decision, which is why it blocks that plan.
+
+### B6 — Remaining hot-path allocations
+
+- **`DcbTag` round-trip reshape** — ✅ **done (2026-07-15).** `extractTags`/`extractTagsExpanded` now feed the tag walkers via `S.reverseConvertToJsonOrThrow` instead of a `stringify → parse` round-trip; gated behind `DcbTagExtractParityTest`; also fixes a latent `@as`-renamed-tag-field bug. The paired "index variants by TAG once per schema" micro-opt was **evaluated and deprioritized** — with the string round-trip gone the residual `anyOf` linear scan (a handful of variants) doesn't justify a module-level mutable cache in this correctness-critical file.
+- **Layer-builder allocations** (`DependencyBundler_Filter.res` `isNecessary`/`predIsNecessary`; extraction loop in `DependencyBundler.res`): `predIsNecessary` runs a full `Treeverse` subtree walk twice per node, and Pacote extraction is serial. **Deferred by decision** — these are build-time (once per Lambda-layer build), not a runtime hot path; the plan's original `Lru.res:38` ref is stale (no `Lru` module exists); and parallelizing registry extraction would churn the deploy path of a thinly-tested package for marginal gain.
+
+### C2 — Serialized category records + protocol kind variants
+
+Folder-axis vocabulary is unified into `Reventless.ComponentKind`. Still open: derive the *serialized category records* — `spec/Plugin.pluginStructure` and `interop/Plugin.resolvedOutputs` (the latter missing `tasks`/`extensions`) — from `ComponentKind`. This needs an **interop→spec dependency** and touches wire schemas, so it is its own step. Also open: promoting the protocol package's graph node/edge `kind` strings to real variants (entangled with C1).
+
+### C3 — Shared tooling modules (five remaining)
+
+`PluginName` is single-sourced. The other five duplicated pure modules remain, each copy-pasted across gwt/spec: **`FsWalk`** (one recursive walker replacing five divergent ones — the divergent ignore globs are the A4 bug class), **`Debounce`** (the rank-coalescing chokidar wrapper), **`ChildProcess` + `killTree`** (teardown semantics with A3's fixes), **`ExnMessage`** (handles both JS Errors and ReScript `RE_EXN_ID`), and **`Args`** (flag-table parser fixing `--flag=value` vs `--flag value` inconsistency). Plus the **packaging decision** — widen `reventless-domain-protocol` vs. a small sibling package — so external consumers stop vendoring pure modules (e.g. `DcbScopeInference` is re-ported verbatim elsewhere).
+
+### C4 — Remaining package-internal dedup
+
+Done: `variantTagName`, `Behavior_GWT` shared core, gwt dead-surface sweep, DCB Sqlite dead-param removal, Human/TAP mismatch normalization, sury absent-vs-null audit. Still open:
+
+- **`registerAdminSchema` triplication** (`Platform.res:1655-1676,1854-1881,2067-2094`, with drift at `:2098`) — a critical deploy-path file; unifying means choosing the canonical behavior, so it is a deliberate own-step, not a drive-by.
+- **Formatter vocabulary fold** — `FormatterJson`/`FormatterVsCode` are not yet on the shared mismatch vocabulary (their `{type,payload,rendered}` + `fieldDiff` shape is a genuinely different surface), plus the **opt-in JUnit rendering change** (JSON-based `Outcome.format` → RenderRescript), an intentional output change kept out of behavior-preserving commits; goldens pin current output so it lands as a reviewable diff.
+- **gwt DSL alignment pass** — `whenCmd`/`whenCommand`/`whenSourceCmd`, five spellings of "nothing emitted", `test` sync vs promise-with-timeout by module, `AggregateT` missing `todo`.
+- Smaller: `Util_Adapter`/`Util_AdapterRuntime` merge; interop namespace collisions (`Counter`, `Plugin`, `Aggregate`, … shadow spec modules); `LocalBus`'s dead `silent` flag (removal touches the `BusConfig` contract and hollows `MakeSilent` — needs its own decision); hardcoded ports in `Platform.res:1912-2144` (route through `resolvePort`); pick one `Util_` naming convention.
+
+### D1 — Remaining test coverage
+
+Harnesses are up for `reventless-spec`, `reventless-domain-protocol`, and `reventless-layer-builder`. Remaining: layer-builder **post-process failure-propagation** (async + fs), the **rescript-dependency guard**, a **zip size-guard**, and a smoke-import of layer entry points; generator **`extractTargetName` edge cases** (still I/O-coupled — needs fixtures); and the **full generator integration test** over temp fixtures.
+
+### D2 — Remaining regression tests
+
+Formatter goldens are done. The broader list still to land where it didn't ship with its Phase A/B fix: projection optimized≡unoptimized property test, `CommandPublisher.flush/clear`, LocalBus failing-subscriber + unsubscribe, restart/read-model-rebuild under SQLite, MCP cursor pagination, conflict-sentinel classification, the `runWatch` rerun state machine, `Collector` exception paths, `ProcessManager.cleanRebuild` sequencing, `ChildProcess` partial-chunk buffering, `WatcherProbe`, and the interop SemVer matrix.
+
+### D3 — Benchmarks + timing (not started)
+
+Synthetic-workspace generator (N plugins × M slices × K tests) with timed `discover` / `run` / watch re-run / `LocalHost.loadGraph` / query-replay benchmarks and CI thresholds, plus RSS tracking across 100 watch re-runs (validates the A1/B2 leak fix). Second half: a `timing` event in the vscode NDJSON protocol surfacing the phase durations the runner already measures.
+
+### D4 — Runner robustness (not started)
+
+**In-band cancellation** (a stdin `{"cmd":"cancelRun"}` line checked by the existing `Cancellation.isCancelled` poll — today clients must kill the whole watch session, losing adopted build watchers); **flaky-test support** (`--retries=N` with attempt metadata in `RunnerTypes.testResult`, most valuable for the async DSLs); and **structured platform readiness** (replace the `"GraphQL:Domain"`/`"listening on"` substring match in `PlatformRunner.res:33-34` with an env-triggered structured readiness line plus a timeout — today a silent child hangs the session forever).
 
 ---
 
@@ -183,7 +238,7 @@ Worker-per-run from A1 is the primary fix (correctness + leak + isolation). If m
 
 - **Projection checkpoints (local)**: read models are fed only by live bus events; under SQLite the tables persist but there is no "last projected position" and no catch-up at startup — a crash between append and projection write diverges state permanently. Add `projection_checkpoint(read_model, position)` + startup catch-up replay.
 - **Aggregate snapshots**: *moved out of this plan (2026-07-03)* — the LRU delta-seed port **and** the persisted `snapshot(log_name, aggregate_id, seq_nr, state)` table now live in [aggregate-snapshotting.md](aggregate-snapshotting.md), widened to cover all three EventLog backends (local InMemory/SQLite, DynamoDB) with a per-aggregate opt-in config (`Behavior.snapshot`, `interval`). They are no longer B5 scope.
-- **Persisted-data versioning**: no `PRAGMA user_version` anywhere (the only migration is a try/catch `ALTER TABLE`, `QueryDbStorage_Sqlite.res:49-52`); `Message.flatJsonToStoredEvent` passes `schemaVersion` through unused; `ExportMeta.version` is frozen and never read by `Compat.validateAndProject`. Introduce versioning or delete the vestigial fields. (The snapshot table's migration story in the backlog plan depends on this decision.)
+- **Persisted-data versioning**: two axes — a **backend-agnostic** data/event-schema version carried in the event/export envelope (the general approach; hooks already exist but are inert — `Message.flatJsonToStoredEvent` passes `schemaVersion` through unused, `ExportMeta.version` is frozen and never read by `Compat.validateAndProject`), and an **engine-specific** storage-layout version behind a common `StorageVersion` seam (SQLite `PRAGMA user_version`, DynamoDB metadata item, Postgres migrations table; InMemory none). Today there is no version marker anywhere and the only migration is a try/catch `ALTER TABLE` (`QueryDbStorage_Sqlite.res:49-52`). Introduce versioning on both axes or delete the vestigial fields. See **Open topics → B5** above for the full split; the snapshot table's migration story in the backlog plan depends on this decision.
 
 ### B6 — hot-path allocations
 

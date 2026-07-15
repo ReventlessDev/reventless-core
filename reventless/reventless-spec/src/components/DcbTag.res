@@ -399,7 +399,11 @@ let extractTagsFromJson = (schema: S.t<unknown>, json: JSON.t): array<tag> =>
 /**
 Extracts DCB tags from a typed event value using its sury schema.
 
-Serializes the value to JSON first, then delegates to `extractTagsFromJson`.
+Reverse-converts the value to JSON through its schema, then delegates to
+`extractTagsFromJson`. Using the schema-aware reverse convert (instead of a
+`JSON.stringifyAny -> parseOrThrow` string round-trip) avoids serializing the
+whole event to a string per message and emits the schema's serialized field
+keys — so `@as`-renamed tagged fields are found by the same-schema walker.
 
 @example
 ```rescript
@@ -410,10 +414,8 @@ let tags = DcbTag.extractTags(
 // [{key: "categoryId", value: "cat-1"}]
 ```
 */
-let extractTags = (schema: S.t<'a>, value: 'a): array<tag> => {
-  let json = value->JSON.stringifyAny->Option.getOrThrow->JSON.parseOrThrow
-  extractTagsFromJson(schema->toUnknownSchema, json)
-}
+let extractTags = (schema: S.t<'a>, value: 'a): array<tag> =>
+  extractTagsFromJson(schema->toUnknownSchema, value->S.reverseConvertToJsonOrThrow(schema))
 
 // --- Extract variant constructor names from a tagged union schema ---
 // For a variant type like `type event = ItemCreated({...}) | ItemRenamed({...})`,
@@ -596,10 +598,8 @@ let tags = DcbTag.extractTagsExpanded(
 // [{key: "orderId", value: "ord-1"}, {key: "productIds", value: "p1"}, {key: "productIds", value: "p2"}]
 ```
 */
-let extractTagsExpanded = (schema: S.t<'a>, value: 'a): array<tag> => {
-  let json = value->JSON.stringifyAny->Option.getOrThrow->JSON.parseOrThrow
-  extractTagsFromJsonExpanded(schema->toUnknownSchema, json)
-}
+let extractTagsExpanded = (schema: S.t<'a>, value: 'a): array<tag> =>
+  extractTagsFromJsonExpanded(schema->toUnknownSchema, value->S.reverseConvertToJsonOrThrow(schema))
 
 // --- Automatic query construction from command schema ---
 
