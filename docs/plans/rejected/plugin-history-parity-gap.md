@@ -1,5 +1,15 @@
 # Plan: Admin Read-Model Parity Gap → PluginHistory Redesign
 
+> **⛔ SUPERSEDED / REJECTED (2026-06-20).** This plan's central deliverable —
+> shipping **PluginHistory as a built-in admin read model** in core (Part 2) —
+> landed (`8a1d86ee3`) and was then **removed** by `0de749a7b`
+> (*"refactor(admin): remove built-in event-graph and plugin-history read
+> models"*, on `alpha`). The architectural decision changed: core admin no
+> longer ships these views — a platform that wants them registers its own read
+> models. **What survives:** Part 1's generic admin-query SDL mechanism
+> (`Api_Naming.adminField` in `PluginBaseFragment`), still used for the
+> remaining `Plugins` admin RM. Retained for the historical reasoning only.
+
 **Date:** 2026-06-18
 
 **Analysis:** [docs/analysis/plugin-history-view-design.md](../analysis/done/plugin-history-view-design.md)
