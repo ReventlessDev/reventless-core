@@ -2,18 +2,7 @@
 
 import * as Nodepath from "node:path";
 import * as Promises from "node:fs/promises";
-
-let ignoreNames = [
-  "node_modules",
-  ".git",
-  "dist",
-  "lib",
-  ".history"
-];
-
-function shouldIgnore(name) {
-  return ignoreNames.includes(name);
-}
+import * as ScanIgnore$ReventlessGwt from "./ScanIgnore.res.mjs";
 
 let gwtIgnoreFile = ".gwtignore";
 
@@ -43,7 +32,7 @@ async function walk(dir, acc) {
   }
   for (let i = 0, i_finish = entries.length; i < i_finish; ++i) {
     let entry = entries[i];
-    if (!ignoreNames.includes(entry.name)) {
+    if (!ScanIgnore$ReventlessGwt.shouldIgnore(entry.name)) {
       let full = Nodepath.join(dir, entry.name);
       if (entry.isDirectory()) {
         await walk(full, acc);
@@ -88,8 +77,6 @@ async function discover(roots) {
 }
 
 export {
-  ignoreNames,
-  shouldIgnore,
   gwtIgnoreFile,
   isPruned,
   isGwtTestFile,

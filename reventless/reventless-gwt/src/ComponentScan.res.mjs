@@ -4,19 +4,8 @@ import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Promises from "node:fs/promises";
+import * as ScanIgnore$ReventlessGwt from "./ScanIgnore.res.mjs";
 import * as ComponentMeta$ReventlessGwt from "./ComponentMeta.res.mjs";
-
-let ignoreNames = [
-  "node_modules",
-  ".git",
-  "dist",
-  "lib",
-  ".history"
-];
-
-function shouldIgnore(name) {
-  return ignoreNames.includes(name);
-}
 
 let gwtIgnoreFile = ".gwtignore";
 
@@ -43,7 +32,7 @@ async function walk(dir, acc) {
   let found = acc;
   for (let i = 0, i_finish = entries.length; i < i_finish; ++i) {
     let entry = entries[i];
-    if (!ignoreNames.includes(entry.name)) {
+    if (!ScanIgnore$ReventlessGwt.shouldIgnore(entry.name)) {
       let full = Nodepath.join(dir, entry.name);
       if (entry.isDirectory()) {
         let nested = await walk(full, []);
@@ -94,8 +83,6 @@ async function scan(pkgDirs) {
 }
 
 export {
-  ignoreNames,
-  shouldIgnore,
   gwtIgnoreFile,
   isPruned,
   isSrcResFile,

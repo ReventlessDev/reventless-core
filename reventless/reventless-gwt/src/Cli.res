@@ -60,7 +60,7 @@ let sha256 = (s: string): string => createHash("sha256")->hashUpdate(s)->hashDig
 // re-emit forces the client to re-render the domain view for nothing.
 let lastDomainHash: ref<option<string>> = ref(None)
 
-let dateNowIso: unit => string = %raw(`() => new Date().toISOString()`)
+let dateNowIso = (): string => Date.make()->Date.toISOString
 
 let parseFormat = (s: string) =>
   switch s {
@@ -229,23 +229,6 @@ let passesFilter = (id: string, filters: array<string>) =>
   filters->Array.length == 0 ||
     filters->Array.some(f => id->String.includes(f))
 
-// Extract a human-readable message from any thrown value. JS Errors carry a
-// `.message`; ReScript exceptions are tagged objects (`RE_EXN_ID` + an optional
-// string payload), e.g. `failwith("…")` raises `Failure("…")`. Without this the
-// catch block below collapsed every ReScript exception to "unknown error",
-// hiding messages like a slice's `failwith("not implemented: …")`.
-let exnMessage: exn => string = %raw(`function(e) {
-  if (e == null) return "unknown error"
-  if (typeof e === "string") return e
-  if (typeof e.message === "string" && e.message.length) return e.message
-  if (typeof e.RE_EXN_ID === "string") {
-    var id = e.RE_EXN_ID
-    var tag = id.lastIndexOf(".") >= 0 ? id.slice(id.lastIndexOf(".") + 1) : id
-    return (typeof e._1 === "string" && e._1.length) ? e._1 : tag
-  }
-  return "unknown error"
-}`)
-
 // Default per-test deadline (ms) when a test body doesn't set `~timeout`.
 // Mirrors Jest's default so behaviour is consistent across both runners.
 let defaultTimeoutMs = 5000
@@ -304,8 +287,8 @@ let runEntry = async (entry: Collector.entry): RunnerTypes.testResult => {
     } catch {
     | exn => {
         status := Fail
-        let err = exnMessage(exn)
-        let stack: string = %raw(`(e => (e && e.stack) || "")`)(exn)
+        let err = ExnMessage.extract(exn)
+        let stack = ExnMessage.stack(exn)
         mismatch := Some(Outcome.Throw({error: err, stack: stack}))
       }
     }

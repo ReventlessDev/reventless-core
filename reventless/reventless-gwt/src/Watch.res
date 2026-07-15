@@ -88,16 +88,10 @@ let start = (roots: array<string>, onChange: (event, string) => unit): watcher =
     roots,
     {
       ignoreInitial: true,
-      // Keep in sync with Discovery's pruned dirs — writes under `dist/` or
+      // Shared with the scanners via `ScanIgnore` — writes under `dist/` or
       // `.history/` are build/editor output, not source, and a `dist/` write
       // could otherwise drive a re-run loop.
-      ignored: [
-        "**/node_modules/**",
-        "**/lib/**",
-        "**/.git/**",
-        "**/dist/**",
-        "**/.history/**",
-      ],
+      ignored: ScanIgnore.globs,
     },
   )
   let debounced = debounce(120, onChange)

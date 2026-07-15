@@ -28,11 +28,8 @@ type stats = {
 @module("node:path") external isAbsolute: string => bool = "isAbsolute"
 @module("node:path") external resolve: string => string = "resolve"
 
-let ignoreNames = ["node_modules", ".git", "dist", "lib", ".history"]
-let shouldIgnore = (name: string) => Array.includes(ignoreNames, name)
-
 // A directory carrying this sentinel file — and its whole subtree — is pruned
-// from discovery. Unlike the `ignoreNames` dir-name list, this is filesystem
+// from discovery. Unlike the `ScanIgnore.names` dir-name list, this is filesystem
 // state, so it excludes generated/vendored trees (e.g. codegen golden fixtures)
 // even when compiled `*_GWT.res.mjs` are present on disk.
 let gwtIgnoreFile = ".gwtignore"
@@ -58,7 +55,7 @@ let rec walk = async (dir: string, acc: array<string>): unit => {
   } else {
     for i in 0 to entries->Array.length - 1 {
       let entry = entries->Array.getUnsafe(i)
-      if !shouldIgnore(entry.name) {
+      if !ScanIgnore.shouldIgnore(entry.name) {
         let full = join(dir, entry.name)
         if entry._isDirectory() {
           await walk(full, acc)

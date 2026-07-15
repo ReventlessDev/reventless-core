@@ -26,8 +26,6 @@ external _readdir: (string, readdirOpts) => promise<array<dirent>> = "readdir"
 @module("node:fs") external _existsSync: string => bool = "existsSync"
 @module("node:path") external join: (string, string) => string = "join"
 
-let ignoreNames = ["node_modules", ".git", "dist", "lib", ".history"]
-let shouldIgnore = (name: string) => Array.includes(ignoreNames, name)
 
 // A directory carrying this sentinel file — and its whole subtree — is pruned
 // from the component scan, matching `Discovery`'s `.gwtignore` convention so
@@ -51,7 +49,7 @@ let rec walk = async (dir: string, acc: array<string>): array<string> => {
   let found = ref(acc)
   for i in 0 to entries->Array.length - 1 {
     let entry = entries->Array.getUnsafe(i)
-    if !shouldIgnore(entry.name) {
+    if !ScanIgnore.shouldIgnore(entry.name) {
       let full = join(dir, entry.name)
       if entry._isDirectory() {
         let nested = await walk(full, [])

@@ -31,7 +31,6 @@ external _readdir: (string, readdirOpts) => promise<array<dirent>> = "readdir"
 @module("node:path") external join: (string, string) => string = "join"
 
 let localPlatformDep = "@reventlessdev/reventless-local"
-let ignoreNames = ["node_modules", ".git", "dist", "lib", ".history"]
 
 // Pure predicate: given a package.json's text and whether src/Main.res.mjs exists,
 // decide whether this is a launchable platform package and surface its name +
@@ -116,7 +115,7 @@ let rec walk = async (dir: string, acc: array<platformPkg>): array<platformPkg> 
     }
     for i in 0 to entries->Array.length - 1 {
       let entry = entries->Array.getUnsafe(i)
-      if entry._isDirectory() && !Array.includes(ignoreNames, entry.name) {
+      if entry._isDirectory() && !ScanIgnore.shouldIgnore(entry.name) {
         let _ = await walk(join(dir, entry.name), acc)
       }
     }

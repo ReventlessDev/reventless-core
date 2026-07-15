@@ -16,6 +16,7 @@ import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as Collector$ReventlessGwt from "./Collector.res.mjs";
 import * as Discovery$ReventlessGwt from "./Discovery.res.mjs";
 import * as LocalHost$ReventlessGwt from "./LocalHost.res.mjs";
+import * as ExnMessage$ReventlessGwt from "./ExnMessage.res.mjs";
 import * as DomainGraph$ReventlessGwt from "./DomainGraph.res.mjs";
 import * as PackageScan$ReventlessGwt from "./PackageScan.res.mjs";
 import * as RunnerTypes$ReventlessGwt from "./RunnerTypes.res.mjs";
@@ -44,7 +45,9 @@ let lastDomainHash = {
   contents: undefined
 };
 
-let dateNowIso = (() => new Date().toISOString());
+function dateNowIso() {
+  return new Date().toISOString();
+}
 
 function parseFormat(s) {
   switch (s) {
@@ -320,18 +323,6 @@ function passesFilter(id, filters) {
   }
 }
 
-let exnMessage = (function(e) {
-  if (e == null) return "unknown error"
-  if (typeof e === "string") return e
-  if (typeof e.message === "string" && e.message.length) return e.message
-  if (typeof e.RE_EXN_ID === "string") {
-    var id = e.RE_EXN_ID
-    var tag = id.lastIndexOf(".") >= 0 ? id.slice(id.lastIndexOf(".") + 1) : id
-    return (typeof e._1 === "string" && e._1.length) ? e._1 : tag
-  }
-  return "unknown error"
-});
-
 function raceWithTimeout(body, ms) {
   let handleRef = {
     contents: undefined
@@ -383,8 +374,8 @@ async function runEntry(entry) {
     } catch (raw_exn) {
       let exn = Primitive_exceptions.internalToException(raw_exn);
       status = "Fail";
-      let err = exnMessage(exn);
-      let stack = ((e => (e && e.stack) || ""))(exn);
+      let err = ExnMessage$ReventlessGwt.extract(exn);
+      let stack = ExnMessage$ReventlessGwt.stack(exn);
       mismatch = {
         TAG: "Throw",
         error: err,
@@ -426,7 +417,7 @@ async function loadAndCollect(path) {
 }
 
 async function runFiles(opts, paths, onFileFinished, onTestStart, onTestFinished) {
-  let startedAt = dateNowIso();
+  let startedAt = new Date().toISOString();
   let startTime = performance.now();
   let files = [];
   for (let i = 0, i_finish = paths.length; i < i_finish; ++i) {
@@ -560,7 +551,7 @@ async function runOnce(opts) {
   let p = opts.paths;
   let paths = p !== undefined ? p : await Discovery$ReventlessGwt.discover(opts.roots);
   if (opts.format === "Json" && opts.stream) {
-    FormatterJson$ReventlessGwt.streamRunStart(opts.toolVersion, dateNowIso(), opts.schemaVersion);
+    FormatterJson$ReventlessGwt.streamRunStart(opts.toolVersion, new Date().toISOString(), opts.schemaVersion);
   }
   let match = opts.format;
   let match$1 = opts.stream;
@@ -929,7 +920,6 @@ export {
   help,
   parseArgv,
   passesFilter,
-  exnMessage,
   defaultTimeoutMs,
   raceWithTimeout,
   runEntry,

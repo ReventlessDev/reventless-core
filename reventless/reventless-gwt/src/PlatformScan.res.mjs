@@ -5,16 +5,9 @@ import * as Nodepath from "node:path";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Promises from "node:fs/promises";
+import * as ScanIgnore$ReventlessGwt from "./ScanIgnore.res.mjs";
 
 let localPlatformDep = "@reventlessdev/reventless-local";
-
-let ignoreNames = [
-  "node_modules",
-  ".git",
-  "dist",
-  "lib",
-  ".history"
-];
 
 function matchPlatform(pkgJsonText, mainExists) {
   if (!mainExists) {
@@ -94,7 +87,7 @@ async function walk(dir, acc) {
     }
     for (let i = 0, i_finish = entries.length; i < i_finish; ++i) {
       let entry = entries[i];
-      if (entry.isDirectory() && !ignoreNames.includes(entry.name)) {
+      if (entry.isDirectory() && !ScanIgnore$ReventlessGwt.shouldIgnore(entry.name)) {
         await walk(Nodepath.join(dir, entry.name), acc);
       }
     }
@@ -123,7 +116,6 @@ async function scan(roots) {
 
 export {
   localPlatformDep,
-  ignoreNames,
   matchPlatform,
   inspectDir,
   walk,
