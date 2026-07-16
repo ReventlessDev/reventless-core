@@ -617,6 +617,7 @@ module Make = (
             ~scheduler,
             ~queryEngine,
             ~resourceNaming=Spec.resourceNaming,
+            ~componentRuntime,
             ~opts,
           )
 

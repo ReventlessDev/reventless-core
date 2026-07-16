@@ -378,6 +378,7 @@ module Make = (
             ~scheduler,
             ~queryEngine,
             ~resourceNaming,
+            ~componentRuntime=Dict.make(),
             ~opts,
           )
 

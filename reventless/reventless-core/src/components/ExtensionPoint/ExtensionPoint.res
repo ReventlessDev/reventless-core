@@ -11,12 +11,14 @@ module type T = {
   type operations = operations
   type component = component<operations>
 
+  let name: string
   let make: (
     ~aggregateResources: dict<array<ReventlessInfra.Adapter.resource>>,
     ~publishToAggregates: dict<CommandTopic.publishJsons>,
     ~scheduler: Scheduler.operations,
     ~queryEngine: Reventless.QueryEngine.operations,
     ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
+    ~runtime: ReventlessInfra.RuntimeHints.t=?,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
   let outputs: component => outputs

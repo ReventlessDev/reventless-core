@@ -9,6 +9,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as RuntimeHints$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/RuntimeHints.res.mjs";
 import * as ExtensionPoint$ReventlessCore from "./ExtensionPoint.res.mjs";
 import * as EventTopic_Builder$ReventlessCore from "../EventTopic/EventTopic_Builder.res.mjs";
 import * as CommandTopic_Builder$ReventlessCore from "../CommandTopic/CommandTopic_Builder.res.mjs";
@@ -24,7 +25,7 @@ function Make(Spec) {
       let name = param[0];
       return aggregateNames.some(aggregateName => aggregateName === name);
     }).map(param => param[1]).flat();
-    let make = (aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(ExtensionPoint$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+    let make = (aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, runtime, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(ExtensionPoint$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
       let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
@@ -58,7 +59,7 @@ function Make(Spec) {
             return Pulumi.output("");
           }
         });
-        ExtensionPointRuntimeBuilder.forCommandTopic(handler, none => SpecificCommandTopic.connect(none, resources, commandTopic), undefined, undefined, Spec.moduleUrl, Mappings.moduleUrl, publishToAggregatesQueueUrls, commandTopic);
+        ExtensionPointRuntimeBuilder.forCommandTopic(handler, none => SpecificCommandTopic.connect(none, resources, commandTopic), RuntimeHints$ReventlessInfra.resolveMemory(runtime, 1024), RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 30), Spec.moduleUrl, Mappings.moduleUrl, publishToAggregatesQueueUrls, commandTopic);
         let SpecificEventTopic = EventTopic_Builder$ReventlessCore.Make({
           Id: Id$Reventless.$$String,
           name: name,
@@ -100,6 +101,7 @@ function Make(Spec) {
       return Component$ReventlessCore.setOutputs(extra, epOutputs);
     }, opts);
     return {
+      name: Spec.name,
       make: make,
       outputs: Component$ReventlessCore.outputs,
       operations: Component$ReventlessCore.operations

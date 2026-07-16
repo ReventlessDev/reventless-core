@@ -429,7 +429,7 @@ function Make(Spec) {
           let localAdminResolvedEP = match[1];
           let interstackAdminExtensionPoints = match[0];
           let aggregatesOutputs = Plugin_Helpers$ReventlessCore.addEventMappers(aggregateEventTopics, queryEngine);
-          let match$1 = Plugin_Helpers$ReventlessCore.createExtensionPoints(extensionPoints, aggregateResources, publishToAggregates, scheduler, queryEngine, Spec.resourceNaming, opts);
+          let match$1 = Plugin_Helpers$ReventlessCore.createExtensionPoints(extensionPoints, aggregateResources, publishToAggregates, scheduler, queryEngine, Spec.resourceNaming, componentRuntime, opts);
           let extensionPointsHandlers = match$1[1];
           let extensionPointsOutputs = match$1[0];
           let coreSetup;

@@ -92,9 +92,9 @@ function createReadModels(readModels, api, apiRole, componentRuntime, allEventTo
   return extractReadModelsOutputs(readModels$1);
 }
 
-function createExtensionPoints(extensionPoints, aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, opts) {
+function createExtensionPoints(extensionPoints, aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, componentRuntime, opts) {
   let triples = extensionPoints.map(SpecificExtensionPoint => {
-    let extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, opts);
+    let extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, componentRuntime[SpecificExtensionPoint.name], opts);
     let ops = SpecificExtensionPoint.operations(extensionPoint);
     let outputs = SpecificExtensionPoint.outputs(extensionPoint);
     let registryInfo_specModule = outputs.specModule;

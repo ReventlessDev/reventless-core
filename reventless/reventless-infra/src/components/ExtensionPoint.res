@@ -49,12 +49,17 @@ the `reventless` package.
 module type T = {
   type operations
   type component
+  /** The extension point's logical name — the key its `plugin.json` runtime
+      hint is looked up by at the `Builder_Helpers.createExtensionPoints` site,
+      before `make` is called. */
+  let name: string
   let make: (
     ~aggregateResources: dict<array<Adapter.resource>>,
     ~publishToAggregates: dict<CommandTopic.publishJsons>,
     ~scheduler: Scheduler.operations,
     ~queryEngine: Reventless.QueryEngine.operations,
     ~resourceNaming: ResourceNaming.operations,
+    ~runtime: RuntimeHints.t=?,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
   let outputs: component => outputs

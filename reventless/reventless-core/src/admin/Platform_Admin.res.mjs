@@ -167,7 +167,7 @@ function Make(RuntimeEnvironment) {
       ]).apply(param => {
         let queryEngine = param[2];
         Builder_Helpers$ReventlessCore.addEventMappers(aggregateEventTopics, queryEngine);
-        let match = Builder_Helpers$ReventlessCore.createExtensionPoints(extensionPoints, param[0], param[1], param[3], queryEngine, resourceNaming, opts);
+        let match = Builder_Helpers$ReventlessCore.createExtensionPoints(extensionPoints, param[0], param[1], param[3], queryEngine, resourceNaming, {}, opts);
         let extensionPointsOutputs = match[0];
         let aggregateNames = Stdlib_Array.reduce(extensionPointsOutputs.map(extensionPointOutputs => Belt_SetString.fromArray(extensionPointOutputs.aggregateNames)), undefined, Belt_SetString.union);
         let aggregatesOutputs = Builder_Helpers$ReventlessCore.addEventMappers(aggregateEventTopics, queryEngine);

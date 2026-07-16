@@ -13,6 +13,8 @@ module Make = (
   type operations = ExtensionPoint.operations
   type component = ExtensionPoint.component<operations>
 
+  let name = Spec.name
+
   module SpecWithId: Reventless.ExtensionPoint.Spec
     with type command = Spec.command
     and type event = Spec.event
@@ -36,6 +38,7 @@ module Make = (
     ~scheduler: Scheduler.operations,
     ~queryEngine: Reventless.QueryEngine.operations,
     ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
+    ~runtime: option<ReventlessInfra.RuntimeHints.t>,
     self,
     name,
   ) => {
@@ -89,6 +92,8 @@ module Make = (
         commandTopic->ExtensionPointRuntimeBuilder.forCommandTopic(
           ~handler,
           ~connect=SpecificCommandTopic.connect(commandTopic, ~resources, ...),
+          ~memorySize=runtime->ReventlessInfra.RuntimeHints.resolveMemory(~default=1024),
+          ~timeout=runtime->ReventlessInfra.RuntimeHints.resolveTimeout(~default=30),
           ~specModulePath=Spec.moduleUrl,
           ~mappingsModulePath=Mappings.moduleUrl,
           ~publishToAggregatesQueueUrls,
@@ -142,6 +147,7 @@ module Make = (
     ~scheduler,
     ~queryEngine,
     ~resourceNaming,
+    ~runtime=?,
     ~opts,
   ) =>
     Component.make(
@@ -153,6 +159,7 @@ module Make = (
         ~scheduler,
         ~queryEngine,
         ~resourceNaming,
+        ~runtime,
         ...
       ),
       ~opts,

@@ -167,6 +167,7 @@ let createExtensionPoints = (
   ~scheduler,
   ~queryEngine,
   ~resourceNaming,
+  ~componentRuntime: dict<ReventlessInfra.RuntimeHints.t>,
   ~opts,
 ) => {
   let triples =
@@ -178,6 +179,7 @@ let createExtensionPoints = (
         ~scheduler,
         ~queryEngine,
         ~resourceNaming,
+        ~runtime=?componentRuntime->Dict.get(SpecificExtensionPoint.name),
         ~opts=Some(opts),
       )
       // operations() returns abstract type from ReventlessInfra.ExtensionPoint.T;

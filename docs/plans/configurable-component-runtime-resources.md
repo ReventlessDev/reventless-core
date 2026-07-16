@@ -2,7 +2,7 @@
 
 ## Status
 
-**Implemented** (across two passes).
+**Implemented** (across three passes — the ExtensionPoint follow-up is now done).
 
 - **Pass 1 — developer surface + core/local threading.** `plugin.json` `runtime`
   block → `Config.componentRuntime` → `Codegen` emits
@@ -21,11 +21,17 @@
   default. Worked example (`online-shop-hybrid/ordering`) builds end-to-end.
   Tests: `RuntimeHintsTest` (infra), `ComponentRuntimeTest` (spec Config+Codegen).
 
-**Follow-up (not yet done):** ExtensionPoint sizing. Unlike other components,
-`ReventlessInfra.ExtensionPoint.T` exposes no `Spec.name` at its realization site
-(`Builder_Helpers.createExtensionPoints`), so there is no clean key to look the
-hint up by. It keeps its current per-kind default (1024) — no regression — until
-a name key is threaded through the EP realization path.
+- **Pass 3 — ExtensionPoint sizing.** `ReventlessInfra.ExtensionPoint.T` (and the
+  core-local `ExtensionPoint.T`) now expose `let name: string`, giving
+  `Builder_Helpers.createExtensionPoints` a clean key to look the hint up by
+  before `make`. `make` gained `~runtime: RuntimeHints.t=?`, threaded through
+  `ExtensionPoint_Builder`'s `construct` into `forCommandTopic` where
+  `resolveMemory(~default=1024)` / `resolveTimeout(~default=30)` replace the
+  builder's fixed defaults — so a `plugin.json` `runtime.<EP>` entry now raises
+  the EP command-handler Lambda memory (and sets its timeout) on AWS, with the
+  1024/30 floor preserved when no hint is present. `PluginExtensionPoint_Builder`
+  inherits the surface via `include`; `Platform_Admin` passes an empty
+  `componentRuntime` (admin EPs keep the default — no regression).
 
 ## Problem
 
