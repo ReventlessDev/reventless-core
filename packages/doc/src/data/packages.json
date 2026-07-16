@@ -20,8 +20,13 @@
           "private": false
         },
         {
+          "name": "@reventlessdev/reventless-graphql-server",
+          "description": "Transport-neutral GraphQL server runtime for Reventless: schema-from-fragments, resolver registration, an HTTP + graphql-ws listener, and a subscription fan-out bridge with a pluggable PubSub backend",
+          "private": false
+        },
+        {
           "name": "@reventlessdev/reventless-gwt",
-          "description": "Given-When-Then DSLs and CLI runner for Reventless slice testing",
+          "description": "Given-When-Then DSLs and test harness for Reventless slice testing",
           "private": false
         },
         {
@@ -45,13 +50,13 @@
           "private": false
         },
         {
-          "name": "@reventlessdev/reventless-spec",
-          "description": "Specifications for Reventless",
+          "name": "@reventlessdev/reventless-postgres",
+          "description": "Postgres storage backend for Reventless (classic + DCB event logs, query DB, change feed). Connection-string only — RDS/Aurora, any managed provider, or a local container.",
           "private": false
         },
         {
-          "name": "@reventlessdev/reventless-domain-protocol",
-          "description": "Shared NDJSON contract (StreamEvent) between the reventless-gwt CLI (--format=vscode) and the reventless-vscode extension — a single sury @schema both emit and decode.",
+          "name": "@reventlessdev/reventless-spec",
+          "description": "Specifications for Reventless",
           "private": false
         }
       ]
@@ -118,6 +123,16 @@
         {
           "name": "@reventlessdev/rescript-pulumi-aws",
           "description": "ReScript bindings for @pulumi/aws",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-pulumi-docker-build",
+          "description": "ReScript bindings for @pulumi/docker-build",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-pulumi-kubernetes",
+          "description": "ReScript bindings for @pulumi/kubernetes",
           "private": false
         },
         {
