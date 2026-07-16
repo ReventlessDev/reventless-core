@@ -47,6 +47,7 @@ module type T = {
     ~api: api,
     ~apiRole: role,
     ~allEventTopics: EventTopic.allOutputs,
+    ~runtime: RuntimeHints.t=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
   let outputs: component => outputs

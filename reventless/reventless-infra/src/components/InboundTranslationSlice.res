@@ -36,6 +36,7 @@ module type T = {
   let queryDbName: string
   let make: (
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
+    ~runtime: RuntimeHints.t=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

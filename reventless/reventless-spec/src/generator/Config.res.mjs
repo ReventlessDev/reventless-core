@@ -27,6 +27,20 @@ function getStrArrayField(json, key) {
   return Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d[key]), Stdlib_JSON.Decode.array), arr => Stdlib_Array.filterMap(arr, Stdlib_JSON.Decode.string));
 }
 
+function getComponentRuntime(json) {
+  let result = {};
+  Stdlib_Option.forEach(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["runtime"]), Stdlib_JSON.Decode.object), runtimeObj => {
+    Object.entries(runtimeObj).forEach(param => {
+      let entry = param[1];
+      result[param[0]] = {
+        memorySize: getIntField(entry, "memorySize"),
+        timeout: getIntField(entry, "timeout")
+      };
+    });
+  });
+  return result;
+}
+
 function read(srcDir) {
   let packageJsonPath = Nodepath.join(Nodepath.dirname(srcDir), "package.json");
   let packageJsonName = Stdlib_Option.flatMap(readJson(packageJsonPath), j => getStrField(j, "name"));
@@ -36,6 +50,7 @@ function read(srcDir) {
     name: PluginName$Reventless.resolve(Stdlib_Option.flatMap(pluginJson, j => getStrField(j, "name")), packageJsonName),
     heartbeatInterval: Stdlib_Option.getOr(Stdlib_Option.flatMap(pluginJson, j => getIntField(j, "heartbeatInterval")), 5),
     exclude: Stdlib_Option.getOr(Stdlib_Option.flatMap(pluginJson, j => getStrArrayField(j, "exclude")), []),
+    componentRuntime: Stdlib_Option.getOr(Stdlib_Option.map(pluginJson, getComponentRuntime), {}),
     variant: "Composition"
   };
 }
@@ -48,6 +63,7 @@ export {
   getStrField,
   getIntField,
   getStrArrayField,
+  getComponentRuntime,
   read,
 }
 /* node:fs Not a pure module */

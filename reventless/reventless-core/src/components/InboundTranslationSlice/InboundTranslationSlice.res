@@ -29,6 +29,7 @@ module type T = {
 
   let make: (
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
+    ~runtime: ReventlessInfra.RuntimeHints.t=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

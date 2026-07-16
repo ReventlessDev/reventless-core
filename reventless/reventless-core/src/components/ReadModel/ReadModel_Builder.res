@@ -46,11 +46,16 @@ module Make = (
     ~api: QueryDbStorage.api,
     ~apiRole: QueryDbStorage.role,
     ~allEventTopics,
+    ~runtime,
     self,
     name,
   ) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let name = name->ComponentType.name(ReadModel.componentType)
+    // Per-component runtime hint raises the event-collector memory floor and
+    // overrides the timeout; absent hint keeps the builder defaults.
+    let memorySize = ReventlessInfra.RuntimeHints.resolveMemory(runtime, ~default=1024)
+    let timeout = ReventlessInfra.RuntimeHints.resolveTimeout(runtime, ~default=30)
 
     module SpecificQueryDb = QueryDb_Builder.Make(Spec, QueryDbStorage, QueryDbResolvers)
     let queryDb = SpecificQueryDb.make(~api, ~apiRole, ~opts)
@@ -129,6 +134,8 @@ module Make = (
           ~handler,
           ~eventTopics,
           ~resources,
+          ~memorySize,
+          ~timeout,
         )
 
         eventCollector
@@ -152,12 +159,13 @@ module Make = (
     ~api: QueryDbStorage.api,
     ~apiRole: QueryDbStorage.role,
     ~allEventTopics,
+    ~runtime=?,
     ~opts=?,
   ): ReadModel.component =>
     Component.make(
       ~componentType=ReadModel.componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~api, ~apiRole, ~allEventTopics, ...),
+      ~construct=construct(~api, ~apiRole, ~allEventTopics, ~runtime, ...),
       ~opts,
     )
 

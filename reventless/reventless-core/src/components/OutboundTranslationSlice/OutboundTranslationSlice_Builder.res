@@ -67,8 +67,10 @@ module Make = (
       })
     }
 
-    let construct = (~dcbEventLog: DcbEventLog.component, ~publishJsons, self, _name) => {
+    let construct = (~dcbEventLog: DcbEventLog.component, ~publishJsons, ~runtime, self, _name) => {
       let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
+      let memorySize = ReventlessInfra.RuntimeHints.resolveMemory(runtime, ~default=1024)
+      let timeout = ReventlessInfra.RuntimeHints.resolveTimeout(runtime, ~default=30)
 
       let queryDb = SpecificQueryDb.make(~api=Api.api(), ~apiRole=Api.apiRole(), ~opts)
 
@@ -147,6 +149,8 @@ module Make = (
             ~handler,
             ~eventTopics=allEventTopics,
             ~resources,
+            ~memorySize,
+            ~timeout,
           )
           ec
         })
@@ -170,11 +174,16 @@ module Make = (
       self->Component.setOutputs(outputs)
     }
 
-    let make = (~dcbEventLog, ~publishJsons, ~opts=?): OutboundTranslationSlice.component =>
+    let make = (
+      ~dcbEventLog,
+      ~publishJsons,
+      ~runtime=?,
+      ~opts=?,
+    ): OutboundTranslationSlice.component =>
       Component.make(
         ~componentType=OutboundTranslationSlice.componentType->ComponentType.toString,
         ~name=Spec.name,
-        ~construct=construct(~dcbEventLog, ~publishJsons, ...),
+        ~construct=construct(~dcbEventLog, ~publishJsons, ~runtime, ...),
         ~opts,
       )
   }

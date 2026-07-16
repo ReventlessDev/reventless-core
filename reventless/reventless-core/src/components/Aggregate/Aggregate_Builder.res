@@ -66,7 +66,7 @@ module Make = (
     }
   }
 
-  let createCommandTopic = (eventLog: SpecificEventLog.component, name, opts) =>
+  let createCommandTopic = (eventLog: SpecificEventLog.component, name, opts, ~memorySize, ~timeout) =>
     eventLog
     ->Component.operations
     ->Pulumi.Output.apply(eventLogOps => {
@@ -88,6 +88,8 @@ module Make = (
       let resources = [eventLog.resources, eventLog.eventTopic.resources]->Array.flat
       commandTopic->AggregateRuntimeBuilder.forCommandTopic(
         ~handler,
+        ~memorySize,
+        ~timeout,
         ~connect=SpecificCommandTopic.connect(commandTopic, ~resources, ...),
       )
       commandTopic
@@ -98,6 +100,8 @@ module Make = (
     ~api: CommandGeneratorResolvers.api,
     name,
     opts,
+    ~memorySize,
+    ~timeout,
   ) =>
     commandTopic->Pulumi.Output.flatMap(commandTopic =>
       commandTopic
@@ -126,6 +130,8 @@ module Make = (
           let resources = (commandTopic->Component.outputs).resources
           commandGenerator->AggregateRuntimeBuilder.forCommandGenerator(
             ~handler=SpecificCommandGenerator.makeHandler(~publishJsons, ~publishJsonsAndWait),
+            ~memorySize,
+            ~timeout,
             ~connect=SpecificCommandGenerator.connect(commandGenerator, ~api, ~resources, ...),
           )
         }
@@ -133,13 +139,18 @@ module Make = (
       })
     )
 
-  let construct = (~api: CommandGeneratorResolvers.api, self, name) => {
+  let construct = (~api: CommandGeneratorResolvers.api, ~runtime, self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let name = name->ComponentType.name(Aggregate.componentType)
 
+    // Per-component runtime hint (plugin.json) raises the per-kind memory floor
+    // and overrides the timeout; absent hint keeps the builder defaults.
+    let memorySize = ReventlessInfra.RuntimeHints.resolveMemory(runtime, ~default=1024)
+    let timeout = ReventlessInfra.RuntimeHints.resolveTimeout(runtime, ~default=30)
+
     let eventLog = SpecificEventLog.make(~name, ~opts)
-    let commandTopic = eventLog->createCommandTopic(name, opts)
-    let commandGenerator = commandTopic->createCommandGenerator(~api, name, opts)
+    let commandTopic = eventLog->createCommandTopic(name, opts, ~memorySize, ~timeout)
+    let commandGenerator = commandTopic->createCommandGenerator(~api, name, opts, ~memorySize, ~timeout)
 
     self->Component.setOperations(
       commandTopic->Pulumi.Output.flatMap(commandTopic =>
@@ -161,11 +172,15 @@ module Make = (
     self->Component.setOutputs(aggOutputs)
   }
 
-  let make = (~api: CommandGeneratorResolvers.api, ~opts=?): Aggregate.component =>
+  let make = (
+    ~api: CommandGeneratorResolvers.api,
+    ~runtime=?,
+    ~opts=?,
+  ): Aggregate.component =>
     Component.make(
       ~componentType=Aggregate.componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~api, ...),
+      ~construct=construct(~api, ~runtime, ...),
       ~opts,
     )
 

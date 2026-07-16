@@ -56,6 +56,7 @@ module Make = (
     ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>,
     ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>,
     ~systemCallableComponents: array<string>,
+    ~componentRuntime: dict<ReventlessInfra.RuntimeHints.t>,
     ~uiFragments: option<Reventless.Plugin.uiFragmentManifest>,
     ~pluginStructure: option<Reventless.Plugin.pluginStructure>,
     self,
@@ -133,7 +134,8 @@ module Make = (
     // AutomationSlices created inside DcbBuilder. The same `aggregateEventTopics`
     // dict (after merging in the DCB EventLog topic) is reused later as
     // `allEventTopics` for ReadModels.
-    let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(~api, opts)
+    let aggregatesWithoutEventMappers =
+      aggregates->createAggregatesWithoutEventMappers(~api, ~componentRuntime, opts)
     let aggregateEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
 
     // Construct DCB components and derive DCB-specific API schema entries
@@ -157,6 +159,7 @@ module Make = (
       ~outboundTranslationSlices,
       ~inboundTranslationSlices,
       ~systemCallableComponents,
+      ~componentRuntime,
       ~pluginStructure?,
       ~opts,
     )
@@ -335,7 +338,8 @@ module Make = (
     | None => ()
     }
 
-    let readModelsOutputs = readModels->createReadModels(~api, ~apiRole, allEventTopics, opts)
+    let readModelsOutputs =
+      readModels->createReadModels(~api, ~apiRole, ~componentRuntime, allEventTopics, opts)
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
     // Merge DCB StateViewSlice, InboundTranslation, AutomationSlice, and
     // OutboundTranslation QueryDbs into allQueryDbs so createResolvers builds
@@ -1063,6 +1067,7 @@ module Make = (
     ~outboundTranslationSlices=[],
     ~inboundTranslationSlices=[],
     ~systemCallableComponents=[],
+    ~componentRuntime=Dict.make(),
     ~uiFragments: option<Reventless.Plugin.uiFragmentManifest>=?,
     ~pluginStructure: option<Reventless.Plugin.pluginStructure>=?,
     ~opts=?,
@@ -1086,6 +1091,7 @@ module Make = (
         ~outboundTranslationSlices,
         ~inboundTranslationSlices,
         ~systemCallableComponents,
+        ~componentRuntime,
         ~uiFragments,
         ~pluginStructure,
         ...

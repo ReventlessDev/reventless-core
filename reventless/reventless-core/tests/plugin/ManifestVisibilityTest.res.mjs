@@ -55,7 +55,7 @@ let sourceNames = [];
 
 let consumedEventNames = ["OrderPlaced"];
 
-function make(param, param$1, param$2, param$3) {
+function make(param, param$1, param$2, param$3, param$4) {
   return 0;
 }
 
@@ -102,7 +102,7 @@ let sourceNames$1 = [];
 
 let consumedEventNames$1 = [];
 
-function make$1(param, param$1, param$2, param$3) {
+function make$1(param, param$1, param$2, param$3, param$4) {
   return 0;
 }
 

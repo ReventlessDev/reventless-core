@@ -14,6 +14,7 @@ module Make = (
     ~publishJsons: Pulumi.Output.t<ReventlessInfra.CommandTopic.publishJsons>,
     ~tagKeysByEventType: Dict.t<array<string>>=?,
     ~crossPartitionTagKeys: array<string>=?,
+    ~runtime: ReventlessInfra.RuntimeHints.t=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component = Inner.make
 }

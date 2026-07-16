@@ -9,6 +9,7 @@ import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ReadModel$ReventlessCore from "./ReadModel.res.mjs";
 import * as EventTopic$ReventlessCore from "../EventTopic/EventTopic.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as RuntimeHints$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/RuntimeHints.res.mjs";
 import * as QueryDb_Builder$ReventlessCore from "../QueryDb/QueryDb_Builder.res.mjs";
 import * as ReadModel_Callback$ReventlessCore from "./ReadModel_Callback.res.mjs";
 import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventCollector_Builder.res.mjs";
@@ -17,12 +18,14 @@ function Make(Spec) {
   return Mappings => (RuntimeEnvironment => (QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => {
     let sourceNames = Belt_SetString.toArray(Belt_SetString.fromArray(Mappings.mappings.map(Mapping => Mapping.sourceName)));
     let consumedEventNames = Belt_SetString.toArray(Belt_SetString.fromArray(Mappings.mappings.flatMap(Mapping => DcbTag$Reventless.extractVariantNames(Mapping.sourceEventSchema))));
-    let make = (api, apiRole, allEventTopics, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(ReadModel$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+    let make = (api, apiRole, allEventTopics, runtime, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(ReadModel$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
       let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
       };
       let name = ComponentType$ReventlessCore.name(extra$1, ReadModel$ReventlessCore.componentType);
+      let memorySize = RuntimeHints$ReventlessInfra.resolveMemory(runtime, 1024);
+      let timeout = RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 30);
       let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make(Spec)(QueryDbStorage)(QueryDbResolvers);
       let queryDb = SpecificQueryDb.make(api, apiRole, undefined, opts);
       let toProjectionOperations = param => {
@@ -69,7 +72,7 @@ function Make(Spec) {
         });
         let handler = SpecificEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
         let resources = Component$ReventlessCore.outputs(queryDb).resources;
-        EventCollectorRuntimeBuilder.forEventCollector(handler, eventTopics, resources, undefined, undefined, eventCollector);
+        EventCollectorRuntimeBuilder.forEventCollector(handler, eventTopics, resources, memorySize, timeout, eventCollector);
         return eventCollector;
       });
       Component$ReventlessCore.setOperations(extra, Output$Pulumi.flatMap(eventCollector, Component$ReventlessCore.operations).apply(param => param.enqueueEvent));

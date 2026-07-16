@@ -46,7 +46,7 @@ function Make(Spec) {
       });
       return Callback.handleCommands(tagKeysByEventType, crossPartitionTagKeys, dcbEventLogOps, decodedStream);
     });
-    let make = (dcbEventLog, publishJsons, tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, opts) => {
+    let make = (dcbEventLog, publishJsons, tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, param, opts) => {
       let tagKeysByEventType = tagKeysByEventTypeOpt !== undefined ? tagKeysByEventTypeOpt : ({});
       let crossPartitionTagKeys = crossPartitionTagKeysOpt !== undefined ? crossPartitionTagKeysOpt : [];
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(StateChangeSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {

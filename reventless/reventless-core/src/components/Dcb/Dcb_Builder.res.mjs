@@ -81,13 +81,14 @@ let emptyResult = {
 
 function Make(DcbEventLogStorage) {
   return DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => (RuntimeBuilder => (HooksConfig => {
-    let construct = (name, childName, apiNamePrefixOpt, onAdminApiOpt, environmentOpt, platformNameOpt, aggregateEventTopicsOpt, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponentsOpt, pluginStructure, opts) => {
+    let construct = (name, childName, apiNamePrefixOpt, onAdminApiOpt, environmentOpt, platformNameOpt, aggregateEventTopicsOpt, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponentsOpt, componentRuntimeOpt, pluginStructure, opts) => {
       let apiNamePrefix = apiNamePrefixOpt !== undefined ? apiNamePrefixOpt : name;
       let onAdminApi = onAdminApiOpt !== undefined ? onAdminApiOpt : false;
       let environment = environmentOpt !== undefined ? environmentOpt : "";
       let platformName = platformNameOpt !== undefined ? platformNameOpt : "";
       let aggregateEventTopics = aggregateEventTopicsOpt !== undefined ? aggregateEventTopicsOpt : ({});
       let systemCallableComponents = systemCallableComponentsOpt !== undefined ? systemCallableComponentsOpt : [];
+      let componentRuntime = componentRuntimeOpt !== undefined ? componentRuntimeOpt : ({});
       let hasDcb = stateChangeSlices.length !== 0;
       if (!hasDcb) {
         return emptyResult;
@@ -206,7 +207,7 @@ function Make(DcbEventLogStorage) {
         asyncDcbCommandTopicOpt = undefined;
       }
       let stateChangeSlicesOutputs = Object.fromEntries(syncSlices.map(StateChangeSlice => {
-        let ch = StateChangeSlice.make(dcbEventLog, publishJsons, effectiveTagKeysByEventType, effectiveCrossPartitionTagKeys, opts);
+        let ch = StateChangeSlice.make(dcbEventLog, publishJsons, effectiveTagKeysByEventType, effectiveCrossPartitionTagKeys, componentRuntime[StateChangeSlice.Spec.name], opts);
         return [
           StateChangeSlice.Spec.name,
           Component$ReventlessCore.outputs(ch)
@@ -216,7 +217,7 @@ function Make(DcbEventLogStorage) {
       if (asyncDcbCommandTopicOpt !== undefined) {
         let asyncPublishJsons = Component$ReventlessCore.operations(Primitive_option.valFromOption(asyncDcbCommandTopicOpt)).apply(ops => ops.publishJsons);
         asyncStateChangeSlicesOutputs = Object.fromEntries(asyncSlices.map(StateChangeSlice => {
-          let ch = StateChangeSlice.make(dcbEventLog, asyncPublishJsons, effectiveTagKeysByEventType, effectiveCrossPartitionTagKeys, opts);
+          let ch = StateChangeSlice.make(dcbEventLog, asyncPublishJsons, effectiveTagKeysByEventType, effectiveCrossPartitionTagKeys, componentRuntime[StateChangeSlice.Spec.name], opts);
           return [
             StateChangeSlice.Spec.name,
             Component$ReventlessCore.outputs(ch)
@@ -297,7 +298,7 @@ function Make(DcbEventLogStorage) {
         Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[I.queryDbName] = qn;
       });
       let stateViewSlicesOutputs = Object.fromEntries(stateViewSlices.map(StateViewSlice => {
-        let sv = StateViewSlice.make(dcbEventLog, opts);
+        let sv = StateViewSlice.make(dcbEventLog, componentRuntime[StateViewSlice.Spec.name], opts);
         return [
           StateViewSlice.Spec.name,
           Component$ReventlessCore.outputs(sv)
@@ -313,21 +314,21 @@ function Make(DcbEventLogStorage) {
           pluginName: name,
           sliceName: context_sliceName
         };
-        let as_ = AutoSlice.make(allEventTopics, publishJsons, context, opts);
+        let as_ = AutoSlice.make(allEventTopics, publishJsons, context, componentRuntime[AutoSlice.Spec.name], opts);
         return [
           AutoSlice.Spec.name,
           Component$ReventlessCore.outputs(as_)
         ];
       }));
       let outboundTranslationSlicesOutputs = Object.fromEntries(outboundTranslationSlices.map(OTS => {
-        let ots = OTS.make(dcbEventLog, publishJsons, opts);
+        let ots = OTS.make(dcbEventLog, publishJsons, componentRuntime[OTS.Spec.name], opts);
         return [
           OTS.Spec.name,
           Component$ReventlessCore.outputs(ots)
         ];
       }));
       let inboundTranslationSliceData = inboundTranslationSlices.map(ITS => {
-        let its = ITS.make(publishJsons, opts);
+        let its = ITS.make(publishJsons, componentRuntime[ITS.Spec.name], opts);
         let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, ITS.Spec.name);
         let registerResolver = HooksConfig.hooks.inboundMutationResolverHook;
         if (registerResolver !== undefined) {

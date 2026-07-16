@@ -168,7 +168,7 @@ async function publishJsons(cmdJsons) {
 
 let publishJsonsOutput = Pulumi.output(publishJsons);
 
-let _addItemSlice = AddItemMaker.make(eventLog, publishJsonsOutput, undefined, undefined, undefined);
+let _addItemSlice = AddItemMaker.make(eventLog, publishJsonsOutput, undefined, undefined, undefined, undefined);
 
 async function dispatch(commandJson, id) {
   return await publishJsons([{

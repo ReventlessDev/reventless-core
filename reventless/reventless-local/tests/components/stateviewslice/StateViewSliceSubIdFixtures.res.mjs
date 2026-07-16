@@ -134,7 +134,7 @@ let ScoresViewMaker = SVMaker.Make({
   moduleUrl: moduleUrl$1
 });
 
-let sv = ScoresViewMaker.make(eventLog, undefined);
+let sv = ScoresViewMaker.make(eventLog, undefined, undefined);
 
 let dcbEventTopicResource = Component$ReventlessCore.outputs(eventLog).eventTopic.resources[0];
 

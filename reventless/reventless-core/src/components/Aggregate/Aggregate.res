@@ -89,7 +89,11 @@ module type T = {
 
   type api
   type component = Component.t<t, outputs, operations>
-  let make: (~api: api, ~opts: Pulumi.ComponentResource.options=?) => component
+  let make: (
+    ~api: api,
+    ~runtime: ReventlessInfra.RuntimeHints.t=?,
+    ~opts: Pulumi.ComponentResource.options=?,
+  ) => component
   let outputs: component => outputs
   let operations: component => Pulumi.Output.t<operations>
   let finish: unit => unit

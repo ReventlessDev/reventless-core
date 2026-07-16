@@ -24,6 +24,11 @@ module type T = {
     ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>=?,
     ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>=?,
     ~systemCallableComponents: array<string>=?,
+    /** Per-component runtime resource hints keyed by component name (plugin.json
+        `runtime` block). Looked up per component by `Spec.name` and forwarded into
+        the component's `make`. See
+        docs/plans/configurable-component-runtime-resources.md. */
+    ~componentRuntime: dict<ReventlessInfra.RuntimeHints.t>=?,
     ~uiFragments: Reventless.Plugin.uiFragmentManifest=?,
     ~pluginStructure: Reventless.Plugin.pluginStructure=?,
     ~opts: Pulumi.ComponentResource.options=?,

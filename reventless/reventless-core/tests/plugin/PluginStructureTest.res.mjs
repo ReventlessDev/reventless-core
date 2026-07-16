@@ -18,7 +18,7 @@ let Behavior = {
   moduleUrl: PsPlaceOrder$ReventlessCore.moduleUrl
 };
 
-function make(param, param$1, param$2, param$3, param$4) {
+function make(param, param$1, param$2, param$3, param$4, param$5) {
   return 0;
 }
 
@@ -48,7 +48,7 @@ let Behavior$1 = {
   moduleUrl: PsShipOrder$ReventlessCore.moduleUrl
 };
 
-function make$1(param, param$1, param$2, param$3, param$4) {
+function make$1(param, param$1, param$2, param$3, param$4, param$5) {
   return 0;
 }
 
@@ -76,7 +76,7 @@ let Projection = {
   moduleUrl: PsOrdersView$ReventlessCore.moduleUrl
 };
 
-function make$2(param, param$1) {
+function make$2(param, param$1, param$2) {
   return 0;
 }
 
@@ -102,7 +102,7 @@ let Projection$1 = {
   moduleUrl: PsAvailableProductsView$ReventlessCore.moduleUrl
 };
 
-function make$3(param, param$1) {
+function make$3(param, param$1, param$2) {
   return 0;
 }
 
@@ -128,7 +128,7 @@ let Projection$2 = {
   moduleUrl: PsCustomersView$ReventlessCore.moduleUrl
 };
 
-function make$4(param, param$1) {
+function make$4(param, param$1, param$2) {
   return 0;
 }
 
@@ -154,7 +154,7 @@ let Projection$3 = {
   moduleUrl: PsAnnotatedView$ReventlessCore.moduleUrl
 };
 
-function make$5(param, param$1) {
+function make$5(param, param$1, param$2) {
   return 0;
 }
 

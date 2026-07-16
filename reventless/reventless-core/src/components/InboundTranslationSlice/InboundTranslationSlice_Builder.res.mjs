@@ -34,7 +34,7 @@ function Make(QueryDbStorage) {
           await queryDbOps.save(Id$Reventless.$$String.makeFromString(param[0]), param[1], "Overwrite", undefined);
         });
       };
-      let make = (publishJsons, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(InboundTranslationSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+      let make = (publishJsons, param, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(InboundTranslationSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
         let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
         let opts = {
           parent: opts_parent

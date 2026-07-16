@@ -205,7 +205,7 @@ let MixedRM = ReadModelMaker.Make({
   visibility: "Public"
 })(MixedMappings);
 
-let rm = MixedRM.make(undefined, undefined, allEventTopics, undefined);
+let rm = MixedRM.make(undefined, undefined, allEventTopics, undefined, undefined);
 
 async function publishAggregateEvent(id, event) {
   let meta = TestFixtures$ReventlessLocal.makeTestMeta("TestAggregateEventTopic");

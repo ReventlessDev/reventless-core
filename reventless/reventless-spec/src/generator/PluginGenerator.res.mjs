@@ -46,10 +46,12 @@ if (srcDirArg === "") {
   let config_name = init.name;
   let config_heartbeatInterval = init.heartbeatInterval;
   let config_exclude = init.exclude;
+  let config_componentRuntime = init.componentRuntime;
   let config = {
     name: config_name,
     heartbeatInterval: config_heartbeatInterval,
     exclude: config_exclude,
+    componentRuntime: config_componentRuntime,
     variant: variant
   };
   let discovered = Discovery$Reventless.scan(srcDir, config_exclude);

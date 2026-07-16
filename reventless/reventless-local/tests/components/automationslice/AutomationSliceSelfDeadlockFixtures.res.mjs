@@ -342,7 +342,7 @@ let PlaceMaker = StateChangeSlice_Builder$ReventlessLocal.Make({
   moduleUrl: moduleUrl$1
 });
 
-let _placeSlice = PlaceMaker.make(dcbEventLog, publishJsonsOutput, undefined, undefined, undefined);
+let _placeSlice = PlaceMaker.make(dcbEventLog, publishJsonsOutput, undefined, undefined, undefined, undefined);
 
 let ShipMaker = StateChangeSlice_Builder$ReventlessLocal.Make({
   name: name$1,
@@ -361,7 +361,7 @@ let ShipMaker = StateChangeSlice_Builder$ReventlessLocal.Make({
   moduleUrl: moduleUrl$3
 });
 
-let _shipSlice = ShipMaker.make(dcbEventLog, publishJsonsOutput, undefined, undefined, undefined);
+let _shipSlice = ShipMaker.make(dcbEventLog, publishJsonsOutput, undefined, undefined, undefined, undefined);
 
 let dcbTopicOutputs = Component$ReventlessInfra.outputs(dcbEventLog).eventTopic;
 
@@ -381,7 +381,7 @@ let AutomationSliceMaker = AutomationSlice_Builder$ReventlessLocal.Make(Bus);
 
 let AutoShip = AutomationSliceMaker.Make(AutoShipSpec)(AutoShipAutomation);
 
-let autoShipSlice = AutoShip.make(allEventTopics, publishJsonsOutput, testContext, undefined);
+let autoShipSlice = AutoShip.make(allEventTopics, publishJsonsOutput, testContext, undefined, undefined);
 
 function placeCmdJson(orderId) {
   return {

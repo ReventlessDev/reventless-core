@@ -58,8 +58,10 @@ module Make = (
 
     let decoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
 
-    let construct = (~dcbEventLog: DcbEventLog.component, self, _name) => {
+    let construct = (~dcbEventLog: DcbEventLog.component, ~runtime, self, _name) => {
       let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
+      let memorySize = ReventlessInfra.RuntimeHints.resolveMemory(runtime, ~default=1024)
+      let timeout = ReventlessInfra.RuntimeHints.resolveTimeout(runtime, ~default=30)
 
       let queryDb = SpecificQueryDb.make(~api=Api.api(), ~apiRole=Api.apiRole(), ~opts)
 
@@ -145,6 +147,8 @@ module Make = (
             ~handler,
             ~eventTopics=allEventTopics,
             ~resources,
+            ~memorySize,
+            ~timeout,
           )
           ec
         })
@@ -165,11 +169,15 @@ module Make = (
       self->Component.setOutputs(outputs)
     }
 
-    let make = (~dcbEventLog, ~opts=?): StateViewSlice.component =>
+    let make = (
+      ~dcbEventLog,
+      ~runtime=?,
+      ~opts=?,
+    ): StateViewSlice.component =>
       Component.make(
         ~componentType=StateViewSlice.componentType->ComponentType.toString,
         ~name=Spec.name,
-        ~construct=construct(~dcbEventLog, ...),
+        ~construct=construct(~dcbEventLog, ~runtime, ...),
         ~opts,
       )
   }

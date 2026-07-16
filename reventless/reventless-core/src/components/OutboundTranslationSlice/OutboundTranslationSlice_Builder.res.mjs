@@ -18,6 +18,7 @@ import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as RuntimeHints$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/RuntimeHints.res.mjs";
 import * as QueryDb_Builder$ReventlessCore from "../QueryDb/QueryDb_Builder.res.mjs";
 import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventCollector_Builder.res.mjs";
 import * as OutboundTranslationSlice$ReventlessCore from "./OutboundTranslationSlice.res.mjs";
@@ -51,11 +52,13 @@ function Make(RuntimeEnvironment) {
           await queryDbOps.save(Id$Reventless.$$String.makeFromString(param[0]), param[1], "Overwrite", undefined);
         });
       };
-      let make = (dcbEventLog, publishJsons, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(OutboundTranslationSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+      let make = (dcbEventLog, publishJsons, runtime, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(OutboundTranslationSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
         let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
         let opts = {
           parent: opts_parent
         };
+        let memorySize = RuntimeHints$ReventlessInfra.resolveMemory(runtime, 1024);
+        let timeout = RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 30);
         let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, opts);
         let dcbEventTopicOutputs = Component$ReventlessCore.outputs(dcbEventLog).eventTopic;
         let allEventTopics = Object.fromEntries([[
@@ -95,7 +98,7 @@ function Make(RuntimeEnvironment) {
           }));
           let handler = SpecificEventCollector.makeHandler(ec, jsonEventsHandler);
           let resources = Component$ReventlessCore.outputs(queryDb).resources;
-          EventCollectorRuntimeBuilder.forEventCollector(handler, allEventTopics, resources, undefined, undefined, ec);
+          EventCollectorRuntimeBuilder.forEventCollector(handler, allEventTopics, resources, memorySize, timeout, ec);
           return ec;
         });
         Component$ReventlessCore.setOperations(extra, Pulumi.all([

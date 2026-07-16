@@ -3,10 +3,22 @@
 
 type variant = Composition | Aws({compositionNamespace: string})
 
+// Per-component runtime resource hints, parsed from the optional `runtime`
+// block in plugin.json and keyed by component name. Both fields are optional;
+// an omitted field falls through to the per-kind builder default. See
+// docs/plans/configurable-component-runtime-resources.md.
+type runtimeHints = {
+  memorySize: option<int>,
+  timeout: option<int>,
+}
+
 type config = {
   name: string,
   heartbeatInterval: int,
   exclude: array<string>,
+  // Keyed by component name (e.g. "Customers", "PlaceOrder"). Empty when the
+  // plugin.json has no `runtime` block.
+  componentRuntime: dict<runtimeHints>,
   variant: variant,
 }
 
@@ -41,6 +53,31 @@ let getStrArrayField = (json: JSON.t, key: string): option<array<string>> =>
   ->Option.flatMap(JSON.Decode.array)
   ->Option.map(arr => arr->Array.filterMap(JSON.Decode.string))
 
+// Parse the optional `runtime` object: each key is a component name, each value
+// an object with optional `memorySize` / `timeout` ints. A missing block yields
+// an empty dict; a non-object entry is skipped.
+let getComponentRuntime = (json: JSON.t): dict<runtimeHints> => {
+  let result: dict<runtimeHints> = Dict.make()
+  json
+  ->JSON.Decode.object
+  ->Option.flatMap(d => d->Dict.get("runtime"))
+  ->Option.flatMap(JSON.Decode.object)
+  ->Option.forEach(runtimeObj =>
+    runtimeObj
+    ->Dict.toArray
+    ->Array.forEach(((componentName, entry)) =>
+      result->Dict.set(
+        componentName,
+        {
+          memorySize: getIntField(entry, "memorySize"),
+          timeout: getIntField(entry, "timeout"),
+        },
+      )
+    )
+  )
+  result
+}
+
 let read = (~srcDir: string): config => {
   // Read package.json `name` from the parent of srcDir
   let packageJsonPath = Generator_Node.join([Generator_Node.dirname(srcDir), "package.json"])
@@ -63,6 +100,7 @@ let read = (~srcDir: string): config => {
     ->Option.flatMap(j => getIntField(j, "heartbeatInterval"))
     ->Option.getOr(5),
     exclude: pluginJson->Option.flatMap(j => getStrArrayField(j, "exclude"))->Option.getOr([]),
+    componentRuntime: pluginJson->Option.map(getComponentRuntime)->Option.getOr(Dict.make()),
     variant: Composition,
   }
 }

@@ -134,7 +134,8 @@ module Make = (
     )
     // Aggregates constructed early so multi-source AutomationSlices created
     // inside DcbBuilder can subscribe to Aggregate event topics.
-    let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(~api, opts)
+    let aggregatesWithoutEventMappers =
+      aggregates->createAggregatesWithoutEventMappers(~api, ~componentRuntime=Dict.make(), opts)
     let aggregateEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
 
     // Wire CommandGenerator → AppSync / in-memory GraphQL resolvers via
@@ -267,7 +268,8 @@ module Make = (
       Plugin_Helpers.stateSchemaRegistry->Dict.set(registryKey, entry.stateSchema)
     })
 
-    let readModelsOutputs = readModels->createReadModels(~api, ~apiRole, allEventTopics, opts)
+    let readModelsOutputs =
+      readModels->createReadModels(~api, ~apiRole, ~componentRuntime=Dict.make(), allEventTopics, opts)
 
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
     // Merge DCB StateViewSlice / InboundTranslation QueryDbs into allQueryDbs so the

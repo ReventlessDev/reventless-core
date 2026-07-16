@@ -68,10 +68,10 @@ function Make(RuntimeEnvironment) {
       let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(DcbCommandTopicChannelAsync)(AdminRuntimeBuilder)({
         hooks: Config.hooks
       });
-      let aggregatesWithoutEventMappers = Builder_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
+      let aggregatesWithoutEventMappers = Builder_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, {}, opts);
       let aggregateEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
       Plugin_Helpers$ReventlessCore.registerAdminAggregateMutations(aggregates, Config.hooks);
-      let dcbResult = DcbBuilder.construct(name, name, "Platform", true, undefined, undefined, aggregateEventTopics, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, undefined, undefined, opts);
+      let dcbResult = DcbBuilder.construct(name, name, "Platform", true, undefined, undefined, aggregateEventTopics, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, undefined, undefined, undefined, opts);
       let slicePublishJsons = dcbResult.dcbPublishJsons;
       if (slicePublishJsons !== undefined) {
         stateChangeSlices.forEach(Sc => {
@@ -129,7 +129,7 @@ function Make(RuntimeEnvironment) {
         Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[registryKey] = qn;
         Plugin_Helpers$ReventlessCore.stateSchemaRegistry[registryKey] = entry.stateSchema;
       });
-      let readModelsOutputs = Builder_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, aggregateEventTopics, opts);
+      let readModelsOutputs = Builder_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, {}, aggregateEventTopics, opts);
       let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);
       let staticSchemaPush = Stdlib_Option.isSome(Config.hooks.preAdminResolversSchemaHook);
       if (!staticSchemaPush) {

@@ -96,7 +96,7 @@ let ItemAgg = ItemAggregateMaker.Make({
   commandSchema: commandSchema
 }));
 
-let agg = ItemAgg.make(undefined, undefined);
+let agg = ItemAgg.make(undefined, undefined, undefined);
 
 export {
   ItemSpec,

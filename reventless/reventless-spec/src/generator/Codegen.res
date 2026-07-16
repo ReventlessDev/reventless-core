@@ -249,6 +249,80 @@ let renderExtensionMakeParam = (extensions: array<string>): option<string> =>
     Some("      ~extensions=[" ++ entries->Array.join(", ") ++ "],")
   }
 
+// ── Per-component runtime hints (plugin.json `runtime` block) ─────────────────
+// Emits `~componentRuntime=Dict.fromArray([("Customers", {memorySize: Some(2048),
+// timeout: None}), …])` into `Platform.Plugin.make(...)`. Only emitted when the
+// plugin declares a `runtime` block, so plugins without one keep a byte-identical
+// generated Plugin.res.
+
+let renderRuntimeHints = (h: Config.runtimeHints): string => {
+  let optInt = (o: option<int>) =>
+    switch o {
+    | Some(n) => "Some(" ++ n->Int.toString ++ ")"
+    | None => "None"
+    }
+  "{memorySize: " ++ optInt(h.memorySize) ++ ", timeout: " ++ optInt(h.timeout) ++ "}"
+}
+
+// Every component name reachable from the resolved plugin — the valid keys for
+// the plugin.json `runtime` block. Mirrors the module names emitted above.
+let collectComponentNames = (resolved: Pairing.resolved): array<string> =>
+  Array.flat([
+    resolved.aggregates->Array.map(({spec}) => spec),
+    resolved.readModels->Array.map(({readModel}) => readModel),
+    resolved.stateChangeSlices,
+    resolved.stateViewSlices,
+    resolved.stateViewSlicesStream,
+    resolved.automationSlices,
+    resolved.outboundTranslationSlices,
+    resolved.inboundTranslationSlices,
+    resolved.tasks,
+    resolved.extensions,
+    resolved.extensionPoints->Array.map(({group, mappings}) =>
+      switch group {
+      | Some(g) => g
+      | None => epModuleName(mappings->Array.getUnsafe(0))
+      }
+    ),
+  ])
+
+// Typo protection: a `runtime` key that names no component is a warning, not a
+// silent no-op. The override is still emitted (harmless — the deploy loop simply
+// never looks it up).
+let validateComponentRuntimeKeys = (
+  ~resolved: Pairing.resolved,
+  ~componentRuntime: dict<Config.runtimeHints>,
+): unit => {
+  let known = collectComponentNames(resolved)
+  componentRuntime
+  ->Dict.keysToArray
+  ->Array.forEach(name =>
+    if !(known->Array.includes(name)) {
+      Console.warn(
+        "Generator: plugin.json `runtime` override for `" ++
+        name ++
+        "` matches no component in this plugin. Known components: " ++
+        known->Array.join(", "),
+      )
+    }
+  )
+}
+
+let renderComponentRuntimeParam = (
+  componentRuntime: dict<Config.runtimeHints>,
+): option<string> => {
+  let entries = componentRuntime->Dict.toArray
+  if entries->Array.length === 0 {
+    None
+  } else {
+    let rendered =
+      entries
+      ->Array.map(((name, hints)) => "(\"" ++ name ++ "\", " ++ renderRuntimeHints(hints) ++ ")")
+      ->Array.join(", ")
+    Some("      ~componentRuntime=Dict.fromArray([" ++ rendered ++ "]),")
+  }
+}
+
 let renderTaskMakeParam = (tasks: array<string>): option<string> =>
   if tasks->Array.length === 0 {
     None

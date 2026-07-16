@@ -5,6 +5,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Aggregate$ReventlessCore from "./Aggregate.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as RuntimeHints$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/RuntimeHints.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "../../plugin/component/Plugin_Helpers.res.mjs";
 import * as EventLog_Builder$ReventlessCore from "../EventLog/EventLog_Builder.res.mjs";
 import * as Aggregate_Callback$ReventlessCore from "./Aggregate_Callback.res.mjs";
@@ -29,7 +30,7 @@ function Make(Spec) {
       Id: Spec.Id,
       commandSchema: Spec.commandSchema
     })(SpecificEventCollector)(EventMappings)(AggregateRuntimeBuilder);
-    let createCommandTopic = (eventLog, name, opts) => Component$ReventlessCore.operations(eventLog).apply(eventLogOps => {
+    let createCommandTopic = (eventLog, name, opts, memorySize, timeout) => Component$ReventlessCore.operations(eventLog).apply(eventLogOps => {
       let AggregateCallback = Aggregate_Callback$ReventlessCore.Make(Spec)(Behavior)({
         Spec: Spec,
         EventLog: SpecificEventLog,
@@ -42,10 +43,10 @@ function Make(Spec) {
         eventLog$1.resources,
         eventLog$1.eventTopic.resources
       ].flat();
-      AggregateRuntimeBuilder.forCommandTopic(handler, none => SpecificCommandTopic.connect(none, resources, commandTopic), undefined, undefined, commandTopic);
+      AggregateRuntimeBuilder.forCommandTopic(handler, none => SpecificCommandTopic.connect(none, resources, commandTopic), memorySize, timeout, commandTopic);
       return commandTopic;
     });
-    let createCommandGenerator = (commandTopic, api, name, opts) => Output$Pulumi.flatMap(commandTopic, commandTopic => Component$ReventlessCore.operations(commandTopic).apply(param => {
+    let createCommandGenerator = (commandTopic, api, name, opts, memorySize, timeout) => Output$Pulumi.flatMap(commandTopic, commandTopic => Component$ReventlessCore.operations(commandTopic).apply(param => {
       let publishJsonsAndWait = param.publishJsonsAndWait;
       let publishJsons = param.publishJsons;
       let commandGenerator = SpecificCommandGenerator.make(name, opts);
@@ -59,19 +60,21 @@ function Make(Spec) {
         fields.forEach(field => bindHandler(field, generateCommand));
       } else {
         let resources = Component$ReventlessCore.outputs(commandTopic).resources;
-        AggregateRuntimeBuilder.forCommandGenerator(SpecificCommandGenerator.makeHandler(publishJsons, publishJsonsAndWait), none => SpecificCommandGenerator.connect(api, resources, none, commandGenerator), undefined, undefined, commandGenerator);
+        AggregateRuntimeBuilder.forCommandGenerator(SpecificCommandGenerator.makeHandler(publishJsons, publishJsonsAndWait), none => SpecificCommandGenerator.connect(api, resources, none, commandGenerator), memorySize, timeout, commandGenerator);
       }
       return commandGenerator;
     }));
-    let make = (api, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Aggregate$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+    let make = (api, runtime, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Aggregate$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
       let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
       };
       let name = ComponentType$ReventlessCore.name(extra$1, Aggregate$ReventlessCore.componentType);
+      let memorySize = RuntimeHints$ReventlessInfra.resolveMemory(runtime, 1024);
+      let timeout = RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 30);
       let eventLog = SpecificEventLog.make(name, opts);
-      let commandTopic = createCommandTopic(eventLog, name, opts);
-      let commandGenerator = createCommandGenerator(commandTopic, api, name, opts);
+      let commandTopic = createCommandTopic(eventLog, name, opts, memorySize, timeout);
+      let commandGenerator = createCommandGenerator(commandTopic, api, name, opts, memorySize, timeout);
       Component$ReventlessCore.setOperations(extra, Output$Pulumi.flatMap(commandTopic, commandTopic => Component$ReventlessCore.operations(commandTopic).apply(param => ({
         publishJsons: param.publishJsons,
         publishJsonsStream: param.publishJsonsStream

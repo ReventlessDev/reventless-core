@@ -103,7 +103,7 @@ function Make(Spec) {
       let componentChapters = componentChaptersOpt !== undefined ? componentChaptersOpt : ({});
       return Plugin_Structure$ReventlessCore.make(name, aggregates, readModels, stateViewSlices, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints, componentChapters);
     };
-    let make = (name, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, stateChangeSlicesOpt, stateViewSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, systemCallableComponentsOpt, uiFragments, pluginStructure, opts) => {
+    let make = (name, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, stateChangeSlicesOpt, stateViewSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, systemCallableComponentsOpt, componentRuntimeOpt, uiFragments, pluginStructure, opts) => {
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
       let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
       let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
@@ -115,6 +115,7 @@ function Make(Spec) {
       let outboundTranslationSlices = outboundTranslationSlicesOpt !== undefined ? outboundTranslationSlicesOpt : [];
       let inboundTranslationSlices = inboundTranslationSlicesOpt !== undefined ? inboundTranslationSlicesOpt : [];
       let systemCallableComponents = systemCallableComponentsOpt !== undefined ? systemCallableComponentsOpt : [];
+      let componentRuntime = componentRuntimeOpt !== undefined ? componentRuntimeOpt : ({});
       PluginRuntimeBuilder.registerPluginName(name);
       let version = PackageVersion$Reventless.fromCaller();
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Plugin$ReventlessCore.componentType), name, (extra, extra$1) => {
@@ -142,12 +143,12 @@ function Make(Spec) {
           parent: opts_parent
         };
         let childName = ComponentType$ReventlessCore.name(extra$1, Plugin$ReventlessCore.componentType);
-        let aggregatesWithoutEventMappers = Plugin_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
+        let aggregatesWithoutEventMappers = Plugin_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, componentRuntime, opts);
         let aggregateEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
         let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(DcbCommandTopicChannelAsync)(PluginRuntimeBuilder)({
           hooks: Spec.hooks
         });
-        let dcbResult = DcbBuilder.construct(extra$1, childName, undefined, undefined, Spec.environment, Spec.platformName, aggregateEventTopics, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponents, pluginStructure, opts);
+        let dcbResult = DcbBuilder.construct(extra$1, childName, undefined, undefined, Spec.environment, Spec.platformName, aggregateEventTopics, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponents, componentRuntime, pluginStructure, opts);
         let mutationEntriesFromAggregates = aggregates.flatMap(M => {
           let commandSchema = M.Spec.commandSchema;
           if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
@@ -252,7 +253,7 @@ function Make(Spec) {
         if (dcbOutputs !== undefined) {
           aggregateEventTopics[extra$1 + "DcbEventLog"] = dcbOutputs.eventTopic;
         }
-        let readModelsOutputs = Plugin_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, aggregateEventTopics, opts);
+        let readModelsOutputs = Plugin_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, componentRuntime, aggregateEventTopics, opts);
         let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);
         Object.entries(dcbResult.stateViewSlicesOutputs).forEach(param => {
           allQueryDbs[param[0]] = param[1].queryDb;

@@ -66,6 +66,12 @@ module type T = {
         `@@reventless.systemCallable` on the spec file and threaded here by the
         plugin generator; see `docs/guides/appsync-iam-system-caller.md`. */
     ~systemCallableComponents: array<string>=?,
+    /** Per-component runtime resource hints keyed by component name, authored in
+        the plugin's `plugin.json` `runtime` block and emitted by the plugin
+        generator. The deploy loop looks up each component's hint by `Spec.name`
+        and forwards it into that component's `make`. See
+        docs/plans/configurable-component-runtime-resources.md. */
+    ~componentRuntime: dict<RuntimeHints.t>=?,
     ~uiFragments: Reventless.Plugin.uiFragmentManifest=?,
     ~pluginStructure: Reventless.Plugin.pluginStructure=?,
     ~opts: Pulumi.ComponentResource.options=?,

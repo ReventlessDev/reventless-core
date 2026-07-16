@@ -116,7 +116,7 @@ let ItemReadModel = ReadModelMaker.Make({
   visibility: "Public"
 })(ItemMappings);
 
-let rm = ItemReadModel.make(undefined, undefined, allEventTopics, undefined);
+let rm = ItemReadModel.make(undefined, undefined, allEventTopics, undefined, undefined);
 
 let testMeta = TestFixtures$ReventlessLocal.makeTestMeta("TestItemEventTopic");
 

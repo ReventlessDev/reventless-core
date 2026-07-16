@@ -81,10 +81,13 @@ module Make = (
       ~allEventTopics: EventTopic.allOutputs,
       ~publishJsons,
       ~context: Reventless.AutomationSlice.context,
+      ~runtime,
       self,
       _name,
     ) => {
       let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
+      let memorySize = ReventlessInfra.RuntimeHints.resolveMemory(runtime, ~default=1024)
+      let timeout = ReventlessInfra.RuntimeHints.resolveTimeout(runtime, ~default=30)
 
       let queryDb = SpecificQueryDb.make(~api=Api.api(), ~apiRole=Api.apiRole(), ~opts)
 
@@ -168,6 +171,8 @@ module Make = (
             ~handler,
             ~eventTopics,
             ~resources,
+            ~memorySize,
+            ~timeout,
           )
           ec
         })
@@ -196,11 +201,17 @@ module Make = (
       self->Component.setOutputs(outputs)
     }
 
-    let make = (~allEventTopics, ~publishJsons, ~context, ~opts=?): AutomationSlice.component =>
+    let make = (
+      ~allEventTopics,
+      ~publishJsons,
+      ~context,
+      ~runtime=?,
+      ~opts=?,
+    ): AutomationSlice.component =>
       Component.make(
         ~componentType=AutomationSlice.componentType->ComponentType.toString,
         ~name=Spec.name,
-        ~construct=construct(~allEventTopics, ~publishJsons, ~context, ...),
+        ~construct=construct(~allEventTopics, ~publishJsons, ~context, ~runtime, ...),
         ~opts,
       )
   }

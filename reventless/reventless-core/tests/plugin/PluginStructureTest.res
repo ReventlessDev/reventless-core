@@ -27,7 +27,7 @@ module PsPlaceOrderSlice: ReventlessInfra.StateChangeSlice.T = {
   }
   let isAsync = false
   type component = scsComponent
-  let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~opts as _=?): component => Obj.magic(0)
+  let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
 module PsShipOrderSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsShipOrder
@@ -40,7 +40,7 @@ module PsShipOrderSlice: ReventlessInfra.StateChangeSlice.T = {
   }
   let isAsync = false
   type component = scsComponent
-  let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~opts as _=?): component => Obj.magic(0)
+  let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
 module PsOrdersViewSlice: ReventlessInfra.StateViewSlice.T = {
   module Spec = PsOrdersView
@@ -49,7 +49,7 @@ module PsOrdersViewSlice: ReventlessInfra.StateViewSlice.T = {
     let moduleUrl = PsOrdersView.moduleUrl
   }
   type component = svsComponent
-  let make = (~dcbEventLog as _, ~opts as _=?): component => Obj.magic(0)
+  let make = (~dcbEventLog as _, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
 module PsAvailableProductsViewSlice: ReventlessInfra.StateViewSlice.T = {
   module Spec = PsAvailableProductsView
@@ -58,7 +58,7 @@ module PsAvailableProductsViewSlice: ReventlessInfra.StateViewSlice.T = {
     let moduleUrl = PsAvailableProductsView.moduleUrl
   }
   type component = svsComponent
-  let make = (~dcbEventLog as _, ~opts as _=?): component => Obj.magic(0)
+  let make = (~dcbEventLog as _, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
 module PsCustomersViewSlice: ReventlessInfra.StateViewSlice.T = {
   module Spec = PsCustomersView
@@ -67,7 +67,7 @@ module PsCustomersViewSlice: ReventlessInfra.StateViewSlice.T = {
     let moduleUrl = PsCustomersView.moduleUrl
   }
   type component = svsComponent
-  let make = (~dcbEventLog as _, ~opts as _=?): component => Obj.magic(0)
+  let make = (~dcbEventLog as _, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
 module PsAnnotatedViewSlice: ReventlessInfra.StateViewSlice.T = {
   module Spec = PsAnnotatedView
@@ -76,7 +76,7 @@ module PsAnnotatedViewSlice: ReventlessInfra.StateViewSlice.T = {
     let moduleUrl = PsAnnotatedView.moduleUrl
   }
   type component = svsComponent
-  let make = (~dcbEventLog as _, ~opts as _=?): component => Obj.magic(0)
+  let make = (~dcbEventLog as _, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
 
 let structure = Plugin_Structure.make(

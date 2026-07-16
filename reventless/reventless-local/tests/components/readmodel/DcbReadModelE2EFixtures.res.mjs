@@ -233,7 +233,7 @@ async function publishJsons(cmdJsons) {
 
 let publishJsonsOutput = Pulumi.output(publishJsons);
 
-let _addProductSlice = AddProductMaker.make(dcbEventLog, publishJsonsOutput, undefined, undefined, undefined);
+let _addProductSlice = AddProductMaker.make(dcbEventLog, publishJsonsOutput, undefined, undefined, undefined, undefined);
 
 let dcbTopicOutputs = Component$ReventlessInfra.outputs(dcbEventLog).eventTopic;
 
@@ -255,7 +255,7 @@ let ProductsReadModel = ReadModelMaker.Make({
   visibility: "Public"
 })(ProductsMappings);
 
-let rm = ProductsReadModel.make(undefined, undefined, allEventTopics, undefined);
+let rm = ProductsReadModel.make(undefined, undefined, allEventTopics, undefined, undefined);
 
 async function dispatch(commandJson, id) {
   return await publishJsons([{

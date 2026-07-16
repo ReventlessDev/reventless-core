@@ -75,11 +75,17 @@ module Make = (
     self->Component.setOutputs(outputs)
   }
 
+  // A StateChangeSlice registers its handler on the plugin's shared DCB command
+  // topic Lambda, so it has no per-slice runtime environment. The per-component
+  // hint is folded into that shared Lambda's size in the plugin/DCB runtime
+  // builder (keyed by `Spec.name` from `componentRuntime`), not here — so the
+  // slice builder accepts the hint for composition-surface parity and discards it.
   let make = (
     ~dcbEventLog,
     ~publishJsons,
     ~tagKeysByEventType=Dict.make(),
     ~crossPartitionTagKeys=[],
+    ~runtime as _=?,
     ~opts=?,
   ): StateChangeSlice.component =>
     Component.make(

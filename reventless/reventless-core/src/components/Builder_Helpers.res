@@ -19,11 +19,16 @@ let createAggregatesWithoutEventMappers = (
   type a,
   aggregates: array<module(ReventlessInfra.Aggregate.T with type api = a)>,
   ~api: a,
+  ~componentRuntime: dict<ReventlessInfra.RuntimeHints.t>,
   opts,
 ) =>
   aggregates
   ->Array.map((module(SpecificAggregate: ReventlessInfra.Aggregate.T with type api = a)) => {
-    let aggregate = SpecificAggregate.make(~api, ~opts)
+    let aggregate = SpecificAggregate.make(
+      ~api,
+      ~runtime=?componentRuntime->Dict.get(SpecificAggregate.Spec.name),
+      ~opts,
+    )
     let aggOutputs = SpecificAggregate.outputs(aggregate)
     addEventMapperFns->Dict.set(
       SpecificAggregate.Spec.name,
@@ -112,11 +117,18 @@ let createReadModels = (
   readModels: array<module(ReventlessInfra.ReadModel.T with type api = a and type role = r)>,
   ~api: a,
   ~apiRole: r,
+  ~componentRuntime: dict<ReventlessInfra.RuntimeHints.t>,
   allEventTopics,
   opts,
 ) => {
   let readModels = readModels->Array.map((module(SpecificReadModel: ReventlessInfra.ReadModel.T with type api = a and type role = r)) => {
-    let readModel = SpecificReadModel.make(~api, ~apiRole, ~allEventTopics, ~opts)
+    let readModel = SpecificReadModel.make(
+      ~api,
+      ~apiRole,
+      ~allEventTopics,
+      ~runtime=?componentRuntime->Dict.get(SpecificReadModel.Spec.name),
+      ~opts,
+    )
     let rmOutputs = SpecificReadModel.outputs(readModel)
     let rmOperations = SpecificReadModel.operations(readModel)
     rmOutputs.sourceNames->Array.forEach(sourceName =>

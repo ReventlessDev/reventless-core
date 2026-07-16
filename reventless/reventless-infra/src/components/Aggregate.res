@@ -65,7 +65,11 @@ module type T = {
   module Spec: Reventless.Aggregate.Spec
   type api
   type component
-  let make: (~api: api, ~opts: Pulumi.ComponentResource.options=?) => component
+  let make: (
+    ~api: api,
+    ~runtime: RuntimeHints.t=?,
+    ~opts: Pulumi.ComponentResource.options=?,
+  ) => component
   let outputs: component => outputs
   let operations: component => Pulumi.Output.t<operations>
   /** Signal that all event mappers have been attached; finalises the aggregate. */

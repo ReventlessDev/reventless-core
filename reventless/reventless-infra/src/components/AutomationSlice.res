@@ -43,6 +43,7 @@ module type T = {
     ~allEventTopics: EventTopic.allOutputs,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
     ~context: Reventless.AutomationSlice.context,
+    ~runtime: RuntimeHints.t=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

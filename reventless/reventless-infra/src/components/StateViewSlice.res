@@ -33,6 +33,7 @@ module type T = {
   type component = Component.t<t, outputs, operations>
   let make: (
     ~dcbEventLog: DcbEventLog.component,
+    ~runtime: RuntimeHints.t=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

@@ -13,9 +13,9 @@ let publishToAggregates = {};
 
 let aggregateFinishFns = {};
 
-function createAggregatesWithoutEventMappers(aggregates, api, opts) {
+function createAggregatesWithoutEventMappers(aggregates, api, componentRuntime, opts) {
   return Object.fromEntries(aggregates.map(SpecificAggregate => {
-    let aggregate = SpecificAggregate.make(api, opts);
+    let aggregate = SpecificAggregate.make(api, componentRuntime[SpecificAggregate.Spec.name], opts);
     let aggOutputs = SpecificAggregate.outputs(aggregate);
     addEventMapperFns[SpecificAggregate.Spec.name] = aggOutputs.addEventMapper;
     let resources = aggOutputs.commandTopic.apply(commandTopic => commandTopic.resources);
@@ -65,9 +65,9 @@ function extractReadModelsOutputs(readModels) {
   ]));
 }
 
-function createReadModels(readModels, api, apiRole, allEventTopics, opts) {
+function createReadModels(readModels, api, apiRole, componentRuntime, allEventTopics, opts) {
   let readModels$1 = readModels.map(SpecificReadModel => {
-    let readModel = SpecificReadModel.make(api, apiRole, allEventTopics, opts);
+    let readModel = SpecificReadModel.make(api, apiRole, allEventTopics, componentRuntime[SpecificReadModel.Spec.name], opts);
     let rmOutputs = SpecificReadModel.outputs(readModel);
     let rmOperations = SpecificReadModel.operations(readModel);
     rmOutputs.sourceNames.forEach(sourceName => {

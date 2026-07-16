@@ -225,7 +225,7 @@ let _addProductSlice = AddProductMaker.make(eventLog, publishJsonsOutput, Object
     "CategoryAdded",
     ["categoryId"]
   ]
-]), ["categoryId"], undefined);
+]), ["categoryId"], undefined, undefined);
 
 async function dispatch(commandJson, id) {
   return await publishJsons([{

@@ -122,7 +122,7 @@ globalThis.describe("ReadModel source-name fail-fast:", () => {
     let threw = false;
     let msg = "";
     try {
-      RmMaker.make(undefined, undefined, allEventTopics, undefined);
+      RmMaker.make(undefined, undefined, allEventTopics, undefined, undefined);
     } catch (raw_err) {
       let err = Primitive_exceptions.internalToException(raw_err);
       if (err.RE_EXN_ID === "JsExn") {

@@ -87,7 +87,14 @@ module Make = (
       self->Component.setOutputs(outputs)
     }
 
-    let make = (~publishJsons, ~opts=?): InboundTranslationSlice.component =>
+    // InboundTranslationSlice publishes commands + syncs its QueryDb inline; it
+    // provisions no per-slice runtime environment, so the runtime hint is accepted
+    // (for composition-surface parity) and discarded.
+    let make = (
+      ~publishJsons,
+      ~runtime as _=?,
+      ~opts=?,
+    ): InboundTranslationSlice.component =>
       Component.make(
         ~componentType=InboundTranslationSlice.componentType->ComponentType.toString,
         ~name=Spec.name,

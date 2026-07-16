@@ -205,7 +205,7 @@ async function mockPublishJsons(cmds) {
   publishedCommands.contents = publishedCommands.contents.concat(cmds);
 }
 
-let slice = AutoFulfill.make(allEventTopics, Pulumi.output(mockPublishJsons), testContext, undefined);
+let slice = AutoFulfill.make(allEventTopics, Pulumi.output(mockPublishJsons), testContext, undefined, undefined);
 
 async function publishAggregateEvent(id, event) {
   let meta = TestFixtures$ReventlessLocal.makeTestMeta(name);

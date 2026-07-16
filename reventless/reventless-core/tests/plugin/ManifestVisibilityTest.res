@@ -48,7 +48,7 @@ module PublicReadModel: ReventlessInfra.ReadModel.T
   // A read model that projects an event reaching it via a (DCB-log-sourced) mapping — the
   // case Plugin_Structure must surface as a qualified `consumedEventTypes` entry.
   let consumedEventNames: array<string> = ["OrderPlaced"]
-  let make = (~api as _, ~apiRole as _, ~allEventTopics as _, ~opts as _=?): component =>
+  let make = (~api as _, ~apiRole as _, ~allEventTopics as _, ~runtime as _=?, ~opts as _=?): component =>
     Obj.magic(0)
   let outputs = (_: component): ReventlessInfra.ReadModel.outputs => Obj.magic(0)
   let operations = (_: component): Pulumi.Output.t<ReventlessInfra.ReadModel.operations> =>
@@ -64,7 +64,7 @@ module InternalReadModel: ReventlessInfra.ReadModel.T
   type component
   let sourceNames: array<string> = []
   let consumedEventNames: array<string> = []
-  let make = (~api as _, ~apiRole as _, ~allEventTopics as _, ~opts as _=?): component =>
+  let make = (~api as _, ~apiRole as _, ~allEventTopics as _, ~runtime as _=?, ~opts as _=?): component =>
     Obj.magic(0)
   let outputs = (_: component): ReventlessInfra.ReadModel.outputs => Obj.magic(0)
   let operations = (_: component): Pulumi.Output.t<ReventlessInfra.ReadModel.operations> =>

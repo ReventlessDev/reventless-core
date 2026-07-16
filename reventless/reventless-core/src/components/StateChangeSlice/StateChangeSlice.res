@@ -33,6 +33,7 @@ module type T = {
         clause (instead of an AND-ed composite) so the decision read is a real
         secondary-tag read. */
     ~crossPartitionTagKeys: array<string>=?,
+    ~runtime: ReventlessInfra.RuntimeHints.t=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

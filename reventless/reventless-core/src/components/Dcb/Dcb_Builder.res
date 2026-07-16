@@ -96,6 +96,9 @@ module Make = (
     // (machine credentials — IAM/SigV4 on AWS) must invoke — sets
     // `systemCallable` on the matching mutation / state-view query schema entries.
     ~systemCallableComponents: array<string>=[],
+    // Per-component runtime hints keyed by slice `Spec.name`; forwarded into each
+    // slice's `make`. Empty for admin/legacy callers.
+    ~componentRuntime: dict<ReventlessInfra.RuntimeHints.t>=Dict.make(),
     ~pluginStructure: option<Reventless.Plugin.pluginStructure>=?,
     ~opts: Pulumi.ComponentResource.options,
   ): dcbResult => {
@@ -389,6 +392,7 @@ module Make = (
               ~publishJsons,
               ~tagKeysByEventType=effectiveTagKeysByEventType,
               ~crossPartitionTagKeys=effectiveCrossPartitionTagKeys,
+              ~runtime=?componentRuntime->Dict.get(StateChangeSlice.Spec.name),
               ~opts,
             )
             (StateChangeSlice.Spec.name, ch->Component.outputs)
@@ -409,6 +413,7 @@ module Make = (
                 ~publishJsons=asyncPublishJsons,
                 ~tagKeysByEventType=effectiveTagKeysByEventType,
                 ~crossPartitionTagKeys=effectiveCrossPartitionTagKeys,
+                ~runtime=?componentRuntime->Dict.get(StateChangeSlice.Spec.name),
                 ~opts,
               )
               (StateChangeSlice.Spec.name, ch->Component.outputs)
@@ -571,7 +576,11 @@ module Make = (
         let stateViewSlicesOutputs =
           stateViewSlices
           ->Array.map((module(StateViewSlice: StateViewSlice.T)) => {
-            let sv = StateViewSlice.make(~dcbEventLog, ~opts)
+            let sv = StateViewSlice.make(
+              ~dcbEventLog,
+              ~runtime=?componentRuntime->Dict.get(StateViewSlice.Spec.name),
+              ~opts,
+            )
             (StateViewSlice.Spec.name, sv->Component.outputs)
           })
           ->Dict.fromArray
@@ -595,7 +604,13 @@ module Make = (
               pluginName: name,
               sliceName: AutoSlice.Spec.name,
             }
-            let as_ = AutoSlice.make(~allEventTopics, ~publishJsons, ~context, ~opts)
+            let as_ = AutoSlice.make(
+              ~allEventTopics,
+              ~publishJsons,
+              ~context,
+              ~runtime=?componentRuntime->Dict.get(AutoSlice.Spec.name),
+              ~opts,
+            )
             (AutoSlice.Spec.name, as_->Component.outputs)
           })
           ->Dict.fromArray
@@ -604,7 +619,12 @@ module Make = (
         let outboundTranslationSlicesOutputs =
           outboundTranslationSlices
           ->Array.map((module(OTS: OutboundTranslationSlice.T)) => {
-            let ots = OTS.make(~dcbEventLog, ~publishJsons, ~opts)
+            let ots = OTS.make(
+              ~dcbEventLog,
+              ~publishJsons,
+              ~runtime=?componentRuntime->Dict.get(OTS.Spec.name),
+              ~opts,
+            )
             (OTS.Spec.name, ots->Component.outputs)
           })
           ->Dict.fromArray
@@ -614,7 +634,11 @@ module Make = (
           inboundTranslationSlices->Array.map((
             module(ITS: InboundTranslationSlice.T),
           ) => {
-            let its = ITS.make(~publishJsons, ~opts)
+            let its = ITS.make(
+              ~publishJsons,
+              ~runtime=?componentRuntime->Dict.get(ITS.Spec.name),
+              ~opts,
+            )
             let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=ITS.Spec.name)
 
             switch HooksConfig.hooks.inboundMutationResolverHook {

@@ -178,6 +178,59 @@ function renderExtensionMakeParam(extensions) {
   return "      ~extensions=[" + entries.join(", ") + "],";
 }
 
+function renderRuntimeHints(h) {
+  let optInt = o => {
+    if (o !== undefined) {
+      return "Some(" + o.toString() + ")";
+    } else {
+      return "None";
+    }
+  };
+  return "{memorySize: " + optInt(h.memorySize) + ", timeout: " + optInt(h.timeout) + "}";
+}
+
+function collectComponentNames(resolved) {
+  return [
+    resolved.aggregates.map(param => param.spec),
+    resolved.readModels.map(param => param.readModel),
+    resolved.stateChangeSlices,
+    resolved.stateViewSlices,
+    resolved.stateViewSlicesStream,
+    resolved.automationSlices,
+    resolved.outboundTranslationSlices,
+    resolved.inboundTranslationSlices,
+    resolved.tasks,
+    resolved.extensions,
+    resolved.extensionPoints.map(param => {
+      let group = param.group;
+      if (group !== undefined) {
+        return group;
+      } else {
+        return stripSuffix(param.mappings[0], "Mapping");
+      }
+    })
+  ].flat();
+}
+
+function validateComponentRuntimeKeys(resolved, componentRuntime) {
+  let known = collectComponentNames(resolved);
+  Object.keys(componentRuntime).forEach(name => {
+    if (!known.includes(name)) {
+      console.warn("Generator: plugin.json `runtime` override for `" + name + "` matches no component in this plugin. Known components: " + known.join(", "));
+      return;
+    }
+  });
+}
+
+function renderComponentRuntimeParam(componentRuntime) {
+  let entries = Object.entries(componentRuntime);
+  if (entries.length === 0) {
+    return;
+  }
+  let rendered = entries.map(param => "(\"" + param[0] + "\", " + renderRuntimeHints(param[1]) + ")").join(", ");
+  return "      ~componentRuntime=Dict.fromArray([" + rendered + "]),";
+}
+
 function renderTaskMakeParam(tasks) {
   if (tasks.length === 0) {
     return;
@@ -493,6 +546,10 @@ export {
   renderAggregateMakeParam,
   renderEpMakeParam,
   renderExtensionMakeParam,
+  renderRuntimeHints,
+  collectComponentNames,
+  validateComponentRuntimeKeys,
+  renderComponentRuntimeParam,
   renderTaskMakeParam,
   renderPluginStructureCall,
   validateUniqueSpecStems,

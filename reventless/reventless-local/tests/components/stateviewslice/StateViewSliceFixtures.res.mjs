@@ -139,7 +139,7 @@ let ItemsViewMaker = SVMaker.Make({
   moduleUrl: moduleUrl$1
 });
 
-let sv = ItemsViewMaker.make(eventLog, undefined);
+let sv = ItemsViewMaker.make(eventLog, undefined, undefined);
 
 let dcbEventTopicResource = Component$ReventlessCore.outputs(eventLog).eventTopic.resources[0];
 
