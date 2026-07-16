@@ -1377,21 +1377,12 @@ importers:
       '@reventlessdev/reventless-core':
         specifier: workspace:*
         version: link:../reventless-core
-      '@reventlessdev/reventless-domain-protocol':
-        specifier: workspace:*
-        version: link:../reventless-domain-protocol
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../reventless-infra
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../reventless-spec
-      chokidar:
-        specifier: ^3.6.0
-        version: 3.6.0
-      picocolors:
-        specifier: ^1.1.1
-        version: 1.1.1
       sury:
         specifier: 11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.3.0)
