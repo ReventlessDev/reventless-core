@@ -31,8 +31,8 @@ function Make(Spec) {
       forEventCollector: EventCollectorRuntime_Builder_PerEventCollector$ReventlessAws.forEventCollector,
       finish: EventCollectorRuntime_Builder_PerEventCollector$ReventlessAws.finish
     });
-    let make = (api, apiRole, allEventTopics, opts) => {
-      let readModel = Inner.make(api, apiRole, allEventTopics, opts);
+    let make = (api, apiRole, allEventTopics, runtime, opts) => {
+      let readModel = Inner.make(api, apiRole, allEventTopics, runtime, opts);
       let queryDbOutputs = Inner.outputs(readModel).queryDb;
       let tableResource = queryDbOutputs.resources[0];
       let queryDbTableName = tableResource.name;

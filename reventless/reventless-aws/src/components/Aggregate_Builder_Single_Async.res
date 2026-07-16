@@ -34,8 +34,8 @@ module Make = (
   type api = Inner.api
   type component = Inner.component
 
-  let make = (~api, ~opts=?): component => {
-    let aggregate = Inner.make(~api, ~opts?)
+  let make = (~api, ~runtime=?, ~opts=?): component => {
+    let aggregate = Inner.make(~api, ~runtime?, ~opts?)
 
     // Extract the event log table name from the aggregate's outputs.
     // EventLog.outputs.resources[0] is the DynamoDB table resource. On the

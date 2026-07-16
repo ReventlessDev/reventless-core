@@ -28,8 +28,8 @@ module Make = (
   type api = Inner.api
   type role = Inner.role
   type component = Inner.component
-  let make = (~api, ~apiRole, ~allEventTopics, ~opts=?): component => {
-    let readModel = Inner.make(~api, ~apiRole, ~allEventTopics, ~opts?)
+  let make = (~api, ~apiRole, ~allEventTopics, ~runtime=?, ~opts=?): component => {
+    let readModel = Inner.make(~api, ~apiRole, ~allEventTopics, ~runtime?, ~opts?)
 
     // On the Postgres backend there is no DynamoDB table (resources is empty) —
     // the read-model spec name is the stable `qdb_<name>` discriminator, both

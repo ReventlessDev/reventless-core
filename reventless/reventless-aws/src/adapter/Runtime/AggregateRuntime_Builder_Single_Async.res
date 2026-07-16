@@ -180,10 +180,21 @@ let finish = () =>
   if !finished.contents {
     let specs = storedSpecs->Dict.valuesToArray
     if specs->Array.length > 0 {
-      // See AggregateRuntime_Builder_Single.finish for the rationale behind
-      // dropping the max-of-zeros reduce in favor of `configRef`.
       let parent = specs->Array.reduce(None, (_, {aggregateResource}) => aggregateResource.parent)
       let cfg = configRef.contents
+
+      // Per-component runtime hints fold into the shared async command Lambda —
+      // see AggregateRuntime_Builder_Single.finish for the full rationale.
+      let specMemorySize = specs->Array.reduce(0, (acc, {memorySize}) => Math.Int.max(acc, memorySize))
+      let specTimeout = specs->Array.reduce(0, (acc, {timeout}) => Math.Int.max(acc, timeout))
+      let memorySize = Math.Int.max(
+        cfg.memorySize->Option.getOr(ReventlessCore.Runtime.CommandHandlerDefaults.memorySize),
+        specMemorySize,
+      )
+      let timeout = Math.Int.max(
+        cfg.timeout->Option.getOr(ReventlessCore.Runtime.CommandHandlerDefaults.timeout),
+        specTimeout,
+      )
       switch parent {
       | Some(parent) =>
         let opts = {Pulumi.ComponentResource.parent: parent}
@@ -294,8 +305,8 @@ let finish = () =>
           ~code,
           ~sourceCodeHash,
           ~envVars,
-          ~memorySize=?cfg.memorySize,
-          ~timeout=?cfg.timeout,
+          ~memorySize,
+          ~timeout,
           ~reservedConcurrency=?cfg.reservedConcurrency,
           ~ephemeralStorageMb=?cfg.ephemeralStorageMb,
           ~logRetentionDays=?cfg.logRetentionDays,

@@ -261,7 +261,13 @@ let renderRuntimeHints = (h: Config.runtimeHints): string => {
     | Some(n) => "Some(" ++ n->Int.toString ++ ")"
     | None => "None"
     }
-  "{memorySize: " ++ optInt(h.memorySize) ++ ", timeout: " ++ optInt(h.timeout) ++ "}"
+  // Qualify the first field with the full module path so the record type resolves
+  // at the `Dict.fromArray([...])` call site (type-directed disambiguation does not
+  // propagate through the tuple/dict, so a bare `{memorySize, …}` has no type in scope).
+  "{ReventlessInfra.RuntimeHints.memorySize: " ++
+  optInt(h.memorySize) ++
+  ", timeout: " ++
+  optInt(h.timeout) ++ "}"
 }
 
 // Every component name reachable from the resolved plugin — the valid keys for
@@ -779,7 +785,13 @@ let renderComposition = (
           ->Array.join(", ") ++ "],",
         )
       : None,
+    // Per-component runtime hints from plugin.json `runtime` (only emitted when
+    // present, so plugins without one keep a byte-identical generated Plugin.res).
+    renderComponentRuntimeParam(config.componentRuntime),
   ]
+
+  // Typo protection: warn on `runtime` keys that name no discovered component.
+  validateComponentRuntimeKeys(~resolved, ~componentRuntime=config.componentRuntime)
 
   makeParams->Array.filterMap(x => x)->Array.forEach(line => lines->Array.push(line))
   switch uiFragmentsParam {

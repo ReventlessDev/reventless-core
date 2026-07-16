@@ -38,8 +38,8 @@ module Make = (
   type api = Inner.api
   type component = Inner.component
 
-  let make = (~api, ~opts=?): component => {
-    let aggregate = Inner.make(~api, ~opts?)
+  let make = (~api, ~runtime=?, ~opts=?): component => {
+    let aggregate = Inner.make(~api, ~runtime?, ~opts?)
 
     let eventLogOutputs = (aggregate->Inner.outputs).eventLog
     let tableResource = eventLogOutputs.resources->Array.getUnsafe(0)

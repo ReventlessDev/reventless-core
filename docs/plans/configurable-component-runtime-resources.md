@@ -1,5 +1,32 @@
 # Plan: Configurable per-component runtime resources (memory & timeout)
 
+## Status
+
+**Implemented** (across two passes).
+
+- **Pass 1 — developer surface + core/local threading.** `plugin.json` `runtime`
+  block → `Config.componentRuntime` → `Codegen` emits
+  `~componentRuntime=Dict.fromArray([...])` (only when present; the record's first
+  field is emitted module-qualified so its type resolves at the `Dict.fromArray`
+  call site). `ReventlessInfra.RuntimeHints` (`resolveMemory` = `Math.Int.max`
+  floor, `resolveTimeout` = replace) threaded through `Plugin.make` /
+  `Plugin_Builder.construct` → `Builder_Helpers` / `Dcb_Builder`, resolved per
+  component by `Spec.name` and folded into each component's runtime builder.
+- **Pass 2 — AWS consumption + folds + Task.** Aggregate (all strategies:
+  Single sync/async, PerAggregate, Micro), ReadModel (all variants), and every
+  slice kind honor the hint on AWS. The **Single** shared command-handler
+  Lambdas (`AllAggregates[Async]CmdHandler`, `<Plugin>Dcb[Async]CmdHandler`)
+  fold the per-component max with the operator `commandHandlerConfig` (config
+  wins when higher). Task's hardcoded `~memorySize=4096` is now an overridable
+  default. Worked example (`online-shop-hybrid/ordering`) builds end-to-end.
+  Tests: `RuntimeHintsTest` (infra), `ComponentRuntimeTest` (spec Config+Codegen).
+
+**Follow-up (not yet done):** ExtensionPoint sizing. Unlike other components,
+`ReventlessInfra.ExtensionPoint.T` exposes no `Spec.name` at its realization site
+(`Builder_Helpers.createExtensionPoints`), so there is no clean key to look the
+hint up by. It keeps its current per-kind default (1024) — no regression — until
+a name key is threaded through the EP realization path.
+
 ## Problem
 
 An application developer authoring a plugin controls only two surfaces: the

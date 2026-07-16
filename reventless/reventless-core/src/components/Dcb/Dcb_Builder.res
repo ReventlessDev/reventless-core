@@ -813,10 +813,26 @@ module Make = (
           hook(dcbEventLog->Obj.magic)
         )
 
+        // Per-component runtime overrides (plugin.json `runtime`) for the
+        // StateChangeSlices hosted on each shared DCB command Lambda. Only
+        // explicit overrides contribute (default 0); the platform folds them
+        // with the per-flavor commandHandlerConfig floor. Sync slices land on
+        // `<Plugin>DcbCmdHandler`, async on `<Plugin>DcbAsyncCmdHandler`.
+        let sliceMemoryFloor = slices =>
+          slices->Array.reduce(0, (acc, module(M: StateChangeSlice.T)) =>
+            Math.Int.max(acc, ReventlessInfra.RuntimeHints.resolveMemory(componentRuntime->Dict.get(M.Spec.name), ~default=0))
+          )
+        let sliceTimeoutFloor = slices =>
+          slices->Array.reduce(0, (acc, module(M: StateChangeSlice.T)) =>
+            Math.Int.max(acc, ReventlessInfra.RuntimeHints.resolveTimeout(componentRuntime->Dict.get(M.Spec.name), ~default=0))
+          )
+
         let dcbRuntimeSetup = () => {
           dcbCommandTopic->RuntimeBuilder.forDcbCommandTopic(
             ~handler=dcbHandler,
             ~connect=dcbConnectFn,
+            ~memorySize=sliceMemoryFloor(syncSlices),
+            ~timeout=sliceTimeoutFloor(syncSlices),
           )
           // Set up async CommandTopic Lambda if any async slices are configured
           asyncDcbCommandTopicOpt->Option.forEach(asyncDcbCommandTopic => {
@@ -830,6 +846,8 @@ module Make = (
             asyncDcbCommandTopic->RuntimeBuilder.forDcbCommandTopic(
               ~handler=asyncDcbHandler->Obj.magic,
               ~connect=asyncDcbConnectFn,
+              ~memorySize=sliceMemoryFloor(asyncSlices),
+              ~timeout=sliceTimeoutFloor(asyncSlices),
             )
           })
         }

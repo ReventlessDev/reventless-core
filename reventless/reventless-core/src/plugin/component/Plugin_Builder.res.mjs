@@ -532,7 +532,7 @@ function Make(Spec) {
           } else {
             EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, undefined, pluginDefinition, Primitive_option.some(uiFragments), undefined, extensionsHandlers, extensionPointsHandlers, undefined, extensionRegistryInfos, undefined, aggregateQueueUrls, readModelQueueUrls, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName);
           }
-          let tasksOutputs = Plugin_Helpers$ReventlessCore.createTasks(tasks, aggregatesOutputs, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, Spec.resourceNaming, opts);
+          let tasksOutputs = Plugin_Helpers$ReventlessCore.createTasks(tasks, aggregatesOutputs, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, Spec.resourceNaming, componentRuntime, opts);
           let resolvers = Plugin_Helpers$ReventlessCore.createResolvers(allQueryDbs);
           Stdlib_Option.forEach(Spec.hooks.subscriptionInfraHook, hook => hook({
             allQueryDbs: allQueryDbs,

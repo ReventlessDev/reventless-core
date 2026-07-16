@@ -11,6 +11,7 @@ import * as Aggregate$ReventlessCore from "../Aggregate/Aggregate.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+import * as RuntimeHints$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/RuntimeHints.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -20,11 +21,13 @@ function pascalCase(s) {
 
 function Make(Spec) {
   return RuntimeEnvironment => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (TaskRuntimeBuilder => (TaskBucket => (SpecificSideEffectHandler => {
-    let make = (queryBucketName, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, resourceNaming, allAggregates, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Task$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+    let make = (queryBucketName, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, resourceNaming, allAggregates, runtime, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Task$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
       let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
       };
+      let memorySize = RuntimeHints$ReventlessInfra.resolveMemory(runtime, 4096);
+      let timeout = RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 600);
       let allCommandTopics = Aggregate$ReventlessCore.allCommandTopics(allAggregates);
       let publishToAggregatesQueueUrls = Stdlib_Dict.mapValues(allAggregates, agg => Output$Pulumi.flatMap(agg.commandTopic, ct => {
         let r = ct.resources[0];
@@ -86,7 +89,7 @@ function Make(Spec) {
         let opts$1 = {
           parent: opts_parent
         };
-        Stdlib_Option.forEach(bucketSpec.callback, callback => TaskRuntimeBuilder.forBucketCallback(createHandler(sideEffectHandler, callback), none => TaskBucket.connect(name, bucket, bucketSpec.bucketMode, allCommandTopics, none, opts$1), 4096, 600, bucketStem, Spec.moduleUrl, publishToAggregatesQueueUrls, schedulerConfig, extra));
+        Stdlib_Option.forEach(bucketSpec.callback, callback => TaskRuntimeBuilder.forBucketCallback(createHandler(sideEffectHandler, callback), none => TaskBucket.connect(name, bucket, bucketSpec.bucketMode, allCommandTopics, none, opts$1), memorySize, timeout, bucketStem, Spec.moduleUrl, publishToAggregatesQueueUrls, schedulerConfig, extra));
         return [
           bucketName,
           bucket.resources[0].id

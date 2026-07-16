@@ -1,1 +1,9 @@
-{"name": "Ordering"}
+{
+  "name": "Ordering",
+  "runtime": {
+    "Customers": { "memorySize": 2048 },
+    "Customer": { "memorySize": 1536 },
+    "PlaceOrder": { "memorySize": 768, "timeout": 60 },
+    "Orders": { "memorySize": 1024 }
+  }
+}

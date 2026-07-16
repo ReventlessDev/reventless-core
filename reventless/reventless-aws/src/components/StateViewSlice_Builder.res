@@ -29,8 +29,8 @@ module Make = (Api: {
     module Projection = Projection
     type component = InnerMake.component
 
-    let make = (~dcbEventLog, ~opts=?): component => {
-      let sv = InnerMake.make(~dcbEventLog, ~opts?)
+    let make = (~dcbEventLog, ~runtime=?, ~opts=?): component => {
+      let sv = InnerMake.make(~dcbEventLog, ~runtime?, ~opts?)
       let queryDbOutputs = (sv->ReventlessCore.Component.outputs).queryDb
       // On the Postgres backend there is no DynamoDB table (resources is
       // empty) — the slice spec name is the stable `qdb_<name>` discriminator.

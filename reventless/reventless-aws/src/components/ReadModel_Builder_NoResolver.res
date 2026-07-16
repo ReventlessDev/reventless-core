@@ -31,8 +31,8 @@ module Make = (
   type api = Inner.api
   type role = Inner.role
   type component = Inner.component
-  let make = (~api, ~apiRole, ~allEventTopics, ~opts=?): component => {
-    let readModel = Inner.make(~api, ~apiRole, ~allEventTopics, ~opts?)
+  let make = (~api, ~apiRole, ~allEventTopics, ~runtime=?, ~opts=?): component => {
+    let readModel = Inner.make(~api, ~apiRole, ~allEventTopics, ~runtime?, ~opts?)
 
     let queryDbOutputs = (readModel->Inner.outputs).queryDb
     let tableResource = queryDbOutputs.resources->Array.getUnsafe(0)

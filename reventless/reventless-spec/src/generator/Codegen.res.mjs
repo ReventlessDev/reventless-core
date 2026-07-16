@@ -186,7 +186,7 @@ function renderRuntimeHints(h) {
       return "None";
     }
   };
-  return "{memorySize: " + optInt(h.memorySize) + ", timeout: " + optInt(h.timeout) + "}";
+  return "{ReventlessInfra.RuntimeHints.memorySize: " + optInt(h.memorySize) + ", timeout: " + optInt(h.timeout) + "}";
 }
 
 function collectComponentNames(resolved) {
@@ -491,8 +491,10 @@ function renderComposition(config, resolved, componentChapters) {
     renderMakeParam("outboundTranslationSlices", resolved.outboundTranslationSlices, "Slice"),
     renderMakeParam("inboundTranslationSlices", resolved.inboundTranslationSlices, "Slice"),
     hasPluginStructure ? "      ~pluginStructure=pluginStructure," : undefined,
-    resolved.systemCallableComponents.length !== 0 ? "      ~systemCallableComponents=[" + resolved.systemCallableComponents.map(n => "\"" + n + "\"").join(", ") + "]," : undefined
+    resolved.systemCallableComponents.length !== 0 ? "      ~systemCallableComponents=[" + resolved.systemCallableComponents.map(n => "\"" + n + "\"").join(", ") + "]," : undefined,
+    renderComponentRuntimeParam(config.componentRuntime)
   ];
+  validateComponentRuntimeKeys(resolved, config.componentRuntime);
   Stdlib_Array.filterMap(makeParams, x => x).forEach(line => {
     lines.push(line);
   });

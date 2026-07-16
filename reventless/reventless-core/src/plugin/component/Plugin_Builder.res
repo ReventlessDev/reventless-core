@@ -862,6 +862,7 @@ module Make = (
           ~publishToAggregates,
           ~queryEngine,
           ~resourceNaming=Spec.resourceNaming,
+          ~componentRuntime,
           ~opts,
         )
 

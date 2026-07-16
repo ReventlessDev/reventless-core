@@ -45,10 +45,15 @@ module Make = (
     ~queryEngine,
     ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
     ~allAggregates,
+    ~runtime,
     self,
     taskName,
   ) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
+    // Task bucket callbacks default to a large envelope (bulk import/export work);
+    // a plugin.json `runtime` override raises memory above it and replaces timeout.
+    let memorySize = ReventlessInfra.RuntimeHints.resolveMemory(runtime, ~default=4096)
+    let timeout = ReventlessInfra.RuntimeHints.resolveTimeout(runtime, ~default=600)
     let allCommandTopics = allAggregates->Aggregate.allCommandTopics
 
     // Each adapter chooses what string the Task runtime should treat as the
@@ -171,8 +176,8 @@ module Make = (
                 ~opts,
                 ...
               ),
-              ~memorySize=4096,
-              ~timeout=600,
+              ~memorySize,
+              ~timeout,
               ~name=bucketStem,
               ~callbackModulePath=Spec.moduleUrl,
               ~publishToAggregatesQueueUrls,
@@ -201,6 +206,7 @@ module Make = (
     ~queryEngine,
     ~resourceNaming,
     ~allAggregates,
+    ~runtime=?,
     ~opts,
   ) =>
     Component.make(
@@ -214,6 +220,7 @@ module Make = (
         ~queryEngine,
         ~resourceNaming,
         ~allAggregates,
+        ~runtime,
         ...
       ),
       ~opts,

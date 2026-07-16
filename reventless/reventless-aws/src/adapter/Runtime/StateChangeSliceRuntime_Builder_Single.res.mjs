@@ -5,6 +5,7 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as Runtime$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/Runtime.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as DcbBackend$ReventlessAws from "../DcbEventLog/DcbBackend.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
@@ -15,7 +16,9 @@ import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_L
 
 let log = Logger$ReventlessCore.fromEnv();
 
-function forDcbCommandTopic(slicePaths, dcbTableName, pluginName, syncConfig, asyncConfig, connect, dcbCommandTopic) {
+function forDcbCommandTopic(slicePaths, dcbTableName, pluginName, syncConfig, asyncConfig, sliceMemoryFloorOpt, sliceTimeoutFloorOpt, connect, dcbCommandTopic) {
+  let sliceMemoryFloor = sliceMemoryFloorOpt !== undefined ? sliceMemoryFloorOpt : 0;
+  let sliceTimeoutFloor = sliceTimeoutFloorOpt !== undefined ? sliceTimeoutFloorOpt : 0;
   if (slicePaths.length === 0) {
     return log.warn("StateChangeSliceRuntime_Builder_Single", undefined, "forDcbCommandTopic skipped (no slice specs)");
   }
@@ -35,6 +38,8 @@ function forDcbCommandTopic(slicePaths, dcbTableName, pluginName, syncConfig, as
   let isAsync = baseName.endsWith("Async");
   let name = baseName + "CmdHandler";
   let cfg = isAsync ? asyncConfig : syncConfig;
+  let memorySize = Math.max(Stdlib_Option.getOr(cfg.memorySize, Runtime$ReventlessCore.CommandHandlerDefaults.memorySize), sliceMemoryFloor);
+  let timeout = Math.max(Stdlib_Option.getOr(cfg.timeout, Runtime$ReventlessCore.CommandHandlerDefaults.timeout), sliceTimeoutFloor);
   let envVars = {};
   envVars["DCB_TABLE"] = dcbTableName$1;
   envVars["QUEUE_URL"] = queue.id;
@@ -77,7 +82,7 @@ function forDcbCommandTopic(slicePaths, dcbTableName, pluginName, syncConfig, as
       subnetIds: pgSelection.subnetIds,
       securityGroupIds: [sgId]
     })) : undefined;
-  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "CommandHandler", match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, true, vpcConfig, opts);
+  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "CommandHandler", match.code, match.sourceCodeHash, envVars, memorySize, timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, true, vpcConfig, opts);
   if (pgSelection !== undefined) {
     pgSelection.connectionConfig.apply(cc => new (Aws.iam.RolePolicy)(name + `-pgSecret`, {
       policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `-pgSecretPolicy`, [{

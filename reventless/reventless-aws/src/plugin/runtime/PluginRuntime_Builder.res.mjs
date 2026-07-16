@@ -425,15 +425,15 @@ function Make(EventCollectorChannel) {
     let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs", {}, undefined);
     connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "Scheduler", match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, undefined, opts));
   };
-  let forDcbCommandTopic = (param, connect, $staropt$star, $staropt$star$1, dcbCommandTopic) => {
-    $staropt$star !== undefined;
-    $staropt$star$1 !== undefined;
+  let forDcbCommandTopic = (param, connect, memorySizeOpt, timeoutOpt, dcbCommandTopic) => {
+    let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 0;
+    let timeout = timeoutOpt !== undefined ? timeoutOpt : 0;
     let dcbConfig = dcbConfigRef.contents;
     let slicePaths = registeredSliceModulePaths.concat(dcbConfig.stateChangeSliceModulePaths).map(param => [
       param.specPath,
       param.behaviorPath
     ]);
-    StateChangeSliceRuntime_Builder_Single$ReventlessAws.forDcbCommandTopic(slicePaths, dcbConfig.dcbTableName, dcbConfig.pluginName, syncStateChangesConfigRef.contents, asyncStateChangesConfigRef.contents, connect, dcbCommandTopic);
+    StateChangeSliceRuntime_Builder_Single$ReventlessAws.forDcbCommandTopic(slicePaths, dcbConfig.dcbTableName, dcbConfig.pluginName, syncStateChangesConfigRef.contents, asyncStateChangesConfigRef.contents, memorySize, timeout, connect, dcbCommandTopic);
   };
   let finish = () => {};
   return {

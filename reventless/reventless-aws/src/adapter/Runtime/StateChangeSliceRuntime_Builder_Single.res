@@ -21,6 +21,11 @@ let forDcbCommandTopic = (
   ~pluginName: string,
   ~syncConfig: ReventlessCore.Runtime.commandHandlerConfig,
   ~asyncConfig: ReventlessCore.Runtime.commandHandlerConfig,
+  // Per-component runtime floor: the max across this shared Lambda's
+  // StateChangeSlices' plugin.json `runtime` overrides (0 if none). Folded with
+  // the per-flavor commandHandlerConfig below (whichever is higher wins).
+  ~sliceMemoryFloor: int=0,
+  ~sliceTimeoutFloor: int=0,
   ~connect,
   dcbCommandTopic,
 ) =>
@@ -63,6 +68,16 @@ let forDcbCommandTopic = (
     let name = baseName ++ "CmdHandler"
 
     let cfg = isAsync ? asyncConfig : syncConfig
+    // Fold the per-component runtime floor with the config: config wins when
+    // higher, an override raises the shared Lambda above the per-kind default.
+    let memorySize = Math.Int.max(
+      cfg.memorySize->Option.getOr(ReventlessCore.Runtime.CommandHandlerDefaults.memorySize),
+      sliceMemoryFloor,
+    )
+    let timeout = Math.Int.max(
+      cfg.timeout->Option.getOr(ReventlessCore.Runtime.CommandHandlerDefaults.timeout),
+      sliceTimeoutFloor,
+    )
 
     let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
     envVars->Dict.set("DCB_TABLE", dcbTableName->Pulumi.Output.asInput)
@@ -170,8 +185,8 @@ let forDcbCommandTopic = (
       ~code,
       ~sourceCodeHash,
       ~envVars,
-      ~memorySize=?cfg.memorySize,
-      ~timeout=?cfg.timeout,
+      ~memorySize,
+      ~timeout,
       ~reservedConcurrency=?cfg.reservedConcurrency,
       ~ephemeralStorageMb=?cfg.ephemeralStorageMb,
       ~logRetentionDays=?cfg.logRetentionDays,

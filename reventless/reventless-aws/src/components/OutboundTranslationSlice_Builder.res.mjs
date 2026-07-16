@@ -40,8 +40,8 @@ function Make(Api) {
   })(Api);
   let Make$1 = Spec => (Translation => {
     let InnerMake = Inner.Make(Spec)(Translation);
-    let make = (dcbEventLog, publishJsons, opts) => {
-      let ots = InnerMake.make(dcbEventLog, publishJsons, opts);
+    let make = (dcbEventLog, publishJsons, runtime, opts) => {
+      let ots = InnerMake.make(dcbEventLog, publishJsons, runtime, opts);
       let queryDbOutputs = Component$ReventlessCore.outputs(ots).queryDb;
       let tableResource = queryDbOutputs.resources[0];
       let queryDbTableName = tableResource.name;

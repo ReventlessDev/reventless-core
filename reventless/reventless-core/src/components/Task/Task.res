@@ -30,6 +30,7 @@ type maker = (
   ~queryEngine: Reventless.QueryEngine.operations,
   ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
   ~allAggregates: dict<Aggregate.outputs>,
+  ~runtime: ReventlessInfra.RuntimeHints.t=?,
   ~opts: option<Pulumi.ComponentResource.options>,
 ) => component
 

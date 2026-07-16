@@ -83,6 +83,7 @@ module type T = {
     ~queryEngine: Reventless.QueryEngine.operations,
     ~resourceNaming: ResourceNaming.operations,
     ~allAggregates: dict<Aggregate.outputs>,
+    ~runtime: RuntimeHints.t=?,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
   let outputs: component => outputs

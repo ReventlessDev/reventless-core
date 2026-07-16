@@ -42,8 +42,8 @@ function Make(Spec) {
       forEventCollector: AggregateRuntime_Builder_Single$ReventlessAws.forEventCollector,
       finish: AggregateRuntime_Builder_Single$ReventlessAws.finish
     })(Plugin_Helpers$ReventlessCore.NoopHooksConfig);
-    let make = (api, opts) => {
-      let aggregate = Inner.make(api, opts);
+    let make = (api, runtime, opts) => {
+      let aggregate = Inner.make(api, runtime, opts);
       let eventLogTableName;
       if (EventLogBackend$ReventlessAws.isPostgres()) {
         eventLogTableName = Pulumi.output(Spec.name + "EventLog");

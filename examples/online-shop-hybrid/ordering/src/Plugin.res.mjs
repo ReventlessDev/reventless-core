@@ -324,7 +324,36 @@ function Make(Platform) {
   ], [
     AvailableProductsStreamSlice,
     OrdersStreamSlice
-  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, undefined, Stdlib_Option.map(process.env.ORDERING_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, undefined, Object.fromEntries([
+    [
+      "Customers",
+      {
+        memorySize: 2048,
+        timeout: undefined
+      }
+    ],
+    [
+      "Customer",
+      {
+        memorySize: 1536,
+        timeout: undefined
+      }
+    ],
+    [
+      "PlaceOrder",
+      {
+        memorySize: 768,
+        timeout: 60
+      }
+    ],
+    [
+      "Orders",
+      {
+        memorySize: 1024,
+        timeout: undefined
+      }
+    ]
+  ]), Stdlib_Option.map(process.env.ORDERING_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     CancelOrderSlice: CancelOrderSlice,
     PlaceOrderSlice: PlaceOrderSlice,

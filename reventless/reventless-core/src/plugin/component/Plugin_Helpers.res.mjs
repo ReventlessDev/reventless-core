@@ -243,11 +243,11 @@ let tasksOutputs = {
   contents: []
 };
 
-function createTasks(tasks, aggregatesOutputs, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, resourceNaming, opts) {
+function createTasks(tasks, aggregatesOutputs, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, resourceNaming, componentRuntime, opts) {
   tasksOutputs.contents = tasks.map(SpecificTask => SpecificTask.outputs(SpecificTask.make((taskName, bucketNameOpt) => {
     let bucketName = bucketNameOpt !== undefined ? bucketNameOpt : "Bucket";
     return ResourceQueryRuntime$ReventlessCore.bucketNameOfTaskExn(tasksOutputs.contents, taskName, bucketName);
-  }, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, resourceNaming, aggregatesOutputs, opts)));
+  }, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, resourceNaming, aggregatesOutputs, componentRuntime[SpecificTask.Spec.name], opts)));
   return tasksOutputs.contents;
 }
 

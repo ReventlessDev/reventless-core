@@ -16,6 +16,7 @@ import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as DcbValidation$Reventless from "@reventlessdev/reventless-spec/src/components/DcbValidation.res.mjs";
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
 import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
+import * as RuntimeHints$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/RuntimeHints.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "../../plugin/component/Plugin_Helpers.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../Api/ApiNoApiHelpers.res.mjs";
 import * as Plugin_Structure$ReventlessCore from "../../plugin/component/Plugin_Structure.res.mjs";
@@ -436,12 +437,14 @@ function Make(DcbEventLogStorage) {
         }
       };
       Stdlib_Option.forEach(HooksConfig.hooks.onDcbSlicesCreated, hook => hook(dcbEventLog));
+      let sliceMemoryFloor = slices => Stdlib_Array.reduce(slices, 0, (acc, M) => Math.max(acc, RuntimeHints$ReventlessInfra.resolveMemory(componentRuntime[M.Spec.name], 0)));
+      let sliceTimeoutFloor = slices => Stdlib_Array.reduce(slices, 0, (acc, M) => Math.max(acc, RuntimeHints$ReventlessInfra.resolveTimeout(componentRuntime[M.Spec.name], 0)));
       let dcbRuntimeSetup = () => {
-        RuntimeBuilder.forDcbCommandTopic(dcbHandler, dcbConnectFn, undefined, undefined, dcbCommandTopic);
+        RuntimeBuilder.forDcbCommandTopic(dcbHandler, dcbConnectFn, sliceMemoryFloor(syncSlices), sliceTimeoutFloor(syncSlices), dcbCommandTopic);
         Stdlib_Option.forEach(asyncDcbCommandTopicOpt, asyncDcbCommandTopic => {
           let asyncDcbHandler = DcbAsyncCommandTopic.makeFilteringHandler(asyncDcbCommandTopic);
           let asyncDcbConnectFn = runtime => DcbAsyncCommandTopic.connect(runtime, asyncDcbResources, asyncDcbCommandTopic);
-          RuntimeBuilder.forDcbCommandTopic(asyncDcbHandler, asyncDcbConnectFn, undefined, undefined, asyncDcbCommandTopic);
+          RuntimeBuilder.forDcbCommandTopic(asyncDcbHandler, asyncDcbConnectFn, sliceMemoryFloor(asyncSlices), sliceTimeoutFloor(asyncSlices), asyncDcbCommandTopic);
         });
       };
       let permissionForFirstConstructor = (commandSchema, commandAuthorization) => {

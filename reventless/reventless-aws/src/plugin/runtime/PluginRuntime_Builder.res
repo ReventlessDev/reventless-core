@@ -748,7 +748,10 @@ module Make = (
     ReventlessCore.Runtime.effectHandler<'callbackEvent, context, unit, string>,
     runtimeParts,
     ReventlessCore.CommandTopic.component<'op>,
-  > = (~handler as _, ~connect, ~memorySize as _=1024, ~timeout as _=30, dcbCommandTopic) => {
+    // `~memorySize`/`~timeout` carry the per-component runtime floor (max across
+    // this shared Lambda's StateChangeSlices' plugin.json overrides, 0 if none),
+    // folded with the per-flavor commandHandlerConfig in the build below.
+  > = (~handler as _, ~connect, ~memorySize=0, ~timeout=0, dcbCommandTopic) => {
     let dcbConfig = dcbConfigRef.contents
     let slicePaths =
       registeredSliceModulePaths
@@ -760,6 +763,8 @@ module Make = (
       ~pluginName=dcbConfig.pluginName,
       ~syncConfig=syncStateChangesConfigRef.contents,
       ~asyncConfig=asyncStateChangesConfigRef.contents,
+      ~sliceMemoryFloor=memorySize,
+      ~sliceTimeoutFloor=timeout,
       ~connect,
       dcbCommandTopic,
     )

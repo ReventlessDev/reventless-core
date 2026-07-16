@@ -416,6 +416,7 @@ let createTasks = (
   ~publishToAggregates,
   ~queryEngine,
   ~resourceNaming,
+  ~componentRuntime: dict<ReventlessInfra.RuntimeHints.t>,
   ~opts,
 ) => {
   tasksOutputs :=
@@ -429,6 +430,7 @@ let createTasks = (
         ~queryEngine,
         ~resourceNaming,
         ~allAggregates=aggregatesOutputs,
+        ~runtime=?componentRuntime->Dict.get(SpecificTask.Spec.name),
         ~opts=Some(opts),
       ))
     )

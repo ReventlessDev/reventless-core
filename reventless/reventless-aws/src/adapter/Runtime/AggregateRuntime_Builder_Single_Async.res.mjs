@@ -7,6 +7,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as Runtime$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/Runtime.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
@@ -141,6 +142,10 @@ function finish() {
   if (specs.length !== 0) {
     let parent = Stdlib_Array.reduce(specs, undefined, (param, param$1) => param$1.aggregateResource.__parentResource);
     let cfg = configRef.contents;
+    let specMemorySize = Stdlib_Array.reduce(specs, 0, (acc, param) => Math.max(acc, param.memorySize));
+    let specTimeout = Stdlib_Array.reduce(specs, 0, (acc, param) => Math.max(acc, param.timeout));
+    let memorySize = Math.max(Stdlib_Option.getOr(cfg.memorySize, Runtime$ReventlessCore.CommandHandlerDefaults.memorySize), specMemorySize);
+    let timeout = Math.max(Stdlib_Option.getOr(cfg.timeout, Runtime$ReventlessCore.CommandHandlerDefaults.timeout), specTimeout);
     if (parent !== undefined) {
       let opts_parent = parent;
       let opts = {
@@ -185,7 +190,7 @@ function finish() {
           subnetIds: pgSelection.subnetIds,
           securityGroupIds: [sgId]
         })) : undefined;
-      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAggregatesAsyncCmdHandler", "CommandHandler", match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, undefined, vpcConfig, opts);
+      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAggregatesAsyncCmdHandler", "CommandHandler", match.code, match.sourceCodeHash, envVars, memorySize, timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, undefined, vpcConfig, opts);
       if (pgSelection !== undefined) {
         pgSelection.connectionConfig.apply(cc => new (Aws.iam.RolePolicy)("AllAggregatesAsyncCmdHandler-pgSecret", {
           policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "AllAggregatesAsyncCmdHandler-pgSecretPolicy", [{

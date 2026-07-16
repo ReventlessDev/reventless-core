@@ -191,12 +191,27 @@ let finish = () =>
   if !finished.contents {
     let specs = storedSpecs->Dict.valuesToArray
     if specs->Array.length > 0 {
-      // The legacy reduce-max-across-specs over `memorySize` / `timeout` was always
-      // a max-of-zeros (the Aggregate_Builder call site never passed those args).
-      // We only need `parent` from the specs here; per-Lambda tuning now lives in
-      // `configRef`, populated by `Platform.MakeWithConfig`.
       let parent = specs->Array.reduce(None, (_, {aggregateResource}) => aggregateResource.parent)
       let cfg = configRef.contents
+
+      // Per-component runtime hints (plugin.json `runtime`) accumulate into each
+      // stored spec's memorySize/timeout via forCommandTopic/forCommandGenerator
+      // (Math.Int.max over the per-aggregate resolved values, floored at the
+      // per-kind default 1024/30). The shared AllAggregates Lambda hosts every
+      // aggregate's handler, so it takes the max across them, folded with the
+      // operator's commandHandlerConfig (whichever is higher wins). An override
+      // on one aggregate raises the shared Lambda above the floor.
+      // See docs/plans/configurable-component-runtime-resources.md.
+      let specMemorySize = specs->Array.reduce(0, (acc, {memorySize}) => Math.Int.max(acc, memorySize))
+      let specTimeout = specs->Array.reduce(0, (acc, {timeout}) => Math.Int.max(acc, timeout))
+      let memorySize = Math.Int.max(
+        cfg.memorySize->Option.getOr(ReventlessCore.Runtime.CommandHandlerDefaults.memorySize),
+        specMemorySize,
+      )
+      let timeout = Math.Int.max(
+        cfg.timeout->Option.getOr(ReventlessCore.Runtime.CommandHandlerDefaults.timeout),
+        specTimeout,
+      )
       switch parent {
       | Some(parent) =>
         let opts = {Pulumi.ComponentResource.parent: parent}
@@ -315,8 +330,8 @@ let finish = () =>
           ~code,
           ~sourceCodeHash,
           ~envVars,
-          ~memorySize=?cfg.memorySize,
-          ~timeout=?cfg.timeout,
+          ~memorySize,
+          ~timeout,
           ~reservedConcurrency=?cfg.reservedConcurrency,
           ~ephemeralStorageMb=?cfg.ephemeralStorageMb,
           ~logRetentionDays=?cfg.logRetentionDays,

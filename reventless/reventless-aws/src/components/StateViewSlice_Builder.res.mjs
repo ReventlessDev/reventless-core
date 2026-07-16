@@ -31,8 +31,8 @@ function Make(Api) {
   })(Api);
   let Make$1 = Spec => (Projection => {
     let InnerMake = Inner.Make(Spec)(Projection);
-    let make = (dcbEventLog, opts) => {
-      let sv = InnerMake.make(dcbEventLog, opts);
+    let make = (dcbEventLog, runtime, opts) => {
+      let sv = InnerMake.make(dcbEventLog, runtime, opts);
       let queryDbOutputs = Component$ReventlessCore.outputs(sv).queryDb;
       let queryDbTableName = QueryDbBackend$ReventlessAws.isPostgresFor(Spec.name) ? Pulumi.output(Spec.name) : queryDbOutputs.resources[0].name;
       StateViewSliceRuntime_Builder_Single$ReventlessAws.registerStateViewSlice(Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Projection.moduleUrl), queryDbTableName, queryDbOutputs.resources);
