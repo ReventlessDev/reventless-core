@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.101 (2026-07-16)
+
+### Features
+
+* **aws:** consume per-component runtime hints; fold into shared command Lambdas ([7ba2485](https://github.com/ReventlessDev/reventless-core/commit/7ba248579f2472f2fc847b26033927199353f3e6))
+* **core:** honor per-component runtime hints for ExtensionPoints ([72d0218](https://github.com/ReventlessDev/reventless-core/commit/72d0218ec4f73d6a59230640c9ee4a538e6b8688))
+* **core:** thread per-component runtime hints from plugin.json (spec/infra/core/local) ([a94f419](https://github.com/ReventlessDev/reventless-core/commit/a94f4199c4ac7eeeb24dd0a71d58fb73c1e514e6))
+
+
 # 3.0.0-alpha.100 (2026-07-15)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra

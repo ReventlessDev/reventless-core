@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.214 (2026-07-16)
+
+### Features
+
+* **aws:** consume per-component runtime hints; fold into shared command Lambdas ([7ba2485](https://github.com/ReventlessDev/reventless-core/commit/7ba248579f2472f2fc847b26033927199353f3e6))
+
+
 # 3.0.0-alpha.213 (2026-07-15)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.117 (2026-07-16)
+
+**Note:** Version bump only for package @reventlessdev/reventless-gwt
+
+
+
+
+
 # 1.0.0-alpha.116 (2026-07-16)
 
 * refactor(gwt)!: focus the package on the GWT test harness library ([925e944](https://github.com/ReventlessDev/reventless-core/commit/925e944e996613f4fb894564696ea8e1ff6b7489))
