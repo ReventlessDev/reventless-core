@@ -1,19 +1,27 @@
 #!/bin/sh
+# Repo pre-commit hook. Install: git config core.hooksPath scripts/hooks
+fail=0
+
+# Guard against committing wiped in-source ReScript outputs: a tracked .res.mjs
+# deleted while its .res source remains (the "compiler-update full clean"
+# footgun). Runs unconditionally. See scripts/check-tracked-outputs.mjs.
+node "$(git rev-parse --show-toplevel)/scripts/check-tracked-outputs.mjs" || fail=1
+
 # Repo hygiene: block AWS account IDs and private-repo references.
 # Mirrors .github/workflows/repo-hygiene.yml — keep in sync.
-# Install: git config core.hooksPath scripts/hooks
 # Patterns are concatenated so this file never matches itself (and survives
 # history filters that replace the literal strings).
 files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(md|res|ts|mjs|yml|yaml|json)$' | grep -v pnpm-lock || true)
-[ -z "$files" ] && exit 0
-fail=0
-hits=$(echo "$files" | xargs grep -nE '\b[0-9]{12}\b' 2>/dev/null | grep -vE '123456789012|000000000000' | grep -vE '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-' || true)
-if [ -n "$hits" ]; then
-  echo "$hits"; echo "ERROR: 12-digit AWS-account-shaped number staged (use 123456789012 as placeholder)"; fail=1
+if [ -n "$files" ]; then
+  hits=$(echo "$files" | xargs grep -nE '\b[0-9]{12}\b' 2>/dev/null | grep -vE '123456789012|000000000000' | grep -vE '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-' || true)
+  if [ -n "$hits" ]; then
+    echo "$hits"; echo "ERROR: 12-digit AWS-account-shaped number staged (use 123456789012 as placeholder)"; fail=1
+  fi
+  P1="reventless-""business"; P2="reventless""lab"
+  refs=$(echo "$files" | xargs grep -niE "${P1}|${P2}" 2>/dev/null || true)
+  if [ -n "$refs" ]; then
+    echo "$refs"; echo "ERROR: private-repo reference staged"; fail=1
+  fi
 fi
-P1="reventless-""business"; P2="reventless""lab"
-refs=$(echo "$files" | xargs grep -niE "${P1}|${P2}" 2>/dev/null || true)
-if [ -n "$refs" ]; then
-  echo "$refs"; echo "ERROR: private-repo reference staged"; fail=1
-fi
+
 exit $fail

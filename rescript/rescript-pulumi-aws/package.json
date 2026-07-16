@@ -34,11 +34,11 @@
   },
   "devDependencies": {
     "esbuild": "^0.25.12",
-    "rescript": "^12.3.0",
+    "rescript": "12.3.0",
     "sury-ppx": "11.0.0-alpha.2"
   },
   "peerDependencies": {
-    "rescript": "^12.3.0"
+    "rescript": "12.3.0"
   },
   "gitHead": "ddea51534dc210635d7b11968089627b3b697ce2",
   "publishConfig": {

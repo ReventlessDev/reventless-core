@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@reventlessdev/rescript-jest": "workspace:*",
-    "rescript": "^12.3.0"
+    "rescript": "12.3.0"
   },
   "dependencies": {
     "@npmcli/arborist": "^9.4.2",

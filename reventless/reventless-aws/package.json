@@ -35,11 +35,11 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
-    "rescript": "^12.3.0",
+    "rescript": "12.3.0",
     "sury-ppx": "11.0.0-alpha.2"
   },
   "peerDependencies": {
-    "rescript": "^12.3.0"
+    "rescript": "12.3.0"
   },
   "jest": {
     "setupFiles": [

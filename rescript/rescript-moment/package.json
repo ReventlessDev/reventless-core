@@ -25,12 +25,12 @@
   },
   "peerDependencies": {
     "moment": "^2.30.1",
-    "rescript": "^12.3.0"
+    "rescript": "12.3.0"
   },
   "devDependencies": {
     "husky": "^9.1.7",
     "moment": "^2.30.1",
-    "rescript": "^12.3.0"
+    "rescript": "12.3.0"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org"

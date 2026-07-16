@@ -15,10 +15,10 @@
     "@reventlessdev/reventless-core": "workspace:*"
   },
   "devDependencies": {
-    "rescript": "^12.3.0"
+    "rescript": "12.3.0"
   },
   "peerDependencies": {
-    "rescript": "^12.3.0"
+    "rescript": "12.3.0"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org"
