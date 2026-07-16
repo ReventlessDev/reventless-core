@@ -23,7 +23,6 @@
     }
   ],
   "dependencies": [
-    "@reventlessdev/reventless-domain-protocol",
     "sury",
     "@reventlessdev/rescript-jest",
     "@reventlessdev/rescript-effect",
