@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-ssh2",
-  "version": "1.1.0-alpha.13",
+  "version": "1.1.0-alpha.14",
   "description": "ReScript bindings for ssh2",
   "license": "Apache-2.0",
   "scripts": {

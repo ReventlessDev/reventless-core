@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.158 (2026-07-17)
+
+### Features
+
+* **runtime:** platform-supplied EP/task pod runtime floors ([37544d0](https://github.com/ReventlessDev/reventless-core/commit/37544d029d278bbcae6eeb0f583da07d6ce70f04))
+
+
 # 3.0.0-alpha.157 (2026-07-16)
 
 ### Features

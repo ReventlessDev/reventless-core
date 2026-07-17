@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.24 (2026-07-17)
+
+**Note:** Version bump only for package @reventlessdev/reventless-layer-builder
+
+
+
+
+
 # 3.0.0-alpha.23 (2026-07-16)
 
 **Note:** Version bump only for package @reventlessdev/reventless-layer-builder
