@@ -162,7 +162,7 @@ let ep = TestEP.make(Object.fromEntries([[
   ]]), Object.fromEntries([[
     "TargetAgg",
     mockPublishFn
-  ]]), TestFixtures$ReventlessLocal.mockScheduler, TestFixtures$ReventlessLocal.mockQueryEngine, TestFixtures$ReventlessLocal.mockResourceNaming, undefined);
+  ]]), TestFixtures$ReventlessLocal.mockScheduler, TestFixtures$ReventlessLocal.mockQueryEngine, TestFixtures$ReventlessLocal.mockResourceNaming, undefined, undefined);
 
 let testMeta = TestFixtures$ReventlessLocal.makeTestMeta("TestEP");
 
