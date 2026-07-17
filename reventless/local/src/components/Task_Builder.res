@@ -13,6 +13,12 @@ module Make = (Bus: LocalBus.T) => {
   )
   module SideEffectHandler = LocalSideEffectHandler
 
+  // The in-memory runtime ignores memorySize; timeout mirrors the AWS task floor.
+  module Defaults: ReventlessInfra.RuntimeDefaults.T = {
+    let memorySize = 4096
+    let timeout = 600
+  }
+
   module Make = (
     Spec: ReventlessCore.Task.Spec,
   ): (ReventlessCore.Task.T with module Spec = Spec) =>
@@ -24,5 +30,6 @@ module Make = (Bus: LocalBus.T) => {
       TaskRuntimeBuilder,
       LocalTaskBucket,
       SideEffectHandler,
+      Defaults,
     )
 }

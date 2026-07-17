@@ -17,6 +17,7 @@ module Make = (
   EventTopicAdapter: EventTopic_Adapter.Publisher,
   ExtensionPointRuntimeBuilder: ExtensionPointRuntime_Builder.T
     with module CommandTopicChannel := CommandTopicChannel,
+  Defaults: ReventlessInfra.RuntimeDefaults.T,
 ): ExtensionPoint.T => {
   module PluginMappingInstance = PluginExtensionPoint_Plugin.Make(Spec)
 
@@ -41,5 +42,6 @@ module Make = (
     CommandTopicChannel,
     EventTopicAdapter,
     ExtensionPointRuntimeBuilder,
+    Defaults,
   )
 }

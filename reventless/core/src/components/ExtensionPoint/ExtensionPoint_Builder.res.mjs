@@ -17,7 +17,7 @@ import * as ExtensionPoint_Callback$ReventlessCore from "./ExtensionPoint_Callba
 import * as ExtensionPoint_Operations$ReventlessCore from "./ExtensionPoint_Operations.res.mjs";
 
 function Make(Spec) {
-  return Mappings => (RuntimeEnvironment => (CommandTopicChannel => (EventTopicAdapter => (ExtensionPointRuntimeBuilder => {
+  return Mappings => (RuntimeEnvironment => (CommandTopicChannel => (EventTopicAdapter => (ExtensionPointRuntimeBuilder => (Defaults => {
     let name = Spec.name;
     let commandSchema = Spec.commandSchema;
     let eventSchema = Spec.eventSchema;
@@ -59,7 +59,7 @@ function Make(Spec) {
             return Pulumi.output("");
           }
         });
-        ExtensionPointRuntimeBuilder.forCommandTopic(handler, none => SpecificCommandTopic.connect(none, resources, commandTopic), RuntimeHints$ReventlessInfra.resolveMemory(runtime, 1024), RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 30), Spec.moduleUrl, Mappings.moduleUrl, publishToAggregatesQueueUrls, commandTopic);
+        ExtensionPointRuntimeBuilder.forCommandTopic(handler, none => SpecificCommandTopic.connect(none, resources, commandTopic), RuntimeHints$ReventlessInfra.resolveMemory(runtime, Defaults.memorySize), RuntimeHints$ReventlessInfra.resolveTimeout(runtime, Defaults.timeout), Spec.moduleUrl, Mappings.moduleUrl, publishToAggregatesQueueUrls, commandTopic);
         let SpecificEventTopic = EventTopic_Builder$ReventlessCore.Make({
           Id: Id$Reventless.$$String,
           name: name,
@@ -106,7 +106,7 @@ function Make(Spec) {
       outputs: Component$ReventlessCore.outputs,
       operations: Component$ReventlessCore.operations
     };
-  }))));
+  })))));
 }
 
 export {

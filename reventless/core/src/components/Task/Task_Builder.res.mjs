@@ -20,14 +20,14 @@ function pascalCase(s) {
 }
 
 function Make(Spec) {
-  return RuntimeEnvironment => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (TaskRuntimeBuilder => (TaskBucket => (SpecificSideEffectHandler => {
+  return RuntimeEnvironment => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (TaskRuntimeBuilder => (TaskBucket => (SpecificSideEffectHandler => (Defaults => {
     let make = (queryBucketName, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, resourceNaming, allAggregates, runtime, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Task$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
       let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
       };
-      let memorySize = RuntimeHints$ReventlessInfra.resolveMemory(runtime, 4096);
-      let timeout = RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 600);
+      let memorySize = RuntimeHints$ReventlessInfra.resolveMemory(runtime, Defaults.memorySize);
+      let timeout = RuntimeHints$ReventlessInfra.resolveTimeout(runtime, Defaults.timeout);
       let allCommandTopics = Aggregate$ReventlessCore.allCommandTopics(allAggregates);
       let publishToAggregatesQueueUrls = Stdlib_Dict.mapValues(allAggregates, agg => Output$Pulumi.flatMap(agg.commandTopic, ct => {
         let r = ct.resources[0];
@@ -107,7 +107,7 @@ function Make(Spec) {
       make: make,
       outputs: Component$ReventlessCore.outputs
     };
-  })))));
+  }))))));
 }
 
 export {

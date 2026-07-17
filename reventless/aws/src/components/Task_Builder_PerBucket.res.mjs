@@ -19,6 +19,11 @@ let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_PerEventCollect
   connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
 });
 
+let Defaults = {
+  memorySize: 4096,
+  timeout: 600
+};
+
 function Make(Spec) {
   return Task_Builder$ReventlessCore.Make(Spec)({
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
@@ -38,7 +43,7 @@ function Make(Spec) {
     make: TaskBucket_S3$ReventlessAws.make
   })({
     make: SideEffectHandler_PerSideEffectHandler$ReventlessAws.make
-  });
+  })(Defaults);
 }
 
 let EventCollectorChannel;
@@ -58,6 +63,7 @@ export {
   TaskBucket,
   TaskRuntimeBuilder,
   SideEffectHandler,
+  Defaults,
   Make,
 }
 /* EventCollectorRuntimeBuilder Not a pure module */

@@ -18,6 +18,10 @@ function Make(Bus) {
   })({
     make: CommandTopicChannel.make
   });
+  let Defaults = {
+    memorySize: 1024,
+    timeout: 30
+  };
   let Make$1 = Spec => (Mappings => ExtensionPoint_Builder$ReventlessCore.Make(Spec)(Mappings)({
     make: LocalRuntimeEnvironment$ReventlessLocal.make,
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
@@ -28,12 +32,13 @@ function Make(Bus) {
     make: CommandTopicChannel.make
   })(EventTopicPublisher)({
     forCommandTopic: ExtensionPointRuntimeBuilder.forCommandTopic
-  }));
+  })(Defaults));
   return {
     RuntimeEnvironment: undefined,
     CommandTopicChannel: CommandTopicChannel,
     EventTopicPublisher: EventTopicPublisher,
     ExtensionPointRuntimeBuilder: ExtensionPointRuntimeBuilder,
+    Defaults: Defaults,
     Make: Make$1
   };
 }

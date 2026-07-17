@@ -20,6 +20,7 @@ module MakeWithConfig = (
   CommandTopicChannel,
   EventTopicPublisher.SNS,
   ExtensionPointRuntimeBuilder,
+  ExtensionPoint_Builder.Defaults,
 )
 
 module Make: ReventlessCore.ExtensionPoint.T = MakeWithConfig({

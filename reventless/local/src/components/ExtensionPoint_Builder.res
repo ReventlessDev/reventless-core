@@ -10,6 +10,12 @@ module Make = (Bus: LocalBus.T) => {
       CommandTopicChannel,
     )
 
+  // The in-memory runtime ignores memorySize; timeout mirrors the AWS EP floor.
+  module Defaults: ReventlessInfra.RuntimeDefaults.T = {
+    let memorySize = 1024
+    let timeout = 30
+  }
+
   module Make = (
     Spec: ReventlessInfra.ExtensionPointMapping.Spec,
     Mappings: ReventlessInfra.ExtensionPoint.Mappings with module Spec := Spec,
@@ -21,5 +27,6 @@ module Make = (Bus: LocalBus.T) => {
       CommandTopicChannel,
       EventTopicPublisher,
       ExtensionPointRuntimeBuilder,
+      Defaults,
     )
 }

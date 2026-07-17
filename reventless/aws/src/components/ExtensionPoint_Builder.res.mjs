@@ -6,6 +6,11 @@ import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/Run
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "../adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as ExtensionPointRuntime_Builder_PerExtensionPoint$ReventlessAws from "../adapter/Runtime/ExtensionPointRuntime_Builder_PerExtensionPoint.res.mjs";
 
+let Defaults = {
+  memorySize: 1024,
+  timeout: 30
+};
+
 function Make(Spec) {
   return Mappings => ExtensionPoint_Builder$ReventlessCore.Make(Spec)(Mappings)({
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
@@ -19,7 +24,7 @@ function Make(Spec) {
     make: EventTopicPublisher_SNS$ReventlessAws.make
   })({
     forCommandTopic: ExtensionPointRuntime_Builder_PerExtensionPoint$ReventlessAws.forCommandTopic
-  });
+  })(Defaults);
 }
 
 let CommandTopicChannel;
@@ -32,6 +37,7 @@ export {
   CommandTopicChannel,
   RuntimeEnvironment,
   ExtensionPointRuntimeBuilder,
+  Defaults,
   Make,
 }
 /* EventTopicPublisher_SNS-ReventlessAws Not a pure module */

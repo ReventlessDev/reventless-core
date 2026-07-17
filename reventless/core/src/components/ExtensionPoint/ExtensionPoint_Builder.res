@@ -7,6 +7,7 @@ module Make = (
   EventTopicAdapter: EventTopic_Adapter.Publisher,
   ExtensionPointRuntimeBuilder: ExtensionPointRuntime_Builder.T
     with module CommandTopicChannel := CommandTopicChannel,
+  Defaults: ReventlessInfra.RuntimeDefaults.T,
 ): ExtensionPoint.T => {
   module Spec = Spec
 
@@ -92,8 +93,10 @@ module Make = (
         commandTopic->ExtensionPointRuntimeBuilder.forCommandTopic(
           ~handler,
           ~connect=SpecificCommandTopic.connect(commandTopic, ~resources, ...),
-          ~memorySize=runtime->ReventlessInfra.RuntimeHints.resolveMemory(~default=1024),
-          ~timeout=runtime->ReventlessInfra.RuntimeHints.resolveTimeout(~default=30),
+          ~memorySize=runtime->ReventlessInfra.RuntimeHints.resolveMemory(
+            ~default=Defaults.memorySize,
+          ),
+          ~timeout=runtime->ReventlessInfra.RuntimeHints.resolveTimeout(~default=Defaults.timeout),
           ~specModulePath=Spec.moduleUrl,
           ~mappingsModulePath=Mappings.moduleUrl,
           ~publishToAggregatesQueueUrls,

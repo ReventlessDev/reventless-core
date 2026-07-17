@@ -18,19 +18,24 @@ function Make(Bus) {
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(LocalTaskBucket$ReventlessLocal);
+  let Defaults = {
+    memorySize: 4096,
+    timeout: 600
+  };
   let Make$1 = Spec => Task_Builder$ReventlessCore.Make(Spec)({
     make: LocalRuntimeEnvironment$ReventlessLocal.make,
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
     extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
-  })(EventCollectorChannel)(EventCollectorRuntimeBuilder)(TaskRuntimeBuilder)(LocalTaskBucket$ReventlessLocal)(LocalSideEffectHandler$ReventlessLocal);
+  })(EventCollectorChannel)(EventCollectorRuntimeBuilder)(TaskRuntimeBuilder)(LocalTaskBucket$ReventlessLocal)(LocalSideEffectHandler$ReventlessLocal)(Defaults);
   return {
     RuntimeEnvironment: undefined,
     EventCollectorChannel: EventCollectorChannel,
     EventCollectorRuntimeBuilder: EventCollectorRuntimeBuilder,
     TaskRuntimeBuilder: TaskRuntimeBuilder,
     SideEffectHandler: undefined,
+    Defaults: Defaults,
     Make: Make$1
   };
 }

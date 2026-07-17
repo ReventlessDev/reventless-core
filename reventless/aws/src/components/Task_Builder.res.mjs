@@ -14,6 +14,8 @@ let TaskRuntimeBuilder = Task_Builder_PerBucket$ReventlessAws.TaskRuntimeBuilder
 
 let SideEffectHandler = Task_Builder_PerBucket$ReventlessAws.SideEffectHandler;
 
+let Defaults = Task_Builder_PerBucket$ReventlessAws.Defaults;
+
 let Make = Task_Builder_PerBucket$ReventlessAws.Make;
 
 export {
@@ -23,6 +25,7 @@ export {
   TaskBucket,
   TaskRuntimeBuilder,
   SideEffectHandler,
+  Defaults,
   Make,
 }
 /* Task_Builder_PerBucket-ReventlessAws Not a pure module */

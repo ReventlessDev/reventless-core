@@ -28,6 +28,7 @@ module Make = (
     and type runtimeParts = RuntimeEnvironment.parts
     and type context = TaskRuntimeBuilder.context,
   SpecificSideEffectHandler: SideEffectHandler.T,
+  Defaults: ReventlessInfra.RuntimeDefaults.T,
 ): Task.T => {
   module Spec = Spec
   type component = Task.component
@@ -50,10 +51,11 @@ module Make = (
     taskName,
   ) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
-    // Task bucket callbacks default to a large envelope (bulk import/export work);
-    // a plugin.json `runtime` override raises memory above it and replaces timeout.
-    let memorySize = ReventlessInfra.RuntimeHints.resolveMemory(runtime, ~default=4096)
-    let timeout = ReventlessInfra.RuntimeHints.resolveTimeout(runtime, ~default=600)
+    // Task bucket callbacks default to the platform-supplied task-pod floor (a
+    // large envelope for bulk import/export work); a plugin.json `runtime`
+    // override raises memory above it and replaces timeout.
+    let memorySize = ReventlessInfra.RuntimeHints.resolveMemory(runtime, ~default=Defaults.memorySize)
+    let timeout = ReventlessInfra.RuntimeHints.resolveTimeout(runtime, ~default=Defaults.timeout)
     let allCommandTopics = allAggregates->Aggregate.allCommandTopics
 
     // Each adapter chooses what string the Task runtime should treat as the
