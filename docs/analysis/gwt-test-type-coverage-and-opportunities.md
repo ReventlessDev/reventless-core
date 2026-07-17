@@ -10,7 +10,7 @@ It complements, and does not repeat, the two existing GWT documents:
 - [`docs/analysis/given-when-then-specifications.md`](given-when-then-specifications.md) — the pre-implementation **design rationale** (alternatives, Outcome algebra, format spec).
 - [`docs/plans/done/reventless-gwt.md`](../plans/done/reventless-gwt.md) — the **phased rollout record** (Stages 1–12).
 
-Files surveyed: every `*_GWT.res` in [`reventless/reventless-gwt/src/`](../../reventless/reventless-gwt/src/),
+Files surveyed: every `*_GWT.res` in [`reventless/gwt/src/`](../../reventless/gwt/src/),
 the PPX kind-mapping in [`packages/reventless-ppx/src/ppx/Util.ml`](../../packages/reventless-ppx/src/ppx/Util.ml),
 and the existing `*_GWT.res` test files across the examples, `reventless-gwt/tests/`, and
 `reventless-local/tests/plugin/` (where the platform Plugin behavior/projection GWT
@@ -43,16 +43,16 @@ recognises.
 
 | Component pattern | Folder(s) | GWT module | Functor | Async? | Status |
 |---|---|---|---|---|---|
-| **Aggregate** (command handling) | `Aggregate/` | [`Behavior_GWT`](../../reventless/reventless-gwt/src/Behavior_GWT.res) | `MakeFromAggregate(Spec, Behavior)` | sync | ✅ |
-| **StateChangeSlice** (DCB command) | `StateChangeSlice/`, `StateChange/` | [`Behavior_GWT`](../../reventless/reventless-gwt/src/Behavior_GWT.res) | `Make(Spec, Behavior)` | sync | ✅ (+ `thenAppendsConditionedOn`) |
-| **StateViewSlice** (DCB view) | `StateViewSlice/`, `StateView/` | [`Projection_GWT`](../../reventless/reventless-gwt/src/Projection_GWT.res) | `Make(Spec, Projection)` | async | ✅ |
-| **StateViewSliceStream** | `StateViewSliceStream/` | [`Projection_GWT`](../../reventless/reventless-gwt/src/Projection_GWT.res) | `Make(Spec, Projection)` | async | ✅ (same DSL) |
-| **ReadModel** (multi-source projection) | `ReadModel/` | [`MultiSourceProjection_GWT`](../../reventless/reventless-gwt/src/MultiSourceProjection_GWT.res) | `Make(Projection)` | async | ✅ |
-| **AutomationSlice** (policy / process) | `AutomationSlice/`, `Automation/` | [`Automation_GWT`](../../reventless/reventless-gwt/src/Automation_GWT.res) | `Make(Spec)` | sync | ✅ (unit + scenario) |
-| **InboundTranslationSlice** | `InboundTranslationSlice/`, `InboundTranslation/` | [`InboundTranslation_GWT`](../../reventless/reventless-gwt/src/InboundTranslation_GWT.res) | `Make(Spec)` | sync | ✅ |
-| **OutboundTranslationSlice** | `OutboundTranslationSlice/`, `OutboundTranslation/` | [`OutboundTranslation_GWT`](../../reventless/reventless-gwt/src/OutboundTranslation_GWT.res) | `Make(Spec)` | async + sync | ✅ |
-| **EventMapping** (Agg↔DCB automation) | inferred from source/target | [`Mapping_GWT`](../../reventless/reventless-gwt/src/Mapping_GWT.res) | `Make(Mapping)` (+ `FromBehavior`, `FromStateChangeSlice` adapters) | async | ✅ (replaces legacy `EventMapping_GWT`) |
-| **Query pattern** (read access) | applies to ReadModel / StateViewSlice | [`Query_GWT`](../../reventless/reventless-gwt/src/Query_GWT.res) | `Make(Spec)` (+ `FromReadModel`, `FromStateViewSlice`) | sync | ✅ |
+| **Aggregate** (command handling) | `Aggregate/` | [`Behavior_GWT`](../../reventless/gwt/src/Behavior_GWT.res) | `MakeFromAggregate(Spec, Behavior)` | sync | ✅ |
+| **StateChangeSlice** (DCB command) | `StateChangeSlice/`, `StateChange/` | [`Behavior_GWT`](../../reventless/gwt/src/Behavior_GWT.res) | `Make(Spec, Behavior)` | sync | ✅ (+ `thenAppendsConditionedOn`) |
+| **StateViewSlice** (DCB view) | `StateViewSlice/`, `StateView/` | [`Projection_GWT`](../../reventless/gwt/src/Projection_GWT.res) | `Make(Spec, Projection)` | async | ✅ |
+| **StateViewSliceStream** | `StateViewSliceStream/` | [`Projection_GWT`](../../reventless/gwt/src/Projection_GWT.res) | `Make(Spec, Projection)` | async | ✅ (same DSL) |
+| **ReadModel** (multi-source projection) | `ReadModel/` | [`MultiSourceProjection_GWT`](../../reventless/gwt/src/MultiSourceProjection_GWT.res) | `Make(Projection)` | async | ✅ |
+| **AutomationSlice** (policy / process) | `AutomationSlice/`, `Automation/` | [`Automation_GWT`](../../reventless/gwt/src/Automation_GWT.res) | `Make(Spec)` | sync | ✅ (unit + scenario) |
+| **InboundTranslationSlice** | `InboundTranslationSlice/`, `InboundTranslation/` | [`InboundTranslation_GWT`](../../reventless/gwt/src/InboundTranslation_GWT.res) | `Make(Spec)` | sync | ✅ |
+| **OutboundTranslationSlice** | `OutboundTranslationSlice/`, `OutboundTranslation/` | [`OutboundTranslation_GWT`](../../reventless/gwt/src/OutboundTranslation_GWT.res) | `Make(Spec)` | async + sync | ✅ |
+| **EventMapping** (Agg↔DCB automation) | inferred from source/target | [`Mapping_GWT`](../../reventless/gwt/src/Mapping_GWT.res) | `Make(Mapping)` (+ `FromBehavior`, `FromStateChangeSlice` adapters) | async | ✅ (replaces legacy `EventMapping_GWT`) |
+| **Query pattern** (read access) | applies to ReadModel / StateViewSlice | [`Query_GWT`](../../reventless/gwt/src/Query_GWT.res) | `Make(Spec)` (+ `FromReadModel`, `FromStateViewSlice`) | sync | ✅ |
 
 **Conclusion for slices: complete.** All five slice families (StateChange, StateView,
 Automation, InboundTranslation, OutboundTranslation), plus the two "classic" patterns
@@ -130,7 +130,7 @@ these clarifies what the genuinely-missing cross-slice form would add.
 
 1. **Behavior given-history is multi-event.** `givenEvents([...])` folds an arbitrary
    prior history before the `whenCmd`. The platform Plugin behavior test
-   [`PluginBehavior_GWT.res`](../../reventless/reventless-local/tests/plugin/PluginBehavior_GWT.res)
+   [`PluginBehavior_GWT.res`](../../reventless/local/tests/plugin/PluginBehavior_GWT.res)
    folds multi-event histories (e.g. `UnknownPluginDetected → Connected → Deactivated`)
    before the `whenCmd`. But this is still **one** slice deciding **one** command;
    the chain is in the *setup*, not in the *execution*.
@@ -164,7 +164,7 @@ reads a *flow*, not an isolated slice. Today every GWT test verifies one tile of
 board in isolation; nothing verifies that the **tiles connect** the way the diagram says.
 
 What's currently used to test connected flows is the **in-memory E2E integration tests**
-(e.g. [`DcbReadModelE2ETest.res`](../../reventless/reventless-local/tests/components/readmodel/DcbReadModelE2ETest.res),
+(e.g. [`DcbReadModelE2ETest.res`](../../reventless/local/tests/components/readmodel/DcbReadModelE2ETest.res),
 the DCB slice E2E pattern in MEMORY): they dispatch real commands through `InMemory_Bus`, await
 `Output.apply` registration, and count events. These work, but they are **not GWT**:
 

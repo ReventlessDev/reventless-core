@@ -346,7 +346,7 @@ test("ProductAdded still publishes only the Pinged event", () =>
 ```
 
 Worked examples for both adapters live in
-`reventless/reventless-gwt/tests/DelegateGwtTest.res` ("…— directives").
+`reventless/gwt/tests/DelegateGwtTest.res` ("…— directives").
 
 ---
 

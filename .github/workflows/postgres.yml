@@ -9,12 +9,12 @@ on:
   push:
     branches: ["**"]
     paths:
-      - "reventless/reventless-postgres/**"
+      - "reventless/postgres/**"
       - ".github/workflows/postgres.yml"
   pull_request:
     branches: [main, beta, alpha]
     paths:
-      - "reventless/reventless-postgres/**"
+      - "reventless/postgres/**"
   workflow_dispatch:
 
 concurrency:

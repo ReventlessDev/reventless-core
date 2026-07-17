@@ -51,7 +51,7 @@ If `rescript clean && rescript build` is run inside the `reventless-spec/` packa
 **Fix:** Restore the correct file from git:
 
 ```bash
-git checkout -- reventless/reventless-spec/src/components/Component.js
+git checkout -- reventless/spec/src/components/Component.js
 ```
 
 To prevent this: always run builds from the monorepo root, not from individual package directories.

@@ -11,7 +11,7 @@ One consistency-checked command (`StateChangeSlice_Callback.handleSingleCommand`
 
 1. **Decision-model read** — for each query clause, a DynamoDB read (single-tag → base-table partition query; multi-tag → `tag_composite` GSI; tagless → scan). The fold consumes the whole matching stream (delta-bounded since the Phase 4 cache, else full history).
 2. **Transactional append** — one `TransactWriteItems` = event Puts + fence Updates/ConditionChecks. Each item is billed at 2× (transactional) and the condition is evaluated **strongly** at commit.
-3. **On conflict, retry the whole cycle** — up to `maxRetries = 3` ([`StateChangeSlice_Callback.res:96`](../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L96), loop at [:309-331](../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L309)).
+3. **On conflict, retry the whole cycle** — up to `maxRetries = 3` ([`StateChangeSlice_Callback.res:96`](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L96), loop at [:309-331](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L309)).
 
 **The two populations of append-conflict** (this distinction governs which knob helps):
 
@@ -61,7 +61,7 @@ The roadmap already owns some of these: R-C create-race = Issue 2 (**done**); R-
 
 The single most effective lever for **same-entity contention (R-C, and R-A when the hot tag is the entity's own partition)**.
 
-**Mechanism.** `@@reventless.async` on a StateChangeSlice routes its commands through `CommandTopicChannel_SQS_Async`, a **FIFO** queue whose `messageGroupId = safeGroupId(commandJson.id)` ([`Util_SQS_Runtime.res:43`](../../reventless/reventless-aws/src/util/Util_SQS_Runtime.res#L43)); for DCB slice commands `commandJson.id` **is the entity/partition id** ([`StateChangeSlice_Callback.res:108`](../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L108)). FIFO guarantees **at most one in-flight message per group**, so same-entity commands are processed **strictly one at a time**.
+**Mechanism.** `@@reventless.async` on a StateChangeSlice routes its commands through `CommandTopicChannel_SQS_Async`, a **FIFO** queue whose `messageGroupId = safeGroupId(commandJson.id)` ([`Util_SQS_Runtime.res:43`](../../reventless/aws/src/util/Util_SQS_Runtime.res#L43)); for DCB slice commands `commandJson.id` **is the entity/partition id** ([`StateChangeSlice_Callback.res:108`](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L108)). FIFO guarantees **at most one in-flight message per group**, so same-entity commands are processed **strictly one at a time**.
 
 **What it fixes.** For a single entity there is now never a concurrent reader/writer pair → **P2 same-entity conflicts vanish, and so do their retries** (and the Issue 2 create-race — already noted in Phase 2A as closed for async slices). Different entities still run fully in parallel (different `messageGroupId`s), so throughput across the keyspace is unaffected.
 
@@ -91,7 +91,7 @@ A refinement that **dominates plain eventual** and resolves most of the "should 
 
 **Why it sidesteps the auto-tuning trap.** The escalation is **per-invocation and local** — it reacts to *this command's own* conflict, not a noisy global rate, so it can't misfire the way a "global conflict rate ↑ → everything goes strong" loop does. It spends strong-read RCU exactly where a conflict already proved a re-read is needed, and nowhere else.
 
-**Recommendation**: make `EventualThenStrongOnRetry` the **default** consistency mode, with `Eventual` (never strong) and `Strong` (always) as the explicit per-slice overrides. This captures the cost win *and* the lag-self-heal in one default, and makes plain "eventual everywhere" an opt-in for cost-extremists. (This is a small change to where `~strongConsistency` is computed in the callback retry loop — the retry branch already exists at [:309](../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L309).)
+**Recommendation**: make `EventualThenStrongOnRetry` the **default** consistency mode, with `Eventual` (never strong) and `Strong` (always) as the explicit per-slice overrides. This captures the cost win *and* the lag-self-heal in one default, and makes plain "eventual everywhere" an opt-in for cost-extremists. (This is a small change to where `~strongConsistency` is computed in the callback retry loop — the retry branch already exists at [:309](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L309).)
 
 ---
 

@@ -26,7 +26,7 @@ live-validated; this plan is **provisioning + connection wiring only**.
   provisioning components (RDS/Aurora/operator resources) — platform packages
   wrap `ensureSchema` + connection config themselves."* This plan is that
   deferred piece.
-- `reventless/reventless-aws/src/adapter/EventLog/` (DynamoDB adapter shape),
+- `reventless/aws/src/adapter/EventLog/` (DynamoDB adapter shape),
   `.../DcbEventLog/`, `.../QueryDb/`, `.../QueryEngine/`.
 - `docs/plans/Backlog/aws-deployment-strategy.md`,
   `docs/plans/Backlog/deploy-runtime-separation-plan.md`.
@@ -37,7 +37,7 @@ live-validated; this plan is **provisioning + connection wiring only**.
 all three surfaces (classic EventLog, DcbEventLog + change feed, QueryDb), and
 is already integrated into `reventless-local` as `Backend.postgres`. But the
 **AWS deploy path has no Postgres story**: every adapter under
-`reventless/reventless-aws/src/adapter/{EventLog,DcbEventLog,QueryDb,QueryEngine}/`
+`reventless/aws/src/adapter/{EventLog,DcbEventLog,QueryDb,QueryEngine}/`
 is DynamoDB-only. To run a real Pulumi-deployed, Lambda-backed platform on
 managed Postgres today, a developer must hand-provision RDS and hand-wire the
 runtime modules — none of it is exposed through the framework's adapter
@@ -59,7 +59,7 @@ Why it's worth doing:
 
 Each AWS storage adapter is a `storageMaker` returning
 `{resources: array<Pulumi resource>, operations: {…runtime ops…}}`
-(`reventless/reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb.res`).
+(`reventless/aws/src/adapter/EventLog/EventLogStorage_DynamoDb.res`).
 The **operations** half already exists for Postgres — the runtime modules in
 `reventless-postgres` (`EventLogStorage_Postgres`, `DcbEventLogStorage_Postgres`,
 `QueryDbStorage_Postgres`, `QueryEnginePostgres`) implement the same operation
@@ -656,8 +656,8 @@ per-plugin deploy guide, live-updates guide, and the DynamoDB DCB adapter doc.
 
 - Done plan: `docs/plans/done/postgres-storage-adapter.md` (engine design,
   live-validation results, deferred provisioning non-goal).
-- Adapter shape: `reventless/reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb.res`
+- Adapter shape: `reventless/aws/src/adapter/EventLog/EventLogStorage_DynamoDb.res`
   (`storageMaker` = `{resources, operations}`).
-- Change-feed API: `reventless/reventless-postgres/src/PgChangeFeed.res`.
-- Schema provisioning: `reventless/reventless-postgres/src/PgSchema.res`
+- Change-feed API: `reventless/postgres/src/PgChangeFeed.res`.
+- Schema provisioning: `reventless/postgres/src/PgSchema.res`
   (`ensureSchema`).

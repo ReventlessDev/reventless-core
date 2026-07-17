@@ -39,9 +39,9 @@ A complete GWT layer needs a DSL for **every cell of that table**, with consiste
 
 ## 2. Current state and gaps
 
-All three existing DSLs live in [`reventless-core/tests/`](../../reventless/reventless-core/tests/), with near-duplicates of `BehaviorTest`/`ProjectionTest`/`AsyncTest` in [`reventless-local/src/test/`](../../reventless/reventless-local/src/test/).
+All three existing DSLs live in [`reventless-core/tests/`](../../reventless/core/tests/), with near-duplicates of `BehaviorTest`/`ProjectionTest`/`AsyncTest` in [`reventless-local/src/test/`](../../reventless/local/src/test/).
 
-### 2.1 [BehaviorTest](../../reventless/reventless-core/tests/BehaviorTest.res) — Aggregate command slice
+### 2.1 [BehaviorTest](../../reventless/core/tests/BehaviorTest.res) — Aggregate command slice
 
 Pure synchronous DSL. Functor over `(Spec, Behavior)`:
 
@@ -59,7 +59,7 @@ Combinators: `givenEvents`, `whenCmd`, `thenEvent`, `thenEvents`, `thenNoEvent`,
 Strengths: idiomatic, matches Behavior shape exactly, no async overhead.
 Limitations: only one entity stream; no notion of multiple `id`s in the history.
 
-### 2.2 [EventMappingTest](../../reventless/reventless-core/tests/EventMappingTest.res) — Aggregate→Aggregate automation
+### 2.2 [EventMappingTest](../../reventless/core/tests/EventMappingTest.res) — Aggregate→Aggregate automation
 
 Async DSL composing two aggregates and one `EventMapping`. Functor over `(Source, SourceBehavior, Target, TargetBehavior, EventMapping)`:
 
@@ -73,7 +73,7 @@ givenSourceEvents([CategoryArchived(...)])
 Strengths: covers cross-aggregate flow including the QueryEngine stub; respects target-aggregate behavior so target invariants are enforced.
 Limitations: only `Aggregate→Aggregate`; no support for `PublishDelayed` time travel; `thenTargetError` family commented out, never finished; no integration with DCB sources or targets.
 
-### 2.3 [ProjectionTest](../../reventless/reventless-core/tests/ProjectionTest.res) — ReadModel projection
+### 2.3 [ProjectionTest](../../reventless/core/tests/ProjectionTest.res) — ReadModel projection
 
 Async DSL with a synthetic in-memory store. Functor over `Projection.Mapping`:
 
@@ -1146,7 +1146,7 @@ The AI loop reads `Query_GWT` scenarios, computes the required `config`, and emi
 After consolidation, `reventless-gwt` ships:
 
 ```
-reventless/reventless-gwt/src/
+reventless/gwt/src/
 ├─ Bind.res                      # Outcome → CLI runner
 ├─ JestBind.res                  # Outcome → Jest (optional)
 ├─ Filter.res                    # only/skip/xtest
@@ -1332,9 +1332,9 @@ The current re-exports exist for two specific reasons. Both go away once the DSL
 
 **Concrete actions:**
 
-1. `git mv reventless/reventless-core/tests/{BehaviorTest,EventMappingTest,ProjectionTest,AsyncTest}.res reventless/reventless-gwt/src/`
+1. `git mv reventless/core/tests/{BehaviorTest,EventMappingTest,ProjectionTest,AsyncTest}.res reventless/gwt/src/`
 2. Rename to `Behavior_GWT.res`, `EventMapping_GWT.res`, `Projection_GWT.res`, `AsyncTest.res`.
-3. `rm reventless/reventless-local/src/test/{BehaviorTest,ProjectionTest,AsyncTest}.res` and their `.res.mjs` siblings.
+3. `rm reventless/local/src/test/{BehaviorTest,ProjectionTest,AsyncTest}.res` and their `.res.mjs` siblings.
 4. Update `reventless-local/rescript.json` to remove `src/test`, or reduce to `Mocks/` and `TestRunner.res` only.
 5. Add `@reventlessdev/reventless-gwt` as a devDep of `reventless-local` (only because some `TestRunner` helpers use `AsyncTest`).
 6. Codemod every example test: `ReventlessLocal.BehaviorTest` → `ReventlessGwt.Behavior_GWT`, `ReventlessLocal.ProjectionTest` → `ReventlessGwt.Projection_GWT`, `ReventlessLocal.AsyncTest` → `ReventlessGwt.AsyncTest`.
@@ -1356,8 +1356,8 @@ The only thing the in-memory package retains in `src/test/`:
 | `examples/online-shop-dcb/*/tests/*/StateChangeSlice/*DecisionTest.res` | ~4 | rewrite to `_GWT` form (semi-automatic) |
 | `examples/online-shop-dcb/*/tests/*/StateViewSlice/*ViewTest.res` | ~4 | rewrite to `_GWT` form (semi-automatic) |
 | `examples/online-shop-dcb/*/tests/E2E/*E2ETest.res` | ~2 | unchanged (uses in-memory bus, not GWT) |
-| `reventless/reventless-core/tests/**` | many | unchanged or in-place rename |
-| `reventless/reventless-local/tests/**` | many | unchanged |
+| `reventless/core/tests/**` | many | unchanged or in-place rename |
+| `reventless/local/tests/**` | many | unchanged |
 
 #### Codemod for renames (Aggregate Behavior + ReadModel Projection)
 

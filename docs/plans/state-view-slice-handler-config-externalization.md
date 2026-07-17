@@ -40,7 +40,7 @@ limit. String measured: {"HANDLER_CONFIG":"{\"handlers\":[ ...13 entries... ]}",
 ```
 
 The builder
-(`reventless/reventless-aws/src/adapter/Runtime/StateViewSliceRuntime_Builder_Single.res`)
+(`reventless/aws/src/adapter/Runtime/StateViewSliceRuntime_Builder_Single.res`)
 consolidates *every* slice of a plugin into a single `AllStateViewSlices` Lambda
 and serializes the full set into `HANDLER_CONFIG`. Each handler entry carries two
 full module paths, a query-DB table name, and the (104-char) DynamoDB stream ARN.
@@ -147,7 +147,7 @@ via the `v` tag; add a `"ref"` shape for the S3-pointer case.
 
 ## Files
 
-- `reventless/reventless-aws/src/adapter/Runtime/StateViewSliceRuntime_Builder_Single.res`
+- `reventless/aws/src/adapter/Runtime/StateViewSliceRuntime_Builder_Single.res`
   — write config to S3, emit pointer env vars, grant `s3:GetObject`.
-- `reventless/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs`
+- `reventless/aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs`
   — fetch-from-S3 fallback ahead of `expandHandlers()`.

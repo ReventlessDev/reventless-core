@@ -1,0 +1,15 @@
+{
+  "name": "@reventlessdev/reventless-conventional-changelog",
+  "version": "1.2.0-alpha.6",
+  "description": "Reventless custom conventional-changelog preset with reduced blank lines",
+  "main": "index.js",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "reventless/conventional-changelog"
+  }
+}

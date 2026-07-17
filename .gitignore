@@ -50,7 +50,7 @@ packages/reventless-ppx/src/_build/
 
 # Lambda layer zip artifacts are built by reventless-layer-builder and
 # uploaded directly by CI — never committed. The package-local gitignore at
-# reventless/reventless-layer-builder/.gitignore covers the build output;
+# reventless/layer-builder/.gitignore covers the build output;
 # this repo-wide rule catches strays from any future layer builders.
 **/reventless-layer*.zip
 

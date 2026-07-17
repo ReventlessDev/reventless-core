@@ -14,7 +14,7 @@ module.exports = {
   // before any client singleton is constructed.
   setupFiles: [integrationSetup, setupFile],
   testMatch: [
-    "<rootDir>/reventless/reventless-aws/tests/integration/**/*Test.res.mjs",
+    "<rootDir>/reventless/aws/tests/integration/**/*Test.res.mjs",
   ],
   moduleFileExtensions: ["js", "mjs", "cjs"],
   testTimeout: 30000,

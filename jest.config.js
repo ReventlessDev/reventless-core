@@ -6,11 +6,11 @@ const setupFile = path.resolve(__dirname, "jest.setup.cjs");
 // any project that transitively loads reventless-local still resolves it.
 const sqliteBridge = path.resolve(
   __dirname,
-  "reventless/reventless-local/__mocks__/nodeSqlite.mjs",
+  "reventless/local/__mocks__/nodeSqlite.mjs",
 );
 const sqliteGlobalSetup = path.resolve(
   __dirname,
-  "reventless/reventless-local/tests/setup/sqliteGlobal.cjs",
+  "reventless/local/tests/setup/sqliteGlobal.cjs",
 );
 
 /** @type {import('jest').Config} */
@@ -30,7 +30,7 @@ module.exports = {
     },
     {
       displayName: "reventless-core",
-      rootDir: "./reventless/reventless-core",
+      rootDir: "./reventless/core",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       testPathIgnorePatterns: [
         "/node_modules/",
@@ -51,14 +51,14 @@ module.exports = {
     },
     {
       displayName: "reventless-gwt",
-      rootDir: "./reventless/reventless-gwt",
+      rootDir: "./reventless/gwt",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
       setupFiles: [setupFile],
     },
     {
       displayName: "reventless-local",
-      rootDir: "./reventless/reventless-local",
+      rootDir: "./reventless/local",
       testMatch: [
         "<rootDir>/tests/**/*Test.res.mjs",
         "<rootDir>/tests/**/*_GWT.res.mjs",
@@ -78,7 +78,7 @@ module.exports = {
     },
     {
       displayName: "reventless-interop",
-      rootDir: "./reventless/reventless-interop",
+      rootDir: "./reventless/interop",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
       setupFiles: [setupFile],

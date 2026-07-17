@@ -35,7 +35,7 @@ pnpm test                      # Run tests in all packages
 pnpm run clean                 # Clean all packages
 ```
 
-### Per-package commands (run from the package directory, e.g. `reventless/reventless-local/`)
+### Per-package commands (run from the package directory, e.g. `reventless/local/`)
 ```bash
 pnpm run build                 # rescript build
 pnpm run start                 # rescript build -w (watch mode)
@@ -100,7 +100,7 @@ Reventless is an **event-sourced CQRS framework** for serverless infrastructure,
 3. **reventless-aws** - AWS-specific implementations (DynamoDB, Lambda, SQS, SNS, S3 adapters)
 4. **rescript-*** - ReScript bindings for various JS libraries (aws-sdk, pulumi, uuid, etc.)
 
-### Core Components (in `reventless/reventless-core/src/components/`)
+### Core Components (in `reventless/core/src/components/`)
 
 - **Aggregate** - Event-sourced aggregate root with CommandTopic, EventLog, CommandGenerator
 - **ReadModel** - Query-side projection consuming events via EventCollector
@@ -139,7 +139,7 @@ The framework separates **deploy-time** (Pulumi infrastructure) from **runtime**
 - `src/adapter/` - Deploy-time adapter interfaces
 - `src/adapter/Runtime/` - Runtime builders for different deployment strategies (Single, PerAggregate, Micro)
 
-AWS adapters in `reventless/reventless-aws/src/adapter/` implement:
+AWS adapters in `reventless/aws/src/adapter/` implement:
 - EventLog storage → DynamoDB
 - CommandTopic/EventTopic channels → SQS (FIFO), SNS
 - QueryDb → DynamoDB

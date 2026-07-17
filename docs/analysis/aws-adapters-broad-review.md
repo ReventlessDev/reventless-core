@@ -15,7 +15,7 @@ The plans are ordered for execution; each plan references the others as siblings
 
 ## Scope
 
-This review covers the AWS adapters under [`reventless/reventless-aws/src/adapter/`](../../reventless/reventless-aws/src/adapter/) that have **not** already been audited in a dedicated analysis. The DCB DynamoDB append path, the Aggregate command-handling path (EventLog DynamoDB / CommandTopic SQS-FIFO / EventTopic-DynamoDbStream), AppSync resolver mechanics, runtime builder structure, and Lambda layer/bundling are each covered in their own documents — issues found there are **not** repeated below.
+This review covers the AWS adapters under [`reventless/aws/src/adapter/`](../../reventless/aws/src/adapter/) that have **not** already been audited in a dedicated analysis. The DCB DynamoDB append path, the Aggregate command-handling path (EventLog DynamoDB / CommandTopic SQS-FIFO / EventTopic-DynamoDbStream), AppSync resolver mechanics, runtime builder structure, and Lambda layer/bundling are each covered in their own documents — issues found there are **not** repeated below.
 
 For each finding the table at the end gives a deterministic execution order combining severity, blast radius, and effort. Section numbering is by adapter family for traceability; the priority table re-orders.
 
@@ -23,18 +23,18 @@ For each finding the table at the end gives a deterministic execution order comb
 
 | Adapter family | Files |
 |---|---|
-| CommandTopic | [`CommandTopicChannel_SQS.res`](../../reventless/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS.res), [`_Sync.res`](../../reventless/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res), [`_Async.res`](../../reventless/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Async.res), [`_Helpers.res`](../../reventless/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_Helpers.res), [`CommandTopicRemoteChannel_SQS.res`](../../reventless/reventless-aws/src/adapter/CommandTopic/CommandTopicRemoteChannel_SQS.res) |
-| EventCollector | [`_DynamoDbStream*.res`](../../reventless/reventless-aws/src/adapter/EventCollector/), [`_SQS*.res`](../../reventless/reventless-aws/src/adapter/EventCollector/) |
-| EventTopic (SNS) | [`EventTopicPublisher_SNS.res`](../../reventless/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_SNS.res), [`_FIFO.res`](../../reventless/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_SNS_FIFO.res), [`_Runtime.res`](../../reventless/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_SNS_Runtime.res) |
-| QueryDb / QueryEngine | [`QueryDbStorage_DynamoDb*.res`](../../reventless/reventless-aws/src/adapter/QueryDb/), [`QueryEngine_DynamoDb.res`](../../reventless/reventless-aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res), [`QueryInterceptor_Lambda.res`](../../reventless/reventless-aws/src/adapter/QueryDb/QueryInterceptor_Lambda.res) |
-| Task | [`TaskBucket_S3*.res`](../../reventless/reventless-aws/src/adapter/Task/) |
-| Cloner | [`ClonerRunner_Fargate*.res`](../../reventless/reventless-aws/src/adapter/Cloner/) |
-| Counter | [`CounterHandler_DynamoDbStream*.res`](../../reventless/reventless-aws/src/adapter/Counter/) |
-| StateTopic / EventLogSubscription | [`StateTopic_AppSync.res`](../../reventless/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res), [`EventLogSubscription_AppSync.res`](../../reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res) |
-| Heartbeat / ScheduledPublisher | [`HeartbeatRunner_CloudWatchEvents.res`](../../reventless/reventless-aws/src/adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res), [`ScheduledPublisher_CloudWatchEvents*.res`](../../reventless/reventless-aws/src/adapter/ScheduledPublisher/) |
-| MCP | [`MCP_Lambda.res`](../../reventless/reventless-aws/src/adapter/Mcp/MCP_Lambda.res) |
-| Api | [`AppSync_EventsApi.res`](../../reventless/reventless-aws/src/adapter/Api/AppSync_EventsApi.res), [`AppSync_Resolver_*.res`](../../reventless/reventless-aws/src/adapter/Api/), [`CommandSubscriptionResolvers_AppSync.res`](../../reventless/reventless-aws/src/adapter/Api/CommandSubscriptionResolvers_AppSync.res), [`Platform_UIDefinitions_Lambda.res`](../../reventless/reventless-aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res) |
-| CommandGenerator | [`CommandGeneratorResolvers*.res`](../../reventless/reventless-aws/src/adapter/CommandGenerator/), [`InboundTranslationResolvers_AppSync.res`](../../reventless/reventless-aws/src/adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res) |
+| CommandTopic | [`CommandTopicChannel_SQS.res`](../../reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_SQS.res), [`_Sync.res`](../../reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res), [`_Async.res`](../../reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Async.res), [`_Helpers.res`](../../reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_Helpers.res), [`CommandTopicRemoteChannel_SQS.res`](../../reventless/aws/src/adapter/CommandTopic/CommandTopicRemoteChannel_SQS.res) |
+| EventCollector | [`_DynamoDbStream*.res`](../../reventless/aws/src/adapter/EventCollector/), [`_SQS*.res`](../../reventless/aws/src/adapter/EventCollector/) |
+| EventTopic (SNS) | [`EventTopicPublisher_SNS.res`](../../reventless/aws/src/adapter/EventTopic/EventTopicPublisher_SNS.res), [`_FIFO.res`](../../reventless/aws/src/adapter/EventTopic/EventTopicPublisher_SNS_FIFO.res), [`_Runtime.res`](../../reventless/aws/src/adapter/EventTopic/EventTopicPublisher_SNS_Runtime.res) |
+| QueryDb / QueryEngine | [`QueryDbStorage_DynamoDb*.res`](../../reventless/aws/src/adapter/QueryDb/), [`QueryEngine_DynamoDb.res`](../../reventless/aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res), [`QueryInterceptor_Lambda.res`](../../reventless/aws/src/adapter/QueryDb/QueryInterceptor_Lambda.res) |
+| Task | [`TaskBucket_S3*.res`](../../reventless/aws/src/adapter/Task/) |
+| Cloner | [`ClonerRunner_Fargate*.res`](../../reventless/aws/src/adapter/Cloner/) |
+| Counter | [`CounterHandler_DynamoDbStream*.res`](../../reventless/aws/src/adapter/Counter/) |
+| StateTopic / EventLogSubscription | [`StateTopic_AppSync.res`](../../reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res), [`EventLogSubscription_AppSync.res`](../../reventless/aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res) |
+| Heartbeat / ScheduledPublisher | [`HeartbeatRunner_CloudWatchEvents.res`](../../reventless/aws/src/adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res), [`ScheduledPublisher_CloudWatchEvents*.res`](../../reventless/aws/src/adapter/ScheduledPublisher/) |
+| MCP | [`MCP_Lambda.res`](../../reventless/aws/src/adapter/Mcp/MCP_Lambda.res) |
+| Api | [`AppSync_EventsApi.res`](../../reventless/aws/src/adapter/Api/AppSync_EventsApi.res), [`AppSync_Resolver_*.res`](../../reventless/aws/src/adapter/Api/), [`CommandSubscriptionResolvers_AppSync.res`](../../reventless/aws/src/adapter/Api/CommandSubscriptionResolvers_AppSync.res), [`Platform_UIDefinitions_Lambda.res`](../../reventless/aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res) |
+| CommandGenerator | [`CommandGeneratorResolvers*.res`](../../reventless/aws/src/adapter/CommandGenerator/), [`InboundTranslationResolvers_AppSync.res`](../../reventless/aws/src/adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res) |
 
 ---
 
@@ -43,7 +43,7 @@ For each finding the table at the end gives a deterministic execution order comb
 The FIFO dispatch path was reviewed in [aggregate-command-handling-review.md](./aggregate-command-handling-review.md). The findings here apply to the surrounding files only.
 
 ### 1.1 — **Critical, Correctness** — receipt-handle / parsed-body mispairing
-[`CommandTopicChannel_SQS_Runtime.res:7-21`](../../reventless/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res#L7-L21). The handler builds two parallel arrays:
+[`CommandTopicChannel_SQS_Runtime.res:7-21`](../../reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res#L7-L21). The handler builds two parallel arrays:
 
 ```rescript
 let jsons = records->Array.filterMap(record => …)  // drops parse failures
@@ -58,31 +58,31 @@ let topicItems =
 **Effort:** Tiny.
 
 ### 1.2 — **Major, Correctness** — non-FIFO CommandTopic has no per-aggregate ordering
-[`CommandTopicChannel_SQS.res:42-55`](../../reventless/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS.res#L42-L55). A standard SQS queue provides no ordering and no dedup. `Aggregate_Callback` relies on FIFO `MessageGroupId` for "commands for the same aggregate are dispatched serially" — that's what bounds the OCC retry budget. With this variant, two consumers concurrently process commands for the same aggregate; both replay-decide-append, hit OCC conflict, and after `maxConflictRetries=3` × `maxReceiveCount=5` commands DLQ. There is no header comment documenting "use only for stateless command processors."
+[`CommandTopicChannel_SQS.res:42-55`](../../reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_SQS.res#L42-L55). A standard SQS queue provides no ordering and no dedup. `Aggregate_Callback` relies on FIFO `MessageGroupId` for "commands for the same aggregate are dispatched serially" — that's what bounds the OCC retry budget. With this variant, two consumers concurrently process commands for the same aggregate; both replay-decide-append, hit OCC conflict, and after `maxConflictRetries=3` × `maxReceiveCount=5` commands DLQ. There is no header comment documenting "use only for stateless command processors."
 
 **Fix:** delete the non-FIFO variant if no caller actually needs it; otherwise add a deploy-time guard preventing wiring to an Aggregate.
 **Effort:** Tiny (delete) / Small (guard).
 
 ### 1.3 — **Major, Correctness** — `_Sync` registration race
-[`CommandTopicChannel_SQS_Sync.res:22, 60-75`](../../reventless/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res#L22). `handleCmdsRef` is a module-level `ref<option<…>>` populated by `handleChannelEvent` and read by `publishJsonsAndWait`, both wired through `Pulumi.Output.apply` chains. Initialization order is not deterministic. The fall-back path (`None => sendToSqs + Pending`) is described as "for PerAggregate where resolver and handler are in separate Lambdas" but in reality also fires on Single during the wiring race window.
+[`CommandTopicChannel_SQS_Sync.res:22, 60-75`](../../reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res#L22). `handleCmdsRef` is a module-level `ref<option<…>>` populated by `handleChannelEvent` and read by `publishJsonsAndWait`, both wired through `Pulumi.Output.apply` chains. Initialization order is not deterministic. The fall-back path (`None => sendToSqs + Pending`) is described as "for PerAggregate where resolver and handler are in separate Lambdas" but in reality also fires on Single during the wiring race window.
 
 **Fix:** distinguish "single-process inline" from "remote dispatch" at deploy-time via a flag, not a runtime ref.
 **Effort:** Small.
 
 ### 1.4 — **Minor, Correctness** — FIFO sends rely on `contentBasedDeduplication`
-[`Util_SQS_Runtime.res:33-34, 60-69`](../../reventless/reventless-aws/src/util/Util_SQS_Runtime.res). `sendFifoMessage` and `makeBatchEntryFifo` never set `messageDeduplicationId`. With `contentBasedDeduplication=true` SQS hashes the body — but a transient retry (`Effect.retry(SQS_Error.sendRetrySchedule)`) can collide with a *previous* send within the 5-minute window if the body is byte-identical, silently dropping the resend. Bodies include `meta.msgId` and `meta.time`, which usually differ — but the design relies on accidental variation rather than explicit dedup.
+[`Util_SQS_Runtime.res:33-34, 60-69`](../../reventless/aws/src/util/Util_SQS_Runtime.res). `sendFifoMessage` and `makeBatchEntryFifo` never set `messageDeduplicationId`. With `contentBasedDeduplication=true` SQS hashes the body — but a transient retry (`Effect.retry(SQS_Error.sendRetrySchedule)`) can collide with a *previous* send within the 5-minute window if the body is byte-identical, silently dropping the resend. Bodies include `meta.msgId` and `meta.time`, which usually differ — but the design relies on accidental variation rather than explicit dedup.
 
 **Fix:** set `messageDeduplicationId = meta.msgId` (already a UUID) explicitly.
 **Effort:** Tiny.
 
 ### 1.5 — **Minor, Performance** — `Stream.grouped(10)` underuses the parallel batcher
-[`CommandTopicChannel_SQS_FIFO.res:39-50`](../../reventless/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res#L39-L50) and siblings. Producers pre-chunk to 10 then call `publishJsons` sequentially per group, even though `sendMessagesParallel` already handles the 10-msg + 256 KB cap *and* parallelises within a group. Tiny payloads pay extra round-trips.
+[`CommandTopicChannel_SQS_FIFO.res:39-50`](../../reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res#L39-L50) and siblings. Producers pre-chunk to 10 then call `publishJsons` sequentially per group, even though `sendMessagesParallel` already handles the 10-msg + 256 KB cap *and* parallelises within a group. Tiny payloads pay extra round-trips.
 
 **Fix:** raise the group size (e.g. 256) or stream straight into `publishJsons` and let the batcher slice.
 **Effort:** Small.
 
 ### 1.6 — **Minor, Operational** — vacuous `arnEquals` on queue policy
-[`CommandTopicChannel_Helpers.res:30-32`](../../reventless/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_Helpers.res). `aws:SourceArn = lambdaArn` only matches when a service-of-service push sets that header; a generic `sqs:SendMessage` from any IAM principal is unconstrained. The condition reads strict but does nothing.
+[`CommandTopicChannel_Helpers.res:30-32`](../../reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_Helpers.res). `aws:SourceArn = lambdaArn` only matches when a service-of-service push sets that header; a generic `sqs:SendMessage` from any IAM principal is unconstrained. The condition reads strict but does nothing.
 
 **Fix:** add `Deny *` plus `Allow` for the specific sender role, or drop the misleading condition.
 **Effort:** Small.
@@ -92,49 +92,49 @@ let topicItems =
 ## 2. EventCollector (DynamoDbStream + SQS variants)
 
 ### 2.1 — **Critical, Correctness** — no `batchItemFailures` on stream / SQS event collectors
-[`EventCollectorChannel_DynamoDbStream_Runtime.res:6-19`](../../reventless/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream_Runtime.res), [`EventCollectorChannel_SQS_Runtime.res:36-45`](../../reventless/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_SQS_Runtime.res). Handlers return a single Effect over the whole batch. A poison record fails the entire invocation, redelivering the full shard window (DDB Streams) or all 10 SQS records, forcing N× projection re-application. The standard ESM pattern (`functionResponseTypes: ["ReportBatchItemFailures"]`) lets Lambda return only the failing `SequenceNumber` / `messageId` so the rest advances. Neither path uses it. There is also no `DestinationConfig.OnFailure` configured; after `MaximumRetryAttempts` poison events vanish silently.
+[`EventCollectorChannel_DynamoDbStream_Runtime.res:6-19`](../../reventless/aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream_Runtime.res), [`EventCollectorChannel_SQS_Runtime.res:36-45`](../../reventless/aws/src/adapter/EventCollector/EventCollectorChannel_SQS_Runtime.res). Handlers return a single Effect over the whole batch. A poison record fails the entire invocation, redelivering the full shard window (DDB Streams) or all 10 SQS records, forcing N× projection re-application. The standard ESM pattern (`functionResponseTypes: ["ReportBatchItemFailures"]`) lets Lambda return only the failing `SequenceNumber` / `messageId` so the rest advances. Neither path uses it. There is also no `DestinationConfig.OnFailure` configured; after `MaximumRetryAttempts` poison events vanish silently.
 
 **Fix:** thread per-record success status through `handleEvents`; return `{batchItemFailures: […]}` from the Lambda; configure on-failure DLQ on the ESM.
 **Effort:** Medium.
 
 ### 2.2 — **Major, Correctness** — DDB-stream filter silently drops `REMOVE` and key-only records
-[`EventCollectorChannel_DynamoDbStream_Runtime.res:6-19`](../../reventless/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream_Runtime.res). `filterMap` discards records where `eventSource ≠ "aws:dynamodb"` *and* records without `NewImage`. If the source table's `StreamViewType` is misconfigured (`KEYS_ONLY` or `OLD_IMAGE`), the EventCollector silently processes nothing and projections never update. There is no warning, no deploy-time validation.
+[`EventCollectorChannel_DynamoDbStream_Runtime.res:6-19`](../../reventless/aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream_Runtime.res). `filterMap` discards records where `eventSource ≠ "aws:dynamodb"` *and* records without `NewImage`. If the source table's `StreamViewType` is misconfigured (`KEYS_ONLY` or `OLD_IMAGE`), the EventCollector silently processes nothing and projections never update. There is no warning, no deploy-time validation.
 
 **Fix:** log a warning when a record with a non-trivial `eventName` is dropped; assert at deploy-time that the table's stream is `NEW_IMAGE` or `NEW_AND_OLD_IMAGES`.
 **Effort:** Small.
 
 ### 2.3 — **Major, Correctness** — non-FIFO EventCollector queue is unordered for stateful projections
-[`EventCollectorChannel_SQS.res:44`](../../reventless/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_SQS.res). SNS→SQS fan-out is unordered. ReadModels using `Set` are tolerant; ReadModels using `Update` against prior state silently corrupt when two events for the same entity arrive out of order. There is no documentation of the caveat at the file head.
+[`EventCollectorChannel_SQS.res:44`](../../reventless/aws/src/adapter/EventCollector/EventCollectorChannel_SQS.res). SNS→SQS fan-out is unordered. ReadModels using `Set` are tolerant; ReadModels using `Update` against prior state silently corrupt when two events for the same entity arrive out of order. There is no documentation of the caveat at the file head.
 
 **Fix:** document the ordering caveat or add a deploy-time guard binding the variant to order-independent projections only.
 **Effort:** Small (doc) / Medium (guard).
 
 ### 2.4 — **Major, Operational** — shared platform-wide DLQs collapse observability
-[`Util_DeadLetterQueue.res:7-35`](../../reventless/reventless-aws/src/util/Util_DeadLetterQueue.res). Two single shared DLQs (one standard, one FIFO) collect poison messages from every CommandTopic *and* every EventCollector. The handler is `console.error("DEAD LETTER ITEM:", JSON.stringify(event))` with no metric, no alarm, no archive. A flooding EventCollector masks unrelated CommandTopic poison events.
+[`Util_DeadLetterQueue.res:7-35`](../../reventless/aws/src/util/Util_DeadLetterQueue.res). Two single shared DLQs (one standard, one FIFO) collect poison messages from every CommandTopic *and* every EventCollector. The handler is `console.error("DEAD LETTER ITEM:", JSON.stringify(event))` with no metric, no alarm, no archive. A flooding EventCollector masks unrelated CommandTopic poison events.
 
 **Fix:** per-component DLQs (or per-component-type at minimum); CloudWatch metric on each receipt; 14-day retention; optional S3 archive.
 **Effort:** Medium.
 
 ### 2.5 — **Major, Correctness** — `EventCollectorChannel_SQS_FIFO` 30 s visibility too short
-[`EventCollectorChannel_SQS_FIFO.res:22`](../../reventless/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_SQS_FIFO.res#L22) (`// TODO fix timeout`). 30 s is shorter than the worst-case projection time; the message reappears mid-processing, a second consumer reads it, and FIFO's "exactly-once-per-group" promise is silently downgraded to "idempotent-or-corrupt."
+[`EventCollectorChannel_SQS_FIFO.res:22`](../../reventless/aws/src/adapter/EventCollector/EventCollectorChannel_SQS_FIFO.res#L22) (`// TODO fix timeout`). 30 s is shorter than the worst-case projection time; the message reappears mid-processing, a second consumer reads it, and FIFO's "exactly-once-per-group" promise is silently downgraded to "idempotent-or-corrupt."
 
 **Fix:** raise to ≥ Lambda timeout × 6 (the convention used elsewhere — 180 s).
 **Effort:** Tiny.
 
 ### 2.6 — **Minor, Operational** — DDB-stream ESM has no parallelism / batching knobs
-[`Util_EventSourceMapping.res:11-22`](../../reventless/reventless-aws/src/util/Util_EventSourceMapping.res). Defaults: `parallelizationFactor=1`, `batchSize=100`, `batchWindow=0`, `startingPosition: LATEST`. Hot aggregates serialise on a single shard; LATEST means redeploys lose any in-flight stream records during the detach/attach window.
+[`Util_EventSourceMapping.res:11-22`](../../reventless/aws/src/util/Util_EventSourceMapping.res). Defaults: `parallelizationFactor=1`, `batchSize=100`, `batchWindow=0`, `startingPosition: LATEST`. Hot aggregates serialise on a single shard; LATEST means redeploys lose any in-flight stream records during the detach/attach window.
 
 **Fix:** expose `parallelizationFactor` / `batchSize` / `maxBatchingWindowInSeconds` knobs; default `parallelizationFactor=10`. Long-term: seed read models from EventLog directly on cold start instead of trusting LATEST.
 **Effort:** Small (knobs) / Medium (seed-from-log).
 
 ### 2.7 — **Minor, Correctness** — `Array.getUnsafe(0)` drops sibling resources
-[`EventCollectorChannel_DynamoDbStream.res:36`](../../reventless/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res), [`EventCollectorChannel_SQS.res:73`](../../reventless/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_SQS.res), [`_FIFO.res:51`](../../reventless/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_SQS_FIFO.res). All three carry `// FIXME` comments next to `outputs.resources->Array.getUnsafe(0)`. EventTopic outputs with multiple resources (e.g. SNS + DLQ pair) silently exclude the others from the IAM grant.
+[`EventCollectorChannel_DynamoDbStream.res:36`](../../reventless/aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res), [`EventCollectorChannel_SQS.res:73`](../../reventless/aws/src/adapter/EventCollector/EventCollectorChannel_SQS.res), [`_FIFO.res:51`](../../reventless/aws/src/adapter/EventCollector/EventCollectorChannel_SQS_FIFO.res). All three carry `// FIXME` comments next to `outputs.resources->Array.getUnsafe(0)`. EventTopic outputs with multiple resources (e.g. SNS + DLQ pair) silently exclude the others from the IAM grant.
 
 **Fix:** flatten over all resources.
 **Effort:** Tiny.
 
 ### 2.8 — **Minor, Operational** — `enqueueEvent` doesn't reuse retry/classify logic
-[`EventCollectorChannel_SQS_Runtime.res:69-89`](../../reventless/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_SQS_Runtime.res). Calls `Util_SQS_Runtime.sendMessage` directly (no retry on transient SQS hiccups). Compare with `Util_SQS_Runtime.send` which wraps in `Effect.retry(SQS_Error.sendRetrySchedule)` (10 attempts, exponential-jittered). Tasks/Schedulers/external-input adapters that route through `enqueueEvent` see transient SQS failures bubble straight to callers.
+[`EventCollectorChannel_SQS_Runtime.res:69-89`](../../reventless/aws/src/adapter/EventCollector/EventCollectorChannel_SQS_Runtime.res). Calls `Util_SQS_Runtime.sendMessage` directly (no retry on transient SQS hiccups). Compare with `Util_SQS_Runtime.send` which wraps in `Effect.retry(SQS_Error.sendRetrySchedule)` (10 attempts, exponential-jittered). Tasks/Schedulers/external-input adapters that route through `enqueueEvent` see transient SQS failures bubble straight to callers.
 
 **Fix:** route through `Util_SQS_Runtime.send`.
 **Effort:** Small.
@@ -146,13 +146,13 @@ let topicItems =
 The DynamoDbStream variant of EventTopic is reviewed in `aggregate-command-handling-review.md`. The SNS variants are different beasts.
 
 ### 3.1 — **Major, Correctness** — non-transactional dual-write outbox for cross-plugin events
-[`EventTopicPublisher_SNS.res:7`](../../reventless/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_SNS.res), [`EventTopicPublisher_SNS_FIFO.res:3`](../../reventless/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_SNS_FIFO.res). Unlike the DynamoDB-Streams variant (transactional outbox tied to the EventLog), the SNS variant is a non-transactional dual write: app code writes to the EventLog *and then* publishes to SNS. If SNS publish fails after the DDB commit, the event is durable but never reaches subscribers. `Plugin_ExtensionPoint_Builder` (the cross-plugin event broadcaster) is wired through SNS — so cross-plugin events can be lost silently.
+[`EventTopicPublisher_SNS.res:7`](../../reventless/aws/src/adapter/EventTopic/EventTopicPublisher_SNS.res), [`EventTopicPublisher_SNS_FIFO.res:3`](../../reventless/aws/src/adapter/EventTopic/EventTopicPublisher_SNS_FIFO.res). Unlike the DynamoDB-Streams variant (transactional outbox tied to the EventLog), the SNS variant is a non-transactional dual write: app code writes to the EventLog *and then* publishes to SNS. If SNS publish fails after the DDB commit, the event is durable but never reaches subscribers. `Plugin_ExtensionPoint_Builder` (the cross-plugin event broadcaster) is wired through SNS — so cross-plugin events can be lost silently.
 
 **Fix:** treat ExtensionPoint events as a Streams subscriber (already-transactional) rather than a primary publisher; or implement an explicit outbox-with-sweeper.
 **Effort:** Large.
 
 ### 3.2 — **Major, Performance / Cost** — no `PublishBatch` (10× round-trips and connection cost)
-[`EventTopicPublisher_SNS_Runtime.res`](../../reventless/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_SNS_Runtime.res). `publish` issues one `PublishCommand` per event. SNS `PublishBatch` accepts 10 messages per call; the helper does not use it. The current `Stream.grouped(10) → Promise.all` chain still issues 10 concurrent `PublishCommand`s, that's 10× API request count, 10× TLS cost, and a higher chance of throttling.
+[`EventTopicPublisher_SNS_Runtime.res`](../../reventless/aws/src/adapter/EventTopic/EventTopicPublisher_SNS_Runtime.res). `publish` issues one `PublishCommand` per event. SNS `PublishBatch` accepts 10 messages per call; the helper does not use it. The current `Stream.grouped(10) → Promise.all` chain still issues 10 concurrent `PublishCommand`s, that's 10× API request count, 10× TLS cost, and a higher chance of throttling.
 
 **Fix:** add `PublishBatch` to `SNS_Helpers`.
 **Effort:** Small.
@@ -164,25 +164,25 @@ SNS publish $0.50/M (FIFO $1.00/M) + per-subscriber delivery $0.40/M (SQS) = ~$2
 **Effort:** Tiny (doc) / Large (architectural shift).
 
 ### 3.4 — **Major, Operational/Security** — SNS topics created without KMS encryption
-[`EventTopicPublisher_SNS.res:7-14`](../../reventless/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_SNS.res), [`EventTopicPublisher_SNS_FIFO.res:5-11`](../../reventless/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_SNS_FIFO.res). No `kmsMasterKeyId` set — messages stored in plaintext at rest. Compliance issue (SOC 2 / HIPAA / PCI) for any deployment carrying sensitive event payloads.
+[`EventTopicPublisher_SNS.res:7-14`](../../reventless/aws/src/adapter/EventTopic/EventTopicPublisher_SNS.res), [`EventTopicPublisher_SNS_FIFO.res:5-11`](../../reventless/aws/src/adapter/EventTopic/EventTopicPublisher_SNS_FIFO.res). No `kmsMasterKeyId` set — messages stored in plaintext at rest. Compliance issue (SOC 2 / HIPAA / PCI) for any deployment carrying sensitive event payloads.
 
 **Fix:** opt into AWS-managed `aws/sns` KMS key by default; expose override.
 **Effort:** Tiny.
 
 ### 3.5 — **Minor, Correctness** — `Promise.all` aborts on first publish failure
-[`EventTopicPublisher_SNS.res:32-36`](../../reventless/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_SNS.res). On failure of message 6 of 10, the throw aborts the remaining 4. Producer cannot tell which messages published.
+[`EventTopicPublisher_SNS.res:32-36`](../../reventless/aws/src/adapter/EventTopic/EventTopicPublisher_SNS.res). On failure of message 6 of 10, the throw aborts the remaining 4. Producer cannot tell which messages published.
 
 **Fix:** `Promise.allSettled` + per-message retry of failures (mirror `Util_SQS_Runtime.sendMessages`).
 **Effort:** Small.
 
 ### 3.6 — **Minor, Operational** — FIFO SNS 300/s ceiling not in error classifier
-[`SNS_Error.res`](../../reventless/reventless-aws/src/util/SNS_Error.res). Bursty event flows on FIFO SNS hit the 300/s ceiling with throttle messages that are not all matched by the current classifier; failures pass through as `Permanent` instead of `Transient`.
+[`SNS_Error.res`](../../reventless/aws/src/util/SNS_Error.res). Bursty event flows on FIFO SNS hit the 300/s ceiling with throttle messages that are not all matched by the current classifier; failures pass through as `Permanent` instead of `Transient`.
 
 **Fix:** broaden the classifier; document the ceiling.
 **Effort:** Tiny.
 
 ### 3.7 — **Minor, Operational** — `snsRegistry: Set.t<string>` is a deploy-time mutable global
-[`EventTopicPublisher_SNS.res:5`](../../reventless/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_SNS.res). Mutable module-level state used by a Phase 5 deploy hook. Test isolation broken; preview/up cycles accumulate; runtime reads see an empty registry.
+[`EventTopicPublisher_SNS.res:5`](../../reventless/aws/src/adapter/EventTopic/EventTopicPublisher_SNS.res). Mutable module-level state used by a Phase 5 deploy hook. Test isolation broken; preview/up cycles accumulate; runtime reads see an empty registry.
 
 **Fix:** thread a deploy-time registry through Pulumi state, or document its lifecycle clearly.
 **Effort:** Small.
@@ -192,61 +192,61 @@ SNS publish $0.50/M (FIFO $1.00/M) + per-subscriber delivery $0.40/M (SQS) = ~$2
 ## 4. QueryDb / QueryEngine
 
 ### 4.1 — **Major, Correctness** — `QueryEngine` swallows DynamoDB errors as `[]`
-[`QueryEngine_DynamoDb.res:106-110`](../../reventless/reventless-aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res#L106-L110), [`:138-142`](../../reventless/reventless-aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res#L138-L142). Both `query` and `scan` log the error and return `[]`. Translation slices, automation processes, and admin tools that compose on top of QueryEngine cannot distinguish "no results" from "DynamoDB threw." Net effect on a transient throttle: ghost decisions ("entity does not exist → create it"). Same class of silent-failure bug as the historical `appendUnconditional` fence-bypass.
+[`QueryEngine_DynamoDb.res:106-110`](../../reventless/aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res#L106-L110), [`:138-142`](../../reventless/aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res#L138-L142). Both `query` and `scan` log the error and return `[]`. Translation slices, automation processes, and admin tools that compose on top of QueryEngine cannot distinguish "no results" from "DynamoDB threw." Net effect on a transient throttle: ghost decisions ("entity does not exist → create it"). Same class of silent-failure bug as the historical `appendUnconditional` fence-bypass.
 
 **Fix:** propagate errors as `Result.Error` (or throw); audit every caller. Provide an explicit opt-in `treatErrorAsEmpty` flag for callers that genuinely want it.
 **Effort:** Small (mechanical) — but **wide blast radius** because every read path is affected.
 
 ### 4.2 — **Major, Cost** — `consistentRead: true` hardcoded on every QueryDb load
-[`QueryDbStorage_DynamoDb_Runtime.res:8-40`](../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res). 2× RCU and added latency per call. Read-models are projections — they're already eventually consistent vs. the EventLog. Strong reads only matter for the rare "save-then-load in the same handler" case.
+[`QueryDbStorage_DynamoDb_Runtime.res:8-40`](../../reventless/aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res). 2× RCU and added latency per call. Read-models are projections — they're already eventually consistent vs. the EventLog. Strong reads only matter for the rare "save-then-load in the same handler" case.
 
 **Fix:** make `consistentRead` a per-call parameter, default `false`.
 **Effort:** Small.
 
 ### 4.3 — **Major, Performance / Cost** — `Util_DynamoDb_Runtime.batchWriteWithRetries` has no backoff
-[`Util_DynamoDb_Runtime.res:177-203`](../../reventless/reventless-aws/src/util/Util_DynamoDb_Runtime.res). The recursive `attempt(retry, requests)` loop immediately re-issues `unprocessedItems` with no delay. The outer `Effect.retry(retrySchedule)` only fires on *thrown* errors — DynamoDB returns `200 OK` with a non-empty `unprocessedItems`, which is not an error, so the schedule never fires. Under partition throttling this becomes a tight loop amplifying WCU pressure.
+[`Util_DynamoDb_Runtime.res:177-203`](../../reventless/aws/src/util/Util_DynamoDb_Runtime.res). The recursive `attempt(retry, requests)` loop immediately re-issues `unprocessedItems` with no delay. The outer `Effect.retry(retrySchedule)` only fires on *thrown* errors — DynamoDB returns `200 OK` with a non-empty `unprocessedItems`, which is not an error, so the schedule never fires. Under partition throttling this becomes a tight loop amplifying WCU pressure.
 
 **Fix:** insert exponential backoff between attempts (50 ms × 2^retry, capped ~2 s); cap retries at 8; emit a metric/log on `retry > 3`.
 **Effort:** Tiny.
 
 ### 4.4 — **Major, Performance / Cost** — `writeMultiple` unbounded concurrency
-[`QueryDbStorage_DynamoDb_Runtime.res:123-144`](../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res#L123-L144). `Effect.all(batchEffects, {"concurrency": "unbounded"})` fans out every 25-item chunk simultaneously. A 1000-item projection issues 40 parallel `BatchWriteItem` calls against the same table from one Lambda — easily saturating per-table WCU.
+[`QueryDbStorage_DynamoDb_Runtime.res:123-144`](../../reventless/aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res#L123-L144). `Effect.all(batchEffects, {"concurrency": "unbounded"})` fans out every 25-item chunk simultaneously. A 1000-item projection issues 40 parallel `BatchWriteItem` calls against the same table from one Lambda — easily saturating per-table WCU.
 
 **Fix:** cap concurrency (`{"concurrency": 4}` or 8); expose as a config knob.
 **Effort:** Tiny.
 
 ### 4.5 — **Major, Cost / Performance** — `QueryEngine.scanByTableName` is unbounded
-[`QueryEngine_DynamoDb.res:114-144`](../../reventless/reventless-aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res#L114-L144). Empty `filterConfigs` + generous `limit` → full-table scan, paginated to completion, materialised by `Stream.runCollect`. No segment parallelism, no max-page ceiling, no warning. A UI or admin tool that hits `scan(~filterConfigs=[])` against a multi-million-row table will burn read capacity without warning.
+[`QueryEngine_DynamoDb.res:114-144`](../../reventless/aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res#L114-L144). Empty `filterConfigs` + generous `limit` → full-table scan, paginated to completion, materialised by `Stream.runCollect`. No segment parallelism, no max-page ceiling, no warning. A UI or admin tool that hits `scan(~filterConfigs=[])` against a multi-million-row table will burn read capacity without warning.
 
 **Fix:** ceiling on max-page or max-item; `WARN` log when scans return >1 000 items; consider gating behind a feature flag.
 **Effort:** Small.
 
 ### 4.6 — **Minor, Correctness** — `count`'s `UpdateCommand` reads hardcoded `"count"` field
-[`QueryDbStorage_DynamoDb_Runtime.res:187-225`](../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res#L187-L225). The `ReturnValues: UPDATED_NEW` branch reads `attributes.count` while the field name passed in is `fieldName`. Any caller using a non-default field name silently surfaces `NotCountedOnStorage("Invalid updateOutput in count")` even though the write succeeded.
+[`QueryDbStorage_DynamoDb_Runtime.res:187-225`](../../reventless/aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res#L187-L225). The `ReturnValues: UPDATED_NEW` branch reads `attributes.count` while the field name passed in is `fieldName`. Any caller using a non-default field name silently surfaces `NotCountedOnStorage("Invalid updateOutput in count")` even though the write succeeded.
 
 **Fix:** read `attributes->getIntAttribute(fieldName)`. Also apply `DynamoDb_Error.retrySchedule` instead of generic `messageFromUnknown`.
 **Effort:** Tiny.
 
 ### 4.7 — **Minor, Correctness** — `saveMode.Any` and `Overwrite` collapse
-[`QueryDbStorage_DynamoDb_Runtime.res:63-95`](../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res#L63-L95). The constructor exists but produces identical behaviour. If `Any` was meant for "upsert without clobber on stale state," the implementation is missing.
+[`QueryDbStorage_DynamoDb_Runtime.res:63-95`](../../reventless/aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res#L63-L95). The constructor exists but produces identical behaviour. If `Any` was meant for "upsert without clobber on stale state," the implementation is missing.
 
 **Fix:** delete the variant or implement `Any` with a `version` condition.
 **Effort:** Small.
 
 ### 4.8 — **Minor, Performance** — JSON stringify/parse round-trip per item
-[`QueryDbStorage_DynamoDb_Runtime.res:33-37`](../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res#L33-L37) and [`QueryEngine_DynamoDb.res:105, 137`](../../reventless/reventless-aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res#L105). Each item is `js->JSON.stringifyAny->Option.getOr("")->JSON.parseOrThrow`. CPU + GC pressure per item; the SDK already returns a marshalled JS object.
+[`QueryDbStorage_DynamoDb_Runtime.res:33-37`](../../reventless/aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res#L33-L37) and [`QueryEngine_DynamoDb.res:105, 137`](../../reventless/aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res#L105). Each item is `js->JSON.stringifyAny->Option.getOr("")->JSON.parseOrThrow`. CPU + GC pressure per item; the SDK already returns a marshalled JS object.
 
 **Fix:** `Obj.magic` or `JSON.Encode.object` directly.
 **Effort:** Tiny.
 
 ### 4.9 — **Minor, Cost** — `streamViewType=NEW_AND_OLD_IMAGES` always
-[`QueryDbStorage_DynamoDbStream.res:27`](../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDbStream.res). Doubles per-record stream payload vs. `NEW_IMAGE`. Most consumers (Counter references, StateTopic_AppSync) only need `NEW_IMAGE`.
+[`QueryDbStorage_DynamoDbStream.res:27`](../../reventless/aws/src/adapter/QueryDb/QueryDbStorage_DynamoDbStream.res). Doubles per-record stream payload vs. `NEW_IMAGE`. Most consumers (Counter references, StateTopic_AppSync) only need `NEW_IMAGE`.
 
 **Fix:** parameterise per QueryDb; default `NEW_IMAGE`; opt into both only where the consumer reads OldImage.
 **Effort:** Small.
 
 ### 4.10 — **Minor, Correctness** — value-placeholder collision in filter expressions
-[`QueryEngine_DynamoDb.res:32`](../../reventless/reventless-aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res#L32). `:${fieldName}${idx}` interpolates user-controlled field names into placeholder identifiers. DynamoDB allows only `[a-zA-Z0-9_]` in placeholder names; field names with `-`, `.`, or reserved characters produce a malformed expression and a hard 400.
+[`QueryEngine_DynamoDb.res:32`](../../reventless/aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res#L32). `:${fieldName}${idx}` interpolates user-controlled field names into placeholder identifiers. DynamoDB allows only `[a-zA-Z0-9_]` in placeholder names; field names with `-`, `.`, or reserved characters produce a malformed expression and a hard 400.
 
 **Fix:** sequential `:v0`, `:v1`, … placeholders; alias `#f0`, `#f1`, … on the attribute-name side too.
 **Effort:** Tiny.
@@ -256,37 +256,37 @@ SNS publish $0.50/M (FIFO $1.00/M) + per-subscriber delivery $0.40/M (SQS) = ~$2
 ## 5. Task Bucket (S3)
 
 ### 5.1 — **Major, Operational/Security** — bucket has no encryption, versioning, or PublicAccessBlock
-[`TaskBucket_S3.res:128-149`](../../reventless/reventless-aws/src/adapter/Task/TaskBucket_S3.res#L128-L149). `S3.Bucket.make` sets only `corsRules`. No SSE-S3/KMS, no versioning, no `PublicAccessBlock`. For a bucket carrying user uploads, this is below baseline.
+[`TaskBucket_S3.res:128-149`](../../reventless/aws/src/adapter/Task/TaskBucket_S3.res#L128-L149). `S3.Bucket.make` sets only `corsRules`. No SSE-S3/KMS, no versioning, no `PublicAccessBlock`. For a bucket carrying user uploads, this is below baseline.
 
 **Fix:** enable SSE (S3 default, optional KMS); enable versioning; attach `BucketPublicAccessBlock` with all four flags `true`; lifecycle rule to expire non-current versions (30→90 d).
 **Effort:** Small.
 
 ### 5.2 — **Major, Operational** — CORS allows any origin
-[`TaskBucket_S3.res:132-145`](../../reventless/reventless-aws/src/adapter/Task/TaskBucket_S3.res#L132-L145). `allowedOrigins: ["*"]` permits any web origin to call `HEAD`/`GET`. Combined with the missing PublicAccessBlock, a leaked presigned URL is exploitable from any origin.
+[`TaskBucket_S3.res:132-145`](../../reventless/aws/src/adapter/Task/TaskBucket_S3.res#L132-L145). `allowedOrigins: ["*"]` permits any web origin to call `HEAD`/`GET`. Combined with the missing PublicAccessBlock, a leaked presigned URL is exploitable from any origin.
 
 **Fix:** parameterise CORS; default to no cross-origin or to the platform's known UI hostnames.
 **Effort:** Small.
 
 ### 5.3 — **Major, Cost / Performance** — Lambda subscribes to *every* object created/removed
-[`TaskBucket_S3.res:11-15`](../../reventless/reventless-aws/src/adapter/Task/TaskBucket_S3.res#L11-L15). No prefix/suffix filter on the S3 notification. Every object change fires the Lambda; user code filters in-process, paying $0.005/10 k S3 events + Lambda invocation cost N×.
+[`TaskBucket_S3.res:11-15`](../../reventless/aws/src/adapter/Task/TaskBucket_S3.res#L11-L15). No prefix/suffix filter on the S3 notification. Every object change fires the Lambda; user code filters in-process, paying $0.005/10 k S3 events + Lambda invocation cost N×.
 
 **Fix:** accept `~filterPrefix` / `~filterSuffix` parameters and pass through to S3 notification config.
 **Effort:** Small.
 
 ### 5.4 — **Major, Correctness** — `Promise.all` partial failure abandons successful records
-[`TaskBucket_S3_Runtime.res:1-11`](../../reventless/reventless-aws/src/adapter/Task/TaskBucket_S3_Runtime.res). S3 batches up to 10 records per invocation. `Promise.all([…])` rejects on the first failure, abandoning successful ones to be reprocessed via DLQ/retry. Without idempotency keys downstream, this produces duplicate commands.
+[`TaskBucket_S3_Runtime.res:1-11`](../../reventless/aws/src/adapter/Task/TaskBucket_S3_Runtime.res). S3 batches up to 10 records per invocation. `Promise.all([…])` rejects on the first failure, abandoning successful ones to be reprocessed via DLQ/retry. Without idempotency keys downstream, this produces duplicate commands.
 
 **Fix:** `Promise.allSettled`; emit successful actions; report partial failure via batch-item-failure response.
 **Effort:** Small.
 
 ### 5.5 — **Minor, Operational** — `Write` mode grants both Put and Delete
-[`TaskBucket_S3.res:34-49`](../../reventless/reventless-aws/src/adapter/Task/TaskBucket_S3.res#L34-L49). Ingest buckets that should be append-only get delete privilege. Missing `s3:AbortMultipartUpload` allows orphan parts to accrue storage cost; no lifecycle rule auto-aborts them.
+[`TaskBucket_S3.res:34-49`](../../reventless/aws/src/adapter/Task/TaskBucket_S3.res#L34-L49). Ingest buckets that should be append-only get delete privilege. Missing `s3:AbortMultipartUpload` allows orphan parts to accrue storage cost; no lifecycle rule auto-aborts them.
 
 **Fix:** split `Write` (Put only) from `Delete` (Put+Delete); add `AbortMultipartUpload`; lifecycle rule auto-aborting incomplete multipart uploads after 7 d.
 **Effort:** Small.
 
 ### 5.6 — **Minor, Correctness** — `decodeURIComponent` may double-decode keys
-[`TaskBucket_S3_Runtime.res:6`](../../reventless/reventless-aws/src/adapter/Task/TaskBucket_S3_Runtime.res). S3 events encode space as `+`; `decodeURIComponent` does not decode `+`. Keys with literal spaces survive S3 transport as `+` and stay that way after decode, breaking key-equality comparisons.
+[`TaskBucket_S3_Runtime.res:6`](../../reventless/aws/src/adapter/Task/TaskBucket_S3_Runtime.res). S3 events encode space as `+`; `decodeURIComponent` does not decode `+`. Keys with literal spaces survive S3 transport as `+` and stay that way after decode, breaking key-equality comparisons.
 
 **Fix:** replace `+` with space before `decodeURIComponent`, or document the constraint.
 **Effort:** Tiny.
@@ -296,37 +296,37 @@ SNS publish $0.50/M (FIFO $1.00/M) + per-subscriber delivery $0.40/M (SQS) = ~$2
 ## 6. Cloner (Fargate)
 
 ### 6.1 — **Critical, Correctness** — `ClonerRunner_Fargate_Runtime.res` uses `Pulumi.Output.get` at runtime
-[`ClonerRunner_Fargate_Runtime.res:21-22`](../../reventless/reventless-aws/src/adapter/Cloner/ClonerRunner_Fargate_Runtime.res#L21-L22). `taskDefinition->Pulumi.Output.get` is a deploy-time API. At Lambda runtime the binding is no longer a Pulumi.Output; this throws or returns `undefined`. The file is currently dead code (the inline JS in `ClonerRunner_Fargate.res:92-113` is what's deployed), but anyone enabling it will hit a runtime crash on first call.
+[`ClonerRunner_Fargate_Runtime.res:21-22`](../../reventless/aws/src/adapter/Cloner/ClonerRunner_Fargate_Runtime.res#L21-L22). `taskDefinition->Pulumi.Output.get` is a deploy-time API. At Lambda runtime the binding is no longer a Pulumi.Output; this throws or returns `undefined`. The file is currently dead code (the inline JS in `ClonerRunner_Fargate.res:92-113` is what's deployed), but anyone enabling it will hit a runtime crash on first call.
 
 **Fix:** delete the dead file *or* rewrite to read `process.env.TASK_DEFINITION_ARN` / `CLUSTER_ARN` (the env-var pattern the inline JS already uses).
 **Effort:** Small.
 
 ### 6.2 — **Major, Correctness** — `RunTaskCommand` has no `clientToken` (no idempotency)
-[`ClonerRunner_Fargate.res:100`](../../reventless/reventless-aws/src/adapter/Cloner/ClonerRunner_Fargate.res). ECS dedups `RunTask` invocations within a 10-minute window per `clientToken`. Without one, a Lambda retry (transient timeout, AppSync retry) launches **two** Fargate tasks. Each task incurs Fargate cost and may produce duplicate clones, corrupting the target environment.
+[`ClonerRunner_Fargate.res:100`](../../reventless/aws/src/adapter/Cloner/ClonerRunner_Fargate.res). ECS dedups `RunTask` invocations within a 10-minute window per `clientToken`. Without one, a Lambda retry (transient timeout, AppSync retry) launches **two** Fargate tasks. Each task incurs Fargate cost and may produce duplicate clones, corrupting the target environment.
 
 **Fix:** derive `clientToken` from `ctx.identity.requestId` or hash of `restoreDateTime + user`.
 **Effort:** Tiny.
 
 ### 6.3 — **Major, Operational** — No SecurityGroup, no `assignPublicIp` config
-[`ClonerRunner_Fargate.res:103-104`](../../reventless/reventless-aws/src/adapter/Cloner/ClonerRunner_Fargate.res#L103-L104). Falls back to VPC default security group (which may be over- or under-permissive). Private subnets without a NAT can't pull the image or call AWS APIs; `assignPublicIp` is unspecified, leaving behaviour subnet-dependent.
+[`ClonerRunner_Fargate.res:103-104`](../../reventless/aws/src/adapter/Cloner/ClonerRunner_Fargate.res#L103-L104). Falls back to VPC default security group (which may be over- or under-permissive). Private subnets without a NAT can't pull the image or call AWS APIs; `assignPublicIp` is unspecified, leaving behaviour subnet-dependent.
 
 **Fix:** thread `securityGroupIds` and `assignPublicIp` through the maker.
 **Effort:** Small.
 
 ### 6.4 — **Major, Correctness** — Lambda execution role uses AppSync principal
-[`ClonerRunner_Fargate.res:194-198`](../../reventless/reventless-aws/src/adapter/Cloner/ClonerRunner_Fargate.res#L194-L198). The execution role is constructed with `servicePrincipal=AWS.AppSync.principal`. Lambda execution roles must trust `lambda.amazonaws.com`. May be working accidentally because `makeWithDefaultPolicy` adds Lambda's principal regardless — needs verification.
+[`ClonerRunner_Fargate.res:194-198`](../../reventless/aws/src/adapter/Cloner/ClonerRunner_Fargate.res#L194-L198). The execution role is constructed with `servicePrincipal=AWS.AppSync.principal`. Lambda execution roles must trust `lambda.amazonaws.com`. May be working accidentally because `makeWithDefaultPolicy` adds Lambda's principal regardless — needs verification.
 
 **Fix:** verify the assume-role policy includes `lambda.amazonaws.com`. Split into `ClonerLambdaExecutionRole` and `ClonerAppSyncInvokeRole` for clarity.
 **Effort:** Small.
 
 ### 6.5 — **Minor, Cost** — `cpu / memory` hardcoded; no log group retention
-[`ClonerRunner_Fargate.res:154-165`](../../reventless/reventless-aws/src/adapter/Cloner/ClonerRunner_Fargate.res#L154-L165). 1 vCPU + 4 GB hardcoded; auto-created log group never expires.
+[`ClonerRunner_Fargate.res:154-165`](../../reventless/aws/src/adapter/Cloner/ClonerRunner_Fargate.res#L154-L165). 1 vCPU + 4 GB hardcoded; auto-created log group never expires.
 
 **Fix:** parameterise CPU/memory; pre-create log group with `retentionInDays: 30`.
 **Effort:** Tiny.
 
 ### 6.6 — **Minor, Operational** — Inline JS Lambda is unmaintainable
-[`ClonerRunner_Fargate.res:92-113`](../../reventless/reventless-aws/src/adapter/Cloner/ClonerRunner_Fargate.res#L92-L113). 22 lines of JS in a template literal. The ReScript runtime (6.1) exists side-by-side and is dead. Two implementations can drift; the JS version has no tests; environment variables stringly coupled.
+[`ClonerRunner_Fargate.res:92-113`](../../reventless/aws/src/adapter/Cloner/ClonerRunner_Fargate.res#L92-L113). 22 lines of JS in a template literal. The ReScript runtime (6.1) exists side-by-side and is dead. Two implementations can drift; the JS version has no tests; environment variables stringly coupled.
 
 **Fix:** consolidate on the `_Runtime.res` file (after fixing 6.1) via `RuntimeEnvironment_Lambda.makeFromCodeAsset`, or extract the JS to a sibling `.mjs` asset.
 **Effort:** Medium.
@@ -336,37 +336,37 @@ SNS publish $0.50/M (FIFO $1.00/M) + per-subscriber delivery $0.40/M (SQS) = ~$2
 ## 7. Counter
 
 ### 7.1 — **Major, Cost / Operational** — `targets` and `targetRefs` grow unbounded
-[`CounterHandler_DynamoDbStream_Runtime.res:16-17`](../../reventless/reventless-aws/src/adapter/Counter/CounterHandler_DynamoDbStream_Runtime.res#L16-L17). Every successful `addToCounterTarget` `list_append`s to `targets` and `targetRefs` while bumping `count` and `total`. The arrays are never compacted. At ~30 bytes per UUID `targetRef`, the 400 KB DynamoDB item limit caps a counter at ~13 k increments, after which writes fail with `ValidationException: Item size has exceeded the maximum allowed size`.
+[`CounterHandler_DynamoDbStream_Runtime.res:16-17`](../../reventless/aws/src/adapter/Counter/CounterHandler_DynamoDbStream_Runtime.res#L16-L17). Every successful `addToCounterTarget` `list_append`s to `targets` and `targetRefs` while bumping `count` and `total`. The arrays are never compacted. At ~30 bytes per UUID `targetRef`, the 400 KB DynamoDB item limit caps a counter at ~13 k increments, after which writes fail with `ValidationException: Item size has exceeded the maximum allowed size`.
 
 **Fix:** split history into a separate table (`partition=counterId, sort=targetRef`), or drop history entirely and rely on the events stream for audit. Document the cap if neither is feasible.
 **Effort:** Medium.
 
 ### 7.2 — **Major, Performance / Cost** — `NOT contains(#targetRefs, :targetRef)` is O(n) per write
-[`CounterHandler_DynamoDbStream_Runtime.res:32`](../../reventless/reventless-aws/src/adapter/Counter/CounterHandler_DynamoDbStream_Runtime.res#L32). DynamoDB evaluates `contains` on a list by linear scan; WCU charges scale with item size. At 10 k entries, a single update costs ~10 WCU instead of ~1.
+[`CounterHandler_DynamoDbStream_Runtime.res:32`](../../reventless/aws/src/adapter/Counter/CounterHandler_DynamoDbStream_Runtime.res#L32). DynamoDB evaluates `contains` on a list by linear scan; WCU charges scale with item size. At 10 k entries, a single update costs ~10 WCU instead of ~1.
 
 **Fix:** combine with 7.1 — maintain a separate "seen refs" table with a single-key check.
 **Effort:** Medium (combines with 7.1).
 
 ### 7.3 — **Major, Correctness** — references `MODIFY` events silently dropped
-[`CounterHandler_DynamoDbStream_Runtime.res:86-89`](../../reventless/reventless-aws/src/adapter/Counter/CounterHandler_DynamoDbStream_Runtime.res#L86-L89). `OLD_AND_NEW` images on a reference row (i.e., update of `inc`) are logged "ignoring duplicate id" and skipped. If references are ever updated post-insert, the count silently desyncs.
+[`CounterHandler_DynamoDbStream_Runtime.res:86-89`](../../reventless/aws/src/adapter/Counter/CounterHandler_DynamoDbStream_Runtime.res#L86-L89). `OLD_AND_NEW` images on a reference row (i.e., update of `inc`) are logged "ignoring duplicate id" and skipped. If references are ever updated post-insert, the count silently desyncs.
 
 **Fix:** decide policy explicitly. If references are immutable (write-once), assert and document. If mutable, compute `delta = newInc - oldInc` and apply.
 **Effort:** Small.
 
 ### 7.4 — **Minor, Correctness** — schema-decode errors fall back to `inc=1`
-[`CounterHandler_DynamoDbStream_Runtime.res:81-84`](../../reventless/reventless-aws/src/adapter/Counter/CounterHandler_DynamoDbStream_Runtime.res#L81-L84). `exception _err → inc=1` hides upstream bugs (event schema drift, malformed projections) and produces wrong counts.
+[`CounterHandler_DynamoDbStream_Runtime.res:81-84`](../../reventless/aws/src/adapter/Counter/CounterHandler_DynamoDbStream_Runtime.res#L81-L84). `exception _err → inc=1` hides upstream bugs (event schema drift, malformed projections) and produces wrong counts.
 
 **Fix:** log the decode error at WARN with offending JSON; fail-closed (skip record + DLQ) rather than silent default.
 **Effort:** Tiny.
 
 ### 7.5 — **Minor, Correctness** — no retry-with-tolerance on `ConditionalCheckFailedException`
-[`CounterHandler_DynamoDbStream_Runtime.res:11-33`](../../reventless/reventless-aws/src/adapter/Counter/CounterHandler_DynamoDbStream_Runtime.res#L11-L33). Idempotent re-delivery throws unhandled `ConditionalCheckFailedException`; the stream retries forever (until bisect-on-error narrows the bad record), then silently advances.
+[`CounterHandler_DynamoDbStream_Runtime.res:11-33`](../../reventless/aws/src/adapter/Counter/CounterHandler_DynamoDbStream_Runtime.res#L11-L33). Idempotent re-delivery throws unhandled `ConditionalCheckFailedException`; the stream retries forever (until bisect-on-error narrows the bad record), then silently advances.
 
 **Fix:** swallow the exception explicitly as success-via-idempotency; log at INFO.
 **Effort:** Tiny.
 
 ### 7.6 — **Minor, Operational** — `handlerConfigJson` string-replace injection
-[`CounterHandler_DynamoDbStream.res:35-39`](../../reventless/reventless-aws/src/adapter/Counter/CounterHandler_DynamoDbStream.res#L35-L39). `String.replace("\"countsStreamArn\":\"\"", "…")` is fragile to whitespace/quote drift. If the empty template string changes, the replace silently no-ops.
+[`CounterHandler_DynamoDbStream.res:35-39`](../../reventless/aws/src/adapter/Counter/CounterHandler_DynamoDbStream.res#L35-L39). `String.replace("\"countsStreamArn\":\"\"", "…")` is fragile to whitespace/quote drift. If the empty template string changes, the replace silently no-ops.
 
 **Fix:** use `Output.all` to gather values and build the JSON atomically.
 **Effort:** Tiny.
@@ -376,7 +376,7 @@ SNS publish $0.50/M (FIFO $1.00/M) + per-subscriber delivery $0.40/M (SQS) = ~$2
 ## 8. StateTopic_AppSync / EventLogSubscription_AppSync
 
 ### 8.1 — **Major, Correctness** — silent message loss on AppSync 5xx
-[`StateTopic_AppSync.res:73-89`](../../reventless/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res#L73-L89), [`EventLogSubscription_AppSync.res:62-82`](../../reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res#L62-L82). Both handlers `console.error` on `!res.ok` and continue. Lambda returns success, the source (DDB stream / SQS) deletes/advances, and the message is **lost** to UI subscribers. No `DestinationConfig.OnFailure`, no batch-item-failure response.
+[`StateTopic_AppSync.res:73-89`](../../reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res#L73-L89), [`EventLogSubscription_AppSync.res:62-82`](../../reventless/aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res#L62-L82). Both handlers `console.error` on `!res.ok` and continue. Lambda returns success, the source (DDB stream / SQS) deletes/advances, and the message is **lost** to UI subscribers. No `DestinationConfig.OnFailure`, no batch-item-failure response.
 
 **Fix:** track per-record failures, throw to fail the batch (DDB stream) or return `batchItemFailures` (SQS); wire `DestinationConfig.OnFailure` to a DLQ.
 **Effort:** Small.
@@ -388,25 +388,25 @@ Both `StateTopic_AppSync` and `EventLogSubscription_AppSync` publish whole event
 **Effort:** Small.
 
 ### 8.3 — **Major, Performance / Cost** — per-record HTTP fetch (no batching)
-[`StateTopic_AppSync.res:75-84`](../../reventless/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res#L75-L84), [`EventLogSubscription_AppSync.res:62-82`](../../reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res#L62-L82). One fetch + SigV4 signing per record. AppSync `/event` accepts arrays (`events: [...]`) and bills per request. Up to 100 records (DDB Streams) or 10 (SQS) become 100/10 requests instead of 1.
+[`StateTopic_AppSync.res:75-84`](../../reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res#L75-L84), [`EventLogSubscription_AppSync.res:62-82`](../../reventless/aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res#L62-L82). One fetch + SigV4 signing per record. AppSync `/event` accepts arrays (`events: [...]`) and bills per request. Up to 100 records (DDB Streams) or 10 (SQS) become 100/10 requests instead of 1.
 
 **Fix:** group by channel and POST once per batch.
 **Effort:** Tiny.
 
 ### 8.4 — **Major, Correctness** — SigV4 amzDate slicing is brittle
-[`StateTopic_AppSync.res:59`](../../reventless/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res#L59), [`EventLogSubscription_AppSync.res:46`](../../reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res#L46). `now.toISOString().replace(/[:\-]|\..../g, "").slice(0, 15) + "Z"` produces `YYYYMMDDTHHMMSSZ` *only if* `toISOString` returns exactly three milliseconds digits. If a future Node renders four (or no) ms digits, the slice desynchronises with `dateStamp` and AWS rejects with `SignatureDoesNotMatch`.
+[`StateTopic_AppSync.res:59`](../../reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res#L59), [`EventLogSubscription_AppSync.res:46`](../../reventless/aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res#L46). `now.toISOString().replace(/[:\-]|\..../g, "").slice(0, 15) + "Z"` produces `YYYYMMDDTHHMMSSZ` *only if* `toISOString` returns exactly three milliseconds digits. If a future Node renders four (or no) ms digits, the slice desynchronises with `dateStamp` and AWS rejects with `SignatureDoesNotMatch`.
 
 **Fix:** build amzDate explicitly: `dateStamp + "T" + hh + mm + ss + "Z"` from `Date` getters. Factor into a shared SigV4 helper (the same code is duplicated in both files).
 **Effort:** Tiny.
 
 ### 8.5 — **Minor, Operational** — visibility timeout < 6× Lambda timeout
-[`EventLogSubscription_AppSync.res:101, 237`](../../reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res#L101). 60 s SQS visibility against a 30 s Lambda timeout (2× ratio). AWS guidance is ≥ 6×. A Lambda that approaches its 30 s timeout will trigger SQS redelivery before completion → duplicate AppSync events to UI clients.
+[`EventLogSubscription_AppSync.res:101, 237`](../../reventless/aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res#L101). 60 s SQS visibility against a 30 s Lambda timeout (2× ratio). AWS guidance is ≥ 6×. A Lambda that approaches its 30 s timeout will trigger SQS redelivery before completion → duplicate AppSync events to UI clients.
 
 **Fix:** raise SQS visibility to ≥ 180 s.
 **Effort:** Tiny.
 
 ### 8.6 — **Minor, Performance / Cost** — SNS-to-SQS subscription has no filter policy
-[`EventLogSubscription_AppSync.res:148`](../../reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res#L148). Every event fans to every subscriber's queue + Lambda invocation, regardless of subscriber interest. AppSync client-side filters can mitigate at delivery time but Lambda cost is already burned.
+[`EventLogSubscription_AppSync.res:148`](../../reventless/aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res#L148). Every event fans to every subscriber's queue + Lambda invocation, regardless of subscriber interest. AppSync client-side filters can mitigate at delivery time but Lambda cost is already burned.
 
 **Fix:** optional `filterPolicy` parameter (e.g. on `eventType`, aggregate name).
 **Effort:** Small.
@@ -418,7 +418,7 @@ Both handlers call `fetch(...)` with no timeout. A stuck connection blocks until
 **Effort:** Tiny.
 
 ### 8.8 — **Minor, Operational** — `logs:*` is too broad
-[`StateTopic_AppSync.res:137-141`](../../reventless/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res#L137-L141), [`EventLogSubscription_AppSync.res:181`](../../reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res#L181), [`Platform_UIDefinitions_Lambda.res:86`](../../reventless/reventless-aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res#L86). Grants `logs:*` cluster-wide; only `CreateLogGroup`, `CreateLogStream`, `PutLogEvents` are needed.
+[`StateTopic_AppSync.res:137-141`](../../reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res#L137-L141), [`EventLogSubscription_AppSync.res:181`](../../reventless/aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res#L181), [`Platform_UIDefinitions_Lambda.res:86`](../../reventless/aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res#L86). Grants `logs:*` cluster-wide; only `CreateLogGroup`, `CreateLogStream`, `PutLogEvents` are needed.
 
 **Fix:** narrow to the three actions; tighten resource scope.
 **Effort:** Tiny.
@@ -428,55 +428,55 @@ Both handlers call `fetch(...)` with no timeout. A stuck connection blocks until
 ## 9. Heartbeat / ScheduledPublisher (CloudWatch Events)
 
 ### 9.1 — **Critical, Correctness** — `Daily(hour, minute)` cron expression is invalid
-[`ScheduledPublisher_CloudWatchEvents_Runtime.res:19`](../../reventless/reventless-aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L19). Emits `cron(M H * * * *)`. CloudWatch Events cron requires *exactly one* of day-of-month and day-of-week to be `?`. AWS rejects with `Cron expressions must have exactly one of D or DOW must be ?`. The `Daily` schedule simply does not work.
+[`ScheduledPublisher_CloudWatchEvents_Runtime.res:19`](../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L19). Emits `cron(M H * * * *)`. CloudWatch Events cron requires *exactly one* of day-of-month and day-of-week to be `?`. AWS rejects with `Cron expressions must have exactly one of D or DOW must be ?`. The `Daily` schedule simply does not work.
 
 **Fix:** `Daily(h, m) => cron(${m} ${h} * * ? *)`.
 **Effort:** Tiny.
 
 ### 9.2 — **Critical, Correctness** — `role.arn->Pulumi.Output.get` at Lambda runtime
-[`ScheduledPublisher_CloudWatchEvents_Runtime.res:42`](../../reventless/reventless-aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L42). `Pulumi.Output.get` is a deploy-time extraction. The runtime function `createSchedule` is called from a Lambda creating CloudWatch rules dynamically — the role binding is no longer a Pulumi.Output. Same dead-code risk pattern as Cloner 6.1.
+[`ScheduledPublisher_CloudWatchEvents_Runtime.res:42`](../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L42). `Pulumi.Output.get` is a deploy-time extraction. The runtime function `createSchedule` is called from a Lambda creating CloudWatch rules dynamically — the role binding is no longer a Pulumi.Output. Same dead-code risk pattern as Cloner 6.1.
 
 **Fix:** thread role ARN through environment variables; read `process.env.SCHEDULER_ROLE_ARN` in the runtime.
 **Effort:** Small.
 
 ### 9.3 — **Major, Correctness** — `PutRule` + `PutTargets` not atomic
-[`ScheduledPublisher_CloudWatchEvents_Runtime.res:37-63`](../../reventless/reventless-aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L37-L63). PutRule succeeds, PutTargets fails (throttling, network) → ghost rule with no targets, accruing `events.RuleEvaluations` charges and never firing. No rollback.
+[`ScheduledPublisher_CloudWatchEvents_Runtime.res:37-63`](../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L37-L63). PutRule succeeds, PutTargets fails (throttling, network) → ghost rule with no targets, accruing `events.RuleEvaluations` charges and never firing. No rollback.
 
 **Fix:** wrap PutTargets in try/catch; on failure call `DeleteRuleCommand`. Add `Effect.retry`.
 **Effort:** Small.
 
 ### 9.4 — **Major, Correctness / Cost** — `deleteSchedule` partial failure window
-[`ScheduledPublisher_CloudWatchEvents_Runtime.res:67-97`](../../reventless/reventless-aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L67-L97). RemoveTargets fails → `Effect.runPromise` throws, rule + targets stay. DeleteRule won't succeed while targets are attached.
+[`ScheduledPublisher_CloudWatchEvents_Runtime.res:67-97`](../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L67-L97). RemoveTargets fails → `Effect.runPromise` throws, rule + targets stay. DeleteRule won't succeed while targets are attached.
 
 **Fix:** treat `ResourceNotFoundException` from RemoveTargets as success; retry DeleteRule; surface as a periodic reaper for orphaned rules.
 **Effort:** Small.
 
 ### 9.5 — **Major, Security** — `events:*` over-permission
-[`ScheduledPublisher_CloudWatchEvents.res:16-22`](../../reventless/reventless-aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents.res#L16-L22). Grants `events:*` cluster-wide; only `PutRule`, `DeleteRule`, `PutTargets`, `RemoveTargets` are needed. A compromised runtime can manipulate any rule in the account.
+[`ScheduledPublisher_CloudWatchEvents.res:16-22`](../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents.res#L16-L22). Grants `events:*` cluster-wide; only `PutRule`, `DeleteRule`, `PutTargets`, `RemoveTargets` are needed. A compromised runtime can manipulate any rule in the account.
 
 **Fix:** narrow actions; restrict resource to `arn:aws:events:*:*:rule/<stack-prefix>-*`.
 **Effort:** Tiny.
 
 ### 9.6 — **Major, Correctness** — `// FIXME` `Array.getUnsafe(0)` on queue resources
-[`ScheduledPublisher_CloudWatchEvents_Runtime.res:36, 77`](../../reventless/reventless-aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L36). Multi-queue Schedulers silently target only the first queue.
+[`ScheduledPublisher_CloudWatchEvents_Runtime.res:36, 77`](../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res#L36). Multi-queue Schedulers silently target only the first queue.
 
 **Fix:** create one EventTarget per queue, or assert single-queue at deploy time.
 **Effort:** Small.
 
 ### 9.7 — **Critical, Correctness/Operational** — `resolvedResource.urn` carries an ARN by convention
-[`HeartbeatRunner_CloudWatchEvents.res:55`](../../reventless/reventless-aws/src/adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res#L55), [`ScheduledPublisher_CloudWatchEvents.res:43`](../../reventless/reventless-aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents.res#L43). The field name is `urn`; the value is an ARN by convention (cross-checked with `Util_SQS.findResolvedResource`). A Pulumi URN cannot match an IAM ARN; if the convention ever drifts the IAM grants silently fail to match. No type-level enforcement.
+[`HeartbeatRunner_CloudWatchEvents.res:55`](../../reventless/aws/src/adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res#L55), [`ScheduledPublisher_CloudWatchEvents.res:43`](../../reventless/aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents.res#L43). The field name is `urn`; the value is an ARN by convention (cross-checked with `Util_SQS.findResolvedResource`). A Pulumi URN cannot match an IAM ARN; if the convention ever drifts the IAM grants silently fail to match. No type-level enforcement.
 
 **Fix:** rename `urn → arn`, or wrap in a phantom-typed `Arn.t`. Add a deploy-time assert that the value starts with `arn:`.
 **Effort:** Medium.
 
 ### 9.8 — **Minor, Security** — Lambda permission grants events principal without `sourceArn`
-[`HeartbeatRunner_CloudWatchEvents.res:38-46`](../../reventless/reventless-aws/src/adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res#L38-L46). Any rule in the account can invoke the heartbeat Lambda.
+[`HeartbeatRunner_CloudWatchEvents.res:38-46`](../../reventless/aws/src/adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res#L38-L46). Any rule in the account can invoke the heartbeat Lambda.
 
 **Fix:** add `sourceArn: cloudwatchEventRule.arn->Pulumi.Output.asInput`.
 **Effort:** Tiny.
 
 ### 9.9 — **Minor, Operational** — EventTarget creation inside `Pulumi.Output.apply`
-[`HeartbeatRunner_CloudWatchEvents.res:75-85`](../../reventless/reventless-aws/src/adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res#L75-L85). Resources created inside `apply` don't show up cleanly in the Pulumi resource graph; Pulumi warns about this pattern.
+[`HeartbeatRunner_CloudWatchEvents.res:75-85`](../../reventless/aws/src/adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res#L75-L85). Resources created inside `apply` don't show up cleanly in the Pulumi resource graph; Pulumi warns about this pattern.
 
 **Fix:** lift the EventTarget creation out of the apply via `arn->Pulumi.Output.asInput`.
 **Effort:** Tiny.
@@ -490,43 +490,43 @@ CloudWatch Events scheduled rules are deprecated in favor of EventBridge Schedul
 ## 10. MCP Lambda
 
 ### 10.1 — **Critical, Security** — JWT signature is not verified
-[`MCP_Lambda.res:338-385`](../../reventless/reventless-aws/src/adapter/Mcp/MCP_Lambda.res#L338-L385). `decodeJwtClaims` is a `%raw` JS that base64url-decodes the payload and returns it. Authorisation in `dispatchTool` (line 399) reads `sub`, `cognito:username`, `cognito:groups` from this payload. The comment defers signature verification to "Lambda authorizer / API Gateway Cognito authorizer" — but the file's deploy-time placeholder shows a Lambda **Function URL**, where the only auth options are `AWS_IAM` or `NONE`. Neither verifies a JWT in the `Authorization` header. With `authType: None` (mentioned as suitable for development), an attacker forges any Cognito identity by base64-encoding a payload with arbitrary claims; per-tool ACLs are entirely bypassed.
+[`MCP_Lambda.res:338-385`](../../reventless/aws/src/adapter/Mcp/MCP_Lambda.res#L338-L385). `decodeJwtClaims` is a `%raw` JS that base64url-decodes the payload and returns it. Authorisation in `dispatchTool` (line 399) reads `sub`, `cognito:username`, `cognito:groups` from this payload. The comment defers signature verification to "Lambda authorizer / API Gateway Cognito authorizer" — but the file's deploy-time placeholder shows a Lambda **Function URL**, where the only auth options are `AWS_IAM` or `NONE`. Neither verifies a JWT in the `Authorization` header. With `authType: None` (mentioned as suitable for development), an attacker forges any Cognito identity by base64-encoding a payload with arbitrary claims; per-tool ACLs are entirely bypassed.
 
 **Fix:** before any production deploy, verify the JWT signature using `aws-jwt-verify` against the configured Cognito User Pool's JWKS. Cache JWKS, invalidate on `kid` rotation. Reject expired tokens, missing `aud`. Or place the function behind API Gateway with a Cognito authorizer.
 **Effort:** Small.
 
 ### 10.2 — **Major, Cost / Security** — no rate limiting / abuse protection
-[`MCP_Lambda.res:478-481`](../../reventless/reventless-aws/src/adapter/Mcp/MCP_Lambda.res#L478-L481). `rateLimitConfig` is declared as deploy-time intent but has no runtime enforcement. A noisy or malicious MCP client can flood `dispatchTool`, triggering the full backend pipeline per call.
+[`MCP_Lambda.res:478-481`](../../reventless/aws/src/adapter/Mcp/MCP_Lambda.res#L478-L481). `rateLimitConfig` is declared as deploy-time intent but has no runtime enforcement. A noisy or malicious MCP client can flood `dispatchTool`, triggering the full backend pipeline per call.
 
 **Fix:** per-identity sliding-window counter (DynamoDB / Redis); `reservedConcurrency` as a coarse cap.
 **Effort:** Medium.
 
 ### 10.3 — **Major, Correctness/Operational** — `Stream.catchAll(... Stream.empty)` swallows DynamoDB errors
-[`MCP_Lambda.res:211-213`](../../reventless/reventless-aws/src/adapter/Mcp/MCP_Lambda.res#L211-L213). On transient throttle, the stream is replaced by empty; the function returns "no events." Same pattern as QueryEngine 4.1 — callers cannot distinguish empty from error.
+[`MCP_Lambda.res:211-213`](../../reventless/aws/src/adapter/Mcp/MCP_Lambda.res#L211-L213). On transient throttle, the stream is replaced by empty; the function returns "no events." Same pattern as QueryEngine 4.1 — callers cannot distinguish empty from error.
 
 **Fix:** propagate the typed error.
 **Effort:** Tiny.
 
 ### 10.4 — **Major, Performance / Cost** — `readDcbEventLogHistory` filters in memory after a broad query
-[`MCP_Lambda.res:257-268`](../../reventless/reventless-aws/src/adapter/Mcp/MCP_Lambda.res#L257-L268). Calls `read(table)(~query=[], ~after?)` (empty query — fetches **all** events), then filters by tag value in app code. Hits scan pricing across many round-trips at scale.
+[`MCP_Lambda.res:257-268`](../../reventless/aws/src/adapter/Mcp/MCP_Lambda.res#L257-L268). Calls `read(table)(~query=[], ~after?)` (empty query — fetches **all** events), then filters by tag value in app code. Hits scan pricing across many round-trips at scale.
 
 **Fix:** push the entity-id tag into the query so DynamoDB filters server-side.
 **Effort:** Small.
 
 ### 10.5 — **Minor, Cost** — `consistentRead: true` on every event-history read
-[`MCP_Lambda.res:207`](../../reventless/reventless-aws/src/adapter/Mcp/MCP_Lambda.res#L207). 2× RCU for a browse use case where eventual is almost always acceptable.
+[`MCP_Lambda.res:207`](../../reventless/aws/src/adapter/Mcp/MCP_Lambda.res#L207). 2× RCU for a browse use case where eventual is almost always acceptable.
 
 **Fix:** parameterise `consistentRead`, default `false`.
 **Effort:** Tiny.
 
 ### 10.6 — **Minor, Operational** — `correlationId` always passes `"unknown"`
-[`MCP_Lambda.res:419`](../../reventless/reventless-aws/src/adapter/Mcp/MCP_Lambda.res#L419). `runEffect(None, ...)` strips request correlation through MCP → SQS → backend.
+[`MCP_Lambda.res:419`](../../reventless/aws/src/adapter/Mcp/MCP_Lambda.res#L419). `runEffect(None, ...)` strips request correlation through MCP → SQS → backend.
 
 **Fix:** accept `correlationId` from request header, plumb through.
 **Effort:** Tiny.
 
 ### 10.7 — **Minor, Correctness** — `extractEntityId` blindly takes URI last segment
-[`MCP_Lambda.res:132-136`](../../reventless/reventless-aws/src/adapter/Mcp/MCP_Lambda.res#L132-L136). Fails on trailing slash (empty entityId), encoded slashes (`%2F`), and multi-param URI templates (collapses to the last param).
+[`MCP_Lambda.res:132-136`](../../reventless/aws/src/adapter/Mcp/MCP_Lambda.res#L132-L136). Fails on trailing slash (empty entityId), encoded slashes (`%2F`), and multi-param URI templates (collapses to the last param).
 
 **Fix:** parse against the registered `uriTemplate`.
 **Effort:** Small.
@@ -536,37 +536,37 @@ CloudWatch Events scheduled rules are deprecated in favor of EventBridge Schedul
 ## 11. Api (AppSync) and CommandGenerator resolvers
 
 ### 11.1 — **Major, Operational** — IAM-only auth excludes browser clients
-[`AppSync_EventsApi.res:31-32`](../../reventless/reventless-aws/src/adapter/Api/AppSync_EventsApi.res#L31-L32). `connectionAuthModes` and `defaultSubscribeAuthModes` are AWS_IAM. Browsers without a Cognito Identity Pool cannot subscribe.
+[`AppSync_EventsApi.res:31-32`](../../reventless/aws/src/adapter/Api/AppSync_EventsApi.res#L31-L32). `connectionAuthModes` and `defaultSubscribeAuthModes` are AWS_IAM. Browsers without a Cognito Identity Pool cannot subscribe.
 
 **Fix:** add Cognito User Pool as a second auth provider for subscriber authentication.
 **Effort:** Small (server) + Medium (client integration).
 
 ### 11.2 — **Major, Performance / Cost** — `Platform_UIDefinitions_Lambda` uses `Scan` with `contains`
-[`Platform_UIDefinitions_Lambda.res:32-36`](../../reventless/reventless-aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res#L32-L36). `Scan` on a Plugin read-model with `contains(#status, :connected)` filter — a non-key filter applied after reading, so RCU is paid for every item in the table.
+[`Platform_UIDefinitions_Lambda.res:32-36`](../../reventless/aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res#L32-L36). `Scan` on a Plugin read-model with `contains(#status, :connected)` filter — a non-key filter applied after reading, so RCU is paid for every item in the table.
 
 **Fix:** sparse GSI on `status` (only `Connected` rows); `Query` the GSI.
 **Effort:** Small.
 
 ### 11.3 — **Major, Operational** — `Platform_UIDefinitions_Lambda` uncapped pagination
-[`Platform_UIDefinitions_Lambda.res:28-39`](../../reventless/reventless-aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res#L28-L39). `do { … } while(exclusiveStartKey)` with no max-item ceiling. Pathological table → 30 s Lambda timeout returns partial result; >6 MB accumulation exceeds AppSync resolver response cap.
+[`Platform_UIDefinitions_Lambda.res:28-39`](../../reventless/aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res#L28-L39). `do { … } while(exclusiveStartKey)` with no max-item ceiling. Pathological table → 30 s Lambda timeout returns partial result; >6 MB accumulation exceeds AppSync resolver response cap.
 
 **Fix:** cap at e.g. 5 000 items + truncation header.
 **Effort:** Small.
 
 ### 11.4 — **Major, Performance / Cost** — `CommandSubscriptionResolvers_AppSync` has no subscription filter
-[`CommandSubscriptionResolvers_AppSync.res:22`](../../reventless/reventless-aws/src/adapter/Api/CommandSubscriptionResolvers_AppSync.res#L22). All connected clients receive every `onPlugin_Agg_Cmd` event regardless of which aggregate id they care about. AppSync charges per delivered subscription message — multiplier on N clients × M events.
+[`CommandSubscriptionResolvers_AppSync.res:22`](../../reventless/aws/src/adapter/Api/CommandSubscriptionResolvers_AppSync.res#L22). All connected clients receive every `onPlugin_Agg_Cmd` event regardless of which aggregate id they care about. AppSync charges per delivered subscription message — multiplier on N clients × M events.
 
 **Fix:** generate `subscriptionFilter` on `id` from the request when callers have one. Make optional for command types without an id.
 **Effort:** Small.
 
 ### 11.5 — **Major, Security** — `CommandGeneratorResolvers_AppSync` adds CloudWatch Events principal to AppSync-invoked Lambda
-[`CommandGeneratorResolvers_AppSync.res:83-91`](../../reventless/reventless-aws/src/adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res#L83-L91). A `Lambda.Permission` with principal `AWS.CloudwatchEventRule.principal` is added — but this Lambda is invoked by AppSync DataSource, not CloudWatch Events. The permission is dead weight in the right case but creates an unintended invocation surface for any CloudWatch Events rule in the account.
+[`CommandGeneratorResolvers_AppSync.res:83-91`](../../reventless/aws/src/adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res#L83-L91). A `Lambda.Permission` with principal `AWS.CloudwatchEventRule.principal` is added — but this Lambda is invoked by AppSync DataSource, not CloudWatch Events. The permission is dead weight in the right case but creates an unintended invocation surface for any CloudWatch Events rule in the account.
 
 **Fix:** drop the unrelated permission.
 **Effort:** Tiny.
 
 ### 11.6 — **Major, Correctness** — `Pulumi.Output.get` on `dns.http`
-[`AppSync_EventsApi.res:67`](../../reventless/reventless-aws/src/adapter/Api/AppSync_EventsApi.res#L67). `dns.http->Option.getOr("")` — if `None`, the endpoint becomes `https://`. Every Lambda using this URL crashes at fetch time.
+[`AppSync_EventsApi.res:67`](../../reventless/aws/src/adapter/Api/AppSync_EventsApi.res#L67). `dns.http->Option.getOr("")` — if `None`, the endpoint becomes `https://`. Every Lambda using this URL crashes at fetch time.
 
 **Fix:** `getOrThrow` with a typed deploy-time error.
 **Effort:** Tiny.
@@ -578,37 +578,37 @@ CloudWatch Events scheduled rules are deprecated in favor of EventBridge Schedul
 **Effort:** Small.
 
 ### 11.8 — **Minor, Operational** — `AppSync_Resolver_Retrying.read_` always reports present
-[`AppSync_Resolver_Retrying.res:437-444`](../../reventless/reventless-aws/src/adapter/Api/AppSync_Resolver_Retrying.res#L437-L444). By design, `read_` lies; `pulumi refresh` cannot drift-detect a manually deleted resolver. Comment acknowledges this.
+[`AppSync_Resolver_Retrying.res:437-444`](../../reventless/aws/src/adapter/Api/AppSync_Resolver_Retrying.res#L437-L444). By design, `read_` lies; `pulumi refresh` cannot drift-detect a manually deleted resolver. Comment acknowledges this.
 
 **Fix:** call `GetResolverCommand` and return real state; on `NotFoundException` return empty props for Pulumi to recreate. Gate on Pulumi version (≤3.224.0 has a documented crash).
 **Effort:** Small.
 
 ### 11.9 — **Minor, Operational** — `runWithRaceRetry` ignores throttling
-[`AppSync_Resolver_Retrying.res:204`](../../reventless/reventless-aws/src/adapter/Api/AppSync_Resolver_Retrying.res#L204). Retries on `NotFoundException` / "No field named" only. `LimitExceededException` (CreateResolver 25 TPS account default) and `ThrottlingException` are the more common failure modes on a deploy with hundreds of resolvers.
+[`AppSync_Resolver_Retrying.res:204`](../../reventless/aws/src/adapter/Api/AppSync_Resolver_Retrying.res#L204). Retries on `NotFoundException` / "No field named" only. `LimitExceededException` (CreateResolver 25 TPS account default) and `ThrottlingException` are the more common failure modes on a deploy with hundreds of resolvers.
 
 **Fix:** broaden retry conditions with a separate jitter strategy for throttling.
 **Effort:** Small.
 
 ### 11.10 — **Minor, Operational** — duplicated data-source/role wiring across CommandGenerator / DCB / InboundTranslation
-[`CommandGeneratorResolvers_AppSync.res:115-128, 184-230`](../../reventless/reventless-aws/src/adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res#L115-L128), [`InboundTranslationResolvers_AppSync.res:21-69`](../../reventless/reventless-aws/src/adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res#L21-L69). Three near-identical "create role + attach policy + create data source" blocks. Drift risk.
+[`CommandGeneratorResolvers_AppSync.res:115-128, 184-230`](../../reventless/aws/src/adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res#L115-L128), [`InboundTranslationResolvers_AppSync.res:21-69`](../../reventless/aws/src/adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res#L21-L69). Three near-identical "create role + attach policy + create data source" blocks. Drift risk.
 
 **Fix:** factor a shared `makeLambdaDataSource` helper.
 **Effort:** Small.
 
 ### 11.11 — **Minor, Correctness** — hard-coded data-source names collide on multi-plugin
-[`CommandGeneratorResolvers_AppSync.res:217 ("DcbMutation")`](../../reventless/reventless-aws/src/adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res#L217), [`InboundTranslationResolvers_AppSync.res:57 ("InboundTranslation")`](../../reventless/reventless-aws/src/adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res#L57). Multiple plugins on the same API collide.
+[`CommandGeneratorResolvers_AppSync.res:217 ("DcbMutation")`](../../reventless/aws/src/adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res#L217), [`InboundTranslationResolvers_AppSync.res:57 ("InboundTranslation")`](../../reventless/aws/src/adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res#L57). Multiple plugins on the same API collide.
 
 **Fix:** prefix with plugin name.
 **Effort:** Tiny.
 
 ### 11.12 — **Minor, Correctness** — `commandName` extracted from field-name suffix
-[`CommandGeneratorResolvers_AppSync.res:131-136`](../../reventless/reventless-aws/src/adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res#L131-L136). Splits on `_` and takes the last segment — a command `Inventory_Reserve_Item` becomes `Item`. Works for the current convention but fragile.
+[`CommandGeneratorResolvers_AppSync.res:131-136`](../../reventless/aws/src/adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res#L131-L136). Splits on `_` and takes the last segment — a command `Inventory_Reserve_Item` becomes `Item`. Works for the current convention but fragile.
 
 **Fix:** thread the explicit `(commandName, fieldName)` pair from the schema generator instead of re-deriving.
 **Effort:** Small.
 
 ### 11.13 — **Minor, Operational** — InboundTranslation has no SQS-send policy
-[`InboundTranslationResolvers_AppSync.res`](../../reventless/reventless-aws/src/adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res). Unlike `CommandGeneratorResolvers_AppSync` (lines 47-63), only attaches a data-source-invoke-Lambda policy. If the inbound-translation Lambda needs to write to SQS (composes with the DCB command path), runtime fails with AccessDenied.
+[`InboundTranslationResolvers_AppSync.res`](../../reventless/aws/src/adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res). Unlike `CommandGeneratorResolvers_AppSync` (lines 47-63), only attaches a data-source-invoke-Lambda policy. If the inbound-translation Lambda needs to write to SQS (composes with the DCB command path), runtime fails with AccessDenied.
 
 **Fix:** verify intent; if SQS sends are required, thread resources through.
 **Effort:** Tiny.
@@ -633,7 +633,7 @@ Every `console.error("...", JSON.stringify(event))` is a free-form string. Cloud
 
 ### XC-3 — **Minor, Operational** — `Lambda.reventlessLayerArn` is `option` everywhere
 
-The Lambda layer carrying the framework runtime is referenced as `option<string>` throughout adapter Lambda definitions ([`StateTopic_AppSync.res:180`](../../reventless/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res#L180), [`EventLogSubscription_AppSync.res:220`](../../reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res#L220), [`Platform_UIDefinitions_Lambda.res:113`](../../reventless/reventless-aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res#L113)). Adapters work without the layer — silently — because they fall back to bundling the framework into each Lambda's code asset. There is no deploy-time test that the layer is actually present in production builds. Misconfigured deploys ship without the layer and bloat each Lambda's bundle by ~30 MB.
+The Lambda layer carrying the framework runtime is referenced as `option<string>` throughout adapter Lambda definitions ([`StateTopic_AppSync.res:180`](../../reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res#L180), [`EventLogSubscription_AppSync.res:220`](../../reventless/aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res#L220), [`Platform_UIDefinitions_Lambda.res:113`](../../reventless/aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res#L113)). Adapters work without the layer — silently — because they fall back to bundling the framework into each Lambda's code asset. There is no deploy-time test that the layer is actually present in production builds. Misconfigured deploys ship without the layer and bloat each Lambda's bundle by ~30 MB.
 
 **Fix:** add a deploy-time assertion that the layer ARN is `Some(_)` in production stacks (gated by `Pulumi.getStack()`); fail the deploy with a clear error if missing. Plan: [minor Bundle 11.2](../plans/Backlog/aws-adapters-minor-fixes.md#112--reventlesslayerarn-deploy-time-check-xc-3).
 
@@ -641,7 +641,7 @@ The Lambda layer carrying the framework runtime is referenced as `option<string>
 
 - **SigV4 amzDate duplicated** (47 lines × 2) → [minor Bundle 1.1](../plans/Backlog/aws-adapters-minor-fixes.md#11--shared-sigv4-amzdate-helper-47-appsync-edge-cleanup).
 - **Queues lack `messageRetentionSeconds`** (default 4 days drops events on outage) → [minor Bundle 10.1, 10.2](../plans/Backlog/aws-adapters-minor-fixes.md#101--dlq-retention-14-days-cross-cutting).
-- **UTF-16 byte estimation underestimates SQS 256 KB cap** ([`SQS_Helpers.res:131-182`](../../reventless/reventless-aws/src/util/SQS_Helpers.res#L131-L182)) → [minor Bundle 1.4](../plans/Backlog/aws-adapters-minor-fixes.md#14--utf-8-byte-estimation-in-sqs_helpers-cross-cutting).
+- **UTF-16 byte estimation underestimates SQS 256 KB cap** ([`SQS_Helpers.res:131-182`](../../reventless/aws/src/util/SQS_Helpers.res#L131-L182)) → [minor Bundle 1.4](../plans/Backlog/aws-adapters-minor-fixes.md#14--utf-8-byte-estimation-in-sqs_helpers-cross-cutting).
 
 ---
 

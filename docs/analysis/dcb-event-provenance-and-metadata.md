@@ -64,7 +64,7 @@ The most important design constraint, and the one that rules out two tempting ho
 Consequences:
 
 - **`meta.headers` is the wrong home.** `deriveMeta` copies `parent.headers` as-is
-  ([Message.res](../../reventless/reventless-core/src/Message.res)), so an originator placed in
+  ([Message.res](../../reventless/core/src/Message.res)), so an originator placed in
   `headers` would propagate downstream and mislabel every event whose producer didn't overwrite
   it. `headers` is also documented as a *caller/application* bag (tenantId, feature flags) that
   the framework never writes to today — putting framework provenance there is a category error.

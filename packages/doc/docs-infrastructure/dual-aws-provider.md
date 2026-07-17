@@ -40,11 +40,11 @@ sleep** between schema push and resolver creation.
   bindings live in `src/AppSync/`, `src/DynamoDb/`, etc. The native
   binding sits under `src/AwsNative/AppSync/` and is exposed as
   `PulumiAws.AwsNative.AppSync.Resolver`.
-- **Adapter** — [`AppSync_Resolver_Native.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/Api/AppSync_Resolver_Native.res)
+- **Adapter** — [`AppSync_Resolver_Native.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/aws/src/adapter/Api/AppSync_Resolver_Native.res)
   preserves the call shape of the classic `Resolver` module
   (`makeUnitJsResolver`, `makePipelineJsResolver`) so call sites are
   agnostic to the underlying provider.
-- **Wiring** — [`QueryDbResolvers_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res)
+- **Wiring** — [`QueryDbResolvers_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res)
   shadows `Resolver` with the native adapter:
   ```rescript
   open PulumiAws.AppSync           // Function, DataSource, GraphQLApi
@@ -67,7 +67,7 @@ sleep** between schema push and resolver creation.
 
 3. **Short-term workaround — reinstate a sleep.** Add a fixed wait after
    `StartSchemaCreation` reaches `ACTIVE` in
-   [`AppSync_Adapter.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/components/Api/AppSync_Adapter.res)
+   [`AppSync_Adapter.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/aws/src/components/Api/AppSync_Adapter.res)
    inside `waitForSchemaActive` (e.g. 15 s `setTimeout` in the
    `ACTIVE` / `SUCCESS` branch). Redeploy.
 

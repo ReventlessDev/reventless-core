@@ -29,7 +29,7 @@ What actually happened. Include error messages and stack traces.
 ## Environment
 - **Node version**: (run `node --version`)
 - **ReScript version**: (run `npx rescript -version`)
-- **Package(s)**: (e.g., @reventless/reventless@1.0.0, @reventless/reventless-aws@1.0.0)
+- **Package(s)**: (e.g., @reventless/reventless@1.0.0, @reventless/aws@1.0.0)
 - **AWS Region** (if applicable):
 - **OS**: (e.g., macOS 13.0, Ubuntu 22.04, AWS Lambda Node.js 22.x)
 

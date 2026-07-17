@@ -89,7 +89,7 @@ Field names in entry types use PascalCase with underscores (e.g., `Catalog_Produ
 
 ### 1. Create the Fragment Generator
 
-File: `reventless/reventless-core/src/components/Api/YourProtocol_FragmentGenerator.res`
+File: `reventless/core/src/components/Api/YourProtocol_FragmentGenerator.res`
 
 Implement a `generate` function with this signature:
 
@@ -127,7 +127,7 @@ For each entry:
 
 ### 2. Create the Stitcher (if applicable)
 
-File: `reventless/reventless-core/src/components/Api/YourProtocol_Stitcher.res`
+File: `reventless/core/src/components/Api/YourProtocol_Stitcher.res`
 
 If your protocol requires merging multiple fragments into a final schema document (like GraphQL SDL stitching or OpenAPI path merging):
 

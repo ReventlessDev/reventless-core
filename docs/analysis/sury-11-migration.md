@@ -176,7 +176,7 @@ Packages affected (file count):
 | **Total**                | **76 files**          |
 
 Plus one hand-written `.mjs`:
-- `reventless/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs` imports
+- `reventless/aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs` imports
   `reverseConvertToJsonOrThrow` directly. This is the file currently crashing
   on Layer 58.
 
@@ -567,7 +567,7 @@ makes them materially easier without being prerequisites.
   `npm pack sury@<ver>`). The alpha.8 API surface referenced in the re-target
   note was read from this file.
 - Inline-Lambda crash that triggered this:
-  `reventless/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs:5`
+  `reventless/aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs:5`
 - Plans built on this analysis:
   - `docs/plans/sury-11-migration.md` — main migration sweep
     (Phases 0–5), covers opportunities A, B, D, E, H.

@@ -171,8 +171,8 @@ A single-source slice is a special case where the `mappings` array has exactly o
 
 ## Reference
 
-- Spec module types: [`reventless-spec/src/components/AutomationSlice.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-spec/src/components/AutomationSlice.res)
-- Builder: [`reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res)
-- Callback (per-source dispatch + retry): [`reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res)
-- Integration test (canonical demo): [`reventless-local/tests/components/automationslice/MixedSourceAutomationSlice*.res`](https://github.com/ReventlessDev/reventless-core/tree/main/reventless/reventless-local/tests/components/automationslice/)
+- Spec module types: [`reventless-spec/src/components/AutomationSlice.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/spec/src/components/AutomationSlice.res)
+- Builder: [`reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/core/src/components/AutomationSlice/AutomationSlice_Builder.res)
+- Callback (per-source dispatch + retry): [`reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/core/src/components/AutomationSlice/AutomationSlice_Callback.res)
+- Integration test (canonical demo): [`reventless-local/tests/components/automationslice/MixedSourceAutomationSlice*.res`](https://github.com/ReventlessDev/reventless-core/tree/main/reventless/local/tests/components/automationslice/)
 - Single-source example slice: [`examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/`](https://github.com/ReventlessDev/reventless-core/tree/main/examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/)

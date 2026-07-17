@@ -8,7 +8,7 @@
 
 ## TL;DR
 
-- Today the host UI is served at the CloudFront-assigned `https://d123abc.cloudfront.net` (see [Plugin_Stack.res:137-139](../../reventless/reventless-aws/src/Plugin_Stack.res#L137-L139) — `cloudfrontDefaultCertificate: true`). Functional but ugly and impossible to remember.
+- Today the host UI is served at the CloudFront-assigned `https://d123abc.cloudfront.net` (see [Plugin_Stack.res:137-139](../../reventless/aws/src/Plugin_Stack.res#L137-L139) — `cloudfrontDefaultCertificate: true`). Functional but ugly and impossible to remember.
 - A custom domain on CloudFront requires four things: a Route53 hosted zone you own, an ACM certificate **in us-east-1** (CloudFront only consumes certs from us-east-1), the distribution configured with `aliases` + `viewerCertificate`, and a Route53 A-alias record pointing the FQDN at the distribution. CloudFront's global hosted zone ID for alias records is the fixed constant `Z2FDTNDATAQYW2`.
 - Most of the Pulumi resources needed are **not yet bound in `rescript-pulumi-aws`** — `Acm.Certificate`, `Acm.CertificateValidation`, `Route53.Record`, and `Provider.make` (for the alt-region us-east-1 provider) all need ReScript bindings before any of this compiles.
 - Three configuration shapes are viable: (A) hard-code FQDN per stack, (B) auto-derive FQDN from `${projectName}-${stackName}.${baseDomain}` with only the base domain + zone ID configured once globally, (C) hybrid (auto by default, explicit override). **Recommendation: C** — auto-derived covers 95% of deploys with zero ceremony, explicit override stays for the occasional vanity URL.
@@ -22,7 +22,7 @@
 
 ### 1.1 The current distribution
 
-[`Plugin_Stack.makeUiBundleDistribution`](../../reventless/reventless-aws/src/Plugin_Stack.res#L37) creates the bundle's CloudFront distribution with:
+[`Plugin_Stack.makeUiBundleDistribution`](../../reventless/aws/src/Plugin_Stack.res#L37) creates the bundle's CloudFront distribution with:
 
 ```rescript
 viewerCertificate: Pulumi.Input.make({
@@ -30,10 +30,10 @@ viewerCertificate: Pulumi.Input.make({
 }),
 ```
 
-No `aliases` field is set, so CloudFront only serves the request at its default `*.cloudfront.net` hostname. The exported `distributionUrl` ([Plugin_Stack.res:199](../../reventless/reventless-aws/src/Plugin_Stack.res#L199)) is `https://${distribution.domainName}` — the CloudFront-assigned URL.
+No `aliases` field is set, so CloudFront only serves the request at its default `*.cloudfront.net` hostname. The exported `distributionUrl` ([Plugin_Stack.res:199](../../reventless/aws/src/Plugin_Stack.res#L199)) is `https://${distribution.domainName}` — the CloudFront-assigned URL.
 
 That URL flows downstream into:
-- `hostShellUrl` stack output ([Platform.res:1487](../../reventless/reventless-aws/src/Platform.res#L1487))
+- `hostShellUrl` stack output ([Platform.res:1487](../../reventless/aws/src/Platform.res#L1487))
 - The host-shell `config.json` indirectly (the SPA bootstraps from its own URL via `window.location`, but `apiEndpoint` / `platformApiEndpoint` are AppSync endpoints, not the SPA URL)
 
 ### 1.2 What CloudFront needs to serve a custom domain
@@ -55,7 +55,7 @@ A grep of [rescript-pulumi-aws/src](../../rescript/rescript-pulumi-aws/src) show
 
 - `Acm.Certificate`, `Acm.CertificateValidation`
 - `Route53.Record` (with the `aliases` field shape — the alias-target sub-record is non-trivial)
-- `Provider.make` for declaring an alt-region provider instance (only one usage of an alternate region today: `@module("@aws-sdk/credential-provider-node")` in [Util_AppSync_Caller.res](../../reventless/reventless-aws/src/util/Util_AppSync_Caller.res), which is an SDK call, not a Pulumi provider)
+- `Provider.make` for declaring an alt-region provider instance (only one usage of an alternate region today: `@module("@aws-sdk/credential-provider-node")` in [Util_AppSync_Caller.res](../../reventless/aws/src/util/Util_AppSync_Caller.res), which is an SDK call, not a Pulumi provider)
 
 Adding these bindings is straightforward — they follow the same `args: t` + `make` pattern as existing bindings — but it's prep work that must land before any of the framework wiring compiles.
 
@@ -347,6 +347,6 @@ Linear scaling for additional UI bundles is zero — the framework handles them 
 - [docs/guides/ui-fragments-deployment.md](../guides/ui-fragments-deployment.md) — current host-shell deployment guide; the "What `platform-aws` provisions" section is what gets extended.
 - [docs/guides/deployment-guide.md](../guides/deployment-guide.md) — `Per-instance overrides` section already lists `cognitoUserPoolId`; `hostUiBaseDomain` + `hostUiHostedZoneId` + `hostUiBaseName` would extend the same table.
 - [docs/plans/done/host-ui-login-core.md](../plans/done/host-ui-login-core.md) — the prior plan that established the `Util_LocalConfig` + env-var pattern this proposal builds on.
-- [reventless/reventless-aws/src/Plugin_Stack.res](../../reventless/reventless-aws/src/Plugin_Stack.res) — primary code location for the change.
-- [reventless/reventless-aws/src/Platform.res](../../reventless/reventless-aws/src/Platform.res) — secondary, for wiring auto-derived FQDN.
+- [reventless/aws/src/Plugin_Stack.res](../../reventless/aws/src/Plugin_Stack.res) — primary code location for the change.
+- [reventless/aws/src/Platform.res](../../reventless/aws/src/Platform.res) — secondary, for wiring auto-derived FQDN.
 - [rescript/rescript-pulumi-aws/src/](../../rescript/rescript-pulumi-aws/src/) — where the new ACM / Route53 / Provider bindings would go.

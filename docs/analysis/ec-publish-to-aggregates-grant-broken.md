@@ -50,7 +50,7 @@ Every ReScript file in this chain is correct. The `Products_Extension` **does** 
 
 ## Root cause 1 — the grant `RolePolicy` is created inside a `Pulumi.Output.apply` and never registers
 
-File: `reventless/reventless-aws/src/plugin/runtime/PluginRuntime_Builder.res`, `forPluginEventCollector`.
+File: `reventless/aws/src/plugin/runtime/PluginRuntime_Builder.res`, `forPluginEventCollector`.
 
 The block that grants the collector `sqs:SendMessage` on the command-topic queues its extensions publish to (`sid: AllowEcPublishToAggregateCmdTopics`, RolePolicy `${name}-publishToAggregates`) builds the policy document in an apply **and calls `PulumiAws.IAM.RolePolicy.make` inside that apply's callback**:
 
@@ -76,7 +76,7 @@ The correct pattern is used a few blocks up in the same file for `pluginRmScan`:
 
 Even with the RolePolicy created, its `Resource` resolved to a placeholder, because the URL never resolves to a real ARN.
 
-Origin: `reventless/reventless-core/src/components/Dcb/Dcb_Builder.res`, field `dcbCommandTopicQueueUrl: option<Pulumi.Output.t<string>>`, computed as:
+Origin: `reventless/core/src/components/Dcb/Dcb_Builder.res`, field `dcbCommandTopicQueueUrl: option<Pulumi.Output.t<string>>`, computed as:
 
 ```rescript
 let dcbCommandTopicQueueUrl = {

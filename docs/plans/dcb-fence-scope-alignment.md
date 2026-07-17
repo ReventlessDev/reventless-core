@@ -6,11 +6,11 @@
 
 ## Implemented (2026-06-20)
 
-In [`DcbEventLogStorage_DynamoDb_Runtime.res`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res):
+In [`DcbEventLogStorage_DynamoDb_Runtime.res`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res):
 - Extracted pure `buildConditionalTransactItems` (testable transaction shape, no IO).
 - Added `eventPartitionTags` / `collectEventPartitionTags` (an event's partition tag = the only fence it may bump) and `buildFenceConditionCheck` (read-only fence assertion).
 - New rule: a **single-tag** query clause whose tag is **not** the written event's partition tag becomes a `ConditionCheck` (assert `lastPosition <= :after`, no bump) instead of a conditional `Update`. Partition tags keep check+bump. **Composite (multi-tag) clauses keep check+bump on all tags (option B).** Unconditional bumps are restricted to partition tags (+ composite query tags), so secondary tags like `customerId` are never fenced.
-- TDD red→green unit tests in [`DcbEventLogStorage_DynamoDb_RuntimeTest.res`](../../reventless/reventless-aws/tests/DcbEventLogStorage_DynamoDb_RuntimeTest.res): `productId` → ConditionCheck, `customerId` not fenced, composite tags stay Updates. Misleading comments updated in `PlaceOrder.res` and `StateChangeSlice_Callback.res`.
+- TDD red→green unit tests in [`DcbEventLogStorage_DynamoDb_RuntimeTest.res`](../../reventless/aws/tests/DcbEventLogStorage_DynamoDb_RuntimeTest.res): `productId` → ConditionCheck, `customerId` not fenced, composite tags stay Updates. Misleading comments updated in `PlaceOrder.res` and `StateChangeSlice_Callback.res`.
 
 Composite decision: **option B**. Audit found one composite-query slice (`RecordProductDemand` in online-shop-dcb); its event tags equal its query tags, so it bumps both fences via its own conditional updates and relies on no secondary-tag bump. Option A (composite fence sentinel) deferred — only needed if a slice writes a >1-tag event but queries a subset of those tags, which no current slice does.
 
@@ -66,15 +66,15 @@ Pick one (decide during implementation, default **A**):
 
 ## Implementation sketch
 
-All in [`DcbEventLogStorage_DynamoDb_Runtime.res`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res):
+All in [`DcbEventLogStorage_DynamoDb_Runtime.res`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res):
 
-1. Thread the event's partition tag into fence-bump construction. `toItem`/`derivePartitionKey` already know the partition tag ([`derivePartitionKey`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L32-L53)); expose "the partition tag of event E" so bump builders can filter.
+1. Thread the event's partition tag into fence-bump construction. `toItem`/`derivePartitionKey` already know the partition tag ([`derivePartitionKey`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L32-L53)); expose "the partition tag of event E" so bump builders can filter.
 2. `collectEventTags` → `collectEventPartitionTags`: for each event, emit only its partition tag/value (used by `appendUnconditional` and `extraEventTags` in `appendConditional`).
 3. `appendConditional` conditional updates: still built from `collectQueryTags`, but a conditional fence on query tag `T` is only sound if `T` is a partition tag of the events the slice could read on `T`. For PlaceOrder both `orderId` and `productId` are partition tags of *some* read event type (`OrderPlaced`, `CatalogProductSynced` resp.), so both keep conditional fences — and both now move only on their own partition's appends. Verify the rule with the GWT/integration tests below rather than special-casing.
 4. `appendUnconditional` (seed/replay): bump only partition-tag fences so seeded `CatalogProductSynced` still advances `fence#productId` (needed for availability reads) without touching unrelated fences.
 5. If **A**: add composite-fence Put/Update helpers and a `fence#composite:` key; wire into the composite branch of read/append.
 
-Update the misleading comments in [`PlaceOrder.res:13-29`](../../examples/online-shop-hybrid/ordering/src/Order/StateChangeSlice/PlaceOrder.res#L13-L29) and [`StateChangeSlice_Callback.res:36-42`](../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L36-L42) (they describe GSI-leak semantics the read path doesn't have).
+Update the misleading comments in [`PlaceOrder.res:13-29`](../../examples/online-shop-hybrid/ordering/src/Order/StateChangeSlice/PlaceOrder.res#L13-L29) and [`StateChangeSlice_Callback.res:36-42`](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L36-L42) (they describe GSI-leak semantics the read path doesn't have).
 
 ## Test plan
 
@@ -90,5 +90,5 @@ Update the misleading comments in [`PlaceOrder.res:13-29`](../../examples/online
 ## Open questions
 
 - Choose composite strategy **A** vs **B** after auditing current multi-tag DCB clauses in `reventless-core` + examples.
-- Does any in-memory/SQLite backend ([`DcbEventLogStorage_InMemory.res`](../../reventless/reventless-local/src/adapter/DcbEventLog/DcbEventLogStorage_InMemory.res), `_Sqlite`) replicate the per-tag-fence semantics? If so, apply the same partition-scoped rule so local dev matches AWS.
+- Does any in-memory/SQLite backend ([`DcbEventLogStorage_InMemory.res`](../../reventless/local/src/adapter/DcbEventLog/DcbEventLogStorage_InMemory.res), `_Sqlite`) replicate the per-tag-fence semantics? If so, apply the same partition-scoped rule so local dev matches AWS.
 - Alpha data: confirm wipe of existing fence rows rather than migrating.

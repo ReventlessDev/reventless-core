@@ -51,18 +51,18 @@ Two structural issues drive the duplicates and motivate this redesign:
 ### 2.1 The aggregate is per **version**
 
 - `Plugin.makeId(name, version) = "${name}@${version}"`
-  — [Plugin.res:51](../../reventless/reventless-core/src/components/Plugin/Plugin.res#L51)
+  — [Plugin.res:51](../../reventless/core/src/components/Plugin/Plugin.res#L51)
 - The Plugin aggregate instance id is that `name@version`
-  — [Plugin_Builder.res:127](../../reventless/reventless-core/src/components/Plugin/Plugin_Builder.res#L127)
+  — [Plugin_Builder.res:127](../../reventless/core/src/components/Plugin/Plugin_Builder.res#L127)
 - The heartbeat Lambda's `PLUGIN_ID` env var is the same `name@version`
-  — [PluginRuntime_Builder.res:714-717](../../reventless/reventless-aws/src/adapter/Runtime/PluginRuntime_Builder.res#L714)
+  — [PluginRuntime_Builder.res:714-717](../../reventless/aws/src/adapter/Runtime/PluginRuntime_Builder.res#L714)
 
 **Consequence:** every version of a plugin is a *separate aggregate instance*
 with its own event stream and its own lifecycle. No instance has any knowledge
 of the other versions. There is no write-side owner of the question *"which
 version of plugin X is current?"*.
 
-### 2.2 State machine ([PluginBehavior.res](../../reventless/reventless-core/src/admin/PluginBehavior.res))
+### 2.2 State machine ([PluginBehavior.res](../../reventless/core/src/admin/PluginBehavior.res))
 
 States: `NotConnected → Detected → Connected ⇄ Disconnected`, plus `Inactive`
 (admin suspend) and `Retired` (deploy supersession). Liveness is **heartbeat
@@ -73,14 +73,14 @@ driven**:
 - `Connected + Heartbeat → []` (keep-alive no-op)
 - `Disconnected + Heartbeat → Reconnected`
 - `Retired + Heartbeat → Reconnected` ← revives a superseded version
-  ([lines 124-134](../../reventless/reventless-core/src/admin/PluginBehavior.res#L124))
+  ([lines 124-134](../../reventless/core/src/admin/PluginBehavior.res#L124))
 
 There is **no deploy-time `Connect`**. A plugin comes up purely via the
 heartbeat handshake: heartbeat → `UnknownPluginDetected` →
 `PluginConnectExtension` publishes `ConnectPlugin` → `Connect`
-([PluginExtensionPoint_Plugin.res:138-169](../../reventless/reventless-core/src/admin/PluginExtensionPoint_Plugin.res#L138)).
+([PluginExtensionPoint_Plugin.res:138-169](../../reventless/core/src/admin/PluginExtensionPoint_Plugin.res#L138)).
 Each heartbeat also (re)creates a per-version timeout that fires `Disconnect`
-when heartbeats stop ([line 143](../../reventless/reventless-core/src/admin/PluginExtensionPoint_Plugin.res#L143)).
+when heartbeats stop ([line 143](../../reventless/core/src/admin/PluginExtensionPoint_Plugin.res#L143)).
 
 > **The heartbeat carries only the `name@version` id — not the
 > `pluginDefinition`.** The definition (structure, schema fragment, UI fragments,
@@ -95,23 +95,23 @@ when heartbeats stop ([line 143](../../reventless/reventless-core/src/admin/Plug
 
 `PluginsProjection` keys rows by the aggregate id (`name@version`):
 `Set(id, state)` / `UpdateWithDefault(id, …)`
-— [PluginsProjection.res:61](../../reventless/reventless-core/src/admin/PluginsProjection.res#L61).
+— [PluginsProjection.res:61](../../reventless/core/src/admin/PluginsProjection.res#L61).
 The read model spec is `Plugins`
-([PluginsReadModelSpec.res:1](../../reventless/reventless-core/src/admin/PluginsReadModelSpec.res#L1)),
+([PluginsReadModelSpec.res:1](../../reventless/core/src/admin/PluginsReadModelSpec.res#L1)),
 with `status ∈ {Connected, Disconnected, Inactive, Retired}`.
 
 ### 2.4 Supersession is decided at deploy time by reading the read model
 
 `publishRetireForOlderPluginVersions`
-([Platform.res:577-664](../../reventless/reventless-aws/src/Platform.res#L577)):
+([Platform.res:577-664](../../reventless/aws/src/Platform.res#L577)):
 
 1. `ScanCommand` the `Plugins` RM table, filter `name = :n AND status =
-   "Connected"` ([lines 585-595](../../reventless/reventless-aws/src/Platform.res#L585)).
-2. Keep rows whose `version != <deploying version>` ([line 602](../../reventless/reventless-aws/src/Platform.res#L602)).
+   "Connected"` ([lines 585-595](../../reventless/aws/src/Platform.res#L585)).
+2. Keep rows whose `version != <deploying version>` ([line 602](../../reventless/aws/src/Platform.res#L602)).
 3. Publish a `Retire` command to the Plugin aggregate command topic for each.
 
 The RM table name and command-topic URL are sourced from the **platform stack's
-exports** via `StackReference` ([lines 833-844](../../reventless/reventless-aws/src/Platform.res#L833)).
+exports** via `StackReference` ([lines 833-844](../../reventless/aws/src/Platform.res#L833)).
 
 ### 2.5 The manifest consumes the read model and assumes single-version
 
@@ -132,7 +132,7 @@ deploys as a single Pulumi stack, and that stack's resources are named by plugin
   argument.
 - Inside `Plugin_Builder`, every infrastructure resource is named from
   `childName = name->ComponentType.name(...)` — the plugin **name, with no
-  version** ([Plugin_Builder.res:129](../../reventless/reventless-core/src/components/Plugin/Plugin_Builder.res#L129),
+  version** ([Plugin_Builder.res:129](../../reventless/core/src/components/Plugin/Plugin_Builder.res#L129),
   used at :149/:578/:735). The EventCollector Lambda, command-handler Lambdas,
   QueryDb/EventLog DynamoDB tables, AppSync resolvers, heartbeat Lambda +
   CloudWatch rule — all name-keyed.
@@ -800,7 +800,7 @@ concurrency is enforced inside a *single event log*.** On AWS it is a
 in that same table
 ([dcb-dynamodb-consistency-check.md](dcb-dynamodb-consistency-check.md)).
 Reventless provisions **one `DcbEventLog` per plugin**
-([Plugin_Builder.res:594-601](../../reventless/reventless-core/src/components/Plugin/Plugin_Builder.res#L594)).
+([Plugin_Builder.res:594-601](../../reventless/core/src/components/Plugin/Plugin_Builder.res#L594)).
 Therefore:
 
 > **DCB cannot make a decision consistent across two *different* event logs.**
@@ -818,7 +818,7 @@ events (`Connected`/`Disconnected`/`Retired`, and the `pluginDefinition` that
 declares each plugin's extension points and protocols) are **not** in any
 business plugin's domain log. They are owned and **centralised by the
 platform/admin** — the Plugin aggregate's EventLog in `Platform_Admin`
-([Platform_Admin.res:261](../../reventless/reventless-core/src/admin/Platform_Admin.res#L261)).
+([Platform_Admin.res:261](../../reventless/core/src/admin/Platform_Admin.res#L261)).
 All plugin names' lifecycle state therefore already co-resides in **one
 admin-owned store**.
 
@@ -841,7 +841,7 @@ That splits "cross-plugin consistency" into two very different cases:
 Today's connect-time protocol check already lives on the admin side and is
 **eventual detection, not prevention**: on mismatch it emits
 `ReportIncompatibility` but *"the connection still proceeds"*
-([PluginExtensionPoint_Plugin.res:145-169](../../reventless/reventless-core/src/admin/PluginExtensionPoint_Plugin.res#L145)).
+([PluginExtensionPoint_Plugin.res:145-169](../../reventless/core/src/admin/PluginExtensionPoint_Plugin.res#L145)).
 The real design question is which **case-(I)** invariants should become atomic
 prevention — and that is an *admin-store modelling* choice, not a business-plugin
 DCB question.
@@ -870,7 +870,7 @@ enforceable) or **(II)** domain-data (cross-log, *not* atomically enforceable).
 - *Why it's enforceable:* every plugin's EP declarations are in the admin store
   (via `Connect`). The admin already routes commands by scanning for the first
   connected provider — `forwardCommand` picks `plugins[0]`
-  ([PluginExtensionPoint_Plugin.res:28-44](../../reventless/reventless-core/src/admin/PluginExtensionPoint_Plugin.res#L28)),
+  ([PluginExtensionPoint_Plugin.res:28-44](../../reventless/core/src/admin/PluginExtensionPoint_Plugin.res#L28)),
   so two providers → **nondeterministic routing (a real latent bug today)**.
 - *Mechanism:* admin-side — a `PluginRegistry` aggregate, or an admin DCB slice
   tagged `extensionPointName`, rejects a second claimant. **No business-plugin

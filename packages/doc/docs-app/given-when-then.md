@@ -1,7 +1,7 @@
 # Given-When-Then Testing in Reventless
 
 Reventless ships a dedicated Given-When-Then (GWT) test framework,
-[`@reventlessdev/reventless-gwt`](https://github.com/ReventlessDev/reventless-core/tree/main/reventless/reventless-gwt/), with a DSL
+[`@reventlessdev/reventless-gwt`](https://github.com/ReventlessDev/reventless-core/tree/main/reventless/gwt/), with a DSL
 for every Event Modeling slice type, a runner-agnostic `Outcome` algebra, and a
 standalone CLI runner (`reventless-gwt`) with five output formats (human, JSON,
 TAP, JUnit, VS Code Testing API).
@@ -132,7 +132,7 @@ Deviations from the shared vocabulary are called out per-DSL below.
 
 Each example is a minimal but complete `_GWT` file that you can copy as a
 template. All nine are also shipped as runnable worked-example tests in
-[`reventless/reventless-gwt/tests/`](https://github.com/ReventlessDev/reventless-core/tree/main/reventless/reventless-gwt/tests/).
+[`reventless/gwt/tests/`](https://github.com/ReventlessDev/reventless-core/tree/main/reventless/gwt/tests/).
 
 ### 4.1 `Behavior_GWT` — Aggregate command slice
 
@@ -230,7 +230,7 @@ describe("AddCategory StateChangeSlice", () => {
 ```
 
 Runnable copy:
-[`reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res).
+[`reventless/gwt/tests/StateChangeSliceGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/gwt/tests/StateChangeSliceGwtTest.res).
 
 **Important:** every `@s.matches(Reventless.DcbTag.string)` annotation on the
 command's ID fields is what enables the implicit `AppendConditionMismatch`
@@ -314,7 +314,7 @@ describe("CategoriesView StateViewSlice", () => {
 ```
 
 Runnable copy:
-[`reventless/reventless-gwt/tests/StateViewSliceGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-gwt/tests/StateViewSliceGwtTest.res).
+[`reventless/gwt/tests/StateViewSliceGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/gwt/tests/StateViewSliceGwtTest.res).
 
 ### 4.5 `Query_GWT` — ReadModel + StateViewSlice queries
 
@@ -347,7 +347,7 @@ CategoriesQuery.describe("Categories ReadModel queries", () => {
 
 `whenQuery` fails with `QueryRowsMismatch` when `index` is named but the
 referenced entry is missing from `Spec.config.indexes`. Runnable copy:
-[`reventless/reventless-gwt/tests/QueryGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-gwt/tests/QueryGwtTest.res).
+[`reventless/gwt/tests/QueryGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/gwt/tests/QueryGwtTest.res).
 
 ### 4.6 `Mapping_GWT` — cross-pattern automation
 
@@ -395,7 +395,7 @@ CatalogGwt.describe("Category → Product (Aggr → Aggr)", () =>
 available for the error combinations. Swap one or both adapters to
 `FromStateChangeSlice` for the DCB combinations. Runnable copies of all four
 Aggregate/DCB combinations live in
-[`reventless/reventless-gwt/tests/MappingGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-gwt/tests/MappingGwtTest.res).
+[`reventless/gwt/tests/MappingGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/gwt/tests/MappingGwtTest.res).
 
 ### 4.7 `Automation_GWT` — DCB automation
 
@@ -452,7 +452,7 @@ describe("ShipOrder AutomationSlice", () => {
 ```
 
 Runnable copy:
-[`reventless/reventless-gwt/tests/AutomationGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-gwt/tests/AutomationGwtTest.res).
+[`reventless/gwt/tests/AutomationGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/gwt/tests/AutomationGwtTest.res).
 
 ### 4.8 `InboundTranslation_GWT` — external → internal translation
 
@@ -667,7 +667,7 @@ value — they only differ in how they render it.
 Every failure is paired with a `Hint` record `{locus, branch, message}`. Hints
 ship inside the JSON/VS Code output so downstream tools can route a fix without
 re-deriving the mapping. The canonical table lives in
-[`reventless-gwt/src/Hint.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-gwt/src/Hint.res).
+[`reventless-gwt/src/Hint.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/gwt/src/Hint.res).
 
 ---
 

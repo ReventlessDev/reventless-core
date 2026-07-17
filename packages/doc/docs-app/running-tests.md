@@ -67,10 +67,10 @@ Use `dev` or `dev:fail` as your normal development loop — edit a `.res` file, 
 Navigate to the package directory and run its tests directly:
 
 ```bash
-cd reventless/reventless-core
+cd reventless/core
 npm test
 
-cd reventless/reventless-local
+cd reventless/local
 npm test
 
 cd examples/online-shop-dcb/catalog
@@ -88,7 +88,7 @@ npm run dev      # jest --watchAll
 From a package directory, pass the file path to Jest directly:
 
 ```bash
-cd reventless/reventless-core
+cd reventless/core
 NODE_OPTIONS='--experimental-vm-modules' npx jest tests/aggregate/AggregateCallbackTest.res.mjs
 ```
 

@@ -242,7 +242,7 @@ a live owner); only final retirement (stack destroyed, resolvers gone) triggers 
   extraction it proposed is superseded by § 8: its store half is replaced by registry
   slices; its sink half already exists as `Api_Adapter.updateSchema` / the runtime
   re-stitcher.
-- `reventless/reventless-aws/src/plugin/SchemaFragmentPush.res` (uncommitted 1:1 extraction
+- `reventless/aws/src/plugin/SchemaFragmentPush.res` (uncommitted 1:1 extraction
   draft incl. a `resolveTarget` helper) — **deleted**; throwaway under § 8.
 - New plan **written**: `docs/plans/event-sourced-fragment-registries.md` — two registries,
   two state machines, deploy-as-system-caller for API, runtime handshake for UI,
@@ -337,23 +337,23 @@ metadata instead of parsing-and-stripping). Picked up as an explicit work item i
 
 | What | Where |
 |---|---|
-| Deploy-time push closure | `reventless/reventless-aws/src/Platform.res:749–1091` |
-| Admin schema push | `reventless/reventless-aws/src/Platform.res:691–742` |
-| Hash helpers / prefixes | `reventless/reventless-aws/src/Platform.res:603–629` |
-| Shrink threshold | `reventless/reventless-aws/src/Platform.res:21–26` |
-| Resolver gating on push | `reventless/reventless-core/src/plugin/component/Plugin_Builder.res:584–587` |
-| Fragment on handshake | `reventless/reventless-core/src/plugin/component/Plugin_Builder.res:751` |
-| Hook type | `reventless/reventless-core/src/plugin/component/Plugin_Helpers.res:919` |
-| `apiSchemaFragment` type | `reventless/reventless-spec/src/components/Plugin.res:93` |
-| `uiFragmentManifest` type | `reventless/reventless-spec/src/components/Plugin.res:134` |
-| Api provider port | `reventless/reventless-infra/src/components/Api_Adapter.res` |
-| Runtime re-stitcher | `reventless/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs:504` |
-| UI projection | `reventless/reventless-core/src/admin/UIFragmentRegistryProjection.res` |
-| UI query API (shared encoder) | `reventless/reventless-core/src/admin/Platform_UIFragmentsApi.res` |
-| Stitcher (generic math) | `reventless/reventless-core/src/components/Api/GraphQL_Stitcher.res` |
-| Bootstrap barrier + hook invocation | `reventless/reventless-core/src/admin/Platform_Admin.res:295–315` |
-| Admin base fragment (incl. `@aws_subscribe` leak) | `reventless/reventless-core/src/admin/AdminApi.res:44,61,63–88` |
-| Source C subscriptions (`@aws_subscribe` leak) | `reventless/reventless-core/src/plugin/component/Plugin_SubscriptionSchema.res:35` |
-| AppSync push helpers (retry, wait, auth stamping) | `reventless/reventless-aws/src/components/Api/AppSync_Adapter.res` |
-| Local platform `@aws_subscribe` stripping | `reventless/reventless-graphql-server/src/GraphQL_SubscriptionBridge.res:69–72` |
-| Local platform `@aws_auth` emulation | `reventless/reventless-local/src/adapter/Auth/Auth_GraphqlContext.res` |
+| Deploy-time push closure | `reventless/aws/src/Platform.res:749–1091` |
+| Admin schema push | `reventless/aws/src/Platform.res:691–742` |
+| Hash helpers / prefixes | `reventless/aws/src/Platform.res:603–629` |
+| Shrink threshold | `reventless/aws/src/Platform.res:21–26` |
+| Resolver gating on push | `reventless/core/src/plugin/component/Plugin_Builder.res:584–587` |
+| Fragment on handshake | `reventless/core/src/plugin/component/Plugin_Builder.res:751` |
+| Hook type | `reventless/core/src/plugin/component/Plugin_Helpers.res:919` |
+| `apiSchemaFragment` type | `reventless/spec/src/components/Plugin.res:93` |
+| `uiFragmentManifest` type | `reventless/spec/src/components/Plugin.res:134` |
+| Api provider port | `reventless/infra/src/components/Api_Adapter.res` |
+| Runtime re-stitcher | `reventless/aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs:504` |
+| UI projection | `reventless/core/src/admin/UIFragmentRegistryProjection.res` |
+| UI query API (shared encoder) | `reventless/core/src/admin/Platform_UIFragmentsApi.res` |
+| Stitcher (generic math) | `reventless/core/src/components/Api/GraphQL_Stitcher.res` |
+| Bootstrap barrier + hook invocation | `reventless/core/src/admin/Platform_Admin.res:295–315` |
+| Admin base fragment (incl. `@aws_subscribe` leak) | `reventless/core/src/admin/AdminApi.res:44,61,63–88` |
+| Source C subscriptions (`@aws_subscribe` leak) | `reventless/core/src/plugin/component/Plugin_SubscriptionSchema.res:35` |
+| AppSync push helpers (retry, wait, auth stamping) | `reventless/aws/src/components/Api/AppSync_Adapter.res` |
+| Local platform `@aws_subscribe` stripping | `reventless/graphql-server/src/GraphQL_SubscriptionBridge.res:69–72` |
+| Local platform `@aws_auth` emulation | `reventless/local/src/adapter/Auth/Auth_GraphqlContext.res` |

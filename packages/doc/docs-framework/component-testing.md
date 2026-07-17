@@ -85,7 +85,7 @@ let _ = beforeAllAsync(async () => {
 
 ### reventless-core — Unit tests
 
-All files are under `reventless/reventless-core/tests/`.
+All files are under `reventless/core/tests/`.
 
 #### Utility / infrastructure tests
 
@@ -171,7 +171,7 @@ All files are under `reventless/reventless-core/tests/`.
 
 ### reventless-local — Adapter unit tests
 
-All files are under `reventless/reventless-local/tests/adapter/`.
+All files are under `reventless/local/tests/adapter/`.
 
 These tests verify the in-memory adapter implementations themselves — the modules that sit between the builder and the abstract adapter interface.
 
@@ -192,7 +192,7 @@ These tests verify the in-memory adapter implementations themselves — the modu
 
 ### reventless-local — Builder E2E tests
 
-All files are under `reventless/reventless-local/tests/components/`.
+All files are under `reventless/local/tests/components/`.
 
 These are integration tests. Each test calls a `_Builder.Make(Bus)` functor, creates a component, resolves its `operations` Output chain, then drives it via the bus or operations directly and observes effects.
 

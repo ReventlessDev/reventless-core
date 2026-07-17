@@ -15,8 +15,8 @@ A plugin's DCB EventLog is its own first-class event source — separate from Ex
 
 Today:
 
-1. `Plugin_Callback` has special-case logic ([Plugin_Callback.res:35-50](../../reventless/reventless-core/src/components/Plugin/Plugin_Callback.res#L35-L50)) for `ownDcbEventLogServiceName = "${plugin.name}DcbEventLog"` — silences the "unmatched service" warning for events this plugin published from its own DCB log but that no extension consumes. This implies the framework already expects DCB events to flow through the same EventCollector pipeline that handles ExtensionPoint events.
-2. The deploy-time `pluginOutputs.dcbEventLog: option<DcbEventLog.outputs>` is populated and serialised into intermediate state ([Plugin_Helpers.res:30, 939, 997, 1147](../../reventless/reventless-core/src/components/Plugin/Plugin_Helpers.res#L30)). But the `pluginDefinition` schema published in `Connected` events ([Plugin.res:241-254](../../reventless/reventless-spec/src/components/Plugin.res#L241-L254)) does NOT include the DCB EventLog's EventTopic ARN — it only carries `extensionPoints[]` (each with its own EventTopic). So the admin (which uses `pluginDefinition` from the Connected event payload to drive Phase 3's `manageSubscriptions`) has no way to discover that pluginX has a DCB EventLog and where its topic lives.
+1. `Plugin_Callback` has special-case logic ([Plugin_Callback.res:35-50](../../reventless/core/src/components/Plugin/Plugin_Callback.res#L35-L50)) for `ownDcbEventLogServiceName = "${plugin.name}DcbEventLog"` — silences the "unmatched service" warning for events this plugin published from its own DCB log but that no extension consumes. This implies the framework already expects DCB events to flow through the same EventCollector pipeline that handles ExtensionPoint events.
+2. The deploy-time `pluginOutputs.dcbEventLog: option<DcbEventLog.outputs>` is populated and serialised into intermediate state ([Plugin_Helpers.res:30, 939, 997, 1147](../../reventless/core/src/components/Plugin/Plugin_Helpers.res#L30)). But the `pluginDefinition` schema published in `Connected` events ([Plugin.res:241-254](../../reventless/spec/src/components/Plugin.res#L241-L254)) does NOT include the DCB EventLog's EventTopic ARN — it only carries `extensionPoints[]` (each with its own EventTopic). So the admin (which uses `pluginDefinition` from the Connected event payload to drive Phase 3's `manageSubscriptions`) has no way to discover that pluginX has a DCB EventLog and where its topic lives.
 3. Each plugin's bundled `Plugin_Builder` extends its own EventCollector subscription list with the plugin's own DCB EventTopic (intra-plugin routing) but cross-plugin DCB consumption has no wiring at all. A catalog extension declaring `Source { name: "OrderingDcbEventLog" }` is dead at runtime.
 
 The cross-plugin DCB story is a structural gap, not a runtime stub. Phase 3's `manageSubscriptions` solves the equivalent gap for ExtensionPoints; this plan extends the same mechanism to DCB topics.
@@ -34,7 +34,7 @@ The plan splits into the schema change, the deploy-side wiring, the admin's `man
 
 ## Step 1 — Extend `pluginDefinition` with `dcbEventLog`
 
-File: `reventless/reventless-spec/src/components/Plugin.res`
+File: `reventless/spec/src/components/Plugin.res`
 
 Add:
 
@@ -78,7 +78,7 @@ Step 1
 
 ## Step 2 — Deploy-side: populate `dcbEventLog` when the plugin has one
 
-File: `reventless/reventless-core/src/components/Plugin/Plugin_Helpers.res`
+File: `reventless/core/src/components/Plugin/Plugin_Helpers.res`
 
 The pluginDefinition is built inside `Plugin_Helpers` (and copied into Connect commands by the heartbeat path or by the deploy-time bootstrap). Wherever pluginDefinition is constructed, check whether `pluginOutputs.dcbEventLog` is `Some`, and if so extract the topic ARN.
 
@@ -120,11 +120,11 @@ Step 2
 
 ## Step 3 — Project `dcbEventLog` into the Plugin RM
 
-File: `reventless/reventless-core/src/admin/PluginProjection.res`
+File: `reventless/core/src/admin/PluginProjection.res`
 
 The Plugin RM is what admin's `manageSubscriptions` scans to learn about peers. The projection currently maps Connected → state with extensionPoints, extensions, eventCollector, etc. Add `dcbEventLog: option<dcbEventLogDefinition>` to the state schema and the projection's mapping.
 
-File: `reventless/reventless-core/src/admin/PluginReadModelSpec.res`
+File: `reventless/core/src/admin/PluginReadModelSpec.res`
 
 Extend the state schema to include `dcbEventLog: option<dcbEventLogDefinition>`.
 
@@ -142,7 +142,7 @@ Step 3
 
 ## Step 4 — Extend `manageSubscriptions` to cover DCB topics
 
-File: `reventless/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs` (the admin entry point rewritten in Phase 1, with `manageSubscriptions` added in Phase 3)
+File: `reventless/aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs` (the admin entry point rewritten in Phase 1, with `manageSubscriptions` added in Phase 3)
 
 Today's Phase 3 `manageSubscriptions` walks `pluginDef.extensions[].extensionPointName` to find peer EPs. Add a parallel scan for DCB source names. Convention: an extension that consumes plugin X's DCB events declares a Source with `name = "${X.name}DcbEventLog"`.
 
@@ -297,8 +297,8 @@ This completes the cross-plugin event routing story for the two source types Rev
 
 ## References
 
-- [Plugin_Callback ownDcbEventLogServiceName handling](../../reventless/reventless-core/src/components/Plugin/Plugin_Callback.res#L35-L50) — current intra-plugin DCB awareness
-- [Plugin_Helpers.dcbEventLog wiring (deploy-time)](../../reventless/reventless-core/src/components/Plugin/Plugin_Helpers.res#L939) — where the DCB topic ARN already flows at deploy time (just not into pluginDefinition)
-- [Plugin.pluginDefinition schema](../../reventless/reventless-spec/src/components/Plugin.res#L241-L254) — where the new `dcbEventLog` field lands
+- [Plugin_Callback ownDcbEventLogServiceName handling](../../reventless/core/src/components/Plugin/Plugin_Callback.res#L35-L50) — current intra-plugin DCB awareness
+- [Plugin_Helpers.dcbEventLog wiring (deploy-time)](../../reventless/core/src/components/Plugin/Plugin_Helpers.res#L939) — where the DCB topic ARN already flows at deploy time (just not into pluginDefinition)
+- [Plugin.pluginDefinition schema](../../reventless/spec/src/components/Plugin.res#L241-L254) — where the new `dcbEventLog` field lands
 - [Phase 3's manageSubscriptions](./plugin-eventcollector-runtime-rewire-cross-plugin.md) — the mechanism this plan extends
 - `examples/online-shop-hybrid/catalog/src/CatalogActivity/ReadModel/CatalogActivity_Projections.res` — existing intra-plugin DCB consumer; the cross-plugin variant becomes the verification fixture

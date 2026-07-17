@@ -201,7 +201,7 @@ AWS Lambda runtimes (Node.js 18+) handle this by making layer packages discovera
 
 ### Location
 
-`reventless/reventless-layer-builder/` — private package, not published.
+`reventless/layer-builder/` — private package, not published.
 
 ### How It Works
 
@@ -322,13 +322,13 @@ Final size: ~30–40 MB uncompressed. Lambda limit is 50 MB per layer (uncompres
 | Event | Condition | Version Source |
 |-------|-----------|----------------|
 | Tag push | `@reventlessdev/reventless-aws@*` | extracted from tag |
-| Branch push | `main`, `beta`, `alpha` + path `reventless/reventless-layer-builder/**` | `reventless-aws/package.json` |
+| Branch push | `main`, `beta`, `alpha` + path `reventless/layer-builder/**` | `reventless-aws/package.json` |
 | Manual dispatch | `workflow_dispatch` | input parameter |
 
 **Steps:**
 1. Checkout + setup Node.js 22.17.1
 2. `npm install` (with GitHub Package Registry auth)
-3. Build layer: `cd reventless/reventless-layer-builder && npm run build`
+3. Build layer: `cd reventless/layer-builder && npm run build`
 4. Verify artifact size (warn >40 MB)
 5. Publish to AWS Lambda: `aws lambda publish-layer-version --layer-name reventless-aws`
 6. Store new layer ARN in SSM: `aws ssm put-parameter --name /reventless/layer-arn/{stack}`
@@ -412,16 +412,16 @@ The layer is extracted once per Lambda container init. Larger layers increase co
 
 | File | Purpose |
 |------|---------|
-| `reventless/reventless-layer-builder/src/Main.res` | Layer builder config (exclusions, post-processing) |
-| `reventless/reventless-layer-builder/src/DependencyBundler.res` | Build orchestration |
-| `reventless/reventless-layer-builder/src/DependencyBundler_Config.res` | Config type definition |
-| `reventless/reventless-layer-builder/src/DependencyBundler_Filter.res` | Inclusion/exclusion logic |
-| `reventless/reventless-layer-builder/src/DependencyBundler_PostProcess.res` | Per-package file cleanup |
-| `reventless/reventless-aws/src/util/Util_Bundle.mjs` | esbuild bundling (external list) |
-| `reventless/reventless-aws/src/util/Util_Bundle.res` | ReScript bindings for bundling |
-| `reventless/reventless-aws/src/util/Util_EntryPoint.mjs` | Lambda entry point code generation |
-| `reventless/reventless-aws/src/util/Util_EntryPoint.res` | Entry point config types |
-| `reventless/reventless-aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res` | Lambda deployment (layer attachment) |
+| `reventless/layer-builder/src/Main.res` | Layer builder config (exclusions, post-processing) |
+| `reventless/layer-builder/src/DependencyBundler.res` | Build orchestration |
+| `reventless/layer-builder/src/DependencyBundler_Config.res` | Config type definition |
+| `reventless/layer-builder/src/DependencyBundler_Filter.res` | Inclusion/exclusion logic |
+| `reventless/layer-builder/src/DependencyBundler_PostProcess.res` | Per-package file cleanup |
+| `reventless/aws/src/util/Util_Bundle.mjs` | esbuild bundling (external list) |
+| `reventless/aws/src/util/Util_Bundle.res` | ReScript bindings for bundling |
+| `reventless/aws/src/util/Util_EntryPoint.mjs` | Lambda entry point code generation |
+| `reventless/aws/src/util/Util_EntryPoint.res` | Entry point config types |
+| `reventless/aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res` | Lambda deployment (layer attachment) |
 | `rescript/rescript-pulumi-aws/src/Lambda/Lambda.res` | `REVENTLESS_LAYER_ARN` binding |
 | `.github/workflows/build-lambda-layer.yml` | CI/CD layer build + publish |
 | SSM `/reventless/layer-arn/{stack}` | Current layer ARN (written by CI, per stack/region) |

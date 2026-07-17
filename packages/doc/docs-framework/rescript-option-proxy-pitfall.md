@@ -150,4 +150,4 @@ if isSet.contents { Some(myOutput.contents) } else { None }
 - Pulumi issue: [pulumi-terraform-bridge#62](https://github.com/pulumi/pulumi-terraform-bridge/issues/62) — Pulumi panic on the sentinel
 - This repo: [`rescript-pulumi-pulumi/src/Rescript11Problem.res`](https://github.com/ReventlessDev/reventless-core/blob/main/rescript/rescript-pulumi-pulumi/src/Rescript11Problem.res) — original problem documentation with reproduction code
 - This repo: [`rescript-pulumi-pulumi/src/Output.res`](https://github.com/ReventlessDev/reventless-core/blob/main/rescript/rescript-pulumi-pulumi/src/Output.res) lines 83-87 — earlier workaround attempt
-- Fix applied: [`Plugin_Helpers.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/Plugin/Plugin_Helpers.res) — `interopMetaOutput` ref uses raw null instead of `option`
+- Fix applied: [`Plugin_Helpers.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/core/src/components/Plugin/Plugin_Helpers.res) — `interopMetaOutput` ref uses raw null instead of `option`

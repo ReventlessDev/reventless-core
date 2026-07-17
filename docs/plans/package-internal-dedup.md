@@ -12,7 +12,7 @@ Each step below lands with its own tests and a clean zero-warning build; verify 
 
 ## Step 1 — Unify admin GraphQL schema registration (`reventless-local`)
 
-**Where:** `reventless/reventless-local/src/Platform.res`.
+**Where:** `reventless/local/src/Platform.res`.
 
 **Current state:** the inner resolver registration is already factored into `registerAdminItemsAndIndexResolvers(~queryResolvers, ~live)` (≈ line 1267). But it is called from **three** distinct registration blocks that each wrap it with their own admin-schema setup and differ subtly:
 - **domain single-server** path (≈ line 1683, `~live=true`),
@@ -33,7 +33,7 @@ Each step below lands with its own tests and a clean zero-warning build; verify 
 
 ## Step 2 — Namespace interop's spec-colliding module names (`reventless-interop`)
 
-**Where:** `reventless/reventless-interop/src/components/`.
+**Where:** `reventless/interop/src/components/`.
 
 **Current state:** interop declares 20 component modules whose names shadow the framework's spec/core modules of the same name — `Aggregate`, `ReadModel`, `StateChangeSlice`, `StateViewSlice`, `Plugin`, `Counter`, `Task`, `ExtensionPoint`, `EventLog`, `DcbEventLog`, `CommandGenerator`, `CommandTopic`, `EventTopic`, `EventCollector`, `EventMapper`, `QueryDb`, `AutomationSlice`, `InboundTranslationSlice`, `OutboundTranslationSlice`. A file that `open`s both `ReventlessInterop` and the core/spec namespace gets ambiguous references and must fully-qualify — and the collision makes cross-reading error-prone (`Aggregate.resolvedOutputs` vs `Aggregate.T`).
 
@@ -51,7 +51,7 @@ Recommend **(A)** with the `…Outputs` suffix (names then say what they are), g
 
 ## Step 3 — Fold `FormatterJson`/`FormatterVsCode` onto the shared mismatch vocabulary + optional JUnit change (`reventless-gwt`)
 
-**Where:** `reventless/reventless-gwt/src/Formatter*.res`.
+**Where:** `reventless/gwt/src/Formatter*.res`.
 
 **Current state:** `FormatterHuman` and `FormatterTap` already render mismatches through the shared `MismatchRender.normalize(m): {kind, fields}` vocabulary. `FormatterJson.mismatchJson` (and `FormatterVsCode`) still use a **separate**, richer surface — a structured `{type, payload, rendered}` shape plus `fieldDiff` (`Diff.diffArrays`/`Diff.diff` → `Diff.toJsonArray`). JUnit (`Outcome.format`) uses yet another (JSON-based) rendering.
 
@@ -70,7 +70,7 @@ Recommend **(A)** with the `…Outputs` suffix (names then say what they are), g
 
 ## Step 4 — gwt test-DSL vocabulary alignment (`reventless-gwt`) — needs naming sign-off
 
-**Where:** `reventless/reventless-gwt/src/*_GWT.res` DSLs and the example `_GWT` tests that consume them.
+**Where:** `reventless/gwt/src/*_GWT.res` DSLs and the example `_GWT` tests that consume them.
 
 **Current state — user-facing inconsistencies:**
 - Command step spelled `whenCmd` / `whenCommand` / `whenSourceCmd` across DSLs.

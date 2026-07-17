@@ -20,8 +20,8 @@
 # workspace:* to concrete semver at publish, so this only bites in link mode.
 
 packages:
-  - '../reventless-ui/reventless/reventless-ui'
-  - '../reventless-ui/reventless/reventless-routes'
+  - '../reventless-ui/reventless/ui'
+  - '../reventless-ui/reventless/routes'
 
 # Uncomment to force transitive consumers of reventless-ui to the live copy:
 # overrides:

@@ -18,7 +18,7 @@ module.exports = {
   reporters: ["<rootDir>/jest.reporter.js"],
   setupFiles: [setupFile],
   testMatch: [
-    "<rootDir>/reventless/reventless-aws/tests/Pg*IntegrationTest.res.mjs",
+    "<rootDir>/reventless/aws/tests/Pg*IntegrationTest.res.mjs",
   ],
   moduleFileExtensions: ["js", "mjs", "cjs"],
   // Mirror the default reventless-aws project's shims (paths rebased to this
@@ -26,7 +26,7 @@ module.exports = {
   // graph, which references @npmcli/arborist + spdx-*. Without these the real
   // modules throw during ESM collection and the suite silently registers 0 tests.
   moduleNameMapper: {
-    "^@npmcli/arborist$": "<rootDir>/reventless/reventless-aws/__mocks__/emptyModule.js",
+    "^@npmcli/arborist$": "<rootDir>/reventless/aws/__mocks__/emptyModule.js",
     "^spdx-license-ids$": "<rootDir>/node_modules/spdx-license-ids/index.json",
     "^spdx-license-ids/deprecated$": "<rootDir>/node_modules/spdx-license-ids/deprecated.json",
     "^spdx-exceptions$": "<rootDir>/node_modules/spdx-exceptions/index.json",

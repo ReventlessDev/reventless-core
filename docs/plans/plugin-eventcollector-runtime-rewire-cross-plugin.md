@@ -6,7 +6,7 @@ Third in a series. Prerequisites:
 - [Phase 1 — minimal](./plugin-eventcollector-runtime-rewire.md) (Connect round-trip; Plugin RM populates)
 - [Phase 2 — generic](./plugin-eventcollector-runtime-rewire-generic.md) (user extensions; plugin-local RMs)
 
-This plan completes the loop by making cross-plugin event routing actually work at runtime: when plugin A's `Orders_Extension` is interested in events from plugin B's `Orders_ExtensionPoint`, plugin A's `EventCollector` SQS queue must be subscribed to plugin B's SNS EventTopic. Today's `PluginConnectExtension_Builder` was designed for this — `DoConnectPlugin` directive invokes `Spec.runtimeOps.topicSubscription.subscribeChannelToTopic` — but the bundled-Lambda entry points stub `subscribeChannelToTopic` as `async () => {}` (see [PluginExtensionPointEntryPoint.mjs:49](../../reventless/reventless-aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.mjs#L49), [AdminEventCollectorEntryPoint.mjs:57](../../reventless/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs#L57)). The actual AWS implementation already exists at [Util_TopicSubscription_Runtime](../../reventless/reventless-aws/src/util/Util_TopicSubscription_Runtime.res) — it just isn't wired.
+This plan completes the loop by making cross-plugin event routing actually work at runtime: when plugin A's `Orders_Extension` is interested in events from plugin B's `Orders_ExtensionPoint`, plugin A's `EventCollector` SQS queue must be subscribed to plugin B's SNS EventTopic. Today's `PluginConnectExtension_Builder` was designed for this — `DoConnectPlugin` directive invokes `Spec.runtimeOps.topicSubscription.subscribeChannelToTopic` — but the bundled-Lambda entry points stub `subscribeChannelToTopic` as `async () => {}` (see [PluginExtensionPointEntryPoint.mjs:49](../../reventless/aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.mjs#L49), [AdminEventCollectorEntryPoint.mjs:57](../../reventless/aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs#L57)). The actual AWS implementation already exists at [Util_TopicSubscription_Runtime](../../reventless/aws/src/util/Util_TopicSubscription_Runtime.res) — it just isn't wired.
 
 ## Problem
 
@@ -87,8 +87,8 @@ The rest of this plan assumes Option B.
 ## Step 1 — Move subscription management from plugin runtime to admin
 
 Files:
-- `reventless/reventless-core/src/admin/PluginExtensionPoint_Plugin.res` — already has `DoConnectPlugin` / `DoDisconnectPlugin` handler dispatching to `Spec.updateApiSchema`. Add a parallel `Spec.manageSubscriptions` hook (or extend `updateApiSchema` into a more generic `onConnect`/`onDisconnect` pair).
-- `reventless/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs` — implement the new hook.
+- `reventless/core/src/admin/PluginExtensionPoint_Plugin.res` — already has `DoConnectPlugin` / `DoDisconnectPlugin` handler dispatching to `Spec.updateApiSchema`. Add a parallel `Spec.manageSubscriptions` hook (or extend `updateApiSchema` into a more generic `onConnect`/`onDisconnect` pair).
+- `reventless/aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs` — implement the new hook.
 
 New AdminEventColl HANDLER_CONFIG fields:
 ```json
@@ -267,7 +267,7 @@ Step 2
 ## Step 3 — Retire `PluginConnectExtension_Builder` subscribe path
 
 Files:
-- `reventless/reventless-core/src/admin/PluginConnectExtension_Builder.res` — `callHandler`'s `DoConnectPlugin` / `DoDisconnectPlugin` cases currently call `subscribe`/`unsubscribe`. With admin owning subscription management, these become no-ops.
+- `reventless/core/src/admin/PluginConnectExtension_Builder.res` — `callHandler`'s `DoConnectPlugin` / `DoDisconnectPlugin` cases currently call `subscribe`/`unsubscribe`. With admin owning subscription management, these become no-ops.
 - The whole extension might become unnecessary IF its only purpose was subscription management. Check: does it produce any other actions besides Connect (which is upstream of admin) and the subscribe/unsubscribe directives?
 
 Looking at the current `mapIncomingEvent`:
@@ -322,7 +322,7 @@ End-to-end fixture from Phase 2's Step 5, now with cross-plugin events actually 
 
 ### Local layer build is blocked
 
-The Lambda Layer builder at `reventless/reventless-layer-builder` fetches
+The Lambda Layer builder at `reventless/layer-builder` fetches
 `@reventlessdev/reventless-aws` via `Arborist` / `Pacote` from the GitHub
 Packages npm registry — it does NOT use the local pnpm workspace. So Phase 3
 spec/runtime changes only reach the deployed layer after CI publishes new
@@ -441,7 +441,7 @@ After Phase 3, both prior plans simplify:
 
 ## References
 
-- [Util_TopicSubscription_Runtime.subscribe](../../reventless/reventless-aws/src/util/Util_TopicSubscription_Runtime.res) — already-implemented AWS SDK wrapper (just unused)
-- [PluginConnectExtension_Builder.callHandler](../../reventless/reventless-core/src/admin/PluginConnectExtension_Builder.res#L52) — current per-plugin subscribe path (to be retired in Step 3)
-- [PluginExtensionPoint_Plugin.callHandler](../../reventless/reventless-core/src/admin/PluginExtensionPoint_Plugin.res#L72) — admin's DoConnectPlugin dispatch (where `manageSubscriptions` hooks in alongside `updateApiSchema`)
+- [Util_TopicSubscription_Runtime.subscribe](../../reventless/aws/src/util/Util_TopicSubscription_Runtime.res) — already-implemented AWS SDK wrapper (just unused)
+- [PluginConnectExtension_Builder.callHandler](../../reventless/core/src/admin/PluginConnectExtension_Builder.res#L52) — current per-plugin subscribe path (to be retired in Step 3)
+- [PluginExtensionPoint_Plugin.callHandler](../../reventless/core/src/admin/PluginExtensionPoint_Plugin.res#L72) — admin's DoConnectPlugin dispatch (where `manageSubscriptions` hooks in alongside `updateApiSchema`)
 - [Phase 1](./plugin-eventcollector-runtime-rewire.md), [Phase 2](./plugin-eventcollector-runtime-rewire-generic.md)

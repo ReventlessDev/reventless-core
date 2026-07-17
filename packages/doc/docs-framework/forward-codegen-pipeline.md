@@ -10,11 +10,11 @@ The pipeline is owned by the `@reventlessdev/reventless-codegen` package. The in
 
 ```bash
 # Validate an Event Modeling JSON document
-pnpm exec node reventless/reventless-codegen/run-codegen.mjs validate \
+pnpm exec node reventless/codegen/run-codegen.mjs validate \
   --in path/to/model.json --plugin-name Catalog
 
 # Run a full forward pass — writes Spec / GWT / Skeleton / sync-base
-pnpm exec node reventless/reventless-codegen/run-codegen.mjs forward \
+pnpm exec node reventless/codegen/run-codegen.mjs forward \
   --in path/to/model.json --plugin-name Catalog --out path/to/plugin
 ```
 
@@ -32,7 +32,7 @@ plugin/
 
 ## Canonical model
 
-Every adapter targets one in-memory shape: [`Model.t`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-codegen/src/Model.res). It carries slices, aggregates, read models, and structural chapters; each entity has a stable `id` for rename-survival across roundtrips. The same `@schema`-derived JSON codec writes the sync-base snapshots, so the on-disk format is human-diffable in PRs.
+Every adapter targets one in-memory shape: [`Model.t`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/codegen/src/Model.res). It carries slices, aggregates, read models, and structural chapters; each entity has a stable `id` for rename-survival across roundtrips. The same `@schema`-derived JSON codec writes the sync-base snapshots, so the on-disk format is human-diffable in PRs.
 
 Structural chapters in `slice.context` (e.g. `"Catalog.Product"`) become subfolder names — the first segment is the plugin, the rest is the chapter folder under `src/` and `tests/`.
 

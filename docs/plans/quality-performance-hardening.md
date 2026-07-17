@@ -139,7 +139,7 @@ Synthetic-workspace generator (N plugins × M slices × K tests) with timed `dis
 
 ### A1 — gwt: watch re-runs must execute current code
 
-`reventless/reventless-gwt/src/Loader.res:19-24` cache-busts only the test file's own URL (`?t=N`); its static imports — the slice/behavior modules under test — resolve to unqueried URLs already in Node's ESM registry, so after a recompile a re-run re-registers tests that close over the **old** module instances. `src/LocalHost.res:30-34` documents the same limitation for `loadGraph`. The monotonic buster also leaks: Node never evicts registry entries, so long watch sessions grow by (files × module graph) per re-run.
+`reventless/gwt/src/Loader.res:19-24` cache-busts only the test file's own URL (`?t=N`); its static imports — the slice/behavior modules under test — resolve to unqueried URLs already in Node's ESM registry, so after a recompile a re-run re-registers tests that close over the **old** module instances. `src/LocalHost.res:30-34` documents the same limitation for `loadGraph`. The monotonic buster also leaks: Node never evicts registry entries, so long watch sessions grow by (files × module graph) per re-run.
 
 **Fix (also B2):** run each re-run pass in a short-lived `worker_threads` Worker — fresh module registry per run (correctness) and memory reclaimed on worker exit (the leak). Keep the current in-process path for one-shot `run`. Alternative if workers prove awkward: content-hash cache keys (`?v=<sha256>`) plus a per-URL `Collector` entry cache so unchanged files replay entries without re-import — but this still needs transitive busting for changed *implementation* files, which the worker approach gets for free.
 
@@ -169,7 +169,7 @@ Synthetic-workspace generator (N plugins × M slices × K tests) with timed `dis
 
 ### A5 — local: a failing subscriber must not hang the topic
 
-`reventless/reventless-local/src/adapter/LocalBus.res:268`: a throwing/rejecting handler becomes an Effect defect in `Effect.promise(() => handler(...))->Effect.zipRight(msg.done_)`; `done_` never runs, the countdown (`:314-328`) never completes, the publisher's await (`:346`) hangs — and since the dead drain fiber stops consuming while `subscriberCounts` is never decremented, **every subsequent publish on that topic hangs too**. Fix: run `done_` via `Effect.ensuring`; catch handler defects and log them. Add the failing-subscriber test (none exists).
+`reventless/local/src/adapter/LocalBus.res:268`: a throwing/rejecting handler becomes an Effect defect in `Effect.promise(() => handler(...))->Effect.zipRight(msg.done_)`; `done_` never runs, the countdown (`:314-328`) never completes, the publisher's await (`:346`) hangs — and since the dead drain fiber stops consuming while `subscriberCounts` is never decremented, **every subsequent publish on that topic hangs too**. Fix: run `done_` via `Effect.ensuring`; catch handler defects and log them. Add the failing-subscriber test (none exists).
 
 Related fire-and-forget rejections to guard: `LocalBus.res:375,417`, `Scheduler/LocalScheduledPublisher.res:64`, `Platform.res:1024`.
 

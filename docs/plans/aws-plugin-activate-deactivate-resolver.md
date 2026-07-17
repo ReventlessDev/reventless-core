@@ -316,7 +316,7 @@ If no AWS callsite of `Aggregate_Builder_NoResolver` remains after this,
 delete the file. Search:
 
 ```bash
-grep -rn "Aggregate_Builder_NoResolver" reventless/reventless-aws/src/
+grep -rn "Aggregate_Builder_NoResolver" reventless/aws/src/
 ```
 
 ### 1.4 Reconcile `PluginBaseFragment.mutationEntries` with the auto-flow
@@ -492,8 +492,8 @@ with the split codes from day one.
 
 Two queries currently run at boot and never refetch:
 
-- `Platform_UIFragments` ([RegisterFragments.res:221](../reventless-ui/reventless/reventless-host-shell/src/fragments/RegisterFragments.res#L221))
-- `Platform_UIDefinitions` ([RegisterFragments.res:220](../reventless-ui/reventless/reventless-host-shell/src/fragments/RegisterFragments.res#L220))
+- `Platform_UIFragments` ([RegisterFragments.res:221](../reventless-ui/reventless/host-shell/src/fragments/RegisterFragments.res#L221))
+- `Platform_UIDefinitions` ([RegisterFragments.res:220](../reventless-ui/reventless/host-shell/src/fragments/RegisterFragments.res#L220))
 
 The framework declares an `onUIFragmentChange` subscription
 ([PluginBaseFragment.res:37](reventless-core/src/admin/PluginBaseFragment.res#L37))

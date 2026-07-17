@@ -168,7 +168,7 @@ We recommend splitting the repository, but only after properly decoupling the co
 5. **Update documentation:**
    - Main README: Add "Cloud Provider Implementations" section
    - Link to `reventless-aws` repository
-   - Document installation: `npm install @reventless/reventless @reventless/reventless-aws`
+   - Document installation: `npm install @reventless/reventless @reventless/aws`
    - Create compatibility matrix
 
 6. **Migration guide:**

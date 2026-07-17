@@ -397,7 +397,7 @@ Investigation + verification, not a code change to core itself. Verified 2026-05
 
 Wired as a registry on `AppSync_EventsApi.res` rather than as a callback field on `Platform.res` — closer to the resource that consumes it, and matches the existing `onPluginDeployedHook` pattern in `Plugin_Helpers.res`. The hook surface is intentionally minimal: downstream extensions install JS code + a data source name, the framework wires the namespace's `handlerConfigs.onSubscribe` to call it.
 
-Concrete API ([`AppSync_EventsApi.res`](../../reventless/reventless-aws/src/adapter/Api/AppSync_EventsApi.res)):
+Concrete API ([`AppSync_EventsApi.res`](../../reventless/aws/src/adapter/Api/AppSync_EventsApi.res)):
 
 ```rescript
 type subscribeAuthConfig = {

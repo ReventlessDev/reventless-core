@@ -51,7 +51,7 @@ Two scopes that must coincide didn't:
 
 | | Scope |
 |---|---|
-| **Decision-model read** of a single-tag clause `T` | events in **partition `T`** — base-table query on `id="<key>:<value>"` ([`executeQueryItemStream`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res) single-tag branch → `queryByPartitionKeyStream`). Sees only events whose **partition tag** is `T`. |
+| **Decision-model read** of a single-tag clause `T` | events in **partition `T`** — base-table query on `id="<key>:<value>"` ([`executeQueryItemStream`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res) single-tag branch → `queryByPartitionKeyStream`). Sees only events whose **partition tag** is `T`. |
 | **Fence bump** for tag `T` | **every** event carrying tag `T`, from any partition (`collectEventTags` + conditional updates over `collectQueryTags`). |
 
 Events are partitioned by their **primary tag** ([primary-tag partitioning](../plans/done/dcb-eventlog-primary-tag-partitioning.md)), so a tag that is *secondary* on one event type but *primary* on another splits across partitions while sharing one fence.
@@ -173,13 +173,13 @@ Only single-tag base-table reads opted into strong consistency ([dcb-strong-cons
 
 ## Issue 9 — `appendUnconditional` still bumps all event tags
 
-The seeding/replay path ([`appendUnconditional`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res)) still bumps **every** event tag (left unchanged by Issue 1's fix to preserve composite seed-visibility). This is inconsistent with the new partition-scope invariant: a multi-tag event seeded this way re-introduces cross-partition fence bumps. Seeding-only and low-risk (runtime order writes go through `appendConditional`), but a known inconsistency — revisit alongside a composite-fence design (option A) if ever adopted.
+The seeding/replay path ([`appendUnconditional`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res)) still bumps **every** event tag (left unchanged by Issue 1's fix to preserve composite seed-visibility). This is inconsistent with the new partition-scope invariant: a multi-tag event seeded this way re-introduces cross-partition fence bumps. Seeding-only and low-risk (runtime order writes go through `appendConditional`), but a known inconsistency — revisit alongside a composite-fence design (option A) if ever adopted.
 
 ---
 
 ## Issue 10 — Hot-tag fence ceiling; retry exhaustion surfaces as `Conflict`
 
-A single fence item caps at ~500 conditional transactions/sec for that tag value (DynamoDB ~1000 WCU/partition, 2 WCU/transaction item). Concurrent writers contend on the same fence; the slice's 3-retry loop ([`StateChangeSlice_Callback`](../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res)) can bottom out under bursts and surface transient contention to the caller as a `Conflict`. Tracked: [`dcb-hot-tag-fence-contention`](../plans/done/dcb-hot-tag-fence-contention.md) (fence sharding + selective bumping).
+A single fence item caps at ~500 conditional transactions/sec for that tag value (DynamoDB ~1000 WCU/partition, 2 WCU/transaction item). Concurrent writers contend on the same fence; the slice's 3-retry loop ([`StateChangeSlice_Callback`](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res)) can bottom out under bursts and surface transient contention to the caller as a `Conflict`. Tracked: [`dcb-hot-tag-fence-contention`](../plans/done/dcb-hot-tag-fence-contention.md) (fence sharding + selective bumping).
 
 ---
 
@@ -323,7 +323,7 @@ The write is bounded and modest; the **read dominates and scales with course siz
 
 ### Symptom
 
-`DcbTag.buildQueryFromCommand` attaches the slice's **entire** consumed-event-type list to **every** clause it builds — it never pairs a tag with the specific event types that actually carry it ([`DcbTag.res` `buildQueryFromCommand`](../../reventless/reventless-spec/src/components/DcbTag.res)). So `PlaceOrder` (consumed `OrderPlaced({orderId})` | `CatalogProductSynced({productId})`) produces:
+`DcbTag.buildQueryFromCommand` attaches the slice's **entire** consumed-event-type list to **every** clause it builds — it never pairs a tag with the specific event types that actually carry it ([`DcbTag.res` `buildQueryFromCommand`](../../reventless/spec/src/components/DcbTag.res)). So `PlaceOrder` (consumed `OrderPlaced({orderId})` | `CatalogProductSynced({productId})`) produces:
 
 ```
 [ { eventTypes: [OrderPlaced, CatalogProductSynced], tags: [orderId:ord-1]   },
@@ -335,7 +335,7 @@ The first clause asks for a `CatalogProductSynced` tagged `orderId` — an event
 
 ### Mechanism
 
-A clause matches an event when *its type is in `eventTypes`* **AND** *the event carries all the clause's tags* (literally `event_type IN (…) AND EXISTS(tag…)` in the local backend, [`DcbEventLogStorage_Sqlite.res:93-115`](../../reventless/reventless-local/src/adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res#L93)). Two consequences fall out of the over-broad type list:
+A clause matches an event when *its type is in `eventTypes`* **AND** *the event carries all the clause's tags* (literally `event_type IN (…) AND EXISTS(tag…)` in the local backend, [`DcbEventLogStorage_Sqlite.res:93-115`](../../reventless/local/src/adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res#L93)). Two consequences fall out of the over-broad type list:
 
 1. **Vacuous combinations (harmless).** `CatalogProductSynced` never carries `orderId`, so the `orderId` clause can only ever match `OrderPlaced` — the `CatalogProductSynced` entry is dead weight, never producing wrong results.
 2. **Active over-match (has teeth).** The symmetric case is not vacuous: the `productId` clauses also list `OrderPlaced`, and `OrderPlaced` **does** carry `productId` as a secondary tag. So on a backend that evaluates the query literally, a `productId` clause also returns *sibling orders'* `OrderPlaced` events. `PlaceOrder_Behavior` documents and defends against exactly this (its `placedOrderIds` tracks every returned `OrderPlaced` so `decide` can ask about *this* order specifically).
@@ -388,7 +388,7 @@ So the consistency check's marginal cost over a plain append is dominated by **t
 ### Where the cost goes (ranked)
 
 1. **Unbounded decision-model read — O(events matching the query), every command, strong-consistent, full-item, uncached.** This is the headline cost. For a tag value that accumulates many events, RCU grows linearly with history and is paid on *every* command. Strong consistency doubles it again. (PlaceOrder itself is cheap here — its `productId` partitions hold only `CatalogProductSynced`, its `orderId` partition only this order — but any slice reading a high-cardinality tag pays.)
-2. **GSI write amplification — and several GSIs are unused.** The table provisions one `tag_<key>` GSI **per tagged field** plus `tag_composite`, all `projectionType: ALL` ([`DcbEventLogStorage_DynamoDb.res`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res), indexes from [`Dcb_Builder.res`](../../reventless/reventless-core/src/components/Dcb/Dcb_Builder.res)). An event with K tags replicates its **full item** to each of its K `tag_<key>` GSIs + `tag_composite` + base ≈ up to **K+2 full-size writes per event**. But the single-tag read path uses the **base table** (`queryByPartitionKeyStream`), not the per-tag GSIs — and `queryBySingleTag`/`queryBySingleTagStream` (the only callers of `tag_<key>`) have **zero callers**. So the per-tag `tag_<key>` GSIs are currently **write-amplification with no read benefit**.
+2. **GSI write amplification — and several GSIs are unused.** The table provisions one `tag_<key>` GSI **per tagged field** plus `tag_composite`, all `projectionType: ALL` ([`DcbEventLogStorage_DynamoDb.res`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res), indexes from [`Dcb_Builder.res`](../../reventless/core/src/components/Dcb/Dcb_Builder.res)). An event with K tags replicates its **full item** to each of its K `tag_<key>` GSIs + `tag_composite` + base ≈ up to **K+2 full-size writes per event**. But the single-tag read path uses the **base table** (`queryByPartitionKeyStream`), not the per-tag GSIs — and `queryBySingleTag`/`queryBySingleTagStream` (the only callers of `tag_<key>`) have **zero callers**. So the per-tag `tag_<key>` GSIs are currently **write-amplification with no read benefit**.
 3. **`TransactWriteItems` 2× WCU per item.** Inherent to transactional atomicity. Item count = events + (partition-tag Updates) + (non-partition ConditionChecks) + (composite Updates). Bounded by distinct tag count; capped at 100 (Issue 11).
 4. **Strong-consistency reads = 2× RCU.** Single-tag decision reads always set `consistentRead: true`. This is a *latency/retry* optimization, not a correctness requirement — a stale read just triggers a fence-retry. So it's a tunable 2× read cost, currently always-on.
 5. **Retry amplification.** A conflict re-runs read + write; 3 retries ⇒ up to 4× work. Note Issue 1 (now fixed) made this *guaranteed* 4× wasted read+write on every repeat order before surfacing a failure — so the fence-scope fix is also a real perf win on that path.

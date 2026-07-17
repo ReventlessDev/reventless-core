@@ -231,9 +231,9 @@ Container support is worth building, but the decision of *which approach to take
 
 | File | Relevance |
 |------|-----------|
-| `reventless/reventless-core/src/adapter/Runtime/Runtime.res` | The abstract `Runtime.Environment` interface to implement |
-| `reventless/reventless-aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res` | Reference implementation to model the ECS version on |
-| `reventless/reventless-core/src/adapter/Runtime/AggregateRuntime_Builder_Single.res` | Shows how runtimes and channels are connected |
-| `reventless/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS.res` | Channel adapter using Lambda-push model |
-| `reventless/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res` | Event collector using Lambda event source mapping |
+| `reventless/core/src/adapter/Runtime/Runtime.res` | The abstract `Runtime.Environment` interface to implement |
+| `reventless/aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res` | Reference implementation to model the ECS version on |
+| `reventless/core/src/adapter/Runtime/AggregateRuntime_Builder_Single.res` | Shows how runtimes and channels are connected |
+| `reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_SQS.res` | Channel adapter using Lambda-push model |
+| `reventless/aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res` | Event collector using Lambda event source mapping |
 | `rescript/rescript-pulumi-aws/src/` | Existing AWS Pulumi bindings to extend |

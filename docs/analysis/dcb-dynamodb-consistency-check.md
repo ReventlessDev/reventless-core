@@ -14,7 +14,7 @@
 
 ### How it works now
 
-**Producer side — [`StateChangeSlice_Callback.handleSingleCommand`](../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L48-L168)**
+**Producer side — [`StateChangeSlice_Callback.handleSingleCommand`](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L48-L168)**
 
 1. Build a `DcbTag.query` from the command tags.
 2. `dcbEventLog.readStream(~query)` → fold into `(decisionState, headPosition, n)`.
@@ -22,19 +22,19 @@
 4. `dcbEventLog.append(rawEvents, ~condition={query, after: headPosition})`.
 5. On `Error`, retry up to `maxRetries = 3` from step 2.
 
-**Storage side — [`DcbEventLogStorage_DynamoDb_Runtime.appendConditional`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L619-L695)**
+**Storage side — [`DcbEventLogStorage_DynamoDb_Runtime.appendConditional`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L619-L695)**
 
 The condition is enforced by **per-tag-value fence sentinels** in the same table:
 
 - A fence item per tag value lives at `id="fence#<key>:<value>", position="FENCE", lastPosition=<pos>`. The `id` prefix is distinct from event partition keys (`<key>:<value>`), so event reads never see fence items.
 - `appendConditional` builds a single `TransactWriteItems` containing:
   - **One `Put` per new event** (existing event items).
-  - **One conditional `Update` per tag in `cond.query`**: `SET lastPosition = :new` gated by `attribute_not_exists(lastPosition) OR lastPosition <= :after` ([`buildConditionalFenceUpdate`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L564-L584)).
-  - **One unconditional `Update` per tag present in new events but not in the query** ([`buildUnconditionalFenceUpdate`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L589-L601)) — so future readers querying those tags detect us.
+  - **One conditional `Update` per tag in `cond.query`**: `SET lastPosition = :new` gated by `attribute_not_exists(lastPosition) OR lastPosition <= :after` ([`buildConditionalFenceUpdate`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L564-L584)).
+  - **One unconditional `Update` per tag present in new events but not in the query** ([`buildUnconditionalFenceUpdate`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L589-L601)) — so future readers querying those tags detect us.
 - If any condition fails, DynamoDB cancels the transaction → `TransactionCanceledException` → `DynamoDb_Error.StaleState` → `Error("Conflict: …")` → slice retries.
-- Tagless conditions ([L637-640](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L637-L640)) and >100-item transactions ([L641-644](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L641-L644)) are rejected up front with clear errors.
+- Tagless conditions ([L637-640](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L637-L640)) and >100-item transactions ([L641-644](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L641-L644)) are rejected up front with clear errors.
 
-**Decision-model read path** — [`executeQueryItemStream`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L899-L929) picks the read shape from query tags:
+**Decision-model read path** — [`executeQueryItemStream`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L899-L929) picks the read shape from query tags:
 - **Single tag** → base-table query with `consistentRead: true` (strong).
 - **Multi-tag** → composite GSI query (eventually consistent — DynamoDB constraint).
 - **Tagless** → table scan (eventually consistent).
@@ -51,7 +51,7 @@ The condition is enforced by **per-tag-value fence sentinels** in the same table
 **Caveats and footguns:**
 
 - ✓ **`appendUnconditional` no longer bypasses the fence system** (resolved 2026-05-10, [`docs/plans/done/dcb-append-unconditional-fence-bypass.md`](../plans/done/dcb-append-unconditional-fence-bypass.md)). The path now uses `TransactWriteItems` with one unconditional fence bump per event tag, so non-DCB writers (imports, seeding, replay) still keep DCB readers in sync. Trade-off: 2× WCU per item (same as the conditional path) and the same 100-item per-call cap.
-- ✓ **Same-millisecond positions tie-break by UUID.** *(Resolved 2026-07-08.)* Was `${ms}-${uuidv4}`; now a Hybrid-Logical-Clock `${ms}-${6-digit counter}-${uuidv4}` ([L6-30](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L6-L30)) — strictly monotonic per call within a warm container. Never a correctness bug (the fence is the consistency primitive, not position); this removes the residual reader/replay-ordering smell. See issue #5 below.
+- ✓ **Same-millisecond positions tie-break by UUID.** *(Resolved 2026-07-08.)* Was `${ms}-${uuidv4}`; now a Hybrid-Logical-Clock `${ms}-${6-digit counter}-${uuidv4}` ([L6-30](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L6-L30)) — strictly monotonic per call within a warm container. Never a correctness bug (the fence is the consistency primitive, not position); this removes the residual reader/replay-ordering smell. See issue #5 below.
 - ⚠ **A query-only fence touch raises false positives for unrelated readers.** If a writer queries `productId=X` to check existence but writes events tagged only with `customerId=Y`, the `productId=X` fence is still bumped (the conditional update commits). Future readers of `productId=X` see the bump and retry once — correct, just wasted work. This is inherent to fence-based OCC, not a bug.
 
 ### Performance assessment
@@ -60,14 +60,14 @@ The condition is enforced by **per-tag-value fence sentinels** in the same table
 
 - ✓ **No redundant read on the append path.** The original read-then-write structure is gone; `headPosition` from the slice's decision-model read is the only input the conditional check needs.
 - ✓ **Conflict detection is now real.** The 3-retry loop in the slice fires when it should (it previously almost never did, because the check passed even on conflicts).
-- ✓ **Single-tag base-table reads opt into strong consistency** ([L910-916](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L910-L916)). Eliminates the avoidable retry when the GSI lags behind a recent commit.
+- ✓ **Single-tag base-table reads opt into strong consistency** ([L910-916](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L910-L916)). Eliminates the avoidable retry when the GSI lags behind a recent commit.
 
 **What's still slow / contention-prone:**
 
 - ⚠ **`TransactWriteItems` costs 2× WCU per item.** A 1-event command with 1 query tag + 0 extra event tags = 2 items = **4 WCU per command**. Multi-tag commands scale linearly. Compared to a non-DCB aggregate write (~1 WCU), DCB is ~4× the per-command write cost — that's the structural DCB tax.
 - ⚠ **Hot-tag fence partitions are throughput choke points.** Every command touching tag value `X` serializes through fence `fence#<key>:X` (one DynamoDB partition, ~1000 WCU/sec ceiling, so ~500 transactions/sec per hot fence). Concurrent writers to the same fence trigger `TransactionConflict` (mapped to `Transient` and retried internally). Tags with skewed distribution — e.g. `category=electronics`, `status=active`, a popular product — become global throughput chokepoints. No sharding/buffering mitigation in the current design.
 - ⚠ **The unconditional bump for "extra event tags" amplifies fence traffic.** A command writing events tagged `productId=X, customerId=Y, orderId=Z` while only querying `productId=X` writes 4 items (1 event + 3 fence updates = 8 WCU). For events with diverse tags, this scales poorly and eats into the 100-item transaction cap.
-- ⚠ **GSI eventual consistency widens the retry window for multi-tag and tagless queries.** Single-tag reads now use strong consistency on the base table, but multi-tag composite GSI ([L919-920](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L919-L920)) and tagless scan ([L923-927](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L923-L927)) still trail by tens of ms. The fence catches the conflict, but the slice pays for an extra retry round-trip when the GSI hasn't caught up.
+- ⚠ **GSI eventual consistency widens the retry window for multi-tag and tagless queries.** Single-tag reads now use strong consistency on the base table, but multi-tag composite GSI ([L919-920](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L919-L920)) and tagless scan ([L923-927](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L923-L927)) still trail by tens of ms. The fence catches the conflict, but the slice pays for an extra retry round-trip when the GSI hasn't caught up.
 - ⚠ **`Scan` for tagless query items is expensive on any non-trivial table.** Inevitable for that query shape; at least never used as a consistency primitive (tagless conditions are now rejected).
 - ✓ **Decision-model read is now delta-cached per warm instance.** `StateChangeSlice_Callback` keeps a bounded in-process LRU of `(decisionState, readHead)` keyed on the serialised query (shipped 2026-06-20, plan [`dcb-decision-model-projection-cache`](../plans/dcb-decision-model-projection-cache.md)). A warm same-entity command reads only events *after* the cached head (O(delta), typically zero), and a conflict re-seeds from the just-read snapshot so each retry also reads only the delta — the old `(1 + retries)` full reads collapse to one delta read each. Correctness is unchanged: the cache feeds only the *decision*; the conditional append's fence still rejects any stale read → retry. Pays off only with warm-Lambda reuse; a cold instance falls back to the full read. (Per-slice capacity tuning and CloudWatch hit/miss metrics remain as follow-ups — see the plan's Steps 4–5.)
 
@@ -142,7 +142,7 @@ If you see that pattern against shared state with concurrent writers, it's a TOC
 The sections below describe the **original** code that motivated this analysis. The implementation has changed; see [§Current state](#current-state-2026-05-10) above for the post-fix design and [§Implementation timeline](#implementation-timeline) below for what changed when.
 
 ### Producer side — `StateChangeSlice_Callback.handleSingleCommand` (pre-fix)
-[`reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res`](../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res)
+[`reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res`](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res)
 
 1. Build a `DcbTag.query` from the command tags.
 2. `dcbEventLog.readStream(~query)` — pull every matching event, fold into `(state, headPosition, n)`.
@@ -172,7 +172,7 @@ Line refs in this section point to the pre-2026-05-08 file layout and no longer 
 
 Where `writeEventsWithPosition` calls
 `items -> Array.map(toPutRequest) -> toTable(table.name) -> batchWriteWithRetries`
-([L464-480](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L464-L480)). That is `BatchWriteItem` — no `ConditionExpression` support, no transaction.
+([L464-480](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L464-L480)). That is `BatchWriteItem` — no `ConditionExpression` support, no transaction.
 
 ---
 
@@ -195,11 +195,11 @@ The 3-retry loop in `StateChangeSlice` only fires when `append` returns `Error`.
 
 This defeats the entire point of the `appendCondition`.
 
-**Resolution:** [`appendConditional`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L619-L695) replaced the read-then-BatchWriteItem flow with a single `TransactWriteItems` carrying per-event Puts plus per-tag fence Updates with `ConditionExpression`s. The check is now part of the write request, evaluated atomically.
+**Resolution:** [`appendConditional`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L619-L695) replaced the read-then-BatchWriteItem flow with a single `TransactWriteItems` carrying per-event Puts plus per-tag fence Updates with `ConditionExpression`s. The check is now part of the write request, evaluated atomically.
 
 ### 2. Tag queries hit GSIs which are always eventually consistent [RESOLVED indirectly]
 
-`queryBySingleTagStream` ([L559](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L559)) and `queryByCompositeTagsStream` ([L601](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L601)) read GSIs.
+`queryBySingleTagStream` ([L559](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L559)) and `queryByCompositeTagsStream` ([L601](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L601)) read GSIs.
 
 DynamoDB GSIs **cannot** be read with strong consistency — fundamental product constraint. A just-written event may not appear on the GSI for tens of milliseconds, widening the race window beyond the network RTT.
 
@@ -215,13 +215,13 @@ Resolved by [`docs/plans/done/dcb-strong-consistency-single-tag-reads.md`](../pl
 
 `scanWithFilterStream` full-table scans, eventually consistent, no condition guard. As a basis for a consistency decision this is unsound and expensive on any non-trivial table.
 
-**Resolution:** `appendConditional` now rejects tagless conditions up front ([L637-640](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L637-L640)) — there is no DynamoDB primitive that fences event-type-only invariants without a global lock. Scans still happen on the *read* path for tagless query items (see [`scanWithFilterStream`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L827-L897)) but never as a consistency primitive.
+**Resolution:** `appendConditional` now rejects tagless conditions up front ([L637-640](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L637-L640)) — there is no DynamoDB primitive that fences event-type-only invariants without a global lock. Scans still happen on the *read* path for tagless query items (see [`scanWithFilterStream`](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L827-L897)) but never as a consistency primitive.
 
 ### 5. Position ordering breaks ties by UUID [RESOLVED 2026-07-08]
 
 `generatePosition = ${ms}-${uuidv4}` (old format). Same-millisecond writers got arbitrary lexical ordering. Combined with the non-atomic write, "events after `headPosition`" was not a well-defined set across concurrent writers.
 
-**Resolution:** Was never corruption-causing — the fence is the consistency primitive, not position. Fixed the residual cosmetic smell by moving to a Hybrid-Logical-Clock position generator: `${ms}-${6-digit counter}-${uuidv4}` ([L6-30](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L6-L30)). Module-level refs make positions strictly monotonic per call within a warm Lambda container (same-ms calls increment the counter; a forward tick resets it); cross-container same-ms writers still tie-break by UUID, but that no longer perturbs same-container reader/replay ordering. The ms prefix keeps its 13-digit width so old `${ms}-${uuid}` positions still sort by timestamp. Backwards-compatible, no migration. Plan: [`docs/plans/done/dcb-monotonic-position-generation.md`](../plans/done/dcb-monotonic-position-generation.md).
+**Resolution:** Was never corruption-causing — the fence is the consistency primitive, not position. Fixed the residual cosmetic smell by moving to a Hybrid-Logical-Clock position generator: `${ms}-${6-digit counter}-${uuidv4}` ([L6-30](../../reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L6-L30)). Module-level refs make positions strictly monotonic per call within a warm Lambda container (same-ms calls increment the counter; a forward tick resets it); cross-container same-ms writers still tie-break by UUID, but that no longer perturbs same-container reader/replay ordering. The ms prefix keeps its 13-digit width so old `${ms}-${uuid}` positions still sort by timestamp. Backwards-compatible, no migration. Plan: [`docs/plans/done/dcb-monotonic-position-generation.md`](../plans/done/dcb-monotonic-position-generation.md).
 
 ---
 
@@ -231,7 +231,7 @@ Each item below carries its current resolution status.
 
 ### 1. Two reads per command, three round-trips minimum [RESOLVED 2026-05-08]
 
-`StateChangeSlice` does its own decision-model read ([Callback.res:78](../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L78)) and then `append` does the **same query again** before writing. The append-side check is redundant — the slice already paid for that read and knows `headPosition`. If the conflict check were a real precondition on the write request, the second read would not exist.
+`StateChangeSlice` does its own decision-model read ([Callback.res:78](../../reventless/core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L78)) and then `append` does the **same query again** before writing. The append-side check is redundant — the slice already paid for that read and knows `headPosition`. If the conflict check were a real precondition on the write request, the second read would not exist.
 
 **Resolution:** The redundant read is gone. `appendConditional` builds `TransactWriteItems` directly from `headPosition`; no append-side query.
 
@@ -243,7 +243,7 @@ The append-side `read(...)` paginated all matching events, decoded, deduped, sor
 
 ### 3. `BatchWriteItem` 25-item limit is not chunked [REMAINING]
 
-`batchWriteWithRetries` ([Util_DynamoDb_Runtime.res:177](../../reventless/reventless-aws/src/util/Util_DynamoDb_Runtime.res#L177)) only re-drives `unprocessedItems`; it does not split inputs into 25-item batches up front. A command producing ≥26 events fails with `ValidationException` before any retry logic kicks in.
+`batchWriteWithRetries` ([Util_DynamoDb_Runtime.res:177](../../reventless/aws/src/util/Util_DynamoDb_Runtime.res#L177)) only re-drives `unprocessedItems`; it does not split inputs into 25-item batches up front. A command producing ≥26 events fails with `ValidationException` before any retry logic kicks in.
 
 **Status:** No longer applies to either DCB append path. As of 2026-05-10, `appendUnconditional` was rewritten on `TransactWriteItems` ([`docs/plans/done/dcb-append-unconditional-fence-bypass.md`](../plans/done/dcb-append-unconditional-fence-bypass.md)) and shares the conditional path's 100-item cap, which is checked up front. Still applies to `QueryDb`'s use of `batchWriteWithRetries`. Backlog plan: [`docs/plans/Backlog/dynamodb-batchwriteitem-25-chunking.md`](../plans/Backlog/dynamodb-batchwriteitem-25-chunking.md).
 
@@ -355,7 +355,7 @@ Replaced the read-then-BatchWriteItem flow with a single `TransactWriteItems` ca
 - Per-tag fence sentinels: `id="fence#<key>:<value>", position="FENCE", lastPosition` tracks latest commit.
 - Tagless conditions and >100-item transactions return clear errors before any AWS call.
 - `DynamoDb_Error` classifies `TransactionCanceledException`: `ConditionalCheckFailed → StaleState`; `TransactionConflict / ProvisionedThroughputExceeded / ThrottlingError → Transient` (retried internally).
-- 18 unit tests cover helper shape and validation gates ([`DcbEventLogStorage_DynamoDb_RuntimeTest.res`](../../reventless/reventless-aws/tests/DcbEventLogStorage_DynamoDb_RuntimeTest.res)).
+- 18 unit tests cover helper shape and validation gates ([`DcbEventLogStorage_DynamoDb_RuntimeTest.res`](../../reventless/aws/tests/DcbEventLogStorage_DynamoDb_RuntimeTest.res)).
 - Slice GWT, in-memory adapter, and DCB example tests passed unchanged.
 
 ### 2026-05-09 — Strong-consistency single-tag reads (`89fe39121`)

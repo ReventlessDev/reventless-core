@@ -2,13 +2,13 @@
 
 **Status:** Analysis (no implementation steps here — see "Cross-references" for the planned work)
 **Date:** 2026-05-12
-**Scope:** The DLQ wiring in the AWS adapters (`reventless/reventless-aws/`). The in-memory adapter has no DLQ concept; this is AWS-specific.
+**Scope:** The DLQ wiring in the AWS adapters (`reventless/aws/`). The in-memory adapter has no DLQ concept; this is AWS-specific.
 
 ---
 
 ## TL;DR
 
-- The unit is the **Pulumi stack**, not the platform. `Util_DeadLetterQueue.res` builds its queues as *module-level bindings* — a ReScript/JS module is a per-program singleton — so every stack that pulls the module in (any stack with a CommandTopic or EventCollector, i.e. every plugin stack and the platform-admin stack) gets **exactly two DLQs**: one standard SQS queue (`DeadLetterQueue`) and one FIFO SQS queue (`FIFODeadLetterQueue`), both in [`Util_DeadLetterQueue.res`](../../reventless/reventless-aws/src/util/Util_DeadLetterQueue.res).
+- The unit is the **Pulumi stack**, not the platform. `Util_DeadLetterQueue.res` builds its queues as *module-level bindings* — a ReScript/JS module is a per-program singleton — so every stack that pulls the module in (any stack with a CommandTopic or EventCollector, i.e. every plugin stack and the platform-admin stack) gets **exactly two DLQs**: one standard SQS queue (`DeadLetterQueue`) and one FIFO SQS queue (`FIFODeadLetterQueue`), both in [`Util_DeadLetterQueue.res`](../../reventless/aws/src/util/Util_DeadLetterQueue.res).
 - Reventless deploys **one Pulumi stack per plugin** (`catalog-aws`, `ordering-aws`, …) plus a separate platform-admin stack (`Platform.deployPlugin` vs `Platform.deployPlatform`; see `examples/online-shop-hybrid/deploy-manifest.yaml`). So a platform with N plugins has ~`2 × (N + 1)` DLQs — **not two globally**. Within any one plugin stack, though, those two DLQs are shared by *all* of that plugin's CommandTopics, EventCollectors, and EventLogSubscriptions.
 - Every consumer queue (CommandTopic in 4 variants, EventCollector in 2–3 variants, EventLogSubscription→AppSync) sets a `redrivePolicy` with `maxReceiveCount=5` pointing at one of the stack's two DLQs.
 - The DLQ "handler" is a 3-line Lambda: `console.error("DEAD LETTER ITEM:", JSON.stringify(event))`. No metric, no alarm, no retention override, no archive, no redrive-back tooling.
@@ -29,7 +29,7 @@ Reventless splits an AWS deployment into multiple Pulumi stacks: a **platform-ad
 
 ### 1.1 The two per-stack DLQs
 
-[`Util_DeadLetterQueue.res`](../../reventless/reventless-aws/src/util/Util_DeadLetterQueue.res) creates, at module-eval time (module-level side effects — itself a smell; see §3.6):
+[`Util_DeadLetterQueue.res`](../../reventless/aws/src/util/Util_DeadLetterQueue.res) creates, at module-eval time (module-level side effects — itself a smell; see §3.6):
 
 | Queue | Name | Type | Visibility timeout | Encryption | Retention | Dedup |
 |---|---|---|---|---|---|---|
@@ -223,6 +223,6 @@ I.e. *fewer* DLQs by hoisting them out of the per-plugin stacks into the platfor
 - [`docs/analysis/aws-adapters-broad-review.md`](./aws-adapters-broad-review.md) — §1.1 (zip-misalignment corrupts the DLQ-redrive path), §1.2 (non-FIFO CommandTopic ordering → spurious DLQ), §2.1 (no batch-item-failure reporting), XC-1 (no alarms / concurrency limits anywhere).
 - [`docs/analysis/aggregate-command-handling-review.md`](./aggregate-command-handling-review.md) — `maxConflictRetries × maxReceiveCount` interaction; the DDB-Stream no-DLQ gap on EventLog→EventTopic.
 - [`docs/analysis/done/end-to-end-error-handling.md`](./done/end-to-end-error-handling.md) — broader error-propagation context (decide/propagate errors), upstream of where messages become DLQ-bound.
-- [`reventless/reventless-aws/src/util/Util_DeadLetterQueue.res`](../../reventless/reventless-aws/src/util/Util_DeadLetterQueue.res) — the implementation under discussion.
-- [`reventless/reventless-aws/src/util/Util_EventSourceMapping.res`](../../reventless/reventless-aws/src/util/Util_EventSourceMapping.res) — `subscribeSqs` / `subscribe`; the place `destinationConfig.onFailure` and `functionResponseTypes` would be threaded.
+- [`reventless/aws/src/util/Util_DeadLetterQueue.res`](../../reventless/aws/src/util/Util_DeadLetterQueue.res) — the implementation under discussion.
+- [`reventless/aws/src/util/Util_EventSourceMapping.res`](../../reventless/aws/src/util/Util_EventSourceMapping.res) — `subscribeSqs` / `subscribe`; the place `destinationConfig.onFailure` and `functionResponseTypes` would be threaded.
 - [`rescript/rescript-pulumi-aws/src/Lambda/EventSourceMapping.res`](../../rescript/rescript-pulumi-aws/src/Lambda/EventSourceMapping.res) — bindings already expose `destinationConfig`, `functionResponseTypes`, `bisectBatchOnFunctionError`, `maximumRetryAttempts`.

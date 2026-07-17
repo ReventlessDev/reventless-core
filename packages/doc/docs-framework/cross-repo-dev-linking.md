@@ -88,7 +88,7 @@ overlay:
 ```yaml
 # pnpm-workspace.local.yaml
 packages:
-  - '../reventless-ui/reventless/reventless-ui'
+  - '../reventless-ui/reventless/ui'
 overrides:
   '@reventlessdev/reventless-ui': 'workspace:*'
 ```

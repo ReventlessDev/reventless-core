@@ -61,7 +61,7 @@ The EventLog component demonstrates the full pattern with all optional files:
 ### File Structure
 
 ```
-reventless/reventless-core/src/components/EventLog/
+reventless/core/src/components/EventLog/
 ├── EventLog.res           # Core types and interface
 ├── EventLog_Builder.res   # Factory/construction
 ├── EventLog_Adapter.res   # Provider-agnostic adapter interface

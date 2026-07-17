@@ -64,7 +64,7 @@ document):
 buys the runway for the proper migration.
 
 Steps:
-1. In `reventless/reventless-{aws,core,infra,spec}/package.json`, change
+1. In `reventless/{aws,core,infra,spec}/package.json`, change
    `"sury": "^11.0.0-alpha.4"` to `"sury": "11.0.0-alpha.4"` (exact, no caret).
 2. `pnpm install` to update `pnpm-lock.yaml`. Confirm only `sury@11.0.0-alpha.4`
    resolves (no alpha.5 entry).
@@ -117,7 +117,7 @@ careful review.
 
 Steps:
 
-1. Add `reventless/reventless-spec/src/util/Util_Sury.res` (alpha.8 — spike-verified):
+1. Add `reventless/spec/src/util/Util_Sury.res` (alpha.8 — spike-verified):
    ```rescript
    let toJson: ('a, S.t<'a>) => JSON.t = (value, schema) =>
      value->S.decodeOrThrow(~from=schema, ~to=S.json)
@@ -221,7 +221,7 @@ Steps:
    - `S.convertOrThrow(s)` (3 sites in `reventless-local/src/Platform.res`)
      → `Util_Sury.fromJson(_, s)` (the calls take JSON values).
    - `S.enableJson()` (41 sites) → delete entire line (opportunity H).
-2. Update `reventless/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs`
+2. Update `reventless/aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs`
    — the only hand-written `.mjs` consumer — to import the new helper or
    inline `decodeOrThrow(value, reverse(schema), json)`.
 3. **Opportunity A** — Replace `js_nullable` workaround.
@@ -304,7 +304,7 @@ This phase is independent of Phase 4; can ship before or after.
 alpha.8-compatible framework.
 
 Steps:
-1. In `reventless/reventless-{aws,core,infra,spec}/package.json`, change
+1. In `reventless/{aws,core,infra,spec}/package.json`, change
    `"sury": "11.0.0-alpha.4"` to `"sury": "11.0.0-alpha.8"` (and `sury-ppx` to
    `"11.0.0-alpha.8"`) — exact again; do not reintroduce `^` until alpha graduates.
 2. `pnpm install`; confirm only `sury@11.0.0-alpha.8` resolves.

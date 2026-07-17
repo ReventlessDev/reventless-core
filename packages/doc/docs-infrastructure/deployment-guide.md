@@ -279,7 +279,7 @@ The branch name determines the environment: push to `alpha` uses `Pulumi.alpha.y
 
 #### Per-instance overrides (env var, `Pulumi.local.yaml`)
 
-Some values vary per deploy target (existing AWS resource IDs to reuse, personal Cognito UserPools, etc.) and should not live in the checked-in `Pulumi.<stack>.yaml`. `Util_LocalConfig` (`reventless/reventless-aws/src/util/Util_LocalConfig.res`) reads two layered sources at deploy time; the first match wins, otherwise lookup falls through to Pulumi stack config (then auto-provision).
+Some values vary per deploy target (existing AWS resource IDs to reuse, personal Cognito UserPools, etc.) and should not live in the checked-in `Pulumi.<stack>.yaml`. `Util_LocalConfig` (`reventless/aws/src/util/Util_LocalConfig.res`) reads two layered sources at deploy time; the first match wins, otherwise lookup falls through to Pulumi stack config (then auto-provision).
 
 | Precedence | Source | Typical use |
 |---|---|---|

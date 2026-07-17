@@ -13,7 +13,7 @@ on:
   push:
     branches: [main, beta, alpha]
     paths:
-      - "reventless/reventless-layer-builder/**"
+      - "reventless/layer-builder/**"
   workflow_dispatch:
     inputs:
       version:
@@ -61,7 +61,7 @@ jobs:
             VERSION="${TAG##*@}"
           else
             # Path-triggered build: read current version from package.json
-            VERSION=$(node -p "require('./reventless/reventless-aws/package.json').version")
+            VERSION=$(node -p "require('./reventless/aws/package.json').version")
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Building layer for @reventlessdev/reventless-aws@$VERSION"
@@ -75,14 +75,14 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Build layer
-        working-directory: reventless/reventless-layer-builder
+        working-directory: reventless/layer-builder
         run: pnpm run build
         env:
           REVENTLESS_AWS_VERSION: ${{ steps.version.outputs.version }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Verify artifact
-        working-directory: reventless/reventless-layer-builder/builder
+        working-directory: reventless/layer-builder/builder
         run: |
           if [ ! -f reventless-layer.zip ]; then
             echo "Error: reventless-layer.zip not found"
@@ -122,7 +122,7 @@ jobs:
           LAYER_VERSION=$(aws lambda publish-layer-version \
             --layer-name ${{ steps.layer.outputs.name }} \
             --description "${{ steps.layer.outputs.name }} v${{ steps.version.outputs.version }}" \
-            --zip-file fileb://reventless/reventless-layer-builder/builder/reventless-layer.zip \
+            --zip-file fileb://reventless/layer-builder/builder/reventless-layer.zip \
             --compatible-runtimes nodejs20.x nodejs22.x \
             --query 'LayerVersionArn' \
             --output text)
@@ -174,7 +174,7 @@ jobs:
 
           # Upload zip as release asset
           gh release upload "$TAG" \
-            reventless/reventless-layer-builder/builder/reventless-layer.zip#"reventless-layer-${REGION}.zip" \
+            reventless/layer-builder/builder/reventless-layer.zip#"reventless-layer-${REGION}.zip" \
             --clobber || echo "Could not upload release asset (release may not exist yet)"
 
           # Append layer ARN to release notes

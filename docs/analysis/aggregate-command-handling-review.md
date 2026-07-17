@@ -3,14 +3,14 @@
 **Scope.** End-to-end review of the Aggregate command path: from SQS dispatch into the Lambda handler, through `Aggregate_Callback.handleCommands`, replay, decide, append, and outbox propagation. AWS adapters (DynamoDB + SQS FIFO + DynamoDB Streams) are the reference deployment; in-memory adapter behavior is noted where it diverges.
 
 **Files reviewed**
-- [`Aggregate_Callback.res`](../../reventless/reventless-core/src/components/Aggregate/Aggregate_Callback.res)
-- [`Aggregate_Builder.res`](../../reventless/reventless-core/src/components/Aggregate/Aggregate_Builder.res)
-- [`EventLog_Operations.res`](../../reventless/reventless-core/src/components/EventLog/EventLog_Operations.res)
-- [`EventLogStorage_DynamoDb_Runtime.res`](../../reventless/reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res)
-- [`CommandTopicChannel_SQS_FIFO.res`](../../reventless/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res)
-- [`CommandTopicChannel_SQS_Runtime.res`](../../reventless/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res)
-- [`Util_SQS_Runtime.res`](../../reventless/reventless-aws/src/util/Util_SQS_Runtime.res)
-- [`EventTopicPublisher_DynamoDbStream.res`](../../reventless/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res)
+- [`Aggregate_Callback.res`](../../reventless/core/src/components/Aggregate/Aggregate_Callback.res)
+- [`Aggregate_Builder.res`](../../reventless/core/src/components/Aggregate/Aggregate_Builder.res)
+- [`EventLog_Operations.res`](../../reventless/core/src/components/EventLog/EventLog_Operations.res)
+- [`EventLogStorage_DynamoDb_Runtime.res`](../../reventless/aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res)
+- [`CommandTopicChannel_SQS_FIFO.res`](../../reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res)
+- [`CommandTopicChannel_SQS_Runtime.res`](../../reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res)
+- [`Util_SQS_Runtime.res`](../../reventless/aws/src/util/Util_SQS_Runtime.res)
+- [`EventTopicPublisher_DynamoDbStream.res`](../../reventless/aws/src/adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res)
 
 ---
 
@@ -18,24 +18,24 @@
 
 ### 1. Dispatch (SQS FIFO → Lambda)
 
-- The CommandTopic queue is FIFO with `MessageGroupId = safeGroupId(commandJson.id)` ([Util_SQS_Runtime.res:23-28](../../reventless/reventless-aws/src/util/Util_SQS_Runtime.res#L23-L28)). Aggregate ID is the group key — IDs longer than 128 chars are SHA-256 hashed (avoiding false grouping from prefix-truncation).
-- `deduplicationScope=MessageGroup` + `fifoThroughputLimit=PerMessageGroupId` ([CommandTopicChannel_SQS_FIFO.res:28-29](../../reventless/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res#L28-L29)) → distinct aggregates can be dispatched to different Lambdas concurrently; the same aggregate's messages are serialized.
+- The CommandTopic queue is FIFO with `MessageGroupId = safeGroupId(commandJson.id)` ([Util_SQS_Runtime.res:23-28](../../reventless/aws/src/util/Util_SQS_Runtime.res#L23-L28)). Aggregate ID is the group key — IDs longer than 128 chars are SHA-256 hashed (avoiding false grouping from prefix-truncation).
+- `deduplicationScope=MessageGroup` + `fifoThroughputLimit=PerMessageGroupId` ([CommandTopicChannel_SQS_FIFO.res:28-29](../../reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res#L28-L29)) → distinct aggregates can be dispatched to different Lambdas concurrently; the same aggregate's messages are serialized.
 - Visibility: 180 s (`6 * 30`); DLQ after `maxReceiveCount=5`.
 - A Lambda invocation receives an SQS batch (1–N records, mixed groups).
 
-### 2. Handler — [`Aggregate_Callback.handleCommands`](../../reventless/reventless-core/src/components/Aggregate/Aggregate_Callback.res#L167-L223)
+### 2. Handler — [`Aggregate_Callback.handleCommands`](../../reventless/core/src/components/Aggregate/Aggregate_Callback.res#L167-L223)
 
 For each batch:
-1. **Group by aggregate ID** ([L33-46](../../reventless/reventless-core/src/components/Aggregate/Aggregate_Callback.res#L33-L46)) — folds the stream into a `Dict<id, topicItem[]>`.
-2. **For each aggregate ID, concurrently** ([L173, `concurrency: "unbounded"`](../../reventless/reventless-core/src/components/Aggregate/Aggregate_Callback.res#L221)):
-   1. **Replay** the event log to current `(state, sequenceNr)` via streaming fold ([L91-95](../../reventless/reventless-core/src/components/Aggregate/Aggregate_Callback.res#L91-L95)).
-   2. **Process commands sequentially** through `Behavior.decide`, threading the evolving in-memory state ([L57-73, L97-100](../../reventless/reventless-core/src/components/Aggregate/Aggregate_Callback.res#L57-L73)).
-   3. **Append** the collected events with optimistic concurrency at `sequenceNr` ([L129](../../reventless/reventless-core/src/components/Aggregate/Aggregate_Callback.res#L129)).
-   4. On `"conflict"`: retry the full replay → process → append cycle, up to `maxConflictRetries = 3` ([L75, L201-217](../../reventless/reventless-core/src/components/Aggregate/Aggregate_Callback.res#L75)).
+1. **Group by aggregate ID** ([L33-46](../../reventless/core/src/components/Aggregate/Aggregate_Callback.res#L33-L46)) — folds the stream into a `Dict<id, topicItem[]>`.
+2. **For each aggregate ID, concurrently** ([L173, `concurrency: "unbounded"`](../../reventless/core/src/components/Aggregate/Aggregate_Callback.res#L221)):
+   1. **Replay** the event log to current `(state, sequenceNr)` via streaming fold ([L91-95](../../reventless/core/src/components/Aggregate/Aggregate_Callback.res#L91-L95)).
+   2. **Process commands sequentially** through `Behavior.decide`, threading the evolving in-memory state ([L57-73, L97-100](../../reventless/core/src/components/Aggregate/Aggregate_Callback.res#L57-L73)).
+   3. **Append** the collected events with optimistic concurrency at `sequenceNr` ([L129](../../reventless/core/src/components/Aggregate/Aggregate_Callback.res#L129)).
+   4. On `"conflict"`: retry the full replay → process → append cycle, up to `maxConflictRetries = 3` ([L75, L201-217](../../reventless/core/src/components/Aggregate/Aggregate_Callback.res#L75)).
 
-### 3. Storage — [`EventLogStorage_DynamoDb_Runtime.appendWithCondition`](../../reventless/reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res#L42-L54)
+### 3. Storage — [`EventLogStorage_DynamoDb_Runtime.appendWithCondition`](../../reventless/aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res#L42-L54)
 
-Single DDB table keyed by `(id PK, seq SK)` where `seq` is a zero-padded 9-digit string ([EventLog_Operations.res:43-46](../../reventless/reventless-core/src/components/EventLog/EventLog_Operations.res#L43-L46)). The OCC primitive is `attribute_not_exists(seq)` per put.
+Single DDB table keyed by `(id PK, seq SK)` where `seq` is a zero-padded 9-digit string ([EventLog_Operations.res:43-46](../../reventless/core/src/components/EventLog/EventLog_Operations.res#L43-L46)). The OCC primitive is `attribute_not_exists(seq)` per put.
 
 | Event count | Strategy | Atomic? | WCU |
 |---|---|---|---|
@@ -43,16 +43,16 @@ Single DDB table keyed by `(id PK, seq SK)` where `seq` is a zero-padded 9-digit
 | 2–100 | `TransactWriteItems` with `attribute_not_exists(seq)` per put | ✓ | 2× per event |
 | > 100 | Rejected up front with `"max 100 events per command"` | ✓ (fail-fast) | — |
 
-Replay uses `consistentRead: true` ([L77](../../reventless/reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res#L77)) — strongly consistent, so any committed write from another Lambda is visible.
+Replay uses `consistentRead: true` ([L77](../../reventless/aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res#L77)) — strongly consistent, so any committed write from another Lambda is visible.
 
 ### 4. Outbox — DynamoDB Streams
 
-Every AWS Aggregate builder pairs `EventLogStorage.DynamoDbStream` with `EventTopicPublisher.DynamoDbStream` (verified across `Aggregate_Builder_Single|Single_Async|Micro|PerAggregate|NoResolver`). The publisher's `publishJson` is a **no-op** ([EventTopicPublisher_DynamoDbStream.res:22](../../reventless/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res#L22)) — propagation rides DynamoDB Streams. This is a transactional outbox: events become visible to subscribers iff the storage write committed.
+Every AWS Aggregate builder pairs `EventLogStorage.DynamoDbStream` with `EventTopicPublisher.DynamoDbStream` (verified across `Aggregate_Builder_Single|Single_Async|Micro|PerAggregate|NoResolver`). The publisher's `publishJson` is a **no-op** ([EventTopicPublisher_DynamoDbStream.res:22](../../reventless/aws/src/adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res#L22)) — propagation rides DynamoDB Streams. This is a transactional outbox: events become visible to subscribers iff the storage write committed.
 
 ### 5. Result reporting — `runInlineAndCollect` and SQS deletes
 
-- For SQS-FIFO (async path): handler returns `Ok(reference) | Error(reference)` per command. SQS messages corresponding to `Ok` are deleted; `Error` messages return to the queue for redelivery ([CommandTopicChannel_SQS_Runtime.res:28-46](../../reventless/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res#L28-L46)).
-- For sync paths (in-memory, `SQS_Sync`): `runInlineAndCollect` ([CommandTopic_Helpers.res:44-72](../../reventless/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res#L44-L72)) collects `commandOutcome` values via the `acceptedResultChannel` side-channel; the producer awaits per-command `Accepted | Rejected | Pending`.
+- For SQS-FIFO (async path): handler returns `Ok(reference) | Error(reference)` per command. SQS messages corresponding to `Ok` are deleted; `Error` messages return to the queue for redelivery ([CommandTopicChannel_SQS_Runtime.res:28-46](../../reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res#L28-L46)).
+- For sync paths (in-memory, `SQS_Sync`): `runInlineAndCollect` ([CommandTopic_Helpers.res:44-72](../../reventless/core/src/components/CommandTopic/CommandTopic_Helpers.res#L44-L72)) collects `commandOutcome` values via the `acceptedResultChannel` side-channel; the producer awaits per-command `Accepted | Rejected | Pending`.
 
 ---
 
@@ -63,9 +63,9 @@ Every AWS Aggregate builder pairs `EventLogStorage.DynamoDbStream` with `EventTo
 - ✓ **OCC for single-event appends.** `attribute_not_exists(seq)` strictly serializes writers at sequence `N`. With strongly-consistent replay, the conflict loser observes the winner on retry.
 - ✓ **Atomic outbox.** DDB-Streams-backed publishing means events are propagated iff the row committed. No "wrote-but-didn't-publish" window.
 - ✓ **Per-aggregate ordering preserved.** SQS FIFO + MessageGroupId = ID + sequential `processCommand` per aggregate inside the handler (the `Array.reduce` thread is sequential ≠ the per-aggregate-group `Effect.all` which is concurrent across IDs).
-- ✓ **Idempotent no-op commands.** Command convention (and the code path on [L110-116](../../reventless/reventless-core/src/components/Aggregate/Aggregate_Callback.res#L110-L116)) returns `Ok` with `eventCount: 0` when `decide` produces no events. Safe under SQS's at-least-once delivery for any deterministic decide function.
+- ✓ **Idempotent no-op commands.** Command convention (and the code path on [L110-116](../../reventless/core/src/components/Aggregate/Aggregate_Callback.res#L110-L116)) returns `Ok` with `eventCount: 0` when `decide` produces no events. Safe under SQS's at-least-once delivery for any deterministic decide function.
 - ✓ **Conflict retries are bounded.** 3 retries → terminal `Error(reference)` → message returns to SQS up to `maxReceiveCount=5` → DLQ. The retry budget is layered, not unbounded.
-- ✓ **Transient-error backoff at the storage layer.** `EventLog_Operations.append` retries up to 5× on `ThrottlingException`, `ProvisionedThroughputExceededException`, `ServiceUnavailable`, `RequestLimitExceeded`, `InternalServerError` ([EventLog_Operations.res:19-30](../../reventless/reventless-core/src/components/EventLog/EventLog_Operations.res#L19-L30)) with exponential jittered backoff before surfacing the error.
+- ✓ **Transient-error backoff at the storage layer.** `EventLog_Operations.append` retries up to 5× on `ThrottlingException`, `ProvisionedThroughputExceededException`, `ServiceUnavailable`, `RequestLimitExceeded`, `InternalServerError` ([EventLog_Operations.res:19-30](../../reventless/core/src/components/EventLog/EventLog_Operations.res#L19-L30)) with exponential jittered backoff before surfacing the error.
 
 ### Caveats and footguns
 
@@ -73,7 +73,7 @@ Every AWS Aggregate builder pairs `EventLogStorage.DynamoDbStream` with `EventTo
 - ✓ **`appendWithCondition` enforces the `count ≤ 100` cap up front.** Resolved by [`aggregate-event-count-cap-validation`](../plans/done/aggregate-event-count-cap-validation.md): `appendWithCondition` returns `Error("EventLog.append: max 100 events per command, got N")` before any AWS SDK call. The non-transient string skips `Effect.retry`'s `isTransient` filter and fails fast.
 - ✓ **Decide errors propagate as `Rejected`.** Originally `processCommand`'s `Error(error)` branch logged and returned `Ok` unchanged, so a domain rejection (e.g., `OrderAlreadyShipped`) was indistinguishable from a successful no-op at the producer. Resolved by the [`aggregate-propagate-decide-errors`](../plans/done/aggregate-propagate-decide-errors.md) plan: the accumulator now records per-command `CmdOk` / `CmdRejected` outcomes, a sibling `rejectedResultChannel` carries `{errorCode, errorDetail}` to synchronous producers, and rejected commands still return `Ok(reference)` so SQS deletes them (domain rejections are deterministic — redelivery doesn't help). Surviving commands inside the same batch continue to produce events and report `Accepted`. The DCB/StateChangeSlice path was migrated to the same channel in the same change.
 - ✓ **Dead branches removed.** The `Error(_) as error` short-circuit in `processCommand` and the `Error(error) => JsError.throwWithMessage(error)` branch in `replayProcessAppend` were unreachable (the old `processCommand` always returned `Ok`). Both went away with the accumulator refactor in [`aggregate-propagate-decide-errors`](../plans/done/aggregate-propagate-decide-errors.md), folding the `aggregate-remove-dead-error-branches` cleanup into the same change.
-- ⚠ **Meta `msgId` is rewritten on every retry.** `updateMeta` ([L48-52](../../reventless/reventless-core/src/components/Aggregate/Aggregate_Callback.res#L48-L52)) regenerates `msgId` per attempt. The producer's correlation token is preserved as the SQS receipt handle / `topicItem.reference`, so this only affects the `meta.msgId` written into the durable event row. Two consequences: (a) you can't trace a published event back to the originating command via `msgId` (you'd need to plumb the original `meta.msgId` separately, e.g., as a `causationId`); (b) on retry-after-partial-write the surviving event from the first attempt has a different `msgId` from any subsequent events from the second attempt, even though they belong to the same logical command.
+- ⚠ **Meta `msgId` is rewritten on every retry.** `updateMeta` ([L48-52](../../reventless/core/src/components/Aggregate/Aggregate_Callback.res#L48-L52)) regenerates `msgId` per attempt. The producer's correlation token is preserved as the SQS receipt handle / `topicItem.reference`, so this only affects the `meta.msgId` written into the durable event row. Two consequences: (a) you can't trace a published event back to the originating command via `msgId` (you'd need to plumb the original `meta.msgId` separately, e.g., as a `causationId`); (b) on retry-after-partial-write the surviving event from the first attempt has a different `msgId` from any subsequent events from the second attempt, even though they belong to the same logical command.
 - ⚠ **Heartbeat has no effect on commands.** Lambda timeout > SQS visibility timeout (180 s) is the only safety net against in-flight handler death. If `decide` hangs (e.g., deadlock in an upstream resolver call) the message returns to the queue after 180 s; meanwhile the in-flight Lambda still holds the handle. SQS FIFO will block the rest of the group until visibility expires or the message is deleted. No application-level command timeout.
 
 ---
@@ -89,7 +89,7 @@ Every AWS Aggregate builder pairs `EventLogStorage.DynamoDbStream` with `EventTo
 
 ### Within a batch
 
-- ✓ **Commands for the same aggregate fold sequentially.** `Array.reduce` over `commands'` ([L97-100](../../reventless/reventless-core/src/components/Aggregate/Aggregate_Callback.res#L97-L100)) threads state through each command. A 5-command batch for one aggregate produces one append (or a partial append, see Caveats above) — the producer sees one transactional commit point for the whole batch.
+- ✓ **Commands for the same aggregate fold sequentially.** `Array.reduce` over `commands'` ([L97-100](../../reventless/core/src/components/Aggregate/Aggregate_Callback.res#L97-L100)) threads state through each command. A 5-command batch for one aggregate produces one append (or a partial append, see Caveats above) — the producer sees one transactional commit point for the whole batch.
 - ⚠ **A mid-batch decide error pollutes downstream commands.** Because the error branch keeps the prior state and accumulates no events, subsequent commands in the same batch see "as if the bad command never happened" state. Whether that is desirable depends on the domain; for "delete then update" patterns it can mask bugs.
 
 ---

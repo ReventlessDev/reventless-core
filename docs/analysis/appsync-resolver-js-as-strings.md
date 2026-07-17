@@ -48,7 +48,7 @@ This is the standard pattern across all AWS IaC tools (CDK, Pulumi, Terraform, S
 
 **Effective resolver count at deploy time** is higher than 39: the 3 shared response snippets (`resultResponseCode`, `firstResultResponseCode`, `resultListResponseCode`) are interpolated into ~20 other resolver templates via `${...}`, so approximately 50+ JS function bodies are deployed per resolver set.
 
-**Additional file:** `reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res` adds one more inline JS resolver string (`interceptorCode`) for the optional query interceptor pipeline function.
+**Additional file:** `reventless/aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res` adds one more inline JS resolver string (`interceptorCode`) for the optional query interceptor pipeline function.
 
 ## Could the JS Be Replaced?
 

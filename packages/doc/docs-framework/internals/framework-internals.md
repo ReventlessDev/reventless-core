@@ -42,10 +42,10 @@ new provider adapter.
 
 ## Where the implementations live
 
-- Framework core: `reventless/reventless-core/src/components/` (and `src/admin/` for the
+- Framework core: `reventless/core/src/components/` (and `src/admin/` for the
   built-in Platform Admin components).
-- Provider adapters: `reventless/reventless-aws/src/adapter/` and
-  `reventless/reventless-local/src/adapter/`. See the
+- Provider adapters: `reventless/aws/src/adapter/` and
+  `reventless/local/src/adapter/`. See the
   [AWS adapter reference](/infrastructure/aws) for the concrete AWS mappings.
 
 ## Related

@@ -1,0 +1,46 @@
+{
+  "name": "@reventlessdev/reventless-infra",
+  "version": "3.0.0-alpha.101",
+  "description": "Infrastructure types for Reventless framework",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/**/*Test.res.mjs"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs"
+    ]
+  },
+  "dependencies": {
+    "@reventlessdev/rescript-effect": "workspace:*",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/rescript-uuid": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
+    "sury": "11.0.0-alpha.4",
+    "sury-ppx": "11.0.0-alpha.2",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@reventlessdev/rescript-jest": "workspace:*",
+    "rescript": "12.3.0"
+  },
+  "peerDependencies": {
+    "rescript": "12.3.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "reventless/infra"
+  }
+}

@@ -38,7 +38,7 @@ These are the highest-leverage fixes. Each appears in the per-journey detail bel
 
 1. **Wrong package scope in the App Guide's first install step.**
    `docs-app/get-started.md:62,89,93` install `@reventless/reventless`,
-   `@reventless/reventless-spec`, `@reventless/reventless-aws`. The real scope is
+   `@reventless/spec`, `@reventless/aws`. The real scope is
    `@reventlessdev/` (verified against `examples/online-shop-hybrid/catalog/package.json`),
    and there is **no `@reventless/reventless` package** at all. A developer copy-pasting
    this gets a 404. The same file's `rescript.json` block (`:75-79`) already uses
@@ -75,7 +75,7 @@ These are the highest-leverage fixes. Each appears in the per-journey detail bel
    present a "3 packages under `packages/`" repo. The real monorepo is four roots:
    `reventless/` (framework, incl. `reventless-core`), `rescript/` (bindings), `examples/`,
    `packages/` (doc/ppx/vscode tooling). The framework core lives at
-   `reventless/reventless-core/src/components/…`, not `packages/reventless/src/components/…`.
+   `reventless/core/src/components/…`, not `packages/reventless/src/components/…`.
    `packages.mdx` already auto-generates the true list from each `package.json` — make the
    prose pages defer to it instead of restating a stale tree.
 
@@ -285,7 +285,7 @@ duplicated/contradictory `framework-internals.md` would resolve most of the jour
 ### `framework/index.md`
 - Stale repo tree and component paths (#5): everything under `packages/`; component example
   path `packages/reventless/src/components/EventLog/` should be
-  `reventless/reventless-core/src/components/EventLog/`. Calls the package `reventless`
+  `reventless/core/src/components/EventLog/`. Calls the package `reventless`
   (`:8`); it's `reventless-core`.
 - "Where to Start" (`:70-75`) ends at `messages.md` and **never links
   `extending-the-framework.md`**, the page billed as the capstone.
@@ -293,7 +293,7 @@ duplicated/contradictory `framework-internals.md` would resolve most of the jour
 ### `framework/get-started.md` — retire/redirect (#2)
 - npm throughout; `.res.js`/CommonJS (`:29`); `npx jest tests/MessageTest.res.js` (`:49`,
   should be `pnpm exec jest …res.mjs`); `cd packages/reventless` (`:42`, should be
-  `reventless/reventless-core`); missing the mandatory `workspace-setup.mjs` symlink step
+  `reventless/core`); missing the mandatory `workspace-setup.mjs` symlink step
   and registry/token setup; stale model commit `update rescript to 11.1.4` (`:74`, repo is
   v12). Following this page, install fails.
 
@@ -464,7 +464,7 @@ read round-trip). All AWS-path file/dir/script references resolve.
 - **HV-2 (wrong env-var names).** The page's table lists `PORT` and `ADMIN_PORT`. The platform
   actually reads `REVENTLESS_DOMAIN_PORT` (default 4000) and `REVENTLESS_PLATFORM_PORT` (default
   4001), plus `REVENTLESS_DOMAIN_MCP_PORT` (3001) and `REVENTLESS_PLATFORM_MCP_PORT` (3002) —
-  see `reventless/reventless-local/src/Platform.res:702-705`. `GRAPHQL_DEBUG`/`MCP_DEBUG` are correct.
+  see `reventless/local/src/Platform.res:702-705`. `GRAPHQL_DEBUG`/`MCP_DEBUG` are correct.
 - **HV-3 ("two processes" is three).** `dev:full` runs `concurrently --names rs,backend,ui` — three
   processes (`rs` = `pnpm -w run watch` rescript watcher, `backend` = `serve:watch`, `ui`). The page
   (line 33, including the earlier cleanup edit) says "two processes". The UI also waits on `tcp:4001`,
@@ -506,7 +506,7 @@ read round-trip). All AWS-path file/dir/script references resolve.
 
 ## App Guide — `docs-app/get-started.md` (recipe checked, not run end-to-end)
 
-- `generate-plugin` is a real bin (`reventless/reventless-spec/package.json` → `./run-generator.mjs`),
+- `generate-plugin` is a real bin (`reventless/spec/package.json` → `./run-generator.mjs`),
   so the `"generate": "generate-plugin src/"` + `prebuild` scripts are valid.
 - Package scope/names, `rescript.json` `suffix: ".res.mjs"`, and the `reventless-ppx` → `sury-ppx` flag
   order all match the working `catalog` example. The recipe is internally consistent; a true fresh-project

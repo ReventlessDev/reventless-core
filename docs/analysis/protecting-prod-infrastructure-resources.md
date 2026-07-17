@@ -15,7 +15,7 @@ operator mistakes are:
 
 For the framework, the highest-value resources to protect are the **EventLog**
 and **DcbEventLog** tables (`Util_DynamoDbStream.makeTable` in
-`reventless/reventless-aws/src/adapter/EventLog/` and
+`reventless/aws/src/adapter/EventLog/` and
 `adapter/DcbEventLog/`) — they are the system of record. Losing a QueryDb
 projection is recoverable (replay); losing the event log is not.
 
@@ -56,7 +56,7 @@ Pulumi exposes this on `aws.dynamodb.Table` as `deletionProtectionEnabled`.
 **Recommended change**: thread a flag through `Util_DynamoDb.makeTableArgs`
 that defaults to `true` when `Pulumi.Pulumi.getStackName()` matches a prod
 pattern (e.g. `prod`, `production`, `main`). Pseudocode for the change in
-`reventless/reventless-aws/src/util/Util_DynamoDb.res`:
+`reventless/aws/src/util/Util_DynamoDb.res`:
 
 ```rescript
 let isProdStack = () => {

@@ -456,15 +456,15 @@ matters.
 
 **Touched on the server** (Tier 2):
 
-- `reventless/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res` —
+- `reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res` —
   write to change journal alongside AppSync publish.
-- New: `reventless/reventless-aws/src/adapter/ChangeJournal/ChangeJournal_DynamoDb.res` —
+- New: `reventless/aws/src/adapter/ChangeJournal/ChangeJournal_DynamoDb.res` —
   Pulumi table + per-topic counter.
-- New: `reventless/reventless-aws/src/adapter/ChangeJournal/CatchUpChanges_AppSync.res` —
+- New: `reventless/aws/src/adapter/ChangeJournal/CatchUpChanges_AppSync.res` —
   AppSync GraphQL resolver against the journal table.
-- `reventless/reventless-core/src/components/Plugin/Plugin_SubscriptionSchema.res` —
+- `reventless/core/src/components/Plugin/Plugin_SubscriptionSchema.res` —
   emit `catchUpChanges` SDL field.
-- `reventless/reventless-local/src/InMemory_Bus.res` — in-memory journal
+- `reventless/local/src/InMemory_Bus.res` — in-memory journal
   (small array; same TTL semantics).
 
 **Touched on the client** (Tiers 1 and 2):

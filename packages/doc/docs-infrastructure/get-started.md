@@ -19,8 +19,8 @@ Provider packages live under `reventless/` (the framework root), **not** `packag
 (which is build tooling and docs only):
 
 ```bash
-mkdir reventless/reventless-myprovider
-cd reventless/reventless-myprovider
+mkdir reventless/myprovider
+cd reventless/myprovider
 ```
 
 ## 2. Set Up rescript.json
@@ -99,7 +99,7 @@ This is the API surface that application developers use.
 The `reventless-aws` package is the canonical reference implementation. When in doubt, examine how it implements a given adapter — the patterns apply directly to other providers.
 
 ```
-reventless/reventless-aws/src/adapter/
+reventless/aws/src/adapter/
 ├── EventLog/
 ├── CommandTopic/
 ├── EventTopic/

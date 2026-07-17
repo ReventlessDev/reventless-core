@@ -25,10 +25,10 @@ Only the four storage surfaces need durability. The bus, command handlers, subsc
 
 | Surface | Current in-memory shape | Semantics that must survive restart |
 |---|---|---|
-| [EventLog](../../reventless/reventless-local/src/adapter/EventLog/EventLogStorage_InMemory.res) | `dict<array<JSON>>` per aggregate instance, wrapped in `Stm.TRef` | Append-only per `id`, optimistic concurrency on `seqNr == currentCount`, replay in insertion order, streaming replay |
-| [DcbEventLog](../../reventless/reventless-local/src/adapter/DcbEventLog/DcbEventLogStorage_InMemory.res) | `ref<array<rawSequencedEvent>>` with monotonic `position` counter | Append with conditional check (query + `after`), read with tag/event-type filter, head position, streaming read |
-| [QueryDb](../../reventless/reventless-local/src/adapter/QueryDb/QueryDbStorage_InMemory.res) | `ref<dict<dict<JSON>>>` — partition key → sub-key → item | `load` by partition key (sub-key ordered), `save`/`delete` by `(id, subId)`, batch variants, scan-all, optional sub-id field extraction, optional GSI indexes, optional TTL |
-| [TaskBucket](../../reventless/reventless-local/src/adapter/Task/TaskBucket_InMemory.res) | Currently a no-op stub | Object storage (key → bytes). No current state; a persistent backend should at least store key/bytes pairs for later task replay |
+| [EventLog](../../reventless/local/src/adapter/EventLog/EventLogStorage_InMemory.res) | `dict<array<JSON>>` per aggregate instance, wrapped in `Stm.TRef` | Append-only per `id`, optimistic concurrency on `seqNr == currentCount`, replay in insertion order, streaming replay |
+| [DcbEventLog](../../reventless/local/src/adapter/DcbEventLog/DcbEventLogStorage_InMemory.res) | `ref<array<rawSequencedEvent>>` with monotonic `position` counter | Append with conditional check (query + `after`), read with tag/event-type filter, head position, streaming read |
+| [QueryDb](../../reventless/local/src/adapter/QueryDb/QueryDbStorage_InMemory.res) | `ref<dict<dict<JSON>>>` — partition key → sub-key → item | `load` by partition key (sub-key ordered), `save`/`delete` by `(id, subId)`, batch variants, scan-all, optional sub-id field extraction, optional GSI indexes, optional TTL |
+| [TaskBucket](../../reventless/local/src/adapter/Task/TaskBucket_InMemory.res) | Currently a no-op stub | Object storage (key → bytes). No current state; a persistent backend should at least store key/bytes pairs for later task replay |
 
 Non-negotiable properties the chosen backend must supply or let us implement cheaply:
 
@@ -36,7 +36,7 @@ Non-negotiable properties the chosen backend must supply or let us implement che
 - **Ordered iteration under a prefix** — QueryDb returns sub-key-sorted items; DcbEventLog returns events after a given position.
 - **Secondary-attribute filtering** — DcbEventLog tag queries (`AND` over `{key, value}` pairs) must not require a full scan at realistic dev dataset sizes.
 - **Embedded, single-file, zero server** — we must not introduce a background daemon.
-- **Synchronous or same-tick-settling API** — the existing storage functions are `async` but mostly resolve immediately; an async driver that adds IO latency to every `save` changes observable test timings and undermines the 2/3-tick guarantees documented in [InMemory_Bus.res](../../reventless/reventless-local/src/adapter/InMemory_Bus.res).
+- **Synchronous or same-tick-settling API** — the existing storage functions are `async` but mostly resolve immediately; an async driver that adds IO latency to every `save` changes observable test timings and undermines the 2/3-tick guarantees documented in [InMemory_Bus.res](../../reventless/local/src/adapter/InMemory_Bus.res).
 - **Clean reset/truncate** — tests call `Bus.reset()` between runs; the persistent backend needs the equivalent (`DELETE FROM *` or file truncation) gated behind a flag so developer sessions don't lose data.
 
 ---
@@ -149,7 +149,7 @@ Two viable shapes. Both keep `reventless-local` the default and additive.
 
 **Option A — extend the existing package (recommended).**
 ```
-reventless/reventless-local/src/adapter/
+reventless/local/src/adapter/
   EventLog/
     EventLogStorage_InMemory.res           # current Dict-based
     EventLogStorage_Sqlite.res             # new
@@ -211,7 +211,7 @@ Mechanism:
 
 ### Behavioural parity tests
 
-Every test in [reventless-local/tests/](../../reventless/reventless-local/tests/) should run under both backends. Concretely: a `describe.each([Memory, Sqlite])` wrapper (ReScript-flavoured via `Jest.describe` + a backend-selector fixture) so any divergence between the two adapters becomes a visible test failure. The small number of timing-sensitive tests (fake timers, subscriber count assertions) are unaffected — SQLite calls are synchronous and do not change microtask counts.
+Every test in [reventless-local/tests/](../../reventless/local/tests/) should run under both backends. Concretely: a `describe.each([Memory, Sqlite])` wrapper (ReScript-flavoured via `Jest.describe` + a backend-selector fixture) so any divergence between the two adapters becomes a visible test failure. The small number of timing-sensitive tests (fake timers, subscriber count assertions) are unaffected — SQLite calls are synchronous and do not change microtask counts.
 
 ### Reset semantics
 

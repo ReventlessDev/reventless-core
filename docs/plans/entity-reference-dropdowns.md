@@ -17,10 +17,10 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 **Goal.** Drop the field from the schema entirely so no consumer can depend on it, removing the local / AWS divergence at the source.
 
 **Files to change.**
-- [GraphQL_FragmentGenerator.res](../../reventless/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res) — remove `totalCount: Int` from the connection type emitted by `deriveConnectionTypes` at line 122.
-- [QueryDbResolvers_GraphQL.res](../../reventless/reventless-local/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res) — drop `"totalCount": items->Array.length` (line 253) and `"totalCount": 0` (line 224) from the connection payloads.
-- [Platform.res](../../reventless/reventless-local/src/Platform.res) — drop `("totalCount", JSON.Encode.int(items->Array.length))` from `connectionResponse` at line 977.
-- [GraphQL_SchemaInspectorTest.res](../../reventless/reventless-local/tests/adapter/GraphQL_SchemaInspectorTest.res) — remove the `totalCount: Int` assertion at line 290.
+- [GraphQL_FragmentGenerator.res](../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res) — remove `totalCount: Int` from the connection type emitted by `deriveConnectionTypes` at line 122.
+- [QueryDbResolvers_GraphQL.res](../../reventless/local/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res) — drop `"totalCount": items->Array.length` (line 253) and `"totalCount": 0` (line 224) from the connection payloads.
+- [Platform.res](../../reventless/local/src/Platform.res) — drop `("totalCount", JSON.Encode.int(items->Array.length))` from `connectionResponse` at line 977.
+- [GraphQL_SchemaInspectorTest.res](../../reventless/local/tests/adapter/GraphQL_SchemaInspectorTest.res) — remove the `totalCount: Int` assertion at line 290.
 
 **Concrete steps.**
 1. Remove `totalCount: Int` from the SDL string literal in `deriveConnectionTypes`.
@@ -81,11 +81,11 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 ```
 
 **Files to change.**
-- New: `reventless/reventless-spec/src/components/DisplayName.res` — exports `displayNameSpec = {fields: array<string>, separator: string}`, `displayNameId: S.Metadata.Id.t<displayNameSpec>`, `getSpec: S.t<unknown> => option<displayNameSpec>`, and `computeLabel: (displayNameSpec, dict<string>) => string` (skips absent/empty parts, never emits leading/trailing/doubled separators).
-- [reventless-spec/src/ReventlessSpec.res](../../reventless/reventless-spec/src/ReventlessSpec.res) — re-export.
+- New: `reventless/spec/src/components/DisplayName.res` — exports `displayNameSpec = {fields: array<string>, separator: string}`, `displayNameId: S.Metadata.Id.t<displayNameSpec>`, `getSpec: S.t<unknown> => option<displayNameSpec>`, and `computeLabel: (displayNameSpec, dict<string>) => string` (skips absent/empty parts, never emits leading/trailing/doubled separators).
+- [reventless-spec/src/ReventlessSpec.res](../../reventless/spec/src/ReventlessSpec.res) — re-export.
 - New: `packages/reventless-ppx/src/ppx/DisplayNameInference.ml` — new pass. For each `@displayName` attribute in `ld.pld_attributes` (field-declaration position, same slot as `@partitionTag`/`@dcbTag`), collect the field name, declaration-order index, and optional separator payload. Assemble a `displayNameSpec`, attach it via `S.Metadata.set(displayNameId, ...)` on the state schema, and inject a synthetic `displayName: string` field into the record type itself. Because the field is in the sury schema, GraphQL SDL emission, serialization, and storage all pick it up for free.
 - [reventless-ppx/src/ppx/ReventlessPpx.ml](../../packages/reventless-ppx/src/ppx/ReventlessPpx.ml) — wire the new pass before the sury-ppx `@schema` transform so the injected record field is visible to sury's codegen.
-- Projection runtime ([Projection.res](../../reventless/reventless-spec/src/components/Projection.res) and its functor in `reventless/reventless-core`) — when the target state schema carries `DisplayName` metadata, intercept `Set` / `Update` / `UpdateWithDefault` and run `computeLabel` against the about-to-be-written state, overwriting any caller-supplied `displayName`. One interception point covers every read model and state-view slice; plugin authors never compute it manually.
+- Projection runtime ([Projection.res](../../reventless/spec/src/components/Projection.res) and its functor in `reventless/core`) — when the target state schema carries `DisplayName` metadata, intercept `Set` / `Update` / `UpdateWithDefault` and run `computeLabel` against the about-to-be-written state, overwriting any caller-supplied `displayName`. One interception point covers every read model and state-view slice; plugin authors never compute it manually.
 
 **Concrete steps.**
 1. Build `DisplayName.res` and `computeLabel`. `computeLabel` reads each key from a state dict, drops `None`/empty strings, joins the rest with `spec.separator`.
@@ -114,14 +114,14 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 - The first-non-`id` fallback walks sury's `Object({items})` (declaration-ordered) rather than `properties` (dict) so the result is deterministic across compiles.
 - When `DisplayName.getSpec` is present, `searchableFields` lists the *raw* underlying fields from `spec.fields` so clients with substring indexes can target them directly; otherwise it mirrors `labelField` (single element).
 - `Logger.warn` fires once per queryable that falls back to `"id"` — helps surface missing annotations without breaking the build.
-- Only the local platform currently emits `Platform_UIDefinitions`; reventless-aws has no corresponding resolver (verified via `grep Platform_UIReadSideDef reventless/reventless-aws/src`), so no AWS work is needed until that query is mirrored there.
+- Only the local platform currently emits `Platform_UIDefinitions`; reventless-aws has no corresponding resolver (verified via `grep Platform_UIReadSideDef reventless/aws/src`), so no AWS work is needed until that query is mirrored there.
 
 **Goal.** Expose the display-label field name (annotated or fallback-inferred) on the GraphQL schema so the UI can render entity labels without shipping its own fallback logic.
 
 **Files to change.**
-- [Plugin.res (spec)](../../reventless/reventless-spec/src/components/Plugin.res) — add `labelField: string` and `searchableFields: array<string>` to `queryableDef`.
-- [Plugin_Structure.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res) — populate the new fields during read-model / stateViewSlice extraction. Source ladder: if `DisplayName.getSpec(stateSchema)->Option.isSome` → `labelField = "displayName"` (the projected column from Phase 2); else fallback to first non-`id` string property; final fallback `"id"` (log a warning). `searchableFields` mirrors `labelField` when composite is present and lists the *raw* underlying fields from `spec.fields` so clients with substring indexes can target them directly.
-- [Platform.res (local)](../../reventless/reventless-local/src/Platform.res) — extend the SDL at line 1159 (and its copy at line 1740):
+- [Plugin.res (spec)](../../reventless/spec/src/components/Plugin.res) — add `labelField: string` and `searchableFields: array<string>` to `queryableDef`.
+- [Plugin_Structure.res](../../reventless/core/src/components/Plugin/Plugin_Structure.res) — populate the new fields during read-model / stateViewSlice extraction. Source ladder: if `DisplayName.getSpec(stateSchema)->Option.isSome` → `labelField = "displayName"` (the projected column from Phase 2); else fallback to first non-`id` string property; final fallback `"id"` (log a warning). `searchableFields` mirrors `labelField` when composite is present and lists the *raw* underlying fields from `spec.fields` so clients with substring indexes can target them directly.
+- [Platform.res (local)](../../reventless/local/src/Platform.res) — extend the SDL at line 1159 (and its copy at line 1740):
   ```graphql
   type Platform_UIReadSideDef {
     name: String!
@@ -167,7 +167,7 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 **Goal.** Extend every per-entity Connection query with a `filter: ${ReturnType}Filter` argument. The UI's combobox (search mode) submits `filter: {search: "..."}` to do server-side substring matching on the label field. Completes the Phase B feature from the analysis.
 
 **Files to change.**
-- [GraphQL_FragmentGenerator.res](../../reventless/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res) — extend `deriveConnectionQueryField` at lines 158-162 to include `filter: ${returnType}Filter` (nullable). Add a new helper `deriveConnectionFilterType` producing:
+- [GraphQL_FragmentGenerator.res](../../reventless/core/src/components/Api/GraphQL_FragmentGenerator.res) — extend `deriveConnectionQueryField` at lines 158-162 to include `filter: ${returnType}Filter` (nullable). Add a new helper `deriveConnectionFilterType` producing:
   ```graphql
   input ${ReturnType}Filter {
     search: String         # case-insensitive substring on labelField
@@ -176,8 +176,8 @@ Phases are ordered for ship-independence — each lands and is validated on its 
   }
   ```
   Emit the type once per return type, reusing the existing `seenTypes` set.
-- [QueryDbResolvers_GraphQL.res](../../reventless/reventless-local/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res) — extend the list resolver at lines 210-256 to read `args.filter`, apply client-side `String.toLowerCase`+`String.includes` on the label column for `search`, `String.startsWith` for `searchPrefix`, and membership check for `ids`. Filtering happens before `first`/`after` pagination.
-- [QueryEngine_DynamoDb.res.mjs](../../reventless/reventless-aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs) — wire the filter arg through to `scanByTableName` at line 174. The engine already speaks `Contains` / `BeginsWith` at lines 98-106; translate `{search}` → `Contains`, `{searchPrefix}` → `BeginsWith`, `{ids}` → multiple `Equal` predicates on the primary key combined with `OR` (use `BatchGetItem` if the engine supports it; otherwise N×`GetItem`).
+- [QueryDbResolvers_GraphQL.res](../../reventless/local/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res) — extend the list resolver at lines 210-256 to read `args.filter`, apply client-side `String.toLowerCase`+`String.includes` on the label column for `search`, `String.startsWith` for `searchPrefix`, and membership check for `ids`. Filtering happens before `first`/`after` pagination.
+- [QueryEngine_DynamoDb.res.mjs](../../reventless/aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs) — wire the filter arg through to `scanByTableName` at line 174. The engine already speaks `Contains` / `BeginsWith` at lines 98-106; translate `{search}` → `Contains`, `{searchPrefix}` → `BeginsWith`, `{ids}` → multiple `Equal` predicates on the primary key combined with `OR` (use `BatchGetItem` if the engine supports it; otherwise N×`GetItem`).
 - AWS resolver for the per-plugin list query (grep for `listQueryField` in `reventless-aws/src`) — accept the new arg and pass it to the query engine.
 
 **Concrete steps.**
@@ -224,11 +224,11 @@ The `!` marks the rename of `${ReturnType}Filter` → `${ReturnType}ItemsFilter`
 **Goal.** Ship `@ref("EntityName")` as a field-level annotation that survives into `Platform_UICommandDef` as a typed reference list.
 
 **Files to change.**
-- New: `reventless/reventless-spec/src/components/Reference.res` — mirrors `DcbTag.res`. Exports `target = {entity: string, plugin: option<string>}`, `referenceId: S.Metadata.Id.t<target>`, `to_: (~plugin=?, string) => S.t<string>`, `getTarget: S.t<unknown> => option<target>`.
+- New: `reventless/spec/src/components/Reference.res` — mirrors `DcbTag.res`. Exports `target = {entity: string, plugin: option<string>}`, `referenceId: S.Metadata.Id.t<target>`, `to_: (~plugin=?, string) => S.t<string>`, `getTarget: S.t<unknown> => option<target>`.
 - [reventless-ppx/src/ppx/ReferenceInference.ml](../../packages/reventless-ppx/src/ppx/ReferenceInference.ml) — new ppx pass. Reads `@ref(...)` from `ld.pld_attributes` (field-declaration position, before the field name — same as `@partitionTag`/`@dcbTag`) and injects `@s.matches(Reventless.Reference.to_(...))` on `ld.pld_type` (type-attribute position). For `array<string>` fields, the injection targets the element type, matching the existing auto-tag dispatch at [DcbTagInference.ml:117-128](../../packages/reventless-ppx/src/ppx/DcbTagInference.ml#L117-L128). Handles `@ref` (no payload → self-reference, filled in from enclosing aggregate at transform time) and `@ref("Plugin.Entity")` (splits on the dot, sets `~plugin`).
 - [ReventlessPpx.ml](../../packages/reventless-ppx/src/ppx/ReventlessPpx.ml) — wire the new pass into `transform`. Must run before `strip_ppx_attrs` and after `transform_explicit_dcb_tags` so `@ref` implies `@dcbTag` (auto-inject DCB tagging when `@ref` is present unless `@noDcbTag` is also set).
-- [SchemaType.res](../../reventless/reventless-core/src/components/Api/SchemaType.res) — extend `fromSury`'s tag check so a field carrying `Reference` metadata is classified as `EntityId` even when `DcbTag` metadata is absent. Today the check is `Reventless.DcbTag.isTagged(schema)`; widen it to `isTagged(schema) || Reference.getTarget(schema)->Option.isSome`. Without this, `@ref @noDcbTag customerId: string` (open question 2, row 5) would render as `String!` while every other `@ref` field renders as `ID!`. The semantic "this field references an entity" should drive the SDL type regardless of DCB-tag storage concerns.
-- [Plugin.res (spec)](../../reventless/reventless-spec/src/components/Plugin.res) — add `references: array<fieldReference>` to `commandDef`:
+- [SchemaType.res](../../reventless/core/src/components/Api/SchemaType.res) — extend `fromSury`'s tag check so a field carrying `Reference` metadata is classified as `EntityId` even when `DcbTag` metadata is absent. Today the check is `Reventless.DcbTag.isTagged(schema)`; widen it to `isTagged(schema) || Reference.getTarget(schema)->Option.isSome`. Without this, `@ref @noDcbTag customerId: string` (open question 2, row 5) would render as `String!` while every other `@ref` field renders as `ID!`. The semantic "this field references an entity" should drive the SDL type regardless of DCB-tag storage concerns.
+- [Plugin.res (spec)](../../reventless/spec/src/components/Plugin.res) — add `references: array<fieldReference>` to `commandDef`:
   ```rescript
   type fieldReference = {
     fieldName: string,
@@ -236,8 +236,8 @@ The `!` marks the rename of `${ReturnType}Filter` → `${ReturnType}ItemsFilter`
     plugin: option<string>,
   }
   ```
-- [Plugin_Structure.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res) — in `toCommandDef`, walk the command schema and collect `Reference.getTarget` results per property. Emit `references: []` when the schema has no annotations.
-- [Platform.res (local)](../../reventless/reventless-local/src/Platform.res) — extend `Platform_UICommandDef` SDL at line 1157 (and its copy at line 1738) with:
+- [Plugin_Structure.res](../../reventless/core/src/components/Plugin/Plugin_Structure.res) — in `toCommandDef`, walk the command schema and collect `Reference.getTarget` results per property. Emit `references: []` when the schema has no annotations.
+- [Platform.res (local)](../../reventless/local/src/Platform.res) — extend `Platform_UICommandDef` SDL at line 1157 (and its copy at line 1738) with:
   ```graphql
   references: [Platform_UIFieldReference!]!
   ```
@@ -305,13 +305,13 @@ The `!` marks the rename of `${ReturnType}Filter` → `${ReturnType}ItemsFilter`
 - **`@searchable(indexed=false)`** — emits the field onto `Platform_UIReadSideDef.searchableFields` (Phase 3) but provisions no GSI. Resolver falls back to scan. Useful on small tables or when authors want to surface the capability to clients before paying the GSI cost.
 
 **Files to change.**
-- New: `reventless/reventless-spec/src/components/Searchable.res` — exports `searchableSpec = {group: option<string>, indexed: bool}`, `searchableId: S.Metadata.Id.t<searchableSpec>`, `getSpec: S.t<unknown> => option<searchableSpec>`.
-- [reventless-spec/src/ReventlessSpec.res](../../reventless/reventless-spec/src/ReventlessSpec.res) — re-export.
+- New: `reventless/spec/src/components/Searchable.res` — exports `searchableSpec = {group: option<string>, indexed: bool}`, `searchableId: S.Metadata.Id.t<searchableSpec>`, `getSpec: S.t<unknown> => option<searchableSpec>`.
+- [reventless-spec/src/ReventlessSpec.res](../../reventless/spec/src/ReventlessSpec.res) — re-export.
 - New: `packages/reventless-ppx/src/ppx/SearchableInference.ml` — rewrite `@searchable[(...)]` field attribute into metadata set on the field's type schema. Collect per-schema the set of annotated fields (with groups) and emit index entries into `let config`'s `indexes` array — same emission point `@index`/`@indexSubId` already uses. One unnamed group per field; named groups aggregate.
 - [ReventlessPpx.ml](../../packages/reventless-ppx/src/ppx/ReventlessPpx.ml) — wire the pass. Order: after `@ref` (so annotations stack correctly) and alongside `@index` aggregation.
-- [Plugin_Structure.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res) — extend the Phase 3 `searchableFields` population. Now sourced from `Searchable.getSpec` on each state field; include `indexed: false` fields too (they're still UI-searchable, just scan-backed).
-- [QueryDbResolvers_GraphQL.res](../../reventless/reventless-local/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res) — route `filter.searchPrefix` through the searchable GSI when one matches the target field. Fallback to scan when no GSI exists (i.e., `indexed: false` or annotation absent).
-- [QueryEngine_DynamoDb.res.mjs](../../reventless/reventless-aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs) — emit `KeyConditionExpression` with `begins_with` on the searchable-index sort key. Engine already supports this form (lines 98-106).
+- [Plugin_Structure.res](../../reventless/core/src/components/Plugin/Plugin_Structure.res) — extend the Phase 3 `searchableFields` population. Now sourced from `Searchable.getSpec` on each state field; include `indexed: false` fields too (they're still UI-searchable, just scan-backed).
+- [QueryDbResolvers_GraphQL.res](../../reventless/local/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res) — route `filter.searchPrefix` through the searchable GSI when one matches the target field. Fallback to scan when no GSI exists (i.e., `indexed: false` or annotation absent).
+- [QueryEngine_DynamoDb.res.mjs](../../reventless/aws/src/adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs) — emit `KeyConditionExpression` with `begins_with` on the searchable-index sort key. Engine already supports this form (lines 98-106).
 
 **Ppx interactions — errors and warnings.**
 

@@ -14,10 +14,10 @@ While reviewing how the Plugins UI decides which commands (`Activate` / `Deactiv
 oddities surfaced:
 
 1. The command-visibility-by-state metadata (`allowedStates`) for the Plugin aggregate is **hand-written** in
-   [`Platform_Admin_Structure.res`](../../reventless/reventless-core/src/admin/Platform_Admin_Structure.res),
+   [`Platform_Admin_Structure.res`](../../reventless/core/src/admin/Platform_Admin_Structure.res),
    not derived from `@allowedStates` annotations on the spec like every other aggregate.
 2. The Plugin read model's GraphQL surface is **hand-rolled** in
-   [`PluginBaseFragment.res`](../../reventless/reventless-core/src/admin/PluginBaseFragment.res) rather than
+   [`PluginBaseFragment.res`](../../reventless/core/src/admin/PluginBaseFragment.res) rather than
    generated from the spec.
 
 This document explains *why* the Plugin aggregate/read model diverge from normal components, catalogs the
@@ -32,23 +32,23 @@ For a user plugin (`examples/online-shop-*`), the flow is fully automatic:
 1. **Discovery / composition.** `generate-plugin` scans `src/` by folder name and emits the
    `Plugin.res` composition root, wiring every discovered aggregate / read model / slice.
 2. **Structure extraction.** At build time, `Plugin_Builder.make` calls
-   [`Plugin_Structure.make`](../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res#L88)
+   [`Plugin_Structure.make`](../../reventless/core/src/components/Plugin/Plugin_Structure.res#L88)
    over the spec modules. This reads PPX-emitted metadata — including the per-variant `@allowedStates` (via
-   [`ApiAllowedStatesHelpers`](../../reventless/reventless-core/src/components/Api/ApiAllowedStatesHelpers.res)),
+   [`ApiAllowedStatesHelpers`](../../reventless/core/src/components/Api/ApiAllowedStatesHelpers.res)),
    the `@status` field, `@displayName`, etc. — and produces a `pluginStructure` value
    (`commandDef[]`, `queryableDef[]`, …).
 3. **Schema generation.** The GraphQL fragment (mutations + queries) is generated from the same spec schemas
    via `FragmentProvider.generateFragment`
-   ([`Plugin_Builder.res:286`](../../reventless/reventless-core/src/components/Plugin/Plugin_Builder.res#L286)).
+   ([`Plugin_Builder.res:286`](../../reventless/core/src/components/Plugin/Plugin_Builder.res#L286)).
 4. **Self-delivery via Connect.** The computed `pluginStructure` rides into the platform inside the
    **Connect** command's `pluginDefinition.structure`
-   ([`Plugin_Builder.res:622`](../../reventless/reventless-core/src/components/Plugin/Plugin_Builder.res#L622),
+   ([`Plugin_Builder.res:622`](../../reventless/core/src/components/Plugin/Plugin_Builder.res#L622),
    surfaced as `outputs.pluginStructure` at line 812).
-5. **Projection.** [`PluginsProjection`](../../reventless/reventless-core/src/admin/PluginsProjection.res#L53-L73)
+5. **Projection.** [`PluginsProjection`](../../reventless/core/src/admin/PluginsProjection.res#L53-L73)
    stores `pluginDef.structure` into the Plugins read-model state.
 6. **Seeding for AutoUI.** The platform copies each plugin's `outputs.pluginStructure` into
    `pluginStructuresStore`
-   ([`seedPluginStructuresStore`](../../reventless/reventless-local/src/Platform.res#L898)), from which
+   ([`seedPluginStructuresStore`](../../reventless/local/src/Platform.res#L898)), from which
    `Platform_UIDefinitions` serves the AutoUI manifest.
 
 **Key property:** the spec is the single source of truth; structure + schema are *derived*, and the plugin
@@ -66,21 +66,21 @@ The Plugin aggregate (`PluginSpec.res`) and Plugins read model (`PluginsReadMode
 It's important not to overstate the divergence. The **write side runs through the generic machinery**:
 
 - The Plugin aggregate is passed in via the `~aggregates` parameter of `Platform_Admin.construct`
-  ([line 103](../../reventless/reventless-core/src/admin/Platform_Admin.res#L103)).
+  ([line 103](../../reventless/core/src/admin/Platform_Admin.res#L103)).
 - Its CommandGenerator/resolver wiring uses the normal path via
-  [`Plugin_Helpers.registerAdminAggregateMutations`](../../reventless/reventless-core/src/admin/Platform_Admin.res#L138).
+  [`Plugin_Helpers.registerAdminAggregateMutations`](../../reventless/core/src/admin/Platform_Admin.res#L138).
 - The mutation SDL **is** derived from `PluginSpec.command`:
-  [`pluginAggregateMutationEntries`](../../reventless/reventless-core/src/admin/PluginBaseFragment.res#L75-L94)
+  [`pluginAggregateMutationEntries`](../../reventless/core/src/admin/PluginBaseFragment.res#L75-L94)
   reads the variant names off the schema and filters `@noApi` — exactly like the generic path.
 
 ### 3b. What is hand-rolled
 
 Two pieces are authored by hand:
 
-**(1) Query schema surface** — [`PluginBaseFragment.queryEntries`](../../reventless/reventless-core/src/admin/PluginBaseFragment.res#L37-L62)
+**(1) Query schema surface** — [`PluginBaseFragment.queryEntries`](../../reventless/core/src/admin/PluginBaseFragment.res#L37-L62)
 instead of auto-generation, because of bespoke shape/naming requirements (see §4).
 
-**(2) `pluginStructure` (AutoUI metadata)** — [`Platform_Admin_Structure.res`](../../reventless/reventless-core/src/admin/Platform_Admin_Structure.res)
+**(2) `pluginStructure` (AutoUI metadata)** — [`Platform_Admin_Structure.res`](../../reventless/core/src/admin/Platform_Admin_Structure.res)
 reconstructs by hand what `Plugin_Structure.make` would otherwise emit: `activateCommand` / `deactivateCommand`
 with literal `allowedStates`, the `pluginReadModel` `queryableDef` with `statusField: Some("status")`, etc.
 Its own header comment states the reason:
@@ -97,9 +97,9 @@ does not flow through pluginStructure outputs" comment:
 
 | Location | What it seeds |
 |---|---|
-| [`Platform.res:1328`](../../reventless/reventless-local/src/Platform.res#L1328) | `pluginStructuresStore` admin entry |
-| [`Platform.res:1043`](../../reventless/reventless-local/src/Platform.res#L1043) (`seedAdminPlatformEventGraphEntry`) | PlatformEventGraph admin row |
-| [`Platform_UIDefinitions_Lambda.res:115`](../../reventless/reventless-aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res#L115) | AWS AutoUI manifest admin entry |
+| [`Platform.res:1328`](../../reventless/local/src/Platform.res#L1328) | `pluginStructuresStore` admin entry |
+| [`Platform.res:1043`](../../reventless/local/src/Platform.res#L1043) (`seedAdminPlatformEventGraphEntry`) | PlatformEventGraph admin row |
+| [`Platform_UIDefinitions_Lambda.res:115`](../../reventless/aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res#L115) | AWS AutoUI manifest admin entry |
 
 ---
 
@@ -111,7 +111,7 @@ The Plugin aggregate **is the registry of plugins**. It exists before, and in or
 registration. A normal plugin *delivers* its structure through the **Connect** handshake; but there is no
 Connect handshake for the platform itself. Internally the admin even fabricates a `fakePluginDefinition` with
 `structure: None`
-([`Platform_Admin.res:70-83`](../../reventless/reventless-core/src/admin/Platform_Admin.res#L70-L83)).
+([`Platform_Admin.res:70-83`](../../reventless/core/src/admin/Platform_Admin.res#L70-L83)).
 
 This is the chicken-and-egg: the component that *implements* plugin registration cannot itself arrive through
 that pipeline. Hence the structure a real plugin would deliver must be synthesized by hand and seeded directly.
@@ -121,8 +121,8 @@ that pipeline. Hence the structure a real plugin would deliver must be synthesiz
 
 Plugin schemas are fragments stitched in at connect time; the admin's is `AdminApi.baseFragment` —
 always-present and foundational, carrying platform policy: the `Platform_` field prefix
-([`Api_Naming.adminField`](../../reventless/reventless-core/src/admin/PluginBaseFragment.res#L46)) and the
-`Admin` authorization group ([`adminAuth`](../../reventless/reventless-core/src/admin/PluginBaseFragment.res#L3-L6)).
+([`Api_Naming.adminField`](../../reventless/core/src/admin/PluginBaseFragment.res#L46)) and the
+`Admin` authorization group ([`adminAuth`](../../reventless/core/src/admin/PluginBaseFragment.res#L3-L6)).
 These are platform concerns, not per-plugin codegen output.
 
 ### Force 3 — Bespoke shape/naming mismatches
@@ -130,12 +130,12 @@ These are platform concerns, not per-plugin codegen output.
 `PluginBaseFragment` is largely comments documenting special cases the generic codegen does not model:
 
 - read-model `Spec.name` is **plural** `"Plugins"` but the GraphQL type is **singular** `Platform_Plugin`
-  ([lines 39-48](../../reventless/reventless-core/src/admin/PluginBaseFragment.res#L39-L48));
+  ([lines 39-48](../../reventless/core/src/admin/PluginBaseFragment.res#L39-L48));
 - the explicit `Platform_UIFragments` field would **collide** with an auto-generated connection field
-  ([lines 32-36](../../reventless/reventless-core/src/admin/PluginBaseFragment.res#L32-L36));
+  ([lines 32-36](../../reventless/core/src/admin/PluginBaseFragment.res#L32-L36));
 - `option<nested-object>` fields (`apiSchemaFragment`, `uiFragments`, `structure`) must be **excluded** or
   AutoUI renders them as scalar columns and every Plugin row fails to load
-  ([lines 19-30](../../reventless/reventless-core/src/admin/PluginBaseFragment.res#L19-L30)).
+  ([lines 19-30](../../reventless/core/src/admin/PluginBaseFragment.res#L19-L30)).
 
 Forces 2 and 3 are **incidental** — products of how the admin grew, not laws of the architecture.
 
@@ -161,7 +161,7 @@ Forces 2 and 3 are **incidental** — products of how the admin grew, not laws o
 
 - `Platform_Admin_Structure.res` must keep `allowedStates` in sync with the accept/reject branches of
   `PluginBehavior` *by hand* (the file says so at
-  [lines 65-68](../../reventless/reventless-core/src/admin/Platform_Admin_Structure.res#L65-L68)).
+  [lines 65-68](../../reventless/core/src/admin/Platform_Admin_Structure.res#L65-L68)).
 - Excluded-field lists are shared between `PluginBaseFragment` and `Platform_Admin_Structure` precisely because
   a mismatch makes AutoUI query non-existent fields and every row fails to load.
 - The synthetic structure is seeded in three independent locations; adding a fourth consumer means a fourth

@@ -1,0 +1,73 @@
+{
+  "name": "@reventlessdev/reventless-core",
+  "version": "3.0.0-alpha.170",
+  "description": "Core package for Reventless framework",
+  "license": "Apache-2.0",
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/**/*Test.res.mjs"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/tests/AsyncTest.res.mjs"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs"
+    ],
+    "setupFiles": [
+      "<rootDir>/jest.setup.cjs"
+    ],
+    "moduleNameMapper": {
+      "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
+      "^spdx-license-ids$": "<rootDir>/../../node_modules/spdx-license-ids/index.json",
+      "^spdx-license-ids/deprecated$": "<rootDir>/../../node_modules/spdx-license-ids/deprecated.json",
+      "^spdx-exceptions$": "<rootDir>/../../node_modules/spdx-exceptions/index.json"
+    }
+  },
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build",
+    "deploy": "./scripts/deploy.sh",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "test:watch": "jest --watchAll",
+    "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
+    "dev": "jest --watchAll",
+    "watch:screen": "screen -c .screenrc",
+    "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
+  },
+  "dependencies": {
+    "@reventlessdev/rescript-effect": "workspace:*",
+    "@reventlessdev/rescript-fast-csv": "workspace:*",
+    "@reventlessdev/rescript-hash-object": "workspace:*",
+    "@reventlessdev/rescript-jest": "workspace:*",
+    "@reventlessdev/rescript-node-streams": "workspace:*",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/rescript-ssh2": "workspace:*",
+    "@reventlessdev/rescript-uuid": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-interop": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
+    "sury": "11.0.0-alpha.4",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@reventlessdev/reventless-ppx": "workspace:*",
+    "rescript": "12.3.0",
+    "sury-ppx": "11.0.0-alpha.2"
+  },
+  "peerDependencies": {
+    "rescript": "12.3.0"
+  },
+  "gitHead": "ddea51534dc210635d7b11968089627b3b697ce2",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "reventless/core"
+  }
+}

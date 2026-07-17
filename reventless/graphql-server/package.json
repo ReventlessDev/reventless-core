@@ -1,0 +1,31 @@
+{
+  "name": "@reventlessdev/reventless-graphql-server",
+  "version": "1.0.0-alpha.17",
+  "description": "Transport-neutral GraphQL server runtime for Reventless: schema-from-fragments, resolver registration, an HTTP + graphql-ws listener, and a subscription fan-out bridge with a pluggable PubSub backend",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build",
+    "test": "echo \"There are no tests for reventless-graphql-server.\""
+  },
+  "dependencies": {
+    "@reventlessdev/rescript-graphql-yoga": "workspace:*",
+    "@reventlessdev/reventless-core": "workspace:*"
+  },
+  "devDependencies": {
+    "rescript": "12.3.0"
+  },
+  "peerDependencies": {
+    "rescript": "12.3.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "reventless/graphql-server"
+  }
+}

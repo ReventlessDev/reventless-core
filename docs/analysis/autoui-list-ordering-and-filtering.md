@@ -241,10 +241,10 @@ These are already flagged in `docs/plans/done/autoui-server-query-capabilities.m
 
 ## References
 
-- `reventless/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res` — `deriveServerCapability`, `deriveConnectionFilterType`, `deriveConnectionOrderByType`, `validateScanSortAlignment`.
-- `reventless/reventless-local/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res` — `defaultListPageSize`, filter/sort/keyset-cursor implementation.
-- `reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res` — capability lookup at deploy time, JS resolver template wiring.
+- `reventless/core/src/components/Api/GraphQL_FragmentGenerator.res` — `deriveServerCapability`, `deriveConnectionFilterType`, `deriveConnectionOrderByType`, `validateScanSortAlignment`.
+- `reventless/local/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res` — `defaultListPageSize`, filter/sort/keyset-cursor implementation.
+- `reventless/aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res` — capability lookup at deploy time, JS resolver template wiring.
 - `rescript/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res` — `listAllItemsConnection` template (filter expression assembly, per-page sort, range clauses).
-- `reventless/reventless-spec/src/components/StateAnnotations.res` — `stateAnnotationSpec` (the metadata record that the PPX populates and the schema-emitter consumes).
+- `reventless/spec/src/components/StateAnnotations.res` — `stateAnnotationSpec` (the metadata record that the PPX populates and the schema-emitter consumes).
 - `docs/plans/done/autoui-schema-annotations.md` — Phases 1–4: how structural annotations reach the JSON Schema.
 - `docs/plans/done/autoui-server-query-capabilities.md` — Phases 1–3: how the JSON Schema becomes the filter / sort / pagination surface.

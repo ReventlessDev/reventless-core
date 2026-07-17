@@ -18,7 +18,7 @@ The runtime builders accept `~memorySize=1024` and `~timeout=30` as labeled
 defaults on the `forCommandTopic` / `forCommandGenerator` / `forDcbCommandTopic`
 runtime hooks, and the `Single` / `Single_Async` Pulumi builders take the
 **max** across all registered components when sizing the bundled Lambda
-([AggregateRuntime_Builder_Single.res:184-193](../../reventless/reventless-aws/src/adapter/Runtime/AggregateRuntime_Builder_Single.res#L184-L193)):
+([AggregateRuntime_Builder_Single.res:184-193](../../reventless/aws/src/adapter/Runtime/AggregateRuntime_Builder_Single.res#L184-L193)):
 
 ```rescript
 let (parent, memorySize, timeout) = specs->Array.reduce((None, 0, 0), (
@@ -34,7 +34,7 @@ let (parent, memorySize, timeout) = specs->Array.reduce((None, 0, 0), (
 ```
 
 But the call sites in
-[Aggregate_Builder.res:89-92](../../reventless/reventless-core/src/components/Aggregate/Aggregate_Builder.res#L89-L92)
+[Aggregate_Builder.res:89-92](../../reventless/core/src/components/Aggregate/Aggregate_Builder.res#L89-L92)
 never pass those args:
 
 ```rescript
@@ -202,8 +202,8 @@ If you genuinely need per-component isolation — independent Lambda,
 independent SQS, independent IAM role — the framework already has
 `Aggregate_Builder_PerAggregate` and `Aggregate_Builder_Micro` strategies
 that emit one Lambda per aggregate
-([AggregateRuntime_Builder_PerAggregate.res](../../reventless/reventless-aws/src/adapter/Runtime/AggregateRuntime_Builder_PerAggregate.res),
-[AggregateRuntime_Builder_Micro.res](../../reventless/reventless-aws/src/adapter/Runtime/AggregateRuntime_Builder_Micro.res)).
+([AggregateRuntime_Builder_PerAggregate.res](../../reventless/aws/src/adapter/Runtime/AggregateRuntime_Builder_PerAggregate.res),
+[AggregateRuntime_Builder_Micro.res](../../reventless/aws/src/adapter/Runtime/AggregateRuntime_Builder_Micro.res)).
 Applying Layer 1's config plumbing to those gives each per-aggregate Lambda
 its own knobs.
 
@@ -257,7 +257,7 @@ per-component isolation becomes a goal.
 ### New type in `reventless-core`
 
 ```rescript
-// reventless/reventless-core/src/adapter/Runtime/Runtime.res
+// reventless/core/src/adapter/Runtime/Runtime.res
 type commandHandlerConfig = {
   memorySize?: int,                  // MB, 128–10240, framework default 1024
   timeout?: int,                     // seconds, 1–900, framework default 30
@@ -286,7 +286,7 @@ compose against them (e.g. "use the default plus 50% memory"), expose
 them as named constants in the same module:
 
 ```rescript
-// reventless/reventless-core/src/adapter/Runtime/Runtime.res
+// reventless/core/src/adapter/Runtime/Runtime.res
 module CommandHandlerDefaults = {
   let memorySize = 1024
   let timeout = 30

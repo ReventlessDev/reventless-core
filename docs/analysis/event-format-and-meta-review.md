@@ -15,7 +15,7 @@
 
 ### 1.1 The `Message.meta` envelope
 
-Defined in `reventless/reventless-spec/src/types/Message.res`:
+Defined in `reventless/spec/src/types/Message.res`:
 
 ```rescript
 @schema
@@ -451,6 +451,6 @@ shelf as a "ready to adopt when there is a buyer" option.
 - [CloudEvents Partitioning extension](https://github.com/cloudevents/spec/blob/main/cloudevents/extensions/partitioning.md)
 - Companion analysis: [event-field-naming-comparison.md](./event-field-naming-comparison.md)
 - Related: [done/dcb-event-type-coupling.md](./done/dcb-event-type-coupling.md) — notes EventSourcingDB uses CloudEvents
-- Code: `reventless/reventless-spec/src/types/Message.res`,
-  `reventless/reventless-core/src/components/EventLog/EventLog_Operations.res:37-52`,
-  `reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res:55-93`
+- Code: `reventless/spec/src/types/Message.res`,
+  `reventless/core/src/components/EventLog/EventLog_Operations.res:37-52`,
+  `reventless/aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res:55-93`

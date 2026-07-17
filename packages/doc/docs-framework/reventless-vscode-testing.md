@@ -168,8 +168,8 @@ Re-run both whenever you edit the respective sources. The extension only re-disc
 Before launching the dev host, confirm the CLI emits well-formed NDJSON for both invocation modes:
 
 ```bash
-node reventless/reventless-gwt/bin/reventless-gwt.mjs discover --format=vscode reventless/reventless-gwt/tests/ | head -3
-node reventless/reventless-gwt/bin/reventless-gwt.mjs run --format=vscode reventless/reventless-gwt/tests/ | tail -3
+node reventless/gwt/bin/reventless-gwt.mjs discover --format=vscode reventless/gwt/tests/ | head -3
+node reventless/gwt/bin/reventless-gwt.mjs run --format=vscode reventless/gwt/tests/ | tail -3
 ```
 
 Expected:
@@ -216,7 +216,7 @@ Two options.
 
 ## 4. Open a test workspace in the dev host
 
-In the dev-host window: **File → Open Folder** → pick a Reventless app (e.g. `examples/online-shop-hybrid/`, or a single plugin like `reventless/reventless-gwt/`).
+In the dev-host window: **File → Open Folder** → pick a Reventless app (e.g. `examples/online-shop-hybrid/`, or a single plugin like `reventless/gwt/`).
 
 `reventless.roots` now defaults to **empty**: the watch session auto-discovers every GWT test across the workspace-folder subtree, so no config is needed. The CLI resolver walks up from the workspace folder looking for `node_modules/.bin/reventless-gwt` and finds it at the monorepo root.
 
@@ -251,7 +251,7 @@ All three paths use the CLI's substring-match `--filter`, so the ids emitted at 
 
 ## 7. Verify failure rendering
 
-Temporarily break a test. For example in [`reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res), change an expected event's field. Rebuild:
+Temporarily break a test. For example in [`reventless/gwt/tests/StateChangeSliceGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/gwt/tests/StateChangeSliceGwtTest.res), change an expected event's field. Rebuild:
 
 ```bash
 pnpm --filter @reventlessdev/reventless-gwt run build
@@ -285,7 +285,7 @@ Mechanism: the extension forwards `token.onCancellationRequested` → `proc.kill
 
 In the dev host: **Settings → Extensions → Reventless**.
 
-- **`reventless.cliPath`** — set to the absolute path of the CLI launcher, e.g. `/abs/path/to/reventless-core/reventless/reventless-gwt/bin/reventless-gwt.mjs`. Restart the watch (Watch view → Restart). Discovery should still work. Clear the setting to fall back to the `node_modules/.bin` walk-up.
+- **`reventless.cliPath`** — set to the absolute path of the CLI launcher, e.g. `/abs/path/to/reventless-core/reventless/gwt/bin/reventless-gwt.mjs`. Restart the watch (Watch view → Restart). Discovery should still work. Clear the setting to fall back to the `node_modules/.bin` walk-up.
 - **`reventless.roots`** — set to a narrow value, e.g. `["catalog/tests"]`. Restart the watch. The tree should shrink to just that subtree. Clear it to return to full auto-discovery.
 
 ---
@@ -339,7 +339,7 @@ If you're using **Option B (F5)**, the `preLaunchTask: "npm: build"` in `.vscode
 
 Changes under `contributes.*` (commands, configuration, menus) are picked up by **Developer: Reload Window**. Changes to `activationEvents` or `main` sometimes aren't — if a new command or configuration key doesn't appear, fully close and relaunch the dev host (Option B: stop and F5 again; Option A: close the window, reload the main window, reopen the dev host).
 
-### You edited the CLI or a GWT DSL (`reventless/reventless-gwt/src/**`)
+### You edited the CLI or a GWT DSL (`reventless/gwt/src/**`)
 
 ```bash
 pnpm --filter @reventlessdev/reventless-gwt run build

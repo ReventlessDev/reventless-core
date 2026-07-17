@@ -74,7 +74,7 @@ Filter a single package from root:
 
 ```bash
 pnpm --filter @reventlessdev/reventless-core run build
-pnpm --filter ./reventless/reventless-local run test
+pnpm --filter ./reventless/local run test
 ```
 
 ### Compiler warnings

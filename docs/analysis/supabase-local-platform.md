@@ -17,7 +17,7 @@ The GraphQL server (`GraphQL_Server.start()`) already runs locally — that stay
 
 ## Package Structure
 
-New package: `reventless/reventless-supabase/` (follows monorepo folder convention for framework packages).
+New package: `reventless/supabase/` (follows monorepo folder convention for framework packages).
 
 New ReScript bindings package: `rescript/rescript-supabase/` (bindings for `@supabase/supabase-js`).
 

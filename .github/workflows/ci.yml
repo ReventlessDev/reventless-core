@@ -54,18 +54,18 @@ jobs:
           echo "$CHANGED"
 
           # Framework changes → run everything
-          if echo "$CHANGED" | grep -qE "^reventless/reventless-core/|^reventless/reventless-spec/|^rescript/|^package\.json|^jest\.config"; then
+          if echo "$CHANGED" | grep -qE "^reventless/core/|^reventless/spec/|^rescript/|^package\.json|^jest\.config"; then
             echo "select=all" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           PROJECTS=""
           # In-memory adapter
-          if echo "$CHANGED" | grep -q "^reventless/reventless-local/"; then
+          if echo "$CHANGED" | grep -q "^reventless/local/"; then
             PROJECTS="$PROJECTS --selectProjects reventless-local"
           fi
           # Interop
-          if echo "$CHANGED" | grep -q "^reventless/reventless-interop/"; then
+          if echo "$CHANGED" | grep -q "^reventless/interop/"; then
             PROJECTS="$PROJECTS --selectProjects reventless-interop"
           fi
           # rescript-moment
@@ -95,7 +95,7 @@ jobs:
           fi
 
           # In-memory changes also affect all example tests (they depend on it)
-          if echo "$CHANGED" | grep -q "^reventless/reventless-local/"; then
+          if echo "$CHANGED" | grep -q "^reventless/local/"; then
             PROJECTS="$PROJECTS --selectProjects online-shop-dcb-catalog --selectProjects online-shop-dcb-ordering"
             PROJECTS="$PROJECTS --selectProjects example-aggregate-catalog --selectProjects example-aggregate-ordering"
             PROJECTS="$PROJECTS --selectProjects online-shop-hybrid-catalog --selectProjects online-shop-hybrid-ordering"

@@ -47,7 +47,7 @@ resolve_dep_dir() {
       ;;
   esac
   node -e 'try { console.log(require("path").dirname(require.resolve(process.argv[1] + "/package.json", { paths: process.argv.slice(2) }))); } catch { process.exit(1); }' \
-    "$dep" "$REPO_ROOT" "$REPO_ROOT/reventless/reventless-spec" "$REPO_ROOT/reventless/reventless-infra" "$PPX_DIR"
+    "$dep" "$REPO_ROOT" "$REPO_ROOT/reventless/spec" "$REPO_ROOT/reventless/infra" "$PPX_DIR"
 }
 
 # Give $1/node_modules a layout where every REQUIRED_DEP resolves.

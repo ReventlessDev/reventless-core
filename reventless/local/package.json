@@ -1,0 +1,69 @@
+{
+  "name": "@reventlessdev/reventless-local",
+  "version": "3.0.0-alpha.157",
+  "description": "Local platform for Reventless (in-memory or SQLite backend, for development and testing without AWS)",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build",
+    "test": "LOG_LEVEL=${LOG_LEVEL:-silent} NODE_OPTIONS='--experimental-vm-modules' npx jest"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/**/*Test.res.mjs",
+      "<rootDir>/tests/**/*_GWT.res.mjs"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs",
+      "cjs"
+    ],
+    "setupFiles": [
+      "<rootDir>/tests/setup/sqliteGlobal.cjs"
+    ],
+    "moduleNameMapper": {
+      "^node:sqlite$": "<rootDir>/__mocks__/nodeSqlite.mjs",
+      "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
+      "^spdx-license-ids$": "<rootDir>/../../node_modules/spdx-license-ids/index.json",
+      "^spdx-license-ids/deprecated$": "<rootDir>/../../node_modules/spdx-license-ids/deprecated.json",
+      "^spdx-exceptions$": "<rootDir>/../../node_modules/spdx-exceptions/index.json",
+      "^@modelcontextprotocol/sdk/(.*)$": "<rootDir>/../../node_modules/@modelcontextprotocol/sdk/dist/esm/$1"
+    }
+  },
+  "dependencies": {
+    "@reventlessdev/rescript-effect": "workspace:*",
+    "@reventlessdev/rescript-graphql-yoga": "workspace:*",
+    "@reventlessdev/rescript-jest": "workspace:*",
+    "@reventlessdev/rescript-mcp-sdk": "workspace:*",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-core": "workspace:*",
+    "@reventlessdev/reventless-graphql-server": "workspace:*",
+    "@reventlessdev/reventless-gwt": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-postgres": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
+    "graphql": "^16.13.2",
+    "graphql-ws": "^5.16.0",
+    "graphql-yoga": "^5.21.0",
+    "sury": "11.0.0-alpha.4",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@reventlessdev/reventless-ppx": "workspace:*",
+    "rescript": "12.3.0",
+    "sury-ppx": "11.0.0-alpha.2"
+  },
+  "peerDependencies": {
+    "rescript": "12.3.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "reventless/local"
+  }
+}

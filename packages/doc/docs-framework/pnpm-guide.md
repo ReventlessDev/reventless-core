@@ -146,7 +146,7 @@ graph. Most common forms:
 pnpm --filter @reventlessdev/reventless-core run build
 
 # by path (relative)
-pnpm --filter ./reventless/reventless-core run build
+pnpm --filter ./reventless/core run build
 
 # by directory glob
 pnpm --filter './examples/**' run build

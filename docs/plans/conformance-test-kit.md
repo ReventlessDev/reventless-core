@@ -2,7 +2,7 @@
 
 **Status**: Draft (2026-07-03)
 **Nature**: feature plan. One new published package
-`reventless/reventless-conformance` (`@reventlessdev/reventless-conformance`,
+`reventless/conformance` (`@reventlessdev/reventless-conformance`,
 Apache-2.0) holding backend-parameterized behavioral suites; `reventless-local`
 and `reventless-aws` become its first two consumers; one packaging hygiene fix
 in `reventless-local`.

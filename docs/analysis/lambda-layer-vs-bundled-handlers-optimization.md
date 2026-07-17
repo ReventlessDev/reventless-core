@@ -8,7 +8,7 @@ Reventless uses a **Lambda Layer + Code Asset** deployment model:
 - **Code Asset** (`/var/task/node_modules/`): Contains only the user's business logic modules (Specs, Behaviors, Mappings)
 - **Entry Points**: 13 compiled `*EntryPoint.res` files live in the layer. Each reads `HANDLER_CONFIG` from env vars at cold start, dynamically imports user modules from the code asset, and wires functor chains.
 
-The layer is built by `reventless/reventless-layer-builder/`, which uses npm Arborist to resolve the dependency tree of `@reventlessdev/reventless-aws`, then filters, extracts, and post-processes packages into a zip.
+The layer is built by `reventless/layer-builder/`, which uses npm Arborist to resolve the dependency tree of `@reventlessdev/reventless-aws`, then filters, extracts, and post-processes packages into a zip.
 
 **Current layer size**: CI warns at >40 MB (Lambda limit: 50 MB unzipped = ~250 MB).
 
@@ -52,7 +52,7 @@ However, the **Lambda Layer** contains the entire framework regardless. Every La
 
 ## Part 2: What's in the Lambda Layer
 
-The layer builder (`reventless/reventless-layer-builder/src/Main.res`) starts from `@reventlessdev/reventless-aws` and resolves its entire production dependency tree, then filters out known build-time/deploy-time packages.
+The layer builder (`reventless/layer-builder/src/Main.res`) starts from `@reventlessdev/reventless-aws` and resolves its entire production dependency tree, then filters out known build-time/deploy-time packages.
 
 ### Included Packages
 
