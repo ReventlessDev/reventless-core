@@ -3,8 +3,4 @@
 # .github/workflows/publish-ppx.yml). Local builds via `pnpm build:ppx` land
 # here as ppx-<target>.exe and serve as the launcher's local fallback — they
 # must never be committed.
-#
-# ppx-osx-x64.exe remains tracked as a transitional macOS fallback until the
-# darwin-* per-platform packages are published — a tracked file is not affected
-# by this gitignore (gitignore is for untracked files only).
 *.exe

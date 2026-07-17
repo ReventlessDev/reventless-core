@@ -41,11 +41,7 @@ packages/reventless-ppx/src/_build/
 # Native build artifacts (e.g. reventless-ppx per-platform binaries) are
 # distributed via the npm registry as @reventlessdev/reventless-ppx-<target>
 # packages, never committed. Local builds via `pnpm build:ppx` land alongside
-# the launcher and serve only as a fallback for PPX hackers.
-#
-# Exception: packages/reventless-ppx/ppx-osx-x64.exe remains tracked as the
-# macOS local-fallback until darwin-* per-platform packages publish. Tracked
-# files are unaffected by this pattern (gitignore is for untracked files).
+# the launcher (e.g. ppx-osx.exe) and serve only as a fallback for PPX hackers.
 *.exe
 
 # Lambda layer zip artifacts are built by reventless-layer-builder and
