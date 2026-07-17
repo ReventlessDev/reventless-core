@@ -375,7 +375,7 @@ function Make(Platform) {
     CategoriesSlice,
     ProductDemandSlice,
     ProductsSlice
-  ], undefined, undefined, [ImportProductSlice], undefined, Stdlib_Option.map(process.env.CATALOG_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Catalog", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
+  ], undefined, undefined, [ImportProductSlice], undefined, undefined, Stdlib_Option.map(process.env.CATALOG_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Catalog", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     AddCategorySlice: AddCategorySlice,
     AddProductSlice: AddProductSlice,

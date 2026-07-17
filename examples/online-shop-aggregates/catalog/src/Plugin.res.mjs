@@ -228,7 +228,7 @@ function Make(Platform) {
     CategoriesReadModel,
     ProductDemandsReadModel,
     ProductsReadModel
-  ], [ImportProductsTask], undefined, undefined, undefined, undefined, undefined, undefined, Stdlib_Option.map(process.env.CATALOG_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Catalog", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
+  ], [ImportProductsTask], undefined, undefined, undefined, undefined, undefined, undefined, undefined, Stdlib_Option.map(process.env.CATALOG_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Catalog", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     CategoryAggregate: CategoryAggregate,
     ProductAggregate: ProductAggregate,
