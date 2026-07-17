@@ -51,7 +51,7 @@ us-east-1 is non-negotiable for the cert. The CloudFront API rejects certificate
 
 ### 1.3 What's missing in our ReScript bindings
 
-A grep of [rescript-pulumi-aws/src](../../rescript/rescript-pulumi-aws/src) shows the current binding surface covers `S3`, `SQS`, `SNS`, `Lambda`, `DynamoDb`, `Cognito`, `CloudFront.Distribution`, `IAM`, `AppSync`, `ECS`, `EC2`, `SES`, `Kinesis`, `Cloudwatch`, `SecretsManager`, plus `AwsNative.AppSync`. **Missing:**
+A grep of [rescript-pulumi-aws/src](../../rescript/pulumi-aws/src) shows the current binding surface covers `S3`, `SQS`, `SNS`, `Lambda`, `DynamoDb`, `Cognito`, `CloudFront.Distribution`, `IAM`, `AppSync`, `ECS`, `EC2`, `SES`, `Kinesis`, `Cloudwatch`, `SecretsManager`, plus `AwsNative.AppSync`. **Missing:**
 
 - `Acm.Certificate`, `Acm.CertificateValidation`
 - `Route53.Record` (with the `aliases` field shape — the alias-target sub-record is non-trivial)
@@ -349,4 +349,4 @@ Linear scaling for additional UI bundles is zero — the framework handles them 
 - [docs/plans/done/host-ui-login-core.md](../plans/done/host-ui-login-core.md) — the prior plan that established the `Util_LocalConfig` + env-var pattern this proposal builds on.
 - [reventless/aws/src/Plugin_Stack.res](../../reventless/aws/src/Plugin_Stack.res) — primary code location for the change.
 - [reventless/aws/src/Platform.res](../../reventless/aws/src/Platform.res) — secondary, for wiring auto-derived FQDN.
-- [rescript/rescript-pulumi-aws/src/](../../rescript/rescript-pulumi-aws/src/) — where the new ACM / Route53 / Provider bindings would go.
+- [rescript/pulumi-aws/src/](../../rescript/pulumi-aws/src/) — where the new ACM / Route53 / Provider bindings would go.

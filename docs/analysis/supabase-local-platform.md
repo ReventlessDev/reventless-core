@@ -19,7 +19,7 @@ The GraphQL server (`GraphQL_Server.start()`) already runs locally — that stay
 
 New package: `reventless/supabase/` (follows monorepo folder convention for framework packages).
 
-New ReScript bindings package: `rescript/rescript-supabase/` (bindings for `@supabase/supabase-js`).
+New ReScript bindings package: `rescript/supabase/` (bindings for `@supabase/supabase-js`).
 
 Dependencies:
 - `reventless-core` — adapter interfaces
@@ -342,7 +342,7 @@ Migrations are committed to source control under `supabase/migrations/`, giving 
 
 | File | Package | Priority |
 |------|---------|---------|
-| `rescript-supabase` bindings | `rescript/rescript-supabase/` | High — needed by all adapters |
+| `rescript-supabase` bindings | `rescript/supabase/` | High — needed by all adapters |
 | `EventLogStorage_Supabase.res` | `reventless-supabase/src/adapter/EventLog/` | High |
 | `QueryDbStorage_Supabase.res` | `reventless-supabase/src/adapter/QueryDb/` | High — needed by read models |
 | `DcbEventLogStorage_Supabase.res` | `reventless-supabase/src/adapter/DcbEventLog/` | Medium — only for DCB-based plugins |

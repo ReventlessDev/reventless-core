@@ -236,4 +236,4 @@ Container support is worth building, but the decision of *which approach to take
 | `reventless/core/src/adapter/Runtime/AggregateRuntime_Builder_Single.res` | Shows how runtimes and channels are connected |
 | `reventless/aws/src/adapter/CommandTopic/CommandTopicChannel_SQS.res` | Channel adapter using Lambda-push model |
 | `reventless/aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res` | Event collector using Lambda event source mapping |
-| `rescript/rescript-pulumi-aws/src/` | Existing AWS Pulumi bindings to extend |
+| `rescript/pulumi-aws/src/` | Existing AWS Pulumi bindings to extend |

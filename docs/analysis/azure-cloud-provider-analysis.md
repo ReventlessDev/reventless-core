@@ -283,8 +283,8 @@ DynamoDB has a 10GB partition limit (but handles splits automatically). Cosmos D
 | Package | Location | Purpose |
 |---------|----------|---------|
 | `reventless-azure` | `reventless/azure/` | Azure adapter implementations (main deliverable) |
-| `rescript-azure-sdk` | `rescript/rescript-azure-sdk/` | ReScript bindings for Azure SDK (`@azure/cosmos`, `@azure/service-bus`, `@azure/storage-blob`, `@azure/identity`, `@azure/functions`) |
-| `rescript-pulumi-azure` | `rescript/rescript-pulumi-azure/` | ReScript bindings for `@pulumi/azure-native` |
+| `rescript-azure-sdk` | `rescript/azure-sdk/` | ReScript bindings for Azure SDK (`@azure/cosmos`, `@azure/service-bus`, `@azure/storage-blob`, `@azure/identity`, `@azure/functions`) |
+| `rescript-pulumi-azure` | `rescript/pulumi-azure/` | ReScript bindings for `@pulumi/azure-native` |
 
 ### 4.4 Pulumi Consideration
 

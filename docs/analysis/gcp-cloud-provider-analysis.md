@@ -342,8 +342,8 @@ Same gap as Azure. See Azure analysis Section 3.3 for detailed discussion. The s
 | Package | Location | Purpose |
 |---------|----------|---------|
 | `reventless-gcp` | `reventless/gcp/` | GCP adapter implementations |
-| `rescript-gcp-sdk` | `rescript/rescript-gcp-sdk/` | ReScript bindings for GCP SDKs (`@google-cloud/firestore`, `@google-cloud/pubsub`, `@google-cloud/storage`, `@google-cloud/functions-framework`) |
-| `rescript-pulumi-gcp` | `rescript/rescript-pulumi-gcp/` | ReScript bindings for `@pulumi/gcp` |
+| `rescript-gcp-sdk` | `rescript/gcp-sdk/` | ReScript bindings for GCP SDKs (`@google-cloud/firestore`, `@google-cloud/pubsub`, `@google-cloud/storage`, `@google-cloud/functions-framework`) |
+| `rescript-pulumi-gcp` | `rescript/pulumi-gcp/` | ReScript bindings for `@pulumi/gcp` |
 
 ### 4.4 Pulumi Consideration
 

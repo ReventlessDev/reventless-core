@@ -69,7 +69,7 @@ jobs:
             PROJECTS="$PROJECTS --selectProjects reventless-interop"
           fi
           # rescript-moment
-          if echo "$CHANGED" | grep -q "^rescript/rescript-moment/"; then
+          if echo "$CHANGED" | grep -q "^rescript/moment/"; then
             PROJECTS="$PROJECTS --selectProjects rescript-moment"
           fi
           # DCB examples

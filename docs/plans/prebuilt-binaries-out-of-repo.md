@@ -168,7 +168,7 @@ eventual darwin-x64 re-enablement.
    Mac fallback). `packages/reventless-ppx/.gitignore` adds `*.exe`.
 7. ✅ **Repo-wide `.gitignore` policy.** Root `.gitignore` adds `*.exe` and
    `**/reventless-layer*.zip`. Test fixture
-   `rescript/rescript-node-zlib/src/example/test.txt.gz` intentionally
+   `rescript/node-zlib/src/example/test.txt.gz` intentionally
    unaffected (no `.zip`/`.gz` glob at the root level).
 8. **(Separate / out of scope)** history rewrite to purge the already-committed
    binaries.
@@ -382,7 +382,7 @@ installable. The steps below are in safe cutover order.
    no-op for consumers — no gap.
 7. Add a general build-artifact `.gitignore` policy (`*.exe`, layer `*.zip`,
    bundles). Document the one intentional exception: the tiny test fixture
-   `rescript/rescript-node-zlib/src/example/test.txt.gz` (a test *input*, not a
+   `rescript/node-zlib/src/example/test.txt.gz` (a test *input*, not a
    build artifact — keep).
 8. **Remove the redundant per-package `package-lock.json`** (see below), once
    confirmed unused: `git rm` the 15 files and `.gitignore` `package-lock.json`

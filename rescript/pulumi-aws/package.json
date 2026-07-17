@@ -1,0 +1,52 @@
+{
+  "name": "@reventlessdev/rescript-pulumi-aws",
+  "version": "2.4.0-alpha.54",
+  "description": "ReScript bindings for @pulumi/aws",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "rescript build && pnpm run bundle",
+    "bundle": "node scripts/bundle-resolvers.mjs",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/**/*Test.mjs"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs"
+    ],
+    "setupFiles": [
+      "<rootDir>/../../jest.setup.cjs"
+    ],
+    "moduleNameMapper": {
+      "^@aws-appsync/utils$": "<rootDir>/tests/__mocks__/appsync-utils.mjs"
+    }
+  },
+  "dependencies": {
+    "@pulumi/aws": "~7.19.0",
+    "@pulumi/aws-native": "^1.62.0",
+    "@reventlessdev/rescript-aws-sdk": "workspace:*",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "sury": "11.0.0-alpha.4"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.12",
+    "rescript": "12.3.0",
+    "sury-ppx": "11.0.0-alpha.2"
+  },
+  "peerDependencies": {
+    "rescript": "12.3.0"
+  },
+  "gitHead": "ddea51534dc210635d7b11968089627b3b697ce2",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "rescript/pulumi-aws"
+  }
+}

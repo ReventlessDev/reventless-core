@@ -240,7 +240,7 @@ From the codebase documentation:
 **Packages in UI Repo (separate repository):**
 - `reventless-ui`, `routes`
 
-The UI repo references `rescript-moment` from this repo using: `"file:../../../reventless-core/rescript/rescript-moment"`
+The UI repo references `rescript-moment` from this repo using: `"file:../../../reventless-core/rescript/moment"`
 
 ## Repo conventions
 
@@ -251,4 +251,4 @@ Most ReScript packages here use `package-specs.in-source: true`, so compiled `.r
 - **Tracked**: outputs under `src/` and per-package `tests/` (where applicable). Either a publish-surface deliverable, shared workspace state run by CI, or — for monorepo `examples/` apps — the entry point that Pulumi (`Main.res.mjs`) and `pnpm run run` (`Main.res.mjs` + transitive `Plugin.res.mjs` etc.) resolve at runtime. ReScript only emits in-source for build-root packages, so transitively-built deps don't reliably populate `src/` on a fresh `pnpm run build`; tracking the outputs avoids per-package build orchestration.
 - **Not tracked**: outputs under `rescript/*/src/example/` and `rescript/*/src/examples/` — inline usage demos inside ReScript binding packages (e.g. `rescript-aws-sdk/src/example`, `rescript-uuid/src/examples`). These regenerate on every build and aren't part of any publish surface or deploy path.
 
-Per-package `.gitignore` files (like `rescript/rescript-effect/.gitignore` covering its own `tests/`) remain as local exceptions where needed.
+Per-package `.gitignore` files (like `rescript/effect/.gitignore` covering its own `tests/`) remain as local exceptions where needed.

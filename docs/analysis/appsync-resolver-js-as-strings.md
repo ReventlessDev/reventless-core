@@ -33,7 +33,7 @@ This is the standard pattern across all AWS IaC tools (CDK, Pulumi, Terraform, S
 
 ## Statistics
 
-**File:** `rescript/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res`
+**File:** `rescript/pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res`
 
 | Metric | Count |
 |--------|-------|

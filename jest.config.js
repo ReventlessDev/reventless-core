@@ -20,7 +20,7 @@ module.exports = {
   projects: [
     {
       displayName: "rescript-pulumi-aws",
-      rootDir: "./rescript/rescript-pulumi-aws",
+      rootDir: "./rescript/pulumi-aws",
       testMatch: ["<rootDir>/tests/**/*Test.mjs"],
       moduleFileExtensions: ["js", "mjs"],
       setupFiles: [setupFile],
@@ -85,7 +85,7 @@ module.exports = {
     },
     {
       displayName: "rescript-moment",
-      rootDir: "./rescript/rescript-moment",
+      rootDir: "./rescript/moment",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
       setupFiles: [setupFile],

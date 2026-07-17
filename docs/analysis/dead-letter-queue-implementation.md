@@ -69,7 +69,7 @@ redrivePolicy: Util_DeadLetterQueue.<queue|fifoQueue>.arn
 | `EventCollectorChannel_SQS` | standard | `queue` | 120 s |
 | `EventLogSubscription_AppSync` (SQS buffer) | standard | `queue` | 60 s |
 
-`maxReceiveCount=5` everywhere. No `bisectBatchOnFunctionError`, no `maximumRetryAttempts`, no `functionResponseTypes: [ReportBatchItemFailures]`, no `destinationConfig.onFailure` — even though the Pulumi bindings for all of those exist in [`EventSourceMapping.res`](../../rescript/rescript-pulumi-aws/src/Lambda/EventSourceMapping.res). The DDB-Stream sources (EventLog → EventTopic) have **no DLQ at all** — a poison stream record retries until the 24 h stream-record TTL and is then lost (covered separately in the aggregate command-handling review and broad review §2.1).
+`maxReceiveCount=5` everywhere. No `bisectBatchOnFunctionError`, no `maximumRetryAttempts`, no `functionResponseTypes: [ReportBatchItemFailures]`, no `destinationConfig.onFailure` — even though the Pulumi bindings for all of those exist in [`EventSourceMapping.res`](../../rescript/pulumi-aws/src/Lambda/EventSourceMapping.res). The DDB-Stream sources (EventLog → EventTopic) have **no DLQ at all** — a poison stream record retries until the 24 h stream-record TTL and is then lost (covered separately in the aggregate command-handling review and broad review §2.1).
 
 ### 1.3 Retry semantics (for reference)
 
@@ -225,4 +225,4 @@ I.e. *fewer* DLQs by hoisting them out of the per-plugin stacks into the platfor
 - [`docs/analysis/done/end-to-end-error-handling.md`](./done/end-to-end-error-handling.md) — broader error-propagation context (decide/propagate errors), upstream of where messages become DLQ-bound.
 - [`reventless/aws/src/util/Util_DeadLetterQueue.res`](../../reventless/aws/src/util/Util_DeadLetterQueue.res) — the implementation under discussion.
 - [`reventless/aws/src/util/Util_EventSourceMapping.res`](../../reventless/aws/src/util/Util_EventSourceMapping.res) — `subscribeSqs` / `subscribe`; the place `destinationConfig.onFailure` and `functionResponseTypes` would be threaded.
-- [`rescript/rescript-pulumi-aws/src/Lambda/EventSourceMapping.res`](../../rescript/rescript-pulumi-aws/src/Lambda/EventSourceMapping.res) — bindings already expose `destinationConfig`, `functionResponseTypes`, `bisectBatchOnFunctionError`, `maximumRetryAttempts`.
+- [`rescript/pulumi-aws/src/Lambda/EventSourceMapping.res`](../../rescript/pulumi-aws/src/Lambda/EventSourceMapping.res) — bindings already expose `destinationConfig`, `functionResponseTypes`, `bisectBatchOnFunctionError`, `maximumRetryAttempts`.

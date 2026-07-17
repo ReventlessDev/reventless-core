@@ -53,7 +53,7 @@ When a package declares a source directory with `"type": "dev"`, that directory 
 ### Example: `rescript-effect`
 
 ```json
-// rescript/rescript-effect/rescript.json
+// rescript/effect/rescript.json
 {
   "sources": [
     { "dir": "src", "subdirs": true },
@@ -73,7 +73,7 @@ When a package declares a source directory with `"type": "dev"`, that directory 
 
 | Build command | `src/*.res.mjs` | `tests/*.res.mjs` |
 |---|---|---|
-| `cd rescript/rescript-effect && rescript build` | compiled | compiled |
+| `cd rescript/effect && rescript build` | compiled | compiled |
 | `rescript build` (from monorepo root) | compiled | **deleted** |
 
 After a root build, the test `.res.mjs` files are gone. Running `npm run build` from within the package (or a Lerna `run build` that enters each package) restores them.

@@ -422,6 +422,6 @@ The layer is extracted once per Lambda container init. Larger layers increase co
 | `reventless/aws/src/util/Util_EntryPoint.mjs` | Lambda entry point code generation |
 | `reventless/aws/src/util/Util_EntryPoint.res` | Entry point config types |
 | `reventless/aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res` | Lambda deployment (layer attachment) |
-| `rescript/rescript-pulumi-aws/src/Lambda/Lambda.res` | `REVENTLESS_LAYER_ARN` binding |
+| `rescript/pulumi-aws/src/Lambda/Lambda.res` | `REVENTLESS_LAYER_ARN` binding |
 | `.github/workflows/build-lambda-layer.yml` | CI/CD layer build + publish |
 | SSM `/reventless/layer-arn/{stack}` | Current layer ARN (written by CI, per stack/region) |
