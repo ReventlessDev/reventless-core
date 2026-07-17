@@ -5,6 +5,14 @@ open Reventless.Plugin
 
 module PluginExtensionPointSpec = ReventlessInfra.PluginExtensionPointSpec
 
+// Grace before a plugin is marked Disconnected once heartbeats stop, expressed in
+// whole minutes (schedules can only be created by minute). The margin scales with
+// the interval so large cadences keep real headroom: a fixed +2 gave a 60-min
+// heartbeat only ~3% slack, so a single late EventBridge beat + Lambda cold-start
+// could trip a spurious disconnect. `+ max(2, interval / 2)` keeps ≥ +2 min for
+// small intervals and ≥ +50% for large ones (5→7, 10→15, 60→90).
+let disconnectGrace = interval => interval + max(2, interval / 2)
+
 module type Spec = {
   let runtimeOps: PluginRuntimeOperations.operations
   let environment: string
@@ -145,10 +153,9 @@ module Make = (Spec: Spec) => {
       switch cmd {
       | PluginExtensionPointSpec.Heartbeat(interval) => [
           PublishCommand(Plugin.name(id), Delegate.Heartbeat(Plugin.version(id))),
-          // Re-create timeout (+2 minute to avoid toggling)
-          // 1 minute because Schedules can only be created by minute
-          // 1 additional minute to allow additional latency
-          HandleDirective(directiveHandler, CreateDisconnectSchedule(id, interval + 2)),
+          // Re-arm the disconnect schedule with an interval-scaled grace so a
+          // single late beat doesn't trip a spurious disconnect (see disconnectGrace).
+          HandleDirective(directiveHandler, CreateDisconnectSchedule(id, disconnectGrace(interval))),
         ]
       | RedetectPlugin(interval) => [
           // Deploy-time re-detect: drive Redetect (not Heartbeat) so an already-connected
@@ -156,7 +163,7 @@ module Make = (Spec: Spec) => {
           // re-arm the disconnect schedule exactly like a heartbeat so liveness tracking
           // continues from the deploy moment.
           PublishCommand(Plugin.name(id), Delegate.Redetect(Plugin.version(id))),
-          HandleDirective(directiveHandler, CreateDisconnectSchedule(id, interval + 2)),
+          HandleDirective(directiveHandler, CreateDisconnectSchedule(id, disconnectGrace(interval))),
         ]
       | ConnectPlugin(pluginDefinition) =>
         // Validate protocol versions declared by the connecting plugin.

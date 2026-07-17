@@ -74,7 +74,12 @@ let heartbeatConfigRef: ref<heartbeatConfig> = ref({
   epQueueUrl: None,
 })
 
-let registerHeartbeatConfig = (~pluginId, ~heartbeatTimeout=10, ~epQueueUrl=?, ()) =>
+// heartbeatTimeout is mandatory: it drives the HEARTBEAT_TIMEOUT env var (and thus
+// the Heartbeat(interval) command the bundled Lambda emits), which must match the
+// EventBridge schedule rate derived from the same heartbeatInterval. A default here
+// silently decoupled the two (schedule every 60min, Heartbeat(10) → 12min grace →
+// flapping); make callers supply it so the values can't diverge.
+let registerHeartbeatConfig = (~pluginId, ~heartbeatTimeout, ~epQueueUrl=?, ()) =>
   heartbeatConfigRef := {pluginId, heartbeatTimeout, epQueueUrl}
 
 // Per-flavor commandHandlerConfig override for the two DCB command-handler Lambdas

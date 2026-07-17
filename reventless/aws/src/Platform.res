@@ -700,12 +700,13 @@ module MakeWithConfig = (
     // Heartbeat EP channel hook — extracts SQS queue URL for heartbeat Lambda handler
     // and records the calling plugin's id so the Lambda runtime can emit Connect commands
     // with a non-empty SQS MessageGroupId (FIFO requirement).
-    onHeartbeatEpChannelAvailable: (remoteChannelUnknown, ~pluginId) => {
+    onHeartbeatEpChannelAvailable: (remoteChannelUnknown, ~pluginId, ~heartbeatInterval) => {
       let remoteChannel = remoteChannelUnknown->asRemoteChannel
       switch remoteChannel.resources->Array.get(0) {
       | Some(resource) =>
         PluginRuntime_Builder.registerHeartbeatConfig(
           ~pluginId,
+          ~heartbeatTimeout=heartbeatInterval,
           ~epQueueUrl=resource.id->Pulumi.Output.make,
           (),
         )

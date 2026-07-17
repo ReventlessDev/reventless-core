@@ -545,7 +545,7 @@ function Make(Spec) {
           let handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToPluginExtensionPoint);
           if (coreSetup !== undefined) {
             let pluginExtensionPointCommandTopicRemoteChannel$1 = coreSetup[1];
-            Stdlib_Option.forEach(Spec.hooks.onHeartbeatEpChannelAvailable, hook => hook(pluginExtensionPointCommandTopicRemoteChannel$1, id));
+            Stdlib_Option.forEach(Spec.hooks.onHeartbeatEpChannelAvailable, hook => hook(pluginExtensionPointCommandTopicRemoteChannel$1, id, heartbeatInterval));
             PluginRuntimeBuilder.forPluginHeartbeat(handler, none => SpecificHeartbeat.connect(none, pluginExtensionPointCommandTopicRemoteChannel$1, heartbeatInterval, heartbeat), undefined, undefined, heartbeat);
           } else {
             PluginRuntimeBuilder.forPluginHeartbeat(handler, param => {}, undefined, undefined, heartbeat);

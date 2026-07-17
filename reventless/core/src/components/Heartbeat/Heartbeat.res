@@ -11,13 +11,13 @@ module type T = {
   let connect: (
     ~runtime: Runtime.environment<runtimeParts>,
     ~remoteChannel: CommandTopic_Adapter.remoteChannel,
-    ~timeout: int=?,
+    ~timeout: int,
     component,
   ) => unit
 
   let makeHandler: (
     ~id: string,
-    ~timeout: int=?,
+    ~timeout: int,
     ~publishToPluginExtensionPoint: CommandTopic.publishJsons,
   ) => Pulumi.Output.t<Runtime.eventHandler<unit, 'context, unit>>
 

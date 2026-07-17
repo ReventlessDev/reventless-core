@@ -9,8 +9,7 @@ import * as Heartbeat_Callback$ReventlessCore from "./Heartbeat_Callback.res.mjs
 
 function Make(Runner) {
   let construct = (_self, _name) => {};
-  let connect = (runtime, remoteChannel, timeoutOpt, heartbeat) => {
-    let timeout = timeoutOpt !== undefined ? timeoutOpt : 10;
+  let connect = (runtime, remoteChannel, timeout, heartbeat) => {
     let heartbeatResource = Component$ReventlessCore.toPulumiResource(heartbeat);
     let name = ComponentType$ReventlessCore.name(Stdlib_Option.getOr(heartbeatResource.__name, "Unnamed"), Heartbeat$ReventlessCore.componentType);
     let opts_parent = heartbeatResource;
@@ -24,8 +23,7 @@ function Make(Runner) {
     };
     Component$ReventlessCore.setOutputs(heartbeat, outputs);
   };
-  let makeHandler = (id, timeoutOpt, publishToPluginExtensionPoint) => {
-    let timeout = timeoutOpt !== undefined ? timeoutOpt : 10;
+  let makeHandler = (id, timeout, publishToPluginExtensionPoint) => {
     let Callback = Heartbeat_Callback$ReventlessCore.Make({
       publishToPluginExtensionPoint: publishToPluginExtensionPoint,
       id: id,

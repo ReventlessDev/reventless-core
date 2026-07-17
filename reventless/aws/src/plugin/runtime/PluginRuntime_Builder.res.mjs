@@ -76,8 +76,7 @@ let heartbeatConfigRef = {
   }
 };
 
-function registerHeartbeatConfig(pluginId, heartbeatTimeoutOpt, epQueueUrl, param) {
-  let heartbeatTimeout = heartbeatTimeoutOpt !== undefined ? heartbeatTimeoutOpt : 10;
+function registerHeartbeatConfig(pluginId, heartbeatTimeout, epQueueUrl, param) {
   heartbeatConfigRef.contents = {
     pluginId: pluginId,
     heartbeatTimeout: heartbeatTimeout,

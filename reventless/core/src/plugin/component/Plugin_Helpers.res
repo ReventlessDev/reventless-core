@@ -957,7 +957,12 @@ type platformHooks = {
   onDcbEventLogCreated?: unknown => unit,
   onDcbCommandTopicCreated?: unknown => unit,
   onDcbSlicesCreated?: unknown => unit,
-  onHeartbeatEpChannelAvailable?: (unknown, ~pluginId: string) => unit,
+  // heartbeatInterval carries the plugin's heartbeat cadence so the AWS bundled
+  // heartbeat Lambda emits Heartbeat(interval) matching its EventBridge schedule
+  // rate. Both derive from the same heartbeatInterval; threading it here prevents
+  // the schedule-rate vs command-interval divergence that caused connect/disconnect
+  // flapping (schedule every 60min but Heartbeat(10) → 12min grace).
+  onHeartbeatEpChannelAvailable?: (unknown, ~pluginId: string, ~heartbeatInterval: int) => unit,
   // ── Admin → Plugin coordination ────────────────────────────────────────
   // Set by makePlatform after Admin.construct(); read by Plugin_Builder to
   // wire the local admin connection path (in-memory).  Starts as an empty

@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
+import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -16,6 +17,10 @@ import * as CompatMatrix$ReventlessInterop from "@reventlessdev/reventless-inter
 import * as PluginsReadModelSpec$ReventlessCore from "../lifecycle/PluginsReadModelSpec.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
+
+function disconnectGrace(interval) {
+  return interval + Primitive_int.max(2, interval / 2 | 0) | 0;
+}
 
 function Make(Spec) {
   let forwardCommand = async (_id, command, extensionPointName, queryEngine) => {
@@ -151,7 +156,7 @@ function Make(Spec) {
             _1: {
               TAG: "CreateDisconnectSchedule",
               _0: id,
-              _1: cmd._0 + 2 | 0
+              _1: disconnectGrace(cmd._0)
             }
           }
         ];
@@ -201,7 +206,7 @@ function Make(Spec) {
             _1: {
               TAG: "CreateDisconnectSchedule",
               _0: id,
-              _1: cmd._0 + 2 | 0
+              _1: disconnectGrace(cmd._0)
             }
           }
         ];
@@ -369,6 +374,7 @@ export {
   name,
   Id,
   PluginExtensionPointSpec,
+  disconnectGrace,
   Make,
   moduleUrl,
 }

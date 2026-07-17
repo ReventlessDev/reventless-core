@@ -495,10 +495,10 @@ function MakeWithConfig(Config) {
     StateViewSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);
     AutomationSliceRuntime_Builder_Single$ReventlessAws.finish();
   };
-  let hooks_onHeartbeatEpChannelAvailable = (remoteChannelUnknown, pluginId) => {
+  let hooks_onHeartbeatEpChannelAvailable = (remoteChannelUnknown, pluginId, heartbeatInterval) => {
     let resource = remoteChannelUnknown.resources[0];
     if (resource !== undefined) {
-      return PluginRuntime_Builder$ReventlessAws.registerHeartbeatConfig(pluginId, undefined, Pulumi.output(resource.id), undefined);
+      return PluginRuntime_Builder$ReventlessAws.registerHeartbeatConfig(pluginId, heartbeatInterval, Pulumi.output(resource.id), undefined);
     } else {
       return log.warn("Platform", undefined, "heartbeat EP channel has no resources");
     }
@@ -1467,10 +1467,10 @@ function Make($star) {
     StateViewSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);
     AutomationSliceRuntime_Builder_Single$ReventlessAws.finish();
   };
-  let hooks_onHeartbeatEpChannelAvailable = (remoteChannelUnknown, pluginId) => {
+  let hooks_onHeartbeatEpChannelAvailable = (remoteChannelUnknown, pluginId, heartbeatInterval) => {
     let resource = remoteChannelUnknown.resources[0];
     if (resource !== undefined) {
-      return PluginRuntime_Builder$ReventlessAws.registerHeartbeatConfig(pluginId, undefined, Pulumi.output(resource.id), undefined);
+      return PluginRuntime_Builder$ReventlessAws.registerHeartbeatConfig(pluginId, heartbeatInterval, Pulumi.output(resource.id), undefined);
     } else {
       return log.warn("Platform", undefined, "heartbeat EP channel has no resources");
     }

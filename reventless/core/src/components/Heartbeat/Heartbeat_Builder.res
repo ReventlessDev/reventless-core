@@ -5,7 +5,7 @@ module Make = (Runner: Heartbeat_Adapter.Runner): (
 
   let construct = (_self, _name) => ()
 
-  let connect = (~runtime, ~remoteChannel, ~timeout=10, heartbeat) => {
+  let connect = (~runtime, ~remoteChannel, ~timeout, heartbeat) => {
     let heartbeatResource = heartbeat->Component.toPulumiResource
     let name =
       heartbeatResource.name
@@ -24,7 +24,7 @@ module Make = (Runner: Heartbeat_Adapter.Runner): (
     let _ = heartbeat->Component.setOutputs(outputs)
   }
 
-  let makeHandler = (~id, ~timeout=10, ~publishToPluginExtensionPoint) => {
+  let makeHandler = (~id, ~timeout, ~publishToPluginExtensionPoint) => {
     module Callback = Heartbeat_Callback.Make({
       let publishToPluginExtensionPoint = publishToPluginExtensionPoint
       let id = id

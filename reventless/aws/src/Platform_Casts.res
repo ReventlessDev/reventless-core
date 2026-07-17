@@ -56,7 +56,7 @@ external asLambdaRuntime: ReventlessCore.Runtime.environment<unknown> => Reventl
 //   onDcbEventLogCreated?:       unknown => unit
 //   onDcbCommandTopicCreated?:   unknown => unit
 //   onDcbSlicesCreated?:         unknown => unit
-//   onHeartbeatEpChannelAvailable?: (unknown, ~pluginId: string) => unit
+//   onHeartbeatEpChannelAvailable?: (unknown, ~pluginId: string, ~heartbeatInterval: int) => unit
 //
 // are typed `unknown => unit` for the same dependency-inversion reason as above:
 // `reventless-core` cannot import `DcbEventLog.component`, `CommandTopic.component`,
