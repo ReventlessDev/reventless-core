@@ -25,16 +25,62 @@ module GetObjectCommand = {
   type input = {
     @as("Bucket") bucket: string,
     @as("Key") key: string,
+    /** fetch a specific object version (requires a versioned bucket) */
+    @as("VersionId")
+    versionId?: string,
   }
 
   type output = {
     /** readable stream of the object */
     @as("Body")
     body: NodeStreams.Readable.t,
+    @as("VersionId") versionId?: string,
   }
 
   @new @module("@aws-sdk/client-s3")
   external make: input => t = "GetObjectCommand"
+
+  module Raw = {
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = input => Raw.send(client(), input)
+}
+
+module ListObjectVersionsCommand = {
+  type t
+
+  type input = {
+    @as("Bucket") bucket: string,
+    @as("Prefix") prefix?: string,
+    @as("KeyMarker") keyMarker?: string,
+    @as("VersionIdMarker") versionIdMarker?: string,
+    @as("MaxKeys") maxKeys?: int,
+    @as("Delimiter") delimiter?: string,
+  }
+
+  /** A single object version. S3 returns versions newest-first per key, so the
+    entry with `isLatest: true` is the current object and the next entry for the
+    same key is the immediately-prior version. */
+  type objectVersion = {
+    @as("Key") key: string,
+    @as("VersionId") versionId: string,
+    @as("IsLatest") isLatest: bool,
+    @as("LastModified") lastModified?: Date.t,
+    @as("ETag") eTag?: string,
+    @as("Size") size?: int,
+  }
+
+  type output = {
+    @as("Versions") versions?: array<objectVersion>,
+    @as("IsTruncated") isTruncated?: bool,
+    @as("NextKeyMarker") nextKeyMarker?: string,
+    @as("NextVersionIdMarker") nextVersionIdMarker?: string,
+  }
+
+  @new @module("@aws-sdk/client-s3")
+  external make: input => t = "ListObjectVersionsCommand"
 
   module Raw = {
     @send

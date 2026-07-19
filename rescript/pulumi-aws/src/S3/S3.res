@@ -8,3 +8,4 @@ module BucketObject = S3_BucketObject
 module BucketOwnershipControls = S3_BucketOwnershipControls
 module BucketPublicAccessBlock = S3_BucketPublicAccessBlock
 module BucketPolicy = S3_BucketPolicy
+module BucketNotification = S3_BucketNotification

@@ -15,6 +15,8 @@ let BucketPublicAccessBlock;
 
 let BucketPolicy;
 
+let BucketNotification;
+
 export {
   Bucket,
   BucketV2,
@@ -23,5 +25,6 @@ export {
   BucketOwnershipControls,
   BucketPublicAccessBlock,
   BucketPolicy,
+  BucketNotification,
 }
 /* No side effect */
