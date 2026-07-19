@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.56 (2026-07-19)
+
+### Features
+
+* **rescript-aws:** S3 ListObjectVersions + BucketNotification bindings ([f0d464a](https://github.com/ReventlessDev/reventless-core/commit/f0d464aedacea930c56aab4849637316fc151dc5))
+
+
 # 2.4.0-alpha.55 (2026-07-17)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws
