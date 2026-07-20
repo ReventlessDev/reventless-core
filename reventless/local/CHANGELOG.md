@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.160 (2026-07-20)
+
+### Features
+
+* **core:** annotate comp + causationId at the dispatch boundary ([ef6d56d](https://github.com/ReventlessDev/reventless-core/commit/ef6d56d0104dbdb21b7cfbb8f3b2b1ead9787595))
+
+
 # 3.0.0-alpha.159 (2026-07-17)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local
