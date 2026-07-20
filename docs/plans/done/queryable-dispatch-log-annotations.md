@@ -38,9 +38,20 @@ parent's. Small delta on this plan.
   `LocalRuntimeEnvironment`), factored through a shared `extractMetaField`.
 - **Phase B** — `RequestContext.t` gained optional `causationId` / `component` /
   `pluginName`; a real `make` constructor is used at dispatch; `.test()` is now
-  test-only (no non-test source calls it).
+  test-only (no non-test source calls it). `pluginName` is populated at dispatch
+  by resolving `comp` through `LogPrefix.resolvePlugin` (the same registry the
+  `plugin` log field uses); `runEffect` also takes optional `identity` / `claims`.
 - **Phase D** — `docs/guides/cloudwatch-logs-insights.md` documents `causationId`,
   the "`comp` on every line" guarantee, and a causal-chain query.
+
+**Follow-ups closed (2026-07-20):**
+- `RequestContext.pluginName` is now actually populated at dispatch (was
+  plumbed-but-always-`None`) via `LogPrefix.resolvePlugin(~comp)`.
+- `MCP_Lambda` no longer has a private `runEffect`: its tool dispatch routes
+  through the shared `Runtime.runEffect` (comp `Mcp(<tool>)` + caller identity),
+  so it gets the same annotation + typed `RequestContext` as every other
+  dispatch boundary. The hand-rolled `pipe` / `effectProvideService` /
+  `requestContextTag` interop externals are gone.
 
 Full monorepo build green (zero warnings); `IdentityTest`, `LogFormatTest`,
 `MessageTest`, `MetaEnvelopeTest`, `AggregateCausationTest` pass.

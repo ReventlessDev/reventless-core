@@ -22,7 +22,7 @@ function Make(RuntimeEnvironment) {
       let correlationId = RuntimeEnvironment.extractCorrelationId(event);
       let causationId = RuntimeEnvironment.extractCausationId(event);
       let comp = `AggregateRuntime(` + aggregateName + `)`;
-      let runEffect = effect => Runtime$ReventlessCore.runEffect(correlationId, causationId, comp, undefined, effect);
+      let runEffect = effect => Runtime$ReventlessCore.runEffect(correlationId, causationId, comp, undefined, undefined, undefined, effect);
       let info = CommandGenerator$ReventlessCore.metaInfo(event);
       if (info !== undefined) {
         let handler = commandGeneratorHandlers[info];

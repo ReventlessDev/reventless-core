@@ -18,8 +18,17 @@ let annotateInvocation = (
   ~causationId=?,
   ~comp=?,
   ~pluginName=?,
+  ~identity=?,
+  ~claims=?,
 ) => {
   let cid = correlationId->Option.getOr("unknown")
+  // Resolve the owning plugin from the comp→plugin registry when not supplied,
+  // so RequestContext.pluginName matches the `plugin` log field (which
+  // EffectLogger.install resolves the same way via LogPrefix.resolvePlugin).
+  let resolvedPlugin = switch pluginName {
+  | Some(_) => pluginName
+  | None => Reventless.LogPrefix.resolvePlugin(~comp?, ())
+  }
   let annotateOpt = (eff, key, value) =>
     switch value {
     | Some(v) => eff->Effect.annotateLogs(key, v)
@@ -31,15 +40,31 @@ let annotateInvocation = (
   ->annotateOpt("causationId", causationId)
   ->Effect.provideService(
     RequestContext.tag,
-    RequestContext.make(~correlationId=cid, ~causationId?, ~component=?comp, ~pluginName?),
+    RequestContext.make(
+      ~correlationId=cid,
+      ~causationId?,
+      ~component=?comp,
+      ~pluginName=?resolvedPlugin,
+      ~identity?,
+      ~claims?,
+    ),
   )
 }
 
 // Annotate + run. Used by the multi-component dispatchers (AllAggregates,
-// AllEventCollectors) that loop over per-source handlers.
-let runEffect = (~correlationId=?, ~causationId=?, ~comp=?, ~pluginName=?, effect) =>
+// AllEventCollectors) that loop over per-source handlers, and by any dispatch
+// site that already holds the invocation's identity (e.g. the MCP tool caller).
+let runEffect = (
+  ~correlationId=?,
+  ~causationId=?,
+  ~comp=?,
+  ~pluginName=?,
+  ~identity=?,
+  ~claims=?,
+  effect,
+) =>
   effect
-  ->annotateInvocation(~correlationId?, ~causationId?, ~comp?, ~pluginName?)
+  ->annotateInvocation(~correlationId?, ~causationId?, ~comp?, ~pluginName?, ~identity?, ~claims?)
   ->Effect.runPromise
 
 // Convert an effectHandler to an eventHandler at build time, annotating the

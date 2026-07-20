@@ -322,14 +322,6 @@ external makeGenerateCommand: (
 external sqsPublishJsons: ('queue, string) => ReventlessCore.CommandGenerator.publishJsons =
   "publishJsons"
 
-@module("@reventlessdev/reventless-core/src/RequestContext.res.mjs")
-external requestContextTag: 'a = "tag"
-
-@module("effect/Effect")
-external effectProvideService: ('a, 'b) => 'c = "provideService"
-
-@send external pipe: ('a, 'b) => 'c = "pipe"
-
 let makeQueueRef: string => 'a = %raw(`(url) => ({ id: url, name: url, arn: "" })`)
 
 // Decode the payload section of a JWT (base64url → JSON) without signature verification.
@@ -384,16 +376,6 @@ let extractIdentity = (authHeader: option<string>): Reventless.Identity.t =>
     }
   }
 
-let runEffect = (correlationId: option<string>, effect) =>
-  effect
-  ->pipe(
-    effectProvideService(
-      requestContextTag,
-      {"correlationId": correlationId->Option.getOr("unknown")},
-    ),
-  )
-  ->pipe(Effect.runPromise)
-
 /** Dispatch an MCP tool call through makeGenerateCommand so the interceptor hook fires.
     The commandTopicArn from mcpConfig tells us which SQS FIFO queue to target. */
 let dispatchTool = async (
@@ -416,7 +398,14 @@ let dispatchTool = async (
     meta: {ip: [], user: identity.userId, info: `mcp/tools/${tool.name}`},
     identity,
   }
-  await runEffect(None, generateCommand(payload))
+  // Route through the shared dispatch helper so this tool call gets the same
+  // correlationId / comp log annotation and a populated RequestContext (identity
+  // included) as every other dispatch boundary.
+  await ReventlessCore.Runtime.runEffect(
+    ~comp=`Mcp(${tool.name})`,
+    ~identity,
+    generateCommand(payload),
+  )
 }
 
 // ─── Deploy-time infrastructure (placeholder) ─────────────────────────────

@@ -2,10 +2,12 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
+import * as LogPrefix$Reventless from "@reventlessdev/reventless-spec/src/LogPrefix.res.mjs";
 import * as RequestContext$ReventlessCore from "../../RequestContext.res.mjs";
 
-function annotateInvocation(effect, correlationId, causationId, comp, pluginName) {
+function annotateInvocation(effect, correlationId, causationId, comp, pluginName, identity, claims) {
   let cid = Stdlib_Option.getOr(correlationId, "unknown");
+  let resolvedPlugin = pluginName !== undefined ? pluginName : LogPrefix$Reventless.resolvePlugin(comp, undefined);
   let annotateOpt = (eff, key, value) => {
     if (value !== undefined) {
       return Effect.annotateLogs(eff, key, value);
@@ -13,18 +15,18 @@ function annotateInvocation(effect, correlationId, causationId, comp, pluginName
       return eff;
     }
   };
-  return Effect.provideService(annotateOpt(annotateOpt(Effect.annotateLogs(effect, "correlationId", cid), "comp", comp), "causationId", causationId), RequestContext$ReventlessCore.tag, RequestContext$ReventlessCore.make(cid, causationId, comp, pluginName, undefined, undefined));
+  return Effect.provideService(annotateOpt(annotateOpt(Effect.annotateLogs(effect, "correlationId", cid), "comp", comp), "causationId", causationId), RequestContext$ReventlessCore.tag, RequestContext$ReventlessCore.make(cid, causationId, comp, resolvedPlugin, identity, claims));
 }
 
-function runEffect(correlationId, causationId, comp, pluginName, effect) {
-  return Effect.runPromise(annotateInvocation(effect, correlationId, causationId, comp, pluginName));
+function runEffect(correlationId, causationId, comp, pluginName, identity, claims, effect) {
+  return Effect.runPromise(annotateInvocation(effect, correlationId, causationId, comp, pluginName, identity, claims));
 }
 
 function runEffectHandler(extractCorrelationId, extractCausationId, comp, pluginName, handler) {
   return (event, ctx) => {
     let correlationId = extractCorrelationId !== undefined ? extractCorrelationId(event) : undefined;
     let causationId = extractCausationId !== undefined ? extractCausationId(event) : undefined;
-    return Effect.runPromise(annotateInvocation(handler(event, ctx), correlationId, causationId, comp, pluginName));
+    return Effect.runPromise(annotateInvocation(handler(event, ctx), correlationId, causationId, comp, pluginName, undefined, undefined));
   };
 }
 

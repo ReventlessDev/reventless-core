@@ -10,13 +10,13 @@ import * as Stream$1 from "effect/Stream";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
+import * as Runtime$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/Runtime.res.mjs";
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/api/PluginBaseFragment.res.mjs";
 import * as MCP_SchemaGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/MCP_SchemaGenerator.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 import * as DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws from "../DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
-import * as RequestContextResMjs from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 import * as CommandTopicChannel_SQS_RuntimeResMjs from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import * as CommandGenerator_CallbackResMjs from "@reventlessdev/reventless-core/src/components/CommandGenerator/CommandGenerator_Callback.res.mjs";
 
@@ -247,12 +247,6 @@ function extractIdentity(authHeader) {
   };
 }
 
-function runEffect(correlationId, effect) {
-  return effect.pipe(Effect.provideService(RequestContextResMjs.tag, {
-    correlationId: Stdlib_Option.getOr(correlationId, "unknown")
-  })).pipe(prim => Effect.runPromise(prim));
-}
-
 async function dispatchTool(tool, args, identity) {
   let queueRef = makeQueueRef(tool.commandTopicArn);
   let publishJsons = CommandTopicChannel_SQS_RuntimeResMjs.publishJsons(queueRef, AWS$ReventlessAws.SQS_FIFO.service);
@@ -269,7 +263,7 @@ async function dispatchTool(tool, args, identity) {
     meta: payload_meta,
     identity: identity
   };
-  return await runEffect(undefined, generateCommand(payload));
+  return await Runtime$ReventlessCore.runEffect(undefined, undefined, `Mcp(` + tool.name + `)`, undefined, identity, undefined, generateCommand(payload));
 }
 
 export {
@@ -283,7 +277,6 @@ export {
   makeQueueRef,
   decodeJwtClaims,
   extractIdentity,
-  runEffect,
   dispatchTool,
 }
 /* S Not a pure module */

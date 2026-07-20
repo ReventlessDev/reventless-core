@@ -42,7 +42,7 @@ function Make(RuntimeEnvironment) {
         Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `found ` + count + ` handler(s) for ` + urn));
         await Promise.all(handlers.map(handler => {
           let effect = handler(event, context);
-          return Runtime$ReventlessCore.runEffect(correlationId, causationId, comp, undefined, effect);
+          return Runtime$ReventlessCore.runEffect(correlationId, causationId, comp, undefined, undefined, undefined, effect);
         }));
       }));
     });
