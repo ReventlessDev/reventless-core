@@ -1,10 +1,13 @@
 # RequestContext — Fields and Usage Analysis
 
 > **Status: Partial.** `RequestContext.t` was implemented with `{ correlationId, identity, claims }`. The `causationId` and `retryCount` fields recommended by this analysis were not added. The shape diverged from the recommendation — `identity` and `claims` were added instead (not proposed here).
+>
+> **Update 2026-07-20:** the `causationId` recommendation is now picked up by `docs/plans/queryable-dispatch-log-annotations.md` (Phase B), which adds `causationId` to `RequestContext` and annotates it on logs at the dispatch boundary. `retryCount` remains unaddressed.
 
 **Created:** 2026-03-05
 
-**Related:** `docs/plans/effect-logger-and-request-context.md` (Work Item 2)
+**Related:** `docs/plans/effect-logger-and-request-context.md` (Work Item 2),
+`docs/plans/queryable-dispatch-log-annotations.md` (causationId + component annotations)
 
 ---
 
