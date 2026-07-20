@@ -1,6 +1,25 @@
 # Component + Causation Log Annotations at the Dispatch Boundary
 
-**Status:** Complete (2026-07-20)
+**Status:** Complete (2026-07-20) — one follow-up remains, see **Follow-up** below.
+
+## Follow-up — `comp` is a runtime-group key, not the domain component
+
+Shipped `comp` is `AggregateRuntime(<aggregateName>)` / `EventCollectorRuntime(<parentName>)` — keyed
+by the **runtime group**, not the domain element. For a consumer filtering logs down to one element
+(e.g. `| filter comp like /<name>/`):
+
+- **Aggregates** — `comp` contains the aggregate name → filtering works.
+- **Read-models / projections / other event-collector components** — `comp` carries the *parent
+  aggregate* name (`EventCollectorRuntime(Customer)`), **not** the read-model's own name
+  (`Customers`), so a per-element filter can't isolate them.
+
+To make element-level log isolation uniform, the event-collector dispatch should annotate `comp`
+(or an additional `component` field) with the **specific component's name/URN**, not the runtime
+group it shares. Low cost — the component name is known where the handler is registered — but the
+event-collector runtime must thread the per-component name into the annotation rather than the
+parent's. Small delta on this plan.
+
+
 
 **Created:** 2026-07-20
 
