@@ -12,11 +12,13 @@ function Make(Bus) {
   return CommandTopicChannel => (EventCollectorChannel => {
     let forCommandGenerator = (handler, connect, param, param$1, commandGenerator) => {
       let resource = Component$ReventlessCore.toPulumiResource(commandGenerator);
-      return connect(LocalRuntimeEnvironment$ReventlessLocal.make(ComponentType$ReventlessCore.nameOpt(resource.__name, CommandGenerator$ReventlessCore.componentType), handler.apply(Runtime$ReventlessCore.runEffectHandler), undefined, undefined, undefined));
+      let name = ComponentType$ReventlessCore.nameOpt(resource.__name, CommandGenerator$ReventlessCore.componentType);
+      return connect(LocalRuntimeEnvironment$ReventlessLocal.make(name, handler.apply(h => Runtime$ReventlessCore.runEffectHandler(LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId, LocalRuntimeEnvironment$ReventlessLocal.extractCausationId, name, undefined, h)), undefined, undefined, undefined));
     };
     let forCommandTopic = (handler, connect, param, param$1, commandTopic) => {
       let resource = Component$ReventlessCore.toPulumiResource(commandTopic);
-      return connect(LocalRuntimeEnvironment$ReventlessLocal.make(ComponentType$ReventlessCore.nameOpt(resource.__name, CommandTopic$ReventlessCore.componentType), handler.apply(Runtime$ReventlessCore.runEffectHandler), undefined, undefined, undefined));
+      let name = ComponentType$ReventlessCore.nameOpt(resource.__name, CommandTopic$ReventlessCore.componentType);
+      return connect(LocalRuntimeEnvironment$ReventlessLocal.make(name, handler.apply(h => Runtime$ReventlessCore.runEffectHandler(LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId, LocalRuntimeEnvironment$ReventlessLocal.extractCausationId, name, undefined, h)), undefined, undefined, undefined));
     };
     let forEventCollector = (handler, eventTopics, resources, param, param$1, eventCollector) => {
       let resource = Component$ReventlessCore.toPulumiResource(eventCollector);
@@ -25,7 +27,7 @@ function Make(Bus) {
       let opts = {
         parent: opts_parent
       };
-      let runtime = LocalRuntimeEnvironment$ReventlessLocal.make(name, handler.apply(Runtime$ReventlessCore.runEffectHandler), undefined, undefined, undefined);
+      let runtime = LocalRuntimeEnvironment$ReventlessLocal.make(name, handler.apply(h => Runtime$ReventlessCore.runEffectHandler(LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId, LocalRuntimeEnvironment$ReventlessLocal.extractCausationId, name, undefined, h)), undefined, undefined, undefined);
       EventCollectorChannel.connect(name, [{
           channel: eventCollector.channel,
           eventTopics: eventTopics,

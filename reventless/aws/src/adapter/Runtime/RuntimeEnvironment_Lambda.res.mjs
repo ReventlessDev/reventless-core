@@ -172,14 +172,22 @@ function groupBySource(event) {
   return dict;
 }
 
-function extractCorrelationId(event) {
+function extractMetaField(event, field) {
   return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(event.Records[0], r => Stdlib_Option.flatMap(r.body, body => {
     try {
       return Stdlib_JSON.Decode.object(JSON.parse(body));
     } catch (exn) {
       return;
     }
-  })), obj => obj["meta"]), Stdlib_JSON.Decode.object), meta => meta["correlationId"]), Stdlib_JSON.Decode.string);
+  })), obj => obj["meta"]), Stdlib_JSON.Decode.object), meta => meta[field]), Stdlib_JSON.Decode.string);
+}
+
+function extractCorrelationId(event) {
+  return extractMetaField(event, "correlationId");
+}
+
+function extractCausationId(event) {
+  return extractMetaField(event, "causationId");
 }
 
 export {
@@ -188,6 +196,8 @@ export {
   make,
   makeFromCodeAsset,
   groupBySource,
+  extractMetaField,
   extractCorrelationId,
+  extractCausationId,
 }
 /* @pulumi/aws Not a pure module */

@@ -1,8 +1,30 @@
 # Component + Causation Log Annotations at the Dispatch Boundary
 
-**Status:** Proposed (draft)
+**Status:** Complete (2026-07-20)
 
 **Created:** 2026-07-20
+
+**Shipped:**
+- **Phase A/C** — one shared dispatch helper in `Runtime.res`: `annotateInvocation`
+  + `runEffect` (multi-component dispatchers) and an upgraded `runEffectHandler`
+  (single-component-per-Lambda strategies). Both annotate `correlationId`, `comp`,
+  and `causationId` and provide a populated `RequestContext`. The private
+  `runEffect` copies in `AggregateRuntime_Builder_Common` and
+  `EventCollectorRuntime_Builder_Single` are gone; every per-component builder
+  (core Micro/Plugin/PerEventCollector/PerExtensionPoint + `reventless-local`)
+  threads the component `comp` and the Environment's extractors into
+  `runEffectHandler`.
+- **Phase A extraction** — `extractCausationId` added to the `Runtime.Environment`
+  module type and both implementations (`RuntimeEnvironment_Lambda`,
+  `LocalRuntimeEnvironment`), factored through a shared `extractMetaField`.
+- **Phase B** — `RequestContext.t` gained optional `causationId` / `component` /
+  `pluginName`; a real `make` constructor is used at dispatch; `.test()` is now
+  test-only (no non-test source calls it).
+- **Phase D** — `docs/guides/cloudwatch-logs-insights.md` documents `causationId`,
+  the "`comp` on every line" guarantee, and a causal-chain query.
+
+Full monorepo build green (zero warnings); `IdentityTest`, `LogFormatTest`,
+`MessageTest`, `MetaEnvelopeTest`, `AggregateCausationTest` pass.
 
 **Builds on (all complete):**
 `docs/plans/done/logging-output-optimization.md` — clean JSON in cloud sinks; `comp` / `plugin` /

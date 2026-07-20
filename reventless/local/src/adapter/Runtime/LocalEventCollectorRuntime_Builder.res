@@ -30,7 +30,13 @@ module Make = (
     let runtime = LocalRuntimeEnvironment.make(
       ~name,
       ~handler=handler->Pulumi.Output.apply(h =>
-        h->LocalRuntimeEnvironment.asEffectHandler->ReventlessCore.Runtime.runEffectHandler
+        h
+        ->LocalRuntimeEnvironment.asEffectHandler
+        ->ReventlessCore.Runtime.runEffectHandler(
+          ~extractCorrelationId=LocalRuntimeEnvironment.extractCorrelationId,
+          ~extractCausationId=LocalRuntimeEnvironment.extractCausationId,
+          ~comp=name,
+        )
       ),
     )
     let _connectResources = EventCollectorChannel.connect(

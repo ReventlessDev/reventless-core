@@ -64,6 +64,7 @@ function MakeWithHooks(Bus) {
         make: LocalRuntimeEnvironment$ReventlessLocal.make,
         groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
         extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
+        extractCausationId: LocalRuntimeEnvironment$ReventlessLocal.extractCausationId,
         asEventHandler: prim => prim,
         asEffectHandler: prim => prim
       })({
@@ -110,6 +111,7 @@ function Make(Bus) {
       make: LocalRuntimeEnvironment$ReventlessLocal.make,
       groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
       extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
+      extractCausationId: LocalRuntimeEnvironment$ReventlessLocal.extractCausationId,
       asEventHandler: prim => prim,
       asEffectHandler: prim => prim
     })({

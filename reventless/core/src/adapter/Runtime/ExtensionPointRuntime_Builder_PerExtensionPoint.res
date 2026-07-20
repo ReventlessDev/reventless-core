@@ -22,10 +22,17 @@ module Make = (
     commandTopic,
   ) => {
     let resource = commandTopic->Component.toPulumiResource
+    let name = resource.name->ComponentType.nameOpt(CommandTopic.componentType)
     let runtime = RuntimeEnvironment.make(
-      ~name=resource.name->ComponentType.nameOpt(CommandTopic.componentType),
+      ~name,
       ~handler=handler->Pulumi.Output.apply(handler =>
-        handler->RuntimeEnvironment.asEffectHandler->Runtime.runEffectHandler
+        handler
+        ->RuntimeEnvironment.asEffectHandler
+        ->Runtime.runEffectHandler(
+          ~extractCorrelationId=RuntimeEnvironment.extractCorrelationId,
+          ~extractCausationId=RuntimeEnvironment.extractCausationId,
+          ~comp=name,
+        )
       ),
       ~memorySize,
       ~timeout,

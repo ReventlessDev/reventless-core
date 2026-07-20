@@ -4,17 +4,70 @@ type effectHandler<'event, 'context, 'result, 'error> = (
   'context,
 ) => Effect.t<'result, 'error, unit>
 
-// Convert an effectHandler to an eventHandler by providing Logger, RequestContext, and running as promise.
-// Used at handler dispatch points (runtime builders) where Effect.runPromise is called.
-let runEffectHandler = (handler: effectHandler<'event, 'context, 'result, 'error>): eventHandler<
-  'event,
-  'context,
-  'result,
-> =>
-  (event, ctx) =>
+// ─── Dispatch-boundary annotation ────────────────────────────────────────────
+// Single source of truth for what every handler invocation carries. Annotating
+// here (rather than in each runtime builder) guarantees that every log line
+// inside the handler — framework *and* application — surfaces the same
+// `correlationId` / `comp` / `causationId` top-level JSON fields (EffectLogger
+// decodes them), and that a populated RequestContext is provided. `comp` is what
+// makes two components hosted in one runtime process separable purely by field;
+// `causationId` reconstructs the parent → child chain within one `correlationId`.
+let annotateInvocation = (
+  effect,
+  ~correlationId=?,
+  ~causationId=?,
+  ~comp=?,
+  ~pluginName=?,
+) => {
+  let cid = correlationId->Option.getOr("unknown")
+  let annotateOpt = (eff, key, value) =>
+    switch value {
+    | Some(v) => eff->Effect.annotateLogs(key, v)
+    | None => eff
+    }
+  effect
+  ->Effect.annotateLogs("correlationId", cid)
+  ->annotateOpt("comp", comp)
+  ->annotateOpt("causationId", causationId)
+  ->Effect.provideService(
+    RequestContext.tag,
+    RequestContext.make(~correlationId=cid, ~causationId?, ~component=?comp, ~pluginName?),
+  )
+}
+
+// Annotate + run. Used by the multi-component dispatchers (AllAggregates,
+// AllEventCollectors) that loop over per-source handlers.
+let runEffect = (~correlationId=?, ~causationId=?, ~comp=?, ~pluginName=?, effect) =>
+  effect
+  ->annotateInvocation(~correlationId?, ~causationId?, ~comp?, ~pluginName?)
+  ->Effect.runPromise
+
+// Convert an effectHandler to an eventHandler at build time, annotating the
+// invocation on each call. Used by the single-component-per-Lambda strategies
+// (Micro / PerAggregate / Plugin / PerEventCollector / PerExtensionPoint), which
+// pass the Environment's `extractCorrelationId` / `extractCausationId` and the
+// component `comp` so their application handlers get the same fields as the
+// multi-component path. Extractors default to none for generic use.
+let runEffectHandler = (
+  ~extractCorrelationId: option<'event => option<string>>=?,
+  ~extractCausationId: option<'event => option<string>>=?,
+  ~comp=?,
+  ~pluginName=?,
+  handler: effectHandler<'event, 'context, 'result, 'error>,
+): eventHandler<'event, 'context, 'result> =>
+  (event, ctx) => {
+    let correlationId = switch extractCorrelationId {
+    | Some(f) => f(event)
+    | None => None
+    }
+    let causationId = switch extractCausationId {
+    | Some(f) => f(event)
+    | None => None
+    }
     handler(event, ctx)
-    ->Effect.provideService(RequestContext.tag, RequestContext.test())
+    ->annotateInvocation(~correlationId?, ~causationId?, ~comp?, ~pluginName?)
     ->Effect.runPromise
+  }
 
 type environment<'parts> = {
   parts: 'parts,
@@ -36,6 +89,7 @@ module type Environment = {
   let make: environmentMaker<event, context, 'result, parts>
   let groupBySource: event => dict<event>
   let extractCorrelationId: event => option<string>
+  let extractCausationId: event => option<string>
   let asEventHandler: 'a => eventHandler<event, context, 'result>
   let asEffectHandler: 'a => effectHandler<event, context, 'result, 'error>
 }

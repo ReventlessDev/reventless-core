@@ -6,9 +6,9 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+import * as Runtime$ReventlessCore from "./Runtime.res.mjs";
 import * as Component$ReventlessCore from "../../components/Component.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
-import * as RequestContext$ReventlessCore from "../../RequestContext.res.mjs";
 
 function Make(RuntimeEnvironment) {
   return EventCollectorChannel => {
@@ -29,6 +29,7 @@ function Make(RuntimeEnvironment) {
     let eventCollectorHandlers = {};
     let eventCollectorHandler = parentName => (async (event, context) => {
       let correlationId = RuntimeEnvironment.extractCorrelationId(event);
+      let causationId = RuntimeEnvironment.extractCausationId(event);
       let comp = `EventCollectorRuntime(` + parentName + `)`;
       await Promise.all(Object.entries(RuntimeEnvironment.groupBySource(event)).map(async param => {
         let event = param[1];
@@ -41,8 +42,7 @@ function Make(RuntimeEnvironment) {
         Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `found ` + count + ` handler(s) for ` + urn));
         await Promise.all(handlers.map(handler => {
           let effect = handler(event, context);
-          let cid = Stdlib_Option.getOr(correlationId, "unknown");
-          return Effect.runPromise(Effect.provideService(Effect.annotateLogs(effect, "correlationId", cid), RequestContext$ReventlessCore.tag, RequestContext$ReventlessCore.test(cid, undefined, undefined)));
+          return Runtime$ReventlessCore.runEffect(correlationId, causationId, comp, undefined, effect);
         }));
       }));
     });

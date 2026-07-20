@@ -31,26 +31,21 @@ module Make = (
   let commandTopicHandlers: dict<effectHandler> = Dict.make()
   let eventCollectorHandlers: dict<array<effectHandler>> = Dict.make()
 
-  let runEffect = (~correlationId=?, effect) => {
-    let cid = correlationId->Option.getOr("unknown")
-    effect
-    // Annotate the request scope so every EffectLogger call inside the handler
-    // carries correlationId as a top-level JSON field (decoded in install()).
-    ->Effect.annotateLogs("correlationId", cid)
-    ->Effect.provideService(RequestContext.tag, RequestContext.test(~correlationId=cid))
-    ->Effect.runPromise
-  }
-
   let aggregateHandler = aggregateName =>
     async (event: RuntimeEnvironment.event, context) => {
       let correlationId = event->RuntimeEnvironment.extractCorrelationId
+      let causationId = event->RuntimeEnvironment.extractCausationId
       let comp = `AggregateRuntime(${aggregateName})`
+      // Shared dispatch helper (Runtime.runEffect) annotates correlationId / comp /
+      // causationId onto the invocation so the application handler's own log lines
+      // carry them without re-logging by hand.
+      let runEffect = effect => Runtime.runEffect(~correlationId?, ~causationId?, ~comp, effect)
       switch event->CommandGenerator.metaInfo {
       | Some(info) =>
         switch commandGeneratorHandlers->Dict.get(info) {
         | Some(handler) =>
           EffectLogger.logDebug(~comp, `found CommandGenerator handler for ${info}`)->Effect.runSync
-          let _ = await runEffect(~correlationId?, handler(event->CommandGenerator.asPayload, context))
+          let _ = await runEffect(handler(event->CommandGenerator.asPayload, context))
         | None =>
           let available = commandGeneratorHandlers->Dict.keysToArray->Array.join(",")
           EffectLogger.logWarn(
@@ -66,7 +61,7 @@ module Make = (
           switch commandTopicHandlers->Dict.get(urn) {
           | Some(handler) =>
             EffectLogger.logDebug(~comp, `found CommandTopic handler for ${urn}`)->Effect.runSync
-            await runEffect(~correlationId?, handler(event, context))
+            await runEffect(handler(event, context))
           | None =>
             switch eventCollectorHandlers->Dict.get(urn) {
             | Some(handlers) =>
@@ -76,7 +71,7 @@ module Make = (
                 `found ${count} EventCollector handler(s) for ${urn}`,
               )->Effect.runSync
               let _ = await handlers
-              ->Array.map(handler => runEffect(~correlationId?, handler(event, context)))
+              ->Array.map(handler => runEffect(handler(event, context)))
               ->Promise.all
             | None =>
               let available =

@@ -16,6 +16,7 @@ function Make(Spec) {
       make: RuntimeEnvironment_Lambda$ReventlessAws.make,
       groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
       extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
+      extractCausationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCausationId,
       asEventHandler: prim => prim,
       asEffectHandler: prim => prim
     })(QueryDbStorage$ReventlessAws.Selectable)(QueryDbResolvers$ReventlessAws.Selectable)({

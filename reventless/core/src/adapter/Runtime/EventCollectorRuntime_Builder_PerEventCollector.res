@@ -26,7 +26,13 @@ module Make = (
     let runtime = RuntimeEnvironment.make(
       ~name,
       ~handler=handler->Pulumi.Output.apply(handler =>
-        handler->RuntimeEnvironment.asEffectHandler->Runtime.runEffectHandler
+        handler
+        ->RuntimeEnvironment.asEffectHandler
+        ->Runtime.runEffectHandler(
+          ~extractCorrelationId=RuntimeEnvironment.extractCorrelationId,
+          ~extractCausationId=RuntimeEnvironment.extractCausationId,
+          ~comp=name,
+        )
       ),
       ~memorySize,
       ~timeout,

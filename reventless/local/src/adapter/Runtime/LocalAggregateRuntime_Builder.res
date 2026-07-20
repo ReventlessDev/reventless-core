@@ -31,12 +31,18 @@ module Make = (
     // The runtime's handlerRef is unused by the GraphQL resolver path, but we create a proper
     // runtime so the type is satisfied and future callers that need handlerRef will work.
     let resource = commandGenerator->ReventlessCore.Component.toPulumiResource
+    let name =
+      resource.name->ReventlessCore.ComponentType.nameOpt(ReventlessCore.CommandGenerator.componentType)
     let runtime = LocalRuntimeEnvironment.make(
-      ~name=resource.name->ReventlessCore.ComponentType.nameOpt(
-        ReventlessCore.CommandGenerator.componentType,
-      ),
+      ~name,
       ~handler=handler->Pulumi.Output.apply(h =>
-        h->LocalRuntimeEnvironment.asEffectHandler->ReventlessCore.Runtime.runEffectHandler
+        h
+        ->LocalRuntimeEnvironment.asEffectHandler
+        ->ReventlessCore.Runtime.runEffectHandler(
+          ~extractCorrelationId=LocalRuntimeEnvironment.extractCorrelationId,
+          ~extractCausationId=LocalRuntimeEnvironment.extractCausationId,
+          ~comp=name,
+        )
       ),
     )
     connect(~runtime)
@@ -50,10 +56,18 @@ module Make = (
     commandTopic,
   ) => {
     let resource = commandTopic->ReventlessCore.Component.toPulumiResource
+    let name =
+      resource.name->ReventlessCore.ComponentType.nameOpt(ReventlessCore.CommandTopic.componentType)
     let runtime = LocalRuntimeEnvironment.make(
-      ~name=resource.name->ReventlessCore.ComponentType.nameOpt(ReventlessCore.CommandTopic.componentType),
+      ~name,
       ~handler=handler->Pulumi.Output.apply(h =>
-        h->LocalRuntimeEnvironment.asEffectHandler->ReventlessCore.Runtime.runEffectHandler
+        h
+        ->LocalRuntimeEnvironment.asEffectHandler
+        ->ReventlessCore.Runtime.runEffectHandler(
+          ~extractCorrelationId=LocalRuntimeEnvironment.extractCorrelationId,
+          ~extractCausationId=LocalRuntimeEnvironment.extractCausationId,
+          ~comp=name,
+        )
       ),
     )
     connect(~runtime)
@@ -74,7 +88,13 @@ module Make = (
     let runtime = LocalRuntimeEnvironment.make(
       ~name,
       ~handler=handler->Pulumi.Output.apply(h =>
-        h->LocalRuntimeEnvironment.asEffectHandler->ReventlessCore.Runtime.runEffectHandler
+        h
+        ->LocalRuntimeEnvironment.asEffectHandler
+        ->ReventlessCore.Runtime.runEffectHandler(
+          ~extractCorrelationId=LocalRuntimeEnvironment.extractCorrelationId,
+          ~extractCausationId=LocalRuntimeEnvironment.extractCausationId,
+          ~comp=name,
+        )
       ),
     )
     let _connectResources = EventCollectorChannel.connect(

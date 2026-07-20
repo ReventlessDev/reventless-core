@@ -5,6 +5,19 @@ import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/I
 
 let tag = Context.GenericTag("reventless/RequestContext");
 
+function make(correlationId, causationId, component, pluginName, identityOpt, claimsOpt) {
+  let identity = identityOpt !== undefined ? identityOpt : Identity$Reventless.anonymous;
+  let claims = claimsOpt !== undefined ? claimsOpt : ({});
+  return {
+    correlationId: correlationId,
+    causationId: causationId,
+    component: component,
+    pluginName: pluginName,
+    identity: identity,
+    claims: claims
+  };
+}
+
 function getClaim(ctx, key) {
   return ctx.claims[key];
 }
@@ -12,11 +25,9 @@ function getClaim(ctx, key) {
 function withClaim(ctx, key, value) {
   let next = Object.fromEntries(Object.entries(ctx.claims));
   next[key] = value;
-  return {
-    correlationId: ctx.correlationId,
-    identity: ctx.identity,
-    claims: next
-  };
+  let newrecord = {...ctx};
+  newrecord.claims = next;
+  return newrecord;
 }
 
 function test(correlationIdOpt, identityOpt, claimsOpt) {
@@ -32,6 +43,7 @@ function test(correlationIdOpt, identityOpt, claimsOpt) {
 
 export {
   tag,
+  make,
   getClaim,
   withClaim,
   test,

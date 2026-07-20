@@ -761,6 +761,7 @@ function MakeWithConfig(Config) {
     make: LocalRuntimeEnvironment$ReventlessLocal.make,
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
     extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
+    extractCausationId: LocalRuntimeEnvironment$ReventlessLocal.extractCausationId,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(EventCollectorChannel)({
@@ -769,6 +770,7 @@ function MakeWithConfig(Config) {
     make: LocalRuntimeEnvironment$ReventlessLocal.make,
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
     extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
+    extractCausationId: LocalRuntimeEnvironment$ReventlessLocal.extractCausationId,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(EventCollectorChannel))(LocalDcbEventLogStorage$ReventlessLocal.Make(Bus))(LocalEventTopicPublisher$ReventlessLocal.Make(Bus))({
@@ -2424,6 +2426,7 @@ function Make($star) {
     make: LocalRuntimeEnvironment$ReventlessLocal.make,
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
     extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
+    extractCausationId: LocalRuntimeEnvironment$ReventlessLocal.extractCausationId,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(EventCollectorChannel)({
@@ -2432,6 +2435,7 @@ function Make($star) {
     make: LocalRuntimeEnvironment$ReventlessLocal.make,
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
     extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
+    extractCausationId: LocalRuntimeEnvironment$ReventlessLocal.extractCausationId,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(EventCollectorChannel))(LocalDcbEventLogStorage$ReventlessLocal.Make(Bus))(LocalEventTopicPublisher$ReventlessLocal.Make(Bus))({

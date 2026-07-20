@@ -6,9 +6,9 @@ import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+import * as Runtime$ReventlessCore from "./Runtime.res.mjs";
 import * as Component$ReventlessCore from "../../components/Component.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
-import * as RequestContext$ReventlessCore from "../../RequestContext.res.mjs";
 import * as CommandGenerator$ReventlessCore from "../../components/CommandGenerator/CommandGenerator.res.mjs";
 
 function Make(RuntimeEnvironment) {
@@ -18,19 +18,17 @@ function Make(RuntimeEnvironment) {
     let commandGeneratorHandlers = {};
     let commandTopicHandlers = {};
     let eventCollectorHandlers = {};
-    let runEffect = (correlationId, effect) => {
-      let cid = Stdlib_Option.getOr(correlationId, "unknown");
-      return Effect.runPromise(Effect.provideService(Effect.annotateLogs(effect, "correlationId", cid), RequestContext$ReventlessCore.tag, RequestContext$ReventlessCore.test(cid, undefined, undefined)));
-    };
     let aggregateHandler = aggregateName => (async (event, context) => {
       let correlationId = RuntimeEnvironment.extractCorrelationId(event);
+      let causationId = RuntimeEnvironment.extractCausationId(event);
       let comp = `AggregateRuntime(` + aggregateName + `)`;
+      let runEffect = effect => Runtime$ReventlessCore.runEffect(correlationId, causationId, comp, undefined, effect);
       let info = CommandGenerator$ReventlessCore.metaInfo(event);
       if (info !== undefined) {
         let handler = commandGeneratorHandlers[info];
         if (handler !== undefined) {
           Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `found CommandGenerator handler for ` + info));
-          await runEffect(correlationId, handler(event, context));
+          await runEffect(handler(event, context));
           return;
         }
         let available = Object.keys(commandGeneratorHandlers).join(",");
@@ -42,13 +40,13 @@ function Make(RuntimeEnvironment) {
         let handler = commandTopicHandlers[urn];
         if (handler !== undefined) {
           Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `found CommandTopic handler for ` + urn));
-          return await runEffect(correlationId, handler(event, context));
+          return await runEffect(handler(event, context));
         }
         let handlers = eventCollectorHandlers[urn];
         if (handlers !== undefined) {
           let count = handlers.length.toString();
           Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `found ` + count + ` EventCollector handler(s) for ` + urn));
-          await Promise.all(handlers.map(handler => runEffect(correlationId, handler(event, context))));
+          await Promise.all(handlers.map(handler => runEffect(handler(event, context))));
           return;
         }
         let available = Object.keys(commandTopicHandlers).concat(Object.keys(eventCollectorHandlers)).join(",");
@@ -171,7 +169,6 @@ function Make(RuntimeEnvironment) {
       commandGeneratorHandlers: commandGeneratorHandlers,
       commandTopicHandlers: commandTopicHandlers,
       eventCollectorHandlers: eventCollectorHandlers,
-      runEffect: runEffect,
       aggregateHandler: aggregateHandler,
       getRuntimeSpec: getRuntimeSpec,
       setRuntimeSpec: setRuntimeSpec,

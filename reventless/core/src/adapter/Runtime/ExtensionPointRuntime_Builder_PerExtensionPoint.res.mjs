@@ -11,7 +11,8 @@ function Make(RuntimeEnvironment) {
       let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
       let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
       let resource = Component$ReventlessCore.toPulumiResource(commandTopic);
-      return connect(RuntimeEnvironment.make(ComponentType$ReventlessCore.nameOpt(resource.__name, CommandTopic$ReventlessCore.componentType), handler.apply(handler => Runtime$ReventlessCore.runEffectHandler(RuntimeEnvironment.asEffectHandler(handler))), memorySize, timeout, {
+      let name = ComponentType$ReventlessCore.nameOpt(resource.__name, CommandTopic$ReventlessCore.componentType);
+      return connect(RuntimeEnvironment.make(name, handler.apply(handler => Runtime$ReventlessCore.runEffectHandler(RuntimeEnvironment.extractCorrelationId, RuntimeEnvironment.extractCausationId, name, undefined, RuntimeEnvironment.asEffectHandler(handler))), memorySize, timeout, {
         parent: resource
       }));
     };

@@ -35,20 +35,15 @@ module Make = (
   })
   type effectHandler = Runtime.effectHandler<RuntimeEnvironment.event, context, unit, string>
   let eventCollectorHandlers: dict<array<effectHandler>> = Dict.make()
-  let runEffect = (~correlationId=?, effect) => {
-    let cid = correlationId->Option.getOr("unknown")
-    effect
-    // Annotate the request scope so every EffectLogger call inside the handler
-    // carries correlationId as a top-level JSON field (decoded in install()).
-    ->Effect.annotateLogs("correlationId", cid)
-    ->Effect.provideService(RequestContext.tag, RequestContext.test(~correlationId=cid))
-    ->Effect.runPromise
-  }
 
   let eventCollectorHandler = parentName =>
     async (event: RuntimeEnvironment.event, context) => {
       let correlationId = event->RuntimeEnvironment.extractCorrelationId
+      let causationId = event->RuntimeEnvironment.extractCausationId
       let comp = `EventCollectorRuntime(${parentName})`
+      // Shared dispatch helper annotates correlationId / comp / causationId so the
+      // application handler's own log lines carry them (see Runtime.runEffect).
+      let runEffect = effect => Runtime.runEffect(~correlationId?, ~causationId?, ~comp, effect)
       let _ = await event
       ->RuntimeEnvironment.groupBySource
       ->Dict.toArray
@@ -61,7 +56,7 @@ module Make = (
             `found ${count} handler(s) for ${urn}`,
           )->Effect.runSync
           let _ = await handlers
-          ->Array.map(handler => runEffect(~correlationId?, handler(event, context)))
+          ->Array.map(handler => runEffect(handler(event, context)))
           ->Promise.all
         | None => EffectLogger.logWarn(~comp, `no handler found: ${urn}`)->Effect.runSync
         }

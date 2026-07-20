@@ -541,6 +541,7 @@ function MakeWithConfig(Config) {
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
     extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
+    extractCausationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCausationId,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })({
@@ -1513,6 +1514,7 @@ function Make($star) {
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
     extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
+    extractCausationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCausationId,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })({

@@ -284,7 +284,8 @@ let groupBySource = (event: event) => {
 // SQS records carry a `body` string field not included in the minimal record type.
 @get external recordBody: PulumiAws.Lambda.CallbackFunction.record => option<string> = "body"
 
-let extractCorrelationId = (event: event) =>
+// Read a single string field off the first SQS record's `meta` object.
+let extractMetaField = (event: event, field) =>
   event.records
   ->Array.get(0)
   ->Option.flatMap(r =>
@@ -298,8 +299,11 @@ let extractCorrelationId = (event: event) =>
   )
   ->Option.flatMap(obj => obj->Dict.get("meta"))
   ->Option.flatMap(JSON.Decode.object)
-  ->Option.flatMap(meta => meta->Dict.get("correlationId"))
+  ->Option.flatMap(meta => meta->Dict.get(field))
   ->Option.flatMap(JSON.Decode.string)
+
+let extractCorrelationId = (event: event) => event->extractMetaField("correlationId")
+let extractCausationId = (event: event) => event->extractMetaField("causationId")
 
 external asEventHandler: 'a => ReventlessCore.Runtime.eventHandler<event, context, 'result> =
   "%identity"

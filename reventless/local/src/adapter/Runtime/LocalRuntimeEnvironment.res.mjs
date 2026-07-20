@@ -28,13 +28,23 @@ function groupBySource(event) {
   return dict;
 }
 
+function extractMetaField(event, field) {
+  return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(event), obj => obj["meta"]), Stdlib_JSON.Decode.object), meta => meta[field]), Stdlib_JSON.Decode.string);
+}
+
 function extractCorrelationId(event) {
-  return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(event), obj => obj["meta"]), Stdlib_JSON.Decode.object), meta => meta["correlationId"]), Stdlib_JSON.Decode.string);
+  return extractMetaField(event, "correlationId");
+}
+
+function extractCausationId(event) {
+  return extractMetaField(event, "causationId");
 }
 
 export {
   make,
   groupBySource,
+  extractMetaField,
   extractCorrelationId,
+  extractCausationId,
 }
 /* effect/Effect Not a pure module */

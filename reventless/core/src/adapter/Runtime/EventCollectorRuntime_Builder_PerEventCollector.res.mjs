@@ -16,7 +16,7 @@ function Make(RuntimeEnvironment) {
       let opts = {
         parent: opts_parent
       };
-      let runtime = RuntimeEnvironment.make(name, handler.apply(handler => Runtime$ReventlessCore.runEffectHandler(RuntimeEnvironment.asEffectHandler(handler))), memorySize, timeout, {
+      let runtime = RuntimeEnvironment.make(name, handler.apply(handler => Runtime$ReventlessCore.runEffectHandler(RuntimeEnvironment.extractCorrelationId, RuntimeEnvironment.extractCausationId, name, undefined, RuntimeEnvironment.asEffectHandler(handler))), memorySize, timeout, {
         parent: resource
       });
       EventCollectorChannel.connect(name, [{
