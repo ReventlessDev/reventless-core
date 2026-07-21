@@ -45,6 +45,8 @@ module Make = (
     async (event: RuntimeEnvironment.event, context) => {
       let correlationId = event->RuntimeEnvironment.extractCorrelationId
       let causationId = event->RuntimeEnvironment.extractCausationId
+      let timestamp = event->RuntimeEnvironment.extractSentTimestamp
+      let retryCount = event->RuntimeEnvironment.extractRetryCount
       // Group-level comp — used only for this dispatcher's own bookkeeping lines,
       // which describe the runtime group rather than any one collector.
       let groupComp = `EventCollectorRuntime(${parentName})`
@@ -63,7 +65,14 @@ module Make = (
           )->Effect.runSync
           let _ = await handlers
           ->Array.map(({comp, handler}) =>
-            Runtime.runEffect(~correlationId?, ~causationId?, ~comp, handler(event, context))
+            Runtime.runEffect(
+              ~correlationId?,
+              ~causationId?,
+              ~comp,
+              ~timestamp?,
+              ~retryCount?,
+              handler(event, context),
+            )
           )
           ->Promise.all
         | None => EffectLogger.logWarn(~comp=groupComp, `no handler found: ${urn}`)->Effect.runSync

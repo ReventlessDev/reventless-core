@@ -2,10 +2,17 @@
 // At cold start: reads HANDLER_CONFIG, dynamically imports Target Spec and Mappings,
 // wires EventMapper_Callback.MakeCounterHandler + MakeEventCollectorHandler.
 
-import * as Effect from "effect/Effect";
 import { $$String as IdString } from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
-import { patchSpecId, makeQueueRef, log, pluginName } from "./HandlerFactoryHelpers.mjs";
-import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
+import {
+  patchSpecId,
+  makeQueueRef,
+  log,
+  runEffect,
+  setRequestId,
+  extractMetaField,
+  extractSentTimestamp,
+  extractRetryCount,
+} from "./HandlerFactoryHelpers.mjs";
 import { MakeCounterHandler, MakeEventCollectorHandler } from "@reventlessdev/reventless-core/src/components/EventMapper/EventMapper_Callback.res.mjs";
 import { publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import { handleStreamEvent } from "@reventlessdev/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_DynamoDbStream_Runtime.res.mjs";
@@ -24,22 +31,6 @@ function patchMappingsSourceIds(mappingsModule) {
       },
     })),
   };
-}
-
-// Set at handler entry; read by runEffect to tag logs with the Lambda request id.
-let _currentRequestId = "unknown";
-
-function runEffect(correlationId, effect) {
-  let e = effect
-    // Promote correlationId/requestId/plugin to top-level JSON log fields —
-    // decoded by EffectLogger.install() from Effect log annotations. Harmless
-    // no-op if the unified logger isn't installed.
-    .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
-    .pipe(Effect.annotateLogs("requestId", _currentRequestId));
-  if (pluginName) e = e.pipe(Effect.annotateLogs("plugin", pluginName));
-  return e
-    .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
-    .pipe(Effect.runPromise);
 }
 
 function groupBySource(records) {
@@ -77,20 +68,31 @@ async function buildHandler() {
     commonEventsHandler: counterHandler.commonEventsHandler,
   });
 
-  return (event, context) => handleStreamEvent(eventCollectorHandler.handleJsonEvents, event, context);
+  return {
+    streamHandler: (event, context) =>
+      handleStreamEvent(eventCollectorHandler.handleJsonEvents, event, context),
+    // The mapper is named after the target it maps into.
+    comp: `EventMapper(${patchedTarget.name})`,
+  };
 }
 
 const initPromise = buildHandler();
 
 export async function handler(event, context) {
-  _currentRequestId = context?.awsRequestId || "unknown";
-  const streamHandler = await initPromise;
+  setRequestId(context?.awsRequestId);
+  const { streamHandler, comp } = await initPromise;
   const records = event.Records || [];
   const grouped = groupBySource(records);
 
   await Promise.all(Object.entries(grouped).map(async ([arn, subRecords]) => {
     log.debug("processing " + arn, { comp: "EventMapperRuntime" });
-    await runEffect(undefined, streamHandler({ Records: subRecords }, context));
+    await runEffect(streamHandler({ Records: subRecords }, context), {
+      correlationId: extractMetaField(subRecords, "correlationId"),
+      causationId: extractMetaField(subRecords, "causationId"),
+      comp,
+      timestamp: extractSentTimestamp(subRecords),
+      retryCount: extractRetryCount(subRecords),
+    });
   }));
 
   return "";

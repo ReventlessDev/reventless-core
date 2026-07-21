@@ -21,9 +21,19 @@ function option(effect) {
   return Effect.map(Effect.option(effect), EffectOption.toOption);
 }
 
+function serviceWith(tag, f) {
+  return Effect.map(tag, f);
+}
+
+function serviceWithEffect(tag, f) {
+  return Effect.flatMap(tag, f);
+}
+
 export {
   tryPromise,
   trySync,
   option,
+  serviceWith,
+  serviceWithEffect,
 }
 /* effect/Effect Not a pure module */

@@ -16,6 +16,8 @@ function Make(Bus) {
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
     extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
     extractCausationId: LocalRuntimeEnvironment$ReventlessLocal.extractCausationId,
+    extractSentTimestamp: LocalRuntimeEnvironment$ReventlessLocal.extractSentTimestamp,
+    extractRetryCount: LocalRuntimeEnvironment$ReventlessLocal.extractRetryCount,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(LocalTaskBucket$ReventlessLocal);
@@ -28,6 +30,8 @@ function Make(Bus) {
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
     extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
     extractCausationId: LocalRuntimeEnvironment$ReventlessLocal.extractCausationId,
+    extractSentTimestamp: LocalRuntimeEnvironment$ReventlessLocal.extractSentTimestamp,
+    extractRetryCount: LocalRuntimeEnvironment$ReventlessLocal.extractRetryCount,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(EventCollectorChannel)(EventCollectorRuntimeBuilder)(TaskRuntimeBuilder)(LocalTaskBucket$ReventlessLocal)(LocalSideEffectHandler$ReventlessLocal)(Defaults);

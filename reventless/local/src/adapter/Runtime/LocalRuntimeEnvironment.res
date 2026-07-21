@@ -52,6 +52,16 @@ let extractMetaField = (event: event, field) =>
 let extractCorrelationId = (event: event) => event->extractMetaField("correlationId")
 let extractCausationId = (event: event) => event->extractMetaField("causationId")
 
+// In-process dispatch: the message is handed over the moment it is published, so
+// dispatch time *is* send time and there is no queue to dwell in. A handler that
+// computes `now - timestamp` therefore measures its own processing latency here
+// and end-to-end latency on a queue-backed platform — same expression, both
+// answers correct for their transport.
+let extractSentTimestamp = (_event: event) => Some(Date.now())
+
+// No redelivery in-process — the bus calls each handler once.
+let extractRetryCount = (_event: event) => Some(1)
+
 external asEventHandler: 'a => ReventlessCore.Runtime.eventHandler<event, context, 'r> = "%identity"
 external asEffectHandler: 'a => ReventlessCore.Runtime.effectHandler<event, context, 'r, 'error> =
   "%identity"

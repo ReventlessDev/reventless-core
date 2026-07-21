@@ -101,9 +101,13 @@ function finish() {
           packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
         });
         let modulesJson = info.sideEffectModulePaths.map(p => Stdlib_Option.getOr(JSON.stringify(p), `""`)).join(",");
+        let comp = `SideEffectHandler(` + spec.componentName + `)`;
+        let plugin = Logger$ReventlessCore.resolvePlugin(comp, undefined);
+        let pluginFragment = plugin !== undefined ? `,"plugin":` + JSON.stringify(plugin) : "";
+        let compFragment = `,"comp":` + JSON.stringify(comp);
         let handlerJson = spec.sourceUrns.apply(urns => {
           let sourceUrn = urns[0];
-          return `{"sideEffectModules":[` + modulesJson + `],"sourceUrn":"` + sourceUrn + `"}`;
+          return `{"sideEffectModules":[` + modulesJson + `],"sourceUrn":"` + sourceUrn + `"` + compFragment + pluginFragment + `}`;
         });
         handlerOutputs.push(handlerJson);
       });

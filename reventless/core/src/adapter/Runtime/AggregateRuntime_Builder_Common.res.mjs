@@ -21,8 +21,10 @@ function Make(RuntimeEnvironment) {
     let aggregateHandler = aggregateName => (async (event, context) => {
       let correlationId = RuntimeEnvironment.extractCorrelationId(event);
       let causationId = RuntimeEnvironment.extractCausationId(event);
+      let timestamp = RuntimeEnvironment.extractSentTimestamp(event);
+      let retryCount = RuntimeEnvironment.extractRetryCount(event);
       let comp = `AggregateRuntime(` + aggregateName + `)`;
-      let runEffect = effect => Runtime$ReventlessCore.runEffect(correlationId, causationId, comp, undefined, undefined, undefined, effect);
+      let runEffect = effect => Runtime$ReventlessCore.runEffect(correlationId, causationId, comp, undefined, timestamp, retryCount, undefined, undefined, effect);
       let info = CommandGenerator$ReventlessCore.metaInfo(event);
       if (info !== undefined) {
         let handler = commandGeneratorHandlers[info];
@@ -46,7 +48,7 @@ function Make(RuntimeEnvironment) {
         if (handlers !== undefined) {
           let count = handlers.length.toString();
           Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `found ` + count + ` EventCollector handler(s) for ` + urn));
-          await Promise.all(handlers.map(param => Runtime$ReventlessCore.runEffect(correlationId, causationId, param.comp, undefined, undefined, undefined, param.handler(event, context))));
+          await Promise.all(handlers.map(param => Runtime$ReventlessCore.runEffect(correlationId, causationId, param.comp, undefined, timestamp, retryCount, undefined, undefined, param.handler(event, context))));
           return;
         }
         let available = Object.keys(commandTopicHandlers).concat(Object.keys(eventCollectorHandlers)).join(",");

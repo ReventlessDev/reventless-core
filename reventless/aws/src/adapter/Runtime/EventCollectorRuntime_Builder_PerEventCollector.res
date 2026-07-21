@@ -67,11 +67,21 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
       let mappingsModule =
         info.mappingsModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
+      // Same deploy-time log attribution as the shared-runtime builder: the
+      // entry point annotates every invocation with these, and the `comp` string
+      // must match the ReScript dispatch boundary's `EventCollector(<name>)`.
+      let comp = `EventCollector(${eventCollectorName})`
+      let pluginFragment = switch ReventlessCore.Logger.resolvePlugin(~comp, ()) {
+      | Some(plugin) => `,"plugin":${plugin->JSON.Encode.string->JSON.stringify}`
+      | None => ""
+      }
+      let compFragment = `,"comp":${comp->JSON.Encode.string->JSON.stringify}`
+
       let handlerConfigOutput =
         Pulumi.Output.all2((info.queryDbTableName, sourceUrns))
         ->Pulumi.Output.apply(((tableName, urns)) => {
           let sourceUrn = urns->Array.getUnsafe(0)
-          `{"handlers":[{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"}]}`
+          `{"handlers":[{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"${compFragment}${pluginFragment}}]}`
         })
 
       let envVars: dict<Pulumi.Input.t<string>> = Dict.make()

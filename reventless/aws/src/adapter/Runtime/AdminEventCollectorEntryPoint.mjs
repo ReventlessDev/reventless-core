@@ -65,8 +65,17 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
-import * as Effect from "effect/Effect";
-import { patchSpecId, makeQueueRef, scanByTableName, log, pluginName } from "./HandlerFactoryHelpers.mjs";
+import {
+  patchSpecId,
+  makeQueueRef,
+  scanByTableName,
+  log,
+  runEffect,
+  setRequestId,
+  extractMetaField,
+  extractSentTimestamp,
+  extractRetryCount,
+} from "./HandlerFactoryHelpers.mjs";
 import { subscribeQueueToTopic, unsubscribeQueueFromTopic } from "@reventlessdev/rescript-aws-sdk/src/SNS_Helpers.res.mjs";
 import { sendMessage } from "@reventlessdev/reventless-aws/src/plugin/runtime/Util_PluginMessage_Runtime.res.mjs";
 import { publish as snsPublish } from "@reventlessdev/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_SNS_Runtime.res.mjs";
@@ -81,7 +90,6 @@ import { createSchedule as cwCreateSchedule, deleteSchedule as cwDeleteSchedule 
 import {
   decode as decodeFragment,
 } from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
-import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 
 // The Plugin RM state schema uses `@s.matches(_jsNullable …)` for many
 // optional fields — top-level AND nested. DDB writes drop undefined
@@ -171,39 +179,6 @@ function parseHandlerConfig(rawJson) {
     if (typeof ext.delegateModule !== "string") ext.delegateModule = "";
   }
   return config;
-}
-
-// Set at handler entry; read by runEffect to tag logs with the Lambda request id.
-let _currentRequestId = "unknown";
-
-function runEffect(correlationId, effect) {
-  let e = effect
-    // Promote correlationId/requestId/plugin to top-level JSON log fields —
-    // decoded by EffectLogger.install() from Effect log annotations. Harmless
-    // no-op if the unified logger isn't installed.
-    .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
-    .pipe(Effect.annotateLogs("requestId", _currentRequestId));
-  if (pluginName) e = e.pipe(Effect.annotateLogs("plugin", pluginName));
-  return e
-    .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
-    .pipe(Effect.runPromise);
-}
-
-function extractCorrelationId(records) {
-  const first = records && records[0];
-  if (!first) return undefined;
-  const body = first.body;
-  if (!body) return undefined;
-  try {
-    const parsed = JSON.parse(body);
-    if (parsed && typeof parsed === "object") {
-      const meta = parsed.meta;
-      if (meta && typeof meta === "object" && typeof meta.correlationId === "string") {
-        return meta.correlationId;
-      }
-    }
-  } catch (_) {}
-  return undefined;
 }
 
 const invalidNameChars = /[^.\-_a-zA-Z0-9]/g;
@@ -714,17 +689,25 @@ async function buildHandler() {
   await reconcileSubscriptionsOnce(config.pluginReadModelTableName, manageSubscriptionsFn);
 
   const sqsHandler = handleDynamoDbOrSqsEvent(makeQueueRef(config.queueUrl), callback.handleJsonEvents);
-  return { sqsHandler };
+  // This module backs both the admin and every per-plugin EventCollector
+  // Lambda, so the comp names the plugin whose events it drains — matching the
+  // `Plugin(<id>)` shape Plugin_Callback logs under.
+  return { sqsHandler, comp: `Plugin(${pluginDefinition.id})` };
 }
 
 const handlerBundlePromise = buildHandler();
 
 export async function handler(event, context) {
-  _currentRequestId = context?.awsRequestId || "unknown";
+  setRequestId(context?.awsRequestId);
   const records = event.Records || [];
-  const correlationId = extractCorrelationId(records);
   log.debug("processing " + records.length.toString() + " record(s)", { comp: "PluginEventCollectorRuntime" });
-  const { sqsHandler } = await handlerBundlePromise;
-  await runEffect(correlationId, sqsHandler(event, context));
+  const { sqsHandler, comp } = await handlerBundlePromise;
+  await runEffect(sqsHandler(event, context), {
+    correlationId: extractMetaField(records, "correlationId"),
+    causationId: extractMetaField(records, "causationId"),
+    comp,
+    timestamp: extractSentTimestamp(records),
+    retryCount: extractRetryCount(records),
+  });
   return "";
 }

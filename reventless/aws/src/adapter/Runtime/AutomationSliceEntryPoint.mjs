@@ -7,8 +7,16 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Chunk from "effect/Chunk";
 import { parseJsonOrThrow } from "sury/src/S.res.mjs";
-import { makeTableRef, makeQueueRef, log, pluginName } from "./HandlerFactoryHelpers.mjs";
-import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
+import {
+  makeTableRef,
+  makeQueueRef,
+  log,
+  runEffect,
+  setRequestId,
+  extractMetaField,
+  extractSentTimestamp,
+  extractRetryCount,
+} from "./HandlerFactoryHelpers.mjs";
 import { save as qdbSave } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res.mjs";
 import { publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import { Make as automationSliceCallbackMake } from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res.mjs";
@@ -17,21 +25,13 @@ import { Make as outboundTranslationSliceCallbackMake } from "@reventlessdev/rev
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
 
-// Set at handler entry; read by runEffect to tag logs with the Lambda request id.
-let _currentRequestId = "unknown";
-
-function runEffect(correlationId, effect) {
-  let e = effect
-    // Promote correlationId/requestId/plugin to top-level JSON log fields —
-    // decoded by EffectLogger.install() from Effect log annotations. Harmless
-    // no-op if the unified logger isn't installed.
-    .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
-    .pipe(Effect.annotateLogs("requestId", _currentRequestId));
-  if (pluginName) e = e.pipe(Effect.annotateLogs("plugin", pluginName));
-  return e
-    .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
-    .pipe(Effect.runPromise);
-}
+// Same comp the slice's own callback logs under (AutomationSlice_Callback /
+// OutboundTranslationSlice_Callback), so a filter catches both the framework's
+// lines and the application handler's.
+const sliceComp = (callbackType, sliceName) =>
+  callbackType === "outbound"
+    ? `OutboundTranslationSlice(${sliceName})`
+    : `AutomationSlice(${sliceName})`;
 
 function groupBySource(records) {
   const dict = {};
@@ -95,8 +95,12 @@ async function buildAllHandlers() {
     // Multiple slices can share one source stream (e.g. several automation
     // slices reacting to the same DcbEventLog). Accumulate all handlers per
     // source ARN; a plain assignment collapses them to one (Promise.all race),
-    // silently dropping the rest.
-    (handlers[h.sourceUrn] ||= []).push(handler);
+    // silently dropping the rest. Each keeps its own comp — that is what
+    // separates co-hosted slices in the log stream.
+    (handlers[h.sourceUrn] ||= []).push({
+      handler,
+      comp: sliceComp(h.callbackType, specModule.name),
+    });
   }));
   return handlers;
 }
@@ -104,7 +108,7 @@ async function buildAllHandlers() {
 const initPromise = buildAllHandlers();
 
 export async function handler(event, context) {
-  _currentRequestId = context?.awsRequestId || "unknown";
+  setRequestId(context?.awsRequestId);
   const handlers = await initPromise;
   const records = event.Records || [];
   const grouped = groupBySource(records);
@@ -113,8 +117,18 @@ export async function handler(event, context) {
     const streamHandlers = handlers[arn];
     if (streamHandlers !== undefined && streamHandlers.length > 0) {
       log.debug("found " + streamHandlers.length + " handler(s) for " + arn, { comp: "AutomationSliceRuntime" });
-      await Promise.all(streamHandlers.map(h =>
-        runEffect(undefined, h({ Records: subRecords }, context))
+      const correlationId = extractMetaField(subRecords, "correlationId");
+      const causationId = extractMetaField(subRecords, "causationId");
+      const timestamp = extractSentTimestamp(subRecords);
+      const retryCount = extractRetryCount(subRecords);
+      await Promise.all(streamHandlers.map(({ handler: h, comp }) =>
+        runEffect(h({ Records: subRecords }, context), {
+          correlationId,
+          causationId,
+          comp,
+          timestamp,
+          retryCount,
+        })
       ));
     } else {
       log.warn("no handler found: " + arn, { comp: "AutomationSliceRuntime" });

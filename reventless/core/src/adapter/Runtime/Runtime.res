@@ -18,6 +18,8 @@ let annotateInvocation = (
   ~causationId=?,
   ~comp=?,
   ~pluginName=?,
+  ~timestamp=?,
+  ~retryCount=?,
   ~identity=?,
   ~claims=?,
 ) => {
@@ -34,10 +36,20 @@ let annotateInvocation = (
     | Some(v) => eff->Effect.annotateLogs(key, v)
     | None => eff
     }
+  // Only a redelivery is annotated: a constant "1" on every line is noise, and
+  // its absence is what makes `retryCount > 1` a usable filter. `timestamp` is
+  // never annotated — it is a context field for computing latency, not a key
+  // anyone filters on.
+  let annotateRetry = eff =>
+    switch retryCount {
+    | Some(count) if count > 1 => eff->Effect.annotateLogs("retryCount", count->Int.toString)
+    | _ => eff
+    }
   effect
   ->Effect.annotateLogs("correlationId", cid)
   ->annotateOpt("comp", comp)
   ->annotateOpt("causationId", causationId)
+  ->annotateRetry
   ->Effect.provideService(
     RequestContext.tag,
     RequestContext.make(
@@ -45,6 +57,8 @@ let annotateInvocation = (
       ~causationId?,
       ~component=?comp,
       ~pluginName=?resolvedPlugin,
+      ~timestamp?,
+      ~retryCount?,
       ~identity?,
       ~claims?,
     ),
@@ -59,12 +73,23 @@ let runEffect = (
   ~causationId=?,
   ~comp=?,
   ~pluginName=?,
+  ~timestamp=?,
+  ~retryCount=?,
   ~identity=?,
   ~claims=?,
   effect,
 ) =>
   effect
-  ->annotateInvocation(~correlationId?, ~causationId?, ~comp?, ~pluginName?, ~identity?, ~claims?)
+  ->annotateInvocation(
+    ~correlationId?,
+    ~causationId?,
+    ~comp?,
+    ~pluginName?,
+    ~timestamp?,
+    ~retryCount?,
+    ~identity?,
+    ~claims?,
+  )
   ->Effect.runPromise
 
 // Convert an effectHandler to an eventHandler at build time, annotating the
@@ -76,21 +101,31 @@ let runEffect = (
 let runEffectHandler = (
   ~extractCorrelationId: option<'event => option<string>>=?,
   ~extractCausationId: option<'event => option<string>>=?,
+  ~extractSentTimestamp: option<'event => option<float>>=?,
+  ~extractRetryCount: option<'event => option<int>>=?,
   ~comp=?,
   ~pluginName=?,
   handler: effectHandler<'event, 'context, 'result, 'error>,
 ): eventHandler<'event, 'context, 'result> =>
   (event, ctx) => {
-    let correlationId = switch extractCorrelationId {
-    | Some(f) => f(event)
-    | None => None
-    }
-    let causationId = switch extractCausationId {
-    | Some(f) => f(event)
-    | None => None
-    }
+    let extract = (f, event) =>
+      switch f {
+      | Some(f) => f(event)
+      | None => None
+      }
+    let correlationId = extractCorrelationId->extract(event)
+    let causationId = extractCausationId->extract(event)
+    let timestamp = extractSentTimestamp->extract(event)
+    let retryCount = extractRetryCount->extract(event)
     handler(event, ctx)
-    ->annotateInvocation(~correlationId?, ~causationId?, ~comp?, ~pluginName?)
+    ->annotateInvocation(
+      ~correlationId?,
+      ~causationId?,
+      ~comp?,
+      ~pluginName?,
+      ~timestamp?,
+      ~retryCount?,
+    )
     ->Effect.runPromise
   }
 
@@ -115,6 +150,10 @@ module type Environment = {
   let groupBySource: event => dict<event>
   let extractCorrelationId: event => option<string>
   let extractCausationId: event => option<string>
+  // Transport-level delivery facts, for RequestContext.timestamp / .retryCount.
+  // `None` where the transport carries no such notion (see each implementation).
+  let extractSentTimestamp: event => option<float>
+  let extractRetryCount: event => option<int>
   let asEventHandler: 'a => eventHandler<event, context, 'result>
   let asEffectHandler: 'a => effectHandler<event, context, 'result, 'error>
 }

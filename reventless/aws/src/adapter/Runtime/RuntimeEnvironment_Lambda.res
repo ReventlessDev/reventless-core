@@ -305,6 +305,37 @@ let extractMetaField = (event: event, field) =>
 let extractCorrelationId = (event: event) => event->extractMetaField("correlationId")
 let extractCausationId = (event: event) => event->extractMetaField("causationId")
 
+// SQS attributes ride on the record but are absent from the minimal record type
+// (see the commented-out `attributes` field in SQS_Queue.res). Read them the same
+// way `recordBody` reads `body`: as a typed getter over the untyped record.
+type recordAttributes = {
+  @as("SentTimestamp") sentTimestamp?: string,
+  @as("ApproximateReceiveCount") approximateReceiveCount?: string,
+}
+@get
+external recordAttributes: PulumiAws.Lambda.CallbackFunction.record => option<recordAttributes> =
+  "attributes"
+
+let firstRecordAttributes = (event: event) =>
+  event.records->Array.get(0)->Option.flatMap(recordAttributes)
+
+// Send time of the triggering message, ms since epoch. SQS stamps
+// `SentTimestamp` server-side (not the producer's clock). DynamoDB-stream
+// sources carry `ApproximateCreationDateTime` instead and are dispatched through
+// the entry-point shells, so None here rather than a fabricated value.
+let extractSentTimestamp = (event: event) =>
+  event
+  ->firstRecordAttributes
+  ->Option.flatMap(attrs => attrs.sentTimestamp)
+  ->Option.flatMap(Float.fromString)
+
+// Delivery attempt, 1 on first delivery.
+let extractRetryCount = (event: event) =>
+  event
+  ->firstRecordAttributes
+  ->Option.flatMap(attrs => attrs.approximateReceiveCount)
+  ->Option.flatMap(Int.fromString(_))
+
 external asEventHandler: 'a => ReventlessCore.Runtime.eventHandler<event, context, 'result> =
   "%identity"
 external asEffectHandler: 'a => ReventlessCore.Runtime.effectHandler<

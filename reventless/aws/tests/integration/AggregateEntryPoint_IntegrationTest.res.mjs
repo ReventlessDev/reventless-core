@@ -8,7 +8,7 @@ let runOneAppSyncEvent = (async (tableName, event) => {
       "@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs"
     );
     const Effect = await import("effect/Effect");
-    const { tag: requestContextTag } = await import(
+    const { tag: requestContextTag, fromOptions: makeRequestContext } = await import(
       "@reventlessdev/reventless-core/src/RequestContext.res.mjs"
     );
     const { commandOutcomeToJson } = await import(
@@ -32,10 +32,12 @@ let runOneAppSyncEvent = (async (tableName, event) => {
     };
 
     const [, cmdGenHandlers] = await buildHandlersForConfig(config, { loadModule });
-    const cmdGenHandler = cmdGenHandlers["AggTestAggregate"];
+    // Registry entries pair the handler with its dispatch comp
+    // (docs/plans/entrypoint-dispatch-parity-and-latency-fields.md).
+    const { handler: cmdGenHandler } = cmdGenHandlers["AggTestAggregate"];
 
     const effect = cmdGenHandler(event, {})
-      .pipe(Effect.provideService(requestContextTag, { correlationId: "agg-test" }));
+      .pipe(Effect.provideService(requestContextTag, makeRequestContext({ correlationId: "agg-test" })));
     const outcome = await Effect.runPromise(effect);
     return commandOutcomeToJson(outcome);
   });

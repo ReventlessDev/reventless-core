@@ -263,7 +263,7 @@ async function dispatchTool(tool, args, identity) {
     meta: payload_meta,
     identity: identity
   };
-  return await Runtime$ReventlessCore.runEffect(undefined, undefined, `Mcp(` + tool.name + `)`, undefined, identity, undefined, generateCommand(payload));
+  return await Runtime$ReventlessCore.runEffect(undefined, undefined, `Mcp(` + tool.name + `)`, undefined, undefined, undefined, identity, undefined, generateCommand(payload));
 }
 
 export {

@@ -21,6 +21,7 @@ directly instead of substring-matching the message:
 | `correlationId` | request scope | Threads one logical flow across Lambdas |
 | `causationId` | request scope, when present | The direct-parent `msgId` — reconstructs the parent → child chain within one `correlationId` |
 | `requestId` | Lambda | `context.awsRequestId` |
+| `retryCount` | **only on a redelivery** | Delivery attempt (SQS `ApproximateReceiveCount`). Absent on a first delivery, so `| filter retryCount > 1` finds exactly the reprocessed messages |
 | `detail` | when provided | Structured payload; truncated to a `{truncated, bytes, preview}` stub above `REVENTLESS_LOG_MAX_DETAIL_BYTES` (default 32 KB) |
 
 > CloudWatch automatically discovers these JSON keys — type `fields @timestamp,
@@ -39,15 +40,45 @@ the component kind:
 | Component | `comp` |
 |---|---|
 | Aggregate command / event handling | `AggregateRuntime(<AggregateName>)` |
-| Event collector — read model, state-view slice, side-effect handler, event mapper | `EventCollector(<ComponentResourceName>)`, e.g. `EventCollector(CustomersReadModel)` |
+| Read model | `EventCollector(<ComponentResourceName>)`, e.g. `EventCollector(CustomersReadModel)` |
+| Side-effect handler | `SideEffectHandler(<HandlerName>)` |
+| State-view slice | `StateViewSlice(<SliceName>)` |
+| Automation slice | `AutomationSlice(<SliceName>)` |
+| Outbound translation slice | `OutboundTranslationSlice(<SliceName>)` |
+| Event mapper | `EventMapper(<TargetName>)` |
+| Extension point (incl. the plugin EP) | `ExtensionPoint(<Name>)` |
+| StateChangeSlice command handling (DCB) | `DcbCommandTopicRuntime(<PluginName>)` |
+| Plugin event collector | `Plugin(<PluginId>)` |
 
-Event collectors get the same `comp` whichever deployment strategy hosts them —
-their own Lambda, the shared `AllReadModels` runtime, or the aggregate-nested
-runtime — so `| filter comp = "EventCollector(CustomersReadModel)"` isolates one
-read model even when a dozen share a Lambda. The dispatcher's own bookkeeping
-lines (`found N handler(s) for <urn>`) stay on the runtime-group `comp`
+Read models get the same `comp` whichever deployment strategy hosts them — their
+own Lambda, the shared `AllReadModels` runtime, or the aggregate-nested runtime —
+so `| filter comp = "EventCollector(CustomersReadModel)"` isolates one read model
+even when a dozen share a Lambda. The dispatcher's own bookkeeping lines (`found
+N handler(s) for <urn>`) stay on the runtime-group `comp`
 (`EventCollectorRuntime(<group>)`), since they describe the group rather than any
 one element.
+
+> **Platform note.** `reventless-local` dispatches every collector-hosted element
+> through one event-collector runtime, so a state-view slice reads as
+> `EventCollector(<ResourceName>)` there and `StateViewSlice(<SliceName>)` on AWS
+> (deployed slices have their own entry point, which names the element by kind). A
+> component only ever runs on one platform in a given deployment, so a filter is
+> never ambiguous *within* a log stream — but a query copied from a local run may
+> need the AWS-side name.
+
+### Latency and redelivery
+
+Neither is derived from the log timestamps: the dispatch boundary reads them off
+the transport and puts them in `RequestContext`, where a handler can use them
+directly.
+
+- **`RequestContext.timestamp`** — when the triggering message was *sent* (ms
+  since epoch): SQS `SentTimestamp` (server-side clock), or a DynamoDB stream
+  record's `ApproximateCreationDateTime`. `Date.now() - timestamp` is end-to-end
+  latency *including queue dwell*, which a handler-local clock cannot see. Not
+  emitted as a log field — it is an input for computing latency, not a filter key.
+- **`RequestContext.retryCount`** — delivery attempt, 1 on first delivery. Emitted
+  as the `retryCount` log field only when > 1.
 
 ## Queries
 
@@ -114,7 +145,21 @@ fields plugin, comp
 | limit 20
 ```
 
-### 7. Truncated detail payloads (find logs dropping data)
+### 7. Redelivered messages (what is being reprocessed?)
+
+`retryCount` is annotated only when a message is delivered more than once, so its
+presence alone is the signal. A component that shows up here repeatedly is either
+failing and being retried, or running long enough to hit the queue's visibility
+timeout.
+
+```
+fields @timestamp, plugin, comp, retryCount, message
+| filter ispresent(retryCount)
+| sort @timestamp desc
+| limit 100
+```
+
+### 8. Truncated detail payloads (find logs dropping data)
 
 ```
 fields @timestamp, comp, message, detail.bytes
@@ -125,10 +170,15 @@ fields @timestamp, comp, message, detail.bytes
 ## Tips
 
 - **Cross-Lambda tracing** is the payoff of `correlationId`: it is set at the
-  request boundary (the shared `Runtime.runEffect` / `Runtime.runEffectHandler`
-  dispatch helper) and rides every `EffectLogger` line inside that scope
-  automatically — along with `comp` and `causationId` — plus every Lambda
-  entry-point shim annotates `correlationId`.
+  request boundary and rides every `EffectLogger` line inside that scope
+  automatically — along with `comp` and `causationId`.
+- **There are two dispatch boundaries, one per platform**, and they annotate the
+  same fields: `ReventlessCore.Runtime.annotateInvocation` (in-process, used by
+  `reventless-local`) and `runEffect` in
+  `reventless-aws/.../Runtime/HandlerFactoryHelpers.mjs` (the deployed Lambda
+  entry points — the AWS runtime builders discard the ReScript handler closure and
+  deploy an entry-point shell instead). Change one and change the other, or the
+  two platforms drift apart in what they emit.
 - To force JSON locally (e.g. when piping to a file or `tee`), set
   `REVENTLESS_LOG_FORMAT=json`. To force coloured text in a non-TTY, set
   `REVENTLESS_LOG_FORMAT=text`.

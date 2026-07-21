@@ -65,6 +65,7 @@ function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeout
   let sourceUrns = Pulumi.all(Component$ReventlessCore.outputs(eventCollector).resources.map(param => param.urn));
   storedSpecs.push({
     componentName: parentName,
+    eventCollectorName: eventCollectorName,
     parentResource: parentResource,
     sourceUrns: sourceUrns,
     channelSpec: {
@@ -128,6 +129,10 @@ function finish() {
         } else {
           stateTopicFragment = "";
         }
+        let comp = `EventCollector(` + spec.eventCollectorName + `)`;
+        let plugin = Logger$ReventlessCore.resolvePlugin(comp, undefined);
+        let pluginFragment = plugin !== undefined ? `,"plugin":` + JSON.stringify(plugin) : "";
+        let compFragment = `,"comp":` + JSON.stringify(comp);
         let handlerJson = Pulumi.all([
           info.queryDbTableName,
           spec.sourceUrns,
@@ -135,7 +140,7 @@ function finish() {
           handlerPgFragment
         ]).apply(param => {
           let sourceUrn = Stdlib_Option.getOr(param[1][0], param[2]);
-          return `{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"` + param[3] + stateTopicFragment + `}`;
+          return `{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"` + compFragment + pluginFragment + param[3] + stateTopicFragment + `}`;
         });
         handlerOutputs.push(handlerJson);
       });

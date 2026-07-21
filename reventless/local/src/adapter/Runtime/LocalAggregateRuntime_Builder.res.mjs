@@ -14,12 +14,12 @@ function Make(Bus) {
     let forCommandGenerator = (handler, connect, param, param$1, commandGenerator) => {
       let resource = Component$ReventlessCore.toPulumiResource(commandGenerator);
       let name = ComponentType$ReventlessCore.nameOpt(resource.__name, CommandGenerator$ReventlessCore.componentType);
-      return connect(LocalRuntimeEnvironment$ReventlessLocal.make(name, handler.apply(h => Runtime$ReventlessCore.runEffectHandler(LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId, LocalRuntimeEnvironment$ReventlessLocal.extractCausationId, name, undefined, h)), undefined, undefined, undefined));
+      return connect(LocalRuntimeEnvironment$ReventlessLocal.make(name, handler.apply(h => Runtime$ReventlessCore.runEffectHandler(LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId, LocalRuntimeEnvironment$ReventlessLocal.extractCausationId, LocalRuntimeEnvironment$ReventlessLocal.extractSentTimestamp, LocalRuntimeEnvironment$ReventlessLocal.extractRetryCount, name, undefined, h)), undefined, undefined, undefined));
     };
     let forCommandTopic = (handler, connect, param, param$1, commandTopic) => {
       let resource = Component$ReventlessCore.toPulumiResource(commandTopic);
       let name = ComponentType$ReventlessCore.nameOpt(resource.__name, CommandTopic$ReventlessCore.componentType);
-      return connect(LocalRuntimeEnvironment$ReventlessLocal.make(name, handler.apply(h => Runtime$ReventlessCore.runEffectHandler(LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId, LocalRuntimeEnvironment$ReventlessLocal.extractCausationId, name, undefined, h)), undefined, undefined, undefined));
+      return connect(LocalRuntimeEnvironment$ReventlessLocal.make(name, handler.apply(h => Runtime$ReventlessCore.runEffectHandler(LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId, LocalRuntimeEnvironment$ReventlessLocal.extractCausationId, LocalRuntimeEnvironment$ReventlessLocal.extractSentTimestamp, LocalRuntimeEnvironment$ReventlessLocal.extractRetryCount, name, undefined, h)), undefined, undefined, undefined));
     };
     let forEventCollector = (handler, eventTopics, resources, param, param$1, eventCollector) => {
       let resource = Component$ReventlessCore.toPulumiResource(eventCollector);
@@ -29,7 +29,7 @@ function Make(Bus) {
       let opts = {
         parent: opts_parent
       };
-      let runtime = LocalRuntimeEnvironment$ReventlessLocal.make(name, handler.apply(h => Runtime$ReventlessCore.runEffectHandler(LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId, LocalRuntimeEnvironment$ReventlessLocal.extractCausationId, comp, undefined, h)), undefined, undefined, undefined);
+      let runtime = LocalRuntimeEnvironment$ReventlessLocal.make(name, handler.apply(h => Runtime$ReventlessCore.runEffectHandler(LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId, LocalRuntimeEnvironment$ReventlessLocal.extractCausationId, LocalRuntimeEnvironment$ReventlessLocal.extractSentTimestamp, LocalRuntimeEnvironment$ReventlessLocal.extractRetryCount, comp, undefined, h)), undefined, undefined, undefined);
       EventCollectorChannel.connect(name, [{
           channel: eventCollector.channel,
           eventTopics: eventTopics,

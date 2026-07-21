@@ -30,6 +30,8 @@ function Make(RuntimeEnvironment) {
     let eventCollectorHandler = parentName => (async (event, context) => {
       let correlationId = RuntimeEnvironment.extractCorrelationId(event);
       let causationId = RuntimeEnvironment.extractCausationId(event);
+      let timestamp = RuntimeEnvironment.extractSentTimestamp(event);
+      let retryCount = RuntimeEnvironment.extractRetryCount(event);
       let groupComp = `EventCollectorRuntime(` + parentName + `)`;
       await Promise.all(Object.entries(RuntimeEnvironment.groupBySource(event)).map(async param => {
         let event = param[1];
@@ -40,7 +42,7 @@ function Make(RuntimeEnvironment) {
         }
         let count = handlers.length.toString();
         Effect.runSync(EffectLogger$ReventlessCore.logDebug(groupComp, undefined, `found ` + count + ` handler(s) for ` + urn));
-        await Promise.all(handlers.map(param => Runtime$ReventlessCore.runEffect(correlationId, causationId, param.comp, undefined, undefined, undefined, param.handler(event, context))));
+        await Promise.all(handlers.map(param => Runtime$ReventlessCore.runEffect(correlationId, causationId, param.comp, undefined, timestamp, retryCount, undefined, undefined, param.handler(event, context))));
       }));
     });
     let validateParent = parent => {

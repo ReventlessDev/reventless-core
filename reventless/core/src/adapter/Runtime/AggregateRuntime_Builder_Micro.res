@@ -32,6 +32,8 @@ module Make = (
         ->Runtime.runEffectHandler(
           ~extractCorrelationId=RuntimeEnvironment.extractCorrelationId,
           ~extractCausationId=RuntimeEnvironment.extractCausationId,
+          ~extractSentTimestamp=RuntimeEnvironment.extractSentTimestamp,
+          ~extractRetryCount=RuntimeEnvironment.extractRetryCount,
           ~comp=name,
         )
       ),
@@ -60,6 +62,8 @@ module Make = (
         ->Runtime.runEffectHandler(
           ~extractCorrelationId=RuntimeEnvironment.extractCorrelationId,
           ~extractCausationId=RuntimeEnvironment.extractCausationId,
+          ~extractSentTimestamp=RuntimeEnvironment.extractSentTimestamp,
+          ~extractRetryCount=RuntimeEnvironment.extractRetryCount,
           ~comp=name,
         )
       ),
@@ -91,6 +95,8 @@ module Make = (
         ->Runtime.runEffectHandler(
           ~extractCorrelationId=RuntimeEnvironment.extractCorrelationId,
           ~extractCausationId=RuntimeEnvironment.extractCausationId,
+          ~extractSentTimestamp=RuntimeEnvironment.extractSentTimestamp,
+          ~extractRetryCount=RuntimeEnvironment.extractRetryCount,
           ~comp=name,
         )
       ),

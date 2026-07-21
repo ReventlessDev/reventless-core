@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect";
 import * as LogPrefix$Reventless from "@reventlessdev/reventless-spec/src/LogPrefix.res.mjs";
 import * as RequestContext$ReventlessCore from "../../RequestContext.res.mjs";
 
-function annotateInvocation(effect, correlationId, causationId, comp, pluginName, identity, claims) {
+function annotateInvocation(effect, correlationId, causationId, comp, pluginName, timestamp, retryCount, identity, claims) {
   let cid = Stdlib_Option.getOr(correlationId, "unknown");
   let resolvedPlugin = pluginName !== undefined ? pluginName : LogPrefix$Reventless.resolvePlugin(comp, undefined);
   let annotateOpt = (eff, key, value) => {
@@ -15,18 +15,32 @@ function annotateInvocation(effect, correlationId, causationId, comp, pluginName
       return eff;
     }
   };
-  return Effect.provideService(annotateOpt(annotateOpt(Effect.annotateLogs(effect, "correlationId", cid), "comp", comp), "causationId", causationId), RequestContext$ReventlessCore.tag, RequestContext$ReventlessCore.make(cid, causationId, comp, resolvedPlugin, identity, claims));
+  let annotateRetry = eff => {
+    if (retryCount !== undefined && retryCount > 1) {
+      return Effect.annotateLogs(eff, "retryCount", retryCount.toString());
+    } else {
+      return eff;
+    }
+  };
+  return Effect.provideService(annotateRetry(annotateOpt(annotateOpt(Effect.annotateLogs(effect, "correlationId", cid), "comp", comp), "causationId", causationId)), RequestContext$ReventlessCore.tag, RequestContext$ReventlessCore.make(cid, causationId, comp, resolvedPlugin, timestamp, retryCount, identity, claims));
 }
 
-function runEffect(correlationId, causationId, comp, pluginName, identity, claims, effect) {
-  return Effect.runPromise(annotateInvocation(effect, correlationId, causationId, comp, pluginName, identity, claims));
+function runEffect(correlationId, causationId, comp, pluginName, timestamp, retryCount, identity, claims, effect) {
+  return Effect.runPromise(annotateInvocation(effect, correlationId, causationId, comp, pluginName, timestamp, retryCount, identity, claims));
 }
 
-function runEffectHandler(extractCorrelationId, extractCausationId, comp, pluginName, handler) {
+function runEffectHandler(extractCorrelationId, extractCausationId, extractSentTimestamp, extractRetryCount, comp, pluginName, handler) {
   return (event, ctx) => {
-    let correlationId = extractCorrelationId !== undefined ? extractCorrelationId(event) : undefined;
-    let causationId = extractCausationId !== undefined ? extractCausationId(event) : undefined;
-    return Effect.runPromise(annotateInvocation(handler(event, ctx), correlationId, causationId, comp, pluginName, undefined, undefined));
+    let extract = (f, event) => {
+      if (f !== undefined) {
+        return f(event);
+      }
+    };
+    let correlationId = extract(extractCorrelationId, event);
+    let causationId = extract(extractCausationId, event);
+    let timestamp = extract(extractSentTimestamp, event);
+    let retryCount = extract(extractRetryCount, event);
+    return Effect.runPromise(annotateInvocation(handler(event, ctx), correlationId, causationId, comp, pluginName, timestamp, retryCount, undefined, undefined));
   };
 }
 

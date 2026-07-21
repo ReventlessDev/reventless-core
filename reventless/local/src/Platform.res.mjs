@@ -762,6 +762,8 @@ function MakeWithConfig(Config) {
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
     extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
     extractCausationId: LocalRuntimeEnvironment$ReventlessLocal.extractCausationId,
+    extractSentTimestamp: LocalRuntimeEnvironment$ReventlessLocal.extractSentTimestamp,
+    extractRetryCount: LocalRuntimeEnvironment$ReventlessLocal.extractRetryCount,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(EventCollectorChannel)({
@@ -771,6 +773,8 @@ function MakeWithConfig(Config) {
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
     extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
     extractCausationId: LocalRuntimeEnvironment$ReventlessLocal.extractCausationId,
+    extractSentTimestamp: LocalRuntimeEnvironment$ReventlessLocal.extractSentTimestamp,
+    extractRetryCount: LocalRuntimeEnvironment$ReventlessLocal.extractRetryCount,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(EventCollectorChannel))(LocalDcbEventLogStorage$ReventlessLocal.Make(Bus))(LocalEventTopicPublisher$ReventlessLocal.Make(Bus))({
@@ -2427,6 +2431,8 @@ function Make($star) {
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
     extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
     extractCausationId: LocalRuntimeEnvironment$ReventlessLocal.extractCausationId,
+    extractSentTimestamp: LocalRuntimeEnvironment$ReventlessLocal.extractSentTimestamp,
+    extractRetryCount: LocalRuntimeEnvironment$ReventlessLocal.extractRetryCount,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(EventCollectorChannel)({
@@ -2436,6 +2442,8 @@ function Make($star) {
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
     extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
     extractCausationId: LocalRuntimeEnvironment$ReventlessLocal.extractCausationId,
+    extractSentTimestamp: LocalRuntimeEnvironment$ReventlessLocal.extractSentTimestamp,
+    extractRetryCount: LocalRuntimeEnvironment$ReventlessLocal.extractRetryCount,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(EventCollectorChannel))(LocalDcbEventLogStorage$ReventlessLocal.Make(Bus))(LocalEventTopicPublisher$ReventlessLocal.Make(Bus))({

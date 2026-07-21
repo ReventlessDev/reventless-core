@@ -3,9 +3,16 @@
 // wires EventLog_Operations, Aggregate_Callback, CommandTopic_Callback.
 // Handles both SQS CommandTopic events (Route 2) and AppSync direct invocation (Route 1).
 
-import * as Effect from "effect/Effect";
-import { patchSpecId, makeQueueRef, log, pluginName } from "./HandlerFactoryHelpers.mjs";
-import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
+import {
+  patchSpecId,
+  makeQueueRef,
+  log,
+  runEffect,
+  setRequestId,
+  extractMetaField,
+  extractSentTimestamp,
+  extractRetryCount,
+} from "./HandlerFactoryHelpers.mjs";
 import { Make as eventLogOperationsMake } from "@reventlessdev/reventless-core/src/components/EventLog/EventLog_Operations.res.mjs";
 import { Make as aggregateCallbackMake } from "@reventlessdev/reventless-core/src/components/Aggregate/Aggregate_Callback.res.mjs";
 import { Make as commandTopicCallbackMake } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Callback.res.mjs";
@@ -192,21 +199,12 @@ function buildCommandGeneratorHandler(parts, dispatchMode) {
   };
 }
 
-// Set at handler entry; read by runEffect to tag logs with the Lambda request id.
-let _currentRequestId = "unknown";
-
-function runEffect(correlationId, effect) {
-  let e = effect
-    // Promote correlationId/requestId/plugin to top-level JSON log fields —
-    // decoded by EffectLogger.install() from Effect log annotations. Harmless
-    // no-op if the unified logger isn't installed.
-    .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
-    .pipe(Effect.annotateLogs("requestId", _currentRequestId));
-  if (pluginName) e = e.pipe(Effect.annotateLogs("plugin", pluginName));
-  return e
-    .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
-    .pipe(Effect.runPromise);
-}
+// The dispatch `comp`, matching the ReScript boundary's
+// `AggregateRuntime(<aggregateName>)` (AggregateRuntime_Builder_Common). Derived
+// in-shell rather than baked into HANDLER_CONFIG because the aggregate name is
+// already in hand here — unlike the event-collector resource name the read-model
+// entry point has to be handed.
+const aggregateComp = (aggregateName) => `AggregateRuntime(${aggregateName})`;
 
 function groupBySource(records) {
   const dict = {};
@@ -216,24 +214,6 @@ function groupBySource(records) {
     dict[arn] = existing.concat([record]);
   });
   return dict;
-}
-
-function extractCorrelationId(records) {
-  const first = records[0];
-  if (!first) return undefined;
-  const body = first.body;
-  if (body == null) return undefined;
-  try {
-    const parsed = JSON.parse(body);
-    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-      const meta = parsed.meta;
-      if (meta && typeof meta === "object" && !Array.isArray(meta)) {
-        const cid = meta.correlationId;
-        if (typeof cid === "string") return cid;
-      }
-    }
-  } catch (_) {}
-  return undefined;
 }
 
 // DISPATCH_MODE controls whether AppSync direct-invoke commands are run inline
@@ -257,8 +237,15 @@ export async function buildHandlersForConfig(config, opts = {}) {
     const specModule = await loadModule(h.specModule);
     const behaviorModule = await loadModule(h.behaviorModule);
     const parts = buildAggregateParts(specModule, behaviorModule, h.eventLogTable, h.queueUrl, h.pgConnection);
-    cmdTopicHandlers[h.queueArn] = parts.sqsHandler;
-    cmdGenHandlers[specModule.name] = buildCommandGeneratorHandler(parts, dispatchMode);
+    // Pair each handler with the comp of the aggregate it belongs to: this
+    // Lambda can host every aggregate in the platform, so the comp is what keeps
+    // their log lines separable.
+    const comp = aggregateComp(specModule.name);
+    cmdTopicHandlers[h.queueArn] = { handler: parts.sqsHandler, comp };
+    cmdGenHandlers[specModule.name] = {
+      handler: buildCommandGeneratorHandler(parts, dispatchMode),
+      comp,
+    };
   }));
   return [cmdTopicHandlers, cmdGenHandlers];
 }
@@ -271,7 +258,7 @@ async function buildAllHandlers() {
 const initPromise = buildAllHandlers();
 
 export async function handler(event, context) {
-  _currentRequestId = context?.awsRequestId || "unknown";
+  setRequestId(context?.awsRequestId);
   const [cmdTopicHandlers, cmdGenHandlers] = await initPromise;
 
   // Route 1: AppSync direct invocation
@@ -290,9 +277,16 @@ export async function handler(event, context) {
     let result = null;
     let found = false;
     while (i < len && !found) {
-      const [name, cmdGenHandler] = entries[i];
+      const [name, { handler: cmdGenHandler, comp }] = entries[i];
       try {
-        const r = await runEffect(undefined, cmdGenHandler(event, context));
+        // Route 1 carries its envelope on `event.meta` (AppSync direct invoke),
+        // not in an SQS record — and there is no send time or receive count on
+        // this path, so latency/retry fields stay absent rather than faked.
+        const r = await runEffect(cmdGenHandler(event, context), {
+          correlationId: event.meta?.correlationId,
+          causationId: event.meta?.causationId,
+          comp,
+        });
         log.debug("processed command via " + name, { comp: "CommandGenerator" });
         result = r;
         found = true;
@@ -313,13 +307,19 @@ export async function handler(event, context) {
 
   // Route 2: SQS CommandTopic events
   const records = event.Records || [];
-  const correlationId = extractCorrelationId(records);
   const grouped = groupBySource(records);
   await Promise.all(Object.entries(grouped).map(async ([arn, subRecords]) => {
-    const cmdHandler = cmdTopicHandlers[arn];
-    if (cmdHandler !== undefined) {
+    const registered = cmdTopicHandlers[arn];
+    if (registered !== undefined) {
+      const { handler: cmdHandler, comp } = registered;
       log.debug("found handler for CommandTopic " + arn, { comp: "AggregateRuntime" });
-      await runEffect(correlationId, cmdHandler({ Records: subRecords }, context));
+      await runEffect(cmdHandler({ Records: subRecords }, context), {
+        correlationId: extractMetaField(subRecords, "correlationId"),
+        causationId: extractMetaField(subRecords, "causationId"),
+        comp,
+        timestamp: extractSentTimestamp(subRecords),
+        retryCount: extractRetryCount(subRecords),
+      });
     } else {
       log.warn("no handler found: " + arn, { comp: "AggregateRuntime" });
     }

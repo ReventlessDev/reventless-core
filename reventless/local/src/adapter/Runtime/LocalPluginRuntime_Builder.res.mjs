@@ -11,6 +11,8 @@ function Make(Bus) {
     groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
     extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
     extractCausationId: LocalRuntimeEnvironment$ReventlessLocal.extractCausationId,
+    extractSentTimestamp: LocalRuntimeEnvironment$ReventlessLocal.extractSentTimestamp,
+    extractRetryCount: LocalRuntimeEnvironment$ReventlessLocal.extractRetryCount,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(ECChannel);

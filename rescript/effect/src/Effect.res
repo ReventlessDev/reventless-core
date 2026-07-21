@@ -407,8 +407,14 @@ let logInfo = (msg: string) =>
   Effect.serviceWith(Logger.tag, logger => logger.info(msg))
 ```
 */
-@module("effect/Effect")
-external serviceWith: (Context.tag<'service>, 'service => 'b) => t<'b, 'e, 'service> = "serviceWith"
+// `effect` exports no `serviceWith` function: since v3 a `Tag` *is* an effect
+// that yields its service, so reading one is a plain `map` over the tag. Binding
+// the name directly compiles but dies at call time with "not a function" — it did,
+// which is how this was found.
+external tagAsEffect: Context.tag<'service> => t<'service, 'e, 'service> = "%identity"
+
+let serviceWith = (tag: Context.tag<'service>, f: 'service => 'b): t<'b, 'e, 'service> =>
+  tag->tagAsEffect->map(f)
 
 /**
 Like `serviceWith`, but the mapping function returns an `Effect`.
@@ -421,11 +427,10 @@ let logInfo = (msg: string) =>
   Effect.serviceWithEffect(Logger.tag, logger => logger.info(msg))
 ```
 */
-@module("effect/Effect")
-external serviceWithEffect: (
-  Context.tag<'service>,
-  'service => t<'a, 'e, 'service>,
-) => t<'a, 'e, 'service> = "serviceWithEffect"
+let serviceWithEffect = (
+  tag: Context.tag<'service>,
+  f: 'service => t<'a, 'e, 'service>,
+): t<'a, 'e, 'service> => tag->tagAsEffect->flatMap(f)
 
 /**
 Satisfies a single service requirement by supplying a concrete implementation.
@@ -483,6 +488,23 @@ the message string.
 */
 @module("effect/Effect")
 external annotateLogs: (t<'a, 'e, 'r>, string, string) => t<'a, 'e, 'r> = "annotateLogs"
+
+/**
+The log annotations currently in scope — the counterpart of `annotateLogs`,
+useful for asserting what a dispatch boundary attached without installing a
+logger and capturing its output.
+
+`effect` holds them in a `HashMap`, not a plain object, so the effect yields an
+opaque value; `annotationsToDict` reads it (the HashMap iterates as `[key,
+value]` pairs).
+*/
+type logAnnotationMap
+
+@module("effect/Effect")
+external logAnnotations: t<logAnnotationMap, 'e, 'r> = "logAnnotations"
+
+@scope("Object") @val
+external annotationsToDict: logAnnotationMap => dict<string> = "fromEntries"
 
 // ─── Running effects ─────────────────────────────────────────────────────
 

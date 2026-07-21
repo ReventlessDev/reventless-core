@@ -6,8 +6,16 @@
 import * as Chunk from "effect/Chunk";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
-import { patchSpecId, makeQueueRef, log, pluginName } from "./HandlerFactoryHelpers.mjs";
-import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
+import {
+  patchSpecId,
+  makeQueueRef,
+  log,
+  runEffect,
+  setRequestId,
+  extractMetaField,
+  extractSentTimestamp,
+  extractRetryCount,
+} from "./HandlerFactoryHelpers.mjs";
 import { Make as dcbEventLogOperationsMake } from "@reventlessdev/reventless-core/src/components/DcbEventLog/DcbEventLog_Operations.res.mjs";
 import { makeCommandGenerator } from "./CommandGeneratorEntryPoint_Ops.res.mjs";
 import { commandOutcomeToJson, runInlineAndCollect } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
@@ -39,39 +47,12 @@ function extractTypeName(json) {
   return undefined;
 }
 
-// Set at handler entry; read by runEffect to tag logs with the Lambda request id.
-let _currentRequestId = "unknown";
-
-function runEffect(correlationId, effect) {
-  let e = effect
-    // Promote correlationId/requestId/plugin to top-level JSON log fields —
-    // decoded by EffectLogger.install() from Effect log annotations. Harmless
-    // no-op if the unified logger isn't installed.
-    .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
-    .pipe(Effect.annotateLogs("requestId", _currentRequestId));
-  if (pluginName) e = e.pipe(Effect.annotateLogs("plugin", pluginName));
-  return e
-    .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
-    .pipe(Effect.runPromise);
-}
-
-function extractCorrelationId(records) {
-  const first = records[0];
-  if (!first) return undefined;
-  const body = first.body;
-  if (body == null) return undefined;
-  try {
-    const parsed = JSON.parse(body);
-    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-      const meta = parsed.meta;
-      if (meta && typeof meta === "object" && !Array.isArray(meta)) {
-        const cid = meta.correlationId;
-        if (typeof cid === "string") return cid;
-      }
-    }
-  } catch (_) {}
-  return undefined;
-}
+// This Lambda hosts one plugin's StateChangeSlices behind a composite handler
+// that routes per command TAG *inside* the stream — so the dispatch boundary
+// names the runtime group, not the individual slice. `Kind(Name)` matches the
+// shape every other comp uses, and the plugin name resolves through
+// LogPrefix.
+const dcbComp = (plugin) => `DcbCommandTopicRuntime(${plugin})`;
 
 // Exported for tests: build the [sqsHandler, cmdGenHandler] pair from an
 // already-parsed `HANDLER_CONFIG` shape, with an injectable module loader.
@@ -204,7 +185,9 @@ export async function buildHandlersForConfig(config, opts = {}) {
     return generateCommand({ ...event, meta, identity });
   };
 
-  return [sqsHandler, cmdGenHandler];
+  // Third element is additive — existing callers (the integration tests) keep
+  // destructuring the first two.
+  return [sqsHandler, cmdGenHandler, dcbComp(config.pluginName)];
 }
 
 async function buildHandler() {
@@ -212,7 +195,7 @@ async function buildHandler() {
   // Importing this module without HANDLER_CONFIG (e.g. from a test that drives
   // `buildHandlersForConfig` directly) must not crash module evaluation.
   // Lambda always sets HANDLER_CONFIG; the production path is unchanged.
-  if (!configStr) return [null, null];
+  if (!configStr) return [null, null, undefined];
   const config = JSON.parse(configStr);
   return buildHandlersForConfig(config, { loadModule: dynamicImport });
 }
@@ -220,21 +203,32 @@ async function buildHandler() {
 const initPromise = buildHandler();
 
 export async function handler(event, context) {
-  _currentRequestId = context?.awsRequestId || "unknown";
-  const [sqsHandler, cmdGenHandler] = await initPromise;
+  setRequestId(context?.awsRequestId);
+  const [sqsHandler, cmdGenHandler, comp] = await initPromise;
 
   // Route 1: AppSync direct invocation — payload carries the CommandGenerator.payload
   // shape (`{command, arguments, meta, identity?}`).
   if (event.command != null && event.arguments != null) {
     log.debug("AppSync direct invocation (" + DISPATCH_MODE + ")", { comp: "DcbCommandTopicRuntime" });
-    const outcome = await runEffect(undefined, cmdGenHandler(event));
+    // Direct invoke: the envelope is on `event.meta`, and there is no send time
+    // or receive count on this path.
+    const outcome = await runEffect(cmdGenHandler(event), {
+      correlationId: event.meta?.correlationId,
+      causationId: event.meta?.causationId,
+      comp,
+    });
     return commandOutcomeToJson(outcome);
   }
 
   // Route 2: SQS CommandTopic events
   const records = event.Records || [];
-  const correlationId = extractCorrelationId(records);
   log.debug("processing " + records.length.toString() + " record(s)", { comp: "DcbCommandTopicRuntime" });
-  await runEffect(correlationId, sqsHandler(event, context));
+  await runEffect(sqsHandler(event, context), {
+    correlationId: extractMetaField(records, "correlationId"),
+    causationId: extractMetaField(records, "causationId"),
+    comp,
+    timestamp: extractSentTimestamp(records),
+    retryCount: extractRetryCount(records),
+  });
   return "";
 }

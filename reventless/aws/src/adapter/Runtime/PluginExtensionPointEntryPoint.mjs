@@ -2,9 +2,17 @@
 // All imports are framework packages — no user modules needed.
 // Handles Heartbeat, Cloner, and other plugin-level extension point commands.
 
-import * as Effect from "effect/Effect";
-import { patchSpecId, makeQueueRef, scanByTableName, log, pluginName } from "./HandlerFactoryHelpers.mjs";
-import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
+import {
+  patchSpecId,
+  makeQueueRef,
+  scanByTableName,
+  log,
+  runEffect,
+  setRequestId,
+  extractMetaField,
+  extractSentTimestamp,
+  extractRetryCount,
+} from "./HandlerFactoryHelpers.mjs";
 import { sendMessage } from "@reventlessdev/reventless-aws/src/plugin/runtime/Util_PluginMessage_Runtime.res.mjs";
 import * as PluginExtensionPointSpec from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import { Make as pluginEPPluginMake } from "@reventlessdev/reventless-core/src/plugin/connect/PluginExtensionPoint_Plugin.res.mjs";
@@ -12,39 +20,6 @@ import { Make as extensionPointCallbackMake } from "@reventlessdev/reventless-co
 import { Make as commandTopicCallbackMake } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Callback.res.mjs";
 import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import { createSchedule as cwCreateSchedule, deleteSchedule as cwDeleteSchedule } from "@reventlessdev/reventless-aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res.mjs";
-
-// Set at handler entry; read by runEffect to tag logs with the Lambda request id.
-let _currentRequestId = "unknown";
-
-function runEffect(correlationId, effect) {
-  let e = effect
-    // Promote correlationId/requestId/plugin to top-level JSON log fields —
-    // decoded by EffectLogger.install() from Effect log annotations. Harmless
-    // no-op if the unified logger isn't installed.
-    .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
-    .pipe(Effect.annotateLogs("requestId", _currentRequestId));
-  if (pluginName) e = e.pipe(Effect.annotateLogs("plugin", pluginName));
-  return e
-    .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
-    .pipe(Effect.runPromise);
-}
-
-function extractCorrelationId(records) {
-  const first = records[0];
-  if (!first) return undefined;
-  const body = first.body;
-  if (!body) return undefined;
-  try {
-    const parsed = JSON.parse(body);
-    if (typeof parsed === "object" && parsed !== null) {
-      const meta = parsed.meta;
-      if (meta && typeof meta === "object" && typeof meta.correlationId === "string") {
-        return meta.correlationId;
-      }
-    }
-  } catch (_) {}
-  return undefined;
-}
 
 function buildHandler() {
   const configStr = process.env["HANDLER_CONFIG"] || "{}";
@@ -121,17 +96,25 @@ function buildHandler() {
     commandsHandler: callback.handleIncomingCommands,
   });
 
-  return handleQueueEvent(makeQueueRef(config.queueUrl), commandTopicCallback.handleJsonCommands);
+  return {
+    sqsHandler: handleQueueEvent(makeQueueRef(config.queueUrl), commandTopicCallback.handleJsonCommands),
+    comp: `ExtensionPoint(${patchedSpec.name})`,
+  };
 }
 
-const sqsHandler = buildHandler();
+const { sqsHandler, comp } = buildHandler();
 
 export async function handler(event, context) {
-  _currentRequestId = context?.awsRequestId || "unknown";
+  setRequestId(context?.awsRequestId);
   const records = event.Records || [];
-  const correlationId = extractCorrelationId(records);
 
   log.debug("processing " + records.length.toString() + " record(s)", { comp: "PluginExtensionPointRuntime" });
-  await runEffect(correlationId, sqsHandler(event, context));
+  await runEffect(sqsHandler(event, context), {
+    correlationId: extractMetaField(records, "correlationId"),
+    causationId: extractMetaField(records, "causationId"),
+    comp,
+    timestamp: extractSentTimestamp(records),
+    retryCount: extractRetryCount(records),
+  });
   return "";
 }

@@ -40,11 +40,21 @@ function extractCausationId(event) {
   return extractMetaField(event, "causationId");
 }
 
+function extractSentTimestamp(_event) {
+  return Date.now();
+}
+
+function extractRetryCount(_event) {
+  return 1;
+}
+
 export {
   make,
   groupBySource,
   extractMetaField,
   extractCorrelationId,
   extractCausationId,
+  extractSentTimestamp,
+  extractRetryCount,
 }
 /* effect/Effect Not a pure module */

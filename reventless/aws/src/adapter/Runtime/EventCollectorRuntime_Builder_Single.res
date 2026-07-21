@@ -44,6 +44,13 @@ let registerReadModel = (
 
 type storedSpec = {
   componentName: string,
+  /** The event collector's own resource name (`CustomersReadModel`), as opposed
+      to `componentName` (its parent read model, `Customers`). Source of the
+      `comp` baked into HANDLER_CONFIG — the deployed entry point annotates logs
+      with it, so it must match the ReScript dispatch boundary's
+      `EventCollector(<name>)` exactly (see
+      docs/plans/entrypoint-dispatch-parity-and-latency-fields.md). */
+  eventCollectorName: string,
   parentResource: Pulumi.Resource.t,
   sourceUrns: Pulumi.Output.t<array<string>>,
   channelSpec: ReventlessCore.EventCollector_Adapter.channelSpec<
@@ -93,6 +100,7 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
     storedSpecs
     ->Array.push({
       componentName: parentName,
+      eventCollectorName,
       parentResource,
       sourceUrns,
       channelSpec: {channel, eventTopics, resources},
@@ -210,6 +218,18 @@ let finish = () =>
                     `,"stateTopicName":${topic->JSON.Encode.string->JSON.stringify}`
                   }
                 : ""
+            // Log attribution baked at deploy time: this Lambda hosts every read
+            // model, so the shell needs a per-handler `comp` to keep their log
+            // lines separable, and a per-handler `plugin` because the shared
+            // Lambda's own name carries no single plugin identity. Both are
+            // resolved here — the registry LogPrefix consults is a deploy-time
+            // structure, empty inside the Lambda.
+            let comp = `EventCollector(${spec.eventCollectorName})`
+            let pluginFragment = switch ReventlessCore.Logger.resolvePlugin(~comp, ()) {
+            | Some(plugin) => `,"plugin":${plugin->JSON.Encode.string->JSON.stringify}`
+            | None => ""
+            }
+            let compFragment = `,"comp":${comp->JSON.Encode.string->JSON.stringify}`
             let handlerJson =
               Pulumi.Output.all4((
                 info.queryDbTableName,
@@ -221,7 +241,7 @@ let finish = () =>
                 // No stream resource (Postgres-backed source) → dispatch on the
                 // feed queue's ARN instead of a stream URN.
                 let sourceUrn = urns->Array.get(0)->Option.getOr(feedArn)
-                `{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"${pgFragment}${stateTopicFragment}}`
+                `{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"${compFragment}${pluginFragment}${pgFragment}${stateTopicFragment}}`
               })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>

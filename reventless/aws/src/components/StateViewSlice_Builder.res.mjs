@@ -17,6 +17,8 @@ function Make(Api) {
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
     extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
     extractCausationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCausationId,
+    extractSentTimestamp: RuntimeEnvironment_Lambda$ReventlessAws.extractSentTimestamp,
+    extractRetryCount: RuntimeEnvironment_Lambda$ReventlessAws.extractRetryCount,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(QueryDbStorage$ReventlessAws.Selectable)(QueryDbResolvers$ReventlessAws.Selectable)({

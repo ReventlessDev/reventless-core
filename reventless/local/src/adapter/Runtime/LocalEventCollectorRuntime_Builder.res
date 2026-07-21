@@ -37,6 +37,8 @@ module Make = (
         ->ReventlessCore.Runtime.runEffectHandler(
           ~extractCorrelationId=LocalRuntimeEnvironment.extractCorrelationId,
           ~extractCausationId=LocalRuntimeEnvironment.extractCausationId,
+          ~extractSentTimestamp=LocalRuntimeEnvironment.extractSentTimestamp,
+          ~extractRetryCount=LocalRuntimeEnvironment.extractRetryCount,
           ~comp,
         )
       ),

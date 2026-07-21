@@ -39,10 +39,25 @@ behaviour. It **does not replace** any existing plan; it sequences them and name
 
 | # | Primitive | What it enables | Status | Owner doc |
 |---|---|---|---|---|
-| 1 | **Log attribution** — `comp` + `causationId` on *every* line of an invocation | Isolate one component's logs in a shared runtime; reconstruct the causal tree from logs alone | **Done** — annotated at the dispatch boundary; `comp` names the element, not its runtime group | `done/queryable-dispatch-log-annotations.md` + `done/eventcollector-element-level-log-comp.md` |
+| 1 | **Log attribution** — `comp` + `causationId` on *every* line of an invocation | Isolate one component's logs in a shared runtime; reconstruct the causal tree from logs alone | **Done on both platforms** (AWS half 2026-07-21) — pending an on-AWS check, see the note below | `done/queryable-dispatch-log-annotations.md` + `done/eventcollector-element-level-log-comp.md` + `entrypoint-dispatch-parity-and-latency-fields.md` |
 | 2 | **Metrics / Telemetry service** — an Effect service at dispatch (e.g. CloudWatch EMF) | Counters, histograms, timing emitted uniformly, provider-swappable, silenced in tests | Not implemented | `effect-services-beyond-logging.md` (§Metrics) |
-| 3 | **Latency timing** — send-time `timestamp` (+ `retryCount`) in `RequestContext` | A handler computes processing latency without `Date.now()`; retry visibility | Not implemented | `request-context-usage.md` (§timestamp, §retryCount) |
+| 3 | **Latency timing** — send-time `timestamp` (+ `retryCount`) in `RequestContext` | A handler computes processing latency without `Date.now()`; retry visibility | **Done** (2026-07-21) — both platforms; `retryCount` also surfaces as a log field on redelivery | `entrypoint-dispatch-parity-and-latency-fields.md` |
 | 4 | **Per-hop `traceparent` rewrite** — update span/parent-id at each hop | Proper OpenTelemetry span *tree* (not just a flat trace-id) | `traceparent` is propagated **flat** (`deriveMeta` inherits as-is) | this doc (decision) |
+
+### Platform-coverage note on primitive #1 (found and closed 2026-07-21)
+
+**There are two dispatch boundaries, not one.** `Runtime.annotateInvocation` — the ReScript one —
+does not execute on AWS: every deployed Lambda is an archive whose `index.handler` is a hand-written
+entry-point shell, and the AWS runtime builders take `~handler as _` (the ReScript handler closure
+is discarded; wiring happens at cold start inside the `.mjs` from `HANDLER_CONFIG`). Each of the ten
+shells carried its own `runEffect` copy annotating only `correlationId` / `requestId` / `plugin`,
+and provided `RequestContext` as a bare object literal — so on a deployed stack an application
+handler's log line could not be attributed to a component and no `causationId` reached the log
+stream, while the same code on `reventless-local` was fully annotated.
+
+`entrypoint-dispatch-parity-and-latency-fields.md` replaced the ten copies with one shared shim in
+`HandlerFactoryHelpers.mjs` and landed primitive #3 in the same pass (same extraction site). Keep
+the two boundaries in step: a field added to one belongs in the other.
 
 ## The decision points
 
@@ -61,10 +76,12 @@ behaviour. It **does not replace** any existing plan; it sequences them and name
 ## Recommended sequence
 
 1. ~~**`queryable-dispatch-log-annotations.md`** (primitive #1) — small, unblocks per-component log
-   isolation and log-derived causal trees immediately. Ship first.~~ **Done** (2026-07-20/21, with
-   `eventcollector-element-level-log-comp.md`). Next up is step 2.
-2. **Latency timestamp** (primitive #3, the `timestamp`/`retryCount` half of
-   `request-context-usage.md`) — trivial extraction, high operational value; pairs naturally with #2.
+   isolation and log-derived causal trees immediately. Ship first.~~ Done on the ReScript dispatch
+   boundary (2026-07-20/21, with `eventcollector-element-level-log-comp.md`).
+2. ~~**`entrypoint-dispatch-parity-and-latency-fields.md`** — closes primitive #1 on AWS (one shared
+   dispatch shim across the ten entry-point shells) and lands **primitive #3** (`timestamp` /
+   `retryCount`) in the same pass, since both read the same SQS record.~~ **Implemented 2026-07-21**;
+   on-AWS verification pending a deploy. Next up is step 3.
 3. **Metrics/Telemetry service** (primitive #2) — the larger build; gives durations/histograms and
    feeds any latency view. Design the provider interface for EMF + an in-memory test accumulator.
 4. **Per-hop `traceparent`** (primitive #4) — only when span-tree fidelity is actually required.

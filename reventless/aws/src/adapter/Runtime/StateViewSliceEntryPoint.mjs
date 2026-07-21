@@ -6,8 +6,14 @@
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import { parseJsonOrThrow } from "sury/src/S.res.mjs";
-import { log, pluginName } from "./HandlerFactoryHelpers.mjs";
-import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
+import {
+  log,
+  runEffect,
+  setRequestId,
+  extractMetaField,
+  extractSentTimestamp,
+  extractRetryCount,
+} from "./HandlerFactoryHelpers.mjs";
 import { handleAction } from "@reventlessdev/reventless-core/src/Projection.res.mjs";
 // Typed cold-start core — DynamoDB QueryDb ops, compiler-checked against the
 // framework signatures (see the module header and
@@ -19,21 +25,10 @@ import { handleStreamEvent } from "@reventlessdev/reventless-aws/src/adapter/Eve
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
 
-// Set at handler entry; read by runEffect to tag logs with the Lambda request id.
-let _currentRequestId = "unknown";
-
-function runEffect(correlationId, effect) {
-  let e = effect
-    // Promote correlationId/requestId/plugin to top-level JSON log fields —
-    // decoded by EffectLogger.install() from Effect log annotations. Harmless
-    // no-op if the unified logger isn't installed.
-    .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
-    .pipe(Effect.annotateLogs("requestId", _currentRequestId));
-  if (pluginName) e = e.pipe(Effect.annotateLogs("plugin", pluginName));
-  return e
-    .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
-    .pipe(Effect.runPromise);
-}
+// One Lambda hosts every state-view slice of a plugin, so each handler carries
+// the comp of the slice it projects — matching the `StateViewSlice(<name>)`
+// shape the rest of the framework logs under.
+const stateViewComp = (sliceName) => `StateViewSlice(${sliceName})`;
 
 function groupBySource(records) {
   const dict = {};
@@ -137,7 +132,7 @@ async function buildAllHandlers() {
     const jsonEventsHandler = buildJsonEventsHandler(specModule, projectionModule, h.queryDbTableName, h.pgConnection, h.stateTopicName);
     const streamHandler = (event, context) => handleStreamEvent(jsonEventsHandler, event, context);
     const existing = handlers[h.sourceUrn] || [];
-    existing.push(streamHandler);
+    existing.push({ handler: streamHandler, comp: stateViewComp(specModule.name) });
     handlers[h.sourceUrn] = existing;
   }));
   return handlers;
@@ -146,7 +141,7 @@ async function buildAllHandlers() {
 const initPromise = buildAllHandlers();
 
 export async function handler(event, context) {
-  _currentRequestId = context?.awsRequestId || "unknown";
+  setRequestId(context?.awsRequestId);
   const handlers = await initPromise;
   const records = event.Records || [];
   const grouped = groupBySource(records);
@@ -155,8 +150,18 @@ export async function handler(event, context) {
     const streamHandlers = handlers[arn];
     if (streamHandlers !== undefined && streamHandlers.length > 0) {
       log.debug("found " + streamHandlers.length + " handler(s) for " + arn, { comp: "StateViewSliceRuntime" });
-      await Promise.all(streamHandlers.map(h =>
-        runEffect(undefined, h({ Records: subRecords }, context))
+      const correlationId = extractMetaField(subRecords, "correlationId");
+      const causationId = extractMetaField(subRecords, "causationId");
+      const timestamp = extractSentTimestamp(subRecords);
+      const retryCount = extractRetryCount(subRecords);
+      await Promise.all(streamHandlers.map(({ handler: h, comp }) =>
+        runEffect(h({ Records: subRecords }, context), {
+          correlationId,
+          causationId,
+          comp,
+          timestamp,
+          retryCount,
+        })
       ));
     } else {
       log.warn("no handler found: " + arn, { comp: "StateViewSliceRuntime" });

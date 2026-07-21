@@ -17,7 +17,7 @@ function Make(Bus) {
       let opts = {
         parent: opts_parent
       };
-      let runtime = LocalRuntimeEnvironment$ReventlessLocal.make(name, handler.apply(h => Runtime$ReventlessCore.runEffectHandler(LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId, LocalRuntimeEnvironment$ReventlessLocal.extractCausationId, comp, undefined, h)), undefined, undefined, undefined);
+      let runtime = LocalRuntimeEnvironment$ReventlessLocal.make(name, handler.apply(h => Runtime$ReventlessCore.runEffectHandler(LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId, LocalRuntimeEnvironment$ReventlessLocal.extractCausationId, LocalRuntimeEnvironment$ReventlessLocal.extractSentTimestamp, LocalRuntimeEnvironment$ReventlessLocal.extractRetryCount, comp, undefined, h)), undefined, undefined, undefined);
       EventCollectorChannel.connect(name, [{
           channel: eventCollector.channel,
           eventTopics: eventTopics,

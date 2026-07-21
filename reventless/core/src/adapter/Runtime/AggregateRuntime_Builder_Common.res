@@ -40,11 +40,15 @@ module Make = (
     async (event: RuntimeEnvironment.event, context) => {
       let correlationId = event->RuntimeEnvironment.extractCorrelationId
       let causationId = event->RuntimeEnvironment.extractCausationId
+      let timestamp = event->RuntimeEnvironment.extractSentTimestamp
+      let retryCount = event->RuntimeEnvironment.extractRetryCount
       let comp = `AggregateRuntime(${aggregateName})`
       // Shared dispatch helper (Runtime.runEffect) annotates correlationId / comp /
       // causationId onto the invocation so the application handler's own log lines
-      // carry them without re-logging by hand.
-      let runEffect = effect => Runtime.runEffect(~correlationId?, ~causationId?, ~comp, effect)
+      // carry them without re-logging by hand, and carries the transport's send
+      // time / delivery attempt into RequestContext.
+      let runEffect = effect =>
+        Runtime.runEffect(~correlationId?, ~causationId?, ~comp, ~timestamp?, ~retryCount?, effect)
       switch event->CommandGenerator.metaInfo {
       | Some(info) =>
         switch commandGeneratorHandlers->Dict.get(info) {
@@ -77,7 +81,14 @@ module Make = (
               )->Effect.runSync
               let _ = await handlers
               ->Array.map(({comp, handler}) =>
-                Runtime.runEffect(~correlationId?, ~causationId?, ~comp, handler(event, context))
+                Runtime.runEffect(
+                  ~correlationId?,
+                  ~causationId?,
+                  ~comp,
+                  ~timestamp?,
+                  ~retryCount?,
+                  handler(event, context),
+                )
               )
               ->Promise.all
             | None =>

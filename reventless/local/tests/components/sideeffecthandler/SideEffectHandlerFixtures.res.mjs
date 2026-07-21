@@ -59,6 +59,8 @@ let SpecificEventCollector = EventCollector_Builder$ReventlessCore.Make({
   groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
   extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
   extractCausationId: LocalRuntimeEnvironment$ReventlessLocal.extractCausationId,
+  extractSentTimestamp: LocalRuntimeEnvironment$ReventlessLocal.extractSentTimestamp,
+  extractRetryCount: LocalRuntimeEnvironment$ReventlessLocal.extractRetryCount,
   asEventHandler: prim => prim,
   asEffectHandler: prim => prim
 })(EventCollectorCh);
@@ -70,6 +72,8 @@ let SEHBuilder = SideEffectHandler_Builder$ReventlessCore.Make({
   groupBySource: LocalRuntimeEnvironment$ReventlessLocal.groupBySource,
   extractCorrelationId: LocalRuntimeEnvironment$ReventlessLocal.extractCorrelationId,
   extractCausationId: LocalRuntimeEnvironment$ReventlessLocal.extractCausationId,
+  extractSentTimestamp: LocalRuntimeEnvironment$ReventlessLocal.extractSentTimestamp,
+  extractRetryCount: LocalRuntimeEnvironment$ReventlessLocal.extractRetryCount,
   asEventHandler: prim => prim,
   asEffectHandler: prim => prim
 })(EventCollectorCh)(SpecificEventCollector)(ECRTBuilder);

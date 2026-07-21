@@ -2,9 +2,15 @@
 // At cold start: reads HANDLER_CONFIG, dynamically imports Spec/Mappings modules,
 // wires ReadModel_Callback.Make, builds handler map keyed by source URN.
 
-import * as Effect from "effect/Effect";
-import { patchSpecId, log, pluginName } from "./HandlerFactoryHelpers.mjs";
-import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
+import {
+  patchSpecId,
+  log,
+  runEffect,
+  setRequestId,
+  extractMetaField,
+  extractSentTimestamp,
+  extractRetryCount,
+} from "./HandlerFactoryHelpers.mjs";
 import { Make as readModelCallbackMake } from "@reventlessdev/reventless-core/src/components/ReadModel/ReadModel_Callback.res.mjs";
 // Typed cold-start core — DynamoDB QueryDb ops, compiler-checked against the
 // framework signatures (see the module header and
@@ -46,22 +52,6 @@ function fixMappingsModule(mod) {
     return { ...mod, mappings: mappingValues };
   }
   return mod;
-}
-
-// Set at handler entry; read by runEffect to tag logs with the Lambda request id.
-let _currentRequestId = "unknown";
-
-function runEffect(correlationId, effect) {
-  let e = effect
-    // Promote correlationId/requestId/plugin to top-level JSON log fields —
-    // decoded by EffectLogger.install() from Effect log annotations. Harmless
-    // no-op if the unified logger isn't installed.
-    .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
-    .pipe(Effect.annotateLogs("requestId", _currentRequestId));
-  if (pluginName) e = e.pipe(Effect.annotateLogs("plugin", pluginName));
-  return e
-    .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
-    .pipe(Effect.runPromise);
 }
 
 function groupBySource(records) {
@@ -130,13 +120,20 @@ async function buildAllHandlers() {
     const specModule = await dynamicImport(h.specModule);
     const mappingsModule = await dynamicImport(h.mappingsModule);
     const handler = buildReadModelHandler(specModule, mappingsModule, h.queryDbTableName, h.pgConnection, h.stateTopicName);
+    // `comp` / `plugin` are resolved at deploy time and baked into
+    // HANDLER_CONFIG (EventCollectorRuntime_Builder_Single) so the shell doesn't
+    // re-derive component identity from module paths, and so the string matches
+    // the ReScript dispatch boundary's `EventCollector(<Name>)` byte for byte.
+    // Kept next to the handler: this Lambda hosts every read model, so the comp
+    // is what separates their log lines.
+    const registered = { handler, comp: h.comp, plugin: h.plugin };
     // Multiple read models can share one source stream — e.g. every admin read
     // model (Plugins, PluginHistory, PlatformEventGraph, UIFragmentRegistry)
     // projects the Plugin aggregate's EventLog stream. Accumulate ALL handlers
     // per source ARN; a plain `handlers[urn] = handler` collapses them to one
     // (whichever async builder wins the Promise.all race), silently dropping the
     // rest — which leaves their QueryDbs empty.
-    (handlers[h.sourceUrn] ||= []).push(handler);
+    (handlers[h.sourceUrn] ||= []).push(registered);
   }));
 
   return handlers;
@@ -145,7 +142,7 @@ async function buildAllHandlers() {
 const initPromise = buildAllHandlers();
 
 export async function handler(event, context) {
-  _currentRequestId = context?.awsRequestId || "unknown";
+  setRequestId(context?.awsRequestId);
   const handlers = await initPromise;
   const records = event.Records || [];
   const grouped = groupBySource(records);
@@ -154,11 +151,23 @@ export async function handler(event, context) {
     const streamHandlers = handlers[arn];
     if (streamHandlers !== undefined && streamHandlers.length > 0) {
       log.debug("found " + streamHandlers.length + " handler(s) for " + arn, { comp: "ReadModelRuntime" });
+      const correlationId = extractMetaField(subRecords, "correlationId");
+      const causationId = extractMetaField(subRecords, "causationId");
+      const timestamp = extractSentTimestamp(subRecords);
+      const retryCount = extractRetryCount(subRecords);
       // Run every read model registered for this source stream (independent
-      // QueryDbs, so concurrent is safe).
+      // QueryDbs, so concurrent is safe). Each carries its own comp so the
+      // shared Lambda's log lines stay separable per read model.
       await Promise.all(
-        streamHandlers.map(streamHandler =>
-          runEffect(undefined, streamHandler({ Records: subRecords }, context))
+        streamHandlers.map(({ handler: streamHandler, comp, plugin }) =>
+          runEffect(streamHandler({ Records: subRecords }, context), {
+            correlationId,
+            causationId,
+            comp,
+            plugin,
+            timestamp,
+            retryCount,
+          })
         )
       );
     } else {

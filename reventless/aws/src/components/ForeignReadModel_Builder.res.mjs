@@ -12,6 +12,8 @@ let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_PerEventCollect
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
   extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
   extractCausationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCausationId,
+  extractSentTimestamp: RuntimeEnvironment_Lambda$ReventlessAws.extractSentTimestamp,
+  extractRetryCount: RuntimeEnvironment_Lambda$ReventlessAws.extractRetryCount,
   asEventHandler: prim => prim,
   asEffectHandler: prim => prim
 })({
@@ -25,6 +27,8 @@ function Make(Spec) {
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
     extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
     extractCausationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCausationId,
+    extractSentTimestamp: RuntimeEnvironment_Lambda$ReventlessAws.extractSentTimestamp,
+    extractRetryCount: RuntimeEnvironment_Lambda$ReventlessAws.extractRetryCount,
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })({
