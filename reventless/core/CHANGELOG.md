@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.174 (2026-07-21)
+
+### Features
+
+* **core:** populate pluginName + route MCP dispatch through shared helper ([06ec4f9](https://github.com/ReventlessDev/reventless-core/commit/06ec4f98b2dc23a8ef547a754d140e48268ee183))
+
+
 # 3.0.0-alpha.173 (2026-07-20)
 
 ### Features

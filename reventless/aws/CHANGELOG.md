@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.219 (2026-07-21)
+
+### Features
+
+* **aws:** retrying SourceApiAssociation provider for concurrent merged-API deploys ([446a8fe](https://github.com/ReventlessDev/reventless-core/commit/446a8fe77ae9ad94a46eb58ec746f56130974f8e))
+* **core:** populate pluginName + route MCP dispatch through shared helper ([06ec4f9](https://github.com/ReventlessDev/reventless-core/commit/06ec4f98b2dc23a8ef547a754d140e48268ee183))
+
+
 # 3.0.0-alpha.218 (2026-07-20)
 
 ### Features
