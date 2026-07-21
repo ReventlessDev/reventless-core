@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.220 (2026-07-21)
+
+### Bug Fixes
+
+* **aws:** declare output-only props on the retrying SourceApiAssociation ([5e1cdcc](https://github.com/ReventlessDev/reventless-core/commit/5e1cdcc8612d717649afa520285f854060d1e276))
+
+
 # 3.0.0-alpha.219 (2026-07-21)
 
 ### Features
