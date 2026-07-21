@@ -295,6 +295,16 @@ let provider = {
   read: read_
 };
 
+function resourcePropsOf(props) {
+  return {
+    mergedApiIdentifier: props.mergedApiIdentifier,
+    sourceApiIdentifier: props.sourceApiIdentifier,
+    mergeType: props.mergeType,
+    arn: undefined,
+    associationId: undefined
+  };
+}
+
 function make(name, props, opts) {
   let migrationAlias = Alias$Pulumi.make(name, "aws:appsync/sourceApiAssociation:SourceApiAssociation", undefined);
   let finalOpts;
@@ -307,7 +317,7 @@ function make(name, props, opts) {
       aliases: [migrationAlias]
     };
   }
-  return new IndexJs.Resource(provider, name, props, finalOpts);
+  return new IndexJs.Resource(provider, name, resourcePropsOf(props), finalOpts);
 }
 
 export {
@@ -335,6 +345,7 @@ export {
   diff_,
   read_,
   provider,
+  resourcePropsOf,
   make,
 }
 /* log Not a pure module */

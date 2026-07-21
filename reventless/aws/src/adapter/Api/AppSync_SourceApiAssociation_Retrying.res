@@ -410,6 +410,31 @@ type constructorProps = {
   mergeType: Pulumi.Input.t<string>,
 }
 
+/** What is actually handed to `pulumi.dynamic.Resource`. The base constructor
+    defines a resource property for every KEY of `props` (it walks
+    `Object.keys`), so an output-only field that is not declared here never
+    materialises on the resource — `association.associationId` reads a plain
+    `undefined` instead of an Output, and `mergeStatusGateWith` then calls
+    GetSourceApiAssociation with no id ("No value provided for input HTTP
+    label: associationId"). Declaring them `undefined` is Pulumi's documented
+    way to register output-only properties; undefined values are dropped from
+    the inputs RPC, so `create` still receives only the three real inputs. */
+type resourceProps = {
+  mergedApiIdentifier: Pulumi.Input.t<string>,
+  sourceApiIdentifier: Pulumi.Input.t<string>,
+  mergeType: Pulumi.Input.t<string>,
+  arn: Nullable.t<string>,
+  associationId: Nullable.t<string>,
+}
+
+let resourcePropsOf = (props: constructorProps): resourceProps => {
+  mergedApiIdentifier: props.mergedApiIdentifier,
+  sourceApiIdentifier: props.sourceApiIdentifier,
+  mergeType: props.mergeType,
+  arn: Nullable.undefined,
+  associationId: Nullable.undefined,
+}
+
 // pulumi.dynamic.Resource constructor: (provider, name, props, opts). Explicit
 // /index.js path because @pulumi/pulumi/dynamic is a directory import not
 // resolvable in ESM mode.
@@ -432,5 +457,5 @@ let make = (
   | Some(o) => {...o, aliases: [migrationAlias]}
   | None => {aliases: [migrationAlias]}
   }
-  _newResource(provider, name, props, finalOpts)
+  _newResource(provider, name, props->resourcePropsOf, finalOpts)
 }

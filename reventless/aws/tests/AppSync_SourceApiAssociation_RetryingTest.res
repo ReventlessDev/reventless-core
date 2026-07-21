@@ -110,3 +110,29 @@ describe("AppSync_SourceApiAssociation_Retrying.idsFromComposite", () => {
     expect(Assoc.idsFromComposite("just-one-value")->Option.isNone)->toBe(true)
   })
 })
+
+// pulumi.dynamic.Resource defines a resource property per KEY of the props
+// object, so the output-only fields must be present (with an undefined value)
+// or `association.associationId` is a bare `undefined` and the merge gate
+// calls GetSourceApiAssociation without an id.
+describe("AppSync_SourceApiAssociation_Retrying.resourcePropsOf", () => {
+  let keysOf: Assoc.resourceProps => array<string> = p => Object.keysToArray(Obj.magic(p))
+  let props = Assoc.resourcePropsOf({
+    mergedApiIdentifier: Obj.magic("merged-arn"),
+    sourceApiIdentifier: Obj.magic("src123"),
+    mergeType: Obj.magic("AUTO_MERGE"),
+  })
+
+  testSync("declares arn + associationId as output-only keys", () => {
+    expect(props->keysOf->Array.includes("arn"))->toBe(true)
+    expect(props->keysOf->Array.includes("associationId"))->toBe(true)
+    expect(props.arn->Nullable.toOption->Option.isNone)->toBe(true)
+    expect(props.associationId->Nullable.toOption->Option.isNone)->toBe(true)
+  })
+
+  testSync("passes the three real inputs through", () => {
+    expect((props.mergedApiIdentifier->Obj.magic: string))->toBe("merged-arn")
+    expect((props.sourceApiIdentifier->Obj.magic: string))->toBe("src123")
+    expect((props.mergeType->Obj.magic: string))->toBe("AUTO_MERGE")
+  })
+})

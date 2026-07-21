@@ -2,6 +2,7 @@
 
 import * as JestGlobals from "@reventlessdev/rescript-jest/src/JestGlobals.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AppSync_SourceApiAssociation_Retrying$ReventlessAws from "../src/adapter/Api/AppSync_SourceApiAssociation_Retrying.res.mjs";
 
 function mkErr(name, message) {
@@ -121,6 +122,25 @@ globalThis.describe("AppSync_SourceApiAssociation_Retrying.idsFromComposite", ()
   });
   globalThis.test("None for a non-composite string", () => {
     globalThis.expect(Stdlib_Option.isNone(AppSync_SourceApiAssociation_Retrying$ReventlessAws.idsFromComposite("just-one-value"))).toBe(true);
+  });
+});
+
+globalThis.describe("AppSync_SourceApiAssociation_Retrying.resourcePropsOf", () => {
+  let props = AppSync_SourceApiAssociation_Retrying$ReventlessAws.resourcePropsOf({
+    mergedApiIdentifier: "merged-arn",
+    sourceApiIdentifier: "src123",
+    mergeType: "AUTO_MERGE"
+  });
+  globalThis.test("declares arn + associationId as output-only keys", () => {
+    globalThis.expect(Object.keys(props).includes("arn")).toBe(true);
+    globalThis.expect(Object.keys(props).includes("associationId")).toBe(true);
+    globalThis.expect(Stdlib_Option.isNone(Primitive_option.fromNullable(props.arn))).toBe(true);
+    globalThis.expect(Stdlib_Option.isNone(Primitive_option.fromNullable(props.associationId))).toBe(true);
+  });
+  globalThis.test("passes the three real inputs through", () => {
+    globalThis.expect(props.mergedApiIdentifier).toBe("merged-arn");
+    globalThis.expect(props.sourceApiIdentifier).toBe("src123");
+    globalThis.expect(props.mergeType).toBe("AUTO_MERGE");
   });
 });
 
