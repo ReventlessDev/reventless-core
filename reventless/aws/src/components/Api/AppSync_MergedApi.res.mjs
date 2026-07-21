@@ -7,6 +7,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Auth_Cognito$ReventlessAws from "../../adapter/Auth/Auth_Cognito.res.mjs";
 import * as AppSync_Adapter$ReventlessAws from "./AppSync_Adapter.res.mjs";
+import * as AppSync_SourceApiAssociation_Retrying$ReventlessAws from "../../adapter/Api/AppSync_SourceApiAssociation_Retrying.res.mjs";
 
 function authenticationTypeName(t) {
   switch (t) {
@@ -89,12 +90,10 @@ function associateSourceWithMergedArn(name, mergedApiArn, sourceApi, opts) {
   let customOpts = {
     parent: customOpts_parent
   };
-  return new (Aws.appsync.SourceApiAssociation)(name, {
-    mergedApiArn: mergedApiArn,
-    sourceApiId: Output$Pulumi.flatMap(sourceApi, a => a.id),
-    sourceApiAssociationConfigs: [{
-        mergeType: "AUTO_MERGE"
-      }]
+  return AppSync_SourceApiAssociation_Retrying$ReventlessAws.make(name, {
+    mergedApiIdentifier: mergedApiArn,
+    sourceApiIdentifier: Output$Pulumi.flatMap(sourceApi, a => a.id),
+    mergeType: "AUTO_MERGE"
   }, customOpts);
 }
 

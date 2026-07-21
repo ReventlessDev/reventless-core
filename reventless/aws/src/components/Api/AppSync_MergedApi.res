@@ -122,9 +122,11 @@ let make = (~name: string, ~opts: Pulumi.ComponentResource.options): t => {
 
 /** Associate a source API with the merged API under AUTO_MERGE. AWS
     serializes association CREATES per merged API (409
-    ConcurrentModificationException) — the platform stack's own associations
-    are inherently sequential; concurrent first-time plugin-stack deploys need
-    retry-with-backoff (Phase 4). */
+    ConcurrentModificationException). This platform-stack form stays on the
+    classic provider: the platform stack creates all its own associations
+    (admin + base) sequentially within one program, so they never race. The
+    cross-stack race is on the plugin-stack `associateSourceWithMergedArn`
+    path, which uses the retrying provider (Phase 4). */
 let associateSource = (
   ~name: string,
   ~mergedApi: t,
@@ -158,8 +160,15 @@ let associateSource = (
 /** Associate a source API against a merged API referenced by ARN — the
     plugin-stack form, where the merged API is not a resource in this stack
     but the platform's `domainMergedApiArn` / `platformMergedApiArn`
-    StackReference export. Same AUTO_MERGE + create-time 409 caveat as
-    `associateSource`. */
+    StackReference export.
+
+    Concurrent first-time plugin deploys race here: AWS serializes association
+    writes per merged API and 409s (`ConcurrentModificationException`). This
+    goes through `AppSync_SourceApiAssociation_Retrying`, a dynamic provider
+    that retries the 409 with backoff (Phase 4), so plugin stacks can deploy in
+    parallel without a CI-level serialization. The returned resource keeps the
+    `PulumiAws.AppSync.SourceApiAssociation.t` shape, so `mergeStatusGateWith`
+    still waits for MERGE_SUCCESS on `.associationId` unchanged. */
 let associateSourceWithMergedArn = (
   ~name: string,
   ~mergedApiArn: Pulumi.Output.t<string>,
@@ -169,20 +178,14 @@ let associateSourceWithMergedArn = (
   let customOpts: Pulumi.CustomResourceOptions.t = {
     parent: ?opts.parent,
   }
-  AppSync.SourceApiAssociation.make(
+  AppSync_SourceApiAssociation_Retrying.make(
     ~name,
-    ~args={
-      mergedApiArn: mergedApiArn->Pulumi.Output.asInput,
-      sourceApiId: sourceApi
+    ~props={
+      mergedApiIdentifier: mergedApiArn->Pulumi.Output.asInput,
+      sourceApiIdentifier: sourceApi
       ->Pulumi.Output.flatMap((a: AppSync.GraphQLApi.t) => a.id)
       ->Pulumi.Output.asInput,
-      sourceApiAssociationConfigs: [
-        (
-          {
-            mergeType: AppSync.SourceApiAssociation.AUTO_MERGE->Pulumi.Input.make,
-          }: AppSync.SourceApiAssociation.sourceApiAssociationConfig
-        )->Pulumi.Input.make,
-      ]->Pulumi.Input.make,
+      mergeType: "AUTO_MERGE"->Pulumi.Input.make,
     },
     ~opts=Some(customOpts),
   )
