@@ -207,10 +207,17 @@ let finish = () =>
             info.behaviorModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
           // --- CommandTopic Lambda ---
+// `plugin` cannot be resolved inside the Lambda — LogPrefix's registry is a
+          // deploy-time structure, and the Lambda-name fallback yields nothing for a
+          // shared or per-aggregate command handler. Resolve it here; the shell still
+          // derives `comp` itself from the spec name.
+          let pluginFragment = Util_LogAttribution.pluginFragment(
+            ~comp=`AggregateRuntime(${spec.aggregateName})`,
+          )
           let cmdTopicHandlerConfigOutput =
             Pulumi.Output.all3((info.eventLogTableName, spec.queueUrl, spec.queueArn))
             ->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
-              `{"handlers":[{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"}]}`
+              `{"handlers":[{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pluginFragment}}]}`
             )
 
           let cmdTopicEnvVars: dict<Pulumi.Input.t<string>> = Dict.make()
@@ -237,10 +244,17 @@ let finish = () =>
 
           // --- CommandGenerator Lambda ---
           if spec.commandGeneratorConnects->Array.length > 0 {
+// `plugin` cannot be resolved inside the Lambda — LogPrefix's registry is a
+            // deploy-time structure, and the Lambda-name fallback yields nothing for a
+            // shared or per-aggregate command handler. Resolve it here; the shell still
+            // derives `comp` itself from the spec name.
+            let pluginFragment = Util_LogAttribution.pluginFragment(
+              ~comp=`AggregateRuntime(${spec.aggregateName})`,
+            )
             let cmdGenHandlerConfigOutput =
               Pulumi.Output.all3((info.eventLogTableName, spec.queueUrl, spec.queueArn))
               ->Pulumi.Output.apply(((table, queueUrl, queueArn)) =>
-                `{"handlers":[{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"}]}`
+                `{"handlers":[{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pluginFragment}}]}`
               )
 
             let cmdGenEnvVars: dict<Pulumi.Input.t<string>> = Dict.make()

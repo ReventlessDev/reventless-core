@@ -8,6 +8,7 @@ import * as Aggregate$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
+import * as Util_LogAttribution$ReventlessAws from "../../util/Util_LogAttribution.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
@@ -138,11 +139,12 @@ function finish() {
       let name = ComponentType$ReventlessCore.name(spec.aggregateName, Aggregate$ReventlessCore.componentType);
       let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
       let behaviorModule = Stdlib_Option.getOr(JSON.stringify(info.behaviorModulePath), `""`);
+      let pluginFragment = Util_LogAttribution$ReventlessAws.pluginFragment(`AggregateRuntime(` + spec.aggregateName + `)`);
       let handlerConfigOutput = Pulumi.all([
         info.eventLogTableName,
         spec.queueUrl,
         spec.queueArn
-      ]).apply(param => `{"handlers":[{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"}]}`);
+      ]).apply(param => `{"handlers":[{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"` + pluginFragment + `}]}`);
       let envVars = {};
       envVars["HANDLER_CONFIG"] = handlerConfigOutput;
       envVars["DISPATCH_MODE"] = "async";

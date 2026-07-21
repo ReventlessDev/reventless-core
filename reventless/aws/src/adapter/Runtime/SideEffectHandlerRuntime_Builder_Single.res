@@ -133,17 +133,14 @@ let finish = () =>
             // the shell has only module paths to go on, and LogPrefix's registry
             // is a deploy-time structure
             // (docs/plans/entrypoint-dispatch-parity-and-latency-fields.md).
-            let comp = `SideEffectHandler(${spec.componentName})`
-            let pluginFragment = switch ReventlessCore.Logger.resolvePlugin(~comp, ()) {
-            | Some(plugin) => `,"plugin":${plugin->JSON.Encode.string->JSON.stringify}`
-            | None => ""
-            }
-            let compFragment = `,"comp":${comp->JSON.Encode.string->JSON.stringify}`
+            let attribution = Util_LogAttribution.fragments(
+              ~comp=`SideEffectHandler(${spec.componentName})`,
+            )
             let handlerJson =
               spec.sourceUrns
               ->Pulumi.Output.apply(urns => {
                 let sourceUrn = urns->Array.getUnsafe(0)
-                `{"sideEffectModules":[${modulesJson}],"sourceUrn":"${sourceUrn}"${compFragment}${pluginFragment}}`
+                `{"sideEffectModules":[${modulesJson}],"sourceUrn":"${sourceUrn}"${attribution}}`
               })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>

@@ -186,8 +186,9 @@ export async function buildHandlersForConfig(config, opts = {}) {
   };
 
   // Third element is additive — existing callers (the integration tests) keep
-  // destructuring the first two.
-  return [sqsHandler, cmdGenHandler, dcbComp(config.pluginName)];
+  // destructuring the first two. No deploy-time `plugin` fragment needed here:
+  // this Lambda serves exactly one plugin and HANDLER_CONFIG already names it.
+  return [sqsHandler, cmdGenHandler, dcbComp(config.pluginName), config.pluginName];
 }
 
 async function buildHandler() {
@@ -195,7 +196,7 @@ async function buildHandler() {
   // Importing this module without HANDLER_CONFIG (e.g. from a test that drives
   // `buildHandlersForConfig` directly) must not crash module evaluation.
   // Lambda always sets HANDLER_CONFIG; the production path is unchanged.
-  if (!configStr) return [null, null, undefined];
+  if (!configStr) return [null, null, undefined, undefined];
   const config = JSON.parse(configStr);
   return buildHandlersForConfig(config, { loadModule: dynamicImport });
 }
@@ -204,7 +205,7 @@ const initPromise = buildHandler();
 
 export async function handler(event, context) {
   setRequestId(context?.awsRequestId);
-  const [sqsHandler, cmdGenHandler, comp] = await initPromise;
+  const [sqsHandler, cmdGenHandler, comp, plugin] = await initPromise;
 
   // Route 1: AppSync direct invocation — payload carries the CommandGenerator.payload
   // shape (`{command, arguments, meta, identity?}`).
@@ -216,6 +217,7 @@ export async function handler(event, context) {
       correlationId: event.meta?.correlationId,
       causationId: event.meta?.causationId,
       comp,
+      plugin,
     });
     return commandOutcomeToJson(outcome);
   }
@@ -227,6 +229,7 @@ export async function handler(event, context) {
     correlationId: extractMetaField(records, "correlationId"),
     causationId: extractMetaField(records, "causationId"),
     comp,
+    plugin,
     timestamp: extractSentTimestamp(records),
     retryCount: extractRetryCount(records),
   });

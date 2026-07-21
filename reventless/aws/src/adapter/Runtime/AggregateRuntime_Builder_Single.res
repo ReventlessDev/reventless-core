@@ -250,6 +250,13 @@ let finish = () =>
             let behaviorModule =
               info.behaviorModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
+// `plugin` cannot be resolved inside the Lambda — LogPrefix's registry is a
+            // deploy-time structure, and the Lambda-name fallback yields nothing for a
+            // shared or per-aggregate command handler. Resolve it here; the shell still
+            // derives `comp` itself from the spec name.
+            let pluginFragment = Util_LogAttribution.pluginFragment(
+              ~comp=`AggregateRuntime(${spec.aggregateName})`,
+            )
             let handlerJson =
               Pulumi.Output.all4((
                 info.eventLogTableName,
@@ -258,7 +265,7 @@ let finish = () =>
                 pgConnectionFragment,
               ))
               ->Pulumi.Output.apply(((table, queueUrl, queueArn, pgFragment)) =>
-                `{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pgFragment}}`
+                `{"specModule":${specModule},"behaviorModule":${behaviorModule},"eventLogTable":"${table}","queueUrl":"${queueUrl}","queueArn":"${queueArn}"${pluginFragment}${pgFragment}}`
               )
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>

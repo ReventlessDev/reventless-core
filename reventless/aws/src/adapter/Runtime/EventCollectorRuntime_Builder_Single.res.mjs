@@ -17,6 +17,7 @@ import * as QueryDbBackend$ReventlessAws from "../QueryDb/QueryDbBackend.res.mjs
 import * as EventLogBackend$ReventlessAws from "../EventLog/EventLogBackend.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as PgProjectionFeed$ReventlessAws from "../Postgres/PgProjectionFeed.res.mjs";
+import * as Util_LogAttribution$ReventlessAws from "../../util/Util_LogAttribution.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
@@ -129,10 +130,7 @@ function finish() {
         } else {
           stateTopicFragment = "";
         }
-        let comp = `EventCollector(` + spec.eventCollectorName + `)`;
-        let plugin = Logger$ReventlessCore.resolvePlugin(comp, undefined);
-        let pluginFragment = plugin !== undefined ? `,"plugin":` + JSON.stringify(plugin) : "";
-        let compFragment = `,"comp":` + JSON.stringify(comp);
+        let attribution = Util_LogAttribution$ReventlessAws.fragments(`EventCollector(` + spec.eventCollectorName + `)`);
         let handlerJson = Pulumi.all([
           info.queryDbTableName,
           spec.sourceUrns,
@@ -140,7 +138,7 @@ function finish() {
           handlerPgFragment
         ]).apply(param => {
           let sourceUrn = Stdlib_Option.getOr(param[1][0], param[2]);
-          return `{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"` + compFragment + pluginFragment + param[3] + stateTopicFragment + `}`;
+          return `{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"` + attribution + param[3] + stateTopicFragment + `}`;
         });
         handlerOutputs.push(handlerJson);
       });

@@ -241,10 +241,15 @@ export async function buildHandlersForConfig(config, opts = {}) {
     // Lambda can host every aggregate in the platform, so the comp is what keeps
     // their log lines separable.
     const comp = aggregateComp(specModule.name);
-    cmdTopicHandlers[h.queueArn] = { handler: parts.sqsHandler, comp };
+    // `plugin` is resolved at deploy time (Util_LogAttribution) — this Lambda can
+    // host aggregates from several plugins, so its own name carries no plugin
+    // identity to fall back on.
+    const plugin = h.plugin;
+    cmdTopicHandlers[h.queueArn] = { handler: parts.sqsHandler, comp, plugin };
     cmdGenHandlers[specModule.name] = {
       handler: buildCommandGeneratorHandler(parts, dispatchMode),
       comp,
+      plugin,
     };
   }));
   return [cmdTopicHandlers, cmdGenHandlers];
@@ -277,7 +282,7 @@ export async function handler(event, context) {
     let result = null;
     let found = false;
     while (i < len && !found) {
-      const [name, { handler: cmdGenHandler, comp }] = entries[i];
+      const [name, { handler: cmdGenHandler, comp, plugin }] = entries[i];
       try {
         // Route 1 carries its envelope on `event.meta` (AppSync direct invoke),
         // not in an SQS record — and there is no send time or receive count on
@@ -286,6 +291,7 @@ export async function handler(event, context) {
           correlationId: event.meta?.correlationId,
           causationId: event.meta?.causationId,
           comp,
+          plugin,
         });
         log.debug("processed command via " + name, { comp: "CommandGenerator" });
         result = r;
@@ -311,12 +317,13 @@ export async function handler(event, context) {
   await Promise.all(Object.entries(grouped).map(async ([arn, subRecords]) => {
     const registered = cmdTopicHandlers[arn];
     if (registered !== undefined) {
-      const { handler: cmdHandler, comp } = registered;
+      const { handler: cmdHandler, comp, plugin } = registered;
       log.debug("found handler for CommandTopic " + arn, { comp: "AggregateRuntime" });
       await runEffect(cmdHandler({ Records: subRecords }, context), {
         correlationId: extractMetaField(subRecords, "correlationId"),
         causationId: extractMetaField(subRecords, "causationId"),
         comp,
+        plugin,
         timestamp: extractSentTimestamp(subRecords),
         retryCount: extractRetryCount(subRecords),
       });

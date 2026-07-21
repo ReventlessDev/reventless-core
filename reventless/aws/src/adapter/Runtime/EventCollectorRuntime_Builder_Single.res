@@ -224,12 +224,9 @@ let finish = () =>
             // Lambda's own name carries no single plugin identity. Both are
             // resolved here — the registry LogPrefix consults is a deploy-time
             // structure, empty inside the Lambda.
-            let comp = `EventCollector(${spec.eventCollectorName})`
-            let pluginFragment = switch ReventlessCore.Logger.resolvePlugin(~comp, ()) {
-            | Some(plugin) => `,"plugin":${plugin->JSON.Encode.string->JSON.stringify}`
-            | None => ""
-            }
-            let compFragment = `,"comp":${comp->JSON.Encode.string->JSON.stringify}`
+            let attribution = Util_LogAttribution.fragments(
+              ~comp=`EventCollector(${spec.eventCollectorName})`,
+            )
             let handlerJson =
               Pulumi.Output.all4((
                 info.queryDbTableName,
@@ -241,7 +238,7 @@ let finish = () =>
                 // No stream resource (Postgres-backed source) → dispatch on the
                 // feed queue's ARN instead of a stream URN.
                 let sourceUrn = urns->Array.get(0)->Option.getOr(feedArn)
-                `{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"${compFragment}${pluginFragment}${pgFragment}${stateTopicFragment}}`
+                `{"specModule":${specModule},"mappingsModule":${mappingsModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"${attribution}${pgFragment}${stateTopicFragment}}`
               })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>

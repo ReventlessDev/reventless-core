@@ -13,6 +13,7 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as PgConnection$ReventlessAws from "../Postgres/PgConnection.res.mjs";
 import * as EventLogBackend$ReventlessAws from "../EventLog/EventLogBackend.res.mjs";
+import * as Util_LogAttribution$ReventlessAws from "../../util/Util_LogAttribution.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as CommandTopicChannel_SQS_Async$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
@@ -166,12 +167,13 @@ function finish() {
         packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(behaviorPkg);
         let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
         let behaviorModule = Stdlib_Option.getOr(JSON.stringify(info.behaviorModulePath), `""`);
+        let pluginFragment = Util_LogAttribution$ReventlessAws.pluginFragment(`AggregateRuntime(` + spec.aggregateName + `)`);
         let handlerJson = Pulumi.all([
           info.eventLogTableName,
           spec.queueUrl,
           spec.queueArn,
           pgConnectionFragment
-        ]).apply(param => `{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"` + param[3] + `}`);
+        ]).apply(param => `{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"` + pluginFragment + param[3] + `}`);
         handlerOutputs.push(handlerJson);
       });
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);

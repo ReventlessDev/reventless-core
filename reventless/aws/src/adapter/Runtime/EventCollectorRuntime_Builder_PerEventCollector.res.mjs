@@ -8,6 +8,7 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
+import * as Util_LogAttribution$ReventlessAws from "../../util/Util_LogAttribution.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
@@ -46,16 +47,13 @@ function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeout
   };
   let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
   let mappingsModule = Stdlib_Option.getOr(JSON.stringify(info.mappingsModulePath), `""`);
-  let comp = `EventCollector(` + eventCollectorName + `)`;
-  let plugin = Logger$ReventlessCore.resolvePlugin(comp, undefined);
-  let pluginFragment = plugin !== undefined ? `,"plugin":` + JSON.stringify(plugin) : "";
-  let compFragment = `,"comp":` + JSON.stringify(comp);
+  let attribution = Util_LogAttribution$ReventlessAws.fragments(`EventCollector(` + eventCollectorName + `)`);
   let handlerConfigOutput = Pulumi.all([
     info.queryDbTableName,
     sourceUrns
   ]).apply(param => {
     let sourceUrn = param[1][0];
-    return `{"handlers":[{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"` + compFragment + pluginFragment + `}]}`;
+    return `{"handlers":[{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"` + attribution + `}]}`;
   });
   let envVars = {};
   envVars["HANDLER_CONFIG"] = handlerConfigOutput;

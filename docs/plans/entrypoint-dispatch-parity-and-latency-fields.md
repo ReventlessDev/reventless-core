@@ -195,12 +195,13 @@ alongside (typed against the `HashMap` it actually returns, with
 ## Verification
 
 **Done — unit:** full monorepo build green with zero warnings; `reventless-core` 510/510,
-`reventless-aws` 265/265 (including the new 13-case dispatch test). `reventless-local` has 6
+`reventless-aws` 265/265 (including the 13-case `HandlerFactoryDispatchTest`), `reventless-local`
+495/501 with the new 4-case `LocalDispatchContextTest`. `reventless-local` has 6
 failing `LocalAuthHttpTest` cases — **pre-existing**, confirmed by stashing this work and
 re-running on the baseline, and a test-harness artifact rather than a product bug: the same
 `POST /__inmemory/login` returns 200 when driven outside Jest.
 
-**Done — integration** (both Docker gates, run against the tree as committed here):
+**Done — integration** (both Docker gates, re-run after the `plugin`-fragment change):
 
 - `pnpm run test:integration` — 4 suites / 19 tests green, including the two whose contracts this
   plan changed: `AggregateEntryPoint_IntegrationTest` (registry entries are now `{handler, comp}`)
@@ -210,10 +211,33 @@ re-running on the baseline, and a test-harness artifact rather than a product bu
   `PgMigrationEntryPoint`).
 
 **Not done — needs a deploy:** confirm in alpha CloudWatch that an application handler's own log
-line carries `comp` + `causationId`, that `plugin` is populated on the shared `AllReadModels`
-Lambda, and that a redelivery surfaces `retryCount`. Watch the cold start first — a failure in the
+line carries `comp` + `causationId`, that `plugin` is populated on both shared Lambdas
+(`AllReadModels` and `AllAggregatesCmdHandler`), and that a redelivery surfaces `retryCount`. Watch the cold start first — a failure in the
 shared shim would take out all ten Lambdas at once, and that is the one failure mode no local test
 reaches.
+
+## Open items
+
+One. Two of the three recorded on 2026-07-21 are closed:
+
+1. **On-AWS verification** — still open (see Verification). The predecessor plan was marked Done on
+   an acceptance criterion nobody checked against a deployed stack, and that is precisely the gap
+   this plan exists to fix — so closing this one on the same assumption would repeat the mistake it
+   corrects. **This is the only thing keeping the plan out of `done/`.**
+2. ~~`timestamp` / `retryCount` untested on the local path.~~ **Closed** —
+   `reventless/local/tests/adapter/LocalDispatchContextTest.res` (4 cases) dispatches a handler
+   through `Runtime.runEffectHandler` wired with `LocalRuntimeEnvironment`'s extractors — the exact
+   composition the local builders use — and asserts the identity fields, the placeholder fallback, a
+   send time bracketed by `Date.now()` either side of the dispatch, and `retryCount = 1`. The "on
+   both platforms" acceptance now rests on assertions rather than on the extractors compiling.
+3. ~~Per-handler `plugin` baked for read models and side-effect handlers only.~~ **Closed** — the
+   fragment logic moved to `Util_LogAttribution` (`pluginFragment` / `compFragment` / `fragments`,
+   with the reasoning for the split in its header) and the six aggregate builders
+   (`{Single,PerAggregate,Micro}` × sync/async, eight config sites) now bake `plugin`. The DCB topic
+   needed no builder change — its `HANDLER_CONFIG` already carries `pluginName`, so the shell passes
+   it straight through. Attribution is now uniform: every deployed component reports a `plugin`,
+   including on the shared `AllAggregatesCmdHandler` and the per-aggregate `<Entity>AggrCmdHandler`,
+   neither of which the Lambda-name fallback can resolve.
 
 ## Non-goals
 

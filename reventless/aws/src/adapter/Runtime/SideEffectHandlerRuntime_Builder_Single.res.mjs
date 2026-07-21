@@ -10,6 +10,7 @@ import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
+import * as Util_LogAttribution$ReventlessAws from "../../util/Util_LogAttribution.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
@@ -101,13 +102,10 @@ function finish() {
           packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
         });
         let modulesJson = info.sideEffectModulePaths.map(p => Stdlib_Option.getOr(JSON.stringify(p), `""`)).join(",");
-        let comp = `SideEffectHandler(` + spec.componentName + `)`;
-        let plugin = Logger$ReventlessCore.resolvePlugin(comp, undefined);
-        let pluginFragment = plugin !== undefined ? `,"plugin":` + JSON.stringify(plugin) : "";
-        let compFragment = `,"comp":` + JSON.stringify(comp);
+        let attribution = Util_LogAttribution$ReventlessAws.fragments(`SideEffectHandler(` + spec.componentName + `)`);
         let handlerJson = spec.sourceUrns.apply(urns => {
           let sourceUrn = urns[0];
-          return `{"sideEffectModules":[` + modulesJson + `],"sourceUrn":"` + sourceUrn + `"` + compFragment + pluginFragment + `}`;
+          return `{"sideEffectModules":[` + modulesJson + `],"sourceUrn":"` + sourceUrn + `"` + attribution + `}`;
         });
         handlerOutputs.push(handlerJson);
       });

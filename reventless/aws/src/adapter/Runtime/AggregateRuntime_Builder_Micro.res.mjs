@@ -8,6 +8,7 @@ import * as Aggregate$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
+import * as Util_LogAttribution$ReventlessAws from "../../util/Util_LogAttribution.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
@@ -164,11 +165,12 @@ function finish() {
       packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(behaviorPkg);
       let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
       let behaviorModule = Stdlib_Option.getOr(JSON.stringify(info.behaviorModulePath), `""`);
+      let pluginFragment = Util_LogAttribution$ReventlessAws.pluginFragment(`AggregateRuntime(` + spec.aggregateName + `)`);
       let cmdTopicHandlerConfigOutput = Pulumi.all([
         info.eventLogTableName,
         spec.queueUrl,
         spec.queueArn
-      ]).apply(param => `{"handlers":[{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"}]}`);
+      ]).apply(param => `{"handlers":[{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"` + pluginFragment + `}]}`);
       let cmdTopicEnvVars = {};
       cmdTopicEnvVars["HANDLER_CONFIG"] = cmdTopicHandlerConfigOutput;
       let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
@@ -176,11 +178,12 @@ function finish() {
       let cmdTopicRuntime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(cmdTopicName, "CommandHandler", match.code, match.sourceCodeHash, cmdTopicEnvVars, Math.max(spec.commandTopicMemorySize, 1024), Math.max(spec.commandTopicTimeout, 30), undefined, undefined, undefined, undefined, undefined, aggregateOpts);
       spec.commandTopicConnects.forEach(connect => connect(cmdTopicRuntime));
       if (spec.commandGeneratorConnects.length !== 0) {
+        let pluginFragment$1 = Util_LogAttribution$ReventlessAws.pluginFragment(`AggregateRuntime(` + spec.aggregateName + `)`);
         let cmdGenHandlerConfigOutput = Pulumi.all([
           info.eventLogTableName,
           spec.queueUrl,
           spec.queueArn
-        ]).apply(param => `{"handlers":[{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"}]}`);
+        ]).apply(param => `{"handlers":[{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"` + pluginFragment$1 + `}]}`);
         let cmdGenEnvVars = {};
         cmdGenEnvVars["HANDLER_CONFIG"] = cmdGenHandlerConfigOutput;
         let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
