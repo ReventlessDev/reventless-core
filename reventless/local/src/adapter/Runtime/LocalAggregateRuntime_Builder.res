@@ -84,6 +84,8 @@ module Make = (
     let resource = eventCollector->ReventlessCore.Component.toPulumiResource
     let name =
       resource.name->ReventlessCore.ComponentType.nameOpt(ReventlessCore.EventCollector.componentType)
+    // Same `comp` shape as the deployed dispatchers — see EventCollectorRuntime_Builder_Single.
+    let comp = `EventCollector(${resource.name->Option.getOr("Unnamed")})`
     let opts = {Pulumi.ComponentResource.parent: resource}
     let runtime = LocalRuntimeEnvironment.make(
       ~name,
@@ -93,7 +95,7 @@ module Make = (
         ->ReventlessCore.Runtime.runEffectHandler(
           ~extractCorrelationId=LocalRuntimeEnvironment.extractCorrelationId,
           ~extractCausationId=LocalRuntimeEnvironment.extractCausationId,
-          ~comp=name,
+          ~comp,
         )
       ),
     )

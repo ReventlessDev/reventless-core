@@ -46,7 +46,7 @@ function Make(RuntimeEnvironment) {
         if (handlers !== undefined) {
           let count = handlers.length.toString();
           Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `found ` + count + ` EventCollector handler(s) for ` + urn));
-          await Promise.all(handlers.map(handler => runEffect(handler(event, context))));
+          await Promise.all(handlers.map(param => Runtime$ReventlessCore.runEffect(correlationId, causationId, param.comp, undefined, undefined, undefined, param.handler(event, context))));
           return;
         }
         let available = Object.keys(commandTopicHandlers).concat(Object.keys(eventCollectorHandlers)).join(",");
@@ -155,9 +155,13 @@ function Make(RuntimeEnvironment) {
         let handler = param[1];
         let urns = param[0];
         log.debug("AggregateRuntime", undefined, `forEventCollector ` + eventCollectorName + `: set handler for ` + urns.join(", "));
+        let comp = `EventCollector(` + eventCollectorName + `)`;
         return urns.map(urn => {
           let handlers = Stdlib_Option.getOr(eventCollectorHandlers[urn], []);
-          eventCollectorHandlers[urn] = handlers.concat([RuntimeEnvironment.asEffectHandler(handler)]);
+          eventCollectorHandlers[urn] = handlers.concat([{
+              comp: comp,
+              handler: RuntimeEnvironment.asEffectHandler(handler)
+            }]);
         });
       });
     };

@@ -34,16 +34,22 @@ module Make = (
     maxTimeout: 0,
   })
   type effectHandler = Runtime.effectHandler<RuntimeEnvironment.event, context, unit, string>
-  let eventCollectorHandlers: dict<array<effectHandler>> = Dict.make()
+  // `comp` is the *element's* log component, resolved where the handler is registered
+  // (the event collector's own resource is in hand there). Keeping it next to the
+  // handler is what makes every collector hosted in this one runtime separable by
+  // field — the runtime-group name would be identical for all of them.
+  type registeredHandler = {comp: string, handler: effectHandler}
+  let eventCollectorHandlers: dict<array<registeredHandler>> = Dict.make()
 
   let eventCollectorHandler = parentName =>
     async (event: RuntimeEnvironment.event, context) => {
       let correlationId = event->RuntimeEnvironment.extractCorrelationId
       let causationId = event->RuntimeEnvironment.extractCausationId
-      let comp = `EventCollectorRuntime(${parentName})`
+      // Group-level comp — used only for this dispatcher's own bookkeeping lines,
+      // which describe the runtime group rather than any one collector.
+      let groupComp = `EventCollectorRuntime(${parentName})`
       // Shared dispatch helper annotates correlationId / comp / causationId so the
       // application handler's own log lines carry them (see Runtime.runEffect).
-      let runEffect = effect => Runtime.runEffect(~correlationId?, ~causationId?, ~comp, effect)
       let _ = await event
       ->RuntimeEnvironment.groupBySource
       ->Dict.toArray
@@ -52,13 +58,15 @@ module Make = (
         | Some(handlers) =>
           let count = handlers->Array.length->Int.toString
           EffectLogger.logDebug(
-            ~comp,
+            ~comp=groupComp,
             `found ${count} handler(s) for ${urn}`,
           )->Effect.runSync
           let _ = await handlers
-          ->Array.map(handler => runEffect(handler(event, context)))
+          ->Array.map(({comp, handler}) =>
+            Runtime.runEffect(~correlationId?, ~causationId?, ~comp, handler(event, context))
+          )
           ->Promise.all
-        | None => EffectLogger.logWarn(~comp, `no handler found: ${urn}`)->Effect.runSync
+        | None => EffectLogger.logWarn(~comp=groupComp, `no handler found: ${urn}`)->Effect.runSync
         }
       })
       ->Promise.all
@@ -155,11 +163,12 @@ module Make = (
             ~comp="EventCollectorRuntime",
             `forEventCollector ${eventCollectorName}: set handler for ${urns->Array.join(", ")}`,
           )
+          let comp = `EventCollector(${eventCollectorName})`
           urns->Array.map(urn => {
             let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])
             eventCollectorHandlers->Dict.set(
               urn,
-              handlers->Array.concat([handler->RuntimeEnvironment.asEffectHandler]),
+              handlers->Array.concat([{comp, handler: handler->RuntimeEnvironment.asEffectHandler}]),
             )
           })
         })

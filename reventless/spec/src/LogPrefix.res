@@ -12,6 +12,8 @@ Resolution priority for a comp string like `"Kind(Name)"`:
    - strip trailing `Plugin` (handles `CommandTopic(FooPlugin)`)
    - last dot segment (handles `Extension(Catalog.Products.Ordering)`)
    - first dot segment (handles `ExtensionPoint(Catalog.Products)`)
+4. Longest registered component name that prefixes the inner name (handles
+   kind-suffixed resource names like `EventCollector(CustomersReadModel)`).
 
 `Plugin_Builder` registers every component (and the plugin's self-name) when
 constructing a plugin, so all transformation candidates resolve to a
@@ -100,6 +102,26 @@ let lastDotSegment = (s: string): option<string> => {
 let lookup = (name: string): option<string> =>
   componentPluginRegistry.contents->Dict.get(name)
 
+// Last-resort candidate: the inner name is a registered component name carrying a
+// component-kind suffix (`Customers` + `ReadModel` → `CustomersReadModel`), which is
+// how event-collector resources are named. Longest prefix wins so `OrdersReadModel`
+// resolves via `Orders` rather than a shorter `Order` registered by another plugin.
+// LogPrefix sits below `ComponentType`, so this stays suffix-table-free.
+let longestRegisteredPrefix = (name: string): option<string> =>
+  componentPluginRegistry.contents
+  ->Dict.keysToArray
+  ->Array.reduce(None, (acc, key) =>
+    if key->String.length < name->String.length && name->String.startsWith(key) {
+      switch acc {
+      | Some(best) if best->String.length >= key->String.length => acc
+      | _ => Some(key)
+      }
+    } else {
+      acc
+    }
+  )
+  ->Option.flatMap(lookup)
+
 let resolvePlugin = (~comp=?, ()) =>
   switch comp {
   | Some(c) =>
@@ -118,12 +140,14 @@ let resolvePlugin = (~comp=?, ()) =>
             lastDotSegment(inner),
             firstDotSegment(inner),
           ]
-          candidates->Array.reduce(None, (acc, candidate) =>
+          candidates
+          ->Array.reduce(None, (acc, candidate) =>
             switch acc {
             | Some(_) => acc
             | None => candidate->Option.flatMap(lookup)
             }
           )
+          ->Option.orElse(longestRegisteredPrefix(inner))
         }
       }
     | None => currentPluginName.contents

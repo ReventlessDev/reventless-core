@@ -30,20 +30,17 @@ function Make(RuntimeEnvironment) {
     let eventCollectorHandler = parentName => (async (event, context) => {
       let correlationId = RuntimeEnvironment.extractCorrelationId(event);
       let causationId = RuntimeEnvironment.extractCausationId(event);
-      let comp = `EventCollectorRuntime(` + parentName + `)`;
+      let groupComp = `EventCollectorRuntime(` + parentName + `)`;
       await Promise.all(Object.entries(RuntimeEnvironment.groupBySource(event)).map(async param => {
         let event = param[1];
         let urn = param[0];
         let handlers = eventCollectorHandlers[urn];
         if (handlers === undefined) {
-          return Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `no handler found: ` + urn));
+          return Effect.runSync(EffectLogger$ReventlessCore.logWarn(groupComp, undefined, `no handler found: ` + urn));
         }
         let count = handlers.length.toString();
-        Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `found ` + count + ` handler(s) for ` + urn));
-        await Promise.all(handlers.map(handler => {
-          let effect = handler(event, context);
-          return Runtime$ReventlessCore.runEffect(correlationId, causationId, comp, undefined, undefined, undefined, effect);
-        }));
+        Effect.runSync(EffectLogger$ReventlessCore.logDebug(groupComp, undefined, `found ` + count + ` handler(s) for ` + urn));
+        await Promise.all(handlers.map(param => Runtime$ReventlessCore.runEffect(correlationId, causationId, param.comp, undefined, undefined, undefined, param.handler(event, context))));
       }));
     });
     let validateParent = parent => {
@@ -108,9 +105,13 @@ function Make(RuntimeEnvironment) {
         let handler = param[2];
         let urns = param[1];
         log.debug("EventCollectorRuntime", undefined, `forEventCollector ` + eventCollectorName + `: set handler for ` + urns.join(", "));
+        let comp = `EventCollector(` + eventCollectorName + `)`;
         return urns.map(urn => {
           let handlers = Stdlib_Option.getOr(eventCollectorHandlers[urn], []);
-          eventCollectorHandlers[urn] = handlers.concat([RuntimeEnvironment.asEffectHandler(handler)]);
+          eventCollectorHandlers[urn] = handlers.concat([{
+              comp: comp,
+              handler: RuntimeEnvironment.asEffectHandler(handler)
+            }]);
         });
       });
     };

@@ -80,6 +80,16 @@ function lookup(name) {
   return componentPluginRegistry.contents[name];
 }
 
+function longestRegisteredPrefix(name) {
+  return Stdlib_Option.flatMap(Stdlib_Array.reduce(Object.keys(componentPluginRegistry.contents), undefined, (acc, key) => {
+    if (key.length < name.length && name.startsWith(key) && !(acc !== undefined && acc.length >= key.length)) {
+      return key;
+    } else {
+      return acc;
+    }
+  }), lookup);
+}
+
 function resolvePlugin(comp, param) {
   if (comp === undefined) {
     return currentPluginName.contents;
@@ -102,13 +112,13 @@ function resolvePlugin(comp, param) {
     lastDotSegment(inner),
     firstDotSegment(inner)
   ];
-  return Stdlib_Array.reduce(candidates, undefined, (acc, candidate) => {
+  return Stdlib_Option.orElse(Stdlib_Array.reduce(candidates, undefined, (acc, candidate) => {
     if (acc !== undefined) {
       return acc;
     } else {
       return Stdlib_Option.flatMap(candidate, lookup);
     }
-  });
+  }), longestRegisteredPrefix(inner));
 }
 
 function fmtPlainPrefix(comp, param) {
@@ -141,6 +151,7 @@ export {
   firstDotSegment,
   lastDotSegment,
   lookup,
+  longestRegisteredPrefix,
   resolvePlugin,
   fmtPlainPrefix,
   fmtComp,

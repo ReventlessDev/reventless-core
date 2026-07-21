@@ -33,6 +33,22 @@ emits `comp` for free — no need to re-log it by hand. This is what makes two
 components hosted in one runtime process (e.g. the all-aggregates command
 handler) separable purely by the `comp` field.
 
+**`comp` names the element, not the runtime that hosts it.** The shape depends on
+the component kind:
+
+| Component | `comp` |
+|---|---|
+| Aggregate command / event handling | `AggregateRuntime(<AggregateName>)` |
+| Event collector — read model, state-view slice, side-effect handler, event mapper | `EventCollector(<ComponentResourceName>)`, e.g. `EventCollector(CustomersReadModel)` |
+
+Event collectors get the same `comp` whichever deployment strategy hosts them —
+their own Lambda, the shared `AllReadModels` runtime, or the aggregate-nested
+runtime — so `| filter comp = "EventCollector(CustomersReadModel)"` isolates one
+read model even when a dozen share a Lambda. The dispatcher's own bookkeeping
+lines (`found N handler(s) for <urn>`) stay on the runtime-group `comp`
+(`EventCollectorRuntime(<group>)`), since they describe the group rather than any
+one element.
+
 ## Queries
 
 ### 1. All errors across all plugins, last 1h

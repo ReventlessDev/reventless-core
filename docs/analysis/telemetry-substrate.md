@@ -39,7 +39,7 @@ behaviour. It **does not replace** any existing plan; it sequences them and name
 
 | # | Primitive | What it enables | Status | Owner doc |
 |---|---|---|---|---|
-| 1 | **Log attribution** — `comp` + `causationId` on *every* line of an invocation | Isolate one component's logs in a shared runtime; reconstruct the causal tree from logs alone | `comp` on framework lines only; `causationId` absent | `queryable-dispatch-log-annotations.md` (proposed) |
+| 1 | **Log attribution** — `comp` + `causationId` on *every* line of an invocation | Isolate one component's logs in a shared runtime; reconstruct the causal tree from logs alone | **Done** — annotated at the dispatch boundary; `comp` names the element, not its runtime group | `done/queryable-dispatch-log-annotations.md` + `done/eventcollector-element-level-log-comp.md` |
 | 2 | **Metrics / Telemetry service** — an Effect service at dispatch (e.g. CloudWatch EMF) | Counters, histograms, timing emitted uniformly, provider-swappable, silenced in tests | Not implemented | `effect-services-beyond-logging.md` (§Metrics) |
 | 3 | **Latency timing** — send-time `timestamp` (+ `retryCount`) in `RequestContext` | A handler computes processing latency without `Date.now()`; retry visibility | Not implemented | `request-context-usage.md` (§timestamp, §retryCount) |
 | 4 | **Per-hop `traceparent` rewrite** — update span/parent-id at each hop | Proper OpenTelemetry span *tree* (not just a flat trace-id) | `traceparent` is propagated **flat** (`deriveMeta` inherits as-is) | this doc (decision) |
@@ -60,8 +60,9 @@ behaviour. It **does not replace** any existing plan; it sequences them and name
 
 ## Recommended sequence
 
-1. **`queryable-dispatch-log-annotations.md`** (primitive #1) — small, unblocks per-component log
-   isolation and log-derived causal trees immediately. Ship first.
+1. ~~**`queryable-dispatch-log-annotations.md`** (primitive #1) — small, unblocks per-component log
+   isolation and log-derived causal trees immediately. Ship first.~~ **Done** (2026-07-20/21, with
+   `eventcollector-element-level-log-comp.md`). Next up is step 2.
 2. **Latency timestamp** (primitive #3, the `timestamp`/`retryCount` half of
    `request-context-usage.md`) — trivial extraction, high operational value; pairs naturally with #2.
 3. **Metrics/Telemetry service** (primitive #2) — the larger build; gives durations/histograms and

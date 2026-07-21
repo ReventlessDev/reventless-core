@@ -26,10 +26,15 @@ module Make = (
   }
   type effectHandler = Runtime.effectHandler<RuntimeEnvironment.event, context, unit, string>
 
+  // Event collectors nested under this aggregate belong to their own element (a
+  // ReadModel, an EventMapper, …), so they carry the comp resolved at registration
+  // time rather than the hosting aggregate's.
+  type registeredHandler = {comp: string, handler: effectHandler}
+
   let runtimeSpecs: dict<runtimeSpec> = Dict.make()
   let commandGeneratorHandlers: dict<CommandGenerator.effectEventHandler<context>> = Dict.make()
   let commandTopicHandlers: dict<effectHandler> = Dict.make()
-  let eventCollectorHandlers: dict<array<effectHandler>> = Dict.make()
+  let eventCollectorHandlers: dict<array<registeredHandler>> = Dict.make()
 
   let aggregateHandler = aggregateName =>
     async (event: RuntimeEnvironment.event, context) => {
@@ -71,7 +76,9 @@ module Make = (
                 `found ${count} EventCollector handler(s) for ${urn}`,
               )->Effect.runSync
               let _ = await handlers
-              ->Array.map(handler => runEffect(handler(event, context)))
+              ->Array.map(({comp, handler}) =>
+                Runtime.runEffect(~correlationId?, ~causationId?, ~comp, handler(event, context))
+              )
               ->Promise.all
             | None =>
               let available =
@@ -237,11 +244,12 @@ module Make = (
             ~comp="AggregateRuntime",
             `forEventCollector ${eventCollectorName}: set handler for ${urns->Array.join(", ")}`,
           )
+          let comp = `EventCollector(${eventCollectorName})`
           urns->Array.map(urn => {
             let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])
             eventCollectorHandlers->Dict.set(
               urn,
-              handlers->Array.concat([handler->RuntimeEnvironment.asEffectHandler]),
+              handlers->Array.concat([{comp, handler: handler->RuntimeEnvironment.asEffectHandler}]),
             )
           })
         })

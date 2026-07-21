@@ -223,6 +223,49 @@ describe("JSON sink", () => {
     expect(lines->Array.length == 1 && line->fieldOf("plugin") == Some("Catalog"))->toBe(true)
   })
 
+  testSync("Logger.info resolves plugin from a kind-suffixed component name", () => {
+    // Event-collector comps carry the component *resource* name (`<Spec><Kind>`),
+    // while the registry holds the bare spec name — the prefix candidate bridges them.
+    Logger.registerComponentPlugin(~componentName="Products", ~pluginName="Catalog")
+    let lines = captureLogs(() =>
+      log.info(~comp="EventCollector(ProductsReadModel)", "projecting event")
+    )
+    let line = lines->Array.length == 1 ? lines->Array.getUnsafe(0) : ""
+    expect(lines->Array.length == 1 && line->fieldOf("plugin") == Some("Catalog"))->toBe(true)
+  })
+
+  testSync("Plugin resolution prefers the longest registered prefix", () => {
+    // `Order` (Ordering) must not win over `OrderLines` (Billing) for `OrderLinesReadModel`.
+    Logger.registerComponentPlugin(~componentName="Order", ~pluginName="Ordering")
+    Logger.registerComponentPlugin(~componentName="OrderLines", ~pluginName="Billing")
+    let lines = captureLogs(() =>
+      log.info(~comp="EventCollector(OrderLinesReadModel)", "projecting event")
+    )
+    let line = lines->Array.length == 1 ? lines->Array.getUnsafe(0) : ""
+    expect(lines->Array.length == 1 && line->fieldOf("plugin") == Some("Billing"))->toBe(true)
+  })
+
+  testSync("dispatch annotation carries comp onto a handler line that passes none", () => {
+    // What makes two collectors in one runtime process separable: the element's comp
+    // comes from the dispatch boundary, not from the application's own log call.
+    let lines = captureLogs(() =>
+      EffectLogger.logInfo("projected")
+      ->Runtime.annotateInvocation(
+        ~correlationId="cid-1",
+        ~causationId="parent-1",
+        ~comp="EventCollector(ProductsReadModel)",
+      )
+      ->Effect.runSync
+    )
+    let line = lines->Array.length >= 1 ? lines->Array.getUnsafe(0) : ""
+    let ok =
+      line->fieldOf("comp") == Some("EventCollector(ProductsReadModel)") &&
+      line->fieldOf("correlationId") == Some("cid-1") &&
+      line->fieldOf("causationId") == Some("parent-1") &&
+      line->fieldOf("message") == Some("projected")
+    expect(ok)->toBe(true)
+  })
+
   testSync("Logger.warn emits one clean JSON record", () => {
     let lines = captureLogs(() => log.warn(~comp="Platform", "heartbeat skipped"))
     expect(lines->Array.length == 1 && isCleanRecord(lines->Array.getUnsafe(0)))->toBe(true)

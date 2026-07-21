@@ -22,6 +22,9 @@ module Make = (
   ) => {
     let resource = eventCollector->Component.toPulumiResource
     let name = resource.name->ComponentType.nameOpt(EventCollector.componentType)
+    // Same `comp` shape as the shared-runtime dispatchers, so a log filter reads the
+    // same whichever deployment strategy hosts the collector.
+    let comp = `EventCollector(${resource.name->Option.getOr("Unnamed")})`
     let opts = {Pulumi.ComponentResource.parent: resource}
     let runtime = RuntimeEnvironment.make(
       ~name,
@@ -31,7 +34,7 @@ module Make = (
         ->Runtime.runEffectHandler(
           ~extractCorrelationId=RuntimeEnvironment.extractCorrelationId,
           ~extractCausationId=RuntimeEnvironment.extractCausationId,
-          ~comp=name,
+          ~comp,
         )
       ),
       ~memorySize,

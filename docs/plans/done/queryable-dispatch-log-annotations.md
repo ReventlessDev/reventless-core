@@ -1,8 +1,9 @@
 # Component + Causation Log Annotations at the Dispatch Boundary
 
-**Status:** Complete (2026-07-20) — one follow-up remains, see **Follow-up** below.
+**Status:** Complete (2026-07-20). The follow-up below was picked up and shipped by
+`done/eventcollector-element-level-log-comp.md` (2026-07-21).
 
-## Follow-up — `comp` is a runtime-group key, not the domain component
+## Follow-up — `comp` is a runtime-group key, not the domain component — RESOLVED
 
 Shipped `comp` is `AggregateRuntime(<aggregateName>)` / `EventCollectorRuntime(<parentName>)` — keyed
 by the **runtime group**, not the domain element. For a consumer filtering logs down to one element
@@ -18,6 +19,12 @@ To make element-level log isolation uniform, the event-collector dispatch should
 group it shares. Low cost — the component name is known where the handler is registered — but the
 event-collector runtime must thread the per-component name into the annotation rather than the
 parent's. Small delta on this plan.
+
+**Resolved 2026-07-21.** Event-collector handlers now carry the element's `comp`
+(`EventCollector(<ComponentResourceName>)`) from registration through dispatch, uniformly across
+the shared, per-component, aggregate-nested and local runtimes. `LogPrefix.resolvePlugin` gained a
+longest-registered-prefix candidate so those kind-suffixed names also resolve their owning plugin —
+which the shared-runtime path previously got wrong (it fell through to the ambient plugin name).
 
 
 
