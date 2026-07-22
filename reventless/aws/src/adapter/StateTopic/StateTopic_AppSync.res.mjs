@@ -198,7 +198,7 @@ function finish(eventsApi, opts) {
     return;
   }
   let name = eventsApi.name;
-  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "StateTopicRole", Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name + "StateTopicRole", QueryDb$ReventlessCore.componentType, "Identity", undefined, name, undefined, undefined), opts);
+  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "StateTopicRole", Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name + "StateTopicRole", QueryDb$ReventlessCore.componentType, "Identity", undefined, name, undefined, undefined, undefined), opts);
   let streamArnsOutput = Pulumi.all(entries.map(e => e.streamArn));
   Pulumi.all([
     streamArnsOutput,
@@ -256,7 +256,7 @@ function finish(eventsApi, opts) {
     memorySize: 256,
     timeout: 30,
     layers: layers,
-    tags: AWS_Tags$ReventlessAws.make(name + "StateTopic", QueryDb$ReventlessCore.componentType, "StateTopic", undefined, name, undefined, undefined),
+    tags: AWS_Tags$ReventlessAws.make(name + "StateTopic", QueryDb$ReventlessCore.componentType, "StateTopic", undefined, name, undefined, undefined, undefined),
     environment: {
       variables: Object.fromEntries([
         [

@@ -24,7 +24,10 @@ function Make(RuntimeEnvironment) {
         };
         let aggregateNames = Belt_SetString.fromArray(sideEffects.map(SideEffect => SideEffect.Source.name));
         let eventTopics = EventTopic$ReventlessCore.filter(allEventTopics, aggregateNames);
-        let eventCollector = SpecificEventCollector.make(extra$1, eventTopics, opts);
+        let eventCollector = SpecificEventCollector.make(extra$1, eventTopics, {
+          kind: "SideEffectHandler",
+          name: extra$1
+        }, opts);
         let Callback = SideEffectHandler_Callback$ReventlessCore.Make({
           sideEffects: sideEffects,
           queryEngine: queryEngine

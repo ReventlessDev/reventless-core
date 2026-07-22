@@ -20,7 +20,7 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
   'context,
   Util.SQS.channelParts,
   Util.Lambda.runtimeParts,
-> = (~name, ~owner as _=?, ~opts=?) => {
+> = (~name, ~owner=?, ~opts=?) => {
   // Captured when handleChannelEvent is called; used by publishJsonsAndWait to
   // run the handler inline and collect typed outcomes without going through SQS.
   let handleCmdsRef: ref<option<ReventlessCore.CommandTopic.jsonCommandsHandler>> = ref(None)
@@ -28,7 +28,7 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
   let opts =
     opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
-  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.CommandTopic.componentType, ~role=CommandTopic)
+  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.CommandTopic.componentType, ~role=CommandTopic, ~owner?)
   let queue = PulumiAws.SQS.Queue.make(
     ~name,
     ~args={

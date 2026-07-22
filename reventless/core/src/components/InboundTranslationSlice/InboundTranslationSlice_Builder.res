@@ -57,7 +57,12 @@ module Make = (
     let construct = (~publishJsons, self, _name) => {
       let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
-      let queryDb = SpecificQueryDb.make(~api=Api.api(), ~apiRole=Api.apiRole(), ~opts)
+      let queryDb = SpecificQueryDb.make(
+        ~api=Api.api(),
+        ~apiRole=Api.apiRole(),
+        ~owner={kind: ComponentType.InboundTranslationSlice, name: Spec.name},
+        ~opts,
+      )
 
       // Resolve publishJsons so it's available for receive
       let publishJsonsRef: ref<option<ReventlessInfra.CommandTopic.publishJsons>> = ref(None)

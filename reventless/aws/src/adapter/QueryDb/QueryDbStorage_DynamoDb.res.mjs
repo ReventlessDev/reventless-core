@@ -73,8 +73,8 @@ function dataSource(name, table, api, apiRole, opts) {
   return AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table, apiRole, opts);
 }
 
-function make(name, indexes, subIdField, ttl, api, apiRole, param, opts) {
-  let tags = AWS_Tags$ReventlessAws.make(name, QueryDb$ReventlessCore.componentType, "QueryDb", undefined, undefined, undefined, undefined);
+function make(name, indexes, subIdField, ttl, api, apiRole, owner, opts) {
+  let tags = AWS_Tags$ReventlessAws.make(name, QueryDb$ReventlessCore.componentType, "QueryDb", undefined, undefined, owner, undefined, undefined);
   let table = Util_DynamoDb$ReventlessAws.makeTable(attributes(subIdField, indexes), globalSecondaryIndexes(indexes), ttl, subIdField, tags, opts, name);
   return {
     resources: [Util_DynamoDb$ReventlessAws.toResource(tags, table)],

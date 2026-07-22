@@ -67,7 +67,7 @@ let MetricQueryDbMaker = QueryDb_Builder$ReventlessCore.Make({
   make: QDbStorage.make
 })(QDbResolvers);
 
-let metricQueryDb = MetricQueryDbMaker.make(undefined, undefined, undefined, undefined);
+let metricQueryDb = MetricQueryDbMaker.make(undefined, undefined, undefined, undefined, undefined);
 
 export {
   MetricSpec,

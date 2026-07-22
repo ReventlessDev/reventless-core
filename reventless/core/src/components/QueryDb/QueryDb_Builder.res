@@ -10,7 +10,7 @@ module Make = (
   type operations = QueryDb.operations<Spec.Id.t, Spec.state>
   type component = Component.t<QueryDb.t, QueryDb.outputs, operations>
 
-  let construct = (self, name, ~api, ~apiRole, ~ttl=?) => {
+  let construct = (self, name, ~api, ~apiRole, ~ttl=?, ~owner=?) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let subIdField = Spec.subIdConfig->Option.map(config => config.subIdField)
@@ -22,6 +22,7 @@ module Make = (
       ~ttl?,
       ~api,
       ~apiRole,
+      ~owner?,
       ~opts,
     )
 
@@ -66,11 +67,11 @@ module Make = (
     self->Component.setOutputs(outputs)
   }
 
-  let make = (~api: Storage.api, ~apiRole: Storage.role, ~ttl=?, ~opts=?): component =>
+  let make = (~api: Storage.api, ~apiRole: Storage.role, ~ttl=?, ~owner=?, ~opts=?): component =>
     Component.make(
       ~componentType=QueryDb.componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~api, ~apiRole, ~ttl?, ...),
+      ~construct=construct(~api, ~apiRole, ~ttl?, ~owner?, ...),
       ~opts,
     )
 }

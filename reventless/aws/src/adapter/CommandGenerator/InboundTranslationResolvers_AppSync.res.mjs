@@ -17,7 +17,7 @@ import * as CommandSubscriptionResolvers_AppSync$ReventlessAws from "../Api/Comm
 function make(api, runtime, fieldNames, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let lambda = runtime.parts.lambda;
-  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy("InboundTranslationDS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make("InboundTranslationDS", InboundTranslationSlice$ReventlessCore.componentType, "Identity", "Plugin", undefined, undefined, undefined), opts$1);
+  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy("InboundTranslationDS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make("InboundTranslationDS", InboundTranslationSlice$ReventlessCore.componentType, "Identity", "Plugin", undefined, undefined, undefined, undefined), opts$1);
   Pulumi.all([
     Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
     dataSourceRole.id

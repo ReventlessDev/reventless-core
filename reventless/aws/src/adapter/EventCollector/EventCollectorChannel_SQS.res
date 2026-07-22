@@ -33,11 +33,11 @@ let connect = (
 let make: ReventlessCore.EventCollector_Adapter.channelMaker<callbackEvent, 'context, channelParts> = (
   ~name,
   ~eventTopics,
-  ~owner as _=?, ~opts,
+  ~owner=?, ~opts,
 ) => {
   let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
-  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.EventCollector.componentType, ~role=EventCollector)
+  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.EventCollector.componentType, ~role=EventCollector, ~owner?)
   let queue = PulumiAws.SQS.Queue.make(
     ~name,
     ~args={

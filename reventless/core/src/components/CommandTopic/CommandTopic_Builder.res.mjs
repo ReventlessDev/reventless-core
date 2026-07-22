@@ -57,35 +57,6 @@ function Make(Spec) {
         return allResults;
       });
     })), prim => prim.flat());
-    let construct = (self, name) => {
-      let opts_parent = Component$ReventlessCore.toPulumiResource(self);
-      let opts = {
-        parent: opts_parent
-      };
-      let name$1 = ComponentType$ReventlessCore.name(name, CommandTopic$ReventlessCore.componentType);
-      let channel = Channel.make(name$1, undefined, opts);
-      self.channel = channel;
-      Component$ReventlessCore.setOperations(self, Pulumi.all([
-        channel.publishJsons,
-        channel.publishJsonsStream,
-        channel.publishJsonsAndWait
-      ]).apply(param => {
-        let Ops = {
-          publishJsons: param[0]
-        };
-        let Operations = CommandTopic_Operations$ReventlessCore.Make(Spec)(Ops);
-        return {
-          publish: Operations.publish,
-          publishJsons: Operations.publishJsons,
-          publishJsonsStream: param[1],
-          publishJsonsAndWait: param[2]
-        };
-      }));
-      let outputs = {
-        resources: channel.resources
-      };
-      return Component$ReventlessCore.setOutputs(self, outputs);
-    };
     let connect = (runtime, resources, commandTopic) => {
       let commandTopicResource = Component$ReventlessCore.toPulumiResource(commandTopic);
       let name = ComponentType$ReventlessCore.name(Stdlib_Option.getOr(commandTopicResource.__name, "Unnamed"), CommandTopic$ReventlessCore.componentType);
@@ -109,7 +80,35 @@ function Make(Spec) {
       let channel = commandTopic.channel;
       return channel.handleChannelEvent(filteringHandler);
     };
-    let make = (name, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(CommandTopic$ReventlessCore.componentType), name, construct, opts);
+    let make = (name, owner, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(CommandTopic$ReventlessCore.componentType), name, (extra, extra$1) => {
+      let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
+      let opts = {
+        parent: opts_parent
+      };
+      let name = ComponentType$ReventlessCore.name(extra$1, CommandTopic$ReventlessCore.componentType);
+      let channel = Channel.make(name, owner, opts);
+      extra.channel = channel;
+      Component$ReventlessCore.setOperations(extra, Pulumi.all([
+        channel.publishJsons,
+        channel.publishJsonsStream,
+        channel.publishJsonsAndWait
+      ]).apply(param => {
+        let Ops = {
+          publishJsons: param[0]
+        };
+        let Operations = CommandTopic_Operations$ReventlessCore.Make(Spec)(Ops);
+        return {
+          publish: Operations.publish,
+          publishJsons: Operations.publishJsons,
+          publishJsonsStream: param[1],
+          publishJsonsAndWait: param[2]
+        };
+      }));
+      let outputs = {
+        resources: channel.resources
+      };
+      return Component$ReventlessCore.setOutputs(extra, outputs);
+    }, opts);
     return {
       Spec: Spec,
       connect: connect,

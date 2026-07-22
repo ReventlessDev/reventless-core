@@ -36,7 +36,10 @@ function Make(Spec) {
         EventLog: SpecificEventLog,
         eventLog: eventLogOps
       });
-      let commandTopic = SpecificCommandTopic.make(name, opts);
+      let commandTopic = SpecificCommandTopic.make(name, {
+        kind: "Aggregate",
+        name: Spec.name
+      }, opts);
       let handler = SpecificCommandTopic.makeHandler(commandTopic, AggregateCallback.handleCommands);
       let eventLog$1 = Component$ReventlessCore.outputs(eventLog);
       let resources = [
@@ -72,7 +75,10 @@ function Make(Spec) {
       let name = ComponentType$ReventlessCore.name(extra$1, Aggregate$ReventlessCore.componentType);
       let memorySize = RuntimeHints$ReventlessInfra.resolveMemory(runtime, 1024);
       let timeout = RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 30);
-      let eventLog = SpecificEventLog.make(name, opts);
+      let eventLog = SpecificEventLog.make(name, {
+        kind: "Aggregate",
+        name: Spec.name
+      }, opts);
       let commandTopic = createCommandTopic(eventLog, name, opts, memorySize, timeout);
       let commandGenerator = createCommandGenerator(commandTopic, api, name, opts, memorySize, timeout);
       Component$ReventlessCore.setOperations(extra, Output$Pulumi.flatMap(commandTopic, commandTopic => Component$ReventlessCore.operations(commandTopic).apply(param => ({

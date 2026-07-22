@@ -47,7 +47,11 @@ module Make = (
     let childName = name->String.replace(".", "")->ComponentType.name(ExtensionPoint.componentType)
 
     module SpecificCommandTopic = CommandTopic_Builder.Make(SpecWithId, CommandTopicChannel)
-    let commandTopic = SpecificCommandTopic.make(~name=childName, ~opts)
+    let commandTopic = SpecificCommandTopic.make(
+      ~name=childName,
+      ~owner={kind: ComponentType.ExtensionPoint, name: Spec.name},
+      ~opts,
+    )
 
     let aggregateNames =
       Mappings.mappings->Array.filterMap((module(Mapping)) =>
@@ -103,7 +107,12 @@ module Make = (
         )
 
         module SpecificEventTopic = EventTopic_Builder.Make(SpecWithId, EventTopicAdapter)
-        let eventTopic = SpecificEventTopic.make(~name=childName, ~storageResources=[], ~opts)
+        let eventTopic = SpecificEventTopic.make(
+          ~name=childName,
+          ~storageResources=[],
+          ~owner={kind: ComponentType.ExtensionPoint, name: Spec.name},
+          ~opts,
+        )
 
         eventTopic
         ->Component.operations

@@ -12,12 +12,13 @@ module Make = (Spec: ReventlessInfra.EventTopic.T, Publisher: EventTopic_Adapter
 
   type component = Component.t<EventTopic.t, EventTopic.outputs, operations>
 
-  let construct = (~storageResources, self, name) => {
+  let construct = (~storageResources, ~owner=?, self, name) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let publisher = Publisher.make(
       ~name=name->ComponentType.name(EventTopic.componentType),
       ~storageResources,
+      ~owner?,
       ~opts,
     )
 
@@ -43,11 +44,11 @@ module Make = (Spec: ReventlessInfra.EventTopic.T, Publisher: EventTopic_Adapter
     self->Component.setOutputs(outputs)
   }
 
-  let make = (~name, ~storageResources, ~opts=?): component =>
+  let make = (~name, ~storageResources, ~owner=?, ~opts=?): component =>
     Component.make(
       ~componentType=EventTopic.componentType->ComponentType.toString,
       ~name,
-      ~construct=construct(~storageResources, ...),
+      ~construct=construct(~storageResources, ~owner?, ...),
       ~opts,
     )
 }

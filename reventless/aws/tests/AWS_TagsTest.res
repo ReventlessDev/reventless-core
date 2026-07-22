@@ -91,6 +91,60 @@ describe("AWS_Tags — role and kind are independent facts", () => {
   })
 })
 
+describe("AWS_Tags — owner overrides the piece adapter's own kind", () => {
+  // The piece adapters pass their OWN ComponentType as ~kind, which names the
+  // piece and so collapses onto ~role. A QueryDb is instantiated by six different
+  // component kinds, so without the owner a reader cannot tell a ReadModel's
+  // table from a StateViewSlice's. See docs/plans/resource-attribution-owner-kind.md.
+  let queryDbTagsFor = (~owner=?) =>
+    AWS_Tags.make(
+      ~name="ProductsQueryDb",
+      ~kind=ReventlessCore.ComponentType.QueryDb,
+      ~role=QueryDb,
+      ~owner?,
+    )->toDict
+
+  testSync("without an owner, kind still names the piece", () => {
+    let tags = queryDbTagsFor()
+    expect(tags->Dict.get("reventless:kind"))->toEqual(Some("QueryDB"))
+    expect(tags->Dict.get("reventless:role"))->toEqual(Some("QueryDb"))
+  })
+
+  testSync("two QueryDb tables under different owners differ in kind", () => {
+    let readModel = queryDbTagsFor(
+      ~owner={kind: ReventlessCore.ComponentType.ReadModel, name: "Products"},
+    )
+    let stateView = queryDbTagsFor(
+      ~owner={kind: ReventlessCore.ComponentType.StateViewSlice, name: "ProductAvailability"},
+    )
+    expect(readModel->Dict.get("reventless:kind"))->toEqual(Some("ReadModel"))
+    expect(stateView->Dict.get("reventless:kind"))->toEqual(Some("StateViewSlice"))
+    // …while both still report the same piece role.
+    expect(readModel->Dict.get("reventless:role"))->toEqual(Some("QueryDb"))
+    expect(stateView->Dict.get("reventless:role"))->toEqual(Some("QueryDb"))
+  })
+
+  testSync("the owner also supplies the component stem, not the resource name", () => {
+    let tags = queryDbTagsFor(
+      ~owner={kind: ReventlessCore.ComponentType.ReadModel, name: "Products"},
+    )
+    expect(tags->Dict.get("Name"))->toEqual(Some("ProductsQueryDb"))
+    expect(tags->Dict.get("reventless:component"))->toEqual(Some("Products"))
+  })
+
+  testSync("an owner does not leak a component onto plugin substrate", () => {
+    let tags =
+      AWS_Tags.make(
+        ~name="OrderingDcbEventLog",
+        ~kind=ReventlessCore.ComponentType.DcbEventLog,
+        ~role=DcbEventLog,
+        ~scope=Plugin,
+        ~owner={kind: ReventlessCore.ComponentType.Aggregate, name: "Order"},
+      )->toDict
+    expect(tags->Dict.get("reventless:component"))->toEqual(Some(""))
+  })
+})
+
 describe("AWS_Tags — scope", () => {
   testSync("component scope names the component, defaulting to the resource name", () => {
     let tags = tagsFor(~name="Products", ~kind=ReventlessCore.ComponentType.ReadModel, ~role=QueryDb)

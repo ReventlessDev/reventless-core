@@ -53,6 +53,7 @@ module type T = {
     ~api: api,
     ~apiRole: role,
     ~ttl: int=?,
+    ~owner: ResourceAttribution.owner=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

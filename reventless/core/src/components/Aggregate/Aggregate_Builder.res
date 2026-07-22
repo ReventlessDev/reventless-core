@@ -79,7 +79,11 @@ module Make = (
           let eventLog = eventLogOps
         },
       )
-      let commandTopic = SpecificCommandTopic.make(~name, ~opts)
+      let commandTopic = SpecificCommandTopic.make(
+        ~name,
+        ~owner={kind: ComponentType.Aggregate, name: Spec.name},
+        ~opts,
+      )
       let handler = SpecificCommandTopic.makeHandler(
         ~commandTopic,
         ~commandsHandler=AggregateCallback.handleCommands,
@@ -148,7 +152,11 @@ module Make = (
     let memorySize = ReventlessInfra.RuntimeHints.resolveMemory(runtime, ~default=1024)
     let timeout = ReventlessInfra.RuntimeHints.resolveTimeout(runtime, ~default=30)
 
-    let eventLog = SpecificEventLog.make(~name, ~opts)
+    let eventLog = SpecificEventLog.make(
+      ~name,
+      ~owner={kind: ComponentType.Aggregate, name: Spec.name},
+      ~opts,
+    )
     let commandTopic = eventLog->createCommandTopic(name, opts, ~memorySize, ~timeout)
     let commandGenerator = commandTopic->createCommandGenerator(~api, name, opts, ~memorySize, ~timeout)
 

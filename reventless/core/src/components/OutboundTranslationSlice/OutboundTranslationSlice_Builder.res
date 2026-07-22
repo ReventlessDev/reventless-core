@@ -72,7 +72,12 @@ module Make = (
       let memorySize = ReventlessInfra.RuntimeHints.resolveMemory(runtime, ~default=1024)
       let timeout = ReventlessInfra.RuntimeHints.resolveTimeout(runtime, ~default=30)
 
-      let queryDb = SpecificQueryDb.make(~api=Api.api(), ~apiRole=Api.apiRole(), ~opts)
+      let queryDb = SpecificQueryDb.make(
+        ~api=Api.api(),
+        ~apiRole=Api.apiRole(),
+        ~owner={kind: ComponentType.OutboundTranslationSlice, name: Spec.name},
+        ~opts,
+      )
 
       let dcbEventTopicOutputs: EventTopic.outputs = (dcbEventLog->Component.outputs).eventTopic
       let allEventTopics = Dict.fromArray([(Spec.name, dcbEventTopicOutputs)])
@@ -87,7 +92,12 @@ module Make = (
         queryDb
         ->Component.operations
         ->Pulumi.Output.apply(queryDbOps => {
-          let ec = SpecificEventCollector.make(~name=Spec.name, ~eventTopics=allEventTopics, ~opts)
+          let ec = SpecificEventCollector.make(
+            ~name=Spec.name,
+            ~eventTopics=allEventTopics,
+            ~owner={kind: ComponentType.OutboundTranslationSlice, name: Spec.name},
+            ~opts,
+          )
 
           let jsonEventsHandler: EventCollector.jsonEventsHandler = stream =>
             stream

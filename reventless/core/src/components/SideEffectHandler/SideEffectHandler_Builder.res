@@ -27,7 +27,12 @@ module Make = (
       ->Belt.Set.String.fromArray
 
     let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)
-    let eventCollector = SpecificEventCollector.make(~name, ~eventTopics, ~opts)
+    let eventCollector = SpecificEventCollector.make(
+      ~name,
+      ~eventTopics,
+      ~owner={kind: ComponentType.SideEffectHandler, name},
+      ~opts,
+    )
 
     module Callback = SideEffectHandler_Callback.Make({
       let sideEffects = sideEffects

@@ -10,15 +10,15 @@ import * as EventLog_Operations$ReventlessCore from "./EventLog_Operations.res.m
 
 function Make(Spec) {
   return Storage => (EventTopicPublisher => {
-    let construct = (self, name) => {
-      let opts_parent = Component$ReventlessCore.toPulumiResource(self);
+    let make = (name, owner, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(EventLog$ReventlessCore.componentType), name, (extra, extra$1) => {
+      let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
       };
-      let storage = Storage.make(ComponentType$ReventlessCore.name(name, EventLog$ReventlessCore.componentType), undefined, opts);
+      let storage = Storage.make(ComponentType$ReventlessCore.name(extra$1, EventLog$ReventlessCore.componentType), owner, opts);
       let SpecificEventTopic = EventTopic_Builder$ReventlessCore.Make(Spec)(EventTopicPublisher);
-      let eventTopic = SpecificEventTopic.make(name, storage.resources, Util_Pulumi$ReventlessCore.ComponentResourceOptions.ofCustomResourceOptions(opts));
-      Component$ReventlessCore.setOperations(self, Pulumi.all([
+      let eventTopic = SpecificEventTopic.make(extra$1, storage.resources, owner, Util_Pulumi$ReventlessCore.ComponentResourceOptions.ofCustomResourceOptions(opts));
+      Component$ReventlessCore.setOperations(extra, Pulumi.all([
         storage.operations,
         Component$ReventlessCore.operations(eventTopic)
       ]).apply(param => {
@@ -43,9 +43,8 @@ function Make(Spec) {
         resources: outputs_resources,
         eventTopic: outputs_eventTopic
       };
-      return Component$ReventlessCore.setOutputs(self, outputs);
-    };
-    let make = (name, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(EventLog$ReventlessCore.componentType), name, construct, opts);
+      return Component$ReventlessCore.setOutputs(extra, outputs);
+    }, opts);
     return {
       Spec: Spec,
       make: make

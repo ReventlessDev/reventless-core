@@ -7,7 +7,7 @@ import * as ResourceAttribution$ReventlessCore from "@reventlessdev/reventless-c
 
 function tagsFor(name, kind, role, scopeOpt, component, plugin, platform) {
   let scope = scopeOpt !== undefined ? scopeOpt : "Component";
-  return AWS_Tags$ReventlessAws.make(name, kind, role, scope, component, plugin, platform);
+  return AWS_Tags$ReventlessAws.make(name, kind, role, scope, component, undefined, plugin, platform);
 }
 
 globalThis.describe("AWS_Tags — key set", () => {
@@ -50,6 +50,44 @@ globalThis.describe("AWS_Tags — role and kind are independent facts", () => {
     globalThis.expect(aggregate["reventless:kind"]).toEqual("Aggregate");
     globalThis.expect(projection["reventless:kind"]).toEqual("StateViewSlice");
     globalThis.expect(Primitive_object.equal(aggregate["reventless:kind"], "CommandTopic")).toBe(false);
+  });
+});
+
+globalThis.describe("AWS_Tags — owner overrides the piece adapter's own kind", () => {
+  let queryDbTagsFor = owner => AWS_Tags$ReventlessAws.make("ProductsQueryDb", "QueryDb", "QueryDb", undefined, undefined, owner, undefined, undefined);
+  globalThis.test("without an owner, kind still names the piece", () => {
+    let tags = queryDbTagsFor(undefined);
+    globalThis.expect(tags["reventless:kind"]).toEqual("QueryDB");
+    globalThis.expect(tags["reventless:role"]).toEqual("QueryDb");
+  });
+  globalThis.test("two QueryDb tables under different owners differ in kind", () => {
+    let readModel = queryDbTagsFor({
+      kind: "ReadModel",
+      name: "Products"
+    });
+    let stateView = queryDbTagsFor({
+      kind: "StateViewSlice",
+      name: "ProductAvailability"
+    });
+    globalThis.expect(readModel["reventless:kind"]).toEqual("ReadModel");
+    globalThis.expect(stateView["reventless:kind"]).toEqual("StateViewSlice");
+    globalThis.expect(readModel["reventless:role"]).toEqual("QueryDb");
+    globalThis.expect(stateView["reventless:role"]).toEqual("QueryDb");
+  });
+  globalThis.test("the owner also supplies the component stem, not the resource name", () => {
+    let tags = queryDbTagsFor({
+      kind: "ReadModel",
+      name: "Products"
+    });
+    globalThis.expect(tags["Name"]).toEqual("ProductsQueryDb");
+    globalThis.expect(tags["reventless:component"]).toEqual("Products");
+  });
+  globalThis.test("an owner does not leak a component onto plugin substrate", () => {
+    let tags = AWS_Tags$ReventlessAws.make("OrderingDcbEventLog", "DcbEventLog", "DcbEventLog", "Plugin", undefined, {
+      kind: "Aggregate",
+      name: "Order"
+    }, undefined, undefined);
+    globalThis.expect(tags["reventless:component"]).toEqual("");
   });
 });
 

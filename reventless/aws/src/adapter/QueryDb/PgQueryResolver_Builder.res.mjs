@@ -102,7 +102,7 @@ function provision(api, selection, opts) {
       }])),
     role: runtime.parts.lambdaRole.id
   }));
-  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", QueryDb$ReventlessCore.componentType, "Identity", undefined, name, undefined, undefined), customOpts);
+  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", QueryDb$ReventlessCore.componentType, "Identity", undefined, name, undefined, undefined, undefined), customOpts);
   let lambdaArn = Output$Pulumi.flatMap(runtime.parts.lambda, l => l.arn);
   Pulumi.all([
     lambdaArn,

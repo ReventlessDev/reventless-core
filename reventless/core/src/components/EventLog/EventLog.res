@@ -54,5 +54,9 @@ module type T = {
   }
   type component = component<operations>
 
-  let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
+  let make: (
+    ~name: string,
+    ~owner: ResourceAttribution.owner=?,
+    ~opts: Pulumi.ComponentResource.options=?,
+  ) => component
 }

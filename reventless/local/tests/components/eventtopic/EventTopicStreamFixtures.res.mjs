@@ -50,7 +50,7 @@ let StreamEvtTopicMaker = EventTopic_Builder$ReventlessCore.Make({
   eventSchema: eventSchema
 })(LocalEventTopicPublisher$ReventlessLocal.Make(StreamEvtBus));
 
-let evtTopic = StreamEvtTopicMaker.make("StreamEvtTopic", [], undefined);
+let evtTopic = StreamEvtTopicMaker.make("StreamEvtTopic", [], undefined, undefined);
 
 export {
   ItemStreamSpec,

@@ -70,11 +70,11 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Channel: CommandTopic_Adapt
     ->Stream.runCollect
     ->Effect.map(Array.flat)
 
-  let construct = (self, name) => {
+  let construct = (~owner=?, self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let name = name->ComponentType.name(CommandTopic.componentType)
 
-    let channel = Channel.make(~name, ~opts)
+    let channel = Channel.make(~name, ~owner?, ~opts)
     self->CommandTopic_Adapter.setChannel(channel)
 
     self->Component.setOperations(
@@ -136,11 +136,11 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Channel: CommandTopic_Adapt
     channel.handleChannelEvent(filteringHandler)
   }
 
-  let make = (~name, ~opts=?): component =>
+  let make = (~name, ~owner=?, ~opts=?): component =>
     Component.make(
       ~componentType=CommandTopic.componentType->ComponentType.toString,
       ~name,
-      ~construct,
+      ~construct=construct(~owner?, ...),
       ~opts,
     )
 }

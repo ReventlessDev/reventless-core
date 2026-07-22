@@ -56,7 +56,10 @@ function Make(RuntimeEnvironment) {
         };
         let memorySize = RuntimeHints$ReventlessInfra.resolveMemory(runtime, 1024);
         let timeout = RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 30);
-        let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, opts);
+        let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, {
+          kind: "AutomationSlice",
+          name: Spec.name
+        }, opts);
         sourceNames.forEach(sourceName => {
           if (sourceName in allEventTopics) {
             return;
@@ -72,7 +75,10 @@ function Make(RuntimeEnvironment) {
         ]).apply(param => {
           let publishJsonsFn = param[1];
           let queryDbOps = param[0];
-          let ec = SpecificEventCollector.make(Spec.name, eventTopics, opts);
+          let ec = SpecificEventCollector.make(Spec.name, eventTopics, {
+            kind: "AutomationSlice",
+            name: Spec.name
+          }, opts);
           let jsonEventsHandler = stream => Effect.flatMap(Stream.runCollect(stream), jsons => Effect.promise(async () => {
             Callback.phase1(jsons, context);
             await syncToQueryDb(queryDbOps);

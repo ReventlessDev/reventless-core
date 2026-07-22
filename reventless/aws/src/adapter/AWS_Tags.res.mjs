@@ -5,7 +5,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as ResourceAttribution$ReventlessCore from "@reventlessdev/reventless-core/src/ResourceAttribution.res.mjs";
 
-function makeDict(name, kind, role, scopeOpt, component, plugin, platform) {
+function makeDict(name, kind, role, scopeOpt, component, owner, plugin, platform) {
   let scope = scopeOpt !== undefined ? scopeOpt : "Component";
   let ambient = ResourceAttribution$ReventlessCore.current.contents;
   let projectName = Pulumi.getProject();
@@ -24,10 +24,11 @@ function makeDict(name, kind, role, scopeOpt, component, plugin, platform) {
   if (exit === 1) {
     plugin$1 = plugin !== undefined ? plugin : Stdlib_Option.getOr(ambient.plugin, "");
   }
+  let kind$1 = owner !== undefined ? owner.kind : kind;
   let component$1;
   switch (scope) {
     case "Component" :
-      component$1 = Stdlib_Option.getOr(component, name);
+      component$1 = owner !== undefined ? owner.name : Stdlib_Option.getOr(component, name);
       break;
     case "Plugin" :
     case "Platform" :
@@ -53,7 +54,7 @@ function makeDict(name, kind, role, scopeOpt, component, plugin, platform) {
     ],
     [
       "reventless:kind",
-      ComponentType$ReventlessCore.toString(kind)
+      ComponentType$ReventlessCore.toString(kind$1)
     ],
     [
       "reventless:role",
@@ -70,9 +71,9 @@ function makeDict(name, kind, role, scopeOpt, component, plugin, platform) {
   ]);
 }
 
-function make(name, kind, role, scopeOpt, component, plugin, platform) {
+function make(name, kind, role, scopeOpt, component, owner, plugin, platform) {
   let scope = scopeOpt !== undefined ? scopeOpt : "Component";
-  return makeDict(name, kind, role, scope, component, plugin, platform);
+  return makeDict(name, kind, role, scope, component, owner, plugin, platform);
 }
 
 let Attribution;

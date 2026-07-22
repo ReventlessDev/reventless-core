@@ -59,7 +59,7 @@ let StreamCmdTopicMaker = CommandTopic_Builder$ReventlessCore.Make({
   make: $$let.make
 });
 
-let cmdTopic = StreamCmdTopicMaker.make("StreamCmdTopic", undefined);
+let cmdTopic = StreamCmdTopicMaker.make("StreamCmdTopic", undefined, undefined);
 
 let captured = {
   contents: []

@@ -9,9 +9,9 @@ import * as QueryDbStorage_DynamoDb_Runtime$ReventlessAws from "./QueryDbStorage
 
 let streamRegistry = new Set();
 
-function make(name, indexes, subIdField, ttl, api, apiRole, param, opts) {
+function make(name, indexes, subIdField, ttl, api, apiRole, owner, opts) {
   streamRegistry.add(name);
-  let tags = AWS_Tags$ReventlessAws.make(name, QueryDb$ReventlessCore.componentType, "QueryDb", undefined, undefined, undefined, undefined);
+  let tags = AWS_Tags$ReventlessAws.make(name, QueryDb$ReventlessCore.componentType, "QueryDb", undefined, undefined, owner, undefined, undefined);
   let table = Util_DynamoDbStream$ReventlessAws.makeTable(QueryDbStorage_DynamoDb$ReventlessAws.attributes(subIdField, indexes), QueryDbStorage_DynamoDb$ReventlessAws.globalSecondaryIndexes(indexes), ttl, subIdField, "NEW_AND_OLD_IMAGES", tags, opts, name);
   return {
     resources: [

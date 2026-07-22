@@ -61,7 +61,10 @@ function Make(RuntimeEnvironment) {
         };
         let memorySize = RuntimeHints$ReventlessInfra.resolveMemory(runtime, 1024);
         let timeout = RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 30);
-        let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, opts);
+        let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, {
+          kind: "StateViewSlice",
+          name: Spec.name
+        }, opts);
         let dcbEventTopicOutputs = Component$ReventlessCore.outputs(dcbEventLog).eventTopic;
         let allEventTopics = Object.fromEntries([[
             Spec.name,
@@ -69,7 +72,10 @@ function Make(RuntimeEnvironment) {
           ]]);
         let eventCollector = Component$ReventlessCore.operations(queryDb).apply(queryDbOps => {
           let projectionOps = toProjectionOps(queryDbOps);
-          let ec = SpecificEventCollector.make(Spec.name, allEventTopics, opts);
+          let ec = SpecificEventCollector.make(Spec.name, allEventTopics, {
+            kind: "StateViewSlice",
+            name: Spec.name
+          }, opts);
           let comp = `StateViewSlice(` + Spec.name + `)`;
           let jsonEventsHandler = stream => Effect.flatMap(Stream.runCollect(stream), events => {
             let total = events.length.toString();

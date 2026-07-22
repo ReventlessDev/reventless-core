@@ -145,7 +145,7 @@ async function buildFixture(name) {
     connectionSpec: true
   };
   Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name] = rowStateSchemaWithAnnotations;
-  let queryDb = Maker.make(undefined, undefined, undefined, undefined);
+  let queryDb = Maker.make(undefined, undefined, undefined, undefined, undefined);
   let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(queryDb));
   Resolvers.make(name, undefined, undefined, Pulumi.output(""), [], undefined, [], [], "AllowAuthenticated", {});
   let r = DomainGraphQL_Server$ReventlessLocal.getQueryResolver(listFieldName);

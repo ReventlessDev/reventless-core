@@ -23,7 +23,7 @@ function makeAddRemoveUserToGroupPolicy(name, userPoolArn, opts) {
         ],
         Resource: userPoolArn
       }])),
-    tags: AWS_Tags$ReventlessAws.make(name + "AddRemoveUserToGroup", "Core", "Identity", "Platform", undefined, undefined, undefined)
+    tags: AWS_Tags$ReventlessAws.make(name + "AddRemoveUserToGroup", "Core", "Identity", "Platform", undefined, undefined, undefined, undefined)
   }, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined));
 }
 

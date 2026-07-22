@@ -29,6 +29,7 @@ module type T = {
   let make: (
     ~name: string,
     ~eventTopics: EventTopic.allOutputs,
+    ~owner: ResourceAttribution.owner=?,
     ~opts: Pulumi.ComponentResource.options,
   ) => component
 }

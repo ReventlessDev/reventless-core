@@ -89,7 +89,12 @@ module Make = (
       let memorySize = ReventlessInfra.RuntimeHints.resolveMemory(runtime, ~default=1024)
       let timeout = ReventlessInfra.RuntimeHints.resolveTimeout(runtime, ~default=30)
 
-      let queryDb = SpecificQueryDb.make(~api=Api.api(), ~apiRole=Api.apiRole(), ~opts)
+      let queryDb = SpecificQueryDb.make(
+        ~api=Api.api(),
+        ~apiRole=Api.apiRole(),
+        ~owner={kind: ComponentType.AutomationSlice, name: Spec.name},
+        ~opts,
+      )
 
       // Fail-fast: every Mapping.sourceName must resolve to a topic in
       // `allEventTopics`. Catches Aggregate-name typos and DCB-source-name
@@ -125,7 +130,12 @@ module Make = (
         (queryDb->Component.operations, publishJsons)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((queryDbOps, publishJsonsFn)) => {
-          let ec = SpecificEventCollector.make(~name=Spec.name, ~eventTopics, ~opts)
+          let ec = SpecificEventCollector.make(
+            ~name=Spec.name,
+            ~eventTopics,
+            ~owner={kind: ComponentType.AutomationSlice, name: Spec.name},
+            ~opts,
+          )
 
           let jsonEventsHandler: EventCollector.jsonEventsHandler = stream =>
             stream

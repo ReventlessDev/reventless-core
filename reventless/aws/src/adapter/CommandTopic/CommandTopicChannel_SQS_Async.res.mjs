@@ -17,9 +17,9 @@ import * as Util_DeadLetterQueue$ReventlessAws from "../../util/Util_DeadLetterQ
 import * as CommandTopicChannel_SQS$ReventlessAws from "./CommandTopicChannel_SQS.res.mjs";
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "./CommandTopicChannel_SQS_Runtime.res.mjs";
 
-function make(name, param, opts) {
+function make(name, owner, opts) {
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
-  let tags = AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType, "CommandTopic", undefined, undefined, undefined, undefined);
+  let tags = AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType, "CommandTopic", undefined, undefined, owner, undefined, undefined);
   let queue = new (Aws.sqs.Queue)(name, {
     contentBasedDeduplication: true,
     fifoQueue: true,

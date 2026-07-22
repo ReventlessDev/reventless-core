@@ -60,7 +60,7 @@ let QueryDbMaker = QueryDb_Builder$ReventlessCore.Make({
   make: QDbStorage.make
 })(QDbResolvers);
 
-let queryDb = QueryDbMaker.make(undefined, undefined, undefined, undefined);
+let queryDb = QueryDbMaker.make(undefined, undefined, undefined, undefined, undefined);
 
 export {
   ItemQueryDbSpec,

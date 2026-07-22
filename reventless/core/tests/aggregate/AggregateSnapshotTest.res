@@ -188,7 +188,7 @@ module MakeOps = (B: {let name: string}) => {
       writeSnapshot: (string, EventLog.snapshot) => promise<result<unit, string>>,
     }
     type component = Component.t<OuterEventLog.t, OuterEventLog.outputs, operations>
-    let make = (~name as _: string, ~opts as _=?): component => Obj.magic(0)
+    let make = (~name as _: string, ~owner as _=?, ~opts as _=?): component => Obj.magic(0)
   }
   let eventLog: EventLog.operations = {
     append: mock.appendFn,

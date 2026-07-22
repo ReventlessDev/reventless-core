@@ -30,11 +30,11 @@ module Make = (
   type callbackEvent = Channel.callbackEvent
   type runtimeParts = RuntimeEnvironment.parts
 
-  let construct = (~eventTopics, self, name) => {
+  let construct = (~eventTopics, ~owner=?, self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let name = name->ComponentType.name(EventCollector.componentType)
 
-    let channel = Channel.make(~name, ~eventTopics, ~opts)
+    let channel = Channel.make(~name, ~eventTopics, ~owner?, ~opts)
     self->EventCollector_Adapter.setChannel(channel)
 
     self->Component.setOperations(
@@ -81,11 +81,11 @@ module Make = (
     channel.handleChannelEvent(jsonEventsHandler)
   }
 
-  let make = (~name, ~eventTopics, ~opts): EventCollector.component =>
+  let make = (~name, ~eventTopics, ~owner=?, ~opts): EventCollector.component =>
     Component.make(
       ~componentType=EventCollector.componentType->ComponentType.toString,
       ~name,
-      ~construct=construct(~eventTopics, ...),
+      ~construct=construct(~eventTopics, ~owner?, ...),
       ~opts=Some(opts),
     )
 }

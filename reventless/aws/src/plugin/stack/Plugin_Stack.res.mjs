@@ -75,7 +75,7 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
   let excludeFiles = excludeFilesOpt !== undefined ? excludeFilesOpt : [];
   let name = stableName ? pluginId : pluginId + "-" + bundleVersion;
   let bucket = new (Aws.s3.Bucket)(name + "-bundle", {
-    tags: AWS_Tags$ReventlessAws.make(name + "-bundle", "Plugin", "Hosting", "Plugin", undefined, pluginId, undefined)
+    tags: AWS_Tags$ReventlessAws.make(name + "-bundle", "Plugin", "Hosting", "Plugin", undefined, undefined, pluginId, undefined)
   });
   new (Aws.s3.BucketPublicAccessBlock)(name + "-bundle-pab", {
     bucket: bucket.id,
@@ -128,7 +128,7 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
     let cert = new (Aws.acm.Certificate)(pluginId + "-domain-cert", {
       domainName: customDomain.fqdn,
       validationMethod: "DNS",
-      tags: AWS_Tags$ReventlessAws.make(pluginId + "-domain-cert", "Plugin", "Hosting", "Plugin", undefined, pluginId, undefined)
+      tags: AWS_Tags$ReventlessAws.make(pluginId + "-domain-cert", "Plugin", "Hosting", "Plugin", undefined, undefined, pluginId, undefined)
     }, {
       provider: Primitive_option.some(usEast1)
     });
@@ -191,7 +191,7 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
     comment: pluginId + " UI bundle CDN",
     customErrorResponses: customErrorResponses,
     defaultRootObject: indexDocument,
-    tags: AWS_Tags$ReventlessAws.make(name + "-cdn", "Plugin", "Hosting", "Plugin", undefined, pluginId, undefined)
+    tags: AWS_Tags$ReventlessAws.make(name + "-cdn", "Plugin", "Hosting", "Plugin", undefined, undefined, pluginId, undefined)
   });
   if (customDomain !== undefined) {
     new (Aws.route53.Record)(pluginId + "-domain-alias", {

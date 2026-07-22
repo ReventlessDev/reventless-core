@@ -69,7 +69,12 @@ module Make = (
     let eventCollector = counterOperations->Pulumi.Output.apply(({count, addToCounterTarget}) =>
       {
         let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)
-        let eventCollector = SpecificEventCollector.make(~name, ~eventTopics, ~opts)
+        let eventCollector = SpecificEventCollector.make(
+          ~name,
+          ~eventTopics,
+          ~owner={kind: ComponentType.EventMapper, name},
+          ~opts,
+        )
 
         module EventCollectorHandler = EventMapper_Callback.MakeEventCollectorHandler({
           let publishJsons = publishJsons

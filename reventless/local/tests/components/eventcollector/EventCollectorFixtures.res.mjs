@@ -38,7 +38,7 @@ let EventCollectorMaker = EventCollector_Builder$ReventlessCore.Make({
   asEffectHandler: prim => prim
 })(LocalEventCollectorChannel$ReventlessLocal.Make(Bus));
 
-let eventCollector = EventCollectorMaker.make("TestEC", allEventTopics, {});
+let eventCollector = EventCollectorMaker.make("TestEC", allEventTopics, undefined, {});
 
 export {
   Bus,

@@ -29,7 +29,7 @@ function make(name, api, fields, param, runtime, resources, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let lambda = runtime.parts.lambda;
   let lambdaRole = runtime.parts.lambdaRole;
-  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", CommandGenerator$ReventlessCore.componentType, "Identity", undefined, name, undefined, undefined), opts$1);
+  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", CommandGenerator$ReventlessCore.componentType, "Identity", undefined, name, undefined, undefined, undefined), opts$1);
   Pulumi.all([
     Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
     Output$Pulumi.flatMap(lambda, lambda => lambda.name),
@@ -93,7 +93,7 @@ function makeDcb(api, runtime, fieldNames, tags, onAdminApiOpt, opts) {
   let onAdminApi = onAdminApiOpt !== undefined ? onAdminApiOpt : false;
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let lambda = runtime.parts.lambda;
-  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy("DcbMutationDS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make("DcbMutationDS", CommandGenerator$ReventlessCore.componentType, "Identity", "Plugin", undefined, undefined, undefined), opts$1);
+  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy("DcbMutationDS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make("DcbMutationDS", CommandGenerator$ReventlessCore.componentType, "Identity", "Plugin", undefined, undefined, undefined, undefined), opts$1);
   Pulumi.all([
     Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
     dataSourceRole.id

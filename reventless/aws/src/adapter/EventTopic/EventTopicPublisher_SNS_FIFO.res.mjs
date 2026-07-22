@@ -10,8 +10,8 @@ import * as EventTopic$ReventlessCore from "@reventlessdev/reventless-core/src/c
 import * as Util_SNS_FIFO$ReventlessAws from "../../util/Util_SNS_FIFO.res.mjs";
 import * as EventTopicPublisher_SNS_Runtime$ReventlessAws from "./EventTopicPublisher_SNS_Runtime.res.mjs";
 
-function make(name, param, param$1, opts) {
-  let tags = AWS_Tags$ReventlessAws.make(name, EventTopic$ReventlessCore.componentType, "EventTopic", undefined, undefined, undefined, undefined);
+function make(name, param, owner, opts) {
+  let tags = AWS_Tags$ReventlessAws.make(name, EventTopic$ReventlessCore.componentType, "EventTopic", undefined, undefined, owner, undefined, undefined);
   let topic = new (Aws.sns.Topic)(name, {
     contentBasedDeduplication: true,
     fifoTopic: true,

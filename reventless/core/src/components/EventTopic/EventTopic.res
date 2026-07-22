@@ -27,6 +27,7 @@ module type T = {
   let make: (
     ~name: string,
     ~storageResources: array<ReventlessInfra.Adapter.resource>,
+    ~owner: ResourceAttribution.owner=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

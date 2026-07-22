@@ -84,7 +84,7 @@ module MockEventTopic: EventTopic.T
     publishJsonStream: ReventlessInfra.EventTopic.publishJsonStream,
   }
   type component = Component.t<EventTopic.t, EventTopic.outputs, operations>
-  let make = (~name as _, ~storageResources as _, ~opts as _=?): component => Obj.magic(0)
+  let make = (~name as _, ~storageResources as _, ~owner as _=?, ~opts as _=?): component => Obj.magic(0)
 }
 
 let mockEventTopicOps: MockEventTopic.operations = {

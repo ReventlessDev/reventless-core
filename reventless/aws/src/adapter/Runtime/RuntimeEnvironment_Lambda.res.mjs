@@ -30,7 +30,7 @@ function make(name, handler, memorySizeOpt, timeoutOpt, opts) {
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), undefined, opts$1);
-  let tags = AWS_Tags$ReventlessAws.make(name, "Core", "Runtime", "Platform", undefined, undefined, undefined);
+  let tags = AWS_Tags$ReventlessAws.make(name, "Core", "Runtime", "Platform", undefined, undefined, undefined, undefined);
   let lambda = handler.apply(handler => new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(handler, lambdaRole, undefined, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, tags, undefined), opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined));
   return {
     parts: {
@@ -50,7 +50,7 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
   let timeout = timeoutOpt !== undefined ? timeoutOpt : Runtime$ReventlessCore.CommandHandlerDefaults.timeout;
   let dcbMetrics = dcbMetricsOpt !== undefined ? dcbMetricsOpt : false;
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
-  let tagsFor = (resourceName, role) => AWS_Tags$ReventlessAws.make(resourceName, componentKind, role, undefined, name, undefined, undefined);
+  let tagsFor = (resourceName, role) => AWS_Tags$ReventlessAws.make(resourceName, componentKind, role, undefined, name, undefined, undefined, undefined);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), tagsFor(name, "Identity"), opts$1);
   Stdlib_Option.forEach(vpcConfig, param => {
     new (Aws.iam.RolePolicy)(name + `VpcAccess`, {

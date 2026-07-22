@@ -57,7 +57,7 @@ let CommandTopicMaker = CommandTopic_Builder$ReventlessCore.Make({
   make: $$let.make
 });
 
-let cmdTopic = CommandTopicMaker.make("TestCommandTopic", undefined);
+let cmdTopic = CommandTopicMaker.make("TestCommandTopic", undefined, undefined);
 
 export {
   ItemSpec,

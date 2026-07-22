@@ -104,7 +104,7 @@ function make(name, logs, securityGroupId, subnetIds, intervalMinutesOpt, opts) 
       TAG: "Minutes",
       _0: intervalMinutes
     })),
-    tags: AWS_Tags$ReventlessAws.make(Pulumi.getStack() + `-` + name, "Core", "Scheduler", undefined, name, undefined, undefined)
+    tags: AWS_Tags$ReventlessAws.make(Pulumi.getStack() + `-` + name, "Core", "Scheduler", undefined, name, undefined, undefined, undefined)
   }, customOpts !== undefined ? Primitive_option.valFromOption(customOpts) : undefined);
   let lambda = runtime.parts.lambda;
   Pulumi.all([

@@ -8,13 +8,13 @@ import * as QueryDb_Operations$ReventlessCore from "./QueryDb_Operations.res.mjs
 
 function Make(Spec) {
   return Storage => (Resolvers => {
-    let make = (api, apiRole, ttl, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(QueryDb$ReventlessCore.componentType), Spec.name, (none, none$1) => {
+    let make = (api, apiRole, ttl, owner, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(QueryDb$ReventlessCore.componentType), Spec.name, (none, none$1) => {
       let opts_parent = Component$ReventlessCore.toPulumiResource(none);
       let opts = {
         parent: opts_parent
       };
       let subIdField = Stdlib_Option.map(Spec.subIdConfig, config => config.subIdField);
-      let storage = Storage.make(none$1, Spec.config.indexes, subIdField, ttl, api, apiRole, undefined, opts);
+      let storage = Storage.make(none$1, Spec.config.indexes, subIdField, ttl, api, apiRole, owner, opts);
       Component$ReventlessCore.setOperations(none, storage.operations.apply(jsonOps => {
         let Operations = QueryDb_Operations$ReventlessCore.Make(Spec)({
           jsonOps: jsonOps

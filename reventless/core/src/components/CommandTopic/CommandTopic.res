@@ -56,7 +56,11 @@ module type T = {
     Runtime.effectHandler<callbackEvent, 'context, unit, string>,
   >
 
-  let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
+  let make: (
+    ~name: string,
+    ~owner: ResourceAttribution.owner=?,
+    ~opts: Pulumi.ComponentResource.options=?,
+  ) => component
 }
 
 let toResolvedOutputs = (

@@ -1,5 +1,5 @@
-let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~owner as _=?, ~opts) => {
-  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.EventLog.componentType, ~role=EventLog)
+let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~owner=?, ~opts) => {
+  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.EventLog.componentType, ~role=EventLog, ~owner?)
   let table = Util.DynamoDb.makeTable(
     name,
     ~attributes=[{name: "id", type_: "S"}, {name: "position", type_: "S"}],

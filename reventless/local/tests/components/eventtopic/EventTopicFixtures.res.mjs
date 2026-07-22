@@ -51,7 +51,7 @@ let EventTopicMaker = EventTopic_Builder$ReventlessCore.Make({
   eventSchema: eventSchema
 })(LocalEventTopicPublisher$ReventlessLocal.Make(Bus));
 
-let eventTopic = EventTopicMaker.make("TestItemEventTopic", [], undefined);
+let eventTopic = EventTopicMaker.make("TestItemEventTopic", [], undefined, undefined);
 
 function makeEvent$p(id, event) {
   return {

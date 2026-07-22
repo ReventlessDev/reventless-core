@@ -59,7 +59,10 @@ function Make(RuntimeEnvironment) {
         };
         let memorySize = RuntimeHints$ReventlessInfra.resolveMemory(runtime, 1024);
         let timeout = RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 30);
-        let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, opts);
+        let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, {
+          kind: "OutboundTranslationSlice",
+          name: Spec.name
+        }, opts);
         let dcbEventTopicOutputs = Component$ReventlessCore.outputs(dcbEventLog).eventTopic;
         let allEventTopics = Object.fromEntries([[
             Spec.name,
@@ -72,7 +75,10 @@ function Make(RuntimeEnvironment) {
           publishJsonsRef.contents = pj;
         });
         let eventCollector = Component$ReventlessCore.operations(queryDb).apply(queryDbOps => {
-          let ec = SpecificEventCollector.make(Spec.name, allEventTopics, opts);
+          let ec = SpecificEventCollector.make(Spec.name, allEventTopics, {
+            kind: "OutboundTranslationSlice",
+            name: Spec.name
+          }, opts);
           let jsonEventsHandler = stream => Effect.flatMap(Stream.runCollect(Stream$1.flatMap(Stream$1.mapEffect(stream, json => Effect.sync(() => {
             let match = Message$ReventlessCore.splitMessage(json);
             let event = decoder.decode(match[0], match[1]);

@@ -27,7 +27,10 @@ function Make(Spec) {
       let memorySize = RuntimeHints$ReventlessInfra.resolveMemory(runtime, 1024);
       let timeout = RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 30);
       let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make(Spec)(QueryDbStorage)(QueryDbResolvers);
-      let queryDb = SpecificQueryDb.make(api, apiRole, undefined, opts);
+      let queryDb = SpecificQueryDb.make(api, apiRole, undefined, {
+        kind: "ReadModel",
+        name: Spec.name
+      }, opts);
       let toProjectionOperations = param => {
         let deleteBatch = param.deleteBatch;
         let $$delete = param.delete;
@@ -64,7 +67,10 @@ function Make(Spec) {
       let SpecificEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
       let eventCollector = Component$ReventlessCore.operations(queryDb).apply(operations => {
         let eventTopics = EventTopic$ReventlessCore.filter(allEventTopics, sourceNames);
-        let eventCollector = SpecificEventCollector.make(name, eventTopics, opts);
+        let eventCollector = SpecificEventCollector.make(name, eventTopics, {
+          kind: "ReadModel",
+          name: Spec.name
+        }, opts);
         let operations$1 = toProjectionOperations(operations);
         let Callback = ReadModel_Callback$ReventlessCore.Make(Spec)(Mappings)({
           ReadModelSpec: Spec,

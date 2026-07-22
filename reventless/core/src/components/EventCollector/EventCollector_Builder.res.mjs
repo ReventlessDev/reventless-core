@@ -31,13 +31,13 @@ function Make(RuntimeEnvironment) {
       let channel = eventCollector.channel;
       return channel.handleChannelEvent(jsonEventsHandler);
     };
-    let make = (name, eventTopics, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(EventCollector$ReventlessCore.componentType), name, (extra, extra$1) => {
+    let make = (name, eventTopics, owner, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(EventCollector$ReventlessCore.componentType), name, (extra, extra$1) => {
       let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
       };
       let name = ComponentType$ReventlessCore.name(extra$1, EventCollector$ReventlessCore.componentType);
-      let channel = Channel.make(name, eventTopics, undefined, opts);
+      let channel = Channel.make(name, eventTopics, owner, opts);
       extra.channel = channel;
       Component$ReventlessCore.setOperations(extra, channel.enqueueEvent.apply(enqueueEvent => ({
         enqueueEvent: enqueueEvent

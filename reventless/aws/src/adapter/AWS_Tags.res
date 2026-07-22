@@ -36,6 +36,12 @@ let makeDict = (
   // The model component stem, when it differs from the resource name
   // ("Products" for a resource named "ProductsQueryDb"). Defaults to `~name`.
   ~component: option<string>=?,
+  // The component that owns this resource, where the caller knows it. Overrides
+  // `~kind` and `~component`: the piece adapters pass their own ComponentType as
+  // `~kind`, which names the PIECE, so it collapses onto `~role` whenever the
+  // owner is unknown. Supplied by the owning builder via
+  // `ResourceAttribution.owner` — see docs/plans/resource-attribution-owner-kind.md.
+  ~owner: option<Attribution.owner>=?,
   ~plugin: option<string>=?,
   ~platform: option<string>=?,
 ) => {
@@ -56,8 +62,17 @@ let makeDict = (
     }
   }
 
+  let kind = switch owner {
+  | Some({kind}) => kind
+  | None => kind
+  }
+
   let component = switch scope {
-  | Component => component->Option.getOr(name)
+  | Component =>
+    switch owner {
+    | Some({name}) => name
+    | None => component->Option.getOr(name)
+    }
   | Plugin | Platform => ""
   }
 
@@ -79,5 +94,23 @@ resource's `tags` field expects. Use `makeDict` only for the bindings that take
 raw tags because they post-process them (e.g. `EC2.Vpc`, which supplements a
 `Name` of its own).
 */
-let make = (~name, ~kind, ~role, ~scope=Attribution.Scope.Component, ~component=?, ~plugin=?, ~platform=?) =>
-  makeDict(~name, ~kind, ~role, ~scope, ~component?, ~plugin?, ~platform?)->Pulumi.Input.make
+let make = (
+  ~name,
+  ~kind,
+  ~role,
+  ~scope=Attribution.Scope.Component,
+  ~component=?,
+  ~owner=?,
+  ~plugin=?,
+  ~platform=?,
+) =>
+  makeDict(
+    ~name,
+    ~kind,
+    ~role,
+    ~scope,
+    ~component?,
+    ~owner?,
+    ~plugin?,
+    ~platform?,
+  )->Pulumi.Input.make

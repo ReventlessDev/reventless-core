@@ -63,7 +63,13 @@ module Make = (
       ~ttl?,
       ~opts,
     )
-    let countsDb = CountsDb.make(~api=Api.api(), ~apiRole=Api.apiRole(), ~ttl?, ~opts)
+    let countsDb = CountsDb.make(
+      ~api=Api.api(),
+      ~apiRole=Api.apiRole(),
+      ~ttl?,
+      ~owner={kind: ComponentType.Counter, name},
+      ~opts,
+    )
 
     let handler =
       countsDb

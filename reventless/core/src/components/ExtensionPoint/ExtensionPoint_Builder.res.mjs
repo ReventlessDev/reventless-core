@@ -36,7 +36,10 @@ function Make(Spec) {
         name: name,
         commandSchema: commandSchema
       })(CommandTopicChannel);
-      let commandTopic = SpecificCommandTopic.make(childName, opts);
+      let commandTopic = SpecificCommandTopic.make(childName, {
+        kind: "ExtensionPoint",
+        name: Spec.name
+      }, opts);
       let aggregateNames = Stdlib_Array.filterMap(Mappings.mappings, Mapping => Stdlib_Option.map(Mapping.mapOutgoingEvent, param => Mapping.delegateName));
       let commandTopicResources = Adapter$ReventlessCore.resourcesToResolvedOutput(commandTopic.channel.resources);
       let match = Output$Pulumi.unzip3(Output$Pulumi.flatMap(commandTopicResources, commandTopicResources => {
@@ -65,7 +68,10 @@ function Make(Spec) {
           name: name,
           eventSchema: eventSchema
         })(EventTopicAdapter);
-        let eventTopic = SpecificEventTopic.make(childName, [], opts);
+        let eventTopic = SpecificEventTopic.make(childName, [], {
+          kind: "ExtensionPoint",
+          name: Spec.name
+        }, opts);
         return Component$ReventlessCore.operations(eventTopic).apply(param => {
           let Ops = ExtensionPoint_Operations$ReventlessCore.Make(Spec)({
             mappings: Mappings.mappings

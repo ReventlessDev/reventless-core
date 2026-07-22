@@ -8,12 +8,12 @@ import * as EventTopic_Operations$ReventlessCore from "./EventTopic_Operations.r
 
 function Make(Spec) {
   return Publisher => {
-    let make = (name, storageResources, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(EventTopic$ReventlessCore.componentType), name, (extra, extra$1) => {
+    let make = (name, storageResources, owner, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(EventTopic$ReventlessCore.componentType), name, (extra, extra$1) => {
       let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
       let opts = {
         parent: opts_parent
       };
-      let publisher = Publisher.make(ComponentType$ReventlessCore.name(extra$1, EventTopic$ReventlessCore.componentType), storageResources, undefined, opts);
+      let publisher = Publisher.make(ComponentType$ReventlessCore.name(extra$1, EventTopic$ReventlessCore.componentType), storageResources, owner, opts);
       Component$ReventlessCore.setOperations(extra, Pulumi.all([
         publisher.publishJson,
         publisher.publishJsonStream

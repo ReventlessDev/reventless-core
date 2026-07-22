@@ -49,7 +49,10 @@ function Make(Target) {
         }));
         let eventCollector = match[0].apply(param => {
           let eventTopics = EventTopic$ReventlessCore.filter(allEventTopics, aggregateNames);
-          let eventCollector = SpecificEventCollector.make(name, eventTopics, opts);
+          let eventCollector = SpecificEventCollector.make(name, eventTopics, {
+            kind: "EventMapper",
+            name: name
+          }, opts);
           let EventCollectorHandler = EventMapper_Callback$ReventlessCore.MakeEventCollectorHandler({
             publishJsons: publishJsons,
             count: param.count,

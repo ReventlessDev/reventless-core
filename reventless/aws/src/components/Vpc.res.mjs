@@ -22,7 +22,7 @@ function construct(self, name, availabilityZone) {
   let vpc = EC2_Vpc$PulumiAws.make(name + "VPC", {
     cidrBlock: "172.31.0.0/16",
     enableDnsHostnames: true,
-    tags: AWS_Tags$ReventlessAws.makeDict(name + "VPC", "Vpc", "Network", "Platform", undefined, undefined, undefined)
+    tags: AWS_Tags$ReventlessAws.makeDict(name + "VPC", "Vpc", "Network", "Platform", undefined, undefined, undefined, undefined)
   }, opts);
   let securityGroup = EC2_SecurityGroup$PulumiAws.make(name + "SecurityGroup", {
     name: name + "SecurityGroup",

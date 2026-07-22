@@ -166,7 +166,7 @@ module TestOps = {
     }
     type component = Component.t<OuterEventLog.t, OuterEventLog.outputs, operations>
     // Never called — satisfies module type only
-    let make = (~name as _: string, ~opts as _=?): component => Obj.magic(0)
+    let make = (~name as _: string, ~owner as _=?, ~opts as _=?): component => Obj.magic(0)
   }
   let eventLog: EventLog.operations = {
     append: mock.appendFn,

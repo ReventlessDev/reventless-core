@@ -54,7 +54,7 @@ let EventLogMaker = EventLog_Builder$ReventlessCore.Make({
   make: EventLogStorage_InMemory$ReventlessLocal.make
 })(LocalEventTopicPublisher$ReventlessLocal.Make(Bus));
 
-let eventLog = EventLogMaker.make("TestItemEventLog", undefined);
+let eventLog = EventLogMaker.make("TestItemEventLog", undefined, undefined);
 
 function makeEvent$p(id, event) {
   return {

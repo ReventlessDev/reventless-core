@@ -15,15 +15,20 @@ module Make = (
   }
   type component = Component.t<EventLog.t, EventLog.outputs, operations>
 
-  let construct = (self, name) => {
+  let construct = (~owner=?, self, name) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
-    let storage = Storage.make(~name=name->ComponentType.name(EventLog.componentType), ~opts)
+    let storage = Storage.make(
+      ~name=name->ComponentType.name(EventLog.componentType),
+      ~owner?,
+      ~opts,
+    )
 
     module SpecificEventTopic = EventTopic_Builder.Make(Spec, EventTopicPublisher)
     let eventTopic = SpecificEventTopic.make(
       ~name,
       ~storageResources=storage.resources,
+      ~owner?,
       ~opts=opts->Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions,
     )
 
@@ -59,11 +64,11 @@ module Make = (
     self->Component.setOutputs(outputs)
   }
 
-  let make = (~name, ~opts=?): component =>
+  let make = (~name, ~owner=?, ~opts=?): component =>
     Component.make(
       ~componentType=EventLog.componentType->ComponentType.toString,
       ~name,
-      ~construct,
+      ~construct=construct(~owner?, ...),
       ~opts,
     )
 }

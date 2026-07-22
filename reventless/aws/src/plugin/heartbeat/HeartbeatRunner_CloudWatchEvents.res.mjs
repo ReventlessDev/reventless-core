@@ -25,7 +25,7 @@ function make(name, remoteChannel, timeout, runtime, opts) {
       TAG: "Minutes",
       _0: timeout
     })),
-    tags: AWS_Tags$ReventlessAws.make(Pulumi.getStack() + ("-" + name), Heartbeat$ReventlessCore.componentType, "Scheduler", undefined, name, undefined, undefined)
+    tags: AWS_Tags$ReventlessAws.make(Pulumi.getStack() + ("-" + name), Heartbeat$ReventlessCore.componentType, "Scheduler", undefined, name, undefined, undefined, undefined)
   }, opts$1);
   let lambda = runtime.parts.lambda;
   let lambdaRole = runtime.parts.lambdaRole;

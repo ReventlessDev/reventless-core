@@ -58,7 +58,12 @@ module Make = (
     let timeout = ReventlessInfra.RuntimeHints.resolveTimeout(runtime, ~default=30)
 
     module SpecificQueryDb = QueryDb_Builder.Make(Spec, QueryDbStorage, QueryDbResolvers)
-    let queryDb = SpecificQueryDb.make(~api, ~apiRole, ~opts)
+    let queryDb = SpecificQueryDb.make(
+      ~api,
+      ~apiRole,
+      ~owner={kind: ComponentType.ReadModel, name: Spec.name},
+      ~opts,
+    )
 
     let toProjectionOperations: SpecificQueryDb.operations => projectionOperations = ({
       load,
@@ -114,7 +119,12 @@ module Make = (
       ->Component.operations
       ->Pulumi.Output.apply(operations => {
         let eventTopics = allEventTopics->EventTopic.filter(sourceNames)
-        let eventCollector = SpecificEventCollector.make(~name, ~eventTopics, ~opts)
+        let eventCollector = SpecificEventCollector.make(
+          ~name,
+          ~eventTopics,
+          ~owner={kind: ComponentType.ReadModel, name: Spec.name},
+          ~opts,
+        )
 
         module Callback = ReadModel_Callback.Make(
           Spec,
