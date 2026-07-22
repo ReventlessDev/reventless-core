@@ -489,6 +489,11 @@ function start(portOpt, param, param$1) {
     }
   };
   let server = Http.createServer((req, res) => _dispatch(req, res, yoga, getSdl));
+  server.on("error", err => {
+    let detail = Stdlib_Option.getOr(Stdlib_JsExn.message(err), "unknown error");
+    log.error("GraphQL:Domain", undefined, `failed to bind port ` + port.toString() + `: ` + detail + ` — is another server (dev server, prior test) already listening there?`);
+    Stdlib_JsError.throwWithMessage(`DomainGraphQL_Server could not bind port ` + port.toString() + `: ` + detail);
+  });
   server.listen(port, () => log.info("GraphQL:Domain", undefined, `listening on http://localhost:` + port.toString() + `/graphql (SDL: /sdl)`));
   activeServer.contents = Primitive_option.some(server);
 }

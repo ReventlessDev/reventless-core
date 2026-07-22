@@ -42,6 +42,12 @@ let readBody = (req: nodeRequest, onBody: string => unit): unit => {
 type requestHandler = (nodeRequest, nodeResponse) => unit
 @module("http") external createServerWithHandler: requestHandler => YG.httpServer = "createServer"
 
+// http.Server emits `error` (e.g. EADDRINUSE) instead of throwing from listen().
+// Without a handler the failure is silent — listen()'s success callback never
+// fires, the server never binds, and requests fall through to whatever else
+// holds the port. We attach one so a bind failure surfaces loudly.
+@send external _onServerError: (YG.httpServer, @as("error") _, JsExn.t => unit) => unit = "on"
+
 // -- /__inmemory/login + /logout handlers -----------------------------------
 
 let _writeJson = (res: nodeResponse, ~status: int, body: JSON.t): unit => {
@@ -577,6 +583,17 @@ let start = (~port: int=4000, ~contextFactory as _: option<YG.contextFactory>=?,
     | None => lastFullSdl.contents->Option.getOr("")
     }
   let server = createServerWithHandler((req, res) => _dispatch(req, res, yoga, getSdl))
+  server->_onServerError(err => {
+    let detail = err->JsExn.message->Option.getOr("unknown error")
+    log.error(
+      ~comp="GraphQL:Domain",
+      `failed to bind port ${port->Int.toString}: ${detail} — ` ++
+      `is another server (dev server, prior test) already listening there?`,
+    )
+    // Re-raise so the failure is loud instead of a silently-unbound server whose
+    // requests fall through to whatever else holds the port.
+    JsError.throwWithMessage(`DomainGraphQL_Server could not bind port ${port->Int.toString}: ${detail}`)
+  })
   server->YG.listen(port, () =>
     log.info(~comp="GraphQL:Domain", `listening on http://localhost:${port->Int.toString}/graphql (SDL: /sdl)`)
   )
