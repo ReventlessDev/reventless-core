@@ -34,9 +34,10 @@ let InlinePolicy = {
   makeForActions: makeForActions
 };
 
-function makeWithDefaultPolicy(name, servicePrincipal, opts) {
+function makeWithDefaultPolicy(name, servicePrincipal, tags, opts) {
   return new (Aws.iam.Role)(name, {
-    assumeRolePolicy: servicePrincipal.apply(principal => assumeRolePolicy(name, principal))
+    assumeRolePolicy: servicePrincipal.apply(principal => assumeRolePolicy(name, principal)),
+    tags: tags
   }, opts);
 }
 

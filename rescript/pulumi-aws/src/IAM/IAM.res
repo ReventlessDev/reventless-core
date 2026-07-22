@@ -29,6 +29,7 @@ module Policy = {
     name?: Pulumi.Input.t<string>,
     namePrefix?: Pulumi.Input.t<string>,
     path?: Pulumi.Input.t<string>,
+    tags?: Pulumi.Input.t<Aws.tags>,
   }
 
   @module("@pulumi/aws") @scope("iam") @new
@@ -93,6 +94,7 @@ module Role = {
   let makeWithDefaultPolicy = (
     ~name: string,
     ~servicePrincipal: Pulumi.Output.t<string>,
+    ~tags: option<Pulumi.Input.t<Aws.tags>>=?,
     ~opts: option<Pulumi.CustomResourceOptions.t>=?,
   ) =>
     make(
@@ -101,6 +103,7 @@ module Role = {
         assumeRolePolicy: servicePrincipal
         ->Pulumi.Output.apply(principal => Policy.assumeRolePolicy(name, principal))
         ->Pulumi.Output.asInput,
+        tags: ?tags,
       },
       ~opts,
     )

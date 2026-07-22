@@ -72,6 +72,7 @@ type args = {
   apiType?: Pulumi.Input.t<apiType>,
   mergedApiExecutionRoleArn?: Pulumi.Input.t<string>,
   logConfig?: Pulumi.Input.t<logConfig>,
+  tags?: Pulumi.Input.t<Aws.tags>,
 }
 
 @module("@pulumi/aws") @scope("appsync") @new

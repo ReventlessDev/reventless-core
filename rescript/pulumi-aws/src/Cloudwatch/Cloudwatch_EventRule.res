@@ -45,6 +45,7 @@ type args = {
   description?: Pulumi.Input.t<string>,
   scheduleExpression?: ScheduleExpression.t,
   roleArn?: Pulumi.Input.t<string>,
+  tags?: Pulumi.Input.t<Aws.tags>,
 }
 
 @module("@pulumi/aws") @scope("cloudwatch") @new
