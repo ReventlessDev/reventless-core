@@ -8,7 +8,11 @@ open JestGlobals
 
 let _ = TestRunner.setup()
 
-let port = 4321
+// High port in the dynamic/ephemeral range — deliberately clear of well-known
+// dev-server defaults (Astro 4321, Vite 5173, 3000/4000/8080) so a running dev
+// server doesn't shadow this test's server via EADDRINUSE (the listen success
+// callback never fires on collision, and requests silently hit the other server).
+let port = 49321
 
 // ── Minimal node:http POST helper ──────────────────────────────────────────
 // Jest 27's VM context strips Node's global `fetch` (and undici needs more

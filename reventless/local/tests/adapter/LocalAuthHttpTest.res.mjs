@@ -17,7 +17,7 @@ function postJson(path, body) {
     let bodyStr = JSON.stringify(body);
     let req = Nodehttp.request({
       hostname: "localhost",
-      port: 4321,
+      port: 49321,
       path: path,
       method: "POST",
       headers: Object.fromEntries([
@@ -62,7 +62,7 @@ function postEmpty(path) {
   return new Promise((resolve, reject) => {
     let req = Nodehttp.request({
       hostname: "localhost",
-      port: 4321,
+      port: 49321,
       path: path,
       method: "POST",
       headers: {}
@@ -80,7 +80,7 @@ function postRaw(path, body) {
   return new Promise((resolve, reject) => {
     let req = Nodehttp.request({
       hostname: "localhost",
-      port: 4321,
+      port: 49321,
       path: path,
       method: "POST",
       headers: Object.fromEntries([
@@ -123,7 +123,7 @@ globalThis.beforeAll(async () => {
     provider: "InMemory"
   });
   DomainGraphQL_Server$ReventlessLocal.reset();
-  DomainGraphQL_Server$ReventlessLocal.start(4321, undefined, undefined);
+  DomainGraphQL_Server$ReventlessLocal.start(49321, undefined, undefined);
   return await new Promise((resolve, param) => {
     setTimeout(() => resolve(), 50);
   });
@@ -224,7 +224,7 @@ globalThis.test("Bearer token issued via HTTP round-trips through authenticate",
   globalThis.expect(identity.groups).toEqual(["Editor"]);
 });
 
-let port = 4321;
+let port = 49321;
 
 export {
   port,
