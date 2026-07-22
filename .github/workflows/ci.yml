@@ -64,6 +64,14 @@ jobs:
           if echo "$CHANGED" | grep -q "^reventless/local/"; then
             PROJECTS="$PROJECTS --selectProjects reventless-local"
           fi
+          # AWS adapter
+          if echo "$CHANGED" | grep -q "^reventless/aws/"; then
+            PROJECTS="$PROJECTS --selectProjects reventless-aws"
+          fi
+          # GWT test harness
+          if echo "$CHANGED" | grep -q "^reventless/gwt/"; then
+            PROJECTS="$PROJECTS --selectProjects reventless-gwt"
+          fi
           # Interop
           if echo "$CHANGED" | grep -q "^reventless/interop/"; then
             PROJECTS="$PROJECTS --selectProjects reventless-interop"
@@ -102,7 +110,7 @@ jobs:
           fi
 
           if [[ -z "$PROJECTS" ]]; then
-            # Changes outside any test-mapped path (e.g. reventless-aws, rescript bindings with no tests)
+            # Changes outside any test-mapped path (e.g. rescript bindings with no tests)
             echo "select=none" >> "$GITHUB_OUTPUT"
           else
             # Deduplicate --selectProjects flags
@@ -174,6 +182,12 @@ jobs:
         id: build
         if: steps.affected.outputs.select != 'none'
         run: pnpm run build
+
+      # A jest project whose test outputs are missing discovers 0 suites and exits 0
+      # — a silent pass. Guard against that before trusting the test result below.
+      - name: Check every jest project discovers suites
+        if: steps.build.outcome == 'success'
+        run: pnpm run test:projects
 
       - name: Run unit tests (all)
         if: steps.build.outcome == 'success' && steps.affected.outputs.select == 'all'

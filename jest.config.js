@@ -29,6 +29,29 @@ module.exports = {
       },
     },
     {
+      displayName: "reventless-aws",
+      rootDir: "./reventless/aws",
+      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      // Integration suites are owned by `test:integration` / `test:integration:pg`
+      // (they need live AWS / Postgres) — excluded here so they don't double-run.
+      testPathIgnorePatterns: [
+        "/node_modules/",
+        "<rootDir>/tests/integration/",
+        "Pg.*IntegrationTest\\.res\\.mjs$",
+      ],
+      moduleFileExtensions: ["js", "mjs", "cjs"],
+      setupFiles: [setupFile],
+      moduleNameMapper: {
+        "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
+        "^spdx-license-ids$":
+          "<rootDir>/../../node_modules/spdx-license-ids/index.json",
+        "^spdx-license-ids/deprecated$":
+          "<rootDir>/../../node_modules/spdx-license-ids/deprecated.json",
+        "^spdx-exceptions$":
+          "<rootDir>/../../node_modules/spdx-exceptions/index.json",
+      },
+    },
+    {
       displayName: "reventless-core",
       rootDir: "./reventless/core",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
