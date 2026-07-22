@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.80 (2026-07-22)
+
+### Features
+
+* **core:** annotate event-collector logs with the element's comp ([eda413a](https://github.com/ReventlessDev/reventless-core/commit/eda413ab00eb8bb02b30e029af2d6221e3e9ba75)), closes [#1](https://github.com/ReventlessDev/reventless-core/issues/1)
+
+
 # 3.0.0-alpha.79 (2026-07-17)
 
 **Note:** Version bump only for package @reventlessdev/reventless-spec

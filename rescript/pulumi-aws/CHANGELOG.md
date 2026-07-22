@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.57 (2026-07-22)
+
+### Features
+
+* **pulumi-aws:** expose tags on IAM, EventRule and AppSync GraphQLApi ([3b147b3](https://github.com/ReventlessDev/reventless-core/commit/3b147b323a35d711bcd3efdd1781f1afa66f2a95))
+
+
 # 2.4.0-alpha.56 (2026-07-19)
 
 ### Features

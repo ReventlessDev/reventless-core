@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.1.0-alpha.30 (2026-07-22)
+
+### Features
+
+* **aws:** unify the deployed entry-point dispatch boundary; add latency fields ([ad7b3f6](https://github.com/ReventlessDev/reventless-core/commit/ad7b3f60e7b2b2213677732bbf13f486043075ef))
+
+
 # 0.1.0-alpha.29 (2026-07-17)
 
 **Note:** Version bump only for package @reventlessdev/rescript-effect

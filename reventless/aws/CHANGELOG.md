@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.221 (2026-07-22)
+
+### Features
+
+* **aws:** give deployed resources a complete attribution tag schema ([f931a44](https://github.com/ReventlessDev/reventless-core/commit/f931a44ab311a4aff1cd73939b42e7e5221621c9))
+* **aws:** resolve plugin at deploy time for aggregate/DCB dispatch ([4d81320](https://github.com/ReventlessDev/reventless-core/commit/4d813200d77362791263357490aa31f63eac1879))
+* **aws:** unify the deployed entry-point dispatch boundary; add latency fields ([ad7b3f6](https://github.com/ReventlessDev/reventless-core/commit/ad7b3f60e7b2b2213677732bbf13f486043075ef))
+* **core:** attribute piece resources to the component that owns them ([2ddd91a](https://github.com/ReventlessDev/reventless-core/commit/2ddd91ae1a5394257dec4b9b6e5021d5aa6e7f63))
+* **core:** attribute shared substrate to the plugin that owns it ([a440d4f](https://github.com/ReventlessDev/reventless-core/commit/a440d4f827dfab9e2e9a763ffd9fc40240852e09))
+
+
 # 3.0.0-alpha.220 (2026-07-21)
 
 ### Bug Fixes

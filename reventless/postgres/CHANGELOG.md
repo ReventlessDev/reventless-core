@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.39 (2026-07-22)
+
+### Features
+
+* **core:** attribute shared substrate to the plugin that owns it ([a440d4f](https://github.com/ReventlessDev/reventless-core/commit/a440d4f827dfab9e2e9a763ffd9fc40240852e09))
+
+
 # 3.0.0-alpha.38 (2026-07-21)
 
 **Note:** Version bump only for package @reventlessdev/reventless-postgres
