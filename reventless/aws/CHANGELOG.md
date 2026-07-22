@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.224 (2026-07-22)
+
+### Bug Fixes
+
+* **aws:** register the QueuePolicy -> Queue dependency so destroys order correctly ([81cf2b3](https://github.com/ReventlessDev/reventless-core/commit/81cf2b3198fea7ad280817d2414102089ba0f13d))
+* **aws:** scope the CommandTopic queue policy's EventBridge send grant ([2f5f148](https://github.com/ReventlessDev/reventless-core/commit/2f5f148f4d73b2997633207f071c8d055960cc75))
+
+
 # 3.0.0-alpha.223 (2026-07-22)
 
 * refactor!: retire the stale "Admin" vocabulary for platform-owned resources ([2770bd9](https://github.com/ReventlessDev/reventless-core/commit/2770bd96f309142bdfc65b9f36bd1a3ef60641bd))
