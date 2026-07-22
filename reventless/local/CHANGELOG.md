@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.165 (2026-07-22)
+
+### Bug Fixes
+
+* **aws:** keep an empty DCB tag value from breaking the append ([1c0ab40](https://github.com/ReventlessDev/reventless-core/commit/1c0ab40f25b596702a81f42686d77c5e423e9b44))
+
+
 # 3.0.0-alpha.164 (2026-07-22)
 
 * refactor!: retire the stale "Admin" vocabulary for platform-owned resources ([2770bd9](https://github.com/ReventlessDev/reventless-core/commit/2770bd96f309142bdfc65b9f36bd1a3ef60641bd))

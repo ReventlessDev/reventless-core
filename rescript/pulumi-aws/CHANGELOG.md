@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.58 (2026-07-22)
+
+### Bug Fixes
+
+* **aws:** tag every taggable resource the framework still left bare ([d4f7a90](https://github.com/ReventlessDev/reventless-core/commit/d4f7a908bcaf686ff59a85e300efac4e5e6199df))
+
+
 # 2.4.0-alpha.57 (2026-07-22)
 
 ### Features

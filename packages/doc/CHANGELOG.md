@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.63 (2026-07-22)
+
+### Bug Fixes
+
+* **aws:** keep an empty DCB tag value from breaking the append ([1c0ab40](https://github.com/ReventlessDev/reventless-core/commit/1c0ab40f25b596702a81f42686d77c5e423e9b44))
+
+
 # 1.0.0-alpha.62 (2026-07-22)
 
 * refactor!: retire the stale "core" vocabulary for platform things ([34e7480](https://github.com/ReventlessDev/reventless-core/commit/34e7480992bd58906a250b0a1ce6ff2c5ba45260))

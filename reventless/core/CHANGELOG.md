@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.178 (2026-07-22)
+
+### Bug Fixes
+
+* **core:** derive the disconnect schedule's rule name in one place ([6324a5b](https://github.com/ReventlessDev/reventless-core/commit/6324a5bc678a375688ec98571423f164b09375ae))
+
+
 # 3.0.0-alpha.177 (2026-07-22)
 
 * refactor!: retire the stale "Admin" vocabulary for platform-owned resources ([2770bd9](https://github.com/ReventlessDev/reventless-core/commit/2770bd96f309142bdfc65b9f36bd1a3ef60641bd))

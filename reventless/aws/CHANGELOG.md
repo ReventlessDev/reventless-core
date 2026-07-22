@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.225 (2026-07-22)
+
+### Bug Fixes
+
+* **aws:** keep an empty DCB tag value from breaking the append ([1c0ab40](https://github.com/ReventlessDev/reventless-core/commit/1c0ab40f25b596702a81f42686d77c5e423e9b44))
+* **aws:** key the disconnect schedule's rule name to the stack, not the Lambda ([05aebcf](https://github.com/ReventlessDev/reventless-core/commit/05aebcfacac34fd9c7cb42f353ee91e20066067e))
+* **aws:** tag every taggable resource the framework still left bare ([d4f7a90](https://github.com/ReventlessDev/reventless-core/commit/d4f7a908bcaf686ff59a85e300efac4e5e6199df))
+
+
 # 3.0.0-alpha.224 (2026-07-22)
 
 ### Bug Fixes
