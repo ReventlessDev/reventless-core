@@ -132,11 +132,11 @@ Pulumi.all([
   }, opts);
   new (Aws.sqs.QueuePolicy)(name, {
     policy: createQueuePolicyDocument(name, queueArn, handlerArn),
-    queueUrl: param[0]
+    queueUrl: queue.id
   }, opts);
   new (Aws.sqs.QueuePolicy)(nameFifo, {
     policy: createQueuePolicyDocument(nameFifo, fifoQueueArn, handlerArn),
-    queueUrl: param[2]
+    queueUrl: fifoQueue.id
   }, opts);
 });
 

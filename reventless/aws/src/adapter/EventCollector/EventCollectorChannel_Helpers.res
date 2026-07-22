@@ -10,64 +10,64 @@ let toResources = (eventTopics: ReventlessCore.EventTopic.allOutputs) =>
   ->Array.flatMap(outputs => outputs.resources)
   ->ReventlessCore.Adapter.resourcesToResolvedOutput
 
-let createQueuePolicy = (queue: PulumiAws.SQS.Queue.t, name, _resources, opts) => {
-  let _ =
-    (queue.arn, queue.id)
-    ->Pulumi.Output.all2
-    ->Pulumi.Output.apply(((queueArn, queueId)) => {
-      // SQS queue ARN is `arn:aws:sqs:<region>:<accountId>:<name>` — segment
-      // index 4 (0-based). Used to scope cross-plugin SNS sources to this
-      // account (aws:SourceAccount) and to topic names following the
-      // Reventless EventTopic naming convention (aws:SourceArn arnLike).
-      let accountId = queueArn->String.split(":")->Array.get(4)->Option.getOr("")
-      let queuePolicyDocument =
-        PulumiAws.PolicyDocument.make(
-          ~id=name ++ "QueuePolicy",
-          ~statements=[
-            // Single statement allows SendMessage from any SNS topic owned by
-            // this AWS account whose name matches the Reventless EventTopic
-            // naming convention. Replaces the previous per-topic arnEquals
-            // list so cross-plugin SNS subscriptions created at runtime by the
-            // admin's manageSubscriptions hook (Phase 3 Step 1) are accepted
-            // without requiring a redeploy of the receiving plugin. Security
-            // boundary: SourceAccount condition keeps third-party-account
-            // topics out; ArnLike + SNS service principal further narrows
-            // accepted senders to in-account EventTopic resources.
-            {
-              sid: "AllowReceiveSnsEvents",
-              principal: Principals({
-                service: PrincipalIds([AWS.SNS.principal]),
-              }),
-              effect: Allow,
-              actions: Actions(["sqs:SendMessage"]),
-              resources: Resource(queueArn),
-              conditions: {
-                stringEquals: [
-                  ("aws:SourceAccount", ConditionValue(accountId)),
-                ]->Dict.fromArray,
-                arnLike: [
-                  ("aws:SourceArn", ConditionValue(`arn:aws:sns:*:${accountId}:*EventTopic-*`)),
-                ]->Dict.fromArray,
-              },
-            },
-          ],
-        )
-        ->toJsonString
-        ->Pulumi.Input.make
-      let _queuePolicy = {
-        PulumiAws.SQS.QueuePolicy.make(
-          ~name,
-          ~args={
-            queueUrl: queueId->Pulumi.Input.make,
-            policy: queuePolicyDocument,
+let createQueuePolicy = (queue: PulumiAws.SQS.Queue.t, name, opts) => {
+  // The document is a *value* derived from the resolved ARN, so it is built in
+  // an apply. The QueuePolicy itself stays outside: passing `queue.id` as an
+  // Output is what registers the policy -> queue dependency, without which
+  // Pulumi has no ordering constraint and can delete the queue first on a
+  // replacement, leaving the policy's delete polling a queue that is gone.
+  let queuePolicyDocument = queue.arn->Pulumi.Output.apply(queueArn => {
+    // SQS queue ARN is `arn:aws:sqs:<region>:<accountId>:<name>` — segment
+    // index 4 (0-based). Used to scope cross-plugin SNS sources to this
+    // account (aws:SourceAccount) and to topic names following the
+    // Reventless EventTopic naming convention (aws:SourceArn arnLike).
+    let accountId = queueArn->String.split(":")->Array.get(4)->Option.getOr("")
+    PulumiAws.PolicyDocument.make(
+      ~id=name ++ "QueuePolicy",
+      ~statements=[
+        // Single statement allows SendMessage from any SNS topic owned by
+        // this AWS account whose name matches the Reventless EventTopic
+        // naming convention. Replaces the previous per-topic arnEquals
+        // list so cross-plugin SNS subscriptions created at runtime by the
+        // admin's manageSubscriptions hook (Phase 3 Step 1) are accepted
+        // without requiring a redeploy of the receiving plugin. Security
+        // boundary: SourceAccount condition keeps third-party-account
+        // topics out; ArnLike + SNS service principal further narrows
+        // accepted senders to in-account EventTopic resources.
+        {
+          sid: "AllowReceiveSnsEvents",
+          principal: Principals({
+            service: PrincipalIds([AWS.SNS.principal]),
+          }),
+          effect: Allow,
+          actions: Actions(["sqs:SendMessage"]),
+          resources: Resource(queueArn),
+          conditions: {
+            stringEquals: [("aws:SourceAccount", ConditionValue(accountId))]->Dict.fromArray,
+            arnLike: [
+              ("aws:SourceArn", ConditionValue(`arn:aws:sns:*:${accountId}:*EventTopic-*`)),
+            ]->Dict.fromArray,
           },
-          ~opts=Some(opts),
-        )
-      }
-    })
+        },
+      ],
+    )->toJsonString
+  })
+  let _queuePolicy = PulumiAws.SQS.QueuePolicy.make(
+    ~name,
+    ~args={
+      queueUrl: queue.id->Pulumi.Output.asInput,
+      policy: queuePolicyDocument->Pulumi.Output.asInput,
+    },
+    ~opts=Some(opts),
+  )
 }
 
-let subscribeQueue2SnsTopic = (queue, name, resources: array<ReventlessInfra.Adapter.resolvedResource>, opts) => {
+let subscribeQueue2SnsTopic = (
+  queue,
+  name,
+  resources: array<ReventlessInfra.Adapter.resolvedResource>,
+  opts,
+) => {
   let _snsTopicSubscriptions = resources->Array.map(resource => {
     log.debug(~comp="EventCollector", `subscribeToSnsTopic: ${name} -> ${resource.name}`)
     let subscription = Util_SQS.subscribeToSnsTopic(
@@ -82,17 +82,21 @@ let subscribeQueue2SnsTopic = (queue, name, resources: array<ReventlessInfra.Ada
 }
 
 let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, eventTopics, opts) => {
+  // The policy grants SendMessage to any in-account EventTopic by naming
+  // convention, so it does not depend on the resolved topic resources and is
+  // created outside the apply. Only the SNS subscriptions need them.
+  queue->createQueuePolicy(name, opts)
   let _ =
     (eventTopics->toResources, queue.id)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((eventTopicResources, queueId)) => {
       log.debug(
         ~comp="EventCollector",
-        `connectSqsQueue2SnsTopics ${queueId}: ${eventTopicResources->Array.length->Int.toString} topic resource(s)`,
+        `connectSqsQueue2SnsTopics ${queueId}: ${eventTopicResources
+          ->Array.length
+          ->Int.toString} topic resource(s)`,
       )
-      let snsResources = eventTopicResources->snsResources
-      queue->createQueuePolicy(name, snsResources, opts)
-      queue->subscribeQueue2SnsTopic(name, snsResources, opts)
+      queue->subscribeQueue2SnsTopic(name, eventTopicResources->snsResources, opts)
     })
 }
 

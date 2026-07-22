@@ -20,14 +20,10 @@ function toResources(eventTopics) {
   return Adapter$ReventlessCore.resourcesToResolvedOutput(Object.values(eventTopics).flatMap(outputs => outputs.resources));
 }
 
-function createQueuePolicy(queue, name, _resources, opts) {
-  Pulumi.all([
-    queue.arn,
-    queue.id
-  ]).apply(param => {
-    let queueArn = param[0];
+function createQueuePolicy(queue, name, opts) {
+  let queuePolicyDocument = queue.arn.apply(queueArn => {
     let accountId = Stdlib_Option.getOr(queueArn.split(":")[4], "");
-    let queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
+    return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
         Sid: "AllowReceiveSnsEvents",
         Principal: {
           Service: [AWS$ReventlessAws.SNS.principal]
@@ -46,11 +42,11 @@ function createQueuePolicy(queue, name, _resources, opts) {
             ]])
         }
       }]));
-    new (Aws.sqs.QueuePolicy)(name, {
-      policy: queuePolicyDocument,
-      queueUrl: param[1]
-    }, opts);
   });
+  new (Aws.sqs.QueuePolicy)(name, {
+    policy: queuePolicyDocument,
+    queueUrl: queue.id
+  }, opts);
 }
 
 function subscribeQueue2SnsTopic(queue, name, resources, opts) {
@@ -62,15 +58,14 @@ function subscribeQueue2SnsTopic(queue, name, resources, opts) {
 }
 
 function connectSqsQueue2SnsTopics(queue, name, eventTopics, opts) {
+  createQueuePolicy(queue, name, opts);
   Pulumi.all([
     toResources(eventTopics),
     queue.id
   ]).apply(param => {
     let eventTopicResources = param[0];
     log.debug("EventCollector", undefined, `connectSqsQueue2SnsTopics ` + param[1] + `: ` + eventTopicResources.length.toString() + ` topic resource(s)`);
-    let snsResources = Adapter_Helpers$ReventlessAws.snsResources(eventTopicResources);
-    createQueuePolicy(queue, name, snsResources, opts);
-    subscribeQueue2SnsTopic(queue, name, snsResources, opts);
+    subscribeQueue2SnsTopic(queue, name, Adapter_Helpers$ReventlessAws.snsResources(eventTopicResources), opts);
   });
 }
 

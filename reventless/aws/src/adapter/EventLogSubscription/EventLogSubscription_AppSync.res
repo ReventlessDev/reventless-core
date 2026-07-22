@@ -114,38 +114,40 @@ let make = (
 
   // SQS queue policy — allow SNS to send messages
   let snsResource = eventTopicOutputs.resources->Array.getUnsafe(0)
-  let _ =
-    (queue.arn, queue.id, snsResource.urn)
-    ->Pulumi.Output.all3
-    ->Pulumi.Output.apply(((queueArn, queueId, snsUrn)) => {
+  // The document is a *value* derived from resolved ARNs, so it is built in an
+  // apply. The QueuePolicy itself stays outside: passing `queue.id` as an Output
+  // is what registers the policy -> queue dependency, without which Pulumi has
+  // no ordering constraint and can delete the queue first on a replacement,
+  // leaving the policy's delete polling a queue that no longer exists.
+  let queuePolicyDocument =
+    (queue.arn, snsResource.urn)
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((queueArn, snsUrn)) => {
       open PolicyDocument
-      let _queuePolicy = SQS.QueuePolicy.make(
-        ~name=name ++ "EventLogSubQueuePolicy",
-        ~args={
-          queueUrl: queueId->Pulumi.Input.make,
-          policy: PolicyDocument.make(
-            ~id=name ++ "EventLogSubQueuePolicy",
-            ~statements=[
-              {
-                sid: "AllowSNSSend",
-                principal: Principals({service: PrincipalIds([AWS.SNS.principal])}),
-                effect: Allow,
-                actions: Actions(["sqs:SendMessage"]),
-                resources: Resource(queueArn),
-                conditions: {
-                  arnEquals: [
-                    ("aws:SourceArn", ConditionValues([snsUrn])),
-                  ]->Dict.fromArray,
-                },
-              },
-            ],
-          )
-          ->PolicyDocument.toJsonString
-          ->Pulumi.Input.make,
-        },
-        ~opts=Some(opts),
-      )
+      PolicyDocument.make(
+        ~id=name ++ "EventLogSubQueuePolicy",
+        ~statements=[
+          {
+            sid: "AllowSNSSend",
+            principal: Principals({service: PrincipalIds([AWS.SNS.principal])}),
+            effect: Allow,
+            actions: Actions(["sqs:SendMessage"]),
+            resources: Resource(queueArn),
+            conditions: {
+              arnEquals: [("aws:SourceArn", ConditionValues([snsUrn]))]->Dict.fromArray,
+            },
+          },
+        ],
+      )->PolicyDocument.toJsonString
     })
+  let _queuePolicy = SQS.QueuePolicy.make(
+    ~name=name ++ "EventLogSubQueuePolicy",
+    ~args={
+      queueUrl: queue.id->Pulumi.Output.asInput,
+      policy: queuePolicyDocument->Pulumi.Output.asInput,
+    },
+    ~opts=Some(opts),
+  )
 
   // SNS → SQS subscription (raw delivery so body IS the event JSON)
   let _subscription = Util_SQS.subscribeToSnsTopic(

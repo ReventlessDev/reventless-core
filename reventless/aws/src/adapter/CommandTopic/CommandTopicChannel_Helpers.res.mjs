@@ -11,13 +11,12 @@ import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
 
 function createQueuePolicy(queue, name, lambda, opts) {
-  Pulumi.all([
+  let queuePolicyDocument = Pulumi.all([
     queue.arn,
-    queue.id,
     Output$Pulumi.flatMap(lambda, lambda => lambda.arn)
   ]).apply(param => {
     let queueArn = param[0];
-    let queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
+    return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
       {
         Sid: "AllowLambdaToAccessQueue",
         Principal: {
@@ -33,7 +32,7 @@ function createQueuePolicy(queue, name, lambda, opts) {
         Condition: {
           ArnEquals: Object.fromEntries([[
               "AWS:SourceArn",
-              param[2]
+              param[1]
             ]])
         }
       },
@@ -47,11 +46,11 @@ function createQueuePolicy(queue, name, lambda, opts) {
         Resource: queueArn
       }
     ]));
-    new (Aws.sqs.QueuePolicy)(name, {
-      policy: queuePolicyDocument,
-      queueUrl: param[1]
-    }, opts);
   });
+  new (Aws.sqs.QueuePolicy)(name, {
+    policy: queuePolicyDocument,
+    queueUrl: queue.id
+  }, opts);
 }
 
 function createLambdaPolicy(lambdaRole, name, queue, resources, opts) {

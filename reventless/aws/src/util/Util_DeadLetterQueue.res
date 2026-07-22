@@ -122,7 +122,7 @@ let createQueuePolicyDocument = (name, queueArn: string, handlerArn: string) => 
 let _ =
   (queue.id, queue.arn, fifoQueue.id, fifoQueue.arn, handler.arn)
   ->Pulumi.Output.all5
-  ->Pulumi.Output.apply(((queueId, queueArn, fifoQueueId, fifoQueueArn, handlerArn)) => {
+  ->Pulumi.Output.apply(((_queueId, queueArn, _fifoQueueId, fifoQueueArn, handlerArn)) => {
     let lambdaPolicyDocument = PulumiAws.PolicyDocument.make(
       ~id=name ++ "SQSPolicy",
       ~statements=[
@@ -152,10 +152,20 @@ let _ =
       ~opts,
     )
 
+    // `queueUrl` takes the queue's Output, not the resolved `queueId` string:
+    // that is what registers the policy -> queue dependency, without which
+    // Pulumi has no ordering constraint and can delete the queue first on a
+    // replacement, leaving the policy's delete polling a queue that is gone.
+    //
+    // Unlike the channel helpers, these two stay inside the apply. This module
+    // creates its resources at import time and this apply resolves late enough
+    // to race Jest's teardown; reshaping it (dropping the now-unused ids to
+    // narrow the tuple) shifts that timing and crashes the AWS unit suites, so
+    // `_queueId` / `_fifoQueueId` are deliberately kept.
     let _attachQueuePolicy = PulumiAws.SQS.QueuePolicy.make(
       ~name,
       ~args={
-        queueUrl: queueId->Pulumi.Input.make,
+        queueUrl: queue.id->Pulumi.Output.asInput,
         policy: createQueuePolicyDocument(name, queueArn, handlerArn),
       },
       ~opts=Some(opts),
@@ -163,7 +173,7 @@ let _ =
     let _attachFifoQueuePolicy = PulumiAws.SQS.QueuePolicy.make(
       ~name=nameFifo,
       ~args={
-        queueUrl: fifoQueueId->Pulumi.Input.make,
+        queueUrl: fifoQueue.id->Pulumi.Output.asInput,
         policy: createQueuePolicyDocument(nameFifo, fifoQueueArn, handlerArn),
       },
       ~opts=Some(opts),

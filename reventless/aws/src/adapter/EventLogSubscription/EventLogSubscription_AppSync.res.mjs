@@ -85,30 +85,28 @@ function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
     sqsManagedSseEnabled: false
   }, opts);
   let snsResource = eventTopicOutputs.resources[0];
-  Pulumi.all([
+  let queuePolicyDocument = Pulumi.all([
     queue.arn,
-    queue.id,
     snsResource.urn
-  ]).apply(param => {
-    new (Aws.sqs.QueuePolicy)(name + "EventLogSubQueuePolicy", {
-      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "EventLogSubQueuePolicy", [{
-          Sid: "AllowSNSSend",
-          Principal: {
-            Service: [AWS$ReventlessAws.SNS.principal]
-          },
-          Effect: "Allow",
-          Action: ["sqs:SendMessage"],
-          Resource: param[0],
-          Condition: {
-            ArnEquals: Object.fromEntries([[
-                "aws:SourceArn",
-                [param[2]]
-              ]])
-          }
-        }])),
-      queueUrl: param[1]
-    }, opts);
-  });
+  ]).apply(param => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "EventLogSubQueuePolicy", [{
+      Sid: "AllowSNSSend",
+      Principal: {
+        Service: [AWS$ReventlessAws.SNS.principal]
+      },
+      Effect: "Allow",
+      Action: ["sqs:SendMessage"],
+      Resource: param[0],
+      Condition: {
+        ArnEquals: Object.fromEntries([[
+            "aws:SourceArn",
+            [param[1]]
+          ]])
+      }
+    }])));
+  new (Aws.sqs.QueuePolicy)(name + "EventLogSubQueuePolicy", {
+    policy: queuePolicyDocument,
+    queueUrl: queue.id
+  }, opts);
   Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name + "EventLogSub", name, snsResource, opts);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "EventLogSubRole", Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name + "EventLogSubRole", EventTopic$ReventlessCore.componentType, "Identity", undefined, name, undefined, undefined, undefined), opts);
   Pulumi.all([

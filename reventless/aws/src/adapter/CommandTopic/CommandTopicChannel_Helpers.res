@@ -7,49 +7,50 @@ let createQueuePolicy = (
   lambda: Pulumi.Output.t<PulumiAws.Lambda.Function.t>,
   opts,
 ) => {
-  let _ =
-    (queue.arn, queue.id, lambda->Pulumi.Output.flatMap(lambda => lambda.arn))
-    ->Pulumi.Output.all3
-    ->Pulumi.Output.apply(((queueArn, queueId, lambdaArn)) => {
-      let queuePolicyDocument =
-        PulumiAws.PolicyDocument.make(
-          ~id=name ++ "QueuePolicy",
-          ~statements=[
-            {
-              sid: "AllowLambdaToAccessQueue",
-              effect: Allow,
-              principal: Principals({
-                service: PrincipalId("lambda.amazonaws.com"),
-              }),
-              actions: Actions([
-                "sqs:ReceiveMessage",
-                "sqs:DeleteMessage",
-                "sqs:GetQueueAttributes",
-              ]),
-              resources: Resource(queueArn),
-              conditions: {
-                arnEquals: [("AWS:SourceArn", ConditionValue(lambdaArn))]->Dict.fromArray,
-              },
+  // The document is a *value* derived from resolved ARNs, so it is built in an
+  // apply. The QueuePolicy itself stays outside: passing `queue.id` as an Output
+  // is what registers the policy -> queue dependency, without which Pulumi has
+  // no ordering constraint and can delete the queue first on a replacement,
+  // leaving the policy's delete polling a queue that no longer exists.
+  let queuePolicyDocument =
+    (queue.arn, lambda->Pulumi.Output.flatMap(lambda => lambda.arn))
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((queueArn, lambdaArn)) =>
+      PulumiAws.PolicyDocument.make(
+        ~id=name ++ "QueuePolicy",
+        ~statements=[
+          {
+            sid: "AllowLambdaToAccessQueue",
+            effect: Allow,
+            principal: Principals({
+              service: PrincipalId("lambda.amazonaws.com"),
+            }),
+            actions: Actions(["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]),
+            resources: Resource(queueArn),
+            conditions: {
+              arnEquals: [("AWS:SourceArn", ConditionValue(lambdaArn))]->Dict.fromArray,
             },
-            {
-              sid: "AllowCloudWatchEventsToSendToQueue",
-              effect: Allow,
-              principal: Principals({
-                service: PrincipalId("events.amazonaws.com"),
-              }),
-              actions: Actions(["sqs:SendMessage"]),
-              resources: Resource(queueArn),
-            },
-          ],
-        )
-        ->toJsonString
-        ->Pulumi.Input.make
-      let _queuePolicy = PulumiAws.SQS.QueuePolicy.make(
-        ~name,
-        ~args={queueUrl: queueId->Pulumi.Input.make, policy: queuePolicyDocument},
-        ~opts=Some(opts),
-      )
-    })
+          },
+          {
+            sid: "AllowCloudWatchEventsToSendToQueue",
+            effect: Allow,
+            principal: Principals({
+              service: PrincipalId("events.amazonaws.com"),
+            }),
+            actions: Actions(["sqs:SendMessage"]),
+            resources: Resource(queueArn),
+          },
+        ],
+      )->toJsonString
+    )
+  let _queuePolicy = PulumiAws.SQS.QueuePolicy.make(
+    ~name,
+    ~args={
+      queueUrl: queue.id->Pulumi.Output.asInput,
+      policy: queuePolicyDocument->Pulumi.Output.asInput,
+    },
+    ~opts=Some(opts),
+  )
 }
 
 let createLambdaPolicy = (
