@@ -5,48 +5,61 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
+import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
 
+function createQueuePolicyDocument(name, queueArn, lambdaArn) {
+  let accountId = Adapter_Helpers$ReventlessAws.accountIdOfQueueArn(queueArn);
+  return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
+    {
+      Sid: "AllowLambdaToAccessQueue",
+      Principal: {
+        Service: AWS$ReventlessAws.Lambda.principal
+      },
+      Effect: "Allow",
+      Action: [
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes"
+      ],
+      Resource: queueArn,
+      Condition: {
+        ArnEquals: Object.fromEntries([[
+            "AWS:SourceArn",
+            lambdaArn
+          ]])
+      }
+    },
+    {
+      Sid: "AllowCloudWatchEventsToSendToQueue",
+      Principal: {
+        Service: AWS$ReventlessAws.CloudwatchEventRule.principal
+      },
+      Effect: "Allow",
+      Action: ["sqs:SendMessage"],
+      Resource: queueArn,
+      Condition: {
+        StringEquals: Object.fromEntries([[
+            "aws:SourceAccount",
+            accountId
+          ]]),
+        ArnLike: Object.fromEntries([[
+            "aws:SourceArn",
+            `arn:aws:events:*:` + accountId + `:rule/*`
+          ]])
+      }
+    }
+  ]));
+}
+
 function createQueuePolicy(queue, name, lambda, opts) {
   let queuePolicyDocument = Pulumi.all([
     queue.arn,
     Output$Pulumi.flatMap(lambda, lambda => lambda.arn)
-  ]).apply(param => {
-    let queueArn = param[0];
-    return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
-      {
-        Sid: "AllowLambdaToAccessQueue",
-        Principal: {
-          Service: "lambda.amazonaws.com"
-        },
-        Effect: "Allow",
-        Action: [
-          "sqs:ReceiveMessage",
-          "sqs:DeleteMessage",
-          "sqs:GetQueueAttributes"
-        ],
-        Resource: queueArn,
-        Condition: {
-          ArnEquals: Object.fromEntries([[
-              "AWS:SourceArn",
-              param[1]
-            ]])
-        }
-      },
-      {
-        Sid: "AllowCloudWatchEventsToSendToQueue",
-        Principal: {
-          Service: "events.amazonaws.com"
-        },
-        Effect: "Allow",
-        Action: ["sqs:SendMessage"],
-        Resource: queueArn
-      }
-    ]));
-  });
+  ]).apply(param => createQueuePolicyDocument(name, param[0], param[1]));
   new (Aws.sqs.QueuePolicy)(name, {
     policy: queuePolicyDocument,
     queueUrl: queue.id
@@ -137,6 +150,7 @@ function subscribeLambda2SqsTopic(batchSize, lambda, name, queue, opts) {
 }
 
 export {
+  createQueuePolicyDocument,
   createQueuePolicy,
   createLambdaPolicy,
   subscribeLambda2SqsTopic,

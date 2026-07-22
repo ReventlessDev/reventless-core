@@ -17,23 +17,21 @@ let createQueuePolicy = (queue: PulumiAws.SQS.Queue.t, name, opts) => {
   // Pulumi has no ordering constraint and can delete the queue first on a
   // replacement, leaving the policy's delete polling a queue that is gone.
   let queuePolicyDocument = queue.arn->Pulumi.Output.apply(queueArn => {
-    // SQS queue ARN is `arn:aws:sqs:<region>:<accountId>:<name>` — segment
-    // index 4 (0-based). Used to scope cross-plugin SNS sources to this
-    // account (aws:SourceAccount) and to topic names following the
-    // Reventless EventTopic naming convention (aws:SourceArn arnLike).
-    let accountId = queueArn->String.split(":")->Array.get(4)->Option.getOr("")
+    // Scopes cross-plugin SNS sources to this account (aws:SourceAccount) and
+    // to topic names following the Reventless EventTopic naming convention
+    // (aws:SourceArn arnLike).
+    let accountId = queueArn->accountIdOfQueueArn
     PulumiAws.PolicyDocument.make(
       ~id=name ++ "QueuePolicy",
       ~statements=[
         // Single statement allows SendMessage from any SNS topic owned by
         // this AWS account whose name matches the Reventless EventTopic
-        // naming convention. Replaces the previous per-topic arnEquals
-        // list so cross-plugin SNS subscriptions created at runtime by the
-        // admin's manageSubscriptions hook (Phase 3 Step 1) are accepted
-        // without requiring a redeploy of the receiving plugin. Security
-        // boundary: SourceAccount condition keeps third-party-account
-        // topics out; ArnLike + SNS service principal further narrows
-        // accepted senders to in-account EventTopic resources.
+        // naming convention. A per-topic arnEquals list would require a
+        // redeploy of the receiving plugin whenever the platform's
+        // manageSubscriptions hook creates a cross-plugin SNS subscription at
+        // runtime. Security boundary: SourceAccount keeps third-party-account
+        // topics out; ArnLike + SNS service principal further narrows accepted
+        // senders to in-account EventTopic resources.
         {
           sid: "AllowReceiveSnsEvents",
           principal: Principals({

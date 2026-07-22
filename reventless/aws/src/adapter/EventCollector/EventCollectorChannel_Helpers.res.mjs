@@ -2,7 +2,6 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
@@ -22,7 +21,7 @@ function toResources(eventTopics) {
 
 function createQueuePolicy(queue, name, opts) {
   let queuePolicyDocument = queue.arn.apply(queueArn => {
-    let accountId = Stdlib_Option.getOr(queueArn.split(":")[4], "");
+    let accountId = Adapter_Helpers$ReventlessAws.accountIdOfQueueArn(queueArn);
     return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
         Sid: "AllowReceiveSnsEvents",
         Principal: {

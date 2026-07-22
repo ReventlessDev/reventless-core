@@ -1,6 +1,48 @@
 open PulumiAws.PolicyDocument
 open Adapter_Helpers
 
+let createQueuePolicyDocument = (~name, ~queueArn: string, ~lambdaArn: string) => {
+  let accountId = queueArn->accountIdOfQueueArn
+  PulumiAws.PolicyDocument.make(
+    ~id=name ++ "QueuePolicy",
+    ~statements=[
+      {
+        sid: "AllowLambdaToAccessQueue",
+        effect: Allow,
+        principal: Principals({
+          service: PrincipalId(AWS.Lambda.principal),
+        }),
+        actions: Actions(["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]),
+        resources: Resource(queueArn),
+        conditions: {
+          arnEquals: [("AWS:SourceArn", ConditionValue(lambdaArn))]->Dict.fromArray,
+        },
+      },
+      {
+        // ScheduledPublisher creates EventBridge rules at runtime
+        // (PutRule/PutTargets) targeting this queue directly, and EventBridge
+        // authorises SQS targets against the queue's resource policy — so the
+        // grant cannot name a single rule ARN. Scope it to rules in this
+        // account instead: SourceAccount closes the cross-account hole,
+        // ArnLike narrows the in-account surface to Events rules.
+        sid: "AllowCloudWatchEventsToSendToQueue",
+        effect: Allow,
+        principal: Principals({
+          service: PrincipalId(AWS.CloudwatchEventRule.principal),
+        }),
+        actions: Actions(["sqs:SendMessage"]),
+        resources: Resource(queueArn),
+        conditions: {
+          stringEquals: [("aws:SourceAccount", ConditionValue(accountId))]->Dict.fromArray,
+          arnLike: [
+            ("aws:SourceArn", ConditionValue(`arn:aws:events:*:${accountId}:rule/*`)),
+          ]->Dict.fromArray,
+        },
+      },
+    ],
+  )->toJsonString
+}
+
 let createQueuePolicy = (
   queue: PulumiAws.SQS.Queue.t,
   name,
@@ -16,32 +58,7 @@ let createQueuePolicy = (
     (queue.arn, lambda->Pulumi.Output.flatMap(lambda => lambda.arn))
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((queueArn, lambdaArn)) =>
-      PulumiAws.PolicyDocument.make(
-        ~id=name ++ "QueuePolicy",
-        ~statements=[
-          {
-            sid: "AllowLambdaToAccessQueue",
-            effect: Allow,
-            principal: Principals({
-              service: PrincipalId("lambda.amazonaws.com"),
-            }),
-            actions: Actions(["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]),
-            resources: Resource(queueArn),
-            conditions: {
-              arnEquals: [("AWS:SourceArn", ConditionValue(lambdaArn))]->Dict.fromArray,
-            },
-          },
-          {
-            sid: "AllowCloudWatchEventsToSendToQueue",
-            effect: Allow,
-            principal: Principals({
-              service: PrincipalId("events.amazonaws.com"),
-            }),
-            actions: Actions(["sqs:SendMessage"]),
-            resources: Resource(queueArn),
-          },
-        ],
-      )->toJsonString
+      createQueuePolicyDocument(~name, ~queueArn, ~lambdaArn)
     )
   let _queuePolicy = PulumiAws.SQS.QueuePolicy.make(
     ~name,
@@ -101,10 +118,10 @@ let createLambdaPolicy = (
                       "dynamodb:UpdateItem",
                       "dynamodb:DeleteItem",
                       "dynamodb:BatchWriteItem",
-                      // Phase 7 cross-partition fences emit read-only
-                      // `ConditionCheck` entries inside `TransactWriteItems`
-                      // when a write doesn't touch the cross-partition tag's
-                      // partition itself; this needs its own IAM action.
+                      // Cross-partition fences emit read-only `ConditionCheck`
+                      // entries inside `TransactWriteItems` when a write
+                      // doesn't touch the cross-partition tag's partition
+                      // itself; this needs its own IAM action.
                       "dynamodb:ConditionCheckItem",
                     ]),
                     resources: Resources(
