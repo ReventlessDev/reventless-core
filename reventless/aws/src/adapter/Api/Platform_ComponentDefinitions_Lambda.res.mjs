@@ -104,7 +104,7 @@ export function response(ctx) {
 function make(api, pluginReadModelTableName, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let name = "PlatformUIDefinitions";
-  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Lambda", Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name + "Lambda", "Core", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
+  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Lambda", Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name + "Lambda", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
   pluginReadModelTableName.apply(tableName => {
     new (Aws.iam.RolePolicy)(name + "LambdaPolicy", {
       policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "LambdaPolicy", [
@@ -140,7 +140,7 @@ function make(api, pluginReadModelTableName, opts) {
     memorySize: 512,
     timeout: 30,
     layers: layers,
-    tags: AWS_Tags$ReventlessAws.make(name + "Lambda", "Core", "Runtime", "Platform", undefined, undefined, undefined, undefined),
+    tags: AWS_Tags$ReventlessAws.make(name + "Lambda", "Platform", "Runtime", "Platform", undefined, undefined, undefined, undefined),
     environment: {
       variables: Object.fromEntries([
         [
@@ -163,7 +163,7 @@ function make(api, pluginReadModelTableName, opts) {
     },
     sourceCodeHash: sourceCodeHash
   }, opts$1);
-  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", "Core", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
+  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
   Pulumi.all([
     lambda.arn,
     dataSourceRole.id

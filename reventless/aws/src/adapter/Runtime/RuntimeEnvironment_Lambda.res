@@ -34,8 +34,8 @@ let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, part
   )
 
   // Legacy path (see above): no component kind reaches here because nothing calls
-  // it. `Core` says "framework substrate" rather than inventing a domain kind.
-  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.ComponentType.Core, ~role=Runtime, ~scope=Platform)
+  // it, so it is attributed to the Platform rather than to an invented domain kind.
+  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.ComponentType.Platform, ~role=Runtime, ~scope=Platform)
   let lambda =
     handler->Pulumi.Output.apply(handler =>
       Lambda.CallbackFunction.make(

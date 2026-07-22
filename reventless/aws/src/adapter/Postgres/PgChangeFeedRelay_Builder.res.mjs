@@ -72,7 +72,7 @@ function make(name, logs, securityGroupId, subnetIds, intervalMinutesOpt, opts) 
   let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, {
     TAG: "Other",
     _0: "ChangeFeed"
-  }, "Core", match.code, match.sourceCodeHash, envVars, undefined, undefined, undefined, undefined, undefined, undefined, vpcConfig, opts);
+  }, "Platform", match.code, match.sourceCodeHash, envVars, undefined, undefined, undefined, undefined, undefined, undefined, vpcConfig, opts);
   let secretArns = logs.map(l => l.connectionConfig.apply(cc => cc.secretArn));
   let queueArns = logs.map(l => l.targetQueueArn);
   Pulumi.all([
@@ -104,7 +104,7 @@ function make(name, logs, securityGroupId, subnetIds, intervalMinutesOpt, opts) 
       TAG: "Minutes",
       _0: intervalMinutes
     })),
-    tags: AWS_Tags$ReventlessAws.make(Pulumi.getStack() + `-` + name, "Core", "Scheduler", undefined, name, undefined, undefined, undefined)
+    tags: AWS_Tags$ReventlessAws.make(Pulumi.getStack() + `-` + name, "Platform", "Scheduler", undefined, name, undefined, undefined, undefined)
   }, customOpts !== undefined ? Primitive_option.valFromOption(customOpts) : undefined);
   let lambda = runtime.parts.lambda;
   Pulumi.all([

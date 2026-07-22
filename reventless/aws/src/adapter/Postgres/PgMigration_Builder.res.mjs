@@ -24,7 +24,7 @@ function make(name, handlerConfig, secretArn, securityGroupId, subnetIds, opts) 
   let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, {
     TAG: "Other",
     _0: "Migration"
-  }, "Core", match.code, sourceCodeHash, envVars, undefined, undefined, undefined, undefined, undefined, undefined, vpcConfig, opts);
+  }, "Platform", match.code, sourceCodeHash, envVars, undefined, undefined, undefined, undefined, undefined, undefined, vpcConfig, opts);
   let rolePolicy = new (Aws.iam.RolePolicy)(name + `MigrationAccess`, {
     policy: secretArn.apply(arn => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `MigrationAccessPolicy`, [{
         Sid: "AllowGetSecret",

@@ -10,7 +10,7 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws from "./ScheduledPublisher_CloudWatchEvents_Runtime.res.mjs";
 
 function make(name, opts) {
-  let role = IAM$PulumiAws.Role.makeWithDefaultPolicy("CloudWatchEventsRole", Pulumi.output(AWS$ReventlessAws.CloudwatchEventRule.principal), AWS_Tags$ReventlessAws.make("CloudWatchEventsRole", "Core", "Identity", "Platform", undefined, undefined, undefined, undefined), opts);
+  let role = IAM$PulumiAws.Role.makeWithDefaultPolicy("CloudWatchEventsRole", Pulumi.output(AWS$ReventlessAws.CloudwatchEventRule.principal), AWS_Tags$ReventlessAws.make("CloudWatchEventsRole", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts);
   new (Aws.iam.Policy)(name + "CloudWatchEventsPolicy", {
     policy: role.arn.apply(roleArn => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "CloudWatchEventsPolicy", [
       {
@@ -26,7 +26,7 @@ function make(name, opts) {
         Resource: roleArn
       }
     ]))),
-    tags: AWS_Tags$ReventlessAws.make(name + "CloudWatchEventsPolicy", "Core", "Identity", "Platform", undefined, undefined, undefined, undefined)
+    tags: AWS_Tags$ReventlessAws.make(name + "CloudWatchEventsPolicy", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined)
   }, opts);
   return {
     resource: Adapter$ReventlessInfra.make(role.name, role.id, role.arn, Pulumi.output("CloudWatchEvents"), undefined, undefined, undefined, Pulumi.output("aws:cloudwatch:EventRule"), undefined, undefined),

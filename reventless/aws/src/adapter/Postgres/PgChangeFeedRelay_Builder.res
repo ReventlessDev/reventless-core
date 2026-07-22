@@ -102,7 +102,7 @@ let make = (
   let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
     ~name,
     ~unitKind=ReventlessCore.Monitoring.Other("ChangeFeed"),
-    ~componentKind=ReventlessCore.ComponentType.Core,
+    ~componentKind=ReventlessCore.ComponentType.Platform,
     ~code,
     ~sourceCodeHash,
     ~envVars,
@@ -156,7 +156,7 @@ let make = (
         scheduleExpression: EventRule.ScheduleExpression.every(Minutes(intervalMinutes)),
         tags: AWS.Tags.make(
           ~name=`${Pulumi.Pulumi.getStackName()}-${name}`,
-          ~kind=ReventlessCore.ComponentType.Core,
+          ~kind=ReventlessCore.ComponentType.Platform,
           ~role=Scheduler,
           ~component=name,
         ),

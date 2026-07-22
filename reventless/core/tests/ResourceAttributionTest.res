@@ -29,6 +29,15 @@ describe("ResourceAttribution.Role — wire spellings", () => {
     expect(Attribution.Role.Other("ChangeFeed")->Attribution.Role.toString)->toBe("ChangeFeed")
   })
 
+  testSync("platform-level things are Platform, not Core", () => {
+    // `Core` predates the platform/plugin split and names nothing the framework
+    // builds; it also reads as the built-in core PLUGIN, which is a different
+    // thing. Platform substrate is attributed to `Platform`, matching
+    // `reventless:platform` and `Scope.Platform`.
+    expect(ComponentType.Platform->ComponentType.toString)->toBe("Platform")
+    expect(ComponentType.ofString("Platform"))->toEqual(Some(ComponentType.Platform))
+  })
+
   testSync("a role is NOT a component kind — Runtime has no ComponentType twin", () => {
     // The whole point of splitting role from kind: `Runtime` is a deployment
     // piece, not something the domain model can be. If this ever resolves, the

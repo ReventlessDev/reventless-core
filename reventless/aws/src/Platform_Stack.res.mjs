@@ -62,7 +62,7 @@ function _resolveUncached() {
       usernameAttributes: ["email"],
       passwordPolicy: pwdPolicy,
       mfaConfiguration: "OFF",
-      tags: AWS_Tags$ReventlessAws.make("HostUiPool", "Core", "Auth", "Platform", undefined, undefined, undefined, undefined)
+      tags: AWS_Tags$ReventlessAws.make("HostUiPool", "Platform", "Auth", "Platform", undefined, undefined, undefined, undefined)
     });
     let tokenUnits2_accessToken = "minutes";
     let tokenUnits2_idToken = "minutes";

@@ -2,6 +2,7 @@ type t =
   | Aggregate
   | Counter
   | Plugin
+  | Platform
   | CommandGenerator
   | CommandTopic
   | EventCollector
@@ -17,7 +18,10 @@ type t =
   | SideEffectHandler
   | Task
   | Vpc
-  | Core
+  | /** Vestigial: predates the platform/plugin split and names nothing the
+       framework builds. Do not reach for it — platform-level things are
+       `Platform`, and the built-in core PLUGIN is a `Plugin`. */
+  Core
   | Heartbeat
   | Cloner
   | DcbEventLog
@@ -32,6 +36,7 @@ let toString = componentType =>
   | Aggregate => "Aggregate"
   | Counter => "Counter"
   | Plugin => "Plugin"
+  | Platform => "Platform"
   | CommandGenerator => "CommandGenerator"
   | CommandTopic => "CommandTopic"
   | EventCollector => "EventCollector"
@@ -63,6 +68,7 @@ let ofString = str =>
   | "Aggregate" => Aggregate->Some
   | "Counter" => Counter->Some
   | "Plugin" => Plugin->Some
+  | "Platform" => Platform->Some
   | "CommandGenerator" => CommandGenerator->Some
   | "CommandTopic" => CommandTopic->Some
   | "EventCollector" => EventCollector->Some
@@ -95,6 +101,7 @@ let toName = componentType =>
   | Aggregate => "Aggr"
   | Counter => "Counter"
   | Plugin => "Plugin"
+  | Platform => "Platform"
   | CommandGenerator => "CmdGen"
   | CommandTopic => "CmdTopic"
   | EventCollector => "EventColl"

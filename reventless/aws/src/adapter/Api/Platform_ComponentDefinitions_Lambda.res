@@ -116,7 +116,7 @@ let make = (
     ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
     ~tags=AWS.Tags.make(
       ~name=name ++ "Lambda",
-      ~kind=ReventlessCore.ComponentType.Core,
+      ~kind=ReventlessCore.ComponentType.Platform,
       ~role=Identity,
       ~scope=Platform,
     ),
@@ -190,7 +190,7 @@ let make = (
       memorySize: 512->Pulumi.Input.make,
       timeout: 30->Pulumi.Input.make,
       layers,
-      tags: AWS.Tags.make(~name=name ++ "Lambda", ~kind=ReventlessCore.ComponentType.Core, ~role=Runtime, ~scope=Platform),
+      tags: AWS.Tags.make(~name=name ++ "Lambda", ~kind=ReventlessCore.ComponentType.Platform, ~role=Runtime, ~scope=Platform),
       environment: (
         {
           Lambda.Function.variables: Dict.fromArray([
@@ -210,7 +210,7 @@ let make = (
     ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
     ~tags=AWS.Tags.make(
       ~name=name ++ "DataSource",
-      ~kind=ReventlessCore.ComponentType.Core,
+      ~kind=ReventlessCore.ComponentType.Platform,
       ~role=Identity,
       ~scope=Platform,
     ),

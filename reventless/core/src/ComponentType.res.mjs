@@ -10,6 +10,8 @@ function toString(componentType) {
       return "Counter";
     case "Plugin" :
       return "Plugin";
+    case "Platform" :
+      return "Platform";
     case "CommandGenerator" :
       return "CommandGenerator";
     case "CommandTopic" :
@@ -97,6 +99,8 @@ function ofString(str) {
       return "InboundTranslationSlice";
     case "OutboundTranslationSlice" :
       return "OutboundTranslationSlice";
+    case "Platform" :
+      return "Platform";
     case "Plugin" :
       return "Plugin";
     case "QueryDB" :
@@ -130,6 +134,8 @@ function toName(componentType) {
       return "Counter";
     case "Plugin" :
       return "Plugin";
+    case "Platform" :
+      return "Platform";
     case "CommandGenerator" :
       return "CmdGen";
     case "CommandTopic" :

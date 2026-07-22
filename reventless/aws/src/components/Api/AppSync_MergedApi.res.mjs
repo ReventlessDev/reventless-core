@@ -38,7 +38,7 @@ function make(name, opts) {
   };
   let executionRole = new (Aws.iam.Role)(name + `-merge-exec-role`, {
     assumeRolePolicy: `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`,
-    tags: AWS_Tags$ReventlessAws.make(name + `-merge-exec-role`, "Core", "Identity", "Platform", undefined, undefined, undefined, undefined)
+    tags: AWS_Tags$ReventlessAws.make(name + `-merge-exec-role`, "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined)
   }, customOpts);
   new (Aws.iam.RolePolicy)(name + `-merge-exec-policy`, {
     policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `-merge-exec-policy`, [{
@@ -66,7 +66,7 @@ function make(name, opts) {
       }],
     apiType: "MERGED",
     mergedApiExecutionRoleArn: executionRole.arn,
-    tags: AWS_Tags$ReventlessAws.make(name, "Core", "Api", "Platform", undefined, undefined, undefined, undefined)
+    tags: AWS_Tags$ReventlessAws.make(name, "Platform", "Api", "Platform", undefined, undefined, undefined, undefined)
   }, customOpts);
   return {
     api: Pulumi.output(mergedApi),
