@@ -410,14 +410,21 @@ let finish = (
     // isolates the bad record across those retries instead of redelivering
     // the whole batch each time.
     entries->Array.forEach(entry => {
+      let esmName = entry.topicName ++ "Stream2" ++ name ++ "StateTopic"
       let _esm = EventSourceMapping.make(
-        ~name=entry.topicName ++ "Stream2" ++ name ++ "StateTopic",
+        ~name=esmName,
         ~args={
           EventSourceMapping.functionName: lambda.arn->Pulumi.Output.asInput,
           eventSourceArn: entry.streamArn->Pulumi.Output.asInput,
           startingPosition: LATEST,
           maximumRetryAttempts: 3,
           bisectBatchOnFunctionError: true,
+          tags: AWS.Tags.make(
+            ~name=esmName,
+            ~kind=ReventlessCore.QueryDb.componentType,
+            ~role=EventSourceMapping,
+            ~component=name,
+          ),
         },
         ~opts=Some(opts),
       )

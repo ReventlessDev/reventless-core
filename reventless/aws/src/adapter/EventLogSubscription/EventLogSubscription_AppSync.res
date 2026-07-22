@@ -108,6 +108,12 @@ let make = (
       )
       ->Pulumi.Output.asInput,
       sqsManagedSseEnabled: false->Pulumi.Input.make,
+      tags: AWS.Tags.make(
+        ~name=name ++ "EventLogSubQueue",
+        ~kind=ReventlessCore.EventTopic.componentType,
+        ~role=EventLogSubscription,
+        ~component=name,
+      ),
     },
     ~opts,
   )
@@ -266,6 +272,12 @@ let make = (
     ~lambda=lambdaOutput,
     ~name=name ++ "EventLogSubEventSourceMapping",
     ~queue,
+    ~tags=AWS.Tags.make(
+      ~name=name ++ "EventLogSubEventSourceMapping",
+      ~kind=ReventlessCore.EventTopic.componentType,
+      ~role=EventSourceMapping,
+      ~component=name,
+    ),
     ~opts,
   )
 }

@@ -131,7 +131,8 @@ export const handler = async (event) => {
       memory: "4096",
       networkMode: "awsvpc",
       requiresCompatibilities: ["FARGATE"],
-      executionRoleArn: taskExecutionRole.arn
+      executionRoleArn: taskExecutionRole.arn,
+      tags: AWS_Tags$ReventlessAws.make(name, Cloner$ReventlessCore.componentType, "DataTransfer", undefined, name, undefined, undefined, undefined)
     }, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined);
     let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name, Cloner$ReventlessCore.componentType, "Identity", undefined, undefined, undefined, undefined, undefined), opts);
     let lambda = new (Aws.lambda.Function)(name, {

@@ -51,6 +51,14 @@ let makeQueue = (
       )
       ->Pulumi.Output.asInput,
       sqsManagedSseEnabled: false->Pulumi.Input.make,
+      // Plugin substrate: one shared feed per plugin ("AllReadModelsFeed"), not a
+      // resource any single component owns.
+      tags: AWS.Tags.make(
+        ~name,
+        ~kind=ReventlessCore.ComponentType.Plugin,
+        ~role=EventCollector,
+        ~scope=Plugin,
+      ),
     },
     ~opts,
   )
@@ -69,7 +77,18 @@ let connect = (
   ~lambdaRole: PulumiAws.IAM.Role.t,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => {
-  let _esm = Util_EventSourceMapping.subscribeSqs(~lambda, ~name, ~queue, ~opts)
+  let _esm = Util_EventSourceMapping.subscribeSqs(
+    ~lambda,
+    ~name,
+    ~queue,
+    ~tags=AWS.Tags.make(
+      ~name,
+      ~kind=ReventlessCore.ComponentType.Plugin,
+      ~role=EventSourceMapping,
+      ~scope=Plugin,
+    ),
+    ~opts,
+  )
   let _policy = queue.arn->Pulumi.Output.apply(queueArn => {
     open PulumiAws.PolicyDocument
     PulumiAws.IAM.RolePolicy.make(

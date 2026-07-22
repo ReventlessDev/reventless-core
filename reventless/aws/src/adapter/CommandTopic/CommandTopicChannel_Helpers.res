@@ -211,4 +211,15 @@ let createLambdaPolicy = (
 }
 
 let subscribeLambda2SqsTopic = (~batchSize=?, lambda, name, queue, opts) =>
-  Util_EventSourceMapping.subscribeSqs(~lambda, ~name, ~queue, ~batchSize?, ~opts)
+  Util_EventSourceMapping.subscribeSqs(
+    ~lambda,
+    ~name,
+    ~queue,
+    ~batchSize?,
+    ~tags=AWS.Tags.make(
+      ~name,
+      ~kind=ReventlessCore.CommandTopic.componentType,
+      ~role=EventSourceMapping,
+    ),
+    ~opts,
+  )

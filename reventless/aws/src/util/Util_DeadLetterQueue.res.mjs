@@ -17,7 +17,12 @@ let name = "DeadLetterQueue";
 
 let nameFifo = "FIFO" + name;
 
+function queueTags(queueName) {
+  return AWS_Tags$ReventlessAws.make(queueName, "Plugin", "DeadLetter", "Plugin", undefined, undefined, undefined, undefined);
+}
+
 let queue = new (Aws.sqs.Queue)(name, {
+  tags: queueTags(name),
   visibilityTimeoutSeconds: 180,
   sqsManagedSseEnabled: false
 });
@@ -25,6 +30,7 @@ let queue = new (Aws.sqs.Queue)(name, {
 let fifoQueue = new (Aws.sqs.Queue)(nameFifo, {
   contentBasedDeduplication: true,
   fifoQueue: true,
+  tags: queueTags(nameFifo),
   visibilityTimeoutSeconds: 180,
   sqsManagedSseEnabled: false
 });
@@ -73,9 +79,13 @@ Monitoring$ReventlessCore.notify("DeadLetterSink", name, Util_Lambda$ReventlessA
 
 let lambda = Pulumi.output(handler);
 
-let _subscription = Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, name, queue, undefined, opts);
+function esmTags(esmName) {
+  return AWS_Tags$ReventlessAws.make(esmName, "Plugin", "EventSourceMapping", "Plugin", undefined, undefined, undefined, undefined);
+}
 
-let _fifoSubscription = Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, nameFifo, fifoQueue, undefined, opts);
+let _subscription = Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, name, queue, undefined, esmTags(name), opts);
+
+let _fifoSubscription = Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, nameFifo, fifoQueue, undefined, esmTags(nameFifo), opts);
 
 function createQueuePolicyDocument(name, queueArn, handlerArn) {
   return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
@@ -143,6 +153,7 @@ Pulumi.all([
 export {
   name,
   nameFifo,
+  queueTags,
   queue,
   fifoQueue,
   opts,
@@ -154,6 +165,7 @@ export {
   layers,
   handler,
   lambda,
+  esmTags,
   _subscription,
   _fifoSubscription,
   createQueuePolicyDocument,

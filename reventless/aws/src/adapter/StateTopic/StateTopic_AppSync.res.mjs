@@ -284,12 +284,14 @@ function finish(eventsApi, opts) {
     sourceCodeHash: sourceCodeHash
   }, opts);
   entries.forEach(entry => {
-    new (Aws.lambda.EventSourceMapping)(entry.topicName + "Stream2" + name + "StateTopic", {
+    let esmName = entry.topicName + "Stream2" + name + "StateTopic";
+    new (Aws.lambda.EventSourceMapping)(esmName, {
       functionName: lambda.arn,
       bisectBatchOnFunctionError: true,
       eventSourceArn: entry.streamArn,
       maximumRetryAttempts: 3,
-      startingPosition: "LATEST"
+      startingPosition: "LATEST",
+      tags: AWS_Tags$ReventlessAws.make(esmName, QueryDb$ReventlessCore.componentType, "EventSourceMapping", undefined, name, undefined, undefined, undefined)
     }, opts);
   });
   registry[key] = [];

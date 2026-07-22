@@ -2,6 +2,8 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Util$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util.res.mjs";
+import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
@@ -42,7 +44,7 @@ function make(name, referencesName, referencesDb, countsName, countsDb, param, s
     _0: "Counter"
   }, "Counter", match.code, match.sourceCodeHash, envVars, 1024, 30, undefined, undefined, undefined, undefined, undefined, componentOpts);
   let lambda = runtime.parts.lambda;
-  let subscribe = (sourceName, source) => Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, sourceName, source, opts);
+  let subscribe = (sourceName, source) => Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, sourceName, source, AWS_Tags$ReventlessAws.make(Util$ReventlessCore.baseName(sourceName) + ("2" + name), "Counter", "EventSourceMapping", undefined, name, undefined, undefined, undefined), opts);
   subscribe(referencesName, referencesStream);
   subscribe(countsName, countsStream);
   return {

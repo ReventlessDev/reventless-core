@@ -6,8 +6,10 @@ import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
+import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
+import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
 
@@ -146,7 +148,7 @@ function createLambdaPolicy(lambdaRole, name, queue, resources, opts) {
 }
 
 function subscribeLambda2SqsTopic(batchSize, lambda, name, queue, opts) {
-  return Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, name, queue, batchSize, opts);
+  return Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, name, queue, batchSize, AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType, "EventSourceMapping", undefined, undefined, undefined, undefined, undefined), opts);
 }
 
 export {

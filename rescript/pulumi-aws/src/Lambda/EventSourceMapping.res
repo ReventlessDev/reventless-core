@@ -64,6 +64,7 @@ type args = {
   startingPosition?: startingPosition,
   startingPositionTimestamp?: Pulumi.Input.t<string>,
   tumblingWindowInSeconds?: int,
+  tags?: Pulumi.Input.t<Aws.tags>,
 }
 
 type t = {

@@ -103,6 +103,42 @@ let makeDict = (
   ]->Dict.fromArray
 }
 
+/***
+Framework-created AWS resource types that carry NO attribution tags, and why.
+Keep this list here rather than in a plan: it is what tells a coverage audit
+whether a bare resource is a gap to close or a fact to work around.
+
+**Cannot be tagged** — the provider type exposes no `tags` property at all
+(verified against `@pulumi/aws` 7.19.0; re-verify on a major provider bump, since
+AWS does add tag support over time — `lambda/eventSourceMapping` gained it after
+the first sweep and is now tagged):
+
+    aws:appsync/dataSource        aws:appsync/resolver (incl. aws-native)
+    aws:appsync/function          aws:appsync/sourceApiAssociation
+    aws:iam/rolePolicy            aws:iam/rolePolicyAttachment
+    aws:sqs/queuePolicy           aws:sns/topicSubscription
+    aws:lambda/permission         aws:lambda/invocation
+    aws:cloudwatch/logMetricFilter aws:cloudwatch/eventTarget
+    aws:s3/bucketPolicy           aws:s3/bucketPublicAccessBlock
+    aws:cloudfront/originAccessControl
+    aws:cognito/userPoolClient    aws:cognito/userGroup
+    aws:route53/record            aws:acm/certificateValidation
+    aws:ses/emailIdentity         aws:ses/identityPolicy
+
+Each is attributable only through its parent (function, log group, API, role,
+bucket, pool, certificate) — i.e. structurally, by URN ancestry. A consumer that
+treats "carries `reventless:*` tags" as universal will be wrong about every row
+above, and no amount of coverage work changes that. Note the ReScript binding for
+`IAM.RolePolicy` carries a `tags?` field that AWS ignores; do not read its
+presence as tag support.
+
+**Taggable, deliberately untagged** — `aws:s3/bucketObject`. Static-bundle assets
+are bucket *contents*, not infrastructure: they are fully attributed by the
+bucket that holds them, and S3 bills object tags per object per month, so tagging
+a few hundred bundle files would cost money to restate a fact the parent already
+carries.
+*/
+
 /**
 The same schema as `makeDict`, wrapped as a Pulumi input — what nearly every
 resource's `tags` field expects. Use `makeDict` only for the bindings that take

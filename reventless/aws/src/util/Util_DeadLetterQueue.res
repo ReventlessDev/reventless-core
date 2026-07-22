@@ -4,11 +4,20 @@ open PulumiAws
 let name = "DeadLetterQueue"
 let nameFifo = "FIFO" ++ name
 
+let queueTags = queueName =>
+  AWS.Tags.make(
+    ~name=queueName,
+    ~kind=ReventlessCore.ComponentType.Plugin,
+    ~role=DeadLetter,
+    ~scope=Plugin,
+  )
+
 let queue = SQS.Queue.make(
   ~name,
   ~args={
     SQS.Queue.visibilityTimeoutSeconds: 180->Pulumi.Input.make,
     sqsManagedSseEnabled: false->Pulumi.Input.make,
+    tags: queueTags(name),
   },
 )
 
@@ -19,6 +28,7 @@ let fifoQueue = SQS.Queue.make(
     contentBasedDeduplication: true->Pulumi.Input.make,
     visibilityTimeoutSeconds: 180->Pulumi.Input.make,
     sqsManagedSseEnabled: false->Pulumi.Input.make,
+    tags: queueTags(nameFifo),
   },
 )
 
@@ -89,11 +99,26 @@ ReventlessCore.Monitoring.notify(
 
 let lambda = handler->Pulumi.Output.make
 
-let _subscription = Util_EventSourceMapping.subscribeSqs(~lambda, ~name, ~queue, ~opts)
+let esmTags = esmName =>
+  AWS.Tags.make(
+    ~name=esmName,
+    ~kind=ReventlessCore.ComponentType.Plugin,
+    ~role=EventSourceMapping,
+    ~scope=Plugin,
+  )
+
+let _subscription = Util_EventSourceMapping.subscribeSqs(
+  ~lambda,
+  ~name,
+  ~queue,
+  ~tags=esmTags(name),
+  ~opts,
+)
 let _fifoSubscription = Util_EventSourceMapping.subscribeSqs(
   ~lambda,
   ~name=nameFifo,
   ~queue=fifoQueue,
+  ~tags=esmTags(nameFifo),
   ~opts,
 )
 let createQueuePolicyDocument = (name, queueArn: string, handlerArn: string) => {

@@ -27,15 +27,21 @@ let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, part
   let opts =
     opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
-  let lambdaRole = IAM.Role.makeWithDefaultPolicy(
-    ~name,
-    ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
-    ~opts?,
-  )
-
   // Legacy path (see above): no component kind reaches here because nothing calls
   // it, so it is attributed to the Platform rather than to an invented domain kind.
   let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.ComponentType.Platform, ~role=Runtime, ~scope=Platform)
+
+  let lambdaRole = IAM.Role.makeWithDefaultPolicy(
+    ~name,
+    ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
+    ~tags=AWS.Tags.make(
+      ~name,
+      ~kind=ReventlessCore.ComponentType.Platform,
+      ~role=Identity,
+      ~scope=Platform,
+    ),
+    ~opts?,
+  )
   let lambda =
     handler->Pulumi.Output.apply(handler =>
       Lambda.CallbackFunction.make(

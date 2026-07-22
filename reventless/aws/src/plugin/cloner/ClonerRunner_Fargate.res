@@ -209,6 +209,12 @@ export const handler = async (event) => {
           cpu: "1024"->Pulumi.Input.make,
           requiresCompatibilities: ["FARGATE"],
           networkMode: #awsvpc,
+          tags: AWS.Tags.make(
+            ~name,
+            ~kind=ReventlessCore.Cloner.componentType,
+            ~role=DataTransfer,
+            ~component=name,
+          ),
         },
         ~opts?,
       )

@@ -5,11 +5,14 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
+import * as Util$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Util_SQS$ReventlessAws from "../../util/Util_SQS.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
+import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
 import * as AdapterDeploytime$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/AdapterDeploytime.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
 
@@ -66,6 +69,10 @@ function connectSqsQueue2SnsTopics(queue, name, eventTopics, opts) {
     log.debug("EventCollector", undefined, `connectSqsQueue2SnsTopics ` + param[1] + `: ` + eventTopicResources.length.toString() + ` topic resource(s)`);
     subscribeQueue2SnsTopic(queue, name, Adapter_Helpers$ReventlessAws.snsResources(eventTopicResources), opts);
   });
+}
+
+function esmTags(name, esmName) {
+  return AWS_Tags$ReventlessAws.make(esmName, EventCollector$ReventlessCore.componentType, "EventSourceMapping", undefined, name, undefined, undefined, undefined);
 }
 
 function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources, opts) {
@@ -141,11 +148,11 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
       ])),
       role: lambdaRole.id
     }, opts);
-    dynamoDbStreamResources.map(dynamoDbStreamResource => Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$ReventlessCore.resolvedToResource(dynamoDbStreamResource), opts));
+    dynamoDbStreamResources.map(dynamoDbStreamResource => Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$ReventlessCore.resolvedToResource(dynamoDbStreamResource), esmTags(name, Util$ReventlessCore.baseName(dynamoDbStreamResource.name) + ("2" + name)), opts));
   });
   return queues.map((queue, idx) => {
     let esmName = queues.length > 1 ? name + `Sqs` + idx.toString() : name;
-    return Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, esmName, queue, undefined, opts);
+    return Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, esmName, queue, undefined, esmTags(name, esmName), opts);
   });
 }
 
@@ -155,6 +162,7 @@ export {
   createQueuePolicy,
   subscribeQueue2SnsTopic,
   connectSqsQueue2SnsTopics,
+  esmTags,
   connectLambda,
 }
 /* log Not a pure module */

@@ -7,20 +7,22 @@ import * as AWS$ReventlessAws from "../adapter/AWS.res.mjs";
 import * as Util$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util.res.mjs";
 import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 
-function subscribe(batchSize, lambda, targetName, sourceName, source, opts) {
+function subscribe(batchSize, lambda, targetName, sourceName, source, tags, opts) {
   return new (Aws.lambda.EventSourceMapping)(Util$ReventlessCore.baseName(sourceName) + ("2" + targetName), {
     functionName: Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
     batchSize: batchSize,
     eventSourceArn: source.urn,
-    startingPosition: "LATEST"
+    startingPosition: "LATEST",
+    tags: tags
   }, opts);
 }
 
-function subscribeSqs(lambda, name, queue, batchSize, opts) {
+function subscribeSqs(lambda, name, queue, batchSize, tags, opts) {
   let esm = new (Aws.lambda.EventSourceMapping)(name, {
     functionName: Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
     batchSize: batchSize,
-    eventSourceArn: queue.arn
+    eventSourceArn: queue.arn,
+    tags: tags
   }, opts);
   return Adapter$ReventlessInfra.make(esm.id, esm.id, esm.arn, esm.id.apply(param => AWS$ReventlessAws.SQS.service), undefined, undefined, undefined, Pulumi.output("aws:lambda:EventSourceMapping"), undefined, undefined);
 }

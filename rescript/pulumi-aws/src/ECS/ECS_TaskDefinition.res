@@ -24,6 +24,7 @@ type args = {
   executionRoleArn?: Pulumi.Input.t<string>,
   /** ARN of IAM role that allows your Amazon ECS container task to make calls to other AWS services. */
   taskRoleArn?: Pulumi.Input.t<string>,
+  tags?: Pulumi.Input.t<Aws.tags>,
 }
 
 @module("@pulumi/aws") @scope("ecs") @new

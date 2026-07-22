@@ -77,6 +77,12 @@ let make: ReventlessCore.Counter_Adapter.handlerMaker = (
       ~targetName=name,
       ~sourceName,
       ~source,
+      ~tags=AWS.Tags.make(
+        ~name=sourceName->ReventlessCore.Util.baseName ++ ("2" ++ name),
+        ~kind=ReventlessCore.ComponentType.Counter,
+        ~role=EventSourceMapping,
+        ~component=name,
+      ),
       ~opts,
     )
 

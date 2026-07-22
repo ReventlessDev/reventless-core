@@ -81,6 +81,7 @@ export async function handler(event) {
 function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
   let queue = new (Aws.sqs.Queue)(name + "EventLogSubQueue", {
     redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(dlqArn => SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5)),
+    tags: AWS_Tags$ReventlessAws.make(name + "EventLogSubQueue", EventTopic$ReventlessCore.componentType, "EventLogSubscription", undefined, name, undefined, undefined, undefined),
     visibilityTimeoutSeconds: 60,
     sqsManagedSseEnabled: false
   }, opts);
@@ -172,7 +173,7 @@ function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
     sourceCodeHash: sourceCodeHash
   }, opts);
   let lambdaOutput = Pulumi.output(lambda);
-  Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambdaOutput, name + "EventLogSubEventSourceMapping", queue, undefined, opts);
+  Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambdaOutput, name + "EventLogSubEventSourceMapping", queue, undefined, AWS_Tags$ReventlessAws.make(name + "EventLogSubEventSourceMapping", EventTopic$ReventlessCore.componentType, "EventSourceMapping", undefined, name, undefined, undefined, undefined), opts);
 }
 
 export {

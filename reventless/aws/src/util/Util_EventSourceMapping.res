@@ -1,11 +1,16 @@
 open PulumiAws
 
+// `~tags` is required rather than optional: an EventSourceMapping is created by
+// several unrelated adapters, and an optional argument is exactly how the last
+// coverage sweep left these bare. Making the caller name the owning piece is the
+// regression guard — the same reasoning as `makeFromCodeAsset`'s `~componentKind`.
 let subscribe = (
   ~batchSize=?,
   ~lambda: Pulumi.Output.t<PulumiAws.Lambda.Function.t>,
   ~targetName,
   ~sourceName,
   ~source: ReventlessInfra.Adapter.resource,
+  ~tags: Pulumi.Input.t<Aws.tags>,
   ~opts,
 ) =>
   EventSourceMapping.make(
@@ -17,6 +22,7 @@ let subscribe = (
       eventSourceArn: source.urn->Pulumi.Output.asInput,
       startingPosition: LATEST,
       ?batchSize,
+      tags,
     },
     ~opts=Some(opts),
   )
@@ -26,6 +32,7 @@ let subscribeSqs = (
   ~name,
   ~queue: PulumiAws.SQS.Queue.t,
   ~batchSize=?,
+  ~tags: Pulumi.Input.t<Aws.tags>,
   ~opts,
 ) => {
   let esm = EventSourceMapping.make(
@@ -36,6 +43,7 @@ let subscribeSqs = (
       ->Pulumi.Output.asInput,
       eventSourceArn: queue.arn->Pulumi.Output.asInput,
       ?batchSize,
+      tags,
     },
     ~opts=Some(opts),
   )

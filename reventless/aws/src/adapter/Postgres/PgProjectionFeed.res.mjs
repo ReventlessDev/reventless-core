@@ -2,6 +2,7 @@
 
 import * as Aws from "@pulumi/aws";
 import * as SQS_Queue$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/SQS/SQS_Queue.res.mjs";
+import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_DeadLetterQueue$ReventlessAws from "../../util/Util_DeadLetterQueue.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
@@ -15,6 +16,7 @@ function getFeedQueues() {
 function makeQueue(name, scope, includeClassic, includeDcb, opts) {
   let queue = new (Aws.sqs.Queue)(name, {
     redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(dlqArn => SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5)),
+    tags: AWS_Tags$ReventlessAws.make(name, "Plugin", "EventCollector", "Plugin", undefined, undefined, undefined, undefined),
     visibilityTimeoutSeconds: 120,
     sqsManagedSseEnabled: false
   }, opts);
@@ -29,7 +31,7 @@ function makeQueue(name, scope, includeClassic, includeDcb, opts) {
 }
 
 function connect(name, queue, lambda, lambdaRole, opts) {
-  Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, name, queue, undefined, opts);
+  Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, name, queue, undefined, AWS_Tags$ReventlessAws.make(name, "Plugin", "EventSourceMapping", "Plugin", undefined, undefined, undefined, undefined), opts);
   queue.arn.apply(queueArn => new (Aws.iam.RolePolicy)(name + `Receive`, {
     policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `ReceivePolicy`, [{
         Sid: "AllowReceiveFeedQueue",

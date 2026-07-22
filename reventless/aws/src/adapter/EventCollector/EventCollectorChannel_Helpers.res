@@ -98,6 +98,17 @@ let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, eventTopics
     })
 }
 
+// The EventCollector's transport wiring: one mapping per stream source plus one
+// per buffer queue. `~component=name` keeps them attributed to the collector they
+// feed, not to the mapping's own generated name.
+let esmTags = (name, esmName) =>
+  AWS.Tags.make(
+    ~name=esmName,
+    ~kind=ReventlessCore.EventCollector.componentType,
+    ~role=EventSourceMapping,
+    ~component=name,
+  )
+
 let connectLambda = (
   lambda: Pulumi.Output.t<PulumiAws.Lambda.Function.t>,
   name: string,
@@ -254,6 +265,10 @@ let connectLambda = (
             ~targetName=name,
             ~sourceName=dynamoDbStreamResource.name,
             ~source=dynamoDbStreamResource->ReventlessCore.AdapterDeploytime.resolvedToResource,
+            ~tags=esmTags(
+              name,
+              dynamoDbStreamResource.name->ReventlessCore.Util.baseName ++ ("2" ++ name),
+            ),
             ~opts,
           )
         )
@@ -261,7 +276,13 @@ let connectLambda = (
 
   let subscriptionResources = queues->Array.mapWithIndex((queue, idx) => {
     let esmName = queues->Array.length > 1 ? `${name}Sqs${Int.toString(idx)}` : name
-    Util_EventSourceMapping.subscribeSqs(~lambda, ~name=esmName, ~queue, ~opts)
+    Util_EventSourceMapping.subscribeSqs(
+      ~lambda,
+      ~name=esmName,
+      ~queue,
+      ~tags=esmTags(name, esmName),
+      ~opts,
+    )
   })
 
   subscriptionResources
