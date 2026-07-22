@@ -72,7 +72,7 @@ describe("LocalCommandTopicChannel", () => {
       TestBus.registerCommandHandler("myCmd", async (json, _) => {
         received := Some(json)
       })
-      let ch = TestChannel.make(~name="myCmd")
+      let ch = TestChannel.make(~name="myCmd", ~owner=None)
       let publishFn = await ch.publishJsons->TestRunner.resolve
       await publishFn([
         {
@@ -96,7 +96,7 @@ describe("LocalCommandTopicChannel", () => {
       TestBus.registerCommandHandler("multiCmd", async (_, _) => {
         count := count.contents + 1
       })
-      let ch = TestChannel.make(~name="multiCmd")
+      let ch = TestChannel.make(~name="multiCmd", ~owner=None)
       let publishFn = await ch.publishJsons->TestRunner.resolve
       await publishFn([
         {
@@ -131,7 +131,7 @@ describe("LocalCommandTopicChannel", () => {
         },
         resources: [],
       }
-      let ch = TestChannel.make(~name="testCmd")
+      let ch = TestChannel.make(~name="testCmd", ~owner=None)
       let _ = ch.connect(
         ~name="testCmd",
         ~channel=ch,
@@ -156,7 +156,7 @@ describe("LocalCommandTopicChannel", () => {
         },
         resources: [],
       }
-      let ch = TestChannel.make(~name="noHandlerCmd")
+      let ch = TestChannel.make(~name="noHandlerCmd", ~owner=None)
       let _ = ch.connect(
         ~name="noHandlerCmd",
         ~channel=ch,

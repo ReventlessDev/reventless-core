@@ -13,7 +13,7 @@ describe("LocalQueryEngine", () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
-      let s = Storage.make(~name="users", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let s = Storage.make(~name="users", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("user-1", JSON.Encode.string("Alice"), ReventlessCore.QueryDb.Any, None)
       let engine = await QE.make(Dict.make())->TestRunner.resolve
@@ -29,7 +29,7 @@ describe("LocalQueryEngine", () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
-      let s = Storage.make(~name="products", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let s = Storage.make(~name="products", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ =
         await ops.save("prod-key", JSON.Encode.string("Widget"), ReventlessCore.QueryDb.Any, None)
@@ -58,7 +58,7 @@ describe("LocalQueryEngine", () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
-      let s = Storage.make(~name="counters", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let s = Storage.make(~name="counters", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("42", JSON.Encode.int(100), ReventlessCore.QueryDb.Any, None)
       let engine = await QE.make(Dict.make())->TestRunner.resolve
@@ -75,7 +75,7 @@ describe("LocalQueryEngine", () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
-      let s = Storage.make(~name="orders", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let s = Storage.make(~name="orders", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("o1", JSON.Encode.string("order1"), ReventlessCore.QueryDb.Any, None)
       let _ = await ops.save("o2", JSON.Encode.string("order2"), ReventlessCore.QueryDb.Any, None)
@@ -98,7 +98,7 @@ describe("LocalQueryEngine", () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
-      let s = Storage.make(~name="items", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let s = Storage.make(~name="items", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("k1", JSON.Encode.string("a"), ReventlessCore.QueryDb.Any, None)
       let _ = await ops.save("k2", JSON.Encode.string("b"), ReventlessCore.QueryDb.Any, None)
@@ -114,7 +114,7 @@ describe("LocalQueryEngine", () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
-      let s = Storage.make(~name="things", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let s = Storage.make(~name="things", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("t1", JSON.Encode.string("x"), ReventlessCore.QueryDb.Any, None)
       let _ = await ops.save("t2", JSON.Encode.string("y"), ReventlessCore.QueryDb.Any, None)
@@ -127,7 +127,7 @@ describe("LocalQueryEngine", () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
-      let s = Storage.make(~name="stuff", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let s = Storage.make(~name="stuff", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("s1", JSON.Encode.string("z"), ReventlessCore.QueryDb.Any, None)
       let engine = await QE.make(Dict.make())->TestRunner.resolve
@@ -139,7 +139,7 @@ describe("LocalQueryEngine", () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalQueryDbStorage.Make(TestBus)
       module QE = LocalQueryEngine.Make(TestBus)
-      let s = Storage.make(~name="widgets", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let s = Storage.make(~name="widgets", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save("w1", JSON.Encode.string("p"), ReventlessCore.QueryDb.Any, None)
       let _ = await ops.save("w2", JSON.Encode.string("q"), ReventlessCore.QueryDb.Any, None)

@@ -18,7 +18,7 @@ module Make = (Spec: ReventlessInfra.EventTopic.T, Publisher: EventTopic_Adapter
     let publisher = Publisher.make(
       ~name=name->ComponentType.name(EventTopic.componentType),
       ~storageResources,
-      ~owner?,
+      ~owner,
       ~opts,
     )
 

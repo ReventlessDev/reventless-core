@@ -34,7 +34,7 @@ module Make = (
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let name = name->ComponentType.name(EventCollector.componentType)
 
-    let channel = Channel.make(~name, ~eventTopics, ~owner?, ~opts)
+    let channel = Channel.make(~name, ~eventTopics, ~owner, ~opts)
     self->EventCollector_Adapter.setChannel(channel)
 
     self->Component.setOperations(

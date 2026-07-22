@@ -206,7 +206,7 @@ let makeDcb = (
     ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
     ~tags=AWS.Tags.make(
       ~name="DcbMutationDS",
-      ~kind=ReventlessCore.CommandGenerator.componentType,
+      ~kind=ReventlessCore.ComponentType.Plugin,
       ~role=Identity,
       ~scope=Plugin,
     ),

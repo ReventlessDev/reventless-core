@@ -33,11 +33,11 @@ module Make = (Bus: LocalBus.T) => {
     ~ttl=?,
     ~api,
     ~apiRole,
-    ~owner as _=?, ~opts,
+    ~owner, ~opts,
   ) =>
     switch BackendState.getSqliteDb() {
     | Some(db) =>
       QueryDbStorage_Sqlite.makeStorage(~db, ~bus=sqliteBusCallbacks, ~name, ~indexes, ~subIdField)
-    | None => Mem.make(~name, ~indexes, ~subIdField?, ~ttl?, ~api, ~apiRole, ~opts)
+    | None => Mem.make(~name, ~indexes, ~subIdField?, ~ttl?, ~api, ~apiRole, ~owner, ~opts)
     }
 }

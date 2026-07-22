@@ -255,7 +255,10 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
   return EventCollectorChannel => (PluginRuntimeBuilder => {
     let PluginEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
     let make = (name, eventTopics, opts) => {
-      let eventCollector = PluginEventCollector.make(name, eventTopics, undefined, opts);
+      let eventCollector = PluginEventCollector.make(name, eventTopics, {
+        kind: "Plugin",
+        name: name
+      }, opts);
       let eventCollectorOutputs = Component$ReventlessCore.outputs(eventCollector);
       let resources = eventCollectorOutputs.resources;
       let r = resources[resources.length - 1 | 0];

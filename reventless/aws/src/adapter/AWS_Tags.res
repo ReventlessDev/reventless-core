@@ -36,11 +36,18 @@ let makeDict = (
   // The model component stem, when it differs from the resource name
   // ("Products" for a resource named "ProductsQueryDb"). Defaults to `~name`.
   ~component: option<string>=?,
-  // The component that owns this resource, where the caller knows it. Overrides
-  // `~kind` and `~component`: the piece adapters pass their own ComponentType as
-  // `~kind`, which names the PIECE, so it collapses onto `~role` whenever the
-  // owner is unknown. Supplied by the owning builder via
-  // `ResourceAttribution.owner` — see docs/plans/resource-attribution-owner-kind.md.
+  // The model element that owns this resource. Overrides `~kind`, `~component`
+  // and `~scope`: the piece adapters pass their own ComponentType as `~kind`,
+  // which names the PIECE, so it collapses onto `~role` whenever the owner is
+  // unknown. Supplied by the owning builder via `ResourceAttribution.owner` —
+  // see docs/plans/done/resource-attribution-owner-kind.md.
+  //
+  // A plugin is a model element too, so shared substrate (a DcbEventLog, a
+  // plugin's DCB command topics, its event collector) is owned by the Plugin
+  // rather than by nothing — that is how it gets attributed to the element it
+  // actually belongs to. `Plugin`-kinded owners therefore imply plugin scope,
+  // where `reventless:plugin` names the owner and `reventless:component` is
+  // empty by definition.
   ~owner: option<Attribution.owner>=?,
   ~plugin: option<string>=?,
   ~platform: option<string>=?,
@@ -53,18 +60,26 @@ let makeDict = (
   | None => ambient.platform->Option.getOr(projectName)
   }
 
-  let plugin = switch scope {
-  | Platform => ""
-  | Component | Plugin =>
-    switch plugin {
-    | Some(p) => p
-    | None => ambient.plugin->Option.getOr("")
-    }
-  }
-
   let kind = switch owner {
   | Some({kind}) => kind
   | None => kind
+  }
+
+  // A Plugin-kinded owner IS the plugin, so the resource is plugin substrate
+  // whatever default scope the piece adapter passed.
+  let scope = switch owner {
+  | Some({kind: Plugin}) => Attribution.Scope.Plugin
+  | Some(_) | None => scope
+  }
+
+  let plugin = switch scope {
+  | Platform => ""
+  | Component | Plugin =>
+    switch (plugin, owner) {
+    | (Some(p), _) => p
+    | (None, Some({kind: Plugin, name})) => name
+    | (None, _) => ambient.plugin->Option.getOr("")
+    }
   }
 
   let component = switch scope {

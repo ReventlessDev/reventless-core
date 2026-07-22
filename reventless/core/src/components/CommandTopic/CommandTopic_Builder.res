@@ -74,7 +74,7 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Channel: CommandTopic_Adapt
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let name = name->ComponentType.name(CommandTopic.componentType)
 
-    let channel = Channel.make(~name, ~owner?, ~opts)
+    let channel = Channel.make(~name, ~owner, ~opts)
     self->CommandTopic_Adapter.setChannel(channel)
 
     self->Component.setOperations(

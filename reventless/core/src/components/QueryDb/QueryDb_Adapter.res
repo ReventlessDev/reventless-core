@@ -14,7 +14,7 @@ type storageMaker<'api, 'role> = (
   ~ttl: int=?,
   ~api: 'api,
   ~apiRole: 'role,
-  ~owner: ResourceAttribution.owner=?,
+  ~owner: option<ResourceAttribution.owner>,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => storage
 

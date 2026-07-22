@@ -47,7 +47,7 @@ describe("LocalBus", () => {
 describe("EventLogStorage_InMemory", () => {
   testPromise("append stores events and replay returns them", async () => {
     let opts: Pulumi.CustomResourceOptions.t = {}
-    let storage = EventLogStorage_InMemory.make(~name="test-log", ~opts)
+    let storage = EventLogStorage_InMemory.make(~name="test-log", ~owner=None, ~opts)
     let ops = await storage.operations->TestRunner.resolve
     let _ = await ops.append(0, "agg-1", [JSON.Encode.string("e1"), JSON.Encode.string("e2")])
     let events = await ops.replay("agg-1")
@@ -56,7 +56,7 @@ describe("EventLogStorage_InMemory", () => {
 
   testPromise("replay returns empty array for unknown aggregate id", async () => {
     let opts: Pulumi.CustomResourceOptions.t = {}
-    let storage = EventLogStorage_InMemory.make(~name="test-log-2", ~opts)
+    let storage = EventLogStorage_InMemory.make(~name="test-log-2", ~owner=None, ~opts)
     let ops = await storage.operations->TestRunner.resolve
     let events = await ops.replay("unknown-id")
     expect(events->Array.length)->toBe(0)
@@ -64,7 +64,7 @@ describe("EventLogStorage_InMemory", () => {
 
   testPromise("multiple appends accumulate events", async () => {
     let opts: Pulumi.CustomResourceOptions.t = {}
-    let storage = EventLogStorage_InMemory.make(~name="test-log-3", ~opts)
+    let storage = EventLogStorage_InMemory.make(~name="test-log-3", ~owner=None, ~opts)
     let ops = await storage.operations->TestRunner.resolve
     let _ = await ops.append(0, "agg-2", [JSON.Encode.string("e1")])
     let _ = await ops.append(1, "agg-2", [JSON.Encode.string("e2"), JSON.Encode.string("e3")])

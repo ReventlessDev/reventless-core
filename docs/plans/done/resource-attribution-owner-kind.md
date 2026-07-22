@@ -1,6 +1,51 @@
 # Owner-kind attribution for storage and channel adapters
 
-**Status:** Planned (2026-07-22) — not started.
+**Status:** Complete (2026-07-22). Phases 1–3 as written; phase 4 narrower, and substrate is
+attributed to its plugin rather than to nothing — see the progress log.
+
+## Progress log (2026-07-22)
+
+- **Phase 1** (`20d0021f8`) — `ResourceAttribution.owner {kind, name}` plus an optional `~owner` on
+  the five piece adapter makers and ~33 implementations across `aws`, `local` and `postgres`.
+  Behaviour-neutral by design.
+- **Phases 2–3** (`2ddd91ae1`) — owning builders populate it; `AWS_Tags.make` takes an optional
+  `~owner` that overrides `~kind` and `~component`. A QueryDb table owned by a ReadModel and one
+  owned by a StateViewSlice now differ in `reventless:kind` while sharing `role = QueryDb`, and
+  `reventless:component` carries the stem instead of the suffixed resource name.
+- **Phase 4** — landed as *required at the adapter boundary only*, typed `option<owner>`.
+
+**One correction the plan needed: substrate has an owner too.**
+
+The plan (and my first cut of phase 4) treated the plugin-level DCB command topics, the plugin and
+admin event collectors, and the DcbEventLog event topic as having *no* owner, on the grounds that no
+single **component** owns them. That was the wrong frame. The goal is to assign every resource to a
+**model element**, and a plugin is a model element — `ComponentType.Plugin` already exists. Those
+resources are owned by the plugin.
+
+So they pass `~owner={kind: Plugin, name}` rather than nothing, and `AWS_Tags` treats a
+`Plugin`-kinded owner as implying plugin scope: `reventless:kind = Plugin`,
+`reventless:scope = plugin`, `reventless:plugin` names the owner, and `reventless:component` is
+empty because the plugin field already identifies it. The piece stays legible in `reventless:role`.
+
+The same rule was applied to the substrate tagged directly by the AWS adapters: at plugin scope
+`kind` is `Plugin`, at platform scope it is `Core`. Previously those rows repeated their piece
+(`kind = DcbEventLog`, `kind = CommandTopic`), which is exactly the kind/role collapse this plan
+exists to remove — the collapse was just hiding at a different level.
+
+**Phase 4 landed narrower than written.** `~owner` is required (typed `option<owner>`, so a caller
+must decide) on the five adapter interfaces, where a new implementation must handle it — but stays
+optional on the piece builders. Requiring it up the whole builder chain would force every test
+fixture and direct builder user to write `~owner=None` without adding safety at the layer that
+actually emits the tag. A new *builder* that forgets still degrades to piece-naming rather than
+failing to compile; that residual is accepted deliberately.
+
+Verified: AWS 280/280, local 501/501, build clean with zero warnings.
+
+---
+
+**Original plan follows.**
+
+**Status (as written):** Planned (2026-07-22).
 **Owner:** Martin
 **Follows:** `docs/plans/done/resource-attribution-tag-schema.md`, which established the tag schema
 and closed the same gap for Lambdas. This plan closes it for the remaining resource classes.

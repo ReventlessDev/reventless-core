@@ -57,7 +57,7 @@ describe("Backend parity (Memory vs Sqlite)", () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalEventLogStorage.Make(TestBus)
-      let s = Storage.make(~name="parity-events", ~opts)
+      let s = Storage.make(~name="parity-events", ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
 
       let e1 = JSON.Encode.object(Dict.fromArray([("t", JSON.Encode.string("A"))]))
@@ -81,7 +81,7 @@ describe("Backend parity (Memory vs Sqlite)", () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalQueryDbStorage.Make(TestBus)
-      let s = Storage.make(~name="parity-qdb", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let s = Storage.make(~name="parity-qdb", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
 
       let _ = await ops.save(
@@ -108,7 +108,7 @@ describe("Backend parity (Memory vs Sqlite)", () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalQueryDbStorage.Make(TestBus)
-      let s = Storage.make(~name="parity-count", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let s = Storage.make(~name="parity-count", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
 
       // First increment creates the counter item and returns the new total.
@@ -143,7 +143,7 @@ describe("Backend parity (Memory vs Sqlite)", () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalQueryDbStorage.Make(TestBus)
-      let s = Storage.make(~name="parity-ttl", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let s = Storage.make(~name="parity-ttl", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
 
       let item = k => JSON.Encode.object(Dict.fromArray([("id", JSON.Encode.string(k))]))
@@ -172,7 +172,7 @@ describe("Backend parity (Memory vs Sqlite)", () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()
       module Storage = LocalEventLogStorage.Make(TestBus)
-      let s = Storage.make(~name="parity-conflict", ~opts)
+      let s = Storage.make(~name="parity-conflict", ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
 
       let e = JSON.Encode.object(Dict.fromArray([("t", JSON.Encode.string("C"))]))

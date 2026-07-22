@@ -29,7 +29,7 @@ module Make = (Bus: LocalBus.T) => {
     'context,
     channelParts,
     runtimeParts,
-  > = (~name, ~owner as _=?, ~opts as _=?) => {
+  > = (~name, ~owner as _, ~opts as _=?) => {
     // Captured when handleChannelEvent is called; used by publishJsonsAndWait to
     // run the handler inline and collect typed outcomes without going through the bus.
     let handleCmdsRef: ref<

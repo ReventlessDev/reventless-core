@@ -20,7 +20,7 @@ describe("LocalEventTopicPublisher", () => {
     testPromise("returns one resource whose name resolves to the topic name", async () => {
       module TestBus = LocalBus.Make()
       module TestPublisher = LocalEventTopicPublisher.Make(TestBus)
-      let pub = TestPublisher.make(~name="MyTopic", ~storageResources=[], ~opts={})
+      let pub = TestPublisher.make(~name="MyTopic", ~storageResources=[], ~owner=None, ~opts={})
       expect(pub.resources->Array.length)->toBe(1)
       let resource = pub.resources->Array.getUnsafe(0)
       let name = await resource.name->TestRunner.resolve
@@ -36,7 +36,7 @@ describe("LocalEventTopicPublisher", () => {
       TestBus.subscribeToEvents("TestTopic", async (_, _, json) => {
         received := Some(json)
       })
-      let pub = TestPublisher.make(~name="TestTopic", ~storageResources=[], ~opts={})
+      let pub = TestPublisher.make(~name="TestTopic", ~storageResources=[], ~owner=None, ~opts={})
       let publishFn = await pub.publishJson->TestRunner.resolve
       await publishFn("svc", testMeta, JSON.Encode.string("hello"))
       expect(received.contents)->toEqual(Some(JSON.Encode.string("hello")))
@@ -53,7 +53,7 @@ describe("LocalEventTopicPublisher", () => {
       TestBus.subscribeToEvents("topic-b", async (_, _, _) => {
         countB := countB.contents + 1
       })
-      let pub = TestPublisher.make(~name="topic-a", ~storageResources=[], ~opts={})
+      let pub = TestPublisher.make(~name="topic-a", ~storageResources=[], ~owner=None, ~opts={})
       let publishFn = await pub.publishJson->TestRunner.resolve
       await publishFn("svc", testMeta, JSON.Null)
       expect(countA.contents)->toBe(1)
@@ -67,7 +67,7 @@ describe("LocalEventTopicPublisher", () => {
       TestBus.subscribeToEvents("svcTopic", async (service, _, _) => {
         receivedService := service
       })
-      let pub = TestPublisher.make(~name="svcTopic", ~storageResources=[], ~opts={})
+      let pub = TestPublisher.make(~name="svcTopic", ~storageResources=[], ~owner=None, ~opts={})
       let publishFn = await pub.publishJson->TestRunner.resolve
       await publishFn("MyService", testMeta, JSON.Null)
       expect(receivedService.contents)->toBe("MyService")

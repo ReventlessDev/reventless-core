@@ -33,7 +33,7 @@ let connect = (
 let make: ReventlessCore.EventCollector_Adapter.channelMaker<callbackEvent, 'context, channelParts> = (
   ~name,
   ~eventTopics,
-  ~owner=?, ~opts,
+  ~owner, ~opts,
 ) => {
   let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 

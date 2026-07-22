@@ -41,7 +41,7 @@ describe("QueryDbStorage_Sqlite — GSI", () => {
       ~indexes=[byOwnerIdx, byOwnerCreatedIdx],
       ~api=(),
       ~apiRole=(),
-      ~opts,
+      ~owner=None, ~opts,
     )
 
     // Verify the indexes were created in sqlite_master.
@@ -95,7 +95,7 @@ describe("QueryDbStorage_Sqlite — GSI", () => {
       ~indexes=[compositeIdx],
       ~api=(),
       ~apiRole=(),
-      ~opts,
+      ~owner=None, ~opts,
     )
 
     let listSql = DbProvider.db->SqliteDriver.prepare(
@@ -129,7 +129,7 @@ describe("QueryDbStorage_Sqlite — GSI", () => {
       ~indexes=[weirdIdx],
       ~api=(),
       ~apiRole=(),
-      ~opts,
+      ~owner=None, ~opts,
     )
     let listIndexes = DbProvider.db->SqliteDriver.prepare(
       "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='qdb_rm'",
@@ -166,7 +166,7 @@ describe("QueryDb — indexed equality lookup (B4 push-down)", () => {
       let db = openFreshDb()
     }
     module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
-    let s = Storage.make(~name="orders", ~indexes=[byOwner], ~api=(), ~apiRole=(), ~opts)
+    let s = Storage.make(~name="orders", ~indexes=[byOwner], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
     let _ = await ops.save("k1", item("o1"), ReventlessCore.QueryDb.Any, None)
     let _ = await ops.save("k2", item("o2"), ReventlessCore.QueryDb.Any, None)
@@ -184,7 +184,7 @@ describe("QueryDb — indexed equality lookup (B4 push-down)", () => {
       let db = openFreshDb()
     }
     module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
-    let s = Storage.make(~name="orders", ~indexes=[byOwner], ~api=(), ~apiRole=(), ~opts)
+    let s = Storage.make(~name="orders", ~indexes=[byOwner], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
     let aMinuteAgo = Float.toInt(Date.now() /. 1000.0) - 60
     let _ = await ops.save("k1", item("o1"), ReventlessCore.QueryDb.Any, None)
@@ -196,7 +196,7 @@ describe("QueryDb — indexed equality lookup (B4 push-down)", () => {
   testPromise("in-memory lookup matches the sqlite result (backend parity)", async () => {
     module TestBus = LocalBus.Make()
     module Storage = QueryDbStorage_InMemory.Make(TestBus)
-    let s = Storage.make(~name="orders", ~indexes=[byOwner], ~api=(), ~apiRole=(), ~opts)
+    let s = Storage.make(~name="orders", ~indexes=[byOwner], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
     let _ = await ops.save("k1", item("o1"), ReventlessCore.QueryDb.Any, None)
     let _ = await ops.save("k2", item("o2"), ReventlessCore.QueryDb.Any, None)
@@ -212,7 +212,7 @@ describe("QueryDbStorage_InMemory — lazy scan snapshot (B4 dirty-flag)", () =>
   testPromise("interleaved save/scan reflects each write without stale reads", async () => {
     module TestBus = LocalBus.Make()
     module Storage = LocalQueryDbStorage.Make(TestBus)
-    let s = Storage.make(~name="lazy", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+    let s = Storage.make(~name="lazy", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
     let scanFn = TestBus.getQueryDbScan("lazy")->Option.getOrThrow
     expect(scanFn()->Array.length)->toBe(0)
@@ -233,7 +233,7 @@ describe("QueryDbStorage_Sqlite — TTL", () => {
     }
     module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
 
-    let s = Storage.make(~name="rt-future", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+    let s = Storage.make(~name="rt-future", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let oneHourFromNow = Float.toInt(Date.now() /. 1000.0) + 3600
@@ -255,7 +255,7 @@ describe("QueryDbStorage_Sqlite — TTL", () => {
     }
     module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
 
-    let s = Storage.make(~name="rt-past", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+    let s = Storage.make(~name="rt-past", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let aMinuteAgo = Float.toInt(Date.now() /. 1000.0) - 60
@@ -277,7 +277,7 @@ describe("QueryDbStorage_Sqlite — TTL", () => {
     }
     module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
 
-    let s = Storage.make(~name="rt-none", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+    let s = Storage.make(~name="rt-none", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let _ = await ops.save("k", JSON.Encode.string("forever"), ReventlessCore.QueryDb.Any, None)
@@ -293,7 +293,7 @@ describe("QueryDbStorage_Sqlite — TTL", () => {
     }
     module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
 
-    let s = Storage.make(~name="scan-ttl", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+    let s = Storage.make(~name="scan-ttl", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let _ = await ops.save("alive", JSON.Encode.string("a"), ReventlessCore.QueryDb.Any, None)
@@ -319,7 +319,7 @@ describe("QueryDbStorage_Sqlite — TTL", () => {
     }
     module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
 
-    let s = Storage.make(~name="overwrite-ttl", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+    let s = Storage.make(~name="overwrite-ttl", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let aMinuteAgo = Float.toInt(Date.now() /. 1000.0) - 60

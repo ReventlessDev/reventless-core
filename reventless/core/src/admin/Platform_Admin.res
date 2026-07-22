@@ -53,7 +53,7 @@ module Make = (
   ) => {
     module AdminEventCollector = EventCollector_Builder.Make(RE, ECC)
     let make = (~name, ~eventTopics, ~opts) => {
-      let eventCollector = AdminEventCollector.make(~name, ~eventTopics, ~opts)
+      let eventCollector = AdminEventCollector.make(~name, ~eventTopics, ~owner={kind: ComponentType.Plugin, name}, ~opts)
       let eventCollectorOutputs = eventCollector->Component.outputs
       (eventCollector, eventCollectorOutputs)
     }

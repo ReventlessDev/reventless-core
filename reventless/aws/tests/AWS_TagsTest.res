@@ -132,6 +132,25 @@ describe("AWS_Tags — owner overrides the piece adapter's own kind", () => {
     expect(tags->Dict.get("reventless:component"))->toEqual(Some("Products"))
   })
 
+  testSync("a Plugin-kinded owner attributes substrate to the plugin", () => {
+    // A plugin IS a model element, so shared substrate is owned by it rather than
+    // by nothing. The owner implies plugin scope even though the piece adapter
+    // passed no ~scope, and it names the plugin.
+    let tags =
+      AWS_Tags.make(
+        ~name="OrderingDcbEventTopic",
+        ~kind=ReventlessCore.ComponentType.EventTopic,
+        ~role=EventTopic,
+        ~owner={kind: ReventlessCore.ComponentType.Plugin, name: "Ordering"},
+      )->toDict
+    expect(tags->Dict.get("reventless:kind"))->toEqual(Some("Plugin"))
+    expect(tags->Dict.get("reventless:scope"))->toEqual(Some("plugin"))
+    expect(tags->Dict.get("reventless:plugin"))->toEqual(Some("Ordering"))
+    expect(tags->Dict.get("reventless:component"))->toEqual(Some(""))
+    // …and the piece it plays is still legible.
+    expect(tags->Dict.get("reventless:role"))->toEqual(Some("EventTopic"))
+  })
+
   testSync("an owner does not leak a component onto plugin substrate", () => {
     let tags =
       AWS_Tags.make(

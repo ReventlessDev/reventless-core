@@ -449,7 +449,7 @@ module MakeEventCollectorHelper = (
     EventCollectorChannel,
   )
   let make = (~name, ~eventTopics, ~opts) => {
-    let eventCollector = PluginEventCollector.make(~name, ~eventTopics, ~opts)
+    let eventCollector = PluginEventCollector.make(~name, ~eventTopics, ~owner={kind: ComponentType.Plugin, name}, ~opts)
     let eventCollectorOutputs = eventCollector->Component.outputs
     // pluginDefinition.eventCollector must identify the EC's inbound queue
     // ARN — admin's `manageSubscriptions` uses it as the subscription target

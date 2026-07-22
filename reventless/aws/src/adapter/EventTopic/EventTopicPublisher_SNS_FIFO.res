@@ -1,6 +1,6 @@
 open PulumiAws
 
-let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (~name, ~storageResources as _, ~owner=?, ~opts) => {
+let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (~name, ~storageResources as _, ~owner, ~opts) => {
   let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.EventTopic.componentType, ~role=EventTopic, ~owner?)
   let topic = SNS.Topic.make(
     ~name,

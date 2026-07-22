@@ -26,7 +26,10 @@ function Make(Storage) {
           name: "DcbEventLog",
           eventSchema: S.json
         })(EventTopicPublisher);
-        let eventTopic = SpecificEventTopic.make(extra$1, storage.resources, undefined, Util_Pulumi$ReventlessCore.ComponentResourceOptions.ofCustomResourceOptions(opts));
+        let eventTopic = SpecificEventTopic.make(extra$1, storage.resources, {
+          kind: "Plugin",
+          name: extra$1
+        }, Util_Pulumi$ReventlessCore.ComponentResourceOptions.ofCustomResourceOptions(opts));
         Component$ReventlessCore.setOperations(extra, Pulumi.all([
           storage.operations,
           Component$ReventlessCore.operations(eventTopic)

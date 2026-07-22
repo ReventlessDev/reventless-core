@@ -298,7 +298,7 @@ function _makeApiResourceWith(name, schema, userPoolConfig, opts) {
       authenticationType: "AWS_IAM"
     }];
   let apiArgs_logConfig = appsyncLogConfig;
-  let apiArgs_tags = AWS_Tags$ReventlessAws.make(name, "Core", "Api", "Plugin", undefined, undefined, undefined, undefined);
+  let apiArgs_tags = AWS_Tags$ReventlessAws.make(name, "Plugin", "Api", "Plugin", undefined, undefined, undefined, undefined);
   let apiArgs = {
     authenticationType: "AMAZON_COGNITO_USER_POOLS",
     schema: apiArgs_schema,

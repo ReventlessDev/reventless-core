@@ -11,7 +11,6 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as Monitoring$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Monitoring/Monitoring.res.mjs";
 import * as Util_Bundle$ReventlessAws from "./Util_Bundle.res.mjs";
 import * as Util_Lambda$ReventlessAws from "./Util_Lambda.res.mjs";
-import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "./Util_EventSourceMapping.res.mjs";
 
 let name = "DeadLetterQueue";
@@ -36,7 +35,7 @@ let opts = {
   parent: opts_parent
 };
 
-let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType, "Identity", "Plugin", undefined, undefined, undefined, undefined), opts);
+let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name, "Plugin", "Identity", "Plugin", undefined, undefined, undefined, undefined), opts);
 
 let entryPointCode = `export const handler = async (event) => {
   console.error("DEAD LETTER ITEM:", JSON.stringify(event));
@@ -60,7 +59,7 @@ let handler = new (Aws.lambda.Function)(name, {
   memorySize: 128,
   timeout: 30,
   layers: layers,
-  tags: AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType, "DeadLetter", "Plugin", undefined, undefined, undefined, undefined),
+  tags: AWS_Tags$ReventlessAws.make(name, "Plugin", "DeadLetter", "Plugin", undefined, undefined, undefined, undefined),
   environment: {
     variables: Object.fromEntries([[
         "Environment",
@@ -70,7 +69,7 @@ let handler = new (Aws.lambda.Function)(name, {
   sourceCodeHash: sourceCodeHash
 }, opts);
 
-Monitoring$ReventlessCore.notify("DeadLetterSink", name, Util_Lambda$ReventlessAws.functionToResource(AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType, "DeadLetter", "Plugin", undefined, undefined, undefined, undefined), handler));
+Monitoring$ReventlessCore.notify("DeadLetterSink", name, Util_Lambda$ReventlessAws.functionToResource(AWS_Tags$ReventlessAws.make(name, "Plugin", "DeadLetter", "Plugin", undefined, undefined, undefined, undefined), handler));
 
 let lambda = Pulumi.output(handler);
 

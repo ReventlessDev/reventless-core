@@ -15,7 +15,7 @@ describe("QueryDbStorage_Sqlite", () => {
     }
     module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
 
-    let s = Storage.make(~name="rm1", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+    let s = Storage.make(~name="rm1", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let _ = await ops.save(
@@ -42,7 +42,7 @@ describe("QueryDbStorage_Sqlite", () => {
     }
     module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
 
-    let s = Storage.make(~name="rm2", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+    let s = Storage.make(~name="rm2", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let _ = await ops.save("k", JSON.Encode.string("a"), ReventlessCore.QueryDb.Any, None)
@@ -65,7 +65,7 @@ describe("QueryDbStorage_Sqlite", () => {
     }
     module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
 
-    let s = Storage.make(~name="rm3", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+    let s = Storage.make(~name="rm3", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let _ = await ops.saveBatch([
@@ -102,7 +102,7 @@ describe("QueryDbStorage_Sqlite", () => {
     }
     module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
 
-    let s = Storage.make(~name="rm4", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+    let s = Storage.make(~name="rm4", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let _ = await ops.save("k", JSON.Encode.string("a"), ReventlessCore.QueryDb.Any, None)
@@ -127,7 +127,7 @@ describe("QueryDbStorage_Sqlite", () => {
         let db = SqliteDriver.openDb(~path)
       }
       module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
-      let s = Storage.make(~name="persist", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+      let s = Storage.make(~name="persist", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.save(
         "k",
@@ -144,7 +144,7 @@ describe("QueryDbStorage_Sqlite", () => {
       let db = SqliteDriver.openDb(~path)
     }
     module Storage2 = QueryDbStorage_Sqlite.Make(TestBus2, DbProvider2)
-    let s2 = Storage2.make(~name="persist", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+    let s2 = Storage2.make(~name="persist", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
     let ops2 = await s2.operations->TestRunner.resolve
     let items =
       await ops2.loadStream("k")

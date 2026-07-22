@@ -547,7 +547,7 @@ let _makeApiResourceWith = (
     logConfig: appsyncLogConfig->Pulumi.Input.make,
     tags: AWS.Tags.make(
       ~name,
-      ~kind=ReventlessCore.ComponentType.Core,
+      ~kind=ReventlessCore.ComponentType.Plugin,
       ~role=Api,
       ~scope=Plugin,
     ),

@@ -32,7 +32,7 @@ external channel: Component.t<CommandTopic.t, CommandTopic.outputs, 'operations>
 
 type channelMaker<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = (
   ~name: string,
-  ~owner: ResourceAttribution.owner=?,
+  ~owner: option<ResourceAttribution.owner>,
   ~opts: Pulumi.ComponentResource.options=?,
 ) => channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts>
 

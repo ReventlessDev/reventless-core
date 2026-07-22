@@ -20,7 +20,7 @@ module Make = (
 
     let storage = Storage.make(
       ~name=name->ComponentType.name(EventLog.componentType),
-      ~owner?,
+      ~owner,
       ~opts,
     )
 

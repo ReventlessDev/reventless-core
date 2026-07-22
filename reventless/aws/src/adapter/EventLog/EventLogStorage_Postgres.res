@@ -11,7 +11,7 @@
 //
 // Selected by `EventLogStorage.Selectable` when `EventLogBackend` holds a selection.
 
-let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~owner as _=?, ~opts as _) => {
+let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~owner as _, ~opts as _) => {
   // `name` is the ComponentType-derived `<Aggregate>EventLog` — the canonical
   // `event_log.log_name`. Register it so `makePlatform` can wire the change-feed
   // relay; the collector queue is attached later in forPluginEventCollector,

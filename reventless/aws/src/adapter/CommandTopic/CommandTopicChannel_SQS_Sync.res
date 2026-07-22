@@ -20,7 +20,7 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
   'context,
   Util.SQS.channelParts,
   Util.Lambda.runtimeParts,
-> = (~name, ~owner=?, ~opts=?) => {
+> = (~name, ~owner, ~opts=?) => {
   // Captured when handleChannelEvent is called; used by publishJsonsAndWait to
   // run the handler inline and collect typed outcomes without going through SQS.
   let handleCmdsRef: ref<option<ReventlessCore.CommandTopic.jsonCommandsHandler>> = ref(None)

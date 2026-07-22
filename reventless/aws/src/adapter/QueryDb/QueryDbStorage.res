@@ -24,12 +24,12 @@ module Selectable = {
     ~ttl=?,
     ~api,
     ~apiRole,
-    ~owner as _=?, ~opts,
+    ~owner, ~opts,
   ) =>
     if QueryDbBackend.isPostgresFor(name) {
-      Postgres.make(~name, ~indexes, ~subIdField?, ~ttl?, ~api, ~apiRole, ~opts)
+      Postgres.make(~name, ~indexes, ~subIdField?, ~ttl?, ~api, ~apiRole, ~owner, ~opts)
     } else {
-      DynamoDb.make(~name, ~indexes, ~subIdField?, ~ttl?, ~api, ~apiRole, ~opts)
+      DynamoDb.make(~name, ~indexes, ~subIdField?, ~ttl?, ~api, ~apiRole, ~owner, ~opts)
     }
 }
 
@@ -43,12 +43,12 @@ module SelectableStream = {
     ~ttl=?,
     ~api,
     ~apiRole,
-    ~owner as _=?, ~opts,
+    ~owner, ~opts,
   ) =>
     if QueryDbBackend.isPostgresFor(name) {
       QueryDbBackend.postgresStreamRegistry->Set.add(name)
-      Postgres.make(~name, ~indexes, ~subIdField?, ~ttl?, ~api, ~apiRole, ~opts)
+      Postgres.make(~name, ~indexes, ~subIdField?, ~ttl?, ~api, ~apiRole, ~owner, ~opts)
     } else {
-      DynamoDbStream.make(~name, ~indexes, ~subIdField?, ~ttl?, ~api, ~apiRole, ~opts)
+      DynamoDbStream.make(~name, ~indexes, ~subIdField?, ~ttl?, ~api, ~apiRole, ~owner, ~opts)
     }
 }

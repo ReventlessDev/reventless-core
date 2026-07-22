@@ -21,12 +21,12 @@ function Make(Bus) {
     registerQueryDbIndexLookup: sqliteBusCallbacks_registerQueryDbIndexLookup,
     registerQueryDbListPage: sqliteBusCallbacks_registerQueryDbListPage
   };
-  let make = (name, indexes, subIdField, ttl, api, apiRole, param, opts) => {
+  let make = (name, indexes, subIdField, ttl, api, apiRole, owner, opts) => {
     let db = BackendState$ReventlessLocal.getSqliteDb();
     if (db !== undefined) {
       return QueryDbStorage_Sqlite$ReventlessLocal.makeStorage(Primitive_option.valFromOption(db), sqliteBusCallbacks, name, indexes, subIdField);
     } else {
-      return Mem.make(name, indexes, subIdField, ttl, api, apiRole, undefined, opts);
+      return Mem.make(name, indexes, subIdField, ttl, api, apiRole, owner, opts);
     }
   };
   return {

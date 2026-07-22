@@ -23,7 +23,7 @@ let make = (
     ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
     ~tags=AWS.Tags.make(
       ~name="InboundTranslationDS",
-      ~kind=ReventlessCore.InboundTranslationSlice.componentType,
+      ~kind=ReventlessCore.ComponentType.Plugin,
       ~role=Identity,
       ~scope=Plugin,
     ),

@@ -10,7 +10,7 @@ let _ = TestRunner.setup()
 let opts: Pulumi.CustomResourceOptions.t = {}
 
 let makeMemoryOps = () => {
-  let s = EventLogStorage_InMemory.make(~name="parity", ~opts)
+  let s = EventLogStorage_InMemory.make(~name="parity", ~owner=None, ~opts)
   s.operations->TestRunner.resolve
 }
 
@@ -20,7 +20,7 @@ let makeSqliteOps = () => {
     let db = SqliteDriver.openDb(~path=":memory:")
   }
   module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-  let s = Storage.make(~name="parity", ~opts)
+  let s = Storage.make(~name="parity", ~owner=None, ~opts)
   s.operations->TestRunner.resolve
 }
 

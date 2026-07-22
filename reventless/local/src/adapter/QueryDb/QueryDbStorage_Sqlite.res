@@ -509,6 +509,6 @@ module Make = (Bus: LocalBus.T, DbProvider: {let db: SqliteDriver.t}) => {
     ~ttl as _=?,
     ~api as _,
     ~apiRole as _,
-    ~owner as _=?, ~opts as _,
+    ~owner as _, ~opts as _,
   ) => makeStorage(~db=DbProvider.db, ~bus=busCallbacks, ~name, ~indexes, ~subIdField)
 }

@@ -16,7 +16,7 @@ describe("EventLogStorage_Sqlite", () => {
     }
     module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
 
-    let s = Storage.make(~name="agg", ~opts)
+    let s = Storage.make(~name="agg", ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let event1 = JSON.Encode.object(
@@ -45,7 +45,7 @@ describe("EventLogStorage_Sqlite", () => {
     }
     module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
 
-    let s = Storage.make(~name="agg", ~opts)
+    let s = Storage.make(~name="agg", ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let e = JSON.Encode.object(Dict.fromArray([("t", JSON.Encode.string("X"))]))
@@ -67,7 +67,7 @@ describe("EventLogStorage_Sqlite", () => {
       let db = makeFreshDb()
     }
     module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-    let s = Storage.make(~name="agg", ~opts)
+    let s = Storage.make(~name="agg", ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let ev = i => JSON.Encode.object(Dict.fromArray([("i", JSON.Encode.int(i))]))
@@ -92,7 +92,7 @@ describe("EventLogStorage_Sqlite", () => {
       let db = makeFreshDb()
     }
     module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-    let s = Storage.make(~name="agg", ~opts)
+    let s = Storage.make(~name="agg", ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let ev = i => JSON.Encode.object(Dict.fromArray([("i", JSON.Encode.int(i))]))
@@ -114,7 +114,7 @@ describe("EventLogStorage_Sqlite", () => {
     }
     module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
 
-    let s = Storage.make(~name="agg", ~opts)
+    let s = Storage.make(~name="agg", ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let replayed = await ops.replay("not-there")
@@ -127,7 +127,7 @@ describe("EventLogStorage_Sqlite", () => {
       let db = makeFreshDb()
     }
     module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-    let s = Storage.make(~name="agg", ~opts)
+    let s = Storage.make(~name="agg", ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let ev = i => JSON.Encode.object(Dict.fromArray([("i", JSON.Encode.int(i))]))
@@ -145,7 +145,7 @@ describe("EventLogStorage_Sqlite", () => {
       let db = makeFreshDb()
     }
     module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-    let s = Storage.make(~name="agg", ~opts)
+    let s = Storage.make(~name="agg", ~owner=None, ~opts)
     let ops = await s.operations->TestRunner.resolve
 
     let none = await ops.latestSnapshot("id-snap")
@@ -182,7 +182,7 @@ describe("EventLogStorage_Sqlite", () => {
         let db = SqliteDriver.openDb(~path)
       }
       module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-      let s = Storage.make(~name="persist", ~opts)
+      let s = Storage.make(~name="persist", ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
       let _ = await ops.writeSnapshot(
         "id-sp",
@@ -196,7 +196,7 @@ describe("EventLogStorage_Sqlite", () => {
       let db = SqliteDriver.openDb(~path)
     }
     module Storage2 = EventLogStorage_Sqlite.Make(TestBus2, DbProvider2)
-    let s2 = Storage2.make(~name="persist", ~opts)
+    let s2 = Storage2.make(~name="persist", ~owner=None, ~opts)
     let ops2 = await s2.operations->TestRunner.resolve
     let r = await ops2.latestSnapshot("id-sp")
     expect(r)->toEqual(Ok(Some({ReventlessCore.EventLog.seqNr: 3, state, schemaHash: "h"})))
@@ -213,7 +213,7 @@ describe("EventLogStorage_Sqlite", () => {
         let db = SqliteDriver.openDb(~path)
       }
       module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-      let s = Storage.make(~name="persist", ~opts)
+      let s = Storage.make(~name="persist", ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
       let ev = JSON.Encode.object(Dict.fromArray([("v", JSON.Encode.int(42))]))
       let _ = await ops.append(0, "id-p", [ev])
@@ -226,7 +226,7 @@ describe("EventLogStorage_Sqlite", () => {
       let db = SqliteDriver.openDb(~path)
     }
     module Storage2 = EventLogStorage_Sqlite.Make(TestBus2, DbProvider2)
-    let s2 = Storage2.make(~name="persist", ~opts)
+    let s2 = Storage2.make(~name="persist", ~owner=None, ~opts)
     let ops2 = await s2.operations->TestRunner.resolve
     let replayed = await ops2.replay("id-p")
     expect(replayed->Array.length)->toBe(1)

@@ -82,6 +82,17 @@ globalThis.describe("AWS_Tags — owner overrides the piece adapter's own kind",
     globalThis.expect(tags["Name"]).toEqual("ProductsQueryDb");
     globalThis.expect(tags["reventless:component"]).toEqual("Products");
   });
+  globalThis.test("a Plugin-kinded owner attributes substrate to the plugin", () => {
+    let tags = AWS_Tags$ReventlessAws.make("OrderingDcbEventTopic", "EventTopic", "EventTopic", undefined, undefined, {
+      kind: "Plugin",
+      name: "Ordering"
+    }, undefined, undefined);
+    globalThis.expect(tags["reventless:kind"]).toEqual("Plugin");
+    globalThis.expect(tags["reventless:scope"]).toEqual("plugin");
+    globalThis.expect(tags["reventless:plugin"]).toEqual("Ordering");
+    globalThis.expect(tags["reventless:component"]).toEqual("");
+    globalThis.expect(tags["reventless:role"]).toEqual("EventTopic");
+  });
   globalThis.test("an owner does not leak a component onto plugin substrate", () => {
     let tags = AWS_Tags$ReventlessAws.make("OrderingDcbEventLog", "DcbEventLog", "DcbEventLog", "Plugin", undefined, {
       kind: "Aggregate",

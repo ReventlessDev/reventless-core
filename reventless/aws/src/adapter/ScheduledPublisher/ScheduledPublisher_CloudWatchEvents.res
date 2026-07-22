@@ -4,7 +4,7 @@ let make: ReventlessCore.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~op
     ~servicePrincipal=AWS.CloudwatchEventRule.principal->Pulumi.Output.make,
     ~tags=AWS.Tags.make(
       ~name="CloudWatchEventsRole",
-      ~kind=ReventlessCore.Scheduler.componentType,
+      ~kind=ReventlessCore.ComponentType.Core,
       ~role=Identity,
       ~scope=Platform,
     ),
@@ -38,7 +38,7 @@ let make: ReventlessCore.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~op
       ->Pulumi.Output.asInput,
       tags: AWS.Tags.make(
         ~name=name ++ "CloudWatchEventsPolicy",
-        ~kind=ReventlessCore.Scheduler.componentType,
+        ~kind=ReventlessCore.ComponentType.Core,
         ~role=Identity,
         ~scope=Platform,
       ),

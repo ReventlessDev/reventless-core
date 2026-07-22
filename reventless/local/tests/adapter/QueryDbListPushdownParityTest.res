@@ -55,7 +55,7 @@ let build = async (): setup => {
     let db = SqliteDriver.openDb(~path=":memory:")
   }
   module Storage = QueryDbStorage_Sqlite.Make(TestBus, DbProvider)
-  let s = Storage.make(~name="items", ~indexes=[], ~api=(), ~apiRole=(), ~opts)
+  let s = Storage.make(~name="items", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
   let ops = await s.operations->TestRunner.resolve
   for i in 0 to rows->Array.length - 1 {
     let (id, status, name, qty) = rows->Array.getUnsafe(i)

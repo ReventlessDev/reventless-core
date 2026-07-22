@@ -22,7 +22,7 @@ module Make = (
       ~ttl?,
       ~api,
       ~apiRole,
-      ~owner?,
+      ~owner,
       ~opts,
     )
 

@@ -92,7 +92,7 @@ describe("ProjectionCheckpoint", () => {
           let db = makeFreshDb()
         }
         module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-        let s = Storage.make(~name="agg", ~opts)
+        let s = Storage.make(~name="agg", ~owner=None, ~opts)
         let ops = await s.operations->TestRunner.resolve
 
         // Batch A (rowids 1-2) appended before batch B (rowid 3).
@@ -132,7 +132,7 @@ describe("ProjectionCheckpoint", () => {
         let db = makeFreshDb()
       }
       module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-      let s = Storage.make(~name="agg", ~opts)
+      let s = Storage.make(~name="agg", ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
 
       // Bulk replay path: no publish cycle will ever resolve these, so they
@@ -217,7 +217,7 @@ describe("ProjectionCheckpoint", () => {
         let db = makeFreshDb()
       }
       module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-      let s = Storage.make(~name="agg", ~opts)
+      let s = Storage.make(~name="agg", ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
       let db = DbProvider.db
 
@@ -283,7 +283,7 @@ describe("ProjectionCheckpoint", () => {
         let db = makeFreshDb()
       }
       module Storage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-      let s = Storage.make(~name="agg", ~opts)
+      let s = Storage.make(~name="agg", ~owner=None, ~opts)
       let ops = await s.operations->TestRunner.resolve
       let db = DbProvider.db
 
@@ -390,7 +390,7 @@ describe("ProjectionCheckpoint", () => {
         let db = makeFreshDb()
       }
       module AggStorage = EventLogStorage_Sqlite.Make(TestBus, DbProvider)
-      let aggS = AggStorage.make(~name="agg", ~opts)
+      let aggS = AggStorage.make(~name="agg", ~owner=None, ~opts)
       let aggOps = await aggS.operations->TestRunner.resolve
       let db = DbProvider.db
       let dcbOps = await makeDcbStorage(db, ~name="dcb-log")

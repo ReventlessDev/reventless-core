@@ -28,6 +28,9 @@ module Make = (
     let eventTopic = SpecificEventTopic.make(
       ~name,
       ~storageResources=storage.resources,
+      // The DCB event log is shared across the plugin's slices, so the plugin
+      // owns it — not any one component.
+      ~owner={kind: ComponentType.Plugin, name},
       ~opts=opts->Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions,
     )
 

@@ -12,7 +12,7 @@ type storage = {
 }
 type storageMaker = (
   ~name: string,
-  ~owner: ResourceAttribution.owner=?,
+  ~owner: option<ResourceAttribution.owner>,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => storage
 

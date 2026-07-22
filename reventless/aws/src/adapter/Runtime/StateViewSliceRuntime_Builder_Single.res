@@ -380,7 +380,7 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
         let channel = EventCollectorChannel.make(
           ~name="AllStateViewSlices",
           ~eventTopics,
-          ~opts={Pulumi.ComponentResource.parent: parent},
+          ~owner=None, ~opts={Pulumi.ComponentResource.parent: parent},
         )
 
         // B3.0: a Postgres-backed DCB log has no stream resource — provision the

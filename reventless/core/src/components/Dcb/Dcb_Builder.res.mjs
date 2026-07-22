@@ -190,7 +190,10 @@ function Make(DcbEventLogStorage) {
         name: childName,
         commandSchema: S.json
       })(DcbCommandTopicChannel);
-      let dcbCommandTopic = DcbCommandTopic.make(name + `Dcb`, undefined, opts);
+      let dcbCommandTopic = DcbCommandTopic.make(name + `Dcb`, {
+        kind: "Plugin",
+        name: name
+      }, opts);
       Stdlib_Option.forEach(HooksConfig.hooks.onDcbCommandTopicCreated, hook => hook(dcbCommandTopic));
       let publishJsons = Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => ops.publishJsons);
       let name$1 = childName + "Async";
@@ -201,7 +204,10 @@ function Make(DcbEventLogStorage) {
       })(DcbCommandTopicChannelAsync);
       let asyncDcbCommandTopicOpt;
       if (asyncSlices.length !== 0) {
-        let t = DcbAsyncCommandTopic.make(name + `DcbAsync`, undefined, opts);
+        let t = DcbAsyncCommandTopic.make(name + `DcbAsync`, {
+          kind: "Plugin",
+          name: name
+        }, opts);
         Stdlib_Option.forEach(HooksConfig.hooks.onDcbCommandTopicCreated, hook => hook(t));
         asyncDcbCommandTopicOpt = Primitive_option.some(t);
       } else {

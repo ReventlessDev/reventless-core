@@ -73,7 +73,7 @@ module Make = (Bus: LocalBus.T) => {
     ~ttl as _=?,
     ~api as _,
     ~apiRole as _,
-    ~owner as _=?, ~opts as _,
+    ~owner as _, ~opts as _,
   ) => {
     let store: ref<dict<dict<JSON.t>>> = ref(Dict.make())
     // Lazy flattened snapshot for the registered scan/stream closures. The old

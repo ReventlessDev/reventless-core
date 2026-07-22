@@ -10,14 +10,13 @@ import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
-import * as InboundTranslationSlice$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 import * as CommandSubscriptionResolvers_AppSync$ReventlessAws from "../Api/CommandSubscriptionResolvers_AppSync.res.mjs";
 
 function make(api, runtime, fieldNames, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let lambda = runtime.parts.lambda;
-  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy("InboundTranslationDS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make("InboundTranslationDS", InboundTranslationSlice$ReventlessCore.componentType, "Identity", "Plugin", undefined, undefined, undefined, undefined), opts$1);
+  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy("InboundTranslationDS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make("InboundTranslationDS", "Plugin", "Identity", "Plugin", undefined, undefined, undefined, undefined), opts$1);
   Pulumi.all([
     Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
     dataSourceRole.id

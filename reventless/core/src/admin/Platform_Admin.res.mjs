@@ -24,7 +24,10 @@ function Make(RuntimeEnvironment) {
     let MakeEventCollectorHelper = RE => (ECC => (RB => {
       let AdminEventCollector = EventCollector_Builder$ReventlessCore.Make(RE)(ECC);
       let make = (name, eventTopics, opts) => {
-        let eventCollector = AdminEventCollector.make(name, eventTopics, undefined, opts);
+        let eventCollector = AdminEventCollector.make(name, eventTopics, {
+          kind: "Plugin",
+          name: name
+        }, opts);
         let eventCollectorOutputs = Component$ReventlessCore.outputs(eventCollector);
         return [
           eventCollector,
@@ -174,7 +177,10 @@ function Make(RuntimeEnvironment) {
         let eventTopics = Aggregate$ReventlessCore.filterEventTopics(aggregatesOutputs, aggregateNames);
         let AdminEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
         let make = (name, eventTopics, opts) => {
-          let eventCollector = AdminEventCollector.make(name, eventTopics, undefined, opts);
+          let eventCollector = AdminEventCollector.make(name, eventTopics, {
+            kind: "Plugin",
+            name: name
+          }, opts);
           let eventCollectorOutputs = Component$ReventlessCore.outputs(eventCollector);
           return [
             eventCollector,

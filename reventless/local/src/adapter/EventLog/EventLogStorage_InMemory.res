@@ -108,7 +108,7 @@ let makeStorage = makeMemoryStorage
 // Pure in-memory storageMaker (no BackendState dispatch, no Bus). Backend
 // selection lives in LocalEventLogStorage.Make — this file holds only the
 // in-memory implementation, as its name says.
-let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~owner as _=?, ~opts) => {
+let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~owner as _, ~opts) => {
   let (_, _, storage) = makeMemoryStorage(~name, ~opts)
   storage
 }
