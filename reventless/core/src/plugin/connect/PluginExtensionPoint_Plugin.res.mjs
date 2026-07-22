@@ -23,6 +23,7 @@ function disconnectGrace(interval) {
 }
 
 function Make(Spec) {
+  let disconnectScheduleName = id => Spec.environment + ("-" + id);
   let forwardCommand = async (_id, command, extensionPointName, queryEngine) => {
     let jsons = await queryEngine.scan(PluginSpec$ReventlessCore.name, [
       [
@@ -81,7 +82,7 @@ function Make(Spec) {
       case "CreateDisconnectSchedule" :
         let id = directive._0;
         return await createSchedule({
-          name: Spec.environment + ("-" + id),
+          name: disconnectScheduleName(id),
           rate: ScheduleOps$ReventlessCore.minutesFromNow(directive._1),
           payload: JSON.stringify(Message$ReventlessCore.encodeCommand$p({
             id: id,
@@ -90,7 +91,7 @@ function Make(Spec) {
           }, S.string, PluginExtensionPointSpec$ReventlessInfra.commandSchema))
         });
       case "DeleteDisconnectSchedule" :
-        return await deleteSchedule(directive._0);
+        return await deleteSchedule(disconnectScheduleName(directive._0));
       case "DoConnectPlugin" :
         let fn = Spec.manageSubscriptions;
         if (fn !== undefined) {
@@ -355,6 +356,7 @@ function Make(Spec) {
     mapOutgoingEvent: mapOutgoingEvent
   });
   return {
+    disconnectScheduleName: disconnectScheduleName,
     forwardCommand: forwardCommand,
     directiveHandler: directiveHandler,
     PluginMapping: PluginMapping,

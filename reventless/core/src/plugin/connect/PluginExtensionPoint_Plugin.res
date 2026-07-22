@@ -29,6 +29,13 @@ module type Spec = {
 }
 
 module Make = (Spec: Spec) => {
+  // Single owner of the disconnect schedule's rule name. Create and delete must
+  // derive it identically — they previously did not (create prefixed the stack,
+  // delete did not), so every delete targeted a name that was never created and
+  // the rule survived. The stack prefix itself is load-bearing: several stacks
+  // share one EventBridge bus, and an unprefixed plugin id would collide.
+  let disconnectScheduleName = id => Spec.environment ++ ("-" ++ id)
+
   let forwardCommand = async (
     _id,
     command,
@@ -104,7 +111,7 @@ module Make = (Spec: Spec) => {
     switch directive {
     | PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout) =>
       await createSchedule({
-        name: Spec.environment ++ ("-" ++ id),
+        name: id->disconnectScheduleName,
         rate: timeout->ScheduleOps.minutesFromNow,
         payload: {
           Message.id,
@@ -114,7 +121,7 @@ module Make = (Spec: Spec) => {
         ->Message.encodeCommand'(S.string, PluginExtensionPointSpec.commandSchema)
         ->JSON.stringify,
       })
-    | DeleteDisconnectSchedule(id) => await deleteSchedule(id)
+    | DeleteDisconnectSchedule(id) => await deleteSchedule(id->disconnectScheduleName)
     | ForwardCommand({id, command, extensionPointName}) =>
       await forwardCommand(id, command, extensionPointName, queryEngine)
     | DoConnectPlugin(pluginDef) =>
