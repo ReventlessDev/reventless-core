@@ -239,6 +239,27 @@ type event =
 | Non-`string` field annotated | No-op — field is left untouched |
 | `@compositePartitionTag` and `@partitionTag` on the same schema | `derivePartitionTag` throws at startup |
 | Fewer than 2 fields annotated | `derivePartitionTag` throws at startup |
+| A member's value is the empty string | Permitted — see below |
+
+**Empty tag values.** A composite key often describes a hierarchy, and a member of
+that hierarchy can be genuinely absent — an entity owned at the outer level has no
+inner-level name to give. The framework accepts an empty tag value rather than
+forcing a placeholder that fabricates identity:
+
+- The event **records** the tag with its empty value, on every backend.
+- The value **participates in the composite key** (`key:value` pairs joined with
+  `#`), so the composite partition key, composite reads and the OCC fences all
+  behave exactly as they do for a non-empty member.
+- The value is **not individually indexed**. On DynamoDB each tag key gets a
+  `tag_<key>` GSI whose hash key is that attribute, and a key attribute cannot hold
+  an empty string — so the adapter skips the attribute and the index goes sparse
+  (its intended mechanism). Reads by the *partition* are unaffected; they go against
+  the base table.
+
+The one consequence to design around: a `@crossPartition` read of a tag key resolves
+through that per-tag index, so it never returns events whose value for that key is
+empty (querying for an empty key value is not expressible in DynamoDB either). If a
+value must be findable across partitions, it must be non-empty.
 
 **Placement:** Place `@compositePartitionTag` **before the field name**, exactly like `@partitionTag`:
 

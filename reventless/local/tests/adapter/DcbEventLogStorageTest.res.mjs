@@ -165,6 +165,49 @@ globalThis.describe("DcbEventLogStorage_InMemory", () => {
       globalThis.expect(result.events[0].eventType).toBe("A");
       globalThis.expect(result.events[1].eventType).toBe("B");
     });
+    globalThis.test("an empty tag value appends and stays readable", async () => {
+      let storage = makeStorage();
+      let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
+      let tags = [
+        {
+          key: "itemId",
+          value: "i1"
+        },
+        {
+          key: "variantId",
+          value: ""
+        }
+      ];
+      let appended = await ops.append([makeEvent("ItemAdded", null, tags)], undefined);
+      globalThis.expect(appended).toEqual({
+        TAG: "Ok",
+        _0: "1"
+      });
+      let byPartition = await ops.read([{
+          tags: [{
+              key: "itemId",
+              value: "i1"
+            }]
+        }], undefined);
+      globalThis.expect(byPartition.events.length).toBe(1);
+      globalThis.expect(byPartition.events[0].tags.map(t => [
+        t.key,
+        t.value
+      ])).toEqual([
+        [
+          "itemId",
+          "i1"
+        ],
+        [
+          "variantId",
+          ""
+        ]
+      ]);
+      let byComposite = await ops.read([{
+          tags: tags
+        }], undefined);
+      globalThis.expect(byComposite.events.length).toBe(1);
+    });
     globalThis.test("after parameter skips events at or before that position", async () => {
       let storage = makeStorage();
       let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);

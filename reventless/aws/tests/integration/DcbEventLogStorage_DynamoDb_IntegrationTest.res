@@ -458,3 +458,61 @@ describe("DCB DynamoDb integration — per-type fence granularity", () => {
     expect(conflicts >= 1)->toBe(true)
   })
 })
+
+// An empty tag value is a legitimate model state (an absent member of a composite
+// partition key), and the in-memory and SQLite backends have always accepted one.
+// DynamoDB used to reject the whole append: `tag_<key>` is a GSI hash key and a key
+// attribute cannot hold an empty string. The adapter now skips that one attribute,
+// leaving the index sparse — everything else about the event is unchanged.
+// See docs/plans/dcb-empty-tag-values-break-append.md.
+describe("DCB DynamoDb integration — an empty tag value does not break the append", () => {
+  let tags = [tag("orderId", "O-empty"), tag("customerId", "")]
+
+  testAsync("appends, and reads back through its partition with the tag intact", async () => {
+    let table = await H.freshTable()
+    let result = await Runtime.appendConditional(
+      table,
+      [event("OrderPlaced", tags)],
+      {query: [{tags: tags}], after: ?None},
+      ~partitionTag=simple("orderId"),
+    )
+    expect(isOk(result))->toBe(true)
+
+    let byPartition = await Runtime.read(table)(~query=[{tags: [tag("orderId", "O-empty")]}])
+    expect(byPartition.events->Array.length)->toBe(1)
+    let stored = byPartition.events->Array.getUnsafe(0)
+    expect(stored.eventType)->toBe("OrderPlaced")
+    // The event records the empty value verbatim — only the index skips it.
+    expect(stored.tags->Array.map(t => (t.key, t.value)))->toEqual([
+      ("orderId", "O-empty"),
+      ("customerId", ""),
+    ])
+  })
+
+  testAsync("is found by a composite (multi-tag) read", async () => {
+    let table = await H.freshTable()
+    let _ = await Runtime.appendUnconditional(
+      table,
+      [event("OrderPlaced", tags)],
+      ~partitionTag=simple("orderId"),
+    )
+    let composite = await Runtime.read(table)(~query=[{tags: tags}])
+    expect(composite.events->Array.length)->toBe(1)
+  })
+
+  testAsync("is absent from that tag's single-tag index rather than erroring", async () => {
+    let table = await H.freshTable()
+    let _ = await Runtime.appendUnconditional(
+      table,
+      [event("OrderPlaced", tags)],
+      ~partitionTag=simple("orderId"),
+    )
+    // A cross-partition read goes through the `tag_customerId` GSI, which carries
+    // no empty-valued key. DynamoDB would reject the key condition outright, so the
+    // adapter short-circuits: empty result, no exception.
+    let crossPartition = await Runtime.read(table, ~crossPartitionTagKeys=["customerId"])(
+      ~query=[{tags: [tag("customerId", "")]}],
+    )
+    expect(crossPartition.events->Array.length)->toBe(0)
+  })
+})

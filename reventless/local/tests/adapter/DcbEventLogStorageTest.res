@@ -142,6 +142,32 @@ describe("DcbEventLogStorage_InMemory", () => {
       expect((result.events->Array.getUnsafe(1)).eventType)->toBe("B")
     })
 
+    // An empty tag value is a legitimate model state — an absent member of a
+    // composite partition key. Every backend must accept it, record it verbatim,
+    // and keep matching the event through its partition and composite reads. See
+    // docs/plans/dcb-empty-tag-values-break-append.md.
+    testPromise("an empty tag value appends and stays readable", async () => {
+      let storage = makeStorage()
+      let ops = await storage.operations->TestRunner.resolve
+      let tags = [
+        {Reventless.DcbTag.key: "itemId", value: "i1"},
+        {Reventless.DcbTag.key: "variantId", value: ""},
+      ]
+      let appended = await ops.append([makeEvent(~eventType="ItemAdded", ~data=JSON.Null, ~tags)])
+      expect(appended)->toEqual(Ok("1"))
+
+      let byPartition = await ops.read(
+        ~query=[{Reventless.DcbTag.tags: [{Reventless.DcbTag.key: "itemId", value: "i1"}]}],
+      )
+      expect(byPartition.events->Array.length)->toBe(1)
+      // The empty value is recorded verbatim, not dropped or substituted.
+      expect((byPartition.events->Array.getUnsafe(0)).tags->Array.map(t => (t.key, t.value)))
+      ->toEqual([("itemId", "i1"), ("variantId", "")])
+
+      let byComposite = await ops.read(~query=[{Reventless.DcbTag.tags: tags}])
+      expect(byComposite.events->Array.length)->toBe(1)
+    })
+
     testPromise("after parameter skips events at or before that position", async () => {
       let storage = makeStorage()
       let ops = await storage.operations->TestRunner.resolve

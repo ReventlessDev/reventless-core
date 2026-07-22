@@ -118,11 +118,19 @@ let toItem = (
   ->ReventlessCore.Message.decomposeMeta
   ->Array.forEach(((k, v)) => item->Dict.set(k, v))
 
-  // Add individual tag attributes for GSI queries
-  event.tags->Array.forEach(tag => {
-    let attrName = tagToAttributeName(tag.key)
-    item->Dict.set(attrName, tag.value->JSON.Encode.string)
-  })
+  // Add individual tag attributes for GSI queries. An empty tag value is a
+  // legitimate model state (a composite-partition member that is absent at this
+  // level of the hierarchy), but `tag_<key>` is a GSI hash key and DynamoDB
+  // rejects an empty string for a key attribute — the whole append fails. Skip
+  // the attribute instead: the index goes sparse (its intended mechanism), the
+  // event still records the tag in its `tags` payload, and `tag_composite`, the
+  // partition key and the OCC fences are all unaffected.
+  event.tags->Array.forEach(tag =>
+    if tag.value != "" {
+      let attrName = tagToAttributeName(tag.key)
+      item->Dict.set(attrName, tag.value->JSON.Encode.string)
+    }
+  )
 
   // Add composite tag attribute if multiple tags. The tag set here is exactly the
   // event's *entity* tags (no framework provenance tag is smuggled in — see
@@ -370,7 +378,7 @@ let resolveBaseItem = (table: resolvedTable, keyItem: JSON.t): Effect.t<
     }
   }
 
-let queryBySingleTagCrossPartitionStream = (
+let queryBySingleTagCrossPartitionStreamIndexed = (
   table: resolvedTable,
   tag: Reventless.DcbTag.tag,
   ~after: option<string>=?,
@@ -418,6 +426,21 @@ let queryBySingleTagCrossPartitionStream = (
     }
   )
 }
+
+let queryBySingleTagCrossPartitionStream = (
+  table: resolvedTable,
+  tag: Reventless.DcbTag.tag,
+  ~after: option<string>=?,
+) =>
+  if tag.value == "" {
+    // `toItem` does not index an empty tag value (a GSI hash key cannot hold an
+    // empty string), so nothing carries it in this index. Querying for it would
+    // be rejected outright too — a key condition value cannot be empty either.
+    // The empty result is the honest answer; an exception is not.
+    Stream.empty
+  } else {
+    queryBySingleTagCrossPartitionStreamIndexed(table, tag, ~after?)
+  }
 
 // --- Query Item Execution ---
 

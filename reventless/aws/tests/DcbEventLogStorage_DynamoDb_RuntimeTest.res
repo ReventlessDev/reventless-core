@@ -559,6 +559,56 @@ describe("Runtime.toItem — tag_composite is keyed on the event's entity tags",
   })
 })
 
+describe("Runtime.toItem — an empty tag value skips its GSI attribute", () => {
+  // `tag_<key>` is a GSI hash key, and DynamoDB rejects an empty string for a key
+  // attribute — writing one fails the whole append. An empty value is legitimate
+  // (an absent composite-partition member), so the attribute is skipped and that
+  // index goes sparse. See docs/plans/dcb-empty-tag-values-break-append.md.
+  let tagOf = (key, value): Reventless.DcbTag.tag => {key, value}
+  let tags = [tagOf("environment", "prod"), tagOf("componentName", "")]
+  let storedEvent: ReventlessCore.DcbEventLog_Adapter.rawStoredEvent = {
+    eventType: "ResourceAdded",
+    data: JSON.Object(Dict.make()),
+    tags,
+    meta: testMeta(),
+  }
+  let item =
+    Runtime.toItem("100", storedEvent, ~recordedAt="2026-07-08T00:00:00Z")
+    ->JSON.Decode.object
+    ->Option.getOrThrow
+
+  testSync("the non-empty tag keeps its attribute", () => {
+    expect(item->Dict.get("tag_environment"))->toEqual(Some("prod"->JSON.Encode.string))
+  })
+
+  testSync("the empty tag has no attribute at all", () => {
+    expect(item->Dict.get("tag_componentName"))->toEqual(None)
+  })
+
+  testSync("tag_composite still carries both tags", () => {
+    expect(item->Dict.get("tag_composite"))->toEqual(
+      Some(Runtime.compositeTagKey(tags)->JSON.Encode.string),
+    )
+  })
+
+  testSync("the tags payload records the empty value verbatim", () => {
+    let payloadTags =
+      item
+      ->Dict.get("tags")
+      ->Option.flatMap(JSON.Decode.array)
+      ->Option.getOrThrow
+      ->Array.filterMap(t =>
+        t
+        ->JSON.Decode.object
+        ->Option.map(o => (
+          o->Dict.get("key")->Option.flatMap(JSON.Decode.string)->Option.getOr(""),
+          o->Dict.get("value")->Option.flatMap(JSON.Decode.string)->Option.getOr("!missing"),
+        ))
+      )
+    expect(payloadTags)->toEqual([("environment", "prod"), ("componentName", "")])
+  })
+})
+
 describe("Runtime.buildConditionalTransactItems — folded create guard (after=None)", () => {
   let event = (eventType, tags): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
     eventType,

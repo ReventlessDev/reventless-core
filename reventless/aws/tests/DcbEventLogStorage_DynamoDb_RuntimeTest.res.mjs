@@ -690,6 +690,53 @@ globalThis.describe("Runtime.toItem — tag_composite is keyed on the event's en
   });
 });
 
+globalThis.describe("Runtime.toItem — an empty tag value skips its GSI attribute", () => {
+  let tags = [
+    {
+      key: "environment",
+      value: "prod"
+    },
+    {
+      key: "componentName",
+      value: ""
+    }
+  ];
+  let storedEvent_data = {};
+  let storedEvent_meta = testMeta();
+  let storedEvent = {
+    eventType: "ResourceAdded",
+    data: storedEvent_data,
+    tags: tags,
+    meta: storedEvent_meta
+  };
+  let item = Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.toItem("100", storedEvent, undefined, "2026-07-08T00:00:00Z")), undefined);
+  globalThis.test("the non-empty tag keeps its attribute", () => {
+    globalThis.expect(item["tag_environment"]).toEqual("prod");
+  });
+  globalThis.test("the empty tag has no attribute at all", () => {
+    globalThis.expect(item["tag_componentName"]).toEqual(undefined);
+  });
+  globalThis.test("tag_composite still carries both tags", () => {
+    globalThis.expect(item["tag_composite"]).toEqual(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.compositeTagKey(tags));
+  });
+  globalThis.test("the tags payload records the empty value verbatim", () => {
+    let payloadTags = Stdlib_Array.filterMap(Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(item["tags"], Stdlib_JSON.Decode.array), undefined), t => Stdlib_Option.map(Stdlib_JSON.Decode.object(t), o => [
+      Stdlib_Option.getOr(Stdlib_Option.flatMap(o["key"], Stdlib_JSON.Decode.string), ""),
+      Stdlib_Option.getOr(Stdlib_Option.flatMap(o["value"], Stdlib_JSON.Decode.string), "!missing")
+    ]));
+    globalThis.expect(payloadTags).toEqual([
+      [
+        "environment",
+        "prod"
+      ],
+      [
+        "componentName",
+        ""
+      ]
+    ]);
+  });
+});
+
 globalThis.describe("Runtime.buildConditionalTransactItems — folded create guard (after=None)", () => {
   let event = (eventType, tags) => ({
     eventType: eventType,

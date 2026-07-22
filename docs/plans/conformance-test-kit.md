@@ -89,8 +89,12 @@ capability", never silently green.
    (`after` omitted), `after`-cursor conflicts, OR-across-query-items,
    AND-within-item (types × tags), tag containment, cursor
    opacity/monotonicity (returned head positions are stable and ordered),
-   `read ~after` exactness, unconditional append. Sources: the behaviors the
-   DynamoDB and SQLite implementations already assert separately, unified.
+   `read ~after` exactness, unconditional append, **empty tag values** (an
+   absent composite-partition member appends, is recorded verbatim, and stays
+   matchable through its partition and composite reads — the divergence in
+   `docs/plans/done/dcb-empty-tag-values-break-append.md`, currently asserted
+   three times in three places). Sources: the behaviors the DynamoDB and SQLite
+   implementations already assert separately, unified.
 3. **QueryDb storage contract**: save/loadStream, counters, TTL
    (capability-gated) — from `BackendParityTest`.
 4. **Query engine contract**: the `QueryDbListQuery.run` spec-equivalence

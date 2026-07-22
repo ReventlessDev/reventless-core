@@ -91,6 +91,39 @@ describe("DcbEventLogStorage_Sqlite", () => {
     })
   })
 
+  // Backend contract: an empty tag value (an absent composite-partition member) is
+  // legitimate — it appends, is recorded verbatim, and keeps matching through both
+  // the partition read and a composite read. Held identically by the in-memory and
+  // DynamoDB backends. See docs/plans/dcb-empty-tag-values-break-append.md.
+  testPromise("an empty tag value appends and stays readable", async () => {
+    await runUnderSqlite(async () => {
+      module TestBus = LocalBus.Make()
+      module Storage = LocalDcbEventLogStorage.Make(TestBus)
+      let s = Storage.make(
+        ~name="dcb-emptytag",
+        ~indexes=[],
+        ~partitionTag=Reventless.DcbTag.Simple({key: "itemId"}),
+        ~opts,
+      )
+      let ops = await s.operations->TestRunner.resolve
+
+      let tags = [{Reventless.DcbTag.key: "itemId", value: "i1"}, {key: "variantId", value: ""}]
+      let result = await ops.append([stored("ItemAdded", tags, JSON.Encode.string("x"))])
+      switch result {
+      | Ok(_) => expect(true)->toBe(true)
+      | Error(e) => expect(appendErrMsg(e))->toBe("Ok")
+      }
+
+      let byPartition = await ops.read(~query=[{tags: [{key: "itemId", value: "i1"}]}])
+      expect(byPartition.events->Array.length)->toBe(1)
+      expect((byPartition.events->Array.getUnsafe(0)).tags->Array.map(t => (t.key, t.value)))
+      ->toEqual([("itemId", "i1"), ("variantId", "")])
+
+      let byComposite = await ops.read(~query=[{tags: tags}])
+      expect(byComposite.events->Array.length)->toBe(1)
+    })
+  })
+
   testPromise("batched tag hydration preserves per-event tags and order", async () => {
     await runUnderSqlite(async () => {
       module TestBus = LocalBus.Make()

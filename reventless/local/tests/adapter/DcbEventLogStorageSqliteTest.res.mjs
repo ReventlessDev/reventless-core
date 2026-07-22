@@ -96,6 +96,57 @@ globalThis.describe("DcbEventLogStorage_Sqlite", () => {
       }], undefined);
     globalThis.expect(read.events.length).toBe(2);
   }));
+  globalThis.test("an empty tag value appends and stays readable", async () => await runUnderSqlite(async () => {
+    let TestBus = LocalBus$ReventlessLocal.Make({});
+    let Storage = LocalDcbEventLogStorage$ReventlessLocal.Make(TestBus);
+    let s = Storage.make("dcb-emptytag", [], {
+      TAG: "Simple",
+      _0: {
+        key: "itemId"
+      }
+    }, undefined, opts);
+    let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
+    let tags = [
+      {
+        key: "itemId",
+        value: "i1"
+      },
+      {
+        key: "variantId",
+        value: ""
+      }
+    ];
+    let result = await ops.append([stored("ItemAdded", tags, "x")], undefined);
+    if (result.TAG === "Ok") {
+      globalThis.expect(true).toBe(true);
+    } else {
+      globalThis.expect(appendErrMsg(result._0)).toBe("Ok");
+    }
+    let byPartition = await ops.read([{
+        tags: [{
+            key: "itemId",
+            value: "i1"
+          }]
+      }], undefined);
+    globalThis.expect(byPartition.events.length).toBe(1);
+    globalThis.expect(byPartition.events[0].tags.map(t => [
+      t.key,
+      t.value
+    ])).toEqual([
+      [
+        "itemId",
+        "i1"
+      ],
+      [
+        "variantId",
+        ""
+      ]
+    ]);
+    let byComposite = await ops.read([{
+        tags: tags
+      }], undefined);
+    globalThis.expect(byComposite.events.length).toBe(1);
+  }));
   globalThis.test("batched tag hydration preserves per-event tags and order", async () => await runUnderSqlite(async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let Storage = LocalDcbEventLogStorage$ReventlessLocal.Make(TestBus);

@@ -103,6 +103,9 @@ function toItem(position, event, partitionTag, recordedAt) {
     item[param[0]] = param[1];
   });
   event.tags.forEach(tag => {
+    if (tag.value === "") {
+      return;
+    }
     let attrName = tagToAttributeName(tag.key);
     item[attrName] = tag.value;
   });
@@ -281,7 +284,7 @@ function resolveBaseItem(table, keyItem) {
   }))), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), result => result.Item);
 }
 
-function queryBySingleTagCrossPartitionStream(table, tag, after) {
+function queryBySingleTagCrossPartitionStreamIndexed(table, tag, after) {
   let indexName = tagToAttributeName(tag.key);
   let expressionAttributeValues = Object.fromEntries([[
       ":val",
@@ -324,6 +327,14 @@ function queryBySingleTagCrossPartitionStream(table, tag, after) {
       return Stream$1.empty;
     }
   });
+}
+
+function queryBySingleTagCrossPartitionStream(table, tag, after) {
+  if (tag.value === "") {
+    return Stream$1.empty;
+  } else {
+    return queryBySingleTagCrossPartitionStreamIndexed(table, tag, after);
+  }
 }
 
 async function executeQueryItem(table, queryItem, after, crossPartitionTagKeysOpt) {
@@ -1164,6 +1175,7 @@ export {
   buildQueryByPartitionKeyInput,
   queryByPartitionKey,
   resolveBaseItem,
+  queryBySingleTagCrossPartitionStreamIndexed,
   queryBySingleTagCrossPartitionStream,
   executeQueryItem,
   deduplicateByPosition,

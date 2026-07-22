@@ -563,6 +563,84 @@ globalThis.describe("DCB DynamoDb integration — per-type fence granularity", (
   });
 });
 
+globalThis.describe("DCB DynamoDb integration — an empty tag value does not break the append", () => {
+  let tags = [
+    {
+      key: "orderId",
+      value: "O-empty"
+    },
+    {
+      key: "customerId",
+      value: ""
+    }
+  ];
+  globalThis.test("appends, and reads back through its partition with the tag intact", async () => {
+    let table = await DcbIntegrationHarness$ReventlessAws.freshTable();
+    let result = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event("OrderPlaced", tags)], {
+      query: [{
+          tags: tags
+        }]
+    }, {
+      TAG: "Simple",
+      _0: {
+        key: "orderId"
+      }
+    }, undefined);
+    globalThis.expect(isOk(result)).toBe(true);
+    let byPartition = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(table, undefined)([{
+        tags: [{
+            key: "orderId",
+            value: "O-empty"
+          }]
+      }], undefined);
+    globalThis.expect(byPartition.events.length).toBe(1);
+    let stored = byPartition.events[0];
+    globalThis.expect(stored.eventType).toBe("OrderPlaced");
+    globalThis.expect(stored.tags.map(t => [
+      t.key,
+      t.value
+    ])).toEqual([
+      [
+        "orderId",
+        "O-empty"
+      ],
+      [
+        "customerId",
+        ""
+      ]
+    ]);
+  });
+  globalThis.test("is found by a composite (multi-tag) read", async () => {
+    let table = await DcbIntegrationHarness$ReventlessAws.freshTable();
+    await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendUnconditional(table, [event("OrderPlaced", tags)], {
+      TAG: "Simple",
+      _0: {
+        key: "orderId"
+      }
+    });
+    let composite = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(table, undefined)([{
+        tags: tags
+      }], undefined);
+    globalThis.expect(composite.events.length).toBe(1);
+  });
+  globalThis.test("is absent from that tag's single-tag index rather than erroring", async () => {
+    let table = await DcbIntegrationHarness$ReventlessAws.freshTable();
+    await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendUnconditional(table, [event("OrderPlaced", tags)], {
+      TAG: "Simple",
+      _0: {
+        key: "orderId"
+      }
+    });
+    let crossPartition = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(table, ["customerId"])([{
+        tags: [{
+            key: "customerId",
+            value: ""
+          }]
+      }], undefined);
+    globalThis.expect(crossPartition.events.length).toBe(0);
+  });
+});
+
 let H;
 
 let Runtime;
