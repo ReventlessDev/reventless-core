@@ -16,7 +16,6 @@ import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Plugin$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
-import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as Backend$ReventlessLocal from "./adapter/Backend.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as LocalBus$ReventlessLocal from "./adapter/LocalBus.res.mjs";
@@ -42,6 +41,7 @@ import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infr
 import * as DomainMCP_Server$ReventlessLocal from "./adapter/DomainMCP_Server.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as LocalQueryEngine$ReventlessLocal from "./adapter/QueryEngine/LocalQueryEngine.res.mjs";
+import * as Platform_AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminApi.res.mjs";
 import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsProjection.res.mjs";
 import * as Scheduler_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Scheduler/Scheduler_Builder.res.mjs";
 import * as Aggregate_Builder$ReventlessLocal from "./components/Aggregate_Builder.res.mjs";
@@ -830,7 +830,7 @@ function MakeWithConfig(Config) {
     };
     return Bus.dispatchCommand(pluginCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
   };
-  let adminDcbCmdTopicKey = ComponentType$ReventlessCore.name("AdminDcb", "CommandTopic");
+  let adminDcbCmdTopicKey = ComponentType$ReventlessCore.name(Platform_Admin_Structure$ReventlessCore.pluginId + "Dcb", "CommandTopic");
   let dispatchUiFragmentCommand = (pluginName, command) => {
     let cmdJson_meta = Message$ReventlessCore.generateMeta(UiFragmentRegistry$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
     let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, UiFragmentRegistry$ReventlessCore.commandSchema);
@@ -843,7 +843,8 @@ function MakeWithConfig(Config) {
   };
   let pluginStatusSubTopic = "onPluginStatusChange";
   let uiFragmentSubTopic = "onUIFragmentChange";
-  let adminDcbEventTopicKey = ComponentType$ReventlessCore.name("Admin", "EventTopic");
+  let adminDcbEventTopicKey = ComponentType$ReventlessCore.name(Platform_Admin_Structure$ReventlessCore.pluginId, "EventTopic");
+  let adminDcbServiceName = ComponentType$ReventlessCore.name(Platform_Admin_Structure$ReventlessCore.pluginId, "DcbEventLog");
   let pluginEventsSubscribed = {
     contents: false
   };
@@ -897,7 +898,7 @@ function MakeWithConfig(Config) {
       }
     });
     Bus.subscribeToEvents(adminDcbEventTopicKey, async (service, _meta, eventJson) => {
-      if (service !== "AdminDcbEventLog") {
+      if (service !== adminDcbServiceName) {
         return;
       }
       let match = decodeUiFragmentRegistryEventEnvelope(eventJson);
@@ -1297,11 +1298,11 @@ function MakeWithConfig(Config) {
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;
     let listQueryField = adminQueryEntry.listFieldName;
-    let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
+    let adminMutationEntries = Platform_AdminApi$ReventlessCore.mutationEntries(Config.cloner);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     let platformGraphQL = resolveTargetGraphQL();
     let platformMCP = resolveTargetMCP();
-    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
+    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(Platform_AdminApi$ReventlessCore.baseFragment(Config.cloner));
     platformGraphQL.registerTypes(baseParts.types);
     let queryResolvers = {};
     queryResolvers[singleQueryField] = async (_root, args, _ctx) => {
@@ -1419,10 +1420,10 @@ function MakeWithConfig(Config) {
       let v = argVersion(args);
       let version = v !== undefined && v !== "" ? v : currentVersionOf(pluginName);
       if (version !== undefined) {
-        log.info("Admin", undefined, field + `(` + pluginName + `@` + version + `): dispatching to aggregate`);
+        log.info(Platform_Admin_Structure$ReventlessCore.pluginId, undefined, field + `(` + pluginName + `@` + version + `): dispatching to aggregate`);
         dispatchPluginCommand(pluginName, makeCommand(version));
       } else {
-        log.warn("Admin", undefined, field + `(` + pluginName + `): plugin not found`);
+        log.warn(Platform_Admin_Structure$ReventlessCore.pluginId, undefined, field + `(` + pluginName + `): plugin not found`);
       }
       return commandAccepted(msgId, pluginName);
     };
@@ -1479,8 +1480,8 @@ function MakeWithConfig(Config) {
     platformGraphQL.registerMutations(adminMutationSdl(baseParts.mutations), mutationResolvers);
     adminRegisteredServers.contents.push(platformGraphQL);
     platformGraphQL.registerSubscriptions([
-      AdminApi$ReventlessCore.uiFragmentSubscriptionField,
-      AdminApi$ReventlessCore.pluginStatusSubscriptionField
+      Platform_AdminApi$ReventlessCore.uiFragmentSubscriptionField,
+      Platform_AdminApi$ReventlessCore.pluginStatusSubscriptionField
     ], Object.fromEntries([
       [
         "onUIFragmentChange",
@@ -1501,7 +1502,7 @@ function MakeWithConfig(Config) {
         PluginsReadModelSpec$ReventlessCore.name
       ]
     ]);
-    platformMCP.registerResourcesFromEntries("Admin", PluginBaseFragment$ReventlessCore.queryEntries, async (resourceName, uri) => {
+    platformMCP.registerResourcesFromEntries(Platform_Admin_Structure$ReventlessCore.pluginId, PluginBaseFragment$ReventlessCore.queryEntries, async (resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
       let queryDbName = Stdlib_Option.getOr(adminFieldToQueryDb[resourceName], PluginsReadModelSpec$ReventlessCore.name);
@@ -1520,7 +1521,7 @@ function MakeWithConfig(Config) {
         return [];
       }
     });
-    platformMCP.registerToolsFromEntries("Admin", adminMutationEntries, async (toolName, args, _identity) => {
+    platformMCP.registerToolsFromEntries(Platform_Admin_Structure$ReventlessCore.pluginId, adminMutationEntries, async (toolName, args, _identity) => {
       let resolver = platformGraphQL.getMutationResolver(toolName);
       if (resolver === undefined) {
         return `error: no handler found for tool ` + toolName;
@@ -1559,7 +1560,7 @@ function MakeWithConfig(Config) {
     currentDeployTarget.contents = "Platform";
     let adminGraphQL = resolveTargetGraphQL();
     let adminMCP = resolveTargetMCP();
-    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
+    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(Platform_AdminApi$ReventlessCore.baseFragment(Config.cloner));
     adminGraphQL.registerTypes(baseParts.types);
     let queryResolvers = {};
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
@@ -1569,7 +1570,7 @@ function MakeWithConfig(Config) {
     registerAdminItemsAndIndexResolvers(queryResolvers, false);
     adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
-    let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
+    let adminMutationEntries = Platform_AdminApi$ReventlessCore.mutationEntries(Config.cloner);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     adminMutationFieldNames.forEach(field => {
       mutationResolvers[field] = async (_root, _args, _ctx) => commandAccepted(Message$ReventlessCore.uuid(), undefined);
@@ -1678,7 +1679,7 @@ function MakeWithConfig(Config) {
     Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
     let adminGraphQL = resolveTargetGraphQL();
     if (!adminRegisteredServers.contents.some(s => s === adminGraphQL)) {
-      let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
+      let baseParts = GraphQL_Stitcher$ReventlessCore.decode(Platform_AdminApi$ReventlessCore.baseFragment(Config.cloner));
       adminGraphQL.registerTypes(baseParts.types);
       let queryResolvers = {};
       let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
@@ -1701,7 +1702,7 @@ function MakeWithConfig(Config) {
       registerAdminItemsAndIndexResolvers(queryResolvers, true);
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
       let mutationResolvers = {};
-      let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
+      let adminMutationEntries = Platform_AdminApi$ReventlessCore.mutationEntries(Config.cloner);
       let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
       adminMutationFieldNames.forEach(field => {
         mutationResolvers[field] = async (_root, _args, _ctx) => commandAccepted(Message$ReventlessCore.uuid(), undefined);
@@ -2499,7 +2500,7 @@ function Make($star) {
     };
     return Bus.dispatchCommand(pluginCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
   };
-  let adminDcbCmdTopicKey = ComponentType$ReventlessCore.name("AdminDcb", "CommandTopic");
+  let adminDcbCmdTopicKey = ComponentType$ReventlessCore.name(Platform_Admin_Structure$ReventlessCore.pluginId + "Dcb", "CommandTopic");
   let dispatchUiFragmentCommand = (pluginName, command) => {
     let cmdJson_meta = Message$ReventlessCore.generateMeta(UiFragmentRegistry$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
     let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, UiFragmentRegistry$ReventlessCore.commandSchema);
@@ -2512,7 +2513,8 @@ function Make($star) {
   };
   let pluginStatusSubTopic = "onPluginStatusChange";
   let uiFragmentSubTopic = "onUIFragmentChange";
-  let adminDcbEventTopicKey = ComponentType$ReventlessCore.name("Admin", "EventTopic");
+  let adminDcbEventTopicKey = ComponentType$ReventlessCore.name(Platform_Admin_Structure$ReventlessCore.pluginId, "EventTopic");
+  let adminDcbServiceName = ComponentType$ReventlessCore.name(Platform_Admin_Structure$ReventlessCore.pluginId, "DcbEventLog");
   let pluginEventsSubscribed = {
     contents: false
   };
@@ -2566,7 +2568,7 @@ function Make($star) {
       }
     });
     Bus.subscribeToEvents(adminDcbEventTopicKey, async (service, _meta, eventJson) => {
-      if (service !== "AdminDcbEventLog") {
+      if (service !== adminDcbServiceName) {
         return;
       }
       let match = decodeUiFragmentRegistryEventEnvelope(eventJson);
@@ -2961,11 +2963,11 @@ function Make($star) {
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;
     let listQueryField = adminQueryEntry.listFieldName;
-    let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
+    let adminMutationEntries = Platform_AdminApi$ReventlessCore.mutationEntries(false);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     let platformGraphQL = resolveTargetGraphQL();
     let platformMCP = resolveTargetMCP();
-    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
+    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(Platform_AdminApi$ReventlessCore.baseFragment(false));
     platformGraphQL.registerTypes(baseParts.types);
     let queryResolvers = {};
     queryResolvers[singleQueryField] = async (_root, args, _ctx) => {
@@ -3083,10 +3085,10 @@ function Make($star) {
       let v = argVersion(args);
       let version = v !== undefined && v !== "" ? v : currentVersionOf(pluginName);
       if (version !== undefined) {
-        log.info("Admin", undefined, field + `(` + pluginName + `@` + version + `): dispatching to aggregate`);
+        log.info(Platform_Admin_Structure$ReventlessCore.pluginId, undefined, field + `(` + pluginName + `@` + version + `): dispatching to aggregate`);
         dispatchPluginCommand(pluginName, makeCommand(version));
       } else {
-        log.warn("Admin", undefined, field + `(` + pluginName + `): plugin not found`);
+        log.warn(Platform_Admin_Structure$ReventlessCore.pluginId, undefined, field + `(` + pluginName + `): plugin not found`);
       }
       return commandAccepted(msgId, pluginName);
     };
@@ -3143,8 +3145,8 @@ function Make($star) {
     platformGraphQL.registerMutations(adminMutationSdl(baseParts.mutations), mutationResolvers);
     adminRegisteredServers.contents.push(platformGraphQL);
     platformGraphQL.registerSubscriptions([
-      AdminApi$ReventlessCore.uiFragmentSubscriptionField,
-      AdminApi$ReventlessCore.pluginStatusSubscriptionField
+      Platform_AdminApi$ReventlessCore.uiFragmentSubscriptionField,
+      Platform_AdminApi$ReventlessCore.pluginStatusSubscriptionField
     ], Object.fromEntries([
       [
         "onUIFragmentChange",
@@ -3165,7 +3167,7 @@ function Make($star) {
         PluginsReadModelSpec$ReventlessCore.name
       ]
     ]);
-    platformMCP.registerResourcesFromEntries("Admin", PluginBaseFragment$ReventlessCore.queryEntries, async (resourceName, uri) => {
+    platformMCP.registerResourcesFromEntries(Platform_Admin_Structure$ReventlessCore.pluginId, PluginBaseFragment$ReventlessCore.queryEntries, async (resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
       let queryDbName = Stdlib_Option.getOr(adminFieldToQueryDb[resourceName], PluginsReadModelSpec$ReventlessCore.name);
@@ -3184,7 +3186,7 @@ function Make($star) {
         return [];
       }
     });
-    platformMCP.registerToolsFromEntries("Admin", adminMutationEntries, async (toolName, args, _identity) => {
+    platformMCP.registerToolsFromEntries(Platform_Admin_Structure$ReventlessCore.pluginId, adminMutationEntries, async (toolName, args, _identity) => {
       let resolver = platformGraphQL.getMutationResolver(toolName);
       if (resolver === undefined) {
         return `error: no handler found for tool ` + toolName;
@@ -3216,7 +3218,7 @@ function Make($star) {
     currentDeployTarget.contents = "Platform";
     let adminGraphQL = resolveTargetGraphQL();
     let adminMCP = resolveTargetMCP();
-    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
+    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(Platform_AdminApi$ReventlessCore.baseFragment(false));
     adminGraphQL.registerTypes(baseParts.types);
     let queryResolvers = {};
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
@@ -3226,7 +3228,7 @@ function Make($star) {
     registerAdminItemsAndIndexResolvers(queryResolvers, false);
     adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
-    let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
+    let adminMutationEntries = Platform_AdminApi$ReventlessCore.mutationEntries(false);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     adminMutationFieldNames.forEach(field => {
       mutationResolvers[field] = async (_root, _args, _ctx) => commandAccepted(Message$ReventlessCore.uuid(), undefined);
@@ -3333,7 +3335,7 @@ function Make($star) {
     Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
     let adminGraphQL = resolveTargetGraphQL();
     if (!adminRegisteredServers.contents.some(s => s === adminGraphQL)) {
-      let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
+      let baseParts = GraphQL_Stitcher$ReventlessCore.decode(Platform_AdminApi$ReventlessCore.baseFragment(false));
       adminGraphQL.registerTypes(baseParts.types);
       let queryResolvers = {};
       let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
@@ -3356,7 +3358,7 @@ function Make($star) {
       registerAdminItemsAndIndexResolvers(queryResolvers, true);
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
       let mutationResolvers = {};
-      let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
+      let adminMutationEntries = Platform_AdminApi$ReventlessCore.mutationEntries(false);
       let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
       adminMutationFieldNames.forEach(field => {
         mutationResolvers[field] = async (_root, _args, _ctx) => commandAccepted(Message$ReventlessCore.uuid(), undefined);

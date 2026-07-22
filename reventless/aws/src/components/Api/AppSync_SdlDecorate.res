@@ -7,7 +7,7 @@
 // STITCHED schema at push time — the additive counterpart of the neutral
 // emission, mirroring how `injectAwsAuthAll`/`stampSharedIamTypes` decorate
 // auth. Runtime-pure so the bundled Lambda entry points
-// (AdminEventCollectorEntryPoint.mjs) can import it without dragging
+// (EventCollectorEntryPoint.mjs) can import it without dragging
 // deploy-time dependencies into the runtime module graph.
 
 /**

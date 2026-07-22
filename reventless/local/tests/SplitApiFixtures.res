@@ -31,7 +31,7 @@ let extractSdlFieldName = (sdlField: string): string => {
 let adminGraphQL = ReventlessGraphqlServer.GraphQL_ServerInstance.make(~label="GraphQL:Admin")
 
 // Build admin SDL — authoritative source for field names.
-let baseParts = ReventlessCore.GraphQL_Stitcher.decode(ReventlessCore.AdminApi.baseFragment(~cloner=true))
+let baseParts = ReventlessCore.GraphQL_Stitcher.decode(ReventlessCore.Platform_AdminApi.baseFragment(~cloner=true))
 let () = adminGraphQL.registerTypes(~sdlTypes=baseParts.types)
 
 // Derive query/mutation field names directly from SDL so that any SDL

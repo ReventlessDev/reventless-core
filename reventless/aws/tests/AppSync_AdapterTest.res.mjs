@@ -5,9 +5,9 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as AppSync_Adapter$ReventlessAws from "../src/components/Api/AppSync_Adapter.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
+import * as Platform_AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminApi.res.mjs";
 import * as AppSync_SdlDecorate$ReventlessAws from "../src/components/Api/AppSync_SdlDecorate.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/api/PluginBaseFragment.res.mjs";
 
@@ -28,7 +28,7 @@ globalThis.describe("AppSync_Adapter.sha256Hex", () => {
 let decodeFragment = GraphQL_Stitcher$ReventlessCore.decode;
 
 globalThis.describe("AppSync_Adapter.injectAwsAuthAll", () => {
-  let baseFragment = AdminApi$ReventlessCore.baseFragment(true);
+  let baseFragment = Platform_AdminApi$ReventlessCore.baseFragment(true);
   globalThis.test("adds @aws_auth directive to all mutation fields", () => {
     let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin", undefined);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
@@ -77,8 +77,8 @@ globalThis.describe("AppSync_Adapter.injectAwsAuthAll", () => {
 
 globalThis.describe("AppSync_Adapter.injectAwsAuth", () => {
   globalThis.test("injects auth only on entries with authorization", () => {
-    let mutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
-    let baseFragment = AdminApi$ReventlessCore.baseFragment(false);
+    let mutationEntries = Platform_AdminApi$ReventlessCore.mutationEntries(false);
+    let baseFragment = Platform_AdminApi$ReventlessCore.baseFragment(false);
     let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuth(baseFragment, mutationEntries, PluginBaseFragment$ReventlessCore.queryEntries);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
     let queryWithAuth = PluginBaseFragment$ReventlessCore.queryEntries.some(entry => Stdlib_Option.isSome(entry.authorization));
@@ -92,7 +92,7 @@ globalThis.describe("AppSync_Adapter.injectAwsAuth", () => {
 
 globalThis.describe("AppSync_Adapter.generateFragment", () => {
   globalThis.test("produces fragment with auth directives from entries", () => {
-    let mutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
+    let mutationEntries = Platform_AdminApi$ReventlessCore.mutationEntries(false);
     let fragment = AppSync_Adapter$ReventlessAws.generateFragment(mutationEntries, PluginBaseFragment$ReventlessCore.queryEntries);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(fragment);
     globalThis.expect(parts.types.length).toBeGreaterThan(0);
@@ -536,7 +536,7 @@ globalThis.describe("AppSync_Adapter — type-level dual-auth", () => {
 });
 
 globalThis.describe("AppSync_Adapter.injectAwsAuthAll — ~iamFieldNames", () => {
-  let baseFragment = AdminApi$ReventlessCore.baseFragment(true);
+  let baseFragment = Platform_AdminApi$ReventlessCore.baseFragment(true);
   globalThis.test("marks only the named field dual-auth, leaving others single-mode", () => {
     let firstMutationName = GraphQL_Stitcher$ReventlessCore.extractLeadingName(GraphQL_Stitcher$ReventlessCore.decode(baseFragment).mutations[0]);
     let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin", [firstMutationName]);
@@ -600,7 +600,7 @@ globalThis.describe("Split mode — empty base fragment", () => {
     globalThis.expect(sdl).not.toContain("Platform_Plugin");
   });
   globalThis.test("stitching admin base without plugins produces only admin fields", () => {
-    let adminBase = AdminApi$ReventlessCore.baseFragment(false);
+    let adminBase = Platform_AdminApi$ReventlessCore.baseFragment(false);
     let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBase, []);
     globalThis.expect(sdl).toContain("Platform_Plugin");
   });
@@ -614,7 +614,7 @@ globalThis.describe("Merged mode — canonical source documents", () => {
     subscriptions: [],
     subscriptionSources: []
   });
-  let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", undefined);
+  let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(Platform_AdminApi$ReventlessCore.baseFragment(false), "Admin", undefined);
   let adminSourceSdl = AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(baseFragment));
   let domainBaseSourceSdl = AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(domainBaseFragment));
   globalThis.test("no AWS source document carries the global node query (dropped — see plan)", () => {

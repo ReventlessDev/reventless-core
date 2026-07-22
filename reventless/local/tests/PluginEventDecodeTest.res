@@ -55,7 +55,12 @@ describe("Platform.decodePluginEventEnvelope", () => {
 // DcbEventLog_Operations produces: composeEventJson'(entityId, meta,
 // combineMessage(eventType, data)).
 describe("Platform.decodeUiFragmentRegistryEventEnvelope", () => {
-  let dcbMeta = ReventlessCore.Message.generateMeta(~service="AdminDcbEventLog")
+  let dcbMeta = {
+    module CT = ReventlessCore.ComponentType
+    ReventlessCore.Message.generateMeta(
+      ~service=ReventlessCore.Platform_Admin_Structure.pluginId->CT.name(CT.DcbEventLog),
+    )
+  }
 
   let dcbEnvelopeOf = (event: ReventlessCore.UiFragmentRegistry.event) => {
     let json = event->S.reverseConvertToJsonOrThrow(ReventlessCore.UiFragmentRegistry.eventSchema)

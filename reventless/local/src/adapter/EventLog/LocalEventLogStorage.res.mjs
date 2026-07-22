@@ -7,7 +7,7 @@ import * as EventLogStorage_InMemory$ReventlessLocal from "./EventLogStorage_InM
 import * as EventLogStorage_Postgres$ReventlessPostgres from "@reventlessdev/reventless-postgres/src/EventLogStorage_Postgres.res.mjs";
 
 function Make(Bus) {
-  let make = (name, owner, opts) => {
+  let make = (name, param, opts) => {
     let match = BackendState$ReventlessLocal.getSqliteDb();
     let match$1 = BackendState$ReventlessLocal.getPostgresPool();
     if (match !== undefined) {

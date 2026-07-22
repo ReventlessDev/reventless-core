@@ -154,7 +154,7 @@ module MakeWithConfig = (
   let adminSourceSdl = (): string =>
     assembleCanonicalSourceSdl(
       ~baseFragment=AppSync_Adapter.injectAwsAuthAll(
-        ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+        ReventlessCore.Platform_AdminApi.baseFragment(~cloner=Config.cloner),
         ~group="Admin",
       ),
     )
@@ -850,7 +850,7 @@ module MakeWithConfig = (
   // admin-prefixed `Platform_Plugin` / `Platform_Plugins` SDL fields declared by
   // PluginBaseFragment.queryEntries. Field-name alignment is handled by the
   // queryFieldNamesRegistry entries that Platform_Admin.construct populates
-  // from AdminApi.queryEntries before this builder runs.
+  // from Platform_AdminApi.queryEntries before this builder runs.
   module PluginReadModel = ReadModel_Builder_Single_Stream.Make(
     ReventlessCore.PluginsReadModelSpec,
     PluginReadModelMappings,
@@ -1124,7 +1124,7 @@ module MakeWithConfig = (
 
     module PluginExtensionPoint = Plugin_ExtensionPoint_Builder.MakeWithConfig({
       // Cross-plugin SNS subscription management runs in the bundled
-      // AdminEventCollector Lambda (AdminEventCollectorEntryPoint.mjs), not in
+      // AdminEventCollector Lambda (EventCollectorEntryPoint.mjs), not in
       // this deploy-time EP Lambda — which only handles incoming commands
       // (Heartbeat, ForwardCommand). None here keeps the deploy-time path
       // unchanged; the .mjs entry point supplies a real implementation.

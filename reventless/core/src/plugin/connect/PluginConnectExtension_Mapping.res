@@ -78,7 +78,7 @@ module Make = (Spec: Spec) => {
         // plugins used to call DoConnectPlugin / DoDisconnectPlugin here so
         // each plugin's EC Lambda could subscribe / unsubscribe its own
         // queue to peer EP topics. Admin owns that work now
-        // (manageSubscriptions in AdminEventCollectorEntryPoint.mjs) — these
+        // (manageSubscriptions in EventCollectorEntryPoint.mjs) — these
         // cases drop to no-ops.
         | _ => []
         }

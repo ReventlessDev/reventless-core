@@ -35,7 +35,7 @@ module Make = (
     with type runtimeParts = RuntimeEnvironment.parts,
   QueryEngineAdapter: QueryDb_Adapter.QueryEngineAdapter,
   ClonerRunner: Cloner.Adapter.Runner,
-  AdminRuntimeBuilder: PluginRuntime_Builder.T
+  PlatformRuntimeBuilder: PluginRuntime_Builder.T
     with module EventCollectorChannel = EventCollectorChannel
     and type runtimeParts = RuntimeEnvironment.parts,
   DcbEventLogStorage: DcbEventLog_Adapter.Storage,
@@ -51,9 +51,9 @@ module Make = (
     ECC: EventCollector_Adapter.Channel with type runtimeParts = RE.parts,
     RB: PluginRuntime_Builder.T with module EventCollectorChannel = ECC,
   ) => {
-    module AdminEventCollector = EventCollector_Builder.Make(RE, ECC)
+    module PlatformEventCollector = EventCollector_Builder.Make(RE, ECC)
     let make = (~name, ~eventTopics, ~opts) => {
-      let eventCollector = AdminEventCollector.make(~name, ~eventTopics, ~owner={kind: ComponentType.Plugin, name}, ~opts)
+      let eventCollector = PlatformEventCollector.make(~name, ~eventTopics, ~owner={kind: ComponentType.Plugin, name}, ~opts)
       let eventCollectorOutputs = eventCollector->Component.outputs
       (eventCollector, eventCollectorOutputs)
     }
@@ -76,8 +76,8 @@ module Make = (
 
       resources->Pulumi.Output.apply(resources => {
         let fakePluginDefinition: Reventless.Plugin.pluginDefinition = {
-          id: "Admin@INTERNAL",
-          name: "Admin",
+          id: Platform_Admin_Structure.pluginId ++ "@INTERNAL",
+          name: Platform_Admin_Structure.pluginId,
           version: "INTERNAL",
           extensionPoints: [],
           extensions: [],
@@ -90,11 +90,11 @@ module Make = (
           kind: Domain,
         }
 
-        module Callback = Admin_Callback.Make({
+        module Callback = Platform_Admin_Callback.Make({
           let pluginDefinition = fakePluginDefinition
           let outgoingExtensionPointJsonEventsHandlers = extensionPointsOutgoingJsonEventsHandlers
         })
-        let handler = AdminEventCollector.makeHandler(
+        let handler = PlatformEventCollector.makeHandler(
           ~eventCollector,
           ~jsonEventsHandler=Callback.handleJsonEvents,
         )
@@ -120,7 +120,9 @@ module Make = (
     ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>,
     ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>,
   ) => {
-    let name = "Admin"
+    // Names every platform-owned resource — the DCB substrate via DcbBuilder and the
+    // EventCollector below. Bound to pluginId so the two can't drift apart again.
+    let name = Platform_Admin_Structure.pluginId
     let opts: Pulumi.ComponentResource.options = {}
 
     // Construct DCB components and derive DCB-specific API schema entries
@@ -129,7 +131,7 @@ module Make = (
       DcbEventTopicPublisher,
       DcbCommandTopicChannel,
       DcbCommandTopicChannelAsync,
-      AdminRuntimeBuilder,
+      PlatformRuntimeBuilder,
       Config,
     )
     // Aggregates constructed early so multi-source AutomationSlices created
@@ -142,15 +144,15 @@ module Make = (
     // `mutationResolverHook` and populate `aggregateMutationFieldsRegistry`.
     // The matching SDL entries are owned by
     // `PluginBaseFragment.pluginAggregateMutationEntries` (picked up via
-    // `AdminApi.mutationEntries`) so the AWS path that pushes
-    // `AdminApi.baseFragment` directly stays aligned with the in-memory path.
+    // `Platform_AdminApi.mutationEntries`) so the AWS path that pushes
+    // `Platform_AdminApi.baseFragment` directly stays aligned with the in-memory path.
     aggregates->Plugin_Helpers.registerAdminAggregateMutations(~hooks=Config.hooks)
 
     let dcbResult = DcbBuilder.construct(
       ~name,
       ~childName=name,
       // Admin slice command mutations render `Platform_*` (not `Admin_*`), byte-aligned with the
-      // hand-declared admin SDL (`AdminApi.baseFragment`, via `Api_Naming.adminField`) so the
+      // hand-declared admin SDL (`Platform_AdminApi.baseFragment`, via `Api_Naming.adminField`) so the
       // auto-bound DCB resolver targets the exact field name that is pushed to the schema.
       ~apiNamePrefix="Platform",
       // Admin DCB mutation resolvers bind to the Platform API (split mode), not the deploy-target
@@ -178,13 +180,13 @@ module Make = (
     | None => ()
     }
 
-    // Admin schema — composed from actual config. `AdminApi.mutationEntries`
+    // Admin schema — composed from actual config. `Platform_AdminApi.mutationEntries`
     // already includes the auto-derived `Platform_Plugin_Activate`/`Deactivate`
     // entries (via `PluginBaseFragment.pluginAggregateMutationEntries`) so the
     // SDL stays in sync with the resolver wiring fired above.
-    let adminMutationEntries = AdminApi.mutationEntries(~cloner=Config.cloner)
+    let adminMutationEntries = Platform_AdminApi.mutationEntries(~cloner=Config.cloner)
     let allMutationEntries = Array.concat(adminMutationEntries, dcbResult.mutationEntries)
-    let allQueryEntries = Array.concat(AdminApi.queryEntries, dcbResult.queryEntries)
+    let allQueryEntries = Array.concat(Platform_AdminApi.queryEntries, dcbResult.queryEntries)
     let adminFragment = GraphQL_FragmentGenerator.generate(
       ~mutationEntries=allMutationEntries,
       ~queryEntries=allQueryEntries,
@@ -202,7 +204,7 @@ module Make = (
       switch Config.hooks.mcpSchemaRegistrationHook {
       | Some(registerMcp) =>
         registerMcp({
-          pluginName: "Admin",
+          pluginName: name,
           mutationEntries: allMutationEntries,
           queryEntries: allQueryEntries,
           eventLogEntries: dcbResult.eventLogEntries,
@@ -227,7 +229,7 @@ module Make = (
     // match the `Platform_Plugin`/`Platform_Plugins` SDL fields declared by
     // PluginBaseFragment.queryEntries — leaving the SDL fields without a
     // resolver and producing "Cannot return null for non-nullable type" errors.
-    AdminApi.queryEntries->Array.forEach(entry => {
+    Platform_AdminApi.queryEntries->Array.forEach(entry => {
       let prefix = "Platform_"
       let entityName = if entry.returnTypeName->String.startsWith(prefix) {
         entry.returnTypeName->String.slice(
@@ -278,7 +280,7 @@ module Make = (
     //
     // BUT skip the StateViewSlice merge on a static-schema-push platform (AWS, where
     // preAdminResolversSchemaHook is Some): there the pushed schema is the static
-    // AdminApi.baseFragment, which does NOT declare the auto `<prefix>_<Slice>` query
+    // Platform_AdminApi.baseFragment, which does NOT declare the auto `<prefix>_<Slice>` query
     // fields — so creating their resolvers would fail CreateResolver with
     // "No field named Admin_<Slice> on type Query". The admin StateView slices are
     // internal registries whose real query surface is served by dedicated Lambda
@@ -401,7 +403,7 @@ module Make = (
         module EventCollectorHelper = MakeEventCollectorHelper(
           RuntimeEnvironment,
           EventCollectorChannel,
-          AdminRuntimeBuilder,
+          PlatformRuntimeBuilder,
         )
         let (eventCollector, _eventCollectorOutputs) = EventCollectorHelper.make(
           ~name,

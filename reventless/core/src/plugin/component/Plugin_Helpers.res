@@ -88,7 +88,7 @@ let getStorageResources = (allQueryDbs, pluginName, queryDbName) =>
 // ---------------------------------------------------------------------------
 // Plugin EventCollector context registry.
 //
-// Adapter runtime entry points (e.g. AdminEventCollectorEntryPoint.mjs) read
+// Adapter runtime entry points (e.g. EventCollectorEntryPoint.mjs) read
 // HANDLER_CONFIG to reconstruct Plugin_Callback at cold start. The JSON payload
 // is assembled at deploy time inside `forPluginEventCollector` (AWS), but the
 // plugin-specific data (pluginDefinition, the auto-included Connect extension
@@ -1024,7 +1024,7 @@ module NoopHooksConfig: HooksConfig = {
 // and fire `mutationResolverHook` so adapter-side SDL stubs get registered
 // synchronously. The matching `mutationSchemaEntry` records — needed to keep the
 // SDL aligned — live in `PluginBaseFragment.pluginAggregateMutationEntries` so the
-// AWS path (which pushes `AdminApi.baseFragment` directly, not Admin.construct's
+// AWS path (which pushes `Platform_AdminApi.baseFragment` directly, not Admin.construct's
 // adminFragment) picks them up too. This helper is side-effect only.
 let registerAdminAggregateMutations = (
   type a,

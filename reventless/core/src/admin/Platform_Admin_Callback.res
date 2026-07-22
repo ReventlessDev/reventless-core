@@ -12,7 +12,7 @@ module Make = (Spec: Spec): T => {
     stream
     ->Stream.mapEffect(eventJson' =>
       EffectLogger.logInfo(
-        ~comp="Admin",
+        ~comp=Platform_Admin_Structure.pluginId,
         `handleJsonEvents: outgoing event: ${LogFormat.event'JsonToLogMessage(eventJson')}`,
       )->Effect.zipRight(
         Effect.all(

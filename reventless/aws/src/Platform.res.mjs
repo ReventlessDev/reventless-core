@@ -15,7 +15,6 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as Plugin$ReventlessAws from "./components/Plugin.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
-import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as Scheduler$ReventlessAws from "./components/Scheduler.res.mjs";
 import * as Aggregate$ReventlessCore from "@reventlessdev/reventless-core/src/components/Aggregate/Aggregate.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
@@ -44,6 +43,7 @@ import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infr
 import * as Util_HostUiDomain$ReventlessAws from "./util/Util_HostUiDomain.res.mjs";
 import * as DcbEventLogStorage$ReventlessAws from "./adapter/DcbEventLog/DcbEventLogStorage.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
+import * as Platform_AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminApi.res.mjs";
 import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsProjection.res.mjs";
 import * as StateTopic_AppSync$ReventlessAws from "./adapter/StateTopic/StateTopic_AppSync.res.mjs";
 import * as AppSync_SdlDecorate$ReventlessAws from "./components/Api/AppSync_SdlDecorate.res.mjs";
@@ -148,7 +148,7 @@ function MakeWithConfig(Config) {
     subscriptionSources: []
   });
   let adminSourceSdl = () => {
-    let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", undefined);
+    let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(Platform_AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin", undefined);
     return AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(baseFragment));
   };
   let match;
@@ -1123,7 +1123,7 @@ function Make($star) {
     subscriptionSources: []
   });
   let adminSourceSdl = () => {
-    let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin", undefined);
+    let baseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(Platform_AdminApi$ReventlessCore.baseFragment(false), "Admin", undefined);
     return AppSync_SdlDecorate$ReventlessAws.stampCanonicalTypes(AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(baseFragment));
   };
   let match;

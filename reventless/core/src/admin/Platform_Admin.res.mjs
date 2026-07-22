@@ -6,25 +6,26 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Cloner$ReventlessCore from "../components/Cloner.res.mjs";
-import * as AdminApi$ReventlessCore from "./AdminApi.res.mjs";
 import * as Aggregate$ReventlessCore from "../components/Aggregate/Aggregate.res.mjs";
 import * as Component$ReventlessCore from "../components/Component.res.mjs";
 import * as ReadModel$ReventlessCore from "../components/ReadModel/ReadModel.res.mjs";
 import * as Dcb_Builder$ReventlessCore from "../components/Dcb/Dcb_Builder.res.mjs";
-import * as Admin_Callback$ReventlessCore from "./Admin_Callback.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "../plugin/component/Plugin_Helpers.res.mjs";
 import * as Builder_Helpers$ReventlessCore from "../components/Builder_Helpers.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "../components/Api/GraphQL_Stitcher.res.mjs";
 import * as Plugin_Structure$ReventlessCore from "../plugin/component/Plugin_Structure.res.mjs";
+import * as Platform_AdminApi$ReventlessCore from "./Platform_AdminApi.res.mjs";
 import * as EventCollector_Builder$ReventlessCore from "../components/EventCollector/EventCollector_Builder.res.mjs";
+import * as Platform_Admin_Callback$ReventlessCore from "./Platform_Admin_Callback.res.mjs";
+import * as Platform_Admin_Structure$ReventlessCore from "./Platform_Admin_Structure.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../components/Api/GraphQL_FragmentGenerator.res.mjs";
 
 function Make(RuntimeEnvironment) {
-  return EventCollectorChannel => (QueryEngineAdapter => (ClonerRunner => (AdminRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => (Config => {
+  return EventCollectorChannel => (QueryEngineAdapter => (ClonerRunner => (PlatformRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => (Config => {
     let MakeEventCollectorHelper = RE => (ECC => (RB => {
-      let AdminEventCollector = EventCollector_Builder$ReventlessCore.Make(RE)(ECC);
+      let PlatformEventCollector = EventCollector_Builder$ReventlessCore.Make(RE)(ECC);
       let make = (name, eventTopics, opts) => {
-        let eventCollector = AdminEventCollector.make(name, eventTopics, {
+        let eventCollector = PlatformEventCollector.make(name, eventTopics, {
           kind: "Plugin",
           name: name
         }, opts);
@@ -38,8 +39,8 @@ function Make(RuntimeEnvironment) {
         let resources = Pulumi.all(extensionPointsOutputs.map(extensionPoint => extensionPoint.eventTopic)).apply(eventTopics => eventTopics.map(eventTopic => eventTopic.resources).flat());
         return resources.apply(resources => {
           let fakePluginDefinition = {
-            id: "Admin@INTERNAL",
-            name: "Admin",
+            id: Platform_Admin_Structure$ReventlessCore.pluginId + "@INTERNAL",
+            name: Platform_Admin_Structure$ReventlessCore.pluginId,
             version: "INTERNAL",
             extensionPoints: [],
             extensions: [],
@@ -51,39 +52,38 @@ function Make(RuntimeEnvironment) {
             dcbEventLog: undefined,
             kind: "Domain"
           };
-          let Callback = Admin_Callback$ReventlessCore.Make({
+          let Callback = Platform_Admin_Callback$ReventlessCore.Make({
             pluginDefinition: fakePluginDefinition,
             outgoingExtensionPointJsonEventsHandlers: extensionPointsOutgoingJsonEventsHandlers
           });
-          let handler = AdminEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
+          let handler = PlatformEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
           RB.forPluginEventCollector(handler, eventTopics, resources, undefined, undefined, eventCollector);
         });
       };
       return {
-        AdminEventCollector: AdminEventCollector,
+        PlatformEventCollector: PlatformEventCollector,
         make: make,
         connect: connect
       };
     }));
     let construct = (param, extensionPoints, aggregates, readModels, scheduler, resourceNaming, api, apiRole, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices) => {
-      let name = "Admin";
       let opts = {};
-      let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(DcbCommandTopicChannelAsync)(AdminRuntimeBuilder)({
+      let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(DcbCommandTopicChannelAsync)(PlatformRuntimeBuilder)({
         hooks: Config.hooks
       });
       let aggregatesWithoutEventMappers = Builder_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, {}, opts);
       let aggregateEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
       Plugin_Helpers$ReventlessCore.registerAdminAggregateMutations(aggregates, Config.hooks);
-      let dcbResult = DcbBuilder.construct(name, name, "Platform", true, undefined, undefined, aggregateEventTopics, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, undefined, undefined, undefined, opts);
+      let dcbResult = DcbBuilder.construct(Platform_Admin_Structure$ReventlessCore.pluginId, Platform_Admin_Structure$ReventlessCore.pluginId, "Platform", true, undefined, undefined, aggregateEventTopics, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, undefined, undefined, undefined, opts);
       let slicePublishJsons = dcbResult.dcbPublishJsons;
       if (slicePublishJsons !== undefined) {
         stateChangeSlices.forEach(Sc => {
           Builder_Helpers$ReventlessCore.publishToAggregates[Sc.Spec.name] = slicePublishJsons;
         });
       }
-      let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
+      let adminMutationEntries = Platform_AdminApi$ReventlessCore.mutationEntries(Config.cloner);
       let allMutationEntries = adminMutationEntries.concat(dcbResult.mutationEntries);
-      let allQueryEntries = AdminApi$ReventlessCore.queryEntries.concat(dcbResult.queryEntries);
+      let allQueryEntries = Platform_AdminApi$ReventlessCore.queryEntries.concat(dcbResult.queryEntries);
       let adminFragment = GraphQL_FragmentGenerator$ReventlessCore.generate(allMutationEntries, allQueryEntries);
       if (dcbResult.mutationEntries.length !== 0 || dcbResult.queryEntries.length !== 0) {
         let registerTypes = Config.hooks.schemaTypeRegistrationHook;
@@ -94,7 +94,7 @@ function Make(RuntimeEnvironment) {
         let registerMcp = Config.hooks.mcpSchemaRegistrationHook;
         if (registerMcp !== undefined) {
           registerMcp({
-            pluginName: "Admin",
+            pluginName: Platform_Admin_Structure$ReventlessCore.pluginId,
             mutationEntries: allMutationEntries,
             queryEntries: allQueryEntries,
             eventLogEntries: dcbResult.eventLogEntries,
@@ -104,9 +104,9 @@ function Make(RuntimeEnvironment) {
       }
       let dcbOutputs = dcbResult.dcbEventLogOutputs;
       if (dcbOutputs !== undefined) {
-        aggregateEventTopics[name + "DcbEventLog"] = dcbOutputs.eventTopic;
+        aggregateEventTopics[Platform_Admin_Structure$ReventlessCore.pluginId + "DcbEventLog"] = dcbOutputs.eventTopic;
       }
-      AdminApi$ReventlessCore.queryEntries.forEach(entry => {
+      Platform_AdminApi$ReventlessCore.queryEntries.forEach(entry => {
         let prefix = "Platform_";
         let entityName = entry.returnTypeName.startsWith(prefix) ? entry.returnTypeName.slice(prefix.length, entry.returnTypeName.length) : entry.returnTypeName;
         let registryKey = Stdlib_Option.getOr(entry.specName, entityName);
@@ -175,9 +175,9 @@ function Make(RuntimeEnvironment) {
         let aggregateNames = Stdlib_Array.reduce(extensionPointsOutputs.map(extensionPointOutputs => Belt_SetString.fromArray(extensionPointOutputs.aggregateNames)), undefined, Belt_SetString.union);
         let aggregatesOutputs = Builder_Helpers$ReventlessCore.addEventMappers(aggregateEventTopics, queryEngine);
         let eventTopics = Aggregate$ReventlessCore.filterEventTopics(aggregatesOutputs, aggregateNames);
-        let AdminEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
+        let PlatformEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
         let make = (name, eventTopics, opts) => {
-          let eventCollector = AdminEventCollector.make(name, eventTopics, {
+          let eventCollector = PlatformEventCollector.make(name, eventTopics, {
             kind: "Plugin",
             name: name
           }, opts);
@@ -191,8 +191,8 @@ function Make(RuntimeEnvironment) {
           let resources = Pulumi.all(extensionPointsOutputs.map(extensionPoint => extensionPoint.eventTopic)).apply(eventTopics => eventTopics.map(eventTopic => eventTopic.resources).flat());
           return resources.apply(resources => {
             let fakePluginDefinition = {
-              id: "Admin@INTERNAL",
-              name: "Admin",
+              id: Platform_Admin_Structure$ReventlessCore.pluginId + "@INTERNAL",
+              name: Platform_Admin_Structure$ReventlessCore.pluginId,
               version: "INTERNAL",
               extensionPoints: [],
               extensions: [],
@@ -204,15 +204,15 @@ function Make(RuntimeEnvironment) {
               dcbEventLog: undefined,
               kind: "Domain"
             };
-            let Callback = Admin_Callback$ReventlessCore.Make({
+            let Callback = Platform_Admin_Callback$ReventlessCore.Make({
               pluginDefinition: fakePluginDefinition,
               outgoingExtensionPointJsonEventsHandlers: extensionPointsOutgoingJsonEventsHandlers
             });
-            let handler = AdminEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
-            AdminRuntimeBuilder.forPluginEventCollector(handler, eventTopics, resources, undefined, undefined, eventCollector);
+            let handler = PlatformEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
+            PlatformRuntimeBuilder.forPluginEventCollector(handler, eventTopics, resources, undefined, undefined, eventCollector);
           });
         };
-        let match$1 = make(name, eventTopics, opts);
+        let match$1 = make(Platform_Admin_Structure$ReventlessCore.pluginId, eventTopics, opts);
         let eventCollector = match$1[0];
         Output$Pulumi.flatMap(Pulumi.all(match[1]), extensionPointsOutgoingJsonEventsHandlers => connect(eventCollector, eventTopics, extensionPointsOutputs, extensionPointsOutgoingJsonEventsHandlers));
         Stdlib_Option.forEach(dcbResult.dcbRuntimeSetup, dcbRuntimeSetup => dcbRuntimeSetup());

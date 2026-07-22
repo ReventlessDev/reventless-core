@@ -38,7 +38,7 @@ All 13 entry points live in the layer at `@reventlessdev/reventless-aws/src/adap
 | `SideEffectEntryPoint` | DynamoDB Stream | SideEffect modules[] | SideEffectHandler_Callback, EventCollectorChannel_DynamoDbStream_Runtime, effect/Effect, RequestContext |
 | `ExtensionPointEntryPoint` | SQS | Spec, Mappings | ExtensionPoint_Callback, CommandTopic_Callback, CommandTopicChannel_SQS_Runtime, effect/Effect, RequestContext |
 | `PluginExtensionPointEntryPoint` | SQS | None (framework-only) | PluginExtensionPoint_Plugin, ExtensionPoint_Callback, CommandTopic_Callback, CommandTopicChannel_SQS_Runtime, Util_PluginMessage_Runtime, ScheduledPublisher_CloudWatchEvents_Runtime, effect/Effect, RequestContext |
-| `AdminEventCollectorEntryPoint` | SQS | None (framework-only) | PluginExtensionPoint_Plugin, ExtensionPoint_Operations, EventCollectorChannel_SQS_Runtime, Util_SNS_Runtime, Util_PluginMessage_Runtime, ScheduledPublisher_CloudWatchEvents_Runtime, GraphQL_Stitcher, AdminApi, PluginReadModelSpec, sury/S, effect/Effect, effect/Stream, @aws-sdk/client-appsync (dynamic import), RequestContext |
+| `EventCollectorEntryPoint` | SQS | None (framework-only) | PluginExtensionPoint_Plugin, ExtensionPoint_Operations, EventCollectorChannel_SQS_Runtime, Util_SNS_Runtime, Util_PluginMessage_Runtime, ScheduledPublisher_CloudWatchEvents_Runtime, GraphQL_Stitcher, Platform_AdminApi, PluginReadModelSpec, sury/S, effect/Effect, effect/Stream, @aws-sdk/client-appsync (dynamic import), RequestContext |
 | `TaskBucketEntryPoint` | S3 | callback module | TaskBucket_S3_Runtime, CommandTopicChannel_SQS_Runtime |
 | `HeartbeatEntryPoint` | CloudWatch Events | None (framework-only) | CommandTopicChannel_SQS_Runtime, Message, PluginExtensionPointSpec, sury/S |
 

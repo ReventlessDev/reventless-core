@@ -119,8 +119,10 @@ let generateAdminConfig = (
   generateConfig(
     ~serverName=`${serverName}-admin`,
     ~serverVersion,
-    ~pluginName="Admin",
-    ~mutationEntries=ReventlessCore.AdminApi.mutationEntries(~cloner),
+    // Must match what Platform_Admin.construct registers — it forms the resource URI
+    // templates (`<pluginName>/<field>/{id}`) that MCP clients address.
+    ~pluginName=ReventlessCore.Platform_Admin_Structure.pluginId,
+    ~mutationEntries=ReventlessCore.Platform_AdminApi.mutationEntries(~cloner),
     ~queryEntries=ReventlessCore.PluginBaseFragment.queryEntries,
     ~commandTopicArns,
     ~queryDbTableNames,

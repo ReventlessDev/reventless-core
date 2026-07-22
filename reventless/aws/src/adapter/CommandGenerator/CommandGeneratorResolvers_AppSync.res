@@ -190,7 +190,7 @@ let makeDcb = (
   ~fieldNames: array<string>,
   ~tags: array<string>,
   // Admin (onAdminApi) DCB slices expose ONLY their mutation fields (declared in the
-  // static AdminApi.baseFragment). The static base does NOT declare their `on<Field>`
+  // static Platform_AdminApi.baseFragment). The static base does NOT declare their `on<Field>`
   // subscription counterparts, so creating Source-C subscription resolvers would fail
   // with CreateResolver NotFound. Suppress subscriptions for admin; plugins keep them
   // (their generated fragment declares the matching subscription fields).

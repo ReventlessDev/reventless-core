@@ -5,8 +5,10 @@ import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Mess
 import * as Platform$ReventlessLocal from "../src/Platform.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as TestRunner$ReventlessLocal from "../src/test/TestRunner.res.mjs";
+import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as Plugin_Fixtures$ReventlessLocal from "./plugin/Plugin_Fixtures.res.mjs";
 import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
+import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
 
 TestRunner$ReventlessLocal.setup();
 
@@ -58,7 +60,7 @@ globalThis.describe("Platform.decodePluginEventEnvelope", () => {
 });
 
 globalThis.describe("Platform.decodeUiFragmentRegistryEventEnvelope", () => {
-  let dcbMeta = Message$ReventlessCore.generateMeta("AdminDcbEventLog", undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+  let dcbMeta = Message$ReventlessCore.generateMeta(ComponentType$ReventlessCore.name(Platform_Admin_Structure$ReventlessCore.pluginId, "DcbEventLog"), undefined, undefined, undefined, undefined, undefined, undefined, undefined);
   let dcbEnvelopeOf = event => {
     let json = S.reverseConvertToJsonOrThrow(event, UiFragmentRegistry$ReventlessCore.eventSchema);
     let match = Message$ReventlessCore.splitMessage(json);

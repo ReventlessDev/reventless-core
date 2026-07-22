@@ -2,7 +2,7 @@
 //
 // Drains a Postgres DCB log via `PgChangeFeed` and pushes each event — transformed
 // into the `{id, meta, event}` shape the plugin EventCollector SQS handler
-// consumes — onto that queue. The plugin EventCollector (`AdminEventCollectorEntryPoint`)
+// consumes — onto that queue. The plugin EventCollector (`EventCollectorEntryPoint`)
 // then drives the full fan-out: read-model projections, aggregate command topics,
 // and the cross-plugin SNS EventTopic. See
 // docs/plans/aws-postgres-change-feed-bridge.md.

@@ -875,10 +875,10 @@ module MakeWithConfig = (
 
   // Bus key for the shared admin DCB command topic, derived exactly as
   // Dcb_Builder + CommandTopic_Builder name the channel:
-  // "Admin" -> +"Dcb" -> +CmdTopic ("AdminDcbCmdTopic").
+  // pluginId -> +"Dcb" -> +CmdTopic ("PlatformDcbCmdTopic").
   let adminDcbCmdTopicKey = {
     module CT = ReventlessCore.ComponentType
-    "AdminDcb"->CT.name(CT.CommandTopic)
+    (ReventlessCore.Platform_Admin_Structure.pluginId ++ "Dcb")->CT.name(CT.CommandTopic)
   }
 
   // Dispatch a UiFragmentRegistry slice command in-process via the shared admin
@@ -909,15 +909,18 @@ module MakeWithConfig = (
   let uiFragmentSubTopic = "onUIFragmentChange"
 
   // Bus key + service identity of the admin DcbEventLog's event topic. The
-  // Platform_Admin construct name is "Admin"; DcbEventLog_Builder hands that name
-  // to EventTopic_Builder, whose publisher registers under `<name>EventTopic`,
-  // and DcbEventLog_Operations stamps every published event's meta.service with
-  // `<name>DcbEventLog`.
+  // Platform_Admin construct name is `Platform_Admin_Structure.pluginId`;
+  // DcbEventLog_Builder hands that name to EventTopic_Builder, whose publisher
+  // registers under `<name>EventTopic`, and DcbEventLog_Operations stamps every
+  // published event's meta.service with `<name>DcbEventLog`.
   let adminDcbEventTopicKey = {
     module CT = ReventlessCore.ComponentType
-    "Admin"->CT.name(CT.EventTopic)
+    ReventlessCore.Platform_Admin_Structure.pluginId->CT.name(CT.EventTopic)
   }
-  let adminDcbServiceName = "AdminDcbEventLog"
+  let adminDcbServiceName = {
+    module CT = ReventlessCore.ComponentType
+    ReventlessCore.Platform_Admin_Structure.pluginId->CT.name(CT.DcbEventLog)
+  }
 
   // Relocated Source-C emission: subscribe to the Plugin aggregate's event topic
   // (lifecycle status) and the admin DcbEventLog event topic (UiFragmentRegistry
@@ -1538,14 +1541,14 @@ module MakeWithConfig = (
     let adminQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
     let singleQueryField = adminQueryEntry.singleFieldName
     let listQueryField = adminQueryEntry.listFieldName
-    let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
+    let adminMutationEntries = ReventlessCore.Platform_AdminApi.mutationEntries(~cloner=Config.cloner)
     let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
 
     // Register the admin Plugin aggregate's types/queries/mutations to the platform target.
     let platformGraphQL = resolveTargetGraphQL()
     let platformMCP = resolveTargetMCP()
     let baseParts = ReventlessCore.GraphQL_Stitcher.decode(
-      ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+      ReventlessCore.Platform_AdminApi.baseFragment(~cloner=Config.cloner),
     )
     platformGraphQL.registerTypes(~sdlTypes=baseParts.types)
 
@@ -1576,7 +1579,7 @@ module MakeWithConfig = (
       connectionResponse(items)
     })
     // Platform_ComponentDefinitions resolver — SDL is already stitched into baseParts via
-    // AdminApi.baseFragment so we register only the resolver here. Encoder is shared
+    // Platform_AdminApi.baseFragment so we register only the resolver here. Encoder is shared
     // with the AWS adapter so responses are byte-identical.
     //
     // Filter by plugin lifecycle status to mirror the AWS DynamoDB filter in
@@ -1734,9 +1737,9 @@ module MakeWithConfig = (
       }
       switch version {
       | Some(version) =>
-        log.info(~comp="Admin", `${field}(${pluginName}@${version}): dispatching to aggregate`)
+        log.info(~comp=ReventlessCore.Platform_Admin_Structure.pluginId, `${field}(${pluginName}@${version}): dispatching to aggregate`)
         let _ = dispatchPluginCommand(~pluginName, ~command=makeCommand(version))
-      | None => log.warn(~comp="Admin", `${field}(${pluginName}): plugin not found`)
+      | None => log.warn(~comp=ReventlessCore.Platform_Admin_Structure.pluginId, `${field}(${pluginName}): plugin not found`)
       }
       commandAccepted(~msgId, ~entityId=pluginName)
     }
@@ -1805,8 +1808,8 @@ module MakeWithConfig = (
     // The SDL field constants are provider-neutral, shared with the AWS path.
     platformGraphQL.registerSubscriptions(
       ~sdlFields=[
-        ReventlessCore.AdminApi.uiFragmentSubscriptionField,
-        ReventlessCore.AdminApi.pluginStatusSubscriptionField,
+        ReventlessCore.Platform_AdminApi.uiFragmentSubscriptionField,
+        ReventlessCore.Platform_AdminApi.pluginStatusSubscriptionField,
       ],
       ~resolvers=Dict.fromArray([
         (
@@ -1831,7 +1834,7 @@ module MakeWithConfig = (
       (listQueryField, pluginQueryDbName),
     ])
     platformMCP.registerResourcesFromEntries(
-      ~pluginName="Admin",
+      ~pluginName=ReventlessCore.Platform_Admin_Structure.pluginId,
       ~queryEntries=ReventlessCore.PluginBaseFragment.queryEntries,
       ~queryHandler=async (resourceName, uri) => {
         let segments = uri->String.split("/")
@@ -1859,7 +1862,7 @@ module MakeWithConfig = (
 
     // Register admin mutations as MCP tools using the same entry-based path as plugins.
     platformMCP.registerToolsFromEntries(
-      ~pluginName="Admin",
+      ~pluginName=ReventlessCore.Platform_Admin_Structure.pluginId,
       ~mutationEntries=adminMutationEntries,
       ~commandHandler=async (toolName, args, _identity) => {
         switch platformGraphQL.getMutationResolver(toolName) {
@@ -1939,7 +1942,7 @@ module MakeWithConfig = (
     let adminMCP = resolveTargetMCP()
 
     let baseParts = ReventlessCore.GraphQL_Stitcher.decode(
-      ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+      ReventlessCore.Platform_AdminApi.baseFragment(~cloner=Config.cloner),
     )
     adminGraphQL.registerTypes(~sdlTypes=baseParts.types)
 
@@ -1965,7 +1968,7 @@ module MakeWithConfig = (
     adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
     let mutationResolvers = Dict.make()
-    let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
+    let adminMutationEntries = ReventlessCore.Platform_AdminApi.mutationEntries(~cloner=Config.cloner)
     let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
     adminMutationFieldNames->Array.forEach(field =>
       mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t =>
@@ -2125,7 +2128,7 @@ module MakeWithConfig = (
     let adminGraphQL = resolveTargetGraphQL()
     if !(adminRegisteredServers.contents->Array.some(s => s === adminGraphQL)) {
       let baseParts = ReventlessCore.GraphQL_Stitcher.decode(
-        ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+        ReventlessCore.Platform_AdminApi.baseFragment(~cloner=Config.cloner),
       )
       adminGraphQL.registerTypes(~sdlTypes=baseParts.types)
 
@@ -2159,7 +2162,7 @@ module MakeWithConfig = (
         },
       )
       // Platform_ComponentDefinitions resolver — SDL is already stitched into baseParts via
-      // AdminApi.baseFragment so we register only the resolver here. Uses the shared
+      // Platform_AdminApi.baseFragment so we register only the resolver here. Uses the shared
       // encoder so the dynamic-plugin admin server emits the same canonical shape as
       // the main platform server (and as AWS).
       queryResolvers->Dict.set(
@@ -2178,7 +2181,7 @@ module MakeWithConfig = (
       adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
       let mutationResolvers = Dict.make()
-      let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
+      let adminMutationEntries = ReventlessCore.Platform_AdminApi.mutationEntries(~cloner=Config.cloner)
       let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
       adminMutationFieldNames->Array.forEach(field =>
         mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t =>

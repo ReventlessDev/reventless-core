@@ -73,7 +73,7 @@ describe("MCP_Lambda.generateAdminConfig", () => {
     let arns = Dict.make()
     // Use a tool name that matches the first mutation field
     let firstEntry: ReventlessInfra.Api.mutationSchemaEntry =
-      ReventlessCore.AdminApi.mutationEntries(~cloner=false)->Array.getUnsafe(0)
+      ReventlessCore.Platform_AdminApi.mutationEntries(~cloner=false)->Array.getUnsafe(0)
     let firstFieldName = firstEntry.fieldNames->Array.getUnsafe(0)
     arns->Dict.set(firstFieldName, "arn:aws:sqs:us-east-1:123:queue")
 

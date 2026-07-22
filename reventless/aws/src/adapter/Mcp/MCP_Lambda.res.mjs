@@ -11,11 +11,12 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Runtime$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/Runtime.res.mjs";
-import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
+import * as Platform_AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminApi.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/api/PluginBaseFragment.res.mjs";
 import * as MCP_SchemaGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/MCP_SchemaGenerator.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
+import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
 import * as DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws from "../DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
 import * as CommandTopicChannel_SQS_RuntimeResMjs from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import * as CommandGenerator_CallbackResMjs from "@reventlessdev/reventless-core/src/components/CommandGenerator/CommandGenerator_Callback.res.mjs";
@@ -69,7 +70,7 @@ function generateAdminConfig(serverName, serverVersion, clonerOpt, commandTopicA
   let cloner = clonerOpt !== undefined ? clonerOpt : false;
   let commandTopicArns = commandTopicArnsOpt !== undefined ? commandTopicArnsOpt : ({});
   let queryDbTableNames = queryDbTableNamesOpt !== undefined ? queryDbTableNamesOpt : ({});
-  return generateConfig(serverName + `-admin`, serverVersion, "Admin", AdminApi$ReventlessCore.mutationEntries(cloner), PluginBaseFragment$ReventlessCore.queryEntries, undefined, commandTopicArns, queryDbTableNames, undefined);
+  return generateConfig(serverName + `-admin`, serverVersion, Platform_Admin_Structure$ReventlessCore.pluginId, Platform_AdminApi$ReventlessCore.mutationEntries(cloner), PluginBaseFragment$ReventlessCore.queryEntries, undefined, commandTopicArns, queryDbTableNames, undefined);
 }
 
 function extractEntityId(uri) {

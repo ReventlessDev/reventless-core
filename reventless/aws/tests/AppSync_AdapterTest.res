@@ -23,7 +23,7 @@ let decodeFragment = (fragment: Reventless.Plugin.apiSchemaFragment) =>
   ReventlessCore.GraphQL_Stitcher.decode(fragment)
 
 describe("AppSync_Adapter.injectAwsAuthAll", () => {
-  let baseFragment = ReventlessCore.AdminApi.baseFragment(~cloner=true)
+  let baseFragment = ReventlessCore.Platform_AdminApi.baseFragment(~cloner=true)
 
   testSync("adds @aws_auth directive to all mutation fields", () => {
     let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
@@ -86,10 +86,10 @@ describe("AppSync_Adapter.injectAwsAuth", () => {
   testSync("injects auth only on entries with authorization", () => {
     // Build a fragment with known entries
     let mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry> =
-      ReventlessCore.AdminApi.mutationEntries(~cloner=false)
+      ReventlessCore.Platform_AdminApi.mutationEntries(~cloner=false)
     let queryEntries = ReventlessCore.PluginBaseFragment.queryEntries
 
-    let baseFragment = ReventlessCore.AdminApi.baseFragment(~cloner=false)
+    let baseFragment = ReventlessCore.Platform_AdminApi.baseFragment(~cloner=false)
     let augmented = AppSync_Adapter.injectAwsAuth(
       baseFragment,
       ~mutationEntries,
@@ -111,7 +111,7 @@ describe("AppSync_Adapter.injectAwsAuth", () => {
 
 describe("AppSync_Adapter.generateFragment", () => {
   testSync("produces fragment with auth directives from entries", () => {
-    let mutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=false)
+    let mutationEntries = ReventlessCore.Platform_AdminApi.mutationEntries(~cloner=false)
     let queryEntries = ReventlessCore.PluginBaseFragment.queryEntries
 
     let fragment = AppSync_Adapter.generateFragment(~mutationEntries, ~queryEntries)
@@ -570,7 +570,7 @@ describe("AppSync_Adapter — type-level dual-auth", () => {
 })
 
 describe("AppSync_Adapter.injectAwsAuthAll — ~iamFieldNames", () => {
-  let baseFragment = ReventlessCore.AdminApi.baseFragment(~cloner=true)
+  let baseFragment = ReventlessCore.Platform_AdminApi.baseFragment(~cloner=true)
 
   testSync("marks only the named field dual-auth, leaving others single-mode", () => {
     // Pick a real mutation field name from the admin base fragment.
@@ -644,7 +644,7 @@ describe("Split mode — empty base fragment", () => {
   })
 
   testSync("stitching admin base without plugins produces only admin fields", () => {
-    let adminBase = ReventlessCore.AdminApi.baseFragment(~cloner=false)
+    let adminBase = ReventlessCore.Platform_AdminApi.baseFragment(~cloner=false)
     let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
       ~baseFragment=adminBase,
       ~pluginFragments=[],
@@ -678,7 +678,7 @@ describe("Merged mode — canonical source documents", () => {
 
   let adminSourceSdl = assembleCanonicalSourceSdl(
     ~baseFragment=AppSync_Adapter.injectAwsAuthAll(
-      ReventlessCore.AdminApi.baseFragment(~cloner=false),
+      ReventlessCore.Platform_AdminApi.baseFragment(~cloner=false),
       ~group="Admin",
     ),
   )

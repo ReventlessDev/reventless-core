@@ -53,7 +53,7 @@ describe("GraphQL_Stitcher.subscriptionSources", () => {
   })
 
   testSync("core-emitted admin base fragment carries no provider directives", () => {
-    let base = AdminApi.baseFragment(~cloner=true)
+    let base = Platform_AdminApi.baseFragment(~cloner=true)
     expect(base.encoded->String.includes("@aws_subscribe"))->toBe(false)
     expect(base.encoded->String.includes("@aws_auth"))->toBe(false)
     // The subscription→mutation fan-in rides the structured metadata instead.

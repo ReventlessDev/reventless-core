@@ -107,7 +107,7 @@ The `apiSchemaFragment` travels **twice**:
    (`PluginsReadModelSpec.res:27`).
 
 The runtime re-stitcher `mkUpdateApiSchema`
-(`reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs:504`) fires on
+(`reventless-aws/src/adapter/Runtime/EventCollectorEntryPoint.mjs:504`) fires on
 Connected/Disconnected events, stitches from the **deploy-scoped rows** (preferred) and
 falls back to Connected Plugin RM fragments only when the persistence table is unavailable.
 Comment at `:490` is explicit: the deploy rows are the durable source, NOT the
@@ -347,7 +347,7 @@ metadata instead of parsing-and-stripping). Picked up as an explicit work item i
 | `apiSchemaFragment` type | `reventless/spec/src/components/Plugin.res:93` |
 | `uiFragmentManifest` type | `reventless/spec/src/components/Plugin.res:134` |
 | Api provider port | `reventless/infra/src/components/Api_Adapter.res` |
-| Runtime re-stitcher | `reventless/aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs:504` |
+| Runtime re-stitcher | `reventless/aws/src/adapter/Runtime/EventCollectorEntryPoint.mjs:504` |
 | UI projection | `reventless/core/src/admin/UIFragmentRegistryProjection.res` |
 | UI query API (shared encoder) | `reventless/core/src/admin/Platform_UIFragmentsApi.res` |
 | Stitcher (generic math) | `reventless/core/src/components/Api/GraphQL_Stitcher.res` |

@@ -1,6 +1,6 @@
-// Plugin EventCollector Lambda entry point — shared between the admin and every
-// per-plugin EventCollector Lambda. Despite the historical "Admin" filename, this
-// module is plugin-agnostic: behaviour is driven entirely by HANDLER_CONFIG.
+// Plugin EventCollector Lambda entry point — shared between the platform and every
+// per-plugin EventCollector Lambda. This module is plugin-agnostic: behaviour is
+// driven entirely by HANDLER_CONFIG.
 //
 // HANDLER_CONFIG schema (JSON in env var "HANDLER_CONFIG"):
 //
@@ -411,7 +411,7 @@ function loadUiFragments() {
 // Cross-plugin spec packages (e.g. "@reventlessdev/online-shop-hybrid-catalog-spec")
 // are bundled into the function asset under /var/task/node_modules/ by
 // PluginRuntime_Builder.forPluginEventCollector. This entry-point file, however,
-// lives in the Lambda LAYER at /opt/nodejs/node_modules/.../AdminEventCollectorEntryPoint.mjs,
+// lives in the Lambda LAYER at /opt/nodejs/node_modules/.../EventCollectorEntryPoint.mjs,
 // so a bare `await import("@reventlessdev/online-shop-hybrid-catalog-spec/...")`
 // from here resolves through /opt/nodejs/node_modules/ and never reaches the
 // function asset. Anchoring createRequire at file:///var/task/index.mjs makes
@@ -585,7 +585,7 @@ async function buildHandler() {
   // it through ExtensionMapping.Make, and build per-extension Extension_Operations.
   const userExtensionHandlers = await Promise.all(config.extensions.map(async (ext) => {
     if (!ext.specModule || !ext.mappingsModule || !ext.delegateModule) {
-      log.warn("extension '" + ext.name + "' missing module specifier(s); skipping. specModule=" + ext.specModule + ", mappingsModule=" + ext.mappingsModule + ", delegateModule=" + ext.delegateModule, { comp: "AdminEventCollectorEntryPoint" });
+      log.warn("extension '" + ext.name + "' missing module specifier(s); skipping. specModule=" + ext.specModule + ", mappingsModule=" + ext.mappingsModule + ", delegateModule=" + ext.delegateModule, { comp: "EventCollectorEntryPoint" });
       return null;
     }
     const epSpec = patchSpecId(await importFromAsset(ext.specModule));

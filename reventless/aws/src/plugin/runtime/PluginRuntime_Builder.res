@@ -118,7 +118,7 @@ let registerConfig = (
 
 // PluginRuntime_Builder is a functor so that the caller can inject the EventCollectorChannel
 // implementation. All other runtime builders hardcode EventCollectorChannel.DynamoDbStream, but
-// the Plugin admin handler (AdminEventCollectorEntryPoint) is shared across DCB and aggregate
+// the Plugin admin handler (EventCollectorEntryPoint) is shared across DCB and aggregate
 // plugins which may use different event log backends. The functor keeps the builder generic
 // while the concrete instantiation picks the right channel at the platform level.
 module Make = (
@@ -151,9 +151,11 @@ module Make = (
   let synthesizeAdminContext = (): ReventlessCore.Plugin_Helpers.eventCollectorContext => {
     let config = configRef.contents
     // Stable JSON literal — matches Reventless.Plugin.pluginDefinitionSchema
-    // (optional fields encoded as null via js_nullable).
+    // (optional fields encoded as null via js_nullable). Must stay byte-aligned with
+    // the ReScript-built twin in `Platform_Admin.construct`'s `fakePluginDefinition`.
+    let platformId = ReventlessCore.Platform_Admin_Structure.pluginId
     let fakePluginDefinitionJson =
-      `{"id":"Admin@INTERNAL","name":"Admin","version":"INTERNAL","extensionPoints":[],"extensions":[],"eventCollector":"NOT-SET","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"structure":null}`->Pulumi.Output.make
+      `{"id":"${platformId}@INTERNAL","name":"${platformId}","version":"INTERNAL","extensionPoints":[],"extensions":[],"eventCollector":"NOT-SET","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"structure":null}`->Pulumi.Output.make
     let adminEpEventTopicArn = switch config.eventTopicArn {
     | Some(arn) => arn
     | None => Pulumi.Output.make("NOT_AVAILABLE")
@@ -436,7 +438,7 @@ module Make = (
       [ext.specModule, ext.mappingsModule, ext.delegateModule]->Array.forEach(addPackageFor)
     })
     // Outgoing EPs: the entry point dynamic-imports ep.specModule and
-    // ep.mappingsModule at cold start (AdminEventCollectorEntryPoint.mjs).
+    // ep.mappingsModule at cold start (EventCollectorEntryPoint.mjs).
     // Without this walk the EP spec package (e.g. <plugin>-spec) is missing
     // from the asset zip even though HANDLER_CONFIG references it, and the
     // Lambda crashes with MODULE_NOT_FOUND before any event is processed.
@@ -484,7 +486,9 @@ module Make = (
         // extension can emit RegisterUiFragment in the handshake answer.
         extraStringAssets->Dict.set("uiFragments.json", uiFragmentsJson)
         Util_Bundle.buildCodeArchive(
-          ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs",
+          // Path string, not a module reference — a rename that misses this stays green
+          // at build time and fails at bundle time or Lambda cold start.
+          ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/EventCollectorEntryPoint.mjs",
           ~packageDirs,
           ~extraStringAssets,
         )

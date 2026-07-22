@@ -15,6 +15,7 @@ import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/sr
 import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
 import * as EventLogBackend$ReventlessAws from "../../adapter/EventLog/EventLogBackend.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
+import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as StateChangeSliceRuntime_Builder_Single$ReventlessAws from "../../adapter/Runtime/StateChangeSliceRuntime_Builder_Single.res.mjs";
 
@@ -132,7 +133,7 @@ function Make(EventCollectorChannel) {
   };
   let synthesizeAdminContext = () => {
     let config = configRef.contents;
-    let fakePluginDefinitionJson = Pulumi.output(`{"id":"Admin@INTERNAL","name":"Admin","version":"INTERNAL","extensionPoints":[],"extensions":[],"eventCollector":"NOT-SET","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"structure":null}`);
+    let fakePluginDefinitionJson = Pulumi.output(`{"id":"` + Platform_Admin_Structure$ReventlessCore.pluginId + `@INTERNAL","name":"` + Platform_Admin_Structure$ReventlessCore.pluginId + `","version":"INTERNAL","extensionPoints":[],"extensions":[],"eventCollector":"NOT-SET","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"structure":null}`);
     let arn = config.eventTopicArn;
     let adminEpEventTopicArn = arn !== undefined ? arn : Pulumi.output("NOT_AVAILABLE");
     return {
@@ -306,7 +307,7 @@ function Make(EventCollectorChannel) {
       let extraStringAssets = {};
       extraStringAssets["pluginDefinition.json"] = param[0];
       extraStringAssets["uiFragments.json"] = param[1];
-      return Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs", packageDirs, extraStringAssets);
+      return Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/EventCollectorEntryPoint.mjs", packageDirs, extraStringAssets);
     });
     let codeOutput = bundleOutput.apply(b => b.code);
     let sourceCodeHashOutput = bundleOutput.apply(b => b.sourceCodeHash);
