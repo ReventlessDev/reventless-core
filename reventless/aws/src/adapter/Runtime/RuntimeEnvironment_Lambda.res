@@ -33,7 +33,9 @@ let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, part
     ~opts?,
   )
 
-  let tags = AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType)
+  // Legacy path (see above): no component kind reaches here because nothing calls
+  // it. `Core` says "framework substrate" rather than inventing a domain kind.
+  let tags = AWS.Tags.make(~name, ~kind=Core, ~role=Runtime, ~scope=Platform)
   let lambda =
     handler->Pulumi.Output.apply(handler =>
       Lambda.CallbackFunction.make(
@@ -70,6 +72,13 @@ let makeFromCodeAsset: (
       kind; `makeFromCodeAsset` announces the provisioned Lambda to the
       `Monitoring` registry (no-op unless an extension registered a backend). */
   ~unitKind: ReventlessCore.Monitoring.unitKind,
+  /** The modelling kind of the component this Lambda runs, for resource
+      attribution (`reventless:kind`). Distinct from `~unitKind`, which grades
+      the unit by what its failure means — `CommandHandler` covers aggregates,
+      state-change slices and extension points alike, so it cannot identify the
+      owning component. Shared Lambdas that host several components of one kind
+      (e.g. AllAggregates) pass that kind. */
+  ~componentKind: ReventlessCore.ComponentType.t,
   ~code: Pulumi.Archive.t,
   ~sourceCodeHash: string,
   ~envVars: dict<Pulumi.Input.t<string>>=?,
@@ -91,6 +100,7 @@ let makeFromCodeAsset: (
 ) => ReventlessCore.Runtime.environment<parts> = (
   ~name,
   ~unitKind,
+  ~componentKind,
   ~code,
   ~sourceCodeHash,
   ~envVars=Dict.make(),
@@ -107,9 +117,17 @@ let makeFromCodeAsset: (
   let opts =
     opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
+  // One attribution identity for every resource provisioned here: same owning
+  // component and kind throughout, distinct piece roles — the function itself,
+  // the execution identity it assumes, and its log group are three pieces of one
+  // component, and an inventory needs to roll all three up to it.
+  let tagsFor = (~resourceName, ~role) =>
+    AWS.Tags.make(~name=resourceName, ~kind=componentKind, ~role, ~component=name)
+
   let lambdaRole = IAM.Role.makeWithDefaultPolicy(
     ~name,
     ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
+    ~tags=tagsFor(~resourceName=name, ~role=Identity),
     ~opts?,
   )
 
@@ -195,7 +213,7 @@ let makeFromCodeAsset: (
   variables->Dict.set("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make)
   variables->Dict.set("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make)
 
-  let tags = AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType)
+  let tags = tagsFor(~resourceName=name, ~role=Runtime)
   let lambda = Lambda.Function.make(
     ~name,
     ~args={
@@ -227,6 +245,7 @@ let makeFromCodeAsset: (
       ~args={
         name: `/aws/lambda/${name}`->Pulumi.Input.make,
         retentionInDays: days->Pulumi.Input.make,
+        tags: tagsFor(~resourceName=`${name}LogGroup`, ~role=Logs),
       },
       ~opts?,
     )

@@ -6,8 +6,10 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS$ReventlessAws from "../../adapter/AWS.res.mjs";
+import * as AWS_Tags$ReventlessAws from "../../adapter/AWS_Tags.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Util_SQS$ReventlessAws from "../../util/Util_SQS.res.mjs";
+import * as Heartbeat$ReventlessCore from "@reventlessdev/reventless-core/src/components/Heartbeat/Heartbeat.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Lambda$ReventlessAws from "../../util/Util_Lambda.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
@@ -22,7 +24,8 @@ function make(name, remoteChannel, timeout, runtime, opts) {
     scheduleExpression: Primitive_option.some(Cloudwatch_EventRule$PulumiAws.ScheduleExpression.every({
       TAG: "Minutes",
       _0: timeout
-    }))
+    })),
+    tags: AWS_Tags$ReventlessAws.make(Pulumi.getStack() + ("-" + name), Heartbeat$ReventlessCore.componentType, "Scheduler", undefined, name, undefined, undefined)
   }, opts$1);
   let lambda = runtime.parts.lambda;
   let lambdaRole = runtime.parts.lambdaRole;

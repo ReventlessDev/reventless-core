@@ -225,6 +225,7 @@ let finish = () =>
           let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
             ~name=lambdaName,
             ~unitKind=ReventlessCore.Monitoring.CommandHandler,
+            ~componentKind=ReventlessCore.ComponentType.Aggregate,
             ~code,
             ~sourceCodeHash,
             ~envVars,

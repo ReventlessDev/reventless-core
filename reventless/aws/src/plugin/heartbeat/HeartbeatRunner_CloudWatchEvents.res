@@ -16,6 +16,12 @@ let make: ReventlessCore.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
       ~args={
         description: "Send a heartbeat to the Core Plugin ExtensionPoint"->Pulumi.Input.make,
         scheduleExpression: EventRule.ScheduleExpression.every(timeout->Minutes),
+        tags: AWS.Tags.make(
+          ~name=Pulumi.Pulumi.getStackName() ++ ("-" ++ name),
+          ~kind=ReventlessCore.Heartbeat.componentType,
+          ~role=Scheduler,
+          ~component=name,
+        ),
       },
       ~opts,
     )

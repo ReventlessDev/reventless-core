@@ -9,6 +9,8 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
+import * as QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as PgConnection$ReventlessAws from "../Postgres/PgConnection.res.mjs";
@@ -90,7 +92,7 @@ function provision(api, selection, opts) {
   let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, {
     TAG: "Other",
     _0: "QueryResolver"
-  }, match.code, match.sourceCodeHash, envVars, 512, 30, undefined, undefined, undefined, undefined, vpcConfig, opts);
+  }, "QueryDb", match.code, match.sourceCodeHash, envVars, 512, 30, undefined, undefined, undefined, undefined, vpcConfig, opts);
   selection.connectionConfig.apply(cc => new (Aws.iam.RolePolicy)(name + "-pgSecret", {
     policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "-pgSecretPolicy", [{
         Sid: "AllowGetPgSecret",
@@ -100,7 +102,7 @@ function provision(api, selection, opts) {
       }])),
     role: runtime.parts.lambdaRole.id
   }));
-  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), customOpts);
+  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", QueryDb$ReventlessCore.componentType, "Identity", undefined, name, undefined, undefined), customOpts);
   let lambdaArn = Output$Pulumi.flatMap(runtime.parts.lambda, l => l.arn);
   Pulumi.all([
     lambdaArn,

@@ -2,6 +2,7 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as AWS_Tags$ReventlessAws from "../adapter/AWS_Tags.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 
 function addUserGroup(name, userPoolId) {
@@ -21,7 +22,8 @@ function makeAddRemoveUserToGroupPolicy(name, userPoolArn, opts) {
           "cognito-idp:AdminRemoveUserFromGroup"
         ],
         Resource: userPoolArn
-      }]))
+      }])),
+    tags: AWS_Tags$ReventlessAws.make(name + "AddRemoveUserToGroup", "Core", "Identity", "Platform", undefined, undefined, undefined)
   }, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined));
 }
 

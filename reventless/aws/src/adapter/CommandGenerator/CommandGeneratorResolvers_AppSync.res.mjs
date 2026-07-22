@@ -9,12 +9,14 @@ import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
+import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Naming.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
+import * as CommandGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandGenerator/CommandGenerator.res.mjs";
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 import * as CommandSubscriptionResolvers_AppSync$ReventlessAws from "../Api/CommandSubscriptionResolvers_AppSync.res.mjs";
@@ -27,7 +29,7 @@ function make(name, api, fields, param, runtime, resources, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let lambda = runtime.parts.lambda;
   let lambdaRole = runtime.parts.lambdaRole;
-  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts$1);
+  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", CommandGenerator$ReventlessCore.componentType, "Identity", undefined, name, undefined, undefined), opts$1);
   Pulumi.all([
     Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
     Output$Pulumi.flatMap(lambda, lambda => lambda.name),
@@ -91,7 +93,7 @@ function makeDcb(api, runtime, fieldNames, tags, onAdminApiOpt, opts) {
   let onAdminApi = onAdminApiOpt !== undefined ? onAdminApiOpt : false;
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let lambda = runtime.parts.lambda;
-  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy("DcbMutationDS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts$1);
+  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy("DcbMutationDS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make("DcbMutationDS", CommandGenerator$ReventlessCore.componentType, "Identity", "Plugin", undefined, undefined, undefined), opts$1);
   Pulumi.all([
     Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
     dataSourceRole.id

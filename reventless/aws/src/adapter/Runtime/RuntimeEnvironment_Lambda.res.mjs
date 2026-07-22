@@ -19,7 +19,6 @@ import * as Monitoring$ReventlessCore from "@reventlessdev/reventless-core/src/a
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Lambda$ReventlessAws from "../../util/Util_Lambda.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
-import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as Util_IAM_Role$ReventlessAws from "../../util/Util_IAM_Role.res.mjs";
 
 let additionalEnvVars = {};
@@ -30,8 +29,8 @@ function make(name, handler, memorySizeOpt, timeoutOpt, opts) {
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
-  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
-  let tags = AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType);
+  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), undefined, opts$1);
+  let tags = AWS_Tags$ReventlessAws.make(name, "Core", "Runtime", "Platform", undefined, undefined, undefined);
   let lambda = handler.apply(handler => new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(handler, lambdaRole, undefined, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, tags, undefined), opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined));
   return {
     parts: {
@@ -45,13 +44,14 @@ function make(name, handler, memorySizeOpt, timeoutOpt, opts) {
   };
 }
 
-function makeFromCodeAsset(name, unitKind, code, sourceCodeHash, envVarsOpt, memorySizeOpt, timeoutOpt, reservedConcurrency, ephemeralStorageMb, logRetentionDays, dcbMetricsOpt, vpcConfig, opts) {
+function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, envVarsOpt, memorySizeOpt, timeoutOpt, reservedConcurrency, ephemeralStorageMb, logRetentionDays, dcbMetricsOpt, vpcConfig, opts) {
   let envVars = envVarsOpt !== undefined ? envVarsOpt : ({});
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : Runtime$ReventlessCore.CommandHandlerDefaults.memorySize;
   let timeout = timeoutOpt !== undefined ? timeoutOpt : Runtime$ReventlessCore.CommandHandlerDefaults.timeout;
   let dcbMetrics = dcbMetricsOpt !== undefined ? dcbMetricsOpt : false;
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
-  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
+  let tagsFor = (resourceName, role) => AWS_Tags$ReventlessAws.make(resourceName, componentKind, role, undefined, name, undefined, undefined);
+  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), tagsFor(name, "Identity"), opts$1);
   Stdlib_Option.forEach(vpcConfig, param => {
     new (Aws.iam.RolePolicy)(name + `VpcAccess`, {
       policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `VpcAccessPolicy`, [{
@@ -97,7 +97,7 @@ function makeFromCodeAsset(name, unitKind, code, sourceCodeHash, envVarsOpt, mem
   });
   variables["NODE_OPTIONS"] = Util_Bundle$ReventlessAws.esmLoaderNodeOptions;
   variables["ESM_FALLBACK_DIRS"] = Util_Bundle$ReventlessAws.esmFallbackDirs;
-  let tags = AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType);
+  let tags = tagsFor(name, "Runtime");
   let lambda = new (Aws.lambda.Function)(name, {
     handler: "index.handler",
     runtime: "nodejs22.x",
@@ -120,7 +120,8 @@ function makeFromCodeAsset(name, unitKind, code, sourceCodeHash, envVarsOpt, mem
   Stdlib_Option.forEach(logRetentionDays, days => {
     let logGroup = new (Aws.cloudwatch.LogGroup)(name + `LogGroup`, {
       name: `/aws/lambda/` + name,
-      retentionInDays: days
+      retentionInDays: days,
+      tags: tagsFor(name + `LogGroup`, "Logs")
     }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
     if (dcbMetrics) {
       [

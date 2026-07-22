@@ -33,6 +33,12 @@ let makeAddRemoveUserToGroupPolicy = (
         )
         ->toJsonString
         ->Pulumi.Input.make,
+        tags: AWS.Tags.make(
+          ~name=name ++ "AddRemoveUserToGroup",
+          ~kind=ReventlessCore.ComponentType.Core,
+          ~role=Identity,
+          ~scope=Platform,
+        ),
       },
       ~opts?,
     )

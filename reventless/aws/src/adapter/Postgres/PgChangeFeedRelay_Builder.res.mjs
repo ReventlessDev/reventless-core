@@ -8,6 +8,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
@@ -71,7 +72,7 @@ function make(name, logs, securityGroupId, subnetIds, intervalMinutesOpt, opts) 
   let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, {
     TAG: "Other",
     _0: "ChangeFeed"
-  }, match.code, match.sourceCodeHash, envVars, undefined, undefined, undefined, undefined, undefined, undefined, vpcConfig, opts);
+  }, "Core", match.code, match.sourceCodeHash, envVars, undefined, undefined, undefined, undefined, undefined, undefined, vpcConfig, opts);
   let secretArns = logs.map(l => l.connectionConfig.apply(cc => cc.secretArn));
   let queueArns = logs.map(l => l.targetQueueArn);
   Pulumi.all([
@@ -102,7 +103,8 @@ function make(name, logs, securityGroupId, subnetIds, intervalMinutesOpt, opts) 
     scheduleExpression: Primitive_option.some(Cloudwatch_EventRule$PulumiAws.ScheduleExpression.every({
       TAG: "Minutes",
       _0: intervalMinutes
-    }))
+    })),
+    tags: AWS_Tags$ReventlessAws.make(Pulumi.getStack() + `-` + name, "Core", "Scheduler", undefined, name, undefined, undefined)
   }, customOpts !== undefined ? Primitive_option.valFromOption(customOpts) : undefined);
   let lambda = runtime.parts.lambda;
   Pulumi.all([

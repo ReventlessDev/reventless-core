@@ -17,7 +17,7 @@ let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
   ~opts,
 ) => {
   streamRegistry->Set.add(name)
-  let tags = AWS.Tags.make(~name, ReventlessCore.QueryDb.componentType)
+  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.QueryDb.componentType, ~role=QueryDb)
   let table = Util_DynamoDbStream.makeTable(
     name,
     ~attributes=attributes(subIdField, indexes),

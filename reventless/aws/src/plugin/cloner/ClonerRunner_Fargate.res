@@ -28,6 +28,12 @@ let make: ReventlessCore.Cloner.Adapter.runnerMaker<api> = (
           ~actions=["logs:PutLogEvents", "logs:CreateLogGroup", "logs:CreateLogStream"],
         ),
       ]->Pulumi.Input.make,
+      tags: AWS.Tags.make(
+        ~name=name ++ "TaskExecution",
+        ~kind=ReventlessCore.Cloner.componentType,
+        ~role=Identity,
+        ~component=name,
+      ),
     },
   )
 
@@ -54,6 +60,12 @@ let make: ReventlessCore.Cloner.Adapter.runnerMaker<api> = (
       policy: secretsManagerPolicyDocument
       ->PolicyDocument.toJsonString
       ->Pulumi.Input.make,
+      tags: AWS.Tags.make(
+        ~name="secretsManagerAccess",
+        ~kind=ReventlessCore.Cloner.componentType,
+        ~role=Identity,
+        ~component=name,
+      ),
     },
   )
 
@@ -74,6 +86,12 @@ let make: ReventlessCore.Cloner.Adapter.runnerMaker<api> = (
       policy: taskRunnerPolicyDocument
       ->PolicyDocument.toJsonString
       ->Pulumi.Input.make,
+      tags: AWS.Tags.make(
+        ~name="taskRunner",
+        ~kind=ReventlessCore.Cloner.componentType,
+        ~role=Identity,
+        ~component=name,
+      ),
     },
   )
 
@@ -198,6 +216,7 @@ export const handler = async (event) => {
       let lambdaRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
         ~name,
         ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
+        ~tags=AWS.Tags.make(~name, ~kind=ReventlessCore.Cloner.componentType, ~role=Identity),
         ~opts?,
       )
 
@@ -212,7 +231,7 @@ export const handler = async (event) => {
           memorySize: 1024->Pulumi.Input.make,
           timeout: 180->Pulumi.Input.make,
           layers,
-          tags: AWS.Tags.make(~name, ReventlessCore.Cloner.componentType),
+          tags: AWS.Tags.make(~name, ~kind=ReventlessCore.Cloner.componentType, ~role=DataTransfer),
           environment: (
             {
               Lambda.Function.variables: Dict.fromArray([
@@ -287,6 +306,12 @@ export const handler = async (event) => {
       let dataSourceRole = IAM.Role.makeWithDefaultPolicy(
         ~name=name ++ "DS",
         ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
+        ~tags=AWS.Tags.make(
+          ~name=name ++ "DS",
+          ~kind=ReventlessCore.Cloner.componentType,
+          ~role=Identity,
+          ~component=name,
+        ),
         ~opts?,
       )
 

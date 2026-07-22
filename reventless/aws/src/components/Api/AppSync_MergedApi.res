@@ -57,6 +57,12 @@ let make = (~name: string, ~opts: Pulumi.ComponentResource.options): t => {
     ~name=`${name}-merge-exec-role`,
     ~args={
       assumeRolePolicy: `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`->Pulumi.Input.make,
+      tags: AWS.Tags.make(
+        ~name=`${name}-merge-exec-role`,
+        ~kind=ReventlessCore.ComponentType.Core,
+        ~role=Identity,
+        ~scope=Platform,
+      ),
     },
     ~opts=Some(customOpts),
   )
@@ -111,6 +117,12 @@ let make = (~name: string, ~opts: Pulumi.ComponentResource.options): t => {
       ]->Pulumi.Input.make,
       apiType: AppSync.GraphQLApi.MERGED->Pulumi.Input.make,
       mergedApiExecutionRoleArn: executionRole.arn->Pulumi.Output.asInput,
+      tags: AWS.Tags.make(
+        ~name,
+        ~kind=ReventlessCore.ComponentType.Core,
+        ~role=Api,
+        ~scope=Platform,
+      ),
     },
     ~opts=Some(customOpts),
   )

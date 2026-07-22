@@ -482,6 +482,12 @@ let _makeApiResourceWith = (
     ~args={
       assumeRolePolicy: `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`
         ->Pulumi.Input.make,
+      tags: AWS.Tags.make(
+        ~name=`${name}-appsync-role`,
+        ~kind=ReventlessCore.ComponentType.Core,
+        ~role=Identity,
+        ~scope=Platform,
+      ),
     },
     ~opts=Some(customOpts),
   )
@@ -539,6 +545,12 @@ let _makeApiResourceWith = (
     ]->Pulumi.Input.make,
     schema: ?(schema->Option.map(Pulumi.Input.make)),
     logConfig: appsyncLogConfig->Pulumi.Input.make,
+    tags: AWS.Tags.make(
+      ~name,
+      ~kind=ReventlessCore.ComponentType.Core,
+      ~role=Api,
+      ~scope=Plugin,
+    ),
   }
   let graphQLApi = AppSync.GraphQLApi.make(~name, ~args=apiArgs, ~opts=Some(customOpts))
 

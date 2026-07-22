@@ -26,7 +26,8 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
         "logs:PutLogEvents",
         "logs:CreateLogGroup",
         "logs:CreateLogStream"
-      ])]
+      ])],
+    tags: AWS_Tags$ReventlessAws.make(name + "TaskExecution", Cloner$ReventlessCore.componentType, "Identity", undefined, name, undefined, undefined)
   });
   let secretsManagerPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "SecretsManagerPolicy", [{
       Sid: "AllowManageSecrets",
@@ -40,7 +41,8 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
       ]
     }]);
   let secretsManagerAccessPolicy = new (Aws.iam.Policy)("secretsManagerAccess", {
-    policy: PolicyDocument$PulumiAws.toJsonString(secretsManagerPolicyDocument)
+    policy: PolicyDocument$PulumiAws.toJsonString(secretsManagerPolicyDocument),
+    tags: AWS_Tags$ReventlessAws.make("secretsManagerAccess", Cloner$ReventlessCore.componentType, "Identity", undefined, name, undefined, undefined)
   });
   let taskRunnerPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "TaskRunnerPolicy", [{
       Sid: "AllowRunTask",
@@ -51,7 +53,8 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
       ]
     }]);
   let taskRunnerPolicy = new (Aws.iam.Policy)("taskRunner", {
-    policy: PolicyDocument$PulumiAws.toJsonString(taskRunnerPolicyDocument)
+    policy: PolicyDocument$PulumiAws.toJsonString(taskRunnerPolicyDocument),
+    tags: AWS_Tags$ReventlessAws.make("taskRunner", Cloner$ReventlessCore.componentType, "Identity", undefined, name, undefined, undefined)
   });
   new (Aws.iam.RolePolicyAttachment)("ClonerTaskExecutionSecretsManagerAccess", {
     policyArn: secretsManagerAccessPolicy.arn,
@@ -130,7 +133,7 @@ export const handler = async (event) => {
       requiresCompatibilities: ["FARGATE"],
       executionRoleArn: taskExecutionRole.arn
     }, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined);
-    let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts);
+    let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name, Cloner$ReventlessCore.componentType, "Identity", undefined, undefined, undefined, undefined), opts);
     let lambda = new (Aws.lambda.Function)(name, {
       handler: "index.handler",
       runtime: "nodejs22.x",
@@ -139,7 +142,7 @@ export const handler = async (event) => {
       memorySize: 1024,
       timeout: 180,
       layers: layers,
-      tags: AWS_Tags$ReventlessAws.make(name, Cloner$ReventlessCore.componentType),
+      tags: AWS_Tags$ReventlessAws.make(name, Cloner$ReventlessCore.componentType, "DataTransfer", undefined, undefined, undefined, undefined),
       environment: {
         variables: Object.fromEntries([
           [
@@ -205,7 +208,7 @@ export const handler = async (event) => {
         });
       });
     });
-    let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts);
+    let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DS", Cloner$ReventlessCore.componentType, "Identity", undefined, name, undefined, undefined), opts);
     new (Aws.iam.RolePolicy)(name + "DS", {
       policy: lambda.arn.apply(lambdaArn => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "LambdaPolicy", [{
           Sid: "AllowInvokeLambda",

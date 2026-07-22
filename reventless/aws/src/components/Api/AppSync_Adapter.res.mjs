@@ -11,6 +11,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as AWS_Tags$ReventlessAws from "../../adapter/AWS_Tags.res.mjs";
 import * as ClientAppsync from "@aws-sdk/client-appsync";
 import * as Auth_Cognito$ReventlessAws from "../../adapter/Auth/Auth_Cognito.res.mjs";
 import * as AppSync_Error$ReventlessAws from "../../errors/AppSync_Error.res.mjs";
@@ -274,7 +275,8 @@ function _makeApiResourceWith(name, schema, userPoolConfig, opts) {
     parent: customOpts_parent
   };
   let iamRole = new (Aws.iam.Role)(name + `-appsync-role`, {
-    assumeRolePolicy: `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`
+    assumeRolePolicy: `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`,
+    tags: AWS_Tags$ReventlessAws.make(name + `-appsync-role`, "Core", "Identity", "Platform", undefined, undefined, undefined)
   }, customOpts);
   new (Aws.iam.RolePolicyAttachment)(name + `-appsync-cwlogs`, {
     policyArn: "arn:aws:iam::aws:policy/service-role/AWSAppSyncPushToCloudWatchLogs",
@@ -296,12 +298,14 @@ function _makeApiResourceWith(name, schema, userPoolConfig, opts) {
       authenticationType: "AWS_IAM"
     }];
   let apiArgs_logConfig = appsyncLogConfig;
+  let apiArgs_tags = AWS_Tags$ReventlessAws.make(name, "Core", "Api", "Plugin", undefined, undefined, undefined);
   let apiArgs = {
     authenticationType: "AMAZON_COGNITO_USER_POOLS",
     schema: apiArgs_schema,
     userPoolConfig: apiArgs_userPoolConfig,
     additionalAuthenticationProviders: apiArgs_additionalAuthenticationProviders,
-    logConfig: apiArgs_logConfig
+    logConfig: apiArgs_logConfig,
+    tags: apiArgs_tags
   };
   let graphQLApi = new (Aws.appsync.GraphQLApi)(name, apiArgs, customOpts);
   return [

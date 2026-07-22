@@ -155,7 +155,18 @@ let makeUiBundleDistribution = (
   // shell, where blue/green between versions is wanted.
   let name = stableName ? pluginId : pluginId ++ "-" ++ bundleVersion
 
-  let bucket = PulumiAws.S3.Bucket.make(~name=name ++ "-bundle")
+  let bucket = PulumiAws.S3.Bucket.make(
+    ~name=name ++ "-bundle",
+    ~args={
+      tags: AWS.Tags.make(
+        ~name=name ++ "-bundle",
+        ~kind=ReventlessCore.ComponentType.Plugin,
+        ~role=Hosting,
+        ~scope=Plugin,
+        ~plugin=pluginId,
+      ),
+    },
+  )
 
   let _ = PulumiAws.S3.BucketPublicAccessBlock.make(
     ~name=name ++ "-bundle-pab",
@@ -234,6 +245,13 @@ let makeUiBundleDistribution = (
       ~args={
         domainName: Pulumi.Input.make(fqdn),
         validationMethod: Pulumi.Input.make("DNS"),
+        tags: AWS.Tags.make(
+          ~name=pluginId ++ "-domain-cert",
+          ~kind=ReventlessCore.ComponentType.Plugin,
+          ~role=Hosting,
+          ~scope=Plugin,
+          ~plugin=pluginId,
+        ),
       },
       ~opts={provider: usEast1},
     )
@@ -317,6 +335,13 @@ let makeUiBundleDistribution = (
       comment: Pulumi.Input.make(pluginId ++ " UI bundle CDN"),
       defaultRootObject: Pulumi.Input.make(indexDocument),
       customErrorResponses: Pulumi.Input.make(customErrorResponses),
+      tags: AWS.Tags.make(
+        ~name=name ++ "-cdn",
+        ~kind=ReventlessCore.ComponentType.Plugin,
+        ~role=Hosting,
+        ~scope=Plugin,
+        ~plugin=pluginId,
+      ),
     },
   )
 

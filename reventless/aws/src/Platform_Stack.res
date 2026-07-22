@@ -90,6 +90,12 @@ let _resolveUncached = (): cognitoUserPool => {
         usernameAttributes: Pulumi.Input.make([Pulumi.Input.make("email")]),
         passwordPolicy: Pulumi.Input.make(pwdPolicy),
         mfaConfiguration: Pulumi.Input.make("OFF"),
+        tags: AWS.Tags.make(
+          ~name="HostUiPool",
+          ~kind=ReventlessCore.ComponentType.Core,
+          ~role=Auth,
+          ~scope=Platform,
+        ),
       },
     )
 

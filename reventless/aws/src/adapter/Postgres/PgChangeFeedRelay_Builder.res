@@ -102,6 +102,7 @@ let make = (
   let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
     ~name,
     ~unitKind=ReventlessCore.Monitoring.Other("ChangeFeed"),
+    ~componentKind=ReventlessCore.ComponentType.Core,
     ~code,
     ~sourceCodeHash,
     ~envVars,
@@ -153,6 +154,12 @@ let make = (
       ~args={
         description: "Poll Postgres DCB change feed and relay to EventCollector"->Pulumi.Input.make,
         scheduleExpression: EventRule.ScheduleExpression.every(Minutes(intervalMinutes)),
+        tags: AWS.Tags.make(
+          ~name=`${Pulumi.Pulumi.getStackName()}-${name}`,
+          ~kind=ReventlessCore.ComponentType.Core,
+          ~role=Scheduler,
+          ~component=name,
+        ),
       },
       ~opts=?customOpts,
     )

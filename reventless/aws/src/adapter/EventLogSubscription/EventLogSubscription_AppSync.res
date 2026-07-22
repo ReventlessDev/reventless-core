@@ -160,6 +160,12 @@ let make = (
   let lambdaRole = IAM.Role.makeWithDefaultPolicy(
     ~name=name ++ "EventLogSubRole",
     ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
+    ~tags=AWS.Tags.make(
+      ~name=name ++ "EventLogSubRole",
+      ~kind=ReventlessCore.EventTopic.componentType,
+      ~role=Identity,
+      ~component=name,
+    ),
     ~opts,
   )
 
@@ -239,7 +245,7 @@ let make = (
       memorySize: 128->Pulumi.Input.make,
       timeout: 30->Pulumi.Input.make,
       layers,
-      tags: AWS.Tags.make(~name=name ++ "EventLogSub", ReventlessCore.EventTopic.componentType),
+      tags: AWS.Tags.make(~name=name ++ "EventLogSub", ~kind=ReventlessCore.EventTopic.componentType, ~role=EventLogSubscription, ~component=name),
       environment: (
         {
           Lambda.Function.variables: Dict.fromArray([

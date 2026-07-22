@@ -143,6 +143,7 @@ let make: ReventlessCore.Task_Adapter.bucketMaker<bucketParts> = (~name, ~opts) 
             maxAgeSeconds: 3000,
           },
         ]->Pulumi.Input.make,
+        tags: AWS.Tags.make(~name, ~kind=ReventlessCore.Task.componentType, ~role=Other("Bucket")),
       },
       ~opts,
     )

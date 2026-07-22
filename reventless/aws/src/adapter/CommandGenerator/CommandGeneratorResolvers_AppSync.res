@@ -21,6 +21,12 @@ let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, Util.Lambd
   let dataSourceRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
     ~name=name ++ "DataSource",
     ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
+    ~tags=AWS.Tags.make(
+      ~name=name ++ "DataSource",
+      ~kind=ReventlessCore.CommandGenerator.componentType,
+      ~role=Identity,
+      ~component=name,
+    ),
     ~opts,
   )
 
@@ -198,6 +204,12 @@ let makeDcb = (
   let dataSourceRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
     ~name="DcbMutationDS",
     ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
+    ~tags=AWS.Tags.make(
+      ~name="DcbMutationDS",
+      ~kind=ReventlessCore.CommandGenerator.componentType,
+      ~role=Identity,
+      ~scope=Plugin,
+    ),
     ~opts,
   )
 

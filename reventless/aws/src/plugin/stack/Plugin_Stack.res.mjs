@@ -9,6 +9,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as AWS_Tags$ReventlessAws from "../../adapter/AWS_Tags.res.mjs";
 import * as ClientCloudfront from "@aws-sdk/client-cloudfront";
 import * as Util_StaticBundle$ReventlessAws from "../../util/Util_StaticBundle.res.mjs";
 
@@ -73,7 +74,9 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
   let stableName = stableNameOpt !== undefined ? stableNameOpt : false;
   let excludeFiles = excludeFilesOpt !== undefined ? excludeFilesOpt : [];
   let name = stableName ? pluginId : pluginId + "-" + bundleVersion;
-  let bucket = new (Aws.s3.Bucket)(name + "-bundle");
+  let bucket = new (Aws.s3.Bucket)(name + "-bundle", {
+    tags: AWS_Tags$ReventlessAws.make(name + "-bundle", "Plugin", "Hosting", "Plugin", undefined, pluginId, undefined)
+  });
   new (Aws.s3.BucketPublicAccessBlock)(name + "-bundle-pab", {
     bucket: bucket.id,
     blockPublicAcls: true,
@@ -124,7 +127,8 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
     let usEast1 = _getUsEast1Provider();
     let cert = new (Aws.acm.Certificate)(pluginId + "-domain-cert", {
       domainName: customDomain.fqdn,
-      validationMethod: "DNS"
+      validationMethod: "DNS",
+      tags: AWS_Tags$ReventlessAws.make(pluginId + "-domain-cert", "Plugin", "Hosting", "Plugin", undefined, pluginId, undefined)
     }, {
       provider: Primitive_option.some(usEast1)
     });
@@ -186,7 +190,8 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
     viewerCertificate: viewerCertificate,
     comment: pluginId + " UI bundle CDN",
     customErrorResponses: customErrorResponses,
-    defaultRootObject: indexDocument
+    defaultRootObject: indexDocument,
+    tags: AWS_Tags$ReventlessAws.make(name + "-cdn", "Plugin", "Hosting", "Plugin", undefined, pluginId, undefined)
   });
   if (customDomain !== undefined) {
     new (Aws.route53.Record)(pluginId + "-domain-alias", {

@@ -12,7 +12,7 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
 > = (~name, ~opts=?) => {
   let opts =
     opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
-  let tags = AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType)
+  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.CommandTopic.componentType, ~role=CommandTopic)
   let queue = PulumiAws.SQS.Queue.make(
     ~name,
     ~args={

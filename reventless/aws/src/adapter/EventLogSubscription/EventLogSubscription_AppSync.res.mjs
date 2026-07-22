@@ -110,7 +110,7 @@ function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
     }, opts);
   });
   Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name + "EventLogSub", name, snsResource, opts);
-  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "EventLogSubRole", Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts);
+  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "EventLogSubRole", Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name + "EventLogSubRole", EventTopic$ReventlessCore.componentType, "Identity", undefined, name, undefined, undefined), opts);
   Pulumi.all([
     queue.arn,
     eventsApi.api.apiArn
@@ -158,7 +158,7 @@ function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
     memorySize: 128,
     timeout: 30,
     layers: layers,
-    tags: AWS_Tags$ReventlessAws.make(name + "EventLogSub", EventTopic$ReventlessCore.componentType),
+    tags: AWS_Tags$ReventlessAws.make(name + "EventLogSub", EventTopic$ReventlessCore.componentType, "EventLogSubscription", undefined, name, undefined, undefined),
     environment: {
       variables: Object.fromEntries([
         [

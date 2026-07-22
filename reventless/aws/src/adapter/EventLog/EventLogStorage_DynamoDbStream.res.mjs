@@ -7,7 +7,7 @@ import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStre
 import * as EventLogStorage_DynamoDb_Runtime$ReventlessAws from "./EventLogStorage_DynamoDb_Runtime.res.mjs";
 
 function make(name, opts) {
-  let tags = AWS_Tags$ReventlessAws.make(name, EventLog$ReventlessCore.componentType);
+  let tags = AWS_Tags$ReventlessAws.make(name, EventLog$ReventlessCore.componentType, "EventLog", undefined, undefined, undefined, undefined);
   let table = Util_DynamoDbStream$ReventlessAws.makeTable([
     {
       name: "id",

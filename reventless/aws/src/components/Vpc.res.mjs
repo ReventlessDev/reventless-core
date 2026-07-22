@@ -5,6 +5,7 @@ import * as Aws from "@pulumi/aws";
 import * as EC2_Eip$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_Eip.res.mjs";
 import * as EC2_Vpc$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_Vpc.res.mjs";
 import * as EC2_Subnet$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_Subnet.res.mjs";
+import * as AWS_Tags$ReventlessAws from "../adapter/AWS_Tags.res.mjs";
 import * as EC2_NatGateway$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_NatGateway.res.mjs";
 import * as EC2_RouteTable$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_RouteTable.res.mjs";
 import * as EC2_VpcEndpoint$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/EC2/EC2_VpcEndpoint.res.mjs";
@@ -20,7 +21,8 @@ function construct(self, name, availabilityZone) {
   };
   let vpc = EC2_Vpc$PulumiAws.make(name + "VPC", {
     cidrBlock: "172.31.0.0/16",
-    enableDnsHostnames: true
+    enableDnsHostnames: true,
+    tags: AWS_Tags$ReventlessAws.makeDict(name + "VPC", "Vpc", "Network", "Platform", undefined, undefined, undefined)
   }, opts);
   let securityGroup = EC2_SecurityGroup$PulumiAws.make(name + "SecurityGroup", {
     name: name + "SecurityGroup",

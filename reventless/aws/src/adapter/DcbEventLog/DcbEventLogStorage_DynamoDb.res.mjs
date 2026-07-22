@@ -31,7 +31,7 @@ function make(name, indexes, partitionTag, crossPartitionTagKeysOpt, opts) {
       rangeKey: "position"
     };
   });
-  let tags = AWS_Tags$ReventlessAws.make(name, DcbEventLog$ReventlessCore.componentType);
+  let tags = AWS_Tags$ReventlessAws.make(name, DcbEventLog$ReventlessCore.componentType, "DcbEventLog", "Plugin", undefined, undefined, undefined);
   let table = Util_DynamoDbStream$ReventlessAws.makeTable(attributes, globalSecondaryIndexes, undefined, "position", "NEW_IMAGE", tags, opts, name);
   return {
     resources: [Util_DynamoDbStream$ReventlessAws.toResource(tags, table)],

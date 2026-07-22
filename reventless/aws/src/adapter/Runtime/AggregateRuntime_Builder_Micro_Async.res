@@ -232,6 +232,7 @@ let finish = () =>
           let cmdTopicRuntime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
             ~name=cmdTopicName,
             ~unitKind=ReventlessCore.Monitoring.CommandHandler,
+            ~componentKind=ReventlessCore.ComponentType.Aggregate,
             ~code=cmdTopicCode,
             ~sourceCodeHash=cmdTopicSourceCodeHash,
             ~envVars=cmdTopicEnvVars,
@@ -270,6 +271,7 @@ let finish = () =>
             let cmdGenRuntime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
               ~name=cmdGenName,
               ~unitKind=ReventlessCore.Monitoring.CommandHandler,
+              ~componentKind=ReventlessCore.ComponentType.Aggregate,
               ~code=cmdGenCode,
               ~sourceCodeHash=cmdGenSourceCodeHash,
               ~envVars=cmdGenEnvVars,
@@ -315,6 +317,7 @@ let finish = () =>
             let evtMapperRuntime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
               ~name=evtMapperName,
               ~unitKind=ReventlessCore.Monitoring.CommandHandler,
+              ~componentKind=ReventlessCore.ComponentType.Aggregate,
               ~code=evtMapperCode,
               ~sourceCodeHash=evtMapperSourceCodeHash,
               ~envVars=evtMapperEnvVars,

@@ -31,6 +31,7 @@ import * as AdapterDeploytime$ReventlessCore from "../../adapter/AdapterDeployti
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as ExtensionPoint$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/ExtensionPoint.res.mjs";
 import * as Heartbeat_Builder$ReventlessCore from "../../components/Heartbeat/Heartbeat_Builder.res.mjs";
+import * as ResourceAttribution$ReventlessCore from "../../ResourceAttribution.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import * as Plugin_SubscriptionSchema$ReventlessCore from "./Plugin_SubscriptionSchema.res.mjs";
 
@@ -121,6 +122,7 @@ function Make(Spec) {
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Plugin$ReventlessCore.componentType), name, (extra, extra$1) => {
         let _prevPluginName = Logger$ReventlessCore.currentPluginName.contents;
         Logger$ReventlessCore.currentPluginName.contents = extra$1;
+        let _prevAttribution = ResourceAttribution$ReventlessCore.enter(Spec.platformName, extra$1);
         Logger$ReventlessCore.registerComponentPlugin(extra$1, extra$1);
         aggregates.forEach(M => Logger$ReventlessCore.registerComponentPlugin(M.Spec.name, extra$1));
         readModels.forEach(R => Logger$ReventlessCore.registerComponentPlugin(R.Spec.name, extra$1));
@@ -626,6 +628,7 @@ function Make(Spec) {
         Component$ReventlessCore.setOutputs(extra, pluginOutputs);
         Plugin_Helpers$ReventlessCore.interopMetaOutput.contents = builderOutputs.apply(outputs => S.reverseConvertToJsonOrThrow(Plugin_Helpers$ReventlessCore.toInteropMeta(outputs), ExportMeta$ReventlessInterop.schema));
         Logger$ReventlessCore.currentPluginName.contents = _prevPluginName;
+        return ResourceAttribution$ReventlessCore.restore(_prevAttribution);
       }, opts);
     };
     return {

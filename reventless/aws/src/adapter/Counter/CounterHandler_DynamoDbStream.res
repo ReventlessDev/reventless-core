@@ -60,6 +60,7 @@ let make: ReventlessCore.Counter_Adapter.handlerMaker = (
   let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
     ~name,
     ~unitKind=ReventlessCore.Monitoring.Other("Counter"),
+    ~componentKind=ReventlessCore.ComponentType.Counter,
     ~code,
     ~sourceCodeHash,
     ~envVars,

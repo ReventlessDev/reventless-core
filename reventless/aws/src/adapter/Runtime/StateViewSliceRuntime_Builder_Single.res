@@ -277,6 +277,7 @@ let buildLambda = (
   let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
     ~name="AllStateViewSlices",
     ~unitKind=ReventlessCore.Monitoring.Projection,
+    ~componentKind=ReventlessCore.ComponentType.StateViewSlice,
     ~code,
     ~sourceCodeHash,
     ~envVars,

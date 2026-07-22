@@ -114,6 +114,12 @@ let make = (
   let lambdaRole = IAM.Role.makeWithDefaultPolicy(
     ~name=name ++ "Lambda",
     ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
+    ~tags=AWS.Tags.make(
+      ~name=name ++ "Lambda",
+      ~kind=ReventlessCore.ReadModel.componentType,
+      ~role=Identity,
+      ~scope=Platform,
+    ),
     ~opts,
   )
 
@@ -184,7 +190,7 @@ let make = (
       memorySize: 512->Pulumi.Input.make,
       timeout: 30->Pulumi.Input.make,
       layers,
-      tags: AWS.Tags.make(~name=name ++ "Lambda", ReventlessCore.ReadModel.componentType),
+      tags: AWS.Tags.make(~name=name ++ "Lambda", ~kind=ReventlessCore.ReadModel.componentType, ~role=Runtime, ~scope=Platform),
       environment: (
         {
           Lambda.Function.variables: Dict.fromArray([
@@ -202,6 +208,12 @@ let make = (
   let dataSourceRole = IAM.Role.makeWithDefaultPolicy(
     ~name=name ++ "DataSource",
     ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
+    ~tags=AWS.Tags.make(
+      ~name=name ++ "DataSource",
+      ~kind=ReventlessCore.ReadModel.componentType,
+      ~role=Identity,
+      ~scope=Platform,
+    ),
     ~opts,
   )
 

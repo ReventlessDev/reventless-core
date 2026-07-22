@@ -6,7 +6,7 @@ let snsRegistry: Set.t<string> = Set.make()
 
 let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (~name, ~storageResources as _, ~opts) => {
   snsRegistry->Set.add(name)
-  let tags = AWS.Tags.make(~name, ReventlessCore.EventTopic.componentType)
+  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.EventTopic.componentType, ~role=EventTopic)
   let topic = SNS.Topic.make(
     ~name,
     ~args={SNS.Topic.tags: tags},

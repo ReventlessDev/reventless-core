@@ -21,6 +21,12 @@ let make = (
   let dataSourceRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
     ~name="InboundTranslationDS",
     ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
+    ~tags=AWS.Tags.make(
+      ~name="InboundTranslationDS",
+      ~kind=ReventlessCore.InboundTranslationSlice.componentType,
+      ~role=Identity,
+      ~scope=Plugin,
+    ),
     ~opts,
   )
 

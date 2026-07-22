@@ -4,6 +4,7 @@ import * as Aws from "@pulumi/aws";
 import * as Pulumi$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Pulumi.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as AWS_Tags$ReventlessAws from "./adapter/AWS_Tags.res.mjs";
 import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs";
 
 function _resolveUncached() {
@@ -60,7 +61,8 @@ function _resolveUncached() {
       adminCreateUserConfig: adminConfig,
       usernameAttributes: ["email"],
       passwordPolicy: pwdPolicy,
-      mfaConfiguration: "OFF"
+      mfaConfiguration: "OFF",
+      tags: AWS_Tags$ReventlessAws.make("HostUiPool", "Core", "Auth", "Platform", undefined, undefined, undefined)
     });
     let tokenUnits2_accessToken = "minutes";
     let tokenUnits2_idToken = "minutes";

@@ -281,6 +281,12 @@ let finish = (
     let lambdaRole = IAM.Role.makeWithDefaultPolicy(
       ~name=name ++ "StateTopicRole",
       ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
+      ~tags=AWS.Tags.make(
+        ~name=name ++ "StateTopicRole",
+        ~kind=ReventlessCore.QueryDb.componentType,
+        ~role=Identity,
+        ~component=name,
+      ),
       ~opts,
     )
 
@@ -380,7 +386,7 @@ let finish = (
         memorySize: 256->Pulumi.Input.make,
         timeout: 30->Pulumi.Input.make,
         layers,
-        tags: AWS.Tags.make(~name=name ++ "StateTopic", ReventlessCore.QueryDb.componentType),
+        tags: AWS.Tags.make(~name=name ++ "StateTopic", ~kind=ReventlessCore.QueryDb.componentType, ~role=StateTopic, ~component=name),
         environment: (
           {
             Lambda.Function.variables: Dict.fromArray([

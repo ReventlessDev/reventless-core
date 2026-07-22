@@ -50,7 +50,7 @@ let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (
 
   // Create DynamoDB table with stream enabled — EventTopicPublisher_DynamoDbStream
   // needs a DynamoDbStream resource to connect the EventTopic.
-  let tags = AWS.Tags.make(~name, ReventlessCore.DcbEventLog.componentType)
+  let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.DcbEventLog.componentType, ~role=DcbEventLog, ~scope=Plugin)
   let table = Util_DynamoDbStream.makeTable(
     name,
     ~attributes,

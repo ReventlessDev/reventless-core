@@ -54,6 +54,7 @@ let make = (
   let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
     ~name,
     ~unitKind=ReventlessCore.Monitoring.Other("Migration"),
+    ~componentKind=ReventlessCore.ComponentType.Core,
     ~code,
     ~sourceCodeHash,
     ~envVars,

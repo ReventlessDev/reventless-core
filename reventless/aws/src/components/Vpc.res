@@ -44,7 +44,16 @@ let construct: construct = (self, name, availabilityZone) => {
 
   let vpc = PulumiAws.EC2.Vpc.make(
     ~name=name ++ "VPC",
-    ~args={cidrBlock: "172.31.0.0/16", enableDnsHostnames: true},
+    ~args={
+      cidrBlock: "172.31.0.0/16",
+      enableDnsHostnames: true,
+      tags: AWS.Tags.makeDict(
+        ~name=name ++ "VPC",
+        ~kind=ReventlessCore.ComponentType.Vpc,
+        ~role=Network,
+        ~scope=Platform,
+      ),
+    },
     ~opts,
   )
 

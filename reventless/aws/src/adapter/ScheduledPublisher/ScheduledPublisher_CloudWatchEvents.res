@@ -2,6 +2,12 @@ let make: ReventlessCore.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~op
   let role = PulumiAws.IAM.Role.makeWithDefaultPolicy(
     ~name="CloudWatchEventsRole",
     ~servicePrincipal=AWS.CloudwatchEventRule.principal->Pulumi.Output.make,
+    ~tags=AWS.Tags.make(
+      ~name="CloudWatchEventsRole",
+      ~kind=ReventlessCore.Scheduler.componentType,
+      ~role=Identity,
+      ~scope=Platform,
+    ),
     ~opts,
   )
 
@@ -30,6 +36,12 @@ let make: ReventlessCore.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~op
         )->toJsonString
       })
       ->Pulumi.Output.asInput,
+      tags: AWS.Tags.make(
+        ~name=name ++ "CloudWatchEventsPolicy",
+        ~kind=ReventlessCore.Scheduler.componentType,
+        ~role=Identity,
+        ~scope=Platform,
+      ),
     },
     ~opts,
   )

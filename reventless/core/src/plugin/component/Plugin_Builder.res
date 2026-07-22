@@ -67,6 +67,11 @@ module Make = (
     let _prevPluginName = Logger.currentPluginName.contents
     Logger.currentPluginName := Some(name)
 
+    // Publish the owning plugin/platform for resource attribution, so adapters
+    // creating infrastructure below this point can tag it without every adapter
+    // signature having to carry the two names. Restored at the end of construct.
+    let _prevAttribution = ResourceAttribution.enter(~platform=Spec.platformName, ~plugin=name)
+
     // Register every component → plugin so runtime logs (fired after construct
     // returns) can resolve a comp like `StateChangeSlice(AddProduct)` to its
     // owning plugin via `Logger.componentPluginRegistry`. Also register the
@@ -975,6 +980,7 @@ module Make = (
       )
 
     Logger.currentPluginName := _prevPluginName
+    ResourceAttribution.restore(_prevAttribution)
   }
 
   let makeAutoUIManifest = (

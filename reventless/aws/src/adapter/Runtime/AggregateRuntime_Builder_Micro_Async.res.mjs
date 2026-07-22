@@ -175,7 +175,7 @@ function finish() {
       cmdTopicEnvVars["HANDLER_CONFIG"] = cmdTopicHandlerConfigOutput;
       let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
       let cmdTopicName = baseName + "CmdHandler";
-      let cmdTopicRuntime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(cmdTopicName, "CommandHandler", match.code, match.sourceCodeHash, cmdTopicEnvVars, Math.max(spec.commandTopicMemorySize, 1024), Math.max(spec.commandTopicTimeout, 30), undefined, undefined, undefined, undefined, undefined, aggregateOpts);
+      let cmdTopicRuntime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(cmdTopicName, "CommandHandler", "Aggregate", match.code, match.sourceCodeHash, cmdTopicEnvVars, Math.max(spec.commandTopicMemorySize, 1024), Math.max(spec.commandTopicTimeout, 30), undefined, undefined, undefined, undefined, undefined, aggregateOpts);
       spec.commandTopicConnects.forEach(connect => connect(cmdTopicRuntime));
       if (spec.commandGeneratorConnects.length !== 0) {
         let pluginFragment$1 = Util_LogAttribution$ReventlessAws.pluginFragment(`AggregateRuntime(` + spec.aggregateName + `)`);
@@ -189,7 +189,7 @@ function finish() {
         cmdGenEnvVars["DISPATCH_MODE"] = "async";
         let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
         let cmdGenName = baseName + "CmdGen";
-        let cmdGenRuntime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(cmdGenName, "CommandHandler", match$1.code, match$1.sourceCodeHash, cmdGenEnvVars, Math.max(spec.commandGeneratorMemorySize, 1024), Math.max(spec.commandGeneratorTimeout, 30), undefined, undefined, undefined, undefined, undefined, aggregateOpts);
+        let cmdGenRuntime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(cmdGenName, "CommandHandler", "Aggregate", match$1.code, match$1.sourceCodeHash, cmdGenEnvVars, Math.max(spec.commandGeneratorMemorySize, 1024), Math.max(spec.commandGeneratorTimeout, 30), undefined, undefined, undefined, undefined, undefined, aggregateOpts);
         spec.commandGeneratorConnects.forEach(connect => connect(cmdGenRuntime));
       }
       let match$2 = spec.eventCollectorChannelSpec;
@@ -212,7 +212,7 @@ function finish() {
       evtMapperPackageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
       let match$4 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperEntryPoint.mjs", evtMapperPackageDirs, undefined);
       let evtMapperName = baseName + "EventMapper";
-      let evtMapperRuntime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(evtMapperName, "CommandHandler", match$4.code, match$4.sourceCodeHash, evtMapperEnvVars, Math.max(spec.eventCollectorMemorySize, 2048), Math.max(spec.eventCollectorTimeout, 180), undefined, undefined, undefined, undefined, undefined, aggregateOpts);
+      let evtMapperRuntime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(evtMapperName, "CommandHandler", "Aggregate", match$4.code, match$4.sourceCodeHash, evtMapperEnvVars, Math.max(spec.eventCollectorMemorySize, 2048), Math.max(spec.eventCollectorTimeout, 180), undefined, undefined, undefined, undefined, undefined, aggregateOpts);
       EventCollectorChannel_DynamoDbStream$ReventlessAws.connect(evtMapperName, [match$2], evtMapperRuntime, aggregateOpts);
     });
   }

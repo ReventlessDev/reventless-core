@@ -4,6 +4,7 @@ import * as Pervasives from "@rescript/runtime/lib/es6/Pervasives.js";
 import * as Aws from "@pulumi/aws";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Pulumi from "@pulumi/pulumi";
+import * as AWS_Tags$ReventlessAws from "../../adapter/AWS_Tags.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Auth_Cognito$ReventlessAws from "../../adapter/Auth/Auth_Cognito.res.mjs";
 import * as AppSync_Adapter$ReventlessAws from "./AppSync_Adapter.res.mjs";
@@ -36,7 +37,8 @@ function make(name, opts) {
     parent: customOpts_parent
   };
   let executionRole = new (Aws.iam.Role)(name + `-merge-exec-role`, {
-    assumeRolePolicy: `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`
+    assumeRolePolicy: `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`,
+    tags: AWS_Tags$ReventlessAws.make(name + `-merge-exec-role`, "Core", "Identity", "Platform", undefined, undefined, undefined)
   }, customOpts);
   new (Aws.iam.RolePolicy)(name + `-merge-exec-policy`, {
     policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `-merge-exec-policy`, [{
@@ -63,7 +65,8 @@ function make(name, opts) {
         authenticationType: "AWS_IAM"
       }],
     apiType: "MERGED",
-    mergedApiExecutionRoleArn: executionRole.arn
+    mergedApiExecutionRoleArn: executionRole.arn,
+    tags: AWS_Tags$ReventlessAws.make(name, "Core", "Api", "Platform", undefined, undefined, undefined)
   }, customOpts);
   return {
     api: Pulumi.output(mergedApi),

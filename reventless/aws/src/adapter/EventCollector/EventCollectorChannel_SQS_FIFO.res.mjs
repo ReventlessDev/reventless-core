@@ -12,7 +12,7 @@ import * as EventCollectorChannel_SQS_Runtime$ReventlessAws from "./EventCollect
 
 function make(name, eventTopics, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
-  let tags = AWS_Tags$ReventlessAws.make(name, EventCollector$ReventlessCore.componentType);
+  let tags = AWS_Tags$ReventlessAws.make(name, EventCollector$ReventlessCore.componentType, "EventCollector", undefined, undefined, undefined, undefined);
   let queue = new (Aws.sqs.Queue)(name, {
     contentBasedDeduplication: true,
     fifoQueue: true,

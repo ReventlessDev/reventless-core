@@ -151,6 +151,7 @@ let provision = (
     let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
       ~name,
       ~unitKind=ReventlessCore.Monitoring.Other("QueryResolver"),
+      ~componentKind=ReventlessCore.ComponentType.QueryDb,
       ~code,
       ~sourceCodeHash,
       ~envVars,
@@ -188,6 +189,12 @@ let provision = (
     let dataSourceRole = IAM.Role.makeWithDefaultPolicy(
       ~name=name ++ "DataSource",
       ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
+      ~tags=AWS.Tags.make(
+        ~name=name ++ "DataSource",
+        ~kind=ReventlessCore.QueryDb.componentType,
+        ~role=Identity,
+        ~component=name,
+      ),
       ~opts=customOpts,
     )
     let lambdaArn = runtime.parts.lambda->Pulumi.Output.flatMap(l => l.arn)

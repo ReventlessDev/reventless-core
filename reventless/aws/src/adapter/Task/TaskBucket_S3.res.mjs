@@ -4,7 +4,9 @@ import * as Aws from "@pulumi/aws";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
+import * as Task$ReventlessCore from "@reventlessdev/reventless-core/src/components/Task/Task.res.mjs";
 import * as Util_S3$ReventlessAws from "../../util/Util_S3.res.mjs";
+import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
@@ -88,7 +90,11 @@ function make(name, opts) {
           "ETag"
         ],
         maxAgeSeconds: 3000
-      }]
+      }],
+    tags: AWS_Tags$ReventlessAws.make(name, Task$ReventlessCore.componentType, {
+      TAG: "Other",
+      _0: "Bucket"
+    }, undefined, undefined, undefined, undefined)
   }, opts$1);
   return {
     resources: [Util_S3$ReventlessAws.toResource(bucket)],

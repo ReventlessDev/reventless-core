@@ -36,7 +36,7 @@ let opts = {
   parent: opts_parent
 };
 
-let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts);
+let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType, "Identity", "Plugin", undefined, undefined, undefined), opts);
 
 let entryPointCode = `export const handler = async (event) => {
   console.error("DEAD LETTER ITEM:", JSON.stringify(event));
@@ -60,7 +60,7 @@ let handler = new (Aws.lambda.Function)(name, {
   memorySize: 128,
   timeout: 30,
   layers: layers,
-  tags: AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType),
+  tags: AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType, "DeadLetter", "Plugin", undefined, undefined, undefined),
   environment: {
     variables: Object.fromEntries([[
         "Environment",
@@ -70,7 +70,7 @@ let handler = new (Aws.lambda.Function)(name, {
   sourceCodeHash: sourceCodeHash
 }, opts);
 
-Monitoring$ReventlessCore.notify("DeadLetterSink", name, Util_Lambda$ReventlessAws.functionToResource(AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType), handler));
+Monitoring$ReventlessCore.notify("DeadLetterSink", name, Util_Lambda$ReventlessAws.functionToResource(AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType, "DeadLetter", "Plugin", undefined, undefined, undefined), handler));
 
 let lambda = Pulumi.output(handler);
 

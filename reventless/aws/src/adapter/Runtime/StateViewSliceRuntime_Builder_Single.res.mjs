@@ -158,7 +158,7 @@ function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, feedQueu
       subnetIds: qdbSelection.subnetIds,
       securityGroupIds: [sgId]
     })) : undefined;
-  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllStateViewSlices", "Projection", match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, vpcConfig, opts);
+  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllStateViewSlices", "Projection", "StateViewSlice", match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, vpcConfig, opts);
   if (qdbSelection !== undefined) {
     qdbSelection.connectionConfig.apply(cc => new (Aws.iam.RolePolicy)("AllStateViewSlices-pgSecret", {
       policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "AllStateViewSlices-pgSecretPolicy", [{

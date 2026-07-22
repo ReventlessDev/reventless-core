@@ -19,7 +19,7 @@ import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "./CommandTopicCh
 
 function make(name, opts) {
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
-  let tags = AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType);
+  let tags = AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType, "CommandTopic", undefined, undefined, undefined, undefined);
   let queue = new (Aws.sqs.Queue)(name, {
     contentBasedDeduplication: true,
     fifoQueue: true,

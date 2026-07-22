@@ -26,6 +26,12 @@ let opts = {Pulumi.CustomResourceOptions.parent: queue->PulumiAws.SQS.Queue.toRe
 let lambdaRole = IAM.Role.makeWithDefaultPolicy(
   ~name,
   ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
+  ~tags=AWS.Tags.make(
+    ~name,
+    ~kind=ReventlessCore.CommandTopic.componentType,
+    ~role=Identity,
+    ~scope=Plugin,
+  ),
   ~opts,
 )
 
@@ -58,7 +64,7 @@ let handler = Lambda.Function.make(
     memorySize: 128->Pulumi.Input.make,
     timeout: 30->Pulumi.Input.make,
     layers,
-    tags: AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType),
+    tags: AWS.Tags.make(~name, ~kind=ReventlessCore.CommandTopic.componentType, ~role=DeadLetter, ~scope=Plugin),
     environment: (
       {
         Lambda.Function.variables: Dict.fromArray([
@@ -77,7 +83,7 @@ ReventlessCore.Monitoring.notify(
   ~name,
   ~component=Util_Lambda.functionToResource(
     handler,
-    ~tags=AWS.Tags.make(~name, ReventlessCore.CommandTopic.componentType)->Pulumi.Output.fromInput,
+    ~tags=AWS.Tags.make(~name, ~kind=ReventlessCore.CommandTopic.componentType, ~role=DeadLetter, ~scope=Plugin)->Pulumi.Output.fromInput,
   ),
 )
 
