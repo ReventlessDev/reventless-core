@@ -1,8 +1,10 @@
 # Plan: Scope the CommandTopic Queue Policy's EventBridge Send Grant
 
-**Status**: code + tests landed 2026-07-22. Step 3 (end-to-end scheduler check
-on alpha) is outstanding and needs a deploy — until it passes, the scoping is
-verified only against the rendered policy JSON, not against a real delivery.
+**Status**: code + tests landed and deployed to alpha 2026-07-22; conditions
+confirmed live on the deployed queues (see Deploy evidence). Step 3 — observing
+an actual scheduled delivery under the new conditions — is still outstanding.
+A wrong condition fails closed and silently, so a correct-looking policy is
+necessary but not sufficient evidence.
 
 **Discovered**: 2026-07-22, while tracing the SQS `QueuePolicy` destroy race
 (orphaned `AdminEventColl` / `AdminDcbCmdTopic` policy deletes after the
@@ -187,6 +189,63 @@ scoping one.
 - [x] `grep` shows no remaining unconditioned *service*-principal statement in
   `reventless/aws/src` (see audit table; Finding A is an `AWS: "*"` principal,
   not a service principal, and is unreachable).
+- [x] Conditions confirmed live on deployed infrastructure (see below).
+
+## Deploy evidence (alpha, 2026-07-22)
+
+Deployed via the `2f5f148f4` push; chain green end to end (CI → Release → Build
+Lambda Layer → Deploy Online Shop Hybrid, run `29922990691`).
+
+**No resource churn from the sibling dependency-edge change.** All three
+affected policies updated in place — `~`, never `+-` — with `~policy` as the
+only diff key, which is this plan's condition change:
+
+```
+~  aws:sqs:QueuePolicy PluginAggrCmdTopic              updating [diff: ~policy]
+~  aws:sqs:QueuePolicy PlatformPluginExtPointCmdTopic  updating [diff: ~policy]
+~  aws:sqs:QueuePolicy PlatformDcbCmdTopic             updating [diff: ~policy]
+
+Resources: ~ 29 updated, 126 unchanged
+```
+
+**Conditions verified on the live queue**, read back from SQS rather than
+inferred from the rendered document:
+
+```json
+"Sid": "AllowCloudWatchEventsToSendToQueue",
+"Condition": {
+  "StringEquals": { "aws:SourceAccount": "<account>" },
+  "ArnLike":      { "aws:SourceArn": "arn:aws:events:*:<account>:rule/*" }
+}
+```
+
+**The grant is confirmed load-bearing.** Runtime-created scheduler rules exist
+on the account and their targets are command-topic queue ARNs directly
+(`arn:aws:sqs:…:*PluginExtPointCmdTopic-*`), so the queue resource policy is
+indeed the authorisation path — deleting the statement rather than scoping it
+would have broken scheduled publishing.
+
+**Why step 3 is still open.** The grant has not been exercised since the change.
+Both disconnect rules created after the deploy report `Invocations: 0`
+(`AWS/Events`, checked 14:07 UTC against a 13:16 UTC change), and the reason is
+structural: a disconnect schedule is re-armed by every 5-minute heartbeat, so in
+healthy operation it is *replaced before it fires*. The EventBridge→SQS path
+only runs when a plugin actually goes silent past its grace window.
+
+**How to close it.** `FailedInvocations` on the rule is the exact instrument —
+EventBridge emits it when a target rejects delivery, which is precisely the
+silent failure this plan worries about. Let one plugin's heartbeat lapse past
+`disconnectGrace`, then check `Invocations` and `FailedInvocations` for its
+disconnect rule: an invocation with zero failures is the proof. (This is also
+the natural implementation of step 4 in the sibling plan.)
+
+**Pre-existing failures, not caused by this change.** Account-wide
+`FailedInvocations` over the preceding 24 h totalled 4, in two buckets at 10:00
+and 12:00 UTC — both before the 13:16 UTC policy update. The likely cause is
+rules still targeting `AdminEventColl` / `AdminDcbCmdTopic`, the queues
+destroyed by the `Admin` → `Platform` rename. That connects the stale-rule
+backlog to real failing deliveries rather than mere clutter; tracked in
+[`Backlog/eventbridge-schedule-rule-accumulation.md`](Backlog/eventbridge-schedule-rule-accumulation.md).
 
 ## Risk
 
