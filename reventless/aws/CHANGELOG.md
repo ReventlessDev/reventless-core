@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.223 (2026-07-22)
+
+* refactor!: retire the stale "Admin" vocabulary for platform-owned resources ([2770bd9](https://github.com/ReventlessDev/reventless-core/commit/2770bd96f309142bdfc65b9f36bd1a3ef60641bd))
+
+### BREAKING CHANGES
+
+* platform-owned resources are renamed Admin* -> Platform*
+(PlatformDcbEventLog, PlatformDcbCmdTopic, PlatformEventColl). This replaces
+a DynamoDB table, an SQS queue and an SNS topic — wipe and redeploy rather
+than migrate. Both alpha AdminDcbEventLog tables held 0 items at the time of
+the rename. MCP resource URI templates change from Admin/<field>/{id} to
+Platform/<field>/{id}; MCP tool names are unaffected.
+
+
+
 # 3.0.0-alpha.222 (2026-07-22)
 
 * refactor!: retire the stale "core" vocabulary for platform things ([34e7480](https://github.com/ReventlessDev/reventless-core/commit/34e7480992bd58906a250b0a1ce6ff2c5ba45260))
