@@ -20,7 +20,7 @@ function connect(name, channelSpecs, runtime, opts) {
   return EventCollectorChannel_Helpers$ReventlessAws.connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources, opts$1);
 }
 
-function make(param, eventTopics, param$1) {
+function make(param, eventTopics, param$1, param$2) {
   let eventTopicResources = Stdlib_Array.filterMap(Object.values(eventTopics), outputs => outputs.resources[0]);
   let enqueueEventNotSupported = (delay, id, messageBody) => {
     log.debug("EventCollectorChannel_DynamoDbStream", Object.fromEntries([

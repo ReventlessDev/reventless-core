@@ -7,7 +7,7 @@ import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
 
-function make(param, storageResources, param$1) {
+function make(param, storageResources, param$1, param$2) {
   let storageResource = Util_DynamoDbStream$ReventlessAws.findResource(storageResources);
   return {
     resources: [Adapter$ReventlessCore.outputToResource(storageResource.service.apply(service => {

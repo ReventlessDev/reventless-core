@@ -6,7 +6,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Deferred from "effect/Deferred";
 
 function Make(Bus) {
-  let make = (param, eventTopics, param$1) => {
+  let make = (param, eventTopics, param$1, param$2) => {
     let eventTopicResources = Object.values(eventTopics).flatMap(outputs => outputs.resources);
     return {
       parts: undefined,
@@ -40,7 +40,7 @@ function Make(Bus) {
 }
 
 function MakeProjection(Bus) {
-  let make = (param, eventTopics, param$1) => {
+  let make = (param, eventTopics, param$1, param$2) => {
     let eventTopicResources = Object.values(eventTopics).flatMap(outputs => outputs.resources);
     return {
       parts: undefined,

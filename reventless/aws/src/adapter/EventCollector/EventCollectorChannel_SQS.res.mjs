@@ -25,7 +25,7 @@ function connect(name, channelSpecs, runtime, opts) {
   return EventCollectorChannel_Helpers$ReventlessAws.connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources, opts$1);
 }
 
-function make(name, eventTopics, opts) {
+function make(name, eventTopics, param, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let tags = AWS_Tags$ReventlessAws.make(name, EventCollector$ReventlessCore.componentType, "EventCollector", undefined, undefined, undefined, undefined);
   let queue = new (Aws.sqs.Queue)(name, {

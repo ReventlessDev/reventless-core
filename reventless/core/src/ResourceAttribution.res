@@ -89,6 +89,22 @@ module Role = {
 }
 
 /**
+The model component a provisioned resource belongs to.
+
+Piece builders (EventLog, QueryDb, CommandTopic, EventTopic, EventCollector) are
+shared building blocks applied as functors by many different component kinds — a
+QueryDb is instantiated by ReadModel, StateViewSlice, AutomationSlice, both
+translation slices and Counter. The adapter that provisions the physical resource
+sits at the bottom of that chain and would otherwise only know its own piece, so
+`kind` would collapse onto `role` and the owning component would be unrecoverable.
+The owning builder passes this record down instead.
+
+`name` is the owner's spec name (the component stem, `Products`), not the
+suffixed resource name (`ProductsQueryDb`).
+*/
+type owner = {kind: ComponentType.t, name: string}
+
+/**
 Ambient deploy-time context: which plugin (and platform) is currently being
 constructed. Adapters that create resources sit far below the builder that knows
 these names, and threading two strings through every adapter signature would be a

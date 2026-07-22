@@ -4,11 +4,11 @@ import * as EventLogBackend$ReventlessAws from "./EventLogBackend.res.mjs";
 import * as EventLogStorage_Postgres$ReventlessAws from "./EventLogStorage_Postgres.res.mjs";
 import * as EventLogStorage_DynamoDbStream$ReventlessAws from "./EventLogStorage_DynamoDbStream.res.mjs";
 
-function make(name, opts) {
+function make(name, param, opts) {
   if (EventLogBackend$ReventlessAws.isPostgres()) {
-    return EventLogStorage_Postgres$ReventlessAws.make(name, opts);
+    return EventLogStorage_Postgres$ReventlessAws.make(name, undefined, opts);
   } else {
-    return EventLogStorage_DynamoDbStream$ReventlessAws.make(name, opts);
+    return EventLogStorage_DynamoDbStream$ReventlessAws.make(name, undefined, opts);
   }
 }
 

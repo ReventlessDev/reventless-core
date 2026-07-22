@@ -258,7 +258,7 @@ let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
 }
 
 module Make = (Bus: LocalBus.T, DbProvider: {let db: SqliteDriver.t}) => {
-  let make: EventLog_Adapter.storageMaker = (~name, ~opts) => {
+  let make: EventLog_Adapter.storageMaker = (~name, ~owner as _=?, ~opts) => {
     let (storageName, replay, storage) = makeStorage(~db=DbProvider.db, ~name, ~opts)
     Bus.registerEventLogReplay(storageName, replay)
     storage

@@ -36,8 +36,8 @@ globalThis.describe("LocalEventCollectorChannel", () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestPublisher = LocalEventTopicPublisher$ReventlessLocal.Make(TestBus);
       let TestCollector = LocalEventCollectorChannel$ReventlessLocal.Make(TestBus);
-      let pubA = TestPublisher.make("topicA", [], {});
-      let pubB = TestPublisher.make("topicB", [], {});
+      let pubA = TestPublisher.make("topicA", [], undefined, {});
+      let pubB = TestPublisher.make("topicB", [], undefined, {});
       let eventTopics = Object.fromEntries([
         [
           "topicA",
@@ -52,13 +52,13 @@ globalThis.describe("LocalEventCollectorChannel", () => {
           }
         ]
       ]);
-      let ch = TestCollector.make("collector", eventTopics, {});
+      let ch = TestCollector.make("collector", eventTopics, undefined, {});
       globalThis.expect(ch.resources.length).toBe(2);
     });
     globalThis.test("empty eventTopics produces empty resources", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestCollector = LocalEventCollectorChannel$ReventlessLocal.Make(TestBus);
-      let ch = TestCollector.make("collector", {}, {});
+      let ch = TestCollector.make("collector", {}, undefined, {});
       globalThis.expect(ch.resources.length).toBe(0);
     });
   });
@@ -73,14 +73,14 @@ globalThis.describe("LocalEventCollectorChannel", () => {
       let runtime = makeRuntime(async (param, _ctx) => {
         received.contents = received.contents + 1 | 0;
       });
-      let pub = TestPublisher.make("eventA", [], {});
+      let pub = TestPublisher.make("eventA", [], undefined, {});
       let eventTopics = Object.fromEntries([[
           "eventA",
           {
             resources: pub.resources
           }
         ]]);
-      let ch = TestCollector.make("collector", eventTopics, {});
+      let ch = TestCollector.make("collector", eventTopics, undefined, {});
       let channelSpec_resources = [];
       let channelSpec = {
         channel: ch,
@@ -103,8 +103,8 @@ globalThis.describe("LocalEventCollectorChannel", () => {
       let runtime = makeRuntime(async (param, param$1) => {
         received.contents = received.contents + 1 | 0;
       });
-      let pub1 = TestPublisher.make("topicX", [], {});
-      let pub2 = TestPublisher.make("topicY", [], {});
+      let pub1 = TestPublisher.make("topicX", [], undefined, {});
+      let pub2 = TestPublisher.make("topicY", [], undefined, {});
       let eventTopics = Object.fromEntries([
         [
           "topicX",
@@ -119,7 +119,7 @@ globalThis.describe("LocalEventCollectorChannel", () => {
           }
         ]
       ]);
-      let ch = TestCollector.make("collector", eventTopics, {});
+      let ch = TestCollector.make("collector", eventTopics, undefined, {});
       let channelSpec_resources = [];
       let channelSpec = {
         channel: ch,
@@ -147,14 +147,14 @@ globalThis.describe("LocalEventCollectorChannel", () => {
         parts: runtime_parts,
         resources: runtime_resources
       };
-      let pub = TestPublisher.make("noHandlerTopic", [], {});
+      let pub = TestPublisher.make("noHandlerTopic", [], undefined, {});
       let eventTopics = Object.fromEntries([[
           "noHandlerTopic",
           {
             resources: pub.resources
           }
         ]]);
-      let ch = TestCollector.make("collector", eventTopics, {});
+      let ch = TestCollector.make("collector", eventTopics, undefined, {});
       let channelSpec_resources = [];
       let channelSpec = {
         channel: ch,

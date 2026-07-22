@@ -12,7 +12,7 @@ function makeStorage(pool, name, indexes, subIdField) {
 }
 
 function Make(P) {
-  let make = (name, indexes, subIdField, param, param$1, param$2, param$3) => makeStorage(P.pool, name, indexes, subIdField);
+  let make = (name, indexes, subIdField, param, param$1, param$2, param$3, param$4) => makeStorage(P.pool, name, indexes, subIdField);
   return {
     make: make
   };

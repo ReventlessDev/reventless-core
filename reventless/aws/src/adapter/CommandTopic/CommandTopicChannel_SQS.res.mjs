@@ -38,7 +38,7 @@ function connect(name, channel, runtime, resources, opts) {
   return [CommandTopicChannel_Helpers$ReventlessAws.subscribeLambda2SqsTopic(batchSizeRef.contents, lambda, name, queue, opts$1)];
 }
 
-function make(name, opts) {
+function make(name, param, opts) {
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let tags = AWS_Tags$ReventlessAws.make(name, CommandTopic$ReventlessCore.componentType, "CommandTopic", undefined, undefined, undefined, undefined);
   let queue = new (Aws.sqs.Queue)(name, {

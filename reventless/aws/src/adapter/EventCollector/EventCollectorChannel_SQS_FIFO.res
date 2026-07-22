@@ -7,7 +7,7 @@ let connect = EventCollectorChannel_SQS.connect
 let make: ReventlessCore.EventCollector_Adapter.channelMaker<callbackEvent, 'context, channelParts> = (
   ~name,
   ~eventTopics,
-  ~opts,
+  ~owner as _=?, ~opts,
 ) => {
   let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 

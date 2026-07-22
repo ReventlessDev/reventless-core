@@ -23,7 +23,7 @@ globalThis.describe("QueryDbStorage_Sqlite", () => {
       db: db
     };
     let Storage = QueryDbStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("rm1", [], undefined, undefined, undefined, undefined, opts);
+    let s = Storage.make("rm1", [], undefined, undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     await ops.save("id1", "value1", "Any", undefined);
     let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("id1")), param => Effect.succeed([])));
@@ -37,7 +37,7 @@ globalThis.describe("QueryDbStorage_Sqlite", () => {
       db: db
     };
     let Storage = QueryDbStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("rm2", [], undefined, undefined, undefined, undefined, opts);
+    let s = Storage.make("rm2", [], undefined, undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     await ops.save("k", "a", "Any", undefined);
     await ops.save("k", "b", "Any", undefined);
@@ -52,7 +52,7 @@ globalThis.describe("QueryDbStorage_Sqlite", () => {
       db: db
     };
     let Storage = QueryDbStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("rm3", [], undefined, undefined, undefined, undefined, opts);
+    let s = Storage.make("rm3", [], undefined, undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     await ops.saveBatch([
       [
@@ -85,7 +85,7 @@ globalThis.describe("QueryDbStorage_Sqlite", () => {
       db: db
     };
     let Storage = QueryDbStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("rm4", [], undefined, undefined, undefined, undefined, opts);
+    let s = Storage.make("rm4", [], undefined, undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     await ops.save("k", "a", "Any", undefined);
     await ops.delete("k", undefined);
@@ -100,7 +100,7 @@ globalThis.describe("QueryDbStorage_Sqlite", () => {
       db: db
     };
     let Storage = QueryDbStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("persist", [], undefined, undefined, undefined, undefined, opts);
+    let s = Storage.make("persist", [], undefined, undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     await ops.save("k", "hello", "Any", undefined);
     SqliteDriver$ReventlessLocal.close(db);
@@ -110,7 +110,7 @@ globalThis.describe("QueryDbStorage_Sqlite", () => {
       db: db$1
     };
     let Storage2 = QueryDbStorage_Sqlite$ReventlessLocal.Make(TestBus2)(DbProvider2);
-    let s2 = Storage2.make("persist", [], undefined, undefined, undefined, undefined, opts);
+    let s2 = Storage2.make("persist", [], undefined, undefined, undefined, undefined, undefined, opts);
     let ops2 = await TestRunner$ReventlessLocal.resolve(s2.operations);
     let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops2.loadStream("k")), param => Effect.succeed([])));
     globalThis.expect(items.length).toBe(1);

@@ -7,7 +7,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 
 function Make(Bus) {
-  let make = (name, param, param$1) => {
+  let make = (name, param, param$1, param$2) => {
     let publishJsonStream = stream => Stream$1.runForEach(Stream.grouped(stream, 10), items => Effect.promise(() => Promise.all(items.map(param => {
       let service = param.service;
       let meta = param.meta;

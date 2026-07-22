@@ -5,7 +5,7 @@ import * as QueryDbBackend$ReventlessAws from "./QueryDbBackend.res.mjs";
 import * as PgQueryResolver_Builder$ReventlessAws from "./PgQueryResolver_Builder.res.mjs";
 import * as QueryDbStorage_Postgres_Runtime$ReventlessAws from "./QueryDbStorage_Postgres_Runtime.res.mjs";
 
-function make(name, indexes, subIdField, param, param$1, param$2, param$3) {
+function make(name, indexes, subIdField, param, param$1, param$2, param$3, param$4) {
   let match = QueryDbBackend$ReventlessAws.get();
   let operations = match !== undefined ? match.connectionConfig.apply(config => QueryDbStorage_Postgres_Runtime$ReventlessAws.opsFor(config, name, indexes, subIdField)) : Stdlib_JsError.throwWithMessage("QueryDbStorage_Postgres.make called without a QueryDbBackend selection");
   return {

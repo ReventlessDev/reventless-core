@@ -9,7 +9,7 @@ module Postgres = EventLogStorage_Postgres
 // or the streamed DynamoDB maker. Used by the Single (sync/async) aggregate
 // builders; PerAggregate and Micro stay on `DynamoDbStream` directly.
 module Selectable = {
-  let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~opts) =>
+  let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~owner as _=?, ~opts) =>
     if EventLogBackend.isPostgres() {
       Postgres.make(~name, ~opts)
     } else {

@@ -37,6 +37,6 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     ~ttl as _=?,
     ~api as _,
     ~apiRole as _,
-    ~opts as _,
+    ~owner as _=?, ~opts as _,
   ) => makeStorage(~pool=P.pool, ~name, ~indexes, ~subIdField)
 }

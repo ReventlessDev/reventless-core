@@ -30,7 +30,7 @@ let connect = (
 let make: ReventlessCore.EventCollector_Adapter.channelMaker<callbackEvent, 'context, channelParts> = (
   ~name as _,
   ~eventTopics,
-  ~opts as _,
+  ~owner as _=?, ~opts as _,
 ) => {
   // Postgres-backed event logs have NO storage resources (no table, no stream) —
   // skip them instead of producing undefined entries; their events arrive via the

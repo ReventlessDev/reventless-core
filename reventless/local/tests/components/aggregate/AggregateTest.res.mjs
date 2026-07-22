@@ -50,7 +50,7 @@ globalThis.describe("LocalBus", () => {
 
 globalThis.describe("EventLogStorage_InMemory", () => {
   globalThis.test("append stores events and replay returns them", async () => {
-    let storage = EventLogStorage_InMemory$ReventlessLocal.make("test-log", {});
+    let storage = EventLogStorage_InMemory$ReventlessLocal.make("test-log", undefined, {});
     let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
     await ops.append(0, "agg-1", [
       "e1",
@@ -60,13 +60,13 @@ globalThis.describe("EventLogStorage_InMemory", () => {
     globalThis.expect(events.length).toBe(2);
   });
   globalThis.test("replay returns empty array for unknown aggregate id", async () => {
-    let storage = EventLogStorage_InMemory$ReventlessLocal.make("test-log-2", {});
+    let storage = EventLogStorage_InMemory$ReventlessLocal.make("test-log-2", undefined, {});
     let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
     let events = await ops.replay("unknown-id");
     globalThis.expect(events.length).toBe(0);
   });
   globalThis.test("multiple appends accumulate events", async () => {
-    let storage = EventLogStorage_InMemory$ReventlessLocal.make("test-log-3", {});
+    let storage = EventLogStorage_InMemory$ReventlessLocal.make("test-log-3", undefined, {});
     let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
     await ops.append(0, "agg-2", ["e1"]);
     await ops.append(1, "agg-2", [

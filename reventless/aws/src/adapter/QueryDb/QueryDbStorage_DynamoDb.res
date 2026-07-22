@@ -83,7 +83,7 @@ let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
   ~ttl=?,
   ~api,
   ~apiRole,
-  ~opts,
+  ~owner as _=?, ~opts,
 ) => {
   let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.QueryDb.componentType, ~role=QueryDb)
   let table = Util_DynamoDb.makeTable(

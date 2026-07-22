@@ -404,7 +404,7 @@ function Make(Bus) {
       registerQueryDbIndexLookup: busCallbacks_registerQueryDbIndexLookup,
       registerQueryDbListPage: busCallbacks_registerQueryDbListPage
     };
-    let make = (name, indexes, subIdField, param, param$1, param$2, param$3) => makeStorage(DbProvider.db, busCallbacks, name, indexes, subIdField);
+    let make = (name, indexes, subIdField, param, param$1, param$2, param$3, param$4) => makeStorage(DbProvider.db, busCallbacks, name, indexes, subIdField);
     return {
       busCallbacks: busCallbacks,
       make: make

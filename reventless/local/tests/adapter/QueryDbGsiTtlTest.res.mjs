@@ -44,7 +44,7 @@ globalThis.describe("QueryDbStorage_Sqlite — GSI", () => {
         subIdField: "createdAt",
         projectionType: "KEYS_ONLY"
       }
-    ], undefined, undefined, undefined, undefined, opts);
+    ], undefined, undefined, undefined, undefined, undefined, opts);
     let listIndexes = SqliteDriver$ReventlessLocal.prepare(db, "SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='qdb_orders' ORDER BY name");
     let rows = SqliteDriver$ReventlessLocal.all(listIndexes, []);
     let names = rows.map(row => {
@@ -89,7 +89,7 @@ globalThis.describe("QueryDbStorage_Sqlite — GSI", () => {
       pkSep: compositeIdx_pkSep,
       projectionType: "ALL"
     };
-    Storage.make("composite", [compositeIdx], undefined, undefined, undefined, undefined, opts);
+    Storage.make("composite", [compositeIdx], undefined, undefined, undefined, undefined, undefined, opts);
     let listSql = SqliteDriver$ReventlessLocal.prepare(db, "SELECT sql FROM sqlite_master WHERE type='index' AND name='idx_qdb_composite_ByTenantOwner'");
     let row = Stdlib_Option.getOrThrow(SqliteDriver$ReventlessLocal.get(listSql, []), undefined);
     let match = row["sql"];
@@ -108,7 +108,7 @@ globalThis.describe("QueryDbStorage_Sqlite — GSI", () => {
         type_: "S",
         idField: "thing",
         projectionType: "ALL"
-      }], undefined, undefined, undefined, undefined, opts);
+      }], undefined, undefined, undefined, undefined, undefined, opts);
     let listIndexes = SqliteDriver$ReventlessLocal.prepare(db, "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='qdb_rm'");
     let names = SqliteDriver$ReventlessLocal.all(listIndexes, []).map(row => {
       let match = row["name"];
@@ -141,7 +141,7 @@ globalThis.describe("QueryDb — indexed equality lookup (B4 push-down)", () => 
       db: db
     };
     let Storage = QueryDbStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("orders", [byOwner], undefined, undefined, undefined, undefined, opts);
+    let s = Storage.make("orders", [byOwner], undefined, undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     await ops.save("k1", item("o1"), "Any", undefined);
     await ops.save("k2", item("o2"), "Any", undefined);
@@ -158,7 +158,7 @@ globalThis.describe("QueryDb — indexed equality lookup (B4 push-down)", () => 
       db: db
     };
     let Storage = QueryDbStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("orders", [byOwner], undefined, undefined, undefined, undefined, opts);
+    let s = Storage.make("orders", [byOwner], undefined, undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let aMinuteAgo = (Date.now() / 1000.0 | 0) - 60 | 0;
     await ops.save("k1", item("o1"), "Any", undefined);
@@ -169,7 +169,7 @@ globalThis.describe("QueryDb — indexed equality lookup (B4 push-down)", () => 
   globalThis.test("in-memory lookup matches the sqlite result (backend parity)", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
-    let s = Storage.make("orders", [byOwner], undefined, undefined, undefined, undefined, opts);
+    let s = Storage.make("orders", [byOwner], undefined, undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     await ops.save("k1", item("o1"), "Any", undefined);
     await ops.save("k2", item("o2"), "Any", undefined);
@@ -185,7 +185,7 @@ globalThis.describe("QueryDbStorage_InMemory — lazy scan snapshot (B4 dirty-fl
   globalThis.test("interleaved save/scan reflects each write without stale reads", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
-    let s = Storage.make("lazy", [], undefined, undefined, undefined, undefined, opts);
+    let s = Storage.make("lazy", [], undefined, undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let scanFn = Stdlib_Option.getOrThrow(TestBus.getQueryDbScan("lazy"), undefined);
     globalThis.expect(scanFn().length).toBe(0);
@@ -206,7 +206,7 @@ globalThis.describe("QueryDbStorage_Sqlite — TTL", () => {
       db: db
     };
     let Storage = QueryDbStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("rt-future", [], undefined, undefined, undefined, undefined, opts);
+    let s = Storage.make("rt-future", [], undefined, undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let oneHourFromNow = (Date.now() / 1000.0 | 0) + 3600 | 0;
     await ops.save("k", "alive", "Any", oneHourFromNow);
@@ -220,7 +220,7 @@ globalThis.describe("QueryDbStorage_Sqlite — TTL", () => {
       db: db
     };
     let Storage = QueryDbStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("rt-past", [], undefined, undefined, undefined, undefined, opts);
+    let s = Storage.make("rt-past", [], undefined, undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let aMinuteAgo = (Date.now() / 1000.0 | 0) - 60 | 0;
     await ops.save("k", "expired", "Any", aMinuteAgo);
@@ -234,7 +234,7 @@ globalThis.describe("QueryDbStorage_Sqlite — TTL", () => {
       db: db
     };
     let Storage = QueryDbStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("rt-none", [], undefined, undefined, undefined, undefined, opts);
+    let s = Storage.make("rt-none", [], undefined, undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     await ops.save("k", "forever", "Any", undefined);
     let items = await collect(ops.loadStream("k"));
@@ -247,7 +247,7 @@ globalThis.describe("QueryDbStorage_Sqlite — TTL", () => {
       db: db
     };
     let Storage = QueryDbStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("scan-ttl", [], undefined, undefined, undefined, undefined, opts);
+    let s = Storage.make("scan-ttl", [], undefined, undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     await ops.save("alive", "a", "Any", undefined);
     let aMinuteAgo = (Date.now() / 1000.0 | 0) - 60 | 0;
@@ -266,7 +266,7 @@ globalThis.describe("QueryDbStorage_Sqlite — TTL", () => {
       db: db
     };
     let Storage = QueryDbStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("overwrite-ttl", [], undefined, undefined, undefined, undefined, opts);
+    let s = Storage.make("overwrite-ttl", [], undefined, undefined, undefined, undefined, undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let aMinuteAgo = (Date.now() / 1000.0 | 0) - 60 | 0;
     await ops.save("k", "expired", "Any", aMinuteAgo);

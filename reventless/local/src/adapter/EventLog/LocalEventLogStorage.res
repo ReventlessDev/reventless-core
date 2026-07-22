@@ -10,7 +10,7 @@
 // the LocalBus event-tap can stream historical events uniformly.
 
 module Make = (Bus: LocalBus.T) => {
-  let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~opts) => {
+  let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~owner as _=?, ~opts) => {
     switch (BackendState.getSqliteDb(), BackendState.getPostgresPool()) {
     | (Some(db), _) =>
       let (storageName, replay, storage) = EventLogStorage_Sqlite.makeStorage(~db, ~name, ~opts)

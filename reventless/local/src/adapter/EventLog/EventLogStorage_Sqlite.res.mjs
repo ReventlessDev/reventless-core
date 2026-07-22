@@ -244,7 +244,7 @@ function makeStorage(db, name, param) {
 
 function Make(Bus) {
   return DbProvider => {
-    let make = (name, opts) => {
+    let make = (name, param, opts) => {
       let match = makeStorage(DbProvider.db, name, opts);
       Bus.registerEventLogReplay(match[0], match[1]);
       return match[2];

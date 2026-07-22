@@ -20,7 +20,7 @@ function Make(Bus) {
       return "";
     }
   };
-  let make = (name, param) => {
+  let make = (name, param, param$1) => {
     let handleCmdsRef = {
       contents: undefined
     };

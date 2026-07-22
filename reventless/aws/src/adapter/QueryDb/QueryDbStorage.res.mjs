@@ -5,11 +5,11 @@ import * as QueryDbStorage_DynamoDb$ReventlessAws from "./QueryDbStorage_DynamoD
 import * as QueryDbStorage_Postgres$ReventlessAws from "./QueryDbStorage_Postgres.res.mjs";
 import * as QueryDbStorage_DynamoDbStream$ReventlessAws from "./QueryDbStorage_DynamoDbStream.res.mjs";
 
-function make(name, indexes, subIdField, ttl, api, apiRole, opts) {
+function make(name, indexes, subIdField, ttl, api, apiRole, param, opts) {
   if (QueryDbBackend$ReventlessAws.isPostgresFor(name)) {
-    return QueryDbStorage_Postgres$ReventlessAws.make(name, indexes, subIdField, ttl, api, apiRole, opts);
+    return QueryDbStorage_Postgres$ReventlessAws.make(name, indexes, subIdField, ttl, api, apiRole, undefined, opts);
   } else {
-    return QueryDbStorage_DynamoDb$ReventlessAws.make(name, indexes, subIdField, ttl, api, apiRole, opts);
+    return QueryDbStorage_DynamoDb$ReventlessAws.make(name, indexes, subIdField, ttl, api, apiRole, undefined, opts);
   }
 }
 
@@ -17,12 +17,12 @@ let Selectable = {
   make: make
 };
 
-function make$1(name, indexes, subIdField, ttl, api, apiRole, opts) {
+function make$1(name, indexes, subIdField, ttl, api, apiRole, param, opts) {
   if (QueryDbBackend$ReventlessAws.isPostgresFor(name)) {
     QueryDbBackend$ReventlessAws.postgresStreamRegistry.add(name);
-    return QueryDbStorage_Postgres$ReventlessAws.make(name, indexes, subIdField, ttl, api, apiRole, opts);
+    return QueryDbStorage_Postgres$ReventlessAws.make(name, indexes, subIdField, ttl, api, apiRole, undefined, opts);
   } else {
-    return QueryDbStorage_DynamoDbStream$ReventlessAws.make(name, indexes, subIdField, ttl, api, apiRole, opts);
+    return QueryDbStorage_DynamoDbStream$ReventlessAws.make(name, indexes, subIdField, ttl, api, apiRole, undefined, opts);
   }
 }
 

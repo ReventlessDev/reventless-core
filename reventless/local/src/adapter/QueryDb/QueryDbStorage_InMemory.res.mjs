@@ -53,7 +53,7 @@ function flattenStore(store) {
 }
 
 function Make(Bus) {
-  let make = (name, param, subIdField, param$1, param$2, param$3, param$4) => {
+  let make = (name, param, subIdField, param$1, param$2, param$3, param$4, param$5) => {
     let store = {
       contents: {}
     };

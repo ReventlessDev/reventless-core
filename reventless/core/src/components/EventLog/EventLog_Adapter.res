@@ -10,7 +10,11 @@ type storage = {
   resources: array<ReventlessInfra.Adapter.resource>,
   operations: Pulumi.Output.t<operations>,
 }
-type storageMaker = (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => storage
+type storageMaker = (
+  ~name: string,
+  ~owner: ResourceAttribution.owner=?,
+  ~opts: Pulumi.CustomResourceOptions.t,
+) => storage
 
 module type Storage = {
   let make: storageMaker

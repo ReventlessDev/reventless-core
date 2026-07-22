@@ -13,7 +13,7 @@ function Make(Spec) {
       let opts = {
         parent: opts_parent
       };
-      let publisher = Publisher.make(ComponentType$ReventlessCore.name(extra$1, EventTopic$ReventlessCore.componentType), storageResources, opts);
+      let publisher = Publisher.make(ComponentType$ReventlessCore.name(extra$1, EventTopic$ReventlessCore.componentType), storageResources, undefined, opts);
       Component$ReventlessCore.setOperations(extra, Pulumi.all([
         publisher.publishJson,
         publisher.publishJsonStream

@@ -15,7 +15,7 @@ globalThis.describe("LocalQueryEngine", () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
-      let s = Storage.make("users", [], undefined, undefined, undefined, undefined, opts);
+      let s = Storage.make("users", [], undefined, undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("user-1", "Alice", "Any", undefined);
       let engine = await TestRunner$ReventlessLocal.resolve(QE.make({}));
@@ -30,7 +30,7 @@ globalThis.describe("LocalQueryEngine", () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
-      let s = Storage.make("products", [], undefined, undefined, undefined, undefined, opts);
+      let s = Storage.make("products", [], undefined, undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("prod-key", "Widget", "Any", undefined);
       let engine = await TestRunner$ReventlessLocal.resolve(QE.make({}));
@@ -55,7 +55,7 @@ globalThis.describe("LocalQueryEngine", () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
-      let s = Storage.make("counters", [], undefined, undefined, undefined, undefined, opts);
+      let s = Storage.make("counters", [], undefined, undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("42", 100, "Any", undefined);
       let engine = await TestRunner$ReventlessLocal.resolve(QE.make({}));
@@ -71,7 +71,7 @@ globalThis.describe("LocalQueryEngine", () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
-      let s = Storage.make("orders", [], undefined, undefined, undefined, undefined, opts);
+      let s = Storage.make("orders", [], undefined, undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("o1", "order1", "Any", undefined);
       await ops.save("o2", "order2", "Any", undefined);
@@ -92,7 +92,7 @@ globalThis.describe("LocalQueryEngine", () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
-      let s = Storage.make("items", [], undefined, undefined, undefined, undefined, opts);
+      let s = Storage.make("items", [], undefined, undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("k1", "a", "Any", undefined);
       await ops.save("k2", "b", "Any", undefined);
@@ -107,7 +107,7 @@ globalThis.describe("LocalQueryEngine", () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
-      let s = Storage.make("things", [], undefined, undefined, undefined, undefined, opts);
+      let s = Storage.make("things", [], undefined, undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("t1", "x", "Any", undefined);
       await ops.save("t2", "y", "Any", undefined);
@@ -119,7 +119,7 @@ globalThis.describe("LocalQueryEngine", () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
-      let s = Storage.make("stuff", [], undefined, undefined, undefined, undefined, opts);
+      let s = Storage.make("stuff", [], undefined, undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("s1", "z", "Any", undefined);
       let engine = await TestRunner$ReventlessLocal.resolve(QE.make({}));
@@ -130,7 +130,7 @@ globalThis.describe("LocalQueryEngine", () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
-      let s = Storage.make("widgets", [], undefined, undefined, undefined, undefined, opts);
+      let s = Storage.make("widgets", [], undefined, undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("w1", "p", "Any", undefined);
       await ops.save("w2", "q", "Any", undefined);

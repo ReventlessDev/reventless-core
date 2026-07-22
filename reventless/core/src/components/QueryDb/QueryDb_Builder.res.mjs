@@ -14,7 +14,7 @@ function Make(Spec) {
         parent: opts_parent
       };
       let subIdField = Stdlib_Option.map(Spec.subIdConfig, config => config.subIdField);
-      let storage = Storage.make(none$1, Spec.config.indexes, subIdField, ttl, api, apiRole, opts);
+      let storage = Storage.make(none$1, Spec.config.indexes, subIdField, ttl, api, apiRole, undefined, opts);
       Component$ReventlessCore.setOperations(none, storage.operations.apply(jsonOps => {
         let Operations = QueryDb_Operations$ReventlessCore.Make(Spec)({
           jsonOps: jsonOps

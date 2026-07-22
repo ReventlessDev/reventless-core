@@ -4,7 +4,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as EventLogBackend$ReventlessAws from "./EventLogBackend.res.mjs";
 import * as EventLogStorage_Postgres_Runtime$ReventlessAws from "./EventLogStorage_Postgres_Runtime.res.mjs";
 
-function make(name, param) {
+function make(name, param, param$1) {
   let aggregateName = name.endsWith("EventLog") ? name.slice(0, name.length - 8 | 0) : name;
   EventLogBackend$ReventlessAws.registerRelayLog(name, aggregateName);
   let match = EventLogBackend$ReventlessAws.get();

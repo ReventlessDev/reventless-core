@@ -85,7 +85,7 @@ async function build() {
     db: db
   };
   let Storage = QueryDbStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-  let s = Storage.make("items", [], undefined, undefined, undefined, undefined, opts);
+  let s = Storage.make("items", [], undefined, undefined, undefined, undefined, undefined, opts);
   let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
   for (let i = 0, i_finish = rows.length; i < i_finish; ++i) {
     let match = rows[i];

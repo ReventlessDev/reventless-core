@@ -59,7 +59,7 @@ globalThis.describe("Backend parity (Memory vs Sqlite)", () => {
     let scenario = async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = LocalEventLogStorage$ReventlessLocal.Make(TestBus);
-      let s = Storage.make("parity-events", opts);
+      let s = Storage.make("parity-events", undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       let e1 = Object.fromEntries([[
           "t",
@@ -84,7 +84,7 @@ globalThis.describe("Backend parity (Memory vs Sqlite)", () => {
     let scenario = async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
-      let s = Storage.make("parity-qdb", [], undefined, undefined, undefined, undefined, opts);
+      let s = Storage.make("parity-qdb", [], undefined, undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("k", "val", "Any", undefined);
       let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("k")), param => Effect.succeed([])));
@@ -98,7 +98,7 @@ globalThis.describe("Backend parity (Memory vs Sqlite)", () => {
     let scenario = async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
-      let s = Storage.make("parity-count", [], undefined, undefined, undefined, undefined, opts);
+      let s = Storage.make("parity-count", [], undefined, undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       let r1 = await ops.count("prod-1", "orderCount", 3);
       globalThis.expect(r1).toEqual({
@@ -122,7 +122,7 @@ globalThis.describe("Backend parity (Memory vs Sqlite)", () => {
     let scenario = async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = LocalQueryDbStorage$ReventlessLocal.Make(TestBus);
-      let s = Storage.make("parity-ttl", [], undefined, undefined, undefined, undefined, opts);
+      let s = Storage.make("parity-ttl", [], undefined, undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       let item = k => Object.fromEntries([[
           "id",
@@ -141,7 +141,7 @@ globalThis.describe("Backend parity (Memory vs Sqlite)", () => {
     let scenario = async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = LocalEventLogStorage$ReventlessLocal.Make(TestBus);
-      let s = Storage.make("parity-conflict", opts);
+      let s = Storage.make("parity-conflict", undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       let e = Object.fromEntries([[
           "t",

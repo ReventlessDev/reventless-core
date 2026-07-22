@@ -37,7 +37,7 @@ function Make(RuntimeEnvironment) {
         parent: opts_parent
       };
       let name = ComponentType$ReventlessCore.name(extra$1, EventCollector$ReventlessCore.componentType);
-      let channel = Channel.make(name, eventTopics, opts);
+      let channel = Channel.make(name, eventTopics, undefined, opts);
       extra.channel = channel;
       Component$ReventlessCore.setOperations(extra, channel.enqueueEvent.apply(enqueueEvent => ({
         enqueueEvent: enqueueEvent

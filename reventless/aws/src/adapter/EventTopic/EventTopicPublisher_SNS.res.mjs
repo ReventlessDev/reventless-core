@@ -11,7 +11,7 @@ import * as EventTopicPublisher_SNS_Runtime$ReventlessAws from "./EventTopicPubl
 
 let snsRegistry = new Set();
 
-function make(name, param, opts) {
+function make(name, param, param$1, opts) {
   snsRegistry.add(name);
   let tags = AWS_Tags$ReventlessAws.make(name, EventTopic$ReventlessCore.componentType, "EventTopic", undefined, undefined, undefined, undefined);
   let topic = new (Aws.sns.Topic)(name, {

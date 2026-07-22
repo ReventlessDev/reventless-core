@@ -24,7 +24,7 @@ let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
   ~ttl as _=?,
   ~api as _,
   ~apiRole as _,
-  ~opts as _,
+  ~owner as _=?, ~opts as _,
 ) => {
   let operations = switch QueryDbBackend.get() {
   | Some({connectionConfig}) =>

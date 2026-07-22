@@ -201,7 +201,7 @@ function finishWithDcbEventLog(dcbEventLog) {
           "DcbEventLog",
           dcbOutputs.eventTopic
         ]]);
-      let channel = EventCollectorChannel_DynamoDbStream$ReventlessAws.make("AllStateViewSlices", eventTopics, {
+      let channel = EventCollectorChannel_DynamoDbStream$ReventlessAws.make("AllStateViewSlices", eventTopics, undefined, {
         parent: parent
       });
       let feedQueue = DcbBackend$ReventlessAws.isPostgres() ? PgProjectionFeed$ReventlessAws.makeQueue("AllStateViewSlicesFeed", "aws-svs-feed", false, true, {

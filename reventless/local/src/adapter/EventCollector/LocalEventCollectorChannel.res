@@ -13,7 +13,7 @@ module Make = (Bus: LocalBus.T) => {
   let make: ReventlessCore.EventCollector_Adapter.channelMaker<callbackEvent, 'context, channelParts> = (
     ~name as _,
     ~eventTopics,
-    ~opts as _,
+    ~owner as _=?, ~opts as _,
   ) => {
     // Collect all event topic resources as our channel resources
     let eventTopicResources =

@@ -23,6 +23,7 @@ type connect<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = (
 type channelMaker<'callbackEvent, 'context, 'channelParts> = (
   ~name: string,
   ~eventTopics: EventTopic.allOutputs,
+  ~owner: ResourceAttribution.owner=?,
   ~opts: Pulumi.ComponentResource.options,
 ) => channel<'callbackEvent, 'context, 'channelParts>
 

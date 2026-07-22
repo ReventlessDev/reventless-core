@@ -24,7 +24,7 @@ globalThis.describe("EventLogStorage_Sqlite", () => {
       db: db
     };
     let Storage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("agg", opts);
+    let s = Storage.make("agg", undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let event1 = Object.fromEntries([[
         "tag",
@@ -56,7 +56,7 @@ globalThis.describe("EventLogStorage_Sqlite", () => {
       db: db
     };
     let Storage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("agg", opts);
+    let s = Storage.make("agg", undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let e = Object.fromEntries([[
         "t",
@@ -82,7 +82,7 @@ globalThis.describe("EventLogStorage_Sqlite", () => {
       db: db
     };
     let Storage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("agg", opts);
+    let s = Storage.make("agg", undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let ev = i => Object.fromEntries([[
         "i",
@@ -123,7 +123,7 @@ globalThis.describe("EventLogStorage_Sqlite", () => {
       db: db
     };
     let Storage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("agg", opts);
+    let s = Storage.make("agg", undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let ev = i => Object.fromEntries([[
         "i",
@@ -147,7 +147,7 @@ globalThis.describe("EventLogStorage_Sqlite", () => {
       db: db
     };
     let Storage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("agg", opts);
+    let s = Storage.make("agg", undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let replayed = await ops.replay("not-there");
     globalThis.expect(replayed.length).toBe(0);
@@ -159,7 +159,7 @@ globalThis.describe("EventLogStorage_Sqlite", () => {
       db: db
     };
     let Storage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("agg", opts);
+    let s = Storage.make("agg", undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let ev = i => Object.fromEntries([[
         "i",
@@ -186,7 +186,7 @@ globalThis.describe("EventLogStorage_Sqlite", () => {
       db: db
     };
     let Storage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("agg", opts);
+    let s = Storage.make("agg", undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let none = await ops.latestSnapshot("id-snap");
     globalThis.expect(none).toEqual({
@@ -246,7 +246,7 @@ globalThis.describe("EventLogStorage_Sqlite", () => {
       db: db
     };
     let Storage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("persist", opts);
+    let s = Storage.make("persist", undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     await ops.writeSnapshot("id-sp", {
       seqNr: 3,
@@ -260,7 +260,7 @@ globalThis.describe("EventLogStorage_Sqlite", () => {
       db: db$1
     };
     let Storage2 = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus2)(DbProvider2);
-    let s2 = Storage2.make("persist", opts);
+    let s2 = Storage2.make("persist", undefined, opts);
     let ops2 = await TestRunner$ReventlessLocal.resolve(s2.operations);
     let r = await ops2.latestSnapshot("id-sp");
     globalThis.expect(r).toEqual({
@@ -281,7 +281,7 @@ globalThis.describe("EventLogStorage_Sqlite", () => {
       db: db
     };
     let Storage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-    let s = Storage.make("persist", opts);
+    let s = Storage.make("persist", undefined, opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let ev = Object.fromEntries([[
         "v",
@@ -295,7 +295,7 @@ globalThis.describe("EventLogStorage_Sqlite", () => {
       db: db$1
     };
     let Storage2 = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus2)(DbProvider2);
-    let s2 = Storage2.make("persist", opts);
+    let s2 = Storage2.make("persist", undefined, opts);
     let ops2 = await TestRunner$ReventlessLocal.resolve(s2.operations);
     let replayed = await ops2.replay("id-p");
     globalThis.expect(replayed.length).toBe(1);

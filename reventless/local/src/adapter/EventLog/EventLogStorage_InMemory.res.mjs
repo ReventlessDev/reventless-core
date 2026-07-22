@@ -99,7 +99,7 @@ function makeMemoryStorage(_name, param) {
   ];
 }
 
-function make(name, opts) {
+function make(name, param, opts) {
   return makeMemoryStorage(name, opts)[2];
 }
 

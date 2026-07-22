@@ -44,7 +44,7 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
   'context,
   Util.SQS.channelParts,
   Util.Lambda.runtimeParts,
-> = (~name, ~opts=?) => {
+> = (~name, ~owner as _=?, ~opts=?) => {
   let opts =
     opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 

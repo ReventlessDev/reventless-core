@@ -15,7 +15,7 @@ import * as Util_DeadLetterQueue$ReventlessAws from "../../util/Util_DeadLetterQ
 import * as CommandTopicChannel_SQS$ReventlessAws from "./CommandTopicChannel_SQS.res.mjs";
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "./CommandTopicChannel_SQS_Runtime.res.mjs";
 
-function make(name, opts) {
+function make(name, param, opts) {
   let handleCmdsRef = {
     contents: undefined
   };

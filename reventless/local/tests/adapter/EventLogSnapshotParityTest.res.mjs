@@ -13,7 +13,7 @@ TestRunner$ReventlessLocal.setup();
 let opts = {};
 
 function makeMemoryOps() {
-  let s = EventLogStorage_InMemory$ReventlessLocal.make("parity", opts);
+  let s = EventLogStorage_InMemory$ReventlessLocal.make("parity", undefined, opts);
   return TestRunner$ReventlessLocal.resolve(s.operations);
 }
 
@@ -24,7 +24,7 @@ function makeSqliteOps() {
     db: db
   };
   let Storage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-  let s = Storage.make("parity", opts);
+  let s = Storage.make("parity", undefined, opts);
   return TestRunner$ReventlessLocal.resolve(s.operations);
 }
 

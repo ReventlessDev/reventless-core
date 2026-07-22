@@ -20,7 +20,7 @@ globalThis.describe("LocalEventTopicPublisher", () => {
     globalThis.test("returns one resource whose name resolves to the topic name", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestPublisher = LocalEventTopicPublisher$ReventlessLocal.Make(TestBus);
-      let pub = TestPublisher.make("MyTopic", [], {});
+      let pub = TestPublisher.make("MyTopic", [], undefined, {});
       globalThis.expect(pub.resources.length).toBe(1);
       let resource = pub.resources[0];
       let name = await TestRunner$ReventlessLocal.resolve(resource.name);
@@ -37,7 +37,7 @@ globalThis.describe("LocalEventTopicPublisher", () => {
       TestBus.subscribeToEvents("TestTopic", async (param, param$1, json) => {
         received.contents = json;
       });
-      let pub = TestPublisher.make("TestTopic", [], {});
+      let pub = TestPublisher.make("TestTopic", [], undefined, {});
       let publishFn = await TestRunner$ReventlessLocal.resolve(pub.publishJson);
       await publishFn("svc", testMeta, "hello");
       globalThis.expect(received.contents).toEqual("hello");
@@ -57,7 +57,7 @@ globalThis.describe("LocalEventTopicPublisher", () => {
       TestBus.subscribeToEvents("topic-b", async (param, param$1, param$2) => {
         countB.contents = countB.contents + 1 | 0;
       });
-      let pub = TestPublisher.make("topic-a", [], {});
+      let pub = TestPublisher.make("topic-a", [], undefined, {});
       let publishFn = await TestRunner$ReventlessLocal.resolve(pub.publishJson);
       await publishFn("svc", testMeta, null);
       globalThis.expect(countA.contents).toBe(1);
@@ -72,7 +72,7 @@ globalThis.describe("LocalEventTopicPublisher", () => {
       TestBus.subscribeToEvents("svcTopic", async (service, param, param$1) => {
         receivedService.contents = service;
       });
-      let pub = TestPublisher.make("svcTopic", [], {});
+      let pub = TestPublisher.make("svcTopic", [], undefined, {});
       let publishFn = await TestRunner$ReventlessLocal.resolve(pub.publishJson);
       await publishFn("MyService", testMeta, null);
       globalThis.expect(receivedService.contents).toBe("MyService");

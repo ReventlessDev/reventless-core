@@ -119,7 +119,7 @@ globalThis.describe("ProjectionCheckpoint", () => {
         db: db
       };
       let Storage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-      let s = Storage.make("agg", opts);
+      let s = Storage.make("agg", undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.append(0, "id-1", [
         flatEvent("id-1", 0, "Created", undefined, "a1", undefined),
@@ -145,7 +145,7 @@ globalThis.describe("ProjectionCheckpoint", () => {
         db: db
       };
       let Storage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-      let s = Storage.make("agg", opts);
+      let s = Storage.make("agg", undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await Effect.runPromise(ops.appendStream(0, "id-bulk", Stream.fromIterable([
         flatEvent("id-bulk", 0, "Created", undefined, "s1", undefined),
@@ -212,7 +212,7 @@ globalThis.describe("ProjectionCheckpoint", () => {
         db: db
       };
       let Storage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-      let s = Storage.make("agg", opts);
+      let s = Storage.make("agg", undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.append(0, "id-1", [flatEvent("id-1", 0, "Created", undefined, "m1", undefined)]);
       await ops.append(0, "id-2", [flatEvent("id-2", 0, "Created", undefined, "m2", undefined)]);
@@ -280,7 +280,7 @@ globalThis.describe("ProjectionCheckpoint", () => {
         db: db
       };
       let Storage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-      let s = Storage.make("agg", opts);
+      let s = Storage.make("agg", undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.append(0, "id-1", [flatEvent("id-1", 0, "Created", undefined, "m1", undefined)]);
       let match = makeHandler();
@@ -368,7 +368,7 @@ globalThis.describe("ProjectionCheckpoint", () => {
         db: db
       };
       let AggStorage = EventLogStorage_Sqlite$ReventlessLocal.Make(TestBus)(DbProvider);
-      let aggS = AggStorage.make("agg", opts);
+      let aggS = AggStorage.make("agg", undefined, opts);
       let aggOps = await TestRunner$ReventlessLocal.resolve(aggS.operations);
       let dcbOps = await makeDcbStorage(db, "dcb-log");
       await aggOps.append(0, "id-1", [flatEvent("id-1", 0, "Created", undefined, "agg1", undefined)]);

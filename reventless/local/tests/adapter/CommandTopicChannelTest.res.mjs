@@ -79,7 +79,7 @@ globalThis.describe("LocalCommandTopicChannel", () => {
       TestBus.registerCommandHandler("myCmd", async (json, param) => {
         received.contents = json;
       });
-      let ch = TestChannel.make("myCmd", undefined);
+      let ch = TestChannel.make("myCmd", undefined, undefined);
       let publishFn = await TestRunner$ReventlessLocal.resolve(ch.publishJsons);
       await publishFn([{
           id: "item-1",
@@ -100,7 +100,7 @@ globalThis.describe("LocalCommandTopicChannel", () => {
       TestBus.registerCommandHandler("multiCmd", async (param, param$1) => {
         count.contents = count.contents + 1 | 0;
       });
-      let ch = TestChannel.make("multiCmd", undefined);
+      let ch = TestChannel.make("multiCmd", undefined, undefined);
       let publishFn = await TestRunner$ReventlessLocal.resolve(ch.publishJsons);
       await publishFn([
         {
@@ -137,7 +137,7 @@ globalThis.describe("LocalCommandTopicChannel", () => {
         parts: runtime_parts,
         resources: runtime_resources
       };
-      let ch = TestChannel.make("testCmd", undefined);
+      let ch = TestChannel.make("testCmd", undefined, undefined);
       ch.connect("testCmd", ch, runtime, [], {});
       await TestBus.dispatchCommand("testCmd", "test-payload");
       globalThis.expect(received.contents).toEqual("test-payload");
@@ -155,7 +155,7 @@ globalThis.describe("LocalCommandTopicChannel", () => {
         parts: runtime_parts,
         resources: runtime_resources
       };
-      let ch = TestChannel.make("noHandlerCmd", undefined);
+      let ch = TestChannel.make("noHandlerCmd", undefined, undefined);
       ch.connect("noHandlerCmd", ch, runtime, [], {});
       TestBus.dispatchCommand("noHandlerCmd", null);
       globalThis.expect(true).toBe(true);

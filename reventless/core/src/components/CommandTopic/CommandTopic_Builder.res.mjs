@@ -63,7 +63,7 @@ function Make(Spec) {
         parent: opts_parent
       };
       let name$1 = ComponentType$ReventlessCore.name(name, CommandTopic$ReventlessCore.componentType);
-      let channel = Channel.make(name$1, opts);
+      let channel = Channel.make(name$1, undefined, opts);
       self.channel = channel;
       Component$ReventlessCore.setOperations(self, Pulumi.all([
         channel.publishJsons,

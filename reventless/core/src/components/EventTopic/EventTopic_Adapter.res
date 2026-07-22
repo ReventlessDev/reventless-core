@@ -7,6 +7,7 @@ type publisher = {
 type publisherMaker = (
   ~name: string,
   ~storageResources: array<ReventlessInfra.Adapter.resource>,
+  ~owner: ResourceAttribution.owner=?,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => publisher
 
