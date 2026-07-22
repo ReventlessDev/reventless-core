@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.29 (2026-07-22)
+
+* refactor!: retire the stale "core" vocabulary for platform things ([34e7480](https://github.com/ReventlessDev/reventless-core/commit/34e7480992bd58906a250b0a1ce6ff2c5ba45260))
+
+### BREAKING CHANGES
+
+* the built-in extension point is renamed Core.Plugin ->
+Platform.Plugin. This replaces the CorePluginExtPointCmdTopic SQS queue
+with PlatformPluginExtPointCmdTopic (a replacement, not an update) and
+breaks every already-deployed plugin's connection until redeployed.
+Wipe the alpha stack and redeploy fresh rather than migrating.
+
+Build clean; 1349 tests green (interop 50, core 518, local 501, aws 280).
+
+
+
 # 3.0.0-alpha.28 (2026-07-17)
 
 **Note:** Version bump only for package @reventlessdev/reventless-interop

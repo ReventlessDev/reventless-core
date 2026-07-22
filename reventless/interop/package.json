@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-interop",
-  "version": "3.0.0-alpha.28",
+  "version": "3.0.0-alpha.29",
   "description": "Versioned cross-plugin contract types and compatibility validation for Reventless",
   "license": "Apache-2.0",
   "jest": {
