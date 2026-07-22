@@ -387,6 +387,16 @@ jobs:
             --stack "$BRANCH" --cwd "$DEPLOY_DIR"
           pulumi up --stack "$BRANCH" --yes --skip-preview --cwd "$DEPLOY_DIR" --non-interactive
 
+      # EventBridge allows 300 rules per bus. The plugin disconnect mechanism
+      # creates one per connected plugin, so a broken delete leaks silently
+      # until PutRule starts failing. Reported, never enforced: a deploy must
+      # not fail over rule count. Runs on the platform job only — rules are
+      # account-wide, so the plugin matrix would just repeat this N times.
+      - name: Report EventBridge rule count
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        run: node scripts/eventbridge-rules.mjs
+
   # ---------------------------------------------------------------------------
   # Job 3: Deploy changed plugins (matrix, respecting depends-on ordering)
   # ---------------------------------------------------------------------------

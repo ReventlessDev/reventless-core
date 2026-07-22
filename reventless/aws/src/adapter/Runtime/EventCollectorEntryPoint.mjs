@@ -430,7 +430,11 @@ const importFromAsset = (() => {
 async function buildHandler() {
   const config = parseHandlerConfig(process.env["HANDLER_CONFIG"]);
   const pluginDefinition = loadPluginDefinition();
-  const lambdaFunctionName = process.env["AWS_LAMBDA_FUNCTION_NAME"] || "unknown";
+  // Stack name, not the function name — see PluginExtensionPointEntryPoint for
+  // why the disconnect schedule's rule prefix must not carry a content hash.
+  // Both entry points instantiate the same admin Plugin EP module, so they have
+  // to derive this identically.
+  const environment = process.env["Environment"] || "unknown";
 
   // runtimeOps carries only what the admin EP mapping's callHandler actually
   // needs: sendMessageToChannel for ForwardCommand. Cross-plugin SNS
@@ -496,7 +500,7 @@ async function buildHandler() {
       // Admin's Plugin EP: invoke the Make functor with runtime ops.
       const epModule = mappingsMod.Make({
         runtimeOps,
-        environment: lambdaFunctionName,
+        environment,
         // Connect-driven schema self-heal retired (Phase 4b) — the ApiSchemaPush
         // SideEffect on ApiFragmentRegistry events is the single schema writer.
         updateApiSchema: undefined,

@@ -37,10 +37,17 @@ function buildHandler() {
   // Instantiate Plugin EP mapping. updateApiSchema and manageSubscriptions are
   // admin-only hooks; this Lambda only handles incoming commands (Heartbeat,
   // ForwardCommand) so they stay undefined here.
-  const lambdaFunctionName = process.env["AWS_LAMBDA_FUNCTION_NAME"] || "unknown";
+  //
+  // `environment` prefixes the disconnect schedule's EventBridge rule name, so it
+  // must be stable across deploys and unique per stack. The stack name is both;
+  // AWS_LAMBDA_FUNCTION_NAME is neither — it carries a content hash, so replacing
+  // this Lambda would orphan every outstanding rule the previous generation
+  // created. EventCollectorEntryPoint instantiates the same EP module and must
+  // agree, or one Lambda creates rules the other cannot delete.
+  const environment = process.env["Environment"] || "unknown";
   const pluginModule = pluginEPPluginMake({
     runtimeOps,
-    environment: lambdaFunctionName,
+    environment,
     updateApiSchema: undefined,
     manageSubscriptions: undefined,
   });
