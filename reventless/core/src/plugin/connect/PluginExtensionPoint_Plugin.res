@@ -47,7 +47,7 @@ module Make = (Spec: Spec) => {
       switch jsons {
       | [] =>
         EffectLogger.logWarn(
-          ~comp="Core.Plugin",
+          ~comp=PluginExtensionPointSpec.name,
           `ForwardCommand: Couldn't find Plugin with ExtensionPoint ${extensionPointName}`,
         )->Effect.runSync
       | plugins =>
@@ -66,28 +66,31 @@ module Make = (Spec: Spec) => {
             ) {
             | _ =>
               EffectLogger.logInfo(
-                ~comp="Core.Plugin",
+                ~comp=PluginExtensionPointSpec.name,
                 `ForwardCommand: published command to ${plugin.name} ${extensionPoint.commandTopic}`,
               )->Effect.runSync
             | exception err =>
               let errMsg =
                 err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
               EffectLogger.logError(
-                ~comp="Core.Plugin",
+                ~comp=PluginExtensionPointSpec.name,
                 `ForwardCommand: Error on publish command: ${errMsg}`,
               )->Effect.runSync
             }
 
           | None =>
             EffectLogger.logWarn(
-              ~comp="Core.Plugin",
+              ~comp=PluginExtensionPointSpec.name,
               `ForwardCommand: Couldn't find ExtensionPoint ${extensionPointName} in ${plugin.name}`,
             )->Effect.runSync
           }
         | exception err =>
           let errMsg =
             err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-          EffectLogger.logError(~comp="Core.Plugin", `ForwardCommand: Couldn't decode Plugin: ${errMsg}`)->Effect.runSync
+          EffectLogger.logError(
+            ~comp=PluginExtensionPointSpec.name,
+            `ForwardCommand: Couldn't decode Plugin: ${errMsg}`,
+          )->Effect.runSync
         }
       }
     }
@@ -105,7 +108,7 @@ module Make = (Spec: Spec) => {
         rate: timeout->ScheduleOps.minutesFromNow,
         payload: {
           Message.id,
-          meta: Message.generateMeta(~service="Core.Plugin", ~user="Scheduler"),
+          meta: Message.generateMeta(~service=PluginExtensionPointSpec.name, ~user="Scheduler"),
           command: PluginExtensionPointSpec.DisconnectPlugin,
         }
         ->Message.encodeCommand'(S.string, PluginExtensionPointSpec.commandSchema)
@@ -155,7 +158,10 @@ module Make = (Spec: Spec) => {
           PublishCommand(Plugin.name(id), Delegate.Heartbeat(Plugin.version(id))),
           // Re-arm the disconnect schedule with an interval-scaled grace so a
           // single late beat doesn't trip a spurious disconnect (see disconnectGrace).
-          HandleDirective(directiveHandler, CreateDisconnectSchedule(id, disconnectGrace(interval))),
+          HandleDirective(
+            directiveHandler,
+            CreateDisconnectSchedule(id, disconnectGrace(interval)),
+          ),
         ]
       | RedetectPlugin(interval) => [
           // Deploy-time re-detect: drive Redetect (not Heartbeat) so an already-connected
@@ -163,7 +169,10 @@ module Make = (Spec: Spec) => {
           // re-arm the disconnect schedule exactly like a heartbeat so liveness tracking
           // continues from the deploy moment.
           PublishCommand(Plugin.name(id), Delegate.Redetect(Plugin.version(id))),
-          HandleDirective(directiveHandler, CreateDisconnectSchedule(id, disconnectGrace(interval))),
+          HandleDirective(
+            directiveHandler,
+            CreateDisconnectSchedule(id, disconnectGrace(interval)),
+          ),
         ]
       | ConnectPlugin(pluginDefinition) =>
         // Validate protocol versions declared by the connecting plugin.
@@ -172,7 +181,7 @@ module Make = (Spec: Spec) => {
         let protocolErrors =
           pluginDefinition.extensionProtocols->Array.flatMap(proto =>
             ReventlessInterop.Compat.validateProtocol(
-              ~host=ReventlessInterop.CompatMatrix.corePlugin,
+              ~host=ReventlessInterop.CompatMatrix.platformPlugin,
               ~extensionPointName=proto.extensionPointName,
               ~commandVersion=proto.commandVersion,
               ~eventVersion=proto.eventVersion,
@@ -180,7 +189,7 @@ module Make = (Spec: Spec) => {
           )
         let reportAction = if protocolErrors->Array.length > 0 {
           EffectLogger.logWarn(
-            ~comp="Core.Plugin",
+            ~comp=PluginExtensionPointSpec.name,
             `Protocol version mismatch for plugin ${pluginDefinition.id}: ${protocolErrors
               ->JSON.stringifyAny
               ->Option.getOr("[]")}`,
@@ -197,7 +206,9 @@ module Make = (Spec: Spec) => {
           PublishCommand(Plugin.name(id), Delegate.Disconnect(Plugin.version(id))),
           HandleDirective(directiveHandler, DeleteDisconnectSchedule(id)),
         ]
-      | ForwardCommand(forwardCommand) => [HandleDirective(directiveHandler, ForwardCommand(forwardCommand))]
+      | ForwardCommand(forwardCommand) => [
+          HandleDirective(directiveHandler, ForwardCommand(forwardCommand)),
+        ]
       // Routed to the UiFragmentRegistry slice by the sibling UI-fragment mapping, not the
       // Plugin aggregate — a no-op here.
       | RegisterUiFragment(_) => []
@@ -212,7 +223,10 @@ module Make = (Spec: Spec) => {
         // definition publish with `def.id` (= name@version), preserving the prior
         // cross-plugin wire id.
         | Delegate.VersionDetected(version) => [
-            PublishEvent(Plugin.makeId(id, version), PluginExtensionPointSpec.UnknownPluginDetected),
+            PublishEvent(
+              Plugin.makeId(id, version),
+              PluginExtensionPointSpec.UnknownPluginDetected,
+            ),
           ]
         | VersionConnected(pluginDefinition)
         | VersionPromoted(pluginDefinition) => [

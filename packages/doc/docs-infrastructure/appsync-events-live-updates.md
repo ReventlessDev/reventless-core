@@ -396,7 +396,7 @@ internal `PluginHistory` audit view, not the manifest.
 **2. Deploy-time synthetic heartbeat (closes the handover lag).** At the end of
 `deployPlugin` ([`Platform.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/aws/src/Platform.res)),
 the platform publishes **one synthetic heartbeat** for the just-deployed plugin —
-a `Heartbeat(timeout)` command (`id = name@version`) onto the Core Plugin
+a `Heartbeat(timeout)` command (`id = name@version`) onto the Platform Plugin
 ExtensionPoint's FIFO command queue, the exact path the runtime CloudWatch
 heartbeat Lambda uses (`HeartbeatEntryPoint.mjs`). Without it, a freshly deployed
 version would not run its connect handshake until the heartbeat rule's first

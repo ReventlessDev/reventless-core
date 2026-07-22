@@ -1,4 +1,4 @@
-let name = "Core.Plugin"
+let name = "Platform.Plugin"
 
 include Reventless.Plugin
 

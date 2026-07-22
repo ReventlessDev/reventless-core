@@ -399,7 +399,7 @@ function Make(Spec) {
             components: components
           });
         }
-        let interstackAdminExtensionPoints = Stdlib_Option.mapOr(Interstack$ReventlessCore.coreStackReference, Pulumi.output(undefined), coreStack => coreStack.getOutput("extensionPoints"));
+        let interstackAdminExtensionPoints = Stdlib_Option.mapOr(Interstack$ReventlessCore.platformStackReference, Pulumi.output(undefined), platformStack => platformStack.getOutput("extensionPoints"));
         let localAdminResolvedEP = Output$Pulumi.flatMap(Spec.hooks.adminExtensionPoints.contents, eps => {
           let ep = eps[PluginExtensionPointSpec$ReventlessInfra.name];
           if (ep !== undefined) {

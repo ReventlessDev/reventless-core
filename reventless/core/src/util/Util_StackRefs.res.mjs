@@ -6,10 +6,10 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 
 let stackRefs = {};
 
-let coreStackName = new Pulumi.Config("platform").get("stack");
+let platformStackName = new Pulumi.Config("platform").get("stack");
 
 function stackName(pluginName) {
-  return Stdlib_Option.map(coreStackName, name => {
+  return Stdlib_Option.map(platformStackName, name => {
     let parts = name.split("/");
     parts[1] = pluginName;
     return parts.join("/");
@@ -32,8 +32,8 @@ function get(pluginName) {
 
 export {
   stackRefs,
-  coreStackName,
+  platformStackName,
   stackName,
   get,
 }
-/* coreStackName Not a pure module */
+/* platformStackName Not a pure module */

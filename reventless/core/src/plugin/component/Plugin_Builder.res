@@ -575,8 +575,8 @@ module Make = (
     let builderOutputs = {
       // Resolve admin extension point data — from Interstack (AWS cross-stack reference).
       let interstackAdminExtensionPoints =
-        Interstack.coreStackReference->Option.mapOr(Pulumi.Output.make(None), coreStack =>
-          coreStack->Pulumi.StackReference.getOutput("extensionPoints")
+        Interstack.platformStackReference->Option.mapOr(Pulumi.Output.make(None), platformStack =>
+          platformStack->Pulumi.StackReference.getOutput("extensionPoints")
         )
 
       // Derive local admin extension point resolved data (passed from makePlatform).

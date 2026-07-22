@@ -24,7 +24,7 @@ Plugin A (the host) stores the current SemVer of each built-in extension point's
 
 ```rescript
 // reventless-interop/src/protocol/CompatMatrix.res
-let corePlugin: ExtensionPointProtocol.schemaVersions = {
+let platformPlugin: ExtensionPointProtocol.schemaVersions = {
   commandVersion: "1.0.0",
   eventVersion: "1.0.0",
 }
@@ -44,11 +44,11 @@ let pluginDef: Reventless.Plugin.pluginDefinition = {
   name: "My Plugin",
   version: "2.0.0",
   extensionPoints: [],
-  extensions: [{ name: "my-ext", extensionPointName: "Core.Plugin" }],
+  extensions: [{ name: "my-ext", extensionPointName: "Platform.Plugin" }],
   eventCollector: "",
   extensionProtocols: [
     {
-      extensionPointName: "Core.Plugin",
+      extensionPointName: "Platform.Plugin",
       commandVersion: "1.0.0",  // SemVer compiled into this plugin
       eventVersion: "1.0.0",
     },
@@ -67,7 +67,7 @@ let protocolErrors =
   pluginDefinition.extensionProtocols
   ->Array.flatMap(proto =>
     ReventlessInterop.Compat.validateProtocol(
-      ~host=ReventlessInterop.CompatMatrix.corePlugin,
+      ~host=ReventlessInterop.CompatMatrix.platformPlugin,
       ~extensionPointName=proto.extensionPointName,
       ~commandVersion=proto.commandVersion,
       ~eventVersion=proto.eventVersion,
@@ -116,10 +116,10 @@ has not yet been redeployed.
 
 ## Built-in Extension Points
 
-### Core.Plugin
+### Platform.Plugin
 
 The single built-in extension point. All plugins that participate in the Reventless
-lifecycle (connect, heartbeat, disconnect) connect through `Core.Plugin`.
+lifecycle (connect, heartbeat, disconnect) connect through `Platform.Plugin`.
 
 | Schema | Current version |
 |--------|----------------|

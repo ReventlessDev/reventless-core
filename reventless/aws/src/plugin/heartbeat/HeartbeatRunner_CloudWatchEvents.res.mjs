@@ -20,7 +20,7 @@ import * as Cloudwatch_EventTarget$PulumiAws from "@reventlessdev/rescript-pulum
 function make(name, remoteChannel, timeout, runtime, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let cloudwatchEventRule = new (Aws.cloudwatch.EventRule)(Pulumi.getStack() + ("-" + name), {
-    description: "Send a heartbeat to the Core Plugin ExtensionPoint",
+    description: "Send a heartbeat to the Platform Plugin ExtensionPoint",
     scheduleExpression: Primitive_option.some(Cloudwatch_EventRule$PulumiAws.ScheduleExpression.every({
       TAG: "Minutes",
       _0: timeout
@@ -29,12 +29,12 @@ function make(name, remoteChannel, timeout, runtime, opts) {
   }, opts$1);
   let lambda = runtime.parts.lambda;
   let lambdaRole = runtime.parts.lambdaRole;
-  let coreSqsQueue = Util_SQS$ReventlessAws.findResolvedResource(remoteChannel.resources);
+  let platformSqsQueue = Util_SQS$ReventlessAws.findResolvedResource(remoteChannel.resources);
   let heartbeatLambdaSendMessagePolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
       Sid: "AllowLambdaToSendSQS",
       Effect: "Allow",
       Action: "sqs:SendMessage",
-      Resource: coreSqsQueue.urn
+      Resource: platformSqsQueue.urn
     }]);
   new (Aws.iam.RolePolicy)(name + "RolePolicy", {
     policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "Policy", [

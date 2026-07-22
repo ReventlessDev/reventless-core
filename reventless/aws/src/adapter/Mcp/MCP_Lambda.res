@@ -102,11 +102,11 @@ let generateConfig = (
   {serverName, serverVersion, tools, resources, eventHistoryResources}
 }
 
-/** Generate the core-only MCP config for split mode.
-    Contains only core administrative tools (Plugin_Activate, Plugin_Deactivate, Clone)
-    and core resources (Plugin, Plugins). No plugin-contributed entries.
+/** Generate the platform-only MCP config for split mode.
+    Contains only platform administrative tools (Plugin_Activate, Plugin_Deactivate, Clone)
+    and platform resources (Plugin, Plugins). No plugin-contributed entries.
 
-    The commandTopicArns and queryDbTableNames must map core field names to their
+    The commandTopicArns and queryDbTableNames must map platform field names to their
     corresponding AWS resource ARNs/names. When Lambda Function URL deployment is
     available (Step 13), these will be wired from Pulumi stack outputs. */
 let generateAdminConfig = (

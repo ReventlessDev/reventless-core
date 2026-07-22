@@ -608,7 +608,7 @@ module Make = (
 
     // Plugin EC sqs:SendMessage grants on the aggregate / StateChangeSlice
     // command-topic queues that user extensions publish to. The default
-    // AllowLambdaSendSQS only covers CorePluginExtPointCmdTopic (added because
+    // AllowLambdaSendSQS only covers PlatformPluginExtPointCmdTopic (added because
     // the auto-included Connect extension publishes there), so without this
     // grant every cross-plugin extension's first command publish fails with
     // IAM AccessDenied (e.g. Catalog's Orders_Extension → RecordProductDemand).

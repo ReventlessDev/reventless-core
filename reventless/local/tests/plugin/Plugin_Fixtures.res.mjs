@@ -9,8 +9,8 @@ let pluginDefinition = {
   version: "1",
   extensionPoints: [],
   extensions: [{
-      name: "Core.Plugin.Test",
-      extensionPointName: "Core.Plugin",
+      name: "Platform.Plugin.Test",
+      extensionPointName: "Platform.Plugin",
       dcbSources: []
     }],
   eventCollector: "eventCollector",

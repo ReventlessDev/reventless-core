@@ -43,7 +43,7 @@ function Make(Spec) {
       ]
     ], 1000);
     if (jsons.length === 0) {
-      return Effect.runSync(EffectLogger$ReventlessCore.logWarn("Core.Plugin", undefined, `ForwardCommand: Couldn't find Plugin with ExtensionPoint ` + extensionPointName));
+      return Effect.runSync(EffectLogger$ReventlessCore.logWarn(PluginExtensionPointSpec$ReventlessInfra.name, undefined, `ForwardCommand: Couldn't find Plugin with ExtensionPoint ` + extensionPointName));
     }
     let plugin = jsons[0];
     let exit = 0;
@@ -54,12 +54,12 @@ function Make(Spec) {
     } catch (raw_err) {
       let err = Primitive_exceptions.internalToException(raw_err);
       let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-      return Effect.runSync(EffectLogger$ReventlessCore.logError("Core.Plugin", undefined, `ForwardCommand: Couldn't decode Plugin: ` + errMsg));
+      return Effect.runSync(EffectLogger$ReventlessCore.logError(PluginExtensionPointSpec$ReventlessInfra.name, undefined, `ForwardCommand: Couldn't decode Plugin: ` + errMsg));
     }
     if (exit === 1) {
       let extensionPoint = plugin$1.extensionPoints.find(extensionPoint => extensionPoint.name === extensionPointName);
       if (extensionPoint === undefined) {
-        return Effect.runSync(EffectLogger$ReventlessCore.logWarn("Core.Plugin", undefined, `ForwardCommand: Couldn't find ExtensionPoint ` + extensionPointName + ` in ` + plugin$1.name));
+        return Effect.runSync(EffectLogger$ReventlessCore.logWarn(PluginExtensionPointSpec$ReventlessInfra.name, undefined, `ForwardCommand: Couldn't find ExtensionPoint ` + extensionPointName + ` in ` + plugin$1.name));
       }
       let exit$1 = 0;
       let val;
@@ -69,10 +69,10 @@ function Make(Spec) {
       } catch (raw_err$1) {
         let err$1 = Primitive_exceptions.internalToException(raw_err$1);
         let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err$1), Stdlib_JsExn.message), "unknown");
-        return Effect.runSync(EffectLogger$ReventlessCore.logError("Core.Plugin", undefined, `ForwardCommand: Error on publish command: ` + errMsg$1));
+        return Effect.runSync(EffectLogger$ReventlessCore.logError(PluginExtensionPointSpec$ReventlessInfra.name, undefined, `ForwardCommand: Error on publish command: ` + errMsg$1));
       }
       if (exit$1 === 2) {
-        return Effect.runSync(EffectLogger$ReventlessCore.logInfo("Core.Plugin", undefined, `ForwardCommand: published command to ` + plugin$1.name + ` ` + extensionPoint.commandTopic));
+        return Effect.runSync(EffectLogger$ReventlessCore.logInfo(PluginExtensionPointSpec$ReventlessInfra.name, undefined, `ForwardCommand: published command to ` + plugin$1.name + ` ` + extensionPoint.commandTopic));
       }
     }
   };
@@ -85,7 +85,7 @@ function Make(Spec) {
           rate: ScheduleOps$ReventlessCore.minutesFromNow(directive._1),
           payload: JSON.stringify(Message$ReventlessCore.encodeCommand$p({
             id: id,
-            meta: Message$ReventlessCore.generateMeta("Core.Plugin", undefined, "Scheduler", undefined, undefined, undefined, undefined, undefined),
+            meta: Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, "Scheduler", undefined, undefined, undefined, undefined, undefined),
             command: "DisconnectPlugin"
           }, S.string, PluginExtensionPointSpec$ReventlessInfra.commandSchema))
         });
@@ -162,8 +162,8 @@ function Make(Spec) {
         ];
       case "ConnectPlugin" :
         let pluginDefinition = cmd._0;
-        let protocolErrors = pluginDefinition.extensionProtocols.flatMap(proto => Compat$ReventlessInterop.validateProtocol(CompatMatrix$ReventlessInterop.corePlugin, proto.extensionPointName, proto.commandVersion, proto.eventVersion));
-        let reportAction = protocolErrors.length !== 0 ? (Effect.runSync(EffectLogger$ReventlessCore.logWarn("Core.Plugin", undefined, `Protocol version mismatch for plugin ` + pluginDefinition.id + `: ` + Stdlib_Option.getOr(JSON.stringify(protocolErrors), "[]"))), [{
+        let protocolErrors = pluginDefinition.extensionProtocols.flatMap(proto => Compat$ReventlessInterop.validateProtocol(CompatMatrix$ReventlessInterop.platformPlugin, proto.extensionPointName, proto.commandVersion, proto.eventVersion));
+        let reportAction = protocolErrors.length !== 0 ? (Effect.runSync(EffectLogger$ReventlessCore.logWarn(PluginExtensionPointSpec$ReventlessInfra.name, undefined, `Protocol version mismatch for plugin ` + pluginDefinition.id + `: ` + Stdlib_Option.getOr(JSON.stringify(protocolErrors), "[]"))), [{
               TAG: "PublishCommand",
               _0: Plugin$ReventlessCore.name(id),
               _1: {

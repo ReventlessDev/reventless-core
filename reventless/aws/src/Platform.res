@@ -234,7 +234,7 @@ module MakeWithConfig = (
 
   // Populate apiConfig with both domain and platform API references.
   // In platform/monolithic mode, platformApi starts as domainApi and is updated
-  // by deployPlatform/makePlatform once the core API resource is created (split mode).
+  // by deployPlatform/makePlatform once the platform API resource is created (split mode).
   let () = apiConfigRef := Some({
     domainApi: domainApi,
     domainApiRole: domainApiRole,
@@ -980,7 +980,7 @@ module MakeWithConfig = (
     }
   }
 
-  // In split mode, create a dedicated core AppSync API and push the core schema.
+  // In split mode, create a dedicated platform AppSync API and push the platform schema.
   // In unified mode, makePlatform is a no-op (schema stitching handled by events).
   let makePlatform = (~version, ~plugins: array<module(PluginMaker)>) => {
     log.info(~comp="Platform", `v${version}`)

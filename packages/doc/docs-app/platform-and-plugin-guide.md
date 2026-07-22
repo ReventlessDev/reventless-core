@@ -1506,9 +1506,9 @@ By default, the local platform uses split API mode — core administrative schem
 | Service | Port |
 |---------|------|
 | GraphQL (plugin) | 4000 |
-| GraphQL (core) | 4001 |
+| GraphQL (platform) | 4001 |
 | MCP (plugin) | 3001 |
-| MCP (core) | 3002 |
+| MCP (platform) | 3002 |
 
 Use `MakeWithConfig` to disable split mode:
 
@@ -1545,9 +1545,9 @@ In split mode, `makePlatform` creates a dedicated admin AppSync API. Access the 
 ```rescript
 // After makePlatform:
 switch ReventlessAws.Platform.getSplitApiOutputs() {
-| Some({coreApi}) =>
-  let coreApiId = coreApi->Pulumi.Output.apply(api => api.id)
-  let coreApiUrl = coreApi->Pulumi.Output.apply(api => api.uris)
+| Some({platformApi}) =>
+  let platformApiId = platformApi->Pulumi.Output.apply(api => api.id)
+  let platformApiUrl = platformApi->Pulumi.Output.apply(api => api.uris)
     ->Pulumi.Output.apply(u => u.graphQL)
   // Export as Pulumi stack outputs from your entry point
 | None => () // unified mode — no separate admin API

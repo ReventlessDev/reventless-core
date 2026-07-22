@@ -42,8 +42,6 @@ function toString(componentType) {
       return "Task";
     case "Vpc" :
       return "Vpc";
-    case "Core" :
-      return "Core";
     case "Heartbeat" :
       return "Heartbeat";
     case "Cloner" :
@@ -75,8 +73,6 @@ function ofString(str) {
       return "CommandGenerator";
     case "CommandTopic" :
       return "CommandTopic";
-    case "Core" :
-      return "Core";
     case "Counter" :
       return "Counter";
     case "DcbEventLog" :
@@ -166,8 +162,6 @@ function toName(componentType) {
       return "Task";
     case "Vpc" :
       return "Vpc";
-    case "Core" :
-      return "Core";
     case "Heartbeat" :
       return "Heartbeat";
     case "Cloner" :

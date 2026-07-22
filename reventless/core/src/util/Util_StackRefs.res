@@ -1,9 +1,9 @@
 let stackRefs: dict<Pulumi.StackReference.t> = Dict.make()
 
-let coreStackName = Pulumi.Config.make(Some("platform"))->Pulumi.Config.get("stack")
+let platformStackName = Pulumi.Config.make(Some("platform"))->Pulumi.Config.get("stack")
 
 let stackName = pluginName =>
-  coreStackName->Option.map(name => {
+  platformStackName->Option.map(name => {
     let parts = name->String.split("/")
     parts->Array.set(1, pluginName)
     parts->Array.joinUnsafe("/")

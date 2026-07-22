@@ -33,8 +33,8 @@ boundary across platforms, so there is no level above Platform to own resources.
 
 ## Core vs Platform
 
-These two are the most-confused pair in the codebase, because "core" was used for the platform
-before the platform term settled.
+These two are the most-confused pair in the codebase. They sit on different axes: one names where
+code lives, the other names what gets deployed.
 
 **Core** is a *code-organisation* term. It names the framework layer — the `reventless-core`
 package and the `ReventlessCore` namespace. Use it when talking about where code lives ("that
@@ -51,17 +51,8 @@ The framework's own built-in plugin is named **`Platform`** (`Platform_Admin_Str
 It hosts the platform's administrative components — the Plugin aggregate, its read model, the
 lifecycle extension point, the cloner.
 
-### Historical drift — do not copy these
-
-Several identifiers and comments still say "core" where they mean the platform. They are stale, not
-a second meaning:
-
-| Stale usage | What it actually is |
-|---|---|
-| "Core Plugin" (heartbeat, IAM comments) | the built-in plugin, which is named `Platform` |
-| `Util_StackRefs.coreStackName`, `Interstack.coreStackReference` | the **platform** stack — both read the `platform` config namespace |
-| "core API", "core schema", `coreApi` (split mode) | the **platform** API, as opposed to the per-plugin APIs |
-| `ComponentType.Core` | vestigial; platform-level things are `ComponentType.Platform` |
+Nothing under `reventless/*/src` uses "core" to mean the platform. If you find one, it is a
+regression — fix it rather than following it.
 
 ---
 
@@ -102,8 +93,7 @@ element owns this, doing what job, at what level.*
 `kind` and `role` are independent on purpose. One component owns several resources in different
 roles (an Aggregate has an EventLog, a CommandTopic, a Runtime), and one role is played under many
 kinds (a QueryDb is owned by a ReadModel, a StateViewSlice, an AutomationSlice, a translation
-slice, or a Counter). Collapsing them — which the schema did historically — makes both questions
-unanswerable.
+slice, or a Counter). Collapsing them into one field makes both questions unanswerable.
 
 **"Role", not "piece".** The job a resource does for its owner is a *role*. That is the word in the
 type, in the tag key, and in prose. Avoid inventing a parallel noun ("piece", "part") for the same

@@ -407,7 +407,7 @@ let pluginDefinition = {
   name: "name",
   version: "1",
   extensionPoints: [],
-  extensions: [{name: "Core.Plugin.Test", extensionPointName: "Core.Plugin"}],
+  extensions: [{name: "Platform.Plugin.Test", extensionPointName: "Platform.Plugin"}],
   eventCollector: "eventCollector",
 }
 
@@ -417,7 +417,7 @@ let state: PluginReadModelSpec.state = {
   eventCollector: pluginDefinition.eventCollector,
   extensionPoints: pluginDefinition.extensionPoints,
   extensionPointNames: [],
-  extensionNames: ["Core.Plugin.Test"],
+  extensionNames: ["Platform.Plugin.Test"],
   extensions: pluginDefinition.extensions,
   status: Connected,
   statusChange: TestFixtures.statusChange,

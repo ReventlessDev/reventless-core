@@ -14,7 +14,7 @@ let make: ReventlessCore.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
     EventRule.make(
       ~name=Pulumi.Pulumi.getStackName() ++ ("-" ++ name),
       ~args={
-        description: "Send a heartbeat to the Core Plugin ExtensionPoint"->Pulumi.Input.make,
+        description: "Send a heartbeat to the Platform Plugin ExtensionPoint"->Pulumi.Input.make,
         scheduleExpression: EventRule.ScheduleExpression.every(timeout->Minutes),
         tags: AWS.Tags.make(
           ~name=Pulumi.Pulumi.getStackName() ++ ("-" ++ name),
@@ -29,14 +29,14 @@ let make: ReventlessCore.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
 
   let lambda = runtime.parts.lambda
   let lambdaRole = runtime.parts.lambdaRole
-  let coreSqsQueue = remoteChannel.resources->Util_SQS.findResolvedResource
+  let platformSqsQueue = remoteChannel.resources->Util_SQS.findResolvedResource
 
-  // Grant sqs:SendMessage on the Core Plugin ExtensionPoint command topic at
-  // TOP LEVEL. Previously this RolePolicy was created inside the
+  // Grant sqs:SendMessage on the Platform Plugin ExtensionPoint command topic
+  // at TOP LEVEL. Previously this RolePolicy was created inside the
   // `Pulumi.Output.apply` below — and a resource created inside an apply
   // callback does not reliably register with the engine, which intermittently
-  // left the heartbeat Lambda without this grant (IAM AccessDenied:
-  // `sqs:sendmessage on CorePluginExtPointCmdTopic`). `coreSqsQueue.urn` is an
+  // left the heartbeat Lambda without this grant (IAM AccessDenied on the
+  // extension point's command-topic queue). `platformSqsQueue.urn` is an
   // already-resolved ARN string from the remote channel and `lambdaRole.id` an
   // Output, so neither needs an apply. Mirrors the EC `pta` grant fix — see
   // docs/analysis/ec-publish-to-aggregates-grant-broken.md.
@@ -48,7 +48,7 @@ let make: ReventlessCore.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
           sid: "AllowLambdaToSendSQS",
           effect: Allow,
           actions: Action("sqs:SendMessage"),
-          resources: Resource(coreSqsQueue.urn),
+          resources: Resource(platformSqsQueue.urn),
         },
       ],
     )

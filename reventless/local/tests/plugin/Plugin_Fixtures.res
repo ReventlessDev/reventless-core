@@ -7,7 +7,9 @@ let pluginDefinition: Reventless.Plugin.pluginDefinition = {
   name: "name",
   version: "1",
   extensionPoints: [],
-  extensions: [{name: "Core.Plugin.Test", extensionPointName: "Core.Plugin", dcbSources: []}],
+  extensions: [
+    {name: "Platform.Plugin.Test", extensionPointName: "Platform.Plugin", dcbSources: []},
+  ],
   eventCollector: "eventCollector",
   extensionProtocols: [],
   apiSchemaFragment: None,

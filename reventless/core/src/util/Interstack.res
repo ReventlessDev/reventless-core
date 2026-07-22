@@ -1,4 +1,4 @@
-let coreStackReference =
+let platformStackReference =
   Pulumi.Config.make(Some("platform"))
   ->Pulumi.Config.get("stack")
   ->Option.map(stack =>

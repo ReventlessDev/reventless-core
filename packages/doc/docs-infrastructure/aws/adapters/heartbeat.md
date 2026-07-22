@@ -73,7 +73,7 @@ let _attachPoliciesAndSetEventTarget =
             sid: "AllowLambdaToSendSQS",
             effect: Allow,
             actions: Action("sqs:SendMessage"),
-            resources: Resource(coreSqsQueue.urn),
+            resources: Resource(platformSqsQueue.urn),
           },
         ],
       )
@@ -154,7 +154,7 @@ The Heartbeat adapter is specifically designed to integrate with the admin Plugi
 **`remoteChannel` parameter:**
 
 ```rescript
-let coreSqsQueue = remoteChannel.resources->Util_SQS.findResolvedResource
+let platformSqsQueue = remoteChannel.resources->Util_SQS.findResolvedResource
 ```
 
 The `remoteChannel` parameter provides access to the admin Plugin ExtensionPoint's CommandTopic SQS queue:
@@ -189,7 +189,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
   // 2. Deploy-time: Extract Lambda and SQS resources
   let lambda = runtime.parts.lambda
   let lambdaRole = runtime.parts.lambdaRole
-  let coreSqsQueue = remoteChannel.resources->Util_SQS.findResolvedResource
+  let platformSqsQueue = remoteChannel.resources->Util_SQS.findResolvedResource
 
   // 3. Deploy-time: Configure Lambda permissions, IAM policies, and event target
   let _attachPoliciesAndSetEventTarget = /* ... */

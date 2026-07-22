@@ -6,7 +6,7 @@
 //
 // {
 //   "queueUrl":                       string  // SQS URL of the EventCollector this Lambda drains
-//   "pluginExtensionPointCmdTopicUrl":string  // SQS URL of CorePluginExtPoint cmd topic (admin's Plugin EP)
+//   "pluginExtensionPointCmdTopicUrl":string  // SQS URL of PlatformPluginExtPoint cmd topic (admin's Plugin EP)
 //   "eventTopicArn":                  string  // SNS ARN the EP's outgoing events publish to ("NOT_AVAILABLE" if none)
 //   "pluginReadModelTableName":       string  // DynamoDB table for Plugin RM (used by QueryEngine.scan)
 //   "pluginSchemaPersistenceTableName":string // DynamoDB table holding deploy-time SDL fragments
@@ -30,7 +30,7 @@
 //   "connectExtension": {                      // The auto-included PluginConnectExtension entry; null for admin Lambda
 //     "specModule":         string,
 //     "mappingsModule":     string,
-//     "extensionPointName": string             // service key for incomingConnectExtensionEventHandlers (e.g. "Core.Plugin")
+//     "extensionPointName": string             // service key for incomingConnectExtensionEventHandlers (e.g. "Platform.Plugin")
 //   } | null,
 //   "extensions": [                            // User-declared extensions — wired into incoming/outgoing dicts at cold start
 //     {

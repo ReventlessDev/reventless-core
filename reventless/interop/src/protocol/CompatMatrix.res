@@ -18,7 +18,7 @@
 //
 // ── Built-in extension points ─────────────────────────────────────────────────
 
-// Core.Plugin — the single built-in extension point.
+// Platform.Plugin — the single built-in extension point.
 //
 // command types (PluginExtensionPointSpec.command):
 //   Heartbeat(timeout) | ConnectPlugin(pluginDefinition)
@@ -29,7 +29,7 @@
 //   | PluginConnected(pluginDefinition) | PluginReconnected(pluginDefinition)
 //   | PluginDisconnected(pluginDefinition) | PluginDeactivated(pluginDefinition)
 //   | PluginActivated(pluginDefinition)
-let corePlugin: ExtensionPointProtocol.schemaVersions = {
+let platformPlugin: ExtensionPointProtocol.schemaVersions = {
   commandVersion: "1.0.0",
   eventVersion: "1.0.0",
 }

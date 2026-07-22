@@ -10,7 +10,7 @@ import * as Query$ReventlessInterop from "@reventlessdev/reventless-interop/src/
 import * as EventMapper$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/EventMapper.res.mjs";
 import * as ExtensionPoint$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/ExtensionPoint.res.mjs";
 
-let coreStackReference = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack + "-interstack", {
+let platformStackReference = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack + "-interstack", {
   name: stack
 }));
 
@@ -115,7 +115,7 @@ let mergeEventMappers = DefaultEventMapperQuery.mergeWith;
 let mergeExtensionPoints = DefaultExtensionPointQuery.mergeWith;
 
 export {
-  coreStackReference,
+  platformStackReference,
   stackDependenciesTasks,
   stackDependenciesEventMappers,
   stackDependenciesExtensionPoints,
@@ -123,4 +123,4 @@ export {
   mergeEventMappers,
   mergeExtensionPoints,
 }
-/* coreStackReference Not a pure module */
+/* platformStackReference Not a pure module */

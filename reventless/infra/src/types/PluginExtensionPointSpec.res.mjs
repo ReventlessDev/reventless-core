@@ -91,7 +91,7 @@ let directiveSchema = S.union([
 
 let moduleUrl = import.meta.url;
 
-let name = "Core.Plugin";
+let name = "Platform.Plugin";
 
 let nameSchema = Plugin$Reventless.nameSchema;
 

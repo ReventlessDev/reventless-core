@@ -18,10 +18,6 @@ type t =
   | SideEffectHandler
   | Task
   | Vpc
-  | /** Vestigial: predates the platform/plugin split and names nothing the
-       framework builds. Do not reach for it — platform-level things are
-       `Platform`, and the built-in core PLUGIN is a `Plugin`. */
-  Core
   | Heartbeat
   | Cloner
   | DcbEventLog
@@ -52,7 +48,6 @@ let toString = componentType =>
   | SideEffectHandler => "SideEffectHandler"
   | Task => "Task"
   | Vpc => "Vpc"
-  | Core => "Core"
   | Heartbeat => "Heartbeat"
   | Cloner => "Cloner"
   | DcbEventLog => "DcbEventLog"
@@ -84,7 +79,6 @@ let ofString = str =>
   | "SideEffectHandler" => SideEffectHandler->Some
   | "Task" => Task->Some
   | "Vpc" => Vpc->Some
-  | "Core" => Core->Some
   | "Heartbeat" => Heartbeat->Some
   | "Cloner" => Cloner->Some
   | "DcbEventLog" => DcbEventLog->Some
@@ -117,7 +111,6 @@ let toName = componentType =>
   | SideEffectHandler => "SideEffectHandler"
   | Task => "Task"
   | Vpc => "Vpc"
-  | Core => "Core"
   | Heartbeat => "Heartbeat"
   | Cloner => "Cloner"
   | DcbEventLog => "DcbEventLog"

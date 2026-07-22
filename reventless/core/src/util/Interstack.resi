@@ -1,4 +1,4 @@
-let coreStackReference: option<Pulumi.StackReference.t>
+let platformStackReference: option<Pulumi.StackReference.t>
 
 let stackDependenciesTasks: Pulumi.Output.t<
   array<result<ReventlessInterop.Task.resolvedOutputs, ReventlessInterop.Compat.error>>,
