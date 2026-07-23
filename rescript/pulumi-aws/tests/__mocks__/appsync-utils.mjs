@@ -12,6 +12,8 @@ export const util = {
     toStringSet: arr => ({ SS: arr }),
     toNumberSet: arr => ({ NS: arr.map(String) }),
   },
+  base64Encode: str => Buffer.from(String(str), 'utf8').toString('base64'),
+  base64Decode: b64 => Buffer.from(String(b64), 'base64').toString('utf8'),
   error: (msg, type) => { throw Object.assign(new Error(msg), { errorType: type }) },
   unauthorized: () => { throw new Error('Unauthorized') },
   defaultIfNull: (val, def) => (val === null || val === undefined ? def : val),

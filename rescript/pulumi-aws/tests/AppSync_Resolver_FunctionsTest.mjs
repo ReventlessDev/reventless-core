@@ -1,4 +1,5 @@
 import { evalResolver, makeCtx } from './resolverTestHelper.mjs'
+import { util } from './__mocks__/appsync-utils.mjs'
 import * as F from '../src/AppSync/AppSync_Resolver_Functions.res.mjs'
 
 // ---------------------------------------------------------------------------
@@ -182,7 +183,7 @@ describe('listAllItemsConnection', () => {
       expect(result.filter.expressionValues[':id0']).toEqual({ S: 'a' })
     })
 
-    test('response returns edges + pageInfo with positional cursors', () => {
+    test('response returns edges + pageInfo carrying the DynamoDB token cursor', () => {
       const ctx = makeCtx({
         args: {},
         result: { items: [{ id: 'a' }, { id: 'b' }], nextToken: 'next' },
@@ -192,6 +193,60 @@ describe('listAllItemsConnection', () => {
       expect(r.edges[0].node).toEqual({ id: 'a' })
       expect(r.pageInfo.hasNextPage).toBe(true)
       expect(r.pageInfo.hasPreviousPage).toBe(false)
+      // Fix 1: the cursor encodes the real nextToken, not a positional index.
+      expect(JSON.parse(util.base64Decode(r.pageInfo.endCursor)).token).toBe('next')
+    })
+
+    // Fix 1 (docs/plans/done/aws-scan-connection-cursor-roundtrip.md): the cursor the
+    // response emits must decode back to the exact DynamoDB nextToken the request feeds
+    // to the next Scan. This is the round-trip that failed before the fix.
+    test('endCursor round-trips: response endCursor → request nextToken', () => {
+      const page1 = response(makeCtx({
+        args: {},
+        result: { items: [{ id: 'a' }], nextToken: 'TOK1' },
+      }))
+      const req2 = request(makeCtx({ args: { after: page1.pageInfo.endCursor } }))
+      expect(req2.nextToken).toBe('TOK1')
+    })
+
+    test('final page (nextToken null) closes the connection', () => {
+      const r = response(makeCtx({
+        args: { after: 'x' },
+        result: { items: [{ id: 'z' }], nextToken: null },
+      }))
+      expect(r.pageInfo.hasNextPage).toBe(false)
+      expect(r.pageInfo.hasPreviousPage).toBe(true)
+    })
+
+    // Fix 3: a filtered Scan can return an empty page while nextToken is still set.
+    // The boundary cursor must let the client resume instead of restarting page 1.
+    test('empty-but-continuable page yields a resumable boundary cursor', () => {
+      const empty = response(makeCtx({
+        args: {},
+        result: { items: [], nextToken: 'TOK2' },
+      }))
+      expect(empty.edges).toHaveLength(0)
+      expect(empty.pageInfo.hasNextPage).toBe(true)
+      expect(empty.pageInfo.endCursor).not.toBeNull()
+      const req = request(makeCtx({ args: { after: empty.pageInfo.endCursor } }))
+      expect(req.nextToken).toBe('TOK2')
+    })
+
+    test('empty final page (nextToken null) has a null boundary and stops', () => {
+      const r = response(makeCtx({ args: {}, result: { items: [], nextToken: null } }))
+      expect(r.pageInfo.endCursor).toBeNull()
+      expect(r.pageInfo.hasNextPage).toBe(false)
+    })
+
+    // Fix 2: Scan cannot page backward; last/before must error, not mislead.
+    test('request rejects backward pagination (before)', () => {
+      expect(() => request(makeCtx({ args: { before: 'x' } }))).toThrow(
+        'Backward pagination',
+      )
+    })
+
+    test('request rejects backward pagination (last)', () => {
+      expect(() => request(makeCtx({ args: { last: 5 } }))).toThrow('Backward pagination')
     })
   })
 
