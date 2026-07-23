@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.179 (2026-07-23)
+
+### Bug Fixes
+
+* **aws:** round-trip the DynamoDB Scan cursor in full-list connections ([0e21008](https://github.com/ReventlessDev/reventless-core/commit/0e2100860767a153a5c2f50a88fd6b501787c7f4))
+
+
 # 3.0.0-alpha.178 (2026-07-22)
 
 ### Bug Fixes
