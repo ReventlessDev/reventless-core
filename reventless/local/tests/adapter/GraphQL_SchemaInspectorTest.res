@@ -667,6 +667,8 @@ describe("GraphQL_SchemaInspector", () => {
         expect(msg->String.includes("ScanItem"))->toBe(true)
         expect(msg->String.includes("name"))->toBe(true)
         expect(msg->String.includes("per-page"))->toBe(true)
+        // The warning must state the correctness consequence, not just the cost.
+        expect(msg->String.includes("globally ordered"))->toBe(true)
       },
     )
     testPromise(

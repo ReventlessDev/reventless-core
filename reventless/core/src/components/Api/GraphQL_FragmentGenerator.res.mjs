@@ -221,7 +221,7 @@ function validateScanSortAlignment(schema, readModelName, knownSortFields) {
       if (knownSortFields.includes(field)) {
         return;
       } else {
-        return `Read model "` + readModelName + `": @scanSort field "` + field + `" is not the sort key of any table or GSI. Sort requests for this field will be evaluated as a JS-runtime per-page sort over a full Scan — expensive in production. Add it as the sort key of an index, or accept the per-page-sort caveat.`;
+        return `Read model "` + readModelName + `": @scanSort field "` + field + `" is not the sort key of any table or GSI. Sort requests Scan the whole table and sort per-page, so results past the first page are NOT globally ordered — and the Scan is expensive in production. Promote the field to an index sort key for correct, cheap ordering, or accept per-page ordering.`;
       }
     });
   } else {

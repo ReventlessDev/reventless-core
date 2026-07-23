@@ -500,6 +500,7 @@ globalThis.describe("GraphQL_SchemaInspector", () => {
       globalThis.expect(msg.includes("ScanItem")).toBe(true);
       globalThis.expect(msg.includes("name")).toBe(true);
       globalThis.expect(msg.includes("per-page")).toBe(true);
+      globalThis.expect(msg.includes("globally ordered")).toBe(true);
     });
     globalThis.test("validateScanSortAlignment is silent when @scanSort field aligns with a known sort key", async () => {
       let warnings = GraphQL_FragmentGenerator$ReventlessCore.validateScanSortAlignment(scanStateSchemaWithAnnotations, "ScanItem", ["name"]);

@@ -506,6 +506,12 @@ let listAllItemsConnection = (
   }
   `${importUtil}
 export function request(ctx) {
+  // Scan cannot page backward (ScanIndexForward is Query-only). Fail loud rather than
+  // silently returning the forward page. The ordered {single}Items connection
+  // (queryItemsWithSortConditions) supports last/before — direct backward callers there.
+  if (ctx.args.before != null || ctx.args.last != null) {
+    util.error('Backward pagination (last/before) is not supported on full-list connections; use first/after.', 'UnsupportedPagination');
+  }
   const filter = ctx.args.filter ?? {};
   const names = {};
   const values = {};
@@ -529,10 +535,17 @@ export function request(ctx) {
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
   }${filterClauses}${rangeClauses}${requireAttributeClause}
+  // The cursor is base64(JSON({ token, index })); decode the after arg back to the raw
+  // DynamoDB continuation token the response side emitted (Fix 1 round-trip).
+  let after = null;
+  if (ctx.args.after != null && ctx.args.after !== '') {
+    const parsed = JSON.parse(util.base64Decode(ctx.args.after));
+    after = parsed.token ?? null;
+  }
   const req = {
     operation: 'Scan',
     limit: (ctx.args.first ?? 50),
-    nextToken: (ctx.args.after ?? null),
+    nextToken: after,
   };
   if (parts.length > 0) {
     req.filter = {
@@ -546,17 +559,27 @@ export function request(ctx) {
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
   let items = ctx.result?.items ?? [];${sortBlock}
+  // One Scan continuation token per page; encode it (with the item's page index for a
+  // unique, opaque Relay cursor). The request side decodes .token back to the raw
+  // DynamoDB nextToken (Fix 1).
+  const next = ctx.result?.nextToken ?? null;
   const edges = items.map((item, i) => ({
     node: item,
-    cursor: ctx.args.after ? ctx.args.after + '_' + i : '' + i,
+    cursor: util.base64Encode(JSON.stringify({ token: next, index: i })),
   }));
+  // A filtered/1MB-capped page can be empty or short while next is still set (limit
+  // caps rows scanned, not returned). The token is page-level, so synthesise a
+  // boundary cursor from it alone so a client can resume past a fully-filtered-out
+  // page instead of restarting from page 1 (Fix 3). The request only reads .token,
+  // so index -1 is inert on resume.
+  const boundary = next ? util.base64Encode(JSON.stringify({ token: next, index: -1 })) : null;
   return {
     edges,
     pageInfo: {
-      hasNextPage: !!ctx.result?.nextToken,
+      hasNextPage: !!next,
       hasPreviousPage: !!ctx.args.after,
-      startCursor: edges.length > 0 ? edges[0].cursor : null,
-      endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null,
+      startCursor: edges.length > 0 ? edges[0].cursor : boundary,
+      endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : boundary,
     },
   };
 }

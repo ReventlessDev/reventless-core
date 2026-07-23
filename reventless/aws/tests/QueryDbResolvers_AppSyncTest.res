@@ -38,3 +38,44 @@ describe("AppSync_Resolver_Retrying.Functions.listAllItemsConnection", () => {
     expect(code->String.includes("attribute_exists"))->toBe(false)
   })
 })
+
+// Tripwires for docs/plans/aws-scan-connection-cursor-roundtrip.md. The Scan
+// resolver's cursor must round-trip DynamoDB's own continuation token, not a
+// synthetic index — every list past page 1 was unreachable before this.
+describe("listAllItemsConnection — Scan cursor round-trip (paging fixes 1–3)", () => {
+  let code = AppSync_Resolver_Retrying.Functions.listAllItemsConnection(~labelField="name")->codeOf
+
+  testSync("Fix 1: response encodes the real nextToken as the cursor", () => {
+    expect(code->String.includes("const next = ctx.result?.nextToken ?? null;"))->toBe(true)
+    expect(
+      code->String.includes("util.base64Encode(JSON.stringify({ token: next, index: i }))"),
+    )->toBe(true)
+    expect(code->String.includes("hasNextPage: !!next,"))->toBe(true)
+  })
+
+  testSync("Fix 1: request decodes `after` back to the DynamoDB token", () => {
+    expect(code->String.includes("JSON.parse(util.base64Decode(ctx.args.after))"))->toBe(true)
+    expect(code->String.includes("nextToken: after,"))->toBe(true)
+  })
+
+  testSync("Fix 1: the old synthetic-index cursor is gone", () => {
+    // The regression: `cursor: ctx.args.after ? ctx.args.after + '_' + i : '' + i`.
+    expect(code->String.includes("ctx.args.after + '_' + i"))->toBe(false)
+  })
+
+  testSync("Fix 2: backward paging (last/before) is rejected, not silently mishandled", () => {
+    expect(code->String.includes("ctx.args.before != null || ctx.args.last != null"))->toBe(true)
+    expect(code->String.includes("UnsupportedPagination"))->toBe(true)
+  })
+
+  testSync("Fix 3: an empty/short filtered page still yields a resumable boundary cursor", () => {
+    expect(
+      code->String.includes(
+        "const boundary = next ? util.base64Encode(JSON.stringify({ token: next, index: -1 })) : null;",
+      ),
+    )->toBe(true)
+    expect(
+      code->String.includes("edges.length > 0 ? edges[edges.length - 1].cursor : boundary"),
+    )->toBe(true)
+  })
+})

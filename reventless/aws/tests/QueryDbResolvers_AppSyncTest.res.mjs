@@ -29,6 +29,30 @@ globalThis.describe("AppSync_Resolver_Retrying.Functions.listAllItemsConnection"
   });
 });
 
+globalThis.describe("listAllItemsConnection — Scan cursor round-trip (paging fixes 1–3)", () => {
+  let code = AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection("name", undefined, undefined, undefined, undefined);
+  globalThis.test("Fix 1: response encodes the real nextToken as the cursor", () => {
+    globalThis.expect(code.includes("const next = ctx.result?.nextToken ?? null;")).toBe(true);
+    globalThis.expect(code.includes("util.base64Encode(JSON.stringify({ token: next, index: i }))")).toBe(true);
+    globalThis.expect(code.includes("hasNextPage: !!next,")).toBe(true);
+  });
+  globalThis.test("Fix 1: request decodes `after` back to the DynamoDB token", () => {
+    globalThis.expect(code.includes("JSON.parse(util.base64Decode(ctx.args.after))")).toBe(true);
+    globalThis.expect(code.includes("nextToken: after,")).toBe(true);
+  });
+  globalThis.test("Fix 1: the old synthetic-index cursor is gone", () => {
+    globalThis.expect(code.includes("ctx.args.after + '_' + i")).toBe(false);
+  });
+  globalThis.test("Fix 2: backward paging (last/before) is rejected, not silently mishandled", () => {
+    globalThis.expect(code.includes("ctx.args.before != null || ctx.args.last != null")).toBe(true);
+    globalThis.expect(code.includes("UnsupportedPagination")).toBe(true);
+  });
+  globalThis.test("Fix 3: an empty/short filtered page still yields a resumable boundary cursor", () => {
+    globalThis.expect(code.includes("const boundary = next ? util.base64Encode(JSON.stringify({ token: next, index: -1 })) : null;")).toBe(true);
+    globalThis.expect(code.includes("edges.length > 0 ? edges[edges.length - 1].cursor : boundary")).toBe(true);
+  });
+});
+
 export {
   codeOf,
 }

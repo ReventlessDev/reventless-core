@@ -135,6 +135,22 @@ Both adapters use keyset cursors. In-memory cursors encode the value of `orderBy
 
 `orderBy` on AWS sorts within the returned page only, because DynamoDB Scan returns indeterminate order and `ScanIndexForward` is Query-only. Paging through multiple pages with `@scanSort` reveals an inconsistent global order. The deploy-time warning surfaces this; the v1.5 index-promotion phase (out of scope here) is what eliminates it for fields that *are* a sort key of some index.
 
+### How often does this actually bite? (prevalence + priority)
+
+The *need* — "sorted, paginated list view" — is table stakes. But the *gap* this caveat describes is a much thinner slice: it requires **all three** of (a) a result set spanning more than one Connection page under a realistic `first`, (b) `orderBy` on a **non-key** attribute, and (c) no acceptable reshaping. Remove any one and it's already handled:
+
+- **Small read model** (≤ one page, or a `first: 1000`-style grab that pulls everything and sorts client-side) → the per-page sort *is* globally correct because there is only one page.
+- **Sort by a key field** (`@id` / `@subId` / `@index`) → already routes to a `Query`; already globally ordered *and* backward-pageable today.
+- **Purpose-built read model** → in CQRS the idiomatic answer is to shape a read model to its query: if you need orders-by-price, give that read model a **sort key of price**. It is then Query-backed and correct for free — no index promotion needed. This is the same reasoning that argues against a generic `@defaultFilter` in favour of an explicit `ActiveOrders` read model (see the *Default filter* gap below).
+
+What index promotion actually buys, then, is making **one** read model orderable by **many arbitrary non-key attributes** with correct cross-page order — a generic-admin-tool / AutoUI-completeness need, not a hand-built-app need.
+
+**Empirical demand (2026-07-23): `@scanSort` has zero usages** across every read model and example in the repo. Grep confirms the only occurrences are framework plumbing (the annotation definition, the deploy-time warning, doc comments). The path this caveat warns about is currently exercised by nobody — so the broken-global-order case is, in practice, latent rather than live.
+
+**The proposed cure is also weakest where the disease is worst.** The durable fix ([Backlog/aws-fulllist-ordered-index-promotion.md](../plans/Backlog/aws-fulllist-ordered-index-promotion.md)) promotes the sort field to a **constant partition-key GSI** so the whole table becomes one ordered partition. That funnels all reads/writes through a single physical partition (~1000 WCU / 3000 RCU ceiling, plus write amplification). It is fine for a moderate read model — but a moderate read model rarely spans multiple pages under a sane `first`. The tables large enough to *need* cross-page ordering are exactly the ones where a single-partition GSI throttles, which then demands a sharded-Lambda scatter-gather — a second, larger project.
+
+**Verdict: demand-driven, not speculative.** The broadly-correct, high-value work already shipped in [done/aws-scan-connection-cursor-roundtrip.md](../plans/done/aws-scan-connection-cursor-roundtrip.md): forward paging round-trips, filtered pages don't stall, backward paging fails loud instead of lying, and the sharpened `@scanSort` warning states the honest tradeoff and points authors at the two cheap escapes (index the field, or accept per-page order). That covers the common case. Full index promotion is worth having *specified* (so no one re-derives it under pressure) but not worth *building* until a real component satisfies all three conditions above and cannot be reshaped.
+
 ---
 
 ## What you cannot change today by annotation — and what would be needed
