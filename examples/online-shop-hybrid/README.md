@@ -109,9 +109,9 @@ phase, and the remaining `Standard` and `Pickup` orders stay `Placed` — so a
 share of them can then be cancelled. The run prints the resulting
 `status` × `shippingMethod` breakdown.
 
-One view the seed cannot fill, reported as a warning at the end of each run:
-`SendOrderConfirmationTodos` stays empty because that OutboundTranslationSlice
-does not run on the local platform.
+Every queryable view ends the run non-empty, including
+`SendOrderConfirmationTodos` — one row per placed order, each `Completed` once
+the `SendOrderConfirmation` OutboundTranslationSlice has called `EmailService`.
 
 ## Deploy it to AWS
 

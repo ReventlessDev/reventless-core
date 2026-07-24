@@ -1,7 +1,8 @@
 # Plan: Make OutboundTranslationSlice run on the local platform
 
-**Status:** Not started — root cause not yet established; step 1 is the investigation.
-**Origin:** [online-shop-hybrid-demo-data.md](done/online-shop-hybrid-demo-data.md) — the one acceptance criterion that plan could not meet. Also flagged as out-of-scope-but-open by [online-shop-hybrid-order-lifecycle.md](done/online-shop-hybrid-order-lifecycle.md).
+**Status:** Done (2026-07-24) — root cause was an un-unwrapped event envelope; all five
+steps landed and every acceptance criterion is met. See "Outcome" below.
+**Origin:** [online-shop-hybrid-demo-data.md](online-shop-hybrid-demo-data.md) — the one acceptance criterion that plan could not meet. Also flagged as out-of-scope-but-open by [online-shop-hybrid-order-lifecycle.md](online-shop-hybrid-order-lifecycle.md).
 
 The `SendOrderConfirmation` OutboundTranslationSlice in the hybrid example's
 Ordering plugin does not run at all on the local platform. Measured across a
@@ -133,3 +134,76 @@ soon as phase 1 works.
 - **AWS is unverified either way.** Nothing here demonstrates the deployed path
   works; step 4 is the only place this plan looks at it. If AWS turns out to be
   broken too, split it rather than growing this plan.
+
+---
+
+## Outcome (2026-07-24)
+
+**Root cause: neither surviving candidate.** It was the event envelope.
+
+Events travel the topic as `{id, meta, event}` envelopes (`Message.composeEventJson'`).
+Every other consumer unwraps the inner `event` before splitting —
+`AutomationSlice_Callback.phase1` does it with a comment saying why, and
+`StateViewSlice_Builder` does the same. `OutboundTranslationSlice_Builder` called
+`Message.splitMessage` on the **envelope**, which has no `TAG` key, so `splitMessage`
+returned its `"Unknown"` fallback, `DcbDecode` missed the lookup, and the event was
+dropped by the `| None => None` arm.
+
+That arm is silent by construction: the `DcbDecode: dropped event … drift?` warning
+only fires in the `WithFields` **parse-failure** branch, never on an unknown tag. So
+step 1's "check the console for the warning first" heuristic could not have found it —
+the absence of the warning was consistent with both the working and the broken case.
+
+Candidate 1 (decode drift) was ruled out directly: driving `DcbDecode.makeDecoder`
+with `SendOrderConfirmation`'s `consumedEventSchema` and the exact four-field
+`OrderPlaced` payload decodes cleanly to the two-field subset. Field-subset decoding
+works as documented. Candidate 2 (subscription timing) never came into play.
+
+### What landed
+
+| Step | Outcome |
+|---|---|
+| 1 | Root-caused via a new platform-level fixture rather than a seeded run — reproduced the zero-row symptom in 0.6s. |
+| 2 | Unwrap `event` before `splitMessage` in `OutboundTranslationSlice_Builder`, matching `StateViewSlice_Builder`. |
+| 3 | `publishJsonsRef` replaced by the `Output.all2` capture; the now-unused `Logger.fromEnv()` and its `publishJsons not yet resolved` error path are gone with it. |
+| 4 | Key harmonised to `<pluginName>DcbEventLog`, derived from the DcbEventLog component's own resource name. |
+| 5 | `OutboundTranslationSlicePlatformTest` + fixtures, modelled on `AutomationSliceSelfDeadlockFixtures`. |
+
+### Step 4's open question, answered
+
+**AWS does not route by dict key** — `EventCollectorChannel_Helpers.toResources` reads
+`Dict.valuesToArray`, and both the SQS and DynamoDbStream channels merge specs with
+`Dict.assign` before using values only. So this was *not* the same bug waiting on the
+deployed side; the deployed path was never broken by the key.
+
+The key still mattered for a lesser reason, which is why it was harmonised anyway:
+`Dict.assign` merges channel specs by key, so a slice-specific key makes one shared
+topic appear once **per slice** instead of collapsing to a single entry the way
+AutomationSlice's convention does.
+
+### Coverage note
+
+The gap this plan set out to close was structural, and the new test is the part that
+closes it: `OutboundTranslationSliceCallbackTest` called `phase1`/`phase2` directly and
+stayed green through the entire outage. The new test publishes a command through the
+real chain — StateChangeSlice → DcbEventLog → event topic → EventCollector → phase 1 →
+phase 2 — and asserts on the recorded external call, so nothing between the topic and
+the translation can go inert silently again. It records `collect` and `translate` calls
+separately so a regression says which phase stalled.
+
+### Acceptance
+
+- ✅ Seeded hybrid run: `Ordering_SendOrderConfirmationTodos` = **150 rows**, one per
+  `OrderPlaced`, and **150** `[EmailService]` calls in the platform log — was 0 and 0.
+- ✅ All 150 rows `Completed` with `retryCount` 0; phase 2 drained without the 60s heartbeat.
+- ✅ Seeder carve-out removed — `Unfillable` → `Seeded`, all **9 of 9** views non-empty
+  and the run ends with no warning. The example README's "one view the seed cannot fill"
+  paragraph is gone too.
+- ✅ Full suite green: **192 suites / 1419 tests**. Zero build warnings.
+
+### Not done here
+
+Nothing demonstrates the **deployed** path end-to-end. The envelope fix is
+backend-agnostic (it is upstream of any channel) and AWS routing was cleared by
+reading, but no AWS run exercised an OutboundTranslationSlice. Worth a rung on the
+next real-AWS pass rather than a plan of its own.

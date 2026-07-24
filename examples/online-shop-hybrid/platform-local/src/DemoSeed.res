@@ -41,11 +41,7 @@ let views = [
   Seed.Runner.Seeded("Ordering_Orders"),
   Seed.Runner.Seeded("Ordering_Customers"),
   Seed.Runner.Seeded("Ordering_AutoShipOrderTodos"),
-  Seed.Runner.Unfillable(
-    "Ordering_SendOrderConfirmationTodos",
-    "the SendOrderConfirmation OutboundTranslationSlice never runs on the local platform — " ++
-    "no todo rows and no EmailService calls for any OrderPlaced event",
-  ),
+  Seed.Runner.Seeded("Ordering_SendOrderConfirmationTodos"),
 ]
 
 // ── Phases ──────────────────────────────────────────────────────────────────

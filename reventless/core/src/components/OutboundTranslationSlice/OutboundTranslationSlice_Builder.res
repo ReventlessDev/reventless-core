@@ -3,8 +3,6 @@
 //
 // Follows the AutomationSlice_Builder pattern for adapter injection.
 
-let log = Logger.fromEnv()
-
 module Make = (
   RuntimeEnvironment: Runtime.Environment,
   QueryDbStorage: QueryDb_Adapter.Storage,
@@ -80,18 +78,25 @@ module Make = (
       )
 
       let dcbEventTopicOutputs: EventTopic.outputs = (dcbEventLog->Component.outputs).eventTopic
-      let allEventTopics = Dict.fromArray([(Spec.name, dcbEventTopicOutputs)])
+      // Key the topic by the source-name convention AutomationSlice and
+      // Dcb_Builder use (`<pluginName>DcbEventLog`) rather than by this slice's
+      // own name. No backend routes on the key — local subscribes on
+      // `resource.name`, AWS reads `Dict.valuesToArray` — but channel specs are
+      // merged with `Dict.assign`, so slice-specific keys make one topic appear
+      // once per slice instead of collapsing to a single entry.
+      let dcbEventLogName =
+        (dcbEventLog->Component.toPulumiResource).name->Option.getOr("") ++ "DcbEventLog"
+      let allEventTopics = Dict.fromArray([(dcbEventLogName, dcbEventTopicOutputs)])
 
-      // Resolve publishJsons so it's available for Phase 2
-      let publishJsonsRef: ref<option<ReventlessInfra.CommandTopic.publishJsons>> = ref(None)
-      let _ = publishJsons->Pulumi.Output.apply(pj => {
-        publishJsonsRef := Some(pj)
-      })
-
+      // Build the EventCollector inside an Output.all2 so both `queryDbOps` and
+      // `publishJsonsFn` are captured in the same closure. The jsonEventsHandler
+      // then has direct access to `publishJsonsFn` — avoids racing a
+      // side-effect-only `publishJsons.apply` against the first event arrival
+      // (which silently dropped Phase 2 in the AutomationSlice's previous shape).
       let eventCollector =
-        queryDb
-        ->Component.operations
-        ->Pulumi.Output.apply(queryDbOps => {
+        (queryDb->Component.operations, publishJsons)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((queryDbOps, publishJsonsFn)) => {
           let ec = SpecificEventCollector.make(
             ~name=Spec.name,
             ~eventTopics=allEventTopics,
@@ -104,7 +109,17 @@ module Make = (
             ->Stream.mapEffect(json =>
               Effect.sync(
                 () => {
-                  let (eventType, dataDict) = json->Message.splitMessage
+                  // Events arrive as `{id, meta, event}` envelopes (see
+                  // Message.composeEventJson'). The decoder works on the inner
+                  // `event` payload — TAG + fields at the top level — not the
+                  // wrapper. Splitting the wrapper yields eventType "Unknown",
+                  // which DcbDecode drops without warning.
+                  let rawEvent =
+                    json
+                    ->JSON.Decode.object
+                    ->Option.flatMap(d => d->Dict.get("event"))
+                    ->Option.getOr(json)
+                  let (eventType, dataDict) = rawEvent->Message.splitMessage
                   switch decoder.decode(~eventType, ~data=dataDict) {
                   | Some(event) => [event]
                   | None => []
@@ -126,29 +141,21 @@ module Make = (
                   // an inbound command whose downstream events fan back to this
                   // same topic, awaiting would self-deadlock the bus — same
                   // shape as AutomationSlice. Detach it; errors are logged.
-                  switch publishJsonsRef.contents {
-                  | Some(pj) =>
-                    let _ =
-                      Callback.phase2(pj)
-                      ->Promise.then(() => syncToQueryDb(queryDbOps))
-                      ->Promise.catch(exn => {
-                        let errMsg =
-                          exn
-                          ->JsExn.fromException
-                          ->Option.flatMap(JsExn.message)
-                          ->Option.getOr("unknown")
-                        EffectLogger.logError(
-                          ~comp=`OutboundTranslationSlice(${Spec.name})`,
-                          `detached phase 2 error: ${errMsg}`,
-                        )->Effect.runSync
-                        Promise.resolve()
-                      })
-                  | None =>
-                    log.error(
-                      ~comp=`OutboundTranslationSlice(${Spec.name})`,
-                      `publishJsons not yet resolved`,
-                    )
-                  }
+                  let _ =
+                    Callback.phase2(publishJsonsFn)
+                    ->Promise.then(() => syncToQueryDb(queryDbOps))
+                    ->Promise.catch(exn => {
+                      let errMsg =
+                        exn
+                        ->JsExn.fromException
+                        ->Option.flatMap(JsExn.message)
+                        ->Option.getOr("unknown")
+                      EffectLogger.logError(
+                        ~comp=`OutboundTranslationSlice(${Spec.name})`,
+                        `detached phase 2 error: ${errMsg}`,
+                      )->Effect.runSync
+                      Promise.resolve()
+                    })
                 },
               )
             )

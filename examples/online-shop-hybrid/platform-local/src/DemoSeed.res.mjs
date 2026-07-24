@@ -55,9 +55,8 @@ let views = [
     _0: "Ordering_AutoShipOrderTodos"
   },
   {
-    TAG: "Unfillable",
-    _0: "Ordering_SendOrderConfirmationTodos",
-    _1: "the SendOrderConfirmation OutboundTranslationSlice never runs on the local platform — no todo rows and no EmailService calls for any OrderPlaced event"
+    TAG: "Seeded",
+    _0: "Ordering_SendOrderConfirmationTodos"
   }
 ];
 
