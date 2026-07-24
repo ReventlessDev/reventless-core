@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.180 (2026-07-24)
+
+### Features
+
+* **core:** Monitoring seam announces owning plugin/platform to backends ([79dd49a](https://github.com/ReventlessDev/reventless-core/commit/79dd49ae29feb95ed88c836cd8827c8e68978889))
+
+
 # 3.0.0-alpha.179 (2026-07-23)
 
 ### Bug Fixes

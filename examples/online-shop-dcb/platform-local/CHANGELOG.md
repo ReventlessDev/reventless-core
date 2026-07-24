@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.148 (2026-07-24)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-dcb-platform-local
+
+
+
+
+
 # 1.0.0-alpha.147 (2026-07-23)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-platform-local
