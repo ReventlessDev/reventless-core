@@ -24,7 +24,7 @@ users are:
 | `admin` | `admin` | `Admin`, `User` |
 | `user` | `user` | `User` |
 
-Open the shell at **http://localhost:5173**, go to the login page, and sign in as
+Open the shell at **http://localhost:5180**, go to the login page, and sign in as
 **`admin` / `admin`**. The admin user can reach every plugin's panels plus the
 platform admin views. Add your own entries to `.reventless/users.yaml` (restart the
 server after editing).

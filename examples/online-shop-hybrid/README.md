@@ -44,7 +44,7 @@ Then, from this example:
 cd platform-local
 pnpm run serve        # backend only: GraphQL (:4000/:4001) + MCP (:3001/:3002)
 # or, with the host-shell UI (requires reventless-host-shell):
-pnpm run dev:full     # backend + host-shell UI (:5173), with live reload
+pnpm run dev:full     # backend + host-shell UI (:5180), with live reload
 ```
 
 `dev:full` recompiles and restarts the backend on any `.res` change (live

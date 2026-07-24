@@ -132,7 +132,7 @@ Built around `examples/online-shop-hybrid/` (real working app: `catalog`/`orderi
 | 2 | Choosing an approach (Aggregate / DCB / Hybrid) | light edit | `aggregate-vs-dcb-decision-guide.md` (summary + link) |
 | 3 | Hybrid walkthrough (`hybrid-based.md`) | **fix drift** | actual `examples/online-shop-hybrid/` source |
 | 4 | Run it locally | **NEW** | `local-dev.md` + `local-persistence.md`, reconciled to the package's real scripts |
-| 5 | Test it locally | **NEW** | `users.yaml` (admin/admin), ports 4000/4001/5173 |
+| 5 | Test it locally | **NEW** | `users.yaml` (admin/admin), ports 4000/4001/5180 |
 | 6 | Deploy to your AWS account | **NEW** | `deployment-guide.md`, distilled to "deploy *this* example to *your* account" |
 | 7 | Test it on AWS | **NEW** | `platform-aws/verify-subscriptions.mjs` (document it) |
 | 8 | `aggregate-based.md`, `dcb-based.md`, `ai-generated.md` | keep as alternates | — |

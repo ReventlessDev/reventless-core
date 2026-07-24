@@ -40,9 +40,9 @@ exposes two endpoints:
 | `[rs]` ReScript watch | Recompiles plugin/framework sources on change | — |
 | `[backend]` — domain API | Plugin queries, mutations, subscriptions | `http://localhost:4000/graphql` |
 | `[backend]` — platform/admin API | `Admin_*` queries, platform introspection | `http://localhost:4001/graphql` |
-| `[ui]` dev server | `reventless-host-shell` (the Auto UI shell) | `http://localhost:5173` |
+| `[ui]` dev server | `reventless-host-shell` (the Auto UI shell) | `http://localhost:5180` |
 
-Open **http://localhost:5173** and you have the running shop: create categories
+Open **http://localhost:5180** and you have the running shop: create categories
 and products, register customers, place orders, and watch read models update
 live via subscriptions.
 

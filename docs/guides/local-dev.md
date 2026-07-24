@@ -40,7 +40,7 @@ pnpm run dev:full
 |--------|---------|---------|
 | `rs` | `rescript watch` (workspace root) | recompiles `.res` → `.res.mjs` on save |
 | `backend` | `tsx watch` over `Main.res.mjs` (`serve:watch`) | restarts the backend (`:4000`/`:4001`) when any framework/plugin `.res.mjs` changes |
-| `ui` | `dev:ui`, started once the admin server is up (`wait-on tcp:4001`) | the UI dev server (`:5173`) |
+| `ui` | `dev:ui`, started once the admin server is up (`wait-on tcp:4001`) | the UI dev server (`:5180`) |
 
 This gives **live reload**: edit a `.res` source anywhere in the framework or plugins and the backend recompiles and restarts automatically. A restart resets in-memory state — but with the default SQLite backend (below) your data survives the restart.
 
@@ -98,7 +98,7 @@ pnpm --filter ./examples/online-shop-hybrid/platform-local run dev
 pnpm run dev:ui
 ```
 
-This launches `reventless-host-shell` (or the local UI source if present). It starts at `http://localhost:5173` and talks to the backend on `http://localhost:4000`.
+This launches `reventless-host-shell` (or the local UI source if present). It starts at `http://localhost:5180` and talks to the backend on `http://localhost:4000`.
 
 ---
 
