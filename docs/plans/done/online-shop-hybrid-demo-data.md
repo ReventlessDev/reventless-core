@@ -1,6 +1,6 @@
 # Plan: Demo data for the online-shop-hybrid example
 
-## Status: Done — 4 of 5 acceptance criteria met; the 5th is blocked by a framework defect tracked separately
+## Status: Done — all 5 acceptance criteria met; the 5th was unblocked once its framework defect landed (verified 2026-07-24)
 
 **Date:** 2026-07-24
 
@@ -17,9 +17,10 @@ statuses; byte-identical data across two reset-and-rerun cycles, verified by
 diffing a full dump of all seven data views; a deliberately broken mutation name
 aborts with the offending mutation and the GraphQL response.
 
-**Partly met.** Non-empty grids on 8 of the 9 queryable views — the script fails
-the run if a view it is supposed to fill is empty, and the 9th is unfillable for
-the reason below.
+**Met.** Non-empty grids on all 9 queryable views — the script fails the run if a
+view it is supposed to fill is empty. The 9th (`SendOrderConfirmationTodos`) was
+unfillable at the time of writing; it now fills once its framework defect landed
+(see below).
 
 **Status spread — resolved by a follow-up plan.** The `AutoShipOrder` automation
 originally issued `ShipOrder` *before the `PlaceOrder` mutation returned*
@@ -31,29 +32,29 @@ which gates the automation on a new `shippingMethod` field. The seeder now
 produces `Shipped` 106 / `Placed` 29 / `Cancelled` 15 out of 150, and this
 acceptance criterion passes.
 
-**Blocked — not fixable in the seed script.** Reported as a warning at the end
-of every run rather than papered over:
+**Was blocked, now resolved.** At the time of writing,
+`SendOrderConfirmationTodos` stayed empty: the `SendOrderConfirmation`
+OutboundTranslationSlice did not run on the local platform at all — zero todo
+rows and zero `EmailService` calls across 150 `OrderPlaced` events, while the
+`AutoShipOrder` automation consuming the same events produced 150 rows. Root
+cause: the slice split the raw `{id, meta, event}` topic envelope instead of the
+inner `event`, so `splitMessage` returned `"Unknown"` and every event was
+dropped on the silent `None` arm. Fixed in
+[outbound-translation-slice-not-running-local.md](outbound-translation-slice-not-running-local.md)
+(commit `66008a4df`). Re-run 2026-07-24 on a fresh in-memory store: the view
+fills 150 rows, the run is 9-of-9 with no warning block. The seeder had already
+been switched from `Unfillable` to `Seeded` for this view in anticipation.
 
-1. **`SendOrderConfirmationTodos` stays empty.** The `SendOrderConfirmation`
-   OutboundTranslationSlice does not run on the local platform at all: zero todo
-   rows and zero `EmailService` calls across 150 `OrderPlaced` events, while the
-   `AutoShipOrder` automation consuming the same events produces 150 rows. Phase
-   1 `collect` never fires, so this is not the 60s heartbeat. Root cause not
-   chased down here — tracked, with the hypotheses already eliminated, in
-   [outbound-translation-slice-not-running-local.md](../outbound-translation-slice-not-running-local.md).
-   The seeder's warning and its 8-of-9 view check come out when that lands.
-
-**Also found, worked around.** Every `Catalog_ImportProduct` call returns a
+**Also found, now resolved.** Every `Catalog_ImportProduct` call returned a
 GraphQL error — `Abstract type "CommandResult" must resolve to an Object type` —
-even though the import succeeds and the audit row records `Success`. The
-resolver at
-[`InboundTranslationResolvers_GraphQL.res:48-56`](../../../reventless/local/src/adapter/CommandGenerator/InboundTranslationResolvers_GraphQL.res#L48-L56)
-returns the target-id array while `deriveMutationFieldFromObject` types the SDL
-field as `CommandResult!`. Every InboundTranslationSlice mutation is affected,
-not just this one. The script carves out that exact error and verifies the
-outcome through the audit view instead; deleting the carve-out is a step of
-[inbound-translation-mutation-result-type.md](../inbound-translation-mutation-result-type.md),
-which fixes the resolver.
+even though the import succeeded and the audit row recorded `Success`. The
+resolver returned the target-id array while `deriveMutationFieldFromObject` typed
+the SDL field as `CommandResult!`; every InboundTranslationSlice mutation was
+affected. Fixed in
+[inbound-translation-mutation-result-type.md](inbound-translation-mutation-result-type.md)
+(commit `381b5458c`), which widens `receive` to carry a real `CommandResult`
+shape. The seeder's carve-out for that exact error is gone; the same 2026-07-24
+re-run imports cleanly (4 imported, 1 rejected) through the normal path.
 
 **Not attempted.** "Orders spread across a date range" (step 2) is not
 representable: `Orders` has no time field, and the projection cannot see
