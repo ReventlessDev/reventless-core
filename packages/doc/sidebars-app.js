@@ -92,6 +92,7 @@ const sidebars = {
         'dcb-usage',
         'reventless-ppx',
         'querydb-key-design-guide',
+        'seeding-guide',
         'mixed-source-readmodel',
         'mixed-source-automationslice',
       ],

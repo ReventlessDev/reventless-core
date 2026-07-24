@@ -220,6 +220,7 @@ From the codebase documentation:
 - `reventless-aws` — AWS adapters (DynamoDB, Lambda, SQS, SNS, S3)
 - `reventless-local` — local platform for dev and testing (in-memory or SQLite backend, selected via `Backend.Memory`/`Backend.Sqlite` or `REVENTLESS_LOCAL_BACKEND`)
 - `reventless-interop` — JS interop helpers
+- `reventless-seed` — reusable harness for seeding a platform through its public GraphQL command API (transport, deterministic randomness, view verification); domain adapters live in the consuming app
 - `reventless-layer-builder` — Lambda layer builder (private)
 
 **`rescript/` — ReScript bindings:**

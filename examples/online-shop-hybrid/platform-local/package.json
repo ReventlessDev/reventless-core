@@ -13,6 +13,7 @@
     "serve": "REVENTLESS_LOCAL_BACKEND=${REVENTLESS_LOCAL_BACKEND:-sqlite:./.reventless/local.db} NODE_OPTIONS='--disable-warning=ExperimentalWarning' npx tsx src/Main.res.mjs",
     "serve:memory": "REVENTLESS_LOCAL_BACKEND=memory pnpm run serve",
     "serve:reset": "REVENTLESS_LOCAL_BACKEND='sqlite:./.reventless/local.db?reset' pnpm run serve",
+    "demo-data": "node src/DemoSeed.res.mjs",
     "serve:watch": "REVENTLESS_LOCAL_BACKEND=${REVENTLESS_LOCAL_BACKEND:-sqlite:./.reventless/local.db} NODE_OPTIONS='--disable-warning=ExperimentalWarning' npx tsx watch --clear-screen=false --exclude '**/node_modules/**' --include '../catalog/src/**/*.res.mjs' --include '../catalog-spec/src/**/*.res.mjs' --include '../ordering/src/**/*.res.mjs' --include '../ordering-spec/src/**/*.res.mjs' --include '../../../reventless/core/src/**/*.res.mjs' --include '../../../reventless/local/src/**/*.res.mjs' --include '../../../reventless/spec/src/**/*.res.mjs' --include '../../../reventless/infra/src/**/*.res.mjs' src/Main.res.mjs",
     "dev": "REVENTLESS_LOCAL_BACKEND=${REVENTLESS_LOCAL_BACKEND:-sqlite:./.reventless/local.db} NODE_OPTIONS='--disable-warning=ExperimentalWarning' GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs",
     "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || reventless-host-shell",
@@ -48,6 +49,7 @@
     "@reventlessdev/reventless-gwt": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-local": "workspace:*",
+    "@reventlessdev/reventless-seed": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "^11.0.0-alpha.4"
   },

@@ -55,6 +55,11 @@
           "private": false
         },
         {
+          "name": "@reventlessdev/reventless-seed",
+          "description": "Reusable harness for seeding a Reventless platform through its public GraphQL command API",
+          "private": false
+        },
+        {
           "name": "@reventlessdev/reventless-spec",
           "description": "Specifications for Reventless",
           "private": false

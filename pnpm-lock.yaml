@@ -873,6 +873,9 @@ importers:
       '@reventlessdev/reventless-local':
         specifier: workspace:*
         version: link:../../../reventless/local
+      '@reventlessdev/reventless-seed':
+        specifier: workspace:*
+        version: link:../../../reventless/seed
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../../../reventless/spec
@@ -1556,6 +1559,12 @@ importers:
       sury-ppx:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
+
+  reventless/seed:
+    devDependencies:
+      rescript:
+        specifier: 12.3.0
+        version: 12.3.0
 
   reventless/spec:
     dependencies:

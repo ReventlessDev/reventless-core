@@ -1,0 +1,26 @@
+{
+  "name": "@reventlessdev/reventless-seed",
+  "version": "1.0.0-alpha.0",
+  "description": "Reusable harness for seeding a Reventless platform through its public GraphQL command API",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build"
+  },
+  "devDependencies": {
+    "rescript": "12.3.0"
+  },
+  "peerDependencies": {
+    "rescript": "12.3.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "reventless/seed"
+  }
+}

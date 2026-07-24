@@ -67,6 +67,52 @@ curl -s -X POST http://localhost:4000/__inmemory/login \
 Walkthrough: [Run it locally](../../packages/doc/docs-tutorials/run-locally.md) ·
 [Test it locally](../../packages/doc/docs-tutorials/test-locally.md).
 
+## Seed demo data
+
+Every view starts empty, which makes "the component is broken" and "there is no
+data" look identical. `demo-data` fills them — 8 categories, 64 products, 20
+customers and 150 orders — by driving the example's own GraphQL mutations:
+
+```bash
+cd platform-local
+pnpm run serve:reset     # in one shell — a clean store
+pnpm run demo-data       # in another
+```
+
+Generation is deterministic (fixed PRNG seed, fixed literal data), so a reset
+plus a re-run reproduces the same rows. There is no idempotence logic: run it
+against a fresh store, not on top of an existing one. Point it elsewhere with
+`REVENTLESS_GRAPHQL_ENDPOINT`.
+
+Because it goes through the public command API rather than writing to the store,
+it doubles as a smoke test — and it is **domain-coupled by design**. The seed is
+built from real plugin command values (`AddProduct.command`,
+`PlaceOrder.command`, …), so a renamed or re-shaped command breaks the build
+rather than seeding states the domain can no longer reach.
+
+It is split three ways, under `platform-local/src/`:
+
+| File | Role |
+|---|---|
+| `DemoData.res` | *What* to seed — literal data and the deterministic generation that turns it into categories, products, customers and orders |
+| `DemoCommands.res` | The adapter — how this example's command values map onto GraphQL mutation fields and arguments |
+| `DemoSeed.res` | The run — phases, view verification, and the summary |
+
+The transport, deterministic randomness, view checks and failure reporting are
+generic and live in [`@reventlessdev/reventless-seed`](../../reventless/seed);
+nothing in that package knows about this domain.
+
+The order data is shaped by the shipping method each order is placed with, which
+is what makes the lifecycle visible: `Express` orders are auto-shipped by the
+`AutoShipOrder` automation, most `Standard` orders are shipped by a batch-dispatch
+phase, and the remaining `Standard` and `Pickup` orders stay `Placed` — so a
+share of them can then be cancelled. The run prints the resulting
+`status` × `shippingMethod` breakdown.
+
+One view the seed cannot fill, reported as a warning at the end of each run:
+`SendOrderConfirmationTodos` stays empty because that OutboundTranslationSlice
+does not run on the local platform.
+
 ## Deploy it to AWS
 
 Deploy the platform stack first, then the plugins (Pulumi):

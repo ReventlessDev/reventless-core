@@ -31,6 +31,7 @@
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-local",
+    "@reventlessdev/reventless-seed",
     "@reventlessdev/reventless-gwt",
     "@reventlessdev/rescript-pulumi-pulumi"
   ],
