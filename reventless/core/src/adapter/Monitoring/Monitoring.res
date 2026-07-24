@@ -58,18 +58,26 @@ FunctionName or a PrometheusRule deployment selector, but unusable as a logical
 resource name). Because `onProvisioned` fires during resource creation inside the
 deploy program, a Pulumi-based backend can create monitoring resources in the
 same stack, parented naturally.
+
+`~plugin` / `~platform` are the OWNING plugin and platform of the unit, taken from the ambient
+`ResourceAttribution` context the plugin builder publishes during construction (the same source
+`AWS_Tags` uses). Both are `None` for substrate provisioned outside any plugin construct — the
+correct answer for platform-scope resources. A backend that names or routes its monitoring resources
+per plugin needs this: `~name` is only the component, and two plugins can own like-named components.
 */
 module type Backend = {
   let onProvisioned: (
     ~kind: unitKind,
     ~name: string,
     ~component: ReventlessInfra.Adapter.resource,
+    ~plugin: option<string>,
+    ~platform: option<string>,
   ) => unit
 }
 
 /** Default backend: does nothing. Active unless an extension calls `use`. */
 module Noop: Backend = {
-  let onProvisioned = (~kind as _, ~name as _, ~component as _) => ()
+  let onProvisioned = (~kind as _, ~name as _, ~component as _, ~plugin as _, ~platform as _) => ()
 }
 
 let backend: ref<module(Backend)> = ref(module(Noop: Backend))
@@ -92,5 +100,9 @@ let notify = (
   ~component: ReventlessInfra.Adapter.resource,
 ) => {
   module B = unpack(backend.contents)
-  B.onProvisioned(~kind, ~name, ~component)
+  // The owning plugin/platform come from the ambient context the plugin builder publishes
+  // (ResourceAttribution.enter) — populated exactly when this fires, so the call sites need not
+  // thread the names. `None` outside a plugin construct (platform substrate).
+  let {ResourceAttribution.plugin: plugin, platform} = ResourceAttribution.current.contents
+  B.onProvisioned(~kind, ~name, ~component, ~plugin, ~platform)
 }
