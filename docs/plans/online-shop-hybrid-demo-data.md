@@ -1,8 +1,63 @@
 # Plan: Demo data for the online-shop-hybrid example
 
-## Status: Not started
+## Status: Implemented — 4 of 5 acceptance criteria met, 1 blocked by a dead slice
 
 **Date:** 2026-07-24
+
+The seeder ships as ReScript under `platform-local/src/` — `DemoData.res` (the
+dataset), `DemoCommands.res` (the command→mutation adapter) and `DemoSeed.res`
+(the run) — on top of the reusable `@reventlessdev/reventless-seed` package. Wired as
+`pnpm run demo-data` and documented in the example README. A full run against a
+fresh store takes ~2.3s and seeds 8 categories, 64 products (60 authored + 4
+supplier-fed), 20 customers, 150 orders and 5 import-audit rows.
+
+**Met.** `ProductDemand` has a real head and tail (56 / 31 / 16 for the top
+three, 44 of 64 products ordered, tail of 1); the `Orders` board shows all three
+statuses; byte-identical data across two reset-and-rerun cycles, verified by
+diffing a full dump of all seven data views; a deliberately broken mutation name
+aborts with the offending mutation and the GraphQL response.
+
+**Partly met.** Non-empty grids on 8 of the 9 queryable views — the script fails
+the run if a view it is supposed to fill is empty, and the 9th is unfillable for
+the reason below.
+
+**Status spread — resolved by a follow-up plan.** The `AutoShipOrder` automation
+originally issued `ShipOrder` *before the `PlaceOrder` mutation returned*
+(measured: `Shipped` at 0ms, an immediate `CancelOrder` rejected
+`OrderAlreadyShipped`), making `Placed` and `Cancelled` unreachable and
+`CancelOrder` dead code. That is fixed in
+[online-shop-hybrid-order-lifecycle.md](online-shop-hybrid-order-lifecycle.md),
+which gates the automation on a new `shippingMethod` field. The seeder now
+produces `Shipped` 106 / `Placed` 29 / `Cancelled` 15 out of 150, and this
+acceptance criterion passes.
+
+**Blocked — not fixable in the seed script.** Reported as a warning at the end
+of every run rather than papered over:
+
+1. **`SendOrderConfirmationTodos` stays empty.** The `SendOrderConfirmation`
+   OutboundTranslationSlice does not run on the local platform at all: zero todo
+   rows and zero `EmailService` calls across 150 `OrderPlaced` events, while the
+   `AutoShipOrder` automation consuming the same events produces 150 rows. Phase
+   1 `collect` never fires, so this is not the 60s heartbeat. Root cause not
+   chased down — likely the slice never binds to the `OrderingDcbEventLog`
+   topic.
+
+**Also found, worked around.** Every `Catalog_ImportProduct` call returns a
+GraphQL error — `Abstract type "CommandResult" must resolve to an Object type` —
+even though the import succeeds and the audit row records `Success`. The
+resolver at
+[`InboundTranslationResolvers_GraphQL.res:48-56`](../../reventless/local/src/adapter/CommandGenerator/InboundTranslationResolvers_GraphQL.res#L48-L56)
+returns the target-id array while `deriveMutationFieldFromObject` types the SDL
+field as `CommandResult!`. Every InboundTranslationSlice mutation is affected,
+not just this one. The script carves out that exact error and verifies the
+outcome through the audit view instead; the carve-out should be deleted once the
+resolver is fixed.
+
+**Not attempted.** "Orders spread across a date range" (step 2) is not
+representable: `Orders` has no time field, and the projection cannot see
+`recordedAt` or `meta` until
+[stateviewslice-projection-envelope.md](stateviewslice-projection-envelope.md)
+(B4) lands. Date spread should be revisited as part of that plan, not this one.
 
 `examples/online-shop-hybrid/platform-local` has serve/dev scripts only — no
 seed. Every view is an empty grid until someone clicks through the command
@@ -39,9 +94,15 @@ in one second.
 
 ## Decision
 
-A plain Node script at
-`examples/online-shop-hybrid/platform-local/scripts/demo-data.mjs` issuing the
+A seeder under `examples/online-shop-hybrid/platform-local/src/` issuing the
 example's **own GraphQL mutations** against the running local platform.
+
+(Originally specified as a plain Node script and first implemented that way;
+subsequently rewritten in ReScript on the generic
+`@reventlessdev/reventless-seed` harness. That split the domain-agnostic
+plumbing out of the example and moved command construction onto real plugin
+command values, so a changed signature is now a compile error rather than a
+runtime rejection.)
 
 Not a direct write into the store. Driving the public command API means:
 
@@ -68,7 +129,7 @@ Endpoint from an env var with the dev-port default; no server-side changes.
      a board** — a real spread of Placed / Shipped / Cancelled, not 95% Placed
    - demand counts that make `ProductDemand` a plausible top-N leaderboard
      (a clear head, a long tail), not a flat line
-3. **Wire it up.** `"demo-data": "node scripts/demo-data.mjs"` in
+3. **Wire it up.** `"demo-data": "node src/DemoSeed.res.mjs"` in
    `platform-local/package.json`; document the `serve:reset` → `demo-data`
    pairing in the example README. No idempotence logic in the script — reset is
    already a first-class script (`serve:reset` passes `?reset` to the sqlite
