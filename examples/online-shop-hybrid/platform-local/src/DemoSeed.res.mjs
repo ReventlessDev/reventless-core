@@ -112,7 +112,7 @@ async function seedSupplierFeed() {
   for (let i = 0, i_finish = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.supplierFeed.length; i < i_finish; ++i) {
     let row = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.supplierFeed[i];
     if (row !== undefined) {
-      await Seed_Client$ReventlessSeed.sendInboundTranslation(client, DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.importProduct(row));
+      await Seed_Client$ReventlessSeed.send(client, DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.importProduct(row), ["TranslationFailed"]);
     }
   }
   let audits = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Catalog_ImportProductAudits", "status");

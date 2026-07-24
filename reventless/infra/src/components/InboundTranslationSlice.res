@@ -10,12 +10,45 @@ type outputs = {
 }
 
 /**
+A translation that ran to completion.
+
+- `requestId` -- the key the audit row is stored under
+- `targetIds` -- the entities the produced commands address; empty when the
+  translation legitimately produced no command
+- `commandCount` -- how many commands were published
+*/
+type acceptedResult = {
+  requestId: string,
+  targetIds: array<string>,
+  commandCount: int,
+}
+
+/**
+A translation that was rejected -- by input parsing, by `translate`, by command
+encoding or by the publish itself.
+
+- `requestId` -- the key the audit row is stored under
+- `error` -- the rejection message
+*/
+type rejectedResult = {
+  requestId: string,
+  error: string,
+}
+
+/**
+Outcome of `receive`. Both arms carry `requestId` so a caller can correlate the
+response with the slice's audit row, and so the GraphQL resolver can report a
+`msgId` on either arm.
+*/
+type receiveResult = result<acceptedResult, rejectedResult>
+
+/**
 Runtime operations exposed by an `InboundTranslationSlice` component.
 
 - `receive` -- accept external input, translate it, and publish a command
 */
 type operations = {
-  receive: JSON.t => promise<result<array<string>, string>>,
+  receive: JSON.t => promise<receiveResult>,
 }
 
 /**

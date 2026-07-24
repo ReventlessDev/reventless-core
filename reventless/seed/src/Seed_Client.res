@@ -154,24 +154,6 @@ let sendAll = async (t: t, mutations: array<mutation>): unit =>
     }
   }
 
-/**
- * InboundTranslationSlice mutations are declared as returning `CommandResult!`
- * but their resolver returns the translated target-id array, so the GraphQL
- * runtime cannot resolve the union and every call comes back as an error even
- * when the import succeeded. Tolerate exactly that shape and verify the outcome
- * through the slice's audit view instead. Delete this once the resolver is
- * fixed — a real failure would otherwise hide behind it.
- */
-let sendInboundTranslation = async (t: t, m: mutation): unit => {
-  let label = m->describe
-  let query = `mutation { r: ${m.field}(${m.args->renderArgs}) { __typename } }`
-  try (await gql(t, ~query, ~label))->ignore catch {
-  | Failed(message)
-    if message->String.includes("must resolve to an Object type") &&
-      message->String.includes("CommandResult") => ()
-  }
-}
-
 // ── Queries ─────────────────────────────────────────────────────────────────
 
 /**

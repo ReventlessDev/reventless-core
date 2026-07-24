@@ -171,6 +171,31 @@ external close: (httpServer, unit => unit) => unit = "close"
 @module("graphql")
 external printSchema: schema => string = "printSchema"
 
+// ─── In-process execution ─────────────────────────────────────────────────
+
+/**
+ * Outcome of an in-process `graphql` call. `errors` carries `GraphQLError`
+ * instances — each an `Error` subclass, so `JsExn.message` reads their message.
+ */
+type executionResult = {
+  data?: JSON.t,
+  errors?: array<JsExn.t>,
+}
+
+/**
+ * Parses, validates and executes a document against a schema without going
+ * through HTTP. This is the same executor a served request drives, so
+ * abstract-type resolution and validation behave identically — useful for
+ * asserting on the full response envelope (`data` *and* `errors`), which a
+ * resolver invoked directly cannot show.
+ */
+@module("graphql")
+external graphql: {
+  "schema": schema,
+  "source": string,
+  "contextValue": JSON.t,
+} => promise<executionResult> = "graphql"
+
 // ─── PubSub (for WebSocket subscriptions) ────────────────────────────────
 
 /**

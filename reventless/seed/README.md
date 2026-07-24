@@ -44,8 +44,6 @@ observe what it produced:
 - **`waitForIds`** — polls a `<View>ByIds` field until every id is present.
   Cross-plugin propagation (extension point → extension → command) is
   asynchronous; waiting on the observable result beats sleeping and hoping.
-- **`sendInboundTranslation`** — dispatch for InboundTranslationSlice mutations,
-  which currently cannot report their own outcome (see *Known gaps*).
 
 ### `Seed.Random` — deterministic generation
 
@@ -132,15 +130,6 @@ store.
 
 A complete worked example — dataset, adapter and run as three files — is the
 `online-shop-hybrid` example's `platform-local/src/Demo*.res`.
-
-## Known gaps
-
-InboundTranslationSlice mutations are declared as returning `CommandResult!` but
-their resolver returns the translated target-id array, so the GraphQL runtime
-cannot resolve the union and **every call comes back as an error even when the
-import succeeded**. `sendInboundTranslation` tolerates exactly that shape;
-verify the outcome through the slice's audit view instead. The carve-out should
-be removed once the resolver is fixed.
 
 ## Where it fits
 

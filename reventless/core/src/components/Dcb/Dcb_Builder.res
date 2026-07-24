@@ -718,11 +718,10 @@ module Make = (
                 | Some(receiveFn) =>
                   Effect.promise(async () => {
                     let result = await receiveFn(args)
-                    let response = switch result {
-                    | Ok(targetIds) =>
-                      targetIds->Array.map(JSON.Encode.string)->JSON.Encode.array
-                    | Error(msg) => msg->JSON.Encode.string
-                    }
+                    let response =
+                      result
+                      ->InboundTranslationSlice.receiveResultToOutcome
+                      ->CommandTopic.commandOutcomeToJson
                     response->Obj.magic
                   })
                 | None => baseHandler(event, ctx)

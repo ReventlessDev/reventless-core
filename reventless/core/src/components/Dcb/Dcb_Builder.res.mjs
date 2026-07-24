@@ -15,6 +15,7 @@ import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as DcbValidation$Reventless from "@reventlessdev/reventless-spec/src/components/DcbValidation.res.mjs";
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
+import * as CommandTopic$ReventlessCore from "../CommandTopic/CommandTopic.res.mjs";
 import * as DcbScopeInference$Reventless from "@reventlessdev/reventless-spec/src/components/DcbScopeInference.res.mjs";
 import * as RuntimeHints$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/RuntimeHints.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "../../plugin/component/Plugin_Helpers.res.mjs";
@@ -22,6 +23,7 @@ import * as ApiNoApiHelpers$ReventlessCore from "../Api/ApiNoApiHelpers.res.mjs"
 import * as Plugin_Structure$ReventlessCore from "../../plugin/component/Plugin_Structure.res.mjs";
 import * as DcbEventLog_Builder$ReventlessCore from "../DcbEventLog/DcbEventLog_Builder.res.mjs";
 import * as CommandTopic_Builder$ReventlessCore from "../CommandTopic/CommandTopic_Builder.res.mjs";
+import * as InboundTranslationSlice$ReventlessCore from "../InboundTranslationSlice/InboundTranslationSlice.res.mjs";
 import * as AutomationSlice_Callback$ReventlessCore from "../AutomationSlice/AutomationSlice_Callback.res.mjs";
 import * as CommandGenerator_Callback$ReventlessCore from "../CommandGenerator/CommandGenerator_Callback.res.mjs";
 import * as InboundTranslationSlice_Callback$ReventlessCore from "../InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
@@ -382,11 +384,7 @@ function Make(DcbEventLogStorage) {
             if (receiveFn !== undefined) {
               return Effect.promise(async () => {
                 let result = await receiveFn(args);
-                if (result.TAG === "Ok") {
-                  return result._0.map(prim => prim);
-                } else {
-                  return result._0;
-                }
+                return CommandTopic$ReventlessCore.commandOutcomeToJson(InboundTranslationSlice$ReventlessCore.receiveResultToOutcome(result));
               });
             } else {
               return baseHandler(event, ctx);

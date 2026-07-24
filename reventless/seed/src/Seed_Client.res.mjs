@@ -2,7 +2,6 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Seed_Types$ReventlessSeed from "./Seed_Types.res.mjs";
 
 function sleep(ms) {
@@ -151,25 +150,6 @@ async function sendAll(t, mutations) {
   }
 }
 
-async function sendInboundTranslation(t, m) {
-  let label = Seed_Types$ReventlessSeed.describe(m);
-  let query = `mutation { r: ` + m.field + `(` + Seed_Types$ReventlessSeed.renderArgs(m.args) + `) { __typename } }`;
-  try {
-    await gql(t, query, label);
-    return;
-  } catch (raw_message) {
-    let message = Primitive_exceptions.internalToException(raw_message);
-    if (message.RE_EXN_ID === Seed_Types$ReventlessSeed.Failed) {
-      let message$1 = message._1;
-      if (message$1.includes("must resolve to an Object type") && message$1.includes("CommandResult")) {
-        return;
-      }
-      throw message;
-    }
-    throw message;
-  }
-}
-
 async function queryAllNodes(t, fieldName, selection) {
   let nodes = [];
   let after;
@@ -250,7 +230,6 @@ export {
   commandResultSelection,
   send,
   sendAll,
-  sendInboundTranslation,
   queryAllNodes,
   countNodes,
   waitForIds,

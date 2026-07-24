@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as InboundTranslationSliceFixtures$ReventlessLocal from "./InboundTranslationSliceFixtures.res.mjs";
@@ -45,9 +46,10 @@ globalThis.describe("InboundTranslationSlice Callback", () => {
       };
       let result = await Callback.receive(mockPublish, inputJson);
       if (result.TAG === "Ok") {
-        let targetIds = result._0;
-        globalThis.expect(targetIds.length).toBe(1);
-        globalThis.expect(targetIds[0]).toBe("ord-1");
+        let match = result._0;
+        globalThis.expect(match.targetIds).toEqual(["ord-1"]);
+        globalThis.expect(match.commandCount).toBe(1);
+        globalThis.expect(Stdlib_Option.isSome(Callback.auditLog[match.requestId])).toBe(true);
       } else {
         globalThis.expect(true).toBe(false);
       }
@@ -56,8 +58,8 @@ globalThis.describe("InboundTranslationSlice Callback", () => {
       globalThis.expect(cmd.id).toBe("ord-1");
       let auditEntries = Object.entries(Callback.auditLog);
       globalThis.expect(auditEntries.length).toBe(1);
-      let match = auditEntries[0];
-      let auditRow = match[1];
+      let match$1 = auditEntries[0];
+      let auditRow = match$1[1];
       globalThis.expect(auditRow.status).toBe("Success");
       globalThis.expect(auditRow.commandCount).toBe(1);
     });
@@ -77,7 +79,7 @@ globalThis.describe("InboundTranslationSlice Callback", () => {
       if (result.TAG === "Ok") {
         globalThis.expect(true).toBe(false);
       } else {
-        globalThis.expect(result._0).toBe("Unknown payment status: pending");
+        globalThis.expect(result._0.error).toBe("Unknown payment status: pending");
       }
       globalThis.expect(publishedCommands.contents.length).toBe(0);
       let auditEntries = Object.entries(Callback.auditLog);
@@ -112,7 +114,7 @@ globalThis.describe("InboundTranslationSlice Callback", () => {
       if (result.TAG === "Ok") {
         globalThis.expect(true).toBe(false);
       } else {
-        globalThis.expect(result._0).toBe("publish failed");
+        globalThis.expect(result._0.error).toBe("publish failed");
       }
       let auditEntries = Object.entries(Callback.auditLog);
       globalThis.expect(auditEntries.length).toBe(1);
@@ -173,17 +175,21 @@ globalThis.describe("InboundTranslationSlice Callback", () => {
       };
       let result = await MultiCallback.receive(mockPublish, inputJson);
       if (result.TAG === "Ok") {
-        let targetIds = result._0;
-        globalThis.expect(targetIds.length).toBe(3);
-        globalThis.expect(targetIds[0]).toBe("ord-1");
+        let match = result._0;
+        globalThis.expect(match.targetIds).toEqual([
+          "ord-1",
+          "ord-1",
+          "ord-1"
+        ]);
+        globalThis.expect(match.commandCount).toBe(3);
       } else {
         globalThis.expect(true).toBe(false);
       }
       globalThis.expect(publishedCommands.contents.length).toBe(3);
       let auditEntries = Object.entries(MultiCallback.auditLog);
       globalThis.expect(auditEntries.length).toBe(1);
-      let match = auditEntries[0];
-      let auditRow = match[1];
+      let match$1 = auditEntries[0];
+      let auditRow = match$1[1];
       globalThis.expect(auditRow.status).toBe("Success");
       globalThis.expect(auditRow.commandCount).toBe(3);
     });
@@ -226,7 +232,9 @@ globalThis.describe("InboundTranslationSlice Callback", () => {
       };
       let result = await EmptyCallback.receive(mockPublish, inputJson);
       if (result.TAG === "Ok") {
-        globalThis.expect(result._0.length).toBe(0);
+        let match = result._0;
+        globalThis.expect(match.targetIds).toEqual([]);
+        globalThis.expect(match.commandCount).toBe(0);
       } else {
         globalThis.expect(true).toBe(false);
       }

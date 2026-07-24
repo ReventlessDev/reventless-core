@@ -34,9 +34,11 @@ describe("InboundTranslationSlice Callback", () => {
       let result = await Callback.receive(mockPublish, inputJson)
 
       switch result {
-      | Ok(targetIds) =>
-        expect(targetIds->Array.length)->toBe(1)
-        expect(targetIds->Array.getUnsafe(0))->toBe("ord-1")
+      | Ok({requestId, targetIds, commandCount}) =>
+        expect(targetIds)->toEqual(["ord-1"])
+        expect(commandCount)->toBe(1)
+        // requestId keys the audit row, so the caller can correlate the response.
+        expect(Callback.auditLog->Dict.get(requestId)->Option.isSome)->toBe(true)
       | Error(_) => expect(true)->toBe(false)
       }
       expect(publishedCommands.contents->Array.length)->toBe(1)
@@ -67,7 +69,7 @@ describe("InboundTranslationSlice Callback", () => {
       let result = await Callback.receive(mockPublish, inputJson)
 
       switch result {
-      | Error(msg) => expect(msg)->toBe("Unknown payment status: pending")
+      | Error({error}) => expect(error)->toBe("Unknown payment status: pending")
       | Ok(_) => expect(true)->toBe(false)
       }
       expect(publishedCommands.contents->Array.length)->toBe(0)
@@ -112,7 +114,7 @@ describe("InboundTranslationSlice Callback", () => {
       let result = await Callback.receive(failingPublish, inputJson)
 
       switch result {
-      | Error(msg) => expect(msg)->toBe("publish failed")
+      | Error({error}) => expect(error)->toBe("publish failed")
       | Ok(_) => expect(true)->toBe(false)
       }
 
@@ -177,9 +179,9 @@ describe("InboundTranslationSlice Callback", () => {
       let result = await MultiCallback.receive(mockPublish, inputJson)
 
       switch result {
-      | Ok(targetIds) =>
-        expect(targetIds->Array.length)->toBe(3)
-        expect(targetIds->Array.getUnsafe(0))->toBe("ord-1")
+      | Ok({targetIds, commandCount}) =>
+        expect(targetIds)->toEqual(["ord-1", "ord-1", "ord-1"])
+        expect(commandCount)->toBe(3)
       | Error(_) => expect(true)->toBe(false)
       }
       // All 3 commands published in one batch
@@ -234,7 +236,9 @@ describe("InboundTranslationSlice Callback", () => {
       let result = await EmptyCallback.receive(mockPublish, inputJson)
 
       switch result {
-      | Ok(targetIds) => expect(targetIds->Array.length)->toBe(0)
+      | Ok({targetIds, commandCount}) =>
+        expect(targetIds)->toEqual([])
+        expect(commandCount)->toBe(0)
       | Error(_) => expect(true)->toBe(false)
       }
       expect(publishedCommands.contents->Array.length)->toBe(0)

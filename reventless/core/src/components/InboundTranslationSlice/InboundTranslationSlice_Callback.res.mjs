@@ -59,7 +59,11 @@ function Make(Spec) {
             };
             return {
               TAG: "Ok",
-              _0: []
+              _0: {
+                requestId: requestId,
+                targetIds: [],
+                commandCount: 0
+              }
             };
           }
           let msgs = {
@@ -101,7 +105,10 @@ function Make(Spec) {
             };
             return {
               TAG: "Error",
-              _0: msg$1
+              _0: {
+                requestId: requestId,
+                error: msg$1
+              }
             };
           }
           try {
@@ -116,7 +123,11 @@ function Make(Spec) {
             };
             return {
               TAG: "Ok",
-              _0: targetIds
+              _0: {
+                requestId: requestId,
+                targetIds: targetIds,
+                commandCount: pairs$1.length
+              }
             };
           } catch (raw_exn$1) {
             let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
@@ -129,7 +140,10 @@ function Make(Spec) {
             };
             return {
               TAG: "Error",
-              _0: msg$2
+              _0: {
+                requestId: requestId,
+                error: msg$2
+              }
             };
           }
         } else {
@@ -142,7 +156,10 @@ function Make(Spec) {
           };
           return {
             TAG: "Error",
-            _0: msg$3
+            _0: {
+              requestId: requestId,
+              error: msg$3
+            }
           };
         }
       } else {
@@ -155,7 +172,10 @@ function Make(Spec) {
         };
         return {
           TAG: "Error",
-          _0: msg$4
+          _0: {
+            requestId: requestId,
+            error: msg$4
+          }
         };
       }
     };

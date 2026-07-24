@@ -932,7 +932,10 @@ type platformHooks = {
   // InboundTranslationSlice — phase 1: register SDL + stub.
   inboundMutationResolverHook?: (~fieldName: string, ~externalInputSchema: S.t<unknown>) => unit,
   // InboundTranslationSlice — phase 2: bind receive.
-  inboundMutationBindReceiveHook?: (~fieldName: string, ~receive: JSON.t => promise<result<array<string>, string>>) => unit,
+  inboundMutationBindReceiveHook?: (
+    ~fieldName: string,
+    ~receive: JSON.t => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>,
+  ) => unit,
   // GraphQL type definitions.
   schemaTypeRegistrationHook?: array<string> => unit,
   // Subscription infrastructure (AWS): wire StateTopic + EventLogSubscription Lambdas.

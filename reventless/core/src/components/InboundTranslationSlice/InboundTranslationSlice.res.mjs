@@ -3,6 +3,36 @@
 import * as Pulumi from "@pulumi/pulumi";
 import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
 
+function receiveResultToOutcome(result) {
+  if (result.TAG === "Ok") {
+    let match = result._0;
+    let commandCount = match.commandCount;
+    let requestId = match.requestId;
+    let entityId = match.targetIds[0];
+    if (entityId !== undefined) {
+      return {
+        TAG: "Accepted",
+        msgId: requestId,
+        entityId: entityId,
+        eventCount: commandCount
+      };
+    } else {
+      return {
+        TAG: "Accepted",
+        msgId: requestId,
+        eventCount: commandCount
+      };
+    }
+  }
+  let match$1 = result._0;
+  return {
+    TAG: "Rejected",
+    msgId: match$1.requestId,
+    errorCode: "TranslationFailed",
+    errorDetail: match$1.error
+  };
+}
+
 function toResolvedOutputs(outputs) {
   return Pulumi.all([
     Adapter$ReventlessCore.resourcesToInterop(outputs.resources),
@@ -19,6 +49,7 @@ let componentType = "InboundTranslationSlice";
 
 export {
   componentType,
+  receiveResultToOutcome,
   toResolvedOutputs,
 }
 /* @pulumi/pulumi Not a pure module */

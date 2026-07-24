@@ -122,12 +122,18 @@ let seedSupplierFeed = async () => {
   for i in 0 to DemoData.supplierFeed->Array.length - 1 {
     switch DemoData.supplierFeed->Array.get(i) {
     | Some(row) =>
-      await client->Seed.Client.sendInboundTranslation(DemoCommands.importProduct(row))
+      // One feed row is deliberately invalid, so a translation rejection is an
+      // expected outcome here rather than a seeding failure.
+      (
+        await client->Seed.Client.send(
+          DemoCommands.importProduct(row),
+          ~tolerate=["TranslationFailed"],
+        )
+      )->ignore
     | None => ()
     }
   }
-  // The import mutation cannot report its own outcome (see
-  // `sendInboundTranslation`), so confirm through the audit view instead.
+  // Cross-check the per-request outcomes against the slice's audit view.
   let audits = await client->Seed.Client.queryAllNodes(
     ~field="Catalog_ImportProductAudits",
     ~selection="status",

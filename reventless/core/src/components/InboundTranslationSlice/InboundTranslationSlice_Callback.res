@@ -29,7 +29,7 @@ module type T = {
   let receive: (
     ReventlessInfra.CommandTopic.publishJsons,
     JSON.t,
-  ) => promise<result<array<string>, string>>
+  ) => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>
 }
 
 module Make = (
@@ -53,7 +53,7 @@ module Make = (
   let receive = async (
     publishJsons: ReventlessInfra.CommandTopic.publishJsons,
     inputJson: JSON.t,
-  ) => {
+  ): ReventlessInfra.InboundTranslationSlice.receiveResult => {
     let requestId = Uuid.v4()
 
     // Parse the external input
@@ -78,7 +78,7 @@ module Make = (
           receivedAt: now(),
         },
       )
-      Error(msg)
+      Error({requestId, error: msg})
 
     | Ok(input) =>
       switch Translation.translate(input) {
@@ -94,7 +94,7 @@ module Make = (
               receivedAt: now(),
             },
           )
-          Ok([])
+          Ok({requestId, targetIds: [], commandCount: 0})
         } else {
           // Encode all commands; abort on first encoding failure
           let msgs = ref([])
@@ -134,7 +134,7 @@ module Make = (
                 receivedAt: now(),
               },
             )
-            Error(msg)
+            Error({requestId, error: msg})
           | None =>
             try {
               await publishJsons(msgs.contents)
@@ -152,7 +152,7 @@ module Make = (
                   receivedAt: now(),
                 },
               )
-              Ok(targetIds)
+              Ok({requestId, targetIds, commandCount: pairs->Array.length})
             } catch {
             | exn =>
               let msg =
@@ -169,7 +169,7 @@ module Make = (
                   receivedAt: now(),
                 },
               )
-              Error(msg)
+              Error({requestId, error: msg})
             }
           }
         }
@@ -184,7 +184,7 @@ module Make = (
             receivedAt: now(),
           },
         )
-        Error(msg)
+        Error({requestId, error: msg})
       }
     }
   }
