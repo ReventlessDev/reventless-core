@@ -6,9 +6,16 @@
 // registers under.
 module OrderingDcbSource = {
   let name = "OrderingDcbEventLog"
+
+  @schema
+  type shippingMethod =
+    | Standard
+    | Express
+    | Pickup
+
   @schema
   type event =
-    | OrderPlaced({orderId: string})
+    | OrderPlaced({orderId: string, shippingMethod: shippingMethod})
     | OrderShipped({orderId: string})
 }
 
@@ -18,9 +25,16 @@ module FromOrderingDcb = Mapping.Make(
   {
     open OrderingDcbSource
 
+    // Filtering here rather than in `process` is deliberate: a todo row is a
+    // claim that this slice owes an action. Admitting Standard and Pickup and
+    // then declining them in `process` would leave rows Pending forever, so the
+    // todo view would show a backlog that is never worked off.
     let collect = (event, _ctx) =>
       switch event {
-      | OrderPlaced({orderId}) => [(orderId, ({orderId: orderId}: AutoShipOrder.todoItem))]
+      | OrderPlaced({orderId, shippingMethod: Express}) => [
+          (orderId, ({orderId: orderId}: AutoShipOrder.todoItem)),
+        ]
+      | OrderPlaced(_) => []
       | OrderShipped(_) => []
       }
 

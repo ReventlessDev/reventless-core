@@ -358,11 +358,13 @@ Use on command types or individual command variants to exclude them from automat
 
 **Type-level `@noApi` — entire command hidden:**
 ```rescript
+// Driven by an extension reacting to another plugin's events — never by a client.
 @schema @noApi
 type command =
-  | IssueRefund({orderId: string, reason: string})
+  | RecordDemand({@partitionTag productId: string, orderId: string})
+  | RevokeDemand({@partitionTag productId: string, orderId: string})
 ```
-All variants of this command type are excluded from GraphQL mutations and MCP tools. Use this for internal automation-only workflows.
+All variants of this command type are excluded from GraphQL mutations and MCP tools. Use this for commands that only ever arrive from an extension, an automation, or another internal path.
 
 **Variant-level `@noApi` — individual variants hidden:**
 ```rescript

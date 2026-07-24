@@ -31,7 +31,8 @@ describe("Orders StateViewSlice", () => {
     productIds: [
       "p1",
       "p2"
-    ]
+    ],
+    shippingMethod: "Standard"
   }), "o1", {
     orderId: "o1",
     customerId: "c1",
@@ -39,13 +40,28 @@ describe("Orders StateViewSlice", () => {
       "p1",
       "p2"
     ],
-    status: "Placed"
+    status: "Placed",
+    shippingMethod: "Standard"
+  }));
+  test("the shipping method chosen at placement is projected onto the row", undefined, () => thenStateWithId(whenEvent(givenEvents([]), {
+    TAG: "OrderPlaced",
+    orderId: "o1",
+    customerId: "c1",
+    productIds: ["p1"],
+    shippingMethod: "Pickup"
+  }), "o1", {
+    orderId: "o1",
+    customerId: "c1",
+    productIds: ["p1"],
+    status: "Placed",
+    shippingMethod: "Pickup"
   }));
   test("OrderShipped updates status to Shipped", undefined, () => thenStateWithId(whenEvent(givenEvents([{
       TAG: "OrderPlaced",
       orderId: "o1",
       customerId: "c1",
-      productIds: ["p1"]
+      productIds: ["p1"],
+      shippingMethod: "Express"
     }]), {
     TAG: "OrderShipped",
     orderId: "o1"
@@ -53,13 +69,15 @@ describe("Orders StateViewSlice", () => {
     orderId: "o1",
     customerId: "c1",
     productIds: ["p1"],
-    status: "Shipped"
+    status: "Shipped",
+    shippingMethod: "Express"
   }));
   test("OrderCancelled updates status to Cancelled", undefined, () => thenStateWithId(whenEvent(givenEvents([{
       TAG: "OrderPlaced",
       orderId: "o1",
       customerId: "c1",
-      productIds: ["p1"]
+      productIds: ["p1"],
+      shippingMethod: "Standard"
     }]), {
     TAG: "OrderCancelled",
     orderId: "o1"
@@ -67,7 +85,8 @@ describe("Orders StateViewSlice", () => {
     orderId: "o1",
     customerId: "c1",
     productIds: ["p1"],
-    status: "Cancelled"
+    status: "Cancelled",
+    shippingMethod: "Standard"
   }));
 });
 

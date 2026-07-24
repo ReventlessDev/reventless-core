@@ -4,12 +4,19 @@ import * as S from "sury/src/S.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
+let shippingMethodSchema = S.union([
+  S.literal("Standard"),
+  S.literal("Express"),
+  S.literal("Pickup")
+]);
+
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "OrderPlaced",
     orderId: s.m(S.string),
     customerId: s.m(S.string),
-    productIds: s.m(S.array(S.string))
+    productIds: s.m(S.array(S.string)),
+    shippingMethod: s.m(shippingMethodSchema)
   })),
   S.schema(s => ({
     TAG: "OrderShipped",
@@ -31,7 +38,8 @@ let stateSchema = S.schema(s => ({
   orderId: s.m(S.string),
   customerId: s.m(S.string),
   productIds: s.m(S.array(S.string)),
-  status: s.m(statusSchema)
+  status: s.m(statusSchema),
+  shippingMethod: s.m(shippingMethodSchema)
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
@@ -69,6 +77,7 @@ let visibility = "Public";
 export {
   name,
   Id,
+  shippingMethodSchema,
   consumedEventSchema,
   statusSchema,
   config,
@@ -78,4 +87,4 @@ export {
   authorization,
   visibility,
 }
-/* consumedEventSchema Not a pure module */
+/* shippingMethodSchema Not a pure module */

@@ -23,10 +23,22 @@ module AutoShipOrderSlice = {
 @@reventless.gwt
 
 describe("AutoShipOrder AutomationSlice", () => {
-  test("collect: OrderPlaced creates a pending TODO", () =>
-    givenEvent(OrderPlaced({orderId: "o1"}))
+  test("collect: an Express OrderPlaced creates a pending TODO", () =>
+    givenEvent(OrderPlaced({orderId: "o1", shippingMethod: Express}))
     ->whenCollect
     ->thenTodos([("o1", {orderId: "o1"})])
+  )
+
+  test("collect: a Standard OrderPlaced is left to the batch run (no TODO)", () =>
+    givenEvent(OrderPlaced({orderId: "o1", shippingMethod: Standard}))
+    ->whenCollect
+    ->thenTodos([])
+  )
+
+  test("collect: a Pickup OrderPlaced is never shipped (no TODO)", () =>
+    givenEvent(OrderPlaced({orderId: "o1", shippingMethod: Pickup}))
+    ->whenCollect
+    ->thenTodos([])
   )
 
   test("collect: OrderShipped is ignored (no TODO)", () =>
@@ -42,7 +54,7 @@ describe("AutoShipOrder AutomationSlice", () => {
   )
 
   test("resolve: OrderPlaced does not mark anything done", () =>
-    givenEvent(OrderPlaced({orderId: "o1"}))
+    givenEvent(OrderPlaced({orderId: "o1", shippingMethod: Express}))
     ->whenResolve
     ->thenResolved(None)
   )

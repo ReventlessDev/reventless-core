@@ -50,7 +50,8 @@ function decide(state, command) {
           TAG: "OrderPlaced",
           orderId: orderId,
           customerId: command.customerId,
-          productIds: productIds
+          productIds: productIds,
+          shippingMethod: command.shippingMethod
         }]
     };
   }

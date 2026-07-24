@@ -66,15 +66,26 @@ let whenProcess = include.whenProcess;
 let thenCommand = include.thenCommand;
 
 describe("AutoShipOrder AutomationSlice", () => {
-  test("collect: OrderPlaced creates a pending TODO", () => thenTodos(whenCollect(givenEvent({
+  test("collect: an Express OrderPlaced creates a pending TODO", () => thenTodos(whenCollect(givenEvent({
     TAG: "OrderPlaced",
-    orderId: "o1"
+    orderId: "o1",
+    shippingMethod: "Express"
   })), [[
       "o1",
       {
         orderId: "o1"
       }
     ]]));
+  test("collect: a Standard OrderPlaced is left to the batch run (no TODO)", () => thenTodos(whenCollect(givenEvent({
+    TAG: "OrderPlaced",
+    orderId: "o1",
+    shippingMethod: "Standard"
+  })), []));
+  test("collect: a Pickup OrderPlaced is never shipped (no TODO)", () => thenTodos(whenCollect(givenEvent({
+    TAG: "OrderPlaced",
+    orderId: "o1",
+    shippingMethod: "Pickup"
+  })), []));
   test("collect: OrderShipped is ignored (no TODO)", () => thenTodos(whenCollect(givenEvent({
     TAG: "OrderShipped",
     orderId: "o1"
@@ -85,7 +96,8 @@ describe("AutoShipOrder AutomationSlice", () => {
   })), "o1"));
   test("resolve: OrderPlaced does not mark anything done", () => thenResolved(whenResolve(givenEvent({
     TAG: "OrderPlaced",
-    orderId: "o1"
+    orderId: "o1",
+    shippingMethod: "Express"
   })), undefined));
   test("process: pending TODO emits ShipOrder for the same id", () => thenCommand(whenProcess(givenTodo("o1", {
     orderId: "o1"

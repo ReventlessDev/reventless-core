@@ -15,11 +15,18 @@ let consumedEventSchema = S.union([
   }))
 ]);
 
+let shippingMethodSchema = S.union([
+  S.literal("Standard"),
+  S.literal("Express"),
+  S.literal("Pickup")
+]);
+
 let commandSchema = S.schema(s => ({
   TAG: "PlaceOrder",
   orderId: s.m(DcbTag$Reventless.partition),
   customerId: s.m(S.string),
-  productIds: s.m(S.array(Reference$Reventless.to_(undefined, "productId", "AvailableProducts")))
+  productIds: s.m(S.array(Reference$Reventless.to_(undefined, "productId", "AvailableProducts"))),
+  shippingMethod: s.m(shippingMethodSchema)
 }));
 
 let errorSchema = S.union([
@@ -34,7 +41,8 @@ let eventSchema = S.schema(s => ({
   TAG: "OrderPlaced",
   orderId: s.m(DcbTag$Reventless.partition),
   customerId: s.m(DcbTag$Reventless.string),
-  productIds: s.m(S.array(DcbTag$Reventless.stringForKey("productId")))
+  productIds: s.m(S.array(DcbTag$Reventless.stringForKey("productId"))),
+  shippingMethod: s.m(shippingMethodSchema)
 }));
 
 function commandAuthorization(param) {
@@ -53,6 +61,7 @@ export {
   name,
   Id,
   consumedEventSchema,
+  shippingMethodSchema,
   commandSchema,
   errorSchema,
   eventSchema,

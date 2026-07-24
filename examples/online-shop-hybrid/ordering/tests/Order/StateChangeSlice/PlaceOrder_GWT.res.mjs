@@ -33,7 +33,8 @@ describe("PlaceOrder StateChangeSlice", () => {
     TAG: "PlaceOrder",
     orderId: "o1",
     customerId: "c1",
-    productIds: ["p1"]
+    productIds: ["p1"],
+    shippingMethod: "Standard"
   }), {
     TAG: "ProductsNotAvailable",
     missing: ["p1"]
@@ -45,12 +46,30 @@ describe("PlaceOrder StateChangeSlice", () => {
     TAG: "PlaceOrder",
     orderId: "o1",
     customerId: "c1",
-    productIds: ["p1"]
+    productIds: ["p1"],
+    shippingMethod: "Standard"
   }), {
     TAG: "OrderPlaced",
     orderId: "o1",
     customerId: "c1",
-    productIds: ["p1"]
+    productIds: ["p1"],
+    shippingMethod: "Standard"
+  }));
+  test("the chosen shipping method is carried onto the event", () => thenEvent(whenCmd(givenEvents([{
+      TAG: "CatalogProductSynced",
+      productId: "p1"
+    }]), {
+    TAG: "PlaceOrder",
+    orderId: "o1",
+    customerId: "c1",
+    productIds: ["p1"],
+    shippingMethod: "Express"
+  }), {
+    TAG: "OrderPlaced",
+    orderId: "o1",
+    customerId: "c1",
+    productIds: ["p1"],
+    shippingMethod: "Express"
   }));
   test("partial product availability returns ProductsNotAvailable with missing list", () => thenError(whenCmd(givenEvents([{
       TAG: "CatalogProductSynced",
@@ -62,7 +81,8 @@ describe("PlaceOrder StateChangeSlice", () => {
     productIds: [
       "p1",
       "p2"
-    ]
+    ],
+    shippingMethod: "Standard"
   }), {
     TAG: "ProductsNotAvailable",
     missing: ["p2"]
@@ -80,7 +100,8 @@ describe("PlaceOrder StateChangeSlice", () => {
     TAG: "PlaceOrder",
     orderId: "o1",
     customerId: "c1",
-    productIds: ["p1"]
+    productIds: ["p1"],
+    shippingMethod: "Standard"
   }), "OrderAlreadyPlaced"));
   test("a sibling OrderPlaced for a different orderId does not block placement", () => thenEvent(whenCmd(givenEvents([
     {
@@ -95,12 +116,14 @@ describe("PlaceOrder StateChangeSlice", () => {
     TAG: "PlaceOrder",
     orderId: "o1",
     customerId: "c1",
-    productIds: ["p1"]
+    productIds: ["p1"],
+    shippingMethod: "Pickup"
   }), {
     TAG: "OrderPlaced",
     orderId: "o1",
     customerId: "c1",
-    productIds: ["p1"]
+    productIds: ["p1"],
+    shippingMethod: "Pickup"
   }));
 });
 

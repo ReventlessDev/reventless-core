@@ -208,20 +208,18 @@ profile-and-order-count row updates in real time.
 
 ### DCB Entity: Order
 
-A confirmed purchase referencing product IDs and a customer. Order events are tagged by `orderId` in the shared DCB event log.
+A confirmed purchase referencing product IDs, a customer, and a delivery choice.
+Order events are tagged by `orderId` in the shared DCB event log.
 
 | State Change Slices | Commands | Events |
 |---|---|---|
 | `PlaceOrder` | `PlaceOrder` | `OrderPlaced` |
 | `ShipOrder` | `ShipOrder` | `OrderShipped` |
 | `CancelOrder` | `CancelOrder` | `OrderCancelled` |
-| `RefundOrder` | `IssueRefund` | `RefundIssued` |
 
-`RefundOrder` is an **internal, admin-only** slice: its command is marked
-`@noApi`, so it is not exposed on the public GraphQL API. It models a refund
-workflow triggered after a cancellation rather than by an external client — a
-small but realistic example of a command that exists for automation/operations
-only.
+`PlaceOrder` carries a `shippingMethod` of `Standard`, `Express`, or `Pickup`.
+It is what decides whether the order is dispatched automatically, so the order
+lifecycle branches on it — see the automation below.
 
 | State View Slice (Stream) | Events | Queryable view |
 |---|---|---|
@@ -229,11 +227,26 @@ only.
 
 #### Automation: Auto-Ship Order
 
-An **AutomationSlice** automatically ships every placed order.
+An **AutomationSlice** handles expedited dispatch: an `Express` order ships as
+soon as it is placed, without waiting for the batch run.
 
 | Automation Slice | Trigger Event | Command Issued | Resolved By |
 |---|---|---|---|
-| `AutoShipOrder` | `OrderPlaced` | `ShipOrder` | `OrderShipped` |
+| `AutoShipOrder` | `OrderPlaced` (`Express` only) | `ShipOrder` | `OrderShipped` |
+
+`Standard` orders ship with the batch — an explicit `ShipOrder` — and `Pickup`
+orders are collected in store and never ship at all. Neither is this slice's
+business, so its `collect` admits only `Express` and no TODO item is created for
+the others.
+
+Filtering in `collect` rather than in `process` is deliberate. A TODO item is a
+claim that the slice owes an action; admitting every order and then declining
+most of them in `process` would leave those items pending forever, so the TODO
+view would show a backlog that is never worked off.
+
+This is also what keeps the rest of the lifecycle reachable. If every order were
+shipped the moment it was placed, `CancelOrder` — which only applies to an order
+still in `Placed` — could never succeed.
 
 #### Outbound Translation: Send Order Confirmation Email
 
@@ -409,7 +422,7 @@ Ordering is generated the same way. Its `make` wires:
   the **mixed aggregate + DCB** read model, fed by both the Customer aggregate
   and the Ordering DCB log (`orderCount`);
 - the Order and CatalogProduct **DCB slices** (`PlaceOrder`, `ShipOrder`,
-  `CancelOrder`, `RefundOrder`, `SyncCatalogProduct`);
+  `CancelOrder`, `SyncCatalogProduct`);
 - the **`AutoShipOrder`** automation slice and the **`SendOrderConfirmation`**
   outbound-translation slice;
 - the `Orders` and `AvailableProducts` `StateViewSliceStream` views;

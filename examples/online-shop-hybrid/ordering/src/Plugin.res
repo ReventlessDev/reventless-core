@@ -6,7 +6,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
   module CancelOrderSlice = Platform.StateChangeSlice.Make(CancelOrder, CancelOrder_Behavior)
   module PlaceOrderSlice = Platform.StateChangeSlice.Make(PlaceOrder, PlaceOrder_Behavior)
-  module RefundOrderSlice = Platform.StateChangeSlice.Make(RefundOrder, RefundOrder_Behavior)
   module ShipOrderSlice = Platform.StateChangeSlice.Make(ShipOrder, ShipOrder_Behavior)
   module SyncCatalogProductSlice = Platform.StateChangeSlice.Make(SyncCatalogProduct, SyncCatalogProduct_Behavior)
 
@@ -41,12 +40,12 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~aggregates=[module(CustomerAggregate)],
     ~readModels=[module(CustomersReadModel)],
     ~stateViewSlices=[module(AvailableProductsStreamSlice), module(OrdersStreamSlice)],
-    ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(RefundOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
+    ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
     ~automationSlices=[module(AutoShipOrderSlice)],
     ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
     ~extensions=[module(Products_Extension)],
     ~extensionPoints=[module(Orders_ExtensionPointMapping)],
-    ~componentChapters=Dict.fromArray([("AutoShipOrder", "Order"), ("AvailableProducts", "CatalogProduct"), ("CancelOrder", "Order"), ("Customer", "Customer"), ("Customers", "Customer"), ("Orders", "Order"), ("PlaceOrder", "Order"), ("RefundOrder", "Order"), ("SendOrderConfirmation", "Order"), ("ShipOrder", "Order"), ("SyncCatalogProduct", "CatalogProduct")]),
+    ~componentChapters=Dict.fromArray([("AutoShipOrder", "Order"), ("AvailableProducts", "CatalogProduct"), ("CancelOrder", "Order"), ("Customer", "Customer"), ("Customers", "Customer"), ("Orders", "Order"), ("PlaceOrder", "Order"), ("SendOrderConfirmation", "Order"), ("ShipOrder", "Order"), ("SyncCatalogProduct", "CatalogProduct")]),
   )
 
   let make = () =>
@@ -57,7 +56,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~extensions=[module(Products_Extension)],
       ~aggregates=[module(CustomerAggregate)],
       ~readModels=[module(CustomersReadModel)],
-      ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(RefundOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
+      ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
       ~stateViewSlices=[module(AvailableProductsStreamSlice), module(OrdersStreamSlice)],
       ~automationSlices=[module(AutoShipOrderSlice)],
       ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],

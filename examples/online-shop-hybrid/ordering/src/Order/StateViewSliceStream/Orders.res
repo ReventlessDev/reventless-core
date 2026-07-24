@@ -4,8 +4,19 @@
 @@reventless.spec
 
 @schema
+type shippingMethod =
+  | Standard
+  | Express
+  | Pickup
+
+@schema
 type consumedEvent =
-  | OrderPlaced({orderId: string, customerId: string, productIds: array<string>})
+  | OrderPlaced({
+      orderId: string,
+      customerId: string,
+      productIds: array<string>,
+      shippingMethod: shippingMethod,
+    })
   | OrderShipped({orderId: string})
   | OrderCancelled({orderId: string})
 
@@ -21,4 +32,5 @@ type state = {
   customerId: string,
   productIds: array<string>,
   @status status: status,
+  shippingMethod: shippingMethod,
 }

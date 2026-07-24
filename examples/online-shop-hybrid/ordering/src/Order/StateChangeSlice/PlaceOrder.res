@@ -9,6 +9,14 @@ type consumedEvent =
   | OrderPlaced({orderId: string})
   | CatalogProductSynced({productId: string})
 
+// Declared in the order the UI should present them: the batched default first,
+// then the expedited option, then in-store collection.
+@schema
+type shippingMethod =
+  | Standard
+  | Express
+  | Pickup
+
 @schema
 type command =
   PlaceOrder({
@@ -16,6 +24,7 @@ type command =
     // customerId is payload, not a query key — @noDcbTag stops it auto-tagging.
     @noDcbTag customerId: string,
     @ref("AvailableProducts") productIds: array<string>,
+    shippingMethod: shippingMethod,
   })
 
 @schema
@@ -25,4 +34,9 @@ type error =
 
 @schema
 type event =
-  OrderPlaced({@partitionTag orderId: string, customerId: string, productIds: array<string>})
+  OrderPlaced({
+    @partitionTag orderId: string,
+    customerId: string,
+    productIds: array<string>,
+    shippingMethod: shippingMethod,
+  })

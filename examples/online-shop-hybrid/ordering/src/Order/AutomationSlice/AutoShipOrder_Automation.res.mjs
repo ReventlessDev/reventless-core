@@ -18,10 +18,17 @@ let M = AutomationSlice$Reventless.Mappings.Make({
 
 let name = "OrderingDcbEventLog";
 
+let shippingMethodSchema = S.union([
+  S.literal("Standard"),
+  S.literal("Express"),
+  S.literal("Pickup")
+]);
+
 let eventSchema = S.union([
   S.schema(s => ({
     TAG: "OrderPlaced",
-    orderId: s.m(DcbTag$Reventless.string)
+    orderId: s.m(DcbTag$Reventless.string),
+    shippingMethod: s.m(shippingMethodSchema)
   })),
   S.schema(s => ({
     TAG: "OrderShipped",
@@ -32,6 +39,7 @@ let eventSchema = S.union([
 let OrderingDcbSource = {
   Id: undefined,
   name: name,
+  shippingMethodSchema: shippingMethodSchema,
   eventSchema: eventSchema
 };
 
@@ -40,12 +48,18 @@ function collect(event, _ctx) {
     return [];
   }
   let orderId = event.orderId;
-  return [[
-      orderId,
-      {
-        orderId: orderId
-      }
-    ]];
+  switch (event.shippingMethod) {
+    case "Express" :
+      return [[
+          orderId,
+          {
+            orderId: orderId
+          }
+        ]];
+    case "Standard" :
+    case "Pickup" :
+      return [];
+  }
 }
 
 function resolve(event) {

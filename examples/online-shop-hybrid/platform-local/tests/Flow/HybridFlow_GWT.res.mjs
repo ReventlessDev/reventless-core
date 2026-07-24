@@ -212,18 +212,21 @@ Flow_GWT$ReventlessGwt.describe("Hybrid cross-plugin flow", () => {
     TAG: "PlaceOrder",
     orderId: "o1",
     customerId: "c1",
-    productIds: ["p1"]
+    productIds: ["p1"],
+    shippingMethod: "Standard"
   }), {
     TAG: "OrderPlaced",
     orderId: "o1",
     customerId: "c1",
-    productIds: ["p1"]
+    productIds: ["p1"],
+    shippingMethod: "Standard"
   }));
   Flow_GWT$ReventlessGwt.test("Tier 2 — placing an order for an unsynced product is rejected", undefined, () => Place.thenError(Place.whenCommand(Flow_GWT$ReventlessGwt.start, {
     TAG: "PlaceOrder",
     orderId: "o1",
     customerId: "c1",
-    productIds: ["p1"]
+    productIds: ["p1"],
+    shippingMethod: "Standard"
   }), {
     TAG: "ProductsNotAvailable",
     missing: ["p1"]
@@ -248,7 +251,8 @@ Flow_GWT$ReventlessGwt.describe("Hybrid cross-plugin flow", () => {
     productIds: [
       "p1",
       "p2"
-    ]
+    ],
+    shippingMethod: "Standard"
   }), {
     TAG: "OrderPlaced",
     orderId: "o1",
@@ -256,7 +260,8 @@ Flow_GWT$ReventlessGwt.describe("Hybrid cross-plugin flow", () => {
     productIds: [
       "p1",
       "p2"
-    ]
+    ],
+    shippingMethod: "Standard"
   })), [
     {
       TAG: "ItemOrdered",

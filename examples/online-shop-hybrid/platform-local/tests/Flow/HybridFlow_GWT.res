@@ -70,17 +70,32 @@ describe("Hybrid cross-plugin flow", () => {
       }),
     )
     ->Place.whenCommand(
-      OrderingPlugin.PlaceOrder.PlaceOrder({orderId: "o1", customerId: "c1", productIds: ["p1"]}),
+      OrderingPlugin.PlaceOrder.PlaceOrder({
+        orderId: "o1",
+        customerId: "c1",
+        productIds: ["p1"],
+        shippingMethod: Standard,
+      }),
     )
     ->Place.thenEvent(
-      OrderingPlugin.PlaceOrder.OrderPlaced({orderId: "o1", customerId: "c1", productIds: ["p1"]}),
+      OrderingPlugin.PlaceOrder.OrderPlaced({
+        orderId: "o1",
+        customerId: "c1",
+        productIds: ["p1"],
+        shippingMethod: Standard,
+      }),
     )
   )
 
   test("Tier 2 — placing an order for an unsynced product is rejected", () =>
     start
     ->Place.whenCommand(
-      OrderingPlugin.PlaceOrder.PlaceOrder({orderId: "o1", customerId: "c1", productIds: ["p1"]}),
+      OrderingPlugin.PlaceOrder.PlaceOrder({
+        orderId: "o1",
+        customerId: "c1",
+        productIds: ["p1"],
+        shippingMethod: Standard,
+      }),
     )
     ->Place.thenError(ProductsNotAvailable({missing: ["p1"]}))
   )
@@ -104,6 +119,7 @@ describe("Hybrid cross-plugin flow", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1", "p2"],
+        shippingMethod: Standard,
       }),
     )
     ->Place.thenEvent(
@@ -111,6 +127,7 @@ describe("Hybrid cross-plugin flow", () => {
         orderId: "o1",
         customerId: "c1",
         productIds: ["p1", "p2"],
+        shippingMethod: Standard,
       }),
     )
     ->OrdersEp.whenPublishedThrough

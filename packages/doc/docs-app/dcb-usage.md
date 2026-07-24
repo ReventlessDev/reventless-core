@@ -287,9 +287,11 @@ type command =
 
 **Type-level — hide entire command type:**
 ```rescript
-// Internal refund processing — triggered by automation, not exposed to API
+// Recorded from an extension reacting to another plugin's events, not by a client
 @schema @noApi
-type command = IssueRefund({orderId: string, reason: string})
+type command =
+  | RecordDemand({@partitionTag productId: string, orderId: string})
+  | RevokeDemand({@partitionTag productId: string, orderId: string})
 ```
 
 The `@noApi` annotation prevents commands from appearing in:

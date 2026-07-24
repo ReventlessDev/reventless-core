@@ -46,9 +46,23 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
     ->Sync.givenEvents([
       SyncCatalogProduct.CatalogProductSynced({productId: "p1", name: "Book", price: 9.99}),
     ])
-    ->Place.whenCommand(PlaceOrder.PlaceOrder({orderId: "o1", customerId: "c1", productIds: ["p1"]}))
+    // Express, so the automation picks it up — a Standard or Pickup order would
+    // stop at Placed and wait for an explicit ShipOrder.
+    ->Place.whenCommand(
+      PlaceOrder.PlaceOrder({
+        orderId: "o1",
+        customerId: "c1",
+        productIds: ["p1"],
+        shippingMethod: Express,
+      }),
+    )
     ->Place.thenEvent(
-      PlaceOrder.OrderPlaced({orderId: "o1", customerId: "c1", productIds: ["p1"]}),
+      PlaceOrder.OrderPlaced({
+        orderId: "o1",
+        customerId: "c1",
+        productIds: ["p1"],
+        shippingMethod: Express,
+      }),
     )
     ->Auto.whenReacts
     ->Auto.thenIssuesCommand(AutoShipOrder.ShipOrder({orderId: "o1"}))
@@ -56,14 +70,27 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
     ->Ship.thenEvent(ShipOrder.OrderShipped({orderId: "o1"}))
     ->OrdersView.thenViewState(
       "o1",
-      {Orders.orderId: "o1", customerId: "c1", productIds: ["p1"], status: Shipped},
+      {
+        Orders.orderId: "o1",
+        customerId: "c1",
+        productIds: ["p1"],
+        status: Shipped,
+        shippingMethod: Express,
+      },
     )
     ->Confirm.thenOutbound([("o1", {SendOrderConfirmation.orderId: "o1", customerId: "c1"})])
   )
 
   test("placing an order for an unsynced product is rejected", () =>
     start
-    ->Place.whenCommand(PlaceOrder.PlaceOrder({orderId: "o1", customerId: "c1", productIds: ["p1"]}))
+    ->Place.whenCommand(
+      PlaceOrder.PlaceOrder({
+        orderId: "o1",
+        customerId: "c1",
+        productIds: ["p1"],
+        shippingMethod: Standard,
+      }),
+    )
     ->Place.thenError(ProductsNotAvailable({missing: ["p1"]}))
   )
 })

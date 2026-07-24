@@ -25,7 +25,7 @@ let evolve = (state, event: consumedEvent) =>
 
 let decide = (state, command) =>
   switch command {
-  | PlaceOrder({orderId, customerId, productIds}) =>
+  | PlaceOrder({orderId, customerId, productIds, shippingMethod}) =>
     if state.placedOrderIds->Array.includes(orderId) {
       Error(OrderAlreadyPlaced)
     } else {
@@ -33,7 +33,7 @@ let decide = (state, command) =>
       if missing->Array.length > 0 {
         Error(ProductsNotAvailable({missing: missing}))
       } else {
-        Ok([OrderPlaced({orderId, customerId, productIds})])
+        Ok([OrderPlaced({orderId, customerId, productIds, shippingMethod})])
       }
     }
   }

@@ -132,12 +132,14 @@ Flow_GWT$ReventlessGwt.describe("Ordering flow — place → auto-ship → confi
     TAG: "PlaceOrder",
     orderId: "o1",
     customerId: "c1",
-    productIds: ["p1"]
+    productIds: ["p1"],
+    shippingMethod: "Express"
   }), {
     TAG: "OrderPlaced",
     orderId: "o1",
     customerId: "c1",
-    productIds: ["p1"]
+    productIds: ["p1"],
+    shippingMethod: "Express"
   })), {
     TAG: "ShipOrder",
     orderId: "o1"
@@ -151,7 +153,8 @@ Flow_GWT$ReventlessGwt.describe("Ordering flow — place → auto-ship → confi
     orderId: "o1",
     customerId: "c1",
     productIds: ["p1"],
-    status: "Shipped"
+    status: "Shipped",
+    shippingMethod: "Express"
   }), [[
       "o1",
       {
@@ -163,7 +166,8 @@ Flow_GWT$ReventlessGwt.describe("Ordering flow — place → auto-ship → confi
     TAG: "PlaceOrder",
     orderId: "o1",
     customerId: "c1",
-    productIds: ["p1"]
+    productIds: ["p1"],
+    shippingMethod: "Standard"
   }), {
     TAG: "ProductsNotAvailable",
     missing: ["p1"]

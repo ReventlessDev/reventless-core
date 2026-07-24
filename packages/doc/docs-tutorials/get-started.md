@@ -63,11 +63,17 @@ purchases referencing product IDs and a customer ID, with a linear lifecycle.
 
 | Command | Event | What Happens |
 |---|---|---|
-| `PlaceOrder` | `OrderPlaced` | Creates a new order referencing product IDs and a customer ID |
+| `PlaceOrder` | `OrderPlaced` | Creates a new order referencing product IDs, a customer ID, and a shipping method (`Standard`, `Express`, or `Pickup`) |
 | `ShipOrder` | `OrderShipped` | Marks the order as dispatched — terminal success state |
 | `CancelOrder` | `OrderCancelled` | Cancels an order that has not yet shipped — terminal failure state |
 
 The order lifecycle is strictly linear: `PlaceOrder` → `ShipOrder` or `CancelOrder`; neither is reversible.
+
+How an order leaves `Placed` depends on the shipping method it was placed with.
+`Express` orders are dispatched automatically by the `AutoShipOrder` automation;
+`Standard` orders wait for a batch run to issue `ShipOrder`; `Pickup` orders are
+collected in store and never ship. Only an order still in `Placed` can be
+cancelled, so the method also determines how long cancellation stays possible.
 
 ### CatalogProduct (internal)
 

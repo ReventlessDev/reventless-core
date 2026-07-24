@@ -8,7 +8,6 @@ import * as Customers$OrderingPlugin from "./Customer/ReadModelStream/Customers.
 import * as ShipOrder$OrderingPlugin from "./Order/StateChangeSlice/ShipOrder.res.mjs";
 import * as PlaceOrder$OrderingPlugin from "./Order/StateChangeSlice/PlaceOrder.res.mjs";
 import * as CancelOrder$OrderingPlugin from "./Order/StateChangeSlice/CancelOrder.res.mjs";
-import * as RefundOrder$OrderingPlugin from "./Order/StateChangeSlice/RefundOrder.res.mjs";
 import * as AutoShipOrder$OrderingPlugin from "./Order/AutomationSlice/AutoShipOrder.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as AvailableProducts$OrderingPlugin from "./CatalogProduct/StateViewSliceStream/AvailableProducts.res.mjs";
@@ -21,7 +20,6 @@ import * as Orders_ExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-
 import * as PlaceOrder_Behavior$OrderingPlugin from "./Order/StateChangeSlice/PlaceOrder_Behavior.res.mjs";
 import * as CancelOrder_Behavior$OrderingPlugin from "./Order/StateChangeSlice/CancelOrder_Behavior.res.mjs";
 import * as Products_ExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/Products_ExtensionPoint.res.mjs";
-import * as RefundOrder_Behavior$OrderingPlugin from "./Order/StateChangeSlice/RefundOrder_Behavior.res.mjs";
 import * as Customers_Projections$OrderingPlugin from "./Customer/ReadModelStream/Customers_Projections.res.mjs";
 import * as SendOrderConfirmation$OrderingPlugin from "./Order/OutboundTranslationSlice/SendOrderConfirmation.res.mjs";
 import * as AutoShipOrder_Automation$OrderingPlugin from "./Order/AutomationSlice/AutoShipOrder_Automation.res.mjs";
@@ -62,22 +60,6 @@ function Make(Platform) {
     evolve: PlaceOrder_Behavior$OrderingPlugin.evolve,
     decide: PlaceOrder_Behavior$OrderingPlugin.decide,
     moduleUrl: PlaceOrder_Behavior$OrderingPlugin.moduleUrl
-  });
-  let RefundOrderSlice = Platform.StateChangeSlice.Make({
-    name: RefundOrder$OrderingPlugin.name,
-    moduleUrl: RefundOrder$OrderingPlugin.moduleUrl,
-    Id: Id$Reventless.$$String,
-    consumedEventSchema: RefundOrder$OrderingPlugin.consumedEventSchema,
-    errorSchema: RefundOrder$OrderingPlugin.errorSchema,
-    eventSchema: RefundOrder$OrderingPlugin.eventSchema,
-    commandSchema: RefundOrder$OrderingPlugin.commandSchema,
-    commandAuthorization: RefundOrder$OrderingPlugin.commandAuthorization,
-    readConsistency: RefundOrder$OrderingPlugin.readConsistency
-  })({
-    initialState: RefundOrder_Behavior$OrderingPlugin.initialState,
-    evolve: RefundOrder_Behavior$OrderingPlugin.evolve,
-    decide: RefundOrder_Behavior$OrderingPlugin.decide,
-    moduleUrl: RefundOrder_Behavior$OrderingPlugin.moduleUrl
   });
   let ShipOrderSlice = Platform.StateChangeSlice.Make({
     name: ShipOrder$OrderingPlugin.name,
@@ -246,7 +228,6 @@ function Make(Platform) {
   ], [
     CancelOrderSlice,
     PlaceOrderSlice,
-    RefundOrderSlice,
     ShipOrderSlice,
     SyncCatalogProductSlice
   ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, [Products_Extension], [{
@@ -299,10 +280,6 @@ function Make(Platform) {
       "Order"
     ],
     [
-      "RefundOrder",
-      "Order"
-    ],
-    [
       "SendOrderConfirmation",
       "Order"
     ],
@@ -318,7 +295,6 @@ function Make(Platform) {
   let make = () => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [CustomerAggregate], [CustomersReadModel], undefined, [
     CancelOrderSlice,
     PlaceOrderSlice,
-    RefundOrderSlice,
     ShipOrderSlice,
     SyncCatalogProductSlice
   ], [
@@ -357,7 +333,6 @@ function Make(Platform) {
   return {
     CancelOrderSlice: CancelOrderSlice,
     PlaceOrderSlice: PlaceOrderSlice,
-    RefundOrderSlice: RefundOrderSlice,
     ShipOrderSlice: ShipOrderSlice,
     SyncCatalogProductSlice: SyncCatalogProductSlice,
     AvailableProductsStreamSlice: AvailableProductsStreamSlice,

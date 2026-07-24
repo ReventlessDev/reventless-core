@@ -744,7 +744,6 @@ extend type Mutation {
   Ordering_PlaceOrder(orderId: ID!, customerId: ID!, productIds: [ID]!): String!
   Ordering_ShipOrder(orderId: ID!): String!
   Ordering_CancelOrder(orderId: ID!): String!
-  Ordering_RefundOrder(orderId: ID!): String!
 
   # Ordering — CatalogProduct sync (driven by the Extension; also reachable directly)
   Ordering_SyncCatalogProduct_SyncNewProduct(productId: ID!, name: String!, price: Float!): String!

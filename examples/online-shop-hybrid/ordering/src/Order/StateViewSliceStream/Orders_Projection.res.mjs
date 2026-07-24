@@ -12,7 +12,8 @@ function project(event) {
             orderId: orderId,
             customerId: event.customerId,
             productIds: event.productIds,
-            status: "Placed"
+            status: "Placed",
+            shippingMethod: event.shippingMethod
           }
         }];
     case "OrderShipped" :
@@ -23,7 +24,8 @@ function project(event) {
             orderId: state.orderId,
             customerId: state.customerId,
             productIds: state.productIds,
-            status: "Shipped"
+            status: "Shipped",
+            shippingMethod: state.shippingMethod
           })
         }];
     case "OrderCancelled" :
@@ -34,7 +36,8 @@ function project(event) {
             orderId: state.orderId,
             customerId: state.customerId,
             productIds: state.productIds,
-            status: "Cancelled"
+            status: "Cancelled",
+            shippingMethod: state.shippingMethod
           })
         }];
   }
