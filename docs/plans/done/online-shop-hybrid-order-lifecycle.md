@@ -29,7 +29,7 @@ the row's existence, so carrying it would be dead payload in the TODO view.
 empty — that OutboundTranslationSlice does not run on the local platform at all
 (no todo rows, no `EmailService` calls for any `OrderPlaced`). The seeder reports
 it as a warning. Tracked in
-[online-shop-hybrid-demo-data.md](online-shop-hybrid-demo-data.md).
+[outbound-translation-slice-not-running-local.md](../outbound-translation-slice-not-running-local.md).
 
 The Ordering plugin in `examples/online-shop-hybrid` has an order lifecycle that
 cannot be observed and a slice that cannot run. Both are invisible when reading
@@ -82,7 +82,7 @@ model — and none of it can ever execute.
 
 `RefundOrder` was introduced by the `@noApi` commit
 (`0c1974cf3`); the plan behind it
-([command-noapi-annotation.md](done/command-noapi-annotation.md)) lists exactly
+([command-noapi-annotation.md](command-noapi-annotation.md)) lists exactly
 two additions to this example — `ReopenOrder` for the variant-level annotation
 and `IssueRefund` for the type-level one. It has acquired no other role since:
 
@@ -204,7 +204,7 @@ doc churn for no additional teaching value.
 - Any payment concept, and with it a meaningful refund.
 - `examples/online-shop-dcb`, whose `AutoShipOrder` has the same shape.
 - Order date fields, which need
-  [stateviewslice-projection-envelope.md](stateviewslice-projection-envelope.md)
+  [stateviewslice-projection-envelope.md](../stateviewslice-projection-envelope.md)
   before a projection can see event time.
 - The stale SDL block in `packages/doc/docs-app/graphql-api-guide.md`, which
   lists `Ordering_RefundOrder` even though `@noApi` means it can never appear,

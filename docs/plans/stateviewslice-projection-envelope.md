@@ -12,7 +12,7 @@ ReadModel side already does the right thing. This plan closes that asymmetry.
 **Origin.** Identified as blocker **B4** of an Auto UI demo-readiness analysis
 tracked outside this repo. That analysis lists five blockers; the other four are
 UI-side or example-side — B1–B3 are tracked with the UI work, B5 is
-[online-shop-hybrid-demo-data.md](online-shop-hybrid-demo-data.md).
+[online-shop-hybrid-demo-data.md](done/online-shop-hybrid-demo-data.md).
 This one stands on its own merits as a spec correctness fix; the UI
 payoff is a consequence, not the justification.
 

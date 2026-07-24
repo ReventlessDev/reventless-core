@@ -1,6 +1,6 @@
 # Plan: Demo data for the online-shop-hybrid example
 
-## Status: Implemented — 4 of 5 acceptance criteria met, 1 blocked by a dead slice
+## Status: Done — 4 of 5 acceptance criteria met; the 5th is blocked by a framework defect tracked separately
 
 **Date:** 2026-07-24
 
@@ -39,24 +39,26 @@ of every run rather than papered over:
    rows and zero `EmailService` calls across 150 `OrderPlaced` events, while the
    `AutoShipOrder` automation consuming the same events produces 150 rows. Phase
    1 `collect` never fires, so this is not the 60s heartbeat. Root cause not
-   chased down — likely the slice never binds to the `OrderingDcbEventLog`
-   topic.
+   chased down here — tracked, with the hypotheses already eliminated, in
+   [outbound-translation-slice-not-running-local.md](../outbound-translation-slice-not-running-local.md).
+   The seeder's warning and its 8-of-9 view check come out when that lands.
 
 **Also found, worked around.** Every `Catalog_ImportProduct` call returns a
 GraphQL error — `Abstract type "CommandResult" must resolve to an Object type` —
 even though the import succeeds and the audit row records `Success`. The
 resolver at
-[`InboundTranslationResolvers_GraphQL.res:48-56`](../../reventless/local/src/adapter/CommandGenerator/InboundTranslationResolvers_GraphQL.res#L48-L56)
+[`InboundTranslationResolvers_GraphQL.res:48-56`](../../../reventless/local/src/adapter/CommandGenerator/InboundTranslationResolvers_GraphQL.res#L48-L56)
 returns the target-id array while `deriveMutationFieldFromObject` types the SDL
 field as `CommandResult!`. Every InboundTranslationSlice mutation is affected,
 not just this one. The script carves out that exact error and verifies the
-outcome through the audit view instead; the carve-out should be deleted once the
-resolver is fixed.
+outcome through the audit view instead; deleting the carve-out is a step of
+[inbound-translation-mutation-result-type.md](../inbound-translation-mutation-result-type.md),
+which fixes the resolver.
 
 **Not attempted.** "Orders spread across a date range" (step 2) is not
 representable: `Orders` has no time field, and the projection cannot see
 `recordedAt` or `meta` until
-[stateviewslice-projection-envelope.md](stateviewslice-projection-envelope.md)
+[stateviewslice-projection-envelope.md](../stateviewslice-projection-envelope.md)
 (B4) lands. Date spread should be revisited as part of that plan, not this one.
 
 `examples/online-shop-hybrid/platform-local` has serve/dev scripts only — no
@@ -67,7 +69,7 @@ example's own command API to a coherent, reproducible dataset.
 **Origin.** Blocker **B5** of an Auto UI demo-readiness analysis tracked outside
 this repo. It is the cheapest of the five blockers and it gates visual
 verification of all the others: B1–B3 are UI-side and tracked there, B4 is
-[stateviewslice-projection-envelope.md](stateviewslice-projection-envelope.md).
+[stateviewslice-projection-envelope.md](../stateviewslice-projection-envelope.md).
 
 **Execution order: step 1 of 6** (B5 → B4 → B1 → B6 → B3 → B2; the full table
 with rationale is kept alongside the UI-side blocker list).
