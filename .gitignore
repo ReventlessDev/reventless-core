@@ -24,6 +24,11 @@ lerna-debug.log
 rescript/*/src/example/**/*.res.mjs
 rescript/*/src/examples/**/*.res.mjs
 
+# Test outputs are regenerated in-source by every root `pnpm run build` (root
+# rewatch pass + example platform-local sub-builds + a trailing `rescript build`),
+# so they are never tracked. Subsumes the former rescript/effect/.gitignore rule.
+**/tests/**/*.res.mjs
+
 # Auto Claude data directory
 .auto-claude/
 

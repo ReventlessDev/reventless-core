@@ -19,10 +19,14 @@ import path from "node:path";
 const require = createRequire(import.meta.url);
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-// Tracked in docs/plans/ci-unit-test-coverage-gap.md — their rescript.json marks
-// `tests` as `type: "dev"`, so the root build never emits their test outputs.
-// Remove an entry as each package is wired up; the check then enforces it.
-const KNOWN_EMPTY = new Set(["reventless-core", "reventless-interop"]);
+// Empty: every declared jest project must now discover at least one suite. The
+// root `pnpm run build` emits every package's test outputs in-source (the root
+// rewatch pass covers core/spec/interop/local/aws/gwt; the example platform-local
+// sub-builds cover the plugins; a trailing bare `rescript build` re-emits the
+// root-graph outputs the sub-builds orphan). Add an entry here only if a project
+// is legitimately expected to be empty — never to paper over a build that failed
+// to emit a package's outputs.
+const KNOWN_EMPTY = new Set([]);
 
 const { projects } = require(path.join(repoRoot, "jest.config.js"));
 

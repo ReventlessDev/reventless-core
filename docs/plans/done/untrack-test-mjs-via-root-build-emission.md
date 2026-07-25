@@ -1,11 +1,49 @@
 # Untrack all test `.res.mjs` by making the root build emit them
 
-> **✅ Mechanism confirmed: Option C (2026-07-25).** The Phase-0 spike proved the plan's
-> original mechanism (`pinned-dependencies`) is **unusable** — the field was removed from
-> ReScript v12 (PR rescript-lang/rescript#7686). The confirmed mechanism is now **Option C —
-> append per-package `rescript build` calls to the root build script**, which the spike proved
-> works, keeps `type: dev`, and satisfies compile-from-root. Full spike record in
-> [Appendix B](#appendix-b--phase-0-spike-record--no-go-on-pinned-dependencies-2026-07-25).
+> **✅ DONE (2026-07-25). Landed — but the mechanism is NOT Option C.** During execution,
+> Option C (append per-package `rescript build reventless/{spec,core,interop}`) was proven
+> **broken**: each per-package sub-root build orphans the in-source `type: dev` test outputs of
+> packages outside its graph, and `spec` (a dependency of `core` & `interop`) is re-orphaned by
+> their later sub-builds — leaving `spec` at **0** in-source. No ordering of per-package
+> sub-builds fixes this. See the **Execution record** below for the mechanism actually shipped.
+
+## Execution record (2026-07-25)
+
+**What actually emits what (measured from a fully-clean tree — `rm -rf` all `lib/` *and* all
+in-source `tests/**/*.res.mjs`):**
+
+- A bare root `rescript build` (rewatch, whole workspace = 1035 files) emits **core/spec/interop
+  + local/aws/gwt** test outputs in-source, but **not** the 6 example plugin packages (they are
+  separate build roots outside the root package's graph).
+- The three `rescript build examples/*/platform-local` sub-builds emit the **example** test
+  outputs — but their clean step **orphans** the Class-B (core/spec/interop) in-source outputs
+  into `lib/bs` (this, not "the root build skips dependency dev sources", is the true cause of
+  the dark-coverage gap; Appendix B's premise was confounded by leftover *tracked* outputs on
+  disk during the spike).
+
+**Shipped mechanism — append a trailing bare `rescript build`:**
+
+```jsonc
+"build": "rescript build \
+  && rescript build examples/online-shop-aggregates/platform-local \
+  && rescript build examples/online-shop-dcb/platform-local \
+  && rescript build examples/online-shop-hybrid/platform-local \
+  && rescript build"          // ← re-emits Class-B in-source; leaves out-of-graph examples intact
+```
+
+The final bare build re-emits the root-graph test outputs in-source (the example sub-builds
+had deleted the in-source copies, so there is no incremental-cache skip) while leaving the
+example outputs untouched. Verified from a fully-clean tree: **all 14 jest projects discover
+suites (255 total), `pnpm test` → 255 suites / 2094 tests green, `pnpm run test:projects`
+passes with `KNOWN_EMPTY` empty.**
+
+**Wart carried over (not introduced here):** the example `platform-local` sub-builds delete two
+tracked `examples/{dcb,hybrid}/platform-aws/src/Main.res.mjs` on every build (they were in the
+original script too). Restore with `git checkout HEAD -- <path>` — do **not** rebuild. This is
+the Phase 2 step 4 guard.
+
+> **Superseded below:** Appendix B's "Option C" and its "confirmed" status are retained for
+> history only. The mechanism that shipped is the trailing bare `rescript build` above.
 
 **Status:** Ready to execute (2026-07-25). Spike done; mechanism decided. **This is the single
 active plan** for the whole workstream — self-contained (background folded into Appendix C).
