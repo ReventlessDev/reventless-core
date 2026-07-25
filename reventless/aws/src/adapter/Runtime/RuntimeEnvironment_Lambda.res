@@ -262,7 +262,13 @@ let makeFromCodeAsset: (
     // is no race against Lambda's lazy auto-created group. Namespace/dimension
     // are CloudWatch-specific and live here, not in core (provider-neutral).
     if dcbMetrics {
-      ["AppendRetry", "AppendConflict"]->Array.forEach(metricName => {
+      [
+        "AppendRetry",
+        "AppendConflict",
+        "DcbDecisionModelCacheHit",
+        "DcbDecisionModelCacheMiss",
+        "DcbDecisionModelDeltaEventCount",
+      ]->Array.forEach(metricName => {
         let _ = Cloudwatch.LogMetricFilter.make(
           ~name=`${name}${metricName}Filter`,
           ~args={

@@ -13,7 +13,7 @@ Order = correctness → verification harness → durable cost wins → robustnes
 | 1 | DynamoDB integration test | Issue 3 | Verification | **done** | [dcb-dynamodb-atomic-append-integration-test](done/dcb-dynamodb-atomic-append-integration-test.md) |
 | 2 | `after=None` create-race | Issue 2 | Correctness | **yes** | — (detailed below) |
 | 3 | Down-project per-tag GSIs to `KEYS_ONLY` | Perf/cost lever #1 | Cost | **done** | — (detailed below) |
-| 4 | Decision-model cache | Perf/cost lever #2 | Cost | **core done** | [dcb-decision-model-projection-cache](dcb-decision-model-projection-cache.md) |
+| 4 | Decision-model cache | Perf/cost lever #2 | Cost | **core done** | [dcb-decision-model-projection-cache](done/dcb-decision-model-projection-cache.md) |
 | 5 | Robustness guards | Issues 4, 5, 6, 9, 12 | Robustness | **4,5,12 done; 6,9 open** | — (detailed below) |
 | 5 | Drop vacuous query-clause type combos | Issue 14 | Cleanup | **done** | — (Phase 5 below) |
 | 5 | Opt-in strong reads | Perf/cost lever #3 | Cost | **yes** | — (detailed below) |
@@ -106,7 +106,7 @@ The reference material below is retained for context.
 
 ## Phase 4 — Decision-model cache (cost lever #2) — **CORE DONE (2026-06-20)**
 
-Per [dcb-decision-model-projection-cache](dcb-decision-model-projection-cache.md): the slice now folds from a cached `(decisionState, readHead)` and reads only events after the cached head → O(history) read cost becomes O(delta), cutting the per-event `decode` CPU. No slice-contract change.
+Per [dcb-decision-model-projection-cache](done/dcb-decision-model-projection-cache.md): the slice now folds from a cached `(decisionState, readHead)` and reads only events after the cached head → O(history) read cost becomes O(delta), cutting the per-event `decode` CPU. No slice-contract change.
 
 **What shipped** (Steps 1–3 + Step 6 docs): a sealed in-process LRU ([`reventless-core/src/util/Lru.res`](../../reventless/core/src/util/Lru.res)) wired into `StateChangeSlice_Callback` (capacity 100, per slice, per warm Lambda). Cache hit → delta read; conflict → re-seed so each retry is also a delta read; terminal failure → invalidate. Tests: `tests/util/LruTest.res` + three projection-cache scenarios in `tests/dcb/DcbStateChangeSliceTest.res` (full reventless-core suite green at 419, local DCB suite green at 35).
 

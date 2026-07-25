@@ -126,7 +126,10 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
     if (dcbMetrics) {
       [
         "AppendRetry",
-        "AppendConflict"
+        "AppendConflict",
+        "DcbDecisionModelCacheHit",
+        "DcbDecisionModelCacheMiss",
+        "DcbDecisionModelDeltaEventCount"
       ].forEach(metricName => {
         new (Aws.cloudwatch.LogMetricFilter)(name + metricName + `Filter`, {
           pattern: `{ $.reventlessMetric = "` + metricName + `" }`,

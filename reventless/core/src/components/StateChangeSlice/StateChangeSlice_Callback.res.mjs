@@ -101,6 +101,7 @@ function Make(Spec) {
       let seed = {
         contents: cacheGet()
       };
+      Metrics$ReventlessCore.emitCount(Stdlib_Option.isSome(seed.contents) ? "DcbDecisionModelCacheHit" : "DcbDecisionModelCacheMiss", Spec.name, undefined);
       let attempt = retries => {
         let match = seed.contents;
         let match$1 = match !== undefined ? [
@@ -152,6 +153,9 @@ function Make(Spec) {
           ];
         }), param => {
           let reads = param[2];
+          if (cacheHit && retries === 3) {
+            Metrics$ReventlessCore.emitCount("DcbDecisionModelDeltaEventCount", Spec.name, reads.length);
+          }
           return EffectLogger$ReventlessCore.logInfo(comp, undefined, `read` + (
             cacheHit ? " (cached, delta)" : ""
           ) + `: ` + reads.length.toString() + ` event(s)` + (

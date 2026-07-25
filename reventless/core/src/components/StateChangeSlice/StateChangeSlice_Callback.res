@@ -227,6 +227,18 @@ module Make = (
     // only the delta the conflicting writer added rather than full history.
     let seed = ref(cacheGet())
 
+    // One hit/miss sample per command, keyed on whether the warm-instance cache
+    // seeded this command's decision read. If Miss dominates Hit for a slice, the
+    // flat-capacity cache is thrashing a wide entity set — the operator's cue to
+    // disable it. Paired with DcbDecisionModelDeltaEventCount (the delta size a
+    // hit actually read); both consumed by the reventless-aws metric filters.
+    Metrics.emitCount(
+      ~metric=seed.contents->Option.isSome
+        ? "DcbDecisionModelCacheHit"
+        : "DcbDecisionModelCacheMiss",
+      ~slice=Spec.name,
+    )
+
     let rec attempt = (~retries) => {
       let (baseState, afterPos) = switch seed.contents {
       | Some((state, head)) => (state, head)
@@ -279,14 +291,27 @@ module Make = (
           },
         ]),
       ))
-      ->Effect.tap(((_, _, reads)) =>
+      ->Effect.tap(((_, _, reads)) => {
+        // On a warm first attempt, record how many events the delta read
+        // returned — near-zero on a healthy hit; a large value means the entity
+        // churned between commands, so the cache saved little. Gated to the first
+        // attempt (retries at maxRetries) so each command yields at most one
+        // sample, aligned 1:1 with a CacheHit. Conflict-driven retry reads are
+        // covered by AppendRetry instead.
+        if cacheHit && retries == maxRetries {
+          Metrics.emitCount(
+            ~metric="DcbDecisionModelDeltaEventCount",
+            ~slice=Spec.name,
+            ~value=reads->Array.length,
+          )
+        }
         EffectLogger.logInfo(
           ~comp,
           `read${cacheHit ? " (cached, delta)" : ""}: ${reads->Array.length->Int.toString} event(s)${reads->Array.length == 0
               ? ""
               : ` [${reads->Array.join(", ")}]`}`,
         )
-      )
+      })
       ->Effect.flatMap(((state, headPosition, _)) =>
         EffectLogger.logDebug(
           ~comp,

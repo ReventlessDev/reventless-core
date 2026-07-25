@@ -436,7 +436,7 @@ Issue 1's fix swapped non-partition query tags from conditional `Update` → `Co
 
 **Should (correctness-adjacent or clear cost win):**
 
-- **P1 — Decision-model cache / snapshots.** Cache folded state keyed by `(query, headPosition)`; next command reads only events *after* the cached head → O(history) becomes O(delta). Biggest lever for warm/hot entities. Already filed: [`dcb-decision-model-projection-cache`](../plans/dcb-decision-model-projection-cache.md). Warm-Lambda reuse makes even an in-process LRU worthwhile.
+- **P1 — Decision-model cache / snapshots.** Cache folded state keyed by `(query, headPosition)`; next command reads only events *after* the cached head → O(history) becomes O(delta). Biggest lever for warm/hot entities. Already filed: [`dcb-decision-model-projection-cache`](../plans/done/dcb-decision-model-projection-cache.md). Warm-Lambda reuse makes even an in-process LRU worthwhile.
 - **P1 — Drop or down-project the unused per-tag GSIs.** Verify no out-of-adapter consumer (EventCollector, admin, debugging) reads `tag_<key>`; if none, remove them or switch to `KEYS_ONLY`. Removes up to K full-item GSI writes per event. Needs a table migration (GSI changes), so batch with other schema work; safe to wipe+recreate in alpha.
 
 **Could (workload-dependent, tunable):**
