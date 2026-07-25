@@ -185,7 +185,16 @@ let make = (
         schema: (v->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
         level,
         aggregateIdField,
-        mutationField: mutationFieldFor(variantName),
+        // A non-exposed (`@noApi`) variant has no callable mutation field. For a
+        // single-exposed-command slice, `mutationFieldFor` resolves *every*
+        // variant — including the `@noApi` one — to the slice's one mutation
+        // field, so emitting it here would hand the non-exposed variant a
+        // sibling's callable-looking field (e.g. `ReopenOrder` →
+        // `Ordering_CancelOrder`). Emit an empty sentinel instead; the variant
+        // stays listed with `apiExposed: false` for the event-graph badge, but
+        // no consumer can mistake it for a callable field. Exposed variants are
+        // byte-identical.
+        mutationField: apiExposed ? mutationFieldFor(variantName) : "",
         references,
         allowedStates,
         apiExposed: Some(apiExposed),

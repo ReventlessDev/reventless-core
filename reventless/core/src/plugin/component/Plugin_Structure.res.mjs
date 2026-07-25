@@ -157,7 +157,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         schema: JSON.stringify(S.toJSONSchema(v)),
         level: match[0],
         aggregateIdField: match[1],
-        mutationField: mutationFieldFor(variantName),
+        mutationField: apiExposed ? mutationFieldFor(variantName) : "",
         references: references,
         allowedStates: allowedStates,
         apiExposed: apiExposed

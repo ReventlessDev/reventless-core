@@ -1,6 +1,14 @@
 # Plan: Fix the `CommandResult` resolution error on InboundTranslationSlice mutations
 
-## Status: Not started
+## Status: DONE — shipped in `381b5458c` (fix(graphql): give InboundTranslationSlice mutations a resolvable result type)
+
+`receive` was widened to `acceptedResult {requestId, targetIds, commandCount}` /
+`rejectedResult {requestId, error}`, threaded through the callback + bind hook,
+mapped onto the union once in `receiveResultToOutcome` feeding
+`CommandTopic.commandOutcomeToJson`; `register` now self-registers the
+CommandResult union and the `None` fallback emits `CommandResult!`. The seeder
+carve-out was deleted and a schema-level regression test added. AWS-parity
+question answered: these mutations aren't routed on AWS today (filed separately).
 
 **Date:** 2026-07-25
 

@@ -15,8 +15,11 @@ let evolve = (_state, _event) => true
 
 // CancelShipment is payload-less — it compiles to a bare string literal, so it
 // exercises toCommandDef's payload-less branch (still surfaced in `commands`).
+// It is also `@noApi` (internal/admin only): a two-variant slice with exactly
+// one API-exposed command, which is the case that used to leak the exposed
+// command's slice mutation field onto the non-exposed variant.
 @schema
-type command = ShipOrder({orderId: string}) | CancelShipment
+type command = ShipOrder({orderId: string}) | @noApi CancelShipment
 
 @schema
 type error = OrderNotFound

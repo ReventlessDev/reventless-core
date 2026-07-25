@@ -159,6 +159,28 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       expect(shipOrder.commands->Array.map(c => c.name))->toEqual(["ShipOrder", "CancelShipment"])
     })
 
+    testSync("ShipOrder: the @noApi CancelShipment is tagged apiExposed=false; ShipOrder stays exposed", () => {
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      let byName = name => shipOrder.commands->Array.find(c => c.name == name)
+      expect((
+        byName("ShipOrder")->Option.flatMap(c => c.apiExposed),
+        byName("CancelShipment")->Option.flatMap(c => c.apiExposed),
+      ))->toEqual((Some(true), Some(false)))
+    })
+
+    testSync("ShipOrder: the @noApi variant carries no callable mutation field (no sibling leak)", () => {
+      // Regression: for a single-exposed-command slice, `mutationFieldFor`
+      // resolves every variant — including the @noApi one — to the slice's one
+      // mutation field. The non-exposed variant must not carry that sibling
+      // field; it emits an empty sentinel instead, while the exposed command
+      // keeps a real, non-empty field.
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      let byName = name => shipOrder.commands->Array.find(c => c.name == name)
+      let shipField = byName("ShipOrder")->Option.map(c => c.mutationField)->Option.getOr("")
+      let cancelField = byName("CancelShipment")->Option.map(c => c.mutationField)->Option.getOr("x")
+      expect((shipField->String.length > 0, cancelField))->toEqual((true, ""))
+    })
+
     testSync("ShipOrder: payload-less event ShipmentVoided is surfaced in events", () => {
       let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
       expect(shipOrder.events->Array.map(e => e.name))->toEqual(["OrderShipped", "ShipmentVoided"])
