@@ -703,6 +703,7 @@ let transform (str : structure) : structure =
     let body = DisplayNameInference.transform_structure body in
     let body = NoApiAnnotation.transform ~loc body in
     let body = AllowedStatesAnnotation.transform ~loc body in
+    let body = TargetStateAnnotation.transform ~loc body in
     match mode with
     | Spec name_opt ->
       let name = derive_spec_name ~loc name_opt in

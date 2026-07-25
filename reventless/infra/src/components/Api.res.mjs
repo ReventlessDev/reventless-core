@@ -8,6 +8,8 @@ let noApiVariantsId = S.Metadata.Id.make("api", "noApiVariants");
 
 let allowedStatesId = S.Metadata.Id.make("api", "allowedStates");
 
+let targetStateId = S.Metadata.Id.make("api", "targetState");
+
 function markNoApi(schema) {
   return S.Metadata.set(schema, noApiId, true);
 }
@@ -20,12 +22,18 @@ function markAllowedStates(schema, entries) {
   return S.Metadata.set(schema, allowedStatesId, Object.fromEntries(entries));
 }
 
+function markTargetState(schema, entries) {
+  return S.Metadata.set(schema, targetStateId, Object.fromEntries(entries));
+}
+
 export {
   noApiId,
   noApiVariantsId,
   allowedStatesId,
+  targetStateId,
   markNoApi,
   markNoApiVariants,
   markAllowedStates,
+  markTargetState,
 }
 /* noApiId Not a pure module */

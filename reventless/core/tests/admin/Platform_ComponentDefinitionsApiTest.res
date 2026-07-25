@@ -15,6 +15,7 @@ let cmd: commandDef = {
     {fieldName: "categoryId", entity: "Category", plugin: Some("Catalog")},
   ],
   allowedStates: None,
+  targetState: None,
   apiExposed: Some(true),
 }
 
@@ -141,6 +142,10 @@ describe("encodePluginStructureEntry", () => {
     expect(json->String.includes("\"allowedStates\":null"))->toEqual(true)
   )
 
+  testSync("encodes None targetState as null (back-compat: resolver falls back to name-stem)", () =>
+    expect(json->String.includes("\"targetState\":null"))->toEqual(true)
+  )
+
   testSync("encodes the command's apiExposed flag (drives the event-graph API badge)", () =>
     expect(json->String.includes("\"apiExposed\":true"))->toEqual(true)
   )
@@ -252,6 +257,7 @@ describe("allowedStates + statusField populated", () => {
     mutationField: "Platform_Plugin_Activate",
     references: [],
     allowedStates: Some(["Inactive"]),
+    targetState: Some("Active"),
     apiExposed: Some(true),
   }
 
@@ -298,6 +304,10 @@ describe("allowedStates + statusField populated", () => {
 
   testSync("encodes populated allowedStates as a JSON array", () =>
     expect(json->String.includes("\"allowedStates\":[\"Inactive\"]"))->toEqual(true)
+  )
+
+  testSync("round-trips a declared targetState as the status string", () =>
+    expect(json->String.includes("\"targetState\":\"Active\""))->toEqual(true)
   )
 
   testSync("encodes populated statusField as the field name string", () =>

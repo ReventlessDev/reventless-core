@@ -102,6 +102,7 @@ let commandDefSchema = S.schema(s => ({
   mutationField: s.m(S.string),
   references: s.m(S.array(fieldReferenceSchema)),
   allowedStates: s.m(stringArrayOptionSchema),
+  targetState: s.m(stringOptionSchema),
   apiExposed: s.m(boolOptionSchema)
 }));
 

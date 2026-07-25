@@ -168,6 +168,19 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       ))->toEqual((Some(true), Some(false)))
     })
 
+    testSync("ShipOrder: @targetState(\"Shipped\") flows through the PPX to commandDef.targetState", () => {
+      // End-to-end: the reventless-ppx @targetState annotation → markTargetState
+      // metadata → ApiTargetStateHelpers.getTargetState → commandDef. The
+      // un-annotated CancelShipment carries None (resolver falls back to
+      // name-stem).
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      let byName = name => shipOrder.commands->Array.find(c => c.name == name)
+      expect((
+        byName("ShipOrder")->Option.flatMap(c => c.targetState),
+        byName("CancelShipment")->Option.flatMap(c => c.targetState),
+      ))->toEqual((Some("Shipped"), None))
+    })
+
     testSync("ShipOrder: the @noApi variant carries no callable mutation field (no sibling leak)", () => {
       // Regression: for a single-exposed-command slice, `mutationFieldFor`
       // resolves every variant — including the @noApi one — to the slice's one

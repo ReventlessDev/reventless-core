@@ -61,6 +61,7 @@ let activateCommand = {
   mutationField: activateCommand_mutationField,
   references: activateCommand_references,
   allowedStates: activateCommand_allowedStates,
+  targetState: undefined,
   apiExposed: activateCommand_apiExposed
 };
 
@@ -87,6 +88,7 @@ let deactivateCommand = {
   mutationField: deactivateCommand_mutationField,
   references: deactivateCommand_references,
   allowedStates: deactivateCommand_allowedStates,
+  targetState: undefined,
   apiExposed: deactivateCommand_apiExposed
 };
 

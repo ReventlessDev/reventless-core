@@ -19,7 +19,7 @@ let evolve = (_state, _event) => true
 // one API-exposed command, which is the case that used to leak the exposed
 // command's slice mutation field onto the non-exposed variant.
 @schema
-type command = ShipOrder({orderId: string}) | @noApi CancelShipment
+type command = @targetState("Shipped") ShipOrder({orderId: string}) | @noApi CancelShipment
 
 @schema
 type error = OrderNotFound

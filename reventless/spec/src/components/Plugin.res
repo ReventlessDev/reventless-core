@@ -177,6 +177,16 @@ type commandDef = {
   */
   allowedStates: @s.matches(stringArrayOptionSchema) option<array<string>>,
   /**
+  The single status value this command's handler writes — the command's *to*
+  state, sibling of `allowedStates`' *from* set. Source: the
+  `@targetState("Shipped")` command-variant annotation. `None` (absent
+  annotation) is the back-compat default: AutoUI's board resolver then falls
+  back to its name-stem heuristic. `Some("Shipped")` lets the resolver move a
+  row by a declared transition instead of a guess. js_nullable for JSON safety,
+  same as `allowedStates`.
+  */
+  targetState: @s.matches(stringOptionSchema) option<string>,
+  /**
   Whether this command variant is exposed in the generated API (a non-`@noApi`
   variant of a non-`@noApi` command). Dev tooling badges API-exposed commands in
   the event graph. js_nullable (T | null) so it stays JSON-safe inside the

@@ -74,6 +74,7 @@ let activateCommand: commandDef = {
   mutationField: Api_Naming.adminField(~name="Plugin_Activate"),
   references: [],
   allowedStates: Some(["Inactive"]),
+  targetState: None,
   apiExposed: Some(true),
 }
 
@@ -85,6 +86,7 @@ let deactivateCommand: commandDef = {
   mutationField: Api_Naming.adminField(~name="Plugin_Deactivate"),
   references: [],
   allowedStates: Some(["Connected", "Disconnected"]),
+  targetState: None,
   apiExposed: Some(true),
 }
 

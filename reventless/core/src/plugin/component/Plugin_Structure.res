@@ -171,6 +171,10 @@ let make = (
       // markAllowedStates). Look it up by variant name; back-compat
       // None when the variant lacks an @allowedStates annotation.
       let allowedStates = ApiAllowedStatesHelpers.getAllowedStates(parentSchema, ~variantName)
+      // Declared `@targetState` (the command's *to* status), read the same way
+      // as allowedStates. None ⇒ AutoUI's board resolver falls back to its
+      // name-stem heuristic.
+      let targetState = ApiTargetStateHelpers.getTargetState(parentSchema, ~variantName)
       // API-exposed iff the whole command isn't @noApi and this variant
       // isn't in its @noApi-variants set — mirrors the API-generation filter
       // (Plugin_Helpers / PluginBaseFragment). Drives the event-graph API badge.
@@ -197,6 +201,7 @@ let make = (
         mutationField: apiExposed ? mutationFieldFor(variantName) : "",
         references,
         allowedStates,
+        targetState,
         apiExposed: Some(apiExposed),
       }: Reventless.Plugin.commandDef)
     }
