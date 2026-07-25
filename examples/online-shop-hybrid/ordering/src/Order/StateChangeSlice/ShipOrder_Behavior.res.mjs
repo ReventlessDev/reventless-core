@@ -2,25 +2,26 @@
 
 
 function evolve(state, event) {
-  switch (event) {
-    case "OrderPlaced" :
-      return {
-        exists: true,
-        shipped: false,
-        cancelled: false
-      };
-    case "OrderShipped" :
+  if (typeof event !== "object") {
+    if (event === "OrderShipped") {
       return {
         exists: state.exists,
         shipped: true,
         cancelled: state.cancelled
       };
-    case "OrderCancelled" :
+    } else {
       return {
         exists: state.exists,
         shipped: state.shipped,
         cancelled: true
       };
+    }
+  } else {
+    return {
+      exists: true,
+      shipped: false,
+      cancelled: false
+    };
   }
 }
 

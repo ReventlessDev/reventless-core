@@ -1,6 +1,20 @@
 # Plan: Let `ShipOrder` participate in the Orders view (ship from the board)
 
-## Status: Not started — carries a domain decision (Step 0)
+## Status: DONE — manual branch chosen
+
+Shipping is a manual operator action on the Orders board. `ShipOrder`'s consumed
+`OrderPlaced` now carries a payload (`OrderPlaced({productIds})`) so it survives
+the DCB payload-less filter, lands in `consumedEventTypes`, overlaps the Orders
+projection, and `consistencyReadFor` links the slice to Orders — no UI change
+needed. The command declares `@targetState(Orders.Shipped)`, so the board
+resolves the Placed→Shipped drop via its `DeclaredTarget` tier (from #5) rather
+than the name-stem guess. The behavior already read order state (rejects
+cancelled / idempotent when shipped), so the `@allowedStates([Orders.Placed])`
+guard is decision-model-backed. GWT tests updated to the payload form.
+
+Remaining live check (deferred, like #1's CloudFront check): reseed demo data and
+confirm the status spread is unchanged — manual shipping is purely additive
+(the AutoShipOrder automation still ships Express/Standard as before).
 
 **Date:** 2026-07-25
 

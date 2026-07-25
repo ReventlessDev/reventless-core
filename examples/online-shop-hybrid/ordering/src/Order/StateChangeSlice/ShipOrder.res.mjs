@@ -5,7 +5,10 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 
 let consumedEventSchema = S.union([
-  S.literal("OrderPlaced"),
+  S.schema(s => ({
+    TAG: "OrderPlaced",
+    productIds: s.m(S.array(DcbTag$Reventless.stringForKey("productId")))
+  })),
   S.literal("OrderShipped"),
   S.literal("OrderCancelled")
 ]);
@@ -30,6 +33,11 @@ let commandSchema$1 = Api$ReventlessInfra.markAllowedStates(commandSchema, [[
     ["Placed"]
   ]]);
 
+let commandSchema$2 = Api$ReventlessInfra.markTargetState(commandSchema$1, [[
+    "ShipOrder",
+    "Shipped"
+  ]]);
+
 function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
@@ -48,7 +56,7 @@ export {
   consumedEventSchema,
   errorSchema,
   eventSchema,
-  commandSchema$1 as commandSchema,
+  commandSchema$2 as commandSchema,
   moduleUrl,
   commandAuthorization,
   readConsistency,

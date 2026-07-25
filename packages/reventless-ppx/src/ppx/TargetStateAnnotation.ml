@@ -1,14 +1,22 @@
 open Ppxlib
 
-(* ── @targetState("Shipped") ──
+(* ── @targetState(Orders.Shipped) ──
    Per-variant attribute on aggregate / DCB-slice command variants declaring the
    single status the command's handler writes — the command's *to* state,
    sibling of @allowedStates (the *from* set).
 
-   The payload is a single STRING constant. The PPX extracts it into the
-   per-variant metadata dict that codegen ultimately surfaces via
-   `Platform_ComponentDefinitions`, so AutoUI's board drag resolver can move a
-   row by a declared transition instead of a name-stem guess.
+   The payload is a status-type constructor reference, matching @allowedStates'
+   authoring shape (`@allowedStates([Orders.Placed]) @targetState(Orders.Shipped)`
+   reads consistently). Like @allowedStates, the PPX extracts the leaf
+   constructor name as a string for the metadata — it does NOT typecheck the
+   reference (the status enum is not in scope at PPX time, and the witness-binding
+   approach doesn't survive ReScript's pre-PPX dep analysis); the UI validates the
+   value against the view's actual enum at registration. A bare string
+   `@targetState("Shipped")` is also accepted for leniency.
+
+   The extracted name lands in the per-variant metadata dict that codegen
+   surfaces via `Platform_ComponentDefinitions`, so AutoUI's board drag resolver
+   can move a row by a declared transition instead of a name-stem guess.
 
    Generated metadata binding (mirrors AllowedStatesAnnotation.gen_metadata_binding):
      let commandSchema =
@@ -30,14 +38,32 @@ let find_attr (attrs : attributes) =
     String.equal attr.attr_name.txt attr_name
   ) attrs
 
-(* Parse the attribute payload into its single target-state string. *)
+(* Extract the leaf constructor name from a longident.
+   Lident "Shipped"            → "Shipped"
+   Ldot(Lident "Orders", "Shipped") → "Shipped" *)
+let leaf_of_lident (lid : Longident.t) : string =
+  match lid with
+  | Lident name -> name
+  | Ldot (_, name) -> name
+  | Lapply _ -> failwith "@targetState: functor application is not a valid constructor reference"
+
+(* Parse the attribute payload into its single target-state name. Accepts a
+   status-type constructor reference `@targetState(Orders.Shipped)` (preferred,
+   consistent with @allowedStates) or a bare string `@targetState("Shipped")`. In
+   both cases only the leaf name is kept for the metadata. *)
 let parse_payload ~loc (attr : attribute) : string =
   match attr.attr_payload with
-  | PStr [{ pstr_desc = Pstr_eval (
-      { pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _ }, _); _ }] -> s
+  | PStr [{ pstr_desc = Pstr_eval (expr, _); _ }] ->
+    (match expr.pexp_desc with
+     | Pexp_construct ({ txt = lid; _ }, None) -> leaf_of_lident lid
+     | Pexp_ident { txt = lid; _ } -> leaf_of_lident lid
+     | Pexp_constant (Pconst_string (s, _, _)) -> s
+     | _ ->
+       Location.raise_errorf ~loc:expr.pexp_loc
+         "@targetState expects a status constructor reference, e.g. @targetState(Orders.Shipped)")
   | _ ->
     Location.raise_errorf ~loc
-      "@targetState expects a single string payload, e.g. @targetState(\"Shipped\")"
+      "@targetState expects a status constructor reference, e.g. @targetState(Orders.Shipped)"
 
 (* Walk a variant type's constructors, collecting per-constructor target state.
    Returns (variantName, targetState) list. Constructors without @targetState
