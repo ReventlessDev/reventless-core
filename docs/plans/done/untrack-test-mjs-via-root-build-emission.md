@@ -21,29 +21,40 @@ in-source `tests/**/*.res.mjs`):**
   the dark-coverage gap; Appendix B's premise was confounded by leftover *tracked* outputs on
   disk during the spike).
 
-**Shipped mechanism — append a trailing bare `rescript build`:**
+**Shipped mechanism — an ordered chain of `rescript build` invocations (each build-root's clean
+orphans its in-graph `type: dev` test outputs, so the chain re-emits them last):**
 
 ```jsonc
 "build": "rescript build \
   && rescript build examples/online-shop-aggregates/platform-local \
   && rescript build examples/online-shop-dcb/platform-local \
   && rescript build examples/online-shop-hybrid/platform-local \
-  && rescript build"          // ← re-emits Class-B in-source; leaves out-of-graph examples intact
+  && rescript build examples/online-shop-aggregates/platform-aws \
+  && rescript build examples/online-shop-dcb/platform-aws \
+  && rescript build examples/online-shop-hybrid/platform-aws \
+  && rescript build reventless/core \
+  && rescript build reventless/interop \
+  && rescript build reventless/spec"
 ```
 
-The final bare build re-emits the root-graph test outputs in-source (the example sub-builds
-had deleted the in-source copies, so there is no incremental-cache skip) while leaving the
-example outputs untouched. Verified from a fully-clean tree: **all 14 jest projects discover
-suites (255 total), `pnpm test` → 255 suites / 2094 tests green, `pnpm run test:projects`
-passes with `KNOWN_EMPTY` empty.**
+Order rationale:
+1. `rescript build` — framework + `local`/`aws`/`gwt` tests in-source (also builds `platform-aws`,
+   a root dep — but a *warm* root build flakily drops `platform-aws`'s tracked `Main.res.mjs`).
+2. `platform-local` ×3 — the example plugin tests.
+3. `platform-aws` ×3 — **regenerate the tracked deploy `Main.res.mjs`** the warm root build drops.
+   Placed before step 4 because building `platform-aws` orphans its dep `spec`'s tests.
+4. `core` → `interop` → `spec`, **in dependency order** — `core` depends on `interop`+`spec`, so
+   building `core` first (orphaning the two leaves) then the leaves last leaves all three emitted.
+   (Option C's `spec`→`core`→`interop` order was the bug: `core`/`interop` re-orphan `spec`.)
 
-**Wart carried over (not introduced here):** the example `platform-local` sub-builds delete two
-tracked `examples/{dcb,hybrid}/platform-aws/src/Main.res.mjs` on every build (they were in the
-original script too). Restore with `git checkout HEAD -- <path>` — do **not** rebuild. This is
-the Phase 2 step 4 guard.
+Verified from both a fully-clean tree and warm rebuilds (×2): **all 14 jest projects discover
+suites (255 total), `pnpm test` → 255 suites / 2094 tests green, `pnpm run test:projects` passes
+with `KNOWN_EMPTY` empty, and `git status` after build shows no phantom deletions.** The former
+`platform-aws/src/Main.res.mjs` deletion wart (Phase 2 step 4) is **fixed** by the `platform-aws`
+sub-builds — no manual `git checkout` restore is needed anymore.
 
 > **Superseded below:** Appendix B's "Option C" and its "confirmed" status are retained for
-> history only. The mechanism that shipped is the trailing bare `rescript build` above.
+> history only. The mechanism that shipped is the ordered chain above.
 
 **Status:** Ready to execute (2026-07-25). Spike done; mechanism decided. **This is the single
 active plan** for the whole workstream — self-contained (background folded into Appendix C).

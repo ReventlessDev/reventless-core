@@ -45,7 +45,7 @@
   "scripts": {
     "setup": "node ./scripts/setup.mjs",
     "check:outputs": "node ./scripts/check-tracked-outputs.mjs",
-    "build": "rescript build && rescript build examples/online-shop-aggregates/platform-local && rescript build examples/online-shop-dcb/platform-local && rescript build examples/online-shop-hybrid/platform-local && rescript build",
+    "build": "rescript build && rescript build examples/online-shop-aggregates/platform-local && rescript build examples/online-shop-dcb/platform-local && rescript build examples/online-shop-hybrid/platform-local && rescript build examples/online-shop-aggregates/platform-aws && rescript build examples/online-shop-dcb/platform-aws && rescript build examples/online-shop-hybrid/platform-aws && rescript build reventless/core && rescript build reventless/interop && rescript build reventless/spec",
     "watch": "rescript watch",
     "clean": "rescript clean",
     "format": "rescript format",
