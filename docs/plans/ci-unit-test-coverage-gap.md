@@ -1,7 +1,19 @@
 # Close the CI unit-test coverage gap for core, spec and interop
 
-**Status:** In progress (2026-07-22). **aws slice DONE** — see below. The remaining work hinges
-on one decision that touches published-package semantics.
+> # 🗄️ ARCHIVED REFERENCE — NOT AN ACTIVE PLAN
+>
+> **The single active plan is `docs/plans/untrack-test-mjs-via-root-build-emission.md`.** Do
+> **not** execute this doc. It is kept as the diagnosis-of-record and the write-up of the
+> **completed aws slice (2026-07-22)** — and because `scripts/check-jest-projects.mjs` links
+> here. The decision below (**Option C**) was confirmed 2026-07-25; a detour to
+> `pinned-dependencies` was spiked and **rejected — removed from ReScript v12 (PR #7686)** — so
+> Option C stands, now wired into the **root build script** (append
+> `rescript build reventless/{spec,core,interop}` to `pnpm run build`). Everything execution-
+> relevant here is folded into the active plan's Appendix C; the "Steps"/"Done when" sections
+> below are superseded by that plan.
+
+**Status:** Archived reference (2026-07-25). Diagnosis + the completed **aws slice** are the
+record; all remaining execution lives in the active untrack plan.
 **Owner:** Martin
 **Found:** while verifying `docs/plans/done/retire-stale-admin-vocabulary.md` (commit `2770bd96f`).
 Wanting to run `CommandAuthorizationTest` and `Auth_CognitoTest` to prove that rename hadn't

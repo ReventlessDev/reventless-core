@@ -139,3 +139,20 @@ consistency with `execute_post_build_command`.)
 - Revisit a full host-shell clean-build guard once a patched rescript (>12.3.0
   with the `from_utf8_lossy` fix) is released, or if the monorepo standardizes
   back on 12.2.0.
+
+## Interaction with the test-`.res.mjs` untracking workstream (2026-07-25)
+
+`docs/plans/untrack-test-mjs-via-root-build-emission.md` adds `pinned-dependencies` so a
+single root build emits every package's test outputs. This **increases exposure to this
+panic** in two ways: (1) pinned packages are force-rebuilt on every root build, and the plan's
+verification is a clean `rm -rf lib + build` — the maximal warning-surfacing full build; (2)
+pinning newly compiles the `type: dev` **test** sources of `core`/`spec`/`interop`, and test
+files carry the non-ASCII (em-dashes / box-drawing in GWT descriptions) that trips the decode —
+so `reventless-core` could panic where it currently builds clean.
+
+**Recommended companion fix:** run full/clean builds via `rescript-legacy build` (the ninja
+path, immune; `console-web` already does). `pinned-dependencies` is originally a bsb feature,
+so it is fully supported under legacy — the switch de-risks both the panic and the pinning
+spike simultaneously. Keep rewatch (`rescript build`) for incremental `-w` dev only. The
+durable fix remains the one-line upstream `from_utf8_lossy` patch above — **still worth filing
+as an issue**, as no matching report was found.
