@@ -134,3 +134,43 @@ describe("Util_StaticBundle.walk", () => {
     expect(threw)->toBe(true)
   })
 })
+
+describe("Util_StaticBundle.readJsonFileVerbatim", () => {
+  let writeTmp = (contents: string): string => {
+    let dir = mkdtempSync(join2(tmpdir(), "ui-hints-"))
+    let path = join2(dir, "ui-hints.json")
+    writeFileSync(path, contents)
+    path
+  }
+
+  testSync("returns the file's exact bytes for valid JSON (verbatim, not re-serialised)", () => {
+    // Deliberately non-canonical formatting: extra spaces + trailing newline.
+    let raw = "{\n  \"dashboards\":  [ ] \n}\n"
+    let path = writeTmp(raw)
+    expect(Util_StaticBundle.readJsonFileVerbatim(~path, ~label="test"))->toBe(raw)
+    rmSync(path, {"recursive": true, "force": true})
+  })
+
+  testSync("throws on malformed JSON", () => {
+    let path = writeTmp("{ not valid json ")
+    let threw = try {
+      let _ = Util_StaticBundle.readJsonFileVerbatim(~path, ~label="test")
+      false
+    } catch {
+    | _ => true
+    }
+    expect(threw)->toBe(true)
+    rmSync(path, {"recursive": true, "force": true})
+  })
+
+  testSync("throws when the file does not exist", () => {
+    let missing = join2(tmpdir(), "ui-hints-missing-xyz123.json")
+    let threw = try {
+      let _ = Util_StaticBundle.readJsonFileVerbatim(~path=missing, ~label="test")
+      false
+    } catch {
+    | _ => true
+    }
+    expect(threw)->toBe(true)
+  })
+})

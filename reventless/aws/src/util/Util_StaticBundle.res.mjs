@@ -52,6 +52,19 @@ function walk(assetsDir) {
   return acc;
 }
 
+function readJsonFileVerbatim(path, label) {
+  if (!Fs.existsSync(path)) {
+    Stdlib_JsError.throwWithMessage(label + `: file does not exist: ` + path);
+  }
+  let content = Fs.readFileSync(path, "utf8");
+  try {
+    JSON.parse(content);
+    return content;
+  } catch (exn) {
+    return Stdlib_JsError.throwWithMessage(label + `: file is not valid JSON: ` + path);
+  }
+}
+
 function sanitizeName(relativePath) {
   return relativePath.replaceAll("/", "-").replaceAll(".", "-");
 }
@@ -125,6 +138,7 @@ export {
   isHidden,
   walkInto,
   walk,
+  readJsonFileVerbatim,
   sanitizeName,
   extensionOf,
   contentTypeFor,

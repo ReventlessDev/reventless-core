@@ -41,6 +41,7 @@ import * as AppSync_MergedApi$ReventlessAws from "./components/Api/AppSync_Merge
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as Util_HostUiDomain$ReventlessAws from "./util/Util_HostUiDomain.res.mjs";
+import * as Util_StaticBundle$ReventlessAws from "./util/Util_StaticBundle.res.mjs";
 import * as DcbEventLogStorage$ReventlessAws from "./adapter/DcbEventLog/DcbEventLogStorage.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as Platform_AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminApi.res.mjs";
@@ -880,7 +881,11 @@ function MakeWithConfig(Config) {
       } else {
         customDomain = undefined;
       }
-      let match$3 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined, true, ["config.json"], customDomain);
+      let match$3 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined, true, [
+        "config.json",
+        "ui-hints.json"
+      ], customDomain);
+      let bucketName = match$3.bucketName;
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
@@ -938,11 +943,21 @@ function MakeWithConfig(Config) {
         return JSON.stringify(Object.fromEntries(withEvents));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
-        bucket: match$3.bucketName,
+        bucket: bucketName,
         key: "config.json",
         content: configJsonContent,
         contentType: "application/json"
       });
+      let hintsPath = hostUiBundle.uiHintsFile;
+      if (hintsPath !== undefined) {
+        let hintsContent = Util_StaticBundle$ReventlessAws.readJsonFileVerbatim(hintsPath, "host-ui ui-hints");
+        new (Aws.s3.BucketObject)("host-ui-ui-hints-json", {
+          bucket: bucketName,
+          key: "ui-hints.json",
+          content: hintsContent,
+          contentType: "application/json"
+        });
+      }
       Pulumi$Pulumi.$$export("hostShellUrl", match$3.distributionUrl);
     }
     return Pulumi$Pulumi.getOutputs();
@@ -1832,7 +1847,11 @@ function Make($star) {
       } else {
         customDomain = undefined;
       }
-      let match$3 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined, true, ["config.json"], customDomain);
+      let match$3 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined, true, [
+        "config.json",
+        "ui-hints.json"
+      ], customDomain);
+      let bucketName = match$3.bucketName;
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
@@ -1890,11 +1909,21 @@ function Make($star) {
         return JSON.stringify(Object.fromEntries(withEvents));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
-        bucket: match$3.bucketName,
+        bucket: bucketName,
         key: "config.json",
         content: configJsonContent,
         contentType: "application/json"
       });
+      let hintsPath = hostUiBundle.uiHintsFile;
+      if (hintsPath !== undefined) {
+        let hintsContent = Util_StaticBundle$ReventlessAws.readJsonFileVerbatim(hintsPath, "host-ui ui-hints");
+        new (Aws.s3.BucketObject)("host-ui-ui-hints-json", {
+          bucket: bucketName,
+          key: "ui-hints.json",
+          content: hintsContent,
+          contentType: "application/json"
+        });
+      }
       Pulumi$Pulumi.$$export("hostShellUrl", match$3.distributionUrl);
     }
     return Pulumi$Pulumi.getOutputs();

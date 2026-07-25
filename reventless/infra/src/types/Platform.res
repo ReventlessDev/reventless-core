@@ -235,6 +235,11 @@ module type T = {
   type hostUiBundleConfig = {
     assetsDir: string,
     bundleVersion: string,
+    // Optional path to a static AutoUI `ui-hints.json`, read and written
+    // verbatim as a BucketObject beside `config.json` at deploy time. Unset ⇒
+    // no file written; the shell treats the 404 as "no hints" and boots
+    // unchanged. In-memory platforms ignore this.
+    uiHintsFile?: string,
   }
 
   /** Deploy a complete platform: creates the scheduler, builds each plugin,

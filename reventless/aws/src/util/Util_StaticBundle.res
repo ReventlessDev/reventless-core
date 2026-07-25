@@ -5,6 +5,7 @@ let log = ReventlessCore.Logger.fromEnv()
 
 @module("fs") external existsSync: string => bool = "existsSync"
 @module("fs") external readFileSync: string => Js.TypedArray2.Uint8Array.t = "readFileSync"
+@module("fs") external readFileSyncUtf8: (string, string) => string = "readFileSync"
 type dirent
 @module("fs")
 external readdirSync: (string, {"withFileTypes": bool}) => array<dirent> = "readdirSync"
@@ -67,6 +68,26 @@ let walk = (assetsDir: string): array<fileEntry> => {
   let acc: array<fileEntry> = []
   walkInto(~dir=assetsDir, ~prefix="", acc)
   acc
+}
+
+/**
+ * Read a JSON file at deploy time and return its exact bytes as a string, after
+ * validating that it parses. A missing or malformed file throws with an
+ * actionable message so a broken file fails the deploy rather than shipping a
+ * file a consumer will fetch-and-ignore. The verbatim bytes are returned (not
+ * re-serialised) so formatting/key order the author chose is preserved.
+ */
+let readJsonFileVerbatim = (~path: string, ~label: string): string => {
+  if !existsSync(path) {
+    JsError.throwWithMessage(`${label}: file does not exist: ${path}`)
+  }
+  let content = readFileSyncUtf8(path, "utf8")
+  try {
+    let _ = JSON.parseOrThrow(content)
+    content
+  } catch {
+  | _ => JsError.throwWithMessage(`${label}: file is not valid JSON: ${path}`)
+  }
 }
 
 /**

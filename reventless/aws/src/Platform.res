@@ -1001,6 +1001,13 @@ module MakeWithConfig = (
   type hostUiBundleConfig = {
     assetsDir: string,
     bundleVersion: string,
+    // Optional path to a static AutoUI `ui-hints.json` (assistant-authored,
+    // plain data — no app rebuild). When set, the deploy reads it and writes it
+    // verbatim as a `ui-hints.json` BucketObject beside `config.json`, so the
+    // shell's static-hints path works in a deployed app. Unset ⇒ no file
+    // written; the shell treats the resulting 404 as "no hints" and boots
+    // unchanged. Single-mode shape: one origin-relative file per deployment.
+    uiHintsFile?: string,
   }
 
   // Merged-mode outputs of deployPlatform — the merged API(s), plus the
@@ -1465,12 +1472,13 @@ module MakeWithConfig = (
         ~assetsDir=cfg.assetsDir,
         ~spaFallback=true,
         ~stableName=true,
-        // The explicit BucketObject below writes the production config.json
-        // with the resolved API endpoints + Cognito IDs. The host-shell
-        // bundle's public/config.json is the dev-mode fallback — exclude
-        // it from the bundle upload so both BucketObjects don't race on
-        // the same S3 key.
-        ~excludeFiles=["config.json"],
+        // The explicit BucketObjects below write the production config.json
+        // (resolved API endpoints + Cognito IDs) and, when configured, a
+        // ui-hints.json. The host-shell bundle's public/config.json and
+        // public/ui-hints.json are dev-mode fallbacks — exclude them from the
+        // bundle upload so the explicit BucketObjects don't race the bundle on
+        // the same S3 keys.
+        ~excludeFiles=["config.json", "ui-hints.json"],
         ~customDomain?,
       )
 
@@ -1538,6 +1546,29 @@ module MakeWithConfig = (
           contentType: Pulumi.Input.make("application/json"),
         },
       )
+
+      // Optional static AutoUI hints. Read + JSON-validated at deploy time
+      // (a malformed file fails the deploy rather than shipping a file the
+      // shell warn-and-ignores), then written verbatim beside config.json.
+      // Unset ⇒ nothing written ⇒ GET /ui-hints.json 404 ⇒ shell boots
+      // unchanged, byte-identical to a hints-less deploy.
+      switch cfg.uiHintsFile {
+      | None => ()
+      | Some(hintsPath) =>
+        let hintsContent = Util_StaticBundle.readJsonFileVerbatim(
+          ~path=hintsPath,
+          ~label="host-ui ui-hints",
+        )
+        let _ = PulumiAws.S3.BucketObject.make(
+          ~name="host-ui-ui-hints-json",
+          ~args={
+            bucket: bucketName->Pulumi.Output.asInput,
+            key: Pulumi.Input.make("ui-hints.json"),
+            content: Pulumi.Input.make(hintsContent),
+            contentType: Pulumi.Input.make("application/json"),
+          },
+        )
+      }
 
       Pulumi.Pulumi.export("hostShellUrl", distributionUrl)
     }
