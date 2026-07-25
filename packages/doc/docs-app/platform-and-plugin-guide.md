@@ -915,7 +915,7 @@ type consumedEvent =
 ```rescript
 @@reventless.projection
 
-let project = event =>
+let project = ({event}) =>
   switch event {
   | ProductAdded({productId, name, description, price}) => [
       Set(productId, {productId, name, description, price}),
@@ -930,9 +930,9 @@ let project = event =>
 | File | Purpose |
 |---|---|
 | `<Name>.res` | Spec — declares `@schema type state` and `@schema type consumedEvent` (the typed subset of the shared DCB log this view cares about). The PPX auto-injects `let name`, `module Id`, `let config`, `let subIdConfig`, `open Reventless.Projection`. |
-| `<Name>_Projection.res` | Body — the `let project = event => ...` function returning `Set`/`Update`/`UpdateWithDefault`/`Delete`/`Ignore` operations. The PPX auto-opens the spec module so event variants resolve unqualified. |
+| `<Name>_Projection.res` | Body — the `let project = ({event}) => ...` function receiving a `consumed` envelope `{event, meta, recordedAt}` and returning `Set`/`Update`/`UpdateWithDefault`/`Delete`/`Ignore` operations. The PPX auto-opens the spec module so event variants resolve unqualified. |
 
-The `project` function uses the same operations as aggregate projections, but receives events directly from the shared DCB log rather than through per-source mapping modules.
+The `project` function uses the same operations as aggregate projections, but receives events (wrapped in a `consumed` envelope that also exposes `meta.time` and `recordedAt`) directly from the shared DCB log rather than through per-source mapping modules.
 
 ---
 

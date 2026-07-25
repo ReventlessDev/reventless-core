@@ -41,6 +41,7 @@ function fromSchemaType(_required, _asInputOpt, _st, collectedTypes, seenTypes) 
           return `ID` + bang;
         case "ScalarString" :
         case "ScalarBigInt" :
+        case "DateTime" :
         case "Unknown" :
           return `String` + bang;
       }

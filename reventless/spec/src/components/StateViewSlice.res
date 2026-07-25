@@ -24,7 +24,7 @@ let name = "CategoriesView"
   | CategoryRenamed({categoryId: string, name: string})
   | CategoryArchived({categoryId: string})
 
-let project = event => switch event {
+let project = ({event}) => switch event {
   | CategoryAdded({categoryId, name}) =>
     [Set(categoryId, {categoryId, name, archived: false})]
   | CategoryRenamed({categoryId, name}) =>
@@ -82,6 +82,29 @@ module type Spec = {
 }
 
 /**
+The envelope a projection receives for each consumed event.
+
+Carries the decoded event alongside the metadata the storage layer already
+holds, so a projection can persist producer time or the acting user without the
+command author having to duplicate that framework state into the event payload.
+
+`meta.time` and `recordedAt` are **different clocks** — pick deliberately:
+
+- `meta.time` — *producer* time, stamped when the command handler created the
+  event. This is the domain-meaningful timestamp (when the order was placed,
+  when it shipped); it is identical across every path.
+- `recordedAt` — *storage* time, when the event was appended to the DCB log. On
+  the AWS (DynamoDB-stream) path this is the authoritative stored column; on the
+  local (topic) path it is stamped at publish, so it may sit a few milliseconds
+  after the stored value. Use it for storage-lag diagnostics, not domain dates.
+*/
+type consumed<'e> = {
+  event: 'e,
+  meta: Message.meta,
+  recordedAt: string,
+}
+
+/**
 The Projection — the pure projection function from consumed events to actions.
 */
 module type Projection = {
@@ -89,9 +112,10 @@ module type Projection = {
 
   /**
   Projects one consumed event into read model actions.
-  Receives only events declared in `Spec.consumedEvent` — no wildcard needed.
+  Receives the event wrapped in a `consumed` envelope (event + `meta` +
+  `recordedAt`); only events declared in `Spec.consumedEvent` — no wildcard needed.
   */
-  let project: Spec.consumedEvent => array<Projection.action<string, Spec.state>>
+  let project: consumed<Spec.consumedEvent> => array<Projection.action<string, Spec.state>>
 
   /** File URL of this Projection module (`import.meta.url`). */
   let moduleUrl: string

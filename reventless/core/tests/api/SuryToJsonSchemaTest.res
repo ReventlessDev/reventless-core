@@ -49,6 +49,25 @@ describe("SuryToJsonSchema:", () => {
         idSchema->Option.flatMap(s => getProperty(s, "x-reventless-id")),
       )->toBe(None)
     })
+
+    testSync("emits format:\"date-time\" for a DateTime-marked string field", () => {
+      let schema = S.schema(s =>
+        {
+          "placedAt": s.matches(Reventless.DateTime.string),
+          "name": s.matches(S.string),
+        }
+      )->S.castToUnknown
+      let json = SuryToJsonSchema.deriveObjectSchema(schema)
+      expect(
+        getPropertyOf(json, "placedAt")
+        ->Option.flatMap(s => getProperty(s, "format"))
+        ->Option.flatMap(JSON.Decode.string),
+      )->toBe(Some("date-time"))
+      // A plain string field stays plain — the marker is opt-in.
+      expect(
+        getPropertyOf(json, "name")->Option.flatMap(s => getProperty(s, "format")),
+      )->toBe(None)
+    })
   })
 
   describe("deriveObjectSchema with stateAnnotations metadata:", () => {

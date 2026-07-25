@@ -1,8 +1,40 @@
 # Plan: Widen the StateViewSlice projection input to the event envelope
 
-## Status: Not started
+## Status: Complete (2026-07-25)
 
 **Date:** 2026-07-24
+
+## Outcome
+
+Landed. `StateViewSlice.consumed<'e> = {event, meta, recordedAt}` is the projection
+input on every path; full monorepo build is warning-free and the affected suites are
+green (gwt 68, local projection/catch-up 45, core PluginStructure 31 + SuryToJsonSchema
+22, dcb examples 102, hybrid examples 113). Acceptance verified by **inspecting** the
+generated Orders state schema: `placedAt`/`shippedAt` carry `format: "date-time"`.
+
+Deviations from the plan as written (all in scope, resolved):
+
+- **Three `project` call sites, not one.** Besides the (dead-but-must-compile)
+  `StateViewSlice_Callback`, the live paths are `StateViewSlice_Builder`'s
+  `jsonEventsHandler` (local, topic envelope) and `StateViewSliceEntryPoint.mjs` (AWS,
+  DynamoDB-stream item). Both were updated to build the `consumed` envelope.
+- **`recordedAt` is not in the live topic envelope.** Storage stamps it but `append`
+  returns only the position. Chosen sourcing (Option 1): stamp at publish into
+  `composeEventJson'` (local); AWS reads the real stored column (threaded through
+  `Util_DynamoDbStream_Runtime.buildJsonEvent'`); SQLite/Postgres catch-up thread the
+  stored `recorded_at`. Documented on `consumed<'e>` and in `internals/messages.md`
+  (the two-clocks `meta.time` vs `recordedAt` distinction — previously unrecorded).
+- **Phase 3 was the real work, as flagged.** `S.datetime` transforms to `Js.Date.t`
+  and sury has no string-typed datetime format, so the assumed
+  `@s.matches(S.datetime(S.string))` spelling does not hold. Introduced a
+  `Reventless.DateTime.string` metadata marker (mirroring `DcbTag.string`), detected in
+  `SchemaType`/`SuryToJsonSchema` → `format: "date-time"`. NB: `@s.matches` must sit on
+  the **type** (`placedAt: @s.matches(...) string`), not before the field name.
+- **PPX change required.** `TypeAnnotationInjection` injected the old `consumedEvent`
+  param type on `project`; taught it to inject `Reventless.StateViewSlice.consumed<consumedEvent>`
+  (ships via reventless-ppx republish for CI).
+
+
 
 StateViewSlice projections receive the decoded event payload and nothing else,
 while the envelope carrying `meta` (actor, producer time) and `recordedAt`

@@ -53,6 +53,7 @@ function buildJsonEvent$p(dict) {
       ]
     ]);
   }
+  let recordedAt = Stdlib_Option.getOr(dict["recordedAt"], "");
   return Object.fromEntries([
     [
       "id",
@@ -61,6 +62,10 @@ function buildJsonEvent$p(dict) {
     [
       "meta",
       meta
+    ],
+    [
+      "recordedAt",
+      recordedAt
     ],
     [
       "event",

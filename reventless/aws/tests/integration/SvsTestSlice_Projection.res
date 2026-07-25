@@ -10,7 +10,7 @@
 open Reventless.Projection
 open SvsTestSlice
 
-let project = event =>
+let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
   switch event {
   | ItemAddedToCart({cartId, productId, qty}) => [
       UpdateMultiState(

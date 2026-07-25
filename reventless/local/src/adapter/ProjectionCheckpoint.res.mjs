@@ -129,7 +129,7 @@ function catchupEnvelope(flat) {
   }
 }
 
-function dcbCatchupEnvelope(logName, eventType, dataText, metaText, firstTagValue) {
+function dcbCatchupEnvelope(logName, eventType, dataText, metaText, recordedAt, firstTagValue) {
   let val;
   let val$1;
   try {
@@ -148,6 +148,10 @@ function dcbCatchupEnvelope(logName, eventType, dataText, metaText, firstTagValu
     [
       "meta",
       val$1
+    ],
+    [
+      "recordedAt",
+      recordedAt
     ],
     [
       "event",
@@ -191,7 +195,7 @@ function missedRows(db, axis, afterPos, upTo) {
       ];
     });
   } else {
-    return Stdlib_Array.filterMap(SqliteDriver$ReventlessLocal.all(SqliteDriver$ReventlessLocal.prepare(db, "SELECT rowid AS pos, log_name, event_type, data, meta, (SELECT t.tag_value FROM dcb_tag t WHERE t.log_name = dcb_event.log_name AND t.position = dcb_event.position ORDER BY t.rowid ASC LIMIT 1) AS first_tag FROM dcb_event WHERE rowid > ? AND rowid <= ? ORDER BY rowid ASC"), [
+    return Stdlib_Array.filterMap(SqliteDriver$ReventlessLocal.all(SqliteDriver$ReventlessLocal.prepare(db, "SELECT rowid AS pos, log_name, event_type, data, meta, recorded_at, (SELECT t.tag_value FROM dcb_tag t WHERE t.log_name = dcb_event.log_name AND t.position = dcb_event.position ORDER BY t.rowid ASC LIMIT 1) AS first_tag FROM dcb_event WHERE rowid > ? AND rowid <= ? ORDER BY rowid ASC"), [
       afterPos,
       upTo
     ]), row => {
@@ -232,9 +236,11 @@ function missedRows(db, axis, afterPos, upTo) {
       }
       let match$5 = row["first_tag"];
       let firstTagValue = typeof match$5 === "string" ? match$5 : undefined;
+      let match$6 = row["recorded_at"];
+      let recordedAt = typeof match$6 === "string" ? match$6 : "";
       return [
         match | 0,
-        dcbCatchupEnvelope(match$1, match$2, match$3, match$4, firstTagValue)
+        dcbCatchupEnvelope(match$1, match$2, match$3, match$4, recordedAt, firstTagValue)
       ];
     });
   }

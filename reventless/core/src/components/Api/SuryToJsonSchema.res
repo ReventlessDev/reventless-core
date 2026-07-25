@@ -80,6 +80,7 @@ let rec fromSchemaType = (st: SchemaType.schemaType): JSON.t =>
   | ScalarBoolean => jsonObject([("type", str("boolean"))])
   | ScalarBigInt => jsonObject([("type", str("integer"))])
   | EntityId => jsonObject([("type", str("string")), ("format", str("uuid"))])
+  | DateTime => jsonObject([("type", str("string")), ("format", str("date-time"))])
   | Nullable(inner) =>
     let innerSchema = fromSchemaType(inner)
     jsonObject([("oneOf", JSON.Encode.array([innerSchema, jsonObject([("type", str("null"))])]))])

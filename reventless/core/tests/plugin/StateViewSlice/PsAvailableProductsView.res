@@ -11,7 +11,7 @@ type consumedEvent =
 @schema
 type state = {productId: string, name: string}
 
-let project = event =>
+let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
   switch event {
   | CatalogProductSynced({productId, name}) => [Set(productId, {productId, name})]
   | CatalogProductPriceChanged({productId}) => [Update(productId, s => s)]

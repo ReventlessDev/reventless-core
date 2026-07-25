@@ -42,7 +42,7 @@ module ItemsViewProjection = {
 
   let moduleUrl: string = %raw(`import.meta.url`)
 
-  let project = (event: consumedEvent) =>
+  let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
     switch event {
     | ItemAdded({id, name}) => [Set(id, {id, name})]
     | ItemRenamed({id, name}) => [Update(id, s => {...s, name})]

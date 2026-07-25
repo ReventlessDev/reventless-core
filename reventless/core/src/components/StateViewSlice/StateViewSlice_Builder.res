@@ -95,16 +95,30 @@ module Make = (
               let total = events->Array.length->Int.toString
               events
               ->Array.mapWithIndex((json, i) => {
-                let rawEvent =
-                  json
-                  ->JSON.Decode.object
-                  ->Option.flatMap(d => d->Dict.get("event"))
-                  ->Option.getOr(json)
+                let envelopeDict = json->JSON.Decode.object->Option.getOr(Dict.make())
+                let rawEvent = envelopeDict->Dict.get("event")->Option.getOr(json)
+                // Events arrive as `{id, meta, recordedAt, event}` envelopes
+                // (Message.composeEventJson' / ProjectionCheckpoint catch-up).
+                // Surface `meta` + `recordedAt` to the projection as `consumed`;
+                // fall back defensively so a malformed envelope never drops the event.
+                let meta = switch envelopeDict->Dict.get("meta") {
+                | Some(m) =>
+                  switch m->S.parseJsonOrThrow(Message.metaSchema) {
+                  | parsed => parsed
+                  | exception _ => Message.generateMeta(~service=Spec.name)
+                  }
+                | None => Message.generateMeta(~service=Spec.name)
+                }
+                let recordedAt =
+                  envelopeDict
+                  ->Dict.get("recordedAt")
+                  ->Option.flatMap(JSON.Decode.string)
+                  ->Option.getOr("")
                 let (eventType, dataDict) = rawEvent->Message.splitMessage
                 switch decoder.decode(~eventType, ~data=dataDict) {
                 | Some(event) =>
                   let actions =
-                    try Projection.project(event)
+                    try Projection.project({event, meta, recordedAt})
                     catch {
                     | exn =>
                       let errMsg =

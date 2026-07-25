@@ -74,7 +74,8 @@ let ItemsViewSpec = {
 
 let moduleUrl$1 = import.meta.url;
 
-function project(event) {
+function project(param) {
+  let event = param.event;
   switch (event.TAG) {
     case "ItemAdded" :
       let id = event.id;

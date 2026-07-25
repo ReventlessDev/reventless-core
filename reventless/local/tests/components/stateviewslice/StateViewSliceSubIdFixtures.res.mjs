@@ -79,7 +79,8 @@ let ScoresViewSpec = {
 
 let moduleUrl$1 = import.meta.url;
 
-function project(event) {
+function project(param) {
+  let event = param.event;
   if (event.TAG !== "ScoreRecorded") {
     return [{
         TAG: "Delete",

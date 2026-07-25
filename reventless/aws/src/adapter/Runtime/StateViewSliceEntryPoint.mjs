@@ -71,8 +71,14 @@ export function buildJsonEventsHandler(specModule, projectionModule, queryDbTabl
     Stream.flatMap(
       Stream.mapEffect(stream, json => Effect.sync(() => {
         try {
+          // Events arrive as `{id, meta, recordedAt, event}` envelopes
+          // (Util_DynamoDbStream_Runtime.buildJsonEvent' / PgChangeFeedRelay).
+          // Surface `meta` + `recordedAt` to the projection as the `consumed`
+          // envelope; `recordedAt` defaults to "" if a producer omitted it.
           const eventJson = json.event != null ? json.event : json;
-          return project(parseJsonOrThrow(eventJson, eventSchema));
+          const meta = json.meta;
+          const recordedAt = json.recordedAt != null ? json.recordedAt : "";
+          return project({ event: parseJsonOrThrow(eventJson, eventSchema), meta, recordedAt });
         } catch (exn) {
           log.error("failed to decode event", { comp: "StateViewSliceRuntime", detail: exn && exn.message ? exn.message : String(exn) });
           return [];

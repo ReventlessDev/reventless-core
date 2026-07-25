@@ -1,6 +1,6 @@
 @@reventless.projection
 
-let project = event =>
+let project = ({event}) =>
   switch event {
   | ProductAdded({productId, name, description, price}) => [
       Set(productId, {productId, name, description, price}),

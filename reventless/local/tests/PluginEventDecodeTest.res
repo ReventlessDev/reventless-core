@@ -15,6 +15,7 @@ let envelopeOf = (event: ReventlessCore.PluginSpec.event) =>
   ReventlessCore.Message.composeEventJson'(
     "Catalog",
     meta,
+    ~recordedAt="2024-01-01T00:00:00Z",
     event->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginSpec.eventSchema),
   )
 
@@ -68,6 +69,7 @@ describe("Platform.decodeUiFragmentRegistryEventEnvelope", () => {
     ReventlessCore.Message.composeEventJson'(
       "Catalog",
       dcbMeta,
+      ~recordedAt="2024-01-01T00:00:00Z",
       ReventlessCore.Message.combineMessage(eventType, data),
     )
   }

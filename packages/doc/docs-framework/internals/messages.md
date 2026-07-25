@@ -77,6 +77,21 @@ type meta = {
 - `ip` / `user` are `option<string>` — *absent* means "unknown" / "system". There are no `""` / `"unknown"` sentinel values to special-case.
 - `headers` is an extensible string-keyed bag for cross-cutting context (tenant id, feature flags, request-scoped state); absent when empty. Read it with `meta.headers->Option.getOr(Dict.make())`.
 
+#### `meta.time` (producer time) vs `recordedAt` (storage time)
+
+A message carries **two distinct clocks**, and they are not interchangeable:
+
+| | `meta.time` | `recordedAt` |
+|---|---|---|
+| **Who sets it** | the *producer* — the command handler, when it creates the event | the *storage adapter*, when it appends the event to the log |
+| **When** | at message creation | at append, after the message already exists |
+| **Lives on** | `meta` — inside every `event'` **and** `command'` | the storage record only (`StoredEvent`, `DcbEventLog.rawSequencedEvent`), **never** on `meta` |
+| **Use for** | domain-meaningful timestamps (order placed, shipment sent), audit trails | storage-lag diagnostics, replay ordering sanity |
+
+`recordedAt` is deliberately **not** a `meta` field. `meta` is the producer envelope, shared byte-for-byte by commands and events; a command is never stored, so it has no `recordedAt`. Folding storage time into `meta` would both break that shared command/event contract and put the two clocks side by side under names that invite confusion. Instead `recordedAt` sits as a top-level sibling of `meta` on the storage record types — the same place it appears on the `StateViewSlice.consumed<'e>` projection envelope (`{event, meta, recordedAt}`).
+
+One caveat on `recordedAt`'s provenance across delivery paths: on the AWS (DynamoDB-stream) path and the SQLite catch-up path it is the authoritative stored value; on the in-memory local topic path it is stamped at publish (a few milliseconds after the stored value), because the append call returns only the position, not the stamp. Domain code should key off `meta.time`, which is identical on every path.
+
 **Building meta**:
 - `Message.generateMeta(~service, ~ip=?, ~user=?, ~causationId=?, ~traceparent=?, ~correlationId=?, ~schemaVersion=?, ~headers=?)` — root meta for messages starting a new chain.
 - `Message.deriveMeta(~parent, ~service=?)` — child meta for messages emitted in response to a triggering message. Sets `causationId = parent.msgId`, inherits `correlationId` (so the chain root id stays stable), inherits `ip` / `user` / `traceparent` / `schemaVersion` / `headers`, and produces a fresh `msgId` + `time`. The framework uses this in `Aggregate_Callback`, `StateChangeSlice_Callback`, `EventMapper_Callback`, and `Extension_Operations.forwardCommand`.
@@ -661,7 +676,7 @@ exception InvalidCommand(Js.Json.t)
 #### Utility Functions
 - `decomposeMeta(meta)` - Decompose meta into key-value pairs
 - `composeMeta(dict)` - Compose meta from dictionary
-- `composeEventJson'(id, meta, eventJson)` - Compose event JSON
+- `composeEventJson'(id, meta, ~recordedAt, eventJson)` - Compose the `{id, meta, recordedAt, event}` topic envelope
 - `log(value, str)` - Log value with message and return value
 
 ### Common Patterns

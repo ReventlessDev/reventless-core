@@ -203,7 +203,7 @@ function decomposeMeta(meta) {
   return Object.entries(Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(S.reverseConvertToJsonOrThrow(meta, Message$Reventless.metaSchema)), undefined));
 }
 
-function composeEventJson$p(id, meta, eventJson) {
+function composeEventJson$p(id, meta, recordedAt, eventJson) {
   return Object.fromEntries([
     [
       "id",
@@ -212,6 +212,10 @@ function composeEventJson$p(id, meta, eventJson) {
     [
       "meta",
       S.reverseConvertToJsonOrThrow(meta, Message$Reventless.metaSchema)
+    ],
+    [
+      "recordedAt",
+      recordedAt
     ],
     [
       "event",

@@ -77,7 +77,7 @@ async function runCatchup(pool, bounds, handlers) {
       }
     }
   }
-  let dcbRows = await PgDriver$ReventlessPostgres.query(pool, "SELECT log_name, event_type, data, meta, tags FROM dcb_event WHERE position <= $1::bigint ORDER BY position ASC", [bounds.dcbBound]);
+  let dcbRows = await PgDriver$ReventlessPostgres.query(pool, "SELECT log_name, event_type, data, meta, tags, recorded_at FROM dcb_event WHERE position <= $1::bigint ORDER BY position ASC", [bounds.dcbBound]);
   for (let i$1 = 0, i_finish$1 = dcbRows.length; i$1 < i_finish$1; ++i$1) {
     let row$1 = dcbRows[i$1];
     let match = row$1["log_name"];
@@ -85,7 +85,9 @@ async function runCatchup(pool, bounds, handlers) {
     let match$2 = row$1["data"];
     let match$3 = row$1["meta"];
     if (typeof match === "string" && typeof match$1 === "string" && match$2 !== undefined && match$3 !== undefined) {
-      let envelope$1 = ProjectionCheckpoint$ReventlessLocal.dcbCatchupEnvelope(match, match$1, JSON.stringify(match$2), JSON.stringify(match$3), firstTagValue(row$1));
+      let match$4 = row$1["recorded_at"];
+      let recordedAt = typeof match$4 === "string" ? match$4 : "";
+      let envelope$1 = ProjectionCheckpoint$ReventlessLocal.dcbCatchupEnvelope(match, match$1, JSON.stringify(match$2), JSON.stringify(match$3), recordedAt, firstTagValue(row$1));
       if (envelope$1 !== undefined) {
         await deliver(handlers, envelope$1);
       }

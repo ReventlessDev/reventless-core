@@ -35,7 +35,8 @@ let CategoriesView = {
   visibility: "Public"
 };
 
-function project(event) {
+function project(param) {
+  let event = param.event;
   switch (event.TAG) {
     case "CategoryAdded" :
       let categoryId = event.categoryId;

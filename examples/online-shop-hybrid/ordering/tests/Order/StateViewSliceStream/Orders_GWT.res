@@ -19,6 +19,8 @@ describe("Orders StateViewSlice", () => {
         productIds: ["p1", "p2"],
         status: Placed,
         shippingMethod: Standard,
+        placedAt: "time",
+        shippedAt: "",
       },
     )
   )
@@ -36,6 +38,8 @@ describe("Orders StateViewSlice", () => {
         productIds: ["p1"],
         status: Placed,
         shippingMethod: Pickup,
+        placedAt: "time",
+        shippedAt: "",
       },
     )
   )
@@ -53,6 +57,8 @@ describe("Orders StateViewSlice", () => {
         productIds: ["p1"],
         status: Shipped,
         shippingMethod: Express,
+        placedAt: "time",
+        shippedAt: "time",
       },
     )
   )
@@ -70,6 +76,8 @@ describe("Orders StateViewSlice", () => {
         productIds: ["p1"],
         status: Cancelled,
         shippingMethod: Standard,
+        placedAt: "time",
+        shippedAt: "",
       },
     )
   )

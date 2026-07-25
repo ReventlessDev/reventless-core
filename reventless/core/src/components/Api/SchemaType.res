@@ -4,6 +4,7 @@ type rec schemaType =
   | ScalarBoolean
   | ScalarBigInt
   | EntityId
+  | DateTime
   | Nullable(schemaType)
   | ArrayOf(schemaType)
   | ObjectRef(string, dict<schemaType>)
@@ -11,6 +12,7 @@ type rec schemaType =
   | Unknown
 
 let isTagged = Reventless.DcbTag.isTagged
+let isDateTime = Reventless.DateTime.isDateTime
 
 let isIdFieldName = (name: string): bool => {
   let lower = String.toLowerCase(name)
@@ -30,6 +32,7 @@ let rec fromSury = (~parentName: string, ~fieldName: string, schema: S.t<unknown
   } else {
     switch schema {
     | String({const: ?Some(_)}) => ScalarString
+    | String(_) if isDateTime(schema) => DateTime
     | String(_) => isIdFieldName(fieldName) ? EntityId : ScalarString
     | Number(_) => ScalarNumber
     | Boolean(_) => ScalarBoolean

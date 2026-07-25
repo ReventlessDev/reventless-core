@@ -254,7 +254,8 @@ let OrdersViewSlice = {
   visibility: "Public"
 };
 
-function project(event) {
+function project(param) {
+  let event = param.event;
   if (event.TAG !== "OrderPlaced") {
     return [{
         TAG: "Update",

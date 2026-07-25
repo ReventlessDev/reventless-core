@@ -28,7 +28,11 @@ function Make(Spec) {
         let event = Primitive_option.valFromOption(decoded);
         idx.contents = idx.contents + 1 | 0;
         let id = Stdlib_Option.getOr(Stdlib_Option.map(raw.tags[0], tag => tag.value), "?");
-        let actions = Projection.project(event);
+        let actions = Projection.project({
+          event: event,
+          meta: raw.meta,
+          recordedAt: raw.recordedAt
+        });
         let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
         Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, raw.data, `handling event ` + idx.contents.toString() + `/` + count + `: ` + LogFormat$ReventlessCore.bold(raw.eventType) + `(` + id + `) ` + actionsStr));
         allActions.push(...actions);

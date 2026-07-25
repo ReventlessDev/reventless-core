@@ -76,6 +76,8 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         productIds: ["p1"],
         status: Shipped,
         shippingMethod: Express,
+        placedAt: "time",
+        shippedAt: "time",
       },
     )
     ->Confirm.thenOutbound([("o1", {SendOrderConfirmation.orderId: "o1", customerId: "c1"})])

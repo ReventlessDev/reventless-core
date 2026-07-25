@@ -8,6 +8,11 @@ let meta = {
   correlationId: "correlationId",
 }
 
+// Deterministic storage timestamp for StateViewSlice projection envelopes
+// (`consumed.recordedAt`). Distinct from `meta.time` (producer time) so a test
+// projecting either clock asserts against an unambiguous fixed value.
+let recordedAt = "recordedAt"
+
 let context = {Reventless.Message.meta, id}
 
 let statusChange = {

@@ -220,7 +220,8 @@ let consumedEventSchema = S.schema(s => ({
   total: s.m(S.int)
 }));
 
-function project(event) {
+function project(param) {
+  let event = param.event;
   let orderId = event.orderId;
   return [{
       TAG: "Set",

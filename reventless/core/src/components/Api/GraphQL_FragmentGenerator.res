@@ -43,6 +43,7 @@ let rec fromSchemaType = (
   | ScalarBoolean => `Boolean${bang}`
   | ScalarBigInt => `String${bang}`
   | EntityId => `ID${bang}`
+  | DateTime => `String${bang}`
   | Nullable(inner) => fromSchemaType(~required=false, ~asInput, inner, collectedTypes, seenTypes)
   | ArrayOf(item) =>
     let itemType = fromSchemaType(~required=true, ~asInput, item, collectedTypes, seenTypes)

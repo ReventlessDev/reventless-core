@@ -257,10 +257,11 @@ let decomposeMeta = meta =>
   ->Option.getOrThrow
   ->Dict.toArray
 
-let composeEventJson' = (id, meta, eventJson) =>
+let composeEventJson' = (id, meta, ~recordedAt, eventJson) =>
   [
     ("id", id->JSON.Encode.string),
     ("meta", meta->S.reverseConvertToJsonOrThrow(metaSchema)),
+    ("recordedAt", recordedAt->JSON.Encode.string),
     ("event", eventJson),
   ]
   ->Dict.fromArray

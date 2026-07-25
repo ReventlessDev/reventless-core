@@ -96,11 +96,11 @@ module type Spec = {
   @schema
   type consumedEvent
 
-  let project: consumedEvent => array<Projection.action<string, state>>
+  let project: Reventless.StateViewSlice.consumed<consumedEvent> => array<Projection.action<string, state>>
 }
 ```
 
-Note: `project` takes only the event (not `option<state>`). Use `Update(id, fn)` for state-dependent projections.
+Note: `project` receives a `consumed` envelope `{event, meta, recordedAt}` (not `option<state>`); destructure `({event})` when you only need the payload. `meta.time` (producer timestamp) and `recordedAt` (storage timestamp) are available. Use `Update(id, fn)` for state-dependent projections.
 
 ### `AutomationSlice.Spec`
 
@@ -319,13 +319,13 @@ type consumedEvent =
 type state = {categoryId: string, name: string, archived: bool}
 ```
 
-The projection file (`@@reventless.projection`) declares a one-argument `project`; `Set`/`Update`/`Delete` are in scope without a prefix:
+The projection file (`@@reventless.projection`) declares `project`, which receives a `consumed` envelope `{event, meta, recordedAt}` (destructure `({event})` when you only need the payload); `Set`/`Update`/`Delete` are in scope without a prefix:
 
 ```rescript
 // Categories_Projection.res
 @@reventless.projection
 
-let project = event =>
+let project = ({event}) =>
   switch event {
   | CategoryAdded({categoryId, name}) => [Set(categoryId, {categoryId, name, archived: false})]
   | CategoryRenamed({categoryId, name}) => [Update(categoryId, state => {...state, name})]

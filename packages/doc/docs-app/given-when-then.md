@@ -286,7 +286,7 @@ module CategoriesViewSpec = {
     | CategoryRenamed({categoryId: string, name: string})
     | CategoryArchived({categoryId: string})
 
-  let project = event =>
+  let project = ({event}) =>
     switch event {
     | CategoryAdded({categoryId, name}) => [
         Set(categoryId, {categoryId, name, archived: false}),

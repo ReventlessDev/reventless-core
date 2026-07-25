@@ -68,11 +68,16 @@ module Make = (Ops: Ops): T => {
       }
     }
 
+    // Storage stamped its own `recordedAt` at append but does not return it, so
+    // the topic envelope carries a publish-time stamp instead (a few ms later).
+    // StateViewSlice projections read this as `consumed.recordedAt`; the stored
+    // column remains authoritative for reads. Producer time is `meta.time`.
+    let recordedAt = Message.nowAsISOString()
     let _ = await Array.zip(rawEvents, finalRawEventsJson)
     ->Array.map(async ((rawEvent, eventJson)) => {
       let entityId =
         rawEvent.tags->Array.get(0)->Option.map(t => t.value)->Option.getOr(name)
-      let eventJson' = Message.composeEventJson'(entityId, rawEvent.meta, eventJson)
+      let eventJson' = Message.composeEventJson'(entityId, rawEvent.meta, ~recordedAt, eventJson)
       try await Ops.publishJson(serviceName, rawEvent.meta, eventJson') catch {
       | JsExn(err) =>
         let errMsg = err->JsExn.message->Option.getOr("unknown")

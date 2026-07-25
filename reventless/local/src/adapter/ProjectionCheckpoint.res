@@ -180,16 +180,21 @@ let dcbCatchupEnvelope = (
   ~eventType: string,
   ~dataText: string,
   ~metaText: string,
+  ~recordedAt: string,
   ~firstTagValue: option<string>,
 ): option<JSON.t> =>
   switch (JSON.parseOrThrow(dataText), JSON.parseOrThrow(metaText)) {
   | (data, meta) =>
     let dataDict = data->JSON.Decode.object->Option.getOr(Dict.make())
     let entityId = firstTagValue->Option.getOr(logName)
+    // The stored `recorded_at` column is the authoritative storage time; unlike
+    // live publish we must NOT re-stamp here (catch-up runs at startup, long
+    // after append). StateViewSlice projections read this as `consumed.recordedAt`.
     Some(
       Dict.fromArray([
         ("id", JSON.Encode.string(entityId)),
         ("meta", meta),
+        ("recordedAt", JSON.Encode.string(recordedAt)),
         ("event", Message.combineMessage(eventType, dataDict)),
       ])->JSON.Encode.object,
     )
@@ -226,7 +231,7 @@ let missedRows = (
     // dcb_tag rows are inserted in tag order, so MIN(rowid) is the first tag.
     db
     ->SqliteDriver.prepare(
-      "SELECT rowid AS pos, log_name, event_type, data, meta, (SELECT t.tag_value FROM dcb_tag t WHERE t.log_name = dcb_event.log_name AND t.position = dcb_event.position ORDER BY t.rowid ASC LIMIT 1) AS first_tag FROM dcb_event WHERE rowid > ? AND rowid <= ? ORDER BY rowid ASC",
+      "SELECT rowid AS pos, log_name, event_type, data, meta, recorded_at, (SELECT t.tag_value FROM dcb_tag t WHERE t.log_name = dcb_event.log_name AND t.position = dcb_event.position ORDER BY t.rowid ASC LIMIT 1) AS first_tag FROM dcb_event WHERE rowid > ? AND rowid <= ? ORDER BY rowid ASC",
     )
     ->SqliteDriver.all([JSON.Encode.int(afterPos), JSON.Encode.int(upTo)])
     ->Array.filterMap(row =>
@@ -248,9 +253,13 @@ let missedRows = (
         | Some(JSON.String(v)) => Some(v)
         | _ => None
         }
+        let recordedAt = switch row->Dict.get("recorded_at") {
+        | Some(JSON.String(v)) => v
+        | _ => ""
+        }
         Some((
           Float.toInt(pos),
-          dcbCatchupEnvelope(~logName, ~eventType, ~dataText, ~metaText, ~firstTagValue),
+          dcbCatchupEnvelope(~logName, ~eventType, ~dataText, ~metaText, ~recordedAt, ~firstTagValue),
         ))
       | _ => None
       }

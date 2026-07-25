@@ -154,7 +154,9 @@ Flow_GWT$ReventlessGwt.describe("Ordering flow — place → auto-ship → confi
     customerId: "c1",
     productIds: ["p1"],
     status: "Shipped",
-    shippingMethod: "Express"
+    shippingMethod: "Express",
+    placedAt: "time",
+    shippedAt: "time"
   }), [[
       "o1",
       {

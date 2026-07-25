@@ -1,6 +1,6 @@
 @@reventless.projection
 
-let project = event =>
+let project = ({event}) =>
   switch event {
   | CatalogProductSynced({productId, name, price}) => [Set(productId, {productId, name, price})]
   | CatalogProductPriceChanged({productId, price}) =>

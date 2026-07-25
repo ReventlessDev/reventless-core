@@ -94,6 +94,17 @@ function fromSchemaType(st) {
             "uuid"
           ]
         ]);
+      case "DateTime" :
+        return Object.fromEntries([
+          [
+            "type",
+            "string"
+          ],
+          [
+            "format",
+            "date-time"
+          ]
+        ]);
       case "ScalarString" :
       case "Unknown" :
         return Object.fromEntries([[

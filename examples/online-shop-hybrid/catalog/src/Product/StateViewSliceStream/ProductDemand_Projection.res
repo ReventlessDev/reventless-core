@@ -1,6 +1,6 @@
 @@reventless.projection
 
-let project = event =>
+let project = ({event}) =>
   switch event {
   | ProductAdded({productId, name, categoryId}) =>
     [UpdateWithDefault(productId, {productId, name, categoryId, orderCount: 0}, s => {...s, name, categoryId})]

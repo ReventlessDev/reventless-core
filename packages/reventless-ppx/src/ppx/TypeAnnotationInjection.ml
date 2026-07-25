@@ -58,6 +58,14 @@ let mk_projection_action ~loc ~state =
     (Ldot (Ldot (Lident "Reventless", "Projection"), "action"))
     [mk_string ~loc; state]
 
+(* [Reventless.StateViewSlice.consumed<inner>] — the projection input envelope
+   (event + meta + recordedAt). The [project] param is the envelope, not the
+   bare [consumedEvent], so the impl destructures [{event}] out of it. *)
+let mk_consumed ~loc inner =
+  mk_constr ~loc
+    (Ldot (Ldot (Lident "Reventless", "StateViewSlice"), "consumed"))
+    [inner]
+
 (* --- Folder detection for Translation inbound/outbound ---------------- *)
 
 let path_contains fname needle =
@@ -111,7 +119,7 @@ let signature_for ~loc kind name : signature option =
            ret = mk_result ~loc (mk_array ~loc (s "event")) (s "error") }
 
   | KProjection, "project" ->
-    Some { params = [s "consumedEvent"];
+    Some { params = [mk_consumed ~loc (s "consumedEvent")];
            ret = mk_array ~loc (mk_projection_action ~loc ~state:(s "state")) }
 
   | KAutomation, "collect" ->

@@ -15,7 +15,7 @@ type state = {
   @displayName lastName: string,
 }
 
-let project = event =>
+let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
   switch event {
   | CustomerAdded({customerId, firstName, lastName}) =>
     [Set(customerId, {customerId, firstName, lastName})]

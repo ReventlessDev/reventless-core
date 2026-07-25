@@ -61,7 +61,11 @@ function Make(Spec) {
     };
     let runActions = (actions, operations) => Projection$ReventlessCore.handleActions(undefined, actions, operations, Spec.subIdConfig);
     let update = async (store, events) => {
-      let actions = events.map(ev => Projection.project(ev)).flat();
+      let actions = events.map(ev => Projection.project({
+        event: ev,
+        meta: TestFixtures$ReventlessGwt.meta,
+        recordedAt: TestFixtures$ReventlessGwt.recordedAt
+      })).flat();
       await runActions(actions, {
         load: extra => Promise.resolve({
           TAG: "Ok",

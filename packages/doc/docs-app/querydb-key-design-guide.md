@@ -94,7 +94,7 @@ type state = {
   price: float,
 }
 
-let project = event => switch event {
+let project = ({event}) => switch event {
   | ProductAdded({ productId, name, price }) =>
     [Set(productId, { productId, name, price })]
   | ProductRemoved({ productId }) =>
@@ -436,7 +436,7 @@ type state = {
   total: float,
 }
 
-let project = event => switch event {
+let project = ({event}) => switch event {
   | OrderPlaced({ orderId, customerId, total, placedAt }) =>
     [Set(orderId, { orderId, changedAt: placedAt, customerId,
                     status: "placed", total })]

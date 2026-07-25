@@ -29,7 +29,7 @@ module CategoriesViewProjection = {
   module Spec = CategoriesView
   open CategoriesView
 
-  let project = (event: consumedEvent) =>
+  let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
     switch event {
     | CategoryAdded({categoryId, name}) => [
         Set(categoryId, {categoryId, name, archived: false}),

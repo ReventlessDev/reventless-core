@@ -32,12 +32,12 @@ type state = {
 
 ### Defining the Projection
 
-The projection file carries `@@reventless.projection`. `project` takes **one argument** — the event — and returns an array of projection actions. `Set`/`Update`/`UpdateWithDefault`/`Delete` are in scope without a `Projection.` prefix (the PPX opens `Reventless.Projection`).
+The projection file carries `@@reventless.projection`. `project` receives a `consumed` envelope `{event, meta, recordedAt}` and returns an array of projection actions; destructure `({event})` when you only need the payload. `meta` (`Reventless.Message.meta`) carries producer info including `meta.time` (producer timestamp) and `meta.user`, and `recordedAt: string` is the storage timestamp. `Set`/`Update`/`UpdateWithDefault`/`Delete` are in scope without a `Projection.` prefix (the PPX opens `Reventless.Projection`).
 
 ```rescript title="ItemView_Projection.res"
 @@reventless.projection
 
-let project = event =>
+let project = ({event}) =>
   switch event {
   | ItemCreated({itemId, name}) => [Set(itemId, {itemId, name})]
   | ItemRenamed({itemId, name}) => [Update(itemId, state => {...state, name})]
@@ -63,7 +63,7 @@ The generator:
 The projection function is the core of StateViewSlice — it transforms each consumed event into state changes. `Set` creates or replaces a row; `Update` transforms an existing row; `UpdateWithDefault` handles both:
 
 ```rescript title="Inventory_Projection.res"
-let project = event =>
+let project = ({event}) =>
   switch event {
   | StockReceived({itemId, qty}) =>
     // Create with a default if the row does not exist yet
@@ -134,7 +134,7 @@ let make = () =>
 
 ```rescript
 // Good: handles both new and existing rows
-let project = event =>
+let project = ({event}) =>
   switch event {
   | ItemAdjusted({itemId, delta}) => [
       UpdateWithDefault(itemId, {count: 0}, state => {...state, count: state.count + delta}),
@@ -142,7 +142,7 @@ let project = event =>
   }
 
 // Avoid: Update on a row that may not exist yet is a no-op
-let project = event =>
+let project = ({event}) =>
   switch event {
   | ItemAdjusted({itemId, delta}) => [Update(itemId, state => {...state, count: state.count + delta})]
   }
@@ -152,7 +152,7 @@ let project = event =>
 
 ```rescript
 // Good: setting an absolute value is idempotent on replay
-let project = event =>
+let project = ({event}) =>
   switch event {
   | QuantitySet({itemId, qty}) => [Update(itemId, state => {...state, qty})]
   }
@@ -183,7 +183,7 @@ type state = {
 ```rescript
 // consumedEvent lists exactly the events this view reads, so the switch is exhaustive.
 // For an event that should not change state, return [] (or [Ignore]).
-let project = event =>
+let project = ({event}) =>
   switch event {
   | KnownEvent1({id}) => [Update(id, state => state)]
   | KnownEvent2({id}) => [Delete(id)]
@@ -256,7 +256,7 @@ type state = {
 ```rescript title="ItemView_Projection.res — StateViewSlice projection"
 @@reventless.projection
 
-let project = event =>
+let project = ({event}) =>
   switch event {
   | ItemCreated({itemId, name, category}) => [Set(itemId, {itemId, name, category})]
   | ItemRenamed({itemId, name}) => [Update(itemId, state => {...state, name})]

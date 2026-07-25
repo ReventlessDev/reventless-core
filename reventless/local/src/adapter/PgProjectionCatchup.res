@@ -104,7 +104,7 @@ let runCatchup = async (
 
   // --- DCB axis: reconstruct the published envelope, position order ---
   let dcbRows = await pool->Pg.query(
-    "SELECT log_name, event_type, data, meta, tags FROM dcb_event WHERE position <= $1::bigint ORDER BY position ASC",
+    "SELECT log_name, event_type, data, meta, tags, recorded_at FROM dcb_event WHERE position <= $1::bigint ORDER BY position ASC",
     [JSON.Encode.int(bounds.dcbBound)],
   )
   for i in 0 to dcbRows->Array.length - 1 {
@@ -116,11 +116,16 @@ let runCatchup = async (
       row->Dict.get("meta"),
     ) {
     | (Some(JSON.String(logName)), Some(JSON.String(eventType)), Some(data), Some(meta)) =>
+      let recordedAt = switch row->Dict.get("recorded_at") {
+      | Some(JSON.String(v)) => v
+      | _ => ""
+      }
       switch ProjectionCheckpoint.dcbCatchupEnvelope(
         ~logName,
         ~eventType,
         ~dataText=JSON.stringify(data),
         ~metaText=JSON.stringify(meta),
+        ~recordedAt,
         ~firstTagValue=firstTagValue(row),
       ) {
       | Some(envelope) => await deliver(handlers, envelope)

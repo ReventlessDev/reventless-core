@@ -44,7 +44,7 @@ module ScoresViewProjection = {
 
   let moduleUrl: string = %raw(`import.meta.url`)
 
-  let project = (event: consumedEvent) =>
+  let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
     switch event {
     | ScoreRecorded({id, category, date, score}) =>
       [Set(id, {id, category, date, score})]

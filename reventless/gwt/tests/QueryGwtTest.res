@@ -123,7 +123,7 @@ module OrdersView = {
   @schema
   type consumedEvent = OrderPlaced({orderId: string, customerId: string, total: int})
 
-  let project = event =>
+  let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
     switch event {
     | OrderPlaced({orderId, customerId, total}) => [
         Reventless.Projection.Set(orderId, {orderId, customerId, total}),

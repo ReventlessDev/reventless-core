@@ -3,7 +3,7 @@
 // No `open Reventless.Plugin`: it would shadow the state labels (panels/pages/...) brought in
 // by the projection's spec open. `manifest.<field>` resolves type-directed from the event's
 // uiFragmentManifest payload.
-let project = event =>
+let project = ({event}) =>
   switch event {
   | UiFragmentRegistered({pluginId, manifest, at}) => [
       Set(

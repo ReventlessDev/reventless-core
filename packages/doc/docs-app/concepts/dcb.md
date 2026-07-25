@@ -69,13 +69,13 @@ let decide: (state, command) => result<array<event>, error>
 
 ### StateViewSlice
 
-The spec file (`<Name>.res`, `@@reventless.spec`) declares `consumedEvent` and the read-model `state`. The projection file (`<Name>_Projection.res`, `@@reventless.projection`) declares a one-argument `project`:
+The spec file (`<Name>.res`, `@@reventless.spec`) declares `consumedEvent` and the read-model `state`. The projection file (`<Name>_Projection.res`, `@@reventless.projection`) declares `project`, which receives a `consumed` envelope `{event, meta, recordedAt}`:
 
 ```rescript title="ItemView.res / ItemView_Projection.res — conceptual shape"
 @schema type consumedEvent  // the events this view reads
 @schema type state          // the read-model row shape
 
-let project: consumedEvent => array<Reventless.Projection.action<string, state>>
+let project: Reventless.StateViewSlice.consumed<consumedEvent> => array<Reventless.Projection.action<string, state>>
 ```
 
 ## Usage

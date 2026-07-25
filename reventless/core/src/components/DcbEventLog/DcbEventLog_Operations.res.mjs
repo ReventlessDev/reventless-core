@@ -41,10 +41,11 @@ function Make(Ops) {
     } else {
       finalRawEventsJson = rawEventsJson;
     }
+    let recordedAt = Message$ReventlessCore.nowAsISOString();
     await Promise.all(Stdlib_Array.zip(rawEvents, finalRawEventsJson).map(async param => {
       let rawEvent = param[0];
       let entityId = Stdlib_Option.getOr(Stdlib_Option.map(rawEvent.tags[0], t => t.value), name);
-      let eventJson$p = Message$ReventlessCore.composeEventJson$p(entityId, rawEvent.meta, param[1]);
+      let eventJson$p = Message$ReventlessCore.composeEventJson$p(entityId, rawEvent.meta, recordedAt, param[1]);
       try {
         return await Ops.publishJson(serviceName, rawEvent.meta, eventJson$p);
       } catch (raw_err) {

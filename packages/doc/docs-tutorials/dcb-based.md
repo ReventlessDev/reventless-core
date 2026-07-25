@@ -539,7 +539,7 @@ type consumedEvent =
 // Product/StateViewSlice/Products_Projection.res
 @@reventless.projection
 
-let project = event =>
+let project = ({event}) =>
   switch event {
   | ProductAdded({productId, name, description, price}) => [
       Set(productId, {productId, name, description, price}),
@@ -576,7 +576,7 @@ type consumedEvent =
 // Product/StateViewSlice/ProductDemand_Projection.res
 @@reventless.projection
 
-let project = event =>
+let project = ({event}) =>
   switch event {
   | ProductAdded({productId, name}) =>
     [UpdateWithDefault(productId, {productId, name, orderCount: 0}, s => {...s, name})]

@@ -1,6 +1,6 @@
 @@reventless.projection
 
-let project = event =>
+let project = ({event}) =>
   switch event {
   | CustomerRegistered({customerId, email, address}) => [
       Set(customerId, {customerId, email, address, deactivated: false}),

@@ -17,7 +17,7 @@ type state = {
   name: string,
 }
 
-let project = event =>
+let project = ({event}: Reventless.StateViewSlice.consumed<consumedEvent>) =>
   switch event {
   | ItemRecorded({itemId, ownerId, version, name}) =>
     [Set(itemId, {itemId, ownerId, version, name})]

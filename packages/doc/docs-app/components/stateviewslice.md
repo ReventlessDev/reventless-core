@@ -83,7 +83,8 @@ A StateViewSlice is **split into two files**:
 - `<Name>.res` — the **spec** (`@@reventless.spec`): the local `consumedEvent` and
   `state` `@schema` types.
 - `<Name>_Projection.res` — the **projection** (`@@reventless.projection`): a single
-  `let project = event => [...]` function (ONE argument).
+  `let project = ({event}) => [...]` function receiving a `consumed` envelope
+  `{event, meta, recordedAt}`.
 
 The spec file. `@@reventless.spec` injects `name`, `module Id`, `moduleUrl`,
 `let config = config()`, and `let subIdConfig = None`:
@@ -103,12 +104,16 @@ type state = {name: string}
 
 The projection file. `@@reventless.projection` injects `open Reventless.Projection`
 (so `Set`, `Update`, `UpdateWithDefault`, `Delete` are in scope unqualified) and
-brings the spec module into scope. `project` takes ONE argument — the event:
+brings the spec module into scope. `project` receives a `consumed` envelope
+`{event, meta, recordedAt}`; destructure `({event})` when you only need the
+payload. `meta` is `Reventless.Message.meta` (producer info incl. `meta.time`, the
+producer timestamp, and `meta.user`) and `recordedAt: string` is the storage
+timestamp:
 
 ```rescript title="Item/StateViewSliceStream/Items_Projection.res" showLineNumbers
 @@reventless.projection
 
-let project = event =>
+let project = ({event}) =>
   switch event {
   | Created({id, name}) => [Set(id, {name: name})]
   | Updated({id, name}) => [Update(id, state => {...state, name})]
@@ -132,7 +137,7 @@ In the `_Projection.res` file:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `project` | `consumedEvent => array<Projection.action<state>>` | Function to transform an event into state actions |
+| `project` | `Reventless.StateViewSlice.consumed<consumedEvent> => array<Projection.action<state>>` | Function to transform a consumed event envelope into state actions |
 
 ## Runtime Behavior
 
@@ -168,7 +173,7 @@ In the `_Projection.res` file, `@@reventless.projection` injects
 ```rescript title="Item/StateViewSliceStream/Items_Projection.res"
 @@reventless.projection
 
-let project = event =>
+let project = ({event}) =>
   switch event {
   | ItemCreated({itemId, name}) => [Set(itemId, {name, createdAt: Date.now()})]
   | ItemRenamed({itemId, newName}) => [Update(itemId, state => {...state, name: newName})]
@@ -208,7 +213,7 @@ The `project` function lives in the sibling `_Projection.res` file, where
 ```rescript title="OrderLineItems/StateViewSliceStream/OrderLineItems_Projection.res" showLineNumbers
 @@reventless.projection
 
-let project = event =>
+let project = ({event}) =>
   switch event {
   | LineItemAdded({orderId, lineItemId, productId, categoryId, quantity}) =>
     [Set(lineItemId, {orderId, lineItemId, productId, categoryId, quantity})]

@@ -3,6 +3,7 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/types/DateTime.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
 
 function isIdFieldName(name) {
@@ -31,10 +32,14 @@ function fromSury(parentName, fieldName, schema) {
   }
   switch (schema.type) {
     case "string" :
-      if (schema.const !== undefined || !isIdFieldName(fieldName)) {
+      if (schema.const !== undefined) {
         return "ScalarString";
-      } else {
+      } else if (DateTime$Reventless.isDateTime(schema)) {
+        return "DateTime";
+      } else if (isIdFieldName(fieldName)) {
         return "EntityId";
+      } else {
+        return "ScalarString";
       }
     case "number" :
       return "ScalarNumber";
@@ -133,8 +138,11 @@ function fromSuryObject(typeName, schema) {
 
 let isTagged = DcbTag$Reventless.isTagged;
 
+let isDateTime = DateTime$Reventless.isDateTime;
+
 export {
   isTagged,
+  isDateTime,
   isIdFieldName,
   isIdsFieldName,
   fromSury,

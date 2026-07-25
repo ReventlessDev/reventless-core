@@ -30,7 +30,9 @@ module type Spec = {
 module type Projection = {
   module Spec: Spec
 
-  let project: Spec.consumedEvent => array<Reventless.Projection.action<string, Spec.state>>
+  let project: Reventless.StateViewSlice.consumed<Spec.consumedEvent> => array<
+    Reventless.Projection.action<string, Spec.state>,
+  >
 }
 
 module type T = {
@@ -163,10 +165,18 @@ module Make = (
 
   let update = async (store, events) => {
     // Projection.project produces an array of actions per event — flatten and
-    // feed them through handleActions against the dict store.
+    // feed them through handleActions against the dict store. Each bare event is
+    // wrapped in the `consumed` envelope with the deterministic test `meta` /
+    // `recordedAt` so a projection reading `meta.time` asserts a fixed value.
     let actions =
       events
-      ->Array.map(ev => ev->Projection.project)
+      ->Array.map(ev =>
+        {
+          Reventless.StateViewSlice.event: ev,
+          meta: TestFixtures.meta,
+          recordedAt: TestFixtures.recordedAt,
+        }->Projection.project
+      )
       ->Array.flat
     await actions->runActions({
       load: load(store, ...),

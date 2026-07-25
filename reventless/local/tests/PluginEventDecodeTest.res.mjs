@@ -15,7 +15,7 @@ TestRunner$ReventlessLocal.setup();
 let meta = Message$ReventlessCore.generateMeta(PluginSpec$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
 
 function envelopeOf(event) {
-  return Message$ReventlessCore.composeEventJson$p("Catalog", meta, S.reverseConvertToJsonOrThrow(event, PluginSpec$ReventlessCore.eventSchema));
+  return Message$ReventlessCore.composeEventJson$p("Catalog", meta, "2024-01-01T00:00:00Z", S.reverseConvertToJsonOrThrow(event, PluginSpec$ReventlessCore.eventSchema));
 }
 
 globalThis.describe("Platform.decodePluginEventEnvelope", () => {
@@ -64,7 +64,7 @@ globalThis.describe("Platform.decodeUiFragmentRegistryEventEnvelope", () => {
   let dcbEnvelopeOf = event => {
     let json = S.reverseConvertToJsonOrThrow(event, UiFragmentRegistry$ReventlessCore.eventSchema);
     let match = Message$ReventlessCore.splitMessage(json);
-    return Message$ReventlessCore.composeEventJson$p("Catalog", dcbMeta, Message$ReventlessCore.combineMessage(match[0], match[1]));
+    return Message$ReventlessCore.composeEventJson$p("Catalog", dcbMeta, "2024-01-01T00:00:00Z", Message$ReventlessCore.combineMessage(match[0], match[1]));
   };
   globalThis.test("decodes a UiFragmentRegistered event from the published envelope", () => {
     let event = {

@@ -138,7 +138,7 @@ module OrdersViewProjection = {
   module Spec = OrdersViewSlice
   open Reventless.Projection
 
-  let project = (event: OrdersViewSlice.consumedEvent) =>
+  let project = ({event}: Reventless.StateViewSlice.consumed<OrdersViewSlice.consumedEvent>) =>
     switch event {
     | OrderPlaced({orderId, item}) => [
         Set(orderId, ({orderId, item, status: "Placed"}: OrdersViewSlice.state)),

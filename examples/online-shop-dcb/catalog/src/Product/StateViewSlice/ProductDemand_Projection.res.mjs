@@ -2,7 +2,8 @@
 
 import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
 
-function project(event) {
+function project(param) {
+  let event = param.event;
   switch (event.TAG) {
     case "ProductAdded" :
       let name = event.name;

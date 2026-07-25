@@ -25,9 +25,12 @@ let statusChange = {
   by: statusChange_by
 };
 
+let recordedAt = "recordedAt";
+
 export {
   id,
   meta,
+  recordedAt,
   context,
   statusChange,
 }
