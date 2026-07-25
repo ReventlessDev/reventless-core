@@ -313,6 +313,26 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       )->toBe(Some("byOwner"))
     })
 
+    testSync("@semantic(\"currency\") flows through the PPX to x-reventless-semantic", () => {
+      expect(
+        annotatedSchema
+        ->getPropertyOf("total")
+        ->Option.flatMap(s => getProperty(s, "x-reventless-semantic"))
+        ->Option.flatMap(JSON.Decode.string),
+      )->toBe(Some("currency"))
+    })
+
+    testSync("@metric flows through the PPX to x-reventless-metric {aggregate,label}", () => {
+      let metricObj =
+        annotatedSchema
+        ->getPropertyOf("total")
+        ->Option.flatMap(s => getProperty(s, "x-reventless-metric"))
+      expect((
+        metricObj->Option.flatMap(m => getProperty(m, "aggregate"))->Option.flatMap(JSON.Decode.string),
+        metricObj->Option.flatMap(m => getProperty(m, "label"))->Option.flatMap(JSON.Decode.string),
+      ))->toEqual((Some("sum"), Some("Revenue")))
+    })
+
     testSync("unannotated field 'name' has no x-reventless-* keys", () => {
       let nameField = annotatedSchema->getPropertyOf("name")
       expect((

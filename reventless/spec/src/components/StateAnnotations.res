@@ -26,6 +26,13 @@ free on the in-memory adapter but is `O(n)` Scan + FilterExpression on
 DynamoDB-backed adapters — the annotation is the explicit signal that the
 read model is small enough or the cost is acceptable.
 */
+/**
+Declared aggregation for a `@metric`-annotated numeric field. `aggregate` is one
+of `"count"`, `"sum"`, `"avg"` (the UI's dashboard vocabulary); `label` is the
+KPI label, or `""` to let the UI derive one from the field name.
+*/
+type metricSpec = {aggregate: string, label: string}
+
 type stateAnnotationSpec = {
   ids: array<string>,
   compositeIds: array<string>,
@@ -39,6 +46,22 @@ type stateAnnotationSpec = {
   collapsed: array<string>,
   scan: array<string>,
   scanSort: array<string>,
+  /**
+  Fields annotated `@semantic("<id>")` — `(fieldName, semanticId)` pairs. The
+  semantic id is the UI's `AutoSemantics` vocabulary (e.g. `"currency"`,
+  `"geo-lat"`); the PPX can't validate it (the UI owns that vocabulary).
+  `SuryToJsonSchema` emits `x-reventless-semantic` on the named field, which
+  AutoUI reads at `#Annotation` provenance — above its heuristic, below a
+  `ui-hints.json` `fields:` override.
+  */
+  semantic: array<(string, string)>,
+  /**
+  Fields annotated `@metric(...)` — `(fieldName, metricSpec)` pairs.
+  `SuryToJsonSchema` emits `x-reventless-metric: {aggregate, label}` on the named
+  field, which AutoUI folds into the dashboard metric list it already builds from
+  hints — so a plugin gets a Dashboard page from its schema alone.
+  */
+  metric: array<(string, metricSpec)>,
   /**
   Field annotated `@status` on the state record (PPX-emitted). `Some(name)`
   when one such annotation exists; the PPX errors on duplicate `@status`

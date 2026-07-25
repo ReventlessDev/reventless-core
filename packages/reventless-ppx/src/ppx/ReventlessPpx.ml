@@ -770,6 +770,7 @@ let transform (str : structure) : structure =
                       |> StateAnnotations.strip_visibility_attrs
                       |> StateAnnotations.strip_drill_collapsed_attrs
                       |> StateAnnotations.strip_scan_attrs
+                      |> StateAnnotations.strip_semantic_metric_attrs
                       |> StateAnnotations.strip_status_attrs
                       |> StateAnnotations.strip_group_by_attrs
                  else body in

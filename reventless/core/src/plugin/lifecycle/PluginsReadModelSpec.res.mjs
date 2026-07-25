@@ -46,6 +46,8 @@ let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stat
   collapsed: [],
   scan: ["kind"],
   scanSort: [],
+  semantic: [],
+  metric: [],
   status: undefined,
   groupBy: "kind",
   visibility: undefined

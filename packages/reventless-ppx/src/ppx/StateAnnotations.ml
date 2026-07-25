@@ -1103,6 +1103,67 @@ let strip_scan_attrs (str : structure) : structure =
     | _ -> item
   ) str
 
+(* ── @semantic / @metric: declared field semantics + dashboard metrics (no
+       behavioural effect at the PPX level — flow through the metadata pipeline
+       so JSON Schema can surface them as x-reventless-semantic /
+       x-reventless-metric, read by AutoUI's annotation + dashboard tiers). ── *)
+
+let find_semantic_attr (attrs : attributes) =
+  List.find_opt (fun (a : attribute) -> String.equal a.attr_name.txt "semantic") attrs
+
+let find_metric_attr (attrs : attributes) =
+  List.find_opt (fun (a : attribute) -> String.equal a.attr_name.txt "metric") attrs
+
+(** Extract the semantic id string from `@semantic("currency")`. *)
+let get_semantic_value ~loc (attr : attribute) : string =
+  match attr.attr_payload with
+  | PStr [{ pstr_desc = Pstr_eval ({pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _}, _); _ }] -> s
+  | _ ->
+    Location.raise_errorf ~loc
+      "@semantic expects a single string payload, e.g. @semantic(\"currency\")"
+
+(** Extract `(aggregate, label)` from a `@metric` attribute. Accepts either a
+    bare string `@metric("sum")` (label defaults to "" — the UI derives one from
+    the field name) or a record `@metric({aggregate: "sum", label: "Revenue"})`. *)
+let get_metric_value ~loc (attr : attribute) : (string * string) =
+  match attr.attr_payload with
+  | PStr [{ pstr_desc = Pstr_eval ({pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _}, _); _ }] ->
+    (s, "")
+  | PStr [{ pstr_desc = Pstr_eval ({pexp_desc = Pexp_record (fields, _); _}, _); _ }] ->
+    let aggregate = (match find_record_str "aggregate" fields with Some s -> s | None -> "count") in
+    let label = (match find_record_str "label" fields with Some s -> s | None -> "") in
+    (aggregate, label)
+  | _ ->
+    Location.raise_errorf ~loc
+      "@metric expects \"sum\" or {aggregate: \"sum\", label: \"Revenue\"}"
+
+let strip_semantic_metric_field_attrs (attrs : attributes) =
+  List.filter (fun (attr : attribute) ->
+    not (String.equal attr.attr_name.txt "semantic"
+         || String.equal attr.attr_name.txt "metric")
+  ) attrs
+
+(** Strip @semantic and @metric from @schema type state record fields. *)
+let strip_semantic_metric_attrs (str : structure) : structure =
+  List.map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (rf, decls) ->
+      let new_decls = List.map (fun (td : type_declaration) ->
+        if not (String.equal td.ptype_name.txt "state"
+                && Util.has_attr "schema" td.ptype_attributes) then td
+        else
+          match td.ptype_kind with
+          | Ptype_record fields ->
+            let new_fields = List.map (fun (ld : label_declaration) ->
+              { ld with pld_attributes = strip_semantic_metric_field_attrs ld.pld_attributes }
+            ) fields in
+            { td with ptype_kind = Ptype_record new_fields }
+          | _ -> td
+      ) decls in
+      { item with pstr_desc = Pstr_type (rf, new_decls) }
+    | _ -> item
+  ) str
+
 (* ── State annotation metadata: propagate structural annotations to JSON Schema ── *)
 
 (** Build a string-array AST expression. *)
@@ -1121,6 +1182,23 @@ let str_tuple ~loc a b =
 (** Build an array of `(string, string)` tuples. *)
 let str_tuple_array ~loc pairs =
   { pexp_desc = Pexp_array (List.map (fun (a, b) -> str_tuple ~loc a b) pairs);
+    pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
+
+(** Build an array of `(fieldName, {aggregate, label})` tuples for the `metric`
+    field of `stateAnnotationSpec`. *)
+let metric_tuple_array ~loc pairs =
+  let estr = Ast_builder.Default.estring ~loc in
+  let one (field, (aggregate, label)) =
+    let rec_expr =
+      { pexp_desc = Pexp_record (
+          [ ({ Location.txt = Lident "aggregate"; loc }, estr aggregate);
+            ({ txt = Lident "label"; loc }, estr label) ],
+          None);
+        pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
+    { pexp_desc = Pexp_tuple [estr field; rec_expr];
+      pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
+  in
+  { pexp_desc = Pexp_array (List.map one pairs);
     pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
 
 (** Build the `let stateSchema = stateSchema->S.Metadata.set(~id=Reventless.StateAnnotations.stateAnnotationsId, spec)`
@@ -1177,6 +1255,16 @@ let make_state_annotations_binding ~loc ~visibility fields : structure_item opti
   let scan_sort = List.filter_map (fun (ld : label_declaration) ->
     if has_scan_sort_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
   ) fields in
+  let semantic = List.filter_map (fun (ld : label_declaration) ->
+    match find_semantic_attr ld.pld_attributes with
+    | Some attr -> Some (ld.pld_name.txt, get_semantic_value ~loc:ld.pld_loc attr)
+    | None -> None
+  ) fields in
+  let metric = List.filter_map (fun (ld : label_declaration) ->
+    match find_metric_attr ld.pld_attributes with
+    | Some attr -> Some (ld.pld_name.txt, get_metric_value ~loc:ld.pld_loc attr)
+    | None -> None
+  ) fields in
   let status_fields = List.filter_map (fun (ld : label_declaration) ->
     if has_status_field_attr ld.pld_attributes then Some (ld.pld_name.txt, ld.pld_loc) else None
   ) fields in
@@ -1202,7 +1290,8 @@ let make_state_annotations_binding ~loc ~visibility fields : structure_item opti
   if ids = [] && composite_ids = [] && sub_ids = [] && composite_sub_ids = []
      && indexes = [] && hidden = [] && summary = []
      && drill_targets = [] && drill_target_keys = [] && collapsed = []
-     && scan = [] && scan_sort = [] && status = None && group_by = None
+     && scan = [] && scan_sort = [] && semantic = [] && metric = []
+     && status = None && group_by = None
      && visibility = None then None
   else
     let ident lid =
@@ -1263,6 +1352,8 @@ let make_state_annotations_binding ~loc ~visibility fields : structure_item opti
             ({ txt = Lident "collapsed"; loc }, estr_array ~loc collapsed);
             ({ txt = Lident "scan"; loc }, estr_array ~loc scan);
             ({ txt = Lident "scanSort"; loc }, estr_array ~loc scan_sort);
+            ({ txt = Lident "semantic"; loc }, str_tuple_array ~loc semantic);
+            ({ txt = Lident "metric"; loc }, metric_tuple_array ~loc metric);
             ({ txt = Lident "status"; loc }, status_value);
             ({ txt = Lident "groupBy"; loc }, group_by_value);
             ({ txt = Lident "visibility"; loc }, visibility_value) ],

@@ -29,6 +29,8 @@ let emptySpec: Reventless.StateAnnotations.stateAnnotationSpec = {
   collapsed: [],
   scan: [],
   scanSort: [],
+  semantic: [],
+  metric: [],
   status: None,
   groupBy: None,
   visibility: None,
@@ -323,6 +325,53 @@ describe("SuryToJsonSchema:", () => {
         ->Option.flatMap(JSON.Decode.bool),
         idSchema->Option.flatMap(s => getProperty(s, "x-reventless-scanSort")),
       ))->toEqual((Some(true), None))
+    })
+
+    testSync("emits x-reventless-semantic on the field listed in semantic", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "total": s.matches(S.float),
+        }
+      )->S.castToUnknown
+      let schema' = schema->withSpec({...emptySpec, semantic: [("total", "currency")]})
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let totalSchema = getPropertyOf(json, "total")
+      let idSchema = getPropertyOf(json, "id")
+      expect((
+        totalSchema
+        ->Option.flatMap(s => getProperty(s, "x-reventless-semantic"))
+        ->Option.flatMap(JSON.Decode.string),
+        idSchema->Option.flatMap(s => getProperty(s, "x-reventless-semantic")),
+      ))->toEqual((Some("currency"), None))
+    })
+
+    testSync("emits x-reventless-metric {aggregate,label} on the field listed in metric", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "total": s.matches(S.float),
+        }
+      )->S.castToUnknown
+      let schema' =
+        schema->withSpec({...emptySpec, metric: [("total", {aggregate: "sum", label: "Revenue"})]})
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let metricObj = getPropertyOf(json, "total")->Option.flatMap(s => getProperty(s, "x-reventless-metric"))
+      expect((
+        metricObj->Option.flatMap(m => getProperty(m, "aggregate"))->Option.flatMap(JSON.Decode.string),
+        metricObj->Option.flatMap(m => getProperty(m, "label"))->Option.flatMap(JSON.Decode.string),
+      ))->toEqual((Some("sum"), Some("Revenue")))
+    })
+
+    testSync("omits the metric label when empty (UI derives one from the field name)", () => {
+      let schema = S.schema(s => {"total": s.matches(S.float)})->S.castToUnknown
+      let schema' = schema->withSpec({...emptySpec, metric: [("total", {aggregate: "sum", label: ""})]})
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let metricObj = getPropertyOf(json, "total")->Option.flatMap(s => getProperty(s, "x-reventless-metric"))
+      expect((
+        metricObj->Option.flatMap(m => getProperty(m, "aggregate"))->Option.flatMap(JSON.Decode.string),
+        metricObj->Option.flatMap(m => getProperty(m, "label")),
+      ))->toEqual((Some("sum"), None))
     })
 
     testSync("emits x-reventless-group-by on the field named by groupBy", () => {

@@ -1909,10 +1909,13 @@ module MakeWithConfig = (
   }
 
   // In-memory ignores `~hostUiBundle` — the host shell is served by `vite dev`
-  // against the running in-process GraphQL server, not from a CDN.
+  // against the running in-process GraphQL server, not from a CDN — including
+  // `uiHintsFile` (the AWS deploy writes it as a BucketObject; local dev serves
+  // `public/ui-hints.json` directly).
   type hostUiBundleConfig = {
     assetsDir: string,
     bundleVersion: string,
+    uiHintsFile?: string,
   }
   let deployPlatform = (~version, ~hostUiBundle as _: option<hostUiBundleConfig>=?) => {
     log.info(~comp="Platform", `deployPlatform v${version}`)

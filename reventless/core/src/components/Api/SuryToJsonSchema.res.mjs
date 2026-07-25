@@ -62,6 +62,23 @@ function mergeAnnotations(fieldSchema, fieldName, spec) {
   if (spec.scanSort.includes(fieldName)) {
     obj["x-reventless-scanSort"] = true;
   }
+  let match$3 = spec.semantic.find(param => param[0] === fieldName);
+  if (match$3 !== undefined) {
+    obj["x-reventless-semantic"] = match$3[1];
+  }
+  let match$4 = spec.metric.find(param => param[0] === fieldName);
+  if (match$4 !== undefined) {
+    let m = match$4[1];
+    let entries = [[
+        "aggregate",
+        m.aggregate
+      ]];
+    let entries$1 = m.label === "" ? entries : entries.concat([[
+          "label",
+          m.label
+        ]]);
+    obj["x-reventless-metric"] = Object.fromEntries(entries$1);
+  }
   return obj;
 }
 

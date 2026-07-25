@@ -68,6 +68,21 @@ let mergeAnnotations = (
     if spec.scanSort->Array.includes(fieldName) {
       obj->Dict.set("x-reventless-scanSort", JSON.Encode.bool(true))
     }
+    switch spec.semantic->Array.find(((field, _)) => field === fieldName) {
+    | Some((_, semanticId)) =>
+      obj->Dict.set("x-reventless-semantic", JSON.Encode.string(semanticId))
+    | None => ()
+    }
+    switch spec.metric->Array.find(((field, _)) => field === fieldName) {
+    | Some((_, m)) =>
+      // `x-reventless-metric: {aggregate, label}`. Omit an empty label so the
+      // UI derives one from the field name.
+      let entries = [("aggregate", JSON.Encode.string(m.aggregate))]
+      let entries =
+        m.label === "" ? entries : Array.concat(entries, [("label", JSON.Encode.string(m.label))])
+      obj->Dict.set("x-reventless-metric", JSON.Encode.object(Dict.fromArray(entries)))
+    | None => ()
+    }
     JSON.Encode.object(obj)
   }
 
