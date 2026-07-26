@@ -15,7 +15,8 @@
     "@reventlessdev/reventless-aws",
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-spec",
-    "@reventlessdev/rescript-pulumi-pulumi"
+    "@reventlessdev/rescript-pulumi-pulumi",
+    "@reventlessdev/rescript-pulumi-aws"
   ],
   "ppx-flags": [
     "@reventlessdev/reventless-ppx/bin",

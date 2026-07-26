@@ -8,6 +8,7 @@
     "build": "rescript build"
   },
   "dependencies": {
+    "@reventlessdev/rescript-pulumi-aws": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "@reventlessdev/reventless-aws": "workspace:*",
     "@reventlessdev/reventless-host-shell": "3.0.0-alpha.43",

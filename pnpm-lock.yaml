@@ -818,6 +818,9 @@ importers:
 
   examples/online-shop-hybrid/platform-aws:
     dependencies:
+      '@reventlessdev/rescript-pulumi-aws':
+        specifier: workspace:*
+        version: link:../../../rescript/pulumi-aws
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/pulumi-pulumi
