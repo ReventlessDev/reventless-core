@@ -107,6 +107,8 @@ let config_excludeModules = [
 
 let config_includeModules = ["@rescript/runtime"];
 
+let config_includeScopes = ["smithy"];
+
 let config_registryOpts = Object.fromEntries([[
     "@reventlessdev:registry",
     "https://registry.npmjs.org"
@@ -149,6 +151,7 @@ let config = {
   excludeScopes: config_excludeScopes,
   excludeModules: config_excludeModules,
   includeModules: config_includeModules,
+  includeScopes: config_includeScopes,
   registryOpts: config_registryOpts,
   postProcess: config_postProcess,
   rootPostProcess: config_rootPostProcess

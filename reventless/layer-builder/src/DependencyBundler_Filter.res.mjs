@@ -5,10 +5,14 @@ import * as Treeverse from "treeverse";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DependencyBundler_Stats from "./DependencyBundler_Stats.res.mjs";
 
-function isNodeScopeExcluded(excludedScopes, node) {
+function isNodeInScopes(scopes, node) {
   let name = node.name;
-  return excludedScopes.some(scope => name.startsWith("@" + scope + "/"));
+  return scopes.some(scope => name.startsWith("@" + scope + "/"));
 }
+
+let isNodeScopeExcluded = isNodeInScopes;
+
+let isNodeScopeIncluded = isNodeInScopes;
 
 function isNodeExcluded(excludedModules, node) {
   return excludedModules.includes(node.name);
@@ -31,9 +35,10 @@ function hasRescriptDependency(node) {
   return hasDependency(node, "rescript");
 }
 
-function isNecessary(excludeScopes, excludeModules, includeModulesOpt, node) {
+function isNecessary(excludeScopes, excludeModules, includeModulesOpt, includeScopesOpt, node) {
   let includeModules = includeModulesOpt !== undefined ? includeModulesOpt : [];
-  if (includeModules.includes(node.name)) {
+  let includeScopes = includeScopesOpt !== undefined ? includeScopesOpt : [];
+  if (includeModules.includes(node.name) || isNodeInScopes(includeScopes, node)) {
     return;
   }
   if (node.dev) {
@@ -48,7 +53,7 @@ function isNecessary(excludeScopes, excludeModules, includeModulesOpt, node) {
   if (node.peer) {
     return "Peer";
   }
-  if (isNodeScopeExcluded(excludeScopes, node)) {
+  if (isNodeInScopes(excludeScopes, node)) {
     return "ScopeExcluded";
   }
   if (excludeModules.includes(node.name)) {
@@ -59,7 +64,7 @@ function isNecessary(excludeScopes, excludeModules, includeModulesOpt, node) {
     tree: node,
     visit: n => {
       tracks.delete(n.name);
-      if (isNodeScopeExcluded(excludeScopes, n)) {
+      if (isNodeInScopes(excludeScopes, n)) {
         return true;
       } else {
         return excludeModules.includes(n.name);
@@ -86,9 +91,10 @@ function isNecessary(excludeScopes, excludeModules, includeModulesOpt, node) {
   }
 }
 
-function predIsNecessary(excludeScopes, excludeModules, includeModulesOpt, node) {
+function predIsNecessary(excludeScopes, excludeModules, includeModulesOpt, includeScopesOpt, node) {
   let includeModules = includeModulesOpt !== undefined ? includeModulesOpt : [];
-  return Stdlib_Option.isNone(isNecessary(excludeScopes, excludeModules, includeModules, node));
+  let includeScopes = includeScopesOpt !== undefined ? includeScopesOpt : [];
+  return Stdlib_Option.isNone(isNecessary(excludeScopes, excludeModules, includeModules, includeScopes, node));
 }
 
 function filterNodes(node, predicate) {
@@ -119,7 +125,9 @@ function isRescriptModule(node) {
 }
 
 export {
+  isNodeInScopes,
   isNodeScopeExcluded,
+  isNodeScopeIncluded,
   isNodeExcluded,
   hasDependency,
   hasRescriptDependency,

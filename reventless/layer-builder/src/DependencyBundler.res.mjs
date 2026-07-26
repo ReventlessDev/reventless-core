@@ -46,6 +46,7 @@ async function build(config) {
   let sourcePackageVersion = config.sourcePackageVersion;
   let sourcePackageName = config.sourcePackageName;
   let includeModules = Stdlib_Option.getOr(config.includeModules, []);
+  let includeScopes = Stdlib_Option.getOr(config.includeScopes, []);
   let spinner = Ora();
   spinner.start("configure");
   let rootPath = Nodepath.resolve(pathToSavedDependencies, sourcePackageName);
@@ -96,7 +97,7 @@ async function build(config) {
         return;
       }
       console.log("\nNode: ", node.packageName);
-      if (!DependencyBundler_Filter.predIsNecessary(excludeScopes, excludeModules, includeModules, node)) {
+      if (!DependencyBundler_Filter.predIsNecessary(excludeScopes, excludeModules, includeModules, includeScopes, node)) {
         _skippedExtractionCount.contents = _skippedExtractionCount.contents + 1 | 0;
         return;
       }
@@ -141,7 +142,7 @@ async function build(config) {
         return [];
       }
     },
-    filter: node => DependencyBundler_Filter.predIsNecessary(excludeScopes, excludeModules, includeModules, node)
+    filter: node => DependencyBundler_Filter.predIsNecessary(excludeScopes, excludeModules, includeModules, includeScopes, node)
   });
   spinner.suffixText = "";
   spinner.succeed(undefined);

@@ -8,6 +8,7 @@ type t = {
   excludeScopes: array<string>,
   excludeModules: array<string>,
   includeModules?: array<string>,
+  includeScopes?: array<string>,
   registryOpts: Dict.t<string>,
   postProcess: postProcessMap,
   rootPostProcess?: DependencyBundler_PostProcess.postProcessFn,

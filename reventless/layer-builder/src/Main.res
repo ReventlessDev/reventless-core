@@ -24,13 +24,21 @@ let config: DependencyBundler_Config.t = {
     "pulumi",
     "types",
     "opentelemetry",
+    // @aws-sdk/* clients are excluded (bundled per-Lambda in /var/task, or
+    // provided by the runtime) — but their @smithy/* transitives must stay in
+    // the layer (see includeScopes below), because the Lambdas resolve @smithy
+    // from /opt/nodejs/node_modules at runtime.
     "aws-sdk",
-    // @smithy/* is provided by the Lambda runtime, but ESM imports from
-    // layer code cannot resolve it via NODE_PATH. Include it in the layer
-    // so ESM resolution finds it under /opt/nodejs/node_modules/.
     "sigstore",
     "npmcli",
     "gar",
+  ],
+  includeScopes: [
+    // Keep the full @smithy/* closure. Its only prod dependents are the
+    // scope-excluded @aws-sdk/* clients, so the orphan pruning would otherwise
+    // strip all but a handful — the exact cause of the upload presign Lambda's
+    // `Cannot find module '@smithy/middleware-endpoint'` cold-start crash.
+    "smithy",
   ],
   includeModules: [
     // @rescript/runtime is a transitive dep of rescript (excluded as build tool)

@@ -65,9 +65,20 @@ describe("DependencyBundler_Filter.hasDependency", () => {
   )
 })
 
+describe("DependencyBundler_Filter.isNodeScopeIncluded", () => {
+  testSync("matches a node under an included scope", () =>
+    expect(F.isNodeScopeIncluded(["smithy"], node(~name="@smithy/middleware-endpoint")))->toEqual(
+      true,
+    )
+  )
+  testSync("does not match a node outside the included scopes", () =>
+    expect(F.isNodeScopeIncluded(["smithy"], node(~name="@aws-sdk/client-s3")))->toEqual(false)
+  )
+})
+
 describe("DependencyBundler_Filter.isNecessary — exclusion reasons", () => {
-  let base = (~excludeScopes=[], ~excludeModules=[], ~includeModules=[], n) =>
-    F.isNecessary(~excludeScopes, ~excludeModules, ~includeModules, n)
+  let base = (~excludeScopes=[], ~excludeModules=[], ~includeModules=[], ~includeScopes=[], n) =>
+    F.isNecessary(~excludeScopes, ~excludeModules, ~includeModules, ~includeScopes, n)
 
   testSync("a dev dependency is unnecessary (Dev)", () =>
     expect(base(node(~name="jest", ~dev=true)))->toEqual(Some(F.Dev))
@@ -89,6 +100,22 @@ describe("DependencyBundler_Filter.isNecessary — exclusion reasons", () => {
   )
   testSync("includeModules overrides every exclusion — even a dev dep is kept", () =>
     expect(base(~includeModules=["jest"], node(~name="jest", ~dev=true)))->toEqual(None)
+  )
+  testSync("includeScopes keeps a whole scope — even a peer dep is kept", () =>
+    expect(
+      base(~includeScopes=["smithy"], node(~name="@smithy/middleware-endpoint", ~peer=true)),
+    )->toEqual(None)
+  )
+  testSync("includeScopes keeps a scope even when that scope is also excluded", () =>
+    // Force-keep wins over scope exclusion — the @smithy regression: its only
+    // dependents are the excluded @aws-sdk clients, yet it must stay in the layer.
+    expect(
+      base(
+        ~excludeScopes=["smithy"],
+        ~includeScopes=["smithy"],
+        node(~name="@smithy/middleware-endpoint"),
+      ),
+    )->toEqual(None)
   )
 })
 

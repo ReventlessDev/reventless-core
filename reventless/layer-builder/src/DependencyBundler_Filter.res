@@ -7,10 +7,14 @@ type filterReason =
   | ModuleExcluded
   | DependentExcluded
 
-let isNodeScopeExcluded = (excludedScopes, node) => {
+let isNodeInScopes = (scopes, node) => {
   let name = node->Arborist.name
-  excludedScopes->Array.some(scope => name->String.startsWith("@" ++ scope ++ "/"))
+  scopes->Array.some(scope => name->String.startsWith("@" ++ scope ++ "/"))
 }
+
+let isNodeScopeExcluded = (excludedScopes, node) => isNodeInScopes(excludedScopes, node)
+
+let isNodeScopeIncluded = (includedScopes, node) => isNodeInScopes(includedScopes, node)
 
 let isNodeExcluded = (excludedModules, node) => {
   excludedModules->Array.includes(node->Arborist.name)
@@ -28,8 +32,13 @@ let hasDependency = (node, dependencyName) => {
 
 let hasRescriptDependency = node => hasDependency(node, "rescript")
 
-let isNecessary = (~excludeScopes, ~excludeModules, ~includeModules=[], node) => {
-  if includeModules->Array.includes(node->Arborist.name) {
+let isNecessary = (~excludeScopes, ~excludeModules, ~includeModules=[], ~includeScopes=[], node) => {
+  // Force-keep takes precedence over every exclusion (including the
+  // orphan/`DependentExcluded` pruning below). A whole scope can be forced —
+  // e.g. `@smithy/*`, whose only prod dependents are the scope-excluded
+  // `@aws-sdk/*` clients, so it would otherwise be pruned as orphaned even
+  // though the deployed Lambdas resolve it from the layer at runtime.
+  if includeModules->Array.includes(node->Arborist.name) || isNodeScopeIncluded(includeScopes, node) {
     None
   } else
   if node->Arborist.dev {
@@ -79,8 +88,8 @@ let isNecessary = (~excludeScopes, ~excludeModules, ~includeModules=[], node) =>
   }
 }
 
-let predIsNecessary = (~excludeScopes, ~excludeModules, ~includeModules=[], node) =>
-  isNecessary(~excludeScopes, ~excludeModules, ~includeModules, node)->Option.isNone
+let predIsNecessary = (~excludeScopes, ~excludeModules, ~includeModules=[], ~includeScopes=[], node) =>
+  isNecessary(~excludeScopes, ~excludeModules, ~includeModules, ~includeScopes, node)->Option.isNone
 
 let rec filterNodes = (node, ~predicate) => {
   let count = ref(0)
