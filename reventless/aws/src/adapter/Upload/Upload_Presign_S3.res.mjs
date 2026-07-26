@@ -81,6 +81,8 @@ async function handlePresign(event, _context) {
     let uploadUrl = await S3RequestPresigner.getSignedUrl(client, command, {
       expiresIn: 300
     });
+    let region = Stdlib_Option.getOr(getEnv("AWS_REGION"), "us-east-1");
+    let storageRef = `https://` + bucket + `.s3.` + region + `.amazonaws.com/` + key;
     return {
       statusCode: 200,
       headers: corsHeaders(),
@@ -91,7 +93,7 @@ async function handlePresign(event, _context) {
         ],
         [
           "storageRef",
-          key
+          storageRef
         ]
       ]))
     };

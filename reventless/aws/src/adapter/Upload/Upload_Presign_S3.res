@@ -117,12 +117,19 @@ let handlePresign = async (event: functionUrlEvent, _context: Lambda.context): r
     let command = makePutObjectCommand({bucket, key, contentType: ?contentType})
     let uploadUrl = await getSignedUrl(client, command, {expiresIn: 300})
 
+    // The stored ref is the object's virtual-hosted URL, so a command can store
+    // it and an `image`-semantic field renders it directly as a thumbnail.
+    // Resolving that URL requires the object to be readable — front the bucket
+    // with public-read (for public assets like product images) or a CDN.
+    let region = getEnv("AWS_REGION")->Option.getOr("us-east-1")
+    let storageRef = `https://${bucket}.s3.${region}.amazonaws.com/${key}`
+
     {
       statusCode: 200,
       headers: corsHeaders(),
       body: Dict.fromArray([
         ("uploadUrl", JSON.Encode.string(uploadUrl)),
-        ("storageRef", JSON.Encode.string(key)),
+        ("storageRef", JSON.Encode.string(storageRef)),
       ])
       ->JSON.Encode.object
       ->JSON.stringify,
