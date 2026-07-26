@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-ppx",
-  "version": "1.0.0-alpha.54",
+  "version": "1.0.0-alpha.55",
   "description": "ReScript PPX to eliminate boilerplate from Reventless application code",
   "license": "Apache-2.0",
   "files": [
@@ -16,8 +16,8 @@
     "test": "./test/run.sh"
   },
   "optionalDependencies": {
-    "@reventlessdev/reventless-ppx-darwin-arm64": "^1.0.0-alpha.52",
-    "@reventlessdev/reventless-ppx-linux-x64": "^1.0.0-alpha.52"
+    "@reventlessdev/reventless-ppx-darwin-arm64": "^1.0.0-alpha.55",
+    "@reventlessdev/reventless-ppx-linux-x64": "^1.0.0-alpha.55"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org"
