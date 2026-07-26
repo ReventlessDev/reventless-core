@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.228 (2026-07-26)
+
+### Features
+
+* **auto-ui:** write ui-hints.json from the host-ui AWS deploy ([cbb334c](https://github.com/ReventlessDev/reventless-core/commit/cbb334c5bc574d7be56746100bae93457a8831ce)), closes [#1](https://github.com/ReventlessDev/reventless-core/issues/1)
+* **aws:** geocoder + upload presign Lambda Function URL services ([be43179](https://github.com/ReventlessDev/reventless-core/commit/be4317972e781dbe3c378f21a28975d1ac8b9add))
+* **aws:** presign service returns the object URL as storageRef ([ec551e6](https://github.com/ReventlessDev/reventless-core/commit/ec551e69cfa82c0fa80122ebe122f827ddf280ec))
+* **dcb:** emit decision-model cache hit/miss + delta metrics ([967fb7f](https://github.com/ReventlessDev/reventless-core/commit/967fb7fb42f00d22b9dd6f6261e2f5308a6e9516))
+* **platform:** serve a private bucket to the UI under a same-origin prefix ([793c8b2](https://github.com/ReventlessDev/reventless-core/commit/793c8b25e13969b42ce331c698bad473be4c0c88))
+
+
 # 3.0.0-alpha.227 (2026-07-24)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

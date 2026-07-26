@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.64 (2026-07-26)
+
+* feat(examples)!: gate hybrid auto-shipping on a shipping method ([d620e12](https://github.com/ReventlessDev/reventless-core/commit/d620e1292db1b470670654588d04cc51b34d2ab9))
+### Features
+
+* **seed:** add a reusable GraphQL seeding harness ([e8c2230](https://github.com/ReventlessDev/reventless-core/commit/e8c2230f25d59e7f93518bff2b2a55997395fb2c))
+
+### BREAKING CHANGES
+
+* PlaceOrder and OrderPlaced gain a required shippingMethod
+field; the RefundOrder slice and its IssueRefund command are removed.
+
+
+
 # 1.0.0-alpha.63 (2026-07-22)
 
 ### Bug Fixes

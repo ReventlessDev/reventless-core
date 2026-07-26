@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.163 (2026-07-26)
+
+### Bug Fixes
+
+* **core:** decode the event envelope in OutboundTranslationSlice ([66008a4](https://github.com/ReventlessDev/reventless-core/commit/66008a4dff411c85470f60aac5424e7b3eda6f01))
+* **graphql:** give InboundTranslationSlice mutations a resolvable result type ([381b545](https://github.com/ReventlessDev/reventless-core/commit/381b5458c16797404cb8ed95fa853fb1e1ca4199))
+* feat(examples)!: gate hybrid auto-shipping on a shipping method ([d620e12](https://github.com/ReventlessDev/reventless-core/commit/d620e1292db1b470670654588d04cc51b34d2ab9))
+### Features
+
+* **example:** geo-point + file command inputs and a map-bearing view ([1cd89e8](https://github.com/ReventlessDev/reventless-core/commit/1cd89e8dbf256a84a2d689df58887203ea345358))
+* **example:** product image upload replaces the customer document demo ([467b8d3](https://github.com/ReventlessDev/reventless-core/commit/467b8d3ab729be1d4fb334939453e86fdb402015))
+* **seed:** add a reusable GraphQL seeding harness ([e8c2230](https://github.com/ReventlessDev/reventless-core/commit/e8c2230f25d59e7f93518bff2b2a55997395fb2c))
+* **seed:** seed product images through the served-bucket upload contract ([7e63efc](https://github.com/ReventlessDev/reventless-core/commit/7e63efccba52de5458efbaa0788ed4564a45ae50))
+
+### BREAKING CHANGES
+
+* PlaceOrder and OrderPlaced gain a required shippingMethod
+field; the RefundOrder slice and its IssueRefund command are removed.
+
+
+
 # 1.0.0-alpha.162 (2026-07-24)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-local

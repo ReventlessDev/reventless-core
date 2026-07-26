@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-graphql-yoga",
-  "version": "1.0.0-alpha.24",
+  "version": "1.0.0-alpha.25",
   "description": "ReScript bindings for graphql-yoga",
   "license": "Apache-2.0",
   "scripts": {

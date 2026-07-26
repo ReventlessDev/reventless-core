@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.168 (2026-07-26)
+
+### Bug Fixes
+
+* **core:** decode the event envelope in OutboundTranslationSlice ([66008a4](https://github.com/ReventlessDev/reventless-core/commit/66008a4dff411c85470f60aac5424e7b3eda6f01))
+* **graphql:** give InboundTranslationSlice mutations a resolvable result type ([381b545](https://github.com/ReventlessDev/reventless-core/commit/381b5458c16797404cb8ed95fa853fb1e1ca4199))
+### Features
+
+* **auto-ui:** declare field semantics + dashboard metrics ([@semantic](https://github.com/semantic), [@metric](https://github.com/metric)) ([d74ff77](https://github.com/ReventlessDev/reventless-core/commit/d74ff7721e18e8638a82931a370a549b304dac94)), closes [#4](https://github.com/ReventlessDev/reventless-core/issues/4)
+* **aws:** geocoder + upload presign Lambda Function URL services ([be43179](https://github.com/ReventlessDev/reventless-core/commit/be4317972e781dbe3c378f21a28975d1ac8b9add))
+* **platform:** serve a private bucket to the UI under a same-origin prefix ([793c8b2](https://github.com/ReventlessDev/reventless-core/commit/793c8b25e13969b42ce331c698bad473be4c0c88))
+
+
 # 3.0.0-alpha.167 (2026-07-24)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local

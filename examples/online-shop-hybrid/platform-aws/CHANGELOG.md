@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.174 (2026-07-26)
+
+### Features
+
+* **example:** activate geocoder + upload services in platform-aws deploy ([e684d66](https://github.com/ReventlessDev/reventless-core/commit/e684d66bc4ce844ae36e8292ed0b78fd965490ff))
+* **platform:** serve a private bucket to the UI under a same-origin prefix ([793c8b2](https://github.com/ReventlessDev/reventless-core/commit/793c8b25e13969b42ce331c698bad473be4c0c88))
+
+
 # 1.0.0-alpha.173 (2026-07-24)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

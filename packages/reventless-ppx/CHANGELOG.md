@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.56 (2026-07-26)
+
+### Bug Fixes
+
+* **reventless-ppx:** pin alpha.55 platform binaries emitting @semantic/[@metric](https://github.com/metric) ([706f9e9](https://github.com/ReventlessDev/reventless-core/commit/706f9e9cffb8e082633ed6d64db8bcac85cf5847))
+### Features
+
+* **auto-ui:** declare command target state via [@target](https://github.com/target)State ([5fc0374](https://github.com/ReventlessDev/reventless-core/commit/5fc03741a8816c57085b86a4ad7d595e3b690193)), closes [#5](https://github.com/ReventlessDev/reventless-core/issues/5)
+* **auto-ui:** declare field semantics + dashboard metrics ([@semantic](https://github.com/semantic), [@metric](https://github.com/metric)) ([d74ff77](https://github.com/ReventlessDev/reventless-core/commit/d74ff7721e18e8638a82931a370a549b304dac94)), closes [#4](https://github.com/ReventlessDev/reventless-core/issues/4)
+* **example:** ship an order from the Orders board (manual branch) + [@target](https://github.com/target)State by constructor ([e36e14d](https://github.com/ReventlessDev/reventless-core/commit/e36e14dd2545bf2db5413e177f8296b684468a41)), closes [#6](https://github.com/ReventlessDev/reventless-core/issues/6) [#5](https://github.com/ReventlessDev/reventless-core/issues/5) [#5](https://github.com/ReventlessDev/reventless-core/issues/5) [#4](https://github.com/ReventlessDev/reventless-core/issues/4)
+
+
 # 1.0.0-alpha.54 (2026-07-17)
 
 **Note:** Version bump only for package @reventlessdev/reventless-ppx

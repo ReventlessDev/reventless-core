@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.81 (2026-07-26)
+
+### Features
+
+* **auto-ui:** declare command target state via [@target](https://github.com/target)State ([5fc0374](https://github.com/ReventlessDev/reventless-core/commit/5fc03741a8816c57085b86a4ad7d595e3b690193)), closes [#5](https://github.com/ReventlessDev/reventless-core/issues/5)
+* **auto-ui:** declare field semantics + dashboard metrics ([@semantic](https://github.com/semantic), [@metric](https://github.com/metric)) ([d74ff77](https://github.com/ReventlessDev/reventless-core/commit/d74ff7721e18e8638a82931a370a549b304dac94)), closes [#4](https://github.com/ReventlessDev/reventless-core/issues/4)
+
+
 # 3.0.0-alpha.80 (2026-07-22)
 
 ### Features

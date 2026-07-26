@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.154 (2026-07-26)
+
+* feat(examples)!: gate hybrid auto-shipping on a shipping method ([d620e12](https://github.com/ReventlessDev/reventless-core/commit/d620e1292db1b470670654588d04cc51b34d2ab9))
+### Features
+
+* **example:** geo-point + file command inputs and a map-bearing view ([1cd89e8](https://github.com/ReventlessDev/reventless-core/commit/1cd89e8dbf256a84a2d689df58887203ea345358))
+* **example:** product image upload replaces the customer document demo ([467b8d3](https://github.com/ReventlessDev/reventless-core/commit/467b8d3ab729be1d4fb334939453e86fdb402015))
+* **example:** ship an order from the Orders board (manual branch) + [@target](https://github.com/target)State by constructor ([e36e14d](https://github.com/ReventlessDev/reventless-core/commit/e36e14dd2545bf2db5413e177f8296b684468a41)), closes [#6](https://github.com/ReventlessDev/reventless-core/issues/6) [#5](https://github.com/ReventlessDev/reventless-core/issues/5) [#5](https://github.com/ReventlessDev/reventless-core/issues/5) [#4](https://github.com/ReventlessDev/reventless-core/issues/4)
+
+### BREAKING CHANGES
+
+* PlaceOrder and OrderPlaced gain a required shippingMethod
+field; the RefundOrder slice and its IssueRefund command are removed.
+
+
+
 # 1.0.0-alpha.153 (2026-07-24)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering

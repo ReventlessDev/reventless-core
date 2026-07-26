@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.25 (2026-07-26)
+
+### Bug Fixes
+
+* **graphql:** give InboundTranslationSlice mutations a resolvable result type ([381b545](https://github.com/ReventlessDev/reventless-core/commit/381b5458c16797404cb8ed95fa853fb1e1ca4199))
+
+
 # 1.0.0-alpha.24 (2026-07-17)
 
 **Note:** Version bump only for package @reventlessdev/rescript-graphql-yoga

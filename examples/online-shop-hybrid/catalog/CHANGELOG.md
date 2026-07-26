@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.155 (2026-07-26)
+
+### Bug Fixes
+
+* **example:** ImportProduct must supply the required imageUrl ([bdd4962](https://github.com/ReventlessDev/reventless-core/commit/bdd496283ffc03c55e61270468b1829133d7f40b))
+### Features
+
+* **example:** product image upload replaces the customer document demo ([467b8d3](https://github.com/ReventlessDev/reventless-core/commit/467b8d3ab729be1d4fb334939453e86fdb402015))
+
+
 # 1.0.0-alpha.154 (2026-07-24)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog

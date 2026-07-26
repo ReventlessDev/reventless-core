@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.181 (2026-07-26)
+
+### Bug Fixes
+
+* **auto-ui:** don't hand a [@no](https://github.com/no)Api command variant a sibling's mutation field ([2640465](https://github.com/ReventlessDev/reventless-core/commit/264046509c5f5fd7f00f5d04ab977bbc2008098c)), closes [#2](https://github.com/ReventlessDev/reventless-core/issues/2)
+* **core:** decode the event envelope in OutboundTranslationSlice ([66008a4](https://github.com/ReventlessDev/reventless-core/commit/66008a4dff411c85470f60aac5424e7b3eda6f01))
+* **graphql:** give InboundTranslationSlice mutations a resolvable result type ([381b545](https://github.com/ReventlessDev/reventless-core/commit/381b5458c16797404cb8ed95fa853fb1e1ca4199))
+### Features
+
+* **auto-ui:** declare command target state via [@target](https://github.com/target)State ([5fc0374](https://github.com/ReventlessDev/reventless-core/commit/5fc03741a8816c57085b86a4ad7d595e3b690193)), closes [#5](https://github.com/ReventlessDev/reventless-core/issues/5)
+* **auto-ui:** declare field semantics + dashboard metrics ([@semantic](https://github.com/semantic), [@metric](https://github.com/metric)) ([d74ff77](https://github.com/ReventlessDev/reventless-core/commit/d74ff7721e18e8638a82931a370a549b304dac94)), closes [#4](https://github.com/ReventlessDev/reventless-core/issues/4)
+* **dcb:** emit decision-model cache hit/miss + delta metrics ([967fb7f](https://github.com/ReventlessDev/reventless-core/commit/967fb7fb42f00d22b9dd6f6261e2f5308a6e9516))
+
+
 # 3.0.0-alpha.180 (2026-07-24)
 
 ### Features

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.60 (2026-07-26)
+
+### Features
+
+* **example:** activate geocoder + upload services in platform-aws deploy ([e684d66](https://github.com/ReventlessDev/reventless-core/commit/e684d66bc4ce844ae36e8292ed0b78fd965490ff))
+
+
 # 2.4.0-alpha.59 (2026-07-23)
 
 ### Bug Fixes

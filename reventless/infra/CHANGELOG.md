@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.105 (2026-07-26)
+
+### Bug Fixes
+
+* **graphql:** give InboundTranslationSlice mutations a resolvable result type ([381b545](https://github.com/ReventlessDev/reventless-core/commit/381b5458c16797404cb8ed95fa853fb1e1ca4199))
+### Features
+
+* **auto-ui:** declare command target state via [@target](https://github.com/target)State ([5fc0374](https://github.com/ReventlessDev/reventless-core/commit/5fc03741a8816c57085b86a4ad7d595e3b690193)), closes [#5](https://github.com/ReventlessDev/reventless-core/issues/5)
+* **auto-ui:** write ui-hints.json from the host-ui AWS deploy ([cbb334c](https://github.com/ReventlessDev/reventless-core/commit/cbb334c5bc574d7be56746100bae93457a8831ce)), closes [#1](https://github.com/ReventlessDev/reventless-core/issues/1)
+* **aws:** geocoder + upload presign Lambda Function URL services ([be43179](https://github.com/ReventlessDev/reventless-core/commit/be4317972e781dbe3c378f21a28975d1ac8b9add))
+* **platform:** serve a private bucket to the UI under a same-origin prefix ([793c8b2](https://github.com/ReventlessDev/reventless-core/commit/793c8b25e13969b42ce331c698bad473be4c0c88))
+
+
 # 3.0.0-alpha.104 (2026-07-22)
 
 * refactor!: retire the stale "core" vocabulary for platform things ([34e7480](https://github.com/ReventlessDev/reventless-core/commit/34e7480992bd58906a250b0a1ce6ff2c5ba45260))
