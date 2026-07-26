@@ -83,7 +83,8 @@ function fromSury(parentName, fieldName, schema) {
         };
       }
     case "union" :
-      let nonNullVariants = schema.anyOf.filter(v => {
+      let anyOf = schema.anyOf;
+      let nonNullVariants = anyOf.filter(v => {
         switch (v.type) {
           case "null" :
           case "undefined" :
@@ -92,6 +93,7 @@ function fromSury(parentName, fieldName, schema) {
             return true;
         }
       });
+      let isOptional = nonNullVariants.length < anyOf.length;
       if (nonNullVariants.length === 1) {
         return {
           TAG: "Nullable",
@@ -111,11 +113,19 @@ function fromSury(parentName, fieldName, schema) {
         return "Unknown";
       }
       let enumName = parentName + fieldName.charAt(0).toUpperCase() + fieldName.slice(1, fieldName.length);
-      return {
+      let $$enum = {
         TAG: "Enum",
         _0: enumName,
         _1: constValues
       };
+      if (isOptional) {
+        return {
+          TAG: "Nullable",
+          _0: $$enum
+        };
+      } else {
+        return $$enum;
+      }
     default:
       return "Unknown";
   }
