@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.182 (2026-07-26)
+
+### Bug Fixes
+
+* **api:** commit regenerated SchemaType output for nullable optional enums ([6d48f53](https://github.com/ReventlessDev/reventless-core/commit/6d48f53c31489b8cb312c4bc63dac3b927145bd4))
+* **api:** preserve nullability for optional enum fields in generated GraphQL ([3110a4a](https://github.com/ReventlessDev/reventless-core/commit/3110a4af032440ba2639519f61f221960ac78fba))
+
+
 # 3.0.0-alpha.181 (2026-07-26)
 
 ### Bug Fixes

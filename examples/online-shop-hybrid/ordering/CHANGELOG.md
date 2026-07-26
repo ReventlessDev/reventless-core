@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.155 (2026-07-26)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering
+
+
+
+
+
 # 1.0.0-alpha.154 (2026-07-26)
 
 * feat(examples)!: gate hybrid auto-shipping on a shipping method ([d620e12](https://github.com/ReventlessDev/reventless-core/commit/d620e1292db1b470670654588d04cc51b34d2ab9))

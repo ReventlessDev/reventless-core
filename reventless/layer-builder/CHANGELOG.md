@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.26 (2026-07-26)
+
+### Bug Fixes
+
+* **layer-builder:** keep full [@smithy](https://github.com/smithy) scope in the layer ([5b93948](https://github.com/ReventlessDev/reventless-core/commit/5b939489749bd1bab032c87a223dc579e27e69a0))
+
+
 # 3.0.0-alpha.25 (2026-07-26)
 
 **Note:** Version bump only for package @reventlessdev/reventless-layer-builder

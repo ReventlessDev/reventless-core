@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-seed-aws",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "AWS connect for the Reventless seed harness — stack discovery and Cognito login, no AWS SDK",
   "license": "Apache-2.0",
   "scripts": {
