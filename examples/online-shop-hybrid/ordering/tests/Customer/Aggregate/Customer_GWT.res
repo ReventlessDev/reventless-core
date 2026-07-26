@@ -61,18 +61,6 @@ describe("Customer Behavior", () => {
     ->thenError(CustomerNotFound)
   )
 
-  test("AttachDocument on active customer produces DocumentAttached", () =>
-    givenEvents([Registered({email: "alice@x.y", address: "123 Main"})])
-    ->whenCmd(AttachDocument({attachmentRef: "customer-docs/alice/id.pdf"}))
-    ->thenEvent(DocumentAttached({attachmentRef: "customer-docs/alice/id.pdf"}))
-  )
-
-  test("AttachDocument on deactivated customer returns CustomerAlreadyDeactivated", () =>
-    givenEvents([Registered({email: "alice@x.y", address: "123 Main"}), Deactivated])
-    ->whenCmd(AttachDocument({attachmentRef: "customer-docs/alice/id.pdf"}))
-    ->thenError(CustomerAlreadyDeactivated)
-  )
-
   test("Deactivate on active customer produces Deactivated", () =>
     givenEvents([Registered({email: "alice@x.y", address: "123 Main"})])
     ->whenCmd(Deactivate)

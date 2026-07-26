@@ -35,6 +35,7 @@ describe("Hybrid cross-plugin flow", () => {
         name: "Book",
         description: "A good book",
         price: 9.99,
+        imageUrl: "https://example.com/p1.jpg",
         categoryId: "cat1",
       }),
     )
@@ -44,6 +45,7 @@ describe("Hybrid cross-plugin flow", () => {
         name: "Book",
         description: "A good book",
         price: 9.99,
+        imageUrl: "https://example.com/p1.jpg",
         categoryId: "cat1",
       }),
     )

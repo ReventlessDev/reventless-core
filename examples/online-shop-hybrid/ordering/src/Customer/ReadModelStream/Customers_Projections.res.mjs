@@ -99,8 +99,6 @@ function project(param) {
           return newrecord;
         }
       };
-    case "DocumentAttached" :
-      return "Ignore";
   }
 }
 

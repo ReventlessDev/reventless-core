@@ -18,6 +18,7 @@ type command =
       name: string,
       description: string,
       price: float,
+      imageUrl: string,
       @ref("Categories") categoryId: string,
     })
 
@@ -33,5 +34,6 @@ type event =
       name: string,
       description: string,
       price: float,
+      imageUrl: string,
       categoryId: string,
     })

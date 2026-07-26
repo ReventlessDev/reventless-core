@@ -294,6 +294,21 @@ function locatedAddress() {
   ];
 }
 
+let productImages = [
+  "https://picsum.photos/id/1/400/300",
+  "https://picsum.photos/id/20/400/300",
+  "https://picsum.photos/id/48/400/300",
+  "https://picsum.photos/id/60/400/300",
+  "https://picsum.photos/id/119/400/300",
+  "https://picsum.photos/id/160/400/300",
+  "https://picsum.photos/id/180/400/300",
+  "https://picsum.photos/id/225/400/300"
+];
+
+function productImageFor(index) {
+  return Stdlib_Option.getOr(productImages[Primitive_int.mod_(index, productImages.length)], "");
+}
+
 function buildProducts() {
   let totalWeight = Stdlib_Array.reduce(categories, 0, (sum, c) => sum + c.weight | 0);
   let products = [];
@@ -319,6 +334,7 @@ function buildProducts() {
           name: name,
           description: name + ` — ` + Seed_Random$ReventlessSeed.pickOr(random, "", blurbs) + ` ` + category.name.toLowerCase() + ` pick.`,
           price: price,
+          imageUrl: productImageFor(n.contents - 1 | 0),
           categoryId: category.id
         });
       }
@@ -350,8 +366,7 @@ function buildCustomers() {
       email: (first + `.` + last + `@example.com`).toLowerCase(),
       address: match[0],
       lat: match[1],
-      lng: match[2],
-      attachmentRef: `customer-docs/` + id + `/id-verification.pdf`
+      lng: match[2]
     };
   });
 }
@@ -449,6 +464,8 @@ export {
   pick,
   address,
   locatedAddress,
+  productImages,
+  productImageFor,
   buildProducts,
   repricedProducts,
   redescribedProducts,

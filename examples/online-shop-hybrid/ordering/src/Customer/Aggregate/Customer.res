@@ -15,9 +15,6 @@ type command =
   | UpdateEmail({email: string})
   | UpdateAddress({address: string})
   | SetLocation({location: location})
-  // `attachmentRef` names a stored file by reference; the generated command form
-  // recognises the name and offers a file upload.
-  | AttachDocument({attachmentRef: string})
   | Deactivate
 
 @schema
@@ -26,7 +23,6 @@ type event =
   | EmailUpdated({email: string})
   | AddressUpdated({address: string})
   | LocationSet({location: location})
-  | DocumentAttached({attachmentRef: string})
   | Deactivated
 
 @schema

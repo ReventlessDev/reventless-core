@@ -47,6 +47,7 @@ function decide(state, command) {
           name: command.name,
           description: command.description,
           price: command.price,
+          imageUrl: command.imageUrl,
           categoryId: categoryId
         }]
     };

@@ -51,7 +51,6 @@ module CustomerMapping = Mapping.Make(
       | AddressUpdated({address}) => Update(id, state => {...state, address})
       | LocationSet({location}) =>
         Update(id, state => {...state, lat: location.lat, lng: location.lng})
-      | DocumentAttached(_) => Ignore
       | Deactivated => Update(id, state => {...state, deactivated: true})
       }
   },

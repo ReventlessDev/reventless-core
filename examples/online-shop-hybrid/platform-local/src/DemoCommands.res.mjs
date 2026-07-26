@@ -89,6 +89,13 @@ function addProduct(command) {
       }
     ],
     [
+      "imageUrl",
+      {
+        TAG: "String",
+        _0: command.imageUrl
+      }
+    ],
+    [
       "categoryId",
       {
         TAG: "Id",
@@ -356,23 +363,6 @@ function customer(id, command) {
                 }
               ]
             ]
-          }
-        ]
-      ]);
-    case "AttachDocument" :
-      return Seed$ReventlessSeed.mutation(`Ordering_` + "Customer_AttachDocument", [
-        [
-          "id",
-          {
-            TAG: "Id",
-            _0: id
-          }
-        ],
-        [
-          "attachmentRef",
-          {
-            TAG: "String",
-            _0: command.attachmentRef
           }
         ]
       ]);

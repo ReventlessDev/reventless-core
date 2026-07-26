@@ -24,12 +24,12 @@ let evolve = (state, event: consumedEvent) =>
 
 let decide = (state, command) =>
   switch command {
-  | AddProduct({productId, name, description, price, categoryId}) =>
+  | AddProduct({productId, name, description, price, imageUrl, categoryId}) =>
     if state.exists {
       Error(ProductAlreadyExists)
     } else if !(state.liveCategoryIds->Array.includes(categoryId)) {
       Error(CategoryNotFound)
     } else {
-      Ok([ProductAdded({productId, name, description, price, categoryId})])
+      Ok([ProductAdded({productId, name, description, price, imageUrl, categoryId})])
     }
   }

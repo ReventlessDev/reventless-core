@@ -25,10 +25,6 @@ let commandSchema = S.union([
     TAG: "SetLocation",
     location: s.m(locationSchema)
   })),
-  S.schema(s => ({
-    TAG: "AttachDocument",
-    attachmentRef: s.m(S.string)
-  })),
   S.literal("Deactivate")
 ]);
 
@@ -49,10 +45,6 @@ let eventSchema = S.union([
   S.schema(s => ({
     TAG: "LocationSet",
     location: s.m(locationSchema)
-  })),
-  S.schema(s => ({
-    TAG: "DocumentAttached",
-    attachmentRef: s.m(S.string)
   })),
   S.literal("Deactivated")
 ]);

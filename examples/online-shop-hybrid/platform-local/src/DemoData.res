@@ -119,8 +119,27 @@ type product = {
   name: string,
   description: string,
   price: float,
+  imageUrl: string,
   categoryId: string,
 }
+
+// A small pool of stable public placeholder images, picked deterministically by
+// product index so every product carries a real image URL and two runs against
+// a fresh store produce identical rows. The Image semantic thumbnails these in
+// the generated Products view.
+let productImages = [
+  "https://picsum.photos/id/1/400/300",
+  "https://picsum.photos/id/20/400/300",
+  "https://picsum.photos/id/48/400/300",
+  "https://picsum.photos/id/60/400/300",
+  "https://picsum.photos/id/119/400/300",
+  "https://picsum.photos/id/160/400/300",
+  "https://picsum.photos/id/180/400/300",
+  "https://picsum.photos/id/225/400/300",
+]
+
+let productImageFor = (index: int): string =>
+  productImages->Array.get(mod(index, productImages->Array.length))->Option.getOr("")
 
 let buildProducts = (): array<product> => {
   // Category share proportional to weight, so the catalog is lopsided the way a
@@ -150,6 +169,7 @@ let buildProducts = (): array<product> => {
           name,
           description: `${name} — ${pick(blurbs)} ${category.name->String.toLowerCase} pick.`,
           price,
+          imageUrl: productImageFor(n.contents - 1),
           categoryId: category.id,
         })
       }
@@ -176,7 +196,6 @@ type customer = {
   address: string,
   lat: float,
   lng: float,
-  attachmentRef: string,
 }
 
 let buildCustomers = (): array<customer> =>
@@ -192,7 +211,6 @@ let buildCustomers = (): array<customer> =>
       address,
       lat,
       lng,
-      attachmentRef: `customer-docs/${id}/id-verification.pdf`,
     }
   })
 

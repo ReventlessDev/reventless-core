@@ -10,6 +10,7 @@ let consumedEventSchema = S.union([
     name: s.m(S.string),
     description: s.m(S.string),
     price: s.m(S.float),
+    imageUrl: s.m(S.string),
     categoryId: s.m(S.string)
   })),
   S.schema(s => ({
@@ -26,6 +27,11 @@ let consumedEventSchema = S.union([
     TAG: "ProductPriceChanged",
     productId: s.m(S.string),
     price: s.m(S.float)
+  })),
+  S.schema(s => ({
+    TAG: "ProductImageChanged",
+    productId: s.m(S.string),
+    imageUrl: s.m(S.string)
   }))
 ]);
 
@@ -34,6 +40,7 @@ let stateSchema = S.schema(s => ({
   name: s.m(S.string),
   description: s.m(S.string),
   price: s.m(S.float),
+  imageUrl: s.m(S.string),
   categoryId: s.m(S.string)
 }));
 
