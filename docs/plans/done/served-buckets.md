@@ -6,13 +6,18 @@ implementation, the local dev-platform routes, and the hybrid-example integratio
 **Companion:** the UI-side pieces (a config escape hatch + an asset resolver + the
 local dev upload adapter) are tracked in a separate `served-buckets` plan in the
 **reventless-ui** repo.
-**Status:** Neutral contract + AWS/CloudFront path + hybrid integration
-IMPLEMENTED; local dev adapter (Part 2b) NOT STARTED.
+**Status:** COMPLETE (implementation). Neutral contract + AWS/CloudFront path +
+hybrid integration + local dev adapter (Part 2b) all implemented and build-clean;
+the local path is verified end-to-end by an HTTP test. The AWS acceptance checks
+(200 via CloudFront, 403 direct-S3, browser thumbnail) verify on the next alpha
+deploy. Follow-ups live in their own plans: the local dev `config.json`/Vite
+wiring in the reventless-ui companion plan, and real seeded images in
+[seed-images-to-served-bucket.md](../seed-images-to-served-bucket.md).
 
 ## Problem
 
 The upload presign service
-([Upload_Presign_S3](../../reventless/aws/src/adapter/Upload/Upload_Presign_S3.res))
+([Upload_Presign_S3](../../../reventless/aws/src/adapter/Upload/Upload_Presign_S3.res))
 hands the UI a `storageRef` that a command stores and the UI renders — e.g. a
 catalog Product `imageUrl` rendered as a thumbnail. Historically that ref was a
 **virtual-hosted S3 URL**, which only resolves if the uploads bucket is
@@ -23,7 +28,7 @@ There is no reusable way to let a **deployed UI read a private storage bucket's
 objects by URL** (uploaded images, generated exports, attachments, thumbnails).
 
 Meanwhile the host-ui already ships exactly the right front door:
-[`Plugin_Stack.makeUiBundleDistribution`](../../reventless/aws/src/plugin/stack/Plugin_Stack.res)
+[`Plugin_Stack.makeUiBundleDistribution`](../../../reventless/aws/src/plugin/stack/Plugin_Stack.res)
 provisions a **CloudFront distribution** that serves the static SPA from a
 **private** S3 bucket via **Origin Access Control** — the bucket is locked down
 (`BucketPublicAccessBlock` all-true), an OAC is created, the single S3 origin is
@@ -71,10 +76,10 @@ populates it — the local platform (Part 2b) mounts routes directly instead.
 
 1. **Served-bucket handle + input (AWS-deploy input).** ✅ DONE. A neutral record
    at file scope in
-   [`ReventlessInfra.Platform`](../../reventless/infra/src/types/Platform.res),
+   [`ReventlessInfra.Platform`](../../../reventless/infra/src/types/Platform.res),
    referenced by `hostUiBundleConfig` in
-   [aws](../../reventless/aws/src/Platform.res) and
-   [local](../../reventless/local/src/Platform.res):
+   [aws](../../../reventless/aws/src/Platform.res) and
+   [local](../../../reventless/local/src/Platform.res):
    ```rescript
    type servedBucket = {
      prefix: string,                                  // "uploads", "exports", …
@@ -106,7 +111,7 @@ populates it — the local platform (Part 2b) mounts routes directly instead.
 ## Part 2 — AWS implementation via CloudFront ✅ DONE
 
 6. **Extend `makeUiBundleDistribution`**
-   ([Plugin_Stack.res](../../reventless/aws/src/plugin/stack/Plugin_Stack.res))
+   ([Plugin_Stack.res](../../../reventless/aws/src/plugin/stack/Plugin_Stack.res))
    with `~servedBuckets: array<servedBucket>=[]`. For each served bucket:
    - **an origin** `served-{prefix}`: `domainName = bucketRegionalDomainName`,
      `originAccessControlId = oac.id` (reuses the existing bundle OAC — the OAC
@@ -126,7 +131,7 @@ populates it — the local platform (Part 2b) mounts routes directly instead.
    set (empty `Array.concat`/`forEach`), so a hints-less deploy is byte-identical.
 
 7. **Thread `servedBuckets`** ✅ DONE. From `hostUiBundleConfig` →
-   [`deployPlatform`](../../reventless/aws/src/Platform.res) →
+   [`deployPlatform`](../../../reventless/aws/src/Platform.res) →
    `makeUiBundleDistribution` (the host-ui branch).
 
 8. **`Upload_Presign_S3` returns the served ref.** ✅ DONE. The handler roots the
@@ -135,42 +140,44 @@ populates it — the local platform (Part 2b) mounts routes directly instead.
    virtual-hosted S3 URL. The Lambda still PUTs by `key`. New object keys are
    uuid-based, so no CloudFront invalidation is needed.
 
-## Part 2b — Local platform adapter (dev) — NOT STARTED
+## Part 2b — Local platform adapter (dev) ✅ DONE
 
-The same contract works for the in-memory dev platform once a local adapter is
-added — because the seam is same-origin URLs + the pluggable upload adapter, not
-CloudFront. In dev the UI is served by Vite with proxies to the local servers;
-the local platform already runs its own HTTP servers
-([DomainGraphQL_Server](../../reventless/local/src/adapter/DomainGraphQL_Server.res))
-and SQLite storage, but has **no object-bucket primitive** today, so this is real
-new work. Each piece is the local analogue of an AWS one:
+The same contract works for the in-memory dev platform because the seam is
+same-origin URLs + the pluggable upload adapter, not CloudFront. The local
+platform already runs its own HTTP server
+([DomainGraphQL_Server](../../../reventless/local/src/adapter/DomainGraphQL_Server.res),
+port 4000); it had **no object-bucket primitive**, so this added one. Each piece
+is the local analogue of an AWS one:
 
 | AWS (Part 2) | Local (Part 2b) |
 | --- | --- |
-| S3 uploads bucket | a **local object store** — a temp dir on disk (or a SQLite blob table); new adapter, the local equivalent of the task/uploads bucket |
-| CloudFront `{prefix}/*` behavior via OAC | a **same-origin serve route** `GET /{prefix}/*` on the dev origin — a local HTTP route + a Vite proxy — streaming bytes from that store |
-| `Upload_Presign_S3` Function URL | a **local upload route** surfaced as `config.uploadEndpoint`; **skips presigning** — accept the file bytes and store them, return `/{prefix}/{key}` |
+| S3 uploads bucket | a **local object store** — [`LocalObjectStore`](../../../reventless/local/src/adapter/LocalObjectStore.res), a process-local `key → {bytes, contentType}` map; in-process only, no SQLite arm |
+| CloudFront `{prefix}/*` behavior via OAC | a **same-origin serve route** `GET /{prefix}/*` in `DomainGraphQL_Server._dispatch`, streaming stored bytes with the object's content type |
+| `Upload_Presign_S3` Function URL | a **presign-shaped upload route** `POST /__inmemory/upload` → `{uploadUrl, storageRef}` (both `/{prefix}/{key}`) + a `PUT /{prefix}/{key}` that stores the bytes; no presigning |
 
-11. **Local object store + routes.** Add the store and the two routes (serve +
-    upload) to the local dev server so `/{prefix}/*` resolves and the upload
+11. **Local object store + routes.** ✅ DONE. The store + the presign / PUT / GET
+    routes live on the dev server so `/{prefix}/*` resolves and the upload
     endpoint accepts bytes. `servedBuckets` (the Pulumi handle) is **not** used
-    locally — the dev server mounts the routes directly. For one UI adapter and
-    one seed helper to cover both providers, implement the local upload route in
-    the **same presign-shaped contract** as AWS (`POST {fileName,contentType} →
-    {uploadUrl, storageRef}`, then `PUT` the bytes to a local `uploadUrl`) rather
-    than a bespoke direct-`POST`. See [seed-images-to-served-bucket.md](seed-images-to-served-bucket.md)
-    Part 1.
+    locally — the dev server mounts the routes directly, serving the
+    `LocalObjectStore` prefixes (default `uploads`). The upload route uses the
+    **same presign-shaped contract** as AWS (`uploadUrl == storageRef ==
+    /{prefix}/{key}`), so the reventless-ui `FileDropzone` S3 adapter and the seed
+    helper are one code path for both providers. See
+    [seed-images-to-served-bucket.md](../seed-images-to-served-bucket.md) Part 1.
+    Covered end-to-end by
+    [ServedBucketHttpTest](../../../reventless/local/tests/adapter/ServedBucketHttpTest.res)
+    (presign shape, PUT→GET byte + content-type round-trip, 404 for a missing
+    object).
 
-Caveats: dev-only and **ephemeral** (a temp store; not durable across restarts),
-and there is genuinely no local bucket to build on, so this is a new storage
-adapter + two routes — not just config. It is optional: an app can run the AWS
-path in prod and leave local uploads unimplemented (a `file`/`image` field then
-falls back to a plain text box locally, since no upload endpoint is registered).
+Caveats: dev-only and **ephemeral** (the store is process-local; contents are
+lost on restart). It remains optional: an app can run the AWS path in prod and
+leave local uploads unused (a `file`/`image` field falls back to a plain text box
+locally when no upload endpoint is registered).
 
 ## Part 3 — Integration into the hybrid example ✅ DONE
 
 9. **Declare the uploads bucket as served.** In
-   [platform-aws/Main.res](../../examples/online-shop-hybrid/platform-aws/src/Main.res)
+   [platform-aws/Main.res](../../../examples/online-shop-hybrid/platform-aws/src/Main.res)
    the existing `online-shop-uploads` bucket (private; PUT/POST CORS for the
    browser upload stays) is passed as a served bucket in `hostUiBundle`:
    ```rescript
@@ -209,7 +216,7 @@ falls back to a plain text box locally, since no upload endpoint is registered).
 ## Notes
 
 - **No new pulumi-aws binding.** OAC
-  ([CloudFront_OriginAccessControl](../../rescript/pulumi-aws/src/CloudFront/CloudFront_OriginAccessControl.res)),
+  ([CloudFront_OriginAccessControl](../../../rescript/pulumi-aws/src/CloudFront/CloudFront_OriginAccessControl.res)),
   `BucketPolicy`, and `BucketPublicAccessBlock` already exist and are already used
   by `makeUiBundleDistribution`.
 - **Security.** The served bucket is never public; only CloudFront (scoped by

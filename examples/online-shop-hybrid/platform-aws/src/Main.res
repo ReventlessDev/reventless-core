@@ -64,5 +64,16 @@ let default = Platform.deployPlatform(
     geocoderPlaceIndex: placeIndex.indexName->Pulumi.Output.asInput,
     enableUploads: true,
     uploadBucketName: uploadBucket.bucket->Pulumi.Output.asInput,
+    // Serve the private uploads bucket read-only to the UI under `/uploads/*` on
+    // the host-shell's own CloudFront origin. The presign service returns a
+    // same-origin `/uploads/<key>` ref that renders directly — no public bucket.
+    servedBuckets: [
+      {
+        prefix: "uploads",
+        bucketId: uploadBucket.id->Pulumi.Output.asInput,
+        bucketArn: uploadBucket.arn->Pulumi.Output.asInput,
+        bucketRegionalDomainName: uploadBucket.bucketRegionalDomainName->Pulumi.Output.asInput,
+      },
+    ],
   },
 )

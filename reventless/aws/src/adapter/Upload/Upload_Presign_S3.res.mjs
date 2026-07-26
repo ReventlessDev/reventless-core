@@ -71,7 +71,8 @@ async function handlePresign(event, _context) {
     let parsed = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(JSON.parse(Stdlib_Option.getOr(event.body, "{}"))), {});
     let fileName = Stdlib_Option.getOr(Stdlib_Option.flatMap(parsed["fileName"], Stdlib_JSON.Decode.string), "upload");
     let contentType = Stdlib_Option.flatMap(parsed["contentType"], Stdlib_JSON.Decode.string);
-    let key = `uploads/` + identityPrefix(event) + genUuid() + `/` + fileName;
+    let servedPrefix = Stdlib_Option.getOr(getEnv("SERVED_PREFIX"), "uploads");
+    let key = servedPrefix + `/` + identityPrefix(event) + genUuid() + `/` + fileName;
     let client = new ClientS3.S3Client();
     let command = new ClientS3.PutObjectCommand({
       Bucket: bucket,
@@ -81,8 +82,7 @@ async function handlePresign(event, _context) {
     let uploadUrl = await S3RequestPresigner.getSignedUrl(client, command, {
       expiresIn: 300
     });
-    let region = Stdlib_Option.getOr(getEnv("AWS_REGION"), "us-east-1");
-    let storageRef = `https://` + bucket + `.s3.` + region + `.amazonaws.com/` + key;
+    let storageRef = `/` + key;
     return {
       statusCode: 200,
       headers: corsHeaders(),
@@ -109,8 +109,9 @@ async function handlePresign(event, _context) {
   }
 }
 
-function make(bucketName, corsOriginsOpt, opts) {
+function make(bucketName, corsOriginsOpt, servedPrefixOpt, opts) {
   let corsOrigins = corsOriginsOpt !== undefined ? corsOriginsOpt : ["*"];
+  let servedPrefix = servedPrefixOpt !== undefined ? servedPrefixOpt : "uploads";
   let serviceName = "UploadPresignService";
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(serviceName, Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(serviceName, "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
@@ -127,10 +128,16 @@ function make(bucketName, corsOriginsOpt, opts) {
     }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
   });
   let environment = {
-    variables: Object.fromEntries([[
+    variables: Object.fromEntries([
+      [
         "UPLOAD_BUCKET",
         bucketName
-      ]])
+      ],
+      [
+        "SERVED_PREFIX",
+        servedPrefix
+      ]
+    ])
   };
   let lambda = new (Aws.lambda.CallbackFunction)(serviceName, Lambda$PulumiAws.CallbackFunction.Args.make(handlePresign, lambdaRole, undefined, undefined, undefined, undefined, 30, undefined, undefined, undefined, AWS_Tags$ReventlessAws.make(serviceName, "Platform", "Runtime", "Platform", undefined, undefined, undefined, undefined), environment), opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
   let functionUrl = new (Aws.lambda.FunctionUrl)(serviceName + `Url`, {

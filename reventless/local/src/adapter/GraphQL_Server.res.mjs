@@ -8,6 +8,8 @@ let log = DomainGraphQL_Server$ReventlessLocal.log;
 
 let readBody = DomainGraphQL_Server$ReventlessLocal.readBody;
 
+let readBodyBuf = DomainGraphQL_Server$ReventlessLocal.readBodyBuf;
+
 let _writeJson = DomainGraphQL_Server$ReventlessLocal._writeJson;
 
 let _loginRejected = DomainGraphQL_Server$ReventlessLocal._loginRejected;
@@ -15,6 +17,16 @@ let _loginRejected = DomainGraphQL_Server$ReventlessLocal._loginRejected;
 let handleLogin = DomainGraphQL_Server$ReventlessLocal.handleLogin;
 
 let handleLogout = DomainGraphQL_Server$ReventlessLocal.handleLogout;
+
+let uploadPresignPath = DomainGraphQL_Server$ReventlessLocal.uploadPresignPath;
+
+let _corsWriteHeaders = DomainGraphQL_Server$ReventlessLocal._corsWriteHeaders;
+
+let handleUploadPresign = DomainGraphQL_Server$ReventlessLocal.handleUploadPresign;
+
+let handleObjectPut = DomainGraphQL_Server$ReventlessLocal.handleObjectPut;
+
+let handleObjectGet = DomainGraphQL_Server$ReventlessLocal.handleObjectGet;
 
 let _isInvalidBearer = DomainGraphQL_Server$ReventlessLocal._isInvalidBearer;
 
@@ -120,10 +132,16 @@ export {
   YG,
   log,
   readBody,
+  readBodyBuf,
   _writeJson,
   _loginRejected,
   handleLogin,
   handleLogout,
+  uploadPresignPath,
+  _corsWriteHeaders,
+  handleUploadPresign,
+  handleObjectPut,
+  handleObjectGet,
   _isInvalidBearer,
   _dispatch,
   buildAuthContext,

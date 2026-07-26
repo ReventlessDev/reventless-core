@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-26
 **Repo:** reventless-core (seed toolkit + example seed)
-**Depends on:** [served-buckets.md](served-buckets.md) — the served-bucket
+**Depends on:** [served-buckets.md](done/served-buckets.md) — the served-bucket
 read path (AWS CloudFront `{prefix}/*` + the local dev-server serve route) and a
 unified upload contract must exist for seeded objects to be viewable.
 **Status:** NOT STARTED (plan only)
@@ -57,7 +57,7 @@ upload route must expose the **same presign-shaped contract** as AWS
 bytes to `uploadUrl` (a local URL), storing under `{prefix}/{key}` and returning
 `storageRef = "/{prefix}/{key}"`.
 
-- This tightens [served-buckets.md](served-buckets.md) Part 2b: implement the
+- This tightens [served-buckets.md](done/served-buckets.md) Part 2b: implement the
   local upload route in the presign shape (return a local `uploadUrl`) rather than
   a bespoke direct-`POST`, so the reventless-ui `FileDropzone` S3 upload adapter
   and the seed helper below are one code path for both.
@@ -140,7 +140,7 @@ optional caller-supplied key (`{key?}`) and have the seed use a stable
 
 - **Provider-neutrality is free** because the seed uploads via the same endpoint
   the UI does — no seed-side S3/credential handling, no per-provider branch.
-- **Sequencing:** land [served-buckets.md](served-buckets.md) first (both
+- **Sequencing:** land [served-buckets.md](done/served-buckets.md) first (both
   read paths + the unified upload contract, Part 1 here), then this.
 - **No repo binaries** with the SVG approach; deterministic and self-contained.
 - This closes the loop the picsum URLs skipped: an image now travels

@@ -1021,6 +1021,10 @@ module MakeWithConfig = (
     // S3 bucket the upload presign service issues PUT URLs against. Required when
     // `enableUploads` is true.
     uploadBucketName?: Pulumi.Input.t<string>,
+    // Buckets served read-only to the UI under a path prefix on the host-shell
+    // CloudFront distribution (same-origin, private, OAC-read). Each entry adds a
+    // `{prefix}/*` ordered cache behavior + origin + scoped BucketPolicy.
+    servedBuckets?: array<ReventlessInfra.Platform.servedBucket>,
   }
 
   // Merged-mode outputs of deployPlatform — the merged API(s), plus the
@@ -1493,6 +1497,11 @@ module MakeWithConfig = (
         // the same S3 keys.
         ~excludeFiles=["config.json", "ui-hints.json"],
         ~customDomain?,
+        // Served buckets front the host-shell distribution with `{prefix}/*`
+        // read paths (private, OAC-read) — same origin as the SPA, so served
+        // objects are addressable by same-origin relative URL with no config.json
+        // change. Unset ⇒ [] ⇒ distribution byte-identical to today.
+        ~servedBuckets=cfg.servedBuckets->Option.getOr([]),
       )
 
       let regionStr =

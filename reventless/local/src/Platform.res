@@ -1922,6 +1922,7 @@ module MakeWithConfig = (
     geocoderPlaceIndex?: Pulumi.Input.t<string>,
     enableUploads?: bool,
     uploadBucketName?: Pulumi.Input.t<string>,
+    servedBuckets?: array<ReventlessInfra.Platform.servedBucket>,
   }
   let deployPlatform = (~version, ~hostUiBundle as _: option<hostUiBundleConfig>=?) => {
     log.info(~comp="Platform", `deployPlatform v${version}`)

@@ -68,11 +68,12 @@ async function invalidateDistribution(distributionId, paths) {
   }
 }
 
-function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbackOpt, indexDocumentOpt, stableNameOpt, excludeFilesOpt, customDomain) {
+function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbackOpt, indexDocumentOpt, stableNameOpt, excludeFilesOpt, customDomain, servedBucketsOpt) {
   let spaFallback = spaFallbackOpt !== undefined ? spaFallbackOpt : false;
   let indexDocument = indexDocumentOpt !== undefined ? indexDocumentOpt : "index.html";
   let stableName = stableNameOpt !== undefined ? stableNameOpt : false;
   let excludeFiles = excludeFilesOpt !== undefined ? excludeFilesOpt : [];
+  let servedBuckets = servedBucketsOpt !== undefined ? servedBucketsOpt : [];
   let name = stableName ? pluginId : pluginId + "-" + bundleVersion;
   let bucket = new (Aws.s3.Bucket)(name + "-bundle", {
     tags: AWS_Tags$ReventlessAws.make(name + "-bundle", "Plugin", "Hosting", "Plugin", undefined, undefined, pluginId, undefined)
@@ -118,10 +119,26 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
     ],
     cachePolicyId: cachingDisabledPolicyId
   });
-  let orderedCacheBehaviors = [noCacheBehavior("/remoteEntry.js")].concat(spaFallback ? [
+  let orderedCacheBehaviors = servedBuckets.map(sb => {
+    let prefix = sb.prefix;
+    return {
+      pathPattern: prefix + "/*",
+      targetOriginId: "served-" + prefix,
+      viewerProtocolPolicy: "redirect-to-https",
+      allowedMethods: [
+        "GET",
+        "HEAD"
+      ],
+      cachedMethods: [
+        "GET",
+        "HEAD"
+      ],
+      cachePolicyId: cachingOptimizedPolicyId
+    };
+  }).concat([noCacheBehavior("/remoteEntry.js")].concat(spaFallback ? [
       noCacheBehavior("/" + indexDocument),
       noCacheBehavior("/config.json")
-    ] : []);
+    ] : []));
   let viewerCertificate;
   if (customDomain !== undefined) {
     let usEast1 = _getUsEast1Provider();
@@ -163,11 +180,18 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
     origins: Pulumi.all([
       bucket.bucketRegionalDomainName,
       oac.id
-    ]).apply(param => [{
-        domainName: param[0],
-        originId: originId,
-        originAccessControlId: param[1]
-      }]),
+    ]).apply(param => {
+      let oacId = param[1];
+      return [{
+          domainName: param[0],
+          originId: originId,
+          originAccessControlId: oacId
+        }].concat(servedBuckets.map(sb => ({
+        domainName: sb.bucketRegionalDomainName,
+        originId: "served-" + sb.prefix,
+        originAccessControlId: oacId
+      })));
+    }),
     defaultCacheBehavior: {
       targetOriginId: originId,
       viewerProtocolPolicy: "redirect-to-https",
@@ -227,6 +251,31 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
           }
         }]
     }))
+  });
+  servedBuckets.forEach(sb => {
+    new (Aws.s3.BucketPolicy)(name + "-served-" + sb.prefix + "-policy", {
+      bucket: sb.bucketId,
+      policy: Pulumi.all([
+        sb.bucketArn,
+        distribution.arn
+      ]).apply(param => JSON.stringify({
+        Version: "2012-10-17",
+        Statement: [{
+            Sid: "AllowCloudFrontServicePrincipal",
+            Effect: "Allow",
+            Principal: {
+              Service: "cloudfront.amazonaws.com"
+            },
+            Action: "s3:GetObject",
+            Resource: param[0] + "/*",
+            Condition: {
+              StringEquals: {
+                "AWS:SourceArn": param[1]
+              }
+            }
+          }]
+      }))
+    });
   });
   if (assetsDir !== undefined) {
     let allEntries = Util_StaticBundle$ReventlessAws.walk(assetsDir);

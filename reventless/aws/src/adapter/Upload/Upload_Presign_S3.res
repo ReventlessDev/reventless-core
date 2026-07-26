@@ -112,17 +112,21 @@ let handlePresign = async (event: functionUrlEvent, _context: Lambda.context): r
       parsed->Dict.get("fileName")->Option.flatMap(JSON.Decode.string)->Option.getOr("upload")
     let contentType = parsed->Dict.get("contentType")->Option.flatMap(JSON.Decode.string)
 
-    let key = `uploads/${identityPrefix(event)}${genUuid()}/${fileName}`
+    // The object key doubles as the served path segment: it is rooted at the
+    // served prefix (`SERVED_PREFIX`, e.g. `uploads`) so the CloudFront
+    // `{prefix}/*` behavior fronts it. Callers PUT to this exact key.
+    let servedPrefix = getEnv("SERVED_PREFIX")->Option.getOr("uploads")
+    let key = `${servedPrefix}/${identityPrefix(event)}${genUuid()}/${fileName}`
     let client = makeS3Client()
     let command = makePutObjectCommand({bucket, key, contentType: ?contentType})
     let uploadUrl = await getSignedUrl(client, command, {expiresIn: 300})
 
-    // The stored ref is the object's virtual-hosted URL, so a command can store
-    // it and an `image`-semantic field renders it directly as a thumbnail.
-    // Resolving that URL requires the object to be readable — front the bucket
-    // with public-read (for public assets like product images) or a CDN.
-    let region = getEnv("AWS_REGION")->Option.getOr("us-east-1")
-    let storageRef = `https://${bucket}.s3.${region}.amazonaws.com/${key}`
+    // The stored ref is a same-origin relative URL `/{key}`: the served bucket is
+    // fronted read-only by the UI's own CloudFront distribution under
+    // `{prefix}/*`, so a command stores this directly-renderable value and an
+    // `image`-semantic field thumbnails it with no post-processing and no public
+    // bucket. See [docs/plans/done/ui-served-buckets.md].
+    let storageRef = `/${key}`
 
     {
       statusCode: 200,
@@ -155,6 +159,10 @@ type serviceOutputs = {
 let make = (
   ~bucketName: Pulumi.Input.t<string>,
   ~corsOrigins: array<string>=["*"],
+  // Prefix the presigned object keys are rooted at; must match the served
+  // bucket's CloudFront `{prefix}/*` behavior so the returned `/{key}` ref
+  // resolves. Defaults to `uploads`.
+  ~servedPrefix: string="uploads",
   ~opts=?,
 ): serviceOutputs => {
   let serviceName = "UploadPresignService"
@@ -204,7 +212,10 @@ let make = (
   let environment: Lambda.CallbackFunction.Args.functionEnvironment = {
     // CallbackFunction under-types env values as `dict<string>`; Pulumi resolves
     // Output-valued variables at deploy time, so bridge the Input here.
-    variables: Dict.fromArray([("UPLOAD_BUCKET", bucketName)])->Obj.magic,
+    variables: Dict.fromArray([
+      ("UPLOAD_BUCKET", bucketName),
+      ("SERVED_PREFIX", Pulumi.Input.make(servedPrefix)),
+    ])->Obj.magic,
   }
 
   let lambda = Lambda.CallbackFunction.make(

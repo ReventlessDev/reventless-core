@@ -26,17 +26,32 @@ type nodeResponse
 @send external writeHead: (nodeResponse, int, {..}) => unit = "writeHead"
 @send external end_: (nodeResponse, string) => unit = "end"
 @send external endEmpty: (nodeResponse, @as(json`null`) _) => unit = "end"
+// Binary response body — the served-object GET streams stored bytes verbatim.
+@send external endBuf: (nodeResponse, LocalObjectStore.buffer) => unit = "end"
 
 // Streaming body collector — request data fires once per chunk, end once at EOF.
 @send external _onData: (nodeRequest, @as("data") _, string => unit) => unit = "on"
 @send external _onEnd: (nodeRequest, @as("end") _, unit => unit) => unit = "on"
 @send external _setEncoding: (nodeRequest, string) => unit = "setEncoding"
+// Binary chunk stream — used by the served-object PUT so raw bytes aren't
+// mangled by utf8 decoding (setEncoding is deliberately NOT called).
+@send external _onDataBuf: (nodeRequest, @as("data") _, LocalObjectStore.buffer => unit) => unit = "on"
+
+@module("crypto") external randomUUID: unit => string = "randomUUID"
 
 let readBody = (req: nodeRequest, onBody: string => unit): unit => {
   let buf = ref("")
   req->_setEncoding("utf8")
   req->_onData(chunk => buf := buf.contents ++ chunk)
   req->_onEnd(() => onBody(buf.contents))
+}
+
+// Binary body collector — accumulates raw Buffer chunks and concatenates once
+// at EOF. Kept separate from `readBody` (utf8) so file uploads stay byte-exact.
+let readBodyBuf = (req: nodeRequest, onBody: LocalObjectStore.buffer => unit): unit => {
+  let chunks: array<LocalObjectStore.buffer> = []
+  req->_onDataBuf(chunk => chunks->Array.push(chunk))
+  req->_onEnd(() => onBody(LocalObjectStore.concatBuffers(chunks)))
 }
 
 type requestHandler = (nodeRequest, nodeResponse) => unit
@@ -110,6 +125,76 @@ let handleLogout = (_req: nodeRequest, res: nodeResponse): unit => {
   res->endEmpty
 }
 
+// -- Served-bucket routes (local analogue of the AWS CloudFront read path) ----
+//
+// The dev platform has no object bucket, so these three routes back the same
+// UI contract locally against `LocalObjectStore`:
+//   POST /__inmemory/upload  {fileName,contentType} → {uploadUrl, storageRef}
+//   PUT  /{prefix}/{key}     raw bytes              → 200 (store)
+//   GET  /{prefix}/{key}                            → the stored bytes
+// `uploadUrl == storageRef == /{prefix}/{key}`, so the existing FileDropzone S3
+// adapter (POST-presign → PUT-bytes) works unchanged — no presigning needed.
+
+let uploadPresignPath = "/__inmemory/upload"
+
+// CORS for the browser PUT (a cross-origin preflight when the dev origin isn't
+// same-origin with the API); the seed uploads from Node and needs none.
+let _corsWriteHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "PUT,GET,OPTIONS",
+  "Access-Control-Allow-Headers": "*",
+}
+
+// Presign-shaped: mint a fresh uuid key under the served prefix and hand back a
+// same-origin `/{prefix}/{key}` for both the PUT target and the stored ref.
+let handleUploadPresign = (req: nodeRequest, res: nodeResponse): unit =>
+  readBody(req, body => {
+    let parsed =
+      try body->JSON.parseOrThrow->JSON.Decode.object->Option.getOr(Dict.make()) catch {
+      | _ => Dict.make()
+      }
+    let fileName =
+      parsed->Dict.get("fileName")->Option.flatMap(JSON.Decode.string)->Option.getOr("upload")
+    let ref = `/${LocalObjectStore.defaultUploadPrefix}/${randomUUID()}/${fileName}`
+    _writeJson(
+      res,
+      ~status=200,
+      JSON.Encode.object(
+        Dict.fromArray([
+          ("uploadUrl", JSON.Encode.string(ref)),
+          ("storageRef", JSON.Encode.string(ref)),
+        ]),
+      ),
+    )
+  })
+
+let handleObjectPut = (req: nodeRequest, res: nodeResponse, ~key: string): unit => {
+  let contentType =
+    req.headers->Dict.get("content-type")->Option.getOr("application/octet-stream")
+  readBodyBuf(req, bytes => {
+    LocalObjectStore.put(~key, ~bytes, ~contentType)
+    res->writeHead(200, _corsWriteHeaders)
+    res->end_("")
+  })
+}
+
+let handleObjectGet = (res: nodeResponse, ~key: string): unit =>
+  switch LocalObjectStore.get(~key) {
+  | Some({bytes, contentType}) =>
+    res->writeHead(
+      200,
+      {
+        "Content-Type": contentType,
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    )
+    res->endBuf(bytes)
+  | None =>
+    res->writeHead(404, {"Access-Control-Allow-Origin": "*"})
+    res->endEmpty
+  }
+
 // Returns true when the request carries an `Authorization: Bearer <token>`
 // header whose token fails HMAC verification. No header (anonymous), or a
 // non-Bearer scheme (e.g. X-User flows), returns false — only an *invalid*
@@ -147,6 +232,16 @@ let _dispatch = (req: nodeRequest, res: nodeResponse, yoga: YG.yoga, getSdl: uni
     handleLogin(req, res)
   } else if path == "/__inmemory/logout" && req.method == "POST" {
     handleLogout(req, res)
+  } else if path == uploadPresignPath && req.method == "POST" {
+    handleUploadPresign(req, res)
+  } else if req.method == "OPTIONS" && LocalObjectStore.servedKey(path)->Option.isSome {
+    // Preflight for the cross-origin browser PUT to a served-object path.
+    res->writeHead(204, _corsWriteHeaders)
+    res->endEmpty
+  } else if req.method == "PUT" && LocalObjectStore.servedKey(path)->Option.isSome {
+    handleObjectPut(req, res, ~key=LocalObjectStore.servedKey(path)->Option.getOr(""))
+  } else if req.method == "GET" && LocalObjectStore.servedKey(path)->Option.isSome {
+    handleObjectGet(res, ~key=LocalObjectStore.servedKey(path)->Option.getOr(""))
   } else {
     (yoga->Obj.magic)(req, res)
   }
@@ -618,6 +713,7 @@ let reset = () => {
   nodeResolverCallback.contents = None
   activeSchema.contents = None
   lastFullSdl.contents = None
+  LocalObjectStore.reset()
 }
 
 // -- Inspection & diagnostics ---------------------------------------------

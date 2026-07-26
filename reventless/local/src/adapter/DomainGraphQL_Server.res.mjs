@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Http from "http";
+import * as Crypto from "crypto";
 import * as Graphql from "graphql";
 import * as GraphqlYoga from "@reventlessdev/rescript-graphql-yoga/src/GraphqlYoga.res.mjs";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
@@ -17,6 +18,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as LocalAuth$ReventlessLocal from "./Auth/LocalAuth.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
+import * as LocalObjectStore$ReventlessLocal from "./LocalObjectStore.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./Auth/Auth_GraphqlContext.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
@@ -30,6 +32,14 @@ function readBody(req, onBody) {
     buf.contents = buf.contents + chunk;
   });
   req.on("end", () => onBody(buf.contents));
+}
+
+function readBodyBuf(req, onBody) {
+  let chunks = [];
+  req.on("data", chunk => {
+    chunks.push(chunk);
+  });
+  req.on("end", () => onBody(Buffer.concat(chunks)));
 }
 
 function _writeJson(res, status, body) {
@@ -89,6 +99,63 @@ function handleLogout(_req, res) {
   res.end(null);
 }
 
+let uploadPresignPath = "/__inmemory/upload";
+
+let _corsWriteHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "PUT,GET,OPTIONS",
+  "Access-Control-Allow-Headers": "*"
+};
+
+function handleUploadPresign(req, res) {
+  readBody(req, body => {
+    let parsed;
+    try {
+      parsed = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(JSON.parse(body)), {});
+    } catch (exn) {
+      parsed = {};
+    }
+    let fileName = Stdlib_Option.getOr(Stdlib_Option.flatMap(parsed["fileName"], Stdlib_JSON.Decode.string), "upload");
+    let ref = `/` + LocalObjectStore$ReventlessLocal.defaultUploadPrefix + `/` + Crypto.randomUUID() + `/` + fileName;
+    _writeJson(res, 200, Object.fromEntries([
+      [
+        "uploadUrl",
+        ref
+      ],
+      [
+        "storageRef",
+        ref
+      ]
+    ]));
+  });
+}
+
+function handleObjectPut(req, res, key) {
+  let contentType = Stdlib_Option.getOr(req.headers["content-type"], "application/octet-stream");
+  readBodyBuf(req, bytes => {
+    LocalObjectStore$ReventlessLocal.put(key, bytes, contentType);
+    res.writeHead(200, _corsWriteHeaders);
+    res.end("");
+  });
+}
+
+function handleObjectGet(res, key) {
+  let match = LocalObjectStore$ReventlessLocal.get(key);
+  if (match !== undefined) {
+    res.writeHead(200, {
+      "Content-Type": match.contentType,
+      "Access-Control-Allow-Origin": "*",
+      "Cache-Control": "public, max-age=31536000, immutable"
+    });
+    res.end(match.bytes);
+  } else {
+    res.writeHead(404, {
+      "Access-Control-Allow-Origin": "*"
+    });
+    res.end(null);
+  }
+}
+
 function _isInvalidBearer(req) {
   let h = req.headers["authorization"];
   if (h === undefined) {
@@ -119,6 +186,16 @@ function _dispatch(req, res, yoga, getSdl) {
     return handleLogin(req, res);
   } else if (path === "/__inmemory/logout" && req.method === "POST") {
     return handleLogout(req, res);
+  } else if (path === uploadPresignPath && req.method === "POST") {
+    return handleUploadPresign(req, res);
+  } else if (req.method === "OPTIONS" && Stdlib_Option.isSome(LocalObjectStore$ReventlessLocal.servedKey(path))) {
+    res.writeHead(204, _corsWriteHeaders);
+    res.end(null);
+    return;
+  } else if (req.method === "PUT" && Stdlib_Option.isSome(LocalObjectStore$ReventlessLocal.servedKey(path))) {
+    return handleObjectPut(req, res, Stdlib_Option.getOr(LocalObjectStore$ReventlessLocal.servedKey(path), ""));
+  } else if (req.method === "GET" && Stdlib_Option.isSome(LocalObjectStore$ReventlessLocal.servedKey(path))) {
+    return handleObjectGet(res, Stdlib_Option.getOr(LocalObjectStore$ReventlessLocal.servedKey(path), ""));
   } else {
     return yoga(req, res);
   }
@@ -515,6 +592,7 @@ function reset() {
   nodeResolverCallback.contents = undefined;
   activeSchema.contents = undefined;
   lastFullSdl.contents = undefined;
+  LocalObjectStore$ReventlessLocal.reset();
 }
 
 function getRegisteredSdl() {
@@ -671,10 +749,16 @@ export {
   YG,
   log,
   readBody,
+  readBodyBuf,
   _writeJson,
   _loginRejected,
   handleLogin,
   handleLogout,
+  uploadPresignPath,
+  _corsWriteHeaders,
+  handleUploadPresign,
+  handleObjectPut,
+  handleObjectGet,
   _isInvalidBearer,
   _dispatch,
   buildAuthContext,

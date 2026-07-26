@@ -886,7 +886,7 @@ function MakeWithConfig(Config) {
       let match$3 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined, true, [
         "config.json",
         "ui-hints.json"
-      ], customDomain);
+      ], customDomain, Stdlib_Option.getOr(hostUiBundle.servedBuckets, []));
       let bucketName = match$3.bucketName;
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
@@ -895,7 +895,7 @@ function MakeWithConfig(Config) {
       let geocoderEndpointOutput = placeIndexName !== undefined ? Geocoder_AwsLocation$ReventlessAws.make(placeIndexName, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
       let match$4 = hostUiBundle.enableUploads;
       let match$5 = hostUiBundle.uploadBucketName;
-      let uploadEndpointOutput = match$4 !== undefined && match$4 && match$5 !== undefined ? Upload_Presign_S3$ReventlessAws.make(match$5, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
+      let uploadEndpointOutput = match$4 !== undefined && match$4 && match$5 !== undefined ? Upload_Presign_S3$ReventlessAws.make(match$5, undefined, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,
@@ -1869,7 +1869,7 @@ function Make($star) {
       let match$3 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined, true, [
         "config.json",
         "ui-hints.json"
-      ], customDomain);
+      ], customDomain, Stdlib_Option.getOr(hostUiBundle.servedBuckets, []));
       let bucketName = match$3.bucketName;
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
@@ -1878,7 +1878,7 @@ function Make($star) {
       let geocoderEndpointOutput = placeIndexName !== undefined ? Geocoder_AwsLocation$ReventlessAws.make(placeIndexName, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
       let match$4 = hostUiBundle.enableUploads;
       let match$5 = hostUiBundle.uploadBucketName;
-      let uploadEndpointOutput = match$4 !== undefined && match$4 && match$5 !== undefined ? Upload_Presign_S3$ReventlessAws.make(match$5, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
+      let uploadEndpointOutput = match$4 !== undefined && match$4 && match$5 !== undefined ? Upload_Presign_S3$ReventlessAws.make(match$5, undefined, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,

@@ -40,7 +40,13 @@ let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), 
   bundleVersion: PackageVersion$Reventless.fromCaller(),
   geocoderPlaceIndex: placeIndex.indexName,
   enableUploads: true,
-  uploadBucketName: uploadBucket.bucket
+  uploadBucketName: uploadBucket.bucket,
+  servedBuckets: [{
+      prefix: "uploads",
+      bucketId: uploadBucket.id,
+      bucketArn: uploadBucket.arn,
+      bucketRegionalDomainName: uploadBucket.bucketRegionalDomainName
+    }]
 });
 
 export {

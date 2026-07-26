@@ -49,6 +49,20 @@ module App = CatalogPlugin.Make(Platform)
 // where `module Plugin: Plugin.T` shadows the package-level Plugin module.
 type pluginOutputs = Plugin.outputs
 
+// A storage bucket a deployment declares to be served read-only to the UI under
+// a path prefix on the UI's own public origin, while the bucket stays private
+// (CDN-only read). These four fields are the minimal handle any CDN front needs;
+// the app owns the bucket's lifecycle and creation. Defined at file scope so it
+// is a single shared nominal type across the concrete Platform implementations
+// (AWS fronts it via CloudFront; in-memory ignores it). See
+// [docs/plans/done/ui-served-buckets.md].
+type servedBucket = {
+  prefix: string,
+  bucketId: Pulumi.Input.t<string>,
+  bucketArn: Pulumi.Input.t<string>,
+  bucketRegionalDomainName: Pulumi.Input.t<string>,
+}
+
 // Module type alias so StateViewSliceStream can reference the component T
 // without being confused by the `module StateViewSlice` declaration inside T.
 module type StateViewSliceComponentT = StateViewSlice.T
@@ -252,6 +266,10 @@ module type T = {
     // S3 bucket the upload presign service issues PUT URLs against. Required
     // when `enableUploads` is true.
     uploadBucketName?: Pulumi.Input.t<string>,
+    // Buckets served read-only to the UI under a path prefix on the UI's own
+    // origin (same-origin, private, CDN-fronted). Each entry adds a `{prefix}/*`
+    // read path on the host-shell distribution. In-memory platforms ignore this.
+    servedBuckets?: array<servedBucket>,
   }
 
   /** Deploy a complete platform: creates the scheduler, builds each plugin,
