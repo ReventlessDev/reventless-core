@@ -132,11 +132,11 @@ let make: ReventlessCore.Task_Adapter.bucketMaker<bucketParts> = (~name, ~opts) 
         corsRules: [
           {
             PulumiAws.S3.Bucket.allowedHeaders: ["*"],
-            allowedMethods: ["HEAD", "GET"],
+            allowedMethods: ["HEAD", "GET", "PUT", "POST"],
             allowedOrigins: ["*"],
             exposeHeaders: [
               "x-amz-server-side-encryption",
-              ">x-amz-request-id",
+              "x-amz-request-id",
               "x-amz-id-2",
               "ETag",
             ],

@@ -1008,6 +1008,19 @@ module MakeWithConfig = (
     // written; the shell treats the resulting 404 as "no hints" and boots
     // unchanged. Single-mode shape: one origin-relative file per deployment.
     uiHintsFile?: string,
+    // Optional AWS Location place-index name. When set, the deploy provisions a
+    // public geocoder Lambda Function URL (Geocoder_AwsLocation) and threads its
+    // URL into config.json as `geocoderEndpoint`. Unset ⇒ no service, field
+    // omitted (byte-identical config.json).
+    geocoderPlaceIndex?: Pulumi.Input.t<string>,
+    // Opt into the direct-to-S3 upload presign service (Upload_Presign_S3). Both
+    // this flag and `uploadBucketName` must be set; the deploy then provisions a
+    // public presign Lambda Function URL and threads its URL into config.json as
+    // `uploadEndpoint`. Unset ⇒ no service, field omitted.
+    enableUploads?: bool,
+    // S3 bucket the upload presign service issues PUT URLs against. Required when
+    // `enableUploads` is true.
+    uploadBucketName?: Pulumi.Input.t<string>,
   }
 
   // Merged-mode outputs of deployPlatform — the merged API(s), plus the
@@ -1502,6 +1515,27 @@ module MakeWithConfig = (
       | None => Pulumi.Output.make(None)
       }
 
+      // Optional public geocoder Function URL. Provisioned only when a place
+      // index is configured; its resolved URL becomes config.json's
+      // `geocoderEndpoint`. Unset ⇒ Output<None> ⇒ field omitted below.
+      let geocoderEndpointOutput: Pulumi.Output.t<option<string>> = switch cfg.geocoderPlaceIndex {
+      | Some(placeIndexName) =>
+        Geocoder_AwsLocation.make(~placeIndexName).url->Pulumi.Output.apply(u => Some(u))
+      | None => Pulumi.Output.make(None)
+      }
+
+      // Optional public upload presign Function URL. Needs both the opt-in flag
+      // and a target bucket; its resolved URL becomes config.json's
+      // `uploadEndpoint`. Otherwise Output<None> ⇒ field omitted below.
+      let uploadEndpointOutput: Pulumi.Output.t<option<string>> = switch (
+        cfg.enableUploads,
+        cfg.uploadBucketName,
+      ) {
+      | (Some(true), Some(bucketName)) =>
+        Upload_Presign_S3.make(~bucketName).url->Pulumi.Output.apply(u => Some(u))
+      | _ => Pulumi.Output.make(None)
+      }
+
       let configJsonContent =
         (
           (
@@ -1511,9 +1545,16 @@ module MakeWithConfig = (
             cognitoPool.clientId,
           )->Pulumi.Output.all4,
           domainEventsEndpointOutput,
+          geocoderEndpointOutput,
+          uploadEndpointOutput,
         )
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply((((domainEp, platformEp, poolId, clientId), eventsEpOpt)) => {
+        ->Pulumi.Output.all4
+        ->Pulumi.Output.apply(((
+          (domainEp, platformEp, poolId, clientId),
+          eventsEpOpt,
+          geocoderEpOpt,
+          uploadEpOpt,
+        )) => {
           let fields = [
             ("apiEndpoint", JSON.Encode.string(domainEp)),
             ("platformApiEndpoint", JSON.Encode.string(platformEp)),
@@ -1534,7 +1575,15 @@ module MakeWithConfig = (
             )
           | None => fields
           }
-          withEvents->Dict.fromArray->JSON.Encode.object->JSON.stringify
+          let withGeocoder = switch geocoderEpOpt {
+          | Some(ep) => Array.concat(withEvents, [("geocoderEndpoint", JSON.Encode.string(ep))])
+          | None => withEvents
+          }
+          let withUpload = switch uploadEpOpt {
+          | Some(ep) => Array.concat(withGeocoder, [("uploadEndpoint", JSON.Encode.string(ep))])
+          | None => withGeocoder
+          }
+          withUpload->Dict.fromArray->JSON.Encode.object->JSON.stringify
         })
 
       let _ = PulumiAws.S3.BucketObject.make(

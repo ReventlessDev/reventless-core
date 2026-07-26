@@ -8,10 +8,11 @@
 // backend as AppSync resolvers. Event history resources read directly from
 // EventLog and DcbEventLog DynamoDB tables.
 //
-// NOTE: Lambda Function URL bindings for rescript-pulumi-aws are not yet
-// available. This module provides the runtime MCP server handler that will
-// be deployed once the Pulumi bindings are added. The deploy-time infrastructure
-// (Lambda + Function URL + IAM role) is documented but not yet wired to Pulumi.
+// NOTE: This module provides the runtime MCP server handler. The Lambda
+// Function URL binding now exists (PulumiAws.Lambda.FunctionUrl), so the
+// deploy-time infrastructure (Lambda + Function URL + IAM role) can be wired to
+// Pulumi following the Geocoder_AwsLocation / Upload_Presign_S3 adapters; the
+// section below still documents the concrete shape that wiring takes.
 
 // ─── Runtime handler ───────────────────────────────────────────────────────
 
@@ -410,10 +411,10 @@ let dispatchTool = async (
   )
 }
 
-// ─── Deploy-time infrastructure (placeholder) ─────────────────────────────
+// ─── Deploy-time infrastructure (documented shape) ────────────────────────
 //
-// When rescript-pulumi-aws gains Lambda Function URL bindings, this section
-// will create:
+// With the Lambda Function URL binding now available, this section documents
+// the resources a full MCP deploy path creates:
 //
 //   1. Lambda function (Node.js 20.x runtime)
 //      - Handler: mcp-handler.handler

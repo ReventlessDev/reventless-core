@@ -240,6 +240,18 @@ module type T = {
     // no file written; the shell treats the 404 as "no hints" and boots
     // unchanged. In-memory platforms ignore this.
     uiHintsFile?: string,
+    // Optional AWS Location place-index name. When set, the deploy provisions a
+    // public geocoder Lambda Function URL and threads its URL into config.json
+    // as `geocoderEndpoint`. Unset ⇒ no service, field omitted. In-memory
+    // platforms ignore this.
+    geocoderPlaceIndex?: Pulumi.Input.t<string>,
+    // Opt into the direct-to-S3 upload presign service. Requires
+    // `uploadBucketName`; the deploy then provisions a public presign Lambda
+    // Function URL and threads its URL into config.json as `uploadEndpoint`.
+    enableUploads?: bool,
+    // S3 bucket the upload presign service issues PUT URLs against. Required
+    // when `enableUploads` is true.
+    uploadBucketName?: Pulumi.Input.t<string>,
   }
 
   /** Deploy a complete platform: creates the scheduler, builds each plugin,

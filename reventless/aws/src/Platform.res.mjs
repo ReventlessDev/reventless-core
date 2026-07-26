@@ -40,6 +40,7 @@ import * as AppSync_EventsApi$ReventlessAws from "./adapter/Api/AppSync_EventsAp
 import * as AppSync_MergedApi$ReventlessAws from "./components/Api/AppSync_MergedApi.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
+import * as Upload_Presign_S3$ReventlessAws from "./adapter/Upload/Upload_Presign_S3.res.mjs";
 import * as Util_HostUiDomain$ReventlessAws from "./util/Util_HostUiDomain.res.mjs";
 import * as Util_StaticBundle$ReventlessAws from "./util/Util_StaticBundle.res.mjs";
 import * as DcbEventLogStorage$ReventlessAws from "./adapter/DcbEventLog/DcbEventLogStorage.res.mjs";
@@ -51,6 +52,7 @@ import * as AppSync_SdlDecorate$ReventlessAws from "./components/Api/AppSync_Sdl
 import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
 import * as ClonerRunner_Fargate$ReventlessAws from "./plugin/cloner/ClonerRunner_Fargate.res.mjs";
+import * as Geocoder_AwsLocation$ReventlessAws from "./adapter/Geocoder/Geocoder_AwsLocation.res.mjs";
 import * as QueryEngine_DynamoDb$ReventlessAws from "./adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs";
 import * as PluginRuntime_Builder$ReventlessAws from "./plugin/runtime/PluginRuntime_Builder.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
@@ -889,6 +891,11 @@ function MakeWithConfig(Config) {
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
+      let placeIndexName = hostUiBundle.geocoderPlaceIndex;
+      let geocoderEndpointOutput = placeIndexName !== undefined ? Geocoder_AwsLocation$ReventlessAws.make(placeIndexName, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
+      let match$4 = hostUiBundle.enableUploads;
+      let match$5 = hostUiBundle.uploadBucketName;
+      let uploadEndpointOutput = match$4 !== undefined && match$4 && match$5 !== undefined ? Upload_Presign_S3$ReventlessAws.make(match$5, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,
@@ -896,8 +903,12 @@ function MakeWithConfig(Config) {
           cognitoPool.poolId,
           cognitoPool.clientId
         ]),
-        domainEventsEndpointOutput
+        domainEventsEndpointOutput,
+        geocoderEndpointOutput,
+        uploadEndpointOutput
       ]).apply(param => {
+        let uploadEpOpt = param[3];
+        let geocoderEpOpt = param[2];
         let eventsEpOpt = param[1];
         let match = param[0];
         let fields = [
@@ -940,7 +951,15 @@ function MakeWithConfig(Config) {
               eventsEpOpt
             ]
           ]) : fields;
-        return JSON.stringify(Object.fromEntries(withEvents));
+        let withGeocoder = geocoderEpOpt !== undefined ? withEvents.concat([[
+              "geocoderEndpoint",
+              geocoderEpOpt
+            ]]) : withEvents;
+        let withUpload = uploadEpOpt !== undefined ? withGeocoder.concat([[
+              "uploadEndpoint",
+              uploadEpOpt
+            ]]) : withGeocoder;
+        return JSON.stringify(Object.fromEntries(withUpload));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: bucketName,
@@ -1855,6 +1874,11 @@ function Make($star) {
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
+      let placeIndexName = hostUiBundle.geocoderPlaceIndex;
+      let geocoderEndpointOutput = placeIndexName !== undefined ? Geocoder_AwsLocation$ReventlessAws.make(placeIndexName, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
+      let match$4 = hostUiBundle.enableUploads;
+      let match$5 = hostUiBundle.uploadBucketName;
+      let uploadEndpointOutput = match$4 !== undefined && match$4 && match$5 !== undefined ? Upload_Presign_S3$ReventlessAws.make(match$5, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,
@@ -1862,8 +1886,12 @@ function Make($star) {
           cognitoPool.poolId,
           cognitoPool.clientId
         ]),
-        domainEventsEndpointOutput
+        domainEventsEndpointOutput,
+        geocoderEndpointOutput,
+        uploadEndpointOutput
       ]).apply(param => {
+        let uploadEpOpt = param[3];
+        let geocoderEpOpt = param[2];
         let eventsEpOpt = param[1];
         let match = param[0];
         let fields = [
@@ -1906,7 +1934,15 @@ function Make($star) {
               eventsEpOpt
             ]
           ]) : fields;
-        return JSON.stringify(Object.fromEntries(withEvents));
+        let withGeocoder = geocoderEpOpt !== undefined ? withEvents.concat([[
+              "geocoderEndpoint",
+              geocoderEpOpt
+            ]]) : withEvents;
+        let withUpload = uploadEpOpt !== undefined ? withGeocoder.concat([[
+              "uploadEndpoint",
+              uploadEpOpt
+            ]]) : withGeocoder;
+        return JSON.stringify(Object.fromEntries(withUpload));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: bucketName,

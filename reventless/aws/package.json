@@ -20,6 +20,9 @@
   "dependencies": {
     "@aws-sdk/client-appsync": "3.970.0",
     "@aws-sdk/client-cloudfront": "3.970.0",
+    "@aws-sdk/client-location": "3.970.0",
+    "@aws-sdk/client-s3": "3.970.0",
+    "@aws-sdk/s3-request-presigner": "3.970.0",
     "@reventlessdev/rescript-aws-sdk": "workspace:*",
     "@reventlessdev/rescript-effect": "workspace:*",
     "@reventlessdev/rescript-jest": "workspace:*",

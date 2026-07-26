@@ -80,12 +80,14 @@ function make(name, opts) {
         allowedHeaders: ["*"],
         allowedMethods: [
           "HEAD",
-          "GET"
+          "GET",
+          "PUT",
+          "POST"
         ],
         allowedOrigins: ["*"],
         exposeHeaders: [
           "x-amz-server-side-encryption",
-          ">x-amz-request-id",
+          "x-amz-request-id",
           "x-amz-id-2",
           "ETag"
         ],
