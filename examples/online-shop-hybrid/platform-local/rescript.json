@@ -28,6 +28,7 @@
     "@reventlessdev/online-shop-hybrid-ordering-spec",
     "@reventlessdev/online-shop-hybrid-catalog",
     "@reventlessdev/online-shop-hybrid-ordering",
+    "@reventlessdev/online-shop-hybrid-seed",
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-local",

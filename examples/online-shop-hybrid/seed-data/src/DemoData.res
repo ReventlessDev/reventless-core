@@ -146,19 +146,18 @@ let productSvg = (~name: string, ~index: int): string => {
   `</svg>`
 }
 
-let buildProducts = (): array<product> => {
+let buildProducts = (~count=productCount, ()): array<product> => {
   // Category share proportional to weight, so the catalog is lopsided the way a
   // real one is rather than eight even buckets.
   let totalWeight = categories->Array.reduce(0, (sum, c) => sum + c.weight)
   let products = []
   let n = ref(0)
   categories->Array.forEach(category => {
-    let exact =
-      Int.toFloat(category.weight) /. Int.toFloat(totalWeight) *. Int.toFloat(productCount)
+    let exact = Int.toFloat(category.weight) /. Int.toFloat(totalWeight) *. Int.toFloat(count)
     let share = Math.round(exact)->Int.fromFloat
     let share = share < 2 ? 2 : share
     for _ in 1 to share {
-      if products->Array.length < productCount {
+      if products->Array.length < count {
         n := n.contents + 1
         let qualifier = pick(qualifiers)
         let suffix = qualifier == "" ? "" : ` ${qualifier}`
@@ -205,8 +204,8 @@ type customer = {
   lng: float,
 }
 
-let buildCustomers = (): array<customer> =>
-  Array.fromInitializer(~length=customerCount, i => {
+let buildCustomers = (~count=customerCount, ()): array<customer> =>
+  Array.fromInitializer(~length=count, i => {
     let first = firstNames->Array.get(mod(i, firstNames->Array.length))->Option.getOr("Ada")
     let last =
       lastNames->Array.get(mod(i * 7 + 3, lastNames->Array.length))->Option.getOr("Beck")
@@ -238,7 +237,12 @@ type order = {
   shippingMethod: OrderingPlugin.PlaceOrder.shippingMethod,
 }
 
-let buildOrders = (products: array<product>, customers: array<customer>): array<order> => {
+let buildOrders = (
+  products: array<product>,
+  customers: array<customer>,
+  ~count=orderCount,
+  (),
+): array<order> => {
   // Zipf over a fixed shuffle: a handful of products carry most of the demand
   // and the tail is long, so ProductDemand reads as a real leaderboard.
   let shuffled = ReventlessSeed.Seed.Random.sampleWeighted(
@@ -250,7 +254,7 @@ let buildOrders = (products: array<product>, customers: array<customer>): array<
   // Milder skew on customers: a few repeat buyers, nobody with zero.
   let customerWeights = ReventlessSeed.Seed.Random.zipfWeights(customers, ~exponent=0.45)
 
-  Array.fromInitializer(~length=orderCount, i => {
+  Array.fromInitializer(~length=count, i => {
     let sizeRoll = ReventlessSeed.Seed.Random.float(random)
     let size = if sizeRoll < 0.5 {
       1

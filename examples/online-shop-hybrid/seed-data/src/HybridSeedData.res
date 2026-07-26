@@ -1,40 +1,18 @@
-// Seeds the online-shop-hybrid example with a coherent demo dataset by driving
-// the example's own GraphQL mutations — no direct store access.
+// The online-shop-hybrid demo data set(s), exported as `Seed.dataSet` values.
 //
-// Because it goes through the public command API, this doubles as a smoke test:
-// it exercises the DCB append path, both extension points, and the AutoShipOrder
-// automation. Keep it in the review scope of any command signature change —
-// though a signature change breaks `DemoCommands.res` at compile time first.
+// This is the shareable artifact: `dataSets` carries everything domain-specific
+// — the phases, the view verification, and the summary board — behind the
+// generic `Seed.dataSet` shape, so any platform script (this example's
+// `platform-local`/`platform-aws`, or a downstream consumer) seeds it with just
+// `Seed.Runner.seed(~sets=HybridSeedData.dataSets, ~connect=…)`.
 //
-//   pnpm run serve:reset     # in one shell
-//   pnpm run demo-data       # in another
-//
-// What to seed lives in `DemoData.res`; how commands map onto the API lives in
-// `DemoCommands.res`; the transport and reporting come from `ReventlessSeed`.
+// Because every phase drives the public GraphQL command API, a run doubles as a
+// smoke test: it exercises the DCB append path, both extension points, and the
+// AutoShipOrder automation. `DemoData.res` holds *what* to seed; `DemoCommands.res`
+// maps command values onto mutations; the transport and reporting come from
+// `ReventlessSeed`.
 
 open ReventlessSeed
-
-let endpoint = Seed.Runner.envOr("REVENTLESS_GRAPHQL_ENDPOINT", "http://localhost:4000/graphql")
-let loginEndpoint = Seed.Runner.envOr(
-  "REVENTLESS_LOGIN_ENDPOINT",
-  "http://localhost:4000/__inmemory/login",
-)
-// Presign-shaped upload endpoint product images are uploaded through — the local
-// dev route by default, retargetable at a deployed AWS presign Function URL to
-// seed the same images into a real bucket.
-let uploadEndpoint = Seed.Runner.envOr(
-  "REVENTLESS_UPLOAD_ENDPOINT",
-  "http://localhost:4000/__inmemory/upload",
-)
-
-let client = Seed.Client.make(
-  ~config={
-    endpoint,
-    loginEndpoint,
-    username: Seed.Runner.envOr("REVENTLESS_DEMO_USER", "admin"),
-    password: Seed.Runner.envOr("REVENTLESS_DEMO_PASSWORD", "admin"),
-  },
-)
 
 // Every queryable view this example exposes. `Unfillable` is not a way to
 // silence a gap — it records a view no volume of seed data can reach, with the
@@ -53,22 +31,24 @@ let views = [
 
 // ── Phases ──────────────────────────────────────────────────────────────────
 
-let seedCategories = async () => {
+let seedCategories = async (~client: Seed.Client.t) => {
   await client->Seed.Client.sendAll(
     DemoData.categories->Array.map(c =>
       DemoCommands.addCategory(AddCategory({categoryId: c.id, name: c.name}))
     ),
   )
-  Seed.Runner.report(
-    `categories: ${(DemoData.categories->Array.length)->Int.toString} added`,
-  )
+  Seed.Runner.report(`categories: ${(DemoData.categories->Array.length)->Int.toString} added`)
 }
 
 // Upload each product's deterministic placeholder SVG through the deployment's
 // upload endpoint and swap `imageUrl` for the returned served `/{prefix}/{key}`
 // ref, so the demo image travels the real upload → store → serve loop (local
 // dev store or AWS bucket) exactly like a user upload — no external image URL.
-let uploadProductImages = async (products: array<DemoData.product>): array<DemoData.product> => {
+let uploadProductImages = async (
+  products: array<DemoData.product>,
+  ~client: Seed.Client.t,
+  ~uploadEndpoint: string,
+): array<DemoData.product> => {
   let out = []
   for i in 0 to products->Array.length - 1 {
     switch products->Array.get(i) {
@@ -93,7 +73,7 @@ let uploadProductImages = async (products: array<DemoData.product>): array<DemoD
   out
 }
 
-let seedProducts = async (products: array<DemoData.product>) => {
+let seedProducts = async (products: array<DemoData.product>, ~client: Seed.Client.t) => {
   await client->Seed.Client.sendAll(
     products->Array.map(p =>
       DemoCommands.addProduct(
@@ -111,7 +91,7 @@ let seedProducts = async (products: array<DemoData.product>) => {
   Seed.Runner.report(`products: ${(products->Array.length)->Int.toString} added`)
 }
 
-let seedCatalogEdits = async (products: array<DemoData.product>) => {
+let seedCatalogEdits = async (products: array<DemoData.product>, ~client: Seed.Client.t) => {
   let repriced = DemoData.repricedProducts(products)
   await client->Seed.Client.sendAll(
     repriced->Array.map(p =>
@@ -151,7 +131,7 @@ let seedCatalogEdits = async (products: array<DemoData.product>) => {
   )
 }
 
-let seedSupplierFeed = async () => {
+let seedSupplierFeed = async (~client: Seed.Client.t) => {
   for i in 0 to DemoData.supplierFeed->Array.length - 1 {
     switch DemoData.supplierFeed->Array.get(i) {
     | Some(row) =>
@@ -189,7 +169,7 @@ let seedSupplierFeed = async () => {
   )
 }
 
-let seedCustomers = async (customers: array<DemoData.customer>) => {
+let seedCustomers = async (customers: array<DemoData.customer>, ~client: Seed.Client.t) => {
   await client->Seed.Client.sendAll(
     customers->Array.map(c =>
       DemoCommands.customer(~id=c.id, Register({email: c.email, address: c.address}))
@@ -214,7 +194,7 @@ let seedCustomers = async (customers: array<DemoData.customer>) => {
   )
 }
 
-let seedOrders = async (orders: array<DemoData.order>) => {
+let seedOrders = async (orders: array<DemoData.order>, ~client: Seed.Client.t) => {
   for i in 0 to orders->Array.length - 1 {
     switch orders->Array.get(i) {
     | Some(order) =>
@@ -247,7 +227,7 @@ let seedOrders = async (orders: array<DemoData.order>) => {
   )
 }
 
-let dispatchStandardBatch = async (orders: array<DemoData.order>) => {
+let dispatchStandardBatch = async (orders: array<DemoData.order>, ~client: Seed.Client.t) => {
   let dispatched = DemoData.batchDispatched(orders)
   await client->Seed.Client.sendAll(
     dispatched->Array.map(o => DemoCommands.shipOrder(ShipOrder({orderId: o.id}))),
@@ -261,7 +241,11 @@ let dispatchStandardBatch = async (orders: array<DemoData.order>) => {
   dispatched->Array.map(o => o.id)
 }
 
-let seedCancellations = async (orders: array<DemoData.order>, ~dispatched: array<string>) => {
+let seedCancellations = async (
+  orders: array<DemoData.order>,
+  ~client: Seed.Client.t,
+  ~dispatched: array<string>,
+) => {
   let cancellable = DemoData.cancellable(orders, ~dispatched)
   let targets = DemoData.cancelled(cancellable)
   await client->Seed.Client.sendAll(
@@ -273,7 +257,7 @@ let seedCancellations = async (orders: array<DemoData.order>, ~dispatched: array
   )
 }
 
-let seedDeactivations = async (customers: array<DemoData.customer>) => {
+let seedDeactivations = async (customers: array<DemoData.customer>, ~client: Seed.Client.t) => {
   let targets = DemoData.deactivatedCustomers(customers)
   await client->Seed.Client.sendAll(
     targets->Array.map(c => DemoCommands.customer(~id=c.id, Deactivate)),
@@ -283,7 +267,7 @@ let seedDeactivations = async (customers: array<DemoData.customer>) => {
 
 // ── Summary ─────────────────────────────────────────────────────────────────
 
-let summarise = async (~counts: dict<int>) => {
+let summarise = async (~client: Seed.Client.t, ~counts: dict<int>) => {
   let orders = await client->Seed.Client.queryAllNodes(
     ~field="Ordering_Orders",
     ~selection="status shippingMethod",
@@ -360,26 +344,39 @@ let summarise = async (~counts: dict<int>) => {
   } else {
     []
   }
-  Seed.Runner.warn(
-    Array.concat(spreadWarning, Seed.Runner.unfillableWarnings(~views, ~counts)),
-  )
+  Seed.Runner.warn(Array.concat(spreadWarning, Seed.Runner.unfillableWarnings(~views, ~counts)))
 }
 
 // ── Run ─────────────────────────────────────────────────────────────────────
 
-let main = async () => {
-  Console.log(`Seeding demo data via ${endpoint}`)
-  await client->Seed.Client.login
+// The shared seed run, parameterized only by volume so every data set walks the
+// same phases. Uploads no-op when the connection carries no upload endpoint
+// (a deployment that serves none), keeping `imageUrl` empty rather than failing.
+let run = async (
+  connection: Seed.connection,
+  ~productCount: int,
+  ~customerCount: int,
+  ~orderCount: int,
+): unit => {
+  let client = connection.client
 
-  let products = await uploadProductImages(DemoData.buildProducts())
-  let customers = DemoData.buildCustomers()
-  let orders = DemoData.buildOrders(products, customers)
+  let built = DemoData.buildProducts(~count=productCount, ())
+  let products = if connection.uploadEndpoint == "" {
+    Seed.Runner.report(
+      "product images: skipped (no upload endpoint / SEED_SKIP_UPLOADS) — imageUrl left empty",
+    )
+    built
+  } else {
+    await uploadProductImages(built, ~client, ~uploadEndpoint=connection.uploadEndpoint)
+  }
+  let customers = DemoData.buildCustomers(~count=customerCount, ())
+  let orders = DemoData.buildOrders(products, customers, ~count=orderCount, ())
 
-  await seedCategories()
-  await seedProducts(products)
-  await seedCatalogEdits(products)
-  await seedSupplierFeed()
-  await seedCustomers(customers)
+  await seedCategories(~client)
+  await seedProducts(products, ~client)
+  await seedCatalogEdits(products, ~client)
+  await seedSupplierFeed(~client)
+  await seedCustomers(customers, ~client)
 
   // Products reach Ordering asynchronously through the Products extension
   // point; PlaceOrder rejects until the shadow copy lands.
@@ -390,13 +387,32 @@ let main = async () => {
   )
   Seed.Runner.report(`ordering: ${available->Int.toString} products available`)
 
-  await seedOrders(orders)
-  let dispatched = await dispatchStandardBatch(orders)
-  await seedCancellations(orders, ~dispatched)
-  await seedDeactivations(customers)
+  await seedOrders(orders, ~client)
+  let dispatched = await dispatchStandardBatch(orders, ~client)
+  await seedCancellations(orders, ~client, ~dispatched)
+  await seedDeactivations(customers, ~client)
 
   let counts = await Seed.Runner.verifyViews(client, ~views)
-  await summarise(~counts)
+  await summarise(~client, ~counts)
 }
 
-Seed.Runner.run(main)->ignore
+// Two sets, so `Seed.Runner.seed` presents a selection: the full demo, and a
+// compact sample for a quick end-to-end check. Both walk identical phases.
+let dataSets: array<Seed.dataSet> = [
+  {
+    name: "full",
+    label: `full — ${DemoData.productCount->Int.toString} products, ${DemoData.customerCount->Int.toString} customers, ${DemoData.orderCount->Int.toString} orders`,
+    seed: connection =>
+      run(
+        connection,
+        ~productCount=DemoData.productCount,
+        ~customerCount=DemoData.customerCount,
+        ~orderCount=DemoData.orderCount,
+      ),
+  },
+  {
+    name: "sample",
+    label: "sample — 16 products, 8 customers, 40 orders",
+    seed: connection => run(connection, ~productCount=16, ~customerCount=8, ~orderCount=40),
+  },
+]

@@ -1,0 +1,21 @@
+{
+  "name": "@reventlessdev/reventless-seed-aws",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "warnings": {
+    "error": "-44+101"
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    }
+  ],
+  "dependencies": [
+    "@reventlessdev/reventless-seed"
+  ],
+  "compiler-flags": [],
+  "suffix": ".res.mjs"
+}

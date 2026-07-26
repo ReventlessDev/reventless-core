@@ -95,7 +95,13 @@ let warn = (warnings: array<string>): unit =>
  * plainly that the store is now half-seeded — recovery is a reset, not a re-run.
  */
 let run = async (main: unit => promise<unit>): unit =>
-  try await main() catch {
+  try {
+    await main()
+    // Exit cleanly: HTTP keep-alive sockets (and, on the interactive path, the
+    // readline/stdin handle) can otherwise keep the event loop alive so the CLI
+    // appears to hang after a successful run.
+    exit(0)
+  } catch {
   | Failed(message) =>
     Console.error("")
     Console.error("Seeding aborted — the store is now half-seeded; re-run against a")
@@ -112,3 +118,82 @@ let run = async (main: unit => promise<unit>): unit =>
     )
     exit(1)
   }
+
+/**
+ * A named, seedable data set. `seed` owns everything domain-specific — the
+ * phases, `verifyViews`, the summary board — so the generic runner never sees
+ * domain detail. `label` is what the selection menu shows.
+ */
+type dataSet = {
+  name: string,
+  label: string,
+  seed: Seed_Connect.connection => promise<unit>,
+}
+
+/**
+ * A failure before any command is sent — bad data-set selection, an
+ * unreachable/undeployed target, a login failure. Nothing was written, so this
+ * says so plainly rather than warning about a half-seeded store (which would
+ * send the user resetting a store the run never touched).
+ */
+let abortStartup = (message: string): unit => {
+  Seed_Prompt.close()
+  Console.error("")
+  Console.error("Seeding did not start — nothing was written. Fix the cause below and re-run.")
+  Console.error("")
+  Console.error(message)
+  exit(1)
+}
+
+/**
+ * Top-level seed entry: choose a data set (auto when there is one, `SEED_SET`
+ * or a menu otherwise), connect, then hand the connection to the chosen set.
+ * Prompts are closed before seeding so the shared readline never lingers.
+ *
+ * Selection and connect run before any command is sent, so a failure there is
+ * reported as "did not start"; only failures inside the data set's own `seed`
+ * carry the half-seeded warning (via `run`).
+ */
+let seed = (~sets: array<dataSet>, ~connect: unit => promise<Seed_Connect.connection>): unit => {
+  let go = async () => {
+    let started = try {
+      let chosen = switch sets {
+      | [only] => only
+      | _ =>
+        switch Seed_Prompt.envValue("SEED_SET") {
+        | Some(wanted) =>
+          switch sets->Array.find(s => s.name == wanted) {
+          | Some(s) => s
+          | None =>
+            throw(
+              Failed(
+                `SEED_SET="${wanted}" matches no data set (have: ${sets
+                  ->Array.map(s => s.name)
+                  ->Array.join(", ")})`,
+              ),
+            )
+          }
+        | None =>
+          await Seed_Prompt.select(~title="Data set:", ~options=sets->Array.map(s => (s.label, s)))
+        }
+      }
+      let connection = await connect()
+      Seed_Prompt.close()
+      Some((chosen, connection))
+    } catch {
+    | Failed(message) =>
+      abortStartup(message)
+      None
+    | exn =>
+      abortStartup(exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown"))
+      None
+    }
+    switch started {
+    | None => () // unreachable: abortStartup has already exited
+    | Some((chosen, connection)) =>
+      heading(`Seeding "${chosen.label}" into ${connection.label}`)
+      await run(() => chosen.seed(connection))
+    }
+  }
+  go()->ignore
+}

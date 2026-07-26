@@ -1,0 +1,29 @@
+{
+  "name": "@reventlessdev/reventless-seed-aws",
+  "version": "1.0.0-alpha.1",
+  "description": "AWS connect for the Reventless seed harness — stack discovery and Cognito login, no AWS SDK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build"
+  },
+  "dependencies": {
+    "@reventlessdev/reventless-seed": "workspace:*"
+  },
+  "devDependencies": {
+    "rescript": "12.3.0"
+  },
+  "peerDependencies": {
+    "rescript": "12.3.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "reventless/seed-aws"
+  }
+}

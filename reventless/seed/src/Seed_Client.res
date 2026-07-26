@@ -27,9 +27,12 @@ let sleep = (ms: int): promise<unit> => Promise.make((resolve, _) => setTimeout(
 
 type config = {
   endpoint: string,
-  loginEndpoint: string,
-  username: string,
-  password: string,
+  // Present only for the `login` flow (a platform that mints tokens over HTTP,
+  // e.g. the local dev `/__inmemory/login`). Omit when the bearer is supplied
+  // out-of-band via `useToken` (e.g. a Cognito id token minted by the caller).
+  loginEndpoint?: string,
+  username?: string,
+  password?: string,
 }
 
 type t = {config: config, mutable token: option<string>}
@@ -39,6 +42,11 @@ let make = (~config: config): t => {config, token: None}
 /** The bearer token from the last successful `login`, if any — so callers (e.g.
     Seed.Upload) can authenticate side-channel requests with the same identity. */
 let currentToken = (t: t): option<string> => t.token
+
+/** Injects a bearer obtained out-of-band (e.g. a Cognito id token), instead of
+    minting one via `login`. Provider-agnostic: the harness only cares that the
+    token is a valid bearer for `endpoint`. */
+let useToken = (t: t, token: string): unit => t.token = Some(token)
 
 // ── JSON helpers ────────────────────────────────────────────────────────────
 
@@ -61,28 +69,31 @@ let nodeString = (node: JSON.t, key: string): option<string> =>
 // ── Requests ────────────────────────────────────────────────────────────────
 
 let login = async (t: t): unit => {
+  let loginEndpoint = switch t.config.loginEndpoint {
+  | Some(e) => e
+  | None => throw(Failed("login: no loginEndpoint configured — supply one or call useToken"))
+  }
+  let username = t.config.username->Option.getOr("")
+  let password = t.config.password->Option.getOr("")
   let body = JSON.stringify(
     JSON.Encode.object(
       Dict.fromArray([
-        ("username", JSON.Encode.string(t.config.username)),
-        ("password", JSON.Encode.string(t.config.password)),
+        ("username", JSON.Encode.string(username)),
+        ("password", JSON.Encode.string(password)),
       ]),
     ),
   )
   let res = try await fetch(
-    t.config.loginEndpoint,
+    loginEndpoint,
     {method: "POST", headers: Dict.fromArray([("content-type", "application/json")]), body},
   ) catch {
-  | _ =>
-    throw(
-      Failed(`login: cannot reach ${t.config.loginEndpoint} — is the platform running?`),
-    )
+  | _ => throw(Failed(`login: cannot reach ${loginEndpoint} — is the platform running?`))
   }
   if !(res->responseOk) {
     let detail = await res->responseText
     throw(
       Failed(
-        `login as "${t.config.username}" failed with HTTP ${(res->responseStatus)
+        `login as "${username}" failed with HTTP ${(res->responseStatus)
             ->Int.toString}: ${detail}`,
       ),
     )

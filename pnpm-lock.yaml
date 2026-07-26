@@ -818,6 +818,9 @@ importers:
 
   examples/online-shop-hybrid/platform-aws:
     dependencies:
+      '@reventlessdev/online-shop-hybrid-seed':
+        specifier: workspace:*
+        version: link:../seed-data
       '@reventlessdev/rescript-pulumi-aws':
         specifier: workspace:*
         version: link:../../../rescript/pulumi-aws
@@ -833,6 +836,12 @@ importers:
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/infra
+      '@reventlessdev/reventless-seed':
+        specifier: workspace:*
+        version: link:../../../reventless/seed
+      '@reventlessdev/reventless-seed-aws':
+        specifier: workspace:*
+        version: link:../../../reventless/seed-aws
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../../../reventless/spec
@@ -864,6 +873,9 @@ importers:
       '@reventlessdev/online-shop-hybrid-ordering-spec':
         specifier: workspace:*
         version: link:../ordering-spec
+      '@reventlessdev/online-shop-hybrid-seed':
+        specifier: workspace:*
+        version: link:../seed-data
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/pulumi-pulumi
@@ -896,6 +908,31 @@ importers:
       '@reventlessdev/reventless-host-shell':
         specifier: 3.0.0-alpha.44
         version: 3.0.0-alpha.44(71c315ff37eefece9b60a3c015699043)
+
+  examples/online-shop-hybrid/seed-data:
+    dependencies:
+      '@reventlessdev/online-shop-hybrid-catalog':
+        specifier: workspace:*
+        version: link:../catalog
+      '@reventlessdev/online-shop-hybrid-catalog-spec':
+        specifier: workspace:*
+        version: link:../catalog-spec
+      '@reventlessdev/online-shop-hybrid-ordering':
+        specifier: workspace:*
+        version: link:../ordering
+      '@reventlessdev/online-shop-hybrid-ordering-spec':
+        specifier: workspace:*
+        version: link:../ordering-spec
+      '@reventlessdev/reventless-seed':
+        specifier: workspace:*
+        version: link:../../../reventless/seed
+      sury:
+        specifier: ^11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
+    devDependencies:
+      rescript:
+        specifier: 12.3.0
+        version: 12.3.0
 
   packages/doc:
     dependencies:
@@ -1573,6 +1610,16 @@ importers:
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   reventless/seed:
+    devDependencies:
+      rescript:
+        specifier: 12.3.0
+        version: 12.3.0
+
+  reventless/seed-aws:
+    dependencies:
+      '@reventlessdev/reventless-seed':
+        specifier: workspace:*
+        version: link:../seed
     devDependencies:
       rescript:
         specifier: 12.3.0

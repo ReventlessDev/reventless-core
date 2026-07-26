@@ -1,0 +1,34 @@
+{
+  "name": "@reventlessdev/online-shop-hybrid-seed",
+  "version": "1.0.0-alpha.1",
+  "description": "Shareable demo data set(s) for the online-shop-hybrid example, exported as reventless-seed data sets",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build"
+  },
+  "dependencies": {
+    "@reventlessdev/online-shop-hybrid-catalog": "workspace:*",
+    "@reventlessdev/online-shop-hybrid-catalog-spec": "workspace:*",
+    "@reventlessdev/online-shop-hybrid-ordering": "workspace:*",
+    "@reventlessdev/online-shop-hybrid-ordering-spec": "workspace:*",
+    "@reventlessdev/reventless-seed": "workspace:*",
+    "sury": "^11.0.0-alpha.4"
+  },
+  "devDependencies": {
+    "rescript": "12.3.0"
+  },
+  "peerDependencies": {
+    "rescript": "12.3.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "examples/online-shop-hybrid/seed-data"
+  }
+}

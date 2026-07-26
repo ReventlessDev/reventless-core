@@ -9,8 +9,25 @@ module Random = Seed_Random
 module Client = Seed_Client
 module Runner = Seed_Runner
 module Upload = Seed_Upload
+module Prompt = Seed_Prompt
+module Connect = Seed_Connect
 
 exception Failed = Seed_Types.Failed
+
+// A live target a data set seeds against: an authenticated client, the upload
+// endpoint (empty when the deployment serves no uploads), and a label.
+type connection = Seed_Connect.connection = {
+  client: Seed_Client.t,
+  uploadEndpoint: string,
+  label: string,
+}
+
+// A named, seedable data set. `seed` owns everything domain-specific.
+type dataSet = Seed_Runner.dataSet = {
+  name: string,
+  label: string,
+  seed: connection => promise<unit>,
+}
 
 type rec value = Seed_Types.value =
   | String(string)

@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Seed_Types$ReventlessSeed from "./Seed_Types.res.mjs";
 import * as Seed_Client$ReventlessSeed from "./Seed_Client.res.mjs";
+import * as Seed_Prompt$ReventlessSeed from "./Seed_Prompt.res.mjs";
 
 function envOr(key, fallback) {
   return Stdlib_Option.getOr(process.env[key], fallback);
@@ -84,7 +85,9 @@ function warn(warnings) {
 
 async function run(main) {
   try {
-    return await main();
+    await main();
+    process.exit(0);
+    return;
   } catch (raw_message) {
     let message = Primitive_exceptions.internalToException(raw_message);
     if (message.RE_EXN_ID === Seed_Types$ReventlessSeed.Failed) {
@@ -105,6 +108,69 @@ async function run(main) {
   }
 }
 
+function abortStartup(message) {
+  Seed_Prompt$ReventlessSeed.close();
+  console.error("");
+  console.error("Seeding did not start — nothing was written. Fix the cause below and re-run.");
+  console.error("");
+  console.error(message);
+  process.exit(1);
+}
+
+function seed(sets, connect) {
+  let go = async () => {
+    let started;
+    try {
+      let chosen;
+      if (sets.length !== 1) {
+        let wanted = Seed_Prompt$ReventlessSeed.envValue("SEED_SET");
+        if (wanted !== undefined) {
+          let s = sets.find(s => s.name === wanted);
+          if (s !== undefined) {
+            chosen = s;
+          } else {
+            throw {
+              RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+              _1: `SEED_SET="` + wanted + `" matches no data set (have: ` + sets.map(s => s.name).join(", ") + `)`,
+              Error: new Error()
+            };
+          }
+        } else {
+          chosen = await Seed_Prompt$ReventlessSeed.select("Data set:", sets.map(s => [
+            s.label,
+            s
+          ]), undefined);
+        }
+      } else {
+        chosen = sets[0];
+      }
+      let connection = await connect();
+      Seed_Prompt$ReventlessSeed.close();
+      started = [
+        chosen,
+        connection
+      ];
+    } catch (raw_message) {
+      let message = Primitive_exceptions.internalToException(raw_message);
+      if (message.RE_EXN_ID === Seed_Types$ReventlessSeed.Failed) {
+        abortStartup(message._1);
+        started = undefined;
+      } else {
+        abortStartup(Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(message), Stdlib_JsExn.message), "unknown"));
+        started = undefined;
+      }
+    }
+    if (started === undefined) {
+      return;
+    }
+    let connection$1 = started[1];
+    let chosen$1 = started[0];
+    heading(`Seeding "` + chosen$1.label + `" into ` + connection$1.label);
+    return await run(() => chosen$1.seed(connection$1));
+  };
+  go();
+}
+
 export {
   envOr,
   report,
@@ -114,5 +180,7 @@ export {
   unfillableWarnings,
   warn,
   run,
+  abortStartup,
+  seed,
 }
 /* Stdlib_JsExn Not a pure module */

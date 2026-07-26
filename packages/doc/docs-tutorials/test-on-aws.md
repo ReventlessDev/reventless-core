@@ -41,6 +41,45 @@ Sign in to the host-shell with that user and run the same smoke test you ran
 locally: add a category and product, register a customer, place an order, and
 confirm read models update.
 
+## Seed demo data (optional)
+
+To fill the views without clicking through by hand, run the demo seed against the
+deployment. It drives the same public GraphQL command API as locally. The AWS
+seed targets AWS by construction — run it from `platform-aws/`:
+
+```bash
+cd examples/online-shop-hybrid/platform-aws
+pnpm run seed
+```
+
+It first asks which data set to seed (`full` or `sample`), then picks the stack
+(one Pulumi stack auto-selects; otherwise it lists the stacks or reads
+`SEED_STACK`). It reads that stack's `config.json` — the same file the host-shell
+boots from — for the GraphQL and upload endpoints, region and Cognito client (or
+the stack outputs directly when no host-shell URL is published), then asks for a
+username and password. It signs in against Cognito for that user (who must exist
+with a permanent password, per the previous section) and runs the seed.
+
+Set `SEED_SET` (`full` or `sample`), `SEED_STACK` (the stack name), plus
+`REVENTLESS_DEMO_USER`/`REVENTLESS_DEMO_PASSWORD` for a non-interactive (CI) run.
+The seed is non-idempotent — run it against a fresh deployment, not on top of
+existing data.
+
+**Skipping image uploads.** `SEED_SKIP_UPLOADS=1` seeds the domain data without
+uploading product images (`imageUrl` is left empty) — use it when the deployment
+serves no upload endpoint, or to seed fast. This is the reliable knob: an *empty*
+`REVENTLESS_UPLOAD_ENDPOINT` reads as "unset" and falls back to discovery, so set
+`SEED_SKIP_UPLOADS` rather than blanking the endpoint.
+
+**Pulumi backend.** This example is deployed by CI to **Pulumi Cloud**, so its
+`SeedAws.res` pins the backend to `https://api.pulumi.com` — the seed reads the
+stack from there regardless of which backend your CLI is logged into (needs a
+Pulumi Cloud login / `PULUMI_ACCESS_TOKEN`). A self-hosted platform instead pins
+its own store, e.g. `ReventlessSeedAws.connect(~backend="s3://<bucket>?region=<r>", ())`
+(needs ambient AWS creds). `SEED_PULUMI_BACKEND` overrides the pin; omit it to use
+the ambient login. The pin is passed as `PULUMI_BACKEND_URL` on a copy of the
+environment, so your persistent `pulumi login` is never changed.
+
 ## Verify subscriptions end to end
 
 The example ships a verification script that drives a command and confirms the

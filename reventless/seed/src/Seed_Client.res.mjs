@@ -21,6 +21,10 @@ function currentToken(t) {
   return t.token;
 }
 
+function useToken(t, token) {
+  t.token = token;
+}
+
 function field(json, key) {
   if (typeof json === "object" && json !== null && !Array.isArray(json)) {
     return json[key];
@@ -38,19 +42,32 @@ function nodeString(node, key) {
 }
 
 async function login(t) {
+  let e = t.config.loginEndpoint;
+  let loginEndpoint;
+  if (e !== undefined) {
+    loginEndpoint = e;
+  } else {
+    throw {
+      RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+      _1: "login: no loginEndpoint configured — supply one or call useToken",
+      Error: new Error()
+    };
+  }
+  let username = Stdlib_Option.getOr(t.config.username, "");
+  let password = Stdlib_Option.getOr(t.config.password, "");
   let body = JSON.stringify(Object.fromEntries([
     [
       "username",
-      t.config.username
+      username
     ],
     [
       "password",
-      t.config.password
+      password
     ]
   ]));
   let res;
   try {
-    res = await fetch(t.config.loginEndpoint, {
+    res = await fetch(loginEndpoint, {
       method: "POST",
       headers: Object.fromEntries([[
           "content-type",
@@ -61,7 +78,7 @@ async function login(t) {
   } catch (exn) {
     throw {
       RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
-      _1: `login: cannot reach ` + t.config.loginEndpoint + ` — is the platform running?`,
+      _1: `login: cannot reach ` + loginEndpoint + ` — is the platform running?`,
       Error: new Error()
     };
   }
@@ -69,7 +86,7 @@ async function login(t) {
     let detail = await res.text();
     throw {
       RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
-      _1: `login as "` + t.config.username + `" failed with HTTP ` + res.status.toString() + `: ` + detail,
+      _1: `login as "` + username + `" failed with HTTP ` + res.status.toString() + `: ` + detail,
       Error: new Error()
     };
   }
@@ -227,6 +244,7 @@ export {
   sleep,
   make,
   currentToken,
+  useToken,
   field,
   asString,
   nodeString,

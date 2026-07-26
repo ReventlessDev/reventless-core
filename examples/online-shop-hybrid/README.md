@@ -70,19 +70,32 @@ Walkthrough: [Run it locally](../../packages/doc/docs-tutorials/run-locally.md) 
 ## Seed demo data
 
 Every view starts empty, which makes "the component is broken" and "there is no
-data" look identical. `demo-data` fills them — 8 categories, 64 products, 20
-customers and 150 orders — by driving the example's own GraphQL mutations:
+data" look identical. `seed` fills them — the `full` set is 8 categories, 64
+products, 20 customers and 150 orders — by driving the example's own GraphQL
+mutations. The provider is **where you run it**, not a prompt: `pnpm run seed` in
+`platform-local/` seeds the local dev platform, and in `platform-aws/` it seeds
+the deployed stack.
 
 ```bash
 cd platform-local
 pnpm run serve:reset     # in one shell — a clean store
-pnpm run demo-data       # in another
+pnpm run seed            # in another — pick a data set, log in as admin/admin
 ```
+
+Two data sets ship, so the run first asks which to seed: `full` (above) and a
+compact `sample` (16 products, 8 customers, 40 orders) for a quick check. It then
+prompts for a **username and password**. Local authenticates against the dev
+`/__inmemory/login` route (the seeded `admin`/`admin` by default). A single
+shared prompt handles the whole run.
 
 Generation is deterministic (fixed PRNG seed, fixed literal data), so a reset
 plus a re-run reproduces the same rows. There is no idempotence logic: run it
-against a fresh store, not on top of an existing one. Point it elsewhere with
-`REVENTLESS_GRAPHQL_ENDPOINT`.
+against a fresh store, not on top of an existing one.
+
+For a non-interactive run (CI), set `SEED_SET` (`full` or `sample`) plus
+`REVENTLESS_DEMO_USER`/`REVENTLESS_DEMO_PASSWORD` to skip every prompt. Add
+`SEED_SKIP_UPLOADS=1` to seed the domain data without product images (leaving
+`imageUrl` empty) — handy when a deployment serves no upload endpoint.
 
 Because it goes through the public command API rather than writing to the store,
 it doubles as a smoke test — and it is **domain-coupled by design**. The seed is
@@ -90,17 +103,23 @@ built from real plugin command values (`AddProduct.command`,
 `PlaceOrder.command`, …), so a renamed or re-shaped command breaks the build
 rather than seeding states the domain can no longer reach.
 
-It is split three ways, under `platform-local/src/`:
+The domain data is a shareable package, [`online-shop-hybrid-seed`](seed-data),
+so both platform scripts import the same sets:
 
 | File | Role |
 |---|---|
-| `DemoData.res` | *What* to seed — literal data and the deterministic generation that turns it into categories, products, customers and orders |
-| `DemoCommands.res` | The adapter — how this example's command values map onto GraphQL mutation fields and arguments |
-| `DemoSeed.res` | The run — phases, view verification, and the summary |
+| `seed-data/src/DemoData.res` | *What* to seed — literal data and the deterministic generation that turns it into categories, products, customers and orders |
+| `seed-data/src/DemoCommands.res` | The adapter — how this example's command values map onto GraphQL mutation fields and arguments |
+| `seed-data/src/HybridSeedData.res` | The data sets — phases, view verification, and the summary, exported as `Seed.dataSet` values |
+| `platform-local/src/SeedLocal.res` | Thin entry — `Seed.Runner.seed` with the local connection |
+| `platform-aws/src/SeedAws.res` | Thin entry — `Seed.Runner.seed` with the AWS connection |
 
-The transport, deterministic randomness, view checks and failure reporting are
-generic and live in [`@reventlessdev/reventless-seed`](../../reventless/seed);
-nothing in that package knows about this domain.
+The transport, prompts, connection, deterministic randomness, view checks and
+failure reporting are generic and live in
+[`@reventlessdev/reventless-seed`](../../reventless/seed); the AWS connect (stack
+discovery + Cognito login) lives in
+[`@reventlessdev/reventless-seed-aws`](../../reventless/seed-aws). Neither package
+knows about this domain.
 
 The order data is shaped by the shipping method each order is placed with, which
 is what makes the lifecycle visible: `Express` orders are auto-shipped by the
@@ -129,6 +148,20 @@ Before deploying, point the stack configs at your own Pulumi org and review the
 Cognito + host-shell settings — see
 [Deploy to your AWS account](../../packages/doc/docs-tutorials/deploy-to-aws.md)
 and [Test it on AWS](../../packages/doc/docs-tutorials/test-on-aws.md).
+
+## Seed the deployed shop
+
+Run [`pnpm run seed`](#seed-demo-data) from `platform-aws/` — it targets AWS by
+construction. It picks the stack (or `SEED_STACK`), discovers the endpoints from
+the stack's published `config.json` (or its stack outputs), and signs in against
+Cognito. The user must exist with a permanent password — see
+[Test it on AWS](../../packages/doc/docs-tutorials/test-on-aws.md). As locally,
+the seed is **non-idempotent** — run it against a fresh deployment.
+
+```bash
+cd platform-aws
+pnpm run seed            # pick a data set and stack, then log in
+```
 
 ## Learn the model
 

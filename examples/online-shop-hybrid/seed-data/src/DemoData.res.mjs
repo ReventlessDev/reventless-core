@@ -305,18 +305,19 @@ function productSvg(name, index) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">` + (`<rect width="400" height="300" fill="` + bg + `"/>`) + (`<text x="200" y="160" fill="#ffffff" font-family="sans-serif" font-size="22" font-weight="600" text-anchor="middle">` + label + `</text>`) + `</svg>`;
 }
 
-function buildProducts() {
+function buildProducts(countOpt, param) {
+  let count = countOpt !== undefined ? countOpt : 60;
   let totalWeight = Stdlib_Array.reduce(categories, 0, (sum, c) => sum + c.weight | 0);
   let products = [];
   let n = {
     contents: 0
   };
   categories.forEach(category => {
-    let exact = category.weight / totalWeight * 60;
+    let exact = category.weight / totalWeight * count;
     let share = Math.round(exact) | 0;
     let share$1 = share < 2 ? 2 : share;
     for (let _for = 1; _for <= share$1; ++_for) {
-      if (products.length < 60) {
+      if (products.length < count) {
         n.contents = n.contents + 1 | 0;
         let qualifier = Seed_Random$ReventlessSeed.pickOr(random, "", qualifiers);
         let suffix = qualifier === "" ? "" : ` ` + qualifier;
@@ -351,8 +352,9 @@ function discountedPrice(p) {
   return Math.round(p.price * 0.85 * 100.0) / 100.0;
 }
 
-function buildCustomers() {
-  return Stdlib_Array.fromInitializer(20, i => {
+function buildCustomers(countOpt, param) {
+  let count = countOpt !== undefined ? countOpt : 20;
+  return Stdlib_Array.fromInitializer(count, i => {
     let first = Stdlib_Option.getOr(firstNames[Primitive_int.mod_(i, firstNames.length)], "Ada");
     let last = Stdlib_Option.getOr(lastNames[Primitive_int.mod_((i * 7 | 0) + 3 | 0, lastNames.length)], "Beck");
     let id = `cust-` + pad(i + 1 | 0, 2);
@@ -379,14 +381,15 @@ function newAddress() {
   return address();
 }
 
-function buildOrders(products, customers) {
+function buildOrders(products, customers, countOpt, param) {
+  let count = countOpt !== undefined ? countOpt : 150;
   let shuffled = Seed_Random$ReventlessSeed.sampleWeighted(random, products.map(p => [
     p,
     1.0
   ]), products.length);
   let productWeights = Seed_Random$ReventlessSeed.zipfWeights(shuffled, 1.1);
   let customerWeights = Seed_Random$ReventlessSeed.zipfWeights(customers, 0.45);
-  return Stdlib_Array.fromInitializer(150, i => {
+  return Stdlib_Array.fromInitializer(count, i => {
     let sizeRoll = Seed_Random$ReventlessSeed.float(random);
     let size = sizeRoll < 0.5 ? 1 : (
         sizeRoll < 0.75 ? 2 : (

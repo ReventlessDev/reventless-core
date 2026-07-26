@@ -8,21 +8,8 @@ import * as Seed$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed.re
 import * as Seed_Client$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Client.res.mjs";
 import * as Seed_Runner$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Runner.res.mjs";
 import * as Seed_Upload$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Upload.res.mjs";
-import * as DemoData$ReventlessdevOnlineShopHybridPlatformLocal from "./DemoData.res.mjs";
-import * as DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal from "./DemoCommands.res.mjs";
-
-let endpoint = Seed_Runner$ReventlessSeed.envOr("REVENTLESS_GRAPHQL_ENDPOINT", "http://localhost:4000/graphql");
-
-let loginEndpoint = Seed_Runner$ReventlessSeed.envOr("REVENTLESS_LOGIN_ENDPOINT", "http://localhost:4000/__inmemory/login");
-
-let uploadEndpoint = Seed_Runner$ReventlessSeed.envOr("REVENTLESS_UPLOAD_ENDPOINT", "http://localhost:4000/__inmemory/upload");
-
-let client = Seed_Client$ReventlessSeed.make({
-  endpoint: endpoint,
-  loginEndpoint: loginEndpoint,
-  username: Seed_Runner$ReventlessSeed.envOr("REVENTLESS_DEMO_USER", "admin"),
-  password: Seed_Runner$ReventlessSeed.envOr("REVENTLESS_DEMO_PASSWORD", "admin")
-});
+import * as DemoData$OnlineShopHybridSeed from "./DemoData.res.mjs";
+import * as DemoCommands$OnlineShopHybridSeed from "./DemoCommands.res.mjs";
 
 let views = [
   {
@@ -63,21 +50,21 @@ let views = [
   }
 ];
 
-async function seedCategories() {
-  await Seed_Client$ReventlessSeed.sendAll(client, DemoData$ReventlessdevOnlineShopHybridPlatformLocal.categories.map(c => DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.addCategory({
+async function seedCategories(client) {
+  await Seed_Client$ReventlessSeed.sendAll(client, DemoData$OnlineShopHybridSeed.categories.map(c => DemoCommands$OnlineShopHybridSeed.addCategory({
     TAG: "AddCategory",
     categoryId: c.id,
     name: c.name
   })));
-  return Seed_Runner$ReventlessSeed.report(`categories: ` + DemoData$ReventlessdevOnlineShopHybridPlatformLocal.categories.length.toString() + ` added`);
+  return Seed_Runner$ReventlessSeed.report(`categories: ` + DemoData$OnlineShopHybridSeed.categories.length.toString() + ` added`);
 }
 
-async function uploadProductImages(products) {
+async function uploadProductImages(products, client, uploadEndpoint) {
   let out = [];
   for (let i = 0, i_finish = products.length; i < i_finish; ++i) {
     let p = products[i];
     if (p !== undefined) {
-      let svg = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.productSvg(p.name, i);
+      let svg = DemoData$OnlineShopHybridSeed.productSvg(p.name, i);
       let servedRef = await Seed_Upload$ReventlessSeed.uploadAsset(uploadEndpoint, svg, p.id + `.svg`, "image/svg+xml", Seed_Client$ReventlessSeed.currentToken(client));
       if (servedRef.TAG === "Ok") {
         out.push({
@@ -101,8 +88,8 @@ async function uploadProductImages(products) {
   return out;
 }
 
-async function seedProducts(products) {
-  await Seed_Client$ReventlessSeed.sendAll(client, products.map(p => DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.addProduct({
+async function seedProducts(products, client) {
+  await Seed_Client$ReventlessSeed.sendAll(client, products.map(p => DemoCommands$OnlineShopHybridSeed.addProduct({
     TAG: "AddProduct",
     productId: p.id,
     name: p.name,
@@ -114,79 +101,79 @@ async function seedProducts(products) {
   return Seed_Runner$ReventlessSeed.report(`products: ` + products.length.toString() + ` added`);
 }
 
-async function seedCatalogEdits(products) {
-  let repriced = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.repricedProducts(products);
-  await Seed_Client$ReventlessSeed.sendAll(client, repriced.map(p => DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.changeProductPrice({
+async function seedCatalogEdits(products, client) {
+  let repriced = DemoData$OnlineShopHybridSeed.repricedProducts(products);
+  await Seed_Client$ReventlessSeed.sendAll(client, repriced.map(p => DemoCommands$OnlineShopHybridSeed.changeProductPrice({
     TAG: "ChangeProductPrice",
     productId: p.id,
-    price: DemoData$ReventlessdevOnlineShopHybridPlatformLocal.discountedPrice(p)
+    price: DemoData$OnlineShopHybridSeed.discountedPrice(p)
   })));
-  let redescribed = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.redescribedProducts(products);
-  await Seed_Client$ReventlessSeed.sendAll(client, redescribed.map(p => DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.changeProductDescription({
+  let redescribed = DemoData$OnlineShopHybridSeed.redescribedProducts(products);
+  await Seed_Client$ReventlessSeed.sendAll(client, redescribed.map(p => DemoCommands$OnlineShopHybridSeed.changeProductDescription({
     TAG: "ChangeProductDescription",
     productId: p.id,
     description: p.description + ` Updated listing copy.`
   })));
-  await Seed_Client$ReventlessSeed.sendAll(client, [DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.renameCategory({
+  await Seed_Client$ReventlessSeed.sendAll(client, [DemoCommands$OnlineShopHybridSeed.renameCategory({
       TAG: "RenameCategory",
-      categoryId: DemoData$ReventlessdevOnlineShopHybridPlatformLocal.renamedCategoryId,
-      name: DemoData$ReventlessdevOnlineShopHybridPlatformLocal.renamedCategoryName
+      categoryId: DemoData$OnlineShopHybridSeed.renamedCategoryId,
+      name: DemoData$OnlineShopHybridSeed.renamedCategoryName
     })]);
-  let archived = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.categories.filter(c => c.archive);
-  await Seed_Client$ReventlessSeed.sendAll(client, archived.map(c => DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.archiveCategory({
+  let archived = DemoData$OnlineShopHybridSeed.categories.filter(c => c.archive);
+  await Seed_Client$ReventlessSeed.sendAll(client, archived.map(c => DemoCommands$OnlineShopHybridSeed.archiveCategory({
     TAG: "ArchiveCategory",
     categoryId: c.id
   })));
   return Seed_Runner$ReventlessSeed.report(`catalog edits: ` + repriced.length.toString() + ` repriced, ` + redescribed.length.toString() + ` redescribed, 1 renamed, ` + archived.length.toString() + ` archived`);
 }
 
-async function seedSupplierFeed() {
-  for (let i = 0, i_finish = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.supplierFeed.length; i < i_finish; ++i) {
-    let row = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.supplierFeed[i];
+async function seedSupplierFeed(client) {
+  for (let i = 0, i_finish = DemoData$OnlineShopHybridSeed.supplierFeed.length; i < i_finish; ++i) {
+    let row = DemoData$OnlineShopHybridSeed.supplierFeed[i];
     if (row !== undefined) {
-      await Seed_Client$ReventlessSeed.send(client, DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.importProduct(row), ["TranslationFailed"]);
+      await Seed_Client$ReventlessSeed.send(client, DemoCommands$OnlineShopHybridSeed.importProduct(row), ["TranslationFailed"]);
     }
   }
   let audits = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Catalog_ImportProductAudits", "status");
   let countWith = status => audits.filter(a => Primitive_object.equal(Seed_Client$ReventlessSeed.nodeString(a, "status"), status)).length;
   let successes = countWith("Success");
   let failures = countWith("Failure");
-  if (successes !== DemoData$ReventlessdevOnlineShopHybridPlatformLocal.expectedImportSuccesses || failures !== DemoData$ReventlessdevOnlineShopHybridPlatformLocal.expectedImportFailures) {
+  if (successes !== DemoData$OnlineShopHybridSeed.expectedImportSuccesses || failures !== DemoData$OnlineShopHybridSeed.expectedImportFailures) {
     throw {
       RE_EXN_ID: Seed$ReventlessSeed.Failed,
-      _1: `supplier feed: expected ` + DemoData$ReventlessdevOnlineShopHybridPlatformLocal.expectedImportSuccesses.toString() + ` Success / ` + DemoData$ReventlessdevOnlineShopHybridPlatformLocal.expectedImportFailures.toString() + ` Failure audit rows, got ` + successes.toString() + `/` + failures.toString(),
+      _1: `supplier feed: expected ` + DemoData$OnlineShopHybridSeed.expectedImportSuccesses.toString() + ` Success / ` + DemoData$OnlineShopHybridSeed.expectedImportFailures.toString() + ` Failure audit rows, got ` + successes.toString() + `/` + failures.toString(),
       Error: new Error()
     };
   }
   return Seed_Runner$ReventlessSeed.report(`supplier feed: ` + successes.toString() + ` imported, ` + failures.toString() + ` rejected (both shown in the audit view)`);
 }
 
-async function seedCustomers(customers) {
-  await Seed_Client$ReventlessSeed.sendAll(client, customers.map(c => DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.customer(c.id, {
+async function seedCustomers(customers, client) {
+  await Seed_Client$ReventlessSeed.sendAll(client, customers.map(c => DemoCommands$OnlineShopHybridSeed.customer(c.id, {
     TAG: "Register",
     email: c.email,
     address: c.address
   })));
-  await Seed_Client$ReventlessSeed.sendAll(client, customers.map(c => DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.customer(c.id, {
+  await Seed_Client$ReventlessSeed.sendAll(client, customers.map(c => DemoCommands$OnlineShopHybridSeed.customer(c.id, {
     TAG: "SetLocation",
     location: {
       lat: c.lat,
       lng: c.lng
     }
   })));
-  let moved = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.movedCustomers(customers);
-  await Seed_Client$ReventlessSeed.sendAll(client, moved.map(c => DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.customer(c.id, {
+  let moved = DemoData$OnlineShopHybridSeed.movedCustomers(customers);
+  await Seed_Client$ReventlessSeed.sendAll(client, moved.map(c => DemoCommands$OnlineShopHybridSeed.customer(c.id, {
     TAG: "UpdateAddress",
-    address: DemoData$ReventlessdevOnlineShopHybridPlatformLocal.newAddress()
+    address: DemoData$OnlineShopHybridSeed.newAddress()
   })));
   return Seed_Runner$ReventlessSeed.report(`customers: ` + customers.length.toString() + ` registered, ` + moved.length.toString() + ` moved`);
 }
 
-async function seedOrders(orders) {
+async function seedOrders(orders, client) {
   for (let i = 0, i_finish = orders.length; i < i_finish; ++i) {
     let order = orders[i];
     if (order !== undefined) {
-      await Seed_Client$ReventlessSeed.send(client, DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.placeOrder({
+      await Seed_Client$ReventlessSeed.send(client, DemoCommands$OnlineShopHybridSeed.placeOrder({
         TAG: "PlaceOrder",
         orderId: order.id,
         customerId: order.customerId,
@@ -202,9 +189,9 @@ async function seedOrders(orders) {
   return Seed_Runner$ReventlessSeed.report(`orders: ` + orders.length.toString() + ` placed (Standard ` + countMethod("Standard").toString() + `, Express ` + countMethod("Express").toString() + `, Pickup ` + countMethod("Pickup").toString() + `) — Express placements were auto-shipped on arrival`);
 }
 
-async function dispatchStandardBatch(orders) {
-  let dispatched = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.batchDispatched(orders);
-  await Seed_Client$ReventlessSeed.sendAll(client, dispatched.map(o => DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.shipOrder({
+async function dispatchStandardBatch(orders, client) {
+  let dispatched = DemoData$OnlineShopHybridSeed.batchDispatched(orders);
+  await Seed_Client$ReventlessSeed.sendAll(client, dispatched.map(o => DemoCommands$OnlineShopHybridSeed.shipOrder({
     TAG: "ShipOrder",
     orderId: o.id
   })));
@@ -213,23 +200,23 @@ async function dispatchStandardBatch(orders) {
   return dispatched.map(o => o.id);
 }
 
-async function seedCancellations(orders, dispatched) {
-  let cancellable = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.cancellable(orders, dispatched);
-  let targets = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.cancelled(cancellable);
-  await Seed_Client$ReventlessSeed.sendAll(client, targets.map(o => DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.cancelOrder({
+async function seedCancellations(orders, client, dispatched) {
+  let cancellable = DemoData$OnlineShopHybridSeed.cancellable(orders, dispatched);
+  let targets = DemoData$OnlineShopHybridSeed.cancelled(cancellable);
+  await Seed_Client$ReventlessSeed.sendAll(client, targets.map(o => DemoCommands$OnlineShopHybridSeed.cancelOrder({
     TAG: "CancelOrder",
     orderId: o.id
   })));
   return Seed_Runner$ReventlessSeed.report(`cancellations: ` + targets.length.toString() + ` of ` + cancellable.length.toString() + ` cancellable orders cancelled`);
 }
 
-async function seedDeactivations(customers) {
-  let targets = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.deactivatedCustomers(customers);
-  await Seed_Client$ReventlessSeed.sendAll(client, targets.map(c => DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.customer(c.id, "Deactivate")));
+async function seedDeactivations(customers, client) {
+  let targets = DemoData$OnlineShopHybridSeed.deactivatedCustomers(customers);
+  await Seed_Client$ReventlessSeed.sendAll(client, targets.map(c => DemoCommands$OnlineShopHybridSeed.customer(c.id, "Deactivate")));
   return Seed_Runner$ReventlessSeed.report(`customers: ` + targets.length.toString() + ` deactivated`);
 }
 
-async function summarise(counts) {
+async function summarise(client, counts) {
   let orders = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Ordering_Orders", "status shippingMethod");
   let statuses = [
     "Placed",
@@ -276,35 +263,42 @@ async function summarise(counts) {
   return Seed_Runner$ReventlessSeed.warn(spreadWarning.concat(Seed_Runner$ReventlessSeed.unfillableWarnings(views, counts)));
 }
 
-async function main() {
-  console.log(`Seeding demo data via ` + endpoint);
-  await Seed_Client$ReventlessSeed.login(client);
-  let products = await uploadProductImages(DemoData$ReventlessdevOnlineShopHybridPlatformLocal.buildProducts());
-  let customers = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.buildCustomers();
-  let orders = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.buildOrders(products, customers);
-  await seedCategories();
-  await seedProducts(products);
-  await seedCatalogEdits(products);
-  await seedSupplierFeed();
-  await seedCustomers(customers);
-  let expected = products.map(p => p.id).concat(DemoData$ReventlessdevOnlineShopHybridPlatformLocal.importedSkus);
+async function run(connection, productCount, customerCount, orderCount) {
+  let client = connection.client;
+  let built = DemoData$OnlineShopHybridSeed.buildProducts(productCount, undefined);
+  let products = connection.uploadEndpoint === "" ? (Seed_Runner$ReventlessSeed.report("product images: skipped (no upload endpoint / SEED_SKIP_UPLOADS) — imageUrl left empty"), built) : await uploadProductImages(built, client, connection.uploadEndpoint);
+  let customers = DemoData$OnlineShopHybridSeed.buildCustomers(customerCount, undefined);
+  let orders = DemoData$OnlineShopHybridSeed.buildOrders(products, customers, orderCount, undefined);
+  await seedCategories(client);
+  await seedProducts(products, client);
+  await seedCatalogEdits(products, client);
+  await seedSupplierFeed(client);
+  await seedCustomers(customers, client);
+  let expected = products.map(p => p.id).concat(DemoData$OnlineShopHybridSeed.importedSkus);
   let available = await Seed_Client$ReventlessSeed.waitForIds(client, "Ordering_AvailableProductsByIds", expected, undefined);
   Seed_Runner$ReventlessSeed.report(`ordering: ` + available.toString() + ` products available`);
-  await seedOrders(orders);
-  let dispatched = await dispatchStandardBatch(orders);
-  await seedCancellations(orders, dispatched);
-  await seedDeactivations(customers);
+  await seedOrders(orders, client);
+  let dispatched = await dispatchStandardBatch(orders, client);
+  await seedCancellations(orders, client, dispatched);
+  await seedDeactivations(customers, client);
   let counts = await Seed_Runner$ReventlessSeed.verifyViews(client, views);
-  return await summarise(counts);
+  return await summarise(client, counts);
 }
 
-Seed_Runner$ReventlessSeed.run(main);
+let dataSets = [
+  {
+    name: "full",
+    label: `full — ` + DemoData$OnlineShopHybridSeed.productCount.toString() + ` products, ` + DemoData$OnlineShopHybridSeed.customerCount.toString() + ` customers, ` + DemoData$OnlineShopHybridSeed.orderCount.toString() + ` orders`,
+    seed: connection => run(connection, DemoData$OnlineShopHybridSeed.productCount, DemoData$OnlineShopHybridSeed.customerCount, DemoData$OnlineShopHybridSeed.orderCount)
+  },
+  {
+    name: "sample",
+    label: "sample — 16 products, 8 customers, 40 orders",
+    seed: connection => run(connection, 16, 8, 40)
+  }
+];
 
 export {
-  endpoint,
-  loginEndpoint,
-  uploadEndpoint,
-  client,
   views,
   seedCategories,
   uploadProductImages,
@@ -317,6 +311,7 @@ export {
   seedCancellations,
   seedDeactivations,
   summarise,
-  main,
+  run,
+  dataSets,
 }
-/* endpoint Not a pure module */
+/* dataSets Not a pure module */

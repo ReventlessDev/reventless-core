@@ -5,14 +5,18 @@
   "description": "Online Shop Hybrid — AWS platform deployment",
   "license": "Apache-2.0",
   "scripts": {
-    "build": "rescript build"
+    "build": "rescript build",
+    "seed": "node src/SeedAws.res.mjs"
   },
   "dependencies": {
+    "@reventlessdev/online-shop-hybrid-seed": "workspace:*",
     "@reventlessdev/rescript-pulumi-aws": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "@reventlessdev/reventless-aws": "workspace:*",
     "@reventlessdev/reventless-host-shell": "3.0.0-alpha.44",
     "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-seed": "workspace:*",
+    "@reventlessdev/reventless-seed-aws": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "^11.0.0-alpha.4"
   },

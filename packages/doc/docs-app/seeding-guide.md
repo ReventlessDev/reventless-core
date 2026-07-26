@@ -4,9 +4,12 @@ This guide covers filling a running platform with data — for a demo, for manua
 exploration, or as an end-to-end smoke test. It is for application developers who
 have a platform running locally and are looking at nine empty grids.
 
-The `online-shop-hybrid` example is the running illustration; its seeder lives in
-`platform-local/src/` and is built on
-[`@reventlessdev/reventless-seed`](https://www.npmjs.com/package/@reventlessdev/reventless-seed).
+The `online-shop-hybrid` example is the running illustration; its demo data is a
+shareable `seed-data` package, and each platform (`platform-local`,
+`platform-aws`) has a thin entry script. Both are built on
+[`@reventlessdev/reventless-seed`](https://www.npmjs.com/package/@reventlessdev/reventless-seed),
+with AWS connect in
+[`@reventlessdev/reventless-seed-aws`](https://www.npmjs.com/package/@reventlessdev/reventless-seed-aws).
 
 ## 1. Why an empty store is a problem
 
@@ -38,20 +41,24 @@ those paths to exist at all.
 
 It also means no privileged back door has to exist for seeding.
 
-## 3. Split the seed three ways
+## 3. Split the seed by coupling
 
 Seeding is domain-coupled by design — that is the point. Concentrate the coupling
-rather than spreading it:
+in a shareable data package, and keep the per-provider entries thin:
 
 | Part | Holds | Example |
 |---|---|---|
-| **Data** | *What* to seed: literal data and the generation that turns it into entities | `DemoData.res` |
-| **Adapter** | How your command values map onto mutation fields and arguments | `DemoCommands.res` |
-| **Run** | Phases, view verification, summary | `DemoSeed.res` |
+| **Data** | *What* to seed: literal data and the generation that turns it into entities | `seed-data/src/DemoData.res` |
+| **Adapter** | How your command values map onto mutation fields and arguments | `seed-data/src/DemoCommands.res` |
+| **Data sets** | Phases, view verification, summary — exported as `Seed.dataSet` values | `seed-data/src/HybridSeedData.res` |
+| **Entry** | Pick a set, connect, seed — one line per provider | `platform-*/src/Seed{Local,Aws}.res` |
 
-Everything domain-agnostic — transport, deterministic randomness, view checks,
-failure reporting — comes from the `reventless-seed` package and needs no
-per-project code.
+Everything domain-agnostic — transport, prompts, the connection, deterministic
+randomness, view checks, failure reporting — comes from the `reventless-seed`
+package (AWS connect from `reventless-seed-aws`) and needs no per-project code.
+Because the data sets are a package rather than app-local code, a second platform
+— or another repository consuming the same published plugins — imports the same
+sets instead of copying them.
 
 ### The adapter is where type safety lands
 
@@ -153,7 +160,7 @@ There is deliberately no idempotence logic. Seed against a fresh store:
 
 ```bash
 pnpm run serve:reset     # in one shell
-pnpm run demo-data       # in another
+pnpm run seed            # in another
 ```
 
 ## 8. Pitfalls
@@ -176,18 +183,30 @@ Four things that are easy to get wrong and quiet when you do:
 
 ## 9. Where to put it
 
-The seeder belongs with the platform package that serves the API — for the hybrid
-example, `platform-local/src/` — and gets wired as a script:
+Put the domain data in a shareable package (the hybrid example's `seed-data`), and
+give each platform a thin entry that names the provider — the provider is where
+the script runs, not a prompt. Each is wired as a `seed` script:
 
 ```json
-{
-  "scripts": {
-    "demo-data": "node src/DemoSeed.res.mjs"
-  }
-}
+// platform-local/package.json
+{ "scripts": { "seed": "node src/SeedLocal.res.mjs" } }
+
+// platform-aws/package.json
+{ "scripts": { "seed": "node src/SeedAws.res.mjs" } }
 ```
 
-Point it at a different platform with `REVENTLESS_GRAPHQL_ENDPOINT` and
+Each entry is a single call — pick a set, connect, seed:
+
+```rescript
+// SeedLocal.res
+Seed.Runner.seed(~sets=HybridSeedData.dataSets, ~connect=Seed.Connect.local())
+
+// SeedAws.res
+Seed.Runner.seed(~sets=HybridSeedData.dataSets, ~connect=ReventlessSeedAws.connect())
+```
+
+If more than one data set exists the runner prompts which to seed (or `SEED_SET`
+selects one). Override the local endpoints with `REVENTLESS_GRAPHQL_ENDPOINT` /
 `REVENTLESS_LOGIN_ENDPOINT`; nothing in the harness assumes a local runtime.
 
 ## Related
