@@ -2,6 +2,11 @@
 
 import * as S from "sury/src/S.res.mjs";
 
+let locationSchema = S.schema(s => ({
+  lat: s.m(S.float),
+  lng: s.m(S.float)
+}));
+
 let commandSchema = S.union([
   S.schema(s => ({
     TAG: "Register",
@@ -15,6 +20,14 @@ let commandSchema = S.union([
   S.schema(s => ({
     TAG: "UpdateAddress",
     address: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "SetLocation",
+    location: s.m(locationSchema)
+  })),
+  S.schema(s => ({
+    TAG: "AttachDocument",
+    attachmentRef: s.m(S.string)
   })),
   S.literal("Deactivate")
 ]);
@@ -32,6 +45,14 @@ let eventSchema = S.union([
   S.schema(s => ({
     TAG: "AddressUpdated",
     address: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "LocationSet",
+    location: s.m(locationSchema)
+  })),
+  S.schema(s => ({
+    TAG: "DocumentAttached",
+    attachmentRef: s.m(S.string)
   })),
   S.literal("Deactivated")
 ]);
@@ -55,10 +76,11 @@ let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Customer/Aggrega
 export {
   name,
   Id,
+  locationSchema,
   commandSchema,
   eventSchema,
   errorSchema,
   moduleUrl,
   commandAuthorization,
 }
-/* commandSchema Not a pure module */
+/* locationSchema Not a pure module */

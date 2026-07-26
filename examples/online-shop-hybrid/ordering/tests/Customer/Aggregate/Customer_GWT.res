@@ -49,6 +49,30 @@ describe("Customer Behavior", () => {
     ->thenNoEvent
   )
 
+  test("SetLocation on active customer produces LocationSet", () =>
+    givenEvents([Registered({email: "alice@x.y", address: "123 Main"})])
+    ->whenCmd(SetLocation({location: {lat: 51.2093, lng: 3.2247}}))
+    ->thenEvent(LocationSet({location: {lat: 51.2093, lng: 3.2247}}))
+  )
+
+  test("SetLocation on non-existent aggregate returns CustomerNotFound", () =>
+    givenEvents([])
+    ->whenCmd(SetLocation({location: {lat: 51.2093, lng: 3.2247}}))
+    ->thenError(CustomerNotFound)
+  )
+
+  test("AttachDocument on active customer produces DocumentAttached", () =>
+    givenEvents([Registered({email: "alice@x.y", address: "123 Main"})])
+    ->whenCmd(AttachDocument({attachmentRef: "customer-docs/alice/id.pdf"}))
+    ->thenEvent(DocumentAttached({attachmentRef: "customer-docs/alice/id.pdf"}))
+  )
+
+  test("AttachDocument on deactivated customer returns CustomerAlreadyDeactivated", () =>
+    givenEvents([Registered({email: "alice@x.y", address: "123 Main"}), Deactivated])
+    ->whenCmd(AttachDocument({attachmentRef: "customer-docs/alice/id.pdf"}))
+    ->thenError(CustomerAlreadyDeactivated)
+  )
+
   test("Deactivate on active customer produces Deactivated", () =>
     givenEvents([Registered({email: "alice@x.y", address: "123 Main"})])
     ->whenCmd(Deactivate)

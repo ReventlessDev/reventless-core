@@ -46,6 +46,9 @@ function evolve(state, event) {
         email: state.email,
         address: event.address
       };
+    case "LocationSet" :
+    case "DocumentAttached" :
+      return state;
   }
 }
 
@@ -123,6 +126,22 @@ function decide(state, command) {
             }]
         };
       }
+    case "SetLocation" :
+      return {
+        TAG: "Ok",
+        _0: [{
+            TAG: "LocationSet",
+            location: command.location
+          }]
+      };
+    case "AttachDocument" :
+      return {
+        TAG: "Ok",
+        _0: [{
+            TAG: "DocumentAttached",
+            attachmentRef: command.attachmentRef
+          }]
+      };
   }
 }
 

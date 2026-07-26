@@ -134,12 +134,24 @@ async function seedCustomers(customers) {
     email: c.email,
     address: c.address
   })));
+  await Seed_Client$ReventlessSeed.sendAll(client, customers.map(c => DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.customer(c.id, {
+    TAG: "SetLocation",
+    location: {
+      lat: c.lat,
+      lng: c.lng
+    }
+  })));
+  let withDocs = customers.filter((param, i) => i % 4 === 0);
+  await Seed_Client$ReventlessSeed.sendAll(client, withDocs.map(c => DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.customer(c.id, {
+    TAG: "AttachDocument",
+    attachmentRef: c.attachmentRef
+  })));
   let moved = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.movedCustomers(customers);
   await Seed_Client$ReventlessSeed.sendAll(client, moved.map(c => DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal.customer(c.id, {
     TAG: "UpdateAddress",
     address: DemoData$ReventlessdevOnlineShopHybridPlatformLocal.newAddress()
   })));
-  return Seed_Runner$ReventlessSeed.report(`customers: ` + customers.length.toString() + ` registered, ` + moved.length.toString() + ` moved`);
+  return Seed_Runner$ReventlessSeed.report(`customers: ` + customers.length.toString() + ` registered, ` + withDocs.length.toString() + ` with documents, ` + moved.length.toString() + ` moved`);
 }
 
 async function seedOrders(orders) {

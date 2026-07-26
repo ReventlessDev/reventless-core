@@ -7,6 +7,8 @@ import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/comp
 let stateSchema = S.schema(s => ({
   email: s.m(S.string),
   address: s.m(S.string),
+  lat: s.m(S.float),
+  lng: s.m(S.float),
   deactivated: s.m(S.bool),
   orderCount: s.m(S.int),
   displayName: s.m(S.option(S.string))

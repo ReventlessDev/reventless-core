@@ -158,6 +158,21 @@ let seedCustomers = async (customers: array<DemoData.customer>) => {
       DemoCommands.customer(~id=c.id, Register({email: c.email, address: c.address}))
     ),
   )
+  // Give every customer a map coordinate so the Customers map view renders a
+  // pin per row. The geo-point payload is a `{lat, lng}` input object.
+  await client->Seed.Client.sendAll(
+    customers->Array.map(c =>
+      DemoCommands.customer(~id=c.id, SetLocation({location: {lat: c.lat, lng: c.lng}}))
+    ),
+  )
+  // Attach a stored document to a slice of customers, so the file-reference
+  // field is populated in the demo dataset as well as offered in the form.
+  let withDocs = customers->Array.filterWithIndex((_, i) => mod(i, 4) == 0)
+  await client->Seed.Client.sendAll(
+    withDocs->Array.map(c =>
+      DemoCommands.customer(~id=c.id, AttachDocument({attachmentRef: c.attachmentRef}))
+    ),
+  )
   let moved = DemoData.movedCustomers(customers)
   await client->Seed.Client.sendAll(
     moved->Array.map(c =>
@@ -165,8 +180,8 @@ let seedCustomers = async (customers: array<DemoData.customer>) => {
     ),
   )
   Seed.Runner.report(
-    `customers: ${(customers->Array.length)->Int.toString} registered, ${(moved->Array.length)
-        ->Int.toString} moved`,
+    `customers: ${(customers->Array.length)->Int.toString} registered, ${(withDocs->Array.length)
+        ->Int.toString} with documents, ${(moved->Array.length)->Int.toString} moved`,
   )
 }
 

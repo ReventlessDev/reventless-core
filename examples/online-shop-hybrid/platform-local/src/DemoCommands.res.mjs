@@ -326,6 +326,56 @@ function customer(id, command) {
           }
         ]
       ]);
+    case "SetLocation" :
+      let location = command.location;
+      return Seed$ReventlessSeed.mutation(`Ordering_` + "Customer_SetLocation", [
+        [
+          "id",
+          {
+            TAG: "Id",
+            _0: id
+          }
+        ],
+        [
+          "location",
+          {
+            TAG: "Object",
+            _0: [
+              [
+                "lat",
+                {
+                  TAG: "Float",
+                  _0: location.lat
+                }
+              ],
+              [
+                "lng",
+                {
+                  TAG: "Float",
+                  _0: location.lng
+                }
+              ]
+            ]
+          }
+        ]
+      ]);
+    case "AttachDocument" :
+      return Seed$ReventlessSeed.mutation(`Ordering_` + "Customer_AttachDocument", [
+        [
+          "id",
+          {
+            TAG: "Id",
+            _0: id
+          }
+        ],
+        [
+          "attachmentRef",
+          {
+            TAG: "String",
+            _0: command.attachmentRef
+          }
+        ]
+      ]);
   }
 }
 

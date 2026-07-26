@@ -52,6 +52,8 @@ function project(param) {
         _1: {
           email: email,
           address: address,
+          lat: 0.0,
+          lng: 0.0,
           deactivated: false,
           orderCount: 0
         },
@@ -85,6 +87,20 @@ function project(param) {
           return newrecord;
         }
       };
+    case "LocationSet" :
+      let location = event.location;
+      return {
+        TAG: "Update",
+        _0: id,
+        _1: state => {
+          let newrecord = {...state};
+          newrecord.lng = location.lng;
+          newrecord.lat = location.lat;
+          return newrecord;
+        }
+      };
+    case "DocumentAttached" :
+      return "Ignore";
   }
 }
 
@@ -108,6 +124,8 @@ function project$1(param) {
     _1: {
       email: "",
       address: "",
+      lat: 0.0,
+      lng: 0.0,
       deactivated: false,
       orderCount: 1
     },

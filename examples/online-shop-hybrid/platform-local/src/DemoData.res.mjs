@@ -190,6 +190,33 @@ let cities = [
   "Gdansk"
 ];
 
+let cityCoords = [
+  [
+    51.2093,
+    3.2247
+  ],
+  [
+    43.2749,
+    11.9853
+  ],
+  [
+    52.0116,
+    4.3571
+  ],
+  [
+    60.2055,
+    24.6559
+  ],
+  [
+    47.999,
+    7.8421
+  ],
+  [
+    54.352,
+    18.6466
+  ]
+];
+
 let supplierFeed = [
   {
     sku: "SKU-4410",
@@ -252,6 +279,21 @@ function address() {
   return number.toString() + ` ` + Seed_Random$ReventlessSeed.pickOr(random, "", streets) + `, ` + Seed_Random$ReventlessSeed.pickOr(random, "", cities);
 }
 
+function locatedAddress() {
+  let number = Seed_Random$ReventlessSeed.int(random, 1, 180);
+  let cityIndex = Seed_Random$ReventlessSeed.int(random, 0, cities.length - 1 | 0);
+  let city = Stdlib_Option.getOr(cities[cityIndex], "");
+  let match = Stdlib_Option.getOr(cityCoords[cityIndex], [
+    0.0,
+    0.0
+  ]);
+  return [
+    number.toString() + ` ` + Seed_Random$ReventlessSeed.pickOr(random, "", streets) + `, ` + city,
+    match[0],
+    match[1]
+  ];
+}
+
 function buildProducts() {
   let totalWeight = Stdlib_Array.reduce(categories, 0, (sum, c) => sum + c.weight | 0);
   let products = [];
@@ -301,10 +343,15 @@ function buildCustomers() {
   return Stdlib_Array.fromInitializer(20, i => {
     let first = Stdlib_Option.getOr(firstNames[Primitive_int.mod_(i, firstNames.length)], "Ada");
     let last = Stdlib_Option.getOr(lastNames[Primitive_int.mod_((i * 7 | 0) + 3 | 0, lastNames.length)], "Beck");
+    let id = `cust-` + pad(i + 1 | 0, 2);
+    let match = locatedAddress();
     return {
-      id: `cust-` + pad(i + 1 | 0, 2),
+      id: id,
       email: (first + `.` + last + `@example.com`).toLowerCase(),
-      address: address()
+      address: match[0],
+      lat: match[1],
+      lng: match[2],
+      attachmentRef: `customer-docs/` + id + `/id-verification.pdf`
     };
   });
 }
@@ -393,6 +440,7 @@ export {
   lastNames,
   streets,
   cities,
+  cityCoords,
   supplierFeed,
   importedSkus,
   expectedImportSuccesses,
@@ -400,6 +448,7 @@ export {
   pad,
   pick,
   address,
+  locatedAddress,
   buildProducts,
   repricedProducts,
   redescribedProducts,

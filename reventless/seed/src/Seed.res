@@ -19,6 +19,7 @@ type rec value = Seed_Types.value =
   | Bool(bool)
   | Enum(string)
   | List(array<value>)
+  | Object(array<(string, value)>)
 
 type mutation = Seed_Types.mutation = {field: string, args: array<(string, value)>}
 

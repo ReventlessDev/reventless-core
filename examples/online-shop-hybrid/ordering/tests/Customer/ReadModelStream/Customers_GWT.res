@@ -18,6 +18,8 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     ->CustomerGwt.thenState({
       Customers.email: "alice@x.y",
       address: "123 Main",
+      lat: 0.0,
+      lng: 0.0,
       deactivated: false,
       orderCount: 0,
     })
@@ -29,6 +31,8 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     ->CustomerGwt.thenState({
       Customers.email: "alice2@x.y",
       address: "123 Main",
+      lat: 0.0,
+      lng: 0.0,
       deactivated: false,
       orderCount: 0,
     })
@@ -40,6 +44,21 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     ->CustomerGwt.thenState({
       Customers.email: "alice@x.y",
       address: "789 Pine",
+      lat: 0.0,
+      lng: 0.0,
+      deactivated: false,
+      orderCount: 0,
+    })
+  )
+
+  CustomerGwt.test("LocationSet fills the map coordinates", () =>
+    CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
+    ->CustomerGwt.whenEvent(Customer.LocationSet({location: {lat: 51.2093, lng: 3.2247}}))
+    ->CustomerGwt.thenState({
+      Customers.email: "alice@x.y",
+      address: "123 Main",
+      lat: 51.2093,
+      lng: 3.2247,
       deactivated: false,
       orderCount: 0,
     })
@@ -51,6 +70,8 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     ->CustomerGwt.thenState({
       Customers.email: "alice@x.y",
       address: "123 Main",
+      lat: 0.0,
+      lng: 0.0,
       deactivated: true,
       orderCount: 0,
     })
@@ -65,7 +86,7 @@ OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {
     )
     ->OrderGwt.thenStateWithId(
       "c1",
-      {Customers.email: "", address: "", deactivated: false, orderCount: 1},
+      {Customers.email: "", address: "", lat: 0.0, lng: 0.0, deactivated: false, orderCount: 1},
     )
   )
 
@@ -78,7 +99,7 @@ OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {
     )
     ->OrderGwt.thenStateWithId(
       "c1",
-      {Customers.email: "", address: "", deactivated: false, orderCount: 2},
+      {Customers.email: "", address: "", lat: 0.0, lng: 0.0, deactivated: false, orderCount: 2},
     )
   )
 })

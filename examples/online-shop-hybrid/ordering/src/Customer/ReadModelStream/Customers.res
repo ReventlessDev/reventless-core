@@ -6,10 +6,15 @@
 
 @@reventless.spec
 
+// `lat`/`lng` are a numeric coordinate pair, so the generated read-model view
+// offers a map display that drops a pin per customer. They are fed by the
+// Customer aggregate's `LocationSet` event (see `Customers_Projections.res`).
 @schema
 type state = {
   @displayName email: string,
   address: string,
+  lat: float,
+  lng: float,
   deactivated: bool,
   orderCount: int,
 }

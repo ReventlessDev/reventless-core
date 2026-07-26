@@ -144,5 +144,15 @@ let customer = (~id: string, command: OrderingPlugin.Customer.command): Seed.mut
       ordering("Customer_UpdateAddress"),
       [("id", Id(id)), ("address", String(address))],
     )
+  | SetLocation({location}) =>
+    Seed.mutation(
+      ordering("Customer_SetLocation"),
+      [("id", Id(id)), ("location", Object([("lat", Float(location.lat)), ("lng", Float(location.lng))]))],
+    )
+  | AttachDocument({attachmentRef}) =>
+    Seed.mutation(
+      ordering("Customer_AttachDocument"),
+      [("id", Id(id)), ("attachmentRef", String(attachmentRef))],
+    )
   | Deactivate => Seed.mutation(ordering("Customer_Deactivate"), [("id", Id(id))])
   }

@@ -16,6 +16,9 @@ type rec value =
   /** Rendered unquoted — GraphQL enum values are identifiers, not strings. */
   | Enum(string)
   | List(array<value>)
+  /** A nested GraphQL input object, e.g. a geo-point `{lat, lng}`. Keys are
+      rendered as bare identifiers, as GraphQL input-object fields require. */
+  | Object(array<(string, value)>)
 
 let quote = (s: string): string => JSON.stringify(JSON.Encode.string(s))
 
@@ -27,6 +30,8 @@ let rec toLiteral = (v: value): string =>
   | Bool(b) => b ? "true" : "false"
   | Enum(name) => name
   | List(items) => `[${items->Array.map(toLiteral)->Array.join(", ")}]`
+  | Object(fields) =>
+    `{${fields->Array.map(((k, v)) => `${k}: ${toLiteral(v)}`)->Array.join(", ")}}`
   }
 
 let ids = (xs: array<string>): value => List(xs->Array.map(x => Id(x)))

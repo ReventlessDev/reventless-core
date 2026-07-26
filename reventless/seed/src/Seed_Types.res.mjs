@@ -26,6 +26,8 @@ function toLiteral(v) {
       return v._0;
     case "List" :
       return `[` + v._0.map(toLiteral).join(", ") + `]`;
+    case "Object" :
+      return `{` + v._0.map(param => param[0] + `: ` + toLiteral(param[1])).join(", ") + `}`;
   }
 }
 

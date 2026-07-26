@@ -61,6 +61,17 @@ let lastNames = [
 let streets = ["Bakergasse", "Cedar Lane", "Dockside Way", "Elm Row", "Foundry Street"]
 let cities = ["Bruges", "Cortona", "Delft", "Espoo", "Freiburg", "Gdansk"]
 
+// Real coordinates for each entry in `cities`, index-aligned, so the Customers
+// map view drops each pin on the customer's actual city rather than at (0, 0).
+let cityCoords: array<(float, float)> = [
+  (51.2093, 3.2247), // Bruges
+  (43.2749, 11.9853), // Cortona
+  (52.0116, 4.3571), // Delft
+  (60.2055, 24.6559), // Espoo
+  (47.999, 7.8421), // Freiburg
+  (54.352, 18.6466), // Gdansk
+]
+
 // ── Supplier feed ───────────────────────────────────────────────────────────
 
 // Rows for the ImportProduct InboundTranslationSlice. The last one is
@@ -89,6 +100,16 @@ let pick = (xs: array<string>): string =>
 let address = (): string => {
   let number = ReventlessSeed.Seed.Random.int(random, ~min=1, ~max=180)
   `${number->Int.toString} ${pick(streets)}, ${pick(cities)}`
+}
+
+// An address paired with the coordinates of the city it names, so a customer's
+// map pin lands on the same city that appears in its address text.
+let locatedAddress = (): (string, float, float) => {
+  let number = ReventlessSeed.Seed.Random.int(random, ~min=1, ~max=180)
+  let cityIndex = ReventlessSeed.Seed.Random.int(random, ~min=0, ~max=cities->Array.length - 1)
+  let city = cities->Array.get(cityIndex)->Option.getOr("")
+  let (lat, lng) = cityCoords->Array.get(cityIndex)->Option.getOr((0.0, 0.0))
+  (`${number->Int.toString} ${pick(streets)}, ${city}`, lat, lng)
 }
 
 // ── Products ────────────────────────────────────────────────────────────────
@@ -149,17 +170,29 @@ let discountedPrice = (p: product): float => Math.round(p.price *. 0.85 *. 100.0
 
 // ── Customers ───────────────────────────────────────────────────────────────
 
-type customer = {id: string, email: string, address: string}
+type customer = {
+  id: string,
+  email: string,
+  address: string,
+  lat: float,
+  lng: float,
+  attachmentRef: string,
+}
 
 let buildCustomers = (): array<customer> =>
   Array.fromInitializer(~length=customerCount, i => {
     let first = firstNames->Array.get(mod(i, firstNames->Array.length))->Option.getOr("Ada")
     let last =
       lastNames->Array.get(mod(i * 7 + 3, lastNames->Array.length))->Option.getOr("Beck")
+    let id = `cust-${pad(i + 1, 2)}`
+    let (address, lat, lng) = locatedAddress()
     {
-      id: `cust-${pad(i + 1, 2)}`,
+      id,
       email: `${first}.${last}@example.com`->String.toLowerCase,
-      address: address(),
+      address,
+      lat,
+      lng,
+      attachmentRef: `customer-docs/${id}/id-verification.pdf`,
     }
   })
 
