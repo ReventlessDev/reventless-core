@@ -17,6 +17,8 @@ let translate = (input: externalInput) =>
         name: input.title,
         description: input.desc,
         price: Int.toFloat(input.unitPrice) /. 100.0,
+        // Supplier feed carries no image; Product.AddProduct requires the field.
+        imageUrl: "",
         categoryId: input.category,
       }),
     )])

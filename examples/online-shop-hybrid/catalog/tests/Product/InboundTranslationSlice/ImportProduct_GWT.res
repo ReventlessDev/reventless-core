@@ -26,6 +26,7 @@ describe("ImportProduct InboundTranslationSlice", () => {
         name: "Laptop",
         description: "high-end",
         price: 999.99,
+        imageUrl: "",
         categoryId: "cat1",
       }),
     )

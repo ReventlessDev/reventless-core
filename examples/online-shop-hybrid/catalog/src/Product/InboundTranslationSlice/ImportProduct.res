@@ -19,6 +19,10 @@ type command = AddProduct({
   name: string,
   description: string,
   price: float,
+  // Product.AddProduct requires an imageUrl; the supplier feed carries no image,
+  // so the translation supplies an empty string (no thumbnail) rather than
+  // omitting the field, which would reject the mapped command downstream.
+  imageUrl: string,
   categoryId: string,
 })
 
