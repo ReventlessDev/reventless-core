@@ -27,6 +27,21 @@ type svState = {
   price: float,
 }
 
+// Multi-variant enum used both as a required and as an optional state field, to pin
+// the nullability the sury→GraphQL deriver must preserve for the optional case.
+@schema
+type sourceKind =
+  | @as("tagged") Tagged
+  | @as("ancestry") Ancestry
+  | @as("substrate") Substrate
+
+@schema
+type enumState = {
+  productId: @s.matches(Reventless.DcbTag.string) string,
+  requiredSource: sourceKind,
+  optionalSource?: sourceKind,
+}
+
 @schema
 type addCommand = {
   productId: @s.matches(Reventless.DcbTag.string) string,
@@ -907,8 +922,38 @@ describe("Plugin admin fragment — kind enum + kindEq filter", () => {
     // kind is a real enum on the Plugin type (auto-derived from the payload-less variant)
     expect(sdl->String.includes("enum Platform_PluginKind"))->toBe(true)
     expect(sdl->String.includes("PlatformInfrastructure"))->toBe(true)
-    expect(sdl->String.includes("kind: Platform_PluginKind!"))->toBe(true)
+    // `kind` is `option<pluginKind>` — nullable on purpose so a kind-less legacy row
+    // can't collapse the whole Platform_Plugins query. It must render without a `!`.
+    expect(sdl->String.includes("kind: Platform_PluginKind"))->toBe(true)
+    expect(sdl->String.includes("kind: Platform_PluginKind!"))->toBe(false)
     // @scan folds a server-side equality filter for the panel split
     expect(sdl->String.includes("kindEq: String"))->toBe(true)
   })
+})
+
+describe("optional enum fields preserve GraphQL nullability", () => {
+  testPromise(
+    "required variant field → SomeEnum!; optional variant field → nullable SomeEnum",
+    async () => {
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=[
+          {
+            singleFieldName: "SV_Sourced",
+            listFieldName: "SV_Sourceds",
+            returnTypeName: "EnumState",
+            stateSchema: enumStateSchema->S.castToUnknown,
+            authorization: None,
+            includeIdParam: false,
+          },
+        ],
+      )
+      let sdl = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment).sdlPreview
+      // A required variant field stays non-null.
+      expect(sdl->String.includes("requiredSource: EnumStateRequiredSource!"))->toBe(true)
+      // An optional variant field is nullable: the enum is present but never with a `!`.
+      expect(sdl->String.includes("optionalSource: EnumStateOptionalSource"))->toBe(true)
+      expect(sdl->String.includes("optionalSource: EnumStateOptionalSource!"))->toBe(false)
+    },
+  )
 })

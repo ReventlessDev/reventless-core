@@ -82,6 +82,7 @@ let rec fromSury = (~parentName: string, ~fieldName: string, schema: S.t<unknown
         | _ => true
         }
       )
+      let isOptional = nonNullVariants->Array.length < anyOf->Array.length
       if nonNullVariants->Array.length == 1 {
         Nullable(
           fromSury(
@@ -102,7 +103,8 @@ let rec fromSury = (~parentName: string, ~fieldName: string, schema: S.t<unknown
             parentName ++
             fieldName->String.charAt(0)->String.toUpperCase ++
             fieldName->String.slice(~start=1, ~end=fieldName->String.length)
-          Enum(enumName, constValues)
+          let enum = Enum(enumName, constValues)
+          isOptional ? Nullable(enum) : enum
         } else {
           Unknown
         }
