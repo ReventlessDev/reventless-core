@@ -36,6 +36,10 @@ type t = {config: config, mutable token: option<string>}
 
 let make = (~config: config): t => {config, token: None}
 
+/** The bearer token from the last successful `login`, if any — so callers (e.g.
+    Seed.Upload) can authenticate side-channel requests with the same identity. */
+let currentToken = (t: t): option<string> => t.token
+
 // ── JSON helpers ────────────────────────────────────────────────────────────
 
 let field = (json: JSON.t, key: string): option<JSON.t> =>

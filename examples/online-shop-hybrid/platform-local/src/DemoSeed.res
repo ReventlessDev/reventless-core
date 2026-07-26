@@ -19,6 +19,13 @@ let loginEndpoint = Seed.Runner.envOr(
   "REVENTLESS_LOGIN_ENDPOINT",
   "http://localhost:4000/__inmemory/login",
 )
+// Presign-shaped upload endpoint product images are uploaded through — the local
+// dev route by default, retargetable at a deployed AWS presign Function URL to
+// seed the same images into a real bucket.
+let uploadEndpoint = Seed.Runner.envOr(
+  "REVENTLESS_UPLOAD_ENDPOINT",
+  "http://localhost:4000/__inmemory/upload",
+)
 
 let client = Seed.Client.make(
   ~config={
@@ -55,6 +62,35 @@ let seedCategories = async () => {
   Seed.Runner.report(
     `categories: ${(DemoData.categories->Array.length)->Int.toString} added`,
   )
+}
+
+// Upload each product's deterministic placeholder SVG through the deployment's
+// upload endpoint and swap `imageUrl` for the returned served `/{prefix}/{key}`
+// ref, so the demo image travels the real upload → store → serve loop (local
+// dev store or AWS bucket) exactly like a user upload — no external image URL.
+let uploadProductImages = async (products: array<DemoData.product>): array<DemoData.product> => {
+  let out = []
+  for i in 0 to products->Array.length - 1 {
+    switch products->Array.get(i) {
+    | Some(p) =>
+      let svg = DemoData.productSvg(~name=p.name, ~index=i)
+      switch await Seed.Upload.uploadAsset(
+        ~uploadEndpoint,
+        ~bytes=svg,
+        ~fileName=`${p.id}.svg`,
+        ~contentType="image/svg+xml",
+        ~authToken=?Seed.Client.currentToken(client),
+      ) {
+      | Ok(servedRef) => out->Array.push({...p, imageUrl: servedRef})
+      | Error(msg) => throw(Seed.Failed(`product image upload for ${p.id} failed: ${msg}`))
+      }
+    | None => ()
+    }
+  }
+  Seed.Runner.report(
+    `product images: ${(out->Array.length)->Int.toString} uploaded to the served bucket`,
+  )
+  out
 }
 
 let seedProducts = async (products: array<DemoData.product>) => {
@@ -335,7 +371,7 @@ let main = async () => {
   Console.log(`Seeding demo data via ${endpoint}`)
   await client->Seed.Client.login
 
-  let products = DemoData.buildProducts()
+  let products = await uploadProductImages(DemoData.buildProducts())
   let customers = DemoData.buildCustomers()
   let orders = DemoData.buildOrders(products, customers)
 

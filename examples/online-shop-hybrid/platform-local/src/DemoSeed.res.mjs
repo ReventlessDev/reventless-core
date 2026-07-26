@@ -7,12 +7,15 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Seed$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed.res.mjs";
 import * as Seed_Client$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Client.res.mjs";
 import * as Seed_Runner$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Runner.res.mjs";
+import * as Seed_Upload$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Upload.res.mjs";
 import * as DemoData$ReventlessdevOnlineShopHybridPlatformLocal from "./DemoData.res.mjs";
 import * as DemoCommands$ReventlessdevOnlineShopHybridPlatformLocal from "./DemoCommands.res.mjs";
 
 let endpoint = Seed_Runner$ReventlessSeed.envOr("REVENTLESS_GRAPHQL_ENDPOINT", "http://localhost:4000/graphql");
 
 let loginEndpoint = Seed_Runner$ReventlessSeed.envOr("REVENTLESS_LOGIN_ENDPOINT", "http://localhost:4000/__inmemory/login");
+
+let uploadEndpoint = Seed_Runner$ReventlessSeed.envOr("REVENTLESS_UPLOAD_ENDPOINT", "http://localhost:4000/__inmemory/upload");
 
 let client = Seed_Client$ReventlessSeed.make({
   endpoint: endpoint,
@@ -67,6 +70,35 @@ async function seedCategories() {
     name: c.name
   })));
   return Seed_Runner$ReventlessSeed.report(`categories: ` + DemoData$ReventlessdevOnlineShopHybridPlatformLocal.categories.length.toString() + ` added`);
+}
+
+async function uploadProductImages(products) {
+  let out = [];
+  for (let i = 0, i_finish = products.length; i < i_finish; ++i) {
+    let p = products[i];
+    if (p !== undefined) {
+      let svg = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.productSvg(p.name, i);
+      let servedRef = await Seed_Upload$ReventlessSeed.uploadAsset(uploadEndpoint, svg, p.id + `.svg`, "image/svg+xml", Seed_Client$ReventlessSeed.currentToken(client));
+      if (servedRef.TAG === "Ok") {
+        out.push({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          price: p.price,
+          imageUrl: servedRef._0,
+          categoryId: p.categoryId
+        });
+      } else {
+        throw {
+          RE_EXN_ID: Seed$ReventlessSeed.Failed,
+          _1: `product image upload for ` + p.id + ` failed: ` + servedRef._0,
+          Error: new Error()
+        };
+      }
+    }
+  }
+  Seed_Runner$ReventlessSeed.report(`product images: ` + out.length.toString() + ` uploaded to the served bucket`);
+  return out;
 }
 
 async function seedProducts(products) {
@@ -247,7 +279,7 @@ async function summarise(counts) {
 async function main() {
   console.log(`Seeding demo data via ` + endpoint);
   await Seed_Client$ReventlessSeed.login(client);
-  let products = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.buildProducts();
+  let products = await uploadProductImages(DemoData$ReventlessdevOnlineShopHybridPlatformLocal.buildProducts());
   let customers = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.buildCustomers();
   let orders = DemoData$ReventlessdevOnlineShopHybridPlatformLocal.buildOrders(products, customers);
   await seedCategories();
@@ -271,9 +303,11 @@ Seed_Runner$ReventlessSeed.run(main);
 export {
   endpoint,
   loginEndpoint,
+  uploadEndpoint,
   client,
   views,
   seedCategories,
+  uploadProductImages,
   seedProducts,
   seedCatalogEdits,
   seedSupplierFeed,

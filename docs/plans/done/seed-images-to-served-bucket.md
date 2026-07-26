@@ -2,16 +2,28 @@
 
 **Date:** 2026-07-26
 **Repo:** reventless-core (seed toolkit + example seed)
-**Depends on:** [served-buckets.md](done/served-buckets.md) — the served-bucket
+**Depends on:** [served-buckets.md](served-buckets.md) — the served-bucket
 read path (AWS CloudFront `{prefix}/*` + the local dev-server serve route) and a
 unified upload contract must exist for seeded objects to be viewable.
-**Status:** NOT STARTED (plan only)
+**Status:** COMPLETE. `Seed.Upload.uploadAsset` (Part 2), the deterministic
+per-product SVG source (Part 3), and the DemoSeed upload wiring that retires the
+picsum pool (Part 4) are all in; Part 1 (presign-shaped local route) landed with
+[served-buckets.md](served-buckets.md). Verified end-to-end against a fresh
+SQLite dev platform: `serve:reset` + `demo-data` runs **fully green** — all 60
+product SVGs upload, each product's `imageUrl` is stored as `/uploads/<key>`, and
+the served ref returns the SVG bytes over HTTP (`image/svg+xml`, immutable cache).
+A pre-existing example bug surfaced and was fixed along the way: `ImportProduct`
+did not supply the now-required `imageUrl`, so imported supplier products were
+rejected downstream and never reached `Ordering_AvailableProducts` (the seed
+aborted at 60/64); the translation now supplies an empty `imageUrl` (no supplier
+image). AWS remains verifiable by pointing `REVENTLESS_UPLOAD_ENDPOINT` /
+`REVENTLESS_GRAPHQL_ENDPOINT` at a deployed stack.
 
 ## Problem
 
 The example seed sets each product's `imageUrl` to an **external** URL —
 `https://picsum.photos/id/<n>/400/300`
-([DemoData.res:130](../../examples/online-shop-hybrid/platform-local/src/DemoData.res#L130)).
+([DemoData.res:130](../../../examples/online-shop-hybrid/platform-local/src/DemoData.res#L130)).
 Those URLs:
 
 - **bypass the bucket and the CDN entirely** — the browser fetches them straight
@@ -28,7 +40,7 @@ work for both **local dev** and **AWS**.
 ## Decision
 
 The seed is already a standalone GraphQL client that drives the example's public
-API ([DemoSeed.res](../../examples/online-shop-hybrid/platform-local/src/DemoSeed.res),
+API ([DemoSeed.res](../../../examples/online-shop-hybrid/platform-local/src/DemoSeed.res),
 `ReventlessSeed`), endpoint-agnostic via `REVENTLESS_GRAPHQL_ENDPOINT` (local by
 default, retargetable at a deployed AWS API). So:
 
@@ -52,12 +64,12 @@ code path serves local and AWS.
 
 For one seed helper (and one UI adapter) to cover both providers, the **local**
 upload route must expose the **same presign-shaped contract** as AWS
-([Upload_Presign_S3](../../reventless/aws/src/adapter/Upload/Upload_Presign_S3.res)):
+([Upload_Presign_S3](../../../reventless/aws/src/adapter/Upload/Upload_Presign_S3.res)):
 `POST {fileName,contentType} → {uploadUrl, storageRef}`, then a `PUT` of the
 bytes to `uploadUrl` (a local URL), storing under `{prefix}/{key}` and returning
 `storageRef = "/{prefix}/{key}"`.
 
-- This tightens [served-buckets.md](done/served-buckets.md) Part 2b: implement the
+- This tightens [served-buckets.md](served-buckets.md) Part 2b: implement the
   local upload route in the presign shape (return a local `uploadUrl`) rather than
   a bespoke direct-`POST`, so the reventless-ui `FileDropzone` S3 upload adapter
   and the seed helper below are one code path for both.
@@ -68,7 +80,7 @@ bytes to `uploadUrl` (a local URL), storing under `{prefix}/{key}` and returning
 ## Part 2 — Seed-time upload helper (ReventlessSeed)
 
 Add an upload capability to the seed toolkit
-([reventless/seed](../../reventless/seed/src)), alongside `Seed.Client` /
+([reventless/seed](../../../reventless/seed/src)), alongside `Seed.Client` /
 `Seed.Runner`:
 
 ```rescript
@@ -103,12 +115,12 @@ only if photographic content matters.)
 
 ## Part 4 — Seed wiring
 
-In [DemoData.res](../../examples/online-shop-hybrid/platform-local/src/DemoData.res) /
-[DemoSeed.res](../../examples/online-shop-hybrid/platform-local/src/DemoSeed.res) /
-[DemoCommands.res](../../examples/online-shop-hybrid/platform-local/src/DemoCommands.res):
+In [DemoData.res](../../../examples/online-shop-hybrid/platform-local/src/DemoData.res) /
+[DemoSeed.res](../../../examples/online-shop-hybrid/platform-local/src/DemoSeed.res) /
+[DemoCommands.res](../../../examples/online-shop-hybrid/platform-local/src/DemoCommands.res):
 
 1. Remove the `productImages` picsum pool + `productImageFor`
-   ([DemoData.res:130-142](../../examples/online-shop-hybrid/platform-local/src/DemoData.res#L130)).
+   ([DemoData.res:130-142](../../../examples/online-shop-hybrid/platform-local/src/DemoData.res#L130)).
 2. For each product, **before** sending `AddProduct`: generate its SVG, call
    `Seed.Upload.uploadAsset(...)`, and use the returned `/{prefix}/{key}` as the
    product's `imageUrl`. `ChangeProductImage` demo edits (if any) upload a fresh
@@ -140,7 +152,7 @@ optional caller-supplied key (`{key?}`) and have the seed use a stable
 
 - **Provider-neutrality is free** because the seed uploads via the same endpoint
   the UI does — no seed-side S3/credential handling, no per-provider branch.
-- **Sequencing:** land [served-buckets.md](done/served-buckets.md) first (both
+- **Sequencing:** land [served-buckets.md](served-buckets.md) first (both
   read paths + the unified upload contract, Part 1 here), then this.
 - **No repo binaries** with the SVG approach; deterministic and self-contained.
 - This closes the loop the picsum URLs skipped: an image now travels

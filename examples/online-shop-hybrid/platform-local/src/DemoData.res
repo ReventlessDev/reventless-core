@@ -123,23 +123,28 @@ type product = {
   categoryId: string,
 }
 
-// A small pool of stable public placeholder images, picked deterministically by
-// product index so every product carries a real image URL and two runs against
-// a fresh store produce identical rows. The Image semantic thumbnails these in
-// the generated Products view.
-let productImages = [
-  "https://picsum.photos/id/1/400/300",
-  "https://picsum.photos/id/20/400/300",
-  "https://picsum.photos/id/48/400/300",
-  "https://picsum.photos/id/60/400/300",
-  "https://picsum.photos/id/119/400/300",
-  "https://picsum.photos/id/160/400/300",
-  "https://picsum.photos/id/180/400/300",
-  "https://picsum.photos/id/225/400/300",
-]
+// A deterministic placeholder image per product: a distinct fill colour derived
+// from the product index plus the product name as a label. SVG is tiny,
+// text-based (no repo binaries, no third-party service), renders in `<img>`, and
+// serves cleanly through both the AWS CloudFront read path and the local dev
+// serve route. Uploaded at seed time (DemoSeed) so each product's `imageUrl`
+// travels the real upload → store → serve loop instead of an external URL. The
+// Image semantic thumbnails the served ref in the generated Products view.
+let escapeXml = (s: string): string =>
+  s
+  ->String.replaceAll("&", "&amp;")
+  ->String.replaceAll("<", "&lt;")
+  ->String.replaceAll(">", "&gt;")
 
-let productImageFor = (index: int): string =>
-  productImages->Array.get(mod(index, productImages->Array.length))->Option.getOr("")
+let productSvg = (~name: string, ~index: int): string => {
+  let hue = mod(index * 47, 360)
+  let bg = `hsl(${hue->Int.toString}, 62%, 52%)`
+  let label = escapeXml(name)
+  `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">` ++
+  `<rect width="400" height="300" fill="${bg}"/>` ++
+  `<text x="200" y="160" fill="#ffffff" font-family="sans-serif" font-size="22" font-weight="600" text-anchor="middle">${label}</text>` ++
+  `</svg>`
+}
 
 let buildProducts = (): array<product> => {
   // Category share proportional to weight, so the catalog is lopsided the way a
@@ -169,7 +174,9 @@ let buildProducts = (): array<product> => {
           name,
           description: `${name} — ${pick(blurbs)} ${category.name->String.toLowerCase} pick.`,
           price,
-          imageUrl: productImageFor(n.contents - 1),
+          // Filled by DemoSeed's upload phase with the served `/{prefix}/{key}`
+          // ref once the product's placeholder SVG is uploaded.
+          imageUrl: "",
           categoryId: category.id,
         })
       }

@@ -8,6 +8,7 @@
 module Random = Seed_Random
 module Client = Seed_Client
 module Runner = Seed_Runner
+module Upload = Seed_Upload
 
 exception Failed = Seed_Types.Failed
 

@@ -294,19 +294,15 @@ function locatedAddress() {
   ];
 }
 
-let productImages = [
-  "https://picsum.photos/id/1/400/300",
-  "https://picsum.photos/id/20/400/300",
-  "https://picsum.photos/id/48/400/300",
-  "https://picsum.photos/id/60/400/300",
-  "https://picsum.photos/id/119/400/300",
-  "https://picsum.photos/id/160/400/300",
-  "https://picsum.photos/id/180/400/300",
-  "https://picsum.photos/id/225/400/300"
-];
+function escapeXml(s) {
+  return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
 
-function productImageFor(index) {
-  return Stdlib_Option.getOr(productImages[Primitive_int.mod_(index, productImages.length)], "");
+function productSvg(name, index) {
+  let hue = (index * 47 | 0) % 360;
+  let bg = `hsl(` + hue.toString() + `, 62%, 52%)`;
+  let label = escapeXml(name);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">` + (`<rect width="400" height="300" fill="` + bg + `"/>`) + (`<text x="200" y="160" fill="#ffffff" font-family="sans-serif" font-size="22" font-weight="600" text-anchor="middle">` + label + `</text>`) + `</svg>`;
 }
 
 function buildProducts() {
@@ -334,7 +330,7 @@ function buildProducts() {
           name: name,
           description: name + ` — ` + Seed_Random$ReventlessSeed.pickOr(random, "", blurbs) + ` ` + category.name.toLowerCase() + ` pick.`,
           price: price,
-          imageUrl: productImageFor(n.contents - 1 | 0),
+          imageUrl: "",
           categoryId: category.id
         });
       }
@@ -464,8 +460,8 @@ export {
   pick,
   address,
   locatedAddress,
-  productImages,
-  productImageFor,
+  escapeXml,
+  productSvg,
   buildProducts,
   repricedProducts,
   redescribedProducts,

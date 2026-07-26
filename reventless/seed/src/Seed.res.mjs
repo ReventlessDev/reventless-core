@@ -8,6 +8,8 @@ let Client;
 
 let Runner;
 
+let Upload;
+
 let Failed = Seed_Types$ReventlessSeed.Failed;
 
 let mutation = Seed_Types$ReventlessSeed.mutation;
@@ -22,6 +24,7 @@ export {
   Random,
   Client,
   Runner,
+  Upload,
   Failed,
   mutation,
   ids,

@@ -17,6 +17,10 @@ function make(config) {
   };
 }
 
+function currentToken(t) {
+  return t.token;
+}
+
 function field(json, key) {
   if (typeof json === "object" && json !== null && !Array.isArray(json)) {
     return json[key];
@@ -222,6 +226,7 @@ async function waitForIds(t, fieldName, ids, timeoutMsOpt) {
 export {
   sleep,
   make,
+  currentToken,
   field,
   asString,
   nodeString,
