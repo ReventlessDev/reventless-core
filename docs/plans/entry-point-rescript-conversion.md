@@ -1,14 +1,23 @@
 # Plan: Convert AWS Lambda entry points to type-checked ReScript (`_Ops` split)
 
-## Status: IN PROGRESS
+## Status: IN PROGRESS — Phase 1 scoped down and executed
 
 - **Done & shipped (unpushed):** presign + geocoder converted from Pulumi
   `CallbackFunction` to compiled EntryPoints with type-checked `_Ops` handlers
   (commits `39134f2f8`, `6bf9b7c6b`), both validated on live alpha.
-- **Next (this plan):** convert the four `.mjs` entry points that do **no**
-  dynamic user-code import to pure-ReScript `_Ops` handlers (real type-safety
-  gain); then a separate `_Ops`-extraction pass on the dynamic-import handlers
-  that still carry logic inline.
+- **Done (unpushed, awaiting CI-deploy validation):** `HeartbeatEntryPoint` and
+  `PluginExtensionPointEntryPoint` converted from hand-written `.mjs` shells to
+  pure-ReScript entry points (`.res` → tracked `.res.mjs`); old shells deleted,
+  builders repointed. Root build zero-warning green; all 22 reventless-aws
+  suites / 296 tests pass; both compiled import graphs verified `@pulumi`-free
+  (92 modules walked). Validation happens on the next alpha push: CI publishes
+  reventless-aws → rebuilds the layer (which then carries the new `.res.mjs`
+  entry points) → deploys online-shop-hybrid; the CloudWatch heartbeat schedule
+  and the plugin connect handshake exercise both Lambdas within minutes.
+- **Deferred (Phase 1 reassessment, user decision):** the two VPC-bound
+  Postgres handlers (`PgMigrationEntryPoint`, `PgChangeFeedRelayEntryPoint`) —
+  not laptop-validatable, woven into RDS/VPC plumbing; risk/gain didn't justify
+  converting them in the same pass.
 
 **Date:** 2026-07-27
 
@@ -222,33 +231,76 @@ untyped `.mjs` boundary — conventions endorse that; the only win is incrementa
 
 ## 4. Plan
 
-### Phase 1 — convert the 4 Group-2 handlers to `_Ops` ReScript (this pass)
+### Phase 1 — convert Group-2 handlers to ReScript (EXECUTED, scoped down)
 
-For each: write `X_Ops.res` (or fold into an existing sibling) with the handler
-as type-checked ReScript exporting `handler`; leave a **1-line `.mjs`** only if a
-consumer imports the `.mjs` path by name (else point the deploy builder /
-`entryPointModule` directly at the compiled `X_Ops.res.mjs`). No Pulumi, no
-`%raw`. Match the presign/geocoder shape.
+**Reassessment before execution.** Closer reading changed the plan's §4 in three
+ways (user approved the reduced scope: Heartbeat + PluginExtensionPoint,
+validated via CI deploy):
 
-1. **`HeartbeatEntryPoint`** — clearest win. Reads 3 env vars, builds a `Message`
-   with `commandSchema` + `uuid`, publishes via `CommandTopicChannel_SQS_Runtime`.
-   All the imports are already ReScript; port straight over. Deploy builder:
-   `HeartbeatRunner_CloudWatchEvents.res`.
-2. **`PgMigrationEntryPoint`** — reads `HANDLER_CONFIG.pgConnection`, calls
-   `PgSchema.ensureSchema(poolFor(conn))`. Port; give the `opts.makePool`
-   test-injection seam a labeled arg (`~makePool=poolFor`). Deploy builder:
-   `PgMigration_Builder.res`. Has an integration test
-   (`PgMigrationEntryPoint_IntegrationTest.res`) — keep it green.
-3. **`PgChangeFeedRelayEntryPoint`** (57 LOC) — read fully first; mirrors
-   PgMigration's relay/relayWithPool split. Deploy builder wiring in the Postgres
-   change-feed relay module.
-4. **`PluginExtensionPointEntryPoint`** (127 LOC) — read fully first; largest of
-   the four, no dynamic import. Confirm it does not reach into plugin code before
-   committing to a full port.
+- These four are **not** presign/geocoder-like standalone services: they lean on
+  the shared shim `HandlerFactoryHelpers.mjs` (structured JSON logging mirroring
+  ReScript's `Logger`, the `runEffect` Effect/RequestContext dispatch boundary,
+  `makeQueueRef`/`makeTableRef`/`patchSpecId`/`scanByTableName`, envelope-field
+  extraction) and publish into live platform plumbing. Only Heartbeat is
+  laptop-invokable with acceptable side effects; the two Pg* handlers are
+  VPC-bound (RDS) — **laptop validation impossible**, so validation moved to the
+  CI deploy (heartbeat schedule + plugin connect handshake exercise both
+  Lambdas naturally right after deploy).
+- The "functors can't take runtime config" worry was **wrong**:
+  [ExtensionPoint_Builder.res:67](../../reventless/core/src/components/ExtensionPoint/ExtensionPoint_Builder.res#L67)
+  applies `ExtensionPoint_Callback.Make` to an inline module capturing runtime
+  values *inside a closure*, and top-level `module X = { let f = runtimeValue }`
+  bindings work the same. `PluginExtensionPointEntryPoint` was therefore fully
+  convertible — the whole functor assembly the `.mjs` did through compiled-JS
+  calls is expressible directly (and `patchSpecId` disappears: a ReScript-level
+  `module Id = Reventless.Id.String` in a `SpecWithId` wrapper replaces the
+  ESM-export patch-up).
+- The two **Pg\* handlers are deferred** (user decision): VPC-bound, one-shot
+  deploy-time (`PgMigration`) / scheduled relay (`PgChangeFeedRelay`), high
+  blast radius, no incremental validation possible before a deploy.
 
-Per handler: build (zero warnings) → validate on alpha via §2 method → detach
-temp logs policy → commit (`fix(aws): …` or `refactor(aws): …`). One commit per
-handler, or grouped, per reviewer preference.
+**What was done (Heartbeat + PluginExtensionPoint):**
+
+- `HeartbeatEntryPoint.res` — full-ReScript entry point (typed `Message.commandJson`
+  envelope via `Message.generateMeta`, `commandSchema` reverse-convert,
+  `publishJsons(queue, AWS.SQS_FIFO)`); modeled on the deploy-time synthetic
+  RedetectPlugin publisher in `Platform.res` (the team's own ReScript port of
+  the same logic). Emitted JS is semantically identical to the old shell
+  (same `{TAG:"Heartbeat"}` encoding, `"SQS_FIFO"` inlined, eager init).
+- `PluginExtensionPointEntryPoint.res` — full-ReScript entry point mirroring
+  core's `PluginExtensionPoint_Builder` wiring: `PluginExtensionPoint_Plugin.Make`
+  on an inline `EpSpec` module, `ExtensionPoint_Callback.Make` on an inline
+  config module, `CommandTopic_Callback.Make` on a `SpecWithId` wrapper.
+  Shim seams kept as **typed externals** to `./HandlerFactoryHelpers.mjs`
+  (`runEffect`/`setRequestId`/`extract*`/`log.debug`/`scanByTableName`) for
+  dispatch-boundary parity with every other deployed entry point.
+  `scanByTableName` stays a shim binding deliberately: the ReScript
+  `QueryEngine_DynamoDb` module's `make` references `Pulumi.Output`, so
+  importing it would leak `@pulumi/*` into the cold-start graph.
+- Old `.mjs` shells deleted; `PluginRuntime_Builder` / `PluginExtensionPointRuntime_Builder`
+  `entryPointModule` paths point at the compiled `.res.mjs`.
+- Verified: root build zero warnings; 296 reventless-aws tests green; a
+  transitive import-graph walk over both compiled entry points (92 modules)
+  found **no `@pulumi`/`rescript-pulumi`** anywhere.
+
+**Finding — UiFragment mapping divergence (needs decision, NOT changed here):**
+core's in-process wiring registers **two** mappings
+([PluginExtensionPoint_Builder.res:33-36](../../reventless/core/src/plugin/connect/PluginExtensionPoint_Builder.res#L33-L36):
+the Plugin lifecycle mapping **and** `PluginExtensionPoint_UiFragment.Mapping`),
+but the deployed Lambda — old `.mjs` and this parity conversion alike — wires
+only the lifecycle mapping. If that second mapping is how `RegisterUiFragment`
+reaches the admin UiFragmentRegistry slice, AWS deployments may silently drop
+plugin UI-fragment registrations (or AWS routes them another way — verify
+before "fixing"; adding the mapping also requires the UiFragmentRegistry queue
+in `publishToAggregates`, which the builder does not currently wire).
+
+**Deferred handlers (revisit only with a real validation path):**
+
+1. **`PgMigrationEntryPoint`** — reads `HANDLER_CONFIG.pgConnection`, calls
+   `PgSchema.ensureSchema(poolFor(conn))`; `opts.makePool` test seam → labeled
+   arg on conversion. Has `PgMigrationEntryPoint_IntegrationTest`.
+2. **`PgChangeFeedRelayEntryPoint`** — drains Postgres logs from checkpoints,
+   relays to EventCollector SQS; mirrors the relay/relayWithPool split.
 
 ### Phase 2 — `_Ops` extraction for Group-1 (separate, later)
 

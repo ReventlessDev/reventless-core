@@ -96,7 +96,7 @@ let forCommandTopic = (
 
   // No user packages — all framework imports are in the Layer
   let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
-    ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.mjs",
+    ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.res.mjs",
     ~packageDirs=Dict.make(),
   )
 

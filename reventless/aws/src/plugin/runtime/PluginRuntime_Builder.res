@@ -731,7 +731,7 @@ module Make = (
 
       // Static re-export from Layer entry point — no esbuild, no user packages
       let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
-        ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs",
+        ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.res.mjs",
         ~packageDirs=Dict.make(),
       )
 

@@ -422,7 +422,7 @@ function Make(EventCollectorChannel) {
     envVars["EP_QUEUE_URL"] = epQueueUrl;
     envVars["PLUGIN_ID"] = Pulumi.output(hbConfig.pluginId);
     envVars["HEARTBEAT_TIMEOUT"] = Pulumi.output(hbConfig.heartbeatTimeout.toString());
-    let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs", {}, undefined);
+    let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.res.mjs", {}, undefined);
     connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "Scheduler", "Scheduler", match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, undefined, opts));
   };
   let forDcbCommandTopic = (param, connect, memorySizeOpt, timeoutOpt, dcbCommandTopic) => {
