@@ -1,25 +1,43 @@
 # Plan: Convert AWS Lambda entry points to type-checked ReScript (`_Ops` split)
 
-## Status: IN PROGRESS — Phase 1 scoped down and executed
+## Status: Phase 1 COMPLETE — all four conversions validated on live alpha
 
-- **Done & shipped (unpushed):** presign + geocoder converted from Pulumi
-  `CallbackFunction` to compiled EntryPoints with type-checked `_Ops` handlers
-  (commits `39134f2f8`, `6bf9b7c6b`), both validated on live alpha.
-- **Done (unpushed, awaiting CI-deploy validation):** `HeartbeatEntryPoint` and
-  `PluginExtensionPointEntryPoint` converted from hand-written `.mjs` shells to
-  pure-ReScript entry points (`.res` → tracked `.res.mjs`); old shells deleted,
-  builders repointed. Root build zero-warning green; all 22 reventless-aws
-  suites / 296 tests pass; both compiled import graphs verified `@pulumi`-free
-  (92 modules walked). Validation happens on the next alpha push: CI publishes
-  reventless-aws → rebuilds the layer (which then carries the new `.res.mjs`
-  entry points) → deploys online-shop-hybrid; the CloudWatch heartbeat schedule
-  and the plugin connect handshake exercise both Lambdas within minutes.
+All four Phase 1 conversions are deployed to alpha (pushed; CI published
+reventless-aws → rebuilt the layer → deployed online-shop-hybrid, Lambdas last
+modified 2026-07-27 ~03:13–03:15 UTC) and confirmed functional at runtime:
+
+- **presign + geocoder** — converted from Pulumi `CallbackFunction` to compiled
+  EntryPoints with type-checked `_Ops` handlers (commits `39134f2f8`,
+  `6bf9b7c6b`). Presign: clean post-redeploy (4–22 ms, no errors) and drove 16
+  image uploads in a live seed run; the earlier `Cannot read properties of
+  undefined (reading 'use')` 502 was the pre-redeploy version and does not
+  recur. Geocoder: direct-invoked `q=Berlin` → `200` with real coordinates
+  (module loads, no SDK skew, `geo:SearchPlaceIndexForText` IAM + AWS Location
+  both work).
+- **`HeartbeatEntryPoint` + `PluginExtensionPointEntryPoint`** — converted from
+  hand-written `.mjs` shells to pure-ReScript entry points (`.res` → tracked
+  `.res.mjs`) in commit `1bffd6785`; old shells deleted, builders repointed.
+  Root build zero-warning green; all reventless-aws suites pass; both compiled
+  import graphs verified `@pulumi`-free (92 modules walked). **Validated on
+  alpha 2026-07-27** via CloudWatch: the `.res` Heartbeat Lambdas fire every
+  5 min (clean `START→END`, 30–100 ms, no cold-start crash), and
+  `PlatformPluginExtPointCmdHandler` processes `Heartbeat(Catalog/Ordering/
+  PlatformInspector)` directives, runs `ScheduleOps`, and drains its queue
+  cleanly.
 - **Deferred (Phase 1 reassessment, user decision):** the two VPC-bound
   Postgres handlers (`PgMigrationEntryPoint`, `PgChangeFeedRelayEntryPoint`) —
   not laptop-validatable, woven into RDS/VPC plumbing; risk/gain didn't justify
-  converting them in the same pass.
+  converting them in the same pass. They still run the hand-written `.mjs`
+  shells.
 
-**Date:** 2026-07-27
+**Note (pre-existing, unrelated to this plan):** alpha currently runs duplicate
+Lambda generations (e.g. two `CatalogPluginHeartbeat`, two
+`PlatformPluginExtPointCmdHandler`), both firing/draining — the known
+"2 connected plugin versions" issue (retire hook inert). Not a side effect of
+the entry-point conversion; the new generation's Lambdas are the ones validated
+above.
+
+**Date:** 2026-07-27 (validated same day)
 
 ---
 
