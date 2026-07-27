@@ -16,10 +16,11 @@ import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_L
 
 let log = Logger$ReventlessCore.fromEnv();
 
-function forDcbCommandTopic(slicePaths, dcbTableName, pluginName, syncConfig, asyncConfig, sliceMemoryFloorOpt, sliceTimeoutFloorOpt, connect, dcbCommandTopic) {
+function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginName, syncConfig, asyncConfig, sliceMemoryFloorOpt, sliceTimeoutFloorOpt, connect, dcbCommandTopic) {
+  let inboundSlices = inboundSlicesOpt !== undefined ? inboundSlicesOpt : [];
   let sliceMemoryFloor = sliceMemoryFloorOpt !== undefined ? sliceMemoryFloorOpt : 0;
   let sliceTimeoutFloor = sliceTimeoutFloorOpt !== undefined ? sliceTimeoutFloorOpt : 0;
-  if (slicePaths.length === 0) {
+  if (slicePaths.length === 0 && inboundSlices.length === 0) {
     return log.warn("StateChangeSliceRuntime_Builder_Single", undefined, "forDcbCommandTopic skipped (no slice specs)");
   }
   let commandTopicResource = Component$ReventlessCore.toPulumiResource(dcbCommandTopic);
@@ -58,13 +59,24 @@ function forDcbCommandTopic(slicePaths, dcbTableName, pluginName, syncConfig, as
     return `{"spec":` + s + `,"behavior":` + b + `}`;
   }).join(",");
   let pgConnectionFragment = pgSelection !== undefined ? pgSelection.connectionConfig.apply(cc => `,"pgConnection":` + JSON.stringify(PgConnection$ReventlessAws.connectionConfigToJson(pgSelection.lockStrategy, cc))) : Pulumi.output("");
+  let inboundFragment = inboundSlices.length !== 0 ? Pulumi.all(inboundSlices.map(s => Stdlib_Option.getOr(s.auditTableName, Pulumi.output("")))).apply(tableNames => {
+      let entries = inboundSlices.map((s, i) => {
+        let spec = Stdlib_Option.getOr(JSON.stringify(s.specPath), `""`);
+        let translation = Stdlib_Option.getOr(JSON.stringify(s.translationPath), `""`);
+        let tableName = tableNames[i];
+        let auditJson = tableName === "" ? "null" : Stdlib_Option.getOr(JSON.stringify(tableName), "null");
+        return `{"spec":` + spec + `,"translation":` + translation + `,"auditTableName":` + auditJson + `}`;
+      }).join(",");
+      return `,"inboundTranslationSliceModules":[` + entries + `]`;
+    }) : Pulumi.output("");
   let handlerConfigJson = Pulumi.all([
     dcbTableName$1,
     queue.id,
-    pgConnectionFragment
+    pgConnectionFragment,
+    inboundFragment
   ]).apply(param => {
     let pluginNameJson = Stdlib_Option.getOr(JSON.stringify(pluginName), `""`);
-    return `{"dcbEventLogTableName":"` + param[0] + `","queueUrl":"` + param[1] + `","pluginName":` + pluginNameJson + `,"stateChangeSliceModules":[` + sliceModulesJson + `]` + param[2] + `}`;
+    return `{"dcbEventLogTableName":"` + param[0] + `","queueUrl":"` + param[1] + `","pluginName":` + pluginNameJson + `,"stateChangeSliceModules":[` + sliceModulesJson + `]` + param[2] + param[3] + `}`;
   });
   envVars["HANDLER_CONFIG"] = handlerConfigJson;
   let packageDirs = {};
@@ -73,6 +85,12 @@ function forDcbCommandTopic(slicePaths, dcbTableName, pluginName, syncConfig, as
     packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
     let behaviorPkg = Util_Bundle$ReventlessAws.extractPackageName(param[1]);
     packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(behaviorPkg);
+  });
+  inboundSlices.forEach(s => {
+    let specPkg = Util_Bundle$ReventlessAws.extractPackageName(s.specPath);
+    packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
+    let translationPkg = Util_Bundle$ReventlessAws.extractPackageName(s.translationPath);
+    packageDirs[translationPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(translationPkg);
   });
   packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws");
   packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-core");

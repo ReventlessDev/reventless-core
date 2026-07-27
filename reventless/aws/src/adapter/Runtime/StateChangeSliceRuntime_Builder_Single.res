@@ -13,10 +13,22 @@
 
 let log = ReventlessCore.Logger.fromEnv()
 
+// `(specPath, translationPath)` module specifiers per InboundTranslationSlice,
+// plus the resolved audit QueryDb table-name Output (None on the Postgres path or
+// if the component hasn't reported it). The entry point imports both modules,
+// builds `InboundTranslationSlice_Callback.Make(Spec)(Translation).receive`, and
+// — when `auditTableName` is present — persists the audit rows to that table.
+type inboundSlicePaths = {
+  specPath: string,
+  translationPath: string,
+  auditTableName: option<Pulumi.Output.t<string>>,
+}
+
 // `slicePaths`: `(specPath, behaviorPath)` per StateChangeSlice (already merged
 // from auto- and manually-registered sources by the caller).
 let forDcbCommandTopic = (
   ~slicePaths: array<(string, string)>,
+  ~inboundSlices: array<inboundSlicePaths>=[],
   ~dcbTableName: option<Pulumi.Output.t<string>>,
   ~pluginName: string,
   ~syncConfig: ReventlessCore.Runtime.commandHandlerConfig,
@@ -29,7 +41,7 @@ let forDcbCommandTopic = (
   ~connect,
   dcbCommandTopic,
 ) =>
-  if slicePaths->Array.length == 0 {
+  if slicePaths->Array.length == 0 && inboundSlices->Array.length == 0 {
     log.warn(
       ~comp="StateChangeSliceRuntime_Builder_Single",
       "forDcbCommandTopic skipped (no slice specs)",
@@ -122,11 +134,37 @@ let forDcbCommandTopic = (
     | None => Pulumi.Output.make("")
     }
 
+    // InboundTranslationSlice modules — spec + translation paths and the resolved
+    // audit table name (Pulumi-generated, so it must be resolved here). Emitted as
+    // a `,"inboundTranslationSliceModules":[…]` fragment merged into HANDLER_CONFIG
+    // (absent → the entry point has no Route 0 registry, unchanged behaviour).
+    let inboundFragment = switch inboundSlices {
+    | [] => Pulumi.Output.make("")
+    | slices =>
+      slices
+      ->Array.map(s => s.auditTableName->Option.getOr(Pulumi.Output.make("")))
+      ->Pulumi.Output.all
+      ->Pulumi.Output.apply(tableNames => {
+        let entries =
+          slices
+          ->Array.mapWithIndex((s, i) => {
+            let spec = s.specPath->JSON.stringifyAny->Option.getOr(`""`)
+            let translation = s.translationPath->JSON.stringifyAny->Option.getOr(`""`)
+            let tableName = tableNames->Array.getUnsafe(i)
+            let auditJson =
+              tableName == "" ? "null" : tableName->JSON.stringifyAny->Option.getOr("null")
+            `{"spec":${spec},"translation":${translation},"auditTableName":${auditJson}}`
+          })
+          ->Array.join(",")
+        `,"inboundTranslationSliceModules":[${entries}]`
+      })
+    }
+
     let handlerConfigJson =
-      Pulumi.Output.all3((dcbTableName, queue.id, pgConnectionFragment))
-      ->Pulumi.Output.apply(((table, queueUrl, pgFragment)) => {
+      Pulumi.Output.all4((dcbTableName, queue.id, pgConnectionFragment, inboundFragment))
+      ->Pulumi.Output.apply(((table, queueUrl, pgFragment, inbFragment)) => {
         let pluginNameJson = pluginName->JSON.stringifyAny->Option.getOr(`""`)
-        `{"dcbEventLogTableName":"${table}","queueUrl":"${queueUrl}","pluginName":${pluginNameJson},"stateChangeSliceModules":[${sliceModulesJson}]${pgFragment}}`
+        `{"dcbEventLogTableName":"${table}","queueUrl":"${queueUrl}","pluginName":${pluginNameJson},"stateChangeSliceModules":[${sliceModulesJson}]${pgFragment}${inbFragment}}`
       })
     envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 
@@ -137,6 +175,13 @@ let forDcbCommandTopic = (
       packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
       let behaviorPkg = Util_Bundle.extractPackageName(behaviorPath)
       packageDirs->Dict.set(behaviorPkg, Util_Bundle.resolvePackageRoot(behaviorPkg))
+    })
+    // Inbound slice spec + translation packages the entry point imports for Route 0.
+    inboundSlices->Array.forEach(s => {
+      let specPkg = Util_Bundle.extractPackageName(s.specPath)
+      packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
+      let translationPkg = Util_Bundle.extractPackageName(s.translationPath)
+      packageDirs->Dict.set(translationPkg, Util_Bundle.resolvePackageRoot(translationPkg))
     })
     // Include the framework packages alongside the entry point so the deployed
     // Lambda picks up uncommitted local changes without waiting for the Lambda

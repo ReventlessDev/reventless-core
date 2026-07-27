@@ -43,6 +43,44 @@ let registerStateChangeSliceSpec = (~specPath: string, ~behaviorPath: string) =>
   let _ = registeredSliceModulePaths->Array.push({specPath, behaviorPath})
 }
 
+// InboundTranslationSlice registration for the shared DCB command Lambda. Unlike
+// StateChangeSlices (routed by command TAG), inbound slices are invoked directly
+// by their AppSync mutation resolver with an `__inboundTranslation` payload — the
+// entry point routes those to a `receive` handler built from the spec + translation
+// modules. Registration is two-phase: the AWS `InboundTranslationSlice_Builder`
+// functor registers the module paths at instantiation (spec/translation `moduleUrl`,
+// like StateChangeSlice), and its wrapped `make` registers the audit QueryDb's
+// resolved table-name Output once the component is constructed (the physical name
+// is Pulumi-generated, so it can't be reconstructed at runtime). Both fire before
+// `forDcbCommandTopic` reads them.
+type inboundSliceReg = {
+  specPath: string,
+  translationPath: string,
+  mutable auditTableName: option<Pulumi.Output.t<string>>,
+}
+let registeredInboundSlices: dict<inboundSliceReg> = Dict.make()
+
+let registerInboundTranslationSliceSpec = (
+  ~specName: string,
+  ~specPath: string,
+  ~translationPath: string,
+) =>
+  switch registeredInboundSlices->Dict.get(specName) {
+  | Some(reg) => registeredInboundSlices->Dict.set(specName, {...reg, specPath, translationPath})
+  | None =>
+    registeredInboundSlices->Dict.set(specName, {specPath, translationPath, auditTableName: None})
+  }
+
+let registerInboundAuditTableName = (~specName: string, tableName: Pulumi.Output.t<string>) =>
+  switch registeredInboundSlices->Dict.get(specName) {
+  | Some(reg) => reg.auditTableName = Some(tableName)
+  | None =>
+    registeredInboundSlices->Dict.set(
+      specName,
+      {specPath: "", translationPath: "", auditTableName: Some(tableName)},
+    )
+  }
+
 /**
 Redundant with the seams that populate `dcbConfigRef` automatically:
 `pluginName` is set by `registerPluginName` (called from `Plugin_Builder.make`
@@ -768,8 +806,28 @@ module Make = (
       registeredSliceModulePaths
       ->Array.concat(dcbConfig.stateChangeSliceModulePaths)
       ->Array.map(({specPath, behaviorPath}) => (specPath, behaviorPath))
+    // Drop registrations that never received their module paths (a bare
+    // audit-table registration with no matching spec functor — shouldn't happen,
+    // but keeps a half-registered slice out of HANDLER_CONFIG).
+    let inboundSlices =
+      registeredInboundSlices
+      ->Dict.valuesToArray
+      ->Array.filterMap(reg =>
+        reg.specPath == ""
+          ? None
+          : Some(
+              (
+                {
+                  StateChangeSliceRuntime_Builder_Single.specPath: reg.specPath,
+                  translationPath: reg.translationPath,
+                  auditTableName: reg.auditTableName,
+                }: StateChangeSliceRuntime_Builder_Single.inboundSlicePaths
+              ),
+            )
+      )
     StateChangeSliceRuntime_Builder_Single.forDcbCommandTopic(
       ~slicePaths,
+      ~inboundSlices,
       ~dcbTableName=dcbConfig.dcbTableName,
       ~pluginName=dcbConfig.pluginName,
       ~syncConfig=syncStateChangesConfigRef.contents,

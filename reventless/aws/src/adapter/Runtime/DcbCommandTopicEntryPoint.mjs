@@ -25,7 +25,8 @@ import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessde
 // per-slice handler building (functor + decode + handleCommands), all
 // compiler-checked against the framework signatures (see the module header and
 // docs/plans/minimize-lambda-entrypoint-mjs-shell.md).
-import { deriveScope, commandTypeNames, makeStorageOps, buildSliceHandler } from "./DcbCommandTopicEntryPoint_Ops.res.mjs";
+import { deriveScope, commandTypeNames, makeStorageOps, buildSliceHandler, buildInboundReceiver } from "./DcbCommandTopicEntryPoint_Ops.res.mjs";
+import { makeDynamoQueryDbOps } from "./QueryDbEntryPoint_Ops.res.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
 
@@ -145,6 +146,32 @@ export async function buildHandlersForConfig(config, opts = {}) {
   const sqsHandler = handleQueueEvent(resolvedQueue, compositeJsonCommandsHandler);
   const publishJsons = sqsPublishJsons(resolvedQueue, "SQS_FIFO");
 
+  // Route 0 registry: InboundTranslationSlice receive handlers keyed by their
+  // AppSync mutation field name. The resolver invokes this Lambda with
+  // {__inboundTranslation, fieldName, arguments}; the field name is
+  // `<pluginName>_<sliceName>` (Api_Naming.sliceMutationField — the deploy side
+  // uses the same `name` that HANDLER_CONFIG.pluginName carries). The spec +
+  // translation modules are the one untyped seam (dynamic import); the typed
+  // `buildInboundReceiver` owns the functor call + audit persistence. Audit ops
+  // are DynamoDB-only for now (makeDynamoQueryDbOps); Postgres audit is a
+  // follow-up, so on that backend the receiver runs without persistence.
+  const inboundModules = config.inboundTranslationSliceModules || [];
+  const inboundReceiversByField = {};
+  await Promise.all(inboundModules.map(async ({ spec, translation, auditTableName }) => {
+    const specModule = await loadModule(spec);
+    const translationModule = await loadModule(translation);
+    const auditOps = (auditTableName && !config.pgConnection)
+      ? makeDynamoQueryDbOps(auditTableName)
+      : undefined;
+    const fieldName = config.pluginName + "_" + specModule.name;
+    inboundReceiversByField[fieldName] = buildInboundReceiver(
+      specModule,
+      translationModule,
+      publishJsons,
+      auditOps,
+    );
+  }));
+
   // Sync (default): inline-dispatch the command via the same composite handler
   // that Route 2 uses, so the AppSync resolver gets a typed Accepted/Rejected
   // outcome. Async: undefined → makeCommandGenerator falls back to publishJsons
@@ -185,10 +212,11 @@ export async function buildHandlersForConfig(config, opts = {}) {
     return generateCommand({ ...event, meta, identity });
   };
 
-  // Third element is additive — existing callers (the integration tests) keep
-  // destructuring the first two. No deploy-time `plugin` fragment needed here:
-  // this Lambda serves exactly one plugin and HANDLER_CONFIG already names it.
-  return [sqsHandler, cmdGenHandler, dcbComp(config.pluginName), config.pluginName];
+  // Elements past the first two are additive — existing callers (the integration
+  // tests) keep destructuring the first two. No deploy-time `plugin` fragment
+  // needed here: this Lambda serves exactly one plugin and HANDLER_CONFIG already
+  // names it. The 5th element is the Route 0 inbound-translation registry.
+  return [sqsHandler, cmdGenHandler, dcbComp(config.pluginName), config.pluginName, inboundReceiversByField];
 }
 
 async function buildHandler() {
@@ -205,7 +233,24 @@ const initPromise = buildHandler();
 
 export async function handler(event, context) {
   setRequestId(context?.awsRequestId);
-  const [sqsHandler, cmdGenHandler, comp, plugin] = await initPromise;
+  const [sqsHandler, cmdGenHandler, comp, plugin, inboundReceivers] = await initPromise;
+
+  // Route 0: InboundTranslationSlice mutation — the AppSync resolver invokes this
+  // Lambda with `{__inboundTranslation: true, fieldName, arguments}` (no `command`,
+  // no `Records`). Dispatch to the field's receive handler, which translates +
+  // publishes and returns a commandOutcome JSON byte-compatible with Route 1's
+  // `commandOutcomeToJson`. Without this branch the payload fell through to Route 2
+  // and crashed on `event.records` being undefined.
+  if (event.__inboundTranslation === true) {
+    const fieldName = event.fieldName;
+    const receiver = (inboundReceivers || {})[fieldName];
+    if (receiver === undefined) {
+      log.warn("no inbound translation receiver for field: " + fieldName, { comp: "DcbCommandTopicRuntime" });
+      throw new Error("no inbound translation receiver for field: " + fieldName);
+    }
+    log.debug("InboundTranslation invocation (" + fieldName + ")", { comp: "DcbCommandTopicRuntime" });
+    return await receiver(event.arguments);
+  }
 
   // Route 1: AppSync direct invocation — payload carries the CommandGenerator.payload
   // shape (`{command, arguments, meta, identity?}`).

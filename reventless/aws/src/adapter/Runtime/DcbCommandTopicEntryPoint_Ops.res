@@ -219,3 +219,63 @@ let buildSliceHandler = (
     callback.handleCommands(~tagKeysByEventType, ~crossPartitionTagKeys, dcbEventLog, decodedStream)
   }
 }
+
+// ── Inbound translation receiver wiring (Route 0) ───────────────────────────
+// The DCB command Lambda is also the target of every InboundTranslationSlice
+// mutation on the plugin's API — its AppSync resolver invokes this Lambda with an
+// `{__inboundTranslation, fieldName, arguments}` payload. Building the per-field
+// `receive` here keeps the curried `InboundTranslationSlice_Callback.Make` functor
+// call compiler-checked (same rationale as `buildSliceHandler`) and mirrors the
+// in-process composite handler in `Dcb_Builder.res`, so the deployed surface and
+// the local surface encode the same `commandOutcome`.
+
+// The dynamically-imported Translation module — opaque; a clean pass-through to
+// the functor (only `translate` is read, inside the compiled callback).
+type translationModule
+
+type inboundCallback = {
+  receive: (
+    ReventlessInfra.CommandTopic.publishJsons,
+    JSON.t,
+  ) => promise<ReventlessInfra.InboundTranslationSlice.receiveResult>,
+  auditLog: dict<ReventlessCore.InboundTranslationSlice_Callback.auditRow>,
+}
+@module("@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs")
+external makeInboundCallback: specModule => translationModule => inboundCallback = "Make"
+
+// Builds the inbound receive handler: run the slice's `receive` (which validates
+// the external input against the spec schema, translates, and publishes the mapped
+// commands via `publishJsons`), then — when an audit table name was threaded —
+// drain the in-memory audit log to that table (best-effort, matching
+// `InboundTranslationSlice_Builder`'s inline `syncToQueryDb`). Returns the
+// `commandOutcome` JSON, byte-compatible with the AppSync direct-invocation route.
+let buildInboundReceiver = (
+  spec: specModule,
+  translation: translationModule,
+  ~publishJsons: ReventlessInfra.CommandTopic.publishJsons,
+  ~auditQueryDbOps: option<ReventlessCore.QueryDb_Adapter.operations>,
+) => {
+  let callback = makeInboundCallback(spec)(translation)
+  async (args: JSON.t): JSON.t => {
+    let result = await callback.receive(publishJsons, args)
+    switch auditQueryDbOps {
+    | Some(ops) =>
+      let rows = callback.auditLog->Dict.toArray
+      let _ = await rows->Array.reduce(Promise.resolve(), async (prev, (id, row)) => {
+        let _ = await prev
+        let json = row->S.reverseConvertToJsonOrThrow(
+          ReventlessCore.InboundTranslationSlice_Callback.auditRowSchema,
+        )
+        try {
+          let _ = await ops.save(id, json, ReventlessCore.QueryDb.Overwrite, None)
+        } catch {
+        | _ => ()
+        }
+      })
+    | None => ()
+    }
+    result
+    ->ReventlessCore.InboundTranslationSlice.receiveResultToOutcome
+    ->ReventlessCore.CommandTopic.commandOutcomeToJson
+  }
+}
