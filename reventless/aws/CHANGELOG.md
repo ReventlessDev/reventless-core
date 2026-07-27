@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.230 (2026-07-27)
+
+### Bug Fixes
+
+* **aws:** convert AWS Location geocoder to a compiled EntryPoint Lambda ([6bf9b7c](https://github.com/ReventlessDev/reventless-core/commit/6bf9b7c6b230857d8dda730fa08c3d0090081c96))
+* **aws:** convert upload presign to a compiled EntryPoint Lambda ([39134f2](https://github.com/ReventlessDev/reventless-core/commit/39134f2f8e8236f043aae6ef410fa719624e625e))
+
+
 # 3.0.0-alpha.229 (2026-07-26)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
