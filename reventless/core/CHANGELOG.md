@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.184 (2026-07-27)
+
+### Bug Fixes
+
+* **aws:** grant DCB command Lambda write access to InboundTranslationSlice audit tables ([2c445fa](https://github.com/ReventlessDev/reventless-core/commit/2c445faf9692573d0eab2f0d4a456e8c5d723b41))
+
+
 # 3.0.0-alpha.183 (2026-07-27)
 
 ### Bug Fixes

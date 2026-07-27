@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.233 (2026-07-27)
+
+### Bug Fixes
+
+* **aws:** grant DCB command Lambda write access to InboundTranslationSlice audit tables ([2c445fa](https://github.com/ReventlessDev/reventless-core/commit/2c445faf9692573d0eab2f0d4a456e8c5d723b41))
+* refactor(aws)!: convert remaining Group-1 entry points to typed-core/thin-shell; fix Counter publish + EP stub wiring ([d7f1aeb](https://github.com/ReventlessDev/reventless-core/commit/d7f1aeb90cfc122106ccc3ffa522911fba5db2de))
+
+### BREAKING CHANGES
+
+* reventless-postgres QueryEnginePostgres.Make no longer
+exposes the dead deploy-time `make` (queryEngineMaker); its Pulumi.Output
+wrap was the last @pulumi/pulumi import in the PgQueryResolver Lambda's
+cold-start graph. Pure helpers now alias QueryDbStorage_Postgres_Ops.
+
+
+
 # 3.0.0-alpha.232 (2026-07-27)
 
 ### Bug Fixes

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.2.0-alpha.25 (2026-07-27)
+
+### Features
+
+* **seed:** guarded AWS store reset (seed:reset) with per-project scope selection ([8446172](https://github.com/ReventlessDev/reventless-core/commit/8446172cbb53776a58f53220d19e96d96ce94508))
+
+
 # 2.2.0-alpha.24 (2026-07-19)
 
 ### Features
