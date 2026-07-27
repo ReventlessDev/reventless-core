@@ -36,7 +36,7 @@ a concrete `CommandResult` member, and no `resolveType`/`isTypeOf` is provided �
 so GraphQL cannot pick a concrete object type for the abstract return.
 
 The field-type derivation and the resolver return sit together in
-[InboundTranslationResolvers_GraphQL.res](../../reventless/local/src/adapter/CommandGenerator/InboundTranslationResolvers_GraphQL.res):
+[InboundTranslationResolvers_GraphQL.res](../../../reventless/local/src/adapter/CommandGenerator/InboundTranslationResolvers_GraphQL.res):
 the field is emitted as `${fieldName}: CommandResult!` (around lines 40–45),
 while the resolver (around lines 56–62) returns
 `receiveResultToOutcome |> commandOutcomeToJson`. The abstract type has no way to
@@ -64,7 +64,7 @@ other command result surfaces rather than introducing a third convention.
    command resolvers return that lets *them* resolve `CommandResult` — the fix is
    to make this path match.
 2. Apply the chosen fix in
-   [InboundTranslationResolvers_GraphQL.res](../../reventless/local/src/adapter/CommandGenerator/InboundTranslationResolvers_GraphQL.res).
+   [InboundTranslationResolvers_GraphQL.res](../../../reventless/local/src/adapter/CommandGenerator/InboundTranslationResolvers_GraphQL.res).
 3. Verify no over-the-wire GraphQL error on a successful InboundTranslation
    mutation, and that a *rejected* one still returns a well-typed rejection.
 

@@ -35,7 +35,7 @@ ShipOrder   | consistencyRead=null   | consumes=[]        ← reads nothing
 ```
 
 `consistencyReadFor`
-([Plugin_Structure.res:345](../../reventless/core/src/plugin/component/Plugin_Structure.res#L345))
+([Plugin_Structure.res:345](../../../reventless/core/src/plugin/component/Plugin_Structure.res#L345))
 links a StateChangeSlice to a view by scoring the overlap between the events the
 slice *consumes* and the events each view consumes. `ShipOrder` consumes nothing,
 so it scores zero against every view and links to none. Any consumer that groups
@@ -44,9 +44,9 @@ as an Orders command.
 
 Note the deeper asymmetry: `ShipOrder` declares
 `@allowedStates([Orders.Placed])`
-([ShipOrder.res:14](../../examples/online-shop-hybrid/ordering/src/Order/StateChangeSlice/ShipOrder.res#L14))
+([ShipOrder.res:14](../../../examples/online-shop-hybrid/ordering/src/Order/StateChangeSlice/ShipOrder.res#L14))
 and its `consumedEvent` type lists `OrderPlaced | OrderShipped | OrderCancelled`
-([ShipOrder.res:6](../../examples/online-shop-hybrid/ordering/src/Order/StateChangeSlice/ShipOrder.res#L6)),
+([ShipOrder.res:6](../../../examples/online-shop-hybrid/ordering/src/Order/StateChangeSlice/ShipOrder.res#L6)),
 but its *behavior* reads none of them — so the declared "only in Placed" guard
 is not backed by a decision-model read the way `CancelOrder`'s is (CancelOrder's
 GWT rejects `OrderAlreadyShipped`). `ShipOrder` ships on `orderId` alone.
@@ -56,7 +56,7 @@ GWT rejects `OrderAlreadyShipped`). `ShipOrder` ships on `orderId` alone.
 **Should a human be able to ship an order from the console?**
 
 The `AutoShipOrder` automation already owns shipping: the order-lifecycle work
-([done/online-shop-hybrid-order-lifecycle.md](done/online-shop-hybrid-order-lifecycle.md))
+([online-shop-hybrid-order-lifecycle.md](online-shop-hybrid-order-lifecycle.md))
 gates it on `shippingMethod` so `Express` ships on arrival and `Pickup` never
 ships. If shipping is intended to be automation-only, the board being unable to
 ship is **correct**, and the honest fix is the opposite of wiring it up:
@@ -88,7 +88,7 @@ Make `ShipOrder` read order state, mirroring `CancelOrder`. This both:
    then keeps it off the board honestly. If manual: continue.
 2. Make `ShipOrder` consume `OrderPlaced` (at minimum) in its behavior/decision
    model, matching `CancelOrder`'s pattern
-   ([CancelOrder.res](../../examples/online-shop-hybrid/ordering/src/Order/StateChangeSlice/CancelOrder.res)),
+   ([CancelOrder.res](../../../examples/online-shop-hybrid/ordering/src/Order/StateChangeSlice/CancelOrder.res)),
    so `consumedEventTypes` is non-empty and includes an event the Orders
    projection also consumes.
 3. Add/adjust GWT tests so `ShipOrder` rejects a non-Placed order (mirroring

@@ -13,9 +13,28 @@ type iamPolicy = {
 }
 let additionalIamPolicies: array<iamPolicy> = []
 
-// Legacy CallbackFunction path — retained for module type compatibility.
-// Not called at runtime; all Lambda deployments now use makeFromCodeAsset.
-// Can be removed once the module type no longer requires environmentMaker.
+// CallbackFunction path — the last serialized-closure Lambda builder on AWS.
+//
+// REACHABLE, despite most deployments going through makeFromCodeAsset. Three
+// component builders instantiate ReventlessCore.EventCollectorRuntime_Builder_
+// PerEventCollector.Make over this module — ForeignReadModel_Builder,
+// SideEffectHandler_PerSideEffectHandler and Task_Builder_PerBucket — and that
+// functor's forEventCollector calls `make` below. The live route is a Task whose
+// spec returns `Task.sideEffects`: Task_Builder then constructs a
+// SideEffectHandler, which provisions its collector Lambda here.
+//
+// A Lambda built this way is a serialized closure, and Pulumi's closure walker
+// fails on Effect-TS — silently, so the function is simply never created and the
+// deploy still reports success (see docs/plans/done/complete-bundled-migration.md,
+// where an ordering-aws deploy came up four Lambdas short). Where it does
+// serialize, it then resolves @aws-sdk against whatever the layer and the runtime
+// each supply, carrying the cold-start SDK-skew failure compiled entry points
+// were introduced to avoid. Converting these three builders to a compiled entry
+// point is the fix; until then a side-effect-bearing Task is the exposed surface.
+//
+// `make` cannot simply be dropped: Runtime.Environment requires environmentMaker
+// and the in-memory platform implements it for real (LocalRuntimeEnvironment
+// registers the handler in a Deferred).
 let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, parts> = (
   ~name,
   ~handler,
@@ -27,8 +46,8 @@ let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, part
   let opts =
     opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
-  // Legacy path (see above): no component kind reaches here because nothing calls
-  // it, so it is attributed to the Platform rather than to an invented domain kind.
+  // The environmentMaker signature carries no component kind, so callers cannot
+  // pass one through; attributed to the Platform rather than to an invented kind.
   let tags = AWS.Tags.make(~name, ~kind=ReventlessCore.ComponentType.Platform, ~role=Runtime, ~scope=Platform)
 
   let lambdaRole = IAM.Role.makeWithDefaultPolicy(
@@ -58,7 +77,8 @@ let make: ReventlessCore.Runtime.environmentMaker<'event, context, 'result, part
     )
 
   // Coerce CallbackFunction.t → Function.t (structurally compatible: both have arn, id, name).
-  // This legacy path is only retained for module type compatibility.
+  // The coercion goes away with the path itself, once the three PerEventCollector
+  // builders above move to a compiled entry point.
   let lambdaAsFunction: Pulumi.Output.t<PulumiAws.Lambda.Function.t> = lambda->Obj.magic
 
   {
