@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.236 (2026-07-27)
+
+### Bug Fixes
+
+* **aws:** deploy AllAutomationSlices via DCB-eventlog finalizer ([d88ff1a](https://github.com/ReventlessDev/reventless-core/commit/d88ff1aac3a67881f5653c48bfd441878e822945))
+
+
 # 3.0.0-alpha.235 (2026-07-27)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

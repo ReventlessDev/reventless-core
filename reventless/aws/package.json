@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-aws",
-  "version": "3.0.0-alpha.235",
+  "version": "3.0.0-alpha.236",
   "description": "AWS adapters for Reventless",
   "license": "Apache-2.0",
   "scripts": {

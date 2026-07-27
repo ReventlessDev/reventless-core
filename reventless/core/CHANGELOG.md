@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.186 (2026-07-27)
+
+### Features
+
+* **api:** event-history query — the Source A read counterpart ([9268b33](https://github.com/ReventlessDev/reventless-core/commit/9268b33a4835d4cd4bc79b38f19bc2b974853fa4))
+
+
 # 3.0.0-alpha.185 (2026-07-27)
 
 ### Bug Fixes
