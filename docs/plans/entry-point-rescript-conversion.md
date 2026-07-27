@@ -372,12 +372,34 @@ SDK-client seam. Prioritise the largest/most-logic-heavy first
 (`EventCollectorEntryPoint` 717 LOC, `ReadModelEntryPoint` 179,
 `StateViewSliceEntryPoint` 177). Track separately; do not block Phase 1 on it.
 
-### Also fold in (cheap, related)
+### Also fold in — inline-string tier (DONE, 2026-07-27)
 
-- The other **4 inline-string handlers** in `.res` files (the remaining
-  `handlerCode`/`makeHandlerCode` tier beyond the two we already fixed) are
-  candidates to move to `_Ops` on the same rationale — audit and convert where
-  the logic is non-trivial. `Platform_UIFragments_Lambda.res` is one.
+All 4 remaining inline-string handlers were audited (all non-trivial) and
+converted to compiled `_Ops`, retiring the `handlerCode`/`makeHandlerCode` tier
+entirely (6 of 6 with presign/geocoder). Two commits:
+
+- **`Platform_UIFragments_Lambda` + `Platform_ComponentDefinitions_Lambda`**
+  (`afff4efba`) — the paginated scan, the version comparator (previously
+  duplicated verbatim across both strings), and the highest-version-per-plugin
+  collapse are shared in the runtime-pure `Platform_AdminScan_Ops` (bare
+  `@aws-sdk/*`, no `PulumiAws`). The admin entry moves from source interpolation
+  to an `ADMIN_ENTRY_JSON` env var. `Platform_AdminScan_OpsTest` unit-tests the
+  ported comparator + collapse. Both graphs `@pulumi`-free.
+- **`EventLogSubscription_AppSync` + `StateTopic_AppSync`** (`4817eab31`) — the
+  hand-rolled SigV4 signer (kept on `node:crypto`, **not** `@smithy/signature-v4`,
+  so the cold-start graph stays SDK-free — the whole point of this plan) is
+  ported to a shared `AppSyncEventsSigner_Ops`. A **byte-parity test**
+  (`AppSyncEventsSigner_OpsTest`) asserts the ReScript signer produces output
+  identical to the preserved original JS (`AppSyncEventsSigner_ParityFixture.mjs`,
+  a verbatim copy of the pre-conversion `signedHeaders`) across credential /
+  region / timestamp variations — the guard against a silent SigV4 drift that
+  would 403 live event delivery, which no on-laptop test could otherwise catch.
+  Both handlers now build via `buildCodeArchive` (EventLogSubscription gains the
+  ESM resolve-hook + `NODE_OPTIONS`/`ESM_FALLBACK_DIRS` it previously didn't
+  need). Both graphs `@pulumi`-free.
+
+Live validation pends the next CI deploy (these are AppSync-signing / admin-query
+Lambdas — the parity + import-graph checks are the on-laptop ceiling).
 
 ---
 
