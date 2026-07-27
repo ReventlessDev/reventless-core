@@ -57,7 +57,7 @@ let register = (~fieldName: string, ~externalInputSchema: S.t<unknown>, ~server:
     let inputJson: JSON.t = args->Obj.magic
     let receive = receiveRegistry->Dict.getUnsafe(fieldName)
     let result = await receive(inputJson)
-    result->InboundTranslationSlice.receiveResultToOutcome->CommandTopic.commandOutcomeToJson
+    result->InboundTranslationSlice_Callback.receiveResultToOutcome->CommandTopic.commandOutcomeToJson
   }
 
   let resolvers = Dict.make()

@@ -23,7 +23,6 @@ import * as ApiNoApiHelpers$ReventlessCore from "../Api/ApiNoApiHelpers.res.mjs"
 import * as Plugin_Structure$ReventlessCore from "../../plugin/component/Plugin_Structure.res.mjs";
 import * as DcbEventLog_Builder$ReventlessCore from "../DcbEventLog/DcbEventLog_Builder.res.mjs";
 import * as CommandTopic_Builder$ReventlessCore from "../CommandTopic/CommandTopic_Builder.res.mjs";
-import * as InboundTranslationSlice$ReventlessCore from "../InboundTranslationSlice/InboundTranslationSlice.res.mjs";
 import * as AutomationSlice_Callback$ReventlessCore from "../AutomationSlice/AutomationSlice_Callback.res.mjs";
 import * as CommandGenerator_Callback$ReventlessCore from "../CommandGenerator/CommandGenerator_Callback.res.mjs";
 import * as InboundTranslationSlice_Callback$ReventlessCore from "../InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
@@ -384,7 +383,7 @@ function Make(DcbEventLogStorage) {
             if (receiveFn !== undefined) {
               return Effect.promise(async () => {
                 let result = await receiveFn(args);
-                return CommandTopic$ReventlessCore.commandOutcomeToJson(InboundTranslationSlice$ReventlessCore.receiveResultToOutcome(result));
+                return CommandTopic$ReventlessCore.commandOutcomeToJson(InboundTranslationSlice_Callback$ReventlessCore.receiveResultToOutcome(result));
               });
             } else {
               return baseHandler(event, ctx);

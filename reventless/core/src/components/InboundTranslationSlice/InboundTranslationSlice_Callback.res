@@ -18,6 +18,34 @@ type auditRow = {
   receivedAt: string,
 }
 
+/**
+Map a `receive` outcome onto the `CommandResult` union the slice's mutation field
+declares, so both surfaces feed `CommandTopic.commandOutcomeToJson` rather than
+hand-rolling a second `__typename` writer.
+
+A translation can fan out across several targets; the mutation response reports
+the first target as `entityId` and the fan-out count as `eventCount`. The
+per-target detail stays queryable through the slice's audit read model. When the
+translation legitimately produced no command, `entityId` is omitted (encoding as
+`null`) rather than reporting a target that does not exist.
+
+Lives here rather than in `InboundTranslationSlice.res` because the deployed DCB
+command Lambda calls it at runtime, and the base module imports `@pulumi/pulumi`
+at deploy time — keeping this runtime-pure keeps Pulumi out of the Lambda graph.
+*/
+let receiveResultToOutcome = (
+  result: ReventlessInfra.InboundTranslationSlice.receiveResult,
+): CommandTopic.commandOutcome =>
+  switch result {
+  | Ok({requestId, targetIds, commandCount}) =>
+    switch targetIds->Array.get(0) {
+    | Some(entityId) => Accepted({msgId: requestId, entityId, eventCount: commandCount})
+    | None => Accepted({msgId: requestId, eventCount: commandCount})
+    }
+  | Error({requestId, error}) =>
+    Rejected({msgId: requestId, errorCode: "TranslationFailed", errorDetail: Some(error)})
+  }
+
 module type T = {
   module Spec: Reventless.InboundTranslationSlice.Spec
   module Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec

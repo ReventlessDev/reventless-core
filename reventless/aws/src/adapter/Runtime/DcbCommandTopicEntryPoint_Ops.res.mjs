@@ -9,8 +9,7 @@ import * as Stream from "effect/Stream";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
-import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
-import * as InboundTranslationSlice$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice.res.mjs";
+import * as CommandTopic_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 import * as InboundTranslationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
 import * as DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws from "../DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
 import * as DcbEventLogStorage_Postgres_Runtime$ReventlessAws from "../DcbEventLog/DcbEventLogStorage_Postgres_Runtime.res.mjs";
@@ -116,7 +115,7 @@ function buildInboundReceiver(spec, translation, publishJsons, auditQueryDbOps) 
         }
       });
     }
-    return CommandTopic$ReventlessCore.commandOutcomeToJson(InboundTranslationSlice$ReventlessCore.receiveResultToOutcome(result));
+    return CommandTopic_Helpers$ReventlessCore.commandOutcomeToJson(InboundTranslationSlice_Callback$ReventlessCore.receiveResultToOutcome(result));
   };
 }
 

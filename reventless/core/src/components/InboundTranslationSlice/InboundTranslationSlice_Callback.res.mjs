@@ -25,6 +25,36 @@ let auditRowSchema = S.schema(s => ({
   receivedAt: s.m(S.string)
 }));
 
+function receiveResultToOutcome(result) {
+  if (result.TAG === "Ok") {
+    let match = result._0;
+    let commandCount = match.commandCount;
+    let requestId = match.requestId;
+    let entityId = match.targetIds[0];
+    if (entityId !== undefined) {
+      return {
+        TAG: "Accepted",
+        msgId: requestId,
+        entityId: entityId,
+        eventCount: commandCount
+      };
+    } else {
+      return {
+        TAG: "Accepted",
+        msgId: requestId,
+        eventCount: commandCount
+      };
+    }
+  }
+  let match$1 = result._0;
+  return {
+    TAG: "Rejected",
+    msgId: match$1.requestId,
+    errorCode: "TranslationFailed",
+    errorDetail: match$1.error
+  };
+}
+
 function Make(Spec) {
   return Translation => {
     let auditLog = {};
@@ -190,6 +220,7 @@ function Make(Spec) {
 export {
   auditStatusSchema,
   auditRowSchema,
+  receiveResultToOutcome,
   Make,
 }
 /*  Not a pure module */

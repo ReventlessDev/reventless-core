@@ -720,7 +720,7 @@ module Make = (
                     let result = await receiveFn(args)
                     let response =
                       result
-                      ->InboundTranslationSlice.receiveResultToOutcome
+                      ->InboundTranslationSlice_Callback.receiveResultToOutcome
                       ->CommandTopic.commandOutcomeToJson
                     response->Obj.magic
                   })

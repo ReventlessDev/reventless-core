@@ -275,7 +275,10 @@ let buildInboundReceiver = (
     | None => ()
     }
     result
-    ->ReventlessCore.InboundTranslationSlice.receiveResultToOutcome
-    ->ReventlessCore.CommandTopic.commandOutcomeToJson
+    ->ReventlessCore.InboundTranslationSlice_Callback.receiveResultToOutcome
+    // `CommandTopic_Helpers`, not `CommandTopic`: the latter imports `Adapter`
+    // (→ `@pulumi/pulumi`) for a deploy-time helper, which would crash this
+    // runtime Lambda's cold start. The encoder itself lives in the pure Helpers.
+    ->ReventlessCore.CommandTopic_Helpers.commandOutcomeToJson
   }
 }
