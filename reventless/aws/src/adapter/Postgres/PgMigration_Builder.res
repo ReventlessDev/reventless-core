@@ -33,7 +33,7 @@ let make = (
   open PulumiAws
 
   let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
-    ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/PgMigrationEntryPoint.mjs",
+    ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/PgMigrationEntryPoint.res.mjs",
     ~packageDirs=Dict.make(),
   )
 

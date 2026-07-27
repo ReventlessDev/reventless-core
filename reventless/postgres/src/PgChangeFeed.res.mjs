@@ -2,15 +2,15 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as PgDriver$ReventlessPostgres from "./PgDriver.res.mjs";
-import * as DcbEventLogStorage_Postgres$ReventlessPostgres from "./DcbEventLogStorage_Postgres.res.mjs";
+import * as DcbEventLogStorage_Postgres_Ops$ReventlessPostgres from "./DcbEventLogStorage_Postgres_Ops.res.mjs";
 
 async function readBatch(pool, logName, after, limitOpt) {
   let limit = limitOpt !== undefined ? limitOpt : 500;
-  let b = DcbEventLogStorage_Postgres$ReventlessPostgres.mkBuilder();
-  let where = DcbEventLogStorage_Postgres$ReventlessPostgres.buildReadWhere(b, logName, [], Stdlib_Option.flatMap(after, DcbEventLogStorage_Postgres$ReventlessPostgres.decodeCursor), true);
-  let sql = `SELECT ` + DcbEventLogStorage_Postgres$ReventlessPostgres.selectColumns + ` FROM dcb_event WHERE ` + where + ` ORDER BY transaction_id ASC, position ASC LIMIT ` + limit.toString();
+  let b = DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.mkBuilder();
+  let where = DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.buildReadWhere(b, logName, [], Stdlib_Option.flatMap(after, DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.decodeCursor), true);
+  let sql = `SELECT ` + DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.selectColumns + ` FROM dcb_event WHERE ` + where + ` ORDER BY transaction_id ASC, position ASC LIMIT ` + limit.toString();
   let rows = await PgDriver$ReventlessPostgres.query(pool, sql, b.params);
-  let events = rows.map(DcbEventLogStorage_Postgres$ReventlessPostgres.rowToEvent);
+  let events = rows.map(DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.rowToEvent);
   let last = events[events.length - 1 | 0];
   let cursor = last !== undefined ? last.position : undefined;
   return {
@@ -31,7 +31,7 @@ async function loadCheckpoint(pool, subscriber) {
 }
 
 async function saveCheckpoint(pool, subscriber, cursor) {
-  let match = DcbEventLogStorage_Postgres$ReventlessPostgres.decodeCursor(cursor);
+  let match = DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.decodeCursor(cursor);
   if (match !== undefined) {
     await PgDriver$ReventlessPostgres.query(pool, "INSERT INTO dcb_subscription(subscriber, last_tx, last_position)\n       VALUES ($1, $2::xid8, $3::bigint)\n       ON CONFLICT (subscriber)\n       DO UPDATE SET last_tx = EXCLUDED.last_tx, last_position = EXCLUDED.last_position", [
       subscriber,

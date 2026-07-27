@@ -1,8 +1,14 @@
 # Plan: Convert AWS Lambda entry points to type-checked ReScript (`_Ops` split)
 
-## Status: Phase 1 COMPLETE — all four conversions validated on live alpha
+## Status: Phase 1 COMPLETE — all four Group-2 handlers converted to ReScript
 
-All four Phase 1 conversions are deployed to alpha (pushed; CI published
+The two originally-deferred Postgres handlers (`PgMigrationEntryPoint`,
+`PgChangeFeedRelayEntryPoint`) are now converted too, completing all four
+Group-2 conversions. See **§4 → Deferred-handler conversion** below for that
+second pass (2026-07-27); the four presign/geocoder/Heartbeat/PluginExtensionPoint
+conversions from the first pass are recorded here:
+
+All four first-pass conversions are deployed to alpha (pushed; CI published
 reventless-aws → rebuilt the layer → deployed online-shop-hybrid, Lambdas last
 modified 2026-07-27 ~03:13–03:15 UTC) and confirmed functional at runtime:
 
@@ -24,11 +30,13 @@ modified 2026-07-27 ~03:13–03:15 UTC) and confirmed functional at runtime:
   `PlatformPluginExtPointCmdHandler` processes `Heartbeat(Catalog/Ordering/
   PlatformInspector)` directives, runs `ScheduleOps`, and drains its queue
   cleanly.
-- **Deferred (Phase 1 reassessment, user decision):** the two VPC-bound
-  Postgres handlers (`PgMigrationEntryPoint`, `PgChangeFeedRelayEntryPoint`) —
-  not laptop-validatable, woven into RDS/VPC plumbing; risk/gain didn't justify
-  converting them in the same pass. They still run the hand-written `.mjs`
-  shells.
+- **Postgres handlers (now converted, 2026-07-27 second pass):** the two
+  VPC-bound Postgres handlers (`PgMigrationEntryPoint`,
+  `PgChangeFeedRelayEntryPoint`) were originally deferred (not laptop-validatable,
+  woven into RDS/VPC plumbing). They have since been converted to pure-ReScript
+  entry points; the `.mjs` shells are deleted. Full write-up in **§4 →
+  Deferred-handler conversion**. A latent `@pulumi/pulumi` cold-start leak in
+  the relay's runtime graph was found and fixed in the same pass.
 
 **Note (pre-existing, unrelated to this plan):** alpha currently runs duplicate
 Lambda generations (e.g. two `CatalogPluginHeartbeat`, two
@@ -312,13 +320,48 @@ plugin UI-fragment registrations (or AWS routes them another way — verify
 before "fixing"; adding the mapping also requires the UiFragmentRegistry queue
 in `publishToAggregates`, which the builder does not currently wire).
 
-**Deferred handlers (revisit only with a real validation path):**
+### Deferred-handler conversion (Postgres, 2026-07-27 second pass)
 
-1. **`PgMigrationEntryPoint`** — reads `HANDLER_CONFIG.pgConnection`, calls
-   `PgSchema.ensureSchema(poolFor(conn))`; `opts.makePool` test seam → labeled
-   arg on conversion. Has `PgMigrationEntryPoint_IntegrationTest`.
-2. **`PgChangeFeedRelayEntryPoint`** — drains Postgres logs from checkpoints,
-   relays to EventCollector SQS; mirrors the relay/relayWithPool split.
+The two Pg\* handlers were converted following the Heartbeat model (relies on the
+published layer via `packageDirs=Dict.make()`; the builder's `entryPointModule`
+now points at the compiled `.res.mjs`).
+
+1. **`PgMigrationEntryPoint.res`** — reads `HANDLER_CONFIG.pgConnection`, calls
+   `ReventlessPostgres.PgSchema.ensureSchema` on `PgRuntime.poolFor(conn)`. The
+   `.mjs`'s `opts.makePool` test seam became a labeled `~makePool` arg (default
+   `PgRuntime.poolFor`). `PgConnection.connectionConfig` is referenced as a
+   **type only** (erased — no runtime import of the Pulumi-carrying `PgConnection`
+   module); the raw `JSON.parse` of `HANDLER_CONFIG` structurally satisfies it.
+   `PgMigrationEntryPoint_IntegrationTest` was rewritten to call the ReScript
+   `runMigration` directly (dropping the two `%raw` dynamic-`import()` blocks).
+2. **`PgChangeFeedRelayEntryPoint.res`** — drains each log from its checkpoint
+   and relays to EventCollector SQS via `PgChangeFeedRelay_Runtime.relay` /
+   `relayClassic` (typed labeled args, replacing the `.mjs`'s fragile positional
+   calls). `makeSendBatch` builds the queue ref inline (like Heartbeat) +
+   `Util_SQS_Runtime.sendMessage`; per-log log-and-continue error handling via
+   `try/catch`. `PgChangeFeedRelay_RuntimeTest` / `_IntegrationTest` call the
+   runtime module directly, so the conversion doesn't touch them.
+
+**Latent `@pulumi/pulumi` leak found and fixed.** The relay's runtime graph
+reached `@pulumi/pulumi` transitively:
+`PgChangeFeedRelay_Runtime → PgChangeFeed → DcbEventLogStorage_Postgres →
+@pulumi/pulumi`. Both `PgChangeFeed` and `EventLogChangeFeed` aliased
+`module Dcb = DcbEventLogStorage_Postgres` (the deploy-time wrapper) purely for
+its pure cursor/decode helpers (`mkBuilder`, `buildReadWhere`, `decodeCursor`,
+`selectColumns`, `rowToEvent`) — all of which live in the runtime-pure
+`DcbEventLogStorage_Postgres_Ops` that the wrapper only `include`s. Repointing
+both aliases at `_Ops` is behavior-preserving (identical bindings) and drops the
+Pulumi import from the relay's cold-start graph. This leak pre-existed the
+conversion (the old `.mjs` had the same graph) — the relay is a Postgres-backend
+Lambda that CI's DynamoDB-backed online-shop-hybrid deploy never exercises, so it
+had never surfaced.
+
+**Verification (this pass):** postgres + aws packages and the full root build are
+zero-warning green; 297 reventless-aws tests pass; a transitive import-graph walk
+over both compiled entry points (34 modules) is **`@pulumi`-free**. Live
+validation still pends a real Postgres-backend deploy (VPC-bound — not
+laptop-invokable); the migration and relay Lambdas exercise naturally on the
+first such `pulumi up` + schedule tick.
 
 ### Phase 2 — `_Ops` extraction for Group-1 (separate, later)
 

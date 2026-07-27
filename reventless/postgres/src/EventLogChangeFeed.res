@@ -15,8 +15,11 @@
 // later commit) is never skipped by a checkpointing reader. `global_seq` alone,
 // being an IDENTITY assigned at INSERT, could NOT provide that guarantee.
 
-// Reuse the shared `<a>:<b>` cursor codec from the DCB storage — identical format.
-module Dcb = DcbEventLogStorage_Postgres
+// Reuse the shared `<a>:<b>` cursor codec from the DCB storage — identical
+// format. Point at the runtime-pure `_Ops` module (no `@pulumi/pulumi`): this
+// feed is drained by the deployed change-feed relay Lambda, whose cold-start
+// graph must stay Pulumi-free.
+module Dcb = DcbEventLogStorage_Postgres_Ops
 
 // One classic event as the feed surfaces it. `payload` is the stored event JSON
 // verbatim; a bus/topic relay transforms it into its target shape (e.g. the AWS

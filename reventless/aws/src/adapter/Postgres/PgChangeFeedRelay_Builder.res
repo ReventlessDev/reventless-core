@@ -49,7 +49,7 @@ let make = (
     opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
   let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
-    ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/PgChangeFeedRelayEntryPoint.mjs",
+    ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/PgChangeFeedRelayEntryPoint.res.mjs",
     ~packageDirs=Dict.make(),
   )
 

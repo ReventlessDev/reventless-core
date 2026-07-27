@@ -18,7 +18,12 @@
 open ReventlessCore
 open Reventless
 
-module Dcb = DcbEventLogStorage_Postgres
+// Runtime-pure ops module (no `@pulumi/pulumi`) — this feed is drained by the
+// deployed change-feed relay Lambda, so its cold-start graph must stay
+// Pulumi-free. `_Ops` carries every helper used below (mkBuilder,
+// buildReadWhere, decodeCursor, selectColumns, rowToEvent); the deploy-time
+// DcbEventLogStorage_Postgres only `include`s it and adds the Pulumi adapter.
+module Dcb = DcbEventLogStorage_Postgres_Ops
 
 // One page of the feed. `events` are in (transaction_id, position) order;
 // `cursor` is the checkpoint to persist and to pass as the next `after` (None

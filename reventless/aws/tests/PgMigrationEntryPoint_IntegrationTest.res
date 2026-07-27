@@ -16,42 +16,33 @@ open JestGlobals
 
 @val external processEnv: dict<string> = "process.env"
 
-// Import the .mjs entry point and call runMigration with the pool injected.
-// Returns "ok" on success. A minimal pgConnection satisfies the guard; the real
-// fields are ignored because `makePool` is injected.
-let runMigrationWithPool: (
-  ReventlessPostgres.PgDriver.pool,
-) => promise<string> = %raw(`
-  async (pool) => {
-    const { runMigration } = await import(
-      "@reventlessdev/reventless-aws/src/adapter/Runtime/PgMigrationEntryPoint.mjs"
-    );
-    const config = {
+// Drive the real ReScript `runMigration` with the pool injected — the guard
+// rejects a HANDLER_CONFIG with no pgConnection; the real fields below are
+// ignored because `~makePool` is injected. Returns "ok" on success.
+let runMigrationWithPool = (pool: ReventlessPostgres.PgDriver.pool): promise<string> =>
+  PgMigrationEntryPoint.runMigration(
+    {
       pgConnection: {
-        host: "ignored", port: 5432, database: "ignored",
-        username: "ignored", secretArn: "ignored",
+        host: "ignored",
+        port: 5432,
+        database: "ignored",
+        username: "ignored",
+        secretArn: "ignored",
       },
-    };
-    return await runMigration(config, { makePool: () => pool });
-  }
-`)
-
-// runMigration with an empty config — the guard must reject a HANDLER_CONFIG
-// that carries no pgConnection (a misconfigured deploy), rather than silently
-// building a bad pool.
-let runMigrationMissingConfigThrows: unit => promise<bool> = %raw(`
-  async () => {
-    const { runMigration } = await import(
-      "@reventlessdev/reventless-aws/src/adapter/Runtime/PgMigrationEntryPoint.mjs"
-    );
-    try { await runMigration({}, {}); return false; }
-    catch { return true; }
-  }
-`)
+    },
+    ~makePool=_ => pool,
+  )
 
 describe("PgMigrationEntryPoint.runMigration", () => {
   testPromise("rejects a HANDLER_CONFIG with no pgConnection", async () => {
-    let threw = await runMigrationMissingConfigThrows()
+    // An empty config carries no pgConnection (a misconfigured deploy); the
+    // guard must reject it rather than silently building a bad pool.
+    let threw = try {
+      let _ = await PgMigrationEntryPoint.runMigration({pgConnection: ?None})
+      false
+    } catch {
+    | _ => true
+    }
     expect(threw)->toBe(true)
   })
 

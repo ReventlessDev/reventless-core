@@ -3,7 +3,7 @@
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as PgDriver$ReventlessPostgres from "./PgDriver.res.mjs";
-import * as DcbEventLogStorage_Postgres$ReventlessPostgres from "./DcbEventLogStorage_Postgres.res.mjs";
+import * as DcbEventLogStorage_Postgres_Ops$ReventlessPostgres from "./DcbEventLogStorage_Postgres_Ops.res.mjs";
 
 let selectColumns = "\n  lpad(transaction_id::text, 20, '0') || ':' || lpad(global_seq::text, 20, '0') AS cursor,\n  aggregate_id,\n  seq_nr,\n  payload,\n  msg_id\n";
 
@@ -43,7 +43,7 @@ async function readBatch(pool, logName, after, limitOpt) {
   let limit = limitOpt !== undefined ? limitOpt : 500;
   let params = [logName];
   let where = "log_name = $1 AND transaction_id < pg_snapshot_xmin(pg_current_snapshot())";
-  let match = Stdlib_Option.flatMap(after, DcbEventLogStorage_Postgres$ReventlessPostgres.decodeCursor);
+  let match = Stdlib_Option.flatMap(after, DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.decodeCursor);
   if (match !== undefined) {
     params.push(match[0]);
     params.push(match[1]);
@@ -72,7 +72,7 @@ async function loadCheckpoint(pool, subscriber) {
 }
 
 async function saveCheckpoint(pool, subscriber, cursor) {
-  let match = DcbEventLogStorage_Postgres$ReventlessPostgres.decodeCursor(cursor);
+  let match = DcbEventLogStorage_Postgres_Ops$ReventlessPostgres.decodeCursor(cursor);
   if (match !== undefined) {
     await PgDriver$ReventlessPostgres.query(pool, "INSERT INTO event_log_subscription(subscriber, last_tx, last_global_seq)\n       VALUES ($1, $2::xid8, $3::bigint)\n       ON CONFLICT (subscriber)\n       DO UPDATE SET last_tx = EXCLUDED.last_tx, last_global_seq = EXCLUDED.last_global_seq", [
       subscriber,
