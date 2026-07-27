@@ -29,6 +29,17 @@ let views = [
   Seed.Runner.Seeded("Ordering_SendOrderConfirmationTodos"),
 ]
 
+// The fresh-store guard probes these before sending any command — the `Seeded`
+// view names, so the pre-flight refusal stays in lockstep with `verifyViews`.
+// `Catalog_Categories` leads, so a populated store aborts after one query.
+let probeViews =
+  views->Array.filterMap(v =>
+    switch v {
+    | Seed.Runner.Seeded(name) => Some(name)
+    | Seed.Runner.Unfillable(_, _) => None
+    }
+  )
+
 // ── Phases ──────────────────────────────────────────────────────────────────
 
 let seedCategories = async (~client: Seed.Client.t) => {
@@ -409,10 +420,12 @@ let dataSets: array<Seed.dataSet> = [
         ~customerCount=DemoData.customerCount,
         ~orderCount=DemoData.orderCount,
       ),
+    probeViews,
   },
   {
     name: "sample",
     label: "sample — 16 products, 8 customers, 40 orders",
     seed: connection => run(connection, ~productCount=16, ~customerCount=8, ~orderCount=40),
+    probeViews,
   },
 ]

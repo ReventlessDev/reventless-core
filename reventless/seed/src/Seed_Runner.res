@@ -91,6 +91,33 @@ let warn = (warnings: array<string>): unit =>
   }
 
 /**
+ * Pre-flight: refuse to seed onto a store that already holds data.
+ *
+ * The harness is a one-shot against a fresh store — a re-run would hit the
+ * domain's own duplicate rejections (`CategoryAlreadyExists`, …) and abort
+ * mid-phase. Catching it here, before any command is sent, turns that into an
+ * honest "nothing was written" startup abort instead of a misleading
+ * half-seeded one. It is the inverse of `verifyViews`: seeding refuses to start
+ * unless the store reads empty. Stops at the first non-empty probe view, so a
+ * populated store aborts after a single query.
+ */
+let assertStoreEmpty = async (client: Seed_Client.t, ~probeViews: array<string>): unit =>
+  for i in 0 to probeViews->Array.length - 1 {
+    switch probeViews->Array.get(i) {
+    | Some(name) =>
+      let count = await Seed_Client.countNodes(client, ~field=name)
+      if count > 0 {
+        throw(
+          Failed(
+            `the target store is not empty — "${name}" already holds ${count->Int.toString} row(s). Seeding is a one-shot against a fresh store; reset the store before re-running.`,
+          ),
+        )
+      }
+    | None => ()
+    }
+  }
+
+/**
  * Wraps a seed run. On failure it prints the cause and exits non-zero, saying
  * plainly that the store is now half-seeded — recovery is a reset, not a re-run.
  */
@@ -128,6 +155,9 @@ type dataSet = {
   name: string,
   label: string,
   seed: Seed_Connect.connection => promise<unit>,
+  // View names probed by the fresh-store guard before any command is sent; a
+  // non-empty one aborts the run at startup. Omit to skip the guard.
+  probeViews?: array<string>,
 }
 
 /**
@@ -179,6 +209,9 @@ let seed = (~sets: array<dataSet>, ~connect: unit => promise<Seed_Connect.connec
       }
       let connection = await connect()
       Seed_Prompt.close()
+      // Runs inside this pre-seed `try`, so refusing a non-empty store (or a
+      // failed probe query) is reported as "did not start", not "half-seeded".
+      await assertStoreEmpty(connection.client, ~probeViews=chosen.probeViews->Option.getOr([]))
       Some((chosen, connection))
     } catch {
     | Failed(message) =>

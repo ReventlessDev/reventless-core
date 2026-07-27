@@ -50,6 +50,12 @@ let views = [
   }
 ];
 
+let probeViews = Stdlib_Array.filterMap(views, v => {
+  if (v.TAG === "Seeded") {
+    return v._0;
+  }
+});
+
 async function seedCategories(client) {
   await Seed_Client$ReventlessSeed.sendAll(client, DemoData$OnlineShopHybridSeed.categories.map(c => DemoCommands$OnlineShopHybridSeed.addCategory({
     TAG: "AddCategory",
@@ -289,17 +295,20 @@ let dataSets = [
   {
     name: "full",
     label: `full — ` + DemoData$OnlineShopHybridSeed.productCount.toString() + ` products, ` + DemoData$OnlineShopHybridSeed.customerCount.toString() + ` customers, ` + DemoData$OnlineShopHybridSeed.orderCount.toString() + ` orders`,
-    seed: connection => run(connection, DemoData$OnlineShopHybridSeed.productCount, DemoData$OnlineShopHybridSeed.customerCount, DemoData$OnlineShopHybridSeed.orderCount)
+    seed: connection => run(connection, DemoData$OnlineShopHybridSeed.productCount, DemoData$OnlineShopHybridSeed.customerCount, DemoData$OnlineShopHybridSeed.orderCount),
+    probeViews: probeViews
   },
   {
     name: "sample",
     label: "sample — 16 products, 8 customers, 40 orders",
-    seed: connection => run(connection, 16, 8, 40)
+    seed: connection => run(connection, 16, 8, 40),
+    probeViews: probeViews
   }
 ];
 
 export {
   views,
+  probeViews,
   seedCategories,
   uploadProductImages,
   seedProducts,
@@ -314,4 +323,4 @@ export {
   run,
   dataSets,
 }
-/* dataSets Not a pure module */
+/* probeViews Not a pure module */

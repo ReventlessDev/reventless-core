@@ -83,6 +83,22 @@ function warn(warnings) {
   }
 }
 
+async function assertStoreEmpty(client, probeViews) {
+  for (let i = 0, i_finish = probeViews.length; i < i_finish; ++i) {
+    let name = probeViews[i];
+    if (name !== undefined) {
+      let count = await Seed_Client$ReventlessSeed.countNodes(client, name);
+      if (count > 0) {
+        throw {
+          RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+          _1: `the target store is not empty — "` + name + `" already holds ` + count.toString() + ` row(s). Seeding is a one-shot against a fresh store; reset the store before re-running.`,
+          Error: new Error()
+        };
+      }
+    }
+  }
+}
+
 async function run(main) {
   try {
     await main();
@@ -146,6 +162,7 @@ function seed(sets, connect) {
       }
       let connection = await connect();
       Seed_Prompt$ReventlessSeed.close();
+      await assertStoreEmpty(connection.client, Stdlib_Option.getOr(chosen.probeViews, []));
       started = [
         chosen,
         connection
@@ -179,6 +196,7 @@ export {
   verifyViews,
   unfillableWarnings,
   warn,
+  assertStoreEmpty,
   run,
   abortStartup,
   seed,
