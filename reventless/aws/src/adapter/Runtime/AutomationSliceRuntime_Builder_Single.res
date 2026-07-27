@@ -8,8 +8,17 @@ type runtimeParts = Util.Lambda.runtimeParts
 
 type sliceInfo = {
   specModulePath: string,
+  // The slice's body module (`<Slice>_Automation.res` / `<Slice>_Translation.res`)
+  // — the second argument of the curried callback functor
+  // (AutomationSlice_Callback.Make(Spec)(Automation)). The entry point must
+  // import it alongside the spec; a spec module alone cannot rebuild the
+  // callback.
+  bodyModulePath: string,
   callbackType: string,
   queryDbTableName: Pulumi.Output.t<string>,
+  // Threaded to phase 1 collect/resolve on the automation path (mirrors the
+  // in-process builder's `~context`); outbound slices take no context.
+  context: option<Reventless.AutomationSlice.context>,
 }
 
 let bundledInfos: dict<sliceInfo> = Dict.make()
@@ -24,10 +33,12 @@ let getDcbQueueUrl = () => dcbQueueUrlRef.contents
 let registerAutomationSlice = (
   ~name,
   ~specModulePath,
+  ~bodyModulePath,
   ~callbackType="automation",
   ~queryDbTableName,
+  ~context=?,
 ) =>
-  bundledInfos->Dict.set(name, {specModulePath, callbackType, queryDbTableName})
+  bundledInfos->Dict.set(name, {specModulePath, bodyModulePath, callbackType, queryDbTableName, context})
 
 type storedSpec = {
   componentName: string,
@@ -128,17 +139,31 @@ let finish = () =>
           | Some(info) =>
             let pkg = Util_Bundle.extractPackageName(info.specModulePath)
             packageDirs->Dict.set(pkg, Util_Bundle.resolvePackageRoot(pkg))
+            // Usually the same package as the spec, but bundle it explicitly —
+            // the entry point imports the body module by specifier too.
+            let bodyPkg = Util_Bundle.extractPackageName(info.bodyModulePath)
+            packageDirs->Dict.set(bodyPkg, Util_Bundle.resolvePackageRoot(bodyPkg))
 
             let specModule =
               info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+            let bodyModule =
+              info.bodyModulePath->JSON.stringifyAny->Option.getOr(`""`)
             let callbackType =
               info.callbackType->JSON.stringifyAny->Option.getOr(`""`)
+            let contextFragment = switch info.context {
+            | Some(context) =>
+              context
+              ->JSON.stringifyAny
+              ->Option.map(json => `,"context":${json}`)
+              ->Option.getOr("")
+            | None => ""
+            }
 
             let handlerJson =
               Pulumi.Output.all3((info.queryDbTableName, dcbQueueUrl, spec.sourceUrns))
               ->Pulumi.Output.apply(((tableName, queueUrl, urns)) => {
                 let sourceUrn = urns->Array.getUnsafe(0)
-                `{"specModule":${specModule},"callbackType":${callbackType},"queryDbTableName":"${tableName}","dcbQueueUrl":"${queueUrl}","sourceUrn":"${sourceUrn}"}`
+                `{"specModule":${specModule},"bodyModule":${bodyModule},"callbackType":${callbackType},"queryDbTableName":"${tableName}","dcbQueueUrl":"${queueUrl}","sourceUrn":"${sourceUrn}"${contextFragment}}`
               })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>

@@ -10,9 +10,10 @@
 // (HANDLER_CONFIG parsing incl. the compact-v2 expansion, the QueryDb operation
 // assembly incl. the Postgres / live-update branch, the projection stream
 // pipeline, the routed dispatch boundary) lives type-checked in
-// StateViewSliceEntryPoint_Ops.res and ProjectionEntryPoint_Ops.res.
+// StateViewSliceEntryPoint_Ops.res / ProjectionEntryPoint_Ops.res /
+// StreamRoutedEntryPoint_Ops.res.
 
-import * as ProjectionOps from "./ProjectionEntryPoint_Ops.res.mjs";
+import * as StreamOps from "./StreamRoutedEntryPoint_Ops.res.mjs";
 import * as Ops from "./StateViewSliceEntryPoint_Ops.res.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
@@ -26,7 +27,7 @@ async function buildAllHandlers() {
       dynamicImport(entry.specModule),
       dynamicImport(entry.projectionModule),
     ]);
-    ProjectionOps.addToRegistry(
+    StreamOps.addToRegistry(
       handlers,
       entry.sourceUrn,
       Ops.makeRegisteredHandler(entry, {
@@ -42,4 +43,4 @@ async function buildAllHandlers() {
   return handlers;
 }
 
-export const handler = ProjectionOps.makeRoutedHandler("StateViewSliceRuntime", buildAllHandlers());
+export const handler = StreamOps.makeRoutedHandler("StateViewSliceRuntime", buildAllHandlers());

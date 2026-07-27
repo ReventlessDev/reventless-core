@@ -4,6 +4,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as ProjectionEntryPoint_Ops$ReventlessAws from "./ProjectionEntryPoint_Ops.res.mjs";
+import * as StreamRoutedEntryPoint_Ops$ReventlessAws from "./StreamRoutedEntryPoint_Ops.res.mjs";
 
 function strOf(obj, key) {
   return Stdlib_Option.flatMap(obj[key], Stdlib_JSON.Decode.string);
@@ -64,7 +65,7 @@ function buildOperations(entry, spec) {
 
 function makeRegisteredHandler(entry, handleJsonEvents) {
   return {
-    handler: ProjectionEntryPoint_Ops$ReventlessAws.toStreamHandler(handleJsonEvents),
+    handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(handleJsonEvents),
     comp: entry.comp,
     plugin: entry.plugin
   };

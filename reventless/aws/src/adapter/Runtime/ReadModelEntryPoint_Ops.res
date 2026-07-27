@@ -6,9 +6,10 @@
 // `fixMappingsModule` shape fix-ups on those runtime-loaded modules, and the
 // ReadModel_Callback.Make functor application consuming them. HANDLER_CONFIG
 // parsing, the QueryDb operation assembly (including the id-injection wrap),
-// and handler registration live here, fully type-checked; the routed dispatch
-// boundary is shared with the StateViewSlice entry point in
-// ProjectionEntryPoint_Ops.
+// and handler registration live here, fully type-checked; the QueryDb backend
+// branch is shared with the StateViewSlice entry point in
+// ProjectionEntryPoint_Ops and the routed dispatch boundary lives in
+// StreamRoutedEntryPoint_Ops.
 
 type handlerEntry = {
   specModule: string,
@@ -106,8 +107,8 @@ let buildOperations = (
 let makeRegisteredHandler = (
   entry: handlerEntry,
   handleJsonEvents: ReventlessCore.EventCollector.jsonEventsHandler,
-): ProjectionEntryPoint_Ops.registeredHandler => {
-  handler: ProjectionEntryPoint_Ops.toStreamHandler(handleJsonEvents),
+): StreamRoutedEntryPoint_Ops.registeredHandler => {
+  handler: StreamRoutedEntryPoint_Ops.toStreamHandler(handleJsonEvents),
   comp: ?entry.comp,
   plugin: ?entry.plugin,
 }

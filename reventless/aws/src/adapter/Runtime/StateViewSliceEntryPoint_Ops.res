@@ -6,8 +6,9 @@
 // reads of their exports. HANDLER_CONFIG parsing (including the compact-v2
 // expansion), the QueryDb operation assembly, and the whole projection stream
 // pipeline (envelope decode → sury event parse → project → handleAction) live
-// here, fully type-checked; the routed dispatch boundary is shared with the
-// ReadModel entry point in ProjectionEntryPoint_Ops.
+// here, fully type-checked; the QueryDb backend branch is shared with the
+// ReadModel entry point in ProjectionEntryPoint_Ops and the routed dispatch
+// boundary lives in StreamRoutedEntryPoint_Ops.
 
 type handlerEntry = {
   specModule: string,
@@ -113,7 +114,7 @@ let decodeEnvelope = (json: JSON.t): envelope<'event> => {
   }
 }
 
-let exnMessage = ProjectionEntryPoint_Ops.exnMessage
+let exnMessage = StreamRoutedEntryPoint_Ops.exnMessage
 
 // The typed core of buildJsonEventsHandler: decode each envelope, parse the
 // event against the slice's consumed-event schema, project, and run every
@@ -138,7 +139,7 @@ let makeJsonEventsHandler = (
           project({event: event->S.parseJsonOrThrow(eventSchema), meta, recordedAt})
         } catch {
         | exn =>
-          ProjectionEntryPoint_Ops.logError(
+          StreamRoutedEntryPoint_Ops.logError(
             "failed to decode event",
             {comp: "StateViewSliceRuntime", detail: exnMessage(exn)},
           )
@@ -180,7 +181,7 @@ type sliceModules<'event> = {
 let makeRegisteredHandler = (
   entry: handlerEntry,
   modules: sliceModules<'event>,
-): ProjectionEntryPoint_Ops.registeredHandler => {
+): StreamRoutedEntryPoint_Ops.registeredHandler => {
   let queryDbOps = ProjectionEntryPoint_Ops.makeQueryDbOps(
     ~queryDbTableName=entry.queryDbTableName,
     ~pgConnection=entry.pgConnection,
@@ -189,7 +190,7 @@ let makeRegisteredHandler = (
     ~subIdField=ProjectionEntryPoint_Ops.subIdFieldOf(modules.subIdConfig),
   )
   {
-    handler: ProjectionEntryPoint_Ops.toStreamHandler(
+    handler: StreamRoutedEntryPoint_Ops.toStreamHandler(
       makeJsonEventsHandler(
         ~sliceName=modules.name,
         ~eventSchema=modules.consumedEventSchema,

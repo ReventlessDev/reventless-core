@@ -10,12 +10,12 @@
 // functor application consuming them. Everything else (HANDLER_CONFIG parsing,
 // the QueryDb operation assembly incl. the id-injection wrap and the
 // Postgres / live-update branch, handler registration, the routed dispatch
-// boundary) lives type-checked in ReadModelEntryPoint_Ops.res and
-// ProjectionEntryPoint_Ops.res.
+// boundary) lives type-checked in ReadModelEntryPoint_Ops.res /
+// ProjectionEntryPoint_Ops.res / StreamRoutedEntryPoint_Ops.res.
 
 import { patchSpecId } from "./HandlerFactoryHelpers.mjs";
 import { Make as readModelCallbackMake } from "@reventlessdev/reventless-core/src/components/ReadModel/ReadModel_Callback.res.mjs";
-import * as ProjectionOps from "./ProjectionEntryPoint_Ops.res.mjs";
+import * as StreamOps from "./StreamRoutedEntryPoint_Ops.res.mjs";
 import * as Ops from "./ReadModelEntryPoint_Ops.res.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
@@ -47,7 +47,7 @@ async function buildAllHandlers() {
       ReadModelSpec: specModule,
       operations,
     });
-    ProjectionOps.addToRegistry(
+    StreamOps.addToRegistry(
       handlers,
       entry.sourceUrn,
       Ops.makeRegisteredHandler(entry, callback.handleJsonEvents)
@@ -57,4 +57,4 @@ async function buildAllHandlers() {
   return handlers;
 }
 
-export const handler = ProjectionOps.makeRoutedHandler("ReadModelRuntime", buildAllHandlers());
+export const handler = StreamOps.makeRoutedHandler("ReadModelRuntime", buildAllHandlers());

@@ -421,6 +421,9 @@ introduced one shared typed module plus one per entry point:
   `EventCollectorChannel_DynamoDbStream_Runtime.handleStreamEvent` wrap), and
   `makeQueryDbOps` — the DynamoDB/Postgres backend branch incl. the env-gated
   `withLiveUpdates` wrap (typed binding into `StateTopicPublish.mjs`).
+  *(The dispatch/registry half later moved to `StreamRoutedEntryPoint_Ops` so
+  the AutomationSlice entry point could reuse it `pg`-free — see the next
+  pass.)*
   Deliberately NOT folded into `QueryDbEntryPoint_Ops`: that module is also
   imported by `DcbCommandTopicEntryPoint.mjs`, and the Postgres branch would
   have dragged `pg`/`PgRuntime` plus the stream-channel modules into the DCB
@@ -457,11 +460,74 @@ graphs (58/54 modules) `@pulumi`-free, the walker sanity-checked against a
 deploy-time builder graph where it does flag `@pulumi/*`, and
 `DcbCommandTopicEntryPoint`'s graph unchanged-clean.
 
-**Remaining Group-1 extractions (next passes):** `TaskBucketEntryPoint` (150),
-`AutomationSliceEntryPoint` (138), then the small ones (`EventMapperEntryPoint`
-99, `CounterEntryPoint` 91, `PgQueryResolverEntryPoint` 88,
-`ExtensionPointEntryPoint` 85, `SideEffectEntryPoint` 82). Same recipe: typed
-core for config/decode/dispatch, `.mjs` keeps only the dynamic-import seam.
+**`AutomationSliceEntryPoint` + `TaskBucketEntryPoint` DONE (2026-07-27, next
+pass).** Two structural findings shaped this pass:
+
+- **Dispatch/backends split.** The AutomationSlice Lambda routes streams the
+  same way as RM/SVS but has no Postgres backend, so the shared dispatch moved
+  out of `ProjectionEntryPoint_Ops` into a new **`StreamRoutedEntryPoint_Ops`**
+  (registry, group-by-ARN routing, `runEffect` attribution, `toStreamHandler`);
+  `ProjectionEntryPoint_Ops` keeps only the QueryDb backend branch + spec-read
+  helpers. Result: the Automation graph reuses the typed dispatch **without**
+  `pg`/`PgRuntime` in its cold-start graph (verified by walk), and RM/SVS
+  import both modules.
+- **The AutomationSlice `.mjs` was latently BROKEN, not just untyped.** It
+  predated the mixed-source callback rework: it applied the (now curried)
+  two-module functor to the spec module alone (`Make(Spec)` returns a closure,
+  not a callback), read `todoItems.contents` (no longer a ref), and passed
+  schema-decoded one-arg events to `phase1` (the automation callback now takes
+  raw envelope JSONs + a context and routes by `meta.service` itself). Any
+  event through that Lambda threw `callback.phase1 is not a function` at
+  dispatch — same dark-spot class as the Pg relay leak: online-shop-hybrid
+  ordering deploys such slices, but no test drove the deployed `.mjs`.
+
+**What was done:**
+
+- **`AutomationSliceEntryPoint_Ops.res`** — typed HANDLER_CONFIG decode incl.
+  two new fields the repaired wiring needs (emitted by
+  `AutomationSliceRuntime_Builder_Single`, threaded from the AWS
+  AutomationSlice/OutboundTranslationSlice builders): `bodyModule` (the
+  `_Automation`/`_Translation` module — second arg of the curried functor;
+  `Automation.moduleUrl`/`Translation.moduleUrl` were already in the module
+  types) and `context` (automation only — phase-1 collect/resolve takes it,
+  mirroring the in-process builder). Typed pipelines for both callback types:
+  automation = raw envelope JSONs + context into `phase1`; outbound = tolerant
+  `DcbDecode` of the inner `event` payload (non-consumed types dropped
+  silently, matching the core builder, where the old shell's
+  `parseJsonOrThrow` would have logged an error per non-consumed event). Both
+  run phase1 → TODO-sync → phase2 → sync, with phase 2 **awaited** (documented
+  divergence from the in-process builders' detach: SQS decouples the fan-out,
+  and a detached promise would freeze with the Lambda runtime). TODO rows are
+  serialized through the callbacks' own `todoRowSchema`. Stale entries without
+  `bodyModule` warn-and-skip instead of crashing co-hosted slices. Shell:
+  138 → ~55 LOC (dynamic imports + the two curried functor applications).
+- **`TaskBucketEntryPoint_Ops.res`** — typed config parse, env-resolved
+  per-aggregate publish dict (skip-on-empty preserved), lazily-cached
+  CloudWatch Events scheduler ops, and an exhaustive `Reventless.Task.taskAction`
+  match replacing the JS TAG switch. The `.mjs`'s hand-maintained mirror of
+  `toScheduleExpression` ("kept in sync manually") is **deleted** — the typed
+  core calls `ScheduledPublisher_CloudWatchEvents_Runtime` directly (same
+  PutRule/PutTargets/RemoveTargets/DeleteRule semantics, single resolved
+  resource from the env-carried target ARN/name). Shell: 150 → ~30 LOC.
+
+Tests: `AutomationSliceEntryPoint_OpsTest` (config decode incl.
+`bodyModule`/`context`, both pipelines end-to-end against stub callbacks —
+raw-JSON+context phase-1 contract, phase1→sync→phase2→sync ordering, tolerant
+outbound decode incl. payload-less variants) and `TaskBucketEntryPoint_OpsTest`
+(config decode, env-var queue resolution incl. skips, action dispatch incl.
+no-scheduler skip paths) — 10 new tests, 341 total green. Root build
+zero-warning; all 4 Docker-gated integration suites green (one timing flake
+under concurrent build load, clean on re-runs); import-graph walk: all five
+converted stream/task entry points `@pulumi`-free, AutomationSlice graph
+`pg`-free (48 modules), TaskBucket 33 modules. Live validation of the repaired
+automation path pends the next CI deploy (heartbeat-driven automation slices in
+online-shop-hybrid ordering exercise it naturally).
+
+**Remaining Group-1 extractions (next passes):** the small ones
+(`EventMapperEntryPoint` 99, `CounterEntryPoint` 91, `PgQueryResolverEntryPoint`
+88, `ExtensionPointEntryPoint` 85, `SideEffectEntryPoint` 82). Same recipe:
+typed core for config/decode/dispatch, `.mjs` keeps only the dynamic-import
+seam.
 
 ### Also fold in — inline-string tier (DONE, 2026-07-27)
 

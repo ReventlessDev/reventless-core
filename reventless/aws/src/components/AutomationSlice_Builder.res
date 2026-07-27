@@ -40,8 +40,10 @@ module Make = (Api: {
       EventCollectorRuntimeBuilder.registerAutomationSlice(
         ~name=Spec.name,
         ~specModulePath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
+        ~bodyModulePath=Util_Bundle.getModuleSpecifier(Automation.moduleUrl),
         ~callbackType="automation",
         ~queryDbTableName,
+        ~context,
       )
 
       as_

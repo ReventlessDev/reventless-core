@@ -48,6 +48,7 @@ module Make = (Api: {
       AutomationSliceRuntime_Builder_Single.registerAutomationSlice(
         ~name=Spec.name,
         ~specModulePath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
+        ~bodyModulePath=Util_Bundle.getModuleSpecifier(Translation.moduleUrl),
         ~callbackType="outbound",
         ~queryDbTableName,
       )

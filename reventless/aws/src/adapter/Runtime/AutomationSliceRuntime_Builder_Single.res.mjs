@@ -26,12 +26,14 @@ function getDcbQueueUrl() {
   return dcbQueueUrlRef.contents;
 }
 
-function registerAutomationSlice(name, specModulePath, callbackTypeOpt, queryDbTableName) {
+function registerAutomationSlice(name, specModulePath, bodyModulePath, callbackTypeOpt, queryDbTableName, context) {
   let callbackType = callbackTypeOpt !== undefined ? callbackTypeOpt : "automation";
   bundledInfos[name] = {
     specModulePath: specModulePath,
+    bodyModulePath: bodyModulePath,
     callbackType: callbackType,
-    queryDbTableName: queryDbTableName
+    queryDbTableName: queryDbTableName,
+    context: context
   };
 }
 
@@ -104,15 +106,20 @@ function finish() {
         }
         let pkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
         packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
+        let bodyPkg = Util_Bundle$ReventlessAws.extractPackageName(info.bodyModulePath);
+        packageDirs[bodyPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(bodyPkg);
         let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
+        let bodyModule = Stdlib_Option.getOr(JSON.stringify(info.bodyModulePath), `""`);
         let callbackType = Stdlib_Option.getOr(JSON.stringify(info.callbackType), `""`);
+        let context = info.context;
+        let contextFragment = context !== undefined ? Stdlib_Option.getOr(Stdlib_Option.map(JSON.stringify(context), json => `,"context":` + json), "") : "";
         let handlerJson = Pulumi.all([
           info.queryDbTableName,
           dcbQueueUrl,
           spec.sourceUrns
         ]).apply(param => {
           let sourceUrn = param[2][0];
-          return `{"specModule":` + specModule + `,"callbackType":` + callbackType + `,"queryDbTableName":"` + param[0] + `","dcbQueueUrl":"` + param[1] + `","sourceUrn":"` + sourceUrn + `"}`;
+          return `{"specModule":` + specModule + `,"bodyModule":` + bodyModule + `,"callbackType":` + callbackType + `,"queryDbTableName":"` + param[0] + `","dcbQueueUrl":"` + param[1] + `","sourceUrn":"` + sourceUrn + `"` + contextFragment + `}`;
         });
         handlerOutputs.push(handlerJson);
       });

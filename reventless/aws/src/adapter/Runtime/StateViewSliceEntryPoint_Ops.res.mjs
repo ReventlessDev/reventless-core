@@ -9,6 +9,7 @@ import * as Stream from "effect/Stream";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Projection$ReventlessCore from "@reventlessdev/reventless-core/src/Projection.res.mjs";
 import * as ProjectionEntryPoint_Ops$ReventlessAws from "./ProjectionEntryPoint_Ops.res.mjs";
+import * as StreamRoutedEntryPoint_Ops$ReventlessAws from "./StreamRoutedEntryPoint_Ops.res.mjs";
 
 function strOf(obj, key) {
   return Stdlib_Option.flatMap(obj[key], Stdlib_JSON.Decode.string);
@@ -73,9 +74,9 @@ function makeJsonEventsHandler(sliceName, eventSchema, project, queryDbOps, subI
       });
     } catch (raw_exn) {
       let exn = Primitive_exceptions.internalToException(raw_exn);
-      ProjectionEntryPoint_Ops$ReventlessAws.logError("failed to decode event", {
+      StreamRoutedEntryPoint_Ops$ReventlessAws.logError("failed to decode event", {
         comp: "StateViewSliceRuntime",
-        detail: ProjectionEntryPoint_Ops$ReventlessAws.exnMessage(exn)
+        detail: StreamRoutedEntryPoint_Ops$ReventlessAws.exnMessage(exn)
       });
       return [];
     }
@@ -85,12 +86,12 @@ function makeJsonEventsHandler(sliceName, eventSchema, project, queryDbOps, subI
 function makeRegisteredHandler(entry, modules) {
   let queryDbOps = ProjectionEntryPoint_Ops$ReventlessAws.makeQueryDbOps(entry.queryDbTableName, entry.pgConnection, entry.stateTopicName, ProjectionEntryPoint_Ops$ReventlessAws.indexesOf(modules.config), ProjectionEntryPoint_Ops$ReventlessAws.subIdFieldOf(modules.subIdConfig));
   return {
-    handler: ProjectionEntryPoint_Ops$ReventlessAws.toStreamHandler(makeJsonEventsHandler(modules.name, modules.consumedEventSchema, modules.project, queryDbOps, modules.subIdConfig)),
+    handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeJsonEventsHandler(modules.name, modules.consumedEventSchema, modules.project, queryDbOps, modules.subIdConfig)),
     comp: `StateViewSlice(` + modules.name + `)`
   };
 }
 
-let exnMessage = ProjectionEntryPoint_Ops$ReventlessAws.exnMessage;
+let exnMessage = StreamRoutedEntryPoint_Ops$ReventlessAws.exnMessage;
 
 export {
   strOf,
