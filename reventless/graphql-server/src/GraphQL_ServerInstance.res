@@ -85,7 +85,16 @@ let make = (~label: string="GraphQL"): t => {
   let lastFullSdl: ref<option<string>> = ref(None)
 
   let registerMutations = (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => {
-    mutationFields.contents = mutationFields.contents->Array.concat(sdlFields)
+    // A mutation field has two legitimate writers: the admin base fragment
+    // carries the Plugin aggregate's lifecycle fields, and the aggregate
+    // auto-flow registers the same fields when the admin is constructed again
+    // for a later deploy onto the same server. buildASTSchema rejects a schema
+    // that defines a field twice, so keep the first SDL definition and drop
+    // repeats by field name — mirroring the resolver dict, where a repeat
+    // registration overwrites by key (last resolver wins).
+    let existing = Set.fromArray(mutationFields.contents->Array.map(extractFieldName))
+    let fresh = sdlFields->Array.filter(f => !(existing->Set.has(extractFieldName(f))))
+    mutationFields.contents = mutationFields.contents->Array.concat(fresh)
     resolvers->Dict.toArray->Array.forEach(((k, v)) => mutationResolvers.contents->Dict.set(k, v))
   }
 

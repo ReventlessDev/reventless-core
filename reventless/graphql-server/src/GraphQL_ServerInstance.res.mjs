@@ -52,7 +52,9 @@ function make(labelOpt) {
     contents: undefined
   };
   let registerMutations = (sdlFields, resolvers) => {
-    mutationFields.contents = mutationFields.contents.concat(sdlFields);
+    let existing = new Set(mutationFields.contents.map(extractFieldName));
+    let fresh = sdlFields.filter(f => !existing.has(extractFieldName(f)));
+    mutationFields.contents = mutationFields.contents.concat(fresh);
     Object.entries(resolvers).forEach(param => {
       mutationResolvers.contents[param[0]] = param[1];
     });
