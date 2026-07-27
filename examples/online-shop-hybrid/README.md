@@ -163,6 +163,57 @@ cd platform-aws
 pnpm run seed            # pick a data set and stack, then log in
 ```
 
+### Reset a deployed stack to re-seed
+
+The seed is one-shot, so re-seeding a deployed stack means emptying it first.
+`seed:reset` truncates a project's DynamoDB tables and empties its S3 buckets —
+the inverse of seeding — and is deliberately hard to fire by accident.
+
+The hybrid deploys as **three Pulumi projects** sharing a stack name — the
+platform plus the `catalog` and `ordering` plugins — so the reset first asks
+**which scope** to empty:
+
+```
+Reset scope:
+  1) domain — catalog, ordering     ← default: the seeded business data
+  2) catalog
+  3) ordering
+  4) platform — platform            ← plugin registry etc.; leave it to re-seed
+  5) everything — platform + catalog + ordering
+```
+
+Wiping `domain` leaves the platform's plugin registry intact, so a re-seed just
+works — that's the normal choice. `SEED_RESET_SCOPE=domain|platform|everything|<plugin>`
+picks non-interactively. Each chosen project then passes the same gates:
+
+- it refuses any stack not named `alpha`, `dev`, or `pr-*`, **and** any project
+  whose `Pulumi.<stack>.yaml` does not declare `reventless:wipeable: "true"` (the
+  example's `alpha` stacks opt in; `main` does not, so it is refused);
+- it finds what to empty only through the `reventless:platform` +
+  `reventless:environment` tags the framework stamps on every resource — scoped
+  to each chosen project's stack, so a same-named stack from another project in
+  the account is not touched — and re-checks both per resource before deleting;
+- it is **dry-run by default** — it lists the tables and buckets it would empty
+  (per project) with their row/object counts, and stops. To actually empty them,
+  **re-type the stack name** at the prompt; then it re-counts every store to prove
+  it is empty. (Non-interactively — CI, no TTY to type into — set
+  `REVENTLESS_WIPE_CONFIRM=<stack>` instead.)
+
+```bash
+cd platform-aws
+pnpm run seed:reset            # pick a scope, see the dry run, type the stack name to confirm
+pnpm run seed                  # re-seed the now-empty stack
+
+# non-interactive (CI): scope + confirm come from the environment
+SEED_RESET_SCOPE=domain REVENTLESS_WIPE_CONFIRM=alpha pnpm run seed:reset
+```
+
+The reset authenticates to AWS with your **ambient credentials** (env / profile /
+SSO) — the same ones `pulumi` uses — not the Cognito login `pnpm run seed` prompts
+for, so there is no username/password. The region is resolved from `AWS_REGION` or
+each stack's `aws:region` config. Every refusal names its cause, so a rejected
+reset says exactly why.
+
 ## Learn the model
 
 Read the [Hybrid walkthrough](../../packages/doc/docs-tutorials/hybrid-based.md)

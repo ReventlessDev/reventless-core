@@ -32,7 +32,7 @@ function send(command) {
   return client().send(command);
 }
 
-let UpdateTableCommand = {
+let DescribeTableCommand = {
   Raw: Raw$1,
   send: send
 };
@@ -43,7 +43,7 @@ function send$1(command) {
   return client().send(command);
 }
 
-let UpdateTimeToLiveCommand = {
+let UpdateTableCommand = {
   Raw: Raw$2,
   send: send$1
 };
@@ -54,15 +54,27 @@ function send$2(command) {
   return client().send(command);
 }
 
-let UpdateContinuousBackupsCommand = {
+let UpdateTimeToLiveCommand = {
   Raw: Raw$3,
   send: send$2
+};
+
+let Raw$4 = {};
+
+function send$3(command) {
+  return client().send(command);
+}
+
+let UpdateContinuousBackupsCommand = {
+  Raw: Raw$4,
+  send: send$3
 };
 
 export {
   Raw,
   clientInstance,
   client,
+  DescribeTableCommand,
   UpdateTableCommand,
   UpdateTimeToLiveCommand,
   UpdateContinuousBackupsCommand,

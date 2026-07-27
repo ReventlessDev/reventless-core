@@ -74,6 +74,11 @@ module ListObjectVersionsCommand = {
 
   type output = {
     @as("Versions") versions?: array<objectVersion>,
+    /** Delete markers are separate from `versions`; a full empty must remove
+      these too, or the bucket keeps phantom keys. Shares the `objectVersion`
+      shape (Key + VersionId + IsLatest). */
+    @as("DeleteMarkers")
+    deleteMarkers?: array<objectVersion>,
     @as("IsTruncated") isTruncated?: bool,
     @as("NextKeyMarker") nextKeyMarker?: string,
     @as("NextVersionIdMarker") nextVersionIdMarker?: string,
@@ -81,6 +86,60 @@ module ListObjectVersionsCommand = {
 
   @new @module("@aws-sdk/client-s3")
   external make: input => t = "ListObjectVersionsCommand"
+
+  module Raw = {
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = input => Raw.send(client(), input)
+}
+
+module DeleteObjectsCommand = {
+  /*** delete up to 1000 objects (each by key, optionally a specific version) in
+    one call. Used by the seed reset to empty a bucket page by page.
+    see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/s3/command/DeleteObjectsCommand/ */
+
+  type t
+
+  type objectIdentifier = {
+    @as("Key") key: string,
+    /** target a specific version; omit on an unversioned bucket */
+    @as("VersionId")
+    versionId?: string,
+  }
+
+  type delete = {
+    @as("Objects") objects: array<objectIdentifier>,
+    /** suppress the per-object success list in the response */
+    @as("Quiet")
+    quiet?: bool,
+  }
+
+  type input = {
+    @as("Bucket") bucket: string,
+    @as("Delete") delete: delete,
+  }
+
+  type deletedObject = {
+    @as("Key") key?: string,
+    @as("VersionId") versionId?: string,
+  }
+
+  type deleteError = {
+    @as("Key") key?: string,
+    @as("VersionId") versionId?: string,
+    @as("Code") code?: string,
+    @as("Message") message?: string,
+  }
+
+  type output = {
+    @as("Deleted") deleted?: array<deletedObject>,
+    @as("Errors") errors?: array<deleteError>,
+  }
+
+  @new @module("@aws-sdk/client-s3")
+  external make: input => t = "DeleteObjectsCommand"
 
   module Raw = {
     @send

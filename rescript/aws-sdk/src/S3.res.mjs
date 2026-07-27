@@ -47,17 +47,28 @@ function send$2(input) {
   return client().send(input);
 }
 
-let PutObjectCommand = {
+let DeleteObjectsCommand = {
   Raw: Raw$3,
   send: send$2
 };
 
-let CompleteMultipartUploadCommand = {};
-
 let Raw$4 = {};
 
+function send$3(input) {
+  return client().send(input);
+}
+
+let PutObjectCommand = {
+  Raw: Raw$4,
+  send: send$3
+};
+
+let CompleteMultipartUploadCommand = {};
+
+let Raw$5 = {};
+
 let Upload = {
-  Raw: Raw$4
+  Raw: Raw$5
 };
 
 export {
@@ -66,6 +77,7 @@ export {
   client,
   GetObjectCommand,
   ListObjectVersionsCommand,
+  DeleteObjectsCommand,
   PutObjectCommand,
   CompleteMultipartUploadCommand,
   Upload,

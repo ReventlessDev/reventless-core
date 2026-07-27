@@ -50,6 +50,50 @@ let client: unit => client = () =>
   | Some(client) => client
   }
 
+module DescribeTableCommand = {
+  /*** describe an existing table — used to read its KeySchema so a truncate can
+  build a delete key from each scanned item.
+
+  this command is not available in document-client
+
+  see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/dynamodb/command/DescribeTableCommand/ */
+
+  type t
+
+  type keySchemaElement = {
+    @as("AttributeName") attributeName: string,
+    /** "HASH" (partition key) or "RANGE" (sort key) */
+    @as("KeyType")
+    keyType: string,
+  }
+
+  /** only the fields a truncate needs; the real description carries far more */
+  type tableDescription = {
+    @as("TableName") tableName?: string,
+    @as("KeySchema") keySchema?: array<keySchemaElement>,
+    /** DynamoDB's own approximate row count (updated ~every 6h) */
+    @as("ItemCount")
+    itemCount?: float,
+  }
+
+  type input = {@as("TableName") tableName: string}
+
+  type output = {
+    @as("$metadata") metadata: Metadata.t,
+    @as("Table") table?: tableDescription,
+  }
+
+  @new @module("@aws-sdk/client-dynamodb")
+  external make: input => t = "DescribeTableCommand"
+
+  module Raw = {
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = command => Raw.send(client(), command)
+}
+
 module UpdateTableCommand = {
   /*** modify an existing table
 

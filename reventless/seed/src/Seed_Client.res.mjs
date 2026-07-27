@@ -208,6 +208,28 @@ async function countNodes(t, field) {
   return (await queryAllNodes(t, field, "id")).length;
 }
 
+async function queryAllNodesUntil(t, field, selection, satisfied, onTimeout, timeoutMsOpt) {
+  let timeoutMs = timeoutMsOpt !== undefined ? timeoutMsOpt : 60000;
+  let deadline = Date.now() + timeoutMs;
+  let result;
+  while (result === undefined) {
+    let nodes = await queryAllNodes(t, field, selection);
+    if (satisfied(nodes)) {
+      result = nodes;
+    } else {
+      if (Date.now() > deadline) {
+        throw {
+          RE_EXN_ID: Seed_Types$ReventlessSeed.Failed,
+          _1: onTimeout(nodes),
+          Error: new Error()
+        };
+      }
+      await sleep(500);
+    }
+  };
+  return Stdlib_Option.getOr(result, []);
+}
+
 async function waitForIds(t, fieldName, ids, timeoutMsOpt) {
   let timeoutMs = timeoutMsOpt !== undefined ? timeoutMsOpt : 60000;
   let deadline = Date.now() + timeoutMs;
@@ -255,6 +277,7 @@ export {
   sendAll,
   queryAllNodes,
   countNodes,
+  queryAllNodesUntil,
   waitForIds,
 }
 /* No side effect */

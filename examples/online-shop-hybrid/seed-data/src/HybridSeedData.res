@@ -157,24 +157,36 @@ let seedSupplierFeed = async (~client: Seed.Client.t) => {
     | None => ()
     }
   }
-  // Cross-check the per-request outcomes against the slice's audit view.
-  let audits = await client->Seed.Client.queryAllNodes(
+  // Cross-check the per-request outcomes against the slice's audit view. The
+  // slice writes an audit row as it receives each feed row, but we read it back
+  // over a separate, eventually-consistent query — so poll until the expected
+  // tally appears rather than asserting on a single immediate read (which would
+  // race the projection and spuriously report 0/0). Same pattern as the id waits
+  // above.
+  let countWith = (audits, status) =>
+    audits->Array.filter(a => a->Seed.Client.nodeString("status") == Some(status))->Array.length
+  let expectedSuccesses = DemoData.expectedImportSuccesses
+  let expectedFailures = DemoData.expectedImportFailures
+  let expected = `${expectedSuccesses->Int.toString} Success / ${expectedFailures->Int.toString} Failure`
+  let audits = await client->Seed.Client.queryAllNodesUntil(
     ~field="Catalog_ImportProductAudits",
     ~selection="status",
+    ~satisfied=audits =>
+      audits->countWith("Success") == expectedSuccesses &&
+        audits->countWith("Failure") == expectedFailures,
+    ~onTimeout=audits => {
+      let successes = audits->countWith("Success")
+      let failures = audits->countWith("Failure")
+      let total = audits->Array.length
+      total == 0
+        ? `supplier feed: the import audit view (Catalog_ImportProductAudits) never became non-empty. All ${(DemoData.supplierFeed
+            ->Array.length)
+            ->Int.toString} import commands were accepted by the API, yet no audit rows appeared — the ImportProduct slice is not persisting its audit log (or it is not queryable through this view). Expected ${expected}.`
+        : `supplier feed: the audit view settled on ${successes->Int.toString} Success / ${failures->Int.toString} Failure (${total->Int.toString} rows), expected ${expected} — the feed produced a different set of outcomes than the seed data describes.`
+    },
   )
-  let countWith = status =>
-    audits->Array.filter(a => a->Seed.Client.nodeString("status") == Some(status))->Array.length
-  let successes = countWith("Success")
-  let failures = countWith("Failure")
-  if (
-    successes != DemoData.expectedImportSuccesses || failures != DemoData.expectedImportFailures
-  ) {
-    throw(
-      Seed.Failed(
-        `supplier feed: expected ${DemoData.expectedImportSuccesses->Int.toString} Success / ${DemoData.expectedImportFailures->Int.toString} Failure audit rows, got ${successes->Int.toString}/${failures->Int.toString}`,
-      ),
-    )
-  }
+  let successes = audits->countWith("Success")
+  let failures = audits->countWith("Failure")
   Seed.Runner.report(
     `supplier feed: ${successes->Int.toString} imported, ${failures->Int.toString} rejected (both shown in the audit view)`,
   )

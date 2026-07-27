@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/reventless-seed-aws",
   "version": "1.0.0-alpha.3",
-  "description": "AWS connect for the Reventless seed harness — stack discovery and Cognito login, no AWS SDK",
+  "description": "AWS connect + guarded reset for the Reventless seed harness — stack discovery, Cognito login, and a tag-scoped, allowlisted store wipe",
   "license": "Apache-2.0",
   "scripts": {
     "build": "rescript build",
@@ -10,7 +10,8 @@
     "rebuild": "pnpm run clean && pnpm run build"
   },
   "dependencies": {
-    "@reventlessdev/reventless-seed": "workspace:*"
+    "@reventlessdev/reventless-seed": "workspace:*",
+    "@reventlessdev/rescript-aws-sdk": "workspace:*"
   },
   "devDependencies": {
     "rescript": "12.3.0"

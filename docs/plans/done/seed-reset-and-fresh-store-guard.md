@@ -1,10 +1,15 @@
 # Seed re-runs: fresh-store guard now, guarded reset later
 
-**Status:** In progress (2026-07-27).
-- **Option 1 — pre-flight fresh-store guard:** implementing now (this plan).
-- **Option 2 — guarded reset/wipe for deployed stacks:** designed here, **not**
-  implemented. It is dangerous by nature and depends on prerequisites (ideally
-  prod in a separate AWS account) that are out of scope for this change.
+**Status:** Complete (2026-07-27). Both options shipped; no code work remains.
+- **Option 1 — pre-flight fresh-store guard:** **done** (commit `987613f07`).
+- **Option 2 — guarded reset/wipe for deployed stacks:** **done** (commit
+  `6e3f5ca15`). Layers 2–4 and 6 (name allowlist, per-stack `wipeable`
+  declaration, tag-scoped discovery + per-resource tag re-check, dry-run + typed
+  confirm) are implemented. Two **non-code** layers stay deferred by design and
+  are tracked under **Still open after this change** below — they are ops /
+  deploy-config decisions, not tasks of this plan: Layer 1 (separate AWS accounts
+  for prod vs dev, a structural prerequisite) and Layer 5 (resource-level deletion
+  protection on prod).
 
 ## Problem
 
@@ -83,12 +88,23 @@ the stack; heavier, same targeting/safety rules apply.)
 ### Enabling fact: resources are already environment-tagged
 
 Every framework-created resource carries
-[`reventless:environment = <stackName>`](../../reventless/aws/src/adapter/AWS_Tags.res)
-(plus `reventless:platform`, `reventless:role`, `reventless:kind`, `reventless:scope`).
-A wipe therefore discovers its exact target set via the **Resource Groups Tagging
-API** filtered on those tags — it only ever sees resources belonging to the named
-stack. No name globbing, no account-wide scan. The blast radius is defined by a tag
-the framework stamps, not by a string we assemble.
+[`reventless:platform = <projectName>` and `reventless:environment = <stackName>`](../../reventless/aws/src/adapter/AWS_Tags.res)
+(plus `reventless:role`, `reventless:kind`, `reventless:scope`). A wipe discovers
+its target set via the **Resource Groups Tagging API** filtered on those tags —
+no name globbing, no account-wide scan. The blast radius is defined by tags the
+framework stamps, not by a string we assemble.
+
+**Scope on BOTH `platform` and `environment`, not `environment` alone.**
+`reventless:environment` is `getStackName()` — the stack *name* only — so two
+different Pulumi projects deployed with the same stack name (e.g. `alpha`) in one
+account/region share that tag value. Filtering on `environment` alone therefore
+sweeps in *every* project's `alpha` resources (observed in practice: the core
+hybrid example and a separate platform-inspector deployment both named `alpha`,
+their tables interleaved). `reventless:platform` is the Pulumi project name
+([`Plugin.res`](../../reventless/aws/src/components/Plugin.res): `platformName =
+getProjectName()`), so AND-ing it keeps the wipe inside the one project the
+operator is standing in. The reset reads that project name from the target's
+`Pulumi.yaml`.
 
 ### Safety — defense in depth, every layer fail-closed
 
@@ -109,9 +125,9 @@ several of them at once.
    and refuses anything that has not opted in. Production stacks simply never set it,
    so the flag lives with the environment definition and travels with it.
 4. **Per-resource tag verification before any delete.** For every table/bucket about
-   to be touched, assert its `reventless:environment` equals the stack the operator
-   named. Any mismatch aborts the whole run — catches a mis-resolved endpoint or a
-   credential pointing at the wrong account.
+   to be touched, assert its `reventless:platform` and `reventless:environment`
+   equal the project + stack the operator named. Any mismatch aborts the whole run
+   — catches a mis-resolved endpoint or a credential pointing at the wrong account.
 5. **Resource-level deletion protection on prod** (not currently set; easy to add):
    DynamoDB `deletionProtectionEnabled: true` and S3 without `forceDestroy` on
    production stacks. Guards the infra-reset path (`pulumi destroy` bounces off
@@ -130,8 +146,8 @@ ergonomics) that:
 1. Resolves the target stack name from the seed connection/config.
 2. Asserts stack ∈ allowlist **and** the stack's own `wipeable` output is `true`
    (both, not either).
-3. Discovers tables/buckets by `reventless:environment` tag; verifies each tag
-   matches (layer 4).
+3. Discovers tables/buckets by `reventless:platform` + `reventless:environment`
+   tags; verifies both per resource (layer 4).
 4. Dry-runs by default; on confirm, `BatchWriteItem`-deletes the DynamoDB stores and
    empties the buckets.
 5. Reuses `verifyViews` — asserting **0** — to prove the store is empty, the exact
@@ -144,8 +160,64 @@ deletion protection behind them.
 ### Prerequisites / open questions for Option 2
 
 - Confirm (or establish) prod-in-separate-account. Until then the allowlist +
-  `wipeable` output is the in-tool gate, but the structural guarantee is missing.
-- Decide where the allowlist lives (stack config vs a checked-in list) and how
-  `reventless:wipeable` is surfaced (stack output vs tag vs both).
+  `wipeable` declaration is the in-tool gate, but the structural guarantee is
+  missing. **This is the one deferred layer.**
+- ~~Decide where the allowlist lives~~ — **decided:** both gates, AND-ed. A
+  checked-in name-pattern allowlist (`alpha`, `dev`, `pr-*`) **and** the target's
+  own `Pulumi.<stack>.yaml` declaring `reventless:wipeable: "true"` (read via
+  `pulumi config get`, not a stack output). A stack must satisfy both.
 - IAM: the wipe principal needs tagging-API read + table item-delete + bucket
-  empty, scoped by tag condition where possible.
+  empty, scoped by tag condition where possible. (Operator-supplied; not codified
+  here.)
+
+## What was built (Option 2, this change)
+
+A guarded reset now ships in **`reventless-seed-aws`** — the same package that
+owns the AWS `connect`, so a reset entry point reads like the seed entry point
+beside it. It gains a `rescript-aws-sdk` dependency (the connect path stays
+SDK-free; the reset path is the AWS-SDK consumer).
+
+- **`ReventlessSeedAws_Reset.run(~stack?, ~backend?, ~targets, ())`** — the caller
+  passes the deployment's Pulumi projects as `targets` (each `{projectDir, label,
+  group: Domain | Platform}`), because a deployment is several projects sharing a
+  stack name (platform + one per domain plugin), each its own `reventless:platform`.
+  Flow: resolve the shared stack → gate 1 name allowlist → **scope menu** (`domain`
+  = all plugins, first/default; each single plugin; `platform`; `everything`;
+  `SEED_RESET_SCOPE` overrides) → for each selected project: gate 2
+  `reventless:wipeable` + region → discover by tag → aggregate dry-run report →
+  confirm → truncate + empty → verify empty. Wiping `domain` alone leaves the
+  platform's plugin registry intact, so the store stays re-seedable.
+- **Discovery** via the **Resource Groups Tagging API** (new
+  `AwsSdk.ResourceGroupsTaggingApi` binding), filtered on **both**
+  `reventless:platform = <project>` and `reventless:environment = <stack>` (see
+  the enabling-fact note above on why `environment` alone is insufficient),
+  paginated and sorted by name. Each returned resource is re-checked to carry both
+  tags before any delete (layer 4); a mismatch aborts the whole run.
+- **Truncate** each DynamoDB table: `DescribeTable` (new binding) for the key
+  schema → key-only `Scan` → `BatchWrite` deletes in 25s, retrying
+  `UnprocessedItems` (capped). **Empty** each S3 bucket: `ListObjectVersions`
+  (now also reads `DeleteMarkers`) → `DeleteObjects` (new binding) in 1000s.
+- **Dry-run is the default.** Interactively, re-typing the exact stack name at the
+  prompt is the confirmation (the allowlist + wipeable + tag checks plus a
+  deliberate keystroke are enough — no env var). Without a TTY (CI),
+  `REVENTLESS_WIPE_CONFIRM=<stack>` is the equivalent opt-in. Either way, anything
+  short of a match deletes nothing. Afterwards it re-counts every store and asserts
+  0 — the SDK-native inverse of the post-seed `verifyViews` (the reset has no
+  GraphQL connection, so it proves emptiness against the tables/buckets directly).
+- **Auth is the ambient AWS credential chain** (env / profile / SSO), the same
+  `pulumi` uses — not the Cognito app login `connect` prompts for. A wipe is an
+  infrastructure operation on DynamoDB/S3, so there is no username/password.
+- **Wired into the hybrid example:** `pnpm run seed:reset` (`src/SeedAwsReset.res`)
+  in `examples/online-shop-hybrid/platform-aws` declares its three projects
+  (catalog, ordering, platform). All nine example alpha stacks — every project
+  (platform + catalog + ordering) across the three examples (aggregates, dcb,
+  hybrid) — declare `reventless:wipeable: "true"` in `Pulumi.alpha.yaml` (alpha is
+  disposable; `Pulumi.main.yaml` omits it, so main is refused at gate 2 even
+  though it also fails gate 1).
+
+### Still open after this change
+
+- Layer 1 (separate prod account) — the deferred structural guarantee.
+- Layer 5 (DynamoDB `deletionProtectionEnabled` / S3 without `forceDestroy` on
+  prod) — not set; protects table *deletion* (the infra-reset path), complements
+  the item-delete guards here.

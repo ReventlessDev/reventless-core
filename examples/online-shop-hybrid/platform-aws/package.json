@@ -6,7 +6,8 @@
   "license": "Apache-2.0",
   "scripts": {
     "build": "rescript build",
-    "seed": "node src/SeedAws.res.mjs"
+    "seed": "node src/SeedAws.res.mjs",
+    "seed:reset": "node src/SeedAwsReset.res.mjs"
   },
   "dependencies": {
     "@reventlessdev/online-shop-hybrid-seed": "workspace:*",

@@ -163,6 +163,38 @@ pnpm run serve:reset     # in one shell
 pnpm run seed            # in another
 ```
 
+Locally that reset is `serve:reset` (a fresh in-memory / SQLite store). On a
+deployed AWS stack, emptying the durable stores is `seed:reset` from
+`platform-aws/` — the inverse of seeding, and fail-closed so it cannot be fired
+against the wrong stack:
+
+- a deployment is usually several Pulumi projects sharing a stack name (a platform
+  plus one per domain plugin), so the reset first asks **which scope** to empty:
+  `domain` (all plugins — the default, and the normal choice, since it leaves the
+  platform's plugin registry intact so a re-seed just works), a single plugin,
+  `platform`, or `everything`. `SEED_RESET_SCOPE` picks it non-interactively;
+- it refuses any stack not named `alpha`, `dev`, or `pr-*`, **and** any project
+  whose `Pulumi.<stack>.yaml` does not declare `reventless:wipeable: "true"`;
+- it discovers what to empty only through the `reventless:platform` +
+  `reventless:environment` tags every framework resource carries (scoped to each
+  chosen project's stack — the stack name alone can collide across projects), and
+  re-checks both per resource before deleting;
+- it is dry-run by default; to actually wipe, **re-type the stack name** at the
+  prompt (interactively), or set `REVENTLESS_WIPE_CONFIRM=<stack>` when there is no
+  TTY (CI), then it re-counts every store to `0`.
+
+```bash
+cd platform-aws
+pnpm run seed:reset                                # pick a scope, then type the stack name to confirm
+SEED_RESET_SCOPE=domain REVENTLESS_WIPE_CONFIRM=alpha pnpm run seed:reset  # non-interactive
+```
+
+The reset authenticates to AWS with the ambient credential chain (env / profile /
+SSO) — not the Cognito login the seed uses — so it prompts for no username or
+password. Every refusal names its cause — an off-allowlist name, a missing
+`wipeable` declaration, an unreadable stack config — so a rejected reset says
+exactly why.
+
 ## 8. Pitfalls
 
 Four things that are easy to get wrong and quiet when you do:

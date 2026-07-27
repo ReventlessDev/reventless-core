@@ -14,7 +14,8 @@
     }
   ],
   "dependencies": [
-    "@reventlessdev/reventless-seed"
+    "@reventlessdev/reventless-seed",
+    "@reventlessdev/rescript-aws-sdk"
   ],
   "compiler-flags": [],
   "suffix": ".res.mjs"

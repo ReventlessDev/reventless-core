@@ -140,17 +140,26 @@ async function seedSupplierFeed(client) {
       await Seed_Client$ReventlessSeed.send(client, DemoCommands$OnlineShopHybridSeed.importProduct(row), ["TranslationFailed"]);
     }
   }
-  let audits = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Catalog_ImportProductAudits", "status");
-  let countWith = status => audits.filter(a => Primitive_object.equal(Seed_Client$ReventlessSeed.nodeString(a, "status"), status)).length;
-  let successes = countWith("Success");
-  let failures = countWith("Failure");
-  if (successes !== DemoData$OnlineShopHybridSeed.expectedImportSuccesses || failures !== DemoData$OnlineShopHybridSeed.expectedImportFailures) {
-    throw {
-      RE_EXN_ID: Seed$ReventlessSeed.Failed,
-      _1: `supplier feed: expected ` + DemoData$OnlineShopHybridSeed.expectedImportSuccesses.toString() + ` Success / ` + DemoData$OnlineShopHybridSeed.expectedImportFailures.toString() + ` Failure audit rows, got ` + successes.toString() + `/` + failures.toString(),
-      Error: new Error()
-    };
-  }
+  let countWith = (audits, status) => audits.filter(a => Primitive_object.equal(Seed_Client$ReventlessSeed.nodeString(a, "status"), status)).length;
+  let expected = DemoData$OnlineShopHybridSeed.expectedImportSuccesses.toString() + ` Success / ` + DemoData$OnlineShopHybridSeed.expectedImportFailures.toString() + ` Failure`;
+  let audits = await Seed_Client$ReventlessSeed.queryAllNodesUntil(client, "Catalog_ImportProductAudits", "status", audits => {
+    if (countWith(audits, "Success") === DemoData$OnlineShopHybridSeed.expectedImportSuccesses) {
+      return countWith(audits, "Failure") === DemoData$OnlineShopHybridSeed.expectedImportFailures;
+    } else {
+      return false;
+    }
+  }, audits => {
+    let successes = countWith(audits, "Success");
+    let failures = countWith(audits, "Failure");
+    let total = audits.length;
+    if (total === 0) {
+      return `supplier feed: the import audit view (Catalog_ImportProductAudits) never became non-empty. All ` + DemoData$OnlineShopHybridSeed.supplierFeed.length.toString() + ` import commands were accepted by the API, yet no audit rows appeared — the ImportProduct slice is not persisting its audit log (or it is not queryable through this view). Expected ` + expected + `.`;
+    } else {
+      return `supplier feed: the audit view settled on ` + successes.toString() + ` Success / ` + failures.toString() + ` Failure (` + total.toString() + ` rows), expected ` + expected + ` — the feed produced a different set of outcomes than the seed data describes.`;
+    }
+  }, undefined);
+  let successes = countWith(audits, "Success");
+  let failures = countWith(audits, "Failure");
   return Seed_Runner$ReventlessSeed.report(`supplier feed: ` + successes.toString() + ` imported, ` + failures.toString() + ` rejected (both shown in the audit view)`);
 }
 

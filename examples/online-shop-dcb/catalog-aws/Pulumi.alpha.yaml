@@ -1,3 +1,5 @@
 config:
   aws:region: eu-west-1
+  # Disposable dev stack: opt into `pnpm run seed:reset`. Prod stacks omit this.
+  reventless:wipeable: "true"
   platform:stack: reventless/online-shop-dcb-platform-aws/alpha

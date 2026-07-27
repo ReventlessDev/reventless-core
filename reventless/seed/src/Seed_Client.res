@@ -217,6 +217,42 @@ let countNodes = async (t: t, ~field: string): int =>
   (await queryAllNodes(t, ~field, ~selection="id"))->Array.length
 
 /**
+ * Polls a connection field until the collected nodes satisfy `satisfied`, or the
+ * timeout elapses. Read models are eventually consistent: a view queried the
+ * instant after the writes that feed it can still read empty or partial (a
+ * DynamoDB connection scan is eventually consistent by default, and the write and
+ * read-back can land on different replicas), so a cross-check that asserts on a
+ * single immediate read races the projection. Same rationale as `waitForIds`,
+ * for the "observe the whole connection" case rather than a fixed id set.
+ *
+ * On timeout, throws `Failed(onTimeout(finalNodes))` so the caller can report
+ * what the view actually settled on — distinguishing a still-empty view from a
+ * genuine count mismatch — instead of a bare assertion.
+ */
+let queryAllNodesUntil = async (
+  t: t,
+  ~field: string,
+  ~selection: string,
+  ~satisfied: array<JSON.t> => bool,
+  ~onTimeout: array<JSON.t> => string,
+  ~timeoutMs: int=60000,
+): array<JSON.t> => {
+  let deadline = nowMs() +. Int.toFloat(timeoutMs)
+  let result = ref(None)
+  while result.contents == None {
+    let nodes = await queryAllNodes(t, ~field, ~selection)
+    if satisfied(nodes) {
+      result := Some(nodes)
+    } else if nowMs() > deadline {
+      throw(Failed(onTimeout(nodes)))
+    } else {
+      await sleep(500)
+    }
+  }
+  result.contents->Option.getOr([])
+}
+
+/**
  * Polls a `<View>ByIds` field until every id is present.
  *
  * Cross-plugin propagation (extension point → extension → command) is
