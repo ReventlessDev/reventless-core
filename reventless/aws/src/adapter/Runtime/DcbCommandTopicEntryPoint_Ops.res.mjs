@@ -11,6 +11,7 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
+import * as QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 import * as InboundTranslationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
@@ -112,8 +113,12 @@ function buildInboundReceiver(spec, translation, publishJsons, auditQueryDbOps) 
         await prev;
         let json = S.reverseConvertToJsonOrThrow(param[1], InboundTranslationSlice_Callback$ReventlessCore.auditRowSchema);
         try {
-          await auditQueryDbOps.save(id, json, "Overwrite", undefined);
-          return;
+          let err = await auditQueryDbOps.save(id, json, "Overwrite", undefined);
+          if (err.TAG === "Ok") {
+            return;
+          } else {
+            return Effect.runSync(EffectLogger$ReventlessCore.logError("InboundTranslationSlice.audit", undefined, `failed to persist audit row ` + id + `: ` + QueryDb$ReventlessCore.storageErrorToString(err._0)));
+          }
         } catch (raw_exn) {
           let exn = Primitive_exceptions.internalToException(raw_exn);
           let detail = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown error");

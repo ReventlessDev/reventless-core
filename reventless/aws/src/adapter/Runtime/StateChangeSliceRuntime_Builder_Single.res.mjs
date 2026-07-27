@@ -59,7 +59,7 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
     return `{"spec":` + s + `,"behavior":` + b + `}`;
   }).join(",");
   let pgConnectionFragment = pgSelection !== undefined ? pgSelection.connectionConfig.apply(cc => `,"pgConnection":` + JSON.stringify(PgConnection$ReventlessAws.connectionConfigToJson(pgSelection.lockStrategy, cc))) : Pulumi.output("");
-  let inboundFragment = inboundSlices.length !== 0 ? Pulumi.all(inboundSlices.map(s => Stdlib_Option.getOr(s.auditTableName, Pulumi.output("")))).apply(tableNames => {
+  let inboundFragment = inboundSlices.length !== 0 ? Pulumi.all(inboundSlices.map(s => s.auditTableName)).apply(tableNames => {
       let entries = inboundSlices.map((s, i) => {
         let spec = Stdlib_Option.getOr(JSON.stringify(s.specPath), `""`);
         let translation = Stdlib_Option.getOr(JSON.stringify(s.translationPath), `""`);

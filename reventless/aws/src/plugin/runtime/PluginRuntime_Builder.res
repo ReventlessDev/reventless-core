@@ -56,7 +56,13 @@ let registerStateChangeSliceSpec = (~specPath: string, ~behaviorPath: string) =>
 type inboundSliceReg = {
   specPath: string,
   translationPath: string,
-  mutable auditTableName: option<Pulumi.Output.t<string>>,
+  // Plain `Pulumi.Output.t<string>`, never `option<Pulumi.Output.t<string>>`:
+  // any generic `Option.*` call over an Output runs `valFromOption`, whose
+  // `.BS_PRIVATE_NESTED_SOME_NONE` probe hits the Output proxy (every property
+  // access returns a truthy Output), mis-classifies it as a nested-option and
+  // corrupts it into `{BS_PRIVATE_NESTED_SOME_NONE:0}`. The empty-string Output
+  // is the "no audit table" sentinel (serialized as `null` downstream).
+  mutable auditTableName: Pulumi.Output.t<string>,
 }
 let registeredInboundSlices: dict<inboundSliceReg> = Dict.make()
 
@@ -68,16 +74,19 @@ let registerInboundTranslationSliceSpec = (
   switch registeredInboundSlices->Dict.get(specName) {
   | Some(reg) => registeredInboundSlices->Dict.set(specName, {...reg, specPath, translationPath})
   | None =>
-    registeredInboundSlices->Dict.set(specName, {specPath, translationPath, auditTableName: None})
+    registeredInboundSlices->Dict.set(
+      specName,
+      {specPath, translationPath, auditTableName: Pulumi.Output.make("")},
+    )
   }
 
 let registerInboundAuditTableName = (~specName: string, tableName: Pulumi.Output.t<string>) =>
   switch registeredInboundSlices->Dict.get(specName) {
-  | Some(reg) => reg.auditTableName = Some(tableName)
+  | Some(reg) => reg.auditTableName = tableName
   | None =>
     registeredInboundSlices->Dict.set(
       specName,
-      {specPath: "", translationPath: "", auditTableName: Some(tableName)},
+      {specPath: "", translationPath: "", auditTableName: tableName},
     )
   }
 

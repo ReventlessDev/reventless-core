@@ -160,7 +160,20 @@ export async function buildHandlersForConfig(config, opts = {}) {
   await Promise.all(inboundModules.map(async ({ spec, translation, auditTableName }) => {
     const specModule = await loadModule(spec);
     const translationModule = await loadModule(translation);
-    const auditOps = (auditTableName && !config.pgConnection)
+    // auditTableName must be a real non-empty string. A non-string here (e.g. a
+    // mis-serialized deploy-time value) would build a QueryDb ops whose TableName
+    // is an object, and every PutCommand would crash in AWS endpoint resolution
+    // ("value.split is not a function") — silently, since the audit save is
+    // best-effort. Guard against that instead of trusting the config shape.
+    const hasAuditTable = typeof auditTableName === "string" && auditTableName.length > 0;
+    if (auditTableName != null && !hasAuditTable) {
+      log.warn(
+        "inbound audit table name is not a string; skipping audit persistence: " +
+          JSON.stringify(auditTableName),
+        { comp: "DcbCommandTopicRuntime" },
+      );
+    }
+    const auditOps = (hasAuditTable && !config.pgConnection)
       ? makeDynamoQueryDbOps(auditTableName)
       : undefined;
     const fieldName = config.pluginName + "_" + specModule.name;

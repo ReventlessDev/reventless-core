@@ -266,14 +266,24 @@ let buildInboundReceiver = (
         let json = row->S.reverseConvertToJsonOrThrow(
           ReventlessCore.InboundTranslationSlice_Callback.auditRowSchema,
         )
+        // A failed audit write must not fail the mutation (the command was
+        // already published), but it must not vanish either. `save` RESOLVES
+        // with `Error(_)` on a storage failure (it does not throw), so the
+        // result must be inspected — a bare `let _ = await ops.save(...)` would
+        // swallow the failure and leave the audit view permanently, silently
+        // empty. `try` still guards an unexpected reject.
         try {
-          let _ = await ops.save(id, json, ReventlessCore.QueryDb.Overwrite, None)
+          switch await ops.save(id, json, ReventlessCore.QueryDb.Overwrite, None) {
+          | Ok() => ()
+          | Error(err) =>
+            ReventlessCore.EffectLogger.logError(
+              ~comp="InboundTranslationSlice.audit",
+              `failed to persist audit row ${id}: ${err
+                ->ReventlessCore.QueryDb.storageErrorToString}`,
+            )->Effect.runSync
+          }
         } catch {
         | exn =>
-          // A failed audit write must not fail the mutation (the command was
-          // already published), but it must not vanish either: an AccessDenied
-          // here means the command Lambda's role lacks PutItem on the audit table,
-          // which otherwise surfaces only as a permanently empty audit view.
           let detail =
             exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown error")
           ReventlessCore.EffectLogger.logError(

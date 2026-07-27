@@ -21,7 +21,10 @@ let log = ReventlessCore.Logger.fromEnv()
 type inboundSlicePaths = {
   specPath: string,
   translationPath: string,
-  auditTableName: option<Pulumi.Output.t<string>>,
+  // Plain Output, never `option<Pulumi.Output.t<string>>` — see the note on
+  // `PluginRuntime_Builder.inboundSliceReg.auditTableName`. Empty string = no
+  // audit table (serialized as `null`).
+  auditTableName: Pulumi.Output.t<string>,
 }
 
 // `slicePaths`: `(specPath, behaviorPath)` per StateChangeSlice (already merged
@@ -142,7 +145,7 @@ let forDcbCommandTopic = (
     | [] => Pulumi.Output.make("")
     | slices =>
       slices
-      ->Array.map(s => s.auditTableName->Option.getOr(Pulumi.Output.make("")))
+      ->Array.map(s => s.auditTableName)
       ->Pulumi.Output.all
       ->Pulumi.Output.apply(tableNames => {
         let entries =

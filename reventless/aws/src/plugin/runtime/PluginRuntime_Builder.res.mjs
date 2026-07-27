@@ -65,7 +65,7 @@ function registerInboundTranslationSliceSpec(specName, specPath, translationPath
     registeredInboundSlices[specName] = {
       specPath: specPath,
       translationPath: translationPath,
-      auditTableName: undefined
+      auditTableName: Pulumi.output("")
     };
   }
 }
