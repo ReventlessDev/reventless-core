@@ -221,6 +221,10 @@ module MakeWithConfig = (
       }
     }
 
+  // Event-history query resolvers. Reads the same event logs the Source A
+  // subscription bridge below streams, but historically and per entity.
+  module EventHistoryResolvers = EventHistoryResolvers_GraphQL.Make(Bus)
+
   // Platform hook record — callbacks known at MakeWithConfig time plus a
   // mutable ref for admin extension points (set by makePlatform/deployPlugin
   // after Admin.construct returns, before plugins are built).
@@ -269,6 +273,11 @@ module MakeWithConfig = (
     inboundMutationBindReceiveHook: InboundTranslationResolvers_GraphQL.bindReceive,
     // Register GraphQL type definitions from the generated schema fragment.
     schemaTypeRegistrationHook: sdlTypes => resolveTargetGraphQL().registerTypes(~sdlTypes),
+    // Event-history queries — the historical read counterpart of the Source A
+    // subscription bridged further down. Same `eventLogEntries`, so the two
+    // always describe the same set of streams.
+    eventQueryResolverHook: params =>
+      EventHistoryResolvers.register(~server=resolveTargetGraphQL(), params),
     // MCP tools and resources — registered during plugin construction.
     // See the large lambda below; it references Bus for QueryDb lookups.
     mcpSchemaRegistrationHook: ({pluginName, mutationEntries, queryEntries, eventLogEntries, subscriptionFields}) => {

@@ -892,6 +892,19 @@ type mcpRegistrationParams = {
   subscriptionFields: array<string>,
 }
 
+// ---------------------------------------------------------------------------
+// Event-history query registration params. The SDL for these fields is emitted
+// by Plugin_EventQuerySchema from this same `eventLogEntries` array; this hook
+// hands a platform what it needs to register the matching resolvers. Kept apart
+// from mcpRegistrationParams (which carries the same two fields) because the
+// two consumers are unrelated: one registers GraphQL resolvers, the other MCP
+// resources, and either can exist without the other.
+// ---------------------------------------------------------------------------
+type eventQueryRegistrationParams = {
+  pluginName: string,
+  eventLogEntries: array<ReventlessInfra.Api.eventLogSchemaEntry>,
+}
+
 // Subscription infrastructure hook params — fired after allQueryDbs and allEventTopics
 // are assembled inside builderOutputs.  Lets the AWS platform wire StateTopic and
 // EventLogSubscription Lambdas without touching reventless-core.
@@ -943,6 +956,9 @@ type platformHooks = {
   subscriptionInfraHook?: subscriptionInfraParams => unit,
   // MCP tools and resources.
   mcpSchemaRegistrationHook?: mcpRegistrationParams => unit,
+  // Event-history query resolvers — the read counterpart of the Source A
+  // subscription (see Plugin_EventQuerySchema).
+  eventQueryResolverHook?: eventQueryRegistrationParams => unit,
   // ── AppSync resolver creation (AWS) ───────────────────────────────────
   preResolversSchemaHook?: (~name: string, ~version: string, Reventless.Plugin.apiSchemaFragment) => Pulumi.Output.t<unit>,
   // Admin equivalent of preResolversSchemaHook. Set by AWS platforms to push

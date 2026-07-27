@@ -32,6 +32,7 @@ import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-inf
 import * as ExtensionPoint$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/ExtensionPoint.res.mjs";
 import * as Heartbeat_Builder$ReventlessCore from "../../components/Heartbeat/Heartbeat_Builder.res.mjs";
 import * as ResourceAttribution$ReventlessCore from "../../ResourceAttribution.res.mjs";
+import * as Plugin_EventQuerySchema$ReventlessCore from "./Plugin_EventQuerySchema.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import * as Plugin_SubscriptionSchema$ReventlessCore from "./Plugin_SubscriptionSchema.res.mjs";
 
@@ -226,11 +227,16 @@ function Make(Spec) {
         });
         let baseFragment = FragmentProvider.generateFragment(mutationEntries, queryEntries);
         let subResult = Plugin_SubscriptionSchema$ReventlessCore.generate(mutationEntries, eventLogEntries);
+        let evtResult = Plugin_EventQuerySchema$ReventlessCore.generate(extra$1, eventLogEntries);
         let parts = GraphQL_Stitcher$ReventlessCore.decode(baseFragment);
         let apiSchemaFragment = GraphQL_Stitcher$ReventlessCore.encode({
-          types: parts.types.concat(subResult.extraTypes),
+          types: [
+            parts.types,
+            subResult.extraTypes,
+            evtResult.extraTypes
+          ].flat(),
           mutations: parts.mutations,
-          queries: parts.queries,
+          queries: parts.queries.concat(evtResult.queryFields),
           subscriptions: subResult.subscriptionFields,
           subscriptionSources: subResult.subscriptionSources
         });
@@ -244,6 +250,10 @@ function Make(Spec) {
           queryEntries: queryEntries,
           eventLogEntries: eventLogEntries,
           subscriptionFields: GraphQL_Stitcher$ReventlessCore.decode(apiSchemaFragment).subscriptions
+        }));
+        Stdlib_Option.forEach(Spec.hooks.eventQueryResolverHook, registerEventQueries => registerEventQueries({
+          pluginName: extra$1,
+          eventLogEntries: eventLogEntries
         }));
         let slicePublishJsons = dcbResult.dcbPublishJsons;
         if (slicePublishJsons !== undefined) {

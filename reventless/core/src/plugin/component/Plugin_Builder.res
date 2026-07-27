@@ -298,10 +298,15 @@ module Make = (
         ~mutationEntries,
         ~eventLogEntries,
       )
+      // The historical read counterpart of the Source A subscription — same
+      // event logs, same generation point, so the two cannot disagree about
+      // which streams exist.
+      let evtResult = Plugin_EventQuerySchema.generate(~plugin=name, ~eventLogEntries)
       let parts = GraphQL_Stitcher.decode(baseFragment)
       GraphQL_Stitcher.encode({
         ...parts,
-        types: Array.concat(parts.types, subResult.extraTypes),
+        types: Array.flat([parts.types, subResult.extraTypes, evtResult.extraTypes]),
+        queries: Array.concat(parts.queries, evtResult.queryFields),
         subscriptions: subResult.subscriptionFields,
         subscriptionSources: subResult.subscriptionSources,
       })
@@ -322,6 +327,11 @@ module Make = (
         eventLogEntries,
         subscriptionFields: GraphQL_Stitcher.decode(apiSchemaFragment).subscriptions,
       })
+    )
+
+    // Register the event-history query resolvers matching the SDL emitted above.
+    Spec.hooks.eventQueryResolverHook->Option.forEach(registerEventQueries =>
+      registerEventQueries({pluginName: name, eventLogEntries})
     )
 
     // Register DCB StateChangeSlice publish functions in publishToAggregates so that

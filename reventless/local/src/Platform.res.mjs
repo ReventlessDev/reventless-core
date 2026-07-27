@@ -76,6 +76,7 @@ import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLo
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
 import * as UiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry_Behavior.res.mjs";
+import * as EventHistoryResolvers_GraphQL$ReventlessLocal from "./adapter/EventHistory/EventHistoryResolvers_GraphQL.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessLocal from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as Platform_ComponentDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_ComponentDefinitionsApi.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessLocal from "./components/OutboundTranslationSlice_Builder.res.mjs";
@@ -192,6 +193,7 @@ function MakeWithConfig(Config) {
       return PlatformMCP_Server$ReventlessLocal.asInterface;
     }
   };
+  let EventHistoryResolvers = EventHistoryResolvers_GraphQL$ReventlessLocal.Make(Bus);
   let hooks_mutationResolverHook = (kind, fields, commandSchema, commandAuthorization) => {
     let server = resolveTargetGraphQL();
     if (kind === "Aggregate") {
@@ -407,6 +409,7 @@ function MakeWithConfig(Config) {
     });
     LocalGraphQL_SubscriptionResolvers$ReventlessLocal.registerAll(server, subscriptionFields, sourceAEntries, []);
   };
+  let hooks_eventQueryResolverHook = params => EventHistoryResolvers.register(resolveTargetGraphQL(), params);
   let hooks_adminExtensionPoints = {
     contents: Pulumi.output({})
   };
@@ -435,6 +438,7 @@ function MakeWithConfig(Config) {
     inboundMutationBindReceiveHook: hooks_inboundMutationBindReceiveHook,
     schemaTypeRegistrationHook: hooks_schemaTypeRegistrationHook,
     mcpSchemaRegistrationHook: hooks_mcpSchemaRegistrationHook,
+    eventQueryResolverHook: hooks_eventQueryResolverHook,
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
     schedulerRoleUrn: hooks_schedulerRoleUrn,
@@ -1862,6 +1866,7 @@ function Make($star) {
       return PlatformMCP_Server$ReventlessLocal.asInterface;
     }
   };
+  let EventHistoryResolvers = EventHistoryResolvers_GraphQL$ReventlessLocal.Make(Bus);
   let hooks_mutationResolverHook = (kind, fields, commandSchema, commandAuthorization) => {
     let server = resolveTargetGraphQL();
     if (kind === "Aggregate") {
@@ -2077,6 +2082,7 @@ function Make($star) {
     });
     LocalGraphQL_SubscriptionResolvers$ReventlessLocal.registerAll(server, subscriptionFields, sourceAEntries, []);
   };
+  let hooks_eventQueryResolverHook = params => EventHistoryResolvers.register(resolveTargetGraphQL(), params);
   let hooks_adminExtensionPoints = {
     contents: Pulumi.output({})
   };
@@ -2105,6 +2111,7 @@ function Make($star) {
     inboundMutationBindReceiveHook: hooks_inboundMutationBindReceiveHook,
     schemaTypeRegistrationHook: hooks_schemaTypeRegistrationHook,
     mcpSchemaRegistrationHook: hooks_mcpSchemaRegistrationHook,
+    eventQueryResolverHook: hooks_eventQueryResolverHook,
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
     schedulerRoleUrn: hooks_schedulerRoleUrn,
