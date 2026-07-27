@@ -13,75 +13,6 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as AppSync_Resolver_Native$ReventlessAws from "./AppSync_Resolver_Native.res.mjs";
 
-function makeHandlerCode(param) {
-  return `
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
-
-const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const TABLE = process.env.UI_FRAGMENT_RM_TABLE;
-
-export async function handler() {
-  if (!TABLE) {
-    console.error("Platform_UIFragments: UI_FRAGMENT_RM_TABLE env var not set");
-    return [];
-  }
-  const items = [];
-  let exclusiveStartKey;
-  do {
-    const out = await client.send(new ScanCommand({
-      TableName: TABLE,
-      Limit: 1000,
-      ExclusiveStartKey: exclusiveStartKey,
-    }));
-    if (out.Items) items.push(...out.Items);
-    exclusiveStartKey = out.LastEvaluatedKey;
-  } while (exclusiveStartKey);
-
-  // Platform invariant: one version per plugin at a time, so the UI sees just
-  // the bare plugin name (mirrors ReventlessCore.Plugin.name). The registry is
-  // keyed by bare plugin name (a no-op for the split below), but rows persisted
-  // by the pre-slice registry were keyed name@version — keep the collapse to the
-  // highest version per plugin name (mirrors ReventlessCore.Plugin.compareVersions)
-  // so a mixed table never surfaces duplicate fragments.
-  const cmpVer = (a, b) => {
-    const pa = String(a).replace(/[-+]/g, ".").split(".");
-    const pb = String(b).replace(/[-+]/g, ".").split(".");
-    const len = Math.max(pa.length, pb.length);
-    for (let i = 0; i < len; i++) {
-      const sa = pa[i] ?? "", sb = pb[i] ?? "";
-      const na = Number(sa), nb = Number(sb);
-      const bothNum = sa !== "" && sb !== "" && !Number.isNaN(na) && !Number.isNaN(nb);
-      if (bothNum) { if (na !== nb) return na > nb ? 1 : -1; }
-      else if (sa !== sb) return sa > sb ? 1 : -1;
-    }
-    return 0;
-  };
-  const latestByName = new Map();
-  for (const item of items) {
-    if (!item || !item.pluginId || !item.remoteEntryUrl) continue;
-    const name = String(item.pluginId).split("@")[0];
-    const version = String(item.pluginId).split("@")[1] ?? "";
-    const prev = latestByName.get(name);
-    if (!prev || cmpVer(version, prev.version) > 0) {
-      latestByName.set(name, {
-        version,
-        entry: {
-          pluginId: name,
-          remoteEntryUrl: item.remoteEntryUrl,
-          panels: item.panels || [],
-          pages: item.pages || [],
-          registeredAt: item.registeredAt || "",
-          updatedAt: item.updatedAt || "",
-        },
-      });
-    }
-  }
-  return [...latestByName.values()].map(v => v.entry);
-}
-`;
-}
-
 let resolverCode = `
 import { util } from '@aws-appsync/utils';
 export function request(ctx) {
@@ -116,82 +47,16 @@ function make(api, uiFragmentRegistryTableName, schemaReady, opts) {
       role: lambdaRole.id
     }, opts$1);
   });
-  let archiveContents = {};
-  let handlerCodeStub = `
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
-
-const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const TABLE = process.env.UI_FRAGMENT_RM_TABLE;
-
-export async function handler() {
-  if (!TABLE) {
-    console.error("Platform_UIFragments: UI_FRAGMENT_RM_TABLE env var not set");
-    return [];
-  }
-  const items = [];
-  let exclusiveStartKey;
-  do {
-    const out = await client.send(new ScanCommand({
-      TableName: TABLE,
-      Limit: 1000,
-      ExclusiveStartKey: exclusiveStartKey,
-    }));
-    if (out.Items) items.push(...out.Items);
-    exclusiveStartKey = out.LastEvaluatedKey;
-  } while (exclusiveStartKey);
-
-  // Platform invariant: one version per plugin at a time, so the UI sees just
-  // the bare plugin name (mirrors ReventlessCore.Plugin.name). The registry is
-  // keyed by bare plugin name (a no-op for the split below), but rows persisted
-  // by the pre-slice registry were keyed name@version — keep the collapse to the
-  // highest version per plugin name (mirrors ReventlessCore.Plugin.compareVersions)
-  // so a mixed table never surfaces duplicate fragments.
-  const cmpVer = (a, b) => {
-    const pa = String(a).replace(/[-+]/g, ".").split(".");
-    const pb = String(b).replace(/[-+]/g, ".").split(".");
-    const len = Math.max(pa.length, pb.length);
-    for (let i = 0; i < len; i++) {
-      const sa = pa[i] ?? "", sb = pb[i] ?? "";
-      const na = Number(sa), nb = Number(sb);
-      const bothNum = sa !== "" && sb !== "" && !Number.isNaN(na) && !Number.isNaN(nb);
-      if (bothNum) { if (na !== nb) return na > nb ? 1 : -1; }
-      else if (sa !== sb) return sa > sb ? 1 : -1;
-    }
-    return 0;
-  };
-  const latestByName = new Map();
-  for (const item of items) {
-    if (!item || !item.pluginId || !item.remoteEntryUrl) continue;
-    const name = String(item.pluginId).split("@")[0];
-    const version = String(item.pluginId).split("@")[1] ?? "";
-    const prev = latestByName.get(name);
-    if (!prev || cmpVer(version, prev.version) > 0) {
-      latestByName.set(name, {
-        version,
-        entry: {
-          pluginId: name,
-          remoteEntryUrl: item.remoteEntryUrl,
-          panels: item.panels || [],
-          pages: item.pages || [],
-          registeredAt: item.registeredAt || "",
-          updatedAt: item.updatedAt || "",
-        },
-      });
-    }
-  }
-  return [...latestByName.values()].map(v => v.entry);
-}
-`;
-  archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(handlerCodeStub);
-  let loaderHash = Util_Bundle$ReventlessAws.addEsmLoaderAssets(archiveContents);
-  let code = new (Pulumi.asset.AssetArchive)(archiveContents);
-  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(handlerCodeStub + "\n---\n" + loaderHash);
+  let packageDirs = Object.fromEntries([[
+      "@reventlessdev/reventless-aws",
+      Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws")
+    ]]);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Api/Platform_UIFragments_Lambda_Ops.res.mjs", packageDirs, undefined);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
   let lambda = new (Aws.lambda.Function)(name + "Lambda", {
     handler: "index.handler",
     runtime: "nodejs22.x",
-    code: code,
+    code: match.code,
     role: lambdaRole.arn,
     memorySize: 512,
     timeout: 30,
@@ -217,7 +82,7 @@ export async function handler() {
         ]
       ])
     },
-    sourceCodeHash: sourceCodeHash
+    sourceCodeHash: match.sourceCodeHash
   }, opts$1);
   let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
   Pulumi.all([
@@ -246,7 +111,6 @@ export async function handler() {
 }
 
 export {
-  makeHandlerCode,
   resolverCode,
   make,
 }

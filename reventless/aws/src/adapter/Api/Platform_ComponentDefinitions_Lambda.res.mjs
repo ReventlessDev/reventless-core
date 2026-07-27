@@ -15,81 +15,6 @@ import * as AppSync_Resolver_Native$ReventlessAws from "./AppSync_Resolver_Nativ
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
 import * as Platform_ComponentDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_ComponentDefinitionsApi.res.mjs";
 
-function makeHandlerCode(param, adminEntryJson) {
-  return `
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
-
-const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const TABLE = process.env.PLUGIN_RM_TABLE;
-const ADMIN_ENTRY = ` + adminEntryJson + `;
-
-export async function handler() {
-  if (!TABLE) {
-    console.error("Platform_ComponentDefinitions: PLUGIN_RM_TABLE env var not set");
-    return [ADMIN_ENTRY];
-  }
-  const items = [];
-  let exclusiveStartKey;
-  do {
-    const out = await client.send(new ScanCommand({
-      TableName: TABLE,
-      FilterExpression: "contains(#status, :connected)",
-      ExpressionAttributeNames: { "#status": "status" },
-      ExpressionAttributeValues: { ":connected": "Connected" },
-      Limit: 1000,
-      ExclusiveStartKey: exclusiveStartKey,
-    }));
-    if (out.Items) items.push(...out.Items);
-    exclusiveStartKey = out.LastEvaluatedKey;
-  } while (exclusiveStartKey);
-
-  // Platform invariant: one version per plugin at a time, so the UI sees just
-  // the bare plugin name (mirrors ReventlessCore.Plugin.name). The Connected
-  // filter above does not enforce single-version: during a rolling deploy or a
-  // missed retire, several versions of the same plugin sit in Connected at once
-  // and each would otherwise emit a full duplicate set of AutoUI menu entries.
-  // Collapse to the highest version per plugin name (mirrors
-  // ReventlessCore.Plugin.compareVersions).
-  const cmpVer = (a, b) => {
-    const pa = String(a).replace(/[-+]/g, ".").split(".");
-    const pb = String(b).replace(/[-+]/g, ".").split(".");
-    const len = Math.max(pa.length, pb.length);
-    for (let i = 0; i < len; i++) {
-      const sa = pa[i] ?? "", sb = pb[i] ?? "";
-      const na = Number(sa), nb = Number(sb);
-      const bothNum = sa !== "" && sb !== "" && !Number.isNaN(na) && !Number.isNaN(nb);
-      if (bothNum) { if (na !== nb) return na > nb ? 1 : -1; }
-      else if (sa !== sb) return sa > sb ? 1 : -1;
-    }
-    return 0;
-  };
-  // The persisted structure carries Internal ReadModels / StateViewSlices for
-  // developer tooling; they must stay out of the deployed AutoUI. Mirror
-  // ReventlessCore.Platform_ComponentDefinitionsApi.isPublicQueryable here on the
-  // read path (the persisted structure is pre-filter — it is NOT re-encoded).
-  const isPublicQueryable = (q) => q?.visibility !== "Internal";
-  const filterStructure = (s) => ({
-    ...s,
-    readModels: (s.readModels ?? []).filter(isPublicQueryable),
-    stateViewSlices: (s.stateViewSlices ?? []).filter(isPublicQueryable),
-  });
-  const latestByName = new Map();
-  for (const item of items) {
-    if (!item || !item.structure) continue;
-    const name = String(item.name).split("@")[0];
-    const version = String(item.name).split("@")[1] ?? "";
-    const prev = latestByName.get(name);
-    if (!prev || cmpVer(version, prev.version) > 0) {
-      latestByName.set(name, { version, entry: { pluginId: name, ...filterStructure(item.structure) } });
-    }
-  }
-  const userEntries = [...latestByName.values()].map(v => v.entry);
-  return [ADMIN_ENTRY, ...userEntries];
-}
-`;
-}
-
 let resolverCode = `
 import { util } from '@aws-appsync/utils';
 export function request(ctx) {
@@ -125,17 +50,16 @@ function make(api, pluginReadModelTableName, opts) {
     }, opts$1);
   });
   let adminEntryJson = JSON.stringify(Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(Platform_Admin_Structure$ReventlessCore.pluginId, Platform_Admin_Structure$ReventlessCore.structure));
-  let archiveContents = {};
-  let handlerCodeStub = makeHandlerCode("", adminEntryJson);
-  archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(handlerCodeStub);
-  let loaderHash = Util_Bundle$ReventlessAws.addEsmLoaderAssets(archiveContents);
-  let code = new (Pulumi.asset.AssetArchive)(archiveContents);
-  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(handlerCodeStub + "\n---\n" + loaderHash);
+  let packageDirs = Object.fromEntries([[
+      "@reventlessdev/reventless-aws",
+      Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws")
+    ]]);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Api/Platform_ComponentDefinitions_Lambda_Ops.res.mjs", packageDirs, undefined);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
   let lambda = new (Aws.lambda.Function)(name + "Lambda", {
     handler: "index.handler",
     runtime: "nodejs22.x",
-    code: code,
+    code: match.code,
     role: lambdaRole.arn,
     memorySize: 512,
     timeout: 30,
@@ -152,6 +76,10 @@ function make(api, pluginReadModelTableName, opts) {
           pluginReadModelTableName
         ],
         [
+          "ADMIN_ENTRY_JSON",
+          adminEntryJson
+        ],
+        [
           "NODE_OPTIONS",
           Util_Bundle$ReventlessAws.esmLoaderNodeOptions
         ],
@@ -161,7 +89,7 @@ function make(api, pluginReadModelTableName, opts) {
         ]
       ])
     },
-    sourceCodeHash: sourceCodeHash
+    sourceCodeHash: match.sourceCodeHash
   }, opts$1);
   let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
   Pulumi.all([
@@ -190,7 +118,6 @@ function make(api, pluginReadModelTableName, opts) {
 }
 
 export {
-  makeHandlerCode,
   resolverCode,
   make,
 }

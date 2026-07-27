@@ -8,74 +8,6 @@
 
 open PulumiAws
 
-let makeHandlerCode = (~tableName as _: string): string =>
-  `
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
-
-const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const TABLE = process.env.UI_FRAGMENT_RM_TABLE;
-
-export async function handler() {
-  if (!TABLE) {
-    console.error("Platform_UIFragments: UI_FRAGMENT_RM_TABLE env var not set");
-    return [];
-  }
-  const items = [];
-  let exclusiveStartKey;
-  do {
-    const out = await client.send(new ScanCommand({
-      TableName: TABLE,
-      Limit: 1000,
-      ExclusiveStartKey: exclusiveStartKey,
-    }));
-    if (out.Items) items.push(...out.Items);
-    exclusiveStartKey = out.LastEvaluatedKey;
-  } while (exclusiveStartKey);
-
-  // Platform invariant: one version per plugin at a time, so the UI sees just
-  // the bare plugin name (mirrors ReventlessCore.Plugin.name). The registry is
-  // keyed by bare plugin name (a no-op for the split below), but rows persisted
-  // by the pre-slice registry were keyed name@version — keep the collapse to the
-  // highest version per plugin name (mirrors ReventlessCore.Plugin.compareVersions)
-  // so a mixed table never surfaces duplicate fragments.
-  const cmpVer = (a, b) => {
-    const pa = String(a).replace(/[-+]/g, ".").split(".");
-    const pb = String(b).replace(/[-+]/g, ".").split(".");
-    const len = Math.max(pa.length, pb.length);
-    for (let i = 0; i < len; i++) {
-      const sa = pa[i] ?? "", sb = pb[i] ?? "";
-      const na = Number(sa), nb = Number(sb);
-      const bothNum = sa !== "" && sb !== "" && !Number.isNaN(na) && !Number.isNaN(nb);
-      if (bothNum) { if (na !== nb) return na > nb ? 1 : -1; }
-      else if (sa !== sb) return sa > sb ? 1 : -1;
-    }
-    return 0;
-  };
-  const latestByName = new Map();
-  for (const item of items) {
-    if (!item || !item.pluginId || !item.remoteEntryUrl) continue;
-    const name = String(item.pluginId).split("@")[0];
-    const version = String(item.pluginId).split("@")[1] ?? "";
-    const prev = latestByName.get(name);
-    if (!prev || cmpVer(version, prev.version) > 0) {
-      latestByName.set(name, {
-        version,
-        entry: {
-          pluginId: name,
-          remoteEntryUrl: item.remoteEntryUrl,
-          panels: item.panels || [],
-          pages: item.pages || [],
-          registeredAt: item.registeredAt || "",
-          updatedAt: item.updatedAt || "",
-        },
-      });
-    }
-  }
-  return [...latestByName.values()].map(v => v.entry);
-}
-`
-
 let resolverCode = `
 import { util } from '@aws-appsync/utils';
 export function request(ctx) {
@@ -143,18 +75,16 @@ let make = (
       )
     })
 
-  let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-  let handlerCodeStub = makeHandlerCode(~tableName="")
-  archiveContents->Dict.set(
-    "index.mjs",
-    Pulumi.Asset.stringAsset(handlerCodeStub)->Pulumi.Archive.assetToAssetOrArchive,
+  // Bundle reventless-aws (the compiled `_Ops` handler lives inside it) and
+  // re-export its `handler`; buildCodeArchive also ships the ESM resolve-hook so
+  // the handler's bare @aws-sdk/* specifiers resolve from the managed runtime.
+  let packageDirs = Dict.fromArray([
+    ("@reventlessdev/reventless-aws", Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws")),
+  ])
+  let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
+    ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Api/Platform_UIFragments_Lambda_Ops.res.mjs",
+    ~packageDirs,
   )
-  // ESM self-containment: the handler imports @aws-sdk/* bare specifiers the
-  // nodejs22.x runtime provides only under /var/runtime — unreachable from
-  // /var/task ESM without the resolver hook. Ship the loader + set its env vars.
-  let loaderHash = Util_Bundle.addEsmLoaderAssets(archiveContents)
-  let code = Pulumi.Archive.assetArchive(archiveContents)
-  let sourceCodeHash = Util_Bundle.hashString(handlerCodeStub ++ "\n---\n" ++ loaderHash)
 
   let layers =
     Lambda.reventlessLayerArn
