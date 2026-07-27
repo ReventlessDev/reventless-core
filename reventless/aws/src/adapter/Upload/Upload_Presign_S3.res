@@ -1,155 +1,24 @@
 // Direct-to-S3 upload presign service behind a public Lambda Function URL.
 //
-// Deploy-time: `make` provisions a CallbackFunction (handler closure serialized
-// by Pulumi), an IAM execution role scoped to `s3:PutObject` on the target
-// bucket, and a Function URL (no auth) so a browser can request a presigned PUT.
+// Deploy-time only: `make` provisions a compiled-EntryPoint Lambda (a plain
+// `Lambda.Function` whose code archive re-exports `handler` from the compiled,
+// type-checked runtime module `Upload_Presign_S3_Ops` and ships the shared ESM
+// resolve-hook loader), an IAM execution role scoped to CloudWatch Logs +
+// `s3:PutObject` on the target bucket, and a Function URL (no auth) so a browser
+// can request a presigned PUT.
 //
-// Runtime: `handlePresign` reads a JSON body `{fileName, contentType}`, derives
-// a target key `uploads/<identity?>/<uuid>/<fileName>`, presigns a PUT to the
-// bucket named in `UPLOAD_BUCKET` (expires in 300s), and returns
-// `{uploadUrl, storageRef}`. A Bearer token, when present, is decoded (no
-// signature verification here — that is the auth layer's job) and its `sub`
-// namespaces the key; anonymous callers are still served for the demo.
+// Why an EntryPoint and not a Pulumi `CallbackFunction`: the handler needs the
+// AWS SDK v3 S3 presigner. A serialized closure bakes the deploy machine's
+// version-specific SDK internals into the archive but then resolves `@smithy/*`
+// and `@aws-sdk/*` transitives from independently-versioned layer/runtime sources
+// that disagree at cold start (an inlined `client-s3` against a newer
+// `@smithy/smithy-client` base whose constructor no longer sets `middlewareStack`
+// → `new S3Client()` throws). Shipping the compiled `_Ops` module with bare
+// `@aws-sdk/*` imports, resolved through the resolve-hook (`@aws-sdk/*` from the
+// runtime, `@smithy/*`/`@reventlessdev/*` from the layer), loads one internally
+// consistent SDK instead. The runtime logic lives in [Upload_Presign_S3_Ops.res].
 
 open PulumiAws
-
-// ── AWS SDK v3 bindings ─────────────────────────────────────────────────────
-
-type s3Client
-
-type putObjectInput = {
-  @as("Bucket") bucket: string,
-  @as("Key") key: string,
-  @as("ContentType") contentType?: string,
-}
-type putObjectCommand
-
-@module("@aws-sdk/client-s3") @new external makeS3Client: unit => s3Client = "S3Client"
-
-@module("@aws-sdk/client-s3") @new
-external makePutObjectCommand: putObjectInput => putObjectCommand = "PutObjectCommand"
-
-type presignOptions = {expiresIn: int}
-
-@module("@aws-sdk/s3-request-presigner")
-external getSignedUrl: (s3Client, putObjectCommand, presignOptions) => promise<string> =
-  "getSignedUrl"
-
-// ── Function URL event / response shapes (payload format 2.0) ────────────────
-
-type functionUrlEvent = {
-  body?: string,
-  headers?: dict<string>,
-}
-
-type response = {
-  statusCode: int,
-  headers?: dict<string>,
-  body: string,
-}
-
-let getEnv: string => option<string> = %raw(`
-  function(k) { var v = process.env[k]; return (v === undefined || v === null || v === "") ? undefined : v; }
-`)
-
-// Node 22 exposes globalThis.crypto.randomUUID; fall back to node:crypto.
-let genUuid: unit => string = %raw(`
-  function() {
-    return (globalThis.crypto && globalThis.crypto.randomUUID)
-      ? globalThis.crypto.randomUUID()
-      : require("crypto").randomUUID();
-  }
-`)
-
-// Decode a JWT payload's `sub` claim without verifying the signature (the auth
-// layer verifies; here we only namespace the storage key).
-let decodeJwtSub: string => option<string> = %raw(`
-  function(header) {
-    try {
-      var token = header.indexOf("Bearer ") === 0 ? header.slice(7) : header;
-      var parts = token.split(".");
-      if (parts.length < 2) return undefined;
-      var base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-      var json = Buffer.from(base64, "base64").toString("utf8");
-      var claims = JSON.parse(json);
-      return (claims && claims.sub) ? String(claims.sub) : undefined;
-    } catch (_) { return undefined; }
-  }
-`)
-
-let corsHeaders = () =>
-  Dict.fromArray([
-    ("content-type", "application/json"),
-    ("access-control-allow-origin", "*"),
-    ("access-control-allow-methods", "POST,OPTIONS"),
-    ("access-control-allow-headers", "*"),
-  ])
-
-// Key prefix from the caller identity when a Bearer token is present.
-let identityPrefix = (event: functionUrlEvent): string => {
-  let authHeader =
-    event.headers->Option.flatMap(h =>
-      h->Dict.get("authorization")->Option.orElse(h->Dict.get("Authorization"))
-    )
-  switch authHeader->Option.flatMap(decodeJwtSub) {
-  | Some(sub) => `${sub}/`
-  | None => ""
-  }
-}
-
-// ── Runtime handler ─────────────────────────────────────────────────────────
-
-let handlePresign = async (event: functionUrlEvent, _context: Lambda.context): response => {
-  try {
-    let bucket = getEnv("UPLOAD_BUCKET")->Option.getOr("")
-    let parsed =
-      event.body
-      ->Option.getOr("{}")
-      ->JSON.parseOrThrow
-      ->JSON.Decode.object
-      ->Option.getOr(Dict.make())
-    let fileName =
-      parsed->Dict.get("fileName")->Option.flatMap(JSON.Decode.string)->Option.getOr("upload")
-    let contentType = parsed->Dict.get("contentType")->Option.flatMap(JSON.Decode.string)
-
-    // The object key doubles as the served path segment: it is rooted at the
-    // served prefix (`SERVED_PREFIX`, e.g. `uploads`) so the CloudFront
-    // `{prefix}/*` behavior fronts it. Callers PUT to this exact key.
-    let servedPrefix = getEnv("SERVED_PREFIX")->Option.getOr("uploads")
-    let key = `${servedPrefix}/${identityPrefix(event)}${genUuid()}/${fileName}`
-    let client = makeS3Client()
-    let command = makePutObjectCommand({bucket, key, contentType: ?contentType})
-    let uploadUrl = await getSignedUrl(client, command, {expiresIn: 300})
-
-    // The stored ref is a same-origin relative URL `/{key}`: the served bucket is
-    // fronted read-only by the UI's own CloudFront distribution under
-    // `{prefix}/*`, so a command stores this directly-renderable value and an
-    // `image`-semantic field thumbnails it with no post-processing and no public
-    // bucket. See [docs/plans/done/ui-served-buckets.md].
-    let storageRef = `/${key}`
-
-    {
-      statusCode: 200,
-      headers: corsHeaders(),
-      body: Dict.fromArray([
-        ("uploadUrl", JSON.Encode.string(uploadUrl)),
-        ("storageRef", JSON.Encode.string(storageRef)),
-      ])
-      ->JSON.Encode.object
-      ->JSON.stringify,
-    }
-  } catch {
-  | _ => {
-      statusCode: 400,
-      headers: corsHeaders(),
-      body: Dict.fromArray([("error", JSON.Encode.string("presign_failed"))])
-      ->JSON.Encode.object
-      ->JSON.stringify,
-    }
-  }
-}
-
-// ── Deploy-time factory ─────────────────────────────────────────────────────
 
 type serviceOutputs = {
   url: Pulumi.Output.t<string>,
@@ -181,7 +50,8 @@ let make = (
     ~opts?,
   )
 
-  // Least-privilege: PutObject on any key under the target bucket.
+  // CloudWatch Logs (so failures are observable) plus least-privilege
+  // `s3:PutObject` on any key under the target bucket.
   let _policy =
     bucketName
     ->Pulumi.Output.fromInput
@@ -193,6 +63,12 @@ let make = (
           policy: PolicyDocument.make(
             ~id=`${serviceName}Policy`,
             ~statements=[
+              {
+                sid: "AllowLambdaLogging",
+                effect: Allow,
+                actions: Actions(["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]),
+                resources: Resource("arn:aws:logs:*:*:*"),
+              },
               {
                 sid: "AllowUploadPut",
                 effect: Allow,
@@ -209,29 +85,54 @@ let make = (
       )
     })
 
-  let environment: Lambda.CallbackFunction.Args.functionEnvironment = {
-    // CallbackFunction under-types env values as `dict<string>`; Pulumi resolves
-    // Output-valued variables at deploy time, so bridge the Input here.
-    variables: Dict.fromArray([
-      ("UPLOAD_BUCKET", bucketName),
-      ("SERVED_PREFIX", Pulumi.Input.make(servedPrefix)),
-    ])->Obj.magic,
-  }
+  // Bundle reventless-aws (the compiled `_Ops` handler lives inside it) and
+  // re-export its `handler`; buildCodeArchive also ships the ESM resolve-hook.
+  let packageDirs = Dict.fromArray([
+    (
+      "@reventlessdev/reventless-aws",
+      Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws"),
+    ),
+  ])
+  let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
+    ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Upload/Upload_Presign_S3_Ops.res.mjs",
+    ~packageDirs,
+  )
 
-  let lambda = Lambda.CallbackFunction.make(
+  let layers =
+    Lambda.reventlessLayerArn
+    ->Option.map(arn => [arn->Pulumi.Input.make])
+    ->Option.getOr([])
+    ->Pulumi.Input.make
+
+  let lambda = Lambda.Function.make(
     ~name=serviceName,
-    ~args=Lambda.CallbackFunction.Args.make(
-      ~callback=handlePresign,
-      ~role=lambdaRole,
-      ~environment,
-      ~timeout=30->Pulumi.Input.make,
-      ~tags=AWS.Tags.make(
+    ~args={
+      handler: "index.handler"->Pulumi.Input.make,
+      runtime: "nodejs22.x"->Pulumi.Input.make,
+      code: code->Pulumi.Input.make,
+      sourceCodeHash: sourceCodeHash->Pulumi.Input.make,
+      role: lambdaRole.arn->Pulumi.Output.asInput,
+      memorySize: 256->Pulumi.Input.make,
+      timeout: 30->Pulumi.Input.make,
+      layers,
+      tags: AWS.Tags.make(
         ~name=serviceName,
         ~kind=ReventlessCore.ComponentType.Platform,
         ~role=Runtime,
         ~scope=Platform,
       ),
-    ),
+      environment: (
+        {
+          Lambda.Function.variables: Dict.fromArray([
+            ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
+            ("UPLOAD_BUCKET", bucketName),
+            ("SERVED_PREFIX", Pulumi.Input.make(servedPrefix)),
+            ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
+            ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
+          ]),
+        }: Lambda.Function.functionEnvironment
+      )->Pulumi.Input.make,
+    },
     ~opts?,
   )
 
