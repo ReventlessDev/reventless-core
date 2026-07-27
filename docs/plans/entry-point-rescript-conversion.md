@@ -363,7 +363,7 @@ validation still pends a real Postgres-backend deploy (VPC-bound — not
 laptop-invokable); the migration and relay Lambdas exercise naturally on the
 first such `pulumi up` + schedule tick.
 
-### Phase 2 — `_Ops` extraction for Group-1 (separate, later)
+### Phase 2 — `_Ops` extraction for Group-1 (IN PROGRESS)
 
 Not a full rewrite. For each Group-1 handler that still carries decode/transform
 logic inline in the `.mjs`, extract that logic into a typed `*_Ops.res` (as
@@ -371,6 +371,49 @@ Aggregate/DCB already do) and leave the `.mjs` as the thin dynamic-import +
 SDK-client seam. Prioritise the largest/most-logic-heavy first
 (`EventCollectorEntryPoint` 717 LOC, `ReadModelEntryPoint` 179,
 `StateViewSliceEntryPoint` 177). Track separately; do not block Phase 1 on it.
+
+**`EventCollectorEntryPoint` DONE (2026-07-27) — maximal split.** The 717-line
+`.mjs` became a ~250-line shell owning ONLY the inherently-untyped seam (the
+dynamic `import()` of EP/extension/spec modules named in HANDLER_CONFIG, plus
+the functor applications consuming those runtime-loaded modules:
+`ExtensionPoint_Operations.Make`, `Extension_Operations.Make`, the two mapping
+factories, `patchSpecId`). Everything else moved to a typed
+`EventCollectorEntryPoint_Ops.res` (~600 lines):
+
+- **HANDLER_CONFIG parse + validation** — explicit decoder (no blanket cast)
+  reproducing the JS normalizer's named errors, defaults, and the
+  `connectExtension` null/absent → `None` rule.
+- **`projectPluginRow`** — the Plugin-RM row projection, typed against the
+  spec's own `extensionDefinition`/`extensionPointDefinition`/
+  `dcbEventLogDefinition` records (structurally a strict subset of
+  `pluginDefinition`, so no duplicate types).
+- **The cross-plugin SNS subscription manager** (`makeManageSubscriptions`) —
+  the highest-value piece: sibling-version disconnect skip, bidirectional
+  EP↔extension matching, and both DCB-source directions, all as typed pattern
+  matches; `manageForDefinition` adapts it to the admin EP functor's
+  `pluginDefinition`-typed hook via a typed projection (js_nullable-normalized).
+- **Cold-start reconciliation**, publish/query/scheduler operation builders,
+  per-extension publish-dict filtering, `pluginDefinition.json` /
+  `uiFragments.json` asset loading, the four service-keyed handler dicts,
+  the `Plugin_Callback.Make` application (functor over an inline module
+  capturing runtime values), and the Lambda dispatch boundary
+  (`makeHandler`).
+
+No `Obj.magic`, no `%raw`; the only casts are `%identity` externals at two
+documented JSON contracts (`asPluginDefinition` — deploy-side writes
+schema-shaped JSON; the js_nullable→option normalizer), following
+`AggregateEntryPoint_Ops.asConnectionConfig`. A dead `GraphQL_Stitcher.decode`
+import was dropped. `EventCollectorEntryPoint_OpsTest` covers the projection
+and the config decoder (11 tests). Corrected-walker import-graph check (the
+earlier walker missed the core/infra subtrees): all 7 converted handler graphs
+re-verified `@pulumi`-free, EC's full graph = 45 modules.
+
+**Remaining Group-1 extractions (next passes):** `ReadModelEntryPoint` (179),
+`StateViewSliceEntryPoint` (177), `TaskBucketEntryPoint` (150),
+`AutomationSliceEntryPoint` (138), then the small ones (`EventMapperEntryPoint`
+99, `CounterEntryPoint` 91, `PgQueryResolverEntryPoint` 88,
+`ExtensionPointEntryPoint` 85, `SideEffectEntryPoint` 82). Same recipe: typed
+core for config/decode/dispatch, `.mjs` keeps only the dynamic-import seam.
 
 ### Also fold in — inline-string tier (DONE, 2026-07-27)
 
