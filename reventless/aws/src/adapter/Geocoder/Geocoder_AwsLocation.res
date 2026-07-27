@@ -1,137 +1,22 @@
 // AWS Location Service geocoder behind a public Lambda Function URL.
 //
-// Deploy-time: `make` provisions a CallbackFunction (its handler closure is
-// serialized by Pulumi), an IAM execution role scoped to
+// Deploy-time only: `make` provisions a compiled-EntryPoint Lambda (a plain
+// `Lambda.Function` whose code archive re-exports `handler` from the compiled,
+// type-checked runtime module `Geocoder_AwsLocation_Ops` and ships the shared
+// ESM resolve-hook loader), an IAM execution role scoped to CloudWatch Logs +
 // `geo:SearchPlaceIndexForText` on the target place index, and a Function URL
 // (no auth) so a browser can geocode directly.
 //
-// Runtime: `handleGeocode` reads a `q` query-string param from the Function URL
-// event, calls SearchPlaceIndexForText against the place index named in
-// `PLACE_INDEX_NAME`, and returns `[{label, lat, lng}]` as JSON. Any failure
-// degrades to an empty array so the caller never sees a hard error.
+// Why an EntryPoint and not a Pulumi `CallbackFunction`: a serialized closure
+// bakes the deploy machine's version-specific AWS SDK internals into the archive
+// but then resolves `@smithy/*`/`@aws-sdk/*` transitives from independently-
+// versioned layer/runtime sources that can disagree at cold start (the exact
+// skew that crashed the upload presign service). Shipping the compiled `_Ops`
+// module with bare `@aws-sdk/*` imports, resolved through the resolve-hook, loads
+// one internally consistent SDK. The runtime logic lives in
+// [Geocoder_AwsLocation_Ops.res].
 
 open PulumiAws
-
-// ── AWS Location SDK bindings (AWS SDK v3, client.send(new Command(...))) ────
-
-type locationClient
-
-type searchPlaceIndexForTextInput = {
-  @as("IndexName") indexName: string,
-  @as("Text") text: string,
-  @as("MaxResults") maxResults?: int,
-}
-// GeoJSON order: [lng, lat].
-type point = array<float>
-type geometry = {@as("Point") point?: point}
-type place = {@as("Label") label?: string, @as("Geometry") geometry?: geometry}
-type searchResult = {@as("Place") place?: place}
-type searchResponse = {@as("Results") results?: array<searchResult>}
-type searchCommand
-
-@module("@aws-sdk/client-location") @new
-external makeLocationClient: unit => locationClient = "LocationClient"
-
-@module("@aws-sdk/client-location") @new
-external makeSearchPlaceIndexForTextCommand: searchPlaceIndexForTextInput => searchCommand =
-  "SearchPlaceIndexForTextCommand"
-
-@send external send: (locationClient, searchCommand) => promise<searchResponse> = "send"
-
-@val external decodeURIComponent: string => string = "decodeURIComponent"
-
-// ── Function URL event / response shapes (payload format 2.0) ────────────────
-
-type functionUrlEvent = {
-  rawQueryString?: string,
-  queryStringParameters?: dict<string>,
-}
-
-type response = {
-  statusCode: int,
-  headers?: dict<string>,
-  body: string,
-}
-
-// Read an env var at runtime, mapping "" / unset to None.
-let getEnv: string => option<string> = %raw(`
-  function(k) { var v = process.env[k]; return (v === undefined || v === null || v === "") ? undefined : v; }
-`)
-
-// Permissive CORS so the browser demo can call the endpoint from any origin.
-let corsHeaders = () =>
-  Dict.fromArray([
-    ("content-type", "application/json"),
-    ("access-control-allow-origin", "*"),
-    ("access-control-allow-methods", "GET,OPTIONS"),
-    ("access-control-allow-headers", "*"),
-  ])
-
-// Pull `q` from the parsed query-string params, falling back to the raw string.
-let readQueryParam = (event: functionUrlEvent): option<string> =>
-  switch event.queryStringParameters->Option.flatMap(p => p->Dict.get("q")) {
-  | Some(q) => Some(q)
-  | None =>
-    event.rawQueryString->Option.flatMap(raw =>
-      raw
-      ->String.split("&")
-      ->Array.findMap(pair =>
-        switch pair->String.split("=") {
-        | [k, v] if k == "q" => Some(v->decodeURIComponent)
-        | _ => None
-        }
-      )
-    )
-  }
-
-// ── Runtime handler ─────────────────────────────────────────────────────────
-
-let handleGeocode = async (event: functionUrlEvent, _context: Lambda.context): response => {
-  try {
-    let indexName = getEnv("PLACE_INDEX_NAME")->Option.getOr("")
-    let q = readQueryParam(event)->Option.getOr("")
-    if indexName == "" || q == "" {
-      {statusCode: 200, headers: corsHeaders(), body: "[]"}
-    } else {
-      let client = makeLocationClient()
-      let resp = await client->send(
-        makeSearchPlaceIndexForTextCommand({indexName, text: q, maxResults: 5}),
-      )
-      let results =
-        resp.results
-        ->Option.getOr([])
-        ->Array.filterMap(r =>
-          switch r.place {
-          | Some(place) =>
-            let label = place.label->Option.getOr("")
-            switch place.geometry->Option.flatMap(g => g.point) {
-            | Some(pt) if pt->Array.length >= 2 =>
-              let lng = pt->Array.getUnsafe(0)
-              let lat = pt->Array.getUnsafe(1)
-              Some(
-                Dict.fromArray([
-                  ("label", JSON.Encode.string(label)),
-                  ("lat", JSON.Encode.float(lat)),
-                  ("lng", JSON.Encode.float(lng)),
-                ])->JSON.Encode.object,
-              )
-            | _ => None
-            }
-          | None => None
-          }
-        )
-      {
-        statusCode: 200,
-        headers: corsHeaders(),
-        body: results->JSON.Encode.array->JSON.stringify,
-      }
-    }
-  } catch {
-  | _ => {statusCode: 200, headers: corsHeaders(), body: "[]"}
-  }
-}
-
-// ── Deploy-time factory ─────────────────────────────────────────────────────
 
 type serviceOutputs = {
   url: Pulumi.Output.t<string>,
@@ -159,7 +44,8 @@ let make = (
     ~opts?,
   )
 
-  // Least-privilege: SearchPlaceIndexForText on the one place index.
+  // CloudWatch Logs (so failures are observable) plus least-privilege
+  // `geo:SearchPlaceIndexForText` on the one place index.
   let _policy =
     placeIndexName
     ->Pulumi.Output.fromInput
@@ -171,6 +57,12 @@ let make = (
           policy: PolicyDocument.make(
             ~id=`${serviceName}Policy`,
             ~statements=[
+              {
+                sid: "AllowLambdaLogging",
+                effect: Allow,
+                actions: Actions(["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]),
+                resources: Resource("arn:aws:logs:*:*:*"),
+              },
               {
                 sid: "AllowGeocode",
                 effect: Allow,
@@ -187,26 +79,53 @@ let make = (
       )
     })
 
-  let environment: Lambda.CallbackFunction.Args.functionEnvironment = {
-    // CallbackFunction under-types env values as `dict<string>`; Pulumi resolves
-    // Output-valued variables at deploy time, so bridge the Input here.
-    variables: Dict.fromArray([("PLACE_INDEX_NAME", placeIndexName)])->Obj.magic,
-  }
+  // Bundle reventless-aws (the compiled `_Ops` handler lives inside it) and
+  // re-export its `handler`; buildCodeArchive also ships the ESM resolve-hook.
+  let packageDirs = Dict.fromArray([
+    (
+      "@reventlessdev/reventless-aws",
+      Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws"),
+    ),
+  ])
+  let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
+    ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Geocoder/Geocoder_AwsLocation_Ops.res.mjs",
+    ~packageDirs,
+  )
 
-  let lambda = Lambda.CallbackFunction.make(
+  let layers =
+    Lambda.reventlessLayerArn
+    ->Option.map(arn => [arn->Pulumi.Input.make])
+    ->Option.getOr([])
+    ->Pulumi.Input.make
+
+  let lambda = Lambda.Function.make(
     ~name=serviceName,
-    ~args=Lambda.CallbackFunction.Args.make(
-      ~callback=handleGeocode,
-      ~role=lambdaRole,
-      ~environment,
-      ~timeout=30->Pulumi.Input.make,
-      ~tags=AWS.Tags.make(
+    ~args={
+      handler: "index.handler"->Pulumi.Input.make,
+      runtime: "nodejs22.x"->Pulumi.Input.make,
+      code: code->Pulumi.Input.make,
+      sourceCodeHash: sourceCodeHash->Pulumi.Input.make,
+      role: lambdaRole.arn->Pulumi.Output.asInput,
+      memorySize: 256->Pulumi.Input.make,
+      timeout: 30->Pulumi.Input.make,
+      layers,
+      tags: AWS.Tags.make(
         ~name=serviceName,
         ~kind=ReventlessCore.ComponentType.Platform,
         ~role=Runtime,
         ~scope=Platform,
       ),
-    ),
+      environment: (
+        {
+          Lambda.Function.variables: Dict.fromArray([
+            ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
+            ("PLACE_INDEX_NAME", placeIndexName),
+            ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
+            ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
+          ]),
+        }: Lambda.Function.functionEnvironment
+      )->Pulumi.Input.make,
+    },
     ~opts?,
   )
 
