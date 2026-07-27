@@ -16,165 +16,6 @@ import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStre
 
 let registry = {};
 
-let handlerCode = `
-import { createHmac, createHash } from "node:crypto";
-import { unmarshall } from "@aws-sdk/util-dynamodb";
-
-const TOPIC_MAP = JSON.parse(process.env.STATE_TOPIC_MAP || "{}");
-const APPSYNC_ENDPOINT = process.env.APPSYNC_ENDPOINT; // "https://{eventsApi.dns.http}"
-const AWS_REGION = process.env.AWS_REGION ?? "eu-west-1";
-
-function sha256hex(data) {
-  return createHash("sha256").update(typeof data === "string" ? data : JSON.stringify(data)).digest("hex");
-}
-function hmacBuf(key, data) {
-  return createHmac("sha256", key).update(data).digest();
-}
-
-async function signedHeaders(host, path, body) {
-  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-  const sessionToken = process.env.AWS_SESSION_TOKEN;
-  const now = new Date();
-  const amzDate = now.toISOString().replace(/[:\\-]|\\..../g, "").slice(0, 15) + "Z";
-  const dateStamp = now.toISOString().slice(0, 10).replace(/-/g, "");
-  const headers = { host, "x-amz-date": amzDate, ...(sessionToken ? { "x-amz-security-token": sessionToken } : {}) };
-  const canonH = Object.entries(headers).sort(([a],[b]) => a.localeCompare(b)).map(([k,v]) => \`\${k}:\${v}\\n\`).join("");
-  const signH = Object.keys(headers).sort().join(";");
-  const cr = ["POST", path, "", canonH, signH, sha256hex(body)].join("\\n");
-  const scope = \`\${dateStamp}/\${AWS_REGION}/appsync/aws4_request\`;
-  const sts = ["AWS4-HMAC-SHA256", amzDate, scope, sha256hex(cr)].join("\\n");
-  const kDate = hmacBuf("AWS4" + secretAccessKey, dateStamp);
-  const kSigning = hmacBuf(hmacBuf(hmacBuf(kDate, AWS_REGION), "appsync"), "aws4_request");
-  const sig = createHmac("sha256", kSigning).update(sts).digest("hex");
-  return { ...headers, Authorization: \`AWS4-HMAC-SHA256 Credential=\${accessKeyId}/\${scope}, SignedHeaders=\${signH}, Signature=\${sig}\` };
-}
-
-// AppSync Events channel segments allow only [A-Za-z0-9-]. Anything else
-// (\`@\`, \`.\`, \`:\`, \`_\`, \`/\`, …) collapses to \`-\` so the segment is a
-// legal channel-path token. The UI's AutoLive.normalizeSegment uses the same
-// rule for Entity-scoped subscribes.
-function pathSegment(value) {
-  return String(value).replace(/[^A-Za-z0-9-]/g, "-");
-}
-
-// Map record.eventSourceARN → topicRoot via STATE_TOPIC_MAP.
-// Stream ARNs look like: arn:aws:dynamodb:<region>:<acct>:table/<TableName>/stream/<ts>
-function topicRootFromEventSourceArn(arn) {
-  const m = arn && arn.match(/:table\\/([^/]+)\\/stream\\//);
-  if (!m) return undefined;
-  const topicName = TOPIC_MAP[m[1]];
-  if (topicName === undefined) return undefined;
-  return pathSegment(topicName);
-}
-
-// Build entityKey from record.dynamodb.Keys. Framework convention:
-// partition-key attr is named "id"; composite tables have one extra attr (the
-// sort key) whose name comes from the projection's subIdConfig.subIdField.
-// Returns the ORIGINAL key string — the descriptor body uses this verbatim so
-// AutoListView can match it against the GraphQL row.id. The channel path
-// segment is derived later via pathSegment().
-function entityKeyFromRecord(record) {
-  const keys = unmarshall(record.dynamodb.Keys ?? {});
-  const id = keys.id;
-  if (id === undefined) {
-    // Defensive: framework always names the partition key "id". If a future
-    // table breaks the convention, fall back to a stable sort-join.
-    const names = Object.keys(keys).sort();
-    return names.map((n) => String(keys[n])).join("-");
-  }
-  const subIdName = Object.keys(keys).find((k) => k !== "id");
-  return subIdName === undefined
-    ? String(id)
-    : String(id) + "-" + String(keys[subIdName]);
-}
-
-// Map DDB stream eventName → descriptor changeKind.
-function changeKindFor(eventName) {
-  switch (eventName) {
-    case "INSERT": return "Added";
-    case "MODIFY": return "Updated";
-    case "REMOVE": return "Removed";
-    default:       return "Updated";  // defensive default — shouldn't fire
-  }
-}
-
-// Pick the "natural" sort timestamp from an unmarshalled image. Conventions
-// in this codebase prefer updatedAt; createdAt is the fallback for views that
-// never mutate after insert. Returns undefined if neither is present.
-function pickSortKeyValue(image) {
-  if (image && typeof image.updatedAt === "string") return image.updatedAt;
-  if (image && typeof image.createdAt === "string") return image.createdAt;
-  return undefined;
-}
-
-export async function handler(event) {
-  const url = new URL(APPSYNC_ENDPOINT);
-  let transientErr;
-  for (const record of event.Records) {
-    const topicRoot = topicRootFromEventSourceArn(record.eventSourceARN);
-    if (topicRoot === undefined) {
-      console.warn("StateTopic: unknown table for ARN", record.eventSourceARN);
-      continue;
-    }
-    const channelRoot = "/default/" + topicRoot;
-    const image =
-      record.eventName === "REMOVE"
-        ? record.dynamodb.OldImage
-        : record.dynamodb.NewImage;
-    if (image === undefined) continue;
-    const entityKey = entityKeyFromRecord(record);
-    const channel = channelRoot + "/" + pathSegment(entityKey);
-    const unmarshalled = unmarshall(image);
-    const descriptor = {
-      changeKind: changeKindFor(record.eventName),
-      id: entityKey,
-    };
-    const sortKeyValue = pickSortKeyValue(unmarshalled);
-    if (sortKeyValue !== undefined) descriptor.sortKeyValue = sortKeyValue;
-    const body = JSON.stringify({ id: record.eventID, channel, events: [JSON.stringify(descriptor)] });
-    const auth = await signedHeaders(url.hostname, "/event", body);
-    try {
-      const res = await fetch(APPSYNC_ENDPOINT + "/event", {
-        method: "POST",
-        headers: { accept: "application/json, text/javascript", "content-encoding": "amz-1.0", "content-type": "application/json; charset=UTF-8", ...auth },
-        body,
-      });
-      if (!res.ok) {
-        const txt = await res.text();
-        // 4xx: permanent (bad request, auth, channel format) — retrying won't
-        // help. Log structurally so a CloudWatch metric filter on
-        // "STATE_TOPIC_PUBLISH_FAILED type=permanent" surfaces it; continue
-        // processing so one bad record doesn't block the rest of the batch.
-        // 5xx / network: transient — record it and throw at the end so the
-        // ESM retries (bounded by maximumRetryAttempts + bisectBatch).
-        const isTransient = res.status >= 500;
-        const tag = isTransient ? "transient" : "permanent";
-        console.error(
-          "STATE_TOPIC_PUBLISH_FAILED type=" + tag +
-          " status=" + res.status +
-          " channel=" + channel +
-          " body=" + txt.slice(0, 500)
-        );
-        if (isTransient) transientErr = new Error("StateTopic publish failed: " + res.status);
-      }
-    } catch (e) {
-      // Network-level error (DNS, connection refused, timeout) — always transient.
-      console.error(
-        "STATE_TOPIC_PUBLISH_FAILED type=transient status=network" +
-        " channel=" + channel +
-        " err=" + (e && e.message)
-      );
-      transientErr = e;
-    }
-  }
-  // Throw after the loop so a single transient error doesn't stop us from
-  // emitting other records' descriptors first. The ESM will retry the batch;
-  // bisectBatchOnFunctionError isolates the bad record across retries.
-  if (transientErr) throw transientErr;
-}
-`;
-
 function make(readModelName, topicName, allQueryDbs, eventsApi, param) {
   let streamResource = Util_DynamoDbStream$ReventlessAws.findResource(Util_ReadModel$ReventlessCore.queryDbStorageResources(allQueryDbs, readModelName));
   let streamArn = Util_DynamoDbStream$ReventlessAws.streamArnFromDynamoDbTableResource(streamResource);
@@ -241,17 +82,17 @@ function finish(eventsApi, opts) {
     });
     return JSON.stringify(dict);
   });
-  let archiveContents = {};
-  archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(handlerCode);
-  let loaderHash = Util_Bundle$ReventlessAws.addEsmLoaderAssets(archiveContents);
-  let code = new (Pulumi.asset.AssetArchive)(archiveContents);
-  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(handlerCode + "\n---\n" + loaderHash);
+  let packageDirs = Object.fromEntries([[
+      "@reventlessdev/reventless-aws",
+      Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws")
+    ]]);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync_Ops.res.mjs", packageDirs, undefined);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
   let appsyncEndpoint = AppSync_EventsApi$ReventlessAws.httpEndpoint(eventsApi);
   let lambda = new (Aws.lambda.Function)(name + "StateTopicPublisher", {
     handler: "index.handler",
     runtime: "nodejs22.x",
-    code: code,
+    code: match.code,
     role: lambdaRole.arn,
     memorySize: 256,
     timeout: 30,
@@ -281,7 +122,7 @@ function finish(eventsApi, opts) {
         ]
       ])
     },
-    sourceCodeHash: sourceCodeHash
+    sourceCodeHash: match.sourceCodeHash
   }, opts);
   entries.forEach(entry => {
     let esmName = entry.topicName + "Stream2" + name + "StateTopic";
@@ -299,7 +140,6 @@ function finish(eventsApi, opts) {
 
 export {
   registry,
-  handlerCode,
   make,
   finish,
 }

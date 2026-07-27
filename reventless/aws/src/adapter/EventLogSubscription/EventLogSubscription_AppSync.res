@@ -15,78 +15,13 @@
 
 open PulumiAws
 
-// ── Handler code ─────────────────────────────────────────────────────────────
-//
-// Receives SNS-via-SQS records (rawMessageDelivery=true → body IS the event JSON).
-// Publishes {position, eventType, payload} to AppSync Events channel.
-
-let makeHandlerCode = (~topicName: string): string => {
-  // Mirrors StateTopic_AppSync.pathSegment: AppSync Events channel segments
-  // allow only [A-Za-z0-9-]. Today's event-log displayNames are bare
-  // PascalCase identifiers (Catalog, Ordering, Plugin) so the rule is a no-op
-  // in practice — kept in lock-step prophylactically so a future displayName
-  // carrying `@/./:` etc. doesn't hit the same silent-drop the Plugins admin
-  // RM did when StateTopic still only normalised underscores.
-  let channelName = topicName->String.replaceRegExp(%re("/[^A-Za-z0-9-]/g"), "-")
-  `
-import { createHmac, createHash } from "node:crypto";
-
-const CHANNEL = "/default/${channelName}";
-const APPSYNC_ENDPOINT = process.env.APPSYNC_ENDPOINT;
-const AWS_REGION = process.env.AWS_REGION ?? "eu-west-1";
-
-function sha256hex(data) {
-  return createHash("sha256").update(typeof data === "string" ? data : JSON.stringify(data)).digest("hex");
-}
-function hmacBuf(key, data) {
-  return createHmac("sha256", key).update(data).digest();
-}
-
-async function signedHeaders(host, path, body) {
-  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-  const sessionToken = process.env.AWS_SESSION_TOKEN;
-  const now = new Date();
-  const amzDate = now.toISOString().replace(/[:\\-]|\\..../g, "").slice(0, 15) + "Z";
-  const dateStamp = now.toISOString().slice(0, 10).replace(/-/g, "");
-  const headers = { host, "x-amz-date": amzDate, ...(sessionToken ? { "x-amz-security-token": sessionToken } : {}) };
-  const canonH = Object.entries(headers).sort(([a],[b]) => a.localeCompare(b)).map(([k,v]) => \`\${k}:\${v}\\n\`).join("");
-  const signH = Object.keys(headers).sort().join(";");
-  const cr = ["POST", path, "", canonH, signH, sha256hex(body)].join("\\n");
-  const scope = \`\${dateStamp}/\${AWS_REGION}/appsync/aws4_request\`;
-  const sts = ["AWS4-HMAC-SHA256", amzDate, scope, sha256hex(cr)].join("\\n");
-  const kDate = hmacBuf("AWS4" + secretAccessKey, dateStamp);
-  const kSigning = hmacBuf(hmacBuf(hmacBuf(kDate, AWS_REGION), "appsync"), "aws4_request");
-  const sig = createHmac("sha256", kSigning).update(sts).digest("hex");
-  return { ...headers, Authorization: \`AWS4-HMAC-SHA256 Credential=\${accessKeyId}/\${scope}, SignedHeaders=\${signH}, Signature=\${sig}\` };
-}
-
-export async function handler(event) {
-  const url = new URL(APPSYNC_ENDPOINT);
-  for (const record of event.Records) {
-    let body;
-    try {
-      body = JSON.parse(record.body);
-    } catch (e) {
-      console.error("EventLogSubscription: failed to parse record body", record.body, e);
-      continue;
-    }
-    const payload = { position: body.position, eventType: body.eventType, payload: body.data };
-    const reqBody = JSON.stringify({ id: record.messageId, channel: CHANNEL, events: [JSON.stringify(payload)] });
-    const auth = await signedHeaders(url.hostname, "/event", reqBody);
-    const res = await fetch(APPSYNC_ENDPOINT + "/event", {
-      method: "POST",
-      headers: { accept: "application/json, text/javascript", "content-encoding": "amz-1.0", "content-type": "application/json; charset=UTF-8", ...auth },
-      body: reqBody,
-    });
-    if (!res.ok) {
-      const txt = await res.text();
-      console.error("EventLogSubscription publish failed:", res.status, txt);
-    }
-  }
-}
-`
-}
+// AppSync Events channel segments allow only [A-Za-z0-9-]. Today's event-log
+// displayNames are bare PascalCase identifiers (Catalog, Ordering, Plugin) so
+// the rule is a no-op in practice — kept prophylactically so a future displayName
+// carrying `@/./:` etc. doesn't hit a silent-drop. Mirrors
+// AppSyncEventsSigner_Ops.pathSegment (the runtime handler's equivalent).
+let channelNameOf = (topicName: string): string =>
+  topicName->String.replaceRegExp(%re("/[^A-Za-z0-9-]/g"), "-")
 
 // ── Deploy-time resource builder ──────────────────────────────────────────────
 
@@ -224,15 +159,18 @@ let make = (
       )
     })
 
-  // Lambda function — processes SQS records (SNS events) → AppSync Events channel
-  let handlerCode = makeHandlerCode(~topicName)
-  let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-  archiveContents->Dict.set(
-    "index.mjs",
-    Pulumi.Asset.stringAsset(handlerCode)->Pulumi.Archive.assetToAssetOrArchive,
+  // Lambda function — processes SQS records (SNS events) → AppSync Events channel.
+  // Bundle reventless-aws (the compiled `_Ops` handler + its node:crypto signer
+  // live inside it) and re-export its `handler`; buildCodeArchive ships the ESM
+  // resolve-hook so `@rescript/runtime` resolves from the layer.
+  let channelName = channelNameOf(topicName)
+  let packageDirs = Dict.fromArray([
+    ("@reventlessdev/reventless-aws", Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws")),
+  ])
+  let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
+    ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync_Ops.res.mjs",
+    ~packageDirs,
   )
-  let code = Pulumi.Archive.assetArchive(archiveContents)
-  let sourceCodeHash = Util_Bundle.hashString(handlerCode)
 
   let layers =
     Lambda.reventlessLayerArn
@@ -259,6 +197,9 @@ let make = (
           Lambda.Function.variables: Dict.fromArray([
             ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
             ("APPSYNC_ENDPOINT", appsyncEndpoint->Pulumi.Output.asInput),
+            ("EVENT_LOG_CHANNEL", channelName->Pulumi.Input.make),
+            ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
+            ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
           ]),
         }: Lambda.Function.functionEnvironment
       )->Pulumi.Input.make,

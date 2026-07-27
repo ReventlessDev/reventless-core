@@ -16,66 +16,8 @@ import * as AppSync_EventsApi$ReventlessAws from "../Api/AppSync_EventsApi.res.m
 import * as Util_DeadLetterQueue$ReventlessAws from "../../util/Util_DeadLetterQueue.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
 
-function makeHandlerCode(topicName) {
-  let channelName = topicName.replace(/[^A-Za-z0-9-]/g, "-");
-  return `
-import { createHmac, createHash } from "node:crypto";
-
-const CHANNEL = "/default/` + channelName + `";
-const APPSYNC_ENDPOINT = process.env.APPSYNC_ENDPOINT;
-const AWS_REGION = process.env.AWS_REGION ?? "eu-west-1";
-
-function sha256hex(data) {
-  return createHash("sha256").update(typeof data === "string" ? data : JSON.stringify(data)).digest("hex");
-}
-function hmacBuf(key, data) {
-  return createHmac("sha256", key).update(data).digest();
-}
-
-async function signedHeaders(host, path, body) {
-  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-  const sessionToken = process.env.AWS_SESSION_TOKEN;
-  const now = new Date();
-  const amzDate = now.toISOString().replace(/[:\\-]|\\..../g, "").slice(0, 15) + "Z";
-  const dateStamp = now.toISOString().slice(0, 10).replace(/-/g, "");
-  const headers = { host, "x-amz-date": amzDate, ...(sessionToken ? { "x-amz-security-token": sessionToken } : {}) };
-  const canonH = Object.entries(headers).sort(([a],[b]) => a.localeCompare(b)).map(([k,v]) => \`\${k}:\${v}\\n\`).join("");
-  const signH = Object.keys(headers).sort().join(";");
-  const cr = ["POST", path, "", canonH, signH, sha256hex(body)].join("\\n");
-  const scope = \`\${dateStamp}/\${AWS_REGION}/appsync/aws4_request\`;
-  const sts = ["AWS4-HMAC-SHA256", amzDate, scope, sha256hex(cr)].join("\\n");
-  const kDate = hmacBuf("AWS4" + secretAccessKey, dateStamp);
-  const kSigning = hmacBuf(hmacBuf(hmacBuf(kDate, AWS_REGION), "appsync"), "aws4_request");
-  const sig = createHmac("sha256", kSigning).update(sts).digest("hex");
-  return { ...headers, Authorization: \`AWS4-HMAC-SHA256 Credential=\${accessKeyId}/\${scope}, SignedHeaders=\${signH}, Signature=\${sig}\` };
-}
-
-export async function handler(event) {
-  const url = new URL(APPSYNC_ENDPOINT);
-  for (const record of event.Records) {
-    let body;
-    try {
-      body = JSON.parse(record.body);
-    } catch (e) {
-      console.error("EventLogSubscription: failed to parse record body", record.body, e);
-      continue;
-    }
-    const payload = { position: body.position, eventType: body.eventType, payload: body.data };
-    const reqBody = JSON.stringify({ id: record.messageId, channel: CHANNEL, events: [JSON.stringify(payload)] });
-    const auth = await signedHeaders(url.hostname, "/event", reqBody);
-    const res = await fetch(APPSYNC_ENDPOINT + "/event", {
-      method: "POST",
-      headers: { accept: "application/json, text/javascript", "content-encoding": "amz-1.0", "content-type": "application/json; charset=UTF-8", ...auth },
-      body: reqBody,
-    });
-    if (!res.ok) {
-      const txt = await res.text();
-      console.error("EventLogSubscription publish failed:", res.status, txt);
-    }
-  }
-}
-`;
+function channelNameOf(topicName) {
+  return topicName.replace(/[^A-Za-z0-9-]/g, "-");
 }
 
 function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
@@ -142,17 +84,18 @@ function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
       role: lambdaRole.id
     }, opts);
   });
-  let handlerCode = makeHandlerCode(topicName);
-  let archiveContents = {};
-  archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(handlerCode);
-  let code = new (Pulumi.asset.AssetArchive)(archiveContents);
-  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(handlerCode);
+  let channelName = channelNameOf(topicName);
+  let packageDirs = Object.fromEntries([[
+      "@reventlessdev/reventless-aws",
+      Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws")
+    ]]);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync_Ops.res.mjs", packageDirs, undefined);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
   let appsyncEndpoint = AppSync_EventsApi$ReventlessAws.httpEndpoint(eventsApi);
   let lambda = new (Aws.lambda.Function)(name + "EventLogSubscriber", {
     handler: "index.handler",
     runtime: "nodejs22.x",
-    code: code,
+    code: match.code,
     role: lambdaRole.arn,
     memorySize: 128,
     timeout: 30,
@@ -167,17 +110,29 @@ function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
         [
           "APPSYNC_ENDPOINT",
           appsyncEndpoint
+        ],
+        [
+          "EVENT_LOG_CHANNEL",
+          channelName
+        ],
+        [
+          "NODE_OPTIONS",
+          Util_Bundle$ReventlessAws.esmLoaderNodeOptions
+        ],
+        [
+          "ESM_FALLBACK_DIRS",
+          Util_Bundle$ReventlessAws.esmFallbackDirs
         ]
       ])
     },
-    sourceCodeHash: sourceCodeHash
+    sourceCodeHash: match.sourceCodeHash
   }, opts);
   let lambdaOutput = Pulumi.output(lambda);
   Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambdaOutput, name + "EventLogSubEventSourceMapping", queue, undefined, AWS_Tags$ReventlessAws.make(name + "EventLogSubEventSourceMapping", EventTopic$ReventlessCore.componentType, "EventSourceMapping", undefined, name, undefined, undefined, undefined), opts);
 }
 
 export {
-  makeHandlerCode,
+  channelNameOf,
   make,
 }
 /* @pulumi/aws Not a pure module */
