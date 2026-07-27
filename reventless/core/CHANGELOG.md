@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.185 (2026-07-27)
+
+### Bug Fixes
+
+* **api:** don't inject id: ID! into multi-variant DCB slice mutations ([03cfaad](https://github.com/ReventlessDev/reventless-core/commit/03cfaadce3bee3d7010835edc10f57ab45ddfa5b))
+
+
 # 3.0.0-alpha.184 (2026-07-27)
 
 ### Bug Fixes

@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-catalog",
-  "version": "3.0.0-alpha.160",
+  "version": "3.0.0-alpha.161",
   "description": "Online Shop example — Catalog plugin (Product & Category aggregates)",
   "license": "Apache-2.0",
   "scripts": {
