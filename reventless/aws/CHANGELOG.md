@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.234 (2026-07-27)
+
+### Bug Fixes
+
+* **aws:** thread InboundTranslationSlice audit table name without option<Output> ([8b2368a](https://github.com/ReventlessDev/reventless-core/commit/8b2368a17e49746beacc0855fd5c655517bfd41a))
+
+
 # 3.0.0-alpha.233 (2026-07-27)
 
 ### Bug Fixes
