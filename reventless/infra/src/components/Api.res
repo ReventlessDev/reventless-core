@@ -67,6 +67,18 @@ type mutationSchemaEntry = {
       the IAM principal must be scoped by the API resource policy / deploy-role
       policy (see `docs/guides/appsync-iam-system-caller.md`). Default `false`. */
   systemCallable?: bool,
+  /** Whether the generated mutation field carries a separate `id: ID!` argument
+      naming the target entity, injected ahead of the command payload args.
+      `true` for aggregate mutations — the aggregate instance id is a real
+      argument distinct from the command payload (e.g.
+      `Ordering_Customer_Register(id: ID!, email: String!, ...)`), and callers
+      send it as `id`. `false` for DCB slice / inbound-translation mutations —
+      the slice's own key field (e.g. `orderId`) is part of the payload and no
+      separate `id` argument exists. Defaults to `true` so aggregate entries
+      (including the admin Plugin fragment) keep the injection without opting in.
+      A multi-variant slice command schema is a sury `Union`, so without this
+      flag it would wrongly inherit the aggregate-style `id: ID!` injection. */
+  injectIdArg?: bool,
   description?: string,
   linkedViews?: array<string>,
   consistencyRead?: string,

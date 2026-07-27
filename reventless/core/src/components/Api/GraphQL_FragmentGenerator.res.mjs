@@ -319,6 +319,7 @@ function generate(mutationEntries, queryEntries) {
   let constructorNameOf = fieldName => Stdlib_Option.getOr(fieldName.split("_")[fieldName.split("_").length - 1 | 0], fieldName);
   mutationEntries.forEach(entry => {
     let schema = entry.commandSchema;
+    let injectIdArg = Stdlib_Option.getOr(entry.injectIdArg, true);
     switch (schema.type) {
       case "object" :
         let fieldName = Stdlib_Option.getOr(entry.fieldNames[0], "");
@@ -361,11 +362,14 @@ function generate(mutationEntries, queryEntries) {
           let variantSchema = variantIndex >= 0 ? Stdlib_Option.getOr(anyOf[variantIndex], schema) : schema;
           let field = deriveMutationFieldFromObject(fieldName, types, seenTypes, variantSchema);
           if (field !== undefined) {
-            let withId = field.includes("(") ? field.replace(fieldName + `(`, fieldName + `(id: ID!, `) : field.replace(fieldName + `:`, fieldName + `(id: ID!):`);
+            let withId = injectIdArg ? (
+                field.includes("(") ? field.replace(fieldName + `(`, fieldName + `(id: ID!, `) : field.replace(fieldName + `:`, fieldName + `(id: ID!):`)
+              ) : field;
             mutations.push(withId);
             return;
           }
-          mutations.push(`  ` + fieldName + `(id: ID!): CommandResult!`);
+          let field$1 = injectIdArg ? `  ` + fieldName + `(id: ID!): CommandResult!` : `  ` + fieldName + `: CommandResult!`;
+          mutations.push(field$1);
         });
         return;
       default:

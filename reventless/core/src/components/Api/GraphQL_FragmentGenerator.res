@@ -396,6 +396,12 @@ let generate = (
 
   mutationEntries->Array.forEach(entry => {
     let schema = entry.commandSchema
+    // Aggregates carry the instance id as a separate `id: ID!` argument ahead of
+    // the command payload; DCB slices don't (their key field is part of the
+    // payload). A multi-variant slice command is a sury `Union` just like an
+    // aggregate command, so the injection must key off the entry flag, not the
+    // schema shape — see `mutationSchemaEntry.injectIdArg`.
+    let injectIdArg = entry.injectIdArg->Option.getOr(true)
     switch schema {
     | Union({anyOf}) =>
       // Map each fieldName to its variant in anyOf by matching the constructor
@@ -433,7 +439,9 @@ let generate = (
           variantSchema,
         ) {
         | Some(field) =>
-          let withId = if field->String.includes("(") {
+          let withId = if !injectIdArg {
+            field
+          } else if field->String.includes("(") {
             field->String.replace(`${fieldName}(`, `${fieldName}(id: ID!, `)
           } else {
             field->String.replace(`${fieldName}:`, `${fieldName}(id: ID!):`)
@@ -442,7 +450,10 @@ let generate = (
         | None =>
           // Payload-less variant (S.literal("Ctor")) — no Object fields to
           // derive args from, but still a valid mutation.
-          mutations->Array.push(`  ${fieldName}(id: ID!): CommandResult!`)
+          let field = injectIdArg
+            ? `  ${fieldName}(id: ID!): CommandResult!`
+            : `  ${fieldName}: CommandResult!`
+          mutations->Array.push(field)
         }
       })
     | Object(_) =>

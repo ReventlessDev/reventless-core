@@ -484,6 +484,7 @@ function Make(DcbEventLogStorage) {
           commandSchema: commandSchema,
           fieldPermissions: fieldPermissions,
           systemCallable: systemCallableComponents.includes(S.Spec.name),
+          injectIdArg: false,
           linkedViews: Stdlib_Option.map(sliceDef, d => d.linkedViews),
           consistencyRead: Stdlib_Option.flatMap(sliceDef, d => d.consistencyRead)
         };
@@ -498,7 +499,8 @@ function Make(DcbEventLogStorage) {
         return {
           fieldNames: [fieldName],
           commandSchema: ITS.Spec.externalInputSchema,
-          fieldPermissions: fieldPermissions
+          fieldPermissions: fieldPermissions,
+          injectIdArg: false
         };
       });
       let stateViewEntries = stateViewSlices.map(V => {

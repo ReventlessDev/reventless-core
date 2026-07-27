@@ -914,6 +914,10 @@ module Make = (
                 ReventlessInfra.Api.fieldNames: fieldSpecs->Array.map(((f, _)) => f),
                 commandSchema,
                 fieldPermissions,
+                // Slice key fields (e.g. `orderId`) are payload args; there is no
+                // separate aggregate `id`. A multi-variant slice command is a sury
+                // `Union`, so without this the generator would inject `id: ID!`.
+                injectIdArg: false,
                 systemCallable: systemCallableComponents->Array.includes(S.Spec.name),
                 linkedViews: ?sliceDef->Option.map(d => d.linkedViews),
                 consistencyRead: ?sliceDef->Option.flatMap(d => d.consistencyRead),
@@ -938,6 +942,7 @@ module Make = (
               ReventlessInfra.Api.fieldNames: [fieldName],
               commandSchema: ITS.Spec.externalInputSchema->S.castToUnknown,
               fieldPermissions,
+              injectIdArg: false,
             }
           })
 
