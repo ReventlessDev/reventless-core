@@ -4,78 +4,43 @@
 // fields (they have no per-table AppSync data source). At cold start it reads
 // QUERY_RESOLVER_CONFIG (one shared pgConnection + one handler per read model),
 // dynamically imports each spec package, and registers a per-read-model
-// `binding` (ops + QueryEnginePostgres push-downs + indexes/subIdField/capability
-// + baked labelField/includeIdParam + authorization) into
-// PgQueryResolver_Lambda. AppSync invokes `handler` with the resolver payload
-// { readModelName, kind, index?, arguments, identity }, which
+// `binding` into PgQueryResolver_Lambda. AppSync invokes `handler` with the
+// resolver payload { readModelName, kind, index?, arguments, identity }, which
 // PgQueryResolver_Lambda.dispatch routes.
 //
-// ReScript labeled args compile positionally, so the engine push-downs
-// (indexLookup/byIds/listPage/scan) are assigned straight into the `pushdowns`
-// record — same calling convention PgQueryResolver_Lambda.dispatch invokes them
-// with (verified against the compiled QueryEnginePostgres output).
+// Thin untyped shell ("typed core, thin shell" —
+// docs/plans/minimize-lambda-entrypoint-mjs-shell.md): this file owns ONLY the
+// seams that are inherently untyped — the dynamic `import()` of the spec
+// packages named in QUERY_RESOLVER_CONFIG, the `patchSpecId` fix-up, and the
+// reads of the runtime-loaded modules' exports. QUERY_RESOLVER_CONFIG parsing,
+// the pool/engine construction, the push-down record, and binding registration
+// live type-checked in PgQueryResolverEntryPoint_Ops.res.
 
-import { poolFor } from "@reventlessdev/reventless-aws/src/adapter/Postgres/PgRuntime.res.mjs";
-import { Make as makeEngine } from "@reventlessdev/reventless-postgres/src/QueryEnginePostgres.res.mjs";
-import { opsFor as pgQdbOpsFor } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_Postgres_Runtime.res.mjs";
-import { deriveServerCapability } from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
-import { register, registerNodeType, handler as dispatchHandler } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/PgQueryResolver_Lambda.res.mjs";
+import { handler as dispatchHandler } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/PgQueryResolver_Lambda.res.mjs";
 import { patchSpecId, log } from "./HandlerFactoryHelpers.mjs";
+import * as Ops from "./PgQueryResolverEntryPoint_Ops.res.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
 
-// A bounded full-materialisation for the list fallback (shapes listPage
-// declines). Kept high; the fallback is only hit for search/searchPrefix/ids/
-// backward pagination, which the AutoUI does not issue for large models.
-const SCAN_ALL_LIMIT = 100000;
-
 async function buildAllBindings() {
-  const configStr = process.env["QUERY_RESOLVER_CONFIG"] || '{"handlers":[]}';
-  const config = JSON.parse(configStr);
+  const config = Ops.parseResolverConfig(process.env["QUERY_RESOLVER_CONFIG"] || "");
   const pgConnection = config.pgConnection;
   if (!pgConnection) {
     log.warn("no pgConnection in QUERY_RESOLVER_CONFIG", { comp: "PgQueryResolver" });
     return;
   }
-  // Container-lifetime pool (memoised by poolFor); the engine and the ops set
-  // share it, so a Lambda holds one pool regardless of read model count.
-  const pool = poolFor(pgConnection);
-  const engine = makeEngine({ pool });
 
-  // Relay node type → read-model map (B3.2c), baked into the config.
-  for (const [typeName, rm] of Object.entries(config.nodeTypes || {})) {
-    registerNodeType(typeName, rm);
-  }
+  Ops.registerNodeTypes(config);
+  const pushdowns = Ops.makePushdowns(pgConnection);
 
-  const pushdowns = {
-    indexLookup: engine.indexLookup,
-    byIds: engine.byIds,
-    listPage: engine.listPage,
-    itemsPage: engine.itemsPage,
-    scanAll: (readModelName) => engine.scan(readModelName, [], SCAN_ALL_LIMIT),
-  };
-
-  await Promise.all((config.handlers || []).map(async h => {
+  await Promise.all(config.handlers.map(async h => {
     const specModule = patchSpecId(await dynamicImport(h.specModule));
-    const indexes = (specModule.config && specModule.config.indexes) || [];
-    const subIdField = specModule.subIdConfig ? specModule.subIdConfig.subIdField : undefined;
-    const capability = deriveServerCapability(specModule.stateSchema);
-    const ops = pgQdbOpsFor(pgConnection, h.readModelName, indexes, subIdField);
-
-    register(h.readModelName, {
-      ops,
-      pushdowns,
-      indexes,
-      subIdField,
-      capability,
-      labelField: h.labelField,
-      includeIdParam: h.includeIdParam,
-      // Compiled string variant (e.g. "AllowAuthenticated"), injected on the
-      // spec by @@reventless.spec — the shape Reventless.Authorization.isAllowed
-      // matches on.
+    Ops.registerBinding(pushdowns, pgConnection, h, {
+      config: specModule.config,
+      subIdConfig: specModule.subIdConfig,
+      stateSchema: specModule.stateSchema,
       authorization: specModule.authorization,
     });
-    log.debug("registered resolver binding for " + h.readModelName, { comp: "PgQueryResolver" });
   }));
 }
 

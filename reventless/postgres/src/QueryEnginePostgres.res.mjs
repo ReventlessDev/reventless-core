@@ -2,11 +2,10 @@
 
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
 import * as PgDriver$ReventlessPostgres from "./PgDriver.res.mjs";
 import * as QueryDbListQuery$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/QueryDbListQuery.res.mjs";
-import * as QueryDbStorage_Postgres$ReventlessPostgres from "./QueryDbStorage_Postgres.res.mjs";
+import * as QueryDbStorage_Postgres_Ops$ReventlessPostgres from "./QueryDbStorage_Postgres_Ops.res.mjs";
 
 function valueToText(v) {
   switch (v.TAG) {
@@ -105,25 +104,25 @@ function subIdSql(b, field, cmp, v) {
 }
 
 function decodeRow(withId, row) {
-  let item = QueryDbStorage_Postgres$ReventlessPostgres.decodeItem(row);
+  let item = QueryDbStorage_Postgres_Ops$ReventlessPostgres.decodeItem(row);
   if (!withId) {
     return item;
   }
   let match = row["partition_key"];
   let pk = typeof match === "string" ? match : "";
-  return QueryDbStorage_Postgres$ReventlessPostgres.withId(item, pk);
+  return QueryDbStorage_Postgres_Ops$ReventlessPostgres.withId(item, pk);
 }
 
 function Make(P) {
   let query = async (readModelName, key, id, subIdConfig, filterConfigs, ascending, limit) => {
-    let table = QueryDbStorage_Postgres$ReventlessPostgres.tableName(readModelName);
+    let table = QueryDbStorage_Postgres_Ops$ReventlessPostgres.tableName(readModelName);
     let keyStr = key !== undefined ? key : valueToText(id);
     let b = {
       params: []
     };
     let where = [
       `partition_key = ` + param(b, keyStr),
-      QueryDbStorage_Postgres$ReventlessPostgres.notExpiredClause
+      QueryDbStorage_Postgres_Ops$ReventlessPostgres.notExpiredClause
     ];
     if (subIdConfig !== undefined) {
       where.push(subIdSql(b, subIdConfig[0], subIdConfig[1], subIdConfig[2]));
@@ -137,11 +136,11 @@ function Make(P) {
     return (await PgDriver$ReventlessPostgres.query(P.pool, sql, b.params)).map(extra => decodeRow(false, extra));
   };
   let scan = async (readModelName, filterConfigs, limit) => {
-    let table = QueryDbStorage_Postgres$ReventlessPostgres.tableName(readModelName);
+    let table = QueryDbStorage_Postgres_Ops$ReventlessPostgres.tableName(readModelName);
     let b = {
       params: []
     };
-    let where = [QueryDbStorage_Postgres$ReventlessPostgres.notExpiredClause];
+    let where = [QueryDbStorage_Postgres_Ops$ReventlessPostgres.notExpiredClause];
     filterConfigs.forEach(param => {
       where.push(filterSql(b, param[0], param[1], param[2]));
     });
@@ -149,29 +148,29 @@ function Make(P) {
     return (await PgDriver$ReventlessPostgres.query(P.pool, sql, b.params)).map(extra => decodeRow(true, extra));
   };
   let indexLookup = async (readModelName, field, value) => {
-    let table = QueryDbStorage_Postgres$ReventlessPostgres.tableName(readModelName);
+    let table = QueryDbStorage_Postgres_Ops$ReventlessPostgres.tableName(readModelName);
     let b = {
       params: []
     };
-    let sql = `SELECT partition_key, item FROM ` + table + ` WHERE ` + col(field) + ` = ` + param(b, value) + ` AND ` + QueryDbStorage_Postgres$ReventlessPostgres.notExpiredClause;
+    let sql = `SELECT partition_key, item FROM ` + table + ` WHERE ` + col(field) + ` = ` + param(b, value) + ` AND ` + QueryDbStorage_Postgres_Ops$ReventlessPostgres.notExpiredClause;
     return (await PgDriver$ReventlessPostgres.query(P.pool, sql, b.params)).map(extra => decodeRow(true, extra));
   };
   let byIds = async (readModelName, ids) => {
     if (ids.length === 0) {
       return [];
     }
-    let table = QueryDbStorage_Postgres$ReventlessPostgres.tableName(readModelName);
+    let table = QueryDbStorage_Postgres_Ops$ReventlessPostgres.tableName(readModelName);
     let b = {
       params: []
     };
     let idsJson = ids.map(prim => prim);
-    let sql = `SELECT partition_key, item FROM ` + table + ` WHERE partition_key = ANY(` + param(b, idsJson) + `::text[]) AND ` + QueryDbStorage_Postgres$ReventlessPostgres.notExpiredClause;
+    let sql = `SELECT partition_key, item FROM ` + table + ` WHERE partition_key = ANY(` + param(b, idsJson) + `::text[]) AND ` + QueryDbStorage_Postgres_Ops$ReventlessPostgres.notExpiredClause;
     return (await PgDriver$ReventlessPostgres.query(P.pool, sql, b.params)).map(extra => decodeRow(true, extra));
   };
   let idExprC = `COALESCE(item->>'id', partition_key) COLLATE "C"`;
   let jsonTextC = field => col(field) + ` COLLATE "C"`;
   let listPage = async (readModelName, argsDict, capability, param$1) => {
-    let table = QueryDbStorage_Postgres$ReventlessPostgres.tableName(readModelName);
+    let table = QueryDbStorage_Postgres_Ops$ReventlessPostgres.tableName(readModelName);
     let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});
     let strNonEmpty = k => Stdlib_Option.mapOr(Stdlib_Option.flatMap(filterDict[k], Stdlib_JSON.Decode.string), false, s => s.length > 0);
     let hasIds = Stdlib_Option.mapOr(Stdlib_Option.flatMap(filterDict["ids"], Stdlib_JSON.Decode.array), false, a => a.length !== 0);
@@ -183,7 +182,7 @@ function Make(P) {
     let b = {
       params: []
     };
-    let whereParts = [QueryDbStorage_Postgres$ReventlessPostgres.notExpiredClause];
+    let whereParts = [QueryDbStorage_Postgres_Ops$ReventlessPostgres.notExpiredClause];
     let valString = v => {
       let s = Stdlib_JSON.Decode.string(v);
       if (s !== undefined) {
@@ -233,7 +232,7 @@ function Make(P) {
     return QueryDbListQuery$ReventlessCore.buildConnection(pageItems, hasMore, false, cursorValueOf);
   };
   let itemsPage = async (readModelName, param$1, id, argsDict) => {
-    let table = QueryDbStorage_Postgres$ReventlessPostgres.tableName(readModelName);
+    let table = QueryDbStorage_Postgres_Ops$ReventlessPostgres.tableName(readModelName);
     let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});
     let fstr = k => Stdlib_Option.flatMap(filterDict[k], Stdlib_JSON.Decode.string);
     let orderDesc = Stdlib_Option.mapOr(fstr("order"), false, o => o === "DESC");
@@ -248,7 +247,7 @@ function Make(P) {
     };
     let where = [
       `partition_key = ` + param(b, id),
-      QueryDbStorage_Postgres$ReventlessPostgres.notExpiredClause
+      QueryDbStorage_Postgres_Ops$ReventlessPostgres.notExpiredClause
     ];
     Stdlib_Option.forEach(fstr("prefix"), p => {
       where.push(`starts_with(sub_key, ` + param(b, p) + `)`);
@@ -304,10 +303,6 @@ function Make(P) {
       }
     };
   };
-  let make = _allQueryDbs => Pulumi.output({
-    scan: scan,
-    query: query
-  });
   return {
     query: query,
     scan: scan,
@@ -316,12 +311,11 @@ function Make(P) {
     idExprC: idExprC,
     jsonTextC: jsonTextC,
     listPage: listPage,
-    itemsPage: itemsPage,
-    make: make
+    itemsPage: itemsPage
   };
 }
 
-let notExpired = QueryDbStorage_Postgres$ReventlessPostgres.notExpiredClause;
+let notExpired = QueryDbStorage_Postgres_Ops$ReventlessPostgres.notExpiredClause;
 
 export {
   valueToText,
@@ -334,4 +328,4 @@ export {
   decodeRow,
   Make,
 }
-/* @pulumi/pulumi Not a pure module */
+/* PgDriver-ReventlessPostgres Not a pure module */

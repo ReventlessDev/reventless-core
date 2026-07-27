@@ -1,6 +1,6 @@
 # Plan: Convert AWS Lambda entry points to type-checked ReScript (`_Ops` split)
 
-## Status: Phase 1 COMPLETE — all four Group-2 handlers converted to ReScript
+## Status: ALL PHASES COMPLETE — every entry point converted (Group 2 + inline strings full-ReScript; all 12 Group-1 handlers split typed-core/thin-shell)
 
 The two originally-deferred Postgres handlers (`PgMigrationEntryPoint`,
 `PgChangeFeedRelayEntryPoint`) are now converted too, completing all four
@@ -363,7 +363,7 @@ validation still pends a real Postgres-backend deploy (VPC-bound — not
 laptop-invokable); the migration and relay Lambdas exercise naturally on the
 first such `pulumi up` + schedule tick.
 
-### Phase 2 — `_Ops` extraction for Group-1 (IN PROGRESS)
+### Phase 2 — `_Ops` extraction for Group-1 (COMPLETE, 2026-07-27)
 
 Not a full rewrite. For each Group-1 handler that still carries decode/transform
 logic inline in the `.mjs`, extract that logic into a typed `*_Ops.res` (as
@@ -523,11 +523,74 @@ converted stream/task entry points `@pulumi`-free, AutomationSlice graph
 automation path pends the next CI deploy (heartbeat-driven automation slices in
 online-shop-hybrid ordering exercise it naturally).
 
-**Remaining Group-1 extractions (next passes):** the small ones
-(`EventMapperEntryPoint` 99, `CounterEntryPoint` 91, `PgQueryResolverEntryPoint`
-88, `ExtensionPointEntryPoint` 85, `SideEffectEntryPoint` 82). Same recipe:
-typed core for config/decode/dispatch, `.mjs` keeps only the dynamic-import
-seam.
+**Remaining five small extractions DONE (2026-07-27, final Group-1 pass).**
+`SideEffectEntryPoint` (82 → 41 LOC), `ExtensionPointEntryPoint` (85 → 38),
+`EventMapperEntryPoint` (99 → 55), `CounterEntryPoint` (91 → 37),
+`PgQueryResolverEntryPoint` (88 → 53) — each got a typed
+`<Name>EntryPoint_Ops.res` core (71–155 lines); the shells keep only the
+dynamic imports, `patchSpecId`-class shape fix-ups, and the functor
+applications consuming runtime-loaded modules. With this pass **every entry
+point has a typed core** — the `.mjs` tier is dynamic-import seams only.
+Highlights:
+
+- **SideEffect** now routes through `StreamRoutedEntryPoint_Ops.makeRoutedHandler`
+  (its `.mjs` had a third verbatim copy of the group-by-ARN dispatch); config
+  decode incl. the deploy-baked `comp`/`plugin` attribution is typed.
+- **ExtensionPoint** — the whole `ExtensionPoint_Callback.Make` config
+  (publish dict from env vars, scheduler/queryEngine stubs, resource naming)
+  is a typed `callbackSpec` record; the SQS dispatch boundary mirrors
+  `PluginExtensionPointEntryPoint`.
+- **EventMapper** — `MakeEventCollectorHandler` is applied in ReScript (functor
+  over an inline module capturing the shell-provided `commonEventsHandler`);
+  per-source dispatch typed.
+- **Counter** — `Counter_Callback.Make` applied in ReScript; the
+  references/counts stream routing is a typed `splitRecords` (runtime twin of
+  `CounterHandler_DynamoDbStream_Runtime.handleStreamEvent` over plain ARNs).
+- **PgQueryResolver** — pool/engine construction
+  (`QueryEnginePostgres.Make` over the memoised `poolFor` pool), the push-down
+  record, and per-read-model `register` bindings all typed; the shell only
+  imports specs and reads their exports into a typed `specInfo`.
+
+**Three latent shell bugs repaired by the types** (same dark-spot class as the
+AutomationSlice breakage):
+
+1. **Counter published to an undefined queue.** The shell read
+   `config.publishQueueUrl`; the deploy side (`CounterHandler_DynamoDbStream.res`)
+   writes `publishChannelId`. Every CountFinished publish targeted queue URL
+   `undefined`. The typed config reads the field the builder writes.
+2. **Wrong stub field names in the generic EP shell** — scheduler
+   `{create, delete}` vs `Scheduler.operations`' `createSchedule`/`deleteSchedule`,
+   resourceNaming `{name, resolve}` vs `validateName`/`urnName`: a mapping
+   touching them crashed "not a function" instead of the intended error.
+3. **Wrong queryEngine stub shapes** — EventMapper had `{query, get}` and
+   Counter `{query, queryAll}` where `QueryEngine.operations` needs
+   `{scan, query}`; a mapping calling `scan` crashed instead of hitting the
+   logged-error/empty fallback.
+
+**Second pre-existing `@pulumi/pulumi` leak found and fixed (reventless-postgres).**
+The PgQueryResolver Lambda's graph (old `.mjs` and conversion alike) reached
+`@pulumi/pulumi` via `QueryEnginePostgres`: it aliased four pure helpers
+(`tableName`/`notExpiredClause`/`decodeItem`/`withId`) through the deploy-time
+wrapper `QueryDbStorage_Postgres` and carried a dead
+`make: QueryDb_Adapter.queryEngineMaker` (wrapping in `Pulumi.Output.make`;
+zero call sites anywhere). Re-aliased the helpers to the runtime-pure
+`QueryDbStorage_Postgres_Ops` (identical bindings — the wrapper only
+`include`s it) and deleted the dead `make`. Same exact pattern as the
+PgChangeFeedRelay leak above.
+
+Tests: `SideEffectEntryPoint_OpsTest`, `EventMapperEntryPoint_OpsTest`
+(incl. the full pipeline: SQS-record body parse → commonEventsHandler →
+publish of produced commands, against a capturing ops record),
+`CounterEntryPoint_OpsTest` (the `publishChannelId` guard + `splitRecords`
+routing over marshalled stream fixtures incl. inc-fallback, duplicate skip,
+and foreign-record drops), `ExtensionPointEntryPoint_OpsTest` (env-var publish
+dict resolution + stub shapes), `PgQueryResolverEntryPoint_OpsTest` (config
+decode incl. null pgConnection and nodeTypes) — 16 new tests. Verification:
+root build zero-warning; full monorepo jest green (270 suites / 2179 tests);
+all 4 Docker-gated integration suites green; import-graph walk over all five
+shells `@pulumi`-free (29/30/40/27/43 modules) and the four non-Pg shells
+`pg`-free, with the walker sanity-checked against the
+`PgQueryResolver_Builder` deploy graph (82 pulumi refs flagged there).
 
 ### Also fold in — inline-string tier (DONE, 2026-07-27)
 

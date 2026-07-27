@@ -63,18 +63,18 @@ let subIdSql = (b: paramBuilder, field: string, cmp: QueryEngine.SubId.comparato
   }
 }
 
-let notExpired = QueryDbStorage_Postgres.notExpiredClause
+let notExpired = QueryDbStorage_Postgres_Ops.notExpiredClause
 
 // Add `id` (from partition_key) when absent — matches allRows/scan in the SQLite
 // engine; partition-key queries return items as stored.
 let decodeRow = (~withId, row: dict<JSON.t>): JSON.t => {
-  let item = QueryDbStorage_Postgres.decodeItem(row)
+  let item = QueryDbStorage_Postgres_Ops.decodeItem(row)
   if withId {
     let pk = switch row->Dict.get("partition_key") {
     | Some(JSON.String(s)) => s
     | _ => ""
     }
-    QueryDbStorage_Postgres.withId(item, pk)
+    QueryDbStorage_Postgres_Ops.withId(item, pk)
   } else {
     item
   }
@@ -90,7 +90,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     ~ascending=?,
     ~limit=?,
   ): array<JSON.t> => {
-    let table = QueryDbStorage_Postgres.tableName(readModelName)
+    let table = QueryDbStorage_Postgres_Ops.tableName(readModelName)
     let keyStr = switch key {
     | Some(k) => k
     | None => valueToText(id)
@@ -114,7 +114,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
   }
 
   let scan = async (~readModelName, ~filterConfigs, ~limit): array<JSON.t> => {
-    let table = QueryDbStorage_Postgres.tableName(readModelName)
+    let table = QueryDbStorage_Postgres_Ops.tableName(readModelName)
     let b = {params: []}
     let where = [notExpired]
     filterConfigs->Array.forEach(((field, cmp, v)) => where->Array.push(filterSql(b, field, cmp, v)))
@@ -138,7 +138,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
   // (`ensureIndexes`) instead of scanning. String comparison mirrors the
   // resolver's JS path (which only matched string-typed fields).
   let indexLookup = async (~readModelName, field: string, value: string): array<JSON.t> => {
-    let table = QueryDbStorage_Postgres.tableName(readModelName)
+    let table = QueryDbStorage_Postgres_Ops.tableName(readModelName)
     let b = {params: []}
     let sql = `SELECT partition_key, item FROM ${table} WHERE ${col(field)} = ${b->param(
         JSON.Encode.string(value),
@@ -154,7 +154,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     if ids->Array.length == 0 {
       []
     } else {
-      let table = QueryDbStorage_Postgres.tableName(readModelName)
+      let table = QueryDbStorage_Postgres_Ops.tableName(readModelName)
       let b = {params: []}
       let idsJson = JSON.Encode.array(ids->Array.map(JSON.Encode.string))
       let sql = `SELECT partition_key, item FROM ${table} WHERE partition_key = ANY(${b->param(
@@ -184,7 +184,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     ~capability: GraphQL_FragmentGenerator.serverCapability,
     ~labelField as _,
   ): option<JSON.t> => {
-    let table = QueryDbStorage_Postgres.tableName(readModelName)
+    let table = QueryDbStorage_Postgres_Ops.tableName(readModelName)
     let filterDict =
       argsDict->Dict.get("filter")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
     let strNonEmpty = k =>
@@ -310,7 +310,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     ~id: string,
     ~argsDict: dict<JSON.t>,
   ): JSON.t => {
-    let table = QueryDbStorage_Postgres.tableName(readModelName)
+    let table = QueryDbStorage_Postgres_Ops.tableName(readModelName)
     let filterDict =
       argsDict->Dict.get("filter")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
     let fstr = k => filterDict->Dict.get(k)->Option.flatMap(JSON.Decode.string)
@@ -380,7 +380,4 @@ module Make = (P: {let pool: PgDriver.pool}) => {
       },
     })
   }
-
-  let make: QueryDb_Adapter.queryEngineMaker = _allQueryDbs =>
-    Pulumi.Output.make({QueryEngine.scan, query})
 }
