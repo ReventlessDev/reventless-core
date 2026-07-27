@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.32 (2026-07-27)
+
+### Bug Fixes
+
+* **graphql:** keep a repeat mutation registration from duplicating SDL ([b54e844](https://github.com/ReventlessDev/reventless-core/commit/b54e8446236e16196a40a1a7df9f7ba84b03b167))
+
+
 # 1.0.0-alpha.31 (2026-07-27)
 
 **Note:** Version bump only for package @reventlessdev/reventless-graphql-server
