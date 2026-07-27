@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.231 (2026-07-27)
+
+### Bug Fixes
+
+* **aws:** route InboundTranslationSlice mutations in the deployed DCB Lambda ([feb129c](https://github.com/ReventlessDev/reventless-core/commit/feb129caf291395e7d35bb953030a1e3efa06e1a))
+
+
 # 3.0.0-alpha.230 (2026-07-27)
 
 ### Bug Fixes
