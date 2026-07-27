@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.3 (2026-07-27)
+
+### Features
+
+* **seed:** refuse to seed onto a non-empty store (fresh-store guard) ([987613f](https://github.com/ReventlessDev/reventless-core/commit/987613f0767fc4391297dfeed3a6b19cd76d8157))
+
+
 # 1.0.0-alpha.2 (2026-07-26)
 
 ### Features

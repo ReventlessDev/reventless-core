@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.170 (2026-07-27)
+
+### Bug Fixes
+
+* **aws:** keep InboundTranslationSlice runtime path out of the Pulumi graph ([9166cff](https://github.com/ReventlessDev/reventless-core/commit/9166cff85939012d12e44835e2eb79a88fd1b66a))
+
+
 # 3.0.0-alpha.169 (2026-07-26)
 
 ### Bug Fixes
