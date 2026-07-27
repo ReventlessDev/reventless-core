@@ -48,7 +48,7 @@ function Make(Api) {
       let queryDbOutputs = Component$ReventlessCore.outputs(ots).queryDb;
       let tableResource = queryDbOutputs.resources[0];
       let queryDbTableName = tableResource.name;
-      AutomationSliceRuntime_Builder_Single$ReventlessAws.registerAutomationSlice(Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Translation.moduleUrl), "outbound", queryDbTableName, undefined);
+      AutomationSliceRuntime_Builder_Single$ReventlessAws.registerAutomationSlice(Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Translation.moduleUrl), "outbound", queryDbTableName, queryDbOutputs.resources, undefined);
       return ots;
     };
     return {

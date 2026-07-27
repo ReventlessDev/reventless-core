@@ -695,7 +695,7 @@ module MakeWithConfig = (
     onDcbSlicesCreated: dcbEventLogUnknown => {
       let dcbEventLog = dcbEventLogUnknown->asDcbEventLog
       StateViewSliceRuntime_Builder_Single.finishWithDcbEventLog(dcbEventLog)
-      AutomationSliceRuntime_Builder_Single.finish()
+      AutomationSliceRuntime_Builder_Single.finishWithDcbEventLog(dcbEventLog)
     },
     // Heartbeat EP channel hook — extracts SQS queue URL for heartbeat Lambda handler
     // and records the calling plugin's id so the Lambda runtime can emit Connect commands

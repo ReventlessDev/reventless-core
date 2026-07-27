@@ -43,6 +43,7 @@ module Make = (Api: {
         ~bodyModulePath=Util_Bundle.getModuleSpecifier(Automation.moduleUrl),
         ~callbackType="automation",
         ~queryDbTableName,
+        ~queryDbResources=queryDbOutputs.resources,
         ~context,
       )
 

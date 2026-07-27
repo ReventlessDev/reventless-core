@@ -496,7 +496,7 @@ function MakeWithConfig(Config) {
   };
   let hooks_onDcbSlicesCreated = dcbEventLogUnknown => {
     StateViewSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);
-    AutomationSliceRuntime_Builder_Single$ReventlessAws.finish();
+    AutomationSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);
   };
   let hooks_onHeartbeatEpChannelAvailable = (remoteChannelUnknown, pluginId, heartbeatInterval) => {
     let resource = remoteChannelUnknown.resources[0];
@@ -1502,7 +1502,7 @@ function Make($star) {
   };
   let hooks_onDcbSlicesCreated = dcbEventLogUnknown => {
     StateViewSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);
-    AutomationSliceRuntime_Builder_Single$ReventlessAws.finish();
+    AutomationSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);
   };
   let hooks_onHeartbeatEpChannelAvailable = (remoteChannelUnknown, pluginId, heartbeatInterval) => {
     let resource = remoteChannelUnknown.resources[0];

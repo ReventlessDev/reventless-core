@@ -51,6 +51,7 @@ module Make = (Api: {
         ~bodyModulePath=Util_Bundle.getModuleSpecifier(Translation.moduleUrl),
         ~callbackType="outbound",
         ~queryDbTableName,
+        ~queryDbResources=queryDbOutputs.resources,
       )
 
       ots
