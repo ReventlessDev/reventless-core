@@ -9,10 +9,10 @@
 // compiler-checked: a field rename/reorder or a `QueryDbStorage_DynamoDb_Runtime`
 // signature change is a build error, not a silent runtime break.
 //
-// The Postgres branch (`pgQdbOpsFor` + env-gated `withLiveUpdates`) and the
-// id-injection wrappers (`mkInjectIdSave`) stay in the shell: `pgQdbOpsFor` is
-// already a single typed call, and the wrappers/live-update publishing are
-// env-driven shell business logic, not framework-call drift.
+// The Postgres branch and the id-injection wrappers live in
+// ProjectionEntryPoint_Ops / ReadModelEntryPoint_Ops — NOT here, because this
+// module is also imported by DcbCommandTopicEntryPoint.mjs, which must not
+// carry `pg`/PgRuntime in its cold-start graph.
 
 let makeDynamoQueryDbOps = (~tableName: string): ReventlessCore.QueryDb_Adapter.operations => {
   let table: Util_DynamoDb_Runtime.resolvedTable = {

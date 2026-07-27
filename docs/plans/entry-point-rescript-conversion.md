@@ -408,8 +408,56 @@ and the config decoder (11 tests). Corrected-walker import-graph check (the
 earlier walker missed the core/infra subtrees): all 7 converted handler graphs
 re-verified `@pulumi`-free, EC's full graph = 45 modules.
 
-**Remaining Group-1 extractions (next passes):** `ReadModelEntryPoint` (179),
-`StateViewSliceEntryPoint` (177), `TaskBucketEntryPoint` (150),
+**`ReadModelEntryPoint` + `StateViewSliceEntryPoint` DONE (2026-07-27, same
+pass).** The two projection Lambdas share most of their machinery, so the split
+introduced one shared typed module plus one per entry point:
+
+- **`ProjectionEntryPoint_Ops.res`** (shared by BOTH shells, and only them) —
+  the routed dispatch boundary (group records by `eventSourceARN`, per-source
+  handler lists with per-handler `comp`/`plugin` attribution, `runEffect`
+  dispatch — the two `.mjs` previously duplicated all of this verbatim), the
+  handler registry (`addToRegistry` preserving the multiple-RMs-per-stream
+  accumulation), `toStreamHandler` (the typed
+  `EventCollectorChannel_DynamoDbStream_Runtime.handleStreamEvent` wrap), and
+  `makeQueryDbOps` — the DynamoDB/Postgres backend branch incl. the env-gated
+  `withLiveUpdates` wrap (typed binding into `StateTopicPublish.mjs`).
+  Deliberately NOT folded into `QueryDbEntryPoint_Ops`: that module is also
+  imported by `DcbCommandTopicEntryPoint.mjs`, and the Postgres branch would
+  have dragged `pg`/`PgRuntime` plus the stream-channel modules into the DCB
+  command Lambda's cold-start graph.
+- **`ReadModelEntryPoint_Ops.res`** — typed HANDLER_CONFIG decode (incl.
+  `comp`/`plugin` attribution and `pgConnection`/`stateTopicName`), the
+  id-injection wrap (`injectId`/`withInjectedId`, compiled guard byte-equivalent
+  to the JS original's `typeof`/`isArray` check), operation assembly, handler
+  registration. Shell keeps: dynamic imports, `patchSpecId`/`fixMappingsModule`,
+  the `ReadModel_Callback.Make` functor application (179 → ~60 LOC).
+- **`StateViewSliceEntryPoint_Ops.res`** — typed HANDLER_CONFIG decode incl.
+  the compact-v2 expansion (shared `base`/`sourceUrn`/`pgConnection`, s/p/q/u/t
+  keys, legacy full-key pass-through) and the ENTIRE projection stream pipeline
+  (envelope decode → `S.parseJsonOrThrow` against the slice schema → `project`
+  → `Projection.handleAction` with threaded `subIdConfig`), parametric in the
+  event type. The shell keeps only the dynamic imports and the module-export
+  reads, passed through one typed `sliceModules` record (177 → ~45 LOC). The
+  only casts are `%identity` at two documented JSON contracts (`pgConnection`
+  written by `connectionConfigToJson`; the envelope `meta` written schema-shaped
+  by the producer).
+
+Tests: `ReadModelEntryPoint_OpsTest` (config decode, id injection incl.
+save/saveBatch wrap via a capturing stub op set) and
+`StateViewSliceEntryPoint_OpsTest` (compact-v2 + legacy config expansion,
+envelope decode, and the full stream pipeline against stub ops incl. the
+decode-failure-skips-record path) — 13 new tests.
+`StateViewSliceEntryPoint_IntegrationTest` (the 2026-07-09 `subIdConfig`
+regression guard) was rewired to drive the new production seam
+(`makeRegisteredHandler` + an SQS-shaped Lambda record through the registered
+stream handler — now also covering `handleStreamEvent`) and passes against
+DynamoDB Local. Root build zero-warning; all 331 reventless-aws unit tests +
+all 4 Docker-gated integration suites green; import-graph walk: both entry-point
+graphs (58/54 modules) `@pulumi`-free, the walker sanity-checked against a
+deploy-time builder graph where it does flag `@pulumi/*`, and
+`DcbCommandTopicEntryPoint`'s graph unchanged-clean.
+
+**Remaining Group-1 extractions (next passes):** `TaskBucketEntryPoint` (150),
 `AutomationSliceEntryPoint` (138), then the small ones (`EventMapperEntryPoint`
 99, `CounterEntryPoint` 91, `PgQueryResolverEntryPoint` 88,
 `ExtensionPointEntryPoint` 85, `SideEffectEntryPoint` 82). Same recipe: typed
