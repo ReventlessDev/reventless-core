@@ -398,7 +398,7 @@ function Make(DcbEventLogStorage) {
           }
         };
       });
-      let dcbResources = Object.values(stateChangeSlicesOutputs).flatMap(outputs => outputs.resources).concat(Object.values(inboundTranslationSlicesOutputs).flatMap(outputs => outputs.resources));
+      let dcbResources = Object.values(stateChangeSlicesOutputs).flatMap(outputs => outputs.resources).concat(Object.values(inboundTranslationSlicesOutputs).flatMap(outputs => outputs.resources.concat(outputs.queryDb.resources)));
       let asyncDcbResources = Object.values(asyncStateChangeSlicesOutputs).flatMap(outputs => outputs.resources);
       let inboundFieldNames = inboundTranslationSliceData.map(param => param[1]);
       let inboundSchemas = inboundTranslationSliceData.map(param => param[3]);

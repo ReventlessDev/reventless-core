@@ -739,12 +739,19 @@ module Make = (
             composite->Obj.magic
           })
 
-        // Resources the sync Lambda needs access to
+        // Resources the sync Lambda needs access to. An InboundTranslationSlice
+        // exposes its audit table under `queryDb.resources` — its top-level
+        // `resources` is empty — and the sync DCB command Lambda is the Route 0
+        // target that writes those audit rows. Granting only `outputs.resources`
+        // left the Lambda role without `PutItem` on the audit table, so every
+        // audit write failed with AccessDenied (swallowed at the write site,
+        // surfacing only as a permanently empty audit view). Include the audit
+        // table's resources so the role can write it.
         let dcbResources = Array.concat(
           stateChangeSlicesOutputs->Dict.valuesToArray->Array.flatMap(outputs => outputs.resources),
           inboundTranslationSlicesOutputs
           ->Dict.valuesToArray
-          ->Array.flatMap(outputs => outputs.resources),
+          ->Array.flatMap(outputs => Array.concat(outputs.resources, outputs.queryDb.resources)),
         )
 
         // Resources the async Lambda needs access to

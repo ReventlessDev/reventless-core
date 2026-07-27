@@ -2,13 +2,16 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
+import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 import * as InboundTranslationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
 import * as DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws from "../DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
@@ -105,13 +108,16 @@ function buildInboundReceiver(spec, translation, publishJsons, auditQueryDbOps) 
     if (auditQueryDbOps !== undefined) {
       let rows = Object.entries(callback.auditLog);
       await Stdlib_Array.reduce(rows, Promise.resolve(), async (prev, param) => {
+        let id = param[0];
         await prev;
         let json = S.reverseConvertToJsonOrThrow(param[1], InboundTranslationSlice_Callback$ReventlessCore.auditRowSchema);
         try {
-          await auditQueryDbOps.save(param[0], json, "Overwrite", undefined);
+          await auditQueryDbOps.save(id, json, "Overwrite", undefined);
           return;
-        } catch (exn) {
-          return;
+        } catch (raw_exn) {
+          let exn = Primitive_exceptions.internalToException(raw_exn);
+          let detail = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown error");
+          return Effect.runSync(EffectLogger$ReventlessCore.logError("InboundTranslationSlice.audit", undefined, `failed to persist audit row ` + id + `: ` + detail));
         }
       });
     }
