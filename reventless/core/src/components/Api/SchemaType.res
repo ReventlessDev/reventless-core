@@ -9,6 +9,12 @@ type rec schemaType =
   | ArrayOf(schemaType)
   | ObjectRef(string, dict<schemaType>)
   | Enum(string, array<string>)
+  | /** A field whose type carries a semantic the IR has no dedicated shape for.
+        Wraps the shape the value actually has, so every consumer that only cares
+        about shape unwraps and is otherwise unaffected. `DateTime` and `EntityId`
+        are *not* expressed this way: they long predate the generic marker and
+        their JSON Schema `format` output is a published contract. */
+  Semantic(Reventless.Semantic.t, schemaType)
   | Unknown
 
 let isTagged = Reventless.DcbTag.isTagged
@@ -27,6 +33,26 @@ let isIdsFieldName = (name: string): bool => {
 }
 
 let rec fromSury = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): schemaType => {
+  let shape = shapeOf(~parentName, ~fieldName, schema)
+  // Semantics the IR already has a dedicated shape for keep it: `dateTime` and
+  // `reference` are read below via `isDateTime` / `getTarget`, both of which now
+  // consult the generic marker, and their `format` output is a published
+  // contract. Every other semantic rides along as a wrapper, so surfacing a new
+  // one costs a value rather than a branch.
+  switch Reventless.Semantic.get(schema) {
+  | Some({id} as sem)
+    if id !== Reventless.Semantic.Id.dateTime && id !== Reventless.Semantic.Id.reference =>
+    Semantic(sem, shape)
+  | _ => shape
+  }
+}
+
+and shapeOf = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): schemaType => {
+  // Two independent facts, checked independently. A DCB-tagged field is an
+  // entity id because it routes; a reference field is one because it points at
+  // an entity. Neither implies the other — a `@partitionTag` field carries no
+  // reference, and `Reference.toWithoutDcbTag` carries no tag — so collapsing
+  // these into one test would silently reclassify whichever case it dropped.
   if isTagged(schema) || Reventless.Reference.getTarget(schema)->Option.isSome {
     EntityId
   } else {

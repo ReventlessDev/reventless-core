@@ -62,6 +62,11 @@ let rec fromSchemaType = (
       collectedTypes->Array.push(`enum ${name} {\n  ${valuesStr}\n}`)
     }
     `${name}${bang}`
+  // GraphQL carries the value's shape, not its meaning: a storage ref is a
+  // String on the wire exactly as it is in the event log. The semantic reaches
+  // the UI through the field's JSON Schema, which is the channel that can
+  // express it.
+  | Semantic(_, inner) => fromSchemaType(~required, ~asInput, inner, collectedTypes, seenTypes)
   | Unknown => `String${bang}`
   }
 }
@@ -171,13 +176,14 @@ let emptyCapability: serverCapability = {filterFields: [], sortFields: []}
 // Convert a SchemaType.schemaType to its GraphQL scalar name (input position).
 // Mirrors the scalar branches of fromSchemaType — kept inline because we don't
 // emit `!`/list wrappers for filter inputs.
-let scalarOfSchemaType = (st: SchemaType.schemaType): string =>
+let rec scalarOfSchemaType = (st: SchemaType.schemaType): string =>
   switch st {
   | ScalarString => "String"
   | ScalarNumber => "Float"
   | ScalarBoolean => "Boolean"
   | ScalarBigInt => "String"
   | EntityId => "ID"
+  | Semantic(_, inner) => scalarOfSchemaType(inner)
   | _ => "String"
   }
 

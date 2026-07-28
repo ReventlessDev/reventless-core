@@ -2,13 +2,15 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "./DcbTag.res.mjs";
-
-let referenceId = S.Metadata.Id.make("reventless", "reference");
+import * as Semantic$Reventless from "../semantic/Semantic.res.mjs";
 
 function to_(plugin, key, entity) {
-  let base = S.Metadata.set(S.Metadata.set(S.string, DcbTag$Reventless.dcbTagId, true), referenceId, {
-    entity: entity,
-    plugin: plugin
+  let base = Semantic$Reventless.mark(S.Metadata.set(S.string, DcbTag$Reventless.dcbTagId, true), Semantic$Reventless.Id.reference, {
+    TAG: "ReferenceTo",
+    _0: {
+      entity: entity,
+      plugin: plugin
+    }
   });
   if (key !== undefined) {
     return S.Metadata.set(base, DcbTag$Reventless.dcbTagKeyOverrideId, key);
@@ -18,20 +20,31 @@ function to_(plugin, key, entity) {
 }
 
 function getTarget(schema) {
-  return S.Metadata.get(schema, referenceId);
+  let match = Semantic$Reventless.get(schema);
+  if (match === undefined) {
+    return;
+  }
+  let target = match.payload;
+  if (typeof target !== "object" || target.TAG !== "ReferenceTo") {
+    return;
+  } else {
+    return target._0;
+  }
 }
 
 function toWithoutDcbTag(plugin, entity) {
-  return S.Metadata.set(S.string, referenceId, {
-    entity: entity,
-    plugin: plugin
+  return Semantic$Reventless.mark(S.string, Semantic$Reventless.Id.reference, {
+    TAG: "ReferenceTo",
+    _0: {
+      entity: entity,
+      plugin: plugin
+    }
   });
 }
 
 export {
-  referenceId,
   to_,
   getTarget,
   toWithoutDcbTag,
 }
-/* referenceId Not a pure module */
+/* S Not a pure module */

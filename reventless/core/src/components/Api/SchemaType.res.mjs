@@ -4,6 +4,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/types/DateTime.res.mjs";
+import * as Semantic$Reventless from "@reventlessdev/reventless-spec/src/semantic/Semantic.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
 
 function isIdFieldName(name) {
@@ -27,6 +28,24 @@ function isIdsFieldName(name) {
 }
 
 function fromSury(parentName, fieldName, schema) {
+  let shape = shapeOf(parentName, fieldName, schema);
+  let sem = Semantic$Reventless.get(schema);
+  if (sem === undefined) {
+    return shape;
+  }
+  let id = sem.id;
+  if (id !== Semantic$Reventless.Id.dateTime && id !== Semantic$Reventless.Id.reference) {
+    return {
+      TAG: "Semantic",
+      _0: sem,
+      _1: shape
+    };
+  } else {
+    return shape;
+  }
+}
+
+function shapeOf(parentName, fieldName, schema) {
   if (DcbTag$Reventless.isTagged(schema) || Stdlib_Option.isSome(Reference$Reventless.getTarget(schema))) {
     return "EntityId";
   }
@@ -156,6 +175,7 @@ export {
   isIdFieldName,
   isIdsFieldName,
   fromSury,
+  shapeOf,
   fromSuryObject,
 }
 /* DcbTag-Reventless Not a pure module */

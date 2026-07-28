@@ -71,6 +71,10 @@ function fromSchemaType(_required, _asInputOpt, _st, collectedTypes, seenTypes) 
             collectedTypes.push(`enum ` + name$1 + ` {\n  ` + valuesStr + `\n}`);
           }
           return name$1 + bang;
+        case "Semantic" :
+          _st = st._1;
+          _asInputOpt = asInput;
+          continue;
       }
     }
   };
@@ -144,20 +148,28 @@ let emptyCapability = {
   sortFields: emptyCapability_sortFields
 };
 
-function scalarOfSchemaType(st) {
-  if (typeof st === "object") {
-    return "String";
-  }
-  switch (st) {
-    case "ScalarNumber" :
-      return "Float";
-    case "ScalarBoolean" :
-      return "Boolean";
-    case "EntityId" :
-      return "ID";
-    default:
-      return "String";
-  }
+function scalarOfSchemaType(_st) {
+  while (true) {
+    let st = _st;
+    if (typeof st !== "object") {
+      switch (st) {
+        case "ScalarNumber" :
+          return "Float";
+        case "ScalarBoolean" :
+          return "Boolean";
+        case "EntityId" :
+          return "ID";
+        default:
+          return "String";
+      }
+    } else {
+      if (st.TAG !== "Semantic") {
+        return "String";
+      }
+      _st = st._1;
+      continue;
+    }
+  };
 }
 
 function deriveServerCapability(schema) {

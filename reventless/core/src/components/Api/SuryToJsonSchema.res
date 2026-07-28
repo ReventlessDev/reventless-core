@@ -1,12 +1,26 @@
 // Shared utility: convert sury S.t<'a> schemas to JSON Schema objects.
 // Uses SchemaType as the shared intermediate representation.
 
+let log = Logger.fromEnv()
+
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 let str = JSON.Encode.string
 
 let jsonObject = (entries: array<(string, JSON.t)>): JSON.t =>
   JSON.Encode.object(Dict.fromArray(entries))
+
+// An absent plugin means "the declaring plugin's own", which the key's absence
+// says exactly. Writing an empty string instead would make "mine" and "unnamed"
+// indistinguishable to every reader.
+let withOptionalPlugin = (
+  entries: array<(string, JSON.t)>,
+  plugin: option<string>,
+): array<(string, JSON.t)> =>
+  switch plugin {
+  | Some(p) => entries->Array.concat([("plugin", JSON.Encode.string(p))])
+  | None => entries
+  }
 
 // Merge x-reventless-* extension properties from a Reventless.StateAnnotations.stateAnnotationSpec
 // into a property schema (a JSON Schema object). Returns the schema unchanged when the field
@@ -70,7 +84,21 @@ let mergeAnnotations = (
     }
     switch spec.semantic->Array.find(((field, _)) => field === fieldName) {
     | Some((_, semanticId)) =>
-      obj->Dict.set("x-reventless-semantic", JSON.Encode.string(semanticId))
+      // The type wins. A typed declaration is better-sourced than an annotation
+      // — the compiler checked it and it cannot drift from the field's shape —
+      // so an annotation never overwrites one. A field carrying both is the
+      // domain saying two things about one value, which is worth hearing about
+      // rather than resolving in silence.
+      switch obj->Dict.get("x-reventless-semantic") {
+      | Some(fromType) =>
+        if fromType !== JSON.Encode.string(semanticId) {
+          log.warn(
+            ~comp="SuryToJsonSchema",
+            `field "${fieldName}" declares semantic "${semanticId}" by annotation but its type already carries ${fromType->JSON.stringify}; the type wins`,
+          )
+        }
+      | None => obj->Dict.set("x-reventless-semantic", JSON.Encode.string(semanticId))
+      }
     | None => ()
     }
     switch spec.metric->Array.find(((field, _)) => field === fieldName) {
@@ -107,7 +135,48 @@ let rec fromSchemaType = (st: SchemaType.schemaType): JSON.t =>
       ("type", str("string")),
       ("enum", JSON.Encode.array(values->Array.map(JSON.Encode.string))),
     ])
+  | Semantic(sem, inner) => fromSchemaType(inner)->withSemantic(sem)
   | Unknown => jsonObject([("type", str("string"))])
+  }
+
+// Attach a type-carried semantic to a field's JSON Schema.
+//
+// This is the type path's emission point, and it is deliberately *not*
+// `mergeAnnotations`: that one is fed by the PPX-collected annotation spec,
+// which the PPX only ever collects on read-model `state` records. This walk is
+// schema-shape-driven and runs over every schema, commands and events included —
+// which is where a declaration like a storage ref has to live, since that is
+// where the value is first accepted.
+//
+// Both paths write the same `x-reventless-semantic` key, on purpose: one wire
+// format, whatever the source. The payload rides in sibling keys so a reader
+// that knows only the bare string still reads it correctly.
+and withSemantic = (fieldSchema: JSON.t, sem: Reventless.Semantic.t): JSON.t =>
+  switch fieldSchema->JSON.Decode.object {
+  | None => fieldSchema
+  | Some(obj) =>
+    obj->Dict.set("x-reventless-semantic", str(sem.id))
+    // The `type` discriminator is what lets a reader tell a type-carried
+    // semantic from an annotated one, and rank it above the annotation
+    // accordingly: the compiler checked this one, and it cannot drift from the
+    // field's shape.
+    obj->Dict.set("x-reventless-semantic-source", str("type"))
+    switch sem.payload {
+    | Plain => ()
+    | ReferenceTo({entity, plugin}) =>
+      obj->Dict.set(
+        "x-reventless-semantic-target",
+        jsonObject(withOptionalPlugin([("entity", str(entity))], plugin)),
+      )
+    | StoredIn({plugin, store}) =>
+      // An absent plugin means "this plugin's own store" — omit the key rather
+      // than writing an empty string, so a reader never has to tell those apart.
+      obj->Dict.set(
+        "x-reventless-semantic-target",
+        jsonObject(withOptionalPlugin([("store", str(store))], plugin)),
+      )
+    }
+    JSON.Encode.object(obj)
   }
 
 and objectRefToJsonSchema = (

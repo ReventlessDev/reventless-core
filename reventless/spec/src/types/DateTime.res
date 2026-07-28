@@ -21,13 +21,9 @@ type state = {
 ```
 */
 
-/** Internal sury metadata ID used to mark a date-time string field. */
-let dateTimeId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(~namespace="reventless", ~name="dateTime")
-
 /** A sury string schema annotated as an ISO-8601 date-time field.
     Use with `@s.matches(Reventless.DateTime.string)`. */
-let string: S.t<string> = S.string->S.Metadata.set(~id=dateTimeId, true)
+let string: S.t<string> = S.string->Semantic.mark(~id=Semantic.Id.dateTime)
 
 /** Whether a field schema carries the date-time marker. */
-let isDateTime = (fieldSchema: S.t<unknown>) =>
-  S.Metadata.get(fieldSchema, ~id=dateTimeId)->Option.isSome
+let isDateTime = (fieldSchema: S.t<unknown>) => fieldSchema->Semantic.has(~id=Semantic.Id.dateTime)

@@ -1,8 +1,5 @@
 /** Identifies which entity a reference field points to. */
-type target = {entity: string, plugin: option<string>}
-
-/** Sury metadata ID for entity reference annotation. */
-let referenceId: S.Metadata.Id.t<target> = S.Metadata.Id.make(~namespace="reventless", ~name="reference")
+type target = Semantic.referenceTarget
 
 /**
 A sury string schema annotated as an entity reference field.
@@ -28,10 +25,14 @@ Prefer the `@ref("EntityName")` ppx shorthand over writing `@s.matches(...)` by 
 ```
 */
 let to_ = (~plugin=?, ~key=?, entity: string): S.t<string> => {
+  // Reference-ness and DCB-tagged-ness are two independent facts that happen to
+  // co-occur here: this constructor declares both. `toWithoutDcbTag` declares
+  // only the first, and plain `DcbTag.string` only the second — so no consumer
+  // may infer either one from the other.
   let base =
     S.string
     ->S.Metadata.set(~id=DcbTag.dcbTagId, true)
-    ->S.Metadata.set(~id=referenceId, {entity, plugin})
+    ->Semantic.mark(~id=Semantic.Id.reference, ~payload=ReferenceTo({entity, plugin}))
   switch key {
   | Some(k) => base->S.Metadata.set(~id=DcbTag.dcbTagKeyOverrideId, k)
   | None => base
@@ -40,7 +41,10 @@ let to_ = (~plugin=?, ~key=?, entity: string): S.t<string> => {
 
 /** Returns the reference target if the schema carries `Reference.to_(...)` metadata. */
 let getTarget = (schema: S.t<unknown>): option<target> =>
-  S.Metadata.get(schema, ~id=referenceId)
+  switch Semantic.get(schema) {
+  | Some({payload: ReferenceTo(target)}) => Some(target)
+  | _ => None
+  }
 
 /**
 Like `to_` but does not imply DCB tag semantics.
@@ -48,4 +52,4 @@ Use with `@ref("Entity") @noDcbTag` when the field references another entity
 but should not participate in content-based event routing.
 */
 let toWithoutDcbTag = (~plugin=?, entity: string): S.t<string> =>
-  S.string->S.Metadata.set(~id=referenceId, {entity, plugin})
+  S.string->Semantic.mark(~id=Semantic.Id.reference, ~payload=ReferenceTo({entity, plugin}))
