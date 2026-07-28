@@ -169,11 +169,28 @@ the pure frame/connection API:
 
 ### Phase 6 — AWS E2E (deploy-only, staged)
 
-`pulumi up`, then from a browser session: subscribe to a `/client/…`
-channel, `POST` the endpoint with a Cognito JWT, observe the data frame on a
-second session; verify a `POST` to `/default/…` with the same JWT is
-rejected. Joins the existing deploy-only checklist (map picker, presigned
-upload, `/ui-hints.json`).
+Automated by `examples/online-shop-hybrid/platform-aws/src/VerifyClientPublish.res`
+(`pnpm run verify:client-publish`), a companion to the SigV4
+`verify-subscriptions.mjs` covering the opposite direction. It reuses the seed
+tooling's stack discovery + Cognito login, so it stays in step with how
+`pnpm run seed` resolves a deployment, and needs no AWS credentials — only a
+pool user. Four assertions:
+
+1. `config.json` advertises `clientEventsNamespace`;
+2. a Cognito IdToken can subscribe to a `/client/**` channel;
+3. a Cognito publish to `/client/**` is accepted **and delivered** to that
+   subscription (acceptance alone would not prove fan-out);
+4. the same token publishing to `/default/**` is **rejected**.
+
+(4) is the assertion that matters. If it ever passes, a browser can forge a
+read-model change descriptor, the namespace split is isolating nothing, and
+the feature must not ship regardless of how (1)–(3) went.
+
+Verified against the deployed `alpha` stack pre-deploy: discovery resolves the
+stack and endpoints, and assertion (1) correctly **fails** (the namespace is not
+deployed yet) — so the check is meaningful rather than vacuously green. Run it
+again after `pulumi up`. Joins the existing deploy-only checklist (map picker,
+presigned upload, `/ui-hints.json`).
 
 ## Risks / open points
 

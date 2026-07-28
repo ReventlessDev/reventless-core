@@ -7,6 +7,7 @@
   "scripts": {
     "build": "rescript build",
     "seed": "node src/SeedAws.res.mjs",
+    "verify:client-publish": "node src/VerifyClientPublish.res.mjs",
     "seed:reset": "node src/SeedAwsReset.res.mjs"
   },
   "dependencies": {
@@ -19,7 +20,8 @@
     "@reventlessdev/reventless-seed": "workspace:*",
     "@reventlessdev/reventless-seed-aws": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "sury": "^11.0.0-alpha.4"
+    "sury": "^11.0.0-alpha.4",
+    "@reventlessdev/rescript-web": "workspace:*"
   },
   "devDependencies": {
     "@reventlessdev/reventless-ppx": "workspace:*",

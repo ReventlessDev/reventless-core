@@ -28,7 +28,8 @@
     "@reventlessdev/reventless-aws",
     "@reventlessdev/online-shop-aggregates-platform-aws",
     "@reventlessdev/online-shop-dcb-platform-aws",
-    "@reventlessdev/online-shop-hybrid-platform-aws"
+    "@reventlessdev/online-shop-hybrid-platform-aws",
+    "@reventlessdev/rescript-web"
   ],
   "sources": [],
   "suffix": ".res.mjs"

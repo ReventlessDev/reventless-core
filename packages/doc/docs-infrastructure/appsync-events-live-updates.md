@@ -85,9 +85,9 @@ path segment of every channel string, on **both** the publish call and the
 subscribe call. There is no "default namespace" that AWS fills in for you; the
 name `default` is just a namespace Reventless chooses to create.
 
-### Why Reventless uses a single namespace named `default`
+### The two namespaces: `default` and `client`
 
-Reventless creates exactly one namespace, named `default`, in
+Reventless creates two namespaces in
 [`AppSync_EventsApi.make`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/aws/src/adapter/Api/AppSync_EventsApi.res):
 
 ```rescript
@@ -96,9 +96,28 @@ let defaultNamespace = ChannelNamespace.make(
   ~args={ apiId: api.apiId->…, name: "default"->… , … },
   …
 )
+// Publish auth overridden per namespace — see the auth model below.
+let clientNamespace = ChannelNamespace.make(
+  ~name=name ++ "ClientNS",
+  ~args={ apiId: …, name: "client"->…,
+          publishAuthModes: [cognito, iam], subscribeAuthModes: [cognito, iam] },
+  …
+)
 ```
 
-One namespace is enough because:
+They exist because they answer to **different publishers**, which is a
+namespace-level distinction and cannot be expressed by channel paths:
+
+- **`default`** carries read-model change descriptors, published only by the
+  SigV4-signed Lambdas. A browser must never be able to publish here — a forged
+  descriptor would make every subscribed list act on a change that never
+  happened.
+- **`client`** carries ephemeral browser-to-browser payloads (presence, session
+  chat). These are not domain events: nothing is stored, validated, or
+  replayed. See the UI-side
+  [client-channels guide](https://github.com/ReventlessDev/reventless-ui/blob/alpha/docs/guides/client-channels.md).
+
+Within `default`, one namespace is enough because:
 
 - The Events API itself already scopes everything (one API per platform).
 - Per-read-model isolation is achieved by the **channel path**
@@ -134,7 +153,9 @@ a namespace that does not exist, so AWS silently delivers nothing.
    │          └─ the read model's GraphQL LIST field name (see below),
    │             sanitised so every non-[A-Za-z0-9-] char becomes "-".
    │
-   └─ the channel namespace (always "default").
+   └─ the channel namespace — "default" for every read-model change
+      descriptor. ("client" is the other namespace, for browser-published
+      ephemera; nothing in this diagram is ever published there.)
 ```
 
 ### Segment normalisation: collapse to `[A-Za-z0-9-]`
@@ -224,17 +245,36 @@ The two ends authenticate **differently**, so the Events API must accept both:
 
 | Path | Who | Auth | Configured by |
 |------|-----|------|---------------|
-| Publish (`POST /event`) | StateTopic / EventLogSubscription Lambda | **AWS_IAM** — native SigV4 over `fetch` using the Lambda role's `AWS_*` env creds | `defaultPublishAuthModes: [AWS_IAM]` + IAM policy `appsync:EventPublish` on `<apiArn>/*` |
+| Publish to `/default/**` (`POST /event`) | StateTopic / EventLogSubscription Lambda | **AWS_IAM** — native SigV4 over `fetch` using the Lambda role's `AWS_*` env creds | `defaultPublishAuthModes: [AWS_IAM]` + IAM policy `appsync:EventPublish` on `<apiArn>/*` |
+| Publish to `/client/**` (`POST /event`) | the browser | **Cognito User Pools** IdToken (bearer) | the `client` namespace's own `publishAuthModes: [COGNITO, AWS_IAM]`, which **overrides** the API-level default |
 | Connect + subscribe (WebSocket) | the browser | **Cognito User Pools** IdToken (bearer) | `connectionAuthModes` + `defaultSubscribeAuthModes` include `AMAZON_COGNITO_USER_POOLS`; an auth provider with `cognitoConfig {userPoolId, awsRegion}` |
 
-`AppSync_EventsApi.make` therefore registers **both** providers:
+`AppSync_EventsApi.make` therefore registers **both** providers, and keeps the
+API-level publish default at IAM so `default` stays Lambda-only:
 
 ```rescript
 authProviders:          [AWS_IAM, AMAZON_COGNITO_USER_POOLS]
 connectionAuthModes:    [AMAZON_COGNITO_USER_POOLS, AWS_IAM]
-defaultPublishAuthModes:[AWS_IAM]                        // Lambdas only
+defaultPublishAuthModes:[AWS_IAM]                        // → /default/**: Lambdas only
 defaultSubscribeAuthModes:[AMAZON_COGNITO_USER_POOLS, AWS_IAM]
 ```
+
+The browser's publish capability is granted **only** by the `client`
+namespace's per-namespace override, never by widening the default above. That
+asymmetry is the security property: an authenticated browser can publish
+presence and chat, and still cannot forge a read-model change descriptor.
+
+> **Advertised, not assumed.** The platform emits `clientEventsNamespace` into
+> the host-shell `config.json` when it creates the namespace. Clients gate every
+> publish-dependent surface on that key's presence, so a UI never publishes into
+> an API that would reject it. Absent key ⇒ those surfaces render nothing.
+
+> **Payloads on `/client/**` are untrusted.** There is no server-side validation
+> of a client publish today: any authenticated user can publish anything on any
+> client channel, including a `userId` that is not theirs, and subscribe auth is
+> per-namespace rather than per-channel. Consumers must treat claimed identity as
+> cosmetic and render every field as text. Server-side identity stamping belongs
+> in a namespace `onPublish` handler — the binding exists and is currently unused.
 
 > **Critical:** the Events API's `cognitoConfig.userPoolId` must be the **same
 > pool** as `config.json`'s `cognitoUserPoolId`. The browser presents a token
@@ -350,7 +390,8 @@ server-side change journal, descriptor-level catch-up
 
 | Concern | Where | Notes |
 |---------|-------|-------|
-| Create the Events API + `default` namespace | `AppSync_EventsApi.make` in [`Platform.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/aws/src/Platform.res) | **Only on the platform/monolithic stack.** Plugin stacks reconstruct a phantom from the `eventsApiArn` / `eventsApiDns` stack exports. |
+| Create the Events API + the `default` and `client` namespaces | `AppSync_EventsApi.make` in [`Platform.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/aws/src/Platform.res) | **Only on the platform/monolithic stack.** Plugin stacks reconstruct a phantom from the `eventsApiArn` / `eventsApiDns` stack exports, so they carry neither namespace. |
+| Advertise the client namespace to browsers | the host-ui `config.json` emission in `Platform.res` | Emits `clientEventsNamespace` alongside the events endpoints. Verify end-to-end with `pnpm run verify:client-publish` in `examples/online-shop-hybrid/platform-aws/`. |
 | Shared StateTopic Lambda (one per events API per stack) | `StateTopic_AppSync.make` (registers) + `StateTopic_AppSync.finish` (builds) in `Platform.res` | `subscriptionInfraHook` calls `make` for every stream-enabled QueryDb in the stack — admin RMs, user-plugin `ReadModelStream`s, and `StateViewSliceStream`s alike. `finish` runs once at the end of `makePlatform` / `deployPlatform` / `deployPlugin` and builds a single Lambda + IAM role/policy + one `EventSourceMapping` per stream, all targeting that shared Lambda. Routing is per-record via the `STATE_TOPIC_MAP` env var (`{ "<ddbTableName>": "<listFieldName>" }`) — the handler reads `record.eventSourceARN`, extracts the table name, and looks up the matching channel root. |
 | Admin RM live updates | `PluginReadModel`, `PlatformEventGraphReadModel`, `UIFragmentRegistryReadModel` in `Platform.res` | The framework's built-in admin read models (`Platform_Plugins`, `Platform_PlatformEventGraphs`, `Platform_UIFragments`) are stream-enabled and participate in the read-model feed — admin lists in the host-shell live-update. UIFragmentRegistry uses `ReadModel_Builder_NoResolver_Stream` because its GraphQL field is served by a dedicated `Platform_UIFragments_Lambda`, not an auto-generated resolver. |
 

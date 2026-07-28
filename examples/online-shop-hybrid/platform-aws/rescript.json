@@ -19,7 +19,8 @@
     "@reventlessdev/reventless-seed-aws",
     "@reventlessdev/online-shop-hybrid-seed",
     "@reventlessdev/rescript-pulumi-pulumi",
-    "@reventlessdev/rescript-pulumi-aws"
+    "@reventlessdev/rescript-pulumi-aws",
+    "@reventlessdev/rescript-web"
   ],
   "ppx-flags": [
     "@reventlessdev/reventless-ppx/bin",

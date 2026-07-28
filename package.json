@@ -28,6 +28,7 @@
     "@reventlessdev/rescript-effect": "workspace:*",
     "@reventlessdev/rescript-jest": "workspace:*",
     "@reventlessdev/rescript-uuid": "workspace:*",
+    "@reventlessdev/rescript-web": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-interop": "workspace:*",
