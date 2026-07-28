@@ -19,6 +19,7 @@ import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/
 import * as LocalAuth$ReventlessLocal from "./Auth/LocalAuth.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as LocalObjectStore$ReventlessLocal from "./LocalObjectStore.res.mjs";
+import * as LocalEvents_Server$ReventlessLocal from "./Api/LocalEvents_Server.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./Auth/Auth_GraphqlContext.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
@@ -175,30 +176,50 @@ function _dispatch(req, res, yoga, getSdl) {
         "error",
         "Invalid bearer token"
       ]]));
-  } else if (path === "/sdl") {
+  }
+  if (path === "/sdl") {
     res.writeHead(200, {
       "Content-Type": "text/plain",
       "Access-Control-Allow-Origin": "*"
     });
     res.end(getSdl());
     return;
-  } else if (path === "/__inmemory/login" && req.method === "POST") {
-    return handleLogin(req, res);
-  } else if (path === "/__inmemory/logout" && req.method === "POST") {
-    return handleLogout(req, res);
-  } else if (path === uploadPresignPath && req.method === "POST") {
-    return handleUploadPresign(req, res);
-  } else if (req.method === "OPTIONS" && Stdlib_Option.isSome(LocalObjectStore$ReventlessLocal.servedKey(path))) {
-    res.writeHead(204, _corsWriteHeaders);
-    res.end(null);
-    return;
-  } else if (req.method === "PUT" && Stdlib_Option.isSome(LocalObjectStore$ReventlessLocal.servedKey(path))) {
-    return handleObjectPut(req, res, Stdlib_Option.getOr(LocalObjectStore$ReventlessLocal.servedKey(path), ""));
-  } else if (req.method === "GET" && Stdlib_Option.isSome(LocalObjectStore$ReventlessLocal.servedKey(path))) {
-    return handleObjectGet(res, Stdlib_Option.getOr(LocalObjectStore$ReventlessLocal.servedKey(path), ""));
-  } else {
-    return yoga(req, res);
   }
+  if (path === "/__inmemory/login" && req.method === "POST") {
+    return handleLogin(req, res);
+  }
+  if (path === "/__inmemory/logout" && req.method === "POST") {
+    return handleLogout(req, res);
+  }
+  if (path === uploadPresignPath && req.method === "POST") {
+    return handleUploadPresign(req, res);
+  }
+  if (path !== "/events" || req.method !== "POST") {
+    if (path === "/events" && req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST,OPTIONS",
+        "Access-Control-Allow-Headers": "*"
+      });
+      res.end(null);
+      return;
+    } else if (req.method === "OPTIONS" && Stdlib_Option.isSome(LocalObjectStore$ReventlessLocal.servedKey(path))) {
+      res.writeHead(204, _corsWriteHeaders);
+      res.end(null);
+      return;
+    } else if (req.method === "PUT" && Stdlib_Option.isSome(LocalObjectStore$ReventlessLocal.servedKey(path))) {
+      return handleObjectPut(req, res, Stdlib_Option.getOr(LocalObjectStore$ReventlessLocal.servedKey(path), ""));
+    } else if (req.method === "GET" && Stdlib_Option.isSome(LocalObjectStore$ReventlessLocal.servedKey(path))) {
+      return handleObjectGet(res, Stdlib_Option.getOr(LocalObjectStore$ReventlessLocal.servedKey(path), ""));
+    } else {
+      return yoga(req, res);
+    }
+  }
+  let authorization = req.headers["authorization"];
+  readBody(req, body => {
+    let match = LocalEvents_Server$ReventlessLocal.handlePublish(authorization, body);
+    _writeJson(res, match[0], match[1]);
+  });
 }
 
 function encodeGlobalId(typeName, localId) {
@@ -572,6 +593,7 @@ function start(portOpt, param, param$1) {
     Stdlib_JsError.throwWithMessage(`DomainGraphQL_Server could not bind port ` + port.toString() + `: ` + detail);
   });
   server.listen(port, () => log.info("GraphQL:Domain", undefined, `listening on http://localhost:` + port.toString() + `/graphql (SDL: /sdl)`));
+  LocalEvents_Server$ReventlessLocal.attach(server, port);
   activeServer.contents = Primitive_option.some(server);
 }
 

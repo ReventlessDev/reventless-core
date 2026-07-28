@@ -259,12 +259,19 @@ function Impl(C) {
   let stateChangeListeners = {
     contents: {}
   };
+  let allStateChangeListeners = {
+    contents: []
+  };
   let subscribeToStateChanges = (name, callback) => {
     let listeners = Stdlib_Option.getOr(stateChangeListeners.contents[name], []);
     stateChangeListeners.contents[name] = listeners.concat([callback]);
   };
+  let subscribeToAllStateChanges = callback => {
+    allStateChangeListeners.contents.push(callback);
+  };
   let publishStateChange = (name, descriptor) => {
     Stdlib_Option.getOr(stateChangeListeners.contents[name], []).forEach(cb => cb(descriptor));
+    allStateChangeListeners.contents.forEach(cb => cb(name, descriptor));
   };
   let eventCollectorHandlers = {
     contents: {}
@@ -320,6 +327,7 @@ function Impl(C) {
     eventLogReplayRegistry.contents = {};
     dcbEventLogReadRegistry.contents = {};
     stateChangeListeners.contents = {};
+    allStateChangeListeners.contents = [];
     eventCollectorHandlers.contents = {};
     eventCollectorPendingTopics.contents = {};
     projectionCatchupRegistry.contents = {};
@@ -346,6 +354,7 @@ function Impl(C) {
     getDcbEventLogRead: getDcbEventLogRead,
     publishStateChange: publishStateChange,
     subscribeToStateChanges: subscribeToStateChanges,
+    subscribeToAllStateChanges: subscribeToAllStateChanges,
     registerEventCollectorHandler: registerEventCollectorHandler,
     subscribeEventCollectorToTopic: subscribeEventCollectorToTopic,
     registerProjectionCatchupHandler: registerProjectionCatchupHandler,
@@ -525,12 +534,19 @@ function Make($star) {
   let stateChangeListeners = {
     contents: {}
   };
+  let allStateChangeListeners = {
+    contents: []
+  };
   let subscribeToStateChanges = (name, callback) => {
     let listeners = Stdlib_Option.getOr(stateChangeListeners.contents[name], []);
     stateChangeListeners.contents[name] = listeners.concat([callback]);
   };
+  let subscribeToAllStateChanges = callback => {
+    allStateChangeListeners.contents.push(callback);
+  };
   let publishStateChange = (name, descriptor) => {
     Stdlib_Option.getOr(stateChangeListeners.contents[name], []).forEach(cb => cb(descriptor));
+    allStateChangeListeners.contents.forEach(cb => cb(name, descriptor));
   };
   let eventCollectorHandlers = {
     contents: {}
@@ -586,6 +602,7 @@ function Make($star) {
     eventLogReplayRegistry.contents = {};
     dcbEventLogReadRegistry.contents = {};
     stateChangeListeners.contents = {};
+    allStateChangeListeners.contents = [];
     eventCollectorHandlers.contents = {};
     eventCollectorPendingTopics.contents = {};
     projectionCatchupRegistry.contents = {};
@@ -612,6 +629,7 @@ function Make($star) {
     getDcbEventLogRead: getDcbEventLogRead,
     publishStateChange: publishStateChange,
     subscribeToStateChanges: subscribeToStateChanges,
+    subscribeToAllStateChanges: subscribeToAllStateChanges,
     registerEventCollectorHandler: registerEventCollectorHandler,
     subscribeEventCollectorToTopic: subscribeEventCollectorToTopic,
     registerProjectionCatchupHandler: registerProjectionCatchupHandler,
@@ -791,12 +809,19 @@ function MakeSilent($star) {
   let stateChangeListeners = {
     contents: {}
   };
+  let allStateChangeListeners = {
+    contents: []
+  };
   let subscribeToStateChanges = (name, callback) => {
     let listeners = Stdlib_Option.getOr(stateChangeListeners.contents[name], []);
     stateChangeListeners.contents[name] = listeners.concat([callback]);
   };
+  let subscribeToAllStateChanges = callback => {
+    allStateChangeListeners.contents.push(callback);
+  };
   let publishStateChange = (name, descriptor) => {
     Stdlib_Option.getOr(stateChangeListeners.contents[name], []).forEach(cb => cb(descriptor));
+    allStateChangeListeners.contents.forEach(cb => cb(name, descriptor));
   };
   let eventCollectorHandlers = {
     contents: {}
@@ -852,6 +877,7 @@ function MakeSilent($star) {
     eventLogReplayRegistry.contents = {};
     dcbEventLogReadRegistry.contents = {};
     stateChangeListeners.contents = {};
+    allStateChangeListeners.contents = [];
     eventCollectorHandlers.contents = {};
     eventCollectorPendingTopics.contents = {};
     projectionCatchupRegistry.contents = {};
@@ -878,6 +904,7 @@ function MakeSilent($star) {
     getDcbEventLogRead: getDcbEventLogRead,
     publishStateChange: publishStateChange,
     subscribeToStateChanges: subscribeToStateChanges,
+    subscribeToAllStateChanges: subscribeToAllStateChanges,
     registerEventCollectorHandler: registerEventCollectorHandler,
     subscribeEventCollectorToTopic: subscribeEventCollectorToTopic,
     registerProjectionCatchupHandler: registerProjectionCatchupHandler,
@@ -1055,12 +1082,19 @@ function MakeBounded(C) {
   let stateChangeListeners = {
     contents: {}
   };
+  let allStateChangeListeners = {
+    contents: []
+  };
   let subscribeToStateChanges = (name, callback) => {
     let listeners = Stdlib_Option.getOr(stateChangeListeners.contents[name], []);
     stateChangeListeners.contents[name] = listeners.concat([callback]);
   };
+  let subscribeToAllStateChanges = callback => {
+    allStateChangeListeners.contents.push(callback);
+  };
   let publishStateChange = (name, descriptor) => {
     Stdlib_Option.getOr(stateChangeListeners.contents[name], []).forEach(cb => cb(descriptor));
+    allStateChangeListeners.contents.forEach(cb => cb(name, descriptor));
   };
   let eventCollectorHandlers = {
     contents: {}
@@ -1116,6 +1150,7 @@ function MakeBounded(C) {
     eventLogReplayRegistry.contents = {};
     dcbEventLogReadRegistry.contents = {};
     stateChangeListeners.contents = {};
+    allStateChangeListeners.contents = [];
     eventCollectorHandlers.contents = {};
     eventCollectorPendingTopics.contents = {};
     projectionCatchupRegistry.contents = {};
@@ -1142,6 +1177,7 @@ function MakeBounded(C) {
     getDcbEventLogRead: getDcbEventLogRead,
     publishStateChange: publishStateChange,
     subscribeToStateChanges: subscribeToStateChanges,
+    subscribeToAllStateChanges: subscribeToAllStateChanges,
     registerEventCollectorHandler: registerEventCollectorHandler,
     subscribeEventCollectorToTopic: subscribeEventCollectorToTopic,
     registerProjectionCatchupHandler: registerProjectionCatchupHandler,

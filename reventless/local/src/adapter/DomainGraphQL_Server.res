@@ -234,6 +234,26 @@ let _dispatch = (req: nodeRequest, res: nodeResponse, yoga: YG.yoga, getSdl: uni
     handleLogout(req, res)
   } else if path == uploadPresignPath && req.method == "POST" {
     handleUploadPresign(req, res)
+  } else if path == "/events" && req.method == "POST" {
+    // Local AppSync Events publish endpoint (`/client/**` only). The
+    // Authorization header carries the token raw (AWS Cognito-publish shape),
+    // so it bypasses `_isInvalidBearer` above and is verified inside.
+    let authorization = req.headers->Dict.get("authorization")
+    readBody(req, body => {
+      let (status, json) = LocalEvents_Server.handlePublish(~authorization, ~body)
+      _writeJson(res, ~status, json)
+    })
+  } else if path == "/events" && req.method == "OPTIONS" {
+    // Preflight for the cross-origin browser publish (Authorization header).
+    res->writeHead(
+      204,
+      {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST,OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+      },
+    )
+    res->endEmpty
   } else if req.method == "OPTIONS" && LocalObjectStore.servedKey(path)->Option.isSome {
     // Preflight for the cross-origin browser PUT to a served-object path.
     res->writeHead(204, _corsWriteHeaders)
@@ -692,6 +712,9 @@ let start = (~port: int=4000, ~contextFactory as _: option<YG.contextFactory>=?,
   server->YG.listen(port, () =>
     log.info(~comp="GraphQL:Domain", `listening on http://localhost:${port->Int.toString}/graphql (SDL: /sdl)`)
   )
+  // Local AppSync Events transport (subscribe WS). Attached here so every
+  // start mode (split, unified, replay) carries it.
+  LocalEvents_Server.attach(~server, ~port)
   activeServer.contents = Some(server)
 }
 

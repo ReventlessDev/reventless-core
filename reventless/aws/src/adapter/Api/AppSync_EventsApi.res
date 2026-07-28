@@ -1,10 +1,19 @@
 /** AppSync_EventsApi — creates an IAM-authenticated AppSync Events (Pub/Sub) API
-    with a `default` channel namespace.
+    with a `default` channel namespace and a client-publishable `client`
+    namespace.
 
     This is a companion to the AppSync GraphQL API. Sources A and B push
     real-time events here; clients subscribe to channels such as
     `/default/{topicRoot}/{entityKey}` — see `StateTopic_AppSync.res` for
     channel layout.
+
+    Namespace auth asymmetry:
+    - `default` namespace — publish AWS_IAM only (the SigV4-signed Lambda
+      publishers); a browser must never be able to forge a change descriptor.
+    - `client` namespace  — publish + subscribe Cognito (and IAM): ephemeral
+      client→client fan-out (presence, typing, transient chat). Payloads are
+      opaque to the platform and client-asserted — consumers treat them as
+      untrusted input. See docs/plans/events-client-publish-channels.md.
 
     Usage (in platform/plugin builder after the GraphQL API is created):
       let eventsApi = AppSync_EventsApi.make(
@@ -73,7 +82,15 @@ type t = {
   api: Api.t,
   /** The `default` channel namespace created on the API. */
   defaultNamespace: option<ChannelNamespace.t>,
+  /** The client-publishable `client` namespace. Absent on plugin-stack
+      phantoms (namespaces live on the platform stack's API). */
+  clientNamespace?: ChannelNamespace.t,
 }
+
+/** Namespace name for client-publishable channels (paths under `/client/`).
+    Emitted into the host-ui config as `clientEventsNamespace` so clients can
+    gate publish-dependent features on its presence. */
+let clientNamespaceName = "client"
 
 /** Create an AppSync Events API with dual auth (Cognito + AWS_IAM) and a
     `default` channel namespace.
@@ -161,7 +178,31 @@ let make = (
     ~opts=Some({...opts, parent: api->Pulumi.Resource.makeFromJs}),
   )
 
-  {name, api, defaultNamespace: Some(defaultNamespace)}
+  // Client-publishable namespace: per-namespace auth modes override the
+  // API-level `defaultPublishAuthModes` (IAM-only), so authenticated browsers
+  // can publish ephemeral payloads on `/client/**` while `/default/**` change
+  // descriptors stay Lambda-only.
+  let clientAuthModes: Pulumi.Input.t<
+    array<Pulumi.Input.t<ChannelNamespace.authMode>>,
+  > =
+    [
+      ({authType: Api.amazonCognitoUserPools->Pulumi.Input.make}: ChannelNamespace.authMode)
+      ->Pulumi.Input.make,
+      ({authType: Api.awsIam->Pulumi.Input.make}: ChannelNamespace.authMode)
+      ->Pulumi.Input.make,
+    ]->Pulumi.Input.make
+  let clientNamespace = ChannelNamespace.make(
+    ~name=name ++ "ClientNS",
+    ~args={
+      apiId: api.apiId->Pulumi.Output.asInput,
+      name: clientNamespaceName->Pulumi.Input.make,
+      publishAuthModes: clientAuthModes,
+      subscribeAuthModes: clientAuthModes,
+    },
+    ~opts=Some({...opts, parent: api->Pulumi.Resource.makeFromJs}),
+  )
+
+  {name, api, defaultNamespace: Some(defaultNamespace), clientNamespace}
 }
 
 /** HTTP endpoint URL for use as Lambda `APPSYNC_ENDPOINT` env var.

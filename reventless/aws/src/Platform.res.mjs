@@ -949,6 +949,10 @@ function MakeWithConfig(Config) {
             [
               "platformApiEventsEndpoint",
               eventsEpOpt
+            ],
+            [
+              "clientEventsNamespace",
+              AppSync_EventsApi$ReventlessAws.clientNamespaceName
             ]
           ]) : fields;
         let withGeocoder = geocoderEpOpt !== undefined ? withEvents.concat([[
@@ -1932,6 +1936,10 @@ function Make($star) {
             [
               "platformApiEventsEndpoint",
               eventsEpOpt
+            ],
+            [
+              "clientEventsNamespace",
+              AppSync_EventsApi$ReventlessAws.clientNamespaceName
             ]
           ]) : fields;
         let withGeocoder = geocoderEpOpt !== undefined ? withEvents.concat([[

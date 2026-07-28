@@ -1580,6 +1580,13 @@ module MakeWithConfig = (
               [
                 ("domainApiEventsEndpoint", JSON.Encode.string(ep)),
                 ("platformApiEventsEndpoint", JSON.Encode.string(ep)),
+                // Capability gate: present iff the API carries the
+                // client-publishable namespace — clients hide publish-dependent
+                // features (presence, transient chat) when absent.
+                (
+                  "clientEventsNamespace",
+                  JSON.Encode.string(AppSync_EventsApi.clientNamespaceName),
+                ),
               ],
             )
           | None => fields

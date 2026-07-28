@@ -155,6 +155,12 @@ module MakeWithConfig = (
     let silent = Config.silent
   })
 
+  // Bridge Source B change descriptors onto the local Events transport
+  // (`/default/{readModel}/{entityKey}` channels) — the in-memory analogue of
+  // the AWS StateTopic → AppSync Events publish path. Harmless without
+  // subscribers; the transport itself is attached in DomainGraphQL_Server.start.
+  Bus.subscribeToAllStateChanges(LocalEvents_Server.broadcastStateChange)
+
   // Track which API target is active during deployPlugin / admin schema registration.
   // Domain = plugin-facing (default); Platform = admin/core (split mode).
   let currentDeployTarget: ref<apiTarget> = ref(Domain)

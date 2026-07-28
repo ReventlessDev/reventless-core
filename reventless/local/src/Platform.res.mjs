@@ -50,6 +50,7 @@ import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-co
 import * as ProjectionPending$ReventlessLocal from "./adapter/ProjectionPending.res.mjs";
 import * as ReadModel_Builder$ReventlessLocal from "./components/ReadModel_Builder.res.mjs";
 import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
+import * as LocalEvents_Server$ReventlessLocal from "./adapter/Api/LocalEvents_Server.res.mjs";
 import * as PlatformMCP_Server$ReventlessLocal from "./adapter/PlatformMCP_Server.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./adapter/Auth/Auth_GraphqlContext.res.mjs";
 import * as PgProjectionCatchup$ReventlessLocal from "./adapter/PgProjectionCatchup.res.mjs";
@@ -143,6 +144,7 @@ function MakeWithConfig(Config) {
     capacity: undefined,
     silent: Config.silent
   });
+  Bus.subscribeToAllStateChanges(LocalEvents_Server$ReventlessLocal.broadcastStateChange);
   let currentDeployTarget = {
     contents: "Domain"
   };
@@ -1822,6 +1824,7 @@ function Make($star) {
     capacity: undefined,
     silent: false
   });
+  Bus.subscribeToAllStateChanges(LocalEvents_Server$ReventlessLocal.broadcastStateChange);
   let currentDeployTarget = {
     contents: "Domain"
   };

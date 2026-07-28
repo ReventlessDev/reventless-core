@@ -17,6 +17,8 @@ function clearSubscribeAuth() {
   subscribeAuthRef.contents = undefined;
 }
 
+let clientNamespaceName = "client";
+
 function make(name, cognitoUserPoolId, awsRegion, opts) {
   let iamMode = {
     authType: AwsNative_AppSync_Api$PulumiAws.awsIam
@@ -69,10 +71,26 @@ function make(name, cognitoUserPoolId, awsRegion, opts) {
     codeHandlers: codeHandlersInput,
     handlerConfigs: handlerConfigsInput
   }, (newrecord.parent = api, newrecord));
+  let clientAuthModes = [
+    {
+      authType: AwsNative_AppSync_Api$PulumiAws.amazonCognitoUserPools
+    },
+    {
+      authType: AwsNative_AppSync_Api$PulumiAws.awsIam
+    }
+  ];
+  let newrecord$1 = {...opts};
+  let clientNamespace = new (AwsNative.appsync.ChannelNamespace)(name + "ClientNS", {
+    apiId: api.apiId,
+    name: clientNamespaceName,
+    publishAuthModes: clientAuthModes,
+    subscribeAuthModes: clientAuthModes
+  }, (newrecord$1.parent = api, newrecord$1));
   return {
     name: name,
     api: api,
-    defaultNamespace: defaultNamespace
+    defaultNamespace: defaultNamespace,
+    clientNamespace: clientNamespace
   };
 }
 
@@ -90,6 +108,7 @@ export {
   subscribeAuthRef,
   registerSubscribeAuth,
   clearSubscribeAuth,
+  clientNamespaceName,
   make,
   httpEndpoint,
 }

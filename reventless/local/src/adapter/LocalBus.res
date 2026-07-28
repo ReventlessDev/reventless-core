@@ -216,6 +216,10 @@ module type T = {
   //   "Removed". `position` is omitted (Phase 3 deferred).
   let publishStateChange: (~name: string, ~descriptor: JSON.t) => unit
   let subscribeToStateChanges: (string, JSON.t => unit) => unit
+  // All-changes variant: receives every publishStateChange with its read-model
+  // name. Used by the local Events transport to bridge descriptors onto
+  // `/default/{name}/{id}` channels without enumerating read models up front.
+  let subscribeToAllStateChanges: ((~name: string, ~descriptor: JSON.t) => unit) => unit
 
   // Cross-plugin EP subscription registry.
   // EventCollectors register their handler once resolved; makePlatform subscribes
@@ -463,17 +467,23 @@ module Impl = (C: BusConfig): T => {
 
   // Source B state-change hook — per QueryDb name, zero or more listeners.
   let stateChangeListeners: ref<dict<array<JSON.t => unit>>> = ref(Dict.make())
+  let allStateChangeListeners: ref<array<(~name: string, ~descriptor: JSON.t) => unit>> = ref([])
 
   let subscribeToStateChanges = (name, callback) => {
     let listeners = stateChangeListeners.contents->Dict.get(name)->Option.getOr([])
     stateChangeListeners.contents->Dict.set(name, Array.concat(listeners, [callback]))
   }
 
-  let publishStateChange = (~name, ~descriptor) =>
+  let subscribeToAllStateChanges = callback =>
+    allStateChangeListeners.contents->Array.push(callback)
+
+  let publishStateChange = (~name, ~descriptor) => {
     stateChangeListeners.contents
     ->Dict.get(name)
     ->Option.getOr([])
     ->Array.forEach(cb => cb(descriptor))
+    allStateChangeListeners.contents->Array.forEach(cb => cb(~name, ~descriptor))
+  }
 
   let eventCollectorHandlers: ref<dict<(JSON.t, unit) => promise<unit>>> = ref(Dict.make())
   let eventCollectorPendingTopics: ref<dict<array<string>>> = ref(Dict.make())
@@ -541,6 +551,7 @@ module Impl = (C: BusConfig): T => {
     eventLogReplayRegistry := Dict.make()
     dcbEventLogReadRegistry := Dict.make()
     stateChangeListeners := Dict.make()
+    allStateChangeListeners := []
     eventCollectorHandlers := Dict.make()
     eventCollectorPendingTopics := Dict.make()
     projectionCatchupRegistry := Dict.make()
