@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.187 (2026-07-28)
+
+### Features
+
+* **platform:** provision object stores from the fields that declare them ([b5e2a1e](https://github.com/ReventlessDev/reventless-core/commit/b5e2a1ec88099941c113e4963f9c4b346b96b0d6))
+
+
 # 1.0.0-alpha.186 (2026-07-28)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws
