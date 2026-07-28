@@ -21,6 +21,7 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as DcbBackend$ReventlessAws from "./adapter/DcbEventLog/DcbBackend.res.mjs";
 import * as ReadModel$ReventlessCore from "@reventlessdev/reventless-core/src/components/ReadModel/ReadModel.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
+import * as Util_Bundle$ReventlessAws from "./util/Util_Bundle.res.mjs";
 import * as Plugin_Stack$ReventlessAws from "./plugin/stack/Plugin_Stack.res.mjs";
 import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
@@ -883,19 +884,25 @@ function MakeWithConfig(Config) {
       } else {
         customDomain = undefined;
       }
-      let match$3 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined, true, [
+      let store = hostUiBundle.uploadBucket;
+      let servedBuckets = store !== undefined ? [{
+            prefix: Upload_Presign_S3$ReventlessAws.defaultServedPrefix,
+            bucketId: store.bucketId,
+            bucketArn: store.bucketArn,
+            bucketRegionalDomainName: store.bucketRegionalDomainName
+          }] : [];
+      let match$3 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
         "config.json",
         "ui-hints.json"
-      ], customDomain, Stdlib_Option.getOr(hostUiBundle.servedBuckets, []));
+      ], customDomain, servedBuckets);
       let bucketName = match$3.bucketName;
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
-      let placeIndexName = hostUiBundle.geocoderPlaceIndex;
-      let geocoderEndpointOutput = placeIndexName !== undefined ? Geocoder_AwsLocation$ReventlessAws.make(placeIndexName, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
-      let match$4 = hostUiBundle.enableUploads;
-      let match$5 = hostUiBundle.uploadBucketName;
-      let uploadEndpointOutput = match$4 !== undefined && match$4 && match$5 !== undefined ? Upload_Presign_S3$ReventlessAws.make(match$5, undefined, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
+      let index = hostUiBundle.geocoderPlaceIndex;
+      let geocoderEndpointOutput = index !== undefined ? Geocoder_AwsLocation$ReventlessAws.make(index.indexName, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
+      let store$1 = hostUiBundle.uploadBucket;
+      let uploadEndpointOutput = store$1 !== undefined ? Upload_Presign_S3$ReventlessAws.make(store$1.bucketName, undefined, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,
@@ -1870,19 +1877,25 @@ function Make($star) {
       } else {
         customDomain = undefined;
       }
-      let match$3 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined, true, [
+      let store = hostUiBundle.uploadBucket;
+      let servedBuckets = store !== undefined ? [{
+            prefix: Upload_Presign_S3$ReventlessAws.defaultServedPrefix,
+            bucketId: store.bucketId,
+            bucketArn: store.bucketArn,
+            bucketRegionalDomainName: store.bucketRegionalDomainName
+          }] : [];
+      let match$3 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
         "config.json",
         "ui-hints.json"
-      ], customDomain, Stdlib_Option.getOr(hostUiBundle.servedBuckets, []));
+      ], customDomain, servedBuckets);
       let bucketName = match$3.bucketName;
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
-      let placeIndexName = hostUiBundle.geocoderPlaceIndex;
-      let geocoderEndpointOutput = placeIndexName !== undefined ? Geocoder_AwsLocation$ReventlessAws.make(placeIndexName, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
-      let match$4 = hostUiBundle.enableUploads;
-      let match$5 = hostUiBundle.uploadBucketName;
-      let uploadEndpointOutput = match$4 !== undefined && match$4 && match$5 !== undefined ? Upload_Presign_S3$ReventlessAws.make(match$5, undefined, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
+      let index = hostUiBundle.geocoderPlaceIndex;
+      let geocoderEndpointOutput = index !== undefined ? Geocoder_AwsLocation$ReventlessAws.make(index.indexName, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
+      let store$1 = hostUiBundle.uploadBucket;
+      let uploadEndpointOutput = store$1 !== undefined ? Upload_Presign_S3$ReventlessAws.make(store$1.bucketName, undefined, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,

@@ -12,9 +12,11 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 
+let defaultServedPrefix = "uploads";
+
 function make(bucketName, corsOriginsOpt, servedPrefixOpt, opts) {
   let corsOrigins = corsOriginsOpt !== undefined ? corsOriginsOpt : ["*"];
-  let servedPrefix = servedPrefixOpt !== undefined ? servedPrefixOpt : "uploads";
+  let servedPrefix = servedPrefixOpt !== undefined ? servedPrefixOpt : defaultServedPrefix;
   let serviceName = "UploadPresignService";
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(serviceName, Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(serviceName, "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
@@ -102,6 +104,7 @@ function make(bucketName, corsOriginsOpt, servedPrefixOpt, opts) {
 }
 
 export {
+  defaultServedPrefix,
   make,
 }
 /* @pulumi/aws Not a pure module */

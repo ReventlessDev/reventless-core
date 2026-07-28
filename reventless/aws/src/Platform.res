@@ -999,8 +999,12 @@ module MakeWithConfig = (
   // `config.json` next to `index.html` so the shell discovers `apiEndpoint` and
   // `region` at boot without rebuild.
   type hostUiBundleConfig = {
-    assetsDir: string,
-    bundleVersion: string,
+    // Directory holding the built shell bundle. Defaults to the resolved
+    // `@reventlessdev/reventless-host-shell` dist — the line every platform
+    // root used to repeat verbatim. Set it only to host a different bundle.
+    assetsDir?: string,
+    // Defaults to the `~version` passed to `deployPlatform`.
+    bundleVersion?: string,
     // Optional path to a static AutoUI `ui-hints.json` (assistant-authored,
     // plain data — no app rebuild). When set, the deploy reads it and writes it
     // verbatim as a `ui-hints.json` BucketObject beside `config.json`, so the
@@ -1008,23 +1012,26 @@ module MakeWithConfig = (
     // written; the shell treats the resulting 404 as "no hints" and boots
     // unchanged. Single-mode shape: one origin-relative file per deployment.
     uiHintsFile?: string,
-    // Optional AWS Location place-index name. When set, the deploy provisions a
+    // Optional geocoding place index, as returned by
+    // `Capability_Geocoding_AwsLocation.make`. When set, the deploy provisions a
     // public geocoder Lambda Function URL (Geocoder_AwsLocation) and threads its
     // URL into config.json as `geocoderEndpoint`. Unset ⇒ no service, field
     // omitted (byte-identical config.json).
-    geocoderPlaceIndex?: Pulumi.Input.t<string>,
-    // Opt into the direct-to-S3 upload presign service (Upload_Presign_S3). Both
-    // this flag and `uploadBucketName` must be set; the deploy then provisions a
-    // public presign Lambda Function URL and threads its URL into config.json as
-    // `uploadEndpoint`. Unset ⇒ no service, field omitted.
-    enableUploads?: bool,
-    // S3 bucket the upload presign service issues PUT URLs against. Required when
-    // `enableUploads` is true.
-    uploadBucketName?: Pulumi.Input.t<string>,
-    // Buckets served read-only to the UI under a path prefix on the host-shell
-    // CloudFront distribution (same-origin, private, OAC-read). Each entry adds a
-    // `{prefix}/*` ordered cache behavior + origin + scoped BucketPolicy.
-    servedBuckets?: array<ReventlessInfra.Platform.servedBucket>,
+    geocoderPlaceIndex?: ReventlessInfra.Platform.geocoderIndex,
+    // Optional object store for direct-to-S3 uploads, as returned by
+    // `Capability_ObjectStore_S3.make`. When set, the deploy provisions the
+    // presign service (Upload_Presign_S3) against it, threads that service's URL
+    // into config.json as `uploadEndpoint`, and fronts the store read-only on
+    // the host-shell CloudFront distribution under the presign service's own
+    // prefix (a `{prefix}/*` ordered cache behavior + origin + scoped
+    // BucketPolicy, private, OAC-read).
+    //
+    // One field replaces the former `enableUploads` / `uploadBucketName` /
+    // `servedBuckets` trio, which were three ways of saying one thing and left
+    // the prefix to be restated by hand on the serve side. The framework now
+    // writes the prefix once and consumes it on both sides, so a mismatch is
+    // unrepresentable rather than merely discouraged.
+    uploadBucket?: ReventlessInfra.Platform.objectStore,
   }
 
   // Merged-mode outputs of deployPlatform — the merged API(s), plus the
@@ -1483,10 +1490,28 @@ module MakeWithConfig = (
       | _ => None
       }
 
+      // A served store is fronted under exactly the prefix the presign service
+      // roots its keys at, read from the service's own constant. This is the
+      // whole reason the store arrives as one value: the app no longer restates
+      // the prefix, so it cannot restate it wrongly.
+      let servedBuckets = switch cfg.uploadBucket {
+      | Some(store) => [
+          {
+            ReventlessInfra.Platform.prefix: Upload_Presign_S3.defaultServedPrefix,
+            bucketId: store.bucketId,
+            bucketArn: store.bucketArn,
+            bucketRegionalDomainName: store.bucketRegionalDomainName,
+          },
+        ]
+      | None => []
+      }
+
       let {distributionUrl, bucketName} = Plugin_Stack.makeUiBundleDistribution(
         ~pluginId="host-ui",
-        ~bundleVersion=cfg.bundleVersion,
-        ~assetsDir=cfg.assetsDir,
+        ~bundleVersion=cfg.bundleVersion->Option.getOr(version),
+        ~assetsDir=cfg.assetsDir->Option.getOr(
+          Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-host-shell") ++ "/dist",
+        ),
         ~spaFallback=true,
         ~stableName=true,
         // The explicit BucketObjects below write the production config.json
@@ -1500,8 +1525,8 @@ module MakeWithConfig = (
         // Served buckets front the host-shell distribution with `{prefix}/*`
         // read paths (private, OAC-read) — same origin as the SPA, so served
         // objects are addressable by same-origin relative URL with no config.json
-        // change. Unset ⇒ [] ⇒ distribution byte-identical to today.
-        ~servedBuckets=cfg.servedBuckets->Option.getOr([]),
+        // change. No upload store ⇒ [] ⇒ distribution byte-identical to today.
+        ~servedBuckets,
       )
 
       let regionStr =
@@ -1528,21 +1553,20 @@ module MakeWithConfig = (
       // index is configured; its resolved URL becomes config.json's
       // `geocoderEndpoint`. Unset ⇒ Output<None> ⇒ field omitted below.
       let geocoderEndpointOutput: Pulumi.Output.t<option<string>> = switch cfg.geocoderPlaceIndex {
-      | Some(placeIndexName) =>
-        Geocoder_AwsLocation.make(~placeIndexName).url->Pulumi.Output.apply(u => Some(u))
+      | Some(index) =>
+        Geocoder_AwsLocation.make(
+          ~placeIndexName=index.indexName,
+        ).url->Pulumi.Output.apply(u => Some(u))
       | None => Pulumi.Output.make(None)
       }
 
-      // Optional public upload presign Function URL. Needs both the opt-in flag
-      // and a target bucket; its resolved URL becomes config.json's
-      // `uploadEndpoint`. Otherwise Output<None> ⇒ field omitted below.
-      let uploadEndpointOutput: Pulumi.Output.t<option<string>> = switch (
-        cfg.enableUploads,
-        cfg.uploadBucketName,
-      ) {
-      | (Some(true), Some(bucketName)) =>
-        Upload_Presign_S3.make(~bucketName).url->Pulumi.Output.apply(u => Some(u))
-      | _ => Pulumi.Output.make(None)
+      // Optional public upload presign Function URL, provisioned against the
+      // configured store; its resolved URL becomes config.json's
+      // `uploadEndpoint`. No store ⇒ Output<None> ⇒ field omitted below.
+      let uploadEndpointOutput: Pulumi.Output.t<option<string>> = switch cfg.uploadBucket {
+      | Some(store) =>
+        Upload_Presign_S3.make(~bucketName=store.bucketName).url->Pulumi.Output.apply(u => Some(u))
+      | None => Pulumi.Output.make(None)
       }
 
       let configJsonContent =

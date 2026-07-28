@@ -63,6 +63,23 @@ type servedBucket = {
   bucketRegionalDomainName: Pulumi.Input.t<string>,
 }
 
+// A provisioned object store, as returned by the framework's object-store
+// capability helper. Carries every handle the platform needs to both write to
+// the store (presigned PUTs against `bucketName`) and serve it read-only from
+// the UI's origin — so the deployment hands over one value instead of restating
+// the bucket three times in three shapes.
+type objectStore = {
+  bucketName: Pulumi.Input.t<string>,
+  bucketId: Pulumi.Input.t<string>,
+  bucketArn: Pulumi.Input.t<string>,
+  bucketRegionalDomainName: Pulumi.Input.t<string>,
+}
+
+// A provisioned geocoding place index, as returned by the framework's geocoding
+// capability helper. A record rather than a bare name so the handle can grow
+// (ARN, data source) without moving every call site.
+type geocoderIndex = {indexName: Pulumi.Input.t<string>}
+
 // Module type alias so StateViewSliceStream can reference the component T
 // without being confused by the `module StateViewSlice` declaration inside T.
 module type StateViewSliceComponentT = StateViewSlice.T
@@ -247,29 +264,31 @@ module type T = {
       endpoint at boot. In-memory platforms typically ignore this — the shell
       is served by `vite dev` against the running in-process GraphQL server. */
   type hostUiBundleConfig = {
-    assetsDir: string,
-    bundleVersion: string,
+    // Directory holding the built shell bundle. Defaults to the resolved
+    // `@reventlessdev/reventless-host-shell` dist, which is what every
+    // deployment wants; set it only to host a different bundle.
+    assetsDir?: string,
+    // Defaults to the `~version` passed to `deployPlatform`.
+    bundleVersion?: string,
     // Optional path to a static AutoUI `ui-hints.json`, read and written
     // verbatim as a BucketObject beside `config.json` at deploy time. Unset ⇒
     // no file written; the shell treats the 404 as "no hints" and boots
     // unchanged. In-memory platforms ignore this.
     uiHintsFile?: string,
-    // Optional AWS Location place-index name. When set, the deploy provisions a
-    // public geocoder Lambda Function URL and threads its URL into config.json
-    // as `geocoderEndpoint`. Unset ⇒ no service, field omitted. In-memory
+    // Optional geocoding place index. When set, the deploy provisions a public
+    // geocoder Lambda Function URL and threads its URL into config.json as
+    // `geocoderEndpoint`. Unset ⇒ no service, field omitted. In-memory
     // platforms ignore this.
-    geocoderPlaceIndex?: Pulumi.Input.t<string>,
-    // Opt into the direct-to-S3 upload presign service. Requires
-    // `uploadBucketName`; the deploy then provisions a public presign Lambda
-    // Function URL and threads its URL into config.json as `uploadEndpoint`.
-    enableUploads?: bool,
-    // S3 bucket the upload presign service issues PUT URLs against. Required
-    // when `enableUploads` is true.
-    uploadBucketName?: Pulumi.Input.t<string>,
-    // Buckets served read-only to the UI under a path prefix on the UI's own
-    // origin (same-origin, private, CDN-fronted). Each entry adds a `{prefix}/*`
-    // read path on the host-shell distribution. In-memory platforms ignore this.
-    servedBuckets?: array<servedBucket>,
+    geocoderPlaceIndex?: geocoderIndex,
+    // Optional object store for direct-to-store uploads. When set, the deploy
+    // provisions a presign service against it, threads that service's URL into
+    // config.json as `uploadEndpoint`, and serves the store read-only from the
+    // UI's own origin under the presign service's prefix.
+    //
+    // The prefix is written once, by the framework, and consumed by both sides:
+    // a deployment cannot mint refs under one prefix and serve another.
+    // In-memory platforms ignore this.
+    uploadBucket?: objectStore,
   }
 
   /** Deploy a complete platform: creates the scheduler, builds each plugin,

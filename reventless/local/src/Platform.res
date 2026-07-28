@@ -1928,16 +1928,14 @@ module MakeWithConfig = (
   // `uiHintsFile` (the AWS deploy writes it as a BucketObject; local dev serves
   // `public/ui-hints.json` directly).
   type hostUiBundleConfig = {
-    assetsDir: string,
-    bundleVersion: string,
+    assetsDir?: string,
+    bundleVersion?: string,
     uiHintsFile?: string,
     // AWS host-ui deploy knobs — carried to satisfy the shared Platform.T
     // signature; the in-memory platform provisions no infrastructure and
     // ignores them.
-    geocoderPlaceIndex?: Pulumi.Input.t<string>,
-    enableUploads?: bool,
-    uploadBucketName?: Pulumi.Input.t<string>,
-    servedBuckets?: array<ReventlessInfra.Platform.servedBucket>,
+    geocoderPlaceIndex?: ReventlessInfra.Platform.geocoderIndex,
+    uploadBucket?: ReventlessInfra.Platform.objectStore,
   }
   let deployPlatform = (~version, ~hostUiBundle as _: option<hostUiBundleConfig>=?) => {
     log.info(~comp="Platform", `deployPlatform v${version}`)

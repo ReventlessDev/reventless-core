@@ -25,13 +25,23 @@ type serviceOutputs = {
   resources: array<Pulumi.Output.t<string>>,
 }
 
+/**
+The prefix presigned object keys are rooted at, and therefore the prefix the
+store must be served under for the returned `/{key}` ref to resolve.
+
+Exported so the serve side reads the same constant the mint side writes. The two
+have to agree exactly: a mismatch deploys green and 404s every object, because
+nothing at deploy time compares a minted key against a cache behavior.
+*/
+let defaultServedPrefix = "uploads"
+
 let make = (
   ~bucketName: Pulumi.Input.t<string>,
   ~corsOrigins: array<string>=["*"],
   // Prefix the presigned object keys are rooted at; must match the served
   // bucket's CloudFront `{prefix}/*` behavior so the returned `/{key}` ref
-  // resolves. Defaults to `uploads`.
-  ~servedPrefix: string="uploads",
+  // resolves.
+  ~servedPrefix: string=defaultServedPrefix,
   ~opts=?,
 ): serviceOutputs => {
   let serviceName = "UploadPresignService"
