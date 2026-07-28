@@ -995,11 +995,11 @@ importers:
   packages/reventless-ppx:
     optionalDependencies:
       '@reventlessdev/reventless-ppx-darwin-arm64':
-        specifier: ^1.0.0-alpha.55
-        version: 1.0.0-alpha.55
+        specifier: ^1.0.0-alpha.58
+        version: 1.0.0-alpha.58
       '@reventlessdev/reventless-ppx-linux-x64':
-        specifier: ^1.0.0-alpha.55
-        version: 1.0.0-alpha.55
+        specifier: ^1.0.0-alpha.58
+        version: 1.0.0-alpha.58
 
   rescript/anthropic:
     dependencies:
@@ -5030,13 +5030,13 @@ packages:
       react: ^18.3.1
       rescript: ^12.3.0
 
-  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.55':
-    resolution: {integrity: sha512-j0RgCLxNsvbPOoKVdqmr0+At14X5qcjUdq9PMNx3LB3p6H0X3fhucJsp+ecisu6AzsO0lNzu2cshXakc7spSXg==}
+  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.58':
+    resolution: {integrity: sha512-Pynt83GJoafUFlIqU2AILojQp8EdJCWF4H/VjndJKwLeCDbJDs2H9k3/fKAcUGWcnkPweuie22g7V9mYcB790w==}
     cpu: [arm64]
     os: [darwin]
 
-  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.55':
-    resolution: {integrity: sha512-UitEwPkrXY+FxZKx9h1da5tG0d3guy/7mU2rscfxC4OV5/okBISCjbvrs5mV3eQ8smU5vVWAwL44g2vfdGCBDg==}
+  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.58':
+    resolution: {integrity: sha512-Yw7uR3W6G/X59fIFWIDZR8oOJ3pQnzCnYc0V2GvDu7ZmRvU6jGqo/u+S85KEl9203dDvZiVbWTA6pDzGmu7b+A==}
     cpu: [x64]
     os: [linux]
 
@@ -18478,10 +18478,10 @@ snapshots:
       rescript: 12.3.0
     optional: true
 
-  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.55':
+  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.58':
     optional: true
 
-  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.55':
+  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.58':
     optional: true
 
   '@reventlessdev/reventless-ui@3.0.0-alpha.40(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(rescript@12.3.0)':
