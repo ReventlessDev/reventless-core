@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.59 (2026-07-28)
+
+### Bug Fixes
+
+* **reventless-ppx:** pin the alpha.58 platform binaries carrying [@storage](https://github.com/storage)Ref ([1b9987f](https://github.com/ReventlessDev/reventless-core/commit/1b9987f68375c82c5a21ccddf5f9d425c0f74db1))
+
+
 # 1.0.0-alpha.58 (2026-07-28)
 
 **Note:** Version bump only for package @reventlessdev/reventless-ppx
