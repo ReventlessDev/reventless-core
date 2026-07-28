@@ -1,7 +1,11 @@
 # Plan: platform capability provisioning — Stage 2 (declaration-driven object stores)
 
 **Date:** 2026-07-28
-**Status:** Proposed.
+**Status:** Steps 1–6 executed 2026-07-28. Build green, `reventless-core` 553/553 and the default
+suite 1535/1535. **Preview-verified on stack `alpha`, not applied** — the existing store is `(same)`
+with 0 replacements and 0 deletions across the whole preview. Teardown and the live legacy-ref fetch
+remain open. See [What landed, and what the plan got wrong](#what-landed-and-what-the-plan-got-wrong)
+and [Status of each](#status-of-each--2026-07-28).
 **Repos:** `reventless-core` only.
 **Analysis:** [platform-main-capability-provisioning.md](../analysis/platform-main-capability-provisioning.md) §5.3, §7 Stage 2, §8.
 **Builds on:** [platform-capability-provisioning-stage-0.md](./platform-capability-provisioning-stage-0.md)
@@ -299,6 +303,79 @@ let default = Platform.deployPlatform(
 `~capabilities` is still hand-written here — deriving it is Stage 3. The value of writing it by hand
 first is that the list is reviewable and the generator has an existing shape to emit.
 
+## What landed, and what the plan got wrong
+
+Executed 2026-07-28. Four corrections, one of which changes the plan's shape rather than its
+detail.
+
+### Step 3 was unbuildable as written: the platform provisions, the tags attribute
+
+The plan said object stores "move out of the platform root into `Plugin_Stack`, beside the plugin's
+other owned substrate". A plugin's *stack* cannot own them. Three independent reasons, any one of
+which is decisive:
+
+- **Deploy order.** Plugin stacks reference the platform stack's outputs, so the platform deploys
+  first. A store owned by a plugin stack cannot be fronted by the platform's CloudFront
+  distribution without inverting that order or requiring a second platform deploy.
+- **The shared layout has no single owner.** Gate 1 puts every non-prod stack's stores in one
+  bucket. No plugin stack can own a bucket several plugins' stores live in.
+- **Step 6 already said so.** `~capabilities` is a parameter of `deployPlatform`. The platform is
+  handed the list; steps 3 and 6 disagreed with each other, and step 6 was right.
+
+So the bucket is created by the platform deploy, and **ownership is expressed in the tags**: a
+per-store bucket carries `scope=Plugin, plugin={plugin}`, a shared bucket carries `scope=Platform`
+because that is what it is. `Capability_ObjectStore_S3.make` takes `~plugin` and switches its
+attribution on it; the legacy hand-written store passes none and its tags are unchanged.
+
+### A served bucket is one bucket with several prefixes, not one prefix
+
+`ReventlessInfra.Platform.servedBucket` carried a single `prefix`, and `Plugin_Stack` created one
+CloudFront origin *and one `BucketPolicy`* per entry. Under the shared layout that is a live defect:
+S3 permits exactly **one** bucket policy per bucket, so the second store's CloudFront read grant
+would silently replace the first store's. It deploys green and 404s half the objects.
+
+`servedBucket` is now `{id, prefixes, …}` — one entry per bucket, carrying every prefix served from
+it. One origin, one policy, N cache behaviours. The failure is unrepresentable rather than a rule to
+remember.
+
+### The two layouts do not fork in the IAM policy either
+
+The plan expected the presign policy's resource ARN to differ between layouts (the store's whole
+bucket on prod, `{bucket}/{store}/*` on a shared stack). Because keys are rooted at the store name
+in *both* layouts, `{bucket}/{servedPrefix}/*` is least-privilege in both — a dedicated bucket's
+service still cannot write outside its own prefix. One expression, no branch. That is a stronger
+form of "the two layouts are one model" than the plan claimed.
+
+`Upload_Presign_S3.make` gained `~name` (defaulting to the previous single-service name, so the
+existing service keeps its identity) and its policy tightened from `{bucket}/*` to
+`{bucket}/{prefix}/*` — which also narrows the legacy service, correctly.
+
+### `@storageRef`'s attribute position fails silently
+
+`@storageRef("documents") documentUrl: string` marks the field. `documentUrl: @storageRef("documents")
+string` attaches the attribute to the *type expression* instead, where the ppx never looks — it
+compiles, deploys green, and provisions nothing. Cost an hour of debugging a "collection returns
+nothing" that was a mis-typed fixture, not a walk bug. The fixture carries a note at the point of
+declaration.
+
+### Also worth recording
+
+- **The prod list is shared, not duplicated.** `Util_HostUiDomain.resolveProdStacks` is the one
+  reader of `hostUiProdStacks`; both domain naming and store layout call it. No second key.
+- **Legacy refs keep resolving by construction.** The hand-written store is served alongside the
+  declared ones rather than replaced — `uploads` is a store that predates the declaration.
+  `config.json` keeps `uploadEndpoint` (the legacy service) and gains `uploadEndpoints`, a
+  `{qualified-store → url}` map. With nothing declared, `config.json` is byte-identical.
+- **`~hostUi=Default`** from step 6's sketch was not adopted; `~hostUiBundle` is unchanged. Renaming
+  it is not this stage's business.
+- **`pluginStructure.requiredStores`** carries the collected declarations, fully qualified to
+  `{plugin}.{store}` and deduplicated, so Stage 3's generator reads a list rather than re-walking
+  every component.
+- **An app-called `Capability_ObjectStore_S3.make` defaults to `protect: true`** and knows nothing
+  about the stack. On a disposable stack a hand-written store would therefore block teardown. Only
+  the declared path decides protection from the stack; the hand-written one cannot, which is one
+  more reason to declare stores rather than write them.
+
 ## Verification
 
 - **The declaration drives it.** Adding `@storageRef("invoices")` to a catalog command and running
@@ -325,6 +402,56 @@ first is that the list is reviewable and the generator has an existing shape to 
 - Tag coverage: every provisioned store discoverable by the `reventless:platform` +
   `reventless:environment` filter pair, as Stage 0 established.
 - Full root build green, suite green, no `.res.mjs` churn beyond intended files.
+
+### Status of each — 2026-07-28
+
+Everything provable without infrastructure is done; everything that needs a deploy is not. The
+split is worth being blunt about, because the items still open are the ones carrying the
+destructive risk.
+
+| Item | State |
+|---|---|
+| Both layouts, and the per-store/shared naming | ✅ `Util_StoreLayoutTest`, 14 assertions, including the `alpha` shares-a-bucket-and-is-still-protected pairing and the accepted fail-open on an unlisted production name |
+| Refs are layout-independent | ✅ asserted on `keyPrefixFor`, which is the single place the ref's prefix is decided |
+| The declaration drives it | ✅ preview: the one declared store produces `alpha-stores` + PAB + a `productImages/*` CDN behaviour + `UploadPresign-catalog-productImages` (role, policy, function, URL). Removal-stays-protected is implied by the lock but not separately exercised |
+| **No replacement of the existing store** | ✅ **`aws:s3/bucket:Bucket::online-shop-uploads (same) 🔒`** — no property diff, no replace, and **0 replacements and 0 resource deletions in the whole preview**. Judged by the step verb, per Gate 2 |
+| Per-store presign writes only its own prefix | ✅ preview: the new policy's resource is `arn:aws:s3:::alpha-stores-…/productImages/*`, and the legacy service *narrows* from `…/*` to `…/uploads/*` |
+| Teardown of a disposable stack leaves no bucket | ❌ open — needs an actual `destroy`, and is invisible to a deploy-only test |
+| Legacy `/uploads/…` refs still resolve | ⚠️ the `uploads/*` cache behaviour is unchanged in the preview and the bucket is untouched; not yet fetched over HTTP |
+| Tag coverage via the platform+environment filter pair | ⚠️ the created bucket carries `scope=platform`, `plugin=""` (shared bucket ⇒ platform substrate, by design); the ambient platform/environment tags are applied by the same helper as today but unverified on the live resource |
+| Build + suite | ✅ green; `reventless-core` 553/553, default suite 1535/1535, no `.res.mjs` deletions |
+
+**Preview of record — 2026-07-28, stack `alpha`, not applied.** `0 replacements, 0 deletions`;
+`+17 create / ~23 update / -10 delete / 138 unchanged`. Ten of the creates and all ten deletes are
+`host-ui-asset-*` `BucketObject`s — the local `reventless-host-shell` dist differs from the one CI
+installed, so they are environment noise and would not appear in a CI preview. The seven real
+creates are the store bucket, its public-access block, the served bucket policy, and the presign
+role/policy/function/URL. CloudFront's `orderedCacheBehaviors` shows a **positional shift**, not a
+rewire: the new `productImages/*` behaviour inserts at index 1 and pushes `/remoteEntry.js`,
+`/index.html`, `/config.json` down one, each keeping its own cache policy.
+
+Reproducing this locally needs the deploy workflow's environment, or the preview reports false
+diffs that swamp the real ones — an unset `REVENTLESS_COGNITO_USER_POOL_ID` auto-provisions a fresh
+UserPool, and unset host-UI domain variables tear down the ACM cert and Route53 alias:
+
+```sh
+AWS_REGION=eu-west-1 \
+REVENTLESS_HOST_UI_BASE_DOMAIN=… REVENTLESS_HOST_UI_HOSTED_ZONE_ID=… \
+REVENTLESS_COGNITO_USER_POOL_ID=$(pulumi stack output cognitoUserPoolId) \
+REVENTLESS_LAYER_ARN=$(aws ssm get-parameter --name /reventless/layer-arn/alpha \
+  --query Parameter.Value --output text) \
+pulumi preview --stack alpha --diff
+```
+
+The stack lives in **Pulumi Cloud**, not the S3 state backend — `pulumi stack ls` against the S3
+backend reports it missing, which reads as "never deployed" rather than "wrong backend".
+
+One infrastructure note found while verifying: the `reventless-core` jest project contributes **no
+tests to the default `pnpm test` run** — its `tests/**/*.res.mjs` only exist after the package is
+built directly, and the run reports 210 suites either way. That is the dark coverage diagnosed in
+`ci-unit-test-coverage-gap.md` and tracked by `untrack-test-mjs-via-root-build-emission.md`; it is
+pre-existing and unchanged here. It does mean **core's suite has to be run explicitly**
+(`jest --selectProjects reventless-core`) to see these assertions at all.
 
 ## Risks
 
