@@ -1,15 +1,19 @@
 # Plan: platform capability provisioning — Stage 2 (declaration-driven object stores)
 
 **Date:** 2026-07-28
-**Status:** Steps 1–6 executed 2026-07-28. Build green, `reventless-core` 553/553 and the default
-suite 1535/1535. **Preview-verified on stack `alpha`, not applied** — the existing store is `(same)`
-with 0 replacements and 0 deletions across the whole preview. Teardown and the live legacy-ref fetch
-remain open. See [What landed, and what the plan got wrong](#what-landed-and-what-the-plan-got-wrong)
-and [Status of each](#status-of-each--2026-07-28).
+**Status:** **Complete.** Steps 1–6 executed, released, and applied to stack `alpha` 2026-07-28.
+Build green, `reventless-core` 553/553 and the default suite 1535/1535; preview showed 0
+replacements and 0 deletions, and the apply matched it. The declared store is live and serving, and
+legacy `/uploads/…` refs still fetch `200`. **Both layouts and teardown have now been exercised on
+real infrastructure** via two throwaway stacks, since destroyed — see
+[The Gate 1 coverage exercise](#the-gate-1-coverage-exercise--executed-2026-07-28), which also
+records the one hand-written store that leaks on teardown and the reason the example cannot be
+deployed twice in one account. See also
+[What landed, and what the plan got wrong](#what-landed-and-what-the-plan-got-wrong).
 **Repos:** `reventless-core` only.
-**Analysis:** [platform-main-capability-provisioning.md](../analysis/platform-main-capability-provisioning.md) §5.3, §7 Stage 2, §8.
+**Analysis:** [platform-main-capability-provisioning.md](../../analysis/platform-main-capability-provisioning.md) §5.3, §7 Stage 2, §8.
 **Builds on:** [platform-capability-provisioning-stage-0.md](./platform-capability-provisioning-stage-0.md)
-(framework-provisioned stores) and [done/semantic-type-marker-and-storage-ref.md](./done/semantic-type-marker-and-storage-ref.md)
+(framework-provisioned stores) and [semantic-type-marker-and-storage-ref.md](./semantic-type-marker-and-storage-ref.md)
 (the declaration).
 
 ## What this closes
@@ -88,7 +92,7 @@ identical across every environment. Take the redundancy.
 ### Naming production explicitly, because this polarity fails open
 
 `ReventlessSeedAws_Reset` warns about exactly this shape at
-[:112](../../reventless/seed-aws/src/ReventlessSeedAws_Reset.res#L112): *"Fail-closed name
+[:112](../../../reventless/seed-aws/src/ReventlessSeedAws_Reset.res#L112): *"Fail-closed name
 allowlist. A denylist ('everything except prod') fails open"*. Keying isolation off "is this prod"
 inherits that: a **new** production stack whose name is not on the list — `production`, `live`,
 `prod-eu` — silently gets the weaker layout, and nothing fails.
@@ -228,8 +232,8 @@ values that events reference; a task bucket is wired by a slice and holds transi
 ### 1. Collect declared capabilities into `Plugin_Structure`
 
 `Plugin_Structure` already walks component schemas and reads type-carried facts — it calls
-`Reference.getTarget` at [:161](../../reventless/core/src/plugin/component/Plugin_Structure.res#L161)
-and [:253](../../reventless/core/src/plugin/component/Plugin_Structure.res#L253). Add the same
+`Reference.getTarget` at [:161](../../../reventless/core/src/plugin/component/Plugin_Structure.res#L161)
+and [:253](../../../reventless/core/src/plugin/component/Plugin_Structure.res#L253). Add the same
 treatment for `StorageRef.getStore`, collecting a deduplicated set of required stores per plugin.
 
 Walk **commands, events and state** — a store referenced only by a read model still has to exist.
@@ -259,7 +263,7 @@ the buckets themselves.
 ### 4. Per-store presign, least-privilege
 
 Today one `Upload_Presign_S3` service holds `s3:PutObject` on the single upload bucket
-([Platform.res](../../reventless/aws/src/Platform.res), presign provisioning) and mints keys under
+([Platform.res](../../../reventless/aws/src/Platform.res), presign provisioning) and mints keys under
 one `defaultServedPrefix`. That becomes **one presign service per store** in both layouts — scoped to
 the store's own bucket on prod, and to `{bucket}/{store}/*` on a shared stack.
 
@@ -277,7 +281,7 @@ blast radius the per-store split exists to remove.
 ### 5. `protect` / `retainOnDelete` — before, not after
 
 Provisioned stores carry `protect: true` per
-[protecting-prod-infrastructure-resources.md](../analysis/protecting-prod-infrastructure-resources.md)
+[protecting-prod-infrastructure-resources.md](../../analysis/protecting-prod-infrastructure-resources.md)
 on every stack except `pr-*`, which carries `forceDestroy: true` instead so teardown works. Per
 Gate 1 this follows **disposability, not layout**: `alpha` shares a bucket and is still protected.
 
@@ -405,23 +409,80 @@ declaration.
 
 ### Status of each — 2026-07-28
 
-Everything provable without infrastructure is done; everything that needs a deploy is not. The
-split is worth being blunt about, because the items still open are the ones carrying the
-destructive risk.
+The shared layout is now exercised end to end on a real stack. What remains open is not a loose end
+of the same kind: it is the **other** layout, plus teardown — the two paths where a mistake destroys
+something, and the two that no amount of deploying `alpha` will reach.
 
 | Item | State |
 |---|---|
 | Both layouts, and the per-store/shared naming | ✅ `Util_StoreLayoutTest`, 14 assertions, including the `alpha` shares-a-bucket-and-is-still-protected pairing and the accepted fail-open on an unlisted production name |
-| Refs are layout-independent | ✅ asserted on `keyPrefixFor`, which is the single place the ref's prefix is decided |
-| The declaration drives it | ✅ preview: the one declared store produces `alpha-stores` + PAB + a `productImages/*` CDN behaviour + `UploadPresign-catalog-productImages` (role, policy, function, URL). Removal-stays-protected is implied by the lock but not separately exercised |
-| **No replacement of the existing store** | ✅ **`aws:s3/bucket:Bucket::online-shop-uploads (same) 🔒`** — no property diff, no replace, and **0 replacements and 0 resource deletions in the whole preview**. Judged by the step verb, per Gate 2 |
-| Per-store presign writes only its own prefix | ✅ preview: the new policy's resource is `arn:aws:s3:::alpha-stores-…/productImages/*`, and the legacy service *narrows* from `…/*` to `…/uploads/*` |
-| Teardown of a disposable stack leaves no bucket | ❌ open — needs an actual `destroy`, and is invisible to a deploy-only test |
-| Legacy `/uploads/…` refs still resolve | ⚠️ the `uploads/*` cache behaviour is unchanged in the preview and the bucket is untouched; not yet fetched over HTTP |
-| Tag coverage via the platform+environment filter pair | ⚠️ the created bucket carries `scope=platform`, `plugin=""` (shared bucket ⇒ platform substrate, by design); the ambient platform/environment tags are applied by the same helper as today but unverified on the live resource |
+| Refs are layout-independent | ✅ asserted on `keyPrefixFor`, the single place the ref's prefix is decided |
+| The declaration drives it | ✅ applied: the one declared store produced `alpha-stores-507202d` + PAB + a `productImages/*` CDN behaviour + `UploadPresign-catalog-productImages` (role, policy, function, URL). Removal-stays-protected is implied by the lock but not separately exercised |
+| **No replacement of the existing store** | ✅ preview `aws:s3/bucket:Bucket::online-shop-uploads (same) 🔒` — no property diff, no replace, **0 replacements and 0 resource deletions** across the whole preview; the apply matched. Judged by the step verb, per Gate 2 |
+| Per-store presign writes only its own prefix | ✅ the new policy's resource is `arn:aws:s3:::alpha-stores-507202d/productImages/*`, and the legacy service *narrowed* from `…/*` to `…/uploads/*` |
+| Refs are rooted at the store, per service | ✅ applied: the declared store's presign mints `/productImages/{uuid}/{file}`; the legacy service still mints `/uploads/{uuid}/{file}` |
+| Legacy `/uploads/…` refs still resolve | ✅ applied and fetched: `GET /uploads/6a46ec4a-…/prd-002.svg` → `200 image/svg+xml, 291 bytes`. The append-only promise holds |
+| Tag coverage via the platform+environment filter pair | ✅ applied: `alpha-stores-507202d` carries `reventless:platform=online-shop-hybrid-platform-aws`, `reventless:environment=alpha`, `reventless:scope=platform` — discoverable by the filter pair the store wipe uses |
+| Per-store endpoint reaches the UI | ✅ applied: `config.json` carries `uploadEndpoints: {"catalog.productImages": …}` beside the unchanged `uploadEndpoint` |
+| **Teardown of a disposable stack leaves no bucket** | ✅ throwaway `pr-gate1`: the declared store deleted in 0.89s and left nothing; the account was checked for leaks afterwards |
+| **The per-store layout** | ✅ throwaway `prod-verify`: one bucket per store (`catalog-productimages-…`), tagged `scope=plugin, plugin=catalog`, presign IAM scoped to `arn:aws:s3:::catalog-productimages-…/productImages/*` — a real bucket boundary, not a prefix one |
+| **Protection actually blocks destruction** | ✅ `prod-verify`'s `destroy` **refused** on the per-store bucket: *"because it is protected"*. This is the second half of the headline pair — removing a store shows it protected, not destroyed |
 | Build + suite | ✅ green; `reventless-core` 553/553, default suite 1535/1535, no `.res.mjs` deletions |
 
-**Preview of record — 2026-07-28, stack `alpha`, not applied.** `0 replacements, 0 deletions`;
+### The Gate 1 coverage exercise — executed 2026-07-28
+
+Two throwaway stacks, deployed and destroyed, closing the rows no amount of deploying a
+shared-layout stack could reach. Both are gone; the account was checked for leftovers and `alpha`
+was confirmed untouched (128 objects) afterwards.
+
+The layout branch is chosen from config, and the deploy says so:
+
+```
+prod-verify : "object stores: bucket per store, protected"
+pr-gate1    : "object stores: shared bucket, {store}/… prefixes, unprotected (disposable stack)"
+```
+
+`prod-verify` is not on the default prod list — it took the per-store branch only because
+`REVENTLESS_HOST_UI_PROD_STACKS` said so, which exercises the config override that pays down the
+fail-open, not just the default.
+
+**Three things this exercise established that reasoning had not.**
+
+**Protection follows disposability, and the split is visible in one state dump.** On `pr-gate1`:
+
+| bucket | `protect` | `forceDestroy` | source |
+|---|---|---|---|
+| `pr-gate1-stores` | false | **true** | declared store, disposable stack |
+| `online-shop-uploads` | **true** | false | app-called `make`, framework default |
+| `host-ui-bundle` | false | false | hosting substrate |
+
+**A hand-written store breaks teardown; a declared one does not.** `pulumi destroy` on `pr-gate1`
+deleted 35 resources — the declared store among them, in 0.89s — and then *refused* on
+`online-shop-uploads`, leaking it. The plan already noted that an app-called
+`Capability_ObjectStore_S3.make` takes the safe default and cannot know it is on a disposable stack.
+That is no longer a caveat to be reasoned about: it is the observed failure the `pr-*` row exists to
+prevent, and it is the strongest argument for declaring stores rather than writing them. Anything
+still constructing a store by hand will leak it on every disposable stack.
+
+**Protection is not decorative.** `prod-verify`'s `destroy` refused on `catalog-productImages`
+— *"because it is protected"* — which is the half of the headline verification that no preview can
+show. A field rename cannot destroy a per-store bucket.
+
+**Two obstacles found, neither caused by this stage:**
+
+- **The example cannot be deployed twice in one account.** `Main.res` hardcodes
+  `~name="online-shop-geocoder"`, and AWS Location place-index names are *not* auto-suffixed the way
+  S3 bucket names are, so the second stack dies on
+  `ConflictException: Place index already exists`. Both throwaway deploys aborted partway because of
+  it (36–37 resources in, store bucket already created, so the verification still landed — the
+  presign policy needed a second `up` pass to be reached). **Anyone repeating this exercise will hit
+  it.** Making that name stack-scoped would remove the obstacle, but it renames a live resource on
+  `alpha`, so it is its own change, not a side effect of one.
+- **S3 lowercases the physical bucket name**: `catalog-productImages` became
+  `catalog-productimages-0c17493`. Traceability back to the declaration survives, but it is no longer
+  byte-identical, and two store names differing only in case would collide on one physical prefix.
+
+**Preview of record — 2026-07-28, stack `alpha`, reviewed before the apply.** `0 replacements, 0 deletions`;
 `+17 create / ~23 update / -10 delete / 138 unchanged`. Ten of the creates and all ten deletes are
 `host-ui-asset-*` `BucketObject`s — the local `reventless-host-shell` dist differs from the one CI
 installed, so they are environment noise and would not appear in a CI preview. The seven real
@@ -446,6 +507,17 @@ pulumi preview --stack alpha --diff
 The stack lives in **Pulumi Cloud**, not the S3 state backend — `pulumi stack ls` against the S3
 backend reports it missing, which reads as "never deployed" rather than "wrong backend".
 
+**Applied 2026-07-28** via the release → layer → deploy chain a push to `alpha` triggers. Deploy
+Platform green in 3m7s; the verification above was then run against the live stack.
+
+One operational note, since it cost a re-run: the first deploy attempt hung **16+ minutes** in
+`Install Pulumi CLI` (`pulumi/setup-pulumi@v2`) while the *sibling* plugin job in the same run
+finished the identical step in 4s — degraded runner egress, not configuration. `setup-pulumi` retries
+its download with no deadline, and these jobs declare no `timeout-minutes`, so GitHub's 6-hour
+default applies while `concurrency: cancel-in-progress: false` queues every subsequent deploy behind
+it. Cancelling and re-dispatching cleared it (3–6s in every job). Worth a `timeout-minutes` on these
+jobs so a hung download fails in minutes rather than hours.
+
 One infrastructure note found while verifying: the `reventless-core` jest project contributes **no
 tests to the default `pnpm test` run** — its `tests/**/*.res.mjs` only exist after the package is
 built directly, and the run reports 210 suites either way. That is the dark coverage diagnosed in
@@ -457,12 +529,12 @@ pre-existing and unchanged here. It does mean **core's suite has to be run expli
 
 | Risk | Mitigation |
 |---|---|
-| **Moving the store between stacks replaces it.** The URN changes when ownership moves from the platform root to a plugin stack — the same class of failure Gate 2 investigated, but this time genuinely reachable. | Explicit alias or `pulumi import`. Verify with a preview showing update/import, never replace, before applying to any stack with objects. This is the one step that must not be reviewed casually. |
+| ~~**Moving the store between stacks replaces it.**~~ **Retired** — the premise was wrong. Ownership never moves: the platform stack provisions, and attribution lives in the tags (see the step-3 correction). No URN changes, and the applied preview showed 0 replacements. | The discipline still stands for anything that *does* move a store: verify by the Pulumi step verb on a preview, never by `ListBuckets`' `CreationDate`. |
 | **Silent deprovisioning by field rename** (§8). | Step 5's `protect: true`, landed in the same commit as provisioning. Capability removal also becomes a reviewable diff once Stage 3 generates the list. |
 | **Bucket ceiling turns out to bind.** | Gate 1 decided before code: only prod gets a bucket per store, and prod does not multiply. Every stack that does multiply shares one. The ref grammar admits both layouts without a stored-value migration. |
 | **A new production stack silently gets shared buckets** because its name is not on the prod list — this polarity fails open, by the reset tool's own argument at `:112`. | Accepted, and paid down explicitly: a config-overridable prod list converged with `hostUiProdStacks` (one notion of "production", not two that can disagree), plus a deploy-time log line naming the chosen layout so it is visible on the first deploy rather than at an audit. |
 | **Protection wired to layout**, giving `alpha` `forceDestroy` because it shares a bucket — while it holds hand-entered data. | Two independent predicates. `wipeable` authorises a *deliberate* reset, not accidental destruction; only `pr-*` is unprotected. |
-| **A PR stack fails teardown** because its buckets are protected, leaking the buckets sharing exists to save. | `pr-*` gets `forceDestroy` and no protection. Covered by a destroy test, not only a deploy test. |
+| **A PR stack fails teardown** because its buckets are protected, leaking the buckets sharing exists to save. | **Verified 2026-07-28** on a throwaway `pr-*` stack: the *declared* store gets `forceDestroy` and no protection, and deleted cleanly. The residual risk is real but sits elsewhere — a store written by hand in a platform root takes the protected default and **did** leak on that teardown. Declared stores are covered; hand-written ones are not, and cannot be. |
 | Per-store presign multiplies Lambdas and Function URLs per stack. | Count them in Gate 1's arithmetic alongside buckets — the ceiling question is not only about S3. |
 | A store declared by two plugins. | `(plugin, store)` is the identity; two plugins declaring the same store name get two stores. Cross-plugin sharing is the qualified `@storageRef("other.store")` form, which requires the owner to exist — assert it rather than provisioning implicitly. |
 

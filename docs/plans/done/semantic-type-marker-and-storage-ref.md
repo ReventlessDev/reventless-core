@@ -26,16 +26,16 @@ and closed, and it keeps `Reference.getTarget` total instead of a decode that ca
 Not done here: the per-platform PPX binary packages must be republished by CI before any downstream
 repo can use `@storageRef`.
 **Repos:** `reventless-core` (this plan) — `reventless-ui` ships the reader half under its own plan.
-**Analysis:** [platform-main-capability-provisioning.md](../analysis/platform-main-capability-provisioning.md)
+**Analysis:** [platform-main-capability-provisioning.md](../../analysis/platform-main-capability-provisioning.md)
 §5.1, §5.6, §7 Stages 0.5–1.
 
 ## Why
 
 Two typed markers ship today and each is bespoke. `DateTime` sets its own `dateTimeId`
-([DateTime.res](../../reventless/spec/src/types/DateTime.res)); `Reference` sets its own
-`referenceId` ([Reference.res](../../reventless/spec/src/components/Reference.res)); and
+([DateTime.res](../../../reventless/spec/src/types/DateTime.res)); `Reference` sets its own
+`referenceId` ([Reference.res](../../../reventless/spec/src/components/Reference.res)); and
 `SchemaType.fromSury` detects both by hardcoded special case
-([SchemaType.res:15](../../reventless/core/src/components/Api/SchemaType.res#L15) and `:30`). There
+([SchemaType.res:15](../../../reventless/core/src/components/Api/SchemaType.res#L15) and `:30`). There
 is no generic "this field's type carries a semantic" machinery, so **every new typed marker is new
 detection code**.
 
@@ -45,11 +45,11 @@ inject `@s.matches(Reventless.StorageRef.forStore(…))` — a type refinement, 
 during the schema walk today.
 
 The decisive detail (§5.6): `x-reventless-semantic` is emitted **only** by `mergeAnnotations`
-([SuryToJsonSchema.res:14-90](../../reventless/core/src/components/Api/SuryToJsonSchema.res#L14-L90),
+([SuryToJsonSchema.res:14-90](../../../reventless/core/src/components/Api/SuryToJsonSchema.res#L14-L90),
 key set at `:71-73`), which is fed by the PPX-collected `spec.semantic` array and therefore reaches
 **read-model `state` records only** — the PPX gates every injection site on
 `ptype_name.txt = "state"` (11 sites in
-[StateAnnotations.ml](../../packages/reventless-ppx/src/ppx/StateAnnotations.ml)). The *other* path
+[StateAnnotations.ml](../../../packages/reventless-ppx/src/ppx/StateAnnotations.ml)). The *other* path
 — `toJsonSchema` → `deriveObjectSchema` → `fromSchemaType` (`:91-162`) — is schema-shape-driven,
 never consults `spec`, and walks **any** schema including commands and events.
 
@@ -121,7 +121,7 @@ DCB-tagged) misclassify.
 ### 4. `StorageRef` — the first new semantic type
 
 `reventless/spec/src/semantic/StorageRef.res`, following the `Id.T` shape
-([Id.res](../../reventless/spec/src/types/Id.res)) rather than inventing a convention:
+([Id.res](../../../reventless/spec/src/types/Id.res)) rather than inventing a convention:
 
 ```rescript
 type t                                            // abstract — the invariant is unbypassable
@@ -146,7 +146,7 @@ Decisions, each following the analysis:
 ### 5. The `@storageRef("<store>")` PPX shorthand
 
 Injects `@s.matches(StorageRef.forStore(~plugin, ~store))` onto the field's type. The `@partitionTag`
-handling in [StateAnnotations.ml](../../packages/reventless-ppx/src/ppx/StateAnnotations.ml) is the
+handling in [StateAnnotations.ml](../../../packages/reventless-ppx/src/ppx/StateAnnotations.ml) is the
 model — it already injects `@s.matches(Reventless.DcbTag.string)`.
 
 Unlike `@semantic`, this must work on **command and event** records, not just `type state`. The
