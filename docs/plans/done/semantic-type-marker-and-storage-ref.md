@@ -1,7 +1,30 @@
 # Plan: generic semantic marker + `StorageRef` as the first semantic type
 
 **Date:** 2026-07-28
-**Status:** Proposed.
+**Status:** DONE 2026-07-28 (`aa18afcf0` foundation, `44f15c37d` StorageRef) — all six steps landed.
+Build clean, suite 2240/2240. The re-expression met its acceptance criterion: `SuryToJsonSchemaTest`,
+`PluginStructureTest` and `GraphQL_FragmentGeneratorTest` pass untouched. The command-field proof
+holds — `ChangeProductImage.imageUrl` carries `x-reventless-semantic` on a *command*, which the
+annotation path structurally cannot reach.
+
+Two departures from the sketch, both forced by the same fact — that the marker refines an existing
+`string` field rather than replacing it, which is what lets it be retrofitted with no stored value
+changing. (1) `StorageRef.t` is transparent, not abstract: `@s.matches` requires the schema's type to
+match the field's, so sealing it would change the field's runtime type. The `StringPure` mitigation
+is therefore moot. (2) The empty string is admitted as the no-object sentinel — these fields are
+non-optional and producers with nothing to reference already write `""`; rejecting it would force the
+event-schema change this plan exists to avoid. `fromString` stays exact. Making those fields properly
+optional is what retires the sentinel.
+
+Step 5's open question resolved: the injection site is *not* gated on `type state`. `ReferenceInference`
+(not `StateAnnotations.ml`, as this plan guessed) is the model, and it walks every type declaration —
+so `@storageRef` reaches commands and events with no gate needing to move.
+
+The step-1 payload is a typed variant rather than `option<JSON.t>`: the vocabulary is framework-owned
+and closed, and it keeps `Reference.getTarget` total instead of a decode that can fail at runtime.
+
+Not done here: the per-platform PPX binary packages must be republished by CI before any downstream
+repo can use `@storageRef`.
 **Repos:** `reventless-core` (this plan) — `reventless-ui` ships the reader half under its own plan.
 **Analysis:** [platform-main-capability-provisioning.md](../analysis/platform-main-capability-provisioning.md)
 §5.1, §5.6, §7 Stages 0.5–1.
