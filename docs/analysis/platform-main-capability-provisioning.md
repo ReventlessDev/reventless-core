@@ -1,7 +1,8 @@
 # Platform `Main.res` — Capability-Driven Resource Provisioning
 
 **Status:** Analysis
-**Date:** 2026-07-28
+**Date:** 2026-07-28 (revised same day — §5.5/§5.6/§7: semantic-type foundation moved ahead of Stage 1)
+**Plans:** [platform-capability-provisioning-stage-0.md](../plans/platform-capability-provisioning-stage-0.md), [semantic-type-marker-and-storage-ref.md](../plans/semantic-type-marker-and-storage-ref.md)
 **Subject:** [examples/online-shop-hybrid/platform-aws/src/Main.res](../../examples/online-shop-hybrid/platform-aws/src/Main.res)
 **Question:** Why does the platform composition root hand-write infrastructure (upload bucket, place index, served-bucket list) that exists only because *a plugin* needs it — and can that be recognised and provisioned automatically?
 
@@ -210,9 +211,11 @@ The real cost is bucket count — names are globally unique and buckets are acco
 
 `deployPlatform` already assembles `config.json` from resolved outputs ([Platform.res:1548–1596](../../reventless/aws/src/Platform.res#L1548-L1596)). With providers, the `switch` chains (`withEvents` → `withGeocoder` → `withUpload`) collapse into a fold over resolved capability outputs, and `servedBuckets` leaves the public API entirely — the `ObjectStore` provider hands its served path to the distribution builder directly, with the prefix it also gave the presign service.
 
-### 5.5 Future state — semantic types
+### 5.5 Semantic types — not a future stage, a prerequisite
 
-Semantic types will land in the framework in the future. When they do, §5.1's annotations collapse into the field's type and everything else falls out of it. Both examples are worth writing down now, so the annotation design is a waypoint on that road rather than a detour.
+**Revised 2026-07-28.** This section originally read "semantic types will land in the framework in the future", and §7 staged them last. Tracing the actual schema-emission paths (§5.6) inverts that: the *foundation* of the semantic-type work — one generic marker read during the schema walk — is what makes §5.1's declaration reach the UI at all. It is a **prerequisite of Stage 1**, not a successor to it. The examples below still describe the end state; what changed is that the first rung of that ladder is now on Stage 1's critical path.
+
+When the types land, §5.1's annotations collapse into the field's type and everything else falls out of it. Both examples are worth writing down now, so the annotation design is a waypoint on that road rather than a detour.
 
 #### Product image
 
@@ -265,6 +268,26 @@ The type is the fix, and it is the same move as the storage ref: **resolution ha
 - `decide` then receives an already-resolved value and stays pure. **Resolution at the boundary, policy in `decide`**: "is this a real address" belongs at the boundary; "we do not ship outside the EU" belongs in `decide`, operating on the resolved coordinates.
 
 Which is the unifying idea behind both examples: **a semantic type is capability-bearing evidence.** Holding one asserts that the capability exists, that the boundary work was done, and that the value is well-formed — and because the framework can see the type in the schema, it also knows what to provision. Provisioning, validation and purity turn out to be the same problem, and one declaration answers all three.
+
+### 5.6 The emission path — why the `type state` gate is not on the critical path
+
+§5.1 proposes `@storageRef("<store>")` and, alongside it, ungating `@semantic` from `type state` so annotations work on `command` and `event` records too. The gate is real — **11 sites** test `ptype_name.txt = "state"` in [StateAnnotations.ml](../../packages/reventless-ppx/src/ppx/StateAnnotations.ml) — but tracing what actually emits `x-reventless-semantic` shows the ungating is **not required** to get a declaration onto a command field. [SuryToJsonSchema.res](../../reventless/core/src/components/Api/SuryToJsonSchema.res) has two independent paths:
+
+| Path | Lines | Driven by | Reaches |
+|---|---|---|---|
+| `mergeAnnotations` | `:14-90` | the PPX-collected `spec.semantic: array<(string, string)>` on `StateAnnotations` | read-model `state` records **only** |
+| `toJsonSchema` → `deriveObjectSchema` → `fromSchemaType` | `:91-162` | the sury schema's own shape | **any** schema — command, event, state |
+
+`x-reventless-semantic` is emitted only by the first, at `:71-73`. The second never consults `spec` at all — it walks the schema. So a marker carried in **sury metadata on the field's type** is emitted for commands and events without touching the PPX gate.
+
+That matters because §5.1's own mechanism is already a type refinement: `@storageRef("productImages")` injects `@s.matches(Reventless.StorageRef.forStore(…))`. The store identity therefore rides on the field's *type*, and the only thing missing is a generic reader for that marker in the schema walk. Today there is none — `SchemaType.fromSury` detects the two existing typed markers by hardcoded special case ([SchemaType.res:15](../../reventless/core/src/components/Api/SchemaType.res#L15) for `DateTime`, `:30` for `Reference`), each with its own bespoke metadata id, so every new typed marker is currently bespoke work.
+
+Two consequences for the plan:
+
+1. **One generic marker (`Semantic.mark`) plus one read in the generic walk is the enabler for Stage 1** — cheaper than the 11-site PPX ungating, and it is work Stage 5 needs regardless. Re-expressing `DateTime` and `Reference` on it proves the machinery against two known-good cases with no behavior change.
+2. **Ungating `@semantic` becomes optional and can be deferred.** It buys the *string* annotation on commands; the type path already covers the declared case, which is the one §5.1 wants authoritative. Keep it as a separate, lower-priority item rather than a Stage 1 dependency.
+
+`StorageRef` is also the right first semantic type to ship, ahead of the richer value types (`Money`, `GeoPoint`): it has a waiting consumer in Stage 2, it closes §3.4's validation hole, it breaks §2's circularity, and it is a *branded scalar* — the `Id.T` shape ([Id.res](../../reventless/spec/src/types/Id.res): abstract `t`, `make` / `makeFromString` / `toString`, sealed so values cannot be mixed) that this package already ships and that new semantic types should follow rather than reinvent. Composite types raise open shape questions; a branded ref raises none.
 
 ---
 
@@ -343,7 +366,11 @@ let default = Platform.deployPlatform(
 
 Roughly 79 → 12 lines, and it fixes §3.2 and §3.3 immediately — restoring `seed:reset` coverage and removing the prefix trap — with no inference machinery at all.
 
-**Stage 1 — the declaration primitive.** `@storageRef("<store>")` on command/event/state fields (PPX; ungate `@semantic` from `type state` at the same time), injecting the `@s.matches(StorageRef.forStore(…))` refinement and surfacing the store on the JSON Schema so the UI reads a declared field instead of guessing. Annotate `ChangeProductImage.imageUrl`, `AddProduct.imageUrl`, `Products.state.imageUrl`. No infrastructure change and no event-schema change — but the requirement is now *stated* (which Stage 3 reads) and §3.4's validation hole is closed.
+**Stage 0.5 — the generic semantic marker (new, 2026-07-28).** One `Semantic.mark(id)` metadata id in `reventless/spec`, read generically in `SchemaType.fromSury` / `SuryToJsonSchema`'s schema walk and emitted as `x-reventless-semantic`; `DateTime` and `Reference` re-expressed on it, replacing their bespoke ids. No behavior change — the two known-good cases are the proof. This is what lets Stage 1's declaration reach a *command* field (§5.6), and it is groundwork Stage 5 needs anyway.
+
+**Stage 1 — the declaration primitive.** `@storageRef("<store>")` on command/event/state fields, injecting the `@s.matches(StorageRef.forStore(…))` refinement, which surfaces the store on the JSON Schema through Stage 0.5's generic path so the UI reads a declared field instead of guessing. `StorageRef` follows the `Id.T` shape (§5.6). Annotate `ChangeProductImage.imageUrl`, `AddProduct.imageUrl`, `Products.state.imageUrl`. No infrastructure change and no event-schema change — but the requirement is now *stated* (which Stage 3 reads) and §3.4's validation hole is closed.
+
+Ungating `@semantic` from `type state` is **no longer part of this stage** (§5.6): it buys the string annotation on commands, which the type path already covers for the declared case. Track it separately.
 
 **Stage 2 — capability providers.** `deployPlatform` provisions from a named set; object stores move to the plugin stacks that own them (§5.3). No Pulumi in the app:
 
@@ -375,9 +402,9 @@ The platform learns only *which stores to serve* — the buckets are created by 
 
 **Stage 4 — catalogue growth.** `EmailDelivery` (SES identity + IAM), `SecretStore`, `Vpc` (Postgres-backed query storage), `FullTextSearch`, `MediaProcessing`, `WebhookIngress` — registered through [DeployBootstrap](../../reventless/infra/src/components/DeployBootstrap.res) so a provider can ship in a satellite package without touching `reventless-aws`.
 
-**Stage 5 — semantic types (§5.5).** `UploadableFile.t` and `GeocodedAddress.t` subsume the annotations: store name, bucket, served path, UI input, schema refinement and capability requirement all derive from the field's type. Stage 1's annotations remain valid as the explicit-override form.
+**Stage 5 — the rest of the semantic-type library (§5.5).** With the marker and `StorageRef` already shipped in Stages 0.5–1, what remains here is breadth: `UploadableFile.t` and `GeocodedAddress.t` subsuming the annotations entirely (store name, bucket, served path, UI input, schema refinement and capability requirement all derived from the field's type), plus the richer value types whose shape questions are still open. Stage 1's annotations remain valid as the explicit-override form.
 
-Stage 0 is worth doing regardless of whether the later stages are taken: it is pure derivation, it closes a live operational defect, and it removes the file's only correctness trap.
+Stage 0 is worth doing regardless of whether the later stages are taken: it is pure derivation, it closes a live operational defect, and it removes the file's only correctness trap. Stages 0 and 0.5 are independent of each other and can proceed in either order or in parallel.
 
 ---
 
