@@ -1,26 +1,37 @@
 # Plan: platform capability provisioning — Stage 0 (derivation only)
 
 **Date:** 2026-07-28
-**Status:** Implemented + build-verified 2026-07-28 (`5f87c57c7`) — NOT yet deploy-verified. All six
-steps landed; build clean, suite 2240/2240. Example platform roots 79 → 24 lines (hybrid), 29 → 14
-(the other two).
+**Status:** DONE + VERIFIED LIVE 2026-07-28 (`5f87c57c7`, released `reventless-aws@3.0.0-alpha.237`).
+All six steps landed; build clean, suite 2240/2240. Example platform roots 79 → 24 lines (hybrid),
+29 → 14 (the other two).
 
-**The acceptance test is still outstanding**, and it is the deploy-time one this plan named: a
-`pulumi preview` against an existing stack must show the uploads bucket updating **in place**, with
-tag additions and a new PAB, and *not* being replaced — a replacement destroys live objects. The
-logical name is unchanged, so it should hold, but nothing here proves it. Tag coverage against the
-Resource Groups Tagging API filter that `ReventlessSeedAws_Reset` uses is likewise unverified against
-real infrastructure, and that is the defect this plan exists to fix.
+Every acceptance item met against the deployed example stack:
+
+- **Update in place, not replace.** Deploy log:
+  `~ aws:s3:Bucket online-shop-uploads updating (0s) [diff: ~tags,tagsAll]` — tags only, no replace
+  step. The bucket retained its 128 objects, oldest `LastModified` the previous day.
+- **Tag coverage — the acceptance test.** The bucket now carries `reventless:platform`,
+  `reventless:environment`, `reventless:role=ObjectStore`, `reventless:scope=platform`,
+  `reventless:kind=Platform` and `Name`, and is returned by the `platform` + `environment` filter
+  pair that `ReventlessSeedAws_Reset` discovers by. It previously carried none and was invisible to
+  that filter, which is why a store wipe left uploaded images orphaned.
+- **Public access block** present and all-true.
+
+**A caution worth carrying forward:** `ListBuckets` reported the bucket's `CreationDate` as the
+deploy time, which reads as a replacement and is wrong. `CreationDate` is not a reliable "created
+at". The two signals that are reliable are the Pulumi step verb in the deploy log and object
+`LastModified` timestamps.
 
 One decision made against the risk table: encryption and versioning are left at the AWS/account
 defaults rather than set explicitly, matching the framework's own buckets (`TaskBucket_S3`, the
-plugin bundle bucket). Versioning is one-way once enabled, and the S3 binding's
-`kmsMasterKeyId` is non-optional so an explicit SSE block would send an empty key. This also keeps
-the preview diff to exactly tags + PAB, which is what makes the update-in-place check readable.
+plugin bundle bucket). Versioning is one-way once enabled, and the S3 binding's `kmsMasterKeyId` is
+non-optional so an explicit SSE block would send an empty key. This also kept the preview diff to
+exactly tags + PAB, which is what made the update-in-place check readable.
 
 `servedBuckets` was removed outright rather than kept as an override escape hatch: a grep confirmed
 the example roots were its only consumers, and retaining it would reintroduce the prefix mismatch the
 derivation exists to make unrepresentable.
+
 **Repos:** `reventless-core` only.
 **Analysis:** [platform-main-capability-provisioning.md](../analysis/platform-main-capability-provisioning.md) §3.2, §3.3, §7 Stage 0.
 
