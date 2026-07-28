@@ -2,136 +2,179 @@
 
 **Status:** Analysis
 **Date:** 2026-07-28
-**Subject:** [examples/online-shop-hybrid/platform-aws/src/Main.res](examples/online-shop-hybrid/platform-aws/src/Main.res)
+**Subject:** [examples/online-shop-hybrid/platform-aws/src/Main.res](../../examples/online-shop-hybrid/platform-aws/src/Main.res)
 **Question:** Why does the platform composition root hand-write infrastructure (upload bucket, place index, served-bucket list) that exists only because *a plugin* needs it — and can that be recognised and provisioned automatically?
 
 ---
 
-## 1. What the file actually contains
+## Summary
 
-79 lines, of which **4 are the deploy program** and the rest is scaffolding. Accounting line by line:
+- **The upload bucket does not belong in `Main.res`** — but it cannot simply be deleted, because it is currently the *only* place in the codebase where "this app stores files" is written down (§2). It should become a **plugin-owned** bucket, one per declared store, provisioned from the plugin's own declaration (§5.3).
+- **The place index is the same chain**, with one difference: it backs a stateless lookup service with no per-plugin data, so it stays **platform-scoped and shared** — one geocoding service for every plugin that needs it. Its `dataSource`/`intendedUse` are real licensing decisions, so they belong in Pulumi config, not code (§5.3).
+- **`servedBuckets` should not exist in the public API.** It restates a framework constant (`servedPrefix = "uploads"`) that the app author cannot see, and nothing validates the match — writing `prefix: "media"` deploys green and 404s every image at runtime (§3.2).
+- **Two live defects** fall out of the hand-written infra: `seed:reset` never empties the uploads bucket (no attribution tags), and nothing validates what lands in the event log — a client can put any URL in `imageUrl` and it is appended permanently (§3.3, §3.4).
+- **The mechanism** is a capability model: the plugin declares, the framework provisions. The missing primitive is a *declared storage reference* — `@storageRef("productImages")` today, `productImage: UploadableFile.t` once semantic types land (§5).
+- **The constraint to design around** is split-stack deploy ordering: the platform deploys first and has no access to plugin schemas. A build-time capability manifest feeding a generated platform root resolves it (§6).
+
+---
+
+## 1. What `Main.res` contains today
+
+79 lines, of which **4 are the deploy program** and the rest is scaffolding:
 
 | Lines | Content | Classification |
 |---|---|---|
 | 12 | `module Platform = ReventlessAws.Platform.Make()` | **Required.** The one real statement. |
-| 18 | `let _cognitoUserPool = Platform_Stack.resolveCognitoUserPool()` | **Dead.** See §2.1. |
+| 18 | `let _cognitoUserPool = Platform_Stack.resolveCognitoUserPool()` | **Dead.** See §3.1. |
 | 20–21 | `hostShellDist` = resolve `@reventlessdev/reventless-host-shell` + `/dist` | **Derivable.** Byte-identical in all three example platforms. |
 | 27–36 | `PulumiAws.Location.PlaceIndex.make(...)` | **Plugin-induced.** Exists because `Customer.SetLocation` carries a `{lat, lng}` field. |
-| 42–55 | `PulumiAws.S3.Bucket.make(... corsRules ...)` | **Plugin-induced.** Exists because `Product.imageUrl` is an uploaded storage ref. |
+| 42–55 | `PulumiAws.S3.Bucket.make(... corsRules ...)` | **Plugin-induced.** Exists because `Product.imageUrl` holds an uploaded object — by convention only (§2). |
 | 57–79 | `deployPlatform(~version, ~hostUiBundle={...})` | 2 of 6 fields carry information; 4 are derivation. |
 
-Inside `hostUiBundle`:
+Inside `hostUiBundle`: `assetsDir` and `bundleVersion` are constants identical across every example; `geocoderPlaceIndex`, `enableUploads` and `uploadBucketName` are three ways of saying *"this app needs geocoding"* and *"this app needs an object store"*; `servedBuckets` is pure derivation from `uploadBucket` (§3.2).
 
-- `assetsDir`, `bundleVersion` — constants, identical across every example.
-- `geocoderPlaceIndex`, `enableUploads`, `uploadBucketName` — three ways of saying *"this app needs geocoding"* and *"this app needs an object store"*.
-- `servedBuckets` — **pure derivation** from `uploadBucket` (§2.2).
-
-So the genuinely app-specific information in this file is **two booleans**: *needs an object store*, *needs geocoding*. Everything else is a hand-written encoding of the framework's own contracts.
-
-### 1.1 Why each resource exists — the plugin-side cause
-
-**Upload bucket.** `catalog` declares [ChangeProductImage.res](examples/online-shop-hybrid/catalog/src/Product/StateChangeSlice/ChangeProductImage.res) with `imageUrl: string`, projected into [Products.res](examples/online-shop-hybrid/catalog/src/Product/StateViewSliceStream/Products.res) `state`. Auto UI's semantic layer (in `@reventlessdev/reventless-ui`) resolves a string field named `image`/`imageUrl`/`photo`/`avatar`/`thumbnail` to the **Image** semantic, and a field named `file`/`attachment`/`upload` or ending in `storageRef`/`fileRef`/`attachmentRef` to the **File** semantic, which is what mounts the upload input. The upload input needs `config.uploadEndpoint`, which needs the presign Lambda, which needs a bucket. **The chain starts at a field name in a plugin spec and ends at an S3 bucket in the platform stack** — with a hand-written hop in the middle.
-
-**Place index.** `ordering` declares [Customer.res](examples/online-shop-hybrid/ordering/src/Customer/Aggregate/Customer.res) `type location = {lat: float, lng: float}` used by `SetLocation`. The same semantic layer resolves an object field with numeric `lat`/`lng` sub-properties to **GeoPoint**, which mounts the map input, which needs `config.geocoderEndpoint` → geocoder Lambda → place index. Identical chain, identical hand-written hop.
-
-Both facts are already machine-readable **before deploy**: they live in the sury schemas that [Plugin_Structure.res](reventless/core/src/plugin/component/Plugin_Structure.res) walks, and (when the PPX sidecar is enabled) in the committed `*.model.json` files, which carry `{name, kind, annotations}` per field.
+**The genuinely app-specific information in this file is two capability requirements.** Everything else is a hand-written encoding of the framework's own contracts.
 
 ---
 
-## 2. Three problems, not one
+## 2. How the requirement is expressed today — it isn't
 
-### 2.1 Authoring cost — the visible one
+**There is no storage-reference type, no annotation, and no declaration anywhere in a plugin that says "this field holds an uploaded object."** Tracing the upload chain end to end, because the gap is the whole point:
 
-A developer adding a product image to a plugin must: know that an image field implies an upload input; know that the upload input needs a presign service; know that the presign service is provisioned by `deployPlatform` behind `enableUploads`; know that it needs a bucket the *app* must create; know the CORS rules that bucket needs; and know that the bucket must additionally be listed under `servedBuckets` with the right prefix. **Six framework internals leak into an app file to express one bit of information.**
+1. [ChangeProductImage.res](../../examples/online-shop-hybrid/catalog/src/Product/StateChangeSlice/ChangeProductImage.res) declares `imageUrl: string` — a plain string, type-identical to `name: string` and to a field holding an external `https://…` URL. Same in the [Products.res](../../examples/online-shop-hybrid/catalog/src/Product/StateViewSliceStream/Products.res) `state` it projects into.
+2. The command's JSON Schema reaches the browser through the plugin structure. Auto UI's semantic layer (`@reventlessdev/reventless-ui`) applies a **field-name heuristic**: a string named `image`/`imageUrl`/`photo`/`photoUrl`/`avatar`/`avatarUrl`/`thumbnail` → **Image** semantic; a string named `file`/`attachment`/`upload` or ending in `storageRef`/`fileRef`/`attachmentRef` → **File** semantic. `imageUrl` matches the first.
+3. The dropzone input is registered under **both** semantics — but only by an explicit `FileDropzoneInput.init(~adapter=…)` call.
+4. That `init` runs **only if `config.uploadEndpoint` is present**. The shell's own comment at the call site: *"Absent endpoint ⇒ a `file` field stays a plain text box."*
+5. `config.uploadEndpoint` exists only if `deployPlatform` provisioned the presign service — i.e. only because someone wrote `enableUploads: true` and a bucket in `Main.res`.
 
-The redundant line 18 is symptomatic. `Platform_Stack.resolveCognitoUserPool` is a process-cached singleton ([Platform_Stack.res:152](reventless/aws/src/Platform_Stack.res#L152)) and is already called inside the functor body at [Platform.res:254](reventless/aws/src/Platform.res#L254) (Events API auth) and again at [Platform.res:1512](reventless/aws/src/Platform.res#L1512) (config.json). The call in `Main.res` provisions nothing that would not otherwise exist. It survives because nobody can tell, from the app side, which of these lines are load-bearing.
+**Step 5 is the answer, and it is circular.** The field does not demand a bucket; the bucket's existence is what upgrades the field's widget. `imageUrl` degrades silently to a text input when the platform lacks the capability — nothing errors, nothing warns. The requirement's single written form in the entire codebase is `enableUploads: true`, in a platform file the plugin author never opens.
 
-### 2.2 `servedBuckets` is not a decision — it is a restatement
+The two places a declaration would live both fall short:
 
-[Platform.res:1539–1546](reventless/aws/src/Platform.res#L1539-L1546) provisions the presign service as `Upload_Presign_S3.make(~bucketName)` — with no `~servedPrefix`, so it takes the default `"uploads"` from [Upload_Presign_S3.res:34](reventless/aws/src/adapter/Upload/Upload_Presign_S3.res#L34). The presign handler therefore returns refs of the form `/uploads/<uuid>`. For those refs to resolve, the host-shell distribution must carry an `uploads/*` ordered cache behavior pointing at that bucket — which is exactly what `servedBuckets: [{prefix: "uploads", bucketId, bucketArn, bucketRegionalDomainName}]` establishes.
+- **Type level:** nothing. There is no `Reventless.StorageRef.t`, and no `@schema` type carrying "this is an object-store key".
+- **Annotation level:** `@semantic("file")` *does* exist in the PPX — but [StateAnnotations.ml](../../packages/reventless-ppx/src/ppx/StateAnnotations.ml) gates every injection site on `ptype_name.txt = "state"`, and emits it as `x-reventless-semantic` on read-model schemas. **It cannot be written on a command field.** The very form that performs the upload is heuristic-only by construction.
+- The `*storageRef`/`*fileRef`/`*attachmentRef` convention is the closest thing to a definition, and it is a lowercase string comparison in UI code, not a framework concept. The example plugin does not use it — `imageUrl` reaches the dropzone through the *display*-oriented Image semantic instead.
 
-Every field of that record is already reachable from `uploadBucket`, and `prefix` must equal a default the app author cannot see. **Nothing validates the match.** Writing `prefix: "media"` compiles, deploys green, and yields 404s on every uploaded image at runtime — the presign service mints `/uploads/…` refs and CloudFront has no behavior for that path. This is a latent bug class created purely by asking the app to restate a framework constant.
+The seed's product images do travel a real upload → S3 → CloudFront loop. They do so because a human connected the two ends by hand.
 
-### 2.3 Hand-written infra silently drops framework invariants — with evidence
+**The place index is the same shape, one rung shorter.** [Customer.res](../../examples/online-shop-hybrid/ordering/src/Customer/Aggregate/Customer.res) declares `type location = {lat: float, lng: float}` for `SetLocation`; the heuristic resolves an object field with numeric `lat`/`lng` sub-properties to **GeoPoint**, which mounts the map input, which reads `config.geocoderEndpoint` → geocoder Lambda → place index. `{lat, lng}` is a structural coincidence the UI pattern-matches, not a declared type.
+
+**Consequence for the design.** Field *names* are machine-readable before deploy — they sit in the sury schemas [Plugin_Structure.res](../../reventless/core/src/plugin/component/Plugin_Structure.res) already walks. The *intent* is not. So "lift the UI's inference rules into core" is not sufficient on its own: those rules are display heuristics that **guess**, and guessing is a poor basis for creating and destroying infrastructure. §5.1 therefore puts declaration first and heuristics second.
+
+---
+
+## 3. What that costs
+
+### 3.1 Authoring cost
+
+A developer adding a product image must know: that an image field implies an upload input; that the input needs a presign service; that the service is provisioned by `deployPlatform` behind `enableUploads`; that it needs a bucket the *app* must create; the CORS rules that bucket needs; and that the bucket must additionally be listed under `servedBuckets` with the right prefix. **Six framework internals leak into an app file to express one bit of information.**
+
+The redundant line 18 is symptomatic. `Platform_Stack.resolveCognitoUserPool` is a process-cached singleton ([Platform_Stack.res:152](../../reventless/aws/src/Platform_Stack.res#L152)), already called inside the functor body at [Platform.res:254](../../reventless/aws/src/Platform.res#L254) (Events API auth) and again at [Platform.res:1512](../../reventless/aws/src/Platform.res#L1512) (config.json). The call in `Main.res` provisions nothing that would not otherwise exist. It survives because nobody can tell, from the app side, which of these lines are load-bearing.
+
+### 3.2 `servedBuckets` is not a decision — it is a restatement
+
+[Platform.res:1539–1546](../../reventless/aws/src/Platform.res#L1539-L1546) provisions the presign service as `Upload_Presign_S3.make(~bucketName)` — with no `~servedPrefix`, so it takes the default `"uploads"` from [Upload_Presign_S3.res:34](../../reventless/aws/src/adapter/Upload/Upload_Presign_S3.res#L34), and the handler returns refs of the form `/uploads/<uuid>`. For those to resolve, the host-shell distribution must carry an `uploads/*` cache behavior pointing at that bucket — which is exactly what `servedBuckets: [{prefix: "uploads", …}]` establishes.
+
+Every field of that record is reachable from `uploadBucket`, and `prefix` must equal a default the app author cannot see. **Nothing validates the match.** Writing `prefix: "media"` compiles, deploys green, and yields 404s on every uploaded image — the presign service mints `/uploads/…` refs and CloudFront has no behavior for that path. A latent bug class created purely by asking the app to restate a framework constant.
+
+### 3.3 Hand-written infra silently drops framework invariants
 
 Framework-created buckets go through helpers that apply a house standard. Hand-written ones do not, and the drift is real in this file today:
 
-- **No attribution tags.** Every framework resource carries `AWS.Tags.make(~name, ~kind, ~role, ~scope, …)` — see [TaskBucket_S3.res:146](reventless/aws/src/adapter/Task/TaskBucket_S3.res#L146) and [Plugin_Stack.res:162](reventless/aws/src/plugin/stack/Plugin_Stack.res#L162). The `online-shop-uploads` bucket has none, and `platform-aws/Pulumi.yaml` sets no `aws:defaultTags`. The guarded store-wipe tool discovers targets **only** through `reventless:platform` + `reventless:environment` tag filters against the Resource Groups Tagging API ([ReventlessSeedAws_Reset.res:176–220](reventless/seed-aws/src/ReventlessSeedAws_Reset.res#L176-L220)). **`pnpm run seed:reset` therefore never empties the uploads bucket.** A "wipe the alpha store" leaves every uploaded product image behind while the events referencing them are gone.
-- **No `BucketPublicAccessBlock`.** [Plugin_Stack.res:434](reventless/aws/src/plugin/stack/Plugin_Stack.res#L434) documents the framework's assumption explicitly — *"the served bucket keeps its own all-true BucketPublicAccessBlock (app-owned)"*. The app never created one. The bundle bucket the framework owns gets one at [Plugin_Stack.res:172](reventless/aws/src/plugin/stack/Plugin_Stack.res#L172). Account-level S3 defaults currently cover this, so it is a latent gap rather than a live exposure — but it is a framework invariant that the app was quietly made responsible for and did not honour.
+- **No attribution tags.** Every framework resource carries `AWS.Tags.make(~name, ~kind, ~role, ~scope, …)` — see [TaskBucket_S3.res:146](../../reventless/aws/src/adapter/Task/TaskBucket_S3.res#L146) and [Plugin_Stack.res:162](../../reventless/aws/src/plugin/stack/Plugin_Stack.res#L162). The `online-shop-uploads` bucket has none, and `platform-aws/Pulumi.yaml` sets no `aws:defaultTags`. The guarded store-wipe tool discovers targets **only** through `reventless:platform` + `reventless:environment` tag filters against the Resource Groups Tagging API ([ReventlessSeedAws_Reset.res:176–220](../../reventless/seed-aws/src/ReventlessSeedAws_Reset.res#L176-L220)). **`pnpm run seed:reset` therefore never empties the uploads bucket** — a "wipe the alpha store" leaves every uploaded product image behind while the events referencing them are gone.
+- **No `BucketPublicAccessBlock`.** [Plugin_Stack.res:434](../../reventless/aws/src/plugin/stack/Plugin_Stack.res#L434) documents the framework's assumption explicitly — *"the served bucket keeps its own all-true BucketPublicAccessBlock (app-owned)"*. The app never created one; the framework's own bundle bucket gets one at [Plugin_Stack.res:172](../../reventless/aws/src/plugin/stack/Plugin_Stack.res#L172). Account-level S3 defaults currently cover this, so it is a latent gap rather than a live exposure — but it is an invariant the app was quietly made responsible for and did not honour.
 - No encryption, versioning, or lifecycle policy — decisions the framework makes consistently for its own buckets and that were never made here.
 
-**This is the strongest argument for automation.** The cost of hand-written platform infra is not the twelve lines; it is that those twelve lines are outside every convention the framework enforces on itself, and the divergence is invisible until an operational tool quietly does nothing.
+**This is the strongest argument for automation.** The cost is not the twelve lines; it is that those twelve lines sit outside every convention the framework enforces on itself, and the divergence is invisible until an operational tool quietly does nothing.
 
-### 2.4 The hard constraint: split-stack deploy ordering
+### 3.4 Nothing validates what lands in the event log
 
-The reason this was not automated already is structural, and any concept must address it head-on.
+The same missing declaration leaves a second hole, on the plugin side. [ChangeProductImage_Behavior.res](../../examples/online-shop-hybrid/catalog/src/Product/StateChangeSlice/ChangeProductImage_Behavior.res) passes the string straight through:
 
-[deploy-manifest.yaml](examples/online-shop-hybrid/deploy-manifest.yaml) deploys `platform-aws` **first**; plugin stacks follow and consume platform outputs via `StackReference`. Correspondingly, [platform-aws/package.json](examples/online-shop-hybrid/platform-aws/package.json) has **no dependency** on `catalog`/`ordering` — deliberately, so plugins deploy and retire independently.
+```rescript
+| ChangeProductImage({productId, imageUrl}) =>
+  if !state.exists { Error(ProductNotFound) }
+  else if imageUrl == state.currentImageUrl { Ok([]) }
+  else { Ok([ProductImageChanged({productId, imageUrl})]) }
+```
 
-So at the moment `deployPlatform` runs, the platform stack has **no access to any plugin's schemas**. It cannot introspect what it has never imported. Worse, the resources in question are not independently attachable: a CloudFront distribution's origins and ordered cache behaviors are a single monolithic resource owned by one stack, so a plugin stack **cannot** add an `uploads/*` read path to a distribution the platform owns. (Contrast the merged-API path at [Platform.res](reventless/aws/src/Platform.res), where a plugin stack *can* associate its own source API against the platform's exported merged-API ARN — association is a separate resource, cache behaviors are not.)
+`imageUrl` is never checked against anything. A client can submit an external `https://…` URL, a `data:` URI, or a path into another plugin's stored objects, and it is appended to the event log **permanently** — event-sourced data being precisely the worst place to discover you accepted junk. The presign service mints well-formed refs; nothing requires the command to carry one.
 
-Any "automatic recognition" therefore has to answer: **where does the platform learn the requirement, and when?**
+This is not an argument for hand-written validation in every behavior. It is the second reason the reference should be *declared*: a declared ref is format-checked by the schema before `decide` runs, and the declaration that closes this hole is the same one that provisions the bucket.
 
 ---
 
-## 3. Precedent — the framework already does this everywhere else
+## 4. Precedent — the framework already does this everywhere else
 
 This is not a new pattern; it is an unfinished one.
 
 | Declared in a plugin | Auto-provisioned | Where |
 |---|---|---|
-| `Task.buckets: [{bucketName: "product-imports", …}]` | S3 bucket + CORS + IAM + notification wiring | [TaskBucket_S3.res:125](reventless/aws/src/adapter/Task/TaskBucket_S3.res#L125) |
+| `Task.buckets: [{bucketName: "product-imports", …}]` | S3 bucket + CORS + IAM + notification wiring | [TaskBucket_S3.res:125](../../reventless/aws/src/adapter/Task/TaskBucket_S3.res#L125) |
 | Aggregate / DCB slice | EventLog tables, command topics (FIFO SQS), Lambdas, IAM | `reventless-aws` adapters |
 | ReadModel / StateViewSlice | QueryDb tables + GSIs from `@index`/`@id`, resolvers | ditto |
 | `@@reventless.async` | A whole extra FIFO-backed command Lambda | plugin generator |
 | Any component | GraphQL SDL, subscriptions, authorization directives | `Plugin_Builder` |
-| Any plugin | Its entire AWS deploy program (`Main.res`) | [Codegen.res:534](reventless/spec/src/generator/Codegen.res#L534) |
+| Any plugin | Its entire AWS deploy program (`Main.res`) | [Codegen.res:534](../../reventless/spec/src/generator/Codegen.res#L534) |
 
-[ImportProducts.res](examples/online-shop-hybrid/catalog/src/Task/ImportProducts.res) is the model to copy: the plugin says `bucketName: "product-imports"` and a bucket appears with tags, CORS, and least-privilege IAM. Nobody writes Pulumi. The upload bucket is the *same kind of statement* — it just happens to be induced by a field name rather than a literal, and to land in the platform stack rather than the plugin stack.
+[ImportProducts.res](../../examples/online-shop-hybrid/catalog/src/Task/ImportProducts.res) is the model to copy: the plugin says `bucketName: "product-imports"` and a bucket appears in **the plugin's own stack** with tags, CORS, and least-privilege IAM. Nobody writes Pulumi. An upload store is the same kind of statement — it just happens to be induced by a field rather than a literal.
 
-Two more relevant seams already exist:
+Two more seams already exist:
 
-- **[DeployBootstrap.res](reventless/infra/src/components/DeployBootstrap.res)** — a `PreDeploy`/`PostDeploy` registry designed precisely so "deploy-time extension becomes *registration*, not *file editing*". Currently no-op.
-- **[Util_LocalConfig.res](reventless/aws/src/util/Util_LocalConfig.res)** — `hostUiBaseDomain`/`hostUiHostedZoneId` demonstrate opt-in via Pulumi config with a safe default, no code ([Platform.res:1464–1484](reventless/aws/src/Platform.res#L1464-L1484)).
+- **[DeployBootstrap.res](../../reventless/infra/src/components/DeployBootstrap.res)** — a `PreDeploy`/`PostDeploy` registry built so "deploy-time extension becomes *registration*, not *file editing*". Currently no-op.
+- **[Util_LocalConfig.res](../../reventless/aws/src/util/Util_LocalConfig.res)** — `hostUiBaseDomain`/`hostUiHostedZoneId` demonstrate opt-in via Pulumi config with a safe default, no code ([Platform.res:1464–1484](../../reventless/aws/src/Platform.res#L1464-L1484)).
 
-And the in-memory platform already proves zero-config is achievable: [platform-local/src/Main.res](examples/online-shop-hybrid/platform-local/src/Main.res) is 10 lines with no bucket, no index, no served list — the local server mounts `/__inmemory/upload` and the served-object routes unconditionally ([DomainGraphQL_Server.res:138](reventless/local/src/adapter/DomainGraphQL_Server.res#L138)). **Same app, same plugins, same capability — one platform requires twelve lines of Pulumi and the other requires nothing.** That asymmetry is the defect.
+And the in-memory platform already proves zero-config is achievable: [platform-local/src/Main.res](../../examples/online-shop-hybrid/platform-local/src/Main.res) is 10 lines with no bucket, no index, no served list — the local server mounts `/__inmemory/upload` and the served-object routes unconditionally ([DomainGraphQL_Server.res:138](../../reventless/local/src/adapter/DomainGraphQL_Server.res#L138)). **Same app, same plugins, same capability — one platform requires twelve lines of Pulumi and the other requires nothing.** That asymmetry is the defect.
 
 ---
 
-## 4. The concept: capabilities
+## 5. The concept: capabilities
 
-A **capability** is a named, provider-agnostic infrastructure service that a component's *functionality* requires, distinct from the storage/messaging substrate every component gets by default. `ObjectStore`, `Geocoding`, `EmailDelivery`, `SecretStore`, `FullTextSearch`, `Vpc`.
+A **capability** is a named, provider-agnostic infrastructure service that a component's *functionality* requires, distinct from the storage/messaging substrate every component gets by default: `ObjectStore`, `Geocoding`, `EmailDelivery`, `SecretStore`, `FullTextSearch`, `Vpc`.
 
-Four stages, each with an existing home in the codebase.
+### 5.1 Declare
 
-### 4.1 Declare — a capability requirement originates at a component
+Three sources, in priority order.
 
-Two sources, in priority order:
+**1. A declared storage reference — the missing primitive.** The declaration must name **which store**, not merely "this is a file", because the store is what gets provisioned:
 
-1. **Inferred** from the component's schemas. The inference rules already exist and are already the thing that decides the UI needs an upload widget — they simply run client-side today. Lift them into a pure core module, `Capability_Inference`, over the same schema data `Plugin_Structure` already walks:
+```rescript
+@schema
+type command =
+  ChangeProductImage({productId: string, @storageRef("productImages") imageUrl: string})
+```
 
-   | Rule | Capability |
-   |---|---|
-   | string field named `image`/`imageUrl`/`photo`/`avatar`/`thumbnail`, or `@semantic("image")` | `ObjectStore` |
-   | string field named `file`/`attachment`/`upload`, or ending `storageRef`/`fileRef`/`attachmentRef`, or `@semantic("file")` | `ObjectStore` |
-   | object field with numeric `lat`/`lng`, or `@semantic("geo-point")`; numeric `lat`+`lng` pair | `Geocoding` |
-   | `Task.buckets` entry | `ObjectStore` *(plugin-scoped — already handled)* |
+The mechanism already exists in the PPX: `@partitionTag` injects `@s.matches(Reventless.DcbTag.string)` onto the field's type, and `@storageRef("productImages")` would inject `@s.matches(Reventless.StorageRef.forStore(~plugin="Catalog", ~store="productImages"))`. One annotation then drives three things:
 
-   This is the identical move the framework already makes elsewhere: `DcbScopeInference` derives read scope from the slice graph; `Plugin_Structure` derives `labelField`/`statusField` from field names and annotations. Deriving *infrastructure* from the same data is the same idea one layer down.
+1. **Provisioning** — `Catalog` needs an object store named `productImages` (§5.3).
+2. **UI** — the field mounts an upload input bound to *that store's* presign endpoint, instead of guessing from the name and hoping an endpoint exists. The §2 circularity disappears: a declared ref on a platform without the capability is a deploy-time error, not a silent text box.
+3. **Validation** — a malformed or foreign ref is rejected **by the schema, before `decide` runs**. No I/O, behaviors stay pure, identical on local and AWS. This closes §3.4.
 
-2. **Explicit**, for what inference cannot see — a file-level `@@reventless.requires(ObjectStore, EmailDelivery)`, matching the existing `@@reventless.async` / `@@reventless.systemCallable` opt-in vocabulary. This is also the escape hatch when inference is *wrong*: `@@reventless.requires.not(ObjectStore)` on a spec whose `avatarUrl` is genuinely an external URL.
+Lifting `@semantic` off its `type state` gate is worth doing alongside so it works on `command` and `event` records too — but `@semantic` carries a *display* hint and `@storageRef` a *store identity*; they are not one annotation wearing two hats.
 
-   `SendOrderConfirmation` already declares `externalSystem = Some("EmailService")` with no infra binding — the natural first explicit-declaration client when an SES capability lands.
+**2. Inferred from field names** — a migration aid and a lint, not the mechanism. The UI's heuristics become a pure core module, `Capability_Inference`, over the schema data `Plugin_Structure` already walks:
 
-**Inference must be advisory-with-override, never silent-only.** A field rename must not silently delete a bucket. See §7.
+| Rule | Requirement |
+|---|---|
+| field typed `UploadableFile.t`, or annotated `@storageRef("<store>")` | `ObjectStore("<store>")` — **declared, authoritative** |
+| `Task.buckets` entry | `ObjectStore("<bucketName>")` — declared (already provisioned today) |
+| string named `file`/`attachment`/`upload`, or ending `storageRef`/`fileRef`/`attachmentRef` | `ObjectStore` — inferred |
+| string named `image`/`imageUrl`/`photo`/`avatar`/`thumbnail` | `ObjectStore` — inferred, **weak** |
+| field typed `GeocodedAddress.t`, annotated `@semantic("geo-point")`, or an object with numeric `lat`/`lng` | `Geocoding` |
 
-### 4.2 Collect — union per plugin
+The `image`-name rule is deliberately weak: `imageUrl` is genuinely ambiguous between an uploaded object and an external URL, and today's UI resolves that ambiguity by asking whether an endpoint happens to exist — which a capability scan cannot do, since it is the thing deciding that. An inferred-only `ObjectStore` should therefore **warn and provision**, naming the field and pointing at `@storageRef`.
 
-`Plugin_Structure.make` gains a `capabilities: array<capability>` field: the deduplicated union over every component, each entry carrying its provenance (`Inferred(component, field)` or `Declared(component)`) so the deploy log and any error message can name *why*. This makes the requirement set a first-class part of the plugin's structural description, alongside `queryableDef` and the component graph — and it becomes visible in the same places (deploy logs, MCP tooling, the event graph).
+Precedent for derivation is solid — `DcbScopeInference` derives read scope from the slice graph, `Plugin_Structure` derives `labelField`/`statusField` from names and annotations. The difference is only that a wrong guess here costs infrastructure rather than a label, which is why declaration outranks it. **Inference must be advisory-with-override, never silent-only** (§8).
 
-### 4.3 Provision — capability providers, following the adapter pattern
+**3. Explicit capability declaration**, for what neither type nor field can express: a file-level `@@reventless.requires(ObjectStore, EmailDelivery)`, matching the existing `@@reventless.async` / `@@reventless.systemCallable` vocabulary — with `@@reventless.requires.not(ObjectStore)` as the denial for a spec whose `avatarUrl` really is an external URL. `SendOrderConfirmation` already declares `externalSystem = Some("EmailService")` with no infra binding: the natural first client when an SES capability lands.
 
-Per provider (`reventless-aws`, `reventless-local`, future `reventless-postgres`), a `Capability_<Name>_<Impl>` module implementing a common interface, mirroring the existing deploy-time/runtime split:
+### 5.2 Collect
+
+`Plugin_Structure.make` gains a `capabilities: array<capabilityRequirement>` field — the deduplicated union over every component. A requirement is a capability **plus its instance key where it has one**: `ObjectStore("productImages")` is distinct from `ObjectStore("productImports")` and provisions a different bucket, whereas `Geocoding` is instance-free. Each entry carries provenance (`Declared(component, field)` / `Inferred(component, field)`) so deploy logs and error messages can name *why*. The requirement set becomes part of the plugin's structural description alongside `queryableDef` and the component graph.
+
+### 5.3 Provision
+
+Per provider (`reventless-aws`, `reventless-local`, future `reventless-postgres`), a `Capability_<Name>_<Impl>` module mirroring the existing deploy-time/runtime split:
 
 ```rescript
 module type CapabilityProvider = {
@@ -142,109 +185,149 @@ module type CapabilityProvider = {
 }
 ```
 
-- `Capability_ObjectStore_S3` → bucket (**with the framework's own tags, PAB, CORS, lifecycle**) + presign Lambda Function URL + the CloudFront served path, and it owns the prefix contract on both sides — so the §2.2 mismatch becomes unrepresentable.
-- `Capability_Geocoding_AwsLocation` → place index + geocoder Lambda Function URL.
+- `Capability_ObjectStore_S3` → **one instance per declared store**: bucket (framework tags, PAB, CORS, lifecycle) + a presign Lambda whose `s3:PutObject` is scoped to exactly that bucket + the CloudFront served path. It owns the prefix contract on both sides, making §3.2's mismatch unrepresentable. Per-store presign Lambdas are also the least-privilege story — today's single service holds write access to everything.
+- `Capability_Geocoding_AwsLocation` → place index + geocoder Lambda Function URL. `dataSource` (Esri / HERE / Grab) and `intendedUse` (`SingleUse` / `Storage`) are licensing, cost and data-retention decisions, so they belong in Pulumi config with today's defaults, following the `hostUiBaseDomain` precedent. A place index has no standing charge — only per-request billing — so provisioning it on a declaration is cheap even if the map input is never opened.
 - `Capability_ObjectStore_InMemory` → the routes `DomainGraphQL_Server` already mounts, now mounted *because a capability was resolved* rather than unconditionally.
 
 **Placement rule** — where a capability's resources live:
 
 | Scope | Rule | Examples |
 |---|---|---|
-| **Platform** | shared, referenced by the host shell, or attached to a platform-owned monolithic resource (the CloudFront distribution) | `ObjectStore`, `Geocoding` |
-| **Plugin** | isolated per plugin, no platform resource to attach to | Task buckets (today), a plugin-private queue |
+| **Plugin** | the resource holds the plugin's *data*, so it should live and die with the plugin | Object stores (one per declared store), Task buckets (today), a plugin-private queue |
+| **Platform** | a shared, stateless *service* every plugin calls, or something attached to a platform-owned monolithic resource | `Geocoding`, the serve wiring on the CloudFront distribution |
 
-Platform-scoped object storage means **one** bucket with per-plugin key prefixes (`uploads/<plugin>/…`) and prefix-scoped IAM, not a bucket per plugin. That is what makes the CloudFront constraint tractable: one origin, one behavior, N plugins.
+So: **one bucket per declared store, owned by the plugin — not one bucket per platform.** The CloudFront distribution *is* monolithic and platform-owned, so a plugin stack cannot add an origin to it — but that is an **ordering** constraint ("the platform must know the list at deploy time"), which the capability manifest supplies (§6). It is easy to mistake it for a constraint on how many buckets may be served, and it is not:
 
-### 4.4 Wire — resolved endpoints flow outward automatically
+- **The machinery already handles N.** [Plugin_Stack.res:145](../../reventless/aws/src/plugin/stack/Plugin_Stack.res#L145) takes `~servedBuckets: array<servedBucket>`, and every consumer is per-entry — one origin per bucket, one ordered cache behavior per prefix, one `BucketPolicy` per bucket scoped to this distribution. N served buckets requires **no new CloudFront code**.
+- **Consistency.** `Task.buckets` already provisions a per-plugin bucket in the plugin's own stack. A platform-owned upload bucket would give the framework two ownership models for one resource type.
+- **Bucket-level settings prefixes cannot express:** versioning, Object Lock, a per-plugin KMS key, replication — plus clean `pulumi destroy` semantics when a plugin retires. (Lifecycle rules *are* prefix-scopeable, so that is not an argument either way.)
 
-`deployPlatform` already assembles `config.json` from resolved outputs ([Platform.res:1548–1596](reventless/aws/src/Platform.res#L1548-L1596)). With providers, the `switch` chains (`withEvents` → `withGeocoder` → `withUpload`) collapse into a fold over resolved capability outputs, and `servedBuckets` disappears from the public API entirely — the `ObjectStore` provider hands its served path to the distribution builder directly, with the prefix it also gave the presign service.
+What per-store buckets do **not** buy is read isolation: a served object is fetchable by anyone who knows its path regardless of which bucket backs it. Splitting buckets makes ownership and policy explicit; making objects private is a separate decision (signed URLs or cookies).
+
+The real cost is bucket count — names are globally unique and buckets are account-limited, and `plugins × stores × stacks` multiplies quickly once alpha/beta/main and personal stacks are counted. **Check the account's current limit before committing**; it is the one input that could justify falling back to prefixes.
+
+### 5.4 Wire
+
+`deployPlatform` already assembles `config.json` from resolved outputs ([Platform.res:1548–1596](../../reventless/aws/src/Platform.res#L1548-L1596)). With providers, the `switch` chains (`withEvents` → `withGeocoder` → `withUpload`) collapse into a fold over resolved capability outputs, and `servedBuckets` leaves the public API entirely — the `ObjectStore` provider hands its served path to the distribution builder directly, with the prefix it also gave the presign service.
+
+### 5.5 Future state — semantic types
+
+Semantic types will land in the framework in the future. When they do, §5.1's annotations collapse into the field's type and everything else falls out of it. Both examples are worth writing down now, so the annotation design is a waypoint on that road rather than a detour.
+
+#### Product image
+
+```rescript
+// now — annotation
+ChangeProductImage({productId: string, @storageRef("productImages") imageUrl: string})
+
+// future — semantic type
+ChangeProductImage({productId: string, productImage: UploadableFile.t})
+```
+
+From `productImage: UploadableFile.t` alone the framework derives:
+
+| Derived | Value |
+|---|---|
+| Store name | `productImages` — the field stem, pluralised |
+| Bucket | `<platform>-<stack>-catalog-product-images`, plugin-owned, framework tags + PAB + CORS |
+| Served path | `/uploads/catalog/product-images/*` on the host-shell distribution |
+| Presign service | one, `s3:PutObject` scoped to that bucket only |
+| Capability requirement | `ObjectStore("productImages")` in the plugin manifest |
+| UI | upload input bound to that store — no name heuristic, no endpoint gating |
+| Validation | schema-level: the value must be a ref into *this* store |
+
+Pluralisation is consistent with conventions the repo already has — aggregates singular, read models plural, and the PPX already strips a trailing `s` when deriving plural DCB tag keys, so `productImage → productImages` is the inverse of a transform that already ships. It should stay overridable (`@storageRef("productImagery")`) where naive pluralisation is wrong: derivation is a default, not a law.
+
+The field also gets its proper name back. `imageUrl` was only ever called "URL" because a string was the only thing available; `productImage: UploadableFile.t` says what it is.
+
+#### Geocoded address
+
+More interesting, because a resolved address is not a reference to something the framework stores — it is a value that had to be *computed* by an external service.
+
+```rescript
+// now — annotation
+type command = | Register({email: string, address: string})
+type event   = | Registered({email: string, @geocoded address: string, lat: float, lng: float})
+
+// future — semantic type
+type command = | Register({email: string, address: PostalAddress.t})      // untrusted input
+type event   = | Registered({email: string, address: GeocodedAddress.t})  // resolved: formatted + lat/lng
+```
+
+`GeocodedAddress.t` in an event declares `Geocoding` exactly as `UploadableFile.t` declares `ObjectStore`: the manifest carries the requirement, the platform provisions one shared service, and `Main.res` needs nothing.
+
+**Where the resolution runs matters.** Calling the geocoder inside `decide` would break the framework's central guarantee — `decide` must be pure and deterministic because it is re-run on every replay, and geocoding the same address next year can return a different point as the provider's data changes. A replayed event log would stop reproducing itself. The lookup cannot live there.
+
+The type is the fix, and it is the same move as the storage ref: **resolution happens at the boundary, and the type is the evidence that it happened.**
+
+- `GeocodedAddress.t` is abstract and constructible only by the geocoding capability. Holding one is proof a real lookup succeeded — the same shape as `ReventlessSpec.Id.String.t`, which cannot be conjured from a bare string.
+- The impure step runs *before* the decision, at the trust boundary. The framework already has the component for server-side resolution: an **InboundTranslationSlice**, whose stated job is turning external input into commands. It resolves `PostalAddress.t` → `GeocodedAddress.t`, or rejects. (Today the browser's map input does this instead, which is why it is a UX affordance and not a guarantee — a client can post any lat/lng it likes, exactly as it can post any `imageUrl`.)
+- `decide` then receives an already-resolved value and stays pure. **Resolution at the boundary, policy in `decide`**: "is this a real address" belongs at the boundary; "we do not ship outside the EU" belongs in `decide`, operating on the resolved coordinates.
+
+Which is the unifying idea behind both examples: **a semantic type is capability-bearing evidence.** Holding one asserts that the capability exists, that the boundary work was done, and that the value is well-formed — and because the framework can see the type in the schema, it also knows what to provision. Provisioning, validation and purity turn out to be the same problem, and one declaration answers all three.
 
 ---
 
-## 5. Where does the platform learn the requirement set?
+## 6. The ordering constraint, and where the requirement set comes from
 
-The open question from §2.4. Four candidates.
+[deploy-manifest.yaml](../../examples/online-shop-hybrid/deploy-manifest.yaml) deploys `platform-aws` **first**; plugin stacks follow and consume platform outputs via `StackReference`. Correspondingly, [platform-aws/package.json](../../examples/online-shop-hybrid/platform-aws/package.json) has **no dependency** on `catalog`/`ordering` — deliberately, so plugins deploy and retire independently.
+
+So when `deployPlatform` runs, the platform stack has **no access to any plugin's schemas**; it cannot introspect what it never imported. And the served paths are not independently attachable — a CloudFront distribution's origins and cache behaviors are one monolithic resource owned by one stack. (Contrast the merged-API path, where a plugin stack *can* associate its own source API against the platform's exported merged-API ARN: association is a separate resource, cache behaviors are not.)
+
+Four candidates.
 
 ### Option A — platform stack imports the plugin packages
 
-Add `catalog`/`ordering` to `platform-aws` deps and call `Capability_Inference.scan([module(Catalog), module(Ordering)])` without deploying them.
+Add `catalog`/`ordering` to `platform-aws` deps and scan them without deploying.
 
 *Pro:* type-safe, single source of truth, no new artifact.
-*Con:* **reintroduces the coupling the split deploy exists to remove.** The platform would rebuild and redeploy on every plugin change. Rejected.
+*Con:* **reintroduces the coupling the split deploy exists to remove** — the platform would rebuild and redeploy on every plugin change. Rejected.
 
 ### Option B — build-time capability manifest + generated platform root ✅ recommended
 
-1. Each plugin's build emits `capabilities.json` (name, provenance) next to `Plugin.res`, from the same PPX/spec scan that already produces `*.model.json` sidecars.
-2. A new `generate-platform` CLI — sibling to the existing `generate-plugin` — reads [deploy-manifest.yaml](examples/online-shop-hybrid/deploy-manifest.yaml) (which already lists every plugin path), unions their manifests, and emits `platform-aws/src/Main.res`.
-3. The emitted root is committed, exactly as plugin `Main.res` files are today ([Codegen.res:534](reventless/spec/src/generator/Codegen.res#L534)).
+1. Each plugin's build emits `capabilities.json` (requirement, instance key, provenance) next to `Plugin.res`.
+2. A new `generate-platform` CLI — sibling to the existing `generate-plugin` — reads `deploy-manifest.yaml` (which already lists every plugin path), unions the manifests, and emits `platform-aws/src/Main.res`.
+3. The emitted root is committed, exactly as plugin `Main.res` files are today ([Codegen.res:534](../../reventless/spec/src/generator/Codegen.res#L534)).
 
-*Pro:* zero runtime coupling; deterministic; the requirement change shows up as a **reviewable diff in a committed file** — which is what makes §7's "silent deprovisioning" risk manageable; matches a convention the repo has already accepted for the harder case (whole plugin composition roots).
+*Pro:* zero runtime coupling; deterministic; a requirement change shows up as a **reviewable diff in a committed file**, which is what makes §8's silent-deprovisioning risk manageable; matches a convention the repo already accepted for the harder case.
 *Con:* new generator; needs plugin sources co-located at platform build time — which `deploy-manifest.yaml` already assumes.
 
-*Caveat found while checking:* the `*.model.json` sidecars are gated on `REVENTLESS_EMIT_SIDECAR=1` and are already stale — 27 `@@reventless.spec` files in `online-shop-hybrid`, 26 sidecars (`ChangeProductImage.model.json`, the most recently added slice, is missing). Sidecars in their current form are a reverse-codegen artifact, not a build invariant. `capabilities.json` must be emitted by an **ungated** step of the normal plugin build, or the scan must read `.res` sources directly.
+*Caveat found while checking:* the `*.model.json` PPX sidecars would be the obvious input, but they are gated on `REVENTLESS_EMIT_SIDECAR=1` and are already stale — 27 `@@reventless.spec` files in `online-shop-hybrid`, 26 sidecars (`ChangeProductImage.model.json`, the most recently added slice, is missing). They are a reverse-codegen artifact, not a build invariant. `capabilities.json` must come from an **ungated** step of the normal plugin build, or the scan must read `.res` sources directly.
 
 ### Option C — two-pass via stack outputs
 
-Plugin stacks export `requiredCapabilities`; the platform `StackReference`s each plugin optionally (`getOutput` → `option`).
+Plugin stacks export `requiredCapabilities`; the platform `StackReference`s each plugin optionally.
 
-*Pro:* no build-time coupling at all; self-healing.
-*Con:* **converges one deploy late.** First introduction of a capability needs plugin deploy → platform redeploy → plugin redeploy. Unacceptable as the primary path.
+*Pro:* no build-time coupling; self-healing.
+*Con:* **converges one deploy late** — first introduction of a capability needs plugin deploy → platform redeploy → plugin redeploy. Unacceptable as the primary path.
 
 ### Option D — runtime discovery
 
 Serve `config.json` from a resolver instead of a static object, reading capability registrations from the platform's own read models (plugins already register themselves and their UI fragments through the Plugin aggregate / `Platform_UIFragments`).
 
-*Pro:* genuinely dynamic; a plugin deployed at 3pm is usable at 3:01pm.
+*Pro:* genuinely dynamic — a plugin deployed at 3pm is usable at 3:01pm.
 *Con:* **solves wiring, not provisioning.** No amount of runtime registration creates an S3 bucket. Complementary, not a substitute.
 
 ### Recommendation
 
-**B as the mechanism, C as the safety net.** Generate the platform root from the build-time union; additionally have `deployPlugin` fail fast when the platform stack's exported capability set does not cover what the plugin requires:
+**B as the mechanism, C as the safety net.** Generate the platform root from the build-time union, and have `deployPlugin` fail fast when the platform's exported capability set does not cover what the plugin requires:
 
 ```
-Catalog requires capability `ObjectStore` (inferred: Products.state.imageUrl → image semantic)
-but platform stack `online-shop-hybrid-platform-aws/alpha` does not provide it.
+Catalog requires capability `ObjectStore("productImages")`
+  (declared: ChangeProductImage.imageUrl @storageRef("productImages"))
+but platform stack `online-shop-hybrid-platform-aws/alpha` does not serve it.
 Run `pnpm run generate` in platform-aws and redeploy the platform stack first.
 ```
 
-That converts §2.4's ordering hazard from a silent 404 at runtime into a named, actionable deploy-time failure. D remains worth doing later for the wiring half.
+That converts the ordering hazard from a silent 404 at runtime into a named, actionable deploy-time failure. D remains worth doing later for the wiring half.
 
 ---
 
-## 6. Answering the three questions directly
-
-**"The upload bucket — is that really necessary in `Main.res`?"**
-No. It encodes one bit (*this app stores files*) in twelve lines, and in doing so it drops the framework's tagging and public-access invariants — which already costs the project a working `seed:reset` for uploaded objects (§2.3). It should be a platform-owned capability resource with per-plugin key prefixes.
-
-**"Same for the place index?"**
-Same chain, same conclusion — with one real caveat. Unlike the bucket, a place index carries genuine configuration: `dataSource` (Esri vs HERE vs Grab) and `intendedUse` (`SingleUse` vs `Storage`) are licensing and cost decisions, and `Storage` has different data-retention terms. So `Geocoding` should be provisioned automatically with the current defaults (`Esri`/`SingleUse`) and **tunable via Pulumi config**, following the `hostUiBaseDomain` precedent — config, not code. Note also that a place index has no standing charge, only per-request billing, so provisioning it on inference is cheap even if the map input is never opened.
-
-**"Why do I write down what buckets are served?"**
-You should not — it is a restatement of a framework constant (`servedPrefix = "uploads"`) that the app cannot see and nothing validates, and getting it wrong deploys green and 404s at runtime (§2.2). `servedBuckets` should leave the public API; the `ObjectStore` provider owns both ends of the prefix contract.
-
-**"What else?"**
-Today: nothing else in `Main.res` is plugin-induced — but `hostShellDist`, `assetsDir`, `bundleVersion`, and line 18 are all constants or dead code (§1), so the same cleanup removes them. Looking forward, the capability catalogue naturally grows to: `EmailDelivery` (SES identity + IAM — `SendOrderConfirmation` already declares `externalSystem = Some("EmailService")`), `SecretStore` (outbound slices calling authenticated third parties), `Vpc` (Postgres-backed query storage), `FullTextSearch`, `MediaProcessing` (thumbnailing behind the Image semantic), `WebhookIngress` (inbound translation slices). Every one of these has the same shape: **a plugin-level statement of intent whose infrastructure consequence currently has to be hand-carried into a platform file.**
-
----
-
-## 7. Risks
-
-| Risk | Mitigation |
-|---|---|
-| **Silent deprovisioning.** A field rename drops the last `ObjectStore` requirement → Pulumi deletes a bucket with live objects. | Capability removal is a **generated-file diff** under Option B, so it lands in review. Additionally: provisioned capabilities carry `protect: true` / `retainOnDelete` by default, with removal requiring an explicit config opt-out — consistent with `docs/analysis/protecting-prod-infrastructure-resources.md`. |
-| **Inference false positives.** `externalImageUrl: string` on a spec that never uploads → an unused bucket. | Cheap failure mode (empty bucket, unused Lambda). `@@reventless.requires.not(...)` for the explicit denial. Log every inferred capability with its provenance at deploy time. |
-| **Inference false negatives.** A field named `banner` holding a storage ref. | Explicit `@@reventless.requires(ObjectStore)`. `deployPlugin`'s assertion (§5) turns the failure into a clear message rather than a runtime 404. |
-| **Rules diverging from Auto UI.** The UI decides the widget; the platform decides the infra. If they drift, a widget appears with no endpoint. | Single source: core owns the semantic rules; the UI consumes them. This is the right direction of dependency anyway — the UI's inference table is currently the de-facto spec for behaviour the backend must match. |
-| **Cross-plugin prefix collisions in one bucket.** | Prefix is `uploads/<plugin>/…`, assigned by the provider, with prefix-scoped IAM per plugin. |
-| **Generator complexity.** `generate-platform` is new surface. | Scope it to exactly what `generate-plugin` does — read a manifest, emit a committed root. No new concepts, one new file kind. |
-
----
-
-## 8. Staged adoption
+## 7. Staged adoption
 
 Each stage stands alone and is independently shippable.
 
-**Stage 0 — derivation only, no new concepts.** Inside `deployPlatform`: derive `servedBuckets` from the upload bucket + the presign service's own `servedPrefix`; default `assetsDir` to the resolved `@reventlessdev/reventless-host-shell` dist; default `bundleVersion` to `~version`; drop the dead Cognito line from all three example roots. `hostUiBundleConfig` keeps `enableUploads` + `uploadBucketName` but loses `servedBuckets` and the two constants.
+**Stage 0 — derivation only, no new concepts.** Inside `deployPlatform`: derive `servedBuckets` from the upload bucket + the presign service's own `servedPrefix`; default `assetsDir` to the resolved host-shell dist; default `bundleVersion` to `~version`; drop the dead Cognito line from all three example roots. The bucket and index are still created in `Main.res`, but through framework helpers that apply tags and PAB:
 
 ```rescript
 module Platform = ReventlessAws.Platform.Make()
@@ -258,19 +341,21 @@ let default = Platform.deployPlatform(
 )
 ```
 
-*Fixes §2.2 and §2.3 immediately* — the helpers apply the framework's tags and PAB, which is what restores `seed:reset` coverage. Roughly 79 → 12 lines with no inference machinery at all.
+Roughly 79 → 12 lines, and it fixes §3.2 and §3.3 immediately — restoring `seed:reset` coverage and removing the prefix trap — with no inference machinery at all.
 
-**Stage 1 — capabilities as a declared list.** `deployPlatform` provisions from a named set; no Pulumi in the app.
+**Stage 1 — the declaration primitive.** `@storageRef("<store>")` on command/event/state fields (PPX; ungate `@semantic` from `type state` at the same time), injecting the `@s.matches(StorageRef.forStore(…))` refinement and surfacing the store on the JSON Schema so the UI reads a declared field instead of guessing. Annotate `ChangeProductImage.imageUrl`, `AddProduct.imageUrl`, `Products.state.imageUrl`. No infrastructure change and no event-schema change — but the requirement is now *stated* (which Stage 3 reads) and §3.4's validation hole is closed.
+
+**Stage 2 — capability providers.** `deployPlatform` provisions from a named set; object stores move to the plugin stacks that own them (§5.3). No Pulumi in the app:
 
 ```rescript
 let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
-  ~capabilities=[ObjectStore, Geocoding],
+  ~capabilities=[ObjectStore("catalog", "productImages"), Geocoding],
   ~hostUi=Default,
 )
 ```
 
-**Stage 2 — inference.** `Capability_Inference` + `capabilities.json` + `generate-platform` + the `deployPlugin` assertion. The `~capabilities` argument becomes generated, and `Main.res` joins the plugin roots as `// AUTO-GENERATED`:
+**Stage 3 — inference and generation.** `Capability_Inference` (declaration-first, heuristics as a warning fallback) + `capabilities.json` + `generate-platform` + the `deployPlugin` assertion. `Main.res` joins the plugin roots as `// AUTO-GENERATED`, with the `~capabilities` list and a provenance comment emitted from the manifest:
 
 ```rescript
 // AUTO-GENERATED — do not edit. Run `npm run generate` to update.
@@ -278,22 +363,40 @@ ReventlessInfra.DeployBootstrap.run(PreDeploy)
 module Platform = ReventlessAws.Platform.Make()
 let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
-  ~capabilities=[ObjectStore, Geocoding],  // catalog: Products.imageUrl; ordering: Customer.location
+  // catalog: ChangeProductImage.imageUrl @storageRef("productImages")
+  // ordering: Customer.location {lat,lng}
+  ~capabilities=[ObjectStore("catalog", "productImages"), Geocoding],
   ~hostUi=Default,
 )
 ReventlessInfra.DeployBootstrap.run(PostDeploy)
 ```
 
-The generated comment carrying provenance is deliberate: it is what makes the diff readable when a capability appears or disappears.
+The platform learns only *which stores to serve* — the buckets are created by the plugin stacks that own them. The provenance comment is deliberate: it makes the diff readable when a capability appears or disappears.
 
-**Stage 3 — catalogue growth.** `EmailDelivery`, `SecretStore`, `Vpc`, … registered through [DeployBootstrap](reventless/infra/src/components/DeployBootstrap.res) so a capability provider can ship in a satellite package without touching `reventless-aws`.
+**Stage 4 — catalogue growth.** `EmailDelivery` (SES identity + IAM), `SecretStore`, `Vpc` (Postgres-backed query storage), `FullTextSearch`, `MediaProcessing`, `WebhookIngress` — registered through [DeployBootstrap](../../reventless/infra/src/components/DeployBootstrap.res) so a provider can ship in a satellite package without touching `reventless-aws`.
 
-Stage 0 is worth doing regardless of whether Stages 1–3 are ever taken: it is pure derivation, it closes a live operational defect, and it removes the file's only correctness trap.
+**Stage 5 — semantic types (§5.5).** `UploadableFile.t` and `GeocodedAddress.t` subsume the annotations: store name, bucket, served path, UI input, schema refinement and capability requirement all derive from the field's type. Stage 1's annotations remain valid as the explicit-override form.
+
+Stage 0 is worth doing regardless of whether the later stages are taken: it is pure derivation, it closes a live operational defect, and it removes the file's only correctness trap.
+
+---
+
+## 8. Risks
+
+| Risk | Mitigation |
+|---|---|
+| **Silent deprovisioning.** A field rename drops the last `ObjectStore("productImages")` requirement → Pulumi deletes a bucket with live objects. | Capability removal is a **generated-file diff** under Option B, so it lands in review. Provisioned stores also carry `protect: true` / `retainOnDelete` by default, removable only via explicit config opt-out — consistent with [protecting-prod-infrastructure-resources.md](protecting-prod-infrastructure-resources.md). |
+| **Inference false positives.** `externalImageUrl: string` on a spec that never uploads → an unused bucket. | Cheap failure mode (empty bucket, unused Lambda). `@@reventless.requires.not(...)` for explicit denial. Every inferred capability logged with provenance at deploy time. |
+| **Inference false negatives.** A field named `banner` holding a storage ref. | Explicit `@storageRef` / `@@reventless.requires`. `deployPlugin`'s assertion (§6) turns the failure into a clear message rather than a runtime 404. |
+| **Rules diverging from Auto UI.** The UI decides the widget; the platform decides the infra. If they drift, a widget appears with no endpoint. | Single source: core owns the declaration and the fallback heuristics; the UI consumes them. This also removes §2's circularity — the UI stops gating on "does an endpoint happen to exist". Right direction of dependency: the UI's inference table is currently the de-facto spec the backend must match. |
+| **Retrofitting the declaration.** `UploadableFile.t` on an existing `imageUrl` changes an event schema; `@storageRef` does not. | Adopt the annotation first (no event-schema change, no replay concern); treat the semantic type as a later, opt-in migration. The scan accepts both. |
+| **Bucket count.** `plugins × stores × stacks` against a globally-unique namespace and an account limit. | Verify the account limit before Stage 2 (§5.3). Prefix-within-one-bucket remains the fallback if the ceiling is real. |
+| **Generator complexity.** `generate-platform` is new surface. | Scope it to exactly what `generate-plugin` does — read a manifest, emit a committed root. One new file kind, no new concepts. |
 
 ---
 
 ## 9. Related
 
-- [docs/analysis/zero-touch-plugin-assembly.md](docs/analysis/zero-touch-plugin-assembly.md) — the same argument one level down (plugin composition root); the generator it proposes is the model Option B copies.
-- [docs/analysis/protecting-prod-infrastructure-resources.md](docs/analysis/protecting-prod-infrastructure-resources.md) — the deprovisioning-risk mitigation in §7.
-- [docs/guides/platform-and-plugin-guide.md](docs/guides/platform-and-plugin-guide.md) — needs a "capabilities" section once Stage 1 lands.
+- [zero-touch-plugin-assembly.md](zero-touch-plugin-assembly.md) — the same argument one level down (plugin composition root); the generator it proposes is the model Option B copies.
+- [protecting-prod-infrastructure-resources.md](protecting-prod-infrastructure-resources.md) — the deprovisioning mitigation in §8.
+- [platform-and-plugin-guide.md](../guides/platform-and-plugin-guide.md) — needs a "capabilities" section once Stage 2 lands.
