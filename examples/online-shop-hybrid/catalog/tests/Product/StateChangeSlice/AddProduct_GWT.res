@@ -4,7 +4,7 @@ describe("AddProduct StateChangeSlice", () => {
   test("adds product when the referenced category exists", () =>
     givenEvents([CategoryAdded({categoryId: "cat1"})])
     ->whenCmd(
-      AddProduct({productId: "p1", name: "Laptop", description: "x", price: 999.99, imageUrl: "https://example.com/p1.jpg", categoryId: "cat1"}),
+      AddProduct({productId: "p1", name: "Laptop", description: "x", price: 999.99, imageUrl: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", categoryId: "cat1"}),
     )
     ->thenEvent(
       ProductAdded({
@@ -12,7 +12,7 @@ describe("AddProduct StateChangeSlice", () => {
         name: "Laptop",
         description: "x",
         price: 999.99,
-        imageUrl: "https://example.com/p1.jpg",
+        imageUrl: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
         categoryId: "cat1",
       }),
     )
@@ -21,7 +21,7 @@ describe("AddProduct StateChangeSlice", () => {
   test("rejects when the referenced category does not exist", () =>
     givenEvents([])
     ->whenCmd(
-      AddProduct({productId: "p1", name: "Laptop", description: "x", price: 999.99, imageUrl: "https://example.com/p1.jpg", categoryId: "cat1"}),
+      AddProduct({productId: "p1", name: "Laptop", description: "x", price: 999.99, imageUrl: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", categoryId: "cat1"}),
     )
     ->thenError(CategoryNotFound)
   )
@@ -29,7 +29,7 @@ describe("AddProduct StateChangeSlice", () => {
   test("rejects when the referenced category is archived", () =>
     givenEvents([CategoryAdded({categoryId: "cat1"}), CategoryArchived({categoryId: "cat1"})])
     ->whenCmd(
-      AddProduct({productId: "p1", name: "Laptop", description: "x", price: 999.99, imageUrl: "https://example.com/p1.jpg", categoryId: "cat1"}),
+      AddProduct({productId: "p1", name: "Laptop", description: "x", price: 999.99, imageUrl: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", categoryId: "cat1"}),
     )
     ->thenError(CategoryNotFound)
   )
@@ -37,7 +37,7 @@ describe("AddProduct StateChangeSlice", () => {
   test("existing product returns ProductAlreadyExists", () =>
     givenEvents([CategoryAdded({categoryId: "cat1"}), ProductAdded({productId: "p1"})])
     ->whenCmd(
-      AddProduct({productId: "p1", name: "Laptop", description: "x", price: 999.99, imageUrl: "https://example.com/p1.jpg", categoryId: "cat1"}),
+      AddProduct({productId: "p1", name: "Laptop", description: "x", price: 999.99, imageUrl: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg", categoryId: "cat1"}),
     )
     ->thenError(ProductAlreadyExists)
   )
@@ -50,7 +50,7 @@ describe("AddProduct StateChangeSlice", () => {
   test("a sibling product in the same category does not block a new product", () =>
     givenEvents([CategoryAdded({categoryId: "cat1"})])
     ->whenCmd(
-      AddProduct({productId: "p2", name: "Mouse", description: "y", price: 19.99, imageUrl: "https://example.com/p2.jpg", categoryId: "cat1"}),
+      AddProduct({productId: "p2", name: "Mouse", description: "y", price: 19.99, imageUrl: "/uploads/b52d8f14-3c60-42ab-9e77-1d4a8c0f6e23/p2.jpg", categoryId: "cat1"}),
     )
     ->thenEvent(
       ProductAdded({
@@ -58,7 +58,7 @@ describe("AddProduct StateChangeSlice", () => {
         name: "Mouse",
         description: "y",
         price: 19.99,
-        imageUrl: "https://example.com/p2.jpg",
+        imageUrl: "/uploads/b52d8f14-3c60-42ab-9e77-1d4a8c0f6e23/p2.jpg",
         categoryId: "cat1",
       }),
     )

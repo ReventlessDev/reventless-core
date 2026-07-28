@@ -490,4 +490,133 @@ describe("SuryToJsonSchema:", () => {
       )->toBe(None)
     })
   })
+
+  // Reference-ness and DCB-tagged-ness are separate facts that happen to
+  // co-occur on `Reference.to_`. The schema walk tests them independently, and
+  // must keep doing so: a field can carry either alone, and a semantic type that
+  // is marked but deliberately *not* DCB-tagged (a storage ref, say) must not be
+  // dragged into entity-id classification by the other fact. Routing failures do
+  // not show up in a schema diff, so the distinction is pinned here executably.
+  describe("reference / DCB-tag decoupling:", () => {
+    let formatOf = (schema: JSON.t, fieldName: string): option<JSON.t> =>
+      getPropertyOf(schema, fieldName)->Option.flatMap(s => getProperty(s, "format"))
+
+    testSync("a DCB-tagged field with no reference is still an entity id", () => {
+      let schema = S.schema(s =>
+        {
+          "orderId": s.matches(Reventless.DcbTag.string),
+        }
+      )->S.castToUnknown
+      let json = SuryToJsonSchema.deriveObjectSchema(schema)
+      expect(formatOf(json, "orderId"))->toEqual(Some(JSON.Encode.string("uuid")))
+      expect(Reventless.Reference.getTarget(schema))->toBe(None)
+    })
+
+    testSync("a reference without a DCB tag is still an entity id", () => {
+      let field = Reventless.Reference.toWithoutDcbTag("Customer")
+      let schema = S.schema(s => {"customerId": s.matches(field)})->S.castToUnknown
+      let json = SuryToJsonSchema.deriveObjectSchema(schema)
+      expect(formatOf(json, "customerId"))->toEqual(Some(JSON.Encode.string("uuid")))
+      expect(Reventless.DcbTag.isTagged(field->S.castToUnknown))->toBe(false)
+    })
+
+    testSync("Reference.to_ carries both facts", () => {
+      let field = Reventless.Reference.to_("Customer")
+      expect(Reventless.DcbTag.isTagged(field->S.castToUnknown))->toBe(true)
+      expect(
+        Reventless.Reference.getTarget(field->S.castToUnknown)->Option.map(t => t.entity),
+      )->toEqual(Some("Customer"))
+    })
+
+    testSync("neither reference nor tag emits x-reventless-semantic on the wire", () => {
+      // `dateTime` and `reference` predate the generic marker and keep emitting
+      // `format`; adding the semantic key for them would change a published
+      // contract. Only semantics without a dedicated shape surface as the key.
+      let schema = S.schema(s =>
+        {
+          "customerId": s.matches(Reventless.Reference.to_("Customer")),
+          "placedAt": s.matches(Reventless.DateTime.string),
+        }
+      )->S.castToUnknown
+      let json = SuryToJsonSchema.deriveObjectSchema(schema)
+      let semanticOf = fieldName =>
+        getPropertyOf(json, fieldName)->Option.flatMap(s =>
+          getProperty(s, "x-reventless-semantic")
+        )
+      expect(semanticOf("customerId"))->toBe(None)
+      expect(semanticOf("placedAt"))->toBe(None)
+    })
+  })
+
+  // The reason the generic marker exists. `x-reventless-semantic` used to be
+  // emitted only by the annotation merge, which is fed by a PPX pass that only
+  // ever runs on read-model `state` records — so a command field could not carry
+  // a semantic at all. This walk is shape-driven and runs over every schema, so
+  // the declaration reaches the place the value is first accepted.
+  describe("type-carried semantics on a command field:", () => {
+    let semanticOf = (json, fieldName) =>
+      getPropertyOf(json, fieldName)->Option.flatMap(s => getProperty(s, "x-reventless-semantic"))
+
+    testSync("a storage-ref command field emits the semantic id", () => {
+      let schema = S.schema(s =>
+        {
+          "productId": s.matches(S.string),
+          "imageUrl": s.matches(Reventless.StorageRef.forStore(~store="productImages")),
+        }
+      )->S.castToUnknown
+      let json = SuryToJsonSchema.deriveObjectSchema(schema)
+      expect(semanticOf(json, "imageUrl"))->toEqual(Some(JSON.Encode.string("storageRef")))
+      expect(semanticOf(json, "productId"))->toBe(None)
+    })
+
+    testSync("it carries the store identity and marks the type as its source", () => {
+      let schema = S.schema(s =>
+        {
+          "imageUrl": s.matches(
+            Reventless.StorageRef.forStore(~plugin="catalog", ~store="productImages"),
+          ),
+        }
+      )->S.castToUnknown
+      let json = SuryToJsonSchema.deriveObjectSchema(schema)
+      let field = getPropertyOf(json, "imageUrl")
+      expect(field->Option.flatMap(s => getProperty(s, "x-reventless-semantic-source")))->toEqual(
+        Some(JSON.Encode.string("type")),
+      )
+      expect(field->Option.flatMap(s => getProperty(s, "x-reventless-semantic-target")))->toEqual(
+        Some(
+          JSON.Encode.object(
+            Dict.fromArray([
+              ("store", JSON.Encode.string("productImages")),
+              ("plugin", JSON.Encode.string("catalog")),
+            ]),
+          ),
+        ),
+      )
+    })
+
+    testSync("the underlying string shape is unchanged", () => {
+      // The marker refines an existing `string` field; nothing about what is
+      // stored changes, which is why it can be retrofitted onto a live schema.
+      let schema = S.schema(s =>
+        {"imageUrl": s.matches(Reventless.StorageRef.forStore(~store="productImages"))}
+      )->S.castToUnknown
+      let json = SuryToJsonSchema.deriveObjectSchema(schema)
+      expect(
+        getPropertyOf(json, "imageUrl")->Option.flatMap(s => getProperty(s, "type")),
+      )->toEqual(Some(JSON.Encode.string("string")))
+    })
+
+    testSync("a type-carried semantic beats an annotation naming the same field", () => {
+      let withSpec = (schema, spec) =>
+        schema->S.Metadata.set(~id=Reventless.StateAnnotations.stateAnnotationsId, spec)
+      let schema =
+        S.schema(s =>
+          {"imageUrl": s.matches(Reventless.StorageRef.forStore(~store="productImages"))}
+        )
+        ->S.castToUnknown
+        ->withSpec({...emptySpec, semantic: [("imageUrl", "image")]})
+      let json = SuryToJsonSchema.deriveObjectSchema(schema)
+      expect(semanticOf(json, "imageUrl"))->toEqual(Some(JSON.Encode.string("storageRef")))
+    })
+  })
 })

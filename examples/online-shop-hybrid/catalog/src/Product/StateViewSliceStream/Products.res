@@ -17,6 +17,6 @@ type state = {
   name: string,
   description: string,
   price: float,
-  imageUrl: string,
+  @storageRef("productImages") imageUrl: string,
   categoryId: string,
 }

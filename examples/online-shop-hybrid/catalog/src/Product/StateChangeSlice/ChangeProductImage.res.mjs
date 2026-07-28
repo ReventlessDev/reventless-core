@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
 
 let consumedEventSchema = S.union([
   S.schema(s => ({
@@ -17,7 +18,7 @@ let consumedEventSchema = S.union([
 let commandSchema = S.schema(s => ({
   TAG: "ChangeProductImage",
   productId: s.m(DcbTag$Reventless.string),
-  imageUrl: s.m(S.string)
+  imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "productImages"))
 }));
 
 let errorSchema = S.literal("ProductNotFound");

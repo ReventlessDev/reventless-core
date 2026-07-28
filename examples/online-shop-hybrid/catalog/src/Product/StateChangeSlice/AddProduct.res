@@ -18,7 +18,7 @@ type command =
       name: string,
       description: string,
       price: float,
-      imageUrl: string,
+      @storageRef("productImages") imageUrl: string,
       @ref("Categories") categoryId: string,
     })
 

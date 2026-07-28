@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
+import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
 
 let consumedEventSchema = S.union([
   S.schema(s => ({
@@ -25,7 +26,7 @@ let commandSchema = S.schema(s => ({
   name: s.m(S.string),
   description: s.m(S.string),
   price: s.m(S.float),
-  imageUrl: s.m(S.string),
+  imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "productImages")),
   categoryId: s.m(Reference$Reventless.to_(undefined, undefined, "Categories"))
 }));
 

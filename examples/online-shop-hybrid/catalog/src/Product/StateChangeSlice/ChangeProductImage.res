@@ -10,7 +10,7 @@ type consumedEvent =
 
 @schema
 type command =
-  ChangeProductImage({productId: string, imageUrl: string})
+  ChangeProductImage({productId: string, @storageRef("productImages") imageUrl: string})
 
 @schema
 type error = ProductNotFound
