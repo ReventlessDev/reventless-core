@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.175 (2026-07-28)
+
+### Features
+
+* **aws:** provision platform capabilities through framework helpers ([5f87c57](https://github.com/ReventlessDev/reventless-core/commit/5f87c57c7c117dccb44c88d6132e5270e8707bc2))
+* **events:** client-publishable /client namespace + local Events transport ([af98ce0](https://github.com/ReventlessDev/reventless-core/commit/af98ce07fb495bc629fcf3dc4f8383a9e0f2890d))
+
+
 # 3.0.0-alpha.174 (2026-07-27)
 
 ### Features

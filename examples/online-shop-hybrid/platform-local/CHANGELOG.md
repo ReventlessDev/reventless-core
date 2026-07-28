@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.170 (2026-07-28)
+
+### Features
+
+* **spec:** StorageRef — the first semantic type, declared on the field's type ([44f15c3](https://github.com/ReventlessDev/reventless-core/commit/44f15c37de71261d701d18a9f1ada6f481c4a8dc))
+
+
 # 1.0.0-alpha.169 (2026-07-27)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-local

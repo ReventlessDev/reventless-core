@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.187 (2026-07-28)
+
+### Features
+
+* **spec:** one semantic marker every typed semantic marks itself with ([aa18afc](https://github.com/ReventlessDev/reventless-core/commit/aa18afcf04c8edad9afe27e6fa4261d01e184da7))
+* **spec:** StorageRef — the first semantic type, declared on the field's type ([44f15c3](https://github.com/ReventlessDev/reventless-core/commit/44f15c37de71261d701d18a9f1ada6f481c4a8dc))
+
+
 # 3.0.0-alpha.186 (2026-07-27)
 
 ### Features

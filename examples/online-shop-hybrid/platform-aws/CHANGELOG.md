@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.184 (2026-07-28)
+
+### Features
+
+* **aws:** provision platform capabilities through framework helpers ([5f87c57](https://github.com/ReventlessDev/reventless-core/commit/5f87c57c7c117dccb44c88d6132e5270e8707bc2))
+* **rescript-web:** web-globals bindings + E2E verifier for client publish ([c3613fd](https://github.com/ReventlessDev/reventless-core/commit/c3613fd7ef75b18f1c6bfb2c7905a6d493eec6f2))
+
+
 # 1.0.0-alpha.183 (2026-07-27)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws
