@@ -119,11 +119,11 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
     ],
     cachePolicyId: cachingDisabledPolicyId
   });
-  let orderedCacheBehaviors = servedBuckets.map(sb => {
-    let prefix = sb.prefix;
+  let orderedCacheBehaviors = servedBuckets.flatMap(sb => sb.prefixes.map(prefix => {
+    let originId = "served-" + sb.id;
     return {
       pathPattern: prefix + "/*",
-      targetOriginId: "served-" + prefix,
+      targetOriginId: originId,
       viewerProtocolPolicy: "redirect-to-https",
       allowedMethods: [
         "GET",
@@ -135,7 +135,7 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
       ],
       cachePolicyId: cachingOptimizedPolicyId
     };
-  }).concat([noCacheBehavior("/remoteEntry.js")].concat(spaFallback ? [
+  })).concat([noCacheBehavior("/remoteEntry.js")].concat(spaFallback ? [
       noCacheBehavior("/" + indexDocument),
       noCacheBehavior("/config.json")
     ] : []));
@@ -188,7 +188,7 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
           originAccessControlId: oacId
         }].concat(servedBuckets.map(sb => ({
         domainName: sb.bucketRegionalDomainName,
-        originId: "served-" + sb.prefix,
+        originId: "served-" + sb.id,
         originAccessControlId: oacId
       })));
     }),
@@ -253,7 +253,7 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
     }))
   });
   servedBuckets.forEach(sb => {
-    new (Aws.s3.BucketPolicy)(name + "-served-" + sb.prefix + "-policy", {
+    new (Aws.s3.BucketPolicy)(name + "-served-" + sb.id + "-policy", {
       bucket: sb.bucketId,
       policy: Pulumi.all([
         sb.bucketArn,

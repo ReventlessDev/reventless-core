@@ -1552,7 +1552,8 @@ function MakeWithConfig(Config) {
       return DomainMCP_Server$ReventlessLocal.start(undefined, undefined);
     }
   };
-  let deployPlatform = (version, param) => {
+  let deployPlatform = (version, param, $staropt$star) => {
+    $staropt$star !== undefined;
     log.info("Platform", undefined, `deployPlatform v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
@@ -3214,7 +3215,8 @@ function Make($star) {
     PlatformGraphQL_Server$ReventlessLocal.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
     currentDeployTarget.contents = "Domain";
   };
-  let deployPlatform = (version, param) => {
+  let deployPlatform = (version, param, $staropt$star) => {
+    $staropt$star !== undefined;
     log.info("Platform", undefined, `deployPlatform v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;

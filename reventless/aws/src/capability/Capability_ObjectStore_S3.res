@@ -20,9 +20,20 @@
 // both cost and delete semantics and belongs to a deployment's judgement rather
 // than to a framework default.
 //
-// Follow-up, once a store's lifecycle follows a declaration rather than an
-// explicit line of app code: `protect` / `retainOnDelete`, so an accidental
-// removal of that declaration cannot destroy a bucket holding live objects.
+// A store's lifecycle now follows a *declaration*, which changes the risk. A
+// hand-written bucket could only be destroyed by editing a line of Pulumi; a
+// declared one can be destroyed by renaming a field, because the last
+// `@storageRef("productImages")` disappearing removes the requirement. Hence
+// `~protect`, on by default and turned off only for stacks that are routinely
+// torn down — see `Util_StoreLayout.protectionFor`, which decides that from
+// disposability rather than from the store's layout.
+//
+// Not to be confused with the framework's other buckets: a **store** is
+// declared by a field's type and holds values that events reference, so its
+// objects outlive any single deploy. A **task bucket** (`TaskBucket_S3`) is
+// wired by a slice and holds transient input, and the plugin-bundle and
+// host-ui-bundle buckets are hosting substrate. Neither has a `@storageRef`
+// field pointing at it, and neither is provisioned from a declaration.
 
 open PulumiAws
 
@@ -39,24 +50,62 @@ let defaultCorsRules: S3.Bucket.corsRules = [
 ]
 
 /** Create an object store bucket with framework attribution tags and an
-    all-true public-access block. */
+    all-true public-access block.
+
+    `~keyPrefix` is the path this store's object keys are rooted at; it travels
+    in the returned record so the mint side and the serve side read one value
+    instead of restating it.
+
+    `~plugin` attributes the store to the plugin whose field declared it. The
+    bucket is created by the platform deploy — that is where the serving CDN and
+    the presign services live, and where a shared bucket has a single owner — so
+    ownership is expressed in the tags rather than in which stack ran `make`.
+
+    `~protect` (default on) blocks `pulumi destroy` and accidental replacement.
+    `~forceDestroy` is its counterpart for disposable stacks: a protected bucket
+    cannot be torn down, so a PR stack would leak exactly the buckets that
+    sharing exists to save. */
 let make = (
   ~name: string,
+  ~keyPrefix: string=Upload_Presign_S3.defaultServedPrefix,
+  ~plugin: option<string>=?,
+  ~protect: bool=true,
+  ~forceDestroy: bool=false,
   ~corsRules: S3.Bucket.corsRules=defaultCorsRules,
   ~opts: option<Pulumi.CustomResourceOptions.t>=?,
 ): ReventlessInfra.Platform.objectStore => {
+  // A declared store is plugin substrate; the legacy hand-written store, which
+  // names no plugin, stays platform-scoped so its tags are unchanged.
+  let (kind, scope) = switch plugin {
+  | Some(_) => (
+      ReventlessCore.ComponentType.Plugin,
+      ReventlessCore.ResourceAttribution.Scope.Plugin,
+    )
+  | None => (
+      ReventlessCore.ComponentType.Platform,
+      ReventlessCore.ResourceAttribution.Scope.Platform,
+    )
+  }
+
+  let opts: Pulumi.CustomResourceOptions.t = {
+    ...opts->Option.getOr({}),
+    protect,
+  }
+
   let bucket = S3.Bucket.make(
     ~name,
     ~args={
       corsRules: corsRules->Pulumi.Input.make,
+      forceDestroy: forceDestroy->Pulumi.Input.make,
       tags: AWS.Tags.make(
         ~name,
-        ~kind=ReventlessCore.ComponentType.Platform,
+        ~kind,
         ~role=Other("ObjectStore"),
-        ~scope=Platform,
+        ~scope,
+        ~plugin?,
       ),
     },
-    ~opts?,
+    ~opts,
   )
 
   // A served store is read through the UI's CDN via an origin access control,
@@ -80,5 +129,18 @@ let make = (
     bucketId: bucket.id->Pulumi.Output.asInput,
     bucketArn: bucket.arn->Pulumi.Output.asInput,
     bucketRegionalDomainName: bucket.bucketRegionalDomainName->Pulumi.Output.asInput,
+    keyPrefix,
   }
 }
+
+/** The same bucket, addressed under a different key prefix.
+
+    A shared-layout stack puts every declared store in one bucket, so the bucket
+    is created once and each store is that bucket seen through its own prefix.
+    Splitting this out keeps the memoisation of "one bucket per physical name"
+    separate from "one store per declaration", which are different cardinalities
+    the moment a layout shares. */
+let underPrefix = (
+  store: ReventlessInfra.Platform.objectStore,
+  ~keyPrefix: string,
+): ReventlessInfra.Platform.objectStore => {...store, keyPrefix}

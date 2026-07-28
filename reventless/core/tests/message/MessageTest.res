@@ -130,6 +130,7 @@ describe("Message should", () => {
         inboundTranslationSlices: [],
         extensions: [],
         extensionPoints: None,
+        requiredStores: None,
       }),
       dcbEventLog: None,
       kind: Domain,

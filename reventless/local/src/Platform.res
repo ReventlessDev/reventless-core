@@ -1937,7 +1937,14 @@ module MakeWithConfig = (
     geocoderPlaceIndex?: ReventlessInfra.Platform.geocoderIndex,
     uploadBucket?: ReventlessInfra.Platform.objectStore,
   }
-  let deployPlatform = (~version, ~hostUiBundle as _: option<hostUiBundleConfig>=?) => {
+  let deployPlatform = (
+    ~version,
+    ~hostUiBundle as _: option<hostUiBundleConfig>=?,
+    // Declared stores are provisioned infrastructure; the in-memory platform
+    // provisions none and serves uploads from the dev server, so the list is
+    // carried to satisfy the shared Platform.T signature and ignored.
+    ~capabilities as _: array<ReventlessInfra.Platform.capability>=[],
+  ) => {
     log.info(~comp="Platform", `deployPlatform v${version}`)
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)

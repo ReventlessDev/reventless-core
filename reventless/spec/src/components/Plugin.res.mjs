@@ -186,7 +186,8 @@ let pluginStructureSchema = S.schema(s => ({
   outboundTranslationSlices: s.m(S.array(outboundTranslationSliceDefSchema)),
   inboundTranslationSlices: s.m(S.array(inboundTranslationSliceDefSchema)),
   extensions: s.m(S.array(extensionDefSchema)),
-  extensionPoints: s.m(extensionPointDefArrayOptionSchema)
+  extensionPoints: s.m(extensionPointDefArrayOptionSchema),
+  requiredStores: s.m(stringArrayOptionSchema)
 }));
 
 let pluginStructureOptionSchema = SuryResMjs.js_nullable(pluginStructureSchema);

@@ -14,16 +14,16 @@ import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/
 
 let defaultServedPrefix = "uploads";
 
-function make(bucketName, corsOriginsOpt, servedPrefixOpt, opts) {
+function make(bucketName, corsOriginsOpt, servedPrefixOpt, nameOpt, opts) {
   let corsOrigins = corsOriginsOpt !== undefined ? corsOriginsOpt : ["*"];
   let servedPrefix = servedPrefixOpt !== undefined ? servedPrefixOpt : defaultServedPrefix;
-  let serviceName = "UploadPresignService";
+  let name = nameOpt !== undefined ? nameOpt : "UploadPresignService";
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
-  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(serviceName, Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(serviceName, "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
+  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name, "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
   bucketName.apply(b => {
-    let arn = `arn:aws:s3:::` + b + `/*`;
-    new (Aws.iam.RolePolicy)(serviceName + `Policy`, {
-      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, serviceName + `Policy`, [
+    let arn = `arn:aws:s3:::` + b + `/` + servedPrefix + `/*`;
+    new (Aws.iam.RolePolicy)(name + `Policy`, {
+      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `Policy`, [
         {
           Sid: "AllowLambdaLogging",
           Effect: "Allow",
@@ -50,7 +50,7 @@ function make(bucketName, corsOriginsOpt, servedPrefixOpt, opts) {
     ]]);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Upload/Upload_Presign_S3_Ops.res.mjs", packageDirs, undefined);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
-  let lambda = new (Aws.lambda.Function)(serviceName, {
+  let lambda = new (Aws.lambda.Function)(name, {
     handler: "index.handler",
     runtime: "nodejs22.x",
     code: match.code,
@@ -58,7 +58,7 @@ function make(bucketName, corsOriginsOpt, servedPrefixOpt, opts) {
     memorySize: 256,
     timeout: 30,
     layers: layers,
-    tags: AWS_Tags$ReventlessAws.make(serviceName, "Platform", "Runtime", "Platform", undefined, undefined, undefined, undefined),
+    tags: AWS_Tags$ReventlessAws.make(name, "Platform", "Runtime", "Platform", undefined, undefined, undefined, undefined),
     environment: {
       variables: Object.fromEntries([
         [
@@ -85,7 +85,7 @@ function make(bucketName, corsOriginsOpt, servedPrefixOpt, opts) {
     },
     sourceCodeHash: match.sourceCodeHash
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
-  let functionUrl = new (Aws.lambda.FunctionUrl)(serviceName + `Url`, {
+  let functionUrl = new (Aws.lambda.FunctionUrl)(name + `Url`, {
     authorizationType: "NONE",
     functionName: lambda.name,
     cors: {

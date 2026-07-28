@@ -5,7 +5,7 @@ import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/P
 
 let Platform = Platform$ReventlessAws.Make({});
 
-let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), {});
+let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), {}, undefined);
 
 export {
   Platform,

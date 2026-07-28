@@ -18,7 +18,21 @@ let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name="onli
 // stays private.
 let uploadBucket = ReventlessAws.Capability_ObjectStore_S3.make(~name="online-shop-uploads")
 
+// The stores the plugins' fields declare. `catalog.productImages` is the
+// requirement `@storageRef("productImages")` states on ChangeProductImage —
+// listing it here is what turns that annotation into a provisioned bucket, a
+// presign service scoped to its own prefix, and a served path on the shell's
+// origin.
+//
+// Written by hand on purpose. Deriving it from the plugins' structures is the
+// next stage; a reviewed hand-written list is what gives the generator a shape
+// to emit and a diff to be checked against.
+let capabilities: array<ReventlessInfra.Platform.capability> = [
+  ObjectStore({plugin: "catalog", store: "productImages"}),
+]
+
 let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
   ~hostUiBundle={geocoderPlaceIndex: placeIndex, uploadBucket},
+  ~capabilities,
 )

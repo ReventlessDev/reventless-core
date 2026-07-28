@@ -26,3 +26,20 @@ let parseProdStacks = (csv: string): array<string> =>
   ->String.split(",")
   ->Array.map(String.trim)
   ->Array.filter(s => s !== "")
+
+/**
+The stacks this deployment considers production, resolved from config.
+
+The one notion of "is this stack production", deliberately shared rather than
+answered twice. Domain naming asked it first; object-store layout asks it too,
+and a second key would be two flags that can disagree — the state where a stack
+gets a production domain and non-production storage, or the reverse, with
+nothing to flag the mismatch.
+
+Impure by necessity (it reads config); the derivations that consume it stay
+pure and unit-tested.
+*/
+let resolveProdStacks = (): array<string> =>
+  Util_LocalConfig.get("hostUiProdStacks")
+  ->Option.map(parseProdStacks)
+  ->Option.getOr(defaultProdStacks)

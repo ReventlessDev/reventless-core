@@ -9,17 +9,24 @@ let Platform = Platform$ReventlessAws.Make({});
 
 let placeIndex = Capability_Geocoding_AwsLocation$ReventlessAws.make("online-shop-geocoder", undefined);
 
-let uploadBucket = Capability_ObjectStore_S3$ReventlessAws.make("online-shop-uploads", undefined, undefined);
+let uploadBucket = Capability_ObjectStore_S3$ReventlessAws.make("online-shop-uploads", undefined, undefined, undefined, undefined, undefined, undefined);
+
+let capabilities = [{
+    TAG: "ObjectStore",
+    plugin: "catalog",
+    store: "productImages"
+  }];
 
 let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), {
   geocoderPlaceIndex: placeIndex,
   uploadBucket: uploadBucket
-});
+}, capabilities);
 
 export {
   Platform,
   placeIndex,
   uploadBucket,
+  capabilities,
   $$default as default,
 }
 /* Platform Not a pure module */

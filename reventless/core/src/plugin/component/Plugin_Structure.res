@@ -387,6 +387,73 @@ let make = (
     }
   }
 
+  // ── Declared object stores ─────────────────────────────────────────────────
+  //
+  // A field typed as a storage ref states that the deployment needs the named
+  // store to exist. Read that declaration the same way `Reference.getTarget` is
+  // read for entity references, so the requirement travels with the plugin's
+  // structure instead of living only inside a field's schema, where the deploy
+  // would have to re-walk every component to find it.
+  //
+  // An unqualified store belongs to the declaring plugin, so every collected
+  // entry is qualified to `{plugin}.{store}` — one shape, and the string is
+  // directly the store's identity. Many fields legitimately name one store, so
+  // the result is deduplicated.
+
+  let storesFromProperties = (properties: dict<S.t<unknown>>): array<string> =>
+    properties
+    ->Dict.toArray
+    ->Array.filterMap(((_, fieldSchema)) =>
+      Reventless.StorageRef.getStore(fieldSchema)->Option.map(target =>
+        target.plugin->Option.getOr(name) ++ "." ++ target.store
+      )
+    )
+
+  // Commands and events are unions of per-variant objects; state is a single
+  // object. Both reduce to "the properties of every object in this schema".
+  let storesFromSchema = (schema: S.t<unknown>): array<string> => {
+    let fromVariant = v =>
+      switch v {
+      | S.Object({properties}) => storesFromProperties(properties)
+      | _ => []
+      }
+    switch schema {
+    | Union({anyOf}) => anyOf->Array.flatMap(fromVariant)
+    | other => fromVariant(other)
+    }
+  }
+
+  let requiredStores =
+    [
+      aggregates->Array.flatMap((module(A: ReventlessInfra.Aggregate.T with type api = api)) =>
+        Array.concat(
+          storesFromSchema(A.Spec.commandSchema->S.castToUnknown),
+          storesFromSchema(A.Spec.eventSchema->S.castToUnknown),
+        )
+      ),
+      stateChangeSlices->Array.flatMap((module(SCS: ReventlessInfra.StateChangeSlice.T)) =>
+        Array.concat(
+          storesFromSchema(SCS.Spec.commandSchema->S.castToUnknown),
+          storesFromSchema(SCS.Spec.eventSchema->S.castToUnknown),
+        )
+      ),
+      stateViewSlices->Array.flatMap((module(SVS: ReventlessInfra.StateViewSlice.T)) =>
+        storesFromSchema(SVS.Spec.stateSchema->S.castToUnknown)
+      ),
+      readModels->Array.flatMap((
+        module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
+      ) => storesFromSchema(R.Spec.stateSchema->S.castToUnknown)),
+      automationSlices->Array.flatMap((module(AS: ReventlessInfra.AutomationSlice.T)) =>
+        storesFromSchema(AS.Spec.commandSchema->S.castToUnknown)
+      ),
+      inboundTranslationSlices->Array.flatMap((
+        module(ITS: ReventlessInfra.InboundTranslationSlice.T),
+      ) => storesFromSchema(ITS.Spec.commandSchema->S.castToUnknown)),
+    ]
+    ->Array.flat
+    ->Belt.Set.String.fromArray
+    ->Belt.Set.String.toArray
+
   // ── Build queryable defs ───────────────────────────────────────────────────
   //
   // Internal ReadModels and StateViewSlices (marked `@@reventless.visibility(Internal)`)
@@ -608,5 +675,6 @@ let make = (
     inboundTranslationSlices: inboundTranslationSliceDefs,
     extensions: extensionDefs,
     extensionPoints: Some(extensionPointDefs),
+    requiredStores: Some(requiredStores),
   }
 }

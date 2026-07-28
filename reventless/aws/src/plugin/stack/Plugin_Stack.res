@@ -225,17 +225,26 @@ let makeUiBundleDistribution = (
   // CachingOptimized policy is safe. Prepended to `orderedCacheBehaviors` so a
   // served path is matched before the SPA-serving default behavior and never
   // routed to the bundle bucket.
-  let servedOriginId = (prefix: string): string => "served-" ++ prefix
-  let servedCacheBehavior = (prefix: string): PulumiAws.CloudFront.Distribution.orderedCacheBehavior => {
+  let servedOriginId = (id: string): string => "served-" ++ id
+  let servedCacheBehavior = (
+    ~prefix: string,
+    ~originId: string,
+  ): PulumiAws.CloudFront.Distribution.orderedCacheBehavior => {
     pathPattern: Pulumi.Input.make(prefix ++ "/*"),
-    targetOriginId: Pulumi.Input.make(servedOriginId(prefix)),
+    targetOriginId: Pulumi.Input.make(originId),
     viewerProtocolPolicy: Pulumi.Input.make("redirect-to-https"),
     allowedMethods: Pulumi.Input.make(["GET", "HEAD"]),
     cachedMethods: Pulumi.Input.make(["GET", "HEAD"]),
     cachePolicyId: Pulumi.Input.make(cachingOptimizedPolicyId),
   }
   let orderedCacheBehaviors = Array.concat(
-    servedBuckets->Array.map(sb => servedCacheBehavior(sb.prefix)),
+    // One behavior per served prefix; several prefixes may share one origin when
+    // they live in the same bucket.
+    servedBuckets->Array.flatMap(sb =>
+      sb.prefixes->Array.map(prefix =>
+        servedCacheBehavior(~prefix, ~originId=servedOriginId(sb.id))
+      )
+    ),
     Array.concat(
       [noCacheBehavior("/remoteEntry.js")],
       spaFallback ? [noCacheBehavior("/" ++ indexDocument), noCacheBehavior("/config.json")] : [],
@@ -336,7 +345,7 @@ let makeUiBundleDistribution = (
             // per-bucket read grant is the served bucket's own BucketPolicy below).
             servedBuckets->Array.map(sb => {
               PulumiAws.CloudFront.Distribution.domainName: sb.bucketRegionalDomainName,
-              originId: Pulumi.Input.make(servedOriginId(sb.prefix)),
+              originId: Pulumi.Input.make(servedOriginId(sb.id)),
               originAccessControlId: Pulumi.Input.make(oacId),
             }),
           )
@@ -432,9 +441,13 @@ let makeUiBundleDistribution = (
   // object is fetchable at `https://<ui-domain>/{prefix}/<key>` while the bucket
   // stays private (direct S3 GET is 403). Mirrors the bundle bucket policy above;
   // the served bucket keeps its own all-true BucketPublicAccessBlock (app-owned).
+  //
+  // Exactly one policy per bucket — S3 permits no more. Grouping prefixes into
+  // one `servedBucket` is what makes that structural rather than a rule to
+  // remember.
   servedBuckets->Array.forEach(sb => {
     let _ = PulumiAws.S3.BucketPolicy.make(
-      ~name=name ++ "-served-" ++ sb.prefix ++ "-policy",
+      ~name=name ++ "-served-" ++ sb.id ++ "-policy",
       ~args={
         bucket: sb.bucketId,
         policy: (sb.bucketArn->Pulumi.Output.fromInput, distribution.arn)

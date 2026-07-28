@@ -374,6 +374,21 @@ type pluginStructure = {
   // read as []). js_nullable keeps it JSON-safe inside union variant payloads.
   extensionPoints: @s.matches(extensionPointDefArrayOptionSchema)
   option<array<extensionPointDef>>,
+  /**
+   The object stores this plugin's fields declare they need, deduplicated and
+   fully qualified as `{plugin}.{store}`.
+
+   A field typed as a storage ref states a *requirement*: the deployment needs
+   that store to exist. Collecting the requirement here is what lets it be read
+   without re-walking every component's schema — the same reason
+   `producedEventTypes` is carried rather than recomputed.
+
+   Qualified even for the common same-plugin case, so one entry has one shape
+   and the string is directly the store's identity. Optional and js_nullable for
+   the same reason as `extensionPoints`: definitions persisted before this field
+   existed still decode (absent → None, read as []).
+   */
+  requiredStores: @s.matches(stringArrayOptionSchema) option<array<string>>,
 }
 
 let pluginStructureOptionSchema = _jsNullable(pluginStructureSchema, ())

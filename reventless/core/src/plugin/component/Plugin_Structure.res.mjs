@@ -8,6 +8,7 @@ import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as Api_Naming$ReventlessCore from "../../components/Api/Api_Naming.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
@@ -316,6 +317,29 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let match$3 = scored[0];
     return match$3[0];
   };
+  let storesFromSchema = schema => {
+    let fromVariant = v => {
+      if (v.type === "object") {
+        let properties = v.properties;
+        return Stdlib_Array.filterMap(Object.entries(properties), param => Stdlib_Option.map(StorageRef$Reventless.getStore(param[1]), target => Stdlib_Option.getOr(target.plugin, name) + "." + target.store));
+      } else {
+        return [];
+      }
+    };
+    if (schema.type === "union") {
+      return schema.anyOf.flatMap(fromVariant);
+    } else {
+      return fromVariant(schema);
+    }
+  };
+  let requiredStores = Belt_SetString.toArray(Belt_SetString.fromArray([
+    aggregates.flatMap(A => storesFromSchema(A.Spec.commandSchema).concat(storesFromSchema(A.Spec.eventSchema))),
+    stateChangeSlices.flatMap(SCS => storesFromSchema(SCS.Spec.commandSchema).concat(storesFromSchema(SCS.Spec.eventSchema))),
+    stateViewSlices.flatMap(SVS => storesFromSchema(SVS.Spec.stateSchema)),
+    readModels.flatMap(R => storesFromSchema(R.Spec.stateSchema)),
+    automationSlices.flatMap(AS => storesFromSchema(AS.Spec.commandSchema)),
+    inboundTranslationSlices.flatMap(ITS => storesFromSchema(ITS.Spec.commandSchema))
+  ].flat()));
   let visibilityTag = v => {
     if (v === "Public") {
       return;
@@ -458,7 +482,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     outboundTranslationSlices: outboundTranslationSliceDefs,
     inboundTranslationSlices: inboundTranslationSliceDefs,
     extensions: extensionDefs,
-    extensionPoints: extensionPointDefs
+    extensionPoints: extensionPointDefs,
+    requiredStores: requiredStores
   };
 }
 

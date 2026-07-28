@@ -1046,7 +1046,11 @@ module MakeWithConfig = (
     platformMergeGate: Pulumi.Output.t<unit>,
   }
 
-  let deployPlatform = (~version, ~hostUiBundle: option<hostUiBundleConfig>=?) => {
+  let deployPlatform = (
+    ~version,
+    ~hostUiBundle: option<hostUiBundleConfig>=?,
+    ~capabilities: array<ReventlessInfra.Platform.capability>=[],
+  ) => {
     log.info(~comp="Platform:deployPlatform", `v${version}`)
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
@@ -1452,6 +1456,120 @@ module MakeWithConfig = (
         })
       })
 
+    // ── Declared object stores ────────────────────────────────────────────
+    //
+    // The store a field declares is the store that gets provisioned. Before
+    // this, a `@storageRef("productImages")` annotation and a hand-written
+    // bucket name were two unrelated strings: deleting the annotation left the
+    // bucket, and adding one provisioned nothing.
+    //
+    // Provisioned here, in the platform deploy, rather than in each plugin's
+    // stack. Three things force it: the serving CDN lives here, the presign
+    // services live here, and a shared-layout bucket has several plugins'
+    // stores in it, so no single plugin stack can own it. Ownership is carried
+    // in the tags instead — a per-store bucket is tagged to the plugin whose
+    // field declared it; a shared bucket is platform substrate, because that is
+    // what it is.
+    let stackName = Pulumi.Pulumi.getStackName()
+    let storeLayout = Util_StoreLayout.layoutFor(
+      ~stack=stackName,
+      ~prodStacks=Util_HostUiDomain.resolveProdStacks(),
+    )
+    let storeProtection = Util_StoreLayout.protectionFor(~stack=stackName)
+
+    // Dedup by `(plugin, store)` — that pair is a store's identity, and many
+    // fields legitimately name one store.
+    let declaredStores =
+      capabilities
+      ->Array.filterMap(c =>
+        switch c {
+        | ObjectStore({plugin, store}) => Some((plugin, store))
+        | Geocoding => None
+        }
+      )
+      ->Array.reduce([], (acc, (plugin, store)) =>
+        acc->Array.some(((p, s)) => p == plugin && s == store)
+          ? acc
+          : Array.concat(acc, [(plugin, store)])
+      )
+
+    if declaredStores->Array.length > 0 {
+      // The fail-open in `layoutFor` is only dangerous while it is silent: a
+      // production stack that is not on the prod list gets the shared layout and
+      // nothing errors. Log the choice on every deploy so it surfaces the first
+      // time it happens rather than at an audit.
+      log.info(
+        ~comp="Platform:deployPlatform",
+        `object stores: ${switch storeLayout {
+          | PerStore => "bucket per store"
+          | SharedBucket => "shared bucket, {store}/… prefixes"
+          }}, ${switch storeProtection {
+          | Protected => "protected"
+          | Unprotected => "unprotected (disposable stack)"
+          }} — stack ${stackName}`,
+      )
+    }
+
+    // One bucket per *physical name*, which is one per store under `PerStore`
+    // and one for the whole stack under `SharedBucket`. Grouped rather than
+    // mapped because those cardinalities differ, and a bucket carries only one
+    // policy and one CDN origin however many stores live in it.
+    let storeBuckets: Dict.t<ReventlessInfra.Platform.objectStore> = Dict.make()
+    let storeBucketOrder: array<string> = []
+    let declaredStoreServices = declaredStores->Array.map(((plugin, store)) => {
+      let bucketName = Util_StoreLayout.bucketNameFor(
+        ~layout=storeLayout,
+        ~stack=stackName,
+        ~plugin,
+        ~store,
+      )
+      let keyPrefix = Util_StoreLayout.keyPrefixFor(~store)
+      let bucket = switch storeBuckets->Dict.get(bucketName) {
+      | Some(b) => b
+      | None =>
+        let b = Capability_ObjectStore_S3.make(
+          ~name=bucketName,
+          ~keyPrefix,
+          // A shared bucket belongs to no single plugin; a dedicated one does.
+          ~plugin=?switch storeLayout {
+          | PerStore => Some(plugin)
+          | SharedBucket => None
+          },
+          ~protect=storeProtection == Protected,
+          // A protected bucket blocks `pulumi destroy`, so protecting a
+          // disposable stack would leak exactly the buckets sharing exists to
+          // save. The two settings are opposite faces of one decision.
+          ~forceDestroy=storeProtection == Unprotected,
+        )
+        storeBuckets->Dict.set(bucketName, b)
+        storeBucketOrder->Array.push(bucketName)
+        b
+      }
+      let storeHandle = bucket->Capability_ObjectStore_S3.underPrefix(~keyPrefix)
+      // One presign service per store, scoped to that store's own prefix.
+      let presign = Upload_Presign_S3.make(
+        ~name=`UploadPresign-${plugin}-${store}`,
+        ~bucketName=storeHandle.bucketName,
+        ~servedPrefix=storeHandle.keyPrefix,
+      )
+      (`${plugin}.${store}`, keyPrefix, bucketName, presign.url)
+    })
+
+    // Group the served view by bucket: one origin and one bucket policy per
+    // bucket, carrying every prefix served from it.
+    let declaredServedBuckets = storeBucketOrder->Array.filterMap(bucketName =>
+      storeBuckets
+      ->Dict.get(bucketName)
+      ->Option.map(b => {
+        ReventlessInfra.Platform.id: bucketName,
+        prefixes: declaredStoreServices
+        ->Array.filterMap(((_, prefix, bn, _)) => bn == bucketName ? Some(prefix) : None),
+        bucketId: b.bucketId,
+        bucketArn: b.bucketArn,
+        bucketRegionalDomainName: b.bucketRegionalDomainName,
+      })
+    )
+
     // Host UI shell deployment — opt-in via ~hostUiBundle. The shell SPA is
     // hosted on its own CloudFront distribution; `config.json` is generated
     // at deploy time with the resolved API endpoints, region, and Cognito
@@ -1494,17 +1612,27 @@ module MakeWithConfig = (
       // roots its keys at, read from the service's own constant. This is the
       // whole reason the store arrives as one value: the app no longer restates
       // the prefix, so it cannot restate it wrongly.
-      let servedBuckets = switch cfg.uploadBucket {
-      | Some(store) => [
-          {
-            ReventlessInfra.Platform.prefix: Upload_Presign_S3.defaultServedPrefix,
-            bucketId: store.bucketId,
-            bucketArn: store.bucketArn,
-            bucketRegionalDomainName: store.bucketRegionalDomainName,
-          },
-        ]
-      | None => []
-      }
+      //
+      // The legacy hand-configured store is served alongside the declared ones,
+      // not replaced by them. Refs live in an append-only event log, so the
+      // `/uploads/…` values already written there can never be rewritten;
+      // `uploads` is therefore treated as a store that happens to predate the
+      // declaration, and keeps its prefix permanently.
+      let servedBuckets = Array.concat(
+        switch cfg.uploadBucket {
+        | Some(store) => [
+            {
+              ReventlessInfra.Platform.id: store.keyPrefix,
+              prefixes: [store.keyPrefix],
+              bucketId: store.bucketId,
+              bucketArn: store.bucketArn,
+              bucketRegionalDomainName: store.bucketRegionalDomainName,
+            },
+          ]
+        | None => []
+        },
+        declaredServedBuckets,
+      )
 
       let {distributionUrl, bucketName} = Plugin_Stack.makeUiBundleDistribution(
         ~pluginId="host-ui",
@@ -1569,6 +1697,18 @@ module MakeWithConfig = (
       | None => Pulumi.Output.make(None)
       }
 
+      // Per-store presign endpoints, keyed by the store's qualified name. This
+      // is what lets an upload input bind to the store its field *declares*
+      // rather than inferring one from the field's name — the endpoint exists
+      // per store, so there is something concrete to bind to.
+      //
+      // `uploadEndpoint` (singular) stays as the legacy service's URL: a shell
+      // built before per-store binding reads it and is unaffected.
+      let storeUploadEndpointsOutput: Pulumi.Output.t<array<(string, string)>> =
+        declaredStoreServices
+        ->Array.map(((qualified, _, _, url)) => url->Pulumi.Output.apply(u => (qualified, u)))
+        ->Pulumi.Output.all
+
       let configJsonContent =
         (
           (
@@ -1579,14 +1719,14 @@ module MakeWithConfig = (
           )->Pulumi.Output.all4,
           domainEventsEndpointOutput,
           geocoderEndpointOutput,
-          uploadEndpointOutput,
+          (uploadEndpointOutput, storeUploadEndpointsOutput)->Pulumi.Output.all2,
         )
         ->Pulumi.Output.all4
         ->Pulumi.Output.apply(((
           (domainEp, platformEp, poolId, clientId),
           eventsEpOpt,
           geocoderEpOpt,
-          uploadEpOpt,
+          (uploadEpOpt, storeUploadEps),
         )) => {
           let fields = [
             ("apiEndpoint", JSON.Encode.string(domainEp)),
@@ -1623,7 +1763,25 @@ module MakeWithConfig = (
           | Some(ep) => Array.concat(withGeocoder, [("uploadEndpoint", JSON.Encode.string(ep))])
           | None => withGeocoder
           }
-          withUpload->Dict.fromArray->JSON.Encode.object->JSON.stringify
+          // Omitted entirely when nothing is declared, so a deployment without
+          // declared stores writes a byte-identical config.json.
+          let withStoreUploads = switch storeUploadEps {
+          | [] => withUpload
+          | eps =>
+            Array.concat(
+              withUpload,
+              [
+                (
+                  "uploadEndpoints",
+                  eps
+                  ->Array.map(((qualified, url)) => (qualified, JSON.Encode.string(url)))
+                  ->Dict.fromArray
+                  ->JSON.Encode.object,
+                ),
+              ],
+            )
+          }
+          withStoreUploads->Dict.fromArray->JSON.Encode.object->JSON.stringify
         })
 
       let _ = PulumiAws.S3.BucketObject.make(

@@ -42,9 +42,19 @@ let make = (
   // bucket's CloudFront `{prefix}/*` behavior so the returned `/{key}` ref
   // resolves.
   ~servedPrefix: string=defaultServedPrefix,
+  // Resource-name stem. Defaults to the single-service name this adapter had
+  // when a deployment could only have one store, so the existing service keeps
+  // its identity; declared stores each pass their own, because there is one
+  // service per store.
+  //
+  // One service per store rather than one service with wildcard write across
+  // stores: a single wide-scoped presigner reintroduces exactly the blast radius
+  // the per-store split exists to remove, and it does so invisibly — every
+  // upload still works.
+  ~name: string="UploadPresignService",
   ~opts=?,
 ): serviceOutputs => {
-  let serviceName = "UploadPresignService"
+  let serviceName = name
   let opts =
     opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
@@ -61,12 +71,18 @@ let make = (
   )
 
   // CloudWatch Logs (so failures are observable) plus least-privilege
-  // `s3:PutObject` on any key under the target bucket.
+  // `s3:PutObject` on this store's own keys.
+  //
+  // Scoped to `{bucket}/{servedPrefix}/*`, not to the whole bucket. Because keys
+  // are rooted at the store's prefix in *both* layouts, this one expression is
+  // least-privilege in both: a dedicated bucket's service still cannot write
+  // outside its prefix, and a shared bucket's services cannot write into each
+  // other's stores. The layouts stay one model — even the policy does not fork.
   let _policy =
     bucketName
     ->Pulumi.Output.fromInput
     ->Pulumi.Output.apply(b => {
-      let arn = `arn:aws:s3:::${b}/*`
+      let arn = `arn:aws:s3:::${b}/${servedPrefix}/*`
       let _ = IAM.RolePolicy.make(
         ~name=`${serviceName}Policy`,
         ~args={

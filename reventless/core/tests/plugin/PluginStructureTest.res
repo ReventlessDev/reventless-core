@@ -79,6 +79,20 @@ module PsAnnotatedViewSlice: ReventlessInfra.StateViewSlice.T = {
   let make = (~dcbEventLog as _, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
 
+module PsAttachInvoiceSlice: ReventlessInfra.StateChangeSlice.T = {
+  module Spec = PsAttachInvoice
+  module Behavior = {
+    type state = PsAttachInvoice.state
+    let initialState = PsAttachInvoice.initialState
+    let evolve = PsAttachInvoice.evolve
+    let decide = PsAttachInvoice.decide
+    let moduleUrl = PsAttachInvoice.moduleUrl
+  }
+  let isAsync = false
+  type component = scsComponent
+  let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
+}
+
 let structure = Plugin_Structure.make(
   ~name="TestPlugin",
   ~stateChangeSlices=[module(PsPlaceOrderSlice), module(PsShipOrderSlice)],
@@ -383,5 +397,37 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       let placeOrder = structure.stateChangeSlices->Array.getUnsafe(0)
       expect(placeOrder.chapter)->toEqual(None)
     })
+  })
+
+  // A field typed as a storage ref states that the deployment needs that store
+  // to exist. Collecting the requirement onto the structure is what lets the
+  // deploy read it without re-walking every component's schema.
+  describe("requiredStores", () => {
+    let withStores = Plugin_Structure.make(
+      ~name="TestPlugin",
+      ~stateChangeSlices=[module(PsAttachInvoiceSlice)],
+    )
+    let stores = withStores.requiredStores->Option.getOr([])
+
+    testSync("an unqualified store resolves against the declaring plugin", () =>
+      expect(stores->Array.includes("TestPlugin.documents"))->toBe(true)
+    )
+
+    testSync("a qualified store keeps its own plugin", () =>
+      expect(stores->Array.includes("branding.logos"))->toBe(true)
+    )
+
+    // `documents` is declared on both a command field and an event field.
+    testSync("a store declared by several fields is collected once", () =>
+      expect(stores->Array.filter(s => s == "TestPlugin.documents")->Array.length)->toBe(1)
+    )
+
+    testSync("only the declared stores are collected", () =>
+      expect(stores->Array.length)->toBe(2)
+    )
+
+    testSync("a plugin declaring no stores collects none — not None", () =>
+      expect(structure.requiredStores)->toEqual(Some([]))
+    )
   })
 })

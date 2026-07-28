@@ -57,7 +57,16 @@ type pluginOutputs = Plugin.outputs
 // (AWS fronts it via CloudFront; in-memory ignores it). See
 // [docs/plans/done/ui-served-buckets.md].
 type servedBucket = {
-  prefix: string,
+  // Stable stem for the CDN origin id and the per-bucket resource names. Distinct
+  // from the prefixes because a bucket can serve several of them.
+  id: string,
+  // Every path prefix served from this bucket. A list rather than a single value
+  // because a shared-layout stack puts several declared stores in one bucket, and
+  // a bucket may carry only ONE bucket policy — a per-prefix policy would have
+  // the second store silently overwrite the first store's CloudFront read grant,
+  // which deploys green and 404s half the objects. One entry per bucket makes
+  // that unrepresentable.
+  prefixes: array<string>,
   bucketId: Pulumi.Input.t<string>,
   bucketArn: Pulumi.Input.t<string>,
   bucketRegionalDomainName: Pulumi.Input.t<string>,
@@ -73,7 +82,34 @@ type objectStore = {
   bucketId: Pulumi.Input.t<string>,
   bucketArn: Pulumi.Input.t<string>,
   bucketRegionalDomainName: Pulumi.Input.t<string>,
+  // The prefix this store's object keys are rooted at, and therefore the path
+  // it must be served under for a minted `/{key}` ref to resolve. Written once
+  // here and read by both the mint side (the presign service) and the serve
+  // side (the CDN behaviour), so the two cannot disagree — the property the
+  // single served prefix already had, now carried per store.
+  //
+  // Rooting keys at the store name in *every* layout is what keeps a stored ref
+  // independent of whether the store got its own bucket or a prefix inside a
+  // shared one. Refs live in an append-only log; one that encoded its bucket
+  // layout would be unrewritable and environment-specific.
+  keyPrefix: string,
 }
+
+/**
+A capability a deployment declares it needs.
+
+A real variant rather than a string pair so the platform and the plugin stacks
+reference one nominal type, and so the compiler finds every consumer when the
+set grows.
+
+`ObjectStore`'s identity is `(plugin, store)`: two plugins that happen to pick
+the same store name get two stores. That mirrors how a field's declaration is
+read — an unqualified `@storageRef("productImages")` means *this* plugin's
+store, and reaching another plugin's store is the qualified form.
+*/
+type capability =
+  | ObjectStore({plugin: string, store: string})
+  | Geocoding
 
 // A provisioned geocoding place index, as returned by the framework's geocoding
 // capability helper. A record rather than a bare name so the handle can grow
@@ -301,10 +337,14 @@ module type T = {
   /** Deploy only the platform (admin components, scheduler, shared API).
       No plugins are deployed — each plugin deploys independently via `deployPlugin`.
       Pass `~hostUiBundle` to also host a static host-shell SPA from this stack.
+      Pass `~capabilities` to provision the stores the plugins' fields declare;
+      the store a field declares is the store that gets provisioned, named after
+      it and attributed to the plugin that owns it.
       Returns the Pulumi stack outputs dict for use as the ESM `default` export. */
   let deployPlatform: (
     ~version: string,
     ~hostUiBundle: hostUiBundleConfig=?,
+    ~capabilities: array<capability>=?,
   ) => dict<Pulumi.Output.t<JSON.t>>
 
   /** Deploy a single plugin as an independent stack.
