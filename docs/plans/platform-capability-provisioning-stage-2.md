@@ -55,10 +55,122 @@ traversal — rather than pinning a per-store prefix, precisely so it admits eit
 stored-value migration. Whichever is chosen, the grammar tightens from structural to per-store, and
 that tightening is the only ref-format change this stage may make.
 
-**Recommendation:** per-store buckets, with the prefix scheme as the documented fallback if the
-account limit turns out to bind. Ephemeral `pr-*` stacks are the pressure, and the cheaper answer
-there is to keep PR stacks on the shared-bucket scheme rather than to compromise the model for
-long-lived environments.
+**Decision: per-store buckets on production stacks only; every other stack — `alpha`, `beta`,
+`pr-*` — shares one bucket with `{store}/…` prefixes.**
+
+Production is the only environment where a bucket boundary is worth its cost, and it is also the
+only one that does not multiply: one prod stack, versus an unbounded number of PR stacks plus the
+long-lived non-prod ones. That keeps the ceiling flat in the term that actually grows.
+
+Three things have to hold for this to be one model rather than a fork.
+
+### What makes the dual scheme safe: refs must not encode the layout
+
+**Root the object key at the store name in *both* schemes.** The presign service mints
+`{store}/{identity}{uuid}/{file}` either way, so the stored ref is `/{store}/{uuid}/{file}`
+regardless of which bucket sits behind it. Only the CloudFront origin differs:
+
+```
+per-store:  /{store}/*  →  bucket {plugin}-{store}
+shared:     /{store}/*  →  bucket {stack}-stores
+```
+
+This is not a detail. Refs live in an append-only event log, so a ref that encoded its bucket layout
+would make stored values environment-specific and unrewritable — a prod dump restored into a PR
+stack would carry refs that cannot resolve. Rooting at the store name costs a slightly redundant
+prefix inside a dedicated bucket (`catalog-productImages/productImages/…`) and buys refs that are
+identical across every environment. Take the redundancy.
+
+### Naming production explicitly, because this polarity fails open
+
+`ReventlessSeedAws_Reset` warns about exactly this shape at
+[:112](../../reventless/seed-aws/src/ReventlessSeedAws_Reset.res#L112): *"Fail-closed name
+allowlist. A denylist ('everything except prod') fails open"*. Keying isolation off "is this prod"
+inherits that: a **new** production stack whose name is not on the list — `production`, `live`,
+`prod-eu` — silently gets the weaker layout, and nothing fails.
+
+That is a real cost of this decision and it is accepted, so it has to be paid down deliberately
+rather than left implicit:
+
+- **An explicit, config-overridable list**, defaulting to `["prod", "main"]` — the same default and
+  the same CSV-override shape `Util_HostUiDomain` already uses for `hostUiProdStacks`. A team on
+  `production` sets one key.
+- **Converge the two lists.** `hostUiProdStacks` already encodes "which stacks are production" for
+  domain naming. A second, independent list answering the same question is the "two flags that can
+  disagree" problem: the fix is one shared notion of a production stack, read by both. Do not add a
+  parallel key.
+- **Log the chosen layout at deploy time**, per stack, at info level. A silent fail-open is only
+  dangerous while it is silent; a line in every deploy makes "prod got shared buckets" visible the
+  first time it happens rather than at an audit.
+
+### Protection does *not* follow the layout
+
+Tempting to make one switch decide layout, `protect` and `forceDestroy` together. That is wrong
+here, and `alpha` is the counter-example: it declares `reventless:wipeable: "true"`
+(`examples/online-shop-hybrid/platform-aws/Pulumi.alpha.yaml`) yet holds hand-entered data.
+
+Those are different claims. `wipeable` authorises the reset tool to empty stores **deliberately**,
+after a scope prompt and a typed confirmation. It does not say a field rename may destroy a bucket
+by accident. Conflating them would put `forceDestroy: true` and no protection on a stack whose data
+people actually care about.
+
+So two independent predicates:
+
+| | layout | `protect` | `forceDestroy` |
+|---|---|---|---|
+| `prod` | bucket per store | on | off |
+| `alpha`, `beta` | shared bucket, `{store}/…` | **on** | off |
+| `pr-*` | shared bucket, `{store}/…` | off | on |
+
+Teardown still works where it must: only `pr-*` is destroyed routinely, and only `pr-*` gets
+`forceDestroy`. A protected bucket blocks `pulumi destroy`, so protecting PR stacks would leak
+exactly the buckets sharing exists to save.
+
+The shared layout also *lowers* the silent-deprovisioning risk (§8) on the stacks that use it:
+dropping a store's declaration stops provisioning a prefix, it does not delete a bucket. Per-store —
+and therefore the sharp form of that risk — now exists only on prod, which is precisely where
+`protect` is on.
+
+The honest cost of sharing is IAM: isolation degrades from a bucket boundary to a prefix boundary,
+so a policy-construction bug could cross stores. That is acceptable on non-production stacks and is
+the reason prod keeps real buckets.
+
+### Implementation shape
+
+Two pure functions, `Util_HostUiDomain`-style — decidable and unit-testable without touching Pulumi:
+
+```rescript
+type storeLayout = PerStore | SharedBucket
+
+/** Production gets a bucket per store; every other stack shares one.
+    `prodStacks` defaults to ["prod", "main"] and is config-overridable. */
+let layoutFor = (~stack, ~prodStacks) =>
+  prodStacks->Array.includes(stack) ? PerStore : SharedBucket
+
+/** Destroy semantics follow disposability, NOT layout: `alpha` shares a bucket
+    but still holds data worth protecting. */
+let protectionFor = (~stack, ~ephemeralStacks) =>
+  ephemeralStacks->Array.includes(stack) ? Unprotected : Protected
+```
+
+Everything downstream — bucket creation, `protect`, `forceDestroy`, the presign policy resource —
+switches on these variants, so there are two decision points, both named, and the compiler finds
+every consumer of each.
+
+`ReventlessInfra.Platform.objectStore` gains `keyPrefix: string` (the store name). Both the presign
+service and the served-bucket derivation read it, so the prefix is written once and consumed by both
+sides — the same property Stage 0 established for `defaultServedPrefix`, extended per store.
+
+### Legacy refs must keep resolving
+
+Today's refs are `/uploads/…` and the declared store is `productImages`; the 128 existing objects sit
+under `uploads/` in `online-shop-uploads`. Moving to `/{store}/…` therefore **breaks every ref
+already in the event log**, and an append-only log cannot be rewritten.
+
+Keep serving `/uploads/*` from the existing bucket permanently, alongside the new `/{store}/*`
+behaviours. Old refs resolve, new refs use the store name, and no event is touched. Treat the legacy
+prefix as a store named `uploads` that happens to predate the declaration, not as debt to be
+migrated away.
 
 ## Gate 2 — the replacement post-mortem — CLOSED
 
@@ -144,8 +256,11 @@ the buckets themselves.
 
 Today one `Upload_Presign_S3` service holds `s3:PutObject` on the single upload bucket
 ([Platform.res](../../reventless/aws/src/Platform.res), presign provisioning) and mints keys under
-one `defaultServedPrefix`. With per-store buckets that becomes one presign service per store, each
-scoped to its own bucket.
+one `defaultServedPrefix`. That becomes **one presign service per store** in both layouts — scoped to
+the store's own bucket on prod, and to `{bucket}/{store}/*` on a shared stack.
+
+One service per store either way, so the number of services is a function of declarations rather than
+of layout. Only the policy's resource ARN differs, which is what keeps the two layouts one model.
 
 This is the step that makes the UI able to bind an upload input to a *declared* store rather than to
 a name heuristic — the reventless-ui side is currently blocked on exactly these endpoints not
@@ -157,13 +272,16 @@ blast radius the per-store split exists to remove.
 
 ### 5. `protect` / `retainOnDelete` — before, not after
 
-Provisioned stores carry `protect: true` (removable by explicit config opt-out), per
-[protecting-prod-infrastructure-resources.md](../analysis/protecting-prod-infrastructure-resources.md).
+Provisioned stores carry `protect: true` per
+[protecting-prod-infrastructure-resources.md](../analysis/protecting-prod-infrastructure-resources.md)
+on every stack except `pr-*`, which carries `forceDestroy: true` instead so teardown works. Per
+Gate 1 this follows **disposability, not layout**: `alpha` shares a bucket and is still protected.
 
 This is the step that must not be deferred. Stage 0's bucket could only be destroyed by editing
-Pulumi; a Stage 2 bucket can be destroyed by **renaming a field**, because the last
+Pulumi; a per-store bucket can be destroyed by **renaming a field**, because the last
 `@storageRef("productImages")` disappearing removes the requirement. Gate 2 showed the current path
-is safe today — that safety does not survive this stage without `protect`.
+is safe today — that safety does not survive this stage without `protect`. Note the sharp form of
+this now exists only on prod, since that is the only stack with per-store buckets.
 
 Land step 5 in the same commit as step 3. A bucket that exists for one deploy without protection is
 a bucket that can be lost in that window.
@@ -192,8 +310,18 @@ first is that the list is reviewable and the generator has an existing shape to 
   stacks changes the URN, so this needs an explicit alias or an import — **verify before applying**,
   and use the two reliable signals from Gate 2 (the step verb, and object timestamps afterwards),
   not `CreationDate`.
-- Per-store presign writes only to its own bucket — assert the IAM policy resource, not just that
-  upload works.
+- **Both layouts, and the teardown.** A non-prod stack gets one shared bucket with `{store}/…`
+  prefixes; a prod-named stack gets a bucket per store. Then `pulumi destroy` a `pr-*` stack and
+  confirm no bucket is left behind — the leak is invisible to a deploy-only test and is the failure
+  the `pr-*` row exists to prevent.
+- **`alpha` is protected.** Assert `protect` is set on a stack that shares a bucket — the pairing
+  that a single layout-driven switch would have got wrong.
+- **Refs are layout-independent.** The same `@storageRef` field produces a byte-identical ref string
+  on a per-store stack and a shared stack. Assert on the presigned key, not by eye.
+- **Legacy refs still resolve.** An existing `/uploads/…` ref fetches successfully after the stage
+  lands.
+- Per-store presign writes only to its own bucket (or, on a shared stack, only under its own
+  prefix) — assert the IAM policy resource, not just that upload works.
 - Tag coverage: every provisioned store discoverable by the `reventless:platform` +
   `reventless:environment` filter pair, as Stage 0 established.
 - Full root build green, suite green, no `.res.mjs` churn beyond intended files.
@@ -204,7 +332,10 @@ first is that the list is reviewable and the generator has an existing shape to 
 |---|---|
 | **Moving the store between stacks replaces it.** The URN changes when ownership moves from the platform root to a plugin stack — the same class of failure Gate 2 investigated, but this time genuinely reachable. | Explicit alias or `pulumi import`. Verify with a preview showing update/import, never replace, before applying to any stack with objects. This is the one step that must not be reviewed casually. |
 | **Silent deprovisioning by field rename** (§8). | Step 5's `protect: true`, landed in the same commit as provisioning. Capability removal also becomes a reviewable diff once Stage 3 generates the list. |
-| **Bucket ceiling turns out to bind** after per-store buckets ship. | Gate 1 decided before code. The prefix scheme is the documented fallback, and the ref grammar admits it without a stored-value migration. |
+| **Bucket ceiling turns out to bind.** | Gate 1 decided before code: only prod gets a bucket per store, and prod does not multiply. Every stack that does multiply shares one. The ref grammar admits both layouts without a stored-value migration. |
+| **A new production stack silently gets shared buckets** because its name is not on the prod list — this polarity fails open, by the reset tool's own argument at `:112`. | Accepted, and paid down explicitly: a config-overridable prod list converged with `hostUiProdStacks` (one notion of "production", not two that can disagree), plus a deploy-time log line naming the chosen layout so it is visible on the first deploy rather than at an audit. |
+| **Protection wired to layout**, giving `alpha` `forceDestroy` because it shares a bucket — while it holds hand-entered data. | Two independent predicates. `wipeable` authorises a *deliberate* reset, not accidental destruction; only `pr-*` is unprotected. |
+| **A PR stack fails teardown** because its buckets are protected, leaking the buckets sharing exists to save. | `pr-*` gets `forceDestroy` and no protection. Covered by a destroy test, not only a deploy test. |
 | Per-store presign multiplies Lambdas and Function URLs per stack. | Count them in Gate 1's arithmetic alongside buckets — the ceiling question is not only about S3. |
 | A store declared by two plugins. | `(plugin, store)` is the identity; two plugins declaring the same store name get two stores. Cross-plugin sharing is the qualified `@storageRef("other.store")` form, which requires the owner to exist — assert it rather than provisioning implicitly. |
 
