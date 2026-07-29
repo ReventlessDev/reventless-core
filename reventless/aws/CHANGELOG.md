@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.243 (2026-07-29)
+
+### Bug Fixes
+
+* **aws:** call the AppSync operations that exist, not the resource's names ([777c8ff](https://github.com/ReventlessDev/reventless-core/commit/777c8ff7e3641b4e7d2228b332f62c14fe690a42))
+
+
 # 3.0.0-alpha.242 (2026-07-29)
 
 ### Bug Fixes

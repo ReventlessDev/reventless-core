@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.98 (2026-07-29)
+
+### Bug Fixes
+
+* **example:** generate the aggregates plugin deploy roots ([c398f76](https://github.com/ReventlessDev/reventless-core/commit/c398f7621a2be2ffccfb356c8914556f90259468))
+
+
 # 1.0.0-alpha.97 (2026-07-29)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog-aws
