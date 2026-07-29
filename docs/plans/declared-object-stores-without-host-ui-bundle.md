@@ -1,7 +1,8 @@
 # Plan: declared object stores without a host-UI bundle
 
 **Date:** 2026-07-29
-**Status:** **Steps 1–3 implemented 2026-07-29. Not released, not deployed.** Build green;
+**Status:** **Steps 1–3 implemented, released and deployed 2026-07-29. Step 1 is live-verified;
+step 2's `PlatformOwned` arm is not, and no deployment exercises it.** Build green;
 `reventless-aws` 376/376 (36 suites, +5 new), `reventless-core` 553/553, default suite 2264/2264.
 The serving decision was extracted to `Util_StoreLayout.servingFor` so it is a unit-testable
 three-way choice rather than a condition buried in `deployPlatform` — see
@@ -205,11 +206,109 @@ The check is folded into the `sourceApiAssociationId` export rather than left as
 `apply`, for the reason the merge gate already is: a dangling `apply` is not guaranteed to be
 evaluated, and a check that might not run is not a check.
 
+## Live state (2026-07-29, alpha)
+
+Deployed at 07:16 UTC, which included step 1–3's commit. `pulumi stack output` on
+`online-shop-hybrid-platform-aws/alpha`:
+
+```
+uploadEndpoints : { "catalog.productImages": "https://qctf…lambda-url.eu-west-1.on.aws/" }
+objectStores    : { "catalog.productImages": { bucketName: "alpha-stores",
+                                               keyPrefix: "productImages" } }
+```
+
+**`bucketName` was the logical name, not the physical one — fixed 2026-07-29.** The live value above
+reads `alpha-stores`; the bucket in S3 is `alpha-stores-507202d`. Pulumi auto-names the resource, and
+[Platform.res:1589](../../reventless/aws/src/Platform.res#L1589) put `Util_StoreLayout.bucketNameFor`'s
+string into the exported record instead of `storeHandle.bucketName`, the `Output` carrying the
+resolved name. Uploads were unaffected — the presign service was already wired from the physical
+handle — so this was visible only in the export, which is precisely where the Risks table says the
+field exists "for IAM and lifecycle reasoning". An IAM policy written against
+`arn:aws:s3:::alpha-stores` grants nothing.
+
+`objectStoreEndpoint.bucketName` is now `Pulumi.Output.t<string>`; the tuple carries the logical name
+(which still groups the served view, where it is correct) *and* the physical one. The two are
+different strings and only one of them exists in S3 — the type now says so. Found while checking
+whether a second platform on `alpha` would collide on a bucket name; it would not, and that is the
+same auto-naming suffix that made the export wrong.
+
+That verifies step 1 end-to-end: both keys are exported, under the `{plugin}.{store}` grammar, and
+`objectStores` carries **no `baseUrl`** — which is the `HostShell` arm of `servingFor` behaving as
+designed, since alpha passes `~hostUiBundle`. So the arm that was already the working path is
+confirmed live; the arm this plan added is not.
+
+**Two facts about that output are not yet reconciled with the repo:**
+
+- The key is `catalog.productImages`, lowercase — the state `b16dcc1c6` fixed. That commit is pushed
+  and published, but **deploy is `workflow_dispatch`**, so it has not been applied. Alpha still runs
+  the pre-fix capability list.
+- The §6 coverage assertion (`8f2b6e6ca`) is unpushed. Once it ships, a plugin deploy against the
+  *current* alpha compares required `Catalog.productImages` against provisioned
+  `catalog.productImages` and returns `Missing` — a hard deploy failure. That is the check doing
+  exactly its job, but it makes an ordering constraint: **redeploy the platform before any plugin
+  stack deploys with the check in it.**
+
+## The shell-less example (2026-07-29)
+
+`online-shop-aggregates` is now the repo's `PlatformOwned` case. Three things changed together,
+because any one alone is incoherent:
+
+- **`Product` declares an image.** `@storageRef("productImages")` on the `Add` and `UpdateImage`
+  command inputs and on the `Products` read model's `imageUrl`. Events carry the ref as a plain
+  string — the annotation describes an input, which is the convention hybrid already follows.
+- **The platform declares the store** and drops `~hostUiBundle`.
+- Downstream constructions of `Product.Add`/`Added` were updated (import task, EP mapping GWT, the
+  cross-plugin flow GWT), and `UpdateImage` got the same three arms the other update commands have,
+  including the idempotent no-event case.
+
+Choosing this example over `online-shop-dcb` buys a second thing: `requiredStores` derives from
+aggregate command/event schemas and read model state as well as from slices, and until now only the
+slice path had an example. This covers the aggregate path.
+
+Build green, zero warnings; full suite 2295/2295 (276 suites), `reventless-core` + `reventless-aws`
+956/956.
+
 ## Still to do
 
 - **Deploy-verify step 2.** PUT through a presign URL, then GET through the exported `baseUrl`, on a
   platform with a declared store and no `~hostUiBundle`. A preview cannot show that a bucket policy
   grants what it claims — the Stage 2 exercise made the same point about `protect` and teardown.
+
+  **An example now reaches the arm; nothing deploys it yet.** Until 2026-07-29 all three example
+  platforms passed `~hostUiBundle` (hybrid with a payload, the other two with `{}`) and only hybrid
+  declared a store, so every configuration in the repo resolved to `HostShell` and `PlatformOwned`
+  had never been compiled into a deployable stack, let alone applied.
+
+  `online-shop-aggregates` is now that stack: it omits `~hostUiBundle` entirely and declares
+  `Catalog.productImages`. Confirmed from the emitted entry point rather than the source —
+  `Main.res.mjs` reads `deployPlatform(version, undefined, capabilities)`, so `servingFor` gets
+  `hasHostUiBundle: false` with one declared bucket and returns `PlatformOwned`. That is the same
+  read-the-generated-JS check used above for the host-UI path.
+
+  What remains is genuinely a deploy: no `online-shop-aggregates` stack has ever existed
+  (`pulumi stack ls` is empty), so the PUT/GET round trip needs a first-ever `pulumi up` standing up
+  a full platform (~180 resources, on the order of hybrid's) rather than diffing an existing one.
+
+  **The stack name is the decision, not the timing.** `Util_StoreLayout.protectionFor` treats only
+  the `pr-` prefix as ephemeral; every other name, `alpha` included, gets `Protected` store buckets
+  that block `pulumi destroy` by design. Verifying on `alpha` would therefore leave a second
+  permanent platform in the account whose store bucket cannot be torn down without manually
+  flipping protection. So the verification runs on a `pr-verify` stack:
+
+  1. `.github/workflows/deploy-online-shop-aggregates.yml` — manual dispatch, added 2026-07-29.
+     The Pulumi stack name is the branch name, so `--ref pr-verify` deploys the `pr-verify` stacks.
+  2. `Pulumi.pr-verify.yaml` for all three stacks (platform, catalog, ordering), with
+     `platform:stack` and the ordering→catalog `interstack` dependency repointed. Without these the
+     plugin stacks cannot resolve the platform's outputs.
+  3. Deploy, PUT through the presign URL, GET through the exported `baseUrl`, then `pulumi destroy`.
+
+  The layer-ARN lookup falls through to `alpha`'s SSM parameter for any unrecognised branch, which
+  is what this wants — the verification is of the serving path, not of a fresh layer build.
+
+  **Why not wait for Stage 3.** Stage 3 changes who *writes* the capability list, not what the
+  serving path does. It would generate the same list this example now holds by hand, for a
+  `PlatformOwned` arm that has still never executed — so the dependency runs the other way round:
+  verifying the arm is what makes Stage 3's generated output trustworthy.
 - ~~**Confirm the host-UI path is untouched.**~~ **Done 2026-07-29, from the emitted JS rather than
   from the source.** In `Platform.res.mjs` the whole `hostUiBundle` branch differs only in ReScript's
   temporary numbering (`match$1`→`match$2`), shifted because the new serving decision introduces a
@@ -217,5 +316,9 @@ evaluated, and a check that might not run is not a check.
   and `~servedBuckets` included. So a host-UI platform's only resource-level change is Lambda source
   hashes, which any framework change produces. This is the cheap check that generalises: read the
   generated JS for the path you did *not* mean to touch.
-- Note that a push to `alpha` publishes *and* deploys, with no review step between preview and
-  apply.
+- ~~Note that a push to `alpha` publishes *and* deploys, with no review step between preview and
+  apply.~~ **Half true, and the wrong half was the worry.** A push to `alpha` publishes
+  automatically (`release.yml`), but `deploy-online-shop-hybrid.yml` is `on: workflow_dispatch` only
+  — both of today's deploys were manual. So there *is* a human step before apply. The real hazard is
+  the opposite one: publish and deploy drift apart silently, which is why alpha is currently running
+  a capability list two commits behind the repo.
