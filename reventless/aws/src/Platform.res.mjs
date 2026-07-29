@@ -936,6 +936,7 @@ function MakeWithConfig(Config) {
         plugin + `.` + store,
         keyPrefix,
         bucketName,
+        storeHandle.bucketName,
         presign.url
       ];
     });
@@ -964,8 +965,8 @@ function MakeWithConfig(Config) {
     let declaredStoreEndpoints = declaredStoreServices.map(param => ({
       store: param[0],
       keyPrefix: param[1],
-      bucketName: param[2],
-      uploadUrl: param[3],
+      bucketName: param[3],
+      uploadUrl: param[4],
       baseUrl: storeServingBaseUrl
     }));
     objectStoreEndpointsRef.contents = declaredStoreEndpoints;
@@ -974,28 +975,22 @@ function MakeWithConfig(Config) {
         e.store,
         u
       ]))).apply(pairs => Object.fromEntries(pairs)));
-      Pulumi$Pulumi.$$export("objectStores", Pulumi.all(declaredStoreEndpoints.map(e => {
-        let u = e.baseUrl;
-        if (u !== undefined) {
-          return u.apply(b => [
-            e,
-            b
-          ]);
-        } else {
-          return Pulumi.output([
-            e,
-            undefined
-          ]);
-        }
-      })).apply(pairs => Object.fromEntries(pairs.map(param => {
-        let baseUrl = param[1];
+      Pulumi$Pulumi.$$export("objectStores", Pulumi.all(declaredStoreEndpoints.map(e => Pulumi.all([
+        e.bucketName,
+        Output$Pulumi.allOpt(e.baseUrl)
+      ]).apply(param => [
+        e,
+        param[0],
+        param[1]
+      ]))).apply(resolved => Object.fromEntries(resolved.map(param => {
+        let baseUrl = param[2];
         let e = param[0];
         return [
           e.store,
           Object.fromEntries([
             [
               "bucketName",
-              e.bucketName
+              param[1]
             ],
             [
               "keyPrefix",
@@ -1048,7 +1043,7 @@ function MakeWithConfig(Config) {
       let uploadEndpointOutput = store$1 !== undefined ? Upload_Presign_S3$ReventlessAws.make(store$1.bucketName, undefined, undefined, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
       let storeUploadEndpointsOutput = Pulumi.all(declaredStoreServices.map(param => {
         let qualified = param[0];
-        return param[3].apply(u => [
+        return param[4].apply(u => [
           qualified,
           u
         ]);
@@ -2096,6 +2091,7 @@ function Make($star) {
         plugin + `.` + store,
         keyPrefix,
         bucketName,
+        storeHandle.bucketName,
         presign.url
       ];
     });
@@ -2124,8 +2120,8 @@ function Make($star) {
     let declaredStoreEndpoints = declaredStoreServices.map(param => ({
       store: param[0],
       keyPrefix: param[1],
-      bucketName: param[2],
-      uploadUrl: param[3],
+      bucketName: param[3],
+      uploadUrl: param[4],
       baseUrl: storeServingBaseUrl
     }));
     objectStoreEndpointsRef.contents = declaredStoreEndpoints;
@@ -2134,28 +2130,22 @@ function Make($star) {
         e.store,
         u
       ]))).apply(pairs => Object.fromEntries(pairs)));
-      Pulumi$Pulumi.$$export("objectStores", Pulumi.all(declaredStoreEndpoints.map(e => {
-        let u = e.baseUrl;
-        if (u !== undefined) {
-          return u.apply(b => [
-            e,
-            b
-          ]);
-        } else {
-          return Pulumi.output([
-            e,
-            undefined
-          ]);
-        }
-      })).apply(pairs => Object.fromEntries(pairs.map(param => {
-        let baseUrl = param[1];
+      Pulumi$Pulumi.$$export("objectStores", Pulumi.all(declaredStoreEndpoints.map(e => Pulumi.all([
+        e.bucketName,
+        Output$Pulumi.allOpt(e.baseUrl)
+      ]).apply(param => [
+        e,
+        param[0],
+        param[1]
+      ]))).apply(resolved => Object.fromEntries(resolved.map(param => {
+        let baseUrl = param[2];
         let e = param[0];
         return [
           e.store,
           Object.fromEntries([
             [
               "bucketName",
-              e.bucketName
+              param[1]
             ],
             [
               "keyPrefix",
@@ -2208,7 +2198,7 @@ function Make($star) {
       let uploadEndpointOutput = store$1 !== undefined ? Upload_Presign_S3$ReventlessAws.make(store$1.bucketName, undefined, undefined, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
       let storeUploadEndpointsOutput = Pulumi.all(declaredStoreServices.map(param => {
         let qualified = param[0];
-        return param[3].apply(u => [
+        return param[4].apply(u => [
           qualified,
           u
         ]);

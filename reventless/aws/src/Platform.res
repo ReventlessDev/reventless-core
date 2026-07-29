@@ -61,7 +61,12 @@ type objectStoreEndpoint = {
   // The path this store's keys are rooted at, and therefore the path it must be
   // served under for a minted `/{key}` ref to resolve.
   keyPrefix: string,
-  bucketName: string,
+  // The bucket's **physical** name, which is not the name the layout computes:
+  // Pulumi auto-names the resource, so a `SharedBucket` stack asking for
+  // `alpha-stores` gets `alpha-stores-507202d`. An Output because that suffix is
+  // only known after the bucket resolves — and a plain string here is exactly
+  // how this shipped exporting a bucket name that no ARN matches.
+  bucketName: Pulumi.Output.t<string>,
   uploadUrl: Pulumi.Output.t<string>,
   // Public base URL the store is served from, when the platform serves it
   // itself. `None` when a host-UI bundle is deployed — there the shell's own
@@ -1586,7 +1591,11 @@ module MakeWithConfig = (
         ~bucketName=storeHandle.bucketName,
         ~servedPrefix=storeHandle.keyPrefix,
       )
-      (`${plugin}.${store}`, keyPrefix, bucketName, presign.url)
+      // `bucketName` is the layout's *logical* name and groups the served view
+      // below; `storeHandle.bucketName` is the physical one Pulumi resolves, and
+      // is what a consumer needs to build an ARN. Carrying both is the point —
+      // they are different strings and only one of them exists in S3.
+      (`${plugin}.${store}`, keyPrefix, bucketName, storeHandle.bucketName, presign.url)
     })
 
     // Group the served view by bucket: one origin and one bucket policy per
@@ -1597,7 +1606,7 @@ module MakeWithConfig = (
       ->Option.map(b => {
         ReventlessInfra.Platform.id: bucketName,
         prefixes: declaredStoreServices
-        ->Array.filterMap(((_, prefix, bn, _)) => bn == bucketName ? Some(prefix) : None),
+        ->Array.filterMap(((_, prefix, bn, _, _)) => bn == bucketName ? Some(prefix) : None),
         bucketId: b.bucketId,
         bucketArn: b.bucketArn,
         bucketRegionalDomainName: b.bucketRegionalDomainName,
@@ -1634,9 +1643,16 @@ module MakeWithConfig = (
     let declaredStoreEndpoints = declaredStoreServices->Array.map(((
       store,
       keyPrefix,
-      bucketName,
+      _logicalBucketName,
+      physicalBucketName,
       uploadUrl,
-    )) => {store, keyPrefix, bucketName, uploadUrl, baseUrl: storeServingBaseUrl})
+    )) => {
+      store,
+      keyPrefix,
+      bucketName: physicalBucketName->Pulumi.Output.fromInput,
+      uploadUrl,
+      baseUrl: storeServingBaseUrl,
+    })
     objectStoreEndpointsRef := declaredStoreEndpoints
 
     // Exported unconditionally — the provisioning above already is. Their only
@@ -1657,18 +1673,18 @@ module MakeWithConfig = (
         "objectStores",
         declaredStoreEndpoints
         ->Array.map(e =>
-          switch e.baseUrl {
-          | Some(u) => u->Pulumi.Output.apply(b => (e, Some(b)))
-          | None => Pulumi.Output.make((e, None))
-          }
+          Pulumi.Output.all2((e.bucketName, e.baseUrl->Pulumi.Output.allOpt))->Pulumi.Output.apply(((
+            bucketName,
+            baseUrl,
+          )) => (e, bucketName, baseUrl))
         )
         ->Pulumi.Output.all
-        ->Pulumi.Output.apply(pairs =>
-          pairs
-          ->Array.map(((e, baseUrl)) => (
+        ->Pulumi.Output.apply(resolved =>
+          resolved
+          ->Array.map(((e, bucketName, baseUrl)) => (
             e.store,
             [
-              ("bucketName", JSON.Encode.string(e.bucketName)),
+              ("bucketName", JSON.Encode.string(bucketName)),
               ("keyPrefix", JSON.Encode.string(e.keyPrefix)),
             ]
             // Absent when the host shell serves the store: there the object is
@@ -1825,7 +1841,7 @@ module MakeWithConfig = (
       // built before per-store binding reads it and is unaffected.
       let storeUploadEndpointsOutput: Pulumi.Output.t<array<(string, string)>> =
         declaredStoreServices
-        ->Array.map(((qualified, _, _, url)) => url->Pulumi.Output.apply(u => (qualified, u)))
+        ->Array.map(((qualified, _, _, _, url)) => url->Pulumi.Output.apply(u => (qualified, u)))
         ->Pulumi.Output.all
 
       let configJsonContent =
