@@ -80,6 +80,80 @@ describe("Util_StoreLayout.servingFor", () => {
   )
 })
 
+describe("Util_StoreLayout.coverageFor", () => {
+  testSync("everything declared is provisioned", () =>
+    expect(
+      Util_StoreLayout.coverageFor(
+        ~required=["Catalog.productImages"],
+        ~provisioned=["Catalog.productImages"],
+      ),
+    )->toEqual(Util_StoreLayout.Covered)
+  )
+
+  testSync("declaring nothing is covered, whatever the platform provisions", () =>
+    expect(Util_StoreLayout.coverageFor(~required=[], ~provisioned=["Catalog.productImages"]))->toEqual(
+      Util_StoreLayout.Covered,
+    )
+  )
+
+  // A platform provisioning nothing has not adopted capability provisioning.
+  // Failing it would break deployments that work today, so this is the arm that
+  // must NOT be a hard error.
+  testSync("a platform provisioning nothing has not adopted, rather than got it wrong", () =>
+    expect(Util_StoreLayout.coverageFor(~required=["Catalog.productImages"], ~provisioned=[]))->toEqual(
+      Util_StoreLayout.NotAdopted(["Catalog.productImages"]),
+    )
+  )
+
+  // The case that shipped: the platform declared the store under a lowercased
+  // plugin name, so both sides had a productImages store and neither matched.
+  // It carries what IS provisioned because the cause is usually a near-miss.
+  testSync("a near-miss reports both sides — this is the case-slip shape", () =>
+    expect(
+      Util_StoreLayout.coverageFor(
+        ~required=["Catalog.productImages"],
+        ~provisioned=["catalog.productImages"],
+      ),
+    )->toEqual(
+      Util_StoreLayout.Missing({
+        missing: ["Catalog.productImages"],
+        provisioned: ["catalog.productImages"],
+      }),
+    )
+  )
+
+  testSync("only the uncovered stores are reported missing", () =>
+    expect(
+      Util_StoreLayout.coverageFor(
+        ~required=["Catalog.productImages", "Catalog.manuals"],
+        ~provisioned=["Catalog.productImages"],
+      ),
+    )->toEqual(
+      Util_StoreLayout.Missing({
+        missing: ["Catalog.manuals"],
+        provisioned: ["Catalog.productImages"],
+      }),
+    )
+  )
+
+  // Matching is exact. Suffix or case-insensitive matching would "fix" the
+  // case slip above by silently binding to the wrong store, and two plugins may
+  // legitimately name a store the same.
+  testSync("matching is exact — a suffix match is not a match", () =>
+    expect(
+      Util_StoreLayout.coverageFor(
+        ~required=["Catalog.productImages"],
+        ~provisioned=["Ordering.productImages"],
+      ),
+    )->toEqual(
+      Util_StoreLayout.Missing({
+        missing: ["Catalog.productImages"],
+        provisioned: ["Ordering.productImages"],
+      }),
+    )
+  )
+})
+
 describe("Util_StoreLayout.protectionFor", () => {
   // The pairing a single layout-driven switch would have got wrong: alpha
   // shares a bucket and is still protected.

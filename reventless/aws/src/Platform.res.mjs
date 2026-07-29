@@ -11,6 +11,7 @@ import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output
 import * as Pulumi$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Pulumi.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Plugin$ReventlessAws from "./components/Plugin.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
@@ -1208,9 +1209,25 @@ function MakeWithConfig(Config) {
       ]).apply(param => param[0]);
       let association = AppSync_MergedApi$ReventlessAws.associateSourceWithMergedArn("PluginSourceAssociation", arnAfterSchemaPush, domainApi, {});
       let mergeGate = AppSync_MergedApi$ReventlessAws.mergeStatusGateWith(checkedMergedApiArn, association);
+      let capabilityGate = Pulumi.all([
+        pluginOutputs.pluginStructure,
+        stackRef.getOutput("objectStores")
+      ]).apply(param => {
+        let required = Stdlib_Option.getOr(Stdlib_Option.flatMap(param[0], s => s.requiredStores), []);
+        let provisioned = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(param[1], Stdlib_JSON.Decode.object), prim => Object.keys(prim)), []);
+        let missing = Util_StoreLayout$ReventlessAws.coverageFor(required, provisioned);
+        if (typeof missing !== "object") {
+          return;
+        } else if (missing.TAG === "NotAdopted") {
+          return log.warn("Platform:deployPlugin", undefined, `declares ` + missing._0.join(", ") + ` but the platform stack provisions no object stores — add them to the platform's ~capabilities and redeploy the platform first, or uploads will fall back to the legacy service and write to the wrong bucket`);
+        } else {
+          return Stdlib_JsError.throwWithMessage(`Plugin requires object store(s) the platform does not provision: ` + missing.missing.join(", ") + `.\n` + (`  The platform stack provisions: ` + missing.provisioned.join(", ") + `.\n`) + `  A store's key is {plugin}.{store}, where {plugin} is the name the plugin registers — check the capability's spelling and case against it.\n  Add the missing entr(ies) to the platform's ~capabilities and redeploy the platform stack first.`);
+        }
+      });
       Pulumi$Pulumi.$$export("sourceApiAssociationId", Pulumi.all([
         association.associationId,
-        mergeGate
+        mergeGate,
+        capabilityGate
       ]).apply(param => param[0]));
       Pulumi$Pulumi.$$export("pluginSourceApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
       Pulumi$Pulumi.$$export("pluginSourceApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
@@ -2352,9 +2369,25 @@ function Make($star) {
       ]).apply(param => param[0]);
       let association = AppSync_MergedApi$ReventlessAws.associateSourceWithMergedArn("PluginSourceAssociation", arnAfterSchemaPush, domainApi, {});
       let mergeGate = AppSync_MergedApi$ReventlessAws.mergeStatusGateWith(checkedMergedApiArn, association);
+      let capabilityGate = Pulumi.all([
+        pluginOutputs.pluginStructure,
+        stackRef.getOutput("objectStores")
+      ]).apply(param => {
+        let required = Stdlib_Option.getOr(Stdlib_Option.flatMap(param[0], s => s.requiredStores), []);
+        let provisioned = Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(param[1], Stdlib_JSON.Decode.object), prim => Object.keys(prim)), []);
+        let missing = Util_StoreLayout$ReventlessAws.coverageFor(required, provisioned);
+        if (typeof missing !== "object") {
+          return;
+        } else if (missing.TAG === "NotAdopted") {
+          return log.warn("Platform:deployPlugin", undefined, `declares ` + missing._0.join(", ") + ` but the platform stack provisions no object stores — add them to the platform's ~capabilities and redeploy the platform first, or uploads will fall back to the legacy service and write to the wrong bucket`);
+        } else {
+          return Stdlib_JsError.throwWithMessage(`Plugin requires object store(s) the platform does not provision: ` + missing.missing.join(", ") + `.\n` + (`  The platform stack provisions: ` + missing.provisioned.join(", ") + `.\n`) + `  A store's key is {plugin}.{store}, where {plugin} is the name the plugin registers — check the capability's spelling and case against it.\n  Add the missing entr(ies) to the platform's ~capabilities and redeploy the platform stack first.`);
+        }
+      });
       Pulumi$Pulumi.$$export("sourceApiAssociationId", Pulumi.all([
         association.associationId,
-        mergeGate
+        mergeGate,
+        capabilityGate
       ]).apply(param => param[0]));
       Pulumi$Pulumi.$$export("pluginSourceApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
       Pulumi$Pulumi.$$export("pluginSourceApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));

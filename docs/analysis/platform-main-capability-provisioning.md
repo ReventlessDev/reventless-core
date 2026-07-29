@@ -389,7 +389,9 @@ Roughly 79 → 12 lines, and it fixes §3.2 and §3.3 immediately — restoring 
 
 Ungating `@semantic` from `type state` is **no longer part of this stage** (§5.6): it buys the string annotation on commands, which the type path already covers for the declared case. Track it separately.
 
-**Stage 2 — capability providers.** `deployPlatform` provisions from a named set; object stores move to the plugin stacks that own them (§5.3). No Pulumi in the app:
+**Stage 2 — capability providers.** `deployPlatform` provisions from a named set. No Pulumi in the app:
+
+> **Superseded on execution (2026-07-28).** This stage was planned to move object stores into the plugin stacks that own them, per §5.3's placement rule. It was unbuildable: plugin stacks deploy *after* the platform and cannot feed its CDN, and a shared-layout bucket holds several plugins' stores, so no single plugin stack can own it. **The platform stack provisions the stores**; ownership is carried in the tags instead (`scope=Plugin, plugin={plugin}` per store; `scope=Platform` for a shared bucket). See [platform-capability-provisioning-stage-2.md](../plans/done/platform-capability-provisioning-stage-2.md), *What landed, and what the plan got wrong*. §5.3's placement rule is stale in the same way and is left as written so the reasoning that produced it stays legible.
 
 ```rescript
 let default = Platform.deployPlatform(
@@ -415,7 +417,9 @@ let default = Platform.deployPlatform(
 ReventlessInfra.DeployBootstrap.run(PostDeploy)
 ```
 
-The platform learns only *which stores to serve* — the buckets are created by the plugin stacks that own them. The provenance comment is deliberate: it makes the diff readable when a capability appears or disappears.
+The platform learns which stores exist, and — as Stage 2 settled — provisions them itself, attributing each to the declaring plugin through tags. The provenance comment is deliberate: it makes the diff readable when a capability appears or disappears.
+
+**This stage is what removes the hand-written `plugin` name, and that is not cosmetic.** Until it lands, the capability's `plugin` is typed by hand while `pluginStructure.requiredStores` derives the same key from the plugin's registered name — so the two halves of one lookup have independent spellings. A case slip between them provisions a store, exports its endpoint under a key nothing queries, and lets the upload input fall back to the legacy service and write to the wrong bucket, with a 2xx and a plausible ref. That is not hypothetical: it shipped in the example and was fixed 2026-07-29. §6's deploy-time assertion is the guard that makes the class loud in the meantime, and it does not depend on this stage.
 
 **Stage 4 — catalogue growth.** `EmailDelivery` (SES identity + IAM), `SecretStore`, `Vpc` (Postgres-backed query storage), `FullTextSearch`, `MediaProcessing`, `WebhookIngress` — registered through [DeployBootstrap](../../reventless/infra/src/components/DeployBootstrap.res) so a provider can ship in a satellite package without touching `reventless-aws`.
 

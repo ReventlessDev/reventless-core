@@ -44,6 +44,26 @@ function servingFor(hasHostUiBundle, declaredBucketCount) {
   }
 }
 
+function coverageFor(required, provisioned) {
+  let missing = required.filter(r => !provisioned.includes(r));
+  if (missing.length !== 0) {
+    if (provisioned.length !== 0) {
+      return {
+        TAG: "Missing",
+        missing: missing,
+        provisioned: provisioned
+      };
+    } else {
+      return {
+        TAG: "NotAdopted",
+        _0: missing
+      };
+    }
+  } else {
+    return "Covered";
+  }
+}
+
 export {
   defaultEphemeralPrefixes,
   layoutFor,
@@ -51,5 +71,6 @@ export {
   bucketNameFor,
   keyPrefixFor,
   servingFor,
+  coverageFor,
 }
 /* No side effect */

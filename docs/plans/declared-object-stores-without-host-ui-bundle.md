@@ -174,6 +174,37 @@ path is matched by its own `{prefix}/*` behaviour first, so the default is reach
 no store claims — which 404s at S3, the correct answer. `servingFor` already prevents the empty
 call, so the throw is a guard on a second caller, not a reachable path today.
 
+## Follow-on: the §6 coverage assertion (2026-07-29)
+
+Not in this plan's steps, added because executing it produced the failure it prevents. The analysis's
+§6 recommended "B as the mechanism, C as the safety net" — `deployPlugin` failing when the platform's
+exported capability set does not cover what the plugin requires. That safety net was unbuildable
+until step 1, because there was no exported capability set to compare against. There is now.
+
+`deployPlugin` reads the platform's `objectStores` output through the existing `platformStackRef` and
+compares its keys against `pluginStructure.requiredStores`. The decision is
+`Util_StoreLayout.coverageFor`, pure and tested, returning **three** outcomes rather than two:
+
+| Outcome | When | Response |
+|---|---|---|
+| `Covered` | every declared store is provisioned | nothing |
+| `NotAdopted(missing)` | the platform provisions **no** stores | warn |
+| `Missing({missing, provisioned})` | it provisions some, but not these | **fail the deploy** |
+
+The third arm is the one that matters and the split is the reason it is safe to ship. A platform
+provisioning nothing has not adopted capability provisioning; failing it would break deployments that
+work today. A platform provisioning *some* stores but not this one has adopted it and has a missing
+or misspelled entry — which is exactly the case-slip that shipped in the example, where both sides
+had a `productImages` store and neither matched.
+
+Matching is **exact**. Case-insensitive or suffix matching would "fix" that slip by silently binding
+to the wrong store, and two plugins may legitimately name a store the same — the same reasoning the
+UI plan used when it rejected suffix-matching.
+
+The check is folded into the `sourceApiAssociationId` export rather than left as a free-standing
+`apply`, for the reason the merge gate already is: a dangling `apply` is not guaranteed to be
+evaluated, and a check that might not run is not a check.
+
 ## Still to do
 
 - **Deploy-verify step 2.** PUT through a presign URL, then GET through the exported `baseUrl`, on a

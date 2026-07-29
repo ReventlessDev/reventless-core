@@ -34,6 +34,17 @@ type protection =
   | Protected
   | Unprotected
 
+/** Whether the platform provisions everything a plugin's fields declare. */
+type coverage =
+  /** Every declared store is provisioned. */
+  | Covered
+  /** The platform provisions no stores at all — it has not adopted capability
+      provisioning, which is a different situation from getting it wrong. */
+  | NotAdopted(array<string>)
+  /** The platform provisions stores, but not these. Carries what it does
+      provision, because the usual cause is a near-miss worth showing. */
+  | Missing({missing: array<string>, provisioned: array<string>})
+
 /** Which distribution fronts the declared stores. */
 type serving =
   /** No store is declared, so nothing is served. */
@@ -134,3 +145,31 @@ let servingFor = (~hasHostUiBundle: bool, ~declaredBucketCount: int): serving =>
   | (true, _) => HostShell
   | (false, _) => PlatformOwned
   }
+
+/**
+Does the platform provision what the plugin's fields declare?
+
+The split-stack ordering hazard, stated as a set difference: the platform
+deploys before the plugin and cannot read its schemas, so its capability list is
+written by hand and can simply be wrong. `required` comes from
+`pluginStructure.requiredStores`; `provisioned` from the platform's exported
+`objectStores` keys. Both are qualified `{plugin}.{store}`.
+
+**Three outcomes, not two.** A platform provisioning nothing has not adopted
+capability provisioning; failing it would break deployments that work today. A
+platform provisioning *some* stores but not this one has adopted it and has a
+missing or misspelled entry. Collapsing those two into one verdict forces a
+choice between breaking the first group and not helping the second.
+
+Worth being strict about because every symptom is silent: the upload input finds
+no per-store endpoint, falls back to the legacy single service, and writes to
+whatever bucket that serves — a 2xx, a plausible ref, and the wrong destination.
+*/
+let coverageFor = (~required: array<string>, ~provisioned: array<string>): coverage => {
+  let missing = required->Array.filter(r => !(provisioned->Array.includes(r)))
+  switch (missing, provisioned) {
+  | ([], _) => Covered
+  | (missing, []) => NotAdopted(missing)
+  | (missing, provisioned) => Missing({missing, provisioned})
+  }
+}

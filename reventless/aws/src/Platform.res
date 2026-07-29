@@ -2053,11 +2053,66 @@ module MakeWithConfig = (
         ~mergedApiIdentifier=checkedMergedApiArn,
         ~association,
       )
+
+      // ── Capability coverage ────────────────────────────────────────────────
+      //
+      // `requiredStores` is what this plugin's fields *declare*; the platform's
+      // `objectStores` output is what it actually provisioned. A store in the
+      // first and not the second is the split-stack ordering hazard: the
+      // platform deploys before the plugin and cannot see the plugin's schemas,
+      // so the capability list is hand-written and can simply be wrong.
+      //
+      // It is worth failing on because every symptom is silent. The upload
+      // input finds no per-store endpoint, falls back to the legacy single
+      // service, and writes to whatever bucket that serves — a 2xx, a plausible
+      // ref, and the wrong destination. A case slip in the hand-written name
+      // produces exactly that, and so does forgetting the entry entirely.
+      //
+      // Two outcomes rather than one, because "you got it wrong" and "you have
+      // not started" deserve different answers. A platform exporting no stores
+      // at all has not adopted capability provisioning; failing it would break
+      // deployments that are working. A platform exporting *some* stores but
+      // not this one has adopted it and is missing or misspelling an entry.
+      //
+      // Folded into the association export for the same reason the merge gate
+      // is: a dangling `apply` is not guaranteed to be evaluated, and a check
+      // that might not run is not a check.
+      let capabilityGate: Pulumi.Output.t<unit> =
+        (pluginOutputs.pluginStructure, stackRef->Pulumi.StackReference.getOutput("objectStores"))
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply((((structure, objectStores): (_, option<JSON.t>))) => {
+          let required =
+            structure->Option.flatMap(s => s.requiredStores)->Option.getOr([])
+          let provisioned =
+            objectStores
+            ->Option.flatMap(JSON.Decode.object)
+            ->Option.map(Dict.keysToArray)
+            ->Option.getOr([])
+          switch Util_StoreLayout.coverageFor(~required, ~provisioned) {
+          | Covered => ()
+          | NotAdopted(missing) =>
+            log.warn(
+              ~comp="Platform:deployPlugin",
+              `declares ${missing->Array.join(", ")} but the platform stack provisions no object stores — ` ++
+              `add them to the platform's ~capabilities and redeploy the platform first, ` ++
+              `or uploads will fall back to the legacy service and write to the wrong bucket`,
+            )
+          | Missing({missing, provisioned}) =>
+            JsError.throwWithMessage(
+              `Plugin requires object store(s) the platform does not provision: ${missing->Array.join(", ")}.\n` ++
+              `  The platform stack provisions: ${provisioned->Array.join(", ")}.\n` ++
+              `  A store's key is {plugin}.{store}, where {plugin} is the name the plugin registers — ` ++
+              `check the capability's spelling and case against it.\n` ++
+              `  Add the missing entr(ies) to the platform's ~capabilities and redeploy the platform stack first.`,
+            )
+          }
+        })
+
       Pulumi.Pulumi.export(
         "sourceApiAssociationId",
-        (association.associationId, mergeGate)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((id, _)) => id),
+        (association.associationId, mergeGate, capabilityGate)
+        ->Pulumi.Output.all3
+        ->Pulumi.Output.apply(((id, _, _)) => id),
       )
       Pulumi.Pulumi.export(
         "pluginSourceApiId",
