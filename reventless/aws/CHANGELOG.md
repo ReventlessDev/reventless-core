@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.241 (2026-07-29)
+
+### Features
+
+* **platform:** serve and publish declared object stores without a host UI ([9cc4700](https://github.com/ReventlessDev/reventless-core/commit/9cc4700dc96f05e3d35fbc912a4c7be7a5531337))
+
+
 # 3.0.0-alpha.240 (2026-07-28)
 
 ### Features
