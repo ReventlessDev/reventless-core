@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.93 (2026-07-29)
+
+### Features
+
+* **example:** serve declared object stores without a host shell ([27794df](https://github.com/ReventlessDev/reventless-core/commit/27794df37a177a29419e82e4fbe698a1489a1bd9))
+
+
 # 1.0.0-alpha.92 (2026-07-29)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-platform-aws

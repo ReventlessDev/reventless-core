@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.189 (2026-07-29)
+
+### Bug Fixes
+
+* **example:** declare the store under the plugin's registered name ([b16dcc1](https://github.com/ReventlessDev/reventless-core/commit/b16dcc1c6d9415329c9c5c7f34e355a9d1165a5d))
+
+
 # 1.0.0-alpha.188 (2026-07-29)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

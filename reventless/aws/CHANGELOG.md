@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.242 (2026-07-29)
+
+### Bug Fixes
+
+* **platform:** export the bucket's physical name, not the layout's ([43b8ba4](https://github.com/ReventlessDev/reventless-core/commit/43b8ba4f04499c918c7c16921962ad640ea20198))
+### Features
+
+* **platform:** fail a plugin deploy that needs a store the platform lacks ([8f2b6e6](https://github.com/ReventlessDev/reventless-core/commit/8f2b6e6ca8ea472c70bee40e57c959a64f2a7b4e))
+
+
 # 3.0.0-alpha.241 (2026-07-29)
 
 ### Features

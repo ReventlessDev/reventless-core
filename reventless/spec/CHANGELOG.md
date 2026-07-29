@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.84 (2026-07-29)
+
+### Features
+
+* **plugin:** why a read model is named by that field ([699ef8e](https://github.com/ReventlessDev/reventless-core/commit/699ef8e72f1b1d82fb04672739e5e4a8db61ae9a))
+
+
 # 3.0.0-alpha.83 (2026-07-28)
 
 ### Features
