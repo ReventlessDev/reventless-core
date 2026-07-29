@@ -5,7 +5,7 @@
 describe("Products ExtensionPoint mapping", () => {
   test("Added publishes ProductBecameAvailable", () =>
     whenDelegateEvent(
-      Delegate.Added({name: "Book", description: "A good book", price: 9.99}),
+      Delegate.Added({name: "Book", description: "A good book", price: 9.99, imageUrl: "/productImages/book.jpg"}),
     )->thenPublishesEvent(
       "gwt-id",
       ExtensionPoint.ProductBecameAvailable({productId: "gwt-id", name: "Book", price: 9.99}),

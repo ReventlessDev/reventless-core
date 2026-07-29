@@ -23,7 +23,8 @@ function project(param) {
         _1: {
           name: event.name,
           description: event.description,
-          price: event.price
+          price: event.price,
+          imageUrl: event.imageUrl
         }
       };
     case "NameUpdated" :
@@ -34,7 +35,8 @@ function project(param) {
         _1: state => ({
           name: name,
           description: state.description,
-          price: state.price
+          price: state.price,
+          imageUrl: state.imageUrl
         })
       };
     case "DescriptionUpdated" :
@@ -45,7 +47,8 @@ function project(param) {
         _1: state => ({
           name: state.name,
           description: description,
-          price: state.price
+          price: state.price,
+          imageUrl: state.imageUrl
         })
       };
     case "PriceUpdated" :
@@ -56,7 +59,20 @@ function project(param) {
         _1: state => ({
           name: state.name,
           description: state.description,
-          price: price
+          price: price,
+          imageUrl: state.imageUrl
+        })
+      };
+    case "ImageUpdated" :
+      let imageUrl = event.imageUrl;
+      return {
+        TAG: "Update",
+        _0: id,
+        _1: state => ({
+          name: state.name,
+          description: state.description,
+          price: state.price,
+          imageUrl: imageUrl
         })
       };
   }

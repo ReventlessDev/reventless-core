@@ -29,7 +29,8 @@ function importCallback(eventName, key) {
             TAG: "Add",
             name: "Imported Product",
             description: "Imported from " + key,
-            price: 9.99
+            price: 9.99,
+            imageUrl: ""
           }, Product$CatalogPlugin.commandSchema)
         }]
     }]);

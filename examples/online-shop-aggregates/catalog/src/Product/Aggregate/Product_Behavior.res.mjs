@@ -8,7 +8,8 @@ let stateSchema = S.union([
     TAG: "Created",
     name: s.m(S.string),
     description: s.m(S.string),
-    price: s.m(S.float)
+    price: s.m(S.float),
+    imageUrl: s.m(S.string)
   }))
 ]);
 
@@ -19,7 +20,8 @@ function evolve(state, event) {
         TAG: "Created",
         name: event.name,
         description: event.description,
-        price: event.price
+        price: event.price,
+        imageUrl: event.imageUrl
       };
     } else {
       return state;
@@ -31,28 +33,40 @@ function evolve(state, event) {
         TAG: "Created",
         name: event.name,
         description: event.description,
-        price: event.price
+        price: event.price,
+        imageUrl: event.imageUrl
       };
     case "NameUpdated" :
       return {
         TAG: "Created",
         name: event.name,
         description: state.description,
-        price: state.price
+        price: state.price,
+        imageUrl: state.imageUrl
       };
     case "DescriptionUpdated" :
       return {
         TAG: "Created",
         name: state.name,
         description: event.description,
-        price: state.price
+        price: state.price,
+        imageUrl: state.imageUrl
       };
     case "PriceUpdated" :
       return {
         TAG: "Created",
         name: state.name,
         description: state.description,
-        price: event.price
+        price: event.price,
+        imageUrl: state.imageUrl
+      };
+    case "ImageUpdated" :
+      return {
+        TAG: "Created",
+        name: state.name,
+        description: state.description,
+        price: state.price,
+        imageUrl: event.imageUrl
       };
   }
 }
@@ -66,7 +80,8 @@ function decide(state, command) {
             TAG: "Added",
             name: command.name,
             description: command.description,
-            price: command.price
+            price: command.price,
+            imageUrl: command.imageUrl
           }]
       };
     } else {
@@ -127,6 +142,22 @@ function decide(state, command) {
           _0: [{
               TAG: "PriceUpdated",
               price: price
+            }]
+        };
+      }
+    case "UpdateImage" :
+      let imageUrl = command.imageUrl;
+      if (imageUrl === state.imageUrl) {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: [{
+              TAG: "ImageUpdated",
+              imageUrl: imageUrl
             }]
         };
       }

@@ -83,8 +83,8 @@ describe("Aggregates ordering flow (single plugin)", () => {
 describe("Aggregates cross-plugin flow", () => {
   test("Catalog.Add → EP → Ordering.Sync surfaces the product as ordering shadow", () =>
     start
-    ->Add.whenCommand(~id="p1", Add({name: "Book", description: "A good book", price: 9.99}))
-    ->Add.thenEvent(Added({name: "Book", description: "A good book", price: 9.99}))
+    ->Add.whenCommand(~id="p1", Add({name: "Book", description: "A good book", price: 9.99, imageUrl: "/productImages/book.jpg"}))
+    ->Add.thenEvent(Added({name: "Book", description: "A good book", price: 9.99, imageUrl: "/productImages/book.jpg"}))
     ->ProductsEp.whenPublishedThrough
     ->ProductsEp.thenPublicEvent(
       CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({

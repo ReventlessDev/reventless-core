@@ -12,24 +12,24 @@ module ProductDemandGwt = ReventlessGwt.MultiSourceProjection_GWT.Make(
 ProductGwt.describe("ProductDemands ReadModel ← Product", () => {
   ProductGwt.test("Added initialises the entry with orderCount = 0", () =>
     ProductGwt.givenEvents([])
-    ->ProductGwt.whenEvent(Product.Added({name: "Laptop", description: "x", price: 1.0}))
+    ->ProductGwt.whenEvent(Product.Added({name: "Laptop", description: "x", price: 1.0, imageUrl: "/productImages/laptop.jpg"}))
     ->ProductGwt.thenState({ProductDemands.name: "Laptop", orderCount: 0})
   )
 
   ProductGwt.test("NameUpdated is ignored (handled by Products read model)", () =>
-    ProductGwt.givenEvents([Product.Added({name: "Laptop", description: "x", price: 1.0})])
+    ProductGwt.givenEvents([Product.Added({name: "Laptop", description: "x", price: 1.0, imageUrl: "/productImages/laptop.jpg"})])
     ->ProductGwt.whenEvent(Product.NameUpdated({name: "Gaming Laptop"}))
     ->ProductGwt.thenState({ProductDemands.name: "Laptop", orderCount: 0})
   )
 
   ProductGwt.test("DescriptionUpdated is ignored", () =>
-    ProductGwt.givenEvents([Product.Added({name: "Laptop", description: "x", price: 1.0})])
+    ProductGwt.givenEvents([Product.Added({name: "Laptop", description: "x", price: 1.0, imageUrl: "/productImages/laptop.jpg"})])
     ->ProductGwt.whenEvent(Product.DescriptionUpdated({description: "y"}))
     ->ProductGwt.thenState({ProductDemands.name: "Laptop", orderCount: 0})
   )
 
   ProductGwt.test("PriceUpdated is ignored", () =>
-    ProductGwt.givenEvents([Product.Added({name: "Laptop", description: "x", price: 1.0})])
+    ProductGwt.givenEvents([Product.Added({name: "Laptop", description: "x", price: 1.0, imageUrl: "/productImages/laptop.jpg"})])
     ->ProductGwt.whenEvent(Product.PriceUpdated({price: 2.0}))
     ->ProductGwt.thenState({ProductDemands.name: "Laptop", orderCount: 0})
   )

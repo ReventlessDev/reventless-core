@@ -12,27 +12,31 @@
 @schema
 type state =
   | NotCreated
-  | Created({name: string, description: string, price: float})
+  | Created({name: string, description: string, price: float, imageUrl: string})
 
 let initialState = NotCreated
 
 let evolve = (state, event) =>
   switch (state, event) {
-  | (NotCreated, Added({name, description, price})) => Created({name, description, price})
-  | (Created(_), Added({name, description, price})) => Created({name, description, price})
+  | (NotCreated, Added({name, description, price, imageUrl})) =>
+    Created({name, description, price, imageUrl})
+  | (Created(_), Added({name, description, price, imageUrl})) =>
+    Created({name, description, price, imageUrl})
   | (Created(s), NameUpdated({name})) => Created({...s, name})
   | (Created(s), DescriptionUpdated({description})) => Created({...s, description})
   | (Created(s), PriceUpdated({price})) => Created({...s, price})
+  | (Created(s), ImageUpdated({imageUrl})) => Created({...s, imageUrl})
   | (NotCreated, _) => state
   }
 
 let decide = (state, command) =>
   switch (state, command) {
-  | (NotCreated, Add({name, description, price})) =>
-    Ok([Added({name, description, price})])
+  | (NotCreated, Add({name, description, price, imageUrl})) =>
+    Ok([Added({name, description, price, imageUrl})])
   | (NotCreated, UpdateName(_)) => Error(ProductNotFound)
   | (NotCreated, UpdateDescription(_)) => Error(ProductNotFound)
   | (NotCreated, UpdatePrice(_)) => Error(ProductNotFound)
+  | (NotCreated, UpdateImage(_)) => Error(ProductNotFound)
   | (Created(_), Add(_)) => Error(ProductAlreadyExists)
   | (Created(s), UpdateName({name})) if name == s.name => Ok([])
   | (Created(_), UpdateName({name})) => Ok([NameUpdated({name: name})])
@@ -41,4 +45,6 @@ let decide = (state, command) =>
     Ok([DescriptionUpdated({description: description})])
   | (Created(s), UpdatePrice({price})) if price == s.price => Ok([])
   | (Created(_), UpdatePrice({price})) => Ok([PriceUpdated({price: price})])
+  | (Created(s), UpdateImage({imageUrl})) if imageUrl == s.imageUrl => Ok([])
+  | (Created(_), UpdateImage({imageUrl})) => Ok([ImageUpdated({imageUrl: imageUrl})])
   }

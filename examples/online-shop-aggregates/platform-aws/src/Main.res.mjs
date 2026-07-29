@@ -5,10 +5,17 @@ import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/P
 
 let Platform = Platform$ReventlessAws.Make({});
 
-let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), {}, undefined);
+let capabilities = [{
+    TAG: "ObjectStore",
+    plugin: "Catalog",
+    store: "productImages"
+  }];
+
+let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), undefined, capabilities);
 
 export {
   Platform,
+  capabilities,
   $$default as default,
 }
 /* Platform Not a pure module */

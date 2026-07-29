@@ -2,11 +2,13 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
 
 let stateSchema = S.schema(s => ({
   name: s.m(S.string),
   description: s.m(S.string),
-  price: s.m(S.float)
+  price: s.m(S.float),
+  imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "productImages"))
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);

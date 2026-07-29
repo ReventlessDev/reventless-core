@@ -18,9 +18,6 @@ let mapOutgoingEvent = (id, event, _meta, _queryEngine) => {
             price: event.price
           }
         }];
-    case "NameUpdated" :
-    case "DescriptionUpdated" :
-      return [];
     case "PriceUpdated" :
       return [{
           TAG: "PublishEvent",
@@ -31,6 +28,8 @@ let mapOutgoingEvent = (id, event, _meta, _queryEngine) => {
             price: event.price
           }
         }];
+    default:
+      return [];
   }
 };
 

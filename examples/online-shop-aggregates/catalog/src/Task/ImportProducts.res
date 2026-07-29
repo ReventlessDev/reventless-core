@@ -27,6 +27,9 @@ let importCallback = (~eventName, ~key) => {
               name: "Imported Product",
               description: "Imported from " ++ key,
               price: 9.99,
+              // A CSV row carries no upload, so the ref is empty until someone
+              // issues UpdateImage against the presigned store.
+              imageUrl: "",
             })->Message.encode(Product.commandSchema),
           },
         ],
