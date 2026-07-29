@@ -13,7 +13,7 @@ let uploadBucket = Capability_ObjectStore_S3$ReventlessAws.make("online-shop-upl
 
 let capabilities = [{
     TAG: "ObjectStore",
-    plugin: "catalog",
+    plugin: "Catalog",
     store: "productImages"
   }];
 

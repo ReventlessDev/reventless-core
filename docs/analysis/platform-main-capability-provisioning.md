@@ -394,7 +394,7 @@ Ungating `@semantic` from `type state` is **no longer part of this stage** (§5.
 ```rescript
 let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
-  ~capabilities=[ObjectStore("catalog", "productImages"), Geocoding],
+  ~capabilities=[ObjectStore("Catalog", "productImages"), Geocoding],
   ~hostUi=Default,
 )
 ```
@@ -409,7 +409,7 @@ let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
   // catalog: ChangeProductImage.imageUrl @storageRef("productImages")
   // ordering: Customer.location {lat,lng}
-  ~capabilities=[ObjectStore("catalog", "productImages"), Geocoding],
+  ~capabilities=[ObjectStore("Catalog", "productImages"), Geocoding],
   ~hostUi=Default,
 )
 ReventlessInfra.DeployBootstrap.run(PostDeploy)
