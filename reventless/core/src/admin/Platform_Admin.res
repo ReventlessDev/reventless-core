@@ -252,7 +252,7 @@ module Make = (
       // pushed SDL — CreateResolver then loops on
       // `NotFoundException: No field named ...`.
       let registryKey = entry.specName->Option.getOr(entityName)
-      let (labelField, _searchableFields) = Plugin_Structure.labelFieldsFromStateSchema(
+      let label: Plugin_Structure.labelResolution = Plugin_Structure.labelFieldsFromStateSchema(
         ~entityName,
         entry.stateSchema,
       )
@@ -263,7 +263,7 @@ module Make = (
         pluralTypeName: entry.listFieldName,
         includeIdParam: entry.includeIdParam->Option.getOr(true),
         connectionSpec: entry.connectionSpec->Option.getOr(true),
-        labelField,
+        labelField: label.field,
         connectionFilterTypeName: entry.returnTypeName ++ "Filter",
       }
       Plugin_Helpers.queryFieldNamesRegistry->Dict.set(registryKey, qn)

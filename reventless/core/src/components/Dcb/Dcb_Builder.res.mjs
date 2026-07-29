@@ -276,13 +276,13 @@ function Make(DcbEventLogStorage) {
       }
       stateViewSlices.forEach(V => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, V.Spec.name, undefined);
-        let match = Plugin_Structure$ReventlessCore.labelFieldsFromStateSchema(V.Spec.name, V.Spec.stateSchema);
+        let label = Plugin_Structure$ReventlessCore.labelFieldsFromStateSchema(V.Spec.name, V.Spec.stateSchema);
         let newrecord = {...qn};
-        newrecord.labelField = match[0];
+        newrecord.labelField = label.field;
         newrecord.connectionFilterTypeName = qn.returnTypeName + "Filter";
-        let match$1 = V.Spec.subIdConfig;
+        let match = V.Spec.subIdConfig;
         let qn$1;
-        if (match$1 !== undefined) {
+        if (match !== undefined) {
           let newrecord$1 = {...newrecord};
           newrecord$1.itemsFilterTypeName = newrecord.returnTypeName + "ItemsFilter";
           newrecord$1.itemsFieldName = newrecord.singleFieldName + "Items";

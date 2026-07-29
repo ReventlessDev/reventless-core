@@ -11,7 +11,7 @@ let sdlTypes: array<string> = [
   `type Platform_CommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_FieldReference!]!\n  allowedStates: [String!]\n  targetState: String\n  apiExposed: Boolean\n}`,
   `type Platform_EventDef {\n  name: String!\n  schema: String!\n  references: [Platform_FieldReference!]!\n}`,
   `type Platform_WriteSideDef {\n  name: String!\n  commands: [Platform_CommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n  events: [Platform_EventDef!]!\n}`,
-  `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  statusField: String\n}`,
+  `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  statusField: String\n}`,
   `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
   `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
   `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n}`,
@@ -72,6 +72,10 @@ let encodeQueryableDef = (r: queryableDef): JSON.t =>
     ("linkedWriteSide", encodeStrings(r.linkedWriteSide)),
     ("labelField", JSON.Encode.string(r.labelField)),
     ("searchableFields", encodeStrings(r.searchableFields)),
+    (
+      "labelFieldSource",
+      r.labelFieldSource->Option.mapOr(JSON.Encode.null, JSON.Encode.string),
+    ),
     ("statusField", r.statusField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("chapter", r.chapter->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
   ])->JSON.Encode.object

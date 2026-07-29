@@ -81,13 +81,27 @@ function statusFieldFromStateSchema(entityName, stateSchema) {
   }
 }
 
+function labelFieldSourceToString(s) {
+  switch (s) {
+    case "Annotation" :
+      return "annotation";
+    case "Convention" :
+      return "convention";
+    case "Position" :
+      return "position";
+    case "Fallback" :
+      return "fallback";
+  }
+}
+
 function labelFieldsFromStateSchema(entityName, stateSchema) {
   let spec = DisplayName$Reventless.getSpec(stateSchema);
   if (spec !== undefined) {
-    return [
-      "displayName",
-      spec.fields
-    ];
+    return {
+      field: "displayName",
+      searchableFields: spec.fields,
+      source: "Annotation"
+    };
   }
   let candidates;
   candidates = stateSchema.type === "object" ? stateSchema.items.filter(item => {
@@ -101,19 +115,27 @@ function labelFieldsFromStateSchema(entityName, stateSchema) {
     let lower = item.location.toLowerCase();
     return conventionalLabelNames.some(n => n === lower);
   });
-  let picked = conventional !== undefined ? conventional : candidates[0];
+  let picked = conventional !== undefined ? [
+      conventional,
+      "Convention"
+    ] : Stdlib_Option.map(candidates[0], item => [
+      item,
+      "Position"
+    ]);
   if (picked !== undefined) {
-    return [
-      picked.location,
-      [picked.location]
-    ];
-  } else {
-    log.warn("Plugin_Structure", undefined, entityName + `: no @displayName annotation and no suitable string field — labelField falls back to "id"`);
-    return [
-      "id",
-      []
-    ];
+    let item = picked[0];
+    return {
+      field: item.location,
+      searchableFields: [item.location],
+      source: picked[1]
+    };
   }
+  log.warn("Plugin_Structure", undefined, entityName + `: no @displayName annotation and no suitable string field — labelField falls back to "id"`);
+  return {
+    field: "id",
+    searchableFields: [],
+    source: "Fallback"
+  };
 }
 
 function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt, componentChaptersOpt) {
@@ -397,7 +419,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   let readModelDefs = readModels.map(R => {
     let qf = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(name, R.Spec.name, undefined);
     let stateSchema = R.Spec.stateSchema;
-    let match = labelFieldsFromStateSchema(R.Spec.name, stateSchema);
+    let label = labelFieldsFromStateSchema(R.Spec.name, stateSchema);
     let consumed = qualify(name, R.consumedEventNames);
     return {
       name: R.Spec.name,
@@ -405,8 +427,9 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(stateSchema)),
       consumedEventTypes: consumed,
       linkedWriteSide: linkedWriteSideFor(consumed),
-      labelField: match[0],
-      searchableFields: match[1],
+      labelField: label.field,
+      searchableFields: label.searchableFields,
+      labelFieldSource: labelFieldSourceToString(label.source),
       statusField: statusFieldFromStateSchema(R.Spec.name, stateSchema),
       visibility: visibilityTag(R.Spec.visibility),
       chapter: componentChapters[R.Spec.name]
@@ -417,15 +440,16 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let match = svsConsumed[i];
     let consumed = match[1];
     let stateSchema = SVS.Spec.stateSchema;
-    let match$1 = labelFieldsFromStateSchema(SVS.Spec.name, stateSchema);
+    let label = labelFieldsFromStateSchema(SVS.Spec.name, stateSchema);
     return {
       name: SVS.Spec.name,
       queryField: qf.listFieldName,
       schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(stateSchema)),
       consumedEventTypes: consumed,
       linkedWriteSide: linkedWriteSideFor(consumed),
-      labelField: match$1[0],
-      searchableFields: match$1[1],
+      labelField: label.field,
+      searchableFields: label.searchableFields,
+      labelFieldSource: labelFieldSourceToString(label.source),
       statusField: statusFieldFromStateSchema(SVS.Spec.name, stateSchema),
       visibility: visibilityTag(SVS.Spec.visibility),
       chapter: componentChapters[SVS.Spec.name]
@@ -541,6 +565,7 @@ export {
   conventionalLabelNames,
   shapeOfItem,
   statusFieldFromStateSchema,
+  labelFieldSourceToString,
   labelFieldsFromStateSchema,
   make,
 }

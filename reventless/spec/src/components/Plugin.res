@@ -218,6 +218,26 @@ type queryableDef = {
   */
   searchableFields: array<string>,
   /**
+  Which rung of the `labelField` ladder produced it, so a consumer with a name
+  rule of its own can tell a declaration from a guess before ranking the two:
+
+  - `"annotation"` — a `@displayName` spec. The author said which field names the
+    record; nothing a client infers locally outranks it.
+  - `"convention"` — a field literally named `name`/`title`/`label`/`displayName`.
+    A guess, and the one guess a client can independently arrive at.
+  - `"position"` — the first candidate in declaration order. A guess, and a fact
+    only this side knows; a client's own conventional-name rule is the better
+    answer where the two differ.
+  - `"fallback"` — no candidate at all, so `labelField` is `"id"`. The state
+    saying it has no human-readable field.
+
+  `None` means not stated — defs persisted before this field existed, and
+  hand-rolled defs that decline to say. Distinct from `Some("fallback")`, which
+  is this side stating that it looked. js_nullable for the same JSON-safety
+  reason as `statusField`.
+  */
+  labelFieldSource: @s.matches(stringOptionSchema) option<string>,
+  /**
   Name of the state field whose value identifies the row's lifecycle status, used
   by AutoUI together with `commandDef.allowedStates` to filter the per-row command
   menu. Resolution order (codegen): (1) field annotated `@status`; (2) a field

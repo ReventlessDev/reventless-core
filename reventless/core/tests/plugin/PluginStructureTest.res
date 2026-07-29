@@ -281,8 +281,10 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
   // string and an optional one all match `String(_)` loosely or not at all, and
   // each was answered wrong before.
   describe("labelField — the shape rule", () => {
-    let labelOf = (~entityName="Test", schema) =>
-      Plugin_Structure.labelFieldsFromStateSchema(~entityName, schema->S.castToUnknown)
+    let labelOf = (~entityName="Test", schema) => {
+      let r = Plugin_Structure.labelFieldsFromStateSchema(~entityName, schema->S.castToUnknown)
+      (r.field, r.searchableFields)
+    }
 
     testSync("a DateTime is not a name — a state whose only string is one falls to id", () => {
       // The shipped `Orders` case: `placedAt` was added so date views have a
@@ -381,8 +383,10 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
   })
 
   describe("labelField — the conventional-name rung", () => {
-    let labelOf = schema =>
-      Plugin_Structure.labelFieldsFromStateSchema(~entityName="Test", schema->S.castToUnknown)
+    let labelOf = schema => {
+      let r = Plugin_Structure.labelFieldsFromStateSchema(~entityName="Test", schema->S.castToUnknown)
+      (r.field, r.searchableFields)
+    }
 
     testSync("a field named `name` beats an earlier string", () => {
       let schema = S.schema(s =>
@@ -424,6 +428,66 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
         }
       )
       expect(labelOf(schema))->toEqual(("name", ["name"]))
+    })
+  })
+
+  // The rung is published because the four are not equally believable: a
+  // consumer with a name rule of its own has to know whether it is ranking
+  // against a declaration or against a guess.
+  describe("labelFieldSource — which rung answered", () => {
+    let sourceOf = schema =>
+      Plugin_Structure.labelFieldsFromStateSchema(
+        ~entityName="Test",
+        schema->S.castToUnknown,
+      ).source->Plugin_Structure.labelFieldSourceToString
+
+    testSync("a @displayName spec is a declaration", () => {
+      let customers = structure.stateViewSlices->Array.getUnsafe(2)
+      expect((customers.labelField, customers.labelFieldSource))->toEqual((
+        "displayName",
+        Some("annotation"),
+      ))
+    })
+
+    testSync("a field named `name` is a guess the consumer can also make", () => {
+      let schema = S.schema(s =>
+        {
+          "sku": s.matches(S.string),
+          "name": s.matches(S.string),
+        }
+      )
+      expect(sourceOf(schema))->toEqual("convention")
+    })
+
+    testSync("declaration order is a guess only this side can make", () => {
+      // `customerName` is eligible and unconventional, so it wins by position —
+      // and a consumer told only "customerName" could not tell that from a
+      // declaration.
+      let schema = S.schema(s =>
+        {
+          "customerName": s.matches(S.string),
+          "note": s.matches(S.string),
+        }
+      )
+      expect(sourceOf(schema))->toEqual("position")
+    })
+
+    testSync("no candidate at all is the state saying it has no human field", () => {
+      let schema = S.schema(s =>
+        {
+          "orderId": s.matches(Reventless.Reference.to_("Order")),
+          "placedAt": s.matches(Reventless.DateTime.string),
+        }
+      )
+      expect(sourceOf(schema))->toEqual("fallback")
+    })
+
+    testSync("every built def states one", () => {
+      let stated =
+        Array.concat(structure.readModels, structure.stateViewSlices)->Array.every(q =>
+          q.labelFieldSource->Option.isSome
+        )
+      expect(stated)->toEqual(true)
     })
   })
 

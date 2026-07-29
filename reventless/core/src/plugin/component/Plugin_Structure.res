@@ -73,7 +73,36 @@ let statusFieldFromStateSchema = (
   }
 }
 
-// Returns (labelField, searchableFields) from a state schema.
+// Which rung of the ladder below produced the label. Published on `queryableDef`
+// as `labelFieldSource`, because the four rungs are not equally believable and a
+// consumer with a name rule of its own has to rank the declaration against it:
+// rung 1 is the author saying which field names the record, rungs 2 and 3 are
+// guesses this repo makes on their behalf, and rung 4 is the admission that
+// there was nothing to guess from. Convention and position are both guesses and
+// nothing here branches on the difference — but a conventional name is the one a
+// client can independently arrive at, while a positional pick is a fact only
+// this side knows.
+type labelFieldSource =
+  | Annotation
+  | Convention
+  | Position
+  | Fallback
+
+let labelFieldSourceToString = (s: labelFieldSource): string =>
+  switch s {
+  | Annotation => "annotation"
+  | Convention => "convention"
+  | Position => "position"
+  | Fallback => "fallback"
+  }
+
+type labelResolution = {
+  field: string,
+  searchableFields: array<string>,
+  source: labelFieldSource,
+}
+
+// Resolves the field a state is named by, from a state schema.
 // Source ladder:
 //   1. @displayName spec present → "displayName" + spec.fields (raw underlying fields)
 //   2. A candidate field named `name`/`title`/`label`/`displayName`
@@ -92,9 +121,9 @@ let statusFieldFromStateSchema = (
 let labelFieldsFromStateSchema = (
   ~entityName: string,
   stateSchema: S.t<unknown>,
-): (string, array<string>) =>
+): labelResolution =>
   switch Reventless.DisplayName.getSpec(stateSchema) {
-  | Some(spec) => ("displayName", spec.fields)
+  | Some(spec) => {field: "displayName", searchableFields: spec.fields, source: Annotation}
   | None =>
     let candidates = switch stateSchema {
     | Object({items}) =>
@@ -110,17 +139,21 @@ let labelFieldsFromStateSchema = (
       conventionalLabelNames->Array.some(n => n == lower)
     })
     let picked = switch conventional {
-    | Some(_) as some => some
-    | None => candidates->Array.get(0)
+    | Some(item) => Some((item, Convention))
+    | None => candidates->Array.get(0)->Option.map(item => (item, Position))
     }
     switch picked {
-    | Some(item) => (item.location, [item.location])
+    | Some((item, source)) => {
+        field: item.location,
+        searchableFields: [item.location],
+        source,
+      }
     | None =>
       log.warn(
         ~comp="Plugin_Structure",
         `${entityName}: no @displayName annotation and no suitable string field — labelField falls back to "id"`,
       )
-      ("id", [])
+      {field: "id", searchableFields: [], source: Fallback}
     }
   }
 
@@ -525,10 +558,7 @@ let make = (
     ) => {
       let qf = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
       let stateSchema = R.Spec.stateSchema->S.castToUnknown
-      let (labelField, searchableFields) = labelFieldsFromStateSchema(
-        ~entityName=R.Spec.name,
-        stateSchema,
-      )
+      let label = labelFieldsFromStateSchema(~entityName=R.Spec.name, stateSchema)
       // The events this read model projects from, qualified to the plugin's event ids so
       // they match the producers' nodes in the graph. Was empty — which dropped projection
       // edges for any event reaching the read model via a DCB-log-sourced mapping (a classic
@@ -540,8 +570,9 @@ let make = (
         schema: stateSchema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
         consumedEventTypes: consumed,
         linkedWriteSide: linkedWriteSideFor(consumed),
-        labelField,
-        searchableFields,
+        labelField: label.field,
+        searchableFields: label.searchableFields,
+        labelFieldSource: Some(labelFieldSourceToString(label.source)),
         statusField: statusFieldFromStateSchema(~entityName=R.Spec.name, stateSchema),
         visibility: visibilityTag(R.Spec.visibility),
         chapter: chapterOf(R.Spec.name),
@@ -553,18 +584,16 @@ let make = (
       let qf = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=SVS.Spec.name)
       let (_, consumed) = svsConsumed->Array.getUnsafe(i)
       let stateSchema = SVS.Spec.stateSchema->S.castToUnknown
-      let (labelField, searchableFields) = labelFieldsFromStateSchema(
-        ~entityName=SVS.Spec.name,
-        stateSchema,
-      )
+      let label = labelFieldsFromStateSchema(~entityName=SVS.Spec.name, stateSchema)
       ({
         Reventless.Plugin.name: SVS.Spec.name,
         queryField: qf.listFieldName,
         schema: stateSchema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
         consumedEventTypes: consumed,
         linkedWriteSide: linkedWriteSideFor(consumed),
-        labelField,
-        searchableFields,
+        labelField: label.field,
+        searchableFields: label.searchableFields,
+        labelFieldSource: Some(labelFieldSourceToString(label.source)),
         statusField: statusFieldFromStateSchema(~entityName=SVS.Spec.name, stateSchema),
         visibility: visibilityTag(SVS.Spec.visibility),
         chapter: chapterOf(SVS.Spec.name),

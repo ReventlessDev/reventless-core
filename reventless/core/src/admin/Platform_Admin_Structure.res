@@ -111,6 +111,9 @@ let pluginReadModel: queryableDef = {
   linkedWriteSide: ["Plugin"],
   labelField: "name",
   searchableFields: ["name"],
+  // Hand-rolled rather than resolved, but the rung is the same one
+  // `labelFieldsFromStateSchema` would report for a field literally named `name`.
+  labelFieldSource: Some("convention"),
   statusField: Some("status"),
   visibility: None,
   chapter: None,

@@ -243,9 +243,11 @@ than by one side winning.
 - **Giving the example `Orders` states a real label.** They have no
   human-readable field; inventing one to silence a warning would hide the thing
   this plan makes visible. An app that wants order numbers should model them.
-- **Publishing *why* a label was chosen.** `queryableDef` carries the field but
-  not the rung it came from, so a consumer cannot tell an explicit
-  `@displayName` from a positional guess — which is the reason a consumer would
-  reasonably rank its own heuristic above the declaration. A `labelFieldSource`
-  on the def would settle that, and it is additive; it needs a consumer asking
-  for it first.
+- ~~**Publishing *why* a label was chosen.**~~ — **closed 2026-07-29**
+  ([label-field-provenance.md](done/label-field-provenance.md)). The consumer asked:
+  a client that renders records has a name rule of its own and, told only the
+  field, could rank the declaration only wholesale — right for a guess and wrong
+  for a `@displayName`, or the reverse. `queryableDef.labelFieldSource` now names
+  the rung (`annotation` / `convention` / `position` / `fallback`), which also
+  made the `Ordering.Customers` split legible: the same entity is `displayName`
+  by annotation in two example apps and `email` by position in the third.

@@ -110,13 +110,13 @@ function Make(RuntimeEnvironment) {
         let prefix = "Platform_";
         let entityName = entry.returnTypeName.startsWith(prefix) ? entry.returnTypeName.slice(prefix.length, entry.returnTypeName.length) : entry.returnTypeName;
         let registryKey = Stdlib_Option.getOr(entry.specName, entityName);
-        let match = Plugin_Structure$ReventlessCore.labelFieldsFromStateSchema(entityName, entry.stateSchema);
+        let label = Plugin_Structure$ReventlessCore.labelFieldsFromStateSchema(entityName, entry.stateSchema);
         let qn_singleFieldName = entry.singleFieldName;
         let qn_listFieldName = entry.listFieldName;
         let qn_returnTypeName = entry.returnTypeName;
         let qn_pluralTypeName = entry.listFieldName;
         let qn_connectionFilterTypeName = entry.returnTypeName + "Filter";
-        let qn_labelField = match[0];
+        let qn_labelField = label.field;
         let qn_includeIdParam = Stdlib_Option.getOr(entry.includeIdParam, true);
         let qn_connectionSpec = Stdlib_Option.getOr(entry.connectionSpec, true);
         let qn = {

@@ -126,6 +126,8 @@ let pluginReadModel_linkedWriteSide = ["Plugin"];
 
 let pluginReadModel_searchableFields = ["name"];
 
+let pluginReadModel_labelFieldSource = "convention";
+
 let pluginReadModel_statusField = "status";
 
 let pluginReadModel = {
@@ -136,6 +138,7 @@ let pluginReadModel = {
   linkedWriteSide: pluginReadModel_linkedWriteSide,
   labelField: "name",
   searchableFields: pluginReadModel_searchableFields,
+  labelFieldSource: pluginReadModel_labelFieldSource,
   statusField: pluginReadModel_statusField,
   visibility: undefined,
   chapter: undefined
