@@ -63,11 +63,21 @@ type deleteCmd
 
 // Shape of the dynamically-imported `@aws-sdk/client-appsync` module. Only the
 // three association commands are needed here.
+//
+// The create/delete names follow the *API operation*, not the resource: AppSync
+// has `AssociateSourceGraphqlApi` / `DisassociateSourceGraphqlApi`, and there is
+// no `Create…`/`Delete…SourceApiAssociation` command. Those names are only the
+// CloudFormation/Pulumi resource's, and naming the constructors after the
+// resource made `create` throw `C is not a constructor` on every fresh stack —
+// `new undefined(...)`, since a missing export is just undefined on the module
+// namespace. `Get` exists under the resource-style name, which is why read and
+// diff always worked and only creation was broken. The request payloads below
+// already match the operations exactly.
 type sdkModule = {
   @as("AppSyncClient") clientCtor: unit => appSyncClient,
-  @as("CreateSourceApiAssociationCommand") createCtor: createInput => createCmd,
+  @as("AssociateSourceGraphqlApiCommand") createCtor: createInput => createCmd,
   @as("GetSourceApiAssociationCommand") getCtor: idInput => getCmd,
-  @as("DeleteSourceApiAssociationCommand") deleteCtor: idInput => deleteCmd,
+  @as("DisassociateSourceGraphqlApiCommand") deleteCtor: idInput => deleteCmd,
 }
 
 // Calls a constructor with `new` — the SDK exports plain classes.
@@ -277,7 +287,7 @@ let extractIds = (resp: createResult): (string, string) =>
   | Some({associationArn: ?Some(arn), associationId: ?Some(aid)}) => (arn, aid)
   | _ =>
     JsError.throwWithMessage(
-      "CreateSourceApiAssociation returned no associationArn / associationId",
+      "AssociateSourceGraphqlApi returned no associationArn / associationId",
     )
   }
 

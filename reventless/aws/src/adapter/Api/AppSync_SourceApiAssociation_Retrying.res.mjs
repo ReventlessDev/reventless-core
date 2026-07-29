@@ -181,11 +181,11 @@ function identifiersFrom(id, props) {
 function extractIds(resp) {
   let match = resp.sourceApiAssociation;
   if (match === undefined) {
-    return Stdlib_JsError.throwWithMessage("CreateSourceApiAssociation returned no associationArn / associationId");
+    return Stdlib_JsError.throwWithMessage("AssociateSourceGraphqlApi returned no associationArn / associationId");
   }
   let aid = match.associationId;
   if (aid === undefined) {
-    return Stdlib_JsError.throwWithMessage("CreateSourceApiAssociation returned no associationArn / associationId");
+    return Stdlib_JsError.throwWithMessage("AssociateSourceGraphqlApi returned no associationArn / associationId");
   }
   let arn = match.associationArn;
   if (arn !== undefined) {
@@ -194,14 +194,14 @@ function extractIds(resp) {
       aid
     ];
   } else {
-    return Stdlib_JsError.throwWithMessage("CreateSourceApiAssociation returned no associationArn / associationId");
+    return Stdlib_JsError.throwWithMessage("AssociateSourceGraphqlApi returned no associationArn / associationId");
   }
 }
 
 async function create(inputs) {
   let sdk = await getSdk();
   let client = await getClient();
-  let match = await runWithRetry(undefined, undefined, undefined, undefined, () => client.send(newOf1(sdk.CreateSourceApiAssociationCommand, {
+  let match = await runWithRetry(undefined, undefined, undefined, undefined, () => client.send(newOf1(sdk.AssociateSourceGraphqlApiCommand, {
     mergedApiIdentifier: inputs.mergedApiIdentifier,
     sourceApiIdentifier: inputs.sourceApiIdentifier,
     sourceApiAssociationConfig: {
@@ -235,7 +235,7 @@ async function delete_(id, props) {
     return log.warn("AppSync_SourceApiAssociation_Retrying", undefined, `delete: could not derive association identifiers from id "` + id + `"; treating as already gone`);
   }
   try {
-    return await runWithRetry(undefined, undefined, undefined, undefined, () => client.send(newOf1(sdk.DeleteSourceApiAssociationCommand, ids)));
+    return await runWithRetry(undefined, undefined, undefined, undefined, () => client.send(newOf1(sdk.DisassociateSourceGraphqlApiCommand, ids)));
   } catch (raw_exn) {
     let exn = Primitive_exceptions.internalToException(raw_exn);
     if (Stdlib_Option.mapOr(Stdlib_JsExn.fromException(exn), false, isAlreadyGoneError)) {
