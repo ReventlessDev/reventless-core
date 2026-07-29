@@ -303,6 +303,121 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
   };
 }
 
+function makeServedBucketDistribution(name, servedBuckets, customDomain) {
+  let oac = new (Aws.cloudfront.OriginAccessControl)(name + "-oac", {
+    originAccessControlOriginType: "s3",
+    signingBehavior: "always",
+    signingProtocol: "sigv4"
+  });
+  let sb = servedBuckets[0];
+  let defaultOriginId = sb !== undefined ? "served-" + sb.id : Stdlib_JsError.throwWithMessage("Plugin_Stack.makeServedBucketDistribution: no served buckets — call only when at least one store is declared");
+  let viewerCertificate;
+  if (customDomain !== undefined) {
+    let usEast1 = _getUsEast1Provider();
+    let cert = new (Aws.acm.Certificate)(name + "-cert", {
+      domainName: customDomain.fqdn,
+      validationMethod: "DNS"
+    }, {
+      provider: Primitive_option.some(usEast1)
+    });
+    viewerCertificate = {
+      acmCertificateArn: cert.arn,
+      sslSupportMethod: "sni-only",
+      minimumProtocolVersion: "TLSv1.2_2021"
+    };
+  } else {
+    viewerCertificate = {
+      cloudfrontDefaultCertificate: true
+    };
+  }
+  let distribution = new (Aws.cloudfront.Distribution)(name + "-cdn", {
+    enabled: true,
+    aliases: customDomain !== undefined ? [customDomain.fqdn] : undefined,
+    origins: oac.id.apply(oacId => servedBuckets.map(sb => ({
+      domainName: sb.bucketRegionalDomainName,
+      originId: "served-" + sb.id,
+      originAccessControlId: oacId
+    }))),
+    defaultCacheBehavior: {
+      targetOriginId: defaultOriginId,
+      viewerProtocolPolicy: "redirect-to-https",
+      allowedMethods: [
+        "GET",
+        "HEAD"
+      ],
+      cachedMethods: [
+        "GET",
+        "HEAD"
+      ],
+      cachePolicyId: cachingOptimizedPolicyId
+    },
+    orderedCacheBehaviors: servedBuckets.flatMap(sb => sb.prefixes.map(prefix => ({
+      pathPattern: prefix + "/*",
+      targetOriginId: "served-" + sb.id,
+      viewerProtocolPolicy: "redirect-to-https",
+      allowedMethods: [
+        "GET",
+        "HEAD"
+      ],
+      cachedMethods: [
+        "GET",
+        "HEAD"
+      ],
+      cachePolicyId: cachingOptimizedPolicyId
+    }))),
+    restrictions: {
+      geoRestriction: {
+        restrictionType: "none"
+      }
+    },
+    viewerCertificate: viewerCertificate,
+    comment: name + " object store CDN",
+    tags: AWS_Tags$ReventlessAws.make(name + "-cdn", "Platform", "Hosting", "Platform", undefined, undefined, undefined, undefined)
+  });
+  if (customDomain !== undefined) {
+    new (Aws.route53.Record)(name + "-domain-alias", {
+      zoneId: customDomain.hostedZoneId,
+      name: customDomain.fqdn,
+      type: "A",
+      aliases: [{
+          name: distribution.domainName,
+          zoneId: cloudFrontAliasZoneId,
+          evaluateTargetHealth: false
+        }]
+    });
+  }
+  servedBuckets.forEach(sb => {
+    new (Aws.s3.BucketPolicy)(name + "-served-" + sb.id + "-policy", {
+      bucket: sb.bucketId,
+      policy: Pulumi.all([
+        sb.bucketArn,
+        distribution.arn
+      ]).apply(param => JSON.stringify({
+        Version: "2012-10-17",
+        Statement: [{
+            Sid: "AllowCloudFrontServicePrincipal",
+            Effect: "Allow",
+            Principal: {
+              Service: "cloudfront.amazonaws.com"
+            },
+            Action: "s3:GetObject",
+            Resource: param[0] + "/*",
+            Condition: {
+              StringEquals: {
+                "AWS:SourceArn": param[1]
+              }
+            }
+          }]
+      }))
+    });
+  });
+  if (customDomain !== undefined) {
+    return Pulumi.output("https://" + customDomain.fqdn);
+  } else {
+    return distribution.domainName.apply(d => "https://" + d);
+  }
+}
+
 export {
   log,
   cachingOptimizedPolicyId,
@@ -313,5 +428,6 @@ export {
   cacheControlFor,
   invalidateDistribution,
   makeUiBundleDistribution,
+  makeServedBucketDistribution,
 }
 /* log Not a pure module */

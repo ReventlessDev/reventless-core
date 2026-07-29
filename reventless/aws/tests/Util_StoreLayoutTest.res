@@ -40,6 +40,46 @@ describe("Util_StoreLayout.layoutFor", () => {
   )
 })
 
+describe("Util_StoreLayout.servingFor", () => {
+  testSync("no declared store means nothing to serve", () =>
+    expect(Util_StoreLayout.servingFor(~hasHostUiBundle=false, ~declaredBucketCount=0))->toEqual(
+      Util_StoreLayout.NoStores,
+    )
+  )
+
+  testSync("a host shell serves the stores from its own origin", () =>
+    expect(Util_StoreLayout.servingFor(~hasHostUiBundle=true, ~declaredBucketCount=1))->toEqual(
+      Util_StoreLayout.HostShell,
+    )
+  )
+
+  // The case that was previously unrepresentable and produced a write-only
+  // store: stores are provisioned unconditionally, but serving used to happen
+  // only as a side car to a host-UI bundle.
+  testSync("no host shell means the platform serves them itself", () =>
+    expect(Util_StoreLayout.servingFor(~hasHostUiBundle=false, ~declaredBucketCount=1))->toEqual(
+      Util_StoreLayout.PlatformOwned,
+    )
+  )
+
+  // A bucket carries exactly one policy, so two distributions fronting one
+  // store would unpick each other's read grant. The three-way return is what
+  // makes "both" unrepresentable — asserted so it stays that way.
+  testSync("a host shell wins even with several buckets — never both", () =>
+    expect(Util_StoreLayout.servingFor(~hasHostUiBundle=true, ~declaredBucketCount=3))->toEqual(
+      Util_StoreLayout.HostShell,
+    )
+  )
+
+  // Declaring nothing outranks having a shell: with no store there is no
+  // bucket, no policy and no origin, whoever is deployed.
+  testSync("no store outranks a host shell", () =>
+    expect(Util_StoreLayout.servingFor(~hasHostUiBundle=true, ~declaredBucketCount=0))->toEqual(
+      Util_StoreLayout.NoStores,
+    )
+  )
+})
+
 describe("Util_StoreLayout.protectionFor", () => {
   // The pairing a single layout-driven switch would have got wrong: alpha
   // shares a bucket and is still protected.

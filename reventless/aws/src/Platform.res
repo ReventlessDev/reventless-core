@@ -44,6 +44,40 @@ let splitApiOutputsRef: ref<option<splitApiOutputs>> = ref(None)
     Call after `makePlatform` — returns `None` in unified mode. */
 let getSplitApiOutputs = () => splitApiOutputsRef.contents
 
+// Object stores provisioned from field declarations — populated by
+// deployPlatform. Access via getObjectStoreEndpoints() after it has been called.
+//
+// A platform whose UI ships from its own stack needs each store's presign
+// endpoint, and `deployPlatform` is the only place that knows it. Without this
+// the store is provisioned and unnameable: the stores are built unconditionally,
+// but every consumer of them used to sit inside `switch hostUiBundle`. Same
+// reason `getSplitApiOutputs` exists — a root cannot re-export what it cannot
+// reach.
+type objectStoreEndpoint = {
+  // The store's qualified `{plugin}.{store}` name. The same string
+  // `pluginStructure.requiredStores` carries, so a UI's binding key and the
+  // declaration's identity are one value rather than two that can drift.
+  store: string,
+  // The path this store's keys are rooted at, and therefore the path it must be
+  // served under for a minted `/{key}` ref to resolve.
+  keyPrefix: string,
+  bucketName: string,
+  uploadUrl: Pulumi.Output.t<string>,
+  // Public base URL the store is served from, when the platform serves it
+  // itself. `None` when a host-UI bundle is deployed — there the shell's own
+  // origin serves the store same-origin and a relative `/{prefix}/…` resolves
+  // without a base.
+  baseUrl: option<Pulumi.Output.t<string>>,
+}
+let objectStoreEndpointsRef: ref<array<objectStoreEndpoint>> = ref([])
+
+/** Returns the object stores this platform provisioned from field declarations.
+
+    Empty when nothing is declared — a legitimate answer rather than a
+    call-order mistake, so this returns `[]` instead of throwing the way
+    `getApiConfig` does. */
+let getObjectStoreEndpoints = () => objectStoreEndpointsRef.contents
+
 module MakeWithConfig = (
   Config: {
     let splitApi: bool
@@ -1569,6 +1603,91 @@ module MakeWithConfig = (
         bucketRegionalDomainName: b.bucketRegionalDomainName,
       })
     )
+
+    // ── Serving the declared stores ───────────────────────────────────────
+    //
+    // A store's bucket blocks public policy and takes its read grant only from
+    // a distribution's BucketPolicy, so "provisioned" and "readable" are two
+    // different things. When a host UI bundle is deployed, its distribution
+    // fronts the stores same-origin (below) and a relative `/{prefix}/…`
+    // resolves with no base URL. When it is not, the platform fronts them
+    // itself — otherwise every declared store is write-only.
+    //
+    // Never both: two distributions fronting one bucket would each write the
+    // bucket's single allowed policy and silently unpick the other's grant.
+    // `Util_StoreLayout.servingFor` is where that exclusion is decided, so it is
+    // one testable choice rather than a condition spelled out here.
+    let storeServingBaseUrl: option<Pulumi.Output.t<string>> = switch Util_StoreLayout.servingFor(
+      ~hasHostUiBundle=hostUiBundle->Option.isSome,
+      ~declaredBucketCount=declaredServedBuckets->Array.length,
+    ) {
+    | NoStores | HostShell => None
+    | PlatformOwned =>
+      Some(
+        Plugin_Stack.makeServedBucketDistribution(
+          ~name="object-stores",
+          ~servedBuckets=declaredServedBuckets,
+        ),
+      )
+    }
+
+    let declaredStoreEndpoints = declaredStoreServices->Array.map(((
+      store,
+      keyPrefix,
+      bucketName,
+      uploadUrl,
+    )) => {store, keyPrefix, bucketName, uploadUrl, baseUrl: storeServingBaseUrl})
+    objectStoreEndpointsRef := declaredStoreEndpoints
+
+    // Exported unconditionally — the provisioning above already is. Their only
+    // consumers used to sit inside `switch hostUiBundle`, which left a platform
+    // whose UI ships from another stack holding stores it could not name.
+    //
+    // Omitted entirely when nothing is declared, so a deployment with no
+    // declared store keeps a byte-identical output set.
+    if declaredStoreEndpoints->Array.length > 0 {
+      Pulumi.Pulumi.export(
+        "uploadEndpoints",
+        declaredStoreEndpoints
+        ->Array.map(e => e.uploadUrl->Pulumi.Output.apply(u => (e.store, JSON.Encode.string(u))))
+        ->Pulumi.Output.all
+        ->Pulumi.Output.apply(pairs => pairs->Dict.fromArray->JSON.Encode.object),
+      )
+      Pulumi.Pulumi.export(
+        "objectStores",
+        declaredStoreEndpoints
+        ->Array.map(e =>
+          switch e.baseUrl {
+          | Some(u) => u->Pulumi.Output.apply(b => (e, Some(b)))
+          | None => Pulumi.Output.make((e, None))
+          }
+        )
+        ->Pulumi.Output.all
+        ->Pulumi.Output.apply(pairs =>
+          pairs
+          ->Array.map(((e, baseUrl)) => (
+            e.store,
+            [
+              ("bucketName", JSON.Encode.string(e.bucketName)),
+              ("keyPrefix", JSON.Encode.string(e.keyPrefix)),
+            ]
+            // Absent when the host shell serves the store: there the object is
+            // addressable same-origin and a base URL would be a second, and
+            // wrong, way to reach it.
+            ->Array.concat(
+              switch baseUrl {
+              | Some(b) => [("baseUrl", JSON.Encode.string(b))]
+              | None => []
+              },
+            )
+            ->Dict.fromArray
+            ->JSON.Encode.object,
+          ))
+          ->Dict.fromArray
+          ->JSON.Encode.object
+        ),
+      )
+    }
 
     // Host UI shell deployment — opt-in via ~hostUiBundle. The shell SPA is
     // hosted on its own CloudFront distribution; `config.json` is generated

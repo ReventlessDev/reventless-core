@@ -116,6 +116,14 @@ function getSplitApiOutputs() {
   return splitApiOutputsRef.contents;
 }
 
+let objectStoreEndpointsRef = {
+  contents: []
+};
+
+function getObjectStoreEndpoints() {
+  return objectStoreEndpointsRef.contents;
+}
+
 function MakeWithConfig(Config) {
   Stdlib_Option.forEach(Config.commandHandlerConfig.aggregates, param => {
     Stdlib_Option.forEach(param.sync, AggregateRuntime_Builder_Single$ReventlessAws.setConfig);
@@ -941,18 +949,76 @@ function MakeWithConfig(Config) {
       bucketArn: b.bucketArn,
       bucketRegionalDomainName: b.bucketRegionalDomainName
     })));
+    let match$1 = Util_StoreLayout$ReventlessAws.servingFor(Stdlib_Option.isSome(hostUiBundle), declaredServedBuckets.length);
+    let storeServingBaseUrl;
+    switch (match$1) {
+      case "NoStores" :
+      case "HostShell" :
+        storeServingBaseUrl = undefined;
+        break;
+      case "PlatformOwned" :
+        storeServingBaseUrl = Plugin_Stack$ReventlessAws.makeServedBucketDistribution("object-stores", declaredServedBuckets, undefined);
+        break;
+    }
+    let declaredStoreEndpoints = declaredStoreServices.map(param => ({
+      store: param[0],
+      keyPrefix: param[1],
+      bucketName: param[2],
+      uploadUrl: param[3],
+      baseUrl: storeServingBaseUrl
+    }));
+    objectStoreEndpointsRef.contents = declaredStoreEndpoints;
+    if (declaredStoreEndpoints.length !== 0) {
+      Pulumi$Pulumi.$$export("uploadEndpoints", Pulumi.all(declaredStoreEndpoints.map(e => e.uploadUrl.apply(u => [
+        e.store,
+        u
+      ]))).apply(pairs => Object.fromEntries(pairs)));
+      Pulumi$Pulumi.$$export("objectStores", Pulumi.all(declaredStoreEndpoints.map(e => {
+        let u = e.baseUrl;
+        if (u !== undefined) {
+          return u.apply(b => [
+            e,
+            b
+          ]);
+        } else {
+          return Pulumi.output([
+            e,
+            undefined
+          ]);
+        }
+      })).apply(pairs => Object.fromEntries(pairs.map(param => {
+        let baseUrl = param[1];
+        let e = param[0];
+        return [
+          e.store,
+          Object.fromEntries([
+            [
+              "bucketName",
+              e.bucketName
+            ],
+            [
+              "keyPrefix",
+              e.keyPrefix
+            ]
+          ].concat(baseUrl !== undefined ? [[
+                "baseUrl",
+                baseUrl
+              ]] : []))
+        ];
+      }))));
+    }
     if (hostUiBundle !== undefined) {
-      let match$1 = Util_LocalConfig$ReventlessAws.get("hostUiBaseDomain");
-      let match$2 = Util_LocalConfig$ReventlessAws.get("hostUiHostedZoneId");
+      let match$2 = Util_LocalConfig$ReventlessAws.get("hostUiBaseDomain");
+      let match$3 = Util_LocalConfig$ReventlessAws.get("hostUiHostedZoneId");
       let customDomain;
-      if (match$1 !== undefined && match$2 !== undefined) {
+      if (match$2 !== undefined && match$3 !== undefined) {
         let stack = Pulumi.getStack();
         let baseName = Stdlib_Option.getOr(Util_LocalConfig$ReventlessAws.get("hostUiBaseName"), Pulumi.getProject());
         let prodStacks = Stdlib_Option.getOr(Stdlib_Option.map(Util_LocalConfig$ReventlessAws.get("hostUiProdStacks"), Util_HostUiDomain$ReventlessAws.parseProdStacks), Util_HostUiDomain$ReventlessAws.defaultProdStacks);
-        let fqdn = Util_HostUiDomain$ReventlessAws.deriveFqdn(baseName, stack, match$1, prodStacks);
+        let fqdn = Util_HostUiDomain$ReventlessAws.deriveFqdn(baseName, stack, match$2, prodStacks);
         customDomain = {
           fqdn: fqdn,
-          hostedZoneId: match$2
+          hostedZoneId: match$3
         };
       } else {
         customDomain = undefined;
@@ -967,11 +1033,11 @@ function MakeWithConfig(Config) {
               bucketRegionalDomainName: store.bucketRegionalDomainName
             }] : []
       ).concat(declaredServedBuckets);
-      let match$3 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
+      let match$4 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
         "config.json",
         "ui-hints.json"
       ], customDomain, servedBuckets);
-      let bucketName = match$3.bucketName;
+      let bucketName = match$4.bucketName;
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
@@ -1083,7 +1149,7 @@ function MakeWithConfig(Config) {
           contentType: "application/json"
         });
       }
-      Pulumi$Pulumi.$$export("hostShellUrl", match$3.distributionUrl);
+      Pulumi$Pulumi.$$export("hostShellUrl", match$4.distributionUrl);
     }
     return Pulumi$Pulumi.getOutputs();
   };
@@ -2027,18 +2093,76 @@ function Make($star) {
       bucketArn: b.bucketArn,
       bucketRegionalDomainName: b.bucketRegionalDomainName
     })));
+    let match$1 = Util_StoreLayout$ReventlessAws.servingFor(Stdlib_Option.isSome(hostUiBundle), declaredServedBuckets.length);
+    let storeServingBaseUrl;
+    switch (match$1) {
+      case "NoStores" :
+      case "HostShell" :
+        storeServingBaseUrl = undefined;
+        break;
+      case "PlatformOwned" :
+        storeServingBaseUrl = Plugin_Stack$ReventlessAws.makeServedBucketDistribution("object-stores", declaredServedBuckets, undefined);
+        break;
+    }
+    let declaredStoreEndpoints = declaredStoreServices.map(param => ({
+      store: param[0],
+      keyPrefix: param[1],
+      bucketName: param[2],
+      uploadUrl: param[3],
+      baseUrl: storeServingBaseUrl
+    }));
+    objectStoreEndpointsRef.contents = declaredStoreEndpoints;
+    if (declaredStoreEndpoints.length !== 0) {
+      Pulumi$Pulumi.$$export("uploadEndpoints", Pulumi.all(declaredStoreEndpoints.map(e => e.uploadUrl.apply(u => [
+        e.store,
+        u
+      ]))).apply(pairs => Object.fromEntries(pairs)));
+      Pulumi$Pulumi.$$export("objectStores", Pulumi.all(declaredStoreEndpoints.map(e => {
+        let u = e.baseUrl;
+        if (u !== undefined) {
+          return u.apply(b => [
+            e,
+            b
+          ]);
+        } else {
+          return Pulumi.output([
+            e,
+            undefined
+          ]);
+        }
+      })).apply(pairs => Object.fromEntries(pairs.map(param => {
+        let baseUrl = param[1];
+        let e = param[0];
+        return [
+          e.store,
+          Object.fromEntries([
+            [
+              "bucketName",
+              e.bucketName
+            ],
+            [
+              "keyPrefix",
+              e.keyPrefix
+            ]
+          ].concat(baseUrl !== undefined ? [[
+                "baseUrl",
+                baseUrl
+              ]] : []))
+        ];
+      }))));
+    }
     if (hostUiBundle !== undefined) {
-      let match$1 = Util_LocalConfig$ReventlessAws.get("hostUiBaseDomain");
-      let match$2 = Util_LocalConfig$ReventlessAws.get("hostUiHostedZoneId");
+      let match$2 = Util_LocalConfig$ReventlessAws.get("hostUiBaseDomain");
+      let match$3 = Util_LocalConfig$ReventlessAws.get("hostUiHostedZoneId");
       let customDomain;
-      if (match$1 !== undefined && match$2 !== undefined) {
+      if (match$2 !== undefined && match$3 !== undefined) {
         let stack = Pulumi.getStack();
         let baseName = Stdlib_Option.getOr(Util_LocalConfig$ReventlessAws.get("hostUiBaseName"), Pulumi.getProject());
         let prodStacks = Stdlib_Option.getOr(Stdlib_Option.map(Util_LocalConfig$ReventlessAws.get("hostUiProdStacks"), Util_HostUiDomain$ReventlessAws.parseProdStacks), Util_HostUiDomain$ReventlessAws.defaultProdStacks);
-        let fqdn = Util_HostUiDomain$ReventlessAws.deriveFqdn(baseName, stack, match$1, prodStacks);
+        let fqdn = Util_HostUiDomain$ReventlessAws.deriveFqdn(baseName, stack, match$2, prodStacks);
         customDomain = {
           fqdn: fqdn,
-          hostedZoneId: match$2
+          hostedZoneId: match$3
         };
       } else {
         customDomain = undefined;
@@ -2053,11 +2177,11 @@ function Make($star) {
               bucketRegionalDomainName: store.bucketRegionalDomainName
             }] : []
       ).concat(declaredServedBuckets);
-      let match$3 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
+      let match$4 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
         "config.json",
         "ui-hints.json"
       ], customDomain, servedBuckets);
-      let bucketName = match$3.bucketName;
+      let bucketName = match$4.bucketName;
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
@@ -2169,7 +2293,7 @@ function Make($star) {
           contentType: "application/json"
         });
       }
-      Pulumi$Pulumi.$$export("hostShellUrl", match$3.distributionUrl);
+      Pulumi$Pulumi.$$export("hostShellUrl", match$4.distributionUrl);
     }
     return Pulumi$Pulumi.getOutputs();
   };
@@ -2321,6 +2445,8 @@ export {
   getApiConfig,
   splitApiOutputsRef,
   getSplitApiOutputs,
+  objectStoreEndpointsRef,
+  getObjectStoreEndpoints,
   MakeWithConfig,
   Make,
 }

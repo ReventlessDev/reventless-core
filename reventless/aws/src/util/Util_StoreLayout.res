@@ -34,6 +34,16 @@ type protection =
   | Protected
   | Unprotected
 
+/** Which distribution fronts the declared stores. */
+type serving =
+  /** No store is declared, so nothing is served. */
+  | NoStores
+  /** The host shell's own distribution serves them same-origin, so a minted
+      `/{prefix}/…` ref resolves relative and there is no base URL. */
+  | HostShell
+  /** The platform fronts them itself, because no host shell is deployed. */
+  | PlatformOwned
+
 /**
 Stack-name prefixes whose stacks are disposable.
 
@@ -102,3 +112,25 @@ The cost is a slightly redundant prefix inside a dedicated bucket
 (`catalog-productImages/productImages/…`). Take the redundancy.
 */
 let keyPrefixFor = (~store: string): string => store
+
+/**
+Who serves the declared stores — and the answer is never "both".
+
+A store's bucket blocks public policy and takes its read grant solely from a
+distribution's `BucketPolicy`. **S3 permits exactly one bucket policy per
+bucket**, so two distributions fronting one store would each write that single
+policy and silently unpick the other's grant: green deploy, 404s afterwards.
+Making this one function's return a three-way choice is what keeps "both" from
+being expressible.
+
+The polarity is the useful part. Provisioning a store and serving it are
+separate; before this, serving happened only as a side car to a host-UI bundle,
+so a platform whose UI shipped from its own stack provisioned stores that
+nothing could read.
+*/
+let servingFor = (~hasHostUiBundle: bool, ~declaredBucketCount: int): serving =>
+  switch (hasHostUiBundle, declaredBucketCount) {
+  | (_, 0) => NoStores
+  | (true, _) => HostShell
+  | (false, _) => PlatformOwned
+  }

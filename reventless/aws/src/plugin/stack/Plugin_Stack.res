@@ -538,3 +538,193 @@ let makeUiBundleDistribution = (
     bucketName: bucket.bucket,
   }
 }
+
+/**
+Front a set of served buckets with a CloudFront distribution of their own, with
+no SPA bundle behind it.
+
+`makeUiBundleDistribution` can already serve buckets, but only as a side car to
+a UI bundle. A platform that deploys no shell — because its UI ships from its
+own stack — still provisions stores and then has nothing to serve them from:
+the bucket is created with an all-true public-access block and takes its read
+grant solely from a distribution's `BucketPolicy`, so with no distribution the
+objects are unreachable by anything.
+
+Serving lives with the stack that owns the buckets, and that is not a style
+preference. **S3 permits exactly one bucket policy per bucket.** If the read
+grant were written by whichever stack happened to build a distribution, two
+distributions fronting one store would silently overwrite each other's grant —
+deploying green and 404ing the loser's objects. Keeping the policy next to the
+bucket makes a second writer impossible rather than merely discouraged.
+
+Returns the public base URL. A consumer needs that and the store's prefix to
+address an object; it needs no bucket identity at all, which is both a smaller
+contract and one that cannot collide.
+*/
+let makeServedBucketDistribution = (
+  ~name: string,
+  ~servedBuckets: array<ReventlessInfra.Platform.servedBucket>,
+  ~customDomain: option<customDomain>=?,
+): Pulumi.Output.t<string> => {
+  let oac = PulumiAws.CloudFront.OriginAccessControl.make(
+    ~name=name ++ "-oac",
+    ~args={
+      originAccessControlOriginType: Pulumi.Input.make("s3"),
+      signingBehavior: Pulumi.Input.make("always"),
+      signingProtocol: Pulumi.Input.make("sigv4"),
+    },
+  )
+
+  let originIdFor = (id: string): string => "served-" ++ id
+
+  // CloudFront requires a default behavior, and with no bundle origin there is
+  // nothing neutral to point it at. The first served bucket takes it; every
+  // real path is matched by its own `{prefix}/*` behavior first, so the default
+  // is only reached by a request for a path no store claims — which 404s at S3,
+  // the correct answer.
+  let defaultOriginId = switch servedBuckets->Array.get(0) {
+  | Some(sb) => originIdFor(sb.id)
+  | None =>
+    JsError.throwWithMessage(
+      "Plugin_Stack.makeServedBucketDistribution: no served buckets — call only when at least one store is declared",
+    )
+  }
+
+  let viewerCertificate: PulumiAws.CloudFront.Distribution.viewerCertificate = switch customDomain {
+  | None => {
+      cloudfrontDefaultCertificate: Pulumi.Input.make(true),
+    }
+  | Some({fqdn, hostedZoneId: _}) =>
+    let usEast1 = _getUsEast1Provider()
+    let cert = PulumiAws.Acm.Certificate.make(
+      ~name=name ++ "-cert",
+      ~args={
+        domainName: Pulumi.Input.make(fqdn),
+        validationMethod: Pulumi.Input.make("DNS"),
+      },
+      ~opts={provider: usEast1},
+    )
+    {
+      acmCertificateArn: cert.arn->Pulumi.Output.asInput,
+      sslSupportMethod: Pulumi.Input.make("sni-only"),
+      minimumProtocolVersion: Pulumi.Input.make("TLSv1.2_2021"),
+    }
+  }
+
+  let distribution = PulumiAws.CloudFront.Distribution.make(
+    ~name=name ++ "-cdn",
+    ~args={
+      enabled: Pulumi.Input.make(true),
+      aliases: ?switch customDomain {
+      | None => None
+      | Some({fqdn}) => Some(Pulumi.Input.make([fqdn]))
+      },
+      origins: oac.id->Pulumi.Output.apply(oacId =>
+        servedBuckets->Array.map(sb => {
+          PulumiAws.CloudFront.Distribution.domainName: sb.bucketRegionalDomainName,
+          originId: Pulumi.Input.make(originIdFor(sb.id)),
+          originAccessControlId: Pulumi.Input.make(oacId),
+        })
+      )
+      ->Pulumi.Output.asInput,
+      defaultCacheBehavior: Pulumi.Input.make(
+        (
+          {
+            targetOriginId: Pulumi.Input.make(defaultOriginId),
+            viewerProtocolPolicy: Pulumi.Input.make("redirect-to-https"),
+            allowedMethods: Pulumi.Input.make(["GET", "HEAD"]),
+            cachedMethods: Pulumi.Input.make(["GET", "HEAD"]),
+            cachePolicyId: Pulumi.Input.make(cachingOptimizedPolicyId),
+          }: PulumiAws.CloudFront.Distribution.defaultCacheBehavior
+        ),
+      ),
+      // One behavior per served prefix. Store objects have immutable uuid keys,
+      // so the long-TTL CachingOptimized policy is safe.
+      orderedCacheBehaviors: Pulumi.Input.make(
+        servedBuckets->Array.flatMap(sb =>
+          sb.prefixes->Array.map(prefix => {
+            PulumiAws.CloudFront.Distribution.pathPattern: Pulumi.Input.make(prefix ++ "/*"),
+            targetOriginId: Pulumi.Input.make(originIdFor(sb.id)),
+            viewerProtocolPolicy: Pulumi.Input.make("redirect-to-https"),
+            allowedMethods: Pulumi.Input.make(["GET", "HEAD"]),
+            cachedMethods: Pulumi.Input.make(["GET", "HEAD"]),
+            cachePolicyId: Pulumi.Input.make(cachingOptimizedPolicyId),
+          })
+        ),
+      ),
+      restrictions: Pulumi.Input.make({
+        PulumiAws.CloudFront.Distribution.geoRestriction: Pulumi.Input.make({
+          PulumiAws.CloudFront.Distribution.restrictionType: Pulumi.Input.make("none"),
+        }),
+      }),
+      viewerCertificate: Pulumi.Input.make(viewerCertificate),
+      comment: Pulumi.Input.make(name ++ " object store CDN"),
+      tags: AWS.Tags.make(
+        ~name=name ++ "-cdn",
+        ~kind=ReventlessCore.ComponentType.Platform,
+        ~role=Hosting,
+        ~scope=Platform,
+      ),
+    },
+  )
+
+  switch customDomain {
+  | None => ()
+  | Some({fqdn, hostedZoneId}) =>
+    let _ = PulumiAws.Route53.Record.make(
+      ~name=name ++ "-domain-alias",
+      ~args={
+        zoneId: Pulumi.Input.make(hostedZoneId),
+        name: Pulumi.Input.make(fqdn),
+        type_: Pulumi.Input.make("A"),
+        aliases: [
+          (
+            {
+              name: distribution.domainName->Pulumi.Output.asInput,
+              zoneId: Pulumi.Input.make(cloudFrontAliasZoneId),
+              evaluateTargetHealth: Pulumi.Input.make(false),
+            }: PulumiAws.Route53.Record.alias
+          ),
+        ]->Pulumi.Input.make,
+      },
+    )
+  }
+
+  // One policy per bucket — see the module doc above for why this is here and
+  // not in the consuming stack.
+  servedBuckets->Array.forEach(sb => {
+    let _ = PulumiAws.S3.BucketPolicy.make(
+      ~name=name ++ "-served-" ++ sb.id ++ "-policy",
+      ~args={
+        bucket: sb.bucketId,
+        policy: (sb.bucketArn->Pulumi.Output.fromInput, distribution.arn)
+          ->Pulumi.Output.all2
+          ->Pulumi.Output.apply(((bucketArn, distributionArn)) =>
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "AllowCloudFrontServicePrincipal",
+                  "Effect": "Allow",
+                  "Principal": {"Service": "cloudfront.amazonaws.com"},
+                  "Action": "s3:GetObject",
+                  "Resource": bucketArn ++ "/*",
+                  "Condition": {
+                    "StringEquals": {"AWS:SourceArn": distributionArn},
+                  },
+                },
+              ],
+            }
+            ->JSON.stringifyAny
+            ->Option.getUnsafe
+          )
+          ->Pulumi.Output.asInput,
+      },
+    )
+  })
+
+  switch customDomain {
+  | Some({fqdn}) => Pulumi.Output.make("https://" ++ fqdn)
+  | None => distribution.domainName->Pulumi.Output.apply(d => "https://" ++ d)
+  }
+}

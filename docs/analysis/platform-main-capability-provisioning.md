@@ -211,6 +211,23 @@ The real cost is bucket count — names are globally unique and buckets are acco
 
 `deployPlatform` already assembles `config.json` from resolved outputs ([Platform.res:1548–1596](../../reventless/aws/src/Platform.res#L1548-L1596)). With providers, the `switch` chains (`withEvents` → `withGeocoder` → `withUpload`) collapse into a fold over resolved capability outputs, and `servedBuckets` leaves the public API entirely — the `ObjectStore` provider hands its served path to the distribution builder directly, with the prefix it also gave the presign service.
 
+**Provisioning a store and serving it are two decisions, and only one of them used to be unconditional.** A store's bucket is created with an all-true public-access block and takes its read grant solely from a distribution's `BucketPolicy`, so a provisioned store is not a readable one. Until this was fixed, every consumer of the provisioned stores — the `uploadEndpoints` map and `~servedBuckets` on the distribution — sat inside `deployPlatform`'s `switch hostUiBundle`. A platform that deploys no shell, because its UI ships from its own stack, therefore provisioned stores that nothing could name and nothing could read: presign services existed, the buckets existed, and no URL for either was published anywhere.
+
+Two things follow, and the second is the constraint that shapes the answer:
+
+- **The store topology is exported unconditionally** — `uploadEndpoints` (qualified `{plugin}.{store}` → presign URL) and `objectStores` (→ `{bucketName, keyPrefix, baseUrl?}`) are stack outputs whenever anything is declared, with `getObjectStoreEndpoints()` as the in-process accessor alongside `getSplitApiOutputs()`. Both are omitted entirely when nothing is declared, so a deployment that declares no store keeps a byte-identical output set.
+- **Serving is owned by the stack that owns the bucket, and is never split.** **S3 permits exactly one bucket policy per bucket.** If the read grant were written by whichever stack happened to build a distribution, two distributions fronting one store would each write that single policy and silently unpick the other's grant — a green deploy that 404s afterwards. That rules out the otherwise-attractive "export the bucket descriptors and let each consumer wire its own origin", and is why a separately-deployed UI receives a **`baseUrl`** rather than a bucket identity: a URL is both a smaller contract and one that cannot collide.
+
+So the topology is a three-way choice, decided in one place ([`Util_StoreLayout.servingFor`](../../reventless/aws/src/util/Util_StoreLayout.res)) precisely so that "both" is not expressible:
+
+| Deployment | Serves the stores | What a consumer gets |
+|---|---|---|
+| No store declared | nothing | neither output is exported |
+| Platform deploys the host shell | the shell's distribution, same-origin | a relative `/{prefix}/…` resolves; no `baseUrl` |
+| UI ships from its own stack | a platform-owned distribution over the store buckets | `baseUrl` + `keyPrefix` per store |
+
+The `servedBucket` type already made the *within-one-distribution* case unrepresentable by grouping prefixes per bucket rather than per prefix. This is the same reasoning one level up: across distributions.
+
 ### 5.5 Semantic types — not a future stage, a prerequisite
 
 **Revised 2026-07-28.** This section originally read "semantic types will land in the framework in the future", and §7 staged them last. Tracing the actual schema-emission paths (§5.6) inverts that: the *foundation* of the semantic-type work — one generic marker read during the schema walk — is what makes §5.1's declaration reach the UI at all. It is a **prerequisite of Stage 1**, not a successor to it. The examples below still describe the end state; what changed is that the first rung of that ladder is now on Stage 1's critical path.

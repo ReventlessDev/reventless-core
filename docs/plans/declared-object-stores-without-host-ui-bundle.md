@@ -1,0 +1,190 @@
+# Plan: declared object stores without a host-UI bundle
+
+**Date:** 2026-07-29
+**Status:** **Steps 1–3 implemented 2026-07-29. Not released, not deployed.** Build green;
+`reventless-aws` 376/376 (36 suites, +5 new), `reventless-core` 553/553, default suite 2264/2264.
+The serving decision was extracted to `Util_StoreLayout.servingFor` so it is a unit-testable
+three-way choice rather than a condition buried in `deployPlatform` — see
+[What landed](#what-landed). Step 2's live verification is outstanding: it needs a deploy, and no
+preview can show that a bucket policy grants what it claims.
+**Repos:** `reventless-core` only.
+**Analysis:** [platform-main-capability-provisioning.md](../analysis/platform-main-capability-provisioning.md) §5.3, §7 Stage 2.
+**Builds on:** [platform-capability-provisioning-stage-2.md](./done/platform-capability-provisioning-stage-2.md)
+(declaration-driven object stores).
+
+## The gap
+
+Stage 2's guarantee is that **the store a field declares is the store it uploads to**. That holds
+only when the platform also deploys the host-UI shell. A platform deployed *without*
+`~hostUiBundle` provisions the stores and can neither address nor serve them.
+
+The asymmetry is not in the provisioning — it is in what consumes it. In `Platform.deployPlatform`:
+
+- `declaredStoreServices` and `declaredServedBuckets` are computed **unconditionally**. The bucket,
+  its public-access block, the per-store presign Lambda, its prefix-scoped IAM policy and its
+  Function URL are all created whether or not a host UI is deployed.
+- Every consumer of that work sits inside `switch hostUiBundle { | None => () | Some(cfg) => … }`:
+  - `storeUploadEndpointsOutput` → the `uploadEndpoints` map in the host shell's `config.json`,
+  - `declaredServedBuckets` → `~servedBuckets` on `Plugin_Stack.makeUiBundleDistribution`, which is
+    what creates the CloudFront OAC origin *and* the per-bucket `BucketPolicy` granting read.
+
+So with no host-UI bundle the result is a **write-only store nobody can name**: no endpoint is
+published anywhere, and because the bucket is created with `blockPublicPolicy: true` and gets its
+read grant only from that distribution, no object in it is readable by anything.
+
+This is not hypothetical shape-guessing — it is what the code does today. It matters because
+deploying the UI from its own stack is a supported topology: `makeUiBundleDistribution` is public,
+takes `~servedBuckets`, and is designed to be called by a stack that is not the platform. The one
+thing such a stack cannot do is *learn what the platform provisioned*.
+
+### Why the existing accessors don't cover it
+
+`getApiConfig()` and `getSplitApiOutputs()` exist for exactly this reason — a root that needs values
+`deployPlatform` computed internally. There is no equivalent for stores: `declaredStoreServices` and
+`storeUploadEndpointsOutput` are locals in `deployPlatform`, and nothing exports them. A root cannot
+re-export what it cannot reach.
+
+## The decision this plan turns on
+
+Stores are provisioned by the platform stack; the distribution that serves them may not be. **S3
+allows exactly one bucket policy per bucket**, and `makeUiBundleDistribution` writes one per served
+bucket. Two distributions in two stacks serving the same store therefore *cannot* both write it —
+the second silently replaces the first's grant and breaks the first's reads.
+
+That constraint rules out the tempting answer ("export the served-bucket descriptors and let each
+consumer wire its own origin") as a general mechanism, and it is the reason this plan is not simply
+"add a stack output".
+
+Three options:
+
+1. **Export endpoints only.** The platform publishes `uploadEndpoints`; serving stays the host-UI
+   branch's job. An external UI can upload but still cannot read back what it wrote unless the
+   platform also deploys a shell. Half a fix, and the half that fails is invisible until an image
+   renders.
+2. **Export endpoints and served-bucket descriptors, and let the consumer own the policy.** Works
+   for exactly one serving distribution per store, and corrupts silently with two. The failure is a
+   broken image, not an error.
+3. **Export endpoints, and give the platform a way to serve its own stores independently of the
+   shell.** The bucket policy stays with the stack that owns the bucket — one writer, by
+   construction — and the consumer needs only a URL prefix.
+
+**Recommendation: option 3**, with option 1's export as the first step since it is needed either way.
+Ownership of the policy should not move to whoever happens to build a distribution; the bucket's
+stack owns the bucket's policy, which is the same reasoning that moved store provisioning to the
+platform in Stage 2 (*What landed, and what the plan got wrong*).
+
+## Steps
+
+### 1. Export the declared store topology as stack outputs
+
+Immediately after `declaredStoreServices` / `declaredServedBuckets` are built — **outside** the
+`hostUiBundle` switch — export:
+
+- `uploadEndpoints`: `{plugin}.{store}` → presign Function URL. Same key grammar and same name as
+  the `config.json` field, so there is one vocabulary rather than two.
+- `objectStores`: `{plugin}.{store}` → `{bucketName, keyPrefix}`. A consumer building asset URLs
+  needs the prefix, and per-store refs are rooted at `/{store}/…`, so a CDN-fronted consumer needs
+  one entry per prefix rather than one global upload path.
+
+Omit both entirely when nothing is declared, so a deployment that declares no stores keeps a
+byte-identical output set. That is the same discipline the `config.json` emission already follows.
+
+Add `getObjectStoreEndpoints()` alongside `getSplitApiOutputs()` for symmetry, returning `[]` rather
+than throwing when called before `deployPlatform` — it is a legitimate "nothing declared" answer,
+unlike `getApiConfig()`'s "called too early".
+
+**Verify:** a platform with no declared store exports neither key; one with a declared store exports
+both, and `pulumi preview` on an existing stack shows no resource changes — outputs only.
+
+### 2. Serve declared stores from the platform stack
+
+Give the platform its own read path for declared stores, independent of `~hostUiBundle`: a
+distribution (or origin set) owned by the platform stack, with the per-bucket `BucketPolicy` written
+by the same stack that creates the bucket.
+
+Export the resulting public base URL per store as part of `objectStores` (a `baseUrl` field). A
+consumer then needs no bucket identity at all — it needs a URL — which is both a smaller contract
+and one that cannot collide.
+
+When `~hostUiBundle` *is* passed, keep today's behaviour: the shell's distribution serves the stores
+same-origin, and `config.json` is unchanged. Two serving paths for one store is exactly the
+bucket-policy collision above, so this is either/or, decided by whether the platform deploys a
+shell.
+
+**Verify:** deploy a platform with a declared store and no `~hostUiBundle`; PUT through the presign
+URL, then GET the object through the exported `baseUrl`. Both must succeed. Then deploy one *with*
+`~hostUiBundle` and confirm the preview is byte-identical to before this plan — the host-UI path is
+the one that already works and must not move.
+
+### 3. Document the topology
+
+The choice between "platform deploys the shell" and "UI deploys separately" now has a consequence
+for stores, and nothing states it. Record in the capability analysis which side owns serving in each
+case, and that the bucket policy is the reason it cannot be both.
+
+## What this deliberately does not do
+
+- **No inference.** `~capabilities` stays hand-written; joining it to `pluginStructure.requiredStores`
+  is Stage 3 and is unaffected by this plan.
+- **No change to the ref grammar.** Refs stay `/{store}/…` in both bucket layouts. This plan changes
+  only who can *resolve* a ref to a URL, not what a ref is.
+- **No change to the host-UI path.** A platform that passes `~hostUiBundle` should see no diff.
+
+## Risks
+
+| Risk | Mitigation |
+|---|---|
+| **Step 2 introduces a second distribution per platform**, with its own cost and its own domain, for deployments that already have one. | It is created only when stores are declared *and* no host-UI bundle is passed — the case that today produces an unusable store. Deployments with a shell keep exactly one distribution. |
+| **Two stacks write a `BucketPolicy` for the same bucket** and silently overwrite each other, breaking reads with no error. | The whole reason ownership stays with the bucket's stack in option 3. If option 2 is chosen instead, this must become an explicit documented constraint, because the symptom is a broken image and nothing logs it. |
+| Exporting `objectStores` invites consumers to reconstruct S3 URLs from `bucketName` directly, bypassing the CDN and hitting a bucket that blocks public policy. | Export `baseUrl` in step 2 and prefer it in docs; `bucketName`/`keyPrefix` exist for IAM and lifecycle reasoning, not for addressing. |
+| A platform that declares stores today and is redeployed after step 1 shows an output-only diff that looks like drift. | Expected and harmless — call it out in the step's verification so it is not mistaken for a resource change. |
+| **Core's own unit tests do not run in its default suite.** | Run `jest --selectProjects reventless-core` when judging this change; a green default suite is not evidence. |
+
+## What landed
+
+Steps 1–3 as written, with one addition the plan did not call for.
+
+**The serving choice became a function.** The plan described the mutual exclusion in prose and would
+have left it as a two-armed condition inside `deployPlatform`, where nothing can test it. It is now
+`Util_StoreLayout.servingFor(~hasHostUiBundle, ~declaredBucketCount) : NoStores | HostShell |
+PlatformOwned`, next to `layoutFor` and `protectionFor` — the module already exists to make exactly
+these decisions pure and testable. Making the return a three-way variant is what stops "both" from
+being expressible; the five new tests assert each arm, including the two orderings that could
+plausibly have gone the other way (a shell wins over several buckets; declaring nothing outranks
+having a shell).
+
+That mirrors the reasoning already recorded on the `servedBucket` type, which groups prefixes per
+bucket so that two policies for one bucket cannot be written *within* one distribution. This is the
+same argument one level up: across distributions.
+
+**Shapes, as built:**
+
+```
+uploadEndpoints : { "{plugin}.{store}": "https://…" }
+objectStores    : { "{plugin}.{store}": { bucketName, keyPrefix, baseUrl? } }
+```
+
+`baseUrl` is present only under `PlatformOwned`. Under `HostShell` the object is addressable
+same-origin, and a base URL would be a second and wrong way to reach it.
+
+**`makeServedBucketDistribution` throws on an empty bucket list** rather than building a
+distribution with no origins. CloudFront requires a default cache behaviour and there is no neutral
+origin to point it at with no bundle behind it; the first served bucket takes it, and every real
+path is matched by its own `{prefix}/*` behaviour first, so the default is reached only by a request
+no store claims — which 404s at S3, the correct answer. `servingFor` already prevents the empty
+call, so the throw is a guard on a second caller, not a reachable path today.
+
+## Still to do
+
+- **Deploy-verify step 2.** PUT through a presign URL, then GET through the exported `baseUrl`, on a
+  platform with a declared store and no `~hostUiBundle`. A preview cannot show that a bucket policy
+  grants what it claims — the Stage 2 exercise made the same point about `protect` and teardown.
+- ~~**Confirm the host-UI path is untouched.**~~ **Done 2026-07-29, from the emitted JS rather than
+  from the source.** In `Platform.res.mjs` the whole `hostUiBundle` branch differs only in ReScript's
+  temporary numbering (`match$1`→`match$2`), shifted because the new serving decision introduces a
+  binding earlier in the function. The `makeUiBundleDistribution` call is byte-identical, arguments
+  and `~servedBuckets` included. So a host-UI platform's only resource-level change is Lambda source
+  hashes, which any framework change produces. This is the cheap check that generalises: read the
+  generated JS for the path you did *not* mean to touch.
+- Note that a push to `alpha` publishes *and* deploys, with no review step between preview and
+  apply.

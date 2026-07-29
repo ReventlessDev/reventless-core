@@ -32,11 +32,24 @@ function keyPrefixFor(store) {
   return store;
 }
 
+function servingFor(hasHostUiBundle, declaredBucketCount) {
+  if (declaredBucketCount !== 0) {
+    if (hasHostUiBundle) {
+      return "HostShell";
+    } else {
+      return "PlatformOwned";
+    }
+  } else {
+    return "NoStores";
+  }
+}
+
 export {
   defaultEphemeralPrefixes,
   layoutFor,
   protectionFor,
   bucketNameFor,
   keyPrefixFor,
+  servingFor,
 }
 /* No side effect */
