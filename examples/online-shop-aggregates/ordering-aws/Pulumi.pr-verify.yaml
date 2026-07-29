@@ -1,0 +1,8 @@
+config:
+  aws:region: eu-west-1
+  # Disposable dev stack: opt into `pnpm run seed:reset`. Prod stacks omit this.
+  reventless:wipeable: "true"
+  platform:stack: reventless/online-shop-aggregates-platform-aws/pr-verify
+  interstack:
+    dependencies:
+      - reventless/online-shop-aggregates-catalog-aws/pr-verify

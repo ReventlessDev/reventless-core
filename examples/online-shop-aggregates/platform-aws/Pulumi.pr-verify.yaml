@@ -1,0 +1,9 @@
+config:
+  aws:region: eu-west-1
+  aws-native:region: eu-west-1
+  # A `pr-` stack is ephemeral by name: Util_StoreLayout.protectionFor treats the
+  # prefix as disposable, so declared object stores are created Unprotected with
+  # forceDestroy and `pulumi destroy` can actually tear them down. Every other
+  # stack name — alpha included — gets Protected buckets that block destroy, which
+  # is why this verification stack exists rather than reusing alpha.
+  reventless:wipeable: "true"

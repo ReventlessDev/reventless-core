@@ -1,0 +1,76 @@
+# Deploy the online-shop-aggregates example to AWS.
+#
+# Why this exists alongside deploy-online-shop-hybrid.yml: this platform deploys
+# no host-shell SPA (its Main.res omits `~hostUiBundle`) while declaring the
+# object store `Catalog.productImages`. That combination is the only one that
+# selects `Util_StoreLayout.servingFor`'s `PlatformOwned` arm, where the platform
+# fronts its own stores and exports a `baseUrl` per store. Hybrid exercises the
+# `HostShell` arm; without this workflow the other arm has no deployment at all.
+#
+# NOTE: a workflow file is only indexed by GitHub Actions once a push touches it,
+# so `gh workflow run` 404s until this file has been pushed at least once. The
+# same trap is recorded at the top of deploy-online-shop-hybrid.yml.
+#
+# Triggered by:
+#   - Manual dispatch only.
+#
+# The Pulumi stack name is the branch name, so `gh workflow run
+# deploy-online-shop-aggregates.yml --ref pr-verify` deploys the `pr-verify`
+# stacks. That name is load-bearing: Util_StoreLayout.protectionFor treats the
+# `pr-` prefix as ephemeral, so declared object stores get Unprotected +
+# forceDestroy and the whole platform can be destroyed after verifying. Deploying
+# this example on `alpha` instead leaves a second permanent platform whose store
+# bucket blocks `pulumi destroy`. Pulumi.pr-verify.yaml exists for all three
+# stacks; the layer-ARN lookup falls through to alpha's SSM parameter, which is
+# what the verification wants.
+# Deliberately NOT dispatched from release.yml or build-lambda-layer.yml the way
+# hybrid is: those fire on every alpha release, and a second full platform deploy
+# per release costs time and AWS resources for an example that exists to prove a
+# serving topology rather than to stay continuously current. Add it to those two
+# dispatch steps if this stack should track every release.
+#
+# The Lambda Layer ARN is resolved from SSM Parameter Store
+# (/reventless/layer-arn/{stack}) at deploy time — the same parameter hybrid
+# reads, written by build-lambda-layer.yml.
+
+name: Deploy Online Shop Aggregates
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-online-shop-aggregates-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  # Read-only: the deploy does not commit state back to the repo.
+  contents: read
+  # Required so detect-changes can derive the base SHA from the last successful
+  # run of this workflow via `gh run list` (the GitHub Actions API). On the first
+  # run there is none, and the reusable workflow falls back to the root commit —
+  # which is what makes a first-ever deploy build everything.
+  actions: read
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy-reventless-aws.yml
+    with:
+      manifest: examples/online-shop-aggregates/deploy-manifest.yaml
+      # The host-ui-* inputs hybrid passes are omitted because they configure the
+      # ACM cert + Route53 alias for a host-shell distribution and this platform
+      # deploys no shell — the framework only reads them inside the hostUiBundle
+      # branch, so passing them would be inert rather than harmful. They are left
+      # out so the file does not imply a shell FQDN exists here. (They would not
+      # collide with hybrid's: the FQDN's baseName defaults to the Pulumi project
+      # name, which differs per platform.)
+    secrets:
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      # Optional: when set, Platform_Stack uses the existing UserPool instead of
+      # auto-provisioning a fresh one — shared with hybrid, as both read the same
+      # repository secret.
+      COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+      # Defined so the repo .npmrc's ${NPM_TOKEN} expands and pnpm honours
+      # node-linker=hoisted during the deploy install.
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
