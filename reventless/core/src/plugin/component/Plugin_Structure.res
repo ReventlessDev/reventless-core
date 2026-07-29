@@ -5,26 +5,53 @@
 
 let log = Logger.fromEnv()
 
-// Returns (labelField, searchableFields) from a state schema.
-// Source ladder:
-//   1. @displayName spec present → "displayName" + spec.fields (raw underlying fields)
-//   2. First non-id, non-`*Id`/`*Ids`, non-TAG, string-typed field in declaration order
-//   3. "id" fallback with a logged warning (no searchable fields)
-//
-// `*Id` / `*Ids` fields (e.g. `productId`, `customerId`, `orderIds`) are entity
-// references, not human-readable labels — skipping them lets a sibling like
-// `name` win even when it appears later in declaration order.
-let isIdLikeFieldName = (name: string): bool =>
-  name == "id" || name->String.endsWith("Id") || name->String.endsWith("Ids")
+// What a field *is* is `SchemaType`'s question, and it is the IR every other
+// schema consumer here reads. The two predicates below are the only two answers
+// this module needs; both are stated over the IR rather than over sury shapes,
+// so a field that is a date, a reference or an enum is one for the label picker
+// too.
 
-// Resolve the field that holds the entity's lifecycle status, used by
-// AutoUI to filter the per-row command menu against each command's
-// `allowedStates`. Resolution order:
+// Whether a field can name a record. `Nullable` unwraps — an optional name is
+// still the entity's name, absent on some rows, which is a rendering question
+// rather than a declaration one. A `Semantic` wrapper is refused: it is the
+// schema saying the string means something other than prose (a storage ref, a
+// URL), and a bucket key is not a name. `DateTime`, `EntityId`, `Enum` and every
+// composite shape fall out of the catch-all without being named — which is the
+// point of reading an IR rather than restating it: the next shape it grows is
+// excluded before it exists.
+let rec isLabelShape = (t: SchemaType.schemaType): bool =>
+  switch t {
+  | ScalarString => true
+  | Nullable(inner) => isLabelShape(inner)
+  | _ => false
+  }
+
+// Whether a field can hold a lifecycle status: a closed set of values, or an
+// optional one. A free-text `status: string` is not a lifecycle — filtering a
+// command menu against `allowedStates` needs states to compare with.
+let rec isStatusShape = (t: SchemaType.schemaType): bool =>
+  switch t {
+  | Enum(_, _) => true
+  | Nullable(inner) => isStatusShape(inner)
+  | _ => false
+  }
+
+// Field names that say "this one is the record's name" in the only way
+// available short of the `@displayName` annotation. Matched case-insensitively
+// and *exactly*: `customerName` holds a customer's name, not this record's.
+let conventionalLabelNames = ["name", "title", "label", "displayname"]
+
+let shapeOfItem = (~entityName: string, item: S.item): SchemaType.schemaType =>
+  SchemaType.fromSury(~parentName=entityName, ~fieldName=item.location, item.schema)
+
+// Resolve the field that holds the entity's lifecycle status, used to filter a
+// per-row command menu against each command's `allowedStates`. Resolution order:
 //   1. Field annotated `@status` (PPX-emitted; see StateAnnotations).
-//   2. Field literally named `"status"` (convention; mirrors how
-//      labelField falls back to a conventionally-named string field).
+//   2. Field literally named `"status"` whose IR shape is an enum (convention;
+//      mirrors how labelField falls back to a conventionally-named field).
 //   3. None — filter is inert for this read model.
 let statusFieldFromStateSchema = (
+  ~entityName: string,
   stateSchema: S.t<unknown>,
 ): option<string> => {
   let annotated = switch Reventless.StateAnnotations.getSpec(stateSchema) {
@@ -37,13 +64,31 @@ let statusFieldFromStateSchema = (
     switch stateSchema {
     | Object({items}) =>
       items
-      ->Array.find(item => item.location == "status")
+      ->Array.find(item =>
+        item.location == "status" && isStatusShape(shapeOfItem(~entityName, item))
+      )
       ->Option.map(item => item.location)
     | _ => None
     }
   }
 }
 
+// Returns (labelField, searchableFields) from a state schema.
+// Source ladder:
+//   1. @displayName spec present → "displayName" + spec.fields (raw underlying fields)
+//   2. A candidate field named `name`/`title`/`label`/`displayName`
+//   3. The first candidate in declaration order
+//   4. "id" fallback with a logged warning (no searchable fields)
+//
+// A *candidate* is a non-TAG field, not literally named `id`, whose IR shape can
+// name a record (`isLabelShape`). Rungs 2 and 3 are both guesses, and the order
+// between them matters: declaration order alone means a state gains a new name
+// whenever a field is inserted above the old one — a `placedAt` added so date
+// views have something to key off renames every order to a timestamp.
+//
+// `id` is excluded here rather than by the IR because `SchemaType` treats a name
+// that short as an ordinary string; every other reference — `*Id`/`*Ids`, a DCB
+// tag, a `Reference.to` — is already an `EntityId` there.
 let labelFieldsFromStateSchema = (
   ~entityName: string,
   stateSchema: S.t<unknown>,
@@ -51,19 +96,24 @@ let labelFieldsFromStateSchema = (
   switch Reventless.DisplayName.getSpec(stateSchema) {
   | Some(spec) => ("displayName", spec.fields)
   | None =>
-    let firstStringItem = switch stateSchema {
+    let candidates = switch stateSchema {
     | Object({items}) =>
-      items->Array.find(item =>
+      items->Array.filter(item =>
         item.location != "TAG" &&
-        !isIdLikeFieldName(item.location) &&
-        switch item.schema {
-        | String(_) => true
-        | _ => false
-        }
+        item.location != "id" &&
+        isLabelShape(shapeOfItem(~entityName, item))
       )
-    | _ => None
+    | _ => []
     }
-    switch firstStringItem {
+    let conventional = candidates->Array.find(item => {
+      let lower = item.location->String.toLowerCase
+      conventionalLabelNames->Array.some(n => n == lower)
+    })
+    let picked = switch conventional {
+    | Some(_) as some => some
+    | None => candidates->Array.get(0)
+    }
+    switch picked {
     | Some(item) => (item.location, [item.location])
     | None =>
       log.warn(
@@ -492,7 +542,7 @@ let make = (
         linkedWriteSide: linkedWriteSideFor(consumed),
         labelField,
         searchableFields,
-        statusField: statusFieldFromStateSchema(stateSchema),
+        statusField: statusFieldFromStateSchema(~entityName=R.Spec.name, stateSchema),
         visibility: visibilityTag(R.Spec.visibility),
         chapter: chapterOf(R.Spec.name),
       }: Reventless.Plugin.queryableDef)
@@ -515,7 +565,7 @@ let make = (
         linkedWriteSide: linkedWriteSideFor(consumed),
         labelField,
         searchableFields,
-        statusField: statusFieldFromStateSchema(stateSchema),
+        statusField: statusFieldFromStateSchema(~entityName=SVS.Spec.name, stateSchema),
         visibility: visibilityTag(SVS.Spec.visibility),
         chapter: chapterOf(SVS.Spec.name),
       }: Reventless.Plugin.queryableDef)

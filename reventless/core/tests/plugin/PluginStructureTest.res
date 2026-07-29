@@ -275,6 +275,188 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     })
   })
 
+  // What a field *is* comes from `SchemaType`, the IR every other schema
+  // consumer reads, rather than from a `String(_)` match here. These pin the
+  // shapes that separates the two: a date, a reference, a semantic-carrying
+  // string and an optional one all match `String(_)` loosely or not at all, and
+  // each was answered wrong before.
+  describe("labelField — the shape rule", () => {
+    let labelOf = (~entityName="Test", schema) =>
+      Plugin_Structure.labelFieldsFromStateSchema(~entityName, schema->S.castToUnknown)
+
+    testSync("a DateTime is not a name — a state whose only string is one falls to id", () => {
+      // The shipped `Orders` case: `placedAt` was added so date views have a
+      // field to key off, and a positional rule let it rename the entity.
+      let schema = S.schema(s =>
+        {
+          "orderId": s.matches(Reventless.Reference.to_("Order")),
+          "placedAt": s.matches(Reventless.DateTime.string),
+          "shippedAt": s.matches(Reventless.DateTime.string),
+        }
+      )
+      expect(labelOf(schema))->toEqual(("id", []))
+    })
+
+    testSync("a DateTime is skipped, not fatal — a later plain string still wins", () => {
+      let schema = S.schema(s =>
+        {
+          "placedAt": s.matches(Reventless.DateTime.string),
+          "reference": s.matches(S.string),
+        }
+      )
+      expect(labelOf(schema))->toEqual(("reference", ["reference"]))
+    })
+
+    testSync("an optional string is still the entity's name", () => {
+      let schema = S.schema(s =>
+        {
+          "nickname": s.matches(S.option(S.string)),
+        }
+      )
+      expect(labelOf(schema))->toEqual(("nickname", ["nickname"]))
+    })
+
+    testSync("a reference is not a name even when its field is not called `*Id`", () => {
+      let schema = S.schema(s =>
+        {
+          "customer": s.matches(Reventless.Reference.to_("Customer")),
+          "note": s.matches(S.string),
+        }
+      )
+      expect(labelOf(schema))->toEqual(("note", ["note"]))
+    })
+
+    testSync("a DCB-tagged string is not a name", () => {
+      let schema = S.schema(s =>
+        {
+          "partition": s.matches(Reventless.DcbTag.string),
+          "note": s.matches(S.string),
+        }
+      )
+      expect(labelOf(schema))->toEqual(("note", ["note"]))
+    })
+
+    testSync("the `*Id` test is case-insensitive — `productID` is a reference", () => {
+      let schema = S.schema(s =>
+        {
+          "productID": s.matches(S.string),
+          "note": s.matches(S.string),
+        }
+      )
+      expect(labelOf(schema))->toEqual(("note", ["note"]))
+    })
+
+    testSync("a semantic-carrying string is a value, not a name", () => {
+      // `imageUrl` names a stored object. A bucket key read as a product's name
+      // is what the previous rule did whenever no plain string preceded it.
+      let schema = S.schema(s =>
+        {
+          "imageUrl": s.matches(Reventless.StorageRef.forStore(~store="productImages")),
+          "note": s.matches(S.string),
+        }
+      )
+      expect(labelOf(schema))->toEqual(("note", ["note"]))
+    })
+
+    testSync("a state whose only string is a semantic falls to id", () => {
+      let schema = S.schema(s =>
+        {
+          "imageUrl": s.matches(Reventless.StorageRef.forStore(~store="productImages")),
+        }
+      )
+      expect(labelOf(schema))->toEqual(("id", []))
+    })
+
+    testSync("`id` itself is still excluded by name", () => {
+      // `SchemaType` reads a name that short as an ordinary string, so the
+      // exclusion cannot come from the IR.
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "note": s.matches(S.string),
+        }
+      )
+      expect(labelOf(schema))->toEqual(("note", ["note"]))
+    })
+  })
+
+  describe("labelField — the conventional-name rung", () => {
+    let labelOf = schema =>
+      Plugin_Structure.labelFieldsFromStateSchema(~entityName="Test", schema->S.castToUnknown)
+
+    testSync("a field named `name` beats an earlier string", () => {
+      let schema = S.schema(s =>
+        {
+          "sku": s.matches(S.string),
+          "name": s.matches(S.string),
+        }
+      )
+      expect(labelOf(schema))->toEqual(("name", ["name"]))
+    })
+
+    testSync("`title` counts too, case-insensitively", () => {
+      let schema = S.schema(s =>
+        {
+          "body": s.matches(S.string),
+          "Title": s.matches(S.string),
+        }
+      )
+      expect(labelOf(schema))->toEqual(("Title", ["Title"]))
+    })
+
+    testSync("the match is exact — `customerName` is a customer's name, not this record's", () => {
+      // The shipped `OrdersView` fixture depends on this: it has exactly one
+      // eligible field and must be picked by position, not by convention.
+      let schema = S.schema(s =>
+        {
+          "customerName": s.matches(S.string),
+          "note": s.matches(S.string),
+        }
+      )
+      expect(labelOf(schema))->toEqual(("customerName", ["customerName"]))
+    })
+
+    testSync("an optional `name` still outranks an earlier string", () => {
+      let schema = S.schema(s =>
+        {
+          "sku": s.matches(S.string),
+          "name": s.matches(S.option(S.string)),
+        }
+      )
+      expect(labelOf(schema))->toEqual(("name", ["name"]))
+    })
+  })
+
+  describe("statusField — the shape rule", () => {
+    let statusOf = schema =>
+      Plugin_Structure.statusFieldFromStateSchema(~entityName="Test", schema->S.castToUnknown)
+
+    testSync("a `status` field holding a closed set of values is the lifecycle field", () => {
+      let schema = S.schema(s =>
+        {
+          "status": s.matches(S.union([S.literal("Placed"), S.literal("Shipped")])),
+        }
+      )
+      expect(statusOf(schema))->toEqual(Some("status"))
+    })
+
+    testSync("an optional one counts too", () => {
+      let schema = S.schema(s =>
+        {
+          "status": s.matches(S.option(S.union([S.literal("Placed"), S.literal("Shipped")]))),
+        }
+      )
+      expect(statusOf(schema))->toEqual(Some("status"))
+    })
+
+    testSync("free text named `status` is not a lifecycle", () => {
+      // `allowedStates` filtering needs states to compare against; a string
+      // field named `status` gives a command menu nothing to match.
+      let schema = S.schema(s => {"status": s.matches(S.string)})
+      expect(statusOf(schema))->toEqual(None)
+    })
+  })
+
   // Phase 4: queryableDef.schema must carry x-reventless-* extension keys for
   // annotated state types. Plugin_Structure now uses SuryToJsonSchema.deriveObjectSchema
   // (annotation-aware) instead of S.toJSONSchema (metadata-blind).

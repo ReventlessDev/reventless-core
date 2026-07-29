@@ -11,6 +11,7 @@ import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as Api_Naming$ReventlessCore from "../../components/Api/Api_Naming.res.mjs";
+import * as SchemaType$ReventlessCore from "../../components/Api/SchemaType.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../../components/Api/ApiNoApiHelpers.res.mjs";
 import * as SuryToJsonSchema$ReventlessCore from "../../components/Api/SuryToJsonSchema.res.mjs";
@@ -19,21 +20,62 @@ import * as ApiAllowedStatesHelpers$ReventlessCore from "../../components/Api/Ap
 
 let log = Logger$ReventlessCore.fromEnv();
 
-function isIdLikeFieldName(name) {
-  if (name === "id" || name.endsWith("Id")) {
-    return true;
-  } else {
-    return name.endsWith("Ids");
-  }
+function isLabelShape(_t) {
+  while (true) {
+    let t = _t;
+    if (typeof t !== "object") {
+      return t === "ScalarString";
+    }
+    if (t.TAG !== "Nullable") {
+      return false;
+    }
+    _t = t._0;
+    continue;
+  };
 }
 
-function statusFieldFromStateSchema(stateSchema) {
+function isStatusShape(_t) {
+  while (true) {
+    let t = _t;
+    if (typeof t !== "object") {
+      return false;
+    }
+    switch (t.TAG) {
+      case "Nullable" :
+        _t = t._0;
+        continue;
+      case "Enum" :
+        return true;
+      default:
+        return false;
+    }
+  };
+}
+
+let conventionalLabelNames = [
+  "name",
+  "title",
+  "label",
+  "displayname"
+];
+
+function shapeOfItem(entityName, item) {
+  return SchemaType$ReventlessCore.fromSury(entityName, item.location, item.schema);
+}
+
+function statusFieldFromStateSchema(entityName, stateSchema) {
   let spec = StateAnnotations$Reventless.getSpec(stateSchema);
   let annotated = spec !== undefined ? spec.status : undefined;
   if (annotated !== undefined) {
     return annotated;
   } else if (stateSchema.type === "object") {
-    return Stdlib_Option.map(stateSchema.items.find(item => item.location === "status"), item => item.location);
+    return Stdlib_Option.map(stateSchema.items.find(item => {
+      if (item.location === "status") {
+        return isStatusShape(shapeOfItem(entityName, item));
+      } else {
+        return false;
+      }
+    }), item => item.location);
   } else {
     return;
   }
@@ -47,18 +89,23 @@ function labelFieldsFromStateSchema(entityName, stateSchema) {
       spec.fields
     ];
   }
-  let firstStringItem;
-  firstStringItem = stateSchema.type === "object" ? stateSchema.items.find(item => {
-      if (item.location === "TAG" || isIdLikeFieldName(item.location)) {
+  let candidates;
+  candidates = stateSchema.type === "object" ? stateSchema.items.filter(item => {
+      if (item.location !== "TAG" && item.location !== "id") {
+        return isLabelShape(shapeOfItem(entityName, item));
+      } else {
         return false;
       }
-      let match = item.schema;
-      return match.type === "string";
-    }) : undefined;
-  if (firstStringItem !== undefined) {
+    }) : [];
+  let conventional = candidates.find(item => {
+    let lower = item.location.toLowerCase();
+    return conventionalLabelNames.some(n => n === lower);
+  });
+  let picked = conventional !== undefined ? conventional : candidates[0];
+  if (picked !== undefined) {
     return [
-      firstStringItem.location,
-      [firstStringItem.location]
+      picked.location,
+      [picked.location]
     ];
   } else {
     log.warn("Plugin_Structure", undefined, entityName + `: no @displayName annotation and no suitable string field — labelField falls back to "id"`);
@@ -360,7 +407,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       linkedWriteSide: linkedWriteSideFor(consumed),
       labelField: match[0],
       searchableFields: match[1],
-      statusField: statusFieldFromStateSchema(stateSchema),
+      statusField: statusFieldFromStateSchema(R.Spec.name, stateSchema),
       visibility: visibilityTag(R.Spec.visibility),
       chapter: componentChapters[R.Spec.name]
     };
@@ -379,7 +426,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       linkedWriteSide: linkedWriteSideFor(consumed),
       labelField: match$1[0],
       searchableFields: match$1[1],
-      statusField: statusFieldFromStateSchema(stateSchema),
+      statusField: statusFieldFromStateSchema(SVS.Spec.name, stateSchema),
       visibility: visibilityTag(SVS.Spec.visibility),
       chapter: componentChapters[SVS.Spec.name]
     };
@@ -489,7 +536,10 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
 
 export {
   log,
-  isIdLikeFieldName,
+  isLabelShape,
+  isStatusShape,
+  conventionalLabelNames,
+  shapeOfItem,
   statusFieldFromStateSchema,
   labelFieldsFromStateSchema,
   make,
