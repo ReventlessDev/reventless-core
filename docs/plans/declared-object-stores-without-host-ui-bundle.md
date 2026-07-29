@@ -268,11 +268,34 @@ slice path had an example. This covers the aggregate path.
 Build green, zero warnings; full suite 2295/2295 (276 suites), `reventless-core` + `reventless-aws`
 956/956.
 
-## Still to do
+## Step 2 verified on AWS (2026-07-29)
 
-- **Deploy-verify step 2.** PUT through a presign URL, then GET through the exported `baseUrl`, on a
-  platform with a declared store and no `~hostUiBundle`. A preview cannot show that a bucket policy
-  grants what it claims — the Stage 2 exercise made the same point about `protect` and teardown.
+Deployed `online-shop-aggregates-platform-aws/pr-verify` — a platform with a declared store and no
+`~hostUiBundle`. The `PlatformOwned` arm executed for the first time. Stack outputs:
+
+```
+uploadEndpoints : { "Catalog.productImages": "https://m7wtpw…lambda-url.eu-west-1.on.aws/" }
+objectStores    : { "Catalog.productImages": { bucketName: "pr-verify-stores-3da07dd",
+                                               keyPrefix: "productImages",
+                                               baseUrl:   "https://d15sqe85qvbyp4.cloudfront.net" } }
+hostShellUrl    : absent
+```
+
+Three things that could only be seen from a real deploy:
+
+- **`baseUrl` present, `hostShellUrl` absent** — `servingFor` selected `PlatformOwned`, and the
+  platform stack built its own distribution rather than borrowing a shell's.
+- **`bucketName` is `pr-verify-stores-3da07dd`** — the physical auto-named bucket, confirming the
+  export fix. The logical name would have been `pr-verify-stores`.
+- **The round trip closes.** POST to the presign URL returned
+  `storageRef: /productImages/02dd8c31-…/verify.txt`; a PUT to the presigned URL returned 200; a GET
+  of `{baseUrl}{storageRef}` returned 200 `text/plain` with byte-identical content.
+
+The last one is the whole point of deploying: the bucket blocks public policy and takes its read
+grant solely from the `BucketPolicy` that distribution writes, and no preview can show that a policy
+grants what it claims. It does.
+
+## Still to do
 
   **An example now reaches the arm; nothing deploys it yet.** Until 2026-07-29 all three example
   platforms passed `~hostUiBundle` (hybrid with a payload, the other two with `{}`) and only hybrid
@@ -309,6 +332,18 @@ Build green, zero warnings; full suite 2295/2295 (276 suites), `reventless-core`
   serving path does. It would generate the same list this example now holds by hand, for a
   `PlatformOwned` arm that has still never executed — so the dependency runs the other way round:
   verifying the arm is what makes Stage 3's generated output trustworthy.
+- **The aggregates plugin stacks never compiled.** Both plugin jobs of that first deploy failed:
+  `project 'main' could not be read: … ordering-aws/src/Main.res.mjs: no such file or directory`.
+  Pre-existing and unrelated to this plan — hybrid's `catalog-aws`/`ordering-aws` track a generated
+  `Plugin.res` composition root plus both `.res.mjs` outputs, and the aggregates equivalents were
+  never generated or committed. Nothing caught it because nothing had ever deployed that example,
+  and the root `build` chain does not cover `*-aws` plugin roots (only `platform-aws` and
+  `platform-local`), so the outputs exist only if tracked. Generated via each package's own
+  `prebuild` → `generate-plugin` and committed. `online-shop-dcb` has the same gap, still open.
+
+  Consequence for this plan: the `deployPlugin` coverage assertion has still never run on AWS. The
+  platform half is verified; the check that reads its output is not.
+
 - ~~**Confirm the host-UI path is untouched.**~~ **Done 2026-07-29, from the emitted JS rather than
   from the source.** In `Platform.res.mjs` the whole `hostUiBundle` branch differs only in ReScript's
   temporary numbering (`match$1`→`match$2`), shifted because the new serving decision introduces a
