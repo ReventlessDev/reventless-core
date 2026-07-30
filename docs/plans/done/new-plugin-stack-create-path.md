@@ -1,15 +1,15 @@
 # Plan: the create path for a new plugin stack
 
 **Date:** 2026-07-29, updated 2026-07-30
-**Status:** **`ordering-aws` now deploys from scratch.** 1b fixed and deploy-verified; 1a turned out
-not to be fixed — it replaced a crash with a silently missing Lambda, and the deeper truth was that a
-side-effect handler's Lambda had *never* been provisioned on AWS by any path — reopened and fixed as
-**defect 3**, verified by the `AllSideEffectHandlers` Lambda actually existing. **Defect 2 (catalog's
-AppSync 409) is the only thing still blocking a from-scratch stack.** None of this affects an existing
-stack.
+**Status:** **A plugin stack can be created from scratch again.** Both `catalog-aws` and `ordering-aws`
+deploy clean on `pr-verify`. 1b fixed and deploy-verified. 1a turned out not to be fixed — it replaced a
+crash with a silently missing Lambda, and the deeper truth was that a side-effect handler's Lambda had
+*never* been provisioned on AWS by any path — reopened and fixed as **defect 3**, verified by the
+`AllSideEffectHandlers` Lambda actually existing. **Defect 2 does not reproduce** and is downgraded from
+blocker to recorded latent race. None of this affects an existing stack.
 
 **Found by:** the first-ever deploy of `online-shop-aggregates`, standing up the `PlatformOwned`
-serving arm — see [declared-object-stores-without-host-ui-bundle.md](./declared-object-stores-without-host-ui-bundle.md).
+serving arm — see [declared-object-stores-without-host-ui-bundle.md](../declared-object-stores-without-host-ui-bundle.md).
 
 **Verification loop is much cheaper than recorded.** `pulumi preview` against a warm `pr-verify`
 stack reproduces the export-serialization failures in ~40s with no AWS writes; the plan previously
@@ -23,7 +23,7 @@ Every deployed plugin stack was created long ago and is only ever *updated*. Not
 from scratch in a long time, so the create path had no coverage of any kind — not CI, not a preview,
 not a deploy. Two of the defects that path contained were fixed earlier (a missing generated deploy
 root, and SDK command names that named the Pulumi resource rather than the AppSync operation,
-`777c8ff7e`); 1b and 3 are fixed here; defect 2 remains.
+`777c8ff7e`); 1b and 3 are fixed here; 2 turned out not to reproduce.
 
 The shared lesson is worth stating separately from either fix: **"the deploy is green" has never
 meant "this stack could be built again."** An update-only path exercises a different code path from
@@ -44,7 +44,7 @@ walker cannot serialize it. The chain, verbatim from the deploy:
         arrow function captured 'this'.
 ```
 
-**This is already documented at the call site.** [RuntimeEnvironment_Lambda.res:25-33](../../reventless/aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res#L25)
+**This is already documented at the call site.** [RuntimeEnvironment_Lambda.res:25-33](../../../reventless/aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res#L25)
 states that the closure walker fails on Effect-TS, that the failure is normally *silent* so the
 Lambda is simply never created while the deploy still reports success, that
 `docs/plans/done/complete-bundled-migration.md` records an ordering-aws deploy coming up four Lambdas
@@ -73,7 +73,7 @@ stack lands on `Plugin_Helpers.res.mjs:630` = `serializeEventMappersOutputs`, wa
 `agg.eventMapper` is `Some(x)` where `x` is not an Output — an EventMapper whose Lambda never
 materialised.
 
-[Aggregate_Builder.res:44](../../reventless/core/src/components/Aggregate/Aggregate_Builder.res#L44)
+[Aggregate_Builder.res:44](../../../reventless/core/src/components/Aggregate/Aggregate_Builder.res#L44)
 gates it: `if EventMappings.mappings->Array.length > 0` builds the EventMapper, else `eventMapper`
 stays absent. So **only an aggregate that declares EventMappings reaches this path**, which explains
 the whole distribution of the failure exactly:
@@ -104,13 +104,14 @@ Lambdas created: AllAggregatesCmdHandler, AllReadModels, DeadLetterQueue,
 So the target is the EventMapper's own EventCollector (`OrderAggrEventMapper`) — every other
 component got its Lambda from a compiled entry point.
 
-**A preview cannot substitute for `up` here** (untested but worth checking before relying on one):
-`EventMapper_Builder` creates its resources *inside* `Pulumi.Output.apply`
-([line 68](../../reventless/core/src/components/EventMapper/EventMapper_Builder.res#L68)), and Pulumi
-skips apply callbacks whose inputs are unknown during preview. If that holds, no preview of any
-plugin stack has ever constructed this component, which would explain a decade of green previews over
-a broken path. That `.apply` is also why the error is garbled rather than pointed: a throw inside an
-apply surfaces as an unresolved output, which `serializeEventMappersOutputs` then dereferences.
+**A preview cannot substitute for `up` — on a *cold* stack.** `EventMapper_Builder` creates its
+resources *inside* `Pulumi.Output.apply`
+([line 68](../../../reventless/core/src/components/EventMapper/EventMapper_Builder.res#L68)), and Pulumi
+skips apply callbacks whose inputs are unknown during preview. That explains a long run of green
+previews over a broken path. **Since tested and half-refuted:** against a *warm* stack the inputs are
+known, the applies do run, and `preview` reproduces this failure in ~40s — which is the iteration loop
+to use. That `.apply` is also why the error is garbled rather than pointed: a throw inside an apply
+surfaces as an unresolved output, which `serializeEventMappersOutputs` then dereferences.
 
 ### 1a — the serializing call site: superseded by defect 3
 
@@ -226,7 +227,7 @@ Two independent gaps, either of which alone is enough:
 `SideEffectHandler_PerSideEffectHandler` via `Task_Builder_PerBucket`. Its
 `EventCollectorRuntime_Builder_PerEventCollector` keys on `readModelInfos` / `registerReadModel` and
 bundles `ReadModelEntryPoint.mjs`. The right module is
-[SideEffectHandlerRuntime_Builder_Single.res](../../reventless/aws/src/adapter/Runtime/SideEffectHandlerRuntime_Builder_Single.res) —
+[SideEffectHandlerRuntime_Builder_Single.res](../../../reventless/aws/src/adapter/Runtime/SideEffectHandlerRuntime_Builder_Single.res) —
 `sideEffectInfos` / `registerSideEffectHandler`, bundling `SideEffectEntryPoint.mjs`. The arm also
 never registers: `SideEffectHandler_Single` calls `registerSideEffectHandler` with module paths derived
 from each `SideEffect`'s `moduleUrl`, and the `_Per` arm is a bare `include` of the core functor that
@@ -286,11 +287,11 @@ Lambda. That is also why this went unnoticed for so long.
 `EventCollectorRuntimeBuilder` to core's serializing
 `EventCollectorRuntime_Builder_PerEventCollector.Make(…)` — the same class of leak 1a chased, unaudited
 as to whether it is reached. `RuntimeEnvironment_Lambda.res:21` names both this and the side-effect arm.
-Worth an audit, since the failure mode is silence.
+Carried to [Backlog/serializing-runtime-builder-audit.md](../Backlog/serializing-runtime-builder-audit.md).
 
-## Defect 2 — AppSync 409 on data-source create
+## Defect 2 — AppSync 409 on data-source create: DOES NOT REPRODUCE
 
-Creating catalog's data sources fails:
+As originally observed in CI, creating catalog's data sources failed:
 
 ```
 AppSync: CreateDataSource, StatusCode: 409,
@@ -298,30 +299,69 @@ ConcurrentModificationException: Schema is currently being altered, please wait 
 is complete.  provider=aws@7.19.0
 ```
 
-**Deterministic, not a race between stacks.** A re-run reproduced it identically, and the log shows
-`Categories`, `ProductDemands` and `Products` all failing within the same second — one stack's own
-data sources being created in parallel while the schema it just created is still settling. The
-initial reading (two plugin jobs colliding) was wrong; a second dispatch ruled it out.
+### It does not reproduce, and "deterministic" was wrong
 
-**Fix, two candidate shapes:**
+A from-scratch `catalog-aws/pr-verify` against the settled `platform-aws/pr-verify` **succeeds** — 155
+resources created, exit 0. The three data sources the plan named created cleanly in under a second
+each:
 
-1. **A retrying dynamic provider**, mirroring `AppSync_Resolver_Retrying` (653 lines) and
-   `AppSync_SourceApiAssociation_Retrying` (471). Consistent with how the codebase already handles
-   AppSync's 409s, and the precedent is close enough to follow rather than invent. Cost: a third
-   sizeable provider, plus rewiring ~10 `DataSource.make` call sites.
-2. **Serialize creation** so data sources do not contend — `dependsOn` chaining. Much smaller, but
-   the data sources belong to *different components*, so chaining them couples components at deploy
-   time for a reason that is not about their domain relationship. That is the kind of coupling the
-   split-stack design exists to avoid, so it needs a decision rather than a patch.
+```
++ aws:appsync:DataSource Categories      created (0.81s)
++ aws:appsync:DataSource Products        created (0.83s)
++ aws:appsync:DataSource ProductDemands  created (1s)
+```
 
-Option 1 is the consistent answer; option 2 is the cheap one. Neither is a small edit, which is why
-this is recorded rather than done.
+The exception is still there, twice — but on **resolvers**, where `AppSync_Resolver_Retrying` already
+absorbs it and the deploy carries on:
+
+```
+INFO attempt 1/8 failed, retrying in 2000ms: ConcurrentModificationException:
+     Schema is currently being altered…    comp=AppSync_Resolver_Retrying
+```
+
+**Why data sources won here, and what that says about the fix.** Everything the plugin builds is
+already gated on the schema push — `schemaPushed` is one of the inputs to the `Output.all6` that wraps
+the whole plugin construction in `Plugin_Builder`, so nothing is created until
+`subgraph schema is ACTIVE`. The log confirms the order: push at `02:30:30`, ACTIVE at `02:30:32`,
+association, then the data sources. The resolver 409s land at `02:31:19` and `02:31:40` — **47 and 68
+seconds after ACTIVE**. So the contention is not with the subgraph push at all; it is with the
+*asynchronous merged-API merge* that keeps altering the schema long after the push reports done. Data
+sources are created in a narrow window right after the gate and usually miss it; resolvers are created
+deep inside it and routinely hit it.
+
+**That kills option 2.** `dependsOn` chaining assumed data sources contend with each other. They do
+not — they contend with an async merge, and the ordering gate that *would* help already exists. There is
+nothing left to order against.
+
+**And there is no free fix.** `aws:maxRetries` cannot help: the SDK models the error as
+`$fault: "client"` with no retryable marker (`@aws-sdk/client-appsync`), so neither the SDK nor the
+Terraform provider beneath `aws:appsync:DataSource` will retry it. That is precisely why
+`AppSync_Resolver_Retrying` hand-rolls its own loop, as its comment says.
+
+**So option 1 is the only real answer, and it is now a hardening rather than a blocker.** If done,
+extract `runWithRaceRetry` and `isSchemaAlteringError` from `AppSync_Resolver_Retrying` into a shared
+module first and build a thin `AppSync_DataSource_Retrying` on it — the resolver provider's 653 lines
+are mostly its six-field SDK surface, not the retry logic, and a third copy of the retry loop would be
+the wrong shape. Roughly 10 `DataSource.make` call sites to rewire.
+
+**Left undone deliberately.** The race is real and recorded, but it did not reproduce, the create path
+is no longer blocked by it, and speculatively adding a third dynamic provider is a poor trade against
+evidence this thin. The trigger to do it: a CI run failing this way again — where the platform stack is
+created in the same pipeline window, which is the condition the original two failures shared and this
+reproduction did not.
 
 ## Sequencing
 
-**Ordering deploys; 1b and 3 are closed.** What remains is **defect 2, which blocks catalog** — and it
-is the only hard failure left on the create path. It needs a decision before code: the retrying dynamic
-provider, or `dependsOn` chaining. It does not reproduce on an existing stack.
+**Nothing is blocking the create path.** 1b and 3 are fixed and deploy-verified; 2 did not reproduce.
+
+Two follow-ups carried to the backlog rather than left buried here:
+
+- [Backlog/appsync-datasource-retrying.md](../Backlog/appsync-datasource-retrying.md) — defect 2's
+  hardening, with its fix shape settled and its trigger named.
+- [Backlog/serializing-runtime-builder-audit.md](../Backlog/serializing-runtime-builder-audit.md) —
+  `Task_Builder_PerBucket`'s own binding to core's serializing builder, plus the other core builders
+  still calling `RuntimeEnvironment.make`. Both fail silently, which is why they are worth an audit
+  before they are worth a bug report.
 
 **Verification, corrected.** `preview` against a warm `pr-verify` stack reproduces the export-side
 failures in ~40s with no AWS writes — that is the iteration loop, and it is an order of magnitude
