@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.86 (2026-07-30)
+
+### Features
+
+* **spec,local:** resolve capability manifests beyond the example topology ([8bfadd5](https://github.com/ReventlessDev/reventless-core/commit/8bfadd5beef90c0c9f6f6f3fbb753c8b789469ed))
+* **spec:** semantic branded scalars — Email, Url, Phone, Percent, Color, Bytes, Duration ([2e64ff9](https://github.com/ReventlessDev/reventless-core/commit/2e64ff992e913c038a71659c731c25a104e3c5a9))
+
+
 # 3.0.0-alpha.85 (2026-07-30)
 
 ### Features
