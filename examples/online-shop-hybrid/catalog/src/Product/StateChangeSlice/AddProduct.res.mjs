@@ -26,7 +26,7 @@ let commandSchema = S.schema(s => ({
   name: s.m(S.string),
   description: s.m(S.string),
   price: s.m(S.float),
-  imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "productImages")),
+  imageUrl: s.m(S.option(StorageRef$Reventless.forStore(undefined, "productImages"))),
   categoryId: s.m(Reference$Reventless.to_(undefined, undefined, "Categories"))
 }));
 
@@ -41,7 +41,7 @@ let eventSchema = S.schema(s => ({
   name: s.m(S.string),
   description: s.m(S.string),
   price: s.m(S.float),
-  imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "productImages")),
+  imageUrl: s.m(S.option(StorageRef$Reventless.forStore(undefined, "productImages"))),
   categoryId: s.m(DcbTag$Reventless.string)
 }));
 

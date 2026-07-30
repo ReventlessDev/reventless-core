@@ -5,7 +5,7 @@
 
 @schema
 type consumedEvent =
-  | ProductAdded({imageUrl: string})
+  | ProductAdded({imageUrl?: string})
   | ProductImageChanged({imageUrl: string})
 
 @schema

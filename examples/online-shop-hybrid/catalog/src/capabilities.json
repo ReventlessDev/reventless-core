@@ -5,19 +5,7 @@
       "key": "Catalog.productImages",
       "declaredBy": [
         {
-          "component": "AddProduct",
-          "field": "imageUrl"
-        },
-        {
           "component": "ChangeProductImage",
-          "field": "imageUrl"
-        },
-        {
-          "component": "ImportProduct",
-          "field": "imageUrl"
-        },
-        {
-          "component": "Products",
           "field": "imageUrl"
         }
       ]

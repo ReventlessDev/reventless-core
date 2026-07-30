@@ -23,56 +23,44 @@ function project(param) {
       return [{
           TAG: "Update",
           _0: event.productId,
-          _1: state => ({
-            productId: state.productId,
-            name: name,
-            description: state.description,
-            price: state.price,
-            imageUrl: state.imageUrl,
-            categoryId: state.categoryId
-          })
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.name = name;
+            return newrecord;
+          }
         }];
     case "ProductDescriptionChanged" :
       let description = event.description;
       return [{
           TAG: "Update",
           _0: event.productId,
-          _1: state => ({
-            productId: state.productId,
-            name: state.name,
-            description: description,
-            price: state.price,
-            imageUrl: state.imageUrl,
-            categoryId: state.categoryId
-          })
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.description = description;
+            return newrecord;
+          }
         }];
     case "ProductPriceChanged" :
       let price = event.price;
       return [{
           TAG: "Update",
           _0: event.productId,
-          _1: state => ({
-            productId: state.productId,
-            name: state.name,
-            description: state.description,
-            price: price,
-            imageUrl: state.imageUrl,
-            categoryId: state.categoryId
-          })
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.price = price;
+            return newrecord;
+          }
         }];
     case "ProductImageChanged" :
       let imageUrl = event.imageUrl;
       return [{
           TAG: "Update",
           _0: event.productId,
-          _1: state => ({
-            productId: state.productId,
-            name: state.name,
-            description: state.description,
-            price: state.price,
-            imageUrl: imageUrl,
-            categoryId: state.categoryId
-          })
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.imageUrl = imageUrl;
+            return newrecord;
+          }
         }];
   }
 }

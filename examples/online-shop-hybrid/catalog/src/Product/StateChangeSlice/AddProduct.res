@@ -18,7 +18,8 @@ type command =
       name: string,
       description: string,
       price: float,
-      @storageRef("productImages") imageUrl: string,
+      // Optional: a product may be created without an image (absent, not `""`).
+      @storageRef("productImages") imageUrl?: string,
       @ref("Categories") categoryId: string,
     })
 
@@ -34,6 +35,6 @@ type event =
       name: string,
       description: string,
       price: float,
-      @storageRef("productImages") imageUrl: string,
+      @storageRef("productImages") imageUrl?: string,
       categoryId: string,
     })

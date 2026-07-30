@@ -11,7 +11,7 @@ let consumedEventSchema = S.union([
     name: s.m(S.string),
     description: s.m(S.string),
     price: s.m(S.float),
-    imageUrl: s.m(S.string),
+    imageUrl: s.m(S.option(S.string)),
     categoryId: s.m(S.string)
   })),
   S.schema(s => ({
@@ -41,7 +41,7 @@ let stateSchema = S.schema(s => ({
   name: s.m(S.string),
   description: s.m(S.string),
   price: s.m(S.float),
-  imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "productImages")),
+  imageUrl: s.m(S.option(StorageRef$Reventless.forStore(undefined, "productImages"))),
   categoryId: s.m(S.string)
 }));
 

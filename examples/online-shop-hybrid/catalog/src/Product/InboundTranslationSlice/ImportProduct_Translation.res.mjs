@@ -33,7 +33,6 @@ function translate(input) {
             name: input.title,
             description: input.desc,
             price: input.unitPrice / 100.0,
-            imageUrl: "",
             categoryId: input.category
           }
         ]]

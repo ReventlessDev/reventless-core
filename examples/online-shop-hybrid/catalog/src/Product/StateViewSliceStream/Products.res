@@ -5,7 +5,7 @@
 
 @schema
 type consumedEvent =
-  | ProductAdded({productId: string, name: string, description: string, price: float, imageUrl: string, categoryId: string})
+  | ProductAdded({productId: string, name: string, description: string, price: float, imageUrl?: string, categoryId: string})
   | ProductNameChanged({productId: string, name: string})
   | ProductDescriptionChanged({productId: string, description: string})
   | ProductPriceChanged({productId: string, price: float})
@@ -17,6 +17,6 @@ type state = {
   name: string,
   description: string,
   price: float,
-  @storageRef("productImages") imageUrl: string,
+  @storageRef("productImages") imageUrl?: string,
   categoryId: string,
 }

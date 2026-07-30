@@ -7,7 +7,7 @@ import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/seman
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "ProductAdded",
-    imageUrl: s.m(S.string)
+    imageUrl: s.m(S.option(S.string))
   })),
   S.schema(s => ({
     TAG: "ProductImageChanged",

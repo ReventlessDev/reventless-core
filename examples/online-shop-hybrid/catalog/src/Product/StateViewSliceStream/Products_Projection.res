@@ -2,8 +2,8 @@
 
 let project = ({event}) =>
   switch event {
-  | ProductAdded({productId, name, description, price, imageUrl, categoryId}) => [
-      Set(productId, {productId, name, description, price, imageUrl, categoryId}),
+  | ProductAdded({productId, name, description, price, imageUrl: ?imageUrl, categoryId}) => [
+      Set(productId, {productId, name, description, price, imageUrl: ?imageUrl, categoryId}),
     ]
   | ProductNameChanged({productId, name}) => [Update(productId, state => {...state, name})]
   | ProductDescriptionChanged({productId, description}) => [
