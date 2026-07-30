@@ -303,8 +303,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/aws
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.47
-        version: 3.0.0-alpha.47(71c315ff37eefece9b60a3c015699043)
+        specifier: 3.0.0-alpha.48
+        version: 3.0.0-alpha.48(71c315ff37eefece9b60a3c015699043)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/infra
@@ -366,8 +366,8 @@ importers:
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.47
-        version: 3.0.0-alpha.47(71c315ff37eefece9b60a3c015699043)
+        specifier: 3.0.0-alpha.48
+        version: 3.0.0-alpha.48(71c315ff37eefece9b60a3c015699043)
 
   examples/online-shop-dcb/catalog:
     dependencies:
@@ -564,8 +564,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/aws
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.47
-        version: 3.0.0-alpha.47(71c315ff37eefece9b60a3c015699043)
+        specifier: 3.0.0-alpha.48
+        version: 3.0.0-alpha.48(71c315ff37eefece9b60a3c015699043)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/infra
@@ -630,8 +630,8 @@ importers:
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.47
-        version: 3.0.0-alpha.47(71c315ff37eefece9b60a3c015699043)
+        specifier: 3.0.0-alpha.48
+        version: 3.0.0-alpha.48(71c315ff37eefece9b60a3c015699043)
 
   examples/online-shop-hybrid/catalog:
     dependencies:
@@ -837,8 +837,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/aws
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.47
-        version: 3.0.0-alpha.47(71c315ff37eefece9b60a3c015699043)
+        specifier: 3.0.0-alpha.48
+        version: 3.0.0-alpha.48(71c315ff37eefece9b60a3c015699043)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/infra
@@ -912,8 +912,8 @@ importers:
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.47
-        version: 3.0.0-alpha.47(71c315ff37eefece9b60a3c015699043)
+        specifier: 3.0.0-alpha.48
+        version: 3.0.0-alpha.48(71c315ff37eefece9b60a3c015699043)
 
   examples/online-shop-hybrid/seed-data:
     dependencies:
@@ -5007,8 +5007,8 @@ packages:
       maplibre-gl: '>=4.0.0'
       rescript: ^12.3.0
 
-  '@reventlessdev/reventless-graph@0.1.0-alpha.4':
-    resolution: {integrity: sha512-kU83QlP62k9iu+gEWzy/ZxDB9qObKPQ1jUdnEsgikQmzA/Z8hXEzaK630Q/0SXd0boaq3LlvF1mmkD6o4n+Sfw==}
+  '@reventlessdev/reventless-graph@0.1.0-alpha.5':
+    resolution: {integrity: sha512-dJUbJ/z7DZmWhP3UcwiMvq8QcIm2k776NVlrNIINz4MImYyS+aP7YxlJkeQcplouVE+7FItchAtbPFuKuLTEYw==}
     peerDependencies:
       '@rescript/react': ^0.13.1
       '@reventlessdev/rescript-cytoscape': '>=0.1.0-alpha.0'
@@ -5019,12 +5019,12 @@ packages:
       react: ^18.3.1
       rescript: ^12.3.0
 
-  '@reventlessdev/reventless-host-shell@3.0.0-alpha.47':
-    resolution: {integrity: sha512-0CaQ/G0w1ZQtNNHi0unehxvKRvR1aaGTA1gMaMxGoYlOnbXFBZoZ1PKROvKDjTo9eiqh33jtr16BFKT61Wm8mA==}
+  '@reventlessdev/reventless-host-shell@3.0.0-alpha.48':
+    resolution: {integrity: sha512-qST96Yv1aG7Wq7rnIpflKPWugFvPHrYNg7qXpqXyUO8qfkJgsHsEwnJ6kC85OTgXOs+hOLHBLmgwN0+YrtW/pA==}
     hasBin: true
 
-  '@reventlessdev/reventless-map@0.1.0-alpha.4':
-    resolution: {integrity: sha512-jLhE6D1Eqic9FlaP/dWXfCmsqtjCwHRkS8dKxP+S6f7rBx1tQkEznfu7ev0M9pfygfFwoPhbKRsKTQv4fSZZ0w==}
+  '@reventlessdev/reventless-map@0.1.0-alpha.5':
+    resolution: {integrity: sha512-uKKc62c2kzHg3KjsRFa6ma44+4HDFO8hEMtdwGKb0EgaGNx1/+puIoS6SIgV4AUIck3wI3NEUnYSznKwfKg7aw==}
     peerDependencies:
       '@rescript/react': ^0.13.1
       '@reventlessdev/rescript-maplibre': '>=0.1.0-alpha.2'
@@ -18412,7 +18412,7 @@ snapshots:
       rescript: 12.3.0
     optional: true
 
-  '@reventlessdev/reventless-graph@0.1.0-alpha.4(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@reventlessdev/rescript-cytoscape@0.1.0-alpha.1(cytoscape-dagre@4.0.0(cytoscape@3.33.2))(cytoscape-fcose@2.2.0(cytoscape@3.33.2))(cytoscape@3.33.2)(rescript@12.3.0))(@reventlessdev/reventless-ui@3.0.0-alpha.40(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(rescript@12.3.0))(cytoscape-dagre@4.0.0(cytoscape@3.33.2))(cytoscape-fcose@2.2.0(cytoscape@3.33.2))(cytoscape@3.33.2)(react@18.3.1)(rescript@12.3.0)':
+  '@reventlessdev/reventless-graph@0.1.0-alpha.5(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@reventlessdev/rescript-cytoscape@0.1.0-alpha.1(cytoscape-dagre@4.0.0(cytoscape@3.33.2))(cytoscape-fcose@2.2.0(cytoscape@3.33.2))(cytoscape@3.33.2)(rescript@12.3.0))(@reventlessdev/reventless-ui@3.0.0-alpha.40(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(rescript@12.3.0))(cytoscape-dagre@4.0.0(cytoscape@3.33.2))(cytoscape-fcose@2.2.0(cytoscape@3.33.2))(cytoscape@3.33.2)(react@18.3.1)(rescript@12.3.0)':
     dependencies:
       '@rescript/react': 0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@reventlessdev/rescript-cytoscape': 0.1.0-alpha.1(cytoscape-dagre@4.0.0(cytoscape@3.33.2))(cytoscape-fcose@2.2.0(cytoscape@3.33.2))(cytoscape@3.33.2)(rescript@12.3.0)
@@ -18424,7 +18424,7 @@ snapshots:
       rescript: 12.3.0
     optional: true
 
-  '@reventlessdev/reventless-host-shell@3.0.0-alpha.47(71c315ff37eefece9b60a3c015699043)':
+  '@reventlessdev/reventless-host-shell@3.0.0-alpha.48(71c315ff37eefece9b60a3c015699043)':
     dependencies:
       '@aws-sdk/client-cognito-identity-provider': 3.1033.0
       '@module-federation/runtime': 0.18.4
@@ -18439,8 +18439,8 @@ snapshots:
       rescript-relay: 4.4.1(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-relay@20.1.1(encoding@0.1.13)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)
       vite: 6.4.2(@types/node@25.6.0)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3)
     optionalDependencies:
-      '@reventlessdev/reventless-graph': 0.1.0-alpha.4(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@reventlessdev/rescript-cytoscape@0.1.0-alpha.1(cytoscape-dagre@4.0.0(cytoscape@3.33.2))(cytoscape-fcose@2.2.0(cytoscape@3.33.2))(cytoscape@3.33.2)(rescript@12.3.0))(@reventlessdev/reventless-ui@3.0.0-alpha.40(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(rescript@12.3.0))(cytoscape-dagre@4.0.0(cytoscape@3.33.2))(cytoscape-fcose@2.2.0(cytoscape@3.33.2))(cytoscape@3.33.2)(react@18.3.1)(rescript@12.3.0)
-      '@reventlessdev/reventless-map': 0.1.0-alpha.4(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@reventlessdev/rescript-maplibre@0.1.0-alpha.3(maplibre-gl@6.0.0)(rescript@12.3.0))(@reventlessdev/reventless-ui@3.0.0-alpha.40(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(rescript@12.3.0))(maplibre-gl@6.0.0)(react@18.3.1)(rescript@12.3.0)
+      '@reventlessdev/reventless-graph': 0.1.0-alpha.5(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@reventlessdev/rescript-cytoscape@0.1.0-alpha.1(cytoscape-dagre@4.0.0(cytoscape@3.33.2))(cytoscape-fcose@2.2.0(cytoscape@3.33.2))(cytoscape@3.33.2)(rescript@12.3.0))(@reventlessdev/reventless-ui@3.0.0-alpha.40(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(rescript@12.3.0))(cytoscape-dagre@4.0.0(cytoscape@3.33.2))(cytoscape-fcose@2.2.0(cytoscape@3.33.2))(cytoscape@3.33.2)(react@18.3.1)(rescript@12.3.0)
+      '@reventlessdev/reventless-map': 0.1.0-alpha.5(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@reventlessdev/rescript-maplibre@0.1.0-alpha.3(maplibre-gl@6.0.0)(rescript@12.3.0))(@reventlessdev/reventless-ui@3.0.0-alpha.40(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(rescript@12.3.0))(maplibre-gl@6.0.0)(react@18.3.1)(rescript@12.3.0)
     transitivePeerDependencies:
       - '@rescript/react'
       - '@reventlessdev/rescript-cytoscape'
@@ -18471,7 +18471,7 @@ snapshots:
       - vue-tsc
       - yaml
 
-  '@reventlessdev/reventless-map@0.1.0-alpha.4(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@reventlessdev/rescript-maplibre@0.1.0-alpha.3(maplibre-gl@6.0.0)(rescript@12.3.0))(@reventlessdev/reventless-ui@3.0.0-alpha.40(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(rescript@12.3.0))(maplibre-gl@6.0.0)(react@18.3.1)(rescript@12.3.0)':
+  '@reventlessdev/reventless-map@0.1.0-alpha.5(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@reventlessdev/rescript-maplibre@0.1.0-alpha.3(maplibre-gl@6.0.0)(rescript@12.3.0))(@reventlessdev/reventless-ui@3.0.0-alpha.40(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(rescript@12.3.0))(maplibre-gl@6.0.0)(react@18.3.1)(rescript@12.3.0)':
     dependencies:
       '@rescript/react': 0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@reventlessdev/rescript-maplibre': 0.1.0-alpha.3(maplibre-gl@6.0.0)(rescript@12.3.0)
