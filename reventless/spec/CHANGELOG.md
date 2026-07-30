@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.85 (2026-07-30)
+
+### Features
+
+* **spec,core,local:** emit capabilities.json from the plugin build ([57a3276](https://github.com/ReventlessDev/reventless-core/commit/57a3276a6b02af93490a8b460e3aa158b7e0e0f8))
+* **spec,core:** derive the platform capability list — inference and generation (stage 3) ([8ab4d25](https://github.com/ReventlessDev/reventless-core/commit/8ab4d2504bd717487fbc87a0f5a053024c8258f9))
+
+
 # 3.0.0-alpha.84 (2026-07-29)
 
 ### Features

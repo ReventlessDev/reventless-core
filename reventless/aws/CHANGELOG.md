@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.244 (2026-07-30)
+
+### Bug Fixes
+
+* **aws:** point the per-side-effect arm at the compiled event-collector builder ([0aaef40](https://github.com/ReventlessDev/reventless-core/commit/0aaef403a844c36c8d13038e3695c182c5b27745))
+* **core,aws:** provision the side-effect handler Lambda, which never existed ([d07311e](https://github.com/ReventlessDev/reventless-core/commit/d07311e0cfc368e9b3d51596e775a58b55a2fc0e))
+
+
 # 3.0.0-alpha.243 (2026-07-29)
 
 ### Bug Fixes

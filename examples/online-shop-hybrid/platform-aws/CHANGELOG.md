@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.191 (2026-07-30)
+
+### Features
+
+* **spec,core:** derive the platform capability list — inference and generation (stage 3) ([8ab4d25](https://github.com/ReventlessDev/reventless-core/commit/8ab4d2504bd717487fbc87a0f5a053024c8258f9))
+
+
 # 1.0.0-alpha.190 (2026-07-29)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

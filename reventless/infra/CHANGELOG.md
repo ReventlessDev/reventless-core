@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.110 (2026-07-30)
+
+### Bug Fixes
+
+* **core:** resolve each eventMapper before collecting, not after ([12060d8](https://github.com/ReventlessDev/reventless-core/commit/12060d84733e1636255be03c432f959139600dbf))
+### Features
+
+* **spec,core,local:** emit capabilities.json from the plugin build ([57a3276](https://github.com/ReventlessDev/reventless-core/commit/57a3276a6b02af93490a8b460e3aa158b7e0e0f8))
+
+
 # 3.0.0-alpha.109 (2026-07-29)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra

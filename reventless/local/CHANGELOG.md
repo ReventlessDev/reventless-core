@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.180 (2026-07-30)
+
+### Bug Fixes
+
+* **core,aws:** provision the side-effect handler Lambda, which never existed ([d07311e](https://github.com/ReventlessDev/reventless-core/commit/d07311e0cfc368e9b3d51596e775a58b55a2fc0e))
+### Features
+
+* **spec,core,local:** emit capabilities.json from the plugin build ([57a3276](https://github.com/ReventlessDev/reventless-core/commit/57a3276a6b02af93490a8b460e3aa158b7e0e0f8))
+
+
 # 3.0.0-alpha.179 (2026-07-29)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local

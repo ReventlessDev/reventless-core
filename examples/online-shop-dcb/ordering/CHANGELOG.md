@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.170 (2026-07-30)
+
+### Features
+
+* **spec,core,local:** emit capabilities.json from the plugin build ([57a3276](https://github.com/ReventlessDev/reventless-core/commit/57a3276a6b02af93490a8b460e3aa158b7e0e0f8))
+
+
 # 1.0.0-alpha.169 (2026-07-29)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-ordering
