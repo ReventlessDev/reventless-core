@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.247 (2026-07-30)
+
+### Bug Fixes
+
+* **aws:** resolve the host-shell bundle from the project that pins it ([8e12fb7](https://github.com/ReventlessDev/reventless-core/commit/8e12fb762795184086080b131397a111a0e75f03))
+
+
 # 3.0.0-alpha.246 (2026-07-30)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
