@@ -94,8 +94,9 @@ against a fresh store, not on top of an existing one.
 
 For a non-interactive run (CI), set `SEED_SET` (`full` or `sample`) plus
 `REVENTLESS_DEMO_USER`/`REVENTLESS_DEMO_PASSWORD` to skip every prompt. Add
-`SEED_SKIP_UPLOADS=1` to seed the domain data without product images (leaving
-`imageUrl` empty) — handy when a deployment serves no upload endpoint.
+`SEED_SKIP_UPLOADS=1` to seed the domain data without product images (the
+optional `imageUrl` is then simply absent) — handy when a deployment serves no
+upload endpoint.
 
 Because it goes through the public command API rather than writing to the store,
 it doubles as a smoke test — and it is **domain-coupled by design**. The seed is

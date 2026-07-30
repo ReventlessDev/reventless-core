@@ -281,7 +281,7 @@ async function summarise(client, counts) {
 async function run(connection, productCount, customerCount, orderCount) {
   let client = connection.client;
   let built = DemoData$OnlineShopHybridSeed.buildProducts(productCount, undefined);
-  let products = connection.uploadEndpoint === "" ? (Seed_Runner$ReventlessSeed.report("product images: skipped (no upload endpoint / SEED_SKIP_UPLOADS) — imageUrl left empty"), built) : await uploadProductImages(built, client, connection.uploadEndpoint);
+  let products = connection.uploadEndpoint === "" ? (Seed_Runner$ReventlessSeed.report("product images: skipped (no upload endpoint / SEED_SKIP_UPLOADS) — imageUrl left absent"), built) : await uploadProductImages(built, client, connection.uploadEndpoint);
   let customers = DemoData$OnlineShopHybridSeed.buildCustomers(customerCount, undefined);
   let orders = DemoData$OnlineShopHybridSeed.buildOrders(products, customers, orderCount, undefined);
   await seedCategories(client);

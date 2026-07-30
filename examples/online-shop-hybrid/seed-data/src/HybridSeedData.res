@@ -386,7 +386,7 @@ let run = async (
   let built = DemoData.buildProducts(~count=productCount, ())
   let products = if connection.uploadEndpoint == "" {
     Seed.Runner.report(
-      "product images: skipped (no upload endpoint / SEED_SKIP_UPLOADS) — imageUrl left empty",
+      "product images: skipped (no upload endpoint / SEED_SKIP_UPLOADS) — imageUrl left absent",
     )
     built
   } else {
