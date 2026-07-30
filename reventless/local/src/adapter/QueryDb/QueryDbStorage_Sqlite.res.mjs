@@ -147,6 +147,7 @@ function makeStorage(db, bus, name, indexes, subIdField) {
   let deleteByPartitionStmt = SqliteDriver$ReventlessLocal.prepare(db, `DELETE FROM ` + table + ` WHERE partition_key = ?`);
   let deleteBySubKeyStmt = SqliteDriver$ReventlessLocal.prepare(db, `DELETE FROM ` + table + ` WHERE partition_key = ? AND sub_key = ?`);
   let scanAllStmt = SqliteDriver$ReventlessLocal.prepare(db, `SELECT partition_key, sub_key, item FROM ` + table + ` WHERE ` + notExpiredClause + ` ORDER BY partition_key, sub_key`);
+  let existsStmt = SqliteDriver$ReventlessLocal.prepare(db, `SELECT 1 FROM ` + table + ` WHERE partition_key = ? AND sub_key = ? AND ` + notExpiredClause + ` LIMIT 1`);
   let rowsFor = id => SqliteDriver$ReventlessLocal.all(selectByPartitionStmt, [id]).map(decodeItem);
   let rowToItem = row => {
     let item = decodeItem(row);
@@ -191,10 +192,21 @@ function makeStorage(db, bus, name, indexes, subIdField) {
       return id;
     }
   };
-  let publishUpdated = (id, state) => {
+  let publishSaved = (changeKind, id, state) => {
     let subKey = computeSubKey(state, subIdField);
-    let descriptor = LocalBus$ReventlessLocal.makeStateChangeDescriptor("Updated", entityKeyFor(id, subKey), state);
+    let descriptor = LocalBus$ReventlessLocal.makeStateChangeDescriptor(changeKind, entityKeyFor(id, subKey), state);
     bus.publishStateChange(name, descriptor);
+  };
+  let saveKind = (id, state) => {
+    let present = Stdlib_Option.isSome(SqliteDriver$ReventlessLocal.get(existsStmt, [
+      id,
+      computeSubKey(state, subIdField)
+    ]));
+    if (present) {
+      return "Updated";
+    } else {
+      return "Added";
+    }
   };
   let publishRemoved = (id, subKey) => {
     let descriptor = LocalBus$ReventlessLocal.makeStateChangeDescriptor("Removed", entityKeyFor(id, subKey), undefined);
@@ -209,18 +221,25 @@ function makeStorage(db, bus, name, indexes, subIdField) {
     }
   });
   let save = async (id, state, _saveMode, ttl) => {
+    let changeKind = saveKind(id, state);
     saveOne(id, state, ttl);
-    publishUpdated(id, state);
+    publishSaved(changeKind, id, state);
     return {
       TAG: "Ok",
       _0: undefined
     };
   };
   let saveBatch = async batch => {
+    let kinds = [];
     SqliteDriver$ReventlessLocal.transaction(db, () => {
-      batch.forEach(param => saveOne(param[0], param[1], param[2]));
+      batch.forEach(param => {
+        let state = param[1];
+        let id = param[0];
+        kinds.push(saveKind(id, state));
+        saveOne(id, state, param[2]);
+      });
     });
-    batch.forEach(param => publishUpdated(param[0], param[1]));
+    batch.forEach((param, i) => publishSaved(Stdlib_Option.getOr(kinds[i], "Updated"), param[0], param[1]));
     return {
       TAG: "Ok",
       _0: undefined
@@ -238,8 +257,9 @@ function makeStorage(db, bus, name, indexes, subIdField) {
     }
     obj["id"] = id;
     obj[fieldName] = next;
+    let changeKind = Stdlib_Option.isSome(existing) ? "Updated" : "Added";
     saveOne(id, obj, undefined);
-    publishUpdated(id, obj);
+    publishSaved(changeKind, id, obj);
     return {
       TAG: "Ok",
       _0: next

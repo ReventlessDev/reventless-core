@@ -146,6 +146,24 @@ module Make = (Bus: LocalBus.T) => {
       }
     }
 
+    // First-insert detection, mirroring the SQLite arm's `existsStmt`. Expiry is
+    // purged lazily, so a key can still be in the store while no reader can see
+    // it — that counts as absent, or an aged-out row would come back as an
+    // Updated nobody has a row for.
+    let entryIsLive = (id: string, subKey: string): bool =>
+      switch store.contents->Dict.get(id) {
+      | None => false
+      | Some(subMap) =>
+        subMap->Dict.get(subKey)->Option.isSome &&
+          expiries.contents
+          ->Dict.get(id)
+          ->Option.flatMap(m => m->Dict.get(subKey))
+          ->Option.mapOr(true, exp => exp > nowSecs())
+      }
+
+    let saveKind = (id: string, subKey: string): string =>
+      entryIsLive(id, subKey) ? "Updated" : "Added"
+
     let getOrCreateSubMap = (partitionKey: string): dict<JSON.t> =>
       switch store.contents->Dict.get(partitionKey) {
       | Some(m) => m
@@ -173,10 +191,10 @@ module Make = (Bus: LocalBus.T) => {
       | None => id
       }
 
-    let publishUpdated = (id: string, state: JSON.t) => {
+    let publishSaved = (~changeKind: string, id: string, state: JSON.t) => {
       let subKey = getSubKey(state, subIdField)
       let descriptor = LocalBus.makeStateChangeDescriptor(
-        ~changeKind="Updated",
+        ~changeKind,
         ~id=entityKeyFor(id, subKey),
         ~state=Some(state),
       )
@@ -194,24 +212,31 @@ module Make = (Bus: LocalBus.T) => {
 
     let save: QueryDb.save<string, JSON.t> = async (id, state, _saveMode, ttl) => {
       let subKey = getSubKey(state, subIdField)
+      let changeKind = saveKind(id, subKey)
       let subMap = getOrCreateSubMap(id)
       subMap->Dict.set(subKey, state)
       recordExpiry(id, subKey, ttl)
       syncAll()
-      publishUpdated(id, state)
+      publishSaved(~changeKind, id, state)
       Ok()
     }
 
     let saveBatch: QueryDb.saveBatch<string, JSON.t> = async batch => {
-      batch->Array.forEach(((id, state, ttl)) => {
+      // Each kind is read immediately before its own write, so a batch that
+      // touches one key twice reports Added then Updated.
+      let kinds = batch->Array.map(((id, state, ttl)) => {
         let subKey = getSubKey(state, subIdField)
+        let changeKind = saveKind(id, subKey)
         let subMap = getOrCreateSubMap(id)
         subMap->Dict.set(subKey, state)
         recordExpiry(id, subKey, ttl)
+        changeKind
       })
       syncAll()
       // Notify subscribers for each saved item
-      batch->Array.forEach(((id, state, _)) => publishUpdated(id, state))
+      batch->Array.forEachWithIndex(((id, state, _), i) =>
+        publishSaved(~changeKind=kinds->Array.get(i)->Option.getOr("Updated"), id, state)
+      )
       Ok()
     }
 
@@ -221,6 +246,9 @@ module Make = (Bus: LocalBus.T) => {
     // previous `Ok(inc)` echoed the increment and never touched the store, so the
     // running total was wrong and `loadStream` never reflected the counter.
     let count: QueryDb.count<string> = async (id, fieldName, inc) => {
+      // Read before `getOrCreateSubMap` materialises the partition — a counter's
+      // very first increment creates its row, and that is an Added like any other.
+      let changeKind = saveKind(id, "")
       let subMap = getOrCreateSubMap(id)
       let existing = subMap->Dict.get("")->Option.flatMap(JSON.Decode.object)
       let current =
@@ -239,7 +267,7 @@ module Make = (Bus: LocalBus.T) => {
       let newItem = JSON.Encode.object(obj)
       subMap->Dict.set("", newItem)
       syncAll()
-      publishUpdated(id, newItem)
+      publishSaved(~changeKind, id, newItem)
       Ok(next)
     }
 

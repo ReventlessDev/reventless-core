@@ -181,6 +181,15 @@ let makeStorage = (
   let scanAllStmt = db->SqliteDriver.prepare(
     `SELECT partition_key, sub_key, item FROM ${table} WHERE ${notExpiredClause} ORDER BY partition_key, sub_key`,
   )
+  // First-insert detection. DynamoDB streams hand the AWS StateTopic Lambda an
+  // eventName that separates INSERT from MODIFY; an upsert reports neither, so
+  // ask the table before writing. Carries `notExpiredClause` because that is what
+  // a reader sees: a row aged past its TTL is invisible to them, so overwriting
+  // it is an insert — the same descriptor pair (Removed, then Added) DynamoDB
+  // emits when a TTL delete is followed by a fresh Put.
+  let existsStmt = db->SqliteDriver.prepare(
+    `SELECT 1 FROM ${table} WHERE partition_key = ? AND sub_key = ? AND ${notExpiredClause} LIMIT 1`,
+  )
 
   let rowsFor = (id: string): array<JSON.t> =>
     selectByPartitionStmt
@@ -246,14 +255,26 @@ let makeStorage = (
     | None => id
     }
 
-  let publishUpdated = (id: string, state: JSON.t) => {
+  let publishSaved = (~changeKind: string, id: string, state: JSON.t) => {
     let subKey = computeSubKey(state, subIdField)
     let descriptor = LocalBus.makeStateChangeDescriptor(
-      ~changeKind="Updated",
+      ~changeKind,
       ~id=entityKeyFor(id, subKey),
       ~state=Some(state),
     )
     bus.publishStateChange(~name, ~descriptor)
+  }
+
+  // Must be called BEFORE the write — afterwards every row exists.
+  let saveKind = (id: string, state: JSON.t): string => {
+    let present =
+      existsStmt
+      ->SqliteDriver.get([
+        JSON.Encode.string(id),
+        JSON.Encode.string(computeSubKey(state, subIdField)),
+      ])
+      ->Option.isSome
+    present ? "Updated" : "Added"
   }
 
   let publishRemoved = (id: string, subKey: string) => {
@@ -277,16 +298,25 @@ let makeStorage = (
     )
 
   let save: QueryDb.save<string, JSON.t> = async (id, state, _saveMode, ttl) => {
+    let changeKind = saveKind(id, state)
     saveOne(id, state, ttl)
-    publishUpdated(id, state)
+    publishSaved(~changeKind, id, state)
     Ok()
   }
 
   let saveBatch: QueryDb.saveBatch<string, JSON.t> = async batch => {
+    // Kinds are decided inside the transaction, each immediately before its own
+    // write, so a batch that touches one key twice reports Added then Updated.
+    let kinds = []
     db->SqliteDriver.transaction(() =>
-      batch->Array.forEach(((id, state, ttl)) => saveOne(id, state, ttl))
+      batch->Array.forEach(((id, state, ttl)) => {
+        kinds->Array.push(saveKind(id, state))
+        saveOne(id, state, ttl)
+      })
     )
-    batch->Array.forEach(((id, state, _)) => publishUpdated(id, state))
+    batch->Array.forEachWithIndex(((id, state, _), i) =>
+      publishSaved(~changeKind=kinds->Array.get(i)->Option.getOr("Updated"), id, state)
+    )
     Ok()
   }
 
@@ -310,8 +340,11 @@ let makeStorage = (
     obj->Dict.set("id", JSON.Encode.string(id))
     obj->Dict.set(fieldName, JSON.Encode.int(next))
     let newItem = JSON.Encode.object(obj)
+    // `existing` already answered the first-insert question — a counter's very
+    // first increment creates its row, and that is an Added like any other.
+    let changeKind = existing->Option.isSome ? "Updated" : "Added"
     saveOne(id, newItem, None)
-    publishUpdated(id, newItem)
+    publishSaved(~changeKind, id, newItem)
     Ok(next)
   }
 

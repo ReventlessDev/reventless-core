@@ -68,9 +68,9 @@ let pickSortKeyValue = (state: JSON.t): option<string> =>
   }
 
 /** Build a state-change descriptor.
-    - `changeKind`: one of "Added" | "Updated" | "Removed". In-memory adapters
-      typically emit "Updated" for save() (no Added detection — see module-type
-      docstring) and "Removed" for delete().
+    - `changeKind`: one of "Added" | "Updated" | "Removed". save() emits "Added"
+      when no visible row held the key and "Updated" otherwise; delete() emits
+      "Removed".
     - `id`: entity key. Single-key projections: the partition-key value.
       Composite projections: `partition ++ "-" ++ subKey`.
     - `state`: present for save() (for `sortKeyValue` extraction);
@@ -210,10 +210,12 @@ module type T = {
   //   ~name is the QueryDb/ReadModel Spec.name; ~descriptor is built via
   //   `makeStateChangeDescriptor` below.
   //
-  //   In-memory degradation vs AWS: `changeKind` for save() is always "Updated"
-  //   (AWS distinguishes "Added" via DynamoDB streams' INSERT eventName; the
-  //   in-memory adapter doesn't cheaply track first-insert). `delete()` emits
-  //   "Removed". `position` is omitted (Phase 3 deferred).
+  //   `changeKind` matches AWS, which reads it off the DynamoDB stream eventName:
+  //   save() checks whether a visible row already held the key and emits "Added"
+  //   or "Updated" accordingly, `delete()` emits "Removed". Without the "Added"
+  //   arm a list view drops every row it doesn't already hold, so seeding into an
+  //   empty read model looked like live updates were broken. `position` is
+  //   omitted (Phase 3 deferred).
   let publishStateChange: (~name: string, ~descriptor: JSON.t) => unit
   let subscribeToStateChanges: (string, JSON.t => unit) => unit
   // All-changes variant: receives every publishStateChange with its read-model

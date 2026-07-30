@@ -168,6 +168,100 @@ describe("Backend parity (Memory vs Sqlite)", () => {
     await runUnderSqlite(scenario)
   })
 
+  testPromise("QueryDb: a first save is Added and a second is Updated under both", async () => {
+    let scenario = async () => {
+      module TestBus = LocalBus.Make()
+      module Storage = LocalQueryDbStorage.Make(TestBus)
+      let s = Storage.make(~name="parity-kind", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
+      let ops = await s.operations->TestRunner.resolve
+
+      let kinds = []
+      TestBus.subscribeToStateChanges("parity-kind", descriptor =>
+        descriptor
+        ->JSON.Decode.object
+        ->Option.flatMap(o => o->Dict.get("changeKind"))
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.forEach(k => kinds->Array.push(k))
+      )
+
+      let item = (k, v) =>
+        JSON.Encode.object(
+          Dict.fromArray([("id", JSON.Encode.string(k)), ("v", JSON.Encode.string(v))]),
+        )
+
+      // The distinction a list view depends on: a row it has never seen arrives
+      // as Added (and is inserted), a row it holds arrives as Updated.
+      let _ = await ops.save("p1", item("p1", "one"), ReventlessCore.QueryDb.Any, None)
+      let _ = await ops.save("p1", item("p1", "two"), ReventlessCore.QueryDb.Any, None)
+      // A distinct key is its own first insert, not an update of the store.
+      let _ = await ops.save("p2", item("p2", "one"), ReventlessCore.QueryDb.Any, None)
+      // Deleting frees the key, so saving it again is an insert once more.
+      let _ = await ops.delete("p1", None)
+      let _ = await ops.save("p1", item("p1", "three"), ReventlessCore.QueryDb.Any, None)
+
+      expect(kinds)->toEqual(["Added", "Updated", "Added", "Removed", "Added"])
+    }
+
+    await runUnderMemory(scenario)
+    await runUnderSqlite(scenario)
+  })
+
+  testPromise("QueryDb: saveBatch reports Added then Updated for a repeated key under both", async () => {
+    let scenario = async () => {
+      module TestBus = LocalBus.Make()
+      module Storage = LocalQueryDbStorage.Make(TestBus)
+      let s = Storage.make(~name="parity-batch", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
+      let ops = await s.operations->TestRunner.resolve
+
+      let kinds = []
+      TestBus.subscribeToStateChanges("parity-batch", descriptor =>
+        descriptor
+        ->JSON.Decode.object
+        ->Option.flatMap(o => o->Dict.get("changeKind"))
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.forEach(k => kinds->Array.push(k))
+      )
+
+      let item = k => JSON.Encode.object(Dict.fromArray([("id", JSON.Encode.string(k))]))
+      let _ = await ops.saveBatch([
+        ("a", item("a"), None),
+        ("b", item("b"), None),
+        ("a", item("a"), None),
+      ])
+
+      expect(kinds)->toEqual(["Added", "Added", "Updated"])
+    }
+
+    await runUnderMemory(scenario)
+    await runUnderSqlite(scenario)
+  })
+
+  testPromise("QueryDb: a counter's first increment is Added under both", async () => {
+    let scenario = async () => {
+      module TestBus = LocalBus.Make()
+      module Storage = LocalQueryDbStorage.Make(TestBus)
+      let s = Storage.make(~name="parity-ckind", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
+      let ops = await s.operations->TestRunner.resolve
+
+      let kinds = []
+      TestBus.subscribeToStateChanges("parity-ckind", descriptor =>
+        descriptor
+        ->JSON.Decode.object
+        ->Option.flatMap(o => o->Dict.get("changeKind"))
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.forEach(k => kinds->Array.push(k))
+      )
+
+      let _ = await ops.count("prod-1", "orderCount", 1)
+      let _ = await ops.count("prod-1", "orderCount", 1)
+
+      expect(kinds)->toEqual(["Added", "Updated"])
+    }
+
+    await runUnderMemory(scenario)
+    await runUnderSqlite(scenario)
+  })
+
   testPromise("EventLog: conflict detection works under both", async () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()

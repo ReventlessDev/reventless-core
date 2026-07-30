@@ -123,6 +123,21 @@ function Make(Bus) {
         return;
       }
     };
+    let entryIsLive = (id, subKey) => {
+      let subMap = store.contents[id];
+      if (subMap !== undefined && Stdlib_Option.isSome(subMap[subKey])) {
+        return Stdlib_Option.mapOr(Stdlib_Option.flatMap(expiries.contents[id], m => m[subKey]), true, exp => exp > Date.now() / 1000.0);
+      } else {
+        return false;
+      }
+    };
+    let saveKind = (id, subKey) => {
+      if (entryIsLive(id, subKey)) {
+        return "Updated";
+      } else {
+        return "Added";
+      }
+    };
     let getOrCreateSubMap = partitionKey => {
       let m = store.contents[partitionKey];
       if (m !== undefined) {
@@ -150,9 +165,9 @@ function Make(Bus) {
         return id;
       }
     };
-    let publishUpdated = (id, state) => {
+    let publishSaved = (changeKind, id, state) => {
       let subKey = getSubKey(state, subIdField);
-      let descriptor = LocalBus$ReventlessLocal.makeStateChangeDescriptor("Updated", entityKeyFor(id, subKey), state);
+      let descriptor = LocalBus$ReventlessLocal.makeStateChangeDescriptor(changeKind, entityKeyFor(id, subKey), state);
       Bus.publishStateChange(name, descriptor);
     };
     let publishRemoved = (id, subKey) => {
@@ -161,33 +176,37 @@ function Make(Bus) {
     };
     let save = async (id, state, _saveMode, ttl) => {
       let subKey = getSubKey(state, subIdField);
+      let changeKind = saveKind(id, subKey);
       let subMap = getOrCreateSubMap(id);
       subMap[subKey] = state;
       recordExpiry(id, subKey, ttl);
       dirty.contents = true;
-      publishUpdated(id, state);
+      publishSaved(changeKind, id, state);
       return {
         TAG: "Ok",
         _0: undefined
       };
     };
     let saveBatch = async batch => {
-      batch.forEach(param => {
+      let kinds = batch.map(param => {
         let state = param[1];
         let id = param[0];
         let subKey = getSubKey(state, subIdField);
+        let changeKind = saveKind(id, subKey);
         let subMap = getOrCreateSubMap(id);
         subMap[subKey] = state;
         recordExpiry(id, subKey, param[2]);
+        return changeKind;
       });
       dirty.contents = true;
-      batch.forEach(param => publishUpdated(param[0], param[1]));
+      batch.forEach((param, i) => publishSaved(Stdlib_Option.getOr(kinds[i], "Updated"), param[0], param[1]));
       return {
         TAG: "Ok",
         _0: undefined
       };
     };
     let count = async (id, fieldName, inc) => {
+      let changeKind = saveKind(id, "");
       let subMap = getOrCreateSubMap(id);
       let existing = Stdlib_Option.flatMap(subMap[""], Stdlib_JSON.Decode.object);
       let current = Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(existing, o => o[fieldName]), Stdlib_JSON.Decode.float), 0, prim => prim | 0);
@@ -202,7 +221,7 @@ function Make(Bus) {
       obj[fieldName] = next;
       subMap[""] = obj;
       dirty.contents = true;
-      publishUpdated(id, obj);
+      publishSaved(changeKind, id, obj);
       return {
         TAG: "Ok",
         _0: next
