@@ -10,17 +10,43 @@
 # Triggered by:
 #   - workflow_dispatch from release.yml when the release does NOT include reventless-aws
 #   - workflow_dispatch from build-lambda-layer.yml after a new layer is published
+#   - push, for the platform's own deploy-time inputs (see below)
 #   - Manual dispatch
 #
 # The Lambda Layer ARN is resolved from SSM Parameter Store
 # (/reventless/layer-arn/{stack}) at deploy time. build-lambda-layer.yml writes
 # the fresh ARN there before dispatching this workflow, so the parameter is
 # always up-to-date when the deploy reads it.
+#
+# Why the push trigger is a short list rather than the platform directory:
+#
+# Every other route into this workflow hangs off a release, and a release asks
+# whether a *publishable* package changed. The platform packages are private, so
+# a change that only alters how the platform deploys — the host-shell pin, the
+# stack config, the manifest — releases nothing and therefore deployed nothing.
+# The change was real; the gate was simply asking a different question.
+#
+# The list stays narrow because the release route is the correct one wherever it
+# fires. Framework edits under `reventless/`, and the generated `platform-aws/src`
+# outputs that come with them, must reach the layer build *before* the deploy —
+# `build-lambda-layer.yml` dispatches this workflow for exactly that reason, and a
+# push trigger covering them would race it with a stale layer. What is listed here
+# is the complement: deploy inputs no release can carry and no layer build affects.
+#
+# `lerna version` also rewrites `platform-aws/package.json` (private packages are
+# versioned, just not published), but that commit is `[skip ci]`, so it does not
+# re-enter here.
 
 name: Deploy Online Shop Hybrid
 
 on:
   workflow_dispatch: {}
+  push:
+    branches: [main, beta, alpha]
+    paths:
+      - examples/online-shop-hybrid/deploy-manifest.yaml
+      - examples/online-shop-hybrid/platform-aws/package.json
+      - examples/online-shop-hybrid/platform-aws/Pulumi.*.yaml
 
 concurrency:
   group: deploy-online-shop-hybrid-${{ github.ref_name }}
