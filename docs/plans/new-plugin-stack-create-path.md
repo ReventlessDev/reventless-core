@@ -1,8 +1,16 @@
 # Plan: the create path for a new plugin stack
 
-**Date:** 2026-07-29
-**Status:** Two defects root-caused with live evidence, neither fixed. Both block creating a plugin
-stack from scratch; neither affects an existing one.
+**Date:** 2026-07-29, updated 2026-07-30
+**Status:** **1b fixed and deploy-verified** — `ordering-aws` now completes `up` and exports its
+event mapper. **1a is not fixed after all**: it replaced a crash with a silently missing Lambda, and
+the deeper truth is that a side-effect handler's Lambda has *never* been provisioned on AWS by any
+path — reopened below as **defect 3**. **2 untouched**. None of this affects an existing stack.
+
+**Verification loop is much cheaper than recorded.** `pulumi preview` against a warm `pr-verify`
+stack reproduces the export-serialization failures in ~40s with no AWS writes; the plan previously
+assumed only a full `up` would do. Use preview to iterate, one `up` to confirm. The earlier note that
+previews skip `EventMapper_Builder`'s `.apply` holds only for a *cold* stack — once the inputs are
+known, the apply runs.
 **Found by:** the first-ever deploy of `online-shop-aggregates`, standing up the `PlatformOwned`
 serving arm — see [declared-object-stores-without-host-ui-bundle.md](./declared-object-stores-without-host-ui-bundle.md).
 
@@ -101,7 +109,12 @@ plugin stack has ever constructed this component, which would explain a decade o
 a broken path. That `.apply` is also why the error is garbled rather than pointed: a throw inside an
 apply surfaces as an unresolved output, which `serializeEventMappersOutputs` then dereferences.
 
-### 1a — the serializing call site: FIXED
+### 1a — the serializing call site: NOT FIXED (see defect 3)
+
+`0aaef403a` removed the serialization error but did not create the Lambda. The builder it swapped in
+is read-model-specific, so the side-effect handler falls through its `None` arm and nothing is built.
+The crash became silence — the outcome this plan calls strictly worse. Kept below as written at the
+time, because the instrumentation that found the call site is still the useful part.
 
 One instrumented run (a `console.error` with a stack trace in the emitted
 `RuntimeEnvironment_Lambda.res.mjs`, reverted after) named it outright:
@@ -136,36 +149,116 @@ reference removes the serialization error — verified against a from-scratch `u
 So no conversion work was needed: the compiled builder already existed, and only this arm had been
 left pointing at core's.
 
-## Defect 1b — `option<Pulumi.Output.t<_>>` on `Aggregate.outputs.eventMapper`
+**That last paragraph is wrong, and the way it is wrong is the lesson.** "The compiled builder already
+existed with the same interface" was inferred from the interface alone. `forEventCollector` type-checks
+for both, but AWS's `EventCollectorRuntime_Builder_PerEventCollector` dispatches on a
+`readModelInfos` registry populated by `registerReadModel`, and builds `ReadModelEntryPoint.mjs`. A
+side-effect handler is never in that registry. Matching module signatures said nothing about matching
+behaviour, and the `up` that "verified" the fix only showed the *error* was gone.
 
-With 1a fixed, the same `up` still fails with `TypeError: m.apply is not a function` — so this was
-never a downstream symptom of the serialization failure. It is an independent bug the first one was
-masking.
+## Defect 1b — the eventMappers export resolved the same record twice: FIXED
 
-[Plugin_Helpers.res:1248](../../reventless/core/src/plugin/component/Plugin_Helpers.res#L1248)
-resolves `pluginOutputs.aggregates` with `Output.flatMap`, then calls `Output.flatMap` again on
-`agg.eventMapper`'s inner value. Pulumi's `apply` **deeply unwraps nested outputs**, so by then that
-value is the resolved record rather than an Output — and `flatMap` is `map` over `.apply`, which a
-plain record does not have.
+`serializeEventMappersOutputs` failed with `TypeError: m.apply is not a function`. Two commits were
+needed, and the second one's diagnosis in `ab0c2f61e` was wrong about the mechanism — worth recording,
+because the corrected mechanism is a general rule about this codebase's Pulumi bindings.
 
-The sharpest evidence that the *type* is the problem: [Aggregate.res:58](../../reventless/core/src/components/Aggregate/Aggregate.res#L58)
-performs the identical `Output.flatMap` on `outputs.eventMapper` and is correct, because it is not
-nested inside an enclosing apply. One expression, one type, two runtime natures decided purely by
-lexical position. That is precisely why `option<Pulumi.Output.t<'a>>` is banned in this repo's
-conventions; this is that pattern in the wild.
+**The rule, measured directly** (a standalone script against the real `@pulumi/pulumi`):
 
-**Fix:** move the field to the allowed shape — `Pulumi.Output.t<option<EventMapper.outputs>>`, output
-outside and option inside. Four sites: `Aggregate_Builder` (which already builds it inside an apply,
-so the option is available at the right depth), `Aggregate.res`, `Builder_Helpers`, and the
-serializer. Do **not** paper over it with a cast at the serializer — a cast is correct only at that
-one call depth, which restates the trap rather than removing it.
+| expression | nested Outputs inside the value |
+|---|---|
+| `output.apply(_ => record)` | **preserved** — still real Outputs |
+| `pulumi.output(record)` | **deep-unwrapped** to plain values |
+| `pulumi.all([...])` | **deep-unwrapped**, including each element's *contents* |
 
-**Why only ordering:** the field is absent unless the aggregate declares EventMappings, per the gate
-above, so the same distribution table applies.
+So `.apply` does not deep-unwrap, and a chain of `.apply` — which is all that stands between
+`Aggregate_Builder` and `pluginOutputs.aggregates` — leaves `agg.eventMapper` a genuine Output.
+Confirmed on a real preview by logging `Output.isOutput(agg.eventMapper)` for all three ordering
+aggregates: `true`, `true`, `true`. The premise in `ab0c2f61e`'s message — "by then Pulumi has
+already unwrapped it" — is therefore false at that call site.
 
-**Fix:** the documented one — an `_Ops.res` split plus `buildCodeArchive`, as already done for the
-presign service and the geocoder. `make` cannot simply be deleted: `Runtime.Environment` requires an
-`environmentMaker`, and the in-memory platform implements it for real via `LocalRuntimeEnvironment`.
+`Output.all` is the one that unwraps, and `ab0c2f61e` introduced a call to it *before* resolving:
+collecting `array<Output.t<option<EventMapper.outputs>>>` through `all` handed
+`EventMapper.toResolvedOutputs` a record Pulumi had already resolved, and that function exists to
+resolve an unresolved one. Hence the failure moving from the serializer's own `flatMap` down into
+`toResolvedOutputs`. This file already knew the hazard — `serializePlainDictExport` carries the
+comment "does NOT wrap the dict in `Pulumi.Output.make` (which deeply resolves nested Outputs and
+breaks `toResolvedOutputs`)" — but the sibling serializer walked into it anyway.
+
+**Fix:** resolve each `eventMapper` through *its own* Output first, carry absence as `None` through
+the collection, and drop the absent ones after. Resolution happens once, at the depth where the
+record is still unresolved. `Builder_Helpers.finishAggregates` keeps its `Output.all`-then-filter
+shape — it only reads `eventCollector` for sequencing and never calls `toResolvedOutputs` — with a
+comment saying why nothing in that block may.
+
+**The type change in `ab0c2f61e` was still load-bearing, not just hygiene.** Rebuilding the
+pre-refactor sources at `0aaef403a` and previewing reproduces the original `m.apply` throw at the
+`Option.map(agg.eventMapper, …)` site, so `option<Pulumi.Output.t<_>>` genuinely did fail there while
+`Pulumi.Output.t<option<_>>` genuinely does not. Why the optional-field form arrived unwrapped when
+the always-Output form does not is *not* explained by anything measured here — recorded as unexplained
+rather than papered over with a mechanism. It no longer blocks anything: the banned type is gone and
+the field is now unconditionally an Output.
+
+**Verified:** `preview` clean, then a real `up` on `ordering-aws/pr-verify` succeeded, and the
+`eventMappers` stack export contains `OrderAggrEventMapper` with its EventCollector bound to the
+`OrderAggrEventLog` DynamoDB stream. Build clean, zero warnings, 2295/2295.
+
+**Why only ordering:** the field resolves to `None` unless the aggregate declares EventMappings, per
+the gate above, so the same distribution table applies.
+
+## Defect 3 — a side-effect handler's Lambda is never provisioned on AWS
+
+Found by reading the `up` log after 1b went green. The `up` reports success and the stack has six
+Lambdas; none of them runs `OrderNotifications`' side effects. In the log:
+
+```
+WARN  no bundled info registered for OrderNotifications
+      comp=EventCollectorRuntime_Builder_PerEventCollector
+```
+
+That is the `None` arm of the builder 1a swapped in, which logs and returns without creating anything.
+Two independent gaps, either of which alone is enough:
+
+**1. The per-side-effect arm is pointed at the read-model builder.** A side-effect-bearing Task reaches
+`SideEffectHandler_PerSideEffectHandler` via `Task_Builder_PerBucket`. Its
+`EventCollectorRuntime_Builder_PerEventCollector` keys on `readModelInfos` / `registerReadModel` and
+bundles `ReadModelEntryPoint.mjs`. The right module is
+[SideEffectHandlerRuntime_Builder_Single.res](../../reventless/aws/src/adapter/Runtime/SideEffectHandlerRuntime_Builder_Single.res) —
+`sideEffectInfos` / `registerSideEffectHandler`, bundling `SideEffectEntryPoint.mjs`. The arm also
+never registers: `SideEffectHandler_Single` calls `registerSideEffectHandler` with module paths derived
+from each `SideEffect`'s `moduleUrl`, and the `_Per` arm is a bare `include` of the core functor that
+calls nothing.
+
+**2. Nothing ever calls `finish()`, so even the correct arm builds no Lambda.** The
+`AllSideEffectHandlers` Lambda is created *only* in `SideEffectHandlerRuntime_Builder_Single.finish()`.
+`SideEffectHandler.T` has no `finish` member, `Task_Builder` has no finish seam for it, and there is no
+call site anywhere in the repo. Every other component type has one (`ReadModel_Builder_Single`,
+`Aggregate_Builder_*`, `AutomationSlice_Builder`, … all define `let finish = () => …Builder.finish()`);
+the side-effect handler is the one that does not.
+
+Consistent with both: **no deployed AWS stack has ever had a side-effect Lambda.** Neither
+`online-shop-hybrid-ordering-aws/alpha` nor `online-shop-ordering-aws/alpha` contains
+`AllSideEffectHandlers` or any per-handler equivalent. So this is not a regression in the ordinary
+sense — it is a deploy path that was never finished, kept invisible because no deployed example had a
+side-effect-bearing Task.
+
+**Decision needed before implementing** — the two gaps have one shared question:
+
+1. **Shared Lambda.** Point the `_Per` arm at `SideEffectHandlerRuntime_Builder_Single`, register like
+   `_Single` does, and add the missing `finish` seam. Smallest change, reuses the compiled entry point
+   that already exists and is unit-tested (`SideEffectEntryPoint_OpsTest`). Cost: "per side effect
+   handler" then means one shared `AllSideEffectHandlers`, so the module name stops describing the
+   topology and the two arms become the same thing — which argues for collapsing them.
+2. **A real per-handler builder.** Write `SideEffectHandlerRuntime_Builder_PerSideEffectHandler`,
+   mirroring the read-model per-collector builder but over `sideEffectInfos` and
+   `SideEffectEntryPoint.mjs`. Keeps the strategy distinction honest and gives per-handler memory and
+   timeout tuning; costs a new module and a second registry to keep in step.
+
+Either way the `finish` seam is required, and that part is not optional.
+
+**Also still live, one line above the fix site:** `Task_Builder_PerBucket` itself binds
+`EventCollectorRuntimeBuilder` to core's serializing
+`EventCollectorRuntime_Builder_PerEventCollector.Make(…)` — the same class of leak 1a chased, unaudited
+as to whether it is reached. `RuntimeEnvironment_Lambda.res:21` names both this and the side-effect arm.
 
 ## Defect 2 — AppSync 409 on data-source create
 
@@ -198,7 +291,31 @@ this is recorded rather than done.
 
 ## Sequencing
 
-Defect 2 blocks catalog; defect 1 blocks ordering. They are independent, and either can go first.
-Defect 1 wants its component pinned before any code changes; defect 2 wants a decision between the
-two shapes above. Both should be verified the same way these were found — a `pr-verify` deploy from
-scratch, since neither reproduces on an existing stack.
+**Ordering now deploys.** 1b is closed. What remains: **2 blocks catalog** (a hard failure), and **3
+blocks nothing visibly** — the deploy is green and the side effects simply never run. Independent of
+each other; 2 is the one that stops a stack from being created.
+
+Both need a decision before code: 2 between the retrying provider and `dependsOn` chaining, 3 between a
+shared and a per-handler Lambda. Neither reproduces on an existing stack.
+
+**Verification, corrected.** `preview` against a warm `pr-verify` stack reproduces the export-side
+failures in ~40s with no AWS writes — that is the iteration loop, and it is an order of magnitude
+better than what this plan previously assumed. Then one `up` to confirm, plus `pulumi stack output` to
+check the export actually carries content. Set `REVENTLESS_LAYER_ARN` from
+`aws ssm get-parameter --name /reventless/layer-arn/alpha --region eu-west-1` first, or the `up` strips
+the Lambda layer from every function. Note `pulumi stack rm` deletes the tracked `Pulumi.pr-verify.yaml`
+— restore with `git checkout` before re-creating.
+
+**On green deploys as evidence.** Defect 3 exists because `0aaef403a` verified a fix by observing that
+an *error message* had disappeared. It had, and nothing was built in its place. Two checks would have
+caught it, and both are cheap: diff the Lambda list before and after
+(`pulumi stack export | … type == "aws:lambda/function:Function"`), and read the `up` log for `WARN`
+lines — the builder announced its own no-op on every run. For this framework specifically, "the deploy
+is green" is weak evidence at best: builders skip silently when a registry lookup misses, so absence of
+error and presence of resource are genuinely separate questions.
+
+**On peeling.** 1b moved twice under individually-correct fixes and the component was mis-identified
+twice. What actually settled it was measurement, not more reading: a 20-line script against the real
+`@pulumi/pulumi` established which combinators deep-unwrap, and one `Output.isOutput` log line at the
+crash site disproved the mechanism the previous commit message asserted. When a bug is about *runtime*
+identity — is this value an Output or not — static tracing will keep producing plausible wrong answers.

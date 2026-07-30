@@ -39,8 +39,13 @@ function toResolvedOutputs(outputs) {
       resources: param[1]
     }
   }));
-  let emOutput = outputs.eventMapper;
-  let eventMapperResolved = emOutput !== undefined ? Output$Pulumi.flatMap(emOutput, EventMapper$ReventlessCore.toResolvedOutputs).apply(resolved => resolved) : Pulumi.output(undefined);
+  let eventMapperResolved = Output$Pulumi.flatMap(outputs.eventMapper, em => {
+    if (em !== undefined) {
+      return EventMapper$ReventlessCore.toResolvedOutputs(em).apply(r => r);
+    } else {
+      return Pulumi.output(undefined);
+    }
+  });
   return Pulumi.all([
     commandGeneratorResolved,
     commandTopicResolved,

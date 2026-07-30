@@ -58,7 +58,7 @@ module Make = (
       {
         ...aggregate->Component.outputs,
         eventMapper: eventMapper->Pulumi.Output.apply(eventMapper =>
-          eventMapper->Component.outputs
+          Some(eventMapper->Component.outputs)
         ),
       }
     } else {
@@ -175,6 +175,9 @@ module Make = (
       commandGenerator: commandGenerator->Component.wrappedOutputs,
       commandTopic: commandTopic->Component.wrappedOutputs,
       eventLog: eventLog->Component.outputs,
+      // Resolved-absent rather than an absent field: an aggregate without
+      // EventMappings still has to answer the question.
+      eventMapper: Pulumi.Output.make(None),
       addEventMapper: self->addEventMapperFn(~opts, ...),
     }
     self->Component.setOutputs(aggOutputs)

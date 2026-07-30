@@ -89,6 +89,7 @@ function Make(Spec) {
       let aggOutputs_commandGenerator = Component$ReventlessCore.wrappedOutputs(commandGenerator);
       let aggOutputs_commandTopic = Component$ReventlessCore.wrappedOutputs(commandTopic);
       let aggOutputs_eventLog = Component$ReventlessCore.outputs(eventLog);
+      let aggOutputs_eventMapper = Pulumi.output(undefined);
       let aggOutputs_addEventMapper = (none, none$1) => {
         if (EventMappings.mappings.length === 0) {
           return Component$ReventlessCore.outputs(extra);
@@ -97,15 +98,22 @@ function Make(Spec) {
           Component$ReventlessCore.operations(extra),
           Component$ReventlessCore.outputs(extra).commandTopic
         ]).apply(param => SpecificEventMapper.make(ComponentType$ReventlessCore.name(Spec.name, Aggregate$ReventlessCore.componentType), none, none$1, param[0].publishJsons, param[1].resources, undefined, undefined, opts));
-        let newrecord = {...Component$ReventlessCore.outputs(extra)};
-        newrecord.eventMapper = eventMapper.apply(Component$ReventlessCore.outputs);
-        return newrecord;
+        let init = Component$ReventlessCore.outputs(extra);
+        return {
+          name: init.name,
+          commandGenerator: init.commandGenerator,
+          commandTopic: init.commandTopic,
+          eventLog: init.eventLog,
+          eventMapper: eventMapper.apply(eventMapper => Component$ReventlessCore.outputs(eventMapper)),
+          addEventMapper: init.addEventMapper
+        };
       };
       let aggOutputs = {
         name: aggOutputs_name,
         commandGenerator: aggOutputs_commandGenerator,
         commandTopic: aggOutputs_commandTopic,
         eventLog: aggOutputs_eventLog,
+        eventMapper: aggOutputs_eventMapper,
         addEventMapper: aggOutputs_addEventMapper
       };
       return Component$ReventlessCore.setOutputs(extra, aggOutputs);

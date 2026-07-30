@@ -55,13 +55,13 @@ let toResolvedOutputs = (
       }
       resolved
     })
-  let eventMapperResolved = switch outputs.eventMapper {
-  | Some(emOutput) =>
-    emOutput
-    ->Pulumi.Output.flatMap(EventMapper.toResolvedOutputs)
-    ->Pulumi.Output.apply(resolved => Some(resolved))
-  | None => Pulumi.Output.make(None)
-  }
+  let eventMapperResolved =
+    outputs.eventMapper->Pulumi.Output.flatMap(em =>
+      switch em {
+      | Some(em) => em->EventMapper.toResolvedOutputs->Pulumi.Output.apply(r => Some(r))
+      | None => Pulumi.Output.make(None)
+      }
+    )
   (commandGeneratorResolved, commandTopicResolved, eventLogResolved, eventMapperResolved)
   ->Pulumi.Output.all4
   ->Pulumi.Output.apply(((commandGenerator, commandTopic, eventLog, eventMapper)) =>

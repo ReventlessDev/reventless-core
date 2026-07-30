@@ -627,7 +627,13 @@ function serializeTasksOutputs(pluginOutputs) {
 }
 
 function serializeEventMappersOutputs(pluginOutputs) {
-  return Output$Pulumi.flatMap(pluginOutputs.aggregates, aggregates => Pulumi.all(Stdlib_Array.filterMap(Object.values(aggregates), agg => Stdlib_Option.map(agg.eventMapper, eventMapperOutput => Output$Pulumi.flatMap(eventMapperOutput, em => EventMapper$ReventlessCore.toResolvedOutputs(em).apply(resolved => S.reverseConvertToJsonOrThrow(resolved, EventMapper$ReventlessInterop.resolvedOutputsSchema)))))).apply(arr => arr));
+  return Output$Pulumi.flatMap(pluginOutputs.aggregates, aggregates => Pulumi.all(Object.values(aggregates).map(agg => Output$Pulumi.flatMap(agg.eventMapper, em => {
+    if (em !== undefined) {
+      return EventMapper$ReventlessCore.toResolvedOutputs(em).apply(resolved => S.reverseConvertToJsonOrThrow(resolved, EventMapper$ReventlessInterop.resolvedOutputsSchema));
+    } else {
+      return Pulumi.output(undefined);
+    }
+  }))).apply(Stdlib_Array.keepSome));
 }
 
 function exportPlatformOutputs(extensionPointsOutputs, aggregatesOutputs, readModelsOutputs, dcbEventLogOutputs, stateChangeSlicesOutputs, stateViewSlicesOutputs, automationSlicesOutputs, outboundTranslationSlicesOutputs, inboundTranslationSlicesOutputs) {

@@ -11,7 +11,7 @@ Deploy-time outputs produced when an `Aggregate` is provisioned.
 - `commandGenerator` — the internal command dispatcher component
 - `commandTopic` — the SQS FIFO queue for inbound commands
 - `eventLog` — the DynamoDB event store
-- `eventMapper` — optional: the event-to-command router (present when mappings are configured)
+- `eventMapper` — the event-to-command router; resolves to `None` unless mappings are configured
 - `addEventMapper` — callback used by the plugin to attach late-bound event mappers
 */
 and outputs = {
@@ -19,7 +19,12 @@ and outputs = {
   commandGenerator: Pulumi.Output.t<CommandGenerator.outputs>,
   commandTopic: Pulumi.Output.t<CommandTopic.outputs>,
   eventLog: EventLog.outputs,
-  eventMapper?: Pulumi.Output.t<EventMapper.outputs>,
+  /* Output outside, option inside — never `option<Pulumi.Output.t<_>>`. An
+     optional Output field reads as a plain record once an enclosing `apply` has
+     resolved it, because Pulumi deep-unwraps nested outputs; the same
+     `Output.flatMap` on this field is then correct at one call depth and a
+     TypeError at another, with the type identical in both. */
+  eventMapper: Pulumi.Output.t<option<EventMapper.outputs>>,
   addEventMapper: addEventMapper,
 }
 

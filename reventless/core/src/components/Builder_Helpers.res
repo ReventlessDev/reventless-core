@@ -58,16 +58,23 @@ let finishAggregates = (
   // to ensure forCommandTopic has registered specs before finish() runs.
   let allCommandTopicOutputs =
     allOutputs->Array.map(aggregateOutputs => aggregateOutputs.commandTopic)
-  let eventMapperOutputs =
-    allOutputs
-    ->Array.map(aggregateOutputs => aggregateOutputs.eventMapper)
-    ->Array.keepSome
+  let eventMapperOutputs = allOutputs->Array.map(aggregateOutputs => aggregateOutputs.eventMapper)
 
   let _ =
     (eventMapperOutputs->Pulumi.Output.all, allCommandTopicOutputs->Pulumi.Output.all)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((eventMapperOutputs, _)) =>
+      // Filtered after resolution, not before: the absent ones are now `None`
+      // inside a resolved array rather than missing fields.
+      //
+      // `eventCollector` here is a plain record, not an Output: `Output.all` above
+      // deeply unwrapped the contents of each element. That is fine because `all`
+      // accepts resolved values, but nothing in this block may call
+      // `EventMapper.toResolvedOutputs` — it expects unresolved fields and would
+      // throw `m.apply is not a function`. Resolve at the depth where the record is
+      // still unresolved instead, as `serializeEventMappersOutputs` does.
       eventMapperOutputs
+      ->Array.keepSome
       ->Array.map(eventMapperOutput => eventMapperOutput.eventCollector)
       ->Pulumi.Output.all
       ->Pulumi.Output.apply(_ =>

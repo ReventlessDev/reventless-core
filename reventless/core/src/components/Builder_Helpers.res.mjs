@@ -33,11 +33,11 @@ function createAggregatesWithoutEventMappers(aggregates, api, componentRuntime, 
 function finishAggregates(aggregatesOutputs) {
   let allOutputs = Object.values(aggregatesOutputs);
   let allCommandTopicOutputs = allOutputs.map(aggregateOutputs => aggregateOutputs.commandTopic);
-  let eventMapperOutputs = Stdlib_Array.keepSome(allOutputs.map(aggregateOutputs => aggregateOutputs.eventMapper));
+  let eventMapperOutputs = allOutputs.map(aggregateOutputs => aggregateOutputs.eventMapper);
   Pulumi.all([
     Pulumi.all(eventMapperOutputs),
     Pulumi.all(allCommandTopicOutputs)
-  ]).apply(param => Pulumi.all(param[0].map(eventMapperOutput => eventMapperOutput.eventCollector)).apply(param => {
+  ]).apply(param => Pulumi.all(Stdlib_Array.keepSome(param[0]).map(eventMapperOutput => eventMapperOutput.eventCollector)).apply(param => {
     Object.values(aggregateFinishFns).forEach(finishFn => finishFn());
   }));
 }

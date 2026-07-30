@@ -1246,23 +1246,32 @@ let serializeTasksOutputs = (pluginOutputs: Plugin.outputs): Pulumi.Output.t<JSO
 // Serialize event mappers from aggregates to JSON array for the "eventMappers" stack export.
 let serializeEventMappersOutputs = (pluginOutputs: Plugin.outputs): Pulumi.Output.t<JSON.t> =>
   pluginOutputs.aggregates->Pulumi.Output.flatMap(aggregates =>
+    // Resolve each `eventMapper` through its own Output before collecting, and only
+    // then drop the absent ones. `Output.all` deeply unwraps the *contents* of its
+    // elements, so collecting first would hand `toResolvedOutputs` a record whose
+    // fields Pulumi has already resolved — see `serializePlainDictExport` above for
+    // the same hazard. Absence is carried as `None` through the collection instead.
     aggregates
     ->Dict.valuesToArray
-    ->Array.filterMap((agg: Aggregate.outputs) =>
-      agg.eventMapper->Option.map(eventMapperOutput =>
-        eventMapperOutput->Pulumi.Output.flatMap(em =>
+    ->Array.map((agg: Aggregate.outputs) =>
+      agg.eventMapper->Pulumi.Output.flatMap(em =>
+        switch em {
+        | Some(em) =>
           em
           ->EventMapper.toResolvedOutputs
           ->Pulumi.Output.apply(resolved =>
-            resolved->S.reverseConvertToJsonOrThrow(
-              ReventlessInterop.EventMapper.resolvedOutputsSchema,
+            Some(
+              resolved->S.reverseConvertToJsonOrThrow(
+                ReventlessInterop.EventMapper.resolvedOutputsSchema,
+              ),
             )
           )
-        )
+        | None => Pulumi.Output.make(None)
+        }
       )
     )
     ->Pulumi.Output.all
-    ->Pulumi.Output.apply(arr => arr->JSON.Encode.array)
+    ->Pulumi.Output.apply(arr => arr->Array.keepSome->JSON.Encode.array)
   )
 
 // Export platform admin component outputs as individual top-level Pulumi stack exports.
