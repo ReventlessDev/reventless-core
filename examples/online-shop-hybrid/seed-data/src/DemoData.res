@@ -119,17 +119,16 @@ type product = {
   name: string,
   description: string,
   price: float,
-  imageUrl: string,
+  imageUrl: option<string>,
   categoryId: string,
 }
 
-// A deterministic placeholder image per product: a distinct fill colour derived
-// from the product index plus the product name as a label. SVG is tiny,
-// text-based (no repo binaries, no third-party service), renders in `<img>`, and
-// serves cleanly through both the AWS CloudFront read path and the local dev
-// serve route. Uploaded at seed time (DemoSeed) so each product's `imageUrl`
-// travels the real upload → store → serve loop instead of an external URL. The
-// Image semantic thumbnails the served ref in the generated Products view.
+// A deterministic demo image per product: a distinct fill colour derived from
+// the product index plus the product name as a label. SVG is tiny, text-based
+// (no repo binaries, no third-party service), and serves cleanly through both
+// the AWS CloudFront read path and the local dev serve route. Uploaded at seed
+// time so each product's `imageUrl` travels the real upload → store → serve loop
+// instead of an external URL. Products with no upload keep no image.
 let escapeXml = (s: string): string =>
   s
   ->String.replaceAll("&", "&amp;")
@@ -173,9 +172,9 @@ let buildProducts = (~count=productCount, ()): array<product> => {
           name,
           description: `${name} — ${pick(blurbs)} ${category.name->String.toLowerCase} pick.`,
           price,
-          // Filled by DemoSeed's upload phase with the served `/{prefix}/{key}`
-          // ref once the product's placeholder SVG is uploaded.
-          imageUrl: "",
+          // Absent until the upload phase fills it with the served `/{prefix}/{key}`
+          // ref; products left without an upload keep no image.
+          imageUrl: None,
           categoryId: category.id,
         })
       }

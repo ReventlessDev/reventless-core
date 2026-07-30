@@ -72,7 +72,7 @@ let uploadProductImages = async (
         ~contentType="image/svg+xml",
         ~authToken=?Seed.Client.currentToken(client),
       ) {
-      | Ok(servedRef) => out->Array.push({...p, imageUrl: servedRef})
+      | Ok(servedRef) => out->Array.push({...p, imageUrl: Some(servedRef)})
       | Error(msg) => throw(Seed.Failed(`product image upload for ${p.id} failed: ${msg}`))
       }
     | None => ()
@@ -93,7 +93,7 @@ let seedProducts = async (products: array<DemoData.product>, ~client: Seed.Clien
           name: p.name,
           description: p.description,
           price: p.price,
-          imageUrl: p.imageUrl,
+          imageUrl: ?p.imageUrl,
           categoryId: p.categoryId,
         }),
       )

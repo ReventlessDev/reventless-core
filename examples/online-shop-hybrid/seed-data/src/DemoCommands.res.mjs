@@ -59,7 +59,8 @@ function archiveCategory(command) {
 }
 
 function addProduct(command) {
-  return Seed$ReventlessSeed.mutation(`Catalog_` + "AddProduct", [
+  let imageUrl = command.imageUrl;
+  let base = [
     [
       "productId",
       {
@@ -87,22 +88,23 @@ function addProduct(command) {
         TAG: "Float",
         _0: command.price
       }
-    ],
-    [
-      "imageUrl",
-      {
-        TAG: "String",
-        _0: command.imageUrl
-      }
-    ],
-    [
+    ]
+  ];
+  let image = imageUrl !== undefined ? [[
+        "imageUrl",
+        {
+          TAG: "String",
+          _0: imageUrl
+        }
+      ]] : [];
+  let tail = [[
       "categoryId",
       {
         TAG: "Id",
         _0: command.categoryId
       }
-    ]
-  ]);
+    ]];
+  return Seed$ReventlessSeed.mutation(`Catalog_` + "AddProduct", base.concat(image).concat(tail));
 }
 
 function changeProductPrice(command) {

@@ -331,7 +331,7 @@ function buildProducts(countOpt, param) {
           name: name,
           description: name + ` — ` + Seed_Random$ReventlessSeed.pickOr(random, "", blurbs) + ` ` + category.name.toLowerCase() + ` pick.`,
           price: price,
-          imageUrl: "",
+          imageUrl: undefined,
           categoryId: category.id
         });
       }

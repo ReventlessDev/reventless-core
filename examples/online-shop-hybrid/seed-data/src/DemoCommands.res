@@ -42,18 +42,21 @@ let archiveCategory = (command: CatalogPlugin.ArchiveCategory.command): Seed.mut
 
 let addProduct = (command: CatalogPlugin.AddProduct.command): Seed.mutation =>
   switch command {
-  | AddProduct({productId, name, description, price, imageUrl, categoryId}) =>
-    Seed.mutation(
-      catalog("AddProduct"),
-      [
-        ("productId", Id(productId)),
-        ("name", String(name)),
-        ("description", String(description)),
-        ("price", Float(price)),
-        ("imageUrl", String(imageUrl)),
-        ("categoryId", Id(categoryId)),
-      ],
-    )
+  | AddProduct({productId, name, description, price, imageUrl: ?imageUrl, categoryId}) =>
+    // imageUrl is optional: include the (nullable) arg only when present, so an
+    // image-less product sends no image rather than an empty string.
+    let base: array<(string, Seed.value)> = [
+      ("productId", Id(productId)),
+      ("name", String(name)),
+      ("description", String(description)),
+      ("price", Float(price)),
+    ]
+    let image: array<(string, Seed.value)> = switch imageUrl {
+    | Some(url) => [("imageUrl", String(url))]
+    | None => []
+    }
+    let tail: array<(string, Seed.value)> = [("categoryId", Id(categoryId))]
+    Seed.mutation(catalog("AddProduct"), Array.concat(Array.concat(base, image), tail))
   }
 
 let changeProductPrice = (command: CatalogPlugin.ChangeProductPrice.command): Seed.mutation =>
