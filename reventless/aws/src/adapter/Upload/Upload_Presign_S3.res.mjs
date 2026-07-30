@@ -89,7 +89,10 @@ function make(bucketName, corsOriginsOpt, servedPrefixOpt, nameOpt, opts) {
     authorizationType: "NONE",
     functionName: lambda.name,
     cors: {
-      allowHeaders: ["*"].map(prim => prim),
+      allowHeaders: [
+        "content-type",
+        "authorization"
+      ].map(prim => prim),
       allowMethods: ["POST"].map(prim => prim),
       allowOrigins: corsOrigins.map(prim => prim)
     }

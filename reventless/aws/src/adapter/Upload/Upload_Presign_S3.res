@@ -171,7 +171,15 @@ let make = (
         {
           allowMethods: ["POST"]->Array.map(Pulumi.Input.make)->Pulumi.Input.make,
           allowOrigins: corsOrigins->Array.map(Pulumi.Input.make)->Pulumi.Input.make,
-          allowHeaders: ["*"]->Array.map(Pulumi.Input.make)->Pulumi.Input.make,
+          // `content-type` and `authorization` named explicitly rather than `*`:
+          // `Access-Control-Allow-Headers: *` is a wildcard that, per the Fetch
+          // spec, does NOT cover `Authorization`. The presign POST carries a
+          // bearer token, so a wildcard fails its preflight and the browser
+          // rejects the request before it is sent — a silent break for every
+          // authenticated upload.
+          allowHeaders: ["content-type", "authorization"]
+          ->Array.map(Pulumi.Input.make)
+          ->Pulumi.Input.make,
         }: FunctionUrl.cors
       )->Pulumi.Input.make,
     },
