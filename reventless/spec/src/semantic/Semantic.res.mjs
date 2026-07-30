@@ -5,7 +5,14 @@ import * as S from "sury/src/S.res.mjs";
 let Id = {
   dateTime: "dateTime",
   reference: "reference",
-  storageRef: "storageRef"
+  storageRef: "storageRef",
+  email: "email",
+  phone: "phone",
+  url: "url",
+  percent: "percent",
+  bytes: "bytes",
+  duration: "duration",
+  color: "color"
 };
 
 let semanticId = S.Metadata.Id.make("reventless", "semantic");
@@ -16,6 +23,21 @@ function mark(schema, id, payloadOpt) {
     id: id,
     payload: payload
   });
+}
+
+function refined(base, id, check) {
+  return mark(S.refine(base, s => (value => {
+    let why = check(value);
+    if (why.TAG === "Ok") {
+      return;
+    } else {
+      return s.fail(why._0, undefined);
+    }
+  })), id, undefined);
+}
+
+function showString(raw) {
+  return JSON.stringify(raw);
 }
 
 function get(fieldSchema) {
@@ -35,6 +57,8 @@ export {
   Id,
   semanticId,
   mark,
+  refined,
+  showString,
   get,
   has,
 }

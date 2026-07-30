@@ -24,7 +24,7 @@ describe("Customer Behavior", () => {
 
   test("UpdateEmail on non-existent aggregate returns CustomerNotFound", () =>
     givenEvents([])
-    ->whenCmd(UpdateEmail({email: "x@y"}))
+    ->whenCmd(UpdateEmail({email: "bob@example.com"}))
     ->thenError(CustomerNotFound)
   )
 
@@ -45,7 +45,7 @@ describe("Customer Behavior", () => {
       Registered({email: "alice@example.com", address: "123 Main St"}),
       Deactivated,
     ])
-    ->whenCmd(UpdateEmail({email: "x@y"}))
+    ->whenCmd(UpdateEmail({email: "bob@example.com"}))
     ->thenError(CustomerAlreadyDeactivated)
   )
 

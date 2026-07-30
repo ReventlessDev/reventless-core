@@ -619,4 +619,46 @@ describe("SuryToJsonSchema:", () => {
       expect(semanticOf(json, "imageUrl"))->toEqual(Some(JSON.Encode.string("storageRef")))
     })
   })
+
+  // The claim the branded scalars rest on: marking a field adds an annotation,
+  // not a shape. A string stays a string and a number stays a number on the
+  // wire, which is what makes them retrofittable onto a log that already has
+  // events in it. One of each is enough — the emission path is the same for all
+  // seven, and it is the *shape* half that is the load-bearing assertion here.
+  describe("branded scalars keep their underlying shape:", () => {
+    let fieldOf = (json, name) => getPropertyOf(json, name)
+    let keyOf = (json, name, key) => fieldOf(json, name)->Option.flatMap(s => getProperty(s, key))
+
+    let json = SuryToJsonSchema.deriveObjectSchema(
+      S.schema(s =>
+        {
+          "contactEmail": s.matches(Reventless.Email.schema),
+          "taxRate": s.matches(Reventless.Percent.schema),
+        }
+      )->S.castToUnknown,
+    )
+
+    testSync("a string scalar stays a string and carries its id", () =>
+      expect((
+        keyOf(json, "contactEmail", "type"),
+        keyOf(json, "contactEmail", "x-reventless-semantic"),
+      ))->toEqual((Some(JSON.Encode.string("string")), Some(JSON.Encode.string("email"))))
+    )
+
+    testSync("a numeric scalar stays a number and carries its id", () =>
+      expect((
+        keyOf(json, "taxRate", "type"),
+        keyOf(json, "taxRate", "x-reventless-semantic"),
+      ))->toEqual((Some(JSON.Encode.string("number")), Some(JSON.Encode.string("percent"))))
+    )
+
+    // The provenance half: a typed field outranks an annotated one, and this is
+    // the key a consumer reads to tell them apart.
+    testSync("both name the type as their source", () =>
+      expect((
+        keyOf(json, "contactEmail", "x-reventless-semantic-source"),
+        keyOf(json, "taxRate", "x-reventless-semantic-source"),
+      ))->toEqual((Some(JSON.Encode.string("type")), Some(JSON.Encode.string("type"))))
+    )
+  })
 })

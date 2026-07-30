@@ -48,6 +48,16 @@ module Id = {
   let dateTime = "dateTime"
   let reference = "reference"
   let storageRef = "storageRef"
+
+  // The branded scalars. Each refines a `string` or a number without changing
+  // its shape, so a field gains one of these without anything stored changing.
+  let email = "email"
+  let phone = "phone"
+  let url = "url"
+  let percent = "percent"
+  let bytes = "bytes"
+  let duration = "duration"
+  let color = "color"
 }
 
 let semanticId: S.Metadata.Id.t<t> = S.Metadata.Id.make(~namespace="reventless", ~name="semantic")
@@ -55,6 +65,30 @@ let semanticId: S.Metadata.Id.t<t> = S.Metadata.Id.make(~namespace="reventless",
 /** Mark a schema as carrying a semantic. */
 let mark = (schema: S.t<'a>, ~id: string, ~payload: payload=Plain): S.t<'a> =>
   schema->S.Metadata.set(~id=semanticId, {id, payload})
+
+/**
+A schema that validates with `check` and carries the semantic `id`.
+
+The branded scalars all have the same shape — one constructor function that
+defines the grammar, and a schema that must agree with it — and `StorageRef`
+established that the schema is *derived* from the constructor rather than
+hand-rolling a second check beside it. Deriving it here makes that structural:
+there is one place a grammar can be written, so there is nowhere for a second
+one to drift.
+*/
+let refined = (base: S.t<'a>, ~id: string, ~check: 'a => result<'a, string>): S.t<'a> =>
+  base
+  ->S.refine(s => value =>
+    switch check(value) {
+    | Ok(_) => ()
+    | Error(why) => s.fail(why)
+    }
+  )
+  ->mark(~id)
+
+/** A value as it should read back to the person who typed it. Rejection messages
+    reach forms through `validateInput`, so they quote the offending value. */
+let showString = (raw: string): string => raw->JSON.Encode.string->JSON.stringify
 
 /** The semantic a field's schema carries, if any. */
 let get = (fieldSchema: S.t<'a>): option<t> => S.Metadata.get(fieldSchema, ~id=semanticId)
