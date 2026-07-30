@@ -17,6 +17,7 @@ import * as SchemaType$ReventlessCore from "../../components/Api/SchemaType.res.
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../../components/Api/ApiNoApiHelpers.res.mjs";
 import * as SuryToJsonSchema$ReventlessCore from "../../components/Api/SuryToJsonSchema.res.mjs";
+import * as Capability_Inference$ReventlessCore from "./Capability_Inference.res.mjs";
 import * as ApiTargetStateHelpers$ReventlessCore from "../../components/Api/ApiTargetStateHelpers.res.mjs";
 import * as ApiAllowedStatesHelpers$ReventlessCore from "../../components/Api/ApiAllowedStatesHelpers.res.mjs";
 
@@ -388,7 +389,59 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let match$3 = scored[0];
     return match$3[0];
   };
-  let storesFromSchema = (component, schema) => {
+  let compareDeclarations = (a, b) => {
+    let byStore = Primitive_string.compare(a.store, b.store);
+    if (byStore !== 0) {
+      return byStore;
+    }
+    let byComponent = Primitive_string.compare(a.component, b.component);
+    if (byComponent !== 0) {
+      return byComponent;
+    } else {
+      return Primitive_string.compare(a.field, b.field);
+    }
+  };
+  let storeDeclarationSites = [
+    aggregates.flatMap(A => [
+      [
+        A.Spec.name,
+        A.Spec.commandSchema
+      ],
+      [
+        A.Spec.name,
+        A.Spec.eventSchema
+      ]
+    ]),
+    stateChangeSlices.flatMap(SCS => [
+      [
+        SCS.Spec.name,
+        SCS.Spec.commandSchema
+      ],
+      [
+        SCS.Spec.name,
+        SCS.Spec.eventSchema
+      ]
+    ]),
+    stateViewSlices.map(SVS => [
+      SVS.Spec.name,
+      SVS.Spec.stateSchema
+    ]),
+    readModels.map(R => [
+      R.Spec.name,
+      R.Spec.stateSchema
+    ]),
+    automationSlices.map(AS => [
+      AS.Spec.name,
+      AS.Spec.commandSchema
+    ]),
+    inboundTranslationSlices.map(ITS => [
+      ITS.Spec.name,
+      ITS.Spec.commandSchema
+    ])
+  ].flat();
+  let requiredStoreDeclarations = Stdlib_Array.reduce(storeDeclarationSites.flatMap(param => {
+    let component = param[0];
+    let schema = param[1];
     let fromVariant = v => {
       if (v.type === "object") {
         let properties = v.properties;
@@ -409,27 +462,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     } else {
       return fromVariant(schema);
     }
-  };
-  let compareDeclarations = (a, b) => {
-    let byStore = Primitive_string.compare(a.store, b.store);
-    if (byStore !== 0) {
-      return byStore;
-    }
-    let byComponent = Primitive_string.compare(a.component, b.component);
-    if (byComponent !== 0) {
-      return byComponent;
-    } else {
-      return Primitive_string.compare(a.field, b.field);
-    }
-  };
-  let requiredStoreDeclarations = Stdlib_Array.reduce([
-    aggregates.flatMap(A => storesFromSchema(A.Spec.name, A.Spec.commandSchema).concat(storesFromSchema(A.Spec.name, A.Spec.eventSchema))),
-    stateChangeSlices.flatMap(SCS => storesFromSchema(SCS.Spec.name, SCS.Spec.commandSchema).concat(storesFromSchema(SCS.Spec.name, SCS.Spec.eventSchema))),
-    stateViewSlices.flatMap(SVS => storesFromSchema(SVS.Spec.name, SVS.Spec.stateSchema)),
-    readModels.flatMap(R => storesFromSchema(R.Spec.name, R.Spec.stateSchema)),
-    automationSlices.flatMap(AS => storesFromSchema(AS.Spec.name, AS.Spec.commandSchema)),
-    inboundTranslationSlices.flatMap(ITS => storesFromSchema(ITS.Spec.name, ITS.Spec.commandSchema))
-  ].flat().toSorted(compareDeclarations), [], (acc, d) => {
+  }).toSorted(compareDeclarations), [], (acc, d) => {
     let prev = Stdlib_Array.last(acc);
     if (prev !== undefined) {
       if (Primitive_object.equal(prev, d)) {
@@ -442,6 +475,9 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     }
   });
   let requiredStores = Belt_SetString.toArray(Belt_SetString.fromArray(requiredStoreDeclarations.map(d => d.store)));
+  storeDeclarationSites.forEach(param => {
+    Capability_Inference$ReventlessCore.scanSchema(param[0], param[1]).forEach(w => log.warn("Plugin_Structure", undefined, Capability_Inference$ReventlessCore.message(w)));
+  });
   let visibilityTag = v => {
     if (v === "Public") {
       return;

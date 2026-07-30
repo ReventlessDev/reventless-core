@@ -26,7 +26,7 @@ let errorSchema = S.literal("ProductNotFound");
 let eventSchema = S.schema(s => ({
   TAG: "ProductImageChanged",
   productId: s.m(DcbTag$Reventless.string),
-  imageUrl: s.m(S.string)
+  imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "productImages"))
 }));
 
 function commandAuthorization(param) {

@@ -34,6 +34,6 @@ type event =
       name: string,
       description: string,
       price: float,
-      imageUrl: string,
+      @storageRef("productImages") imageUrl: string,
       categoryId: string,
     })

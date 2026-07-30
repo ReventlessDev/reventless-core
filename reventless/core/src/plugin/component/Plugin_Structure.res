@@ -534,37 +534,42 @@ let make = (
     }
   }
 
+  // The (component, schema) sites the store walk reads. One list feeds both the
+  // declared-store collection and the heuristic lint below, so a field is read
+  // exactly once: either its declaration is collected, or its name is eligible
+  // to warn — never a third reading that could disagree with both.
+  let storeDeclarationSites: array<(string, S.t<unknown>)> =
+    [
+      aggregates->Array.flatMap((module(A: ReventlessInfra.Aggregate.T with type api = api)) => [
+        (A.Spec.name, A.Spec.commandSchema->S.castToUnknown),
+        (A.Spec.name, A.Spec.eventSchema->S.castToUnknown),
+      ]),
+      stateChangeSlices->Array.flatMap((module(SCS: ReventlessInfra.StateChangeSlice.T)) => [
+        (SCS.Spec.name, SCS.Spec.commandSchema->S.castToUnknown),
+        (SCS.Spec.name, SCS.Spec.eventSchema->S.castToUnknown),
+      ]),
+      stateViewSlices->Array.map((module(SVS: ReventlessInfra.StateViewSlice.T)) => (
+        SVS.Spec.name,
+        SVS.Spec.stateSchema->S.castToUnknown,
+      )),
+      readModels->Array.map((
+        module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
+      ) => (R.Spec.name, R.Spec.stateSchema->S.castToUnknown)),
+      automationSlices->Array.map((module(AS: ReventlessInfra.AutomationSlice.T)) => (
+        AS.Spec.name,
+        AS.Spec.commandSchema->S.castToUnknown,
+      )),
+      inboundTranslationSlices->Array.map((
+        module(ITS: ReventlessInfra.InboundTranslationSlice.T),
+      ) => (ITS.Spec.name, ITS.Spec.commandSchema->S.castToUnknown)),
+    ]->Array.flat
+
   // Sorted so the emitted manifest is deterministic; identical triples collapse
   // (one store named by a component's command field and again by its event
   // field under the same field name is one declaration site).
   let requiredStoreDeclarations =
-    [
-      aggregates->Array.flatMap((module(A: ReventlessInfra.Aggregate.T with type api = api)) =>
-        Array.concat(
-          storesFromSchema(~component=A.Spec.name, A.Spec.commandSchema->S.castToUnknown),
-          storesFromSchema(~component=A.Spec.name, A.Spec.eventSchema->S.castToUnknown),
-        )
-      ),
-      stateChangeSlices->Array.flatMap((module(SCS: ReventlessInfra.StateChangeSlice.T)) =>
-        Array.concat(
-          storesFromSchema(~component=SCS.Spec.name, SCS.Spec.commandSchema->S.castToUnknown),
-          storesFromSchema(~component=SCS.Spec.name, SCS.Spec.eventSchema->S.castToUnknown),
-        )
-      ),
-      stateViewSlices->Array.flatMap((module(SVS: ReventlessInfra.StateViewSlice.T)) =>
-        storesFromSchema(~component=SVS.Spec.name, SVS.Spec.stateSchema->S.castToUnknown)
-      ),
-      readModels->Array.flatMap((
-        module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
-      ) => storesFromSchema(~component=R.Spec.name, R.Spec.stateSchema->S.castToUnknown)),
-      automationSlices->Array.flatMap((module(AS: ReventlessInfra.AutomationSlice.T)) =>
-        storesFromSchema(~component=AS.Spec.name, AS.Spec.commandSchema->S.castToUnknown)
-      ),
-      inboundTranslationSlices->Array.flatMap((
-        module(ITS: ReventlessInfra.InboundTranslationSlice.T),
-      ) => storesFromSchema(~component=ITS.Spec.name, ITS.Spec.commandSchema->S.castToUnknown)),
-    ]
-    ->Array.flat
+    storeDeclarationSites
+    ->Array.flatMap(((component, schema)) => storesFromSchema(~component, schema))
     ->Array.toSorted(compareDeclarations)
     ->Array.reduce([], (acc, d) =>
       switch acc->Array.last {
@@ -578,6 +583,15 @@ let make = (
     ->Array.map(d => d.store)
     ->Belt.Set.String.fromArray
     ->Belt.Set.String.toArray
+
+  // Heuristic-only matches — a field *named* like a stored-object ref with no
+  // `@storageRef` — warn and provision nothing. Declaration outranks inference;
+  // the warning names the annotation that would settle it.
+  storeDeclarationSites->Array.forEach(((component, schema)) =>
+    Capability_Inference.scanSchema(~component, schema)->Array.forEach(w =>
+      log.warn(~comp="Plugin_Structure", Capability_Inference.message(w))
+    )
+  )
 
   // ── Build queryable defs ───────────────────────────────────────────────────
   //

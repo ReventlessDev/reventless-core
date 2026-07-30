@@ -19,5 +19,5 @@ type error = ProductNotFound
 type event =
   | ProductImageChanged({
       productId: string,
-      imageUrl: string,
+      @storageRef("productImages") imageUrl: string,
     })

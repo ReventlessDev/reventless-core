@@ -12,17 +12,14 @@
 
 module Platform = ReventlessAws.Platform.Make()
 
-// The stores this platform's plugins declare through `@storageRef`. `plugin`
-// must be the name the plugin *registers* (`~name="Catalog"`) — the endpoint map
-// is keyed `{plugin}.{store}` from this list while `pluginStructure.requiredStores`
-// derives the same key from the registered name, so a case slip produces two keys
-// that never meet. `deployPlugin` compares the two sets and fails the deploy when
-// a required store is missing from a platform that provisions others.
-let capabilities: array<ReventlessInfra.Platform.capability> = [
-  ObjectStore({plugin: "Catalog", store: "productImages"}),
-]
-
+// The stores this platform's plugins declare through `@storageRef`, generated
+// from their committed `capabilities.json` manifests so the capability's
+// `plugin` and the plugin's registered name are one spelling by construction.
+// After a `@storageRef` change: rebuild the plugin, run
+// `pnpm run generate:platform`, review the diff. `deployPlugin` compares the
+// deployed sets and fails the deploy when a required store is missing from a
+// platform that provisions others.
 let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
-  ~capabilities,
+  ~capabilities=PlatformCapabilities.capabilities,
 )

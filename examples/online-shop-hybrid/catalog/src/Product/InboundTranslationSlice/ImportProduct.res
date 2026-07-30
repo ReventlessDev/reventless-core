@@ -21,8 +21,9 @@ type command = AddProduct({
   price: float,
   // Product.AddProduct requires an imageUrl; the supplier feed carries no image,
   // so the translation supplies an empty string (no thumbnail) rather than
-  // omitting the field, which would reject the mapped command downstream.
-  imageUrl: string,
+  // omitting the field, which would reject the mapped command downstream. The
+  // storage ref admits "" as its no-object sentinel for exactly this producer.
+  @storageRef("productImages") imageUrl: string,
   categoryId: string,
 })
 

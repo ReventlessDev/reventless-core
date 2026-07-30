@@ -13,6 +13,10 @@
           "field": "imageUrl"
         },
         {
+          "component": "ImportProduct",
+          "field": "imageUrl"
+        },
+        {
           "component": "Products",
           "field": "imageUrl"
         }

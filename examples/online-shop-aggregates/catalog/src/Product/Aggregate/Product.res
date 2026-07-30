@@ -24,11 +24,16 @@ type command =
 
 @schema
 type event =
-  | Added({name: string, description: string, price: float, imageUrl: string})
+  | Added({
+      name: string,
+      description: string,
+      price: float,
+      @storageRef("productImages") imageUrl: string,
+    })
   | NameUpdated({name: string})
   | DescriptionUpdated({description: string})
   | PriceUpdated({price: float})
-  | ImageUpdated({imageUrl: string})
+  | ImageUpdated({@storageRef("productImages") imageUrl: string})
 
 @schema
 type error =

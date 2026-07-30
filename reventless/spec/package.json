@@ -4,7 +4,8 @@
   "description": "Specifications for Reventless",
   "license": "Apache-2.0",
   "bin": {
-    "generate-plugin": "./run-generator.mjs"
+    "generate-plugin": "./run-generator.mjs",
+    "generate-platform": "./run-platform-generator.mjs"
   },
   "scripts": {
     "build": "rescript build",
@@ -25,7 +26,8 @@
   "dependencies": {
     "jsonschema2graphql": "1.1.1",
     "sury": "11.0.0-alpha.4",
-    "sury-ppx": "11.0.0-alpha.2"
+    "sury-ppx": "11.0.0-alpha.2",
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@reventlessdev/rescript-jest": "workspace:*",

@@ -35,7 +35,7 @@ let eventSchema = S.union([
     name: s.m(S.string),
     description: s.m(S.string),
     price: s.m(S.float),
-    imageUrl: s.m(S.string)
+    imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "productImages"))
   })),
   S.schema(s => ({
     TAG: "NameUpdated",
@@ -51,7 +51,7 @@ let eventSchema = S.union([
   })),
   S.schema(s => ({
     TAG: "ImageUpdated",
-    imageUrl: s.m(S.string)
+    imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "productImages"))
   }))
 ]);
 

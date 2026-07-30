@@ -93,6 +93,20 @@ module PsAttachInvoiceSlice: ReventlessInfra.StateChangeSlice.T = {
   let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
 
+module PsChangePhotoSlice: ReventlessInfra.StateChangeSlice.T = {
+  module Spec = PsChangePhoto
+  module Behavior = {
+    type state = PsChangePhoto.state
+    let initialState = PsChangePhoto.initialState
+    let evolve = PsChangePhoto.evolve
+    let decide = PsChangePhoto.decide
+    let moduleUrl = PsChangePhoto.moduleUrl
+  }
+  let isAsync = false
+  type component = scsComponent
+  let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
+}
+
 let structure = Plugin_Structure.make(
   ~name="TestPlugin",
   ~stateChangeSlices=[module(PsPlaceOrderSlice), module(PsShipOrderSlice)],
@@ -743,6 +757,68 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
 `,
         )
       })
+    })
+  })
+
+  // Declarations are authoritative; the name heuristics are a lint. A
+  // heuristic-only match warns and never reaches the manifest, so nothing is
+  // provisioned from a guess — `imageUrl` is genuinely ambiguous between an
+  // uploaded object and an external URL, and only the author can settle it.
+  describe("capability inference", () => {
+    let commandWarnings = Capability_Inference.scanSchema(
+      ~component="ChangePhoto",
+      PsChangePhoto.commandSchema->S.castToUnknown,
+    )
+    let eventWarnings = Capability_Inference.scanSchema(
+      ~component="ChangePhoto",
+      PsChangePhoto.eventSchema->S.castToUnknown,
+    )
+
+    testSync("a heuristic-only match produces a warning", () => {
+      let expected: array<Capability_Inference.warning> = [
+        {component: "ChangePhoto", field: "photoUrl"},
+      ]
+      expect(commandWarnings)->toEqual(expected)
+    })
+
+    testSync("a declared field with a heuristic name does not warn", () => {
+      // The event's `thumbnail` matches the name heuristic but carries
+      // @storageRef — only the undeclared `photoUrl` warns.
+      let expected: array<Capability_Inference.warning> = [
+        {component: "ChangePhoto", field: "photoUrl"},
+      ]
+      expect(eventWarnings)->toEqual(expected)
+    })
+
+    testSync("a heuristic-only match reaches no manifest entry", () => {
+      let withHeuristicField = Plugin_Structure.make(
+        ~name="TestPlugin",
+        ~stateChangeSlices=[module(PsChangePhotoSlice)],
+      )
+      // Only the *declared* `thumbnail` store is collected; `photoUrl` — the
+      // heuristic-only match — provisions nothing.
+      expect(withHeuristicField.requiredStores)->toEqual(Some(["TestPlugin.productPhotos"]))
+      let manifest = Reventless.CapabilityManifest.fromStructure(withHeuristicField)
+      expect(
+        manifest.capabilities->Array.every(entry =>
+          entry.declaredBy->Array.every(site => site.field != "photoUrl")
+        ),
+      )->toBe(true)
+    })
+
+    testSync("the warning names the field and the settling annotation", () => {
+      let text =
+        commandWarnings->Array.getUnsafe(0)->Capability_Inference.message
+      expect(text->String.includes("ChangePhoto.photoUrl"))->toBe(true)
+      expect(text->String.includes("@storageRef"))->toBe(true)
+    })
+
+    testSync("suffix and exact name rules match; ordinary names do not", () => {
+      expect(
+        ["invoiceFileRef", "upload", "thumbnail", "customerName", "documentUrl"]->Array.map(
+          Capability_Inference.nameMatches,
+        ),
+      )->toEqual([true, true, true, false, false])
     })
   })
 })

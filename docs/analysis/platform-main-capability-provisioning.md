@@ -334,6 +334,25 @@ Add `catalog`/`ordering` to `platform-aws` deps and scan them without deploying.
 
 *Caveat found while checking:* the `*.model.json` PPX sidecars would be the obvious input, but they are gated on `REVENTLESS_EMIT_SIDECAR=1` and are already stale — 27 `@@reventless.spec` files in `online-shop-hybrid`, 26 sidecars (`ChangeProductImage.model.json`, the most recently added slice, is missing). They are a reverse-codegen artifact, not a build invariant. `capabilities.json` must come from an **ungated** step of the normal plugin build, or the scan must read `.res` sources directly.
 
+### The manifest's format — a rule, not a per-artifact debate
+
+`capabilities.json` is JSON, and the reason generalises. The repo carries both formats under a
+rule that had never been written down, which meant every new artifact re-argued it: **hand-authored
+config is YAML; machine-emitted artifacts are JSON.** YAML earns its place on human-edited files
+because of comments — `deploy-manifest.yaml` opens with two lines saying what it drives, and a
+manifest whose purpose is undocumented at the point of editing is worse. JSON earns its place on
+emitted files because it has one serialization — YAML's implicit typing (`NO` is a boolean, `1.0`
+may be string or float, indentation is semantic) is a liability for generated content, which is
+read by diff far more often than by a human; a generator that must defensively quote its own
+output is a generator with a bug waiting. Runtime-fetched files settle the remaining case on their
+own: `ui-hints.json` is read by a browser, and shipping a YAML parser in the shell bundle to read
+a config file would be dead weight.
+
+| Format | Who authors it | Who reads it | Examples |
+|---|---|---|---|
+| **YAML** | a human, by hand | CI, deploy tooling, an operator | `deploy-manifest.yaml`, `users.yaml`, `Pulumi.<stack>.yaml` |
+| **JSON** | a build step, mechanically | a program — generator, runtime, browser | `capabilities.json`, `*.model.json`, `ui-hints.json`, `plugin.json` |
+
 ### Option C — two-pass via stack outputs
 
 Plugin stacks export `requiredCapabilities`; the platform `StackReference`s each plugin optionally.

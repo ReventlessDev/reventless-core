@@ -1,8 +1,9 @@
 # Plan: platform capability provisioning — Stage 3 (inference and generation)
 
 **Date:** 2026-07-29
-**Status:** Not started. Written against the shipped Stage 2 + follow-on, not against the analysis
-as originally drafted — both post-date it, and one of Stage 3's four components has already landed.
+**Status:** **Complete (2026-07-30).** All four components shipped; each step's outcome is recorded
+inline. Written against the shipped Stage 2 + follow-on, not against the analysis as originally
+drafted — both post-date it, and one of Stage 3's four components had already landed.
 **Repos:** `reventless-core` only.
 **Analysis:** [platform-main-capability-provisioning.md](../analysis/platform-main-capability-provisioning.md) §6 Option B, §7 Stage 3.
 **Builds on:** [platform-capability-provisioning-stage-2.md](./done/platform-capability-provisioning-stage-2.md)
@@ -33,8 +34,8 @@ Stage 3's four components, per §7:
 |---|---|
 | `deployPlugin` coverage assertion | **Done.** Shipped as the follow-on to declared-store serving. |
 | `capabilities.json` per plugin | **Done — step 1.** See the step for what was built and learned. |
-| `Capability_Inference` | Not started — step 2 |
-| `generate-platform` | Not started — step 3, and **narrower than the analysis proposed** |
+| `Capability_Inference` | **Done — step 2.** |
+| `generate-platform` | **Done — step 3**, and **narrower than the analysis proposed** |
 
 Because the assertion already exists, the failure mode is loud today even while the list stays
 hand-written. That is what makes this stage schedulable rather than urgent, and it should be built
@@ -182,6 +183,23 @@ infrastructure.
 
 **Verify:** a heuristic-only match produces a warning and no manifest entry.
 
+**Done (2026-07-30).** `Capability_Inference` is a pure module beside `Plugin_Structure` — the
+name rules from §2/§5.1 (`file`/`attachment`/`upload`, the `*storageRef`/`*fileRef`/`*attachmentRef`
+suffixes, and the weak `image`/`imageUrl`/`photo`/`photoUrl`/`avatar`/`avatarUrl`/`thumbnail` set)
+over plain-string fields that carry no `StorageRef` marker. `Plugin_Structure` was refactored to
+build one `(component, schema)` site list that feeds *both* the declared-store collection and the
+lint, so a field is read exactly once — declared, or eligible to warn, never a third reading. The
+warnings go through `Plugin_Structure`'s logger, which means `emit-capabilities` (postbuild,
+`LOG_LEVEL=warn`) surfaces them in every ordinary plugin build with no extra wiring.
+`PluginStructureTest` pins: heuristic-only match warns; a declared field with a heuristic name
+stays silent; the match reaches no manifest entry; the message names the field and `@storageRef`.
+
+Worth recording: the lint paid for itself on its first run. Four real undeclared sites in the
+examples — the *produced-event* payloads of hybrid `AddProduct`/`ChangeProductImage` and aggregates
+`Product`, plus hybrid `ImportProduct`'s command — carried storage refs as bare strings (§3.4's
+validation hole in miniature). All four are now annotated; the hybrid manifest gained
+`ImportProduct.imageUrl` as a declaring site, and the store key set did not change anywhere.
+
 ### 3. `generate-platform` — union the manifests, emit the capability file
 
 A CLI sibling to `generate-plugin`. Reads `deploy-manifest.yaml` for the plugin list (it already
@@ -194,11 +212,40 @@ file does not churn). Removing the last declaring field removes the entry, and t
 Running it on a platform whose plugins declare nothing produces an empty list, and `deployPlatform`
 provisions nothing.
 
+**Done (2026-07-30).** `generate-platform <deploy-manifest.yaml>` ships as a second bin of
+`reventless-spec` (new `yaml` dependency; rendering in `PlatformCodegen`, I/O in
+`PlatformGenerator`, exact bytes pinned by `PlatformCodegenTest`). Decisions that resolved in
+the writing:
+
+- **Finding a plugin's manifest from its deploy path.** The manifest lists `catalog-aws`, but the
+  manifest lives beside the *composition* `Plugin.res`. The `-aws` root's own
+  `generate: generate-plugin --aws <Namespace> <srcDir>` script is the single existing record of
+  that delegation, so the generator reads `<srcDir>/capabilities.json` from it (after trying
+  `<path>/src/capabilities.json` directly, which covers a composition-package path). No new
+  hand-typed spelling of the relationship was introduced — the failure this stage removes.
+- **Provenance sits per-entry inside the list**, not above it: with several stores, each
+  `// <plugin>: <Component>.<field> @storageRef("<store>")` line rides directly on the entry its
+  rename would remove. A foreign store's comment keeps the qualified form.
+- **Deliberately not `prebuild`.** The plugins' CI builds re-emit `capabilities.json` before the
+  platform builds, so a `prebuild` regenerate would deploy a list that was never committed or
+  reviewed — the committed diff *is* the review gate the risks table leans on. `pnpm run
+  generate:platform` is a manual step in the three `platform-aws` packages; the risk table's
+  lockfile-style staleness check remains open as a possible follow-up (the `deployPlugin`
+  assertion covers the gap meanwhile).
+- All three example roots now read `~capabilities=PlatformCapabilities.capabilities` — dcb too,
+  whose generated list is empty, so a future `@storageRef` flows through a regenerate instead of a
+  hand edit. Regeneration verified byte-identical on all three; the `deploy-aws` template's
+  platform root is untouched (a templated deployment starts with no capabilities and adopts the
+  generator when its first declaration lands).
+
 ### 4. Write the format rule down
 
 D1 as a short section in the analysis, next to the manifest discussion. One paragraph and the table.
 The cost of not having it is that every future artifact re-argues it, and the arguments are not
 obvious from either format in isolation.
+
+**Done (2026-07-30).** Added to the analysis as *"The manifest's format — a rule, not a
+per-artifact debate"*, directly under §6 Option B.
 
 ## What this does not do
 

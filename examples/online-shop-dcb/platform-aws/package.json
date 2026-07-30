@@ -5,6 +5,7 @@
   "description": "Online Shop DCB — AWS platform deployment",
   "license": "Apache-2.0",
   "scripts": {
+    "generate:platform": "generate-platform ../deploy-manifest.yaml",
     "build": "rescript build"
   },
   "dependencies": {

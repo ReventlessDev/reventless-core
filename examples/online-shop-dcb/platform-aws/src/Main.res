@@ -11,4 +11,8 @@ module Platform = ReventlessAws.Platform.Make()
 let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
   ~hostUiBundle={},
+  // Empty today — no plugin declares a store. Generated all the same, so a
+  // future `@storageRef` flows through `pnpm run generate:platform` as a
+  // reviewable diff instead of a hand edit here.
+  ~capabilities=PlatformCapabilities.capabilities,
 )

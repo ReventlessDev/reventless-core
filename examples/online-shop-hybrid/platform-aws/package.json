@@ -5,6 +5,7 @@
   "description": "Online Shop Hybrid — AWS platform deployment",
   "license": "Apache-2.0",
   "scripts": {
+    "generate:platform": "generate-platform ../deploy-manifest.yaml",
     "build": "rescript build",
     "seed": "node src/SeedAws.res.mjs",
     "verify:client-publish": "node src/VerifyClientPublish.res.mjs",
