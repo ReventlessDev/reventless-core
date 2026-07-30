@@ -32,7 +32,7 @@ Stage 3's four components, per §7:
 | Component | State |
 |---|---|
 | `deployPlugin` coverage assertion | **Done.** Shipped as the follow-on to declared-store serving. |
-| `capabilities.json` per plugin | Not started — step 1 |
+| `capabilities.json` per plugin | **Done — step 1.** See the step for what was built and learned. |
 | `Capability_Inference` | Not started — step 2 |
 | `generate-platform` | Not started — step 3, and **narrower than the analysis proposed** |
 
@@ -145,6 +145,33 @@ Two constraints, both learned rather than assumed:
 **Verify:** a plugin with no `@storageRef` emits an empty list, not a missing file. Renaming a
 declaring field changes the manifest. The manifest's keys are byte-identical to the plugin's
 `requiredStores` at runtime — assert this in a test, since it is the whole contract.
+
+**Done (2026-07-30).** How the constraint resolved in practice: `requiredStores` is computed at
+runtime by `Plugin_Structure` from the compiled sury schemas, not at generation time — so "the same
+code path" meant *reflecting the compiled plugin*, not extending `generate-plugin` (which is a
+source scanner, i.e. exactly the second scan this step forbids). The pieces:
+
+- `Plugin_Structure`'s store walk now keeps each declaration site as a
+  `{store, component, field}` triple (`pluginStructure.requiredStoreDeclarations`, js_nullable like
+  its siblings), and `requiredStores` is **derived from those triples** — one walk, so provenance
+  and key set cannot disagree. Identical triples collapse (one store on a command and event field
+  of the same component is one site).
+- `Reventless.CapabilityManifest` (spec) renders the manifest *from* `requiredStores` itself, so
+  key-set byte-identity holds by construction; `PluginStructureTest` asserts it anyway, plus
+  provenance, the empty-list case, and the exact rendered bytes.
+- `emit-capabilities` (bin in `reventless-local`) dynamically imports the plugin's compiled
+  `Plugin.res.mjs`, applies it to the local platform — the same reflect-don't-parse strategy as the
+  domain graph — and writes `src/capabilities.json`. Wired as **`postbuild`** in all six
+  composition plugin packages (ungated, sibling of the `prebuild` generate step). The `-aws` roots
+  delegate to the composition packages, so the manifest lives beside the composition `Plugin.res`.
+- Verified live: hybrid/aggregates catalogs emit `Catalog.productImages` with three/two declaring
+  sites; the four store-less plugins emit `{"capabilities": []}`; re-emitting is byte-identical
+  (md5-checked).
+
+One consequence to know: the new pluginStructure field follows the js_nullable pattern, which is
+present-required on decode — plugin definitions persisted *before* this field existed no longer
+decode and must be re-emitted (the usual alpha-wipe/reconnect, same as when `requiredStores` itself
+landed).
 
 ### 2. `Capability_Inference` — declaration-first, heuristics as warnings
 

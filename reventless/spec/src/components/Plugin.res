@@ -379,6 +379,26 @@ type extensionPointDef = {
 // jsonableValidation inside the pluginStructure union variant payload.
 let extensionPointDefArrayOptionSchema = _jsNullable(S.array(extensionPointDefSchema), ())
 
+/**
+One field's store requirement, with its provenance.
+
+`store` is the same qualified `{plugin}.{store}` string `requiredStores`
+carries; `component` and `field` name the declaration site. The site matters
+because a requirement only ever changes by editing a field — when a rename
+removes a store from the manifest, the diff has to say which field caused it.
+*/
+@schema
+type requiredStoreDeclaration = {
+  store: string,
+  component: string,
+  field: string,
+}
+
+let requiredStoreDeclarationArrayOptionSchema = _jsNullable(
+  S.array(requiredStoreDeclarationSchema),
+  (),
+)
+
 @schema
 type pluginStructure = {
   readModels: array<queryableDef>,
@@ -409,6 +429,14 @@ type pluginStructure = {
    existed still decode (absent → None, read as []).
    */
   requiredStores: @s.matches(stringArrayOptionSchema) option<array<string>>,
+  /**
+   Provenance for `requiredStores`: one entry per declaring `(component, field)`
+   site, with `store` matching the qualified key above. `requiredStores` is
+   derived from this list, so the two cannot disagree. Optional and js_nullable
+   for the same reason as `extensionPoints`.
+   */
+  requiredStoreDeclarations: @s.matches(requiredStoreDeclarationArrayOptionSchema)
+  option<array<requiredStoreDeclaration>>,
 }
 
 let pluginStructureOptionSchema = _jsNullable(pluginStructureSchema, ())

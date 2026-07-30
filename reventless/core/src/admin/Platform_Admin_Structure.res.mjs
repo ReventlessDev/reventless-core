@@ -170,7 +170,8 @@ let structure = {
   inboundTranslationSlices: structure_inboundTranslationSlices,
   extensions: structure_extensions,
   extensionPoints: undefined,
-  requiredStores: undefined
+  requiredStores: undefined,
+  requiredStoreDeclarations: undefined
 };
 
 let pluginName = pluginId;

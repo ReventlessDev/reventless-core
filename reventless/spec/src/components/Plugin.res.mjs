@@ -178,6 +178,14 @@ let extensionPointDefSchema = S.schema(s => ({
 
 let extensionPointDefArrayOptionSchema = SuryResMjs.js_nullable(S.array(extensionPointDefSchema));
 
+let requiredStoreDeclarationSchema = S.schema(s => ({
+  store: s.m(S.string),
+  component: s.m(S.string),
+  field: s.m(S.string)
+}));
+
+let requiredStoreDeclarationArrayOptionSchema = SuryResMjs.js_nullable(S.array(requiredStoreDeclarationSchema));
+
 let pluginStructureSchema = S.schema(s => ({
   readModels: s.m(S.array(queryableDefSchema)),
   stateViewSlices: s.m(S.array(queryableDefSchema)),
@@ -188,7 +196,8 @@ let pluginStructureSchema = S.schema(s => ({
   inboundTranslationSlices: s.m(S.array(inboundTranslationSliceDefSchema)),
   extensions: s.m(S.array(extensionDefSchema)),
   extensionPoints: s.m(extensionPointDefArrayOptionSchema),
-  requiredStores: s.m(stringArrayOptionSchema)
+  requiredStores: s.m(stringArrayOptionSchema),
+  requiredStoreDeclarations: s.m(requiredStoreDeclarationArrayOptionSchema)
 }));
 
 let pluginStructureOptionSchema = SuryResMjs.js_nullable(pluginStructureSchema);
@@ -244,6 +253,8 @@ export {
   extensionDefSchema,
   extensionPointDefSchema,
   extensionPointDefArrayOptionSchema,
+  requiredStoreDeclarationSchema,
+  requiredStoreDeclarationArrayOptionSchema,
   pluginStructureSchema,
   pluginStructureOptionSchema,
   pluginDefinitionSchema,

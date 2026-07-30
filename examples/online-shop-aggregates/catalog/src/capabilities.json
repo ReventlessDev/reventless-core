@@ -1,0 +1,18 @@
+{
+  "capabilities": [
+    {
+      "kind": "ObjectStore",
+      "key": "Catalog.productImages",
+      "declaredBy": [
+        {
+          "component": "Product",
+          "field": "imageUrl"
+        },
+        {
+          "component": "Products",
+          "field": "imageUrl"
+        }
+      ]
+    }
+  ]
+}

@@ -130,4 +130,5 @@ let structure: pluginStructure = {
   extensions: [],
   extensionPoints: None,
   requiredStores: None,
+  requiredStoreDeclarations: None,
 }

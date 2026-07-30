@@ -481,23 +481,34 @@ let make = (
   // An unqualified store belongs to the declaring plugin, so every collected
   // entry is qualified to `{plugin}.{store}` — one shape, and the string is
   // directly the store's identity. Many fields legitimately name one store, so
-  // the result is deduplicated.
+  // the key set is deduplicated.
+  //
+  // Each collected entry keeps its declaration site `(component, field)` as
+  // provenance, and `requiredStores` is derived from the collected entries —
+  // one walk, so the capability manifest's provenance and the deploy's key set
+  // cannot come from different readings of the schemas.
 
-  let storesFromProperties = (properties: dict<S.t<unknown>>): array<string> =>
+  let storesFromProperties = (~component, properties: dict<S.t<unknown>>): array<
+    Reventless.Plugin.requiredStoreDeclaration,
+  > =>
     properties
     ->Dict.toArray
-    ->Array.filterMap(((_, fieldSchema)) =>
-      Reventless.StorageRef.getStore(fieldSchema)->Option.map(target =>
-        target.plugin->Option.getOr(name) ++ "." ++ target.store
-      )
+    ->Array.filterMap(((field, fieldSchema)) =>
+      Reventless.StorageRef.getStore(fieldSchema)->Option.map(target => {
+        Reventless.Plugin.store: target.plugin->Option.getOr(name) ++ "." ++ target.store,
+        component,
+        field,
+      })
     )
 
   // Commands and events are unions of per-variant objects; state is a single
   // object. Both reduce to "the properties of every object in this schema".
-  let storesFromSchema = (schema: S.t<unknown>): array<string> => {
+  let storesFromSchema = (~component, schema: S.t<unknown>): array<
+    Reventless.Plugin.requiredStoreDeclaration,
+  > => {
     let fromVariant = v =>
       switch v {
-      | S.Object({properties}) => storesFromProperties(properties)
+      | S.Object({properties}) => storesFromProperties(~component, properties)
       | _ => []
       }
     switch schema {
@@ -506,34 +517,65 @@ let make = (
     }
   }
 
-  let requiredStores =
+  let compareDeclarations = (
+    a: Reventless.Plugin.requiredStoreDeclaration,
+    b: Reventless.Plugin.requiredStoreDeclaration,
+  ) => {
+    let byStore = String.compare(a.store, b.store)
+    if byStore != Ordering.equal {
+      byStore
+    } else {
+      let byComponent = String.compare(a.component, b.component)
+      if byComponent != Ordering.equal {
+        byComponent
+      } else {
+        String.compare(a.field, b.field)
+      }
+    }
+  }
+
+  // Sorted so the emitted manifest is deterministic; identical triples collapse
+  // (one store named by a component's command field and again by its event
+  // field under the same field name is one declaration site).
+  let requiredStoreDeclarations =
     [
       aggregates->Array.flatMap((module(A: ReventlessInfra.Aggregate.T with type api = api)) =>
         Array.concat(
-          storesFromSchema(A.Spec.commandSchema->S.castToUnknown),
-          storesFromSchema(A.Spec.eventSchema->S.castToUnknown),
+          storesFromSchema(~component=A.Spec.name, A.Spec.commandSchema->S.castToUnknown),
+          storesFromSchema(~component=A.Spec.name, A.Spec.eventSchema->S.castToUnknown),
         )
       ),
       stateChangeSlices->Array.flatMap((module(SCS: ReventlessInfra.StateChangeSlice.T)) =>
         Array.concat(
-          storesFromSchema(SCS.Spec.commandSchema->S.castToUnknown),
-          storesFromSchema(SCS.Spec.eventSchema->S.castToUnknown),
+          storesFromSchema(~component=SCS.Spec.name, SCS.Spec.commandSchema->S.castToUnknown),
+          storesFromSchema(~component=SCS.Spec.name, SCS.Spec.eventSchema->S.castToUnknown),
         )
       ),
       stateViewSlices->Array.flatMap((module(SVS: ReventlessInfra.StateViewSlice.T)) =>
-        storesFromSchema(SVS.Spec.stateSchema->S.castToUnknown)
+        storesFromSchema(~component=SVS.Spec.name, SVS.Spec.stateSchema->S.castToUnknown)
       ),
       readModels->Array.flatMap((
         module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
-      ) => storesFromSchema(R.Spec.stateSchema->S.castToUnknown)),
+      ) => storesFromSchema(~component=R.Spec.name, R.Spec.stateSchema->S.castToUnknown)),
       automationSlices->Array.flatMap((module(AS: ReventlessInfra.AutomationSlice.T)) =>
-        storesFromSchema(AS.Spec.commandSchema->S.castToUnknown)
+        storesFromSchema(~component=AS.Spec.name, AS.Spec.commandSchema->S.castToUnknown)
       ),
       inboundTranslationSlices->Array.flatMap((
         module(ITS: ReventlessInfra.InboundTranslationSlice.T),
-      ) => storesFromSchema(ITS.Spec.commandSchema->S.castToUnknown)),
+      ) => storesFromSchema(~component=ITS.Spec.name, ITS.Spec.commandSchema->S.castToUnknown)),
     ]
     ->Array.flat
+    ->Array.toSorted(compareDeclarations)
+    ->Array.reduce([], (acc, d) =>
+      switch acc->Array.last {
+      | Some(prev) if prev == d => acc
+      | _ => acc->Array.concat([d])
+      }
+    )
+
+  let requiredStores =
+    requiredStoreDeclarations
+    ->Array.map(d => d.store)
     ->Belt.Set.String.fromArray
     ->Belt.Set.String.toArray
 
@@ -755,5 +797,6 @@ let make = (
     extensions: extensionDefs,
     extensionPoints: Some(extensionPointDefs),
     requiredStores: Some(requiredStores),
+    requiredStoreDeclarations: Some(requiredStoreDeclarations),
   }
 }

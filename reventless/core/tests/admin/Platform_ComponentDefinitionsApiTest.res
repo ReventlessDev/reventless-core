@@ -87,6 +87,7 @@ let structure: pluginStructure = {
   ],
   extensionPoints: None,
   requiredStores: None,
+  requiredStoreDeclarations: None,
 }
 
 let encoded = Platform_ComponentDefinitionsApi.encodePluginStructureEntry(
@@ -300,6 +301,7 @@ describe("allowedStates + statusField populated", () => {
     extensions: [],
     extensionPoints: None,
     requiredStores: None,
+    requiredStoreDeclarations: None,
   }
 
   let json =

@@ -3,6 +3,9 @@
   "version": "3.0.0-alpha.179",
   "description": "Local platform for Reventless (in-memory or SQLite backend, for development and testing without AWS)",
   "license": "Apache-2.0",
+  "bin": {
+    "emit-capabilities": "./emit-capabilities.mjs"
+  },
   "scripts": {
     "build": "rescript build",
     "start": "rescript watch",

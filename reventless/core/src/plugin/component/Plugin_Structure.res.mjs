@@ -5,6 +5,8 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
@@ -386,11 +388,18 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let match$3 = scored[0];
     return match$3[0];
   };
-  let storesFromSchema = schema => {
+  let storesFromSchema = (component, schema) => {
     let fromVariant = v => {
       if (v.type === "object") {
         let properties = v.properties;
-        return Stdlib_Array.filterMap(Object.entries(properties), param => Stdlib_Option.map(StorageRef$Reventless.getStore(param[1]), target => Stdlib_Option.getOr(target.plugin, name) + "." + target.store));
+        return Stdlib_Array.filterMap(Object.entries(properties), param => {
+          let field = param[0];
+          return Stdlib_Option.map(StorageRef$Reventless.getStore(param[1]), target => ({
+            store: Stdlib_Option.getOr(target.plugin, name) + "." + target.store,
+            component: component,
+            field: field
+          }));
+        });
       } else {
         return [];
       }
@@ -401,14 +410,38 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       return fromVariant(schema);
     }
   };
-  let requiredStores = Belt_SetString.toArray(Belt_SetString.fromArray([
-    aggregates.flatMap(A => storesFromSchema(A.Spec.commandSchema).concat(storesFromSchema(A.Spec.eventSchema))),
-    stateChangeSlices.flatMap(SCS => storesFromSchema(SCS.Spec.commandSchema).concat(storesFromSchema(SCS.Spec.eventSchema))),
-    stateViewSlices.flatMap(SVS => storesFromSchema(SVS.Spec.stateSchema)),
-    readModels.flatMap(R => storesFromSchema(R.Spec.stateSchema)),
-    automationSlices.flatMap(AS => storesFromSchema(AS.Spec.commandSchema)),
-    inboundTranslationSlices.flatMap(ITS => storesFromSchema(ITS.Spec.commandSchema))
-  ].flat()));
+  let compareDeclarations = (a, b) => {
+    let byStore = Primitive_string.compare(a.store, b.store);
+    if (byStore !== 0) {
+      return byStore;
+    }
+    let byComponent = Primitive_string.compare(a.component, b.component);
+    if (byComponent !== 0) {
+      return byComponent;
+    } else {
+      return Primitive_string.compare(a.field, b.field);
+    }
+  };
+  let requiredStoreDeclarations = Stdlib_Array.reduce([
+    aggregates.flatMap(A => storesFromSchema(A.Spec.name, A.Spec.commandSchema).concat(storesFromSchema(A.Spec.name, A.Spec.eventSchema))),
+    stateChangeSlices.flatMap(SCS => storesFromSchema(SCS.Spec.name, SCS.Spec.commandSchema).concat(storesFromSchema(SCS.Spec.name, SCS.Spec.eventSchema))),
+    stateViewSlices.flatMap(SVS => storesFromSchema(SVS.Spec.name, SVS.Spec.stateSchema)),
+    readModels.flatMap(R => storesFromSchema(R.Spec.name, R.Spec.stateSchema)),
+    automationSlices.flatMap(AS => storesFromSchema(AS.Spec.name, AS.Spec.commandSchema)),
+    inboundTranslationSlices.flatMap(ITS => storesFromSchema(ITS.Spec.name, ITS.Spec.commandSchema))
+  ].flat().toSorted(compareDeclarations), [], (acc, d) => {
+    let prev = Stdlib_Array.last(acc);
+    if (prev !== undefined) {
+      if (Primitive_object.equal(prev, d)) {
+        return acc;
+      } else {
+        return acc.concat([d]);
+      }
+    } else {
+      return acc.concat([d]);
+    }
+  });
+  let requiredStores = Belt_SetString.toArray(Belt_SetString.fromArray(requiredStoreDeclarations.map(d => d.store)));
   let visibilityTag = v => {
     if (v === "Public") {
       return;
@@ -554,7 +587,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     inboundTranslationSlices: inboundTranslationSliceDefs,
     extensions: extensionDefs,
     extensionPoints: extensionPointDefs,
-    requiredStores: requiredStores
+    requiredStores: requiredStores,
+    requiredStoreDeclarations: requiredStoreDeclarations
   };
 }
 

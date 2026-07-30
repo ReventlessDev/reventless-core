@@ -675,5 +675,74 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     testSync("a plugin declaring no stores collects none — not None", () =>
       expect(structure.requiredStores)->toEqual(Some([]))
     )
+
+    testSync("each requirement keeps its declaring (component, field) sites", () => {
+      // `documents` is declared on a command field AND an event field of the
+      // same component under the same field name — one declaration site, so
+      // the identical triples collapse to one entry.
+      let expected: array<Reventless.Plugin.requiredStoreDeclaration> = [
+        {store: "TestPlugin.documents", component: "AttachInvoice", field: "documentUrl"},
+        {store: "branding.logos", component: "AttachInvoice", field: "logoUrl"},
+      ]
+      expect(withStores.requiredStoreDeclarations)->toEqual(Some(expected))
+    })
+
+    // The manifest is a rendering of the structure. Its key set must be
+    // byte-identical to what the deployed plugin reports as `requiredStores`,
+    // because the deploy-time coverage assertion compares against exactly that
+    // — this equality is the whole contract of `capabilities.json`.
+    describe("capability manifest", () => {
+      let manifest = Reventless.CapabilityManifest.fromStructure(withStores)
+
+      testSync("keys are byte-identical to requiredStores", () =>
+        expect(manifest.capabilities->Array.map(c => c.key))->toEqual(
+          withStores.requiredStores->Option.getOr([]),
+        )
+      )
+
+      testSync("each entry carries its provenance", () => {
+        let entry =
+          manifest.capabilities->Array.find(c => c.key == "TestPlugin.documents")->Option.getOrThrow
+        let expected: array<Reventless.CapabilityManifest.provenance> = [
+          {component: "AttachInvoice", field: "documentUrl"},
+        ]
+        expect(entry.declaredBy)->toEqual(expected)
+      })
+
+      testSync("a structure declaring nothing yields an empty list, not a missing manifest", () =>
+        expect(Reventless.CapabilityManifest.fromStructure(structure).capabilities)->toEqual([])
+      )
+
+      testSync("rendering is deterministic and newline-terminated", () => {
+        let rendered = Reventless.CapabilityManifest.renderForStructure(withStores)
+        expect(rendered)->toBe(
+          `{
+  "capabilities": [
+    {
+      "kind": "ObjectStore",
+      "key": "TestPlugin.documents",
+      "declaredBy": [
+        {
+          "component": "AttachInvoice",
+          "field": "documentUrl"
+        }
+      ]
+    },
+    {
+      "kind": "ObjectStore",
+      "key": "branding.logos",
+      "declaredBy": [
+        {
+          "component": "AttachInvoice",
+          "field": "logoUrl"
+        }
+      ]
+    }
+  ]
+}
+`,
+        )
+      })
+    })
   })
 })
