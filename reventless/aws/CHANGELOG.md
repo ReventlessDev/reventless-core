@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.248 (2026-07-30)
+
+### Bug Fixes
+
+* **aws:** name the presign CORS headers so authorized uploads pass preflight ([1034a4a](https://github.com/ReventlessDev/reventless-core/commit/1034a4ab82a5c3017daf5aaec0b789eb3dc2c0e1))
+
+
 # 3.0.0-alpha.247 (2026-07-30)
 
 ### Bug Fixes

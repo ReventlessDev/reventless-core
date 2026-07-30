@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.183 (2026-07-30)
+
+### Bug Fixes
+
+* **local:** a row saved for the first time is Added, not Updated ([6947253](https://github.com/ReventlessDev/reventless-core/commit/6947253a94f9e5fdfeb42fd9268795c948871803))
+* **local:** publish live descriptors on the list-field channel clients subscribe to ([912940d](https://github.com/ReventlessDev/reventless-core/commit/912940dbd5d180b4b3222e5cb954362be2671594))
+
+
 # 3.0.0-alpha.182 (2026-07-30)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local

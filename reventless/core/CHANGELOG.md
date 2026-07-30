@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.195 (2026-07-30)
+
+### Bug Fixes
+
+* **core:** a command's field markers reach the wire, and its optional fields stay optional ([f1c1112](https://github.com/ReventlessDev/reventless-core/commit/f1c1112e9baa6b06e50097a5a618f49c9301cd0a))
+
+
 # 3.0.0-alpha.194 (2026-07-30)
 
 ### Bug Fixes
