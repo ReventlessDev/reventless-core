@@ -28,7 +28,12 @@ function make(name, param, param$1, param$2, param$3, param$4, scheduler, param$
   }, opts);
 }
 
+function finish() {
+  
+}
+
 export {
   make,
+  finish,
 }
 /* @pulumi/pulumi Not a pure module */

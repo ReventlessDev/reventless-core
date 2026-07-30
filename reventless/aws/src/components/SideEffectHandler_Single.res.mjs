@@ -50,7 +50,8 @@ function Make($star) {
     return component;
   };
   return {
-    make: make
+    make: make,
+    finish: Inner.finish
   };
 }
 

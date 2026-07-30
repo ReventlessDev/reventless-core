@@ -96,6 +96,32 @@ let addEventMappers = (
   aggregatesOutputs
 }
 
+// Side-effect handlers registered by Task_Builder, with the Output that tells us the
+// handler has reached its runtime builder. Registration happens inside an
+// `allCommandTopics` apply, so `make` returning is not enough — a synchronous
+// `finish()` would build the shared runtime before any handler had registered, or
+// worse, from only the first one.
+let taskSideEffectGates: array<Pulumi.Output.t<unit>> = []
+let taskSideEffectFinishFns: array<unit => unit> = []
+
+let registerTaskSideEffectHandler = (~gate, ~finish) => {
+  let _ = taskSideEffectGates->Array.push(gate)
+  let _ = taskSideEffectFinishFns->Array.push(finish)
+}
+
+// Provision side-effect handler runtimes once every task's handler is ready. Same
+// shape as `finishAggregates`: collect the gates, wait on all of them, then run the
+// finish functions. Adapters guard against repeat calls.
+let finishTasks = () =>
+  if taskSideEffectGates->Array.length > 0 {
+    let _ =
+      taskSideEffectGates
+      ->Pulumi.Output.all
+      ->Pulumi.Output.apply(_ =>
+        taskSideEffectFinishFns->Array.forEach(finishFn => finishFn())
+      )
+  }
+
 let readModelNamesForSourceName = Dict.make()
 let publishToReadModels = Dict.make()
 

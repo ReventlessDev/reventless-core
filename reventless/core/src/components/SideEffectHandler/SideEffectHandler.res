@@ -32,4 +32,15 @@ module type T = {
     ~extraEnvVars: dict<Pulumi.Input.t<string>>=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
+
+  /** Provision the runtime for every handler registered by `make`.
+   *
+   * Adapters that share one runtime across all side-effect handlers can only build
+   * it once every handler has registered, so nothing is provisioned by `make`
+   * alone. Every other component type has this seam
+   * (`ReadModel_Builder.finish`, `Aggregate_Builder.finish`, …); the side-effect
+   * handler went without one, which is why its Lambda was never created. Call it
+   * after the last handler is constructed — `Builder_Helpers.finishTasks` gates it
+   * on their readiness. Idempotent. */
+  let finish: unit => unit
 }

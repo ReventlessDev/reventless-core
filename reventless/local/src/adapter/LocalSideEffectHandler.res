@@ -43,3 +43,6 @@ let make = (
     ~opts=opts,
   )
 }
+
+// No shared runtime to provision — side effects run in process.
+let finish = () => ()

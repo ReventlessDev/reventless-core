@@ -1,26 +1,29 @@
 # Plan: the create path for a new plugin stack
 
 **Date:** 2026-07-29, updated 2026-07-30
-**Status:** **1b fixed and deploy-verified** — `ordering-aws` now completes `up` and exports its
-event mapper. **1a is not fixed after all**: it replaced a crash with a silently missing Lambda, and
-the deeper truth is that a side-effect handler's Lambda has *never* been provisioned on AWS by any
-path — reopened below as **defect 3**. **2 untouched**. None of this affects an existing stack.
+**Status:** **`ordering-aws` now deploys from scratch.** 1b fixed and deploy-verified; 1a turned out
+not to be fixed — it replaced a crash with a silently missing Lambda, and the deeper truth was that a
+side-effect handler's Lambda had *never* been provisioned on AWS by any path — reopened and fixed as
+**defect 3**, verified by the `AllSideEffectHandlers` Lambda actually existing. **Defect 2 (catalog's
+AppSync 409) is the only thing still blocking a from-scratch stack.** None of this affects an existing
+stack.
+
+**Found by:** the first-ever deploy of `online-shop-aggregates`, standing up the `PlatformOwned`
+serving arm — see [declared-object-stores-without-host-ui-bundle.md](./declared-object-stores-without-host-ui-bundle.md).
 
 **Verification loop is much cheaper than recorded.** `pulumi preview` against a warm `pr-verify`
 stack reproduces the export-serialization failures in ~40s with no AWS writes; the plan previously
 assumed only a full `up` would do. Use preview to iterate, one `up` to confirm. The earlier note that
 previews skip `EventMapper_Builder`'s `.apply` holds only for a *cold* stack — once the inputs are
 known, the apply runs.
-**Found by:** the first-ever deploy of `online-shop-aggregates`, standing up the `PlatformOwned`
-serving arm — see [declared-object-stores-without-host-ui-bundle.md](./declared-object-stores-without-host-ui-bundle.md).
 
 ## Why these were invisible
 
 Every deployed plugin stack was created long ago and is only ever *updated*. Nothing had created one
 from scratch in a long time, so the create path had no coverage of any kind — not CI, not a preview,
-not a deploy. Two of the four defects that path contained have already been fixed (a missing
-generated deploy root, and SDK command names that named the Pulumi resource rather than the AppSync
-operation, `777c8ff7e`). These are the remaining two.
+not a deploy. Two of the defects that path contained were fixed earlier (a missing generated deploy
+root, and SDK command names that named the Pulumi resource rather than the AppSync operation,
+`777c8ff7e`); 1b and 3 are fixed here; defect 2 remains.
 
 The shared lesson is worth stating separately from either fix: **"the deploy is green" has never
 meant "this stack could be built again."** An update-only path exercises a different code path from
@@ -109,12 +112,13 @@ plugin stack has ever constructed this component, which would explain a decade o
 a broken path. That `.apply` is also why the error is garbled rather than pointed: a throw inside an
 apply surfaces as an unresolved output, which `serializeEventMappersOutputs` then dereferences.
 
-### 1a — the serializing call site: NOT FIXED (see defect 3)
+### 1a — the serializing call site: superseded by defect 3
 
 `0aaef403a` removed the serialization error but did not create the Lambda. The builder it swapped in
-is read-model-specific, so the side-effect handler falls through its `None` arm and nothing is built.
-The crash became silence — the outcome this plan calls strictly worse. Kept below as written at the
-time, because the instrumentation that found the call site is still the useful part.
+is read-model-specific, so the side-effect handler fell through its `None` arm and nothing was built:
+the crash became silence, the outcome this plan calls strictly worse. Fixed properly in defect 3
+below. Kept as written at the time, because the instrumentation that found the call site is still the
+useful part.
 
 One instrumented run (a `console.error` with a stack trace in the emitted
 `RuntimeEnvironment_Lambda.res.mjs`, reverted after) named it outright:
@@ -205,7 +209,7 @@ the field is now unconditionally an Output.
 **Why only ordering:** the field resolves to `None` unless the aggregate declares EventMappings, per
 the gate above, so the same distribution table applies.
 
-## Defect 3 — a side-effect handler's Lambda is never provisioned on AWS
+## Defect 3 — a side-effect handler's Lambda is never provisioned on AWS: FIXED
 
 Found by reading the `up` log after 1b went green. The `up` reports success and the stack has six
 Lambdas; none of them runs `OrderNotifications`' side effects. In the log:
@@ -241,24 +245,48 @@ Consistent with both: **no deployed AWS stack has ever had a side-effect Lambda.
 sense — it is a deploy path that was never finished, kept invisible because no deployed example had a
 side-effect-bearing Task.
 
-**Decision needed before implementing** — the two gaps have one shared question:
+### The fix: shared Lambda, plus the missing finish seam
 
-1. **Shared Lambda.** Point the `_Per` arm at `SideEffectHandlerRuntime_Builder_Single`, register like
-   `_Single` does, and add the missing `finish` seam. Smallest change, reuses the compiled entry point
-   that already exists and is unit-tested (`SideEffectEntryPoint_OpsTest`). Cost: "per side effect
-   handler" then means one shared `AllSideEffectHandlers`, so the module name stops describing the
-   topology and the two arms become the same thing — which argues for collapsing them.
-2. **A real per-handler builder.** Write `SideEffectHandlerRuntime_Builder_PerSideEffectHandler`,
-   mirroring the read-model per-collector builder but over `sideEffectInfos` and
-   `SideEffectEntryPoint.mjs`. Keeps the strategy distinction honest and gives per-handler memory and
-   timeout tuning; costs a new module and a second registry to keep in step.
+**Chosen shape:** one shared `AllSideEffectHandlers`, reusing the compiled `SideEffectEntryPoint` that
+already exists and is unit-tested. `SideEffectHandler_PerSideEffectHandler` collapses to
+`include SideEffectHandler_Single.Make()` and carries a comment recording both wrong wirings, because
+the interesting part is *why* the second one type-checked. A real
+`SideEffectHandlerRuntime_Builder_PerSideEffectHandler` remains the option if per-handler memory and
+timeout tuning is ever wanted; the comment says where to hook it.
 
-Either way the `finish` seam is required, and that part is not optional.
+**The finish seam, and why it cannot be a plain call.** `finish` joins `SideEffectHandler.T`
+(implemented in the core builder, the AWS arm, and `LocalSideEffectHandler` as a no-op). Calling it
+straight after `make` would not work: registration into the runtime builder happens inside
+`SideEffectHandler_Builder`'s `allCommandTopics->Output.apply`, so when `make` returns nothing has
+registered yet, and a synchronous finish would build the shared Lambda from an empty — or worse,
+partial — spec list. So `Task_Builder` registers each handler with a **gate**, its `operations` Output,
+which the core builder sets at the end of `construct` after `forEventCollector` has run.
+`Builder_Helpers.finishTasks` waits on all the gates and then runs the finish functions —
+deliberately the same shape as `finishAggregates` next to it, which exists for the same reason.
+`Plugin_Helpers.createTasks` calls it once every task is constructed.
+
+**Verified on real AWS, not just by absence of error** — the check this defect existed for lack of:
+
+```
+Lambdas: … AllSideEffectHandlers …            (6 → 7, + role, role policy, event source mapping)
+HANDLER_CONFIG: {"handlers":[{"sideEffectModules":
+  ["…/src/Order/SideEffect/Order_EmailNotification.res.mjs"],
+  "sourceUrn":"…table/OrderAggrEventLog-…/stream/…",
+  "comp":"SideEffectHandler(OrderNotifications)","plugin":"Ordering"}]}
+EventSourceMapping: Enabled, bound to the OrderAggrEventLog stream
+```
+
+The `no bundled info registered` warning is gone. Build clean, zero warnings, 2295/2295.
+
+**Blast radius is one example.** `online-shop-aggregates/ordering` is the only package in the repo with
+a side-effect-bearing Task, so `finishTasks` is a no-op for hybrid and dcb and no existing stack gains a
+Lambda. That is also why this went unnoticed for so long.
 
 **Also still live, one line above the fix site:** `Task_Builder_PerBucket` itself binds
 `EventCollectorRuntimeBuilder` to core's serializing
 `EventCollectorRuntime_Builder_PerEventCollector.Make(…)` — the same class of leak 1a chased, unaudited
 as to whether it is reached. `RuntimeEnvironment_Lambda.res:21` names both this and the side-effect arm.
+Worth an audit, since the failure mode is silence.
 
 ## Defect 2 — AppSync 409 on data-source create
 
@@ -291,12 +319,9 @@ this is recorded rather than done.
 
 ## Sequencing
 
-**Ordering now deploys.** 1b is closed. What remains: **2 blocks catalog** (a hard failure), and **3
-blocks nothing visibly** — the deploy is green and the side effects simply never run. Independent of
-each other; 2 is the one that stops a stack from being created.
-
-Both need a decision before code: 2 between the retrying provider and `dependsOn` chaining, 3 between a
-shared and a per-handler Lambda. Neither reproduces on an existing stack.
+**Ordering deploys; 1b and 3 are closed.** What remains is **defect 2, which blocks catalog** — and it
+is the only hard failure left on the create path. It needs a decision before code: the retrying dynamic
+provider, or `dependsOn` chaining. It does not reproduce on an existing stack.
 
 **Verification, corrected.** `preview` against a warm `pr-verify` stack reproduces the export-side
 failures in ~40s with no AWS writes — that is the iteration loop, and it is an order of magnitude

@@ -93,6 +93,17 @@ module Make = (
         )
       )
 
+    // The handler's runtime is provisioned by `SpecificSideEffectHandler.finish()`,
+    // not by `make` — see `SideEffectHandler.T.finish`. Register it with the gate that
+    // says this handler has reached its runtime builder: `operations` is set at the end
+    // of the builder's construct, after `forEventCollector` has run.
+    sideEffectHandler->Option.forEach(handler =>
+      Builder_Helpers.registerTaskSideEffectHandler(
+        ~gate=handler->Component.operations->Pulumi.Output.apply(_ => ()),
+        ~finish=SpecificSideEffectHandler.finish,
+      )
+    )
+
     let taskActionsHandler = (taskActions, operations: option<SideEffectHandler.operations>) => {
       taskActions
       ->Array.map(async taskAction => {

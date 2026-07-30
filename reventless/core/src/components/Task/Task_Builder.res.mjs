@@ -12,6 +12,7 @@ import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as RuntimeHints$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/RuntimeHints.res.mjs";
+import * as Builder_Helpers$ReventlessCore from "../Builder_Helpers.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -40,6 +41,7 @@ function Make(Spec) {
       let publishCommands = (aggregateName, cmdJsons) => Stdlib_Option.getOrThrow(publishToAggregates[aggregateName], undefined)(cmdJsons);
       let config = Spec.setup(queryEngine, queryBucketName, opts);
       let sideEffectHandler = Stdlib_Option.map(config.sideEffects, sideEffects => SpecificSideEffectHandler.make(extra$1, sideEffects, Aggregate$ReventlessCore.allEventTopics(allAggregates), allCommandTopics, undefined, queryEngine, scheduler, resourceNaming, undefined, undefined, undefined, opts));
+      Stdlib_Option.forEach(sideEffectHandler, handler => Builder_Helpers$ReventlessCore.registerTaskSideEffectHandler(Component$ReventlessCore.operations(handler).apply(param => {}), SpecificSideEffectHandler.finish));
       let taskActionsHandler = (taskActions, operations) => Util_Promise$ReventlessCore.toUnit(Promise.all(taskActions.map(async taskAction => {
         switch (taskAction.TAG) {
           case "PublishCommands" :

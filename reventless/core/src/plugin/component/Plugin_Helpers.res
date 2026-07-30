@@ -434,6 +434,8 @@ let createTasks = (
         ~opts=Some(opts),
       ))
     )
+  // Every task is constructed, so every side-effect handler has registered.
+  finishTasks()
   tasksOutputs.contents
 }
 

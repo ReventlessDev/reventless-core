@@ -248,6 +248,7 @@ function createTasks(tasks, aggregatesOutputs, scheduler, schedulerRoleUrn, publ
     let bucketName = bucketNameOpt !== undefined ? bucketNameOpt : "Bucket";
     return ResourceQueryRuntime$ReventlessCore.bucketNameOfTaskExn(tasksOutputs.contents, taskName, bucketName);
   }, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, resourceNaming, aggregatesOutputs, componentRuntime[SpecificTask.Spec.name], opts)));
+  Builder_Helpers$ReventlessCore.finishTasks();
   return tasksOutputs.contents;
 }
 
@@ -919,6 +920,14 @@ let finishAggregates = Builder_Helpers$ReventlessCore.finishAggregates;
 
 let addEventMappers = Builder_Helpers$ReventlessCore.addEventMappers;
 
+let taskSideEffectGates = Builder_Helpers$ReventlessCore.taskSideEffectGates;
+
+let taskSideEffectFinishFns = Builder_Helpers$ReventlessCore.taskSideEffectFinishFns;
+
+let registerTaskSideEffectHandler = Builder_Helpers$ReventlessCore.registerTaskSideEffectHandler;
+
+let finishTasks = Builder_Helpers$ReventlessCore.finishTasks;
+
 let readModelNamesForSourceName = Builder_Helpers$ReventlessCore.readModelNamesForSourceName;
 
 let publishToReadModels = Builder_Helpers$ReventlessCore.publishToReadModels;
@@ -974,6 +983,10 @@ export {
   createAggregatesWithoutEventMappers,
   finishAggregates,
   addEventMappers,
+  taskSideEffectGates,
+  taskSideEffectFinishFns,
+  registerTaskSideEffectHandler,
+  finishTasks,
   readModelNamesForSourceName,
   publishToReadModels,
   finishReadModels,

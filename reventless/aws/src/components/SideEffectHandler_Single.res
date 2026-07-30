@@ -59,4 +59,8 @@ module Make = (): ReventlessCore.SideEffectHandler.T => {
 
     component
   }
+
+  // Builds the shared "AllSideEffectHandlers" Lambda from everything registered
+  // above. Nothing exists until this runs.
+  let finish = Inner.finish
 }

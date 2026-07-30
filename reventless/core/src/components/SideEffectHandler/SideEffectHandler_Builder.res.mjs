@@ -55,8 +55,10 @@ function Make(RuntimeEnvironment) {
         });
       }, opts);
     };
+    let finish = () => EventCollectorRuntimeBuilder.finish();
     return {
-      make: make
+      make: make,
+      finish: finish
     };
   }));
 }

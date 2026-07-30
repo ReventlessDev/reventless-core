@@ -122,4 +122,6 @@ module Make = (
       ~opts,
     )
   }
+
+  let finish = () => EventCollectorRuntimeBuilder.finish()
 }

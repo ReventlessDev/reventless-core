@@ -48,6 +48,24 @@ function addEventMappers(allEventTopics, queryEngine) {
   return aggregatesOutputs;
 }
 
+let taskSideEffectGates = [];
+
+let taskSideEffectFinishFns = [];
+
+function registerTaskSideEffectHandler(gate, finish) {
+  taskSideEffectGates.push(gate);
+  taskSideEffectFinishFns.push(finish);
+}
+
+function finishTasks() {
+  if (taskSideEffectGates.length !== 0) {
+    Pulumi.all(taskSideEffectGates).apply(param => {
+      taskSideEffectFinishFns.forEach(finishFn => finishFn());
+    });
+    return;
+  }
+}
+
 let readModelNamesForSourceName = {};
 
 let publishToReadModels = {};
@@ -131,6 +149,10 @@ export {
   createAggregatesWithoutEventMappers,
   finishAggregates,
   addEventMappers,
+  taskSideEffectGates,
+  taskSideEffectFinishFns,
+  registerTaskSideEffectHandler,
+  finishTasks,
   readModelNamesForSourceName,
   publishToReadModels,
   finishReadModels,

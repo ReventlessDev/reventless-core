@@ -47,9 +47,7 @@ function Make(Spec) {
     connect: TaskBucket_S3$ReventlessAws.connect,
     makeHandler: TaskBucket_S3$ReventlessAws.makeHandler,
     make: TaskBucket_S3$ReventlessAws.make
-  })({
-    make: SideEffectHandler_PerSideEffectHandler$ReventlessAws.make
-  })(Defaults);
+  })(SideEffectHandler_PerSideEffectHandler$ReventlessAws)(Defaults);
 }
 
 let EventCollectorChannel;
