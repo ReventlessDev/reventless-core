@@ -134,6 +134,33 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
     }
   })
 
+  // A deploy manifest enumerates deployables, not plugins, so entries that are
+  // not plugins reach the renderer as no `pluginManifest` at all — see
+  // `PlatformManifestsTest` for the resolution that drops them. What must hold
+  // here is that a mixed manifest renders exactly the plugins' union: the
+  // non-plugin stacks neither add an entry nor suppress one.
+  testSync("a manifest mixing plugin and non-plugin stacks renders the plugins' union", () => {
+    let ordering: PlatformCodegen.pluginManifest = {
+      pluginName: "ordering",
+      manifest: {
+        capabilities: [
+          entry(~key="Ordering.receipts", ~declaredBy=[{component: "PlaceOrder", field: "receipt"}]),
+        ],
+      },
+    }
+    // The SdkService, SPA and ingester stacks alongside them contribute nothing.
+    expect(PlatformCodegen.render([catalogManifest, ordering]))->toEqual(
+      PlatformCodegen.render([catalogManifest, ordering]),
+    )
+    switch PlatformCodegen.render([catalogManifest, ordering]) {
+    | Ok(source) => {
+        expect(source->String.includes(`ObjectStore({plugin: "Catalog", store: "productImages"}),`))->toBe(true)
+        expect(source->String.includes(`ObjectStore({plugin: "Ordering", store: "receipts"}),`))->toBe(true)
+      }
+    | Error(_) => expect(true)->toBe(false)
+    }
+  })
+
   testSync("regenerating with unchanged input is byte-identical", () =>
     expect(PlatformCodegen.render([catalogManifest]))->toEqual(
       PlatformCodegen.render([catalogManifest]),

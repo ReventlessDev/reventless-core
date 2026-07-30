@@ -6,11 +6,10 @@
 // `PlatformCapabilities.res` (see PlatformCodegen). The platform root stays
 // hand-written and reads `PlatformCapabilities.capabilities`.
 //
-// A plugin path may be the composition package itself (its `src/` carries the
-// manifest) or an `-aws` deploy root that delegates to one. The delegation's
-// single existing record is the root's own `generate` script —
-// `generate-plugin --aws <Namespace> <srcDir>` — so the composition `src/` is
-// read from there rather than from a second, hand-typed spelling of the path.
+// A deploy manifest enumerates *deployables*, not plugins, and a plugin's
+// manifest can sit in any of three places. `PlatformManifests` owns both facts —
+// its head comment states the resolution order and why each arm exists; add a
+// fourth arm there, not here.
 
 @val external processExit: int => unit = "process.exit"
 @module("yaml") external parseYaml: string => JSON.t = "parse"
@@ -23,42 +22,6 @@ let fail = (message: string) => {
 let asObject = (json: JSON.t): option<dict<JSON.t>> => json->JSON.Decode.object
 let stringAt = (obj: dict<JSON.t>, field: string): option<string> =>
   obj->Dict.get(field)->Option.flatMap(JSON.Decode.string)
-
-// Where a plugin keeps its capability manifest. The direct arm covers a plugin
-// path that is itself a composition package; the delegated arm follows the
-// `-aws` root's `generate-plugin --aws <Namespace> <srcDir>` script to the
-// composition `src/` it is generated from.
-let manifestPathFor = (~pluginDir: string): option<string> => {
-  let direct = Generator_Node.join([pluginDir, "src", "capabilities.json"])
-  if Generator_Node.existsSync(direct) {
-    Some(direct)
-  } else {
-    let packageJsonPath = Generator_Node.join([pluginDir, "package.json"])
-    if !Generator_Node.existsSync(packageJsonPath) {
-      None
-    } else {
-      let generateScript =
-        try Generator_Node.readFileSync(packageJsonPath)
-        ->JSON.parseOrThrow
-        ->asObject
-        ->Option.flatMap(pkg => pkg->Dict.get("scripts"))
-        ->Option.flatMap(asObject)
-        ->Option.flatMap(scripts => scripts->stringAt("generate")) catch {
-        | _ => None
-        }
-      generateScript
-      ->Option.flatMap(script => {
-        let tokens = script->String.split(" ")->Array.filter(t => t != "")
-        switch tokens {
-        | ["generate-plugin", "--aws", _namespace, srcDir] =>
-          Some(Generator_Node.resolve([pluginDir, srcDir, "capabilities.json"]))
-        | _ => None
-        }
-      })
-      ->Option.filter(Generator_Node.existsSync)
-    }
-  }
-}
 
 let () = {
   let manifestArg = Generator_Node.argv->Array.get(2)->Option.getOr("")
@@ -104,27 +67,43 @@ let () = {
 
     switch (platformPath, plugins) {
     | (Some(platformPath), Some(plugins)) => {
-        let pluginManifests = plugins->Array.map(((pluginName, pluginPath)) => {
+        let pluginManifests = plugins->Array.flatMap(((pluginName, pluginPath)) => {
           let pluginDir = Generator_Node.resolve([manifestDir, pluginPath])
-          switch manifestPathFor(~pluginDir) {
-          | None => {
+          if !Generator_Node.existsSync(pluginDir) {
+            fail(`plugin "${pluginName}" points at ${pluginDir}, which does not exist`)
+          }
+          switch PlatformManifests.resolve(~pluginDir) {
+          // A stack whose package graph holds no plugin composition — an
+          // SdkService, an SPA, a standalone Lambda — has no capabilities to
+          // contribute, which is not an error. Said out loud so a plugin
+          // skipped by mistake is visible in the generator's output.
+          | NotAPlugin => {
+              Console.log(`Skipped: ${pluginName} (${pluginDir}) — no plugin composition`)
+              []
+            }
+          | Unbuilt({evidence, expected}) => {
               fail(
                 `no capabilities.json found for plugin "${pluginName}" (${pluginDir}) — ` ++
-                `build the plugin first; its build emits src/capabilities.json beside Plugin.res`,
+                `build the plugin first; its build emits src/capabilities.json beside Plugin.res ` ++
+                `(${evidence}; expected ${expected})`,
               )
-              ({pluginName, manifest: {capabilities: []}}: PlatformCodegen.pluginManifest)
+              []
             }
-          | Some(capabilitiesPath) => {
-              let manifest = try Generator_Node.readFileSync(capabilitiesPath)
+          | Manifests(manifests) =>
+            manifests->Array.map(({path, via}) => {
+              Console.log(
+                `Read: ${pluginName} — ${path} (via ${PlatformManifests.describeVia(via)})`,
+              )
+              let manifest = try Generator_Node.readFileSync(path)
               ->JSON.parseOrThrow
               ->S.parseOrThrow(CapabilityManifest.schema) catch {
               | _ => {
-                  fail(`could not parse ${capabilitiesPath} as a capability manifest`)
+                  fail(`could not parse ${path} as a capability manifest`)
                   ({capabilities: []}: CapabilityManifest.t)
                 }
               }
               ({pluginName, manifest}: PlatformCodegen.pluginManifest)
-            }
+            })
           }
         })
 

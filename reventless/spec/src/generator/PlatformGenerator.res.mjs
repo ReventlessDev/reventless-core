@@ -8,6 +8,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as PlatformCodegen$Reventless from "./PlatformCodegen.res.mjs";
+import * as PlatformManifests$Reventless from "./PlatformManifests.res.mjs";
 import * as CapabilityManifest$Reventless from "../components/CapabilityManifest.res.mjs";
 
 function fail(message) {
@@ -21,39 +22,6 @@ function asObject(json) {
 
 function stringAt(obj, field) {
   return Stdlib_Option.flatMap(obj[field], Stdlib_JSON.Decode.string);
-}
-
-function manifestPathFor(pluginDir) {
-  let direct = Nodepath.join(pluginDir, "src", "capabilities.json");
-  if (Nodefs.existsSync(direct)) {
-    return direct;
-  }
-  let packageJsonPath = Nodepath.join(pluginDir, "package.json");
-  if (!Nodefs.existsSync(packageJsonPath)) {
-    return;
-  }
-  let generateScript;
-  try {
-    generateScript = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(JSON.parse(Nodefs.readFileSync(packageJsonPath, "utf8"))), pkg => pkg["scripts"]), asObject), scripts => stringAt(scripts, "generate"));
-  } catch (exn) {
-    generateScript = undefined;
-  }
-  return Stdlib_Option.filter(Stdlib_Option.flatMap(generateScript, script => {
-    let tokens = script.split(" ").filter(t => t !== "");
-    if (tokens.length !== 4) {
-      return;
-    }
-    let match = tokens[0];
-    if (match !== "generate-plugin") {
-      return;
-    }
-    let match$1 = tokens[1];
-    if (match$1 !== "--aws") {
-      return;
-    }
-    let srcDir = tokens[3];
-    return Nodepath.resolve(pluginDir, srcDir, "capabilities.json");
-  }), prim => Nodefs.existsSync(prim));
 }
 
 let manifestArg = Stdlib_Option.getOr(process.argv[2], "");
@@ -88,32 +56,39 @@ if (manifestArg === "") {
   }));
   if (platformPath !== undefined) {
     if (plugins !== undefined) {
-      let pluginManifests = plugins.map(param => {
+      let pluginManifests = plugins.flatMap(param => {
         let pluginName = param[0];
         let pluginDir = Nodepath.resolve(manifestDir, param[1]);
-        let capabilitiesPath = manifestPathFor(pluginDir);
-        if (capabilitiesPath !== undefined) {
-          let manifest;
-          try {
-            manifest = S.parseOrThrow(JSON.parse(Nodefs.readFileSync(capabilitiesPath, "utf8")), CapabilityManifest$Reventless.schema);
-          } catch (exn) {
-            fail(`could not parse ` + capabilitiesPath + ` as a capability manifest`);
-            manifest = {
-              capabilities: []
-            };
-          }
-          return {
-            pluginName: pluginName,
-            manifest: manifest
-          };
+        if (!Nodefs.existsSync(pluginDir)) {
+          fail(`plugin "` + pluginName + `" points at ` + pluginDir + `, which does not exist`);
         }
-        fail(`no capabilities.json found for plugin "` + pluginName + `" (` + pluginDir + `) — build the plugin first; its build emits src/capabilities.json beside Plugin.res`);
-        return {
-          pluginName: pluginName,
-          manifest: {
-            capabilities: []
-          }
-        };
+        let manifests = PlatformManifests$Reventless.resolve(undefined, pluginDir);
+        if (typeof manifests !== "object") {
+          console.log(`Skipped: ` + pluginName + ` (` + pluginDir + `) — no plugin composition`);
+          return [];
+        }
+        if (manifests.TAG === "Manifests") {
+          return manifests._0.map(param => {
+            let path = param.path;
+            console.log(`Read: ` + pluginName + ` — ` + path + ` (via ` + PlatformManifests$Reventless.describeVia(param.via) + `)`);
+            let manifest;
+            try {
+              manifest = S.parseOrThrow(JSON.parse(Nodefs.readFileSync(path, "utf8")), CapabilityManifest$Reventless.schema);
+            } catch (exn) {
+              fail(`could not parse ` + path + ` as a capability manifest`);
+              manifest = {
+                capabilities: []
+              };
+            }
+            return {
+              pluginName: pluginName,
+              manifest: manifest
+            };
+          });
+        }
+        let match = manifests._0;
+        fail(`no capabilities.json found for plugin "` + pluginName + `" (` + pluginDir + `) — build the plugin first; its build emits src/capabilities.json beside Plugin.res ` + (`(` + match.evidence + `; expected ` + match.expected + `)`));
+        return [];
       });
       let message = PlatformCodegen$Reventless.render(pluginManifests);
       if (message.TAG === "Ok") {
@@ -135,6 +110,5 @@ export {
   fail,
   asObject,
   stringAt,
-  manifestPathFor,
 }
 /* manifestArg Not a pure module */
