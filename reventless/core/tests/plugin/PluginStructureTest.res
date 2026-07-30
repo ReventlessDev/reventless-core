@@ -93,6 +93,20 @@ module PsAttachInvoiceSlice: ReventlessInfra.StateChangeSlice.T = {
   let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
 
+module PsUploadAvatarSlice: ReventlessInfra.StateChangeSlice.T = {
+  module Spec = PsUploadAvatar
+  module Behavior = {
+    type state = PsUploadAvatar.state
+    let initialState = PsUploadAvatar.initialState
+    let evolve = PsUploadAvatar.evolve
+    let decide = PsUploadAvatar.decide
+    let moduleUrl = PsUploadAvatar.moduleUrl
+  }
+  let isAsync = false
+  type component = scsComponent
+  let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
+}
+
 module PsChangePhotoSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsChangePhoto
   module Behavior = {
@@ -772,6 +786,45 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
 `,
         )
       })
+    })
+  })
+
+  // Making a field optional says the value may be absent. It does not say the
+  // field stopped being a storage ref or a reference — but both walks read the
+  // marker through `Semantic.get`, and an optional field's marker sits on the
+  // schema inside the wrapper sury-ppx builds. Until that unwrap existed, adding
+  // a `?` to a field silently un-declared its store: nothing failed, an S3
+  // bucket just stopped being provisioned.
+  describe("optional carriers keep their declarations", () => {
+    let withOptional = Plugin_Structure.make(
+      ~name="TestPlugin",
+      ~stateChangeSlices=[module(PsUploadAvatarSlice)],
+    )
+
+    testSync("an optional storage ref still requires its store", () =>
+      expect(withOptional.requiredStores)->toEqual(Some(["TestPlugin.avatars"]))
+    )
+
+    // Declared on the command and on the event under one field name — the same
+    // collapse the required case makes, so optionality does not change arity.
+    testSync("and still carries one declaring site", () => {
+      let expected: array<Reventless.Plugin.requiredStoreDeclaration> = [
+        {
+          store: "TestPlugin.avatars",
+          component: "UploadAvatar",
+          field: "avatarUrl",
+          annotation: "avatars",
+        },
+      ]
+      expect(withOptional.requiredStoreDeclarations)->toEqual(Some(expected))
+    })
+
+    testSync("an optional reference is still collected", () => {
+      let cmd = (withOptional.stateChangeSlices->Array.getUnsafe(0)).commands->Array.getUnsafe(0)
+      let expected: array<Reventless.Plugin.fieldReference> = [
+        {fieldName: "referredBy", entity: "Customers", plugin: None},
+      ]
+      expect(cmd.references)->toEqual(expected)
     })
   })
 

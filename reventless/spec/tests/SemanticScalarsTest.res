@@ -50,6 +50,45 @@ describe("semantic scalars:", () => {
     )
   })
 
+  // An optional field's marker sits on the inner schema, because sury-ppx wraps
+  // the annotated `string` rather than re-annotating the wrapper. Every reader
+  // below went through `Semantic.get` and so read the wrapper and found nothing:
+  // an optional `@storageRef` field left its object store undeclared, which is
+  // an S3 bucket that never gets provisioned rather than a failing build.
+  describe("an optional field keeps its semantic:", () => {
+    let carries = (schema, ~id) => schema->S.castToUnknown->Semantic.has(~id)
+
+    testSync("undefined-wrapped (the `field?: t` shape)", () =>
+      expect(S.option(Email.schema)->carries(~id="email"))->toBe(true)
+    )
+    testSync("null-wrapped", () => expect(S.null(Url.schema)->carries(~id="url"))->toBe(true))
+
+    testSync("an optional storage ref still declares its store", () =>
+      expect(
+        S.option(StorageRef.forStore(~store="productImages"))
+        ->S.castToUnknown
+        ->StorageRef.getStore
+        ->Option.map(t => t.store),
+      )->toEqual(Some("productImages"))
+    )
+
+    testSync("an optional reference still names its target", () =>
+      expect(
+        S.option(Reference.to_("Product"))
+        ->S.castToUnknown
+        ->Reference.getTarget
+        ->Option.map(t => t.entity),
+      )->toEqual(Some("Product"))
+    )
+
+    // The unwrap follows a union with one non-null variant — the shape an
+    // optional field has. A real multi-variant union has no single inner schema
+    // whose semantic could speak for the whole, so it stays unread.
+    testSync("a multi-variant union carries no semantic of its own", () =>
+      expect(S.union([Email.schema, Url.schema])->carries(~id="email"))->toBe(false)
+    )
+  })
+
   describe("Email:", () => {
     let accepts = raw => Email.fromString(raw)->Result.isOk
 

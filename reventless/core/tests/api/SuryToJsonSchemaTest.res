@@ -606,6 +606,22 @@ describe("SuryToJsonSchema:", () => {
       )->toEqual(Some(JSON.Encode.string("string")))
     })
 
+    // An optional field's marker sits inside the wrapper sury-ppx builds around
+    // it, so this used to emit a plain nullable string: the field was a storage
+    // ref in the source and an untyped string on the wire. The semantic now
+    // survives, and it rides *beside* the nullable shape rather than replacing
+    // it — a reader still learns the value may be absent.
+    testSync("an optional storage-ref field keeps both its semantic and its nullability", () => {
+      let schema = S.schema(s =>
+        {"imageUrl": s.matches(S.option(Reventless.StorageRef.forStore(~store="productImages")))}
+      )->S.castToUnknown
+      let json = SuryToJsonSchema.deriveObjectSchema(schema)
+      expect(semanticOf(json, "imageUrl"))->toEqual(Some(JSON.Encode.string("storageRef")))
+      expect(
+        getPropertyOf(json, "imageUrl")->Option.flatMap(s => getProperty(s, "oneOf"))->Option.isSome,
+      )->toBe(true)
+    })
+
     testSync("a type-carried semantic beats an annotation naming the same field", () => {
       let withSpec = (schema, spec) =>
         schema->S.Metadata.set(~id=Reventless.StateAnnotations.stateAnnotationsId, spec)

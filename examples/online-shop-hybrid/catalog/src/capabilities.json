@@ -5,7 +5,22 @@
       "key": "Catalog.productImages",
       "declaredBy": [
         {
+          "component": "AddProduct",
+          "field": "imageUrl",
+          "annotation": "productImages"
+        },
+        {
           "component": "ChangeProductImage",
+          "field": "imageUrl",
+          "annotation": "productImages"
+        },
+        {
+          "component": "ImportProduct",
+          "field": "imageUrl",
+          "annotation": "productImages"
+        },
+        {
+          "component": "Products",
           "field": "imageUrl",
           "annotation": "productImages"
         }

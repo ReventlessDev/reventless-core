@@ -40,12 +40,37 @@ function showString(raw) {
   return JSON.stringify(raw);
 }
 
-function get(fieldSchema) {
-  return S.Metadata.get(fieldSchema, semanticId);
+function getFrom(_schema) {
+  while (true) {
+    let schema = _schema;
+    let found = S.Metadata.get(schema, semanticId);
+    if (found !== undefined) {
+      return found;
+    }
+    if (schema.type !== "union") {
+      return;
+    }
+    let match = schema.anyOf.filter(v => {
+      switch (v.type) {
+        case "null" :
+        case "undefined" :
+          return false;
+        default:
+          return true;
+      }
+    });
+    if (match.length !== 1) {
+      return;
+    }
+    _schema = match[0];
+    continue;
+  };
 }
 
+let get = getFrom;
+
 function has(fieldSchema, id) {
-  let s = S.Metadata.get(fieldSchema, semanticId);
+  let s = getFrom(fieldSchema);
   if (s !== undefined) {
     return s.id === id;
   } else {
@@ -59,6 +84,7 @@ export {
   mark,
   refined,
   showString,
+  getFrom,
   get,
   has,
 }

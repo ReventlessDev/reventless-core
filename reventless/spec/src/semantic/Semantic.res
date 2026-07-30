@@ -90,8 +90,43 @@ let refined = (base: S.t<'a>, ~id: string, ~check: 'a => result<'a, string>): S.
     reach forms through `validateInput`, so they quote the offending value. */
 let showString = (raw: string): string => raw->JSON.Encode.string->JSON.stringify
 
-/** The semantic a field's schema carries, if any. */
-let get = (fieldSchema: S.t<'a>): option<t> => S.Metadata.get(fieldSchema, ~id=semanticId)
+/**
+The semantic a field's schema carries, if any.
+
+An **optional** field keeps its marker one level down. The ppx annotates the
+field's `string`, and sury-ppx then wraps that schema in a union with
+`Undefined`/`Null`; the wrapper is a new schema and carries no metadata of its
+own. So a walk that reads only the outer schema sees `imageUrl?: string` as
+carrying no semantic at all — the store goes undeclared, the reference goes
+uncollected, the branded scalar loses its brand. Every reader converges here, so
+following the wrapper once here is what keeps "optional" a statement about
+presence rather than a way to lose the field's type.
+
+The outer schema is read first, so a marker set on the wrapper itself still wins.
+Only a union with exactly one non-null variant is followed: that is the shape an
+optional field has, and a genuine multi-variant union has no single inner schema
+whose semantic could stand for the whole.
+*/
+let rec getFrom = (schema: S.t<unknown>): option<t> =>
+  switch S.Metadata.get(schema, ~id=semanticId) {
+  | Some(_) as found => found
+  | None =>
+    switch schema {
+    | Union({anyOf}) =>
+      switch anyOf->Array.filter(v =>
+        switch v {
+        | Null(_) | Undefined(_) => false
+        | _ => true
+        }
+      ) {
+      | [inner] => getFrom(inner)
+      | _ => None
+      }
+    | _ => None
+    }
+  }
+
+let get = (fieldSchema: S.t<'a>): option<t> => fieldSchema->S.castToUnknown->getFrom
 
 /** Whether a field's schema carries this specific semantic. */
 let has = (fieldSchema: S.t<'a>, ~id: string): bool =>

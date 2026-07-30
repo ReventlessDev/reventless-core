@@ -1,12 +1,42 @@
 # Plan: an optional field hides its semantic marker from every schema walk
 
 **Date:** 2026-07-30
-**Status:** Backlog
+**Status:** Done (implemented on alpha 2026-07-30).
 **Repos:** `reventless-core` only.
 **Prompted by:** `docs/plans/done/product-image-optional-storage-ref.md`, which made
 `Catalog` product images optional and hit this as a *blocking risk*. It did not materialize there
 only because one carrier (`ChangeProductImage.imageUrl`) legitimately stayed required, so the
 `Catalog.productImages` store kept exactly one declarer. The gap itself was left unfixed.
+
+## Outcome (2026-07-30)
+
+All five steps implemented as written; the unwrap went into `Semantic.get` as planned, not into the
+call sites.
+
+The fix was proven to be load-bearing rather than assumed: with `Semantic.res` reverted and
+everything else in place, exactly the four new spec tests fail. The core fixture's compiled output
+was read back to confirm the field really is optional
+(`avatarUrl: s.m(S.option(StorageRef.forStore(undefined, "avatars")))` — marker on the inner
+schema), so the tests exercise the wrapper rather than passing trivially.
+
+`capabilities.json` went from one declarer to four (`AddProduct`, `ChangeProductImage`,
+`ImportProduct`, `Products`), which is the defect made visible: three of those fields had been
+declaring a store that nothing recorded.
+
+**The deploy is provably unaffected.** `PlatformCapabilities.res` gained three provenance *comments*
+and no new entry — the store was already listed via the one required carrier — and its compiled
+`PlatformCapabilities.res.mjs` came back byte-identical. Nothing the deploy executes changed, which
+settles the "does the S3 store still get provisioned" question more directly than a `pulumi preview`
+would.
+
+Blast radius checked and benign: `GraphQL_FragmentGenerator` and `SuryToJsonSchema` both unwrap
+`Semantic(_, inner)` and recurse, so `Semantic(sem, Nullable(...))` renders as a nullable field that
+now also carries its semantic. On the wire an optional storage ref emits `x-reventless-semantic`
+*beside* its `oneOf` nullable shape rather than in place of it — pinned by a new
+`SuryToJsonSchemaTest` case, since that is a published contract with a consumer outside this repo.
+
+Validation: root `pnpm run build` clean (zero warnings, no tracked output deleted); full suite
+2413 tests / 279 suites green; `pnpm run test:projects` reports all 14 projects discovering suites.
 
 ## The defect
 

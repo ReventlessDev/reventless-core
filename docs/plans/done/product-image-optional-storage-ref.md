@@ -40,7 +40,7 @@ optional and dropped out of the provenance walk. `capabilities.json` and the gen
 verified — so the S3 store is still provisioned. The general framework gap (the store-provisioning
 walk not unwrapping an optional to read the marker) is **left as a tracked follow-up**, not fixed
 here, since no productImages site needed all its declarers to be optional. It is tracked as
-`docs/plans/Backlog/semantic-marker-hidden-by-optional-wrapper.md`, which widens it to the real
+`docs/plans/done/semantic-marker-hidden-by-optional-wrapper.md`, which widens it to the real
 scope: the blind spot is in `Semantic.get`, so it costs `@ref`, `dateTime` and the branded scalars
 their markers on optional fields too, not just `@storageRef`.
 

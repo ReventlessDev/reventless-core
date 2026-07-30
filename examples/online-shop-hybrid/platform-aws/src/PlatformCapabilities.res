@@ -6,6 +6,9 @@
 // disappears from this list, the diff says which field's change removed it.
 
 let capabilities: array<ReventlessInfra.Platform.capability> = [
+  // catalog: AddProduct.imageUrl @storageRef("productImages")
   // catalog: ChangeProductImage.imageUrl @storageRef("productImages")
+  // catalog: ImportProduct.imageUrl @storageRef("productImages")
+  // catalog: Products.imageUrl @storageRef("productImages")
   ObjectStore({plugin: "Catalog", store: "productImages"}),
 ]
