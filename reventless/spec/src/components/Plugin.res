@@ -275,8 +275,10 @@ type queryableDef = {
 One emitted event of a write side, with its field schema. Mirrors `commandDef`
 but for the past-tense facts a write side produces: `name` is the event variant
 name (e.g. `OrderPlaced`), `schema` is the JSON Schema of that variant's payload
-(same `S.toJSONSchema` serialization as `commandDef.schema`, incl. `x-reventless-*`
-extensions and the `TAG` const), `references` its cross-entity field links.
+(same serialization as `commandDef.schema`: `SuryToJsonSchema.deriveObjectSchema`,
+so field-level `x-reventless-*` extensions are carried and the variant's `TAG`
+discriminator is not — the constructor name is already `name`), `references` its
+cross-entity field links.
 Carried so developer tools (the `reventless-dev` / VSCode domain graph) can show
 event field rows — AutoUI ignores it. */
 @schema

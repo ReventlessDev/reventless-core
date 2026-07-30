@@ -269,7 +269,14 @@ let make = (
         }
       ({
         Reventless.Plugin.name: variantName,
-        schema: (v->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
+        // The derived schema, not sury's raw one: `S.toJSONSchema` carries the
+        // shape and drops every `x-reventless-*` marker the PPX put on the
+        // fields, so a command's `@storageRef`/`@semantic`/`@ref` reached the
+        // wire on the read side and nowhere on the write side. A reader that
+        // matches a field against its setter — or picks the upload endpoint of
+        // the store a command argument declares — then has nothing to match on.
+        // `MCP_SchemaGenerator` already derives these same variant schemas.
+        schema: v->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
         level,
         aggregateIdField,
         // A non-exposed (`@noApi`) variant has no callable mutation field. For a
@@ -343,7 +350,9 @@ let make = (
         )
       ({
         Reventless.Plugin.name: variantName,
-        schema: (v->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
+        // Derived for the same reason as `commandDef.schema` above: an event's
+        // field markers are the write side's half of the same vocabulary.
+        schema: v->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
         references,
       }: Reventless.Plugin.eventDef)
     }

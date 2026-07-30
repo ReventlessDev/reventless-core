@@ -179,8 +179,18 @@ and withSemantic = (fieldSchema: JSON.t, sem: Reventless.Semantic.t): JSON.t =>
     JSON.Encode.object(obj)
   }
 
+// `optional` names the fields that may be absent; everything else is required.
+// It comes from the sury schema (`SchemaType.optionalFieldNames`) rather than
+// from the IR, which cannot answer for a reference or a DCB-tagged field — both
+// classify as `EntityId` before the nullable wrapper is ever examined.
+//
+// Defaulting to "all required" mattered nowhere while only read-model state came
+// through here: nothing validates a read schema. A command schema is the input
+// of a form, and a field listed as required is one the form refuses to submit
+// without — which turned `imageUrl?` into a picture every product had to have.
 and objectRefToJsonSchema = (
   ~annotations: option<Reventless.StateAnnotations.stateAnnotationSpec>=?,
+  ~optional: array<string>=[],
   fields: dict<SchemaType.schemaType>,
 ): JSON.t => {
   let props = Dict.make()
@@ -194,7 +204,9 @@ and objectRefToJsonSchema = (
     | None => baseSchema
     }
     props->Dict.set(fieldName, withAnnotations)
-    required->Array.push(fieldName)
+    if !(optional->Array.includes(fieldName)) {
+      required->Array.push(fieldName)
+    }
   })
   let entries: array<(string, JSON.t)> = [
     ("type", str("object")),
@@ -212,7 +224,11 @@ let deriveObjectSchema = (schema: S.t<unknown>): JSON.t =>
   switch SchemaType.fromSuryObject(~typeName="", schema) {
   | Some(fields) =>
     let annotations = Reventless.StateAnnotations.getSpec(schema)
-    let objSchema = objectRefToJsonSchema(~annotations?, fields)
+    let objSchema = objectRefToJsonSchema(
+      ~annotations?,
+      ~optional=SchemaType.optionalFieldNames(schema),
+      fields,
+    )
     // Surface component-level visibility on the top-level object schema.
     // Omitted entirely for the default `Public` (None) so schemas stay compact.
     switch annotations {

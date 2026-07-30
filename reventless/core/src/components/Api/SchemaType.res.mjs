@@ -150,6 +150,27 @@ function shapeOf(parentName, fieldName, schema) {
   }
 }
 
+function optionalFieldNames(schema) {
+  if (schema.type === "object") {
+    return Stdlib_Array.filterMap(Object.entries(schema.properties), param => {
+      let propSchema = param[1];
+      if (propSchema.type === "union" && propSchema.anyOf.some(v => {
+          switch (v.type) {
+            case "null" :
+            case "undefined" :
+              return true;
+            default:
+              return false;
+          }
+        })) {
+        return param[0];
+      }
+    });
+  } else {
+    return [];
+  }
+}
+
 function fromSuryObject(typeName, schema) {
   if (schema.type !== "object") {
     return;
@@ -176,6 +197,7 @@ export {
   isIdsFieldName,
   fromSury,
   shapeOf,
+  optionalFieldNames,
   fromSuryObject,
 }
 /* DcbTag-Reventless Not a pure module */

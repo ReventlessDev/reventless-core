@@ -549,26 +549,28 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     })
   })
 
+  // Shared by the read-side and write-side schema cases below, which ask the
+  // same question of the same emitter.
+  let getProperty = (json: JSON.t, key: string): option<JSON.t> =>
+    switch json->JSON.Decode.object {
+    | Some(obj) => obj->Dict.get(key)
+    | None => None
+    }
+
+  let getPropertyOf = (json: JSON.t, fieldName: string): option<JSON.t> =>
+    switch getProperty(json, "properties") {
+    | Some(props) =>
+      switch props->JSON.Decode.object {
+      | Some(obj) => obj->Dict.get(fieldName)
+      | None => None
+      }
+    | None => None
+    }
+
   // Phase 4: queryableDef.schema must carry x-reventless-* extension keys for
   // annotated state types. Plugin_Structure now uses SuryToJsonSchema.deriveObjectSchema
   // (annotation-aware) instead of S.toJSONSchema (metadata-blind).
   describe("queryableDef.schema propagates x-reventless-* annotations", () => {
-    let getProperty = (json: JSON.t, key: string): option<JSON.t> =>
-      switch json->JSON.Decode.object {
-      | Some(obj) => obj->Dict.get(key)
-      | None => None
-      }
-
-    let getPropertyOf = (json: JSON.t, fieldName: string): option<JSON.t> =>
-      switch getProperty(json, "properties") {
-      | Some(props) =>
-        switch props->JSON.Decode.object {
-        | Some(obj) => obj->Dict.get(fieldName)
-        | None => None
-        }
-      | None => None
-      }
-
     let parseSchema = (svs: Reventless.Plugin.queryableDef): JSON.t =>
       svs.schema->JSON.parseOrThrow
 
@@ -825,6 +827,37 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
         {fieldName: "referredBy", entity: "Customers", plugin: None},
       ]
       expect(cmd.references)->toEqual(expected)
+    })
+
+    // What `requiredStores` knows, the wire has to carry. A reader deciding
+    // which command fills a storage-ref field, or which store's endpoint an
+    // upload goes to, has only the command schema to go on.
+    testSync("the command schema carries the field's storage-ref marker", () => {
+      let cmd = (withOptional.stateChangeSlices->Array.getUnsafe(0)).commands->Array.getUnsafe(0)
+      let target =
+        cmd.schema
+        ->JSON.parseOrThrow
+        ->getPropertyOf("avatarUrl")
+        ->Option.flatMap(s => getProperty(s, "x-reventless-semantic-target"))
+        ->Option.flatMap(t => getProperty(t, "store"))
+        ->Option.flatMap(JSON.Decode.string)
+      expect(target)->toBe(Some("avatars"))
+    })
+
+    // A form submits what a schema says is required. `avatarUrl?` is optional in
+    // the spec, so listing it would make the picture mandatory in every UI that
+    // renders the command — the failure this pairs with, since carrying the
+    // marker is worth nothing if the field cannot be left empty.
+    testSync("an optional command argument is not required", () => {
+      let cmd = (withOptional.stateChangeSlices->Array.getUnsafe(0)).commands->Array.getUnsafe(0)
+      let required =
+        cmd.schema
+        ->JSON.parseOrThrow
+        ->getProperty("required")
+        ->Option.flatMap(JSON.Decode.array)
+        ->Option.getOr([])
+        ->Array.filterMap(JSON.Decode.string)
+      expect(required)->toEqual(["customerId"])
     })
   })
 

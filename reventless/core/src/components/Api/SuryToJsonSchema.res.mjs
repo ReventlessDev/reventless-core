@@ -177,7 +177,7 @@ function fromSchemaType(st) {
           ]
         ]);
       case "ObjectRef" :
-        return objectRefToJsonSchema(undefined, st._1);
+        return objectRefToJsonSchema(undefined, undefined, st._1);
       case "Enum" :
         return Object.fromEntries([
           [
@@ -221,7 +221,8 @@ function withSemantic(fieldSchema, sem) {
   return obj;
 }
 
-function objectRefToJsonSchema(annotations, fields) {
+function objectRefToJsonSchema(annotations, optionalOpt, fields) {
+  let optional = optionalOpt !== undefined ? optionalOpt : [];
   let props = {};
   let required = [];
   Object.entries(fields).forEach(param => {
@@ -229,7 +230,10 @@ function objectRefToJsonSchema(annotations, fields) {
     let baseSchema = fromSchemaType(param[1]);
     let withAnnotations = annotations !== undefined ? mergeAnnotations(baseSchema, fieldName, annotations) : baseSchema;
     props[fieldName] = withAnnotations;
-    required.push(fieldName);
+    if (!optional.includes(fieldName)) {
+      required.push(fieldName);
+      return;
+    }
   });
   let entries = [
     [
@@ -259,7 +263,7 @@ function deriveObjectSchema(schema) {
       ]]);
   }
   let annotations = StateAnnotations$Reventless.getSpec(schema);
-  let objSchema = objectRefToJsonSchema(annotations, fields);
+  let objSchema = objectRefToJsonSchema(annotations, SchemaType$ReventlessCore.optionalFieldNames(schema), fields);
   if (annotations === undefined) {
     return objSchema;
   }

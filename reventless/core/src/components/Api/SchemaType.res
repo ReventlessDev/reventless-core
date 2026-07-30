@@ -141,6 +141,42 @@ and shapeOf = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): s
   }
 }
 
+/**
+The names of an object's optional properties, read from sury rather than from
+the IR.
+
+The IR cannot answer this for every field. `shapeOf` classifies a DCB-tagged or
+`@ref` field as `EntityId` before it ever looks at the union sury wraps an
+`option<…>` in — correctly, since those markers now describe the field through
+that wrapper — so an optional reference reaches the IR as a plain `EntityId`
+with its optionality spent. Asking the source schema keeps the two questions
+apart: what a field *is*, and whether it has to be there.
+
+Top-level properties only. A nested object's own fields are emitted by the
+`ObjectRef` branch, which has no `required` of its own today.
+*/
+let optionalFieldNames = (schema: S.t<unknown>): array<string> =>
+  switch schema {
+  | Object({properties}) =>
+    properties
+    ->Dict.toArray
+    ->Array.filterMap(((propName, propSchema)) =>
+      switch propSchema {
+      | Union({anyOf}) =>
+        anyOf->Array.some(v =>
+          switch v {
+          | Null(_) | Undefined(_) => true
+          | _ => false
+          }
+        )
+          ? Some(propName)
+          : None
+      | _ => None
+      }
+    )
+  | _ => []
+  }
+
 let fromSuryObject = (~typeName: string, schema: S.t<unknown>): option<dict<schemaType>> =>
   switch schema {
   | Object({properties}) =>
