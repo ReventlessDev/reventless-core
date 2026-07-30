@@ -111,7 +111,18 @@ let broadcastStateChange = (~name: string, ~descriptor: JSON.t): unit => {
     ->Option.flatMap(JSON.Decode.string)
     ->Option.getOr("")
   if entityKey != "" {
-    let channel = `/default/${pathSegment(name)}/${pathSegment(entityKey)}`
+    // Channel root MUST equal what the host-shell subscribes to. AutoLive uses
+    // `queryField = listFieldName` (plural, plugin-qualified, e.g.
+    // "Catalog_Products"), not the read-model store name ("Products"). Translate
+    // through the same registry the AWS StateTopic wiring uses (aws/Platform.res)
+    // — publishing on the raw store name lands descriptors on a channel no client
+    // listens to, so the socket stays Open but no view ever refreshes.
+    let topicName =
+      ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry
+      ->Dict.get(name)
+      ->Option.map(qn => qn.listFieldName)
+      ->Option.getOr(name)
+    let channel = `/default/${pathSegment(topicName)}/${pathSegment(entityKey)}`
     broadcast(~channel, ~event=descriptor->JSON.stringify)
   }
 }

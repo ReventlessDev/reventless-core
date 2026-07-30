@@ -120,6 +120,36 @@ describe("LocalEvents_Server", () => {
       expect(sentFrames.contents->Array.length)->toBe(2)
     })
 
+    testSync("publishes on the plugin-qualified list field, not the store name", () => {
+      // The channel root the client subscribes on is the read model's
+      // `listFieldName` ("Catalog_Products"), not its store name ("Products").
+      // The publish must translate through the same registry the AWS StateTopic
+      // wiring uses — otherwise the descriptor lands on a channel no one listens
+      // to and the socket stays Open while no view refreshes.
+      let registry = ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry
+      registry->Dict.set(
+        "Products",
+        {
+          ReventlessCore.Api_Naming.singleFieldName: "Catalog_Product",
+          listFieldName: "Catalog_Products",
+          returnTypeName: "Catalog_Product",
+          pluralTypeName: "Catalog_Products",
+          includeIdParam: false,
+          connectionSpec: true,
+        },
+      )
+      let conn = makeConn()
+      LocalEvents_Server.handleFrame(
+        conn,
+        `{"type":"subscribe","id":"s","channel":"/default/Catalog-Products/*"}`,
+      )
+      LocalEvents_Server.broadcastStateChange(~name="Products", ~descriptor=descriptor(~id="SKU-1"))
+      // subscribe_success + a data frame ⇒ the descriptor reached the client's channel
+      expect(sentFrames.contents->Array.length)->toBe(2)
+      expect(sentFrames.contents->Array.getUnsafe(1)->frameField("type"))->toEqual(Some("data"))
+      registry->Dict.delete("Products")
+    })
+
     testSync("unsubscribe stops delivery", () => {
       let conn = makeConn()
       LocalEvents_Server.handleFrame(

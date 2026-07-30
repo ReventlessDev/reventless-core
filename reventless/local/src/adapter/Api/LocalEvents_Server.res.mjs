@@ -6,6 +6,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as LocalAuth$ReventlessLocal from "../Auth/LocalAuth.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -99,7 +100,8 @@ function broadcastStateChange(name, descriptor) {
   if (entityKey === "") {
     return;
   }
-  let channel = `/default/` + pathSegment(name) + `/` + pathSegment(entityKey);
+  let topicName = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[name], qn => qn.listFieldName), name);
+  let channel = `/default/` + pathSegment(topicName) + `/` + pathSegment(entityKey);
   broadcast(channel, JSON.stringify(descriptor));
 }
 
