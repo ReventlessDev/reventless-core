@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.193 (2026-07-30)
+
+### Bug Fixes
+
+* **spec:** read a semantic marker through an optional field's wrapper ([abebaa9](https://github.com/ReventlessDev/reventless-core/commit/abebaa9e6c73986765bb3de589ba0414eb0d85da))
+
+
 # 1.0.0-alpha.192 (2026-07-30)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

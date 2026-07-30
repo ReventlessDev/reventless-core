@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.15 (2026-07-30)
+
+### Features
+
+* **examples:** seed products with optional images; add upload-test PNGs ([a5205c8](https://github.com/ReventlessDev/reventless-core/commit/a5205c8c233a580cb7bd02989b14bb73d888b7d6))
+
+
 # 1.0.0-alpha.14 (2026-07-30)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-seed

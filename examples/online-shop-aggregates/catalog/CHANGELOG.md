@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.170 (2026-07-30)
+
+### Bug Fixes
+
+* **spec,core:** record the storageRef annotation instead of inferring it ([06fb5d6](https://github.com/ReventlessDev/reventless-core/commit/06fb5d671db91fb536acefd0c2db69d98671da39))
+
+
 # 3.0.0-alpha.169 (2026-07-30)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog
