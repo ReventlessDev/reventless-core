@@ -4,21 +4,7 @@ import * as EventCollector_Builder$ReventlessCore from "@reventlessdev/reventles
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as SideEffectHandler_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/SideEffectHandler/SideEffectHandler_Builder.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
-import * as EventCollectorRuntime_Builder_PerEventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/EventCollectorRuntime_Builder_PerEventCollector.res.mjs";
-
-let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_PerEventCollector$ReventlessCore.Make({
-  make: RuntimeEnvironment_Lambda$ReventlessAws.make,
-  groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-  extractCorrelationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCorrelationId,
-  extractCausationId: RuntimeEnvironment_Lambda$ReventlessAws.extractCausationId,
-  extractSentTimestamp: RuntimeEnvironment_Lambda$ReventlessAws.extractSentTimestamp,
-  extractRetryCount: RuntimeEnvironment_Lambda$ReventlessAws.extractRetryCount,
-  asEventHandler: prim => prim,
-  asEffectHandler: prim => prim
-})({
-  make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
-  connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
-});
+import * as EventCollectorRuntime_Builder_PerEventCollector$ReventlessAws from "../adapter/Runtime/EventCollectorRuntime_Builder_PerEventCollector.res.mjs";
 
 let include = SideEffectHandler_Builder$ReventlessCore.Make({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
@@ -44,11 +30,20 @@ let include = SideEffectHandler_Builder$ReventlessCore.Make({
 })({
   make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
   connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
-}))(EventCollectorRuntimeBuilder);
+}))({
+  EventCollectorChannel: {
+    make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
+    connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
+  },
+  forEventCollector: EventCollectorRuntime_Builder_PerEventCollector$ReventlessAws.forEventCollector,
+  finish: EventCollectorRuntime_Builder_PerEventCollector$ReventlessAws.finish
+});
 
 let EventCollectorChannel;
 
 let RuntimeEnvironment;
+
+let EventCollectorRuntimeBuilder;
 
 let make = include.make;
 
@@ -58,4 +53,4 @@ export {
   EventCollectorRuntimeBuilder,
   make,
 }
-/* EventCollectorRuntimeBuilder Not a pure module */
+/* include Not a pure module */

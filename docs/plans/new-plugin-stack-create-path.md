@@ -56,13 +56,112 @@ smoothing over: a silent missing Lambda is strictly worse than a crash.
 already uses `makeFromCodeAsset`, the compiled-entry-point path, which is why most components are
 unaffected.
 
-**Not yet pinned:** which component in `ordering` reaches it. `AllReadModels` updates successfully in
-the same run, so the failing Lambda is a different, newly-created one — the plausible candidates are
-the side-effect-bearing Task (`Task/OrderNotifications.res`) and the side effect
-(`Order/SideEffect/Order_EmailNotification.res`), which is consistent with the call-site comment
-naming "a side-effect-bearing Task" as the exposed surface, and with `online-shop-hybrid` having no
-equivalent component. Confirm this before converting anything — the conversion is per-builder, and
-converting the wrong one fixes nothing.
+**The trigger condition is the EventMapper, and it is confirmed from the crash site.** The TypeError's
+stack lands on `Plugin_Helpers.res.mjs:630` = `serializeEventMappersOutputs`, walking
+`Stdlib_Array.filterMap` → `Stdlib_Option.map(agg.eventMapper, …)` → `Output.flatMap`. So
+`agg.eventMapper` is `Some(x)` where `x` is not an Output — an EventMapper whose Lambda never
+materialised.
+
+[Aggregate_Builder.res:44](../../reventless/core/src/components/Aggregate/Aggregate_Builder.res#L44)
+gates it: `if EventMappings.mappings->Array.length > 0` builds the EventMapper, else `eventMapper`
+stays absent. So **only an aggregate that declares EventMappings reaches this path**, which explains
+the whole distribution of the failure exactly:
+
+| Example | EventMappings on an aggregate? | Outcome |
+|---|---|---|
+| `online-shop-hybrid` | no — slice-based | never builds an EventMapper, deploys fine |
+| `online-shop-aggregates` / catalog | no `_Mappings.res` | got far enough to fail on defect 2 instead |
+| `online-shop-aggregates` / ordering | yes — `Order/Aggregate/Order_Mappings.res` | **fails here** |
+
+Earlier guesses at the Task and the SideEffect were wrong; both are on compiled paths. That matters
+for the fix: it is not the call-site comment's "side-effect-bearing Task" surface, so the conversion
+target is whatever the EventMapper path uses, not one of the builders that comment names.
+
+**Reproduced locally, and the component is named.** A from-scratch `pulumi up` of `ordering-aws`
+against a throwaway platform stack reproduces the failure identically in about four minutes — a far
+better loop than a CI cycle. `pulumi stack export` on the half-built stack shows the EventMapper
+exists as a component while its Lambda does not:
+
+```
+reventless:EventMapper     OrderAggr
+reventless:EventCollector  OrderAggrEventMapper     ← no Lambda
+Lambdas created: AllAggregatesCmdHandler, AllReadModels, DeadLetterQueue,
+                 OrderingOrdersExtPointCmdHandler, OrderingPluginEventColl,
+                 OrderingPluginHeartbeat
+```
+
+So the target is the EventMapper's own EventCollector (`OrderAggrEventMapper`) — every other
+component got its Lambda from a compiled entry point.
+
+**A preview cannot substitute for `up` here** (untested but worth checking before relying on one):
+`EventMapper_Builder` creates its resources *inside* `Pulumi.Output.apply`
+([line 68](../../reventless/core/src/components/EventMapper/EventMapper_Builder.res#L68)), and Pulumi
+skips apply callbacks whose inputs are unknown during preview. If that holds, no preview of any
+plugin stack has ever constructed this component, which would explain a decade of green previews over
+a broken path. That `.apply` is also why the error is garbled rather than pointed: a throw inside an
+apply surfaces as an unresolved output, which `serializeEventMappersOutputs` then dereferences.
+
+### 1a — the serializing call site: FIXED
+
+One instrumented run (a `console.error` with a stack trace in the emitted
+`RuntimeEnvironment_Lambda.res.mjs`, reverted after) named it outright:
+
+```
+RuntimeEnvironment_Lambda.make("OrderNotificationsEventColl")
+  ← core EventCollectorRuntime_Builder_PerEventCollector.forEventCollector
+    ← core SideEffectHandler_Builder.res.mjs:39   (inside an Output.apply)
+```
+
+It is the **SideEffectHandler**, which vindicates the original call-site comment naming "a
+side-effect-bearing Task" as the exposed surface. An intermediate guess that the EventMapper was the
+culprit was wrong — the EventMapper appears in the *crash* (defect 1b) but not in the serialization.
+
+The defect was one mis-wired module. Two AWS arms instantiate the same core builder:
+
+```rescript
+// SideEffectHandler_Single.res — correct
+module EventCollectorRuntimeBuilder = SideEffectHandlerRuntime_Builder_Single       // AWS, compiled
+
+// SideEffectHandler_PerSideEffectHandler.res — the bug
+module EventCollectorRuntimeBuilder =
+  ReventlessCore.EventCollectorRuntime_Builder_PerEventCollector.Make(…)           // core, serializing
+```
+
+AWS already has a compiled `EventCollectorRuntime_Builder_PerEventCollector` with the same interface
+(`forEventCollector`, `finish`, both types, the channel); it is a plain module rather than a functor
+because it is already bound to `DynamoDbStream` and the Lambda environment. Swapping that one module
+reference removes the serialization error — verified against a from-scratch `up`, where
+`Error serializing` and `captured 'Effect'` are both gone.
+
+So no conversion work was needed: the compiled builder already existed, and only this arm had been
+left pointing at core's.
+
+## Defect 1b — `option<Pulumi.Output.t<_>>` on `Aggregate.outputs.eventMapper`
+
+With 1a fixed, the same `up` still fails with `TypeError: m.apply is not a function` — so this was
+never a downstream symptom of the serialization failure. It is an independent bug the first one was
+masking.
+
+[Plugin_Helpers.res:1248](../../reventless/core/src/plugin/component/Plugin_Helpers.res#L1248)
+resolves `pluginOutputs.aggregates` with `Output.flatMap`, then calls `Output.flatMap` again on
+`agg.eventMapper`'s inner value. Pulumi's `apply` **deeply unwraps nested outputs**, so by then that
+value is the resolved record rather than an Output — and `flatMap` is `map` over `.apply`, which a
+plain record does not have.
+
+The sharpest evidence that the *type* is the problem: [Aggregate.res:58](../../reventless/core/src/components/Aggregate/Aggregate.res#L58)
+performs the identical `Output.flatMap` on `outputs.eventMapper` and is correct, because it is not
+nested inside an enclosing apply. One expression, one type, two runtime natures decided purely by
+lexical position. That is precisely why `option<Pulumi.Output.t<'a>>` is banned in this repo's
+conventions; this is that pattern in the wild.
+
+**Fix:** move the field to the allowed shape — `Pulumi.Output.t<option<EventMapper.outputs>>`, output
+outside and option inside. Four sites: `Aggregate_Builder` (which already builds it inside an apply,
+so the option is available at the right depth), `Aggregate.res`, `Builder_Helpers`, and the
+serializer. Do **not** paper over it with a cast at the serializer — a cast is correct only at that
+one call depth, which restates the trap rather than removing it.
+
+**Why only ordering:** the field is absent unless the aggregate declares EventMappings, per the gate
+above, so the same distribution table applies.
 
 **Fix:** the documented one — an `_Ops.res` split plus `buildCodeArchive`, as already done for the
 presign service and the geocoder. `make` cannot simply be deleted: `Runtime.Environment` requires an
