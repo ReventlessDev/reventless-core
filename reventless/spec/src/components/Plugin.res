@@ -386,12 +386,20 @@ One field's store requirement, with its provenance.
 carries; `component` and `field` name the declaration site. The site matters
 because a requirement only ever changes by editing a field — when a rename
 removes a store from the manifest, the diff has to say which field caused it.
+
+`annotation` is the store exactly as the field spells it — bare for a store
+the declaring plugin owns, qualified for a foreign one. It is recorded rather
+than reconstructed: only here is the owning plugin unambiguous, so anything
+downstream would have to infer it by comparing a registered plugin name with
+whatever name a deploy manifest happened to use, and those were never required
+to match.
 */
 @schema
 type requiredStoreDeclaration = {
   store: string,
   component: string,
   field: string,
+  annotation: string,
 }
 
 let requiredStoreDeclarationArrayOptionSchema = _jsNullable(

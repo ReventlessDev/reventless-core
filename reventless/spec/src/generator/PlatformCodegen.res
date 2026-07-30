@@ -22,6 +22,7 @@ type provenance = {
   pluginName: string,
   component: string,
   field: string,
+  annotation: option<string>,
 }
 
 /** One capability the platform must provision: the qualified `{plugin}.{store}`
@@ -45,6 +46,7 @@ let union = (manifests: array<pluginManifest>): array<unionEntry> => {
           pluginName,
           component: site.component,
           field: site.field,
+          annotation: site.annotation,
         })
       switch byKey->Dict.get(entry.key) {
       | Some(existing) =>
@@ -71,17 +73,17 @@ let splitKey = (key: string): option<(string, string)> =>
     key->String.slice(~start=i + 1),
   ))
 
-// The provenance comment quotes the annotation as its author wrote it: a store
-// declared by its own plugin is unqualified, a foreign store keeps the
-// qualified form. The manifest carries only the deploy-manifest plugin name
-// (lowercase by convention) while the key carries the registered name, so the
-// comparison is case-insensitive — and it only shapes a comment.
-let annotationStore = (~pluginName, ~key): string =>
-  switch splitKey(key) {
-  | Some((keyPlugin, store)) if keyPlugin->String.toLowerCase == pluginName->String.toLowerCase => store
-  | _ => key
-  }
-
+// The provenance comment quotes the annotation as its author wrote it — taken
+// from the manifest, which recorded it at the one place the owning plugin was
+// unambiguous. Inferring it here is what this replaced: the manifest carries a
+// deploy-manifest entry name and the key carries the registered name, and no
+// rule relates the two (`platform-inspector` against `PlatformInspector` is an
+// ordinary pairing), so any comparison here eventually quotes a string that is
+// in no source file.
+//
+// A site with no recorded annotation predates the recording. It still names the
+// field, which is the comment's job; it just makes no claim about the source
+// text it cannot see.
 let renderEntry = (entry: unionEntry): result<array<string>, string> =>
   switch splitKey(entry.key) {
   | None =>
@@ -90,11 +92,13 @@ let renderEntry = (entry: unionEntry): result<array<string>, string> =>
     )
   | Some((plugin, store)) => {
       let comments =
-        entry.declaredBy->Array.map(site =>
-          `  // ${site.pluginName}: ${site.component}.${site.field} @storageRef(${quote(
-              annotationStore(~pluginName=site.pluginName, ~key=entry.key),
-            )})`
-        )
+        entry.declaredBy->Array.map(site => {
+          let site_ = `  // ${site.pluginName}: ${site.component}.${site.field}`
+          switch site.annotation {
+          | Some(annotation) => `${site_} @storageRef(${quote(annotation)})`
+          | None => site_
+          }
+        })
       let line = switch entry.kind {
       | ObjectStore => `  ObjectStore({plugin: ${quote(plugin)}, store: ${quote(store)}}),`
       }

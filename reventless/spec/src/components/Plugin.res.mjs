@@ -181,7 +181,8 @@ let extensionPointDefArrayOptionSchema = SuryResMjs.js_nullable(S.array(extensio
 let requiredStoreDeclarationSchema = S.schema(s => ({
   store: s.m(S.string),
   component: s.m(S.string),
-  field: s.m(S.string)
+  field: s.m(S.string),
+  annotation: s.m(S.string)
 }));
 
 let requiredStoreDeclarationArrayOptionSchema = SuryResMjs.js_nullable(S.array(requiredStoreDeclarationSchema));

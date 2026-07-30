@@ -8,7 +8,8 @@ let kindSchema = S.literal("ObjectStore");
 
 let provenanceSchema = S.schema(s => ({
   component: s.m(S.string),
-  field: s.m(S.string)
+  field: s.m(S.string),
+  annotation: s.m(S.option(S.string))
 }));
 
 let entrySchema = S.schema(s => ({
@@ -31,7 +32,8 @@ function fromStructure(structure) {
         if (d.store === key) {
           return {
             component: d.component,
-            field: d.field
+            field: d.field,
+            annotation: d.annotation
           };
         }
       })

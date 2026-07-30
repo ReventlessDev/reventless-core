@@ -6,11 +6,13 @@
       "declaredBy": [
         {
           "component": "Product",
-          "field": "imageUrl"
+          "field": "imageUrl",
+          "annotation": "productImages"
         },
         {
           "component": "Products",
-          "field": "imageUrl"
+          "field": "imageUrl",
+          "annotation": "productImages"
         }
       ]
     }

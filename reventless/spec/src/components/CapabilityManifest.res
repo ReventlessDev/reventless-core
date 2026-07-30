@@ -17,9 +17,14 @@ emits the platform's capability list from them.
 type kind = ObjectStore
 
 /** The declaration site: the component's spec name and the field carrying the
-    `@storageRef` annotation. */
+    `@storageRef` annotation, plus the store exactly as that field spells it.
+
+    `annotation` is optional only to keep reading a manifest emitted before it
+    existed: a plugin built earlier still parses, and a reader that cannot say
+    what the source says omits the claim rather than inventing one. Every
+    manifest emitted now carries it. */
 @schema
-type provenance = {component: string, field: string}
+type provenance = {component: string, field: string, annotation?: string}
 
 @schema
 type entry = {
@@ -50,7 +55,9 @@ let fromStructure = (structure: Plugin.pluginStructure): t => {
       kind: ObjectStore,
       key,
       declaredBy: declarations->Array.filterMap(d =>
-        d.store == key ? Some({component: d.component, field: d.field}) : None
+        d.store == key
+          ? Some({component: d.component, field: d.field, annotation: d.annotation})
+          : None
       ),
     }),
   }

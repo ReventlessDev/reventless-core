@@ -6,7 +6,8 @@
       "declaredBy": [
         {
           "component": "ChangeProductImage",
-          "field": "imageUrl"
+          "field": "imageUrl",
+          "annotation": "productImages"
         }
       ]
     }

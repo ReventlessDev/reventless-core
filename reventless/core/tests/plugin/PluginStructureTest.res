@@ -694,9 +694,22 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       // `documents` is declared on a command field AND an event field of the
       // same component under the same field name — one declaration site, so
       // the identical triples collapse to one entry.
+      // `annotation` is the source text, not the key: the own-plugin store is
+      // written bare and the foreign one qualified, which is exactly the
+      // distinction no downstream comparison can recover.
       let expected: array<Reventless.Plugin.requiredStoreDeclaration> = [
-        {store: "TestPlugin.documents", component: "AttachInvoice", field: "documentUrl"},
-        {store: "branding.logos", component: "AttachInvoice", field: "logoUrl"},
+        {
+          store: "TestPlugin.documents",
+          component: "AttachInvoice",
+          field: "documentUrl",
+          annotation: "documents",
+        },
+        {
+          store: "branding.logos",
+          component: "AttachInvoice",
+          field: "logoUrl",
+          annotation: "branding.logos",
+        },
       ]
       expect(withStores.requiredStoreDeclarations)->toEqual(Some(expected))
     })
@@ -718,7 +731,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
         let entry =
           manifest.capabilities->Array.find(c => c.key == "TestPlugin.documents")->Option.getOrThrow
         let expected: array<Reventless.CapabilityManifest.provenance> = [
-          {component: "AttachInvoice", field: "documentUrl"},
+          {component: "AttachInvoice", field: "documentUrl", annotation: "documents"},
         ]
         expect(entry.declaredBy)->toEqual(expected)
       })
@@ -738,7 +751,8 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       "declaredBy": [
         {
           "component": "AttachInvoice",
-          "field": "documentUrl"
+          "field": "documentUrl",
+          "annotation": "documents"
         }
       ]
     },
@@ -748,7 +762,8 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       "declaredBy": [
         {
           "component": "AttachInvoice",
-          "field": "logoUrl"
+          "field": "logoUrl",
+          "annotation": "branding.logos"
         }
       ]
     }

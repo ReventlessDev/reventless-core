@@ -447,11 +447,15 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         let properties = v.properties;
         return Stdlib_Array.filterMap(Object.entries(properties), param => {
           let field = param[0];
-          return Stdlib_Option.map(StorageRef$Reventless.getStore(param[1]), target => ({
-            store: Stdlib_Option.getOr(target.plugin, name) + "." + target.store,
-            component: component,
-            field: field
-          }));
+          return Stdlib_Option.map(StorageRef$Reventless.getStore(param[1]), target => {
+            let plugin = target.plugin;
+            return {
+              store: Stdlib_Option.getOr(target.plugin, name) + "." + target.store,
+              component: component,
+              field: field,
+              annotation: plugin !== undefined ? plugin + "." + target.store : target.store
+            };
+          });
         });
       } else {
         return [];

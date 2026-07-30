@@ -20,8 +20,8 @@ let catalogManifest: PlatformCodegen.pluginManifest = {
       entry(
         ~key="Catalog.productImages",
         ~declaredBy=[
-          {component: "AddProduct", field: "imageUrl"},
-          {component: "Products", field: "imageUrl"},
+          {component: "AddProduct", field: "imageUrl", annotation: "productImages"},
+          {component: "Products", field: "imageUrl", annotation: "productImages"},
         ],
       ),
     ],
@@ -72,7 +72,7 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
       pluginName: "ordering",
       manifest: {
         capabilities: [
-          entry(~key="Catalog.productImages", ~declaredBy=[{component: "PlaceOrder", field: "receiptUpload"}]),
+          entry(~key="Catalog.productImages", ~declaredBy=[{component: "PlaceOrder", field: "receiptUpload", annotation: "Catalog.productImages"}]),
         ],
       },
     }
@@ -90,8 +90,8 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
       pluginName: "catalog",
       manifest: {
         capabilities: [
-          entry(~key="Catalog.z", ~declaredBy=[{component: "C", field: "upload"}]),
-          entry(~key="Catalog.a", ~declaredBy=[{component: "C", field: "attachment"}]),
+          entry(~key="Catalog.z", ~declaredBy=[{component: "C", field: "upload", annotation: "z"}]),
+          entry(~key="Catalog.a", ~declaredBy=[{component: "C", field: "attachment", annotation: "a"}]),
         ],
       },
     }
@@ -106,7 +106,7 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
       pluginName: "catalog",
       manifest: {
         capabilities: [
-          entry(~key="branding.logos", ~declaredBy=[{component: "AttachInvoice", field: "logoUrl"}]),
+          entry(~key="branding.logos", ~declaredBy=[{component: "AttachInvoice", field: "logoUrl", annotation: "branding.logos"}]),
         ],
       },
     }
@@ -118,6 +118,59 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
         expect(
           source->String.includes(`ObjectStore({plugin: "branding", store: "logos"}),`),
         )->toBe(true)
+      }
+    | Error(_) => expect(true)->toBe(false)
+    }
+  })
+
+  // The defect this replaced: the comment used to be reconstructed by comparing
+  // the deploy-manifest entry name with the key's registered-name prefix,
+  // case-insensitively. A kebab-case entry name against a PascalCase registered
+  // name is an ordinary pairing that the comparison misses, and the fallback
+  // quoted the qualified key — a string in no source file, offered to a reader
+  // as the thing to grep for.
+  testSync("a kebab-case entry name still quotes the annotation as written", () => {
+    let inspector: PlatformCodegen.pluginManifest = {
+      pluginName: "platform-inspector",
+      manifest: {
+        capabilities: [
+          entry(
+            ~key="PlatformInspector.inspectorSnapshots",
+            ~declaredBy=[
+              {component: "SyncAlarmState", field: "urn", annotation: "inspectorSnapshots"},
+            ],
+          ),
+        ],
+      },
+    }
+    switch PlatformCodegen.render([inspector]) {
+    | Ok(source) => {
+        expect(
+          source->String.includes(
+            `// platform-inspector: SyncAlarmState.urn @storageRef("inspectorSnapshots")`,
+          ),
+        )->toBe(true)
+        expect(source->String.includes(`@storageRef("PlatformInspector.`))->toBe(false)
+      }
+    | Error(_) => expect(true)->toBe(false)
+    }
+  })
+
+  // A manifest emitted before the annotation was recorded. The comment still
+  // names the field — its actual job — and makes no claim it cannot support.
+  testSync("a site with no recorded annotation names the field and quotes nothing", () => {
+    let legacy: PlatformCodegen.pluginManifest = {
+      pluginName: "catalog",
+      manifest: {
+        capabilities: [
+          entry(~key="Catalog.productImages", ~declaredBy=[{component: "AddProduct", field: "imageUrl"}]),
+        ],
+      },
+    }
+    switch PlatformCodegen.render([legacy]) {
+    | Ok(source) => {
+        expect(source->String.includes("// catalog: AddProduct.imageUrl"))->toBe(true)
+        expect(source->String.includes("@storageRef"))->toBe(false)
       }
     | Error(_) => expect(true)->toBe(false)
     }
@@ -144,7 +197,7 @@ let capabilities: array<ReventlessInfra.Platform.capability> = [
       pluginName: "ordering",
       manifest: {
         capabilities: [
-          entry(~key="Ordering.receipts", ~declaredBy=[{component: "PlaceOrder", field: "receipt"}]),
+          entry(~key="Ordering.receipts", ~declaredBy=[{component: "PlaceOrder", field: "receipt", annotation: "receipts"}]),
         ],
       },
     }

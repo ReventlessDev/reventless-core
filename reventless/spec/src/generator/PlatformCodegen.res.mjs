@@ -14,7 +14,8 @@ function union(manifests) {
       let sites = entry.declaredBy.map(site => ({
         pluginName: pluginName,
         component: site.component,
-        field: site.field
+        field: site.field,
+        annotation: site.annotation
       }));
       let existing = byKey[entry.key];
       if (existing !== undefined) {
@@ -46,15 +47,6 @@ function splitKey(key) {
   ]);
 }
 
-function annotationStore(pluginName, key) {
-  let match = splitKey(key);
-  if (match !== undefined && match[0].toLowerCase() === pluginName.toLowerCase()) {
-    return match[1];
-  } else {
-    return key;
-  }
-}
-
 function renderEntry(entry) {
   let match = splitKey(entry.key);
   if (match === undefined) {
@@ -63,7 +55,15 @@ function renderEntry(entry) {
       _0: `malformed capability key ` + JSON.stringify(entry.key) + ` — expected "{plugin}.{store}" (is the plugin's capabilities.json hand-edited?)`
     };
   }
-  let comments = entry.declaredBy.map(site => `  // ` + site.pluginName + `: ` + site.component + `.` + site.field + ` @storageRef(` + JSON.stringify(annotationStore(site.pluginName, entry.key)) + `)`);
+  let comments = entry.declaredBy.map(site => {
+    let site_ = `  // ` + site.pluginName + `: ` + site.component + `.` + site.field;
+    let annotation = site.annotation;
+    if (annotation !== undefined) {
+      return site_ + ` @storageRef(` + JSON.stringify(annotation) + `)`;
+    } else {
+      return site_;
+    }
+  });
   let line = `  ObjectStore({plugin: ` + JSON.stringify(match[0]) + `, store: ` + JSON.stringify(match[1]) + `}),`;
   return {
     TAG: "Ok",
@@ -108,7 +108,6 @@ export {
   union,
   quote,
   splitKey,
-  annotationStore,
   renderEntry,
   header,
   render,
