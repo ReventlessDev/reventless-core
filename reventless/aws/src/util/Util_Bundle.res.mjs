@@ -61,17 +61,31 @@ function extractPackageName(specifier) {
   }
 }
 
-function resolvePackageRoot(packageName) {
-  let cachedRoot = packageRootCache[packageName];
+function resolvePackageRoot(fromPulumiProjectOpt, packageName) {
+  let fromPulumiProject = fromPulumiProjectOpt !== undefined ? fromPulumiProjectOpt : false;
+  let cacheKey = fromPulumiProject ? "pulumi-project:" + packageName : packageName;
+  let cachedRoot = packageRootCache[cacheKey];
   if (cachedRoot !== undefined) {
     return cachedRoot;
   }
+  let request = packageName + "/package.json";
+  let viaFramework = () => Path.dirname(localRequire.resolve(request));
+  let viaPulumiProject = () => Path.dirname(Module.createRequire(process.cwd() + "/index.js").resolve(request));
+  let match = fromPulumiProject ? [
+      viaPulumiProject,
+      viaFramework
+    ] : [
+      viaFramework,
+      viaPulumiProject
+    ];
+  let root;
   try {
-    return Path.dirname(localRequire.resolve(packageName + "/package.json"));
+    root = match[0]();
   } catch (exn) {
-    let cwdRequire = Module.createRequire(process.cwd() + "/index.js");
-    return Path.dirname(cwdRequire.resolve(packageName + "/package.json"));
+    root = match[1]();
   }
+  packageRootCache[cacheKey] = root;
+  return root;
 }
 
 function hashString(str) {
@@ -174,7 +188,7 @@ function buildCodeArchive(entryPointModule, packageDirs, extraStringAssetsOpt) {
   let allPackageDirs;
   if ("@reventlessdev/reventless-aws" in packageDirs && !("effect" in packageDirs)) {
     let dirs = Object.assign({}, packageDirs);
-    dirs["effect"] = resolvePackageRoot("effect");
+    dirs["effect"] = resolvePackageRoot(undefined, "effect");
     allPackageDirs = dirs;
   } else {
     allPackageDirs = packageDirs;

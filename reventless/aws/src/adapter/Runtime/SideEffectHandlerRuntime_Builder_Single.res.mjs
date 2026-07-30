@@ -99,7 +99,7 @@ function finish() {
         }
         info.sideEffectModulePaths.forEach(modPath => {
           let pkg = Util_Bundle$ReventlessAws.extractPackageName(modPath);
-          packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
+          packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, pkg);
         });
         let modulesJson = info.sideEffectModulePaths.map(p => Stdlib_Option.getOr(JSON.stringify(p), `""`)).join(",");
         let attribution = Util_LogAttribution$ReventlessAws.fragments(`SideEffectHandler(` + spec.componentName + `)`);

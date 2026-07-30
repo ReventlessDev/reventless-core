@@ -70,7 +70,7 @@ function provision(api, selection, opts) {
   let packageDirs = {};
   handlers.forEach(param => {
     let pkg = Util_Bundle$ReventlessAws.extractPackageName(param[1]);
-    packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
+    packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, pkg);
   });
   let handlerJsons = handlers.toSorted((param, param$1) => Primitive_string.compare(param[0].readModelName, param$1[0].readModelName)).map(param => {
     let entry = param[0];

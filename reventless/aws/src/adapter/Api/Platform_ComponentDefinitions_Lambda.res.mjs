@@ -52,7 +52,7 @@ function make(api, pluginReadModelTableName, opts) {
   let adminEntryJson = JSON.stringify(Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(Platform_Admin_Structure$ReventlessCore.pluginId, Platform_Admin_Structure$ReventlessCore.structure));
   let packageDirs = Object.fromEntries([[
       "@reventlessdev/reventless-aws",
-      Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws")
+      Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws")
     ]]);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Api/Platform_ComponentDefinitions_Lambda_Ops.res.mjs", packageDirs, undefined);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);

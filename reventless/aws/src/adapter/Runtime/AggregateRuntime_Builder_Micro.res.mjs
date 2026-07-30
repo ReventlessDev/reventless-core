@@ -161,8 +161,8 @@ function finish() {
       let packageDirs = {};
       let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
       let behaviorPkg = Util_Bundle$ReventlessAws.extractPackageName(info.behaviorModulePath);
-      packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
-      packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(behaviorPkg);
+      packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, specPkg);
+      packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, behaviorPkg);
       let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
       let behaviorModule = Stdlib_Option.getOr(JSON.stringify(info.behaviorModulePath), `""`);
       let pluginFragment = Util_LogAttribution$ReventlessAws.pluginFragment(`AggregateRuntime(` + spec.aggregateName + `)`);
@@ -207,8 +207,8 @@ function finish() {
       let evtMapperPackageDirs = {};
       let specPkg$1 = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
       let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(match$3);
-      evtMapperPackageDirs[specPkg$1] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg$1);
-      evtMapperPackageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
+      evtMapperPackageDirs[specPkg$1] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, specPkg$1);
+      evtMapperPackageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, mappingsPkg);
       let match$4 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperEntryPoint.mjs", evtMapperPackageDirs, undefined);
       let evtMapperName = baseName + "EventMapper";
       let evtMapperRuntime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(evtMapperName, "CommandHandler", "Aggregate", match$4.code, match$4.sourceCodeHash, evtMapperEnvVars, Math.max(spec.eventCollectorMemorySize, 2048), Math.max(spec.eventCollectorTimeout, 180), undefined, undefined, undefined, undefined, undefined, aggregateOpts);

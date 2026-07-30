@@ -36,8 +36,8 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, specModuleUr
   let packageDirs = {};
   let specPkg = Util_Bundle$ReventlessAws.extractPackageName(specModulePath);
   let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(mappingsModulePath);
-  packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
-  packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
+  packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, specPkg);
+  packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, mappingsPkg);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/ExtensionPointEntryPoint.mjs", packageDirs, undefined);
   return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "CommandHandler", "ExtensionPoint", match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, undefined, opts));
 }

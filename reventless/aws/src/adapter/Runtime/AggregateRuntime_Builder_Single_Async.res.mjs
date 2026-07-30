@@ -163,8 +163,8 @@ function finish() {
         }
         let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
         let behaviorPkg = Util_Bundle$ReventlessAws.extractPackageName(info.behaviorModulePath);
-        packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
-        packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(behaviorPkg);
+        packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, specPkg);
+        packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, behaviorPkg);
         let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
         let behaviorModule = Stdlib_Option.getOr(JSON.stringify(info.behaviorModulePath), `""`);
         let pluginFragment = Util_LogAttribution$ReventlessAws.pluginFragment(`AggregateRuntime(` + spec.aggregateName + `)`);

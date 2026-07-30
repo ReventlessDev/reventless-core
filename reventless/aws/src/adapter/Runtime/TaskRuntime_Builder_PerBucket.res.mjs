@@ -27,7 +27,7 @@ function forBucketCallback(param, connect, memorySizeOpt, timeoutOpt, name, call
   envVars["HANDLER_CONFIG"] = handlerConfigJson;
   let packageDirs = {};
   let pkg = Util_Bundle$ReventlessAws.extractPackageName(callbackModulePath);
-  packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
+  packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, pkg);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/TaskBucketEntryPoint.mjs", packageDirs, undefined);
   let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(fullName, "Task", "Task", match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, undefined, {
     parent: resource

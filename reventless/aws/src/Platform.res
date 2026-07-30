@@ -1773,7 +1773,10 @@ module MakeWithConfig = (
         ~pluginId="host-ui",
         ~bundleVersion=cfg.bundleVersion->Option.getOr(version),
         ~assetsDir=cfg.assetsDir->Option.getOr(
-          Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-host-shell") ++ "/dist",
+          Util_Bundle.resolvePackageRoot(
+            ~fromPulumiProject=true,
+            "@reventlessdev/reventless-host-shell",
+          ) ++ "/dist",
         ),
         ~spaFallback=true,
         ~stableName=true,

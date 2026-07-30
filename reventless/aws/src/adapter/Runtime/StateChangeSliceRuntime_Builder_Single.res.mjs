@@ -82,18 +82,18 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
   let packageDirs = {};
   slicePaths.forEach(param => {
     let specPkg = Util_Bundle$ReventlessAws.extractPackageName(param[0]);
-    packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
+    packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, specPkg);
     let behaviorPkg = Util_Bundle$ReventlessAws.extractPackageName(param[1]);
-    packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(behaviorPkg);
+    packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, behaviorPkg);
   });
   inboundSlices.forEach(s => {
     let specPkg = Util_Bundle$ReventlessAws.extractPackageName(s.specPath);
-    packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
+    packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, specPkg);
     let translationPkg = Util_Bundle$ReventlessAws.extractPackageName(s.translationPath);
-    packageDirs[translationPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(translationPkg);
+    packageDirs[translationPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, translationPkg);
   });
-  packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws");
-  packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-core");
+  packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws");
+  packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-core");
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs", packageDirs, undefined);
   Stdlib_Option.forEach(cfg.sqsBatchSize, CommandTopicChannel_SQS$ReventlessAws.setBatchSize);
   let vpcConfig = pgSelection !== undefined ? pgSelection.securityGroupId.apply(sgId => ({

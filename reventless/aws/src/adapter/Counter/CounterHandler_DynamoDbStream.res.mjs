@@ -32,8 +32,8 @@ function make(name, referencesName, referencesDb, countsName, countsDb, param, s
   let packageDirs = {};
   let specPkg = Util_Bundle$ReventlessAws.extractPackageName(specModulePath);
   let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(mappingsModulePath);
-  packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
-  packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
+  packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, specPkg);
+  packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, mappingsPkg);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/CounterEntryPoint.mjs", packageDirs, undefined);
   let componentOpts_parent = opts.parent;
   let componentOpts = {

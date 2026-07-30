@@ -49,7 +49,7 @@ function make(api, uiFragmentRegistryTableName, schemaReady, opts) {
   });
   let packageDirs = Object.fromEntries([[
       "@reventlessdev/reventless-aws",
-      Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws")
+      Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws")
     ]]);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Api/Platform_UIFragments_Lambda_Ops.res.mjs", packageDirs, undefined);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);

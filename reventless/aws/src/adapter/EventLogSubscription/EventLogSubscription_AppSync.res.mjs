@@ -87,7 +87,7 @@ function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
   let channelName = channelNameOf(topicName);
   let packageDirs = Object.fromEntries([[
       "@reventlessdev/reventless-aws",
-      Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws")
+      Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws")
     ]]);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync_Ops.res.mjs", packageDirs, undefined);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);

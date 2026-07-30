@@ -151,8 +151,8 @@ function finish() {
       let packageDirs = {};
       let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
       let behaviorPkg = Util_Bundle$ReventlessAws.extractPackageName(info.behaviorModulePath);
-      packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
-      packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(behaviorPkg);
+      packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, specPkg);
+      packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, behaviorPkg);
       let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
       let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(lambdaName, "CommandHandler", "Aggregate", match.code, match.sourceCodeHash, envVars, spec.memorySize, spec.timeout, undefined, undefined, undefined, undefined, undefined, aggregateOpts);
       spec.connects.forEach(connect => connect(runtime));

@@ -89,20 +89,43 @@ let extractPackageName = (specifier: string): string => {
 /**
  * Resolve the root directory of an npm package.
  * Fast path: populated by getModuleSpecifier when it walks the package tree.
+ *
+ * Two rootings, because two different questions are being asked.
+ *
+ * The default resolves from this framework module. That is right for anything
+ * the framework itself depends on and then packages — a Lambda's runtime deps
+ * are reventless-aws's own, and the version reventless-aws was built against is
+ * the version that must ship.
+ *
+ * `~fromPulumiProject=true` resolves from the Pulumi project's directory
+ * instead (`pulumi up --cwd <project>` runs the program there), which is what a
+ * *deploy input* needs: an asset the project names in its own package.json and
+ * the framework merely uploads. The framework has no dependency on it, so a
+ * framework-rooted lookup skips the project's pin entirely and walks up to
+ * whatever the workspace hoisted — which is how a platform pinning
+ * host-shell 3.0.0-alpha.49 deployed 3.0.0-alpha.48 while four sibling examples
+ * pinned the older one. Node still walks up from the project, so a project that
+ * declares nothing keeps resolving exactly as before.
+ *
+ * The two are cached under separate keys: they are allowed to disagree, and
+ * that disagreement is the whole point.
  */
-let resolvePackageRoot = (packageName: string): string => {
-  switch packageRootCache->Dict.get(packageName) {
+let resolvePackageRoot = (~fromPulumiProject: bool=false, packageName: string): string => {
+  let cacheKey = fromPulumiProject ? "pulumi-project:" ++ packageName : packageName
+  switch packageRootCache->Dict.get(cacheKey) {
   | Some(cachedRoot) => cachedRoot
   | None =>
-    try {
-      let pkgJsonPath = localRequire->requireResolve(packageName ++ "/package.json")
-      dirname(pkgJsonPath)
-    } catch {
-    | _ =>
-      let cwdRequire = createRequire(cwd() ++ "/index.js")
-      let pkgJsonPath = cwdRequire->requireResolve(packageName ++ "/package.json")
-      dirname(pkgJsonPath)
+    let request = packageName ++ "/package.json"
+    let viaFramework = () => dirname(localRequire->requireResolve(request))
+    let viaPulumiProject = () => dirname(createRequire(cwd() ++ "/index.js")->requireResolve(request))
+    let (preferred, fallback) = fromPulumiProject
+      ? (viaPulumiProject, viaFramework)
+      : (viaFramework, viaPulumiProject)
+    let root = try preferred() catch {
+    | _ => fallback()
     }
+    packageRootCache->Dict.set(cacheKey, root)
+    root
   }
 }
 

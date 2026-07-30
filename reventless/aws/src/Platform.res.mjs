@@ -1029,7 +1029,7 @@ function MakeWithConfig(Config) {
               bucketRegionalDomainName: store.bucketRegionalDomainName
             }] : []
       ).concat(declaredServedBuckets);
-      let match$4 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
+      let match$4 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot(true, "@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
         "config.json",
         "ui-hints.json"
       ], customDomain, servedBuckets);
@@ -2184,7 +2184,7 @@ function Make($star) {
               bucketRegionalDomainName: store.bucketRegionalDomainName
             }] : []
       ).concat(declaredServedBuckets);
-      let match$4 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
+      let match$4 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot(true, "@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
         "config.json",
         "ui-hints.json"
       ], customDomain, servedBuckets);

@@ -309,7 +309,7 @@ function Make(EventCollectorChannel) {
     let packageDirs = {};
     let addPackageFor = spec => {
       let pkgName = Util_Bundle$ReventlessAws.extractPackageName(spec);
-      packageDirs[pkgName] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkgName);
+      packageDirs[pkgName] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, pkgName);
     };
     context.extensions.forEach(ext => {
       [
@@ -331,8 +331,8 @@ function Make(EventCollectorChannel) {
         ce.mappingsModule
       ].forEach(addPackageFor);
     }
-    packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws");
-    packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-core");
+    packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws");
+    packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-core");
     let bundleOutput = Pulumi.all([
       context.pluginDefinitionJson,
       context.uiFragmentsJson

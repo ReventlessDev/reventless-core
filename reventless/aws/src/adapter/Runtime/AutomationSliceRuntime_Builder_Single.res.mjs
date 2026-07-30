@@ -108,9 +108,9 @@ function finish() {
           return log.warn("AutomationSliceRuntime_Builder_Single", undefined, `no bundled info registered for ` + spec.componentName);
         }
         let pkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
-        packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
+        packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, pkg);
         let bodyPkg = Util_Bundle$ReventlessAws.extractPackageName(info.bodyModulePath);
-        packageDirs[bodyPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(bodyPkg);
+        packageDirs[bodyPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, bodyPkg);
         let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
         let bodyModule = Stdlib_Option.getOr(JSON.stringify(info.bodyModulePath), `""`);
         let callbackType = Stdlib_Option.getOr(JSON.stringify(info.callbackType), `""`);
@@ -170,9 +170,9 @@ function finishWithDcbEventLog(dcbEventLog) {
           allQueryDbResources.push(r);
         });
         let pkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
-        packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
+        packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, pkg);
         let bodyPkg = Util_Bundle$ReventlessAws.extractPackageName(info.bodyModulePath);
-        packageDirs[bodyPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(bodyPkg);
+        packageDirs[bodyPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, bodyPkg);
         let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
         let bodyModule = Stdlib_Option.getOr(JSON.stringify(info.bodyModulePath), `""`);
         let callbackType = Stdlib_Option.getOr(JSON.stringify(info.callbackType), `""`);

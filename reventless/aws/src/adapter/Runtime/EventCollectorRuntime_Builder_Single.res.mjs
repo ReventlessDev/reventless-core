@@ -118,8 +118,8 @@ function finish() {
         }
         let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
         let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(info.mappingsModulePath);
-        packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
-        packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
+        packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, specPkg);
+        packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, mappingsPkg);
         let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
         let mappingsModule = Stdlib_Option.getOr(JSON.stringify(info.mappingsModulePath), `""`);
         let handlerPgFragment = info.pgBacked ? pgConnectionFragment : Pulumi.output("");

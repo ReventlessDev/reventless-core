@@ -151,8 +151,8 @@ function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, feedQueu
   if (pgStreamConfig !== undefined) {
     envVars["APPSYNC_ENDPOINT"] = pgStreamConfig.endpoint;
   }
-  packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws");
-  packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-core");
+  packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws");
+  packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-core");
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs", packageDirs, undefined);
   let vpcConfig = qdbSelection !== undefined ? qdbSelection.securityGroupId.apply(sgId => ({
       subnetIds: qdbSelection.subnetIds,
@@ -216,9 +216,9 @@ function finishWithDcbEventLog(dcbEventLog) {
           allQueryDbResources.push(r);
         });
         let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
-        packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
+        packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, specPkg);
         let projectionPkg = Util_Bundle$ReventlessAws.extractPackageName(info.projectionModulePath);
-        packageDirs[projectionPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(projectionPkg);
+        packageDirs[projectionPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, projectionPkg);
         let etResources = dcbOutputs.eventTopic.resources;
         let resource = etResources[0];
         let sourceUrn = resource !== undefined ? resource.urn : feedArnOutput;
@@ -274,9 +274,9 @@ function finish() {
           return log.warn("StateViewSliceRuntime_Builder_Single", undefined, `no handler registered for ` + spec.componentName);
         }
         let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
-        packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
+        packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, specPkg);
         let projectionPkg = Util_Bundle$ReventlessAws.extractPackageName(info.projectionModulePath);
-        packageDirs[projectionPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(projectionPkg);
+        packageDirs[projectionPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, projectionPkg);
         let handlerJson = Pulumi.all([
           info.queryDbTableName,
           spec.sourceUrns,
