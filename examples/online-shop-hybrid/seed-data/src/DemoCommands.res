@@ -17,6 +17,16 @@ open ReventlessSeed
 let catalog = (name: string): string => `Catalog_${name}`
 let ordering = (name: string): string => `Ordering_${name}`
 
+/** A `Money.t` argument is a GraphQL input object, and its currency is an
+    *enum* rather than a string — the closed ReScript type reaches the API as a
+    closed GraphQL type. Quoting it here would be rejected by the server, which
+    is the one detail worth centralising in this file. */
+let money = (m: Reventless.Money.t): Seed.value =>
+  Object([
+    ("amount", Float(m.amount)),
+    ("currency", Enum(Reventless.Currency.toString(m.currency))),
+  ])
+
 // ── Catalog ─────────────────────────────────────────────────────────────────
 
 let addCategory = (command: CatalogPlugin.AddCategory.command): Seed.mutation =>
@@ -49,7 +59,7 @@ let addProduct = (command: CatalogPlugin.AddProduct.command): Seed.mutation =>
       ("productId", Id(productId)),
       ("name", String(name)),
       ("description", String(description)),
-      ("price", Float(price)),
+      ("price", money(price)),
     ]
     let image: array<(string, Seed.value)> = switch imageUrl {
     | Some(url) => [("imageUrl", String(url))]
@@ -64,7 +74,7 @@ let changeProductPrice = (command: CatalogPlugin.ChangeProductPrice.command): Se
   | ChangeProductPrice({productId, price}) =>
     Seed.mutation(
       catalog("ChangeProductPrice"),
-      [("productId", Id(productId)), ("price", Float(price))],
+      [("productId", Id(productId)), ("price", money(price))],
     )
   }
 

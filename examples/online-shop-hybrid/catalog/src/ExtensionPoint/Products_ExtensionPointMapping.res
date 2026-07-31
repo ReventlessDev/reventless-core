@@ -12,8 +12,8 @@ module Delegate = {
   let name = "CatalogDcbEventLog"
   @schema
   type event =
-    | ProductAdded({productId: string, name: string, description: string, price: float})
-    | ProductPriceChanged({productId: string, price: float})
+    | ProductAdded({productId: string, name: string, description: string, price: Reventless.Money.t})
+    | ProductPriceChanged({productId: string, price: Reventless.Money.t})
 }
 
 let mapIncomingCommand = (_id, _command, _meta) => []
@@ -33,7 +33,7 @@ let directiveHandler = async (
   switch directive {
   | EmitPricingUpdate({productId, price}) =>
     Console.log(
-      `[Catalog.ProductsExtensionPoint] telemetry: pricing update product=${productId} price=${price->Float.toString}`,
+      `[Catalog.ProductsExtensionPoint] telemetry: pricing update product=${productId} price=${price->Reventless.Money.format}`,
     )
   }
 

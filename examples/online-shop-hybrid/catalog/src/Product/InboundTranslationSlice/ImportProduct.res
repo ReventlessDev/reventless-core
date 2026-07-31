@@ -3,6 +3,10 @@
 
 @@reventless.spec
 
+// The supplier's own shape, kept exactly as it arrives: `unitPrice` is a whole
+// number of minor units and `currency` is a free string, because that is what
+// the feed sends. Translating it into the domain's `Money.t` is this slice's
+// job — that is what an anti-corruption layer is for.
 @schema
 type externalInput = {
   sku: string,
@@ -18,7 +22,7 @@ type command = AddProduct({
   productId: string,
   name: string,
   description: string,
-  price: float,
+  price: Reventless.Money.t,
   // The supplier feed carries no image, so this field is simply absent on the
   // mapped command — Product.AddProduct now models the image as optional.
   @storageRef("productImages") imageUrl?: string,

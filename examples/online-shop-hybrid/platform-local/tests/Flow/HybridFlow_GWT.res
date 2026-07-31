@@ -24,6 +24,12 @@ module OrdersEp = ExtensionPointStep(OrderingPlugin.Orders_ExtensionPointMapping
 module OrdersExt = ExtensionStep(CatalogPlugin.Orders_Extension.Mapping)
 module Demand = CommandStep(CatalogPlugin.RecordProductDemand, CatalogPlugin.RecordProductDemand_Behavior)
 
+// Prices are money now, so a test writes the amount a person would say and
+// converts it once. `ofMajor` scales by the currency's own exponent, which is
+// what keeps the literal honest: 9.99 EUR is 999 cents, and the same call on a
+// JPY price would scale by 1.
+let eur = amount => Reventless.Money.ofMajor(~amount, ~currency=EUR)
+
 describe("Hybrid cross-plugin flow", () => {
   test("Tier 2 — a product added in Catalog becomes orderable in Ordering via the sync", () =>
     start
@@ -34,7 +40,7 @@ describe("Hybrid cross-plugin flow", () => {
         productId: "p1",
         name: "Book",
         description: "A good book",
-        price: 9.99,
+        price: eur(9.99),
         imageUrl: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
         categoryId: "cat1",
       }),
@@ -44,7 +50,7 @@ describe("Hybrid cross-plugin flow", () => {
         productId: "p1",
         name: "Book",
         description: "A good book",
-        price: 9.99,
+        price: eur(9.99),
         imageUrl: "/uploads/3e7b41c8-5a2d-4f60-8c19-77b0d4e6a912/p1.jpg",
         categoryId: "cat1",
       }),
@@ -54,21 +60,21 @@ describe("Hybrid cross-plugin flow", () => {
       CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({
         productId: "p1",
         name: "Book",
-        price: 9.99,
+        price: eur(9.99),
       }),
     )
     ->ProductsExt.whenExtensionReacts
     ->ProductsExt.thenIssuesCommand(
-      OrderingPlugin.SyncCatalogProduct.SyncNewProduct({productId: "p1", name: "Book", price: 9.99}),
+      OrderingPlugin.SyncCatalogProduct.SyncNewProduct({productId: "p1", name: "Book", price: eur(9.99)}),
     )
     ->Sync.whenCommand(
-      OrderingPlugin.SyncCatalogProduct.SyncNewProduct({productId: "p1", name: "Book", price: 9.99}),
+      OrderingPlugin.SyncCatalogProduct.SyncNewProduct({productId: "p1", name: "Book", price: eur(9.99)}),
     )
     ->Sync.thenEvent(
       OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
         productId: "p1",
         name: "Book",
-        price: 9.99,
+        price: eur(9.99),
       }),
     )
     ->Place.whenCommand(
@@ -108,12 +114,12 @@ describe("Hybrid cross-plugin flow", () => {
       OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
         productId: "p1",
         name: "Book",
-        price: 9.99,
+        price: eur(9.99),
       }),
       OrderingPlugin.SyncCatalogProduct.CatalogProductSynced({
         productId: "p2",
         name: "Pen",
-        price: 1.5,
+        price: eur(1.5),
       }),
     ])
     ->Place.whenCommand(

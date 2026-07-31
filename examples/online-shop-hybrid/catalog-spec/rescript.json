@@ -19,7 +19,8 @@
     }
   ],
   "dependencies": [
-    "sury"
+    "sury",
+    "@reventlessdev/reventless-spec"
   ],
   "compiler-flags": [],
   "suffix": ".res.mjs"

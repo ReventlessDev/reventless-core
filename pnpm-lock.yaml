@@ -932,6 +932,9 @@ importers:
       '@reventlessdev/reventless-seed':
         specifier: workspace:*
         version: link:../../../reventless/seed
+      '@reventlessdev/reventless-spec':
+        specifier: workspace:*
+        version: link:../../../reventless/spec
       sury:
         specifier: ^11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.3.0)

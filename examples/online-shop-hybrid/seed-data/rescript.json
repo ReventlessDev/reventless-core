@@ -17,6 +17,7 @@
   "dependencies": [
     "sury",
     "@reventlessdev/reventless-seed",
+    "@reventlessdev/reventless-spec",
     "@reventlessdev/online-shop-hybrid-catalog",
     "@reventlessdev/online-shop-hybrid-catalog-spec",
     "@reventlessdev/online-shop-hybrid-ordering",

@@ -40,11 +40,17 @@ module Ship = CommandStep(ShipOrder, ShipOrder_Behavior)
 module OrdersView = ViewStep(Orders, Orders_Projection)
 module Confirm = OutboundStep(ConfirmSlice)
 
+// Prices are money now, so a test writes the amount a person would say and
+// converts it once. `ofMajor` scales by the currency's own exponent, which is
+// what keeps the literal honest: 9.99 EUR is 999 cents, and the same call on a
+// JPY price would scale by 1.
+let eur = amount => Reventless.Money.ofMajor(~amount, ~currency=EUR)
+
 describe("Ordering flow — place → auto-ship → confirm", () => {
   test("an order is placed, auto-shipped, projected as Shipped, and confirmed", () =>
     start
     ->Sync.givenEvents([
-      SyncCatalogProduct.CatalogProductSynced({productId: "p1", name: "Book", price: 9.99}),
+      SyncCatalogProduct.CatalogProductSynced({productId: "p1", name: "Book", price: eur(9.99)}),
     ])
     // Express, so the automation picks it up — a Standard or Pickup order would
     // stop at Placed and wait for an explicit ShipOrder.

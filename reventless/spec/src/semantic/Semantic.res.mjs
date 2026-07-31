@@ -12,7 +12,8 @@ let Id = {
   percent: "percent",
   bytes: "bytes",
   duration: "duration",
-  color: "color"
+  color: "color",
+  money: "money"
 };
 
 let semanticId = S.Metadata.Id.make("reventless", "semantic");

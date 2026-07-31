@@ -58,6 +58,11 @@ module Id = {
   let bytes = "bytes"
   let duration = "duration"
   let color = "color"
+
+  // The first composite that is not infrastructure. Unlike the seven above it
+  // this one changes a field's *shape* — a number becomes an object — so it is
+  // a wire-breaking declaration rather than a refinement of one.
+  let money = "money"
 }
 
 let semanticId: S.Metadata.Id.t<t> = S.Metadata.Id.make(~namespace="reventless", ~name="semantic")

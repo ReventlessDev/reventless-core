@@ -9,6 +9,11 @@ module ImportProductSlice = {
 
 @@reventless.gwt
 
+// The feed sends minor units already, so these expectations are written the same
+// way — `make`, not `ofMajor`. Nothing is scaled at this boundary, which is the
+// point: the supplier's `unitPrice` and the domain's `amount` are the same number.
+let money = (amount, currency) => Reventless.Money.make(~amount, ~currency)
+
 describe("ImportProduct InboundTranslationSlice", () => {
   test("USD payload translates to AddProduct command", () =>
     whenInput({
@@ -25,16 +30,77 @@ describe("ImportProduct InboundTranslationSlice", () => {
         productId: "p-1",
         name: "Laptop",
         description: "high-end",
-        price: 999.99,
+        price: money(99999.0, USD),
         // Supplier feed carries no image → the optional imageUrl is absent.
         categoryId: "cat1",
       }),
     )
   )
 
-  test("non-USD currency surfaces a translate error", () =>
-    whenInput({sku: "p-1", title: "Laptop", desc: "x", unitPrice: 1, currency: "EUR", category: "cat1"})
-    ->thenTranslateError("Unsupported currency: EUR")
+  // The case the old translation could not express. It rejected every currency
+  // but USD, because the domain had a `float` price and nowhere to record which
+  // currency it was in. Now the currency survives, so a second one is ordinary
+  // data rather than an unsupported case.
+  test("a non-USD payload translates instead of failing", () =>
+    whenInput({
+      sku: "p-2",
+      title: "Buch",
+      desc: "gut",
+      unitPrice: 1999,
+      currency: "EUR",
+      category: "cat1",
+    })
+    ->thenCommand(
+      "p-2",
+      AddProduct({
+        productId: "p-2",
+        name: "Buch",
+        description: "gut",
+        price: money(1999.0, EUR),
+        categoryId: "cat1",
+      }),
+    )
+  )
+
+  // And the case that would have been silently wrong under a hardcoded `/100`:
+  // JPY has no minor unit, so ¥1200 is 1200 and not ¥12. Nothing in this slice
+  // special-cases it — the amount is simply not scaled at all.
+  test("a currency with no minor unit needs no special case", () =>
+    whenInput({
+      sku: "p-3",
+      title: "ノート",
+      desc: "x",
+      unitPrice: 1200,
+      currency: "JPY",
+      category: "cat1",
+    })
+    ->thenCommand(
+      "p-3",
+      AddProduct({
+        productId: "p-3",
+        name: "ノート",
+        description: "x",
+        price: money(1200.0, JPY),
+        categoryId: "cat1",
+      }),
+    )
+  )
+
+  // What "unsupported currency" means now: not a code the domain declined to
+  // handle, but one ISO 4217 does not define. The lower-case spelling is the
+  // failure the closed type exists to catch, and the feed is told at its first
+  // request rather than after a ledger stops adding up.
+  test("a code ISO does not define surfaces a translate error", () =>
+    whenInput({
+      sku: "p-1",
+      title: "Laptop",
+      desc: "x",
+      unitPrice: 1,
+      currency: "eur",
+      category: "cat1",
+    })->thenTranslateError(
+      `expected an ISO 4217 currency code such as "EUR", got "eur". Codes are upper-case and exactly three letters.`,
+    )
   )
 
   test("non-positive price surfaces a translate error", () =>

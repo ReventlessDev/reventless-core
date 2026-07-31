@@ -677,4 +677,69 @@ describe("SuryToJsonSchema:", () => {
       ))->toEqual((Some(JSON.Encode.string("type")), Some(JSON.Encode.string("type"))))
     )
   })
+
+  // The other half of that claim, stated so it cannot be confused with it.
+  // `Money` is the first semantic type that is *not* a brand: it turns a number
+  // into an object, so the wire shape changes and stored events written against
+  // the old field do not decode. The assertions below are the evidence for that
+  // — a schema diff before and after a retype is exactly this, and it is what
+  // says a deployment needs an upcaster before it can take the change.
+  describe("Money changes the field's shape, and says so:", () => {
+    let json = SuryToJsonSchema.deriveObjectSchema(
+      S.schema(s =>
+        {
+          "price": s.matches(Reventless.Money.schema),
+          "quantity": s.matches(S.float),
+        }
+      )->S.castToUnknown,
+    )
+    let keyOf = (name, key) => getPropertyOf(json, name)->Option.flatMap(s => getProperty(s, key))
+
+    testSync("the field is an object, not a number", () =>
+      expect(keyOf("price", "type"))->toEqual(Some(JSON.Encode.string("object")))
+    )
+
+    testSync("it carries the money id, sourced from the type", () =>
+      expect((keyOf("price", "x-reventless-semantic"), keyOf("price", "x-reventless-semantic-source")))
+      ->toEqual((Some(JSON.Encode.string("money")), Some(JSON.Encode.string("type"))))
+    )
+
+    // The control: an ordinary `float` price is what the field looked like
+    // before, and it emits nothing at all. Without this the assertions above
+    // would pass just as well against a schema that had always said `money`.
+    testSync("a plain numeric field emits no semantic", () =>
+      expect((keyOf("quantity", "type"), keyOf("quantity", "x-reventless-semantic")))->toEqual((
+        Some(JSON.Encode.string("number")),
+        None,
+      ))
+    )
+
+    testSync("the amount and the currency both reach the wire", () => {
+      let inner = getPropertyOf(json, "price")->Option.getOr(JSON.Encode.null)
+      expect((
+        getPropertyOf(inner, "amount")->Option.flatMap(s => getProperty(s, "type")),
+        getPropertyOf(inner, "currency")->Option.flatMap(s => getProperty(s, "type")),
+      ))->toEqual((Some(JSON.Encode.string("number")), Some(JSON.Encode.string("string"))))
+    })
+
+    // The closed currency arrives as an enum rather than a free string, which is
+    // what lets a consumer build a currency picker instead of a text box — and
+    // what makes `"eur"` unrepresentable on the wire as well as in the source.
+    testSync("the currency is an enum of ISO codes", () => {
+      let codes =
+        getPropertyOf(json, "price")
+        ->Option.getOr(JSON.Encode.null)
+        ->getPropertyOf("currency")
+        ->Option.flatMap(s => getProperty(s, "enum"))
+        ->Option.flatMap(JSON.Decode.array)
+        ->Option.getOr([])
+        ->Array.filterMap(JSON.Decode.string)
+      expect((
+        codes->Array.length == Reventless.Currency.all->Array.length,
+        codes->Array.includes("EUR"),
+        codes->Array.includes("JPY"),
+        codes->Array.includes("eur"),
+      ))->toEqual((true, true, true, false))
+    })
+  })
 })

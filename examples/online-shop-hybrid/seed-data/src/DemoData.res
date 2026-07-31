@@ -118,10 +118,15 @@ type product = {
   id: string,
   name: string,
   description: string,
-  price: float,
+  price: Reventless.Money.t,
   imageUrl: option<string>,
   categoryId: string,
 }
+
+// This dataset prices everything in euros. That is a *choice this data makes*
+// rather than something the domain assumes — the commands accept any ISO
+// currency, and the shop only looks single-currency because its seed is.
+let currency = Reventless.Currency.EUR
 
 // A deterministic demo image per product: a distinct fill colour derived from
 // the product index plus the product name as a label. SVG is tiny, text-based
@@ -166,7 +171,10 @@ let buildProducts = (~count=productCount, ()): array<product> => {
         let low = Math.log(5.0)
         let high = Math.log(900.0)
         let raw = Math.exp(low +. ReventlessSeed.Seed.Random.float(random) *. (high -. low))
-        let price = Math.round(raw *. 100.0) /. 100.0
+        // `ofMajor` is the rounding: it scales by the currency's exponent and
+        // lands on a whole minor unit, which is what the hand-written
+        // `Math.round(raw *. 100.0) /. 100.0` here used to approximate.
+        let price = Reventless.Money.ofMajor(~amount=raw, ~currency)
         products->Array.push({
           id: `prd-${pad(n.contents, 3)}`,
           name,
@@ -191,7 +199,10 @@ let repricedProducts = (products: array<product>): array<product> =>
 let redescribedProducts = (products: array<product>): array<product> =>
   products->Array.filterWithIndex((_, i) => mod(i, 17) == 9)
 
-let discountedPrice = (p: product): float => Math.round(p.price *. 0.85 *. 100.0) /. 100.0
+// The discount is applied to the minor units directly, so it cannot drift into
+// float error on the way through a decimal and back.
+let discountedPrice = (p: product): Reventless.Money.t =>
+  Reventless.Money.make(~amount=Math.round(p.price.amount *. 0.85), ~currency=p.price.currency)
 
 // ── Customers ───────────────────────────────────────────────────────────────
 

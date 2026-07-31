@@ -5,15 +5,15 @@
 
 @schema
 type consumedEvent =
-  | ProductAdded({price: float})
-  | ProductPriceChanged({price: float})
+  | ProductAdded({price: Reventless.Money.t})
+  | ProductPriceChanged({price: Reventless.Money.t})
 
 @schema
-type command = ChangeProductPrice({productId: string, price: float})
+type command = ChangeProductPrice({productId: string, price: Reventless.Money.t})
 
 @schema
 type error = ProductNotFound
 
 @schema
 type event =
-  | ProductPriceChanged({productId: string, price: float})
+  | ProductPriceChanged({productId: string, price: Reventless.Money.t})

@@ -17,7 +17,7 @@ type command =
       @partitionTag productId: string,
       name: string,
       description: string,
-      price: float,
+      price: Reventless.Money.t,
       // Optional: a product may be created without an image (absent, not `""`).
       @storageRef("productImages") imageUrl?: string,
       @ref("Categories") categoryId: string,
@@ -34,7 +34,7 @@ type event =
       @partitionTag productId: string,
       name: string,
       description: string,
-      price: float,
+      price: Reventless.Money.t,
       @storageRef("productImages") imageUrl?: string,
       categoryId: string,
     })

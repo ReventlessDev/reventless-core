@@ -3,6 +3,7 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as Seed_Random$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Random.res.mjs";
 
 let random = Seed_Random$ReventlessSeed.make(24301);
@@ -325,7 +326,7 @@ function buildProducts(countOpt, param) {
         let low = Math.log(5.0);
         let high = Math.log(900.0);
         let raw = Math.exp(low + Seed_Random$ReventlessSeed.float(random) * (high - low));
-        let price = Math.round(raw * 100.0) / 100.0;
+        let price = Money$Reventless.ofMajor(raw, "EUR");
         products.push({
           id: `prd-` + pad(n.contents, 3),
           name: name,
@@ -349,7 +350,7 @@ function redescribedProducts(products) {
 }
 
 function discountedPrice(p) {
-  return Math.round(p.price * 0.85 * 100.0) / 100.0;
+  return Money$Reventless.make(Math.round(p.price.amount * 0.85), p.price.currency);
 }
 
 function buildCustomers(countOpt, param) {
@@ -439,6 +440,8 @@ let renamedCategoryId = "cat-06";
 
 let renamedCategoryName = "Home & Office";
 
+let currency = "EUR";
+
 export {
   random,
   productCount,
@@ -463,6 +466,7 @@ export {
   pick,
   address,
   locatedAddress,
+  currency,
   escapeXml,
   productSvg,
   buildProducts,

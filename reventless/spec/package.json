@@ -11,6 +11,7 @@
     "build": "rescript build",
     "start": "rescript start",
     "clean": "rescript clean",
+    "generate:currency": "node ./scripts/generate-currency.mjs",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "dev": "NODE_OPTIONS='--experimental-vm-modules' jest --watchAll"
   },
