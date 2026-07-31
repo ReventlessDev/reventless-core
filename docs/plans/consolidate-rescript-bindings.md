@@ -48,11 +48,18 @@ function with the same name, and which one a file gets depends on which block it
 
 `rescript-anthropic`, `rescript-pulumi-kubernetes`, `rescript-pulumi-docker-build` and
 `rescript-moment` are depended on by no `package.json` and no `rescript.json` in this tree, and no
-`.res` file here imports their modules. Each is consumed by exactly one downstream repository.
+`.res` file here imports their modules.
 
-They are not dead — they do what they were built for. They are simply in the wrong repository: this
-one installs their npm dependencies (~30 MB) on every contributor's machine and compiles against none
-of them.
+They are not dead — they do what they were built for. Having no consumer *here* is not by itself the
+finding, though: what decides where a binding belongs is how many downstream repositories share it
+(D4). Three of the four are consumed by exactly one, and those are in the wrong repository — this one
+installs their npm dependencies (~30 MB) on every contributor's machine and compiles against none of
+them.
+
+**`rescript-moment` is the exception, and step 5 no longer moves it** (established 2026-07-31, after
+the finding was first written). Two downstream repositories declare it. That makes this repository
+their common upstream, which is exactly the case D4 says belongs here — the same rule that evicts the
+other three keeps this one. Its ~30 MB is a cost with a reason.
 
 ## Decisions
 
@@ -143,7 +150,10 @@ distribute the notice at all, whatever the repository contains.
    **Verify:** a release of this repository through the extracted workflow is indistinguishable from
    one before it. Callers pin a **tag**, never a branch — see the risks table.
 
-5. **Relocate the four packages named in F3**, per D4. For each: the receiving repository takes over
+5. **Relocate the three single-consumer packages named in F3**, per D4 — `rescript-anthropic`,
+   `rescript-pulumi-kubernetes` and `rescript-pulumi-docker-build`. `rescript-moment` stays: it has
+   two downstream consumers, so this repository is its common upstream.
+   For each: the receiving repository takes over
    publishing, continuing the existing version line rather than restarting it; the package's tests are
    wired into that repository's test run; this repository drops the workspace member, the pnpm
    override where one exists, and the npm dependency.
@@ -318,7 +328,13 @@ one step earlier for the publish loop) rather than from a path convention — a 
 
 ### Outstanding
 
-- **Step 5** — relocate `rescript-anthropic`, `rescript-pulumi-kubernetes`,
-  `rescript-pulumi-docker-build` and `rescript-moment` to their single consumers. Needs the receiving
-  repositories to exist and to have the 0-suites test guard the risks table requires.
-- **Step 7** — `npm deprecate` the two merged names. Acts on live published packages.
+- **Step 5** — relocate `rescript-anthropic`, `rescript-pulumi-kubernetes` and
+  `rescript-pulumi-docker-build` to their single consumers; `rescript-moment` stays (see F3). Needs
+  the receiving repositories to have the 0-suites test guard the risks table requires. Current
+  versions to continue from, recorded per the risks table: `rescript-anthropic` `1.0.0-alpha.7`,
+  `rescript-pulumi-kubernetes` `0.1.0-alpha.6`, `rescript-pulumi-docker-build` `0.1.0-alpha.5`.
+- **Step 7** — `npm deprecate` the two merged names. Acts on live published packages, and is
+  **blocked until `@reventlessdev/rescript-node` is actually on npmjs**: the merge is committed but
+  unpushed, `rescript-node-streams@1.1.0-alpha.13` and `rescript-node-zlib@1.1.0-alpha.14` are the
+  live versions, and `rescript-node` is not published at all. Deprecating first would point users at
+  a package that does not exist.
