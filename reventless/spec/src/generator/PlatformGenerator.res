@@ -11,12 +11,11 @@
 // its head comment states the resolution order and why each arm exists; add a
 // fourth arm there, not here.
 
-@val external processExit: int => unit = "process.exit"
 @module("yaml") external parseYaml: string => JSON.t = "parse"
 
 let fail = (message: string) => {
   Console.error("generate-platform: " ++ message)
-  processExit(1)
+  NodeProcess.exit(1)
 }
 
 let asObject = (json: JSON.t): option<dict<JSON.t>> => json->JSON.Decode.object
@@ -27,7 +26,7 @@ let () = {
   let manifestArg = NodeProcess.argv->Array.get(2)->Option.getOr("")
   if manifestArg == "" {
     Console.error("Usage: generate-platform <deploy-manifest.yaml>")
-    processExit(1)
+    NodeProcess.exit(1)
   } else {
     let manifestPath = NodePath.resolve([manifestArg])
     if !NodeFs.existsSync(manifestPath) {
