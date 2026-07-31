@@ -41,6 +41,18 @@ let asString = (json: JSON.t): option<string> =>
   | _ => None
   }
 
+// Non-string members are dropped rather than failing the whole map: one
+// malformed entry should not cost a run every endpoint it could have used.
+let asStringDict = (json: JSON.t): dict<string> =>
+  switch json {
+  | Object(obj) =>
+    obj
+    ->Dict.toArray
+    ->Array.filterMap(((k, v)) => v->asString->Option.map(s => (k, s)))
+    ->Dict.fromArray
+  | _ => Dict.make()
+  }
+
 // ── Stack discovery ───────────────────────────────────────────────────────────
 
 // Which Pulumi backend the `pulumi` subprocess reads from. When `backend` is
@@ -147,70 +159,118 @@ let resolveField = (~envKey: string, ~fromSource: option<string>, ~human: string
     }
   }
 
-// Returns (graphqlEndpoint, uploadEndpoint, cognitoRegion, cognitoClientId).
-// `uploadEndpoint` is "" when the deployment publishes none — the data set's
-// upload phase no-ops on empty.
-let resolveEndpoints = async (~projectDir: string, ~backend: option<string>, ~stack: string): (
-  string,
-  string,
-  string,
-  string,
-) => {
-  let outputs = stackOutputs(~projectDir, ~backend, stack)
-  switch outputs->field("hostShellUrl")->Option.flatMap(asString) {
-  | Some(hostShellUrl) =>
-    let cfg = await fetchConfig(hostShellUrl)
-    let fromCfg = key => cfg->field(key)->Option.flatMap(asString)
-    let endpoint = resolveField(
-      ~envKey="REVENTLESS_GRAPHQL_ENDPOINT",
-      ~fromSource=fromCfg("apiEndpoint"),
-      ~human="apiEndpoint",
-    )
-    let uploadEndpoint = resolveField(
-      ~envKey="REVENTLESS_UPLOAD_ENDPOINT",
-      ~fromSource=fromCfg("uploadEndpoint"),
-      ~human="uploadEndpoint",
-    )
-    let region = resolveField(
-      ~envKey="AWS_REGION",
-      ~fromSource=fromCfg("region"),
-      ~human="region",
-    )
-    let clientId = resolveField(
-      ~envKey="COGNITO_CLIENT_ID",
-      ~fromSource=fromCfg("cognitoClientId"),
-      ~human="cognitoClientId",
-    )
-    (endpoint, uploadEndpoint, region, clientId)
-  | None =>
-    let out = key => outputs->field(key)->Option.flatMap(asString)
-    let endpoint = switch (
-      Seed.Prompt.envValue("REVENTLESS_GRAPHQL_ENDPOINT"),
-      out("domainMergedApiEndpoint"),
-      out("domainApiEndpoint"),
-    ) {
-    | (Some(v), _, _) | (_, Some(v), _) | (_, _, Some(v)) => v
-    | _ =>
-      throw(
-        Seed.Failed(
-          `stack "${stack}" exports neither domainMergedApiEndpoint nor domainApiEndpoint`,
-        ),
-      )
-    }
-    let region = resolveField(
-      ~envKey="AWS_REGION",
-      ~fromSource=out("cognitoRegion"),
-      ~human="cognitoRegion",
-    )
-    let clientId = resolveField(
-      ~envKey="COGNITO_CLIENT_ID",
-      ~fromSource=out("cognitoUserPoolClientId"),
-      ~human="cognitoUserPoolClientId",
-    )
-    // Absent → "" → the data set skips its upload phase.
-    let uploadEndpoint = Seed.Prompt.envValue("REVENTLESS_UPLOAD_ENDPOINT")->Option.getOr("")
-    (endpoint, uploadEndpoint, region, clientId)
+// Same precedence, for a value whose absence is a legitimate answer rather than
+// a broken deployment: a stack that declares no store publishes no upload
+// endpoint, and that must stay a no-op at the data set instead of failing the
+// run before a single command is sent.
+let optionalField = (~envKey: string, ~fromSource: option<string>): string =>
+  switch Seed.Prompt.envValue(envKey) {
+  | Some(v) => v
+  | None => fromSource->Option.getOr("")
   }
+
+// Which document publishes the deployment's endpoints. A stack that serves a
+// host shell publishes them in the shell's `config.json` under the client's key
+// names; one that does not publishes them as stack outputs under Pulumi's. The
+// two arms name different keys for the same values, which is why this is a
+// variant and not a merged lookup.
+type source = HostShellConfig(JSON.t) | StackOutputs(JSON.t)
+
+type endpoints = {
+  graphql: string,
+  // The legacy single presign service; "" when the deployment publishes none.
+  uploadEndpoint: string,
+  // Qualified `{plugin}.{store}` → that store's presign endpoint. Empty when the
+  // deployment declares no store.
+  uploadEndpoints: dict<string>,
+  cognitoRegion: string,
+  cognitoClientId: string,
+}
+
+/**
+ * The endpoints a source document publishes — pure, so the branch selection and
+ * every key it reads can be exercised with synthetic documents.
+ *
+ * `uploadEndpoints` is read on **both** arms. It was read on neither: the
+ * host-shell arm looked only at the singular `uploadEndpoint`, and the
+ * stack-output arm had no upload lookup at all, so a platform that publishes its
+ * stores and no host shell resolved "" and reported itself as serving no
+ * uploads.
+ *
+ * `REVENTLESS_UPLOAD_ENDPOINT` still overrides the singular endpoint and does
+ * not touch the map: one string cannot express a map, so it could only ever
+ * override one store and would need a naming convention to say which.
+ */
+let endpointsFrom = (~stack: string, source: source): endpoints =>
+  switch source {
+  | HostShellConfig(cfg) =>
+    let fromCfg = key => cfg->field(key)->Option.flatMap(asString)
+    {
+      graphql: resolveField(
+        ~envKey="REVENTLESS_GRAPHQL_ENDPOINT",
+        ~fromSource=fromCfg("apiEndpoint"),
+        ~human="apiEndpoint",
+      ),
+      uploadEndpoint: optionalField(
+        ~envKey="REVENTLESS_UPLOAD_ENDPOINT",
+        ~fromSource=fromCfg("uploadEndpoint"),
+      ),
+      uploadEndpoints: cfg->field("uploadEndpoints")->Option.mapOr(Dict.make(), asStringDict),
+      cognitoRegion: resolveField(
+        ~envKey="AWS_REGION",
+        ~fromSource=fromCfg("region"),
+        ~human="region",
+      ),
+      cognitoClientId: resolveField(
+        ~envKey="COGNITO_CLIENT_ID",
+        ~fromSource=fromCfg("cognitoClientId"),
+        ~human="cognitoClientId",
+      ),
+    }
+  | StackOutputs(outputs) =>
+    let out = key => outputs->field(key)->Option.flatMap(asString)
+    {
+      graphql: switch (
+        Seed.Prompt.envValue("REVENTLESS_GRAPHQL_ENDPOINT"),
+        out("domainMergedApiEndpoint"),
+        out("domainApiEndpoint"),
+      ) {
+      | (Some(v), _, _) | (_, Some(v), _) | (_, _, Some(v)) => v
+      | _ =>
+        throw(
+          Seed.Failed(
+            `stack "${stack}" exports neither domainMergedApiEndpoint nor domainApiEndpoint`,
+          ),
+        )
+      },
+      // No stack output carries the legacy single service — it exists only in a
+      // host shell's config.json — so here the env override is its only source.
+      uploadEndpoint: optionalField(~envKey="REVENTLESS_UPLOAD_ENDPOINT", ~fromSource=None),
+      uploadEndpoints: outputs->field("uploadEndpoints")->Option.mapOr(Dict.make(), asStringDict),
+      cognitoRegion: resolveField(
+        ~envKey="AWS_REGION",
+        ~fromSource=out("cognitoRegion"),
+        ~human="cognitoRegion",
+      ),
+      cognitoClientId: resolveField(
+        ~envKey="COGNITO_CLIENT_ID",
+        ~fromSource=out("cognitoUserPoolClientId"),
+        ~human="cognitoUserPoolClientId",
+      ),
+    }
+  }
+
+let resolveEndpoints = async (
+  ~projectDir: string,
+  ~backend: option<string>,
+  ~stack: string,
+): endpoints => {
+  let outputs = stackOutputs(~projectDir, ~backend, stack)
+  let source = switch outputs->field("hostShellUrl")->Option.flatMap(asString) {
+  | Some(hostShellUrl) => HostShellConfig(await fetchConfig(hostShellUrl))
+  | None => StackOutputs(outputs)
+  }
+  endpointsFrom(~stack, source)
 }
 
 // ── Cognito login ─────────────────────────────────────────────────────────────
@@ -302,15 +362,12 @@ let connect = (~projectDir: string=".", ~stack=?, ~backend=?, ()): (
     | None => backend
     }
     let stackName = await resolveStack(~projectDir, ~backend, ~stack)
-    let (endpoint, uploadEndpoint, region, clientId) = await resolveEndpoints(
-      ~projectDir,
-      ~backend,
-      ~stack=stackName,
-    )
+    let eps = await resolveEndpoints(~projectDir, ~backend, ~stack=stackName)
     await Seed.Connect.make(
       ~label=stackName,
-      ~endpoint,
-      ~uploadEndpoint,
-      ~login=cognito(~region, ~clientId),
+      ~endpoint=eps.graphql,
+      ~uploadEndpoint=eps.uploadEndpoint,
+      ~uploadEndpoints=eps.uploadEndpoints,
+      ~login=cognito(~region=eps.cognitoRegion, ~clientId=eps.cognitoClientId),
     )
   }

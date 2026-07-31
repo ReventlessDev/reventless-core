@@ -11,11 +11,17 @@
     {
       "dir": "src",
       "subdirs": true
+    },
+    {
+      "dir": "tests",
+      "subdirs": true,
+      "type": "dev"
     }
   ],
   "dependencies": [
     "@reventlessdev/reventless-seed",
-    "@reventlessdev/rescript-aws-sdk"
+    "@reventlessdev/rescript-aws-sdk",
+    "@reventlessdev/rescript-jest"
   ],
   "compiler-flags": [],
   "suffix": ".res.mjs"

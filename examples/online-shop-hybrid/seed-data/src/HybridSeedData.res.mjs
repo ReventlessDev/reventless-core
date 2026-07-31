@@ -8,6 +8,7 @@ import * as Seed$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed.re
 import * as Seed_Client$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Client.res.mjs";
 import * as Seed_Runner$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Runner.res.mjs";
 import * as Seed_Upload$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Upload.res.mjs";
+import * as Seed_Connect$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Connect.res.mjs";
 import * as DemoData$OnlineShopHybridSeed from "./DemoData.res.mjs";
 import * as DemoCommands$OnlineShopHybridSeed from "./DemoCommands.res.mjs";
 
@@ -64,6 +65,8 @@ async function seedCategories(client) {
   })));
   return Seed_Runner$ReventlessSeed.report(`categories: ` + DemoData$OnlineShopHybridSeed.categories.length.toString() + ` added`);
 }
+
+let productImageStore = "Catalog.productImages";
 
 async function uploadProductImages(products, client, uploadEndpoint) {
   let out = [];
@@ -281,7 +284,14 @@ async function summarise(client, counts) {
 async function run(connection, productCount, customerCount, orderCount) {
   let client = connection.client;
   let built = DemoData$OnlineShopHybridSeed.buildProducts(productCount, undefined);
-  let products = connection.uploadEndpoint === "" ? (Seed_Runner$ReventlessSeed.report("product images: skipped (no upload endpoint / SEED_SKIP_UPLOADS) — imageUrl left absent"), built) : await uploadProductImages(built, client, connection.uploadEndpoint);
+  let uploadEndpoint = Seed_Connect$ReventlessSeed.uploadEndpointFor(connection, productImageStore);
+  let products;
+  if (uploadEndpoint.TAG === "Ok") {
+    products = await uploadProductImages(built, client, uploadEndpoint._0);
+  } else {
+    Seed_Runner$ReventlessSeed.report(`product images: skipped (` + uploadEndpoint._0 + `) — imageUrl left absent`);
+    products = built;
+  }
   let customers = DemoData$OnlineShopHybridSeed.buildCustomers(customerCount, undefined);
   let orders = DemoData$OnlineShopHybridSeed.buildOrders(products, customers, orderCount, undefined);
   await seedCategories(client);
@@ -319,6 +329,7 @@ export {
   views,
   probeViews,
   seedCategories,
+  productImageStore,
   uploadProductImages,
   seedProducts,
   seedCatalogEdits,

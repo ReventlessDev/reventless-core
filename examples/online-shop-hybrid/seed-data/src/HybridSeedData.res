@@ -51,7 +51,15 @@ let seedCategories = async (~client: Seed.Client.t) => {
   Seed.Runner.report(`categories: ${(DemoData.categories->Array.length)->Int.toString} added`)
 }
 
-// Upload each product's deterministic placeholder SVG through the deployment's
+// The store a product image lives in: the qualified `{plugin}.{store}` the
+// catalog plugin's `@storageRef("productImages")` declares, and the key the
+// platform publishes that store's presign endpoint under. Naming it is what lets
+// a deployment serving several stores put the image in the right one — a
+// resolver that just took "the" upload endpoint would upload into whichever
+// store came first, with a 2xx and a plausible-looking ref.
+let productImageStore = "Catalog.productImages"
+
+// Upload each product's deterministic placeholder SVG through the store's
 // upload endpoint and swap `imageUrl` for the returned served `/{prefix}/{key}`
 // ref, so the demo image travels the real upload → store → serve loop (local
 // dev store or AWS bucket) exactly like a user upload — no external image URL.
@@ -373,8 +381,8 @@ let summarise = async (~client: Seed.Client.t, ~counts: dict<int>) => {
 // ── Run ─────────────────────────────────────────────────────────────────────
 
 // The shared seed run, parameterized only by volume so every data set walks the
-// same phases. Uploads no-op when the connection carries no upload endpoint
-// (a deployment that serves none), keeping `imageUrl` empty rather than failing.
+// same phases. Uploads no-op when no endpoint resolves for the product-image
+// store, keeping `imageUrl` empty rather than failing.
 let run = async (
   connection: Seed.connection,
   ~productCount: int,
@@ -384,13 +392,11 @@ let run = async (
   let client = connection.client
 
   let built = DemoData.buildProducts(~count=productCount, ())
-  let products = if connection.uploadEndpoint == "" {
-    Seed.Runner.report(
-      "product images: skipped (no upload endpoint / SEED_SKIP_UPLOADS) — imageUrl left absent",
-    )
+  let products = switch connection->Seed.Connect.uploadEndpointFor(~store=productImageStore) {
+  | Ok(uploadEndpoint) => await uploadProductImages(built, ~client, ~uploadEndpoint)
+  | Error(reason) =>
+    Seed.Runner.report(`product images: skipped (${reason}) — imageUrl left absent`)
     built
-  } else {
-    await uploadProductImages(built, ~client, ~uploadEndpoint=connection.uploadEndpoint)
   }
   let customers = DemoData.buildCustomers(~count=customerCount, ())
   let orders = DemoData.buildOrders(products, customers, ~count=orderCount, ())

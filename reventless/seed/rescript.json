@@ -12,9 +12,16 @@
     {
       "dir": "src",
       "subdirs": true
+    },
+    {
+      "dir": "tests",
+      "subdirs": true,
+      "type": "dev"
     }
   ],
-  "dependencies": [],
+  "dependencies": [
+    "@reventlessdev/rescript-jest"
+  ],
   "compiler-flags": [],
   "suffix": ".res.mjs"
 }

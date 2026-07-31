@@ -114,6 +114,20 @@ module.exports = {
       setupFiles: [setupFile],
     },
     {
+      displayName: "reventless-seed",
+      rootDir: "./reventless/seed",
+      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
+    },
+    {
+      displayName: "reventless-seed-aws",
+      rootDir: "./reventless/seed-aws",
+      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
+    },
+    {
       displayName: "rescript-moment",
       rootDir: "./rescript/moment",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],

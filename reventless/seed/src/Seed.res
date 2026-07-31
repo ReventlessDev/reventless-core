@@ -14,11 +14,13 @@ module Connect = Seed_Connect
 
 exception Failed = Seed_Types.Failed
 
-// A live target a data set seeds against: an authenticated client, the upload
-// endpoint (empty when the deployment serves no uploads), and a label.
+// A live target a data set seeds against: an authenticated client, the
+// deployment's upload endpoints (the legacy single service and the per-store
+// map, either of which may be empty), and a label.
 type connection = Seed_Connect.connection = {
   client: Seed_Client.t,
   uploadEndpoint: string,
+  uploadEndpoints: dict<string>,
   label: string,
 }
 

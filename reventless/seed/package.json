@@ -10,6 +10,7 @@
     "rebuild": "pnpm run clean && pnpm run build"
   },
   "devDependencies": {
+    "@reventlessdev/rescript-jest": "workspace:*",
     "rescript": "12.3.0"
   },
   "peerDependencies": {

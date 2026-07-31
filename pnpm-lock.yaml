@@ -1630,6 +1630,9 @@ importers:
 
   reventless/seed:
     devDependencies:
+      '@reventlessdev/rescript-jest':
+        specifier: workspace:*
+        version: link:../../rescript/jest
       rescript:
         specifier: 12.3.0
         version: 12.3.0
@@ -1643,6 +1646,9 @@ importers:
         specifier: workspace:*
         version: link:../seed
     devDependencies:
+      '@reventlessdev/rescript-jest':
+        specifier: workspace:*
+        version: link:../../rescript/jest
       rescript:
         specifier: 12.3.0
         version: 12.3.0

@@ -10,6 +10,11 @@
 // absolute URL against the endpoint's origin: AWS returns an absolute presigned
 // S3 URL (unchanged), while the local route returns a same-origin relative
 // `/{prefix}/{key}` that Node's `fetch` cannot PUT to until it is made absolute.
+//
+// `uploadAsset` is the transport and takes a resolved endpoint. *Which* endpoint
+// an asset uses — a deployment now publishes one per declared store — is
+// `endpointFor` below, kept separate so the decision is testable without a
+// running presign service.
 
 type fetchInit = {method: string, headers: dict<string>, body: string}
 type response
@@ -37,6 +42,60 @@ let asString = (json: JSON.t): option<string> =>
   | String(s) => Some(s)
   | _ => None
   }
+
+/**
+ * Which endpoint an asset destined for `store` uploads through:
+ *
+ *   declares a store with a matching endpoint  → that store's endpoint
+ *   declares a store with no matching endpoint → the legacy single service
+ *   declares no store                          → the legacy single service
+ *   neither available                          → `None`
+ *
+ * `store` is the qualified `{plugin}.{store}` the platform keys its per-store
+ * presign endpoints by. The two middle rows are what keep a deployment predating
+ * per-store endpoints — and the local dev server, which serves one upload route
+ * — working unchanged.
+ *
+ * These are the same four rows the AutoUI renderer resolves an upload field by.
+ * Resolving one declaration by two different rules is how an asset lands in
+ * another plugin's bucket with a 2xx and a plausible-looking ref, so a missing
+ * key falls back to the legacy service rather than to some other store.
+ */
+let endpointFor = (
+  ~store: option<string>=?,
+  ~uploadEndpoint: string,
+  ~uploadEndpoints: dict<string>,
+): option<string> => {
+  let legacy = uploadEndpoint == "" ? None : Some(uploadEndpoint)
+  switch store {
+  | Some(s) => uploadEndpoints->Dict.get(s)->Option.orElse(legacy)
+  | None => legacy
+  }
+}
+
+/**
+ * Why `endpointFor` resolved nothing — the message a data set reports when its
+ * upload phase skips.
+ *
+ * "no upload endpoint" states a fact about the *deployment*; when the deployment
+ * publishes endpoints the caller could not match, the fact is about the *client*
+ * and that phrasing sends a reader to the bucket, the presign service and the
+ * IAM policy, all of which are correct. So the three cases are distinguished and
+ * the unmatched one names both the store it wanted and the keys it saw.
+ */
+let unresolvedReason = (~store: option<string>=?, ~uploadEndpoints: dict<string>): string => {
+  let available = uploadEndpoints->Dict.keysToArray
+  switch (Seed_Prompt.envValue("SEED_SKIP_UPLOADS"), store, available) {
+  | (Some(_), _, _) => "SEED_SKIP_UPLOADS is set"
+  | (None, _, []) => "this deployment publishes no upload endpoint"
+  | (None, Some(s), keys) =>
+    `this deployment publishes upload endpoints for ${keys->Array.join(", ")}, none for "${s}"`
+  | (None, None, keys) =>
+    `this deployment publishes only per-store upload endpoints (${keys->Array.join(
+        ", ",
+      )}) and this upload names no store`
+  }
+}
 
 // A `fetch` that reports an unreachable endpoint as `Error` instead of throwing,
 // so the two-step upload can thread failures without exceptions.
