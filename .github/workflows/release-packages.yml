@@ -71,6 +71,26 @@ on:
         required: false
         type: string
         default: "12"
+      registry:
+        description: "Registry to authenticate against and to query when skipping already-published versions. Where each package actually publishes is still its own `publishConfig.registry`."
+        required: false
+        type: string
+        default: "https://registry.npmjs.org"
+      token-env-var:
+        description: "Name of the environment variable the caller's .npmrc expands for auth. The NPM_TOKEN secret is exported under this name for install and publish."
+        required: false
+        type: string
+        default: "NPM_TOKEN"
+      publish-access:
+        description: "Value for `pnpm publish --access`. Empty omits the flag — required for a registry that only accepts restricted packages."
+        required: false
+        type: string
+        default: "public"
+      dist-tag-prereleases:
+        description: "Publish prereleases under a dist-tag named after the prerelease identifier (alpha/beta) instead of letting them become `latest`."
+        required: false
+        type: boolean
+        default: false
       doc-changelog-file:
         description: "CHANGELOG file that records documentation commits. Skipped when empty."
         required: false
@@ -139,7 +159,7 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
           cache: "pnpm"
-          registry-url: "https://registry.npmjs.org"
+          registry-url: ${{ inputs.registry }}
 
       - name: Configure Git
         run: |
@@ -151,9 +171,14 @@ jobs:
         run: ${{ inputs.workspace-setup }}
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          TOKEN_ENV_VAR: ${{ inputs.token-env-var }}
+          RELEASE_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # The caller's .npmrc decides which variable it expands; export the one
+          # secret under that name rather than assuming NPM_TOKEN.
+          export "${TOKEN_ENV_VAR}=${RELEASE_TOKEN}"
+          pnpm install --frozen-lockfile
 
       - name: Check if PPX Linux binary is available
         if: inputs.ppx-fallback
@@ -383,10 +408,29 @@ jobs:
       - name: Publish to npmjs (throttled, sequential, stop on first error)
         if: steps.changes.outputs.count != '0'
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          TOKEN_ENV_VAR: ${{ inputs.token-env-var }}
+          RELEASE_TOKEN: ${{ secrets.NPM_TOKEN }}
           PUBLISH_DELAY_SECONDS: ${{ inputs.publish-delay-seconds }}
+          REGISTRY: ${{ inputs.registry }}
+          PUBLISH_ACCESS: ${{ inputs.publish-access }}
+          DIST_TAG_PRERELEASES: ${{ inputs.dist-tag-prereleases }}
+          PREID: ${{ steps.prerelease.outputs.preid }}
         run: |
           set -euo pipefail
+          export "${TOKEN_ENV_VAR}=${RELEASE_TOKEN}"
+
+          # if-blocks, not `test && cmd`: under `set -e` a false test makes the
+          # whole statement non-zero and aborts the step.
+          PUBLISH_ARGS=(--no-git-checks)
+          if [ -n "$PUBLISH_ACCESS" ]; then
+            PUBLISH_ARGS+=(--access "$PUBLISH_ACCESS")
+          fi
+          # A prerelease that becomes `latest` is what makes a bare `npm install`
+          # resolve a prerelease; a dist-tag keeps `latest` for graduated releases.
+          if [ "$DIST_TAG_PRERELEASES" = "true" ] && [ -n "$PREID" ]; then
+            PUBLISH_ARGS+=(--tag "$PREID")
+          fi
+          echo "publish args: ${PUBLISH_ARGS[*]}"
           # Publish one package at a time in dependency (topological) order with
           # a delay between each, instead of lerna's parallel `publish
           # from-package`. The bulk parallel publish previously tripped npmjs'
@@ -404,12 +448,12 @@ jobs:
             | jq -r '.[] | "\(.name)\t\(.version)\t\(.location)"' \
             | while IFS=$'\t' read -r name version location; do
                 if npm view "$name@$version" version \
-                     --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+                     --registry="$REGISTRY" >/dev/null 2>&1; then
                   echo "skip    $name@$version (already on registry)"
                   continue
                 fi
                 echo "publish $name@$version"
-                ( cd "$location" && pnpm publish --no-git-checks --access public )
+                ( cd "$location" && pnpm publish "${PUBLISH_ARGS[@]}" )
                 echo "waiting ${PUBLISH_DELAY_SECONDS}s before next publish"
                 sleep "$PUBLISH_DELAY_SECONDS"
               done
