@@ -20,7 +20,6 @@
 // `callback.phase1`. The `bodyModule` and `context` HANDLER_CONFIG fields
 // exist for this wiring (AutomationSliceRuntime_Builder_Single).
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 type handlerEntry = {
   specModule: string,
@@ -81,7 +80,7 @@ let warnMissingBodyModule = (entry: handlerEntry) =>
 // Fallback for automation entries from a config without `context` — sliceName
 // is the only field the runtime can still recover.
 let defaultContext = (sliceName: string): Reventless.AutomationSlice.context => {
-  environment: processEnv->Dict.get("Environment")->Option.getOr("unknown"),
+  environment: NodeProcess.env->Dict.get("Environment")->Option.getOr("unknown"),
   platformName: "unknown",
   pluginName: "unknown",
   sliceName,

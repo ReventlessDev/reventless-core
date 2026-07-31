@@ -39,11 +39,10 @@ external makeSearchPlaceIndexForTextCommand: searchPlaceIndexForTextInput => sea
 
 // ── Node bindings (replacing the former `%raw` env helper with a typed one) ──
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 // Read an env var, mapping "" / unset to None.
 let getEnv = (k: string): option<string> =>
-  switch processEnv->Dict.get(k) {
+  switch NodeProcess.env->Dict.get(k) {
   | Some("") | None => None
   | Some(v) => Some(v)
   }

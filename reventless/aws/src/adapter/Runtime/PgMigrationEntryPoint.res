@@ -18,7 +18,6 @@
 // HANDLER_CONFIG shape:
 //   { "pgConnection": { host, port, database, username, secretArn } }
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 // Structured JSON logging shared by every deployed entry point (HandlerFactoryHelpers).
 type logExtra = {comp?: string}
@@ -49,6 +48,6 @@ let runMigration = async (
 }
 
 let handler = async (_event: JSON.t, _context: PulumiAws.Lambda.context) => {
-  let config = processEnv->Dict.get("HANDLER_CONFIG")->Option.getOr("{}")->parseHandlerConfig
+  let config = NodeProcess.env->Dict.get("HANDLER_CONFIG")->Option.getOr("{}")->parseHandlerConfig
   await runMigration(config)
 }

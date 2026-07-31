@@ -12,7 +12,6 @@
 // sury-encoded with the same shape as the in-memory adapter's
 // encodePluginStructureEntry, so it is wrapped with `pluginId` without decoding.
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 let str = (item: dict<JSON.t>, key: string): option<string> =>
   item->Dict.get(key)->Option.flatMap(JSON.Decode.string)
@@ -61,14 +60,14 @@ let toEntry = (item: dict<JSON.t>, ~name: string): option<JSON.t> =>
 // ADMIN_ENTRY_JSON env var (the admin never Connects to itself, so its structure
 // never enters the Plugin read model).
 let adminEntry: option<JSON.t> =
-  switch processEnv->Dict.get("ADMIN_ENTRY_JSON") {
+  switch NodeProcess.env->Dict.get("ADMIN_ENTRY_JSON") {
   | Some(s) if s != "" => Some(JSON.parseOrThrow(s))
   | _ => None
   }
 
 let handler = async (_event: JSON.t): array<JSON.t> => {
   let admin = adminEntry->Option.mapOr([], e => [e])
-  switch processEnv->Dict.get("PLUGIN_RM_TABLE") {
+  switch NodeProcess.env->Dict.get("PLUGIN_RM_TABLE") {
   | None | Some("") =>
     Console.error("Platform_ComponentDefinitions: PLUGIN_RM_TABLE env var not set")
     admin

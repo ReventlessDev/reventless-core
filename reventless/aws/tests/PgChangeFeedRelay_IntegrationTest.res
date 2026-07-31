@@ -17,7 +17,6 @@ open JestGlobals
 open ReventlessCore
 open Reventless
 
-@val external processEnv: dict<string> = "process.env"
 let opts: Pulumi.CustomResourceOptions.t = {}
 
 let jsonObj = pairs => JSON.Encode.object(Dict.fromArray(pairs))
@@ -35,7 +34,7 @@ let capturingSendBatch = sink => async jsons => sink := sink.contents->Array.con
 let idOf = json =>
   json->JSON.Decode.object->Option.flatMap(o => o->Dict.get("id"))->Option.flatMap(JSON.Decode.string)
 
-switch processEnv->Dict.get("PG_URL") {
+switch NodeProcess.env->Dict.get("PG_URL") {
 | None =>
   testSync("Postgres relay integration (skipped — set PG_URL to run)", () =>
     expect(true)->toBe(true)

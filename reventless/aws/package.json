@@ -25,6 +25,7 @@
     "@aws-sdk/s3-request-presigner": "3.970.0",
     "@reventlessdev/rescript-aws-sdk": "workspace:*",
     "@reventlessdev/rescript-effect": "workspace:*",
+    "@reventlessdev/rescript-node": "workspace:*",
     "@reventlessdev/rescript-jest": "workspace:*",
     "@reventlessdev/rescript-pulumi-aws": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",

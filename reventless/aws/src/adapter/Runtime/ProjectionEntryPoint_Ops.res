@@ -16,7 +16,6 @@
 // Runtime-pure: no `open PulumiAws` values — Pulumi appears in type positions
 // only (erased).
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 // ── Runtime-loaded spec-module reads (typed at the seam) ────────────────────
 // The shells read `config` / `subIdConfig` off dynamically imported spec
@@ -71,8 +70,8 @@ let makeQueryDbOps = (
       ~indexes,
       ~subIdField?,
     )->withLiveUpdates({
-      endpoint: ?(processEnv->Dict.get("APPSYNC_ENDPOINT")),
-      region: ?(processEnv->Dict.get("AWS_REGION")),
+      endpoint: ?(NodeProcess.env->Dict.get("APPSYNC_ENDPOINT")),
+      region: ?(NodeProcess.env->Dict.get("AWS_REGION")),
       topicName: ?stateTopicName,
       subIdField: ?subIdField,
     })

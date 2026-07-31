@@ -1,22 +1,15 @@
 open JestGlobals
 
-@module("fs") external mkdtempSync: string => string = "mkdtempSync"
-@module("fs") external mkdirSync: (string, {"recursive": bool}) => unit = "mkdirSync"
-@module("fs") external writeFileSync: (string, string) => unit = "writeFileSync"
-@module("fs") external rmSync: (string, {"recursive": bool, "force": bool}) => unit = "rmSync"
-@module("path") external join2: (string, string) => string = "join"
-@module("os") external tmpdir: unit => string = "tmpdir"
-
 let makeFixture = (): string => {
-  let base = mkdtempSync(join2(tmpdir(), "static-bundle-"))
-  writeFileSync(join2(base, "index.html"), "<html></html>")
-  writeFileSync(join2(base, "app.js"), "console.log('x')")
-  writeFileSync(join2(base, "app.css"), "body{color:red}")
-  writeFileSync(join2(base, ".DS_Store"), "ignored")
-  let assets = join2(base, "assets")
-  mkdirSync(assets, {"recursive": true})
-  writeFileSync(join2(assets, "logo.svg"), "<svg/>")
-  writeFileSync(join2(assets, "favicon.ico"), "ico")
+  let base = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "static-bundle-"]))
+  NodeFs.writeFileSync(NodePath.join([base, "index.html"]), "<html></html>")
+  NodeFs.writeFileSync(NodePath.join([base, "app.js"]), "console.log('x')")
+  NodeFs.writeFileSync(NodePath.join([base, "app.css"]), "body{color:red}")
+  NodeFs.writeFileSync(NodePath.join([base, ".DS_Store"]), "ignored")
+  let assets = NodePath.join([base, "assets"])
+  NodeFs.mkdirSync(assets, {recursive: true})
+  NodeFs.writeFileSync(NodePath.join([assets, "logo.svg"]), "<svg/>")
+  NodeFs.writeFileSync(NodePath.join([assets, "favicon.ico"]), "ico")
   base
 }
 
@@ -86,14 +79,14 @@ describe("Util_StaticBundle.walk", () => {
       "assets/logo.svg",
       "index.html",
     ])
-    rmSync(dir, {"recursive": true, "force": true})
+    NodeFs.rmSync(dir, {recursive: true, force: true})
   })
 
   testSync("computes a non-empty content hash for each entry", () => {
     let dir = makeFixture()
     let entries = Util_StaticBundle.walk(dir)
     entries->Array.forEach(e => expect(e.contentHash->String.length > 0)->toBe(true))
-    rmSync(dir, {"recursive": true, "force": true})
+    NodeFs.rmSync(dir, {recursive: true, force: true})
   })
 
   testSync("identical contents produce identical hashes", () => {
@@ -102,29 +95,29 @@ describe("Util_StaticBundle.walk", () => {
     let indexEntry =
       entries->Array.find(e => e.relativePath == "index.html")->Option.getUnsafe
     let indexHash = indexEntry.contentHash
-    let dir2 = mkdtempSync(join2(tmpdir(), "static-bundle-"))
-    writeFileSync(join2(dir2, "index.html"), "<html></html>")
+    let dir2 = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "static-bundle-"]))
+    NodeFs.writeFileSync(NodePath.join([dir2, "index.html"]), "<html></html>")
     let entries2 = Util_StaticBundle.walk(dir2)
     let indexHash2 = (entries2->Array.getUnsafe(0)).contentHash
     expect(indexHash)->toBe(indexHash2)
-    rmSync(dir, {"recursive": true, "force": true})
-    rmSync(dir2, {"recursive": true, "force": true})
+    NodeFs.rmSync(dir, {recursive: true, force: true})
+    NodeFs.rmSync(dir2, {recursive: true, force: true})
   })
 
   testSync("different contents produce different hashes", () => {
-    let dirA = mkdtempSync(join2(tmpdir(), "static-bundle-"))
-    writeFileSync(join2(dirA, "f.txt"), "AAA")
-    let dirB = mkdtempSync(join2(tmpdir(), "static-bundle-"))
-    writeFileSync(join2(dirB, "f.txt"), "BBB")
+    let dirA = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "static-bundle-"]))
+    NodeFs.writeFileSync(NodePath.join([dirA, "f.txt"]), "AAA")
+    let dirB = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "static-bundle-"]))
+    NodeFs.writeFileSync(NodePath.join([dirB, "f.txt"]), "BBB")
     let hashA = (Util_StaticBundle.walk(dirA)->Array.getUnsafe(0)).contentHash
     let hashB = (Util_StaticBundle.walk(dirB)->Array.getUnsafe(0)).contentHash
     expect(hashA == hashB)->toBe(false)
-    rmSync(dirA, {"recursive": true, "force": true})
-    rmSync(dirB, {"recursive": true, "force": true})
+    NodeFs.rmSync(dirA, {recursive: true, force: true})
+    NodeFs.rmSync(dirB, {recursive: true, force: true})
   })
 
   testSync("throws when assetsDir does not exist", () => {
-    let missing = join2(tmpdir(), "static-bundle-does-not-exist-xyz123")
+    let missing = NodePath.join([NodeOs.tmpdir(), "static-bundle-does-not-exist-xyz123"])
     let threw = try {
       let _ = Util_StaticBundle.walk(missing)
       false
@@ -137,9 +130,9 @@ describe("Util_StaticBundle.walk", () => {
 
 describe("Util_StaticBundle.readJsonFileVerbatim", () => {
   let writeTmp = (contents: string): string => {
-    let dir = mkdtempSync(join2(tmpdir(), "ui-hints-"))
-    let path = join2(dir, "ui-hints.json")
-    writeFileSync(path, contents)
+    let dir = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "ui-hints-"]))
+    let path = NodePath.join([dir, "ui-hints.json"])
+    NodeFs.writeFileSync(path, contents)
     path
   }
 
@@ -148,7 +141,7 @@ describe("Util_StaticBundle.readJsonFileVerbatim", () => {
     let raw = "{\n  \"dashboards\":  [ ] \n}\n"
     let path = writeTmp(raw)
     expect(Util_StaticBundle.readJsonFileVerbatim(~path, ~label="test"))->toBe(raw)
-    rmSync(path, {"recursive": true, "force": true})
+    NodeFs.rmSync(path, {recursive: true, force: true})
   })
 
   testSync("throws on malformed JSON", () => {
@@ -160,11 +153,11 @@ describe("Util_StaticBundle.readJsonFileVerbatim", () => {
     | _ => true
     }
     expect(threw)->toBe(true)
-    rmSync(path, {"recursive": true, "force": true})
+    NodeFs.rmSync(path, {recursive: true, force: true})
   })
 
   testSync("throws when the file does not exist", () => {
-    let missing = join2(tmpdir(), "ui-hints-missing-xyz123.json")
+    let missing = NodePath.join([NodeOs.tmpdir(), "ui-hints-missing-xyz123.json"])
     let threw = try {
       let _ = Util_StaticBundle.readJsonFileVerbatim(~path=missing, ~label="test")
       false

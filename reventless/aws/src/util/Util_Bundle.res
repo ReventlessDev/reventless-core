@@ -1,38 +1,11 @@
-// Node.js path bindings
-@module("path") external dirname: string => string = "dirname"
-@module("path") external join2: (string, string) => string = "join"
-@module("path") external relative: (string, string) => string = "relative"
-
-// Node.js fs bindings
-@module("fs") external existsSync: string => bool = "existsSync"
-@module("fs") external readFileSync: (string, string) => string = "readFileSync"
-type dirent
-@module("fs") external readdirSync: (string, {"withFileTypes": bool}) => array<dirent> = "readdirSync"
-@send external isDirectory: dirent => bool = "isDirectory"
-@get external direntName: dirent => string = "name"
-
-// Node.js crypto bindings
-type hashObj
-@module("crypto") external createHash: string => hashObj = "createHash"
-@send external update: (hashObj, string) => hashObj = "update"
-@send external digest: (hashObj, string) => string = "digest"
-
 // URL global
 type urlObj
 @new external newURL: string => urlObj = "URL"
 @get external pathname: urlObj => string = "pathname"
 
-// module.createRequire
-type requireFn
-@module("module") external createRequire: string => requireFn = "createRequire"
-@send external requireResolve: (requireFn, string) => string = "resolve"
-
-// process.cwd
-@val @scope("process") external cwd: unit => string = "cwd"
-
 // Module-level state: cache populated by getModuleSpecifier
 let packageRootCache: dict<string> = Dict.make()
-let localRequire: requireFn = createRequire(%raw("import.meta.url"))
+let localRequire: NodeModule.require = NodeModule.createRequire(%raw("import.meta.url"))
 
 /**
  * Convert an import.meta.url file URL to an npm module specifier.
@@ -44,26 +17,26 @@ let getModuleSpecifier = (importMetaUrl: string): string => {
     importMetaUrl
   } else {
     let filePath = newURL(importMetaUrl)->pathname
-    let dirRef = ref(dirname(filePath))
+    let dirRef = ref(NodePath.dirname(filePath))
     let resultRef: ref<option<string>> = ref(None)
     while dirRef.contents != "/" && resultRef.contents->Option.isNone {
       let dir = dirRef.contents
-      let pkgPath = join2(dir, "package.json")
-      if existsSync(pkgPath) {
-        let pkgText = readFileSync(pkgPath, "utf-8")
+      let pkgPath = NodePath.join([dir, "package.json"])
+      if NodeFs.existsSync(pkgPath) {
+        let pkgText = NodeFs.readFileSync(pkgPath)
         switch pkgText->JSON.parseOrThrow->JSON.Decode.object {
         | Some(obj) =>
           switch obj->Dict.get("name")->Option.flatMap(JSON.Decode.string) {
           | Some(pkgName) =>
             packageRootCache->Dict.set(pkgName, dir)
-            let relPath = relative(dir, filePath)
+            let relPath = NodePath.relative(dir, filePath)
             resultRef := Some(pkgName ++ "/" ++ relPath)
-          | None => dirRef := dirname(dir)
+          | None => dirRef := NodePath.dirname(dir)
           }
-        | None => dirRef := dirname(dir)
+        | None => dirRef := NodePath.dirname(dir)
         }
       } else {
-        dirRef := dirname(dir)
+        dirRef := NodePath.dirname(dir)
       }
     }
     switch resultRef.contents {
@@ -116,8 +89,12 @@ let resolvePackageRoot = (~fromPulumiProject: bool=false, packageName: string): 
   | Some(cachedRoot) => cachedRoot
   | None =>
     let request = packageName ++ "/package.json"
-    let viaFramework = () => dirname(localRequire->requireResolve(request))
-    let viaPulumiProject = () => dirname(createRequire(cwd() ++ "/index.js")->requireResolve(request))
+    let viaFramework = () => NodePath.dirname(localRequire->NodeModule.requireResolve(request))
+    let viaPulumiProject = () =>
+      NodePath.dirname(
+        NodeModule.createRequire(NodeProcess.cwd() ++ "/index.js")
+        ->NodeModule.requireResolve(request),
+      )
     let (preferred, fallback) = fromPulumiProject
       ? (viaPulumiProject, viaFramework)
       : (viaFramework, viaPulumiProject)
@@ -133,7 +110,7 @@ let resolvePackageRoot = (~fromPulumiProject: bool=false, packageName: string): 
  * Compute a SHA256 hash of a string, returned as base64.
  */
 let hashString = (str: string): string =>
-  createHash("sha256")->update(str)->digest("base64")
+  NodeCrypto.createHash("sha256")->NodeCrypto.hashUpdate(str)->NodeCrypto.hashDigest("base64")
 
 // ── ESM self-containment loader (Option C) ──────────────────────────────────
 // Deployed Lambda entry points are ESM (`.mjs`) and statically/dynamically import
@@ -213,28 +190,23 @@ let isSkippedDir = (n: string) =>
   n == ".git" ||
   n == "coverage"
 
-// Reads file as a string for content hashing; Buffer would be slightly more
-// efficient but utf-8 keeps the hash stable across platforms and matches what
-// Lambda will execute.
-@module("fs") external readFileAsString: (string, string) => string = "readFileSync"
-
 let rec walkDir = (
   ~dir: string,
   ~prefix: string,
   ~assets: dict<Pulumi.Archive.assetOrArchive>,
   ~paths: array<(string, string)>,
 ) => {
-  let entries = readdirSync(dir, {"withFileTypes": true})
+  let entries = NodeFs.readdirSync(dir, {withFileTypes: true})
   entries->Array.forEach(entry => {
-    let entryName = entry->direntName
-    if entry->isDirectory {
+    let entryName = entry->NodeFs.direntName
+    if entry->NodeFs.isDirectory {
       if !isSkippedDir(entryName) {
         let newPrefix = prefix == "" ? entryName : prefix ++ "/" ++ entryName
-        walkDir(~dir=join2(dir, entryName), ~prefix=newPrefix, ~assets, ~paths)
+        walkDir(~dir=NodePath.join([dir, entryName]), ~prefix=newPrefix, ~assets, ~paths)
       }
     } else if entryName == "package.json" || entryName->String.endsWith(".mjs") || entryName->String.endsWith(".js") {
       let relPath = prefix == "" ? entryName : prefix ++ "/" ++ entryName
-      let absPath = join2(dir, entryName)
+      let absPath = NodePath.join([dir, entryName])
       assets->Dict.set(
         relPath,
         Pulumi.Asset.fileAsset(absPath)->Pulumi.Archive.assetToAssetOrArchive,
@@ -256,9 +228,11 @@ let createFilteredPackageArchive = (packageRoot: string): (Pulumi.Archive.t, str
   walkDir(~dir=packageRoot, ~prefix="", ~assets, ~paths)
   // Sort so the hash is stable across filesystem traversal order.
   paths->Array.sort(((a, _), (b, _)) => String.compare(a, b))
+  // Read as a string rather than a Buffer: slightly less efficient, but utf-8
+  // keeps the hash stable across platforms and matches what Lambda executes.
   let combined =
     paths
-    ->Array.map(((relPath, absPath)) => `${relPath}:${readFileAsString(absPath, "utf-8")}`)
+    ->Array.map(((relPath, absPath)) => `${relPath}:${NodeFs.readFileSync(absPath)}`)
     ->Array.join("\n---\n")
   (Pulumi.Archive.assetArchive(assets), hashString(combined))
 }

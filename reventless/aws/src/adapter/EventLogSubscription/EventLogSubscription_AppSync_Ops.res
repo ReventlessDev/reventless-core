@@ -7,11 +7,10 @@
 // body, wraps it as a `{position, eventType, payload}` event, and publishes it
 // to the fixed plugin event-log channel on the AppSync Events API.
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 // Baked at deploy time: the normalised channel segment for this event log.
-let channel = "/default/" ++ processEnv->Dict.get("EVENT_LOG_CHANNEL")->Option.getOr("")
-let endpoint = processEnv->Dict.get("APPSYNC_ENDPOINT")->Option.getOr("")
+let channel = "/default/" ++ NodeProcess.env->Dict.get("EVENT_LOG_CHANNEL")->Option.getOr("")
+let endpoint = NodeProcess.env->Dict.get("APPSYNC_ENDPOINT")->Option.getOr("")
 
 // SQS Lambda event (only the fields this handler reads).
 type sqsRecord = {body: string, messageId: string}

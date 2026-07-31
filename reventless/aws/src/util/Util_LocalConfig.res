@@ -19,13 +19,6 @@
 // ignored. Not a full YAML parser — only this subset is supported by
 // design (no nesting, no arrays, no multi-line scalars).
 
-@module("fs") external existsSync: string => bool = "existsSync"
-@module("fs") external readFileSync: (string, string) => string = "readFileSync"
-@module("path") external pathJoin: (string, string) => string = "join"
-@module("path") external pathDirname: string => string = "dirname"
-@val @scope("process") external processCwd: unit => string = "cwd"
-@val external processEnv: Dict.t<string> = "process.env"
-
 let _filename = "Pulumi.local.yaml"
 let _projectFile = "Pulumi.yaml"
 let _cache: ref<option<Dict.t<string>>> = ref(None)
@@ -35,15 +28,15 @@ let _cache: ref<option<Dict.t<string>>> = ref(None)
 // find Pulumi.yaml, then read Pulumi.local.yaml next to it.
 let _findSidecar = (): option<string> => {
   let rec find = dir => {
-    if existsSync(pathJoin(dir, _projectFile)) {
-      let candidate = pathJoin(dir, _filename)
-      existsSync(candidate) ? Some(candidate) : None
+    if NodeFs.existsSync(NodePath.join([dir, _projectFile])) {
+      let candidate = NodePath.join([dir, _filename])
+      NodeFs.existsSync(candidate) ? Some(candidate) : None
     } else {
-      let parent = pathDirname(dir)
+      let parent = NodePath.dirname(dir)
       parent == dir ? None : find(parent)
     }
   }
-  find(processCwd())
+  find(NodeProcess.cwd())
 }
 
 let _stripQuotes = (s: string): string => {
@@ -88,7 +81,7 @@ let _load = (): Dict.t<string> =>
   | Some(d) => d
   | None =>
     let d = switch _findSidecar() {
-    | Some(path) => _parse(readFileSync(path, "utf-8"))
+    | Some(path) => _parse(NodeFs.readFileSync(path))
     | None => Dict.make()
     }
     _cache := Some(d)
@@ -113,7 +106,7 @@ let _envVarName = (key: string): string => {
 }
 
 let get = (key: string): option<string> =>
-  switch Dict.get(processEnv, _envVarName(key)) {
+  switch Dict.get(NodeProcess.env, _envVarName(key)) {
   | Some(v) if v !== "" => Some(v)
   | _ => Dict.get(_load(), key)
   }

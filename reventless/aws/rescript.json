@@ -23,6 +23,7 @@
   ],
   "dependencies": [
     "sury",
+    "@reventlessdev/rescript-node",
     "@reventlessdev/rescript-jest",
     "@reventlessdev/rescript-aws-sdk",
     "@reventlessdev/rescript-effect",

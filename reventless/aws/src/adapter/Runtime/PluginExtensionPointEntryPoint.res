@@ -10,7 +10,6 @@
 // binds the Id module at the ReScript level, mirroring ExtensionPoint_Builder.
 // Runtime-pure: no Pulumi value reaches this module's import graph.
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 // ── Shim bindings (HandlerFactoryHelpers.mjs) ───────────────────────────────
 // The structured-log + Effect dispatch boundary shared by every deployed entry
@@ -64,7 +63,7 @@ type handlerConfig = {
 
 // === Initialize eagerly at module load (Lambda cold start) ===
 
-let config = processEnv->Dict.get("HANDLER_CONFIG")->Option.getOr("{}")->parseHandlerConfig
+let config = NodeProcess.env->Dict.get("HANDLER_CONFIG")->Option.getOr("{}")->parseHandlerConfig
 
 // Instantiate the Plugin EP mapping. updateApiSchema and manageSubscriptions
 // are admin-only hooks; this Lambda only handles incoming commands (Heartbeat,
@@ -82,7 +81,7 @@ module EpSpec = {
   let runtimeOps: ReventlessCore.PluginRuntimeOperations.operations = {
     messagePublish: {sendMessageToChannel: Util_PluginMessage_Runtime.sendMessage},
   }
-  let environment = processEnv->Dict.get("Environment")->Option.getOr("unknown")
+  let environment = NodeProcess.env->Dict.get("Environment")->Option.getOr("unknown")
   let updateApiSchema: option<Reventless.QueryEngine.operations => promise<unit>> = None
   let manageSubscriptions: option<
     (Reventless.Plugin.pluginDefinition, [#connect | #disconnect]) => promise<unit>,
@@ -108,7 +107,7 @@ let publishToAggregates: dict<ReventlessCore.CommandTopic.publishJsons> =
   ->Option.getOr(Dict.make())
   ->Dict.toArray
   ->Array.map(((aggName, envVarName)) => {
-    let queueUrl = processEnv->Dict.get(envVarName)->Option.getOr("")
+    let queueUrl = NodeProcess.env->Dict.get(envVarName)->Option.getOr("")
     let queue: Util_SQS_Runtime.resolvedQueue = {id: queueUrl, name: queueUrl, arn: ""}
     (aggName, queue->CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS_FIFO))
   })

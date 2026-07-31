@@ -14,7 +14,6 @@
 // ScheduledPublisher_CloudWatchEvents_Runtime directly — the layer ships it —
 // so the mirror is gone.
 
-@val @scope("process") external processEnv: dict<string> = "env"
 @module("./HandlerFactoryHelpers.mjs") @scope("log")
 external logWarn: (string, StreamRoutedEntryPoint_Ops.dispatchOpts) => unit = "warn"
 
@@ -71,7 +70,7 @@ let buildPublishCommands = (map: dict<string>): dict<ReventlessCore.CommandTopic
   map
   ->Dict.toArray
   ->Array.filterMap(((aggName, envVarName)) =>
-    processEnv
+    NodeProcess.env
     ->Dict.get(envVarName)
     ->Option.filter(queueUrl => queueUrl != "")
     ->Option.map(queueUrl => {
@@ -98,9 +97,9 @@ let makeSchedulerOps = (config: option<schedulerEnvConfig>): option<schedulerOps
   | (None, None) => None
   | (None, Some(cfg)) =>
     switch (
-      processEnv->Dict.get(cfg.roleArnEnv),
-      processEnv->Dict.get(cfg.targetArnEnv),
-      processEnv->Dict.get(cfg.targetNameEnv),
+      NodeProcess.env->Dict.get(cfg.roleArnEnv),
+      NodeProcess.env->Dict.get(cfg.targetArnEnv),
+      NodeProcess.env->Dict.get(cfg.targetNameEnv),
     ) {
     | (Some(roleArn), Some(targetArn), Some(targetName))
       if roleArn != "" && targetArn != "" && targetName != "" =>

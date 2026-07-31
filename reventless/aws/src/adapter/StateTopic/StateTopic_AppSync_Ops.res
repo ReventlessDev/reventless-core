@@ -10,13 +10,12 @@
 // are logged and skipped; 5xx / network failures are recorded and rethrown after
 // the batch so the EventSourceMapping retries (bisectBatchOnFunctionError).
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
-let endpoint = processEnv->Dict.get("APPSYNC_ENDPOINT")->Option.getOr("")
+let endpoint = NodeProcess.env->Dict.get("APPSYNC_ENDPOINT")->Option.getOr("")
 
 // STATE_TOPIC_MAP: `{ <tableName>: <topicName> }`, injected at deploy time.
 let topicMap: dict<string> =
-  switch processEnv->Dict.get("STATE_TOPIC_MAP")->Option.getOr("{}")->JSON.parseOrThrow->JSON.Decode.object {
+  switch NodeProcess.env->Dict.get("STATE_TOPIC_MAP")->Option.getOr("{}")->JSON.parseOrThrow->JSON.Decode.object {
   | Some(obj) =>
     obj
     ->Dict.toArray

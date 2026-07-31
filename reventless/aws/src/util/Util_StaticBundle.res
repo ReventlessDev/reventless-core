@@ -1,22 +1,5 @@
 let log = ReventlessCore.Logger.fromEnv()
 
-@module("path") external join2: (string, string) => string = "join"
-@module("path") external relative: (string, string) => string = "relative"
-
-@module("fs") external existsSync: string => bool = "existsSync"
-@module("fs") external readFileSync: string => Js.TypedArray2.Uint8Array.t = "readFileSync"
-@module("fs") external readFileSyncUtf8: (string, string) => string = "readFileSync"
-type dirent
-@module("fs")
-external readdirSync: (string, {"withFileTypes": bool}) => array<dirent> = "readdirSync"
-@send external isDirectory: dirent => bool = "isDirectory"
-@get external direntName: dirent => string = "name"
-
-type hashObj
-@module("crypto") external createHash: string => hashObj = "createHash"
-@send external updateBuffer: (hashObj, Js.TypedArray2.Uint8Array.t) => hashObj = "update"
-@send external digest: (hashObj, string) => string = "digest"
-
 type fileEntry = {
   relativePath: string,
   absolutePath: string,
@@ -29,22 +12,22 @@ let toForwardSlashes = (p: string): string => p->String.replaceAll("\\", "/")
 let isHidden = (name: string): bool => name->String.startsWith(".")
 
 let rec walkInto = (~dir: string, ~prefix: string, acc: array<fileEntry>): unit => {
-  let entries = readdirSync(dir, {"withFileTypes": true})
+  let entries = NodeFs.readdirSync(dir, {withFileTypes: true})
   entries->Array.forEach(entry => {
-    let entryName = entry->direntName
+    let entryName = entry->NodeFs.direntName
     if isHidden(entryName) {
       ()
-    } else if entry->isDirectory {
+    } else if entry->NodeFs.isDirectory {
       let nextPrefix = prefix == "" ? entryName : prefix ++ "/" ++ entryName
-      walkInto(~dir=join2(dir, entryName), ~prefix=nextPrefix, acc)
+      walkInto(~dir=NodePath.join([dir, entryName]), ~prefix=nextPrefix, acc)
     } else {
-      let absolutePath = join2(dir, entryName)
+      let absolutePath = NodePath.join([dir, entryName])
       let relativePath = prefix == "" ? entryName : prefix ++ "/" ++ entryName
-      let bytes = readFileSync(absolutePath)
+      let bytes = NodeFs.readFileSyncBuffer(absolutePath)
       let contentHash =
-        createHash("sha256")
-        ->updateBuffer(bytes)
-        ->digest("hex")
+        NodeCrypto.createHash("sha256")
+        ->NodeCrypto.hashUpdateBuffer(bytes)
+        ->NodeCrypto.hashDigest("hex")
       acc->Array.push({
         relativePath: relativePath->toForwardSlashes,
         absolutePath,
@@ -60,7 +43,7 @@ let rec walkInto = (~dir: string, ~prefix: string, acc: array<fileEntry>): unit 
  * relative S3 key, content hash, and a Pulumi FileAsset. Skips dotfiles.
  */
 let walk = (assetsDir: string): array<fileEntry> => {
-  if !existsSync(assetsDir) {
+  if !NodeFs.existsSync(assetsDir) {
     JsError.throwWithMessage(
       `Util_StaticBundle.walk: assetsDir does not exist: ${assetsDir}`,
     )
@@ -78,10 +61,10 @@ let walk = (assetsDir: string): array<fileEntry> => {
  * re-serialised) so formatting/key order the author chose is preserved.
  */
 let readJsonFileVerbatim = (~path: string, ~label: string): string => {
-  if !existsSync(path) {
+  if !NodeFs.existsSync(path) {
     JsError.throwWithMessage(`${label}: file does not exist: ${path}`)
   }
-  let content = readFileSyncUtf8(path, "utf8")
+  let content = NodeFs.readFileSync(path)
   try {
     let _ = JSON.parseOrThrow(content)
     content

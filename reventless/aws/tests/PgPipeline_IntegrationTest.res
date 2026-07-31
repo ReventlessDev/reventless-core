@@ -15,7 +15,6 @@
 open JestGlobals
 open ReventlessCore
 
-@val external processEnv: dict<string> = "process.env"
 
 // --- Fixtures: one classic source, one read model, one projection mapping ---
 
@@ -94,7 +93,7 @@ let asSqsEvent = (bodies: array<JSON.t>): PulumiAws.Lambda.CallbackFunction.even
     ),
   })
 
-switch processEnv->Dict.get("PG_URL") {
+switch NodeProcess.env->Dict.get("PG_URL") {
 | None =>
   testSync("Postgres pipeline integration (skipped — set PG_URL to run)", () =>
     expect(true)->toBe(true)

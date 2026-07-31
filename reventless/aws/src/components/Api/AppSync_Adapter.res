@@ -9,13 +9,8 @@ let log = ReventlessCore.Logger.fromEnv()
 
 // ── SHA-256 helper ─────────────────────────────────────────────────────────
 
-type hashObject
-@module("node:crypto") external createHash: string => hashObject = "createHash"
-@send external hashUpdate: (hashObject, string) => hashObject = "update"
-@send external hashDigest: (hashObject, string) => string = "digest"
-
 let sha256Hex = (input: string): string =>
-  createHash("sha256")->hashUpdate(input)->hashDigest("hex")
+  NodeCrypto.createHash("sha256")->NodeCrypto.hashUpdate(input)->NodeCrypto.hashDigest("hex")
 
 // ── Inline AppSync SDK binding ─────────────────────────────────────────────
 

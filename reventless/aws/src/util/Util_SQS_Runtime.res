@@ -13,10 +13,6 @@ let toResolvedQueue = ({id, name, urn}: ReventlessCore.Adapter.resolvedResource)
   arn: urn,
 }
 
-@module("node:crypto") external _createHash: string => 'h = "createHash"
-@send external _update: ('h, string) => 'h = "update"
-@send external _digest: ('h, string) => string = "digest"
-
 /** Returns `id` unchanged if ≤ 128 chars; otherwise its SHA-256 hex digest (64 chars).
     SQS FIFO MessageGroupId is limited to 128 characters. Using a hash instead of
     truncation avoids false-grouping of distinct keys that share a long prefix. */
@@ -24,7 +20,7 @@ let safeGroupId = (id: string): string =>
   if id->String.length <= 128 {
     id
   } else {
-    _createHash("sha256")->_update(id)->_digest("hex")
+    NodeCrypto.createHash("sha256")->NodeCrypto.hashUpdate(id)->NodeCrypto.hashDigest("hex")
   }
 
 let sendMessage = (queue, ~delay=?, messageBody) =>

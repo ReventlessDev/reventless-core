@@ -16,7 +16,6 @@
 // records fix the shapes; scheduler/queryEngine still throw by design (not
 // available in the bundled handler).
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 // ── Shim bindings (HandlerFactoryHelpers.mjs), typed for SQS records ────────
 @module("./HandlerFactoryHelpers.mjs")
@@ -69,7 +68,7 @@ let makeCallbackSpec = (config: handlerConfig): callbackSpec => {
   ->Option.getOr(Dict.make())
   ->Dict.toArray
   ->Array.map(((aggName, envVarName)) => {
-    let queueUrl = processEnv->Dict.get(envVarName)->Option.getOr("")
+    let queueUrl = NodeProcess.env->Dict.get(envVarName)->Option.getOr("")
     let queue: Util_SQS_Runtime.resolvedQueue = {id: queueUrl, name: queueUrl, arn: ""}
     (aggName, queue->CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS_FIFO))
   })

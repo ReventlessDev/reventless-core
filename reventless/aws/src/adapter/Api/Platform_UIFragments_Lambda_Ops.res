@@ -11,7 +11,6 @@
 // adapter's Platform_UIFragmentsApi.encodeUIFragmentEntry produces, so rows are
 // returned as-is (bar the name/version collapse).
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 let str = (item: dict<JSON.t>, key: string): option<string> =>
   item->Dict.get(key)->Option.flatMap(JSON.Decode.string)
@@ -38,7 +37,7 @@ let toEntry = (item: dict<JSON.t>, ~name: string): option<JSON.t> =>
   }
 
 let handler = async (_event: JSON.t): array<JSON.t> =>
-  switch processEnv->Dict.get("UI_FRAGMENT_RM_TABLE") {
+  switch NodeProcess.env->Dict.get("UI_FRAGMENT_RM_TABLE") {
   | None | Some("") =>
     Console.error("Platform_UIFragments: UI_FRAGMENT_RM_TABLE env var not set")
     []

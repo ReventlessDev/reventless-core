@@ -14,7 +14,6 @@
 
 open JestGlobals
 
-@val external processEnv: dict<string> = "process.env"
 
 // Drive the real ReScript `runMigration` with the pool injected — the guard
 // rejects a HANDLER_CONFIG with no pgConnection; the real fields below are
@@ -46,7 +45,7 @@ describe("PgMigrationEntryPoint.runMigration", () => {
     expect(threw)->toBe(true)
   })
 
-  switch processEnv->Dict.get("PG_URL") {
+  switch NodeProcess.env->Dict.get("PG_URL") {
   | None =>
     testSync("live migration (skipped — set PG_URL to run)", () => expect(true)->toBe(true))
   | Some(url) =>

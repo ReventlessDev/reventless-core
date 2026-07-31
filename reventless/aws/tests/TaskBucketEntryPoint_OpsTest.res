@@ -11,7 +11,6 @@ open JestGlobals
 let str = JSON.Encode.string
 let obj = pairs => JSON.Encode.object(Dict.fromArray(pairs))
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 describe("TaskBucketEntryPoint_Ops.parseHandlerConfig", () => {
   testSync("empty raw config decodes to empty defaults", () => {
@@ -46,8 +45,8 @@ describe("TaskBucketEntryPoint_Ops.parseHandlerConfig", () => {
 
 describe("TaskBucketEntryPoint_Ops.buildPublishCommands", () => {
   testSync("resolves queue URLs via env vars, skipping unset or empty ones", () => {
-    processEnv->Dict.set("TB_TEST_QUEUE_A", "https://sqs/a.fifo")
-    processEnv->Dict.set("TB_TEST_QUEUE_EMPTY", "")
+    NodeProcess.env->Dict.set("TB_TEST_QUEUE_A", "https://sqs/a.fifo")
+    NodeProcess.env->Dict.set("TB_TEST_QUEUE_EMPTY", "")
     let map = Dict.fromArray([
       ("AggA", "TB_TEST_QUEUE_A"),
       ("AggEmpty", "TB_TEST_QUEUE_EMPTY"),

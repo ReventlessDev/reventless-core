@@ -11,44 +11,26 @@
 // AppSyncEventsSigner_ParityFixture.mjs pins that original as a golden reference
 // and AppSyncEventsSigner_OpsTest asserts byte-for-byte equality.
 
-// ── node:crypto (string- and buffer-keyed HMAC; the signing key chain feeds a
-//    Buffer digest back in as the next key) ──────────────────────────────────
+let sha256hex = (data: string): string =>
+  NodeCrypto.createHash("sha256")->NodeCrypto.hashUpdate(data)->NodeCrypto.hashDigest("hex")
 
-type buffer
-
-type hmac
-@module("node:crypto") external createHmacStr: (string, string) => hmac = "createHmac"
-@module("node:crypto") external createHmacBuf: (string, buffer) => hmac = "createHmac"
-@send external hmacUpdate: (hmac, string) => hmac = "update"
-@send external hmacDigestBuf: hmac => buffer = "digest"
-@send external hmacDigestHex: (hmac, string) => string = "digest"
-
-type hash
-@module("node:crypto") external createHash: string => hash = "createHash"
-@send external hashUpdate: (hash, string) => hash = "update"
-@send external hashDigestHex: (hash, string) => string = "digest"
-
-let sha256hex = (data: string): string => createHash("sha256")->hashUpdate(data)->hashDigestHex("hex")
-
-let hmacFromStr = (key: string, data: string): buffer =>
-  createHmacStr("sha256", key)->hmacUpdate(data)->hmacDigestBuf
-let hmacFromBuf = (key: buffer, data: string): buffer =>
-  createHmacBuf("sha256", key)->hmacUpdate(data)->hmacDigestBuf
+let hmacFromStr = (key: string, data: string): NodeCrypto.buffer =>
+  NodeCrypto.createHmac("sha256", key)->NodeCrypto.hmacUpdate(data)->NodeCrypto.hmacDigestBuffer
+let hmacFromBuf = (key: NodeCrypto.buffer, data: string): NodeCrypto.buffer =>
+  NodeCrypto.createHmacFromBuffer("sha256", key)->NodeCrypto.hmacUpdate(data)->NodeCrypto.hmacDigestBuffer
 
 // ── SigV4 ───────────────────────────────────────────────────────────────────
 
 type creds = {accessKeyId: string, secretAccessKey: string, sessionToken: option<string>}
 
-@val @scope("process") external processEnv: dict<string> = "env"
-
 // Ambient Lambda execution-role credentials (the managed runtime injects these).
 let envCreds = (): creds => {
-  accessKeyId: processEnv->Dict.get("AWS_ACCESS_KEY_ID")->Option.getOr(""),
-  secretAccessKey: processEnv->Dict.get("AWS_SECRET_ACCESS_KEY")->Option.getOr(""),
-  sessionToken: processEnv->Dict.get("AWS_SESSION_TOKEN"),
+  accessKeyId: NodeProcess.env->Dict.get("AWS_ACCESS_KEY_ID")->Option.getOr(""),
+  secretAccessKey: NodeProcess.env->Dict.get("AWS_SECRET_ACCESS_KEY")->Option.getOr(""),
+  sessionToken: NodeProcess.env->Dict.get("AWS_SESSION_TOKEN"),
 }
 
-let region = (): string => processEnv->Dict.get("AWS_REGION")->Option.getOr("eu-west-1")
+let region = (): string => NodeProcess.env->Dict.get("AWS_REGION")->Option.getOr("eu-west-1")
 
 // Sign a `POST <path>` for service `appsync`. `isoNow` is a Date().toISOString()
 // string, taken as an argument so the signer is pure and parity-testable. The
@@ -89,7 +71,7 @@ let signedHeaders = (
   let kRegion = hmacFromBuf(kDate, region)
   let kService = hmacFromBuf(kRegion, "appsync")
   let kSigning = hmacFromBuf(kService, "aws4_request")
-  let signature = createHmacBuf("sha256", kSigning)->hmacUpdate(stringToSign)->hmacDigestHex("hex")
+  let signature = NodeCrypto.createHmacFromBuffer("sha256", kSigning)->NodeCrypto.hmacUpdate(stringToSign)->NodeCrypto.hmacDigest("hex")
 
   let authorization = `AWS4-HMAC-SHA256 Credential=${creds.accessKeyId}/${scope}, SignedHeaders=${signedHeaderList}, Signature=${signature}`
   let out = Dict.fromArray(sorted)

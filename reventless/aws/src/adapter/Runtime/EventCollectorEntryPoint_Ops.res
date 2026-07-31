@@ -58,7 +58,6 @@ external scanByTableName: (
   int,
 ) => promise<array<JSON.t>> = "scanByTableName"
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 let exnMessage = (exn: exn): string =>
   exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown error")
@@ -536,7 +535,7 @@ let reconcileSubscriptionsOnce = async (
 // rule prefix must be stable across deploys and unique per stack;
 // AWS_LAMBDA_FUNCTION_NAME carries a content hash. PluginExtensionPointEntryPoint
 // instantiates the same admin EP module and must derive this identically.
-let environment = processEnv->Dict.get("Environment")->Option.getOr("unknown")
+let environment = NodeProcess.env->Dict.get("Environment")->Option.getOr("unknown")
 
 // Only what the admin EP mapping's callHandler needs: sendMessageToChannel for
 // ForwardCommand.
@@ -613,7 +612,7 @@ let buildPublishToAggregates = (map: dict<string>): dict<ReventlessCore.CommandT
   ->Dict.toArray
   ->Array.map(((aggName, envVarName)) => (
     aggName,
-    makePublishJsons(processEnv->Dict.get(envVarName)->Option.getOr("")),
+    makePublishJsons(NodeProcess.env->Dict.get(envVarName)->Option.getOr("")),
   ))
   ->Dict.fromArray
 
@@ -632,7 +631,7 @@ let extensionPublishDicts = (config: handlerConfig, ext: extensionConfig): exten
     ->Array.filterMap(name =>
       envVarNames
       ->Dict.get(name)
-      ->Option.flatMap(envVarName => processEnv->Dict.get(envVarName))
+      ->Option.flatMap(envVarName => NodeProcess.env->Dict.get(envVarName))
       ->Option.filter(queueUrl => queueUrl != "")
       ->Option.map(queueUrl => (name, makePublishJsons(queueUrl)))
     )
@@ -666,7 +665,6 @@ let warnSkippedExtension = (ext: extensionConfig) =>
 type url
 @new external makeUrl: (string, string) => url = "URL"
 @module("node:fs") external readFileSyncUrl: (url, string) => string = "readFileSync"
-@val @scope("process") external cwd: unit => string = "cwd"
 
 // pluginDefinition.json is written at deploy time as a stable JSON literal
 // matching Reventless.Plugin.pluginDefinitionSchema (PluginRuntime_Builder), so
@@ -677,7 +675,7 @@ external asPluginDefinition: JSON.t => Reventless.Plugin.pluginDefinition = "%id
 
 let loadPluginDefinition = (): Reventless.Plugin.pluginDefinition =>
   try {
-    readFileSyncUrl(makeUrl("./pluginDefinition.json", `file://${cwd()}/`), "utf-8")
+    readFileSyncUrl(makeUrl("./pluginDefinition.json", `file://${NodeProcess.cwd()}/`), "utf-8")
     ->JSON.parseOrThrow
     ->asPluginDefinition
   } catch {
@@ -693,7 +691,7 @@ let loadPluginDefinition = (): Reventless.Plugin.pluginDefinition =>
 // both map to None.
 let loadUiFragments = (): option<JSON.t> =>
   try {
-    switch readFileSyncUrl(makeUrl("./uiFragments.json", `file://${cwd()}/`), "utf-8")->JSON.parseOrThrow {
+    switch readFileSyncUrl(makeUrl("./uiFragments.json", `file://${NodeProcess.cwd()}/`), "utf-8")->JSON.parseOrThrow {
     | JSON.Null => None
     | json => Some(json)
     }

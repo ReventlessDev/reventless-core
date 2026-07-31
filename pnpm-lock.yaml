@@ -1300,6 +1300,9 @@ importers:
       '@reventlessdev/rescript-jest':
         specifier: workspace:*
         version: link:../../rescript/jest
+      '@reventlessdev/rescript-node':
+        specifier: workspace:*
+        version: link:../../rescript/node
       '@reventlessdev/rescript-pulumi-aws':
         specifier: workspace:*
         version: link:../../rescript/pulumi-aws

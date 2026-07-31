@@ -7,16 +7,15 @@
 // Pulumi value reaches this module's import graph (deploy-time wiring lives in
 // PluginRuntime_Builder.forPluginHeartbeat).
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 // === Initialize eagerly at module load (Lambda cold start) ===
 
-let epQueueUrl = processEnv->Dict.get("EP_QUEUE_URL")->Option.getOr("")
-let pluginId = processEnv->Dict.get("PLUGIN_ID")->Option.getOr("")
+let epQueueUrl = NodeProcess.env->Dict.get("EP_QUEUE_URL")->Option.getOr("")
+let pluginId = NodeProcess.env->Dict.get("PLUGIN_ID")->Option.getOr("")
 // Mirrors the former shell's `parseInt(…) || 10`: unset, unparsable, and 0 all
 // fall back to the 10-minute default.
 let timeout =
-  processEnv
+  NodeProcess.env
   ->Dict.get("HEARTBEAT_TIMEOUT")
   ->Option.flatMap(s => Int.fromString(s))
   ->Option.filter(n => n != 0)

@@ -34,9 +34,6 @@ external getSignedUrl: (s3Client, putObjectCommand, presignOptions) => promise<s
 
 // ── Node bindings (replacing the former `%raw` helpers with typed externals) ──
 
-@val @scope("process") external processEnv: dict<string> = "env"
-
-@module("node:crypto") external randomUUID: unit => string = "randomUUID"
 
 type buffer
 @val @scope("Buffer") external bufferFromBase64: (string, string) => buffer = "from"
@@ -44,7 +41,7 @@ type buffer
 
 // Read an env var, mapping "" / unset to None.
 let getEnv = (k: string): option<string> =>
-  switch processEnv->Dict.get(k) {
+  switch NodeProcess.env->Dict.get(k) {
   | Some("") | None => None
   | Some(v) => Some(v)
   }
@@ -121,7 +118,7 @@ let handler = async (event: functionUrlEvent): response => {
     // served prefix (`SERVED_PREFIX`, e.g. `uploads`) so the CloudFront
     // `{prefix}/*` behavior fronts it. Callers PUT to this exact key.
     let servedPrefix = getEnv("SERVED_PREFIX")->Option.getOr("uploads")
-    let key = `${servedPrefix}/${identityPrefix(event)}${randomUUID()}/${fileName}`
+    let key = `${servedPrefix}/${identityPrefix(event)}${NodeCrypto.randomUUID()}/${fileName}`
     let client = makeS3Client()
     let command = makePutObjectCommand({bucket, key, contentType: ?contentType})
     let uploadUrl = await getSignedUrl(client, command, {expiresIn: 300})

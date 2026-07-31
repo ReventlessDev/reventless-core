@@ -23,7 +23,6 @@
 //                 "kind"?: "classic",          // absent → DCB
 //                 "partitionTag"?: <derivedPartitionTag> } ] }  // DCB only
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 // Structured JSON logging shared by every deployed entry point (HandlerFactoryHelpers).
 type logExtra = {comp?: string}
@@ -89,7 +88,7 @@ let relayLog = async (l: relayLogConfig): unit => {
 
 let handler = async (_event: JSON.t, _context: PulumiAws.Lambda.context) => {
   let config =
-    processEnv->Dict.get("HANDLER_CONFIG")->Option.getOr(`{"logs":[]}`)->parseHandlerConfig
+    NodeProcess.env->Dict.get("HANDLER_CONFIG")->Option.getOr(`{"logs":[]}`)->parseHandlerConfig
   let logs = config.logs->Option.getOr([])
   let _ = await logs->Array.map(relayLog)->Promise.all
   ""

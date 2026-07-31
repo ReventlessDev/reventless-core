@@ -9,7 +9,6 @@
 
 open JestGlobals
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 describe("ExtensionPointEntryPoint_Ops.parseHandlerConfig", () => {
   testSync("reads the builder's field names", () => {
@@ -26,7 +25,7 @@ describe("ExtensionPointEntryPoint_Ops.parseHandlerConfig", () => {
 
 describe("ExtensionPointEntryPoint_Ops.makeCallbackSpec", () => {
   testSync("resolves publishToAggregates queue URLs via env vars", () => {
-    processEnv->Dict.set("EP_TEST_PRODUCT_QUEUE", "https://sqs/product")
+    NodeProcess.env->Dict.set("EP_TEST_PRODUCT_QUEUE", "https://sqs/product")
     let spec = ExtensionPointEntryPoint_Ops.makeCallbackSpec({
       queueUrl: "https://sqs/ep",
       publishToAggregates: Dict.fromArray([("Product", "EP_TEST_PRODUCT_QUEUE")]),
