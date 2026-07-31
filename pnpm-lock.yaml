@@ -1413,6 +1413,9 @@ importers:
       '@reventlessdev/rescript-jest':
         specifier: workspace:*
         version: link:../../rescript/jest
+      '@reventlessdev/rescript-node':
+        specifier: workspace:*
+        version: link:../../rescript/node
       '@reventlessdev/reventless-core':
         specifier: workspace:*
         version: link:../core
@@ -1531,6 +1534,9 @@ importers:
       '@reventlessdev/rescript-mcp-sdk':
         specifier: workspace:*
         version: link:../../rescript/mcp-sdk
+      '@reventlessdev/rescript-node':
+        specifier: workspace:*
+        version: link:../../rescript/node
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../rescript/pulumi-pulumi

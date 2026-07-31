@@ -98,10 +98,9 @@ let makeStateChangeDescriptor = (
 // so the runner's line parser can pick it out of the platform's ANSI log noise on
 // stdout. The emit is a plain Console.log, so it never perturbs publishEvent's
 // subscriber-countdown delivery semantics.
-@val external tapProcessEnv: dict<string> = "process.env"
 // Read per publish (not once at import) so the runner can toggle it live and so
 // hermetic tests can flip it between cases. The cost is one dict lookup per event.
-let eventTapEnabled = () => tapProcessEnv->Dict.get("REVENTLESS_EVENT_TAP")->Option.isSome
+let eventTapEnabled = () => NodeProcess.env->Dict.get("REVENTLESS_EVENT_TAP")->Option.isSome
 let eventTapSeq = ref(0)
 // Seed the in-memory tap counter from a persistent store's existing event count
 // so the timeline's #N continues across process restarts / app switches instead

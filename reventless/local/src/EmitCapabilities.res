@@ -20,21 +20,6 @@
 // Usage: emit-capabilities <srcDir> [<compositionModule>]
 //   (run from the plugin package, after `rescript build`)
 
-// ── Node ─────────────────────────────────────────────────────────────────────
-
-@module("node:fs") external existsSync: string => bool = "existsSync"
-@module("node:fs") external writeFileSync: (string, string, @as("utf8") _) => unit = "writeFileSync"
-
-@module("node:path") @variadic external join: array<string> => string = "join"
-@module("node:path") @variadic external resolve: array<string> => string = "resolve"
-@module("node:path") @val external sep: string = "sep"
-
-@module("node:url") external pathToFileURL: string => {"href": string} = "pathToFileURL"
-
-@val @scope("process") external argv: array<string> = "argv"
-@val @scope("process") external env: Dict.t<string> = "env"
-@val external processExit: int => unit = "process.exit"
-
 // Emitted by ReScript as a literal `import(...)` expression — the composition
 // root's path is only known at run time, so it cannot be a static binding.
 @val external dynImport: string => promise<'a> = "import"
@@ -56,11 +41,11 @@ type compositionExports = {"Make": platform => builtPlugin}
 let compositionModulePath = (~srcDir: string, ~moduleArg: option<string>): string => {
   let withExtension = name => name->String.endsWith(".mjs") ? name : name ++ ".res.mjs"
   switch moduleArg {
-  | None | Some("") => join([srcDir, "Plugin.res.mjs"])
+  | None | Some("") => NodePath.join([srcDir, "Plugin.res.mjs"])
   | Some(name) =>
-    name->String.includes("/") || name->String.includes(sep)
-      ? resolve([withExtension(name)])
-      : join([srcDir, withExtension(name)])
+    name->String.includes("/") || name->String.includes(NodePath.sep)
+      ? NodePath.resolve([withExtension(name)])
+      : NodePath.join([srcDir, withExtension(name)])
   }
 }
 
@@ -68,25 +53,25 @@ let compositionModulePath = (~srcDir: string, ~moduleArg: option<string>): strin
 
 let fail = (message: string) => {
   Console.error("emit-capabilities: " ++ message)
-  processExit(1)
+  NodeProcess.exit(1)
 }
 
 let main = async () => {
   // The local platform defaults to Debug-level logging; a build step should not.
-  switch env->Dict.get("LOG_LEVEL") {
+  switch NodeProcess.env->Dict.get("LOG_LEVEL") {
   | Some(_) => ()
-  | None => env->Dict.set("LOG_LEVEL", "warn")
+  | None => NodeProcess.env->Dict.set("LOG_LEVEL", "warn")
   }
 
-  switch argv->Array.get(2) {
+  switch NodeProcess.argv->Array.get(2) {
   | None | Some("") => {
       Console.error("Usage: emit-capabilities <srcDir> [<compositionModule>]")
-      processExit(1)
+      NodeProcess.exit(1)
     }
   | Some(srcDirArg) => {
-      let srcDir = resolve([srcDirArg])
-      let modulePath = compositionModulePath(~srcDir, ~moduleArg=argv->Array.get(3))
-      if !existsSync(modulePath) {
+      let srcDir = NodePath.resolve([srcDirArg])
+      let modulePath = compositionModulePath(~srcDir, ~moduleArg=NodeProcess.argv->Array.get(3))
+      if !NodeFs.existsSync(modulePath) {
         fail(`${modulePath} not found — run \`rescript build\` first.`)
       }
 
@@ -95,11 +80,11 @@ let main = async () => {
       let platformModule: localPlatformExports = await dynImport("./Platform.res.mjs")
       let platform = platformModule["Make"]()
 
-      let composition: compositionExports = await dynImport(pathToFileURL(modulePath)["href"])
+      let composition: compositionExports = await dynImport(NodeUrl.pathToFileURL(modulePath)["href"])
       let built = composition["Make"](platform)
 
-      let manifestPath = join([srcDir, "capabilities.json"])
-      writeFileSync(
+      let manifestPath = NodePath.join([srcDir, "capabilities.json"])
+      NodeFs.writeFileSync(
         manifestPath,
         Reventless.CapabilityManifest.renderForStructure(built["pluginStructure"]),
       )
@@ -107,7 +92,7 @@ let main = async () => {
 
       // Applying the platform functor wires in-process infrastructure; exit
       // explicitly so no lingering handle keeps the build step alive.
-      processExit(0)
+      NodeProcess.exit(0)
     }
   }
 }

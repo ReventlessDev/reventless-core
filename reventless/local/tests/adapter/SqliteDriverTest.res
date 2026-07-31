@@ -64,23 +64,23 @@ describe("SqliteDriver", () => {
 
   testPromise("Backend.fromEnv parses sqlite path and reset flag", async () => {
     let originalEnv =
-      Backend.processEnv->Dict.get("REVENTLESS_LOCAL_BACKEND")
+      NodeProcess.env->Dict.get("REVENTLESS_LOCAL_BACKEND")
 
-    Backend.processEnv->Dict.set("REVENTLESS_LOCAL_BACKEND", "sqlite:./local.db")
+    NodeProcess.env->Dict.set("REVENTLESS_LOCAL_BACKEND", "sqlite:./local.db")
     let parsed = Backend.fromEnv()
     expect(parsed)->toEqual(Backend.Sqlite({path: "./local.db", resetOnStart: false}))
 
-    Backend.processEnv->Dict.set("REVENTLESS_LOCAL_BACKEND", "sqlite:./local.db?reset")
+    NodeProcess.env->Dict.set("REVENTLESS_LOCAL_BACKEND", "sqlite:./local.db?reset")
     let parsedReset = Backend.fromEnv()
     expect(parsedReset)->toEqual(Backend.Sqlite({path: "./local.db", resetOnStart: true}))
 
-    Backend.processEnv->Dict.set("REVENTLESS_LOCAL_BACKEND", "memory")
+    NodeProcess.env->Dict.set("REVENTLESS_LOCAL_BACKEND", "memory")
     let parsedMem = Backend.fromEnv()
     expect(parsedMem)->toEqual(Backend.Memory)
 
     switch originalEnv {
-    | Some(v) => Backend.processEnv->Dict.set("REVENTLESS_LOCAL_BACKEND", v)
-    | None => Backend.processEnv->Dict.delete("REVENTLESS_LOCAL_BACKEND")
+    | Some(v) => NodeProcess.env->Dict.set("REVENTLESS_LOCAL_BACKEND", v)
+    | None => NodeProcess.env->Dict.delete("REVENTLESS_LOCAL_BACKEND")
     }
   })
 })

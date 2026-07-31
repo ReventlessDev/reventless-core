@@ -36,6 +36,7 @@
     }
   },
   "dependencies": {
+    "@reventlessdev/rescript-node": "workspace:*",
     "@reventlessdev/rescript-effect": "workspace:*",
     "@reventlessdev/rescript-graphql-yoga": "workspace:*",
     "@reventlessdev/rescript-jest": "workspace:*",

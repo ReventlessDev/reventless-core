@@ -37,7 +37,6 @@ type nodeResponse
 // mangled by utf8 decoding (setEncoding is deliberately NOT called).
 @send external _onDataBuf: (nodeRequest, @as("data") _, LocalObjectStore.buffer => unit) => unit = "on"
 
-@module("crypto") external randomUUID: unit => string = "randomUUID"
 
 let readBody = (req: nodeRequest, onBody: string => unit): unit => {
   let buf = ref("")
@@ -155,7 +154,7 @@ let handleUploadPresign = (req: nodeRequest, res: nodeResponse): unit =>
       }
     let fileName =
       parsed->Dict.get("fileName")->Option.flatMap(JSON.Decode.string)->Option.getOr("upload")
-    let ref = `/${LocalObjectStore.defaultUploadPrefix}/${randomUUID()}/${fileName}`
+    let ref = `/${LocalObjectStore.defaultUploadPrefix}/${NodeCrypto.randomUUID()}/${fileName}`
     _writeJson(
       res,
       ~status=200,
@@ -496,8 +495,7 @@ let buildNodeResolver = (): option<(string, resolverFn)> =>
 
 // -- Server lifecycle ------------------------------------------------------
 
-@val external processEnv: dict<string> = "process.env"
-let debug = processEnv->Dict.get("GRAPHQL_DEBUG")->Option.isSome
+let debug = NodeProcess.env->Dict.get("GRAPHQL_DEBUG")->Option.isSome
 
 let activeServer: ref<option<YG.httpServer>> = ref(None)
 let activeSchema: ref<option<YG.schema>> = ref(None)

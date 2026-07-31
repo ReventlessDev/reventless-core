@@ -17,7 +17,6 @@ let defaultMeta: Reventless.Message.meta = {
   correlationId: "",
 }
 
-@val external processEnv: Dict.t<string> = "process.env"
 
 type consoleObj = {mutable log: string => unit}
 @val external console: consoleObj = "console"
@@ -48,7 +47,7 @@ let tapLines = (logs: array<string>): array<string> =>
 
 describe("LocalBus event tap (Phase 9)", () => {
   // Each test owns the env flag; always clear it afterwards so cases don't leak.
-  let clearEnv = () => processEnv->Dict.delete("REVENTLESS_EVENT_TAP")
+  let clearEnv = () => NodeProcess.env->Dict.delete("REVENTLESS_EVENT_TAP")
 
   testPromise("tap off → no sentinel line is emitted", async () => {
     clearEnv()
@@ -60,7 +59,7 @@ describe("LocalBus event tap (Phase 9)", () => {
   })
 
   testPromise("tap on → one well-formed line per published event", async () => {
-    processEnv->Dict.set("REVENTLESS_EVENT_TAP", "ndjson")
+    NodeProcess.env->Dict.set("REVENTLESS_EVENT_TAP", "ndjson")
     module TestBus = LocalBus.MakeSilent()
     let logs = await captureLogs(async () => {
       await TestBus.publishEvent(
@@ -90,7 +89,7 @@ describe("LocalBus event tap (Phase 9)", () => {
   })
 
   testPromise("tap emits even when the topic has no subscribers", async () => {
-    processEnv->Dict.set("REVENTLESS_EVENT_TAP", "ndjson")
+    NodeProcess.env->Dict.set("REVENTLESS_EVENT_TAP", "ndjson")
     module TestBus = LocalBus.MakeSilent()
     let logs = await captureLogs(async () => {
       // No subscribeToEvents call — the tap fires before the subscriber-count gate.

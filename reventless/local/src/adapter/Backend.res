@@ -34,13 +34,11 @@ let postgres = async (~connection, ~resetOnStart=false) => {
   Postgres({pool, initialCount, connection})
 }
 
-@val external processEnv: dict<string> = "process.env"
 
 // Deletes a file if it exists. No-op if the path is missing.
-@module("node:fs") external _unlinkSync: string => unit = "unlinkSync"
 
 let removeFileIfExists = (path: string) =>
-  try _unlinkSync(path) catch {
+  try NodeFs.unlinkSync(path) catch {
   | _ => ()
   }
 
@@ -50,7 +48,7 @@ let removeFileIfExists = (path: string) =>
 //   memory                   — explicit Memory selector
 // Anything else (including unset) yields Memory.
 let fromEnv = () =>
-  switch processEnv->Dict.get("REVENTLESS_LOCAL_BACKEND") {
+  switch NodeProcess.env->Dict.get("REVENTLESS_LOCAL_BACKEND") {
   | None => Memory
   | Some(raw) =>
     let trimmed = raw->String.trim

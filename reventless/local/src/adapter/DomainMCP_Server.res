@@ -132,8 +132,7 @@ let registerEventHistoryResourcesFromEntries = (
 
 let activeServer: ref<option<McpSdk.httpServer>> = ref(None)
 
-@val external processEnv: dict<string> = "process.env"
-let debug = processEnv->Dict.get("MCP_DEBUG")->Option.isSome
+let debug = NodeProcess.env->Dict.get("MCP_DEBUG")->Option.isSome
 
 // Extract identity from an HTTP IncomingMessage via the X-Identity header.
 // Falls back to Identity.anonymous when the header is absent or malformed.

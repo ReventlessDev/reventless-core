@@ -2,11 +2,11 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Http from "http";
-import * as Crypto from "crypto";
 import * as Graphql from "graphql";
 import * as GraphqlYoga from "@reventlessdev/rescript-graphql-yoga/src/GraphqlYoga.res.mjs";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Nodecrypto from "node:crypto";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as GraphqlYoga$1 from "graphql-yoga";
@@ -117,7 +117,7 @@ function handleUploadPresign(req, res) {
       parsed = {};
     }
     let fileName = Stdlib_Option.getOr(Stdlib_Option.flatMap(parsed["fileName"], Stdlib_JSON.Decode.string), "upload");
-    let ref = `/` + LocalObjectStore$ReventlessLocal.defaultUploadPrefix + `/` + Crypto.randomUUID() + `/` + fileName;
+    let ref = `/` + LocalObjectStore$ReventlessLocal.defaultUploadPrefix + `/` + Nodecrypto.randomUUID() + `/` + fileName;
     _writeJson(res, 200, Object.fromEntries([
       [
         "uploadUrl",

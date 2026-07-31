@@ -95,24 +95,15 @@ module Login = {
   // after a backend reload. When unset, falls back to a random per-process
   // secret — secure for ephemeral test runs but invalidates every previously
   // issued token on every restart.
-  type buf
-  @module("node:crypto") external _randomBytes: int => buf = "randomBytes"
-  @send external _bufToString: (buf, string) => string = "toString"
-  type hmac
-  @module("node:crypto") external _createHmac: (string, string) => hmac = "createHmac"
-  @send external _update: (hmac, string) => hmac = "update"
-  @send external _digest: (hmac, string) => string = "digest"
-
-  @val external _processEnv: Dict.t<string> = "process.env"
 
   let _secret: ref<option<string>> = ref(None)
   let _getSecret = (): string =>
     switch _secret.contents {
     | Some(s) => s
     | None =>
-      let s = switch _processEnv->Dict.get("REVENTLESS_INMEMORY_TOKEN_SECRET") {
+      let s = switch NodeProcess.env->Dict.get("REVENTLESS_INMEMORY_TOKEN_SECRET") {
       | Some(envSecret) if String.length(envSecret) >= 16 => envSecret
-      | _ => _randomBytes(32)->_bufToString("hex")
+      | _ => NodeCrypto.randomBytes(32)->NodeCrypto.bufferToString("hex")
       }
       _secret := Some(s)
       s
@@ -121,7 +112,9 @@ module Login = {
   let setTokenSecret = (s: string): unit => _secret := Some(s)
 
   let _sign = (payload: string): string =>
-    _createHmac("sha256", _getSecret())->_update(payload)->_digest("base64url")
+    NodeCrypto.createHmac("sha256", _getSecret())
+    ->NodeCrypto.hmacUpdate(payload)
+    ->NodeCrypto.hmacDigest("base64url")
 
   // base64url over arbitrary JSON strings: btoa-encode + URL-safe alphabet,
   // strip `=` padding. Avoids pulling in Buffer for a single-line conversion.

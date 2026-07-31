@@ -10,13 +10,12 @@
 
 open JestGlobals
 
-@val external processEnv: dict<string> = "process.env"
 
 let _ = TestRunner.setup()
 let opts: Pulumi.CustomResourceOptions.t = {}
 
 let pgPool =
-  processEnv
+  NodeProcess.env
   ->Dict.get("PG_URL")
   ->Option.map(url => ReventlessPostgres.PgDriver.makePool({connectionString: url}))
 

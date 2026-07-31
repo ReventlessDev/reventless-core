@@ -26,10 +26,6 @@ type entry = {
 // ── YAML parsing (eemeli/yaml) ──────────────────────────────────────────────
 
 @module("yaml") external _yamlParse: string => unknown = "parse"
-@module("node:fs") external _readFileSync: (string, string) => string = "readFileSync"
-@module("node:fs") external _existsSync: string => bool = "existsSync"
-@module("node:path") external _join: (string, string) => string = "join"
-@val external _processCwd: unit => string = "process.cwd"
 
 let _entriesSchema = S.array(entrySchema)
 
@@ -46,7 +42,7 @@ let parseString = (yamlText: string): result<array<entry>, string> =>
 /** Reads + parses a YAML file. */
 let parseFile = (path: string): result<array<entry>, string> =>
   try {
-    let text = _readFileSync(path, "utf8")
+    let text = NodeFs.readFileSync(path)
     parseString(text)
   } catch {
   | JsExn(err) => Error(JsExn.message(err)->Option.getOr(`Cannot read ${path}`))
@@ -66,7 +62,7 @@ let _registerEntries = (entries: array<entry>): unit =>
     LocalAuth.Login.setCredentials(~username, ~password, ~identity=id)
   })
 
-let _defaultPath = (): string => _join(_processCwd(), ".reventless/users.yaml")
+let _defaultPath = (): string => NodePath.join([NodeProcess.cwd(), ".reventless/users.yaml"])
 
 /**
  * Hydrates the Login store. Returns the resolution path actually used
@@ -106,7 +102,7 @@ let load = (
       })
     | None =>
       let defaultPath = _defaultPath()
-      if _existsSync(defaultPath) {
+      if NodeFs.existsSync(defaultPath) {
         parseFile(defaultPath)->Result.map(entries => {
           _registerEntries(entries)
           DefaultFile(defaultPath)

@@ -7,10 +7,6 @@ type statement
 @module("node:sqlite") @new
 external openDatabaseSync: string => t = "DatabaseSync"
 
-@module("node:path") external dirname: string => string = "dirname"
-type mkdirOpts = {recursive: bool}
-@module("node:fs") external mkdirSync: (string, mkdirOpts) => unit = "mkdirSync"
-
 @send external _close: t => unit = "close"
 @send external _exec: (t, string) => unit = "exec"
 @send external _prepare: (t, string) => statement = "prepare"
@@ -25,7 +21,7 @@ let _iterateApply: (statement, array<JSON.t>) => Iterator.t<dict<JSON.t>> = %raw
 
 let openDb = (~path) => {
   if path !== ":memory:" {
-    mkdirSync(dirname(path), {recursive: true})
+    NodeFs.mkdirSync(NodePath.dirname(path), {recursive: true})
   }
   let db = openDatabaseSync(path)
   // Connection pragmas. WAL lets readers proceed concurrently with a writer and

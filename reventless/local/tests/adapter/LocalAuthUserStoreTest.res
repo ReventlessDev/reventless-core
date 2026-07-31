@@ -4,11 +4,6 @@
 
 open JestGlobals
 
-@module("node:fs") external _writeFileSync: (string, string, string) => unit = "writeFileSync"
-@module("node:fs") external _mkdtempSync: string => string = "mkdtempSync"
-@module("node:fs") external _rmSync: (string, {..}) => unit = "rmSync"
-@module("node:path") external _join: (string, string) => string = "join"
-@module("node:os") external _tmpdir: unit => string = "tmpdir"
 
 let resetAll = () => {
   LocalAuth.resetUsers()
@@ -17,9 +12,9 @@ let resetAll = () => {
 }
 
 let _writeYamlFile = (contents: string): string => {
-  let dir = _mkdtempSync(_join(_tmpdir(), "reventless-userstore-"))
-  let path = _join(dir, "users.yaml")
-  _writeFileSync(path, contents, "utf8")
+  let dir = NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), "reventless-userstore-"]))
+  let path = NodePath.join([dir, "users.yaml"])
+  NodeFs.writeFileSync(path, contents)
   path
 }
 
@@ -102,7 +97,7 @@ testPromise("load(~usersFile) reads a YAML file from disk", async () => {
   | Ok(_) => ()
   | Error(msg) => JsError.throwWithMessage("issue rejected file-loaded credentials: " ++ msg)
   }
-  _rmSync(path, {"force": true})
+  NodeFs.rmSync(path, {force: true})
 })
 
 testPromise("load(~usersFile) returns Error when the file is missing", async () => {
@@ -152,7 +147,7 @@ testPromise("inline users win over a file path", async () => {
   | Some(_) => ()
   | None => JsError.throwWithMessage("inline-user missing from registry")
   }
-  _rmSync(path, {"force": true})
+  NodeFs.rmSync(path, {force: true})
 })
 
 testPromise("autoLoadOnce is a no-op after an explicit load", async () => {

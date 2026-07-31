@@ -51,8 +51,7 @@ type t = {
   printDiagnostics: unit => unit,
 }
 
-@val external processEnv: dict<string> = "process.env"
-let debug = processEnv->Dict.get("MCP_DEBUG")->Option.isSome
+let debug = NodeProcess.env->Dict.get("MCP_DEBUG")->Option.isSome
 
 let make = (~label: string="MCP"): t => {
   let tools: ref<dict<registeredTool>> = ref(Dict.make())

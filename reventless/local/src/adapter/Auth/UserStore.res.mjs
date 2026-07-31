@@ -106,7 +106,7 @@ function load(users, usersFile, param) {
       };
     });
   }
-  let defaultPath = Nodepath.join(process.cwd(), ".reventless/users.yaml");
+  let defaultPath = _defaultPath();
   if (Nodefs.existsSync(defaultPath)) {
     return Stdlib_Result.map(parseFile(defaultPath), entries => {
       _registerEntries(entries);

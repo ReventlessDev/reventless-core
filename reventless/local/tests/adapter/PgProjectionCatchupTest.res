@@ -10,7 +10,6 @@
 
 open JestGlobals
 
-@val external processEnv: dict<string> = "process.env"
 let opts: Pulumi.CustomResourceOptions.t = {}
 
 // Flat stored aggregate event — the exact shape EventLog_Operations.encodeEvent'
@@ -58,7 +57,7 @@ let recorder = () => {
   (received, handler)
 }
 
-switch processEnv->Dict.get("PG_URL") {
+switch NodeProcess.env->Dict.get("PG_URL") {
 | None => testSync("Postgres projection catch-up (skipped — set PG_URL)", () => expect(true)->toBe(true))
 | Some(url) =>
   let pool = ReventlessPostgres.PgDriver.makePool({connectionString: url})

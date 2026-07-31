@@ -821,15 +821,14 @@ module MakeWithConfig = (
     component->ReventlessCore.Component.operations
   }
 
-  @val external processEnv: dict<string> = "process.env"
-  let graphqlDebug = processEnv->Dict.get("GRAPHQL_DEBUG")->Option.isSome
+  let graphqlDebug = NodeProcess.env->Dict.get("GRAPHQL_DEBUG")->Option.isSome
 
   // Per-session server ports for the VS Code local platform runner (features
   // plan Phase 9). The runner spawns one platform child per app folder; default
   // ports (4000/4001/3001/3002) collide when several run, so each is overridable
   // via env. Defaults preserve today's behaviour for all non-runner callers.
   let resolvePort = (key, fallback) =>
-    processEnv->Dict.get(key)->Option.flatMap(v => Int.fromString(v))->Option.getOr(fallback)
+    NodeProcess.env->Dict.get(key)->Option.flatMap(v => Int.fromString(v))->Option.getOr(fallback)
   let domainPort = resolvePort("REVENTLESS_DOMAIN_PORT", 4000)
   let domainMcpPort = resolvePort("REVENTLESS_DOMAIN_MCP_PORT", 3001)
   let platformPort = resolvePort("REVENTLESS_PLATFORM_PORT", 4001)
