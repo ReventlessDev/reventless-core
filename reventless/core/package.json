@@ -43,7 +43,7 @@
     "@reventlessdev/rescript-fast-csv": "workspace:*",
     "@reventlessdev/rescript-hash-object": "workspace:*",
     "@reventlessdev/rescript-jest": "workspace:*",
-    "@reventlessdev/rescript-node-streams": "workspace:*",
+    "@reventlessdev/rescript-node": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "@reventlessdev/rescript-ssh2": "workspace:*",
     "@reventlessdev/rescript-uuid": "workspace:*",

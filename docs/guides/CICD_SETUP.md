@@ -81,7 +81,7 @@ Triggered on:
 
 **Tier 0** (No dependencies):
 - `rescript-hash-obj`
-- `rescript-node-streams`
+- `rescript-node`
 - `rescript-pulumi-pulumi`
 - `rescript-uuid`
 

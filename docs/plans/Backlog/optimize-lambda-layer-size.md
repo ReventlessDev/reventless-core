@@ -59,7 +59,7 @@ grep -r "rescript-pulumi" reventless/reventless-aws/src/adapter/Runtime/*EntryPo
 | Package | Reason for exclusion |
 |---|---|
 | `@reventlessdev/rescript-fast-csv` | Used by `CsvStream.res` in Cloner export only |
-| `@reventlessdev/rescript-node-streams` | Used alongside fast-csv for Cloner streams |
+| `@reventlessdev/rescript-node` | Used alongside fast-csv for Cloner streams |
 | `@reventlessdev/rescript-hash-object` | Not imported by any entry point |
 | `fast-csv` | Underlying JS library for rescript-fast-csv |
 | `@fast-csv/*` | fast-csv sub-packages |
@@ -70,7 +70,7 @@ Note: `rescript-ssh2` and `ssh2` are already excluded. The `rescript-fast-csv` p
 
 **Verification**: Confirm no entry point imports these:
 ```bash
-grep -rE "fast-csv|hash-object|node-streams|CsvStream" reventless/reventless-aws/src/adapter/Runtime/*EntryPoint.res
+grep -rE "fast-csv|hash-object|rescript-node|CsvStream" reventless/reventless-aws/src/adapter/Runtime/*EntryPoint.res
 # Should return nothing
 ```
 
@@ -85,7 +85,7 @@ grep -r "hash.object\|HashObject\|rescript-hash-object" reventless/reventless-co
 **Change**: Add to `excludeModules` in `Main.res`:
 ```
 "@reventlessdev/rescript-fast-csv",
-"@reventlessdev/rescript-node-streams",
+"@reventlessdev/rescript-node",
 "@reventlessdev/rescript-hash-object",
 "hash-object",
 "fast-json-stable-stringify",

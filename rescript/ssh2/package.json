@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@rescript/std": "^11.1.4",
-    "@reventlessdev/rescript-node-streams": "workspace:*",
+    "@reventlessdev/rescript-node": "workspace:*",
     "ssh2": "^1.17.0"
   },
   "devDependencies": {

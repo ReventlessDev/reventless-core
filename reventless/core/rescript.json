@@ -29,7 +29,7 @@
     "@reventlessdev/rescript-effect",
     "@reventlessdev/rescript-fast-csv",
     "@reventlessdev/rescript-hash-object",
-    "@reventlessdev/rescript-node-streams",
+    "@reventlessdev/rescript-node",
     "@reventlessdev/rescript-pulumi-pulumi",
     "@reventlessdev/rescript-ssh2",
     "@reventlessdev/rescript-uuid",

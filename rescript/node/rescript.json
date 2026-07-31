@@ -1,5 +1,5 @@
 {
-  "name": "@reventlessdev/rescript-node-streams",
+  "name": "@reventlessdev/rescript-node",
   "package-specs": {
     "module": "esmodule",
     "in-source": true
@@ -15,7 +15,8 @@
       "dir": "src",
       "subdirs": true,
       "public": [
-        "NodeStreams"
+        "NodeStreams",
+        "NodeZlib"
       ]
     }
   ],

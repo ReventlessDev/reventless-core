@@ -7,8 +7,8 @@ base64.
 
 These are **ambient globals, not `node:*` imports**. Everything here works
 unchanged in a browser and in Node 18+ (WebSocket from 21). That is the whole
-distinction from `rescript-node-streams` and its siblings, which bind
-`import`ed Node modules and are server-only by construction.
+distinction from `rescript-node`, which binds `import`ed Node modules and is
+server-only by construction.
 
 The split matters in practice because the same two APIs are needed on both
 sides of Reventless: the browser client subscribes to AppSync Events over

@@ -60,6 +60,11 @@
           "private": false
         },
         {
+          "name": "@reventlessdev/reventless-seed-aws",
+          "description": "AWS connect + guarded reset for the Reventless seed harness — stack discovery, Cognito login, and a tag-scoped, allowlisted store wipe",
+          "private": false
+        },
+        {
           "name": "@reventlessdev/reventless-spec",
           "description": "Specifications for Reventless",
           "private": false
@@ -116,13 +121,8 @@
           "private": false
         },
         {
-          "name": "@reventlessdev/rescript-node-streams",
-          "description": "ReScript bindings for node streams",
-          "private": false
-        },
-        {
-          "name": "@reventlessdev/rescript-node-zlib",
-          "description": "ReScript bindings for node zlib",
+          "name": "@reventlessdev/rescript-node",
+          "description": "ReScript bindings for the Node.js standard library",
           "private": false
         },
         {
@@ -152,7 +152,12 @@
         },
         {
           "name": "@reventlessdev/rescript-uuid",
-          "description": "ReScript bindings for node streams",
+          "description": "ReScript bindings for the uuid package",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-web",
+          "description": "ReScript bindings for the WHATWG web globals available in both browsers and Node 18+ (fetch, WebSocket, timers, base64)",
           "private": false
         }
       ]

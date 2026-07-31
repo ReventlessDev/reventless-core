@@ -102,7 +102,7 @@ rides the normal release train and ships binary-less.
   registry serves it) and `ppx-osx-x64.exe` (`git rm --cached`, kept on disk as
   Intel Mac fallback while darwin-x64 CI is suspended) removed from the index.
 - **Step 7** (repo-wide gitignore policy): root `.gitignore` ignores `*.exe`
-  and `**/reventless-layer*.zip`. The `rescript-node-zlib` test fixture `.gz`
+  and `**/reventless-layer*.zip`. The `rescript-node` test fixture `.gz`
   is intentionally unaffected.
 - **Step 8 (independent cleanup, earlier):** removed the 15 redundant per-package
   `package-lock.json`; gitignored `package-lock.json`.
@@ -168,7 +168,7 @@ eventual darwin-x64 re-enablement.
    Mac fallback). `packages/reventless-ppx/.gitignore` adds `*.exe`.
 7. ✅ **Repo-wide `.gitignore` policy.** Root `.gitignore` adds `*.exe` and
    `**/reventless-layer*.zip`. Test fixture
-   `rescript/node-zlib/src/example/test.txt.gz` intentionally
+   `rescript/node/src/example/test.txt.gz` intentionally
    unaffected (no `.zip`/`.gz` glob at the root level).
 8. **(Separate / out of scope)** history rewrite to purge the already-committed
    binaries.
@@ -382,7 +382,7 @@ installable. The steps below are in safe cutover order.
    no-op for consumers — no gap.
 7. Add a general build-artifact `.gitignore` policy (`*.exe`, layer `*.zip`,
    bundles). Document the one intentional exception: the tiny test fixture
-   `rescript/node-zlib/src/example/test.txt.gz` (a test *input*, not a
+   `rescript/node/src/example/test.txt.gz` (a test *input*, not a
    build artifact — keep).
 8. **Remove the redundant per-package `package-lock.json`** (see below), once
    confirmed unused: `git rm` the 15 files and `.gitignore` `package-lock.json`

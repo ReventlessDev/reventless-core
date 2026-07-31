@@ -47,12 +47,9 @@ importers:
       '@reventlessdev/rescript-moment':
         specifier: link:rescript/moment
         version: link:rescript/moment
-      '@reventlessdev/rescript-node-streams':
+      '@reventlessdev/rescript-node':
         specifier: workspace:*
-        version: link:rescript/node-streams
-      '@reventlessdev/rescript-node-zlib':
-        specifier: workspace:*
-        version: link:rescript/node-zlib
+        version: link:rescript/node
       '@reventlessdev/rescript-pulumi-aws':
         specifier: workspace:*
         version: link:rescript/pulumi-aws
@@ -1061,9 +1058,9 @@ importers:
       '@aws-sdk/lib-storage':
         specifier: ^3.1033.0
         version: 3.1033.0(@aws-sdk/client-s3@3.1033.0)
-      '@reventlessdev/rescript-node-streams':
+      '@reventlessdev/rescript-node':
         specifier: workspace:*
-        version: link:../node-streams
+        version: link:../node
       '@smithy/node-http-handler':
         specifier: ^4.5.3
         version: 4.6.0
@@ -1096,9 +1093,9 @@ importers:
 
   rescript/fast-csv:
     dependencies:
-      '@reventlessdev/rescript-node-streams':
+      '@reventlessdev/rescript-node':
         specifier: workspace:*
-        version: link:../node-streams
+        version: link:../node
       fast-csv:
         specifier: ^5.0.5
         version: 5.0.5
@@ -1171,20 +1168,7 @@ importers:
         specifier: 12.3.0
         version: 12.3.0
 
-  rescript/node-streams:
-    devDependencies:
-      rescript:
-        specifier: 12.3.0
-        version: 12.3.0
-
-  rescript/node-zlib:
-    dependencies:
-      '@rescript/std':
-        specifier: ^11.1.4
-        version: 11.1.4
-      '@reventlessdev/rescript-node-streams':
-        specifier: workspace:*
-        version: link:../node-streams
+  rescript/node:
     devDependencies:
       rescript:
         specifier: 12.3.0
@@ -1259,9 +1243,9 @@ importers:
       '@rescript/std':
         specifier: ^11.1.4
         version: 11.1.4
-      '@reventlessdev/rescript-node-streams':
+      '@reventlessdev/rescript-node':
         specifier: workspace:*
-        version: link:../node-streams
+        version: link:../node
       ssh2:
         specifier: ^1.17.0
         version: 1.17.0
@@ -1370,9 +1354,9 @@ importers:
       '@reventlessdev/rescript-jest':
         specifier: workspace:*
         version: link:../../rescript/jest
-      '@reventlessdev/rescript-node-streams':
+      '@reventlessdev/rescript-node':
         specifier: workspace:*
-        version: link:../../rescript/node-streams
+        version: link:../../rescript/node
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../rescript/pulumi-pulumi

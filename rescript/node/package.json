@@ -1,13 +1,13 @@
 {
-  "name": "@reventlessdev/rescript-node-streams",
-  "version": "1.1.0-alpha.13",
-  "description": "ReScript bindings for node streams",
+  "name": "@reventlessdev/rescript-node",
+  "version": "1.1.0-alpha.14",
+  "description": "ReScript bindings for the Node.js standard library",
   "license": "Apache-2.0",
   "scripts": {
     "build": "rescript build",
     "start": "rescript watch",
     "clean": "rescript clean",
-    "test": "echo \"There are no tests for rescript-node-streams.\"",
+    "test": "echo \"There are no tests for rescript-node.\"",
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
   },
   "devDependencies": {
@@ -22,6 +22,6 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ReventlessDev/reventless-core.git",
-    "directory": "rescript/node-streams"
+    "directory": "rescript/node"
   }
 }

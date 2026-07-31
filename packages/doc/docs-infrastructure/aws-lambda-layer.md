@@ -299,7 +299,7 @@ reventless-layer.zip
         │   ├── rescript-uuid/
         │   ├── rescript-hash-object/
         │   ├── rescript-fast-csv/
-        │   ├── rescript-node-streams/
+        │   ├── rescript-node/
         │   └── rescript-pulumi-pulumi/
         ├── @rescript/
         │   └── runtime/

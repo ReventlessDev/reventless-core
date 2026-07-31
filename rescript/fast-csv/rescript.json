@@ -17,7 +17,7 @@
     }
   ],
   "dependencies": [
-    "@reventlessdev/rescript-node-streams"
+    "@reventlessdev/rescript-node"
   ],
   "compiler-flags": []
 }
