@@ -1,7 +1,9 @@
 # Plan: consolidate the `rescript/` bindings
 
 **Date:** 2026-07-30
-**Status:** Open.
+**Status:** **Steps 1, 2, 3 and 6 implemented and verified (2026-07-31).** Steps 4, 5 and 7 are
+outstanding and are the three that reach outside this repository — see
+[What landed](#what-landed-2026-07-31).
 **Repos:** `reventless-core` only.
 **Prompted by:** [generate-platform-beyond-the-example-topology.md](./done/generate-platform-beyond-the-example-topology.md),
 which added a *fourth* inline set of `node:fs`/`node:path` externals and made F2 below visible.
@@ -185,3 +187,87 @@ distribute the notice at all, whatever the repository contains.
 | **A relocated package's tests stop running** and its coverage goes dark without any signal. | This repository guards that with `scripts/check-jest-projects.mjs` (a declared project discovering 0 suites fails). Step 5 requires the equivalent guard on the receiving side before the move is considered done. |
 | **A reusable workflow pinned to a branch** changes release behaviour in every calling repository the moment this one's branch moves — the same class of silent disagreement this repository's capability generation exists to remove. | Callers pin a tag; the tag moves deliberately. Never `@alpha`. |
 | Relicensing a derivative drops an upstream notice that its license requires be preserved. | D5: the notice is preserved and the holder named, not deleted. Step 6 verifies through `npm pack`, since the repository containing a file and the package shipping it are different things. |
+
+## What landed (2026-07-31)
+
+Steps 1, 2, 3 and 6, in seven commits — `1258d8c2b`, `aa9237c2f`, `0b24ddff4`, `56287d2c8`,
+`889825318`, `43e7f6518`, `5a1ca9655`, `eab081038`, `35a87a141`.
+
+`@reventlessdev/rescript-node` at `rescript/node` replaces `rescript-node-streams` and
+`rescript-node-zlib` and carries ten modules: `NodeStreams`, `NodeZlib`, `NodeFs`, `NodePath`,
+`NodeUrl`, `NodeProcess`, `NodeOs`, `NodeCrypto`, `NodeChildProcess`, `NodeModule`. Zero
+dependencies. `Generator_Node` is down to one helper that is not a binding; `layer-builder`'s own
+`NodeFs`/`NodePath` are gone; every inline site in `spec`, `core`, `gwt`, `local`, `aws`, `seed` and
+`seed-aws` reads the shared modules.
+
+### The verification that matters
+
+**The compiled JavaScript barely moved, and every hunk that did is the `node:` prefix.** ReScript
+erases externals and inlines them at the call site, so re-pointing a binding cannot change
+behaviour — the generator's compiled output did not change at *all*, and `generate-plugin` /
+`generate-platform` produce byte-identical roots on all three examples. The only compiled changes in
+the repository are: `FTPHandler`, `Util_Bundle`, `Util_LocalConfig`, `Util_StaticBundle` and
+`DomainGraphQL_Server` switching `"fs"`/`"path"`/`"crypto"`/`"module"`/`"stream"` to their `node:`
+forms; `UserStore._defaultPath` losing an inline; and `Seed_Prompt.requireTty` becoming an explicit
+undefined check.
+
+**The bindings package cannot enter a Lambda runtime module graph** — the risk that motivated D3.
+Not because it is careful, but because there is nothing of it to enter: `rescript-node` appears in
+zero compiled outputs. Across all twenty compiled entry points the only builtin import is `node:fs`,
+in `EventCollectorEntryPoint_Ops`.
+
+**The `readFileSync` encoding audit came out clean.** Every call in the tree passed `"utf8"` or
+`"utf-8"` — the same encoding to Node — so folding the encoding into the binding was safe. Two calls
+do not fold and were recorded rather than changed: `Util_StaticBundle` reads bytes with no encoding
+(now `readFileSyncBuffer`), and `EventCollectorEntryPoint_Ops` reads through a `URL` object.
+
+Root build clean (zero warnings), 2483/2483 across 16 projects, `test:projects` 16/16,
+`check:outputs` clean, layer-builder 21/21, `npm pack --dry-run` lists LICENSE on all 17 packages and
+NOTICE on moment.
+
+### Two things fixed that the plan did not ask for
+
+- **`reventless-gwt`'s `test:host` was dead.** It builds the local-platform path from the repository
+  root and still said `reventless/reventless-local`, a folder renamed to `reventless/local`, so every
+  run died at `ERR_MODULE_NOT_FOUND` before reaching an assertion. It is a separate script from the
+  jest projects, so `check-jest-projects` never saw it and the root test run stayed green. Both its
+  tests pass now.
+- **`NodeProcess.isTTY` returns `option<bool>`.** The two seed packages disagreed about the same
+  property — `Seed_Prompt` typed it `bool`, `ReventlessSeedAws_Reset` typed it `option<bool>` with a
+  comment explaining that Node sets it to `true` interactively and leaves it *undefined* otherwise,
+  never `false`. This is exactly the class of drift D2 exists to settle, so the correct one won.
+
+### Bindings deliberately left local
+
+Each is one spelling with no drift, and none is a builtin D2's module list covers. Putting them in
+the shared package would widen it past what it is for:
+
+| Binding | Where | Why it stays |
+|---|---|---|
+| `node:test`, `node:assert/strict` | `gwt/tests/LocalHostIntegration` | A test runner, not a builtin — it would land in the module graph of everything wanting `NodePath` |
+| `node:readline` | `seed/Seed_Prompt` | Needs `{input, output, terminal}` over process streams; `NodeStreams.Readline` takes a file stream. Two call shapes, not two spellings |
+| `node:sqlite`, `node:http` | `local` | One spelling each, no drift |
+| `readFileSyncUrl` | `aws/EventCollectorEntryPoint_Ops` | First argument is a `URL` — a WHATWG global, so typing it here would make the Node bindings take a position on a web type |
+| `child_process` (bare) | `rescript/pulumi-aws/Lambda.res` | Outside step 3's package list; deploy-time only. **Still bare — the one specifier in the tree D2 has not reached** |
+| `process.exit` | `examples/online-shop-hybrid/platform-aws/VerifyClientPublish` | Outside step 3's package list |
+
+Named `process.env.X` accessors (`Env.res`, `Logger.res`, `AnsiStyle.res`, the generated
+`uiBundleUrl`) are also untouched. They are typed accessors of specific variables, not a second
+spelling of a builtin, and folding them into `NodeProcess.env` would add the convenience layer
+["What this does not do"](#what-this-does-not-do) rules out.
+
+### Unrelated finding
+
+`examples/online-shop-dcb/{catalog,ordering}-aws/src/Plugin.res` are **not tracked**, while the
+aggregates and hybrid equivalents are. Surfaced by running the generators to establish a
+byte-identical baseline. Nothing builds them today so nothing is broken, but it contradicts the
+committed-composition-root convention. Not touched here.
+
+### Outstanding
+
+- **Step 4** — extract the release pipeline as a `workflow_call` workflow. Changes release behaviour
+  for every repository that later pins it.
+- **Step 5** — relocate `rescript-anthropic`, `rescript-pulumi-kubernetes`,
+  `rescript-pulumi-docker-build` and `rescript-moment` to their single consumers. Needs the receiving
+  repositories, and step 4 first.
+- **Step 7** — `npm deprecate` the two merged names. Acts on live published packages.
