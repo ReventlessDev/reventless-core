@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.30 (2026-07-31)
+
+**Note:** Version bump only for package @reventlessdev/reventless-interop
+
+
+
+
+
 # 3.0.0-alpha.29 (2026-07-22)
 
 * refactor!: retire the stale "core" vocabulary for platform things ([34e7480](https://github.com/ReventlessDev/reventless-core/commit/34e7480992bd58906a250b0a1ce6ff2c5ba45260))

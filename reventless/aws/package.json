@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-aws",
-  "version": "3.0.0-alpha.248",
+  "version": "3.0.0-alpha.249",
   "description": "AWS adapters for Reventless",
   "license": "Apache-2.0",
   "scripts": {
@@ -25,8 +25,8 @@
     "@aws-sdk/s3-request-presigner": "3.970.0",
     "@reventlessdev/rescript-aws-sdk": "workspace:*",
     "@reventlessdev/rescript-effect": "workspace:*",
-    "@reventlessdev/rescript-node": "workspace:*",
     "@reventlessdev/rescript-jest": "workspace:*",
+    "@reventlessdev/rescript-node": "workspace:*",
     "@reventlessdev/rescript-pulumi-aws": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "@reventlessdev/rescript-uuid": "workspace:*",

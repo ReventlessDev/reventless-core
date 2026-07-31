@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-local",
-  "version": "3.0.0-alpha.183",
+  "version": "3.0.0-alpha.184",
   "description": "Local platform for Reventless (in-memory or SQLite backend, for development and testing without AWS)",
   "license": "Apache-2.0",
   "bin": {
@@ -36,11 +36,11 @@
     }
   },
   "dependencies": {
-    "@reventlessdev/rescript-node": "workspace:*",
     "@reventlessdev/rescript-effect": "workspace:*",
     "@reventlessdev/rescript-graphql-yoga": "workspace:*",
     "@reventlessdev/rescript-jest": "workspace:*",
     "@reventlessdev/rescript-mcp-sdk": "workspace:*",
+    "@reventlessdev/rescript-node": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "@reventlessdev/reventless-core": "workspace:*",
     "@reventlessdev/reventless-graphql-server": "workspace:*",

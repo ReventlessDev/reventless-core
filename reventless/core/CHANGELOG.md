@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.196 (2026-07-31)
+
+* feat(rescript)!: one Node bindings package, not two ([1258d8c](https://github.com/ReventlessDev/reventless-core/commit/1258d8c2b2ff2636b36a849fc5bdf9005c6fb0eb))
+### Features
+
+* **spec:** add Money and a closed ISO 4217 Currency ([d4852ab](https://github.com/ReventlessDev/reventless-core/commit/d4852ab63e823e39fac793c4fa5ac31470db9655))
+
+### BREAKING CHANGES
+
+* `@reventlessdev/rescript-node-streams` and
+`@reventlessdev/rescript-node-zlib` are replaced by
+`@reventlessdev/rescript-node`. Module names are unchanged.
+
+
+
 # 3.0.0-alpha.195 (2026-07-30)
 
 ### Bug Fixes

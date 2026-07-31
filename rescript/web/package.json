@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-web",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "ReScript bindings for the WHATWG web globals available in both browsers and Node 18+ (fetch, WebSocket, timers, base64)",
   "license": "Apache-2.0",
   "scripts": {

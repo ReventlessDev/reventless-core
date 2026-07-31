@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-fast-csv",
-  "version": "1.2.0-alpha.14",
+  "version": "2.0.0-alpha.0",
   "description": "ReScript bindings for fast-csv",
   "license": "Apache-2.0",
   "scripts": {

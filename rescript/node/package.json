@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-node",
-  "version": "1.1.0-alpha.14",
+  "version": "2.0.0-alpha.0",
   "description": "ReScript bindings for the Node.js standard library",
   "license": "Apache-2.0",
   "scripts": {
