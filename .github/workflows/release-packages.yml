@@ -1,0 +1,491 @@
+# Reusable workflow for versioning and publishing a Lerna workspace to npmjs.
+#
+# It performs, in order: install, optional PPX fallback build, `lerna changed`,
+# `lerna version` (prerelease-aware, driven by the branch name), an optional
+# documentation-CHANGELOG commit, a clean build, a throttled sequential publish
+# in topological order, a tag/commit push and one GitHub release per new tag.
+#
+# Everything repository-specific is an input: the `--ignore-changes` list, the
+# workspace-setup command, the build command, the PPX fallback and the
+# documentation CHANGELOG. Post-release side effects (layer builds, deploys) are
+# NOT part of this workflow — it reports the tags it created through the `tags`
+# output and the caller dispatches whatever it needs.
+#
+# Callers MUST pin a tag, never a branch: this workflow publishes packages, so a
+# moving ref changes release behaviour in every calling repository the moment
+# this repository's branch moves.
+#
+# Caller example:
+#   jobs:
+#     release:
+#       uses: ReventlessDev/reventless-core/.github/workflows/release-packages.yml@v1
+#       permissions:
+#         contents: write
+#         packages: write
+#         issues: write
+#       with:
+#         ref: ${{ github.ref_name }}
+#       secrets:
+#         NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+name: Release Packages (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Branch to release. `alpha`/`beta` produce prereleases with that identifier; anything else graduates to a regular release."
+        required: true
+        type: string
+      node-version:
+        description: "Node.js version"
+        required: false
+        type: string
+        default: "22.17.1"
+      workspace-setup:
+        description: "Command run after checkout and before install (e.g. a script that generates pnpm-workspace.yaml). Skipped when empty."
+        required: false
+        type: string
+        default: ""
+      build-command:
+        description: "Command producing the artifacts that get published. Runs after versioning, on a clean tree."
+        required: false
+        type: string
+        default: "pnpm run clean && pnpm run build"
+      ignore-changes:
+        description: "Space-separated package names passed to `lerna version` as `--ignore-changes <name>` — changes to these do not by themselves cause a version bump."
+        required: false
+        type: string
+        default: ""
+      private-packages:
+        description: "Space-separated package names to skip when creating GitHub releases."
+        required: false
+        type: string
+        default: ""
+      changelog-root:
+        description: "Directory under which release notes are looked up as <changelog-root>/<package>/CHANGELOG.md. A package whose CHANGELOG is not found there gets a one-line generated note instead."
+        required: false
+        type: string
+        default: "packages"
+      publish-delay-seconds:
+        description: "Seconds to wait between individual `pnpm publish` calls. The delay exists because a bulk parallel publish trips npmjs' E429 rate limiter."
+        required: false
+        type: string
+        default: "12"
+      doc-changelog-file:
+        description: "CHANGELOG file that records documentation commits. Skipped when empty."
+        required: false
+        type: string
+        default: ""
+      doc-changelog-source:
+        description: "git pathspec whose commits are recorded in doc-changelog-file (e.g. `packages/doc/**`). Required when doc-changelog-file is set."
+        required: false
+        type: string
+        default: ""
+      ppx-fallback:
+        description: "Build a native OCaml PPX from source when no prebuilt binary is present after install. Only reventless-core needs this."
+        required: false
+        type: boolean
+        default: false
+      ppx-binary-paths:
+        description: "Space-separated paths that each count as an available prebuilt PPX binary. When none exists, the from-source fallback runs."
+        required: false
+        type: string
+        default: ""
+      ppx-source-dir:
+        description: "Directory holding the PPX dune project (the fallback build's working directory)."
+        required: false
+        type: string
+        default: ""
+      ppx-output-path:
+        description: "Repository-relative path the fallback build copies the compiled binary to."
+        required: false
+        type: string
+        default: ""
+    secrets:
+      NPM_TOKEN:
+        required: true
+    outputs:
+      released:
+        description: "`true` when packages were versioned and published, `false` when nothing had releasable changes."
+        value: ${{ jobs.release.outputs.released }}
+      branch:
+        description: "The branch that was released."
+        value: ${{ jobs.release.outputs.branch }}
+      tags:
+        description: "Space-separated list of the git tags created by this release (empty when nothing was released)."
+        value: ${{ jobs.release.outputs.tags }}
+
+jobs:
+  release:
+    name: Release Packages
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.changes.outputs.count != '0' }}
+      branch: ${{ steps.prerelease.outputs.branch }}
+      tags: ${{ steps.tags.outputs.list }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Setup workspace
+        if: inputs.workspace-setup != ''
+        run: ${{ inputs.workspace-setup }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Check if PPX Linux binary is available
+        if: inputs.ppx-fallback
+        id: ppx_check
+        env:
+          PPX_BINARY_PATHS: ${{ inputs.ppx-binary-paths }}
+        run: |
+          # The native PPX is consumed from a published per-platform package
+          # installed as an optionalDependency. Build from source ONLY when that
+          # binary is absent — i.e. the optionalDep was silently skipped
+          # (missing/unpublished) — which is the documented "no binary found"
+          # failure mode. A committed local .exe also counts. In the healthy case
+          # we skip the OCaml build entirely.
+          for candidate in $PPX_BINARY_PATHS; do
+            if [ -x "$candidate" ] || [ -f "$candidate" ]; then
+              echo "Prebuilt PPX binary present ($candidate) — skipping from-source build"
+              echo "present=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "Prebuilt PPX binary missing (optionalDependency skipped?) — building from source"
+          echo "present=false" >> "$GITHUB_OUTPUT"
+
+      - name: Setup OCaml (fallback — prebuilt PPX binary missing)
+        if: inputs.ppx-fallback && steps.ppx_check.outputs.present == 'false'
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: "5.2.x"
+          dune-cache: true
+
+      - name: Build PPX for Linux (fallback)
+        if: inputs.ppx-fallback && steps.ppx_check.outputs.present == 'false'
+        env:
+          PPX_OUTPUT_PATH: ${{ inputs.ppx-output-path }}
+        run: |
+          opam install . --deps-only --yes
+          opam exec -- dune build
+          cp _build/default/bin/bin.exe "$GITHUB_WORKSPACE/$PPX_OUTPUT_PATH"
+          chmod +x "$GITHUB_WORKSPACE/$PPX_OUTPUT_PATH"
+        working-directory: ${{ inputs.ppx-source-dir }}
+
+      - name: Check for releasable changes
+        id: changes
+        run: |
+          # `lerna changed` exits non-zero when no releasable (non-private)
+          # packages changed — e.g. a commit that only touches private example
+          # packages or the root lockfile. That is a valid "nothing to release"
+          # outcome, not an error, so tolerate the exit code and fall through to
+          # the skip branch below.
+          CHANGED=$(npx lerna changed --json 2>/dev/null || true)
+          if [[ -z "$CHANGED" ]]; then
+            CHANGED='[]'
+          fi
+          COUNT=$(echo "$CHANGED" | jq 'length' 2>/dev/null || echo 0)
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          if [[ "$COUNT" -eq 0 ]]; then
+            echo "No packages have releasable changes — skipping release"
+          else
+            echo "Packages to release: $COUNT"
+            echo "$CHANGED" | jq -r '.[].name'
+          fi
+
+      # No pre-version build: the caller's CI already compiled and tested this
+      # commit, and any build output here would be discarded by the "Clean
+      # uncommitted changes" git reset/clean below before lerna version runs.
+      # The single authoritative build happens in "Build release artifacts"
+      # (clean + build) just before publish.
+
+      - name: Determine prerelease identifier
+        if: steps.changes.outputs.count != '0'
+        id: prerelease
+        env:
+          BRANCH_NAME: ${{ inputs.ref }}
+        run: |
+          echo "branch=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+
+          if [ "$BRANCH_NAME" = "alpha" ]; then
+            echo "preid=alpha" >> "$GITHUB_OUTPUT"
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          elif [ "$BRANCH_NAME" = "beta" ]; then
+            echo "preid=beta" >> "$GITHUB_OUTPUT"
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "preid=" >> "$GITHUB_OUTPUT"
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Clean uncommitted changes
+        if: steps.changes.outputs.count != '0'
+        run: |
+          # Discard any uncommitted changes from the install/fallback steps
+          # (build artifacts, generated files, deleted files, etc.)
+          git status
+          git reset --hard HEAD
+          git clean -fd
+          git status
+
+      - name: Version packages with Lerna
+        if: steps.changes.outputs.count != '0'
+        timeout-minutes: 10
+        env:
+          HUSKY: 0
+          IS_PRERELEASE: ${{ steps.prerelease.outputs.is_prerelease }}
+          PREID: ${{ steps.prerelease.outputs.preid }}
+          BRANCH_NAME: ${{ steps.prerelease.outputs.branch }}
+          IGNORE_CHANGES: ${{ inputs.ignore-changes }}
+        run: |
+          # Disable git hooks to prevent hanging in CI
+          git config core.hooksPath /dev/null
+
+          IGNORE_ARGS=()
+          for pkg in $IGNORE_CHANGES; do
+            IGNORE_ARGS+=(--ignore-changes "$pkg")
+          done
+
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            echo "Creating prerelease versions with identifier: $PREID"
+            npx lerna version --conventional-commits --conventional-prerelease --preid "$PREID" --allow-branch "$BRANCH_NAME" "${IGNORE_ARGS[@]}" --force-git-tag --yes --no-push --message "chore(release): version packages [skip ci]"
+          else
+            echo "Creating regular release versions"
+            npx lerna version --conventional-commits --conventional-graduate --allow-branch "$BRANCH_NAME" "${IGNORE_ARGS[@]}" --force-git-tag --yes --no-push --message "chore(release): version packages [skip ci]"
+          fi
+
+          echo "Lerna version completed successfully"
+
+      - name: Update documentation CHANGELOG
+        if: steps.changes.outputs.count != '0' && inputs.doc-changelog-file != ''
+        env:
+          CHANGELOG_FILE: ${{ inputs.doc-changelog-file }}
+          DOC_SOURCE: ${{ inputs.doc-changelog-source }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          # Get the last commit that modified the CHANGELOG (excluding this workflow)
+          LAST_CHANGELOG_COMMIT=$(git log -1 --format="%H" --skip=0 -- "$CHANGELOG_FILE" 2>/dev/null || echo "")
+
+          # Determine the range to search
+          if [ -z "$LAST_CHANGELOG_COMMIT" ]; then
+            # If CHANGELOG never updated, get commits from last 30 days
+            SINCE_DATE=$(date -u -d '30 days ago' +%Y-%m-%d 2>/dev/null || date -u -v-30d +%Y-%m-%d)
+            COMMIT_RANGE="--since=$SINCE_DATE"
+          else
+            COMMIT_RANGE="$LAST_CHANGELOG_COMMIT..HEAD"
+          fi
+
+          # Get commits affecting the documentation sources
+          COMMITS=$(git log --format="%H|%s|%ad" --date=short $COMMIT_RANGE -- "$DOC_SOURCE" 2>/dev/null || echo "")
+
+          # If no new commits, skip
+          if [ -z "$COMMITS" ]; then
+            echo "No new documentation changes to record"
+            exit 0
+          fi
+
+          echo "Found documentation changes to record"
+
+          # Create temporary file for new entries
+          TEMP_ENTRIES=$(mktemp)
+
+          # Process commits and group by date
+          CURRENT_DATE=""
+          while IFS='|' read -r hash subject date; do
+            # Skip if empty line
+            [ -z "$hash" ] && continue
+
+            # Add date header if new date
+            if [ "$date" != "$CURRENT_DATE" ]; then
+              if [ -n "$CURRENT_DATE" ]; then
+                echo "" >> "$TEMP_ENTRIES"
+              fi
+              echo "### $date" >> "$TEMP_ENTRIES"
+              CURRENT_DATE="$date"
+            fi
+
+            # Format entry with commit link (truncate hash to 7 chars)
+            SHORT_HASH="${hash:0:7}"
+            echo "- $subject ([$SHORT_HASH](https://github.com/$GITHUB_REPO/commit/$hash))" >> "$TEMP_ENTRIES"
+          done <<< "$COMMITS"
+
+          # Insert new entries into CHANGELOG after "## Changes" header
+          TEMP_CHANGELOG=$(mktemp)
+
+          awk -v new_entries_file="$TEMP_ENTRIES" '
+            /^## Changes$/ {
+              print $0
+              print ""
+              while ((getline line < new_entries_file) > 0) {
+                print line
+              }
+              close(new_entries_file)
+              # Skip the next empty line if it exists
+              getline
+              if ($0 != "") {
+                print $0
+              }
+              next
+            }
+            {print}
+          ' "$CHANGELOG_FILE" > "$TEMP_CHANGELOG"
+
+          # Replace original file
+          mv "$TEMP_CHANGELOG" "$CHANGELOG_FILE"
+          rm -f "$TEMP_ENTRIES"
+
+          # Stage the changes
+          git add "$CHANGELOG_FILE"
+
+          # Check if there are changes to commit
+          if git diff --cached --quiet; then
+            echo "No changes to commit to CHANGELOG"
+          else
+            git commit -m "docs: update documentation CHANGELOG" -m "[skip ci]"
+            echo "Documentation CHANGELOG updated successfully"
+          fi
+
+      - name: Build release artifacts
+        if: steps.changes.outputs.count != '0'
+        run: ${{ inputs.build-command }}
+
+      - name: Restore deleted dev sources
+        if: steps.changes.outputs.count != '0'
+        run: |
+          # A `rescript clean` deletes compiled test files (dev sources) that are
+          # checked into git, and a root build does not regenerate them. Restore
+          # them before publishing, which requires a clean working tree.
+          git checkout -- .
+
+      - name: Publish to npmjs (throttled, sequential, stop on first error)
+        if: steps.changes.outputs.count != '0'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PUBLISH_DELAY_SECONDS: ${{ inputs.publish-delay-seconds }}
+        run: |
+          set -euo pipefail
+          # Publish one package at a time in dependency (topological) order with
+          # a delay between each, instead of lerna's parallel `publish
+          # from-package`. The bulk parallel publish previously tripped npmjs'
+          # E429 publish rate limiter during the first-time scope publish.
+          #
+          #   * topo order  -> every workspace dependency is already on the
+          #                    registry before its dependents publish, so pnpm's
+          #                    `workspace:*` -> exact-version rewrite resolves.
+          #   * pnpm publish -> rewrites the `workspace:*` protocol (lerna does
+          #                    not understand it on its own).
+          #   * set -e + loop in the foreground -> first failed publish aborts
+          #                    the whole step (no silent partial release).
+          #   * already-on-registry versions are skipped (idempotent re-runs).
+          npx lerna list --toposort --json --no-private \
+            | jq -r '.[] | "\(.name)\t\(.version)\t\(.location)"' \
+            | while IFS=$'\t' read -r name version location; do
+                if npm view "$name@$version" version \
+                     --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+                  echo "skip    $name@$version (already on registry)"
+                  continue
+                fi
+                echo "publish $name@$version"
+                ( cd "$location" && pnpm publish --no-git-checks --access public )
+                echo "waiting ${PUBLISH_DELAY_SECONDS}s before next publish"
+                sleep "$PUBLISH_DELAY_SECONDS"
+              done
+
+      - name: Push version tags and commits
+        if: steps.changes.outputs.count != '0'
+        env:
+          BRANCH_NAME: ${{ steps.prerelease.outputs.branch }}
+        run: |
+          for i in 1 2 3; do
+            git pull --rebase origin "$BRANCH_NAME" && \
+            git push --follow-tags origin "$BRANCH_NAME" && exit 0
+            echo "Push attempt $i failed, retrying..."
+            sleep 5
+          done
+          echo "All push attempts failed"
+          exit 1
+
+      - name: Collect released tags
+        if: steps.changes.outputs.count != '0'
+        id: tags
+        run: |
+          # Tag names never contain whitespace, so a space-separated list
+          # survives the trip through a job output intact.
+          echo "list=$(git tag --points-at HEAD | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub releases
+        if: steps.changes.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IS_PRERELEASE: ${{ steps.prerelease.outputs.is_prerelease }}
+          BRANCH_NAME: ${{ steps.prerelease.outputs.branch }}
+          NEW_TAGS: ${{ steps.tags.outputs.list }}
+          PRIVATE_PACKAGES: ${{ inputs.private-packages }}
+          CHANGELOG_ROOT: ${{ inputs.changelog-root }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          for tag in $NEW_TAGS; do
+            # Extract package name and version from tag
+            # Tags are in format: @scope/package-name@version or package-name@version
+            package_name=$(echo "$tag" | sed 's/^@[^/]*\///' | sed 's/@.*//')
+            version=$(echo "$tag" | sed 's/.*@//')
+
+            skip=false
+            for private in $PRIVATE_PACKAGES; do
+              if [ "$package_name" = "$private" ]; then
+                echo "Skipping private package: $package_name"
+                skip=true
+                break
+              fi
+            done
+            [ "$skip" = true ] && continue
+
+            echo "Creating release for $package_name@$version"
+
+            # Generate release notes from the changelog when one is found under
+            # changelog-root. Packages living elsewhere in the workspace get the
+            # generated one-liner instead.
+            if [ -f "$CHANGELOG_ROOT/$package_name/CHANGELOG.md" ]; then
+              # Extract the latest changelog entry
+              CHANGELOG_ENTRY=$(awk '/^## / {if (found) exit; found=1; next} found' "$CHANGELOG_ROOT/$package_name/CHANGELOG.md")
+
+              # Create release notes with changelog link (using printf for proper formatting)
+              RELEASE_NOTES=$(printf '%s\n\n**Changelog**: https://github.com/%s/blob/%s/%s/%s/CHANGELOG.md' "$CHANGELOG_ENTRY" "$REPOSITORY" "$BRANCH_NAME" "$CHANGELOG_ROOT" "$package_name")
+            else
+              RELEASE_NOTES="Release $version of $package_name"
+            fi
+
+            # Create GitHub release
+            gh release create "$tag" \
+              --title "$package_name v$version" \
+              --notes "$RELEASE_NOTES" \
+              $PRERELEASE_FLAG || echo "Release already exists or failed for $tag"
+          done

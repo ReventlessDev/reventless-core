@@ -1,8 +1,8 @@
 # Plan: consolidate the `rescript/` bindings
 
 **Date:** 2026-07-30
-**Status:** **Steps 1, 2, 3 and 6 implemented and verified (2026-07-31).** Steps 4, 5 and 7 are
-outstanding and are the three that reach outside this repository — see
+**Status:** **Steps 1, 2, 3, 4 and 6 implemented and verified (2026-07-31).** Steps 5 and 7 are
+outstanding, and both reach outside this repository — see
 [What landed](#what-landed-2026-07-31).
 **Repos:** `reventless-core` only.
 **Prompted by:** [generate-platform-beyond-the-example-topology.md](./done/generate-platform-beyond-the-example-topology.md),
@@ -263,11 +263,62 @@ aggregates and hybrid equivalents are. Surfaced by running the generators to est
 byte-identical baseline. Nothing builds them today so nothing is broken, but it contradicts the
 committed-composition-root convention. Not touched here.
 
+## Step 4 (2026-07-31)
+
+`release.yml` is now a 120-line caller of `.github/workflows/release-packages.yml`, a `workflow_call`
+workflow taking fourteen inputs, one required secret (`NPM_TOKEN`) and three outputs
+(`released`, `branch`, `tags`).
+
+**What became an input, and why each is repository-specific:** `ignore-changes` and
+`private-packages` (this repository's `doc` / `reventless-layer-builder` / `reventless-ppx`),
+`workspace-setup` (the `pnpm-workspace.yaml` generator that only exists here),
+`build-command`, `doc-changelog-file` + `doc-changelog-source` (the Docusaurus package),
+`changelog-root`, `publish-delay-seconds`, `node-version`, `ref`, and four `ppx-*` inputs gating the
+OCaml fallback build behind `ppx-fallback: false` for everyone else.
+
+**What deliberately did not move in:** the Lambda-layer build and the deploy dispatch. They are
+`reventless-aws` specifics, not release mechanics. The reusable workflow reports the tags it created
+through its `tags` output and the caller decides what to dispatch — a `post-release` job in
+`release.yml` does exactly what the two old steps did, reading that output instead of re-running
+`git tag --points-at HEAD`.
+
+**Verification — the pipeline is the same pipeline.** Step for step, in order, with one addition
+(`Collect released tags`, which feeds the new output). The two constructed commands that stopped
+being literals were checked against their originals rather than eyeballed: the `--ignore-changes`
+loop over `doc reventless-layer-builder reventless-ppx` produces a byte-identical `lerna version`
+command line, and the generalised tag→package-name `sed` (`^@[^/]*\/` instead of a hard-coded
+`@reventlessdev/`) returns the same name for scoped, unscoped and prerelease tags. Both files parse.
+
+**This repository calls the workflow by local path (`./.github/workflows/release-packages.yml`), not
+by tag.** The risks table's rule — pin a tag, never a branch — is about *other* repositories. For the
+self-call a local path is strictly stronger than a tag: the pipeline that releases a commit is always
+the one committed alongside it, so there is no second ref to keep in sync and no window where a tag
+lags the code it releases. The header of `release-packages.yml` states the tag rule for external
+callers.
+
+### Two behaviours that changed, both deliberately
+
+- **A failed post-release dispatch now fails the run.** It used to be the last two steps of the
+  release job, so a failed `gh workflow run` failed that job. As a separate job it would have been
+  invisible to a summary that only read `needs.release.result`, so `release-summary` now needs and
+  reports both.
+- **`github.repository` replaced the hard-coded `ReventlessDev/reventless-core`** in the
+  documentation-CHANGELOG commit links. Same value here; correct value for a caller.
+
+### Latent finding, recorded not fixed
+
+**Every GitHub release created by this repository gets the fallback one-line note.** The release-notes
+lookup reads `packages/<name>/CHANGELOG.md`, but of the 43 releasable packages exactly one
+(`reventless-ppx`) lives under `packages/` — the rest are under `rescript/`, `reventless/` and
+`examples/`, so the `-f` test never hits and every release body is `Release <version> of <name>`.
+Preserved exactly, because step 4's verification is that a release through the extracted workflow is
+*indistinguishable* from one before it, and changing release-note content mid-extraction makes that
+unverifiable. The fix is to resolve each package's location from `lerna list --json` (already parsed
+one step earlier for the publish loop) rather than from a path convention — a separate change.
+
 ### Outstanding
 
-- **Step 4** — extract the release pipeline as a `workflow_call` workflow. Changes release behaviour
-  for every repository that later pins it.
 - **Step 5** — relocate `rescript-anthropic`, `rescript-pulumi-kubernetes`,
   `rescript-pulumi-docker-build` and `rescript-moment` to their single consumers. Needs the receiving
-  repositories, and step 4 first.
+  repositories to exist and to have the 0-suites test guard the risks table requires.
 - **Step 7** — `npm deprecate` the two merged names. Acts on live published packages.

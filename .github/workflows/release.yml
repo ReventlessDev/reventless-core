@@ -14,10 +14,14 @@ concurrency:
 jobs:
   release:
     name: Release Packages
-    runs-on: ubuntu-latest
     # While npm publishing is blocked, push-triggered releases are gated behind
     # the PUBLISHING_ENABLED repo variable. Manual workflow_dispatch still runs.
     if: github.event_name == 'workflow_dispatch' || (vars.PUBLISHING_ENABLED == 'true' && github.event.workflow_run.conclusion == 'success')
+    # Local path, so the pipeline that releases this repository is always the one
+    # committed alongside the code being released. Repositories calling this
+    # workflow from outside pin a TAG — never a branch; see the header of
+    # release-packages.yml.
+    uses: ./.github/workflows/release-packages.yml
     permissions:
       contents: write
       packages: write
@@ -25,390 +29,82 @@ jobs:
       issues: write
       checks: read
       actions: write
+    with:
+      ref: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+      node-version: "22.17.1"
+      workspace-setup: node scripts/workspace-setup.mjs
+      build-command: pnpm run clean && pnpm run build
+      # doc and reventless-layer-builder are private; reventless-ppx is released
+      # by its own workflow (publish-ppx.yml).
+      ignore-changes: doc reventless-layer-builder reventless-ppx
+      private-packages: doc reventless-layer-builder
+      changelog-root: packages
+      doc-changelog-file: packages/doc/CHANGELOG.md
+      doc-changelog-source: packages/doc/**
+      # The PPX is consumed from the published per-platform package
+      # @reventlessdev/reventless-ppx-linux-x64 (an optionalDependency resolved
+      # by packages/reventless-ppx/bin). It is compiled here only when that
+      # binary is absent — see publish-ppx.yml.
+      ppx-fallback: true
+      ppx-binary-paths: node_modules/@reventlessdev/reventless-ppx-linux-x64/ppx.exe packages/reventless-ppx/ppx-linux.exe
+      ppx-source-dir: packages/reventless-ppx/src
+      ppx-output-path: packages/reventless-ppx/ppx-linux.exe
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  post-release:
+    name: Post-release Dispatch
+    runs-on: ubuntu-latest
+    needs: [release]
+    if: needs.release.outputs.released == 'true'
+    permissions:
+      contents: read
+      actions: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_branch || github.ref_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "22.17.1"
-          cache: "pnpm"
-          registry-url: "https://registry.npmjs.org"
-
-      - name: Configure Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Setup workspace (pnpm-workspace.yaml)
-        run: node scripts/workspace-setup.mjs
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Check if PPX Linux binary is available
-        id: ppx_check
-        run: |
-          # The native PPX is consumed from the published per-platform package
-          # @reventlessdev/reventless-ppx-linux-x64 (installed as an
-          # optionalDependency, resolved by packages/reventless-ppx/bin). Build
-          # from source ONLY when that binary is absent — i.e. the optionalDep
-          # was silently skipped (missing/unpublished) — which is the documented
-          # "no binary found" failure mode. A committed local .exe also counts.
-          # In the healthy case we skip the OCaml build entirely (the PPX is
-          # never compiled by a normal framework build — see publish-ppx.yml).
-          PKG_BIN="node_modules/@reventlessdev/reventless-ppx-linux-x64/ppx.exe"
-          if [ -x "$PKG_BIN" ] || [ -f packages/reventless-ppx/ppx-linux.exe ]; then
-            echo "Prebuilt PPX binary present ($PKG_BIN) — skipping from-source build"
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "Prebuilt PPX binary missing (optionalDependency skipped?) — building from source"
-            echo "present=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Setup OCaml (fallback — prebuilt PPX binary missing)
-        if: steps.ppx_check.outputs.present == 'false'
-        uses: ocaml/setup-ocaml@v3
-        with:
-          ocaml-compiler: "5.2.x"
-          dune-cache: true
-
-      - name: Build reventless-ppx for Linux (fallback)
-        if: steps.ppx_check.outputs.present == 'false'
-        run: |
-          opam install . --deps-only --yes
-          opam exec -- dune build
-          cp _build/default/bin/bin.exe ../ppx-linux.exe
-          chmod +x ../ppx-linux.exe
-        working-directory: packages/reventless-ppx/src
-
-      - name: Check for releasable changes
-        id: changes
-        run: |
-          # `lerna changed` exits non-zero when no releasable (non-private)
-          # packages changed — e.g. a commit that only touches private example
-          # packages (host-shell bumps) or the root lockfile. That is a valid
-          # "nothing to release" outcome, not an error, so tolerate the exit
-          # code and fall through to the skip branch below.
-          CHANGED=$(npx lerna changed --json 2>/dev/null || true)
-          if [[ -z "$CHANGED" ]]; then
-            CHANGED='[]'
-          fi
-          COUNT=$(echo "$CHANGED" | jq 'length' 2>/dev/null || echo 0)
-          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
-          if [[ "$COUNT" -eq 0 ]]; then
-            echo "No packages have releasable changes — skipping release"
-          else
-            echo "Packages to release: $COUNT"
-            echo "$CHANGED" | jq -r '.[].name'
-          fi
-
-      # No pre-version build: CI (the triggering workflow) already compiled
-      # and tested this commit, and any build output here would be discarded
-      # by the "Clean uncommitted changes" git reset/clean below before
-      # lerna version runs. The single authoritative build happens in
-      # "Build release artifacts" (clean + build) just before publish.
-      #
-      # Tests already run in CI workflow - no need to run again.
-
-      - name: Determine prerelease identifier
-        if: steps.changes.outputs.count != '0'
-        id: prerelease
-        run: |
-          BRANCH_NAME="${{ github.event.workflow_run.head_branch || github.ref_name }}"
-          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
-
-          if [ "$BRANCH_NAME" = "alpha" ]; then
-            echo "preid=alpha" >> $GITHUB_OUTPUT
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
-          elif [ "$BRANCH_NAME" = "beta" ]; then
-            echo "preid=beta" >> $GITHUB_OUTPUT
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
-          else
-            echo "preid=" >> $GITHUB_OUTPUT
-            echo "is_prerelease=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Clean uncommitted changes
-        if: steps.changes.outputs.count != '0'
-        run: |
-          # Discard any uncommitted changes from build process
-          # (build artifacts, generated files, deleted files, etc.)
-          git status
-          git reset --hard HEAD
-          git clean -fd
-          git status
-
-      - name: Version packages with Lerna
-        if: steps.changes.outputs.count != '0'
-        timeout-minutes: 10
-        env:
-          HUSKY: 0
-        run: |
-          IS_PRERELEASE="${{ steps.prerelease.outputs.is_prerelease }}"
-          PREID="${{ steps.prerelease.outputs.preid }}"
-          BRANCH_NAME="${{ steps.prerelease.outputs.branch }}"
-
-          # Disable git hooks to prevent hanging in CI
-          git config core.hooksPath /dev/null
-
-          if [ "$IS_PRERELEASE" = "true" ]; then
-            echo "Creating prerelease versions with identifier: $PREID"
-            npx lerna version --conventional-commits --conventional-prerelease --preid "$PREID" --allow-branch "$BRANCH_NAME" --ignore-changes doc --ignore-changes reventless-layer-builder --ignore-changes reventless-ppx --force-git-tag --yes --no-push --message "chore(release): version packages [skip ci]"
-          else
-            echo "Creating regular release versions"
-            npx lerna version --conventional-commits --conventional-graduate --allow-branch "$BRANCH_NAME" --ignore-changes doc --ignore-changes reventless-layer-builder --ignore-changes reventless-ppx --force-git-tag --yes --no-push --message "chore(release): version packages [skip ci]"
-          fi
-
-          echo "Lerna version completed successfully"
-
-      - name: Update documentation CHANGELOG
-        if: steps.changes.outputs.count != '0'
-        run: |
-          CHANGELOG_FILE="packages/doc/CHANGELOG.md"
-          GITHUB_REPO="ReventlessDev/reventless-core"
-
-          # Get the last commit that modified the CHANGELOG (excluding this workflow)
-          LAST_CHANGELOG_COMMIT=$(git log -1 --format="%H" --skip=0 -- "$CHANGELOG_FILE" 2>/dev/null || echo "")
-
-          # Determine the range to search
-          if [ -z "$LAST_CHANGELOG_COMMIT" ]; then
-            # If CHANGELOG never updated, get commits from last 30 days
-            SINCE_DATE=$(date -u -d '30 days ago' +%Y-%m-%d 2>/dev/null || date -u -v-30d +%Y-%m-%d)
-            COMMIT_RANGE="--since=$SINCE_DATE"
-          else
-            COMMIT_RANGE="$LAST_CHANGELOG_COMMIT..HEAD"
-          fi
-
-          # Get commits affecting doc package
-          COMMITS=$(git log --format="%H|%s|%ad" --date=short $COMMIT_RANGE -- "packages/doc/**" 2>/dev/null || echo "")
-
-          # If no new commits, skip
-          if [ -z "$COMMITS" ]; then
-            echo "No new documentation changes to record"
-            exit 0
-          fi
-
-          echo "Found documentation changes to record"
-
-          # Create temporary file for new entries
-          TEMP_ENTRIES=$(mktemp)
-
-          # Process commits and group by date
-          CURRENT_DATE=""
-          while IFS='|' read -r hash subject date; do
-            # Skip if empty line
-            [ -z "$hash" ] && continue
-
-            # Add date header if new date
-            if [ "$date" != "$CURRENT_DATE" ]; then
-              if [ -n "$CURRENT_DATE" ]; then
-                echo "" >> "$TEMP_ENTRIES"
-              fi
-              echo "### $date" >> "$TEMP_ENTRIES"
-              CURRENT_DATE="$date"
-            fi
-
-            # Format entry with commit link (truncate hash to 7 chars)
-            SHORT_HASH="${hash:0:7}"
-            echo "- $subject ([$SHORT_HASH](https://github.com/$GITHUB_REPO/commit/$hash))" >> "$TEMP_ENTRIES"
-          done <<< "$COMMITS"
-
-          # Insert new entries into CHANGELOG after "## Changes" header
-          TEMP_CHANGELOG=$(mktemp)
-
-          awk -v new_entries_file="$TEMP_ENTRIES" '
-            /^## Changes$/ {
-              print $0
-              print ""
-              while ((getline line < new_entries_file) > 0) {
-                print line
-              }
-              close(new_entries_file)
-              # Skip the next empty line if it exists
-              getline
-              if ($0 != "") {
-                print $0
-              }
-              next
-            }
-            {print}
-          ' "$CHANGELOG_FILE" > "$TEMP_CHANGELOG"
-
-          # Replace original file
-          mv "$TEMP_CHANGELOG" "$CHANGELOG_FILE"
-          rm -f "$TEMP_ENTRIES"
-
-          # Stage the changes
-          git add "$CHANGELOG_FILE"
-
-          # Check if there are changes to commit
-          if git diff --cached --quiet; then
-            echo "No changes to commit to CHANGELOG"
-          else
-            git commit -m "docs: update documentation CHANGELOG" -m "[skip ci]"
-            echo "Documentation CHANGELOG updated successfully"
-          fi
-
-      - name: Build release artifacts
-        if: steps.changes.outputs.count != '0'
-        run: |
-          pnpm run clean
-          pnpm run build
-
-      - name: Restore deleted dev sources
-        if: steps.changes.outputs.count != '0'
-        run: |
-          # rescript clean deletes compiled test files (dev sources)
-          # that are checked into git. rescript build from root skips
-          # dev sources, so they aren't regenerated. Restore them
-          # before lerna publish, which requires a clean working tree.
-          git checkout -- .
-
-      - name: Publish to npmjs (throttled, sequential, stop on first error)
-        if: steps.changes.outputs.count != '0'
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          PUBLISH_DELAY_SECONDS: "12"
-        run: |
-          set -euo pipefail
-          # Publish one package at a time in dependency (topological) order with
-          # a delay between each, instead of lerna's parallel `publish
-          # from-package`. The bulk parallel publish previously tripped npmjs'
-          # E429 publish rate limiter during the first-time scope publish.
-          #
-          #   * topo order  -> every workspace dependency is already on the
-          #                    registry before its dependents publish, so pnpm's
-          #                    `workspace:*` -> exact-version rewrite resolves.
-          #   * pnpm publish -> rewrites the `workspace:*` protocol (lerna does
-          #                    not understand it on its own).
-          #   * set -e + loop in the foreground -> first failed publish aborts
-          #                    the whole step (no silent partial release).
-          #   * already-on-registry versions are skipped (idempotent re-runs).
-          npx lerna list --toposort --json --no-private \
-            | jq -r '.[] | "\(.name)\t\(.version)\t\(.location)"' \
-            | while IFS=$'\t' read -r name version location; do
-                if npm view "$name@$version" version \
-                     --registry=https://registry.npmjs.org >/dev/null 2>&1; then
-                  echo "skip    $name@$version (already on registry)"
-                  continue
-                fi
-                echo "publish $name@$version"
-                ( cd "$location" && pnpm publish --no-git-checks --access public )
-                echo "waiting ${PUBLISH_DELAY_SECONDS}s before next publish"
-                sleep "$PUBLISH_DELAY_SECONDS"
-              done
-
-      - name: Push version tags and commits
-        if: steps.changes.outputs.count != '0'
-        run: |
-          BRANCH_NAME="${{ steps.prerelease.outputs.branch }}"
-          for i in 1 2 3; do
-            git pull --rebase origin "$BRANCH_NAME" && \
-            git push --follow-tags origin "$BRANCH_NAME" && exit 0
-            echo "Push attempt $i failed, retrying..."
-            sleep 5
-          done
-          echo "All push attempts failed"
-          exit 1
-
-      - name: Create GitHub releases
-        if: steps.changes.outputs.count != '0'
-        run: |
-          IS_PRERELEASE="${{ steps.prerelease.outputs.is_prerelease }}"
-          BRANCH_NAME="${{ steps.prerelease.outputs.branch }}"
-          PRERELEASE_FLAG=""
-
-          if [ "$IS_PRERELEASE" = "true" ]; then
-            PRERELEASE_FLAG="--prerelease"
-          fi
-
-          # Get all new tags created by Lerna
-          NEW_TAGS=$(git tag --points-at HEAD)
-
-          for tag in $NEW_TAGS; do
-            # Extract package name and version from tag
-            # Tags are in format: @reventlessdev/package-name@version or package-name@version
-            package_name=$(echo $tag | sed 's/@reventlessdev\///' | sed 's/@.*//')
-            version=$(echo $tag | sed 's/.*@//')
-
-            # Skip private packages (doc, aws-lambda-layer)
-            if [ "$package_name" = "doc" ] || [ "$package_name" = "reventless-layer-builder" ]; then
-              echo "Skipping private package: $package_name"
-              continue
-            fi
-
-            echo "Creating release for $package_name@$version"
-
-            # Generate release notes from changelog if it exists
-            if [ -f "packages/$package_name/CHANGELOG.md" ]; then
-              # Extract the latest changelog entry
-              CHANGELOG_ENTRY=$(awk '/^## / {if (found) exit; found=1; next} found' "packages/$package_name/CHANGELOG.md")
-              
-              # Create release notes with changelog link (using printf for proper formatting)
-              RELEASE_NOTES=$(printf '%s\n\n**Changelog**: https://github.com/${{ github.repository }}/blob/%s/packages/%s/CHANGELOG.md' "$CHANGELOG_ENTRY" "$BRANCH_NAME" "$package_name")
-            else
-              RELEASE_NOTES="Release $version of $package_name"
-            fi
-
-            # Create GitHub release
-            gh release create "$tag" \
-              --title "$package_name v$version" \
-              --notes "$RELEASE_NOTES" \
-              $PRERELEASE_FLAG || echo "Release already exists or failed for $tag"
-          done
+      - name: Trigger Lambda Layer build if reventless-aws was released
+        id: layer-build
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Trigger Lambda Layer build if reventless-aws was released
-        if: steps.changes.outputs.count != '0'
-        id: layer-build
+          NEW_TAGS: ${{ needs.release.outputs.tags }}
         run: |
-          NEW_TAGS=$(git tag --points-at HEAD)
           TRIGGERED=false
           for tag in $NEW_TAGS; do
             if [[ "$tag" == @reventlessdev/reventless-aws@* ]]; then
               VERSION="${tag##*@}"
               echo "Triggering Lambda Layer build for version $VERSION"
               gh workflow run build-lambda-layer.yml \
+                -R "${{ github.repository }}" \
                 -f version="$VERSION"
               TRIGGERED=true
               break
             fi
           done
           echo "triggered=$TRIGGERED" >> "$GITHUB_OUTPUT"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Trigger deploy if no layer build needed
-        if: steps.changes.outputs.count != '0' && steps.layer-build.outputs.triggered == 'false'
-        run: |
-          BRANCH_NAME="${{ steps.prerelease.outputs.branch }}"
-          echo "No reventless-aws release — dispatching deploy directly on $BRANCH_NAME"
-          gh workflow run deploy-online-shop-hybrid.yml --ref "$BRANCH_NAME"
+        if: steps.layer-build.outputs.triggered == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ needs.release.outputs.branch }}
+        run: |
+          echo "No reventless-aws release — dispatching deploy directly on $BRANCH_NAME"
+          gh workflow run deploy-online-shop-hybrid.yml \
+            -R "${{ github.repository }}" \
+            --ref "$BRANCH_NAME"
 
   release-summary:
     name: Release Summary
     runs-on: ubuntu-latest
-    needs: [release]
+    # post-release is included so a failed dispatch still fails the summary — it
+    # used to be a step of the release job, where its failure was visible.
+    needs: [release, post-release]
     if: always()
     steps:
       - name: Summary
         run: |
           echo "Release workflow completed"
-          echo "Status: ${{ needs.release.result }}"
+          echo "Release status: ${{ needs.release.result }}"
+          echo "Post-release status: ${{ needs.post-release.result }}"
 
           if [[ "${{ needs.release.result }}" == "success" ]]; then
             echo "✅ Packages released successfully"
@@ -416,5 +112,10 @@ jobs:
             echo "⏭️ No changes to release"
           else
             echo "❌ Release failed"
+            exit 1
+          fi
+
+          if [[ "${{ needs.post-release.result }}" == "failure" ]]; then
+            echo "❌ Post-release dispatch failed"
             exit 1
           fi
