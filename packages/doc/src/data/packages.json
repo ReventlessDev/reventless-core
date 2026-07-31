@@ -126,16 +126,6 @@
           "private": false
         },
         {
-          "name": "@reventlessdev/rescript-pulumi-docker-build",
-          "description": "ReScript bindings for @pulumi/docker-build",
-          "private": false
-        },
-        {
-          "name": "@reventlessdev/rescript-pulumi-kubernetes",
-          "description": "ReScript bindings for @pulumi/kubernetes",
-          "private": false
-        },
-        {
           "name": "@reventlessdev/rescript-pulumi-pulumi",
           "description": "ReScript bindings for @pulumi/pulumi",
           "private": false

@@ -1,9 +1,10 @@
 # Plan: consolidate the `rescript/` bindings
 
 **Date:** 2026-07-30
-**Status:** **Steps 1, 2, 3, 4, 6 and 7 implemented and verified (2026-07-31 / 2026-08-01).** Step 5
-is **one of three packages done** — see [Step 5](#step-5-2026-08-01) for the constraint that changed
-how it is executed, and [What landed](#what-landed-2026-07-31) for the rest.
+**Status:** **Complete — all seven steps implemented and verified (2026-07-31 / 2026-08-01).**
+Step 5 relocated three of the four packages it named; `rescript-moment` stays here on the plan's own
+rule. See [Step 5](#step-5-2026-08-01) for the constraint that changed how the relocations were
+executed, and the [follow-up](#follow-up-not-a-step) the work leaves behind.
 **Repos:** `reventless-core` only.
 **Prompted by:** [generate-platform-beyond-the-example-topology.md](./done/generate-platform-beyond-the-example-topology.md),
 which added a *fourth* inline set of `node:fs`/`node:path` externals and made F2 below visible.
@@ -421,12 +422,38 @@ checked on their own terms.
 and the package is off the documentation site's package list and the README. Root build clean,
 283/283 suites and 2483/2483 tests — the same numbers as before the move.
 
-### Outstanding
+### `rescript-pulumi-kubernetes` + `rescript-pulumi-docker-build` — moved and renamed (done)
 
-- **Step 5, remaining two** — `rescript-pulumi-kubernetes` (`0.1.0-alpha.7`) and
-  `rescript-pulumi-docker-build` (`0.1.0-alpha.6`) move together to a single consumer under the same
-  rename rule. Record their current versions before the move; the first release afterwards must be
-  strictly greater. `rescript-moment` stays (see F3).
-- **The abandoned npmjs name.** `@reventlessdev/rescript-anthropic@1.0.0-alpha.8` remains published
-  and now has no source in this repository. Unlike step 7's deprecations it has no public
-  replacement to point at, so what its notice should say is a separate decision.
+Both moved together, to the one repository that consumes them, keeping `0.1.0-alpha.7` and
+`0.1.0-alpha.6`. As with `rescript-anthropic`, **no call site changed** — but for a different reason
+worth recording: these two are not `namespace: false`, they set an explicit namespace
+(`PulumiKubernetes`, `PulumiDockerBuild`). A namespace is a `rescript.json` setting, independent of
+the npm package name, so keeping it means the rename is invisible to every `PulumiKubernetes.Core.Pod`
+in the consumer. Both compile from source in their new home (49 and 17 modules) and the kubernetes
+package's own 5 tests pass there.
+
+**They still depend on `rescript-pulumi-pulumi`, which stays here** — the coupling the relocation does
+not remove. `workspace:*` became a pinned registry dependency on the version the receiving repository's
+train is on, so a release of that binding here now requires a deliberate bump there.
+
+**The move could not happen until the receiving repository could release at all**, which is what the
+`workflow_call` extraction (step 4) was for. Getting there took three preparatory pieces of work
+beyond this plan's scope: the reusable workflow had to learn a second registry (it hardcoded npmjs in
+three places); the receiving repository needed a release pipeline at all; and its dependency train —
+frozen 19 releases back — had to move forward, which cost five source changes to absorb the API drift
+and surfaced a latent bug there (a hand-annotated `@module external` whose declared type had stopped
+matching what this repository returns, so it typechecked while misreading every field at runtime).
+
+**This side:** both packages, their npm dependencies (`@pulumi/kubernetes` at ~58 MB and
+`@pulumi/docker-build`) and their exclusive transitive subtrees are out of the lockfile, and both are
+off the documentation site's package list and the README. Root build clean, `check:outputs` clean,
+16/16 jest projects, 283/283 suites and 2483/2483 tests — the same numbers as before.
+
+## Follow-up (not a step)
+
+**Three abandoned npmjs names.** `@reventlessdev/rescript-anthropic@1.0.0-alpha.8`,
+`@reventlessdev/rescript-pulumi-kubernetes@0.1.0-alpha.7` and
+`@reventlessdev/rescript-pulumi-docker-build@0.1.0-alpha.6` remain published with no source in this
+repository. Unlike step 7's deprecations, none has a public replacement to point at — the packages
+that continue them are private. What their notices should say, or whether they should carry one at
+all, is a decision this plan does not make.
