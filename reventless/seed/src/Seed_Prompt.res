@@ -1,7 +1,7 @@
 // One shared readline interface for every interactive prompt in a seed run.
 //
 // The reason this module exists: creating and closing a fresh `readline`
-// interface per prompt leaves stdin paused after the first `close`, so the
+// interface per prompt leaves NodeProcess.stdin paused after the first `close`, so the
 // second prompt (password after username) never fires and the run hangs. A
 // single interface, created lazily and closed exactly once, avoids that — and a
 // `muted` gate on its output lets password entry reuse the same interface
@@ -14,18 +14,8 @@ open Seed_Types
 
 // ── Node bindings ─────────────────────────────────────────────────────────────
 
-type stream
-@val @scope("process") external stdin: stream = "stdin"
-@val @scope("process") external stdout: stream = "stdout"
-@send external writeStream: (stream, string) => unit = "write"
-@get external isTTY: stream => bool = "isTTY"
-@send external pauseStream: stream => unit = "pause"
-@send external unrefStream: stream => unit = "unref"
-
-@scope("process") @val external processEnv: dict<string> = "env"
-
 type rl
-type rlOptions = {input: stream, output: stream, terminal?: bool}
+type rlOptions = {input: NodeProcess.stream, output: NodeProcess.stream, terminal?: bool}
 @module("node:readline") external createInterface: rlOptions => rl = "createInterface"
 @send external question: (rl, string, string => unit) => unit = "question"
 @send external closeRl: rl => unit = "close"
@@ -42,10 +32,10 @@ let iface = (): rl =>
   switch rlRef.contents {
   | Some(rl) => rl
   | None =>
-    let rl = createInterface({input: stdin, output: stdout, terminal: true})
+    let rl = createInterface({input: NodeProcess.stdin, output: NodeProcess.stdout, terminal: true})
     rl->setWriteToOutput(s =>
       if !muted.contents {
-        stdout->writeStream(s)
+        NodeProcess.stdout->NodeProcess.write(s)
       }
     )
     rlRef := Some(rl)
@@ -58,23 +48,23 @@ let close = (): unit =>
     rl->closeRl
     rlRef := None
     // Closing the interface is not enough: a terminal-mode readline leaves
-    // stdin resumed and reffed, which keeps the event loop alive so the CLI
+    // NodeProcess.stdin resumed and reffed, which keeps the event loop alive so the CLI
     // never exits after seeding. Release it explicitly.
-    stdin->pauseStream
-    stdin->unrefStream
+    NodeProcess.stdin->NodeProcess.pause
+    NodeProcess.stdin->NodeProcess.unref
   | None => ()
   }
 
 // ── Env + TTY ─────────────────────────────────────────────────────────────────
 
 let envValue = (key: string): option<string> =>
-  switch processEnv->Dict.get(key) {
+  switch NodeProcess.env->Dict.get(key) {
   | Some(v) if v->String.trim != "" => Some(v->String.trim)
   | _ => None
   }
 
 let requireTty = (): unit =>
-  if !(stdin->isTTY) {
+  if !(NodeProcess.stdin->NodeProcess.isTTY->Option.getOr(false)) {
     throw(
       Failed(
         "no TTY for an interactive prompt — set the documented SEED_* / REVENTLESS_DEMO_* " ++
@@ -101,7 +91,7 @@ let askHidden = (query: string): promise<string> =>
     let rl = iface()
     rl->question(query, answer => {
       muted := false
-      stdout->writeStream("\n")
+      NodeProcess.stdout->NodeProcess.write("\n")
       resolve(answer)
     })
     muted := true

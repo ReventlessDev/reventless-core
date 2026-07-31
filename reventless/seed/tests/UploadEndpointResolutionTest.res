@@ -10,10 +10,9 @@
 
 open JestGlobals
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 // `unresolvedReason` reads the knob, so the ambient environment has to be quiet.
-let clearSkip = () => processEnv->Dict.set("SEED_SKIP_UPLOADS", "")
+let clearSkip = () => NodeProcess.env->Dict.set("SEED_SKIP_UPLOADS", "")
 
 let perStore = Dict.fromArray([
   ("Catalog.productImages", "https://catalog.example/"),
@@ -93,7 +92,7 @@ describe("Seed.Upload.unresolvedReason", () => {
   })
 
   testSync("the knob outranks both, so a skipped run is never read as a broken one", () => {
-    processEnv->Dict.set("SEED_SKIP_UPLOADS", "1")
+    NodeProcess.env->Dict.set("SEED_SKIP_UPLOADS", "1")
     expect(
       Seed.Upload.unresolvedReason(~store="Catalog.productImages", ~uploadEndpoints=perStore),
     )->toBe("SEED_SKIP_UPLOADS is set")

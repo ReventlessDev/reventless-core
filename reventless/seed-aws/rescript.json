@@ -21,6 +21,7 @@
   "dependencies": [
     "@reventlessdev/reventless-seed",
     "@reventlessdev/rescript-aws-sdk",
+    "@reventlessdev/rescript-node",
     "@reventlessdev/rescript-jest"
   ],
   "compiler-flags": [],

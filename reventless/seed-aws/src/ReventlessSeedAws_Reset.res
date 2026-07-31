@@ -48,14 +48,7 @@ module Ddb = AwsSdk.DynamoDb
 module Rgt = AwsSdk.ResourceGroupsTaggingApi
 module S3 = AwsSdk.S3
 
-@scope("process") @val external exit: int => unit = "exit"
-@scope("process") @val external processEnv: dict<string> = "env"
-@module("node:fs") external readFileSync: (string, string) => string = "readFileSync"
 
-type stream
-@scope("process") @val external stdin: stream = "stdin"
-// `process.stdin.isTTY` is `true` interactively and `undefined` under a pipe/CI.
-@get external isTTY: stream => option<bool> = "isTTY"
 
 // The Pulumi project name, which the framework stamps as `reventless:platform` on
 // every resource (`Plugin.res`: `platformName = getProjectName()`). Discovery
@@ -66,7 +59,7 @@ type stream
 // the target project's Pulumi.yaml — the same dir the pulumi subprocess uses.
 let projectName = (~projectDir: string): string => {
   let path = `${projectDir}/Pulumi.yaml`
-  let raw = try readFileSync(path, "utf8") catch {
+  let raw = try NodeFs.readFileSync(path) catch {
   | _ => throw(Seed.Failed(`could not read ${path} to scope the wipe to this Pulumi project.`))
   }
   switch raw
@@ -561,7 +554,7 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
           ),
         )
       }
-      processEnv->Dict.set("AWS_REGION", region)
+      NodeProcess.env->Dict.set("AWS_REGION", region)
 
       // Discover + count each target, scoped to its own project via the platform
       // tag so a same-named stack from another project is never touched.
@@ -597,7 +590,7 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
         Seed.Prompt.close()
         Console.log("")
         Console.log(`Nothing to reset — the selected scope already reads empty in ${region}.`)
-        exit(0)
+        NodeProcess.exit(0)
       }
 
       // Confirmation. Interactively, re-typing the exact stack name IS the
@@ -606,7 +599,7 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
       // TTY (CI/scripts) there is nothing to type into, so
       // REVENTLESS_WIPE_CONFIRM=<stack> is the equivalent opt-in. Dry-run is the
       // default either way.
-      let interactive = stdin->isTTY->Option.getOr(false)
+      let interactive = NodeProcess.stdin->NodeProcess.isTTY->Option.getOr(false)
       let confirmed = if interactive {
         let typed = await Seed.Prompt.ask(
           `About to permanently empty ${total->Int.toString} item(s)/object(s) across the selected scope of "${stack}". ` ++
@@ -624,7 +617,7 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
             ? "Dry run — nothing was deleted."
             : `Dry run — nothing was deleted. Set REVENTLESS_WIPE_CONFIRM=${stack} to empty this scope non-interactively.`,
         )
-        exit(0)
+        NodeProcess.exit(0)
       }
 
       for i in 0 to resolvedList->Array.length - 1 {
@@ -681,19 +674,19 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
 
       Console.log("")
       Console.log(`Reset complete — the selected scope of "${stack}" reads empty and is re-seedable.`)
-      exit(0)
+      NodeProcess.exit(0)
     } catch {
     | Seed.Failed(message) =>
       Seed.Prompt.close()
       Console.error("")
       Console.error(`Reset aborted — ${message}`)
-      exit(1)
+      NodeProcess.exit(1)
     | exn =>
       Seed.Prompt.close()
       Console.error("")
       Console.error("Reset aborted with an unexpected error:")
       Console.error(exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown"))
-      exit(1)
+      NodeProcess.exit(1)
     }
   }
   go()->ignore

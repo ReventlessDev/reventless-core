@@ -1628,6 +1628,10 @@ importers:
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   reventless/seed:
+    dependencies:
+      '@reventlessdev/rescript-node':
+        specifier: workspace:*
+        version: link:../../rescript/node
     devDependencies:
       '@reventlessdev/rescript-jest':
         specifier: workspace:*
@@ -1641,6 +1645,9 @@ importers:
       '@reventlessdev/rescript-aws-sdk':
         specifier: workspace:*
         version: link:../../rescript/aws-sdk
+      '@reventlessdev/rescript-node':
+        specifier: workspace:*
+        version: link:../../rescript/node
       '@reventlessdev/reventless-seed':
         specifier: workspace:*
         version: link:../seed

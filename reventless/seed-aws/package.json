@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@reventlessdev/rescript-aws-sdk": "workspace:*",
+    "@reventlessdev/rescript-node": "workspace:*",
     "@reventlessdev/reventless-seed": "workspace:*"
   },
   "devDependencies": {

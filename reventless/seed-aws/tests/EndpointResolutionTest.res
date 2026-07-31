@@ -12,7 +12,6 @@
 open JestGlobals
 open ReventlessSeed
 
-@val @scope("process") external processEnv: dict<string> = "env"
 
 // Every value read here has an env override, and an ambient one in the runner's
 // environment (AWS_REGION is routinely set) would silently stand in for the
@@ -24,7 +23,7 @@ let clearOverrides = () =>
     "AWS_REGION",
     "COGNITO_CLIENT_ID",
     "SEED_SKIP_UPLOADS",
-  ]->Array.forEach(k => processEnv->Dict.set(k, ""))
+  ]->Array.forEach(k => NodeProcess.env->Dict.set(k, ""))
 
 let obj = entries => JSON.Encode.object(entries->Dict.fromArray)
 let str = JSON.Encode.string
@@ -92,7 +91,7 @@ describe("endpointsFrom — host shell arm", () => {
   })
 
   testSync("REVENTLESS_UPLOAD_ENDPOINT overrides the legacy service and leaves the map alone", () => {
-    processEnv->Dict.set("REVENTLESS_UPLOAD_ENDPOINT", "https://override.example/")
+    NodeProcess.env->Dict.set("REVENTLESS_UPLOAD_ENDPOINT", "https://override.example/")
     let eps = ReventlessSeedAws.endpointsFrom(
       ~stack="alpha",
       HostShellConfig(

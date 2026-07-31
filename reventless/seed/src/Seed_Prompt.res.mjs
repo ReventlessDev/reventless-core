@@ -53,7 +53,7 @@ function envValue(key) {
 }
 
 function requireTty() {
-  if (process.stdin.isTTY) {
+  if (Stdlib_Option.getOr(process.stdin.isTTY, false)) {
     return;
   }
   throw {

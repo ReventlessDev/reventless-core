@@ -1,7 +1,13 @@
 /** Bindings for
     [`node:child_process`](https://nodejs.org/api/child_process.html). */
 
-type execOptions = {encoding?: string, stdio?: array<string>, maxBuffer?: int}
+type execOptions = {
+  cwd?: string,
+  encoding?: string,
+  env?: dict<string>,
+  stdio?: array<string>,
+  maxBuffer?: int,
+}
 
 @module("node:child_process")
 external execSync: (string, execOptions) => string = "execSync"

@@ -20,6 +20,7 @@
     }
   ],
   "dependencies": [
+    "@reventlessdev/rescript-node",
     "@reventlessdev/rescript-jest"
   ],
   "compiler-flags": [],

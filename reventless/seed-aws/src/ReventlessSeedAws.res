@@ -14,11 +14,6 @@ open ReventlessSeed
 
 // ── Node bindings ─────────────────────────────────────────────────────────────
 
-@val @scope("process") external processEnv: dict<string> = "env"
-
-type execOptions = {cwd: string, encoding: string, env?: dict<string>}
-@module("node:child_process")
-external execFileSync: (string, array<string>, execOptions) => string = "execFileSync"
 
 type fetchInit = {method: string, headers: dict<string>, body?: string}
 type response
@@ -65,13 +60,17 @@ let envForBackend = (backend: option<string>): option<dict<string>> =>
   switch backend {
   | None => None
   | Some(url) =>
-    let copy = processEnv->Dict.toArray->Dict.fromArray
+    let copy = NodeProcess.env->Dict.toArray->Dict.fromArray
     copy->Dict.set("PULUMI_BACKEND_URL", url)
     Some(copy)
   }
 
 let pulumi = (~projectDir: string, ~backend: option<string>, args: array<string>): string =>
-  execFileSync("pulumi", args, {cwd: projectDir, encoding: "utf8", env: ?envForBackend(backend)})
+  NodeChildProcess.execFileSync(
+    "pulumi",
+    args,
+    {cwd: projectDir, encoding: "utf8", env: ?envForBackend(backend)},
+  )
 
 // Stacks that actually exist in the Pulumi backend for this project — the names
 // `pulumi stack output --stack <name>` accepts. A `Pulumi.<stack>.yaml` config

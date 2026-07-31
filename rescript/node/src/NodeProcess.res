@@ -33,6 +33,11 @@ external stdin: stream = "stdin"
 external stdout: stream = "stdout"
 
 @send external write: (stream, string) => unit = "write"
-@get external isTTY: stream => bool = "isTTY"
 @send external pause: stream => unit = "pause"
 @send external unref: stream => unit = "unref"
+
+/** `option<bool>`, not `bool`: Node sets `isTTY` to `true` on an interactive
+    stream and leaves it **undefined** otherwise — it is never `false`. A
+    `bool`-typed binding reads that undefined as a valid `false`, which happens
+    to work and is still lying about the value. */
+@get external isTTY: stream => option<bool> = "isTTY"

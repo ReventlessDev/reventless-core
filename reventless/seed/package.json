@@ -9,6 +9,9 @@
     "clean": "rescript clean",
     "rebuild": "pnpm run clean && pnpm run build"
   },
+  "dependencies": {
+    "@reventlessdev/rescript-node": "workspace:*"
+  },
   "devDependencies": {
     "@reventlessdev/rescript-jest": "workspace:*",
     "rescript": "12.3.0"

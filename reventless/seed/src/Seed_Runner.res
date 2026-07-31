@@ -2,11 +2,9 @@
 
 open Seed_Types
 
-@scope("process") @val external exit: int => unit = "exit"
-@scope("process") @val external env: dict<string> = "env"
 
 let envOr = (key: string, fallback: string): string =>
-  env->Dict.get(key)->Option.getOr(fallback)
+  NodeProcess.env->Dict.get(key)->Option.getOr(fallback)
 
 /** One line of progress per phase, so a slow run never looks hung. */
 let report = (line: string): unit => Console.log(`  ${line}`)
@@ -127,7 +125,7 @@ let run = async (main: unit => promise<unit>): unit =>
     // Exit cleanly: HTTP keep-alive sockets (and, on the interactive path, the
     // readline/stdin handle) can otherwise keep the event loop alive so the CLI
     // appears to hang after a successful run.
-    exit(0)
+    NodeProcess.exit(0)
   } catch {
   | Failed(message) =>
     Console.error("")
@@ -135,7 +133,7 @@ let run = async (main: unit => promise<unit>): unit =>
     Console.error("fresh store once the cause below is fixed.")
     Console.error("")
     Console.error(message)
-    exit(1)
+    NodeProcess.exit(1)
   | exn =>
     Console.error("")
     Console.error("Seeding aborted with an unexpected error:")
@@ -143,7 +141,7 @@ let run = async (main: unit => promise<unit>): unit =>
     Console.error(
       exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown"),
     )
-    exit(1)
+    NodeProcess.exit(1)
   }
 
 /**
@@ -172,7 +170,7 @@ let abortStartup = (message: string): unit => {
   Console.error("Seeding did not start — nothing was written. Fix the cause below and re-run.")
   Console.error("")
   Console.error(message)
-  exit(1)
+  NodeProcess.exit(1)
 }
 
 /**
