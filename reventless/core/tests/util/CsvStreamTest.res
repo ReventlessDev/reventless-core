@@ -4,16 +4,13 @@
 
 open JestGlobals
 
-// Write a UTF-8 string to a file synchronously (no return value).
-@module("fs") external writeFileSync: (string, string) => unit = "writeFileSync"
-
 // Counter for unique temp file names — avoids cross-test collisions.
 let fileCounter = ref(0)
 
 let writeTempCsv = (content: string): string => {
   fileCounter := fileCounter.contents + 1
   let path = `/tmp/reventless-csvstream-test-${Int.toString(fileCounter.contents)}.csv`
-  writeFileSync(path, content)
+  NodeFs.writeFileSync(path, content)
   path
 }
 

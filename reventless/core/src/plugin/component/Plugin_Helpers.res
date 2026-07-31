@@ -1165,16 +1165,14 @@ let getInteropMeta = (): Pulumi.Output.t<JSON.t> => {
 // Stack metadata export — environment, region, timestamp, actor, git SHA.
 // Called from both exportPluginOutputs and exportPlatformOutputs.
 // ---------------------------------------------------------------------------
-@val external processEnv: dict<string> = "process.env"
-
 let exportDeploymentMetadata = () => {
   let metadata =
     [
       ("environment", Pulumi.Pulumi.getStackName()),
       ("region", Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown")),
       ("timestamp", Date.make()->Date.toISOString),
-      ("gitSha", processEnv->Dict.get("GITHUB_SHA")->Option.getOr("unknown")),
-      ("actor", processEnv->Dict.get("GITHUB_ACTOR")->Option.getOr("unknown")),
+      ("gitSha", NodeProcess.env->Dict.get("GITHUB_SHA")->Option.getOr("unknown")),
+      ("actor", NodeProcess.env->Dict.get("GITHUB_ACTOR")->Option.getOr("unknown")),
     ]
     ->Dict.fromArray
   Pulumi.Pulumi.export(
@@ -1516,15 +1514,15 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
   | Some(hook) =>
     // Read deployment provenance from env vars synchronously (before Output.apply).
     let actor =
-      processEnv
+      NodeProcess.env
       ->Dict.get("GITHUB_ACTOR")
-      ->Option.orElse(processEnv->Dict.get("CI_COMMIT_AUTHOR"))
-      ->Option.orElse(processEnv->Dict.get("USER"))
+      ->Option.orElse(NodeProcess.env->Dict.get("CI_COMMIT_AUTHOR"))
+      ->Option.orElse(NodeProcess.env->Dict.get("USER"))
       ->Option.getOr("local")
     let deploymentId =
-      processEnv
+      NodeProcess.env
       ->Dict.get("GITHUB_SHA")
-      ->Option.orElse(processEnv->Dict.get("CI_COMMIT_SHA"))
+      ->Option.orElse(NodeProcess.env->Dict.get("CI_COMMIT_SHA"))
       ->Option.getOr(Date.make()->Date.toISOString)
     let schemaFor = name =>
       componentSchemaRegistry->Dict.get(name)->Option.getOr({})

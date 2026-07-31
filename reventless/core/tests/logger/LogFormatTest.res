@@ -7,8 +7,7 @@ S.enableJson()
 // included — to JSON, which no-ops `bold`/`fmtComp`. The human-format
 // assertions below expect ANSI, so force text mode for this file. The
 // "JSON sink" block flips to json and restores text in its own setup.
-@val external _processEnv: Dict.t<string> = "process.env"
-_processEnv->Dict.set("REVENTLESS_LOG_FORMAT", "text")
+NodeProcess.env->Dict.set("REVENTLESS_LOG_FORMAT", "text")
 Reventless.AnsiStyle.reload()
 
 describe("LogFormat", () => {
@@ -193,11 +192,11 @@ describe("JSON sink", () => {
   // Flip to json for the whole block; restore text afterwards so a re-run of the
   // file (or shared module state) keeps the human-format assertions valid.
   beforeAll(() => {
-    _processEnv->Dict.set("REVENTLESS_LOG_FORMAT", "json")
+    NodeProcess.env->Dict.set("REVENTLESS_LOG_FORMAT", "json")
     Reventless.AnsiStyle.reload()
   })
   afterAll(() => {
-    _processEnv->Dict.set("REVENTLESS_LOG_FORMAT", "text")
+    NodeProcess.env->Dict.set("REVENTLESS_LOG_FORMAT", "text")
     Reventless.AnsiStyle.reload()
   })
 
@@ -344,10 +343,10 @@ describe("JSON sink", () => {
   })
 
   testSync("service field is emitted when REVENTLESS_SERVICE is set", () => {
-    _processEnv->Dict.set("REVENTLESS_SERVICE", "TestService")
+    NodeProcess.env->Dict.set("REVENTLESS_SERVICE", "TestService")
     let lines = captureLogs(() => log.info(~comp="Platform", "tick"))
     let got = lines->Array.get(0)->Option.flatMap(l => l->fieldOf("service"))
-    _processEnv->Dict.delete("REVENTLESS_SERVICE")
+    NodeProcess.env->Dict.delete("REVENTLESS_SERVICE")
     expect(got)->toEqual(Some("TestService"))
   })
 
