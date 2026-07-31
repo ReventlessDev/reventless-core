@@ -1,8 +1,8 @@
 # Plan: consolidate the `rescript/` bindings
 
 **Date:** 2026-07-30
-**Status:** **Steps 1, 2, 3, 4 and 6 implemented and verified (2026-07-31).** Steps 5 and 7 are
-outstanding, and both reach outside this repository — see
+**Status:** **Steps 1, 2, 3, 4, 6 and 7 implemented and verified (2026-07-31 / 2026-08-01).** Step 5
+is the only one outstanding, and it is the one that needs repositories other than this one — see
 [What landed](#what-landed-2026-07-31).
 **Repos:** `reventless-core` only.
 **Prompted by:** [generate-platform-beyond-the-example-topology.md](./done/generate-platform-beyond-the-example-topology.md),
@@ -340,6 +340,35 @@ Preserved exactly, because step 4's verification is that a release through the e
 unverifiable. The fix is to resolve each package's location from `lerna list --json` (already parsed
 one step earlier for the publish loop) rather than from a path convention — a separate change.
 
+## Step 7 (2026-08-01)
+
+Both merged names are deprecated across **all** their published versions, not just the last one, so a
+consumer pinned to any of them hears about it:
+
+```
+@reventlessdev/rescript-node-streams  (4 versions, latest 1.1.0-alpha.13)
+@reventlessdev/rescript-node-zlib     (4 versions, latest 1.1.0-alpha.14)
+  → "Merged into @reventlessdev/rescript-node. Node{Streams,Zlib} ships there unchanged —
+     same module name, no call-site changes."
+```
+
+The message says *unchanged, same module name* because that is the actual migration: both packages
+were already `namespace: false` (D1), so a consumer swaps the dependency and edits nothing else. A
+deprecation notice that only named the replacement would understate how cheap the move is.
+
+**Verified by installing one**, since a registry accepting the write and a client showing the warning
+are different things: `npm install @reventlessdev/rescript-node-streams@1.1.0-alpha.13` now prints
+`npm warn deprecated … Merged into @reventlessdev/rescript-node …`. `rescript-node` itself is
+correctly not deprecated. The first `npm view` on zlib returned empty and the second returned the
+message — registry propagation lag, not a failed write.
+
+Reversible: `npm deprecate '<name>@*' ''` clears it.
+
+**Unrelated observation, not caused by this.** A bare `npm install @reventlessdev/rescript-node-streams`
+fails `ETARGET` rather than warning, because npm's implicit `*` range does not match a prerelease and
+every version of it is one. That is true of every alpha package in the scope, including
+`rescript-node` — consumers install by explicit version or dist-tag. Deprecation does not change it.
+
 ### Outstanding
 
 - **Step 5** — relocate `rescript-anthropic`, `rescript-pulumi-kubernetes` and
@@ -347,8 +376,3 @@ one step earlier for the publish loop) rather than from a path convention — a 
   the receiving repositories to have the 0-suites test guard the risks table requires. Current
   versions to continue from, recorded per the risks table: `rescript-anthropic` `1.0.0-alpha.7`,
   `rescript-pulumi-kubernetes` `0.1.0-alpha.6`, `rescript-pulumi-docker-build` `0.1.0-alpha.5`.
-- **Step 7** — `npm deprecate` the two merged names. **Precondition met on 2026-08-01**:
-  `@reventlessdev/rescript-node@2.0.0-alpha.0` is on npmjs, so a deprecation notice pointing at it
-  now resolves. The names to deprecate are `@reventlessdev/rescript-node-streams` (last
-  `1.1.0-alpha.13`) and `@reventlessdev/rescript-node-zlib` (last `1.1.0-alpha.14`), both across all
-  versions. Still acts on live published packages, so it is run deliberately and not by CI.
