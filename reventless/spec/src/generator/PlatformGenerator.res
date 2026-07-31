@@ -24,17 +24,17 @@ let stringAt = (obj: dict<JSON.t>, field: string): option<string> =>
   obj->Dict.get(field)->Option.flatMap(JSON.Decode.string)
 
 let () = {
-  let manifestArg = Generator_Node.argv->Array.get(2)->Option.getOr("")
+  let manifestArg = NodeProcess.argv->Array.get(2)->Option.getOr("")
   if manifestArg == "" {
     Console.error("Usage: generate-platform <deploy-manifest.yaml>")
     processExit(1)
   } else {
-    let manifestPath = Generator_Node.resolve([manifestArg])
-    if !Generator_Node.existsSync(manifestPath) {
+    let manifestPath = NodePath.resolve([manifestArg])
+    if !NodeFs.existsSync(manifestPath) {
       fail(`${manifestPath} not found`)
     }
-    let manifestDir = Generator_Node.dirname(manifestPath)
-    let deployManifest = try Generator_Node.readFileSync(manifestPath)->parseYaml catch {
+    let manifestDir = NodePath.dirname(manifestPath)
+    let deployManifest = try NodeFs.readFileSync(manifestPath)->parseYaml catch {
     | _ => {
         fail(`could not parse ${manifestPath} as YAML`)
         JSON.Null
@@ -68,8 +68,8 @@ let () = {
     switch (platformPath, plugins) {
     | (Some(platformPath), Some(plugins)) => {
         let pluginManifests = plugins->Array.flatMap(((pluginName, pluginPath)) => {
-          let pluginDir = Generator_Node.resolve([manifestDir, pluginPath])
-          if !Generator_Node.existsSync(pluginDir) {
+          let pluginDir = NodePath.resolve([manifestDir, pluginPath])
+          if !NodeFs.existsSync(pluginDir) {
             fail(`plugin "${pluginName}" points at ${pluginDir}, which does not exist`)
           }
           switch PlatformManifests.resolve(~pluginDir) {
@@ -94,7 +94,7 @@ let () = {
               Console.log(
                 `Read: ${pluginName} — ${path} (via ${PlatformManifests.describeVia(via)})`,
               )
-              let manifest = try Generator_Node.readFileSync(path)
+              let manifest = try NodeFs.readFileSync(path)
               ->JSON.parseOrThrow
               ->S.parseOrThrow(CapabilityManifest.schema) catch {
               | _ => {
@@ -110,13 +110,13 @@ let () = {
         switch PlatformCodegen.render(pluginManifests) {
         | Error(message) => fail(message)
         | Ok(source) => {
-            let outputPath = Generator_Node.resolve([
+            let outputPath = NodePath.resolve([
               manifestDir,
               platformPath,
               "src",
               "PlatformCapabilities.res",
             ])
-            Generator_Node.writeFileSync(outputPath, source)
+            NodeFs.writeFileSync(outputPath, source)
             Console.log("Generated: " ++ outputPath)
           }
         }

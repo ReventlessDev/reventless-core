@@ -29,7 +29,7 @@ type config = {
 let packageNameToPluginName = PluginName.fromPackageName
 
 let readJson = (path: string): option<JSON.t> =>
-  try Some(Generator_Node.readFileSync(path)->JSON.parseOrThrow) catch {
+  try Some(NodeFs.readFileSync(path)->JSON.parseOrThrow) catch {
   | _ => None
   }
 
@@ -80,12 +80,12 @@ let getComponentRuntime = (json: JSON.t): dict<runtimeHints> => {
 
 let read = (~srcDir: string): config => {
   // Read package.json `name` from the parent of srcDir
-  let packageJsonPath = Generator_Node.join([Generator_Node.dirname(srcDir), "package.json"])
+  let packageJsonPath = NodePath.join([NodePath.dirname(srcDir), "package.json"])
   let packageJsonName = readJson(packageJsonPath)->Option.flatMap(j => getStrField(j, "name"))
 
   // Read plugin.json from srcDir (optional)
-  let pluginJsonPath = Generator_Node.join([srcDir, "plugin.json"])
-  let pluginJson = if Generator_Node.existsSync(pluginJsonPath) {
+  let pluginJsonPath = NodePath.join([srcDir, "plugin.json"])
+  let pluginJson = if NodeFs.existsSync(pluginJsonPath) {
     readJson(pluginJsonPath)
   } else {
     None

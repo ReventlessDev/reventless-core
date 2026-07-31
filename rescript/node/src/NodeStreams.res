@@ -93,18 +93,18 @@ module Transform = {
   @send external pipe: (t, readableStream) => writableStream = "pipe"
 }
 
-@val @module("fs")
+@val @module("node:fs")
 external createWriteStream: string => Writable.t = "createWriteStream"
-@val @module("fs")
+@val @module("node:fs")
 external createReadStream: string => Readable.t = "createReadStream"
-@val @module("fs")
+@val @module("node:fs")
 external unlink: string => promise<unit> = "unlink"
 
 module Readline = {
   type t
   type options = {input: Readable.t}
 
-  @val @module("readline")
+  @val @module("node:readline")
   external createInterface: options => t = "createInterface"
 
   @send
@@ -113,13 +113,13 @@ module Readline = {
 
 // NOTE: This node function is variadic (=takes n transform streams)
 // NOTE: documentation says, this returns <Stream>, we just bind to unit
-@val @module("stream") @scope("promises")
+@val @module("node:stream") @scope("promises")
 external pipeline0: (Readable.t, Writable.t) => promise<unit> = "pipeline"
-@val @module("stream") @scope("promises")
+@val @module("node:stream") @scope("promises")
 external pipeline: (Readable.t, Transform.t, Writable.t) => promise<unit> = "pipeline"
-@val @module("stream") @scope("promises")
+@val @module("node:stream") @scope("promises")
 external pipeline2: (Readable.t, Transform.t, Transform.t, Writable.t) => promise<unit> = "pipeline"
-@val @module("stream") @scope("promises")
+@val @module("node:stream") @scope("promises")
 external pipeline3: (
   Readable.t,
   Transform.t,

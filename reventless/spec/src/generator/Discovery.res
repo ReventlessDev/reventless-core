@@ -122,8 +122,8 @@ let collectFiles = (
   ~acc: array<discoveredFile>,
 ): unit =>
   Generator_Node.readDir(dir)->Array.forEach(entry => {
-    if entry->Generator_Node.isFile {
-      let filename = entry->Generator_Node.direntName
+    if entry->NodeFs.isFile {
+      let filename = entry->NodeFs.direntName
       let relPath = if relDir === "" {filename} else {relDir ++ "/" ++ filename}
       if !isExcluded(relPath, exclude) {
         switch stemOf(filename) {
@@ -144,26 +144,26 @@ let rec walkDir = (
   ~acc: array<discoveredFile>,
 ): unit =>
   Generator_Node.readDir(dir)->Array.forEach(entry => {
-    let entryName = entry->Generator_Node.direntName
+    let entryName = entry->NodeFs.direntName
     let relPath = if relDir === "" {entryName} else {relDir ++ "/" ++ entryName}
 
     if isExcluded(relPath, exclude) {
       ()
-    } else if entry->Generator_Node.isDirectory {
+    } else if entry->NodeFs.isDirectory {
       if isAlwaysExcludedDir(entryName) {
         ()
       } else {
         switch folderToComponentType(entryName) {
         | Some(ExtensionPoint) =>
-          let epDir = Generator_Node.join([dir, entryName])
+          let epDir = NodePath.join([dir, entryName])
           let children = Generator_Node.readDir(epDir)
-          let hasSubDirs = children->Array.some(e => e->Generator_Node.isDirectory)
+          let hasSubDirs = children->Array.some(e => e->NodeFs.isDirectory)
           if hasSubDirs {
             // Each subfolder is a named EP group
             children->Array.forEach(child => {
-              if child->Generator_Node.isDirectory {
-                let groupName = child->Generator_Node.direntName
-                let groupDir = Generator_Node.join([epDir, groupName])
+              if child->NodeFs.isDirectory {
+                let groupName = child->NodeFs.direntName
+                let groupDir = NodePath.join([epDir, groupName])
                 let groupRelDir = relPath ++ "/" ++ groupName
                 collectFiles(
                   ~dir=groupDir,
@@ -189,7 +189,7 @@ let rec walkDir = (
         | Some(ct) =>
           // Recurse into component type folder, collecting files at any depth
           walkDir(
-            ~dir=Generator_Node.join([dir, entryName]),
+            ~dir=NodePath.join([dir, entryName]),
             ~relDir=relPath,
             ~parentComponentType=Some(ct),
             ~epGroup=None,
@@ -199,7 +199,7 @@ let rec walkDir = (
         | None =>
           // Chapter folder or other — recurse inheriting parent context
           walkDir(
-            ~dir=Generator_Node.join([dir, entryName]),
+            ~dir=NodePath.join([dir, entryName]),
             ~relDir=relPath,
             ~parentComponentType,
             ~epGroup,
@@ -208,7 +208,7 @@ let rec walkDir = (
           )
         }
       }
-    } else if entry->Generator_Node.isFile {
+    } else if entry->NodeFs.isFile {
       switch parentComponentType {
       | None => ()
       | Some(ct) =>

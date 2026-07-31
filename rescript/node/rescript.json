@@ -15,7 +15,15 @@
       "dir": "src",
       "subdirs": true,
       "public": [
+        "NodeChildProcess",
+        "NodeCrypto",
+        "NodeFs",
+        "NodeModule",
+        "NodeOs",
+        "NodePath",
+        "NodeProcess",
         "NodeStreams",
+        "NodeUrl",
         "NodeZlib"
       ]
     }

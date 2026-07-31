@@ -52,9 +52,9 @@ type fileSystem = {
 }
 
 let nodeFileSystem: fileSystem = {
-  exists: Generator_Node.existsSync,
+  exists: NodeFs.existsSync,
   readJson: path =>
-    try Some(Generator_Node.readFileSync(path)->JSON.parseOrThrow) catch {
+    try Some(NodeFs.readFileSync(path)->JSON.parseOrThrow) catch {
     | _ => None
     },
 }
@@ -69,7 +69,7 @@ let describeVia = (via: via): string =>
 let asObject = (json: JSON.t): option<dict<JSON.t>> => json->JSON.Decode.object
 
 let packageJsonAt = (~fs: fileSystem, ~dir: string): option<dict<JSON.t>> =>
-  fs.readJson(Generator_Node.join([dir, "package.json"]))->Option.flatMap(asObject)
+  fs.readJson(NodePath.join([dir, "package.json"]))->Option.flatMap(asObject)
 
 let scriptsOf = (pkg: dict<JSON.t>): array<string> =>
   pkg
@@ -129,11 +129,11 @@ let dependencyNames = (pkg: dict<JSON.t>): array<string> => {
     may be anywhere, and it is `src/capabilities.json` that is wanted. */
 let resolvePackageDir = (~fs: fileSystem, ~fromDir: string, ~name: string): option<string> => {
   let rec search = dir => {
-    let candidate = Generator_Node.join([dir, "node_modules", name])
-    if fs.exists(Generator_Node.join([candidate, "package.json"])) {
+    let candidate = NodePath.join([dir, "node_modules", name])
+    if fs.exists(NodePath.join([candidate, "package.json"])) {
       Some(candidate)
     } else {
-      let parent = Generator_Node.dirname(dir)
+      let parent = NodePath.dirname(dir)
       parent == dir ? None : search(parent)
     }
   }
@@ -152,7 +152,7 @@ let fromDependencies = (~fs: fileSystem, ~pluginDir: string, ~pkg: dict<JSON.t>)
     switch resolvePackageDir(~fs, ~fromDir=pluginDir, ~name) {
     | None => ()
     | Some(packageDir) => {
-        let candidate = Generator_Node.join([packageDir, "src", "capabilities.json"])
+        let candidate = NodePath.join([packageDir, "src", "capabilities.json"])
         if fs.exists(candidate) {
           found->Array.push({path: candidate, via: Dependency(name)})
         } else if packageJsonAt(~fs, ~dir=packageDir)->Option.mapOr(false, emitsCapabilities) {
@@ -177,7 +177,7 @@ let fromDependencies = (~fs: fileSystem, ~pluginDir: string, ~pkg: dict<JSON.t>)
 }
 
 let resolve = (~fs: fileSystem=nodeFileSystem, ~pluginDir: string): t => {
-  let direct = Generator_Node.join([pluginDir, "src", "capabilities.json"])
+  let direct = NodePath.join([pluginDir, "src", "capabilities.json"])
   if fs.exists(direct) {
     Manifests([{path: direct, via: Composition}])
   } else {
@@ -186,7 +186,7 @@ let resolve = (~fs: fileSystem=nodeFileSystem, ~pluginDir: string): t => {
     | Some(pkg) =>
       switch generatedSrcDir(pkg) {
       | Some(srcDir) => {
-          let expected = Generator_Node.resolve([pluginDir, srcDir, "capabilities.json"])
+          let expected = NodePath.resolve([pluginDir, srcDir, "capabilities.json"])
           if fs.exists(expected) {
             Manifests([{path: expected, via: Generated(srcDir)}])
           } else {

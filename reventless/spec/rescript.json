@@ -24,7 +24,8 @@
   ],
   "dependencies": [
     "sury",
-    "@reventlessdev/rescript-jest"
+    "@reventlessdev/rescript-jest",
+    "@reventlessdev/rescript-node"
   ],
   "compiler-flags": [],
   "suffix": ".res.mjs"

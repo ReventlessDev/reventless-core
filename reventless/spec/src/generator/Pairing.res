@@ -89,12 +89,12 @@ let findEventMappings = (~srcDir: string): Dict.t<string> => {
     }
   let rec walk = (dir: string, segments: array<string>) =>
     Generator_Node.readDir(dir)->Array.forEach(entry => {
-      let name = entry->Generator_Node.direntName
-      if entry->Generator_Node.isDirectory {
+      let name = entry->NodeFs.direntName
+      if entry->NodeFs.isDirectory {
         if name !== "Plugin" && name !== "tests" && name !== "lib" {
-          walk(Generator_Node.join([dir, name]), Array.concat(segments, [name]))
+          walk(NodePath.join([dir, name]), Array.concat(segments, [name]))
         }
-      } else if entry->Generator_Node.isFile {
+      } else if entry->NodeFs.isFile {
         if name->String.endsWith("_Mappings.res") && parentDirIsAggregate(segments) {
           let stem = name->String.slice(~start=0, ~end=name->String.length - 4)
           // "_Mappings" = 9 chars
@@ -112,7 +112,7 @@ let findEventMappings = (~srcDir: string): Dict.t<string> => {
         }
       }
     })
-  if Generator_Node.existsSync(srcDir) {
+  if NodeFs.existsSync(srcDir) {
     walk(srcDir, [])
   }
   dict
@@ -126,7 +126,7 @@ let sortedStems = (stems: array<string>): array<string> =>
 // or None for `let targetName = None` or when the line is absent.
 let extractTargetName = (filePath: string): option<string> => {
   try {
-    let content = Generator_Node.readFileSync(filePath)
+    let content = NodeFs.readFileSync(filePath)
     let result = ref(None)
     content->String.split("\n")->Array.forEach(line => {
       let trimmed = line->String.trimStart
@@ -151,7 +151,7 @@ let extractTargetName = (filePath: string): option<string> => {
 // into the opt-in behavior — the safe default is the attribute being absent.
 let hasFileAttribute = (filePath: string, ~attr: string): bool => {
   try {
-    let content = Generator_Node.readFileSync(filePath)
+    let content = NodeFs.readFileSync(filePath)
     let found = ref(false)
     content->String.split("\n")->Array.forEach(line => {
       let trimmed = line->String.trimStart
@@ -187,7 +187,7 @@ let hasSystemCallableAttribute = (filePath: string): bool =>
 // with an explicit name override.
 let effectiveSpecName = (filePath: string, ~stem: string): string => {
   try {
-    let content = Generator_Node.readFileSync(filePath)
+    let content = NodeFs.readFileSync(filePath)
     let name = ref(None)
     content->String.split("\n")->Array.forEach(line => {
       let trimmed = line->String.trimStart
@@ -347,7 +347,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
       | Some(behavior) =>
         let isAsync = switch Dict.get(aggregateSpecRelPaths, spec) {
         | None => false
-        | Some(relPath) => hasAsyncAttribute(Generator_Node.join([srcDir, relPath]))
+        | Some(relPath) => hasAsyncAttribute(NodePath.join([srcDir, relPath]))
         }
         Some({
           spec,
@@ -397,7 +397,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
     stems->Array.forEach(stem => {
       let target = switch Dict.get(relPaths, stem) {
       | None => None
-      | Some(relPath) => extractTargetName(Generator_Node.join([srcDir, relPath]))
+      | Some(relPath) => extractTargetName(NodePath.join([srcDir, relPath]))
       }
       dict->Dict.set(stem, target)
     })
@@ -426,7 +426,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
         switch Dict.get(stateChangeSliceRelPaths, stem) {
         | None => ()
         | Some(relPath) =>
-          if hasAsyncAttribute(Generator_Node.join([srcDir, relPath])) {
+          if hasAsyncAttribute(NodePath.join([srcDir, relPath])) {
             d->Dict.set(stem, true)
           }
         }
@@ -440,7 +440,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
           switch Dict.get(relPaths, stem) {
           | None => ()
           | Some(relPath) =>
-            let filePath = Generator_Node.join([srcDir, relPath])
+            let filePath = NodePath.join([srcDir, relPath])
             if hasSystemCallableAttribute(filePath) {
               names->Array.push(effectiveSpecName(filePath, ~stem))
             }

@@ -1,19 +1,13 @@
-@val @scope("process")
-external env: Dict.t<string> = "env"
-
-@module("node:url")
-external fileURLToPath: string => string = "fileURLToPath"
-
 @val @scope(("import", "meta"))
 external importMetaUrl: string = "url"
 
-let dirname = importMetaUrl->fileURLToPath->NodePath.dirname
+let dirname = importMetaUrl->NodeUrl.fileURLToPath->NodePath.dirname
 
 let pathToLayerData = NodePath.resolve([dirname, "../builder/layer/"])
 let pathToSavedDependencies = NodePath.resolve([dirname, "../builder/layer/nodejs/node_modules"])
 
 let sourcePackageVersion =
-  env->Dict.get("REVENTLESS_AWS_VERSION")->Option.getOr("latest")
+  NodeProcess.env->Dict.get("REVENTLESS_AWS_VERSION")->Option.getOr("latest")
 
 let config: DependencyBundler_Config.t = {
   sourcePackageName: "@reventlessdev/reventless-aws",
@@ -148,14 +142,12 @@ let config: DependencyBundler_Config.t = {
   ]),
 }
 
-@val external processExit: int => unit = "process.exit"
-
 // Await the build and exit non-zero on failure. Discarding the promise (the
 // previous shape) surfaced failures only as an unhandledRejection, so CI saw a
 // green exit even when the layer build threw.
 let _ =
   DependencyBundler.build(config)->Promise.catch(e => {
     Console.error2("layer build failed:", e)
-    processExit(1)
+    NodeProcess.exit(1)
     Promise.resolve()
   })

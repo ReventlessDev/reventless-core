@@ -2,7 +2,7 @@
 
 import * as SSH2 from "@reventlessdev/rescript-ssh2/src/SSH2.res.mjs";
 import * as Ssh2 from "ssh2";
-import * as Stream from "stream";
+import * as Nodestream from "node:stream";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
@@ -122,7 +122,7 @@ function ftp(connectionParams, ftpAction) {
             let err$1 = new Error("FTPHandler: Error in Write Stream");
             sftp.emit("error", err$1);
           });
-          return await Stream.promises.pipeline(ftpAction._0, ws);
+          return await Nodestream.promises.pipeline(ftpAction._0, ws);
         }
       }
     }, () => {});

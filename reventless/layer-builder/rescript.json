@@ -21,6 +21,7 @@
     }
   ],
   "dependencies": [
-    "@reventlessdev/rescript-jest"
+    "@reventlessdev/rescript-jest",
+    "@reventlessdev/rescript-node"
   ]
 }

@@ -5,9 +5,9 @@
 @val external processExit: int => unit = "process.exit"
 
 let () = {
-  let argv2 = Generator_Node.argv->Array.get(2)->Option.getOr("")
-  let argv3 = Generator_Node.argv->Array.get(3)->Option.getOr("")
-  let argv4 = Generator_Node.argv->Array.get(4)->Option.getOr("")
+  let argv2 = NodeProcess.argv->Array.get(2)->Option.getOr("")
+  let argv3 = NodeProcess.argv->Array.get(3)->Option.getOr("")
+  let argv4 = NodeProcess.argv->Array.get(4)->Option.getOr("")
 
   let (variant, srcDirArg) = if argv2 === "--aws" {
     if argv3 !== "" && argv4 !== "" {
@@ -30,7 +30,7 @@ let () = {
     processExit(1)
   } else {
     // Resolve to absolute path (handles relative paths and trailing slashes)
-    let srcDir = Generator_Node.resolve([srcDirArg])
+    let srcDir = NodePath.resolve([srcDirArg])
 
     let config = {...Config.read(~srcDir), variant}
     let discovered = Discovery.scan(~srcDir, ~exclude=config.exclude)
@@ -39,19 +39,19 @@ let () = {
 
     let outputDir = switch variant {
     | Config.Composition => srcDir
-    | Config.Aws(_) => Generator_Node.join([Generator_Node.cwd(), "src"])
+    | Config.Aws(_) => NodePath.join([NodeProcess.cwd(), "src"])
     }
 
-    let pluginPath = Generator_Node.join([outputDir, "Plugin.res"])
-    Generator_Node.writeFileSync(pluginPath, source)
+    let pluginPath = NodePath.join([outputDir, "Plugin.res"])
+    NodeFs.writeFileSync(pluginPath, source)
     Console.log("Generated: " ++ pluginPath)
 
     switch variant {
     | Config.Composition => ()
     | Config.Aws(_) =>
       let mainSource = Codegen.renderMain(~config)
-      let mainPath = Generator_Node.join([outputDir, "Main.res"])
-      Generator_Node.writeFileSync(mainPath, mainSource)
+      let mainPath = NodePath.join([outputDir, "Main.res"])
+      NodeFs.writeFileSync(mainPath, mainSource)
       Console.log("Generated: " ++ mainPath)
     }
   }
