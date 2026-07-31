@@ -251,3 +251,6 @@ Deprecated Moment.js methods (e.g. `moment().days` in favor of `moment().day`) a
 ## License
 
 [Apache-2.0](https://opensource.org/licenses/Apache-2.0)
+
+This package is a derivative of [bs-moment](https://github.com/Jimexist/bs-moment),
+which is MIT-licensed. The upstream notice is preserved in [NOTICE](./NOTICE).
