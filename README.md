@@ -63,7 +63,7 @@ This is a [pnpm](https://pnpm.io) + [Lerna](https://lerna.js.org) monorepo. Pack
 Bindings for JS/npm libraries used across the framework:
 
 - **AWS / infra:** `rescript-aws-sdk`, `rescript-pulumi-pulumi`, `rescript-pulumi-aws`, `rescript-pulumi-docker-build`, `rescript-pulumi-kubernetes`, `rescript-ssh2`
-- **APIs / SDKs:** `rescript-graphql-yoga`, `rescript-mcp-sdk`, `rescript-anthropic`, `rescript-effect`
+- **APIs / SDKs:** `rescript-graphql-yoga`, `rescript-mcp-sdk`, `rescript-effect`
 - **Utilities / testing:** `rescript-uuid`, `rescript-fast-csv`, `rescript-hash-object`, `rescript-node`, `rescript-jest`, `rescript-moment` (shared with the UI repo)
 
 ### Examples (`examples/`)

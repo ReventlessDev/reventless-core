@@ -76,11 +76,6 @@
       "description": "ReScript bindings for the JS/npm libraries used across the framework.",
       "packages": [
         {
-          "name": "@reventlessdev/rescript-anthropic",
-          "description": "ReScript bindings for @anthropic-ai/sdk and @anthropic-ai/claude-agent-sdk",
-          "private": false
-        },
-        {
           "name": "@reventlessdev/rescript-aws-sdk",
           "description": "ReScript bindings for aws-sdk",
           "private": false

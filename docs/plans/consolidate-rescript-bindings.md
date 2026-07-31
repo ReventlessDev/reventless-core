@@ -2,8 +2,8 @@
 
 **Date:** 2026-07-30
 **Status:** **Steps 1, 2, 3, 4, 6 and 7 implemented and verified (2026-07-31 / 2026-08-01).** Step 5
-is the only one outstanding, and it is the one that needs repositories other than this one — see
-[What landed](#what-landed-2026-07-31).
+is **one of three packages done** — see [Step 5](#step-5-2026-08-01) for the constraint that changed
+how it is executed, and [What landed](#what-landed-2026-07-31) for the rest.
 **Repos:** `reventless-core` only.
 **Prompted by:** [generate-platform-beyond-the-example-topology.md](./done/generate-platform-beyond-the-example-topology.md),
 which added a *fourth* inline set of `node:fs`/`node:path` externals and made F2 below visible.
@@ -159,6 +159,9 @@ distribute the notice at all, whatever the repository contains.
    override where one exists, and the npm dependency.
    **Verify:** the next published version of each is a continuation of its predecessor and installs
    unchanged for existing consumers; a clean install here no longer fetches their npm dependencies.
+   **Amended in execution** — every receiving repository publishes to a different scope and registry,
+   so each package is also renamed and "installs unchanged for existing consumers" cannot hold. See
+   [Step 5](#step-5-2026-08-01).
 
 6. **Settle the licensing per D5.** Give every binding package a `LICENSE`, give the derivative ones a
    `NOTICE` naming the upstream and its terms, and ensure both are inside each package's `files`
@@ -369,10 +372,61 @@ fails `ETARGET` rather than warning, because npm's implicit `*` range does not m
 every version of it is one. That is true of every alpha package in the scope, including
 `rescript-node` — consumers install by explicit version or dist-tag. Deprecation does not change it.
 
+## Step 5 (2026-08-01)
+
+### The constraint D4 did not anticipate
+
+Every one of the three single-consumer bindings is consumed by a package in a **private** repository
+that publishes under a **different, private scope** to **GitHub Packages**, behind a publish guard
+that fails the release of anything not matching both. Its stated purpose is to prevent accidental
+public npmjs publication.
+
+So the relocation cannot be what D4 describes. D4 says: *"The relocation is not a rename …
+a relocated package keeps its name and version line and consumers see nothing change. Only the
+publishing repository moves."* For these three, the name, the scope, the registry and the source
+visibility all have to change together — there is no arrangement in which only the repository moves.
+
+**The decision was to relocate anyway, renaming to the receiving scope.** That overrides D4's
+no-rename clause deliberately, with the trade understood: three Apache-2.0 bindings leave public
+distribution, and their npmjs names are left behind. The alternatives considered and rejected were
+leaving all three here (D4's own answer), teaching the receiving repositories to publish publicly
+(defeats the guard), and creating a public repository per binding.
+
+**D4's rule as it now reads:** a binding belongs in the repository of its lowest common consumer —
+and where that consumer publishes to a different scope and registry, the binding follows it there
+rather than the rule bending to keep the name.
+
+### `rescript-anthropic` — moved and renamed (done)
+
+The package left this repository and is a lerna-managed member of the consuming one, under a
+`rescript/` folder mirroring this repository's folder-states-the-kind split.
+
+**No call site changed** — the property that made step 1 cheap applies again. The package is
+`namespace: false`, so `Anthropic`, `AnthropicAgentSdk` and `AnthropicZod` are global module names
+that a package rename cannot touch. Exactly two files name the package at all (`package.json`,
+`rescript.json`) and the consumer's clean rebuild compiles 101 modules with no source edit and no
+warning; its 139 tests pass.
+
+**The version line continues at `1.0.0-alpha.8`** rather than restarting, so the next release is
+strictly greater than the last one published under the old name, as the risks table requires. The
+`CHANGELOG` moved with it and says at which version the name changed.
+
+**The tests-go-dark guard is vacuous here, and that is worth stating rather than ticking off.** This
+package has no tests — its `test` script is an `echo`. There is no coverage to lose and no guard to
+install; the consumer's suite is what exercises the bindings. The other two relocations must be
+checked on their own terms.
+
+**This side:** the workspace member, the npm dependency and its exclusive dependency subtrees
+(~2.4k resolved packages down by `zod` and the Anthropic SDK binaries) are gone from the lockfile,
+and the package is off the documentation site's package list and the README. Root build clean,
+283/283 suites and 2483/2483 tests — the same numbers as before the move.
+
 ### Outstanding
 
-- **Step 5** — relocate `rescript-anthropic`, `rescript-pulumi-kubernetes` and
-  `rescript-pulumi-docker-build` to their single consumers; `rescript-moment` stays (see F3). Needs
-  the receiving repositories to have the 0-suites test guard the risks table requires. Current
-  versions to continue from, recorded per the risks table: `rescript-anthropic` `1.0.0-alpha.7`,
-  `rescript-pulumi-kubernetes` `0.1.0-alpha.6`, `rescript-pulumi-docker-build` `0.1.0-alpha.5`.
+- **Step 5, remaining two** — `rescript-pulumi-kubernetes` (`0.1.0-alpha.7`) and
+  `rescript-pulumi-docker-build` (`0.1.0-alpha.6`) move together to a single consumer under the same
+  rename rule. Record their current versions before the move; the first release afterwards must be
+  strictly greater. `rescript-moment` stays (see F3).
+- **The abandoned npmjs name.** `@reventlessdev/rescript-anthropic@1.0.0-alpha.8` remains published
+  and now has no source in this repository. Unlike step 7's deprecations it has no public
+  replacement to point at, so what its notice should say is a separate decision.
