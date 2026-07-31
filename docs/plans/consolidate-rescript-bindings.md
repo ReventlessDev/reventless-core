@@ -306,6 +306,20 @@ the one committed alongside it, so there is no second ref to keep in sync and no
 lags the code it releases. The header of `release-packages.yml` states the tag rule for external
 callers.
 
+### Verified on a live release (2026-08-01)
+
+The first release through the extracted workflow —
+[run 30668577956](https://github.com/ReventlessDev/reventless-core/actions/runs/30668577956) — went
+green on all three jobs and did what the old single job did. The part worth stating is the one that
+could only be proven live: **`Post-release Dispatch` read the reusable workflow's `tags` output,
+found `@reventlessdev/reventless-aws@3.0.0-alpha.249` in it and dispatched the Lambda-layer build.**
+It took the layer branch rather than the deploy branch, which is the branch the old in-job step
+would have taken — so the output carries the same information the step used to recompute from
+`git tag --points-at HEAD`.
+
+It also published `@reventlessdev/rescript-node@2.0.0-alpha.0`, the first release of the merged
+package, which is what step 7 was waiting for.
+
 ### Two behaviours that changed, both deliberately
 
 - **A failed post-release dispatch now fails the run.** It used to be the last two steps of the
@@ -333,8 +347,8 @@ one step earlier for the publish loop) rather than from a path convention — a 
   the receiving repositories to have the 0-suites test guard the risks table requires. Current
   versions to continue from, recorded per the risks table: `rescript-anthropic` `1.0.0-alpha.7`,
   `rescript-pulumi-kubernetes` `0.1.0-alpha.6`, `rescript-pulumi-docker-build` `0.1.0-alpha.5`.
-- **Step 7** — `npm deprecate` the two merged names. Acts on live published packages, and is
-  **blocked until `@reventlessdev/rescript-node` is actually on npmjs**: the merge is committed but
-  unpushed, `rescript-node-streams@1.1.0-alpha.13` and `rescript-node-zlib@1.1.0-alpha.14` are the
-  live versions, and `rescript-node` is not published at all. Deprecating first would point users at
-  a package that does not exist.
+- **Step 7** — `npm deprecate` the two merged names. **Precondition met on 2026-08-01**:
+  `@reventlessdev/rescript-node@2.0.0-alpha.0` is on npmjs, so a deprecation notice pointing at it
+  now resolves. The names to deprecate are `@reventlessdev/rescript-node-streams` (last
+  `1.1.0-alpha.13`) and `@reventlessdev/rescript-node-zlib` (last `1.1.0-alpha.14`), both across all
+  versions. Still acts on live published packages, so it is run deliberately and not by CI.
