@@ -10,16 +10,6 @@
 
 open JestGlobals
 
-@module("node:os") external tmpdir: unit => string = "tmpdir"
-@module("node:path") external join: (string, string) => string = "join"
-
-type mkdirOpts = {recursive: bool}
-@module("node:fs/promises")
-external mkdir: (string, mkdirOpts) => promise<Nullable.t<string>> = "mkdir"
-@module("node:fs/promises") external writeFile: (string, string) => promise<unit> = "writeFile"
-type rmOpts = {recursive: bool, force: bool}
-@module("node:fs/promises") external rm: (string, rmOpts) => promise<unit> = "rm"
-
 describe("LocalHost.packageNameToPluginName", () => {
   testPromise("PascalCases scoped / dashed / underscored package names", async () => {
     expect(LocalHost.packageNameToPluginName("@scope/my-catalog"))->toBe("MyCatalog")
@@ -34,27 +24,32 @@ describe("LocalHost name derivation + discovery", () => {
   testPromise(
     "derivePluginName prefers plugin.json then PascalCase(package.json); discover skips non-plugins",
     async () => {
-      let root = join(tmpdir(), "reventless-localhost-test")
-      let _ = await rm(root, {recursive: true, force: true})
+      let root = NodePath.join([NodeOs.tmpdir(), "reventless-localhost-test"])
+      let _ = await NodeFs.Promises.rm(root, {recursive: true, force: true})
 
       // a: explicit plugin.json name + a compiled composition root.
-      let a = join(root, "a")
-      let aSrc = join(a, "src")
-      let _ = await mkdir(aSrc, {recursive: true})
-      let _ = await writeFile(join(a, "package.json"), `{"name":"@x/a-pkg"}`)
-      let _ = await writeFile(join(aSrc, "plugin.json"), `{"name":"Catalog"}`)
-      let _ = await writeFile(join(aSrc, "Plugin.res.mjs"), "")
+      let a = NodePath.join([root, "a"])
+      let aSrc = NodePath.join([a, "src"])
+      let _ = await NodeFs.Promises.mkdir(aSrc, {recursive: true})
+      let _ =
+        await NodeFs.Promises.writeFile(NodePath.join([a, "package.json"]), `{"name":"@x/a-pkg"}`)
+      let _ =
+        await NodeFs.Promises.writeFile(NodePath.join([aSrc, "plugin.json"]), `{"name":"Catalog"}`)
+      let _ = await NodeFs.Promises.writeFile(NodePath.join([aSrc, "Plugin.res.mjs"]), "")
 
       // b: no plugin.json → name falls back to PascalCase(package.json name).
-      let b = join(root, "b")
-      let bSrc = join(b, "src")
-      let _ = await mkdir(bSrc, {recursive: true})
-      let _ = await writeFile(join(b, "package.json"), `{"name":"@scope/my-ordering"}`)
-      let _ = await writeFile(join(bSrc, "Plugin.res.mjs"), "")
+      let b = NodePath.join([root, "b"])
+      let bSrc = NodePath.join([b, "src"])
+      let _ = await NodeFs.Promises.mkdir(bSrc, {recursive: true})
+      let _ = await NodeFs.Promises.writeFile(
+        NodePath.join([b, "package.json"]),
+        `{"name":"@scope/my-ordering"}`,
+      )
+      let _ = await NodeFs.Promises.writeFile(NodePath.join([bSrc, "Plugin.res.mjs"]), "")
 
       // c: has src/ but no Plugin.res.mjs → discover must skip it.
-      let c = join(root, "c")
-      let _ = await mkdir(join(c, "src"), {recursive: true})
+      let c = NodePath.join([root, "c"])
+      let _ = await NodeFs.Promises.mkdir(NodePath.join([c, "src"]), {recursive: true})
 
       expect(LocalHost.derivePluginName(~pluginSrcDir=aSrc))->toBe("Catalog")
       expect(LocalHost.derivePluginName(~pluginSrcDir=bSrc))->toBe("MyOrdering")
@@ -65,7 +60,7 @@ describe("LocalHost name derivation + discovery", () => {
       expect(first.modulePath->String.endsWith("Plugin.res.mjs"))->toBe(true)
       expect(first.packageDir)->toBe(a)
 
-      let _ = await rm(root, {recursive: true, force: true})
+      let _ = await NodeFs.Promises.rm(root, {recursive: true, force: true})
     },
   )
 })

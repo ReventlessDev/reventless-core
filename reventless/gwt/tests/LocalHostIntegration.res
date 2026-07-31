@@ -18,15 +18,11 @@
 @module("node:assert/strict") external deepEqual: ('a, 'a) => unit = "deepEqual"
 @module("node:assert/strict") external ok: (bool, ~message: string=?) => unit = "ok"
 
-@module("node:url") external fileURLToPath: string => string = "fileURLToPath"
-@module("node:path") external dirname: string => string = "dirname"
-@module("node:path") @variadic external join: array<string> => string = "join"
-
-let here = dirname(fileURLToPath(%raw(`import.meta.url`)))
-let repoRoot = join([here, "..", "..", ".."]) // reventless-gwt/test → repo root
-let catalogDir = join([repoRoot, "examples", "online-shop-aggregates", "catalog"])
-let orderingDir = join([repoRoot, "examples", "online-shop-aggregates", "ordering"])
-let platformPath = join([repoRoot, "reventless", "reventless-local", "src", "Platform.res.mjs"])
+let here = NodePath.dirname(NodeUrl.fileURLToPath(%raw(`import.meta.url`)))
+let repoRoot = NodePath.join([here, "..", "..", ".."]) // reventless-gwt/test → repo root
+let catalogDir = NodePath.join([repoRoot, "examples", "online-shop-aggregates", "catalog"])
+let orderingDir = NodePath.join([repoRoot, "examples", "online-shop-aggregates", "ordering"])
+let platformPath = NodePath.join([repoRoot, "reventless", "local", "src", "Platform.res.mjs"])
 
 let structureFor = (g: LocalHost.graph, name) =>
   g.structures->Array.find(((n, _)) => n == name)->Option.map(((_, s)) => s)

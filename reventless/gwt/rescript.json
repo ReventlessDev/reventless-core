@@ -24,6 +24,7 @@
   ],
   "dependencies": [
     "sury",
+    "@reventlessdev/rescript-node",
     "@reventlessdev/rescript-jest",
     "@reventlessdev/rescript-effect",
     "@reventlessdev/reventless-infra",

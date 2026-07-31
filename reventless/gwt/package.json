@@ -21,6 +21,7 @@
     ]
   },
   "dependencies": {
+    "@reventlessdev/rescript-node": "workspace:*",
     "@reventlessdev/rescript-effect": "workspace:*",
     "@reventlessdev/rescript-jest": "workspace:*",
     "@reventlessdev/reventless-core": "workspace:*",

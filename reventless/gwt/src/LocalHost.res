@@ -13,16 +13,6 @@
 // path via dynamic import, so a missing local platform is a caller concern, not a
 // compile-time coupling.
 
-@module("node:url") external pathToFileURL: string => {"href": string} = "pathToFileURL"
-@module("node:fs") external existsSync: string => bool = "existsSync"
-@module("node:fs") external readFileSync: (string, string) => string = "readFileSync"
-@module("node:path") external join: (string, string) => string = "join"
-@module("node:path") external dirname: string => string = "dirname"
-
-type nodeRequire
-@module("node:module") external createRequire: string => nodeRequire = "createRequire"
-@send external requireResolve: (nodeRequire, string) => string = "resolve"
-
 let dynamicImport: string => promise<'a> = %raw(`(u) => import(u)`)
 
 // Monotonic cache-buster so repeated loads in one process (a watch session
@@ -35,7 +25,7 @@ let dynamicImport: string => promise<'a> = %raw(`(u) => import(u)`)
 let counter = ref(0)
 let bustedUrl = (absolutePath: string): string => {
   counter := counter.contents + 1
-  pathToFileURL(absolutePath)["href"] ++ "?t=" ++ Int.toString(counter.contents)
+  NodeUrl.pathToFileURL(absolutePath)["href"] ++ "?t=" ++ Int.toString(counter.contents)
 }
 
 type pluginRef = {name: string, modulePath: string, packageDir: string}
@@ -65,7 +55,7 @@ let strField = (json, key) =>
   json->JSON.Decode.object->Option.flatMap(d => d->Dict.get(key))->Option.flatMap(JSON.Decode.string)
 
 let readJson = path =>
-  try Some(readFileSync(path, "utf8")->JSON.parseOrThrow) catch {
+  try Some(NodeFs.readFileSync(path)->JSON.parseOrThrow) catch {
   | _ => None
   }
 
@@ -73,11 +63,14 @@ let readJson = path =>
 // The precedence itself lives in `Reventless.PluginName.resolve`; this only
 // reads the two raw fields with the local node bindings.
 let derivePluginName = (~pluginSrcDir: string): string => {
-  let pluginJson = join(pluginSrcDir, "plugin.json")
+  let pluginJson = NodePath.join([pluginSrcDir, "plugin.json"])
   let pluginJsonName =
-    existsSync(pluginJson) ? readJson(pluginJson)->Option.flatMap(j => strField(j, "name")) : None
+    NodeFs.existsSync(pluginJson)
+      ? readJson(pluginJson)->Option.flatMap(j => strField(j, "name"))
+      : None
   let packageJsonName =
-    readJson(join(dirname(pluginSrcDir), "package.json"))->Option.flatMap(j => strField(j, "name"))
+    readJson(NodePath.join([NodePath.dirname(pluginSrcDir), "package.json"]))
+    ->Option.flatMap(j => strField(j, "name"))
   Reventless.PluginName.resolve(~pluginJsonName, ~packageJsonName)
 }
 
@@ -85,9 +78,9 @@ let derivePluginName = (~pluginSrcDir: string): string => {
 // compiled composition root and pair each with its framework plugin name.
 let discover = (~packageDirs: array<string>): array<pluginRef> =>
   packageDirs->Array.filterMap(dir => {
-    let srcDir = join(dir, "src")
-    let modulePath = join(srcDir, "Plugin.res.mjs")
-    existsSync(modulePath)
+    let srcDir = NodePath.join([dir, "src"])
+    let modulePath = NodePath.join([srcDir, "Plugin.res.mjs"])
+    NodeFs.existsSync(modulePath)
       ? Some({name: derivePluginName(~pluginSrcDir=srcDir), modulePath, packageDir: dir})
       : None
   })
@@ -99,7 +92,10 @@ let discover = (~packageDirs: array<string>): array<pluginRef> =>
 // there — callers then skip platform-dependent features (dead-code / graph).
 let localPlatformSpecifier = "@reventlessdev/reventless-local/src/Platform.res.mjs"
 let resolveLocalPlatform = (~fromPackageDir: string): option<string> =>
-  try Some(createRequire(join(fromPackageDir, "package.json"))->requireResolve(localPlatformSpecifier)) catch {
+  try Some(
+    NodeModule.createRequire(NodePath.join([fromPackageDir, "package.json"]))
+    ->NodeModule.requireResolve(localPlatformSpecifier),
+  ) catch {
   | _ => None
   }
 
