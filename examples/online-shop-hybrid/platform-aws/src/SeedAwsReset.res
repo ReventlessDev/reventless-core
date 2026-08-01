@@ -21,9 +21,13 @@
 // backend pin matches the seed script beside it. AWS credentials come from the
 // ambient chain (env / profile / SSO).
 
+// `plugin` is the name the project's plugin registers, which the platform's
+// `objectStores` keys are qualified by — it is how an uploaded object is
+// attributed to the plugin that declared its store. It differs from `label`
+// only in case here, but stating it is what keeps the reset from guessing.
 let targets: array<ReventlessSeedAws_Reset.target> = [
-  {projectDir: "../catalog-aws", label: "catalog", group: Domain},
-  {projectDir: "../ordering-aws", label: "ordering", group: Domain},
+  {projectDir: "../catalog-aws", label: "catalog", group: Domain, plugin: "Catalog"},
+  {projectDir: "../ordering-aws", label: "ordering", group: Domain, plugin: "Ordering"},
   {projectDir: ".", label: "platform", group: Platform},
 ]
 

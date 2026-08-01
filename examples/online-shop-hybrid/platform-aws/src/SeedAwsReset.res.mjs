@@ -6,12 +6,14 @@ let targets = [
   {
     projectDir: "../catalog-aws",
     label: "catalog",
-    group: "Domain"
+    group: "Domain",
+    plugin: "Catalog"
   },
   {
     projectDir: "../ordering-aws",
     label: "ordering",
-    group: "Domain"
+    group: "Domain",
+    plugin: "Ordering"
   },
   {
     projectDir: ".",

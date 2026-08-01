@@ -5,6 +5,7 @@ import * as S3$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/S3.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as ReventlessSeedAws from "./ReventlessSeedAws.res.mjs";
@@ -198,6 +199,97 @@ async function discover(region, stack, platform) {
   ];
 }
 
+function splitQualified(key) {
+  return Stdlib_Option.map(Stdlib_String.indexOfOpt(key, "."), i => [
+    key.slice(0, i),
+    key.slice(i + 1 | 0, key.length)
+  ]);
+}
+
+function parseObjectStores(json) {
+  if (json !== undefined) {
+    if (typeof json === "object" && json !== null && !Array.isArray(json)) {
+      return Stdlib_Array.reduce(Object.entries(json), {
+        TAG: "Ok",
+        _0: []
+      }, (acc, param) => {
+        let entry = param[1];
+        let qualified = param[0];
+        if (acc.TAG !== "Ok") {
+          return acc;
+        }
+        let match = splitQualified(qualified);
+        let match$1 = Stdlib_Option.flatMap(field(entry, "bucketName"), asString);
+        let match$2 = Stdlib_Option.flatMap(field(entry, "keyPrefix"), asString);
+        if (match !== undefined && match$1 !== undefined && match$2 !== undefined) {
+          return {
+            TAG: "Ok",
+            _0: acc._0.concat([{
+                qualified: qualified,
+                plugin: match[0],
+                store: match[1],
+                bucketName: match$1,
+                keyPrefix: match$2
+              }])
+          };
+        }
+        return {
+          TAG: "Error",
+          _0: `the platform stack's \`objectStores\` output has a malformed entry for "` + qualified + `" — expected a {plugin}.{store} key carrying bucketName and keyPrefix.`
+        };
+      });
+    } else {
+      return {
+        TAG: "Error",
+        _0: "the platform stack's `objectStores` output is not an object."
+      };
+    }
+  } else {
+    return {
+      TAG: "Ok",
+      _0: []
+    };
+  }
+}
+
+function validateStores(stores) {
+  let s = stores.find(s => {
+    if (s.keyPrefix === "") {
+      return true;
+    } else {
+      return s.store.includes("/");
+    }
+  });
+  if (s !== undefined) {
+    return {
+      TAG: "Error",
+      _0: `store "` + s.qualified + `" has an unusable key prefix ("` + s.keyPrefix + `") — a store name may not be empty or contain "/".`
+    };
+  }
+  let message = Stdlib_Array.findMap(stores, a => Stdlib_Array.findMap(stores, b => {
+    if (a.qualified === b.qualified || a.bucketName !== b.bucketName) {
+      return;
+    } else if (a.keyPrefix === b.keyPrefix) {
+      return `stores "` + a.qualified + `" and "` + b.qualified + `" both live at ` + (a.bucketName + `/` + a.keyPrefix + `/ — a prefix-scoped wipe cannot tell their objects `) + `apart. Rename one store, or qualify the \`@storageRef\` annotation if they were meant to be one shared store.`;
+    } else if (b.keyPrefix.startsWith(a.keyPrefix + "/")) {
+      return `store "` + a.qualified + `" (` + a.bucketName + `/` + a.keyPrefix + `/) encloses "` + b.qualified + `" ` + (`(` + b.keyPrefix + `/) — wiping the first would delete the second's objects. Rename one.`);
+    } else {
+      return;
+    }
+  }));
+  if (message !== undefined) {
+    return {
+      TAG: "Error",
+      _0: message
+    };
+  } else {
+    return {
+      TAG: "Ok",
+      _0: undefined
+    };
+  }
+}
+
 async function countTable(table) {
   let loop = async (start, acc) => {
     let out = await DynamoDb_DocumentClient$AwsSdk.ScanCommand.send(new LibDynamodb.ScanCommand({
@@ -216,10 +308,11 @@ async function countTable(table) {
   return await loop(undefined, 0);
 }
 
-async function countBucket(bucket) {
+async function countBucket(bucket, prefix) {
   let loop = async (keyMarker, versionMarker, acc) => {
     let out = await S3$AwsSdk.ListObjectVersionsCommand.send(new ClientS3.ListObjectVersionsCommand({
       Bucket: bucket,
+      Prefix: prefix,
       KeyMarker: keyMarker,
       VersionIdMarker: versionMarker
     }));
@@ -306,10 +399,11 @@ async function truncateTable(table) {
   return await loop(undefined);
 }
 
-async function emptyBucket(bucket) {
+async function emptyBucket(bucket, prefix) {
   let loop = async (keyMarker, versionMarker) => {
     let out = await S3$AwsSdk.ListObjectVersionsCommand.send(new ClientS3.ListObjectVersionsCommand({
       Bucket: bucket,
+      Prefix: prefix,
       KeyMarker: keyMarker,
       VersionIdMarker: versionMarker
     }));
@@ -339,6 +433,10 @@ async function emptyBucket(bucket) {
     }
   };
   return await loop(undefined, undefined);
+}
+
+function pluginOf(t) {
+  return Stdlib_Option.getOr(t.plugin, t.label);
 }
 
 async function chooseScope(targets) {
@@ -479,6 +577,15 @@ function reportAll(resolvedList, stack, region) {
     });
     if (r.bucketCounts.length === 0) {
       console.log("      (none)");
+    }
+    if (r.storeCounts.length !== 0) {
+      console.log("    Object stores:");
+      r.storeCounts.forEach(param => {
+        let c = param[1];
+        let s = param[0];
+        total.contents = total.contents + c | 0;
+        console.log(`      ` + c.toString().padStart(8, " ") + `  ` + s.qualified + `   ` + (s.bucketName + `/` + s.keyPrefix + `/`));
+      });
       return;
     }
   });
@@ -507,7 +614,38 @@ function run(stack, backend, targets, param) {
         };
       }
       let selected = await chooseScope(targets);
-      let regions = selected.map(t => gateTarget(t, backend$1, stack$1));
+      let platformTarget = targets.find(t => t.group === "Platform");
+      let allStores;
+      if (platformTarget !== undefined) {
+        let output = ReventlessSeedAws.stackOutputs(platformTarget.projectDir, backend$1, stack$1);
+        let stores = parseObjectStores(field(output, "objectStores"));
+        if (stores.TAG === "Ok") {
+          allStores = stores._0;
+        } else {
+          throw {
+            RE_EXN_ID: Seed$ReventlessSeed.Failed,
+            _1: stores._0,
+            Error: new Error()
+          };
+        }
+      } else {
+        console.log("");
+        console.log("Note: no `platform` target is declared, so declared object stores could not be resolved — any uploaded objects will be left in place.");
+        allStores = [];
+      }
+      let message = validateStores(allStores);
+      if (message.TAG !== "Ok") {
+        throw {
+          RE_EXN_ID: Seed$ReventlessSeed.Failed,
+          _1: `refusing: ` + message._0,
+          Error: new Error()
+        };
+      }
+      let storeBucketNames = allStores.map(s => s.bucketName);
+      let selectedStores = allStores.filter(s => selected.some(t => pluginOf(t) === s.plugin));
+      let match = selectedStores.length !== 0;
+      let gated = match && platformTarget !== undefined && !selected.some(t => t.projectDir === platformTarget.projectDir) ? selected.concat([platformTarget]) : selected;
+      let regions = gated.map(t => gateTarget(t, backend$1, stack$1));
       let region = regions[0];
       if (regions.some(r => r !== region)) {
         throw {
@@ -517,14 +655,29 @@ function run(stack, backend, targets, param) {
         };
       }
       process.env["AWS_REGION"] = region;
+      if (selectedStores.length !== 0 && platformTarget !== undefined) {
+        let platformProject = projectName(platformTarget.projectDir);
+        let match$1 = await discover(region, stack$1, platformProject);
+        let platformBuckets = match$1[1];
+        selectedStores.forEach(s => {
+          if (platformBuckets.includes(s.bucketName)) {
+            return;
+          }
+          throw {
+            RE_EXN_ID: Seed$ReventlessSeed.Failed,
+            _1: `refusing: store "` + s.qualified + `" names bucket ` + s.bucketName + `, which does not ` + (`carry reventless:platform=` + platformProject + ` + reventless:environment=` + stack$1 + `.`),
+            Error: new Error()
+          };
+        });
+      }
       let resolvedList = [];
       for (let i = 0, i_finish = selected.length; i < i_finish; ++i) {
         let target = selected[i];
         if (target !== undefined) {
           let platform = projectName(target.projectDir);
-          let match = await discover(region, stack$1, platform);
-          let tables = match[0].toSorted(Primitive_string.compare);
-          let buckets = match[1].toSorted(Primitive_string.compare);
+          let match$2 = await discover(region, stack$1, platform);
+          let tables = match$2[0].toSorted(Primitive_string.compare);
+          let buckets = match$2[1].filter(b => !storeBucketNames.includes(b)).toSorted(Primitive_string.compare);
           let tableCounts = [];
           for (let j = 0, j_finish = tables.length; j < j_finish; ++j) {
             let t = tables[j];
@@ -538,7 +691,18 @@ function run(stack, backend, targets, param) {
             if (b !== undefined) {
               bucketCounts.push([
                 b,
-                await countBucket(b)
+                await countBucket(b, undefined)
+              ]);
+            }
+          }
+          let stores$1 = selectedStores.filter(s => s.plugin === pluginOf(target));
+          let storeCounts = [];
+          for (let j$2 = 0, j_finish$2 = stores$1.length; j$2 < j_finish$2; ++j$2) {
+            let s = stores$1[j$2];
+            if (s !== undefined) {
+              storeCounts.push([
+                s,
+                await countBucket(s.bucketName, s.keyPrefix + `/`)
               ]);
             }
           }
@@ -547,7 +711,8 @@ function run(stack, backend, targets, param) {
             platform: platform,
             tables: tables,
             tableCounts: tableCounts,
-            bucketCounts: bucketCounts
+            bucketCounts: bucketCounts,
+            storeCounts: storeCounts
           });
         }
       }
@@ -576,19 +741,27 @@ function run(stack, backend, targets, param) {
         let r = resolvedList[i$1];
         if (r !== undefined) {
           Seed_Runner$ReventlessSeed.heading(`Emptying ` + r.target.label + ` …`);
-          for (let j$2 = 0, j_finish$2 = r.tables.length; j$2 < j_finish$2; ++j$2) {
-            let t$1 = r.tables[j$2];
+          for (let j$3 = 0, j_finish$3 = r.tables.length; j$3 < j_finish$3; ++j$3) {
+            let t$1 = r.tables[j$3];
             if (t$1 !== undefined) {
               await truncateTable(t$1);
               console.log(`  truncated ` + t$1);
             }
           }
-          for (let j$3 = 0, j_finish$3 = r.bucketCounts.length; j$3 < j_finish$3; ++j$3) {
-            let match$1 = r.bucketCounts[j$3];
-            if (match$1 !== undefined) {
-              let b$1 = match$1[0];
-              await emptyBucket(b$1);
+          for (let j$4 = 0, j_finish$4 = r.bucketCounts.length; j$4 < j_finish$4; ++j$4) {
+            let match$3 = r.bucketCounts[j$4];
+            if (match$3 !== undefined) {
+              let b$1 = match$3[0];
+              await emptyBucket(b$1, undefined);
               console.log(`  emptied ` + b$1);
+            }
+          }
+          for (let j$5 = 0, j_finish$5 = r.storeCounts.length; j$5 < j_finish$5; ++j$5) {
+            let match$4 = r.storeCounts[j$5];
+            if (match$4 !== undefined) {
+              let s$1 = match$4[0];
+              await emptyBucket(s$1.bucketName, s$1.keyPrefix + `/`);
+              console.log(`  emptied ` + s$1.qualified + ` — ` + match$4[1].toString() + ` object(s) removed from ` + (s$1.bucketName + `/` + s$1.keyPrefix + `/`));
             }
           }
         }
@@ -597,16 +770,25 @@ function run(stack, backend, targets, param) {
       for (let i$2 = 0, i_finish$2 = resolvedList.length; i$2 < i_finish$2; ++i$2) {
         let r$1 = resolvedList[i$2];
         if (r$1 !== undefined) {
-          for (let j$4 = 0, j_finish$4 = r$1.tables.length; j$4 < j_finish$4; ++j$4) {
-            let t$2 = r$1.tables[j$4];
+          for (let j$6 = 0, j_finish$6 = r$1.tables.length; j$6 < j_finish$6; ++j$6) {
+            let t$2 = r$1.tables[j$6];
             if (t$2 !== undefined) {
               remaining = remaining + await countTable(t$2) | 0;
             }
           }
-          for (let j$5 = 0, j_finish$5 = r$1.bucketCounts.length; j$5 < j_finish$5; ++j$5) {
-            let match$2 = r$1.bucketCounts[j$5];
-            if (match$2 !== undefined) {
-              remaining = remaining + await countBucket(match$2[0]) | 0;
+          for (let j$7 = 0, j_finish$7 = r$1.bucketCounts.length; j$7 < j_finish$7; ++j$7) {
+            let match$5 = r$1.bucketCounts[j$7];
+            if (match$5 !== undefined) {
+              remaining = remaining + await countBucket(match$5[0], undefined) | 0;
+            }
+          }
+          for (let j$8 = 0, j_finish$8 = r$1.storeCounts.length; j$8 < j_finish$8; ++j$8) {
+            let match$6 = r$1.storeCounts[j$8];
+            if (match$6 !== undefined) {
+              let s$2 = match$6[0];
+              let left = await countBucket(s$2.bucketName, s$2.keyPrefix + `/`);
+              remaining = remaining + left | 0;
+              console.log(`  verified empty: ` + s$2.qualified + ` — ` + left.toString() + ` object(s) remain under ` + (s$2.bucketName + `/` + s$2.keyPrefix + `/`));
             }
           }
         }
@@ -623,17 +805,17 @@ function run(stack, backend, targets, param) {
       process.exit(0);
       return;
     } catch (raw_message) {
-      let message = Primitive_exceptions.internalToException(raw_message);
-      if (message.RE_EXN_ID === Seed$ReventlessSeed.Failed) {
+      let message$1 = Primitive_exceptions.internalToException(raw_message);
+      if (message$1.RE_EXN_ID === Seed$ReventlessSeed.Failed) {
         Seed_Prompt$ReventlessSeed.close();
         console.error("");
-        console.error(`Reset aborted — ` + message._1);
+        console.error(`Reset aborted — ` + message$1._1);
         process.exit(1);
       } else {
         Seed_Prompt$ReventlessSeed.close();
         console.error("");
         console.error("Reset aborted with an unexpected error:");
-        console.error(Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(message), Stdlib_JsExn.message), "unknown"));
+        console.error(Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(message$1), Stdlib_JsExn.message), "unknown"));
         process.exit(1);
       }
       return;
@@ -662,11 +844,15 @@ export {
   classify,
   tagValue,
   discover,
+  splitQualified,
+  parseObjectStores,
+  validateStores,
   countTable,
   countBucket,
   sendBatch,
   truncateTable,
   emptyBucket,
+  pluginOf,
   chooseScope,
   gateTarget,
   reportAll,

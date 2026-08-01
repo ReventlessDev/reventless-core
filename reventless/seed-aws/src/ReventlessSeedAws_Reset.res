@@ -213,6 +213,118 @@ let discover = async (~region, ~stack, ~platform): (array<string>, array<string>
   (tables, buckets)
 }
 
+// ── Declared object stores ────────────────────────────────────────────────────
+//
+// A store declared by a `@storageRef` field is provisioned by the PLATFORM
+// deploy — the serving CDN and the presign services live there, and a
+// shared-layout bucket holds several plugins' stores, so no plugin stack can own
+// it. Its bucket therefore carries the platform project's `reventless:platform`
+// tag, which makes it invisible to a domain-scoped tag discovery and, worse,
+// wholesale-emptiable by a platform-scoped one.
+//
+// Tag discovery cannot fix that: the tag says which project *built* the bucket,
+// and the answer needed here is which plugin's data is *in* it — at prefix
+// granularity, since one bucket holds several plugins' stores. The platform
+// already publishes exactly that mapping as its `objectStores` stack output, so
+// the reset reads ownership from the declaration rather than inferring it.
+
+/** One provisioned store: which plugin owns it, and where its objects live. */
+type objectStore = {
+  qualified: string,
+  plugin: string,
+  store: string,
+  bucketName: string,
+  keyPrefix: string,
+}
+
+// A store's key is `{plugin}.{store}`, split at the FIRST dot: a registered
+// plugin name cannot contain one, a store name could in principle.
+let splitQualified = (key: string): option<(string, string)> =>
+  key
+  ->String.indexOfOpt(".")
+  ->Option.map(i => (
+    key->String.slice(~start=0, ~end=i),
+    key->String.slice(~start=i + 1, ~end=key->String.length),
+  ))
+
+/** Parse the platform stack's `objectStores` output. Absent is normal — a
+    platform may declare no stores — so only a malformed entry is an error, and
+    it is an error rather than a skip because a store the reset cannot read is a
+    store it would silently leave behind. */
+let parseObjectStores = (json: option<JSON.t>): result<array<objectStore>, string> =>
+  switch json {
+  | None => Ok([])
+  | Some(Object(entries)) =>
+    entries
+    ->Dict.toArray
+    ->Array.reduce(Ok([]), (acc, (qualified, entry)) =>
+      switch acc {
+      | Error(_) as failed => failed
+      | Ok(stores) =>
+        switch (
+          splitQualified(qualified),
+          entry->field("bucketName")->Option.flatMap(asString),
+          entry->field("keyPrefix")->Option.flatMap(asString),
+        ) {
+        | (Some((plugin, store)), Some(bucketName), Some(keyPrefix)) =>
+          Ok(Array.concat(stores, [{qualified, plugin, store, bucketName, keyPrefix}]))
+        | _ =>
+          Error(
+            `the platform stack's \`objectStores\` output has a malformed entry for "${qualified}" — ` ++
+            `expected a {plugin}.{store} key carrying bucketName and keyPrefix.`,
+          )
+        }
+      }
+    )
+  | Some(_) => Error("the platform stack's `objectStores` output is not an object.")
+  }
+
+/** Refuse any store set a prefix-scoped wipe cannot separate.
+
+    Equality is the cross-plugin collision: two plugins declaring one store name
+    land on one prefix inside a shared bucket, and nothing distinguishes their
+    objects. Containment is the same problem one level up — the delete prefix is
+    `{keyPrefix}/`, so a store rooted at `a` encloses one rooted at `a/b`.
+    Comparing containment rather than equality is what keeps this correct once a
+    prefix carries path structure.
+
+    Fail-closed, and before anything is counted: this is the tool that destroys
+    data, so it refuses rather than skipping, and it does not assume an upstream
+    deploy-time check ran. */
+let validateStores = (stores: array<objectStore>): result<unit, string> =>
+  switch stores->Array.find(s => s.keyPrefix == "" || s.store->String.includes("/")) {
+  | Some(s) =>
+    Error(
+      `store "${s.qualified}" has an unusable key prefix ("${s.keyPrefix}") — ` ++
+      `a store name may not be empty or contain "/".`,
+    )
+  | None =>
+    switch stores->Array.findMap(a =>
+      stores->Array.findMap(b =>
+        if a.qualified == b.qualified || a.bucketName != b.bucketName {
+          None
+        } else if a.keyPrefix == b.keyPrefix {
+          Some(
+            `stores "${a.qualified}" and "${b.qualified}" both live at ` ++
+            `${a.bucketName}/${a.keyPrefix}/ — a prefix-scoped wipe cannot tell their objects ` ++
+            `apart. Rename one store, or qualify the \`@storageRef\` annotation if they were ` ++
+            `meant to be one shared store.`,
+          )
+        } else if b.keyPrefix->String.startsWith(a.keyPrefix ++ "/") {
+          Some(
+            `store "${a.qualified}" (${a.bucketName}/${a.keyPrefix}/) encloses "${b.qualified}" ` ++
+            `(${b.keyPrefix}/) — wiping the first would delete the second's objects. Rename one.`,
+          )
+        } else {
+          None
+        }
+      )
+    ) {
+    | Some(message) => Error(message)
+    | None => Ok()
+    }
+  }
+
 // ── Counting (dry-run) ─────────────────────────────────────────────────────────
 
 let countTable = async (table: string): int => {
@@ -233,11 +345,14 @@ let countTable = async (table: string): int => {
   await loop(None, 0)
 }
 
-let countBucket = async (bucket: string): int => {
+// `~prefix` narrows the count to one declared store inside a shared bucket;
+// omitted, it counts the whole bucket.
+let countBucket = async (bucket: string, ~prefix: option<string>=?): int => {
   let rec loop = async (keyMarker, versionMarker, acc): int => {
     let out = await S3.ListObjectVersionsCommand.send(
       S3.ListObjectVersionsCommand.make({
         bucket,
+        prefix: ?prefix,
         keyMarker: ?keyMarker,
         versionIdMarker: ?versionMarker,
       }),
@@ -327,11 +442,12 @@ let truncateTable = async (table: string): unit => {
 
 // One ListObjectVersions page returns ≤ 1000 entries (versions + delete
 // markers), and DeleteObjects takes ≤ 1000, so one list page maps to one delete.
-let emptyBucket = async (bucket: string): unit => {
+let emptyBucket = async (bucket: string, ~prefix: option<string>=?): unit => {
   let rec loop = async (keyMarker, versionMarker): unit => {
     let out = await S3.ListObjectVersionsCommand.send(
       S3.ListObjectVersionsCommand.make({
         bucket,
+        prefix: ?prefix,
         keyMarker: ?keyMarker,
         versionIdMarker: ?versionMarker,
       }),
@@ -383,7 +499,15 @@ type target = {
   projectDir: string,
   label: string,
   group: group,
+  // The name this project's plugin REGISTERS, when it differs from the
+  // operator-facing `label` (`Catalog` against `catalog`). It is what the
+  // platform's `objectStores` keys are qualified by, so it is how a declared
+  // store is attributed to a target. Declared rather than case-folded from the
+  // label: the caller states the topology, the reset never guesses it.
+  plugin?: string,
 }
+
+let pluginOf = (t: target): string => t.plugin->Option.getOr(t.label)
 
 // A target resolved to its discovered, counted stores, ready to report and wipe.
 type resolved = {
@@ -392,6 +516,7 @@ type resolved = {
   tables: array<string>,
   tableCounts: array<int>,
   bucketCounts: array<(string, int)>,
+  storeCounts: array<(objectStore, int)>,
 }
 
 // Picks which targets to wipe. `domain` (every domain plugin) leads and is the
@@ -496,6 +621,19 @@ let reportAll = (resolvedList: array<resolved>, ~stack, ~region): int => {
     if r.bucketCounts->Array.length == 0 {
       Console.log("      (none)")
     }
+    // Declared stores get their own section rather than being folded in with the
+    // plain buckets: the unit is a prefix inside a bucket that other plugins also
+    // write to, and the operator needs to see which is which before confirming.
+    if r.storeCounts->Array.length > 0 {
+      Console.log("    Object stores:")
+      r.storeCounts->Array.forEach(((s, c)) => {
+        total := total.contents + c
+        Console.log(
+          `      ${c->Int.toString->String.padStart(8, " ")}  ${s.qualified}   ` ++
+          `${s.bucketName}/${s.keyPrefix}/`,
+        )
+      })
+    }
   })
   total.contents
 }
@@ -541,9 +679,53 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
 
       let selected = await chooseScope(~targets)
 
+      // Declared object stores live in a bucket the PLATFORM project owns, so
+      // resolving them reads the platform's stack output whichever scope was
+      // picked. Reading is side-effect free; the gates below decide whether
+      // anything may be deleted from it.
+      let platformTarget = targets->Array.find(t => t.group == Platform)
+      let allStores = switch platformTarget {
+      | None =>
+        // Not silent: a topology with no platform target is exactly the case
+        // where declared stores would be missed, and missing them is the bug
+        // this resolution exists to fix.
+        Console.log("")
+        Console.log(
+          "Note: no `platform` target is declared, so declared object stores could not be " ++
+          "resolved — any uploaded objects will be left in place.",
+        )
+        []
+      | Some(pt) =>
+        let output = ReventlessSeedAws.stackOutputs(~projectDir=pt.projectDir, ~backend, stack)
+        switch parseObjectStores(output->field("objectStores")) {
+        | Ok(stores) => stores
+        | Error(message) => throw(Seed.Failed(message))
+        }
+      }
+      switch validateStores(allStores) {
+      | Ok() => ()
+      | Error(message) => throw(Seed.Failed(`refusing: ${message}`))
+      }
+
+      // Every bucket that holds a declared store, selected or not. These are
+      // excluded from the plain per-target bucket lists below so a store is
+      // reachable ONLY through the plugin that declared it — otherwise the
+      // platform scope would empty every plugin's objects wholesale.
+      let storeBucketNames = allStores->Array.map(s => s.bucketName)
+      let selectedStores =
+        allStores->Array.filter(s => selected->Array.some(t => pluginOf(t) == s.plugin))
+
       // Gate every selected target and collect its region; all must agree, since
-      // the DynamoDB/S3 clients read one region from the environment.
-      let regions = selected->Array.map(t => gateTarget(~target=t, ~backend, ~stack))
+      // the DynamoDB/S3 clients read one region from the environment. When a
+      // store is in scope, the platform's own stack must also declare itself
+      // wipeable — the objects belong to a plugin, but the bucket is the
+      // platform's, and both consents are needed to delete from it.
+      let gated = switch (selectedStores->Array.length > 0, platformTarget) {
+      | (true, Some(pt)) if !(selected->Array.some(t => t.projectDir == pt.projectDir)) =>
+        Array.concat(selected, [pt])
+      | _ => selected
+      }
+      let regions = gated->Array.map(t => gateTarget(~target=t, ~backend, ~stack))
       let region = regions->Array.getUnsafe(0)
       if regions->Array.some(r => r != region) {
         throw(
@@ -556,6 +738,30 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
       }
       NodeProcess.env->Dict.set("AWS_REGION", region)
 
+      // A store bucket arrives by stack output, not by tag discovery, so the
+      // per-resource tag re-check has to be applied to it explicitly: confirm it
+      // carries the platform project's own `platform`+`environment` tags before
+      // anything is deleted from it. One extra tagging-API call, and only when a
+      // store is actually in scope.
+      if selectedStores->Array.length > 0 {
+        switch platformTarget {
+        | Some(pt) =>
+          let platformProject = projectName(~projectDir=pt.projectDir)
+          let (_, platformBuckets) = await discover(~region, ~stack, ~platform=platformProject)
+          selectedStores->Array.forEach(s =>
+            if !(platformBuckets->Array.includes(s.bucketName)) {
+              throw(
+                Seed.Failed(
+                  `refusing: store "${s.qualified}" names bucket ${s.bucketName}, which does not ` ++
+                  `carry reventless:platform=${platformProject} + reventless:environment=${stack}.`,
+                ),
+              )
+            }
+          )
+        | None => ()
+        }
+      }
+
       // Discover + count each target, scoped to its own project via the platform
       // tag so a same-named stack from another project is never touched.
       let resolvedList = []
@@ -565,7 +771,10 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
           let platform = projectName(~projectDir=target.projectDir)
           let (tables, buckets) = await discover(~region, ~stack, ~platform)
           let tables = tables->Array.toSorted(String.compare)
-          let buckets = buckets->Array.toSorted(String.compare)
+          let buckets =
+            buckets
+            ->Array.filter(b => !(storeBucketNames->Array.includes(b)))
+            ->Array.toSorted(String.compare)
           let tableCounts = []
           for j in 0 to tables->Array.length - 1 {
             switch tables->Array.get(j) {
@@ -580,7 +789,26 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
             | None => ()
             }
           }
-          resolvedList->Array.push({target, platform, tables, tableCounts, bucketCounts})
+          let stores = selectedStores->Array.filter(s => s.plugin == pluginOf(target))
+          let storeCounts = []
+          for j in 0 to stores->Array.length - 1 {
+            switch stores->Array.get(j) {
+            | Some(s) =>
+              storeCounts->Array.push((
+                s,
+                await countBucket(s.bucketName, ~prefix=`${s.keyPrefix}/`),
+              ))
+            | None => ()
+            }
+          }
+          resolvedList->Array.push({
+            target,
+            platform,
+            tables,
+            tableCounts,
+            bucketCounts,
+            storeCounts,
+          })
         | None => ()
         }
       }
@@ -640,6 +868,19 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
             | None => ()
             }
           }
+          // Report the count with the store, not just in the run total: "how
+          // many images went" is the question an operator is actually asking.
+          for j in 0 to r.storeCounts->Array.length - 1 {
+            switch r.storeCounts->Array.get(j) {
+            | Some((s, count)) =>
+              await emptyBucket(s.bucketName, ~prefix=`${s.keyPrefix}/`)
+              Console.log(
+                `  emptied ${s.qualified} — ${count->Int.toString} object(s) removed from ` ++
+                `${s.bucketName}/${s.keyPrefix}/`,
+              )
+            | None => ()
+            }
+          }
         | None => ()
         }
       }
@@ -658,6 +899,20 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
           for j in 0 to r.bucketCounts->Array.length - 1 {
             switch r.bucketCounts->Array.get(j) {
             | Some((b, _)) => remaining := remaining.contents + (await countBucket(b))
+            | None => ()
+            }
+          }
+          // Per-store confirmation, so "every uploaded object is gone" is an
+          // observed fact rather than an inference from a global total.
+          for j in 0 to r.storeCounts->Array.length - 1 {
+            switch r.storeCounts->Array.get(j) {
+            | Some((s, _)) =>
+              let left = await countBucket(s.bucketName, ~prefix=`${s.keyPrefix}/`)
+              remaining := remaining.contents + left
+              Console.log(
+                `  verified empty: ${s.qualified} — ${left->Int.toString} object(s) remain under ` ++
+                `${s.bucketName}/${s.keyPrefix}/`,
+              )
             | None => ()
             }
           }
