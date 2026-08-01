@@ -236,6 +236,7 @@ let seedOrders = async (orders: array<DemoData.order>, ~client: Seed.Client.t) =
             customerId: order.customerId,
             productIds: order.productIds,
             shippingMethod: order.shippingMethod,
+            deliveryWindow: ?order.deliveryWindow,
           }),
         ),
       ))->ignore

@@ -33,6 +33,28 @@ function money(m) {
   };
 }
 
+function dateRange(r) {
+  return {
+    TAG: "Object",
+    _0: [
+      [
+        "start",
+        {
+          TAG: "String",
+          _0: r.start
+        }
+      ],
+      [
+        "end",
+        {
+          TAG: "String",
+          _0: r.end
+        }
+      ]
+    ]
+  };
+}
+
 function addCategory(command) {
   return Seed$ReventlessSeed.mutation(`Catalog_` + "AddCategory", [
     [
@@ -230,7 +252,8 @@ function shippingMethod(method) {
 }
 
 function placeOrder(command) {
-  return Seed$ReventlessSeed.mutation(`Ordering_` + "PlaceOrder", [
+  let window = command.deliveryWindow;
+  let base = [
     [
       "orderId",
       {
@@ -253,7 +276,11 @@ function placeOrder(command) {
       "shippingMethod",
       shippingMethod(command.shippingMethod)
     ]
-  ]);
+  ];
+  return Seed$ReventlessSeed.mutation(`Ordering_` + "PlaceOrder", window !== undefined ? base.concat([[
+        "deliveryWindow",
+        dateRange(window)
+      ]]) : base);
 }
 
 function shipOrder(command) {
@@ -392,6 +419,7 @@ export {
   catalog,
   ordering,
   money,
+  dateRange,
   addCategory,
   renameCategory,
   archiveCategory,

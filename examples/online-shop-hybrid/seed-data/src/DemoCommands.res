@@ -27,6 +27,12 @@ let money = (m: Reventless.Money.t): Seed.value =>
     ("currency", Enum(Reventless.Currency.toString(m.currency))),
   ])
 
+/** A `DateRange.t` argument is a GraphQL input object of two ISO instants. `end`
+    is the wire field name (`@as("end")` in the type), so it is `end` here too —
+    the composite reaches the API as one nested input, not a guessed field pair. */
+let dateRange = (r: Reventless.DateRange.t): Seed.value =>
+  Object([("start", String(r.start)), ("end", String(r.end_))])
+
 // ── Catalog ─────────────────────────────────────────────────────────────────
 
 let addCategory = (command: CatalogPlugin.AddCategory.command): Seed.mutation =>
@@ -115,15 +121,21 @@ let shippingMethod = (method: OrderingPlugin.PlaceOrder.shippingMethod): Seed.va
 
 let placeOrder = (command: OrderingPlugin.PlaceOrder.command): Seed.mutation =>
   switch command {
-  | PlaceOrder({orderId, customerId, productIds, shippingMethod: method}) =>
+  | PlaceOrder({orderId, customerId, productIds, shippingMethod: method, deliveryWindow: ?window}) =>
+    let base: array<(string, Seed.value)> = [
+      ("orderId", Id(orderId)),
+      ("customerId", Id(customerId)),
+      ("productIds", Seed.ids(productIds)),
+      ("shippingMethod", shippingMethod(method)),
+    ]
+    // The delivery window is optional: send the (nested input object) arg only
+    // when the order asked for one, so an order with no preference sends none.
     Seed.mutation(
       ordering("PlaceOrder"),
-      [
-        ("orderId", Id(orderId)),
-        ("customerId", Id(customerId)),
-        ("productIds", Seed.ids(productIds)),
-        ("shippingMethod", shippingMethod(method)),
-      ],
+      switch window {
+      | Some(w) => base->Array.concat([("deliveryWindow", dateRange(w))])
+      | None => base
+      },
     )
   }
 

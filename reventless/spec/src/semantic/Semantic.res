@@ -63,6 +63,12 @@ module Id = {
   // this one changes a field's *shape* — a number becomes an object — so it is
   // a wire-breaking declaration rather than a refinement of one.
   let money = "money"
+
+  // The second composite. A pair of ISO-8601 instants as one value, replacing a
+  // span the UI used to guess from a `start*`/`end*` name pair. Like `money` it
+  // is an object on the wire; unlike it, adopting it as a *new* optional field
+  // is additive — an absent optional decodes to `None`.
+  let dateRange = "dateRange"
 }
 
 let semanticId: S.Metadata.Id.t<t> = S.Metadata.Id.make(~namespace="reventless", ~name="semantic")

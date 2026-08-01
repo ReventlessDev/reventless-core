@@ -245,7 +245,21 @@ type order = {
   customerId: string,
   productIds: array<string>,
   shippingMethod: OrderingPlugin.PlaceOrder.shippingMethod,
+  // The requested delivery slot, as one declared `DateRange` — not a guessed
+  // `start*`/`end*` field pair. `None` for Pickup (collected in store) and for
+  // the orders that name no preference, so the scheduler mode has both rows that
+  // carry a bar and rows that do not.
+  deliveryWindow: option<Reventless.DateRange.t>,
 }
+
+// A small fixed pool of slots so seeded windows are deterministic and a day grid
+// has both morning and afternoon bars to lay out across two days.
+let deliverySlots = [
+  ("2026-03-02T09:00:00Z", "2026-03-02T12:00:00Z"),
+  ("2026-03-02T14:00:00Z", "2026-03-02T17:00:00Z"),
+  ("2026-03-03T09:00:00Z", "2026-03-03T12:00:00Z"),
+  ("2026-03-03T14:00:00Z", "2026-03-03T17:00:00Z"),
+]
 
 let buildOrders = (
   products: array<product>,
@@ -293,7 +307,18 @@ let buildOrders = (
     } else {
       Pickup
     }
-    {id: `ord-${pad(i + 1, 3)}`, customerId, productIds, shippingMethod}
+    // A delivered order asks for a slot ~60% of the time; Pickup never does.
+    let windowRoll = ReventlessSeed.Seed.Random.float(random)
+    let deliveryWindow = if shippingMethod == Pickup || windowRoll < 0.4 {
+      None
+    } else {
+      let (start, end_) =
+        deliverySlots
+        ->Array.get(mod(i, deliverySlots->Array.length))
+        ->Option.getOr(("2026-03-02T09:00:00Z", "2026-03-02T12:00:00Z"))
+      Some(Reventless.DateRange.make(~start, ~end_)->Result.getOrThrow)
+    }
+    {id: `ord-${pad(i + 1, 3)}`, customerId, productIds, shippingMethod, deliveryWindow}
   })
 }
 

@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as DateTime$Reventless from "@reventlessdev/reventless-spec/src/types/DateTime.res.mjs";
+import * as DateRange$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateRange.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
@@ -17,7 +18,8 @@ let consumedEventSchema = S.union([
     orderId: s.m(S.string),
     customerId: s.m(S.string),
     productIds: s.m(S.array(S.string)),
-    shippingMethod: s.m(shippingMethodSchema)
+    shippingMethod: s.m(shippingMethodSchema),
+    deliveryWindow: s.m(S.option(DateRange$Reventless.schema))
   })),
   S.schema(s => ({
     TAG: "OrderShipped",
@@ -42,7 +44,8 @@ let stateSchema = S.schema(s => ({
   status: s.m(statusSchema),
   shippingMethod: s.m(shippingMethodSchema),
   placedAt: s.m(DateTime$Reventless.string),
-  shippedAt: s.m(DateTime$Reventless.string)
+  shippedAt: s.m(DateTime$Reventless.string),
+  deliveryWindow: s.m(S.option(DateRange$Reventless.schema))
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);

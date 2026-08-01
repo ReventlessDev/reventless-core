@@ -25,6 +25,12 @@ type command =
     @noDcbTag customerId: string,
     @ref("AvailableProducts") productIds: array<string>,
     shippingMethod: shippingMethod,
+    // A requested delivery slot, chosen at checkout. An optional field — a
+    // Pickup order (or a caller that names no preference) simply omits it, and
+    // an order placed before this field existed carries no key, so adding it
+    // costs the log nothing (the additive path in the plan's adoption table).
+    // One `DateRange.t`, not a guessed `start*`/`end*` name pair.
+    deliveryWindow?: Reventless.DateRange.t,
   })
 
 @schema
@@ -39,4 +45,5 @@ type event =
     customerId: string,
     productIds: array<string>,
     shippingMethod: shippingMethod,
+    deliveryWindow?: Reventless.DateRange.t,
   })

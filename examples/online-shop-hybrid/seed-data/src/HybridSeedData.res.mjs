@@ -196,7 +196,8 @@ async function seedOrders(orders, client) {
         orderId: order.id,
         customerId: order.customerId,
         productIds: order.productIds,
-        shippingMethod: order.shippingMethod
+        shippingMethod: order.shippingMethod,
+        deliveryWindow: order.deliveryWindow
       }), undefined);
       if ((i + 1 | 0) % 50 === 0) {
         Seed_Runner$ReventlessSeed.report(`orders: ` + (i + 1 | 0).toString() + `/` + orders.length.toString() + ` placed`);

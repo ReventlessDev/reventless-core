@@ -17,7 +17,8 @@ function project(param) {
             status: "Placed",
             shippingMethod: event.shippingMethod,
             placedAt: meta.time,
-            shippedAt: ""
+            shippedAt: "",
+            deliveryWindow: event.deliveryWindow
           }
         }];
     case "OrderShipped" :
@@ -31,7 +32,8 @@ function project(param) {
             status: "Shipped",
             shippingMethod: state.shippingMethod,
             placedAt: state.placedAt,
-            shippedAt: meta.time
+            shippedAt: meta.time,
+            deliveryWindow: state.deliveryWindow
           })
         }];
     case "OrderCancelled" :
@@ -45,7 +47,8 @@ function project(param) {
             status: "Cancelled",
             shippingMethod: state.shippingMethod,
             placedAt: state.placedAt,
-            shippedAt: state.shippedAt
+            shippedAt: state.shippedAt,
+            deliveryWindow: state.deliveryWindow
           })
         }];
   }

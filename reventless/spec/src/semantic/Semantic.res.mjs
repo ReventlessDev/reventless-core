@@ -13,7 +13,8 @@ let Id = {
   bytes: "bytes",
   duration: "duration",
   color: "color",
-  money: "money"
+  money: "money",
+  dateRange: "dateRange"
 };
 
 let semanticId = S.Metadata.Id.make("reventless", "semantic");

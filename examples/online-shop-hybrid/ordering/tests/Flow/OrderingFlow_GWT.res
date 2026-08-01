@@ -47,7 +47,13 @@ module Confirm = OutboundStep(ConfirmSlice)
 let eur = amount => Reventless.Money.ofMajor(~amount, ~currency=EUR)
 
 describe("Ordering flow — place → auto-ship → confirm", () => {
-  test("an order is placed, auto-shipped, projected as Shipped, and confirmed", () =>
+  test("an order is placed, auto-shipped, projected as Shipped, and confirmed", () => {
+    // The requested delivery slot travels command → event → view row unchanged,
+    // one `DateRange` end to end.
+    let window = Reventless.DateRange.make(
+      ~start="2026-03-02T09:00:00Z",
+      ~end_="2026-03-02T11:00:00Z",
+    )->Result.getOrThrow
     start
     ->Sync.givenEvents([
       SyncCatalogProduct.CatalogProductSynced({productId: "p1", name: "Book", price: eur(9.99)}),
@@ -60,6 +66,7 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         customerId: "c1",
         productIds: ["p1"],
         shippingMethod: Express,
+        deliveryWindow: window,
       }),
     )
     ->Place.thenEvent(
@@ -68,6 +75,7 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         customerId: "c1",
         productIds: ["p1"],
         shippingMethod: Express,
+        deliveryWindow: window,
       }),
     )
     ->Auto.whenReacts
@@ -84,10 +92,11 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         shippingMethod: Express,
         placedAt: "time",
         shippedAt: "time",
+        deliveryWindow: Some(window),
       },
     )
     ->Confirm.thenOutbound([("o1", {SendOrderConfirmation.orderId: "o1", customerId: "c1"})])
-  )
+  })
 
   test("placing an order for an unsynced product is rejected", () =>
     start

@@ -9,6 +9,7 @@ describe("Orders StateViewSlice", () => {
         customerId: "c1",
         productIds: ["p1", "p2"],
         shippingMethod: Standard,
+        deliveryWindow: None,
       }),
     )
     ->thenStateWithId(
@@ -21,14 +22,54 @@ describe("Orders StateViewSlice", () => {
         shippingMethod: Standard,
         placedAt: "time",
         shippedAt: "",
+        deliveryWindow: None,
       },
     )
   )
 
+  // The declared span is carried straight from the event onto the row, with
+  // `customerId` beside it as the resource ref — which is what lets a scheduler
+  // mode lay a bar out from the row without guessing the pair from field names.
+  test("a requested delivery window lands on the row", () => {
+    let window = Reventless.DateRange.make(
+      ~start="2026-03-02T09:00:00Z",
+      ~end_="2026-03-02T11:00:00Z",
+    )->Result.getOrThrow
+    givenEvents([])
+    ->whenEvent(
+      OrderPlaced({
+        orderId: "o1",
+        customerId: "c1",
+        productIds: ["p1"],
+        shippingMethod: Standard,
+        deliveryWindow: Some(window),
+      }),
+    )
+    ->thenStateWithId(
+      "o1",
+      {
+        orderId: "o1",
+        customerId: "c1",
+        productIds: ["p1"],
+        status: Placed,
+        shippingMethod: Standard,
+        placedAt: "time",
+        shippedAt: "",
+        deliveryWindow: Some(window),
+      },
+    )
+  })
+
   test("the shipping method chosen at placement is projected onto the row", () =>
     givenEvents([])
     ->whenEvent(
-      OrderPlaced({orderId: "o1", customerId: "c1", productIds: ["p1"], shippingMethod: Pickup}),
+      OrderPlaced({
+        orderId: "o1",
+        customerId: "c1",
+        productIds: ["p1"],
+        shippingMethod: Pickup,
+        deliveryWindow: None,
+      }),
     )
     ->thenStateWithId(
       "o1",
@@ -40,13 +81,20 @@ describe("Orders StateViewSlice", () => {
         shippingMethod: Pickup,
         placedAt: "time",
         shippedAt: "",
+        deliveryWindow: None,
       },
     )
   )
 
   test("OrderShipped updates status to Shipped", () =>
     givenEvents([
-      OrderPlaced({orderId: "o1", customerId: "c1", productIds: ["p1"], shippingMethod: Express}),
+      OrderPlaced({
+        orderId: "o1",
+        customerId: "c1",
+        productIds: ["p1"],
+        shippingMethod: Express,
+        deliveryWindow: None,
+      }),
     ])
     ->whenEvent(OrderShipped({orderId: "o1"}))
     ->thenStateWithId(
@@ -59,13 +107,20 @@ describe("Orders StateViewSlice", () => {
         shippingMethod: Express,
         placedAt: "time",
         shippedAt: "time",
+        deliveryWindow: None,
       },
     )
   )
 
   test("OrderCancelled updates status to Cancelled", () =>
     givenEvents([
-      OrderPlaced({orderId: "o1", customerId: "c1", productIds: ["p1"], shippingMethod: Standard}),
+      OrderPlaced({
+        orderId: "o1",
+        customerId: "c1",
+        productIds: ["p1"],
+        shippingMethod: Standard,
+        deliveryWindow: None,
+      }),
     ])
     ->whenEvent(OrderCancelled({orderId: "o1"}))
     ->thenStateWithId(
@@ -78,6 +133,7 @@ describe("Orders StateViewSlice", () => {
         shippingMethod: Standard,
         placedAt: "time",
         shippedAt: "",
+        deliveryWindow: None,
       },
     )
   )

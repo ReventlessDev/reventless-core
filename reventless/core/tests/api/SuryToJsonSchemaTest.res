@@ -742,4 +742,56 @@ describe("SuryToJsonSchema:", () => {
       ))->toEqual((true, true, true, false))
     })
   })
+
+  // The second composite, and the one whose emission the reader's shape rung
+  // depends on. Like `Money` it turns the field into an object — same
+  // shape-changed evidence, same upcaster warning for a collapse. Unlike it, the
+  // two parts keep their own `dateTime` marker, so a walker that only understands
+  // date-times still sees into the composite. That last property is asserted, not
+  // described, because it is what lets the UI's primary rung key on the shape
+  // before the `dateRange` marker reaches it in a release.
+  describe("DateRange is an object whose parts stay date-times:", () => {
+    let json = SuryToJsonSchema.deriveObjectSchema(
+      S.schema(s =>
+        {
+          "deliveryWindow": s.matches(Reventless.DateRange.schema),
+          "orderedAt": s.matches(Reventless.DateTime.string),
+        }
+      )->S.castToUnknown,
+    )
+    let keyOf = (name, key) => getPropertyOf(json, name)->Option.flatMap(s => getProperty(s, key))
+
+    testSync("the field is an object, not a string", () =>
+      expect(keyOf("deliveryWindow", "type"))->toEqual(Some(JSON.Encode.string("object")))
+    )
+
+    testSync("it carries the dateRange id, sourced from the type", () =>
+      expect((
+        keyOf("deliveryWindow", "x-reventless-semantic"),
+        keyOf("deliveryWindow", "x-reventless-semantic-source"),
+      ))->toEqual((Some(JSON.Encode.string("dateRange")), Some(JSON.Encode.string("type"))))
+    )
+
+    // The property that is not incidental: each part keeps its own date-time
+    // marker under the composite. `dateTime` predates the generic marker and
+    // surfaces as `format: "date-time"` (not `x-reventless-semantic`), so that is
+    // what a walker reads to see the two instants without knowing about ranges.
+    testSync("both instants keep their own date-time marker", () => {
+      let inner = getPropertyOf(json, "deliveryWindow")->Option.getOr(JSON.Encode.null)
+      expect((
+        getPropertyOf(inner, "start")->Option.flatMap(s => getProperty(s, "format")),
+        getPropertyOf(inner, "end")->Option.flatMap(s => getProperty(s, "format")),
+      ))->toEqual((Some(JSON.Encode.string("date-time")), Some(JSON.Encode.string("date-time"))))
+    })
+
+    // The control, mirroring the `Money` block's plain-float case: a lone
+    // date-time field stays a string and never becomes an object, so the
+    // object-ness above is the composite's doing and not the walk's.
+    testSync("a lone date-time field stays a string", () =>
+      expect((keyOf("orderedAt", "type"), keyOf("orderedAt", "format")))->toEqual((
+        Some(JSON.Encode.string("string")),
+        Some(JSON.Encode.string("date-time")),
+      ))
+    )
+  })
 })

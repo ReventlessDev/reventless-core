@@ -51,7 +51,8 @@ function decide(state, command) {
           orderId: orderId,
           customerId: command.customerId,
           productIds: productIds,
-          shippingMethod: command.shippingMethod
+          shippingMethod: command.shippingMethod,
+          deliveryWindow: command.deliveryWindow
         }]
     };
   }

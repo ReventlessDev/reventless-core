@@ -2,10 +2,19 @@
 
 let project = ({event, meta}) =>
   switch event {
-  | OrderPlaced({orderId, customerId, productIds, shippingMethod}) => [
+  | OrderPlaced({orderId, customerId, productIds, shippingMethod, deliveryWindow}) => [
       Set(
         orderId,
-        {orderId, customerId, productIds, status: Placed, shippingMethod, placedAt: meta.time, shippedAt: ""},
+        {
+          orderId,
+          customerId,
+          productIds,
+          status: Placed,
+          shippingMethod,
+          placedAt: meta.time,
+          shippedAt: "",
+          deliveryWindow,
+        },
       ),
     ]
   | OrderShipped({orderId}) => [

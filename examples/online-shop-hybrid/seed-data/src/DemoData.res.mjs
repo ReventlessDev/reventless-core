@@ -3,7 +3,9 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
+import * as DateRange$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateRange.res.mjs";
 import * as Seed_Random$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Random.res.mjs";
 
 let random = Seed_Random$ReventlessSeed.make(24301);
@@ -382,6 +384,25 @@ function newAddress() {
   return address();
 }
 
+let deliverySlots = [
+  [
+    "2026-03-02T09:00:00Z",
+    "2026-03-02T12:00:00Z"
+  ],
+  [
+    "2026-03-02T14:00:00Z",
+    "2026-03-02T17:00:00Z"
+  ],
+  [
+    "2026-03-03T09:00:00Z",
+    "2026-03-03T12:00:00Z"
+  ],
+  [
+    "2026-03-03T14:00:00Z",
+    "2026-03-03T17:00:00Z"
+  ]
+];
+
 function buildOrders(products, customers, countOpt, param) {
   let count = countOpt !== undefined ? countOpt : 150;
   let shuffled = Seed_Random$ReventlessSeed.sampleWeighted(random, products.map(p => [
@@ -403,11 +424,23 @@ function buildOrders(products, customers, countOpt, param) {
     let shippingMethod = methodRoll < 0.35 ? "Express" : (
         methodRoll < 0.8 ? "Standard" : "Pickup"
       );
+    let windowRoll = Seed_Random$ReventlessSeed.float(random);
+    let deliveryWindow;
+    if (shippingMethod === "Pickup" || windowRoll < 0.4) {
+      deliveryWindow = undefined;
+    } else {
+      let match = Stdlib_Option.getOr(deliverySlots[Primitive_int.mod_(i, deliverySlots.length)], [
+        "2026-03-02T09:00:00Z",
+        "2026-03-02T12:00:00Z"
+      ]);
+      deliveryWindow = Stdlib_Result.getOrThrow(DateRange$Reventless.make(match[0], match[1]), undefined);
+    }
     return {
       id: `ord-` + pad(i + 1 | 0, 3),
       customerId: customerId,
       productIds: productIds,
-      shippingMethod: shippingMethod
+      shippingMethod: shippingMethod,
+      deliveryWindow: deliveryWindow
     };
   });
 }
@@ -477,6 +510,7 @@ export {
   movedCustomers,
   deactivatedCustomers,
   newAddress,
+  deliverySlots,
   buildOrders,
   batchDispatched,
   cancellable,

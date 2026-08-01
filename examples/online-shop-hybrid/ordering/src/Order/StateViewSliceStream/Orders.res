@@ -16,6 +16,7 @@ type consumedEvent =
       customerId: string,
       productIds: array<string>,
       shippingMethod: shippingMethod,
+      deliveryWindow: option<Reventless.DateRange.t>,
     })
   | OrderShipped({orderId: string})
   | OrderCancelled({orderId: string})
@@ -39,4 +40,10 @@ type state = {
   // views (Calendar/Timeline) key off. `shippedAt` is "" until the order ships.
   placedAt: @s.matches(Reventless.DateTime.string) string,
   shippedAt: @s.matches(Reventless.DateTime.string) string,
+  // The requested delivery slot, carried straight from `OrderPlaced`. A declared
+  // span — two ISO instants as one value — so a scheduler mode lays a bar out
+  // from it directly, with `customerId` beside it as the row's resource ref,
+  // instead of guessing the pair from field names. `None` until (and unless) an
+  // order requests one.
+  deliveryWindow: option<Reventless.DateRange.t>,
 }
