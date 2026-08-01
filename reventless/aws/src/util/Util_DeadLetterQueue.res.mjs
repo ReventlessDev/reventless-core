@@ -22,6 +22,7 @@ function queueTags(queueName) {
 }
 
 let queue = new (Aws.sqs.Queue)(name, {
+  messageRetentionSeconds: 1209600,
   tags: queueTags(name),
   visibilityTimeoutSeconds: 180,
   sqsManagedSseEnabled: false
@@ -30,6 +31,7 @@ let queue = new (Aws.sqs.Queue)(name, {
 let fifoQueue = new (Aws.sqs.Queue)(nameFifo, {
   contentBasedDeduplication: true,
   fifoQueue: true,
+  messageRetentionSeconds: 1209600,
   tags: queueTags(nameFifo),
   visibilityTimeoutSeconds: 180,
   sqsManagedSseEnabled: false
@@ -45,6 +47,10 @@ let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AW
 
 let entryPointCode = `export const handler = async (event) => {
   console.error("DEAD LETTER ITEM:", JSON.stringify(event));
+  throw new Error(
+    "Dead-lettered " + (event?.Records?.length ?? 0) +
+    " message(s); see DEAD LETTER ITEM above. Failing so the messages are retained and Errors is non-zero."
+  );
 };`;
 
 let archiveContents = {};
@@ -150,10 +156,13 @@ Pulumi.all([
   }, opts);
 });
 
+let retentionSeconds = 1209600;
+
 export {
   name,
   nameFifo,
   queueTags,
+  retentionSeconds,
   queue,
   fifoQueue,
   opts,

@@ -12,10 +12,16 @@ let queueTags = queueName =>
     ~scope=Plugin,
   )
 
+// 14 days, the SQS maximum, stated rather than inherited. A dead letter is the
+// only surviving evidence of a message the system could not process, and the
+// 4-day default can expire it over a long weekend before anyone reads it.
+let retentionSeconds = 14 * 24 * 60 * 60
+
 let queue = SQS.Queue.make(
   ~name,
   ~args={
     SQS.Queue.visibilityTimeoutSeconds: 180->Pulumi.Input.make,
+    messageRetentionSeconds: retentionSeconds->Pulumi.Input.make,
     sqsManagedSseEnabled: false->Pulumi.Input.make,
     tags: queueTags(name),
   },
@@ -27,6 +33,7 @@ let fifoQueue = SQS.Queue.make(
     SQS.Queue.fifoQueue: true->Pulumi.Input.make,
     contentBasedDeduplication: true->Pulumi.Input.make,
     visibilityTimeoutSeconds: 180->Pulumi.Input.make,
+    messageRetentionSeconds: retentionSeconds->Pulumi.Input.make,
     sqsManagedSseEnabled: false->Pulumi.Input.make,
     tags: queueTags(nameFifo),
   },
@@ -45,8 +52,27 @@ let lambdaRole = IAM.Role.makeWithDefaultPolicy(
   ~opts,
 )
 
+// Logs what arrived, then FAILS the invocation on purpose.
+//
+// Returning success here would let SQS delete the message, which is what this
+// handler used to do — and it made a dead letter unobservable twice over: the
+// queue's depth returned to 0, so a depth alarm could never fire, and the
+// function's `Errors` metric stayed at 0, so neither could an error alarm. A
+// plugin whose commands failed every 5 minutes for two days produced 217 dead
+// letters and no signal at all; it was found by a person noticing a stale UI.
+//
+// Failing instead keeps the message on the queue (this queue has no redrive
+// target of its own, so it stays until retention expires) and keeps `Errors`
+// non-zero for as long as the condition lasts. Both are conventional alarm
+// subjects, and a monitoring backend attached through the `DeadLetterSink` seam
+// below now has something to attach to. Re-delivery re-logs the payload; on a
+// queue that is empty in normal operation, that repetition is the alert.
 let entryPointCode = `export const handler = async (event) => {
   console.error("DEAD LETTER ITEM:", JSON.stringify(event));
+  throw new Error(
+    "Dead-lettered " + (event?.Records?.length ?? 0) +
+    " message(s); see DEAD LETTER ITEM above. Failing so the messages are retained and Errors is non-zero."
+  );
 };`
 
 let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
