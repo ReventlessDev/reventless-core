@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.174 (2026-08-01)
+
+### Features
+
+* **spec:** a coordinate is one declared point, not two fields and a name guess ([bfe2f90](https://github.com/ReventlessDev/reventless-core/commit/bfe2f90241492422d6c242e3f50e31b81ed2a010))
+
+
 # 1.0.0-alpha.173 (2026-08-01)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering

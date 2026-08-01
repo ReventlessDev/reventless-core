@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.175 (2026-08-01)
+
+* feat(core,aws)!: name task buckets for their plugin and task ([05203cb](https://github.com/ReventlessDev/reventless-core/commit/05203cb3b0b019401a6f32cf78109f397b6799d5))
+
+### BREAKING CHANGES
+
+* a bucket name change is a replace. TaskBucket_S3 now sets
+forceDestroy on disposable stacks (Util_StoreLayout.protectionFor), so pr-*
+stacks recreate cleanly; protected stacks must have the task bucket drained by
+hand before the first deploy after this, or the replace fails BucketNotEmpty.
+
+
+
 # 1.0.0-alpha.174 (2026-08-01)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog

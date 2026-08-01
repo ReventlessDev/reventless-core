@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.92 (2026-08-01)
+
+* feat(aws,core,spec)!: qualify store prefixes by plugin and refuse name collisions ([da39405](https://github.com/ReventlessDev/reventless-core/commit/da394059d9f8f981bf7adc79e2c1ce2b429e0267))
+### Features
+
+* **spec:** a coordinate is one declared point, not two fields and a name guess ([bfe2f90](https://github.com/ReventlessDev/reventless-core/commit/bfe2f90241492422d6c242e3f50e31b81ed2a010))
+
+### BREAKING CHANGES
+
+* objects minted under the old bare prefix are orphaned and their
+refs unresolvable. The migration is `seed:reset` for the owning plugin, then
+re-seed. Legacy-prefix grandfathering was considered and deliberately dropped —
+it would have added a permanent prefix SET across the deploy argument, both store
+configs, the presign IAM fan-out, the release scope check and the stack output,
+to spare a disposable stack one wipe.
+
+
+
 # 3.0.0-alpha.91 (2026-08-01)
 
 ### Bug Fixes

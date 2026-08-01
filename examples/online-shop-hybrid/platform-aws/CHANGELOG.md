@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.201 (2026-08-01)
+
+### Features
+
+* **deps:** bump host-shell to 3.0.0-alpha.53 ([3a8eb71](https://github.com/ReventlessDev/reventless-core/commit/3a8eb71d36c8945b0d1858000b84b86f5fc53f53))
+* **seed-aws:** wipe a plugin's declared object stores in seed:reset ([2280c5f](https://github.com/ReventlessDev/reventless-core/commit/2280c5f14755d13fff0fe1ac11eb440cd0617f1d))
+
+
 # 1.0.0-alpha.200 (2026-08-01)
 
 ### Features

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.8 (2026-08-01)
+
+### Features
+
+* **seed-aws:** wipe a plugin's declared object stores in seed:reset ([2280c5f](https://github.com/ReventlessDev/reventless-core/commit/2280c5f14755d13fff0fe1ac11eb440cd0617f1d))
+
+
 # 1.0.0-alpha.7 (2026-08-01)
 
 ### Features
