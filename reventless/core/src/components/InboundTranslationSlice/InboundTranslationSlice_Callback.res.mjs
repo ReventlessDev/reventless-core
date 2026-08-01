@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Uuid from "uuid";
+import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
@@ -53,6 +54,16 @@ function receiveResultToOutcome(result) {
     errorCode: "TranslationFailed",
     errorDetail: match$1.error
   };
+}
+
+function requestIdOf(result) {
+  return result._0.requestId;
+}
+
+function takeAuditRow(auditLog, requestId) {
+  let row = auditLog[requestId];
+  Stdlib_Dict.$$delete(auditLog, requestId);
+  return row;
 }
 
 function Make(Spec) {
@@ -221,6 +232,8 @@ export {
   auditStatusSchema,
   auditRowSchema,
   receiveResultToOutcome,
+  requestIdOf,
+  takeAuditRow,
   Make,
 }
 /*  Not a pure module */

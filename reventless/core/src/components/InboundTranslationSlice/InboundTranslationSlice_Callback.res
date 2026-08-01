@@ -46,6 +46,33 @@ let receiveResultToOutcome = (
     Rejected({msgId: requestId, errorCode: "TranslationFailed", errorDetail: Some(error)})
   }
 
+/**
+The request a `receive` outcome belongs to, from either arm. Both carry the id
+that keys the outcome's audit row, so a caller draining the log does not have to
+match on the result to find its own row.
+*/
+let requestIdOf = (result: ReventlessInfra.InboundTranslationSlice.receiveResult): string =>
+  switch result {
+  | Ok({requestId}) | Error({requestId}) => requestId
+  }
+
+/**
+Remove one request's audit row from the in-memory log and hand it back.
+
+`auditLog` is a hand-off buffer between `receive` and whoever persists the row,
+not a log in its own right — the QueryDb it drains into is the durable one. It
+has to be emptied as it drains: the dict lives as long as the process (a warm
+Lambda container serves many requests), so a drain that walked the whole dict
+would rewrite every row the container had ever seen on every request — quadratic
+writes, unbounded retention, and, because the write is an overwrite by row id,
+resurrection of rows deleted from the table since.
+*/
+let takeAuditRow = (auditLog: Dict.t<auditRow>, requestId: string): option<auditRow> => {
+  let row = auditLog->Dict.get(requestId)
+  auditLog->Dict.delete(requestId)
+  row
+}
+
 module type T = {
   module Spec: Reventless.InboundTranslationSlice.Spec
   module Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec

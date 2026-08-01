@@ -41,18 +41,19 @@ module Make = (
 
     module SpecificQueryDb = QueryDb_Builder.Make(AuditQueryDbSpec, QueryDbStorage, QueryDbResolvers)
 
-    let syncToQueryDb = async (queryDbOps: SpecificQueryDb.operations) => {
-      let items = Callback.auditLog->Dict.toArray
-      let _ = await items->Array.reduce(Promise.resolve(), async (prev, (id, row)) => {
-        let _ = await prev
+    // Persist just this request's audit row, taking it out of the in-memory log
+    // as it goes — see `takeAuditRow` for why draining the whole dict is wrong.
+    let syncToQueryDb = async (queryDbOps: SpecificQueryDb.operations, requestId: string) =>
+      switch Callback.auditLog->InboundTranslationSlice_Callback.takeAuditRow(requestId) {
+      | Some(row) =>
         let _ = await queryDbOps.save(
-          id->Reventless.Id.String.makeFromString,
+          requestId->Reventless.Id.String.makeFromString,
           row,
           QueryDb.Overwrite,
           None,
         )
-      })
-    }
+      | None => ()
+      }
 
     let construct = (~publishJsons, self, _name) => {
       let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
@@ -77,7 +78,10 @@ module Make = (
           let ops: InboundTranslationSlice.operations = {
             receive: async inputJson => {
               let result = await Callback.receive(publishJsonsFn, inputJson)
-              await syncToQueryDb(queryDbOps)
+              await syncToQueryDb(
+                queryDbOps,
+                result->InboundTranslationSlice_Callback.requestIdOf,
+              )
               result
             },
           }

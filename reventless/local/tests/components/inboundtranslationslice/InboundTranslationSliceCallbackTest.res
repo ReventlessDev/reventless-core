@@ -125,6 +125,60 @@ describe("InboundTranslationSlice Callback", () => {
     })
   })
 
+  // `auditLog` hands a row to whoever persists it and must not keep it: the dict
+  // outlives the request (a warm Lambda container serves many), so a drain that
+  // re-read the whole dict would rewrite every row the container had ever seen on
+  // every request — and, since the write overwrites by row id, would resurrect
+  // rows deleted from the table in between. Persisting is per-request and takes.
+  describe("draining the audit log", () => {
+    testPromise("taking a row leaves the log empty for the next request", async () => {
+      let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
+      let input = status =>
+        {"paymentId": "pay-1", "orderId": "ord-1", "status": status}->Obj.magic
+
+      let first = await Callback.receive(mockPublish, input("completed"))
+      let firstId = first->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
+      expect(
+        Callback.auditLog
+        ->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(firstId)
+        ->Option.isSome,
+      )->toBe(true)
+      expect(Callback.auditLog->Dict.toArray->Array.length)->toBe(0)
+
+      // A second request drains only its own row — the first one is gone, so it
+      // cannot be written a second time.
+      let second = await Callback.receive(mockPublish, input("completed"))
+      let secondId = second->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
+      expect(secondId == firstId)->toBe(false)
+      expect(Callback.auditLog->Dict.toArray->Array.length)->toBe(1)
+      expect(
+        Callback.auditLog
+        ->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(firstId)
+        ->Option.isSome,
+      )->toBe(false)
+      expect(
+        Callback.auditLog
+        ->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(secondId)
+        ->Option.isSome,
+      )->toBe(true)
+    })
+
+    testPromise("a rejected request's row is drained the same way", async () => {
+      let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
+      let result = await Callback.receive(
+        mockPublish,
+        {"paymentId": "pay-1", "orderId": "ord-1", "status": "pending"}->Obj.magic,
+      )
+      let id = result->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
+      switch Callback.auditLog->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(id) {
+      | Some(row) =>
+        expect(row.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Failure)
+      | None => expect(true)->toBe(false)
+      }
+      expect(Callback.auditLog->Dict.toArray->Array.length)->toBe(0)
+    })
+  })
+
   describe("multi-command", () => {
     testPromise("translate returning multiple pairs publishes all commands", async () => {
       // Use a spec that returns multiple commands

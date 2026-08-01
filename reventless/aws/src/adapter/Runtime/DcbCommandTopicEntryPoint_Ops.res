@@ -260,9 +260,9 @@ let buildInboundReceiver = (
     let result = await callback.receive(publishJsons, args)
     switch auditQueryDbOps {
     | Some(ops) =>
-      let rows = callback.auditLog->Dict.toArray
-      let _ = await rows->Array.reduce(Promise.resolve(), async (prev, (id, row)) => {
-        let _ = await prev
+      let id = result->ReventlessCore.InboundTranslationSlice_Callback.requestIdOf
+      switch callback.auditLog->ReventlessCore.InboundTranslationSlice_Callback.takeAuditRow(id) {
+      | Some(row) =>
         let json = row->S.reverseConvertToJsonOrThrow(
           ReventlessCore.InboundTranslationSlice_Callback.auditRowSchema,
         )
@@ -291,7 +291,8 @@ let buildInboundReceiver = (
             `failed to persist audit row ${id}: ${detail}`,
           )->Effect.runSync
         }
-      })
+      | None => ()
+      }
     | None => ()
     }
     result
