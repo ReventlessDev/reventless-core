@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.198 (2026-08-01)
+
+### Bug Fixes
+
+* **core:** drain the inbound audit log per request, not wholesale ([e18d4ec](https://github.com/ReventlessDev/reventless-core/commit/e18d4ec4b7ffb38a9e2bd3594d39a07e2ee91851))
+
+
 # 3.0.0-alpha.197 (2026-08-01)
 
 ### Features

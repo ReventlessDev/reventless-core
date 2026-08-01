@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.20 (2026-08-01)
+
+### Bug Fixes
+
+* **examples:** stop the seed expecting the removed USD-only import rule ([e8841ea](https://github.com/ReventlessDev/reventless-core/commit/e8841ea4010202267ad384b3a907acf6673d31cc))
+
+
 # 1.0.0-alpha.19 (2026-08-01)
 
 ### Features
