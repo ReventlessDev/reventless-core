@@ -52,8 +52,7 @@ function project(param) {
         _1: {
           email: email,
           address: address,
-          lat: 0.0,
-          lng: 0.0,
+          location: undefined,
           deactivated: false,
           orderCount: 0
         },
@@ -94,8 +93,7 @@ function project(param) {
         _0: id,
         _1: state => {
           let newrecord = {...state};
-          newrecord.lng = location.lng;
-          newrecord.lat = location.lat;
+          newrecord.location = location;
           return newrecord;
         }
       };
@@ -122,8 +120,7 @@ function project$1(param) {
     _1: {
       email: "",
       address: "",
-      lat: 0.0,
-      lng: 0.0,
+      location: undefined,
       deactivated: false,
       orderCount: 1
     },

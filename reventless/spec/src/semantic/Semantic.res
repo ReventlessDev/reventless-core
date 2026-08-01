@@ -69,6 +69,13 @@ module Id = {
   // is an object on the wire; unlike it, adopting it as a *new* optional field
   // is additive — an absent optional decodes to `None`.
   let dateRange = "dateRange"
+
+  // The third composite, and the cheapest to adopt. A latitude/longitude pair as
+  // one value, replacing a point the UI used to guess from a `lat`/`lng` name
+  // pair. Most coordinate fields already store `{lat, lng}` as a hand-rolled
+  // record, so retyping one is shape-preserving: the wire is unchanged and
+  // nothing stored needs upcasting.
+  let geoPoint = "geoPoint"
 }
 
 let semanticId: S.Metadata.Id.t<t> = S.Metadata.Id.make(~namespace="reventless", ~name="semantic")

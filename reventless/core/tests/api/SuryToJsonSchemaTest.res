@@ -794,4 +794,50 @@ describe("SuryToJsonSchema:", () => {
       ))
     )
   })
+
+  // The third composite. Its emission matters more than the other two's, because
+  // the reader has been resolving this shape from a *heuristic* since before the
+  // marker existed: an object with numeric `lat`/`lng` sub-properties already
+  // resolves to the geo-point semantic by shape. So the assertions below are what
+  // separate a declaration from a lucky guess — the marker and its `type` source.
+  describe("GeoPoint is an object carrying the geoPoint marker:", () => {
+    let json = SuryToJsonSchema.deriveObjectSchema(
+      S.schema(s =>
+        {
+          "location": s.matches(Reventless.GeoPoint.schema),
+          "lat": s.matches(S.float),
+        }
+      )->S.castToUnknown,
+    )
+    let keyOf = (name, key) => getPropertyOf(json, name)->Option.flatMap(s => getProperty(s, key))
+
+    testSync("the field is an object, not a pair of numbers", () =>
+      expect(keyOf("location", "type"))->toEqual(Some(JSON.Encode.string("object")))
+    )
+
+    testSync("it carries the geoPoint id, sourced from the type", () =>
+      expect((
+        keyOf("location", "x-reventless-semantic"),
+        keyOf("location", "x-reventless-semantic-source"),
+      ))->toEqual((Some(JSON.Encode.string("geoPoint")), Some(JSON.Encode.string("type"))))
+    )
+
+    // The control, and the whole reason the composite exists: a bare `lat` float
+    // is exactly what the flattened pair looked like, and it emits nothing at
+    // all. Everything a map knew about it, it inferred from the name.
+    testSync("a bare lat float emits no semantic", () =>
+      expect((keyOf("lat", "type"), keyOf("lat", "x-reventless-semantic")))->toEqual((
+        Some(JSON.Encode.string("number")),
+        None,
+      ))
+    )
+
+    testSync("both coordinates reach the wire as numbers", () => {
+      let inner = getPropertyOf(json, "location")->Option.getOr(JSON.Encode.null)
+      expect((
+        getPropertyOf(inner, "lat")->Option.flatMap(s => getProperty(s, "type")),
+        getPropertyOf(inner, "lng")->Option.flatMap(s => getProperty(s, "type")),
+      ))->toEqual((Some(JSON.Encode.string("number")), Some(JSON.Encode.string("number"))))
+    })
+  })
 })

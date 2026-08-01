@@ -6,15 +6,18 @@
 
 @@reventless.spec
 
-// `lat`/`lng` are a numeric coordinate pair, so the generated read-model view
-// offers a map display that drops a pin per customer. They are fed by the
-// Customer aggregate's `LocationSet` event (see `Customers_Projections.res`).
+// `location` is one declared point, so the generated read-model view offers a
+// map display that drops a pin per customer — from the declaration, not from a
+// `lat`/`lng` name guess over the numeric fields. It is fed by the Customer
+// aggregate's `LocationSet` event (see `Customers_Projections.res`), and it is
+// `option` because a customer has no location until that event arrives: the
+// `0.0, 0.0` this used to default to is a real coordinate in the Gulf of Guinea,
+// so every unlocated customer was pinned there.
 @schema
 type state = {
   @displayName email: string,
   address: string,
-  lat: float,
-  lng: float,
+  location: option<Reventless.GeoPoint.t>,
   deactivated: bool,
   orderCount: int,
 }

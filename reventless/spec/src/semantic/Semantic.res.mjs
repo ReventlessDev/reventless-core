@@ -14,7 +14,8 @@ let Id = {
   duration: "duration",
   color: "color",
   money: "money",
-  dateRange: "dateRange"
+  dateRange: "dateRange",
+  geoPoint: "geoPoint"
 };
 
 let semanticId = S.Metadata.Id.make("reventless", "semantic");

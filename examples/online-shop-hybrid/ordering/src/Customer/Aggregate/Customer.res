@@ -3,18 +3,17 @@
 
 @@reventless.spec
 
-// A map coordinate carried by location commands/events. Emitted as a JSON-Schema
-// object with numeric `lat`/`lng` sub-properties, which the generated command
-// form recognises as a geo-point picker.
-@schema
-type location = {lat: float, lng: float}
-
+// A map coordinate carried by location commands/events. `GeoPoint.t` rather than
+// a local `{lat, lng}` record: the wire shape is identical — so every event
+// already stored decodes unchanged — and the declaration buys the range checks
+// at the boundary and the marker the command form and the map view read, instead
+// of both being inferred from the field names.
 @schema
 type command =
   | Register({email: string, address: string})
   | UpdateEmail({email: string})
   | UpdateAddress({address: string})
-  | SetLocation({location: location})
+  | SetLocation({location: Reventless.GeoPoint.t})
   | Deactivate
 
 @schema
@@ -22,7 +21,7 @@ type event =
   | Registered({email: string, address: string})
   | EmailUpdated({email: string})
   | AddressUpdated({address: string})
-  | LocationSet({location: location})
+  | LocationSet({location: Reventless.GeoPoint.t})
   | Deactivated
 
 @schema

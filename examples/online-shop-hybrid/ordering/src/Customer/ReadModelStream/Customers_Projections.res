@@ -44,13 +44,12 @@ module CustomerMapping = Mapping.Make(
       | Registered({email, address}) =>
         UpdateWithDefault(
           id,
-          {Customers.email: email, address, lat: 0.0, lng: 0.0, deactivated: false, orderCount: 0},
+          {Customers.email: email, address, location: None, deactivated: false, orderCount: 0},
           state => {...state, email, address, deactivated: false},
         )
       | EmailUpdated({email}) => Update(id, state => {...state, email})
       | AddressUpdated({address}) => Update(id, state => {...state, address})
-      | LocationSet({location}) =>
-        Update(id, state => {...state, lat: location.lat, lng: location.lng})
+      | LocationSet({location}) => Update(id, state => {...state, location: Some(location)})
       | Deactivated => Update(id, state => {...state, deactivated: true})
       }
   },
@@ -70,7 +69,7 @@ module CustomerOrdersMapping = Mapping.Make(
       | OrderPlaced({customerId}) =>
         UpdateWithDefault(
           customerId,
-          {Customers.email: "", address: "", lat: 0.0, lng: 0.0, deactivated: false, orderCount: 1},
+          {Customers.email: "", address: "", location: None, deactivated: false, orderCount: 1},
           state => {...state, orderCount: state.orderCount + 1},
         )
       }
