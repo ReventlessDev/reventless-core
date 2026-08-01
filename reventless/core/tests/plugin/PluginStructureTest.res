@@ -718,13 +718,13 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
           store: "TestPlugin.documents",
           component: "AttachInvoice",
           field: "documentUrl",
-          annotation: "documents",
+          annotation: Some("documents"),
         },
         {
           store: "branding.logos",
           component: "AttachInvoice",
           field: "logoUrl",
-          annotation: "branding.logos",
+          annotation: Some("branding.logos"),
         },
       ]
       expect(withStores.requiredStoreDeclarations)->toEqual(Some(expected))
@@ -815,7 +815,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
           store: "TestPlugin.avatars",
           component: "UploadAvatar",
           field: "avatarUrl",
-          annotation: "avatars",
+          annotation: Some("avatars"),
         },
       ]
       expect(withOptional.requiredStoreDeclarations)->toEqual(Some(expected))

@@ -18,7 +18,8 @@
 # shape the rule asks for. A scalar nested inside a nullable object or array IS listed —
 # when an old payload carries the parent, the new field still has to be invented. That is
 # how requiredStoreDeclarations[].annotation, a required string inside a nullable array,
-# froze a plugin's registration for two days.
+# froze a plugin's registration for two days; it is absent from this list because it has
+# since been made `js_nullable`.
 .apiSchemaFragment.encoded: string
 .apiSchemaFragment.protocol: string
 .dcbEventLog.eventTopicArn: string
@@ -74,7 +75,6 @@
 .structure.readModels[].queryField: string
 .structure.readModels[].schema: string
 .structure.readModels[].searchableFields[]: string
-.structure.requiredStoreDeclarations[].annotation: string
 .structure.requiredStoreDeclarations[].component: string
 .structure.requiredStoreDeclarations[].field: string
 .structure.requiredStoreDeclarations[].store: string

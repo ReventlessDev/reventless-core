@@ -1,6 +1,6 @@
 # Plan: Stop Plugin-Definition Schema Evolution From Wedging a Plugin
 
-**Status**: Phases 1a, 1b, 2, 3, 4 implemented 2026-08-01 — full build warning-free, 2521 tests green. Phase 5 not started; its blocking unknown is now **settled** (measured against real stored payloads — see Phase 5), leaving it a value judgement rather than an open question. Two deviations from the plan as written, both recorded in-place below. Two open items for the reader: `requiredStoreDeclaration.annotation` is still a required scalar and is grandfathered into the Phase 1b golden list, and Phase 2's runtime behaviour is unverified until a deploy.
+**Status**: Phases 1a, 1b, 2, 3, 4 implemented 2026-08-01 — full build warning-free, 2540 tests green. `requiredStoreDeclaration.annotation` has since been made `js_nullable`, so no stored payload needs a fabricated value any more and the rule now holds for the field that motivated it. Phase 5 not started; its blocking unknown is **settled** (measured against real stored payloads — see Phase 5), leaving it a value judgement rather than an open question. Two deviations from the plan as written, both recorded in-place below. One open item: Phase 2's runtime behaviour is unverified until a deploy.
 **Analysis**: [plugin-definition-schema-evolution-wedge.md](../analysis/plugin-definition-schema-evolution-wedge.md)
 **Prior occurrence**: [platform-infrastructure-in-plugin-list.md](done/platform-infrastructure-in-plugin-list.md) — same class, fixed 2026-07-11 with schema-migration-on-read; that fix has a blind spot this plan closes.
 
@@ -90,9 +90,9 @@ the moment we want a deliberate conversation.
 is sufficient for correctness; 1b buys an earlier, more legible failure. Recommend implementing 1a
 first and judging 1b against how noisy the allowlist actually looks.
 
-**Judged and implemented.** The list came out at 111 entries — a snapshot file, one line per
-field, that changes only when someone adds a required scalar. Acceptable, and no longer optional:
-after Phase 3 this is the only thing enforcing Goal 1 in CI.
+**Judged and implemented.** The list is 81 entries — a snapshot file, one line per field, that
+changes only when someone adds a required scalar. Acceptable, and no longer optional: after
+Phase 3 this is the only thing enforcing Goal 1 in CI.
 
 [`PluginDefinitionRequiredScalarsTest.res`](../../reventless/core/tests/plugin/PluginDefinitionRequiredScalarsTest.res)
 compares [`pluginDefinitionRequiredScalars.txt`](../../reventless/core/tests/plugin/pluginDefinitionRequiredScalars.txt)
@@ -100,11 +100,27 @@ against a walk of the live schema; the reflection lives in `pluginDefinitionScal
 than `%raw`, per the repo rule on untyped reflection. Verified in both directions by perturbing
 the golden file — the failure reports `ADDED` / `REMOVED` by path.
 
-**Open**: `.structure.requiredStoreDeclarations[].annotation: string` — the field that caused the
-incident — is in the list, because it is still a required scalar. Re-shaping it to
-`js_nullable` would apply the rule to the case that motivated it and let the corpus assert "no
-fabricated values" outright. Not done here: it changes a shipped type and its producers, which is
-beyond this plan's steps.
+**Collector bug, found by using it (2026-08-01).** The first version walked into the non-null arm
+of a `T | null` union, so a `js_nullable` scalar was reported exactly like a required one. The
+guard would then have gone red on the very shape the rule tells authors to reach for, and the
+first list carried ~30 such false positives. Fixed to skip *scalar* arms of a nullable union while
+still descending into *object and array* arms — because when an old payload happens to carry a
+nullable parent, a scalar added inside it does still have to be invented. That distinction is not
+academic: it is exactly how `requiredStoreDeclarations[].annotation`, a required string inside a
+nullable array, froze a plugin. 111 entries → 81.
+
+**Resolved: `annotation` is now `js_nullable`.** The field that caused the incident no longer
+forces a fabricated value. `CapabilityManifest.provenance` and `PlatformCodegen.provenance` — the
+two places the value travels onward to — already declared it optional, with a rationale identical
+to the rule this plan wrote down ("a reader that cannot say what the source says omits the claim
+rather than inventing one"); the event-log copy was the lone hold-out, and the one that broke.
+The producer always emits `Some`, so `capabilities.json` output is unchanged. Every corpus fixture
+now decodes with **zero** invented scalars — the incident payloads heal purely from schema-derived
+defaults.
+
+The corpus could now additionally assert "nothing was fabricated". Not added: it needs a reporting
+variant of `parseJsonTolerant`, and the golden list already catches the same trigger at the
+declaration site, so the second net would be new API surface for little added reach.
 
 ## Phase 2 — Restore the dead-letter signal
 

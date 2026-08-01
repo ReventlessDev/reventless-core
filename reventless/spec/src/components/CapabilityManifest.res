@@ -56,7 +56,7 @@ let fromStructure = (structure: Plugin.pluginStructure): t => {
       key,
       declaredBy: declarations->Array.filterMap(d =>
         d.store == key
-          ? Some({component: d.component, field: d.field, annotation: d.annotation})
+          ? Some({component: d.component, field: d.field, annotation: ?d.annotation})
           : None
       ),
     }),

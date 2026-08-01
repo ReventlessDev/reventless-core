@@ -396,16 +396,25 @@ downstream would have to infer it by comparing a registered plugin name with
 whatever name a deploy manifest happened to use, and those were never required
 to match.
 
-`annotation` was added to this record as a required `string` while events written
-without it were already stored, which froze a plugin's registration for two days
-— the worked example behind the schema-evolution note on `pluginStructure` below.
+Optional for the same reason `CapabilityManifest.provenance` and
+`PlatformCodegen.provenance` — the two places this value travels onward to —
+already declare it optional: an event stored before the field existed cannot
+say what the source said, and a reader that cannot say omits the claim rather
+than inventing one. Every definition emitted now carries it.
+
+That is not a stylistic preference. It was first added here as a required
+`string` while events written without it were already stored, and since the
+lifecycle aggregate replays its own log before every decision, those events
+stopped decoding and the plugin's registration froze for two days. `None` is
+also the honest value: `""` would assert the author wrote an empty annotation.
+See the schema-evolution note on `pluginStructure` below.
 */
 @schema
 type requiredStoreDeclaration = {
   store: string,
   component: string,
   field: string,
-  annotation: string,
+  annotation: @s.matches(stringOptionSchema) option<string>,
 }
 
 let requiredStoreDeclarationArrayOptionSchema = _jsNullable(

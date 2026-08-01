@@ -182,7 +182,7 @@ let requiredStoreDeclarationSchema = S.schema(s => ({
   store: s.m(S.string),
   component: s.m(S.string),
   field: s.m(S.string),
-  annotation: s.m(S.string)
+  annotation: s.m(stringOptionSchema)
 }));
 
 let requiredStoreDeclarationArrayOptionSchema = SuryResMjs.js_nullable(S.array(requiredStoreDeclarationSchema));

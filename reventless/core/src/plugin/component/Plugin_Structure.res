@@ -510,11 +510,14 @@ let make = (
         // The annotation as its author wrote it. `target.plugin` is `None`
         // exactly when the field left the store unqualified, so this is the
         // source text rather than a guess at it — and this is the only place
-        // that distinction survives.
-        annotation: switch target.plugin {
-        | None => target.store
-        | Some(plugin) => plugin ++ "." ++ target.store
-        },
+        // that distinction survives. Always `Some` here: the field is optional
+        // on the type only so definitions stored before it existed still decode.
+        annotation: Some(
+          switch target.plugin {
+          | None => target.store
+          | Some(plugin) => plugin ++ "." ++ target.store
+          },
+        ),
       })
     )
 
