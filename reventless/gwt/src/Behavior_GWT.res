@@ -153,10 +153,22 @@ module AssertionCore = (Spec: CoreSpec) => {
     )
   }
 
+  // Events are compared by their **encoded (wire) form**, not by ReScript
+  // structural equality. For an event-sourced system the serialized event *is*
+  // its identity: two events that reverse-convert to the same JSON are the same
+  // event. Raw `==` is stricter than that — it distinguishes an optional field
+  // that is present-but-`undefined` (what a decider's `deliveryWindow: ?x`
+  // passthrough emits when `x` is `None`) from one whose key is absent (what a
+  // test literal that omits the field produces), even though sury drops a `None`
+  // optional either way and both hit the log identically. Comparing on `encEvents`
+  // unifies that spurious difference, so an optional event field can be omitted in
+  // the expectation instead of spelled out as `?None`. It is a strictly weaker
+  // equality: equal values still encode equally, so nothing that passed can start
+  // failing — it only stops the wire-invisible key asymmetry from failing a test.
   let compareEvents = (events, expectedEvents) =>
     if errors.contents->Array.length > 0 {
       unexpectedError(events)
-    } else if events == expectedEvents {
+    } else if events->encEvents == expectedEvents->encEvents {
       Outcome.pass
     } else {
       Outcome.fail(
@@ -211,7 +223,8 @@ module AssertionCore = (Spec: CoreSpec) => {
         }),
       )
     | Some(_) =>
-      if events == expectedEvents {
+      // Encoded comparison, for the same reason as `compareEvents` above.
+      if events->encEvents == expectedEvents->encEvents {
         Outcome.pass
       } else {
         Outcome.fail(

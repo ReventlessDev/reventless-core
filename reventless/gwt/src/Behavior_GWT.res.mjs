@@ -66,7 +66,7 @@ function AssertionCore(Spec) {
   let compareEvents = (events, expectedEvents) => {
     if (errors.contents.length !== 0) {
       return unexpectedError(events);
-    } else if (Primitive_object.equal(events, expectedEvents)) {
+    } else if (Primitive_object.equal(events.map(encEvent), expectedEvents.map(encEvent))) {
       return Outcome$ReventlessGwt.pass;
     } else {
       return Outcome$ReventlessGwt.fail({
@@ -120,7 +120,7 @@ function AssertionCore(Spec) {
         actual: Message$ReventlessCore.encode(actual$1, Spec.errorSchema),
         actualEvents: events.map(encEvent)
       });
-    } else if (Primitive_object.equal(events, expectedEvents)) {
+    } else if (Primitive_object.equal(events.map(encEvent), expectedEvents.map(encEvent))) {
       return Outcome$ReventlessGwt.pass;
     } else {
       return Outcome$ReventlessGwt.fail({
@@ -180,7 +180,7 @@ function Make(Spec) {
           actual: Message$ReventlessCore.encode(actual$1, Spec.errorSchema),
           actualEvents: events.map(encEvent)
         });
-      } else if (Primitive_object.equal(events, expectedEvents)) {
+      } else if (Primitive_object.equal(events.map(encEvent), expectedEvents.map(encEvent))) {
         return Outcome$ReventlessGwt.pass;
       } else {
         return Outcome$ReventlessGwt.fail({
@@ -281,7 +281,7 @@ function Make(Spec) {
         return o;
       } else if (errors.contents.length !== 0) {
         return unexpectedError(events);
-      } else if (Primitive_object.equal(events, expectedEvents)) {
+      } else if (Primitive_object.equal(events.map(encEvent), expectedEvents.map(encEvent))) {
         return Outcome$ReventlessGwt.pass;
       } else {
         return Outcome$ReventlessGwt.fail({
@@ -413,7 +413,7 @@ function MakeFromAggregate(Spec) {
     let compareEvents = (events, expectedEvents) => {
       if (errors.contents.length !== 0) {
         return unexpectedError(events);
-      } else if (Primitive_object.equal(events, expectedEvents)) {
+      } else if (Primitive_object.equal(events.map(encEvent), expectedEvents.map(encEvent))) {
         return Outcome$ReventlessGwt.pass;
       } else {
         return Outcome$ReventlessGwt.fail({
@@ -467,7 +467,7 @@ function MakeFromAggregate(Spec) {
           actual: Message$ReventlessCore.encode(actual$1, Spec.errorSchema),
           actualEvents: events.map(encEvent)
         });
-      } else if (Primitive_object.equal(events, expectedEvents)) {
+      } else if (Primitive_object.equal(events.map(encEvent), expectedEvents.map(encEvent))) {
         return Outcome$ReventlessGwt.pass;
       } else {
         return Outcome$ReventlessGwt.fail({
