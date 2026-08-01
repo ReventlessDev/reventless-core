@@ -7,6 +7,7 @@ import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as DateRange$Reventless from "@reventlessdev/reventless-spec/src/semantic/DateRange.res.mjs";
 import * as Seed_Random$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Random.res.mjs";
+import * as ImportProduct_Translation$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/InboundTranslationSlice/ImportProduct_Translation.res.mjs";
 
 let random = Seed_Random$ReventlessSeed.make(24301);
 
@@ -256,14 +257,14 @@ let supplierFeed = [
   {
     sku: "SKU-4414",
     title: "Ember Cable Set",
-    desc: "Rejected: non-USD supplier row.",
+    desc: "Rejected: currency is a symbol, not an ISO 4217 code.",
     unitPrice: 1900,
-    currency: "EUR",
+    currency: "US$",
     category: "cat-07"
   }
 ];
 
-let importedSkus = supplierFeed.filter(row => row.currency === "USD").map(row => row.sku);
+let importedSkus = supplierFeed.filter(row => Stdlib_Result.isOk(ImportProduct_Translation$CatalogPlugin.translate(row))).map(row => row.sku);
 
 let expectedImportSuccesses = importedSkus.length;
 

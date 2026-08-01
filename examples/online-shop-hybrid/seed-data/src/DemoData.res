@@ -75,17 +75,26 @@ let cityCoords: array<(float, float)> = [
 // ── Supplier feed ───────────────────────────────────────────────────────────
 
 // Rows for the ImportProduct InboundTranslationSlice. The last one is
-// deliberately invalid so the ImportProductAudit view shows both outcomes.
+// deliberately invalid so the ImportProductAudit view shows both outcomes: it
+// sends a currency symbol where the feed's contract says ISO 4217 code, which is
+// the kind of shape an anti-corruption layer exists to stop at the boundary.
 let supplierFeed: array<CatalogPlugin.ImportProduct.externalInput> = [
   {sku: "SKU-4410", title: "Fathom Dock 4-Port", desc: "Supplier-fed docking station.", unitPrice: 8990, currency: "USD", category: "cat-07"},
   {sku: "SKU-4411", title: "Cirrus Travel Charger", desc: "Supplier-fed 65W charger.", unitPrice: 4550, currency: "USD", category: "cat-07"},
   {sku: "SKU-4412", title: "Granite Laptop Sleeve", desc: "Supplier-fed protective sleeve.", unitPrice: 3200, currency: "USD", category: "cat-07"},
   {sku: "SKU-4413", title: "Halcyon Desk Riser", desc: "Supplier-fed monitor riser.", unitPrice: 12400, currency: "USD", category: "cat-06"},
-  {sku: "SKU-4414", title: "Ember Cable Set", desc: "Rejected: non-USD supplier row.", unitPrice: 1900, currency: "EUR", category: "cat-07"},
+  {sku: "SKU-4414", title: "Ember Cable Set", desc: "Rejected: currency is a symbol, not an ISO 4217 code.", unitPrice: 1900, currency: "US$", category: "cat-07"},
 ]
 
+// Which rows survive the boundary is the slice's decision, so ask the slice
+// rather than restating its rules here. Stating them twice is how this drifted
+// once already: the translation stopped rejecting non-USD rows when `Money.t`
+// gave the supplier's currency somewhere to live, and a copy of the old rule
+// left here failed the seed's audit-view cross-check against correct behaviour.
 let importedSkus =
-  supplierFeed->Array.filter(row => row.currency == "USD")->Array.map(row => row.sku)
+  supplierFeed
+  ->Array.filter(row => CatalogPlugin.ImportProduct_Translation.translate(row)->Result.isOk)
+  ->Array.map(row => row.sku)
 
 let expectedImportSuccesses = importedSkus->Array.length
 let expectedImportFailures = supplierFeed->Array.length - expectedImportSuccesses
