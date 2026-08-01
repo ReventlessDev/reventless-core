@@ -71,6 +71,36 @@ function renderEntry(entry) {
   };
 }
 
+function duplicatePluginOwners(entries) {
+  let owners = {};
+  entries.forEach(entry => {
+    let match = splitKey(entry.key);
+    if (match === undefined) {
+      return;
+    }
+    let plugin = match[0];
+    entry.declaredBy.forEach(site => {
+      let annotation = site.annotation;
+      if (annotation === undefined) {
+        return;
+      }
+      if (annotation.includes(".")) {
+        return;
+      }
+      let claimants = Stdlib_Option.getOr(owners[plugin], []);
+      if (!claimants.includes(site.pluginName)) {
+        owners[plugin] = claimants.concat([site.pluginName]);
+        return;
+      }
+    });
+  });
+  return Object.entries(owners).filter(param => param[1].length > 1).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0]));
+}
+
+function duplicatePluginMessage(param) {
+  return `Plugin name "` + param[0] + `" is registered by more than one deployable: ` + param[1].join(", ") + `.\n  A platform keys its plugin registry by name, so the second registration is read as a new VERSION of the first and supersedes it.\n  Give each deployable's plugin a distinct name (plugin.json), or — if these were meant to be one plugin — deploy only one of them.`;
+}
+
 let header = [
   "// AUTO-GENERATED — do not edit. Run `pnpm run generate:platform` to update.",
   "//",
@@ -84,17 +114,24 @@ let header = [
 function render(manifests) {
   let entries = union(manifests);
   let rendered = entries.map(renderEntry);
-  let e = Stdlib_Array.findMap(rendered, r => {
+  let match = duplicatePluginOwners(entries);
+  let match$1 = Stdlib_Array.findMap(rendered, r => {
     if (r.TAG === "Ok") {
       return;
     } else {
       return r._0;
     }
   });
-  if (e !== undefined) {
+  if (match.length !== 0) {
     return {
       TAG: "Error",
-      _0: e
+      _0: match.map(duplicatePluginMessage).join("\n\n")
+    };
+  }
+  if (match$1 !== undefined) {
+    return {
+      TAG: "Error",
+      _0: match$1
     };
   }
   let body = entries.length === 0 ? ["let capabilities: array<ReventlessInfra.Platform.capability> = []"] : ["let capabilities: array<ReventlessInfra.Platform.capability> = ["].concat(rendered.flatMap(r => Stdlib_Result.getOr(r, []))).concat(["]"]);
@@ -109,6 +146,8 @@ export {
   quote,
   splitKey,
   renderEntry,
+  duplicatePluginOwners,
+  duplicatePluginMessage,
   header,
   render,
 }

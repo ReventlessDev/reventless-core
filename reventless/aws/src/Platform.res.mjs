@@ -59,6 +59,7 @@ import * as Geocoder_AwsLocation$ReventlessAws from "./adapter/Geocoder/Geocoder
 import * as QueryEngine_DynamoDb$ReventlessAws from "./adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs";
 import * as PluginRuntime_Builder$ReventlessAws from "./plugin/runtime/PluginRuntime_Builder.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
+import * as StorePrefixCollision$ReventlessCore from "@reventlessdev/reventless-core/src/util/StorePrefixCollision.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessAws from "./components/ExtensionPoint_Builder.res.mjs";
 import * as StateViewSlice_Builder$ReventlessAws from "./components/StateViewSlice_Builder.res.mjs";
 import * as Task_Builder_PerBucket$ReventlessAws from "./components/Task_Builder_PerBucket.res.mjs";
@@ -904,6 +905,17 @@ function MakeWithConfig(Config) {
           ]]);
       }
     });
+    let collisions = StorePrefixCollision$ReventlessCore.collisionsFor(declaredStores.map(param => {
+      let store = param[1];
+      let plugin = param[0];
+      return {
+        qualified: plugin + `.` + store,
+        prefix: Util_StoreLayout$ReventlessAws.keyPrefixFor(plugin, store)
+      };
+    }));
+    if (collisions.length !== 0) {
+      Stdlib_JsError.throwWithMessage(collisions.map(StorePrefixCollision$ReventlessCore.collisionMessage).join("\n\n"));
+    }
     if (declaredStores.length !== 0) {
       let tmp;
       tmp = storeLayout === "PerStore" ? "bucket per store" : "shared bucket, {store}/… prefixes";
@@ -917,7 +929,7 @@ function MakeWithConfig(Config) {
       let store = param[1];
       let plugin = param[0];
       let bucketName = Util_StoreLayout$ReventlessAws.bucketNameFor(storeLayout, stackName, plugin, store);
-      let keyPrefix = Util_StoreLayout$ReventlessAws.keyPrefixFor(store);
+      let keyPrefix = Util_StoreLayout$ReventlessAws.keyPrefixFor(plugin, store);
       let b = storeBuckets[bucketName];
       let bucket;
       if (b !== undefined) {
@@ -2038,6 +2050,17 @@ function Make($star) {
           ]]);
       }
     });
+    let collisions = StorePrefixCollision$ReventlessCore.collisionsFor(declaredStores.map(param => {
+      let store = param[1];
+      let plugin = param[0];
+      return {
+        qualified: plugin + `.` + store,
+        prefix: Util_StoreLayout$ReventlessAws.keyPrefixFor(plugin, store)
+      };
+    }));
+    if (collisions.length !== 0) {
+      Stdlib_JsError.throwWithMessage(collisions.map(StorePrefixCollision$ReventlessCore.collisionMessage).join("\n\n"));
+    }
     if (declaredStores.length !== 0) {
       let tmp;
       tmp = storeLayout === "PerStore" ? "bucket per store" : "shared bucket, {store}/… prefixes";
@@ -2051,7 +2074,7 @@ function Make($star) {
       let store = param[1];
       let plugin = param[0];
       let bucketName = Util_StoreLayout$ReventlessAws.bucketNameFor(storeLayout, stackName, plugin, store);
-      let keyPrefix = Util_StoreLayout$ReventlessAws.keyPrefixFor(store);
+      let keyPrefix = Util_StoreLayout$ReventlessAws.keyPrefixFor(plugin, store);
       let b = storeBuckets[bucketName];
       let bucket;
       if (b !== undefined) {

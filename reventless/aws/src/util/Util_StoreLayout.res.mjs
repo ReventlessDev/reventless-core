@@ -28,8 +28,8 @@ function bucketNameFor(layout, stack, plugin, store) {
   }
 }
 
-function keyPrefixFor(store) {
-  return store;
+function keyPrefixFor(plugin, store) {
+  return plugin + `/` + store;
 }
 
 function servingFor(hasHostUiBundle, declaredBucketCount) {

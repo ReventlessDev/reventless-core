@@ -123,6 +123,10 @@ type releaseOutcome = Released | Refused(string)
 // Key must sit under this store's served prefix (`not_in_store`) and under the
 // caller's own identity segment within it (`not_yours`); an empty `sub` is
 // `unauthenticated` (the authorizer should have refused first — this is a guard).
+//
+// One prefix, not a set: changing a store's prefix strands the refs already
+// minted under the old one, so a prefix change is a breaking change resolved by
+// emptying the store and re-seeding, never by carrying both prefixes forever.
 let scopeCheck = (~key: string, ~sub: string, ~servedPrefix: string): result<unit, string> =>
   if sub == "" {
     Error("unauthenticated")

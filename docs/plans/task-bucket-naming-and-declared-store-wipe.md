@@ -1,7 +1,10 @@
 # Plan: task-bucket names, wiping declared object stores, and plugin-qualified store prefixes
 
 **Date:** 2026-08-01
-**Status:** Not started.
+**Status:** All four parts implemented; full build clean and 2613 tests green across 16 jest
+projects. **Part 4's legacy-prefix grandfathering was dropped by decision** — see
+[Deviation](#deviation-no-legacy-prefixes). Outstanding: the on-stack verifications, which need a
+deploy (Part 1 `pulumi preview` replace check, Part 2 dry run and real wipe, Part 4 new-prefix mint).
 **Repos:** `reventless-core` only.
 **Touches:** `reventless/core` (task bucket naming, registration warning), `reventless/aws` (bucket
 destroy semantics, store prefixes, serving, presign), `reventless/seed-aws` (reset),
@@ -457,7 +460,30 @@ worse (a same-named pair is already broken in ways that dwarf a shared store pre
 the qualifier to the list of things silently wrong when it happens, which is why Part 3 gains a check
 for it.
 
-## A store gains a prefix *set*
+## Deviation: no legacy prefixes
+
+**Decided during implementation; the sections below are kept as the rejected alternative.**
+
+The stores are all on a disposable `alpha` stack, so the migration is one `seed:reset` — which Part 2
+had just made able to empty a store per plugin. Grandfathering would have bought that one wipe at the
+price of permanent surface in six places: a `legacyBarePrefixStores` deploy argument, a
+`legacyKeyPrefixFor`, a prefix *set* on both the deploy-time `uploadStore` and the runtime
+`storeConfig`, an IAM fan-out of one ARN per prefix per store, a multi-prefix `scopeCheck`, and an
+extra stack-output field. That is a poor trade against wiping a stack that is meant to be wiped, and
+it matches the standing preference for wiping alpha over carrying migration code.
+
+What that makes true instead:
+
+- **Changing `keyPrefixFor` is a breaking change**, stated in its doc comment. Objects minted under
+  the old prefix are orphaned and their refs unresolvable.
+- **The migration is `seed:reset` then re-seed.** Part 2 is what makes that a per-plugin operation
+  rather than a wholesale bucket empty.
+- The release path keeps a single-prefix `scopeCheck`, so a ref minted under an old prefix is
+  correctly refused `not_in_store` rather than silently half-working.
+- A deployment with production data would need the rejected design back. It is recorded below for
+  that case rather than deleted.
+
+## A store gains a prefix *set* (rejected — see Deviation above)
 
 Refs already written cannot be rewritten, so a store that has ever minted under a bare prefix must
 keep **serving and deleting** under it. Every store therefore carries:
@@ -485,39 +511,17 @@ enclosed store's keys; and a prefix-scoped wipe of the legacy store deletes the 
 objects. Part 3's containment test is what catches it, which is why that test is specified as
 containment rather than equality.
 
-## Steps
+## Steps (as implemented)
 
-1. **`keyPrefixFor(~plugin, ~store)`** returns `{plugin}/{store}`; unit-test both the shape and its
-   stack-invariance.
-2. **Model the prefix set** — extend `ReventlessInfra.Platform.objectStore` (or the
-   `declaredStoreServices` tuple at [`Platform.res:1600`](../../reventless/aws/src/Platform.res#L1600))
-   with `mintPrefix` and `legacyPrefixes`, so every downstream consumer takes the set rather than
-   re-deriving a single string.
-3. **Declare the legacy set** on the platform's capability list, and thread it into
-   [`Platform.res:1563-1601`](../../reventless/aws/src/Platform.res#L1563-L1601).
-4. **Serving** — `declaredServedBuckets.prefixes` becomes the union of mint + legacy prefixes per
-   bucket, so both old and new keys stay readable through the distribution. The bucket policy is
-   bucket-wide (`{arn}/*`) and needs no change.
-5. **Presign IAM** — [`Upload_Presign_S3.res:111`](../../reventless/aws/src/adapter/Upload/Upload_Presign_S3.res#L111)
-   emits one ARN per prefix per store, not one per store, or release stops being able to delete
-   legacy objects.
-6. **Release scope check** — [`Upload_Presign_S3_Ops.res:126-135`](../../reventless/aws/src/adapter/Upload/Upload_Presign_S3_Ops.res#L126-L135)
-   currently tests `key.startsWith("{servedPrefix}/")` against a single prefix, so a legacy-prefixed
-   ref would be refused `not_in_store` the moment the store's prefix qualifies. It must accept **any**
-   of the store's prefixes, while `{prefix}/{sub}/` identity scoping stays exactly as strict. This is
-   the one step that silently breaks user-visible behaviour if missed.
-7. **Minting** — [`Upload_Presign_S3_Ops.res:223`](../../reventless/aws/src/adapter/Upload/Upload_Presign_S3_Ops.res#L223)
-   keeps its `{prefix}/{sub}/{uuid}/{file}` shape and takes the **mint** prefix only.
-8. **Stack output** — `objectStores` keeps `keyPrefix` as the mint prefix (existing consumers, incl.
-   the seed's endpoint resolution, keep working unchanged) and gains an additive `legacyPrefixes`
-   array.
-9. **Reset (Part 2)** — count and empty across the store's **whole** prefix set, or a wipe leaves
-   every pre-qualification image behind. Report them as one store with the combined count, since that
-   is what an operator means by "the images".
-10. **`reventless-local`** — [`LocalObjectStore`](../../reventless/local/src/adapter/LocalObjectStore.res#L25)
-    serves one flat `uploads` prefix and has no per-store prefixes at all, so it neither breaks nor
-    benefits. Leave it, and record the divergence here rather than in a code comment: local refs and
-    deployed refs already differ in prefix, and Part 4 widens that gap.
+1. **`keyPrefixFor(~plugin, ~store)`** returns `{plugin}/{store}`, with the breaking-change note in
+   its doc comment. Unit-tested for the shape and for two plugins getting distinct prefixes.
+2. Everything downstream — the served-bucket prefixes, the presign IAM ARN, the `UPLOAD_STORES`
+   config, the `objectStores` stack output and the reset's delete prefix — reads that one value, so
+   no consumer needed a change beyond passing `~plugin`.
+3. **`reventless-local`** ([`LocalObjectStore`](../../reventless/local/src/adapter/LocalObjectStore.res#L25))
+   serves one flat `uploads` prefix and has no per-store prefixes, so it neither breaks nor benefits.
+   Its composition-time collision warning restates `{plugin}/{store}` so it cannot report a collision
+   the deploy would not.
 
 ## How this relaxes Part 3
 
@@ -555,8 +559,7 @@ reuses; doing 4 first would leave the interim state with no early diagnosis at a
 | Part 2 reads a stale `objectStores` output | the output is written by the same deploy that creates the bucket; a stale stack output means an undeployed stack, which `stackOutputs` already reports |
 | Part 2 deletes under a prefix in a bucket it does not own | steps 8 and 9 — tag re-check plus wipeable on both stacks |
 | Part 3 rejects a deployment that works today | impossible by construction — a colliding pair cannot have deployed; verified by the "deliberate sharing" test case |
-| Part 4 breaks existing refs | the legacy prefix set, declared explicitly (steps 3–6); step 6 is the easiest one to miss and the one users would feel |
-| Part 4 legacy declaration forgotten on an existing stack | old refs 404 and old releases refuse `not_in_store`. Consider a deploy-time warning when a stack provisions a store whose bucket already holds objects under the bare prefix and no legacy entry is declared |
+| Part 4 breaks existing refs | **accepted** — see [Deviation](#deviation-no-legacy-prefixes). Deploying Part 4 orphans objects minted under the bare prefix; the migration is `seed:reset` then re-seed, and the commit must be marked breaking |
 | Part 4: a legacy bare store named like a plugin encloses that plugin's whole qualified space | Part 3's containment test, which is why it compares containment rather than equality |
 | Two plugins registering one name — unchecked today, and it supersedes the first in the registry | Part 3 steps 5–6; note this is a pre-existing defect Part 4 depends on, not one Part 4 introduces |
 | Plugin rename breaks refs | accepted; plugin names are already load-bearing for store identity |

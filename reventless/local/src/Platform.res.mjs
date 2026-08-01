@@ -55,6 +55,7 @@ import * as PlatformMCP_Server$ReventlessLocal from "./adapter/PlatformMCP_Serve
 import * as Auth_GraphqlContext$ReventlessLocal from "./adapter/Auth/Auth_GraphqlContext.res.mjs";
 import * as PgProjectionCatchup$ReventlessLocal from "./adapter/PgProjectionCatchup.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
+import * as StorePrefixCollision$ReventlessCore from "@reventlessdev/reventless-core/src/util/StorePrefixCollision.res.mjs";
 import * as DomainGraphQL_Server$ReventlessLocal from "./adapter/DomainGraphQL_Server.res.mjs";
 import * as EventPublish_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventLog/EventPublish_Callback.res.mjs";
 import * as LocalUploadResolvers$ReventlessLocal from "./adapter/LocalUploadResolvers.res.mjs";
@@ -824,6 +825,14 @@ function MakeWithConfig(Config) {
         }
       });
     });
+    let declared = Object.values(pluginStructuresStore.contents).flatMap(structure => Stdlib_Option.getOr(structure.requiredStores, []).map(qualified => {
+      let i = Stdlib_String.indexOfOpt(qualified, ".");
+      return {
+        qualified: qualified,
+        prefix: i !== undefined ? qualified.slice(0, i) + "/" + qualified.slice(i + 1 | 0, qualified.length) : qualified
+      };
+    }));
+    StorePrefixCollision$ReventlessCore.collisionsFor(declared).forEach(c => log.warn("Platform:plugins", undefined, StorePrefixCollision$ReventlessCore.collisionMessage(c)));
   };
   let pluginCmdTopicKey = PluginSpec$ReventlessCore.name + "AggrCmdTopic";
   let pluginEventTopicKey = PluginSpec$ReventlessCore.name + "AggrEventTopic";
@@ -2500,6 +2509,14 @@ function Make($star) {
         }
       });
     });
+    let declared = Object.values(pluginStructuresStore.contents).flatMap(structure => Stdlib_Option.getOr(structure.requiredStores, []).map(qualified => {
+      let i = Stdlib_String.indexOfOpt(qualified, ".");
+      return {
+        qualified: qualified,
+        prefix: i !== undefined ? qualified.slice(0, i) + "/" + qualified.slice(i + 1 | 0, qualified.length) : qualified
+      };
+    }));
+    StorePrefixCollision$ReventlessCore.collisionsFor(declared).forEach(c => log.warn("Platform:plugins", undefined, StorePrefixCollision$ReventlessCore.collisionMessage(c)));
   };
   let pluginCmdTopicKey = PluginSpec$ReventlessCore.name + "AggrCmdTopic";
   let pluginEventTopicKey = PluginSpec$ReventlessCore.name + "AggrEventTopic";

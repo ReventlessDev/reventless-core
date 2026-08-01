@@ -865,6 +865,40 @@ module MakeWithConfig = (
           }
         })
     })
+
+    // Two plugins declaring one store name is refused by the deployed platform
+    // before it provisions anything. Local provisions no stores, so nothing here
+    // breaks — but this is the only place a developer meets the rule while the
+    // fix is still free: once a store has deployed, its minted refs are in an
+    // append-only event log and renaming it strands them. Hence a warning at
+    // composition, and the authoritative refusal at deploy.
+    let declared =
+      pluginStructuresStore.contents
+      ->Dict.valuesToArray
+      ->Array.flatMap(structure =>
+        structure.requiredStores
+        ->Option.getOr([])
+        ->Array.map(qualified => {
+          ReventlessCore.StorePrefixCollision.qualified,
+          // Local provisions no stores, so it has no prefix of its own — it
+          // restates the deployed rule (`{plugin}/{store}`) so the warning it
+          // gives matches the refusal a deploy would give. Reporting a collision
+          // the deployed platform does not have would be worse than silence.
+          prefix: switch qualified->String.indexOfOpt(".") {
+          | Some(i) =>
+            qualified->String.slice(~start=0, ~end=i) ++
+            "/" ++
+            qualified->String.slice(~start=i + 1, ~end=qualified->String.length)
+          | None => qualified
+          },
+        })
+      )
+    ReventlessCore.StorePrefixCollision.collisionsFor(~stores=declared)->Array.forEach(c =>
+      log.warn(
+        ~comp="Platform:plugins",
+        ReventlessCore.StorePrefixCollision.collisionMessage(c),
+      )
+    )
   }
 
   // Bus keys for the admin Plugin aggregate (name-keyed). ComponentType.toName maps

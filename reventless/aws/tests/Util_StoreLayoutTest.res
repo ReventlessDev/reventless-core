@@ -222,8 +222,21 @@ describe("Util_StoreLayout.bucketNameFor", () => {
 describe("Util_StoreLayout.keyPrefixFor", () => {
   // The assertion the whole dual-layout scheme rests on: a ref is
   // layout-independent, so the same declaration produces the same stored string
-  // on a per-store stack and a shared one.
-  testSync("the key prefix is the store name in both layouts", () =>
-    expect(Util_StoreLayout.keyPrefixFor(~store="productImages"))->toBe("productImages")
+  // on a per-store stack and a shared one. Plugin and store are both
+  // stack-invariant, so qualifying by plugin keeps that property.
+  testSync("the key prefix qualifies the store with its plugin", () =>
+    expect(Util_StoreLayout.keyPrefixFor(~plugin="Catalog", ~store="productImages"))->toBe(
+      "Catalog/productImages",
+    )
+  )
+
+  // The reason it is qualified: the prefix is a platform-global namespace (one
+  // distribution, one cache behavior per prefix), so two plugins declaring one
+  // store name were unroutable in EITHER layout until the plugin qualified them.
+  testSync("two plugins declaring one store name get distinct prefixes", () =>
+    expect(
+      Util_StoreLayout.keyPrefixFor(~plugin="Catalog", ~store="productImages") !=
+        Util_StoreLayout.keyPrefixFor(~plugin="Ordering", ~store="productImages"),
+    )->toBe(true)
   )
 })

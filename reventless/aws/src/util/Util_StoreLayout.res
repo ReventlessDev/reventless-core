@@ -109,20 +109,36 @@ let bucketNameFor = (~layout: t, ~stack: string, ~plugin: string, ~store: string
   }
 
 /**
-The prefix a store's object keys are rooted at — the store name, in **both**
+The prefix a store's object keys are rooted at — `{plugin}/{store}`, in **both**
 layouts.
 
-This is the property that keeps the two layouts one model rather than a fork.
-The presign service mints `{store}/{identity}{uuid}/{file}` either way, so the
-stored ref is `/{store}/…` regardless of which bucket sits behind it, and only
-the CDN origin differs. Refs live in an append-only event log: one that encoded
-its bucket layout would be environment-specific and unrewritable, so a prod dump
-restored into a PR stack would carry refs that cannot resolve.
+Layout-invariance is what keeps the two layouts one model rather than a fork.
+The presign service mints `{prefix}/{identity}/{uuid}/{file}` either way, so the
+stored ref is `/{prefix}/…` regardless of which bucket sits behind it, and only
+the CDN origin differs. Refs live in an append-only event log: a prefix that
+encoded its bucket layout would be environment-specific and unrewritable, so a
+prod dump restored into a PR stack would carry refs that cannot resolve. Plugin
+and store are stack-invariant, so qualifying by plugin costs none of that.
+
+Qualified because the prefix is a **platform-global** namespace: one distribution
+fronts every store bucket and takes one cache behavior per prefix, so a bare
+store name made two plugins declaring `productImages` unroutable — in either
+layout, since the per-store layout still lands both prefixes on the one
+distribution. Qualifying narrows uniqueness from "per platform" to "per plugin",
+which is what plugin isolation wants and what a platform composing plugins it
+did not author needs.
 
 The cost is a slightly redundant prefix inside a dedicated bucket
-(`catalog-productImages/productImages/…`). Take the redundancy.
+(`catalog-productImages/Catalog/productImages/…`). Take the redundancy.
+
+**Changing this string is breaking.** Minted refs are `/{prefix}/…` in an
+append-only event log, so objects written under an earlier prefix become
+unreachable and their refs unresolvable. There is deliberately no grandfathering
+machinery: a stack that predates a change to this function empties its stores
+(`seed:reset`, which wipes per plugin) and re-seeds. Carrying a permanent prefix
+set to spare a disposable stack one wipe is the worse trade.
 */
-let keyPrefixFor = (~store: string): string => store
+let keyPrefixFor = (~plugin: string, ~store: string): string => `${plugin}/${store}`
 
 /**
 Who serves the declared stores — and the answer is never "both".

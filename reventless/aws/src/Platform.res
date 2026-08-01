@@ -1537,6 +1537,30 @@ module MakeWithConfig = (
           : Array.concat(acc, [(plugin, store)])
       )
 
+    // Refuse two stores that cannot be told apart, BEFORE a single resource is
+    // created. Left to the deploy, the same collision surfaces as a CloudFront
+    // error about a duplicate path pattern — minutes in, naming a path pattern
+    // rather than the two plugins — and only after the intermixed objects and
+    // the over-broad presign grant have already been provisioned.
+    //
+    // Checked on the prefix, so it costs nothing to keep once prefixes are
+    // qualified: a qualified prefix simply stops colliding, while the check
+    // still guards any bare prefix that outlives the change.
+    switch ReventlessCore.StorePrefixCollision.collisionsFor(
+      ~stores=declaredStores->Array.map(((plugin, store)) => {
+        ReventlessCore.StorePrefixCollision.qualified: `${plugin}.${store}`,
+        prefix: Util_StoreLayout.keyPrefixFor(~plugin, ~store),
+      }),
+    ) {
+    | [] => ()
+    | collisions =>
+      JsError.throwWithMessage(
+        collisions
+        ->Array.map(ReventlessCore.StorePrefixCollision.collisionMessage)
+        ->Array.join("\n\n"),
+      )
+    }
+
     if declaredStores->Array.length > 0 {
       // The fail-open in `layoutFor` is only dangerous while it is silent: a
       // production stack that is not on the prod list gets the shared layout and
@@ -1567,7 +1591,7 @@ module MakeWithConfig = (
         ~plugin,
         ~store,
       )
-      let keyPrefix = Util_StoreLayout.keyPrefixFor(~store)
+      let keyPrefix = Util_StoreLayout.keyPrefixFor(~plugin, ~store)
       let bucket = switch storeBuckets->Dict.get(bucketName) {
       | Some(b) => b
       | None =>
