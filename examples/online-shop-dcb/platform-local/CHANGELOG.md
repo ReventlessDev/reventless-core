@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.169 (2026-08-01)
+
+### Features
+
+* **deps:** bump host-shell to 3.0.0-alpha.52 ([4a56549](https://github.com/ReventlessDev/reventless-core/commit/4a565497a8895a46fd28482e4495cfbaad6f86b5))
+
+
 # 1.0.0-alpha.168 (2026-08-01)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-platform-local

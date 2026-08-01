@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.252 (2026-08-01)
+
+### Bug Fixes
+
+* **aws:** let a dead letter be seen ([e64949b](https://github.com/ReventlessDev/reventless-core/commit/e64949bb3f4965cb8e6fc7a2f04971290ebe43bf))
+* **aws:** let the Function URL own CORS on the upload and geocoder services ([19d4b7f](https://github.com/ReventlessDev/reventless-core/commit/19d4b7f26f0925b7c659a1b37555e952bb7c7f46))
+### Features
+
+* **upload:** add the release half of the upload contract via the domain API ([448f887](https://github.com/ReventlessDev/reventless-core/commit/448f88714a5875be420f794a08d482fcf4ba8404))
+
+
 # 3.0.0-alpha.251 (2026-08-01)
 
 ### Bug Fixes

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.91 (2026-08-01)
+
+### Bug Fixes
+
+* **spec,core:** heal a missing scalar on read ([de9a98e](https://github.com/ReventlessDev/reventless-core/commit/de9a98ec5fe11ec19bef80626e99244d9c30a6b1))
+* **spec,core:** make the storageRef annotation optional, as its readers already are ([c8477c5](https://github.com/ReventlessDev/reventless-core/commit/c8477c5c34384b864c06716dc5896310629dc349))
+
+
 # 3.0.0-alpha.90 (2026-08-01)
 
 ### Features

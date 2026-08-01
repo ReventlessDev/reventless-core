@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.199 (2026-08-01)
+
+### Bug Fixes
+
+* **core:** don't flag js_nullable scalars in the required-scalar guard ([fb394a3](https://github.com/ReventlessDev/reventless-core/commit/fb394a3f556ffa6a95b1cf746cfd55ded8a5021a))
+* **spec,core:** heal a missing scalar on read ([de9a98e](https://github.com/ReventlessDev/reventless-core/commit/de9a98ec5fe11ec19bef80626e99244d9c30a6b1))
+* **spec,core:** make the storageRef annotation optional, as its readers already are ([c8477c5](https://github.com/ReventlessDev/reventless-core/commit/c8477c5c34384b864c06716dc5896310629dc349))
+### Features
+
+* **upload:** add the release half of the upload contract via the domain API ([448f887](https://github.com/ReventlessDev/reventless-core/commit/448f88714a5875be420f794a08d482fcf4ba8404))
+
+
 # 3.0.0-alpha.198 (2026-08-01)
 
 ### Bug Fixes
