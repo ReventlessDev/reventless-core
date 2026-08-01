@@ -44,7 +44,19 @@ export const collect = (schema) => {
       case "union": {
         // A union of literals is an enum: absent heals to the first variant.
         if ((s.anyOf || []).every((m) => m.const !== undefined || m.type === "null")) return;
-        for (const m of s.anyOf || []) if (m.type !== "null") walk(m, path);
+        const nullable = !!(s.has && s.has.null);
+        for (const m of s.anyOf || []) {
+          if (m.type === "null") continue;
+          // A SCALAR arm of a `T | null` union heals to null — that is the
+          // `js_nullable` encoding the rule asks authors to reach for, so
+          // reporting it would flag the recommended shape.
+          if (nullable && SCALARS.includes(m.type)) continue;
+          // Object and array arms are still walked, nullable or not: when an old
+          // payload happens to carry the parent, a scalar added inside it must
+          // still be invented. `requiredStoreDeclarations[].annotation` — a
+          // required string inside a nullable array — is exactly that case.
+          walk(m, path);
+        }
         return;
       }
       default: {
