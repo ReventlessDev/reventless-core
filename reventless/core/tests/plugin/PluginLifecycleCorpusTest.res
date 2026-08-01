@@ -22,18 +22,11 @@
 
 open JestGlobals
 
-type corpusEntry = {
-  name: string,
-  event: string,
-  data: dict<JSON.t>,
-}
-
-@module("../fixtures/plugin-lifecycle/corpus.mjs")
-external entries: array<corpusEntry> = "entries"
+let entries = PluginLifecycleCorpus.entries
 
 // Mirrors EventLog_Operations.decodeEvent: reassemble the stored `{event, data}`
 // pair into a variant and decode it — the exact call replay makes.
-let decodeStored = (entry: corpusEntry) =>
+let decodeStored = (entry: PluginLifecycleCorpus.entry) =>
   Message.combineMessage(entry.event, entry.data)->Message.decode(PluginSpec.eventSchema)
 
 describe("The stored plugin-lifecycle payload corpus", () => {

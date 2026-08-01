@@ -13,14 +13,19 @@
 
 open JestGlobals
 
-@module("./pluginDefinitionScalars.mjs")
-external collect: S.t<'a> => array<string> = "collect"
+let moduleUrl: string = %raw(`import.meta.url`)
 
-@module("./pluginDefinitionScalars.mjs")
-external golden: unit => array<string> = "golden"
+// The checked-in list. See the header of that file before changing it.
+let golden = () =>
+  NodeFs.readFileSync(
+    NodePath.dirname(NodeUrl.fileURLToPath(moduleUrl)) ++ "/pluginDefinitionRequiredScalars.txt",
+  )
+  ->String.split("\n")
+  ->Array.map(String.trim)
+  ->Array.filter(line => line != "" && !(line->String.startsWith("#")))
 
 describe("pluginDefinition's required scalar fields", () => {
-  let actual = collect(Reventless.Plugin.pluginDefinitionSchema)
+  let actual = PluginDefinitionScalars.collect(Reventless.Plugin.pluginDefinitionSchema)
   let expected = golden()
 
   testSync("the golden list is populated (an empty read would pass vacuously)", () =>

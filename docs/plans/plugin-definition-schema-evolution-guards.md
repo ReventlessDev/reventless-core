@@ -67,7 +67,8 @@ A required-scalar addition then turns into a red build naming the field and the 
 **Implemented.** [`PluginLifecycleCorpusTest.res`](../../reventless/core/tests/plugin/PluginLifecycleCorpusTest.res)
 over [`tests/fixtures/plugin-lifecycle/`](../../reventless/core/tests/fixtures/plugin-lifecycle/)
 — 5 payloads recovered from the deployed `Catalog` stream, spanning four shape generations,
-loaded through `corpus.mjs` and decoded exactly as replay does (`combineMessage` → `decode`).
+loaded through `PluginLifecycleCorpus.res` and decoded exactly as replay does
+(`combineMessage` → `decode`).
 Verified in both directions: before Phase 3 the two incident fixtures failed naming
 `["_0"]["structure"]["requiredStoreDeclarations"]["0"]["annotation"]`; after it, all 6 pass.
 
@@ -96,9 +97,19 @@ Phase 3 this is the only thing enforcing Goal 1 in CI.
 
 [`PluginDefinitionRequiredScalarsTest.res`](../../reventless/core/tests/plugin/PluginDefinitionRequiredScalarsTest.res)
 compares [`pluginDefinitionRequiredScalars.txt`](../../reventless/core/tests/plugin/pluginDefinitionRequiredScalars.txt)
-against a walk of the live schema; the reflection lives in `pluginDefinitionScalars.mjs` rather
-than `%raw`, per the repo rule on untyped reflection. Verified in both directions by perturbing
-the golden file — the failure reports `ADDED` / `REMOVED` by path.
+against a walk of the live schema in `PluginDefinitionScalars.res`. Verified in both directions
+by perturbing the golden file — the failure reports `ADDED` / `REMOVED` by path.
+
+**Both helpers are ReScript, not the companion `.mjs` this plan first prescribed.** The `.mjs`
+was proposed on the assumption that walking a sury schema is untyped reflection. It is not: sury
+publishes its schema as a `@tag("type")` variant, `item` / `has` / `anyOf` are all typed, and
+`SchemaType.res` already walks it that way — so the port needs neither `%raw` nor `Obj.magic`.
+The reason to prefer it is not tidiness: an untyped walker degrades *silently*. If sury's shape
+changes, the JS version collects `[]`, the golden list matches nothing, and the guard passes while
+checking nothing — which is why the first version needed an explicit "the list is populated" test
+to cover the possibility. In ReScript that same drift is a compile error. For a guard whose only
+job is to fail at the right moment, that is the difference that matters. (`NodeFs` covers the file
+reads; `import.meta.url` follows the repo's existing pattern for resolving a module's own path.)
 
 **Collector bug, found by using it (2026-08-01).** The first version walked into the non-null arm
 of a `T | null` union, so a `js_nullable` scalar was reported exactly like a required one. The
@@ -188,8 +199,8 @@ emits a `Console.warn` naming every invented path and value:
 
 Schema-derived heals stay silent — only invented values are worth a line. The `%raw` → companion
 `.mjs` move was **not** taken: the diff was already substantial and the two changes are unrelated,
-so bundling them would have obscured the behavioural one. The new reflection added in Phase 1b does
-follow the rule (`pluginDefinitionScalars.mjs`).
+so bundling them would have obscured the behavioural one. The new reflection added in Phase 1b is written in
+typed ReScript (`PluginDefinitionScalars.res`), pattern-matching sury's own variant.
 
 ## Phase 4 — Write the rule down
 
@@ -290,15 +301,22 @@ Phases 1–4 are independently landable and independently valuable; none blocks 
 
 ### Result (2026-08-01)
 
-- Root `pnpm run build` warning-free; `pnpm exec jest` 286 suites / 2521 tests green.
-- Phase 1a verified both directions (red before Phase 3 naming the field, green after).
+- Root `pnpm run build` warning-free; `pnpm exec jest` 287 suites / 2540 tests green;
+  `pnpm run test:projects` clean.
+- Phase 1a verified both directions (red before Phase 3 naming the field, green after; and a
+  fixture corrupted beyond what healing absorbs still fails, naming the sury path).
 - Phase 1b verified both directions by perturbing the golden file (`ADDED` / `REMOVED` reported).
 - Phase 3's strict fast path is untouched by construction — the fill runs only after a throw.
 - Phase 2 verified by unit suites only. The runtime claim (a dead letter now raises depth and
   `Errors` instead of vanishing) needs a deploy to confirm and is **not** yet observed on AWS.
 
-**Unrelated pre-existing failure, left alone**: `pnpm run test:projects` fails with
-`reventless-seed: discovers 0 suites`. `448f88714` deleted that package's tests and HEAD tracks
-none, so the check is red independently of this work. Fixing it means either restoring tests or
-adding a `KNOWN_EMPTY` entry per [ci-unit-test-coverage-gap.md](ci-unit-test-coverage-gap.md) —
-a call for whoever owns that gap, not this plan.
+Follow-ons landed after the phases above, each recorded in its own section: the Phase 1b collector
+bug and its ~30 false positives; `annotation` re-shaped to `js_nullable`, which is what took the
+corpus to zero fabricated values; and both guard helpers ported from `.mjs` to typed ReScript.
+
+**Adjacent failure, since fixed**: `pnpm run test:projects` was failing with
+`reventless-seed: discovers 0 suites` — `448f88714` had deleted that package's only test along with
+the feature it covered, and a jest project that discovers nothing passes silently. Fixed by
+covering `Seed_Random`, whose contract is reproducibility, rather than by adding a `KNOWN_EMPTY`
+exemption (`072db2814`). Its transport-facing modules remain uncovered; that needs a fake transport
+and is separate work.

@@ -4,7 +4,7 @@ Real `Plugin` aggregate event payloads, exactly as they were written to a deploy
 kept so that every one of them still decodes against the **current** `PluginSpec.eventSchema`.
 
 Read by [`PluginLifecycleCorpusTest.res`](../../plugin/PluginLifecycleCorpusTest.res) through
-[`corpus.mjs`](./corpus.mjs).
+[`PluginLifecycleCorpus.res`](../../plugin/PluginLifecycleCorpus.res).
 
 ## Never regenerate these files
 
