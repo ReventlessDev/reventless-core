@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.144 (2026-08-01)
+
+### Bug Fixes
+
+* **gwt:** compare produced events by their encoded wire form ([f773062](https://github.com/ReventlessDev/reventless-core/commit/f773062bc8ea18bf12e5611fcbad81aa4f1bd1b2))
+
+
 # 1.0.0-alpha.143 (2026-07-31)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt

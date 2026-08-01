@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.171 (2026-08-01)
+
+### Features
+
+* **spec:** add DateRange semantic type ([d85b6cc](https://github.com/ReventlessDev/reventless-core/commit/d85b6cc18241644905241df2abd99949dd758059))
+
+
 # 1.0.0-alpha.170 (2026-07-31)
 
 ### Features
