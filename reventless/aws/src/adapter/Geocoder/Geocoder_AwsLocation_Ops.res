@@ -60,14 +60,16 @@ type response = {
   body: string,
 }
 
-// Permissive CORS so the browser demo can call the endpoint from any origin.
-let corsHeaders = () =>
-  Dict.fromArray([
-    ("content-type", "application/json"),
-    ("access-control-allow-origin", "*"),
-    ("access-control-allow-methods", "GET,OPTIONS"),
-    ("access-control-allow-headers", "*"),
-  ])
+// CORS belongs to the Function URL's own `cors` configuration and to nothing
+// else. AWS injects the allow-origin header itself whenever the request carries
+// an `Origin`, so a handler that also sets one sends the header *twice* — and a
+// browser rejects `Access-Control-Allow-Origin: *, *` outright, failing every
+// cross-origin call while leaving `curl` (which sends no `Origin`, so AWS adds
+// nothing) working perfectly.
+//
+// It is also the only way `~corsOrigins` can mean anything: a hardcoded `*`
+// here would keep answering `*` for a deployment that narrowed the allow-list.
+let jsonHeaders = () => Dict.fromArray([("content-type", "application/json")])
 
 // Pull `q` from the parsed query-string params, falling back to the raw string.
 let readQueryParam = (event: functionUrlEvent): option<string> =>
@@ -93,7 +95,7 @@ let handler = async (event: functionUrlEvent): response => {
     let indexName = getEnv("PLACE_INDEX_NAME")->Option.getOr("")
     let q = readQueryParam(event)->Option.getOr("")
     if indexName == "" || q == "" {
-      {statusCode: 200, headers: corsHeaders(), body: "[]"}
+      {statusCode: 200, headers: jsonHeaders(), body: "[]"}
     } else {
       let client = makeLocationClient()
       let resp = await client->send(
@@ -124,13 +126,13 @@ let handler = async (event: functionUrlEvent): response => {
         )
       {
         statusCode: 200,
-        headers: corsHeaders(),
+        headers: jsonHeaders(),
         body: results->JSON.Encode.array->JSON.stringify,
       }
     }
   } catch {
   | exn =>
     Console.error2("Geocoder: search failed", exn)
-    {statusCode: 200, headers: corsHeaders(), body: "[]"}
+    {statusCode: 200, headers: jsonHeaders(), body: "[]"}
   }
 }

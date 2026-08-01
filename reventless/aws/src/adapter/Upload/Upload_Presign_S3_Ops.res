@@ -59,13 +59,16 @@ type response = {
   body: string,
 }
 
-let corsHeaders = () =>
-  Dict.fromArray([
-    ("content-type", "application/json"),
-    ("access-control-allow-origin", "*"),
-    ("access-control-allow-methods", "POST,OPTIONS"),
-    ("access-control-allow-headers", "*"),
-  ])
+// CORS belongs to the Function URL's own `cors` configuration and to nothing
+// else. AWS injects the allow-origin header itself whenever the request carries
+// an `Origin`, so a handler that also sets one sends the header *twice* — and a
+// browser rejects `Access-Control-Allow-Origin: *, *` outright, failing every
+// cross-origin call while leaving `curl` (which sends no `Origin`, so AWS adds
+// nothing) working perfectly.
+//
+// It is also the only way `~corsOrigins` can mean anything: a hardcoded `*`
+// here would keep answering `*` for a deployment that narrowed the allow-list.
+let jsonHeaders = () => Dict.fromArray([("content-type", "application/json")])
 
 // Decode a JWT payload's `sub` claim without verifying the signature.
 let decodeJwtSub = (header: string): option<string> =>
@@ -132,7 +135,7 @@ let handler = async (event: functionUrlEvent): response => {
 
     {
       statusCode: 200,
-      headers: corsHeaders(),
+      headers: jsonHeaders(),
       body: Dict.fromArray([
         ("uploadUrl", JSON.Encode.string(uploadUrl)),
         ("storageRef", JSON.Encode.string(storageRef)),
@@ -145,7 +148,7 @@ let handler = async (event: functionUrlEvent): response => {
     Console.error2("UploadPresign: presign failed", exn)
     {
       statusCode: 400,
-      headers: corsHeaders(),
+      headers: jsonHeaders(),
       body: Dict.fromArray([("error", JSON.Encode.string("presign_failed"))])
       ->JSON.Encode.object
       ->JSON.stringify,

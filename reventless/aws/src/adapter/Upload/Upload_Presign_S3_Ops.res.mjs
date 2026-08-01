@@ -14,25 +14,11 @@ function getEnv(k) {
   }
 }
 
-function corsHeaders() {
-  return Object.fromEntries([
-    [
+function jsonHeaders() {
+  return Object.fromEntries([[
       "content-type",
       "application/json"
-    ],
-    [
-      "access-control-allow-origin",
-      "*"
-    ],
-    [
-      "access-control-allow-methods",
-      "POST,OPTIONS"
-    ],
-    [
-      "access-control-allow-headers",
-      "*"
-    ]
-  ]);
+    ]]);
 }
 
 function decodeJwtSub(header) {
@@ -84,7 +70,10 @@ async function handler(event) {
     let storageRef = `/` + key;
     return {
       statusCode: 200,
-      headers: corsHeaders(),
+      headers: Object.fromEntries([[
+          "content-type",
+          "application/json"
+        ]]),
       body: JSON.stringify(Object.fromEntries([
         [
           "uploadUrl",
@@ -101,7 +90,10 @@ async function handler(event) {
     console.error("UploadPresign: presign failed", exn);
     return {
       statusCode: 400,
-      headers: corsHeaders(),
+      headers: Object.fromEntries([[
+          "content-type",
+          "application/json"
+        ]]),
       body: JSON.stringify(Object.fromEntries([[
           "error",
           "presign_failed"
@@ -112,7 +104,7 @@ async function handler(event) {
 
 export {
   getEnv,
-  corsHeaders,
+  jsonHeaders,
   decodeJwtSub,
   identityPrefix,
   handler,

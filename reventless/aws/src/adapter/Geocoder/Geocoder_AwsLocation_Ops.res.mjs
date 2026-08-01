@@ -12,25 +12,11 @@ function getEnv(k) {
   }
 }
 
-function corsHeaders() {
-  return Object.fromEntries([
-    [
+function jsonHeaders() {
+  return Object.fromEntries([[
       "content-type",
       "application/json"
-    ],
-    [
-      "access-control-allow-origin",
-      "*"
-    ],
-    [
-      "access-control-allow-methods",
-      "GET,OPTIONS"
-    ],
-    [
-      "access-control-allow-headers",
-      "*"
-    ]
-  ]);
+    ]]);
 }
 
 function readQueryParam(event) {
@@ -59,7 +45,10 @@ async function handler(event) {
     if (indexName === "" || q === "") {
       return {
         statusCode: 200,
-        headers: corsHeaders(),
+        headers: Object.fromEntries([[
+            "content-type",
+            "application/json"
+          ]]),
         body: "[]"
       };
     }
@@ -101,7 +90,10 @@ async function handler(event) {
     });
     return {
       statusCode: 200,
-      headers: corsHeaders(),
+      headers: Object.fromEntries([[
+          "content-type",
+          "application/json"
+        ]]),
       body: JSON.stringify(results)
     };
   } catch (raw_exn) {
@@ -109,7 +101,10 @@ async function handler(event) {
     console.error("Geocoder: search failed", exn);
     return {
       statusCode: 200,
-      headers: corsHeaders(),
+      headers: Object.fromEntries([[
+          "content-type",
+          "application/json"
+        ]]),
       body: "[]"
     };
   }
@@ -117,7 +112,7 @@ async function handler(event) {
 
 export {
   getEnv,
-  corsHeaders,
+  jsonHeaders,
   readQueryParam,
   handler,
 }
