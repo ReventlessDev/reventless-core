@@ -37,6 +37,10 @@ function get(key) {
   return objects[key];
 }
 
+function $$delete(key) {
+  Stdlib_Dict.$$delete(objects, key);
+}
+
 function reset() {
   Object.keys(objects).forEach(k => Stdlib_Dict.$$delete(objects, k));
   servedPrefixes.contents = [defaultUploadPrefix];
@@ -50,6 +54,7 @@ export {
   servedKey,
   put,
   get,
+  $$delete,
   reset,
 }
 /* No side effect */

@@ -43,6 +43,10 @@ let make = (~config: config): t => {config, token: None}
     Seed.Upload) can authenticate side-channel requests with the same identity. */
 let currentToken = (t: t): option<string> => t.token
 
+/** The GraphQL endpoint this client targets — so `Seed.Upload` can resolve a
+    relative presigned `uploadUrl` against the same origin. */
+let endpoint = (t: t): string => t.config.endpoint
+
 /** Injects a bearer obtained out-of-band (e.g. a Cognito id token), instead of
     minting one via `login`. Provider-agnostic: the harness only cares that the
     token is a valid bearer for `endpoint`. */

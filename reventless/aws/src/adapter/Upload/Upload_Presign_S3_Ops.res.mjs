@@ -2,7 +2,11 @@
 
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Nodecrypto from "node:crypto";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_Float from "@rescript/runtime/lib/es6/Stdlib_Float.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as ClientS3 from "@aws-sdk/client-s3";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as S3RequestPresigner from "@aws-sdk/s3-request-presigner";
@@ -14,99 +18,223 @@ function getEnv(k) {
   }
 }
 
-function jsonHeaders() {
-  return Object.fromEntries([[
-      "content-type",
-      "application/json"
-    ]]);
-}
-
-function decodeJwtSub(header) {
-  try {
-    let token = header.startsWith("Bearer ") ? header.slice(7, header.length) : header;
-    let payload = token.split(".")[1];
-    if (payload === undefined) {
-      return;
-    }
-    let base64 = payload.replaceAll("-", "+").replaceAll("_", "/");
-    let obj = JSON.parse(Buffer.from(base64, "base64").toString("utf8"));
-    if (typeof obj === "object" && obj !== null && !Array.isArray(obj)) {
-      return Stdlib_Option.flatMap(obj["sub"], Stdlib_JSON.Decode.string);
-    } else {
-      return;
-    }
-  } catch (exn) {
+function decodeStore(json) {
+  if (typeof json !== "object" || json === null || Array.isArray(json)) {
     return;
   }
+  let match = Stdlib_Option.flatMap(json["bucket"], Stdlib_JSON.Decode.string);
+  let match$1 = Stdlib_Option.flatMap(json["prefix"], Stdlib_JSON.Decode.string);
+  if (match !== undefined && match$1 !== undefined) {
+    return {
+      bucket: match,
+      prefix: match$1
+    };
+  }
 }
 
-function identityPrefix(event) {
-  let authHeader = Stdlib_Option.flatMap(event.headers, h => Stdlib_Option.orElse(h["authorization"], h["Authorization"]));
-  let sub = Stdlib_Option.flatMap(authHeader, decodeJwtSub);
-  if (sub !== undefined) {
-    return sub + `/`;
+function loadStores() {
+  let match = Stdlib_Option.map(getEnv("UPLOAD_STORES"), s => JSON.parse(s));
+  if (match !== undefined) {
+    if (typeof match === "object" && match !== null && !Array.isArray(match)) {
+      return Object.fromEntries(Stdlib_Array.filterMap(Object.entries(match), param => {
+        let k = param[0];
+        return Stdlib_Option.map(decodeStore(param[1]), c => [
+          k,
+          c
+        ]);
+      }));
+    } else {
+      return {};
+    }
   } else {
-    return "";
+    return {};
   }
+}
+
+function windowMs() {
+  return Stdlib_Option.getOr(Stdlib_Option.flatMap(getEnv("RELEASE_WINDOW_SECONDS"), Stdlib_Float.fromString), 900) * 1000;
+}
+
+function scopeCheck(key, sub, servedPrefix) {
+  if (sub === "") {
+    return {
+      TAG: "Error",
+      _0: "unauthenticated"
+    };
+  } else if (key.startsWith(servedPrefix + `/`)) {
+    if (key.startsWith(servedPrefix + `/` + sub + `/`)) {
+      return {
+        TAG: "Ok",
+        _0: undefined
+      };
+    } else {
+      return {
+        TAG: "Error",
+        _0: "not_yours"
+      };
+    }
+  } else {
+    return {
+      TAG: "Error",
+      _0: "not_in_store"
+    };
+  }
+}
+
+function ageOk(lastModifiedMs, nowMs, windowMs) {
+  if (lastModifiedMs !== undefined) {
+    return nowMs - lastModifiedMs <= windowMs;
+  } else {
+    return true;
+  }
+}
+
+function decideRelease(key, sub, servedPrefix, lastModifiedMs, nowMs, windowMs) {
+  let reason = scopeCheck(key, sub, servedPrefix);
+  if (reason.TAG === "Ok") {
+    if (ageOk(lastModifiedMs, nowMs, windowMs)) {
+      return "Released";
+    } else {
+      return {
+        TAG: "Refused",
+        _0: "too_old"
+      };
+    }
+  } else {
+    return {
+      TAG: "Refused",
+      _0: reason._0
+    };
+  }
+}
+
+function ticket(uploadUrl, storageRef) {
+  return Object.fromEntries([
+    [
+      "uploadUrl",
+      uploadUrl
+    ],
+    [
+      "storageRef",
+      storageRef
+    ]
+  ]);
+}
+
+function releaseResult(released, reason) {
+  return Object.fromEntries([
+    [
+      "released",
+      released
+    ],
+    [
+      "reason",
+      Stdlib_Option.mapOr(reason, null, prim => prim)
+    ]
+  ]);
+}
+
+function keyOfRef(storageRef) {
+  if (storageRef.startsWith("/")) {
+    return storageRef.slice(1, storageRef.length);
+  } else {
+    return storageRef;
+  }
+}
+
+async function headLastModifiedMs(client, bucket, key) {
+  try {
+    let out = await client.send(new ClientS3.HeadObjectCommand({
+      Bucket: bucket,
+      Key: key
+    }));
+    return Stdlib_Option.map(out.LastModified, d => d.getTime());
+  } catch (raw_exn) {
+    let exn = Primitive_exceptions.internalToException(raw_exn);
+    let match = Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.name);
+    if (match !== undefined) {
+      switch (match) {
+        case "NoSuchKey" :
+        case "NotFound" :
+          return;
+        default:
+          throw exn;
+      }
+    } else {
+      throw exn;
+    }
+  }
+}
+
+async function handlePresign(client, bucket, servedPrefix, sub, args) {
+  if (sub === "") {
+    Stdlib_JsError.throwWithMessage("unauthenticated");
+  }
+  let fileName = Stdlib_Option.getOr(args.fileName, "upload");
+  let key = servedPrefix + `/` + sub + `/` + Nodecrypto.randomUUID() + `/` + fileName;
+  let command = new ClientS3.PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    ContentType: args.contentType
+  });
+  let uploadUrl = await S3RequestPresigner.getSignedUrl(client, command, {
+    expiresIn: 300
+  });
+  return ticket(uploadUrl, `/` + key);
+}
+
+async function handleRelease(client, bucket, servedPrefix, sub, args) {
+  let key = keyOfRef(Stdlib_Option.getOr(args.storageRef, ""));
+  let reason = scopeCheck(key, sub, servedPrefix);
+  if (reason.TAG !== "Ok") {
+    return releaseResult(false, reason._0);
+  }
+  let lastModifiedMs = await headLastModifiedMs(client, bucket, key);
+  let reason$1 = decideRelease(key, sub, servedPrefix, lastModifiedMs, Date.now(), windowMs());
+  if (typeof reason$1 === "object") {
+    return releaseResult(false, reason$1._0);
+  }
+  await client.send(new ClientS3.DeleteObjectCommand({
+    Bucket: bucket,
+    Key: key
+  }));
+  return releaseResult(true, undefined);
 }
 
 async function handler(event) {
-  try {
-    let bucket = Stdlib_Option.getOr(getEnv("UPLOAD_BUCKET"), "");
-    let parsed = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(JSON.parse(Stdlib_Option.getOr(event.body, "{}"))), {});
-    let fileName = Stdlib_Option.getOr(Stdlib_Option.flatMap(parsed["fileName"], Stdlib_JSON.Decode.string), "upload");
-    let contentType = Stdlib_Option.flatMap(parsed["contentType"], Stdlib_JSON.Decode.string);
-    let servedPrefix = Stdlib_Option.getOr(getEnv("SERVED_PREFIX"), "uploads");
-    let key = servedPrefix + `/` + identityPrefix(event) + Nodecrypto.randomUUID() + `/` + fileName;
-    let client = new ClientS3.S3Client();
-    let command = new ClientS3.PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      ContentType: contentType
-    });
-    let uploadUrl = await S3RequestPresigner.getSignedUrl(client, command, {
-      expiresIn: 300
-    });
-    let storageRef = `/` + key;
-    return {
-      statusCode: 200,
-      headers: Object.fromEntries([[
-          "content-type",
-          "application/json"
-        ]]),
-      body: JSON.stringify(Object.fromEntries([
-        [
-          "uploadUrl",
-          uploadUrl
-        ],
-        [
-          "storageRef",
-          storageRef
-        ]
-      ]))
-    };
-  } catch (raw_exn) {
-    let exn = Primitive_exceptions.internalToException(raw_exn);
-    console.error("UploadPresign: presign failed", exn);
-    return {
-      statusCode: 400,
-      headers: Object.fromEntries([[
-          "content-type",
-          "application/json"
-        ]]),
-      body: JSON.stringify(Object.fromEntries([[
-          "error",
-          "presign_failed"
-        ]]))
-    };
+  let stores = loadStores();
+  let args = Stdlib_Option.getOr(event.arguments, {});
+  let sub = Stdlib_Option.getOr(Stdlib_Option.flatMap(event.identity, i => i.sub), "");
+  let storeKey = Stdlib_Option.getOr(args.store, "");
+  let match = stores[storeKey];
+  if (match === undefined) {
+    return Stdlib_JsError.throwWithMessage("unknown_store");
+  }
+  let prefix = match.prefix;
+  let bucket = match.bucket;
+  let client = new ClientS3.S3Client();
+  let match$1 = Stdlib_Option.getOr(event.operation, "presign");
+  if (match$1 === "release") {
+    return await handleRelease(client, bucket, prefix, sub, args);
+  } else {
+    return await handlePresign(client, bucket, prefix, sub, args);
   }
 }
 
 export {
   getEnv,
-  jsonHeaders,
-  decodeJwtSub,
-  identityPrefix,
+  decodeStore,
+  loadStores,
+  windowMs,
+  scopeCheck,
+  ageOk,
+  decideRelease,
+  ticket,
+  releaseResult,
+  keyOfRef,
+  headLastModifiedMs,
+  handlePresign,
+  handleRelease,
   handler,
 }
 /* node:crypto Not a pure module */

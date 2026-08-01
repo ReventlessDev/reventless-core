@@ -67,7 +67,6 @@ type objectStoreEndpoint = {
   // only known after the bucket resolves — and a plain string here is exactly
   // how this shipped exporting a bucket name that no ARN matches.
   bucketName: Pulumi.Output.t<string>,
-  uploadUrl: Pulumi.Output.t<string>,
   // Public base URL the store is served from, when the platform serves it
   // itself. `None` when a host-UI bundle is deployed — there the shell's own
   // origin serves the store same-origin and a relative `/{prefix}/…` resolves
@@ -170,9 +169,15 @@ module MakeWithConfig = (
   // "Relay node resolution" section of the merged-api plan (never resolved on
   // any deployed AWS platform, zero consumers; the Node interface and global
   // IDs stay).
+  // The upload service (route B) lives on the domain base, not the Admin-gated admin
+  // base: `Upload_Presign`/`Upload_Release` take the domain API's default
+  // `AllowAuthenticated` auth so any authenticated user can mint/release their own
+  // uploads. See [docs/plans/upload-release-path.md] § "Which API". (Split mode only —
+  // unified mode carries the admin base here instead; it declares no stores in practice,
+  // so the upload resolvers below are never created there.)
   let domainBaseFragment = ReventlessCore.GraphQL_Stitcher.encode({
-    types: [],
-    mutations: [],
+    types: ReventlessCore.Platform_AdminApi.uploadTypes,
+    mutations: ReventlessCore.Platform_AdminApi.uploadMutationFields,
     queries: ["  Platform_ping: String"],
     subscriptions: [],
     subscriptionSources: [],
@@ -1585,17 +1590,14 @@ module MakeWithConfig = (
         b
       }
       let storeHandle = bucket->Capability_ObjectStore_S3.underPrefix(~keyPrefix)
-      // One presign service per store, scoped to that store's own prefix.
-      let presign = Upload_Presign_S3.make(
-        ~name=`UploadPresign-${plugin}-${store}`,
-        ~bucketName=storeHandle.bucketName,
-        ~servedPrefix=storeHandle.keyPrefix,
-      )
       // `bucketName` is the layout's *logical* name and groups the served view
       // below; `storeHandle.bucketName` is the physical one Pulumi resolves, and
       // is what a consumer needs to build an ARN. Carrying both is the point —
       // they are different strings and only one of them exists in S3.
-      (`${plugin}.${store}`, keyPrefix, bucketName, storeHandle.bucketName, presign.url)
+      //
+      // Presigning is no longer per store: one platform-API Upload service (below)
+      // covers every declared store, keyed by the qualified `{plugin}.{store}` name.
+      (`${plugin}.${store}`, keyPrefix, bucketName, storeHandle.bucketName)
     })
 
     // Group the served view by bucket: one origin and one bucket policy per
@@ -1606,7 +1608,7 @@ module MakeWithConfig = (
       ->Option.map(b => {
         ReventlessInfra.Platform.id: bucketName,
         prefixes: declaredStoreServices
-        ->Array.filterMap(((_, prefix, bn, _, _)) => bn == bucketName ? Some(prefix) : None),
+        ->Array.filterMap(((_, prefix, bn, _)) => bn == bucketName ? Some(prefix) : None),
         bucketId: b.bucketId,
         bucketArn: b.bucketArn,
         bucketRegionalDomainName: b.bucketRegionalDomainName,
@@ -1645,30 +1647,58 @@ module MakeWithConfig = (
       keyPrefix,
       _logicalBucketName,
       physicalBucketName,
-      uploadUrl,
     )) => {
       store,
       keyPrefix,
       bucketName: physicalBucketName->Pulumi.Output.fromInput,
-      uploadUrl,
       baseUrl: storeServingBaseUrl,
     })
     objectStoreEndpointsRef := declaredStoreEndpoints
+
+    // One domain-API Upload service (route B1) covers every declared store plus the
+    // legacy `hostUiBundle.uploadBucket`, keyed by the qualified `{plugin}.{store}` name
+    // the caller passes as the `store` argument. On the domain API (not the Admin-gated
+    // platform API — see the plan's "Which API" note) so any authenticated user can
+    // mint/release. Created here in the outer scope — not inside the `hostUiBundle`
+    // branch — because a platform whose UI ships from another stack still has declared
+    // stores that need presigning. `uploads` keys the legacy store, matching the prefix
+    // it has always served under.
+    let uploadServiceStores =
+      declaredStoreServices
+      ->Array.map(((qualified, keyPrefix, _logical, physicalBucketName)) => {
+        Upload_Presign_S3.qualified: qualified,
+        bucketName: physicalBucketName,
+        servedPrefix: keyPrefix,
+      })
+      ->Array.concat(
+        switch hostUiBundle->Option.flatMap(c => c.uploadBucket) {
+        | Some(store) => [
+            {
+              Upload_Presign_S3.qualified: store.keyPrefix,
+              bucketName: store.bucketName,
+              servedPrefix: store.keyPrefix,
+            },
+          ]
+        | None => []
+        },
+      )
+    if uploadServiceStores->Array.length > 0 {
+      let _uploadService = Upload_Presign_S3.make(
+        ~api=domainApi,
+        ~stores=uploadServiceStores,
+        ~opts={},
+      )
+    }
 
     // Exported unconditionally — the provisioning above already is. Their only
     // consumers used to sit inside `switch hostUiBundle`, which left a platform
     // whose UI ships from another stack holding stores it could not name.
     //
     // Omitted entirely when nothing is declared, so a deployment with no
-    // declared store keeps a byte-identical output set.
+    // declared store keeps a byte-identical output set. The presign endpoint is no
+    // longer exported — under route B the client calls the platform API's
+    // `Upload_Presign` mutation, so there is no per-store URL to publish.
     if declaredStoreEndpoints->Array.length > 0 {
-      Pulumi.Pulumi.export(
-        "uploadEndpoints",
-        declaredStoreEndpoints
-        ->Array.map(e => e.uploadUrl->Pulumi.Output.apply(u => (e.store, JSON.Encode.string(u))))
-        ->Pulumi.Output.all
-        ->Pulumi.Output.apply(pairs => pairs->Dict.fromArray->JSON.Encode.object),
-      )
       Pulumi.Pulumi.export(
         "objectStores",
         declaredStoreEndpoints
@@ -1826,27 +1856,11 @@ module MakeWithConfig = (
       | None => Pulumi.Output.make(None)
       }
 
-      // Optional public upload presign Function URL, provisioned against the
-      // configured store; its resolved URL becomes config.json's
-      // `uploadEndpoint`. No store ⇒ Output<None> ⇒ field omitted below.
-      let uploadEndpointOutput: Pulumi.Output.t<option<string>> = switch cfg.uploadBucket {
-      | Some(store) =>
-        Upload_Presign_S3.make(~bucketName=store.bucketName).url->Pulumi.Output.apply(u => Some(u))
-      | None => Pulumi.Output.make(None)
-      }
-
-      // Per-store presign endpoints, keyed by the store's qualified name. This
-      // is what lets an upload input bind to the store its field *declares*
-      // rather than inferring one from the field's name — the endpoint exists
-      // per store, so there is something concrete to bind to.
-      //
-      // `uploadEndpoint` (singular) stays as the legacy service's URL: a shell
-      // built before per-store binding reads it and is unaffected.
-      let storeUploadEndpointsOutput: Pulumi.Output.t<array<(string, string)>> =
-        declaredStoreServices
-        ->Array.map(((qualified, _, _, _, url)) => url->Pulumi.Output.apply(u => (qualified, u)))
-        ->Pulumi.Output.all
-
+      // Presign endpoints are no longer written to config.json: under route B the
+      // client calls the platform API's `Upload_Presign` mutation (reachable from
+      // `platformApiEndpoint`, already present) with the store it declares, so there
+      // is no per-store URL to publish. The store's *serving* base URL still travels
+      // in the `objectStores` stack output above.
       let configJsonContent =
         (
           (
@@ -1857,14 +1871,12 @@ module MakeWithConfig = (
           )->Pulumi.Output.all4,
           domainEventsEndpointOutput,
           geocoderEndpointOutput,
-          (uploadEndpointOutput, storeUploadEndpointsOutput)->Pulumi.Output.all2,
         )
-        ->Pulumi.Output.all4
+        ->Pulumi.Output.all3
         ->Pulumi.Output.apply(((
           (domainEp, platformEp, poolId, clientId),
           eventsEpOpt,
           geocoderEpOpt,
-          (uploadEpOpt, storeUploadEps),
         )) => {
           let fields = [
             ("apiEndpoint", JSON.Encode.string(domainEp)),
@@ -1897,29 +1909,7 @@ module MakeWithConfig = (
           | Some(ep) => Array.concat(withEvents, [("geocoderEndpoint", JSON.Encode.string(ep))])
           | None => withEvents
           }
-          let withUpload = switch uploadEpOpt {
-          | Some(ep) => Array.concat(withGeocoder, [("uploadEndpoint", JSON.Encode.string(ep))])
-          | None => withGeocoder
-          }
-          // Omitted entirely when nothing is declared, so a deployment without
-          // declared stores writes a byte-identical config.json.
-          let withStoreUploads = switch storeUploadEps {
-          | [] => withUpload
-          | eps =>
-            Array.concat(
-              withUpload,
-              [
-                (
-                  "uploadEndpoints",
-                  eps
-                  ->Array.map(((qualified, url)) => (qualified, JSON.Encode.string(url)))
-                  ->Dict.fromArray
-                  ->JSON.Encode.object,
-                ),
-              ],
-            )
-          }
-          withStoreUploads->Dict.fromArray->JSON.Encode.object->JSON.stringify
+          withGeocoder->Dict.fromArray->JSON.Encode.object->JSON.stringify
         })
 
       let _ = PulumiAws.S3.BucketObject.make(

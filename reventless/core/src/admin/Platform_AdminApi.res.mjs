@@ -71,6 +71,16 @@ let pluginStatusSubscriptionSource = {
   mutations: pluginStatusSubscriptionSource_mutations
 };
 
+let uploadTypes = [
+  `type Upload_Ticket {\n  uploadUrl: String!\n  storageRef: String!\n}`,
+  `type Upload_ReleaseResult {\n  released: Boolean!\n  reason: String\n}`
+];
+
+let uploadMutationFields = [
+  `  Upload_Presign(store: ID!, fileName: String!, contentType: String): Upload_Ticket`,
+  `  Upload_Release(store: ID!, storageRef: String!): Upload_ReleaseResult`
+];
+
 function baseFragment(cloner) {
   let base = GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries(cloner), PluginBaseFragment$ReventlessCore.queryEntries);
   let parts = GraphQL_Stitcher$ReventlessCore.decode(base);
@@ -108,6 +118,8 @@ export {
   pluginStatusMutationFields,
   pluginStatusSubscriptionField,
   pluginStatusSubscriptionSource,
+  uploadTypes,
+  uploadMutationFields,
   baseFragment,
 }
 /* cloneArgsSchema Not a pure module */

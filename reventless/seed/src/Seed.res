@@ -14,13 +14,12 @@ module Connect = Seed_Connect
 
 exception Failed = Seed_Types.Failed
 
-// A live target a data set seeds against: an authenticated client, the
-// deployment's upload endpoints (the legacy single service and the per-store
-// map, either of which may be empty), and a label.
+// A live target a data set seeds against: an authenticated client, whether uploads
+// are skipped this run, and a label. Uploads mint through the domain API's
+// `Upload_Presign` mutation on the client (route B), so no upload endpoint is carried.
 type connection = Seed_Connect.connection = {
   client: Seed_Client.t,
-  uploadEndpoint: string,
-  uploadEndpoints: dict<string>,
+  uploadsSkipped: bool,
   label: string,
 }
 

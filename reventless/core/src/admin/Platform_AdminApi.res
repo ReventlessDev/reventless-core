@@ -77,6 +77,29 @@ let pluginStatusSubscriptionSource: GraphQL_Stitcher.subscriptionSource = {
   mutations: ["Platform_PluginStatusChanged"],
 }
 
+// Upload service (route B): mint and release object-store uploads through the GraphQL
+// API instead of an anonymous Function URL, so AppSync's Cognito authorizer
+// authenticates the caller and the verified identity reaches the resolver. `store` is
+// the qualified `{plugin}.{store}` the caller declares; the resolver Lambda maps it to
+// a bucket/prefix. No subscription source — these are request/response operations, not
+// Source-C event fan-ins.
+//
+// These constants live here (next to the other cross-provider platform SDL constants)
+// but are deliberately NOT part of `baseFragment`: the admin base is Admin-group gated
+// (`injectAwsAuthAll(~group="Admin")`), and uploads are a regular authenticated-user
+// operation. They are added instead to the **domain** API's platform-owned base
+// (`domainBaseFragment` in the AWS/local Platform), which takes the default
+// `AllowAuthenticated` auth. See [docs/plans/upload-release-path.md] § "Which API".
+let uploadTypes = [
+  `type Upload_Ticket {\n  uploadUrl: String!\n  storageRef: String!\n}`,
+  `type Upload_ReleaseResult {\n  released: Boolean!\n  reason: String\n}`,
+]
+
+let uploadMutationFields = [
+  `  Upload_Presign(store: ID!, fileName: String!, contentType: String): Upload_Ticket`,
+  `  Upload_Release(store: ID!, storageRef: String!): Upload_ReleaseResult`,
+]
+
 let baseFragment = (~cloner: bool) => {
   let base = GraphQL_FragmentGenerator.generate(
     ~mutationEntries=mutationEntries(~cloner),

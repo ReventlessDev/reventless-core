@@ -1,32 +1,26 @@
-// Seed-time asset upload against the framework's presign-shaped upload contract.
+// Seed-time asset upload against the framework's upload contract (route B).
 //
-// One code path for both providers: the AWS `Upload_Presign_S3` Function URL and
-// the local dev upload route expose the SAME shape — POST `{fileName,contentType}`
-// → `{uploadUrl, storageRef}`, then PUT the bytes to `uploadUrl`. `uploadAsset`
-// resolves `Ok(storageRef)` — the same same-origin `/{prefix}/{key}` ref a command
-// stores and the UI renders.
+// Minting is a GraphQL mutation on the domain API — `Upload_Presign(store, fileName,
+// contentType)` — authenticated by the same bearer the seed already uses for commands
+// (no separate endpoint, no anonymous surface). `uploadAsset` issues it through the
+// shared `Seed_Client`, then PUTs the bytes to the returned `uploadUrl` and resolves
+// `Ok(storageRef)` — the same `/{prefix}/{key}` ref a command stores and the UI renders.
 //
-// The seed runs under Node, so the returned `uploadUrl` is resolved to an
-// absolute URL against the endpoint's origin: AWS returns an absolute presigned
-// S3 URL (unchanged), while the local route returns a same-origin relative
-// `/{prefix}/{key}` that Node's `fetch` cannot PUT to until it is made absolute.
-//
-// `uploadAsset` is the transport and takes a resolved endpoint. *Which* endpoint
-// an asset uses — a deployment now publishes one per declared store — is
-// `endpointFor` below, kept separate so the decision is testable without a
-// running presign service.
+// The seed runs under Node, so a relative `uploadUrl` (the local dev server returns a
+// same-origin `/{prefix}/{key}`) is resolved to an absolute URL against the client's
+// endpoint origin before the PUT; AWS returns an absolute presigned S3 URL (used as-is).
+// The PUT itself is unauthenticated — presigned on AWS, open on the local route.
 
 type fetchInit = {method: string, headers: dict<string>, body: string}
 type response
 
 @val external fetch: (string, fetchInit) => promise<response> = "fetch"
-@send external responseJson: response => promise<JSON.t> = "json"
 @send external responseText: response => promise<string> = "text"
 @get external responseOk: response => bool = "ok"
 @get external responseStatus: response => int = "status"
 
-// Resolve a possibly-relative URL against a base (WHATWG URL semantics: an
-// absolute `input` ignores `base`, a relative one is resolved against it).
+// Resolve a possibly-relative URL against a base (WHATWG URL semantics: an absolute
+// `input` ignores `base`, a relative one is resolved against it).
 type url
 @new external makeUrl: (string, string) => url = "URL"
 @get external urlHref: url => string = "href"
@@ -43,105 +37,50 @@ let asString = (json: JSON.t): option<string> =>
   | _ => None
   }
 
-/**
- * Which endpoint an asset destined for `store` uploads through:
- *
- *   declares a store with a matching endpoint  → that store's endpoint
- *   declares a store with no matching endpoint → the legacy single service
- *   declares no store                          → the legacy single service
- *   neither available                          → `None`
- *
- * `store` is the qualified `{plugin}.{store}` the platform keys its per-store
- * presign endpoints by. The two middle rows are what keep a deployment predating
- * per-store endpoints — and the local dev server, which serves one upload route
- * — working unchanged.
- *
- * These are the same four rows the AutoUI renderer resolves an upload field by.
- * Resolving one declaration by two different rules is how an asset lands in
- * another plugin's bucket with a 2xx and a plausible-looking ref, so a missing
- * key falls back to the legacy service rather than to some other store.
- */
-let endpointFor = (
-  ~store: option<string>=?,
-  ~uploadEndpoint: string,
-  ~uploadEndpoints: dict<string>,
-): option<string> => {
-  let legacy = uploadEndpoint == "" ? None : Some(uploadEndpoint)
-  switch store {
-  | Some(s) => uploadEndpoints->Dict.get(s)->Option.orElse(legacy)
-  | None => legacy
-  }
-}
+// Whether this run should skip uploads entirely. `SEED_SKIP_UPLOADS` seeds domain data
+// fast, or skips a broken/absent upload path without editing the data set.
+let uploadsSkipped = (): bool => Seed_Prompt.envValue("SEED_SKIP_UPLOADS")->Option.isSome
 
-/**
- * Why `endpointFor` resolved nothing — the message a data set reports when its
- * upload phase skips.
- *
- * "no upload endpoint" states a fact about the *deployment*; when the deployment
- * publishes endpoints the caller could not match, the fact is about the *client*
- * and that phrasing sends a reader to the bucket, the presign service and the
- * IAM policy, all of which are correct. So the three cases are distinguished and
- * the unmatched one names both the store it wanted and the keys it saw.
- */
-let unresolvedReason = (~store: option<string>=?, ~uploadEndpoints: dict<string>): string => {
-  let available = uploadEndpoints->Dict.keysToArray
-  switch (Seed_Prompt.envValue("SEED_SKIP_UPLOADS"), store, available) {
-  | (Some(_), _, _) => "SEED_SKIP_UPLOADS is set"
-  | (None, _, []) => "this deployment publishes no upload endpoint"
-  | (None, Some(s), keys) =>
-    `this deployment publishes upload endpoints for ${keys->Array.join(", ")}, none for "${s}"`
-  | (None, None, keys) =>
-    `this deployment publishes only per-store upload endpoints (${keys->Array.join(
-        ", ",
-      )}) and this upload names no store`
-  }
-}
-
-// A `fetch` that reports an unreachable endpoint as `Error` instead of throwing,
-// so the two-step upload can thread failures without exceptions.
+// A `fetch` that reports an unreachable endpoint as `Error` instead of throwing.
 let tryFetch = async (url: string, init: fetchInit): result<response, string> =>
   try Ok(await fetch(url, init)) catch {
   | _ => Error(`cannot reach ${url}`)
   }
 
 /**
- * Uploads `bytes` under `fileName`/`contentType` through `uploadEndpoint` and
+ * Uploads `bytes` under `fileName`/`contentType` into `store` (the qualified
+ * `{plugin}.{store}` the asset's field declares, e.g. `"Catalog.productImages"`) and
  * resolves `Ok(storageRef)` (the stored `/{prefix}/{key}` ref), or `Error(msg)`
- * describing the step that failed. `authToken`, when supplied, is sent as a
- * Bearer on the presign request (the endpoint decides whether it is required;
- * the PUT itself is unauthenticated — presigned on AWS, open locally).
+ * describing the step that failed. Mints through the domain API's `Upload_Presign`
+ * mutation on `client`, then PUTs the bytes to the returned `uploadUrl`.
  */
 let uploadAsset = async (
-  ~uploadEndpoint: string,
+  ~client: Seed_Client.t,
+  ~store: string,
   ~bytes: string,
   ~fileName: string,
   ~contentType: string,
-  ~authToken: option<string>=?,
 ): result<string, string> => {
-  let presignHeaders = Dict.fromArray([("content-type", "application/json")])
-  authToken->Option.forEach(t => presignHeaders->Dict.set("authorization", `Bearer ${t}`))
-  let presignBody = JSON.stringify(
-    JSON.Encode.object(
-      Dict.fromArray([
-        ("fileName", JSON.Encode.string(fileName)),
-        ("contentType", JSON.Encode.string(contentType)),
-      ]),
-    ),
-  )
+  // GraphQL string literals: JSON-quote the argument values (JSON string escaping is a
+  // superset-safe subset of GraphQL's for these ASCII-ish inputs).
+  let q = s => JSON.stringify(JSON.Encode.string(s))
+  let query = `mutation { r: Upload_Presign(store: ${q(store)}, fileName: ${q(fileName)}, contentType: ${q(contentType)}) { uploadUrl storageRef } }`
 
-  switch await tryFetch(uploadEndpoint, {method: "POST", headers: presignHeaders, body: presignBody}) {
-  | Error(m) => Error(`presign: ${m} — is the platform running?`)
-  | Ok(presignRes) if !(presignRes->responseOk) =>
-    let detail = await presignRes->responseText
-    Error(`presign failed with HTTP ${(presignRes->responseStatus)->Int.toString}: ${detail}`)
-  | Ok(presignRes) =>
-    let json = await presignRes->responseJson
+  let presign = try Ok(await Seed_Client.gql(client, ~query, ~label="Upload_Presign")) catch {
+  | Seed_Types.Failed(m) => Error(m)
+  | _ => Error("Upload_Presign: unexpected error")
+  }
+
+  switch presign {
+  | Error(m) => Error(`presign: ${m}`)
+  | Ok(data) =>
+    let r = data->field("r")->Option.getOr(JSON.Encode.null)
     switch (
-      json->field("uploadUrl")->Option.flatMap(asString),
-      json->field("storageRef")->Option.flatMap(asString),
+      r->field("uploadUrl")->Option.flatMap(asString),
+      r->field("storageRef")->Option.flatMap(asString),
     ) {
     | (Some(uploadUrl), Some(storageRef)) =>
-      let putUrl = urlHref(makeUrl(uploadUrl, uploadEndpoint))
+      let putUrl = urlHref(makeUrl(uploadUrl, Seed_Client.endpoint(client)))
       switch await tryFetch(
         putUrl,
         {method: "PUT", headers: Dict.fromArray([("content-type", contentType)]), body: bytes},
@@ -152,7 +91,7 @@ let uploadAsset = async (
         let detail = await putRes->responseText
         Error(`upload PUT failed with HTTP ${(putRes->responseStatus)->Int.toString}: ${detail}`)
       }
-    | _ => Error("presign response missing uploadUrl/storageRef")
+    | _ => Error("Upload_Presign response missing uploadUrl/storageRef")
     }
   }
 }

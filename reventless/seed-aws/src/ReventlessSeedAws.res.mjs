@@ -19,20 +19,6 @@ function asString(json) {
   }
 }
 
-function asStringDict(json) {
-  if (typeof json === "object" && json !== null && !Array.isArray(json)) {
-    return Object.fromEntries(Stdlib_Array.filterMap(Object.entries(json), param => {
-      let k = param[0];
-      return Stdlib_Option.map(asString(param[1]), s => [
-        k,
-        s
-      ]);
-    }));
-  } else {
-    return {};
-  }
-}
-
 function envForBackend(backend) {
   if (backend === undefined) {
     return;
@@ -166,23 +152,12 @@ function resolveField(envKey, fromSource, human) {
   };
 }
 
-function optionalField(envKey, fromSource) {
-  let v = Seed_Prompt$ReventlessSeed.envValue(envKey);
-  if (v !== undefined) {
-    return v;
-  } else {
-    return Stdlib_Option.getOr(fromSource, "");
-  }
-}
-
 function endpointsFrom(stack, source) {
   if (source.TAG === "HostShellConfig") {
     let cfg = source._0;
     let fromCfg = key => Stdlib_Option.flatMap(field(cfg, key), asString);
     return {
       graphql: resolveField("REVENTLESS_GRAPHQL_ENDPOINT", fromCfg("apiEndpoint"), "apiEndpoint"),
-      uploadEndpoint: optionalField("REVENTLESS_UPLOAD_ENDPOINT", fromCfg("uploadEndpoint")),
-      uploadEndpoints: Stdlib_Option.mapOr(field(cfg, "uploadEndpoints"), {}, asStringDict),
       cognitoRegion: resolveField("AWS_REGION", fromCfg("region"), "region"),
       cognitoClientId: resolveField("COGNITO_CLIENT_ID", fromCfg("cognitoClientId"), "cognitoClientId")
     };
@@ -208,8 +183,6 @@ function endpointsFrom(stack, source) {
   }
   return {
     graphql: tmp,
-    uploadEndpoint: optionalField("REVENTLESS_UPLOAD_ENDPOINT", undefined),
-    uploadEndpoints: Stdlib_Option.mapOr(field(outputs, "uploadEndpoints"), {}, asStringDict),
     cognitoRegion: resolveField("AWS_REGION", out("cognitoRegion"), "cognitoRegion"),
     cognitoClientId: resolveField("COGNITO_CLIENT_ID", out("cognitoUserPoolClientId"), "cognitoUserPoolClientId")
   };
@@ -313,14 +286,13 @@ function connect($staropt$star, stack, backend, param) {
     let backend$1 = url !== undefined ? url : backend;
     let stackName = await resolveStack(projectDir, backend$1, stack);
     let eps = await resolveEndpoints(projectDir, backend$1, stackName);
-    return await Seed_Connect$ReventlessSeed.make(stackName, eps.graphql, eps.uploadEndpoint, eps.uploadEndpoints, cognito(eps.cognitoRegion, eps.cognitoClientId), undefined);
+    return await Seed_Connect$ReventlessSeed.make(stackName, eps.graphql, cognito(eps.cognitoRegion, eps.cognitoClientId), undefined);
   };
 }
 
 export {
   field,
   asString,
-  asStringDict,
   envForBackend,
   pulumi,
   deployedStacks,
@@ -329,7 +301,6 @@ export {
   resolveStack,
   fetchConfig,
   resolveField,
-  optionalField,
   endpointsFrom,
   resolveEndpoints,
   cognito,

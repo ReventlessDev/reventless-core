@@ -18,11 +18,7 @@ let handleLogin = DomainGraphQL_Server$ReventlessLocal.handleLogin;
 
 let handleLogout = DomainGraphQL_Server$ReventlessLocal.handleLogout;
 
-let uploadPresignPath = DomainGraphQL_Server$ReventlessLocal.uploadPresignPath;
-
 let _corsWriteHeaders = DomainGraphQL_Server$ReventlessLocal._corsWriteHeaders;
-
-let handleUploadPresign = DomainGraphQL_Server$ReventlessLocal.handleUploadPresign;
 
 let handleObjectPut = DomainGraphQL_Server$ReventlessLocal.handleObjectPut;
 
@@ -137,9 +133,7 @@ export {
   _loginRejected,
   handleLogin,
   handleLogout,
-  uploadPresignPath,
   _corsWriteHeaders,
-  handleUploadPresign,
   handleObjectPut,
   handleObjectGet,
   _isInvalidBearer,

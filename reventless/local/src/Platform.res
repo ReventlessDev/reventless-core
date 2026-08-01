@@ -1901,6 +1901,9 @@ module MakeWithConfig = (
       ~sdlFields=ReventlessCore.GraphQL_Stitcher.relayBaseQueries,
       ~resolvers=Dict.make(),
     )
+    // Upload service (route B) on the domain server — mirrors adding it to
+    // `domainBaseFragment` on AWS.
+    LocalUploadResolvers.register(DomainGraphQL_Server.asInterface)
     // In split mode, inject Relay base types (Node interface, PageInfo) into the platform
     // server so SDL fragments compile. The node(id) query is Domain-only — the Platform
     // API is consumed by admin tools and agents, not Relay clients.

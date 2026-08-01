@@ -36,18 +36,6 @@ let asString = (json: JSON.t): option<string> =>
   | _ => None
   }
 
-// Non-string members are dropped rather than failing the whole map: one
-// malformed entry should not cost a run every endpoint it could have used.
-let asStringDict = (json: JSON.t): dict<string> =>
-  switch json {
-  | Object(obj) =>
-    obj
-    ->Dict.toArray
-    ->Array.filterMap(((k, v)) => v->asString->Option.map(s => (k, s)))
-    ->Dict.fromArray
-  | _ => Dict.make()
-  }
-
 // ── Stack discovery ───────────────────────────────────────────────────────────
 
 // Which Pulumi backend the `pulumi` subprocess reads from. When `backend` is
@@ -158,16 +146,6 @@ let resolveField = (~envKey: string, ~fromSource: option<string>, ~human: string
     }
   }
 
-// Same precedence, for a value whose absence is a legitimate answer rather than
-// a broken deployment: a stack that declares no store publishes no upload
-// endpoint, and that must stay a no-op at the data set instead of failing the
-// run before a single command is sent.
-let optionalField = (~envKey: string, ~fromSource: option<string>): string =>
-  switch Seed.Prompt.envValue(envKey) {
-  | Some(v) => v
-  | None => fromSource->Option.getOr("")
-  }
-
 // Which document publishes the deployment's endpoints. A stack that serves a
 // host shell publishes them in the shell's `config.json` under the client's key
 // names; one that does not publishes them as stack outputs under Pulumi's. The
@@ -177,11 +155,6 @@ type source = HostShellConfig(JSON.t) | StackOutputs(JSON.t)
 
 type endpoints = {
   graphql: string,
-  // The legacy single presign service; "" when the deployment publishes none.
-  uploadEndpoint: string,
-  // Qualified `{plugin}.{store}` → that store's presign endpoint. Empty when the
-  // deployment declares no store.
-  uploadEndpoints: dict<string>,
   cognitoRegion: string,
   cognitoClientId: string,
 }
@@ -190,15 +163,9 @@ type endpoints = {
  * The endpoints a source document publishes — pure, so the branch selection and
  * every key it reads can be exercised with synthetic documents.
  *
- * `uploadEndpoints` is read on **both** arms. It was read on neither: the
- * host-shell arm looked only at the singular `uploadEndpoint`, and the
- * stack-output arm had no upload lookup at all, so a platform that publishes its
- * stores and no host shell resolved "" and reported itself as serving no
- * uploads.
- *
- * `REVENTLESS_UPLOAD_ENDPOINT` still overrides the singular endpoint and does
- * not touch the map: one string cannot express a map, so it could only ever
- * override one store and would need a naming convention to say which.
+ * Upload endpoints are no longer resolved here: under route B the seed mints through
+ * the domain API's `Upload_Presign` mutation on `graphql`, passing the store per asset,
+ * so there is no per-store URL to discover.
  */
 let endpointsFrom = (~stack: string, source: source): endpoints =>
   switch source {
@@ -210,11 +177,6 @@ let endpointsFrom = (~stack: string, source: source): endpoints =>
         ~fromSource=fromCfg("apiEndpoint"),
         ~human="apiEndpoint",
       ),
-      uploadEndpoint: optionalField(
-        ~envKey="REVENTLESS_UPLOAD_ENDPOINT",
-        ~fromSource=fromCfg("uploadEndpoint"),
-      ),
-      uploadEndpoints: cfg->field("uploadEndpoints")->Option.mapOr(Dict.make(), asStringDict),
       cognitoRegion: resolveField(
         ~envKey="AWS_REGION",
         ~fromSource=fromCfg("region"),
@@ -242,10 +204,6 @@ let endpointsFrom = (~stack: string, source: source): endpoints =>
           ),
         )
       },
-      // No stack output carries the legacy single service — it exists only in a
-      // host shell's config.json — so here the env override is its only source.
-      uploadEndpoint: optionalField(~envKey="REVENTLESS_UPLOAD_ENDPOINT", ~fromSource=None),
-      uploadEndpoints: outputs->field("uploadEndpoints")->Option.mapOr(Dict.make(), asStringDict),
       cognitoRegion: resolveField(
         ~envKey="AWS_REGION",
         ~fromSource=out("cognitoRegion"),
@@ -365,8 +323,6 @@ let connect = (~projectDir: string=".", ~stack=?, ~backend=?, ()): (
     await Seed.Connect.make(
       ~label=stackName,
       ~endpoint=eps.graphql,
-      ~uploadEndpoint=eps.uploadEndpoint,
-      ~uploadEndpoints=eps.uploadEndpoints,
       ~login=cognito(~region=eps.cognitoRegion, ~clientId=eps.cognitoClientId),
     )
   }

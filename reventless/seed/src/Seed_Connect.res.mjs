@@ -6,12 +6,9 @@ import * as Seed_Client$ReventlessSeed from "./Seed_Client.res.mjs";
 import * as Seed_Prompt$ReventlessSeed from "./Seed_Prompt.res.mjs";
 import * as Seed_Upload$ReventlessSeed from "./Seed_Upload.res.mjs";
 
-async function make(label, endpoint, uploadEndpoint, uploadEndpointsOpt, login, localDefaultsOpt) {
-  let uploadEndpoints = uploadEndpointsOpt !== undefined ? uploadEndpointsOpt : ({});
+async function make(label, endpoint, login, localDefaultsOpt) {
   let localDefaults = localDefaultsOpt !== undefined ? localDefaultsOpt : false;
-  let skip = Stdlib_Option.isSome(Seed_Prompt$ReventlessSeed.envValue("SEED_SKIP_UPLOADS"));
-  let uploadEndpoint$1 = skip ? "" : uploadEndpoint;
-  let uploadEndpoints$1 = skip ? ({}) : uploadEndpoints;
+  let uploadsSkipped = Seed_Upload$ReventlessSeed.uploadsSkipped();
   let match = await Seed_Prompt$ReventlessSeed.credentials(localDefaults);
   let token = await login(match[0], match[1]);
   let client = Seed_Client$ReventlessSeed.make({
@@ -20,25 +17,9 @@ async function make(label, endpoint, uploadEndpoint, uploadEndpointsOpt, login, 
   Seed_Client$ReventlessSeed.useToken(client, token);
   return {
     client: client,
-    uploadEndpoint: uploadEndpoint$1,
-    uploadEndpoints: uploadEndpoints$1,
+    uploadsSkipped: uploadsSkipped,
     label: label
   };
-}
-
-function uploadEndpointFor(c, store) {
-  let endpoint = Seed_Upload$ReventlessSeed.endpointFor(store, c.uploadEndpoint, c.uploadEndpoints);
-  if (endpoint !== undefined) {
-    return {
-      TAG: "Ok",
-      _0: endpoint
-    };
-  } else {
-    return {
-      TAG: "Error",
-      _0: Seed_Upload$ReventlessSeed.unresolvedReason(store, c.uploadEndpoints)
-    };
-  }
 }
 
 function viaLoginEndpoint(loginEndpoint) {
@@ -66,16 +47,14 @@ function envOr(key, fallback) {
   return Stdlib_Option.getOr(Seed_Prompt$ReventlessSeed.envValue(key), fallback);
 }
 
-function local(graphql, upload, login, param) {
+function local(graphql, login, param) {
   let endpoint = Stdlib_Option.getOr(graphql, Stdlib_Option.getOr(Seed_Prompt$ReventlessSeed.envValue("REVENTLESS_GRAPHQL_ENDPOINT"), "http://localhost:4000/graphql"));
-  let uploadEndpoint = Stdlib_Option.getOr(upload, Stdlib_Option.getOr(Seed_Prompt$ReventlessSeed.envValue("REVENTLESS_UPLOAD_ENDPOINT"), "http://localhost:4000/__inmemory/upload"));
   let loginEndpoint = Stdlib_Option.getOr(login, Stdlib_Option.getOr(Seed_Prompt$ReventlessSeed.envValue("REVENTLESS_LOGIN_ENDPOINT"), "http://localhost:4000/__inmemory/login"));
-  return () => make("local", endpoint, uploadEndpoint, undefined, viaLoginEndpoint(loginEndpoint), true);
+  return () => make("local", endpoint, viaLoginEndpoint(loginEndpoint), true);
 }
 
 export {
   make,
-  uploadEndpointFor,
   viaLoginEndpoint,
   envOr,
   local,

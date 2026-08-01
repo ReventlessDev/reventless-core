@@ -1,11 +1,15 @@
-// End-to-end test for the local served-bucket HTTP routes on DomainGraphQL_Server
-// (the dev analogue of the AWS CloudFront read path). Boots a real server on a
-// private port, then exercises the full upload → store → serve loop:
-//   POST /__inmemory/upload → {uploadUrl, storageRef}
-//   PUT  /{prefix}/{key}    → 200 (store)
-//   GET  /{prefix}/{key}    → the stored bytes + content-type
-// Talks to the server over node:http (Jest 27's VM strips global fetch), same
-// as LocalAuthHttpTest.
+// End-to-end test for the local upload contract on DomainGraphQL_Server (route B, the
+// dev analogue of the AWS presign + serve + release loop). Boots a real server on a
+// private port with the Upload resolvers registered (as `makePlatform` does), then
+// exercises the full loop:
+//   mutation Upload_Presign  → {uploadUrl, storageRef}
+//   PUT  /{prefix}/{key}     → 200 (store)
+//   GET  /{prefix}/{key}     → the stored bytes + content-type
+//   mutation Upload_Release  → {released: true}
+//   GET  /{prefix}/{key}     → 404 (gone)
+// Talks to the server over node:http (Jest 27's VM strips global fetch), same as
+// LocalAuthHttpTest. Mint and release are GraphQL mutations under route B; the byte
+// PUT/GET stay HTTP data-plane routes.
 
 @@warning("-44")
 
@@ -120,8 +124,37 @@ let getString = (j: JSON.t, k: string): string =>
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 
+// Extract `data.r` from a GraphQL response body.
+let mutationResult = (body: JSON.t): JSON.t =>
+  body
+  ->JSON.Decode.object
+  ->Option.flatMap(d => d->Dict.get("data"))
+  ->Option.flatMap(JSON.Decode.object)
+  ->Option.flatMap(d => d->Dict.get("r"))
+  ->Option.getOr(JSON.Encode.null)
+
+let presign = async (~fileName: string): JSON.t => {
+  let q = `mutation { r: Upload_Presign(store: "x.y", fileName: "${fileName}", contentType: "image/svg+xml") { uploadUrl storageRef } }`
+  let (_, body) = await postJson("/graphql", Dict.fromArray([("query", JSON.Encode.string(q))]))
+  mutationResult(body)
+}
+
+let releaseRef = async (~storageRef: string): JSON.t => {
+  let q = `mutation { r: Upload_Release(store: "x.y", storageRef: "${storageRef}") { released reason } }`
+  let (_, body) = await postJson("/graphql", Dict.fromArray([("query", JSON.Encode.string(q))]))
+  mutationResult(body)
+}
+
 beforeAllAsync(async () => {
   DomainGraphQL_Server.reset()
+  // Minimal valid schema: relay base (a Query type must exist) plus the Upload
+  // mutations, registered exactly as makePlatform does via LocalUploadResolvers.
+  DomainGraphQL_Server.registerTypes(~sdlTypes=ReventlessCore.GraphQL_Stitcher.relayBaseTypes)
+  DomainGraphQL_Server.registerQueries(
+    ~sdlFields=ReventlessCore.GraphQL_Stitcher.relayBaseQueries,
+    ~resolvers=Dict.make(),
+  )
+  LocalUploadResolvers.register(DomainGraphQL_Server.asInterface)
   DomainGraphQL_Server.start(~port, ())
   await Promise.make((resolve, _) => setTimeout(() => resolve(), 50)->ignore)
 })
@@ -132,31 +165,19 @@ afterAll(() => {
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
-testPromise("POST /__inmemory/upload returns matching uploadUrl + storageRef under the prefix", async () => {
-  let (status, body) =
-    await postJson(
-      "/__inmemory/upload",
-      Dict.fromArray([
-        ("fileName", JSON.Encode.string("logo.svg")),
-        ("contentType", JSON.Encode.string("image/svg+xml")),
-      ]),
-    )
-  expect(status)->toEqual(200)
-  let uploadUrl = getString(body, "uploadUrl")
-  let storageRef = getString(body, "storageRef")
+testPromise("Upload_Presign returns matching uploadUrl + storageRef under the prefix", async () => {
+  let r = await presign(~fileName="logo.svg")
+  let uploadUrl = getString(r, "uploadUrl")
+  let storageRef = getString(r, "storageRef")
   // Same same-origin ref serves as both the PUT target and the stored value.
   expect(uploadUrl)->toEqual(storageRef)
   expect(storageRef->String.startsWith("/uploads/"))->toEqual(true)
   expect(storageRef->String.endsWith("/logo.svg"))->toEqual(true)
 })
 
-testPromise("PUT then GET round-trips the bytes and content-type", async () => {
-  let (_, body) =
-    await postJson(
-      "/__inmemory/upload",
-      Dict.fromArray([("fileName", JSON.Encode.string("pixel.svg"))]),
-    )
-  let ref = getString(body, "storageRef")
+testPromise("presign → PUT → GET → release → GET(404) is the full loop", async () => {
+  let r = await presign(~fileName="pixel.svg")
+  let ref = getString(r, "storageRef")
   let svg = "<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'></svg>"
 
   let putStatus = await putRaw(ref, svg, ~contentType="image/svg+xml")
@@ -166,6 +187,23 @@ testPromise("PUT then GET round-trips the bytes and content-type", async () => {
   expect(getStatus)->toEqual(200)
   expect(gotBody)->toEqual(svg)
   expect(gotContentType)->toEqual("image/svg+xml")
+
+  let released = await releaseRef(~storageRef=ref)
+  expect(released->JSON.Decode.object->Option.flatMap(d => d->Dict.get("released")))->toEqual(
+    Some(JSON.Encode.bool(true)),
+  )
+
+  // After release the object is gone.
+  let (goneStatus, _, _) = await getRaw(ref)
+  expect(goneStatus)->toEqual(404)
+})
+
+testPromise("Upload_Release of a ref outside a served prefix is refused with a reason", async () => {
+  let r = await releaseRef(~storageRef="/not-a-store/x/y.svg")
+  expect(r->JSON.Decode.object->Option.flatMap(d => d->Dict.get("released")))->toEqual(
+    Some(JSON.Encode.bool(false)),
+  )
+  expect(getString(r, "reason"))->toEqual("not_in_store")
 })
 
 testPromise("GET a missing served object returns 404", async () => {

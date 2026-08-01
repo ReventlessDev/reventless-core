@@ -156,8 +156,8 @@ function MakeWithConfig(Config) {
   };
   let platformStackRef = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack));
   let domainBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
-    types: [],
-    mutations: [],
+    types: Platform_AdminApi$ReventlessCore.uploadTypes,
+    mutations: Platform_AdminApi$ReventlessCore.uploadMutationFields,
     queries: ["  Platform_ping: String"],
     subscriptions: [],
     subscriptionSources: []
@@ -931,13 +931,11 @@ function MakeWithConfig(Config) {
         bucket = b$1;
       }
       let storeHandle = Capability_ObjectStore_S3$ReventlessAws.underPrefix(bucket, keyPrefix);
-      let presign = Upload_Presign_S3$ReventlessAws.make(storeHandle.bucketName, undefined, storeHandle.keyPrefix, `UploadPresign-` + plugin + `-` + store, undefined);
       return [
         plugin + `.` + store,
         keyPrefix,
         bucketName,
-        storeHandle.bucketName,
-        presign.url
+        storeHandle.bucketName
       ];
     });
     let declaredServedBuckets = Stdlib_Array.filterMap(storeBucketOrder, bucketName => Stdlib_Option.map(storeBuckets[bucketName], b => ({
@@ -966,15 +964,23 @@ function MakeWithConfig(Config) {
       store: param[0],
       keyPrefix: param[1],
       bucketName: param[3],
-      uploadUrl: param[4],
       baseUrl: storeServingBaseUrl
     }));
     objectStoreEndpointsRef.contents = declaredStoreEndpoints;
+    let store = Stdlib_Option.flatMap(hostUiBundle, c => c.uploadBucket);
+    let uploadServiceStores = declaredStoreServices.map(param => ({
+      qualified: param[0],
+      bucketName: param[3],
+      servedPrefix: param[1]
+    })).concat(store !== undefined ? [{
+          qualified: store.keyPrefix,
+          bucketName: store.bucketName,
+          servedPrefix: store.keyPrefix
+        }] : []);
+    if (uploadServiceStores.length !== 0) {
+      Upload_Presign_S3$ReventlessAws.make(domainApi, uploadServiceStores, undefined, undefined, {});
+    }
     if (declaredStoreEndpoints.length !== 0) {
-      Pulumi$Pulumi.$$export("uploadEndpoints", Pulumi.all(declaredStoreEndpoints.map(e => e.uploadUrl.apply(u => [
-        e.store,
-        u
-      ]))).apply(pairs => Object.fromEntries(pairs)));
       Pulumi$Pulumi.$$export("objectStores", Pulumi.all(declaredStoreEndpoints.map(e => Pulumi.all([
         e.bucketName,
         Output$Pulumi.allOpt(e.baseUrl)
@@ -1019,14 +1025,14 @@ function MakeWithConfig(Config) {
       } else {
         customDomain = undefined;
       }
-      let store = hostUiBundle.uploadBucket;
+      let store$1 = hostUiBundle.uploadBucket;
       let servedBuckets = (
-        store !== undefined ? [{
-              id: store.keyPrefix,
-              prefixes: [store.keyPrefix],
-              bucketId: store.bucketId,
-              bucketArn: store.bucketArn,
-              bucketRegionalDomainName: store.bucketRegionalDomainName
+        store$1 !== undefined ? [{
+              id: store$1.keyPrefix,
+              prefixes: [store$1.keyPrefix],
+              bucketId: store$1.bucketId,
+              bucketArn: store$1.bucketArn,
+              bucketRegionalDomainName: store$1.bucketRegionalDomainName
             }] : []
       ).concat(declaredServedBuckets);
       let match$4 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot(true, "@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
@@ -1039,15 +1045,6 @@ function MakeWithConfig(Config) {
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
       let index = hostUiBundle.geocoderPlaceIndex;
       let geocoderEndpointOutput = index !== undefined ? Geocoder_AwsLocation$ReventlessAws.make(index.indexName, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
-      let store$1 = hostUiBundle.uploadBucket;
-      let uploadEndpointOutput = store$1 !== undefined ? Upload_Presign_S3$ReventlessAws.make(store$1.bucketName, undefined, undefined, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
-      let storeUploadEndpointsOutput = Pulumi.all(declaredStoreServices.map(param => {
-        let qualified = param[0];
-        return param[4].apply(u => [
-          qualified,
-          u
-        ]);
-      }));
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,
@@ -1056,26 +1053,19 @@ function MakeWithConfig(Config) {
           cognitoPool.clientId
         ]),
         domainEventsEndpointOutput,
-        geocoderEndpointOutput,
-        Pulumi.all([
-          uploadEndpointOutput,
-          storeUploadEndpointsOutput
-        ])
+        geocoderEndpointOutput
       ]).apply(param => {
-        let match = param[3];
-        let storeUploadEps = match[1];
-        let uploadEpOpt = match[0];
         let geocoderEpOpt = param[2];
         let eventsEpOpt = param[1];
-        let match$1 = param[0];
+        let match = param[0];
         let fields = [
           [
             "apiEndpoint",
-            match$1[0]
+            match[0]
           ],
           [
             "platformApiEndpoint",
-            match$1[1]
+            match[1]
           ],
           [
             "region",
@@ -1087,11 +1077,11 @@ function MakeWithConfig(Config) {
           ],
           [
             "cognitoUserPoolId",
-            match$1[2]
+            match[2]
           ],
           [
             "cognitoClientId",
-            match$1[3]
+            match[3]
           ],
           [
             "liveUpdates",
@@ -1116,18 +1106,7 @@ function MakeWithConfig(Config) {
               "geocoderEndpoint",
               geocoderEpOpt
             ]]) : withEvents;
-        let withUpload = uploadEpOpt !== undefined ? withGeocoder.concat([[
-              "uploadEndpoint",
-              uploadEpOpt
-            ]]) : withGeocoder;
-        let withStoreUploads = storeUploadEps.length !== 0 ? withUpload.concat([[
-              "uploadEndpoints",
-              Object.fromEntries(storeUploadEps.map(param => [
-                param[0],
-                param[1]
-              ]))
-            ]]) : withUpload;
-        return JSON.stringify(Object.fromEntries(withStoreUploads));
+        return JSON.stringify(Object.fromEntries(withGeocoder));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: bucketName,
@@ -1334,8 +1313,8 @@ function Make($star) {
   };
   let platformStackRef = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack));
   let domainBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
-    types: [],
-    mutations: [],
+    types: Platform_AdminApi$ReventlessCore.uploadTypes,
+    mutations: Platform_AdminApi$ReventlessCore.uploadMutationFields,
     queries: ["  Platform_ping: String"],
     subscriptions: [],
     subscriptionSources: []
@@ -2086,13 +2065,11 @@ function Make($star) {
         bucket = b$1;
       }
       let storeHandle = Capability_ObjectStore_S3$ReventlessAws.underPrefix(bucket, keyPrefix);
-      let presign = Upload_Presign_S3$ReventlessAws.make(storeHandle.bucketName, undefined, storeHandle.keyPrefix, `UploadPresign-` + plugin + `-` + store, undefined);
       return [
         plugin + `.` + store,
         keyPrefix,
         bucketName,
-        storeHandle.bucketName,
-        presign.url
+        storeHandle.bucketName
       ];
     });
     let declaredServedBuckets = Stdlib_Array.filterMap(storeBucketOrder, bucketName => Stdlib_Option.map(storeBuckets[bucketName], b => ({
@@ -2121,15 +2098,23 @@ function Make($star) {
       store: param[0],
       keyPrefix: param[1],
       bucketName: param[3],
-      uploadUrl: param[4],
       baseUrl: storeServingBaseUrl
     }));
     objectStoreEndpointsRef.contents = declaredStoreEndpoints;
+    let store = Stdlib_Option.flatMap(hostUiBundle, c => c.uploadBucket);
+    let uploadServiceStores = declaredStoreServices.map(param => ({
+      qualified: param[0],
+      bucketName: param[3],
+      servedPrefix: param[1]
+    })).concat(store !== undefined ? [{
+          qualified: store.keyPrefix,
+          bucketName: store.bucketName,
+          servedPrefix: store.keyPrefix
+        }] : []);
+    if (uploadServiceStores.length !== 0) {
+      Upload_Presign_S3$ReventlessAws.make(domainApi, uploadServiceStores, undefined, undefined, {});
+    }
     if (declaredStoreEndpoints.length !== 0) {
-      Pulumi$Pulumi.$$export("uploadEndpoints", Pulumi.all(declaredStoreEndpoints.map(e => e.uploadUrl.apply(u => [
-        e.store,
-        u
-      ]))).apply(pairs => Object.fromEntries(pairs)));
       Pulumi$Pulumi.$$export("objectStores", Pulumi.all(declaredStoreEndpoints.map(e => Pulumi.all([
         e.bucketName,
         Output$Pulumi.allOpt(e.baseUrl)
@@ -2174,14 +2159,14 @@ function Make($star) {
       } else {
         customDomain = undefined;
       }
-      let store = hostUiBundle.uploadBucket;
+      let store$1 = hostUiBundle.uploadBucket;
       let servedBuckets = (
-        store !== undefined ? [{
-              id: store.keyPrefix,
-              prefixes: [store.keyPrefix],
-              bucketId: store.bucketId,
-              bucketArn: store.bucketArn,
-              bucketRegionalDomainName: store.bucketRegionalDomainName
+        store$1 !== undefined ? [{
+              id: store$1.keyPrefix,
+              prefixes: [store$1.keyPrefix],
+              bucketId: store$1.bucketId,
+              bucketArn: store$1.bucketArn,
+              bucketRegionalDomainName: store$1.bucketRegionalDomainName
             }] : []
       ).concat(declaredServedBuckets);
       let match$4 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", Stdlib_Option.getOr(hostUiBundle.bundleVersion, version), Stdlib_Option.getOr(hostUiBundle.assetsDir, Util_Bundle$ReventlessAws.resolvePackageRoot(true, "@reventlessdev/reventless-host-shell") + "/dist"), true, undefined, true, [
@@ -2194,15 +2179,6 @@ function Make($star) {
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
       let index = hostUiBundle.geocoderPlaceIndex;
       let geocoderEndpointOutput = index !== undefined ? Geocoder_AwsLocation$ReventlessAws.make(index.indexName, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
-      let store$1 = hostUiBundle.uploadBucket;
-      let uploadEndpointOutput = store$1 !== undefined ? Upload_Presign_S3$ReventlessAws.make(store$1.bucketName, undefined, undefined, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
-      let storeUploadEndpointsOutput = Pulumi.all(declaredStoreServices.map(param => {
-        let qualified = param[0];
-        return param[4].apply(u => [
-          qualified,
-          u
-        ]);
-      }));
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,
@@ -2211,26 +2187,19 @@ function Make($star) {
           cognitoPool.clientId
         ]),
         domainEventsEndpointOutput,
-        geocoderEndpointOutput,
-        Pulumi.all([
-          uploadEndpointOutput,
-          storeUploadEndpointsOutput
-        ])
+        geocoderEndpointOutput
       ]).apply(param => {
-        let match = param[3];
-        let storeUploadEps = match[1];
-        let uploadEpOpt = match[0];
         let geocoderEpOpt = param[2];
         let eventsEpOpt = param[1];
-        let match$1 = param[0];
+        let match = param[0];
         let fields = [
           [
             "apiEndpoint",
-            match$1[0]
+            match[0]
           ],
           [
             "platformApiEndpoint",
-            match$1[1]
+            match[1]
           ],
           [
             "region",
@@ -2242,11 +2211,11 @@ function Make($star) {
           ],
           [
             "cognitoUserPoolId",
-            match$1[2]
+            match[2]
           ],
           [
             "cognitoClientId",
-            match$1[3]
+            match[3]
           ],
           [
             "liveUpdates",
@@ -2271,18 +2240,7 @@ function Make($star) {
               "geocoderEndpoint",
               geocoderEpOpt
             ]]) : withEvents;
-        let withUpload = uploadEpOpt !== undefined ? withGeocoder.concat([[
-              "uploadEndpoint",
-              uploadEpOpt
-            ]]) : withGeocoder;
-        let withStoreUploads = storeUploadEps.length !== 0 ? withUpload.concat([[
-              "uploadEndpoints",
-              Object.fromEntries(storeUploadEps.map(param => [
-                param[0],
-                param[1]
-              ]))
-            ]]) : withUpload;
-        return JSON.stringify(Object.fromEntries(withStoreUploads));
+        return JSON.stringify(Object.fromEntries(withGeocoder));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: bucketName,

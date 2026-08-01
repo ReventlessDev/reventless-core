@@ -57,6 +57,7 @@ import * as PgProjectionCatchup$ReventlessLocal from "./adapter/PgProjectionCatc
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
 import * as DomainGraphQL_Server$ReventlessLocal from "./adapter/DomainGraphQL_Server.res.mjs";
 import * as EventPublish_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventLog/EventPublish_Callback.res.mjs";
+import * as LocalUploadResolvers$ReventlessLocal from "./adapter/LocalUploadResolvers.res.mjs";
 import * as ProjectionCheckpoint$ReventlessLocal from "./adapter/ProjectionCheckpoint.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as UiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments_Projection.res.mjs";
@@ -1542,6 +1543,7 @@ function MakeWithConfig(Config) {
     });
     DomainGraphQL_Server$ReventlessLocal.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
     DomainGraphQL_Server$ReventlessLocal.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
+    LocalUploadResolvers$ReventlessLocal.register(DomainGraphQL_Server$ReventlessLocal.asInterface);
     if (Config.splitApi) {
       PlatformGraphQL_Server$ReventlessLocal.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
     }
@@ -3212,6 +3214,7 @@ function Make($star) {
     });
     DomainGraphQL_Server$ReventlessLocal.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
     DomainGraphQL_Server$ReventlessLocal.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
+    LocalUploadResolvers$ReventlessLocal.register(DomainGraphQL_Server$ReventlessLocal.asInterface);
     PlatformGraphQL_Server$ReventlessLocal.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
     currentDeployTarget.contents = "Domain";
   };

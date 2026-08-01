@@ -21,6 +21,10 @@ function currentToken(t) {
   return t.token;
 }
 
+function endpoint(t) {
+  return t.config.endpoint;
+}
+
 function useToken(t, token) {
   t.token = token;
 }
@@ -266,6 +270,7 @@ export {
   sleep,
   make,
   currentToken,
+  endpoint,
   useToken,
   field,
   asString,

@@ -66,7 +66,7 @@ let productImageStore = "Catalog.productImages"
 let uploadProductImages = async (
   products: array<DemoData.product>,
   ~client: Seed.Client.t,
-  ~uploadEndpoint: string,
+  ~store: string,
 ): array<DemoData.product> => {
   let out = []
   for i in 0 to products->Array.length - 1 {
@@ -74,11 +74,11 @@ let uploadProductImages = async (
     | Some(p) =>
       let svg = DemoData.productSvg(~name=p.name, ~index=i)
       switch await Seed.Upload.uploadAsset(
-        ~uploadEndpoint,
+        ~client,
+        ~store,
         ~bytes=svg,
         ~fileName=`${p.id}.svg`,
         ~contentType="image/svg+xml",
-        ~authToken=?Seed.Client.currentToken(client),
       ) {
       | Ok(servedRef) => out->Array.push({...p, imageUrl: Some(servedRef)})
       | Error(msg) => throw(Seed.Failed(`product image upload for ${p.id} failed: ${msg}`))
@@ -382,8 +382,8 @@ let summarise = async (~client: Seed.Client.t, ~counts: dict<int>) => {
 // ── Run ─────────────────────────────────────────────────────────────────────
 
 // The shared seed run, parameterized only by volume so every data set walks the
-// same phases. Uploads no-op when no endpoint resolves for the product-image
-// store, keeping `imageUrl` empty rather than failing.
+// same phases. Uploads no-op when `SEED_SKIP_UPLOADS` is set, keeping `imageUrl`
+// empty rather than failing.
 let run = async (
   connection: Seed.connection,
   ~productCount: int,
@@ -393,10 +393,10 @@ let run = async (
   let client = connection.client
 
   let built = DemoData.buildProducts(~count=productCount, ())
-  let products = switch connection->Seed.Connect.uploadEndpointFor(~store=productImageStore) {
-  | Ok(uploadEndpoint) => await uploadProductImages(built, ~client, ~uploadEndpoint)
-  | Error(reason) =>
-    Seed.Runner.report(`product images: skipped (${reason}) — imageUrl left absent`)
+  let products = switch connection.uploadsSkipped {
+  | false => await uploadProductImages(built, ~client, ~store=productImageStore)
+  | true =>
+    Seed.Runner.report(`product images: skipped (SEED_SKIP_UPLOADS) — imageUrl left absent`)
     built
   }
   let customers = DemoData.buildCustomers(~count=customerCount, ())

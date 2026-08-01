@@ -2,28 +2,53 @@
 
 import * as Aws from "@pulumi/aws";
 import * as IAM$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/IAM.res.mjs";
+import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
-import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as AppSync_Resolver_Native$ReventlessAws from "../Api/AppSync_Resolver_Native.res.mjs";
 
-let defaultServedPrefix = "uploads";
+function invokeCode(operation) {
+  return `import { util } from '@aws-appsync/utils';
+export function request(ctx) {
+  const id = ctx.identity;
+  return {
+    operation: 'Invoke',
+    payload: {
+      operation: '` + operation + `',
+      arguments: ctx.args,
+      identity: id != null && id.sub != null
+        ? { sub: id.sub, username: id.username, claims: id.claims }
+        : null
+    }
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  return ctx.result;
+}
+`;
+}
 
-function make(bucketName, corsOriginsOpt, servedPrefixOpt, nameOpt, opts) {
-  let corsOrigins = corsOriginsOpt !== undefined ? corsOriginsOpt : ["*"];
-  let servedPrefix = servedPrefixOpt !== undefined ? servedPrefixOpt : defaultServedPrefix;
-  let name = nameOpt !== undefined ? nameOpt : "UploadPresignService";
-  let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
-  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name, "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
-  bucketName.apply(b => {
-    let arn = `arn:aws:s3:::` + b + `/` + servedPrefix + `/*`;
-    new (Aws.iam.RolePolicy)(name + `Policy`, {
-      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `Policy`, [
+function make(api, stores, releaseWindowSecondsOpt, nameOpt, opts) {
+  let releaseWindowSeconds = releaseWindowSecondsOpt !== undefined ? releaseWindowSecondsOpt : 900;
+  let name = nameOpt !== undefined ? nameOpt : "UploadService";
+  let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
+  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Lambda", Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name + "Lambda", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
+  let resolvedStores = Pulumi.all(stores.map(s => s.bucketName.apply(b => [
+    s.qualified,
+    b,
+    s.servedPrefix
+  ])));
+  resolvedStores.apply(list => {
+    let arns = list.map(param => `arn:aws:s3:::` + param[1] + `/` + param[2] + `/*`);
+    new (Aws.iam.RolePolicy)(name + "LambdaPolicy", {
+      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "LambdaPolicy", [
         {
           Sid: "AllowLambdaLogging",
           Effect: "Allow",
@@ -35,22 +60,39 @@ function make(bucketName, corsOriginsOpt, servedPrefixOpt, nameOpt, opts) {
           Resource: "arn:aws:logs:*:*:*"
         },
         {
-          Sid: "AllowUploadPut",
+          Sid: "AllowUploadObjectAccess",
           Effect: "Allow",
-          Action: "s3:PutObject",
-          Resource: arn
+          Action: [
+            "s3:PutObject",
+            "s3:DeleteObject",
+            "s3:GetObject"
+          ],
+          Resource: arns
         }
       ])),
       role: lambdaRole.id
-    }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
+    }, opts$1);
   });
+  let uploadStoresJson = resolvedStores.apply(list => JSON.stringify(Object.fromEntries(list.map(param => [
+    param[0],
+    Object.fromEntries([
+      [
+        "bucket",
+        param[1]
+      ],
+      [
+        "prefix",
+        param[2]
+      ]
+    ])
+  ]))));
   let packageDirs = Object.fromEntries([[
       "@reventlessdev/reventless-aws",
       Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws")
     ]]);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Upload/Upload_Presign_S3_Ops.res.mjs", packageDirs, undefined);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
-  let lambda = new (Aws.lambda.Function)(name, {
+  let lambda = new (Aws.lambda.Function)(name + "Lambda", {
     handler: "index.handler",
     runtime: "nodejs22.x",
     code: match.code,
@@ -58,7 +100,7 @@ function make(bucketName, corsOriginsOpt, servedPrefixOpt, nameOpt, opts) {
     memorySize: 256,
     timeout: 30,
     layers: layers,
-    tags: AWS_Tags$ReventlessAws.make(name, "Platform", "Runtime", "Platform", undefined, undefined, undefined, undefined),
+    tags: AWS_Tags$ReventlessAws.make(name + "Lambda", "Platform", "Runtime", "Platform", undefined, undefined, undefined, undefined),
     environment: {
       variables: Object.fromEntries([
         [
@@ -66,12 +108,12 @@ function make(bucketName, corsOriginsOpt, servedPrefixOpt, nameOpt, opts) {
           Pulumi.getStack()
         ],
         [
-          "UPLOAD_BUCKET",
-          bucketName
+          "UPLOAD_STORES",
+          uploadStoresJson
         ],
         [
-          "SERVED_PREFIX",
-          servedPrefix
+          "RELEASE_WINDOW_SECONDS",
+          releaseWindowSeconds.toString()
         ],
         [
           "NODE_OPTIONS",
@@ -84,30 +126,78 @@ function make(bucketName, corsOriginsOpt, servedPrefixOpt, nameOpt, opts) {
       ])
     },
     sourceCodeHash: match.sourceCodeHash
-  }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
-  let functionUrl = new (Aws.lambda.FunctionUrl)(name + `Url`, {
-    authorizationType: "NONE",
-    functionName: lambda.name,
-    cors: {
-      allowHeaders: [
-        "content-type",
-        "authorization"
-      ].map(prim => prim),
-      allowMethods: ["POST"].map(prim => prim),
-      allowOrigins: corsOrigins.map(prim => prim)
-    }
-  }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
+  }, opts$1);
+  let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
+  Pulumi.all([
+    lambda.arn,
+    dataSourceRole.id
+  ]).apply(param => {
+    new (Aws.iam.RolePolicy)(name + "DataSource", {
+      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "DataSourcePolicy", [{
+          Sid: "AllowDataSourceInvokeLambda",
+          Effect: "Allow",
+          Action: "lambda:InvokeFunction",
+          Resource: param[0]
+        }])),
+      role: param[1]
+    }, opts$1);
+  });
+  let dataSource = new (Aws.appsync.DataSource)(name + "DataSource", {
+    type: "AWS_LAMBDA",
+    apiId: Output$Pulumi.flatMap(api, api => api.id),
+    lambdaConfig: {
+      functionArn: lambda.arn
+    },
+    serviceRoleArn: dataSourceRole.arn
+  }, opts$1);
+  AppSync_Resolver_Native$ReventlessAws.makeUnitJsResolver(name + "Presign", api, dataSource.name, "Mutation", "Upload_Presign", `import { util } from '@aws-appsync/utils';
+export function request(ctx) {
+  const id = ctx.identity;
   return {
-    url: functionUrl.functionUrl,
-    resources: [
-      lambda.arn,
-      functionUrl.functionArn
-    ]
+    operation: 'Invoke',
+    payload: {
+      operation: '` + "presign" + `',
+      arguments: ctx.args,
+      identity: id != null && id.sub != null
+        ? { sub: id.sub, username: id.username, claims: id.claims }
+        : null
+    }
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  return ctx.result;
+}
+`, opts$1);
+  AppSync_Resolver_Native$ReventlessAws.makeUnitJsResolver(name + "Release", api, dataSource.name, "Mutation", "Upload_Release", `import { util } from '@aws-appsync/utils';
+export function request(ctx) {
+  const id = ctx.identity;
+  return {
+    operation: 'Invoke',
+    payload: {
+      operation: '` + "release" + `',
+      arguments: ctx.args,
+      identity: id != null && id.sub != null
+        ? { sub: id.sub, username: id.username, claims: id.claims }
+        : null
+    }
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  return ctx.result;
+}
+`, opts$1);
+  return {
+    resources: [lambda.arn]
   };
 }
 
+let defaultServedPrefix = "uploads";
+
 export {
   defaultServedPrefix,
+  invokeCode,
   make,
 }
 /* @pulumi/aws Not a pure module */

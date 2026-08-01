@@ -126,15 +126,14 @@ let handleLogout = (_req: nodeRequest, res: nodeResponse): unit => {
 
 // -- Served-bucket routes (local analogue of the AWS CloudFront read path) ----
 //
-// The dev platform has no object bucket, so these three routes back the same
-// UI contract locally against `LocalObjectStore`:
-//   POST /__inmemory/upload  {fileName,contentType} → {uploadUrl, storageRef}
-//   PUT  /{prefix}/{key}     raw bytes              → 200 (store)
-//   GET  /{prefix}/{key}                            → the stored bytes
-// `uploadUrl == storageRef == /{prefix}/{key}`, so the existing FileDropzone S3
-// adapter (POST-presign → PUT-bytes) works unchanged — no presigning needed.
-
-let uploadPresignPath = "/__inmemory/upload"
+// The dev platform has no object bucket, so these routes back the same UI contract
+// locally against `LocalObjectStore`:
+//   PUT  /{prefix}/{key}     raw bytes → 200 (store)
+//   GET  /{prefix}/{key}              → the stored bytes
+// Minting (`Upload_Presign`) and release (`Upload_Release`) are platform-API
+// mutations under route B (see [docs/plans/upload-release-path.md], resolved in
+// Platform.res against this same `LocalObjectStore`); the presign returns
+// `uploadUrl == storageRef == /{prefix}/{key}`, so the byte PUT below is unchanged.
 
 // CORS for the browser PUT (a cross-origin preflight when the dev origin isn't
 // same-origin with the API); the seed uploads from Node and needs none.
@@ -143,29 +142,6 @@ let _corsWriteHeaders = {
   "Access-Control-Allow-Methods": "PUT,GET,OPTIONS",
   "Access-Control-Allow-Headers": "*",
 }
-
-// Presign-shaped: mint a fresh uuid key under the served prefix and hand back a
-// same-origin `/{prefix}/{key}` for both the PUT target and the stored ref.
-let handleUploadPresign = (req: nodeRequest, res: nodeResponse): unit =>
-  readBody(req, body => {
-    let parsed =
-      try body->JSON.parseOrThrow->JSON.Decode.object->Option.getOr(Dict.make()) catch {
-      | _ => Dict.make()
-      }
-    let fileName =
-      parsed->Dict.get("fileName")->Option.flatMap(JSON.Decode.string)->Option.getOr("upload")
-    let ref = `/${LocalObjectStore.defaultUploadPrefix}/${NodeCrypto.randomUUID()}/${fileName}`
-    _writeJson(
-      res,
-      ~status=200,
-      JSON.Encode.object(
-        Dict.fromArray([
-          ("uploadUrl", JSON.Encode.string(ref)),
-          ("storageRef", JSON.Encode.string(ref)),
-        ]),
-      ),
-    )
-  })
 
 let handleObjectPut = (req: nodeRequest, res: nodeResponse, ~key: string): unit => {
   let contentType =
@@ -231,8 +207,6 @@ let _dispatch = (req: nodeRequest, res: nodeResponse, yoga: YG.yoga, getSdl: uni
     handleLogin(req, res)
   } else if path == "/__inmemory/logout" && req.method == "POST" {
     handleLogout(req, res)
-  } else if path == uploadPresignPath && req.method == "POST" {
-    handleUploadPresign(req, res)
   } else if path == "/events" && req.method == "POST" {
     // Local AppSync Events publish endpoint (`/client/**` only). The
     // Authorization header carries the token raw (AWS Cognito-publish shape),

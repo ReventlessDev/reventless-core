@@ -6,7 +6,6 @@ import * as Graphql from "graphql";
 import * as GraphqlYoga from "@reventlessdev/rescript-graphql-yoga/src/GraphqlYoga.res.mjs";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
-import * as Nodecrypto from "node:crypto";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as GraphqlYoga$1 from "graphql-yoga";
@@ -100,36 +99,11 @@ function handleLogout(_req, res) {
   res.end(null);
 }
 
-let uploadPresignPath = "/__inmemory/upload";
-
 let _corsWriteHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "PUT,GET,OPTIONS",
   "Access-Control-Allow-Headers": "*"
 };
-
-function handleUploadPresign(req, res) {
-  readBody(req, body => {
-    let parsed;
-    try {
-      parsed = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(JSON.parse(body)), {});
-    } catch (exn) {
-      parsed = {};
-    }
-    let fileName = Stdlib_Option.getOr(Stdlib_Option.flatMap(parsed["fileName"], Stdlib_JSON.Decode.string), "upload");
-    let ref = `/` + LocalObjectStore$ReventlessLocal.defaultUploadPrefix + `/` + Nodecrypto.randomUUID() + `/` + fileName;
-    _writeJson(res, 200, Object.fromEntries([
-      [
-        "uploadUrl",
-        ref
-      ],
-      [
-        "storageRef",
-        ref
-      ]
-    ]));
-  });
-}
 
 function handleObjectPut(req, res, key) {
   let contentType = Stdlib_Option.getOr(req.headers["content-type"], "application/octet-stream");
@@ -190,9 +164,6 @@ function _dispatch(req, res, yoga, getSdl) {
   }
   if (path === "/__inmemory/logout" && req.method === "POST") {
     return handleLogout(req, res);
-  }
-  if (path === uploadPresignPath && req.method === "POST") {
-    return handleUploadPresign(req, res);
   }
   if (path !== "/events" || req.method !== "POST") {
     if (path === "/events" && req.method === "OPTIONS") {
@@ -776,9 +747,7 @@ export {
   _loginRejected,
   handleLogin,
   handleLogout,
-  uploadPresignPath,
   _corsWriteHeaders,
-  handleUploadPresign,
   handleObjectPut,
   handleObjectGet,
   _isInvalidBearer,
