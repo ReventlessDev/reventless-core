@@ -214,6 +214,28 @@ let filename_stem (fname : string) : string =
   | Some i -> String.sub base 0 i
   | None -> base
 
+(* The sidecar `file` field is repo-root-relative so sidecars are
+   machine-independent: walk up from the source file to the nearest `.git`
+   entry (a directory, or a file in worktrees) and strip that prefix. Absent a
+   repo root the path is kept as given — best-effort, like the write itself. *)
+let repo_relative (fname : string) : string =
+  if Filename.is_relative fname then fname
+  else
+    let rec find_root dir =
+      if Sys.file_exists (Filename.concat dir ".git") then Some dir
+      else
+        let parent = Filename.dirname dir in
+        if String.equal parent dir then None else find_root parent
+    in
+    match find_root (Filename.dirname fname) with
+    | Some root ->
+      let prefix = root ^ Filename.dir_sep in
+      let plen = String.length prefix in
+      if String.length fname > plen && String.equal (String.sub fname 0 plen) prefix
+      then String.sub fname plen (String.length fname - plen)
+      else fname
+    | None -> fname
+
 let fragment_json ~spec_name ~fname (body : structure) : Yojson.Safe.t =
   let types =
     List.concat_map
@@ -229,7 +251,7 @@ let fragment_json ~spec_name ~fname (body : structure) : Yojson.Safe.t =
   `Assoc
     [ ("specName", `String spec_name);
       ("stem", `String (filename_stem fname));
-      ("file", `String fname);
+      ("file", `String (repo_relative fname));
       ("types", `List types);
       ("config", `List (config_entries body)) ]
 
@@ -557,7 +579,7 @@ let gwt_fragment_json ~fname (str : structure) : Yojson.Safe.t option =
       (`Assoc
          [ ("specName", `String spec_name);
            ("stem", `String (filename_stem fname));
-           ("file", `String fname);
+           ("file", `String (repo_relative fname));
            ("scenarios", `List scenarios) ])
 
 let gwt_sidecar_path (fname : string) : string =
