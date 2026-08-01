@@ -125,10 +125,21 @@ let connect = (
 let make: ReventlessCore.Task_Adapter.bucketMaker<bucketParts> = (~name, ~opts) => {
   let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
+  // A task bucket holds transient input a slice consumes, so disposability
+  // follows the stack, exactly as it does for declared stores. It matters
+  // because a bucket name change is a *replace*, and a replace of a non-empty
+  // bucket fails the deploy with `BucketNotEmpty` — which would wedge precisely
+  // the throwaway stacks that are recreated most often. Protected stacks keep
+  // the safe default and drain by hand.
+  let forceDestroy =
+    Util_StoreLayout.protectionFor(~stack=Pulumi.Pulumi.getStackName()) ==
+      Util_StoreLayout.Unprotected
+
   let bucket = {
     PulumiAws.S3.Bucket.make(
       ~name,
       ~args={
+        forceDestroy: forceDestroy->Pulumi.Input.make,
         corsRules: [
           {
             PulumiAws.S3.Bucket.allowedHeaders: ["*"],

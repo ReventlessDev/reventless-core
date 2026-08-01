@@ -11,6 +11,7 @@ import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adap
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
+import * as Util_StoreLayout$ReventlessAws from "../../util/Util_StoreLayout.res.mjs";
 import * as TaskBucket_S3_Runtime$ReventlessAws from "./TaskBucket_S3_Runtime.res.mjs";
 
 function subscribeLambda2S3Bucket(lambda, name, bucket, opts) {
@@ -75,6 +76,7 @@ function connect(name, bucket, bucketMode, commandTopics, runtime, opts) {
 
 function make(name, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
+  let forceDestroy = Util_StoreLayout$ReventlessAws.protectionFor(Pulumi.getStack(), undefined) === "Unprotected";
   let bucket = new (Aws.s3.Bucket)(name, {
     corsRules: [{
         allowedHeaders: ["*"],
@@ -93,6 +95,7 @@ function make(name, opts) {
         ],
         maxAgeSeconds: 3000
       }],
+    forceDestroy: forceDestroy,
     tags: AWS_Tags$ReventlessAws.make(name, Task$ReventlessCore.componentType, {
       TAG: "Other",
       _0: "Bucket"

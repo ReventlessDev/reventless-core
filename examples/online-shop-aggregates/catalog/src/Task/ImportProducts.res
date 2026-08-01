@@ -43,7 +43,6 @@ let importCallback = (~eventName, ~key) => {
 let setup = (_queryEngine, _queryBucketName, _opts) => {
   Task.buckets: [
     {
-      bucketName: "product-imports",
       bucketMode: Task.Read,
       callback: importCallback,
     },

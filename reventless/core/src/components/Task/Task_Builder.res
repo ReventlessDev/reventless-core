@@ -14,6 +14,71 @@ let pascalCase = s =>
   )
   ->Array.join("")
 
+// Split words out of a PascalCase/camelCase run so kebab-casing keeps the word
+// boundaries. Two passes: `aB` splits an ordinary hump, `ABc` splits the tail of
+// an acronym off the word that follows it ("HTTPServer" -> "HTTP-Server").
+let humpBoundary = %re("/([a-z0-9])([A-Z])/g")
+let acronymBoundary = %re("/([A-Z]+)([A-Z][a-z])/g")
+
+// Kebab-case an identifier for use in an S3 bucket name: "ImportProducts" and
+// "product-imports" both reduce to "import-products".
+//
+// S3 lowercases bucket names, so a PascalCase segment collapses into an
+// unreadable run-on ("importproductsproductimportsbucket"). Kebab survives the
+// lowercasing with its word boundaries intact, which is why the framework's
+// declared-store buckets (`Util_StoreLayout.bucketNameFor`) already use it.
+let kebabCase = s =>
+  s
+  ->String.replaceRegExp(acronymBoundary, "$1-$2")
+  ->String.replaceRegExp(humpBoundary, "$1-$2")
+  ->String.split("-")
+  ->Array.flatMap(p => p->String.split("_"))
+  ->Array.filter(p => p->String.length > 0)
+  ->Array.map(String.toLowerCase)
+  ->Array.join("-")
+
+// S3 caps a bucket name at 63 characters and Pulumi appends `-` plus a 7-char
+// uniqueness suffix, so the composed name has 55 to work with.
+let maxBucketNameLength = 55
+
+/**
+The Pulumi resource name for a task's bucket: `{plugin}-{task}` for a task's
+default bucket, `{plugin}-{task}-{bucketId}` when the declaration names one.
+
+`plugin` is the ambient plugin under construction, absent for a task built
+outside any plugin. No `Bucket` suffix — `aws:s3/bucket` and the
+`reventless:role=Bucket` tag both already say what it is.
+
+Composed rather than sanitised, so a name too long for S3 is the caller's to fix:
+truncating here would silently manufacture a collision between two long names
+that share a prefix.
+*/
+let bucketResourceName = (
+  ~plugin: option<string>,
+  ~task: string,
+  ~bucketId: option<string>,
+): string => {
+  let name =
+    [plugin, Some(task), bucketId]
+    ->Array.filterMap(segment => segment)
+    ->Array.map(kebabCase)
+    ->Array.filter(segment => segment != "")
+    ->Array.join("-")
+  if name->String.length > maxBucketNameLength {
+    JsError.throwWithMessage(
+      `Task bucket name "${name}" is ${name
+        ->String.length
+        ->Int.toString} characters; S3 allows ${maxBucketNameLength->Int.toString} once Pulumi's ` ++
+      `uniqueness suffix is added. Shorten the task name` ++
+      switch bucketId {
+      | Some(id) => ` or the bucket id "${id}".`
+      | None => "."
+      },
+    )
+  }
+  name
+}
+
 module Make = (
   Spec: Task.Spec,
   RuntimeEnvironment: Runtime.Environment,
@@ -169,11 +234,17 @@ module Make = (
       buckets
       ->Array.map(bucketSpec => {
         let bucketName = bucketSpec.bucketName->Option.getOr("Bucket")
-        // `bucketStem` is the PascalCase resource-name segment (empty for the
-        // default unnamed bucket so the name stays `<Task>Bucket`, not
-        // `<Task>BucketBucket`). `bucketName` above remains the runtime key.
+        // `bucketStem` is the PascalCase segment naming this bucket's Lambda
+        // (empty for the default unnamed bucket). `bucketName` above remains the
+        // runtime key into `Task.bucketNames`; `name` is the bucket's own
+        // resource name, kebab-cased and plugin-qualified because S3 lowercases
+        // it — see `bucketResourceName`.
         let bucketStem = bucketSpec.bucketName->Option.mapOr("", pascalCase)
-        let name = taskName ++ bucketStem ++ "Bucket"
+        let name = bucketResourceName(
+          ~plugin=ResourceAttribution.current.contents.plugin,
+          ~task=taskName,
+          ~bucketId=bucketSpec.bucketName,
+        )
         let bucket = TaskBucket.make(~name, ~opts)
         let opts = {Pulumi.ComponentResource.parent: bucket.parts->Pulumi.Resource.makeFromJs}
 

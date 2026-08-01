@@ -90,9 +90,12 @@ describe("Task_Builder.Make:", () => {
       let bucketNames = outputs.bucketNames->Option.getUnsafe
       let idOutput = bucketNames->Dict.get("Reports")->Option.getUnsafe
       let id = await idOutput->TestRunner.resolve
-      // In-memory bucket id = resource name: taskName ++ pascalCase(bucketName) ++ "Bucket"
-      // = "OneBucketTask" ++ "Reports" ++ "Bucket". The lookup key stays "Reports".
-      expect(id)->toBe("OneBucketTaskReportsBucket")
+      // In-memory bucket id = the bucket's resource name, which is kebab-cased
+      // and plugin-qualified because S3 lowercases a bucket name and a PascalCase
+      // one collapses into a run-on. No plugin segment here: the task is built
+      // outside any plugin, so there is no ambient plugin to qualify with.
+      // The runtime lookup key is a separate string and stays "Reports".
+      expect(id)->toBe("one-bucket-task-reports")
     })
   })
 })

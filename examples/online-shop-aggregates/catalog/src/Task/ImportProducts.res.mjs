@@ -39,7 +39,6 @@ function importCallback(eventName, key) {
 function setup(_queryEngine, _queryBucketName, _opts) {
   return {
     buckets: [{
-        bucketName: "product-imports",
         bucketMode: "Read",
         callback: importCallback
       }]

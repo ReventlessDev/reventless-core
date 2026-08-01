@@ -4,7 +4,6 @@
 function setup(_queryEngine, _queryBucketName, _opts) {
   return {
     buckets: [{
-        bucketName: "product-imports",
         bucketMode: "Read",
         callback: (param, param$1) => Promise.resolve([])
       }]
