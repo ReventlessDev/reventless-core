@@ -395,6 +395,10 @@ than reconstructed: only here is the owning plugin unambiguous, so anything
 downstream would have to infer it by comparing a registered plugin name with
 whatever name a deploy manifest happened to use, and those were never required
 to match.
+
+`annotation` was added to this record as a required `string` while events written
+without it were already stored, which froze a plugin's registration for two days
+— the worked example behind the schema-evolution note on `pluginStructure` below.
 */
 @schema
 type requiredStoreDeclaration = {
@@ -409,6 +413,32 @@ let requiredStoreDeclarationArrayOptionSchema = _jsNullable(
   (),
 )
 
+/**
+Adding a field here? It has to be a shape a stale event can be healed into.
+
+Everything reachable from `pluginDefinition` is persisted in the Plugin lifecycle
+aggregate's event log, and that aggregate replays its own log before every
+decision. Events already written do not have your new field, so if decoding one
+of them throws, the aggregate cannot process ANY command for that plugin — it
+stops answering the deploy handshake and its registration silently freezes at
+whatever version connected last.
+
+`Message.parseJsonTolerant` heals a stale event on read, but only for shapes it
+can supply a value for: a `T | null` union (→ `None`), an array (→ `[]`), a
+mandatory enum (→ first variant), a nested object (→ recursively filled), and a
+scalar (→ `""` / `0` / `false`, logged as a warning because it is a fabricated
+value, not a derived one).
+
+So: **prefer `js_nullable` for anything genuinely optional**, and expect a scalar
+addition to show up as a warning in the logs of every deployment that still holds
+older events. A field that can be absent should say so in its type rather than
+lean on the healer.
+
+The regression suite for this is `PluginLifecycleCorpusTest` in reventless-core,
+which decodes frozen payloads captured off a deployed log. If it goes red naming
+your field, re-shape the field — do not re-cut the fixtures. Background:
+`docs/analysis/plugin-definition-schema-evolution-wedge.md`.
+*/
 @schema
 type pluginStructure = {
   readModels: array<queryableDef>,

@@ -1,0 +1,129 @@
+# Every bare required scalar reachable from `pluginDefinition`, sorted.
+#
+# This file is a tripwire, not an inventory to keep tidy. Everything reachable from
+# `pluginDefinition` is persisted in the Plugin lifecycle aggregate's event log, and a
+# scalar is the one shape `Message.fillMissingDefaults` cannot derive a value for: adding
+# one means every message stored before it decodes with a value this framework invented
+# (`""` / `0` / `false`), reported at runtime as a warning and nowhere else.
+#
+# So a diff here is a design decision, not a chore. If your new field can be absent, give
+# it the `js_nullable` (`T | null`) shape and this list does not change. If it genuinely
+# must be a required scalar, add the line and accept that older payloads carry a fabricated
+# value for it.
+#
+# Regenerate ONLY after making that call — never to make a red build green.
+# See docs/analysis/plugin-definition-schema-evolution-wedge.md.
+#
+# requiredStoreDeclarations[].annotation is the field whose addition froze a plugin's
+# registration for two days; it is listed because it is still a required scalar today.
+.apiSchemaFragment.encoded: string
+.apiSchemaFragment.protocol: string
+.apiTarget: string
+.dcbEventLog.eventTopicArn: string
+.dcbEventLog.name: string
+.eventCollector: string
+.extensionPoints[].commandTopic: string
+.extensionPoints[].eventTopic: string
+.extensionPoints[].name: string
+.extensionProtocols[].commandVersion: string
+.extensionProtocols[].eventVersion: string
+.extensionProtocols[].extensionPointName: string
+.extensions[].dcbSources[]: string
+.extensions[].extensionPointName: string
+.extensions[].name: string
+.id: string
+.name: string
+.structure.aggregates[].chapter: string
+.structure.aggregates[].commands[].aggregateIdField: string
+.structure.aggregates[].commands[].allowedStates[]: string
+.structure.aggregates[].commands[].apiExposed: boolean
+.structure.aggregates[].commands[].mutationField: string
+.structure.aggregates[].commands[].name: string
+.structure.aggregates[].commands[].references[].entity: string
+.structure.aggregates[].commands[].references[].fieldName: string
+.structure.aggregates[].commands[].references[].plugin: string
+.structure.aggregates[].commands[].schema: string
+.structure.aggregates[].commands[].targetState: string
+.structure.aggregates[].consistencyRead: string
+.structure.aggregates[].consumedEventTypes[]: string
+.structure.aggregates[].events[].name: string
+.structure.aggregates[].events[].references[].entity: string
+.structure.aggregates[].events[].references[].fieldName: string
+.structure.aggregates[].events[].references[].plugin: string
+.structure.aggregates[].events[].schema: string
+.structure.aggregates[].linkedViews[]: string
+.structure.aggregates[].name: string
+.structure.aggregates[].producedEventTypes[]: string
+.structure.automationSlices[].chapter: string
+.structure.automationSlices[].consumedEventTypes[]: string
+.structure.automationSlices[].name: string
+.structure.automationSlices[].producedCommandTypes[]: string
+.structure.automationSlices[].targetName: string
+.structure.extensionPoints[].commandTypes[]: string
+.structure.extensionPoints[].delegateNames[]: string
+.structure.extensionPoints[].name: string
+.structure.extensionPoints[].sourceEventTypes[]: string
+.structure.extensions[].commandTypes[]: string
+.structure.extensions[].delegateNames[]: string
+.structure.extensions[].eventTypes[]: string
+.structure.extensions[].name: string
+.structure.inboundTranslationSlices[].chapter: string
+.structure.inboundTranslationSlices[].commandTypes[]: string
+.structure.inboundTranslationSlices[].externalSystem: string
+.structure.inboundTranslationSlices[].name: string
+.structure.inboundTranslationSlices[].targetName: string
+.structure.outboundTranslationSlices[].chapter: string
+.structure.outboundTranslationSlices[].consumedEventTypes[]: string
+.structure.outboundTranslationSlices[].externalSystem: string
+.structure.outboundTranslationSlices[].inboundCommandTypes[]: string
+.structure.outboundTranslationSlices[].name: string
+.structure.outboundTranslationSlices[].targetName: string
+.structure.readModels[].chapter: string
+.structure.readModels[].consumedEventTypes[]: string
+.structure.readModels[].labelField: string
+.structure.readModels[].labelFieldSource: string
+.structure.readModels[].linkedWriteSide[]: string
+.structure.readModels[].name: string
+.structure.readModels[].queryField: string
+.structure.readModels[].schema: string
+.structure.readModels[].searchableFields[]: string
+.structure.readModels[].statusField: string
+.structure.readModels[].visibility: string
+.structure.requiredStoreDeclarations[].annotation: string
+.structure.requiredStoreDeclarations[].component: string
+.structure.requiredStoreDeclarations[].field: string
+.structure.requiredStoreDeclarations[].store: string
+.structure.requiredStores[]: string
+.structure.stateChangeSlices[].chapter: string
+.structure.stateChangeSlices[].commands[].aggregateIdField: string
+.structure.stateChangeSlices[].commands[].allowedStates[]: string
+.structure.stateChangeSlices[].commands[].apiExposed: boolean
+.structure.stateChangeSlices[].commands[].mutationField: string
+.structure.stateChangeSlices[].commands[].name: string
+.structure.stateChangeSlices[].commands[].references[].entity: string
+.structure.stateChangeSlices[].commands[].references[].fieldName: string
+.structure.stateChangeSlices[].commands[].references[].plugin: string
+.structure.stateChangeSlices[].commands[].schema: string
+.structure.stateChangeSlices[].commands[].targetState: string
+.structure.stateChangeSlices[].consistencyRead: string
+.structure.stateChangeSlices[].consumedEventTypes[]: string
+.structure.stateChangeSlices[].events[].name: string
+.structure.stateChangeSlices[].events[].references[].entity: string
+.structure.stateChangeSlices[].events[].references[].fieldName: string
+.structure.stateChangeSlices[].events[].references[].plugin: string
+.structure.stateChangeSlices[].events[].schema: string
+.structure.stateChangeSlices[].linkedViews[]: string
+.structure.stateChangeSlices[].name: string
+.structure.stateChangeSlices[].producedEventTypes[]: string
+.structure.stateViewSlices[].chapter: string
+.structure.stateViewSlices[].consumedEventTypes[]: string
+.structure.stateViewSlices[].labelField: string
+.structure.stateViewSlices[].labelFieldSource: string
+.structure.stateViewSlices[].linkedWriteSide[]: string
+.structure.stateViewSlices[].name: string
+.structure.stateViewSlices[].queryField: string
+.structure.stateViewSlices[].schema: string
+.structure.stateViewSlices[].searchableFields[]: string
+.structure.stateViewSlices[].statusField: string
+.structure.stateViewSlices[].visibility: string
+.version: string

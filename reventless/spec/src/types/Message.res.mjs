@@ -35,21 +35,30 @@ let commandJsonSchema = S.schema(s => ({
   delay: s.m(S.option(S.int))
 }));
 
-let fillMissingDefaults = (function(schema, json){
+let fillMissingDefaults = (function(schema, json, scalarFills){
   function isSchema(x){ return x && typeof x === "object" && typeof x.type === "string"; }
   function firstConst(anyOf){ var m=(anyOf||[]).find(function(s){return s.const!==undefined;}); return m ? m.const : undefined; }
-  function fill(schema, value){
+  function scalarDefault(schema){
+    if(schema.const!==undefined) return schema.const;
+    switch(schema.type){
+      case "string": return "";
+      case "number": return 0;
+      case "boolean": return false;
+      default: return undefined;
+    }
+  }
+  function fill(schema, value, path){
     if(!isSchema(schema)) return value;
     switch(schema.type){
       case "object": {
         if(value===undefined){ value={}; }
         else if(value===null || typeof value!=="object" || Array.isArray(value)) return value;
         var items=schema.items||[];
-        for(var i=0;i<items.length;i++){ var it=items[i]; value[it.location]=fill(it.schema, value[it.location]); }
+        for(var i=0;i<items.length;i++){ var it=items[i]; value[it.location]=fill(it.schema, value[it.location], path+"."+it.location); }
         return value;
       }
       case "array": {
-        if(Array.isArray(value)){ var el=schema.additionalItems; return isSchema(el) ? value.map(function(v){return fill(el,v);}) : value; }
+        if(Array.isArray(value)){ var el=schema.additionalItems; return isSchema(el) ? value.map(function(v,ix){return fill(el,v,path+"["+ix+"]");}) : value; }
         if(value===undefined) return [];
         return value;
       }
@@ -58,35 +67,47 @@ let fillMissingDefaults = (function(schema, json){
         if(value===undefined){
           if(has.null) return null;
           var c=firstConst(schema.anyOf); if(c!==undefined) return c;
-          var obj=(schema.anyOf||[]).find(function(s){return s.type==="object";}); if(obj) return fill(obj,{});
+          var obj=(schema.anyOf||[]).find(function(s){return s.type==="object";}); if(obj) return fill(obj,{},path);
           return undefined;
         }
         if(value===null) return null;
         var members=schema.anyOf||[];
-        if(Array.isArray(value)){ var a=members.find(function(s){return s.type==="array";}); return a ? fill(a,value) : value; }
+        if(Array.isArray(value)){ var a=members.find(function(s){return s.type==="array";}); return a ? fill(a,value,path) : value; }
         if(typeof value==="object"){
           var m=members.find(function(s){return s.type==="object" && (s.items||[]).some(function(it){return it.location==="TAG" && it.schema.const===value.TAG;});});
           if(!m) m=members.find(function(s){return s.type==="object";});
-          return m ? fill(m,value) : value;
+          return m ? fill(m,value,path) : value;
         }
         return value;
       }
-      default: return value;
+      default: {
+        if(value!==undefined) return value;
+        var d=scalarDefault(schema);
+        if(d===undefined) return value;
+        scalarFills.push(path + " := " + JSON.stringify(d));
+        return d;
+      }
     }
   }
   // Clone via JSON round-trip (json is already pure JSON) so the caller's value is never mutated.
-  return fill(schema, JSON.parse(JSON.stringify(json)));
+  return fill(schema, JSON.parse(JSON.stringify(json)), "");
 });
 
 function parseJsonTolerant(json, schema) {
   try {
     return S.parseJsonOrThrow(json, schema);
   } catch (firstErr) {
+    let scalarFills = [];
+    let value;
     try {
-      return S.parseJsonOrThrow(fillMissingDefaults(schema, json), schema);
+      value = S.parseJsonOrThrow(fillMissingDefaults(schema, json, scalarFills), schema);
     } catch (exn) {
       throw firstErr;
     }
+    if (scalarFills.length !== 0) {
+      console.warn(`[reventless] decoded a stored message by inventing ` + scalarFills.length.toString() + ` missing scalar field(s): ` + scalarFills.join(", ") + `. A required scalar was added to a persisted type after this message was written; the value above is fabricated, not recovered. Prefer a js_nullable (T | null) field.`);
+    }
+    return value;
   }
 }
 

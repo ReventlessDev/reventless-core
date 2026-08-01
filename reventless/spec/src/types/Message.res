@@ -156,27 +156,53 @@ type commandJson = {
 // message); only when it throws do we schema-guide the raw JSON and retry once. The fill
 // walks the target sury schema and inserts, for any absent field, the value that field's
 // schema expects: `null` for a `T | null` union (→ `None`), `[]` for a missing array, the
-// first variant of a mandatory enum (`kind` → `Domain`), and a filled `{}` for a missing
-// nested object. It descends only into values actually present, matches tagged-union
-// members by their `TAG` const, is purely additive (clones via a JSON round-trip; never
-// re-encodes through the schema), is idempotent on valid data, and falls back to the
-// ORIGINAL error when the fill doesn't resolve the failure — so genuine corruption still
-// surfaces. See docs/plans/platform-infrastructure-in-plugin-list.md (durable fix option 2).
-let fillMissingDefaults: (S.t<'a>, JSON.t) => JSON.t = %raw(`function(schema, json){
+// first variant of a mandatory enum (`kind` → `Domain`), a filled `{}` for a missing
+// nested object, and a zero value for a missing scalar. It descends only into values
+// actually present, matches tagged-union members by their `TAG` const, is purely additive
+// (clones via a JSON round-trip; never re-encodes through the schema), is idempotent on
+// valid data, and falls back to the ORIGINAL error when the fill doesn't resolve the
+// failure — so genuine corruption still surfaces.
+// See docs/plans/platform-infrastructure-in-plugin-list.md (durable fix option 2).
+//
+// The scalar arm is the odd one out and is deliberately noisy. Every other fill is
+// *derived* — the schema states what an absent value means, and the fill supplies exactly
+// that. A scalar has no such statement, so `""` / `0` / `false` is a value this code
+// invented: right for a descriptive field added later, wrong for a field that carries
+// meaning. It also widens what can be masked, since a genuinely truncated payload now
+// decodes where it used to throw. Every scalar fill is therefore reported to the caller
+// and logged, so healing stays findable instead of becoming the silent default. Without
+// it, a required-scalar addition freezes an aggregate outright — see
+// docs/analysis/plugin-definition-schema-evolution-wedge.md.
+//
+// `bigint` is excluded on purpose: it has no JSON representation, so any value invented
+// here would fail the retry anyway and mask the real error path.
+//
+// `scalarFills` is an out-parameter: the walker pushes `path := value` for each scalar it
+// invented.
+let fillMissingDefaults: (S.t<'a>, JSON.t, array<string>) => JSON.t = %raw(`function(schema, json, scalarFills){
   function isSchema(x){ return x && typeof x === "object" && typeof x.type === "string"; }
   function firstConst(anyOf){ var m=(anyOf||[]).find(function(s){return s.const!==undefined;}); return m ? m.const : undefined; }
-  function fill(schema, value){
+  function scalarDefault(schema){
+    if(schema.const!==undefined) return schema.const;
+    switch(schema.type){
+      case "string": return "";
+      case "number": return 0;
+      case "boolean": return false;
+      default: return undefined;
+    }
+  }
+  function fill(schema, value, path){
     if(!isSchema(schema)) return value;
     switch(schema.type){
       case "object": {
         if(value===undefined){ value={}; }
         else if(value===null || typeof value!=="object" || Array.isArray(value)) return value;
         var items=schema.items||[];
-        for(var i=0;i<items.length;i++){ var it=items[i]; value[it.location]=fill(it.schema, value[it.location]); }
+        for(var i=0;i<items.length;i++){ var it=items[i]; value[it.location]=fill(it.schema, value[it.location], path+"."+it.location); }
         return value;
       }
       case "array": {
-        if(Array.isArray(value)){ var el=schema.additionalItems; return isSchema(el) ? value.map(function(v){return fill(el,v);}) : value; }
+        if(Array.isArray(value)){ var el=schema.additionalItems; return isSchema(el) ? value.map(function(v,ix){return fill(el,v,path+"["+ix+"]");}) : value; }
         if(value===undefined) return [];
         return value;
       }
@@ -185,24 +211,30 @@ let fillMissingDefaults: (S.t<'a>, JSON.t) => JSON.t = %raw(`function(schema, js
         if(value===undefined){
           if(has.null) return null;
           var c=firstConst(schema.anyOf); if(c!==undefined) return c;
-          var obj=(schema.anyOf||[]).find(function(s){return s.type==="object";}); if(obj) return fill(obj,{});
+          var obj=(schema.anyOf||[]).find(function(s){return s.type==="object";}); if(obj) return fill(obj,{},path);
           return undefined;
         }
         if(value===null) return null;
         var members=schema.anyOf||[];
-        if(Array.isArray(value)){ var a=members.find(function(s){return s.type==="array";}); return a ? fill(a,value) : value; }
+        if(Array.isArray(value)){ var a=members.find(function(s){return s.type==="array";}); return a ? fill(a,value,path) : value; }
         if(typeof value==="object"){
           var m=members.find(function(s){return s.type==="object" && (s.items||[]).some(function(it){return it.location==="TAG" && it.schema.const===value.TAG;});});
           if(!m) m=members.find(function(s){return s.type==="object";});
-          return m ? fill(m,value) : value;
+          return m ? fill(m,value,path) : value;
         }
         return value;
       }
-      default: return value;
+      default: {
+        if(value!==undefined) return value;
+        var d=scalarDefault(schema);
+        if(d===undefined) return value;
+        scalarFills.push(path + " := " + JSON.stringify(d));
+        return d;
+      }
     }
   }
   // Clone via JSON round-trip (json is already pure JSON) so the caller's value is never mutated.
-  return fill(schema, JSON.parse(JSON.stringify(json)));
+  return fill(schema, JSON.parse(JSON.stringify(json)), "");
 }`)
 
 // Strict parse with a single schema-migration-on-read retry (see fillMissingDefaults).
@@ -210,8 +242,22 @@ let parseJsonTolerant = (json, schema) =>
   switch json->S.parseJsonOrThrow(schema) {
   | value => value
   | exception firstErr =>
-    switch fillMissingDefaults(schema, json)->S.parseJsonOrThrow(schema) {
-    | value => value
+    let scalarFills = []
+    switch fillMissingDefaults(schema, json, scalarFills)->S.parseJsonOrThrow(schema) {
+    | value =>
+      // Only the invented values are worth a line. A heal that used nothing but
+      // schema-derived defaults is the mechanism working as designed.
+      if scalarFills->Array.length > 0 {
+        Console.warn(
+          `[reventless] decoded a stored message by inventing ${scalarFills
+            ->Array.length
+            ->Int.toString} missing scalar field(s): ${scalarFills->Array.join(
+              ", ",
+            )}. A required scalar was added to a persisted type after this message was ` ++
+          `written; the value above is fabricated, not recovered. Prefer a js_nullable (T | null) field.`,
+        )
+      }
+      value
     | exception _ => throw(firstErr)
     }
   }
