@@ -16,7 +16,10 @@ let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name="onli
 // service against this store and serves it read-only from the shell's own
 // origin, so an uploaded object is addressable by relative URL and the bucket
 // stays private.
-let uploadBucket = ReventlessAws.Capability_ObjectStore_S3.make(~name="online-shop-uploads")
+let uploadBucket = ReventlessAws.Capability_ObjectStore_S3.make(
+  ~name="online-shop-uploads",
+  ~protect=false,
+)
 
 // The stores the plugins' fields declare, generated from their committed
 // `capabilities.json` manifests — the capability's `plugin` and the plugin's
