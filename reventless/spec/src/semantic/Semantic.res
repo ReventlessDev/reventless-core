@@ -48,6 +48,11 @@ module Id = {
   let dateTime = "dateTime"
   let reference = "reference"
   let storageRef = "storageRef"
+  // A field whose large value the client stored in a content-addressed object
+  // store and carries by reference (inline below a size threshold). Sibling of
+  // `storageRef`: same `StoredIn` store declaration, but an inline-or-reference
+  // value rather than an always-a-ref path string.
+  let offload = "offload"
 
   // The branded scalars. Each refines a `string` or a number without changing
   // its shape, so a field gains one of these without anything stored changing.

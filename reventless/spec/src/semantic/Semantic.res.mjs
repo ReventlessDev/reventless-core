@@ -6,6 +6,7 @@ let Id = {
   dateTime: "dateTime",
   reference: "reference",
   storageRef: "storageRef",
+  offload: "offload",
   email: "email",
   phone: "phone",
   url: "url",
