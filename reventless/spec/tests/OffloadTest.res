@@ -65,6 +65,65 @@ describe("Offload marker:", () => {
   testSync("id string matches the wire vocabulary", () => expect(Semantic.Id.offload)->toBe("offload"))
 })
 
+describe("Offload threshold:", () => {
+  testSync("getThreshold reads the per-field marker, None when unset", () => {
+    let withT = Offload.optionSchema(~store="s", ~threshold=4096, demoSchema)->Offload.getThreshold
+    let without = Offload.optionSchema(~store="s", demoSchema)->Offload.getThreshold
+    expect(withT == Some(4096) && without == None)->toBe(true)
+  })
+
+  testSync("effectiveThreshold resolves the precedence chain", () => {
+    let marked = Offload.optionSchema(~store="s", ~threshold=4096, demoSchema)
+    let unmarked = Offload.optionSchema(~store="s", demoSchema)
+    // (1) per-field marker wins even when a platform default is supplied
+    let perField = Offload.effectiveThreshold(marked, ~platformDefault=100, ())
+    // (2) platform default when the field left it unset
+    let platform = Offload.effectiveThreshold(unmarked, ~platformDefault=100, ())
+    // (3) framework default (8 KB) when neither is set
+    let fallback = Offload.effectiveThreshold(unmarked, ())
+    expect(perField == 4096 && platform == 100 && fallback == Offload.defaultThreshold)->toBe(true)
+  })
+
+  test("declaration -> effectiveThreshold -> prepare splits at the declared cut", async () => {
+    // The end-to-end a client drives: read the field's cut off its schema, then
+    // hand it to prepare. A tiny threshold forces the value to offload; a huge one
+    // keeps the identical value inline.
+    let objects = Dict.make()
+    let upload = (~key, ~bytes) => {
+      objects->Dict.set(key, bytes)
+      Promise.resolve()
+    }
+    let hash = s => "H" ++ Int.toString(String.length(s))
+    let value = {name: "abcdefghij", count: 1}
+
+    let lowField = Offload.optionSchema(~store="s", ~threshold=1, demoSchema)
+    let lowP = await Offload.prepare(
+      value,
+      ~schema=demoSchema,
+      ~store="s",
+      ~threshold=Offload.effectiveThreshold(lowField, ()),
+      ~hash,
+      ~upload,
+    )
+
+    let highField = Offload.optionSchema(~store="s", ~threshold=100000, demoSchema)
+    let highP = await Offload.prepare(
+      value,
+      ~schema=demoSchema,
+      ~store="s",
+      ~threshold=Offload.effectiveThreshold(highField, ()),
+      ~hash,
+      ~upload,
+    )
+
+    let offloaded = switch lowP {
+    | Offloaded(_) => true
+    | Inline(_) => false
+    }
+    expect(offloaded && highP->Offload.getInline->Option.isSome)->toBe(true)
+  })
+})
+
 describe("Offload client helpers:", () => {
   // Deterministic content hash (same bytes -> same key) and an in-memory transport
   // sharing one dict between upload and fetch, with call counters.

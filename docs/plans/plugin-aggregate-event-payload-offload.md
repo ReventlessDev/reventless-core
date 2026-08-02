@@ -1,8 +1,9 @@
 # Plan: a general client-driven `@offload` field primitive, first applied to plugin payloads
 
-**Date:** 2026-08-02 (shipped 2026-08-03)
-**Status:** ✅ **DONE + validated live on `alpha`** for the plugin payloads. Optional follow-ups
-(the `@offload` ppx shorthand; the Sury `alpha.4 → rc.0` bump) remain — see "Remaining (optional)".
+**Date:** 2026-08-02 (shipped 2026-08-03; `@offload` ppx shorthand added 2026-08-03)
+**Status:** ✅ **DONE + validated live on `alpha`** for the plugin payloads. The `@offload` ppx
+shorthand is now implemented + tested (not yet republished — see below). One optional follow-up
+(the Sury `alpha.4 → rc.0` bump) remains — see "Remaining (optional)".
 
 ## Current state (read this first if resuming)
 
@@ -35,13 +36,66 @@ query the resolver), not just "did it deploy".**
 One-time data repair (already done, not migration code — alpha example data): the 2 pre-fix rows
 (`{TAG,_0}`) were rewritten to `{$offload}` via a throwaway DocumentClient script.
 
+## Done since — `@offload` ppx shorthand (2026-08-03)
+
+`packages/reventless-ppx/src/ppx/OffloadInference.ml` (new) + wired into `ReventlessPpx.ml` right
+after the `StorageRefInference` line. Modelled on `StorageRefInference.ml`. Surface:
+
+```
+@offload("store") structure: option<pluginStructure>          // → optionSchema
+@offload("plugin.store") structure: pluginStructure           // → forStore, cross-plugin
+@offload({store: "store"}) structure: option<pluginStructure> // record form
+```
+
+It rewrites the field type `X` / `option<X>` → `Reventless.Offload.payload<X>` /
+`option<Reventless.Offload.payload<X>>`, derives the inner schema by sury convention (`t` →
+`schema`, else `<name>Schema`, preserving a module prefix), and emits
+`@s.matches(Reventless.Offload.forStore/optionSchema(~plugin?, ~store, <innerSchema>))` — byte-for-byte
+the hand-written first-consumer form, just fully qualified. Idempotent if the field is already
+`Offload.payload<X>`; a manual `@s.matches` wins (marker stripped, schema left alone).
+
+**Threshold precedence chain — now wired end-to-end** (per the plan's "Threshold precedence chain"
+section). `Semantic.storeTarget` gained `threshold: option<int>` (`@storageRef` passes `None`);
+`Offload.forStore`/`optionSchema` take `~threshold=?` and mark it; the ppx record form
+`@offload({store, threshold: N})` emits `~threshold=N` (the string form carries none). Readers:
+`Offload.getThreshold(schema)` (raw per-field value) and `Offload.effectiveThreshold(schema,
+~platformDefault?, ())` resolving per-field marker → platform default → `Offload.defaultThreshold`
+(8 KB). A client reads the field schema, calls `effectiveThreshold`, and passes the result to
+`Offload.prepare(~threshold)` — `prepare` stays threshold-explicit because it holds the *value*
+schema, not the field schema that carries the marker. Level 2's `MakeWithConfig.offloadThreshold`
+is represented as the `~platformDefault` argument (a client supplies its platform config value);
+adding an actual `offloadThreshold` field to `MakeWithConfig` is deferred until a client reads
+platform config, to avoid an unused config knob. The plugin producer still offloads unconditionally
+(Pulumi-Output constraint), so on the plugin path the threshold is declarative until a general
+`prepare`-driven client (browser/seed/Node) adopts it. Non-derivable inner types (array, type
+params) raise pointing at the explicit-helper escape hatch.
+
+**Emits fully-qualified `Reventless.Offload.*`** — `Offload` lives in `reventless-spec` whose
+namespace *is* `Reventless`, so this resolves in any spec that depends on it (same as `@storageRef`'s
+`Reventless.StorageRef.*`). It is therefore **not** usable inside `reventless-spec`'s own `Plugin.res`
+(self-namespace), which stays on the explicit bare-`Offload` helper — matching the plan. So there is
+**no in-repo consumer yet**; this is the capability + its test.
+
+Verified: isolated `bsc -dsource` on all forms + every error/edge case (incl. the record threshold
+form → `~threshold:N`, string form omits it); compile-based `test/run.sh` fixture (`OffloadHost.res`
+→ `optionSchema`/`forStore`/`blobSchema`/`"blobs"`/`4096`, marker stripped) — **227 passed**; spec
+`OffloadTest` threshold cases (`getThreshold`, `effectiveThreshold` precedence, declaration →
+`effectiveThreshold` → `prepare` split) — spec suite **329 passed**; frozen `PluginLifecycleCorpusTest`
++ `MessageTest` still green (the `storeTarget` change is metadata-only, not on the wire).
+
+Docs (both surfaces, previously undocumented — `@storageRef` was missing too, added alongside):
+`.claude/rules/app-developer.md` gained a "Semantic field markers" subsection; the docs site's
+`packages/doc/docs-app/reventless-ppx.md` gained a `@storageRef`/`@offload` section + a
+"What the PPX replaces" row (cross-instance link `/framework/ppx-binary-management`).
+
+**Not yet republished.** CI compiles ReScript with the *published* ppx binary, and the local
+`ppx-osx.exe` fallback is gitignored/dev-only. This change is a no-op for CI (no committed `.res`
+uses the `@offload` marker), so CI stays green without republish — but **the ppx must be republished
+in lockstep before the first real consumer adopts the shorthand** (see memory note
+`reference_reventless_ppx_publishing_pitfalls`).
+
 ## Remaining (optional — for a fresh session)
 
-- **`@offload` ppx shorthand** (deferred; the plugin uses explicit `Offload.optionSchema`/`toJson`
-  helpers, so this is pure ergonomics). Template `StorageRefInference.ml` → new `OffloadInference.ml`;
-  must rewrite the field type `X`→`Offload.payload<X>` + synthesize the inner schema name + emit
-  `@s.matches`; wire into `ReventlessPpx.ml`; **republish gates CI** (see memory note
-  `reference_reventless_ppx_publishing_pitfalls`).
 - **Sury `alpha.4 → rc.0` bump** — monorepo-wide (sury + sury-ppx lockstep, 9 packages), orthogonal;
   its own session.
 - Preview loop for any further AWS work is verified working — exact command + env

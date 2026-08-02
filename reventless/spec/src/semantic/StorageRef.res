@@ -114,7 +114,7 @@ let forStore = (~plugin: option<string>=?, ~store: string): S.t<t> =>
       }
     }
   )
-  ->Semantic.mark(~id=Semantic.Id.storageRef, ~payload=StoredIn({plugin, store}))
+  ->Semantic.mark(~id=Semantic.Id.storageRef, ~payload=StoredIn({plugin, store, threshold: None}))
 
 /** The store a field's schema declares its refs live in, if any. */
 let getStore = (schema: S.t<'a>): option<Semantic.storeTarget> =>

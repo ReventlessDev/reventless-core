@@ -205,6 +205,27 @@ type event = Placed
 type error = unit
 EOF
 
+# @offload shorthand — rewrites the field type X -> Reventless.Offload.payload<X>
+# and emits the matching untagged codec, deriving the inner schema by sury
+# convention (blob -> blobSchema). Optional field -> optionSchema; non-optional ->
+# forStore. Resolves Reventless.Offload because reventless-spec's namespace IS
+# Reventless (same mechanism as @storageRef's Reventless.StorageRef).
+cat > "$PLUGIN/src/OffloadHost.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type blob = { data: string, size: int }
+
+@schema
+type command = Store({ @offload({store: "blobs", threshold: 4096}) payload: option<blob> })
+
+@schema
+type event = Stored({ @offload("blobs") raw: blob })
+
+@schema
+type error = unit
+EOF
+
 # Note: `@reventless.projections` was retired — projection mappings now live
 # in slice-local `<Plural>_Projections.res` files with `@@reventless.mappings`
 # (covered by the multi-source ReadModel fixture below).
@@ -1210,6 +1231,17 @@ echo "=== Test: @@reventless.spec with explicit name ==="
 JS="$PLUGIN/src/Aggregate/Order.res.mjs"
 assert_js_contains "$JS" 'let name = "CustomOrder"'       "explicit name preserved"
 assert_js_not_contains "$JS" 'let name = "Order"'         "does not inject derived name"
+
+echo ""
+echo "=== Test: @offload shorthand (type rewrite + Offload codec, marker stripped) ==="
+JS="$PLUGIN/src/OffloadHost.res.mjs"
+# The optional field compiles to Reventless.Offload.optionSchema(~store, blobSchema);
+# the non-optional field to Reventless.Offload.forStore(~store, blobSchema).
+assert_js_contains "$JS" 'optionSchema'                   "@offload: optional field emits Offload.optionSchema"
+assert_js_contains "$JS" 'forStore'                       "@offload: non-optional field emits Offload.forStore"
+assert_js_contains "$JS" 'blobSchema'                     "@offload: inner schema derived (blob -> blobSchema)"
+assert_js_contains "$JS" '"blobs"'                        "@offload: store name threaded into codec"
+assert_js_contains "$JS" '4096'                           "@offload: per-field threshold threaded into codec"
 
 # Note: `@reventless.projections` was retired — its replacement is
 # `@@reventless.mappings` covered by the multi-source ReadModel fixture below.

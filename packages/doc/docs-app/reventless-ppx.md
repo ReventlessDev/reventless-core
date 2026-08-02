@@ -648,6 +648,43 @@ type state = {
 
 ---
 
+### `@storageRef`, `@offload` — object-store field markers
+
+These field markers declare that a field's value lives in one of the platform's object stores, and provision that store. Place them **before the field name** (like the DCB tag markers).
+
+**`@storageRef` — a field holding a store ref (`string` / `array<string>`):**
+
+The value is a store-minted origin-relative path; the ref *is* the value the reader renders. `@storageRef("store")` names a store of this plugin; `@storageRef("Plugin.store")` points at another plugin's.
+
+```rescript
+@schema
+type command =
+  | ChangeProductImage({
+      @dcbTag productId: string,
+      @storageRef("productImages") imageUrl: string,
+    })
+```
+
+**`@offload` — an inline-or-reference field:**
+
+A small value stays embedded in the command/event; a large one is content-addressed to the store by the **client** (which uploads the bytes before issuing the command) and carried as a reference — so the event shrinks and byte-identical values across versions dedupe to one object. A reader resolves either arm back to the value with `Offload.resolve`.
+
+```rescript
+@schema
+type event =
+  | ReportGenerated({
+      reportId: string,
+      @offload("reports") body: option<reportBody>,
+    })
+```
+
+- Forms: `@offload("store")`, `@offload("plugin.store")`, and the record form `@offload({store: "store"})`; works on a field of type `X` or `option<X>`.
+- **Per-field threshold:** `@offload({store: "s", threshold: 16384})` sets the inline-vs-offloaded byte cut. A client resolves the effective cut with `Offload.effectiveThreshold` — precedence **per-field marker → platform default → 8 KB** — and passes it to `Offload.prepare` when uploading. Retuning it is always safe; it only changes how *future* values split.
+
+**Constraints:** the field's inner type must be a plain named type (`reportBody`, `M.t`); for an `array<…>` or type-parameterised inner type, apply the schema by hand with `@s.matches(Reventless.Offload.optionSchema(~store="s", <schema>))`.
+
+---
+
 ## Examples
 
 ### Aggregate spec
@@ -964,3 +1001,4 @@ The developer only writes `let name` and the `@schema type event`. Everything el
 | `let subIdConfig = Some({...})` in ReadModel/StateViewSlice spec | Use `@subId` or `@compositeSubId` on `@schema type state` fields |
 | `let config = config(~indexes=[...])` with manual `indexConfig` records | Use `@index`/`@indexSubId` on `@schema type state` fields |
 | Manual `idResolverConfig`/`idsResolverConfig` entries in `let config` | Use `@resolves`/`@resolvesMany` on `@schema type state` fields |
+| Hand-written `@s.matches(StorageRef.forStore(...))` / `@s.matches(Offload.optionSchema(...))` | Use `@storageRef` / `@offload` field annotations |

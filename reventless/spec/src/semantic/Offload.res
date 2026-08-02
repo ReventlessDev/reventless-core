@@ -127,8 +127,13 @@ plugin's own store; qualify as `"<plugin>.<store>"` to point at another's.
 
 Prefer the `@offload("<store>")` ppx shorthand over calling this by hand.
 */
-let forStore = (~plugin: option<string>=?, ~store: string, inner: S.t<'a>): S.t<payload<'a>> =>
-  schema(inner)->Semantic.mark(~id=Semantic.Id.offload, ~payload=StoredIn({plugin, store}))
+let forStore = (
+  ~plugin: option<string>=?,
+  ~store: string,
+  ~threshold: option<int>=?,
+  inner: S.t<'a>,
+): S.t<payload<'a>> =>
+  schema(inner)->Semantic.mark(~id=Semantic.Id.offload, ~payload=StoredIn({plugin, store, threshold}))
 
 /**
 The codec wrapped for an **optional** field (`js_nullable`), plus the `StoredIn`
@@ -139,11 +144,12 @@ for older protocol versions, say). The marker sits on the outer schema, where
 let optionSchema = (
   ~plugin: option<string>=?,
   ~store: string,
+  ~threshold: option<int>=?,
   inner: S.t<'a>,
 ): S.t<option<payload<'a>>> =>
   _jsNullable(schema(inner), ())->Semantic.mark(
     ~id=Semantic.Id.offload,
-    ~payload=StoredIn({plugin, store}),
+    ~payload=StoredIn({plugin, store, threshold}),
   )
 
 /** Serialize a payload to its **untagged** wire JSON: `Inline` becomes the bare
@@ -252,4 +258,37 @@ let getStore = (schema: S.t<'a>): option<Semantic.storeTarget> =>
   switch Semantic.get(schema) {
   | Some({id, payload: StoredIn(target)}) if id == Semantic.Id.offload => Some(target)
   | _ => None
+  }
+
+/** The framework-default inline-vs-offloaded byte cut, used when neither the field
+    marker nor the platform declares one. Retuning any level is safe: both arms of
+    the codec read back to identical bytes, so the threshold only decides how
+    *future* values are split — no wire change, no re-encoding, existing events
+    stay valid. */
+let defaultThreshold = 8192
+
+/** The per-field threshold an `@offload` field declares, if any — the top of the
+    precedence chain (`@offload({..., threshold})`). `None` when the field left it
+    unset, which defers to the platform default and then {!defaultThreshold}. */
+let getThreshold = (schema: S.t<'a>): option<int> =>
+  switch Semantic.get(schema) {
+  | Some({id, payload: StoredIn({threshold})}) if id == Semantic.Id.offload => threshold
+  | _ => None
+  }
+
+/**
+The effective threshold for a field, resolving the precedence chain most-specific
+first: the per-field `@offload({threshold})` (read from the field's schema), then
+the platform config default (`~platformDefault`, e.g. `MakeWithConfig`'s
+`offloadThreshold`), then {!defaultThreshold}.
+
+A client drives an offloadable field by reading its field schema, calling this to
+get the cut, and passing the result as {!prepare}'s `~threshold`. `prepare` stays
+threshold-explicit (it holds the *value* schema, not the field schema that carries
+the marker), so this is the seam that turns the declaration into a number.
+*/
+let effectiveThreshold = (schema: S.t<'a>, ~platformDefault: option<int>=?, ()): int =>
+  switch getThreshold(schema) {
+  | Some(t) => t
+  | None => platformDefault->Option.getOr(defaultThreshold)
   }

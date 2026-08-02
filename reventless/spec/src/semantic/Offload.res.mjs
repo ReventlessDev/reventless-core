@@ -61,22 +61,24 @@ function schema(inner) {
   ]);
 }
 
-function forStore(plugin, store, inner) {
+function forStore(plugin, store, threshold, inner) {
   return Semantic$Reventless.mark(schema(inner), Semantic$Reventless.Id.offload, {
     TAG: "StoredIn",
     _0: {
       plugin: plugin,
-      store: store
+      store: store,
+      threshold: threshold
     }
   });
 }
 
-function optionSchema(plugin, store, inner) {
+function optionSchema(plugin, store, threshold, inner) {
   return Semantic$Reventless.mark(SuryResMjs.js_nullable(schema(inner)), Semantic$Reventless.Id.offload, {
     TAG: "StoredIn",
     _0: {
       plugin: plugin,
-      store: store
+      store: store,
+      threshold: threshold
     }
   });
 }
@@ -146,6 +148,30 @@ function getStore(schema) {
   }
 }
 
+function getThreshold(schema) {
+  let match = Semantic$Reventless.get(schema);
+  if (match === undefined) {
+    return;
+  }
+  let match$1 = match.payload;
+  if (typeof match$1 !== "object" || match$1.TAG === "ReferenceTo" || match.id !== Semantic$Reventless.Id.offload) {
+    return;
+  } else {
+    return match$1._0.threshold;
+  }
+}
+
+function effectiveThreshold(schema, platformDefault, param) {
+  let t = getThreshold(schema);
+  if (t !== undefined) {
+    return t;
+  } else {
+    return Stdlib_Option.getOr(platformDefault, 8192);
+  }
+}
+
+let defaultThreshold = 8192;
+
 export {
   offloadedRefSchema,
   sentinelKey,
@@ -158,5 +184,8 @@ export {
   resolve,
   cachedFetch,
   getStore,
+  defaultThreshold,
+  getThreshold,
+  effectiveThreshold,
 }
 /* offloadedRefSchema Not a pure module */

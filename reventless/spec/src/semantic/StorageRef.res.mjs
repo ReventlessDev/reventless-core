@@ -59,7 +59,8 @@ function forStore(plugin, store) {
     TAG: "StoredIn",
     _0: {
       plugin: plugin,
-      store: store
+      store: store,
+      threshold: undefined
     }
   });
 }

@@ -44,7 +44,7 @@ let apiTargetSchema = S.union([
   S.literal("Platform")
 ]);
 
-let apiSchemaFragmentOffloadSchema = Offload$Reventless.optionSchema(undefined, "pluginApiFragments", apiSchemaFragmentSchema);
+let apiSchemaFragmentOffloadSchema = Offload$Reventless.optionSchema(undefined, "pluginApiFragments", undefined, apiSchemaFragmentSchema);
 
 let dcbEventLogOptionSchema = SuryResMjs.js_nullable(dcbEventLogDefinitionSchema);
 
@@ -202,7 +202,7 @@ let pluginStructureSchema = S.schema(s => ({
   requiredStoreDeclarations: s.m(requiredStoreDeclarationArrayOptionSchema)
 }));
 
-let pluginStructureOffloadSchema = Offload$Reventless.optionSchema(undefined, "pluginStructures", pluginStructureSchema);
+let pluginStructureOffloadSchema = Offload$Reventless.optionSchema(undefined, "pluginStructures", undefined, pluginStructureSchema);
 
 let pluginDefinitionSchema = S.schema(s => ({
   id: s.m(S.string),

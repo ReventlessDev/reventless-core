@@ -24,9 +24,12 @@ that can fail at runtime.
 /** Which entity a reference field points to. */
 type referenceTarget = {entity: string, plugin: option<string>}
 
-/** Which object store a storage-ref field's value lives in. `plugin` is absent
-    when the store belongs to the declaring plugin, which is the common case. */
-type storeTarget = {plugin: option<string>, store: string}
+/** Which object store a storage-ref / offload field's value lives in. `plugin` is
+    absent when the store belongs to the declaring plugin, which is the common
+    case. `threshold` is the per-field inline-vs-offloaded byte cut an `@offload`
+    field may declare (`None` for `@storageRef`, which is always a ref, and for
+    `@offload` fields that leave it to the platform default). */
+type storeTarget = {plugin: option<string>, store: string, threshold: option<int>}
 
 /** Per-semantic detail, for the semantics that carry any. */
 type payload =
