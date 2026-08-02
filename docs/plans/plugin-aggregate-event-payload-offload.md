@@ -1,7 +1,51 @@
 # Plan: a general client-driven `@offload` field primitive, first applied to plugin payloads
 
-**Date:** 2026-08-02
-**Status:** Proposed. Not started. (Design settled after codebase exploration — see "Findings that shaped this plan".)
+**Date:** 2026-08-02 (shipped 2026-08-03)
+**Status:** ✅ **DONE + validated live on `alpha`** for the plugin payloads. Optional follow-ups
+(the `@offload` ppx shorthand; the Sury `alpha.4 → rc.0` bump) remain — see "Remaining (optional)".
+
+## Current state (read this first if resuming)
+
+The full round-trip works on live `alpha` and is runtime-validated: `VersionConnected` events
+carry `{$offload}` refs (small + content-addressed/deduped); the producer writes a `BucketObject`
+to a dedicated `reventless-offload-*` bucket at deploy time; the ComponentDefinitions Lambda
+resolves refs from S3 (scoped GET IAM) and returns real component counts (verified via
+`aws lambda invoke PlatformUIDefinitionsLambda-*` → Catalog 3 SVS/9 SCS, Ordering 1/1/1/4, no leak).
+
+**Shipped (pushed to alpha):** `Offload` primitive + untagged `S.union` codec + `getInline`/
+`toJson`/`prepare`/`resolve`/`cachedFetch` (`reventless/spec`); event field retype
+(`pluginDefinition.structure`/`apiSchemaFragment` → `Offload.payload`); core producer hook seam
+(`Plugin_Helpers.offloadHook` + `Plugin_Builder`); AWS activation (offload bucket + export,
+producer hook via Node sha256 `BucketObject`, S3 `GetObject→string` binding, ComponentDefinitions
+resolver + GET IAM).
+
+**Design correction learned the hard way (critical for anyone extending this):** the read-model
+DynamoDB write path marshals the **raw ReScript value** (DocumentClient) — it does NOT sury-encode
+via `@s.matches`. So a **variant** read-model field (`Offload.payload`) persists as ReScript's
+runtime `{TAG,_0}` shape and breaks any raw-JSON reader (the ComponentDefinitions Lambda → AutoUI
+component graph empty). **Rule: read-model fields must be plain records/scalars/`JSON.t`, never
+variants.** Fix applied: `PluginsReadModelSpec.structure`/`apiSchemaFragment` are `option<JSON.t>`
+and `PluginsProjection` writes the untagged codec JSON via `Offload.toJson` (bare, or `{$offload}`);
+the resolver detects `$offload` (resolve) / passes bare through — **no `{TAG,_0}` tolerance**.
+Settled design: **offloading lives in the immutable EVENT (size/dedup win); the read model is a
+plain untagged JSON blob, resolved lazily by the client that needs it.**
+**Meta-lesson: a green deploy ≠ working runtime — always run the runtime query (invoke the Lambda /
+query the resolver), not just "did it deploy".**
+
+One-time data repair (already done, not migration code — alpha example data): the 2 pre-fix rows
+(`{TAG,_0}`) were rewritten to `{$offload}` via a throwaway DocumentClient script.
+
+## Remaining (optional — for a fresh session)
+
+- **`@offload` ppx shorthand** (deferred; the plugin uses explicit `Offload.optionSchema`/`toJson`
+  helpers, so this is pure ergonomics). Template `StorageRefInference.ml` → new `OffloadInference.ml`;
+  must rewrite the field type `X`→`Offload.payload<X>` + synthesize the inner schema name + emit
+  `@s.matches`; wire into `ReventlessPpx.ml`; **republish gates CI** (see memory note
+  `reference_reventless_ppx_publishing_pitfalls`).
+- **Sury `alpha.4 → rc.0` bump** — monorepo-wide (sury + sury-ppx lockstep, 9 packages), orthogonal;
+  its own session.
+- Preview loop for any further AWS work is verified working — exact command + env
+  (`REVENTLESS_COGNITO_USER_POOL_ID=eu-west-1_CQTwafSeX AWS_REGION=eu-west-1`) is in the memory note.
 
 ## Problem
 
