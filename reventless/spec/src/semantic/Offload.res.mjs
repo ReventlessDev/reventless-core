@@ -81,6 +81,10 @@ function optionSchema(plugin, store, inner) {
   });
 }
 
+function toJson(inner, payload) {
+  return S.reverseConvertToJsonOrThrow(payload, schema(inner));
+}
+
 function getInline(payload) {
   if (payload.TAG === "Inline") {
     return Primitive_option.some(payload._0);
@@ -148,6 +152,7 @@ export {
   schema,
   forStore,
   optionSchema,
+  toJson,
   getInline,
   prepare,
   resolve,

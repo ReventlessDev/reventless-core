@@ -146,6 +146,14 @@ let optionSchema = (
     ~payload=StoredIn({plugin, store}),
   )
 
+/** Serialize a payload to its **untagged** wire JSON: `Inline` becomes the bare
+    inner value's JSON, `Offloaded` becomes `{"$offload": {...}}`. Used where a
+    payload must be stored as a plain JSON blob rather than the ReScript variant —
+    e.g. the plugin read model, whose DynamoDB write path marshals the raw value
+    and would otherwise persist the variant's runtime `{TAG, _0}` shape. */
+let toJson = (inner: S.t<'a>, payload: payload<'a>): JSON.t =>
+  payload->S.reverseConvertToJsonOrThrow(schema(inner))
+
 /** The inline value, if this payload is `Inline`. `None` for `Offloaded` — a
     caller that must handle both arms uses `resolve` (async, fetches the ref); a
     caller that only ever sees inline values (a test, or a path where offloading
