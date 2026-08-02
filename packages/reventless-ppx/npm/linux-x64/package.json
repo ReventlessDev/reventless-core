@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-ppx-linux-x64",
-  "version": "1.0.0-alpha.58",
+  "version": "1.0.0-alpha.61",
   "description": "Prebuilt reventless-ppx native binary for Linux x64.",
   "license": "Apache-2.0",
   "os": [
