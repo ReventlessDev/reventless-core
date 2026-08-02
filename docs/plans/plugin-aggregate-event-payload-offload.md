@@ -208,6 +208,32 @@ shared across **seven** event variants + `versionSupersededData`'s two, mirrored
   falls through to the inner schema for legacy records), not a manual nested parse. Re-verify
   against `PluginLifecycleCorpusTest` + `MessageTest` after the change.
 
+## Implementation notes (discovered during build)
+
+**Producer runs through a hook, not `prepare`.** `Plugin_Builder` is core
+(provider-agnostic) and cannot create an S3 resource, and the plugin's values are
+`Pulumi.Output`-assembled — so the imperative `Offload.prepare` does not fit. Instead a
+`Plugin_Helpers.offloadHook: ref<option<(~store, ~bytes) => offloadedRef>>` (register/clear,
+same shape as `onPluginDeployedHook`) is set by an object-writing provider. `Plugin_Builder`
+reads the two fields (concrete at build time) and, before the `pluginDefinition`
+`Pulumi.Output.apply`, calls the hook to content-address each value or falls back to `Inline`
+when unset. **Done + green** (core seam; local leaves the hook unset ⇒ stays `Inline`).
+
+**AWS hook (remaining, deploy-validated).** In `aws/src/Platform.res`, register the offload
+hook before `P.make()` and clear after (mirror `currentDeployTarget`, :2102/:2117). The hook:
+sha256 the bytes (Node crypto), `PulumiAws.S3.BucketObject.make` under key `sha256/<hash>` in a
+dedicated offload bucket, return `{store, key, hash, bytes}`. Provision the two content-addressed
+stores (`pluginStructures`, `pluginApiFragments`) via the existing store loop
+(`Capability_ObjectStore_S3.make`, :1711) and surface them in the `objectStores` export (:1841).
+The `BucketObject.make` reference pattern already exists at :2053.
+
+**Resolve (remaining, deploy-validated).** `apiSchemaFragment` → deploy-time only, at the
+AppSync stitch (`aws/src/Platform.res` `preResolversSchemaHook` → `AppSync_Adapter`); use
+`Offload.resolve` with an S3-GET fetch. `structure` → the runtime Lambda
+`Platform_ComponentDefinitions_Lambda_Ops` (grant it offload-store GET IAM; thread the store
+location into its config); use `Offload.resolve` + `Offload.cachedFetch`. `PluginsProjection`
+keeps passing the ref through untouched.
+
 ## Steps
 
 1. **Spec primitive** (`reventless/spec`): `Semantic.Id.offload`; `Offload` module — `payload<'a>`
