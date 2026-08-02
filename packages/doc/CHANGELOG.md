@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.71 (2026-08-02)
+
+### Features
+
+* **ppx:** add [@offload](https://github.com/offload) field shorthand with per-field threshold ([3d5e3b5](https://github.com/ReventlessDev/reventless-core/commit/3d5e3b5da5010547ce0eaf7d94d660daec67feed))
+
+
 # 1.0.0-alpha.70 (2026-08-02)
 
 ### Features
