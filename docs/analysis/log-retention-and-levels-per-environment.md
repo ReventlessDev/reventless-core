@@ -1,5 +1,45 @@
 # Log Retention and Log Levels per Environment
 
+## Status — 2026-08-02 (code complete for all stacks; ops on `alpha` outstanding)
+
+The framework machinery is implemented and managed groups now default for
+**every** stack. Implementation plan:
+[../plans/env-tiered-log-retention-and-levels.md](../plans/env-tiered-log-retention-and-levels.md).
+Against the [Recommendation](#recommendation):
+
+- ✅ **0. Managed log-group name fix** — the group name now derives from
+  `lambda.name` (physical, suffix-carrying) rather than the logical `name`.
+  `RuntimeEnvironment_Lambda.makeFromCodeAsset`.
+- ✅ **1. `Util_LogRetention.res`** — new, beside `Util_StoreLayout` /
+  `Util_HostUiDomain`, with the tier functions + the `managesLogGroup` gate.
+  Unit-tested (`Util_LogRetentionTest.res`, 24 cases).
+- ✅ **2. Default retention + `LOG_LEVEL` in `makeFromCodeAsset`** — `LOG_LEVEL`
+  tier-defaulted for **every** Lambda (no hazard); managed log groups (tier
+  retention) created for **every** stack by default, AppSync included.
+- ✅ **3. Tier values** — `retentionDaysFor` / `logLevelFor` return prod 365/`info`,
+  beta 30/`info`, alpha 7/`debug`, `pr-*` 3/`debug`, applied on every stack.
+- ⬜ **4. Wipe the existing forever-logs** (Option A, retroactive retention on the
+  remaining live/AppSync groups) — **operational, not done.**
+- ✅ **5. Fix the phantom "7-day default"** — the unused
+  `CommandHandlerDefaults.logRetentionDays = 7` constant is removed; `lambda-
+  deployment.md` §10 corrected and a new §11 documents the tiers + the hazard.
+- ⬜ **6. Sequenced rollout + verify** — **operational, not done.** Only stack is
+  `alpha`; it already has auto-created groups, so its first managed deploy is a
+  delete-then-deploy (disposable path, no import), then verify the group +
+  `retentionInDays` exist.
+
+New first-class field: `commandHandlerConfig.logLevel?: string` (maps to
+`LOG_LEVEL`), wired through the three command-handler builders.
+
+**On the migration hazard:** making a group Pulumi-managed fails
+`ResourceAlreadyExists` on a stack that already has an auto-created group
+(Proposal §3). A **fresh** stack has no such group — Pulumi creates it before
+Lambda would — so defaulting management on is safe for every future stack. No
+prod stack exists to migrate. For the day one ever needs *adopting*, the
+`unmanagedLogGroupStacks` config key keeps a named stack on auto-created groups
+until a `pulumi import` is done — a config flip, not a code change. This doc
+stays in `docs/analysis/`; on-AWS verification tracks in the plan's Step 8.
+
 ## Context
 
 Today every CloudWatch log group in a Reventless AWS deployment keeps its logs

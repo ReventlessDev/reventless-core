@@ -200,6 +200,11 @@ type commandHandlerConfig = {
   sqsBatchSize?: int,
   ephemeralStorageMb?: int,
   logRetentionDays?: int,
+  // Minimum log level for this handler ("silent" | "error" | "warn" | "info" |
+  // "debug"), mapped onto the `LOG_LEVEL` env var the logger reads. Overrides the
+  // per-environment tier default. Transport-neutral: the in-memory platform reads
+  // it the same way via the env var.
+  logLevel?: string,
   envVars?: dict<string>,
 }
 
@@ -220,5 +225,8 @@ module CommandHandlerDefaults = {
   let timeout = 30
   let sqsBatchSize = 10
   let ephemeralStorageMb = 512
-  let logRetentionDays = 7
+  // No `logRetentionDays` / `logLevel` default here: both are resolved per
+  // environment tier by the AWS platform (`Util_LogRetention`), not by a flat
+  // framework constant. An unset field means "follow the stack's tier", which a
+  // single number could not express.
 }

@@ -107,6 +107,11 @@ let forDcbCommandTopic = (
         }
       })
     )
+    // First-class log-level override → LOG_LEVEL, winning over any generic
+    // envVars entry. When unset, makeFromCodeAsset applies the tier default.
+    cfg.logLevel->Option.forEach(level =>
+      envVars->Dict.set("LOG_LEVEL", level->Pulumi.Output.make->Pulumi.Output.asInput)
+    )
 
     // Build HANDLER_CONFIG JSON: array of {spec, behavior} objects so the entry point
     // can dynamically import both modules and apply the curried StateChangeSlice_Callback.Make

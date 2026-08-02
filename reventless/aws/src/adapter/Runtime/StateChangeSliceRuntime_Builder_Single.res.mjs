@@ -53,6 +53,9 @@ function forDcbCommandTopic(slicePaths, inboundSlicesOpt, dcbTableName, pluginNa
       return;
     }
   }));
+  Stdlib_Option.forEach(cfg.logLevel, level => {
+    envVars["LOG_LEVEL"] = Pulumi.output(level);
+  });
   let sliceModulesJson = slicePaths.map(param => {
     let s = Stdlib_Option.getOr(JSON.stringify(param[0]), `""`);
     let b = Stdlib_Option.getOr(JSON.stringify(param[1]), `""`);

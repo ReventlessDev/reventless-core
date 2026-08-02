@@ -276,6 +276,11 @@ let finish = () =>
             }
           })
         )
+        // First-class log-level override → LOG_LEVEL, winning over any generic
+        // envVars entry. When unset, makeFromCodeAsset applies the tier default.
+        cfg.logLevel->Option.forEach(level =>
+          envVars->Dict.set("LOG_LEVEL", level->Pulumi.Output.make->Pulumi.Output.asInput)
+        )
 
         // Build AssetArchive: static re-export + user packages
         let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(

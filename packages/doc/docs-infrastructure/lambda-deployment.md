@@ -466,7 +466,12 @@ tune the four command-handler Lambdas independently:
 Every field on the inner `commandHandlerConfig` record is optional. Unset fields
 fall back to the framework defaults exposed as
 `Reventless.Runtime.CommandHandlerDefaults` (1024 MB memory, 30 s timeout,
-batch size 10, 512 MB `/tmp`, 7-day log retention).
+batch size 10, 512 MB `/tmp`).
+
+`logRetentionDays` and `logLevel` are **not** flat defaults — they are resolved
+per environment tier (see [§11](#11-log-retention-and-levels-per-environment)).
+When unset, retention and log level follow the stack's tier rather than a fixed
+value; setting either field pins it for that handler and overrides the tier.
 
 ```rescript
 module Platform = ReventlessAws.Platform.MakeWithConfig({
@@ -506,7 +511,8 @@ let commandHandlerConfig: commandHandlerConfigs = {
 | `reservedConcurrency` | `ReservedConcurrentExecutions` |
 | `sqsBatchSize` | SQS event-source mapping `batchSize` |
 | `ephemeralStorageMb` | `EphemeralStorage.size` (`/tmp` size, MB) |
-| `logRetentionDays` | A dedicated `CloudWatch.LogGroup` with `retentionInDays` |
+| `logRetentionDays` | A dedicated `CloudWatch.LogGroup` with `retentionInDays` (overrides the environment tier) |
+| `logLevel` | `LOG_LEVEL` env var — the logger's minimum level (overrides the environment tier) |
 | `envVars` | Extra `environment.variables`, layered under framework-set keys |
 
 The local platform accepts the same record for type parity but ignores
@@ -515,3 +521,38 @@ honors them.
 
 `Platform.Make()` keeps the default behavior — an empty `commandHandlerConfig`
 that leaves every Lambda on framework defaults.
+
+## 11. Log retention and levels per environment
+
+Retention and log level are **not** fixed defaults — they are tiered by Pulumi
+stack, reusing the same prod allow-list (`hostUiProdStacks`) that names the
+host-shell domain and store layout. `Util_LogRetention` (in `reventless-aws`)
+holds the pure tier functions:
+
+| Tier | Stacks | Retention | `LOG_LEVEL` |
+|------|--------|-----------|-------------|
+| prod | `prod`, `main` | 365 days | `info` |
+| staging | `beta` | 30 days | `info` |
+| dev | `alpha`, and any unlisted stack | 7 days | `debug` |
+| ephemeral | `pr-*` | 3 days | `debug` |
+
+Retention and level pull in opposite directions between the two worlds — prod is
+quiet and long-lived, the dev stacks are loud and short-lived — which is why a
+single global setting cannot serve both.
+
+- **`LOG_LEVEL`** is defaulted per tier for **every** Lambda when nothing pins it
+  (a caller env var or `commandHandlerConfig.logLevel` wins). No migration
+  hazard: it is only an env var.
+- **Managed log groups** (with tiered `retentionInDays`) are created for **every**
+  stack by default (`Util_LogRetention.managesLogGroup`). A fresh stack gets its
+  groups from Pulumi before Lambda/AppSync auto-create them, so there is nothing
+  to adopt. The one exception is *adopting* a stack that predates managed groups:
+  it already has an auto-created group, and `CreateLogGroup` fails
+  `ResourceAlreadyExists` rather than adopting it — so either `pulumi import` its
+  groups first or list it in `unmanagedLogGroupStacks` (below) until you do.
+- **Overrides:** the Pulumi config keys `logRetentionDays` (an integer; `0` =
+  never expire) and `logLevel` override the tier for a whole stack;
+  `commandHandlerConfig.logRetentionDays` / `logLevel` override it for a single
+  command handler. `unmanagedLogGroupStacks` (CSV of stack names) keeps the named
+  stacks on Lambda/AppSync auto-created groups — the escape hatch for a stack
+  pending a `pulumi import` adoption.

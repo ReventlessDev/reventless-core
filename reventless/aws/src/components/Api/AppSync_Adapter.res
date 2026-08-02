@@ -549,6 +549,42 @@ let _makeApiResourceWith = (
   }
   let graphQLApi = AppSync.GraphQLApi.make(~name, ~args=apiArgs, ~opts=Some(customOpts))
 
+  // Managed log group with tiered retention for AppSync's own field-resolver logs,
+  // which land in `/aws/appsync/apis/<id>` and otherwise live forever with no
+  // retention. Managed on every stack by default (bar any in
+  // `unmanagedLogGroupStacks`), same as the Lambda groups. The name derives from
+  // the API id output so it matches the group AppSync writes to, and Pulumi
+  // therefore tears it down with the API.
+  let stack = Pulumi.Pulumi.getStackName()
+  let prodStacks = Util_HostUiDomain.resolveProdStacks()
+  let unmanagedStacks = Util_LogRetention.parseUnmanagedStacks(
+    Util_LocalConfig.get("unmanagedLogGroupStacks")->Option.getOr(""),
+  )
+  if Util_LogRetention.managesLogGroup(~stack, ~unmanagedStacks) {
+    let _ = Cloudwatch.LogGroup.make(
+      ~name=`${name}AppSyncLogGroup`,
+      ~args={
+        name: graphQLApi.id
+        ->Pulumi.Output.apply(id => `/aws/appsync/apis/${id}`)
+        ->Pulumi.Output.asInput,
+        retentionInDays: Util_LogRetention.retentionDaysFor(
+          ~stack,
+          ~prodStacks,
+          ~configOverride=?Util_LocalConfig.get("logRetentionDays")->Option.flatMap(s =>
+            Int.fromString(s)
+          ),
+        )->Pulumi.Input.make,
+        tags: AWS.Tags.make(
+          ~name=`${name}AppSyncLogGroup`,
+          ~kind=ReventlessCore.ComponentType.Plugin,
+          ~role=Logs,
+          ~scope=Plugin,
+        ),
+      },
+      ~opts=customOpts,
+    )
+  }
+
   (graphQLApi->Pulumi.Output.make, iamRole->Pulumi.Output.make)
 }
 

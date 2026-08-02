@@ -20,6 +20,9 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Lambda$ReventlessAws from "../../util/Util_Lambda.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_IAM_Role$ReventlessAws from "../../util/Util_IAM_Role.res.mjs";
+import * as Util_LocalConfig$ReventlessAws from "../../util/Util_LocalConfig.res.mjs";
+import * as Util_HostUiDomain$ReventlessAws from "../../util/Util_HostUiDomain.res.mjs";
+import * as Util_LogRetention$ReventlessAws from "../../util/Util_LogRetention.res.mjs";
 
 let additionalEnvVars = {};
 
@@ -50,6 +53,9 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
   let timeout = timeoutOpt !== undefined ? timeoutOpt : Runtime$ReventlessCore.CommandHandlerDefaults.timeout;
   let dcbMetrics = dcbMetricsOpt !== undefined ? dcbMetricsOpt : false;
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
+  let stack = Pulumi.getStack();
+  let prodStacks = Util_HostUiDomain$ReventlessAws.resolveProdStacks();
+  let unmanagedStacks = Util_LogRetention$ReventlessAws.parseUnmanagedStacks(Stdlib_Option.getOr(Util_LocalConfig$ReventlessAws.get("unmanagedLogGroupStacks"), ""));
   let tagsFor = (resourceName, role) => AWS_Tags$ReventlessAws.make(resourceName, componentKind, role, undefined, name, undefined, undefined, undefined);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), tagsFor(name, "Identity"), opts$1);
   Stdlib_Option.forEach(vpcConfig, param => {
@@ -87,7 +93,7 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
   let variables = Object.fromEntries([[
       "Environment",
-      Pulumi.getStack()
+      stack
     ]]);
   Stdlib_Dict.forEachWithKey(envVars, (value, key) => {
     variables[key] = value;
@@ -95,6 +101,9 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
   Stdlib_Dict.forEachWithKey(additionalEnvVars, (value, key) => {
     variables[key] = value;
   });
+  if (Stdlib_Option.isNone(variables["LOG_LEVEL"])) {
+    variables["LOG_LEVEL"] = Util_LogRetention$ReventlessAws.logLevelFor(stack, prodStacks, Util_LocalConfig$ReventlessAws.get("logLevel"));
+  }
   variables["NODE_OPTIONS"] = Util_Bundle$ReventlessAws.esmLoaderNodeOptions;
   variables["ESM_FALLBACK_DIRS"] = Util_Bundle$ReventlessAws.esmFallbackDirs;
   let tags = tagsFor(name, "Runtime");
@@ -117,9 +126,13 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
     })),
     vpcConfig: vpcConfig
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
-  Stdlib_Option.forEach(logRetentionDays, days => {
+  let match = Util_LogRetention$ReventlessAws.managesLogGroup(stack, unmanagedStacks);
+  let managedRetention = logRetentionDays !== undefined ? logRetentionDays : (
+      match ? Util_LogRetention$ReventlessAws.retentionDaysFor(stack, prodStacks, Stdlib_Option.flatMap(Util_LocalConfig$ReventlessAws.get("logRetentionDays"), s => Stdlib_Int.fromString(s, undefined))) : undefined
+    );
+  Stdlib_Option.forEach(managedRetention, days => {
     let logGroup = new (Aws.cloudwatch.LogGroup)(name + `LogGroup`, {
-      name: `/aws/lambda/` + name,
+      name: lambda.name.apply(n => `/aws/lambda/` + n),
       retentionInDays: days,
       tags: tagsFor(name + `LogGroup`, "Logs")
     }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);

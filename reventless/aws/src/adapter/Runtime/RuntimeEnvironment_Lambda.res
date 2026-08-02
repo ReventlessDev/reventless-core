@@ -115,7 +115,9 @@ let makeFromCodeAsset: (
   ~logRetentionDays: int=?,
   /** Provision the DCB append-retry/conflict CloudWatch metric filters on this
       Lambda's log group (command-handler Lambdas only). Requires a managed log
-      group, so it only takes effect when `~logRetentionDays` is also set. */
+      group, so it only takes effect when one is created — i.e. when
+      `~logRetentionDays` is set or the stack tier manages its groups
+      (`Util_LogRetention.managesLogGroup`). */
   ~dcbMetrics: bool=?,
   /** Place the Lambda in a VPC (needed to reach RDS/managed Postgres). When set,
       the execution role also gets the EC2 network-interface permissions AWS
@@ -142,6 +144,18 @@ let makeFromCodeAsset: (
   open PulumiAws
   let opts =
     opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
+
+  // The environment tier drives retention, default log level and whether the log
+  // group is Pulumi-managed. Resolved once from the stack name and the shared
+  // prod allow-list (the same notion of "production" that names the host-shell
+  // domain and the store layout).
+  let stack = Pulumi.Pulumi.getStackName()
+  let prodStacks = Util_HostUiDomain.resolveProdStacks()
+  // Stacks explicitly held on auto-created log groups pending a `pulumi import`
+  // (none today — the escape hatch for adopting a pre-existing stack later).
+  let unmanagedStacks = Util_LogRetention.parseUnmanagedStacks(
+    Util_LocalConfig.get("unmanagedLogGroupStacks")->Option.getOr(""),
+  )
 
   // One attribution identity for every resource provisioned here: same owning
   // component and kind throughout, distinct piece roles — the function itself,
@@ -219,15 +233,28 @@ let makeFromCodeAsset: (
     ->Option.getOr([])
     ->Pulumi.Input.make
 
-  let variables = Dict.fromArray([
-    ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
-  ])
+  let variables = Dict.fromArray([("Environment", stack->Pulumi.Input.make)])
   envVars->Dict.forEachWithKey((value, key) => {
     variables->Dict.set(key, value)
   })
   additionalEnvVars->Dict.forEachWithKey((value, key) => {
     variables->Dict.set(key, value)
   })
+
+  // Default the logger's minimum level per environment tier when nothing already
+  // pinned one (caller `envVars` or a consumer-registered `additionalEnvVars`
+  // win). Verbose on disposable dev stacks, quiet on prod/beta — for every
+  // Lambda, not just the command handlers.
+  if variables->Dict.get("LOG_LEVEL")->Option.isNone {
+    variables->Dict.set(
+      "LOG_LEVEL",
+      Util_LogRetention.logLevelFor(
+        ~stack,
+        ~prodStacks,
+        ~configOverride=?Util_LocalConfig.get("logLevel"),
+      )->Pulumi.Input.make,
+    )
+  }
 
   // ESM self-containment (Option C): every code archive built by
   // Util_Bundle.buildCodeArchive ships register-hook.mjs + layer-resolver.mjs at
@@ -263,13 +290,44 @@ let makeFromCodeAsset: (
     ~opts?,
   )
 
-  // Optional CloudWatch log-group with explicit retention. When not set, Lambda
-  // auto-creates a log group with no retention (logs accumulate indefinitely).
-  logRetentionDays->Option.forEach(days => {
+  // Managed CloudWatch log-group with explicit retention. Created when the caller
+  // pins `~logRetentionDays` (the app-developer opt-in) OR the stack manages its
+  // groups — every stack by default, bar any named in `unmanagedLogGroupStacks`
+  // (see `Util_LogRetention.managesLogGroup`). When neither holds, Lambda
+  // auto-creates an unmanaged group with no retention.
+  //
+  // Precedence for the retention value: explicit `~logRetentionDays` → the
+  // `logRetentionDays` config key → the environment tier default.
+  //
+  // The group name derives from the function's *physical* name output, not the
+  // logical `name`. `Lambda.Function` has no `name` arg, so its physical name
+  // always carries Pulumi's `-<7hex>` suffix; a literal `/aws/lambda/${name}`
+  // would create an empty group beside the real one, leave orphan accumulation
+  // unchanged, and collide across stacks sharing an account.
+  let managedRetention = switch (
+    logRetentionDays,
+    Util_LogRetention.managesLogGroup(~stack, ~unmanagedStacks),
+  ) {
+  | (Some(days), _) => Some(days)
+  | (None, true) =>
+    Some(
+      Util_LogRetention.retentionDaysFor(
+        ~stack,
+        ~prodStacks,
+        ~configOverride=?Util_LocalConfig.get("logRetentionDays")->Option.flatMap(s =>
+          Int.fromString(s)
+        ),
+      ),
+    )
+  | (None, false) => None
+  }
+  managedRetention->Option.forEach(days => {
     let logGroup = Cloudwatch.LogGroup.make(
       ~name=`${name}LogGroup`,
       ~args={
-        name: `/aws/lambda/${name}`->Pulumi.Input.make,
+        name: lambda.name
+        ->Pulumi.Output.apply(n => `/aws/lambda/${n}`)
+        ->Pulumi.Output.asInput,
         retentionInDays: days->Pulumi.Input.make,
         tags: tagsFor(~resourceName=`${name}LogGroup`, ~role=Logs),
       },

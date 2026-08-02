@@ -48,8 +48,7 @@ let CommandHandlerDefaults = {
   memorySize: 1024,
   timeout: 30,
   sqsBatchSize: 10,
-  ephemeralStorageMb: 512,
-  logRetentionDays: 7
+  ephemeralStorageMb: 512
 };
 
 export {
