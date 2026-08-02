@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.204 (2026-08-02)
+
+### Bug Fixes
+
+* **core:** store offloaded plugin structure untagged in the read model ([9036991](https://github.com/ReventlessDev/reventless-core/commit/9036991d9fbc7bbb01157fa58be1702ea4ba36d1))
+
+
 # 3.0.0-alpha.203 (2026-08-02)
 
 ### Bug Fixes
