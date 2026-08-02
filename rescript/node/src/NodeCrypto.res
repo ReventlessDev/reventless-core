@@ -17,6 +17,12 @@ external createHash: string => hash = "createHash"
 @send external hashUpdateBuffer: (hash, Uint8Array.t) => hash = "update"
 @send external hashDigest: (hash, string) => string = "digest"
 
+/** SHA-256 of a UTF-8 string, hex-encoded. The content hash content-addressed
+    stores key their objects on (`sha256/<hash>`): the same bytes always yield the
+    same digest, so an upload is idempotent and deduplicating. */
+let sha256Hex = (input: string): string =>
+  createHash("sha256")->hashUpdate(input)->hashDigest("hex")
+
 // ── HMAC ─────────────────────────────────────────────────────────────────────
 
 type hmac
