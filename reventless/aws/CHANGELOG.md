@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.257 (2026-08-02)
+
+### Features
+
+* **aws:** activate [@offload](https://github.com/offload) for plugin payloads across platform + plugin stacks ([3d9e91c](https://github.com/ReventlessDev/reventless-core/commit/3d9e91c382504f9bbb71e653dd96c503ec25a566))
+* **aws:** S3 GetObject->string binding + structure offload resolver ([1274bcc](https://github.com/ReventlessDev/reventless-core/commit/1274bcce29f8a1b70db362a10585c508710e7b56))
+
+
 # 3.0.0-alpha.256 (2026-08-02)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

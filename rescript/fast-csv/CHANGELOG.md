@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.1 (2026-08-02)
+
+**Note:** Version bump only for package @reventlessdev/rescript-fast-csv
+
+
+
+
+
 # 2.0.0-alpha.0 (2026-07-31)
 
 * feat(rescript)!: one Node bindings package, not two ([1258d8c](https://github.com/ReventlessDev/reventless-core/commit/1258d8c2b2ff2636b36a849fc5bdf9005c6fb0eb))

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.2 (2026-08-02)
+
+### Features
+
+* **aws:** S3 GetObject->string binding + structure offload resolver ([1274bcc](https://github.com/ReventlessDev/reventless-core/commit/1274bcce29f8a1b70db362a10585c508710e7b56))
+
+
 # 3.0.0-alpha.1 (2026-08-02)
 
 ### Features

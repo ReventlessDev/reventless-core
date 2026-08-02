@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.203 (2026-08-02)
+
+### Bug Fixes
+
+* **core:** run the offload hook at graph-construction, not inside .apply ([5a102f1](https://github.com/ReventlessDev/reventless-core/commit/5a102f149d6d218cdeeb28dbf9bded1d6fb1252e))
+
+
 # 3.0.0-alpha.202 (2026-08-02)
 
 ### Features
