@@ -122,3 +122,43 @@ let getStore = (schema: S.t<'a>): option<Semantic.storeTarget> =>
   | Some({payload: StoredIn(target)}) => Some(target)
   | _ => None
   }
+
+/** How many refs one field holds. */
+type arity =
+  | /** A `string` field: one ref. */ Single
+  | /** An `array<string>` field: zero or more refs. */ Multiple
+
+/**
+The store a *field* declares, looking through an array wrapper, with the arity
+that tells a reader how to get at the value.
+
+`getStore` asks about a schema; this asks about a field, and those differ for
+`@storageRef("s") urls: array<string>` — the ppx attaches the marker to the
+element type, because `@s.matches` requires the schema's type to match what it
+is attached to, so the array itself carries no marker and `getStore` on it
+answers `None`.
+
+Every reader of a *field* wants this one. Reading `getStore` directly is what
+made a multi-valued store declaration invisible: the store went unprovisioned,
+which is the same silence as not having written the annotation at all.
+*/
+let getFieldStore = (schema: S.t<'a>): option<(Semantic.storeTarget, arity)> =>
+  switch getStore(schema) {
+  | Some(target) => Some(target, Single)
+  | None =>
+    switch schema->(Obj.magic: S.t<'a> => S.t<unknown>) {
+    | Array({items, additionalItems}) =>
+      // sury keeps a homogeneous `S.array` element schema in `additionalItems`
+      // and a tuple's positional schemas in `items`; read both so the marker is
+      // found wherever the element sits.
+      switch items->Array.get(0) {
+      | Some({schema: itemSchema}) => getStore(itemSchema)
+      | None =>
+        switch additionalItems {
+        | Schema(itemSchema) => getStore(itemSchema)
+        | _ => None
+        }
+      }->Option.map(target => (target, Multiple))
+    | _ => None
+    }
+  }

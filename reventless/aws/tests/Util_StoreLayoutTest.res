@@ -240,3 +240,66 @@ describe("Util_StoreLayout.keyPrefixFor", () => {
     )->toBe(true)
   )
 })
+
+describe("Util_StoreLayout.pendingExpiryFor", () => {
+  // The default is the whole point: expiry is the one step in the mechanism that
+  // deletes objects, and it is only sound once reconciliation has confirmed the
+  // tagged set is the unreferenced set. A store nobody named accumulates.
+  testSync("no config at all means no store expires anything", () =>
+    expect(
+      Util_StoreLayout.pendingExpiryFor(~config=None, ~store="Catalog.productImages"),
+    )->toEqual(None)
+  )
+
+  testSync("a store the config does not name expires nothing", () =>
+    expect(
+      Util_StoreLayout.pendingExpiryFor(
+        ~config=Some("Ordering.receipts=14"),
+        ~store="Catalog.productImages",
+      ),
+    )->toEqual(None)
+  )
+
+  testSync("a named store takes its own retention", () =>
+    expect(
+      Util_StoreLayout.pendingExpiryFor(
+        ~config=Some("Catalog.productImages=30"),
+        ~store="Catalog.productImages",
+      ),
+    )->toEqual(Some(30))
+  )
+
+  // Per store, one at a time — the plan's sequencing expressed in the setting.
+  testSync("stores are enabled independently, with their own values", () => {
+    let config = Some("Catalog.productImages=30, Ordering.receipts=14")
+    expect((
+      Util_StoreLayout.pendingExpiryFor(~config, ~store="Catalog.productImages"),
+      Util_StoreLayout.pendingExpiryFor(~config, ~store="Ordering.receipts"),
+      Util_StoreLayout.pendingExpiryFor(~config, ~store="Catalog.other"),
+    ))->toEqual((Some(30), Some(14), None))
+  })
+
+  // Guessing at what a typo meant, in the one setting that deletes objects, is
+  // not a service — an unreadable entry leaves the store accumulating.
+  testSync("a malformed or non-positive entry is ignored, not defaulted", () => {
+    let of_ = c => Util_StoreLayout.pendingExpiryFor(~config=Some(c), ~store="Catalog.productImages")
+    expect((
+      of_("Catalog.productImages"),
+      of_("Catalog.productImages="),
+      of_("Catalog.productImages=soon"),
+      of_("Catalog.productImages=0"),
+      of_("Catalog.productImages=-1"),
+    ))->toEqual((None, None, None, None, None))
+  })
+
+  // The prefix is a platform-global namespace, so two plugins' stores are
+  // distinct keys — enabling one must not enable the other.
+  testSync("a store name is matched whole, not by prefix", () =>
+    expect(
+      Util_StoreLayout.pendingExpiryFor(
+        ~config=Some("Catalog.productImages=30"),
+        ~store="Catalog.productImagesArchive",
+      ),
+    )->toEqual(None)
+  )
+})

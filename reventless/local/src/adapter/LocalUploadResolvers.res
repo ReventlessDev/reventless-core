@@ -5,7 +5,7 @@
 // The dev store has no identities and no clock, so release enforces only the *shape*
 // of the rule (key under a served prefix), not the identity/age conditions AWS applies
 // — dev parity is about the client seeing the same contract, not reproducing AWS's
-// guarantees. See [docs/plans/upload-release-path.md] § Step 3.
+// guarantees. See [docs/plans/done/upload-release-path.md] § Step 3.
 
 // Mint a same-origin `/{prefix}/{uuid}/{fileName}` ref: both the PUT target and the
 // stored value, mirroring the AWS presign ticket's shape.

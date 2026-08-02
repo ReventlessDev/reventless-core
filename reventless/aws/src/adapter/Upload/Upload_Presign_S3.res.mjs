@@ -64,6 +64,7 @@ function make(api, stores, releaseWindowSecondsOpt, nameOpt, opts) {
           Effect: "Allow",
           Action: [
             "s3:PutObject",
+            "s3:PutObjectTagging",
             "s3:DeleteObject",
             "s3:GetObject"
           ],

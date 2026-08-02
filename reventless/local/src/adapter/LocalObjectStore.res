@@ -57,7 +57,7 @@ let put = (~key: string, ~bytes: buffer, ~contentType: string): unit =>
 let get = (~key: string): option<entry> => objects->Dict.get(key)
 
 // Remove a stored object. Idempotent — deleting an absent key is a no-op, matching
-// the release contract (see docs/plans/upload-release-path.md, Step 3). The dev
+// the release contract (see docs/plans/done/upload-release-path.md, Step 3). The dev
 // store has no identities or clock, so the release resolver enforces only the
 // *shape* of the rule (key under a served prefix), not the identity/age conditions.
 let delete = (~key: string): unit => objects->Dict.delete(key)

@@ -503,7 +503,11 @@ let make = (
     properties
     ->Dict.toArray
     ->Array.filterMap(((field, fieldSchema)) =>
-      Reventless.StorageRef.getStore(fieldSchema)->Option.map(target => {
+      // `getFieldStore`, not `getStore`: a `@storageRef("s") urls: array<string>`
+      // field carries the marker on its *element*, so reading the field schema
+      // directly answered `None` and the store went unprovisioned — the same
+      // silence as never having written the annotation.
+      Reventless.StorageRef.getFieldStore(fieldSchema)->Option.map(((target, _arity)) => {
         Reventless.Plugin.store: target.plugin->Option.getOr(name) ++ "." ++ target.store,
         component,
         field,

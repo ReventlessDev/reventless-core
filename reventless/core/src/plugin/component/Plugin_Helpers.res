@@ -911,6 +911,11 @@ type eventQueryRegistrationParams = {
 // are assembled inside builderOutputs.  Lets the AWS platform wire StateTopic and
 // EventLogSubscription Lambdas without touching reventless-core.
 type subscriptionInfraParams = {
+  /** The plugin's registered name. Carried because infrastructure wired from
+      here can be per plugin rather than per component — and because a
+      declaration that names a store without qualifying it means "this plugin's
+      own", which is unreadable without knowing whose plugin it is. */
+  pluginName: string,
   allQueryDbs: ReventlessInfra.QueryDb.allOutputs,
   allEventTopics: dict<ReventlessInfra.EventTopic.outputs>,
   eventLogEntries: array<ReventlessInfra.Api.eventLogSchemaEntry>,

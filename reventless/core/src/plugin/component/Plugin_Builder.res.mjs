@@ -547,6 +547,7 @@ function Make(Spec) {
           let tasksOutputs = Plugin_Helpers$ReventlessCore.createTasks(tasks, aggregatesOutputs, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, Spec.resourceNaming, componentRuntime, opts);
           let resolvers = Plugin_Helpers$ReventlessCore.createResolvers(allQueryDbs);
           Stdlib_Option.forEach(Spec.hooks.subscriptionInfraHook, hook => hook({
+            pluginName: extra$1,
             allQueryDbs: allQueryDbs,
             allEventTopics: aggregateEventTopics,
             eventLogEntries: eventLogEntries,

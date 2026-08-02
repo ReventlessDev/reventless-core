@@ -189,3 +189,40 @@ let coverageFor = (~required: array<string>, ~provisioned: array<string>): cover
   | (missing, provisioned) => Missing({missing, provisioned})
   }
 }
+
+/**
+After how many days a store expires objects still tagged pending — `None`, which
+is the default, meaning it expires nothing.
+
+The setting is a deployment's, not a declaration's: `@storageRef("productImages")`
+says a store is needed, and says nothing about how long an unclaimed upload
+should live there. Read from the `pendingUploadExpiryDays` config key (env var
+`REVENTLESS_PENDING_UPLOAD_EXPIRY_DAYS`, or the `Pulumi.local.yaml` sidecar) as a
+comma-separated list of `{plugin}.{store}=days` pairs:
+
+    pendingUploadExpiryDays: "Catalog.productImages=30, Ordering.receipts=14"
+
+**Per store and off by default, on purpose.** Enabling this is the one step in
+the mechanism that deletes data, and it is only sound once the claim component
+has been live long enough for reconciliation to confirm that the objects still
+tagged pending really are the unreferenced ones. A global switch — or a default
+value — would turn it on for stores nobody had checked yet, which is the whole
+failure this sequencing exists to prevent. A store that accumulates forever is a
+legitimate choice, and stays the choice until a deployment says otherwise.
+
+Only positive whole days are accepted. A malformed or non-positive entry is
+ignored rather than rounded or defaulted: guessing at what a typo meant, in the
+one setting that deletes objects, is not a service.
+*/
+let pendingExpiryFor = (~config: option<string>, ~store: string): option<int> =>
+  config
+  ->Option.getOr("")
+  ->String.split(",")
+  ->Array.filterMap(entry =>
+    switch entry->String.split("=") {
+    | [name, days] if name->String.trim == store =>
+      days->String.trim->Int.fromString->Option.filter(d => d > 0)
+    | _ => None
+    }
+  )
+  ->Array.get(0)

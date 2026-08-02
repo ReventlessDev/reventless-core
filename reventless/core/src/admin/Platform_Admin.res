@@ -309,7 +309,7 @@ module Make = (
       })
     let eventLogEntries = Array.concat(eventLogEntriesFromAggregates, dcbResult.eventLogEntries)
     Config.hooks.subscriptionInfraHook->Option.forEach(hook =>
-      hook({allQueryDbs, allEventTopics, eventLogEntries, opts})
+      hook({pluginName: name, allQueryDbs, allEventTopics, eventLogEntries, opts})
     )
 
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)

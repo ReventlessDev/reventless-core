@@ -1,11 +1,16 @@
 # Plan: seeding a platform that publishes per-store upload endpoints
 
 **Date:** 2026-07-31
-**Status:** Steps 1–5 implemented and unit-tested; two of the four verifications need a deployed
-stack and are outstanding (see [Implementation](#implementation-2026-07-31)).
+**Status:** CLOSED 2026-08-02 — gap closed, **mechanism superseded**. Steps 1–5 were implemented
+and unit-tested on 2026-07-31; route B of
+[upload-release-path.md](./upload-release-path.md) then removed per-store presign *URLs*
+altogether, and with them most of what this plan built. See
+[What became of it](#what-became-of-it-2026-08-02). The two AWS verifications it left outstanding
+are now subsumed by that plan's acceptance check 7 (seeding end-to-end through the mutation), which
+awaits the same deploy.
 **Repos:** `reventless-core` only.
-**Analysis:** [platform-main-capability-provisioning.md](../analysis/platform-main-capability-provisioning.md) §7 Stage 2.
-**Builds on:** [declared-object-stores-without-host-ui-bundle.md](./declared-object-stores-without-host-ui-bundle.md)
+**Analysis:** [platform-main-capability-provisioning.md](../../analysis/platform-main-capability-provisioning.md) §7 Stage 2.
+**Builds on:** [declared-object-stores-without-host-ui-bundle.md](../declared-object-stores-without-host-ui-bundle.md)
 (the `uploadEndpoints` / `objectStores` outputs this plan consumes).
 
 ## The gap
@@ -197,6 +202,32 @@ declares one store (`online-shop-aggregates-platform-aws`) seeding images whose 
 `objectStores.baseUrl`. The second is the one this plan exists for and has never worked; it is also
 gated on that example's platform being deployed, which the preceding plan's "Still to do" already
 records.
+
+## What became of it (2026-08-02)
+
+Route B moved minting behind the domain API's `Upload_Presign(store, fileName, contentType)`
+mutation. A caller now **names the store and gets a URL back**, where before it had to **find the
+store's URL**. That inverts the problem this plan solved, so most of its machinery had nothing left
+to do and was deleted rather than adapted:
+
+| Step | Fate |
+|---|---|
+| 1 — `connection` carries `uploadEndpoints` | **Gone.** No per-store URL is published, so there is no map. |
+| 2 — `resolveEndpoints` reads the map in both arms | **Gone.** `endpointsFrom` now decides only which GraphQL endpoint each arm takes. |
+| 3 — four-row `endpointFor` / `uploadEndpointFor` | **Gone.** There is one endpoint and the store is an argument, so there is nothing to resolve and no way to mis-resolve. |
+| 4 — a data set names the store it uploads to | **Survives, and is now load-bearing.** `~store` is the mutation's argument; `HybridSeedData` passes `"Catalog.productImages"`. |
+| 5 — the skip message tells the truth | **Partly.** `SEED_SKIP_UPLOADS` still reports itself; the "endpoints present but none matching" case it distinguished can no longer occur. |
+
+The half worth keeping is the one this plan argued hardest for. Its decision section says *"the
+connection must carry the map, and the data set must name its store"* — the map was the mechanism
+and the naming was the principle, and only the mechanism was contingent on how mint was exposed.
+The failure it was defending against (a wrong guess uploading into another plugin's bucket with a
+2xx and a plausible ref) is now structurally impossible: an unnamed store is not a wrong store, it
+is a missing required argument.
+
+Also retired with the URLs: `config.json`'s `uploadEndpoint`/`uploadEndpoints` fields, and the
+platform's `uploadEndpoints` stack output. `objectStores` stays — it carries bucket and prefix, not
+an endpoint, and the reset and reconciliation tools both read it.
 
 ## Out of scope
 

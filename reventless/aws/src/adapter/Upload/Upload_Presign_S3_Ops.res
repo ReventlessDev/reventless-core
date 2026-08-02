@@ -25,6 +25,7 @@ type putObjectInput = {
   @as("Bucket") bucket: string,
   @as("Key") key: string,
   @as("ContentType") contentType?: string,
+  @as("Tagging") tagging?: string,
 }
 type putObjectCommand
 
@@ -225,7 +226,18 @@ let handlePresign = async (
   // served prefix so the CloudFront `{prefix}/*` behavior fronts it, and namespaced
   // by the verified `sub` so the release rule can tell one caller's objects apart.
   let key = `${servedPrefix}/${sub}/${NodeCrypto.randomUUID()}/${fileName}`
-  let command = makePutObjectCommand({bucket, key, contentType: ?args.contentType})
+  // The object is provisional from the moment the bytes land: it carries the
+  // pending tag until a committed event referencing it strips it (see
+  // `Upload_Claim_S3_Ops`). Written into the signature here, not asked of the
+  // caller — the SDK hoists `x-amz-tagging` into the presigned URL's query
+  // string, so a client that PUTs exactly as it always has still gets tagged
+  // bytes, and cannot opt out.
+  let command = makePutObjectCommand({
+    bucket,
+    key,
+    contentType: ?args.contentType,
+    tagging: Upload_PendingTag.putObjectTagging,
+  })
   let uploadUrl = await getSignedUrl(client, command, {expiresIn: 300})
   // Same-origin relative ref `/{key}`: the served bucket is fronted read-only by the
   // UI's own CloudFront distribution under `{prefix}/*`, so a command stores this

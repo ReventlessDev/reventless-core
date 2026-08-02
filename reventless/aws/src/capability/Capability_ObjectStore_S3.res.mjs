@@ -3,6 +3,7 @@
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as AWS_Tags$ReventlessAws from "../adapter/AWS_Tags.res.mjs";
+import * as Upload_PendingTag$ReventlessAws from "../adapter/Upload/Upload_PendingTag.res.mjs";
 import * as Upload_Presign_S3$ReventlessAws from "../adapter/Upload/Upload_Presign_S3.res.mjs";
 
 let defaultCorsRules = [{
@@ -18,10 +19,11 @@ let defaultCorsRules = [{
     maxAgeSeconds: 3000
   }];
 
-function make(name, keyPrefixOpt, plugin, protectOpt, forceDestroyOpt, corsRulesOpt, opts) {
+function make(name, keyPrefixOpt, plugin, protectOpt, forceDestroyOpt, expirePendingOpt, corsRulesOpt, opts) {
   let keyPrefix = keyPrefixOpt !== undefined ? keyPrefixOpt : Upload_Presign_S3$ReventlessAws.defaultServedPrefix;
   let protect = protectOpt !== undefined ? protectOpt : true;
   let forceDestroy = forceDestroyOpt !== undefined ? forceDestroyOpt : false;
+  let expirePending = expirePendingOpt !== undefined ? expirePendingOpt : [];
   let corsRules = corsRulesOpt !== undefined ? corsRulesOpt : defaultCorsRules;
   let match = plugin !== undefined ? [
       "Plugin",
@@ -32,9 +34,25 @@ function make(name, keyPrefixOpt, plugin, protectOpt, forceDestroyOpt, corsRules
     ];
   let newrecord = {...Stdlib_Option.getOr(opts, {})};
   newrecord.protect = protect;
+  let lifecycleRules = expirePending.map(param => {
+    let prefix = param.prefix;
+    return {
+      enabled: true,
+      expiration: {
+        days: param.days
+      },
+      id: `reventless-pending-expiry-` + prefix.replaceAll("/", "-"),
+      prefix: prefix + `/`,
+      tags: Object.fromEntries([[
+          Upload_PendingTag$ReventlessAws.key,
+          Upload_PendingTag$ReventlessAws.value
+        ]])
+    };
+  });
   let bucket = new (Aws.s3.Bucket)(name, {
     corsRules: corsRules,
     forceDestroy: forceDestroy,
+    lifecycleRules: lifecycleRules,
     tags: AWS_Tags$ReventlessAws.make(name, match[0], {
       TAG: "Other",
       _0: "ObjectStore"

@@ -89,7 +89,7 @@ let pluginStatusSubscriptionSource: GraphQL_Stitcher.subscriptionSource = {
 // (`injectAwsAuthAll(~group="Admin")`), and uploads are a regular authenticated-user
 // operation. They are added instead to the **domain** API's platform-owned base
 // (`domainBaseFragment` in the AWS/local Platform), which takes the default
-// `AllowAuthenticated` auth. See [docs/plans/upload-release-path.md] § "Which API".
+// `AllowAuthenticated` auth. See [docs/plans/done/upload-release-path.md] § "Which API".
 let uploadTypes = [
   `type Upload_Ticket {\n  uploadUrl: String!\n  storageRef: String!\n}`,
   `type Upload_ReleaseResult {\n  released: Boolean!\n  reason: String\n}`,

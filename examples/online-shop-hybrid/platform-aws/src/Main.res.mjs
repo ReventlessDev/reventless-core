@@ -10,7 +10,7 @@ let Platform = Platform$ReventlessAws.Make({});
 
 let placeIndex = Capability_Geocoding_AwsLocation$ReventlessAws.make("online-shop-geocoder", undefined);
 
-let uploadBucket = Capability_ObjectStore_S3$ReventlessAws.make("online-shop-uploads", undefined, undefined, undefined, undefined, undefined, undefined);
+let uploadBucket = Capability_ObjectStore_S3$ReventlessAws.make("online-shop-uploads", undefined, undefined, undefined, undefined, undefined, undefined, undefined);
 
 let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), {
   geocoderPlaceIndex: placeIndex,

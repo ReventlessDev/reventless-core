@@ -6,19 +6,21 @@ store provisioning, and the local dev-platform routes.
 **Companion:** the client-side adapter that calls the release operation is tracked in
 its own plan in the consuming UI repo. Nothing here depends on that plan landing: the
 contract, the service and the local routes stand on their own.
-**Status:** Steps 1–4 implemented (route B, domain API, single service B1) — builds
-clean and unit/HTTP tests green across `aws`, `local`, `seed`, `seed-aws`. Steps 5
-(sweeper) and 6 (offline reconciliation) remain staged/backlog. The deploy + browser
-acceptance checks (1–5, 7-on-AWS) await a real deploy.
+**Status:** COMPLETE (implementation). Steps 1–4 (route B, domain API, single service
+B1) plus Steps 5 (sweeper) and 6 (offline reconciliation), the latter two promoted into
+[upload-pending-claim-and-expiry.md](./upload-pending-claim-and-expiry.md) and
+implemented there 2026-08-02. Builds clean and unit/HTTP tests green across `aws`,
+`local`, `seed`, `seed-aws`. The deploy + browser acceptance checks (1–5, 7-on-AWS)
+verify on the next alpha deploy.
 **Revised 2026-08-01:** route **B** chosen — mint and release move behind the
 **platform GraphQL API** — over the earlier recommendation of route A (verify a bearer
 token inside the Function-URL Lambda). The reasoning is recorded under
 [How mint and release are exposed](#how-mint-and-release-are-exposed); the steps,
 acceptance checks and risks below are all written for B.
-**Builds on:** [served-buckets.md](./done/served-buckets.md) (the mint → store → serve
-loop), [platform-capability-provisioning-stage-2.md](./done/platform-capability-provisioning-stage-2.md)
+**Builds on:** [served-buckets.md](./served-buckets.md) (the mint → store → serve
+loop), [platform-capability-provisioning-stage-2.md](./platform-capability-provisioning-stage-2.md)
 (declaration-driven object stores),
-[declared-object-stores-without-host-ui-bundle.md](./declared-object-stores-without-host-ui-bundle.md)
+[declared-object-stores-without-host-ui-bundle.md](../declared-object-stores-without-host-ui-bundle.md)
 (store endpoints as first-class outputs).
 
 ## The gap
@@ -51,10 +53,10 @@ Three properties of the service as it stands make the obvious fix unsafe.
 
 1. **The mint side is anonymous.** The Function URL is created with
    `authorizationType: FunctionUrl.None`
-   ([Upload_Presign_S3.res](../../reventless/aws/src/adapter/Upload/Upload_Presign_S3.res)),
+   ([Upload_Presign_S3.res](../../../reventless/aws/src/adapter/Upload/Upload_Presign_S3.res)),
    and the handler *decodes* a bearer token without verifying its signature —
    `decodeJwtSub` exists only to namespace the object key
-   ([Upload_Presign_S3_Ops.res](../../reventless/aws/src/adapter/Upload/Upload_Presign_S3_Ops.res)).
+   ([Upload_Presign_S3_Ops.res](../../../reventless/aws/src/adapter/Upload/Upload_Presign_S3_Ops.res)).
    Today that is a write-only surface. Bolting deletion onto it makes an
    unauthenticated endpoint destructive.
 
@@ -127,7 +129,7 @@ Two routes were considered; **B is chosen**.
 - **A — verify the token in the Function-URL Lambda.** Keeps the contract shape every
   caller already speaks (`POST {fileName, contentType}` → `{uploadUrl, storageRef}`),
   and the seed's optional-bearer path
-  ([Seed_Upload.res](../../reventless/seed/src/Seed_Upload.res)) becomes required
+  ([Seed_Upload.res](../../../reventless/seed/src/Seed_Upload.res)) becomes required
   rather than restructured. Cost: a real JWKS-backed verifier (issuer, audience,
   `token_use`, clock skew, key caching) — `aws-jwt-verify` rather than hand-rolled —
   and therefore a **new runtime dependency that has to reach the Lambda through the
@@ -167,7 +169,7 @@ authorizer every other API call already uses) instead of a second, parallel
 JWKS-verification path with its own issuer/audience/skew/key-cache config to keep in
 sync. And the two operations land on the **platform API**, which already hosts exactly
 this kind of operational, non-domain mutation (`Plugin_Activate`, `Plugin_Deactivate`,
-the cloner mutation — [Platform_AdminApi.res](../../reventless/core/src/admin/Platform_AdminApi.res)) —
+the cloner mutation — [Platform_AdminApi.res](../../../reventless/core/src/admin/Platform_AdminApi.res)) —
 not on the domain API, where aggregate/DCB commands live.
 
 A's headline advantage was continuity — "the contract shape stays, so no caller
@@ -219,9 +221,9 @@ parentheticals mark where B2 would have differed and can be ignored.
 - Add an `Upload_Presign` mutation to the platform API, backed by a Lambda data source,
   following the `createResolvers` + Lambda-data-source pattern the admin and
   CommandGenerator resolvers already use
-  ([CommandGeneratorResolvers_AppSync.res](../../reventless/aws/src/adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res),
+  ([CommandGeneratorResolvers_AppSync.res](../../../reventless/aws/src/adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res),
   `Platform.res:1220`). The field entry is hand-authored alongside the admin entries in
-  [Platform_AdminApi.res](../../reventless/core/src/admin/Platform_AdminApi.res),
+  [Platform_AdminApi.res](../../../reventless/core/src/admin/Platform_AdminApi.res),
   named via `Api_Naming.adminField` — it is a platform operation, not a generated
   plugin field.
 - Rework `Upload_Presign_S3_Ops` to read an **AppSync resolver event**
@@ -240,7 +242,7 @@ parentheticals mark where B2 would have differed and can be ignored.
   already has the platform API endpoint. (B2 keeps a store→field-name map here instead.)
 - **Breaking:** the mint *transport* changes — a caller POSTing to the old Function URL
   stops working and must call the `Upload_Presign` mutation. In this repo that is the
-  seed ([Seed_Upload.res](../../reventless/seed/src/Seed_Upload.res)) and the local dev
+  seed ([Seed_Upload.res](../../../reventless/seed/src/Seed_Upload.res)) and the local dev
   path; the client is new code. Wants a release note.
 
 ### Step 2 — the release mutation
@@ -274,7 +276,7 @@ parentheticals mark where B2 would have differed and can be ignored.
 ### Step 3 — local dev parity
 
 - Register `Upload_Presign` and `Upload_Release` on the local **platform** GraphQL
-  server ([PlatformGraphQL_Server.res](../../reventless/local/src/adapter/PlatformGraphQL_Server.res))
+  server ([PlatformGraphQL_Server.res](../../../reventless/local/src/adapter/PlatformGraphQL_Server.res))
   via `DomainGraphQL_Server.registerMutations(~sdlFields, ~resolvers)`, backed by
   `LocalObjectStore`, so the client and seed call the identical mutation in dev.
 - Add `LocalObjectStore.delete(~key)`; the `Upload_Release` resolver calls it. The
@@ -304,7 +306,7 @@ parentheticals mark where B2 would have differed and can be ignored.
   general delete API, and no object a committed event references is reachable through
   it.**
 
-### Step 5 (staged) — the sweeper
+### Step 5 (staged) — the sweeper → **promoted and implemented**
 
 For everything a client never got to release. Mint tags the object
 `reventless:pending`; something that observes committed events strips the tag from the
@@ -318,13 +320,23 @@ nothing consumes them at runtime today, and (c) a lifecycle policy on a bucket c
 with `protect: true`, where a wrong rule deletes referenced objects wholesale. Each of
 those is a decision in its own right; sizing them into Step 2 would bury them.
 
-### Step 6 (backlog) — offline reconciliation
+Each of those three did turn out to be its own decision, so this became its own plan:
+[upload-pending-claim-and-expiry.md](./upload-pending-claim-and-expiry.md), now
+implemented. The lifecycle rule ships **off** — no store expires anything until a
+deployment names it, after Step 6's report says it is safe.
+
+### Step 6 (backlog) — offline reconciliation → **pulled forward and implemented**
 
 A maintenance command that lists a store's objects, extracts every storage ref the
 event log ever committed, and reports the difference. This is the only mechanism that
 can *prove* an object is unreferenced, which makes it the right shape for an
 operator-run tool and the wrong shape for a request handler. It also gives Step 5 its
 acceptance evidence.
+
+Which is why it stopped being backlog: it is what makes enabling Step 5's rule safe.
+Delivered as `ReventlessSeedAws_Reconcile` beside the reset tool (`pnpm run
+seed:reconcile` in the hybrid example), and it exits non-zero while any store still has
+a referenced object carrying the pending tag.
 
 ## Acceptance checks
 

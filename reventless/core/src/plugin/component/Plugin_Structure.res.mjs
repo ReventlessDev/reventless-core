@@ -446,7 +446,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         let properties = v.properties;
         return Stdlib_Array.filterMap(Object.entries(properties), param => {
           let field = param[0];
-          return Stdlib_Option.map(StorageRef$Reventless.getStore(param[1]), target => {
+          return Stdlib_Option.map(StorageRef$Reventless.getFieldStore(param[1]), param => {
+            let target = param[0];
             let plugin = target.plugin;
             return {
               store: Stdlib_Option.getOr(target.plugin, name) + "." + target.store,

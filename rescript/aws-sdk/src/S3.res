@@ -95,6 +95,65 @@ module ListObjectVersionsCommand = {
   let send: t => promise<output> = input => Raw.send(client(), input)
 }
 
+/** An object tag. Shared by the get/put tagging commands, which exchange the
+  same `TagSet` — reading, filtering and writing back is the only way to remove
+  one tag without discarding the rest. */
+type tag = {
+  @as("Key") key: string,
+  @as("Value") value: string,
+}
+
+module GetObjectTaggingCommand = {
+  type t
+
+  type input = {
+    @as("Bucket") bucket: string,
+    @as("Key") key: string,
+  }
+
+  /** An object with no tags returns an empty `TagSet`, not an absent one — but
+    the field is optional here anyway, since a caller that treats "absent" and
+    "empty" differently would be reading a distinction S3 does not make. */
+  type output = {@as("TagSet") tagSet?: array<tag>}
+
+  @new @module("@aws-sdk/client-s3")
+  external make: input => t = "GetObjectTaggingCommand"
+
+  module Raw = {
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = input => Raw.send(client(), input)
+}
+
+module PutObjectTaggingCommand = {
+  type t
+
+  /** Replaces the object's whole tag set — there is no partial update, so
+    removing one tag means putting back the others. An empty `tagSet` clears
+    every tag and is a valid, idempotent call on an already-untagged object. */
+  type tagging = {@as("TagSet") tagSet: array<tag>}
+
+  type input = {
+    @as("Bucket") bucket: string,
+    @as("Key") key: string,
+    @as("Tagging") tagging: tagging,
+  }
+
+  type output = {@as("VersionId") versionId?: string}
+
+  @new @module("@aws-sdk/client-s3")
+  external make: input => t = "PutObjectTaggingCommand"
+
+  module Raw = {
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = input => Raw.send(client(), input)
+}
+
 module DeleteObjectsCommand = {
   /*** delete up to 1000 objects (each by key, optionally a specific version) in
     one call. Used by the seed reset to empty a bucket page by page.

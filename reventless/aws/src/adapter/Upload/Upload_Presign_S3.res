@@ -11,7 +11,7 @@
 // There is no Function URL and no anonymous surface: authentication is the platform
 // API's Cognito authorizer, and the verified caller identity reaches the handler in
 // the resolver payload (see the JS resolver code below). This is route B of
-// [docs/plans/upload-release-path.md]; the anonymous Function URL and the unverified
+// [docs/plans/done/upload-release-path.md]; the anonymous Function URL and the unverified
 // `decodeJwtSub` the mint side used to carry are gone.
 //
 // Why an EntryPoint and not a Pulumi `CallbackFunction`: the handler needs the AWS
@@ -106,6 +106,11 @@ let make = (
   // `GetObject` backs the `HeadObject` the age check reads. One Lambda covers every
   // declared store (route B1) — but its reach is still the union of those prefixes,
   // not a wildcard, so it cannot touch a key outside a declared store.
+  //
+  // `PutObjectTagging` is what lets the presigned PUT carry the pending tag: a
+  // presigned request runs with the *signer's* permissions, so tag-on-put fails
+  // with AccessDenied without it — and an untagged object is one the sweep can
+  // never reach.
   let _policy =
     resolvedStores->Pulumi.Output.apply(list => {
       let arns = list->Array.map(((_, bucket, prefix)) => `arn:aws:s3:::${bucket}/${prefix}/*`)
@@ -124,7 +129,12 @@ let make = (
               {
                 sid: "AllowUploadObjectAccess",
                 effect: Allow,
-                actions: Actions(["s3:PutObject", "s3:DeleteObject", "s3:GetObject"]),
+                actions: Actions([
+                  "s3:PutObject",
+                  "s3:PutObjectTagging",
+                  "s3:DeleteObject",
+                  "s3:GetObject",
+                ]),
                 resources: Resources(arns),
               },
             ],

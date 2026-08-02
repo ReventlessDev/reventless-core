@@ -10,6 +10,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as ClientS3 from "@aws-sdk/client-s3";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as S3RequestPresigner from "@aws-sdk/s3-request-presigner";
+import * as Upload_PendingTag$ReventlessAws from "./Upload_PendingTag.res.mjs";
 
 function getEnv(k) {
   let v = process.env[k];
@@ -175,7 +176,8 @@ async function handlePresign(client, bucket, servedPrefix, sub, args) {
   let command = new ClientS3.PutObjectCommand({
     Bucket: bucket,
     Key: key,
-    ContentType: args.contentType
+    ContentType: args.contentType,
+    Tagging: Upload_PendingTag$ReventlessAws.putObjectTagging
   });
   let uploadUrl = await S3RequestPresigner.getSignedUrl(client, command, {
     expiresIn: 300

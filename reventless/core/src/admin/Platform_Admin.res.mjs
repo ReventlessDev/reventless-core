@@ -150,6 +150,7 @@ function Make(RuntimeEnvironment) {
       }));
       let eventLogEntries = eventLogEntriesFromAggregates.concat(dcbResult.eventLogEntries);
       Stdlib_Option.forEach(Config.hooks.subscriptionInfraHook, hook => hook({
+        pluginName: Platform_Admin_Structure$ReventlessCore.pluginId,
         allQueryDbs: allQueryDbs,
         allEventTopics: aggregateEventTopics,
         eventLogEntries: eventLogEntries,

@@ -131,7 +131,7 @@ let handleLogout = (_req: nodeRequest, res: nodeResponse): unit => {
 //   PUT  /{prefix}/{key}     raw bytes → 200 (store)
 //   GET  /{prefix}/{key}              → the stored bytes
 // Minting (`Upload_Presign`) and release (`Upload_Release`) are platform-API
-// mutations under route B (see [docs/plans/upload-release-path.md], resolved in
+// mutations under route B (see [docs/plans/done/upload-release-path.md], resolved in
 // Platform.res against this same `LocalObjectStore`); the presign returns
 // `uploadUrl == storageRef == /{prefix}/{key}`, so the byte PUT below is unchanged.
 

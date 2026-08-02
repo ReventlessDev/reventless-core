@@ -19,10 +19,13 @@ type corsRule = {
 
 type corsRules = array<corsRule>
 
+// Optional throughout: the provider accepts (and mostly requires) exactly one
+// of `date` / `days`, so a record forcing both would be unconstructible without
+// writing a value the API rejects.
 type lifecycleRuleExpiration = {
-  date: string,
-  days: int,
-  expiredObjectDeleteMarker: bool,
+  date?: string,
+  days?: int,
+  expiredObjectDeleteMarker?: bool,
 }
 
 type lifecycleRuleNoncurrentVersionExpiration = {days: int}
@@ -38,16 +41,18 @@ type lifecycleRuleTransition = {
   storageClass: string,
 }
 
+/** `enabled` is the only required field. `prefix` and `tags` together are the
+    rule's filter — a rule carrying both matches objects satisfying both. */
 type lifecycleRule = {
-  abortIncompleteMultipartUploadDays: int,
+  abortIncompleteMultipartUploadDays?: int,
   enabled: bool,
-  expiration: lifecycleRuleExpiration,
-  id: string,
-  noncurrentVersionExpiration: lifecycleRuleNoncurrentVersionExpiration,
-  noncurrentVersionTransitions: array<lifecycleRuleNoncurrentVersionTransition>,
-  prefix: string,
-  tags: Aws.tags,
-  transitions: array<lifecycleRuleTransition>,
+  expiration?: lifecycleRuleExpiration,
+  id?: string,
+  noncurrentVersionExpiration?: lifecycleRuleNoncurrentVersionExpiration,
+  noncurrentVersionTransitions?: array<lifecycleRuleNoncurrentVersionTransition>,
+  prefix?: string,
+  tags?: Aws.tags,
+  transitions?: array<lifecycleRuleTransition>,
 }
 
 type lifecycleRules = array<lifecycleRule>

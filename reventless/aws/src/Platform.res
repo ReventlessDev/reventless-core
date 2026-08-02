@@ -157,6 +157,58 @@ module MakeWithConfig = (
     ->Pulumi.Config.get("stack")
     ->Option.map(stack => Pulumi.StackReference.make(stack))
 
+  // The declared object stores, as the upload claimer needs them: qualified
+  // name, physical bucket, served prefix.
+  //
+  // Stores are provisioned by the *platform* deploy; the claimer is wired into
+  // the *plugin* stack, because that is where the event log streams it reads
+  // exist. So the two halves meet here — across the stack reference in plugin
+  // mode, and through the platform's own in-process record when platform and
+  // plugin are one program.
+  //
+  // Read lazily (a thunk, not a value) for the monolithic case: `deployPlatform`
+  // fills `objectStoreEndpointsRef` as it provisions, and this is called during
+  // a later plugin build.
+  let claimStores = (): Pulumi.Output.t<array<Upload_Claim_S3.storeConfig>> =>
+    switch platformStackRef {
+    | Some(stackRef) =>
+      // The `objectStores` export: `{ "<plugin>.<store>": {bucketName, keyPrefix} }`.
+      // A platform that provisions none omits the export entirely, which reads
+      // as "no store to claim in" — the claimer then builds nothing, rather
+      // than building something that can reach nothing.
+      (stackRef->Pulumi.StackReference.getOutput("objectStores"): Pulumi.Output.t<option<JSON.t>>)
+      ->Pulumi.Output.apply(objectStores =>
+        objectStores
+        ->Option.flatMap(JSON.Decode.object)
+        ->Option.getOr(Dict.make())
+        ->Dict.toArray
+        ->Array.filterMap(((qualified, v)) =>
+          v
+          ->JSON.Decode.object
+          ->Option.flatMap(o =>
+            switch (
+              o->Dict.get("bucketName")->Option.flatMap(JSON.Decode.string),
+              o->Dict.get("keyPrefix")->Option.flatMap(JSON.Decode.string),
+            ) {
+            | (Some(bucketName), Some(servedPrefix)) =>
+              Some({Upload_Claim_S3.qualified: qualified, bucketName, servedPrefix})
+            | _ => None
+            }
+          )
+        )
+      )
+    | None =>
+      objectStoreEndpointsRef.contents
+      ->Array.map(e =>
+        e.bucketName->Pulumi.Output.apply(bucketName => {
+          Upload_Claim_S3.qualified: e.store,
+          bucketName,
+          servedPrefix: e.keyPrefix,
+        })
+      )
+      ->Pulumi.Output.all
+    }
+
   // ── Merged-mode source SDL assembly (merged-api plan, Phase 3) ────────────
   // Empty base fragment — no types, no mutations, no queries. Used by the
   // plugin Api in split mode (so plugin schema has no core fields) and as the
@@ -172,7 +224,7 @@ module MakeWithConfig = (
   // The upload service (route B) lives on the domain base, not the Admin-gated admin
   // base: `Upload_Presign`/`Upload_Release` take the domain API's default
   // `AllowAuthenticated` auth so any authenticated user can mint/release their own
-  // uploads. See [docs/plans/upload-release-path.md] § "Which API". (Split mode only —
+  // uploads. See [docs/plans/done/upload-release-path.md] § "Which API". (Split mode only —
   // unified mode carries the admin base here instead; it declares no stores in practice,
   // so the upload resolvers below are never created there.)
   let domainBaseFragment = ReventlessCore.GraphQL_Stitcher.encode({
@@ -763,7 +815,7 @@ module MakeWithConfig = (
     // Only active when the Events API resource exists (platform/monolithic mode).
     subscriptionInfraHook: ?domainEventsApiOpt->Option.map(eventsApi =>
       (params: ReventlessCore.Plugin_Helpers.subscriptionInfraParams) => {
-        let {allQueryDbs, allEventTopics, eventLogEntries, opts} = params
+        let {pluginName, allQueryDbs, allEventTopics, eventLogEntries, opts} = params
         let customOpts =
           opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
         // StateTopic Lambda per stream-enabled QueryDb — publishes row changes
@@ -799,19 +851,34 @@ module MakeWithConfig = (
           let isSns =
             EventTopicPublisher_SNS.snsRegistry->Set.has(entry.displayName) ||
             EventTopicPublisher_SNS.snsRegistry->Set.has(entry.busKey)
-          let eventTopicOutputs =
-            isSns
-              ? allEventTopics
-                ->Dict.get(entry.displayName)
-                ->Option.orElse(allEventTopics->Dict.get(entry.busKey))
-              : None
-          eventTopicOutputs->Option.forEach(outputs =>
-            EventLogSubscription_AppSync.make(
-              ~name=entry.displayName,
-              ~topicName=entry.displayName,
+          let topicOutputs =
+            allEventTopics
+            ->Dict.get(entry.displayName)
+            ->Option.orElse(allEventTopics->Dict.get(entry.busKey))
+          isSns
+            ? topicOutputs->Option.forEach(outputs =>
+                EventLogSubscription_AppSync.make(
+                  ~name=entry.displayName,
+                  ~topicName=entry.displayName,
+                  ~eventTopicOutputs=outputs,
+                  ~eventsApi,
+                  ~opts=customOpts,
+                )
+              )
+            : ()
+          // Register this event log with the upload claimer if — and only if —
+          // its events declare a `@storageRef` field. An event log that declares
+          // none is not registered, so a platform whose plugins declare no store
+          // provisions no claimer at all. `isSns` is the same synchronous answer
+          // the subscription above turns on, so the two cannot disagree about
+          // which channel an event log publishes through.
+          topicOutputs->Option.forEach(outputs =>
+            Upload_Claim_S3.make(
+              ~plugin=pluginName,
+              ~eventLogName=entry.displayName,
+              ~eventSchema=entry.eventSchema,
               ~eventTopicOutputs=outputs,
-              ~eventsApi,
-              ~opts=customOpts,
+              ~isStreamBacked=!isSns,
             )
           )
         })
@@ -822,6 +889,9 @@ module MakeWithConfig = (
         // empty because the hook hasn't run yet. Admin's hook fires synchronously,
         // but the call site is unified here so admin and plugins share one path.
         StateTopic_AppSync.finish(~eventsApi, ~opts={})
+        // Same timing constraint, same reason: the claimer's registry is filled
+        // by the loop just above and drained here.
+        Upload_Claim_S3.finish(~plugin=pluginName, ~stores=claimStores, ~opts=customOpts)
       }
     ),
   }
@@ -1063,12 +1133,15 @@ module MakeWithConfig = (
     // omitted (byte-identical config.json).
     geocoderPlaceIndex?: ReventlessInfra.Platform.geocoderIndex,
     // Optional object store for direct-to-S3 uploads, as returned by
-    // `Capability_ObjectStore_S3.make`. When set, the deploy provisions the
-    // presign service (Upload_Presign_S3) against it, threads that service's URL
-    // into config.json as `uploadEndpoint`, and fronts the store read-only on
-    // the host-shell CloudFront distribution under the presign service's own
-    // prefix (a `{prefix}/*` ordered cache behavior + origin + scoped
-    // BucketPolicy, private, OAC-read).
+    // `Capability_ObjectStore_S3.make`. When set, the deploy registers it with
+    // the platform's one Upload service (`Upload_Presign_S3`) under the `uploads`
+    // store key, and fronts the store read-only on the host-shell CloudFront
+    // distribution under that prefix (a `{prefix}/*` ordered cache behavior +
+    // origin + scoped BucketPolicy, private, OAC-read).
+    //
+    // No endpoint is written into config.json: under route B a caller mints
+    // through the domain API's `Upload_Presign` mutation, naming the store, so
+    // there is no per-store URL to publish or to resolve.
     //
     // One field replaces the former `enableUploads` / `uploadBucketName` /
     // `servedBuckets` trio, which were three ways of saying one thing and left
@@ -1584,6 +1657,46 @@ module MakeWithConfig = (
     // policy and one CDN origin however many stores live in it.
     let storeBuckets: Dict.t<ReventlessInfra.Platform.objectStore> = Dict.make()
     let storeBucketOrder: array<string> = []
+
+    // Which stores expire their never-claimed uploads, grouped by the bucket
+    // they live in. Computed before any bucket is created, because a bucket
+    // carries its lifecycle rules from birth and a shared-layout bucket is
+    // created once for several stores — the first store through the loop below
+    // would otherwise be the only one whose setting was ever read.
+    //
+    // Off unless a deployment names the store. See `Util_StoreLayout.pendingExpiryFor`
+    // for why this is a deployment's setting and not a declaration's, and why
+    // there is deliberately no default.
+    let pendingExpiryConfig = Util_LocalConfig.get("pendingUploadExpiryDays")
+    let pendingExpiryByBucket: Dict.t<array<Capability_ObjectStore_S3.pendingExpiry>> = Dict.make()
+    declaredStores->Array.forEach(((plugin, store)) =>
+      Util_StoreLayout.pendingExpiryFor(
+        ~config=pendingExpiryConfig,
+        ~store=`${plugin}.${store}`,
+      )->Option.forEach(days => {
+        let bucketName = Util_StoreLayout.bucketNameFor(
+          ~layout=storeLayout,
+          ~stack=stackName,
+          ~plugin,
+          ~store,
+        )
+        let prefix = Util_StoreLayout.keyPrefixFor(~plugin, ~store)
+        pendingExpiryByBucket->Dict.set(
+          bucketName,
+          pendingExpiryByBucket
+          ->Dict.get(bucketName)
+          ->Option.getOr([])
+          ->Array.concat([{Capability_ObjectStore_S3.prefix, days}]),
+        )
+        log.info(
+          ~comp="Platform:deployPlatform",
+          `object store ${plugin}.${store}: never-claimed uploads under ${prefix}/ expire after ` ++
+          `${days->Int.toString} days. Claimed objects and objects minted before the claim ` ++
+          `component existed carry no pending tag and are outside the rule.`,
+        )
+      })
+    )
+
     let declaredStoreServices = declaredStores->Array.map(((plugin, store)) => {
       let bucketName = Util_StoreLayout.bucketNameFor(
         ~layout=storeLayout,
@@ -1608,6 +1721,7 @@ module MakeWithConfig = (
           // disposable stack would leak exactly the buckets sharing exists to
           // save. The two settings are opposite faces of one decision.
           ~forceDestroy=storeProtection == Unprotected,
+          ~expirePending=pendingExpiryByBucket->Dict.get(bucketName)->Option.getOr([]),
         )
         storeBuckets->Dict.set(bucketName, b)
         storeBucketOrder->Array.push(bucketName)

@@ -888,7 +888,7 @@ module Make = (
         // Gives the AWS platform access to allQueryDbs, allEventTopics, and eventLogEntries
         // without coupling reventless-core to reventless-aws.
         Spec.hooks.subscriptionInfraHook->Option.forEach(hook =>
-          hook({allQueryDbs, allEventTopics, eventLogEntries, opts})
+          hook({pluginName: name, allQueryDbs, allEventTopics, eventLogEntries, opts})
         )
 
         module SpecificHeartbeat = Heartbeat_Builder.Make(HeartbeatRunner)

@@ -37,6 +37,14 @@
 
 open PulumiAws
 
+/** One prefix in this bucket whose never-claimed uploads expire, and after how
+    many days. A list rather than a scalar because a shared-layout bucket holds
+    several stores, and expiry is opt-in per store. */
+type pendingExpiry = {
+  prefix: string,
+  days: int,
+}
+
 // Browser direct-PUT needs CORS. These defaults match what deployments wrote by
 // hand; `~corsRules` overrides them for a store the browser never touches.
 let defaultCorsRules: S3.Bucket.corsRules = [
@@ -64,13 +72,19 @@ let defaultCorsRules: S3.Bucket.corsRules = [
     `~protect` (default on) blocks `pulumi destroy` and accidental replacement.
     `~forceDestroy` is its counterpart for disposable stacks: a protected bucket
     cannot be torn down, so a PR stack would leak exactly the buckets that
-    sharing exists to save. */
+    sharing exists to save.
+
+    `~expirePending` turns on the sweep of never-claimed uploads. One entry per
+    prefix rather than one setting for the bucket, because a shared-layout
+    bucket holds several stores and the setting is each store's own — see the
+    comment on the rule below before setting it. */
 let make = (
   ~name: string,
   ~keyPrefix: string=Upload_Presign_S3.defaultServedPrefix,
   ~plugin: option<string>=?,
   ~protect: bool=true,
   ~forceDestroy: bool=false,
+  ~expirePending: array<pendingExpiry>=[],
   ~corsRules: S3.Bucket.corsRules=defaultCorsRules,
   ~opts: option<Pulumi.CustomResourceOptions.t>=?,
 ): ReventlessInfra.Platform.objectStore => {
@@ -92,11 +106,38 @@ let make = (
     protect,
   }
 
+  // Expire objects nobody ever claimed — the half of abandonment the release
+  // path cannot reach, because the client that would have released them is
+  // gone (tab closed, navigation, dead network).
+  //
+  // Filtered on the pending tag **and** this store's served prefix, never on
+  // either alone, and written per store rather than once per bucket — a shared
+  // bucket holds several stores, and expiring a neighbouring store's objects on
+  // this store's setting would be exactly the wrong kind of surprise on a
+  // bucket created with `protect: true`.
+  //
+  // What makes it safe is what it *cannot* match. An object minted before this
+  // mechanism existed carries no tag; a claimed object has had its tag stripped.
+  // Neither is inside the filter, so the rule's blast radius is precisely
+  // "uploaded here, and no committed event references it". The one way it
+  // deletes live data is a claim component that stopped and was not noticed —
+  // which is why the claimer alarms on its own lag, why this is opt-in per
+  // store, and why the plan sequences reconciliation before the first store
+  // turns it on.
+  let lifecycleRules = expirePending->Array.map(({prefix, days}) => {
+    S3.Bucket.id: `reventless-pending-expiry-${prefix->String.replaceAll("/", "-")}`,
+    enabled: true,
+    prefix: `${prefix}/`,
+    tags: Dict.fromArray([(Upload_PendingTag.key, Upload_PendingTag.value)]),
+    expiration: {days: days},
+  })
+
   let bucket = S3.Bucket.make(
     ~name,
     ~args={
       corsRules: corsRules->Pulumi.Input.make,
       forceDestroy: forceDestroy->Pulumi.Input.make,
+      lifecycleRules: lifecycleRules->Pulumi.Input.make,
       tags: AWS.Tags.make(
         ~name,
         ~kind,

@@ -35,6 +35,7 @@ import * as EventLogBackend$ReventlessAws from "./adapter/EventLog/EventLogBacke
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
 import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginBehavior.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
+import * as Upload_Claim_S3$ReventlessAws from "./adapter/Upload/Upload_Claim_S3.res.mjs";
 import * as PgProjectionFeed$ReventlessAws from "./adapter/Postgres/PgProjectionFeed.res.mjs";
 import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs";
 import * as Util_StoreLayout$ReventlessAws from "./util/Util_StoreLayout.res.mjs";
@@ -156,6 +157,30 @@ function MakeWithConfig(Config) {
     contents: "Domain"
   };
   let platformStackRef = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack));
+  let claimStores = () => {
+    if (platformStackRef !== undefined) {
+      return Primitive_option.valFromOption(platformStackRef).getOutput("objectStores").apply(objectStores => Stdlib_Array.filterMap(Object.entries(Stdlib_Option.getOr(Stdlib_Option.flatMap(objectStores, Stdlib_JSON.Decode.object), {})), param => {
+        let qualified = param[0];
+        return Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(param[1]), o => {
+          let match = Stdlib_Option.flatMap(o["bucketName"], Stdlib_JSON.Decode.string);
+          let match$1 = Stdlib_Option.flatMap(o["keyPrefix"], Stdlib_JSON.Decode.string);
+          if (match !== undefined && match$1 !== undefined) {
+            return {
+              qualified: qualified,
+              bucketName: match,
+              servedPrefix: match$1
+            };
+          }
+        });
+      }));
+    } else {
+      return Pulumi.all(objectStoreEndpointsRef.contents.map(e => e.bucketName.apply(bucketName => ({
+        qualified: e.store,
+        bucketName: bucketName,
+        servedPrefix: e.keyPrefix
+      }))));
+    }
+  };
   let domainBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: Platform_AdminApi$ReventlessCore.uploadTypes,
     mutations: Platform_AdminApi$ReventlessCore.uploadMutationFields,
@@ -457,6 +482,7 @@ function MakeWithConfig(Config) {
   let hooks_subscriptionInfraHook = Stdlib_Option.map(domainEventsApiOpt, eventsApi => (params => {
     let allEventTopics = params.allEventTopics;
     let allQueryDbs = params.allQueryDbs;
+    let pluginName = params.pluginName;
     let customOpts = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(params.opts);
     Stdlib_Dict.forEachWithKey(allQueryDbs, (_queryDbOutputs, readModelName) => {
       if (!QueryDbStorage_DynamoDbStream$ReventlessAws.streamRegistry.has(readModelName)) {
@@ -467,10 +493,14 @@ function MakeWithConfig(Config) {
     });
     params.eventLogEntries.forEach(entry => {
       let isSns = EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.displayName) || EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.busKey);
-      let eventTopicOutputs = isSns ? Stdlib_Option.orElse(allEventTopics[entry.displayName], allEventTopics[entry.busKey]) : undefined;
-      Stdlib_Option.forEach(eventTopicOutputs, outputs => EventLogSubscription_AppSync$ReventlessAws.make(entry.displayName, entry.displayName, outputs, eventsApi, customOpts));
+      let topicOutputs = Stdlib_Option.orElse(allEventTopics[entry.displayName], allEventTopics[entry.busKey]);
+      if (isSns) {
+        Stdlib_Option.forEach(topicOutputs, outputs => EventLogSubscription_AppSync$ReventlessAws.make(entry.displayName, entry.displayName, outputs, eventsApi, customOpts));
+      }
+      Stdlib_Option.forEach(topicOutputs, outputs => Upload_Claim_S3$ReventlessAws.make(pluginName, entry.displayName, entry.eventSchema, outputs, !isSns));
     });
     StateTopic_AppSync$ReventlessAws.finish(eventsApi, {});
+    Upload_Claim_S3$ReventlessAws.finish(pluginName, claimStores, undefined, customOpts);
   }));
   let hooks_preResolversSchemaHook = (name, version, pluginFragment) => {
     let sdl = AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(pluginFragment);
@@ -925,6 +955,21 @@ function MakeWithConfig(Config) {
     }
     let storeBuckets = {};
     let storeBucketOrder = [];
+    let pendingExpiryConfig = Util_LocalConfig$ReventlessAws.get("pendingUploadExpiryDays");
+    let pendingExpiryByBucket = {};
+    declaredStores.forEach(param => {
+      let store = param[1];
+      let plugin = param[0];
+      Stdlib_Option.forEach(Util_StoreLayout$ReventlessAws.pendingExpiryFor(pendingExpiryConfig, plugin + `.` + store), days => {
+        let bucketName = Util_StoreLayout$ReventlessAws.bucketNameFor(storeLayout, stackName, plugin, store);
+        let prefix = Util_StoreLayout$ReventlessAws.keyPrefixFor(plugin, store);
+        pendingExpiryByBucket[bucketName] = Stdlib_Option.getOr(pendingExpiryByBucket[bucketName], []).concat([{
+            prefix: prefix,
+            days: days
+          }]);
+        log.info("Platform:deployPlatform", undefined, `object store ` + plugin + `.` + store + `: never-claimed uploads under ` + prefix + `/ expire after ` + (days.toString() + ` days. Claimed objects and objects minted before the claim `) + `component existed carry no pending tag and are outside the rule.`);
+      });
+    });
     let declaredStoreServices = declaredStores.map(param => {
       let store = param[1];
       let plugin = param[0];
@@ -937,7 +982,7 @@ function MakeWithConfig(Config) {
       } else {
         let tmp;
         tmp = storeLayout === "PerStore" ? plugin : undefined;
-        let b$1 = Capability_ObjectStore_S3$ReventlessAws.make(bucketName, keyPrefix, tmp, storeProtection === "Protected", storeProtection === "Unprotected", undefined, undefined);
+        let b$1 = Capability_ObjectStore_S3$ReventlessAws.make(bucketName, keyPrefix, tmp, storeProtection === "Protected", storeProtection === "Unprotected", Stdlib_Option.getOr(pendingExpiryByBucket[bucketName], []), undefined, undefined);
         storeBuckets[bucketName] = b$1;
         storeBucketOrder.push(bucketName);
         bucket = b$1;
@@ -1324,6 +1369,30 @@ function Make($star) {
     contents: "Domain"
   };
   let platformStackRef = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack));
+  let claimStores = () => {
+    if (platformStackRef !== undefined) {
+      return Primitive_option.valFromOption(platformStackRef).getOutput("objectStores").apply(objectStores => Stdlib_Array.filterMap(Object.entries(Stdlib_Option.getOr(Stdlib_Option.flatMap(objectStores, Stdlib_JSON.Decode.object), {})), param => {
+        let qualified = param[0];
+        return Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(param[1]), o => {
+          let match = Stdlib_Option.flatMap(o["bucketName"], Stdlib_JSON.Decode.string);
+          let match$1 = Stdlib_Option.flatMap(o["keyPrefix"], Stdlib_JSON.Decode.string);
+          if (match !== undefined && match$1 !== undefined) {
+            return {
+              qualified: qualified,
+              bucketName: match,
+              servedPrefix: match$1
+            };
+          }
+        });
+      }));
+    } else {
+      return Pulumi.all(objectStoreEndpointsRef.contents.map(e => e.bucketName.apply(bucketName => ({
+        qualified: e.store,
+        bucketName: bucketName,
+        servedPrefix: e.keyPrefix
+      }))));
+    }
+  };
   let domainBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: Platform_AdminApi$ReventlessCore.uploadTypes,
     mutations: Platform_AdminApi$ReventlessCore.uploadMutationFields,
@@ -1625,6 +1694,7 @@ function Make($star) {
   let hooks_subscriptionInfraHook = Stdlib_Option.map(domainEventsApiOpt, eventsApi => (params => {
     let allEventTopics = params.allEventTopics;
     let allQueryDbs = params.allQueryDbs;
+    let pluginName = params.pluginName;
     let customOpts = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(params.opts);
     Stdlib_Dict.forEachWithKey(allQueryDbs, (_queryDbOutputs, readModelName) => {
       if (!QueryDbStorage_DynamoDbStream$ReventlessAws.streamRegistry.has(readModelName)) {
@@ -1635,10 +1705,14 @@ function Make($star) {
     });
     params.eventLogEntries.forEach(entry => {
       let isSns = EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.displayName) || EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.busKey);
-      let eventTopicOutputs = isSns ? Stdlib_Option.orElse(allEventTopics[entry.displayName], allEventTopics[entry.busKey]) : undefined;
-      Stdlib_Option.forEach(eventTopicOutputs, outputs => EventLogSubscription_AppSync$ReventlessAws.make(entry.displayName, entry.displayName, outputs, eventsApi, customOpts));
+      let topicOutputs = Stdlib_Option.orElse(allEventTopics[entry.displayName], allEventTopics[entry.busKey]);
+      if (isSns) {
+        Stdlib_Option.forEach(topicOutputs, outputs => EventLogSubscription_AppSync$ReventlessAws.make(entry.displayName, entry.displayName, outputs, eventsApi, customOpts));
+      }
+      Stdlib_Option.forEach(topicOutputs, outputs => Upload_Claim_S3$ReventlessAws.make(pluginName, entry.displayName, entry.eventSchema, outputs, !isSns));
     });
     StateTopic_AppSync$ReventlessAws.finish(eventsApi, {});
+    Upload_Claim_S3$ReventlessAws.finish(pluginName, claimStores, undefined, customOpts);
   }));
   let hooks_preResolversSchemaHook = (name, version, pluginFragment) => {
     let sdl = AppSync_Adapter$ReventlessAws.stitchStandaloneWithAwsDirectives(pluginFragment);
@@ -2070,6 +2144,21 @@ function Make($star) {
     }
     let storeBuckets = {};
     let storeBucketOrder = [];
+    let pendingExpiryConfig = Util_LocalConfig$ReventlessAws.get("pendingUploadExpiryDays");
+    let pendingExpiryByBucket = {};
+    declaredStores.forEach(param => {
+      let store = param[1];
+      let plugin = param[0];
+      Stdlib_Option.forEach(Util_StoreLayout$ReventlessAws.pendingExpiryFor(pendingExpiryConfig, plugin + `.` + store), days => {
+        let bucketName = Util_StoreLayout$ReventlessAws.bucketNameFor(storeLayout, stackName, plugin, store);
+        let prefix = Util_StoreLayout$ReventlessAws.keyPrefixFor(plugin, store);
+        pendingExpiryByBucket[bucketName] = Stdlib_Option.getOr(pendingExpiryByBucket[bucketName], []).concat([{
+            prefix: prefix,
+            days: days
+          }]);
+        log.info("Platform:deployPlatform", undefined, `object store ` + plugin + `.` + store + `: never-claimed uploads under ` + prefix + `/ expire after ` + (days.toString() + ` days. Claimed objects and objects minted before the claim `) + `component existed carry no pending tag and are outside the rule.`);
+      });
+    });
     let declaredStoreServices = declaredStores.map(param => {
       let store = param[1];
       let plugin = param[0];
@@ -2082,7 +2171,7 @@ function Make($star) {
       } else {
         let tmp;
         tmp = storeLayout === "PerStore" ? plugin : undefined;
-        let b$1 = Capability_ObjectStore_S3$ReventlessAws.make(bucketName, keyPrefix, tmp, storeProtection === "Protected", storeProtection === "Unprotected", undefined, undefined);
+        let b$1 = Capability_ObjectStore_S3$ReventlessAws.make(bucketName, keyPrefix, tmp, storeProtection === "Protected", storeProtection === "Unprotected", Stdlib_Option.getOr(pendingExpiryByBucket[bucketName], []), undefined, undefined);
         storeBuckets[bucketName] = b$1;
         storeBucketOrder.push(bucketName);
         bucket = b$1;
