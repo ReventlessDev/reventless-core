@@ -140,23 +140,30 @@ groups until a `pulumi import` is done. Empty today. Turning a future prod
 adoption into a config flip rather than a code edit is the whole "prepared for
 the future" requirement.
 
-## Step 8 — Operational rollout on `alpha` ⬜ (not code)
+## Step 8 — Operational rollout on `alpha` ◑ (not code)
 
-`alpha` is the only live stack, and it already has Lambda's auto-created groups,
-so its first managed deploy is a delete-then-deploy — the disposable-stack path,
-no import needed.
+`alpha` is the only live stack. Field finding (2026-08-02): it is a **running**
+deployment whose scheduled heartbeats recreate a deleted log group within
+minutes, and the CI deploy lags ~15 min — so a plain delete-then-deploy loses the
+race (the managed `CreateLogGroup` still hits a recreated group). The 2026-08-02
+cleanup deleted all existing alpha groups (41 real deletes; orphan groups gone,
+confirmed); only the ~8 live/heartbeat groups reappear.
 
-1. **Delete `alpha`'s existing auto-created groups**, then deploy — so the
-   managed `CreateLogGroup` does not hit `ResourceAlreadyExists`. `alpha`'s logs
-   are disposable, so this is the simple path.
-2. **Verify the managed group + its `retentionInDays` actually exist** after the
-   deploy — not merely that it went green (the create-vs-adopt asymmetry can hide
-   a group that was silently never created).
-3. **Wipe any remaining forever-logs** via Option A (retroactive
-   `put-retention-policy`) for groups a redeploy doesn't replace.
+Chosen path — **decouple landing the code from cutting alpha over**:
 
-Needs AWS account access + touches deploy state → operator-driven; commands can
-be prepped but not run without an explicit ask.
+1. ✅ **Escape hatch in CI** — `REVENTLESS_UNMANAGED_LOG_GROUP_STACKS: alpha` set
+   in both `env:` blocks of `deploy-reventless-aws.yml`. Alpha deploys keep
+   Lambda/AppSync auto-created groups (status quo), so CI stays green; alpha does
+   not yet get tiered retention. `LOG_LEVEL` tiering still applies (env var only).
+2. ⬜ **Deliberate cutover** — remove the escape-hatch var, then run a **local
+   `pulumi up`** immediately after deleting alpha's groups
+   (`scratchpad/migrate-alpha-log-groups.sh APPLY=1`), so the managed creates land
+   seconds later and beat the ~minute heartbeat window; re-delete + up for any
+   group that races.
+3. ⬜ **Verify** the managed group + its `retentionInDays` actually exist after
+   the cutover — not merely that it went green.
+
+Needs AWS account access + touches deploy state → operator-driven.
 
 ## Verification
 
