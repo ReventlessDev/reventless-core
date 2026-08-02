@@ -12,15 +12,6 @@ module Platform = ReventlessAws.Platform.Make()
 // geocoder Function URL and writes `geocoderEndpoint` into config.json.
 let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name="online-shop-geocoder")
 
-// Backs the file-upload command input. The framework provisions the presign
-// service against this store and serves it read-only from the shell's own
-// origin, so an uploaded object is addressable by relative URL and the bucket
-// stays private.
-let uploadBucket = ReventlessAws.Capability_ObjectStore_S3.make(
-  ~name="online-shop-uploads",
-  ~protect=false,
-)
-
 // The stores the plugins' fields declare, generated from their committed
 // `capabilities.json` manifests — the capability's `plugin` and the plugin's
 // registered name are one spelling by construction, which is what retires the
@@ -30,6 +21,6 @@ let uploadBucket = ReventlessAws.Capability_ObjectStore_S3.make(
 // before a regenerate.
 let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
-  ~hostUiBundle={geocoderPlaceIndex: placeIndex, uploadBucket},
+  ~hostUiBundle={geocoderPlaceIndex: placeIndex},
   ~capabilities=PlatformCapabilities.capabilities,
 )
