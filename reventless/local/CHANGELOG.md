@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.190 (2026-08-02)
+
+### Features
+
+* **spec:** make plugin structure/apiSchemaFragment offloadable payloads ([a0391bf](https://github.com/ReventlessDev/reventless-core/commit/a0391bf26f91035460cbf90f52d105a1003414c3))
+
+
 # 3.0.0-alpha.189 (2026-08-02)
 
 ### Features

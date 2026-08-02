@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.94 (2026-08-02)
+
+### Features
+
+* **spec:** add [@offload](https://github.com/offload) inline-or-reference field primitive ([a54c39c](https://github.com/ReventlessDev/reventless-core/commit/a54c39ceb45b2c0b63caffd8ad039e732a5eb95d))
+* **spec:** add Offload prepare/resolve/cachedFetch client helpers ([2855990](https://github.com/ReventlessDev/reventless-core/commit/2855990ba5cc56bd691460d3614ac666382c7fac))
+* **spec:** make plugin structure/apiSchemaFragment offloadable payloads ([a0391bf](https://github.com/ReventlessDev/reventless-core/commit/a0391bf26f91035460cbf90f52d105a1003414c3))
+
+
 # 3.0.0-alpha.93 (2026-08-02)
 
 ### Features
