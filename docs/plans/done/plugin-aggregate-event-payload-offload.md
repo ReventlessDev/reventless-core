@@ -1,9 +1,10 @@
 # Plan: a general client-driven `@offload` field primitive, first applied to plugin payloads
 
-**Date:** 2026-08-02 (shipped 2026-08-03; `@offload` ppx shorthand added 2026-08-03)
-**Status:** ✅ **DONE + validated live on `alpha`** for the plugin payloads. The `@offload` ppx
-shorthand is now implemented + tested (not yet republished — see below). One optional follow-up
-(the Sury `alpha.4 → rc.0` bump) remains — see "Remaining (optional)".
+**Date:** 2026-08-02 (shipped 2026-08-03; `@offload` ppx shorthand + per-field threshold added 2026-08-03)
+**Status:** ✅ **DONE** — the `@offload` primitive (validated live on `alpha`), plus the ppx shorthand
+and end-to-end per-field threshold (this session, tested). Republish is **prepared** (two commits on
+`alpha`, pending push — see "Republish prepared, pending push"). The only follow-up is orthogonal: the
+Sury `alpha.4 → rc.0` bump (its own session, also tracked in memory). Moving to `done/`.
 
 ## Current state (read this first if resuming)
 
@@ -71,10 +72,13 @@ platform config, to avoid an unused config knob. The plugin producer still offlo
 params) raise pointing at the explicit-helper escape hatch.
 
 **Emits fully-qualified `Reventless.Offload.*`** — `Offload` lives in `reventless-spec` whose
-namespace *is* `Reventless`, so this resolves in any spec that depends on it (same as `@storageRef`'s
-`Reventless.StorageRef.*`). It is therefore **not** usable inside `reventless-spec`'s own `Plugin.res`
-(self-namespace), which stays on the explicit bare-`Offload` helper — matching the plan. So there is
-**no in-repo consumer yet**; this is the capability + its test.
+namespace *is* `Reventless`. **Confirmed empirically that this resolves even inside `reventless-spec`
+itself** (a manual `@s.matches(Reventless.Offload.optionSchema(...))` in `Plugin.res` compiles green
+and emits the offload codec), correcting an earlier assumption — the shorthand *is* usable in
+`Plugin.res`. It is nonetheless left on the explicit bare-`Offload` helper for now, by choice: adopting
+the marker anywhere in committed code is **republish-gated** (an older published ppx silently ignores
+`@offload` and emits a wire-incompatible `S.option(...)`), so a `Plugin.res` conversion must *follow*
+the republish, not ride with it. No in-repo `@offload` consumer yet — this is the capability + its test.
 
 Verified: isolated `bsc -dsource` on all forms + every error/edge case (incl. the record threshold
 form → `~threshold:N`, string form omits it); compile-based `test/run.sh` fixture (`OffloadHost.res`
@@ -88,11 +92,15 @@ Docs (both surfaces, previously undocumented — `@storageRef` was missing too, 
 `packages/doc/docs-app/reventless-ppx.md` gained a `@storageRef`/`@offload` section + a
 "What the PPX replaces" row (cross-instance link `/framework/ppx-binary-management`).
 
-**Not yet republished.** CI compiles ReScript with the *published* ppx binary, and the local
-`ppx-osx.exe` fallback is gitignored/dev-only. This change is a no-op for CI (no committed `.res`
-uses the `@offload` marker), so CI stays green without republish — but **the ppx must be republished
-in lockstep before the first real consumer adopts the shorthand** (see memory note
-`reference_reventless_ppx_publishing_pitfalls`).
+**Republish prepared, pending push.** Commits `3d5e3b5da` (ppx source + threshold) and `0bdd200df`
+(per-platform scaffolds → `alpha.61`) are on `alpha`, unpushed. Pushing triggers `publish-ppx.yml`
+(its `paths:` filter matches the `src/**` change) to build+publish the `linux-x64` / `darwin-arm64` /
+main packages at `alpha.61`; `darwin-x64` is out of the CI matrix (Intel, manual) and not in
+`optionalDependencies`, so it falls back to a local build. The local `ppx-osx.exe` is gitignored/
+dev-only. This change is a CI no-op until then (no committed `.res` uses `@offload`). **Adopting** the
+shorthand (e.g. converting `Plugin.res`) is a later, separate step and must be sequenced: push →
+confirm `alpha.61` binaries live → bump main's `optionalDependencies` range + lockfile to `alpha.61`
+(Phase 2) → convert. See memory note `reference_reventless_ppx_publishing_pitfalls`.
 
 ## Remaining (optional — for a fresh session)
 
