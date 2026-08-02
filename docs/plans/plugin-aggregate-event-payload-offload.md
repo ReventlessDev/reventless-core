@@ -227,12 +227,23 @@ stores (`pluginStructures`, `pluginApiFragments`) via the existing store loop
 (`Capability_ObjectStore_S3.make`, :1711) and surface them in the `objectStores` export (:1841).
 The `BucketObject.make` reference pattern already exists at :2053.
 
-**Resolve (remaining, deploy-validated).** `apiSchemaFragment` → deploy-time only, at the
-AppSync stitch (`aws/src/Platform.res` `preResolversSchemaHook` → `AppSync_Adapter`); use
-`Offload.resolve` with an S3-GET fetch. `structure` → the runtime Lambda
-`Platform_ComponentDefinitions_Lambda_Ops` (grant it offload-store GET IAM; thread the store
-location into its config); use `Offload.resolve` + `Offload.cachedFetch`. `PluginsProjection`
-keeps passing the ref through untouched.
+**Resolve (remaining, deploy-validated) — REFINED after verifying readers.** Only **`structure`**
+has a runtime reader: `Platform_ComponentDefinitions_Lambda_Ops.res:50`
+(`item->Dict.get("structure")->filterStructure`, which *drops the row* if it can't decode the
+structure JSON). So offloading `structure` **requires** resolving here (grant that Lambda
+offload-bucket GET IAM; thread the bucket name into its config; the resolve is at raw-JSON level —
+detect the `$offload` sentinel key, GET the object, substitute). **`apiSchemaFragment` needs NO
+resolver**: every consumer of it (`GraphQL_Stitcher`/`SchemaInspector`/`preResolversSchemaHook`)
+takes a *fresh* fragment built by `Plugin_Builder`, never the stored payload, and the stored field
+is in `pluginUIOnlyExcludeFields`. So offloading it is safe write-only size savings. This is
+all-or-nothing with the producer: a producer-only push offloads `structure` and the
+ComponentDefinitions Lambda then drops every plugin row (AutoUI component graph empties) — so the
+`structure` resolver + its IAM/config must land in the same change and be deploy-validated first.
+
+**Bucket topology (remaining).** A platform-level content-addressed offload bucket (the
+ComponentDefinitions Lambda is platform-level and needs GET; plugin stacks need PUT), created in
+the platform stack and exported (like `objectStores`, ~:1841); plugin stacks read it via the
+existing `objectStores` StackReference (~:179) for the producer's `BucketObject` writes.
 
 ## Steps
 
