@@ -11,6 +11,7 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as Monitoring$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Monitoring/Monitoring.res.mjs";
 import * as Util_Bundle$ReventlessAws from "./Util_Bundle.res.mjs";
 import * as Util_Lambda$ReventlessAws from "./Util_Lambda.res.mjs";
+import * as Util_LambdaLogging$ReventlessAws from "./Util_LambdaLogging.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "./Util_EventSourceMapping.res.mjs";
 
 let name = "DeadLetterQueue";
@@ -73,10 +74,13 @@ let handler = new (Aws.lambda.Function)(name, {
   layers: layers,
   tags: AWS_Tags$ReventlessAws.make(name, "Plugin", "DeadLetter", "Plugin", undefined, undefined, undefined, undefined),
   environment: {
-    variables: Object.fromEntries([[
+    variables: Object.fromEntries([
+      [
         "Environment",
         Pulumi.getStack()
-      ]])
+      ],
+      Util_LambdaLogging$ReventlessAws.logLevelEntry()
+    ])
   },
   sourceCodeHash: sourceCodeHash
 }, opts);

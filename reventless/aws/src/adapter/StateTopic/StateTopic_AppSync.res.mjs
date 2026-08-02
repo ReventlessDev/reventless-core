@@ -12,6 +12,7 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_ReadModel$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_ReadModel.res.mjs";
 import * as AppSync_EventsApi$ReventlessAws from "../Api/AppSync_EventsApi.res.mjs";
+import * as Util_LambdaLogging$ReventlessAws from "../../util/Util_LambdaLogging.res.mjs";
 import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
 
 let registry = {};
@@ -119,11 +120,13 @@ function finish(eventsApi, opts) {
         [
           "ESM_FALLBACK_DIRS",
           Util_Bundle$ReventlessAws.esmFallbackDirs
-        ]
+        ],
+        Util_LambdaLogging$ReventlessAws.logLevelEntry()
       ])
     },
     sourceCodeHash: match.sourceCodeHash
   }, opts);
+  Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name + "StateTopicPublisher", lambda.name, AWS_Tags$ReventlessAws.make(name + "StateTopicPublisherLogGroup", QueryDb$ReventlessCore.componentType, "Logs", undefined, name, undefined, undefined, undefined), opts, undefined);
   entries.forEach(entry => {
     let esmName = entry.topicName + "Stream2" + name + "StateTopic";
     new (Aws.lambda.EventSourceMapping)(esmName, {

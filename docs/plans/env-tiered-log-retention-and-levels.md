@@ -165,6 +165,36 @@ Chosen path — **decouple landing the code from cutting alpha over**:
 
 Needs AWS account access + touches deploy state → operator-driven.
 
+## Step 9 — Close the bespoke-builder coverage gap ◑
+
+Post-deploy verification (2026-08-02) found the tier policy only reached the ~22
+Lambdas built via `makeFromCodeAsset`. **8 platform/service Lambdas** are built by
+bespoke `Lambda.Function.make` call sites and so had `LOG_LEVEL=None` (logger
+default) and no managed group: `DeadLetterQueue`, `DomainEventsApiStateTopicPublisher`,
+`GeocoderService`, `UploadServiceLambda`, `PlatformUIDefinitionsLambda`,
+`PlatformUIFragmentsLambda`. Not a regression, but contradicts the "all ~25
+Lambdas" goal — and matters more for retention: those groups would stay unmanaged
+and forever-retained even after the Step 8 cutover.
+
+Fix — a shared helper so the policy lives in one place:
+
+- ✅ **`Util_LambdaLogging.res`** (new) — `logLevelEntry()` / `applyLogLevelDefault`
+  (the tier `LOG_LEVEL`) and `makeManagedLogGroup` (tier-retention group, name from
+  the function's physical `lambda.name`, gated by `managesLogGroup`, parented via
+  the caller's `~opts`). `makeFromCodeAsset` now applies `LOG_LEVEL` through it too.
+- ✅ **`LOG_LEVEL` on all 7 bespoke builders** — one `logLevelEntry()` entry each
+  (`Util_DeadLetterQueue`, `StateTopic_AppSync`, `Geocoder_AwsLocation`,
+  `Upload_{Presign,Claim}_S3`, `Platform_{UIFragments,ComponentDefinitions}_Lambda`).
+- ✅ **Managed groups on the 6 non-DLQ bespoke builders** — inert on `alpha` today
+  (escape hatch), so they complete the cutover without changing current behavior.
+- ⬜ **`DeadLetterQueue` managed group deferred** — its module provisions at import
+  time (races Jest teardown; flagged fragile), so only `LOG_LEVEL` was added there.
+  Fold its managed group into the Step 8 cutover.
+
+Verified: `pnpm run build` clean/zero-warnings; 183 tests green across the affected
+suites; on-AWS, the ~22 `makeFromCodeAsset` Lambdas already carry `LOG_LEVEL=debug`
+on alpha (the 8 bespoke ones flip on the next deploy).
+
 ## Verification
 
 - `pnpm run build` in `reventless/core` and `reventless/aws` — clean, zero

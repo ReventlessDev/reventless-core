@@ -237,11 +237,25 @@ let finish = (
               ("STATE_TOPIC_MAP", topicMapJson->Pulumi.Output.asInput),
               ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
               ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
+              Util_LambdaLogging.logLevelEntry(),
             ]),
           }: Lambda.Function.functionEnvironment
         )->Pulumi.Input.make,
       },
       ~opts,
+    )
+
+    Util_LambdaLogging.makeManagedLogGroup(
+      ~name=name ++ "StateTopicPublisher",
+      ~lambdaName=lambda.name,
+      ~tags=AWS.Tags.make(
+        ~name=name ++ "StateTopicPublisherLogGroup",
+        ~kind=ReventlessCore.QueryDb.componentType,
+        ~role=Logs,
+        ~component=name,
+      ),
+      ~opts,
+      (),
     )
 
     // One EventSourceMapping per stream, all targeting the shared Lambda.

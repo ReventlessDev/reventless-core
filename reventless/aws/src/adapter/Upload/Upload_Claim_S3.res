@@ -290,11 +290,25 @@ let finish = (
               ("CLAIM_REF_FIELDS", refFieldsJson->Pulumi.Output.asInput),
               ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
               ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
+              Util_LambdaLogging.logLevelEntry(),
             ]),
           }: Lambda.Function.functionEnvironment
         )->Pulumi.Input.make,
       },
       ~opts,
+    )
+
+    Util_LambdaLogging.makeManagedLogGroup(
+      ~name,
+      ~lambdaName=lambda.name,
+      ~tags=AWS.Tags.make(
+        ~name=name ++ "LogGroup",
+        ~kind=ReventlessCore.ComponentType.Plugin,
+        ~role=Logs,
+        ~component=name,
+      ),
+      ~opts,
+      (),
     )
 
     // One mapping per event log stream, all targeting the one Lambda.

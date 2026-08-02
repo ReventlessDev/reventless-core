@@ -105,6 +105,7 @@ let handler = Lambda.Function.make(
       {
         Lambda.Function.variables: Dict.fromArray([
           ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
+          Util_LambdaLogging.logLevelEntry(),
         ]),
       }: Lambda.Function.functionEnvironment
     )->Pulumi.Input.make,

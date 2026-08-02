@@ -23,6 +23,7 @@ import * as Util_IAM_Role$ReventlessAws from "../../util/Util_IAM_Role.res.mjs";
 import * as Util_LocalConfig$ReventlessAws from "../../util/Util_LocalConfig.res.mjs";
 import * as Util_HostUiDomain$ReventlessAws from "../../util/Util_HostUiDomain.res.mjs";
 import * as Util_LogRetention$ReventlessAws from "../../util/Util_LogRetention.res.mjs";
+import * as Util_LambdaLogging$ReventlessAws from "../../util/Util_LambdaLogging.res.mjs";
 
 let additionalEnvVars = {};
 
@@ -101,9 +102,7 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
   Stdlib_Dict.forEachWithKey(additionalEnvVars, (value, key) => {
     variables[key] = value;
   });
-  if (Stdlib_Option.isNone(variables["LOG_LEVEL"])) {
-    variables["LOG_LEVEL"] = Util_LogRetention$ReventlessAws.logLevelFor(stack, prodStacks, Util_LocalConfig$ReventlessAws.get("logLevel"));
-  }
+  Util_LambdaLogging$ReventlessAws.applyLogLevelDefault(variables);
   variables["NODE_OPTIONS"] = Util_Bundle$ReventlessAws.esmLoaderNodeOptions;
   variables["ESM_FALLBACK_DIRS"] = Util_Bundle$ReventlessAws.esmFallbackDirs;
   let tags = tagsFor(name, "Runtime");

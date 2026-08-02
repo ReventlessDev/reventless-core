@@ -11,6 +11,7 @@ import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as Util_LambdaLogging$ReventlessAws from "../../util/Util_LambdaLogging.res.mjs";
 
 function make(placeIndexName, corsOriginsOpt, opts) {
   let corsOrigins = corsOriginsOpt !== undefined ? corsOriginsOpt : ["*"];
@@ -73,11 +74,13 @@ function make(placeIndexName, corsOriginsOpt, opts) {
         [
           "ESM_FALLBACK_DIRS",
           Util_Bundle$ReventlessAws.esmFallbackDirs
-        ]
+        ],
+        Util_LambdaLogging$ReventlessAws.logLevelEntry()
       ])
     },
     sourceCodeHash: match.sourceCodeHash
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
+  Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(serviceName, lambda.name, AWS_Tags$ReventlessAws.make(serviceName + "LogGroup", "Platform", "Logs", "Platform", undefined, undefined, undefined, undefined), opts$1, undefined);
   let functionUrl = new (Aws.lambda.FunctionUrl)(serviceName + `Url`, {
     authorizationType: "NONE",
     functionName: lambda.name,

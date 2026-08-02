@@ -11,6 +11,7 @@ import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as StorageRefFields$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/StorageRefFields.res.mjs";
+import * as Util_LambdaLogging$ReventlessAws from "../../util/Util_LambdaLogging.res.mjs";
 import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
 
 let registry = {};
@@ -154,11 +155,13 @@ function finish(plugin, stores, iteratorAgeAlarmMsOpt, opts) {
         [
           "ESM_FALLBACK_DIRS",
           Util_Bundle$ReventlessAws.esmFallbackDirs
-        ]
+        ],
+        Util_LambdaLogging$ReventlessAws.logLevelEntry()
       ])
     },
     sourceCodeHash: match.sourceCodeHash
   }, opts);
+  Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name, lambda.name, AWS_Tags$ReventlessAws.make(name + "LogGroup", "Plugin", "Logs", undefined, name, undefined, undefined, undefined), opts, undefined);
   entries.forEach((entry, i) => {
     let esmName = name + `Stream` + i.toString();
     new (Aws.lambda.EventSourceMapping)(esmName, {

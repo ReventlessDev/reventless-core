@@ -120,11 +120,25 @@ let make = (
             ("ADMIN_ENTRY_JSON", adminEntryJson->Pulumi.Input.make),
             ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
             ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
+            Util_LambdaLogging.logLevelEntry(),
           ]),
         }: Lambda.Function.functionEnvironment
       )->Pulumi.Input.make,
     },
     ~opts,
+  )
+
+  Util_LambdaLogging.makeManagedLogGroup(
+    ~name=name ++ "Lambda",
+    ~lambdaName=lambda.name,
+    ~tags=AWS.Tags.make(
+      ~name=name ++ "LambdaLogGroup",
+      ~kind=ReventlessCore.ComponentType.Platform,
+      ~role=Logs,
+      ~scope=Platform,
+    ),
+    ~opts,
+    (),
   )
 
   let dataSourceRole = IAM.Role.makeWithDefaultPolicy(

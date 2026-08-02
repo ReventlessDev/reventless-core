@@ -122,11 +122,25 @@ let make = (
             ("PLACE_INDEX_NAME", placeIndexName),
             ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
             ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
+            Util_LambdaLogging.logLevelEntry(),
           ]),
         }: Lambda.Function.functionEnvironment
       )->Pulumi.Input.make,
     },
     ~opts?,
+  )
+
+  Util_LambdaLogging.makeManagedLogGroup(
+    ~name=serviceName,
+    ~lambdaName=lambda.name,
+    ~tags=AWS.Tags.make(
+      ~name=serviceName ++ "LogGroup",
+      ~kind=ReventlessCore.ComponentType.Platform,
+      ~role=Logs,
+      ~scope=Platform,
+    ),
+    ~opts?,
+    (),
   )
 
   let functionUrl = FunctionUrl.make(

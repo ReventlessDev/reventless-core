@@ -11,6 +11,7 @@ import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as Util_LambdaLogging$ReventlessAws from "../../util/Util_LambdaLogging.res.mjs";
 import * as AppSync_Resolver_Native$ReventlessAws from "./AppSync_Resolver_Native.res.mjs";
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
 import * as Platform_ComponentDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_ComponentDefinitionsApi.res.mjs";
@@ -86,11 +87,13 @@ function make(api, pluginReadModelTableName, opts) {
         [
           "ESM_FALLBACK_DIRS",
           Util_Bundle$ReventlessAws.esmFallbackDirs
-        ]
+        ],
+        Util_LambdaLogging$ReventlessAws.logLevelEntry()
       ])
     },
     sourceCodeHash: match.sourceCodeHash
   }, opts$1);
+  Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name + "Lambda", lambda.name, AWS_Tags$ReventlessAws.make(name + "LambdaLogGroup", "Platform", "Logs", "Platform", undefined, undefined, undefined, undefined), opts$1, undefined);
   let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
   Pulumi.all([
     lambda.arn,

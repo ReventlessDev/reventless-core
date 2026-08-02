@@ -243,18 +243,9 @@ let makeFromCodeAsset: (
 
   // Default the logger's minimum level per environment tier when nothing already
   // pinned one (caller `envVars` or a consumer-registered `additionalEnvVars`
-  // win). Verbose on disposable dev stacks, quiet on prod/beta — for every
-  // Lambda, not just the command handlers.
-  if variables->Dict.get("LOG_LEVEL")->Option.isNone {
-    variables->Dict.set(
-      "LOG_LEVEL",
-      Util_LogRetention.logLevelFor(
-        ~stack,
-        ~prodStacks,
-        ~configOverride=?Util_LocalConfig.get("logLevel"),
-      )->Pulumi.Input.make,
-    )
-  }
+  // win) — for every Lambda, via the shared helper so the bespoke
+  // `Lambda.Function.make` builders apply the identical policy.
+  Util_LambdaLogging.applyLogLevelDefault(variables)
 
   // ESM self-containment (Option C): every code archive built by
   // Util_Bundle.buildCodeArchive ships register-hook.mjs + layer-resolver.mjs at
