@@ -8,6 +8,7 @@ import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Plugin$ReventlessCore from "./Plugin.res.mjs";
 import * as StackReference$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/StackReference.res.mjs";
@@ -486,6 +487,22 @@ function Make(Spec) {
           let match$3 = EventCollectorHelper.make(childName, eventTopics, opts);
           let eventCollector = match$3[0];
           let capturedDeployTarget = Spec.hooks.deployTarget.contents;
+          let toPayload = (value, schema, store) => {
+            let hook = Plugin_Helpers$ReventlessCore.offloadHook.contents;
+            if (hook !== undefined) {
+              return {
+                TAG: "Offloaded",
+                _0: hook(store, S.reverseConvertToJsonStringOrThrow(value, schema, undefined))
+              };
+            } else {
+              return {
+                TAG: "Inline",
+                _0: value
+              };
+            }
+          };
+          let apiSchemaFragmentPayload = toPayload(apiSchemaFragment, Plugin$Reventless.apiSchemaFragmentSchema, "pluginApiFragments");
+          let structurePayload = Stdlib_Option.map(pluginStructure, s => toPayload(s, Plugin$Reventless.pluginStructureSchema, "pluginStructures"));
           let dcbOutputs$1 = dcbResult.dcbEventLogOutputs;
           let dcbEventLogDef;
           if (dcbOutputs$1 !== undefined) {
@@ -509,15 +526,9 @@ function Make(Spec) {
             extensions: extensionsDefinitions,
             eventCollector: param[1],
             extensionProtocols: [],
-            apiSchemaFragment: {
-              TAG: "Inline",
-              _0: apiSchemaFragment
-            },
+            apiSchemaFragment: apiSchemaFragmentPayload,
             apiTarget: capturedDeployTarget,
-            structure: Stdlib_Option.map(pluginStructure, s => ({
-              TAG: "Inline",
-              _0: s
-            })),
+            structure: structurePayload,
             dcbEventLog: param[2],
             kind: Stdlib_Option.getOr(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.pluginMetadataRegistry.contents, m => m.kind), "Domain")
           }));

@@ -786,6 +786,27 @@ let clearOnPluginDeployed = () => {
 }
 
 // ---------------------------------------------------------------------------
+// Deploy-time offload hook — content-addresses a large pluginDefinition field
+// to an object store and returns the reference. Set by a provider that can
+// write objects (AWS creates a BucketObject); unset on the local platform, so
+// the fields stay Inline. `bytes` is the already-serialized JSON of the value;
+// the provider hashes it, stores it at `sha256/<hash>`, and returns the ref.
+// Fired synchronously at graph-construction time (the value is concrete and a
+// resource cannot be created inside a Pulumi.Output.apply).
+// ---------------------------------------------------------------------------
+let offloadHook: ref<option<(~store: string, ~bytes: string) => Reventless.Offload.offloadedRef>> = ref(
+  None,
+)
+
+let registerOffload = (hook: (~store: string, ~bytes: string) => Reventless.Offload.offloadedRef) => {
+  offloadHook.contents = Some(hook)
+}
+
+let clearOffload = () => {
+  offloadHook.contents = None
+}
+
+// ---------------------------------------------------------------------------
 // Platform-deployed hook — fires after deployPlatform / makePlatform
 // completes, providing platform-level metadata with resolved values.
 // ---------------------------------------------------------------------------

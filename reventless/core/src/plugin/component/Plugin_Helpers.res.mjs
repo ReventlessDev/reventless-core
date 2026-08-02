@@ -418,6 +418,18 @@ function clearOnPluginDeployed() {
   onPluginDeployedHook.contents = undefined;
 }
 
+let offloadHook = {
+  contents: undefined
+};
+
+function registerOffload(hook) {
+  offloadHook.contents = hook;
+}
+
+function clearOffload() {
+  offloadHook.contents = undefined;
+}
+
 let onPlatformDeployedHook = {
   contents: undefined
 };
@@ -1015,6 +1027,9 @@ export {
   onPluginDeployedHook,
   registerOnPluginDeployed,
   clearOnPluginDeployed,
+  offloadHook,
+  registerOffload,
+  clearOffload,
   onPlatformDeployedHook,
   lastPlatformDeployedInfo,
   registerOnPlatformDeployed,
