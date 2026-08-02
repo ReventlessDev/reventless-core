@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.255 (2026-08-02)
+
+### Bug Fixes
+
+* **aws:** apply tier LOG_LEVEL + managed log groups to bespoke Lambda builders ([8814627](https://github.com/ReventlessDev/reventless-core/commit/8814627a200199616f407f4011d4e0b0e1895397))
+
+
 # 3.0.0-alpha.254 (2026-08-02)
 
 ### Features
