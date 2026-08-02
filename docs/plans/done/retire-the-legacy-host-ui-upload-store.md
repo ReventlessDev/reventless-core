@@ -1,13 +1,14 @@
 # Plan: retire the legacy host-UI upload store
 
 **Date:** 2026-08-02
-**Status (updated 2026-08-02):** In progress. **Step 2 deployed** (`3e0f9833a` — protection
-cleared; bucket verified empty + `protect=false` in state). **Step 3 committed but NOT pushed/deployed**
-(`d27866e5c` — declaration removed; local preview confirmed only the bucket, its public-access block, and
-the served-uploads policy delete, declared store untouched). **Outstanding:** confirm no `/uploads/…` ref
-remains in the event log (the last precondition), push/deploy Step 3, then **Step 4** — exercise an actual
-upload through the declared store (a green deploy does not prove it). The **ordering is the plan**, because
-two of the three steps fail as a red deploy rather than as a caught preview if taken out of order.
+**Status: COMPLETE (2026-08-02).** All four steps done and verified on live alpha.
+**Step 2** deployed (`3e0f9833a`). **Precondition** confirmed — event-log scan found 0 `/uploads/…`
+refs; all image refs are the declared `/Catalog/productImages/…` form. **Step 3** pushed + deployed
++ verified (`d27866e5c`, deploy `fa3eff9e2`): the `online-shop-uploads-*` bucket is gone, declared
+store untouched. **Step 4** verified by exercising uploads through the declared store — seed pre-loads
+product images, and the UI presign path handles a missing image — both work end-to-end. The last
+hand-written object store in the estate is retired; `destroy` on a disposable stack now removes what
+it created.
 **Repos:** `reventless-core` only.
 **Analysis:** [platform-main-capability-provisioning.md](../analysis/platform-main-capability-provisioning.md) §5.3, §7 Stage 2.
 **Builds on:** [declared-object-stores-without-host-ui-bundle.md](./declared-object-stores-without-host-ui-bundle.md)

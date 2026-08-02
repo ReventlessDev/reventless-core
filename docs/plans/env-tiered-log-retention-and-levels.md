@@ -6,8 +6,11 @@ Source analysis: [../analysis/log-retention-and-levels-per-environment.md](../an
 coverage gap) done and committed; on alpha the `makeFromCodeAsset` Lambdas carry
 `LOG_LEVEL=debug` and the 8 bespoke Lambdas flip on the next deploy (commit
 `8814627a2`, unpushed). Only **Step 8** (the operator-driven alpha managed-group
-cutover — the switch that turns on tiered *retention*, incl. DLQ's deferred group)
-is outstanding. Stays in `docs/plans/` until Step 8's on-AWS verification passes.**
+cutover — full Pulumi-owned groups + DCB metric filters) is outstanding, and it is
+**deliberately deferred** (low value, risky local `pulumi up`). Alpha meanwhile has
+**interim 7-day retention** applied via Option A (retroactive `put-retention-policy`,
+2026-08-02) — see Step 8. Stays in `docs/plans/` until Step 8's on-AWS verification
+passes.**
 
 ## Problem
 
@@ -167,6 +170,19 @@ Chosen path — **decouple landing the code from cutting alpha over**:
    the cutover — not merely that it went green.
 
 Needs AWS account access + touches deploy state → operator-driven.
+
+**Interim retention applied (Option A, 2026-08-02).** Rather than run the risky
+cutover now, alpha's existing groups got a *retroactive* retention policy — no
+Pulumi, no deploy, reversible (`scratchpad/set-alpha-retention.sh`, dry-run first).
+`aws logs put-retention-policy --retention-in-days 7` was set on all **21** existing
+alpha Lambda log groups (verified `retentionInDays: 7`); the other ~9 live functions
+had not yet been invoked so had no group to set, and no AppSync group exists yet
+(lazy creation). So alpha now has bounded 7-day retention on the logs that exist,
+while the full managed-group cutover (steps 2–3 above) stays deferred. Caveats
+inherent to Option A: the groups stay **unmanaged** (no Pulumi ownership, no DCB
+metric filters), and a future deploy that changes a Lambda's name suffix — or a
+first invocation / first AppSync field-log — creates a fresh no-retention group, so
+re-running the sweep periodically is needed until the managed cutover lands.
 
 ## Step 9 — Close the bespoke-builder coverage gap ◑
 
