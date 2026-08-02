@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.60 (2026-08-02)
+
+### Features
+
+* **ppx:** emit repo-root-relative file paths in .model.json/.gwt.json sidecars ([7212c1d](https://github.com/ReventlessDev/reventless-core/commit/7212c1db030258b1918f15250ead61d4e0785af2))
+
+
 # 1.0.0-alpha.59 (2026-07-28)
 
 ### Bug Fixes

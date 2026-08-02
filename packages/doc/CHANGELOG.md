@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.70 (2026-08-02)
+
+### Features
+
+* **aws,core,doc:** environment-tiered CloudWatch log retention and levels ([8032023](https://github.com/ReventlessDev/reventless-core/commit/803202305a7d352484b8df5e58df03c92ca58b5f))
+
+
 # 1.0.0-alpha.69 (2026-08-01)
 
 **Note:** Version bump only for package doc

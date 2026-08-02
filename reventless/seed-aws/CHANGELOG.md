@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.9 (2026-08-02)
+
+### Features
+
+* **aws,core,spec,seed-aws:** expire uploads nobody committed a reference to ([f63e84c](https://github.com/ReventlessDev/reventless-core/commit/f63e84c1a11cc350b799a6f69a2e7427cf1ea6e9))
+
+
 # 1.0.0-alpha.8 (2026-08-01)
 
 ### Features

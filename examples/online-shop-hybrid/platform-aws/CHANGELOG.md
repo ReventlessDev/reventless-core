@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.202 (2026-08-02)
+
+### Features
+
+* **aws,core,spec,seed-aws:** expire uploads nobody committed a reference to ([f63e84c](https://github.com/ReventlessDev/reventless-core/commit/f63e84c1a11cc350b799a6f69a2e7427cf1ea6e9))
+* **deps:** bump host-shell to 3.0.0-alpha.54 ([6866095](https://github.com/ReventlessDev/reventless-core/commit/6866095ca2a1c1b9e42866623f9cf73aa275e02a))
+
+
 # 1.0.0-alpha.201 (2026-08-01)
 
 ### Features
