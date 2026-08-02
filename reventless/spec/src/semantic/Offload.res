@@ -156,6 +156,85 @@ let getInline = (payload: payload<'a>): option<'a> =>
   | Offloaded(_) => None
   }
 
+// ── Client helpers ─────────────────────────────────────────────────────────
+//
+// The producer/reader surface that makes offloading easy for a client to drive.
+// Both take their store I/O as injected transports so this module stays pure
+// and provider-agnostic: a browser passes a presigned PUT / fetch, the Node seed
+// passes a direct SDK call, a test passes an in-memory map. The plugin's own
+// deploy-time producer is the exception — it offloads Pulumi-natively (declares a
+// content-addressed object resource) rather than through `prepare`, because its
+// value is a `Pulumi.Output` and a resource cannot be created inside `.apply`.
+
+/**
+Decide inline-or-offloaded for one value and, when it is large, upload it.
+
+Serializes `value` with `schema`; if the JSON is below `threshold` it stays
+`Inline` (no round trip). Otherwise it is hashed, uploaded under the
+content-addressed key `sha256/<hash>`, and returned as `Offloaded`. Because the
+key is the content hash, re-uploading identical bytes writes the same object —
+idempotent, and the source of cross-version/cross-client dedupe.
+
+`~hash` and `~upload` are injected so this stays provider-agnostic; `~hash` must
+be a stable content hash (the same bytes must always hash the same). Size is the
+JSON string's length in characters — a close proxy for byte length on the
+mostly-ASCII JSON these payloads are, and only ever used for the threshold cut.
+*/
+let prepare = (
+  value: 'a,
+  ~schema: S.t<'a>,
+  ~store: string,
+  ~threshold: int,
+  ~hash: string => string,
+  ~upload: (~key: string, ~bytes: string) => promise<unit>,
+): promise<payload<'a>> => {
+  let bytes = value->S.reverseConvertToJsonStringOrThrow(schema)
+  if bytes->String.length < threshold {
+    Promise.resolve(Inline(value))
+  } else {
+    let digest = hash(bytes)
+    let key = "sha256/" ++ digest
+    upload(~key, ~bytes)->Promise.then(() =>
+      Promise.resolve(Offloaded({store, key, hash: digest, bytes: bytes->String.length}))
+    )
+  }
+}
+
+/**
+Resolve a payload back to its value: `Inline` directly, `Offloaded` by fetching
+the object's bytes (via the injected `~fetch`) and decoding with `schema`.
+
+Offloaded objects are written by current code, so their bytes decode strictly —
+unlike the inline arm of the wire codec, which heals older event payloads.
+*/
+let resolve = (payload: payload<'a>, ~schema: S.t<'a>, ~fetch: string => promise<string>): promise<
+  'a,
+> =>
+  switch payload {
+  | Inline(value) => Promise.resolve(value)
+  | Offloaded({key}) =>
+    fetch(key)->Promise.then(bytes => Promise.resolve(bytes->S.parseJsonStringOrThrow(schema)))
+  }
+
+/**
+Wrap a `~fetch` so each content-addressed key is fetched at most once per process.
+
+Keys are immutable (they are content hashes), so a fetched object can be cached
+forever — every replay/projection that references the same hash reuses it, and
+concurrent resolves of the same key share the one in-flight promise.
+*/
+let cachedFetch = (fetch: string => promise<string>): (string => promise<string>) => {
+  let cache: dict<promise<string>> = Dict.make()
+  key =>
+    switch cache->Dict.get(key) {
+    | Some(inflight) => inflight
+    | None =>
+      let inflight = fetch(key)
+      cache->Dict.set(key, inflight)
+      inflight
+    }
+}
+
 /** The store an `@offload` field declares, if any — the read side of the marker,
     used by provisioning to know the field requires this store to exist. Distinct
     from `StorageRef.getStore` by the semantic id, so the two families stay

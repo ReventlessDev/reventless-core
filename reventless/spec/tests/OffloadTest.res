@@ -64,3 +64,113 @@ describe("Offload marker:", () => {
 
   testSync("id string matches the wire vocabulary", () => expect(Semantic.Id.offload)->toBe("offload"))
 })
+
+describe("Offload client helpers:", () => {
+  // Deterministic content hash (same bytes -> same key) and an in-memory transport
+  // sharing one dict between upload and fetch, with call counters.
+  let hash = s => "H" ++ Int.toString(String.length(s))
+  let makeStore = () => {
+    let objects = Dict.make()
+    let uploads = ref(0)
+    let fetches = ref(0)
+    let upload = (~key, ~bytes) => {
+      uploads := uploads.contents + 1
+      objects->Dict.set(key, bytes)
+      Promise.resolve()
+    }
+    let fetch = key => {
+      fetches := fetches.contents + 1
+      Promise.resolve(objects->Dict.getUnsafe(key))
+    }
+    (objects, upload, fetch, uploads, fetches)
+  }
+  let keyOf = (p: Offload.payload<demo>) =>
+    switch p {
+    | Offloaded({key}) => key
+    | Inline(_) => ""
+    }
+
+  test("prepare keeps small values inline, no upload", async () => {
+    let (_, upload, _, uploads, _) = makeStore()
+    let p = await Offload.prepare(
+      {name: "a", count: 1},
+      ~schema=demoSchema,
+      ~store="s",
+      ~threshold=10000,
+      ~hash,
+      ~upload,
+    )
+    expect(p->Offload.getInline->Option.isSome && uploads.contents == 0)->toBe(true)
+  })
+
+  test("prepare offloads large values under a content-addressed key", async () => {
+    let (objects, upload, _, uploads, _) = makeStore()
+    let p = await Offload.prepare(
+      {name: "abcdefghijklmnop", count: 1},
+      ~schema=demoSchema,
+      ~store="pluginStructures",
+      ~threshold=10,
+      ~hash,
+      ~upload,
+    )
+    switch p {
+    | Offloaded({store, key}) =>
+      expect(
+        store == "pluginStructures" &&
+        key->String.startsWith("sha256/") &&
+        uploads.contents == 1 &&
+        objects->Dict.get(key)->Option.isSome,
+      )->toBe(true)
+    | Inline(_) => expect("inline")->toBe("offloaded")
+    }
+  })
+
+  test("prepare dedupes identical content to the same key", async () => {
+    let (_, upload, _, _, _) = makeStore()
+    let mk = () =>
+      Offload.prepare(
+        {name: "abcdefghij", count: 2},
+        ~schema=demoSchema,
+        ~store="s",
+        ~threshold=10,
+        ~hash,
+        ~upload,
+      )
+    let a = await mk()
+    let b = await mk()
+    expect(keyOf(a) == keyOf(b) && keyOf(a) != "")->toBe(true)
+  })
+
+  test("resolve: inline needs no fetch, offloaded round-trips", async () => {
+    let (_, upload, fetch, _, fetches) = makeStore()
+    let inlineBack = await Offload.resolve(Inline({name: "a", count: 1}), ~schema=demoSchema, ~fetch)
+    expect(inlineBack.name == "a" && fetches.contents == 0)->toBe(true)
+    let big = {name: "abcdefghij", count: 5}
+    let p = await Offload.prepare(
+      big,
+      ~schema=demoSchema,
+      ~store="s",
+      ~threshold=10,
+      ~hash,
+      ~upload,
+    )
+    let back = await Offload.resolve(p, ~schema=demoSchema, ~fetch)
+    expect(back == big)->toBe(true)
+  })
+
+  test("cachedFetch fetches each key at most once", async () => {
+    let (_, upload, fetch, _, fetches) = makeStore()
+    let p = await Offload.prepare(
+      {name: "abcdefghij", count: 9},
+      ~schema=demoSchema,
+      ~store="s",
+      ~threshold=10,
+      ~hash,
+      ~upload,
+    )
+    let cf = Offload.cachedFetch(fetch)
+    let _ = await cf(keyOf(p))
+    let _ = await cf(keyOf(p))
+    expect(fetches.contents)->toBe(1)
+  })
+})

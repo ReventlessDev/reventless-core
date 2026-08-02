@@ -87,6 +87,48 @@ function getInline(payload) {
   }
 }
 
+function prepare(value, schema, store, threshold, hash, upload) {
+  let bytes = S.reverseConvertToJsonStringOrThrow(value, schema, undefined);
+  if (bytes.length < threshold) {
+    return Promise.resolve({
+      TAG: "Inline",
+      _0: value
+    });
+  }
+  let digest = hash(bytes);
+  let key = "sha256/" + digest;
+  return upload(key, bytes).then(() => Promise.resolve({
+    TAG: "Offloaded",
+    _0: {
+      store: store,
+      key: key,
+      hash: digest,
+      bytes: bytes.length
+    }
+  }));
+}
+
+function resolve(payload, schema, fetch) {
+  if (payload.TAG === "Inline") {
+    return Promise.resolve(payload._0);
+  } else {
+    return fetch(payload._0.key).then(bytes => Promise.resolve(S.parseJsonStringOrThrow(bytes, schema)));
+  }
+}
+
+function cachedFetch(fetch) {
+  let cache = {};
+  return key => {
+    let inflight = cache[key];
+    if (inflight !== undefined) {
+      return inflight;
+    }
+    let inflight$1 = fetch(key);
+    cache[key] = inflight$1;
+    return inflight$1;
+  };
+}
+
 function getStore(schema) {
   let match = Semantic$Reventless.get(schema);
   if (match === undefined) {
@@ -107,6 +149,9 @@ export {
   forStore,
   optionSchema,
   getInline,
+  prepare,
+  resolve,
+  cachedFetch,
   getStore,
 }
 /* offloadedRefSchema Not a pure module */
