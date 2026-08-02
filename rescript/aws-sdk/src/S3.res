@@ -46,6 +46,16 @@ module GetObjectCommand = {
   }
 
   let send: t => promise<output> = input => Raw.send(client(), input)
+
+  // AWS SDK v3 returns the object body as an SdkStream that adds
+  // `transformToString()` (UTF-8 by default) on top of the Node Readable the
+  // output type reflects. Bind the method here rather than inline at the call site.
+  @send
+  external transformToString: NodeStreams.Readable.t => promise<string> = "transformToString"
+
+  /** Fetch an object and return its body as a UTF-8 string. */
+  let getString: (~bucket: string, ~key: string) => promise<string> = (~bucket, ~key) =>
+    make({bucket, key})->send->Promise.then(output => output.body->transformToString)
 }
 
 module ListObjectVersionsCommand = {

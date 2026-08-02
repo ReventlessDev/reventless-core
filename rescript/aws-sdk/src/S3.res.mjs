@@ -25,9 +25,18 @@ function send(input) {
   return client().send(input);
 }
 
+function getString(bucket, key) {
+  let input = new ClientS3.GetObjectCommand({
+    Bucket: bucket,
+    Key: key
+  });
+  return client().send(input).then(output => output.Body.transformToString());
+}
+
 let GetObjectCommand = {
   Raw: Raw$1,
-  send: send
+  send: send,
+  getString: getString
 };
 
 let Raw$2 = {};

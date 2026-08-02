@@ -65,6 +65,35 @@ let adminEntry: option<JSON.t> =
   | _ => None
   }
 
+// Resolve an offloaded `structure`: a large structure is content-addressed to the
+// offload bucket at deploy time and persisted as an `{$offload: {...}}` reference,
+// so fetch the object's bytes and substitute the real structure JSON before it is
+// filtered. Inline (or absent) structures pass through untouched. The `fetch` is
+// per-hash cached, so an identical structure shared across versions is read once.
+let resolveStructure = (
+  fetch: string => promise<string>,
+  item: dict<JSON.t>,
+): promise<dict<JSON.t>> =>
+  switch item
+  ->Dict.get("structure")
+  ->Option.flatMap(JSON.Decode.object)
+  ->Option.flatMap(o => o->Dict.get(Reventless.Offload.sentinelKey)) {
+  | None => Promise.resolve(item)
+  | Some(refJson) =>
+    switch refJson
+    ->JSON.Decode.object
+    ->Option.flatMap(r => r->Dict.get("key"))
+    ->Option.flatMap(JSON.Decode.string) {
+    | None => Promise.resolve(item)
+    | Some(key) =>
+      fetch(key)->Promise.then(bytes => {
+        let resolved = Dict.fromArray(item->Dict.toArray)
+        resolved->Dict.set("structure", JSON.parseOrThrow(bytes))
+        Promise.resolve(resolved)
+      })
+    }
+  }
+
 let handler = async (_event: JSON.t): array<JSON.t> => {
   let admin = adminEntry->Option.mapOr([], e => [e])
   switch NodeProcess.env->Dict.get("PLUGIN_RM_TABLE") {
@@ -72,12 +101,18 @@ let handler = async (_event: JSON.t): array<JSON.t> => {
     Console.error("Platform_ComponentDefinitions: PLUGIN_RM_TABLE env var not set")
     admin
   | Some(table) =>
-    let items = await Platform_AdminScan_Ops.scanAll(
+    let rawItems = await Platform_AdminScan_Ops.scanAll(
       ~tableName=table,
       ~filterExpression="contains(#status, :connected)",
       ~expressionAttributeNames=Dict.fromArray([("#status", "status")]),
       ~expressionAttributeValues=Dict.fromArray([(":connected", JSON.Encode.string("Connected"))]),
     )
+    // Substitute any offloaded structure references with their bytes before filtering.
+    let bucket = NodeProcess.env->Dict.get("OFFLOAD_BUCKET")->Option.getOr("")
+    let fetch = Reventless.Offload.cachedFetch(key =>
+      AwsSdk.S3.GetObjectCommand.getString(~bucket, ~key)
+    )
+    let items = await Promise.all(rawItems->Array.map(item => resolveStructure(fetch, item)))
     let userEntries =
       Platform_AdminScan_Ops.latestByName(items, ~nameVersionOf=item => item->str("name"), ~toEntry)
     Array.concat(admin, userEntries)
