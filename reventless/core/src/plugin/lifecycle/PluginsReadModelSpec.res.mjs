@@ -23,9 +23,9 @@ let stateSchema = S.schema(s => ({
   extensions: s.m(S.array(Plugin$Reventless.extensionDefinitionSchema)),
   status: s.m(statusSchema),
   statusChange: s.m(Message$ReventlessCore.statusChangeSchema),
-  apiSchemaFragment: s.m(Plugin$Reventless.apiSchemaFragmentOffloadSchema),
+  apiSchemaFragment: s.m(S.option(S.json)),
   apiTarget: s.m(S.option(S.string)),
-  structure: s.m(Plugin$Reventless.pluginStructureOffloadSchema),
+  structure: s.m(S.option(S.json)),
   dcbEventLog: s.m(Plugin$Reventless.dcbEventLogOptionSchema),
   kind: s.m(S.option(Plugin$Reventless.pluginKindSchema)),
   otherConnectedVersions: s.m(S.array(Plugin$Reventless.versionSchema))

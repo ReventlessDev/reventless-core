@@ -3,6 +3,8 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
+import * as Offload$Reventless from "@reventlessdev/reventless-spec/src/semantic/Offload.res.mjs";
 import * as Plugin$ReventlessCore from "../component/Plugin.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as PluginSpec$ReventlessCore from "./PluginSpec.res.mjs";
@@ -70,8 +72,8 @@ function displayState(def, status, statusChange, otherConnectedVersions) {
   let base_extensionPointNames = def.extensionPoints.map(extensionPoint => extensionPoint.name);
   let base_extensionNames = def.extensions.map(extension => extension.extensionPointName);
   let base_extensions = def.extensions;
-  let base_apiSchemaFragment = def.apiSchemaFragment;
-  let base_structure = def.structure;
+  let base_apiSchemaFragment = Stdlib_Option.map(def.apiSchemaFragment, __x => Offload$Reventless.toJson(Plugin$Reventless.apiSchemaFragmentSchema, __x));
+  let base_structure = Stdlib_Option.map(def.structure, __x => Offload$Reventless.toJson(Plugin$Reventless.pluginStructureSchema, __x));
   let base_dcbEventLog = def.dcbEventLog;
   let base_kind = def.kind;
   let base_otherConnectedVersions = without(otherConnectedVersions, def.version);

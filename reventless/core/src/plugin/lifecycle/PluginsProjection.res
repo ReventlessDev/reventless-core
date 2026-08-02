@@ -54,8 +54,17 @@ let displayState = (
     extensions: def.extensions,
     status,
     statusChange,
-    apiSchemaFragment: def.apiSchemaFragment,
-    structure: def.structure,
+    // Store the offloadable fields as their untagged wire JSON (bare value, or an
+    // `{$offload: {...}}` reference), not the `Offload.payload` variant: the QueryDb
+    // write path marshals the raw ReScript value, so a variant would land in DynamoDB
+    // as `{TAG, _0}`. The ComponentDefinitions Lambda then reads structure back and
+    // resolves the sentinel.
+    apiSchemaFragment: def.apiSchemaFragment->Option.map(
+      Reventless.Offload.toJson(Reventless.Plugin.apiSchemaFragmentSchema, _),
+    ),
+    structure: def.structure->Option.map(
+      Reventless.Offload.toJson(Reventless.Plugin.pluginStructureSchema, _),
+    ),
     dcbEventLog: def.dcbEventLog,
     // A freshly projected row always knows its kind (the definition carries it as a
     // mandatory field). `option` here is purely for rows persisted before `kind`

@@ -24,15 +24,22 @@ type state = {
   extensions: array<Reventless.Plugin.extensionDefinition>,
   status: status,
   statusChange: Message.statusChange,
-  apiSchemaFragment: @s.matches(Reventless.Plugin.apiSchemaFragmentOffloadSchema)
-    option<Reventless.Offload.payload<Reventless.Plugin.apiSchemaFragment>>,
+  // Stored as the **untagged** offload wire JSON (a bare fragment, or an
+  // `{$offload: {...}}` reference) — NOT the `Offload.payload` variant. The QueryDb
+  // write path marshals the raw ReScript value straight to DynamoDB without
+  // sury-encoding through this field's schema, so a variant would persist as its
+  // runtime `{TAG, _0}` shape and no reader could parse it. UI-excluded
+  // (PluginBaseFragment.pluginUIOnlyExcludeFields), so JSON.t typing costs no
+  // GraphQL consumer. PluginsProjection.displayState writes it via Offload.toJson.
+  apiSchemaFragment: option<JSON.t>,
   // API target for split-API schema routing. Absent/None means "Domain" (backward compat).
   // "Platform" → excluded from DomainApi runtime schema stitching in updateApiSchema.
   apiTarget?: string,
   // Plugin structure (component metadata) — surfaced via Platform_ComponentDefinitions.
-  // None for older plugins whose protocol version did not carry the field.
-  structure: @s.matches(Reventless.Plugin.pluginStructureOffloadSchema)
-    option<Reventless.Offload.payload<Reventless.Plugin.pluginStructure>>,
+  // None for older plugins whose protocol version did not carry the field. Same
+  // untagged-JSON storage as apiSchemaFragment above; the ComponentDefinitions
+  // Lambda detects the `$offload` sentinel and resolves it from S3.
+  structure: option<JSON.t>,
   // DCB EventLog definition for plugins that bundle a DcbEventLog component.
   // Admin's manageSubscriptions uses this to wire cross-plugin SNS subscriptions
   // from this plugin's DCB topic → peer EventCollectors (and vice-versa). None
@@ -74,9 +81,9 @@ type queryResult = {
   extensionNames: array<string>,
   extensions: array<Reventless.Plugin.extensionDefinition>,
   status: status,
-  apiSchemaFragment: option<Reventless.Offload.payload<Reventless.Plugin.apiSchemaFragment>>,
+  apiSchemaFragment: option<JSON.t>,
   apiTarget?: string,
-  structure: option<Reventless.Offload.payload<Reventless.Plugin.pluginStructure>>,
+  structure: option<JSON.t>,
   dcbEventLog: option<Reventless.Plugin.dcbEventLogDefinition>,
   kind: option<Reventless.Plugin.pluginKind>,
 }
