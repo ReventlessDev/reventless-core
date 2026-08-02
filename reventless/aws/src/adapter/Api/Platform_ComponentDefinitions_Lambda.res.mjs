@@ -27,11 +27,14 @@ export function response(ctx) {
 }
 `;
 
-function make(api, pluginReadModelTableName, opts) {
+function make(api, pluginReadModelTableName, offloadBucketName, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let name = "PlatformUIDefinitions";
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Lambda", Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name + "Lambda", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
-  pluginReadModelTableName.apply(tableName => {
+  Pulumi.all([
+    pluginReadModelTableName,
+    offloadBucketName
+  ]).apply(param => {
     new (Aws.iam.RolePolicy)(name + "LambdaPolicy", {
       policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "LambdaPolicy", [
         {
@@ -44,7 +47,13 @@ function make(api, pluginReadModelTableName, opts) {
           Sid: "AllowScanPluginRm",
           Effect: "Allow",
           Action: ["dynamodb:Scan"],
-          Resource: "arn:aws:dynamodb:*:*:table/" + tableName
+          Resource: "arn:aws:dynamodb:*:*:table/" + param[0]
+        },
+        {
+          Sid: "AllowOffloadGet",
+          Effect: "Allow",
+          Action: ["s3:GetObject"],
+          Resource: "arn:aws:s3:::" + param[1] + "/*"
         }
       ])),
       role: lambdaRole.id
@@ -75,6 +84,10 @@ function make(api, pluginReadModelTableName, opts) {
         [
           "PLUGIN_RM_TABLE",
           pluginReadModelTableName
+        ],
+        [
+          "OFFLOAD_BUCKET",
+          offloadBucketName
         ],
         [
           "ADMIN_ENTRY_JSON",

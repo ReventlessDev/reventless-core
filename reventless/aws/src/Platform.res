@@ -1355,6 +1355,44 @@ module MakeWithConfig = (
       (),
     )
 
+    // ── Content-addressed offload bucket (@offload primitive) ─────────────────
+    //
+    // One platform-level bucket holds the large `pluginDefinition` fields
+    // (`structure` ~74 KB, `apiSchemaFragment` ~32 KB) keyed by their SHA-256
+    // (`sha256/<hash>`). Content-addressed and immutable, so it needs no CORS,
+    // lifecycle, or versioning — identical payloads across versions land on one
+    // object (free dedupe). Plugin stacks PUT to it (a `BucketObject` in the
+    // plugin deploy, via the offload hook) and the ComponentDefinitions Lambda
+    // GETs from it to resolve an offloaded `structure`. Kept out of the declared
+    // `@storageRef` stores and their pending-claim/expiry machinery: offload
+    // objects are written durably up front and are never "pending".
+    let offloadProtection = Util_StoreLayout.protectionFor(~stack=Pulumi.Pulumi.getStackName())
+    let offloadBucket = PulumiAws.S3.Bucket.make(
+      ~name="reventless-offload",
+      ~args={
+        forceDestroy: (offloadProtection == Unprotected)->Pulumi.Input.make,
+        tags: AWS.Tags.make(
+          ~name="reventless-offload",
+          ~kind=ReventlessCore.ComponentType.Platform,
+          ~role=Other("Offload"),
+          ~scope=Platform,
+        ),
+      },
+      ~opts={protect: offloadProtection == Protected},
+    )
+    let offloadBucketName = offloadBucket.bucket
+    let _offloadPab = PulumiAws.S3.BucketPublicAccessBlock.make(
+      ~name="reventless-offload-pab",
+      ~args={
+        bucket: offloadBucket.id->Pulumi.Output.asInput,
+        blockPublicAcls: Pulumi.Input.make(true),
+        blockPublicPolicy: Pulumi.Input.make(true),
+        ignorePublicAcls: Pulumi.Input.make(true),
+        restrictPublicBuckets: Pulumi.Input.make(true),
+      },
+    )
+    Pulumi.Pulumi.export("offloadBucket", offloadBucketName)
+
     // Mount the Platform_ComponentDefinitions Lambda resolver on the Platform API
     // (split mode) or Domain API (unified mode — platformApi == domainApi above).
     // Also register the Plugin RM table with the AllAggregates Lambda runtime
@@ -1366,6 +1404,7 @@ module MakeWithConfig = (
       Platform_ComponentDefinitions_Lambda.make(
         ~api=platformApi,
         ~pluginReadModelTableName=tableName,
+        ~offloadBucketName,
         ~opts={},
       )
     | None => ()
@@ -2112,8 +2151,39 @@ module MakeWithConfig = (
     hooks.api := Some(targetApi->wrapHookedValue)
     hooks.apiRole := Some(targetApiRole->wrapHookedValue)
 
+    // Register the deploy-time offload hook so Plugin_Builder content-addresses
+    // the two large pluginDefinition fields (`structure`, `apiSchemaFragment`)
+    // into the platform's offload bucket and carries them as references instead
+    // of inline. The hook fires synchronously during P.make() (both values are
+    // concrete at graph construction), writing a content-addressed BucketObject
+    // and returning its ref; cleared after the build so nothing else offloads.
+    // The bucket name comes from the platform stack (deploy the platform first).
+    let offloadBucketName: Pulumi.Output.t<string> = switch platformStackRef {
+    | Some(stackRef) =>
+      (stackRef->Pulumi.StackReference.getOutput("offloadBucket"): Pulumi.Output.t<option<string>>)
+      ->Pulumi.Output.apply(o => o->Option.getOr("OFFLOAD_BUCKET_PENDING_PLATFORM_DEPLOY"))
+    | None => Pulumi.Output.make("OFFLOAD_BUCKET_PENDING_PLATFORM_DEPLOY")
+    }
+    ReventlessCore.Plugin_Helpers.registerOffload((~store, ~bytes) => {
+      let hash = NodeCrypto.sha256Hex(bytes)
+      let key = "sha256/" ++ hash
+      // Content-addressed: the name and key are the hash, so re-deploying an
+      // unchanged field writes the same object (idempotent, deduplicating).
+      let _ = PulumiAws.S3.BucketObject.make(
+        ~name="offload-" ++ hash,
+        ~args={
+          bucket: offloadBucketName->Pulumi.Output.asInput,
+          key: Pulumi.Input.make(key),
+          content: Pulumi.Input.make(bytes),
+          contentType: Pulumi.Input.make("application/json"),
+        },
+      )
+      {Reventless.Offload.store, key, hash, bytes: bytes->String.length}
+    })
+
     module P = unpack(plugin)
     let pluginComponent = P.make()
+    ReventlessCore.Plugin_Helpers.clearOffload()
     currentDeployTarget := Domain // reset after build
 
     // Note: StateTopic_AppSync.finish runs from inside subscriptionInfraHook —

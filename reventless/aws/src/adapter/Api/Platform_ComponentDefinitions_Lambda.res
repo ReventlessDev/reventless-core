@@ -27,6 +27,7 @@ export function response(ctx) {
 let make = (
   ~api: Pulumi.Output.t<AppSync.GraphQLApi.t>,
   ~pluginReadModelTableName: Pulumi.Output.t<string>,
+  ~offloadBucketName: Pulumi.Output.t<string>,
   ~opts: Pulumi.ComponentResource.options,
 ) => {
   let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
@@ -45,7 +46,9 @@ let make = (
   )
 
   let _ =
-    pluginReadModelTableName->Pulumi.Output.apply(tableName => {
+    (pluginReadModelTableName, offloadBucketName)
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((tableName, offloadBucket)) => {
       open PolicyDocument
       let _rolePolicy = IAM.RolePolicy.make(
         ~name=name ++ "LambdaPolicy",
@@ -64,6 +67,15 @@ let make = (
                 effect: Allow,
                 actions: Actions(["dynamodb:Scan"]),
                 resources: Resource("arn:aws:dynamodb:*:*:table/" ++ tableName),
+              },
+              // Offloaded `structure` payloads live in the platform's
+              // content-addressed offload bucket; the handler GETs them by their
+              // `sha256/<hash>` key and substitutes before filtering.
+              {
+                sid: "AllowOffloadGet",
+                effect: Allow,
+                actions: Actions(["s3:GetObject"]),
+                resources: Resource("arn:aws:s3:::" ++ offloadBucket ++ "/*"),
               },
             ],
           )
@@ -117,6 +129,7 @@ let make = (
           Lambda.Function.variables: Dict.fromArray([
             ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
             ("PLUGIN_RM_TABLE", pluginReadModelTableName->Pulumi.Output.asInput),
+            ("OFFLOAD_BUCKET", offloadBucketName->Pulumi.Output.asInput),
             ("ADMIN_ENTRY_JSON", adminEntryJson->Pulumi.Input.make),
             ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
             ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
