@@ -606,6 +606,32 @@ module Make = (
       | None => Pulumi.Output.make()
       }
 
+      // Offload the two large pluginDefinition fields at deploy time when a
+      // provider offers an object store (AWS writes a content-addressed object
+      // and returns a reference); unset locally, so they stay Inline. Computed
+      // HERE, at graph-construction time — both values are concrete and the hook
+      // (which creates the object resource) MUST run outside the Pulumi.Output.apply
+      // below: a resource cannot be created inside .apply, and an apply callback is
+      // skipped entirely on `pulumi preview` when its inputs are still unknown.
+      // Unconditional: these fields are always large enough to be worth offloading.
+      let toPayload = (value, ~schema, ~store) =>
+        switch Plugin_Helpers.offloadHook.contents {
+        | Some(hook) =>
+          Reventless.Offload.Offloaded(
+            hook(~store, ~bytes=value->S.reverseConvertToJsonStringOrThrow(schema)),
+          )
+        | None => Reventless.Offload.Inline(value)
+        }
+      let apiSchemaFragmentPayload = toPayload(
+        apiSchemaFragment,
+        ~schema=Reventless.Plugin.apiSchemaFragmentSchema,
+        ~store="pluginApiFragments",
+      )
+      let structurePayload =
+        pluginStructure->Option.map(s =>
+          toPayload(s, ~schema=Reventless.Plugin.pluginStructureSchema, ~store="pluginStructures")
+        )
+
       (
         (interstackAdminExtensionPoints, localAdminResolvedEP, schemaPushed)->Pulumi.Output.all3,
         aggregateResources->Pulumi.Output.allDict,
@@ -737,31 +763,6 @@ module Make = (
         // deployPlugin resets hooks.deployTarget to "Domain" after P.make() returns,
         // so reading it inside the async callback would always yield "Domain".
         let capturedDeployTarget = Spec.hooks.deployTarget.contents
-
-        // Offload the two large pluginDefinition fields at deploy time when a
-        // provider offers an object store (AWS writes a content-addressed object
-        // and returns a reference); unset locally, so they stay Inline. Both
-        // values are concrete here, so the hook — and the object write it does —
-        // runs at graph-construction time, before the Pulumi.Output.apply below
-        // (a resource cannot be created inside .apply). Unconditional: these
-        // fields are always large enough to be worth offloading.
-        let toPayload = (value, ~schema, ~store) =>
-          switch Plugin_Helpers.offloadHook.contents {
-          | Some(hook) =>
-            Reventless.Offload.Offloaded(
-              hook(~store, ~bytes=value->S.reverseConvertToJsonStringOrThrow(schema)),
-            )
-          | None => Reventless.Offload.Inline(value)
-          }
-        let apiSchemaFragmentPayload = toPayload(
-          apiSchemaFragment,
-          ~schema=Reventless.Plugin.apiSchemaFragmentSchema,
-          ~store="pluginApiFragments",
-        )
-        let structurePayload =
-          pluginStructure->Option.map(s =>
-            toPayload(s, ~schema=Reventless.Plugin.pluginStructureSchema, ~store="pluginStructures")
-          )
 
         // DCB EventLog definition — Some when this plugin has a DcbEventLog
         // component, None otherwise. Admin's manageSubscriptions reads this to

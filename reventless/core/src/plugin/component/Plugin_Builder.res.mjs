@@ -421,6 +421,22 @@ function Make(Spec) {
         });
         let pushSchema = Spec.hooks.preResolversSchemaHook;
         let schemaPushed = pushSchema !== undefined ? pushSchema(extra$1, version, apiSchemaFragment) : Pulumi.output();
+        let toPayload = (value, schema, store) => {
+          let hook = Plugin_Helpers$ReventlessCore.offloadHook.contents;
+          if (hook !== undefined) {
+            return {
+              TAG: "Offloaded",
+              _0: hook(store, S.reverseConvertToJsonStringOrThrow(value, schema, undefined))
+            };
+          } else {
+            return {
+              TAG: "Inline",
+              _0: value
+            };
+          }
+        };
+        let apiSchemaFragmentPayload = toPayload(apiSchemaFragment, Plugin$Reventless.apiSchemaFragmentSchema, "pluginApiFragments");
+        let structurePayload = Stdlib_Option.map(pluginStructure, s => toPayload(s, Plugin$Reventless.pluginStructureSchema, "pluginStructures"));
         let builderOutputs = Pulumi.all([
           Pulumi.all([
             interstackAdminExtensionPoints,
@@ -487,22 +503,6 @@ function Make(Spec) {
           let match$3 = EventCollectorHelper.make(childName, eventTopics, opts);
           let eventCollector = match$3[0];
           let capturedDeployTarget = Spec.hooks.deployTarget.contents;
-          let toPayload = (value, schema, store) => {
-            let hook = Plugin_Helpers$ReventlessCore.offloadHook.contents;
-            if (hook !== undefined) {
-              return {
-                TAG: "Offloaded",
-                _0: hook(store, S.reverseConvertToJsonStringOrThrow(value, schema, undefined))
-              };
-            } else {
-              return {
-                TAG: "Inline",
-                _0: value
-              };
-            }
-          };
-          let apiSchemaFragmentPayload = toPayload(apiSchemaFragment, Plugin$Reventless.apiSchemaFragmentSchema, "pluginApiFragments");
-          let structurePayload = Stdlib_Option.map(pluginStructure, s => toPayload(s, Plugin$Reventless.pluginStructureSchema, "pluginStructures"));
           let dcbOutputs$1 = dcbResult.dcbEventLogOutputs;
           let dcbEventLogDef;
           if (dcbOutputs$1 !== undefined) {
