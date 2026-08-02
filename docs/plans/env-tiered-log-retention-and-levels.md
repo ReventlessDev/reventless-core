@@ -2,9 +2,12 @@
 
 Source analysis: [../analysis/log-retention-and-levels-per-environment.md](../analysis/log-retention-and-levels-per-environment.md).
 
-**Status: code complete (2026-08-02) — managed groups now default for every
-stack. Steps 1–7 done; Step 8 (operational rollout on the live `alpha` stack)
-outstanding. Stays in `docs/plans/` until Step 8's on-AWS verification passes.**
+**Status: code complete (2026-08-02) — Steps 1–7 + Step 9 (bespoke-builder
+coverage gap) done and committed; on alpha the `makeFromCodeAsset` Lambdas carry
+`LOG_LEVEL=debug` and the 8 bespoke Lambdas flip on the next deploy (commit
+`8814627a2`, unpushed). Only **Step 8** (the operator-driven alpha managed-group
+cutover — the switch that turns on tiered *retention*, incl. DLQ's deferred group)
+is outstanding. Stays in `docs/plans/` until Step 8's on-AWS verification passes.**
 
 ## Problem
 
