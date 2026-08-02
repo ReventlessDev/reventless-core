@@ -109,7 +109,7 @@ describe("Message should", () => {
       extensionProtocols: [],
       apiSchemaFragment: None,
       apiTarget: None,
-      structure: Some({
+      structure: Some(Reventless.Offload.Inline({
         readModels: [],
         stateViewSlices: [],
         stateChangeSlices: [],
@@ -132,7 +132,7 @@ describe("Message should", () => {
         extensionPoints: None,
         requiredStores: None,
         requiredStoreDeclarations: None,
-      }),
+      })),
       dcbEventLog: None,
       kind: Domain,
     }
@@ -186,7 +186,8 @@ describe("Message should", () => {
         },
       )->toBe("Domain")
       expect(d.apiSchemaFragment->Option.isNone)->toBe(true)
-      let structure: Reventless.Plugin.pluginStructure = d.structure->Option.getOrThrow
+      let structure: Reventless.Plugin.pluginStructure =
+        d.structure->Option.flatMap(Reventless.Offload.getInline)->Option.getOrThrow
       let agg = structure.aggregates->Array.getUnsafe(0)
       expect(agg.events->Array.length)->toBe(0)
       expect(agg.chapter->Option.isNone)->toBe(true)

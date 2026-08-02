@@ -24,13 +24,15 @@ type state = {
   extensions: array<Reventless.Plugin.extensionDefinition>,
   status: status,
   statusChange: Message.statusChange,
-  apiSchemaFragment: @s.matches(Reventless.Plugin.apiSchemaFragmentOptionSchema) option<Reventless.Plugin.apiSchemaFragment>,
+  apiSchemaFragment: @s.matches(Reventless.Plugin.apiSchemaFragmentOffloadSchema)
+    option<Reventless.Offload.payload<Reventless.Plugin.apiSchemaFragment>>,
   // API target for split-API schema routing. Absent/None means "Domain" (backward compat).
   // "Platform" → excluded from DomainApi runtime schema stitching in updateApiSchema.
   apiTarget?: string,
   // Plugin structure (component metadata) — surfaced via Platform_ComponentDefinitions.
   // None for older plugins whose protocol version did not carry the field.
-  structure: @s.matches(Reventless.Plugin.pluginStructureOptionSchema) option<Reventless.Plugin.pluginStructure>,
+  structure: @s.matches(Reventless.Plugin.pluginStructureOffloadSchema)
+    option<Reventless.Offload.payload<Reventless.Plugin.pluginStructure>>,
   // DCB EventLog definition for plugins that bundle a DcbEventLog component.
   // Admin's manageSubscriptions uses this to wire cross-plugin SNS subscriptions
   // from this plugin's DCB topic → peer EventCollectors (and vice-versa). None
@@ -72,9 +74,9 @@ type queryResult = {
   extensionNames: array<string>,
   extensions: array<Reventless.Plugin.extensionDefinition>,
   status: status,
-  apiSchemaFragment: option<Reventless.Plugin.apiSchemaFragment>,
+  apiSchemaFragment: option<Reventless.Offload.payload<Reventless.Plugin.apiSchemaFragment>>,
   apiTarget?: string,
-  structure: option<Reventless.Plugin.pluginStructure>,
+  structure: option<Reventless.Offload.payload<Reventless.Plugin.pluginStructure>>,
   dcbEventLog: option<Reventless.Plugin.dcbEventLogDefinition>,
   kind: option<Reventless.Plugin.pluginKind>,
 }

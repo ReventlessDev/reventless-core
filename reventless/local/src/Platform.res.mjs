@@ -969,9 +969,15 @@ function MakeWithConfig(Config) {
           }),
           eventCollector: param[2].name,
           extensionProtocols: [],
-          apiSchemaFragment: param[5],
+          apiSchemaFragment: Stdlib_Option.map(param[5], f => ({
+            TAG: "Inline",
+            _0: f
+          })),
           apiTarget: undefined,
-          structure: param[7],
+          structure: Stdlib_Option.map(param[7], s => ({
+            TAG: "Inline",
+            _0: s
+          })),
           dcbEventLog: undefined,
           kind: "Domain"
         };
@@ -2653,9 +2659,15 @@ function Make($star) {
           }),
           eventCollector: param[2].name,
           extensionProtocols: [],
-          apiSchemaFragment: param[5],
+          apiSchemaFragment: Stdlib_Option.map(param[5], f => ({
+            TAG: "Inline",
+            _0: f
+          })),
           apiTarget: undefined,
-          structure: param[7],
+          structure: Stdlib_Option.map(param[7], s => ({
+            TAG: "Inline",
+            _0: s
+          })),
           dcbEventLog: undefined,
           kind: "Domain"
         };

@@ -769,9 +769,9 @@ module Make = (
             extensions: extensionsDefinitions,
             eventCollector: eventCollectorUrn,
             extensionProtocols: [],
-            apiSchemaFragment: Some(apiSchemaFragment),
+            apiSchemaFragment: Some(Reventless.Offload.Inline(apiSchemaFragment)),
             apiTarget: Some(capturedDeployTarget),
-            structure: pluginStructure,
+            structure: pluginStructure->Option.map(s => Reventless.Offload.Inline(s)),
             dcbEventLog: dcbEventLogDef,
             // Business role from the deploy-time metadata registry (set via
             // registerPluginMetadata). Unset → Domain. Rides the handshake to the

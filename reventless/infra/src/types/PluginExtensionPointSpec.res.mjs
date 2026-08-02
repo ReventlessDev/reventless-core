@@ -111,7 +111,7 @@ let apiSchemaFragmentSchema = Plugin$Reventless.apiSchemaFragmentSchema;
 
 let apiTargetSchema = Plugin$Reventless.apiTargetSchema;
 
-let apiSchemaFragmentOptionSchema = Plugin$Reventless.apiSchemaFragmentOptionSchema;
+let apiSchemaFragmentOffloadSchema = Plugin$Reventless.apiSchemaFragmentOffloadSchema;
 
 let dcbEventLogOptionSchema = Plugin$Reventless.dcbEventLogOptionSchema;
 
@@ -161,7 +161,7 @@ let requiredStoreDeclarationArrayOptionSchema = Plugin$Reventless.requiredStoreD
 
 let pluginStructureSchema = Plugin$Reventless.pluginStructureSchema;
 
-let pluginStructureOptionSchema = Plugin$Reventless.pluginStructureOptionSchema;
+let pluginStructureOffloadSchema = Plugin$Reventless.pluginStructureOffloadSchema;
 
 let pluginDefinitionSchema = Plugin$Reventless.pluginDefinitionSchema;
 
@@ -178,7 +178,7 @@ export {
   extensionProtocolSchema,
   apiSchemaFragmentSchema,
   apiTargetSchema,
-  apiSchemaFragmentOptionSchema,
+  apiSchemaFragmentOffloadSchema,
   dcbEventLogOptionSchema,
   stringOptionSchema,
   stringArrayOptionSchema,
@@ -203,7 +203,7 @@ export {
   requiredStoreDeclarationSchema,
   requiredStoreDeclarationArrayOptionSchema,
   pluginStructureSchema,
-  pluginStructureOptionSchema,
+  pluginStructureOffloadSchema,
   pluginDefinitionSchema,
   timeoutSchema,
   forwardCommandSchema,

@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Semantic$Reventless from "./Semantic.res.mjs";
 import * as SuryResMjs from "sury/src/Sury.res.mjs";
 
@@ -18,7 +19,7 @@ S.enableJson();
 let sentinelKey = "$offload";
 
 function schema(inner) {
-  return S.transform(S.json, _s => ({
+  let offloadedArm = S.transform(S.json, s => ({
     p: json => {
       let refJson = Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), dict => dict[sentinelKey]);
       if (refJson !== undefined) {
@@ -27,15 +28,12 @@ function schema(inner) {
           _0: S.parseJsonOrThrow(refJson, offloadedRefSchema)
         };
       } else {
-        return {
-          TAG: "Inline",
-          _0: S.parseJsonOrThrow(json, inner)
-        };
+        return s.fail("not an offloaded reference", undefined);
       }
     },
     s: payload => {
       if (payload.TAG === "Inline") {
-        return S.reverseConvertToJsonOrThrow(payload._0, inner);
+        return s.fail("not an offloaded reference", undefined);
       } else {
         return Object.fromEntries([[
             sentinelKey,
@@ -44,6 +42,23 @@ function schema(inner) {
       }
     }
   }));
+  let inlineArm = S.transform(inner, s => ({
+    p: value => ({
+      TAG: "Inline",
+      _0: value
+    }),
+    s: payload => {
+      if (payload.TAG === "Inline") {
+        return payload._0;
+      } else {
+        return s.fail("not an inline value", undefined);
+      }
+    }
+  }));
+  return S.union([
+    offloadedArm,
+    inlineArm
+  ]);
 }
 
 function forStore(plugin, store, inner) {
@@ -66,6 +81,12 @@ function optionSchema(plugin, store, inner) {
   });
 }
 
+function getInline(payload) {
+  if (payload.TAG === "Inline") {
+    return Primitive_option.some(payload._0);
+  }
+}
+
 function getStore(schema) {
   let match = Semantic$Reventless.get(schema);
   if (match === undefined) {
@@ -85,6 +106,7 @@ export {
   schema,
   forStore,
   optionSchema,
+  getInline,
   getStore,
 }
 /* offloadedRefSchema Not a pure module */

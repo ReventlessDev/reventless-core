@@ -1113,9 +1113,9 @@ module MakeWithConfig = (
               },
             ),
             extensionProtocols: [],
-            apiSchemaFragment,
+            apiSchemaFragment: apiSchemaFragment->Option.map(f => Reventless.Offload.Inline(f)),
             apiTarget: None,
-            structure: pluginStructure,
+            structure: pluginStructure->Option.map(s => Reventless.Offload.Inline(s)),
             dcbEventLog: None,
             kind: Domain,
           }

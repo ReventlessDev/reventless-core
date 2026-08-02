@@ -106,7 +106,7 @@ type apiTarget = Domain | Platform
 // inside union variant payloads. js_nullable creates T | null (no undefined) which is
 // JSON-safe and passes jsonableValidation in all contexts.
 @module("sury/src/Sury.res.mjs") external _jsNullable: (S.t<'a>, unit) => S.t<option<'a>> = "js_nullable"
-let apiSchemaFragmentOptionSchema = _jsNullable(apiSchemaFragmentSchema, ())
+let apiSchemaFragmentOffloadSchema = Offload.optionSchema(~store="pluginApiFragments", apiSchemaFragmentSchema)
 let dcbEventLogOptionSchema = _jsNullable(dcbEventLogDefinitionSchema, ())
 // js_nullable creates T | null which passes sury's jsonableValidation inside union variant payloads.
 let stringOptionSchema = _jsNullable(S.string, ())
@@ -488,7 +488,7 @@ type pluginStructure = {
   option<array<requiredStoreDeclaration>>,
 }
 
-let pluginStructureOptionSchema = _jsNullable(pluginStructureSchema, ())
+let pluginStructureOffloadSchema = Offload.optionSchema(~store="pluginStructures", pluginStructureSchema)
 
 /**
 The self-description of a deployed plugin, persisted in the plugin's event store.
@@ -509,9 +509,11 @@ type pluginDefinition = {
   // Use [] when the plugin does not need version negotiation.
   extensionProtocols: array<extensionProtocol>,
   // GraphQL schema fragment contributed by this plugin (optional, set at build time).
-  // Uses @s.matches(apiSchemaFragmentOptionSchema) — js_nullable creates T | null
-  // (not T | undefined | null), which passes sury's jsonableValidation inside union variants.
-  apiSchemaFragment: @s.matches(apiSchemaFragmentOptionSchema) option<apiSchemaFragment>,
+  // Offloadable: a large SDL fragment is content-addressed to the pluginApiFragments
+  // store by the client and carried by reference; a small one stays Inline. optionSchema
+  // wraps the untagged codec in js_nullable (T | null, not T | undefined | null) so it
+  // passes jsonableValidation inside the lifecycle Message union, and marks the store.
+  apiSchemaFragment: @s.matches(apiSchemaFragmentOffloadSchema) option<Offload.payload<apiSchemaFragment>>,
   // API target for schema routing in split-API mode.
   // None/"Domain" → fragment goes to the DomainApi (default).
   // Some("Platform") → fragment goes to the PlatformApi; excluded from DomainApi runtime schema.
@@ -519,7 +521,9 @@ type pluginDefinition = {
   // which passes sury's jsonableValidation inside union variant payloads.
   apiTarget: @s.matches(stringOptionSchema) option<string>,
   // Component graph metadata — populated by makePluginDefinition; absent for older protocol versions.
-  structure: @s.matches(pluginStructureOptionSchema) option<pluginStructure>,
+  // Offloadable: the large structure is content-addressed to the pluginStructures store by
+  // the client and carried by reference; a small one stays Inline (see apiSchemaFragment).
+  structure: @s.matches(pluginStructureOffloadSchema) option<Offload.payload<pluginStructure>>,
   // DCB EventLog definition for plugins that bundle a DcbEventLog component.
   // Carries the EventTopic ARN so the admin can provision cross-plugin SNS
   // subscriptions from this plugin's DCB topic → peer EventCollectors.

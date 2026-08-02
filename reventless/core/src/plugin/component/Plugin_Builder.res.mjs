@@ -509,9 +509,15 @@ function Make(Spec) {
             extensions: extensionsDefinitions,
             eventCollector: param[1],
             extensionProtocols: [],
-            apiSchemaFragment: apiSchemaFragment,
+            apiSchemaFragment: {
+              TAG: "Inline",
+              _0: apiSchemaFragment
+            },
             apiTarget: capturedDeployTarget,
-            structure: pluginStructure,
+            structure: Stdlib_Option.map(pluginStructure, s => ({
+              TAG: "Inline",
+              _0: s
+            })),
             dcbEventLog: param[2],
             kind: Stdlib_Option.getOr(Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.pluginMetadataRegistry.contents, m => m.kind), "Domain")
           }));

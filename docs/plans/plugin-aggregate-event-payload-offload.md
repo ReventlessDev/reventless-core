@@ -1,241 +1,288 @@
-# Plan: a general `@offload` field primitive, first applied to plugin-aggregate payloads
+# Plan: a general client-driven `@offload` field primitive, first applied to plugin payloads
 
 **Date:** 2026-08-02
-**Status:** Proposed. Not started.
+**Status:** Proposed. Not started. (Design settled after codebase exploration — see "Findings that shaped this plan".)
 
 ## Problem
 
-The plugin lifecycle aggregate's `VersionConnected` event embeds the full plugin
-definition inline. Two fields dominate the payload:
+The plugin lifecycle aggregate's `VersionConnected` (and six sibling `pluginDefinition`-carrying
+events) embeds the full plugin definition inline. Two fields dominate:
 
-- `structure` — the plugin's component structure (UI fragments and all) — **~74 KB**
-- `apiSchemaFragment` — the plugin's API/SDL fragment — **~32 KB**
+- `structure` — the plugin's component structure — **~74 KB**
+- `apiSchemaFragment` — the plugin's API/SDL fragment (`{encoded, protocol}`) — **~32 KB**
 
-Everything else in the event (`id`, `kind`, `version`, `name`, `apiTarget`,
-`eventCollector`, `dcbEventLog`, the extension descriptors) is under a few hundred bytes
-combined. Observed `VersionConnected` events run **107 KB**, with the aggregate's event
-log averaging **~70 KB per event** and a max over **130 KB**.
+Everything else is a few hundred bytes. Observed events run **107 KB**, the aggregate's event
+log averages **~70 KB/event**, max over **130 KB**. Events are immutable, so each fat event costs
+its size in the store, on every projection rebuild, through the change stream, and in any log of
+the body. The payload is highly **repetitive across versions**: a re-registration with an
+unchanged structure re-embeds ~106 KB byte-identical to a prior version. The log accumulates
+many near-duplicate large blobs forever.
 
-Events are immutable history. So each fat `VersionConnected`:
-
-- costs its full size in the event-store item (and its read/write capacity),
-- is re-read in full on **every** projection rebuild of that aggregate,
-- is delivered in full through the change stream to every projection consumer,
-- and is carried in full by anything that logs the event body.
-
-The payload is also highly **repetitive across versions**: a plugin that re-registers
-with an unchanged (or barely-changed) structure re-embeds ~106 KB that is byte-identical
-to a previous version's. The log accumulates many near-duplicate large blobs that live
-forever.
-
-The plugin aggregate is the *first* place this bites, but nothing about the pain is
-plugin-specific. Any aggregate or slice with a potentially-large serialized field
-(imported catalogs, large documents, snapshots, fat DCB payloads) hits the same wall.
+The plugin aggregate is the *first* place this bites, but the pain is not plugin-specific.
 
 ## Goal
 
-Introduce a **general framework primitive** — an `@offload` field marker — that
-transparently moves a large serialized field to a platform object store, content-addressed
-by hash, carrying only a **reference** in the event; small values stay inline. Then apply it
-to `VersionConnected`'s two large fields as its **first consumer**.
+Introduce a **general, client-driven `@offload` field primitive** and apply it to the two plugin
+fields. A field's large value is uploaded to a content-addressed object store **by the client**
+and carried in the command/event as a **reference**; small values stay **inline**. `VersionConnected`
+shrinks from ~107 KB to **under 1 KB**, and identical structures across versions resolve to the
+**same** object (free dedupe). Because the primitive is general, a second consumer is a
+one-annotation opt-in.
 
-A `VersionConnected` event shrinks from ~107 KB to **under 1 KB**. Identical structures
-across versions resolve to the **same** object (free dedupe), so the object store holds one
-copy of each distinct structure rather than one per registration. Because the primitive is
-general, the second consumer is a one-line opt-in rather than a copy-paste.
+## Findings that shaped this plan
 
-## Where this fits: the `@storageRef` family
+Three facts from exploration determine the design:
 
-The framework already has a general "a field's value lives in a platform object store"
-mechanism — **`@storageRef("store")`** (`reventless/spec/src/semantic/StorageRef.res`),
-backed by `Capability_ObjectStore_S3` (AWS) and `LocalObjectStore` (dev), with
-provisioning-from-declaration and wipe-discovery tagging, and a deploy-time scanner
-(`reventless/core/src/components/Api/StorageRefFields.res`) that reads the markers so the
-store requirement is visible to provisioning.
+1. **`Behavior.decide` is pure and synchronous** — `(state, command) => result<array<event>, error>`,
+   no infra handle, not async (`reventless/core/src/Behavior.res:15`). It **cannot** perform an
+   object-store PUT. There is also **no** command-side object-store write seam in the framework
+   today (only the browser/seed presign→PUT upload path exists). Building a runtime command-side
+   seam would be large framework plumbing.
+2. **The plugin's two fields are produced at deploy time**, in `Plugin_Builder.res` (Pulumi
+   `Output`-wrapped, lines 295-313 for `apiSchemaFragment`, 1047-1074 for `structure`), assembled
+   into `pluginDefinition` (761-782), and reach the aggregate via the `Connect(pluginDefinition)`
+   command. So the *client* that produces them is the **deploy-time Pulumi script**.
+3. **The two fields are consumed in different environments** (read-side trace):
+   - `apiSchemaFragment.encoded` is only ever decoded at **deploy time** (`aws/src/Platform.res`
+     `preResolversSchemaHook` → `AppSync_Adapter.stitchStandaloneWithAwsDirectives`; the
+     cross-plugin merge is AppSync **AUTO_MERGE**, not code). It is **never** read out of the read
+     model and **never** decoded in a runtime Lambda.
+   - `structure` *is* read out of the read model by a **runtime Lambda**,
+     `Platform_ComponentDefinitions_Lambda_Ops.res:29-56` (filters `readModels`/`stateViewSlices`
+     by visibility), plus local in-process (`local/src/Platform.res:1688/2240/879`) and Node
+     tooling (`EmitCapabilities`/`CapabilityManifest`).
 
-`@offload` is a **sibling** of `@storageRef`, not the same thing. Both say "this field's
-value lives in a store," and both should route through the same `Semantic.mark` machinery
-and the same object-store seam. They differ in who produces the object and how it is
-referenced:
-
-| | `@storageRef` (exists) | `@offload` (this plan) |
-|---|---|---|
-| Producer | the **browser**, via presigned PUT *before* the command | the **framework**, transparently on the emit path |
-| Value on the wire | opaque origin-relative path `string` | `Inline \| Offloaded{store,key,hash,bytes}` variant |
-| Inline arm | none (always a ref, or `""`) | yes — a size threshold decides |
-| Addressing | UUID per upload | content-addressed hash → cross-version dedupe |
-| Reader | sees the ref as the value | a resolve helper hides inline-vs-offloaded |
-
-The design reuses everything the two share (the store seam, the semantic marker, the
-deploy-time store-requirement scan) and adds only what is genuinely new (the inline-or-offloaded
-variant, content-addressed write, resolve-with-cache).
+**Conclusion:** the client-driven model (client uploads, framework passes the ref through a pure
+`decide`) is the right architecture — it needs **no** command-side seam. `decide` stays pure; the
+event/command simply carry the reference. This is the `@storageRef` model, generalized with an
+inline arm and a client helper.
 
 ## Design
 
-### The `payload<'a>` (inline-or-offloaded) type
+### Model: client uploads, `decide` stays pure
 
-Model an offloadable field as a variant rather than a raw value:
+A field marked `@offload` may carry either the inline value or a reference to bytes the **client**
+already stored. The framework never PUTs on the command side. Producers use a framework helper
+(below) to do the upload + reference construction easily; consumers use a resolve helper. This
+mirrors `@storageRef` (`reventless/spec/src/semantic/StorageRef.res`) and reuses its provisioning
+and semantic-marker machinery.
+
+### The `payload<'a>` type + backward-compatible decode
 
 ```
 type payload<'a> =
-  | Inline('a)                                    // small payloads stay embedded
+  | Inline('a)
   | Offloaded({store: string, key: string, hash: string, bytes: int})
 ```
 
-This is a **backward-compatible spec change** wherever it is adopted: every event already
-in history decodes as `Inline`, and only newly-appended large payloads are written as
-`Offloaded`. No migration of existing event logs is required — a reader handles both arms.
+The **decode must be backward-compatible with every event already in history**, which stores the
+raw value inline with no wrapper. So the payload schema is an **untagged** codec, not sury's default
+tagged union:
 
-### The marker and its schema (`reventless/spec`)
+- if the JSON has the `Offloaded` shape (its distinctive `{store, key, hash, bytes}` keys), decode
+  `Offloaded`;
+- otherwise decode the whole JSON as `'a` → `Inline`.
 
-Mirror `StorageRef.res`. Add a `Semantic.Id.offload` alongside `storageRef`, and an
-`Offload` module (`reventless/spec/src/semantic/Offload.res`) holding:
+This makes a legacy `structure: {readModels: […], …}` decode as `Inline({readModels: …})` with no
+migration. Implemented as a sury custom schema in the `Offload` module. **A pre-change fixture from
+the frozen corpus must decode green** (see Serialization).
 
-- the polymorphic sury schema for `payload<'a>` (legacy values decode as `Inline`), marked
-  via `Semantic.mark(~id=Semantic.Id.offload, ~payload=StoredIn({plugin, store}))` so the
-  store requirement is expressed the *same way* `@storageRef` expresses it — reusing the
-  existing `StoredIn(storeTarget)` payload variant unchanged;
-- an `@offload("store")` ppx shorthand (and `"<plugin>.<store>"` cross-plugin form),
-  matching `@storageRef`'s ergonomics, plus a record form
-  `@offload({store: "s", threshold: 16384})` that carries a per-field threshold override
-  (mirroring how `@index("name")` widens to `@index({name, projection})`). The threshold
-  is a *hint*, not part of the field's meaning — it is resolved at emit time (see below),
-  so it never touches the wire contract or what a reader sees.
+### The `@offload` marker (ppx) + provisioning
 
-Because the marker uses `StoredIn`, the deploy-time scanner that today collects `@storageRef`
-stores (`StorageRefFields`) extends to collect `@offload` stores with no new detection
-branch — a field of this type *requires* a store to exist, and provisioning already knows how
-to read that requirement.
+Add `Semantic.Id.offload` alongside `storageRef` (`reventless/spec/src/semantic/Semantic.res:56`)
+and an `Offload` module (`reventless/spec/src/semantic/Offload.res`) modelled on `StorageRef.res`.
+The `@offload` field marker:
 
-### Write path (framework emit side) (`reventless/core`)
+- declares the target store and carries an optional threshold: record form
+  `@offload({store: "s", threshold: 16384})` and string shorthand `@offload("s")`
+  (`"<plugin>.<store>"` for cross-plugin), mirroring how `@index` widens from `@index("n")` to
+  `@index({…})`;
+- attaches `Semantic.mark(~id=Semantic.Id.offload, ~payload=StoredIn({plugin, store}))` so the
+  **existing provisioning reader** (`Plugin_Structure` / `StorageRef.getFieldStore`) provisions the
+  store. (It must **not** feed the pending-upload **claimer** `StorageRefFields` — offload objects
+  are written durably up front and are never "pending"; keep that reader `@storageRef`-only.)
 
-A reusable write helper, invoked wherever an `@offload` field is emitted. For the field's
-serialized bytes, compared against the **effective threshold** (resolved by the precedence
-chain in "Config surface" below):
+**ppx implementation** (`packages/reventless-ppx/src/ppx/OffloadInference.ml`, template
+`StorageRefInference.ml`; record parsing via `StateAnnotations.find_record_str` + an int matcher;
+wire into `ReventlessPpx.ml` right after line 697; strip the marker inline like storageRef). The
+one wrinkle vs. storageRef: storageRef's emitted schema (`forStore`) is always `string` and needs
+no inner schema, whereas `@offload`'s codec needs the **field's inner schema**. Recommended: the
+ppx emits `@s.matches(Reventless.Offload.forStore(~store, ~threshold?, <innerSchema>))`, deriving
+`<innerSchema>` from the field's type name by sury convention; **escape hatch** — where derivation
+is awkward, write the `@s.matches(Reventless.Offload.optionSchema(innerSchema, ~store, …))` helper
+by hand (exactly what the `StorageRef` tests do with `StorageRef.forStore` directly). **The first
+consumer uses the explicit helper form**, because `pluginDefinition` already hand-writes its
+`@s.matches(…OptionSchema)` helpers.
 
-- if the size is below the effective threshold, keep it `Inline` — a tiny payload pays no
-  object-store round trip;
-- otherwise, hash the bytes, `PUT` them to the field's declared store under a
-  content-addressed key (`sha256/<hash>`), and substitute `Offloaded{…}`.
+### Producer helper (the "easy for clients" surface)
 
-The object **must be durably written before the event is appended** — the event references a
-key that has to exist for every future replay. Content-addressing makes the write idempotent:
-the same structure re-registered writes to the same key (a no-op if present), which is exactly
-what gives the cross-version dedupe.
+```
+Offload.prepare(value, ~schema, ~store, ~threshold, ~upload): promise<payload<'a>>
+```
 
-### Read / projection path (`reventless/core`)
+Serialize `value` via `schema`; if under the effective threshold return `Inline(value)`; else hash
+the bytes (sha256), call the injected `~upload` transport for key `sha256/<hash>`, and return
+`Offloaded{store, key, hash, bytes}`. The `~upload` transport is **pluggable per environment**:
 
-A reusable resolve helper returns the bytes for either arm: `Inline` yields them directly;
-`Offloaded` fetches from the store. Because keys are content-addressed and immutable, the
-fetch is cacheable forever — a per-hash cache means each distinct object is fetched at most
-once per process, regardless of how many versions or replays reference it.
+- **deploy-time (Pulumi, the first client):** declare an `aws.s3.BucketObjectv2` with a
+  content-addressed key — **not** an imperative SDK PUT inside `.apply` (forbidden: "never create
+  resources inside `.apply`"). See the deploy-time decision below.
+- **local dev:** `LocalObjectStore.put` (in-process).
+- **Node/seed and, later, browser:** direct PUT with credentials, or a content-addressed presign
+  variant (deferred — not needed for v1).
 
-### Store seam
+**Deploy-time decision — offload the plugin fields unconditionally.** The Inline-vs-Offloaded choice
+is size-dependent, but at deploy time the content is `Pulumi.Output`-wrapped, so branching on its
+size to conditionally create a resource hits the Output-conditional-resource problem. The two plugin
+fields are known-large (~74 KB / ~32 KB), so the deploy-time producer **always** offloads them
+(always creates the `BucketObjectv2`, always emits `Offloaded`). The inline arm still exists in the
+type (for backward-compat decode and for non-Pulumi clients holding the value synchronously); it is
+simply not exercised by the plugin producer. Revisit only if tiny-plugin structures under the
+threshold prove common enough to matter.
 
-`@offload` writes to the **same** platform object-store seam `@storageRef` uses
-(`Capability_ObjectStore_S3` on AWS, `LocalObjectStore` in dev), under a framework-internal
-content-addressed prefix. Provisioning, attribution tagging, wipe-discovery, and the
-local/AWS split all come for free — no new store type is introduced.
+### Dedicated content-addressed offload store (Variant 1)
 
-### First consumer: `VersionConnected`
+A framework store/prefix whose **key is the content hash**, separate from user-upload stores. It
+is immutable and content-addressed; user-upload stores stay UUID-keyed and keep their
+pending-claim/expiry lifecycle untouched. Provisioned via `Capability_ObjectStore_S3` (AWS) /
+`LocalObjectStore` (dev) from the `@offload` marker declaration. Rationale and the rejected
+Variant 2 (extending presign to accept client-supplied keys) are recorded in the analysis; the
+short version: keep the security-sensitive presign path and its claim/expiry machinery untouched,
+and the v1 producers (deploy-time Pulumi, Node) write directly.
 
-Retype `VersionConnected`'s `structure` and `apiSchemaFragment` as `@offload` fields in
-`reventless/core/src/plugin/lifecycle/PluginSpec.res` (verify the exact path when
-implementing). `PluginBehavior`'s emit path calls the write helper; `PluginsProjection` and
-any other `VersionConnected` reader call the resolve helper.
+### Reader helper + the two resolve environments
 
-### Object lifecycle
+```
+Offload.resolve(payload, ~fetch): promise<'a>
+```
 
-Content-addressed + immutable objects are never mutated. For the plugin consumer the safe
-default is **never delete** (the objects are small relative to the value of a self-consistent,
-replayable history, and dedupe keeps the count low).
+`Inline` returns the value directly; `Offloaded` calls the injected `~fetch` for the key and decodes.
+Keys are content-addressed and immutable ⇒ a **per-hash cache** makes each object fetch-at-most-once
+per process. Offloading **both** fields means resolve runs in two environments:
 
-**Generalization caveat:** never-delete is safe *because* plugin structures are small,
-deduped, and low-cardinality. As a general marker, a domain will eventually point `@offload`
-at a high-cardinality, non-deduplicating large field, and never-delete becomes an unbounded
-store. Reclamation may be **deferred** for the plugin consumer, but the lifecycle/ref-counting
-model must be **designed** before `@offload` is advertised as a general-purpose marker — if
-reclamation ever runs, it must be ref-counted against the live event history so an object is
-never removed while any event still references its hash.
+- **`apiSchemaFragment` → deploy-time only.** Add resolve where a *stored* fragment is decoded:
+  `aws/src/Platform.res` `preResolversSchemaHook` (:751) → `AppSync_Adapter` (:288/444/448) /
+  `AppSync_SdlDecorate.res:95`. `Plugin_Builder`'s own decodes (:305/317/328) act on a
+  freshly-built inline fragment, not a ref — no resolve needed there. The deploy-time `~fetch` is
+  an S3 GET (Pulumi has store access).
+- **`structure` → runtime Lambda + local + tooling.** Add resolve in
+  `Platform_ComponentDefinitions_Lambda_Ops.res` (the one read-model-OUT consumer; this Lambda
+  gains an offload-store **GET** — its own IAM + store-location config), and in the local
+  in-process (`local/src/Platform.res`) and Node-tooling (`EmitCapabilities`/`CapabilityManifest`)
+  paths if refs are allowed to reach their in-process/inline values. This is the read-side GET
+  seam — contained to one Lambda and effectful infra code (not pure `decide`), far smaller than a
+  command-side write seam.
+
+`PluginsProjection.displayState` (`:57-58`) keeps passing the ref through into the read model
+unchanged — **no resolve at projection time**; resolution happens only at the points of use above.
+
+### Threshold precedence chain
+
+Effective threshold resolved when the client calls `prepare()` (client-side, not emit-time),
+most-specific wins: (1) per-field `@offload({…, threshold})`; (2) platform config default
+(`Platform.MakeWithConfig`'s `offloadThreshold`); (3) framework default **8 KB**. Because both arms
+resolve to identical bytes on read, **retuning is always safe** — no wire change, no re-encoding,
+existing events stay valid; it affects only how future values are split. (Deferred: a runtime env
+override — a blunt global that can't express per-field intent; add only on real ops need.)
+
+### Serialization / backward compatibility
+
+The retyped fields live on `pluginDefinition` (`reventless/spec/src/components/Plugin.res:500-533`),
+shared across **seven** event variants + `versionSupersededData`'s two, mirrored on
+`PluginsReadModelSpec.res:27/33` (and `queryResult` 75/77). Constraints:
+
+- Keep the `@s.matches(_jsNullable(…))` option pattern (Plugin.res:105-114/491): the option must go
+  through `js_nullable` (`T | null`, not `T | undefined | null`) or it fails `jsonableValidation`
+  inside the event union. The new schema is `_jsNullable(Offload.optionSchema(innerSchema, …), ())`.
+- The **frozen corpus must stay decodable** (`PluginLifecycleCorpusTest`, fixtures in
+  `tests/fixtures/plugin-lifecycle/`, captured off a deployed log — **never re-cut**). The untagged
+  decode (above) is what keeps legacy inline payloads green.
+- **The codec must preserve the event decode's tolerance (found during implementation).** A first
+  cut built the codec as `S.json->S.transform` whose `Inline` arm did a nested
+  `S.parseJsonOrThrow(json, innerSchema)`. That is a **strict** parse and bypasses the
+  schema-evolution **healing** `Message.decode` applies (older fixtures rely on missing nested
+  fields — e.g. `requiredStoreDeclarations[].annotation`, older `kind` — being filled), so the
+  corpus and `MessageTest` tolerant-decode cases threw. The codec must instead let sury apply the
+  inner schema through its **normal pipeline** so it inherits that tolerance — i.e. an untagged
+  `S.union([<offloaded-object> → Offloaded, innerSchema → Inline])` (sury tries `Offloaded` first,
+  falls through to the inner schema for legacy records), not a manual nested parse. Re-verify
+  against `PluginLifecycleCorpusTest` + `MessageTest` after the change.
 
 ## Steps
 
-1. **Spec primitive** (`reventless/spec`): add `Semantic.Id.offload`; add an `Offload`
-   module (`payload<'a>` type + polymorphic sury schema marked with `StoredIn`, legacy →
-   `Inline`); add the `@offload("store")` ppx shorthand mirroring `@storageRef`.
-2. **Deploy-time scan** (`reventless/core`): confirm/extend `StorageRefFields` (or a shared
-   sibling) so `@offload` stores are collected as store requirements via the shared
-   `StoredIn` payload — ideally no new branch.
-3. **Write helper** (`reventless/core`): threshold check → hash → content-addressed PUT to the
-   declared store → `Offloaded` substitution, write-before-append. Needs an object-store
-   handle on the command side (the same seam `@storageRef` uses).
-4. **Resolve helper** (`reventless/core`): inline-or-offloaded → bytes, with a per-hash cache.
-5. **First consumer**: retype `VersionConnected.structure` and `apiSchemaFragment` as
-   `@offload`; wire `PluginBehavior` (emit) and `PluginsProjection` (read).
-6. **Backward compatibility**: confirm legacy inline events decode unchanged; add a fixture
-   from a pre-change `VersionConnected` body.
-7. **Config surface — the threshold's precedence chain** (most specific wins):
-   1. **Per-field marker** — `@offload({store, threshold})` on the field. Use for a field
-      known to always warrant offloading (or never), independent of the platform default.
-   2. **Platform config default** — a single `offloadThreshold` on `Platform.MakeWithConfig`,
-      the default for every `@offload` field that does not override it. This is the knob most
-      deployments actually turn.
-   3. **Framework default — 8 KB** — used when neither of the above is set.
+1. **Spec primitive** (`reventless/spec`): `Semantic.Id.offload`; `Offload` module — `payload<'a>`
+   type, the untagged backward-compat codec, `optionSchema`/`forStore` helpers marking `StoredIn`,
+   threshold plumbing.
+2. **ppx** (`reventless-ppx`): `OffloadInference.ml` (record + string forms, read from
+   `pld_attributes`, strip inline, emit `@s.matches(Offload.forStore(…))`); wire into
+   `ReventlessPpx.ml:697`. Build via dune; **republish** (CI `publish-ppx.yml` or
+   `scripts/publish-ppx-local.mjs`, all `npm/*` + root versions bumped in lockstep) — CI stays red
+   until republished.
+3. **Provisioning** (`reventless/core` + `aws`/`local`): recognize `@offload` stores in the
+   `Plugin_Structure` provisioning reader (not the claimer); provision the dedicated
+   content-addressed store on AWS (`Capability_ObjectStore_S3`) and local (`LocalObjectStore`).
+4. **Producer helper** `Offload.prepare(~upload)` + transports: deploy-time `BucketObjectv2`
+   transport; local `LocalObjectStore.put`; (Node direct-PUT).
+5. **Reader helper** `Offload.resolve(~fetch)` + per-hash cache; deploy-time S3-GET fetch and
+   runtime-Lambda S3-GET fetch.
+6. **Retype the two fields** on `pluginDefinition` (Plugin.res) + read-model mirror
+   (PluginsReadModelSpec) to `option<Offload.payload<…>>` via the `_jsNullable(Offload.optionSchema(…))`
+   helper.
+7. **First consumer — produce**: `Plugin_Builder` calls `prepare` (unconditional offload) for both
+   fields when assembling `pluginDefinition`; `Connect` carries the ref; `decide` passes it through.
+8. **First consumer — resolve**: `apiSchemaFragment` at the deploy-time AppSync path; `structure`
+   in `Platform_ComponentDefinitions_Lambda_Ops` (+ local + tooling). Grant that Lambda offload-store
+   GET IAM; thread the store location into its config.
+9. **Config surface**: `offloadThreshold` on `Platform.MakeWithConfig`; per-field marker override.
+10. **Tests** (below).
 
-   The effective threshold is resolved at **emit time** in the write helper, not baked into
-   the spec. Because it is pure write-path policy — both `Inline` and `Offloaded` resolve to
-   identical bytes on read — **changing it at any level is always safe**: no wire change, no
-   re-encoding, and existing events (already written under an old threshold) stay valid and
-   readable. Retuning affects only how *future* events are split.
+## Tests
 
-   The target store is declared per-field by the marker (step 1), not part of this chain.
+- Untagged decode: a legacy inline `structure`/`apiSchemaFragment` JSON decodes as `Inline`; a
+  frozen-corpus fixture stays green (`PluginLifecycleCorpusTest`).
+- `prepare`: value over threshold → `Offloaded` (object written to store, content-addressed key);
+  under threshold → `Inline` (no write); two identical values → identical key (dedupe).
+- `resolve`: `Offloaded` round-trips to identical bytes; per-hash cache fetches once.
+- Threshold precedence: per-field marker > platform config > 8 KB; a straddling payload splits
+  differently under each, both reading back identical.
+- Deploy path: producing a `pluginDefinition` offloads both fields; the emitted `VersionConnected`
+  is < 1 KB; `Connect`→`decide`→event passes the ref through unchanged (`PluginBehavior_GWT`).
+- Read path: `structure` resolves in the component-definitions consumer; `apiSchemaFragment`
+  resolves at the AppSync stitch; `PluginsProjection` passes the ref through without fetching.
+- Provisioning: the `@offload` store is provisioned (declaration reader) and is **not** added to the
+  claimer's table.
+- Generality: a synthetic `@offload` field on a test spec exercises `prepare`/`resolve` independently
+  of the plugin aggregate.
 
-   *Deferred, not in the first cut:* a runtime env override (e.g.
-   `REVENTLESS_OFFLOAD_THRESHOLD`) read by the command-handler tier, to let ops retune without
-   a redeploy. It is a blunt global (it can't express per-field intent), so it is worth adding
-   only if a real ops need appears; the marker + platform-config chain covers the design cases.
-8. **Tests**:
-   - large `structure` → `Offloaded` emitted; round-trips to identical bytes on read
-   - small structure → stays `Inline`; no object written
-   - two versions with identical structure → identical key (dedupe proven)
-   - legacy inline event still decodes and projects
-   - event appended only after the object write resolves (ordering)
-   - deploy-time scan reports the `@offload` store as a store requirement
-   - (generality) a second, synthetic `@offload` field on a test spec exercises the
-     primitive independently of the plugin aggregate
-   - (threshold precedence) a per-field marker threshold overrides the platform default,
-     which overrides the 8 KB framework default; a payload straddling two thresholds is
-     split differently under each, and both encodings read back to identical bytes
+## Object lifecycle
+
+Content-addressed + immutable ⇒ never mutated. Default **never-delete** (objects small vs. the value
+of replayable history; dedupe keeps counts low). **GC caveat:** as a general marker, a domain may
+point `@offload` at high-cardinality non-deduping fields, so before advertising it generally, design
+ref-counted reclamation (an object may not be removed while any live event references its hash) —
+and note the **GDPR erasure vs. immutability** tension for personal data (crypto-shred via
+per-object keys, or keep offload off PII). Deferred for the plugin consumer.
 
 ## Risks / trade-offs
 
-- **Speculative generality.** Building a general marker for one consumer risks
-  over-abstraction. Mitigated by driving the API from the plugin case and keeping the surface
-  minimal — but the type and helpers live in shared modules (`spec`/`core`) from day one, so
-  the second consumer is an `@offload("store")` opt-in, not a copy-paste.
-- **Two-store durability.** The event no longer self-contains its payload; a replay now
-  depends on the object store as well as the event log. This is the inherent trade of moving a
-  payload out of the event. Mitigate with write-before-append ordering and never-delete (or
-  ref-counted) objects, so a referenced hash is always resolvable.
-- **Cold-path fetch latency** on projection rebuilds — mitigated by the content-addressed
-  per-hash cache (immutable ⇒ cache-forever, fetch-at-most-once).
-- **Lifecycle at scale** — see the generalization caveat above: the never-delete default is
-  safe for the plugin consumer but must have a reclamation model designed before the marker is
-  offered generally.
-- **Threshold tuning** — too low adds object round-trips for medium payloads; too high leaves
-  bloat inline. 8 KB is the framework default, overridable per-field (marker) or per-platform
-  (config); see the precedence chain in step 7. Retuning is always safe — it is write-path
-  policy with no wire or read-back effect — so the default can be revisited against the
-  observed size distribution without touching existing history.
+- **Two-store durability** — a replay now depends on the object store too; the referenced hash must
+  always be resolvable (write-before-reference ordering; never-delete/ref-counted objects).
+- **Read-side GET seam for `structure`** — one runtime Lambda gains offload-store GET + IAM. Modest
+  and contained, but real; `apiSchemaFragment` has no runtime read cost (deploy-time only).
+- **Deploy-time unconditional offload** — the plugin producer always writes an object even for a
+  small structure; accepted to avoid Output-conditional resource creation.
+- **ppx inner-schema derivation** — the general `@offload` shorthand must synthesize the field's
+  inner schema; the explicit-helper escape hatch (used by the first consumer) de-risks it.
+- **Speculative generality** — mitigated by driving the API from the plugin case while placing the
+  type/helpers in shared modules so consumer #2 is a one-annotation opt-in.
+- **ppx republish gate** — CI is red until the rebuilt ppx binaries are republished in lockstep.
 
 ## Scope
 
-- **Adds:** a general, reusable `@offload` field primitive in the `@storageRef` family —
-  transparent, content-addressed, inline-or-offloaded field spill — reusing the existing
-  object-store seam, semantic marker, and deploy-time store-requirement scan.
-- **Reduces (via the first consumer):** per-event size for large plugin structures, and total
-  stored bytes via cross-version dedupe — lowering item size, read/write capacity,
-  stream-delivery bytes, and any event-body logging for the plugin aggregate.
-- **Does not:** change how *many* events are appended, alter `@storageRef`, or touch any other
-  aggregate beyond opting the plugin fields in. It is a size fix for large serialized fields,
-  orthogonal to event-count concerns elsewhere.
+- **Adds:** a general client-driven `@offload` primitive (inline-or-ref, content-addressed,
+  client-uploaded) reusing the `@storageRef` marker/provisioning machinery and a dedicated
+  content-addressed store — **no** command-side write seam.
+- **Reduces:** per-event size for the plugin's large fields and total stored bytes via cross-version
+  dedupe (item size, RCU/WCU, stream bytes, event-body logging).
+- **Does not:** change how many events are appended, alter `@storageRef`, add a runtime command-side
+  seam, or touch other aggregates beyond opting the plugin fields in.

@@ -86,21 +86,39 @@ Parameterised by the inner value's schema because the `Inline` arm round-trips
 through it. The `Offloaded` arm round-trips through `offloadedRefSchema` under the
 sentinel key. See the module doc for why this is untagged.
 */
-let schema = (inner: S.t<'a>): S.t<payload<'a>> =>
-  S.json->S.transform(_s => {
+let schema = (inner: S.t<'a>): S.t<payload<'a>> => {
+  // Offloaded arm: recognised by the reserved sentinel key, strict, and tried
+  // first so an offloaded value is never mistaken for an inline one. The ref is
+  // a fixed new shape that needs no healing, so a direct json-transform is fine.
+  let offloadedArm = S.json->S.transform(s => {
     parser: json =>
       switch json->JSON.Decode.object->Option.flatMap(dict => dict->Dict.get(sentinelKey)) {
       | Some(refJson) => Offloaded(refJson->S.parseJsonOrThrow(offloadedRefSchema))
-      | None => Inline(json->S.parseJsonOrThrow(inner))
+      | None => s.fail("not an offloaded reference")
       },
     serializer: payload =>
       switch payload {
-      | Inline(value) => value->S.reverseConvertToJsonOrThrow(inner)
       | Offloaded(ref) =>
         Dict.fromArray([(sentinelKey, ref->S.reverseConvertToJsonOrThrow(offloadedRefSchema))])
         ->JSON.Encode.object
+      | Inline(_) => s.fail("not an offloaded reference")
       },
   })
+  // Inline arm: the inner schema applied through sury's own pipeline, so it
+  // inherits whatever tolerance the surrounding decode uses — the lifecycle
+  // Message decoder heals older payloads with missing fields. This is why the
+  // codec is a union rather than one json-transform with a nested
+  // parseJsonOrThrow: a nested parse runs strict and breaks the frozen corpus.
+  let inlineArm = inner->S.transform(s => {
+    parser: value => Inline(value),
+    serializer: payload =>
+      switch payload {
+      | Inline(value) => value
+      | Offloaded(_) => s.fail("not an inline value")
+      },
+  })
+  S.union([offloadedArm, inlineArm])
+}
 
 /**
 The codec plus the `StoredIn` marker declaring which store the field's references
@@ -127,6 +145,16 @@ let optionSchema = (
     ~id=Semantic.Id.offload,
     ~payload=StoredIn({plugin, store}),
   )
+
+/** The inline value, if this payload is `Inline`. `None` for `Offloaded` — a
+    caller that must handle both arms uses `resolve` (async, fetches the ref); a
+    caller that only ever sees inline values (a test, or a path where offloading
+    is not yet wired) uses this. */
+let getInline = (payload: payload<'a>): option<'a> =>
+  switch payload {
+  | Inline(value) => Some(value)
+  | Offloaded(_) => None
+  }
 
 /** The store an `@offload` field declares, if any — the read side of the marker,
     used by provisioning to know the field requires this store to exist. Distinct
