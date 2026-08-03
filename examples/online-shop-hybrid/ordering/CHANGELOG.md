@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.180 (2026-08-03)
+
+### Features
+
+* **aws:** let a deployment hand its plugins a geocoder ([143bf41](https://github.com/ReventlessDev/reventless-core/commit/143bf4137765362ce07dd42db0f4a57057da9f13))
+* **outbound:** let an outbound slice read an aggregate, and geocode addresses with it ([867e63e](https://github.com/ReventlessDev/reventless-core/commit/867e63e774ebc8b78b2b19c78645c8a12a8d06f6))
+
+
 # 1.0.0-alpha.179 (2026-08-02)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering

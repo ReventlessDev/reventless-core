@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.72 (2026-08-03)
+
+### Features
+
+* **aws:** let a deployment hand its plugins a geocoder ([143bf41](https://github.com/ReventlessDev/reventless-core/commit/143bf4137765362ce07dd42db0f4a57057da9f13))
+* **platform:** let a deployment choose what the host shell does ([ae0aec3](https://github.com/ReventlessDev/reventless-core/commit/ae0aec33dcf641f02187e8d6a3f3594c506820b6))
+
+
 # 1.0.0-alpha.71 (2026-08-02)
 
 ### Features

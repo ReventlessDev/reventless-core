@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.3 (2026-08-03)
+
+### Features
+
+* **outbound:** let an outbound slice read an aggregate, and geocode addresses with it ([867e63e](https://github.com/ReventlessDev/reventless-core/commit/867e63e774ebc8b78b2b19c78645c8a12a8d06f6))
+
+
 # 3.0.0-alpha.2 (2026-08-02)
 
 ### Features

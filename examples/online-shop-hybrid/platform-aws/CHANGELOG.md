@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.208 (2026-08-03)
+
+### Features
+
+* **platform:** let a deployment choose what the host shell does ([ae0aec3](https://github.com/ReventlessDev/reventless-core/commit/ae0aec33dcf641f02187e8d6a3f3594c506820b6))
+
+
 # 1.0.0-alpha.207 (2026-08-02)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws
