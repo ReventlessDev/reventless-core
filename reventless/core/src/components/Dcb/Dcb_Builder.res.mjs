@@ -83,12 +83,13 @@ let emptyResult = {
 
 function Make(DcbEventLogStorage) {
   return DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => (RuntimeBuilder => (HooksConfig => {
-    let construct = (name, childName, apiNamePrefixOpt, onAdminApiOpt, environmentOpt, platformNameOpt, aggregateEventTopicsOpt, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponentsOpt, componentRuntimeOpt, pluginStructure, opts) => {
+    let construct = (name, childName, apiNamePrefixOpt, onAdminApiOpt, environmentOpt, platformNameOpt, aggregateEventTopicsOpt, aggregateProducedEventsOpt, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponentsOpt, componentRuntimeOpt, pluginStructure, opts) => {
       let apiNamePrefix = apiNamePrefixOpt !== undefined ? apiNamePrefixOpt : name;
       let onAdminApi = onAdminApiOpt !== undefined ? onAdminApiOpt : false;
       let environment = environmentOpt !== undefined ? environmentOpt : "";
       let platformName = platformNameOpt !== undefined ? platformNameOpt : "";
       let aggregateEventTopics = aggregateEventTopicsOpt !== undefined ? aggregateEventTopicsOpt : ({});
+      let aggregateProducedEvents = aggregateProducedEventsOpt !== undefined ? aggregateProducedEventsOpt : [];
       let systemCallableComponents = systemCallableComponentsOpt !== undefined ? systemCallableComponentsOpt : [];
       let componentRuntime = componentRuntimeOpt !== undefined ? componentRuntimeOpt : ({});
       let hasDcb = stateChangeSlices.length !== 0;
@@ -119,7 +120,7 @@ function Make(DcbEventLogStorage) {
         O.Spec.name,
         O.Spec.consumedEventSchema
       ]));
-      let errors = DcbValidation$Reventless.validateProducedAndConsumed(produced, consumed);
+      let errors = DcbValidation$Reventless.validateProducedAndConsumed(produced.concat(aggregateProducedEvents), consumed);
       if (errors.TAG !== "Ok") {
         errors._0.forEach(err => log.error("Dcb_Builder", undefined, `DCB validation error (` + err.sliceName + `): ` + err.message));
       }

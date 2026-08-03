@@ -140,6 +140,15 @@ module Make = (
       aggregates->createAggregatesWithoutEventMappers(~api, ~componentRuntime=Dict.make(), opts)
     let aggregateEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
 
+    // As in Plugin_Builder: what the admin aggregates emit, so a slice naming one
+    // as its source is checked against real producers rather than reported as
+    // consuming events nothing produces.
+    let aggregateProducedEvents =
+      aggregates->Array.map((module(A: ReventlessInfra.Aggregate.T with type api = api)) => (
+        A.Spec.name,
+        A.Spec.eventSchema->S.castToUnknown,
+      ))
+
     // Wire CommandGenerator → AppSync / in-memory GraphQL resolvers via
     // `mutationResolverHook` and populate `aggregateMutationFieldsRegistry`.
     // The matching SDL entries are owned by
@@ -159,6 +168,7 @@ module Make = (
       // Domain API — routes the provider hook to `hooks.adminApi`.
       ~onAdminApi=true,
       ~aggregateEventTopics,
+      ~aggregateProducedEvents,
       ~stateChangeSlices,
       ~stateViewSlices,
       ~automationSlices,

@@ -12,7 +12,7 @@ reasons it could never have run, none of them in the plugin code: the stale comp
 (fixed, `c05641014`), the AWS runtime's inability to feed an outbound slice from an aggregate — step
 1's capability, never built on the deploy side (now fixed, and confirmed in a `pulumi preview` to
 resolve `GeocodeCustomerAddress` onto the Customer aggregate's stream) — and a false-positive DCB
-validation error that is noisy rather than fatal (open). See [the deploy
+validation error, fixed by giving the validator the aggregates' event schemas. See [the deploy
 round](#the-deploy-round-step-7s-wiring-works-and-two-things-behind-it-do-not). Step 10 waits on a UI
 release.
 See [Build log](#build-log) at the foot for what landed and what the build taught that the plan had
@@ -528,7 +528,7 @@ address would show two facts that disagree, with nothing saying so.
 
 **7 — Make it run: the fast path. 🟨 complete in code; unproven until the next deploy.** Its
 prerequisites are confirmed on real infrastructure, the geocoder answers correctly, and the three
-reasons it could never have run are fixed bar one non-fatal validation warning — see [the deploy
+reasons it could never have run are all fixed — see [the deploy
 round](#the-deploy-round-step-7s-wiring-works-and-two-things-behind-it-do-not).
 
 The resolution above is where this ends up. This step is what gets geocoding *working* before it gets
@@ -668,7 +668,7 @@ this slice is the unattended one, and D8 is why they do not collide. The capabil
 shape D9 found: one capability, two doors, a GraphQL field for clients and an injected function for
 plugin code — with the object store as the worked example, since it already has both.
 
-**9 — The injected port (D9 half 1). ⬜ gated on the AWS aggregate-source gap, not on evidence.**
+**9 — The injected port (D9 half 1). ⬜ unblocked; worth letting step 7 run first.**
 Replace `GeocodingService`'s HTTP call
 with the real injection: thread a geocoder to `translate` the way `Offload.resolve` threads `~fetch`,
 supplied by the platform and backed by `Geocoder_AwsLocation_Backend` calling the SDK directly. The
@@ -737,18 +737,24 @@ likely place for this design to be wrong.
 
 ## Follow-ups
 
-- **The `Task` fallback, if step 1 does not fit.** Same `translate` body, same commands, a schedule
-  instead of a subscription. Worth writing down before it is needed, because the decision point is
-  step 1 and not later.
-- **`DcbValidation` cannot see aggregate producers.** Its producer map is built from DCB slices only,
-  so any slice consuming an Aggregate's events is reported as consuming something nothing produces —
-  logged as `ERROR` on every deploy for code that is correct. The rule is worth keeping; it needs the
-  aggregate specs' event schemas fed in alongside the DCB ones. Until then the honest options are to
-  fix it or to downgrade the message, and leaving a permanent false `ERROR` in a deploy log is the
-  one option that should not survive.
-- **`InboundTranslationSlice` symmetry.** If outbound gains aggregate sources, inbound's source model
-  is worth the same look — not because anything needs it today, but because two translation
-  components with different source rules is the kind of asymmetry that gets discovered by accident.
+- ~~**The `Task` fallback, if step 1 does not fit.**~~ **Not needed.** Step 1 fit, and the deploy
+  plan now shows the slice resolving onto the aggregate's stream. Kept in D1's rejected alternatives
+  as the shape to reach for if a *backfill* is ever wanted, which is the one thing the heartbeat
+  sweep genuinely does not cover.
+- ~~**`DcbValidation` cannot see aggregate producers.**~~ **Fixed properly.** `produced` was built
+  from StateChangeSlices alone, so an aggregate's events had no producer and every one of them was
+  reported as unproduced — on every deploy, for correct code. `Plugin_Builder` and `Platform_Admin`
+  now pass `~aggregateProducedEvents`, and `Dcb_Builder` concatenates them into the produced set for
+  the validation call **only** — not into `producedSchemas`, which drives DCB GSI creation and must
+  not mint indexes on the DCB table for events that live on an aggregate's own EventLog.
+  Verified both ways on the ordering stack: no errors for the correct slice, and renaming a consumed
+  variant to `AddressUpdatedTypo` still produces `consumes 'AddressUpdatedTypo' but no slice produces
+  it`. So the rule is intact for aggregate-sourced slices rather than switched off for them.
+- ~~**`InboundTranslationSlice` symmetry.**~~ **Checked — there is no asymmetry to fix.** Inbound has
+  no source model at all: its Spec declares `externalInput`, not a `consumedEvent`, and it is invoked
+  through GraphQL rather than subscribed to a stream. The two translation slices differ in
+  *direction*, not in source rules, so there is nothing for outbound's source model to be
+  inconsistent with. Worth having asked; the answer is that the question does not apply.
 - ~~**A relevance threshold that is not a constant.**~~ **Answered** — see
   [the measurement round](#the-measurement-round-d3-calibrated-against-a-real-index). It stayed a
   constant; it just became a *measured* one, and the measurement found the original pair actively
@@ -1003,9 +1009,9 @@ DCB validation error (GeocodeCustomerAddress): Slice 'GeocodeCustomerAddress' co
 `DcbValidation`'s "every consumed event has a producer" rule builds its producer map from DCB slices
 only, so an aggregate's events look like nothing produces them. **Not fatal** — `Dcb_Builder` logs the
 errors and continues, which is why the deploy succeeds — but it is the same blind spot as blocker 2 in
-a third place, and it is corrosive in a specific way: a deploy that prints `ERROR` for correct code
-teaches everyone to skim past `ERROR`. Left unfixed here because it needs aggregate produced-events
-fed into the validator, which is a wider change than this plan should absorb; recorded in Follow-ups.
+a third place, and corrosive in a specific way: a deploy that prints `ERROR` for correct code teaches
+everyone to skim past `ERROR`. **Fixed** by feeding the aggregates' event schemas in as producers;
+see Follow-ups for the shape and for the one place they are deliberately *not* added.
 
 ### Open
 
@@ -1020,9 +1026,11 @@ fed into the validator, which is a wider change than this plan should absorb; re
   bundle has no geocoder to export, even though D9 makes geocoding a platform capability rather than
   a UI feature. Left alone deliberately — moving it is step 10's territory, where the Function URL is
   deleted anyway — but it is why the capability is not yet reachable on a headless platform.
-- **Step 9 is ready in itself, and now gated by blocker 2 rather than by evidence.** The port type it
-  targets exists (7a), the env channel it needs is built and shared with step 7, and D3's calibration
-  is measured. What remains on its own account is small: delete `GeocodingService`, accept an
-  argument in `translate`, grant the Lambda place-index read. But swapping the transport does nothing
-  for a slice that never receives an event, so the AWS runtime's aggregate-source gap comes first.
+- **Step 9 is unblocked and small.** The port type it targets exists (7a), the env channel is built
+  and shared with step 7, D3's calibration is measured, and the aggregate-source gap that would have
+  made it pointless is closed. What remains: delete `GeocodingService`, accept an argument in
+  `translate`, grant the Lambda place-index read, and absorb the signature change in the two existing
+  outbound slices and the GWT harness. The only reason to wait is that letting step 7 run first
+  proves the path end to end against the *simpler* transport, so anything that breaks afterwards is
+  known to be the injection rather than the design.
 - **Step 10 waits on a UI release** — cross-repo, and the interval is safe by D9's sequencing.

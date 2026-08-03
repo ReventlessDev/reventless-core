@@ -143,6 +143,15 @@ module Make = (
       aggregates->createAggregatesWithoutEventMappers(~api, ~componentRuntime, opts)
     let aggregateEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
 
+    // What each aggregate emits, for the DCB produced/consumed check. A slice
+    // naming an Aggregate as its source consumes those events, and the check
+    // otherwise sees no producer for them and reports correct code as broken.
+    let aggregateProducedEvents =
+      aggregates->Array.map((module(A: ReventlessInfra.Aggregate.T with type api = api)) => (
+        A.Spec.name,
+        A.Spec.eventSchema->S.castToUnknown,
+      ))
+
     // Construct DCB components and derive DCB-specific API schema entries
     module DcbBuilder = Dcb_Builder.Make(
       DcbEventLogStorage,
@@ -158,6 +167,7 @@ module Make = (
       ~environment=Spec.environment,
       ~platformName=Spec.platformName,
       ~aggregateEventTopics,
+      ~aggregateProducedEvents,
       ~stateChangeSlices,
       ~stateViewSlices,
       ~automationSlices,

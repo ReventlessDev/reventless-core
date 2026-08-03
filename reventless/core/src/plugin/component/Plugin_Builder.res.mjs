@@ -149,10 +149,14 @@ function Make(Spec) {
         let childName = ComponentType$ReventlessCore.name(extra$1, Plugin$ReventlessCore.componentType);
         let aggregatesWithoutEventMappers = Plugin_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, componentRuntime, opts);
         let aggregateEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
+        let aggregateProducedEvents = aggregates.map(A => [
+          A.Spec.name,
+          A.Spec.eventSchema
+        ]);
         let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(DcbCommandTopicChannelAsync)(PluginRuntimeBuilder)({
           hooks: Spec.hooks
         });
-        let dcbResult = DcbBuilder.construct(extra$1, childName, undefined, undefined, Spec.environment, Spec.platformName, aggregateEventTopics, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponents, componentRuntime, pluginStructure, opts);
+        let dcbResult = DcbBuilder.construct(extra$1, childName, undefined, undefined, Spec.environment, Spec.platformName, aggregateEventTopics, aggregateProducedEvents, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponents, componentRuntime, pluginStructure, opts);
         let mutationEntriesFromAggregates = aggregates.flatMap(M => {
           let commandSchema = M.Spec.commandSchema;
           if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {

@@ -87,6 +87,13 @@ module Make = (
     ~environment: string="",
     ~platformName: string="",
     ~aggregateEventTopics: EventTopic.allOutputs=Dict.make(),
+    // `(Aggregate name, its event schema)` for every aggregate in this plugin.
+    // Feeds the produced/consumed check only — an outbound or automation slice
+    // may name an Aggregate as a source, and without these its events look like
+    // events nothing produces. Deliberately *not* folded into `produced`, which
+    // also drives DCB GSI creation: an aggregate's events live on its own
+    // EventLog and must not mint indexes on the DCB table.
+    ~aggregateProducedEvents: array<(string, S.t<unknown>)>=[],
     ~stateChangeSlices: array<module(StateChangeSlice.T)>,
     ~stateViewSlices: array<module(StateViewSlice.T)>,
     ~automationSlices: array<module(AutomationSlice.T)>,
@@ -145,7 +152,10 @@ module Make = (
             ),
           )
 
-        switch Reventless.DcbValidation.validateProducedAndConsumed(~produced, ~consumed) {
+        switch Reventless.DcbValidation.validateProducedAndConsumed(
+          ~produced=produced->Array.concat(aggregateProducedEvents),
+          ~consumed,
+        ) {
         | Error(errors) =>
           errors->Array.forEach(err =>
             log.error(~comp="Dcb_Builder", `DCB validation error (${err.sliceName}): ${err.message}`)
