@@ -86,8 +86,12 @@ module Make = (
   // only carries `item` data), so causation across the automation hop is
   // lost — emitted commands are roots of a fresh correlation chain. If we
   // later thread source meta through todoItems, switch to deriveMeta.
-  let makeMeta = (): Reventless.Message.meta =>
-    Message.generateMeta(~service=`AutomationSlice:${Spec.name}`)
+  // `service` names the command's TARGET, matching the API path
+  // (`CommandGenerator_Callback` passes `~serviceName=AggregateSpec.name`). An
+  // aggregate derives its event meta from the command's, and ReadModel /
+  // AutomationSlice callbacks dispatch mappings on `meta.service` — so naming
+  // the slice here makes the target's own events unmatchable, silently.
+  let makeMeta = (): Reventless.Message.meta => Message.generateMeta(~service=Spec.targetName)
 
   // Per-source erased dispatch — pre-compile decoders once at module init.
   type dispatch = {

@@ -7,7 +7,14 @@ passed on the latest full run). **D9 is resolved** (two callers, two seams). **D
 live Esri index** — the shipped `0.8`/`0.1` declined correct addresses at a 1-in-4 rate and is
 replaced by `0.97`/`0.01`; see [the measurement
 round](#the-measurement-round-d3-calibrated-against-a-real-index). Step 7's fast path is
-**built end to end and awaiting a deploy to prove it.** Checking the deployed stack turned up five
+**built, deployed, and proven end to end** — a real address was geocoded to the right point and
+`LocationSet` was appended to the aggregate, which closes steps 1–7 against live infrastructure ([the
+run](#the-end-to-end-run-the-loop-closes-and-the-last-hop-drops-the-answer)). Two gaps remain between
+that and a visible pin, both found by running it and both wider than this feature: the read model
+dropped the event because `meta.service` named the slice rather than its target (blocker 7 — **fixed,
+awaiting a deploy**), and [the retry sweep D4 relies on has no
+caller](#the-proving-deploy-the-wiring-is-confirmed-on-real-infrastructure-and-the-sweep-does-not-exist)
+(blocker 6 — open). Checking the deployed stack turned up five
 blockers, none of them in the plugin code — the stale composition root (`c05641014`); the AWS
 runtime's inability to feed an outbound slice from an aggregate (fixed, confirmed live: the Lambda
 carries an enabled event-source mapping on `CustomerAggrEventLog`); a false-positive DCB validation
@@ -870,6 +877,151 @@ stack for `geocoderEndpoint` to exist. Getting it wrong degrades rather than fai
 `""`, the client reports `Unavailable`, the item retries and the sweep surfaces it — which is what
 the empty-string-not-missing-output choice buys.
 
+### The proving deploy: the wiring is confirmed on real infrastructure, and the sweep does not exist
+
+The deploy carrying the five fixes landed green (CI → Release → Layer → Deploy, all success). Every
+claim the previous round could only support with `pulumi preview` is now checked against the deployed
+resources, read-only:
+
+| claim | evidence on the live stack |
+|---|---|
+| the aggregate stream reaches the slice (step 1, blocker 2) | `AllAutomationSlices-ace9609` carries an **Enabled** `EventSourceMapping` on `CustomerAggrEventLog-51b40cd` beside the DCB one |
+| routing (fault B) | the `outbound` handler whose source is `CustomerAggrEventLog` has `dcbQueueUrl = CustomerAggrCmdTopic-2f9309d`; both DCB-sourced handlers keep `OrderingDcbCmdTopic-01908ac` |
+| IAM (fault A) | `AllowLambdaSendSQS` on role `AllAutomationSlices-918b7f5`, `sqs:SendMessage` on **both** command topics |
+| flavor (fault C) | `commandQueueIsFifo: false` on all three handlers |
+| per-handler streams (blocker 2's fix) | each handler carries its own `sourceUrns`, `sourceUrn` still emitted beside it |
+| the env channel (step 7b) | `GEOCODER_ENDPOINT` set to the platform's Function URL |
+
+So the deploy-time half of this plan is done and verified. **The runtime round trip is still
+unproven** — nothing has registered a customer since the deploy, and the aggregate's July events are
+long past the stream's 24-hour retention, so no event will arrive on its own.
+
+**Blocker 6 — the TODO list is write-only and the heartbeat sweep has no caller.** Looking for the
+previous round's stranded item to see whether it would self-heal found that it cannot, and why is
+worse than the item:
+
+```
+GeocodeCustomerAddressTodo-50d9488
+  id=geo-probe-1:Karlsplatz 1, 1010 Vienna, Austria  status=Failed  retryCount=1
+```
+
+`maxRetries = 3` and `phase2`'s filter admits `Failed && retryCount < maxRetries`, so this row is
+*eligible* for retry and has not been retried once — across two hours and a Lambda replacement. Three
+findings behind that, each checkable:
+
+1. **`todoItems` is a module-level `Dict.make()`** ([`OutboundTranslationSlice_Callback.res:76`](../../reventless/core/src/components/OutboundTranslationSlice/OutboundTranslationSlice_Callback.res#L76)),
+   populated only by `phase1` from the batch in hand. Warm-container memory.
+2. **Nothing ever reads the table back.** `makeSyncTodoItems` is an `Overwrite` *save* only
+   ([`AutomationSliceEntryPoint_Ops.res:108-129`](../../reventless/aws/src/adapter/Runtime/AutomationSliceEntryPoint_Ops.res#L108-L129));
+   `QueryDbStorage_DynamoDb_Runtime` has a `load`, and the entry point never calls it. So a persisted
+   row is a report to observers, not state the slice can act on.
+3. **`translatePending` has zero callers** in the whole repo — the builder exposes it
+   ([`_Builder.res:226`](../../reventless/core/src/components/OutboundTranslationSlice/OutboundTranslationSlice_Builder.res#L226))
+   and its doc comment says "useful in tests and for heartbeat", and no heartbeat calls it. The plugin
+   heartbeat is registration plumbing (`SpecificHeartbeat.connect` emitting Connect commands to the
+   platform extension point); it does not sweep components.
+
+**This is the third appearance of one pattern**, and by now that is the finding rather than the
+incident: `targetName` was declared and never read, `finish()` was written and never called, and now
+`translatePending` is exposed and never called while the table it feeds is never read. A declaration
+with no consumer is invisible to every test, because the tests exercise the declaration.
+
+**What it costs this plan.** D4's first row — "retried to `maxRetries`, then swept by the heartbeat" —
+holds only *within one warm container*. A transient geocoder failure whose container recycles is
+stranded permanently, in a row that reads `Failed` and looks like it is waiting for a retry that
+nothing will ever perform. It also undercuts D1's reason for rejecting the `Task` alternative: that
+the slice "already owns" the TODO list, retry counter and sweep. It owns two of the three. Not fixed
+here — it is framework work of its own size, on the same footing as step 1 — but it is no longer an
+assumption, and it should be settled before anything unattended depends on the retry path.
+
+### The end-to-end run: the loop closes, and the last hop drops the answer
+
+A `Register` command was published directly onto `CustomerAggrCmdTopic` (the aggregate's own topic —
+this exercises exactly the hops that were unproven and skips only AppSync auth, which is not under
+test). **The whole plan ran, first time, on real infrastructure:**
+
+```
+handling command 1/1: Register(geo-probe-3, {email:…})
+produced 1 event(s): [Registered(geo-probe-3, …)]      ← aggregate
+save: … status=Completed  retryCount=0                  ← slice TODO row, 1.5s later
+handling command 1/1: SetLocation(geo-probe-3, {location:{…}})
+produced 1 event(s): [LocationSet(geo-probe-3, …)]      ← back in the aggregate
+```
+
+and the point is right: `lng 16.372605, lat 48.208728` for `"Stephansplatz 1, 1010 Vienna, Austria"`
+is St. Stephen's Cathedral. So `collect` keyed off `~sourceId`, the geocoder answered, `confidentMatch`
+at `0.97`/`0.01` accepted it, the command routed to the aggregate's queue (fault B), the role could
+send (fault A), the standard-queue flavor was right (fault C), and `SetLocation` passed D5's staleness
+guard and produced its event. **Everything steps 1–7 set out to build is now proven against the real
+service, including the retry counter reading `0`.**
+
+**Blocker 7 — the read model never sees it, because the event is tagged with the wrong service.**
+The row stays `locationStatus: Pending` with no point. The read model *received* the event and
+decided it meant nothing:
+
+```
+handling event 1/1 from Customer: Registered(geo-probe-3, …) actions:[UpdateWithDefault(…)]   ✓
+handling event 1/1 from OutboundTranslationSlice:GeocodeCustomerAddress:
+    LocationSet(geo-probe-3, {…}) actions:[]                                                   ✗
+```
+
+`ReadModel_Callback` takes `sourceName = context.meta.service`
+([:23](../../reventless/core/src/components/ReadModel/ReadModel_Callback.res#L23)) and matches
+mappings against it. The stored events show why the two differ:
+
+| event | `service` |
+|---|---|
+| `Registered` | `Customer` |
+| `LocationSet` | `OutboundTranslationSlice:GeocodeCustomerAddress` |
+
+An aggregate **inherits the command's meta into the event it emits**. The slice stamps its published
+command with its own name —
+[`makeMeta`](../../reventless/core/src/components/OutboundTranslationSlice/OutboundTranslationSlice_Callback.res#L85):
+
+```rescript
+Message.generateMeta(~service=`OutboundTranslationSlice:${Spec.name}`)
+```
+
+so the resulting event announces itself as coming from the slice, and every mapping keyed on
+`Customer` declines it. No error, no dropped message, no retry — `actions:[]` and a 6.5 ms success.
+
+**This is not specific to geocoding.** All three slice callbacks do the same thing
+(`AutomationSlice:${Spec.name}`, `OutboundTranslationSlice:${Spec.name}`,
+`InboundTranslationSlice:${Spec.name}`), so *any* slice that publishes a command to an aggregate
+produces events that the aggregate's own read models silently ignore. It has been latent for the same
+reason as the rest of this round's findings: no slice had ever successfully published a command to an
+aggregate before today.
+
+**Fixed — and it turned out not to be a new convention but an existing one the slices ignored.**
+The API path already does exactly the right thing: `CommandGenerator_Callback` publishes with
+`~serviceName=AggregateSpec.name`
+([:187](../../reventless/core/src/components/CommandGenerator/CommandGenerator_Callback.res#L187)),
+which is why every hand-seeded customer's events carry `service: Customer`. So a command is tagged
+with its **target**, the aggregate inherits that into its event, and dispatch works. The slices were
+the only publishers stamping themselves instead — and `Spec.targetName`, whose sole consumer until
+blocker 5 was a diagram, is precisely the value they needed. Second missing consumer for the same
+field, found one blocker later.
+
+All three callbacks now tag with the target: `AutomationSlice` and `InboundTranslationSlice`
+unconditionally (their `targetName` is a required `string`), `OutboundTranslationSlice` through
+`Option.getOr`, keeping its own name when there is no target — that command goes to the plugin's DCB
+topic, where nothing dispatches on `service`, so the fallback preserves existing behaviour exactly.
+
+**The regression test is the point, not the fix.** Every blocker in this plan was invisible to a
+green suite, and this one had the additional insult that the *whole feature* worked end to end while
+it was broken. `OutboundTranslationSliceCallbackTest` now asserts the published command's
+`meta.service` against the fixture whose `targetName = Some("ConfirmPayment")`; confirmed to fail
+against the old code with `Received: "OutboundTranslationSlice:ProcessPayment"`, which is the only
+evidence that makes a test worth keeping.
+
+*Also learned, and worth a line because it cost a probe:* the command wire envelope is
+`{id, meta, command}` ([`toCommandSchema'`](../../reventless/core/src/Message.res#L58)), while
+`Message.commandJson` — the publish-side record — spells its payload field `commandJson` and
+`toMessageBody` renames it. A body sent with the wrong key is not rejected: `decodeCommand'` uses
+`parseJsonTolerant`, so a missing `command` decoded to the payload-less last variant (`Deactivate`)
+and the aggregate cheerfully rejected it as `CustomerNotFound`. Tolerant decoding turning a malformed
+command into a *different valid command* is worth knowing about independently of this plan.
+
 ### The measurement round (D3 calibrated against a real index)
 
 The gate on step 9 was "nothing has ever spoken to a real geocoder". That turned out not to need a
@@ -1192,6 +1344,16 @@ component with live data needs a backfill planned alongside it.
   both queues is correct. A no-op for every currently deployed plugin (none combines async slices
   with automation/outbound slices), which is why it rides along with step 7's deploy rather than
   needing one of its own.
+- ~~**A slice-published command makes the aggregate's event unprojectable.**~~ **Fixed** — all three
+  slice callbacks now tag the published command's `meta.service` with `Spec.targetName`, matching what
+  the API path has always done, with a regression test that fails against the old code. See [blocker
+  7](#the-end-to-end-run-the-loop-closes-and-the-last-hop-drops-the-answer). Unproven on AWS: the run
+  that found it was against the deployed build, so the pin appearing needs one more deploy.
+- **The outbound retry/sweep path is unimplemented** — see [blocker
+  6](#the-proving-deploy-the-wiring-is-confirmed-on-real-infrastructure-and-the-sweep-does-not-exist).
+  The TODO table is written and never read, and `translatePending` has no caller, so `maxRetries`
+  only survives inside one warm container. Framework work of its own size; recorded here because D4
+  and D1 both lean on a sweep that does not run.
 - **Step 9 is unblocked and small.** The port type it targets exists (7a), the env channel is built
   and shared with step 7, D3's calibration is measured, and the aggregate-source gap that would have
   made it pointless is closed. What remains: delete `GeocodingService`, accept an argument in

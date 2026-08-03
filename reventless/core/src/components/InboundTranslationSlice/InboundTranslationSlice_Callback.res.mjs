@@ -69,7 +69,7 @@ function takeAuditRow(auditLog, requestId) {
 function Make(Spec) {
   return Translation => {
     let auditLog = {};
-    let makeMeta = () => Message$ReventlessCore.generateMeta(`InboundTranslationSlice:` + Spec.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let makeMeta = () => Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
     let receive = async (publishJsons, inputJson) => {
       let requestId = Uuid.v4();
       let input;

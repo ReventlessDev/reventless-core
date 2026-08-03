@@ -101,6 +101,22 @@ describe("OutboundTranslationSlice Callback", () => {
       expect(row.status)->toBe(Completed)
     })
 
+    // The published command's `meta.service` must name the TARGET, not this
+    // slice. An aggregate derives its event's meta from the command's, and
+    // ReadModel/AutomationSlice callbacks dispatch mappings on `meta.service` —
+    // so a slice that stamps its own name here makes the target's events match
+    // no mapping and project as zero actions, with no error anywhere.
+    testPromise("published command is tagged with the target's name", async () => {
+      CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
+      let publishedCommands = ref([])
+      let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
+        publishedCommands := Array.concat(publishedCommands.contents, cmds)
+      }
+      await CommandBackCallback.phase2(mockPublish)
+      let cmd = publishedCommands.contents->Array.getUnsafe(0)
+      expect(cmd.meta.service)->toBe("ConfirmPayment")
+    })
+
     testPromise("Error marks item as Failed with incremented retryCount", async () => {
       ProcessPaymentSpec.translateFn := (async (_id, _item) => Error("gateway timeout"))
 

@@ -81,8 +81,20 @@ module Make = (
   // meta is not threaded from phase1 → phase2 today, so causation across the
   // translation hop is not preserved. If sources later carry meta into todoItems,
   // switch to Message.deriveMeta.
+  //
+  // `service` names the command's TARGET, matching what the API path does
+  // (`CommandGenerator_Callback` passes `~serviceName=AggregateSpec.name`). It is
+  // load-bearing rather than descriptive: an aggregate derives its event's meta
+  // from the command's, and ReadModel/AutomationSlice callbacks dispatch mappings
+  // on `meta.service`. Naming the slice here instead makes the aggregate emit an
+  // event no mapping for that aggregate matches — projected as zero actions, with
+  // no error. Falls back to the slice's own name only when there is no target, in
+  // which case the command goes to the plugin's DCB topic and nothing dispatches
+  // on it.
   let makeMeta = (): Reventless.Message.meta =>
-    Message.generateMeta(~service=`OutboundTranslationSlice:${Spec.name}`)
+    Message.generateMeta(
+      ~service=Spec.targetName->Option.getOr(`OutboundTranslationSlice:${Spec.name}`),
+    )
 
   let phase1 = (events: array<(string, Spec.consumedEvent)>) => {
     events->Array.forEach(((sourceId, event)) => {

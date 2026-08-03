@@ -102,8 +102,9 @@ module Make = (
   // no upstream Reventless meta to derive from, so emitted commands are roots
   // of a fresh correlation chain. `traceparent` populated from an inbound HTTP
   // header would need to be threaded in here by the API/ingress adapter.
-  let makeMeta = (): Reventless.Message.meta =>
-    Message.generateMeta(~service=`InboundTranslationSlice:${Spec.name}`)
+  // `service` names the command's TARGET, as on the API path — see the note in
+  // `AutomationSlice_Callback`. The target's events are dispatched on it.
+  let makeMeta = (): Reventless.Message.meta => Message.generateMeta(~service=Spec.targetName)
 
   let receive = async (
     publishJsons: ReventlessInfra.CommandTopic.publishJsons,

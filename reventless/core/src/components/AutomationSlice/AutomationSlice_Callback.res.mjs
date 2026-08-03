@@ -33,7 +33,7 @@ let todoRowSchema = S.schema(s => ({
 function Make(Spec) {
   return Automation => {
     let todoItems = {};
-    let makeMeta = () => Message$ReventlessCore.generateMeta(`AutomationSlice:` + Spec.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let makeMeta = () => Message$ReventlessCore.generateMeta(Spec.targetName, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
     let dispatches = Automation.mappings.map(M => {
       let decoder = DcbDecode$Reventless.makeDecoder(M.sourceEventSchema);
       let handle = (json, ctx) => {
