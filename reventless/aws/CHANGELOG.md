@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.263 (2026-08-03)
+
+### Bug Fixes
+
+* **aws:** make the slice callback protocol one declaration, not three ([d49e543](https://github.com/ReventlessDev/reventless-core/commit/d49e543f4715c955c75cec8bd691ee0927b7e2f4))
+
+
 # 3.0.0-alpha.262 (2026-08-03)
 
 ### Bug Fixes
