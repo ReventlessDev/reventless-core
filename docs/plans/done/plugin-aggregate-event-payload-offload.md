@@ -2,8 +2,10 @@
 
 **Date:** 2026-08-02 (shipped 2026-08-03; `@offload` ppx shorthand + per-field threshold added 2026-08-03)
 **Status:** ✅ **DONE** — the `@offload` primitive (validated live on `alpha`), plus the ppx shorthand
-and end-to-end per-field threshold (this session, tested). Republish is **prepared** (two commits on
-`alpha`, pending push — see "Republish prepared, pending push"). The only follow-up is orthogonal: the
+and end-to-end per-field threshold (this session, tested). **Republished + released** (`alpha.61` ppx
+binaries + `reventless-spec@alpha.97`, pin kept), and offloading **re-verified live** post-deploy —
+see "Republished + released". The shorthand is **not** usable in `Plugin.res` (needs `@@reventless.spec`;
+see below). The only follow-up is orthogonal: the
 Sury `alpha.4 → rc.0` bump (its own session, also tracked in memory). Moving to `done/`.
 
 ## Current state (read this first if resuming)
@@ -71,14 +73,19 @@ platform config, to avoid an unused config knob. The plugin producer still offlo
 `prepare`-driven client (browser/seed/Node) adopts it. Non-derivable inner types (array, type
 params) raise pointing at the explicit-helper escape hatch.
 
-**Emits fully-qualified `Reventless.Offload.*`** — `Offload` lives in `reventless-spec` whose
-namespace *is* `Reventless`. **Confirmed empirically that this resolves even inside `reventless-spec`
-itself** (a manual `@s.matches(Reventless.Offload.optionSchema(...))` in `Plugin.res` compiles green
-and emits the offload codec), correcting an earlier assumption — the shorthand *is* usable in
-`Plugin.res`. It is nonetheless left on the explicit bare-`Offload` helper for now, by choice: adopting
-the marker anywhere in committed code is **republish-gated** (an older published ppx silently ignores
-`@offload` and emits a wire-incompatible `S.option(...)`), so a `Plugin.res` conversion must *follow*
-the republish, not ride with it. No in-repo `@offload` consumer yet — this is the capability + its test.
+**The shorthand is NOT usable in `Plugin.res` — it needs a `@@reventless.spec` file.** `OffloadInference`
+(like `StorageRefInference`) runs *only* inside the ppx's spec-mode branch, i.e. on files carrying a
+file-level `@@reventless.*` attribute. `Plugin.res` is a hand-written framework module with none, so
+`@offload` there is silently ignored and the field degrades to a plain `S.option(...)` — a
+wire-incompatible loss of the offload codec. **Proven empirically** (2026-08-03): with the `alpha.61`
+`@offload`-capable ppx materialized, `@offload("pluginStructures") structure: option<pluginStructure>`
+still compiled to `s.m(S.option(pluginStructureSchema))`. An earlier note here wrongly claimed it *was*
+usable — that test used the manual `@s.matches(Reventless.Offload.optionSchema(...))` form, a sury
+attribute any ppx passes through, which does **not** exercise the `@offload` marker. (`Reventless.Offload`
+*does* resolve in-namespace, but that's irrelevant when the pass never runs.) So `Plugin.res` stays on
+the explicit bare-`Offload` helper as a **requirement**, not a choice. The shorthand's real consumers
+are `@@reventless.spec` files (app/example plugin specs); there is no natural in-repo consumer yet, so
+this is the capability + its test.
 
 Verified: isolated `bsc -dsource` on all forms + every error/edge case (incl. the record threshold
 form → `~threshold:N`, string form omits it); compile-based `test/run.sh` fixture (`OffloadHost.res`
@@ -92,15 +99,26 @@ Docs (both surfaces, previously undocumented — `@storageRef` was missing too, 
 `packages/doc/docs-app/reventless-ppx.md` gained a `@storageRef`/`@offload` section + a
 "What the PPX replaces" row (cross-instance link `/framework/ppx-binary-management`).
 
-**Republish prepared, pending push.** Commits `3d5e3b5da` (ppx source + threshold) and `0bdd200df`
-(per-platform scaffolds → `alpha.61`) are on `alpha`, unpushed. Pushing triggers `publish-ppx.yml`
-(its `paths:` filter matches the `src/**` change) to build+publish the `linux-x64` / `darwin-arm64` /
-main packages at `alpha.61`; `darwin-x64` is out of the CI matrix (Intel, manual) and not in
-`optionalDependencies`, so it falls back to a local build. The local `ppx-osx.exe` is gitignored/
-dev-only. This change is a CI no-op until then (no committed `.res` uses `@offload`). **Adopting** the
-shorthand (e.g. converting `Plugin.res`) is a later, separate step and must be sequenced: push →
-confirm `alpha.61` binaries live → bump main's `optionalDependencies` range + lockfile to `alpha.61`
-(Phase 2) → convert. See memory note `reference_reventless_ppx_publishing_pitfalls`.
+**Republished + released (pushed 2026-08-03).** Commits `3d5e3b5da` (ppx source + threshold) and
+`0bdd200df` (per-platform scaffolds → `alpha.61`) pushed to `alpha`; `publish-ppx.yml` published
+`reventless-ppx-linux-x64` + `-darwin-arm64` at **`alpha.61`** (its `Test PPX` job red on an apt/sudo
+infra flake — the two publish jobs succeeded), and the lerna Release train bumped main
+`@reventlessdev/reventless-ppx` to `alpha.61` and published `reventless-spec@3.0.0-alpha.97`. The
+`alpha.61` **pin was kept** (Phase 2): main's `optionalDependencies` range bumped `^alpha.58` →
+`^alpha.61` + lockfile refreshed (clean 20-line diff) so `--frozen-lockfile` installs resolve the
+`@offload`-capable binary. Behavior-identical for all committed code (nothing uses `@offload`).
+
+**Live runtime re-verified post-deploy (2026-08-03).** The `Deploy Online Shop Hybrid` deploy of
+`reventless-spec@alpha.97` went green, and invoking the ComponentDefinitions Lambda on the **current**
+Plugins read-model table (`Plugins-a115fd5`, written by the post-deploy Heartbeat at plugin
+`alpha.180`, storing `{$offload}`) resolves refs from S3 to real components matching the original
+validation exactly — **Catalog 3 SVS/9 SCS, Ordering 1/1/1/4, no `$offload`/`{TAG,_0}` leak**. So the
+metadata-only `storeTarget` change is confirmed non-regressive on live. **Separate pre-existing issue
+(NOT from this session):** a second Plugins table (`Plugins-1b3ba55`, a different API scope, read by a
+second live Lambda) still holds *stale* `alpha.148` rows (written `00:01Z`, before the deploy) for
+Ordering/Catalog/PlatformInspector in the old `{TAG,_0}` variant shape (pre-`Offload.toJson`-fix data
+never re-written), so that Lambda returns empty components for them — deferred, needs a re-heartbeat of
+those plugins in that scope or a one-time row repair.
 
 ## Remaining (optional — for a fresh session)
 
