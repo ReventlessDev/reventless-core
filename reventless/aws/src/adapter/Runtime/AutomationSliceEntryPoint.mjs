@@ -45,7 +45,19 @@ async function buildAllHandlers() {
           specModule.name,
           automationSliceCallbackMake(specModule)(bodyModule)
         );
-    StreamOps.addToRegistry(handlers, entry.sourceUrn, registered);
+    // A slice can listen on several streams — its plugin's DCB log and any
+    // Aggregate EventTopic it named. Register the one handler under each, since
+    // the router dispatches by the record's own eventSourceARN. `sourceUrn` is
+    // the pre-multi-source spelling, kept as a fallback so an older handler
+    // config still routes.
+    const sourceUrns = entry.sourceUrns?.length
+      ? entry.sourceUrns
+      : entry.sourceUrn
+        ? [entry.sourceUrn]
+        : [];
+    for (const sourceUrn of sourceUrns) {
+      StreamOps.addToRegistry(handlers, sourceUrn, registered);
+    }
   }));
 
   return handlers;

@@ -45,6 +45,20 @@ module Make = (Api: {
       let tableResource = queryDbOutputs.resources->Array.getUnsafe(0)
       let queryDbTableName = tableResource.name
 
+      // Which streams this slice's Lambda must actually listen on. The core
+      // `make` above has already validated every declared name and thrown on a
+      // typo, so this only has to select — a name absent from `allEventTopics`
+      // is necessarily the plugin's own DCB log, the one source that dict does
+      // not carry.
+      let declaredSources = Spec.sourceNames
+      let sourceTopics =
+        allEventTopics->ReventlessCore.EventTopic.filter(
+          declaredSources->Belt.Set.String.fromArray,
+        )
+      let consumesDcbLog =
+        declaredSources->Array.length == 0 ||
+          declaredSources->Array.some(name => !(allEventTopics->Dict.has(name)))
+
       AutomationSliceRuntime_Builder_Single.registerAutomationSlice(
         ~name=Spec.name,
         ~specModulePath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
@@ -52,6 +66,8 @@ module Make = (Api: {
         ~callbackType="outbound",
         ~queryDbTableName,
         ~queryDbResources=queryDbOutputs.resources,
+        ~sourceTopics,
+        ~consumesDcbLog,
       )
 
       ots

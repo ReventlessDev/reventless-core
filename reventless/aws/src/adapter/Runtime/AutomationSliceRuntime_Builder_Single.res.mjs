@@ -28,16 +28,20 @@ function getDcbQueueUrl() {
   return dcbQueueUrlRef.contents;
 }
 
-function registerAutomationSlice(name, specModulePath, bodyModulePath, callbackTypeOpt, queryDbTableName, queryDbResourcesOpt, context) {
+function registerAutomationSlice(name, specModulePath, bodyModulePath, callbackTypeOpt, queryDbTableName, queryDbResourcesOpt, context, sourceTopicsOpt, consumesDcbLogOpt) {
   let callbackType = callbackTypeOpt !== undefined ? callbackTypeOpt : "automation";
   let queryDbResources = queryDbResourcesOpt !== undefined ? queryDbResourcesOpt : [];
+  let sourceTopics = sourceTopicsOpt !== undefined ? sourceTopicsOpt : ({});
+  let consumesDcbLog = consumesDcbLogOpt !== undefined ? consumesDcbLogOpt : true;
   bundledInfos[name] = {
     specModulePath: specModulePath,
     bodyModulePath: bodyModulePath,
     callbackType: callbackType,
     queryDbTableName: queryDbTableName,
     queryDbResources: queryDbResources,
-    context: context
+    context: context,
+    sourceTopics: sourceTopics,
+    consumesDcbLog: consumesDcbLog
   };
 }
 
@@ -161,9 +165,24 @@ function finishWithDcbEventLog(dcbEventLog) {
           "DcbEventLog",
           dcbOutputs.eventTopic
         ]]);
+      Stdlib_Dict.forEach(bundledInfos, info => Stdlib_Dict.forEachWithKey(info.sourceTopics, (topic, key) => {
+        eventTopics[key] = topic;
+      }));
       let channel = EventCollectorChannel_DynamoDbStream$ReventlessAws.make("AllAutomationSlices", eventTopics, undefined, opts);
       let resource = dcbOutputs.eventTopic.resources[0];
-      let sourceUrn = resource !== undefined ? resource.urn : Pulumi.output("");
+      let dcbSourceUrn = resource !== undefined ? resource.urn : Pulumi.output("");
+      let sourceUrnsFor = info => {
+        let urns = [];
+        if (info.consumesDcbLog) {
+          urns.push(dcbSourceUrn);
+        }
+        Object.values(info.sourceTopics).forEach(topic => {
+          topic.resources.forEach(resource => {
+            urns.push(resource.urn);
+          });
+        });
+        return Pulumi.all(urns);
+      };
       let url = dcbQueueUrlRef.contents;
       let dcbQueueUrl = url !== undefined ? url : Pulumi.output("NOT_AVAILABLE");
       let handlerOutputs = [];
@@ -185,8 +204,13 @@ function finishWithDcbEventLog(dcbEventLog) {
         let handlerJson = Pulumi.all([
           info.queryDbTableName,
           dcbQueueUrl,
-          sourceUrn
-        ]).apply(param => `{"specModule":` + specModule + `,"bodyModule":` + bodyModule + `,"callbackType":` + callbackType + `,"queryDbTableName":"` + param[0] + `","dcbQueueUrl":"` + param[1] + `","sourceUrn":"` + param[2] + `"` + contextFragment + `}`);
+          sourceUrnsFor(info)
+        ]).apply(param => {
+          let urns = param[2];
+          let urnsJson = JSON.stringify(urns.map(prim => prim));
+          let firstUrn = Stdlib_Option.getOr(urns[0], "");
+          return `{"specModule":` + specModule + `,"bodyModule":` + bodyModule + `,"callbackType":` + callbackType + `,"queryDbTableName":"` + param[0] + `","dcbQueueUrl":"` + param[1] + `","sourceUrn":"` + firstUrn + `","sourceUrns":` + urnsJson + contextFragment + `}`;
+        });
         handlerOutputs.push(handlerJson);
       });
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);

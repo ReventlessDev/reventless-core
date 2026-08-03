@@ -7,11 +7,12 @@ its whole project). **D9 is resolved** (two callers, two seams). **D3 is now cal
 live Esri index** — the shipped `0.8`/`0.1` declined correct addresses at a 1-in-4 rate and is
 replaced by `0.97`/`0.01`; see [the measurement
 round](#the-measurement-round-d3-calibrated-against-a-real-index). Step 7's fast path is still
-**blocked on one known thing** rather than on want of a deploy. Its own prerequisites are confirmed
-working on real infrastructure, and the stale composition root that kept the slice out of every
-deployed artifact is fixed (`c05641014`). What remains is that **the AWS runtime cannot feed an
-outbound slice from an aggregate at all** — the step 1 capability, never built on the deploy side —
-so the slice now deploys and then waits for events that structurally cannot reach it. See [the deploy
+**built end to end and awaiting a deploy to prove it.** Checking the deployed stack turned up three
+reasons it could never have run, none of them in the plugin code: the stale composition root
+(fixed, `c05641014`), the AWS runtime's inability to feed an outbound slice from an aggregate — step
+1's capability, never built on the deploy side (now fixed, and confirmed in a `pulumi preview` to
+resolve `GeocodeCustomerAddress` onto the Customer aggregate's stream) — and a false-positive DCB
+validation error that is noisy rather than fatal (open). See [the deploy
 round](#the-deploy-round-step-7s-wiring-works-and-two-things-behind-it-do-not). Step 10 waits on a UI
 release.
 See [Build log](#build-log) at the foot for what landed and what the build taught that the plan had
@@ -525,9 +526,9 @@ the generated view sections by it) plus a `@hidden locationNote` carrying the re
 `AddressUpdated` resets the row to `Pending` and clears the point — leaving the old pin beside a new
 address would show two facts that disagree, with nothing saying so.
 
-**7 — Make it run: the fast path. 🟨 wired and deployed; still does not run.** Its own prerequisites
-are confirmed on real infrastructure and the geocoder answers correctly, but the slice cannot receive
-an event on AWS — see [the deploy
+**7 — Make it run: the fast path. 🟨 complete in code; unproven until the next deploy.** Its
+prerequisites are confirmed on real infrastructure, the geocoder answers correctly, and the three
+reasons it could never have run are fixed bar one non-fatal validation warning — see [the deploy
 round](#the-deploy-round-step-7s-wiring-works-and-two-things-behind-it-do-not).
 
 The resolution above is where this ends up. This step is what gets geocoding *working* before it gets
@@ -739,6 +740,12 @@ likely place for this design to be wrong.
 - **The `Task` fallback, if step 1 does not fit.** Same `translate` body, same commands, a schedule
   instead of a subscription. Worth writing down before it is needed, because the decision point is
   step 1 and not later.
+- **`DcbValidation` cannot see aggregate producers.** Its producer map is built from DCB slices only,
+  so any slice consuming an Aggregate's events is reported as consuming something nothing produces —
+  logged as `ERROR` on every deploy for code that is correct. The rule is worth keeping; it needs the
+  aggregate specs' event schemas fed in alongside the DCB ones. Until then the honest options are to
+  fix it or to downgrade the message, and leaving a permanent false `ERROR` in a deploy log is the
+  one option that should not survive.
 - **`InboundTranslationSlice` symmetry.** If outbound gains aggregate sources, inbound's source model
   is worth the same look — not because anything needs it today, but because two translation
   components with different source rules is the kind of asymmetry that gets discovered by accident.
@@ -952,11 +959,53 @@ Step 1 closed the gap in `reventless-core` and in the local platform — which i
 suite is green and why this stayed invisible. The AWS *runtime* half was never done. Until it is, the
 slice deploys and then waits for events that structurally cannot reach it.
 
-This is bigger than a wiring fix: it needs the aggregate EventTopic outputs to be available at
-`onDcbSlicesCreated` time (or a per-slice channel spec carried through `registerAutomationSlice`),
-which is a design question about the deploy lifecycle rather than a line to add. It is now the real
-gate on step 7, and it changes step 9's estimate too — the injected port does nothing for a slice
-that never receives an event.
+**Blocker 2, resolved — and the shape of the fix was decided by *when* things run.** The obvious
+route, teaching `finish()` about aggregate sources, is closed: `storedSpecs` is populated by
+`forEventCollector` *inside* a `Pulumi.Output.apply`, so it is still empty when the synchronous
+`onDcbSlicesCreated` hook fires. That is the same reason `finish()` is dead code. The topics
+themselves, though, are computed *before* that apply in both core builders — the value was available
+in time all along and simply had nowhere to go.
+
+So `registerAutomationSlice`, which already runs synchronously, now also carries `~sourceTopics` (the
+slice's non-DCB EventTopics) and `~consumesDcbLog`. `finishWithDcbEventLog` unions those into the
+channel's `eventTopics`, and each handler gets its own `sourceUrns` array rather than sharing one DCB
+URN. The entry point registers a handler under each of its streams — no routing change needed, since
+`addToRegistry` already accumulates many handlers per source and the router dispatches on each
+record's own `eventSourceARN`.
+
+Both defaults (`sourceTopics = {}`, `consumesDcbLog = true`) reproduce the previous DCB-only wiring
+exactly, which is what keeps the two existing slices untouched. `sourceUrn` is still emitted beside
+`sourceUrns` so a handler config read by an older entry point still routes its first stream.
+
+*Verified against the real stack, at plan level.* A `pulumi preview` of the ordering stack shows:
+
+| handler | `sourceUrns` |
+|---|---|
+| `AutoShipOrder` | `OrderingDcbEventLog` — unchanged |
+| `GeocodeCustomerAddress` | **`CustomerAggrEventLog`** — the aggregate stream, previously unreachable |
+| `SendOrderConfirmation` | `OrderingDcbEventLog` — unchanged |
+
+*What the preview cannot show, and why.* The EventCollector is built inside an `apply`, and a
+brand-new resource's outputs are unknown during preview, so that callback never runs — which is also
+why `GeocodeCustomerAddress` is absent from the `registered … for …` log there. The
+`EventSourceMapping` resources therefore cannot be confirmed ahead of a real deploy. A local preview
+additionally diverges wholesale from the CI-deployed graph (it planned 94 deletions, against
+workspace packages rather than published ones), so its resource plan is not evidence about anything
+beyond the handler config, and it must not be applied.
+
+**Blocker 3 — the DCB validator reports a correct slice as broken.** Deploying now logs, every time:
+
+```
+DCB validation error (GeocodeCustomerAddress): Slice 'GeocodeCustomerAddress' consumes 'Registered' but no slice produces it
+DCB validation error (GeocodeCustomerAddress): Slice 'GeocodeCustomerAddress' consumes 'AddressUpdated' but no slice produces it
+```
+
+`DcbValidation`'s "every consumed event has a producer" rule builds its producer map from DCB slices
+only, so an aggregate's events look like nothing produces them. **Not fatal** — `Dcb_Builder` logs the
+errors and continues, which is why the deploy succeeds — but it is the same blind spot as blocker 2 in
+a third place, and it is corrosive in a specific way: a deploy that prints `ERROR` for correct code
+teaches everyone to skim past `ERROR`. Left unfixed here because it needs aggregate produced-events
+fed into the validator, which is a wider change than this plan should absorb; recorded in Follow-ups.
 
 ### Open
 

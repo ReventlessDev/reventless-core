@@ -24,6 +24,20 @@ type sliceInfo = {
   // Threaded to phase 1 collect/resolve on the automation path (mirrors the
   // in-process builder's `~context`); outbound slices take no context.
   context: option<Reventless.AutomationSlice.context>,
+  // The non-DCB topics this slice subscribes to — an Aggregate's EventTopic when
+  // it names one by `Spec.name`. Empty for the common DCB-only slice.
+  //
+  // Captured *synchronously* here for the same reason the whole `bundledInfos`
+  // path exists: `forEventCollector` runs inside a `Pulumi.Output.apply`, so
+  // `storedSpecs` — which carries the resolved topics on the dead `finish` path
+  // — is still empty when `finishWithDcbEventLog` runs. The core builders
+  // compute this dict before that apply, so the value is available in time; it
+  // just had nowhere to go until now.
+  sourceTopics: ReventlessCore.EventTopic.allOutputs,
+  // Whether this slice also reads the plugin's own DCB event log. True for every
+  // slice that declares no sources (the default) and for any that names the log
+  // explicitly, which is why it is not derivable from `sourceTopics` being empty.
+  consumesDcbLog: bool,
 }
 
 let bundledInfos: dict<sliceInfo> = Dict.make()
@@ -35,6 +49,9 @@ let setDcbQueueUrl = url => dcbQueueUrlRef := Some(url)
 // ApiFragmentRegistry push (2e) to dispatch RecordApiFragmentPush.
 let getDcbQueueUrl = () => dcbQueueUrlRef.contents
 
+// `~sourceTopics` / `~consumesDcbLog` default to the DCB-only shape every slice
+// had before aggregate sources existed, so a caller that has not been updated
+// keeps exactly its previous wiring.
 let registerAutomationSlice = (
   ~name,
   ~specModulePath,
@@ -43,10 +60,21 @@ let registerAutomationSlice = (
   ~queryDbTableName,
   ~queryDbResources=[],
   ~context=?,
+  ~sourceTopics=Dict.make(),
+  ~consumesDcbLog=true,
 ) =>
   bundledInfos->Dict.set(
     name,
-    {specModulePath, bodyModulePath, callbackType, queryDbTableName, queryDbResources, context},
+    {
+      specModulePath,
+      bodyModulePath,
+      callbackType,
+      queryDbTableName,
+      queryDbResources,
+      context,
+      sourceTopics,
+      consumesDcbLog,
+    },
   )
 
 type storedSpec = {
@@ -259,9 +287,18 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
         let opts = {Pulumi.ComponentResource.parent: parent}
         let dcbOutputs: ReventlessCore.DcbEventLog.outputs =
           dcbEventLog->ReventlessCore.Component.outputs
+        // The plugin's DCB log, plus every Aggregate EventTopic any slice on this
+        // Lambda named. One channel spans them all: `connect` turns each topic
+        // into its own event-source mapping, and the entry point routes an
+        // incoming record to the handlers registered for its stream, so a slice
+        // only ever sees the sources it asked for.
         let eventTopics: ReventlessCore.EventTopic.allOutputs = Dict.fromArray([
           ("DcbEventLog", dcbOutputs.eventTopic),
         ])
+        bundledInfos->Dict.forEach(info =>
+          info.sourceTopics->Dict.forEachWithKey((topic, key) => eventTopics->Dict.set(key, topic))
+        )
+
         let channel = EventCollectorChannel.make(
           ~name="AllAutomationSlices",
           ~eventTopics,
@@ -269,11 +306,27 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           ~opts,
         )
 
-        // One DCB stream URN, identical for every slice on this plugin log — the
-        // dispatch key the entry point maps event-source records back to.
-        let sourceUrn = switch dcbOutputs.eventTopic.resources->Array.get(0) {
+        let dcbSourceUrn = switch dcbOutputs.eventTopic.resources->Array.get(0) {
         | Some(resource) => resource.urn
         | None => Pulumi.Output.make("")
+        }
+
+        // The stream URNs this one slice listens on — the dispatch keys the entry
+        // point maps event-source records back to. Per slice rather than one
+        // shared DCB URN, which is what lets an Aggregate-sourced slice exist at
+        // all: its events arrive on the Aggregate's stream and would otherwise
+        // reach a registry that has never heard of them.
+        let sourceUrnsFor = (info: sliceInfo): Pulumi.Output.t<array<string>> => {
+          let urns = []
+          if info.consumesDcbLog {
+            urns->Array.push(dcbSourceUrn)->ignore
+          }
+          info.sourceTopics
+          ->Dict.valuesToArray
+          ->Array.forEach(topic =>
+            topic.resources->Array.forEach(resource => urns->Array.push(resource.urn)->ignore)
+          )
+          urns->Pulumi.Output.all
         }
 
         let dcbQueueUrl = switch dcbQueueUrlRef.contents {
@@ -307,10 +360,16 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           }
 
           let handlerJson =
-            Pulumi.Output.all3((info.queryDbTableName, dcbQueueUrl, sourceUrn))
-            ->Pulumi.Output.apply(((tableName, queueUrl, urn)) =>
-              `{"specModule":${specModule},"bodyModule":${bodyModule},"callbackType":${callbackType},"queryDbTableName":"${tableName}","dcbQueueUrl":"${queueUrl}","sourceUrn":"${urn}"${contextFragment}}`
-            )
+            Pulumi.Output.all3((info.queryDbTableName, dcbQueueUrl, sourceUrnsFor(info)))
+            ->Pulumi.Output.apply(((tableName, queueUrl, urns)) => {
+              let urnsJson =
+                urns->Array.map(JSON.Encode.string)->JSON.Encode.array->JSON.stringify
+              // `sourceUrn` stays beside `sourceUrns` so a handler config read by
+              // an entry point that predates multi-source still routes its first
+              // stream rather than none.
+              let firstUrn = urns->Array.get(0)->Option.getOr("")
+              `{"specModule":${specModule},"bodyModule":${bodyModule},"callbackType":${callbackType},"queryDbTableName":"${tableName}","dcbQueueUrl":"${queueUrl}","sourceUrn":"${firstUrn}","sourceUrns":${urnsJson}${contextFragment}}`
+            })
           let _ = handlerOutputs->Array.push(handlerJson)
         })
 

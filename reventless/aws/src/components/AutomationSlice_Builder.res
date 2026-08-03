@@ -37,6 +37,17 @@ module Make = (Api: {
       let tableResource = queryDbOutputs.resources->Array.getUnsafe(0)
       let queryDbTableName = tableResource.name
 
+      // An automation names its sources through its Mappings rather than a flat
+      // list, but the runtime question is the same one the outbound builder
+      // answers: which streams must this Lambda listen on. Unlike outbound, an
+      // automation's DCB log is already a key in `allEventTopics`, so the filter
+      // picks it up and nothing extra has to be assumed.
+      let sourceTopics =
+        allEventTopics->ReventlessCore.EventTopic.filter(sourceNames->Belt.Set.String.fromArray)
+      let consumesDcbLog =
+        sourceNames->Array.length == 0 ||
+          sourceNames->Array.some(name => !(allEventTopics->Dict.has(name)))
+
       EventCollectorRuntimeBuilder.registerAutomationSlice(
         ~name=Spec.name,
         ~specModulePath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
@@ -45,6 +56,8 @@ module Make = (Api: {
         ~queryDbTableName,
         ~queryDbResources=queryDbOutputs.resources,
         ~context,
+        ~sourceTopics,
+        ~consumesDcbLog,
       )
 
       as_
