@@ -1,9 +1,11 @@
 # Plan: an address is entered once, and the backend finds the point
 
 **Date:** 2026-08-03
-**Status:** IN PROGRESS — steps 1–6 built and compiling; step 7 (deploy wiring) open and **blocked on
-the D9 decision**, step 8 (docs) not started. See [Build log](#build-log) at the foot for what landed
-and what the build taught that the plan had wrong.
+**Status:** IN PROGRESS — steps 1–6 built, committed and green (`867e63e77`; full suite 299 suites /
+2710 tests). **D9 is resolved** (two callers, two seams). Step 7 is a deliberate **fast path** that
+makes geocoding run without foreclosing the resolution; steps 8–10 carry it the rest of the way. None
+of 7–10 started. See [Build log](#build-log) at the foot for what landed and what the build taught
+that the plan had wrong.
 **Repos:** reventless-core. A UI-repo change is *anticipated* (D7) but not required by this plan and
 not scheduled here.
 **Builds on:** [semantic-geo-point.md](./semantic-geo-point.md) (the declared point) and
@@ -318,22 +320,142 @@ has never heard of AWS.
   is the standard trade for any adapter that crosses a network, which every other remote adapter here
   already makes.
 
-#### Recommendation: option 3
+#### The framing above is wrong: two callers, two seams
 
-It is the only one of the three where the *deployment* chooses the provider, which is what
-provider-independence has to mean in practice — a plugin that runs on a non-AWS platform without
-being recompiled. Option 1 gets that too but bills every existing outbound slice for it and starts
-the framework down the road of curating a service catalogue. Option 2 is the cheapest to write and
-the one whose failure mode is invisible until production, which is the wrong thing to be cheap about.
+The three options are an honest map of *how* to hand a plugin a geocoder, but they were posed as if
+one seam had to serve every caller. It does not, and the framework already demonstrates that — the
+review that produced this section turned up two facts that settle it.
 
-It also settles what looked like a loose end. `Geocoder_AwsLocation_Backend` is not an orphan under
-option 3 — it is the implementation *behind* the URL, running in the geocoder Lambda the platform
-already provisions. That makes D2's status-code contract the load-bearing piece of this whole design
-rather than a tidy-up: it is the seam.
+**First: geocoding is already a first-class platform capability**, declared alongside the object
+store in [`ReventlessInfra.Platform`](../../reventless/infra/src/types/Platform.res):
 
-Option 1 stays the obvious escalation if a future service genuinely cannot be reached over HTTP, or
-if a compile-time guarantee is worth the churn. That is a decision to make when there is a second
-service, not now.
+```rescript
+type capability =
+  | ObjectStore({plugin: string, store: string})
+  | Geocoding
+```
+
+So it was never meant to be a foreign system a plugin happens to call. It is something a deployment
+declares, the platform provisions, and the framework brokers — the same standing as an object store.
+
+**Second: the object-store capability answers this exact question twice, differently, and both
+answers are right for their caller.**
+
+| Caller | How it reaches the capability | Where |
+|---|---|---|
+| a client (browser, seed, any API consumer) | a GraphQL field — `Upload_Presign(store: ID!, fileName: String!, contentType: String): Upload_Ticket` | [Platform_AdminApi.res:99](../../reventless/core/src/admin/Platform_AdminApi.res#L99) |
+| plugin backend code | an injected function — `Offload.resolve(payload, ~schema, ~fetch)` | [Offload.res](../../reventless/spec/src/semantic/Offload.res) |
+
+A client gets a *published, authenticated API surface*; plugin code gets a *function handed to it*.
+Neither is a compromise for the other, and nothing about the object store is duplicated by having
+both — they are two doors onto one capability.
+
+#### Resolution: geocoding copies both halves
+
+| Caller | Seam | Which option above |
+|---|---|---|
+| the browser's map picker | a field on the platform GraphQL API | — (none of the three; this is the upload precedent) |
+| the geocoding slice | an injected port, calling the AWS SDK directly | option 1 |
+
+This dissolves both objections that were live during the review, because they turn out to be the
+same objection to the same mistake — *reusing a browser-facing service for an unattended caller*:
+
+- **the extra hop.** The slice's Lambda proxying through another Lambda to reach a service it could
+  call directly was overhead the backend never needed. Gone: the injected port calls the SDK.
+- **the public endpoint.** The geocoder Function URL is unauthenticated by necessity — a browser
+  cannot sign a request. Routing the unattended path through it made the backend's availability a
+  function of whoever else was hitting a public URL. Gone twice over: the backend no longer touches
+  it, and the browser half moves behind the platform API's existing Cognito wiring, after which the
+  public endpoint has no callers at all.
+
+It also settles `Geocoder_AwsLocation_Backend`, written during the build and unused since. It is not
+an orphan and not a proxy target — it is the thing injected into the slice, and the same module the
+platform's geocode resolver will call. One module owns the AWS Location call, the `[lng, lat]` order
+and the relevance handling; both doors open onto it.
+
+#### The evidence: the object store already does exactly this
+
+Not a design by analogy — a working precedent with two implementations shipped.
+
+**The client door is a GraphQL contract, and it is genuinely portable.** `Upload_Presign` /
+`Upload_Release` are registered on AppSync by the AWS platform and on the dev server by the local
+one ([LocalUploadResolvers.res](../../reventless/local/src/adapter/LocalUploadResolvers.res)), backed
+by [LocalObjectStore.res](../../reventless/local/src/adapter/LocalObjectStore.res) — a process-local
+dict of Node buffers, ephemeral by design, served from `/{prefix}/*`. A client cannot tell which it
+is talking to, and local's `deployPlatform` ignores `~capabilities` entirely because it provisions
+nothing. So "swap the implementation" has already happened once, and the thing that made it possible
+was the mutation contract, not an adapter module.
+
+**The plugin door is an injected function**, `Offload.resolve(payload, ~schema, ~fetch)`. Same
+capability, different caller, different seam — and no duplication, because both doors open onto the
+same stored bytes.
+
+**Three layers, three different portability answers**, worth separating because only one of them is
+actually stuck:
+
+| Layer | Portable? | Why |
+|---|---|---|
+| the ref format `/{prefix}/{key}` | yes, by design | `keyPrefix`'s own comment: rooting keys at the store name keeps a stored ref independent of whether the store got its own bucket or a prefix in a shared one. Refs live in an append-only log; one that encoded its layout would be unrewritable |
+| the runtime read/write path | yes — two implementations exist | `~fetch` is injected; `Upload_Presign` is a contract, not a URL |
+| the deploy-time handle | **no** | see below |
+
+**The stuck layer, recorded because this work surfaced it and did not create it.**
+`ReventlessInfra.Platform.objectStore` sits in the provider-agnostic layer and is S3-shaped:
+
+```rescript
+type objectStore = {
+  bucketName: Pulumi.Input.t<string>,
+  bucketId: Pulumi.Input.t<string>,
+  bucketArn: Pulumi.Input.t<string>,                 // AWS-only concept
+  bucketRegionalDomainName: Pulumi.Input.t<string>,  // AWS-only concept
+  keyPrefix: string,
+}
+```
+
+There is also no `module type` port for an object store — nothing declares what an implementation
+must satisfy; `Capability_ObjectStore_S3` and `Upload_Presign_S3` carry the provider in their names
+by convention alone. So the capability is **switchable by platform** (AWS ↔ local, proven) and **not
+switchable within one** (S3 → MinIO/GCS on the AWS platform). That may be the right trade — a
+platform package arguably *is* the provider choice — but it means the portability story is "pick a
+different platform", not "pick a different backend", and an ARN in the neutral layer is where that
+would first hurt. Out of scope here; noted so it is not rediscovered.
+
+**And it hands geocoding something it currently lacks: a local story.** Today
+`config.geocoderEndpoint` is unset in local dev, so the map picker is click-to-place only and the
+search box does not render — address search simply does not exist outside a deployed stack. Under the
+two-door shape the local platform registers its own geocode resolver (a stub, a fixture, or
+Nominatim) exactly as it registers `Upload_Presign`, and search works in dev without anyone editing
+`public/config.json`. Step 9 is therefore not only "move an endpoint"; it closes a dev-experience gap.
+
+#### Sequencing: the halves have very different costs
+
+**Half 1 — the injected port (this repo, self-contained).** Replaces the plugin's
+`Service/GeocodingService.res` with a port in `Reventless.Geocoding`, threaded to `translate` the way
+`Offload.resolve` threads `~fetch`. No cross-repo dependency. The `translate` signature change is the
+same shape as the `~sourceId` change already made in this plan, which touched five call sites and the
+GWT harness — that is the measured size of it, not an estimate.
+
+**Half 2 — the platform API field (cross-repo, lockstep).** The shipped host-shell reads
+`config.geocoderEndpoint` and builds its client with `Geocoder.fromEndpoint(endpoint)` *inside the
+dynamically-imported map chunk*. Moving it to a GraphQL field is a UI change, a UI release, and a
+version bump here, in that order — the lockstep cost the geo work has already paid twice. Only once
+that lands can the public Function URL and its config key be deleted.
+
+So half 1 goes now and half 2 goes with the next UI change. Until then the browser keeps using the
+Function URL and nothing regresses: D2's status-code contract stays worth having, because it is what
+lets the two callers share that endpoint safely during the interval.
+
+A small irony worth recording: half 2 removes `geocoderEndpoint` from `config.json`, a key the
+[shell-config work](./host-ui-shell-config-choices.md) built plumbing for. That plumbing is not
+wasted — `viewModes` was its point — but this particular key is on its way out.
+
+#### Open, and deliberately not decided here
+
+The slice declares `externalSystem = Some("AwsLocation")`, which draws AWS Location as an external box
+in the Event Graph. If geocoding is a platform capability the framework brokers, that box arguably
+belongs to the platform rather than to this plugin's diagram — the object store is not drawn that
+way. Left as-is for now, because AWS Location genuinely *is* a third-party service and the box is not
+wrong, only possibly misplaced. Worth a decision rather than a default.
 
 ## Steps
 
@@ -362,37 +484,183 @@ call sites, all updated.
 The Function-URL handler now returns `502` on a service failure (body still `[]`) and carries
 `relevance` through — see D2 for why one contract serves both callers.
 
-**3 — The vocabulary, the policy, and an AWS transport. ✅ (final placement pending D9)**
+**3 — The vocabulary, the policy, and an AWS transport. ✅**
 `Reventless.Geocoding` holds `candidate`, `failure` and `confidentMatch` — provider-neutral, so no
 transport re-invents the confidence rule. `Geocoder_AwsLocation_Backend` (runtime-pure, no Pulumi in
-its cold-start graph) is the SDK-backed transport returning that vocabulary. **D9 decides what this
-module is for**: under option 3 it is the implementation behind the geocoder URL; under options 1–2 it
-is the thing injected into the slice.
+its cold-start graph) is the SDK-backed transport returning that vocabulary. Per D9 it is the module
+*injected into the slice*, and later the one the platform's geocode resolver calls — one owner for the
+AWS Location call, the `[lng, lat]` order and the relevance handling.
 
 **4 — The `Customer` aggregate (hybrid example). ✅** As planned.
 
-**5 — The slice (hybrid `ordering` plugin). ✅ (its geocoder call depends on D9)**
+**5 — The slice (hybrid `ordering` plugin). ✅ (its geocoder call is replaced in step 9)**
 `GeocodeCustomerAddress` under `OutboundTranslationSlice/`: `collect` over `Registered` /
 `AddressUpdated` keyed `{customerId}:{address}` — keying by customer alone would make a later address
 change look like work already done; `translate` per D3–D4; `targetName = Some("Customer")`;
-`externalSystem = Some("AwsLocation")`. Currently reaches its geocoder through a plugin-side HTTP
-client (`Service/GeocodingService.res`), which is option 3's shape — **confirm or replace per D9.**
+`externalSystem = Some("AwsLocation")`. Reaches its geocoder through a plugin-side HTTP client
+(`Service/GeocodingService.res`). Step 7 makes that client actually reach a geocoder; step 9
+replaces it with the injected port D9 settled on.
 
 **6 — The read model. ✅** `locationStatus: Pending | Located | Unresolvable` (marked `@status`, so
 the generated view sections by it) plus a `@hidden locationNote` carrying the reason. An
 `AddressUpdated` resets the row to `Pending` and clears the point — leaving the old pin beside a new
 address would show two facts that disagree, with nothing saying so.
 
-**7 — Deploy wiring. ⛔ blocked on D9.** What gets threaded depends on the seam: option 3 needs the
-platform's geocoder URL in the slice Lambda's environment (`GEOCODER_ENDPOINT`), read across stacks
-the way other platform outputs already are; options 1–2 need place-index read permission on the
-slice's own Lambda instead. Follow the existing capability threading either way rather than inventing
-a second path to the same resource.
+**7 — Make it run: the fast path. ⬜ next.**
+
+The resolution above is where this ends up. This step is what gets geocoding *working* before it gets
+there, chosen so that nothing done here has to be undone.
+
+Everything on the plugin side is already built and committed — the slice, the vocabulary, the
+confidence rule, the HTTP client. **The only reason geocoding does not run today is that nothing sets
+`GEOCODER_ENDPOINT` on the slice's Lambda** — but setting it turns out to need two small framework
+additions first, neither of which existed when this step was first written. So:
+
+**7a — declare the port type now, even though nothing injects it yet.** In `Reventless.Geocoding`:
+
+```rescript
+type search = (~text: string) => promise<result<array<candidate>, failure>>
+```
+
+and annotate the plugin's `GeocodingService.search` as satisfying it. This costs nothing today and is
+what makes the eventual swap mechanical: the injected implementation has to match a type that already
+exists, and the call site in `translate` does not change when the provider stops being an HTTP client.
+Writing the port down first is the difference between a shortcut and a dead end.
+
+**7b — two prerequisites, because the wiring this step assumed does not exist.**
+
+An earlier draft called the cross-stack read "the main unknown". Checking it found the situation is
+worse and simpler than that: *neither end of the wire is there*. Both gaps are small, neither is a
+design question, and one of them is needed by step 9 as well.
+
+**Prerequisite 1 — the platform does not export the geocoder URL.** It is computed inside
+`deployPlatform`'s `apply` and consumed by exactly one thing: the `geocoderEndpoint` key in
+`config.json` ([Platform.res:2047-2105](../../reventless/aws/src/Platform.res#L2047-L2105)). There is
+no stack export, so a plugin stack has nothing to read.
+
+*Solution — write side.* One export beside the platform's existing ones, in the same shape as
+`Pulumi.Pulumi.export("offloadBucket", offloadBucketName)`
+([Platform.res:1413](../../reventless/aws/src/Platform.res#L1413)):
+
+```rescript
+// Exported, not only written into config.json, because a plugin stack's
+// components need it too — the browser is no longer the only caller.
+Pulumi.Pulumi.export(
+  "geocoderEndpoint",
+  geocoderEndpointOutput->Pulumi.Output.apply(Option.getOr(_, "")),
+)
+```
+
+Unset ⇒ `""` rather than a missing output, so the read side has one shape to handle rather than two.
+
+*Solution — read side.* The plugin path already builds a `StackReference` from config and reads
+platform outputs through it — `objectStores` is read exactly this way at
+[Platform.res:179](../../reventless/aws/src/Platform.res#L179). Add a sibling read there. **The typing
+gotcha applies**: `getOutput` returns `Pulumi.Output.t<option<'a>>`, so annotate
+`Pulumi.Output.t<option<JSON.t>>` and decode inside the `apply`, as the `objectStores` read does — an
+`option<Pulumi.Output.t<_>>` is the shape this repo has a standing rule against.
+
+**A constraint worth stating, because it decides where the code goes:** the plugin stacks'
+`Main.res` files are **auto-generated** (`// AUTO-GENERATED — do not edit`). So the read cannot live
+in an example's stack root; it has to happen inside `deployPlugin`, which is where the existing
+`StackReference` already is. That is the right home anyway — a capability endpoint is framework
+plumbing, not something a plugin author should be wiring by hand.
+
+**Prerequisite 2 — there is no env-var channel to a slice's Lambda.** `RuntimeHints.t` is
+`{memorySize, timeout}` and nothing else. The runtime builder *does* assemble an `envVars` dict
+internally
+([AutomationSliceRuntime_Builder_Single.res:200](../../reventless/aws/src/adapter/Runtime/AutomationSliceRuntime_Builder_Single.res#L200),
+setting `HANDLER_CONFIG`), so there is a place to put one — but nothing lets anything outside
+contribute to it. The target is the single shared `AllAutomationSlices` Lambda, so whatever is added
+is a deployment-wide knob, which suits an endpoint and would not suit a per-slice secret.
+
+*Two candidate seams already exist. They are not interchangeable, and picking the wrong one is the
+mistake available here.*
+
+**Rejected: `commandHandlerConfig`.** It already carries exactly the right field —
+`envVars?: dict<string>` on `ReventlessCore.Runtime.commandHandlerConfig`, transport-neutral by
+design ("the in-memory platform honors envVars and ignores the rest"), plumbed
+`Platform.MakeWithConfig` → `Config.commandHandlerConfig.<flavor>` → `setConfig` → a module ref →
+the Lambda. Tempting, and wrong: that path is for values a **human deployer chooses** (memory,
+timeout, tuning). The geocoder endpoint is **derived by the framework** from another stack's output.
+Routing it through hand-authored config would mean a deployer copying a generated URL into a config
+file — precisely the hand-restated value this framework keeps eliminating elsewhere.
+
+**Chosen: `PluginRuntime_Builder.registerConfig`.** That function already exists to carry
+framework-derived deploy values into runtime Lambdas — its current parameters are
+`~eventTopicArn`, `~pluginReadModelTableName`, `~schedulerRoleArn`, `~schedulerQueueArn`
+([PluginRuntime_Builder.res:146](../../reventless/aws/src/plugin/runtime/PluginRuntime_Builder.res#L146)),
+which is the same category of value as a geocoder endpoint: computed at deploy time, needed at
+runtime, never typed by a person. Add `~geocoderEndpoint=?`, store it in a ref beside the others, and
+have `AutomationSliceRuntime_Builder_Single` merge it into `envVars` as `GEOCODER_ENDPOINT` when
+non-empty.
+
+*One thing to verify first, because the plan should not assert it:* whether `registerConfig`'s values
+already reach the `AllAutomationSlices` builder, or only the DCB command-handler Lambdas. If only the
+latter, the fallback is a ref set on the slice runtime builder directly, in the same shape as its
+existing `syncStateChangesConfigRef` — a few lines either way, and the choice of seam does not change.
+
+*Forward-compatible shape, worth one minute of thought at implementation time:* the analysis this work
+produced expects more capabilities to need exactly this. `~geocoderEndpoint` is a one-off;
+`~capabilityEndpoints: dict<string>` is the same code with room for the next one. Prefer the dict if
+it costs nothing; do not build a registry for it.
+
+**Prerequisite 2 is not throwaway work — step 9 needs it too.** The injected port still has to tell
+the Lambda *which place index* to use, and the entry point is a bundled module reading its
+environment, not a serialized closure that could capture the value. So the env channel gets built on
+either route. Only prerequisite 1 is specific to the fast path.
+
+That narrows the real comparison between the fast path and the destination: the fast path's *extra*
+cost is one stack export, and what it *defers* is the whole runtime-injection question — how the
+platform hands a geocoder to `translate` — which is unresolved and is the same question the capability
+model ends on. Deferring it to get a working geocoder is the trade this step is making, deliberately.
+
+**7c — thread it.** With both prerequisites in place the wiring is one line each way: `deployPlugin`
+reads `geocoderEndpoint` off the platform `StackReference` and passes it to `registerConfig`; the
+slice runtime builder puts it in `envVars`. The plugin code already committed — `GeocodingService`
+reading `process.env["GEOCODER_ENDPOINT"]` — then works unchanged, which is the point of having
+written it against an env var rather than a provider.
+
+**What this knowingly accepts, for now.** The backend shares the browser's public, unauthenticated
+Function URL — the coupling D9 rejects. It is tolerable *temporarily* and for a specific reason: the
+endpoint already exists and is already public for the browser, so this adds a caller rather than an
+exposure, and D2's status-code contract is exactly what lets the two share it safely in the interval.
+It stops being tolerable the moment geocoding volume matters or the endpoint is abused, which is why
+step 10 exists and is written down rather than left implicit.
+
+**Two runtime assumptions, checked rather than assumed.** The plugin's client does `fetch` from the
+slice's Lambda, which only works if two things hold. Both do: the `AllAutomationSlices` Lambda is
+built without `~vpcConfig` (unlike the StateViewSlice and Aggregate runtimes, which attach one when a
+Postgres selection demands it), so it keeps default internet egress and can reach a Function URL; and
+`fetch` is global on the Node 18+ runtime this deploys on. Recorded because a VPC-attached Lambda with
+no NAT fails this in a way that looks like a broken geocoder rather than a networking choice.
+
+**Order of work, and where the risk actually is.** 7a has no unknowns and can land immediately. The
+two prerequisites are mechanical. The risk is not in any of them — it is that **nothing in this plan
+has ever spoken to a real geocoder**, so the first deployed run is the first test of D2's status
+contract, D3's relevance threshold against real scores, and the SDK call itself. Expect to find
+something there; that is the point of shipping this step rather than mocking further.
 
 **8 — Docs. ⬜ not started.** The outbound-slice documentation gains its new source model and the
 `~sourceId` argument; the geo docs gain the sentence that matters — the picker is the client path,
-this slice is the unattended one, and D8 is why they do not collide. If D9 lands on option 3, the
-geocoder wire contract is documentation, not a comment: it is the port.
+this slice is the unattended one, and D8 is why they do not collide. The capability docs gain the
+shape D9 found: one capability, two doors, a GraphQL field for clients and an injected function for
+plugin code — with the object store as the worked example, since it already has both.
+
+**9 — The injected port (D9 half 1). ⬜ after step 7 runs.** Replace `GeocodingService`'s HTTP call
+with the real injection: thread a geocoder to `translate` the way `Offload.resolve` threads `~fetch`,
+supplied by the platform and backed by `Geocoder_AwsLocation_Backend` calling the SDK directly. The
+port type from 7a is already the target, so the plugin-side change is deleting a file and accepting an
+argument. Deploy side: the slice's Lambda gains place-index read permission and the index name,
+replacing `GEOCODER_ENDPOINT`. Knock-on: the two existing outbound slices and the GWT harness absorb
+the `translate` signature change — the same shape as step 1's `~sourceId`, which touched five call
+sites.
+
+**10 — Geocoding on the platform API (D9 half 2). ⬜ deferred, cross-repo.** A geocode field on the
+platform GraphQL API, mirroring `Upload_Presign`, resolving through the same
+`Geocoder_AwsLocation_Backend`. The map picker moves onto it; the public Function URL and
+`geocoderEndpoint` are then deleted. Lands with a UI release, not before — see D9's sequencing for
+why the interval is safe.
 
 ## Verification
 
@@ -407,7 +675,17 @@ geocoder wire contract is documentation, not a comment: it is the port.
 - **End to end on the hybrid** — register a customer with a plain address, and the pin appears
   without anyone opening a map. This is the whole plan in one sentence and it is the check that
   matters.
+- **The aggregate-source path has its own GWT** — `~sourceId` reaches `collect` and names the
+  customer. Done: `GeocodeCustomerAddress_GWT`, the first test of an outbound slice fed by an
+  Aggregate, which is the capability step 1 exists for.
+- **A pin correction is not swallowed** — same address, different point, expects an event. Done, and
+  it fails against the guard as originally written, which is what makes it worth having.
 - **Zero warnings** after a full build, and no `.res.mjs` deletions (`git ls-files --deleted`).
+
+**Not covered by any of the above, and worth stating plainly:** every test mocks `translate`, so
+nothing exercises a real geocoder. D2's wire contract, D3's relevance threshold against real scores,
+and the SDK call itself are all unverified. The first deployed run is the first test of them, and the
+most likely place for this design to be wrong.
 
 ## Out of scope
 
@@ -482,11 +760,25 @@ staleness token; the aggregate state carries `location`. The seed moved to `SetA
 which is the honest shape for it — it always knew both halves, and sending them together also stops
 the slice spending a geocoder request per seeded customer.
 
+### The D9 round
+
+The seam was argued three ways before the review found that the question had already been answered —
+twice, by the object-store capability, for its two callers. Recorded in D9 because the *wrong* framing
+is the instructive part: the three options were all attempts to make one seam serve both a browser and
+an unattended Lambda, and every one of them traded something real to do it. What killed the leading
+candidate was not a preference but two concrete costs — a proxy hop the backend never needed, and an
+unauthenticated public endpoint on the backend's critical path.
+
 ### Open
 
-- **D9 is undecided** and steps 7–8 wait on it. Step 5's geocoder call is currently written in
-  option 3's shape (recommended); options 1 and 2 would replace `Service/GeocodingService.res` with
-  an injected port.
+- **Steps 7–10 not started.** Step 7 (fast path) and step 9 (the port) are self-contained here;
+  step 10 waits on a UI release.
+- **Step 7 grew two prerequisites on inspection** — the platform never exported the geocoder URL, and
+  there is no env-var channel to a slice's Lambda. Both small, both verified rather than assumed, and
+  the second is shared with step 9. Recorded in the step because "just thread an env var" was wrong
+  and would have been discovered mid-implementation.
+- **Nothing has run against a real geocoder** — see the note under Verification. Step 7 exists
+  largely to change that, because the design cannot be validated by more mocking.
 - **Nothing has run against a real geocoder.** Every test mocks `translate`, so the wire contract in
   D2 — `200` is an answer, anything else is not — is asserted nowhere. It is the first thing a
   deployed run would exercise, and the first thing likely to be wrong.
