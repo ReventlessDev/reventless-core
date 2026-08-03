@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.262 (2026-08-03)
+
+### Bug Fixes
+
+* **aws:** key the shared automation channel's DCB topic by convention ([fe473d5](https://github.com/ReventlessDev/reventless-core/commit/fe473d561343f39bc1d05a2afaa902459142bbd0))
+
+
 # 3.0.0-alpha.261 (2026-08-03)
 
 ### Features
