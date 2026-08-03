@@ -1018,6 +1018,9 @@ importers:
       '@aws-sdk/client-kinesis':
         specifier: ^3.1033.0
         version: 3.1033.0
+      '@aws-sdk/client-location':
+        specifier: ^3.970.0
+        version: 3.970.0
       '@aws-sdk/client-resource-groups-tagging-api':
         specifier: ^3.1033.0
         version: 3.1095.0
