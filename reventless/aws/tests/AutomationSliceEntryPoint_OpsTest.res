@@ -150,16 +150,26 @@ describe("AutomationSliceEntryPoint_Ops.makeOutboundJsonEventsHandler", () => {
       ~publishJsons=noopPublish,
       ~syncTodoItems=async () => steps->Array.push("sync"),
     )
+    // `id` is the envelope's subject — the entity the event was published for.
+    // An Aggregate's event payload does not repeat it, so this is the only place
+    // `collect` can learn which customer/order an event belongs to.
     let placed = obj([
+      ("id", str("ord-1")),
       ("meta", obj([("service", str("Order"))])),
       ("event", obj([("TAG", str("OrderPlaced")), ("orderId", str("ord-1"))])),
     ])
     // Not consumed by this slice — dropped without an error.
     let ignored = obj([("event", obj([("TAG", str("OrderShipped")), ("orderId", str("ord-1"))]))])
-    // Bare payload-less variant, no envelope.
+    // Bare payload-less variant, no envelope and therefore no id.
     let archived = str("OrderArchived")
     await Stream.fromIterable([placed, ignored, archived])->handler->Effect.runPromise
-    expect(received.contents)->toEqual([OrderPlaced({orderId: "ord-1"}), OrderArchived])
+    // Pairs, not bare events. Asserting the bare shape is what let the AWS entry
+    // point ship a phase1 that destructured `undefined` out of a non-tuple: the
+    // test agreed with the drifted local type instead of with the callback.
+    expect(received.contents)->toEqual([
+      ("ord-1", OrderPlaced({orderId: "ord-1"})),
+      ("", OrderArchived),
+    ])
     expect(steps)->toEqual(["phase1", "sync", "phase2", "sync"])
   })
 })

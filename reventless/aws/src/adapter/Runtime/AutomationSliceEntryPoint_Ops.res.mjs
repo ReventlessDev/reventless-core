@@ -98,11 +98,16 @@ function makeAutomationJsonEventsHandler(context, callback, publishJsons, syncTo
 function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJsons, syncTodoItems) {
   let decoder = DcbDecode$Reventless.makeDecoder(consumedEventSchema);
   return stream => Effect.flatMap(Stream.runCollect(Stream$1.flatMap(Stream$1.mapEffect(stream, json => Effect.sync(() => {
-    let rawEvent = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["event"]), json);
+    let envelope = Stdlib_JSON.Decode.object(json);
+    let rawEvent = Stdlib_Option.getOr(Stdlib_Option.flatMap(envelope, d => d["event"]), json);
+    let sourceId = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(envelope, d => d["id"]), Stdlib_JSON.Decode.string), "");
     let match = Message$ReventlessCore.splitMessage(rawEvent);
     let event = decoder.decode(match[0], match[1]);
     if (event !== undefined) {
-      return [Primitive_option.valFromOption(event)];
+      return [[
+          sourceId,
+          Primitive_option.valFromOption(event)
+        ]];
     } else {
       return [];
     }

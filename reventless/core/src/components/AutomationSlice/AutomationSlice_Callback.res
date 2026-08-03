@@ -31,6 +31,30 @@ type todoRow = {
   retryCount: int,
 }
 
+/**
+The runtime protocol between a built callback and whoever drives it — the same
+arrangement as `OutboundTranslationSlice_Callback`, and for the same reason. The
+AWS entry point builds callbacks dynamically and has to ascribe a structural type
+at the JS boundary; pointing that ascription at these aliases is what keeps it
+from becoming an unreconcilable second declaration of the shape.
+
+Unlike outbound, phase 1 here takes *raw* envelope JSONs: the callback routes by
+`meta.service` and unwraps `{id, meta, event}` itself, per-source, through the
+registered Mappings.
+*/
+type phase1 = (array<JSON.t>, Reventless.AutomationSlice.context) => unit
+
+/** Phase 2: process all pending items, publishing commands. */
+type phase2 = ReventlessInfra.CommandTopic.publishJsons => promise<unit>
+
+/** The whole protocol as a value, for a driver that holds a built callback and
+    knows nothing of the Spec behind it. */
+type runtime = {
+  todoItems: Dict.t<todoRow>,
+  phase1: phase1,
+  phase2: phase2,
+}
+
 module type T = {
   module Spec: Reventless.AutomationSlice.Spec
   module Automation: Reventless.AutomationSlice.Automation with module Spec := Spec
@@ -40,10 +64,10 @@ module type T = {
 
   /** Phase 1: update TODO list from a batch of raw event JSONs. Internally
       decodes per-source via the registered Mappings. */
-  let phase1: (array<JSON.t>, Reventless.AutomationSlice.context) => unit
+  let phase1: phase1
 
   /** Phase 2: process all pending items, publishing commands via publishJsons. */
-  let phase2: ReventlessInfra.CommandTopic.publishJsons => promise<unit>
+  let phase2: phase2
 }
 
 module Make = (

@@ -129,16 +129,21 @@ let makeSyncTodoItems = (
 // The callback shapes the shell's functor applications produce
 // (AutomationSlice_Callback.T / OutboundTranslationSlice_Callback.T), typed at
 // the seam.
-type automationCallback = {
-  todoItems: dict<ReventlessCore.AutomationSlice_Callback.todoRow>,
-  phase1: (array<JSON.t>, Reventless.AutomationSlice.context) => unit,
-  phase2: ReventlessCore.CommandTopic.publishJsons => promise<unit>,
-}
-type outboundCallback<'event> = {
-  todoItems: dict<ReventlessCore.OutboundTranslationSlice_Callback.todoRow>,
-  phase1: array<'event> => unit,
-  phase2: ReventlessCore.CommandTopic.publishJsons => promise<unit>,
-}
+// The entry point builds callbacks dynamically per HANDLER_CONFIG entry, so it
+// cannot name `AutomationSlice_Callback.T` / `OutboundTranslationSlice_Callback.T`
+// — the Spec is not known statically — and has to ascribe a structural type where
+// the value crosses from the dynamically-imported JS module into ReScript.
+//
+// These are aliases of the protocol types each callback module owns, never
+// restatements of them. That distinction is the whole point: a hand-written copy
+// is a second source of truth the compiler cannot reconcile with the first, and
+// it drifts silently. It did — when `phase1` gained its `sourceId` the copy here
+// kept saying `array<'event>`, stayed internally consistent, compiled, and then
+// destructured a bare event as a tuple at runtime, so every outbound slice on AWS
+// died reading `.TAG` of `undefined` on its first record. As aliases, the same
+// change is a compile error here instead.
+type automationCallback = ReventlessCore.AutomationSlice_Callback.runtime
+type outboundCallback<'event> = ReventlessCore.OutboundTranslationSlice_Callback.runtime<'event>
 
 // Automation: phase 1 takes the RAW envelope JSONs — the callback routes by
 // `meta.service` and unwraps `{id, meta, event}` itself — plus the context.
@@ -175,14 +180,20 @@ let makeOutboundJsonEventsHandler = (
     stream
     ->Stream.mapEffect(json =>
       Effect.sync(() => {
-        let rawEvent =
-          json
-          ->JSON.Decode.object
-          ->Option.flatMap(d => d->Dict.get("event"))
-          ->Option.getOr(json)
+        let envelope = json->JSON.Decode.object
+        let rawEvent = envelope->Option.flatMap(d => d->Dict.get("event"))->Option.getOr(json)
+        // The entity the event was published for, mirroring the in-process
+        // builder. An Aggregate's event payload does not repeat its own id, so
+        // without lifting this out of the envelope `collect` cannot name the
+        // subject of the outbound item it creates.
+        let sourceId =
+          envelope
+          ->Option.flatMap(d => d->Dict.get("id"))
+          ->Option.flatMap(JSON.Decode.string)
+          ->Option.getOr("")
         let (eventType, dataDict) = rawEvent->ReventlessCore.Message.splitMessage
         switch decoder.decode(~eventType, ~data=dataDict) {
-        | Some(event) => [event]
+        | Some(event) => [(sourceId, event)]
         | None => []
         }
       })

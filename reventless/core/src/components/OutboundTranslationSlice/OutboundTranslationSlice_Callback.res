@@ -22,6 +22,34 @@ type todoRow = {
   lastError?: string,
 }
 
+/**
+The runtime protocol between a built callback and whoever drives it.
+
+Defined here, once, and referenced by every party — `module type T` below, the
+in-process builder, and the AWS entry point, which cannot name `T` because it
+builds callbacks dynamically per `HANDLER_CONFIG` entry and must ascribe a
+structural type at the JS boundary.
+
+That ascription is the reason these aliases exist. A driver that restates the
+shape instead of referencing it becomes a second source of truth that the
+compiler cannot reconcile with this one: when `phase1` gained its `sourceId`,
+the AWS entry point kept passing bare events and nothing complained, because its
+hand-written copy was internally consistent. The mismatch surfaced only at
+runtime, as `undefined` destructured from a tuple that was never a tuple.
+*/
+type phase1<'event> = array<(string, 'event)> => unit
+
+/** Phase 2: translate all pending items, optionally publishing commands. */
+type phase2 = ReventlessInfra.CommandTopic.publishJsons => promise<unit>
+
+/** The whole protocol as a value — what a driver holding a built callback needs,
+    with no knowledge of the Spec it was built from. */
+type runtime<'event> = {
+  todoItems: Dict.t<todoRow>,
+  phase1: phase1<'event>,
+  phase2: phase2,
+}
+
 module type T = {
   module Spec: Reventless.OutboundTranslationSlice.Spec
   module Translation: Reventless.OutboundTranslationSlice.Translation with module Spec := Spec
@@ -32,10 +60,10 @@ module type T = {
   /** Phase 1: update TODO list from a batch of `(sourceId, event)` pairs
       (collect only, no resolve). `sourceId` is the envelope id of the entity the
       event was published for. */
-  let phase1: array<(string, Spec.consumedEvent)> => unit
+  let phase1: phase1<Spec.consumedEvent>
 
   /** Phase 2: translate all pending items, optionally publishing commands via publishJsons. */
-  let phase2: ReventlessInfra.CommandTopic.publishJsons => promise<unit>
+  let phase2: phase2
 }
 
 module Make = (
