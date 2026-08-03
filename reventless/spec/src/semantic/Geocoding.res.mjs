@@ -3,8 +3,8 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
 function confidentMatch(candidates, minRelevanceOpt, ambiguityMarginOpt) {
-  let minRelevance = minRelevanceOpt !== undefined ? minRelevanceOpt : 0.8;
-  let ambiguityMargin = ambiguityMarginOpt !== undefined ? ambiguityMarginOpt : 0.1;
+  let minRelevance = minRelevanceOpt !== undefined ? minRelevanceOpt : 0.97;
+  let ambiguityMargin = ambiguityMarginOpt !== undefined ? ambiguityMarginOpt : 0.01;
   let top = candidates[0];
   if (top === undefined) {
     return;
@@ -24,10 +24,13 @@ function confidentMatch(candidates, minRelevanceOpt, ambiguityMarginOpt) {
   }
 }
 
-let defaultMinRelevance = 0.8;
+let defaultMinRelevance = 0.97;
+
+let defaultAmbiguityMargin = 0.01;
 
 export {
   defaultMinRelevance,
+  defaultAmbiguityMargin,
   confidentMatch,
 }
 /* No side effect */

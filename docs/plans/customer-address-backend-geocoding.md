@@ -3,10 +3,19 @@
 **Date:** 2026-08-03
 **Status:** IN PROGRESS — steps 1–8 built and green (full suite 301 suites / 2721 tests; the one
 red, `LocalAuthHttpTest`, is a port-binding flake under full-suite load and passes alone and with
-its whole project). **D9 is resolved** (two callers, two seams). Step 7's fast path is wired end to
-end in code but **has never run against a real geocoder** — that is the gate on step 9, which is
-otherwise ready. Step 10 waits on a UI release. See [Build log](#build-log) at the foot for what
-landed and what the build taught that the plan had wrong.
+its whole project). **D9 is resolved** (two callers, two seams). **D3 is now calibrated against the
+live Esri index** — the shipped `0.8`/`0.1` declined correct addresses at a 1-in-4 rate and is
+replaced by `0.97`/`0.01`; see [the measurement
+round](#the-measurement-round-d3-calibrated-against-a-real-index). Step 7's fast path is still
+**blocked on one known thing** rather than on want of a deploy. Its own prerequisites are confirmed
+working on real infrastructure, and the stale composition root that kept the slice out of every
+deployed artifact is fixed (`c05641014`). What remains is that **the AWS runtime cannot feed an
+outbound slice from an aggregate at all** — the step 1 capability, never built on the deploy side —
+so the slice now deploys and then waits for events that structurally cannot reach it. See [the deploy
+round](#the-deploy-round-step-7s-wiring-works-and-two-things-behind-it-do-not). Step 10 waits on a UI
+release.
+See [Build log](#build-log) at the foot for what landed and what the build taught that the plan had
+wrong.
 **Repos:** reventless-core. A UI-repo change is *anticipated* (D7) but not required by this plan and
 not scheduled here.
 **Builds on:** [semantic-geo-point.md](./semantic-geo-point.md) (the declared point) and
@@ -138,6 +147,15 @@ path safe enough to run unattended.
 
 Below threshold, or several candidates clustered near the top, is **not** a point. It is D4's third
 outcome.
+
+**The numbers have since been measured, and the first guess was wrong in an expensive direction.**
+`0.8` / `0.1` was written before anything had spoken to a geocoder; against the live Esri index it
+declines *correct* addresses. Esri does not spread its scores over 0…1 — everything it returns at all
+lands in roughly 0.9…1.0 — so the floor admitted nearly everything and the margin did all the work at
+a width that swallows real winners. The calibration is now `0.97` / `0.01`, and the reasoning is
+recorded in [the measurement round](#the-measurement-round-d3-calibrated-against-a-real-index) with
+the corpus behind it. What D3 argues does not change; what changes is which of its two guards is
+load-bearing.
 
 ### D4. Three outcomes, mapped onto `translate`'s result type
 
@@ -507,7 +525,10 @@ the generated view sections by it) plus a `@hidden locationNote` carrying the re
 `AddressUpdated` resets the row to `Pending` and clears the point — leaving the old pin beside a new
 address would show two facts that disagree, with nothing saying so.
 
-**7 — Make it run: the fast path. ✅ wired; unproven against a live geocoder.**
+**7 — Make it run: the fast path. 🟨 wired and deployed; still does not run.** Its own prerequisites
+are confirmed on real infrastructure and the geocoder answers correctly, but the slice cannot receive
+an event on AWS — see [the deploy
+round](#the-deploy-round-step-7s-wiring-works-and-two-things-behind-it-do-not).
 
 The resolution above is where this ends up. This step is what gets geocoding *working* before it gets
 there, chosen so that nothing done here has to be undone.
@@ -646,7 +667,8 @@ this slice is the unattended one, and D8 is why they do not collide. The capabil
 shape D9 found: one capability, two doors, a GraphQL field for clients and an injected function for
 plugin code — with the object store as the worked example, since it already has both.
 
-**9 — The injected port (D9 half 1). ⬜ after step 7 runs.** Replace `GeocodingService`'s HTTP call
+**9 — The injected port (D9 half 1). ⬜ gated on the AWS aggregate-source gap, not on evidence.**
+Replace `GeocodingService`'s HTTP call
 with the real injection: thread a geocoder to `translate` the way `Offload.resolve` threads `~fetch`,
 supplied by the platform and backed by `Geocoder_AwsLocation_Backend` calling the SDK directly. The
 port type from 7a is already the target, so the plugin-side change is deleting a file and accepting an
@@ -686,10 +708,18 @@ why the interval is safe.
   and an empty query is `200` (nothing was asked). Added with step 7, because that is the step that
   first puts an unattended caller on that endpoint.
 
+- **The confidence rule is calibrated against real scores, not invented ones** — a 24-address corpus
+  put through the live Esri index, scored against a labelled expectation. `0.97`/`0.01` gets 24/24;
+  the shipped `0.8`/`0.1` got 21/24 by declining three correct addresses. Two of those cases are now
+  regression tests. See [the measurement
+  round](#the-measurement-round-d3-calibrated-against-a-real-index).
+
 **Not covered by any of the above, and worth stating plainly:** every slice test mocks `translate`,
-so nothing exercises a real geocoder. D3's relevance threshold against real scores and the SDK call
-itself remain unverified, as does the success path of the Function URL handler. The first deployed
-run is the first test of them, and the most likely place for this design to be wrong.
+so nothing exercises a real geocoder *through the slice*. The confidence rule is no longer among the
+unknowns, but the SDK call from the slice's Lambda, the `~sourceId` collect against a live aggregate
+event, and the command round trip back into `Customer` remain unverified — as does the success path
+of the Function URL handler. The first deployed run is the first test of those, and now the most
+likely place for this design to be wrong.
 
 ## Out of scope
 
@@ -712,9 +742,16 @@ run is the first test of them, and the most likely place for this design to be w
 - **`InboundTranslationSlice` symmetry.** If outbound gains aggregate sources, inbound's source model
   is worth the same look — not because anything needs it today, but because two translation
   components with different source rules is the kind of asymmetry that gets discovered by accident.
-- **A relevance threshold that is not a constant.** D3 picks one number. What it should be is an
-  empirical question this plan has no data for, and the first real corpus of addresses is what
-  answers it.
+- ~~**A relevance threshold that is not a constant.**~~ **Answered** — see
+  [the measurement round](#the-measurement-round-d3-calibrated-against-a-real-index). It stayed a
+  constant; it just became a *measured* one, and the measurement found the original pair actively
+  harmful rather than merely unvalidated. What remains open is narrower and worth stating separately:
+  the numbers are calibrated against **Esri**, while `Reventless.Geocoding` is provider-neutral. A
+  deployment on a provider that scores on a different curve needs its own pair. They are labelled
+  arguments precisely so it can pass them, but nothing today *notices* a provider whose scores do not
+  fit — the sharpest version of that is an index returning no `relevance` at all, which
+  `confidentMatch` correctly declines and which therefore looks exactly like "every address is
+  unresolvable".
 
 ## Build log
 
@@ -818,16 +855,125 @@ stack for `geocoderEndpoint` to exist. Getting it wrong degrades rather than fai
 `""`, the client reports `Unavailable`, the item retries and the sweep surfaces it — which is what
 the empty-string-not-missing-output choice buys.
 
+### The measurement round (D3 calibrated against a real index)
+
+The gate on step 9 was "nothing has ever spoken to a real geocoder". That turned out not to need a
+deploy: the place index (`online-shop-geocoder`, `DataSource: Esri`) is live, and asking it directly
+answers D3's question without waiting for the slice to run. It was asked, and **the shipped
+calibration was wrong in the direction that costs customers**.
+
+**What Esri actually scores.** Not a spread over 0…1. Everything it is willing to return lands in
+roughly 0.9…1.0, and genuine ambiguity shows up as an *exact tie* rather than a near miss —
+`"Springfield"` returns five states at exactly `1.0`, `"221B Baker"` five towns at exactly `0.8222`.
+Meanwhile a *correct* pinpoint match routinely has a plausible runner-up close behind it:
+`"Baker Street 221B, London NW1 6XE"` returns the right building, matching postcode, at `0.991` —
+with an unrelated Baker Street at `0.962`.
+
+So `ambiguityMargin = 0.1` does not catch more ambiguity. It rejects clear winners. Against a
+24-address corpus (12 realistic complete addresses expected to resolve, 12 vague, misspelled, or
+nonexistent expected to decline):
+
+| calibration | correct | false declines | false resolves |
+|---|---|---|---|
+| `0.8` / `0.1` — as shipped | 21/24 | **3** | 0 |
+| `0.97` / `0.01` — now | **24/24** | 0 | 0 |
+
+The three false declines were `"Baker Street 221B, London NW1 6XE"` (0.991/0.962),
+`"Rue de Rivoli 99, 75001 Paris"` (0.995/0.959) and `"Gran Via 28, 28013 Madrid"` (0.988/0.952) —
+in every case the geocoder returned the exactly-right address, with the right postcode, as its top
+hit. **Per D4 those become `MarkAddressUnresolvable`, which is deliberately not retried**, so the
+defect is permanent per address and silent: a quarter of realistic addresses written off, with the
+correct answer having been in hand.
+
+**Why the fix is a higher floor rather than a narrower margin.** Because no margin separates the
+remaining cases. `"Kaiserstrasse 12, 4020 Linz"` resolves to *Rainerstraße* 12 — wrong street, right
+city — with a gap of `0.031` to its runner-up, *wider* than the correct Baker Street match's `0.029`.
+Ranked by margin the wrong answer beats the right one. Ranked by absolute score they separate
+cleanly: the wrong matches sit at 0.913…0.958, the correct ones at ≥0.988. So the floor moved up into
+that gap and the margin shrank to what it is actually good at — catching ties. `0.96`–`0.98` paired
+with `0.005`–`0.02` all score 24/24; `0.97` / `0.01` is the middle of that plateau rather than an
+edge of it.
+
+Both constants are now named (`defaultMinRelevance`, `defaultAmbiguityMargin`) and both remain
+labelled arguments, because this is an *Esri* calibration sitting in a provider-neutral module — the
+tension is real and is recorded in Follow-ups rather than papered over. Two regression tests carry the
+measurement into the suite: the correct-match-with-plausible-runner-up case, and the wrong-street case
+that explains why the margin alone could not do it.
+
+### The deploy round: step 7's wiring works, and two things behind it do not
+
+The deploy carrying step 7 landed, and checking it turned up the reason this was never going to run —
+twice over. Neither was visible from the code the plan had been reasoning about, because both sit
+*outside* it: one in a generated file that is committed rather than built, one in the AWS runtime
+builder. The first is fixed; the second is now the gate. Both are recorded in full, because the way
+each stayed hidden is the reusable part.
+
+**What works, confirmed on real infrastructure.** `AllAutomationSlices` now carries
+`GEOCODER_ENDPOINT` pointing at the platform's Function URL. Both of step 7's prerequisites are
+therefore proven end to end: the platform stack export, the cross-stack `StackReference` read in
+`deployPlugin`, and `registerCapabilityEnv` merging into the slice Lambda's `envVars`. That is the
+part the step was least sure of, and it is the part that turned out fine.
+
+**Blocker 1 — the committed composition root never wired the slice. ✅ fixed in `c05641014`.**
+`Plugin.res` is generated but *committed*, and CI compiles it directly rather than re-running the
+generator (CLAUDE.md says so explicitly). It was never regenerated when step 5 added
+`GeocodeCustomerAddress`, so the deployed `HANDLER_CONFIG` listed only `AutoShipOrder` and
+`SendOrderConfirmation` — while `GEOCODER_ENDPOINT` sat correctly beside it. The endpoint arrived;
+the only component that reads it did not. The generator finds the slice perfectly well: re-running it
+adds `GeocodeCustomerAddressSlice` at both `~outboundTranslationSlices` call sites and gives it its
+`componentChapters` entry. Until that commit the feature had never been deployed, and no amount of
+correct plugin code would have changed it.
+
+*Worth generalising, because the trap is not specific to this slice:* a generated-but-committed file
+is only as current as the last person to run the generator, and nothing fails when it is stale — the
+build is green, the tests are green, and the component silently does not exist. Every check this plan
+listed under Verification passes with the slice absent.
+
+**Blocker 2 — the AWS runtime has no way to feed an aggregate-sourced outbound slice.** This is the
+step 1 capability, missing on the deploy side. `AutomationSliceRuntime_Builder_Single` has two
+finalizers, and only `finishWithDcbEventLog` is ever called
+([Platform.res:808](../../reventless/aws/src/Platform.res#L808)) — the plain `finish()` has no call
+site. That finalizer builds exactly one channel:
+
+```rescript
+let eventTopics: ReventlessCore.EventTopic.allOutputs = Dict.fromArray([
+  ("DcbEventLog", dcbOutputs.eventTopic),
+])
+```
+
+and its own comment calls the DCB stream "the sole source for automation/outbound slices". The AWS
+`OutboundTranslationSlice_Builder` confirms it from the other end: it accepts `~allEventTopics` and
+passes it to the *core* component, but `registerAutomationSlice` records only the name, module paths,
+callback type and query-db table — **no source information at all**. So the runtime cannot know a
+slice wanted `["Customer"]`, and the Customer aggregate's `Registered` / `AddressUpdated` events live
+on the aggregate's own EventTopic stream, never on the DCB log.
+
+Step 1 closed the gap in `reventless-core` and in the local platform — which is exactly why the GWT
+suite is green and why this stayed invisible. The AWS *runtime* half was never done. Until it is, the
+slice deploys and then waits for events that structurally cannot reach it.
+
+This is bigger than a wiring fix: it needs the aggregate EventTopic outputs to be available at
+`onDcbSlicesCreated` time (or a per-slice channel spec carried through `registerAutomationSlice`),
+which is a design question about the deploy lifecycle rather than a line to add. It is now the real
+gate on step 7, and it changes step 9's estimate too — the injected port does nothing for a slice
+that never receives an event.
+
 ### Open
 
-- **Step 7 is wired but unproven.** Every code path exists and compiles; nothing has spoken to a real
-  geocoder. The first deployed run is still the first test of D3's relevance threshold against real
-  scores and of the SDK call itself, and it is the gate on step 9.
+- **Resolved by the deploy: the wire contract now carries `relevance`.** Before it, the live Function
+  URL returned `{label, lat, lng}` and nothing else — which under `confidentMatch` declines *every*
+  address, since an unscored candidate is not confident. It now answers
+  `{label, lat, lng, relevance}`, so step 2's pass-through and D2's shape are confirmed against the
+  real service. Recorded rather than deleted because that stale state is exactly what a
+  provider-mismatch looks like from the outside — uniformly unresolvable, with nothing pointing at
+  the cause — and it is the failure mode the provider-calibration follow-up warns about.
 - **The geocoder is provisioned only inside `switch hostUiBundle`.** So a platform with no host-UI
   bundle has no geocoder to export, even though D9 makes geocoding a platform capability rather than
   a UI feature. Left alone deliberately — moving it is step 10's territory, where the Function URL is
   deleted anyway — but it is why the capability is not yet reachable on a headless platform.
-- **Step 9 is ready and blocked only by evidence.** The port type it targets exists (7a), and the env
-  channel it needs is built and shared with step 7. What remains is deleting `GeocodingService`,
-  accepting an argument in `translate`, and granting the Lambda place-index read.
+- **Step 9 is ready in itself, and now gated by blocker 2 rather than by evidence.** The port type it
+  targets exists (7a), the env channel it needs is built and shared with step 7, and D3's calibration
+  is measured. What remains on its own account is small: delete `GeocodingService`, accept an
+  argument in `translate`, grant the Lambda place-index read. But swapping the transport does nothing
+  for a slice that never receives an event, so the AWS runtime's aggregate-source gap comes first.
 - **Step 10 waits on a UI release** — cross-repo, and the interval is safe by D9's sequencing.

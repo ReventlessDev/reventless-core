@@ -60,9 +60,35 @@ provider's job, and its canonical rendering comes back as `candidate.label`.
 */
 type search = (~text: string) => promise<result<array<candidate>, failure>>
 
-/** The default confidence floor. A starting point, not a finding — the first
-    real corpus of addresses is what should set it. */
-let defaultMinRelevance = 0.8
+/**
+The default confidence floor, calibrated against Amazon Location's Esri index.
+
+Measured, not guessed — and the measurement moved it a long way. Esri does not
+spread its scores over 0…1: everything it is willing to return at all lands in
+roughly 0.9…1.0, so a floor of `0.8` admitted almost every answer and left the
+ambiguity margin doing all the work. The separation is up at the top of the
+range instead — in a 24-address corpus the correct pinpoint matches scored
+≥ 0.988 while the wrong ones (a misspelling resolved to the wrong state, a
+street name matched to a different street in the right city) scored 0.913…0.958.
+
+`0.97` sits in that gap. The wider consequence is that these numbers are
+*provider-calibrated* even though everything else in this module is
+provider-neutral, which is exactly why both are labelled arguments: a geocoder
+that scores on a different curve needs its own pair, and the defaults are the
+Esri answer rather than a universal one.
+*/
+let defaultMinRelevance = 0.97
+
+/**
+How close the runner-up may come before the answer is called ambiguous.
+
+Deliberately small, for the same reason the floor is large. Genuine ambiguity in
+Esri shows up as a *tie* — "Springfield" returns five states at exactly 1.0,
+"221B Baker" five towns at exactly 0.8222 — not as a near miss. A wide margin
+does not catch more of those; it only starts rejecting clear winners, because a
+correct match at 0.991 routinely has a plausible runner-up at 0.962.
+*/
+let defaultAmbiguityMargin = 0.01
 
 /**
 The one candidate confident enough to store, or `None`.
@@ -81,7 +107,7 @@ a caller that wants to show them.
 let confidentMatch = (
   candidates: array<candidate>,
   ~minRelevance: float=defaultMinRelevance,
-  ~ambiguityMargin: float=0.1,
+  ~ambiguityMargin: float=defaultAmbiguityMargin,
 ): option<candidate> =>
   switch candidates->Array.get(0) {
   | None => None
