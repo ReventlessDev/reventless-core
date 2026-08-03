@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.207 (2026-08-03)
+
+### Bug Fixes
+
+* **dcb:** let the produced/consumed check see aggregate producers ([0075360](https://github.com/ReventlessDev/reventless-core/commit/0075360fc5915b166ab25b6acca2c8580e5b4ecb))
+* **geocoding:** calibrate the confidence rule against a real index ([cd72b27](https://github.com/ReventlessDev/reventless-core/commit/cd72b2741460c871db2915a8603f7837b8191187))
+
+
 # 3.0.0-alpha.206 (2026-08-03)
 
 ### Features

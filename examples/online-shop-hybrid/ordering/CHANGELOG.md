@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.181 (2026-08-03)
+
+### Bug Fixes
+
+* **examples:** wire the geocoding slice into the ordering plugin root ([db2eb78](https://github.com/ReventlessDev/reventless-core/commit/db2eb789ee1a1dea7b879994211dc4bb04ca0cf6))
+
+
 # 1.0.0-alpha.180 (2026-08-03)
 
 ### Features

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.261 (2026-08-03)
+
+### Features
+
+* **aws:** let an outbound slice read an aggregate at runtime ([24585f8](https://github.com/ReventlessDev/reventless-core/commit/24585f869c15a07910434632d76d8c8d8058042b))
+
+
 # 3.0.0-alpha.260 (2026-08-03)
 
 ### Bug Fixes
