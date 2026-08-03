@@ -17,6 +17,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder, AutoShipOrder_Automation)
 
   // OutboundTranslationSlices
+  module GeocodeCustomerAddressSlice = Platform.OutboundTranslationSlice.Make(GeocodeCustomerAddress, GeocodeCustomerAddress_Translation)
   module SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make(SendOrderConfirmation, SendOrderConfirmation_Translation)
 
   // Aggregates
@@ -42,10 +43,10 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~stateViewSlices=[module(AvailableProductsStreamSlice), module(OrdersStreamSlice)],
     ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
     ~automationSlices=[module(AutoShipOrderSlice)],
-    ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
+    ~outboundTranslationSlices=[module(GeocodeCustomerAddressSlice), module(SendOrderConfirmationSlice)],
     ~extensions=[module(Products_Extension)],
     ~extensionPoints=[module(Orders_ExtensionPointMapping)],
-    ~componentChapters=Dict.fromArray([("AutoShipOrder", "Order"), ("AvailableProducts", "CatalogProduct"), ("CancelOrder", "Order"), ("Customer", "Customer"), ("Customers", "Customer"), ("Orders", "Order"), ("PlaceOrder", "Order"), ("SendOrderConfirmation", "Order"), ("ShipOrder", "Order"), ("SyncCatalogProduct", "CatalogProduct")]),
+    ~componentChapters=Dict.fromArray([("AutoShipOrder", "Order"), ("AvailableProducts", "CatalogProduct"), ("CancelOrder", "Order"), ("Customer", "Customer"), ("Customers", "Customer"), ("GeocodeCustomerAddress", "Customer"), ("Orders", "Order"), ("PlaceOrder", "Order"), ("SendOrderConfirmation", "Order"), ("ShipOrder", "Order"), ("SyncCatalogProduct", "CatalogProduct")]),
   )
 
   let make = () =>
@@ -59,7 +60,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
       ~stateViewSlices=[module(AvailableProductsStreamSlice), module(OrdersStreamSlice)],
       ~automationSlices=[module(AutoShipOrderSlice)],
-      ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
+      ~outboundTranslationSlices=[module(GeocodeCustomerAddressSlice), module(SendOrderConfirmationSlice)],
       ~pluginStructure=pluginStructure,
       ~componentRuntime=Dict.fromArray([("Customers", {ReventlessInfra.RuntimeHints.memorySize: Some(2048), timeout: None}), ("Customer", {ReventlessInfra.RuntimeHints.memorySize: Some(1536), timeout: None}), ("PlaceOrder", {ReventlessInfra.RuntimeHints.memorySize: Some(768), timeout: Some(60)}), ("Orders", {ReventlessInfra.RuntimeHints.memorySize: Some(1024), timeout: None})]),
       ~uiFragments=?uiBundleUrl->Option.map(url =>

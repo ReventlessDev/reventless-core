@@ -22,11 +22,13 @@ import * as CancelOrder_Behavior$OrderingPlugin from "./Order/StateChangeSlice/C
 import * as Products_ExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/Products_ExtensionPoint.res.mjs";
 import * as Customers_Projections$OrderingPlugin from "./Customer/ReadModelStream/Customers_Projections.res.mjs";
 import * as SendOrderConfirmation$OrderingPlugin from "./Order/OutboundTranslationSlice/SendOrderConfirmation.res.mjs";
+import * as GeocodeCustomerAddress$OrderingPlugin from "./Customer/OutboundTranslationSlice/GeocodeCustomerAddress.res.mjs";
 import * as AutoShipOrder_Automation$OrderingPlugin from "./Order/AutomationSlice/AutoShipOrder_Automation.res.mjs";
 import * as SyncCatalogProduct_Behavior$OrderingPlugin from "./CatalogProduct/StateChangeSlice/SyncCatalogProduct_Behavior.res.mjs";
 import * as AvailableProducts_Projection$OrderingPlugin from "./CatalogProduct/StateViewSliceStream/AvailableProducts_Projection.res.mjs";
 import * as Orders_ExtensionPointMapping$OrderingPlugin from "./ExtensionPoint/Orders_ExtensionPointMapping.res.mjs";
 import * as SendOrderConfirmation_Translation$OrderingPlugin from "./Order/OutboundTranslationSlice/SendOrderConfirmation_Translation.res.mjs";
+import * as GeocodeCustomerAddress_Translation$OrderingPlugin from "./Customer/OutboundTranslationSlice/GeocodeCustomerAddress_Translation.res.mjs";
 
 function Make(Platform) {
   let CancelOrderSlice = Platform.StateChangeSlice.Make({
@@ -132,6 +134,22 @@ function Make(Platform) {
     moduleUrl: AutoShipOrder_Automation$OrderingPlugin.moduleUrl,
     mappings: AutoShipOrder_Automation$OrderingPlugin.mappings
   });
+  let GeocodeCustomerAddressSlice = Platform.OutboundTranslationSlice.Make({
+    name: GeocodeCustomerAddress$OrderingPlugin.name,
+    moduleUrl: GeocodeCustomerAddress$OrderingPlugin.moduleUrl,
+    consumedEventSchema: GeocodeCustomerAddress$OrderingPlugin.consumedEventSchema,
+    outboundItemSchema: GeocodeCustomerAddress$OrderingPlugin.outboundItemSchema,
+    inboundCommandSchema: GeocodeCustomerAddress$OrderingPlugin.inboundCommandSchema,
+    maxRetries: GeocodeCustomerAddress$OrderingPlugin.maxRetries,
+    heartbeatInterval: GeocodeCustomerAddress$OrderingPlugin.heartbeatInterval,
+    targetName: GeocodeCustomerAddress$OrderingPlugin.targetName,
+    sourceNames: GeocodeCustomerAddress$OrderingPlugin.sourceNames,
+    externalSystem: GeocodeCustomerAddress$OrderingPlugin.externalSystem
+  })({
+    collect: GeocodeCustomerAddress_Translation$OrderingPlugin.collect,
+    translate: GeocodeCustomerAddress_Translation$OrderingPlugin.translate,
+    moduleUrl: GeocodeCustomerAddress_Translation$OrderingPlugin.moduleUrl
+  });
   let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make({
     name: SendOrderConfirmation$OrderingPlugin.name,
     moduleUrl: SendOrderConfirmation$OrderingPlugin.moduleUrl,
@@ -231,7 +249,10 @@ function Make(Platform) {
     PlaceOrderSlice,
     ShipOrderSlice,
     SyncCatalogProductSlice
-  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, [Products_Extension], [{
+  ], [AutoShipOrderSlice], [
+    GeocodeCustomerAddressSlice,
+    SendOrderConfirmationSlice
+  ], undefined, [Products_Extension], [{
       ExtensionPoint: {
         name: Orders_ExtensionPoint$OrderingSpec.name,
         moduleUrl: Orders_ExtensionPoint$OrderingSpec.moduleUrl,
@@ -273,6 +294,10 @@ function Make(Platform) {
       "Customer"
     ],
     [
+      "GeocodeCustomerAddress",
+      "Customer"
+    ],
+    [
       "Orders",
       "Order"
     ],
@@ -301,7 +326,10 @@ function Make(Platform) {
   ], [
     AvailableProductsStreamSlice,
     OrdersStreamSlice
-  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, undefined, Object.fromEntries([
+  ], [AutoShipOrderSlice], [
+    GeocodeCustomerAddressSlice,
+    SendOrderConfirmationSlice
+  ], undefined, undefined, Object.fromEntries([
     [
       "Customers",
       {
@@ -339,6 +367,7 @@ function Make(Platform) {
     AvailableProductsStreamSlice: AvailableProductsStreamSlice,
     OrdersStreamSlice: OrdersStreamSlice,
     AutoShipOrderSlice: AutoShipOrderSlice,
+    GeocodeCustomerAddressSlice: GeocodeCustomerAddressSlice,
     SendOrderConfirmationSlice: SendOrderConfirmationSlice,
     CustomerAggregate: CustomerAggregate,
     CustomersReadModel: CustomersReadModel,
