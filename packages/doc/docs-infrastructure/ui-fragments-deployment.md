@@ -91,7 +91,7 @@ No CDN, no S3, no bundle distributions. The host shell rebuilds itself on save l
 - Ordered cache behaviors layered on top of the default `CachingOptimized` policy:
   - `/remoteEntry.js`, `/index.html`, `/config.json` use `CachingDisabled` (TTL 0).
   - Hashed `/assets/*.<hash>.js` chunks keep the long-cache default.
-- A `config.json` `BucketObject` whose **content** is derived from Pulumi `Output`s at deploy time — `apiEndpoint`, `platformApiEndpoint`, `region`, `authMode`, `cognitoUserPoolId`, `cognitoClientId`. No rebuild of the host shell SPA is needed when these change.
+- A `config.json` `BucketObject` whose **content** is derived from Pulumi `Output`s at deploy time — `apiEndpoint`, `platformApiEndpoint`, `region`, `authMode`, `cognitoUserPoolId`, `cognitoClientId`, `liveUpdates`, and (when the corresponding resource is provisioned) `domainApiEventsEndpoint` / `platformApiEventsEndpoint` / `clientEventsNamespace` and `geocoderEndpoint`. Deployment *choices* — `viewModes` and anything passed through `shellConfig` — are merged in beside them. No rebuild of the host shell SPA is needed when any of this changes.
 - Stack output `hostShellUrl`.
 
 #### Conditional: custom domain
@@ -135,9 +135,17 @@ The host shell SPA itself is built upstream by `reventless-ui`'s `host-shell` pa
   "region": "<aws region>",
   "authMode": "cognito",
   "cognitoUserPoolId": "<aws region>_XXXXXXXXX",
-  "cognitoClientId": "<26-char client id>"
+  "cognitoClientId": "<26-char client id>",
+  "liveUpdates": true,
+  "domainApiEventsEndpoint": "https://<id>.appsync-api.<region>.amazonaws.com/event",
+  "platformApiEventsEndpoint": "https://<id>.appsync-api.<region>.amazonaws.com/event",
+  "clientEventsNamespace": "client",
+  "geocoderEndpoint": "https://<id>.lambda-url.<region>.on.aws/",
+  "viewModes": ["map"]
 }
 ```
+
+The first block of keys is always present. The events keys appear only when the stack has an AppSync Events API — `clientEventsNamespace` is a capability gate, and a client hides publish-dependent features (presence, transient chat) when it is absent. `geocoderEndpoint` appears only when `~hostUiBundle` carries a `geocoderPlaceIndex`. `viewModes` (and each mode's flattened options) appears only when `~hostUiBundle` names one.
 
 `authMode: "cognito"` matches the AppSync auth wiring used for host-UI login — every AWS AppSync GraphQL API uses `AMAZON_COGNITO_USER_POOLS` as its primary authenticationType with `AWS_IAM` as the single additional provider for server-to-server lambdas.
 
@@ -159,6 +167,25 @@ let default = Platform.deployPlatform(
 ```
 
 `assetsDir` is resolved relative to the directory containing `Pulumi.yaml` (the `platform-aws/` folder). The three `../` traverse up from `platform-aws/` → `online-shop-hybrid/` → `examples/` → repo root, where hoisted `node_modules/` lives. No separate build step is needed — `pnpm install` extracts the published tarball (which already contains `dist/`).
+
+### Choosing what the shell *does*
+
+Most of `config.json` tells the shell where things are. Two `~hostUiBundle` fields tell it what to be:
+
+```rescript
+~hostUiBundle={
+  viewModes: [Map({})],
+  shellConfig: Dict.fromArray([("platformName", JSON.Encode.string("Online Shop"))]),
+}
+```
+
+**`viewModes`** names the optional view modes the shell loads at boot. Each mode is a separate package with a heavy dependency (maplibre-gl, cytoscape) reached through a dynamic `import()`, so a deployment that names none downloads none — which is exactly why the modes have to be opted into rather than shipped on. It is a closed variant (`Map(mapOptions)` / `Graph(graphOptions)`), not the wire's `array<string>`: a mode is looked up by name in the shell's registry, so a misspelling would type-check, deploy, and produce an app with the feature silently missing. Per-mode options ride on their arm and are flattened onto the wire (`Map({style})` ⇒ `"viewModes": ["map"], "mapStyle": …`), so a style set with the map off cannot be expressed.
+
+Naming `Map` turns on **both** halves of the map feature — the map view mode *and* the map-backed geo-point command input are registered by the same `init` — and it is also what makes a provisioned `geocoderPlaceIndex` reachable, since the shell builds its geocoder client inside the map chunk. A stack that provisions the place index without naming the mode pays for a service no browser can call.
+
+**`shellConfig`** is an untyped `dict<JSON.t>` passthrough for keys the shell owns and the framework has no opinion about (`accessTiers`, `platformName`, `assetOrigins`, `uiHintsUrl`). It merges in under the computed keys; a key that collides with one the deploy computes **fails the deploy naming the key**, rather than quietly pointing the app at a different API.
+
+The in-memory platform accepts both fields and ignores them — it serves no `config.json` of its own. Local dev turns a view mode on by editing the host-shell package's `public/config.json`.
 
 ### Independent host-ui cadence
 

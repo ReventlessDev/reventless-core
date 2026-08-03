@@ -40,6 +40,7 @@ import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as Upload_Claim_S3$ReventlessAws from "./adapter/Upload/Upload_Claim_S3.res.mjs";
 import * as PgProjectionFeed$ReventlessAws from "./adapter/Postgres/PgProjectionFeed.res.mjs";
 import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs";
+import * as Util_ShellConfig$ReventlessAws from "./util/Util_ShellConfig.res.mjs";
 import * as Util_StoreLayout$ReventlessAws from "./util/Util_StoreLayout.res.mjs";
 import * as IndexJs from "@pulumi/pulumi/runtime/index.js";
 import * as AppSync_EventsApi$ReventlessAws from "./adapter/Api/AppSync_EventsApi.res.mjs";
@@ -1136,7 +1137,7 @@ function MakeWithConfig(Config) {
         let geocoderEpOpt = param[2];
         let eventsEpOpt = param[1];
         let match = param[0];
-        let fields = [
+        let computed = [
           [
             "apiEndpoint",
             match[0]
@@ -1166,7 +1167,7 @@ function MakeWithConfig(Config) {
             true
           ]
         ];
-        let withEvents = eventsEpOpt !== undefined ? fields.concat([
+        let withEvents = eventsEpOpt !== undefined ? computed.concat([
             [
               "domainApiEventsEndpoint",
               eventsEpOpt
@@ -1179,12 +1180,12 @@ function MakeWithConfig(Config) {
               "clientEventsNamespace",
               AppSync_EventsApi$ReventlessAws.clientNamespaceName
             ]
-          ]) : fields;
+          ]) : computed;
         let withGeocoder = geocoderEpOpt !== undefined ? withEvents.concat([[
               "geocoderEndpoint",
               geocoderEpOpt
             ]]) : withEvents;
-        return JSON.stringify(Object.fromEntries(withGeocoder));
+        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withGeocoder, hostUiBundle.viewModes, hostUiBundle.shellConfig));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: bucketName,
@@ -2362,7 +2363,7 @@ function Make($star) {
         let geocoderEpOpt = param[2];
         let eventsEpOpt = param[1];
         let match = param[0];
-        let fields = [
+        let computed = [
           [
             "apiEndpoint",
             match[0]
@@ -2392,7 +2393,7 @@ function Make($star) {
             true
           ]
         ];
-        let withEvents = eventsEpOpt !== undefined ? fields.concat([
+        let withEvents = eventsEpOpt !== undefined ? computed.concat([
             [
               "domainApiEventsEndpoint",
               eventsEpOpt
@@ -2405,12 +2406,12 @@ function Make($star) {
               "clientEventsNamespace",
               AppSync_EventsApi$ReventlessAws.clientNamespaceName
             ]
-          ]) : fields;
+          ]) : computed;
         let withGeocoder = geocoderEpOpt !== undefined ? withEvents.concat([[
               "geocoderEndpoint",
               geocoderEpOpt
             ]]) : withEvents;
-        return JSON.stringify(Object.fromEntries(withGeocoder));
+        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withGeocoder, hostUiBundle.viewModes, hostUiBundle.shellConfig));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: bucketName,

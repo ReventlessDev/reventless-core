@@ -1149,6 +1149,25 @@ module MakeWithConfig = (
     // writes the prefix once and consumes it on both sides, so a mismatch is
     // unrepresentable rather than merely discouraged.
     uploadBucket?: ReventlessInfra.Platform.objectStore,
+    // Optional view modes the deployed shell loads at boot. Written to
+    // config.json as `viewModes`, with each mode's options flattened beside it
+    // (`Map({style})` ⇒ `"viewModes": ["map"], "mapStyle": …`). Unset ⇒ both
+    // keys omitted and the shell loads no optional mode, so a non-map
+    // deployment still downloads no maplibre chunk and gets a byte-identical
+    // config.json.
+    //
+    // This is the one input that decides what the shell *does* rather than what
+    // it points at, and it is load-bearing twice over: naming `Map` is what
+    // makes both the map view and the map-backed geo-point command input exist,
+    // and it is what makes a provisioned `geocoderPlaceIndex` reachable at all
+    // (the geocoder client is built inside the map chunk).
+    viewModes?: array<ReventlessInfra.Platform.viewMode>,
+    // Shell-owned config.json keys the framework has no opinion about
+    // (`accessTiers`, `platformName`, `assetOrigins`, `uiHintsUrl`, …), merged
+    // in verbatim under the computed keys. Untyped on purpose — re-declaring
+    // the shell's schema here would cost a lockstep core release per UI knob.
+    // A key that collides with a computed one fails the deploy naming it.
+    shellConfig?: dict<JSON.t>,
   }
 
   // Merged-mode outputs of deployPlatform — the merged API(s), plus the
@@ -2055,7 +2074,7 @@ module MakeWithConfig = (
           eventsEpOpt,
           geocoderEpOpt,
         )) => {
-          let fields = [
+          let computed = [
             ("apiEndpoint", JSON.Encode.string(domainEp)),
             ("platformApiEndpoint", JSON.Encode.string(platformEp)),
             ("region", JSON.Encode.string(regionStr)),
@@ -2067,7 +2086,7 @@ module MakeWithConfig = (
           let withEvents = switch eventsEpOpt {
           | Some(ep) =>
             Array.concat(
-              fields,
+              computed,
               [
                 ("domainApiEventsEndpoint", JSON.Encode.string(ep)),
                 ("platformApiEventsEndpoint", JSON.Encode.string(ep)),
@@ -2080,13 +2099,19 @@ module MakeWithConfig = (
                 ),
               ],
             )
-          | None => fields
+          | None => computed
           }
           let withGeocoder = switch geocoderEpOpt {
           | Some(ep) => Array.concat(withEvents, [("geocoderEndpoint", JSON.Encode.string(ep))])
           | None => withEvents
           }
-          withGeocoder->Dict.fromArray->JSON.Encode.object->JSON.stringify
+          Util_ShellConfig.fields(
+            ~computed=withGeocoder,
+            ~viewModes=?cfg.viewModes,
+            ~shellConfig=?cfg.shellConfig,
+          )
+          ->JSON.Encode.object
+          ->JSON.stringify
         })
 
       let _ = PulumiAws.S3.BucketObject.make(

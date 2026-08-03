@@ -1972,6 +1972,11 @@ module MakeWithConfig = (
     // ignores them.
     geocoderPlaceIndex?: ReventlessInfra.Platform.geocoderIndex,
     uploadBucket?: ReventlessInfra.Platform.objectStore,
+    // Same terms: the AWS deploy writes these into the config.json it hosts, and
+    // local dev has no config.json of its own to write — the host-shell package
+    // serves `public/config.json`, which is where local turns a view mode on.
+    viewModes?: array<ReventlessInfra.Platform.viewMode>,
+    shellConfig?: dict<JSON.t>,
   }
   let deployPlatform = (
     ~version,

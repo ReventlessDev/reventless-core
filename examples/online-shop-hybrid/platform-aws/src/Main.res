@@ -10,6 +10,11 @@ module Platform = ReventlessAws.Platform.Make()
 // Backs the geo-point command input's address search. Provisioning it here
 // declares that this deployment wants geocoding; the framework wires the public
 // geocoder Function URL and writes `geocoderEndpoint` into config.json.
+//
+// It is only reachable because `~hostUiBundle` below names the `Map` view mode:
+// the shell builds its geocoder client inside the dynamically-imported map
+// chunk, and that same mode registers the geo-point command input. Drop one and
+// keep the other and this index is a service no browser can call.
 let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name="online-shop-geocoder")
 
 // The stores the plugins' fields declare, generated from their committed
@@ -21,6 +26,9 @@ let placeIndex = ReventlessAws.Capability_Geocoding_AwsLocation.make(~name="onli
 // before a regenerate.
 let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
-  ~hostUiBundle={geocoderPlaceIndex: placeIndex},
+  // `Map({})` — the mode with its defaults. No `style`: the mode's built-in
+  // demo tiles are the honest default for an example, and a real style URL is a
+  // per-deployment key with an account behind it.
+  ~hostUiBundle={viewModes: [Map({})], geocoderPlaceIndex: placeIndex},
   ~capabilities=PlatformCapabilities.capabilities,
 )

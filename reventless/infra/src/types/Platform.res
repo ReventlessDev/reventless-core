@@ -116,6 +116,46 @@ type capability =
 // (ARN, data source) without moving every call site.
 type geocoderIndex = {indexName: Pulumi.Input.t<string>}
 
+// Options for the shell's map view mode. Written to config.json flat, beside
+// `viewModes`, because that is where the shell reads them; carried on the arm
+// here so a style set with the map off is unrepresentable.
+type mapOptions = {
+  // Map style URL. Unset ⇒ the mode's built-in demo tiles, which is the honest
+  // default for an example; a real style is an account and a bill.
+  style?: string,
+}
+
+// Options for the shell's graph view mode. Flat on the wire for the same reason
+// as `mapOptions`.
+type graphOptions = {
+  // Graph layout algorithm. Unset ⇒ the mode's default.
+  layout?: string,
+}
+
+/**
+An optional view mode the deployed shell loads at boot.
+
+A closed variant rather than the wire's `array<string>` because a mode is looked
+up by name in the shell's registry: a misspelled or renamed mode type-checks,
+deploys, and yields an app with the feature silently absent. The cost is real
+and accepted — a mode that ships in the UI repo cannot be turned on until this
+variant grows an arm and core releases.
+
+`Map` turns on *both* halves of the map feature: the map view mode and the
+map-backed geo-point command input are registered by the same `init`.
+*/
+type viewMode =
+  | Map(mapOptions)
+  | Graph(graphOptions)
+
+// The wire spelling of a mode, owned in one place so the variant and the string
+// the shell matches on cannot drift apart.
+let viewModeToString = (mode: viewMode) =>
+  switch mode {
+  | Map(_) => "map"
+  | Graph(_) => "graph"
+  }
+
 // Module type alias so StateViewSliceStream can reference the component T
 // without being confused by the `module StateViewSlice` declaration inside T.
 module type StateViewSliceComponentT = StateViewSlice.T
@@ -325,6 +365,20 @@ module type T = {
     // a deployment cannot mint refs under one prefix and serve another.
     // In-memory platforms ignore this.
     uploadBucket?: objectStore,
+    // Optional view modes the shell loads at boot, written to config.json as
+    // `viewModes` with each mode's options flattened beside it. Unset ⇒ the key
+    // is omitted and no optional mode loads: every mode is a separate
+    // dynamically-imported chunk, so a deployment that names none downloads
+    // none. In-memory platforms ignore this.
+    viewModes?: array<viewMode>,
+    // Shell-owned config.json keys the framework has no opinion about
+    // (`accessTiers`, `platformName`, `assetOrigins`, `uiHintsUrl`, …), merged
+    // in verbatim under the keys the deploy computes. Untyped on purpose: these
+    // belong to the shell's schema, and re-declaring them here would mean a
+    // lockstep core release every time the UI adds a knob. A key that collides
+    // with a computed one fails the deploy naming it, rather than quietly
+    // pointing the app somewhere else. In-memory platforms ignore this.
+    shellConfig?: dict<JSON.t>,
   }
 
   /** Deploy a complete platform: creates the scheduler, builds each plugin,
