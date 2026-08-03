@@ -78,7 +78,7 @@ function Make(RuntimeEnvironment) {
         A.Spec.eventSchema
       ]);
       Plugin_Helpers$ReventlessCore.registerAdminAggregateMutations(aggregates, Config.hooks);
-      let dcbResult = DcbBuilder.construct(Platform_Admin_Structure$ReventlessCore.pluginId, Platform_Admin_Structure$ReventlessCore.pluginId, "Platform", true, undefined, undefined, aggregateEventTopics, aggregateProducedEvents, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, undefined, undefined, undefined, opts);
+      let dcbResult = DcbBuilder.construct(Platform_Admin_Structure$ReventlessCore.pluginId, Platform_Admin_Structure$ReventlessCore.pluginId, "Platform", true, undefined, undefined, aggregateEventTopics, aggregateProducedEvents, undefined, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, undefined, undefined, undefined, opts);
       let slicePublishJsons = dcbResult.dcbPublishJsons;
       if (slicePublishJsons !== undefined) {
         stateChangeSlices.forEach(Sc => {

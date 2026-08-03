@@ -94,6 +94,17 @@ module Make = (
     // also drives DCB GSI creation: an aggregate's events live on its own
     // EventLog and must not mint indexes on the DCB table.
     ~aggregateProducedEvents: array<(string, S.t<unknown>)>=[],
+    // Per-aggregate command publishers, keyed by Aggregate `Spec.name`. An
+    // OutboundTranslationSlice naming one in `targetName` publishes its command
+    // through that aggregate's CommandTopic instead of this plugin's DCB topic —
+    // the two are handled by different Lambdas, so sending an aggregate command
+    // to the DCB queue delivers it somewhere nothing handles it.
+    //
+    // Populated before this runs (`createAggregatesWithoutEventMappers`), so the
+    // publisher is in hand by the time a slice is built. DCB StateChangeSlice
+    // publishers are registered *after* and are deliberately absent: a slice
+    // targeting one wants the DCB topic, which is the fallback.
+    ~publishToAggregates: dict<Pulumi.Output.t<CommandTopic.publishJsons>>=Dict.make(),
     ~stateChangeSlices: array<module(StateChangeSlice.T)>,
     ~stateViewSlices: array<module(StateViewSlice.T)>,
     ~automationSlices: array<module(AutomationSlice.T)>,
@@ -629,12 +640,21 @@ module Make = (
         let outboundTranslationSlicesOutputs =
           outboundTranslationSlices
           ->Array.map((module(OTS: OutboundTranslationSlice.T)) => {
+            // Where this slice's inbound command goes. `targetName` naming an
+            // Aggregate routes to that aggregate's CommandTopic; anything else —
+            // a DCB slice, or no target at all — keeps the plugin's DCB topic,
+            // which is what every slice wanted before aggregates were reachable.
+            let targetPublishJsons =
+              OTS.Spec.targetName
+              ->Option.flatMap(target => publishToAggregates->Dict.get(target))
+              ->Option.getOr(publishJsons)
+
             let ots = OTS.make(
               ~dcbEventLog,
               // Same dict the AutomationSlices get, so an outbound slice can
               // name an Aggregate source by its Spec.name.
               ~allEventTopics,
-              ~publishJsons,
+              ~publishJsons=targetPublishJsons,
               ~runtime=?componentRuntime->Dict.get(OTS.Spec.name),
               ~opts,
             )

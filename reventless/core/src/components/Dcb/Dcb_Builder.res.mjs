@@ -83,13 +83,14 @@ let emptyResult = {
 
 function Make(DcbEventLogStorage) {
   return DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => (RuntimeBuilder => (HooksConfig => {
-    let construct = (name, childName, apiNamePrefixOpt, onAdminApiOpt, environmentOpt, platformNameOpt, aggregateEventTopicsOpt, aggregateProducedEventsOpt, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponentsOpt, componentRuntimeOpt, pluginStructure, opts) => {
+    let construct = (name, childName, apiNamePrefixOpt, onAdminApiOpt, environmentOpt, platformNameOpt, aggregateEventTopicsOpt, aggregateProducedEventsOpt, publishToAggregatesOpt, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponentsOpt, componentRuntimeOpt, pluginStructure, opts) => {
       let apiNamePrefix = apiNamePrefixOpt !== undefined ? apiNamePrefixOpt : name;
       let onAdminApi = onAdminApiOpt !== undefined ? onAdminApiOpt : false;
       let environment = environmentOpt !== undefined ? environmentOpt : "";
       let platformName = platformNameOpt !== undefined ? platformNameOpt : "";
       let aggregateEventTopics = aggregateEventTopicsOpt !== undefined ? aggregateEventTopicsOpt : ({});
       let aggregateProducedEvents = aggregateProducedEventsOpt !== undefined ? aggregateProducedEventsOpt : [];
+      let publishToAggregates = publishToAggregatesOpt !== undefined ? publishToAggregatesOpt : ({});
       let systemCallableComponents = systemCallableComponentsOpt !== undefined ? systemCallableComponentsOpt : [];
       let componentRuntime = componentRuntimeOpt !== undefined ? componentRuntimeOpt : ({});
       let hasDcb = stateChangeSlices.length !== 0;
@@ -330,7 +331,8 @@ function Make(DcbEventLogStorage) {
         ];
       }));
       let outboundTranslationSlicesOutputs = Object.fromEntries(outboundTranslationSlices.map(OTS => {
-        let ots = OTS.make(dcbEventLog, allEventTopics, publishJsons, componentRuntime[OTS.Spec.name], opts);
+        let targetPublishJsons = Stdlib_Option.getOr(Stdlib_Option.flatMap(OTS.Spec.targetName, target => publishToAggregates[target]), publishJsons);
+        let ots = OTS.make(dcbEventLog, allEventTopics, targetPublishJsons, componentRuntime[OTS.Spec.name], opts);
         return [
           OTS.Spec.name,
           Component$ReventlessCore.outputs(ots)

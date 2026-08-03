@@ -168,6 +168,9 @@ module Make = (
       ~platformName=Spec.platformName,
       ~aggregateEventTopics,
       ~aggregateProducedEvents,
+      // Carries the aggregate publishers registered just above, so an outbound
+      // slice can route its command to the aggregate it names.
+      ~publishToAggregates,
       ~stateChangeSlices,
       ~stateViewSlices,
       ~automationSlices,

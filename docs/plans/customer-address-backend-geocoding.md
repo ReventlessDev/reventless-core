@@ -10,9 +10,12 @@ round](#the-measurement-round-d3-calibrated-against-a-real-index). Step 7's fast
 **built end to end and awaiting a deploy to prove it.** Checking the deployed stack turned up three
 reasons it could never have run, none of them in the plugin code: the stale composition root
 (fixed, `c05641014`), the AWS runtime's inability to feed an outbound slice from an aggregate — step
-1's capability, never built on the deploy side (now fixed, and confirmed in a `pulumi preview` to
-resolve `GeocodeCustomerAddress` onto the Customer aggregate's stream) — and a false-positive DCB
-validation error, fixed by giving the validator the aggregates' event schemas. See [the deploy
+1's capability, never built on the deploy side (now fixed, and confirmed live: the Lambda carries an
+enabled event-source mapping on `CustomerAggrEventLog` and routes records to the slice) — a
+false-positive DCB validation error, fixed by giving the validator the aggregates' event schemas —
+and, once events finally arrived, a `phase1` shape mismatch that had been crashing **every** outbound
+slice on AWS since step 1, fixed by making each callback protocol a single declaration. See [the
+deploy
 round](#the-deploy-round-step-7s-wiring-works-and-two-things-behind-it-do-not). Step 10 waits on a UI
 release.
 See [Build log](#build-log) at the foot for what landed and what the build taught that the plan had
@@ -1012,6 +1015,92 @@ errors and continues, which is why the deploy succeeds — but it is the same bl
 a third place, and corrosive in a specific way: a deploy that prints `ERROR` for correct code teaches
 everyone to skim past `ERROR`. **Fixed** by feeding the aggregates' event schemas in as producers;
 see Follow-ups for the shape and for the one place they are deliberately *not* added.
+
+**Blocker 4 — every outbound slice on AWS had been crashing since step 1, and the test said
+otherwise.** With the first three cleared, the slice finally received an event — and died on it:
+
+```
+found 1 handler(s) for …CustomerAggrEventLog…
+TypeError: Cannot read properties of undefined (reading 'TAG')
+  at Module.collect (…/GeocodeCustomerAddress_Translation.res.mjs:7:13)
+```
+
+Everything up to `collect` worked; the argument was `undefined`. Step 1 changed `phase1` to take
+`(sourceId, event)` pairs, but `AutomationSliceEntryPoint_Ops` still emitted bare events. A ReScript
+tuple compiles to an array, so destructuring a bare event object yields `undefined` for both halves.
+**This was never specific to aggregate sources** — `SendOrderConfirmation` had been failing the same
+way on every order since step 1, unnoticed.
+
+*Why the compiler was silent, which is the part worth keeping.* The entry point builds callbacks
+dynamically per `HANDLER_CONFIG` entry, from modules it `dynamicImport`s at runtime, so it cannot
+name `OutboundTranslationSlice_Callback.T` — the Spec is not known statically. It therefore declared
+its **own structural copy** of the callback shape to ascribe at the JS boundary. That copy was a
+second source of truth: internally consistent, never reconciled with the original, and silently wrong
+the moment core changed. Step 1's "five call sites, all updated" was accurate for every site the
+compiler could see; this one was invisible by construction.
+
+*And the test was holding it in place.* `AutomationSliceEntryPoint_OpsTest` covers exactly this
+function — and asserted the bare-event shape, against that same drifted local type. The one test that
+should have caught the regression was pinning it instead, because it agreed with the copy rather than
+with the callback. A test written against a restated type inherits the restatement's errors.
+
+*The fix is structural, not a patched call site.* Each callback module now owns its protocol as named
+types — `phase1`, `phase2`, and a `runtime` record — used by its own `module type T` and **aliased**
+by the entry point rather than restated. Verified by changing the core type and watching the build
+fail. The same treatment went to `AutomationSlice_Callback`, which had the identical hand-written copy
+sitting beside it and would have drifted the same way on its next signature change.
+
+**Blocker 5 — the slice geocodes correctly and then cannot deliver the answer.** With blocker 4
+cleared the slice ran properly for the first time, and the log records how far it got:
+
+```
+save: saved state to GeocodeCustomerAddressTodo-50d9488: id=geo-probe-1:Karlsplatz 1, 1010 Vienna, Austria
+failed to publish command: … not authorized to perform: sqs:sendmessage
+  on resource: …:OrderingDcbCmdTopic-01908ac
+```
+
+**That line is reachable only after `translate` returned `Ok(Some(…))`**, so everything this plan set
+out to build is now proven against the real service: `collect` keyed the item with the `~sourceId`
+step 1 added, the geocoder was called and answered, and `confidentMatch` at the recalibrated
+`0.97`/`0.01` accepted the result and produced a `SetLocation`. D3 and D4 are no longer theoretical.
+
+What fails is the last hop, and it is two faults wearing one error message.
+
+*Fault A — no IAM grant.* The `AllAutomationSlices` role cannot `sqs:SendMessage` to the command
+topic at all. This was never specific to geocoding: `SendOrderConfirmation` publishes the same way and
+would have hit it identically. It never did, because blocker 4 killed that slice before it could
+reach a publish. **Two defects concealing each other** — fixing the first is what exposed the second,
+and neither could have been found while the other stood.
+
+*Fault B — the wrong queue.* `makePublishJsons(entry.dcbQueueUrl)` hardwires the plugin's *DCB*
+command topic. `SetLocation` targets the **Customer aggregate**, whose commands travel through
+`CustomerAggrCmdTopic` to a different handler. So the grant alone would not fix this: it would
+faithfully deliver the command somewhere nothing handles it — a silent no-op rather than an error,
+which is the worse outcome of the two.
+
+The cause is that **`targetName` has no consumer.** `GeocodeCustomerAddress` declares
+`targetName = Some("Customer")`, the Spec has carried the field all along, and nothing in the builder
+reads it for routing. It documented an intention the framework never acted on. This is blocker 2's
+shape a second time: the DCB direction was built and the aggregate direction was not, and the
+declaration that should have exposed the gap was inert instead.
+
+*Why the fix is tractable.* `publishToAggregates` already exists — a dict of per-aggregate publish
+functions, threaded into read models and extension points — and `createAggregatesWithoutEventMappers`
+populates it **before** `Dcb_Builder.construct` runs, so the Customer publisher is in hand at the
+moment an outbound slice is built. The work is to thread that dict into `Dcb_Builder`, have the
+outbound slice resolve its publisher through `Spec.targetName` (falling back to the DCB topic, which
+is what every existing slice wants), carry the resolved queue into `HANDLER_CONFIG` so the Lambda
+publishes to the same place, and grant the role `SendMessage` on it.
+
+**A note this plan owes step 6, found while repairing the fallout.** Adding a non-nullable field to a
+read model breaks the *entire list query* for every pre-existing row. `locationStatus` is non-null in
+the generated schema; the eight seeded customers predate it and carry no such attribute; GraphQL
+propagates a null in a non-nullable field up to its parent, and inside a list that nulls the whole
+result. So the symptom is **every customer disappearing**, not one field going blank — indistinguishable
+from data loss, and alarming out of all proportion to the cause. The rows were repaired in place
+(`Located` where a point already existed, guarded by `attribute_not_exists`), no wipe needed. The
+general rule belongs with the `pluginStructure` trap it rhymes with: a new required field on a
+component with live data needs a backfill planned alongside it.
 
 ### Open
 

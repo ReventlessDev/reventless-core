@@ -156,7 +156,7 @@ function Make(Spec) {
         let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(DcbCommandTopicChannelAsync)(PluginRuntimeBuilder)({
           hooks: Spec.hooks
         });
-        let dcbResult = DcbBuilder.construct(extra$1, childName, undefined, undefined, Spec.environment, Spec.platformName, aggregateEventTopics, aggregateProducedEvents, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponents, componentRuntime, pluginStructure, opts);
+        let dcbResult = DcbBuilder.construct(extra$1, childName, undefined, undefined, Spec.environment, Spec.platformName, aggregateEventTopics, aggregateProducedEvents, Plugin_Helpers$ReventlessCore.publishToAggregates, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, systemCallableComponents, componentRuntime, pluginStructure, opts);
         let mutationEntriesFromAggregates = aggregates.flatMap(M => {
           let commandSchema = M.Spec.commandSchema;
           if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
