@@ -161,8 +161,9 @@ function finishWithDcbEventLog(dcbEventLog) {
         parent: opts_parent
       };
       let dcbOutputs = Component$ReventlessCore.outputs(dcbEventLog);
+      let dcbTopicKey = Stdlib_Option.getOr(dcbResource.__name, "") + "DcbEventLog";
       let eventTopics = Object.fromEntries([[
-          "DcbEventLog",
+          dcbTopicKey,
           dcbOutputs.eventTopic
         ]]);
       Stdlib_Dict.forEach(bundledInfos, info => Stdlib_Dict.forEachWithKey(info.sourceTopics, (topic, key) => {
@@ -181,7 +182,13 @@ function finishWithDcbEventLog(dcbEventLog) {
             urns.push(resource.urn);
           });
         });
-        return Pulumi.all(urns);
+        return Pulumi.all(urns).apply(resolved => Stdlib_Array.reduce(resolved, [], (acc, urn) => {
+          if (acc.includes(urn)) {
+            return acc;
+          } else {
+            return acc.concat([urn]);
+          }
+        }));
       };
       let url = dcbQueueUrlRef.contents;
       let dcbQueueUrl = url !== undefined ? url : Pulumi.output("NOT_AVAILABLE");

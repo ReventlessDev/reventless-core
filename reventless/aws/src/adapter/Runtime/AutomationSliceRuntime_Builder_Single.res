@@ -292,8 +292,18 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
         // into its own event-source mapping, and the entry point routes an
         // incoming record to the handlers registered for its stream, so a slice
         // only ever sees the sources it asked for.
+        //
+        // Keyed `<plugin>DcbEventLog`, the convention `Dcb_Builder` uses when it
+        // puts the log into `allEventTopics`. That matters because a slice naming
+        // the log explicitly (every DCB-sourced AutomationSlice does) contributes
+        // it back under that key: a different key here would leave the same topic
+        // in the dict twice, and since an event-source mapping is named after the
+        // *topic resource* rather than the key, both would render as
+        // `<plugin>DcbEventLog2AllAutomationSlices` and the deploy would fail on a
+        // duplicate URN.
+        let dcbTopicKey = dcbResource.name->Option.getOr("") ++ "DcbEventLog"
         let eventTopics: ReventlessCore.EventTopic.allOutputs = Dict.fromArray([
-          ("DcbEventLog", dcbOutputs.eventTopic),
+          (dcbTopicKey, dcbOutputs.eventTopic),
         ])
         bundledInfos->Dict.forEach(info =>
           info.sourceTopics->Dict.forEachWithKey((topic, key) => eventTopics->Dict.set(key, topic))
@@ -326,7 +336,18 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           ->Array.forEach(topic =>
             topic.resources->Array.forEach(resource => urns->Array.push(resource.urn)->ignore)
           )
-          urns->Pulumi.Output.all
+          // Deduped after resolution, because the same stream can be reached two
+          // ways — `consumesDcbLog` and an explicit source naming the DCB log.
+          // The entry point registers the handler once per URN, so a repeat would
+          // run the slice twice for every event: no error, no log, just doubled
+          // work and doubled commands.
+          urns
+          ->Pulumi.Output.all
+          ->Pulumi.Output.apply(resolved =>
+            resolved->Array.reduce([], (acc, urn) =>
+              acc->Array.includes(urn) ? acc : acc->Array.concat([urn])
+            )
+          )
         }
 
         let dcbQueueUrl = switch dcbQueueUrlRef.contents {
