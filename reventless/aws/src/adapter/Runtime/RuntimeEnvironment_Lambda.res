@@ -331,26 +331,13 @@ let makeFromCodeAsset: (
     // is no race against Lambda's lazy auto-created group. Namespace/dimension
     // are CloudWatch-specific and live here, not in core (provider-neutral).
     if dcbMetrics {
-      [
-        "AppendRetry",
-        "AppendConflict",
-        "DcbDecisionModelCacheHit",
-        "DcbDecisionModelCacheMiss",
-        "DcbDecisionModelDeltaEventCount",
-      ]->Array.forEach(metricName => {
+      Util_DcbMetrics.metricNames->Array.forEach(metricName => {
         let _ = Cloudwatch.LogMetricFilter.make(
           ~name=`${name}${metricName}Filter`,
           ~args={
-            pattern: `{ $.reventlessMetric = "${metricName}" }`->Pulumi.Input.make,
+            pattern: Util_DcbMetrics.patternFor(metricName)->Pulumi.Input.make,
             logGroupName: logGroup.name->Pulumi.Output.asInput,
-            metricTransformation: ({
-              name: metricName->Pulumi.Input.make,
-              namespace: "Reventless/DCB"->Pulumi.Input.make,
-              value: "$.value"->Pulumi.Input.make,
-              defaultValue: "0"->Pulumi.Input.make,
-              unit: "Count"->Pulumi.Input.make,
-              dimensions: Dict.fromArray([("slice", "$.slice")])->Pulumi.Input.make,
-            }: Cloudwatch.LogMetricFilter.metricTransformation)->Pulumi.Input.make,
+            metricTransformation: Util_DcbMetrics.transformationFor(metricName)->Pulumi.Input.make,
           },
           ~opts?,
         )

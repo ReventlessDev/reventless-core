@@ -20,6 +20,7 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Lambda$ReventlessAws from "../../util/Util_Lambda.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_IAM_Role$ReventlessAws from "../../util/Util_IAM_Role.res.mjs";
+import * as Util_DcbMetrics$ReventlessAws from "../../util/Util_DcbMetrics.res.mjs";
 import * as Util_LocalConfig$ReventlessAws from "../../util/Util_LocalConfig.res.mjs";
 import * as Util_HostUiDomain$ReventlessAws from "../../util/Util_HostUiDomain.res.mjs";
 import * as Util_LogRetention$ReventlessAws from "../../util/Util_LogRetention.res.mjs";
@@ -136,27 +137,11 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
       tags: tagsFor(name + `LogGroup`, "Logs")
     }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
     if (dcbMetrics) {
-      [
-        "AppendRetry",
-        "AppendConflict",
-        "DcbDecisionModelCacheHit",
-        "DcbDecisionModelCacheMiss",
-        "DcbDecisionModelDeltaEventCount"
-      ].forEach(metricName => {
+      Util_DcbMetrics$ReventlessAws.metricNames.forEach(metricName => {
         new (Aws.cloudwatch.LogMetricFilter)(name + metricName + `Filter`, {
-          pattern: `{ $.reventlessMetric = "` + metricName + `" }`,
+          pattern: Util_DcbMetrics$ReventlessAws.patternFor(metricName),
           logGroupName: logGroup.name,
-          metricTransformation: {
-            name: metricName,
-            namespace: "Reventless/DCB",
-            value: "$.value",
-            defaultValue: "0",
-            unit: "Count",
-            dimensions: Object.fromEntries([[
-                "slice",
-                "$.slice"
-              ]])
-          }
+          metricTransformation: Util_DcbMetrics$ReventlessAws.transformationFor(metricName)
         }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
       });
       return;
