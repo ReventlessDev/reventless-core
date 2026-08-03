@@ -621,6 +621,9 @@ module Make = (
           ->Array.map((module(OTS: OutboundTranslationSlice.T)) => {
             let ots = OTS.make(
               ~dcbEventLog,
+              // Same dict the AutomationSlices get, so an outbound slice can
+              // name an Aggregate source by its Spec.name.
+              ~allEventTopics,
               ~publishJsons,
               ~runtime=?componentRuntime->Dict.get(OTS.Spec.name),
               ~opts,

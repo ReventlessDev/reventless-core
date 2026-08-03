@@ -76,6 +76,29 @@ module type Spec = {
   /** Name of the aggregate or StateChangeSlice that receives the inbound command, or None for fire-and-forget. */
   let targetName: option<string>
 
+  /**
+  Event sources this slice subscribes to, by topic key.
+
+  `[]` — the default and the historical behaviour — means this plugin's own DCB
+  event log. Naming sources explicitly subscribes to them instead: an Aggregate's
+  `Spec.name`, or a DCB source name (conventionally `"<pluginName>DcbEventLog"`),
+  matching the keys `AutomationSlice` mappings already use.
+
+  This exists because an outbound slice is the framework's one component for
+  *calling an external service and feeding the answer back*, and that job is not
+  specific to DCB-modelled entities. An Aggregate whose events should trigger an
+  outbound call had no route to one while this list was hard-wired.
+
+  Unlike `AutomationSlice`, the sources are a flat list rather than per-source
+  `Mapping` modules. An automation needs a `resolve` per source (a different
+  event completes the item depending on where it came from); an outbound item is
+  resolved by its own `translate` succeeding, so the only thing that varies per
+  source is the decode — and the one `consumedEvent` union already covers that.
+  The cost of the flat form is that two sources sharing an event-type name are
+  indistinguishable; declare only the sources whose events you mean.
+  */
+  let sourceNames: array<string>
+
   /** Optional display name of the foreign system this anti-corruption slice publishes
       to (e.g. `"EmailService"`). Drives the **external box** drawn outside the plugin
       in the Event Graph / Context Map (see docs/plans/translation-external-boxes.md).
@@ -94,8 +117,15 @@ module type Translation = {
   Collect: map an incoming event to zero or more new outbound items.
   Each item has an `id` (deduplication key) and the `outboundItem` payload.
   Returns empty array if this event is not relevant.
+
+  `~sourceId` is the id of the entity the event was published for — the envelope's
+  `id`, not part of the event payload. A DCB event usually names its own subject
+  in the payload (`OrderPlaced({orderId, …})`) and can ignore this; an Aggregate's
+  event generally does not, because the aggregate id is what addressed it in the
+  first place. Without this the outbound item for `Registered({email, address})`
+  would have no way to say *which customer* it is for.
   */
-  let collect: Spec.consumedEvent => array<(string, Spec.outboundItem)>
+  let collect: (Spec.consumedEvent, ~sourceId: string) => array<(string, Spec.outboundItem)>
 
   /**
   Translate: call the external service for a single outbound item.

@@ -9,31 +9,9 @@
 // `[{label, lat, lng}]` as JSON. Any failure degrades to an empty array so the
 // caller never sees a hard error.
 
-// ── AWS Location SDK bindings (AWS SDK v3, client.send(new Command(...))) ────
-
-type locationClient
-
-type searchPlaceIndexForTextInput = {
-  @as("IndexName") indexName: string,
-  @as("Text") text: string,
-  @as("MaxResults") maxResults?: int,
-}
-// GeoJSON order: [lng, lat].
-type point = array<float>
-type geometry = {@as("Point") point?: point}
-type place = {@as("Label") label?: string, @as("Geometry") geometry?: geometry}
-type searchResult = {@as("Place") place?: place}
-type searchResponse = {@as("Results") results?: array<searchResult>}
-type searchCommand
-
-@module("@aws-sdk/client-location") @new
-external makeLocationClient: unit => locationClient = "LocationClient"
-
-@module("@aws-sdk/client-location") @new
-external makeSearchPlaceIndexForTextCommand: searchPlaceIndexForTextInput => searchCommand =
-  "SearchPlaceIndexForTextCommand"
-
-@send external send: (locationClient, searchCommand) => promise<searchResponse> = "send"
+// AWS Location lives in the bindings package, shared with the backend geocoder
+// adapter — one place owns the `[lng, lat]` order and the optional `Relevance`.
+module Search = AwsSdk.Location.SearchPlaceIndexForTextCommand
 
 @val external decodeURIComponent: string => string = "decodeURIComponent"
 
@@ -97,10 +75,7 @@ let handler = async (event: functionUrlEvent): response => {
     if indexName == "" || q == "" {
       {statusCode: 200, headers: jsonHeaders(), body: "[]"}
     } else {
-      let client = makeLocationClient()
-      let resp = await client->send(
-        makeSearchPlaceIndexForTextCommand({indexName, text: q, maxResults: 5}),
-      )
+      let resp = await Search.send(Search.make({indexName, text: q, maxResults: 5}))
       let results =
         resp.results
         ->Option.getOr([])
@@ -113,11 +88,23 @@ let handler = async (event: functionUrlEvent): response => {
               let lng = pt->Array.getUnsafe(0)
               let lat = pt->Array.getUnsafe(1)
               Some(
-                Dict.fromArray([
-                  ("label", JSON.Encode.string(label)),
-                  ("lat", JSON.Encode.float(lat)),
-                  ("lng", JSON.Encode.float(lng)),
-                ])->JSON.Encode.object,
+                Dict.fromArray(
+                  Array.concat(
+                    [
+                      ("label", JSON.Encode.string(label)),
+                      ("lat", JSON.Encode.float(lat)),
+                      ("lng", JSON.Encode.float(lng)),
+                    ],
+                    // Additive: the browser client reads the three fields above
+                    // and ignores this one. An unattended caller needs it to
+                    // apply `Geocoding.confidentMatch`, which is what keeps a
+                    // vague match from becoming a confident pin.
+                    switch r.relevance {
+                    | Some(rel) => [("relevance", JSON.Encode.float(rel))]
+                    | None => []
+                    },
+                  ),
+                )->JSON.Encode.object,
               )
             | _ => None
             }
@@ -133,6 +120,13 @@ let handler = async (event: functionUrlEvent): response => {
   } catch {
   | exn =>
     Console.error2("Geocoder: search failed", exn)
-    {statusCode: 200, headers: jsonHeaders(), body: "[]"}
+    // 502, not 200 — and still `[]`, which is the point. A browser search box
+    // reads the body and degrades to "no results" whether or not it checks the
+    // status, so nothing on that side changes. An unattended caller reads the
+    // status and can tell "the service is down" from "there is no such address",
+    // which is the difference between retrying and writing a verdict into an
+    // event log. One contract serves both because they disagree only about which
+    // half of the response they read.
+    {statusCode: 502, headers: jsonHeaders(), body: "[]"}
   }
 }

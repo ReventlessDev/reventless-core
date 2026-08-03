@@ -14,6 +14,8 @@ let outboundItemSchema = S.schema(s => ({
   customerId: s.m(S.string)
 }));
 
+let sourceNames = [];
+
 let name = "SendOrderConfirmation";
 
 let Id;
@@ -39,6 +41,7 @@ export {
   maxRetries,
   heartbeatInterval,
   targetName,
+  sourceNames,
   externalSystem,
   moduleUrl,
 }

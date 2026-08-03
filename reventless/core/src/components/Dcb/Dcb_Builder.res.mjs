@@ -329,7 +329,7 @@ function Make(DcbEventLogStorage) {
         ];
       }));
       let outboundTranslationSlicesOutputs = Object.fromEntries(outboundTranslationSlices.map(OTS => {
-        let ots = OTS.make(dcbEventLog, publishJsons, componentRuntime[OTS.Spec.name], opts);
+        let ots = OTS.make(dcbEventLog, allEventTopics, publishJsons, componentRuntime[OTS.Spec.name], opts);
         return [
           OTS.Spec.name,
           Component$ReventlessCore.outputs(ots)

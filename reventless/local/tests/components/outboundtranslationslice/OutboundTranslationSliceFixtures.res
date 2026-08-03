@@ -30,7 +30,7 @@ module SendTrackingEmailSpec = {
   @schema
   type inboundCommand = unit
 
-  let collect = event =>
+  let collect = (event, ~sourceId as _) =>
     switch event {
     | OrderShipped({orderId, email}) => [(orderId, {orderId, email})]
     }
@@ -40,6 +40,7 @@ module SendTrackingEmailSpec = {
   let maxRetries = 3
   let heartbeatInterval = 60
   let targetName = None
+  let sourceNames: array<string> = []
   let externalSystem = None
 }
 
@@ -61,7 +62,7 @@ module ProcessPaymentSpec = {
   @schema
   type inboundCommand = ConfirmPayment({orderId: @s.matches(Reventless.DcbTag.string) string})
 
-  let collect = event =>
+  let collect = (event, ~sourceId as _) =>
     switch event {
     | PaymentReceived({orderId, amount}) => [(orderId, {orderId, amount})]
     }
@@ -76,5 +77,6 @@ module ProcessPaymentSpec = {
   let maxRetries = 2
   let heartbeatInterval = 30
   let targetName = Some("ConfirmPayment")
+  let sourceNames: array<string> = []
   let externalSystem = None
 }

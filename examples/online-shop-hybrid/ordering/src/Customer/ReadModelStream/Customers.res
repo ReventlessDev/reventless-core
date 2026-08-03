@@ -13,11 +13,27 @@
 // `option` because a customer has no location until that event arrives: the
 // `0.0, 0.0` this used to default to is a real coordinate in the Gulf of Guinea,
 // so every unlocated customer was pinned there.
+// Whether this customer's address has been turned into a point yet, and if not,
+// why not. `location: option<GeoPoint.t>` alone cannot say: `None` would mean
+// both "the geocoder has not run" and "the geocoder ran and failed", and an
+// operator cannot act on a state that means two things. Marked `@status` so the
+// generated view sections and badges rows by it without further configuration.
+@schema
+type locationStatus =
+  | Pending
+  | Located
+  | Unresolvable
+
 @schema
 type state = {
   @displayName email: string,
   address: string,
   location: option<Reventless.GeoPoint.t>,
+  @status locationStatus: locationStatus,
+  // Why the geocoder gave up, for the rows sitting in `Unresolvable`. Absent
+  // otherwise; hidden from list views because it is only meaningful on a row a
+  // human is already looking into.
+  @hidden locationNote: option<string>,
   deactivated: bool,
   orderCount: int,
 }

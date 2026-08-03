@@ -34,8 +34,8 @@ function Make(Spec) {
     let todoItems = {};
     let makeMeta = () => Message$ReventlessCore.generateMeta(`OutboundTranslationSlice:` + Spec.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
     let phase1 = events => {
-      events.forEach(event => {
-        Translation.collect(event).forEach(param => {
+      events.forEach(param => {
+        Translation.collect(param[1], param[0]).forEach(param => {
           let id = param[0];
           let match = todoItems[id];
           if (match !== undefined) {

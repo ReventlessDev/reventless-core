@@ -29,8 +29,10 @@ module type T = {
   /** The in-memory TODO list -- maps item ID to row. */
   let todoItems: Dict.t<todoRow>
 
-  /** Phase 1: update TODO list from a batch of events (collect only, no resolve). */
-  let phase1: array<Spec.consumedEvent> => unit
+  /** Phase 1: update TODO list from a batch of `(sourceId, event)` pairs
+      (collect only, no resolve). `sourceId` is the envelope id of the entity the
+      event was published for. */
+  let phase1: array<(string, Spec.consumedEvent)> => unit
 
   /** Phase 2: translate all pending items, optionally publishing commands via publishJsons. */
   let phase2: ReventlessInfra.CommandTopic.publishJsons => promise<unit>
@@ -54,10 +56,10 @@ module Make = (
   let makeMeta = (): Reventless.Message.meta =>
     Message.generateMeta(~service=`OutboundTranslationSlice:${Spec.name}`)
 
-  let phase1 = (events: array<Spec.consumedEvent>) => {
-    events->Array.forEach(event => {
+  let phase1 = (events: array<(string, Spec.consumedEvent)>) => {
+    events->Array.forEach(((sourceId, event)) => {
       // Collect new outbound items
-      Translation.collect(event)->Array.forEach(((id, item)) => {
+      Translation.collect(event, ~sourceId)->Array.forEach(((id, item)) => {
         switch todoItems->Dict.get(id) {
         | Some(_) => () // Already exists -- skip (idempotent)
         | None =>

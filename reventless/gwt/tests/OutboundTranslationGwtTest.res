@@ -16,7 +16,7 @@ module SendTrackingEmailSlice = {
   @schema
   type inboundCommand = NoOp
 
-  let collect = event =>
+  let collect = (event, ~sourceId as _) =>
     switch event {
     | OrderShipped({orderId, email}) => [(orderId, {orderId, email})]
     }

@@ -159,7 +159,7 @@ module ConfirmSlice = {
   @schema
   type inboundCommand = unit
 
-  let collect = event =>
+  let collect = (event, ~sourceId as _) =>
     switch event {
     | OrderPlaced({orderId}) => [(orderId, ({orderId: orderId}: outboundItem))]
     }

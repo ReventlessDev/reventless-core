@@ -4,11 +4,20 @@ import * as S from "sury/src/S.res.mjs";
 import * as GeoPoint$Reventless from "@reventlessdev/reventless-spec/src/semantic/GeoPoint.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
+
+let locationStatusSchema = S.union([
+  S.literal("Pending"),
+  S.literal("Located"),
+  S.literal("Unresolvable")
+]);
 
 let stateSchema = S.schema(s => ({
   email: s.m(S.string),
   address: s.m(S.string),
   location: s.m(S.option(GeoPoint$Reventless.schema)),
+  locationStatus: s.m(locationStatusSchema),
+  locationNote: s.m(S.option(S.string)),
   deactivated: s.m(S.bool),
   orderCount: s.m(S.int),
   displayName: s.m(S.option(S.string))
@@ -20,6 +29,26 @@ let stateSchema$1 = S.Metadata.set(stateSchema, DisplayName$Reventless.displayNa
 });
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
+
+let stateSchema$2 = S.Metadata.set(stateSchema$1, StateAnnotations$Reventless.stateAnnotationsId, {
+  ids: [],
+  compositeIds: [],
+  subIds: [],
+  compositeSubIds: [],
+  indexes: [],
+  hidden: ["locationNote"],
+  summary: [],
+  drillTargets: [],
+  drillTargetKeys: [],
+  collapsed: [],
+  scan: [],
+  scanSort: [],
+  semantic: [],
+  metric: [],
+  status: "locationStatus",
+  groupBy: undefined,
+  visibility: undefined
+});
 
 let name = "Customers";
 
@@ -36,11 +65,12 @@ let visibility = "Public";
 export {
   name,
   Id,
-  stateSchema$1 as stateSchema,
+  locationStatusSchema,
   config,
   subIdConfig,
+  stateSchema$2 as stateSchema,
   moduleUrl,
   authorization,
   visibility,
 }
-/* stateSchema Not a pure module */
+/* locationStatusSchema Not a pure module */

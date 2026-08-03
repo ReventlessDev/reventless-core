@@ -44,12 +44,53 @@ module CustomerMapping = Mapping.Make(
       | Registered({email, address}) =>
         UpdateWithDefault(
           id,
-          {Customers.email: email, address, location: None, deactivated: false, orderCount: 0},
+          {
+            Customers.email: email,
+            address,
+            location: None,
+            locationStatus: Pending,
+            locationNote: None,
+            deactivated: false,
+            orderCount: 0,
+          },
           state => {...state, email, address, deactivated: false},
         )
       | EmailUpdated({email}) => Update(id, state => {...state, email})
-      | AddressUpdated({address}) => Update(id, state => {...state, address})
-      | LocationSet({location}) => Update(id, state => {...state, location: Some(location)})
+      // A new address invalidates the pin: back to Pending until the geocoding
+      // slice answers for the new one. Leaving the old point on the row would
+      // show an address and a marker that disagree, with nothing saying so.
+      | AddressUpdated({address}) =>
+        Update(id, state => {
+          ...state,
+          address,
+          location: None,
+          locationStatus: Pending,
+          locationNote: None,
+        })
+      | LocationSet({location}) =>
+        Update(id, state => {
+          ...state,
+          location: Some(location),
+          locationStatus: Located,
+          locationNote: None,
+        })
+      // Both halves in one event — the client supplied the pair, so the row is
+      // Located immediately and no geocode is owed.
+      | AddressLocated({address, location}) =>
+        Update(id, state => {
+          ...state,
+          address,
+          location: Some(location),
+          locationStatus: Located,
+          locationNote: None,
+        })
+      | AddressUnresolvable({reason}) =>
+        Update(id, state => {
+          ...state,
+          location: None,
+          locationStatus: Unresolvable,
+          locationNote: Some(reason),
+        })
       | Deactivated => Update(id, state => {...state, deactivated: true})
       }
   },
@@ -69,7 +110,15 @@ module CustomerOrdersMapping = Mapping.Make(
       | OrderPlaced({customerId}) =>
         UpdateWithDefault(
           customerId,
-          {Customers.email: "", address: "", location: None, deactivated: false, orderCount: 1},
+          {
+            Customers.email: "",
+            address: "",
+            location: None,
+            locationStatus: Pending,
+            locationNote: None,
+            deactivated: false,
+            orderCount: 1,
+          },
           state => {...state, orderCount: state.orderCount + 1},
         )
       }

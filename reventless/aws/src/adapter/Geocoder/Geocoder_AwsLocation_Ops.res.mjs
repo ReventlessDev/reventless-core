@@ -2,6 +2,7 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Location$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/Location.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as ClientLocation from "@aws-sdk/client-location";
 
@@ -52,8 +53,7 @@ async function handler(event) {
         body: "[]"
       };
     }
-    let client = new ClientLocation.LocationClient();
-    let resp = await client.send(new ClientLocation.SearchPlaceIndexForTextCommand({
+    let resp = await Location$AwsSdk.SearchPlaceIndexForTextCommand.send(new ClientLocation.SearchPlaceIndexForTextCommand({
       IndexName: indexName,
       Text: q,
       MaxResults: 5
@@ -73,6 +73,7 @@ async function handler(event) {
       }
       let lng = pt[0];
       let lat = pt[1];
+      let rel = r.Relevance;
       return Object.fromEntries([
         [
           "label",
@@ -86,7 +87,10 @@ async function handler(event) {
           "lng",
           lng
         ]
-      ]);
+      ].concat(rel !== undefined ? [[
+            "relevance",
+            rel
+          ]] : []));
     });
     return {
       statusCode: 200,
@@ -100,7 +104,7 @@ async function handler(event) {
     let exn = Primitive_exceptions.internalToException(raw_exn);
     console.error("Geocoder: search failed", exn);
     return {
-      statusCode: 200,
+      statusCode: 502,
       headers: Object.fromEntries([[
           "content-type",
           "application/json"
@@ -110,10 +114,13 @@ async function handler(event) {
   }
 }
 
+let Search;
+
 export {
+  Search,
   getEnv,
   jsonHeaders,
   readQueryParam,
   handler,
 }
-/* @aws-sdk/client-location Not a pure module */
+/* Location-AwsSdk Not a pure module */

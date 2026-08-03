@@ -38,8 +38,8 @@ module Make = (Api: {
     type component = InnerMake.component
     let queryDbName = InnerMake.queryDbName
 
-    let make = (~dcbEventLog, ~publishJsons, ~runtime=?, ~opts=?): component => {
-      let ots = InnerMake.make(~dcbEventLog, ~publishJsons, ~runtime?, ~opts?)
+    let make = (~dcbEventLog, ~allEventTopics=Dict.make(), ~publishJsons, ~runtime=?, ~opts=?): component => {
+      let ots = InnerMake.make(~dcbEventLog, ~allEventTopics, ~publishJsons, ~runtime?, ~opts?)
 
       let queryDbOutputs = (ots->ReventlessCore.Component.outputs).queryDb
       let tableResource = queryDbOutputs.resources->Array.getUnsafe(0)

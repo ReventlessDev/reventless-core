@@ -505,7 +505,11 @@ module OutboundStep = (Spec: OutboundTranslation_GWT.SliceSpec) => {
   let thenOutbound = async (flowP: flow, expected: array<(string, Spec.outboundItem)>) => {
     let s = await flowP
     let events = decodeMatching(s.log, consumedDecoder, [])
-    let collected = events->Array.map(e => e->Spec.collect)->Array.flat
+    // The flow log carries decoded events, not their envelopes, so there is no
+    // entity id to thread here. A collect that keys off `~sourceId` (an
+    // aggregate source) should be exercised by the dedicated
+    // `OutboundTranslation_GWT`, which can supply one.
+    let collected = events->Array.map(e => e->Spec.collect(~sourceId=""))->Array.flat
     let actual = encItems(collected)
     let expectedJson = encItems(expected)
     let o =

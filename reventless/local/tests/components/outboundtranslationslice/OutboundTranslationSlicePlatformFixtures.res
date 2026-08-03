@@ -86,6 +86,7 @@ module SendConfirmSpec = {
   let maxRetries = 3
   let heartbeatInterval = 60
   let targetName = None
+  let sourceNames: array<string> = []
   let externalSystem = Some("EmailService")
 }
 
@@ -99,7 +100,7 @@ module SendConfirmTranslation: OutboundTranslationSlice.Translation
   with module Spec := SendConfirmSpec = {
   let moduleUrl: string = %raw(`import.meta.url`)
 
-  let collect = (event: SendConfirmSpec.consumedEvent) =>
+  let collect = (event: SendConfirmSpec.consumedEvent, ~sourceId as _) =>
     switch event {
     | Placed({orderId}) =>
       collectCalls->Array.push(orderId)

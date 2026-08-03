@@ -1,6 +1,7 @@
 @@reventless.translation
 
-let collect = event =>
+// `orderId` is in the payload, so the envelope id adds nothing here.
+let collect = (event, ~sourceId as _) =>
   switch event {
   | OrderPlaced({orderId, customerId}) => [(orderId, {orderId, customerId})]
   }

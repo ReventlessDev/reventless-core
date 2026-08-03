@@ -16,7 +16,7 @@ module type SliceSpec = {
   @schema
   type inboundCommand
 
-  let collect: consumedEvent => array<(string, outboundItem)>
+  let collect: (consumedEvent, ~sourceId: string) => array<(string, outboundItem)>
 }
 
 // Status enum reflecting how the slice's runtime labels a TODO after a
@@ -48,7 +48,7 @@ module type T = {
 
   // Unit — collect
   let givenEvent: Spec.consumedEvent => Spec.consumedEvent
-  let whenCollect: Spec.consumedEvent => array<(string, Spec.outboundItem)>
+  let whenCollect: (Spec.consumedEvent, ~sourceId: string=?) => array<(string, Spec.outboundItem)>
   let thenTodos: (
     array<(string, Spec.outboundItem)>,
     array<(string, Spec.outboundItem)>,
@@ -105,8 +105,12 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
     c->Message.encode(Spec.inboundCommandSchema)
 
   // Unit: collect
+  //
+  // `~sourceId` defaults so a DCB-source test — whose event names its own subject
+  // in the payload — reads exactly as it did before this argument existed. An
+  // aggregate-source test passes the entity id it is exercising.
   let givenEvent = e => e
-  let whenCollect = e => e->Spec.collect
+  let whenCollect = (e, ~sourceId="") => e->Spec.collect(~sourceId)
   let thenTodos = (actual, expected) =>
     if actual == expected {
       Outcome.pass

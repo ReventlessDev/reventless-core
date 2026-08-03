@@ -35,7 +35,7 @@ describe("OutboundTranslationSlice Callback", () => {
 
   describe("Phase 1 — collect", () => {
     testPromise("OrderShipped event creates a pending outbound item", async () => {
-      FireForgetCallback.phase1([OrderShipped({orderId: "ord-1", email: "test@example.com"})])
+      FireForgetCallback.phase1([("evt", OrderShipped({orderId: "ord-1", email: "test@example.com"}))])
       let items = FireForgetCallback.todoItems
       expect(items->Dict.toArray->Array.length)->toBe(1)
       let row = items->Dict.get("ord-1")
@@ -46,16 +46,16 @@ describe("OutboundTranslationSlice Callback", () => {
     })
 
     testPromise("duplicate event does not create a second item (idempotent)", async () => {
-      FireForgetCallback.phase1([OrderShipped({orderId: "ord-1", email: "test@example.com"})])
-      FireForgetCallback.phase1([OrderShipped({orderId: "ord-1", email: "other@example.com"})])
+      FireForgetCallback.phase1([("evt", OrderShipped({orderId: "ord-1", email: "test@example.com"}))])
+      FireForgetCallback.phase1([("evt", OrderShipped({orderId: "ord-1", email: "other@example.com"}))])
       let items = FireForgetCallback.todoItems
       expect(items->Dict.toArray->Array.length)->toBe(1)
     })
 
     testPromise("multiple different events create multiple items", async () => {
       FireForgetCallback.phase1([
-        OrderShipped({orderId: "ord-1", email: "a@example.com"}),
-        OrderShipped({orderId: "ord-2", email: "b@example.com"}),
+        ("evt", OrderShipped({orderId: "ord-1", email: "a@example.com"})),
+        ("evt", OrderShipped({orderId: "ord-2", email: "b@example.com"})),
       ])
       let items = FireForgetCallback.todoItems
       expect(items->Dict.toArray->Array.length)->toBe(2)
@@ -65,7 +65,7 @@ describe("OutboundTranslationSlice Callback", () => {
 
   describe("Phase 2 — translate (fire-and-forget)", () => {
     testPromise("Ok(None) marks item as Completed, no command published", async () => {
-      FireForgetCallback.phase1([OrderShipped({orderId: "ord-1", email: "test@example.com"})])
+      FireForgetCallback.phase1([("evt", OrderShipped({orderId: "ord-1", email: "test@example.com"}))])
       let publishedCommands = ref([])
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
@@ -88,7 +88,7 @@ describe("OutboundTranslationSlice Callback", () => {
 
   describe("Phase 2 — translate (command-back)", () => {
     testPromise("Ok(Some(...)) marks item as Completed and publishes command", async () => {
-      CommandBackCallback.phase1([PaymentReceived({orderId: "ord-1", amount: 50.0})])
+      CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
       let publishedCommands = ref([])
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := Array.concat(publishedCommands.contents, cmds)
@@ -104,7 +104,7 @@ describe("OutboundTranslationSlice Callback", () => {
     testPromise("Error marks item as Failed with incremented retryCount", async () => {
       ProcessPaymentSpec.translateFn := (async (_id, _item) => Error("gateway timeout"))
 
-      CommandBackCallback.phase1([PaymentReceived({orderId: "ord-1", amount: 50.0})])
+      CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
       await CommandBackCallback.phase2(mockPublish)
 
@@ -116,7 +116,7 @@ describe("OutboundTranslationSlice Callback", () => {
     testPromise("failed items with retryCount < maxRetries are retried", async () => {
       // First attempt fails
       ProcessPaymentSpec.translateFn := (async (_id, _item) => Error("timeout"))
-      CommandBackCallback.phase1([PaymentReceived({orderId: "ord-1", amount: 50.0})])
+      CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
       await CommandBackCallback.phase2(mockPublish)
       let row1 = CommandBackCallback.todoItems->Dict.get("ord-1")->Option.getOrThrow
@@ -138,7 +138,7 @@ describe("OutboundTranslationSlice Callback", () => {
     testPromise("failed items beyond maxRetries are not retried", async () => {
       // ProcessPaymentSpec.maxRetries = 2, so after 2 failures it should stop
       ProcessPaymentSpec.translateFn := (async (_id, _item) => Error("timeout"))
-      CommandBackCallback.phase1([PaymentReceived({orderId: "ord-1", amount: 50.0})])
+      CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
 
       // Fail twice
@@ -171,8 +171,8 @@ describe("OutboundTranslationSlice Callback", () => {
       })
 
       CommandBackCallback.phase1([
-        PaymentReceived({orderId: "ord-1", amount: 50.0}),
-        PaymentReceived({orderId: "ord-2", amount: 75.0}),
+        ("evt", PaymentReceived({orderId: "ord-1", amount: 50.0})),
+        ("evt", PaymentReceived({orderId: "ord-2", amount: 75.0})),
       ])
       let publishedCommands = ref([])
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {

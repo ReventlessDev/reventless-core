@@ -10,12 +10,16 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
+import * as EventTopic$ReventlessCore from "../EventTopic/EventTopic.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as RuntimeHints$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/RuntimeHints.res.mjs";
@@ -50,74 +54,90 @@ function Make(RuntimeEnvironment) {
           await queryDbOps.save(Id$Reventless.$$String.makeFromString(param[0]), param[1], "Overwrite", undefined);
         });
       };
-      let make = (dcbEventLog, publishJsons, runtime, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(OutboundTranslationSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
-        let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
-        let opts = {
-          parent: opts_parent
-        };
-        let memorySize = RuntimeHints$ReventlessInfra.resolveMemory(runtime, 1024);
-        let timeout = RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 30);
-        let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, {
-          kind: "OutboundTranslationSlice",
-          name: Spec.name
-        }, opts);
-        let dcbEventTopicOutputs = Component$ReventlessCore.outputs(dcbEventLog).eventTopic;
-        let dcbEventLogName = Stdlib_Option.getOr(Component$ReventlessCore.toPulumiResource(dcbEventLog).__name, "") + "DcbEventLog";
-        let allEventTopics = Object.fromEntries([[
-            dcbEventLogName,
-            dcbEventTopicOutputs
-          ]]);
-        let eventCollector = Pulumi.all([
-          Component$ReventlessCore.operations(queryDb),
-          publishJsons
-        ]).apply(param => {
-          let publishJsonsFn = param[1];
-          let queryDbOps = param[0];
-          let ec = SpecificEventCollector.make(Spec.name, allEventTopics, {
+      let make = (dcbEventLog, allEventTopicsOpt, publishJsons, runtime, opts) => {
+        let allEventTopics = allEventTopicsOpt !== undefined ? allEventTopicsOpt : ({});
+        return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(OutboundTranslationSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+          let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
+          let opts = {
+            parent: opts_parent
+          };
+          let memorySize = RuntimeHints$ReventlessInfra.resolveMemory(runtime, 1024);
+          let timeout = RuntimeHints$ReventlessInfra.resolveTimeout(runtime, 30);
+          let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, {
             kind: "OutboundTranslationSlice",
             name: Spec.name
           }, opts);
-          let jsonEventsHandler = stream => Effect.flatMap(Stream.runCollect(Stream$1.flatMap(Stream$1.mapEffect(stream, json => Effect.sync(() => {
-            let rawEvent = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["event"]), json);
-            let match = Message$ReventlessCore.splitMessage(rawEvent);
-            let event = decoder.decode(match[0], match[1]);
-            if (event !== undefined) {
-              return [Primitive_option.valFromOption(event)];
-            } else {
-              return [];
+          let dcbEventTopicOutputs = Component$ReventlessCore.outputs(dcbEventLog).eventTopic;
+          let dcbEventLogName = Stdlib_Option.getOr(Component$ReventlessCore.toPulumiResource(dcbEventLog).__name, "") + "DcbEventLog";
+          let availableTopics = Object.assign({}, allEventTopics);
+          availableTopics[dcbEventLogName] = dcbEventTopicOutputs;
+          let declared = Spec.sourceNames;
+          let sourceNames = declared.length !== 0 ? declared : [dcbEventLogName];
+          sourceNames.forEach(sourceName => {
+            if (sourceName in availableTopics) {
+              return;
             }
-          })), events => Stream$1.fromIterable(events))), eventsArr => Effect.promise(async () => {
-            Callback.phase1(eventsArr);
-            await syncToQueryDb(queryDbOps);
-            Stdlib_Promise.$$catch(Callback.phase2(publishJsonsFn).then(() => syncToQueryDb(queryDbOps)), exn => {
-              let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-              Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `detached phase 2 error: ` + errMsg));
-              return Promise.resolve();
-            });
+            let availableNames = Object.keys(availableTopics).toSorted(Primitive_string.compare).join(", ");
+            Stdlib_JsError.throwWithMessage(`OutboundTranslationSlice "` + Spec.name + `" declares sourceName "` + sourceName + `", but no EventTopic with that key exists. ` + (`Available source names: [` + availableNames + `]. `) + `A source is an Aggregate Spec.name or a DCB source name (typically "<pluginName>DcbEventLog"); \`[]\` means this plugin's own DCB log.`);
+          });
+          let eventTopics = EventTopic$ReventlessCore.filter(availableTopics, Belt_SetString.fromArray(sourceNames));
+          let eventCollector = Pulumi.all([
+            Component$ReventlessCore.operations(queryDb),
+            publishJsons
+          ]).apply(param => {
+            let publishJsonsFn = param[1];
+            let queryDbOps = param[0];
+            let ec = SpecificEventCollector.make(Spec.name, eventTopics, {
+              kind: "OutboundTranslationSlice",
+              name: Spec.name
+            }, opts);
+            let jsonEventsHandler = stream => Effect.flatMap(Stream.runCollect(Stream$1.flatMap(Stream$1.mapEffect(stream, json => Effect.sync(() => {
+              let envelope = Stdlib_JSON.Decode.object(json);
+              let rawEvent = Stdlib_Option.getOr(Stdlib_Option.flatMap(envelope, d => d["event"]), json);
+              let sourceId = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(envelope, d => d["id"]), Stdlib_JSON.Decode.string), "");
+              let match = Message$ReventlessCore.splitMessage(rawEvent);
+              let event = decoder.decode(match[0], match[1]);
+              if (event !== undefined) {
+                return [[
+                    sourceId,
+                    Primitive_option.valFromOption(event)
+                  ]];
+              } else {
+                return [];
+              }
+            })), events => Stream$1.fromIterable(events))), eventsArr => Effect.promise(async () => {
+              Callback.phase1(eventsArr);
+              await syncToQueryDb(queryDbOps);
+              Stdlib_Promise.$$catch(Callback.phase2(publishJsonsFn).then(() => syncToQueryDb(queryDbOps)), exn => {
+                let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+                Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `detached phase 2 error: ` + errMsg));
+                return Promise.resolve();
+              });
+            }));
+            let handler = SpecificEventCollector.makeHandler(ec, jsonEventsHandler);
+            let resources = Component$ReventlessCore.outputs(queryDb).resources;
+            EventCollectorRuntimeBuilder.forEventCollector(handler, eventTopics, resources, memorySize, timeout, ec);
+            return ec;
+          });
+          Component$ReventlessCore.setOperations(extra, Pulumi.all([
+            Output$Pulumi.flatMap(eventCollector, Component$ReventlessCore.operations),
+            publishJsons
+          ]).apply(param => {
+            let publishJsonsFn = param[1];
+            return {
+              enqueueEvent: param[0].enqueueEvent,
+              translatePending: async () => await Callback.phase2(publishJsonsFn)
+            };
           }));
-          let handler = SpecificEventCollector.makeHandler(ec, jsonEventsHandler);
-          let resources = Component$ReventlessCore.outputs(queryDb).resources;
-          EventCollectorRuntimeBuilder.forEventCollector(handler, allEventTopics, resources, memorySize, timeout, ec);
-          return ec;
-        });
-        Component$ReventlessCore.setOperations(extra, Pulumi.all([
-          Output$Pulumi.flatMap(eventCollector, Component$ReventlessCore.operations),
-          publishJsons
-        ]).apply(param => {
-          let publishJsonsFn = param[1];
-          return {
-            enqueueEvent: param[0].enqueueEvent,
-            translatePending: async () => await Callback.phase2(publishJsonsFn)
+          let aggregatedResources = Object.values(eventTopics).flatMap(t => t.resources);
+          let outputs_queryDb = Component$ReventlessCore.outputs(queryDb);
+          let outputs = {
+            resources: aggregatedResources,
+            queryDb: outputs_queryDb
           };
-        }));
-        let outputs_resources = dcbEventTopicOutputs.resources;
-        let outputs_queryDb = Component$ReventlessCore.outputs(queryDb);
-        let outputs = {
-          resources: outputs_resources,
-          queryDb: outputs_queryDb
-        };
-        return Component$ReventlessCore.setOutputs(extra, outputs);
-      }, opts);
+          return Component$ReventlessCore.setOutputs(extra, outputs);
+        }, opts);
+      };
       return {
         Spec: Spec,
         Translation: Translation,

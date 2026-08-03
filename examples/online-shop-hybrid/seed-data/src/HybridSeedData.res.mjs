@@ -172,7 +172,8 @@ async function seedCustomers(customers, client) {
     address: c.address
   })));
   await Seed_Client$ReventlessSeed.sendAll(client, customers.map(c => DemoCommands$OnlineShopHybridSeed.customer(c.id, {
-    TAG: "SetLocation",
+    TAG: "SetAddressLocation",
+    address: c.address,
     location: {
       lat: c.lat,
       lng: c.lng

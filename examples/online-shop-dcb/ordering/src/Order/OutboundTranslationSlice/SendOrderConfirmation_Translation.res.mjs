@@ -5,7 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as EmailService$OrderingPlugin from "../../Service/EmailService.res.mjs";
 
-function collect(event) {
+function collect(event, param) {
   let orderId = event.orderId;
   return [[
       orderId,

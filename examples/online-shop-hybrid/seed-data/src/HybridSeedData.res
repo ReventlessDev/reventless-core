@@ -207,10 +207,15 @@ let seedCustomers = async (customers: array<DemoData.customer>, ~client: Seed.Cl
     ),
   )
   // Give every customer a map coordinate so the Customers map view renders a
-  // pin per row. The geo-point payload is a `{lat, lng}` input object.
+  // pin per row. The seed is a client that already knows both halves, so it
+  // sends them together — which is also what keeps the geocoding slice from
+  // spending a request per seeded customer on addresses it was handed.
   await client->Seed.Client.sendAll(
     customers->Array.map(c =>
-      DemoCommands.customer(~id=c.id, SetLocation({location: {lat: c.lat, lng: c.lng}}))
+      DemoCommands.customer(
+        ~id=c.id,
+        SetAddressLocation({address: c.address, location: {lat: c.lat, lng: c.lng}}),
+      )
     ),
   )
   let moved = DemoData.movedCustomers(customers)

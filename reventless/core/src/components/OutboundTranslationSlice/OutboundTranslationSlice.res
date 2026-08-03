@@ -29,6 +29,7 @@ module type T = {
 
   let make: (
     ~dcbEventLog: DcbEventLog.component,
+    ~allEventTopics: EventTopic.allOutputs=?,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
     ~runtime: ReventlessInfra.RuntimeHints.t=?,
     ~opts: Pulumi.ComponentResource.options=?,

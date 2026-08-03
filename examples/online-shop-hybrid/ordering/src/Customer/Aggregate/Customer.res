@@ -8,12 +8,35 @@
 // already stored decodes unchanged — and the declaration buys the range checks
 // at the boundary and the marker the command form and the map view read, instead
 // of both being inferred from the field names.
+// A human enters an address and nothing else. `GeocodeCustomerAddress` — an
+// OutboundTranslationSlice subscribed to this aggregate — turns that address
+// into a point and reports the outcome back through the two `@noApi` commands
+// below.
+//
+// The rule that shapes this API: **whoever supplies a point supplies the address
+// it belongs to.** So a caller never sends a bare coordinate — `SetLocation` is
+// the slice's shape, not a client's, and stays internal. A UI corrects a row
+// through `SetAddressLocation`, which covers the pin-only fix too (same address,
+// new point).
+//
+// The two are not interchangeable even though their payloads nearly are. The
+// slice's `SetLocation` is a *report about a past address* and loses to a
+// subsequent change; `SetAddressLocation` is an *assertion about the present* and
+// wins. That is the whole reason `resolvedFrom` exists.
 @schema
 type command =
   | Register({email: string, address: string})
   | UpdateEmail({email: string})
+  // Change the address and let the geocoder find the point.
   | UpdateAddress({address: string})
-  | SetLocation({location: Reventless.GeoPoint.t})
+  // Change the address *and* say where it is — a client that already has a point
+  // (it geocoded, or a human dragged the pin). Suppresses the geocoder for this
+  // address, because there is nothing left to look up.
+  | SetAddressLocation({address: string, location: Reventless.GeoPoint.t})
+  // `resolvedFrom` is a staleness token as much as provenance: an answer for an
+  // address that has since changed is dropped rather than applied.
+  | @noApi SetLocation({location: Reventless.GeoPoint.t, resolvedFrom: string})
+  | @noApi MarkAddressUnresolvable({address: string, reason: string})
   | Deactivate
 
 @schema
@@ -21,7 +44,21 @@ type event =
   | Registered({email: string, address: string})
   | EmailUpdated({email: string})
   | AddressUpdated({address: string})
-  | LocationSet({location: Reventless.GeoPoint.t})
+  // `resolvedFrom` is the address this point was derived from — provenance, not
+  // the address of record. Keeping it separate is what makes "is the pin still
+  // current?" a decidable question instead of an assumption, and it is what the
+  // slice reads to know whether an address still needs geocoding.
+  | LocationSet({location: Reventless.GeoPoint.t, resolvedFrom: string})
+  // A client supplied both halves at once. Deliberately *not* `AddressUpdated` +
+  // `LocationSet`: the geocoding slice collects `AddressUpdated`, so emitting it
+  // here would spend a request re-geocoding an address a human just pinned by
+  // hand, then race the machine's answer against theirs. This event is not in
+  // the slice's consumed set, so the slice stands down.
+  | AddressLocated({address: string, location: Reventless.GeoPoint.t})
+  // The geocoder answered and had nothing usable. A fact rather than an absence:
+  // `location: None` already means "not looked up yet", and one state meaning
+  // two things is one nobody can act on.
+  | AddressUnresolvable({address: string, reason: string})
   | Deactivated
 
 @schema

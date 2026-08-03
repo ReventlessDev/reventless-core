@@ -17,6 +17,8 @@ type inboundCommand = unit
 let maxRetries = 3
 let heartbeatInterval = 60
 let targetName = None
+// This plugin's own DCB event log — `OrderPlaced` is a DCB event.
+let sourceNames: array<string> = []
 // Foreign system this anti-corruption slice publishes confirmations to — drawn as an
 // external box outside the Ordering plugin in the Event Graph.
 let externalSystem = Some("EmailService")

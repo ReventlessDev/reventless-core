@@ -19,6 +19,8 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       Customers.email: "alice@x.y",
       address: "123 Main",
       location: None,
+      locationStatus: Pending,
+      locationNote: None,
       deactivated: false,
       orderCount: 0,
     })
@@ -31,6 +33,8 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       Customers.email: "alice2@x.y",
       address: "123 Main",
       location: None,
+      locationStatus: Pending,
+      locationNote: None,
       deactivated: false,
       orderCount: 0,
     })
@@ -43,6 +47,8 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       Customers.email: "alice@x.y",
       address: "789 Pine",
       location: None,
+      locationStatus: Pending,
+      locationNote: None,
       deactivated: false,
       orderCount: 0,
     })
@@ -50,11 +56,13 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
 
   CustomerGwt.test("LocationSet fills the declared point", () =>
     CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
-    ->CustomerGwt.whenEvent(Customer.LocationSet({location: {lat: 51.2093, lng: 3.2247}}))
+    ->CustomerGwt.whenEvent(Customer.LocationSet({location: {lat: 51.2093, lng: 3.2247}, resolvedFrom: "123 Main"}))
     ->CustomerGwt.thenState({
       Customers.email: "alice@x.y",
       address: "123 Main",
       location: Some({lat: 51.2093, lng: 3.2247}),
+      locationStatus: Located,
+      locationNote: None,
       deactivated: false,
       orderCount: 0,
     })
@@ -67,6 +75,8 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       Customers.email: "alice@x.y",
       address: "123 Main",
       location: None,
+      locationStatus: Pending,
+      locationNote: None,
       deactivated: true,
       orderCount: 0,
     })
@@ -81,7 +91,15 @@ OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {
     )
     ->OrderGwt.thenStateWithId(
       "c1",
-      {Customers.email: "", address: "", location: None, deactivated: false, orderCount: 1},
+      {
+        Customers.email: "",
+        address: "",
+        location: None,
+        locationStatus: Pending,
+        locationNote: None,
+        deactivated: false,
+        orderCount: 1,
+      },
     )
   )
 
@@ -94,7 +112,15 @@ OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {
     )
     ->OrderGwt.thenStateWithId(
       "c1",
-      {Customers.email: "", address: "", location: None, deactivated: false, orderCount: 2},
+      {
+        Customers.email: "",
+        address: "",
+        location: None,
+        locationStatus: Pending,
+        locationNote: None,
+        deactivated: false,
+        orderCount: 2,
+      },
     )
   )
 })

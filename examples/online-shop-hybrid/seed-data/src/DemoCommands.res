@@ -170,10 +170,25 @@ let customer = (~id: string, command: OrderingPlugin.Customer.command): Seed.mut
       ordering("Customer_UpdateAddress"),
       [("id", Id(id)), ("address", String(address))],
     )
-  | SetLocation({location}) =>
+  | SetAddressLocation({address, location}) =>
     Seed.mutation(
-      ordering("Customer_SetLocation"),
-      [("id", Id(id)), ("location", Object([("lat", Float(location.lat)), ("lng", Float(location.lng))]))],
+      ordering("Customer_SetAddressLocation"),
+      [
+        ("id", Id(id)),
+        ("address", String(address)),
+        (
+          "location",
+          Object([("lat", Float(location.lat)), ("lng", Float(location.lng))]),
+        ),
+      ],
     )
   | Deactivate => Seed.mutation(ordering("Customer_Deactivate"), [("id", Id(id))])
+  // `@noApi` — the geocoding slice publishes these onto the command topic
+  // directly; they are not mutations, so the seed cannot send them. Failing
+  // loudly beats mapping to a field name the schema does not have.
+  | SetLocation(_) | MarkAddressUnresolvable(_) =>
+    failwith(
+      "Customer.SetLocation / MarkAddressUnresolvable are internal (@noApi) — " ++
+      "seed a located customer with SetAddressLocation instead.",
+    )
   }

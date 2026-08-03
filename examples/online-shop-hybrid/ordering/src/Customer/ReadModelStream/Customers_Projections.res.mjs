@@ -53,6 +53,8 @@ function project(param) {
           email: email,
           address: address,
           location: undefined,
+          locationStatus: "Pending",
+          locationNote: undefined,
           deactivated: false,
           orderCount: 0
         },
@@ -82,6 +84,9 @@ function project(param) {
         _0: id,
         _1: state => {
           let newrecord = {...state};
+          newrecord.locationNote = undefined;
+          newrecord.locationStatus = "Pending";
+          newrecord.location = undefined;
           newrecord.address = address$1;
           return newrecord;
         }
@@ -93,7 +98,37 @@ function project(param) {
         _0: id,
         _1: state => {
           let newrecord = {...state};
+          newrecord.locationNote = undefined;
+          newrecord.locationStatus = "Located";
           newrecord.location = location;
+          return newrecord;
+        }
+      };
+    case "AddressLocated" :
+      let location$1 = event.location;
+      let address$2 = event.address;
+      return {
+        TAG: "Update",
+        _0: id,
+        _1: state => {
+          let newrecord = {...state};
+          newrecord.locationNote = undefined;
+          newrecord.locationStatus = "Located";
+          newrecord.location = location$1;
+          newrecord.address = address$2;
+          return newrecord;
+        }
+      };
+    case "AddressUnresolvable" :
+      let reason = event.reason;
+      return {
+        TAG: "Update",
+        _0: id,
+        _1: state => {
+          let newrecord = {...state};
+          newrecord.locationNote = reason;
+          newrecord.locationStatus = "Unresolvable";
+          newrecord.location = undefined;
           return newrecord;
         }
       };
@@ -121,6 +156,8 @@ function project$1(param) {
       email: "",
       address: "",
       location: undefined,
+      locationStatus: "Pending",
+      locationNote: undefined,
       deactivated: false,
       orderCount: 1
     },

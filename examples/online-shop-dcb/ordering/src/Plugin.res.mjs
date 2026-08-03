@@ -223,6 +223,7 @@ function Make(Platform) {
     maxRetries: SendOrderConfirmation$OrderingPlugin.maxRetries,
     heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval,
     targetName: undefined,
+    sourceNames: SendOrderConfirmation$OrderingPlugin.sourceNames,
     externalSystem: SendOrderConfirmation$OrderingPlugin.externalSystem
   })({
     collect: SendOrderConfirmation_Translation$OrderingPlugin.collect,

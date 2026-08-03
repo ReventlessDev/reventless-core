@@ -38,6 +38,10 @@ module type T = {
   let queryDbName: string
   let make: (
     ~dcbEventLog: DcbEventLog.component,
+    // The plugin-wide topic dict, for a slice whose `Spec.sourceNames` reaches
+    // beyond its own DCB log (an Aggregate's events, say). Omitted ⇒ the slice
+    // subscribes to the DCB log alone, which is what every DCB-only slice wants.
+    ~allEventTopics: EventTopic.allOutputs=?,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
     ~runtime: RuntimeHints.t=?,
     ~opts: Pulumi.ComponentResource.options=?,

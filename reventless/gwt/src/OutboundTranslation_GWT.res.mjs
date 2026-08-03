@@ -15,7 +15,10 @@ function Make(Spec) {
     Message$ReventlessCore.encode(param[1], Spec.outboundItemSchema)
   ]);
   let givenEvent = e => e;
-  let whenCollect = e => Spec.collect(e);
+  let whenCollect = (e, sourceIdOpt) => {
+    let sourceId = sourceIdOpt !== undefined ? sourceIdOpt : "";
+    return Spec.collect(e, sourceId);
+  };
   let thenTodos = (actual, expected) => {
     if (Primitive_object.equal(actual, expected)) {
       return Outcome$ReventlessGwt.pass;

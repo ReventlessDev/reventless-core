@@ -65,7 +65,14 @@ module Make = (
       })
     }
 
-    let construct = (~dcbEventLog: DcbEventLog.component, ~publishJsons, ~runtime, self, _name) => {
+    let construct = (
+      ~dcbEventLog: DcbEventLog.component,
+      ~allEventTopics: EventTopic.allOutputs,
+      ~publishJsons,
+      ~runtime,
+      self,
+      _name,
+    ) => {
       let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
       let memorySize = ReventlessInfra.RuntimeHints.resolveMemory(runtime, ~default=1024)
       let timeout = ReventlessInfra.RuntimeHints.resolveTimeout(runtime, ~default=30)
@@ -86,7 +93,38 @@ module Make = (
       // once per slice instead of collapsing to a single entry.
       let dcbEventLogName =
         (dcbEventLog->Component.toPulumiResource).name->Option.getOr("") ++ "DcbEventLog"
-      let allEventTopics = Dict.fromArray([(dcbEventLogName, dcbEventTopicOutputs)])
+
+      // Everything this slice could subscribe to: the plugin-wide dict the
+      // caller passed, plus its own DCB log — which is always reachable whether
+      // or not a dict was supplied, so the `[]` default works in tests and
+      // fixtures that construct a slice with nothing else around it.
+      let availableTopics = allEventTopics->Dict.copy
+      availableTopics->Dict.set(dcbEventLogName, dcbEventTopicOutputs)
+
+      let sourceNames = switch Spec.sourceNames {
+      | [] => [dcbEventLogName]
+      | declared => declared
+      }
+
+      // Fail-fast, mirroring AutomationSlice_Builder: an unknown source name
+      // would otherwise be dropped by `EventTopic.filter`, leaving the collector
+      // subscribed to nothing. That surfaces much later as "the TODO list never
+      // populates", with nothing pointing at the typo that caused it.
+      sourceNames->Array.forEach(sourceName =>
+        if !(availableTopics->Dict.has(sourceName)) {
+          let availableNames =
+            availableTopics->Dict.keysToArray->Array.toSorted(String.compare)->Array.join(", ")
+          JsError.throwWithMessage(
+            `OutboundTranslationSlice "${Spec.name}" declares sourceName "${sourceName}", ` ++
+            `but no EventTopic with that key exists. ` ++
+            `Available source names: [${availableNames}]. ` ++
+            `A source is an Aggregate Spec.name or a DCB source name ` ++
+            `(typically "<pluginName>DcbEventLog"); \`[]\` means this plugin's own DCB log.`,
+          )
+        }
+      )
+
+      let eventTopics = availableTopics->EventTopic.filter(sourceNames->Belt.Set.String.fromArray)
 
       // Build the EventCollector inside an Output.all2 so both `queryDbOps` and
       // `publishJsonsFn` are captured in the same closure. The jsonEventsHandler
@@ -99,7 +137,7 @@ module Make = (
         ->Pulumi.Output.apply(((queryDbOps, publishJsonsFn)) => {
           let ec = SpecificEventCollector.make(
             ~name=Spec.name,
-            ~eventTopics=allEventTopics,
+            ~eventTopics,
             ~owner={kind: ComponentType.OutboundTranslationSlice, name: Spec.name},
             ~opts,
           )
@@ -114,14 +152,21 @@ module Make = (
                   // `event` payload — TAG + fields at the top level — not the
                   // wrapper. Splitting the wrapper yields eventType "Unknown",
                   // which DcbDecode drops without warning.
+                  let envelope = json->JSON.Decode.object
                   let rawEvent =
-                    json
-                    ->JSON.Decode.object
-                    ->Option.flatMap(d => d->Dict.get("event"))
-                    ->Option.getOr(json)
+                    envelope->Option.flatMap(d => d->Dict.get("event"))->Option.getOr(json)
+                  // The entity the event was published for. An Aggregate's event
+                  // payload does not repeat its own id, so without carrying this
+                  // out of the envelope `collect` cannot name the subject of the
+                  // outbound item it creates.
+                  let sourceId =
+                    envelope
+                    ->Option.flatMap(d => d->Dict.get("id"))
+                    ->Option.flatMap(JSON.Decode.string)
+                    ->Option.getOr("")
                   let (eventType, dataDict) = rawEvent->Message.splitMessage
                   switch decoder.decode(~eventType, ~data=dataDict) {
-                  | Some(event) => [event]
+                  | Some(event) => [(sourceId, event)]
                   | None => []
                   }
                 },
@@ -164,7 +209,7 @@ module Make = (
           let resources = (queryDb->Component.outputs).resources
           ec->EventCollectorRuntimeBuilder.forEventCollector(
             ~handler,
-            ~eventTopics=allEventTopics,
+            ~eventTopics,
             ~resources,
             ~memorySize,
             ~timeout,
@@ -184,8 +229,12 @@ module Make = (
         }),
       )
 
+      // Aggregated across every subscribed topic, as AutomationSlice does — with
+      // more than one source, the DCB log's resources alone are an undercount.
+      let aggregatedResources =
+        eventTopics->Dict.valuesToArray->Array.flatMap((t: EventTopic.outputs) => t.resources)
       let outputs: OutboundTranslationSlice.outputs = {
-        resources: dcbEventTopicOutputs.resources,
+        resources: aggregatedResources,
         queryDb: queryDb->Component.outputs,
       }
       self->Component.setOutputs(outputs)
@@ -193,6 +242,10 @@ module Make = (
 
     let make = (
       ~dcbEventLog,
+      // Defaulted so every existing call site — fixtures included — keeps
+      // compiling; a slice with no declared sources needs nothing but its own
+      // DCB log, which `construct` adds regardless.
+      ~allEventTopics=Dict.make(),
       ~publishJsons,
       ~runtime=?,
       ~opts=?,
@@ -200,7 +253,7 @@ module Make = (
       Component.make(
         ~componentType=OutboundTranslationSlice.componentType->ComponentType.toString,
         ~name=Spec.name,
-        ~construct=construct(~dcbEventLog, ~publishJsons, ~runtime, ...),
+        ~construct=construct(~dcbEventLog, ~allEventTopics, ~publishJsons, ~runtime, ...),
         ~opts,
       )
   }

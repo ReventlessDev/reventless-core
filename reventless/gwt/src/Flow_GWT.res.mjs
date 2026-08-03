@@ -428,7 +428,7 @@ function OutboundStep(Spec) {
   let thenOutbound = async (flowP, expected) => {
     let s = await flowP;
     let events = decodeMatching(s.log, consumedDecoder, []);
-    let collected = events.map(e => Spec.collect(e)).flat();
+    let collected = events.map(e => Spec.collect(e, "")).flat();
     let actual = encItems(collected);
     let expectedJson = encItems(expected);
     let o = Primitive_object.equal(actual, expectedJson) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
