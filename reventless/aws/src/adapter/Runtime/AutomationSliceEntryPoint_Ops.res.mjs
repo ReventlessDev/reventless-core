@@ -36,6 +36,7 @@ function decodeEntry(json) {
     callbackType: Stdlib_Option.getOr(strOf(h, "callbackType"), "automation"),
     queryDbTableName: Stdlib_Option.getOr(strOf(h, "queryDbTableName"), ""),
     dcbQueueUrl: Stdlib_Option.getOr(strOf(h, "dcbQueueUrl"), ""),
+    commandQueueIsFifo: Stdlib_Option.flatMap(h["commandQueueIsFifo"], Stdlib_JSON.Decode.bool),
     sourceUrn: Stdlib_Option.getOr(strOf(h, "sourceUrn"), ""),
     context: Stdlib_Option.flatMap(h["context"], decodeContext)
   }));
@@ -64,13 +65,13 @@ function defaultContext(sliceName) {
   };
 }
 
-function makePublishJsons(queueUrl) {
+function makePublishJsons(queueUrl, isFifo) {
   let queue = {
     id: queueUrl,
     name: queueUrl,
     arn: ""
   };
-  return CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(queue, "SQS_FIFO");
+  return CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(queue, isFifo ? "SQS_FIFO" : "SQS");
 }
 
 function makeSyncTodoItems(queryDbTableName, todoItems, rowSchema) {
@@ -121,14 +122,14 @@ function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJso
 
 function makeAutomationRegisteredHandler(entry, sliceName, callback) {
   return {
-    handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeAutomationJsonEventsHandler(Stdlib_Option.getOr(entry.context, defaultContext(sliceName)), callback, makePublishJsons(entry.dcbQueueUrl), makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, AutomationSlice_Callback$ReventlessCore.todoRowSchema))),
+    handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeAutomationJsonEventsHandler(Stdlib_Option.getOr(entry.context, defaultContext(sliceName)), callback, makePublishJsons(entry.dcbQueueUrl, Stdlib_Option.getOr(entry.commandQueueIsFifo, false)), makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, AutomationSlice_Callback$ReventlessCore.todoRowSchema))),
     comp: `AutomationSlice(` + sliceName + `)`
   };
 }
 
 function makeOutboundRegisteredHandler(entry, sliceName, consumedEventSchema, callback) {
   return {
-    handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeOutboundJsonEventsHandler(consumedEventSchema, callback, makePublishJsons(entry.dcbQueueUrl), makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema))),
+    handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeOutboundJsonEventsHandler(consumedEventSchema, callback, makePublishJsons(entry.dcbQueueUrl, Stdlib_Option.getOr(entry.commandQueueIsFifo, false)), makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema))),
     comp: `OutboundTranslationSlice(` + sliceName + `)`
   };
 }

@@ -12,6 +12,7 @@ import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Util_SQS$ReventlessAws from "../../util/Util_SQS.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
+import * as CommandTopicRegistry$ReventlessAws from "./CommandTopicRegistry.res.mjs";
 import * as Util_DeadLetterQueue$ReventlessAws from "../../util/Util_DeadLetterQueue.res.mjs";
 import * as CommandTopicChannel_Helpers$ReventlessAws from "./CommandTopicChannel_Helpers.res.mjs";
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "./CommandTopicChannel_SQS_Runtime.res.mjs";
@@ -48,11 +49,13 @@ function make(name, owner, opts) {
     sqsManagedSseEnabled: false
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
   let resolvedQueueOutput = Util_SQS$ReventlessAws.toResolvedQueueOutput(queue);
+  let queueResource = Util_SQS$ReventlessAws.toResource(tags, queue);
+  CommandTopicRegistry$ReventlessAws.register(owner, queue.id, queueResource, false);
   return {
     parts: {
       queue: queue
     },
-    resources: [Util_SQS$ReventlessAws.toResource(tags, queue)],
+    resources: [queueResource],
     publishJsons: resolvedQueueOutput.apply(resolvedQueue => CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(resolvedQueue, "SQS")),
     publishJsonsStream: resolvedQueueOutput.apply(resolvedQueue => {
       let publishJsons = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(resolvedQueue, "SQS");

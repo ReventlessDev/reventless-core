@@ -542,7 +542,7 @@ function MakeWithConfig(Config) {
   let hooks_onDcbCommandTopicCreated = dcbCommandTopicUnknown => {
     let channel = dcbCommandTopicUnknown.channel;
     let channelParts = channel.parts;
-    AutomationSliceRuntime_Builder_Single$ReventlessAws.setDcbQueueUrl(channelParts.queue.id);
+    AutomationSliceRuntime_Builder_Single$ReventlessAws.setDcbQueueUrl(undefined, channel.resources[0], channelParts.queue.id);
   };
   let hooks_onDcbSlicesCreated = dcbEventLogUnknown => {
     StateViewSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);
@@ -1796,7 +1796,7 @@ function Make($star) {
   let hooks_onDcbCommandTopicCreated = dcbCommandTopicUnknown => {
     let channel = dcbCommandTopicUnknown.channel;
     let channelParts = channel.parts;
-    AutomationSliceRuntime_Builder_Single$ReventlessAws.setDcbQueueUrl(channelParts.queue.id);
+    AutomationSliceRuntime_Builder_Single$ReventlessAws.setDcbQueueUrl(undefined, channel.resources[0], channelParts.queue.id);
   };
   let hooks_onDcbSlicesCreated = dcbEventLogUnknown => {
     StateViewSliceRuntime_Builder_Single$ReventlessAws.finishWithDcbEventLog(dcbEventLogUnknown);

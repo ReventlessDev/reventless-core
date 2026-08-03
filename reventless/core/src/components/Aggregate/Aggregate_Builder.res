@@ -66,7 +66,17 @@ module Make = (
     }
   }
 
-  let createCommandTopic = (eventLog: SpecificEventLog.component, name, opts, ~memorySize, ~timeout) =>
+  let createCommandTopic = (eventLog: SpecificEventLog.component, name, opts, ~memorySize, ~timeout) => {
+    // Created outside the apply below, so the topic — and with it the channel's
+    // queue — exists while plugin construction is still synchronous. An outbound
+    // slice targeting this aggregate resolves its publish queue in a finalizer
+    // that runs before any Output settles; a queue created inside the apply is
+    // invisible there. Only the handler needs the event log's operations.
+    let commandTopic = SpecificCommandTopic.make(
+      ~name,
+      ~owner={kind: ComponentType.Aggregate, name: Spec.name},
+      ~opts,
+    )
     eventLog
     ->Component.operations
     ->Pulumi.Output.apply(eventLogOps => {
@@ -78,11 +88,6 @@ module Make = (
           module EventLog = SpecificEventLog
           let eventLog = eventLogOps
         },
-      )
-      let commandTopic = SpecificCommandTopic.make(
-        ~name,
-        ~owner={kind: ComponentType.Aggregate, name: Spec.name},
-        ~opts,
       )
       let handler = SpecificCommandTopic.makeHandler(
         ~commandTopic,
@@ -98,6 +103,7 @@ module Make = (
       )
       commandTopic
     })
+  }
 
   let createCommandGenerator = (
     commandTopic: Pulumi.Output.t<SpecificCommandTopic.component>,

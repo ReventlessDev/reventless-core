@@ -65,9 +65,14 @@ module Make = (Api: {
         ~bodyModulePath=Util_Bundle.getModuleSpecifier(Translation.moduleUrl),
         ~callbackType="outbound",
         ~queryDbTableName,
+        // The target queue rides along so `connectLambda`'s existing
+        // `sqs:SendMessage` grant covers it. Without it the role can publish
+        // nowhere, and the command is lost after the geocoder has been paid for.
         ~queryDbResources=queryDbOutputs.resources,
         ~sourceTopics,
         ~consumesDcbLog,
+        // Only the name: the target Aggregate's CommandTopic does not exist yet.
+        ~commandTargetName=?Spec.targetName,
       )
 
       ots

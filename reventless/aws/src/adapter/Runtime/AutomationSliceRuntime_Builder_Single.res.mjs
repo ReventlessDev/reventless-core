@@ -8,6 +8,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
+import * as CommandTopicRegistry$ReventlessAws from "../CommandTopic/CommandTopicRegistry.res.mjs";
 import * as PluginRuntime_Builder$ReventlessAws from "../../plugin/runtime/PluginRuntime_Builder.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
@@ -20,15 +21,28 @@ let dcbQueueUrlRef = {
   contents: undefined
 };
 
-function setDcbQueueUrl(url) {
-  dcbQueueUrlRef.contents = url;
+let dcbQueueIsFifo = {
+  contents: false
+};
+
+let dcbQueueResources = [];
+
+function setDcbQueueUrl(isFifoOpt, resource, url) {
+  let isFifo = isFifoOpt !== undefined ? isFifoOpt : false;
+  if (Stdlib_Option.isNone(dcbQueueUrlRef.contents)) {
+    dcbQueueUrlRef.contents = url;
+    dcbQueueIsFifo.contents = isFifo;
+  }
+  Stdlib_Option.forEach(resource, r => {
+    dcbQueueResources.push(r);
+  });
 }
 
 function getDcbQueueUrl() {
   return dcbQueueUrlRef.contents;
 }
 
-function registerAutomationSlice(name, specModulePath, bodyModulePath, callbackTypeOpt, queryDbTableName, queryDbResourcesOpt, context, sourceTopicsOpt, consumesDcbLogOpt) {
+function registerAutomationSlice(name, specModulePath, bodyModulePath, callbackTypeOpt, queryDbTableName, queryDbResourcesOpt, context, sourceTopicsOpt, consumesDcbLogOpt, commandTargetName) {
   let callbackType = callbackTypeOpt !== undefined ? callbackTypeOpt : "automation";
   let queryDbResources = queryDbResourcesOpt !== undefined ? queryDbResourcesOpt : [];
   let sourceTopics = sourceTopicsOpt !== undefined ? sourceTopicsOpt : ({});
@@ -41,7 +55,8 @@ function registerAutomationSlice(name, specModulePath, bodyModulePath, callbackT
     queryDbResources: queryDbResources,
     context: context,
     sourceTopics: sourceTopics,
-    consumesDcbLog: consumesDcbLog
+    consumesDcbLog: consumesDcbLog,
+    commandTargetName: commandTargetName
   };
 }
 
@@ -195,10 +210,19 @@ function finishWithDcbEventLog(dcbEventLog) {
       let handlerOutputs = [];
       let packageDirs = {};
       let allQueryDbResources = [];
+      let anyDcbFallback = {
+        contents: false
+      };
       Stdlib_Dict.forEachWithKey(bundledInfos, (info, _name) => {
         info.queryDbResources.forEach(r => {
           allQueryDbResources.push(r);
         });
+        let target = Stdlib_Option.flatMap(info.commandTargetName, CommandTopicRegistry$ReventlessAws.get);
+        if (target !== undefined) {
+          allQueryDbResources.push(target.resource);
+        } else {
+          anyDcbFallback.contents = true;
+        }
         let pkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
         packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, pkg);
         let bodyPkg = Util_Bundle$ReventlessAws.extractPackageName(info.bodyModulePath);
@@ -208,18 +232,32 @@ function finishWithDcbEventLog(dcbEventLog) {
         let callbackType = Stdlib_Option.getOr(JSON.stringify(info.callbackType), `""`);
         let context = info.context;
         let contextFragment = context !== undefined ? Stdlib_Option.getOr(Stdlib_Option.map(JSON.stringify(context), json => `,"context":` + json), "") : "";
+        let match = target !== undefined ? [
+            target.queueUrl,
+            target.isFifo
+          ] : [
+            dcbQueueUrl,
+            dcbQueueIsFifo.contents
+          ];
+        let commandQueueIsFifo = match[1];
         let handlerJson = Pulumi.all([
           info.queryDbTableName,
-          dcbQueueUrl,
+          match[0],
           sourceUrnsFor(info)
         ]).apply(param => {
           let urns = param[2];
           let urnsJson = JSON.stringify(urns.map(prim => prim));
           let firstUrn = Stdlib_Option.getOr(urns[0], "");
-          return `{"specModule":` + specModule + `,"bodyModule":` + bodyModule + `,"callbackType":` + callbackType + `,"queryDbTableName":"` + param[0] + `","dcbQueueUrl":"` + param[1] + `","sourceUrn":"` + firstUrn + `","sourceUrns":` + urnsJson + contextFragment + `}`;
+          let fifoJson = commandQueueIsFifo ? "true" : "false";
+          return `{"specModule":` + specModule + `,"bodyModule":` + bodyModule + `,"callbackType":` + callbackType + `,"queryDbTableName":"` + param[0] + `","dcbQueueUrl":"` + param[1] + `","commandQueueIsFifo":` + fifoJson + `,"sourceUrn":"` + firstUrn + `","sourceUrns":` + urnsJson + contextFragment + `}`;
         });
         handlerOutputs.push(handlerJson);
       });
+      if (anyDcbFallback.contents) {
+        dcbQueueResources.forEach(r => {
+          allQueryDbResources.push(r);
+        });
+      }
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
       let envVars = {};
       envVars["HANDLER_CONFIG"] = handlerConfigOutput;
@@ -250,6 +288,8 @@ export {
   log,
   bundledInfos,
   dcbQueueUrlRef,
+  dcbQueueIsFifo,
+  dcbQueueResources,
   setDcbQueueUrl,
   getDcbQueueUrl,
   registerAutomationSlice,

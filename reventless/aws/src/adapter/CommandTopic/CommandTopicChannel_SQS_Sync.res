@@ -45,10 +45,15 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
   )
 
   let resolvedQueueOutput = queue->Util_SQS.toResolvedQueueOutput
+  let queueResource = queue->Util_SQS.toResource(~tags=tags->Pulumi.Output.fromInput)
+
+  // This is the maker Aggregates use, so it is the one an OutboundTranslationSlice
+  // naming an Aggregate in `targetName` needs to find.
+  CommandTopicRegistry.register(~owner, ~queueUrl=queue.id, ~resource=queueResource, ~isFifo=false)
 
   {
     ReventlessCore.CommandTopic_Adapter.parts: {queue: queue},
-    resources: [queue->Util_SQS.toResource(~tags=tags->Pulumi.Output.fromInput)],
+    resources: [queueResource],
     publishJsons: resolvedQueueOutput->Pulumi.Output.apply(resolvedQueue =>
       resolvedQueue->CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS, ...)
     ),

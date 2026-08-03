@@ -1,23 +1,22 @@
 # Plan: an address is entered once, and the backend finds the point
 
 **Date:** 2026-08-03
-**Status:** IN PROGRESS — steps 1–8 built and green (full suite 301 suites / 2721 tests; the one
-red, `LocalAuthHttpTest`, is a port-binding flake under full-suite load and passes alone and with
-its whole project). **D9 is resolved** (two callers, two seams). **D3 is now calibrated against the
+**Status:** IN PROGRESS — steps 1–8 built and green (full suite 301 suites / 2723 tests, all
+passing; `LocalAuthHttpTest`, previously red under full-suite load, is a port-binding flake and
+passed on the latest full run). **D9 is resolved** (two callers, two seams). **D3 is now calibrated against the
 live Esri index** — the shipped `0.8`/`0.1` declined correct addresses at a 1-in-4 rate and is
 replaced by `0.97`/`0.01`; see [the measurement
-round](#the-measurement-round-d3-calibrated-against-a-real-index). Step 7's fast path is still
-**built end to end and awaiting a deploy to prove it.** Checking the deployed stack turned up three
-reasons it could never have run, none of them in the plugin code: the stale composition root
-(fixed, `c05641014`), the AWS runtime's inability to feed an outbound slice from an aggregate — step
-1's capability, never built on the deploy side (now fixed, and confirmed live: the Lambda carries an
-enabled event-source mapping on `CustomerAggrEventLog` and routes records to the slice) — a
-false-positive DCB validation error, fixed by giving the validator the aggregates' event schemas —
-and, once events finally arrived, a `phase1` shape mismatch that had been crashing **every** outbound
-slice on AWS since step 1, fixed by making each callback protocol a single declaration. See [the
-deploy
-round](#the-deploy-round-step-7s-wiring-works-and-two-things-behind-it-do-not). Step 10 waits on a UI
-release.
+round](#the-measurement-round-d3-calibrated-against-a-real-index). Step 7's fast path is
+**built end to end and awaiting a deploy to prove it.** Checking the deployed stack turned up five
+blockers, none of them in the plugin code — the stale composition root (`c05641014`); the AWS
+runtime's inability to feed an outbound slice from an aggregate (fixed, confirmed live: the Lambda
+carries an enabled event-source mapping on `CustomerAggrEventLog`); a false-positive DCB validation
+error; a `phase1` shape mismatch that had been crashing **every** outbound slice on AWS since step 1;
+and a publish path that had never once run — no IAM grant, hardwired to the wrong queue, wrong SQS
+flavor. **All five are now closed in code**, the last verified by `pulumi preview` against the real
+stack (routing, grant, flavor, and no replacements); the next deploy is the end-to-end proof. See
+[the deploy round](#the-deploy-round-step-7s-wiring-works-and-two-things-behind-it-do-not). Step 10
+waits on a UI release.
 See [Build log](#build-log) at the foot for what landed and what the build taught that the plan had
 wrong.
 **Repos:** reventless-core. A UI-repo change is *anticipated* (D7) but not required by this plan and
@@ -1084,13 +1083,77 @@ reads it for routing. It documented an intention the framework never acted on. T
 shape a second time: the DCB direction was built and the aggregate direction was not, and the
 declaration that should have exposed the gap was inert instead.
 
-*Why the fix is tractable.* `publishToAggregates` already exists — a dict of per-aggregate publish
-functions, threaded into read models and extension points — and `createAggregatesWithoutEventMappers`
-populates it **before** `Dcb_Builder.construct` runs, so the Customer publisher is in hand at the
-moment an outbound slice is built. The work is to thread that dict into `Dcb_Builder`, have the
-outbound slice resolve its publisher through `Spec.targetName` (falling back to the DCB topic, which
-is what every existing slice wants), carry the resolved queue into `HANDLER_CONFIG` so the Lambda
-publishes to the same place, and grant the role `SendMessage` on it.
+*The deploy-time half is done* (`91f580130`). `Dcb_Builder` resolves the publisher through
+`Spec.targetName` against `publishToAggregates` — a dict of per-aggregate publish functions that
+`createAggregatesWithoutEventMappers` fills **before** `construct` runs, so the Customer publisher is
+in hand when the slice is built. DCB slice publishers register afterwards and are deliberately
+absent, since a slice targeting one wants the DCB fallback. That completes the **local** platform,
+where the publisher is a captured closure.
+
+*The AWS half is not, and cannot reuse the function.* The Lambda is a compiled `EntryPoint` bundled by
+`buildCodeArchive` and configured solely through `HANDLER_CONFIG` — not a serialized closure. That
+separation was deliberate: serialized closures mixing layer and runtime `@aws-sdk` versions caused
+cold-start 502s. So a `publishJsons` function cannot cross into the Lambda, and the same choice has to
+be re-expressed as **data**: which queue, and what flavor.
+
+*Fault C, found while scoping that — and it would have been the next surprise.* `makePublishJsons`
+hardcodes `AWS.SQS_FIFO`, and `Util_SQS_Runtime.sendMessages` branches on exactly that to attach a
+`MessageGroupId`. Both deployed command topics are **standard** queues (`CommandTopicChannel_SQS.make`
+creates them without `fifoQueue`; only the `_FIFO` variant sets it), and SQS rejects a
+`MessageGroupId` on a standard queue. So the publish would still fail after routing and IAM were
+fixed — and it would fail for `AutoShipOrder` and `SendOrderConfirmation` too, the moment their grant
+exists. **Three faults in a row on one path, each hidden by the one before it**, which is what a code
+path that has never once executed end to end looks like from the outside.
+
+*The seam for the remainder.* `CommandTopicChannel_SQS.make` is where the queue is created: it holds
+the concrete `PulumiAws.SQS.Queue.t` (so `.id` is a flat `Output<string>`, not a field buried inside
+an `Output<array<resource>>`), it takes `~owner`, and its module identity already fixes the flavor.
+Registering `(url, queue resource, isFifo)` there, keyed by owner name — the plural sibling of
+`setDcbQueueUrl` — gives the outbound builder everything it needs: the URL and flavor for
+`HANDLER_CONFIG`, and the resource to append to the channel spec so `connectLambda`'s existing
+`sqsResources` grant covers it.
+
+*The registry landed one commit before it could work* (`af94d0218`), because registration happened at
+queue creation and the queue was created inside `eventLog->Component.operations->Pulumi.Output.apply`
+— after every synchronous finalizer had already run. The framing "find a lifecycle point that
+observes both" turned out to be the wrong question; the right one was *why is the queue in an apply
+at all?* Only the command **handler** needs the event log's operations. The queue needs nothing from
+them, so `SpecificCommandTopic.make` is hoisted out of the apply in
+`Aggregate_Builder.createCommandTopic` and runs during `createAggregatesWithoutEventMappers` — which
+`Plugin_Builder` deliberately calls *before* DCB construction, for exactly this class of reason. The
+finalizer's existing lookup then simply finds the entry; no new lifecycle point exists. This also
+moves an SQS queue creation out of an apply, which is the repo's own standing rule, and it is why the
+queue was invisible to `pulumi preview` on a fresh stack.
+
+*Fault A closes the same way, for the fallback direction.* A slice that resolves no target publishes
+to the plugin's DCB command topic — and that queue's `SendMessage` grant was equally missing.
+`onDcbCommandTopicCreated` already held the channel synchronously; it now passes the queue resource
+to `setDcbQueueUrl`, and the finalizer appends the captured DCB queue(s) to the channel resources
+whenever at least one slice kept the fallback. (Accumulated, not singular: the hook fires again for
+the async DCB topic when async StateChangeSlices exist, and granting on both is correct.)
+
+*Verified at plan level against the real stack.* A `pulumi preview` of the ordering stack shows all
+three faults closing at once and nothing being replaced:
+
+| evidence | detail |
+|---|---|
+| routing (fault B) | `GeocodeCustomerAddress`'s `dcbQueueUrl`: `OrderingDcbCmdTopic → CustomerAggrCmdTopic`; `AutoShipOrder` / `SendOrderConfirmation` unchanged |
+| IAM (fault A) | new `AllowLambdaSendSQS` statement on the `AllAutomationSlices` role, resources `[CustomerAggrCmdTopic, OrderingDcbCmdTopic]` |
+| flavor (fault C) | `commandQueueIsFifo: false` on all three handlers — both topics are standard queues |
+| URN stability | `CustomerAggrCmdTopic` is an in-place *update*, not a replace — the hoist does not change resource identity |
+
+The one diff the hoist itself causes: the queue gains its `reventless:plugin` tag. `AWS_Tags` reads
+the ambient plugin context that `Plugin_Builder` publishes during synchronous construction; a queue
+created inside an apply ran after that context was gone, so the tag had been silently missing on
+every aggregate command topic. Tags-only, in-place.
+
+*What was tried and abandoned, so it is not retried.* Deriving the URL from
+`Builder_Helpers.aggregateResources` does not work. It is an `Output<array<resource>>`, and although
+every `resource` field is typed `Pulumi.Output.t<string>`, Pulumi **flattens nested Outputs at
+resolution**, so inside the outer apply those fields are already plain strings — `.apply` on one
+throws `TypeError: m.apply is not a function`. The types describe the pre-resolution shape and reality
+is the post-resolution one; bridging that needs `Obj.magic`, which is barred in `.res`. Capture at
+creation sidesteps it entirely.
 
 **A note this plan owes step 6, found while repairing the fallout.** Adding a non-nullable field to a
 read model breaks the *entire list query* for every pre-existing row. `locationStatus` is non-null in
@@ -1115,6 +1178,20 @@ component with live data needs a backfill planned alongside it.
   bundle has no geocoder to export, even though D9 makes geocoding a platform capability rather than
   a UI feature. Left alone deliberately — moving it is step 10's territory, where the Function URL is
   deleted anyway — but it is why the capability is not yet reachable on a headless platform.
+- ~~**Found while wiring the DCB grant, not fixed: async DCB topics overwrite `dcbQueueUrlRef`.**~~
+  **Fixed, first-wins as predicted.** `onDcbCommandTopicCreated` fires once per DCB command topic,
+  and a plugin with async StateChangeSlices fires it twice
+  ([Dcb_Builder.res:380](../../reventless/core/src/components/Dcb/Dcb_Builder.res#L380) then
+  [:402](../../reventless/core/src/components/Dcb/Dcb_Builder.res#L402)) — the second (async, FIFO)
+  call overwrote the sync topic's URL, and since the AWS hook never passes `~isFifo` the flavor was
+  recorded as `false` either way. Any automation/outbound slice in such a plugin would have published
+  its command to the async FIFO queue without a `MessageGroupId`, which SQS rejects — fault C's shape
+  again, on the queue that had not yet been looked at. `setDcbQueueUrl` now keeps the first URL and
+  flavor; the sync topic is created first and is the one a slice's command belongs on. The *grant*
+  half was already immune and is unchanged: resources accumulate across both calls, and granting on
+  both queues is correct. A no-op for every currently deployed plugin (none combines async slices
+  with automation/outbound slices), which is why it rides along with step 7's deploy rather than
+  needing one of its own.
 - **Step 9 is unblocked and small.** The port type it targets exists (7a), the env channel is built
   and shared with step 7, D3's calibration is measured, and the aggregate-source gap that would have
   made it pointless is closed. What remains: delete `GeocodingService`, accept an argument in

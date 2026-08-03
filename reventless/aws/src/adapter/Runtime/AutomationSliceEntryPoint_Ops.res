@@ -27,6 +27,10 @@ type handlerEntry = {
   callbackType: string,
   queryDbTableName: string,
   dcbQueueUrl: string,
+  /** Whether `dcbQueueUrl` is a FIFO queue. Absent in a config written before
+      the flavor travelled with the URL, where `false` — a standard queue — is
+      what these command topics actually are. */
+  commandQueueIsFifo: option<bool>,
   sourceUrn: string,
   context: option<Reventless.AutomationSlice.context>,
 }
@@ -53,6 +57,7 @@ let decodeEntry = (json: JSON.t): option<handlerEntry> =>
     callbackType: h->strOf("callbackType")->Option.getOr("automation"),
     queryDbTableName: h->strOf("queryDbTableName")->Option.getOr(""),
     dcbQueueUrl: h->strOf("dcbQueueUrl")->Option.getOr(""),
+    commandQueueIsFifo: h->Dict.get("commandQueueIsFifo")->Option.flatMap(JSON.Decode.bool),
     sourceUrn: h->strOf("sourceUrn")->Option.getOr(""),
     context: h->Dict.get("context")->Option.flatMap(decodeContext),
   })
@@ -88,9 +93,13 @@ let defaultContext = (sliceName: string): Reventless.AutomationSlice.context => 
 
 // ── Shared plumbing ─────────────────────────────────────────────────────────
 
-let makePublishJsons = (queueUrl: string): ReventlessCore.CommandTopic.publishJsons => {
+// The flavor comes from the handler config rather than being assumed. It used to
+// be hardcoded FIFO while the command topics are standard queues, and SQS rejects
+// the MessageGroupId a FIFO publisher attaches — a failure nothing had reached,
+// because the role had no sqs:SendMessage to get that far.
+let makePublishJsons = (queueUrl: string, ~isFifo: bool): ReventlessCore.CommandTopic.publishJsons => {
   let queue: Util_SQS_Runtime.resolvedQueue = {id: queueUrl, name: queueUrl, arn: ""}
-  queue->CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS_FIFO)
+  queue->CommandTopicChannel_SQS_Runtime.publishJsons(isFifo ? AWS.SQS_FIFO : AWS.SQS)
 }
 
 // Overwrite-sync the in-memory TODO list into the slice's view table. Rows are
@@ -223,7 +232,7 @@ let makeAutomationRegisteredHandler = (
     makeAutomationJsonEventsHandler(
       ~context=entry.context->Option.getOr(defaultContext(sliceName)),
       ~callback,
-      ~publishJsons=makePublishJsons(entry.dcbQueueUrl),
+      ~publishJsons=makePublishJsons(entry.dcbQueueUrl, ~isFifo=entry.commandQueueIsFifo->Option.getOr(false)),
       ~syncTodoItems=makeSyncTodoItems(
         ~queryDbTableName=entry.queryDbTableName,
         ~todoItems=callback.todoItems,
@@ -244,7 +253,7 @@ let makeOutboundRegisteredHandler = (
     makeOutboundJsonEventsHandler(
       ~consumedEventSchema,
       ~callback,
-      ~publishJsons=makePublishJsons(entry.dcbQueueUrl),
+      ~publishJsons=makePublishJsons(entry.dcbQueueUrl, ~isFifo=entry.commandQueueIsFifo->Option.getOr(false)),
       ~syncTodoItems=makeSyncTodoItems(
         ~queryDbTableName=entry.queryDbTableName,
         ~todoItems=callback.todoItems,

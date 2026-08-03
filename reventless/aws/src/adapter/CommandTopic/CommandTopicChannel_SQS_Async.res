@@ -44,6 +44,11 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
   )
 
   let resolvedQueueOutput = queue->Util_SQS.toResolvedQueueOutput
+  let queueResource = queue->Util_SQS.toResource(~tags=tags->Pulumi.Output.fromInput)
+
+  // Async aggregates and StateChangeSlices land here; same capture so a slice
+  // targeting one is routed to it rather than to the plugin's DCB topic.
+  CommandTopicRegistry.register(~owner, ~queueUrl=queue.id, ~resource=queueResource, ~isFifo=false)
 
   {
     parts: {queue: queue},

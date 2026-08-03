@@ -794,12 +794,17 @@ module MakeWithConfig = (
         let tableResource = outputs.resources->Array.getUnsafe(0)
         PluginRuntime_Builder.registerDcbTableName(tableResource.name)
       },
-    // DCB CommandTopic created hook — extracts SQS queue URL for slice builders.
+    // DCB CommandTopic created hook — extracts SQS queue URL for slice builders,
+    // and the queue resource so the slice Lambda's role is granted
+    // `sqs:SendMessage` on it.
     onDcbCommandTopicCreated: dcbCommandTopicUnknown => {
       let commandTopic = dcbCommandTopicUnknown->asDcbCommandTopicComponent
       let channel = commandTopic->ReventlessCore.CommandTopic_Adapter.channel
       let channelParts = channel.parts->asSqsChannelParts
-      AutomationSliceRuntime_Builder_Single.setDcbQueueUrl(channelParts.queue.id)
+      AutomationSliceRuntime_Builder_Single.setDcbQueueUrl(
+        ~resource=?channel.resources->Array.get(0),
+        channelParts.queue.id,
+      )
     },
     // DCB slices created hook — finalize slice Lambdas.
     onDcbSlicesCreated: dcbEventLogUnknown => {

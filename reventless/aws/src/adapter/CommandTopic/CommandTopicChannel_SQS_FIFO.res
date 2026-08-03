@@ -33,10 +33,15 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
   )
 
   let resolvedQueueOutput = queue->Util_SQS.toResolvedQueueOutput
+  let queueResource = queue->Util_SQS_FIFO.toResource(~tags=tags->Pulumi.Output.fromInput)
+
+  // Same capture as the standard variant, and the reason the flag exists: only
+  // the creating module knows this queue needs a MessageGroupId.
+  CommandTopicRegistry.register(~owner, ~queueUrl=queue.id, ~resource=queueResource, ~isFifo=true)
 
   {
     parts: {queue: queue},
-    resources: [queue->Util_SQS_FIFO.toResource(~tags=tags->Pulumi.Output.fromInput)],
+    resources: [queueResource],
     publishJsons: resolvedQueueOutput->Pulumi.Output.apply(resolvedQueue =>
       resolvedQueue->CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS_FIFO, ...)
     ),

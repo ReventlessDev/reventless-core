@@ -54,7 +54,7 @@ function Make(Api) {
       let declaredSources = Spec.sourceNames;
       let sourceTopics = EventTopic$ReventlessCore.filter(allEventTopics, Belt_SetString.fromArray(declaredSources));
       let consumesDcbLog = declaredSources.length === 0 || declaredSources.some(name => !(name in allEventTopics));
-      AutomationSliceRuntime_Builder_Single$ReventlessAws.registerAutomationSlice(Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Translation.moduleUrl), "outbound", queryDbTableName, queryDbOutputs.resources, undefined, sourceTopics, consumesDcbLog);
+      AutomationSliceRuntime_Builder_Single$ReventlessAws.registerAutomationSlice(Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Translation.moduleUrl), "outbound", queryDbTableName, queryDbOutputs.resources, undefined, sourceTopics, consumesDcbLog, Spec.targetName);
       return ots;
     };
     return {

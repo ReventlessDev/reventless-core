@@ -38,12 +38,44 @@ type sliceInfo = {
   // slice that declares no sources (the default) and for any that names the log
   // explicitly, which is why it is not derivable from `sourceTopics` being empty.
   consumesDcbLog: bool,
+  // Which component's CommandTopic this slice publishes its inbound command to.
+  // `None` keeps the plugin's DCB queue — right for a slice targeting a DCB
+  // StateChangeSlice, and what the shared Lambda used unconditionally before an
+  // outbound slice could target an Aggregate, whose commands a different Lambda
+  // consumes.
+  //
+  // Resolved in the finalizer rather than here: an Aggregate's CommandTopic is
+  // created *after* the slices that target it, so a lookup at registration time
+  // finds nothing. Only the name is knowable this early.
+  commandTargetName: option<string>,
 }
 
 let bundledInfos: dict<sliceInfo> = Dict.make()
 
 let dcbQueueUrlRef: ref<option<Pulumi.Output.t<string>>> = ref(None)
-let setDcbQueueUrl = url => dcbQueueUrlRef := Some(url)
+// The DCB command topic's own flavor, for the slices that publish to it. Set
+// beside the URL rather than assumed: the runtime publisher used to hardcode
+// FIFO, and these queues are standard, which SQS rejects.
+let dcbQueueIsFifo = ref(false)
+// The DCB command topic queues as deploy-time resources, so the finalizer can
+// put them on the channel spec and `connectLambda`'s `sqs:SendMessage` grant
+// covers the slices that publish to the DCB fallback. Accumulated rather than
+// kept singular: the hook fires once per DCB command topic (sync, and async
+// when async StateChangeSlices exist), and granting on both is correct.
+let dcbQueueResources: array<ReventlessInfra.Adapter.resource> = []
+// First call wins for the URL and flavor. The hook fires once per DCB command
+// topic and a plugin with async StateChangeSlices fires it twice; the sync topic
+// is created first and is the one a slice's command belongs on, so letting the
+// async FIFO topic overwrite would send slice commands to a FIFO queue with no
+// MessageGroupId — which SQS rejects. The resources keep accumulating: the grant
+// is wanted on every DCB command topic.
+let setDcbQueueUrl = (~isFifo=false, ~resource=?, url) => {
+  if dcbQueueUrlRef.contents->Option.isNone {
+    dcbQueueUrlRef := Some(url)
+    dcbQueueIsFifo := isFifo
+  }
+  resource->Option.forEach(r => dcbQueueResources->Array.push(r)->ignore)
+}
 // The admin/plugin DCB command-topic FIFO URL captured by the
 // onDcbCommandTopicCreated hook. Read by the admin EventCollector's reactive
 // ApiFragmentRegistry push (2e) to dispatch RecordApiFragmentPush.
@@ -62,6 +94,7 @@ let registerAutomationSlice = (
   ~context=?,
   ~sourceTopics=Dict.make(),
   ~consumesDcbLog=true,
+  ~commandTargetName=?,
 ) =>
   bundledInfos->Dict.set(
     name,
@@ -74,6 +107,7 @@ let registerAutomationSlice = (
       context,
       sourceTopics,
       consumesDcbLog,
+      commandTargetName,
     },
   )
 
@@ -358,9 +392,25 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
         let handlerOutputs: array<Pulumi.Output.t<string>> = []
         let packageDirs: dict<string> = Dict.make()
         let allQueryDbResources: array<ReventlessInfra.Adapter.resource> = []
+        // Whether any slice publishes to the DCB fallback rather than a target
+        // aggregate's own topic — if so, that queue needs the SendMessage grant
+        // too, once, below the loop.
+        let anyDcbFallback = ref(false)
 
         bundledInfos->Dict.forEachWithKey((info, _name) => {
           info.queryDbResources->Array.forEach(r => allQueryDbResources->Array.push(r)->ignore)
+          // The queue this slice publishes its command to. An Aggregate registers
+          // its CommandTopic while plugin construction is still synchronous —
+          // before DCB construction registers the slices targeting it — so a
+          // named target resolves here; anything else keeps the DCB fallback.
+          let target = info.commandTargetName->Option.flatMap(CommandTopicRegistry.get)
+          switch target {
+          | Some({resource}) =>
+            // The target CommandTopic joins the channel's resources so
+            // `connectLambda`'s existing `sqs:SendMessage` grant covers it.
+            allQueryDbResources->Array.push(resource)->ignore
+          | None => anyDcbFallback := true
+          }
           let pkg = Util_Bundle.extractPackageName(info.specModulePath)
           packageDirs->Dict.set(pkg, Util_Bundle.resolvePackageRoot(pkg))
           // Usually the same package as the spec, but bundle it explicitly —
@@ -380,8 +430,16 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           | None => ""
           }
 
+          // Per slice, not plugin-wide: an outbound slice targeting an Aggregate
+          // publishes to that aggregate's CommandTopic. Everything else keeps the
+          // DCB topic, which is what the field has always meant — and with it the
+          // DCB queue's own flavor.
+          let (commandQueueUrl, commandQueueIsFifo) = switch target {
+          | Some({queueUrl, isFifo}) => (queueUrl, isFifo)
+          | None => (dcbQueueUrl, dcbQueueIsFifo.contents)
+          }
           let handlerJson =
-            Pulumi.Output.all3((info.queryDbTableName, dcbQueueUrl, sourceUrnsFor(info)))
+            Pulumi.Output.all3((info.queryDbTableName, commandQueueUrl, sourceUrnsFor(info)))
             ->Pulumi.Output.apply(((tableName, queueUrl, urns)) => {
               let urnsJson =
                 urns->Array.map(JSON.Encode.string)->JSON.Encode.array->JSON.stringify
@@ -389,10 +447,19 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
               // an entry point that predates multi-source still routes its first
               // stream rather than none.
               let firstUrn = urns->Array.get(0)->Option.getOr("")
-              `{"specModule":${specModule},"bodyModule":${bodyModule},"callbackType":${callbackType},"queryDbTableName":"${tableName}","dcbQueueUrl":"${queueUrl}","sourceUrn":"${firstUrn}","sourceUrns":${urnsJson}${contextFragment}}`
+              let fifoJson = commandQueueIsFifo ? "true" : "false"
+              `{"specModule":${specModule},"bodyModule":${bodyModule},"callbackType":${callbackType},"queryDbTableName":"${tableName}","dcbQueueUrl":"${queueUrl}","commandQueueIsFifo":${fifoJson},"sourceUrn":"${firstUrn}","sourceUrns":${urnsJson}${contextFragment}}`
             })
           let _ = handlerOutputs->Array.push(handlerJson)
         })
+
+        // The fallback publishers' grant. Every slice that resolved no target
+        // publishes to the plugin's DCB command topic, whose queue was captured
+        // by `setDcbQueueUrl` — without this the role has no `sqs:SendMessage`
+        // there and every such publish is rejected.
+        if anyDcbFallback.contents {
+          dcbQueueResources->Array.forEach(r => allQueryDbResources->Array.push(r)->ignore)
+        }
 
         let handlerConfigOutput =
           Pulumi.Output.all(handlerOutputs)
