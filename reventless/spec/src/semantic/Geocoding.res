@@ -44,6 +44,22 @@ type failure =
   | /** The provider answered, and had nothing for this text. Do not retry. */
   NoMatch
 
+/**
+The port a caller reaches a geocoder through.
+
+Everything above says what an answer looks like; this says how one is asked for.
+Written down as a type before anything is injected against it, so that swapping
+the implementation underneath a caller is a change of *supplier* rather than a
+change of call site: whatever eventually hands a translator its geocoder — an
+HTTP client reading an endpoint out of its environment, a provider SDK called
+directly — has to satisfy this, and the `await search(~text=…)` in the caller
+does not move.
+
+`~text` is the address as a human typed it, unnormalised. Normalising it is the
+provider's job, and its canonical rendering comes back as `candidate.label`.
+*/
+type search = (~text: string) => promise<result<array<candidate>, failure>>
+
 /** The default confidence floor. A starting point, not a finding — the first
     real corpus of addresses is what should set it. */
 let defaultMinRelevance = 0.8

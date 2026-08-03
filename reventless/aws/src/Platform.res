@@ -82,6 +82,20 @@ let objectStoreEndpointsRef: ref<array<objectStoreEndpoint>> = ref([])
     `getApiConfig` does. */
 let getObjectStoreEndpoints = () => objectStoreEndpointsRef.contents
 
+/** The geocoder endpoint this platform provisioned, for the monolithic case.
+
+    In plugin mode the value crosses to the plugin stack as the `geocoderEndpoint`
+    export; when platform and plugin are one program there is no stack to read, so
+    `deployPlatform` records it here and `deployPlugin` picks it up — the same two
+    halves `objectStoreEndpointsRef` exists for.
+
+    A plain Output with `""` as the "no geocoder" sentinel, never
+    `option<Pulumi.Output.t<_>>`: any generic `Option.*` over an Output runs
+    `valFromOption`, whose nested-option probe hits the Output proxy — where every
+    property access returns a truthy Output — and corrupts it. Same reasoning, and
+    the same sentinel, as `PluginRuntime_Builder.inboundSliceReg.auditTableName`. */
+let geocoderEndpointRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
+
 module MakeWithConfig = (
   Config: {
     let splitApi: bool
@@ -2052,6 +2066,18 @@ module MakeWithConfig = (
       | None => Pulumi.Output.make(None)
       }
 
+      // Exported as well as written into config.json, because the browser is no
+      // longer the only caller: a plugin stack's slice Lambdas geocode too, and a
+      // plugin stack has no other way to see a value computed in this one.
+      //
+      // `""` when unset rather than a missing output, so the read side has one
+      // shape to handle instead of two — and "" is already what a client reads as
+      // "no geocoder configured".
+      let geocoderEndpointFlat =
+        geocoderEndpointOutput->Pulumi.Output.apply(o => o->Option.getOr(""))
+      Pulumi.Pulumi.export("geocoderEndpoint", geocoderEndpointFlat)
+      geocoderEndpointRef := geocoderEndpointFlat
+
       // Presign endpoints are no longer written to config.json: under route B the
       // client calls the platform API's `Upload_Presign` mutation (reachable from
       // `platformApiEndpoint`, already present) with the store it declares, so there
@@ -2205,6 +2231,30 @@ module MakeWithConfig = (
       )
       {Reventless.Offload.store, key, hash, bytes: bytes->String.length}
     })
+
+    // Capability endpoints the platform provisioned, handed to this plugin's
+    // slice Lambdas as environment. Read across the stack reference in plugin
+    // mode and out of the platform's own record when platform and plugin are one
+    // program — the same two halves the offload bucket above is read through.
+    //
+    // Registered before `P.make()`: the slice runtime finalizers fire from inside
+    // the plugin build, and a variable registered after it would be built into
+    // nothing.
+    //
+    // A platform that provisioned no geocoder yields "", and the plugin's client
+    // reports `Unavailable` — retried, then surfaced by the heartbeat sweep. That
+    // is a modelled outcome, which is the point of the empty string: a plugin
+    // deployed against a platform without the capability degrades rather than
+    // failing to deploy.
+    let geocoderEndpoint: Pulumi.Output.t<string> = switch platformStackRef {
+    | Some(stackRef) =>
+      (
+        stackRef->Pulumi.StackReference.getOutput("geocoderEndpoint"):
+          Pulumi.Output.t<option<string>>
+      )->Pulumi.Output.apply(o => o->Option.getOr(""))
+    | None => geocoderEndpointRef.contents
+    }
+    PluginRuntime_Builder.registerCapabilityEnv("GEOCODER_ENDPOINT", geocoderEndpoint)
 
     module P = unpack(plugin)
     let pluginComponent = P.make()

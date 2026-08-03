@@ -34,6 +34,16 @@ let configRef = {
   }
 };
 
+let capabilityEnvRef = {};
+
+function registerCapabilityEnv(name, value) {
+  capabilityEnvRef[name] = value;
+}
+
+function capabilityEnv() {
+  return Object.entries(capabilityEnvRef);
+}
+
 let dcbConfigRef = {
   contents: {
     pluginName: "",
@@ -493,6 +503,9 @@ function Make(EventCollectorChannel) {
 export {
   log,
   configRef,
+  capabilityEnvRef,
+  registerCapabilityEnv,
+  capabilityEnv,
   dcbConfigRef,
   registeredSliceModulePaths,
   registerStateChangeSliceSpec,

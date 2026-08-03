@@ -183,6 +183,8 @@ Most of `config.json` tells the shell where things are. Two `~hostUiBundle` fiel
 
 Naming `Map` turns on **both** halves of the map feature — the map view mode *and* the map-backed geo-point command input are registered by the same `init` — and it is also what makes a provisioned `geocoderPlaceIndex` reachable, since the shell builds its geocoder client inside the map chunk. A stack that provisions the place index without naming the mode pays for a service no browser can call.
 
+The picker is the **client** path to a geo point, and not the only one: a plugin can also geocode an address nobody pinned, in an `OutboundTranslationSlice` that runs unattended. The two do not collide, and not by luck — the slice's `collect` yields no work item for an event that already carries a point (which is what saves the geocoder request), and the receiving aggregate returns no events for a command that matches state it already holds (which is what survives at-least-once redelivery). Both guards, not either: the first alone is wrong under redelivery, the second alone pays for every duplicate lookup. The place index is therefore shared by a browser and a backend, and `geocoderPlaceIndex` provisions it for both.
+
 **`shellConfig`** is an untyped `dict<JSON.t>` passthrough for keys the shell owns and the framework has no opinion about (`accessTiers`, `platformName`, `assetOrigins`, `uiHintsUrl`). It merges in under the computed keys; a key that collides with one the deploy computes **fails the deploy naming the key**, rather than quietly pointing the app at a different API.
 
 The in-memory platform accepts both fields and ignores them — it serves no `config.json` of its own. Local dev turns a view mode on by editing the host-shell package's `public/config.json`.

@@ -198,6 +198,16 @@ let finish = () =>
 
         let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
         envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
+        // Deploy-derived capability endpoints — a geocoder URL today. Plugin-wide
+        // rather than per-handler, which is why they sit here and not inside
+        // HANDLER_CONFIG: this is one shared Lambda and every slice on it reaches
+        // the same capability. A capability the platform did not provision arrives
+        // as "", which its client reads as "not configured" and reports as a
+        // retryable `Unavailable` — a modelled outcome rather than a missing
+        // variable that fails as a crash.
+        PluginRuntime_Builder.capabilityEnv()->Array.forEach(((name, value)) =>
+          envVars->Dict.set(name, value->Pulumi.Output.asInput)
+        )
 
         let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
           ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs",
@@ -310,6 +320,16 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
 
         let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
         envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
+        // Deploy-derived capability endpoints — a geocoder URL today. Plugin-wide
+        // rather than per-handler, which is why they sit here and not inside
+        // HANDLER_CONFIG: this is one shared Lambda and every slice on it reaches
+        // the same capability. A capability the platform did not provision arrives
+        // as "", which its client reads as "not configured" and reports as a
+        // retryable `Unavailable` — a modelled outcome rather than a missing
+        // variable that fails as a crash.
+        PluginRuntime_Builder.capabilityEnv()->Array.forEach(((name, value)) =>
+          envVars->Dict.set(name, value->Pulumi.Output.asInput)
+        )
 
         let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
           ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs",

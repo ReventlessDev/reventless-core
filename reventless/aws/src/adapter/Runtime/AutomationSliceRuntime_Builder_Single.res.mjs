@@ -8,6 +8,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
+import * as PluginRuntime_Builder$ReventlessAws from "../../plugin/runtime/PluginRuntime_Builder.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
@@ -129,6 +130,9 @@ function finish() {
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
       let envVars = {};
       envVars["HANDLER_CONFIG"] = handlerConfigOutput;
+      PluginRuntime_Builder$ReventlessAws.capabilityEnv().forEach(param => {
+        envVars[param[0]] = param[1];
+      });
       let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs", packageDirs, undefined);
       let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAutomationSlices", "Reactor", "AutomationSlice", match$1.code, match$1.sourceCodeHash, envVars, match[0], match[1], undefined, undefined, undefined, undefined, undefined, opts);
       let channelSpecs = storedSpecs.map(param => param.channelSpec);
@@ -188,6 +192,9 @@ function finishWithDcbEventLog(dcbEventLog) {
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
       let envVars = {};
       envVars["HANDLER_CONFIG"] = handlerConfigOutput;
+      PluginRuntime_Builder$ReventlessAws.capabilityEnv().forEach(param => {
+        envVars[param[0]] = param[1];
+      });
       let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs", packageDirs, undefined);
       let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAutomationSlices", "Reactor", "AutomationSlice", match.code, match.sourceCodeHash, envVars, 1024, 30, undefined, undefined, undefined, undefined, undefined, opts);
       EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllAutomationSlices", [{

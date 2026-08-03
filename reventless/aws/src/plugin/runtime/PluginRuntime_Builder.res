@@ -20,6 +20,37 @@ let configRef: ref<adminConfig> = ref({
   clonerEnabled: false,
 })
 
+/**
+Deploy-derived environment for a plugin's slice Lambdas, keyed by variable name.
+
+A capability the platform provisions — a geocoder, and the same shape whenever
+the next one arrives — is reachable only through a value the platform computes:
+a URL, an index name, a queue. The deployer never types it, which is what keeps
+it out of `commandHandlerConfig` (memory, timeout, the knobs a human chooses)
+and out of the hand-edited config files this framework exists to remove.
+
+Kept apart from `configRef` because the two are filled at different moments and
+by different halves: `registerConfig` runs inside `deployPlatform` and replaces
+its record wholesale, while these values are only knowable in `deployPlugin`,
+where a plugin stack reads them off the platform's stack reference.
+
+Keyed by the variable name rather than by capability so the runtime builders
+merge a dict they need no knowledge of. Naming a capability's variable is then
+a single decision at the single call site that knows which capability it is —
+not a table two modules have to agree on.
+*/
+let capabilityEnvRef: dict<Pulumi.Output.t<string>> = Dict.make()
+
+/** Registers one deploy-derived variable. Must be called before the plugin
+    builds — the slice runtimes read the dict when their finalizer runs. */
+let registerCapabilityEnv = (name: string, value: Pulumi.Output.t<string>) =>
+  capabilityEnvRef->Dict.set(name, value)
+
+/** The registered variables, for a runtime builder to merge into its Lambda's
+    environment. Empty is the ordinary answer for a platform that provisions no
+    capability, so this returns `[]` rather than throwing. */
+let capabilityEnv = () => capabilityEnvRef->Dict.toArray
+
 type sliceModulePaths = {
   specPath: string,
   behaviorPath: string,

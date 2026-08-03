@@ -1,11 +1,12 @@
 # Plan: an address is entered once, and the backend finds the point
 
 **Date:** 2026-08-03
-**Status:** IN PROGRESS — steps 1–6 built, committed and green (`867e63e77`; full suite 299 suites /
-2710 tests). **D9 is resolved** (two callers, two seams). Step 7 is a deliberate **fast path** that
-makes geocoding run without foreclosing the resolution; steps 8–10 carry it the rest of the way. None
-of 7–10 started. See [Build log](#build-log) at the foot for what landed and what the build taught
-that the plan had wrong.
+**Status:** IN PROGRESS — steps 1–8 built and green (full suite 301 suites / 2721 tests; the one
+red, `LocalAuthHttpTest`, is a port-binding flake under full-suite load and passes alone and with
+its whole project). **D9 is resolved** (two callers, two seams). Step 7's fast path is wired end to
+end in code but **has never run against a real geocoder** — that is the gate on step 9, which is
+otherwise ready. Step 10 waits on a UI release. See [Build log](#build-log) at the foot for what
+landed and what the build taught that the plan had wrong.
 **Repos:** reventless-core. A UI-repo change is *anticipated* (D7) but not required by this plan and
 not scheduled here.
 **Builds on:** [semantic-geo-point.md](./semantic-geo-point.md) (the declared point) and
@@ -506,7 +507,7 @@ the generated view sections by it) plus a `@hidden locationNote` carrying the re
 `AddressUpdated` resets the row to `Pending` and clears the point — leaving the old pin beside a new
 address would show two facts that disagree, with nothing saying so.
 
-**7 — Make it run: the fast path. ⬜ next.**
+**7 — Make it run: the fast path. ✅ wired; unproven against a live geocoder.**
 
 The resolution above is where this ends up. This step is what gets geocoding *working* before it gets
 there, chosen so that nothing done here has to be undone.
@@ -595,15 +596,13 @@ runtime, never typed by a person. Add `~geocoderEndpoint=?`, store it in a ref b
 have `AutomationSliceRuntime_Builder_Single` merge it into `envVars` as `GEOCODER_ENDPOINT` when
 non-empty.
 
-*One thing to verify first, because the plan should not assert it:* whether `registerConfig`'s values
-already reach the `AllAutomationSlices` builder, or only the DCB command-handler Lambdas. If only the
-latter, the fallback is a ref set on the slice runtime builder directly, in the same shape as its
-existing `syncStateChangesConfigRef` — a few lines either way, and the choice of seam does not change.
-
-*Forward-compatible shape, worth one minute of thought at implementation time:* the analysis this work
-produced expects more capabilities to need exactly this. `~geocoderEndpoint` is a one-off;
-`~capabilityEndpoints: dict<string>` is the same code with room for the next one. Prefer the dict if
-it costs nothing; do not build a registry for it.
+*Checked, and it changed the answer.* `registerConfig` is called from `deployPlatform` and assigns its
+record wholesale, while the endpoint is only knowable in `deployPlugin` — so extending it would mean a
+second wholesale call wiping the first one's fields. The rejection of `commandHandlerConfig` above
+stands and turns out to exclude `registerConfig` too. What shipped is the dict this step suggested as
+a nicety: `PluginRuntime_Builder.registerCapabilityEnv`, a separate ref keyed by variable name, merged
+into `envVars` by both of `AutomationSliceRuntime_Builder_Single`'s finalizers. See the
+[build log](#the-step-7-round).
 
 **Prerequisite 2 is not throwaway work — step 9 needs it too.** The injected port still has to tell
 the Lambda *which place index* to use, and the entry point is a bundled module reading its
@@ -641,7 +640,7 @@ has ever spoken to a real geocoder**, so the first deployed run is the first tes
 contract, D3's relevance threshold against real scores, and the SDK call itself. Expect to find
 something there; that is the point of shipping this step rather than mocking further.
 
-**8 — Docs. ⬜ not started.** The outbound-slice documentation gains its new source model and the
+**8 — Docs. ✅** The outbound-slice documentation gains its new source model and the
 `~sourceId` argument; the geo docs gain the sentence that matters — the picker is the client path,
 this slice is the unattended one, and D8 is why they do not collide. The capability docs gain the
 shape D9 found: one capability, two doors, a GraphQL field for clients and an injected function for
@@ -682,10 +681,15 @@ why the interval is safe.
   it fails against the guard as originally written, which is what makes it worth having.
 - **Zero warnings** after a full build, and no `.res.mjs` deletions (`git ls-files --deleted`).
 
-**Not covered by any of the above, and worth stating plainly:** every test mocks `translate`, so
-nothing exercises a real geocoder. D2's wire contract, D3's relevance threshold against real scores,
-and the SDK call itself are all unverified. The first deployed run is the first test of them, and the
-most likely place for this design to be wrong.
+- **D2's status contract is asserted** — `Geocoder_AwsLocation_OpsTest` covers the two arms reachable
+  without a live AWS Location call: an unset place index is `502` (a service failure, not a verdict)
+  and an empty query is `200` (nothing was asked). Added with step 7, because that is the step that
+  first puts an unattended caller on that endpoint.
+
+**Not covered by any of the above, and worth stating plainly:** every slice test mocks `translate`,
+so nothing exercises a real geocoder. D3's relevance threshold against real scores and the SDK call
+itself remain unverified, as does the success path of the Function URL handler. The first deployed
+run is the first test of them, and the most likely place for this design to be wrong.
 
 ## Out of scope
 
@@ -769,16 +773,61 @@ an unattended Lambda, and every one of them traded something real to do it. What
 candidate was not a preference but two concrete costs — a proxy hop the backend never needed, and an
 unauthenticated public endpoint on the backend's critical path.
 
+### The step 7 round
+
+Both prerequisites landed as specified, and the seam question in prerequisite 2 resolved against the
+plan's own first choice once the call sites were checked.
+
+| Half | Files |
+|---|---|
+| 7a — the port type | `Geocoding.res` gains `type search`; `GeocodingService.search` annotated against it |
+| 7b.1 — the export | `Platform.res`: `Pulumi.Pulumi.export("geocoderEndpoint", …)` + `geocoderEndpointRef` for the monolithic case; read in `deployPlugin` off the platform `StackReference` |
+| 7b.2 — the env channel | `PluginRuntime_Builder.registerCapabilityEnv` / `capabilityEnv`; merged into `envVars` by both of `AutomationSliceRuntime_Builder_Single`'s finalizers |
+| the status contract, now tested | `Geocoder_AwsLocation_Ops.res` + a new `Geocoder_AwsLocation_OpsTest.res` |
+
+**Three things the step had wrong, all found by checking rather than by running.**
+
+1. **`registerConfig` is the wrong function, for a reason the step did not see.** It is called from
+   `deployPlatform` and assigns its record *wholesale*; the geocoder endpoint is only knowable in
+   `deployPlugin`, so adding a parameter would have meant either a second wholesale call that wipes
+   the fields the first one set, or moving a `deployPlatform` concern into `deployPlugin`. The
+   forward-compatible dict the step suggested as an optional nicety turns out to be the thing that
+   actually fits: `registerCapabilityEnv` is a separate ref with a separate lifetime, keyed by
+   variable name so the runtime builders merge a dict they need no knowledge of. The step's reasoning
+   for *rejecting* `commandHandlerConfig` — deployer-chosen values versus framework-derived ones —
+   was right and is preserved; it just also excludes `registerConfig`.
+
+2. **The obvious shape for the monolithic-mode ref is the one the repo forbids.** Written first as
+   `ref<option<Pulumi.Output.t<string>>>` — mirroring `objectStoreEndpointsRef`'s optionality — it
+   compiled to `Stdlib_Option.getOr(ref.contents, …)`, and `getOr` is `valFromOption`, whose
+   nested-option probe hits the Output proxy and corrupts it. Caught by reading the emitted `.mjs`,
+   not by the compiler, which is the point: this is a silent-at-build-time class. Now a plain Output
+   with `""` as the sentinel, the shape `inboundSliceReg.auditTableName` already documents.
+
+3. **The Function URL handler violated D2's own contract, on the one path step 7 puts on it.** An
+   unset `PLACE_INDEX_NAME` returned `200 []` — indistinguishable from "no such address". D2 names
+   exactly this case and says it must not be, but the shipped handler folded it into the empty-query
+   arm. On the unattended path that means a misconfigured deployment writes
+   `MarkAddressUnresolvable`, unretried, for every address handed to it. Now `502`; the empty-query
+   arm stays `200`, because nothing was asked and "no results" is a true and final answer to that.
+   `Geocoder_AwsLocation_OpsTest` asserts both, which is the first assertion the wire contract has
+   ever had.
+
+**Ordering constraint the export introduces:** the platform stack must be deployed before the plugin
+stack for `geocoderEndpoint` to exist. Getting it wrong degrades rather than fails — the plugin reads
+`""`, the client reports `Unavailable`, the item retries and the sweep surfaces it — which is what
+the empty-string-not-missing-output choice buys.
+
 ### Open
 
-- **Steps 7–10 not started.** Step 7 (fast path) and step 9 (the port) are self-contained here;
-  step 10 waits on a UI release.
-- **Step 7 grew two prerequisites on inspection** — the platform never exported the geocoder URL, and
-  there is no env-var channel to a slice's Lambda. Both small, both verified rather than assumed, and
-  the second is shared with step 9. Recorded in the step because "just thread an env var" was wrong
-  and would have been discovered mid-implementation.
-- **Nothing has run against a real geocoder** — see the note under Verification. Step 7 exists
-  largely to change that, because the design cannot be validated by more mocking.
-- **Nothing has run against a real geocoder.** Every test mocks `translate`, so the wire contract in
-  D2 — `200` is an answer, anything else is not — is asserted nowhere. It is the first thing a
-  deployed run would exercise, and the first thing likely to be wrong.
+- **Step 7 is wired but unproven.** Every code path exists and compiles; nothing has spoken to a real
+  geocoder. The first deployed run is still the first test of D3's relevance threshold against real
+  scores and of the SDK call itself, and it is the gate on step 9.
+- **The geocoder is provisioned only inside `switch hostUiBundle`.** So a platform with no host-UI
+  bundle has no geocoder to export, even though D9 makes geocoding a platform capability rather than
+  a UI feature. Left alone deliberately — moving it is step 10's territory, where the Function URL is
+  deleted anyway — but it is why the capability is not yet reachable on a headless platform.
+- **Step 9 is ready and blocked only by evidence.** The port type it targets exists (7a), and the env
+  channel it needs is built and shared with step 7. What remains is deleting `GeocodingService`,
+  accepting an argument in `translate`, and granting the Lambda place-index read.
+- **Step 10 waits on a UI release** — cross-repo, and the interval is safe by D9's sequencing.

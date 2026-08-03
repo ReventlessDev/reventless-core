@@ -56,10 +56,11 @@ let decodeCandidate = (json: JSON.t): option<Reventless.Geocoding.candidate> =>
     }
   }
 
-let search = async (~text: string): result<
-  array<Reventless.Geocoding.candidate>,
-  Reventless.Geocoding.failure,
-> => {
+// Annotated against the framework's port rather than spelling the signature out
+// again. The endpoint this reads is a deployment's *current* answer to "who
+// geocodes"; the type is the answer that does not change when that one does, so
+// a later supplier swaps in here without `translate` noticing.
+let search: Reventless.Geocoding.search = async (~text) => {
   let trimmed = text->String.trim
   switch endpoint() {
   | None => Error(Unavailable("no geocoder endpoint configured (GEOCODER_ENDPOINT unset)"))

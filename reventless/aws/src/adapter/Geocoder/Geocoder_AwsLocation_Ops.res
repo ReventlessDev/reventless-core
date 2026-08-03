@@ -72,7 +72,19 @@ let handler = async (event: functionUrlEvent): response => {
   try {
     let indexName = getEnv("PLACE_INDEX_NAME")->Option.getOr("")
     let q = readQueryParam(event)->Option.getOr("")
-    if indexName == "" || q == "" {
+    if indexName == "" {
+      // A handler with no place index cannot answer anything, so this is the
+      // service being misconfigured — not a verdict on the address. It has to
+      // read as `502` for the same reason the catch below does: a `200 []` here
+      // tells an unattended caller "no such address", and it would then write
+      // that verdict, unretried, for every address it is handed while the
+      // deployment is broken. The browser is unaffected — it reads the body.
+      Console.error("Geocoder: PLACE_INDEX_NAME is unset")
+      {statusCode: 502, headers: jsonHeaders(), body: "[]"}
+    } else if q == "" {
+      // `200`, unlike the arm above: nothing was asked, so "no results" is a
+      // true and final answer rather than a failure to produce one. A search box
+      // sends this on every cleared input.
       {statusCode: 200, headers: jsonHeaders(), body: "[]"}
     } else {
       let resp = await Search.send(Search.make({indexName, text: q, maxResults: 5}))

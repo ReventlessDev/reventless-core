@@ -31,7 +31,11 @@ CommandTopic -> StateChangeSlice: commands { class: command-flow }
 StateChangeSlice -> DcbEventLog: append { class: event-flow }
 ```
 
-The **OutboundTranslationSlice** implements the Event Modeling **Translation** pattern for outbound external communication. It listens to events from a shared DcbEventLog, accumulates outbound work items into a TODO list, translates each item by calling an external service, and optionally publishes a command back into the domain.
+The **OutboundTranslationSlice** implements the Event Modeling **Translation** pattern for outbound external communication. It listens to events from its declared sources, accumulates outbound work items into a TODO list, translates each item by calling an external service, and optionally publishes a command back into the domain.
+
+Those sources default to the plugin's own DcbEventLog — the diagram above — but need
+not be. `Spec.sourceNames` also names Aggregates, so an Aggregate's events can
+trigger an outbound call; see [Event sources](#event-sources).
 
 ## Event Modeling: The Outbound Translation Pattern
 
@@ -47,23 +51,26 @@ The key difference from AutomationSlice is that the "process" step involves an *
 ## Purpose and Responsibilities
 
 - **Responsibility**: Collect outbound items from events; call external services for each item via the `translate` function; optionally publish commands back into the domain; track status with per-item retry semantics
-- **In**: Events from DcbEventLog (subscribed via EventCollector)
+- **In**: Events from the sources named in `Spec.sourceNames` — the plugin's own DcbEventLog by default, Aggregates and other DCB logs when declared (subscribed via EventCollector)
 - **Out**: External API calls (via `translate`); optional commands to CommandTopic (via `publishJsons`); TODO state synced to QueryDb
 
 ## Comparison with SideEffectHandler
 
 | Aspect | SideEffectHandler | OutboundTranslationSlice |
 |--------|-------------------|--------------------------|
-| **Architecture** | Aggregate-based plugins | DCB-based plugins |
+| **Architecture** | Aggregate-based plugins | Either — DCB by default, Aggregates via `sourceNames` |
 | **State tracking** | None -- fire-and-forget | TODO list with status (Pending/Processing/Completed/Failed) |
 | **Retry** | Relies on EventCollector retry (entire batch) | Per-item retry with configurable max |
 | **Idempotency** | None -- replays cause duplicate calls | Deduplication key prevents double-processing |
 | **Visibility** | No queryable state | QueryDb stores full processing history |
 | **Command emission** | Never | Optional -- can publish commands back |
 
-**Choose SideEffectHandler** when you have plugins using Aggregates and need simple fire-and-forget event reactions.
+**Choose SideEffectHandler** for simple fire-and-forget event reactions where a failed call needs no record.
 
-**Choose OutboundTranslationSlice** when you need tracked, retryable external calls with full observability in a DCB-based plugin.
+**Choose OutboundTranslationSlice** when you need tracked, retryable external calls
+with full observability. Aggregate-based plugins are no longer a reason to prefer
+the other one: name the Aggregate in `sourceNames` and this slice consumes its
+events like any other source.
 
 ## Component Spec
 
@@ -90,11 +97,14 @@ module type Spec = {
   let maxRetries: int
   let heartbeatInterval: int
   let targetName: option<string>
+  let sourceNames: array<string>
+  let externalSystem: option<string>
 }
 ```
 
 `collect` and `translate` live on the `Translation` module. There is no
-`DcbEventLogSpec` reference; the slice declares a local `consumedEvent` union.
+`DcbEventLogSpec` reference; the slice declares a local `consumedEvent` union
+and names its sources in `sourceNames`.
 
 ### Spec Fields Explained
 
@@ -106,13 +116,62 @@ module type Spec = {
 | `maxRetries` | `int` | Maximum retry attempts for failed items |
 | `heartbeatInterval` | `int` | Seconds between heartbeat sweeps for pending/failed items |
 | `targetName` | `option<string>` | `None` for fire-and-forget; `Some("<TargetSlice>")` to route the optional command back |
+| `sourceNames` | `array<string>` | Event sources to subscribe to. `[]` (the default) means this plugin's own DcbEventLog — see [Event sources](#event-sources) |
+| `externalSystem` | `option<string>` | Display name of the foreign system, drawn as an external box in the Event Graph. Auto-injected as `None` |
 
 In the `_Translation.res` file:
 
 | Function | Type | Description |
 |----------|------|-------------|
-| `collect` | `consumedEvent => array<(string, outboundItem)>` | Map an event to zero or more outbound items (id + payload) |
+| `collect` | `(consumedEvent, ~sourceId: string) => array<(string, outboundItem)>` | Map an event to zero or more outbound items (id + payload). `~sourceId` is the entity the event was published for |
 | `translate` | `(string, outboundItem) => promise<result<...>>` | Call external service; returns success with optional command, or error |
+
+### Event sources
+
+`sourceNames` names the topics this slice's EventCollector subscribes to:
+
+| Value | Subscribes to |
+|-------|---------------|
+| `[]` | This plugin's own DcbEventLog. The default, and what every slice written before sources existed keeps doing |
+| `["Customer"]` | The `Customer` Aggregate's EventTopic — an Aggregate's `Spec.name` |
+| `["OrderingDcbEventLog"]` | A DCB log by name, conventionally `"<pluginName>DcbEventLog"` |
+
+Each name is validated against the plugin-wide topic dict at deploy time; a name
+that matches nothing fails the build with a message listing the keys that are
+available.
+
+Sources are a **flat list**, not the per-source `Mapping` modules an
+[AutomationSlice](./automationslice.md) uses. An automation needs a `resolve` per
+source — a different event completes the item depending on where it came from —
+whereas an outbound item is resolved by its own `translate` succeeding. The only
+thing that varies per source is the decode, and the single `consumedEvent` union
+already covers that.
+
+The cost of the flat form: two sources that publish an event type of the same
+name are indistinguishable to `collect`. Declare only the sources whose events you
+actually mean.
+
+### Why `collect` takes `~sourceId`
+
+`collect` receives the envelope's id alongside the decoded event, because the
+event alone may not say what it is about:
+
+```rescript
+let collect = (event, ~sourceId) =>
+  switch event {
+  | Registered({address}) => [(`${sourceId}:${address}`, {customerId: sourceId, address})]
+  }
+```
+
+A DCB event usually names its own subject in the payload — `OrderPlaced({orderId,
+…})` — and can ignore the argument. An Aggregate's event generally does not: the
+aggregate id is what *addressed* the event, so it is on the envelope rather than
+in the payload. Without `~sourceId` an outbound item built from
+`Registered({email, address})` would have no way to say which customer it is for.
+
+Note the deduplication key above is `{id}:{address}`, not `{id}`. Keying by the
+entity alone would make a later address change look like work already done, and
+the corrected address would never be translated.
 
 ### The translate Return Values
 
@@ -147,15 +206,20 @@ type inboundCommand = unit
 let maxRetries = 3
 let heartbeatInterval = 60
 let targetName = None
+// This plugin's own DCB event log — `OrderShipped` is a DCB event. The
+// annotation is needed because a bare `[]` has no element type to infer.
+let sourceNames: array<string> = []
+let externalSystem = Some("EmailService")
 ```
 
 The **translation file** (`@@reventless.translation`) holds `collect` and the
-async `translate`:
+async `translate`. `OrderShipped` carries its own `orderId`, so this `collect`
+ignores `~sourceId`:
 
 ```rescript title="Order/OutboundTranslationSlice/SendTrackingEmail_Translation.res" showLineNumbers
 @@reventless.translation
 
-let collect = event =>
+let collect = (event, ~sourceId as _) =>
   switch event {
   | OrderShipped({orderId, email}) => [(orderId, {orderId, email})]
   }
@@ -190,12 +254,14 @@ type inboundCommand = ConfirmPayment({
 let maxRetries = 5
 let heartbeatInterval = 30
 let targetName = Some("ConfirmPayment")
+let sourceNames: array<string> = []
+let externalSystem = Some("PaymentGateway")
 ```
 
 ```rescript title="Payment/OutboundTranslationSlice/ProcessPayment_Translation.res" showLineNumbers
 @@reventless.translation
 
-let collect = event =>
+let collect = (event, ~sourceId as _) =>
   switch event {
   | PaymentRequested({orderId, amount}) => [(orderId, {orderId, amount})]
   }
@@ -235,7 +301,56 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 }
 ```
 
-The framework automatically wires the slice to the shared DcbEventLog and CommandTopic.
+The framework automatically wires the slice to the sources it declared and to the
+CommandTopic.
+
+### Example 3: An Aggregate as the source
+
+`sourceNames` names the Aggregate, and `~sourceId` supplies the customer id that
+the event payload does not carry:
+
+```rescript title="Customer/OutboundTranslationSlice/GeocodeCustomerAddress.res" showLineNumbers
+@@reventless.spec
+
+@schema
+type consumedEvent =
+  | Registered({email: string, address: string})
+  | AddressUpdated({address: string})
+
+@schema
+type outboundItem = {customerId: string, address: string}
+
+@schema
+type inboundCommand =
+  | SetLocation({location: Reventless.GeoPoint.t, resolvedFrom: string})
+  | MarkAddressUnresolvable({address: string, reason: string})
+
+// Retries are for a geocoder that is *down*, not for one that has answered. An
+// address the service has no match for is settled by publishing a command, not
+// by asking three more times.
+let maxRetries = 3
+let heartbeatInterval = 60
+let targetName = Some("Customer")
+
+// The Customer Aggregate, by its `Spec.name`.
+let sourceNames = ["Customer"]
+let externalSystem = Some("AwsLocation")
+```
+
+```rescript title="Customer/OutboundTranslationSlice/GeocodeCustomerAddress_Translation.res" showLineNumbers
+@@reventless.translation
+
+let collect = (event, ~sourceId) =>
+  switch event {
+  | Registered({address}) => [(`${sourceId}:${address}`, {customerId: sourceId, address})]
+  | AddressUpdated({address}) => [(`${sourceId}:${address}`, {customerId: sourceId, address})]
+  }
+```
+
+Note that the slice publishes back into the same Aggregate it reads from. That is
+not a cycle: `SetLocation` produces an event this slice does not consume, so the
+loop terminates by construction rather than by a guard. Choosing which events a
+slice consumes is how you keep it that way.
 
 ## Runtime Behavior
 
@@ -271,7 +386,7 @@ OutboundSlice -> QueryDb: sync TODO state
 
 ```
 for each event:
-  for each (id, item) in collect(event):
+  for each (id, item) in collect(event, ~sourceId=envelope.id):
     if not exists in TODO list:
       insert {id, item, status: Pending}
 ```
@@ -390,6 +505,6 @@ type operations = {
 - **[DcbEventLog](./dcbeventlog.md)** -- Shared event log that OutboundTranslationSlice subscribes to
 - **[StateChangeSlice](./statechangeslice.md)** -- Processes the commands OutboundTranslationSlice optionally produces
 - **[CommandTopic](./commandtopic.md)** -- Receives optional commands from the translator
-- **[EventCollector](./eventcollector.md)** -- Subscribes to DcbEventLog events
+- **[EventCollector](./eventcollector.md)** -- Subscribes to the topics named in `sourceNames`
 - **[QueryDb](./querydb.md)** -- Stores the TODO list for observability
 - **[Plugin](./plugin.md)** -- Hosts OutboundTranslationSlice via DcbSpec

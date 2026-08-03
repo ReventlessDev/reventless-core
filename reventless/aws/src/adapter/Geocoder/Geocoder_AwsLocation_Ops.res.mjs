@@ -43,7 +43,18 @@ async function handler(event) {
   try {
     let indexName = Stdlib_Option.getOr(getEnv("PLACE_INDEX_NAME"), "");
     let q = Stdlib_Option.getOr(readQueryParam(event), "");
-    if (indexName === "" || q === "") {
+    if (indexName === "") {
+      console.error("Geocoder: PLACE_INDEX_NAME is unset");
+      return {
+        statusCode: 502,
+        headers: Object.fromEntries([[
+            "content-type",
+            "application/json"
+          ]]),
+        body: "[]"
+      };
+    }
+    if (q === "") {
       return {
         statusCode: 200,
         headers: Object.fromEntries([[
