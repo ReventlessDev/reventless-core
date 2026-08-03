@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.264 (2026-08-03)
+
+### Bug Fixes
+
+* **aws:** give slice command publishes a queue they can actually reach ([42fdb55](https://github.com/ReventlessDev/reventless-core/commit/42fdb55b751a197d586c49e3615ce12ffea42046))
+
+
 # 3.0.0-alpha.263 (2026-08-03)
 
 ### Bug Fixes

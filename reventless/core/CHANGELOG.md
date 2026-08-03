@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.209 (2026-08-03)
+
+### Bug Fixes
+
+* **aws:** give slice command publishes a queue they can actually reach ([42fdb55](https://github.com/ReventlessDev/reventless-core/commit/42fdb55b751a197d586c49e3615ce12ffea42046))
+### Features
+
+* **dcb:** route an outbound slice's command to the aggregate it targets ([897b37b](https://github.com/ReventlessDev/reventless-core/commit/897b37b46a4e856567646dfdc2f0652e81cf7388))
+
+
 # 3.0.0-alpha.208 (2026-08-03)
 
 ### Bug Fixes

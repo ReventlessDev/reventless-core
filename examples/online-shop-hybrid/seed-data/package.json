@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-seed",
-  "version": "1.0.0-alpha.30",
+  "version": "1.0.0-alpha.31",
   "description": "Shareable demo data set(s) for the online-shop-hybrid example, exported as reventless-seed data sets",
   "license": "Apache-2.0",
   "scripts": {
