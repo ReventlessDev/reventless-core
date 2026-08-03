@@ -112,6 +112,7 @@ describe("AutomationSliceEntryPoint_Ops.makeAutomationJsonEventsHandler", () => 
       ~callback,
       ~publishJsons=noopPublish,
       ~syncTodoItems=async () => steps->Array.push("sync"),
+      ~loadTodoItems=async () => steps->Array.push("restore"),
     )
     let envelope = obj([("meta", obj([("service", str("Order"))])), ("event", str("Placed"))])
     await Stream.fromIterable([envelope, str("bare")])->handler->Effect.runPromise
@@ -120,7 +121,43 @@ describe("AutomationSliceEntryPoint_Ops.makeAutomationJsonEventsHandler", () => 
     expect(receivedCtx.contents->Option.map(c => c.Reventless.AutomationSlice.sliceName))->toEqual(
       Some("S"),
     )
-    expect(steps)->toEqual(["phase1", "sync", "phase2", "sync"])
+    // `restore` first: rehydrating the TODO list after phase 1 would let a stored
+    // row overwrite one this batch just collected, and after phase 2 would leave
+    // the reloaded backlog unprocessed until another invocation.
+    expect(steps)->toEqual(["restore", "phase1", "sync", "phase2", "sync"])
+  })
+})
+
+describe("AutomationSliceEntryPoint_Ops.runSweeps", () => {
+  let dummyRegistered: StreamRoutedEntryPoint_Ops.registeredHandler = {
+    handler: (_event, _context) => Effect.succeed(),
+  }
+  let sliceThat = (~comp, ~run): AutomationSliceEntryPoint_Ops.builtSlice => {
+    registered: dummyRegistered,
+    sweep: run,
+    comp,
+  }
+
+  test("sweeps every slice", async () => {
+    let swept = []
+    await AutomationSliceEntryPoint_Ops.runSweeps([
+      sliceThat(~comp="A", ~run=async () => swept->Array.push("a")),
+      sliceThat(~comp="B", ~run=async () => swept->Array.push("b")),
+    ])
+    expect(swept)->toEqual(["a", "b"])
+  })
+
+  // A sweep exists to recover from a failing external call, so one slice whose
+  // geocoder is still down must not cost every other slice on the Lambda its
+  // turn — that would be a worse version of the problem being fixed.
+  test("a throwing slice does not stop the others", async () => {
+    let swept = []
+    await AutomationSliceEntryPoint_Ops.runSweeps([
+      sliceThat(~comp="A", ~run=async () => swept->Array.push("a")),
+      sliceThat(~comp="Boom", ~run=async () => JsError.throwWithMessage("gateway down")),
+      sliceThat(~comp="C", ~run=async () => swept->Array.push("c")),
+    ])
+    expect(swept)->toEqual(["a", "c"])
   })
 })
 
@@ -149,6 +186,7 @@ describe("AutomationSliceEntryPoint_Ops.makeOutboundJsonEventsHandler", () => {
       ~callback,
       ~publishJsons=noopPublish,
       ~syncTodoItems=async () => steps->Array.push("sync"),
+      ~loadTodoItems=async () => steps->Array.push("restore"),
     )
     // `id` is the envelope's subject — the entity the event was published for.
     // An Aggregate's event payload does not repeat it, so this is the only place
@@ -170,6 +208,9 @@ describe("AutomationSliceEntryPoint_Ops.makeOutboundJsonEventsHandler", () => {
       ("ord-1", OrderPlaced({orderId: "ord-1"})),
       ("", OrderArchived),
     ])
-    expect(steps)->toEqual(["phase1", "sync", "phase2", "sync"])
+    // `restore` first: rehydrating the TODO list after phase 1 would let a stored
+    // row overwrite one this batch just collected, and after phase 2 would leave
+    // the reloaded backlog unprocessed until another invocation.
+    expect(steps)->toEqual(["restore", "phase1", "sync", "phase2", "sync"])
   })
 })

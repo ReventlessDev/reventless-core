@@ -22,6 +22,7 @@ const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifie
 
 async function buildAllHandlers() {
   const handlers = {};
+  const sweeps = [];
   const entries = Ops.parseHandlerConfig(process.env["HANDLER_CONFIG"] || "");
 
   await Promise.all(entries.map(async (entry) => {
@@ -56,11 +57,28 @@ async function buildAllHandlers() {
         ? [entry.sourceUrn]
         : [];
     for (const sourceUrn of sourceUrns) {
-      StreamOps.addToRegistry(handlers, sourceUrn, registered);
+      StreamOps.addToRegistry(handlers, sourceUrn, registered.registered);
     }
+    // Every slice can also be swept without an event — see the scheduled branch
+    // below. Collected regardless of how many streams it listens on, so a
+    // multi-source slice is swept once rather than once per stream.
+    sweeps.push(registered);
   }));
 
-  return handlers;
+  return { handlers, sweeps };
 }
 
-export const handler = StreamOps.makeRoutedHandler("AutomationSliceRuntime", buildAllHandlers());
+const builtPromise = buildAllHandlers();
+const routed = StreamOps.makeRoutedHandler(
+  "AutomationSliceRuntime",
+  builtPromise.then((b) => b.handlers),
+);
+
+// The scheduled sweep arrives as the EventBridge rule's constant Input, which
+// has no `records` — so this branch is the one place that must probe an untyped
+// Lambda payload, which is what this shell exists for. Everything it dispatches
+// to is type-checked in AutomationSliceEntryPoint_Ops.
+export const handler = async (event, context) =>
+  event?.reventlessSweep
+    ? Ops.runSweeps((await builtPromise).sweeps)
+    : routed(event, context);

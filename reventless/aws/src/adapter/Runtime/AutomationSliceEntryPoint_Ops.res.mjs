@@ -4,12 +4,17 @@ import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
+import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
+import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
+import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 import * as AutomationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res.mjs";
 import * as StreamRoutedEntryPoint_Ops$ReventlessAws from "./StreamRoutedEntryPoint_Ops.res.mjs";
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
@@ -87,8 +92,65 @@ function makeSyncTodoItems(queryDbTableName, todoItems, rowSchema) {
   };
 }
 
-function makeAutomationJsonEventsHandler(context, callback, publishJsons, syncTodoItems) {
+function makeLoadTodoItems(queryDbTableName, todoItems, rowSchema, comp) {
+  let loaded = {
+    contents: false
+  };
+  return async () => {
+    if (loaded.contents) {
+      return;
+    }
+    loaded.contents = true;
+    let params_ConsistentRead = true;
+    let params_ExpressionAttributeNames = Object.fromEntries([[
+        "#s",
+        "status"
+      ]]);
+    let params_ExpressionAttributeValues = Object.fromEntries([
+      [
+        ":pending",
+        "Pending"
+      ],
+      [
+        ":failed",
+        "Failed"
+      ]
+    ]);
+    let params_FilterExpression = "#s = :pending OR #s = :failed";
+    let params = {
+      TableName: queryDbTableName,
+      ConsistentRead: params_ConsistentRead,
+      ExpressionAttributeNames: params_ExpressionAttributeNames,
+      ExpressionAttributeValues: params_ExpressionAttributeValues,
+      FilterExpression: params_FilterExpression
+    };
+    let restored = await Effect.runPromise(Effect.catchAll(Effect.map(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(params)), items => Stdlib_Array.reduce(items, 0, (count, item) => {
+      let json = JSON.parse(Stdlib_Option.getOr(JSON.stringify(item), ""));
+      let id = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["id"]), Stdlib_JSON.Decode.string);
+      if (id === undefined) {
+        return count;
+      }
+      if (!Stdlib_Option.isNone(todoItems[id])) {
+        return count;
+      }
+      let row;
+      try {
+        row = S.parseJsonOrThrow(json, rowSchema);
+      } catch (exn) {
+        return count;
+      }
+      todoItems[id] = row;
+      return count + 1 | 0;
+    })), err => Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `restore: couldn't read pending TODO rows from ` + queryDbTableName + `: ` + DynamoDb_Error$ReventlessAws.message(err)), () => 0)));
+    if (restored > 0) {
+      return Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `restore: reloaded ` + restored.toString() + ` unfinished TODO row(s) from ` + queryDbTableName));
+    }
+  };
+}
+
+function makeAutomationJsonEventsHandler(context, callback, publishJsons, syncTodoItems, loadTodoItems) {
   return stream => Effect.flatMap(Stream.runCollect(stream), jsons => Effect.promise(async () => {
+    await loadTodoItems();
     callback.phase1(jsons, context);
     await syncTodoItems();
     await callback.phase2(publishJsons);
@@ -96,7 +158,7 @@ function makeAutomationJsonEventsHandler(context, callback, publishJsons, syncTo
   }));
 }
 
-function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJsons, syncTodoItems) {
+function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJsons, syncTodoItems, loadTodoItems) {
   let decoder = DcbDecode$Reventless.makeDecoder(consumedEventSchema);
   return stream => Effect.flatMap(Stream.runCollect(Stream$1.flatMap(Stream$1.mapEffect(stream, json => Effect.sync(() => {
     let envelope = Stdlib_JSON.Decode.object(json);
@@ -113,6 +175,7 @@ function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJso
       return [];
     }
   })), events => Stream$1.fromIterable(events))), events => Effect.promise(async () => {
+    await loadTodoItems();
     callback.phase1(events);
     await syncTodoItems();
     await callback.phase2(publishJsons);
@@ -121,17 +184,54 @@ function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJso
 }
 
 function makeAutomationRegisteredHandler(entry, sliceName, callback) {
+  let comp = `AutomationSlice(` + sliceName + `)`;
+  let publishJsons = makePublishJsons(entry.dcbQueueUrl, Stdlib_Option.getOr(entry.commandQueueIsFifo, false));
+  let syncTodoItems = makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, AutomationSlice_Callback$ReventlessCore.todoRowSchema);
+  let loadTodoItems = makeLoadTodoItems(entry.queryDbTableName, callback.todoItems, AutomationSlice_Callback$ReventlessCore.todoRowSchema, comp);
   return {
-    handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeAutomationJsonEventsHandler(Stdlib_Option.getOr(entry.context, defaultContext(sliceName)), callback, makePublishJsons(entry.dcbQueueUrl, Stdlib_Option.getOr(entry.commandQueueIsFifo, false)), makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, AutomationSlice_Callback$ReventlessCore.todoRowSchema))),
-    comp: `AutomationSlice(` + sliceName + `)`
+    registered: {
+      handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeAutomationJsonEventsHandler(Stdlib_Option.getOr(entry.context, defaultContext(sliceName)), callback, publishJsons, syncTodoItems, loadTodoItems)),
+      comp: comp
+    },
+    sweep: async () => {
+      await loadTodoItems();
+      await callback.phase2(publishJsons);
+      return await syncTodoItems();
+    },
+    comp: comp
   };
 }
 
 function makeOutboundRegisteredHandler(entry, sliceName, consumedEventSchema, callback) {
+  let comp = `OutboundTranslationSlice(` + sliceName + `)`;
+  let publishJsons = makePublishJsons(entry.dcbQueueUrl, Stdlib_Option.getOr(entry.commandQueueIsFifo, false));
+  let syncTodoItems = makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema);
+  let loadTodoItems = makeLoadTodoItems(entry.queryDbTableName, callback.todoItems, OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema, comp);
   return {
-    handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeOutboundJsonEventsHandler(consumedEventSchema, callback, makePublishJsons(entry.dcbQueueUrl, Stdlib_Option.getOr(entry.commandQueueIsFifo, false)), makeSyncTodoItems(entry.queryDbTableName, callback.todoItems, OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema))),
-    comp: `OutboundTranslationSlice(` + sliceName + `)`
+    registered: {
+      handler: StreamRoutedEntryPoint_Ops$ReventlessAws.toStreamHandler(makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJsons, syncTodoItems, loadTodoItems)),
+      comp: comp
+    },
+    sweep: async () => {
+      await loadTodoItems();
+      await callback.phase2(publishJsons);
+      return await syncTodoItems();
+    },
+    comp: comp
   };
+}
+
+async function runSweeps(slices) {
+  for (let i = 0, i_finish = slices.length; i < i_finish; ++i) {
+    let slice = slices[i];
+    try {
+      await slice.sweep();
+    } catch (raw_exn) {
+      let exn = Primitive_exceptions.internalToException(raw_exn);
+      let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+      Effect.runSync(EffectLogger$ReventlessCore.logError(slice.comp, undefined, `sweep failed: ` + msg));
+    }
+  }
 }
 
 export {
@@ -143,9 +243,11 @@ export {
   defaultContext,
   makePublishJsons,
   makeSyncTodoItems,
+  makeLoadTodoItems,
   makeAutomationJsonEventsHandler,
   makeOutboundJsonEventsHandler,
   makeAutomationRegisteredHandler,
   makeOutboundRegisteredHandler,
+  runSweeps,
 }
 /* S Not a pure module */

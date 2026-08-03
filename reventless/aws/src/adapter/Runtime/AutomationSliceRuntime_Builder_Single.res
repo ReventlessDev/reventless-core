@@ -181,6 +181,77 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
   }
 }
 
+// How often the shared automation Lambda is invoked with no records, to work
+// its slices' TODO backlogs.
+//
+// Without it a backlog only moves when the *next event* arrives, so a slice
+// whose traffic stops holds its failed items indefinitely — and D4's "retried to
+// maxRetries, then swept" is what an outbound slice is chosen for over a
+// hand-rolled Task. Five minutes is short enough that a transient outage clears
+// on its own without anyone watching, and long enough that the invocations are
+// noise against the event traffic (~288/day per deployment, most of them finding
+// an empty backlog and exiting).
+let sweepIntervalMinutes = 5
+
+// The scheduled trigger: a rule, permission for EventBridge to invoke, and a
+// target carrying the constant payload the entry point's shell branches on. The
+// payload is the whole event — a scheduled invocation has no `records`, which is
+// exactly how the shell tells the two apart.
+let makeSweepSchedule = (~runtime: ReventlessCore.Runtime.environment<runtimeParts>, ~opts) => {
+  let name = "AllAutomationSlicesSweep"
+  let customOpts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+
+  let rule = {
+    open PulumiAws.Cloudwatch
+    EventRule.make(
+      ~name=Pulumi.Pulumi.getStackName() ++ ("-" ++ name),
+      ~args={
+        description: "Work the automation/outbound slices' TODO backlogs"->Pulumi.Input.make,
+        scheduleExpression: EventRule.ScheduleExpression.every(sweepIntervalMinutes->Minutes),
+        tags: AWS.Tags.make(
+          ~name=Pulumi.Pulumi.getStackName() ++ ("-" ++ name),
+          ~kind=ReventlessCore.ComponentType.AutomationSlice,
+          ~role=Scheduler,
+          ~component=name,
+        ),
+      },
+      ~opts=customOpts,
+    )
+  }
+
+  // The permission and target need the Lambda's resolved arn/name, so they stay
+  // inside an apply — the same shape the plugin heartbeat's runner uses.
+  let _permissionAndTarget =
+    (
+      runtime.parts.lambda->Pulumi.Output.flatMap(l => l.arn),
+      runtime.parts.lambda->Pulumi.Output.flatMap(l => l.name),
+    )
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((lambdaArn, lambdaName)) => {
+      let _permission = PulumiAws.Lambda.Permission.make(
+        ~name,
+        ~args={
+          action: "lambda:InvokeFunction",
+          function: lambdaName->Pulumi.Input.make,
+          principal: AWS.CloudwatchEventRule.principal,
+        },
+        ~opts=customOpts,
+      )
+      let _target = {
+        open PulumiAws.Cloudwatch
+        EventTarget.make(
+          ~name,
+          ~args={
+            rule: EventTarget.Rule.ofEventRule(rule),
+            arn: lambdaArn->Pulumi.Input.make,
+            input: `{"reventlessSweep":true}`->Pulumi.Input.make,
+          },
+          ~opts=customOpts,
+        )
+      }
+    })
+}
+
 let finished = ref(false)
 
 // Legacy finalizer, kept only to satisfy `EventCollectorRuntime_Builder.T`.
@@ -501,6 +572,8 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           ~runtime,
           ~opts,
         )
+
+        makeSweepSchedule(~runtime, ~opts)
       | None =>
         log.warn(
           ~comp="AutomationSliceRuntime_Builder_Single",

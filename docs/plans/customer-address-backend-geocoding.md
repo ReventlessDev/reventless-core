@@ -930,9 +930,54 @@ with no consumer is invisible to every test, because the tests exercise the decl
 holds only *within one warm container*. A transient geocoder failure whose container recycles is
 stranded permanently, in a row that reads `Failed` and looks like it is waiting for a retry that
 nothing will ever perform. It also undercuts D1's reason for rejecting the `Task` alternative: that
-the slice "already owns" the TODO list, retry counter and sweep. It owns two of the three. Not fixed
-here — it is framework work of its own size, on the same footing as step 1 — but it is no longer an
-assumption, and it should be settled before anything unattended depends on the retry path.
+the slice "already owns" the TODO list, retry counter and sweep. It owns two of the three.
+
+**Half fixed: the table is read back now.** `makeLoadTodoItems` in `AutomationSliceEntryPoint_Ops`
+scans the slice's view table for `Pending` / `Failed` rows and merges them into `todoItems` ahead of
+phase 1, in both pipelines. So a backlog now survives a cold start and is retried on the first event
+the next container handles — which is what turns a `Failed` row from a permanent record into work
+still queued.
+
+Four choices worth stating, because each was a fork:
+
+- **Once per container, not per invocation.** Within a container the dict is authoritative and
+  `phase2` already re-attempts every actionable row on each batch, so re-reading buys nothing and
+  costs a scan every time.
+- **Memory wins on conflict.** A row already in the dict may be `Processing` or a status this
+  invocation just advanced; the stored copy is by definition no fresher.
+- **Only `Pending` and `Failed` are read.** `Completed` is the bulk of a mature table and never
+  actionable. Retry-exhausted rows are not filtered out — `maxRetries` is Spec-level and not known at
+  that layer — but `phase2` drops them, so they are inert rather than wrong.
+- **Before phase 1, not between the phases.** Loading after phase 1 would let a stored row overwrite
+  one the batch just collected; loading after phase 2 would leave the reloaded backlog sitting until
+  the next invocation. The step-order assertion in `AutomationSliceEntryPoint_OpsTest` now pins
+  `["restore", "phase1", "sync", "phase2", "sync"]` — and the signature change made the compiler
+  flag both call sites in that same test, which is the protocol-as-named-types fix from blocker 4
+  doing its job.
+
+**Other half fixed: the sweep now fires on a timer.** An EventBridge rule invokes the shared
+automation Lambda every five minutes with the constant payload `{"reventlessSweep":true}`; the entry
+point runs every slice's backlog — reload, translate, persist — with no event to trigger it. It had
+to be the automation Lambda itself and not the plugin heartbeat's: `todoItems` is per-container state
+of a *different* function, so nothing outside that Lambda can sweep it. The rehydration above is what
+makes a scheduled invocation useful at all, since it lands on a cold container with an empty dict.
+
+- **The branch lives in the `.mjs` shell**, which is the one file that owns untyped Lambda-payload
+  probing (a scheduled event has no `records` — that *is* the discriminator). Everything it dispatches
+  to is type-checked: `makeAutomationRegisteredHandler` / `makeOutboundRegisteredHandler` now return a
+  `builtSlice` carrying both the stream handler and a `sweep` thunk, and the two share the same
+  publish/sync/load closures — so a sweep landing on a warm container reuses the load that container
+  already did, and one landing cold does it itself.
+- **Sweeps run sequentially and a thrower does not stop the rest.** A sweep exists to recover from a
+  failing external call; letting one slice's dead geocoder cost every other slice on the Lambda its
+  turn would be a worse version of the problem. Both properties are tested.
+- **Five minutes** is short enough that a transient outage clears unattended and long enough that the
+  invocations are noise against event traffic (~288/day, most finding an empty backlog).
+- **Local is deliberately unchanged.** Its dict lives for the whole process, so the cold-start
+  stranding this fixes cannot happen there; the residual "no traffic, no retry" is a dev-only wrinkle
+  with an obvious workaround, and a `setInterval` in the dev platform risks holding the Node process
+  open under Jest. `translatePending` therefore still has no caller — but it is now the *local*
+  handle for a capability the deployed platform has, rather than a promise nothing anywhere keeps.
 
 ### The end-to-end run: the loop closes, and the last hop drops the answer
 
@@ -1349,11 +1394,12 @@ component with live data needs a backfill planned alongside it.
   the API path has always done, with a regression test that fails against the old code. See [blocker
   7](#the-end-to-end-run-the-loop-closes-and-the-last-hop-drops-the-answer). Unproven on AWS: the run
   that found it was against the deployed build, so the pin appearing needs one more deploy.
-- **The outbound retry/sweep path is unimplemented** — see [blocker
+- ~~**The outbound retry/sweep path is unimplemented.**~~ **Fixed, both halves** — see [blocker
   6](#the-proving-deploy-the-wiring-is-confirmed-on-real-infrastructure-and-the-sweep-does-not-exist).
-  The TODO table is written and never read, and `translatePending` has no caller, so `maxRetries`
-  only survives inside one warm container. Framework work of its own size; recorded here because D4
-  and D1 both lean on a sweep that does not run.
+  The TODO table is read back on cold start, and an EventBridge rule sweeps the backlog every five
+  minutes, so D4's retry behaviour and D1's reason for preferring an outbound slice over a hand-rolled
+  `Task` both hold now. Unproven on AWS until the next deploy — in particular the scheduled
+  invocation's shell branch, which no test can reach.
 - **Step 9 is unblocked and small.** The port type it targets exists (7a), the env channel is built
   and shared with step 7, D3's calibration is measured, and the aggregate-source gap that would have
   made it pointless is closed. What remains: delete `GeocodingService`, accept an argument in

@@ -128,6 +128,87 @@ let makeSyncTodoItems = (
   }
 }
 
+// Rehydrate the in-memory TODO list from the slice's view table, once per
+// container.
+//
+// `todoItems` is a module-level dict populated only by phase 1, so before this
+// existed a cold start began with an empty list and every row already persisted
+// was unreachable: `phase2` admits `Failed && retryCount < maxRetries`, but only
+// for rows it can see. A transient failure whose container then recycled was
+// stranded permanently, in a row reading `Failed` that nothing would ever pick
+// up again — while `makeSyncTodoItems` kept faithfully writing it back out.
+//
+// Once per container rather than per invocation: within a container the dict is
+// authoritative and `phase2` already re-attempts every actionable row on each
+// batch, so re-reading would buy nothing and cost a scan each time. The backlog
+// is therefore retried on the first event a new container handles.
+//
+// Memory wins on conflict. A row already in the dict may be mid-flight
+// (`Processing`) or a status this invocation just advanced; the stored copy is
+// by definition no fresher.
+//
+// Only `Pending` and `Failed` are read. `Completed` rows are the bulk of a
+// mature table and are never actionable. Retry-exhausted rows are not excluded —
+// `maxRetries` is Spec-level and not known here — but `phase2` filters them, so
+// they are inert rather than wrong.
+let makeLoadTodoItems = (
+  ~queryDbTableName: string,
+  ~todoItems: dict<'row>,
+  ~rowSchema: S.t<'row>,
+  ~comp: string,
+): (unit => promise<unit>) => {
+  let loaded = ref(false)
+  async () =>
+    if loaded.contents {
+      ()
+    } else {
+      loaded := true
+      let params: AwsSdk.DynamoDb.DocumentClient.ScanCommand.input = {
+        tableName: queryDbTableName,
+        consistentRead: true,
+        filterExpression: "#s = :pending OR #s = :failed",
+        expressionAttributeNames: [("#s", "status")]->Dict.fromArray,
+        expressionAttributeValues: [
+          (":pending", "Pending"->JSON.Encode.string),
+          (":failed", "Failed"->JSON.Encode.string),
+        ]->Dict.fromArray,
+      }
+      let restored = await Util_DynamoDb_Runtime.scanStream(params)
+      ->Stream.runCollect
+      ->Effect.map(items =>
+        items->Array.reduce(0, (count, item) => {
+          let json = item->JSON.stringifyAny->Option.getOr("")->JSON.parseOrThrow
+          let id = json->JSON.Decode.object->Option.flatMap(d => d->Dict.get("id"))->Option.flatMap(JSON.Decode.string)
+          switch id {
+          | Some(id) if todoItems->Dict.get(id)->Option.isNone =>
+            switch json->S.parseJsonOrThrow(rowSchema) {
+            | row =>
+              todoItems->Dict.set(id, row)
+              count + 1
+            | exception _ => count
+            }
+          | _ => count
+          }
+        })
+      )
+      ->Effect.catchAll(err =>
+        ReventlessCore.EffectLogger.logError(
+          ~comp,
+          `restore: couldn't read pending TODO rows from ${queryDbTableName}: ${DynamoDb_Error.message(
+              err,
+            )}`,
+        )->Effect.map(_ => 0)
+      )
+      ->Effect.runPromise
+      if restored > 0 {
+        ReventlessCore.EffectLogger.logInfo(
+          ~comp,
+          `restore: reloaded ${restored->Int.toString} unfinished TODO row(s) from ${queryDbTableName}`,
+        )->Effect.runSync
+      }
+    }
+}
+
 // ── Phase-1/phase-2 pipelines ───────────────────────────────────────────────
 // Both run: collect the batch → phase 1 → sync (so consumers observe Pending
 // rows even if phase 2 fails) → phase 2 → sync. Unlike the in-process builders
@@ -161,12 +242,14 @@ let makeAutomationJsonEventsHandler = (
   ~callback: automationCallback,
   ~publishJsons: ReventlessCore.CommandTopic.publishJsons,
   ~syncTodoItems: unit => promise<unit>,
+  ~loadTodoItems: unit => promise<unit>,
 ): ReventlessCore.EventCollector.jsonEventsHandler =>
   stream =>
     stream
     ->Stream.runCollect
     ->Effect.flatMap(jsons =>
       Effect.promise(async () => {
+        await loadTodoItems()
         callback.phase1(jsons, context)
         await syncTodoItems()
         await callback.phase2(publishJsons)
@@ -183,6 +266,7 @@ let makeOutboundJsonEventsHandler = (
   ~callback: outboundCallback<'event>,
   ~publishJsons: ReventlessCore.CommandTopic.publishJsons,
   ~syncTodoItems: unit => promise<unit>,
+  ~loadTodoItems: unit => promise<unit>,
 ): ReventlessCore.EventCollector.jsonEventsHandler => {
   let decoder = Reventless.DcbDecode.makeDecoder(consumedEventSchema)
   stream =>
@@ -211,6 +295,7 @@ let makeOutboundJsonEventsHandler = (
     ->Stream.runCollect
     ->Effect.flatMap(events =>
       Effect.promise(async () => {
+        await loadTodoItems()
         callback.phase1(events)
         await syncTodoItems()
         await callback.phase2(publishJsons)
@@ -223,24 +308,62 @@ let makeOutboundJsonEventsHandler = (
 // Comp matches what the slice's own callback logs under, so a filter catches
 // both the framework's lines and the application handler's.
 
+/**
+A built slice, in the two ways the Lambda drives it.
+
+`registered` handles a stream batch. `sweep` runs the TODO backlog with no event
+to trigger it — the scheduled path, and the reason `translatePending` exists on
+the in-process builder. Both close over the *same* publish/sync/load closures, so
+a sweep landing on a container that has already served a batch reuses the load it
+did then, and one landing cold does the reload itself.
+*/
+type builtSlice = {
+  registered: StreamRoutedEntryPoint_Ops.registeredHandler,
+  sweep: unit => promise<unit>,
+  comp: string,
+}
+
 let makeAutomationRegisteredHandler = (
   entry: handlerEntry,
   ~sliceName: string,
   ~callback: automationCallback,
-): StreamRoutedEntryPoint_Ops.registeredHandler => {
-  handler: StreamRoutedEntryPoint_Ops.toStreamHandler(
-    makeAutomationJsonEventsHandler(
-      ~context=entry.context->Option.getOr(defaultContext(sliceName)),
-      ~callback,
-      ~publishJsons=makePublishJsons(entry.dcbQueueUrl, ~isFifo=entry.commandQueueIsFifo->Option.getOr(false)),
-      ~syncTodoItems=makeSyncTodoItems(
-        ~queryDbTableName=entry.queryDbTableName,
-        ~todoItems=callback.todoItems,
-        ~rowSchema=ReventlessCore.AutomationSlice_Callback.todoRowSchema,
+): builtSlice => {
+  let comp = `AutomationSlice(${sliceName})`
+  let publishJsons = makePublishJsons(
+    entry.dcbQueueUrl,
+    ~isFifo=entry.commandQueueIsFifo->Option.getOr(false),
+  )
+  let syncTodoItems = makeSyncTodoItems(
+    ~queryDbTableName=entry.queryDbTableName,
+    ~todoItems=callback.todoItems,
+    ~rowSchema=ReventlessCore.AutomationSlice_Callback.todoRowSchema,
+  )
+  let loadTodoItems = makeLoadTodoItems(
+    ~queryDbTableName=entry.queryDbTableName,
+    ~todoItems=callback.todoItems,
+    ~rowSchema=ReventlessCore.AutomationSlice_Callback.todoRowSchema,
+    ~comp,
+  )
+  {
+    registered: {
+      handler: StreamRoutedEntryPoint_Ops.toStreamHandler(
+        makeAutomationJsonEventsHandler(
+          ~context=entry.context->Option.getOr(defaultContext(sliceName)),
+          ~callback,
+          ~publishJsons,
+          ~syncTodoItems,
+          ~loadTodoItems,
+        ),
       ),
-    ),
-  ),
-  comp: `AutomationSlice(${sliceName})`,
+      comp,
+    },
+    sweep: async () => {
+      await loadTodoItems()
+      await callback.phase2(publishJsons)
+      await syncTodoItems()
+    },
+    comp,
+  }
 }
 
 let makeOutboundRegisteredHandler = (
@@ -248,18 +371,63 @@ let makeOutboundRegisteredHandler = (
   ~sliceName: string,
   ~consumedEventSchema: S.t<'event>,
   ~callback: outboundCallback<'event>,
-): StreamRoutedEntryPoint_Ops.registeredHandler => {
-  handler: StreamRoutedEntryPoint_Ops.toStreamHandler(
-    makeOutboundJsonEventsHandler(
-      ~consumedEventSchema,
-      ~callback,
-      ~publishJsons=makePublishJsons(entry.dcbQueueUrl, ~isFifo=entry.commandQueueIsFifo->Option.getOr(false)),
-      ~syncTodoItems=makeSyncTodoItems(
-        ~queryDbTableName=entry.queryDbTableName,
-        ~todoItems=callback.todoItems,
-        ~rowSchema=ReventlessCore.OutboundTranslationSlice_Callback.todoRowSchema,
+): builtSlice => {
+  let comp = `OutboundTranslationSlice(${sliceName})`
+  let publishJsons = makePublishJsons(
+    entry.dcbQueueUrl,
+    ~isFifo=entry.commandQueueIsFifo->Option.getOr(false),
+  )
+  let syncTodoItems = makeSyncTodoItems(
+    ~queryDbTableName=entry.queryDbTableName,
+    ~todoItems=callback.todoItems,
+    ~rowSchema=ReventlessCore.OutboundTranslationSlice_Callback.todoRowSchema,
+  )
+  let loadTodoItems = makeLoadTodoItems(
+    ~queryDbTableName=entry.queryDbTableName,
+    ~todoItems=callback.todoItems,
+    ~rowSchema=ReventlessCore.OutboundTranslationSlice_Callback.todoRowSchema,
+    ~comp,
+  )
+  {
+    registered: {
+      handler: StreamRoutedEntryPoint_Ops.toStreamHandler(
+        makeOutboundJsonEventsHandler(
+          ~consumedEventSchema,
+          ~callback,
+          ~publishJsons,
+          ~syncTodoItems,
+          ~loadTodoItems,
+        ),
       ),
-    ),
-  ),
-  comp: `OutboundTranslationSlice(${sliceName})`,
+      comp,
+    },
+    sweep: async () => {
+      await loadTodoItems()
+      await callback.phase2(publishJsons)
+      await syncTodoItems()
+    },
+    comp,
+  }
+}
+
+/**
+Run every slice's TODO backlog, for a scheduled invocation carrying no records.
+
+Sequential rather than concurrent: the slices in one Lambda share its memory and
+its downstream quotas, and a sweep is never latency-critical. A slice that throws
+is logged and does not stop the rest — a sweep that abandoned the remaining
+slices because one geocoder was down would be a worse version of the problem it
+exists to fix.
+*/
+let runSweeps = async (slices: array<builtSlice>) => {
+  for i in 0 to slices->Array.length - 1 {
+    let slice = slices->Array.getUnsafe(i)
+    try {
+      await slice.sweep()
+    } catch {
+    | exn =>
+      let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+      ReventlessCore.EffectLogger.logError(~comp=slice.comp, `sweep failed: ${msg}`)->Effect.runSync
+    }
+  }
 }
