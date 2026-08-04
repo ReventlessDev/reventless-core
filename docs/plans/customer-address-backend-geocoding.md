@@ -721,12 +721,13 @@ All the code landed:
   `AutoGraphQL.current` ref that `ShellApp` keeps fresh (the same discipline the presign adapter uses).
   `config.geocoderEndpoint` is deleted; `OptionalModes` builds the geocoder with no endpoint.
 
-**What is left is not code — it is the coordinated release D9 sequenced.** The deployed browser bundle
-(`reventless-host-shell` pinned at `3.0.0-alpha.54` in `examples/online-shop-hybrid/platform-aws`)
-still calls the Function URL, so the order is: publish reventless-ui → bump that pin to the new tag →
-one core deploy (which adds the resolver, swaps in the new bundle, and removes the Function URL in the
-same stack update). Doing the deploy before the UI release would strand the old bundle's search; the
-pin bump is what makes the swap atomic.
+**What is left is the deploy — the release and the pin bump are done.** reventless-ui published
+`@reventlessdev/reventless-host-shell@3.0.0-alpha.55` (the Release job on the UI push), which carries
+the `Geocoder.fromShell` client, and all three examples' host-shell pins are bumped to it (`alpha.54`
+→ `alpha.55`, lockfile regenerated). So the order D9 sequenced — publish reventless-ui → bump the pin →
+one core deploy — is at its last step: a single core deploy adds the resolver, serves the new bundle,
+and removes the Function URL in the same stack update. Doing the deploy before the UI release would
+have stranded the old bundle's search; the pin bump on the same deploy is what makes the swap atomic.
 
 ## Verification
 
@@ -1563,9 +1564,9 @@ mechanical application of it plus the deletions the second door makes safe.
    from the query text) for the map search box while keeping the *unattended* path at
    `Capabilities.none`. Search works offline in dev; nothing pretends the coordinates are real.
 
-**What is deliberately not done here: the release.** The code deletes the Function URL, but the
-deployed browser bundle still calls it, so a deploy now would strand the old bundle's search. The safe
-order is the one D9 wrote down — publish reventless-ui, bump the `reventless-host-shell` pin
-(`3.0.0-alpha.54` in `examples/online-shop-hybrid/platform-aws`) to the new tag, then one core deploy
-that adds the resolver, serves the new bundle, and drops the Function URL in the same stack update.
-Both are user-initiated (releases and UI tags), so this round ends at code-complete.
+**What is left is the deploy.** The safe order is the one D9 wrote down, and two of its three steps are
+done: reventless-ui published `@reventlessdev/reventless-host-shell@3.0.0-alpha.55` (the Release job on
+the UI push) and all three examples' pins are bumped to it (lockfile regenerated). The last step is one
+core deploy that adds the resolver, serves the new bundle, and drops the Function URL in the same stack
+update — deferred because a deploy is user-initiated, not because anything is unfinished. Running it
+before the pin bump would have stranded the old bundle's search, which is why the bump lands first.
