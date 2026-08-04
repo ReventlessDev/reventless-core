@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.210 (2026-08-04)
+
+### Bug Fixes
+
+* **core:** tag a slice's published command with its target, not itself ([bb2b063](https://github.com/ReventlessDev/reventless-core/commit/bb2b063f914e45fb8efcba28e0b691713cf93d8a))
+### Features
+
+* **outbound:** hand translate its geocoder instead of making it fetch one ([fb18312](https://github.com/ReventlessDev/reventless-core/commit/fb1831216b37c9562868c46e1a09054e69418c67))
+
+
 # 3.0.0-alpha.209 (2026-08-03)
 
 ### Bug Fixes
