@@ -1,9 +1,15 @@
 # Plan: an address is entered once, and the backend finds the point
 
 **Date:** 2026-08-03
-**Status:** IN PROGRESS — steps 1–9 built and green; only step 10 (cross-repo) remains. Full suite
+**Status:** IN PROGRESS — steps 1–9 **built, deployed and proven end to end**; **step 10 is now built
+in both repos** (the platform-API geocode field, its AWS + local resolvers, the UI client, and every
+deletion) and awaits only the coordinated UI release + deploy D9 sequenced — see [the step 10
+round](#the-step-10-round-the-client-door-opens-and-the-function-url-closes). A customer registered
+with nothing but a plain address gets the right pin,
+with no map opened — see [the proving deploy](#the-proving-deploy-2-the-pin-appears). Full suite
 301 suites / 2726 tests, all passing. **D9 is resolved** (two callers, two seams) and **half 1 is
-built** — the geocoder now reaches `translate` as an injected capability, not an HTTP client. **D3 is now calibrated against the
+built**: the geocoder reaches `translate` as an injected capability calling the SDK, not an HTTP
+client, and the backend no longer touches the public Function URL. **D3 is now calibrated against the
 live Esri index** — the shipped `0.8`/`0.1` declined correct addresses at a 1-in-4 rate and is
 replaced by `0.97`/`0.01`; see [the measurement
 round](#the-measurement-round-d3-calibrated-against-a-real-index). Step 7's fast path is
@@ -686,11 +692,41 @@ gains `geo:SearchPlaceIndexForText` on it. `GEOCODER_ENDPOINT` is gone from the 
 browser keeps the Function URL until step 10, which is what makes the two doors independent. See
 [the step 9 round](#the-step-9-round-the-capability-becomes-an-argument).
 
-**10 — Geocoding on the platform API (D9 half 2). ⬜ deferred, cross-repo.** A geocode field on the
-platform GraphQL API, mirroring `Upload_Presign`, resolving through the same
-`Geocoder_AwsLocation_Backend`. The map picker moves onto it; the public Function URL and
-`geocoderEndpoint` are then deleted. Lands with a UI release, not before — see D9's sequencing for
-why the interval is safe.
+**10 — Geocoding on the platform API (D9 half 2). 🟨 built in both repos; awaits a coordinated UI
+release + deploy.** A geocode field on the platform GraphQL API, mirroring `Upload_Presign`,
+resolving through the same `Geocoder_AwsLocation_Backend`. The map picker moves onto it; the public
+Function URL and `geocoderEndpoint` are deleted. See [the step 10 round](#the-step-10-round-the-client-door-opens-and-the-function-url-closes).
+
+All the code landed:
+
+- **Core, the field.** `geocode(text: String!): [GeocodeCandidate!]` — a Query, since geocoding is a
+  read — declared in `Platform_AdminApi` (`geocodeTypes` / `geocodeQueryFields`) beside the upload
+  fields and stitched into `domainBaseFragment` on both platforms, so it takes the domain API's
+  default `AllowAuthenticated` auth exactly as `Upload_Presign` does.
+- **Core, the AWS door.** `Geocoder_AwsLocation_Resolver{,_Ops}.res` mirror `Upload_Presign_S3{,_Ops}`:
+  a compiled-EntryPoint Lambda over the shared `Geocoder_AwsLocation_Backend.search`, an IAM grant of
+  `geo:SearchPlaceIndexForText`, an AppSync Lambda data source, and one `Query.geocode` resolver on
+  the domain API (split mode). Wired in `Platform.res` gated on `cfg.geocoderPlaceIndex`.
+- **Core, the local door.** `LocalGeocodeResolvers.register` on the dev domain server (a deterministic
+  stub, since local provisions no real geocoder) — so the map picker's search box works offline, which
+  closes the dev gap D9 named. The unattended slice path stays `Capabilities.none`; the two doors are
+  independent.
+- **Core, the deletions.** The public Function URL (`Geocoder_AwsLocation{,_Ops}.res` and its Ops
+  test), the `geocoderEndpoint` stack export, and the `geocoderEndpoint` config.json key are all gone.
+  The `geocoderPlaceIndex` export stays — it is how the unattended slice path reaches the same index.
+  The status-contract test moves to `Geocoder_AwsLocation_Resolver_OpsTest` (unset index throws, empty
+  query is `[]`).
+- **UI, the client.** `Geocoder.fromShell` replaces `Geocoder.fromEndpoint`: it issues the `geocode`
+  query over the shell's authenticated transport, read lazily per search from a kit-owned
+  `AutoGraphQL.current` ref that `ShellApp` keeps fresh (the same discipline the presign adapter uses).
+  `config.geocoderEndpoint` is deleted; `OptionalModes` builds the geocoder with no endpoint.
+
+**What is left is not code — it is the coordinated release D9 sequenced.** The deployed browser bundle
+(`reventless-host-shell` pinned at `3.0.0-alpha.54` in `examples/online-shop-hybrid/platform-aws`)
+still calls the Function URL, so the order is: publish reventless-ui → bump that pin to the new tag →
+one core deploy (which adds the resolver, swaps in the new bundle, and removes the Function URL in the
+same stack update). Doing the deploy before the UI release would strand the old bundle's search; the
+pin bump is what makes the swap atomic.
 
 ## Verification
 
@@ -1409,6 +1445,36 @@ it is immune to its signature — the opposite of the lesson blocker 4 taught ab
 and worth recording beside it so the two are not confused. Restating a type the compiler could have
 checked is a liability; declining to call a function you are standing in for is not.
 
+### The proving deploy #2: the pin appears
+
+Blockers 6 and 7 and step 9 shipped together and were checked on the live stack. **The plan's
+headline verification passes**: a customer registered with nothing but a plain address —
+`"Schlossberg 1, 8010 Graz, Austria"` — ended up with
+
+```
+locationStatus: Located   lat 47.073780   lng 15.437879
+```
+
+which is Schlossberg, Graz. Nobody opened a map. That sentence is the whole plan, and it is now true
+end to end on real infrastructure.
+
+| What | Evidence |
+|---|---|
+| blocker 7 — the event is projectable | the stored `LocationSet` carries `service: Customer`, not the slice's name, and the read model applied it |
+| step 9 — the SDK path | `PLACE_INDEX_NAME: online-shop-geocoder` on the Lambda, `AllAutomationSlicesGeocode` granting `geo:SearchPlaceIndexForText`, and **no `GEOCODER_ENDPOINT`** — the Function URL is out of the backend path entirely |
+| blocker 6 — the timer | `alpha-AllAutomationSlicesSweep`, `rate(5 minutes)`, ENABLED, target `AllAutomationSlices`, input `{"reventlessSweep":true}` |
+| blocker 6 — the shell branch | over 20 minutes: 4 invocations, 2 carrying stream dispatches (the probe) and **2 carrying none** — the scheduled path, which no test can reach. Zero errors, 220–305 ms |
+| blocker 6 — rehydration | `restore: reloaded 12 unfinished TODO row(s) from AutoShipOrderTodo-f548350` |
+
+That last line is the one worth dwelling on. Those twelve rows are `AutoShipOrder` items that failed
+*before* any of this work and had been unreachable ever since — precisely the stranded state blocker 6
+described, found in the wild rather than in a thought experiment. A container that had never seen them
+from a stream loaded them from storage and considered them.
+
+**And then correctly declined to retry them:** all twelve sit at `retryCount: 3` against
+`maxRetries: 3`, so `phase2` filters them. Loaded but inert, exactly as the loader's design note says
+it should be. Which surfaces one cost that is now measured rather than predicted — see Open.
+
 ### Open
 
 - **Resolved by the deploy: the wire contract now carries `relevance`.** Before it, the live Function
@@ -1447,10 +1513,59 @@ checked is a liability; declining to call a function you are standing in for is 
   minutes, so D4's retry behaviour and D1's reason for preferring an outbound slice over a hand-rolled
   `Task` both hold now. Unproven on AWS until the next deploy — in particular the scheduled
   invocation's shell branch, which no test can reach.
+- **Retry-exhausted TODO rows are reloaded forever.** Measured on the deploy: twelve `AutoShipOrder`
+  rows at `retryCount: 3` are re-read into memory on every cold container and re-written by every
+  five-minute sweep, because the loader filters on *status* and "exhausted" is not a status —
+  `maxRetries` is Spec-level and unknown at that layer. Harmless at twelve rows and wrong at scale.
+  Two candidate fixes, neither taken here: thread `maxRetries` into the loader's filter, or give an
+  exhausted row a terminal status so it stops being `Failed`. The second is probably right, since a
+  row nothing will ever retry is not the same fact as a row that failed, and the read model showing
+  the difference has value of its own.
 - ~~**Step 9 is unblocked and small.**~~ **Done** — see [the step 9
   round](#the-step-9-round-the-capability-becomes-an-argument). It was the size predicted. Unproven on
   AWS: nothing has yet called Amazon Location through the SDK from a slice Lambda, so the new grant
   and `PLACE_INDEX_NAME` are the next deploy's first test. Waiting for step 7 to run first paid off
   exactly as argued — the transport is now the only thing that changed, so a geocoding failure after
   this points at the injection rather than at the design.
-- **Step 10 waits on a UI release** — cross-repo, and the interval is safe by D9's sequencing.
+- ~~**Step 10 waits on a UI release**~~ — **built in both repos**; see [the step 10
+  round](#the-step-10-round-the-client-door-opens-and-the-function-url-closes). All that is left is the
+  release + deploy, whose order D9 sequenced and which is user-initiated.
+
+### The step 10 round: the client door opens and the Function URL closes
+
+The last decision was already made — D9 settled that geocoding copies the object store's two-door
+shape, and step 10 is that shape built for the client half. Nothing surprising surfaced, because the
+precedent it mirrors (`Upload_Presign`) is a working, shipped pattern with both doors; step 10 is the
+mechanical application of it plus the deletions the second door makes safe.
+
+| Half | Files |
+|---|---|
+| the SDL field | `Platform_AdminApi.res` — `geocodeTypes` / `geocodeQueryFields`; stitched into `domainBaseFragment` on AWS and registered on the local domain server |
+| the AWS door | `Geocoder_AwsLocation_Resolver{,_Ops}.res` (mirrors `Upload_Presign_S3{,_Ops}`); wired in `Platform.res` gated on `cfg.geocoderPlaceIndex` |
+| the local door | `LocalGeocodeResolvers.res` (deterministic dev stub); registered in `local/Platform.res` beside `LocalUploadResolvers` |
+| the deletions | `Geocoder_AwsLocation{,_Ops}.res` + its Ops test; the `geocoderEndpoint` export and config.json key; UI `Geocoder.fromEndpoint` and `config.geocoderEndpoint` |
+| the UI client | `Geocoder.fromShell` over the shell's authenticated transport (`AutoGraphQL.current`, kept fresh by `ShellApp`); `OptionalModes` builds it with no endpoint |
+| the moved test | `Geocoder_AwsLocation_Resolver_OpsTest.res` — unset index throws, empty query is `[]` (the client-door restatement of D2's status contract) |
+
+**Three choices worth keeping.**
+
+1. **A Query, not a Mutation, and it forwards no identity.** Geocoding is a read and is not scoped per
+   caller — any authenticated user may resolve any address — so the resolver's request mapper forwards
+   only `ctx.args`, unlike the upload resolver which namespaces objects by the verified `sub`.
+2. **The status contract narrows because the caller set does.** The Function URL served a browser and
+   an unattended translator through one `200`/`502` body-vs-status split. The GraphQL door serves only
+   the browser (the slice path reaches the SDK directly), so the contract collapses to
+   *value = answer, thrown = no answer* — a no-match is `[]` and a service failure throws, which the
+   response mapper turns into a GraphQL error rather than an empty list a browser would read as "no
+   such address".
+3. **Local finally has a geocoder door, and it is a stub on purpose.** The browser door and the slice
+   door are independent, so local can register a working `Query.geocode` (deterministic coordinates
+   from the query text) for the map search box while keeping the *unattended* path at
+   `Capabilities.none`. Search works offline in dev; nothing pretends the coordinates are real.
+
+**What is deliberately not done here: the release.** The code deletes the Function URL, but the
+deployed browser bundle still calls it, so a deploy now would strand the old bundle's search. The safe
+order is the one D9 wrote down — publish reventless-ui, bump the `reventless-host-shell` pin
+(`3.0.0-alpha.54` in `examples/online-shop-hybrid/platform-aws`) to the new tag, then one core deploy
+that adds the resolver, serves the new bundle, and drops the Function URL in the same stack update.
+Both are user-initiated (releases and UI tags), so this round ends at code-complete.

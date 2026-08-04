@@ -351,10 +351,10 @@ module type T = {
     // no file written; the shell treats the 404 as "no hints" and boots
     // unchanged. In-memory platforms ignore this.
     uiHintsFile?: string,
-    // Optional geocoding place index. When set, the deploy provisions a public
-    // geocoder Lambda Function URL and threads its URL into config.json as
-    // `geocoderEndpoint`. Unset ⇒ no service, field omitted. In-memory
-    // platforms ignore this.
+    // Optional geocoding place index. When set, the deploy provisions the
+    // capability's client door — a Cognito-authenticated `Query.geocode` resolver
+    // on the platform API — and exports the index name for the unattended slice
+    // path. Unset ⇒ no resolver, no export. In-memory platforms ignore this.
     geocoderPlaceIndex?: geocoderIndex,
     // Optional object store for direct-to-store uploads. When set, the deploy
     // provisions a presign service against it, threads that service's URL into

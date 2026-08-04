@@ -100,6 +100,25 @@ let uploadMutationFields = [
   `  Upload_Release(store: ID!, storageRef: String!): Upload_ReleaseResult`,
 ]
 
+// Geocoding service (D9 half 2): turn an address into ranked coordinate candidates
+// through the platform GraphQL API instead of an anonymous Function URL, so
+// AppSync's Cognito authorizer authenticates the caller. Geocoding is a *read*, so
+// a Query field. Like the upload fields these belong on the **domain** base
+// (`domainBaseFragment` in the AWS/local Platform), which takes the default
+// `AllowAuthenticated` auth — not the Admin-gated admin base, and so deliberately
+// NOT part of `baseFragment` below.
+//
+// This is the client door of the geocoding capability; plugin backend code reaches
+// the same place index through an injected port (`Reventless.Capabilities.geocode`,
+// backed by `Geocoder_AwsLocation_Backend`). One capability, two doors — mirroring
+// the object store's `Upload_Presign` / `Offload.resolve` split. `relevance` is
+// nullable because a provider that does not score its results returns none.
+let geocodeTypes = [
+  `type GeocodeCandidate {\n  label: String!\n  lat: Float!\n  lng: Float!\n  relevance: Float\n}`,
+]
+
+let geocodeQueryFields = [`  geocode(text: String!): [GeocodeCandidate!]`]
+
 let baseFragment = (~cloner: bool) => {
   let base = GraphQL_FragmentGenerator.generate(
     ~mutationEntries=mutationEntries(~cloner),

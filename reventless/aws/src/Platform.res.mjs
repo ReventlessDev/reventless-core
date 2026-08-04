@@ -59,7 +59,6 @@ import * as AppSync_SdlDecorate$ReventlessAws from "./components/Api/AppSync_Sdl
 import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
 import * as ClonerRunner_Fargate$ReventlessAws from "./plugin/cloner/ClonerRunner_Fargate.res.mjs";
-import * as Geocoder_AwsLocation$ReventlessAws from "./adapter/Geocoder/Geocoder_AwsLocation.res.mjs";
 import * as QueryEngine_DynamoDb$ReventlessAws from "./adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs";
 import * as PluginRuntime_Builder$ReventlessAws from "./plugin/runtime/PluginRuntime_Builder.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
@@ -85,6 +84,7 @@ import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTo
 import * as EventLogSubscription_AppSync$ReventlessAws from "./adapter/EventLogSubscription/EventLogSubscription_AppSync.res.mjs";
 import * as UiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry_Behavior.res.mjs";
 import * as CommandTopicChannel_SQS_Async$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
+import * as Geocoder_AwsLocation_Resolver$ReventlessAws from "./adapter/Geocoder/Geocoder_AwsLocation_Resolver.res.mjs";
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./plugin/stack/Plugin_ExtensionPoint_Builder.res.mjs";
 import * as QueryDbStorage_DynamoDbStream$ReventlessAws from "./adapter/QueryDb/QueryDbStorage_DynamoDbStream.res.mjs";
 import * as StateViewSlice_Builder_Stream$ReventlessAws from "./components/StateViewSlice_Builder_Stream.res.mjs";
@@ -129,10 +129,6 @@ let objectStoreEndpointsRef = {
 function getObjectStoreEndpoints() {
   return objectStoreEndpointsRef.contents;
 }
-
-let geocoderEndpointRef = {
-  contents: Pulumi.output("")
-};
 
 let geocoderPlaceIndexRef = {
   contents: Pulumi.output("")
@@ -193,9 +189,9 @@ function MakeWithConfig(Config) {
     }
   };
   let domainBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
-    types: Platform_AdminApi$ReventlessCore.uploadTypes,
+    types: Platform_AdminApi$ReventlessCore.uploadTypes.concat(Platform_AdminApi$ReventlessCore.geocodeTypes),
     mutations: Platform_AdminApi$ReventlessCore.uploadMutationFields,
-    queries: ["  Platform_ping: String"],
+    queries: ["  Platform_ping: String"].concat(Platform_AdminApi$ReventlessCore.geocodeQueryFields),
     subscriptions: [],
     subscriptionSources: []
   });
@@ -1131,10 +1127,9 @@ function MakeWithConfig(Config) {
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
       let index = hostUiBundle.geocoderPlaceIndex;
-      let geocoderEndpointOutput = index !== undefined ? Geocoder_AwsLocation$ReventlessAws.make(index.indexName, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
-      let geocoderEndpointFlat = geocoderEndpointOutput.apply(o => Stdlib_Option.getOr(o, ""));
-      Pulumi$Pulumi.$$export("geocoderEndpoint", geocoderEndpointFlat);
-      geocoderEndpointRef.contents = geocoderEndpointFlat;
+      if (index !== undefined && Config.splitApi) {
+        Geocoder_AwsLocation_Resolver$ReventlessAws.make(domainApi, index.indexName, undefined, {});
+      }
       let index$1 = hostUiBundle.geocoderPlaceIndex;
       let geocoderPlaceIndexFlat = index$1 !== undefined ? index$1.indexName : Pulumi.output("");
       Pulumi$Pulumi.$$export("geocoderPlaceIndex", geocoderPlaceIndexFlat);
@@ -1146,10 +1141,8 @@ function MakeWithConfig(Config) {
           cognitoPool.poolId,
           cognitoPool.clientId
         ]),
-        domainEventsEndpointOutput,
-        geocoderEndpointOutput
+        domainEventsEndpointOutput
       ]).apply(param => {
-        let geocoderEpOpt = param[2];
         let eventsEpOpt = param[1];
         let match = param[0];
         let computed = [
@@ -1196,11 +1189,7 @@ function MakeWithConfig(Config) {
               AppSync_EventsApi$ReventlessAws.clientNamespaceName
             ]
           ]) : computed;
-        let withGeocoder = geocoderEpOpt !== undefined ? withEvents.concat([[
-              "geocoderEndpoint",
-              geocoderEpOpt
-            ]]) : withEvents;
-        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withGeocoder, hostUiBundle.viewModes, hostUiBundle.shellConfig));
+        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, hostUiBundle.viewModes, hostUiBundle.shellConfig));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: bucketName,
@@ -1452,9 +1441,9 @@ function Make($star) {
     }
   };
   let domainBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
-    types: Platform_AdminApi$ReventlessCore.uploadTypes,
+    types: Platform_AdminApi$ReventlessCore.uploadTypes.concat(Platform_AdminApi$ReventlessCore.geocodeTypes),
     mutations: Platform_AdminApi$ReventlessCore.uploadMutationFields,
-    queries: ["  Platform_ping: String"],
+    queries: ["  Platform_ping: String"].concat(Platform_AdminApi$ReventlessCore.geocodeQueryFields),
     subscriptions: [],
     subscriptionSources: []
   });
@@ -2367,10 +2356,9 @@ function Make($star) {
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
       let index = hostUiBundle.geocoderPlaceIndex;
-      let geocoderEndpointOutput = index !== undefined ? Geocoder_AwsLocation$ReventlessAws.make(index.indexName, undefined, undefined).url.apply(u => u) : Pulumi.output(undefined);
-      let geocoderEndpointFlat = geocoderEndpointOutput.apply(o => Stdlib_Option.getOr(o, ""));
-      Pulumi$Pulumi.$$export("geocoderEndpoint", geocoderEndpointFlat);
-      geocoderEndpointRef.contents = geocoderEndpointFlat;
+      if (index !== undefined) {
+        Geocoder_AwsLocation_Resolver$ReventlessAws.make(domainApi, index.indexName, undefined, {});
+      }
       let index$1 = hostUiBundle.geocoderPlaceIndex;
       let geocoderPlaceIndexFlat = index$1 !== undefined ? index$1.indexName : Pulumi.output("");
       Pulumi$Pulumi.$$export("geocoderPlaceIndex", geocoderPlaceIndexFlat);
@@ -2382,10 +2370,8 @@ function Make($star) {
           cognitoPool.poolId,
           cognitoPool.clientId
         ]),
-        domainEventsEndpointOutput,
-        geocoderEndpointOutput
+        domainEventsEndpointOutput
       ]).apply(param => {
-        let geocoderEpOpt = param[2];
         let eventsEpOpt = param[1];
         let match = param[0];
         let computed = [
@@ -2432,11 +2418,7 @@ function Make($star) {
               AppSync_EventsApi$ReventlessAws.clientNamespaceName
             ]
           ]) : computed;
-        let withGeocoder = geocoderEpOpt !== undefined ? withEvents.concat([[
-              "geocoderEndpoint",
-              geocoderEpOpt
-            ]]) : withEvents;
-        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withGeocoder, hostUiBundle.viewModes, hostUiBundle.shellConfig));
+        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, hostUiBundle.viewModes, hostUiBundle.shellConfig));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: bucketName,
@@ -2645,7 +2627,6 @@ export {
   getSplitApiOutputs,
   objectStoreEndpointsRef,
   getObjectStoreEndpoints,
-  geocoderEndpointRef,
   geocoderPlaceIndexRef,
   MakeWithConfig,
   Make,

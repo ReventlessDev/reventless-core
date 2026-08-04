@@ -61,6 +61,7 @@ import * as EventPublish_Callback$ReventlessCore from "@reventlessdev/reventless
 import * as LocalUploadResolvers$ReventlessLocal from "./adapter/LocalUploadResolvers.res.mjs";
 import * as ProjectionCheckpoint$ReventlessLocal from "./adapter/ProjectionCheckpoint.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
+import * as LocalGeocodeResolvers$ReventlessLocal from "./adapter/LocalGeocodeResolvers.res.mjs";
 import * as UiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments_Projection.res.mjs";
 import * as EventLogStorage_Sqlite$ReventlessLocal from "./adapter/EventLog/EventLogStorage_Sqlite.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessLocal from "./components/ExtensionPoint_Builder.res.mjs";
@@ -1559,6 +1560,7 @@ function MakeWithConfig(Config) {
     DomainGraphQL_Server$ReventlessLocal.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
     DomainGraphQL_Server$ReventlessLocal.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
     LocalUploadResolvers$ReventlessLocal.register(DomainGraphQL_Server$ReventlessLocal.asInterface);
+    LocalGeocodeResolvers$ReventlessLocal.register(DomainGraphQL_Server$ReventlessLocal.asInterface);
     if (Config.splitApi) {
       PlatformGraphQL_Server$ReventlessLocal.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
     }
@@ -3244,6 +3246,7 @@ function Make($star) {
     DomainGraphQL_Server$ReventlessLocal.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
     DomainGraphQL_Server$ReventlessLocal.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
     LocalUploadResolvers$ReventlessLocal.register(DomainGraphQL_Server$ReventlessLocal.asInterface);
+    LocalGeocodeResolvers$ReventlessLocal.register(DomainGraphQL_Server$ReventlessLocal.asInterface);
     PlatformGraphQL_Server$ReventlessLocal.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
     currentDeployTarget.contents = "Domain";
   };

@@ -81,6 +81,10 @@ let uploadMutationFields = [
   `  Upload_Release(store: ID!, storageRef: String!): Upload_ReleaseResult`
 ];
 
+let geocodeTypes = [`type GeocodeCandidate {\n  label: String!\n  lat: Float!\n  lng: Float!\n  relevance: Float\n}`];
+
+let geocodeQueryFields = [`  geocode(text: String!): [GeocodeCandidate!]`];
+
 function baseFragment(cloner) {
   let base = GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries(cloner), PluginBaseFragment$ReventlessCore.queryEntries);
   let parts = GraphQL_Stitcher$ReventlessCore.decode(base);
@@ -120,6 +124,8 @@ export {
   pluginStatusSubscriptionSource,
   uploadTypes,
   uploadMutationFields,
+  geocodeTypes,
+  geocodeQueryFields,
   baseFragment,
 }
 /* cloneArgsSchema Not a pure module */

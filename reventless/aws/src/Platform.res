@@ -82,24 +82,21 @@ let objectStoreEndpointsRef: ref<array<objectStoreEndpoint>> = ref([])
     `getApiConfig` does. */
 let getObjectStoreEndpoints = () => objectStoreEndpointsRef.contents
 
-/** The geocoder endpoint this platform provisioned, for the monolithic case.
+/** The geocoding place index this platform provisioned, for the monolithic case.
 
-    In plugin mode the value crosses to the plugin stack as the `geocoderEndpoint`
+    In plugin mode the value crosses to the plugin stack as the `geocoderPlaceIndex`
     export; when platform and plugin are one program there is no stack to read, so
     `deployPlatform` records it here and `deployPlugin` picks it up — the same two
-    halves `objectStoreEndpointsRef` exists for.
+    halves `objectStoreEndpointsRef` exists for. Slice Lambdas call Amazon Location
+    directly with this index name; the browser reaches the same capability through
+    the platform API's `Query.geocode` resolver (D9 half 2), so there is no endpoint
+    to carry beside it.
 
     A plain Output with `""` as the "no geocoder" sentinel, never
     `option<Pulumi.Output.t<_>>`: any generic `Option.*` over an Output runs
     `valFromOption`, whose nested-option probe hits the Output proxy — where every
     property access returns a truthy Output — and corrupts it. Same reasoning, and
     the same sentinel, as `PluginRuntime_Builder.inboundSliceReg.auditTableName`. */
-let geocoderEndpointRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
-
-/** The geocoding place index, for the monolithic case — the SDK-side half of the
-    same capability, carried for exactly the reasons above and with the same `""`
-    sentinel. Slice Lambdas call Amazon Location directly with this; only the
-    browser needs the Function URL. */
 let geocoderPlaceIndexRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
 
 module MakeWithConfig = (
@@ -248,9 +245,15 @@ module MakeWithConfig = (
   // unified mode carries the admin base here instead; it declares no stores in practice,
   // so the upload resolvers below are never created there.)
   let domainBaseFragment = ReventlessCore.GraphQL_Stitcher.encode({
-    types: ReventlessCore.Platform_AdminApi.uploadTypes,
+    types: Array.concat(
+      ReventlessCore.Platform_AdminApi.uploadTypes,
+      ReventlessCore.Platform_AdminApi.geocodeTypes,
+    ),
     mutations: ReventlessCore.Platform_AdminApi.uploadMutationFields,
-    queries: ["  Platform_ping: String"],
+    queries: Array.concat(
+      ["  Platform_ping: String"],
+      ReventlessCore.Platform_AdminApi.geocodeQueryFields,
+    ),
     subscriptions: [],
     subscriptionSources: [],
   })
@@ -1152,10 +1155,10 @@ module MakeWithConfig = (
     // unchanged. Single-mode shape: one origin-relative file per deployment.
     uiHintsFile?: string,
     // Optional geocoding place index, as returned by
-    // `Capability_Geocoding_AwsLocation.make`. When set, the deploy provisions a
-    // public geocoder Lambda Function URL (Geocoder_AwsLocation) and threads its
-    // URL into config.json as `geocoderEndpoint`. Unset ⇒ no service, field
-    // omitted (byte-identical config.json).
+    // `Capability_Geocoding_AwsLocation.make`. When set, the deploy provisions the
+    // capability's client door — a Cognito-authenticated `Query.geocode` resolver
+    // on the domain API (`Geocoder_AwsLocation_Resolver`, split mode) — and exports
+    // the index name for the unattended slice path. Unset ⇒ no resolver, no export.
     geocoderPlaceIndex?: ReventlessInfra.Platform.geocoderIndex,
     // Optional object store for direct-to-S3 uploads, as returned by
     // `Capability_ObjectStore_S3.make`. When set, the deploy registers it with
@@ -2066,35 +2069,32 @@ module MakeWithConfig = (
       | None => Pulumi.Output.make(None)
       }
 
-      // Optional public geocoder Function URL. Provisioned only when a place
-      // index is configured; its resolved URL becomes config.json's
-      // `geocoderEndpoint`. Unset ⇒ Output<None> ⇒ field omitted below.
-      let geocoderEndpointOutput: Pulumi.Output.t<option<string>> = switch cfg.geocoderPlaceIndex {
-      | Some(index) =>
-        Geocoder_AwsLocation.make(
+      // The geocoding capability's client door (D9 half 2): a `Query.geocode`
+      // resolver on the domain API, provisioned only when a place index is
+      // configured. Authenticated by the API's Cognito authorizer, so it replaces
+      // the public unauthenticated Function URL the browser used to call — after
+      // which that endpoint has no callers at all (the unattended slice path reaches
+      // the same index through the SDK, via `geocoderPlaceIndex` below).
+      //
+      // Split-API only, for the same reason the upload resolvers are: `geocode`
+      // lives on the domain base document (`domainBaseFragment`), which a
+      // unified-mode deployment's single API does not carry.
+      switch cfg.geocoderPlaceIndex {
+      | Some(index) if Config.splitApi =>
+        let _geocodeService = Geocoder_AwsLocation_Resolver.make(
+          ~api=domainApi,
           ~placeIndexName=index.indexName,
-        ).url->Pulumi.Output.apply(u => Some(u))
-      | None => Pulumi.Output.make(None)
+          ~opts={},
+        )
+      | _ => ()
       }
 
-      // Exported as well as written into config.json, because the browser is no
-      // longer the only caller: a plugin stack's slice Lambdas geocode too, and a
-      // plugin stack has no other way to see a value computed in this one.
-      //
-      // `""` when unset rather than a missing output, so the read side has one
-      // shape to handle instead of two — and "" is already what a client reads as
-      // "no geocoder configured".
-      let geocoderEndpointFlat =
-        geocoderEndpointOutput->Pulumi.Output.apply(o => o->Option.getOr(""))
-      Pulumi.Pulumi.export("geocoderEndpoint", geocoderEndpointFlat)
-      geocoderEndpointRef := geocoderEndpointFlat
-
-      // The place index itself, exported beside the Function URL because the two
-      // callers need different things from the same capability. A browser cannot
-      // sign an SDK call and gets the URL; a slice's Lambda can, and gets the
-      // index name — no proxy hop, and no dependence on a public unauthenticated
-      // endpoint for an unattended path. `""` when unset, for the same
-      // one-shape-to-handle reason as the endpoint above.
+      // The place index itself, exported so the unattended slice path can reach the
+      // capability: a slice's Lambda signs an SDK call directly and needs the index
+      // name, not an endpoint (no proxy hop, no dependence on a public URL). The
+      // browser reaches the same capability through the `Query.geocode` resolver
+      // above. `""` when unset, so a plugin stack reading this output has one shape
+      // to handle rather than two.
       let geocoderPlaceIndexFlat = switch cfg.geocoderPlaceIndex {
       | Some(index) => index.indexName->Pulumi.Output.fromInput
       | None => Pulumi.Output.make("")
@@ -2116,14 +2116,9 @@ module MakeWithConfig = (
             cognitoPool.clientId,
           )->Pulumi.Output.all4,
           domainEventsEndpointOutput,
-          geocoderEndpointOutput,
         )
-        ->Pulumi.Output.all3
-        ->Pulumi.Output.apply(((
-          (domainEp, platformEp, poolId, clientId),
-          eventsEpOpt,
-          geocoderEpOpt,
-        )) => {
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply((((domainEp, platformEp, poolId, clientId), eventsEpOpt)) => {
           let computed = [
             ("apiEndpoint", JSON.Encode.string(domainEp)),
             ("platformApiEndpoint", JSON.Encode.string(platformEp)),
@@ -2151,12 +2146,12 @@ module MakeWithConfig = (
             )
           | None => computed
           }
-          let withGeocoder = switch geocoderEpOpt {
-          | Some(ep) => Array.concat(withEvents, [("geocoderEndpoint", JSON.Encode.string(ep))])
-          | None => withEvents
-          }
+          // `geocoderEndpoint` is no longer written: the browser reaches geocoding
+          // through the platform API's `Query.geocode` resolver (D9 half 2), the
+          // same way uploads moved off a per-store URL onto `Upload_Presign`. The
+          // public Function URL and its config key are both gone.
           Util_ShellConfig.fields(
-            ~computed=withGeocoder,
+            ~computed=withEvents,
             ~viewModes=?cfg.viewModes,
             ~shellConfig=?cfg.shellConfig,
           )

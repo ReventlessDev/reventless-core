@@ -1938,6 +1938,9 @@ module MakeWithConfig = (
     // Upload service (route B) on the domain server — mirrors adding it to
     // `domainBaseFragment` on AWS.
     LocalUploadResolvers.register(DomainGraphQL_Server.asInterface)
+    // Geocoding client door (D9 half 2) on the domain server — same mirror. A dev
+    // stub (no real geocoder locally), so the map picker's search box works offline.
+    LocalGeocodeResolvers.register(DomainGraphQL_Server.asInterface)
     // In split mode, inject Relay base types (Node interface, PageInfo) into the platform
     // server so SDL fragments compile. The node(id) query is Domain-only — the Platform
     // API is consumed by admin tools and agents, not Relay clients.
