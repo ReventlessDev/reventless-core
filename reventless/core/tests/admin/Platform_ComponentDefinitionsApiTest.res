@@ -163,17 +163,22 @@ describe("encodePluginStructureEntry", () => {
   )
 
   // Translation-slice externalSystem: absent on the fixture above (both None), so it
-  // must serialize as null — the "no external box" case.
+  // must serialize as null — the "no external box" case. The leading field keeps the
+  // two directions apart; `targetName` sits between them and is pinned here too.
   testSync("encodes None outbound externalSystem as null", () =>
-    expect(json->String.includes("\"inboundCommandTypes\":[\"Ship\"],\"externalSystem\":null"))->toEqual(
-      true,
-    )
+    expect(
+      json->String.includes(
+        "\"inboundCommandTypes\":[\"Ship\"],\"targetName\":null,\"externalSystem\":null",
+      ),
+    )->toEqual(true)
   )
 
   testSync("encodes None inbound externalSystem as null", () =>
-    expect(json->String.includes("\"commandTypes\":[\"RecordPayment\"],\"externalSystem\":null"))->toEqual(
-      true,
-    )
+    expect(
+      json->String.includes(
+        "\"commandTypes\":[\"RecordPayment\"],\"targetName\":\"Order\",\"externalSystem\":null",
+      ),
+    )->toEqual(true)
   )
 })
 

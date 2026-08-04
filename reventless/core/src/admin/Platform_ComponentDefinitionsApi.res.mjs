@@ -8,11 +8,11 @@ let sdlTypes = [
   `type Platform_FieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
   `type Platform_CommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_FieldReference!]!\n  allowedStates: [String!]\n  targetState: String\n  apiExposed: Boolean\n}`,
   `type Platform_EventDef {\n  name: String!\n  schema: String!\n  references: [Platform_FieldReference!]!\n}`,
-  `type Platform_WriteSideDef {\n  name: String!\n  commands: [Platform_CommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n  events: [Platform_EventDef!]!\n}`,
-  `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  statusField: String\n}`,
-  `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
-  `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
-  `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n}`,
+  `type Platform_WriteSideDef {\n  name: String!\n  commands: [Platform_CommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n  events: [Platform_EventDef!]!\n  chapter: String\n}`,
+  `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  statusField: String\n  visibility: String\n  chapter: String\n}`,
+  `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n  targetName: String\n  chapter: String\n}`,
+  `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
+  `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
   `type Platform_ExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
   `type Platform_ComponentDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n}`
 ];
@@ -125,6 +125,10 @@ function encodeQueryableDef(r) {
       Stdlib_Option.mapOr(r.statusField, null, prim => prim)
     ],
     [
+      "visibility",
+      Stdlib_Option.mapOr(r.visibility, null, prim => prim)
+    ],
+    [
       "chapter",
       Stdlib_Option.mapOr(r.chapter, null, prim => prim)
     ]
@@ -200,6 +204,10 @@ function encodeAutomationSliceDef(a) {
       a.producedCommandTypes.map(prim => prim)
     ],
     [
+      "targetName",
+      a.targetName
+    ],
+    [
       "chapter",
       Stdlib_Option.mapOr(a.chapter, null, prim => prim)
     ]
@@ -221,6 +229,10 @@ function encodeOutboundTranslationSliceDef(o) {
       o.inboundCommandTypes.map(prim => prim)
     ],
     [
+      "targetName",
+      Stdlib_Option.mapOr(o.targetName, null, prim => prim)
+    ],
+    [
       "externalSystem",
       Stdlib_Option.mapOr(o.externalSystem, null, prim => prim)
     ],
@@ -240,6 +252,10 @@ function encodeInboundTranslationSliceDef(i) {
     [
       "commandTypes",
       i.commandTypes.map(prim => prim)
+    ],
+    [
+      "targetName",
+      i.targetName
     ],
     [
       "externalSystem",
