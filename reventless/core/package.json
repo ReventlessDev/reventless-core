@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-core",
-  "version": "3.0.0-alpha.211",
+  "version": "3.0.0-alpha.212",
   "description": "Core package for Reventless framework",
   "license": "Apache-2.0",
   "jest": {

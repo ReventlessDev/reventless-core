@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.212 (2026-08-04)
+
+### Bug Fixes
+
+* **admin:** declare the component fields the resolver already returned ([879fdf3](https://github.com/ReventlessDev/reventless-core/commit/879fdf3e7ac68be23f915db6bdd0fdc68294de5d))
+### Features
+
+* **admin:** serve the complete plugin structure to developer tooling ([e99cda0](https://github.com/ReventlessDev/reventless-core/commit/e99cda02a2f862b36bcfdb018a0fb34bb7426a2b))
+
+
 # 3.0.0-alpha.211 (2026-08-04)
 
 ### Features
