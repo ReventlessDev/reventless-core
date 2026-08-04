@@ -80,6 +80,7 @@ import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLo
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
 import * as UiFragmentRegistry_Behavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry_Behavior.res.mjs";
+import * as Platform_PluginStructuresApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_PluginStructuresApi.res.mjs";
 import * as EventHistoryResolvers_GraphQL$ReventlessLocal from "./adapter/EventHistory/EventHistoryResolvers_GraphQL.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessLocal from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as Platform_ComponentDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_ComponentDefinitionsApi.res.mjs";
@@ -1341,7 +1342,7 @@ function MakeWithConfig(Config) {
       let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
-    queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => {
+    let connectedLatestStructures = () => {
       let dict = {};
       let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
       if (scanAll !== undefined) {
@@ -1386,11 +1387,10 @@ function MakeWithConfig(Config) {
           return;
         }
       });
-      return Object.values(latestByName).map(param => {
-        let match = param[1];
-        return Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(match[0], match[1]);
-      });
+      return Object.values(latestByName).map(param => param[1]);
     };
+    queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => connectedLatestStructures().map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+    queryResolvers["Platform_PluginStructures"] = async (_root, _args, _ctx) => connectedLatestStructures().map(param => Platform_PluginStructuresApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(UiFragments$ReventlessCore.name);
       let items = scanAll !== undefined ? scanAll() : [];
@@ -3027,7 +3027,7 @@ function Make($star) {
       let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
-    queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => {
+    let connectedLatestStructures = () => {
       let dict = {};
       let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
       if (scanAll !== undefined) {
@@ -3072,11 +3072,10 @@ function Make($star) {
           return;
         }
       });
-      return Object.values(latestByName).map(param => {
-        let match = param[1];
-        return Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(match[0], match[1]);
-      });
+      return Object.values(latestByName).map(param => param[1]);
     };
+    queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => connectedLatestStructures().map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+    queryResolvers["Platform_PluginStructures"] = async (_root, _args, _ctx) => connectedLatestStructures().map(param => Platform_PluginStructuresApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(UiFragments$ReventlessCore.name);
       let items = scanAll !== undefined ? scanAll() : [];

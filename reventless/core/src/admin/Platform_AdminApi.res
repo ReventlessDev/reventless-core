@@ -136,11 +136,13 @@ let baseFragment = (~cloner: bool) => {
     ->Array.concat(uiFragmentSubscriptionTypes)
     ->Array.concat(pluginStatusSubscriptionTypes)
     ->Array.concat(Platform_ComponentDefinitionsApi.sdlTypes)
+    ->Array.concat(Platform_PluginStructuresApi.sdlTypes)
     ->Array.concat(Platform_UIFragmentsApi.sdlTypes),
     queries: Array.concat(
       parts.queries,
       [
         Platform_ComponentDefinitionsApi.sdlQueryField,
+        Platform_PluginStructuresApi.sdlQueryField,
         Platform_UIFragmentsApi.sdlQueryField,
       ],
     ),

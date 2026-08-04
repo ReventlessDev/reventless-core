@@ -24,10 +24,29 @@ export function response(ctx) {
 }
 `->Pulumi.Input.make
 
+// `Platform_PluginStructures` — the same scan, unfiltered. The `complete` flag is
+// the whole difference; see the handler's `toEntryWith`.
+let completeResolverCode = `
+import { util } from '@aws-appsync/utils';
+export function request(ctx) {
+  return { operation: 'Invoke', payload: { complete: true } };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  return ctx.result;
+}
+`->Pulumi.Input.make
+
 let make = (
   ~api: Pulumi.Output.t<AppSync.GraphQLApi.t>,
   ~pluginReadModelTableName: Pulumi.Output.t<string>,
   ~offloadBucketName: Pulumi.Output.t<string>,
+  // Resolves once the admin schema push is ACTIVE (Platform_Admin.adminSchemaPushed).
+  // Only the `Platform_PluginStructures` resolver is gated on it: that field is new,
+  // so CreateResolver would otherwise race StartSchemaCreation on the deploy that
+  // first ships it. `Platform_ComponentDefinitions` predates the gate and is left
+  // ungated so this change adds no dependency edge to an already-deployed resource.
+  ~schemaReady: Pulumi.Output.t<unit>,
   ~opts: Pulumi.ComponentResource.options,
 ) => {
   let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
@@ -215,4 +234,21 @@ let make = (
     ~code=resolverCode,
     ~opts,
   )
+
+  // Second field, same DataSource and same Lambda — the developer-tooling read of
+  // the identical scan. Sharing the data source is what keeps the two answers from
+  // drifting: there is one place that decides what a deployed plugin's structure is.
+  // Created only after the schema carrying `Platform_PluginStructures` is ACTIVE.
+  let _structuresResolver =
+    schemaReady->Pulumi.Output.apply(() =>
+      AppSync_Resolver_Native.makeUnitJsResolver(
+        ~name=name ++ "StructuresResolver",
+        ~api,
+        ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
+        ~type_="Query"->Pulumi.Input.make,
+        ~field="Platform_PluginStructures"->Pulumi.Input.make,
+        ~code=completeResolverCode,
+        ~opts,
+      )
+    )
 }

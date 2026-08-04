@@ -1635,60 +1635,78 @@ module MakeWithConfig = (
     // whose Plugin RM row is not Connected are hidden until reactivated. The built-in
     // Platform_Admin entry has no Plugin RM row — include it unconditionally since
     // it can't be deactivated.
+    // The plugins both structure queries answer over: one entry per plugin name,
+    // Connected only, highest version. Shared so the two fields can never disagree
+    // about which plugins exist — mirrors the single Lambda serving both fields on
+    // the AWS side.
+    let connectedLatestStructures = () => {
+      let pluginStatusById = {
+        let dict = Dict.make()
+        switch Bus.getQueryDbScan(pluginQueryDbName) {
+        | Some(scanAll) =>
+          scanAll()->Array.forEach(json =>
+            switch json->S.convertOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema) {
+            | state =>
+              let id = state.name ++ "@" ++ state.version
+              dict->Dict.set(id, state.status)
+            | exception _ => ()
+            }
+          )
+        | None => ()
+        }
+        dict
+      }
+      let adminPluginId = ReventlessCore.Platform_Admin_Structure.pluginId
+      // One entry per plugin name: among Connected versions keep the highest
+      // version, enforcing the deploy-time one-version-per-plugin invariant.
+      // Without this, a lingering Connected older version (rolling deploy or a
+      // missed retire) surfaces a full duplicate set of AutoUI menu entries —
+      // mirrors the dedup in Platform_ComponentDefinitions_Lambda.res.
+      let latestByName = Dict.make()
+      pluginStructuresStore.contents
+      ->Dict.toArray
+      ->Array.forEach(((pluginId, def)) => {
+        let connected =
+          pluginId === adminPluginId ||
+            switch pluginStatusById->Dict.get(pluginId) {
+            | Some(Connected) => true
+            | _ => false
+            }
+        if connected {
+          let name = ReventlessCore.Plugin.name(pluginId)
+          let version = ReventlessCore.Plugin.version(pluginId)
+          switch latestByName->Dict.get(name) {
+          | Some((prevVersion, _)) =>
+            if ReventlessCore.Plugin.compareVersions(version, prevVersion) > 0 {
+              latestByName->Dict.set(name, (version, (pluginId, def)))
+            }
+          | None => latestByName->Dict.set(name, (version, (pluginId, def)))
+          }
+        }
+      })
+      latestByName->Dict.valuesToArray->Array.map(((_, pair)) => pair)
+    }
+
     queryResolvers->Dict.set(
       "Platform_ComponentDefinitions",
-      async (_root, _args, _ctx): JSON.t => {
-        let pluginStatusById = {
-          let dict = Dict.make()
-          switch Bus.getQueryDbScan(pluginQueryDbName) {
-          | Some(scanAll) =>
-            scanAll()->Array.forEach(json =>
-              switch json->S.convertOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema) {
-              | state =>
-                let id = state.name ++ "@" ++ state.version
-                dict->Dict.set(id, state.status)
-              | exception _ => ()
-              }
-            )
-          | None => ()
-          }
-          dict
-        }
-        let adminPluginId = ReventlessCore.Platform_Admin_Structure.pluginId
-        // One entry per plugin name: among Connected versions keep the highest
-        // version, enforcing the deploy-time one-version-per-plugin invariant.
-        // Without this, a lingering Connected older version (rolling deploy or a
-        // missed retire) surfaces a full duplicate set of AutoUI menu entries —
-        // mirrors the dedup in Platform_ComponentDefinitions_Lambda.res.
-        let latestByName = Dict.make()
-        pluginStructuresStore.contents
-        ->Dict.toArray
-        ->Array.forEach(((pluginId, def)) => {
-          let connected =
-            pluginId === adminPluginId ||
-              switch pluginStatusById->Dict.get(pluginId) {
-              | Some(Connected) => true
-              | _ => false
-              }
-          if connected {
-            let name = ReventlessCore.Plugin.name(pluginId)
-            let version = ReventlessCore.Plugin.version(pluginId)
-            switch latestByName->Dict.get(name) {
-            | Some((prevVersion, _)) =>
-              if ReventlessCore.Plugin.compareVersions(version, prevVersion) > 0 {
-                latestByName->Dict.set(name, (version, (pluginId, def)))
-              }
-            | None => latestByName->Dict.set(name, (version, (pluginId, def)))
-            }
-          }
-        })
-        latestByName
-        ->Dict.valuesToArray
-        ->Array.map(((_, (pluginId, def))) =>
+      async (_root, _args, _ctx): JSON.t =>
+        connectedLatestStructures()
+        ->Array.map(((pluginId, def)) =>
           ReventlessCore.Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
         )
-        ->JSON.Encode.array
-      },
+        ->JSON.Encode.array,
+    )
+
+    // Platform_PluginStructures resolver — the same plugins, encoded unfiltered for
+    // developer tooling (Internal components kept, extension points carried).
+    queryResolvers->Dict.set(
+      "Platform_PluginStructures",
+      async (_root, _args, _ctx): JSON.t =>
+        connectedLatestStructures()
+        ->Array.map(((pluginId, def)) =>
+          ReventlessCore.Platform_PluginStructuresApi.encodePluginStructureEntry(~pluginId, def)
+        )
+        ->JSON.Encode.array,
     )
 
     // Platform_UIFragments resolver — reads the UiFragments StateViewSlice

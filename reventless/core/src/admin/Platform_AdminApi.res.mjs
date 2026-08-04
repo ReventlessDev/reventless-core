@@ -7,6 +7,7 @@ import * as PluginBaseFragment$ReventlessCore from "../plugin/api/PluginBaseFrag
 import * as Platform_UIFragmentsApi$ReventlessCore from "./Platform_UIFragmentsApi.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../components/Api/GraphQL_FragmentGenerator.res.mjs";
 import * as Plugin_SubscriptionSchema$ReventlessCore from "../plugin/component/Plugin_SubscriptionSchema.res.mjs";
+import * as Platform_PluginStructuresApi$ReventlessCore from "./Platform_PluginStructuresApi.res.mjs";
 import * as Platform_ComponentDefinitionsApi$ReventlessCore from "./Platform_ComponentDefinitionsApi.res.mjs";
 
 let cloneArgsSchema = S.schema(s => ({
@@ -90,10 +91,11 @@ function baseFragment(cloner) {
   let parts = GraphQL_Stitcher$ReventlessCore.decode(base);
   let match = Plugin_SubscriptionSchema$ReventlessCore.sourceCFields(PluginBaseFragment$ReventlessCore.pluginAggregateMutationEntries);
   return GraphQL_Stitcher$ReventlessCore.encode({
-    types: parts.types.concat(uiFragmentSubscriptionTypes).concat(pluginStatusSubscriptionTypes).concat(Platform_ComponentDefinitionsApi$ReventlessCore.sdlTypes).concat(Platform_UIFragmentsApi$ReventlessCore.sdlTypes),
+    types: parts.types.concat(uiFragmentSubscriptionTypes).concat(pluginStatusSubscriptionTypes).concat(Platform_ComponentDefinitionsApi$ReventlessCore.sdlTypes).concat(Platform_PluginStructuresApi$ReventlessCore.sdlTypes).concat(Platform_UIFragmentsApi$ReventlessCore.sdlTypes),
     mutations: parts.mutations.concat(uiFragmentMutationFields).concat(pluginStatusMutationFields),
     queries: parts.queries.concat([
       Platform_ComponentDefinitionsApi$ReventlessCore.sdlQueryField,
+      Platform_PluginStructuresApi$ReventlessCore.sdlQueryField,
       Platform_UIFragmentsApi$ReventlessCore.sdlQueryField
     ]),
     subscriptions: [

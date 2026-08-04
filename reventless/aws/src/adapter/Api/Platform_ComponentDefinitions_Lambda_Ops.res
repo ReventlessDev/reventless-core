@@ -43,11 +43,21 @@ let filterStructure = (structure: JSON.t): option<dict<JSON.t>> =>
     Some(out)
   }
 
-// `{pluginId: name, ...filterStructure(structure)}` — pluginId first so the
-// structure's fields win on the (never-expected) key collision, matching the JS
-// spread. Drops a row with no decodable structure (former `!item.structure`).
-let toEntry = (item: dict<JSON.t>, ~name: string): option<JSON.t> =>
-  switch item->Dict.get("structure")->Option.flatMap(filterStructure) {
+// `{pluginId: name, ...structure}` — pluginId first so the structure's fields win
+// on the (never-expected) key collision, matching the JS spread. Drops a row with
+// no decodable structure (former `!item.structure`).
+//
+// `~filter` is what separates the two fields this handler serves: AutoUI
+// (`Platform_ComponentDefinitions`) gets the public-queryable subset, developer
+// tooling (`Platform_PluginStructures`) gets the structure exactly as persisted,
+// including Internal components and the producer-side `extensionPoints` that the
+// AutoUI entry type does not declare.
+let toEntryWith = (~filter: bool, item: dict<JSON.t>, ~name: string): option<JSON.t> => {
+  let structure =
+    item
+    ->Dict.get("structure")
+    ->Option.flatMap(s => filter ? filterStructure(s) : s->JSON.Decode.object)
+  switch structure {
   | None => None
   | Some(structureObj) =>
     let entry = Dict.make()
@@ -55,10 +65,17 @@ let toEntry = (item: dict<JSON.t>, ~name: string): option<JSON.t> =>
     structureObj->Dict.toArray->Array.forEach(((k, v)) => entry->Dict.set(k, v))
     Some(JSON.Encode.object(entry))
   }
+}
+
 
 // The built-in Platform_Admin entry, injected at deploy time as the
 // ADMIN_ENTRY_JSON env var (the admin never Connects to itself, so its structure
 // never enters the Plugin read model).
+//
+// Shared by both fields. The admin structure has no Internal components and no
+// extension points, so its filtered and complete encodings carry the same
+// components; the structure-level fields the complete entry adds are absent from
+// this JSON and resolve to null, which is what `extensionPoints: None` means.
 let adminEntry: option<JSON.t> =
   switch NodeProcess.env->Dict.get("ADMIN_ENTRY_JSON") {
   | Some(s) if s != "" => Some(JSON.parseOrThrow(s))
@@ -94,7 +111,21 @@ let resolveStructure = (
     }
   }
 
-let handler = async (_event: JSON.t): array<JSON.t> => {
+// One Lambda serves both fields — the scan, the offload resolution and the
+// latest-version-per-plugin collapse are identical work, and duplicating them into
+// a second function would mean a second cold start and a second chance for the two
+// to disagree about what "the deployed structure" is. The resolver for
+// `Platform_PluginStructures` invokes with `{complete: true}`.
+let isComplete = (event: JSON.t): bool =>
+  event
+  ->JSON.Decode.object
+  ->Option.flatMap(o => o->Dict.get("complete"))
+  ->Option.flatMap(JSON.Decode.bool)
+  ->Option.getOr(false)
+
+let handler = async (event: JSON.t): array<JSON.t> => {
+  let complete = isComplete(event)
+  let toEntry = (item, ~name) => toEntryWith(~filter=!complete, item, ~name)
   let admin = adminEntry->Option.mapOr([], e => [e])
   switch NodeProcess.env->Dict.get("PLUGIN_RM_TABLE") {
   | None | Some("") =>

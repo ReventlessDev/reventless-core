@@ -1452,6 +1452,7 @@ module MakeWithConfig = (
         ~api=platformApi,
         ~pluginReadModelTableName=tableName,
         ~offloadBucketName,
+        ~schemaReady=admin.adminSchemaPushed,
         ~opts={},
       )
     | None => ()

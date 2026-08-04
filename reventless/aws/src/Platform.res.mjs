@@ -861,7 +861,7 @@ function MakeWithConfig(Config) {
     Pulumi$Pulumi.$$export("offloadBucket", offloadBucketName);
     if (pluginReadModelTableName !== undefined) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
-      Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, offloadBucketName, {});
+      Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, offloadBucketName, admin.adminSchemaPushed, {});
     }
     let rm = admin.stateViewSlicesOutputs["UiFragments"];
     if (rm !== undefined) {
@@ -2096,7 +2096,7 @@ function Make($star) {
     Pulumi$Pulumi.$$export("offloadBucket", offloadBucketName);
     if (pluginReadModelTableName !== undefined) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
-      Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, offloadBucketName, {});
+      Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, offloadBucketName, admin.adminSchemaPushed, {});
     }
     let rm = admin.stateViewSlicesOutputs["UiFragments"];
     if (rm !== undefined) {

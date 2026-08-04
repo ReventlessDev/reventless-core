@@ -31,14 +31,20 @@ function filterStructure(structure) {
   return out;
 }
 
-function toEntry(item, name) {
-  let structureObj = Stdlib_Option.flatMap(item["structure"], filterStructure);
-  if (structureObj === undefined) {
+function toEntryWith(filter, item, name) {
+  let structure = Stdlib_Option.flatMap(item["structure"], s => {
+    if (filter) {
+      return filterStructure(s);
+    } else {
+      return Stdlib_JSON.Decode.object(s);
+    }
+  });
+  if (structure === undefined) {
     return;
   }
   let entry = {};
   entry["pluginId"] = name;
-  Object.entries(structureObj).forEach(param => {
+  Object.entries(structure).forEach(param => {
     entry[param[0]] = param[1];
   });
   return entry;
@@ -65,7 +71,13 @@ function resolveStructure(fetch, item) {
   }
 }
 
-async function handler(_event) {
+function isComplete(event) {
+  return Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(event), o => o["complete"]), Stdlib_JSON.Decode.bool), false);
+}
+
+async function handler(event) {
+  let complete = isComplete(event);
+  let toEntry = (item, name) => toEntryWith(!complete, item, name);
   let admin = Stdlib_Option.mapOr(adminEntry, [], e => [e]);
   let table = process.env["PLUGIN_RM_TABLE"];
   if (table !== undefined) {
@@ -94,9 +106,10 @@ export {
   str,
   isPublicQueryable,
   filterStructure,
-  toEntry,
+  toEntryWith,
   adminEntry,
   resolveStructure,
+  isComplete,
   handler,
 }
 /* s Not a pure module */

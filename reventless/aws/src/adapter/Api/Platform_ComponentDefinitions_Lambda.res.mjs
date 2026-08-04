@@ -27,7 +27,18 @@ export function response(ctx) {
 }
 `;
 
-function make(api, pluginReadModelTableName, offloadBucketName, opts) {
+let completeResolverCode = `
+import { util } from '@aws-appsync/utils';
+export function request(ctx) {
+  return { operation: 'Invoke', payload: { complete: true } };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  return ctx.result;
+}
+`;
+
+function make(api, pluginReadModelTableName, offloadBucketName, schemaReady, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let name = "PlatformUIDefinitions";
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Lambda", Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name + "Lambda", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
@@ -131,10 +142,12 @@ function make(api, pluginReadModelTableName, offloadBucketName, opts) {
     serviceRoleArn: dataSourceRole.arn
   }, opts$1);
   AppSync_Resolver_Native$ReventlessAws.makeUnitJsResolver(name + "Resolver", api, dataSource.name, "Query", "Platform_ComponentDefinitions", resolverCode, opts$1);
+  schemaReady.apply(() => AppSync_Resolver_Native$ReventlessAws.makeUnitJsResolver(name + "StructuresResolver", api, dataSource.name, "Query", "Platform_PluginStructures", completeResolverCode, opts$1));
 }
 
 export {
   resolverCode,
+  completeResolverCode,
   make,
 }
 /* @pulumi/aws Not a pure module */
