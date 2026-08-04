@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.211 (2026-08-04)
+
+### Features
+
+* **geocoding:** serve geocoding through the platform GraphQL API (D9 half 2) ([914d3c0](https://github.com/ReventlessDev/reventless-core/commit/914d3c0a99a1b67ffb89e2b8259dd30f67ff9bae))
+
+
 # 3.0.0-alpha.210 (2026-08-04)
 
 ### Bug Fixes

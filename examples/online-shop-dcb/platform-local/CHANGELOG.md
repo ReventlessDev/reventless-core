@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.181 (2026-08-04)
+
+### Features
+
+* **deps:** pin host-shell to 3.0.0-alpha.55 for the geocode client ([78d2d5c](https://github.com/ReventlessDev/reventless-core/commit/78d2d5c4fd53dd63a8a5ae695ad1b60627eed1c0))
+
+
 # 1.0.0-alpha.180 (2026-08-04)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-platform-local

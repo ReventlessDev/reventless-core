@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.214 (2026-08-04)
+
+### Features
+
+* **deps:** pin host-shell to 3.0.0-alpha.55 for the geocode client ([78d2d5c](https://github.com/ReventlessDev/reventless-core/commit/78d2d5c4fd53dd63a8a5ae695ad1b60627eed1c0))
+* **geocoding:** serve geocoding through the platform GraphQL API (D9 half 2) ([914d3c0](https://github.com/ReventlessDev/reventless-core/commit/914d3c0a99a1b67ffb89e2b8259dd30f67ff9bae))
+
+
 # 1.0.0-alpha.213 (2026-08-04)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws
