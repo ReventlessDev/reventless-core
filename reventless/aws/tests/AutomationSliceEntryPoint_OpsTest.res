@@ -179,7 +179,7 @@ describe("AutomationSliceEntryPoint_Ops.makeOutboundJsonEventsHandler", () => {
         received := events
         steps->Array.push("phase1")
       },
-      phase2: async _publish => steps->Array.push("phase2"),
+      phase2: async (_publish, ~capabilities as _) => steps->Array.push("phase2"),
     }
     let handler = AutomationSliceEntryPoint_Ops.makeOutboundJsonEventsHandler(
       ~consumedEventSchema=outboundEventSchema,

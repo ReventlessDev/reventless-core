@@ -16,7 +16,7 @@ function collect(event, param) {
     ]];
 }
 
-async function translate(_id, item) {
+async function translate(_id, item, param) {
   try {
     await EmailService$OrderingPlugin.sendOrderConfirmation(item.customerId, item.orderId);
     return {

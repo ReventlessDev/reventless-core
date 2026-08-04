@@ -17,6 +17,17 @@ module Make = (
     let api: unit => QueryDbStorage.api
     let apiRole: unit => QueryDbStorage.role
   },
+  // What the platform provisioned, for `translate` to reach. A thunk like
+  // `Api.api` rather than a value, so a platform can resolve it when the runtime
+  // exists rather than when this functor is applied.
+  //
+  // A functor parameter, not a mutable slot: the platform that omits it does not
+  // compile, which is the property D9 chose injection for. This supplies the
+  // in-process path; the Lambda entry point supplies its own, because there the
+  // callback is driven by a bundled shell rather than by this builder.
+  Capabilities: {
+    let capabilities: unit => Reventless.Capabilities.t
+  },
 ) => {
   let finish = EventCollectorRuntimeBuilder.finish
   module Make = (
@@ -187,7 +198,7 @@ module Make = (
                   // same topic, awaiting would self-deadlock the bus — same
                   // shape as AutomationSlice. Detach it; errors are logged.
                   let _ =
-                    Callback.phase2(publishJsonsFn)
+                    Callback.phase2(publishJsonsFn, ~capabilities=Capabilities.capabilities())
                     ->Promise.then(() => syncToQueryDb(queryDbOps))
                     ->Promise.catch(exn => {
                       let errMsg =
@@ -223,7 +234,8 @@ module Make = (
         ->Pulumi.Output.apply(((ecOps, publishJsonsFn)) => {
           let ops: OutboundTranslationSlice.operations = {
             enqueueEvent: ecOps.enqueueEvent,
-            translatePending: async () => await Callback.phase2(publishJsonsFn),
+            translatePending: async () =>
+              await Callback.phase2(publishJsonsFn, ~capabilities=Capabilities.capabilities()),
           }
           ops
         }),

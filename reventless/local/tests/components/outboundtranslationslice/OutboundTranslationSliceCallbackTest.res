@@ -70,7 +70,7 @@ describe("OutboundTranslationSlice Callback", () => {
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await FireForgetCallback.phase2(mockPublish)
+      await FireForgetCallback.phase2(mockPublish, ~capabilities=Reventless.Capabilities.none)
       expect(publishedCommands.contents->Array.length)->toBe(0)
       let row = FireForgetCallback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row.status)->toBe(Completed)
@@ -81,7 +81,7 @@ describe("OutboundTranslationSlice Callback", () => {
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await FireForgetCallback.phase2(mockPublish)
+      await FireForgetCallback.phase2(mockPublish, ~capabilities=Reventless.Capabilities.none)
       expect(publishedCommands.contents->Array.length)->toBe(0)
     })
   })
@@ -93,7 +93,7 @@ describe("OutboundTranslationSlice Callback", () => {
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := Array.concat(publishedCommands.contents, cmds)
       }
-      await CommandBackCallback.phase2(mockPublish)
+      await CommandBackCallback.phase2(mockPublish, ~capabilities=Reventless.Capabilities.none)
       expect(publishedCommands.contents->Array.length)->toBe(1)
       let cmd = publishedCommands.contents->Array.getUnsafe(0)
       expect(cmd.id)->toBe("ord-1")
@@ -112,7 +112,7 @@ describe("OutboundTranslationSlice Callback", () => {
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := Array.concat(publishedCommands.contents, cmds)
       }
-      await CommandBackCallback.phase2(mockPublish)
+      await CommandBackCallback.phase2(mockPublish, ~capabilities=Reventless.Capabilities.none)
       let cmd = publishedCommands.contents->Array.getUnsafe(0)
       expect(cmd.meta.service)->toBe("ConfirmPayment")
     })
@@ -122,7 +122,7 @@ describe("OutboundTranslationSlice Callback", () => {
 
       CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
-      await CommandBackCallback.phase2(mockPublish)
+      await CommandBackCallback.phase2(mockPublish, ~capabilities=Reventless.Capabilities.none)
 
       let row = CommandBackCallback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row.status)->toBe(Failed)
@@ -134,7 +134,7 @@ describe("OutboundTranslationSlice Callback", () => {
       ProcessPaymentSpec.translateFn := (async (_id, _item) => Error("timeout"))
       CommandBackCallback.phase1([("evt", PaymentReceived({orderId: "ord-1", amount: 50.0}))])
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
-      await CommandBackCallback.phase2(mockPublish)
+      await CommandBackCallback.phase2(mockPublish, ~capabilities=Reventless.Capabilities.none)
       let row1 = CommandBackCallback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row1.retryCount)->toBe(1)
 
@@ -145,7 +145,7 @@ describe("OutboundTranslationSlice Callback", () => {
       let successPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await CommandBackCallback.phase2(successPublish)
+      await CommandBackCallback.phase2(successPublish, ~capabilities=Reventless.Capabilities.none)
       expect(publishedCommands.contents->Array.length)->toBe(1)
       let row2 = CommandBackCallback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row2.status)->toBe(Completed)
@@ -158,8 +158,8 @@ describe("OutboundTranslationSlice Callback", () => {
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => ()
 
       // Fail twice
-      await CommandBackCallback.phase2(mockPublish)
-      await CommandBackCallback.phase2(mockPublish)
+      await CommandBackCallback.phase2(mockPublish, ~capabilities=Reventless.Capabilities.none)
+      await CommandBackCallback.phase2(mockPublish, ~capabilities=Reventless.Capabilities.none)
       let row = CommandBackCallback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row.retryCount)->toBe(2)
 
@@ -168,7 +168,7 @@ describe("OutboundTranslationSlice Callback", () => {
       let trackPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await CommandBackCallback.phase2(trackPublish)
+      await CommandBackCallback.phase2(trackPublish, ~capabilities=Reventless.Capabilities.none)
       expect(publishedCommands.contents->Array.length)->toBe(0)
       let row2 = CommandBackCallback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       // retryCount should still be 2 — not retried
@@ -194,7 +194,7 @@ describe("OutboundTranslationSlice Callback", () => {
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := Array.concat(publishedCommands.contents, cmds)
       }
-      await CommandBackCallback.phase2(mockPublish)
+      await CommandBackCallback.phase2(mockPublish, ~capabilities=Reventless.Capabilities.none)
 
       // ord-1 should be Failed, ord-2 should be Completed
       let row1 = CommandBackCallback.todoItems->Dict.get("ord-1")->Option.getOrThrow

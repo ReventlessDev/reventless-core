@@ -209,6 +209,30 @@ let makeLoadTodoItems = (
     }
 }
 
+// ── Platform capabilities ───────────────────────────────────────────────────
+
+/**
+What this Lambda hands a slice's `translate`.
+
+Built here rather than reached for inside the plugin, because a plugin depends on
+`reventless-spec` and cannot name Amazon Location — the whole point of the
+injected record. This module is the AWS side of that seam and calls the SDK
+directly: no proxy hop through the browser's Function URL, and no dependence on a
+public unauthenticated endpoint for an unattended path.
+
+Resolved per call rather than captured once, so a Lambda whose configuration is
+updated does not need a cold start to see it. An unset `PLACE_INDEX_NAME` reaches
+`Geocoder_AwsLocation_Backend` as `""`, which answers `Unavailable` — a retryable
+outcome, not a verdict on the address.
+*/
+let capabilities = (): Reventless.Capabilities.t => {
+  geocode: (~text) =>
+    Geocoder_AwsLocation_Backend.search(
+      ~indexName=NodeProcess.env->Dict.get("PLACE_INDEX_NAME")->Option.getOr(""),
+      ~text,
+    ),
+}
+
 // ── Phase-1/phase-2 pipelines ───────────────────────────────────────────────
 // Both run: collect the batch → phase 1 → sync (so consumers observe Pending
 // rows even if phase 2 fails) → phase 2 → sync. Unlike the in-process builders
@@ -298,7 +322,7 @@ let makeOutboundJsonEventsHandler = (
         await loadTodoItems()
         callback.phase1(events)
         await syncTodoItems()
-        await callback.phase2(publishJsons)
+        await callback.phase2(publishJsons, ~capabilities=capabilities())
         await syncTodoItems()
       })
     )
@@ -403,7 +427,7 @@ let makeOutboundRegisteredHandler = (
     },
     sweep: async () => {
       await loadTodoItems()
-      await callback.phase2(publishJsons)
+      await callback.phase2(publishJsons, ~capabilities=capabilities())
       await syncTodoItems()
     },
     comp,

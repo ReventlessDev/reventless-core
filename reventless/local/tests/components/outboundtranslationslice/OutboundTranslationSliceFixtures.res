@@ -35,7 +35,7 @@ module SendTrackingEmailSpec = {
     | OrderShipped({orderId, email}) => [(orderId, {orderId, email})]
     }
 
-  let translate = async (_id, _item) => Ok(None)
+  let translate = async (_id, _item, ~capabilities as _) => Ok(None)
 
   let maxRetries = 3
   let heartbeatInterval = 60
@@ -72,7 +72,10 @@ module ProcessPaymentSpec = {
     async (id, _item) => Ok(Some((id, ConfirmPayment({orderId: id}))))
   )
 
-  let translate = (id, item) => translateFn.contents(id, item)
+  // The mock stays two-arg: a test that wants to vary behaviour varies it on
+  // the item, and threading capabilities into every fixture would make each
+  // one restate a type it does not use.
+  let translate = (id, item, ~capabilities as _) => translateFn.contents(id, item)
 
   let maxRetries = 2
   let heartbeatInterval = 30

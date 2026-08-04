@@ -33,7 +33,9 @@ let collect = event => switch event {
   | _ => []
 }
 
-let translate = async (_id, item) => {
+// `~capabilities` is ignored here: this slice calls a service the framework
+// does not broker. A geocoding slice would use `capabilities.geocode`.
+let translate = async (_id, item, ~capabilities as _) => {
   await EmailService.send(item.email, ~orderId=item.orderId)
   Ok(None) // fire-and-forget: no command back
 }
@@ -133,8 +135,15 @@ module type Translation = {
   - `Ok(Some((targetId, cmd)))` to publish a command back into the system
   - `Ok(None)` for fire-and-forget (no command back)
   - `Error(msg)` on failure (item will be retried up to maxRetries)
+
+  `~capabilities` carries what the platform provisioned — a geocoder today. It is
+  how a provider-agnostic plugin reaches a provider-specific service without
+  naming one: the deployment decides what is behind `capabilities.geocode`, and
+  the call site does not change when that answer does. A slice calling a service
+  the framework knows nothing about still reaches it directly and simply ignores
+  this argument.
   */
-  let translate: (string, Spec.outboundItem) => promise<
+  let translate: (string, Spec.outboundItem, ~capabilities: Capabilities.t) => promise<
     result<option<(string, Spec.inboundCommand)>, string>,
   >
 

@@ -17,6 +17,7 @@ import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.m
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 import * as AutomationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res.mjs";
 import * as StreamRoutedEntryPoint_Ops$ReventlessAws from "./StreamRoutedEntryPoint_Ops.res.mjs";
+import * as Geocoder_AwsLocation_Backend$ReventlessAws from "../Geocoder/Geocoder_AwsLocation_Backend.res.mjs";
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import * as QueryDbStorage_DynamoDb_Runtime$ReventlessAws from "../QueryDb/QueryDbStorage_DynamoDb_Runtime.res.mjs";
 import * as OutboundTranslationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/OutboundTranslationSlice/OutboundTranslationSlice_Callback.res.mjs";
@@ -148,6 +149,12 @@ function makeLoadTodoItems(queryDbTableName, todoItems, rowSchema, comp) {
   };
 }
 
+function capabilities() {
+  return {
+    geocode: text => Geocoder_AwsLocation_Backend$ReventlessAws.search(Stdlib_Option.getOr(process.env["PLACE_INDEX_NAME"], ""), text, undefined)
+  };
+}
+
 function makeAutomationJsonEventsHandler(context, callback, publishJsons, syncTodoItems, loadTodoItems) {
   return stream => Effect.flatMap(Stream.runCollect(stream), jsons => Effect.promise(async () => {
     await loadTodoItems();
@@ -178,7 +185,9 @@ function makeOutboundJsonEventsHandler(consumedEventSchema, callback, publishJso
     await loadTodoItems();
     callback.phase1(events);
     await syncTodoItems();
-    await callback.phase2(publishJsons);
+    await callback.phase2(publishJsons, {
+      geocode: text => Geocoder_AwsLocation_Backend$ReventlessAws.search(Stdlib_Option.getOr(process.env["PLACE_INDEX_NAME"], ""), text, undefined)
+    });
     return await syncTodoItems();
   }));
 }
@@ -214,7 +223,9 @@ function makeOutboundRegisteredHandler(entry, sliceName, consumedEventSchema, ca
     },
     sweep: async () => {
       await loadTodoItems();
-      await callback.phase2(publishJsons);
+      await callback.phase2(publishJsons, {
+        geocode: text => Geocoder_AwsLocation_Backend$ReventlessAws.search(Stdlib_Option.getOr(process.env["PLACE_INDEX_NAME"], ""), text, undefined)
+      });
       return await syncTodoItems();
     },
     comp: comp
@@ -244,6 +255,7 @@ export {
   makePublishJsons,
   makeSyncTodoItems,
   makeLoadTodoItems,
+  capabilities,
   makeAutomationJsonEventsHandler,
   makeOutboundJsonEventsHandler,
   makeAutomationRegisteredHandler,

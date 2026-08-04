@@ -24,6 +24,7 @@ module Make = (Bus: LocalBus.T) => {
     EventCollectorChannel,
     EventCollectorRuntimeBuilder,
     Api,
+    LocalCapabilities,
   )
 
   module Make = (

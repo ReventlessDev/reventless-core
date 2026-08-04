@@ -134,6 +134,10 @@ let geocoderEndpointRef = {
   contents: Pulumi.output("")
 };
 
+let geocoderPlaceIndexRef = {
+  contents: Pulumi.output("")
+};
+
 function MakeWithConfig(Config) {
   Stdlib_Option.forEach(Config.commandHandlerConfig.aggregates, param => {
     Stdlib_Option.forEach(param.sync, AggregateRuntime_Builder_Single$ReventlessAws.setConfig);
@@ -1131,6 +1135,10 @@ function MakeWithConfig(Config) {
       let geocoderEndpointFlat = geocoderEndpointOutput.apply(o => Stdlib_Option.getOr(o, ""));
       Pulumi$Pulumi.$$export("geocoderEndpoint", geocoderEndpointFlat);
       geocoderEndpointRef.contents = geocoderEndpointFlat;
+      let index$1 = hostUiBundle.geocoderPlaceIndex;
+      let geocoderPlaceIndexFlat = index$1 !== undefined ? index$1.indexName : Pulumi.output("");
+      Pulumi$Pulumi.$$export("geocoderPlaceIndex", geocoderPlaceIndexFlat);
+      geocoderPlaceIndexRef.contents = geocoderPlaceIndexFlat;
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,
@@ -1247,8 +1255,9 @@ function MakeWithConfig(Config) {
         bytes: bytes.length
       };
     });
-    let geocoderEndpoint = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("geocoderEndpoint").apply(o => Stdlib_Option.getOr(o, "")) : geocoderEndpointRef.contents;
-    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("GEOCODER_ENDPOINT", geocoderEndpoint);
+    let geocoderPlaceIndex = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("geocoderPlaceIndex").apply(o => Stdlib_Option.getOr(o, "")) : geocoderPlaceIndexRef.contents;
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("PLACE_INDEX_NAME", geocoderPlaceIndex);
+    PluginRuntime_Builder$ReventlessAws.registerGeocoderPlaceIndex(geocoderPlaceIndex);
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();
     currentDeployTarget.contents = "Domain";
@@ -2362,6 +2371,10 @@ function Make($star) {
       let geocoderEndpointFlat = geocoderEndpointOutput.apply(o => Stdlib_Option.getOr(o, ""));
       Pulumi$Pulumi.$$export("geocoderEndpoint", geocoderEndpointFlat);
       geocoderEndpointRef.contents = geocoderEndpointFlat;
+      let index$1 = hostUiBundle.geocoderPlaceIndex;
+      let geocoderPlaceIndexFlat = index$1 !== undefined ? index$1.indexName : Pulumi.output("");
+      Pulumi$Pulumi.$$export("geocoderPlaceIndex", geocoderPlaceIndexFlat);
+      geocoderPlaceIndexRef.contents = geocoderPlaceIndexFlat;
       let configJsonContent = Pulumi.all([
         Pulumi.all([
           resolvedDomainApiEndpoint,
@@ -2478,8 +2491,9 @@ function Make($star) {
         bytes: bytes.length
       };
     });
-    let geocoderEndpoint = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("geocoderEndpoint").apply(o => Stdlib_Option.getOr(o, "")) : geocoderEndpointRef.contents;
-    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("GEOCODER_ENDPOINT", geocoderEndpoint);
+    let geocoderPlaceIndex = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("geocoderPlaceIndex").apply(o => Stdlib_Option.getOr(o, "")) : geocoderPlaceIndexRef.contents;
+    PluginRuntime_Builder$ReventlessAws.registerCapabilityEnv("PLACE_INDEX_NAME", geocoderPlaceIndex);
+    PluginRuntime_Builder$ReventlessAws.registerGeocoderPlaceIndex(geocoderPlaceIndex);
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.clearOffload();
     currentDeployTarget.contents = "Domain";
@@ -2632,6 +2646,7 @@ export {
   objectStoreEndpointsRef,
   getObjectStoreEndpoints,
   geocoderEndpointRef,
+  geocoderPlaceIndexRef,
   MakeWithConfig,
   Make,
 }

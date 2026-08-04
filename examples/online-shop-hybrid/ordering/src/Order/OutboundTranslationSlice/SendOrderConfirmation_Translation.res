@@ -6,7 +6,9 @@ let collect = (event, ~sourceId as _) =>
   | OrderPlaced({orderId, customerId}) => [(orderId, {orderId, customerId})]
   }
 
-let translate = async (_id, item) => {
+// This slice calls a service the framework does not broker, so it reaches its
+// mailer directly and ignores the injected capabilities.
+let translate = async (_id, item, ~capabilities as _) => {
   try {
     await EmailService.sendOrderConfirmation(
       ~email=item.customerId,

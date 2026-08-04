@@ -12,6 +12,7 @@ import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
+import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Cloudwatch_EventRule$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Cloudwatch/Cloudwatch_EventRule.res.mjs";
@@ -130,6 +131,23 @@ function makeSweepSchedule(runtime, opts) {
       input: `{"reventlessSweep":true}`
     }, customOpts);
   });
+}
+
+function makeGeocoderGrant(runtime, opts) {
+  if (!PluginRuntime_Builder$ReventlessAws.geocoderProvisioned()) {
+    return;
+  }
+  let customOpts = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
+  let policyJson = PluginRuntime_Builder$ReventlessAws.geocoderPlaceIndex().apply(idx => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "AllAutomationSlicesGeocode", [{
+      Sid: "AllowGeocode",
+      Effect: "Allow",
+      Action: "geo:SearchPlaceIndexForText",
+      Resource: `arn:aws:geo:*:*:place-index/` + idx
+    }])));
+  new (Aws.iam.RolePolicy)("AllAutomationSlicesGeocode", {
+    policy: policyJson,
+    role: runtime.parts.lambdaRole.id
+  }, customOpts);
 }
 
 let finished = {
@@ -308,6 +326,7 @@ function finishWithDcbEventLog(dcbEventLog) {
           resources: allQueryDbResources
         }], runtime, opts);
       makeSweepSchedule(runtime, opts);
+      makeGeocoderGrant(runtime, opts);
     } else {
       log.warn("AutomationSliceRuntime_Builder_Single", undefined, "finishWithDcbEventLog: DCB EventLog has no parent");
     }
@@ -337,6 +356,7 @@ export {
   forEventCollector,
   sweepIntervalMinutes,
   makeSweepSchedule,
+  makeGeocoderGrant,
   finished,
   finish,
   finishWithDcbEventLog,

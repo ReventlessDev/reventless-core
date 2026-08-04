@@ -29,7 +29,7 @@ import * as OutboundTranslationSlice$ReventlessCore from "./OutboundTranslationS
 import * as OutboundTranslationSlice_Callback$ReventlessCore from "./OutboundTranslationSlice_Callback.res.mjs";
 
 function Make(RuntimeEnvironment) {
-  return QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (Api => {
+  return QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (Api => (Capabilities => {
     let Make = Spec => (Translation => {
       let Callback = OutboundTranslationSlice_Callback$ReventlessCore.Make(Spec)(Translation);
       let queryDbName = Spec.name + "Todo";
@@ -108,7 +108,7 @@ function Make(RuntimeEnvironment) {
             })), events => Stream$1.fromIterable(events))), eventsArr => Effect.promise(async () => {
               Callback.phase1(eventsArr);
               await syncToQueryDb(queryDbOps);
-              Stdlib_Promise.$$catch(Callback.phase2(publishJsonsFn).then(() => syncToQueryDb(queryDbOps)), exn => {
+              Stdlib_Promise.$$catch(Callback.phase2(publishJsonsFn, Capabilities.capabilities()).then(() => syncToQueryDb(queryDbOps)), exn => {
                 let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
                 Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `detached phase 2 error: ` + errMsg));
                 return Promise.resolve();
@@ -126,7 +126,7 @@ function Make(RuntimeEnvironment) {
             let publishJsonsFn = param[1];
             return {
               enqueueEvent: param[0].enqueueEvent,
-              translatePending: async () => await Callback.phase2(publishJsonsFn)
+              translatePending: async () => await Callback.phase2(publishJsonsFn, Capabilities.capabilities())
             };
           }));
           let aggregatedResources = Object.values(eventTopics).flatMap(t => t.resources);
@@ -149,7 +149,7 @@ function Make(RuntimeEnvironment) {
       finish: EventCollectorRuntimeBuilder.finish,
       Make: Make
     };
-  }))));
+  })))));
 }
 
 export {

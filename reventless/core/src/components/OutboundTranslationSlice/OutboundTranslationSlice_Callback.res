@@ -39,8 +39,16 @@ runtime, as `undefined` destructured from a tuple that was never a tuple.
 */
 type phase1<'event> = array<(string, 'event)> => unit
 
-/** Phase 2: translate all pending items, optionally publishing commands. */
-type phase2 = ReventlessInfra.CommandTopic.publishJsons => promise<unit>
+/** Phase 2: translate all pending items, optionally publishing commands.
+
+    `~capabilities` is supplied by whoever drives the callback — the in-process
+    builder or the Lambda entry point — because that is the layer that knows what
+    the platform provisioned. It arrives here rather than at `Make` so the
+    functor stays a pure function of the Spec, appliable before a runtime exists. */
+type phase2 = (
+  ReventlessInfra.CommandTopic.publishJsons,
+  ~capabilities: Reventless.Capabilities.t,
+) => promise<unit>
 
 /** The whole protocol as a value — what a driver holding a built callback needs,
     with no knowledge of the Spec it was built from. */
@@ -115,7 +123,10 @@ module Make = (
     })
   }
 
-  let phase2 = async (publishJsons: ReventlessInfra.CommandTopic.publishJsons) => {
+  let phase2 = async (
+    publishJsons: ReventlessInfra.CommandTopic.publishJsons,
+    ~capabilities: Reventless.Capabilities.t,
+  ) => {
     let pending =
       todoItems
       ->Dict.toArray
@@ -143,7 +154,7 @@ module Make = (
       | Some(item) =>
         todoItems->Dict.set(id, {...row, status: Processing, processedAt: now()})
 
-        let result = try await Translation.translate(id, item) catch {
+        let result = try await Translation.translate(id, item, ~capabilities) catch {
         | exn =>
           let msg =
             exn

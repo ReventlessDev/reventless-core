@@ -51,6 +51,32 @@ let registerCapabilityEnv = (name: string, value: Pulumi.Output.t<string>) =>
     capability, so this returns `[]` rather than throwing. */
 let capabilityEnv = () => capabilityEnvRef->Dict.toArray
 
+/**
+The geocoding place index, when the platform provisioned one.
+
+Separate from `capabilityEnv` because an env dict cannot express a *grant*: a
+slice Lambda calling Amazon Location needs `geo:SearchPlaceIndexForText` on this
+index, and its role is created later, in the slice runtime's finalizer. So the
+name travels twice — once as a variable the runtime reads, once as the resource
+its role must be allowed to touch.
+
+A plain Output with `""` for "not provisioned", plus a separate bool for "was it
+registered at all", rather than `ref<option<Pulumi.Output.t<_>>>`: that shape
+compiles to `Option.getOr`, whose nested-option probe corrupts the Output proxy.
+The bool is an ordinary value and is known synchronously, which is what the
+finalizer needs in order to decide whether to attach a policy at all.
+*/
+let geocoderPlaceIndexRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
+let geocoderProvisionedRef = ref(false)
+
+let registerGeocoderPlaceIndex = (indexName: Pulumi.Output.t<string>) => {
+  geocoderPlaceIndexRef := indexName
+  geocoderProvisionedRef := true
+}
+
+let geocoderPlaceIndex = () => geocoderPlaceIndexRef.contents
+let geocoderProvisioned = () => geocoderProvisionedRef.contents
+
 type sliceModulePaths = {
   specPath: string,
   behaviorPath: string,

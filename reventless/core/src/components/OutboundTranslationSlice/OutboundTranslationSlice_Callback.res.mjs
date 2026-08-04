@@ -53,7 +53,7 @@ function Make(Spec) {
         });
       });
     };
-    let phase2 = async publishJsons => {
+    let phase2 = async (publishJsons, capabilities) => {
       let pending = Object.entries(todoItems).filter(param => {
         let row = param[1];
         if (row.status === "Pending") {
@@ -86,7 +86,7 @@ function Make(Spec) {
         todoItems[id] = newrecord;
         let result;
         try {
-          result = await Translation.translate(id, Primitive_option.valFromOption(item));
+          result = await Translation.translate(id, Primitive_option.valFromOption(item), capabilities);
         } catch (raw_exn$1) {
           let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
           let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown error");

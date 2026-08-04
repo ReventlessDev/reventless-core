@@ -252,6 +252,50 @@ let makeSweepSchedule = (~runtime: ReventlessCore.Runtime.environment<runtimePar
     })
 }
 
+// Least-privilege `geo:SearchPlaceIndexForText` on the platform's place index,
+// for the slices that call the geocoder through the injected capability.
+//
+// Only attached when the platform actually provisioned an index — that bit is a
+// plain bool and therefore known synchronously, while the index *name* is an
+// Output. Without the split this would either grant on a nonsense ARN or need
+// `option<Pulumi.Output.t<_>>`, which corrupts the Output proxy.
+//
+// The RolePolicy is created at top level with an Output-valued document, not
+// inside an `apply`. A resource created in an apply callback does not reliably
+// register with the engine — the same defect that intermittently left the
+// heartbeat Lambda without its SQS grant.
+let makeGeocoderGrant = (~runtime: ReventlessCore.Runtime.environment<runtimeParts>, ~opts) =>
+  if PluginRuntime_Builder.geocoderProvisioned() {
+    let customOpts =
+      opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+    let policyJson =
+      PluginRuntime_Builder.geocoderPlaceIndex()->Pulumi.Output.apply(idx => {
+        open PulumiAws.PolicyDocument
+        PulumiAws.PolicyDocument.make(
+          ~id="AllAutomationSlicesGeocode",
+          ~statements=[
+            {
+              sid: "AllowGeocode",
+              effect: Allow,
+              actions: Action("geo:SearchPlaceIndexForText"),
+              // Account/region wildcarded, matching the Function URL handler's
+              // own policy: the index name is what identifies it, and the stack
+              // has no other account to reach.
+              resources: Resource(`arn:aws:geo:*:*:place-index/${idx}`),
+            },
+          ],
+        )->PulumiAws.PolicyDocument.toJsonString
+      })
+    let _ = PulumiAws.IAM.RolePolicy.make(
+      ~name="AllAutomationSlicesGeocode",
+      ~args={
+        policy: policyJson->Pulumi.Output.asInput,
+        role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+      },
+      ~opts=customOpts,
+    )
+  }
+
 let finished = ref(false)
 
 // Legacy finalizer, kept only to satisfy `EventCollectorRuntime_Builder.T`.
@@ -574,6 +618,7 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
         )
 
         makeSweepSchedule(~runtime, ~opts)
+        makeGeocoderGrant(~runtime, ~opts)
       | None =>
         log.warn(
           ~comp="AutomationSliceRuntime_Builder_Single",

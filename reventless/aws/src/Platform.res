@@ -96,6 +96,12 @@ let getObjectStoreEndpoints = () => objectStoreEndpointsRef.contents
     the same sentinel, as `PluginRuntime_Builder.inboundSliceReg.auditTableName`. */
 let geocoderEndpointRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
 
+/** The geocoding place index, for the monolithic case — the SDK-side half of the
+    same capability, carried for exactly the reasons above and with the same `""`
+    sentinel. Slice Lambdas call Amazon Location directly with this; only the
+    browser needs the Function URL. */
+let geocoderPlaceIndexRef: ref<Pulumi.Output.t<string>> = ref(Pulumi.Output.make(""))
+
 module MakeWithConfig = (
   Config: {
     let splitApi: bool
@@ -2083,6 +2089,19 @@ module MakeWithConfig = (
       Pulumi.Pulumi.export("geocoderEndpoint", geocoderEndpointFlat)
       geocoderEndpointRef := geocoderEndpointFlat
 
+      // The place index itself, exported beside the Function URL because the two
+      // callers need different things from the same capability. A browser cannot
+      // sign an SDK call and gets the URL; a slice's Lambda can, and gets the
+      // index name — no proxy hop, and no dependence on a public unauthenticated
+      // endpoint for an unattended path. `""` when unset, for the same
+      // one-shape-to-handle reason as the endpoint above.
+      let geocoderPlaceIndexFlat = switch cfg.geocoderPlaceIndex {
+      | Some(index) => index.indexName->Pulumi.Output.fromInput
+      | None => Pulumi.Output.make("")
+      }
+      Pulumi.Pulumi.export("geocoderPlaceIndex", geocoderPlaceIndexFlat)
+      geocoderPlaceIndexRef := geocoderPlaceIndexFlat
+
       // Presign endpoints are no longer written to config.json: under route B the
       // client calls the platform API's `Upload_Presign` mutation (reachable from
       // `platformApiEndpoint`, already present) with the store it declares, so there
@@ -2251,15 +2270,22 @@ module MakeWithConfig = (
     // is a modelled outcome, which is the point of the empty string: a plugin
     // deployed against a platform without the capability degrades rather than
     // failing to deploy.
-    let geocoderEndpoint: Pulumi.Output.t<string> = switch platformStackRef {
+    // The place index, not the Function URL. A slice's Lambda reaches Amazon
+    // Location through the SDK now, so what it needs is the index's name — and
+    // the grant that goes with it, which is why this is also handed to
+    // `registerGeocoderPlaceIndex` rather than only to the environment. The
+    // browser keeps using the Function URL until the platform API carries a
+    // geocode field; the two doors are independent.
+    let geocoderPlaceIndex: Pulumi.Output.t<string> = switch platformStackRef {
     | Some(stackRef) =>
       (
-        stackRef->Pulumi.StackReference.getOutput("geocoderEndpoint"):
+        stackRef->Pulumi.StackReference.getOutput("geocoderPlaceIndex"):
           Pulumi.Output.t<option<string>>
       )->Pulumi.Output.apply(o => o->Option.getOr(""))
-    | None => geocoderEndpointRef.contents
+    | None => geocoderPlaceIndexRef.contents
     }
-    PluginRuntime_Builder.registerCapabilityEnv("GEOCODER_ENDPOINT", geocoderEndpoint)
+    PluginRuntime_Builder.registerCapabilityEnv("PLACE_INDEX_NAME", geocoderPlaceIndex)
+    PluginRuntime_Builder.registerGeocoderPlaceIndex(geocoderPlaceIndex)
 
     module P = unpack(plugin)
     let pluginComponent = P.make()

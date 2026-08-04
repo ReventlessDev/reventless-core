@@ -44,6 +44,27 @@ function capabilityEnv() {
   return Object.entries(capabilityEnvRef);
 }
 
+let geocoderPlaceIndexRef = {
+  contents: Pulumi.output("")
+};
+
+let geocoderProvisionedRef = {
+  contents: false
+};
+
+function registerGeocoderPlaceIndex(indexName) {
+  geocoderPlaceIndexRef.contents = indexName;
+  geocoderProvisionedRef.contents = true;
+}
+
+function geocoderPlaceIndex() {
+  return geocoderPlaceIndexRef.contents;
+}
+
+function geocoderProvisioned() {
+  return geocoderProvisionedRef.contents;
+}
+
 let dcbConfigRef = {
   contents: {
     pluginName: "",
@@ -506,6 +527,11 @@ export {
   capabilityEnvRef,
   registerCapabilityEnv,
   capabilityEnv,
+  geocoderPlaceIndexRef,
+  geocoderProvisionedRef,
+  registerGeocoderPlaceIndex,
+  geocoderPlaceIndex,
+  geocoderProvisioned,
   dcbConfigRef,
   registeredSliceModulePaths,
   registerStateChangeSliceSpec,

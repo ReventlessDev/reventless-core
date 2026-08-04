@@ -107,7 +107,7 @@ module SendConfirmTranslation: OutboundTranslationSlice.Translation
       [(orderId, ({orderId: orderId}: SendConfirmSpec.outboundItem))]
     }
 
-  let translate = async (_id, item: SendConfirmSpec.outboundItem) => {
+  let translate = async (_id, item: SendConfirmSpec.outboundItem, ~capabilities as _) => {
     externalCalls->Array.push(item.orderId)
     Ok(None)
   }

@@ -1,9 +1,9 @@
 # Plan: an address is entered once, and the backend finds the point
 
 **Date:** 2026-08-03
-**Status:** IN PROGRESS — steps 1–8 built and green (full suite 301 suites / 2723 tests, all
-passing; `LocalAuthHttpTest`, previously red under full-suite load, is a port-binding flake and
-passed on the latest full run). **D9 is resolved** (two callers, two seams). **D3 is now calibrated against the
+**Status:** IN PROGRESS — steps 1–9 built and green; only step 10 (cross-repo) remains. Full suite
+301 suites / 2726 tests, all passing. **D9 is resolved** (two callers, two seams) and **half 1 is
+built** — the geocoder now reaches `translate` as an injected capability, not an HTTP client. **D3 is now calibrated against the
 live Esri index** — the shipped `0.8`/`0.1` declined correct addresses at a 1-in-4 rate and is
 replaced by `0.97`/`0.01`; see [the measurement
 round](#the-measurement-round-d3-calibrated-against-a-real-index). Step 7's fast path is
@@ -677,15 +677,14 @@ this slice is the unattended one, and D8 is why they do not collide. The capabil
 shape D9 found: one capability, two doors, a GraphQL field for clients and an injected function for
 plugin code — with the object store as the worked example, since it already has both.
 
-**9 — The injected port (D9 half 1). ⬜ unblocked; worth letting step 7 run first.**
-Replace `GeocodingService`'s HTTP call
-with the real injection: thread a geocoder to `translate` the way `Offload.resolve` threads `~fetch`,
-supplied by the platform and backed by `Geocoder_AwsLocation_Backend` calling the SDK directly. The
-port type from 7a is already the target, so the plugin-side change is deleting a file and accepting an
-argument. Deploy side: the slice's Lambda gains place-index read permission and the index name,
-replacing `GEOCODER_ENDPOINT`. Knock-on: the two existing outbound slices and the GWT harness absorb
-the `translate` signature change — the same shape as step 1's `~sourceId`, which touched five call
-sites.
+**9 — The injected port (D9 half 1). ✅** `GeocodingService` is deleted; `translate` takes
+`~capabilities` and calls `capabilities.geocode`, backed on AWS by `Geocoder_AwsLocation_Backend`
+calling the SDK directly. The port type from 7a was already the target, so the plugin-side change was
+exactly what was predicted: delete a file, accept an argument. Deploy side: the platform exports the
+place index, `deployPlugin` registers it as `PLACE_INDEX_NAME`, and the `AllAutomationSlices` role
+gains `geo:SearchPlaceIndexForText` on it. `GEOCODER_ENDPOINT` is gone from the slice path; the
+browser keeps the Function URL until step 10, which is what makes the two doors independent. See
+[the step 9 round](#the-step-9-round-the-capability-becomes-an-argument).
 
 **10 — Geocoding on the platform API (D9 half 2). ⬜ deferred, cross-repo.** A geocode field on the
 platform GraphQL API, mirroring `Upload_Presign`, resolving through the same
@@ -1362,6 +1361,54 @@ from data loss, and alarming out of all proportion to the cause. The rows were r
 general rule belongs with the `pluginStructure` trap it rhymes with: a new required field on a
 component with live data needs a backfill planned alongside it.
 
+### The step 9 round: the capability becomes an argument
+
+The plugin no longer reaches for a geocoder; it is handed one. `Reventless.Capabilities.t` is a
+record with a `geocode: Geocoding.search` field, `translate` takes `~capabilities`, and
+`GeocodingService.res` — the plugin-side HTTP client written for step 7 — is deleted. What replaces
+it is not a different client but no client at all: on AWS,
+`AutomationSliceEntryPoint_Ops.capabilities` builds the record from `PLACE_INDEX_NAME` and
+`Geocoder_AwsLocation_Backend` calls the SDK. Both of D9's objections to the fast path close with it —
+the proxy hop through a second Lambda is gone, and the unattended path no longer depends on a public
+unauthenticated Function URL.
+
+| Layer | What supplies it | Why |
+|---|---|---|
+| the AWS Lambda | `capabilities()` from the environment, per call | where the index name is; per call, so a config update needs no cold start |
+| the local platform | `LocalCapabilities` → `Capabilities.none` | local provisions no geocoder; `Unavailable` keeps items queued rather than writing addresses off |
+| the AWS *deploy-time* builder | `DeployTimeCapabilities` → `none` | inert by construction — the core builder's in-process handler never runs a translation on AWS |
+
+**Four decisions worth keeping.**
+
+1. **A record, not another labelled argument.** Adding a capability later changes the record, which
+   breaks the three places that *construct* it — the platforms, which is where a new capability has to
+   be wired anyway — and leaves every `translate` reading `capabilities.geocode` untouched. D9's
+   stated cost for option 1 was that "the bag accretes"; the record is what keeps the accretion off
+   the plugins.
+2. **A functor parameter on the core builder, not a mutable slot.** A platform that fails to supply
+   capabilities does not compile. That is the property D9 chose injection for, and precisely why it
+   rejected the cold-start slot: ES modules evaluate imports before the importing module's body, so
+   "the entry point runs first" is an assumption a bundling change can break.
+3. **`Capabilities.none` is a statement, not a stub.** Every capability answers `Unavailable`, which
+   `translate` maps to a retryable `Error` — so a platform without a geocoder leaves items queued and
+   visible instead of recording `MarkAddressUnresolvable`, which would be a false verdict on the
+   address.
+4. **The grant travels separately from the environment variable.** `registerCapabilityEnv` carries a
+   *value*; a role needs a *resource*. So `PluginRuntime_Builder` also gains
+   `registerGeocoderPlaceIndex`, and the finalizer attaches the policy — at top level with an
+   Output-valued document, not inside an `apply`, because a resource created in an apply callback does
+   not reliably register (the defect that intermittently cost the heartbeat Lambda its SQS grant). The
+   "was a geocoder provisioned at all" bit is a plain bool beside the Output, because
+   `ref<option<Pulumi.Output.t<_>>>` is the shape that corrupts the proxy.
+
+**One predicted knock-on did not happen.** The step expected the GWT harness to absorb the signature
+change alongside the two `SendOrderConfirmation` slices. It did not need to:
+`OutboundTranslation_GWT` declares its own `translateResult` and mocks the call rather than invoking
+`Spec.translate`, and says so in its own header. A harness that *models* a function instead of calling
+it is immune to its signature — the opposite of the lesson blocker 4 taught about restated *types*,
+and worth recording beside it so the two are not confused. Restating a type the compiler could have
+checked is a liability; declining to call a function you are standing in for is not.
+
 ### Open
 
 - **Resolved by the deploy: the wire contract now carries `relevance`.** Before it, the live Function
@@ -1400,11 +1447,10 @@ component with live data needs a backfill planned alongside it.
   minutes, so D4's retry behaviour and D1's reason for preferring an outbound slice over a hand-rolled
   `Task` both hold now. Unproven on AWS until the next deploy — in particular the scheduled
   invocation's shell branch, which no test can reach.
-- **Step 9 is unblocked and small.** The port type it targets exists (7a), the env channel is built
-  and shared with step 7, D3's calibration is measured, and the aggregate-source gap that would have
-  made it pointless is closed. What remains: delete `GeocodingService`, accept an argument in
-  `translate`, grant the Lambda place-index read, and absorb the signature change in the two existing
-  outbound slices and the GWT harness. The only reason to wait is that letting step 7 run first
-  proves the path end to end against the *simpler* transport, so anything that breaks afterwards is
-  known to be the injection rather than the design.
+- ~~**Step 9 is unblocked and small.**~~ **Done** — see [the step 9
+  round](#the-step-9-round-the-capability-becomes-an-argument). It was the size predicted. Unproven on
+  AWS: nothing has yet called Amazon Location through the SDK from a slice Lambda, so the new grant
+  and `PLACE_INDEX_NAME` are the next deploy's first test. Waiting for step 7 to run first paid off
+  exactly as argued — the transport is now the only thing that changed, so a geocoding failure after
+  this points at the injection rather than at the design.
 - **Step 10 waits on a UI release** — cross-repo, and the interval is safe by D9's sequencing.

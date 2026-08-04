@@ -14,6 +14,20 @@ module EventCollectorRuntimeBuilder = {
   let finish = Inner.finish
 }
 
+// On AWS the core builder's in-process handler is never the thing that runs a
+// translation: `forEventCollector` registers module paths, and the shared
+// `AllAutomationSlices` Lambda rebuilds the callback from them and drives phase 2
+// itself. So the capabilities that matter are the ones
+// `AutomationSliceEntryPoint_Ops.capabilities` builds at runtime, from the
+// Lambda's environment — where the place index name actually is.
+//
+// This deploy-time value therefore has no caller. `none` rather than a real
+// geocoder because inventing one here would suggest a path that does not exist,
+// and because a deploy-time module has no environment to read anyway.
+module DeployTimeCapabilities = {
+  let capabilities = () => Reventless.Capabilities.none
+}
+
 module Make = (Api: {
   let api: unit => Types.AppSync.api
   let apiRole: unit => Types.AppSync.role
@@ -25,6 +39,7 @@ module Make = (Api: {
     EventCollectorChannel,
     EventCollectorRuntimeBuilder,
     Api,
+    DeployTimeCapabilities,
   )
 
   module Make = (

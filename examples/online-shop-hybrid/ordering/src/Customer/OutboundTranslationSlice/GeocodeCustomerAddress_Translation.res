@@ -17,9 +17,13 @@ let collect = (event, ~sourceId) =>
   | AddressUpdated({address}) => [(`${sourceId}:${address}`, {customerId: sourceId, address})]
   }
 
-let translate = async (_id, item) => {
+// The geocoder arrives as a capability rather than being reached for. This
+// plugin cannot name Amazon Location — it depends on `reventless-spec`, not on
+// `reventless-aws` — and under this shape it does not need to: the deployment
+// decides what answers, and nothing below changes when that answer does.
+let translate = async (_id, item, ~capabilities: Reventless.Capabilities.t) => {
   let customerId = item.customerId
-  switch await GeocodingService.search(~text=item.address) {
+  switch await capabilities.geocode(~text=item.address) {
   | Error(Unavailable(why)) =>
     // Retryable: the service could not answer. Do NOT report a verdict on the
     // address — one outage would otherwise mark every address in flight bad.
