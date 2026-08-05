@@ -126,9 +126,12 @@ let applyChanges = async (
 }
 
 // Best-effort: a state that can't be JSON-serialized (e.g. carries a function)
-// must not crash the projection just to produce a debug line.
+// must not crash the projection just to produce a debug line. Capped at the
+// shared log budget — an action line names which row changed, and a read model
+// holding a large field (a plugin structure, an inline offload payload) would
+// otherwise print the whole row twice, once per side of the `=>`.
 let stateToString: 'a => string = state =>
-  state->JSON.stringifyAny->Option.getOr("<unserializable>")
+  state->JSON.stringifyAny->Option.getOr("<unserializable>")->LogFormat.truncate
 let statesToString: array<'a> => string = states =>
   states->Array.map(stateToString)->Array.joinUnsafe(", ")
 

@@ -16,6 +16,7 @@ import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/comp
 import * as Message$ReventlessCore from "./Message.res.mjs";
 import * as QueryDb$ReventlessCore from "./components/QueryDb/QueryDb.res.mjs";
 import * as QueryDb$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/QueryDb.res.mjs";
+import * as LogFormat$ReventlessCore from "./util/LogFormat.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -195,7 +196,7 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
 }
 
 function stateToString(state) {
-  return Stdlib_Option.getOr(JSON.stringify(state), "<unserializable>");
+  return LogFormat$ReventlessCore.truncate(Stdlib_Option.getOr(JSON.stringify(state), "<unserializable>"));
 }
 
 function statesToString(states) {

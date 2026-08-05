@@ -28,6 +28,41 @@
 // styling primitive through `LogFormat.bold` rather than the spec namespace.
 let bold = Reventless.AnsiStyle.bold
 
+// ─── Value truncation ────────────────────────────────────────────────────────
+
+@val external logEnv: dict<string> = "process.env"
+
+/**
+Per-value character budget for rendered payloads, before the rest is elided.
+
+A detail line exists to say *which* command or event this is, not to reproduce
+it: a single field can be arbitrarily large (a plugin structure, a pasted
+document, an inline offload payload), and one of those turns a log into
+something no one reads. Truncation is per value rather than per line so a large
+field costs its neighbours nothing — the small fields that identify the message
+stay visible next to it.
+
+`REVENTLESS_LOG_MAX_VALUE` overrides the budget; `0` disables truncation for a
+session that genuinely needs the whole payload.
+*/
+let maxValueChars =
+  logEnv
+  ->Dict.get("REVENTLESS_LOG_MAX_VALUE")
+  ->Option.flatMap(v => Int.fromString(v))
+  ->Option.getOr(512)
+
+/** `s` capped at `maxValueChars`, with what was dropped named rather than
+    silently missing — a truncated line must not read like a complete one. */
+let truncate = (s: string): string => {
+  let len = s->String.length
+  if maxValueChars <= 0 || len <= maxValueChars {
+    s
+  } else {
+    `${s->String.slice(~start=0, ~end=maxValueChars)}…(+${(len - maxValueChars)
+      ->Int.toString} chars)`
+  }
+}
+
 // ─── Commands ────────────────────────────────────────────────────────────────
 
 // "Add"  (bold)
@@ -46,6 +81,16 @@ let cmdSummary = (msg: Message.commandJson): string =>
 let cmdSummaries = (msgs: array<Message.commandJson>): string =>
   `[${msgs->Array.map(cmdSummary)->Array.join(",")}]`
 
+/**
+`JSON.stringify` is typed as total but returns `undefined` — not a string — for
+the one value `JSON.t` cannot represent: the `undefined` a ReScript record's
+*absent* optional field leaves behind as an own property of the JS object. Read
+the result as nullable so an absent field is dropped instead of reaching a
+string function as `undefined`. An explicit `null` still stringifies to `"null"`
+and keeps printing.
+*/
+external stringifiedOrAbsent: string => Nullable.t<string> = "%identity"
+
 // Strip TAG from a variant JSON, return remaining fields as a compact string.
 // {"TAG":"Add","name":"Cat 1"} → {name:"Cat 1"}
 // "Add" (bare string variant) → ""
@@ -56,7 +101,13 @@ let variantFields = (json: JSON.t): string =>
       dict
       ->Dict.toArray
       ->Array.filter(((k, _)) => k != "TAG")
-      ->Array.map(((k, v)) => `${k}:${v->JSON.stringify}`)
+      ->Array.filterMap(((k, v)) =>
+        v
+        ->JSON.stringify
+        ->stringifiedOrAbsent
+        ->Nullable.toOption
+        ->Option.map(s => `${k}:${s->truncate}`)
+      )
       ->Array.join(",")
     fields == "" ? "" : `, {${fields}}`
   | _ => ""

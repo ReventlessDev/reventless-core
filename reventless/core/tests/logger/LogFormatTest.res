@@ -127,6 +127,48 @@ describe("LogFormat", () => {
       },
     )
   })
+
+  // A ReScript record's absent optional field survives encoding as an own
+  // property whose value is `undefined` — the one thing `JSON.t` cannot hold and
+  // `JSON.stringify` answers with `undefined` instead of a string. Rendering a
+  // command carrying one must not reach a string function with that `undefined`:
+  // `variantFields` runs inside the CommandGenerator's log tap, so a throw there
+  // takes the command down with it and the slice never sees it.
+  describe("variantFields", () => {
+    module OptionalFieldCmd = {
+      @schema
+      type command = AddProduct({productId: string, name: string, imageUrl?: string})
+    }
+
+    testSync("omits an absent optional field", () => {
+      let json =
+        OptionalFieldCmd.AddProduct({productId: "prd-1", name: "Cirrus"})
+        ->Message.encode(OptionalFieldCmd.commandSchema)
+      expect(variantFields(json))->toEqual(`, {productId:"prd-1",name:"Cirrus"}`)
+    })
+
+    testSync("keeps a present optional field", () => {
+      let json =
+        OptionalFieldCmd.AddProduct({productId: "prd-1", name: "Cirrus", imageUrl: "/u/a.png"})
+        ->Message.encode(OptionalFieldCmd.commandSchema)
+      expect(variantFields(json))->toEqual(
+        `, {productId:"prd-1",name:"Cirrus",imageUrl:"/u/a.png"}`,
+      )
+    })
+
+    testSync("elides a value past the budget rather than dropping it", () => {
+      let long = String.repeat("x", maxValueChars + 20)
+      let json =
+        OptionalFieldCmd.AddProduct({productId: "prd-1", name: long})
+        ->Message.encode(OptionalFieldCmd.commandSchema)
+      let rendered = variantFields(json)
+      expect(rendered->String.includes("…(+22 chars)"))->toBe(true)
+      // The oversized value is capped, not the line: the neighbouring field that
+      // says which product this is stays intact.
+      expect(rendered->String.includes(long))->toBe(false)
+      expect(rendered->String.includes(`productId:"prd-1"`))->toBe(true)
+    })
+  })
 })
 
 // ─── JSON sink (non-TTY collector: CloudWatch / Datadog / …) ─────────────────
