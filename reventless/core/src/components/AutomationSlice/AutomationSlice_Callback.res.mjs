@@ -30,6 +30,17 @@ let todoRowSchema = S.schema(s => ({
   retryCount: s.m(S.int)
 }));
 
+function todoRowSchemaFor(itemSchema) {
+  return S.schema(s => ({
+    item: s.m(itemSchema),
+    status: s.m(todoStatusSchema),
+    createdAt: s.m(S.string),
+    processedAt: s.m(S.option(S.string)),
+    completedAt: s.m(S.option(S.string)),
+    retryCount: s.m(S.int)
+  }));
+}
+
 function Make(Spec) {
   return Automation => {
     let todoItems = {};
@@ -184,6 +195,7 @@ function Make(Spec) {
 export {
   todoStatusSchema,
   todoRowSchema,
+  todoRowSchemaFor,
   Make,
 }
 /*  Not a pure module */

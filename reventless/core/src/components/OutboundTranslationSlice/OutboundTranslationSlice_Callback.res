@@ -22,6 +22,38 @@ type todoRow = {
   lastError?: string,
 }
 
+/** The item schema seen through the `JSON.t` the row actually stores.
+
+    `item` holds `Spec.outboundItemSchema`-encoded JSON, so the item schema
+    already describes the stored value exactly — only the ReScript types
+    disagree. */
+external itemAsJson: S.t<'item> => S.t<JSON.t> = "%identity"
+
+/**
+The row schema as the API describes it: `item` carried by the slice's own item
+schema instead of as opaque JSON.
+
+`todoRowSchema` types `item` as `JSON.t`, which the schema→GraphQL IR can only
+classify as `Unknown` — and `Unknown` renders as `String!`. The field then
+serves a stored object through a String, which fails at execution ("String
+cannot represent value: { … }") the moment a client selects it. Describing the
+item shape gives the field a real object type instead.
+
+Shape only: never encode or parse a row with this. The runtime field is `JSON.t`
+and the identity cast above would have `S.parseOrThrow` hand back an item where
+the row's own code expects JSON.
+*/
+let todoRowSchemaFor = (itemSchema: S.t<'item>): S.t<todoRow> =>
+  S.schema(s => {
+    item: s.matches(itemSchema->itemAsJson),
+    status: s.matches(todoStatusSchema),
+    createdAt: s.matches(S.string),
+    processedAt: ?s.matches(S.option(S.string)),
+    completedAt: ?s.matches(S.option(S.string)),
+    retryCount: s.matches(S.int),
+    lastError: ?s.matches(S.option(S.string)),
+  })
+
 /**
 The runtime protocol between a built callback and whoever drives it.
 

@@ -531,7 +531,7 @@ function Make(DcbEventLogStorage) {
           singleFieldName: qn.singleFieldName,
           listFieldName: qn.listFieldName,
           returnTypeName: qn.returnTypeName,
-          stateSchema: AutomationSlice_Callback$ReventlessCore.todoRowSchema,
+          stateSchema: AutomationSlice_Callback$ReventlessCore.todoRowSchemaFor(A.Spec.todoItemSchema),
           authorization: undefined,
           connectionSpec: true
         };
@@ -542,7 +542,7 @@ function Make(DcbEventLogStorage) {
           singleFieldName: qn.singleFieldName,
           listFieldName: qn.listFieldName,
           returnTypeName: qn.returnTypeName,
-          stateSchema: OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema,
+          stateSchema: OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchemaFor(O.Spec.outboundItemSchema),
           authorization: undefined,
           connectionSpec: true
         };

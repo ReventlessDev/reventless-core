@@ -1009,7 +1009,9 @@ module Make = (
             ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
             listFieldName: qn.listFieldName,
             returnTypeName: qn.returnTypeName,
-            stateSchema: AutomationSlice_Callback.todoRowSchema->S.castToUnknown,
+            stateSchema: AutomationSlice_Callback.todoRowSchemaFor(
+              A.Spec.todoItemSchema,
+            )->S.castToUnknown,
             authorization: None,
             connectionSpec: true,
           }
@@ -1023,7 +1025,9 @@ module Make = (
             ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
             listFieldName: qn.listFieldName,
             returnTypeName: qn.returnTypeName,
-            stateSchema: OutboundTranslationSlice_Callback.todoRowSchema->S.castToUnknown,
+            stateSchema: OutboundTranslationSlice_Callback.todoRowSchemaFor(
+              O.Spec.outboundItemSchema,
+            )->S.castToUnknown,
             authorization: None,
             connectionSpec: true,
           }

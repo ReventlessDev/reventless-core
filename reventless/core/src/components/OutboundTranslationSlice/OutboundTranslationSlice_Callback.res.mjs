@@ -29,6 +29,18 @@ let todoRowSchema = S.schema(s => ({
   lastError: s.m(S.option(S.string))
 }));
 
+function todoRowSchemaFor(itemSchema) {
+  return S.schema(s => ({
+    item: s.m(itemSchema),
+    status: s.m(todoStatusSchema),
+    createdAt: s.m(S.string),
+    processedAt: s.m(S.option(S.string)),
+    completedAt: s.m(S.option(S.string)),
+    retryCount: s.m(S.int),
+    lastError: s.m(S.option(S.string))
+  }));
+}
+
 function Make(Spec) {
   return Translation => {
     let todoItems = {};
@@ -168,6 +180,7 @@ function Make(Spec) {
 export {
   todoStatusSchema,
   todoRowSchema,
+  todoRowSchemaFor,
   Make,
 }
 /*  Not a pure module */
