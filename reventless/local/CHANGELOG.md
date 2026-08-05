@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.201 (2026-08-05)
+
+### Features
+
+* **local,aws:** carry the changed row in the live-update descriptor ([9272e2e](https://github.com/ReventlessDev/reventless-core/commit/9272e2e18e9e1d740f9a2c5aa83eccbcb41feff7))
+* **local:** offload large pluginDefinition fields to the object store ([84c5fab](https://github.com/ReventlessDev/reventless-core/commit/84c5fab339856b5d64f0c05110b1fa7f38646f5e))
+* **local:** persist the object store beside the SQLite database ([f37e4a1](https://github.com/ReventlessDev/reventless-core/commit/f37e4a1ad3191a97f14f3db7e2ead0e2b27b46c2))
+* **local:** scoped seed:reset for the local platform ([a4dd003](https://github.com/ReventlessDev/reventless-core/commit/a4dd0033b7d01be23be91bac3f01d38ebeab7d45))
+
+
 # 3.0.0-alpha.200 (2026-08-04)
 
 ### Features

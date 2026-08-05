@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.2 (2026-08-05)
+
+### Features
+
+* **local:** persist the object store beside the SQLite database ([f37e4a1](https://github.com/ReventlessDev/reventless-core/commit/f37e4a1ad3191a97f14f3db7e2ead0e2b27b46c2))
+
+
 # 2.0.0-alpha.1 (2026-08-02)
 
 ### Features

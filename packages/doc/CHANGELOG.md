@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.73 (2026-08-05)
+
+### Features
+
+* **local,aws:** carry the changed row in the live-update descriptor ([9272e2e](https://github.com/ReventlessDev/reventless-core/commit/9272e2e18e9e1d740f9a2c5aa83eccbcb41feff7))
+
+
 # 1.0.0-alpha.72 (2026-08-03)
 
 ### Features

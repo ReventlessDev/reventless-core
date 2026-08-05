@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.213 (2026-08-05)
+
+### Bug Fixes
+
+* **core:** describe slice TODO items by their own schema in the API ([d863056](https://github.com/ReventlessDev/reventless-core/commit/d863056ba734ba3dc76721c32bfb766d777ceb9a))
+### Features
+
+* **core:** cap rendered values in command, event and action logs ([8e07752](https://github.com/ReventlessDev/reventless-core/commit/8e077527ad3c8258582951544ee53d2722876191))
+* **local:** offload large pluginDefinition fields to the object store ([84c5fab](https://github.com/ReventlessDev/reventless-core/commit/84c5fab339856b5d64f0c05110b1fa7f38646f5e))
+* **local:** scoped seed:reset for the local platform ([a4dd003](https://github.com/ReventlessDev/reventless-core/commit/a4dd0033b7d01be23be91bac3f01d38ebeab7d45))
+
+
 # 3.0.0-alpha.212 (2026-08-04)
 
 ### Bug Fixes

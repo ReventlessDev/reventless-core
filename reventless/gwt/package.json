@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-gwt",
-  "version": "1.0.0-alpha.159",
+  "version": "1.0.0-alpha.160",
   "description": "Given-When-Then DSLs and test harness for Reventless slice testing",
   "license": "Apache-2.0",
   "scripts": {

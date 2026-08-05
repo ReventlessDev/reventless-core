@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.198 (2026-08-05)
+
+### Features
+
+* **local:** scoped seed:reset for the local platform ([a4dd003](https://github.com/ReventlessDev/reventless-core/commit/a4dd0033b7d01be23be91bac3f01d38ebeab7d45))
+
+
 # 1.0.0-alpha.197 (2026-08-04)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-local

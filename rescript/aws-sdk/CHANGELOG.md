@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.4 (2026-08-05)
+
+**Note:** Version bump only for package @reventlessdev/rescript-aws-sdk
+
+
+
+
+
 # 3.0.0-alpha.3 (2026-08-03)
 
 ### Features
