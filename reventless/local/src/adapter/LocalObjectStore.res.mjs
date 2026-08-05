@@ -41,8 +41,19 @@ function $$delete(key) {
   Stdlib_Dict.$$delete(objects, key);
 }
 
+let offloadObjects = {};
+
+function putOffload(key, bytes) {
+  offloadObjects[key] = bytes;
+}
+
+function getOffload(key) {
+  return offloadObjects[key];
+}
+
 function reset() {
   Object.keys(objects).forEach(k => Stdlib_Dict.$$delete(objects, k));
+  Object.keys(offloadObjects).forEach(k => Stdlib_Dict.$$delete(offloadObjects, k));
   servedPrefixes.contents = [defaultUploadPrefix];
 }
 
@@ -55,6 +66,9 @@ export {
   put,
   get,
   $$delete,
+  offloadObjects,
+  putOffload,
+  getOffload,
   reset,
 }
 /* No side effect */

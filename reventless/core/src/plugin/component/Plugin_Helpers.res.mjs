@@ -430,6 +430,21 @@ function clearOffload() {
   offloadHook.contents = undefined;
 }
 
+function offloadPayload(value, schema, store) {
+  let hook = offloadHook.contents;
+  if (hook !== undefined) {
+    return {
+      TAG: "Offloaded",
+      _0: hook(store, S.reverseConvertToJsonStringOrThrow(value, schema, undefined))
+    };
+  } else {
+    return {
+      TAG: "Inline",
+      _0: value
+    };
+  }
+}
+
 let onPlatformDeployedHook = {
   contents: undefined
 };
@@ -1030,6 +1045,7 @@ export {
   offloadHook,
   registerOffload,
   clearOffload,
+  offloadPayload,
   onPlatformDeployedHook,
   lastPlatformDeployedInfo,
   registerOnPlatformDeployed,

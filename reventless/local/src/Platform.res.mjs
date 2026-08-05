@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
+import * as NodeCrypto from "@reventlessdev/rescript-node/src/NodeCrypto.res.mjs";
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_Bool from "@rescript/runtime/lib/es6/Stdlib_Bool.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
@@ -40,6 +41,7 @@ import * as LocalPluginSpec$ReventlessLocal from "./adapter/LocalPluginSpec.res.
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as DomainMCP_Server$ReventlessLocal from "./adapter/DomainMCP_Server.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
+import * as LocalObjectStore$ReventlessLocal from "./adapter/LocalObjectStore.res.mjs";
 import * as LocalQueryEngine$ReventlessLocal from "./adapter/QueryEngine/LocalQueryEngine.res.mjs";
 import * as Platform_AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminApi.res.mjs";
 import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsProjection.res.mjs";
@@ -810,6 +812,17 @@ function MakeWithConfig(Config) {
   let domainMcpPort = resolvePort("REVENTLESS_DOMAIN_MCP_PORT", 3001);
   let platformPort = resolvePort("REVENTLESS_PLATFORM_PORT", 4001);
   let platformMcpPort = resolvePort("REVENTLESS_PLATFORM_MCP_PORT", 3002);
+  Plugin_Helpers$ReventlessCore.registerOffload((store, bytes) => {
+    let hash = NodeCrypto.sha256Hex(bytes);
+    let key = "sha256/" + hash;
+    LocalObjectStore$ReventlessLocal.putOffload(key, bytes);
+    return {
+      store: store,
+      key: key,
+      hash: hash,
+      bytes: bytes.length
+    };
+  });
   let pluginStructuresStore = {
     contents: {}
   };
@@ -971,15 +984,9 @@ function MakeWithConfig(Config) {
           }),
           eventCollector: param[2].name,
           extensionProtocols: [],
-          apiSchemaFragment: Stdlib_Option.map(param[5], f => ({
-            TAG: "Inline",
-            _0: f
-          })),
+          apiSchemaFragment: Stdlib_Option.map(param[5], f => Plugin_Helpers$ReventlessCore.offloadPayload(f, Plugin$Reventless.apiSchemaFragmentSchema, "pluginApiFragments")),
           apiTarget: undefined,
-          structure: Stdlib_Option.map(param[7], s => ({
-            TAG: "Inline",
-            _0: s
-          })),
+          structure: Stdlib_Option.map(param[7], s => Plugin_Helpers$ReventlessCore.offloadPayload(s, Plugin$Reventless.pluginStructureSchema, "pluginStructures")),
           dcbEventLog: undefined,
           kind: "Domain"
         };
@@ -2500,6 +2507,17 @@ function Make($star) {
   let domainMcpPort = resolvePort("REVENTLESS_DOMAIN_MCP_PORT", 3001);
   let platformPort = resolvePort("REVENTLESS_PLATFORM_PORT", 4001);
   let platformMcpPort = resolvePort("REVENTLESS_PLATFORM_MCP_PORT", 3002);
+  Plugin_Helpers$ReventlessCore.registerOffload((store, bytes) => {
+    let hash = NodeCrypto.sha256Hex(bytes);
+    let key = "sha256/" + hash;
+    LocalObjectStore$ReventlessLocal.putOffload(key, bytes);
+    return {
+      store: store,
+      key: key,
+      hash: hash,
+      bytes: bytes.length
+    };
+  });
   let pluginStructuresStore = {
     contents: {}
   };
@@ -2661,15 +2679,9 @@ function Make($star) {
           }),
           eventCollector: param[2].name,
           extensionProtocols: [],
-          apiSchemaFragment: Stdlib_Option.map(param[5], f => ({
-            TAG: "Inline",
-            _0: f
-          })),
+          apiSchemaFragment: Stdlib_Option.map(param[5], f => Plugin_Helpers$ReventlessCore.offloadPayload(f, Plugin$Reventless.apiSchemaFragmentSchema, "pluginApiFragments")),
           apiTarget: undefined,
-          structure: Stdlib_Option.map(param[7], s => ({
-            TAG: "Inline",
-            _0: s
-          })),
+          structure: Stdlib_Option.map(param[7], s => Plugin_Helpers$ReventlessCore.offloadPayload(s, Plugin$Reventless.pluginStructureSchema, "pluginStructures")),
           dcbEventLog: undefined,
           kind: "Domain"
         };

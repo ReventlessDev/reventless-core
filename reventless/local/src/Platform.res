@@ -837,6 +837,20 @@ module MakeWithConfig = (
   type mcpSupported = | @as(true) McpSupported | @as(false) McpNotSupported
   let mcpSupported = McpSupported
 
+  // Content-address the two large pluginDefinition fields into the process-local
+  // object store, exactly as the AWS platform does into its offload bucket. Local
+  // has no bucket, but it does have an object store — and leaving the fields
+  // inline here meant every connect handshake carried a whole plugin structure
+  // through the command log, and that local never exercised the offload path the
+  // deployed platform takes. Registered once at platform setup, before any plugin
+  // is built, since the hook fires during graph construction.
+  ReventlessCore.Plugin_Helpers.registerOffload((~store, ~bytes) => {
+    let hash = NodeCrypto.sha256Hex(bytes)
+    let key = "sha256/" ++ hash
+    LocalObjectStore.putOffload(~key, ~bytes)
+    {Reventless.Offload.store, key, hash, bytes: bytes->String.length}
+  })
+
   // ---------------------------------------------------------------------------
   // Shared helpers — used by both makePlatform and deployPlugin.
   // ---------------------------------------------------------------------------
@@ -1113,9 +1127,19 @@ module MakeWithConfig = (
               },
             ),
             extensionProtocols: [],
-            apiSchemaFragment: apiSchemaFragment->Option.map(f => Reventless.Offload.Inline(f)),
+            apiSchemaFragment: apiSchemaFragment->Option.map(f =>
+              f->ReventlessCore.Plugin_Helpers.offloadPayload(
+                ~schema=Reventless.Plugin.apiSchemaFragmentSchema,
+                ~store="pluginApiFragments",
+              )
+            ),
             apiTarget: None,
-            structure: pluginStructure->Option.map(s => Reventless.Offload.Inline(s)),
+            structure: pluginStructure->Option.map(s =>
+              s->ReventlessCore.Plugin_Helpers.offloadPayload(
+                ~schema=Reventless.Plugin.pluginStructureSchema,
+                ~store="pluginStructures",
+              )
+            ),
             dcbEventLog: None,
             kind: Domain,
           }

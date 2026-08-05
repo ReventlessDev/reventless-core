@@ -62,9 +62,24 @@ let get = (~key: string): option<entry> => objects->Dict.get(key)
 // *shape* of the rule (key under a served prefix), not the identity/age conditions.
 let delete = (~key: string): unit => objects->Dict.delete(key)
 
+// ── Offload objects ───────────────────────────────────────────────────────
+// Content-addressed deploy-time objects (`sha256/<hash>`), holding the large
+// pluginDefinition fields the connect handshake carries by reference instead of
+// inline. Deliberately a separate keyspace from `objects`: on AWS these live in
+// a private bucket the ComponentDefinitions Lambda reads through the SDK, never
+// behind a served route, so they must not become reachable over `/{prefix}/*`
+// here either. Bytes are the value's JSON, kept as a string because that is
+// what `Offload.resolve`'s `fetch` hands back.
+let offloadObjects: dict<string> = Dict.make()
+
+let putOffload = (~key: string, ~bytes: string): unit => offloadObjects->Dict.set(key, bytes)
+
+let getOffload = (~key: string): option<string> => offloadObjects->Dict.get(key)
+
 // Clear stored objects and restore the default served prefix — used between
 // isolated test suites (called from DomainGraphQL_Server.reset).
 let reset = (): unit => {
   objects->Dict.keysToArray->Array.forEach(k => objects->Dict.delete(k))
+  offloadObjects->Dict.keysToArray->Array.forEach(k => offloadObjects->Dict.delete(k))
   servedPrefixes.contents = [defaultUploadPrefix]
 }

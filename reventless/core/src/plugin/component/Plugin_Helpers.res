@@ -788,9 +788,10 @@ let clearOnPluginDeployed = () => {
 // ---------------------------------------------------------------------------
 // Deploy-time offload hook — content-addresses a large pluginDefinition field
 // to an object store and returns the reference. Set by a provider that can
-// write objects (AWS creates a BucketObject); unset on the local platform, so
-// the fields stay Inline. `bytes` is the already-serialized JSON of the value;
-// the provider hashes it, stores it at `sha256/<hash>`, and returns the ref.
+// write objects (AWS creates a BucketObject, local writes to its process-local
+// object store); when unset the fields stay Inline. `bytes` is the
+// already-serialized JSON of the value; the provider hashes it, stores it at
+// `sha256/<hash>`, and returns the ref.
 // Fired synchronously at graph-construction time (the value is concrete and a
 // resource cannot be created inside a Pulumi.Output.apply).
 // ---------------------------------------------------------------------------
@@ -805,6 +806,23 @@ let registerOffload = (hook: (~store: string, ~bytes: string) => Reventless.Offl
 let clearOffload = () => {
   offloadHook.contents = None
 }
+
+/**
+Carry a large `pluginDefinition` field by reference when a provider registered an
+offload hook, inline otherwise.
+
+One implementation for both construction sites — `Plugin_Builder`'s deploy-time
+definition and the local platform's synthetic one — so a provider that offloads
+cannot end up offloading through one path and inlining through the other.
+*/
+let offloadPayload = (value: 'a, ~schema: S.t<'a>, ~store: string): Reventless.Offload.payload<'a> =>
+  switch offloadHook.contents {
+  | Some(hook) =>
+    Reventless.Offload.Offloaded(
+      hook(~store, ~bytes=value->S.reverseConvertToJsonStringOrThrow(schema)),
+    )
+  | None => Reventless.Offload.Inline(value)
+  }
 
 // ---------------------------------------------------------------------------
 // Platform-deployed hook — fires after deployPlatform / makePlatform
