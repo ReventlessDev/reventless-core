@@ -90,6 +90,37 @@ The object store follows the same choice, so bytes never outlive — or fall sho
 
 The `objects/` tree mirrors the URL space the dev server serves, so an object is browsable at the path it is fetched from; `object-meta/` is a parallel tree so no sidecar files clutter it. Under `memory` (or a `:memory:` database) the store stays in process, as before. `?reset` wipes these trees along with the database — releasing an upload deletes it either way. On AWS these are two S3 buckets: a served one behind CloudFront and a private one the platform reads through the SDK.
 
+Uploads are rooted at the declaring store — `objects/uploads/{plugin}/{store}/{uuid}/{file}` — so an object carries the plugin that owns it in its own key. That is what lets `seed:reset` empty one plugin's objects without touching another's. A store no connected plugin declared falls back to plain `uploads/{uuid}/{file}`.
+
+The `{plugin}/{store}` segments are the layout the deployed platform uses as an S3 key prefix; locally they sit **inside** `uploads/` rather than at the root. That nesting is load-bearing: a UI dev server runs on its own port and forwards exactly one path to the platform (`"/uploads": "http://localhost:4000"` in the host shell's Vite config). A ref minted outside that path resolves against the UI server instead, so the image request quietly returns the SPA shell and nothing renders. Keeping every object under `uploads/` means the serve path is a property of the platform, not something each UI dev server has to be reconfigured to know.
+
+---
+
+## Resetting the store (`seed:reset`)
+
+`pnpm run seed:reset` empties a **scope** of the store so it can be re-seeded — the local counterpart of the deployed platform's script of the same name, and the inverse of `pnpm run seed` (which refuses to seed a non-empty store).
+
+```bash
+pnpm run seed:reset      # pick a scope, see what it would empty, confirm
+pnpm run seed            # in a second shell
+```
+
+**It works against a running platform.** Rows are deleted through a second connection to the same database, and the server sees that immediately — its read models read those tables on every query, with no in-process cache. So you do not stop the platform, and nothing needs restarting.
+
+| Scope | Empties |
+|---|---|
+| `domain` (default) | every read model, event log, checkpoint and object that is not the platform's own — including components no plugin structure lists |
+| a plugin name | only that plugin's components and the objects under its declared stores |
+| `platform` | the plugin registry, the UI fragment registry, the Plugin aggregate's log, and the offloaded plugin definitions |
+| `everything` | both |
+
+`domain` is the default because it leaves the plugin registry intact, so a re-seed just works. `SEED_RESET_SCOPE` picks a scope non-interactively and `SEED_RESET_CONFIRM=1` skips the y/N — the deployed script's `SEED_RESET_SCOPE` and typed confirmation, minus the gates that exist because *that* target is remote and irreversible.
+
+Two things worth knowing:
+
+- **A plugin scope reports what it left alone.** Components that no structure claims (audit and todo read models, typically) can only be reached by `domain`, and the plan says so rather than leaving you to discover it through a failing seed.
+- **It empties, it does not delete.** Tables are cleared, never dropped, so the running platform's prepared statements stay valid. If you want the files gone entirely, that is `serve:reset` (wipes everything as the platform starts) or deleting `.reventless/` by hand — but note that deleting `local.db` while the platform runs does nothing useful: the process keeps the orphaned inode and carries on serving the old rows.
+
 ---
 
 ## Manual startup (two terminals)

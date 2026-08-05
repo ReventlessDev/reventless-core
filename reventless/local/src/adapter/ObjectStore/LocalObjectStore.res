@@ -21,13 +21,14 @@ type entry = {
   contentType: string,
 }
 
-// The prefix the local upload route mints keys under. Mirrors the AWS presign
-// `SERVED_PREFIX` (default "uploads"); the hybrid example uses "uploads".
+// The prefix keys are minted under when no declared store claims them. Mirrors
+// the AWS presign `SERVED_PREFIX` default; it stays served even once every store
+// declares its own prefix, because refs already minted under it live in an
+// append-only event log and must keep resolving.
 let defaultUploadPrefix = "uploads"
 
 // Prefixes the dev server serves at `/{prefix}/*` (PUT stores, GET reads).
-// Seeded with the default upload prefix; a deployment serving another prefix
-// registers it before the servers start.
+// Seeded with the default upload prefix; declared stores add their own.
 let servedPrefixes: ref<array<string>> = ref([defaultUploadPrefix])
 
 let registerServedPrefix = (prefix: string): unit =>
@@ -35,9 +36,46 @@ let registerServedPrefix = (prefix: string): unit =>
     servedPrefixes.contents = servedPrefixes.contents->Array.concat([prefix])
   }
 
-// A request path is a served-object path when its first segment is a registered
-// served prefix and at least one key segment follows. Returns the storage key
-// (the path without its leading slash), or None for GraphQL / other paths.
+// Declared object stores, `{plugin}.{store}` → the prefix its keys are rooted at
+// (`StoreLayout.keyPrefixFor`). The deployed platform threads the same map into
+// its presign service as `UPLOAD_STORES`; here the Platform fills it from every
+// connected plugin's `requiredStores`.
+//
+// Rooting keys at the declaring store — rather than dropping every plugin's
+// uploads into one `uploads/` space — is what makes an object attributable: a
+// scoped wipe reads the plugin back off the key prefix, exactly as it does from
+// an S3 key.
+let declaredStores: dict<string> = Dict.make()
+
+/** Where a declared store's objects sit locally: the deployed `{plugin}/{store}`
+    layout NESTED under the served `uploads/` prefix.
+
+    The nesting is not cosmetic. A dev UI is served by its own dev server and
+    reaches the platform through a proxy that forwards one path — `/uploads` — so a
+    ref minted outside it resolves against the UI server instead of the platform,
+    and the image silently renders as the SPA shell. Keeping every object under
+    `uploads/` means the serve path is a property of the platform, not something
+    each UI dev server has to be reconfigured to know. The `{plugin}/{store}`
+    segments still carry the attribution a scoped reset reads back off the key. */
+let localPrefixFor = (~qualified: string): string =>
+  `${defaultUploadPrefix}/${ReventlessCore.StoreLayout.prefixOfQualified(qualified)}`
+
+let registerStore = (~qualified: string, ~prefix: string): unit => {
+  declaredStores->Dict.set(qualified, prefix)
+  registerServedPrefix(prefix)
+}
+
+let storePrefix = (~qualified: string): option<string> => declaredStores->Dict.get(qualified)
+
+let declaredStoreList = (): array<(string, string)> => declaredStores->Dict.toArray
+
+// A request path is a served-object path when it sits under a registered served
+// prefix with at least one key segment following. Returns the storage key (the
+// path without its leading slash), or None for GraphQL / other paths.
+//
+// Matches the prefix as a path, not as a first segment: a declared store's
+// prefix is `{plugin}/{store}` — two segments — while the default `uploads` is
+// one, and both have to resolve through the same route.
 //
 // `..`, `.` and empty segments are refused here rather than inside the storage
 // arms so that every caller — the HTTP routes and Upload_Release alike — agrees
@@ -47,13 +85,11 @@ let registerServedPrefix = (prefix: string): unit =>
 let servedKey = (path: string): option<string> => {
   let trimmed = path->String.startsWith("/") ? path->String.slice(~start=1, ~end=path->String.length) : path
   let segments = trimmed->String.split("/")
-  let prefix = segments->Array.get(0)->Option.getOr("")
-  if (
-    prefix->String.length > 0 &&
-    servedPrefixes.contents->Array.includes(prefix) &&
-    trimmed->String.length > prefix->String.length + 1 &&
-    segments->Array.every(seg => seg != "" && seg != "." && seg != "..")
-  ) {
+  let underAPrefix =
+    servedPrefixes.contents->Array.some(p =>
+      p->String.length > 0 && trimmed->String.startsWith(p ++ "/") && trimmed->String.length > p->String.length + 1
+    )
+  if underAPrefix && segments->Array.every(seg => seg != "" && seg != "." && seg != "..") {
     Some(trimmed)
   } else {
     None
@@ -117,4 +153,5 @@ let reset = (): unit => {
   | None => ()
   }
   servedPrefixes.contents = [defaultUploadPrefix]
+  declaredStores->Dict.keysToArray->Array.forEach(k => declaredStores->Dict.delete(k))
 }

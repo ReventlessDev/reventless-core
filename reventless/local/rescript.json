@@ -35,7 +35,8 @@
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-core",
     "@reventlessdev/reventless-gwt",
-    "@reventlessdev/reventless-postgres"
+    "@reventlessdev/reventless-postgres",
+    "@reventlessdev/reventless-seed"
   ],
   "compiler-flags": [],
   "suffix": ".res.mjs"

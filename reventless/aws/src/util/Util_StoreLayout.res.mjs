@@ -3,6 +3,7 @@
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as StoreLayout$ReventlessCore from "@reventlessdev/reventless-core/src/util/StoreLayout.res.mjs";
 
 let defaultEphemeralPrefixes = ["pr-"];
 
@@ -29,10 +30,6 @@ function bucketNameFor(layout, stack, plugin, store) {
   } else {
     return stack + `-stores`;
   }
-}
-
-function keyPrefixFor(plugin, store) {
-  return plugin + `/` + store;
 }
 
 function servingFor(hasHostUiBundle, declaredBucketCount) {
@@ -80,6 +77,8 @@ function pendingExpiryFor(config, store) {
       }
     })[0];
 }
+
+let keyPrefixFor = StoreLayout$ReventlessCore.keyPrefixFor;
 
 export {
   defaultEphemeralPrefixes,

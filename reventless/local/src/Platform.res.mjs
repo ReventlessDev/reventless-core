@@ -840,18 +840,15 @@ function MakeWithConfig(Config) {
         let ps = param[1];
         if (ps !== undefined) {
           pluginStructuresStore.contents[param[0]] = ps;
+          Stdlib_Option.getOr(ps.requiredStores, []).forEach(qualified => LocalObjectStore$ReventlessLocal.registerStore(qualified, LocalObjectStore$ReventlessLocal.localPrefixFor(qualified)));
+          StorePrefixCollision$ReventlessCore.collisionsFor(LocalObjectStore$ReventlessLocal.declaredStoreList().map(param => ({
+            qualified: param[0],
+            prefix: param[1]
+          }))).forEach(c => log.warn("Platform:plugins", undefined, StorePrefixCollision$ReventlessCore.collisionMessage(c)));
           return;
         }
       });
     });
-    let declared = Object.values(pluginStructuresStore.contents).flatMap(structure => Stdlib_Option.getOr(structure.requiredStores, []).map(qualified => {
-      let i = Stdlib_String.indexOfOpt(qualified, ".");
-      return {
-        qualified: qualified,
-        prefix: i !== undefined ? qualified.slice(0, i) + "/" + qualified.slice(i + 1 | 0, qualified.length) : qualified
-      };
-    }));
-    StorePrefixCollision$ReventlessCore.collisionsFor(declared).forEach(c => log.warn("Platform:plugins", undefined, StorePrefixCollision$ReventlessCore.collisionMessage(c)));
   };
   let pluginCmdTopicKey = PluginSpec$ReventlessCore.name + "AggrCmdTopic";
   let pluginEventTopicKey = PluginSpec$ReventlessCore.name + "AggrEventTopic";
@@ -2539,18 +2536,15 @@ function Make($star) {
         let ps = param[1];
         if (ps !== undefined) {
           pluginStructuresStore.contents[param[0]] = ps;
+          Stdlib_Option.getOr(ps.requiredStores, []).forEach(qualified => LocalObjectStore$ReventlessLocal.registerStore(qualified, LocalObjectStore$ReventlessLocal.localPrefixFor(qualified)));
+          StorePrefixCollision$ReventlessCore.collisionsFor(LocalObjectStore$ReventlessLocal.declaredStoreList().map(param => ({
+            qualified: param[0],
+            prefix: param[1]
+          }))).forEach(c => log.warn("Platform:plugins", undefined, StorePrefixCollision$ReventlessCore.collisionMessage(c)));
           return;
         }
       });
     });
-    let declared = Object.values(pluginStructuresStore.contents).flatMap(structure => Stdlib_Option.getOr(structure.requiredStores, []).map(qualified => {
-      let i = Stdlib_String.indexOfOpt(qualified, ".");
-      return {
-        qualified: qualified,
-        prefix: i !== undefined ? qualified.slice(0, i) + "/" + qualified.slice(i + 1 | 0, qualified.length) : qualified
-      };
-    }));
-    StorePrefixCollision$ReventlessCore.collisionsFor(declared).forEach(c => log.warn("Platform:plugins", undefined, StorePrefixCollision$ReventlessCore.collisionMessage(c)));
   };
   let pluginCmdTopicKey = PluginSpec$ReventlessCore.name + "AggrCmdTopic";
   let pluginEventTopicKey = PluginSpec$ReventlessCore.name + "AggrEventTopic";

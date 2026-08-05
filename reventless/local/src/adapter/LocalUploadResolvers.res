@@ -9,8 +9,20 @@
 
 // Mint a same-origin `/{prefix}/{uuid}/{fileName}` ref: both the PUT target and the
 // stored value, mirroring the AWS presign ticket's shape.
-let mintRef = (~fileName: string): string =>
-  `/${LocalObjectStore.defaultUploadPrefix}/${NodeCrypto.randomUUID()}/${fileName}`
+//
+// The prefix is the declaring store's (`{plugin}/{store}`), so an object carries
+// the plugin that owns it in its own key — what lets a scoped reset attribute it,
+// exactly as an S3 key's prefix does. A store no connected plugin declared falls
+// back to the shared `uploads/` space rather than being refused: local plugins
+// need not declare a store to upload during development, and refusing here would
+// make dev stricter than deploy about something dev cannot check.
+let mintRef = (~store: string, ~fileName: string): string => {
+  let prefix =
+    LocalObjectStore.storePrefix(~qualified=store)->Option.getOr(
+      LocalObjectStore.defaultUploadPrefix,
+    )
+  `/${prefix}/${NodeCrypto.randomUUID()}/${fileName}`
+}
 
 // Release a ref: delete iff it sits under a served prefix; idempotent (deleting an
 // absent key still succeeds). Returns `(released, reason)`.
@@ -30,7 +42,8 @@ let register = (server: ReventlessGraphqlServer.GraphQL_ServerInstance.t): unit 
     let obj = args->JSON.Decode.object->Option.getOr(Dict.make())
     let fileName =
       obj->Dict.get("fileName")->Option.flatMap(JSON.Decode.string)->Option.getOr("upload")
-    let ref = mintRef(~fileName)
+    let store = obj->Dict.get("store")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+    let ref = mintRef(~store, ~fileName)
     Dict.fromArray([
       ("uploadUrl", JSON.Encode.string(ref)),
       ("storageRef", JSON.Encode.string(ref)),

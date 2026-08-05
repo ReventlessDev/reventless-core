@@ -22,10 +22,9 @@ describe("ObjectStoreStorage_FileSystem", () => {
       ~contentType="image/svg+xml",
     )
     expect(
-      ObjectStoreStorage_FileSystem.get(~root, ~key="uploads/abc/logo.svg")->Option.map(((
-        got,
-        contentType,
-      )) => (got->NodeBuffer.toStringUtf8, contentType)),
+      ObjectStoreStorage_FileSystem.get(~root, ~key="uploads/abc/logo.svg")->Option.map(
+        ((got, contentType)) => (got->NodeBuffer.toStringUtf8, contentType),
+      ),
     )->toEqual(Some(("<svg/>", "image/svg+xml")))
   })
 
@@ -37,9 +36,9 @@ describe("ObjectStoreStorage_FileSystem", () => {
       ~bytes=bytes("x"),
       ~contentType="image/svg+xml",
     )
-    expect(NodeFs.existsSync(NodePath.join([root, "objects", "uploads", "abc", "logo.svg"])))->toEqual(
-      true,
-    )
+    expect(
+      NodeFs.existsSync(NodePath.join([root, "objects", "uploads", "abc", "logo.svg"])),
+    )->toEqual(true)
   })
 
   testSync("get returns None for a missing key", () => {
@@ -69,7 +68,9 @@ describe("ObjectStoreStorage_FileSystem", () => {
     ObjectStoreStorage_FileSystem.delete(~root, ~key="uploads/abc/logo.svg")
     expect(ObjectStoreStorage_FileSystem.get(~root, ~key="uploads/abc/logo.svg"))->toEqual(None)
     expect(NodeFs.existsSync(NodePath.join([root, "objects", "uploads", "abc"])))->toEqual(false)
-    expect(NodeFs.existsSync(NodePath.join([root, "object-meta", "uploads", "abc"])))->toEqual(false)
+    expect(NodeFs.existsSync(NodePath.join([root, "object-meta", "uploads", "abc"])))->toEqual(
+      false,
+    )
   })
 
   testSync("delete of an absent key is a no-op", () => {
@@ -98,7 +99,9 @@ describe("ObjectStoreStorage_FileSystem", () => {
     )
     // `objects/uploads/../../escaped.svg` resolves to `<root>/escaped.svg`.
     expect(NodeFs.existsSync(NodePath.join([root, "escaped.svg"])))->toEqual(false)
-    expect(ObjectStoreStorage_FileSystem.get(~root, ~key="uploads/../../escaped.svg"))->toEqual(None)
+    expect(ObjectStoreStorage_FileSystem.get(~root, ~key="uploads/../../escaped.svg"))->toEqual(
+      None,
+    )
   })
 
   testSync("reset clears the store's trees and leaves the rest of the root alone", () => {
@@ -132,12 +135,12 @@ describe("LocalObjectStore backend dispatch", () => {
 
     LocalObjectStore.put(~key="uploads/abc/logo.svg", ~bytes=bytes("x"), ~contentType="image/png")
 
-    expect(NodeFs.existsSync(NodePath.join([root, "objects", "uploads", "abc", "logo.svg"])))->toEqual(
-      true,
-    )
-    expect(LocalObjectStore.get(~key="uploads/abc/logo.svg")->Option.map(e => e.contentType))->toEqual(
-      Some("image/png"),
-    )
+    expect(
+      NodeFs.existsSync(NodePath.join([root, "objects", "uploads", "abc", "logo.svg"])),
+    )->toEqual(true)
+    expect(
+      LocalObjectStore.get(~key="uploads/abc/logo.svg")->Option.map(e => e.contentType),
+    )->toEqual(Some("image/png"))
   })
 
   testSync("an object stored on disk outlives the process that stored it", () => {
@@ -146,7 +149,11 @@ describe("LocalObjectStore backend dispatch", () => {
 
     // First "process": store, then drop every trace of it from memory.
     BackendState.setSqlite(~db=SqliteDriver.openDb(~path), ~path)
-    LocalObjectStore.put(~key="uploads/abc/logo.svg", ~bytes=bytes("kept"), ~contentType="image/png")
+    LocalObjectStore.put(
+      ~key="uploads/abc/logo.svg",
+      ~bytes=bytes("kept"),
+      ~contentType="image/png",
+    )
     LocalObjectStore.putOffload(~key="sha256/cafe", ~bytes=`{"structure":true}`)
     BackendState.setMemory()
     ObjectStoreStorage_InMemory.reset()
@@ -179,6 +186,58 @@ describe("LocalObjectStore backend dispatch", () => {
 
   testSync("servedKey refuses a path that would climb out of the store", () => {
     expect(LocalObjectStore.servedKey("/uploads/../../etc/passwd"))->toEqual(None)
-    expect(LocalObjectStore.servedKey("/uploads/abc/logo.svg"))->toEqual(Some("uploads/abc/logo.svg"))
+    expect(LocalObjectStore.servedKey("/uploads/abc/logo.svg"))->toEqual(
+      Some("uploads/abc/logo.svg"),
+    )
+  })
+})
+
+describe("declared store prefixes", () => {
+  afterEach(() => LocalObjectStore.reset())
+
+  testSync("a declared store mints under uploads/{plugin}/{store}", () => {
+    LocalObjectStore.registerStore(
+      ~qualified="Catalog.productImages",
+      ~prefix=LocalObjectStore.localPrefixFor(~qualified="Catalog.productImages"),
+    )
+    let ref = LocalUploadResolvers.mintRef(~store="Catalog.productImages", ~fileName="logo.svg")
+    expect(ref->String.startsWith("/uploads/Catalog/productImages/"))->toEqual(true)
+    expect(ref->String.endsWith("/logo.svg"))->toEqual(true)
+  })
+
+  testSync("an undeclared store falls back to the shared uploads prefix", () => {
+    let ref = LocalUploadResolvers.mintRef(~store="Nobody.knows", ~fileName="logo.svg")
+    expect(ref->String.startsWith("/uploads/"))->toEqual(true)
+  })
+
+  testSync("a store's objects stay under the served uploads prefix", () => {
+    LocalObjectStore.registerStore(
+      ~qualified="Catalog.productImages",
+      ~prefix="uploads/Catalog/productImages",
+    )
+    expect(LocalObjectStore.servedKey("/uploads/Catalog/productImages/abc/logo.svg"))->toEqual(
+      Some("uploads/Catalog/productImages/abc/logo.svg"),
+    )
+    // Nesting the store under `uploads/` is what keeps a UI dev server's single
+    // `/uploads` proxy hop enough to reach it — a sibling top-level prefix would
+    // resolve against the UI server instead of the platform.
+    expect(LocalObjectStore.servedKey("/Catalog/productImages/abc/logo.svg"))->toEqual(None)
+    expect(LocalObjectStore.servedKey("/Ordering/invoices/abc/x.pdf"))->toEqual(None)
+  })
+
+  testSync("two plugins declaring the same store name stay apart", () => {
+    ["Catalog.images", "Ordering.images"]->Array.forEach(
+      q =>
+        LocalObjectStore.registerStore(
+          ~qualified=q,
+          ~prefix=LocalObjectStore.localPrefixFor(~qualified=q),
+        ),
+    )
+    expect(LocalObjectStore.storePrefix(~qualified="Catalog.images"))->toEqual(
+      Some("uploads/Catalog/images"),
+    )
+    expect(LocalObjectStore.storePrefix(~qualified="Ordering.images"))->toEqual(
+      Some("uploads/Ordering/images"),
+    )
   })
 })

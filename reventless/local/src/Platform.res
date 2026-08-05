@@ -874,6 +874,10 @@ module MakeWithConfig = (
   // In-memory store for plugin structures, keyed by plugin ID.
   let pluginStructuresStore: ref<dict<Reventless.Plugin.pluginStructure>> = ref(Dict.make())
 
+  // The object stores a plugin's fields declared, as `{plugin}.{store}` keys.
+  let declaredStoresOf = (structure: Reventless.Plugin.pluginStructure) =>
+    structure.requiredStores->Option.getOr([])
+
   let seedPluginStructuresStore = (~pluginComponents: array<ReventlessCore.Plugin.component>) => {
     pluginComponents->Array.forEach(plugin => {
       let outputs: ReventlessInfra.Plugin.outputs = plugin->ReventlessCore.Component.outputs
@@ -882,45 +886,42 @@ module MakeWithConfig = (
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((id, ps)) => {
           switch ps {
-          | Some(def) => pluginStructuresStore.contents->Dict.set(id, def)
+          | Some(def) =>
+            pluginStructuresStore.contents->Dict.set(id, def)
+            // Inside the apply, not after the forEach: the structure only exists
+            // once the Output resolves, so anything reading
+            // `pluginStructuresStore` synchronously below reads an empty dict.
+            declaredStoresOf(def)->Array.forEach(qualified =>
+              // Registering the store is what lets an uploaded object be attributed
+              // to the plugin that declared it, the way an S3 key's prefix does —
+              // under the served `uploads/` prefix locally, for the reason
+              // LocalObjectStore.localPrefixFor gives.
+              LocalObjectStore.registerStore(
+                ~qualified,
+                ~prefix=LocalObjectStore.localPrefixFor(~qualified),
+              )
+            )
+            // Two plugins declaring one store name is refused by the deployed
+            // platform before it provisions anything. Local provisions no stores, so
+            // nothing here breaks — but this is the only place a developer meets the
+            // rule while the fix is still free: once a store has deployed, its minted
+            // refs are in an append-only event log and renaming it strands them.
+            // Hence a warning at composition, and the authoritative refusal at deploy.
+            //
+            // Checked against every store registered so far rather than this
+            // plugin's own, since a collision is by definition between two plugins.
+            ReventlessCore.StorePrefixCollision.collisionsFor(
+              ~stores=LocalObjectStore.declaredStoreList()->Array.map(((qualified, prefix)) => {
+                ReventlessCore.StorePrefixCollision.qualified,
+                prefix,
+              }),
+            )->Array.forEach(c =>
+              log.warn(~comp="Platform:plugins", ReventlessCore.StorePrefixCollision.collisionMessage(c))
+            )
           | None => ()
           }
         })
     })
-
-    // Two plugins declaring one store name is refused by the deployed platform
-    // before it provisions anything. Local provisions no stores, so nothing here
-    // breaks — but this is the only place a developer meets the rule while the
-    // fix is still free: once a store has deployed, its minted refs are in an
-    // append-only event log and renaming it strands them. Hence a warning at
-    // composition, and the authoritative refusal at deploy.
-    let declared =
-      pluginStructuresStore.contents
-      ->Dict.valuesToArray
-      ->Array.flatMap(structure =>
-        structure.requiredStores
-        ->Option.getOr([])
-        ->Array.map(qualified => {
-          ReventlessCore.StorePrefixCollision.qualified,
-          // Local provisions no stores, so it has no prefix of its own — it
-          // restates the deployed rule (`{plugin}/{store}`) so the warning it
-          // gives matches the refusal a deploy would give. Reporting a collision
-          // the deployed platform does not have would be worse than silence.
-          prefix: switch qualified->String.indexOfOpt(".") {
-          | Some(i) =>
-            qualified->String.slice(~start=0, ~end=i) ++
-            "/" ++
-            qualified->String.slice(~start=i + 1, ~end=qualified->String.length)
-          | None => qualified
-          },
-        })
-      )
-    ReventlessCore.StorePrefixCollision.collisionsFor(~stores=declared)->Array.forEach(c =>
-      log.warn(
-        ~comp="Platform:plugins",
-        ReventlessCore.StorePrefixCollision.collisionMessage(c),
-      )
-    )
   }
 
   // Bus keys for the admin Plugin aggregate (name-keyed). ComponentType.toName maps

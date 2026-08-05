@@ -168,6 +168,77 @@ function getOffload(root, key) {
   }
 }
 
+function walkKeys(dir, prefix, into) {
+  let entries;
+  try {
+    entries = Nodefs.readdirSync(dir, {
+      withFileTypes: true
+    });
+  } catch (exn) {
+    entries = undefined;
+  }
+  if (entries !== undefined) {
+    entries.forEach(entry => {
+      let name = entry.name;
+      let key = prefix === "" ? name : prefix + `/` + name;
+      if (entry.isDirectory()) {
+        return walkKeys(Nodepath.join(dir, name), key, into);
+      } else {
+        into.push(key);
+        return;
+      }
+    });
+    return;
+  }
+}
+
+function keysUnder(root, prefix) {
+  let into = [];
+  walkKeys(Nodepath.join(Nodepath.join(root, "objects"), prefix), prefix, into);
+  return into;
+}
+
+function topLevelPrefixes(root) {
+  let entries;
+  try {
+    entries = Nodefs.readdirSync(Nodepath.join(root, "objects"), {
+      withFileTypes: true
+    });
+  } catch (exn) {
+    entries = undefined;
+  }
+  if (entries !== undefined) {
+    return entries.filter(prim => prim.isDirectory()).map(prim => prim.name);
+  } else {
+    return [];
+  }
+}
+
+function deleteUnder(root, prefix) {
+  let keys = keysUnder(root, prefix);
+  keys.forEach(key => $$delete(root, key));
+  return keys.length;
+}
+
+function offloadKeys(root) {
+  let into = [];
+  walkKeys(Nodepath.join(root, "offload"), "", into);
+  return into;
+}
+
+function deleteOffloadAll(root) {
+  let keys = offloadKeys(root);
+  try {
+    Nodefs.rmSync(Nodepath.join(root, "offload"), {
+      recursive: true,
+      force: true
+    });
+  } catch (exn) {
+    
+  }
+  return keys.length;
+}
+
 function reset(root) {
   [
     Nodepath.join(root, "objects"),
@@ -204,6 +275,12 @@ export {
   offloadPath,
   putOffload,
   getOffload,
+  walkKeys,
+  keysUnder,
+  topLevelPrefixes,
+  deleteUnder,
+  offloadKeys,
+  deleteOffloadAll,
   reset,
 }
 /* node:fs Not a pure module */

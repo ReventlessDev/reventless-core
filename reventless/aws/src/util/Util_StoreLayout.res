@@ -138,7 +138,7 @@ machinery: a stack that predates a change to this function empties its stores
 (`seed:reset`, which wipes per plugin) and re-seeds. Carrying a permanent prefix
 set to spare a disposable stack one wipe is the worse trade.
 */
-let keyPrefixFor = (~plugin: string, ~store: string): string => `${plugin}/${store}`
+let keyPrefixFor = ReventlessCore.StoreLayout.keyPrefixFor
 
 /**
 Who serves the declared stores — and the answer is never "both".

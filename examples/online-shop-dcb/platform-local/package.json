@@ -18,7 +18,8 @@
     "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || reventless-host-shell",
     "dev:full": "REVENTLESS_LOCAL_BACKEND=${REVENTLESS_LOCAL_BACKEND:-sqlite:./.reventless/local.db} concurrently --names rs,backend,ui --prefix-colors blue,cyan,magenta 'pnpm -w run watch' 'pnpm run serve:watch' 'npx wait-on tcp:4001 && pnpm run dev:ui'",
     "dev:full:memory": "REVENTLESS_LOCAL_BACKEND=memory pnpm run dev:full",
-    "dev:full:reset": "REVENTLESS_LOCAL_BACKEND='sqlite:./.reventless/local.db?reset' pnpm run dev:full"
+    "dev:full:reset": "REVENTLESS_LOCAL_BACKEND='sqlite:./.reventless/local.db?reset' pnpm run dev:full",
+    "seed:reset": "REVENTLESS_LOCAL_BACKEND=${REVENTLESS_LOCAL_BACKEND:-sqlite:./.reventless/local.db} NODE_OPTIONS='--disable-warning=ExperimentalWarning' node src/SeedLocalReset.res.mjs"
   },
   "jest": {
     "testMatch": [

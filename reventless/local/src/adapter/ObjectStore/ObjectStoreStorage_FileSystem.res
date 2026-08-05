@@ -140,6 +140,71 @@ let getOffload = (~root: string, ~key: string): option<string> =>
     }
   }
 
+// ── Prefix-scoped inspection and removal ────────────────────────────────────
+//
+// What a scoped reset works in: an object belongs to the store whose key prefix
+// it sits under, so a wipe names a prefix and never a whole tree — the same
+// prefix-scoped delete the deployed reset issues against S3.
+
+let rec walkKeys = (~dir: string, ~prefix: string, ~into: array<string>): unit =>
+  switch try Some(NodeFs.readdirSync(dir, {withFileTypes: true})) catch {
+  | _ => None
+  } {
+  | None => ()
+  | Some(entries) =>
+    entries->Array.forEach(entry => {
+      let name = NodeFs.direntName(entry)
+      let key = prefix == "" ? name : `${prefix}/${name}`
+      if NodeFs.isDirectory(entry) {
+        walkKeys(~dir=NodePath.join([dir, name]), ~prefix=key, ~into)
+      } else {
+        into->Array.push(key)
+      }
+    })
+  }
+
+/** Every stored object key under `prefix` (the prefix itself included when it
+    names an object). An absent prefix is simply empty, not an error. */
+let keysUnder = (~root: string, ~prefix: string): array<string> => {
+  let into = []
+  walkKeys(~dir=NodePath.join([objectsDir(~root), prefix]), ~prefix, ~into)
+  into
+}
+
+/** Top-level key prefixes present in the store, one segment deep — what a plan
+    lists when it has to report objects no declared store claims. */
+let topLevelPrefixes = (~root: string): array<string> =>
+  switch try Some(NodeFs.readdirSync(objectsDir(~root), {withFileTypes: true})) catch {
+  | _ => None
+  } {
+  | None => []
+  | Some(entries) =>
+    entries->Array.filter(NodeFs.isDirectory)->Array.map(NodeFs.direntName)
+  }
+
+/** Deletes every object under `prefix`, returning how many were removed. Goes
+    through `delete` so the content-type sidecar and the emptied directories go
+    with each object. */
+let deleteUnder = (~root: string, ~prefix: string): int => {
+  let keys = keysUnder(~root, ~prefix)
+  keys->Array.forEach(key => delete(~root, ~key))
+  keys->Array.length
+}
+
+let offloadKeys = (~root: string): array<string> => {
+  let into = []
+  walkKeys(~dir=offloadDir(~root), ~prefix="", ~into)
+  into
+}
+
+let deleteOffloadAll = (~root: string): int => {
+  let keys = offloadKeys(~root)
+  try NodeFs.rmSync(offloadDir(~root), {recursive: true, force: true}) catch {
+  | _ => ()
+  }
+  keys->Array.length
+}
+
 // Removes the three trees, leaving the rest of the root (the database file, the
 // dev `users.yaml`) untouched.
 let reset = (~root: string): unit =>

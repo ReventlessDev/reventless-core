@@ -1519,6 +1519,9 @@ importers:
       '@reventlessdev/reventless-postgres':
         specifier: workspace:*
         version: link:../postgres
+      '@reventlessdev/reventless-seed':
+        specifier: workspace:*
+        version: link:../seed
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../spec
