@@ -47,48 +47,9 @@ type queuedEvent = {
   done_: Effect.t<unit, unit, unit>,
 }
 
-// ── State-change descriptor helper ───────────────────────────────────────────
-// Mirrors the JSON shape produced by the AWS StateTopic Lambda (Phase 2):
-// `{ changeKind, id, sortKeyValue? }`. Storage adapters call this and pass
-// the result to `publishStateChange(~descriptor)` so dev and prod subscribers
-// see the same payload.
-
-let pickSortKeyValue = (state: JSON.t): option<string> =>
-  switch state->JSON.Decode.object {
-  | Some(obj) =>
-    switch obj->Dict.get("updatedAt") {
-    | Some(JSON.String(v)) => Some(v)
-    | _ =>
-      switch obj->Dict.get("createdAt") {
-      | Some(JSON.String(v)) => Some(v)
-      | _ => None
-      }
-    }
-  | None => None
-  }
-
-/** Build a state-change descriptor.
-    - `changeKind`: one of "Added" | "Updated" | "Removed". save() emits "Added"
-      when no visible row held the key and "Updated" otherwise; delete() emits
-      "Removed".
-    - `id`: entity key. Single-key projections: the partition-key value.
-      Composite projections: `partition ++ "-" ++ subKey`.
-    - `state`: present for save() (for `sortKeyValue` extraction);
-      `None` for delete() — descriptor will omit `sortKeyValue`. */
-let makeStateChangeDescriptor = (
-  ~changeKind: string,
-  ~id: string,
-  ~state: option<JSON.t>,
-): JSON.t => {
-  let descriptor = Dict.make()
-  descriptor->Dict.set("changeKind", JSON.Encode.string(changeKind))
-  descriptor->Dict.set("id", JSON.Encode.string(id))
-  switch state->Option.flatMap(pickSortKeyValue) {
-  | Some(v) => descriptor->Dict.set("sortKeyValue", JSON.Encode.string(v))
-  | None => ()
-  }
-  descriptor->JSON.Encode.object
-}
+// The state-change descriptor itself lives in `LocalStateChangeDescriptor` —
+// it is one of three implementations of a shared wire format and is covered by
+// its own parity test, so it stays out of the bus.
 
 // Opt-in NDJSON domain-event tap for the VS Code local platform runner (features
 // plan Phase 9). Enabled when REVENTLESS_EVENT_TAP is set; off by default so normal
@@ -205,16 +166,15 @@ module type T = {
   //
   // Source B (state changes): QueryDbStorage_InMemory calls publishStateChange after
   //   every save/delete so subscription listeners receive a change descriptor matching
-  //   the AWS StateTopic Lambda output (Phase 2): {changeKind, id, sortKeyValue?}.
+  //   the AWS StateTopic Lambda output: {changeKind, id, sortKeyValue?, seq, state?}.
   //   ~name is the QueryDb/ReadModel Spec.name; ~descriptor is built via
-  //   `makeStateChangeDescriptor` below.
+  //   `LocalStateChangeDescriptor.make`.
   //
   //   `changeKind` matches AWS, which reads it off the DynamoDB stream eventName:
   //   save() checks whether a visible row already held the key and emits "Added"
   //   or "Updated" accordingly, `delete()` emits "Removed". Without the "Added"
   //   arm a list view drops every row it doesn't already hold, so seeding into an
-  //   empty read model looked like live updates were broken. `position` is
-  //   omitted (Phase 3 deferred).
+  //   empty read model looked like live updates were broken.
   let publishStateChange: (~name: string, ~descriptor: JSON.t) => unit
   let subscribeToStateChanges: (string, JSON.t => unit) => unit
   // All-changes variant: receives every publishStateChange with its read-model

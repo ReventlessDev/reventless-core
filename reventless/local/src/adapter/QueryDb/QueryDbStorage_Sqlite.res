@@ -257,10 +257,11 @@ let makeStorage = (
 
   let publishSaved = (~changeKind: string, id: string, state: JSON.t) => {
     let subKey = computeSubKey(state, subIdField)
-    let descriptor = LocalBus.makeStateChangeDescriptor(
+    let descriptor = LocalStateChangeDescriptor.make(
       ~changeKind,
       ~id=entityKeyFor(id, subKey),
       ~state=Some(state),
+      ~seq=LocalStateChangeDescriptor.nextSequence(),
     )
     bus.publishStateChange(~name, ~descriptor)
   }
@@ -278,10 +279,11 @@ let makeStorage = (
   }
 
   let publishRemoved = (id: string, subKey: string) => {
-    let descriptor = LocalBus.makeStateChangeDescriptor(
+    let descriptor = LocalStateChangeDescriptor.make(
       ~changeKind="Removed",
       ~id=entityKeyFor(id, subKey),
       ~state=None,
+      ~seq=LocalStateChangeDescriptor.nextSequence(),
     )
     bus.publishStateChange(~name, ~descriptor)
   }

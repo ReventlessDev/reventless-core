@@ -6,7 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stream from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
-import * as LocalBus$ReventlessLocal from "../LocalBus.res.mjs";
+import * as LocalStateChangeDescriptor$ReventlessLocal from "../LocalStateChangeDescriptor.res.mjs";
 
 function getSubKey(item, subIdField) {
   if (subIdField === undefined) {
@@ -167,11 +167,11 @@ function Make(Bus) {
     };
     let publishSaved = (changeKind, id, state) => {
       let subKey = getSubKey(state, subIdField);
-      let descriptor = LocalBus$ReventlessLocal.makeStateChangeDescriptor(changeKind, entityKeyFor(id, subKey), state);
+      let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make(changeKind, entityKeyFor(id, subKey), state, LocalStateChangeDescriptor$ReventlessLocal.nextSequence());
       Bus.publishStateChange(name, descriptor);
     };
     let publishRemoved = (id, subKey) => {
-      let descriptor = LocalBus$ReventlessLocal.makeStateChangeDescriptor("Removed", entityKeyFor(id, subKey), undefined);
+      let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make("Removed", entityKeyFor(id, subKey), undefined, LocalStateChangeDescriptor$ReventlessLocal.nextSequence());
       Bus.publishStateChange(name, descriptor);
     };
     let save = async (id, state, _saveMode, ttl) => {

@@ -2,7 +2,6 @@
 
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
-import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Queue from "effect/Queue";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
@@ -11,32 +10,6 @@ import * as Stream from "effect/Stream";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Deferred from "effect/Deferred";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-
-function pickSortKeyValue(state) {
-  let obj = Stdlib_JSON.Decode.object(state);
-  if (obj === undefined) {
-    return;
-  }
-  let match = obj["updatedAt"];
-  if (typeof match === "string") {
-    return match;
-  }
-  let match$1 = obj["createdAt"];
-  if (typeof match$1 === "string") {
-    return match$1;
-  }
-}
-
-function makeStateChangeDescriptor(changeKind, id, state) {
-  let descriptor = {};
-  descriptor["changeKind"] = changeKind;
-  descriptor["id"] = id;
-  let v = Stdlib_Option.flatMap(state, pickSortKeyValue);
-  if (v !== undefined) {
-    descriptor["sortKeyValue"] = v;
-  }
-  return descriptor;
-}
 
 function eventTapEnabled() {
   return Stdlib_Option.isSome(process.env["REVENTLESS_EVENT_TAP"]);
@@ -1187,8 +1160,6 @@ function MakeBounded(C) {
 }
 
 export {
-  pickSortKeyValue,
-  makeStateChangeDescriptor,
   eventTapEnabled,
   eventTapSeq,
   seedEventTapSeq,

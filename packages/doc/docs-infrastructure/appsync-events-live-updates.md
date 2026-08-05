@@ -43,7 +43,7 @@ Reventless uses the **Events** API for live read-model updates because the
 publisher is a **Lambda reacting to a DynamoDB Stream**, not a GraphQL mutation.
 There is no GraphQL operation to hang a subscription off — the change originates
 in the projection store. A plain pub/sub channel is the natural fit: the Lambda
-POSTs a small "something changed" descriptor to a channel, and any browser viewing
+POSTs a "something changed" descriptor to a channel, and any browser viewing
 that read model is subscribed to it.
 
 A single AppSync Events API per platform serves **both** domain and platform
@@ -53,7 +53,7 @@ read-model channels (see [`AppSync_EventsApi.res`](https://github.com/Reventless
 
 | Feed | Trigger | Adapter | Channel root | Payload |
 |------|---------|---------|--------------|---------|
-| **Read-model feed** (state changes) | QueryDb DynamoDB **Stream** | [`StateTopic_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res) | read model **list field name** | change descriptor `{changeKind, id, sortKeyValue?}` |
+| **Read-model feed** (state changes) | QueryDb DynamoDB **Stream** | [`StateTopic_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/aws/src/adapter/StateTopic/StateTopic_AppSync.res) | read model **list field name** | change descriptor `{changeKind, id, sortKeyValue?, seq, state?}` |
 | **Event-log feed** (raw events) | SNS EventTopic → SQS | [`EventLogSubscription_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res) | event log **displayName** | `{position, eventType, payload, originatorSlice}` |
 
 AutoUI list/detail views consume the **read-model feed**. The rest of this guide
@@ -216,12 +216,12 @@ row change in the read model; a detail view receives only its own entity's chang
 
 ### Change-descriptor payload (read-model feed)
 
-The publisher sends a small descriptor — **not** the full row:
-
 ```json
 { "changeKind": "Added" | "Updated" | "Removed" | "BulkInvalidated",
   "id": "<entityKey>",
-  "sortKeyValue": "<updatedAt | createdAt, if present>" }
+  "sortKeyValue": "<updatedAt | createdAt, if present>",
+  "seq": "<monotonic ordering token>",
+  "state": { "...": "the full new row — saves only, size permitting" } }
 ```
 
 `changeKind` is derived from the DynamoDB stream `eventName`
@@ -236,6 +236,77 @@ submit (expiring after 60s) and matches it against the descriptor id; there is n
 actor field on the wire. `Updated` / `Removed` apply in place for all origins
 (an open detail refetches on `Updated` and shows an "entity gone" placeholder on
 `Removed`).
+
+#### `state` — the row, carried along
+
+A save carries its resulting row so a subscriber can update a view it already
+holds without a round-trip back to the read model. A delete carries no `state`
+(there is no new row) and no `sortKeyValue`.
+
+**The payload is advisory.** A client may always ignore it and refetch, and that
+is what keeps the channel best-effort: a dropped or reordered frame costs
+staleness until the next fetch, never permanent corruption. A protocol that
+*required* the payload to be applied would have to be lossless, and this one is
+not.
+
+The row is the *resulting state*, not a field-level diff. One shape for every
+`changeKind` means one client code path, rather than "patch if fields are
+present, else refetch". Deltas can layer on later if payload size turns out to
+be the binding constraint — they are deferred deliberately, not overlooked,
+because a patch cannot be applied to a base you are unsure of.
+
+Two things the payload cannot answer:
+
+- **List membership.** A changed filter field can move a row out of a filtered
+  view; a changed sort field can move its position. The publisher does not know
+  any subscriber's query, so it cannot decide this. Apply the payload to rows you
+  already hold; **refetch when membership may have changed.**
+- **Offloaded fields.** An `@offload` field travels as a reference and is still
+  resolved separately, so rows dominated by offloaded content save less than the
+  round-trip count suggests.
+
+**Size.** AppSync caps a publish at ~240 KB and the descriptor travels as a JSON
+string nested inside the publish body, so escaping inflates it. A row over
+60 K characters is dropped from the descriptor and the downgrade logged
+(`STATE_PAYLOAD_DOWNGRADED`) — metadata-only still tells the client to refetch,
+where a publish rejected for size would tell it nothing. Clients must therefore
+treat `state` as optional on every frame, including `Added` and `Updated`.
+
+#### `seq` — ordering, not gap detection
+
+`seq` is a decimal string that only ever increases for a given entity. Compare it
+against the last `seq` you saw **for that same entity on that same channel**;
+apply `state` when it is greater and ignore the frame otherwise. Values are not
+comparable across read models, across channels, or against another deployment's:
+the DynamoDB relay reads the stream record's `SequenceNumber`, while the local and
+Postgres publishers use a wall-clock-seeded counter.
+
+It is **monotonic, not consecutive**. A client can detect a stale or reordered
+frame; it cannot count gaps, and a missed frame is not visible as a hole in the
+numbering. Recovery for a missed frame stays the reconnect refetch below. Making
+gaps detectable would mean maintaining a version on every read-model row, whose
+cost is worked through in
+[`docs/analysis/live-update-descriptor-sequencing.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/live-update-descriptor-sequencing.md).
+
+> **The framework cannot enforce the sequence check.** A client that applies
+> `state` without comparing `seq` works fine in testing and diverges silently
+> under load or after a reconnect. This is a contract, not a guarantee.
+
+#### Three publishers, one format
+
+The descriptor has three independent implementations with no shared code —
+`LocalStateChangeDescriptor` (both local backends), `StateTopic_AppSync_Ops` (the
+DynamoDB stream relay), and `StateTopicPublish.mjs` (Postgres read models, which
+have no stream, so the projection Lambda publishes for itself). The relay's module
+is deliberately Pulumi-free so a shared core import cannot pull deploy-time code
+into its Lambda graph. `StateChangeDescriptorParityTest` in `reventless-aws`
+drives all three through the same logical changes and asserts the descriptors
+match; extend it whenever the wire format changes.
+
+**Local dev caveat:** the in-memory auth path resolves a no-header request to
+`defaultUser`. That is fine for a metadata channel and stays fine for a data
+channel only because local dev is not a security boundary — do not read the
+local behaviour as the deployed one.
 
 ---
 
@@ -315,7 +386,7 @@ AddProduct: AddProduct {
   CMD -> AGG: command
   AGG -> DDB: projection writes row
   DDB -> LMB: "stream record (INSERT)"
-  LMB -> EV: "POST /event /default/Catalog-Products/<id> (SigV4) {changeKind: Added, id}"
+  LMB -> EV: "POST /event /default/Catalog-Products/<id> (SigV4) {changeKind: Added, id, seq, state}"
   EV -> U: "data frame → new items badge"
 }
 ```

@@ -205,6 +205,57 @@ describe("Backend parity (Memory vs Sqlite)", () => {
     await runUnderSqlite(scenario)
   })
 
+  testPromise("QueryDb: a descriptor carries the saved row and a rising seq under both", async () => {
+    let scenario = async () => {
+      module TestBus = LocalBus.Make()
+      module Storage = LocalQueryDbStorage.Make(TestBus)
+      let s = Storage.make(
+        ~name="parity-payload",
+        ~indexes=[],
+        ~api=(),
+        ~apiRole=(),
+        ~owner=None,
+        ~opts,
+      )
+      let ops = await s.operations->TestRunner.resolve
+
+      let descriptors = []
+      TestBus.subscribeToStateChanges("parity-payload", d => descriptors->Array.push(d))
+
+      let field = (d, key) => d->JSON.Decode.object->Option.flatMap(o => o->Dict.get(key))
+      let item = (k, v) =>
+        JSON.Encode.object(
+          Dict.fromArray([("id", JSON.Encode.string(k)), ("v", JSON.Encode.string(v))]),
+        )
+      let stateAt = i => descriptors->Array.get(i)->Option.flatMap(d => field(d, "state"))
+
+      let _ = await ops.save("p1", item("p1", "one"), ReventlessCore.QueryDb.Any, None)
+      let _ = await ops.save("p1", item("p1", "two"), ReventlessCore.QueryDb.Any, None)
+      let _ = await ops.delete("p1", None)
+
+      // The point of the payload: a subscriber can apply the row it was handed
+      // instead of spending a round-trip to fetch what the platform already had.
+      expect(stateAt(0))->toEqual(Some(item("p1", "one")))
+      expect(stateAt(1))->toEqual(Some(item("p1", "two")))
+      // A delete has no new row to carry.
+      expect(stateAt(2))->toEqual(None)
+
+      // seq only has to rise — it is monotonic, not consecutive, so a client can
+      // reject a stale payload but cannot count gaps.
+      let seqs =
+        descriptors->Array.filterMap(d =>
+          field(d, "seq")->Option.flatMap(JSON.Decode.string)->Option.flatMap(Float.fromString)
+        )
+      expect(seqs->Array.length)->toBe(3)
+      let rising =
+        seqs->Array.everyWithIndex((v, i) => i == 0 || v > seqs->Array.getUnsafe(i - 1))
+      expect(rising)->toBe(true)
+    }
+
+    await runUnderMemory(scenario)
+    await runUnderSqlite(scenario)
+  })
+
   testPromise("QueryDb: saveBatch reports Added then Updated for a repeated key under both", async () => {
     let scenario = async () => {
       module TestBus = LocalBus.Make()

@@ -89,6 +89,30 @@ function pickSortKeyValue(image) {
   }
 }
 
+function makeDescriptor(changeKind, entityKey, image, seq) {
+  let removed = changeKind === "Removed";
+  let descriptor = {};
+  descriptor["changeKind"] = changeKind;
+  descriptor["id"] = entityKey;
+  if (!removed) {
+    Stdlib_Option.forEach(pickSortKeyValue(image), v => {
+      descriptor["sortKeyValue"] = v;
+    });
+  }
+  Stdlib_Option.forEach(seq, s => {
+    descriptor["seq"] = s;
+  });
+  if (!removed) {
+    let encoded = JSON.stringify(image);
+    if (encoded.length <= 61440) {
+      descriptor["state"] = image;
+    } else {
+      console.warn(`STATE_PAYLOAD_DOWNGRADED id=` + entityKey + ` chars=` + encoded.length.toString());
+    }
+  }
+  return descriptor;
+}
+
 async function processRecord(record, region, creds) {
   let topicRoot = topicRootFromEventSourceArn(record.eventSourceARN);
   if (topicRoot !== undefined) {
@@ -103,12 +127,7 @@ async function processRecord(record, region, creds) {
     let entityKey = entityKeyFromRecord(dynamodb);
     let channel = `/default/` + topicRoot + `/` + AppSyncEventsSigner_Ops$ReventlessAws.pathSegment(entityKey);
     let unmarshalled = DynamoDb_Util_Helpers$AwsSdk.unmarshallDict(undefined, image);
-    let descriptor = {};
-    descriptor["changeKind"] = changeKindFor(record.eventName);
-    descriptor["id"] = entityKey;
-    Stdlib_Option.forEach(pickSortKeyValue(unmarshalled), v => {
-      descriptor["sortKeyValue"] = v;
-    });
+    let descriptor = makeDescriptor(changeKindFor(record.eventName), entityKey, unmarshalled, dynamodb.SequenceNumber);
     let body = JSON.stringify(Object.fromEntries([
       [
         "id",
@@ -169,6 +188,8 @@ async function handler(event) {
   }
 }
 
+let maxStateChars = 61440;
+
 export {
   endpoint,
   topicMap,
@@ -177,6 +198,8 @@ export {
   entityKeyFromRecord,
   changeKindFor,
   pickSortKeyValue,
+  maxStateChars,
+  makeDescriptor,
   processRecord,
   handler,
 }

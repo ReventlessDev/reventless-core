@@ -6,9 +6,16 @@
 //
 // Triggered by DynamoDB streams (one shared Lambda; routing is per-record via
 // STATE_TOPIC_MAP). For each changed row it derives the entity channel and a
-// `{changeKind, id, sortKeyValue?}` descriptor and publishes it. 4xx failures
-// are logged and skipped; 5xx / network failures are recorded and rethrown after
-// the batch so the EventSourceMapping retries (bisectBatchOnFunctionError).
+// `{changeKind, id, sortKeyValue?, seq, state?}` descriptor and publishes it. 4xx
+// failures are logged and skipped; 5xx / network failures are recorded and
+// rethrown after the batch so the EventSourceMapping retries
+// (bisectBatchOnFunctionError).
+//
+// The descriptor is one of three implementations of a shared wire format (the
+// others: `LocalStateChangeDescriptor` in reventless-local, `StateTopicPublish.mjs`
+// for Postgres read models). They share no code — this module stays Pulumi-free so
+// a core import can't drag deploy-time code into the Lambda's import graph — so
+// `StateChangeDescriptorParityTest` drives all three and asserts they agree.
 
 
 let endpoint = NodeProcess.env->Dict.get("APPSYNC_ENDPOINT")->Option.getOr("")
@@ -31,6 +38,10 @@ type streamRecord = {
   @as("Keys") keys: dict<attributeValue>,
   @as("NewImage") newImage?: dict<attributeValue>,
   @as("OldImage") oldImage?: dict<attributeValue>,
+  // Monotonic within the entity's shard lineage — records for one partition key
+  // always land on the same shard — so it orders an entity's changes without
+  // anything being written to the table. Sparse, so it detects staleness, not gaps.
+  @as("SequenceNumber") sequenceNumber?: string,
 }
 type record = {
   eventID: string,
@@ -103,6 +114,52 @@ let pickSortKeyValue = (image: dict<JSON.t>): option<string> =>
   | None => image->Dict.get("createdAt")->Option.flatMap(JSON.Decode.string)
   }
 
+/** Cap on the serialised state payload, in characters. Must match
+    `LocalStateChangeDescriptor.maxStateChars` and `StateTopicPublish.mjs`'s
+    MAX_STATE_CHARS — see the local module for the reasoning. */
+let maxStateChars = 60 * 1024
+
+/** Build the change descriptor. Split out of `processRecord` so the wire format
+    can be asserted against the other two implementations without a network call.
+
+    `image` is the unmarshalled NewImage for a save, the OldImage for a REMOVE.
+    A REMOVE carries neither `state` (there is no new row) nor `sortKeyValue`
+    (a sort position for a deleted row has no consumer, and the other two
+    implementations cannot produce one). */
+let makeDescriptor = (
+  ~changeKind: string,
+  ~entityKey: string,
+  ~image: dict<JSON.t>,
+  ~seq: option<string>,
+): JSON.t => {
+  let removed = changeKind == "Removed"
+  let descriptor = Dict.make()
+  descriptor->Dict.set("changeKind", JSON.Encode.string(changeKind))
+  descriptor->Dict.set("id", JSON.Encode.string(entityKey))
+  if !removed {
+    pickSortKeyValue(image)->Option.forEach(v =>
+      descriptor->Dict.set("sortKeyValue", JSON.Encode.string(v))
+    )
+  }
+  seq->Option.forEach(s => descriptor->Dict.set("seq", JSON.Encode.string(s)))
+  if !removed {
+    let state = image->JSON.Encode.object
+    let encoded = state->JSON.stringify
+    if encoded->String.length <= maxStateChars {
+      descriptor->Dict.set("state", state)
+    } else {
+      // Metadata-only still tells the client to refetch; a publish rejected for
+      // size would tell it nothing at all.
+      Console.warn(
+        `STATE_PAYLOAD_DOWNGRADED id=${entityKey} chars=${encoded
+          ->String.length
+          ->Int.toString}`,
+      )
+    }
+  }
+  descriptor->JSON.Encode.object
+}
+
 // Publish one record; returns Some(errorMessage) on a transient (5xx / network)
 // failure so the caller can rethrow after the batch, None otherwise.
 let processRecord = async (
@@ -129,20 +186,17 @@ let processRecord = async (
         let entityKey = entityKeyFromRecord(dynamodb)
         let channel = `/default/${topicRoot}/${AppSyncEventsSigner_Ops.pathSegment(entityKey)}`
         let unmarshalled: dict<JSON.t> = AwsSdk.DynamoDb_Util_Helpers.unmarshallDict(image)
-        let descriptor = Dict.make()
-        descriptor->Dict.set("changeKind", JSON.Encode.string(changeKindFor(record.eventName)))
-        descriptor->Dict.set("id", JSON.Encode.string(entityKey))
-        pickSortKeyValue(unmarshalled)->Option.forEach(v =>
-          descriptor->Dict.set("sortKeyValue", JSON.Encode.string(v))
+        let descriptor = makeDescriptor(
+          ~changeKind=changeKindFor(record.eventName),
+          ~entityKey,
+          ~image=unmarshalled,
+          ~seq=dynamodb.sequenceNumber,
         )
         let body =
           Dict.fromArray([
             ("id", JSON.Encode.string(record.eventID)),
             ("channel", JSON.Encode.string(channel)),
-            (
-              "events",
-              JSON.Encode.array([JSON.Encode.string(descriptor->JSON.Encode.object->JSON.stringify)]),
-            ),
+            ("events", JSON.Encode.array([JSON.Encode.string(descriptor->JSON.stringify)])),
           ])
           ->JSON.Encode.object
           ->JSON.stringify

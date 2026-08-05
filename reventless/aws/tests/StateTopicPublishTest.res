@@ -17,9 +17,14 @@ open JestGlobals
 let run: string => promise<JSON.t> = %raw(`
 async function(scenario) {
   const mod = await import("../src/adapter/Runtime/StateTopicPublish.mjs");
-  const { withLiveUpdates } = mod;
+  const { withLiveUpdates, makeDescriptor } = mod;
   const captured = [];
-  const publish = async (call) => { captured.push(call); };
+  // Record the descriptor the real publisher would build alongside the call, with
+  // a fixed seq so assertions stay deterministic. sortKeyValue/state derivation
+  // lives in makeDescriptor, so this keeps it under test at the wrapper level.
+  const publish = async (call) => {
+    captured.push({ ...call, descriptor: makeDescriptor({ ...call, seq: "1" }) });
+  };
   const ok = async () => ({ TAG: "Ok", _0: undefined });
 
   // Mock ops. load returns the composite partition's rows for the enumerate case.
@@ -52,6 +57,9 @@ async function(scenario) {
       break;
     case "save-no-sortkey":
       await w(undefined).save("p1", { id: "p1" }, "Insert", undefined);
+      break;
+    case "save-oversized":
+      await w(undefined).save("p1", { id: "p1", blob: "x".repeat(70 * 1024) }, "Insert", undefined);
       break;
     case "saveBatch":
       await w(undefined).saveBatch([
@@ -86,6 +94,11 @@ let getField = (call: JSON.t, key: string): option<JSON.t> =>
 
 let str = (call, key) => getField(call, key)->Option.flatMap(JSON.Decode.string)
 
+let descriptorField = (call: JSON.t, key: string): option<JSON.t> =>
+  getField(call, "descriptor")->Option.flatMap(d => getField(d, key))
+
+let descriptorStr = (call, key) => descriptorField(call, key)->Option.flatMap(JSON.Decode.string)
+
 let calls = (j: JSON.t): array<JSON.t> => j->JSON.Decode.array->Option.getOr([])
 
 describe("withLiveUpdates (B3.3a Postgres live updates)", () => {
@@ -96,8 +109,11 @@ describe("withLiveUpdates (B3.3a Postgres live updates)", () => {
     let call = arr->Array.getUnsafe(0)
     expect(str(call, "entityKey"))->toEqual(Some("p1"))
     expect(str(call, "changeKind"))->toEqual(Some("Updated"))
-    expect(str(call, "sortKeyValue"))->toEqual(Some("2024-01-02"))
+    expect(descriptorStr(call, "sortKeyValue"))->toEqual(Some("2024-01-02"))
     expect(str(call, "topicName"))->toEqual(Some("Shop_Orders"))
+    // The saved row rides along so a subscriber can apply it without refetching.
+    expect(descriptorField(call, "state"))->toEqual(getField(call, "state"))
+    expect(descriptorStr(call, "seq"))->toEqual(Some("1"))
   })
 
   testAsync("save on a composite table uses id-subKey and createdAt fallback", async () => {
@@ -105,13 +121,21 @@ describe("withLiveUpdates (B3.3a Postgres live updates)", () => {
     let call = calls(c)->Array.getUnsafe(0)
     expect(str(call, "entityKey"))->toEqual(Some("o1-L2"))
     expect(str(call, "changeKind"))->toEqual(Some("Updated"))
-    expect(str(call, "sortKeyValue"))->toEqual(Some("2024-03-04"))
+    expect(descriptorStr(call, "sortKeyValue"))->toEqual(Some("2024-03-04"))
   })
 
   testAsync("save without updatedAt/createdAt omits sortKeyValue", async () => {
     let c = await run("save-no-sortkey")
     let call = calls(c)->Array.getUnsafe(0)
-    expect(getField(call, "sortKeyValue"))->toEqual(None)
+    expect(descriptorField(call, "sortKeyValue"))->toEqual(None)
+  })
+
+  testAsync("an oversized row degrades to a metadata-only descriptor", async () => {
+    let c = await run("save-oversized")
+    let call = calls(c)->Array.getUnsafe(0)
+    expect(descriptorField(call, "state"))->toEqual(None)
+    expect(descriptorStr(call, "changeKind"))->toEqual(Some("Updated"))
+    expect(descriptorStr(call, "seq"))->toEqual(Some("1"))
   })
 
   testAsync("saveBatch publishes one Updated per item", async () => {

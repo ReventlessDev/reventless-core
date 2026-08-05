@@ -5,9 +5,9 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stream from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as LocalBus$ReventlessLocal from "../LocalBus.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "../SqliteDriver.res.mjs";
 import * as QueryDbListQuery$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/QueryDbListQuery.res.mjs";
+import * as LocalStateChangeDescriptor$ReventlessLocal from "../LocalStateChangeDescriptor.res.mjs";
 
 function tableName(name) {
   return "qdb_" + name.replaceAll("-", "_");
@@ -194,7 +194,7 @@ function makeStorage(db, bus, name, indexes, subIdField) {
   };
   let publishSaved = (changeKind, id, state) => {
     let subKey = computeSubKey(state, subIdField);
-    let descriptor = LocalBus$ReventlessLocal.makeStateChangeDescriptor(changeKind, entityKeyFor(id, subKey), state);
+    let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make(changeKind, entityKeyFor(id, subKey), state, LocalStateChangeDescriptor$ReventlessLocal.nextSequence());
     bus.publishStateChange(name, descriptor);
   };
   let saveKind = (id, state) => {
@@ -209,7 +209,7 @@ function makeStorage(db, bus, name, indexes, subIdField) {
     }
   };
   let publishRemoved = (id, subKey) => {
-    let descriptor = LocalBus$ReventlessLocal.makeStateChangeDescriptor("Removed", entityKeyFor(id, subKey), undefined);
+    let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make("Removed", entityKeyFor(id, subKey), undefined, LocalStateChangeDescriptor$ReventlessLocal.nextSequence());
     bus.publishStateChange(name, descriptor);
   };
   let rowKeysForPartition = id => SqliteDriver$ReventlessLocal.all(selectByPartitionStmt, [id]).map(row => {

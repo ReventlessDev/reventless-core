@@ -193,19 +193,21 @@ module Make = (Bus: LocalBus.T) => {
 
     let publishSaved = (~changeKind: string, id: string, state: JSON.t) => {
       let subKey = getSubKey(state, subIdField)
-      let descriptor = LocalBus.makeStateChangeDescriptor(
+      let descriptor = LocalStateChangeDescriptor.make(
         ~changeKind,
         ~id=entityKeyFor(id, subKey),
         ~state=Some(state),
+        ~seq=LocalStateChangeDescriptor.nextSequence(),
       )
       Bus.publishStateChange(~name, ~descriptor)
     }
 
     let publishRemoved = (id: string, subKey: string) => {
-      let descriptor = LocalBus.makeStateChangeDescriptor(
+      let descriptor = LocalStateChangeDescriptor.make(
         ~changeKind="Removed",
         ~id=entityKeyFor(id, subKey),
         ~state=None,
+        ~seq=LocalStateChangeDescriptor.nextSequence(),
       )
       Bus.publishStateChange(~name, ~descriptor)
     }

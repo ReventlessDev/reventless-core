@@ -12,7 +12,9 @@
 //
 // Channel:  /default/{pathSegment(topicName)}/{pathSegment(entityKey)}
 // Descriptor: { changeKind: "Updated" | "Removed", id: <entityKey>,
-//               sortKeyValue?: <updatedAt | createdAt if present> }
+//               sortKeyValue?: <updatedAt | createdAt if present>,
+//               seq: <monotonic ordering token>,
+//               state?: <the full new row, saves only> }
 //
 // changeKind is fixed per operation (save→"Updated", delete→"Removed"): a
 // Postgres upsert doesn't distinguish insert vs update, and the Sqlite/InMemory
@@ -64,8 +66,8 @@ function pathSegment(value) {
 }
 
 // Pick the natural sort timestamp from the saved state (updatedAt preferred,
-// createdAt fallback). Mirrors StateTopic_AppSync.pickSortKeyValue and
-// LocalBus.pickSortKeyValue.
+// createdAt fallback). Mirrors StateTopic_AppSync_Ops.pickSortKeyValue and
+// LocalStateChangeDescriptor.pickSortKeyValue.
 function pickSortKeyValue(state) {
   if (state && typeof state === "object" && !Array.isArray(state)) {
     if (typeof state.updatedAt === "string") return state.updatedAt;
@@ -74,21 +76,62 @@ function pickSortKeyValue(state) {
   return undefined;
 }
 
+// Cap on the serialised state payload, in characters. Must match
+// LocalStateChangeDescriptor.maxStateChars and StateTopic_AppSync_Ops.maxStateChars
+// — see the local module for the reasoning.
+const MAX_STATE_CHARS = 60 * 1024;
+
+// Monotonic ordering token, seeded from the wall clock so it keeps rising across
+// container restarts. Per Lambda instance: two instances writing the same entity
+// within one millisecond have no defined order. This is an ordering hint, not a
+// lock, and it is sparse — the client rule is "greater than what I hold", never
+// "exactly one more". See docs/analysis/live-update-descriptor-sequencing.md.
+let lastSequence = 0;
+export function nextSequence() {
+  const now = Date.now();
+  lastSequence = now > lastSequence ? now : lastSequence + 1;
+  return String(lastSequence);
+}
+
+// Assemble the descriptor. `state` is the full new row for a save, undefined for a
+// delete — which carries neither `state` nor `sortKeyValue`, matching the other two
+// implementations. Over the size cap the state is dropped and the downgrade logged:
+// a metadata-only descriptor still tells the client to refetch, where a publish
+// rejected for size would tell it nothing.
+export function makeDescriptor({ changeKind, entityKey, state, seq }) {
+  const descriptor = { changeKind, id: entityKey };
+  if (state !== undefined) {
+    const sortKeyValue = pickSortKeyValue(state);
+    if (sortKeyValue !== undefined) descriptor.sortKeyValue = sortKeyValue;
+  }
+  descriptor.seq = seq;
+  if (state !== undefined) {
+    const encoded = JSON.stringify(state);
+    if (encoded.length <= MAX_STATE_CHARS) {
+      descriptor.state = state;
+    } else {
+      console.warn(
+        "STATE_PAYLOAD_DOWNGRADED id=" + entityKey + " chars=" + encoded.length,
+      );
+    }
+  }
+  return descriptor;
+}
+
 // Build the descriptor + channel and POST to {endpoint}/event.
 // - endpoint:   base AppSync Events HTTP endpoint (no trailing /event).
 // - region:     AWS region for the SigV4 credential scope.
 // - topicName:  the plugin-prefixed query LIST field name (channel root).
 // - entityKey:  ORIGINAL entity key (id or `id-subKey`) — descriptor body + path.
 // - changeKind: "Updated" (save) | "Removed" (delete).
-// - sortKeyValue: optional; included when defined.
+// - state:      the full new row for a save; omitted for a delete.
 // - dedupeId:   AppSync publish `id` (idempotency hint).
-export async function publishStateChange({ endpoint, region, topicName, entityKey, changeKind, sortKeyValue, dedupeId }) {
+export async function publishStateChange({ endpoint, region, topicName, entityKey, changeKind, state, dedupeId }) {
   if (!endpoint || !topicName) return; // not live-enabled — no-op
   try {
     const url = new URL(endpoint);
     const channel = "/default/" + pathSegment(topicName) + "/" + pathSegment(entityKey);
-    const descriptor = { changeKind, id: entityKey };
-    if (sortKeyValue !== undefined) descriptor.sortKeyValue = sortKeyValue;
+    const descriptor = makeDescriptor({ changeKind, entityKey, state, seq: nextSequence() });
     const body = JSON.stringify({
       id: dedupeId || (topicName + ":" + entityKey + ":" + changeKind),
       channel,
@@ -154,7 +197,7 @@ export function withLiveUpdates(ops, liveConfig) {
       endpoint, region, topicName,
       entityKey: entityKeyFor(id, state, subIdField),
       changeKind: "Updated",
-      sortKeyValue: pickSortKeyValue(state),
+      state,
     });
 
   const publishRemovedKey = async (entityKey) =>

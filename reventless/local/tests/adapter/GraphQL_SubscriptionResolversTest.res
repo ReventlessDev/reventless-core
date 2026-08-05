@@ -77,8 +77,8 @@ describe("LocalGraphQL_SubscriptionResolvers", () => {
       let consumerPromise = startConsumer(iter, 1000)
       await yieldTick() // ensure listener is registered before publish
 
-      // Bus payload is now the change descriptor (Phase 8) matching the
-      // AWS StateTopic Lambda output shape: {changeKind, id, sortKeyValue?}.
+      // Bus payload is the change descriptor matching the AWS StateTopic Lambda
+      // output shape: {changeKind, id, sortKeyValue?, seq, state?}.
       let state = JSON.Encode.object(
         Dict.fromArray([
           ("id", JSON.Encode.string("prod-1")),
@@ -86,10 +86,11 @@ describe("LocalGraphQL_SubscriptionResolvers", () => {
           ("updatedAt", JSON.Encode.string("2026-05-19T12:00:00Z")),
         ]),
       )
-      let descriptor = LocalBus.makeStateChangeDescriptor(
+      let descriptor = LocalStateChangeDescriptor.make(
         ~changeKind="Updated",
         ~id="prod-1",
         ~state=Some(state),
+        ~seq=LocalStateChangeDescriptor.nextSequence(),
       )
       TestBus.publishStateChange(~name="Product", ~descriptor)
 
@@ -115,10 +116,11 @@ describe("LocalGraphQL_SubscriptionResolvers", () => {
       await yieldTick()
 
       // Publish for a DIFFERENT ReadModel — should NOT reach our topic.
-      let foreignDescriptor = LocalBus.makeStateChangeDescriptor(
+      let foreignDescriptor = LocalStateChangeDescriptor.make(
         ~changeKind="Updated",
         ~id="cat-1",
         ~state=Some(JSON.Encode.object(Dict.fromArray([("id", JSON.Encode.string("cat-1"))]))),
+        ~seq=LocalStateChangeDescriptor.nextSequence(),
       )
       TestBus.publishStateChange(~name="Category", ~descriptor=foreignDescriptor)
 
