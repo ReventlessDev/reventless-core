@@ -32,4 +32,4 @@ function Make(Bus) {
 export {
   Make,
 }
-/* DcbEventLogStorage_Sqlite-ReventlessLocal Not a pure module */
+/* BackendState-ReventlessLocal Not a pure module */

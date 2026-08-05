@@ -76,6 +76,20 @@ REVENTLESS_LOCAL_BACKEND=memory pnpm run serve           # same as serve:memory
 REVENTLESS_LOCAL_BACKEND=sqlite:./.reventless/local.db?reset pnpm run serve
 ```
 
+### Uploaded and offloaded objects
+
+The object store follows the same choice, so bytes never outlive — or fall short of — the events that reference them. Under SQLite it writes beside the database, in the directory the database file sits in:
+
+```
+.reventless/
+  local.db                            events and read models
+  objects/uploads/<uuid>/<file>       uploaded bytes, served at /uploads/*
+  object-meta/uploads/<uuid>/<file>.json   {"contentType": …} for that object
+  offload/sha256/<hash>               offloaded payloads (large plugin-definition fields)
+```
+
+The `objects/` tree mirrors the URL space the dev server serves, so an object is browsable at the path it is fetched from; `object-meta/` is a parallel tree so no sidecar files clutter it. Under `memory` (or a `:memory:` database) the store stays in process, as before. `?reset` wipes these trees along with the database — releasing an upload deletes it either way. On AWS these are two S3 buckets: a served one behind CloudFront and a private one the platform reads through the SDK.
+
 ---
 
 ## Manual startup (two terminals)

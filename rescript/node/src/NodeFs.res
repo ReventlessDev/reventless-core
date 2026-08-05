@@ -32,6 +32,12 @@ external readFileSyncBuffer: string => Uint8Array.t = "readFileSync"
 @module("node:fs")
 external writeFileSync: (string, string, @as("utf8") _) => unit = "writeFileSync"
 
+/** The byte-oriented companion to {!writeFileSync}, mirroring
+    {!readFileSyncBuffer}: no encoding to bake in, because the payload is
+    already bytes. */
+@module("node:fs")
+external writeFileSyncBuffer: (string, Uint8Array.t) => unit = "writeFileSync"
+
 // ── Directories ──────────────────────────────────────────────────────────────
 
 type dirent

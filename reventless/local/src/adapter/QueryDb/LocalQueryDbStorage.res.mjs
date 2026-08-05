@@ -39,4 +39,4 @@ function Make(Bus) {
 export {
   Make,
 }
-/* QueryDbStorage_Sqlite-ReventlessLocal Not a pure module */
+/* BackendState-ReventlessLocal Not a pure module */

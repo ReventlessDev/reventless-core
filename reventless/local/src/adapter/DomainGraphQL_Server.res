@@ -27,7 +27,7 @@ type nodeResponse
 @send external end_: (nodeResponse, string) => unit = "end"
 @send external endEmpty: (nodeResponse, @as(json`null`) _) => unit = "end"
 // Binary response body — the served-object GET streams stored bytes verbatim.
-@send external endBuf: (nodeResponse, LocalObjectStore.buffer) => unit = "end"
+@send external endBuf: (nodeResponse, NodeBuffer.t) => unit = "end"
 
 // Streaming body collector — request data fires once per chunk, end once at EOF.
 @send external _onData: (nodeRequest, @as("data") _, string => unit) => unit = "on"
@@ -35,7 +35,7 @@ type nodeResponse
 @send external _setEncoding: (nodeRequest, string) => unit = "setEncoding"
 // Binary chunk stream — used by the served-object PUT so raw bytes aren't
 // mangled by utf8 decoding (setEncoding is deliberately NOT called).
-@send external _onDataBuf: (nodeRequest, @as("data") _, LocalObjectStore.buffer => unit) => unit = "on"
+@send external _onDataBuf: (nodeRequest, @as("data") _, NodeBuffer.t => unit) => unit = "on"
 
 
 let readBody = (req: nodeRequest, onBody: string => unit): unit => {
@@ -47,10 +47,10 @@ let readBody = (req: nodeRequest, onBody: string => unit): unit => {
 
 // Binary body collector — accumulates raw Buffer chunks and concatenates once
 // at EOF. Kept separate from `readBody` (utf8) so file uploads stay byte-exact.
-let readBodyBuf = (req: nodeRequest, onBody: LocalObjectStore.buffer => unit): unit => {
-  let chunks: array<LocalObjectStore.buffer> = []
+let readBodyBuf = (req: nodeRequest, onBody: NodeBuffer.t => unit): unit => {
+  let chunks: array<NodeBuffer.t> = []
   req->_onDataBuf(chunk => chunks->Array.push(chunk))
-  req->_onEnd(() => onBody(LocalObjectStore.concatBuffers(chunks)))
+  req->_onEnd(() => onBody(NodeBuffer.concat(chunks)))
 }
 
 type requestHandler = (nodeRequest, nodeResponse) => unit

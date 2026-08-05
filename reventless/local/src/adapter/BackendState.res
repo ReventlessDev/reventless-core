@@ -37,3 +37,16 @@ let getPostgresPool = () =>
   | Postgres({pool}) => Some(pool)
   | Memory | Sqlite(_) => None
   }
+
+// Directory the object store persists under, derived from the SQLite file's own
+// directory (`./.reventless/local.db` → `./.reventless`) so uploaded bytes and
+// offloaded payloads live and die with the events that reference them. None for
+// the backends with nothing durable on this disk: Memory, an in-process
+// `:memory:` SQLite, and Postgres — durable, but off-machine, and a connection
+// string names no local directory to anchor to, so its object store stays
+// in-process.
+let getObjectStoreRoot = () =>
+  switch current.contents {
+  | Sqlite({path}) if path != ":memory:" => Some(NodePath.dirname(path))
+  | Sqlite(_) | Memory | Postgres(_) => None
+  }

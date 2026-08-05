@@ -41,7 +41,7 @@ import * as LocalPluginSpec$ReventlessLocal from "./adapter/LocalPluginSpec.res.
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as DomainMCP_Server$ReventlessLocal from "./adapter/DomainMCP_Server.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
-import * as LocalObjectStore$ReventlessLocal from "./adapter/LocalObjectStore.res.mjs";
+import * as LocalObjectStore$ReventlessLocal from "./adapter/ObjectStore/LocalObjectStore.res.mjs";
 import * as LocalQueryEngine$ReventlessLocal from "./adapter/QueryEngine/LocalQueryEngine.res.mjs";
 import * as Platform_AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_AdminApi.res.mjs";
 import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsProjection.res.mjs";
@@ -129,12 +129,16 @@ function MakeWithConfig(Config) {
   if (typeof match !== "object") {
     BackendState$ReventlessLocal.setMemory();
   } else if (match.TAG === "Sqlite") {
+    let resetOnStart = match.resetOnStart;
     let path = match.path;
-    if (match.resetOnStart) {
+    if (resetOnStart) {
       Backend$ReventlessLocal.removeFileIfExists(path);
     }
     let db = SqliteDriver$ReventlessLocal.openDb(path);
     BackendState$ReventlessLocal.setSqlite(db, path);
+    if (resetOnStart) {
+      LocalObjectStore$ReventlessLocal.reset();
+    }
     LocalBus$ReventlessLocal.seedEventTapSeq(EventLogStorage_Sqlite$ReventlessLocal.countAll(db) + DcbEventLogStorage_Sqlite$ReventlessLocal.countAll(db) | 0);
     ProjectionPending$ReventlessLocal.enableTracking();
     EventPublish_Callback$ReventlessCore.registerAfterPublish(async publishedEvent => {
@@ -1830,12 +1834,16 @@ function Make($star) {
   if (typeof backend !== "object") {
     BackendState$ReventlessLocal.setMemory();
   } else if (backend.TAG === "Sqlite") {
+    let resetOnStart = backend.resetOnStart;
     let path = backend.path;
-    if (backend.resetOnStart) {
+    if (resetOnStart) {
       Backend$ReventlessLocal.removeFileIfExists(path);
     }
     let db = SqliteDriver$ReventlessLocal.openDb(path);
     BackendState$ReventlessLocal.setSqlite(db, path);
+    if (resetOnStart) {
+      LocalObjectStore$ReventlessLocal.reset();
+    }
     LocalBus$ReventlessLocal.seedEventTapSeq(EventLogStorage_Sqlite$ReventlessLocal.countAll(db) + DcbEventLogStorage_Sqlite$ReventlessLocal.countAll(db) | 0);
     ProjectionPending$ReventlessLocal.enableTracking();
     EventPublish_Callback$ReventlessCore.registerAfterPublish(async publishedEvent => {

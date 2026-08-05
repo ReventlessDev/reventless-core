@@ -118,6 +118,14 @@ module MakeWithConfig = (
     }
     let db = SqliteDriver.openDb(~path)
     BackendState.setSqlite(~db, ~path)
+    // The object store persists beside the database under this backend (see
+    // LocalObjectStore), so a reset that wipes the events wipes the bytes they
+    // reference too — otherwise the session starts with orphaned uploads and
+    // offload payloads no event points at. Runs after setSqlite because the
+    // store reads the active backend to find its root.
+    if resetOnStart {
+      LocalObjectStore.reset()
+    }
     // Persistent stores keep their event numbering across restarts and app
     // switches: seed the in-memory event-tap counter from the rows already on
     // disk so the timeline's #N continues instead of restarting at 1. (After a
