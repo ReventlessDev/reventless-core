@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.269 (2026-08-07)
+
+### Features
+
+* **core,aws:** add the EventLogProvisioning seam for out-of-tree consumers ([82477b3](https://github.com/ReventlessDev/reventless-core/commit/82477b38c1ef90fbe3a6f4a114a9798770329470))
+
+
 # 3.0.0-alpha.268 (2026-08-05)
 
 ### Features
