@@ -16,11 +16,26 @@ module Make = (
   let construct = (indexes, partitionTag, crossPartitionTagKeys, self, name) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
+    let logName = name->ComponentType.name(DcbEventLog.componentType)
+    // The DCB event log is shared across the plugin's slices, so the plugin owns
+    // it — not any one component.
+    let owner: ResourceAttribution.owner = {kind: ComponentType.Plugin, name}
     let storage = Storage.make(
-      ~name=name->ComponentType.name(DcbEventLog.componentType),
+      ~name=logName,
       ~indexes,
       ~partitionTag,
       ~crossPartitionTagKeys,
+      ~opts,
+    )
+
+    // Announce the log to any registered extension. No-op unless a deploy program
+    // registered a backend via EventLogProvisioning.use — see
+    // src/adapter/EventLogProvisioning/EventLogProvisioning.res.
+    EventLogProvisioning.notify(
+      ~logStyle=Dcb,
+      ~name=logName,
+      ~owner=Some(owner),
+      ~resources=storage.resources,
       ~opts,
     )
 
@@ -28,9 +43,7 @@ module Make = (
     let eventTopic = SpecificEventTopic.make(
       ~name,
       ~storageResources=storage.resources,
-      // The DCB event log is shared across the plugin's slices, so the plugin
-      // owns it — not any one component.
-      ~owner={kind: ComponentType.Plugin, name},
+      ~owner,
       ~opts=opts->Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions,
     )
 

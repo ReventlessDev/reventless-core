@@ -8,6 +8,7 @@ import * as DcbEventLog$ReventlessCore from "./DcbEventLog.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "../../util/Util_Pulumi.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as EventTopic_Builder$ReventlessCore from "../EventTopic/EventTopic_Builder.res.mjs";
+import * as EventLogProvisioning$ReventlessCore from "../../adapter/EventLogProvisioning/EventLogProvisioning.res.mjs";
 import * as DcbEventLog_Operations$ReventlessCore from "./DcbEventLog_Operations.res.mjs";
 
 function Make(Storage) {
@@ -20,16 +21,19 @@ function Make(Storage) {
         let opts = {
           parent: opts_parent
         };
-        let storage = Storage.make(ComponentType$ReventlessCore.name(extra$1, DcbEventLog$ReventlessCore.componentType), indexes, partitionTag, crossPartitionTagKeys, opts);
+        let logName = ComponentType$ReventlessCore.name(extra$1, DcbEventLog$ReventlessCore.componentType);
+        let owner = {
+          kind: "Plugin",
+          name: extra$1
+        };
+        let storage = Storage.make(logName, indexes, partitionTag, crossPartitionTagKeys, opts);
+        EventLogProvisioning$ReventlessCore.notify("Dcb", logName, owner, storage.resources, opts);
         let SpecificEventTopic = EventTopic_Builder$ReventlessCore.Make({
           Id: Id$Reventless.$$String,
           name: "DcbEventLog",
           eventSchema: S.json
         })(EventTopicPublisher);
-        let eventTopic = SpecificEventTopic.make(extra$1, storage.resources, {
-          kind: "Plugin",
-          name: extra$1
-        }, Util_Pulumi$ReventlessCore.ComponentResourceOptions.ofCustomResourceOptions(opts));
+        let eventTopic = SpecificEventTopic.make(extra$1, storage.resources, owner, Util_Pulumi$ReventlessCore.ComponentResourceOptions.ofCustomResourceOptions(opts));
         Component$ReventlessCore.setOperations(extra, Pulumi.all([
           storage.operations,
           Component$ReventlessCore.operations(eventTopic)

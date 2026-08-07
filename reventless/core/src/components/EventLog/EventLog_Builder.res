@@ -18,9 +18,17 @@ module Make = (
   let construct = (~owner=?, self, name) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
-    let storage = Storage.make(
-      ~name=name->ComponentType.name(EventLog.componentType),
+    let logName = name->ComponentType.name(EventLog.componentType)
+    let storage = Storage.make(~name=logName, ~owner, ~opts)
+
+    // Announce the log to any registered extension. No-op unless a deploy program
+    // registered a backend via EventLogProvisioning.use — see
+    // src/adapter/EventLogProvisioning/EventLogProvisioning.res.
+    EventLogProvisioning.notify(
+      ~logStyle=Classic,
+      ~name=logName,
       ~owner,
+      ~resources=storage.resources,
       ~opts,
     )
 
