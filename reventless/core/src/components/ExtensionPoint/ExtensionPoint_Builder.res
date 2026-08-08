@@ -63,7 +63,10 @@ module Make = (
 
     let (commandTopic, eventTopic, outgoingJsonEventsHandler) =
       commandTopicResources
-      ->Pulumi.Output.flatMap(commandTopicResources => {
+      // The extension point's runtime and its event topic are both built in
+      // here, once the command topic's resources resolve — i.e. after the
+      // plugin's construct has returned. Reinstate its attribution.
+      ->ResourceAttribution_Deploytime.flatMapAttributed(commandTopicResources => {
         module ExtensionPointCallback = ExtensionPoint_Callback.Make(
           {
             let publishToAggregates = publishToAggregates

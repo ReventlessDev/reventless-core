@@ -58,6 +58,7 @@ import * as OutboundTranslationSlice$ReventlessInterop from "@reventlessdev/reve
 import * as PluginExtensionPoint_Plugin$ReventlessCore from "../connect/PluginExtensionPoint_Plugin.res.mjs";
 import * as PluginConnectExtension_Builder$ReventlessCore from "../connect/PluginConnectExtension_Builder.res.mjs";
 import * as PluginConnectExtension_Mapping$ReventlessCore from "../connect/PluginConnectExtension_Mapping.res.mjs";
+import * as ResourceAttribution_Deploytime$ReventlessCore from "../../adapter/ResourceAttribution_Deploytime.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -224,7 +225,7 @@ function extractExtensionDefinitions(extensionsOutputs) {
 }
 
 function createConnectPluginExtension(pluginDefinition, uiFragments, publishToPluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts) {
-  return Output$Pulumi.unzip(pluginDefinition.apply(pluginDefinition => {
+  return Output$Pulumi.unzip(ResourceAttribution_Deploytime$ReventlessCore.applyAttributed(pluginDefinition, pluginDefinition => {
     let ConnectPluginExtension = PluginConnectExtension_Builder$ReventlessCore.Make({
       pluginDefinition: pluginDefinition,
       uiFragments: uiFragments
@@ -292,13 +293,13 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
           param[0],
           param[1]
         ]) : Pulumi.output(undefined);
-      return Pulumi.all([
+      return ResourceAttribution_Deploytime$ReventlessCore.applyAttributed(Pulumi.all([
         pluginDefinition,
         connectExtData,
         Pulumi.all(extensionsHandlers),
         Pulumi.all(extensionPointsHandlers),
         resources
-      ]).apply(param => {
+      ]), param => {
         let extensionsHandlers = param[2];
         let connectExtData = param[1];
         let pluginDefinition = param[0];

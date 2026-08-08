@@ -86,11 +86,37 @@ function restore(previous) {
   current.contents = previous;
 }
 
+function enterCaptured(captured) {
+  let previous = current.contents;
+  current.contents = captured;
+  return previous;
+}
+
+function within(captured, fn) {
+  let previous = enterCaptured(captured);
+  try {
+    let result = fn();
+    current.contents = previous;
+    return result;
+  } catch (e) {
+    current.contents = previous;
+    throw e;
+  }
+}
+
+function deferred(fn) {
+  let captured = current.contents;
+  return () => within(captured, fn);
+}
+
 export {
   Scope,
   Role,
   current,
   enter,
   restore,
+  enterCaptured,
+  within,
+  deferred,
 }
 /* No side effect */

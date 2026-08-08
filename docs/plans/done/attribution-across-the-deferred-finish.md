@@ -1,8 +1,9 @@
 # Plan: Carry plugin attribution across the deferred builder finish
 
-**Status.** Planned — 2026-08-08. Not started. Found when an out-of-tree runtime extension
-deployed with `plugin: null` in its runtime config, and the same runtime turned out to carry an
-empty `reventless:plugin` tag.
+**Status.** Implemented — 2026-08-08. Found when an out-of-tree runtime extension deployed with
+`plugin: null` in its runtime config, and the same runtime turned out to carry an empty
+`reventless:plugin` tag. The §5 sweep found the defect is wider than the two sites §1 names — see
+[§7](#7--what-the-sweep-found).
 
 **Goal.** A resource created in a builder's deferred `finish()` is attributed to the plugin that
 owns it, exactly as one created during `construct` already is.
@@ -135,6 +136,10 @@ as it is.
 Worth checking against known attribution symptoms before assuming they have separate causes — an
 empty owner key on a provisioned resource is the signature this defect leaves.
 
+The sweep was run and is written up in [§7](#7--what-the-sweep-found). The docstring's invariant
+was the thing that had to give: it is corrected in `ResourceAttribution` to describe deferral as a
+fact of the builders, with the mechanism that carries attribution across it.
+
 ## §6 — Acceptance
 
 - A runtime created in a deferred `finish()` carries the same `reventless:plugin` /
@@ -146,6 +151,68 @@ empty owner key on a provisioned resource is the signature this defect leaves.
 - A test asserts attribution is populated *inside* a deferred finish — the regression this plan
   exists to prevent is silent, so it needs a test that fails without the fix.
 - No builder or adapter signature changes.
+
+---
+
+## §7 — What the sweep found
+
+§5 was right to insist the audit is *every* apply that creates a resource. The two named sites were
+not the cause of most of it.
+
+**The deferred `finish` is the smaller half.** `Plugin_Builder.construct` runs the majority of its
+work — extension points, tasks, resolvers, the heartbeat, the plugin's event collector — inside one
+`Pulumi.Output.apply` starting at `Plugin_Builder.res:651`. That callback runs after `restore`,
+so everything it provisions was already unattributed before any `finish` was reached. The file
+directly above it (`:627-629`) even states the invariant it breaks: *"a resource cannot be created
+inside .apply"*.
+
+**Five sites, found by measurement rather than reading.** Static reading kept mis-predicting which
+resources were affected, so the sweep was done by instrumenting `AWS_Tags.makeDict` to print a
+stack trace whenever it rendered an empty `reventless:plugin` at non-platform scope, and running a
+`pulumi preview` of a real plugin stack. That named every offender and its exact creation path:
+
+| Site | What it provisions |
+| --- | --- |
+| `Plugin_Builder.res:651` apply | extension points, tasks, resolvers, heartbeat |
+| `Plugin_Helpers.res:553` apply | the plugin's own event-collector runtime |
+| `ExtensionPoint_Builder.res:65` flatMap | the extension point's runtime and event topic |
+| `EventCollectorChannel_Helpers.res:128` apply (aws) | collector role, policies, event-source mappings |
+| the three `finish` registries in `Builder_Helpers` | aggregate, read-model and task runtimes |
+
+**The fix has two shapes, and both are needed.** `applyAttributed` / `flatMapAttributed` capture
+where the apply is *registered* and reinstate around the callback — right for a builder's own
+apply, which belongs to one plugin. The `finish` registries need `deferred` at *registration*
+instead: they are module-level and shared, so one apply runs several plugins' callbacks and no
+single context would be right for all of them.
+
+**Two classes remain unattributed, and correctly so.** Both are created at module-import time,
+before any plugin construct exists — so `None` is the honest answer rather than a false negative:
+
+- `Util_DeadLetterQueue`'s shared queues, which are platform substrate no single plugin owns.
+- `PluginSourceApi` and its log group, created by `Platform.Make` before the plugin module is
+  applied. This one a plugin *does* conceptually own, but attributing it needs the plugin name at
+  `Platform.Make` time — a signature change, which §6 rules out.
+
+Verified by re-running the instrumented preview after each fix: the list shrank to exactly those
+two, with every plugin-owned resource attributed. `RUNTIME_EXTENSIONS` is not separately observed
+here — it reads `ResourceAttribution.current.contents` in the same function and at the same moment
+as the tags that were observed to flip (`RuntimeEnvironment_Lambda.res:260`), so it follows.
+
+**One deployment consequence: a task bucket is renamed, and renaming an S3 bucket replaces it.**
+`Task_Builder.res:244` is the only place the ambient context feeds a resource *name* rather than a
+tag — `bucketResourceName(~plugin=…)` qualifies a task bucket with its plugin. It was silently
+producing the unqualified name, which is what the fix corrects, so the first deploy after this
+change plans a delete-and-create of that bucket (`import-products` → `catalog-import-products` on
+the example stack). **Anything stored in it is lost.** Fine on a disposable stack; on a stack whose
+task buckets hold anything worth keeping, move the objects first or pin the old name.
+
+**Note for the Pulumi-aware helpers' placement.** They live in
+`ResourceAttribution_Deploytime`, not in `ResourceAttribution`, because putting them in the latter
+made it import Pulumi — and `ResourceAttribution` is reachable from code that ends up in a Lambda
+bundle, where importing the deploy-time engine is a cold-start failure. The compiler makes this
+visible: the dependent modules' emitted footer flips from `No side effect` to `Not a pure module`.
+Wrapping the callback instead of the `apply` would have kept one module, but it severs the type
+flow from the Output to the callback's parameters and inference then fails.
 
 ---
 

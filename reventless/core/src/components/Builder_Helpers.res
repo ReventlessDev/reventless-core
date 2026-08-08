@@ -42,7 +42,13 @@ let createAggregatesWithoutEventMappers = (
     let publishJsons =
       SpecificAggregate.operations(aggregate)->Pulumi.Output.apply(({publishJsons}) => publishJsons)
     publishToAggregates->Dict.set(SpecificAggregate.Spec.name, publishJsons)
-    aggregateFinishFns->Dict.set(SpecificAggregate.Spec.name, SpecificAggregate.finish)
+    // `finish` runs from an apply in `finishAggregates`, long after this
+    // construct returns — wrap it now, while the plugin is still the ambient
+    // one, so whatever it provisions is attributed to that plugin.
+    aggregateFinishFns->Dict.set(
+      SpecificAggregate.Spec.name,
+      ResourceAttribution.deferred(SpecificAggregate.finish),
+    )
     aggOutputs
   })
   ->Array.map(aggregate => {(aggregate.name, aggregate)})
@@ -106,7 +112,10 @@ let taskSideEffectFinishFns: array<unit => unit> = []
 
 let registerTaskSideEffectHandler = (~gate, ~finish) => {
   let _ = taskSideEffectGates->Array.push(gate)
-  let _ = taskSideEffectFinishFns->Array.push(finish)
+  // These arrays are module-level and shared by every plugin, so the context has
+  // to travel with each entry: by the time `finishTasks` runs them there is no
+  // one plugin that would be right for all of them.
+  let _ = taskSideEffectFinishFns->Array.push(ResourceAttribution.deferred(finish))
 }
 
 // Provision side-effect handler runtimes once every task's handler is ready. Same
@@ -179,7 +188,16 @@ let createReadModels = (
       rmOperations->Pulumi.Output.apply(({enqueueEvent}) => enqueueEvent),
     )
 
-    (SpecificReadModel.Spec.name, {outputs: rmOutputs, operations: rmOperations, finish: SpecificReadModel.finish})
+    // Deferred to `finishReadModels`, which runs it from an apply — wrap it here
+    // so the read model's runtime is attributed to the plugin building it.
+    (
+      SpecificReadModel.Spec.name,
+      {
+        outputs: rmOutputs,
+        operations: rmOperations,
+        finish: ResourceAttribution.deferred(SpecificReadModel.finish),
+      },
+    )
   })
   readModels->finishReadModels
   readModels->extractReadModelsOutputs

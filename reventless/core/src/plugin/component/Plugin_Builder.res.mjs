@@ -36,6 +36,7 @@ import * as ResourceAttribution$ReventlessCore from "../../ResourceAttribution.r
 import * as Plugin_EventQuerySchema$ReventlessCore from "./Plugin_EventQuerySchema.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import * as Plugin_SubscriptionSchema$ReventlessCore from "./Plugin_SubscriptionSchema.res.mjs";
+import * as ResourceAttribution_Deploytime$ReventlessCore from "../../adapter/ResourceAttribution_Deploytime.res.mjs";
 
 function Make(Spec) {
   return ApiSpec => (FragmentProvider => (RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (PluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => {
@@ -428,7 +429,7 @@ function Make(Spec) {
         let schemaPushed = pushSchema !== undefined ? pushSchema(extra$1, version, apiSchemaFragment) : Pulumi.output();
         let apiSchemaFragmentPayload = Plugin_Helpers$ReventlessCore.offloadPayload(apiSchemaFragment, Plugin$Reventless.apiSchemaFragmentSchema, "pluginApiFragments");
         let structurePayload = Stdlib_Option.map(pluginStructure, s => Plugin_Helpers$ReventlessCore.offloadPayload(s, Plugin$Reventless.pluginStructureSchema, "pluginStructures"));
-        let builderOutputs = Pulumi.all([
+        let builderOutputs = ResourceAttribution_Deploytime$ReventlessCore.applyAttributed(Pulumi.all([
           Pulumi.all([
             interstackAdminExtensionPoints,
             localAdminResolvedEP,
@@ -439,7 +440,7 @@ function Make(Spec) {
           Pulumi.all(Plugin_Helpers$ReventlessCore.publishToReadModels),
           scheduler,
           queryEngine
-        ]).apply(param => {
+        ]), param => {
           let queryEngine = param[5];
           let scheduler = param[4];
           let publishToReadModels = param[3];

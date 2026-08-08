@@ -383,7 +383,10 @@ let createConnectPluginExtension = (
   ~opts,
 ) =>
   pluginDefinition
-  ->Pulumi.Output.apply(pluginDefinition => {
+  // Provisions the plugin's connect-extension and its event-collector runtime,
+  // so it needs the plugin's attribution reinstated — the apply runs after
+  // construct has emptied it.
+  ->ResourceAttribution_Deploytime.applyAttributed(pluginDefinition => {
     module ConnectPluginExtension = PluginConnectExtension_Builder.Make({
       let pluginDefinition = pluginDefinition
       let uiFragments = uiFragments
@@ -548,7 +551,9 @@ module MakeEventCollectorHelper = (
       resources,
     )
     ->Pulumi.Output.all5
-    ->Pulumi.Output.apply(((
+    // Builds the plugin's own event-collector runtime, so it needs the plugin's
+    // attribution reinstated — this callback runs after construct emptied it.
+    ->ResourceAttribution_Deploytime.applyAttributed(((
       pluginDefinition,
       connectExtData,
       extensionsHandlers,

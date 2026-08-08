@@ -648,7 +648,11 @@ module Make = (
         queryEngine,
       )
       ->Pulumi.Output.all6
-      ->Pulumi.Output.apply(((
+      // `applyAttributed`, not `apply`: this callback provisions real resources —
+      // extension points, tasks, the heartbeat, resolvers — and it runs after
+      // this construct has returned, when the ambient attribution context is
+      // already empty. It reinstates the plugin's context for the duration.
+      ->ResourceAttribution_Deploytime.applyAttributed(((
         (interstackAdminExtensionPoints, localAdminResolvedEP, _),
         aggregateResources,
         publishToAggregates,

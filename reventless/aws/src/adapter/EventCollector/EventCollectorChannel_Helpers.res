@@ -125,7 +125,14 @@ let connectLambda = (
       resources->ReventlessCore.Adapter.resourcesToResolvedOutput,
     )
     ->Pulumi.Output.all3
-    ->Pulumi.Output.apply(((eventTopicResources, queueArns, resources)) => {
+    // Provisions the collector's role, policies and event-source mappings, so it
+    // carries the plugin's attribution across the apply — by the time this runs
+    // the builder's construct has returned and the ambient context is empty.
+    ->ReventlessCore.ResourceAttribution_Deploytime.applyAttributed(((
+      eventTopicResources,
+      queueArns,
+      resources,
+    )) => {
       log.debug(
         ~comp="EventCollector",
         `connectLambda ${name}: ${eventTopicResources->Array.length->Int.toString} topic resource(s), ${resources->Array.length->Int.toString} resource(s)`,

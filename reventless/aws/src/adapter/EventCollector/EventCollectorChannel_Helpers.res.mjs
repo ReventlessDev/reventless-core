@@ -15,6 +15,7 @@ import * as Adapter_Helpers$ReventlessAws from "../Adapter_Helpers.res.mjs";
 import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
 import * as AdapterDeploytime$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/AdapterDeploytime.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
+import * as ResourceAttribution_Deploytime$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/ResourceAttribution_Deploytime.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -76,11 +77,11 @@ function esmTags(name, esmName) {
 }
 
 function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources, opts) {
-  Pulumi.all([
+  ResourceAttribution_Deploytime$ReventlessCore.applyAttributed(Pulumi.all([
     toResources(eventTopics),
     Pulumi.all(queues.map(queue => queue.arn)),
     Adapter$ReventlessCore.resourcesToResolvedOutput(resources)
-  ]).apply(param => {
+  ]), param => {
     let resources = param[2];
     let queueArns = param[1];
     let eventTopicResources = param[0];

@@ -15,6 +15,7 @@ import * as EventTopic_Builder$ReventlessCore from "../EventTopic/EventTopic_Bui
 import * as CommandTopic_Builder$ReventlessCore from "../CommandTopic/CommandTopic_Builder.res.mjs";
 import * as ExtensionPoint_Callback$ReventlessCore from "./ExtensionPoint_Callback.res.mjs";
 import * as ExtensionPoint_Operations$ReventlessCore from "./ExtensionPoint_Operations.res.mjs";
+import * as ResourceAttribution_Deploytime$ReventlessCore from "../../adapter/ResourceAttribution_Deploytime.res.mjs";
 
 function Make(Spec) {
   return Mappings => (RuntimeEnvironment => (CommandTopicChannel => (EventTopicAdapter => (ExtensionPointRuntimeBuilder => (Defaults => {
@@ -42,7 +43,7 @@ function Make(Spec) {
       }, opts);
       let aggregateNames = Stdlib_Array.filterMap(Mappings.mappings, Mapping => Stdlib_Option.map(Mapping.mapOutgoingEvent, param => Mapping.delegateName));
       let commandTopicResources = Adapter$ReventlessCore.resourcesToResolvedOutput(commandTopic.channel.resources);
-      let match = Output$Pulumi.unzip3(Output$Pulumi.flatMap(commandTopicResources, commandTopicResources => {
+      let match = Output$Pulumi.unzip3(ResourceAttribution_Deploytime$ReventlessCore.flatMapAttributed(commandTopicResources, commandTopicResources => {
         let ExtensionPointCallback = ExtensionPoint_Callback$ReventlessCore.Make({
           publishToAggregates: publishToAggregates,
           commandTopicResources: commandTopicResources,

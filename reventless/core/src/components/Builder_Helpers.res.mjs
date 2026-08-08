@@ -4,6 +4,7 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as QueryDb$ReventlessCore from "./QueryDb/QueryDb.res.mjs";
+import * as ResourceAttribution$ReventlessCore from "../ResourceAttribution.res.mjs";
 
 let addEventMapperFns = {};
 
@@ -22,7 +23,7 @@ function createAggregatesWithoutEventMappers(aggregates, api, componentRuntime, 
     aggregateResources[SpecificAggregate.Spec.name] = resources;
     let publishJsons = SpecificAggregate.operations(aggregate).apply(param => param.publishJsons);
     publishToAggregates[SpecificAggregate.Spec.name] = publishJsons;
-    aggregateFinishFns[SpecificAggregate.Spec.name] = SpecificAggregate.finish;
+    aggregateFinishFns[SpecificAggregate.Spec.name] = ResourceAttribution$ReventlessCore.deferred(SpecificAggregate.finish);
     return aggOutputs;
   }).map(aggregate => [
     aggregate.name,
@@ -54,7 +55,7 @@ let taskSideEffectFinishFns = [];
 
 function registerTaskSideEffectHandler(gate, finish) {
   taskSideEffectGates.push(gate);
-  taskSideEffectFinishFns.push(finish);
+  taskSideEffectFinishFns.push(ResourceAttribution$ReventlessCore.deferred(finish));
 }
 
 function finishTasks() {
@@ -102,7 +103,7 @@ function createReadModels(readModels, api, apiRole, componentRuntime, allEventTo
       {
         outputs: rmOutputs,
         operations: rmOperations,
-        finish: SpecificReadModel.finish
+        finish: ResourceAttribution$ReventlessCore.deferred(SpecificReadModel.finish)
       }
     ];
   });

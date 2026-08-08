@@ -112,10 +112,28 @@ large, purely mechanical churn — so the plugin builder publishes them here for
 the duration of its construct, exactly as it already does for
 `Logger.currentPluginName`.
 
-Safe because deploy-time resource construction is synchronous (the framework
-forbids creating resources inside `Pulumi.Output.apply`), so everything built
-between `enter` and `restore` genuinely belongs to that plugin. Outside any
-plugin construct both are `None` — which is the correct answer for
+The `enter`/`restore` bracket covers what runs **synchronously** inside the
+builder's construct, and everything built there genuinely belongs to that plugin.
+
+It does not cover all of construct. Builders defer part of their work until every
+handler has registered, and they defer it by waiting on outputs — so that work
+runs from a `Pulumi.Output.apply` callback, after construct has returned and
+`restore` has already emptied the context. A resource created there would be
+attributed to nobody, and `None` is a *meaningful* value here: it means
+platform-scope substrate. So the miss does not read as a gap, it reads as a
+positive answer, and a consumer cannot tell the two apart.
+
+Deferred work therefore carries its own attribution. Capture the context while it
+is still published and reinstate it around the callback: `deferred` for a
+callback registered during construct and invoked later, and
+`ResourceAttribution_Deploytime.applyAttributed` / `flatMapAttributed` for a
+builder's own apply. Both restore afterwards, so several plugins' deferred work
+can run from one apply without leaking into each other.
+
+Everything Pulumi-shaped lives in that separate module, so this one stays
+importable from code that ends up in a Lambda bundle.
+
+Outside any plugin construct both are `None` — the correct answer for
 platform-scope substrate.
 */
 type context = {platform: option<string>, plugin: option<string>}
@@ -131,3 +149,41 @@ let enter = (~platform: string, ~plugin: string) => {
 
 /** Restore the context captured by `enter`. */
 let restore = (previous: context) => current := previous
+
+/** Re-enter a whole captured context — including an empty one, which `enter`
+    cannot express since it takes two required strings. Returns the previous
+    context, exactly as `enter` does. */
+let enterCaptured = (captured: context) => {
+  let previous = current.contents
+  current := captured
+  previous
+}
+
+/** Run `fn` under `captured`, then put the previous context back — including
+    when `fn` throws, so a failing deferred callback cannot strand the context
+    and mis-attribute everything built after it. */
+let within = (captured: context, fn: unit => 'a): 'a => {
+  let previous = enterCaptured(captured)
+  try {
+    let result = fn()
+    restore(previous)
+    result
+  } catch {
+  | e =>
+    restore(previous)
+    throw(e)
+  }
+}
+
+/** Capture the context now and wrap a callback so it runs under that context
+    whenever it is finally called. For work registered during construct but
+    executed later from an apply — a builder's deferred `finish`, whose whole
+    purpose is to run after every handler has registered.
+
+    Wrap at **registration**, not at the call site: the registries these
+    callbacks land in are module-level and shared by every plugin, so by the time
+    they run there is no single context that would be right for all of them. */
+let deferred = (fn: unit => 'a): (unit => 'a) => {
+  let captured = current.contents
+  () => within(captured, fn)
+}
