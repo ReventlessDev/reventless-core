@@ -75,7 +75,10 @@ function make(api, pluginReadModelTableName, offloadBucketName, schemaReady, opt
       "@reventlessdev/reventless-aws",
       Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws")
     ]]);
-  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Api/Platform_ComponentDefinitions_Lambda_Ops.res.mjs", packageDirs, undefined, false);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Api/Platform_ComponentDefinitions_Lambda_Ops.res.mjs", packageDirs, Object.fromEntries([[
+      "adminEntry.json",
+      adminEntryJson
+    ]]), false);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
   let lambda = new (Aws.lambda.Function)(name + "Lambda", {
     handler: "index.handler",
@@ -99,10 +102,6 @@ function make(api, pluginReadModelTableName, offloadBucketName, schemaReady, opt
         [
           "OFFLOAD_BUCKET",
           offloadBucketName
-        ],
-        [
-          "ADMIN_ENTRY_JSON",
-          adminEntryJson
         ],
         [
           "NODE_OPTIONS",

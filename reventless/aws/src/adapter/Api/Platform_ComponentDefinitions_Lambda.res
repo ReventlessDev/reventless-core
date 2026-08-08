@@ -115,14 +115,17 @@ let make = (
   // Bundle reventless-aws (the compiled `_Ops` handler lives inside it) and
   // re-export its `handler`; buildCodeArchive also ships the ESM resolve-hook so
   // the handler's bare @aws-sdk/* specifiers resolve from the managed runtime.
-  // The admin entry is passed as an env var (ADMIN_ENTRY_JSON) rather than
-  // interpolated into the source, so the archive hash is stable across deploys.
+  // The admin entry rides the archive as `adminEntry.json` rather than an env var:
+  // it alone encodes to ~3 KB, which together with the other variables exceeds the
+  // 4096-byte UpdateFunctionConfiguration limit. Its content participates in
+  // `sourceCodeHash`, so a change to the admin structure redeploys the code.
   let packageDirs = Dict.fromArray([
     ("@reventlessdev/reventless-aws", Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws")),
   ])
   let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
     ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Api/Platform_ComponentDefinitions_Lambda_Ops.res.mjs",
     ~packageDirs,
+    ~extraStringAssets=Dict.fromArray([("adminEntry.json", adminEntryJson)]),
     ~bundleRuntimeExtensions=false,
   )
 
@@ -150,7 +153,6 @@ let make = (
             ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
             ("PLUGIN_RM_TABLE", pluginReadModelTableName->Pulumi.Output.asInput),
             ("OFFLOAD_BUCKET", offloadBucketName->Pulumi.Output.asInput),
-            ("ADMIN_ENTRY_JSON", adminEntryJson->Pulumi.Input.make),
             ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
             ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
             Util_LambdaLogging.logLevelEntry(),

@@ -68,17 +68,26 @@ let toEntryWith = (~filter: bool, item: dict<JSON.t>, ~name: string): option<JSO
 }
 
 
-// The built-in Platform_Admin entry, injected at deploy time as the
-// ADMIN_ENTRY_JSON env var (the admin never Connects to itself, so its structure
-// never enters the Plugin read model).
+// The built-in Platform_Admin entry, written at deploy time as an asset file in
+// the code archive (the admin never Connects to itself, so its structure never
+// enters the Plugin read model). It rides the archive rather than an env var
+// because it alone is ~3 KB and the function's variables must fit AWS's 4096-byte
+// UpdateFunctionConfiguration limit. process.cwd() is /var/task in Lambda, where
+// the archive is extracted.
 //
 // Shared by both fields. The admin structure has no Internal components and no
 // extension points, so its filtered and complete encodings carry the same
 // components; the structure-level fields the complete entry adds are absent from
 // this JSON and resolve to null, which is what `extensionPoints: None` means.
 let adminEntry: option<JSON.t> =
-  switch NodeProcess.env->Dict.get("ADMIN_ENTRY_JSON") {
-  | Some(s) if s != "" => Some(JSON.parseOrThrow(s))
+  try {
+    switch NodePath.join([NodeProcess.cwd(), "adminEntry.json"])
+    ->NodeFs.readFileSync
+    ->JSON.parseOrThrow {
+    | JSON.Null => None
+    | json => Some(json)
+    }
+  } catch {
   | _ => None
   }
 
