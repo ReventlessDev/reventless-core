@@ -266,6 +266,20 @@ let finish = (
       ->Option.getOr([])
       ->Pulumi.Input.make
 
+    // Created before the function that writes to it — see
+    // `Util_LambdaLogging.makeManagedLogGroup` for why the ordering matters.
+    let logGroup = Util_LambdaLogging.makeManagedLogGroup(
+      ~name,
+      ~tags=AWS.Tags.make(
+        ~name=name ++ "LogGroup",
+        ~kind=ReventlessCore.ComponentType.Plugin,
+        ~role=Logs,
+        ~component=name,
+      ),
+      ~opts,
+      (),
+    )
+
     let lambda = Lambda.Function.make(
       ~name,
       ~args={
@@ -295,21 +309,9 @@ let finish = (
             ]),
           }: Lambda.Function.functionEnvironment
         )->Pulumi.Input.make,
+        loggingConfig: ?Util_LambdaLogging.loggingConfigFor(logGroup),
       },
       ~opts,
-    )
-
-    Util_LambdaLogging.makeManagedLogGroup(
-      ~name,
-      ~lambdaName=lambda.name,
-      ~tags=AWS.Tags.make(
-        ~name=name ++ "LogGroup",
-        ~kind=ReventlessCore.ComponentType.Plugin,
-        ~role=Logs,
-        ~component=name,
-      ),
-      ~opts,
-      (),
     )
 
     // One mapping per event log stream, all targeting the one Lambda.

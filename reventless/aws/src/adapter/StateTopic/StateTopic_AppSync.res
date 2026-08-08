@@ -218,6 +218,20 @@ let finish = (
 
     let appsyncEndpoint = AppSync_EventsApi.httpEndpoint(eventsApi)
 
+    // Created before the function that writes to it — see
+    // `Util_LambdaLogging.makeManagedLogGroup` for why the ordering matters.
+    let logGroup = Util_LambdaLogging.makeManagedLogGroup(
+      ~name=name ++ "StateTopicPublisher",
+      ~tags=AWS.Tags.make(
+        ~name=name ++ "StateTopicPublisherLogGroup",
+        ~kind=ReventlessCore.QueryDb.componentType,
+        ~role=Logs,
+        ~component=name,
+      ),
+      ~opts,
+      (),
+    )
+
     let lambda = Lambda.Function.make(
       ~name=name ++ "StateTopicPublisher",
       ~args={
@@ -242,21 +256,9 @@ let finish = (
             ]),
           }: Lambda.Function.functionEnvironment
         )->Pulumi.Input.make,
+        loggingConfig: ?Util_LambdaLogging.loggingConfigFor(logGroup),
       },
       ~opts,
-    )
-
-    Util_LambdaLogging.makeManagedLogGroup(
-      ~name=name ++ "StateTopicPublisher",
-      ~lambdaName=lambda.name,
-      ~tags=AWS.Tags.make(
-        ~name=name ++ "StateTopicPublisherLogGroup",
-        ~kind=ReventlessCore.QueryDb.componentType,
-        ~role=Logs,
-        ~component=name,
-      ),
-      ~opts,
-      (),
     )
 
     // One EventSourceMapping per stream, all targeting the shared Lambda.

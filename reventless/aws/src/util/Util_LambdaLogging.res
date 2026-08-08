@@ -44,40 +44,88 @@ let applyLogLevelDefault = (variables: dict<Pulumi.Input.t<string>>) =>
     variables->Dict.set(key, value)
   }
 
-// Create a managed CloudWatch log group with tier retention for a Lambda when the
-// stack manages its groups (`Util_LogRetention.managesLogGroup`). The group name
-// derives from the function's own *physical* name output — never the logical
-// name — so it matches the group Lambda would auto-create and carries Pulumi's
-// uniqueness suffix. The caller supplies `~tags` (Logs-role, its own attribution
-// convention) and `~opts` (so the group parents to the same component and is torn
-// down with it — closing the orphan-group loop for the bespoke builders too). The
-// trailing `()` terminates the optional `~opts`.
+/** The managed log group name for a Lambda — chosen by the program, never
+    derived from the function's physical name output. Two properties follow from
+    choosing it:
+
+    - **stable**: it carries no `-<7hex>` Pulumi suffix, so replacing a function
+      keeps its group instead of stranding the old one as an orphan nothing
+      tears down.
+    - **stack-scoped**: stacks sharing an account cannot collide, which was the
+      reason the physical name was used before.
+
+    Pure, so the naming is decidable without Pulumi. */
+let logGroupNameFor = (~stack: string, ~name: string): string => `/aws/lambda/${stack}-${name}`
+
+// Create the managed CloudWatch log group for a Lambda **before** the function
+// that writes to it, so the function can be pointed at it via `loggingConfig`
+// (see `loggingConfigFor`) and Lambda never auto-creates a group of its own.
+// That ordering is the whole point: a group created *after* its function races
+// the auto-create the function's first invocation triggers, and a lost race is
+// permanent — the group persists, so every retry fails the same way.
+//
+// Created when the stack manages its groups (`Util_LogRetention.managesLogGroup`)
+// or the caller pins `~retentionDaysOverride` (the app-developer opt-in, which
+// wins over the tier default and applies even on an unmanaged stack). `None`
+// means the group is left to Lambda, with no retention.
+//
+// The caller supplies `~tags` (Logs-role, its own attribution convention) and
+// `~opts` (so the group parents to the same component and is torn down with it).
+// The trailing `()` terminates the optional arguments.
 let makeManagedLogGroup = (
   ~name: string,
-  ~lambdaName: Pulumi.Output.t<string>,
+  ~retentionDaysOverride: option<int>=?,
   ~tags,
   ~opts=?,
   (),
-) => {
+): option<Cloudwatch.LogGroup.t> => {
   let (stack, prodStacks, unmanagedStacks) = stackContext()
-  if Util_LogRetention.managesLogGroup(~stack, ~unmanagedStacks) {
-    let days = Util_LogRetention.retentionDaysFor(
-      ~stack,
-      ~prodStacks,
-      ~configOverride=?Util_LocalConfig.get("logRetentionDays")->Option.flatMap(s =>
-        Int.fromString(s)
+  let retentionDays = switch (
+    retentionDaysOverride,
+    Util_LogRetention.managesLogGroup(~stack, ~unmanagedStacks),
+  ) {
+  | (Some(days), _) => Some(days)
+  | (None, true) =>
+    Some(
+      Util_LogRetention.retentionDaysFor(
+        ~stack,
+        ~prodStacks,
+        ~configOverride=?Util_LocalConfig.get("logRetentionDays")->Option.flatMap(s =>
+          Int.fromString(s)
+        ),
       ),
     )
-    let _ = Cloudwatch.LogGroup.make(
+  | (None, false) => None
+  }
+  retentionDays->Option.map(days =>
+    Cloudwatch.LogGroup.make(
       ~name=`${name}LogGroup`,
       ~args={
-        name: lambdaName
-        ->Pulumi.Output.apply(n => `/aws/lambda/${n}`)
-        ->Pulumi.Output.asInput,
+        name: logGroupNameFor(~stack, ~name)->Pulumi.Input.make,
         retentionInDays: days->Pulumi.Input.make,
         tags,
       },
       ~opts?,
     )
-  }
+  )
 }
+
+// The `loggingConfig` that points a function at the group `makeManagedLogGroup`
+// just created. Reading `logGroup.name` is also what orders the two: Pulumi sees
+// the function depend on the group, so the group exists first and the function
+// has somewhere to write from its very first invocation.
+//
+// `None` when the group is unmanaged — the function then carries no
+// `loggingConfig` at all and keeps Lambda's auto-created group, exactly as
+// before. `Text` is AWS's own default format, so no log line changes shape.
+let loggingConfigFor = (logGroup: option<Cloudwatch.LogGroup.t>): option<
+  Pulumi.Input.t<Lambda.Function.loggingConfig>,
+> =>
+  logGroup->Option.map(group =>
+    (
+      {
+        logFormat: "Text"->Pulumi.Input.make,
+        logGroup: group.name->Pulumi.Output.asInput,
+      }: Lambda.Function.loggingConfig
+    )->Pulumi.Input.make
+  )

@@ -184,6 +184,20 @@ let make = (
     ->Option.getOr([])
     ->Pulumi.Input.make
 
+  // Created before the function that writes to it — see
+  // `Util_LambdaLogging.makeManagedLogGroup` for why the ordering matters.
+  let logGroup = Util_LambdaLogging.makeManagedLogGroup(
+    ~name=name ++ "Lambda",
+    ~tags=AWS.Tags.make(
+      ~name=name ++ "LambdaLogGroup",
+      ~kind=ReventlessCore.ComponentType.Platform,
+      ~role=Logs,
+      ~scope=Platform,
+    ),
+    ~opts,
+    (),
+  )
+
   let lambda = Lambda.Function.make(
     ~name=name ++ "Lambda",
     ~args={
@@ -213,21 +227,9 @@ let make = (
           ]),
         }: Lambda.Function.functionEnvironment
       )->Pulumi.Input.make,
+      loggingConfig: ?Util_LambdaLogging.loggingConfigFor(logGroup),
     },
     ~opts,
-  )
-
-  Util_LambdaLogging.makeManagedLogGroup(
-    ~name=name ++ "Lambda",
-    ~lambdaName=lambda.name,
-    ~tags=AWS.Tags.make(
-      ~name=name ++ "LambdaLogGroup",
-      ~kind=ReventlessCore.ComponentType.Platform,
-      ~role=Logs,
-      ~scope=Platform,
-    ),
-    ~opts,
-    (),
   )
 
   let dataSourceRole = IAM.Role.makeWithDefaultPolicy(

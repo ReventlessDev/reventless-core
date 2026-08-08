@@ -7,9 +7,13 @@ The framework machinery is implemented and managed groups now default for
 [../plans/env-tiered-log-retention-and-levels.md](../plans/env-tiered-log-retention-and-levels.md).
 Against the [Recommendation](#recommendation):
 
-- ✅ **0. Managed log-group name fix** — the group name now derives from
-  `lambda.name` (physical, suffix-carrying) rather than the logical `name`.
-  `RuntimeEnvironment_Lambda.makeFromCodeAsset`.
+- ✅ **0. Managed log-group name fix** — superseded. The group is now created
+  *before* its function, under a name the deploy chooses
+  (`Util_LambdaLogging.logGroupNameFor`: `/aws/lambda/<stack>-<component>`), and
+  handed to the function via `loggingConfig.logGroup`. Deriving the name from the
+  physical `lambda.name` forced the group to be created second, which lost a race
+  against Lambda's lazy auto-create; see
+  [../plans/log-group-ownership-without-a-race.md](../plans/log-group-ownership-without-a-race.md).
 - ✅ **1. `Util_LogRetention.res`** — new, beside `Util_StoreLayout` /
   `Util_HostUiDomain`, with the tier functions + the `managesLogGroup` gate.
   Unit-tested (`Util_LogRetentionTest.res`, 24 cases).

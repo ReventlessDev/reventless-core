@@ -22,10 +22,7 @@ import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/
 import * as Util_IAM_Role$ReventlessAws from "../../util/Util_IAM_Role.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as Util_DcbMetrics$ReventlessAws from "../../util/Util_DcbMetrics.res.mjs";
-import * as Util_LocalConfig$ReventlessAws from "../../util/Util_LocalConfig.res.mjs";
 import * as RuntimeExtension$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/RuntimeExtension/RuntimeExtension.res.mjs";
-import * as Util_HostUiDomain$ReventlessAws from "../../util/Util_HostUiDomain.res.mjs";
-import * as Util_LogRetention$ReventlessAws from "../../util/Util_LogRetention.res.mjs";
 import * as Util_LambdaLogging$ReventlessAws from "../../util/Util_LambdaLogging.res.mjs";
 import * as ResourceAttribution$ReventlessCore from "@reventlessdev/reventless-core/src/ResourceAttribution.res.mjs";
 
@@ -59,8 +56,6 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
   let dcbMetrics = dcbMetricsOpt !== undefined ? dcbMetricsOpt : false;
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let stack = Pulumi.getStack();
-  let prodStacks = Util_HostUiDomain$ReventlessAws.resolveProdStacks();
-  let unmanagedStacks = Util_LogRetention$ReventlessAws.parseUnmanagedStacks(Stdlib_Option.getOr(Util_LocalConfig$ReventlessAws.get("unmanagedLogGroupStacks"), ""));
   let tagsFor = (resourceName, role) => AWS_Tags$ReventlessAws.make(resourceName, componentKind, role, undefined, name, undefined, undefined, undefined);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), tagsFor(name, "Identity"), opts$1);
   Stdlib_Option.forEach(vpcConfig, param => {
@@ -136,6 +131,7 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
     ]);
     variables["RUNTIME_EXTENSIONS"] = JSON.stringify(config);
   }
+  let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name, logRetentionDays, tagsFor(name + `LogGroup`, "Logs"), opts$1, undefined);
   let tags = tagsFor(name, "Runtime");
   let lambda = new (Aws.lambda.Function)(name, {
     handler: "index.handler",
@@ -154,19 +150,11 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
     ephemeralStorage: Stdlib_Option.map(ephemeralStorageMb, mb => ({
       size: mb
     })),
-    vpcConfig: vpcConfig
+    vpcConfig: vpcConfig,
+    loggingConfig: Util_LambdaLogging$ReventlessAws.loggingConfigFor(logGroup)
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
-  let match$1 = Util_LogRetention$ReventlessAws.managesLogGroup(stack, unmanagedStacks);
-  let managedRetention = logRetentionDays !== undefined ? logRetentionDays : (
-      match$1 ? Util_LogRetention$ReventlessAws.retentionDaysFor(stack, prodStacks, Stdlib_Option.flatMap(Util_LocalConfig$ReventlessAws.get("logRetentionDays"), s => Stdlib_Int.fromString(s, undefined))) : undefined
-    );
-  Stdlib_Option.forEach(managedRetention, days => {
-    let logGroup = new (Aws.cloudwatch.LogGroup)(name + `LogGroup`, {
-      name: lambda.name.apply(n => `/aws/lambda/` + n),
-      retentionInDays: days,
-      tags: tagsFor(name + `LogGroup`, "Logs")
-    }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
-    if (dcbMetrics) {
+  if (dcbMetrics) {
+    Stdlib_Option.forEach(logGroup, logGroup => {
       Util_DcbMetrics$ReventlessAws.metricNames.forEach(metricName => {
         new (Aws.cloudwatch.LogMetricFilter)(name + metricName + `Filter`, {
           pattern: Util_DcbMetrics$ReventlessAws.patternFor(metricName),
@@ -174,9 +162,8 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
           metricTransformation: Util_DcbMetrics$ReventlessAws.transformationFor(metricName)
         }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
       });
-      return;
-    }
-  });
+    });
+  }
   let lambdaResource = Util_Lambda$ReventlessAws.functionToResource(tags, lambda);
   Monitoring$ReventlessCore.notify(unitKind, name, lambdaResource);
   return {

@@ -125,6 +125,7 @@ function finish(plugin, stores, iteratorAgeAlarmMsOpt, opts) {
     ]]);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Upload/Upload_Claim_S3_Ops.res.mjs", packageDirs, undefined, false);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
+  let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name, undefined, AWS_Tags$ReventlessAws.make(name + "LogGroup", "Plugin", "Logs", undefined, name, undefined, undefined, undefined), opts, undefined);
   let lambda = new (Aws.lambda.Function)(name, {
     handler: "index.handler",
     runtime: "nodejs22.x",
@@ -159,9 +160,9 @@ function finish(plugin, stores, iteratorAgeAlarmMsOpt, opts) {
         Util_LambdaLogging$ReventlessAws.logLevelEntry()
       ])
     },
-    sourceCodeHash: match.sourceCodeHash
+    sourceCodeHash: match.sourceCodeHash,
+    loggingConfig: Util_LambdaLogging$ReventlessAws.loggingConfigFor(logGroup)
   }, opts);
-  Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name, lambda.name, AWS_Tags$ReventlessAws.make(name + "LogGroup", "Plugin", "Logs", undefined, name, undefined, undefined, undefined), opts, undefined);
   entries.forEach((entry, i) => {
     let esmName = name + `Stream` + i.toString();
     new (Aws.lambda.EventSourceMapping)(esmName, {

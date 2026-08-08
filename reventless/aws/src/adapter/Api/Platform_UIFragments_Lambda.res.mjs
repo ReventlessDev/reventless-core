@@ -54,6 +54,7 @@ function make(api, uiFragmentRegistryTableName, schemaReady, opts) {
     ]]);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Api/Platform_UIFragments_Lambda_Ops.res.mjs", packageDirs, undefined, false);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
+  let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name + "Lambda", undefined, AWS_Tags$ReventlessAws.make(name + "LambdaLogGroup", "Platform", "Logs", "Platform", undefined, undefined, undefined, undefined), opts$1, undefined);
   let lambda = new (Aws.lambda.Function)(name + "Lambda", {
     handler: "index.handler",
     runtime: "nodejs22.x",
@@ -84,9 +85,9 @@ function make(api, uiFragmentRegistryTableName, schemaReady, opts) {
         Util_LambdaLogging$ReventlessAws.logLevelEntry()
       ])
     },
-    sourceCodeHash: match.sourceCodeHash
+    sourceCodeHash: match.sourceCodeHash,
+    loggingConfig: Util_LambdaLogging$ReventlessAws.loggingConfigFor(logGroup)
   }, opts$1);
-  Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name + "Lambda", lambda.name, AWS_Tags$ReventlessAws.make(name + "LambdaLogGroup", "Platform", "Logs", "Platform", undefined, undefined, undefined, undefined), opts$1, undefined);
   let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
   Pulumi.all([
     lambda.arn,

@@ -36,24 +36,37 @@ function applyLogLevelDefault(variables) {
   variables[match[0]] = match[1];
 }
 
-function makeManagedLogGroup(name, lambdaName, tags, opts, param) {
+function logGroupNameFor(stack, name) {
+  return `/aws/lambda/` + stack + `-` + name;
+}
+
+function makeManagedLogGroup(name, retentionDaysOverride, tags, opts, param) {
   let match = stackContext();
   let stack = match[0];
-  if (!Util_LogRetention$ReventlessAws.managesLogGroup(stack, match[2])) {
-    return;
-  }
-  let days = Util_LogRetention$ReventlessAws.retentionDaysFor(stack, match[1], Stdlib_Option.flatMap(Util_LocalConfig$ReventlessAws.get("logRetentionDays"), s => Stdlib_Int.fromString(s, undefined)));
-  new (Aws.cloudwatch.LogGroup)(name + `LogGroup`, {
-    name: lambdaName.apply(n => `/aws/lambda/` + n),
+  let match$1 = Util_LogRetention$ReventlessAws.managesLogGroup(stack, match[2]);
+  let retentionDays = retentionDaysOverride !== undefined ? retentionDaysOverride : (
+      match$1 ? Util_LogRetention$ReventlessAws.retentionDaysFor(stack, match[1], Stdlib_Option.flatMap(Util_LocalConfig$ReventlessAws.get("logRetentionDays"), s => Stdlib_Int.fromString(s, undefined))) : undefined
+    );
+  return Stdlib_Option.map(retentionDays, days => new (Aws.cloudwatch.LogGroup)(name + `LogGroup`, {
+    name: logGroupNameFor(stack, name),
     retentionInDays: days,
     tags: tags
-  }, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined);
+  }, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined));
+}
+
+function loggingConfigFor(logGroup) {
+  return Stdlib_Option.map(logGroup, group => ({
+    logFormat: "Text",
+    logGroup: group.name
+  }));
 }
 
 export {
   stackContext,
   logLevelEntry,
   applyLogLevelDefault,
+  logGroupNameFor,
   makeManagedLogGroup,
+  loggingConfigFor,
 }
 /* @pulumi/aws Not a pure module */

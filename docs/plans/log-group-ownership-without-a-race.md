@@ -1,8 +1,8 @@
 # Plan: Own a runtime's log group from birth, not after the fact
 
-**Status.** Planned — 2026-08-08. Not started. Written after a managed-log-group rollout
-deadlocked in the field: three groups could not be adopted because the runtimes they belong to
-kept recreating them faster than a deploy could reach them.
+**Status.** §3 implemented — 2026-08-08. §4 in progress. Written after a managed-log-group
+rollout deadlocked in the field: three groups could not be adopted because the runtimes they
+belong to kept recreating them faster than a deploy could reach them.
 
 **Goal.** A framework-provisioned runtime's CloudWatch log group is created and owned by the
 deploy, with no window in which AWS can create it first — and an estate whose groups AWS already
@@ -94,31 +94,69 @@ Adding it is part of this work.
 server-assigned id, and the service offers no equivalent "write here" knob. That site can only be
 made safe by adoption, not by ordering.
 
+### Implemented — 2026-08-08
+
+`loggingConfig` is on the binding; `Util_LambdaLogging` creates the group first and returns the
+`loggingConfig` that points a function at it; both Lambda sites and the six bespoke builders that
+route through them are rewired. The chosen name is `/aws/lambda/<stack>-<component>`
+(`Util_LambdaLogging.logGroupNameFor`, unit-tested).
+
+One consequence deserves stating, because it changes what §4 is *for*: the chosen name is one AWS
+never produces — the service auto-creates `/aws/lambda/<physical name>`, and a physical name always
+carries the `-<7hex>` suffix. **So on the Lambda sites there is nothing left to adopt**, on any
+stack, including one whose groups AWS already created. The create cannot collide.
+
+What that leaves behind is the mirror of the problem: those already-auto-created groups are now
+written to by nothing and managed by nothing, and they carry no retention — the unbounded-storage
+outcome §5 rejects. They need a deliberate sweep once the first deploy on the new naming lands;
+this is an operational step, recorded in §6.
+
 ## §4 — Adoption, for the estates that already have the problem
 
-Ordering fixes new resources. It does nothing for a group AWS already created, of which there will
-be many, and nothing for AppSync at all. So the durable fix needs a second half: when the group
-already exists, **adopt it instead of failing**.
+Ordering fixes new resources. §3 turned out to fix the Lambda sites outright — a name AWS never
+mints has nothing to adopt. **AppSync is what remains**, and it remains structurally: its group
+name is `/aws/appsync/apis/<server-assigned id>`, so the group can only ever be created after the
+API, and any window in which the API serves a request before the deploy reaches the group is a
+window the deploy loses permanently.
 
-The shape is a deploy-time lookup (`aws.cloudwatch.getLogGroup`) that decides between create and
-adopt. The mechanism is where the open question is:
+The behaviour to guarantee is unchanged: **a deploy that meets an existing log group adopts it and
+reports that it did, rather than failing.**
 
-**Open question — does a blind `import` option work here?** Pulumi's `import` resource option
-adopts an existing resource, but it validates the declared inputs against the live resource and
-errors when they differ. An auto-created group has **no retention and no tags**, while the
-declared resource has both — so the inputs differ by construction, and import may reject exactly
-the case this exists to serve. Three candidate resolutions, in preference order, and this needs a
-spike before the plan commits:
+### Spike result — the `import` option cannot be wired in-program
 
-1. Import with the *observed* inputs and let the following update apply retention and tags, if the
-   engine permits import-then-update in one deployment.
-2. Import under `ignoreChanges` for the drifting fields, then drop the ignore in a later deploy.
-3. Fall back to an out-of-band `pulumi import`, documented as a runbook rather than automated —
-   the weakest option, because it puts a manual step on the recovery path for a failure the
-   framework caused.
+The plan's open question was whether Pulumi's `import` resource option tolerates inputs that differ
+from the live resource. It does: import-then-update in one deployment is the documented behaviour,
+so candidate 1 was correct and candidates 2 and 3 were unnecessary. That is not the blocker.
 
-Whichever wins, the behaviour to guarantee is: **a deploy that meets an existing log group adopts
-it and reports that it did, rather than failing.**
+The blocker is one the plan did not anticipate: **`import` takes a plan-time `string`**, and neither
+thing this needs is available as one at resource-declaration time.
+
+- *"Does the group already exist?"* — `aws.cloudwatch.getLogGroup` returns a `Promise`, and
+  `getLogGroupOutput` an `Output`. A resource declaration is synchronous, so the create-vs-adopt
+  branch cannot be taken. Passing `import` unconditionally is not a fallback: importing a resource
+  that does not exist is itself an error.
+- *The AppSync group's name* is derived from `graphQLApi.id` — an `Output`, never a string.
+
+Two candidate mechanisms survive that. Preloading the live group names through a top-level-`await`
+companion module would make the branch synchronous, but it only reaches AppSync if api ids are also
+preloaded and matched back to logical names by prefix — fragile, and it puts an AWS call on every
+program start.
+
+### The mechanism: make create-or-adopt a non-question
+
+The chosen shape sidesteps the branch entirely. A log group's *retention and tags* can be applied
+with calls that are indifferent to whether the group already exists — `PutRetentionPolicy`,
+`TagResource`, and `CreateLogGroup` tolerated when it reports `ResourceAlreadyExists`. A resource
+whose create step does that is idempotent by construction: there is no case to detect, so nothing
+has to be known synchronously, and the group name can be a plain `Output` because it arrives as a
+resource **input** rather than a resource **option**.
+
+Delete tears the group down, so the resource keeps the teardown behaviour the declarative
+`Cloudwatch.LogGroup` had, and `unmanagedLogGroupStacks` keeps its meaning.
+
+The known cost is that a Pulumi dynamic provider runs from a serialized closure captured in state:
+a source fix reaches only resources that are subsequently created or updated. That constrains how
+its create/update steps may be changed later, and is worth a comment at the definition.
 
 ## §5 — Rejected alternatives
 
@@ -144,6 +182,9 @@ it and reports that it did, rather than failing.**
 - A deploy that fails for an unrelated reason, is left for an hour with live traffic, and is then
   re-run, succeeds — the scenario §1.3 describes.
 - Replacing a function does not leave an orphan log group.
+- The groups AWS auto-created before this change are swept once the first deploy on the new naming
+  has landed. They are written to by nothing and carry no retention, so leaving them is the
+  unbounded-storage outcome §5 rejects — only now silent rather than loud.
 - `unmanagedLogGroupStacks` still works for a stack that has adopted nothing, and its
   documentation states that it must not be set once adoption is partial.
 - No call site outside the three in §1 changes.

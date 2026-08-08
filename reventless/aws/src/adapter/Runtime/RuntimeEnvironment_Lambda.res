@@ -145,17 +145,7 @@ let makeFromCodeAsset: (
   let opts =
     opts->Option.map(ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
-  // The environment tier drives retention, default log level and whether the log
-  // group is Pulumi-managed. Resolved once from the stack name and the shared
-  // prod allow-list (the same notion of "production" that names the host-shell
-  // domain and the store layout).
   let stack = Pulumi.Pulumi.getStackName()
-  let prodStacks = Util_HostUiDomain.resolveProdStacks()
-  // Stacks explicitly held on auto-created log groups pending a `pulumi import`
-  // (none today — the escape hatch for adopting a pre-existing stack later).
-  let unmanagedStacks = Util_LogRetention.parseUnmanagedStacks(
-    Util_LocalConfig.get("unmanagedLogGroupStacks")->Option.getOr(""),
-  )
 
   // One attribution identity for every resource provisioned here: same owning
   // component and kind throughout, distinct piece roles — the function itself,
@@ -285,6 +275,26 @@ let makeFromCodeAsset: (
     variables->Dict.set("RUNTIME_EXTENSIONS", config->JSON.stringify->Pulumi.Input.make)
   }
 
+  // Managed CloudWatch log group with explicit retention, created **before** the
+  // function so the function can be told to write to it. That ordering is what
+  // keeps the deploy the owner: a group created after its function races the
+  // auto-create that the function's first invocation triggers, and losing that
+  // race is permanent — the group persists, so every retry fails identically.
+  // Runtimes with a heartbeat, a stream subscription or a schedule are invoked
+  // within seconds of existing, so they lost it most reliably.
+  //
+  // Created when the caller pins `~logRetentionDays` (the app-developer opt-in)
+  // OR the stack manages its groups — every stack by default, bar any named in
+  // `unmanagedLogGroupStacks`. When neither holds, Lambda auto-creates an
+  // unmanaged group with no retention, as before.
+  let logGroup = Util_LambdaLogging.makeManagedLogGroup(
+    ~name,
+    ~retentionDaysOverride=?logRetentionDays,
+    ~tags=tagsFor(~resourceName=`${name}LogGroup`, ~role=Logs),
+    ~opts?,
+    (),
+  )
+
   let tags = tagsFor(~resourceName=name, ~role=Runtime)
   let lambda = Lambda.Function.make(
     ~name,
@@ -305,60 +315,20 @@ let makeFromCodeAsset: (
       vpcConfig: ?vpcConfig,
       environment: ({Lambda.Function.variables: variables}: Lambda.Function.functionEnvironment)
         ->Pulumi.Input.make,
+      // Points the function at the group above and, by reading its name output,
+      // orders the function after it.
+      loggingConfig: ?Util_LambdaLogging.loggingConfigFor(logGroup),
     },
     ~opts?,
   )
 
-  // Managed CloudWatch log-group with explicit retention. Created when the caller
-  // pins `~logRetentionDays` (the app-developer opt-in) OR the stack manages its
-  // groups — every stack by default, bar any named in `unmanagedLogGroupStacks`
-  // (see `Util_LogRetention.managesLogGroup`). When neither holds, Lambda
-  // auto-creates an unmanaged group with no retention.
-  //
-  // Precedence for the retention value: explicit `~logRetentionDays` → the
-  // `logRetentionDays` config key → the environment tier default.
-  //
-  // The group name derives from the function's *physical* name output, not the
-  // logical `name`. `Lambda.Function` has no `name` arg, so its physical name
-  // always carries Pulumi's `-<7hex>` suffix; a literal `/aws/lambda/${name}`
-  // would create an empty group beside the real one, leave orphan accumulation
-  // unchanged, and collide across stacks sharing an account.
-  let managedRetention = switch (
-    logRetentionDays,
-    Util_LogRetention.managesLogGroup(~stack, ~unmanagedStacks),
-  ) {
-  | (Some(days), _) => Some(days)
-  | (None, true) =>
-    Some(
-      Util_LogRetention.retentionDaysFor(
-        ~stack,
-        ~prodStacks,
-        ~configOverride=?Util_LocalConfig.get("logRetentionDays")->Option.flatMap(s =>
-          Int.fromString(s)
-        ),
-      ),
-    )
-  | (None, false) => None
-  }
-  managedRetention->Option.forEach(days => {
-    let logGroup = Cloudwatch.LogGroup.make(
-      ~name=`${name}LogGroup`,
-      ~args={
-        name: lambda.name
-        ->Pulumi.Output.apply(n => `/aws/lambda/${n}`)
-        ->Pulumi.Output.asInput,
-        retentionInDays: days->Pulumi.Input.make,
-        tags: tagsFor(~resourceName=`${name}LogGroup`, ~role=Logs),
-      },
-      ~opts?,
-    )
-
-    // DCB command-handler Lambdas: extract the provider-neutral metric lines
-    // emitted by StateChangeSlice_Callback (`{reventlessMetric, slice, value}`)
-    // into CloudWatch metrics. Attached to the managed log group above so there
-    // is no race against Lambda's lazy auto-created group. Namespace/dimension
-    // are CloudWatch-specific and live here, not in core (provider-neutral).
-    if dcbMetrics {
+  // DCB command-handler Lambdas: extract the provider-neutral metric lines
+  // emitted by StateChangeSlice_Callback (`{reventlessMetric, slice, value}`)
+  // into CloudWatch metrics. Attached to the managed log group, which is the only
+  // group the function ever writes to. Namespace/dimension are CloudWatch-specific
+  // and live here, not in core (provider-neutral).
+  if dcbMetrics {
+    logGroup->Option.forEach(logGroup =>
       Util_DcbMetrics.metricNames->Array.forEach(metricName => {
         let _ = Cloudwatch.LogMetricFilter.make(
           ~name=`${name}${metricName}Filter`,
@@ -370,8 +340,8 @@ let makeFromCodeAsset: (
           ~opts?,
         )
       })
-    }
-  })
+    )
+  }
 
   let lambdaResource = lambda->Util.Lambda.functionToResource(~tags=tags->Pulumi.Output.fromInput)
 

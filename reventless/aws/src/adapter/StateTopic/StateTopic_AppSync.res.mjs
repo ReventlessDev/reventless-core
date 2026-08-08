@@ -90,6 +90,7 @@ function finish(eventsApi, opts) {
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync_Ops.res.mjs", packageDirs, undefined, false);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
   let appsyncEndpoint = AppSync_EventsApi$ReventlessAws.httpEndpoint(eventsApi);
+  let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name + "StateTopicPublisher", undefined, AWS_Tags$ReventlessAws.make(name + "StateTopicPublisherLogGroup", QueryDb$ReventlessCore.componentType, "Logs", undefined, name, undefined, undefined, undefined), opts, undefined);
   let lambda = new (Aws.lambda.Function)(name + "StateTopicPublisher", {
     handler: "index.handler",
     runtime: "nodejs22.x",
@@ -124,9 +125,9 @@ function finish(eventsApi, opts) {
         Util_LambdaLogging$ReventlessAws.logLevelEntry()
       ])
     },
-    sourceCodeHash: match.sourceCodeHash
+    sourceCodeHash: match.sourceCodeHash,
+    loggingConfig: Util_LambdaLogging$ReventlessAws.loggingConfigFor(logGroup)
   }, opts);
-  Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name + "StateTopicPublisher", lambda.name, AWS_Tags$ReventlessAws.make(name + "StateTopicPublisherLogGroup", QueryDb$ReventlessCore.componentType, "Logs", undefined, name, undefined, undefined, undefined), opts, undefined);
   entries.forEach(entry => {
     let esmName = entry.topicName + "Stream2" + name + "StateTopic";
     new (Aws.lambda.EventSourceMapping)(esmName, {

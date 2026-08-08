@@ -62,19 +62,18 @@ let logLevelFor = (
 Whether the framework creates a *managed* CloudWatch log group for this stack, or
 leaves Lambda/AppSync to auto-create an unmanaged one.
 
-**Managed for every stack by default.** A stack deployed on this framework gets
-its log groups from Pulumi on the first `pulumi up`, before Lambda/AppSync would
-lazily auto-create them — so on a fresh stack there is nothing to adopt and no
-`ResourceAlreadyExists` hazard. Every current stack is `alpha`, and there is no
-prod stack to migrate, so extending management to all stacks costs nothing today.
+**Managed for every stack by default**, and for Lambda there is nothing to adopt
+on any stack: the group is created *before* the function and under a name the
+program chooses (`Util_LambdaLogging.logGroupNameFor`), which is never the name
+Lambda auto-creates. The `ResourceAlreadyExists` hazard that made this gate
+necessary is structural for AppSync only, whose group name comes from a
+server-assigned api id.
 
-The one case that still needs care is *adopting* a stack that predates managed
-groups: it already carries Lambda's auto-created group, and `CreateLogGroup`
-fails with `ResourceAlreadyExists` rather than adopting it. When such a stack
-ever appears, either `pulumi import` its groups first, or name it in the
-`unmanagedLogGroupStacks` config key to keep it on auto-created groups until the
-import is done. That escape hatch is the "prepared for the future" seam — turning
-a prod adoption into a config flip rather than an edit to this function.
+`unmanagedLogGroupStacks` remains the escape hatch for a stack that has adopted
+**nothing** — it makes the program stop *declaring* log groups. Do not reach for
+it once a stack holds managed groups in state: "stop declaring them" reads to the
+engine as removed-from-the-program, and the next deploy deletes them along with
+their retention, tags and any attached metric filters.
 */
 let managesLogGroup = (~stack: string, ~unmanagedStacks: array<string>=[]): bool =>
   !(unmanagedStacks->Array.includes(stack))

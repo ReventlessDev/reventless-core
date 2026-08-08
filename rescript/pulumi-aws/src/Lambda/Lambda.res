@@ -215,6 +215,22 @@ module Function = {
     securityGroupIds: Pulumi.Input.t<array<Pulumi.Input.t<string>>>,
   }
 
+  /** Advanced Logging Controls. Naming `logGroup` here is what lets a deploy own
+    the group: the function writes to a group the program created, so Lambda
+    never lazily auto-creates `/aws/lambda/<physical name>` on first invocation
+    and there is no window in which the two can race.
+
+    `logFormat` is required by the provider. `Text` is AWS's own default and
+    leaves the emitted lines byte-identical; `JSON` wraps every application line
+    in an envelope, and is the only mode in which `applicationLogLevel` /
+    `systemLogLevel` apply. */
+  type loggingConfig = {
+    logFormat: Pulumi.Input.t<string>,
+    logGroup?: Pulumi.Input.t<string>,
+    applicationLogLevel?: Pulumi.Input.t<string>,
+    systemLogLevel?: Pulumi.Input.t<string>,
+  }
+
   type args = {
     handler?: Pulumi.Input.t<string>,
     runtime?: Pulumi.Input.t<string>,
@@ -229,6 +245,7 @@ module Function = {
     reservedConcurrentExecutions?: Pulumi.Input.t<int>,
     ephemeralStorage?: Pulumi.Input.t<ephemeralStorage>,
     vpcConfig?: Pulumi.Input.t<vpcConfig>,
+    loggingConfig?: Pulumi.Input.t<loggingConfig>,
   }
 
   type t = {

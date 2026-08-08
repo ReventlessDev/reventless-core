@@ -544,15 +544,35 @@ single global setting cannot serve both.
   (a caller env var or `commandHandlerConfig.logLevel` wins). No migration
   hazard: it is only an env var.
 - **Managed log groups** (with tiered `retentionInDays`) are created for **every**
-  stack by default (`Util_LogRetention.managesLogGroup`). A fresh stack gets its
-  groups from Pulumi before Lambda/AppSync auto-create them, so there is nothing
-  to adopt. The one exception is *adopting* a stack that predates managed groups:
-  it already has an auto-created group, and `CreateLogGroup` fails
-  `ResourceAlreadyExists` rather than adopting it — so either `pulumi import` its
-  groups first or list it in `unmanagedLogGroupStacks` (below) until you do.
+  stack by default (`Util_LogRetention.managesLogGroup`).
+- **A Lambda's group is created before the function that writes to it.** The
+  deploy names the group itself — `/aws/lambda/<stack>-<component>` — and hands
+  it to the function through Lambda's Advanced Logging Controls
+  (`loggingConfig.logGroup`). Two consequences worth knowing:
+  - The deploy cannot lose a race to the Lambda service. A function configured
+    with a log group has somewhere to write from its first invocation, so it
+    never triggers the lazy auto-create of `/aws/lambda/<physical name>` that a
+    group created *after* its function would have had to beat. That race was not
+    survivable on retry: the auto-created group persists, so every later attempt
+    failed `ResourceAlreadyExists` identically.
+  - The name is stable across replacement. It carries no Pulumi `-<7hex>`
+    physical-name suffix, so replacing a function keeps its group instead of
+    stranding the old one as an orphan nothing tears down.
+
+  A stack that ran an earlier version keeps its old auto-created groups. They are
+  no longer written to and no longer managed, and they have no retention — delete
+  them once the first deploy on the new naming has landed.
+- **AppSync groups are not covered by that ordering.** An AppSync API's group name
+  (`/aws/appsync/apis/<id>`) is fixed by a server-assigned id and the service has
+  no "write here" knob, so its group can only be created after the API exists.
 - **Overrides:** the Pulumi config keys `logRetentionDays` (an integer; `0` =
   never expire) and `logLevel` override the tier for a whole stack;
   `commandHandlerConfig.logRetentionDays` / `logLevel` override it for a single
   command handler. `unmanagedLogGroupStacks` (CSV of stack names) keeps the named
-  stacks on Lambda/AppSync auto-created groups — the escape hatch for a stack
-  pending a `pulumi import` adoption.
+  stacks on Lambda/AppSync auto-created groups.
+
+  `unmanagedLogGroupStacks` is only safe on a stack that has adopted **nothing**.
+  It makes the program stop *declaring* log groups, which on a stack that already
+  holds some in state reads as removed-from-the-program — so the next deploy
+  deletes those groups, together with their retention, their tags and any metric
+  filters attached to them.
