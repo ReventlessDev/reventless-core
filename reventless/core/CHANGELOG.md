@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.217 (2026-08-08)
+
+### Bug Fixes
+
+* **core:** attribute resources built after a builder's construct returns ([67d6d9c](https://github.com/ReventlessDev/reventless-core/commit/67d6d9c0ff3ff1d38cd9e8ad43a4b86121abf827))
+### Features
+
+* **core:** let an extension switch query interception on, and provision it ([4523b10](https://github.com/ReventlessDev/reventless-core/commit/4523b10597f1a028eedccc42391b250b25a6ddd3))
+
+
 # 3.0.0-alpha.216 (2026-08-08)
 
 ### Features

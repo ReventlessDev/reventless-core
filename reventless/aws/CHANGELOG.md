@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.273 (2026-08-08)
+
+### Bug Fixes
+
+* **aws:** create a Lambda's log group before the function that writes to it ([8d1e459](https://github.com/ReventlessDev/reventless-core/commit/8d1e4591127489d2ae8e84e7ade3843a1a859eb6))
+* **core:** attribute resources built after a builder's construct returns ([67d6d9c](https://github.com/ReventlessDev/reventless-core/commit/67d6d9c0ff3ff1d38cd9e8ad43a4b86121abf827))
+### Features
+
+* **aws:** adopt an existing AppSync log group instead of failing on it ([ebed6c1](https://github.com/ReventlessDev/reventless-core/commit/ebed6c1ceb77b8deebff10a9c45715c107861f04))
+* **core:** let an extension switch query interception on, and provision it ([4523b10](https://github.com/ReventlessDev/reventless-core/commit/4523b10597f1a028eedccc42391b250b25a6ddd3))
+
+
 # 3.0.0-alpha.272 (2026-08-08)
 
 ### Bug Fixes

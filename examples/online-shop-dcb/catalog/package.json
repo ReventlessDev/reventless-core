@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-dcb-catalog",
-  "version": "1.0.0-alpha.195",
+  "version": "1.0.0-alpha.196",
   "description": "Online Shop example — Catalog bounded context (Product & Category) using the DCB pattern",
   "license": "Apache-2.0",
   "scripts": {

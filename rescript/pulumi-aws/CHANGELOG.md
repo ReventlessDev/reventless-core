@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.67 (2026-08-08)
+
+### Bug Fixes
+
+* **aws:** create a Lambda's log group before the function that writes to it ([8d1e459](https://github.com/ReventlessDev/reventless-core/commit/8d1e4591127489d2ae8e84e7ade3843a1a859eb6))
+
+
 # 2.4.0-alpha.66 (2026-08-05)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws
