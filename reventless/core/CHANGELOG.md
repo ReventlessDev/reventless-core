@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.215 (2026-08-08)
+
+### Features
+
+* **core,aws,local:** add the RuntimeExtension cold-start seam ([143e30e](https://github.com/ReventlessDev/reventless-core/commit/143e30eeded6232ce7f0fcc18328939b2917bb31))
+
+
 # 3.0.0-alpha.214 (2026-08-07)
 
 ### Features
