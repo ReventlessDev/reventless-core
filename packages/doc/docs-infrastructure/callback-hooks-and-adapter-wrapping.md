@@ -6,7 +6,7 @@ The framework provides optional callback hooks at key processing boundaries and 
 
 ## Callback Hooks
 
-Five module-level hooks are available, each a `ref<option<callback>>`. When `None` (the default), the framework passes through unchanged. When set to `Some(fn)`, the function runs as part of the normal processing flow.
+Six module-level hooks are available, each a `ref<option<callback>>`. When `None` (the default), the framework passes through unchanged. When set to `Some(fn)`, the function runs as part of the normal processing flow.
 
 ### Command Interceptor
 
@@ -32,6 +32,39 @@ Called before every command is dispatched to an aggregate or state change slice.
 **Where it fires:** `CommandGenerator_Callback.makeGenerateCommand` — the function that every command generator resolver calls when a GraphQL mutation arrives.
 
 **Use cases:** authentication, authorization, rate limiting, tenant scoping, audit logging, command validation.
+
+### Command Outcome
+
+**Module:** `CommandTopic_Helpers` (re-exported by `CommandTopic`)
+
+```rescript
+type refusalCause = DomainRejection | InfrastructureFailure
+
+type observedOutcome =
+  | OutcomeAccepted({entityId: option<string>, eventCount: int})
+  | OutcomeRejected({errorCode: string, errorDetail: string, cause: refusalCause})
+
+type commandOutcomeReport = {
+  component: string,
+  reference: string,
+  outcome: observedOutcome,
+}
+
+let registerCommandOutcome: (commandOutcomeReport => unit) => unit
+let clearCommandOutcome: unit => unit
+```
+
+Called once per command, after its outcome is settled. The counterpart to the command interceptor: the interceptor is a **gate** that runs before `decide`, so it sees commands it refuses but never learns what the ones it allowed did. This hook is the terminal half — how many events the command actually produced, or which declared error refused it.
+
+`errorCode` is the variant tag of the component's `Spec.errorSchema` (e.g. `"AlreadyExists"`); `errorDetail` is the JSON-stringified error payload, empty for payload-less variants. `reference` is the command's `meta.msgId`.
+
+`cause` separates the two ways a command is refused. `DomainRejection` is `decide` returning `Error` — the model working as designed. `InfrastructureFailure` is the decision never landing: an event-log append that failed, or conflict retries exhausted. Without the distinction a broken event log reads as a business rejection.
+
+**Where it fires:** `CommandTopic_Helpers.reportAccepted` / `reportRejected` — the single point both write-side kinds funnel every terminal outcome through, so one hook covers aggregates and state change slices. Both callbacks call them **unconditionally**, so the hook sees fire-and-forget dispatches too, not only the ones a producer awaited.
+
+Observe-only and synchronous: the return value is ignored, and a throwing hook is logged and swallowed rather than failing a command whose outcome has already happened.
+
+**Use cases:** rejection rates per command, event-count attribution, distinguishing a domain refusal that is a bug from one that is the model working, write-side SLIs.
 
 ### Query Interceptor
 
@@ -109,7 +142,7 @@ Called after a plugin's components are fully constructed. Receives the plugin na
 
 ## Registering Hooks in a Deployed Runtime
 
-The four runtime hooks above are module-level `ref`s. They only do anything if something calls the registrar **in the same process, before the first request**. In your deploy program that is easy; inside a deployed Lambda it is not — the handler is a framework-owned entry shell that imports framework and domain modules only, so an out-of-tree package has nowhere to put its registration.
+The five runtime hooks above are module-level `ref`s. They only do anything if something calls the registrar **in the same process, before the first request**. In your deploy program that is easy; inside a deployed Lambda it is not — the handler is a framework-owned entry shell that imports framework and domain modules only, so an out-of-tree package has nowhere to put its registration.
 
 `RuntimeExtension` is the way in. It fires once per runtime process, before that runtime handles its first request.
 
@@ -295,6 +328,10 @@ EventLog_Operations.append / DcbEventLog_Operations.append
   |-- write to EventLog / DcbEventLog
   |-- publish to EventTopic
   |-- afterPublishHook -> observe events
+  |
+  v
+CommandTopic_Helpers.reportAccepted / reportRejected
+  |-- commandOutcomeHook -> observe the settled outcome
   |
   v
 Query arrives (GraphQL query)

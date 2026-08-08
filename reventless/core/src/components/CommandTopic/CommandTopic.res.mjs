@@ -23,6 +23,14 @@ function filter(allCommandTopics, names) {
 
 let componentType = "CommandTopic";
 
+let commandOutcomeHook = CommandTopic_Helpers$ReventlessCore.commandOutcomeHook;
+
+let registerCommandOutcome = CommandTopic_Helpers$ReventlessCore.registerCommandOutcome;
+
+let clearCommandOutcome = CommandTopic_Helpers$ReventlessCore.clearCommandOutcome;
+
+let fireCommandOutcome = CommandTopic_Helpers$ReventlessCore.fireCommandOutcome;
+
 let acceptedResultChannel = CommandTopic_Helpers$ReventlessCore.acceptedResultChannel;
 
 let rejectedResultChannel = CommandTopic_Helpers$ReventlessCore.rejectedResultChannel;
@@ -50,6 +58,10 @@ let getHandlers = CommandTopic_Helpers$ReventlessCore.getHandlers;
 export {
   componentType,
   NotPublishedToChannel,
+  commandOutcomeHook,
+  registerCommandOutcome,
+  clearCommandOutcome,
+  fireCommandOutcome,
   acceptedResultChannel,
   rejectedResultChannel,
   reportAccepted,

@@ -6,6 +6,14 @@ let componentType = CommandTopic$ReventlessCore.componentType;
 
 let NotPublishedToChannel = CommandTopic$ReventlessCore.NotPublishedToChannel;
 
+let commandOutcomeHook = CommandTopic$ReventlessCore.commandOutcomeHook;
+
+let registerCommandOutcome = CommandTopic$ReventlessCore.registerCommandOutcome;
+
+let clearCommandOutcome = CommandTopic$ReventlessCore.clearCommandOutcome;
+
+let fireCommandOutcome = CommandTopic$ReventlessCore.fireCommandOutcome;
+
 let acceptedResultChannel = CommandTopic$ReventlessCore.acceptedResultChannel;
 
 let rejectedResultChannel = CommandTopic$ReventlessCore.rejectedResultChannel;
@@ -37,6 +45,10 @@ let filter = CommandTopic$ReventlessCore.filter;
 export {
   componentType,
   NotPublishedToChannel,
+  commandOutcomeHook,
+  registerCommandOutcome,
+  clearCommandOutcome,
+  fireCommandOutcome,
   acceptedResultChannel,
   rejectedResultChannel,
   reportAccepted,

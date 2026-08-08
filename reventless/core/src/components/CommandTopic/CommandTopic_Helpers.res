@@ -18,6 +18,71 @@ is the JSON-stringified error payload (or empty string for payload-less variants
 */
 type rejectedResult = {errorCode: string, errorDetail: string}
 
+/**
+Why a command was refused.
+
+`DomainRejection` is `Behavior.decide` returning `Error` — the model declining the command,
+which is the model working. `InfrastructureFailure` is the decision never landing: an event-log
+append that failed outright or exhausted its conflict retries. Both arrive on `reportRejected`,
+so without this a consumer would read a broken event log as a business rejection.
+*/
+type refusalCause = DomainRejection | InfrastructureFailure
+
+/**
+What became of one command. Constructors are prefixed to stay clear of `commandOutcome`'s
+`Accepted`/`Rejected` below — that type is the producer-facing result shape (and the GraphQL
+`CommandResult` union); this one is the observation, and carries the refusal cause it doesn't.
+*/
+type observedOutcome =
+  | OutcomeAccepted({entityId: option<string>, eventCount: int})
+  | OutcomeRejected({errorCode: string, errorDetail: string, cause: refusalCause})
+
+/** `reference` is the command's `meta.msgId` on every current transport. */
+type commandOutcomeReport = {
+  component: string,
+  reference: string,
+  outcome: observedOutcome,
+}
+
+type commandOutcomeHook = commandOutcomeReport => unit
+
+/**
+Module-level outcome hook, in the shape the `RuntimeExtension` cold-start seam already reaches
+— so an extension registers it from `onColdStart` alongside the interception and publish hooks,
+and no new registration path is needed. None = no-op (default).
+*/
+let commandOutcomeHook: ref<option<commandOutcomeHook>> = ref(None)
+
+let registerCommandOutcome = (hook: commandOutcomeHook) => {
+  commandOutcomeHook.contents = Some(hook)
+}
+
+let clearCommandOutcome = () => {
+  commandOutcomeHook.contents = None
+}
+
+// Fired from reportAccepted/reportRejected below, which both write-side kinds call
+// unconditionally — so this sees fire-and-forget dispatches too, not just the ones a
+// producer awaited on the side-channels.
+//
+// A throwing hook is logged and swallowed: the outcome it observes has already happened,
+// and letting an observer fail a completed command would make an extension an outage
+// (the same failure policy the cold-start seam settled on).
+let fireCommandOutcome = (~component: string, ~reference: string, outcome: observedOutcome) =>
+  commandOutcomeHook.contents->Option.forEach(hook =>
+    switch hook({component, reference, outcome}) {
+    | () => ()
+    | exception err =>
+      EffectLogger.logError(
+        ~comp=`CommandTopic(${component})`,
+        `command-outcome hook threw (ignored): ${err
+          ->JsExn.fromException
+          ->Option.flatMap(JsExn.message)
+          ->Option.getOr("unknown")}`,
+      )->Effect.runSync
+    }
+  )
+
 // Side-channel for publishJsonsAndWait result propagation.
 // Set by runInlineAndCollect before invoking the handler; cleared after.
 // Callback implementations call reportAccepted during inline dispatch.
@@ -28,11 +93,32 @@ let acceptedResultChannel: ref<option<(string, acceptedResult) => unit>> = ref(N
 // `Rejected` outcomes that carry the real error code and detail.
 let rejectedResultChannel: ref<option<(string, rejectedResult) => unit>> = ref(None)
 
-let reportAccepted = (reference: string, result: acceptedResult) =>
+// `~component` is the owning component's `Spec.name`: an outcome isn't interpretable without
+// knowing which component produced it, and the side-channel (keyed per inline dispatch) never
+// had to say. `~cause` is required rather than defaulted so a new rejection site has to state
+// which kind it is instead of silently reporting infrastructure as a domain decision.
+let reportAccepted = (~component: string, reference: string, result: acceptedResult) => {
   acceptedResultChannel.contents->Option.forEach(cb => cb(reference, result))
+  fireCommandOutcome(
+    ~component,
+    ~reference,
+    OutcomeAccepted({entityId: result.entityId, eventCount: result.eventCount}),
+  )
+}
 
-let reportRejected = (reference: string, result: rejectedResult) =>
+let reportRejected = (
+  ~component: string,
+  ~cause: refusalCause,
+  reference: string,
+  result: rejectedResult,
+) => {
   rejectedResultChannel.contents->Option.forEach(cb => cb(reference, result))
+  fireCommandOutcome(
+    ~component,
+    ~reference,
+    OutcomeRejected({errorCode: result.errorCode, errorDetail: result.errorDetail, cause}),
+  )
+}
 
 // Placed here (rather than CommandTopic.res) so runInlineAndCollect can use commandOutcome
 // without importing Adapter.res → @pulumi/pulumi. Re-exported by CommandTopic via include.

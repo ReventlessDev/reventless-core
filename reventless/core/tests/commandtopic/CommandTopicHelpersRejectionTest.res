@@ -26,8 +26,14 @@ describe("CommandTopic_Helpers.runInlineAndCollect:", () => {
       ->Effect.map(items => {
         items->Array.forEach(item => {
           // Both channels report for the same reference; rejected wins.
-          CommandTopic_Helpers.reportAccepted(item.reference, {entityId: "agg-1", eventCount: 0})
+          CommandTopic_Helpers.reportAccepted(
+            ~component="TestService",
+            item.reference,
+            {entityId: "agg-1", eventCount: 0},
+          )
           CommandTopic_Helpers.reportRejected(
+            ~component="TestService",
+            ~cause=DomainRejection,
             item.reference,
             {errorCode: "AlreadyExists", errorDetail: ""},
           )
@@ -53,6 +59,8 @@ describe("CommandTopic_Helpers.runInlineAndCollect:", () => {
       ->Effect.map(items => {
         items->Array.forEach(item =>
           CommandTopic_Helpers.reportRejected(
+            ~component="TestService",
+            ~cause=DomainRejection,
             item.reference,
             {errorCode: "BusinessRuleViolated", errorDetail: "{\"reason\":\"x\"}"},
           )

@@ -322,6 +322,7 @@ module Make = (
             // No append, but the read snapshot is valid — cache it for the next command.
             cachePut((state, headPosition))
             CommandTopic_Helpers.reportAccepted(
+              ~component=Spec.name,
               cmdJson.meta.msgId,
               switch entityId {
               | Some(eid) => {entityId: eid, eventCount: 0}
@@ -373,6 +374,7 @@ module Make = (
                   // next command's delta read picks our events up from `headPosition`.
                   cachePut((state, headPosition))
                   CommandTopic_Helpers.reportAccepted(
+                    ~component=Spec.name,
                     cmdJson.meta.msgId,
                     switch entityId {
                     | Some(eid) => {entityId: eid, eventCount: rawEvents->Array.length}
@@ -412,7 +414,12 @@ module Make = (
                     if errorCode == "Conflict" {
                       Metrics.emitCount(~metric="AppendConflict", ~slice=Spec.name)
                     }
+                    // Both arms here are storage, not the model: a surfaced Conflict is
+                    // contention the retry loop couldn't absorb, and AppendFailed is the
+                    // store failing. `decide` had already said Ok.
                     CommandTopic_Helpers.reportRejected(
+                      ~component=Spec.name,
+                      ~cause=InfrastructureFailure,
                       cmdJson.meta.msgId,
                       {errorCode, errorDetail: errDetail},
                     )
@@ -433,7 +440,12 @@ module Make = (
               payloadDict->Dict.toArray->Array.length == 0
                 ? ""
                 : payloadDict->JSON.Encode.object->JSON.stringify
-            CommandTopic_Helpers.reportRejected(cmdJson.meta.msgId, {errorCode, errorDetail})
+            CommandTopic_Helpers.reportRejected(
+              ~component=Spec.name,
+              ~cause=DomainRejection,
+              cmdJson.meta.msgId,
+              {errorCode, errorDetail},
+            )
             EffectLogger.logError(
               ~comp,
               `decide rejected: ${errorCode} ${errorDetail}`,

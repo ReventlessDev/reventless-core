@@ -284,13 +284,25 @@ module Make = (
     outcomes->Array.map(((reference, outcome, _meta)) =>
       switch outcome {
       | CmdRejected({errorCode, errorDetail}) =>
-        CommandTopic_Helpers.reportRejected(reference, {errorCode, errorDetail})
+        CommandTopic_Helpers.reportRejected(
+          ~component=Spec.name,
+          ~cause=DomainRejection,
+          reference,
+          {errorCode, errorDetail},
+        )
         Ok(reference)
       | CmdOk(_) if appendSucceeded =>
-        CommandTopic_Helpers.reportAccepted(reference, {entityId, eventCount: appendedEventCount})
+        CommandTopic_Helpers.reportAccepted(
+          ~component=Spec.name,
+          reference,
+          {entityId, eventCount: appendedEventCount},
+        )
         Ok(reference)
       | CmdOk(_) =>
+        // The decision succeeded and the append did not — infrastructure, not the model.
         CommandTopic_Helpers.reportRejected(
+          ~component=Spec.name,
+          ~cause=InfrastructureFailure,
           reference,
           {errorCode: "AppendFailed", errorDetail: appendErrorDetail},
         )

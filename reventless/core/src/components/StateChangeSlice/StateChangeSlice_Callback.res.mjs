@@ -173,7 +173,7 @@ function Make(Spec) {
                   state,
                   headPosition
                 ]);
-                CommandTopic_Helpers$ReventlessCore.reportAccepted(cmdJson.meta.msgId, entityId !== undefined ? ({
+                CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.msgId, entityId !== undefined ? ({
                     entityId: entityId,
                     eventCount: 0
                   }) : ({
@@ -223,7 +223,7 @@ function Make(Spec) {
                     state,
                     headPosition
                   ]);
-                  CommandTopic_Helpers$ReventlessCore.reportAccepted(cmdJson.meta.msgId, entityId !== undefined ? ({
+                  CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, cmdJson.meta.msgId, entityId !== undefined ? ({
                       entityId: entityId,
                       eventCount: rawEvents.length
                     }) : ({
@@ -257,7 +257,7 @@ function Make(Spec) {
                   if (errorCode === "Conflict") {
                     Metrics$ReventlessCore.emitCount("AppendConflict", Spec.name, undefined);
                   }
-                  CommandTopic_Helpers$ReventlessCore.reportRejected(cmdJson.meta.msgId, {
+                  CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", cmdJson.meta.msgId, {
                     errorCode: errorCode,
                     errorDetail: errDetail
                   });
@@ -277,7 +277,7 @@ function Make(Spec) {
             let match = Message$ReventlessCore.splitMessage(errorJson);
             let payloadDict = match[1];
             let errorDetail = Object.entries(payloadDict).length === 0 ? "" : JSON.stringify(payloadDict);
-            CommandTopic_Helpers$ReventlessCore.reportRejected(cmdJson.meta.msgId, {
+            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", cmdJson.meta.msgId, {
               errorCode: errorCode,
               errorDetail: errorDetail
             });

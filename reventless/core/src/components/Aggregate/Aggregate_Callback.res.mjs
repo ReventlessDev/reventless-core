@@ -200,7 +200,7 @@ function Make(Spec) {
         let reference = param[0];
         if (outcome.TAG === "CmdOk") {
           if (appendSucceeded) {
-            CommandTopic_Helpers$ReventlessCore.reportAccepted(reference, {
+            CommandTopic_Helpers$ReventlessCore.reportAccepted(Spec.name, reference, {
               entityId: entityId,
               eventCount: appendedEventCount
             });
@@ -209,7 +209,7 @@ function Make(Spec) {
               _0: reference
             };
           } else {
-            CommandTopic_Helpers$ReventlessCore.reportRejected(reference, {
+            CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "InfrastructureFailure", reference, {
               errorCode: "AppendFailed",
               errorDetail: appendErrorDetail
             });
@@ -219,7 +219,7 @@ function Make(Spec) {
             };
           }
         }
-        CommandTopic_Helpers$ReventlessCore.reportRejected(reference, {
+        CommandTopic_Helpers$ReventlessCore.reportRejected(Spec.name, "DomainRejection", reference, {
           errorCode: outcome.errorCode,
           errorDetail: outcome.errorDetail
         });
