@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.204 (2026-08-08)
+
+### Features
+
+* **core:** add a runtime hook for command outcomes ([f2092a8](https://github.com/ReventlessDev/reventless-core/commit/f2092a8f9a8d8d7feee4f3de19bea7297a250cbd))
+
+
 # 3.0.0-alpha.203 (2026-08-08)
 
 ### Features
