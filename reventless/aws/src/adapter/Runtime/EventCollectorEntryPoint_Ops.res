@@ -659,12 +659,9 @@ let warnSkippedExtension = (ext: extensionConfig) =>
 // ── Asset files (bundled alongside index.mjs in the code archive) ───────────
 // pluginDefinition is shipped as a file rather than packed into HANDLER_CONFIG
 // (UpdateFunctionConfiguration has a 5120-byte limit; pluginStructure alone blew
-// past it). process.cwd() is /var/task in Lambda, so a relative URL resolves
-// against the extracted zip.
+// past it). process.cwd() is /var/task in Lambda, where the archive is extracted.
 
-type url
-@new external makeUrl: (string, string) => url = "URL"
-@module("node:fs") external readFileSyncUrl: (url, string) => string = "readFileSync"
+let assetPath = (fileName: string): string => NodePath.join([NodeProcess.cwd(), fileName])
 
 // pluginDefinition.json is written at deploy time as a stable JSON literal
 // matching Reventless.Plugin.pluginDefinitionSchema (PluginRuntime_Builder), so
@@ -675,9 +672,7 @@ external asPluginDefinition: JSON.t => Reventless.Plugin.pluginDefinition = "%id
 
 let loadPluginDefinition = (): Reventless.Plugin.pluginDefinition =>
   try {
-    readFileSyncUrl(makeUrl("./pluginDefinition.json", `file://${NodeProcess.cwd()}/`), "utf-8")
-    ->JSON.parseOrThrow
-    ->asPluginDefinition
+    assetPath("pluginDefinition.json")->NodeFs.readFileSync->JSON.parseOrThrow->asPluginDefinition
   } catch {
   | exn =>
     JsError.throwWithMessage(
@@ -691,7 +686,7 @@ let loadPluginDefinition = (): Reventless.Plugin.pluginDefinition =>
 // both map to None.
 let loadUiFragments = (): option<JSON.t> =>
   try {
-    switch readFileSyncUrl(makeUrl("./uiFragments.json", `file://${NodeProcess.cwd()}/`), "utf-8")->JSON.parseOrThrow {
+    switch assetPath("uiFragments.json")->NodeFs.readFileSync->JSON.parseOrThrow {
     | JSON.Null => None
     | json => Some(json)
     }
