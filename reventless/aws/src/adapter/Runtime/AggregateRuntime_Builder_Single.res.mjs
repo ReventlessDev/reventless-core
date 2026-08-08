@@ -200,7 +200,7 @@ function finish() {
       Stdlib_Option.forEach(cfg.logLevel, level => {
         envVars["LOG_LEVEL"] = Pulumi.output(level);
       });
-      let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
+      let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined, undefined);
       Stdlib_Option.forEach(cfg.sqsBatchSize, CommandTopicChannel_SQS_Sync$ReventlessAws.setBatchSize);
       let vpcConfig = pgSelection !== undefined ? pgSelection.securityGroupId.apply(sgId => ({
           subnetIds: pgSelection.subnetIds,

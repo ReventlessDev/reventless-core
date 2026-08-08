@@ -243,6 +243,33 @@ type codeArchive = {
 }
 
 /**
+ * The module specifier of each registered runtime extension, in registration
+ * order — what a deployed runtime imports at cold start. `[]` when nothing is
+ * registered, which is what keeps an extension-free archive byte-identical.
+ *
+ * `ReventlessCore.RuntimeExtension` carries `import.meta.url`s because that is
+ * what an extension module can state about itself; the npm specifier a Lambda
+ * resolves is derived here, the same conversion spec and behavior modules go
+ * through.
+ */
+let runtimeExtensionSpecifiers = (): array<string> =>
+  ReventlessCore.RuntimeExtension.moduleUrls()->Array.map(getModuleSpecifier)
+
+/**
+ * Add every registered runtime extension's package to `packageDirs`, so the
+ * archive carries the modules the entry shell imports at cold start.
+ *
+ * Rooted through `getModuleSpecifier`, which caches the package root it walked
+ * to. That matters: an extension is an out-of-tree package the framework has no
+ * dependency on, so a framework-rooted `require.resolve` would not find it.
+ */
+let addRuntimeExtensionPackages = (packageDirs: dict<string>) =>
+  runtimeExtensionSpecifiers()->Array.forEach(specifier => {
+    let pkgName = extractPackageName(specifier)
+    packageDirs->Dict.set(pkgName, resolvePackageRoot(pkgName))
+  })
+
+/**
  * Build a Lambda code AssetArchive with a static re-export entry point and optional user packages.
  * Centralises the archive-building pattern used by every runtime builder.
  *
@@ -263,6 +290,13 @@ let buildCodeArchive = (
   // Used to ship payloads that would otherwise blow the 5120-byte
   // UpdateFunctionConfiguration limit when packed into HANDLER_CONFIG.
   ~extraStringAssets: dict<string>=Dict.make(),
+  // Whether this archive carries the registered runtime extensions
+  // (`ReventlessCore.RuntimeExtension`). Default-on, so a runtime builder added
+  // later gets the seam by construction rather than by remembering — the same
+  // reason `EventLogProvisioning` fires from the builders and not from each
+  // storage adapter. Support Lambdas that never fire the seam pass `false`
+  // rather than carry modules they will not import.
+  ~bundleRuntimeExtensions: bool=true,
 ): codeArchive => {
   let reExportCode = `export { handler } from "${entryPointModule}";`
   let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
@@ -288,6 +322,12 @@ let buildCodeArchive = (
     } else {
       packageDirs
     }
+  // Registered runtime extensions ride along, so the entry shell can import them
+  // at cold start. No-op when nothing is registered — the archive, and therefore
+  // `sourceCodeHash`, is unchanged.
+  if bundleRuntimeExtensions {
+    allPackageDirs->addRuntimeExtensionPackages
+  }
   let packageContentHashes: ref<array<string>> = ref([])
   allPackageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
     let (archive, contentHash) = createFilteredPackageArchive(pkgRoot)

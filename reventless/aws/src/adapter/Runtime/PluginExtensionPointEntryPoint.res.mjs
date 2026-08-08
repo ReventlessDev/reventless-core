@@ -179,7 +179,10 @@ let sqsHandler = CommandTopicChannel_SQS_Runtime$ReventlessAws.handleQueueEvent(
 
 let comp = `ExtensionPoint(` + PluginExtensionPointSpec$ReventlessInfra.name + `)`;
 
+let runtimeExtensionsReady = HandlerFactoryHelpersMjs.runtimeExtensionsReady;
+
 async function handler(event, context) {
+  await runtimeExtensionsReady;
   HandlerFactoryHelpersMjs.setRequestId(context.awsRequestId);
   let records = event.Records;
   let prim0 = `processing ` + records.length.toString() + ` record(s)`;
@@ -221,6 +224,7 @@ export {
   queue,
   sqsHandler,
   comp,
+  runtimeExtensionsReady,
   handler,
 }
 /* config Not a pure module */

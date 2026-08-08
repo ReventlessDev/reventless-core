@@ -11,7 +11,7 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../Runtime/RuntimeEnvironment_Lambda.res.mjs";
 
 function make(name, handlerConfig, secretArn, securityGroupId, subnetIds, opts) {
-  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/PgMigrationEntryPoint.res.mjs", {}, undefined);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/PgMigrationEntryPoint.res.mjs", {}, undefined, undefined);
   let sourceCodeHash = match.sourceCodeHash;
   let envVars = Object.fromEntries([[
       "HANDLER_CONFIG",

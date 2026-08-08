@@ -15,10 +15,16 @@
 
 import * as StreamOps from "./StreamRoutedEntryPoint_Ops.res.mjs";
 import * as Ops from "./StateViewSliceEntryPoint_Ops.res.mjs";
+import { runtimeExtensionsReady } from "./HandlerFactoryHelpers.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
 
 async function buildAllHandlers() {
+  // Runtime extension seam: any registered out-of-tree extension gets its
+  // onColdStart before a single handler is built, which is what makes the
+  // framework's interception/publish hooks reachable here. No-op unless the
+  // deployment registered one.
+  await runtimeExtensionsReady;
   const handlers = {};
   const entries = Ops.parseHandlerConfig(process.env["HANDLER_CONFIG"] || "");
 

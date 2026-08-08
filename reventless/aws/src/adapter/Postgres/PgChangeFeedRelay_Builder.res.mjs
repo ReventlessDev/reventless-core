@@ -23,7 +23,7 @@ import * as RuntimeEnvironment_Lambda$ReventlessAws from "../Runtime/RuntimeEnvi
 function make(name, logs, securityGroupId, subnetIds, intervalMinutesOpt, opts) {
   let intervalMinutes = intervalMinutesOpt !== undefined ? intervalMinutesOpt : 1;
   let customOpts = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
-  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/PgChangeFeedRelayEntryPoint.res.mjs", {}, undefined);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/PgChangeFeedRelayEntryPoint.res.mjs", {}, undefined, undefined);
   let logJsonOutputs = logs.map(l => Pulumi.all([
     l.connectionConfig,
     l.targetQueueUrl

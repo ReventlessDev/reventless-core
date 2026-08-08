@@ -123,7 +123,7 @@ function finish(plugin, stores, iteratorAgeAlarmMsOpt, opts) {
       "@reventlessdev/reventless-aws",
       Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws")
     ]]);
-  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Upload/Upload_Claim_S3_Ops.res.mjs", packageDirs, undefined);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Upload/Upload_Claim_S3_Ops.res.mjs", packageDirs, undefined, false);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
   let lambda = new (Aws.lambda.Function)(name, {
     handler: "index.handler",

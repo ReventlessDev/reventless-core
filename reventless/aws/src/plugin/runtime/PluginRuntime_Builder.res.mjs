@@ -371,7 +371,7 @@ function Make(EventCollectorChannel) {
       let extraStringAssets = {};
       extraStringAssets["pluginDefinition.json"] = param[0];
       extraStringAssets["uiFragments.json"] = param[1];
-      return Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/EventCollectorEntryPoint.mjs", packageDirs, extraStringAssets);
+      return Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/EventCollectorEntryPoint.mjs", packageDirs, extraStringAssets, undefined);
     });
     let codeOutput = bundleOutput.apply(b => b.code);
     let sourceCodeHashOutput = bundleOutput.apply(b => b.sourceCodeHash);
@@ -486,7 +486,7 @@ function Make(EventCollectorChannel) {
     envVars["EP_QUEUE_URL"] = epQueueUrl;
     envVars["PLUGIN_ID"] = Pulumi.output(hbConfig.pluginId);
     envVars["HEARTBEAT_TIMEOUT"] = Pulumi.output(hbConfig.heartbeatTimeout.toString());
-    let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.res.mjs", {}, undefined);
+    let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.res.mjs", {}, undefined, undefined);
     connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, "Scheduler", "Scheduler", match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, undefined, opts));
   };
   let forDcbCommandTopic = (param, connect, memorySizeOpt, timeoutOpt, dcbCommandTopic) => {

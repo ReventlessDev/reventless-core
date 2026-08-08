@@ -84,6 +84,7 @@ let make = (
   let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
     ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Api/Platform_UIFragments_Lambda_Ops.res.mjs",
     ~packageDirs,
+    ~bundleRuntimeExtensions=false,
   )
 
   let layers =

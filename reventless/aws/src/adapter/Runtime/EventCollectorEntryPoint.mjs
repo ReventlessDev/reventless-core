@@ -66,7 +66,7 @@
 
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
-import { patchSpecId } from "./HandlerFactoryHelpers.mjs";
+import { patchSpecId, runtimeExtensionsReady } from "./HandlerFactoryHelpers.mjs";
 import { Make as extensionPointOperationsMake } from "@reventlessdev/reventless-core/src/components/ExtensionPoint/ExtensionPoint_Operations.res.mjs";
 import { Make as extensionOperationsMake } from "@reventlessdev/reventless-core/src/components/Extension/Extension_Operations.res.mjs";
 import { Make as extensionMappingMake } from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
@@ -93,6 +93,11 @@ const importFromAsset = (() => {
 })();
 
 async function buildHandler() {
+  // Runtime extension seam: any registered out-of-tree extension gets its
+  // onColdStart before a single handler is built, which is what makes the
+  // framework's interception/publish hooks reachable here. No-op unless the
+  // deployment registered one.
+  await runtimeExtensionsReady;
   const config = Ops.parseHandlerConfig(process.env["HANDLER_CONFIG"] || "");
   const pluginDefinition = Ops.loadPluginDefinition();
 

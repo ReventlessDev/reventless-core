@@ -257,6 +257,34 @@ let makeFromCodeAsset: (
   variables->Dict.set("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make)
   variables->Dict.set("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make)
 
+  // Runtime extension seam: the modules a cold start imports plus this runtime's
+  // identity, so an out-of-tree extension can register the framework's runtime
+  // callback hooks before the first request (see
+  // ReventlessCore.RuntimeExtension). Emitted here rather than folded into
+  // HANDLER_CONFIG for two reasons: every runtime builder already routes through
+  // makeFromCodeAsset with the kind and name the seam needs, so no call site
+  // changes; and HANDLER_CONFIG is already close to the 5120-byte
+  // UpdateFunctionConfiguration limit. Absent entirely when nothing is
+  // registered — an extension-free deployment gets the env it always had.
+  if !ReventlessCore.RuntimeExtension.isEmpty() {
+    let {ReventlessCore.ResourceAttribution.plugin: plugin, platform} =
+      ReventlessCore.ResourceAttribution.current.contents
+    let orNull = o => o->Option.mapOr(JSON.Null, s => JSON.String(s))
+    let config = JSON.Object(
+      Dict.fromArray([
+        (
+          "modules",
+          JSON.Array(Util_Bundle.runtimeExtensionSpecifiers()->Array.map(s => JSON.String(s))),
+        ),
+        ("runtimeKind", JSON.String(componentKind->ReventlessCore.ComponentType.toString)),
+        ("component", JSON.String(name)),
+        ("plugin", plugin->orNull),
+        ("platform", platform->orNull),
+      ]),
+    )
+    variables->Dict.set("RUNTIME_EXTENSIONS", config->JSON.stringify->Pulumi.Input.make)
+  }
+
   let tags = tagsFor(~resourceName=name, ~role=Runtime)
   let lambda = Lambda.Function.make(
     ~name,

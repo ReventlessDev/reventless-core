@@ -153,7 +153,7 @@ function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, feedQueu
   }
   packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws");
   packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-core");
-  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs", packageDirs, undefined);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs", packageDirs, undefined, undefined);
   let vpcConfig = qdbSelection !== undefined ? qdbSelection.securityGroupId.apply(sgId => ({
       subnetIds: qdbSelection.subnetIds,
       securityGroupIds: [sgId]

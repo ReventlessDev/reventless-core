@@ -13,7 +13,7 @@
 // EventMapperEntryPoint_Ops.res.
 
 import { $$String as IdString } from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
-import { patchSpecId } from "./HandlerFactoryHelpers.mjs";
+import { patchSpecId, runtimeExtensionsReady } from "./HandlerFactoryHelpers.mjs";
 import { MakeCounterHandler } from "@reventlessdev/reventless-core/src/components/EventMapper/EventMapper_Callback.res.mjs";
 import * as Ops from "./EventMapperEntryPoint_Ops.res.mjs";
 
@@ -34,6 +34,11 @@ function patchMappingsSourceIds(mappingsModule) {
 }
 
 async function build() {
+  // Runtime extension seam: any registered out-of-tree extension gets its
+  // onColdStart before a single handler is built, which is what makes the
+  // framework's interception/publish hooks reachable here. No-op unless the
+  // deployment registered one.
+  await runtimeExtensionsReady;
   const config = Ops.parseHandlerConfig(process.env["HANDLER_CONFIG"] || "{}");
 
   const targetSpecModule = await dynamicImport(config.targetSpecModule);

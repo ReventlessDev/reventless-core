@@ -10,6 +10,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as RuntimeExtension$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/RuntimeExtension/RuntimeExtension.res.mjs";
 
 let packageRootCache = {};
 
@@ -176,8 +177,20 @@ function createFilteredPackageArchive(packageRoot) {
   ];
 }
 
-function buildCodeArchive(entryPointModule, packageDirs, extraStringAssetsOpt) {
+function runtimeExtensionSpecifiers() {
+  return RuntimeExtension$ReventlessCore.moduleUrls().map(getModuleSpecifier);
+}
+
+function addRuntimeExtensionPackages(packageDirs) {
+  RuntimeExtension$ReventlessCore.moduleUrls().map(getModuleSpecifier).forEach(specifier => {
+    let pkgName = extractPackageName(specifier);
+    packageDirs[pkgName] = resolvePackageRoot(undefined, pkgName);
+  });
+}
+
+function buildCodeArchive(entryPointModule, packageDirs, extraStringAssetsOpt, bundleRuntimeExtensionsOpt) {
   let extraStringAssets = extraStringAssetsOpt !== undefined ? extraStringAssetsOpt : ({});
+  let bundleRuntimeExtensions = bundleRuntimeExtensionsOpt !== undefined ? bundleRuntimeExtensionsOpt : true;
   let reExportCode = `export { handler } from "` + entryPointModule + `";`;
   let archiveContents = {};
   archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
@@ -192,6 +205,9 @@ function buildCodeArchive(entryPointModule, packageDirs, extraStringAssetsOpt) {
     allPackageDirs = dirs;
   } else {
     allPackageDirs = packageDirs;
+  }
+  if (bundleRuntimeExtensions) {
+    addRuntimeExtensionPackages(allPackageDirs);
   }
   let packageContentHashes = {
     contents: []
@@ -236,6 +252,8 @@ export {
   isSkippedDir,
   walkDir,
   createFilteredPackageArchive,
+  runtimeExtensionSpecifiers,
+  addRuntimeExtensionPackages,
   buildCodeArchive,
 }
 /* localRequire Not a pure module */

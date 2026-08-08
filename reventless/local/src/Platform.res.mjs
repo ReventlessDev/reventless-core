@@ -39,6 +39,7 @@ import * as Counter_Builder$ReventlessLocal from "./components/Counter_Builder.r
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as LocalPluginSpec$ReventlessLocal from "./adapter/LocalPluginSpec.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
+import * as RuntimeExtension$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/RuntimeExtension/RuntimeExtension.res.mjs";
 import * as DomainMCP_Server$ReventlessLocal from "./adapter/DomainMCP_Server.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as LocalObjectStore$ReventlessLocal from "./adapter/ObjectStore/LocalObjectStore.res.mjs";
@@ -54,6 +55,7 @@ import * as ReadModel_Builder$ReventlessLocal from "./components/ReadModel_Build
 import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
 import * as LocalEvents_Server$ReventlessLocal from "./adapter/Api/LocalEvents_Server.res.mjs";
 import * as PlatformMCP_Server$ReventlessLocal from "./adapter/PlatformMCP_Server.res.mjs";
+import * as ResourceAttribution$ReventlessCore from "@reventlessdev/reventless-core/src/ResourceAttribution.res.mjs";
 import * as Auth_GraphqlContext$ReventlessLocal from "./adapter/Auth/Auth_GraphqlContext.res.mjs";
 import * as PgProjectionCatchup$ReventlessLocal from "./adapter/PgProjectionCatchup.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
@@ -1192,6 +1194,7 @@ function MakeWithConfig(Config) {
           ) + `)` : `backend: postgres (` + match.connection + `, event-logs only)`
       );
     log.info("Platform", undefined, tmp);
+    RuntimeExtension$ReventlessCore.notifyColdStart("Platform", "LocalPlatform", ResourceAttribution$ReventlessCore.current.contents.plugin, ResourceAttribution$ReventlessCore.current.contents.platform);
     let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getSqliteDb(), db => [
       db,
       ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Aggregate"),
@@ -2883,6 +2886,7 @@ function Make($star) {
           ) + `)` : `backend: postgres (` + backend.connection + `, event-logs only)`
       );
     log.info("Platform", undefined, tmp);
+    RuntimeExtension$ReventlessCore.notifyColdStart("Platform", "LocalPlatform", ResourceAttribution$ReventlessCore.current.contents.plugin, ResourceAttribution$ReventlessCore.current.contents.platform);
     let projectionCatchup = Stdlib_Option.map(BackendState$ReventlessLocal.getSqliteDb(), db => [
       db,
       ProjectionCheckpoint$ReventlessLocal.maxPosition(db, "Aggregate"),

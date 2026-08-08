@@ -15,6 +15,7 @@ import {
   extractMetaField,
   extractSentTimestamp,
   extractRetryCount,
+  runtimeExtensionsReady,
 } from "./HandlerFactoryHelpers.mjs";
 import { Make as dcbEventLogOperationsMake } from "@reventlessdev/reventless-core/src/components/DcbEventLog/DcbEventLog_Operations.res.mjs";
 import { makeCommandGenerator } from "./CommandGeneratorEntryPoint_Ops.res.mjs";
@@ -233,6 +234,11 @@ export async function buildHandlersForConfig(config, opts = {}) {
 }
 
 async function buildHandler() {
+  // Runtime extension seam: any registered out-of-tree extension gets its
+  // onColdStart before a single handler is built, which is what makes the
+  // framework's interception/publish hooks reachable here. No-op unless the
+  // deployment registered one.
+  await runtimeExtensionsReady;
   const configStr = process.env["HANDLER_CONFIG"];
   // Importing this module without HANDLER_CONFIG (e.g. from a test that drives
   // `buildHandlersForConfig` directly) must not crash module evaluation.

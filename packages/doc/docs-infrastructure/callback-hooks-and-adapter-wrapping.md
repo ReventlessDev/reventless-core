@@ -107,6 +107,72 @@ Called after a plugin's components are fully constructed. Receives the plugin na
 
 ---
 
+## Registering Hooks in a Deployed Runtime
+
+The four runtime hooks above are module-level `ref`s. They only do anything if something calls the registrar **in the same process, before the first request**. In your deploy program that is easy; inside a deployed Lambda it is not — the handler is a framework-owned entry shell that imports framework and domain modules only, so an out-of-tree package has nowhere to put its registration.
+
+`RuntimeExtension` is the way in. It fires once per runtime process, before that runtime handles its first request.
+
+**Module:** `ReventlessCore.RuntimeExtension`
+
+```rescript
+type coldStartHook = (
+  ~runtimeKind: ComponentType.t,
+  ~component: string,
+  ~plugin: option<string>,
+  ~platform: option<string>,
+) => unit
+
+module type Extension = {
+  let moduleUrl: string
+  let onColdStart: coldStartHook
+}
+
+let use: module(Extension) => unit
+```
+
+Write the extension in its own package and register it in the deploy program, before the platform builds:
+
+```rescript
+// @acme/tracing/src/TracingExtension.res
+module Ext: ReventlessCore.RuntimeExtension.Extension = {
+  let moduleUrl: string = %raw(`import.meta.url`)
+
+  let onColdStart = (~runtimeKind as _, ~component, ~plugin, ~platform as _) =>
+    ReventlessCore.CommandGenerator_Callback.registerCommandInterceptor(async (
+      ~identity,
+      ~componentName,
+      ~componentKind as _,
+      ~tag,
+      ~args as _,
+    ) => {
+      Trace.record(~runtime=component, ~plugin, ~componentName, ~tag, ~user=identity.userId)
+      Allow
+    })
+}
+```
+
+```rescript
+// Main.res — the deploy program, before makePlatform / deployPlugin
+ReventlessCore.RuntimeExtension.use(module(TracingExtension.Ext: ReventlessCore.RuntimeExtension.Extension))
+```
+
+That single registration covers both platforms:
+
+- **AWS** — the framework bundles the extension's package into every runtime's code archive and names the module in a `RUNTIME_EXTENSIONS` env var. Each entry shell imports it and calls `onColdStart` before it builds a handler. This is why `moduleUrl` is part of the module type: registering a first-class module only populates the deploy program's process, and the Lambda is a different one.
+- **reventless-local** — everything runs in one process, so the seam fires once at platform startup with `runtimeKind: Platform` and `component: "LocalPlatform"`. Off Lambda there is one cold start, not one per runtime.
+
+Notes:
+
+- `~component` is the runtime's logical name. A shared Lambda hosts several components of one kind (`AllAggregatesCmdHandler`), so use the per-request `~componentName` on the interception hooks to tell them apart.
+- `~plugin` / `~platform` come from the same attribution context the resource tags use, and are `None` for platform substrate.
+- `onColdStart` is **synchronous**. An awaited hook would put extension latency on every cold path. Start I/O here if you need it; don't block on it.
+- Several extensions compose, and run in registration order.
+- A throwing extension is logged at ERROR and skipped — the runtime still serves, and its siblings still run.
+- Registering nothing costs nothing: no package is bundled, no env var is set, and the code archive is byte-identical.
+
+---
+
 ## Why One Hook Per Concern
 
 Each hook is a single `ref<option<callback>>`, not a list. This is deliberate:

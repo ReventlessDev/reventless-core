@@ -211,7 +211,16 @@ let comp = `ExtensionPoint(${ReventlessInfra.PluginExtensionPointSpec.name})`
 
 // === Exported handler ===
 
+// Runtime extension seam: HandlerFactoryHelpers loads and fires any registered
+// out-of-tree extension once, at module load. Awaiting its promise before this
+// handler does any work is what makes "before the first request" a fact rather
+// than a hope; it is already resolved on every invocation after the first, and
+// resolves immediately when nothing is registered.
+@module("./HandlerFactoryHelpers.mjs")
+external runtimeExtensionsReady: promise<unit> = "runtimeExtensionsReady"
+
 let handler = async (event: PulumiAws.SQS.Queue.event, context: PulumiAws.Lambda.context) => {
+  await runtimeExtensionsReady
   setRequestId(context.awsRequestId)
   let records = event.records
 

@@ -24,7 +24,10 @@ async function runMigration(config, makePoolOpt) {
   return "ok";
 }
 
+let runtimeExtensionsReady = HandlerFactoryHelpersMjs.runtimeExtensionsReady;
+
 async function handler(_event, _context) {
+  await runtimeExtensionsReady;
   let config = JSON.parse(Stdlib_Option.getOr(process.env["HANDLER_CONFIG"], "{}"));
   return await runMigration(config, undefined);
 }
@@ -32,6 +35,7 @@ async function handler(_event, _context) {
 export {
   logInfo,
   runMigration,
+  runtimeExtensionsReady,
   handler,
 }
-/* PgRuntime-ReventlessAws Not a pure module */
+/* runtimeExtensionsReady Not a pure module */

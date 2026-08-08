@@ -13,7 +13,7 @@
 // boundary) lives type-checked in ReadModelEntryPoint_Ops.res /
 // ProjectionEntryPoint_Ops.res / StreamRoutedEntryPoint_Ops.res.
 
-import { patchSpecId } from "./HandlerFactoryHelpers.mjs";
+import { patchSpecId, runtimeExtensionsReady } from "./HandlerFactoryHelpers.mjs";
 import { Make as readModelCallbackMake } from "@reventlessdev/reventless-core/src/components/ReadModel/ReadModel_Callback.res.mjs";
 import * as StreamOps from "./StreamRoutedEntryPoint_Ops.res.mjs";
 import * as Ops from "./ReadModelEntryPoint_Ops.res.mjs";
@@ -33,6 +33,11 @@ function fixMappingsModule(mod) {
 }
 
 async function buildAllHandlers() {
+  // Runtime extension seam: any registered out-of-tree extension gets its
+  // onColdStart before a single handler is built, which is what makes the
+  // framework's interception/publish hooks reachable here. No-op unless the
+  // deployment registered one.
+  await runtimeExtensionsReady;
   const handlers = {};
   const entries = Ops.parseHandlerConfig(process.env["HANDLER_CONFIG"] || "");
 

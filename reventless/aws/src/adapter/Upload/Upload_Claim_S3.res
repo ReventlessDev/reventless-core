@@ -257,6 +257,7 @@ let finish = (
     let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
       ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Upload/Upload_Claim_S3_Ops.res.mjs",
       ~packageDirs,
+      ~bundleRuntimeExtensions=false,
     )
 
     let layers =

@@ -118,7 +118,7 @@ function finish() {
           return;
         }
       });
-      let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/SideEffectEntryPoint.mjs", packageDirs, undefined);
+      let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/SideEffectEntryPoint.mjs", packageDirs, undefined, undefined);
       let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllSideEffectHandlers", "Reactor", "SideEffectHandler", match$1.code, match$1.sourceCodeHash, envVars, match[0], match[1], undefined, undefined, undefined, undefined, undefined, opts);
       if (Object.keys(extraEnvVarsAll).length !== 0) {
         new (Aws.iam.RolePolicy)("AllSideEffectHandlers-appsyncSchemaPush", {

@@ -17,12 +17,17 @@
 // live type-checked in PgQueryResolverEntryPoint_Ops.res.
 
 import { handler as dispatchHandler } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/PgQueryResolver_Lambda.res.mjs";
-import { patchSpecId, log } from "./HandlerFactoryHelpers.mjs";
+import { patchSpecId, log, runtimeExtensionsReady } from "./HandlerFactoryHelpers.mjs";
 import * as Ops from "./PgQueryResolverEntryPoint_Ops.res.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
 
 async function buildAllBindings() {
+  // Runtime extension seam: any registered out-of-tree extension gets its
+  // onColdStart before a single handler is built, which is what makes the
+  // framework's interception/publish hooks reachable here. No-op unless the
+  // deployment registered one.
+  await runtimeExtensionsReady;
   const config = Ops.parseResolverConfig(process.env["QUERY_RESOLVER_CONFIG"] || "");
   const pgConnection = config.pgConnection;
   if (!pgConnection) {

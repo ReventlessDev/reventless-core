@@ -1414,6 +1414,24 @@ module MakeWithConfig = (
         `backend: sqlite (${path}${resetOnStart ? ", resetOnStart" : ""})`
       },
     )
+    // Runtime extension seam. Fired before anything is built, so an extension's
+    // interception and publish hooks are registered before the first command or
+    // query can reach them.
+    //
+    // Off Lambda the seam means something slightly different, and deliberately
+    // so: every component runs in THIS process, so there is one cold start, not
+    // one per runtime. Firing per hosted component would hand an extension N
+    // identities for a single process and re-run registrations that are
+    // module-level refs anyway. `Platform` is the honest kind for a runtime that
+    // hosts all of them; an extension that routes on kind should treat this as
+    // "everything", which is what it is.
+    ReventlessCore.RuntimeExtension.notifyColdStart(
+      ~runtimeKind=ReventlessCore.ComponentType.Platform,
+      ~component="LocalPlatform",
+      ~plugin=ReventlessCore.ResourceAttribution.current.contents.plugin,
+      ~platform=ReventlessCore.ResourceAttribution.current.contents.platform,
+    )
+
     // Projection catch-up bound (plan B5): the highest persisted event position
     // BEFORE this session appends anything. Catch-up replays only (checkpoint,
     // bound] — this session's own events (Connect dispatches, user commands)

@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
+import * as HandlerFactoryHelpersMjs from "./HandlerFactoryHelpers.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 
@@ -21,7 +22,10 @@ let queue = {
 
 let publishJsons = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(queue, "SQS_FIFO");
 
+let runtimeExtensionsReady = HandlerFactoryHelpersMjs.runtimeExtensionsReady;
+
 async function handler(_event, _context) {
+  await runtimeExtensionsReady;
   let message_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, "", "Heartbeat", undefined, undefined, undefined, undefined, undefined);
   let message_commandJson = S.reverseConvertToJsonOrThrow({
     TAG: "Heartbeat",
@@ -42,6 +46,7 @@ export {
   timeout,
   queue,
   publishJsons,
+  runtimeExtensionsReady,
   handler,
 }
 /* epQueueUrl Not a pure module */

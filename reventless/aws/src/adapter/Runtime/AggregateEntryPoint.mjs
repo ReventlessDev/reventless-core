@@ -12,6 +12,7 @@ import {
   extractMetaField,
   extractSentTimestamp,
   extractRetryCount,
+  runtimeExtensionsReady,
 } from "./HandlerFactoryHelpers.mjs";
 import { Make as eventLogOperationsMake } from "@reventlessdev/reventless-core/src/components/EventLog/EventLog_Operations.res.mjs";
 import { Make as aggregateCallbackMake } from "@reventlessdev/reventless-core/src/components/Aggregate/Aggregate_Callback.res.mjs";
@@ -256,6 +257,11 @@ export async function buildHandlersForConfig(config, opts = {}) {
 }
 
 async function buildAllHandlers() {
+  // Runtime extension seam: any registered out-of-tree extension gets its
+  // onColdStart before a single handler is built, which is what makes the
+  // framework's interception/publish hooks reachable here. No-op unless the
+  // deployment registered one.
+  await runtimeExtensionsReady;
   const configStr = process.env["HANDLER_CONFIG"] || '{"handlers":[]}';
   return buildHandlersForConfig(JSON.parse(configStr));
 }

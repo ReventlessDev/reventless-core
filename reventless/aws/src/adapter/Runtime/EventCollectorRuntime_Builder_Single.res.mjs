@@ -156,7 +156,7 @@ function finish() {
       if (pgStreamConfig !== undefined) {
         envVars["APPSYNC_ENDPOINT"] = pgStreamConfig.endpoint;
       }
-      let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelEntryPoint.mjs", packageDirs, undefined);
+      let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelEntryPoint.mjs", packageDirs, undefined, undefined);
       let vpcConfig = qdbSelection !== undefined && anyPgBacked ? qdbSelection.securityGroupId.apply(sgId => ({
           subnetIds: qdbSelection.subnetIds,
           securityGroupIds: [sgId]

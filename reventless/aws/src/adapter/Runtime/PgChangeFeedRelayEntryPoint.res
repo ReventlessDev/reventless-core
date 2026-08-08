@@ -86,7 +86,16 @@ let relayLog = async (l: relayLogConfig): unit => {
   }
 }
 
+// Runtime extension seam: HandlerFactoryHelpers loads and fires any registered
+// out-of-tree extension once, at module load. Awaiting its promise before this
+// handler does any work is what makes "before the first request" a fact rather
+// than a hope; it is already resolved on every invocation after the first, and
+// resolves immediately when nothing is registered.
+@module("./HandlerFactoryHelpers.mjs")
+external runtimeExtensionsReady: promise<unit> = "runtimeExtensionsReady"
+
 let handler = async (_event: JSON.t, _context: PulumiAws.Lambda.context) => {
+  await runtimeExtensionsReady
   let config =
     NodeProcess.env->Dict.get("HANDLER_CONFIG")->Option.getOr(`{"logs":[]}`)->parseHandlerConfig
   let logs = config.logs->Option.getOr([])

@@ -53,7 +53,10 @@ async function relayLog(l) {
   }
 }
 
+let runtimeExtensionsReady = HandlerFactoryHelpersMjs.runtimeExtensionsReady;
+
 async function handler(_event, _context) {
+  await runtimeExtensionsReady;
   let config = JSON.parse(Stdlib_Option.getOr(process.env["HANDLER_CONFIG"], `{"logs":[]}`));
   let logs = Stdlib_Option.getOr(config.logs, []);
   await Promise.all(logs.map(relayLog));
@@ -65,6 +68,7 @@ export {
   logWarn,
   makeSendBatch,
   relayLog,
+  runtimeExtensionsReady,
   handler,
 }
-/* Stdlib_JsExn Not a pure module */
+/* runtimeExtensionsReady Not a pure module */

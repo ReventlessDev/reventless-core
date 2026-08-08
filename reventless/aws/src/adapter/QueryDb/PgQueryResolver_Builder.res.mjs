@@ -84,7 +84,7 @@ function provision(api, selection, opts) {
   let envVars = {};
   envVars["QUERY_RESOLVER_CONFIG"] = queryResolverConfig;
   envVars["Environment"] = Pulumi.getStack();
-  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/PgQueryResolverEntryPoint.mjs", packageDirs, undefined);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/PgQueryResolverEntryPoint.mjs", packageDirs, undefined, undefined);
   let vpcConfig = selection.securityGroupId.apply(sgId => ({
     subnetIds: selection.subnetIds,
     securityGroupIds: [sgId]

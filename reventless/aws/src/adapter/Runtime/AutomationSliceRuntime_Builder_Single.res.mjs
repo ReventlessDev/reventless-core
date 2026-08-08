@@ -206,7 +206,7 @@ function finish() {
       PluginRuntime_Builder$ReventlessAws.capabilityEnv().forEach(param => {
         envVars[param[0]] = param[1];
       });
-      let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs", packageDirs, undefined);
+      let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs", packageDirs, undefined, undefined);
       let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAutomationSlices", "Reactor", "AutomationSlice", match$1.code, match$1.sourceCodeHash, envVars, match[0], match[1], undefined, undefined, undefined, undefined, undefined, opts);
       let channelSpecs = storedSpecs.map(param => param.channelSpec);
       EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllAutomationSlices", channelSpecs, runtime, opts);
@@ -318,7 +318,7 @@ function finishWithDcbEventLog(dcbEventLog) {
       PluginRuntime_Builder$ReventlessAws.capabilityEnv().forEach(param => {
         envVars[param[0]] = param[1];
       });
-      let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs", packageDirs, undefined);
+      let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs", packageDirs, undefined, undefined);
       let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAutomationSlices", "Reactor", "AutomationSlice", match.code, match.sourceCodeHash, envVars, 1024, 30, undefined, undefined, undefined, undefined, undefined, opts);
       EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllAutomationSlices", [{
           channel: channel,

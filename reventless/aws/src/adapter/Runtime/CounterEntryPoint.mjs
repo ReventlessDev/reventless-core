@@ -12,13 +12,18 @@
 // references/counts stream routing live type-checked in
 // CounterEntryPoint_Ops.res.
 
-import { patchSpecId } from "./HandlerFactoryHelpers.mjs";
+import { patchSpecId, runtimeExtensionsReady } from "./HandlerFactoryHelpers.mjs";
 import { MakeCounterHandler } from "@reventlessdev/reventless-core/src/components/EventMapper/EventMapper_Callback.res.mjs";
 import * as Ops from "./CounterEntryPoint_Ops.res.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
 
 async function build() {
+  // Runtime extension seam: any registered out-of-tree extension gets its
+  // onColdStart before a single handler is built, which is what makes the
+  // framework's interception/publish hooks reachable here. No-op unless the
+  // deployment registered one.
+  await runtimeExtensionsReady;
   const config = Ops.parseHandlerConfig(process.env["HANDLER_CONFIG"] || "{}");
 
   const targetSpecModule = await dynamicImport(config.targetSpecModule);
