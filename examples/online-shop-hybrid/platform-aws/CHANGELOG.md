@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.222 (2026-08-08)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws
+
+
+
+
+
 # 1.0.0-alpha.221 (2026-08-08)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

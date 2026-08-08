@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-platform-aws",
   "private": true,
-  "version": "1.0.0-alpha.221",
+  "version": "1.0.0-alpha.222",
   "description": "Online Shop Hybrid — AWS platform deployment",
   "license": "Apache-2.0",
   "scripts": {

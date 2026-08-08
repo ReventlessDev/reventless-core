@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.274 (2026-08-08)
+
+### Bug Fixes
+
+* **aws:** scope a managed log group by project as well as stack ([f3ea01a](https://github.com/ReventlessDev/reventless-core/commit/f3ea01a254465012becf6a27b401f10382439864))
+
+
 # 3.0.0-alpha.273 (2026-08-08)
 
 ### Bug Fixes
