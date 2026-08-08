@@ -89,6 +89,26 @@ Called before every read model query is executed. Receives the caller's identity
 
 **Use cases:** query authorization, tenant-scoped access control, query logging.
 
+**On a DynamoDB-backed read model this hook has to be provisioned for.** A top-level Query resolver
+reads DynamoDB directly, so no code of yours is on the read path at all until something puts a
+runtime in front of it. Ask for that with:
+
+```rescript
+ReventlessCore.QueryInterception.use()   // before the platform/plugin build
+```
+
+The framework then provisions an interceptor runtime and its AppSync data source per plugin API,
+and turns the affected Query resolvers into pipeline resolvers. You name no data source, api or
+role. Registering the interceptor itself stays your job — typically from a `RuntimeExtension`
+cold-start hook, which reaches the interceptor runtime with no extra registration.
+
+Weigh the cost before switching it on: this adds a Lambda invocation to **every read**, and reads
+outrun writes by orders of magnitude. Two things bound it — a Postgres-backed read model already
+routes through a resolver Lambda that consults the same hook, so it pays nothing extra; and this is
+the only place a read can be *refused*, so where you need enforcement rather than observation the
+cost is the requirement's price. Left alone, nothing is provisioned and resolvers are exactly what
+they were.
+
 ### Event Publish Hooks
 
 **Module:** `EventPublish_Callback`

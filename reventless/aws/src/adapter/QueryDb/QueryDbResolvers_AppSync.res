@@ -13,15 +13,6 @@ let log = ReventlessCore.Logger.fromEnv()
 type api = Types.AppSync.api
 type role = Types.AppSync.role
 
-type interceptorConfig = {
-  dataSourceName: Pulumi.Input.t<string>,
-}
-
-/** Deploy-time config for the query interceptor. When set, all top-level Query
-    resolvers become pipeline resolvers with an interceptor Lambda function
-    preceding the DynamoDB query. Set this before calling `make`. */
-let queryInterceptorConfig: ref<option<interceptorConfig>> = ref(None)
-
 let interceptorCode = readModelName =>
   `import { util } from '@aws-appsync/utils';
 export function request(ctx) {
@@ -106,9 +97,12 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   }
 
   // Creates either a unit resolver (no interceptor) or a pipeline resolver
-  // (interceptor Lambda → DynamoDB query) depending on queryInterceptorConfig.
+  // (interceptor Lambda → DynamoDB query), depending on whether an extension
+  // switched interception on for this deployment. Provisioning the interceptor
+  // is the framework's job — see `QueryInterceptor_Provisioning`; the first
+  // Query resolver under a plugin creates it and the rest reuse it.
   let makeQueryResolver = (~resolverName, ~field, ~code) =>
-    switch queryInterceptorConfig.contents {
+    switch QueryInterceptor_Provisioning.dataSourceName(~api, ~opts) {
     | None =>
       Resolver.makeUnitJsResolver(
         ~name=resolverName,
@@ -119,7 +113,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
         ~code,
         ~opts,
       )
-    | Some({dataSourceName: interceptorDsName}) =>
+    | Some(interceptorDsName) =>
       let interceptorFn = Function.makeJs(
         ~name=resolverName ++ "Interceptor",
         ~api,

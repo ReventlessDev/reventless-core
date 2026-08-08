@@ -1,6 +1,6 @@
 # Plan: Make query interception reachable in a deployed estate
 
-**Status.** Planned — 2026-08-08. Not started.
+**Status.** Implemented — 2026-08-08.
 
 **Goal.** An out-of-tree package can switch query interception on for a deployment, and the
 framework provisions whatever that costs. Today the hook exists, the handler exists, and nothing
@@ -127,6 +127,61 @@ Revisit when something needs interception for one read model and not another —
   registration — the composition in §3 holds end to end.
 - Several plugins in one deployment each get a working interceptor on their own API.
 - A Postgres-backed read model is unaffected either way.
+
+---
+
+## §7 — What was built, and what the shape cost
+
+`ReventlessCore.QueryInterception` (`use` / `isEnabled` / `reset`) is the seam;
+`QueryInterceptor_Provisioning` is the AWS half that reads it and provisions the runtime, its
+execution role, the AppSync Lambda data source and the role that lets AppSync invoke it.
+`QueryDbResolvers_AppSync` asks that module for a data source instead of reading a ref.
+
+**`queryInterceptorConfig` is gone rather than set.** §3 said the framework would set it, but §1's
+own observation rules that out: it is one global ref and resolvers live on each plugin's own api, so
+no single value can serve a stack with several plugins. The provisioning module returns the data
+source for *this* resolver's plugin instead, which is the same decision made per-api.
+
+**The memo is keyed on the api handle by identity, and named from the owning plugin.** Keying it on
+the plugin was the first attempt and it is wrong in a way previews would not have caught: the
+platform stack routes everything built outside a plugin construct into one bucket, and the moment
+that bucket spans two apis a resolver names a data source that does not exist on its api — rejected
+at deploy time, with nothing in the message pointing here. The api's *contents* are an `Output` and
+unknown at resolver-construction time, but the handle itself is a value the builders thread
+unchanged through every read model on that api, so object identity is an exact key. The ambient
+`ResourceAttribution` plugin supplies only the resource names, which is presentation. That context
+is reliable inside the deferred apply where resolvers are built only because of
+`docs/plans/done/attribution-across-the-deferred-finish.md` — this plan quietly depends on that one.
+
+### Verified by preview, not by reading
+
+Enabling it in the catalog plugin stack and running `pulumi preview` plans exactly:
+
+```
++ aws:lambda:Function     CatalogQueryInterceptor
++ aws:iam:Role            CatalogQueryInterceptor
++ aws:cloudwatch:LogGroup CatalogQueryInterceptorLogGroup
++ aws:iam:Role            CatalogQueryInterceptorDataSource
++ aws:appsync:DataSource  CatalogQueryInterceptorDataSource
++ 24 aws:appsync:Function        (two per Query field)
++-12 resolvers to replace        (unit → pipeline)
+```
+
+One interceptor for all twelve read models, named for its plugin — the "per plugin api, not per
+read model" property, observed rather than argued. The log group and the IAM role come from
+`RuntimeEnvironment_Lambda.makeFromCodeAsset`, which is also what carries `RUNTIME_EXTENSIONS` and
+the bundled extension packages into the archive, so §3's composition holds by construction. With
+the switch removed the same stack plans no interceptor resources at all and the resolvers stay
+unit resolvers.
+
+### One thing acceptance §1 does not say
+
+A deploy program reaches the switch through `reventless-core`, so a package that depends only on
+`reventless-aws` cannot call it — the example stacks needed `@reventlessdev/reventless-core` added
+to their `rescript.json` to switch it on. This is not a new constraint (`Monitoring.use`,
+`RuntimeExtension.use` and `registerQueryInterceptor` itself all live in core, so any extension
+already depends on it) but it is worth stating, because "an out-of-tree package can switch it on"
+reads as if no dependency were involved.
 
 ---
 

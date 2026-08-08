@@ -14,12 +14,9 @@ import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
+import * as QueryInterceptor_Provisioning$ReventlessAws from "./QueryInterceptor_Provisioning.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
-
-let queryInterceptorConfig = {
-  contents: undefined
-};
 
 function interceptorCode(readModelName) {
   return `import { util } from '@aws-appsync/utils';
@@ -70,11 +67,11 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
   let includeIdParam = registryEntry !== undefined ? registryEntry.includeIdParam : true;
   let connectionSpec = registryEntry !== undefined ? registryEntry.connectionSpec : true;
   let makeQueryResolver = (resolverName, field, code) => {
-    let match = queryInterceptorConfig.contents;
-    if (match === undefined) {
+    let interceptorDsName = QueryInterceptor_Provisioning$ReventlessAws.dataSourceName(api, opts);
+    if (interceptorDsName === undefined) {
       return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(resolverName, api, dataSourceName, "Query", field, code, opts);
     }
-    let interceptorFn = AppSync_Function$PulumiAws.makeJs(resolverName + "Interceptor", api, match.dataSourceName, interceptorCode(name$1), opts);
+    let interceptorFn = AppSync_Function$PulumiAws.makeJs(resolverName + "Interceptor", api, interceptorDsName, interceptorCode(name$1), opts);
     let queryFn = AppSync_Function$PulumiAws.makeJs(resolverName + "Query", api, dataSourceName, code, opts);
     return AppSync_Resolver_Retrying$ReventlessAws.makePipelineJsResolver(resolverName, api, "Query", field, AppSync_Resolver_Functions$PulumiAws.pipelinePassThrough, [
       interceptorFn,
@@ -238,7 +235,6 @@ let Resolver;
 export {
   Resolver,
   log,
-  queryInterceptorConfig,
   interceptorCode,
   internalRowRequiredAttr,
   make,
