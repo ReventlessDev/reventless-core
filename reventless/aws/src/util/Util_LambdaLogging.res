@@ -51,11 +51,21 @@ let applyLogLevelDefault = (variables: dict<Pulumi.Input.t<string>>) =>
     - **stable**: it carries no `-<7hex>` Pulumi suffix, so replacing a function
       keeps its group instead of stranding the old one as an orphan nothing
       tears down.
-    - **stack-scoped**: stacks sharing an account cannot collide, which was the
-      reason the physical name was used before.
+    - **deployment-scoped**: deployments sharing an account cannot collide, which
+      was the reason the physical name was used before.
+
+    The scope is `project`/`stack`, and **both halves are load-bearing**. A stack
+    name alone is not a discriminator: every plugin of one platform is deployed as
+    its own Pulumi project under the *same* stack name (`alpha`, `beta`, …), and
+    the components inside them are named by role rather than by owner — so several
+    projects each host an `AllStateViewSlices`, an `AllReadModels`, an
+    `AllAggregatesCmdHandler`. Scoping on the stack alone gives all of them one
+    name, and every deployment after the first fails with
+    `ResourceAlreadyExistsException`.
 
     Pure, so the naming is decidable without Pulumi. */
-let logGroupNameFor = (~stack: string, ~name: string): string => `/aws/lambda/${stack}-${name}`
+let logGroupNameFor = (~project: string, ~stack: string, ~name: string): string =>
+  `/aws/lambda/${project}-${stack}-${name}`
 
 // Create the managed CloudWatch log group for a Lambda **before** the function
 // that writes to it, so the function can be pointed at it via `loggingConfig`
@@ -101,7 +111,11 @@ let makeManagedLogGroup = (
     Cloudwatch.LogGroup.make(
       ~name=`${name}LogGroup`,
       ~args={
-        name: logGroupNameFor(~stack, ~name)->Pulumi.Input.make,
+        name: logGroupNameFor(
+          ~project=Pulumi.Pulumi.getProjectName(),
+          ~stack,
+          ~name,
+        )->Pulumi.Input.make,
         retentionInDays: days->Pulumi.Input.make,
         tags,
       },

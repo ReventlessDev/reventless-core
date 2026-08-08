@@ -36,8 +36,8 @@ function applyLogLevelDefault(variables) {
   variables[match[0]] = match[1];
 }
 
-function logGroupNameFor(stack, name) {
-  return `/aws/lambda/` + stack + `-` + name;
+function logGroupNameFor(project, stack, name) {
+  return `/aws/lambda/` + project + `-` + stack + `-` + name;
 }
 
 function makeManagedLogGroup(name, retentionDaysOverride, tags, opts, param) {
@@ -48,7 +48,7 @@ function makeManagedLogGroup(name, retentionDaysOverride, tags, opts, param) {
       match$1 ? Util_LogRetention$ReventlessAws.retentionDaysFor(stack, match[1], Stdlib_Option.flatMap(Util_LocalConfig$ReventlessAws.get("logRetentionDays"), s => Stdlib_Int.fromString(s, undefined))) : undefined
     );
   return Stdlib_Option.map(retentionDays, days => new (Aws.cloudwatch.LogGroup)(name + `LogGroup`, {
-    name: logGroupNameFor(stack, name),
+    name: logGroupNameFor(Pulumi.getProject(), stack, name),
     retentionInDays: days,
     tags: tags
   }, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined));
