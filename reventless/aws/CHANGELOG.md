@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.272 (2026-08-08)
+
+### Bug Fixes
+
+* **aws:** ship the admin structure as a code asset, not an env var ([93bc8a4](https://github.com/ReventlessDev/reventless-core/commit/93bc8a4891b54efeb13b99845a96f990dea6d41c))
+
+
 # 3.0.0-alpha.271 (2026-08-08)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
