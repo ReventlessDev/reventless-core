@@ -562,9 +562,15 @@ single global setting cannot serve both.
   A stack that ran an earlier version keeps its old auto-created groups. They are
   no longer written to and no longer managed, and they have no retention — delete
   them once the first deploy on the new naming has landed.
-- **AppSync groups are not covered by that ordering.** An AppSync API's group name
-  (`/aws/appsync/apis/<id>`) is fixed by a server-assigned id and the service has
-  no "write here" knob, so its group can only be created after the API exists.
+- **AppSync groups are not covered by that ordering, so they adopt instead.** An
+  AppSync API's group name (`/aws/appsync/apis/<id>`) is fixed by a
+  server-assigned id and the service has no "write here" knob, so its group can
+  only ever be created after the API — and any request the API serves in between
+  creates it first. `Util_LogGroup_Adopting` makes losing that order survivable:
+  it applies the declared retention and tags whether or not the group was already
+  there, and logs at info level when it adopted one. A deploy that meets an
+  existing AppSync log group reports the adoption instead of failing
+  `ResourceAlreadyExists`.
 - **Overrides:** the Pulumi config keys `logRetentionDays` (an integer; `0` =
   never expire) and `logLevel` override the tier for a whole stack;
   `commandHandlerConfig.logRetentionDays` / `logLevel` override it for a single
@@ -576,3 +582,37 @@ single global setting cannot serve both.
   holds some in state reads as removed-from-the-program — so the next deploy
   deletes those groups, together with their retention, their tags and any metric
   filters attached to them.
+
+### Sweeping the groups AWS created
+
+Any group the Lambda or AppSync service created before the framework managed
+them is unmanaged and has **no retention**, so it is billed for as long as the
+account exists. A stack that has now deployed managed groups no longer writes to
+them, which makes them safe to remove — and worth removing, since silent
+unbounded storage is the outcome the retention tiers exist to prevent.
+
+List the candidates first. Retention-less groups are exactly the ones nothing
+manages:
+
+```bash
+aws logs describe-log-groups --region eu-west-1 \
+  --query 'logGroups[?retentionInDays==`null`].logGroupName' --output text
+```
+
+Check each name against the functions and APIs that are still live before
+deleting it — a group belonging to a stack that has *not* yet deployed managed
+groups is still in use:
+
+```bash
+aws lambda list-functions --region eu-west-1 --query 'Functions[].FunctionName' --output text
+aws appsync list-graphql-apis --region eu-west-1 --query 'graphqlApis[].apiId' --output text
+```
+
+Then delete the ones that survive that check, one at a time:
+
+```bash
+aws logs delete-log-group --region eu-west-1 --log-group-name <name>
+```
+
+Deleting a log group destroys its history. There is no undo, so do not pipe the
+listing straight into the delete.

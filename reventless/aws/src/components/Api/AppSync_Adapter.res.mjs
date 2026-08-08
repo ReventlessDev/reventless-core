@@ -21,6 +21,7 @@ import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core
 import * as Util_HostUiDomain$ReventlessAws from "../../util/Util_HostUiDomain.res.mjs";
 import * as Util_LogRetention$ReventlessAws from "../../util/Util_LogRetention.res.mjs";
 import * as AppSync_SdlDecorate$ReventlessAws from "./AppSync_SdlDecorate.res.mjs";
+import * as Util_LogGroup_Adopting$ReventlessAws from "../../util/Util_LogGroup_Adopting.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
@@ -316,10 +317,10 @@ function _makeApiResourceWith(name, schema, userPoolConfig, opts) {
   let prodStacks = Util_HostUiDomain$ReventlessAws.resolveProdStacks();
   let unmanagedStacks = Util_LogRetention$ReventlessAws.parseUnmanagedStacks(Stdlib_Option.getOr(Util_LocalConfig$ReventlessAws.get("unmanagedLogGroupStacks"), ""));
   if (Util_LogRetention$ReventlessAws.managesLogGroup(stack, unmanagedStacks)) {
-    new (Aws.cloudwatch.LogGroup)(name + `AppSyncLogGroup`, {
-      name: graphQLApi.id.apply(id => `/aws/appsync/apis/` + id),
+    Util_LogGroup_Adopting$ReventlessAws.make(name + `AppSyncLogGroup`, {
+      logGroupName: graphQLApi.id.apply(id => `/aws/appsync/apis/` + id),
       retentionInDays: Util_LogRetention$ReventlessAws.retentionDaysFor(stack, prodStacks, Stdlib_Option.flatMap(Util_LocalConfig$ReventlessAws.get("logRetentionDays"), s => Stdlib_Int.fromString(s, undefined))),
-      tags: AWS_Tags$ReventlessAws.make(name + `AppSyncLogGroup`, "Plugin", "Logs", "Plugin", undefined, undefined, undefined, undefined)
+      tags: AWS_Tags$ReventlessAws.makeDict(name + `AppSyncLogGroup`, "Plugin", "Logs", "Plugin", undefined, undefined, undefined, undefined)
     }, customOpts);
   }
   return [

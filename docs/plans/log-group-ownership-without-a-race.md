@@ -1,8 +1,8 @@
 # Plan: Own a runtime's log group from birth, not after the fact
 
-**Status.** §3 implemented — 2026-08-08. §4 in progress. Written after a managed-log-group
-rollout deadlocked in the field: three groups could not be adopted because the runtimes they
-belong to kept recreating them faster than a deploy could reach them.
+**Status.** Implemented — 2026-08-08. Written after a managed-log-group rollout deadlocked in the
+field: three groups could not be adopted because the runtimes they belong to kept recreating them
+faster than a deploy could reach them. On-AWS verification (§6) is outstanding.
 
 **Goal.** A framework-provisioned runtime's CloudWatch log group is created and owned by the
 deploy, with no window in which AWS can create it first — and an estate whose groups AWS already
@@ -158,6 +158,25 @@ The known cost is that a Pulumi dynamic provider runs from a serialized closure 
 a source fix reaches only resources that are subsequently created or updated. That constrains how
 its create/update steps may be changed later, and is worth a comment at the definition.
 
+### Implemented — 2026-08-08
+
+`Util_LogGroup_Adopting`, mirroring the dynamic-provider shape already established by
+`AppSync_SourceApiAssociation_Retrying` (lazy SDK import so the closure stays serializable,
+hand-rolled backoff, aliases the classic type so state migrates in place rather than
+delete-then-recreate). `AppSync_Adapter` is the one call site.
+
+A `pulumi preview` against the `alpha` hybrid stack is what confirms it, and it did so more
+directly than expected: the stack's `PlatformApiAppSyncLogGroup` resolves to
+`/aws/appsync/apis/47xi7skgqzapponhwpybvjxcny`, **a group that exists in the account and is not in
+the stack's state**. That is the deadlock itself, still live — the classic resource's create
+against that name is exactly the `ResourceAlreadyExists` failure this plan was written for. The
+preview plans it as a create the adopting provider absorbs.
+
+The same preview shows the §3 half behaving: log groups plan as clean creates under the new names
+(no replace of the old ones — they were never in this stack's state, because the deploy that would
+have created them is the one that deadlocked), and every function takes `loggingConfig` as an
+in-place update.
+
 ## §5 — Rejected alternatives
 
 - **Delete the group and immediately create it.** This is what the failure tempts an operator into,
@@ -203,3 +222,14 @@ its create/update steps may be changed later, and is worth a comment at the defi
 | Retention/level policy this plan does not touch | `reventless/aws/src/util/Util_LogRetention.res` |
 | Lambda binding without `loggingConfig` | `rescript/pulumi-aws/src/Lambda/Lambda.res:218-232` |
 | Metric filters attached to the managed group | `RuntimeEnvironment_Lambda.res:356-372` |
+
+## Appendix: what the work landed on (2026-08-08)
+
+| Fact | Anchor |
+| --- | --- |
+| `loggingConfig` on the binding | `rescript/pulumi-aws/src/Lambda/Lambda.res` (`Function.loggingConfig`) |
+| Group created first; the config that points a function at it | `Util_LambdaLogging.makeManagedLogGroup` / `loggingConfigFor` |
+| The chosen name | `Util_LambdaLogging.logGroupNameFor`, tested in `Util_LambdaLoggingTest.res` |
+| Create-or-adopt for AppSync | `reventless/aws/src/util/Util_LogGroup_Adopting.res`, tested in `Util_LogGroup_AdoptingTest.res` |
+| The one adopting call site | `AppSync_Adapter.res` (`${name}AppSyncLogGroup`) |
+| Operator runbook: tiers, ownership, the sweep | `packages/doc/docs-infrastructure/lambda-deployment.md` §11 |

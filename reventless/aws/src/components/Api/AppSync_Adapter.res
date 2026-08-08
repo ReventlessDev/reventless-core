@@ -552,19 +552,23 @@ let _makeApiResourceWith = (
   // Managed log group with tiered retention for AppSync's own field-resolver logs,
   // which land in `/aws/appsync/apis/<id>` and otherwise live forever with no
   // retention. Managed on every stack by default (bar any in
-  // `unmanagedLogGroupStacks`), same as the Lambda groups. The name derives from
-  // the API id output so it matches the group AppSync writes to, and Pulumi
-  // therefore tears it down with the API.
+  // `unmanagedLogGroupStacks`), same as the Lambda groups.
+  //
+  // Unlike a Lambda's group this one cannot be created ahead of the resource that
+  // writes to it: the name comes from the API's server-assigned id, so the group
+  // is always second and any request the API serves in between creates it first.
+  // `Util_LogGroup_Adopting` is what makes losing that order survivable — it
+  // adopts an existing group rather than failing `ResourceAlreadyExists`.
   let stack = Pulumi.Pulumi.getStackName()
   let prodStacks = Util_HostUiDomain.resolveProdStacks()
   let unmanagedStacks = Util_LogRetention.parseUnmanagedStacks(
     Util_LocalConfig.get("unmanagedLogGroupStacks")->Option.getOr(""),
   )
   if Util_LogRetention.managesLogGroup(~stack, ~unmanagedStacks) {
-    let _ = Cloudwatch.LogGroup.make(
+    let _ = Util_LogGroup_Adopting.make(
       ~name=`${name}AppSyncLogGroup`,
-      ~args={
-        name: graphQLApi.id
+      ~props={
+        logGroupName: graphQLApi.id
         ->Pulumi.Output.apply(id => `/aws/appsync/apis/${id}`)
         ->Pulumi.Output.asInput,
         retentionInDays: Util_LogRetention.retentionDaysFor(
@@ -574,14 +578,14 @@ let _makeApiResourceWith = (
             Int.fromString(s)
           ),
         )->Pulumi.Input.make,
-        tags: AWS.Tags.make(
+        tags: AWS.Tags.makeDict(
           ~name=`${name}AppSyncLogGroup`,
           ~kind=ReventlessCore.ComponentType.Plugin,
           ~role=Logs,
           ~scope=Plugin,
-        ),
+        )->Pulumi.Input.make,
       },
-      ~opts=customOpts,
+      ~opts=Some(customOpts),
     )
   }
 
