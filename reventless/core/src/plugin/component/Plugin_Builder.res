@@ -529,6 +529,7 @@ module Make = (
           {
             commandTypes: extractTypes(Scs.Spec.commandSchema),
             eventTypes: extractEventTypes(Scs.Spec.eventSchema->S.castToUnknown),
+            errorTypes: extractTypes(Scs.Spec.errorSchema),
             consumedEventTypes: extractEventTypes(Scs.Spec.consumedEventSchema->S.castToUnknown),
             chapter: ?chapterFor(Scs.Spec.name),
           },

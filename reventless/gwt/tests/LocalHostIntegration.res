@@ -38,6 +38,13 @@ test("loadGraph cold-loads structures from the real plugins", async () => {
   let category = catalog.aggregates->Array.find((a: Reventless.Plugin.writableDef) => a.name == "Category")->Option.getOrThrow
   ok(category.producedEventTypes->Array.includes("Catalog.Added"))
 
+  // An aggregate's declared errors ride the structure beside its events: what the
+  // Category aggregate can refuse a command with, read off a real built plugin.
+  deepEqual(
+    category.errors->Array.map((e: Reventless.Plugin.errorDef) => e.name),
+    ["CategoryAlreadyExists", "CategoryNotFound", "CategoryAlreadyArchived"],
+  )
+
   let ordering = structureFor(g, "Ordering")->Option.getOrThrow
   let order = ordering.aggregates->Array.find((a: Reventless.Plugin.writableDef) => a.name == "Order")->Option.getOrThrow
   ok(order.producedEventTypes->Array.includes("Ordering.Placed"))

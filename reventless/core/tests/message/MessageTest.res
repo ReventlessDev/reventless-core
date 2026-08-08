@@ -122,6 +122,7 @@ describe("Message should", () => {
             linkedViews: [],
             consistencyRead: None,
             events: [],
+            errors: [],
             chapter: None,
           },
         ],

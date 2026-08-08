@@ -98,6 +98,10 @@ let pluginAggregate: writableDef = {
   linkedViews: ["Plugins"],
   consistencyRead: None,
   events: [],
+  // Derived rather than left empty like `events` above: the two admin commands can
+  // be refused, and `[]` here would read as "this aggregate never rejects". Uses
+  // the same walk `Plugin_Structure` applies to every other write side.
+  errors: Plugin_Structure.extractErrorDefs(PluginSpec.errorSchema->S.castToUnknown),
   chapter: None,
 }
 

@@ -157,6 +157,70 @@ let labelFieldsFromStateSchema = (
     }
   }
 
+// ── Per-variant event / error field extraction (Phase 6.3) ───────────────────
+// Mirrors toCommandDef/extractCommandDefs for emitted events: name (TAG const),
+// payload JSON Schema, and cross-entity references. Module-level rather than
+// inside `make` because the synthetic Platform_Admin structure — hand-written,
+// because its components never pass through `make` — has to derive its defs the
+// same way, and a second copy of this walk would be free to drift from this one.
+
+let toEventDef = (v: S.t<unknown>): option<Reventless.Plugin.eventDef> => {
+  let mkDef = (~variantName, ~properties) => {
+    let references =
+      properties
+      ->Dict.toArray
+      ->Array.filterMap(((fieldName, fieldSchema)) =>
+        Reventless.Reference.getTarget(fieldSchema)->Option.map(target => (
+          {
+            Reventless.Plugin.fieldName,
+            entity: target.entity,
+            plugin: target.plugin,
+          }: Reventless.Plugin.fieldReference
+        ))
+      )
+    ({
+      Reventless.Plugin.name: variantName,
+      // Derived for the same reason as `commandDef.schema`: an event's field
+      // markers are the write side's half of the same vocabulary.
+      schema: v->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
+      references,
+    }: Reventless.Plugin.eventDef)
+  }
+  switch v {
+  | Object({properties}) =>
+    properties
+    ->Dict.get("TAG")
+    ->Option.flatMap(tagSchema =>
+      switch tagSchema {
+      | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties))
+      | _ => None
+      }
+    )
+  // Payload-less event variants (`| Archived`) compile to a bare string literal.
+  // DCB-projection lookups can't WHERE-clause on them, so they stay out of
+  // producedEventTypes/consumedEventTypes; but the full `events` list carries them
+  // so the event graph can still draw the emitted (orphan) event node.
+  | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties=Dict.make()))
+  | _ => None
+  }
+}
+
+let extractEventDefs = (eventSchema: S.t<unknown>): array<Reventless.Plugin.eventDef> =>
+  switch eventSchema {
+  | Union({anyOf}) => anyOf->Array.filterMap(toEventDef)
+  | _ => toEventDef(eventSchema)->Option.mapOr([], def => [def])
+  }
+
+// Declared errors walk identically to emitted events — an error variant is a
+// variant, and the payload-less form (`| CategoryNotFound`) is the common case
+// the bare-string branch above already handles. Reusing the walk rather than
+// copying it keeps the two from drifting; only the def type differs, so that a
+// consumer (and the SDL) can tell a refusal from a fact.
+let extractErrorDefs = (errorSchema: S.t<unknown>): array<Reventless.Plugin.errorDef> =>
+  extractEventDefs(errorSchema)->Array.map(({name, schema, references}) => (
+    {name, schema, references}: Reventless.Plugin.errorDef
+  ))
+
 let make = (
   type api role,
   ~name: string,
@@ -328,57 +392,6 @@ let make = (
       // Single-variant command types compile to a bare Object schema, not a Union.
       toCommandDef(~isAggregate, ~mutationFieldFor, ~parentSchema=commandSchema, commandSchema)
       ->Option.mapOr([], def => [def])
-    }
-
-  // ── Per-variant event field extraction (Phase 6.3) ─────────────────────────
-  // Mirrors toCommandDef/extractCommandDefs for emitted events: name (TAG const),
-  // payload JSON Schema, and cross-entity references.
-
-  let toEventDef = (v: S.t<unknown>): option<Reventless.Plugin.eventDef> => {
-    let mkDef = (~variantName, ~properties) => {
-      let references =
-        properties
-        ->Dict.toArray
-        ->Array.filterMap(((fieldName, fieldSchema)) =>
-          Reventless.Reference.getTarget(fieldSchema)->Option.map(target => (
-            {
-              Reventless.Plugin.fieldName,
-              entity: target.entity,
-              plugin: target.plugin,
-            }: Reventless.Plugin.fieldReference
-          ))
-        )
-      ({
-        Reventless.Plugin.name: variantName,
-        // Derived for the same reason as `commandDef.schema` above: an event's
-        // field markers are the write side's half of the same vocabulary.
-        schema: v->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
-        references,
-      }: Reventless.Plugin.eventDef)
-    }
-    switch v {
-    | Object({properties}) =>
-      properties
-      ->Dict.get("TAG")
-      ->Option.flatMap(tagSchema =>
-        switch tagSchema {
-        | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties))
-        | _ => None
-        }
-      )
-    // Payload-less event variants (`| Archived`) compile to a bare string literal.
-    // DCB-projection lookups can't WHERE-clause on them, so they stay out of
-    // producedEventTypes/consumedEventTypes; but the full `events` list carries them
-    // so the event graph can still draw the emitted (orphan) event node.
-    | String({const: ?Some(variantName)}) => Some(mkDef(~variantName, ~properties=Dict.make()))
-    | _ => None
-    }
-  }
-
-  let extractEventDefs = (eventSchema: S.t<unknown>): array<Reventless.Plugin.eventDef> =>
-    switch eventSchema {
-    | Union({anyOf}) => anyOf->Array.filterMap(toEventDef)
-    | _ => toEventDef(eventSchema)->Option.mapOr([], def => [def])
     }
 
   // ── Per-component event type extraction ────────────────────────────────────
@@ -704,6 +717,7 @@ let make = (
         linkedViews: linkedSvsFor(produced),
         consistencyRead: consistencyReadFor(consumed),
         events: extractEventDefs(SCS.Spec.eventSchema->S.castToUnknown),
+        errors: extractErrorDefs(SCS.Spec.errorSchema->S.castToUnknown),
         chapter: chapterOf(SCS.Spec.name),
       }: Reventless.Plugin.writableDef)
     })
@@ -726,6 +740,7 @@ let make = (
         linkedViews: Array.concat(linkedSvsFor(produced), linkedReadModelsFor(A.Spec.name)),
         consistencyRead: None,
         events: extractEventDefs(A.Spec.eventSchema->S.castToUnknown),
+        errors: extractErrorDefs(A.Spec.errorSchema->S.castToUnknown),
         chapter: chapterOf(A.Spec.name),
       }: Reventless.Plugin.writableDef)
     })

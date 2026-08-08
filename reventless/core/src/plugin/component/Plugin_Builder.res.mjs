@@ -373,6 +373,7 @@ function Make(Spec) {
           stateSchemas[Scs.Spec.name] = {
             commandTypes: DcbTag$Reventless.extractAllVariantNames(Scs.Spec.commandSchema),
             eventTypes: DcbTag$Reventless.extractVariantNames(Scs.Spec.eventSchema),
+            errorTypes: DcbTag$Reventless.extractAllVariantNames(Scs.Spec.errorSchema),
             consumedEventTypes: DcbTag$Reventless.extractVariantNames(Scs.Spec.consumedEventSchema),
             chapter: chapterByName[Scs.Spec.name]
           };

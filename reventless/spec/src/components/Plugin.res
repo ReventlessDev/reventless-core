@@ -288,6 +288,24 @@ type eventDef = {
   references: array<fieldReference>,
 }
 
+/**
+One declared error of a write side, with its field schema. Same shape and same
+derivation as `eventDef` — a refusal is a variant of `Spec.errorSchema` exactly as
+an emitted fact is a variant of `Spec.eventSchema`, so a consumer reading an
+error's payload walks it with the code path it already uses for an event. `name`
+is the variant name (e.g. `CategoryNotFound`) — the same string the runtime puts
+on `errorCode` when a decision is rejected (see `CommandTopic_Helpers`), so a
+caller can match what it reads here against what it receives. Payload-less
+variants (the common case for errors) carry an empty `schema` object and no
+references.
+*/
+@schema
+type errorDef = {
+  name: string,
+  schema: string,
+  references: array<fieldReference>,
+}
+
 @schema
 type writableDef = {
   name: string,
@@ -300,6 +318,13 @@ type writableDef = {
   arrays; `[]` when there are none. The structure is re-derived on every build/
   deploy, so no persisted-data back-compat shim is needed. */
   events: array<eventDef>,
+  /** Declared-error field schemas — what this component can refuse a command with.
+  Required, on the same reasoning as `events`: a structure is re-derived on every
+  build and re-registered on every deploy, and the persisted copy is never decoded
+  through this schema (the event log carries it as an offload reference, and the
+  serving path reads it as raw JSON), so `[]` honestly means "declares no errors"
+  rather than "an older deploy could not say". */
+  errors: array<errorDef>,
   /** Chapter grouping band — see `queryableDef.chapter`. */
   chapter: @s.matches(stringOptionSchema) option<string>,
 }

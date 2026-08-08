@@ -245,6 +245,33 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
       expect(shipOrder.producedEventTypes)->toEqual(["TestPlugin.OrderShipped"])
     })
+
+    // A slice's declared errors are the third family of its contract, beside the
+    // commands it accepts and the events it emits — what a caller has to handle
+    // when a decision is refused.
+    testSync("PlaceOrder: the single payload-less error variant is surfaced", () => {
+      let placeOrder = structure.stateChangeSlices->Array.getUnsafe(0)
+      expect(placeOrder.errors->Array.map(e => e.name))->toEqual(["AlreadyPlaced"])
+    })
+
+    testSync("ShipOrder: both error variants surface, in declaration order", () => {
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      expect(shipOrder.errors->Array.map(e => e.name))->toEqual(["OrderNotFound", "NotShippable"])
+    })
+
+    testSync("ShipOrder: a payload-carrying error carries its field schema", () => {
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      let notShippable =
+        shipOrder.errors->Array.find(e => e.name == "NotShippable")->Option.getOrThrow
+      expect(notShippable.schema->String.includes("\"reason\""))->toBe(true)
+    })
+
+    testSync("ShipOrder: a payload-less error carries no fields and no references", () => {
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      let notFound = shipOrder.errors->Array.find(e => e.name == "OrderNotFound")->Option.getOrThrow
+      expect((notFound.schema->String.includes("\"reason\""), notFound.references->Array.length))
+      ->toEqual((false, 0))
+    })
   })
 
   describe("stateViewSlices", () => {

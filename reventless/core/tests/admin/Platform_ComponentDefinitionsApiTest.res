@@ -41,6 +41,7 @@ let wbl: writableDef = {
   producedEventTypes: ["ProductAdded"],
   consumedEventTypes: [],
   events: [{name: "ProductAdded", schema: "{}", references: []}],
+  errors: [{name: "ProductAlreadyExists", schema: "{}", references: []}],
   chapter: None,
 }
 
@@ -161,6 +162,17 @@ describe("encodePluginStructureEntry", () => {
   testSync("encodes writableDef events", () =>
     expect(json->String.includes("\"events\":[{\"name\":\"ProductAdded\""))->toEqual(true)
   )
+
+  // The refusals a caller has to handle travel beside the facts it can observe.
+  testSync("encodes writableDef errors", () =>
+    expect(json->String.includes("\"errors\":[{\"name\":\"ProductAlreadyExists\""))->toEqual(true)
+  )
+
+  testSync("declares Platform_ErrorDef and the errors field in the shared write-side SDL", () => {
+    let sdl = Platform_ComponentDefinitionsApi.sdlTypes->Array.join("\n")
+    expect(sdl->String.includes("type Platform_ErrorDef"))->toEqual(true)
+    expect(sdl->String.includes("errors: [Platform_ErrorDef!]!"))->toEqual(true)
+  })
 
   // Translation-slice externalSystem: absent on the fixture above (both None), so it
   // must serialize as null — the "no external box" case. The leading field keeps the
@@ -292,6 +304,7 @@ describe("allowedStates + statusField populated", () => {
     producedEventTypes: [],
     consumedEventTypes: [],
     events: [],
+    errors: [],
     chapter: None,
   }
 
@@ -325,4 +338,12 @@ describe("allowedStates + statusField populated", () => {
   testSync("encodes populated statusField as the field name string", () =>
     expect(json->String.includes("\"statusField\":\"status\""))->toEqual(true)
   )
+
+  // "declares no errors" is an empty list, never null — the SDL types `errors` as
+  // non-null, and a structure is re-derived on every build, so there is no third
+  // "cannot say" state to encode.
+  testSync("encodes a component with no declared errors as an empty array, not null", () => {
+    expect(json->String.includes("\"errors\":[]"))->toEqual(true)
+    expect(json->String.includes("\"errors\":null"))->toEqual(false)
+  })
 })

@@ -140,6 +140,62 @@ function labelFieldsFromStateSchema(entityName, stateSchema) {
   };
 }
 
+function toEventDef(v) {
+  let mkDef = (variantName, properties) => {
+    let references = Stdlib_Array.filterMap(Object.entries(properties), param => {
+      let fieldName = param[0];
+      return Stdlib_Option.map(Reference$Reventless.getTarget(param[1]), target => ({
+        fieldName: fieldName,
+        entity: target.entity,
+        plugin: target.plugin
+      }));
+    });
+    return {
+      name: variantName,
+      schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(v)),
+      references: references
+    };
+  };
+  switch (v.type) {
+    case "string" :
+      let variantName = v.const;
+      if (variantName !== undefined) {
+        return mkDef(variantName, {});
+      } else {
+        return;
+      }
+    case "object" :
+      let properties = v.properties;
+      return Stdlib_Option.flatMap(properties["TAG"], tagSchema => {
+        if (tagSchema.type !== "string") {
+          return;
+        }
+        let variantName = tagSchema.const;
+        if (variantName !== undefined) {
+          return mkDef(variantName, properties);
+        }
+      });
+    default:
+      return;
+  }
+}
+
+function extractEventDefs(eventSchema) {
+  if (eventSchema.type === "union") {
+    return Stdlib_Array.filterMap(eventSchema.anyOf, toEventDef);
+  } else {
+    return Stdlib_Option.mapOr(toEventDef(eventSchema), [], def => [def]);
+  }
+}
+
+function extractErrorDefs(errorSchema) {
+  return extractEventDefs(errorSchema).map(param => ({
+    name: param.name,
+    schema: param.schema,
+    references: param.references
+  }));
+}
+
 function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt, componentChaptersOpt) {
   let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
   let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
@@ -266,52 +322,6 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, mutationFieldFor, commandSchema, v));
     } else {
       return Stdlib_Option.mapOr(toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandSchema), [], def => [def]);
-    }
-  };
-  let toEventDef = v => {
-    let mkDef = (variantName, properties) => {
-      let references = Stdlib_Array.filterMap(Object.entries(properties), param => {
-        let fieldName = param[0];
-        return Stdlib_Option.map(Reference$Reventless.getTarget(param[1]), target => ({
-          fieldName: fieldName,
-          entity: target.entity,
-          plugin: target.plugin
-        }));
-      });
-      return {
-        name: variantName,
-        schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(v)),
-        references: references
-      };
-    };
-    switch (v.type) {
-      case "string" :
-        let variantName = v.const;
-        if (variantName !== undefined) {
-          return mkDef(variantName, {});
-        } else {
-          return;
-        }
-      case "object" :
-        let properties = v.properties;
-        return Stdlib_Option.flatMap(properties["TAG"], tagSchema => {
-          if (tagSchema.type !== "string") {
-            return;
-          }
-          let variantName = tagSchema.const;
-          if (variantName !== undefined) {
-            return mkDef(variantName, properties);
-          }
-        });
-      default:
-        return;
-    }
-  };
-  let extractEventDefs = eventSchema => {
-    if (eventSchema.type === "union") {
-      return Stdlib_Array.filterMap(eventSchema.anyOf, toEventDef);
-    } else {
-      return Stdlib_Option.mapOr(toEventDef(eventSchema), [], def => [def]);
     }
   };
   let scsProduced = stateChangeSlices.map(SCS => [
@@ -541,6 +551,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       linkedViews: linkedSvsFor(produced),
       consistencyRead: consistencyReadFor(consumed),
       events: extractEventDefs(SCS.Spec.eventSchema),
+      errors: extractErrorDefs(SCS.Spec.errorSchema),
       chapter: componentChapters[SCS.Spec.name]
     };
   });
@@ -555,6 +566,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       linkedViews: linkedSvsFor(produced).concat(linkedReadModelsFor(A.Spec.name)),
       consistencyRead: undefined,
       events: extractEventDefs(A.Spec.eventSchema),
+      errors: extractErrorDefs(A.Spec.errorSchema),
       chapter: componentChapters[A.Spec.name]
     };
   });
@@ -641,6 +653,9 @@ export {
   statusFieldFromStateSchema,
   labelFieldSourceToString,
   labelFieldsFromStateSchema,
+  toEventDef,
+  extractEventDefs,
+  extractErrorDefs,
   make,
 }
 /* log Not a pure module */

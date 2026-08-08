@@ -21,8 +21,10 @@ let evolve = (_state, _event) => true
 @schema
 type command = @targetState("Shipped") ShipOrder({orderId: string}) | @noApi CancelShipment
 
+// Two variants, one payload-less and one carrying a field — the same two branches
+// `events` exercises, so the structure's `errors` list is pinned on both.
 @schema
-type error = OrderNotFound
+type error = OrderNotFound | NotShippable({reason: string})
 
 // ShipmentVoided is payload-less — excluded from producedEventTypes (DCB filter),
 // but still surfaced in `events` (toEventDef's payload-less branch).

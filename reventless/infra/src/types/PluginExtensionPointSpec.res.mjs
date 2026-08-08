@@ -141,6 +141,8 @@ let queryableDefSchema = Plugin$Reventless.queryableDefSchema;
 
 let eventDefSchema = Plugin$Reventless.eventDefSchema;
 
+let errorDefSchema = Plugin$Reventless.errorDefSchema;
+
 let writableDefSchema = Plugin$Reventless.writableDefSchema;
 
 let automationSliceDefSchema = Plugin$Reventless.automationSliceDefSchema;
@@ -193,6 +195,7 @@ export {
   commandDefSchema,
   queryableDefSchema,
   eventDefSchema,
+  errorDefSchema,
   writableDefSchema,
   automationSliceDefSchema,
   outboundTranslationSliceDefSchema,

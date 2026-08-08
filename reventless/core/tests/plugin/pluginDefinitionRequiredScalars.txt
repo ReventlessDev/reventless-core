@@ -43,6 +43,10 @@
 .structure.aggregates[].commands[].references[].fieldName: string
 .structure.aggregates[].commands[].schema: string
 .structure.aggregates[].consumedEventTypes[]: string
+.structure.aggregates[].errors[].name: string
+.structure.aggregates[].errors[].references[].entity: string
+.structure.aggregates[].errors[].references[].fieldName: string
+.structure.aggregates[].errors[].schema: string
 .structure.aggregates[].events[].name: string
 .structure.aggregates[].events[].references[].entity: string
 .structure.aggregates[].events[].references[].fieldName: string
@@ -86,6 +90,10 @@
 .structure.stateChangeSlices[].commands[].references[].fieldName: string
 .structure.stateChangeSlices[].commands[].schema: string
 .structure.stateChangeSlices[].consumedEventTypes[]: string
+.structure.stateChangeSlices[].errors[].name: string
+.structure.stateChangeSlices[].errors[].references[].entity: string
+.structure.stateChangeSlices[].errors[].references[].fieldName: string
+.structure.stateChangeSlices[].errors[].schema: string
 .structure.stateChangeSlices[].events[].name: string
 .structure.stateChangeSlices[].events[].references[].entity: string
 .structure.stateChangeSlices[].events[].references[].fieldName: string

@@ -1,7 +1,7 @@
 # Plan: surface a write-side component's declared error types in the plugin structure
 
 **Date:** 2026-08-08
-**Status:** Proposed.
+**Status:** Done — implemented 2026-08-08.
 **Repos:** `reventless-core` only.
 
 ## Why
@@ -77,6 +77,32 @@ Note also that a sury field cannot be both absent-tolerant and JSON-encodable, s
 means an explicit `T | null`, not an optional field — the same shape `consistencyRead` uses via
 `stringOptionSchema`.
 
+### Answer, verified before implementing: required array.
+
+The check the recommendation asked for was run against three places a persisted structure is read,
+and none of them decodes one through `pluginStructureSchema`:
+
+- **Aggregate replay.** `pluginDefinition.structure` is `option<Offload.payload<pluginStructure>>`.
+  A deploy that has an object store offloads it unconditionally
+  (`Plugin_Builder.res` → `Plugin_Helpers.offloadPayload`), so a stored `VersionConnected` carries a
+  `{$offload}` reference and the inner schema is never applied when the Plugin aggregate rehydrates.
+- **Serving.** `PluginsProjection` writes the structure as untagged wire JSON, and
+  `Platform_ComponentDefinitions_Lambda_Ops` substitutes the offloaded bytes and filters the JSON
+  by key — it never parses it back into the record.
+- **`LocalSeedReset`** reads the structure field-by-field, and says in a comment that it does so
+  precisely to avoid decoding through `pluginStructureSchema`.
+
+Independently, the declaration-site tripwire (`PluginDefinitionRequiredScalarsTest` plus
+`docs/analysis/plugin-definition-schema-evolution-wedge.md`) fires on any new *bare required
+scalar* reachable from `pluginDefinition`. `errors` is an **array**, one of the four shapes
+`Message.fillMissingDefaults` heals: an old payload without it decodes to `[]`, and the nested
+scalars the tripwire lists (`errors[].name`, `errors[].schema`, `errors[].references[].*`) are
+reachable only inside elements an old payload never has. This is the same position `events[]`
+already occupies in the golden list, so the golden file was regenerated with the eight new lines —
+a recorded decision, not a chore.
+
+So: **required array on `writableDef`, required list in the SDL**, exactly as `events` did it.
+
 ## Non-goals
 
 - **No runtime change.** How errors are raised, encoded, or returned is untouched; this only
@@ -97,3 +123,30 @@ means an explicit `T | null`, not an optional field — the same shape `consiste
   rather than left to a reader's inference.
 - `PluginStructureTest` covers errors alongside the command/event assertions it already makes.
 - No change to any component's runtime behaviour; the existing callback tests pass untouched.
+
+## What landed
+
+1. `Plugin_Builder.res` state-change-slice branch gained `errorTypes: extractTypes(Scs.Spec.errorSchema)`.
+   The comment above it is now true.
+2. `Reventless.Plugin.errorDef` (`{name, schema, references}`) plus a required
+   `errors: array<errorDef>` on `writableDef`.
+3. `Plugin_Structure.extractErrorDefs` reuses the `eventDef` walk — the payload-less branch is the
+   common case for errors — and both `stateChangeDefs` and `aggregateDefs` populate the field.
+   `toEventDef` / `extractEventDefs` / `extractErrorDefs` moved from inside `make` to module level so
+   the hand-written `Platform_Admin_Structure` derives its Plugin aggregate's four errors through the
+   same walk instead of hard-coding `[]` — a second copy would have been free to drift.
+4. `Platform_ErrorDef` + `errors: [Platform_ErrorDef!]!` on the shared `Platform_WriteSideDef`, with
+   `encodeErrorDef`. Both admin APIs gain the field from that one edit.
+
+Tests: `PluginStructureTest` pins both error variants of `PsShipOrder` (extended to
+`OrderNotFound | NotShippable({reason})` so the payload-less and payload-carrying branches are both
+covered) and `PsPlaceOrder`'s single variant; `Platform_ComponentDefinitionsApiTest` pins the encoded
+`errors`, the SDL type, and that a component declaring none encodes `[]` and never `null`;
+`LocalHostIntegration` pins the aggregate path end-to-end against the real Catalog plugin
+(`CategoryAlreadyExists`, `CategoryNotFound`, `CategoryAlreadyArchived`). Full suite: 2813 passed.
+
+**Not covered by a test:** the hook one-liner itself. `Plugin_Builder.make` has no test harness in
+this repo — it needs a live Pulumi platform, and nothing currently exercises `onPluginBuiltHook`. The
+line uses the same `extractTypes(Spec.errorSchema)` call the aggregate branch twelve lines up has
+always used, and the structural surfaces below it are pinned; a harness for the hook would be its
+own piece of work.

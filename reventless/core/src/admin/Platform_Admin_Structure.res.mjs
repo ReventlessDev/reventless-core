@@ -7,6 +7,8 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs";
+import * as PluginSpec$ReventlessCore from "../plugin/lifecycle/PluginSpec.res.mjs";
+import * as Plugin_Structure$ReventlessCore from "../plugin/component/Plugin_Structure.res.mjs";
 import * as SuryToJsonSchema$ReventlessCore from "../components/Api/SuryToJsonSchema.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "../plugin/api/PluginBaseFragment.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "../plugin/lifecycle/PluginsReadModelSpec.res.mjs";
@@ -105,6 +107,8 @@ let pluginAggregate_linkedViews = ["Plugins"];
 
 let pluginAggregate_events = [];
 
+let pluginAggregate_errors = Plugin_Structure$ReventlessCore.extractErrorDefs(PluginSpec$ReventlessCore.errorSchema);
+
 let pluginAggregate = {
   name: "Plugin",
   commands: pluginAggregate_commands,
@@ -113,6 +117,7 @@ let pluginAggregate = {
   linkedViews: pluginAggregate_linkedViews,
   consistencyRead: undefined,
   events: pluginAggregate_events,
+  errors: pluginAggregate_errors,
   chapter: undefined
 };
 
