@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.206 (2026-08-09)
+
+### Bug Fixes
+
+* **examples:** pin host-shell 3.0.0-alpha.58 so [@live](https://github.com/live)(false) hides the Live control ([f1eba90](https://github.com/ReventlessDev/reventless-core/commit/f1eba9024540db5d20d7e11080f5f2d35ed3dbee))
+
+
 # 1.0.0-alpha.205 (2026-08-09)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-local

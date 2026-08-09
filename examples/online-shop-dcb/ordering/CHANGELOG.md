@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.199 (2026-08-09)
+
+### Features
+
+* **ppx,spec,core:** [@live](https://github.com/live) on state declarations → top-level x-reventless-live schema key ([0f38f38](https://github.com/ReventlessDev/reventless-core/commit/0f38f38dc83c38da2fde6615b89a98cd7fda6fed))
+
+
 # 1.0.0-alpha.198 (2026-08-09)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-ordering
