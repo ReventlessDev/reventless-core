@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.275 (2026-08-09)
+
+### Bug Fixes
+
+* **aws:** fire the deploy-time re-detect after the deferred plugin callback ([b373ff1](https://github.com/ReventlessDev/reventless-core/commit/b373ff19cf910328c098ca63d5e52015d070a236))
+* **aws:** heal a persisted structure that predates a required list field ([dc4c42c](https://github.com/ReventlessDev/reventless-core/commit/dc4c42cab5a7db538d90edbce6d13b949830aad6))
+
+
 # 3.0.0-alpha.274 (2026-08-08)
 
 ### Bug Fixes

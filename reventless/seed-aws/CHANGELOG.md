@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.13 (2026-08-09)
+
+### Bug Fixes
+
+* **seed-aws:** hold and recycle a stack's runtimes so a reset stays empty ([4baaa38](https://github.com/ReventlessDev/reventless-core/commit/4baaa3827ef30a0adccdef5d2bccc688e7b6686f))
+
+
 # 1.0.0-alpha.12 (2026-08-05)
 
 **Note:** Version bump only for package @reventlessdev/reventless-seed-aws
