@@ -26,22 +26,28 @@ let extractVariantInfo = (variantSchema: S.t<unknown>): option<variantInfo> =>
         )
       {tagName, fields: properties, taggedFields}
     })
+  // Payload-less variant — sury compiles a constructor with no payload to
+  // String({const}), whether it stands alone (`type t = Foo`) or sits beside
+  // payload-carrying constructors in one union (`Foo | Bar(string)`). Matching it
+  // here rather than only at the top level is what makes it visible inside a
+  // mixed union: the Union branch below filters members through this function, so
+  // while this case lived only in `extractAllVariants` every payload-less arm of a
+  // mixed union was silently dropped — `NoPriorType | PriorType(string)` extracted
+  // as just `[PriorType]`, and a tag-set comparison could not tell it apart from a
+  // union that genuinely has only that one arm.
+  | String({const: ?Some(name)}) => Some({tagName: name, fields: Dict.make(), taggedFields: []})
   | _ => None
   }
 
-// Extract all variant infos from a schema (handles Union and single Object)
+// Extract all variant infos from a schema (handles Union and single variants)
 let extractAllVariants = (schema: S.t<unknown>): array<variantInfo> =>
   switch schema {
   | Union({anyOf}) => anyOf->Array.filterMap(extractVariantInfo)
-  | Object(_) =>
+  | _ =>
     switch extractVariantInfo(schema) {
     | Some(info) => [info]
     | None => []
     }
-  | String({const: ?Some(name)}) =>
-    // Single payload-less variant — sury compiles `type t = Foo` to String({const: "Foo"})
-    [{tagName: name, fields: Dict.make(), taggedFields: []}]
-  | _ => []
   }
 
 // Check if a variant has no payload fields (only TAG)
@@ -103,6 +109,31 @@ let schemaTypeName = (schema: S.t<unknown>): string =>
   | Unknown(_) => "unknown"
   | Ref(_) => "ref"
   | _ => "unknown"
+  }
+
+// One level deeper than `schemaTypeName`, for the mismatch messages.
+//
+// `schemaTypeName` alone makes an incompatibility unreadable whenever both sides
+// share a top-level kind: `schemasAreCompatible` rejects two unions on their
+// variant tags or a variant's payload, but both stringify to "union", so the
+// message read "consumes X as union but producer declares it as union" and named
+// nothing a reader could act on. Listing the members turns that into the actual
+// difference — e.g. `union[string | unknown]` against
+// `union[NoPriorType | PriorType]`, which names the drift outright.
+//
+// A union of *tagged* variants is described by its tag names; one whose members
+// carry no TAG (what `option<t>` compiles to) falls back to the member kinds,
+// since that is all there is to say about it.
+let describeSchema = (schema: S.t<unknown>): string =>
+  switch schema {
+  | Union({anyOf}) =>
+    let tags = extractAllVariants(schema)->Array.map(v => v.tagName)
+    let members = tags->Array.length > 0 ? tags : anyOf->Array.map(schemaTypeName)
+    `union[${members->Array.join(" | ")}]`
+  | Object({properties}) =>
+    `object{${properties->Dict.keysToArray->Array.toSorted(String.compare)->Array.join(", ")}}`
+  | Array({additionalItems: Schema(item)}) => `array<${schemaTypeName(item)}>`
+  | _ => schemaTypeName(schema)
   }
 
 type producerEntry = {
@@ -314,7 +345,7 @@ let validateProducedAndConsumed = (
                 let _ =
                   errors->Array.push({
                     sliceName,
-                    message: `Slice '${sliceName}' consumes '${variant.tagName}.${fieldName}' as ${schemaTypeName(consumedFieldSchema)} but producer declares it as ${schemaTypeName(producedFieldSchema)}`,
+                    message: `Slice '${sliceName}' consumes '${variant.tagName}.${fieldName}' as ${describeSchema(consumedFieldSchema)} but producer '${producer.sliceName}' declares it as ${describeSchema(producedFieldSchema)}`,
                   })
               }
             }

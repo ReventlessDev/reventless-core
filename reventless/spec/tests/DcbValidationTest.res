@@ -36,3 +36,46 @@ describe("DcbValidation.schemasAreCompatible", () => {
     expect(DcbValidation.schemasAreCompatible(u(nestedSchema), u(nestedDriftSchema)))->toEqual(false)
   )
 })
+
+// The message a field-type mismatch produces. `schemaTypeName` alone renders any
+// two unions as "union", so the report named neither side's actual shape — the
+// case that made a real producer/consumer drift unreadable in a deploy log.
+@schema type priorTypeCarrier = NoPriorType | PriorType(string)
+
+describe("DcbValidation.describeSchema", () => {
+  testSync("a tagged union is described by its variant tags, not just 'union'", () =>
+    expect(DcbValidation.describeSchema(u(priorTypeCarrierSchema)))->toEqual(
+      "union[NoPriorType | PriorType]",
+    )
+  )
+  testSync("a union with untagged members falls back to member kinds", () =>
+    expect(DcbValidation.describeSchema(S.option(S.string)->DcbTag.toUnknownSchema))->toEqual(
+      "union[string | unknown]",
+    )
+  )
+  testSync("the two sides of the real drift no longer read identically", () => {
+    let consumed = DcbValidation.describeSchema(S.option(S.string)->DcbTag.toUnknownSchema)
+    let produced = DcbValidation.describeSchema(u(priorTypeCarrierSchema))
+    expect(consumed == produced)->toEqual(false)
+  })
+  testSync("an object is described by its field names", () =>
+    expect(DcbValidation.describeSchema(u(flatSchema)))->toEqual("object{productId, qty}")
+  )
+})
+
+// The compatibility consequence of seeing payload-less arms: two unions that
+// differ only by one are no longer indistinguishable.
+@schema type onlyPayloadArm = PriorType(string)
+
+describe("DcbValidation payload-less variants inside a mixed union", () => {
+  testSync("both arms are extracted", () =>
+    expect(
+      DcbValidation.extractAllVariants(u(priorTypeCarrierSchema))->Array.map(v => v.tagName),
+    )->toEqual(["NoPriorType", "PriorType"])
+  )
+  testSync("dropping a payload-less arm is now an incompatibility", () =>
+    expect(
+      DcbValidation.schemasAreCompatible(u(priorTypeCarrierSchema), u(onlyPayloadArmSchema)),
+    )->toEqual(false)
+  )
+})

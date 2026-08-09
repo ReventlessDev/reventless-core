@@ -7,48 +7,46 @@ import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js
 import * as DcbTag$Reventless from "./DcbTag.res.mjs";
 
 function extractVariantInfo(variantSchema) {
-  if (variantSchema.type !== "object") {
-    return;
-  }
-  let properties = variantSchema.properties;
-  return Stdlib_Option.map(DcbTag$Reventless.variantTagName(variantSchema.items), tagName => {
-    let taggedFields = Stdlib_Array.filterMap(Object.entries(properties), param => {
-      if (DcbTag$Reventless.isTagged(param[1])) {
-        return param[0];
+  switch (variantSchema.type) {
+    case "string" :
+      let name = variantSchema.const;
+      if (name !== undefined) {
+        return {
+          tagName: name,
+          fields: {},
+          taggedFields: []
+        };
+      } else {
+        return;
       }
-    });
-    return {
-      tagName: tagName,
-      fields: properties,
-      taggedFields: taggedFields
-    };
-  });
+    case "object" :
+      let properties = variantSchema.properties;
+      return Stdlib_Option.map(DcbTag$Reventless.variantTagName(variantSchema.items), tagName => {
+        let taggedFields = Stdlib_Array.filterMap(Object.entries(properties), param => {
+          if (DcbTag$Reventless.isTagged(param[1])) {
+            return param[0];
+          }
+        });
+        return {
+          tagName: tagName,
+          fields: properties,
+          taggedFields: taggedFields
+        };
+      });
+    default:
+      return;
+  }
 }
 
 function extractAllVariants(schema) {
-  switch (schema.type) {
-    case "string" :
-      let name = schema.const;
-      if (name !== undefined) {
-        return [{
-            tagName: name,
-            fields: {},
-            taggedFields: []
-          }];
-      } else {
-        return [];
-      }
-    case "object" :
-      let info = extractVariantInfo(schema);
-      if (info !== undefined) {
-        return [info];
-      } else {
-        return [];
-      }
-    case "union" :
-      return Stdlib_Array.filterMap(schema.anyOf, extractVariantInfo);
-    default:
-      return [];
+  if (schema.type === "union") {
+    return Stdlib_Array.filterMap(schema.anyOf, extractVariantInfo);
+  }
+  let info = extractVariantInfo(schema);
+  if (info !== undefined) {
+    return [info];
+  } else {
+    return [];
   }
 }
 
@@ -157,6 +155,26 @@ function schemaTypeName(schema) {
       return "ref";
     default:
       return "unknown";
+  }
+}
+
+function describeSchema(schema) {
+  switch (schema.type) {
+    case "array" :
+      let item = schema.additionalItems;
+      if (item === "strip" || item === "strict") {
+        return schemaTypeName(schema);
+      } else {
+        return `array<` + schemaTypeName(item) + `>`;
+      }
+    case "object" :
+      return `object{` + Object.keys(schema.properties).toSorted(Primitive_string.compare).join(", ") + `}`;
+    case "union" :
+      let tags = extractAllVariants(schema).map(v => v.tagName);
+      let members = tags.length !== 0 ? tags : schema.anyOf.map(schemaTypeName);
+      return `union[` + members.join(" | ") + `]`;
+    default:
+      return schemaTypeName(schema);
   }
 }
 
@@ -298,7 +316,7 @@ function validateProducedAndConsumed(produced, consumed) {
               if (!schemasAreCompatible(consumedFieldSchema, producedFieldSchema)) {
                 errors.push({
                   sliceName: sliceName,
-                  message: `Slice '` + sliceName + `' consumes '` + variant.tagName + `.` + fieldName + `' as ` + schemaTypeName(consumedFieldSchema) + ` but producer declares it as ` + schemaTypeName(producedFieldSchema)
+                  message: `Slice '` + sliceName + `' consumes '` + variant.tagName + `.` + fieldName + `' as ` + describeSchema(consumedFieldSchema) + ` but producer '` + producer.sliceName + `' declares it as ` + describeSchema(producedFieldSchema)
                 });
                 return;
               } else {
@@ -414,6 +432,7 @@ export {
   schemasAreCompatible,
   propsCompatible,
   schemaTypeName,
+  describeSchema,
   dedupeKeys,
   validateCompositeReads,
   validateProducedAndConsumed,
