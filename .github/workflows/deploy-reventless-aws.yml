@@ -52,6 +52,11 @@ on:
         required: false
         type: string
         default: ""
+      pulumi-concurrent-updates:
+        description: "Whether the Pulumi backend tolerates more than one update in flight. Leave false for a Pulumi Cloud individual account, whose one-update limit is per ACCOUNT, not per stack. Set true for a Pulumi organization or a self-managed (S3/DIY) backend."
+        required: false
+        type: boolean
+        default: false
     secrets:
       PULUMI_ACCESS_TOKEN:
         required: true
@@ -70,8 +75,15 @@ on:
       NPM_TOKEN:
         required: false
 
+# A Pulumi Cloud *individual* account permits one running update per ACCOUNT —
+# the "Individual user accounts do not support concurrent updates" 409 names
+# whichever stack currently holds the slot, even one this run never referenced.
+# So the lock has to be account-wide, not ref-wide: an `alpha` deploy and a
+# `pr-verify` deploy touch disjoint stacks and still collide. Backends that do
+# lock per stack (Pulumi organization, self-managed S3/DIY) opt back into the
+# ref-scoped group via `pulumi-concurrent-updates: true`.
 concurrency:
-  group: deploy-${{ github.ref }}
+  group: ${{ inputs.pulumi-concurrent-updates && format('deploy-{0}', github.ref) || 'deploy-pulumi-account' }}
   cancel-in-progress: false
 
 jobs:
@@ -422,7 +434,11 @@ jobs:
     environment: deploy-${{ matrix.plugin }}
     strategy:
       fail-fast: false
-      max-parallel: 4
+      # Each plugin owns a distinct stack, so the matrix is safe to fan out —
+      # but only if the backend locks per stack. Against a Pulumi Cloud
+      # individual account the second job 409s on the first job's stack (see
+      # the workflow-level `concurrency` comment), so the default is serial.
+      max-parallel: ${{ inputs.pulumi-concurrent-updates && 4 || 1 }}
       matrix:
         plugin: ${{ fromJson(needs.detect-changes.outputs.changed-plugins) }}
     env:
