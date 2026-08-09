@@ -5,7 +5,8 @@ Spec describing the structural annotations declared on the fields of an
 `@compositeId`, `@subId`, `@compositeSubId`, `@index`), a visibility
 annotation (`@hidden`, `@summary`), a hierarchical-rendering annotation
 (`@drillTarget`, `@collapsed`), a server-query opt-in annotation
-(`@scan`, `@scanSort`), or a UI-list annotation (`@status`, `@groupBy`).
+(`@scan`, `@scanSort`), a UI-list annotation (`@status`, `@groupBy`), or a
+type-level live-updates annotation (`@live` on the `state` declaration).
 Downstream consumers (UI, MCP, codegen) read the
 spec to surface field roles in JSON Schema as `x-reventless-*` extension
 properties.
@@ -86,6 +87,15 @@ type stateAnnotationSpec = {
   the default case is omitted to keep schemas compact.
   */
   visibility: option<string>,
+  /**
+  Component-level live-updates hint from `@live(true | false)` on the
+  `@schema type state` declaration (PPX-emitted). `SuryToJsonSchema.deriveObjectSchema`
+  emits top-level `x-reventless-live: bool` when present; absent annotation ⇒
+  key absent ⇒ the consumer's own default applies. The framework only
+  transports the declaration — UI consumers decide whether a live-updates
+  control is offered (`true`) or hidden (`false`) for the view.
+  */
+  live: option<bool>,
 }
 
 /** Sury metadata ID used to attach a `stateAnnotationSpec` to a state schema. */

@@ -155,6 +155,33 @@ The default (`Public`) is omitted from the JSON Schema to keep it compact.
 The same attribute works on StateViewSlice files. It is rejected on
 Aggregate / `*Slice` (command-carrying) files with a clear compile error.
 
+### Live updates (`@live`)
+
+Views that render fast-moving operational state benefit from live updates;
+investigative or historical views (catalogues, comparisons, audit histories) do
+not. Declare which kind a view is directly on its state declaration:
+
+```rescript title="Catalog/ReadModel/Products.res" showLineNumbers
+@@reventless.spec
+
+@live(false)
+@schema
+type state = {
+  @id productId: string,
+  name: string,
+}
+```
+
+The bool propagates to the generated JSON Schema as a top-level
+`x-reventless-live: bool`. The framework only transports the declaration — UI
+consumers decide what to do with it (typically whether a Live control is
+offered for the view at all). An absent annotation emits no key, so the
+consumer's own default applies.
+
+The same annotation works on StateViewSlice state declarations. It is rejected
+on any other spec file's state declaration with a clear compile error, and the
+payload must be exactly one bool literal.
+
 ### config
 
 `Reventless.ReadModel.config` is a convenience function to create the actual config value. The function takes these optional arguments:

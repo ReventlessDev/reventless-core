@@ -229,13 +229,22 @@ let deriveObjectSchema = (schema: S.t<unknown>): JSON.t =>
       ~optional=SchemaType.optionalFieldNames(schema),
       fields,
     )
-    // Surface component-level visibility on the top-level object schema.
-    // Omitted entirely for the default `Public` (None) so schemas stay compact.
+    // Surface component-level hints on the top-level object schema.
+    // Visibility is omitted entirely for the default `Public` (None) so schemas
+    // stay compact; live is emitted only when declared — an absent key means
+    // the consumer's own default applies.
     switch annotations {
-    | Some({visibility: Some(name)}) =>
+    | Some({visibility, live}) if visibility->Option.isSome || live->Option.isSome =>
       switch objSchema->JSON.Decode.object {
       | Some(obj) =>
-        obj->Dict.set("x-reventless-visibility", JSON.Encode.string(name))
+        switch visibility {
+        | Some(name) => obj->Dict.set("x-reventless-visibility", JSON.Encode.string(name))
+        | None => ()
+        }
+        switch live {
+        | Some(b) => obj->Dict.set("x-reventless-live", JSON.Encode.bool(b))
+        | None => ()
+        }
         JSON.Encode.object(obj)
       | None => objSchema
       }

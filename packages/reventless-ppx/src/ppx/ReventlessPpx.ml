@@ -775,7 +775,8 @@ let transform (str : structure) : structure =
                       |> StateAnnotations.strip_semantic_metric_attrs
                       |> StateAnnotations.strip_status_attrs
                       |> StateAnnotations.strip_group_by_attrs
-                 else body in
+                      |> StateAnnotations.strip_live_attrs
+                 else (StateAnnotations.check_live_placement body; body) in
       let suffix =
         if not (Util.has_let_binding "moduleUrl" body) then
           [ModuleUrl.gen_module_url ~loc specifier]

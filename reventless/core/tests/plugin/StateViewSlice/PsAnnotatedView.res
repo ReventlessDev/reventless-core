@@ -9,6 +9,7 @@
 type consumedEvent =
   | ItemRecorded({itemId: string, ownerId: string, version: string, name: string, total: float})
 
+@live(false)
 @schema
 type state = {
   @id itemId: string,

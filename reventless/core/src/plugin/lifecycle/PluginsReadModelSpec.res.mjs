@@ -50,7 +50,8 @@ let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stat
   metric: [],
   status: undefined,
   groupBy: "kind",
-  visibility: undefined
+  visibility: undefined,
+  live: undefined
 });
 
 let name = "Plugins";

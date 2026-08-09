@@ -47,7 +47,8 @@ let stateSchema$2 = S.Metadata.set(stateSchema$1, StateAnnotations$Reventless.st
   metric: [],
   status: "locationStatus",
   groupBy: undefined,
-  visibility: undefined
+  visibility: undefined,
+  live: undefined
 });
 
 let name = "Customers";

@@ -430,6 +430,27 @@ The PPX emits the field name into `stateAnnotationSpec.groupBy` (sury metadata a
 
 ---
 
+### `@live` — declare the view's live-updates default
+
+Use on the `@schema type state` **declaration** (not a field) of a ReadModel or StateViewSlice spec to declare whether live updates make sense for the view. `@live(false)` marks investigative/historical views (catalogues, comparisons, audit histories) where a live-updates control is pointless; `@live(true)` marks operational views where one should be offered.
+
+```rescript
+@@reventless.spec
+
+@live(false)
+@schema
+type state = {
+  @id productId: string,
+  name: string,
+}
+```
+
+The PPX emits the bool into `stateAnnotationSpec.live` (sury metadata attached to the state schema), and `SuryToJsonSchema.deriveObjectSchema` stamps top-level `x-reventless-live: bool` on the read model's JSON Schema. The framework only transports the declaration — UI consumers decide what to do with it (the annotation typically governs whether a Live control is offered at all). **Absent annotation ⇒ absent key ⇒ the consumer's own default applies.** There is no runtime or projection change — this is a schema hint only.
+
+**Constraint:** the payload is exactly one bool literal (`@live(true)` or `@live(false)`); anything else is a compile error. Only ReadModel and StateViewSlice (incl. Stream) spec files accept it — the PPX errors on a `@live` state declaration in any other spec file.
+
+---
+
 ### `@allowedStates` — per-variant command state guard
 
 Use on individual command variants in an aggregate or DCB-slice `@schema type command` to declare which lifecycle states the command is meaningful in. The payload is an expression list of status-type constructor references. AutoUI hides the command on rows whose status isn't in the set.

@@ -800,6 +800,34 @@ let project = event => switch event {
 }
 EOF
 
+# ─── Fixture: @live on the state declaration (live-updates hint) ──
+
+# @live(false) on a ReadModel state declaration
+cat > "$PLUGIN/src/ReadModel/LiveOffReadModel.res" <<'EOF'
+@@reventless.spec
+
+@live(false)
+@schema
+type state = { @id id: string, name: string }
+EOF
+
+# @live(true) on a StateViewSlice state declaration (no field annotations —
+# the metadata binding must be emitted from @live alone)
+cat > "$PLUGIN/src/StateViewSlice/LiveOnView.res" <<'EOF'
+@@reventless.spec
+
+@live(true)
+@schema
+type state = { id: string, name: string }
+
+@schema
+type consumedEvent = Created({id: string, name: string})
+
+let project = event => switch event {
+  | Created({id, name}) => [Set(id, {id, name})]
+}
+EOF
+
 # ─── Fixture: @scan + @scanSort (server-query opt-in) ─────────────
 
 cat > "$PLUGIN/src/ReadModel/ScanReadModel.res" <<'EOF'
@@ -1859,6 +1887,24 @@ assert_js_not_contains "$JS" 'visibility: "Public"' "Public visibility omitted f
 assert_js_not_contains "$JS" 'visibility: "Internal"' "Internal visibility absent from default-visibility ReadModel"
 
 echo ""
+echo "=== Test: @live(false) on ReadModel state → metadata carries live: false ==="
+JS="$PLUGIN/src/ReadModel/LiveOffReadModel.res.mjs"
+assert_js_contains "$JS" 'stateAnnotationsId' "stateAnnotations binding emitted on @live ReadModel"
+assert_js_contains "$JS" 'live: false' "live: false recorded in stateAnnotations metadata"
+
+echo ""
+echo "=== Test: @live(true) on StateViewSlice state → metadata from @live alone ==="
+JS="$PLUGIN/src/StateViewSlice/LiveOnView.res.mjs"
+assert_js_contains "$JS" 'stateAnnotationsId' "stateAnnotations binding emitted from @live alone"
+assert_js_contains "$JS" 'live: true' "live: true recorded in stateAnnotations metadata"
+
+echo ""
+echo "=== Test: unannotated state → metadata omits live ==="
+JS="$PLUGIN/src/ReadModel/VisibilityDefaultReadModel.res.mjs"
+assert_js_not_contains "$JS" 'live: true' "live: true absent without @live"
+assert_js_not_contains "$JS" 'live: false' "live: false absent without @live"
+
+echo ""
 echo "=== Test: PPX error — @hidden + @summary on same field ==="
 
 cat > "$ERROR/src/ReadModel/HiddenSummaryConflictReadModel.res" <<'EOF'
@@ -1908,6 +1954,58 @@ else
   fi
 fi
 rm -f "$ERROR/src/ReadModel/GroupByConflictReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — @live with a non-bool payload ==="
+
+cat > "$ERROR/src/ReadModel/LiveArityReadModel.res" <<'EOF'
+@@reventless.spec
+
+@live("yes")
+@schema
+type state = { @id id: string, name: string }
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@live non-bool payload" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@live expects exactly one bool payload"; then
+    pass "@live with non-bool payload → correct compile error"
+  else
+    fail "@live non-bool payload" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/LiveArityReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — @live on an Aggregate state declaration ==="
+
+mkdir -p "$ERROR/src/Aggregate"
+cat > "$ERROR/src/Aggregate/LiveOnAggregate.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = Create
+@schema
+type event = Created
+@schema
+type error = unit
+
+@live(true)
+@schema
+type state = { id: string }
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@live on Aggregate state" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@live is only supported on the @schema type state declaration"; then
+    pass "@live on Aggregate state → correct compile error"
+  else
+    fail "@live on Aggregate state" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/Aggregate/LiveOnAggregate.res"
 
 echo ""
 echo "=== Test: PPX error — @@reventless.visibility on an Aggregate ==="

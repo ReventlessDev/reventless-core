@@ -34,6 +34,7 @@ let emptySpec: Reventless.StateAnnotations.stateAnnotationSpec = {
   status: None,
   groupBy: None,
   visibility: None,
+  live: None,
 }
 
 describe("SuryToJsonSchema:", () => {
@@ -426,6 +427,41 @@ describe("SuryToJsonSchema:", () => {
       let schema' = schema->withSpec({...emptySpec, visibility: None})
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       expect(getProperty(json, "x-reventless-visibility"))->toBe(None)
+    })
+
+    testSync("emits x-reventless-live at top level when live is declared", () => {
+      let schema = S.schema(s => {"id": s.matches(S.string)})->S.castToUnknown
+      let offJson = SuryToJsonSchema.deriveObjectSchema(
+        schema->withSpec({...emptySpec, live: Some(false)}),
+      )
+      let onJson = SuryToJsonSchema.deriveObjectSchema(
+        schema->withSpec({...emptySpec, live: Some(true)}),
+      )
+      expect((
+        getProperty(offJson, "x-reventless-live")->Option.flatMap(JSON.Decode.bool),
+        getProperty(onJson, "x-reventless-live")->Option.flatMap(JSON.Decode.bool),
+      ))->toEqual((Some(false), Some(true)))
+    })
+
+    testSync("omits x-reventless-live when live is None (no annotation)", () => {
+      let schema = S.schema(s => {"id": s.matches(S.string)})->S.castToUnknown
+      let schema' = schema->withSpec({...emptySpec, live: None})
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      expect(getProperty(json, "x-reventless-live"))->toBe(None)
+    })
+
+    testSync("emits x-reventless-live and x-reventless-visibility together", () => {
+      let schema = S.schema(s => {"id": s.matches(S.string)})->S.castToUnknown
+      let schema' = schema->withSpec({
+        ...emptySpec,
+        visibility: Some("Internal"),
+        live: Some(false),
+      })
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      expect((
+        getProperty(json, "x-reventless-visibility")->Option.flatMap(JSON.Decode.string),
+        getProperty(json, "x-reventless-live")->Option.flatMap(JSON.Decode.bool),
+      ))->toEqual((Some("Internal"), Some(false)))
     })
   })
 

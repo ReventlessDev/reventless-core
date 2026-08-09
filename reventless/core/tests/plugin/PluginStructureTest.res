@@ -666,6 +666,17 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
         orderIdField->Option.flatMap(s => getProperty(s, "x-reventless-id")),
       )->toBe(None)
     })
+
+    testSync("@live(false) flows through the PPX to top-level x-reventless-live", () => {
+      expect(
+        getProperty(annotatedSchema, "x-reventless-live")->Option.flatMap(JSON.Decode.bool),
+      )->toBe(Some(false))
+    })
+
+    testSync("unannotated state-view slice (Orders) has no top-level x-reventless-live", () => {
+      let ordersSchema = structure.stateViewSlices->Array.getUnsafe(0)->parseSchema
+      expect(getProperty(ordersSchema, "x-reventless-live"))->toBe(None)
+    })
   })
 
   // The generator captures each component's chapter (source-folder grouping band)

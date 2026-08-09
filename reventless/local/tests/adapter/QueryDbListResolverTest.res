@@ -40,6 +40,7 @@ let rowStateSchemaWithAnnotations =
       status: None,
       groupBy: None,
       visibility: None,
+      live: None,
     },
   )
 

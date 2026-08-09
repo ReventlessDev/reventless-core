@@ -104,6 +104,7 @@ let indexedStateSchemaWithAnnotations = indexedStateSchema->S.Metadata.set(
     status: None,
     groupBy: None,
     visibility: None,
+    live: None,
   },
 )
 
@@ -133,6 +134,7 @@ let orderedStateSchemaWithAnnotations = orderedStateSchema->S.Metadata.set(
     status: None,
     groupBy: None,
     visibility: None,
+    live: None,
   },
 )
 
@@ -163,6 +165,7 @@ let scanStateSchemaWithAnnotations = scanStateSchema->S.Metadata.set(
     status: None,
     groupBy: None,
     visibility: None,
+    live: None,
   },
 )
 

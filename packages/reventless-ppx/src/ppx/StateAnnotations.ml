@@ -1164,6 +1164,82 @@ let strip_semantic_metric_attrs (str : structure) : structure =
     | _ -> item
   ) str
 
+(* ── @live: component-level live-updates hint carried on the `@schema type
+       state` declaration itself (no behavioural effect at the PPX level — flows
+       through the metadata pipeline so JSON Schema can surface it as a
+       top-level x-reventless-live bool, read by UI consumers to decide whether
+       a live-updates control is offered for the view). ── *)
+
+let find_live_attr (attrs : attributes) =
+  List.find_opt (fun (a : attribute) -> String.equal a.attr_name.txt "live") attrs
+
+(** Extract the bool from `@live(true)` / `@live(false)`. Anything else —
+    missing payload, non-bool, multiple items — is an arity error. *)
+let get_live_value (attr : attribute) : bool =
+  match attr.attr_payload with
+  | PStr [{ pstr_desc = Pstr_eval ({pexp_desc = Pexp_construct ({ txt = Lident "true"; _ }, None); _}, _); _ }] -> true
+  | PStr [{ pstr_desc = Pstr_eval ({pexp_desc = Pexp_construct ({ txt = Lident "false"; _ }, None); _}, _); _ }] -> false
+  | _ ->
+    Location.raise_errorf ~loc:attr.attr_loc
+      "@live expects exactly one bool payload, e.g. @live(false)"
+
+(** Extract `@live(bool)` from the `@schema type state` declaration, if present. *)
+let extract_state_live (str : structure) : bool option =
+  let rec scan = function
+    | [] -> None
+    | (item : structure_item) :: rest ->
+      (match item.pstr_desc with
+       | Pstr_type (_, decls) ->
+         let found = List.find_opt (fun (td : type_declaration) ->
+           String.equal td.ptype_name.txt "state"
+           && Util.has_attr "schema" td.ptype_attributes
+         ) decls in
+         (match found with
+          | Some td ->
+            (match find_live_attr td.ptype_attributes with
+             | Some attr -> Some (get_live_value attr)
+             | None -> None)
+          | None -> scan rest)
+       | _ -> scan rest)
+  in
+  scan str
+
+(** Strip @live from the @schema type state type declaration. *)
+let strip_live_attrs (str : structure) : structure =
+  List.map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (rf, decls) ->
+      let new_decls = List.map (fun (td : type_declaration) ->
+        if not (String.equal td.ptype_name.txt "state"
+                && Util.has_attr "schema" td.ptype_attributes) then td
+        else
+          { td with ptype_attributes =
+              List.filter (fun (a : attribute) ->
+                not (String.equal a.attr_name.txt "live")
+              ) td.ptype_attributes }
+      ) decls in
+      { item with pstr_desc = Pstr_type (rf, new_decls) }
+    | _ -> item
+  ) str
+
+(** Reject `@live` on state declarations of spec files that are not a ReadModel
+    or StateViewSlice — without this the annotation would be dropped silently. *)
+let check_live_placement (str : structure) : unit =
+  List.iter (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (_, decls) ->
+      List.iter (fun (td : type_declaration) ->
+        if String.equal td.ptype_name.txt "state"
+           && Util.has_attr "schema" td.ptype_attributes then
+          match find_live_attr td.ptype_attributes with
+          | Some attr ->
+            Location.raise_errorf ~loc:attr.attr_loc
+              "@live is only supported on the @schema type state declaration of ReadModel and StateViewSlice spec files"
+          | None -> ()
+      ) decls
+    | _ -> ()
+  ) str
+
 (* ── State annotation metadata: propagate structural annotations to JSON Schema ── *)
 
 (** Build a string-array AST expression. *)
@@ -1203,10 +1279,13 @@ let metric_tuple_array ~loc pairs =
 
 (** Build the `let stateSchema = stateSchema->S.Metadata.set(~id=Reventless.StateAnnotations.stateAnnotationsId, spec)`
     shadowing binding. Returns `None` when the state has no structural annotations
-    AND no file-level visibility override. The `~visibility` arg is the constructor
-    name extracted from `@@reventless.visibility(...)` ("Public" or "Internal"); the
-    default case is normalised to `None` upstream so the metadata stays compact. *)
-let make_state_annotations_binding ~loc ~visibility fields : structure_item option =
+    AND no file-level visibility override AND no `@live` declaration. The
+    `~visibility` arg is the constructor name extracted from
+    `@@reventless.visibility(...)` ("Public" or "Internal"); the default case is
+    normalised to `None` upstream so the metadata stays compact. The `~live` arg
+    is the bool from `@live(...)` on the state type declaration, or `None` when
+    the annotation is absent. *)
+let make_state_annotations_binding ~loc ~visibility ~live fields : structure_item option =
   let ids = List.filter_map (fun (ld : label_declaration) ->
     if has_id_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
   ) fields in
@@ -1292,7 +1371,7 @@ let make_state_annotations_binding ~loc ~visibility fields : structure_item opti
      && drill_targets = [] && drill_target_keys = [] && collapsed = []
      && scan = [] && scan_sort = [] && semantic = [] && metric = []
      && status = None && group_by = None
-     && visibility = None then None
+     && visibility = None && live = None then None
   else
     let ident lid =
       { pexp_desc = Pexp_ident { txt = lid; loc };
@@ -1338,6 +1417,17 @@ let make_state_annotations_binding ~loc ~visibility fields : structure_item opti
             pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
         { pexp_desc = Pexp_construct ({ txt = Lident "Some"; loc }, Some str_lit);
           pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
+    let live_value =
+      match live with
+      | None ->
+        { pexp_desc = Pexp_construct ({ txt = Lident "None"; loc }, None);
+          pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
+      | Some b ->
+        let bool_lit =
+          { pexp_desc = Pexp_construct ({ txt = Lident (if b then "true" else "false"); loc }, None);
+            pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
+        { pexp_desc = Pexp_construct ({ txt = Lident "Some"; loc }, Some bool_lit);
+          pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
     let spec_record =
       { pexp_desc = Pexp_record (
           [ ({ Location.txt = Lident "ids"; loc }, estr_array ~loc ids);
@@ -1356,7 +1446,8 @@ let make_state_annotations_binding ~loc ~visibility fields : structure_item opti
             ({ txt = Lident "metric"; loc }, metric_tuple_array ~loc metric);
             ({ txt = Lident "status"; loc }, status_value);
             ({ txt = Lident "groupBy"; loc }, group_by_value);
-            ({ txt = Lident "visibility"; loc }, visibility_value) ],
+            ({ txt = Lident "visibility"; loc }, visibility_value);
+            ({ txt = Lident "live"; loc }, live_value) ],
           None);
         pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
     let apply_expr =
@@ -1401,6 +1492,7 @@ let generate_state_annotations ~loc (str : structure) : structure_item list =
   | Some fields ->
     validate_visibility_annotations fields;
     let visibility = extract_file_visibility str in
-    (match make_state_annotations_binding ~loc ~visibility fields with
+    let live = extract_state_live str in
+    (match make_state_annotations_binding ~loc ~visibility ~live fields with
      | None -> []
      | Some s -> [s])

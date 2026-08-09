@@ -44,7 +44,8 @@ let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stat
   metric: [],
   status: undefined,
   groupBy: undefined,
-  visibility: "Internal"
+  visibility: "Internal",
+  live: undefined
 });
 
 let name = "AvailableProducts";
