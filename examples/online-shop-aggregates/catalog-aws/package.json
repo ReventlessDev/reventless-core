@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-catalog-aws",
   "private": true,
-  "version": "1.0.0-alpha.131",
+  "version": "1.0.0-alpha.132",
   "description": "Online Shop Aggregates — Catalog plugin AWS deployment",
   "license": "Apache-2.0",
   "scripts": {

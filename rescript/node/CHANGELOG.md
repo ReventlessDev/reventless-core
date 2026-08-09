@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.3 (2026-08-09)
+
+### Features
+
+* **core,aws:** bundle a runtime extension's companion packages, guard imports at deploy ([e975175](https://github.com/ReventlessDev/reventless-core/commit/e9751758f51582a8e46db362219f725bb5f1bcde))
+
+
 # 2.0.0-alpha.2 (2026-08-05)
 
 ### Features
