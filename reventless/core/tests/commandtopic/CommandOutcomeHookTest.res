@@ -228,6 +228,7 @@ describe("CommandTopic command-outcome hook:", () => {
       // seam already reaches, so an extension picks it up alongside the other four.
       module Accountant: RuntimeExtension.Extension = {
         let moduleUrl = "file:///pkg/accountant.res.mjs"
+        let companionModuleUrls = []
         let onColdStart = (~runtimeKind as _, ~component as _, ~plugin as _, ~platform as _) =>
           record()
       }

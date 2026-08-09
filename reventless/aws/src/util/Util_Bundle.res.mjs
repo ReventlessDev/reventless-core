@@ -182,9 +182,76 @@ function runtimeExtensionSpecifiers() {
 }
 
 function addRuntimeExtensionPackages(packageDirs) {
-  RuntimeExtension$ReventlessCore.moduleUrls().map(getModuleSpecifier).forEach(specifier => {
+  let added = {};
+  RuntimeExtension$ReventlessCore.moduleUrls().map(getModuleSpecifier).concat(RuntimeExtension$ReventlessCore.companionModuleUrls().map(getModuleSpecifier)).forEach(specifier => {
     let pkgName = extractPackageName(specifier);
-    packageDirs[pkgName] = resolvePackageRoot(undefined, pkgName);
+    let root = resolvePackageRoot(undefined, pkgName);
+    packageDirs[pkgName] = root;
+    added[pkgName] = root;
+  });
+  return added;
+}
+
+function staticImportSpecifiers(source) {
+  let re = new RegExp("(?:^|\\n)\\s*(?:import|export)\\s*(?:[\\w$*{},\\s]+?from\\s*)?[\"']([^\"']+)[\"']", "g");
+  let specifiers = [];
+  let scanning = true;
+  while (scanning) {
+    let result = re.exec(source);
+    if (result == null) {
+      scanning = false;
+    } else {
+      let specifier = result.slice(1)[0];
+      if (specifier !== undefined) {
+        specifiers.push(specifier);
+      }
+    }
+  };
+  return specifiers;
+}
+
+function isBareSpecifier(s) {
+  if (!s.startsWith(".") && !s.startsWith("/") && !s.startsWith("file:") && !s.startsWith("data:")) {
+    return !s.startsWith("#");
+  } else {
+    return false;
+  }
+}
+
+let nodeBuiltins = new Set(Nodemodule.builtinModules);
+
+function isRuntimeProvided(specifier, pkgName) {
+  if (specifier.startsWith("node:") || nodeBuiltins.has(specifier) || nodeBuiltins.has(pkgName) || pkgName.startsWith("@aws-sdk/") || pkgName.startsWith("@smithy/")) {
+    return true;
+  }
+  try {
+    resolvePackageRoot(undefined, pkgName);
+    return true;
+  } catch (exn) {
+    return false;
+  }
+}
+
+function assertRuntimeExtensionImportsResolvable(extensionPackages, bundledPackages) {
+  Stdlib_Dict.forEachWithKey(extensionPackages, (pkgRoot, pkgName) => {
+    let assets = {};
+    let paths = [];
+    walkDir(pkgRoot, "", assets, paths);
+    paths.forEach(param => {
+      let relPath = param[0];
+      if (relPath.endsWith(".mjs") || relPath.endsWith(".js")) {
+        staticImportSpecifiers(Nodefs.readFileSync(param[1], "utf8")).forEach(specifier => {
+          if (!isBareSpecifier(specifier)) {
+            return;
+          }
+          let dep = extractPackageName(specifier);
+          if (!(dep in bundledPackages) && !isRuntimeProvided(specifier, dep)) {
+            return Stdlib_JsError.throwWithMessage(`runtime extension package "` + pkgName + `" imports "` + specifier + `" (` + relPath + `), which is neither bundled into the code archive nor provided in the deployed runtime. The extension would be skipped at every cold start with "could not be loaded". Declare the package in the extension's companionModuleUrls — the import.meta.url of one of its modules — so it rides into the archive alongside the extension.`);
+          }
+        });
+        return;
+      }
+    });
   });
 }
 
@@ -207,7 +274,8 @@ function buildCodeArchive(entryPointModule, packageDirs, extraStringAssetsOpt, b
     allPackageDirs = packageDirs;
   }
   if (bundleRuntimeExtensions) {
-    addRuntimeExtensionPackages(allPackageDirs);
+    let extensionPackages = addRuntimeExtensionPackages(allPackageDirs);
+    assertRuntimeExtensionImportsResolvable(extensionPackages, allPackageDirs);
   }
   let packageContentHashes = {
     contents: []
@@ -254,6 +322,11 @@ export {
   createFilteredPackageArchive,
   runtimeExtensionSpecifiers,
   addRuntimeExtensionPackages,
+  staticImportSpecifiers,
+  isBareSpecifier,
+  nodeBuiltins,
+  isRuntimeProvided,
+  assertRuntimeExtensionImportsResolvable,
   buildCodeArchive,
 }
 /* localRequire Not a pure module */

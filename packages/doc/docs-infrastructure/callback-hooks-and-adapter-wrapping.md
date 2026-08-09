@@ -178,6 +178,7 @@ type coldStartHook = (
 
 module type Extension = {
   let moduleUrl: string
+  let companionModuleUrls: array<string>
   let onColdStart: coldStartHook
 }
 
@@ -190,6 +191,7 @@ Write the extension in its own package and register it in the deploy program, be
 // @acme/tracing/src/TracingExtension.res
 module Ext: ReventlessCore.RuntimeExtension.Extension = {
   let moduleUrl: string = %raw(`import.meta.url`)
+  let companionModuleUrls = []
 
   let onColdStart = (~runtimeKind as _, ~component, ~plugin, ~platform as _) =>
     ReventlessCore.CommandGenerator_Callback.registerCommandInterceptor(async (
@@ -223,6 +225,24 @@ Notes:
 - Several extensions compose, and run in registration order.
 - A throwing extension is logged at ERROR and skipped — the runtime still serves, and its siblings still run.
 - Registering nothing costs nothing: no package is bundled, no env var is set, and the code archive is byte-identical.
+
+**Companion packages.** Rule of thumb for what your extension module imports: framework packages (`@reventlessdev/reventless-core`, `@reventlessdev/reventless-aws`, `effect`) are peers — already in the archive or the Lambda layer, declare them as `peerDependencies` and leave `companionModuleUrls` empty. Everything else your module statically imports at runtime must be named in `companionModuleUrls`, as the `import.meta.url` of one module per companion package:
+
+```rescript
+// @acme/tracing/src/TracingExtension.res — Trace lives in @acme/tracing-core,
+// a peer split out of this provider arm, so a dependencies walk never finds it.
+module Ext: ReventlessCore.RuntimeExtension.Extension = {
+  let moduleUrl: string = %raw(`import.meta.url`)
+  let companionModuleUrls = [Trace.moduleUrl]
+  // ...
+}
+```
+
+A companion exposes such a URL by exporting `let moduleUrl: string = %raw("import.meta.url")` from any module the extension already imports (spec modules can lift the `@@reventless.spec`-injected one). Companions are bundle-only: the entry shell imports only the extension modules, and Node resolves companions from the archive's `node_modules` like any other import.
+
+Why this is explicit rather than inferred: the ecosystem convention for split packages declares the neutral core as a `peerDependency` — true in the deploy program's process, false inside the Lambda — so a `dependencies` walk finds nothing, and a bare package name has no resolution root the framework could use. The one thing that resolves robustly is a module URL the companion states about itself, the same way the extension states its own.
+
+Forgetting a companion cannot slip through silently: when the code archive is built, the framework parses the static imports of every bundled extension and companion package and **fails the deploy** on any bare specifier that is neither bundled nor provided by the runtime — naming the package, the file, the specifier and the `companionModuleUrls` remedy. (Dynamic `import()` escapes that check; the declaration is the mechanism, the parse is only the guard.)
 
 ---
 

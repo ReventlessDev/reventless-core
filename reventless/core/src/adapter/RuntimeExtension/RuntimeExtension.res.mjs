@@ -26,6 +26,10 @@ function moduleUrls() {
   return extensions.contents.map(e => e.moduleUrl);
 }
 
+function companionModuleUrls() {
+  return extensions.contents.flatMap(e => e.companionModuleUrls);
+}
+
 let log = Logger$ReventlessCore.fromEnv();
 
 function runHook(hook, index, runtimeKind, component, plugin, platform) {
@@ -52,6 +56,7 @@ export {
   reset,
   isEmpty,
   moduleUrls,
+  companionModuleUrls,
   log,
   runHook,
   notifyColdStartHooks,

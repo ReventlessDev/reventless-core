@@ -90,6 +90,28 @@ trade than a loud, skipped hook.
 */
 module type Extension = {
   let moduleUrl: string
+  /**
+  `import.meta.url` of one module per COMPANION package this extension imports at
+  runtime — packages that must ride into the code archive alongside the
+  extension's own. `[]` for an extension importing nothing outside the
+  framework-provided set.
+
+  Needed because a companion is invisible to every conventional lookup: the
+  ecosystem convention for split packages declares the neutral core as a
+  `peerDependency` (true in the deploy program's process, false in the Lambda),
+  so a `dependencies` walk finds nothing; and a companion named by bare package
+  name has no resolution root the framework could use — the one thing that
+  resolves robustly is a module URL the companion states about itself, exactly
+  like `moduleUrl`. A companion package exposes one by exporting
+  `let moduleUrl: string = %raw("import.meta.url")` from any module the
+  extension already imports (spec modules can lift the
+  `@@reventless.spec`-injected one).
+
+  Companions are bundle-only: the entry shell imports only the extension
+  modules, and Node resolves companions from the archive's `node_modules` like
+  any other import.
+  */
+  let companionModuleUrls: array<string>
   let onColdStart: coldStartHook
 }
 
@@ -125,6 +147,18 @@ let moduleUrls = (): array<string> =>
   extensions.contents->Array.map(e => {
     module E = unpack(e)
     E.moduleUrl
+  })
+
+/**
+Every registered extension's companion module URLs, flattened in registration
+order. Read only by the provider's code-archive builder — unlike `moduleUrls`,
+these never reach a runtime's config: companions are bundled so the extension's
+own imports resolve, not imported by the entry shell.
+*/
+let companionModuleUrls = (): array<string> =>
+  extensions.contents->Array.flatMap(e => {
+    module E = unpack(e)
+    E.companionModuleUrls
   })
 
 let log = Logger.fromEnv()

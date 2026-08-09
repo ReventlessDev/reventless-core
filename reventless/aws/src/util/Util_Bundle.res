@@ -256,17 +256,138 @@ let runtimeExtensionSpecifiers = (): array<string> =>
   ReventlessCore.RuntimeExtension.moduleUrls()->Array.map(getModuleSpecifier)
 
 /**
- * Add every registered runtime extension's package to `packageDirs`, so the
- * archive carries the modules the entry shell imports at cold start.
+ * Add every registered runtime extension's package to `packageDirs` — and every
+ * package its `companionModuleUrls` name — so the archive carries both the
+ * modules the entry shell imports at cold start and the packages those modules
+ * import. Companions are bundle-only: they never appear in `RUNTIME_EXTENSIONS`;
+ * Node resolves them from the archive's `node_modules` when the extension's own
+ * import runs.
  *
  * Rooted through `getModuleSpecifier`, which caches the package root it walked
  * to. That matters: an extension is an out-of-tree package the framework has no
- * dependency on, so a framework-rooted `require.resolve` would not find it.
+ * dependency on, so a framework-rooted `require.resolve` would not find it —
+ * and the same holds for its companions, which is why the contract asks for a
+ * module URL per companion rather than a bare package name.
+ *
+ * Returns the packages this mechanism put into the archive (name → root): the
+ * set `assertRuntimeExtensionImportsResolvable` scans.
  */
-let addRuntimeExtensionPackages = (packageDirs: dict<string>) =>
-  runtimeExtensionSpecifiers()->Array.forEach(specifier => {
+let addRuntimeExtensionPackages = (packageDirs: dict<string>): dict<string> => {
+  let added: dict<string> = Dict.make()
+  runtimeExtensionSpecifiers()
+  ->Array.concat(
+    ReventlessCore.RuntimeExtension.companionModuleUrls()->Array.map(getModuleSpecifier),
+  )
+  ->Array.forEach(specifier => {
     let pkgName = extractPackageName(specifier)
-    packageDirs->Dict.set(pkgName, resolvePackageRoot(pkgName))
+    let root = resolvePackageRoot(pkgName)
+    packageDirs->Dict.set(pkgName, root)
+    added->Dict.set(pkgName, root)
+  })
+  added
+}
+
+/**
+ * The bare package specifiers of a module source's static top-level `import` /
+ * re-`export` declarations. A regex, not a parser: `import` declarations are
+ * only legal at a module's top level, so line-anchored matching is exact up to
+ * strings/comments that spell out an import — an acceptable imprecision for a
+ * guard (see `assertRuntimeExtensionImportsResolvable`). Dynamic `import()`
+ * deliberately does not match.
+ */
+let staticImportSpecifiers = (source: string): array<string> => {
+  let re = RegExp.fromString(
+    "(?:^|\\n)\\s*(?:import|export)\\s*(?:[\\w$*{},\\s]+?from\\s*)?[\"']([^\"']+)[\"']",
+    ~flags="g",
+  )
+  let specifiers: array<string> = []
+  let scanning = ref(true)
+  while scanning.contents {
+    switch re->RegExp.exec(source) {
+    | Some(result) =>
+      switch result->RegExp.Result.matches->Array.getUnsafe(0) {
+      | Some(specifier) => specifiers->Array.push(specifier)
+      | None => ()
+      }
+    | None => scanning := false
+    }
+  }
+  specifiers
+}
+
+let isBareSpecifier = (s: string) =>
+  !(s->String.startsWith(".")) &&
+  !(s->String.startsWith("/")) &&
+  !(s->String.startsWith("file:")) &&
+  !(s->String.startsWith("data:")) &&
+  // `#…` is a package-internal `imports` alias, resolved inside the package.
+  !(s->String.startsWith("#"))
+
+let nodeBuiltins = Set.fromArray(NodeModule.builtinModules)
+
+/**
+ * Whether a deployed runtime resolves this bare specifier without it riding in
+ * the archive: Node builtins, the @aws-sdk and @smithy scopes reachable through
+ * the ESM fallback dirs (runtime SDK dir and layer), or a package resolvable
+ * from the framework — an approximation of the Lambda layer, which bundles
+ * reventless-aws's dependency closure. The approximation errs toward passing
+ * (workspace hoisting can resolve more than the layer carries); a false pass
+ * still lands on the explicit `companionModuleUrls` declaration.
+ */
+let isRuntimeProvided = (specifier: string, ~pkgName: string): bool =>
+  specifier->String.startsWith("node:") ||
+  nodeBuiltins->Set.has(specifier) ||
+  nodeBuiltins->Set.has(pkgName) ||
+  pkgName->String.startsWith("@aws-sdk/") ||
+  pkgName->String.startsWith("@smithy/") ||
+  (
+    try {
+      let _ = resolvePackageRoot(pkgName)
+      true
+    } catch {
+    | _ => false
+    }
+  )
+
+/**
+ * Deploy-time guard: every bare package statically imported by a bundled
+ * runtime-extension (or companion) package must either be in the archive
+ * (`bundledPackages`) or be provided by the deployed runtime. Throws at archive
+ * build on a miss, naming the package, the file, the specifier and the
+ * `companionModuleUrls` remedy.
+ *
+ * Without this the failure mode is the worst kind: the deploy is green, the
+ * entry shell catches the load failure by design, logs at ERROR and fires zero
+ * extensions — the feature the extension carries is silently off on every cold
+ * start. Static parsing is a partial truth (dynamic `import()` escapes it),
+ * which is exactly why it is the check and not the mechanism: a false negative
+ * here still lands on the explicit declaration; the declaration never depends
+ * on parsing.
+ */
+let assertRuntimeExtensionImportsResolvable = (
+  ~extensionPackages: dict<string>,
+  ~bundledPackages: dict<string>,
+) =>
+  extensionPackages->Dict.forEachWithKey((pkgRoot, pkgName) => {
+    let assets: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+    let paths: array<(string, string)> = []
+    walkDir(~dir=pkgRoot, ~prefix="", ~assets, ~paths)
+    paths->Array.forEach(((relPath, absPath)) =>
+      if relPath->String.endsWith(".mjs") || relPath->String.endsWith(".js") {
+        NodeFs.readFileSync(absPath)
+        ->staticImportSpecifiers
+        ->Array.forEach(specifier =>
+          if isBareSpecifier(specifier) {
+            let dep = extractPackageName(specifier)
+            if !(bundledPackages->Dict.has(dep)) && !isRuntimeProvided(specifier, ~pkgName=dep) {
+              JsError.throwWithMessage(
+                `runtime extension package "${pkgName}" imports "${specifier}" (${relPath}), which is neither bundled into the code archive nor provided in the deployed runtime. The extension would be skipped at every cold start with "could not be loaded". Declare the package in the extension's companionModuleUrls — the import.meta.url of one of its modules — so it rides into the archive alongside the extension.`,
+              )
+            }
+          }
+        )
+      }
+    )
   })
 
 /**
@@ -322,11 +443,15 @@ let buildCodeArchive = (
     } else {
       packageDirs
     }
-  // Registered runtime extensions ride along, so the entry shell can import them
-  // at cold start. No-op when nothing is registered — the archive, and therefore
-  // `sourceCodeHash`, is unchanged.
+  // Registered runtime extensions ride along (with their declared companion
+  // packages), so the entry shell can import them at cold start. No-op when
+  // nothing is registered — the archive, and therefore `sourceCodeHash`, is
+  // unchanged. The guard then fails the deploy on any statically imported
+  // package that would not resolve at cold start — the alternative is a green
+  // deploy whose extensions are silently skipped.
   if bundleRuntimeExtensions {
-    allPackageDirs->addRuntimeExtensionPackages
+    let extensionPackages = allPackageDirs->addRuntimeExtensionPackages
+    assertRuntimeExtensionImportsResolvable(~extensionPackages, ~bundledPackages=allPackageDirs)
   }
   let packageContentHashes: ref<array<string>> = ref([])
   allPackageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {

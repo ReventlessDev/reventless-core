@@ -7,11 +7,12 @@ type call = {
   platform: option<string>,
 }
 
-let recorderNamed = (label: string, into: array<(string, call)>): module(
+let recorderNamed = (~companions: array<string>=[], label: string, into: array<(string, call)>): module(
   RuntimeExtension.Extension
 ) => {
   module R = {
     let moduleUrl = `file:///pkg/${label}.res.mjs`
+    let companionModuleUrls = companions
     let onColdStart = (~runtimeKind, ~component, ~plugin, ~platform) =>
       into->Array.push((label, {runtimeKind, component, plugin, platform}))
   }
@@ -32,6 +33,7 @@ describe("RuntimeExtension", () => {
   testSync("empty registry is the default and notifyColdStart is silent", () => {
     expect(RuntimeExtension.isEmpty())->toBe(true)
     expect(RuntimeExtension.moduleUrls())->toEqual([])
+    expect(RuntimeExtension.companionModuleUrls())->toEqual([])
     fireAggregate()
     expect(true)->toBe(true)
   })
@@ -77,10 +79,38 @@ describe("RuntimeExtension", () => {
     ])
   })
 
+  testSync("companionModuleUrls flattens every registration's companions, in order", () => {
+    let calls: array<(string, call)> = []
+    RuntimeExtension.use(
+      recorderNamed(
+        ~companions=["file:///pkg/companion-a.res.mjs", "file:///pkg/companion-b.res.mjs"],
+        "tracing",
+        calls,
+      ),
+    )
+    RuntimeExtension.use(recorderNamed("accounting", calls))
+    RuntimeExtension.use(
+      recorderNamed(~companions=["file:///pkg/companion-c.res.mjs"], "quota", calls),
+    )
+
+    expect(RuntimeExtension.companionModuleUrls())->toEqual([
+      "file:///pkg/companion-a.res.mjs",
+      "file:///pkg/companion-b.res.mjs",
+      "file:///pkg/companion-c.res.mjs",
+    ])
+    // Companions are bundle-only: the entry shell's import list is untouched.
+    expect(RuntimeExtension.moduleUrls())->toEqual([
+      "file:///pkg/tracing.res.mjs",
+      "file:///pkg/accounting.res.mjs",
+      "file:///pkg/quota.res.mjs",
+    ])
+  })
+
   testSync("a throwing extension is skipped; the runtime and its siblings survive", () => {
     let calls: array<(string, call)> = []
     module Broken: RuntimeExtension.Extension = {
       let moduleUrl = "file:///pkg/broken.res.mjs"
+      let companionModuleUrls = []
       let onColdStart = (~runtimeKind as _, ~component as _, ~plugin as _, ~platform as _) =>
         JsError.throwWithMessage("extension blew up")
     }

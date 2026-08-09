@@ -47,6 +47,7 @@ describe("RuntimeExtension reaches the runtime callback hooks", () => {
     let seenAtColdStart: array<string> = []
     module Gatekeeper: RuntimeExtension.Extension = {
       let moduleUrl = "file:///pkg/gatekeeper.res.mjs"
+      let companionModuleUrls = []
       let onColdStart = (~runtimeKind as _, ~component, ~plugin as _, ~platform as _) => {
         seenAtColdStart->Array.push(component)
         CommandGenerator_Callback.registerCommandInterceptor(async (

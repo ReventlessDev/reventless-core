@@ -206,7 +206,7 @@ package and the shell's import resolves under `/var/task/node_modules`.
 | The seam | `reventless/core/src/adapter/RuntimeExtension/RuntimeExtension.res` |
 | Runtime hooks it makes reachable | `CommandGenerator_Callback.res:16`; `QueryDb_Callback.res:12`; `EventPublish_Callback.res:25,29` |
 | Command interception is consulted on the hot path | `CommandGenerator_Callback.res:124-136` |
-| Extension packages bundled into the archive | `Util_Bundle.addRuntimeExtensionPackages`, called from `buildCodeArchive` |
+| Extension packages bundled into the archive | `Util_Bundle.addRuntimeExtensionPackages`, called from `buildCodeArchive` — since [runtime-extension-companion-packages.md](runtime-extension-companion-packages.md) also each package named by the extension's `companionModuleUrls`, guarded by a deploy-time static-import check |
 | Support Lambdas that opt out | `~bundleRuntimeExtensions=false` at the seven non-`Runtime/` sites |
 | `RUNTIME_EXTENSIONS` env var written | `RuntimeEnvironment_Lambda.makeFromCodeAsset`, beside the ESM-loader invariants |
 | Typed parse + fire (the arity-safe half) | `reventless/aws/src/adapter/Runtime/RuntimeExtensionEntryPoint_Ops.res` |

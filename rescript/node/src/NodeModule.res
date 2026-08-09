@@ -10,3 +10,8 @@ type require
 external createRequire: string => require = "createRequire"
 
 @send external requireResolve: (require, string) => string = "resolve"
+
+/** The names of Node's built-in modules (both bare and some `node:`-only
+    entries like `node:test`), plus subpath forms such as `fs/promises`. */
+@module("node:module")
+external builtinModules: array<string> = "builtinModules"
