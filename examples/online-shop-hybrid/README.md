@@ -200,6 +200,29 @@ picks non-interactively. Each chosen project then passes the same gates:
   it is empty. (Non-interactively — CI, no TTY to type into — set
   `REVENTLESS_WIPE_CONFIRM=<stack>` instead.)
 
+Once confirmed, the reset **holds the stack still** for the length of the wipe.
+A truncate is not durable while the runtimes that own the data are running: a
+slice runtime keeps its TODO list in memory for the life of its execution
+environment and re-saves every row it holds at the end of each invocation —
+including the scheduled sweep, which carries no events. So an unheld wipe of such
+a table succeeds and is then undone, byte for byte, within a sweep interval.
+
+So the reset reserves **zero concurrency** on every Lambda function in the chosen
+scope before the first delete, empties and verifies while nothing can start, and
+then **recycles** each function — a marker environment variable added and
+immediately removed, which is what makes Lambda discard the execution
+environments still holding pre-wipe state. Concurrency and environment are
+restored exactly as they were, on the failure path as well as the success path,
+so `pulumi preview` reports no drift afterwards.
+
+That needs `lambda:GetFunctionConcurrency`, `lambda:GetFunctionConfiguration`,
+`lambda:PutFunctionConcurrency`, `lambda:DeleteFunctionConcurrency` and
+`lambda:UpdateFunctionConfiguration` in addition to the DynamoDB, S3 and tagging
+permissions. Credentials without them get a refusal that names the missing
+actions, before anything is deleted. `SEED_RESET_NO_QUIESCE=1` wipes without the
+hold — but a running runtime can then write straight back over an emptied store,
+and the reset says so.
+
 ```bash
 cd platform-aws
 pnpm run seed:reset            # pick a scope, see the dry run, type the stack name to confirm

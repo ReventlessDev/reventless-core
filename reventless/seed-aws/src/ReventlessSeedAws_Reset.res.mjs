@@ -4,6 +4,7 @@ import * as Nodefs from "node:fs";
 import * as S3$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/S3.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
+import * as Lambda$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/Lambda.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
@@ -15,6 +16,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as ClientDynamodb from "@aws-sdk/client-dynamodb";
 import * as DynamoDb_DynamoDb$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DynamoDb.res.mjs";
+import * as ReventlessSeedAws_Quiesce from "./ReventlessSeedAws_Quiesce.res.mjs";
 import * as Seed_Prompt$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Prompt.res.mjs";
 import * as Seed_Runner$ReventlessSeed from "@reventlessdev/reventless-seed/src/Seed_Runner.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
@@ -110,25 +112,52 @@ function configValue(cfg, key) {
 }
 
 function classify(arn) {
-  if (!arn.startsWith("arn:aws:dynamodb:")) {
-    if (arn.startsWith("arn:aws:s3:::")) {
-      return {
-        TAG: "Bucket",
-        _0: arn.slice("arn:aws:s3:::".length, arn.length)
-      };
-    } else {
+  if (arn.startsWith("arn:aws:dynamodb:")) {
+    let match = arn.split(":table/");
+    if (match.length !== 2) {
       return "Other";
     }
+    let name = match[1];
+    return {
+      TAG: "Table",
+      _0: name
+    };
   }
-  let match = arn.split(":table/");
-  if (match.length !== 2) {
+  if (arn.startsWith("arn:aws:s3:::")) {
+    return {
+      TAG: "Bucket",
+      _0: arn.slice("arn:aws:s3:::".length, arn.length)
+    };
+  }
+  if (!arn.startsWith("arn:aws:lambda:")) {
     return "Other";
   }
-  let name = match[1];
-  return {
-    TAG: "Table",
-    _0: name
-  };
+  let match$1 = arn.split(":function:");
+  if (match$1.length !== 2) {
+    return "Other";
+  }
+  let rest = match$1[1];
+  let match$2 = rest.split(":");
+  let len = match$2.length;
+  if (len >= 3) {
+    return "Other";
+  }
+  switch (len) {
+    case 0 :
+      return "Other";
+    case 1 :
+      let name$1 = match$2[0];
+      return {
+        TAG: "Function",
+        _0: name$1
+      };
+    case 2 :
+      let name$2 = match$2[0];
+      return {
+        TAG: "Function",
+        _0: name$2
+      };
+  }
 }
 
 function tagValue(tags, key) {
@@ -143,6 +172,7 @@ async function discover(region, stack, platform) {
   let client = ResourceGroupsTaggingApi$AwsSdk.client(region, undefined);
   let tables = [];
   let buckets = [];
+  let functions = [];
   let loop = async token => {
     let out = await client.send(new ClientResourceGroupsTaggingApi.GetResourcesCommand({
       TagFilters: [
@@ -157,7 +187,8 @@ async function discover(region, stack, platform) {
       ],
       ResourceTypeFilters: [
         "dynamodb:table",
-        "s3"
+        "s3",
+        "lambda:function"
       ],
       ResourcesPerPage: 100,
       PaginationToken: token
@@ -181,11 +212,17 @@ async function discover(region, stack, platform) {
       if (typeof name !== "object") {
         return;
       }
-      if (name.TAG === "Table") {
-        tables.push(name._0);
-        return;
+      switch (name.TAG) {
+        case "Table" :
+          tables.push(name._0);
+          return;
+        case "Bucket" :
+          buckets.push(name._0);
+          return;
+        case "Function" :
+          functions.push(name._0);
+          return;
       }
-      buckets.push(name._0);
     });
     let t = out.PaginationToken;
     if (t !== undefined && t !== "") {
@@ -193,10 +230,11 @@ async function discover(region, stack, platform) {
     }
   };
   await loop(undefined);
-  return [
-    tables,
-    buckets
-  ];
+  return {
+    tables: tables,
+    buckets: buckets,
+    functions: functions
+  };
 }
 
 function splitQualified(key) {
@@ -552,6 +590,28 @@ function gateTarget(target, backend, stack) {
   }
 }
 
+function noQuiesce() {
+  let match = Stdlib_Option.map(Seed_Prompt$ReventlessSeed.envValue("SEED_RESET_NO_QUIESCE"), v => v.trim().toLowerCase());
+  if (match === undefined) {
+    return false;
+  }
+  switch (match) {
+    case "1" :
+    case "true" :
+    case "yes" :
+      return true;
+    default:
+      return false;
+  }
+}
+
+function refillMessage(refilled, heldCount) {
+  let total = Stdlib_Array.reduce(refilled, 0, (acc, param) => acc + param[1] | 0);
+  let lines = refilled.map(param => `\n      ` + param[1].toString().padStart(8, " ") + `  ` + param[0]).join("");
+  let diagnosis = heldCount > 0 ? `\n\n  The wipe deleted these and something wrote them back. All ` + heldCount.toString() + ` runtime(s) in scope were held at zero concurrency for the whole wipe, so the writer was an invocation already in flight when the hold took effect. Re-running clears it.` : `\n\n  The wipe deleted these and a running runtime wrote them back. The stack was NOT held (SEED_RESET_NO_QUIESCE), so nothing stopped it, and re-running will not help: the writer keeps the state in memory and restores it on every invocation, identical each time. Re-run without SEED_RESET_NO_QUIESCE so the runtimes are held and recycled.`;
+  return total.toString() + ` item(s)/object(s) came back after the wipe:` + lines + diagnosis;
+}
+
 function reportAll(resolvedList, stack, region) {
   Seed_Runner$ReventlessSeed.heading(`Reset target: stack "` + stack + `" in ` + region);
   let total = {
@@ -657,10 +717,9 @@ function run(stack, backend, targets, param) {
       process.env["AWS_REGION"] = region;
       if (selectedStores.length !== 0 && platformTarget !== undefined) {
         let platformProject = projectName(platformTarget.projectDir);
-        let match$1 = await discover(region, stack$1, platformProject);
-        let platformBuckets = match$1[1];
+        let platformFound = await discover(region, stack$1, platformProject);
         selectedStores.forEach(s => {
-          if (platformBuckets.includes(s.bucketName)) {
+          if (platformFound.buckets.includes(s.bucketName)) {
             return;
           }
           throw {
@@ -675,9 +734,9 @@ function run(stack, backend, targets, param) {
         let target = selected[i];
         if (target !== undefined) {
           let platform = projectName(target.projectDir);
-          let match$2 = await discover(region, stack$1, platform);
-          let tables = match$2[0].toSorted(Primitive_string.compare);
-          let buckets = match$2[1].filter(b => !storeBucketNames.includes(b)).toSorted(Primitive_string.compare);
+          let found = await discover(region, stack$1, platform);
+          let tables = found.tables.toSorted(Primitive_string.compare);
+          let buckets = found.buckets.filter(b => !storeBucketNames.includes(b)).toSorted(Primitive_string.compare);
           let tableCounts = [];
           for (let j = 0, j_finish = tables.length; j < j_finish; ++j) {
             let t = tables[j];
@@ -712,7 +771,8 @@ function run(stack, backend, targets, param) {
             tables: tables,
             tableCounts: tableCounts,
             bucketCounts: bucketCounts,
-            storeCounts: storeCounts
+            storeCounts: storeCounts,
+            functions: found.functions.toSorted(Primitive_string.compare)
           });
         }
       }
@@ -737,66 +797,128 @@ function run(stack, backend, targets, param) {
         console.log(interactive ? "Dry run — nothing was deleted." : `Dry run — nothing was deleted. Set REVENTLESS_WIPE_CONFIRM=` + stack$1 + ` to empty this scope non-interactively.`);
         process.exit(0);
       }
-      for (let i$1 = 0, i_finish$1 = resolvedList.length; i$1 < i_finish$1; ++i$1) {
-        let r = resolvedList[i$1];
-        if (r !== undefined) {
-          Seed_Runner$ReventlessSeed.heading(`Emptying ` + r.target.label + ` …`);
-          for (let j$3 = 0, j_finish$3 = r.tables.length; j$3 < j_finish$3; ++j$3) {
-            let t$1 = r.tables[j$3];
-            if (t$1 !== undefined) {
-              await truncateTable(t$1);
-              console.log(`  truncated ` + t$1);
+      let functionNames = Stdlib_Array.reduce(resolvedList, [], (acc, r) => acc.concat(r.functions.filter(f => !acc.includes(f))));
+      let quiesce = !noQuiesce() && functionNames.length !== 0;
+      let lambdaClient = Lambda$AwsSdk.client(region, undefined);
+      let held = quiesce ? (Seed_Runner$ReventlessSeed.heading(`Holding ` + functionNames.length.toString() + ` runtime(s) at zero concurrency …`), await ReventlessSeedAws_Quiesce.hold(lambdaClient, functionNames)) : (functionNames.length !== 0 ? (console.log(""), console.log("Note: SEED_RESET_NO_QUIESCE is set — the stack's runtimes keep running through the wipe. A runtime that holds state across invocations can write it straight back over an emptied store."), undefined) : undefined, []);
+      let outcome;
+      try {
+        for (let i$1 = 0, i_finish$1 = resolvedList.length; i$1 < i_finish$1; ++i$1) {
+          let r = resolvedList[i$1];
+          if (r !== undefined) {
+            Seed_Runner$ReventlessSeed.heading(`Emptying ` + r.target.label + ` …`);
+            for (let j$3 = 0, j_finish$3 = r.tables.length; j$3 < j_finish$3; ++j$3) {
+              let t$1 = r.tables[j$3];
+              if (t$1 !== undefined) {
+                await truncateTable(t$1);
+                console.log(`  truncated ` + t$1);
+              }
             }
-          }
-          for (let j$4 = 0, j_finish$4 = r.bucketCounts.length; j$4 < j_finish$4; ++j$4) {
-            let match$3 = r.bucketCounts[j$4];
-            if (match$3 !== undefined) {
-              let b$1 = match$3[0];
-              await emptyBucket(b$1, undefined);
-              console.log(`  emptied ` + b$1);
+            for (let j$4 = 0, j_finish$4 = r.bucketCounts.length; j$4 < j_finish$4; ++j$4) {
+              let match$1 = r.bucketCounts[j$4];
+              if (match$1 !== undefined) {
+                let b$1 = match$1[0];
+                await emptyBucket(b$1, undefined);
+                console.log(`  emptied ` + b$1);
+              }
             }
-          }
-          for (let j$5 = 0, j_finish$5 = r.storeCounts.length; j$5 < j_finish$5; ++j$5) {
-            let match$4 = r.storeCounts[j$5];
-            if (match$4 !== undefined) {
-              let s$1 = match$4[0];
-              await emptyBucket(s$1.bucketName, s$1.keyPrefix + `/`);
-              console.log(`  emptied ` + s$1.qualified + ` — ` + match$4[1].toString() + ` object(s) removed from ` + (s$1.bucketName + `/` + s$1.keyPrefix + `/`));
-            }
-          }
-        }
-      }
-      let remaining = 0;
-      for (let i$2 = 0, i_finish$2 = resolvedList.length; i$2 < i_finish$2; ++i$2) {
-        let r$1 = resolvedList[i$2];
-        if (r$1 !== undefined) {
-          for (let j$6 = 0, j_finish$6 = r$1.tables.length; j$6 < j_finish$6; ++j$6) {
-            let t$2 = r$1.tables[j$6];
-            if (t$2 !== undefined) {
-              remaining = remaining + await countTable(t$2) | 0;
-            }
-          }
-          for (let j$7 = 0, j_finish$7 = r$1.bucketCounts.length; j$7 < j_finish$7; ++j$7) {
-            let match$5 = r$1.bucketCounts[j$7];
-            if (match$5 !== undefined) {
-              remaining = remaining + await countBucket(match$5[0], undefined) | 0;
-            }
-          }
-          for (let j$8 = 0, j_finish$8 = r$1.storeCounts.length; j$8 < j_finish$8; ++j$8) {
-            let match$6 = r$1.storeCounts[j$8];
-            if (match$6 !== undefined) {
-              let s$2 = match$6[0];
-              let left = await countBucket(s$2.bucketName, s$2.keyPrefix + `/`);
-              remaining = remaining + left | 0;
-              console.log(`  verified empty: ` + s$2.qualified + ` — ` + left.toString() + ` object(s) remain under ` + (s$2.bucketName + `/` + s$2.keyPrefix + `/`));
+            for (let j$5 = 0, j_finish$5 = r.storeCounts.length; j$5 < j_finish$5; ++j$5) {
+              let match$2 = r.storeCounts[j$5];
+              if (match$2 !== undefined) {
+                let s$1 = match$2[0];
+                await emptyBucket(s$1.bucketName, s$1.keyPrefix + `/`);
+                console.log(`  emptied ` + s$1.qualified + ` — ` + match$2[1].toString() + ` object(s) removed from ` + (s$1.bucketName + `/` + s$1.keyPrefix + `/`));
+              }
             }
           }
         }
+        let refilled = [];
+        for (let i$2 = 0, i_finish$2 = resolvedList.length; i$2 < i_finish$2; ++i$2) {
+          let r$1 = resolvedList[i$2];
+          if (r$1 !== undefined) {
+            for (let j$6 = 0, j_finish$6 = r$1.tables.length; j$6 < j_finish$6; ++j$6) {
+              let t$2 = r$1.tables[j$6];
+              if (t$2 !== undefined) {
+                let left = await countTable(t$2);
+                if (left !== 0) {
+                  refilled.push([
+                    t$2,
+                    left
+                  ]);
+                }
+              }
+            }
+            for (let j$7 = 0, j_finish$7 = r$1.bucketCounts.length; j$7 < j_finish$7; ++j$7) {
+              let match$3 = r$1.bucketCounts[j$7];
+              if (match$3 !== undefined) {
+                let b$2 = match$3[0];
+                let left$1 = await countBucket(b$2, undefined);
+                if (left$1 !== 0) {
+                  refilled.push([
+                    b$2,
+                    left$1
+                  ]);
+                }
+              }
+            }
+            for (let j$8 = 0, j_finish$8 = r$1.storeCounts.length; j$8 < j_finish$8; ++j$8) {
+              let match$4 = r$1.storeCounts[j$8];
+              if (match$4 !== undefined) {
+                let s$2 = match$4[0];
+                let left$2 = await countBucket(s$2.bucketName, s$2.keyPrefix + `/`);
+                if (left$2 !== 0) {
+                  refilled.push([
+                    s$2.qualified + ` (` + s$2.bucketName + `/` + s$2.keyPrefix + `/)`,
+                    left$2
+                  ]);
+                }
+                console.log(`  verified empty: ` + s$2.qualified + ` — ` + left$2.toString() + ` object(s) remain under ` + (s$2.bucketName + `/` + s$2.keyPrefix + `/`));
+              }
+            }
+          }
+        }
+        outcome = {
+          TAG: "Ok",
+          _0: refilled
+        };
+      } catch (raw_message) {
+        let message$1 = Primitive_exceptions.internalToException(raw_message);
+        outcome = message$1.RE_EXN_ID === Seed$ReventlessSeed.Failed ? ({
+            TAG: "Error",
+            _0: message$1._1
+          }) : ({
+            TAG: "Error",
+            _0: `the wipe failed: ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(message$1), Stdlib_JsExn.message), "unknown error")
+          });
       }
-      if (remaining !== 0) {
+      let warnings;
+      if (held.length !== 0) {
+        Seed_Runner$ReventlessSeed.heading(`Recycling ` + held.length.toString() + ` runtime(s) …`);
+        let recycled = await ReventlessSeedAws_Quiesce.recycle(lambdaClient, held);
+        let released = await ReventlessSeedAws_Quiesce.release(lambdaClient, held);
+        warnings = recycled.concat(released);
+      } else {
+        warnings = [];
+      }
+      if (warnings.length !== 0) {
+        console.error("");
+        warnings.forEach(w => {
+          console.error(`  warning: ` + w);
+        });
+      }
+      if (outcome.TAG === "Ok") {
+        let refilled$1 = outcome._0;
+        if (refilled$1.length !== 0) {
+          throw {
+            RE_EXN_ID: Seed$ReventlessSeed.Failed,
+            _1: refillMessage(refilled$1, held.length),
+            Error: new Error()
+          };
+        }
+      } else {
         throw {
           RE_EXN_ID: Seed$ReventlessSeed.Failed,
-          _1: remaining.toString() + ` item(s)/object(s) remain after the wipe — re-run to finish.`,
+          _1: outcome._0,
           Error: new Error()
         };
       }
@@ -804,18 +926,18 @@ function run(stack, backend, targets, param) {
       console.log(`Reset complete — the selected scope of "` + stack$1 + `" reads empty and is re-seedable.`);
       process.exit(0);
       return;
-    } catch (raw_message) {
-      let message$1 = Primitive_exceptions.internalToException(raw_message);
-      if (message$1.RE_EXN_ID === Seed$ReventlessSeed.Failed) {
+    } catch (raw_message$1) {
+      let message$2 = Primitive_exceptions.internalToException(raw_message$1);
+      if (message$2.RE_EXN_ID === Seed$ReventlessSeed.Failed) {
         Seed_Prompt$ReventlessSeed.close();
         console.error("");
-        console.error(`Reset aborted — ` + message$1._1);
+        console.error(`Reset aborted — ` + message$2._1);
         process.exit(1);
       } else {
         Seed_Prompt$ReventlessSeed.close();
         console.error("");
         console.error("Reset aborted with an unexpected error:");
-        console.error(Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(message$1), Stdlib_JsExn.message), "unknown"));
+        console.error(Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(message$2), Stdlib_JsExn.message), "unknown"));
         process.exit(1);
       }
       return;
@@ -830,10 +952,16 @@ let Rgt;
 
 let S3;
 
+let Lambda;
+
+let Quiesce;
+
 export {
   Ddb,
   Rgt,
   S3,
+  Lambda,
+  Quiesce,
   projectName,
   field,
   asString,
@@ -855,6 +983,8 @@ export {
   pluginOf,
   chooseScope,
   gateTarget,
+  noQuiesce,
+  refillMessage,
   reportAll,
   run,
 }

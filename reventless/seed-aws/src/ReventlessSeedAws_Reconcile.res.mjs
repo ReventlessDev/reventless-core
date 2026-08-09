@@ -250,8 +250,8 @@ function run(stack, backend, targets, param) {
         let tables = [];
         await Stdlib_Array.reduce(targets, Promise.resolve(), (acc, target) => acc.then(async () => {
           let platform = ReventlessSeedAws_Reset.projectName(target.projectDir);
-          let match = await ReventlessSeedAws_Reset.discover(region, stack$1, platform);
-          match[0].forEach(t => {
+          let found = await ReventlessSeedAws_Reset.discover(region, stack$1, platform);
+          found.tables.forEach(t => {
             tables.push(t);
           });
         }));

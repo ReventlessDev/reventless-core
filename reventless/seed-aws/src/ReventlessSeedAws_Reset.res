@@ -47,6 +47,8 @@ open ReventlessSeed
 module Ddb = AwsSdk.DynamoDb
 module Rgt = AwsSdk.ResourceGroupsTaggingApi
 module S3 = AwsSdk.S3
+module Lambda = AwsSdk.Lambda
+module Quiesce = ReventlessSeedAws_Quiesce
 
 
 
@@ -140,9 +142,16 @@ let configValue = (cfg: dict<JSON.t>, key: string): option<string> =>
 type resource =
   | Table(string)
   | Bucket(string)
+  | Function(string)
   | Other
 
 // arn:aws:dynamodb:<region>:<acct>:table/<name>  |  arn:aws:s3:::<bucket>
+//   |  arn:aws:lambda:<region>:<acct>:function:<name>
+//
+// A Lambda ARN can carry a trailing `:<version|alias>` qualifier. The tagging
+// API returns the unqualified form, but taking the segment after `:function:`
+// up to the next colon rather than to the end of the string means a qualified
+// one still yields the function name instead of a name no API accepts.
 let classify = (arn: string): resource =>
   if arn->String.startsWith("arn:aws:dynamodb:") {
     switch arn->String.split(":table/") {
@@ -151,6 +160,16 @@ let classify = (arn: string): resource =>
     }
   } else if arn->String.startsWith("arn:aws:s3:::") {
     Bucket(arn->String.slice(~start=String.length("arn:aws:s3:::"), ~end=String.length(arn)))
+  } else if arn->String.startsWith("arn:aws:lambda:") {
+    switch arn->String.split(":function:") {
+    | [_, rest] =>
+      switch rest->String.split(":") {
+      | [name] => Function(name)
+      | [name, _qualifier] => Function(name)
+      | _ => Other
+      }
+    | _ => Other
+    }
   } else {
     Other
   }
@@ -158,15 +177,29 @@ let classify = (arn: string): resource =>
 let tagValue = (tags: array<Rgt.GetResourcesCommand.tag>, key: string): option<string> =>
   tags->Array.findMap(t => t.key == key ? Some(t.value) : None)
 
+/** What one project's tags resolve to: the stores to empty, and the runtimes
+    that have to be held still while that happens. */
+type discovered = {
+  tables: array<string>,
+  buckets: array<string>,
+  functions: array<string>,
+}
+
 // Discovery is scoped by BOTH tags (platform AND environment) — the Tagging API
 // ANDs multiple TagFilters — so it only ever sees the target project's own stack,
 // never a same-named stack from another project. Each returned resource is then
 // re-checked to carry both tags (a mismatch aborts the whole run rather than
 // being skipped) as a second, per-resource guard.
-let discover = async (~region, ~stack, ~platform): (array<string>, array<string>) => {
+//
+// Lambda functions are discovered alongside the stores, under the same tags and
+// the same per-resource re-check. They are never deleted from — they are what
+// the wipe has to hold still, and the tag scope that decides what may be emptied
+// is exactly the scope that decides what may be held.
+let discover = async (~region, ~stack, ~platform): discovered => {
   let client = Rgt.client(~region, ())
   let tables = []
   let buckets = []
+  let functions = []
   let rec loop = async (token: option<string>): unit => {
     let out = await Rgt.GetResourcesCommand.send(
       client,
@@ -175,7 +208,7 @@ let discover = async (~region, ~stack, ~platform): (array<string>, array<string>
           {key: "reventless:platform", values: [platform]},
           {key: "reventless:environment", values: [stack]},
         ],
-        resourceTypeFilters: ["dynamodb:table", "s3"],
+        resourceTypeFilters: ["dynamodb:table", "s3", "lambda:function"],
         resourcesPerPage: 100,
         paginationToken: ?token,
       }),
@@ -201,6 +234,7 @@ let discover = async (~region, ~stack, ~platform): (array<string>, array<string>
       switch classify(m.resourceARN) {
       | Table(name) => tables->Array.push(name)
       | Bucket(name) => buckets->Array.push(name)
+      | Function(name) => functions->Array.push(name)
       | Other => ()
       }
     })
@@ -210,7 +244,7 @@ let discover = async (~region, ~stack, ~platform): (array<string>, array<string>
     }
   }
   await loop(None)
-  (tables, buckets)
+  {tables, buckets, functions}
 }
 
 // ── Declared object stores ────────────────────────────────────────────────────
@@ -517,6 +551,8 @@ type resolved = {
   tableCounts: array<int>,
   bucketCounts: array<(string, int)>,
   storeCounts: array<(objectStore, int)>,
+  /** The project's Lambda functions — not wiped, held still while it is. */
+  functions: array<string>,
 }
 
 // Picks which targets to wipe. `domain` (every domain plugin) leads and is the
@@ -596,6 +632,49 @@ let gateTarget = (~target: target, ~backend, ~stack): string => {
       )
     }
   }
+}
+
+/** Opt out of holding the platform still for the wipe. The hold needs Lambda
+    permissions the reset did not previously ask for, so credentials that lack
+    them have a way through — at the cost of the emptiness guarantee, which the
+    note printed alongside it says plainly. */
+let noQuiesce = (): bool =>
+  switch Seed.Prompt.envValue("SEED_RESET_NO_QUIESCE")->Option.map(v =>
+    v->String.trim->String.toLowerCase
+  ) {
+  | Some("1") | Some("true") | Some("yes") => true
+  | _ => false
+  }
+
+/** What to say when a store is not empty after the wipe.
+
+    The old message reported only a total and advised re-running. That advice was
+    wrong in exactly the case that occurs: a runtime holding its state in memory
+    rewrites the store on every invocation, so every re-run reproduces the same
+    failure and the message sends the operator round the loop again.
+
+    So name the stores, and separate the two situations that are actually
+    different. Under a hold, nothing could start during the wipe, so the only
+    possible writer is an invocation that was already in flight — and a re-run
+    does clear that. Without a hold there is no such bound, and re-running is the
+    wrong advice. */
+let refillMessage = (~refilled: array<(string, int)>, ~heldCount: int): string => {
+  let total = refilled->Array.reduce(0, (acc, (_, n)) => acc + n)
+  let lines =
+    refilled
+    ->Array.map(((label, n)) => `\n      ${n->Int.toString->String.padStart(8, " ")}  ${label}`)
+    ->Array.join("")
+  let diagnosis = if heldCount > 0 {
+    `\n\n  The wipe deleted these and something wrote them back. All ${heldCount->Int.toString} runtime(s) ` ++
+    `in scope were held at zero concurrency for the whole wipe, so the writer was an invocation already ` ++
+    `in flight when the hold took effect. Re-running clears it.`
+  } else {
+    `\n\n  The wipe deleted these and a running runtime wrote them back. The stack was NOT held ` ++
+    `(SEED_RESET_NO_QUIESCE), so nothing stopped it, and re-running will not help: the writer keeps the ` ++
+    `state in memory and restores it on every invocation, identical each time. Re-run without ` ++
+    `SEED_RESET_NO_QUIESCE so the runtimes are held and recycled.`
+  }
+  `${total->Int.toString} item(s)/object(s) came back after the wipe:${lines}${diagnosis}`
 }
 
 let reportAll = (resolvedList: array<resolved>, ~stack, ~region): int => {
@@ -747,9 +826,9 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
         switch platformTarget {
         | Some(pt) =>
           let platformProject = projectName(~projectDir=pt.projectDir)
-          let (_, platformBuckets) = await discover(~region, ~stack, ~platform=platformProject)
+          let platformFound = await discover(~region, ~stack, ~platform=platformProject)
           selectedStores->Array.forEach(s =>
-            if !(platformBuckets->Array.includes(s.bucketName)) {
+            if !(platformFound.buckets->Array.includes(s.bucketName)) {
               throw(
                 Seed.Failed(
                   `refusing: store "${s.qualified}" names bucket ${s.bucketName}, which does not ` ++
@@ -769,10 +848,10 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
         switch selected->Array.get(i) {
         | Some(target) =>
           let platform = projectName(~projectDir=target.projectDir)
-          let (tables, buckets) = await discover(~region, ~stack, ~platform)
-          let tables = tables->Array.toSorted(String.compare)
+          let found = await discover(~region, ~stack, ~platform)
+          let tables = found.tables->Array.toSorted(String.compare)
           let buckets =
-            buckets
+            found.buckets
             ->Array.filter(b => !(storeBucketNames->Array.includes(b)))
             ->Array.toSorted(String.compare)
           let tableCounts = []
@@ -808,6 +887,7 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
             tableCounts,
             bucketCounts,
             storeCounts,
+            functions: found.functions->Array.toSorted(String.compare),
           })
         | None => ()
         }
@@ -848,83 +928,153 @@ let run = (~stack=?, ~backend=?, ~targets: array<target>, ()): unit => {
         NodeProcess.exit(0)
       }
 
-      for i in 0 to resolvedList->Array.length - 1 {
-        switch resolvedList->Array.get(i) {
-        | Some(r) =>
-          Seed.Runner.heading(`Emptying ${r.target.label} …`)
-          for j in 0 to r.tables->Array.length - 1 {
-            switch r.tables->Array.get(j) {
-            | Some(t) =>
-              await truncateTable(t)
-              Console.log(`  truncated ${t}`)
-            | None => ()
-            }
-          }
-          for j in 0 to r.bucketCounts->Array.length - 1 {
-            switch r.bucketCounts->Array.get(j) {
-            | Some((b, _)) =>
-              await emptyBucket(b)
-              Console.log(`  emptied ${b}`)
-            | None => ()
-            }
-          }
-          // Report the count with the store, not just in the run total: "how
-          // many images went" is the question an operator is actually asking.
-          for j in 0 to r.storeCounts->Array.length - 1 {
-            switch r.storeCounts->Array.get(j) {
-            | Some((s, count)) =>
-              await emptyBucket(s.bucketName, ~prefix=`${s.keyPrefix}/`)
-              Console.log(
-                `  emptied ${s.qualified} — ${count->Int.toString} object(s) removed from ` ++
-                `${s.bucketName}/${s.keyPrefix}/`,
-              )
-            | None => ()
-            }
-          }
-        | None => ()
+      // Hold the platform still before the first delete. A truncate is not
+      // durable while the runtimes that own the data are running — see
+      // ReventlessSeedAws_Quiesce for the mechanism and for why emptying the
+      // upstream stores first does not substitute for this.
+      let functionNames = resolvedList->Array.reduce([], (acc, r) =>
+        Array.concat(acc, r.functions->Array.filter(f => !(acc->Array.includes(f))))
+      )
+      let quiesce = !noQuiesce() && functionNames->Array.length > 0
+      let lambdaClient = Lambda.client(~region, ())
+      let held = if quiesce {
+        Seed.Runner.heading(
+          `Holding ${functionNames->Array.length->Int.toString} runtime(s) at zero concurrency …`,
+        )
+        await Quiesce.hold(~client=lambdaClient, ~functionNames)
+      } else {
+        if functionNames->Array.length > 0 {
+          Console.log("")
+          Console.log(
+            "Note: SEED_RESET_NO_QUIESCE is set — the stack's runtimes keep running through the wipe. " ++
+            "A runtime that holds state across invocations can write it straight back over an emptied store.",
+          )
         }
+        []
       }
 
-      // Prove empty — the inverse of the post-seed verify.
-      let remaining = ref(0)
-      for i in 0 to resolvedList->Array.length - 1 {
-        switch resolvedList->Array.get(i) {
-        | Some(r) =>
-          for j in 0 to r.tables->Array.length - 1 {
-            switch r.tables->Array.get(j) {
-            | Some(t) => remaining := remaining.contents + (await countTable(t))
-            | None => ()
+      // From here the reset owns the platform's concurrency, so every exit has
+      // to run through the release below — including the abort path. ReScript
+      // has no `finally`, so the wipe's outcome is captured as a value and
+      // re-raised after the stack has been handed back.
+      let outcome = try {
+        for i in 0 to resolvedList->Array.length - 1 {
+          switch resolvedList->Array.get(i) {
+          | Some(r) =>
+            Seed.Runner.heading(`Emptying ${r.target.label} …`)
+            for j in 0 to r.tables->Array.length - 1 {
+              switch r.tables->Array.get(j) {
+              | Some(t) =>
+                await truncateTable(t)
+                Console.log(`  truncated ${t}`)
+              | None => ()
+              }
             }
-          }
-          for j in 0 to r.bucketCounts->Array.length - 1 {
-            switch r.bucketCounts->Array.get(j) {
-            | Some((b, _)) => remaining := remaining.contents + (await countBucket(b))
-            | None => ()
+            for j in 0 to r.bucketCounts->Array.length - 1 {
+              switch r.bucketCounts->Array.get(j) {
+              | Some((b, _)) =>
+                await emptyBucket(b)
+                Console.log(`  emptied ${b}`)
+              | None => ()
+              }
             }
-          }
-          // Per-store confirmation, so "every uploaded object is gone" is an
-          // observed fact rather than an inference from a global total.
-          for j in 0 to r.storeCounts->Array.length - 1 {
-            switch r.storeCounts->Array.get(j) {
-            | Some((s, _)) =>
-              let left = await countBucket(s.bucketName, ~prefix=`${s.keyPrefix}/`)
-              remaining := remaining.contents + left
-              Console.log(
-                `  verified empty: ${s.qualified} — ${left->Int.toString} object(s) remain under ` ++
-                `${s.bucketName}/${s.keyPrefix}/`,
-              )
-            | None => ()
+            // Report the count with the store, not just in the run total: "how
+            // many images went" is the question an operator is actually asking.
+            for j in 0 to r.storeCounts->Array.length - 1 {
+              switch r.storeCounts->Array.get(j) {
+              | Some((s, count)) =>
+                await emptyBucket(s.bucketName, ~prefix=`${s.keyPrefix}/`)
+                Console.log(
+                  `  emptied ${s.qualified} — ${count->Int.toString} object(s) removed from ` ++
+                  `${s.bucketName}/${s.keyPrefix}/`,
+                )
+              | None => ()
+              }
             }
+          | None => ()
           }
-        | None => ()
         }
-      }
-      if remaining.contents != 0 {
-        throw(
-          Seed.Failed(
-            `${remaining.contents->Int.toString} item(s)/object(s) remain after the wipe — re-run to finish.`,
-          ),
+
+        // Prove empty — the inverse of the post-seed verify. Every store that
+        // still reads non-zero is named, because "12 items remain" without
+        // saying where is the difference between a diagnosis and a mystery.
+        let refilled = []
+        for i in 0 to resolvedList->Array.length - 1 {
+          switch resolvedList->Array.get(i) {
+          | Some(r) =>
+            for j in 0 to r.tables->Array.length - 1 {
+              switch r.tables->Array.get(j) {
+              | Some(t) =>
+                let left = await countTable(t)
+                if left != 0 {
+                  refilled->Array.push((t, left))
+                }
+              | None => ()
+              }
+            }
+            for j in 0 to r.bucketCounts->Array.length - 1 {
+              switch r.bucketCounts->Array.get(j) {
+              | Some((b, _)) =>
+                let left = await countBucket(b)
+                if left != 0 {
+                  refilled->Array.push((b, left))
+                }
+              | None => ()
+              }
+            }
+            // Per-store confirmation, so "every uploaded object is gone" is an
+            // observed fact rather than an inference from a global total.
+            for j in 0 to r.storeCounts->Array.length - 1 {
+              switch r.storeCounts->Array.get(j) {
+              | Some((s, _)) =>
+                let left = await countBucket(s.bucketName, ~prefix=`${s.keyPrefix}/`)
+                if left != 0 {
+                  refilled->Array.push((`${s.qualified} (${s.bucketName}/${s.keyPrefix}/)`, left))
+                }
+                Console.log(
+                  `  verified empty: ${s.qualified} — ${left->Int.toString} object(s) remain under ` ++
+                  `${s.bucketName}/${s.keyPrefix}/`,
+                )
+              | None => ()
+              }
+            }
+          | None => ()
+          }
+        }
+        Ok(refilled)
+      } catch {
+      | Seed.Failed(message) => Error(message)
+      | exn =>
+        Error(
+          `the wipe failed: ${exn
+            ->JsExn.fromException
+            ->Option.flatMap(JsExn.message)
+            ->Option.getOr("unknown error")}`,
         )
+      }
+
+      // Recycle while still held, so the container that eventually serves
+      // traffic is created after the stores were emptied — then hand the stack
+      // back. Both are best-effort and report rather than raise: they run on the
+      // abort path too, where throwing would bury the reason the reset failed.
+      let warnings = if held->Array.length > 0 {
+        Seed.Runner.heading(`Recycling ${held->Array.length->Int.toString} runtime(s) …`)
+        let recycled = await Quiesce.recycle(~client=lambdaClient, ~held)
+        let released = await Quiesce.release(~client=lambdaClient, ~held)
+        Array.concat(recycled, released)
+      } else {
+        []
+      }
+      if warnings->Array.length > 0 {
+        Console.error("")
+        warnings->Array.forEach(w => Console.error(`  warning: ${w}`))
+      }
+
+      switch outcome {
+      | Error(message) => throw(Seed.Failed(message))
+      | Ok(refilled) if refilled->Array.length > 0 =>
+        throw(Seed.Failed(refillMessage(~refilled, ~heldCount=held->Array.length)))
+      | Ok(_) => ()
       }
 
       Console.log("")

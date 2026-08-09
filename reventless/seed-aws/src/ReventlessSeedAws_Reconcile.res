@@ -333,12 +333,8 @@ let run = (~stack=?, ~backend=?, ~targets: array<ReventlessSeedAws_Reset.target>
         await targets->Array.reduce(Promise.resolve(), (acc, target) =>
           acc->Promise.then(async _ => {
             let platform = ReventlessSeedAws_Reset.projectName(~projectDir=target.projectDir)
-            let (found, _buckets) = await ReventlessSeedAws_Reset.discover(
-              ~region,
-              ~stack,
-              ~platform,
-            )
-            found->Array.forEach(t => tables->Array.push(t))
+            let found = await ReventlessSeedAws_Reset.discover(~region, ~stack, ~platform)
+            found.tables->Array.forEach(t => tables->Array.push(t))
           })
         )
 
