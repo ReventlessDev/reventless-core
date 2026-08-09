@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.104 (2026-08-09)
+
+### Bug Fixes
+
+* **spec:** see payload-less variants inside a mixed union, and say what differs ([e82e742](https://github.com/ReventlessDev/reventless-core/commit/e82e742201941f978bfde809eeb2581fdda453c5))
+
+
 # 3.0.0-alpha.103 (2026-08-09)
 
 ### Bug Fixes
