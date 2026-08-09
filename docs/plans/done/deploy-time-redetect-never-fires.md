@@ -1,7 +1,7 @@
 # Plan: make the deploy-time re-detect actually fire
 
 **Date:** 2026-08-09
-**Status:** Proposed.
+**Status:** Implemented — verification steps 1–5 are deploy-time observations, still open.
 **Repos:** `reventless-core` only.
 
 ## Why

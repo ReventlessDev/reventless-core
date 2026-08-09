@@ -1315,39 +1315,43 @@ function MakeWithConfig(Config) {
     if (sel !== undefined) {
       PgQueryResolver_Builder$ReventlessAws.provision(domainApi, sel, {});
     }
-    let hbConfig = PluginRuntime_Builder$ReventlessAws.heartbeatConfigRef.contents;
-    let match = IndexJs.isDryRun();
-    let match$1 = hbConfig.epQueueUrl;
-    if (match) {
-      
-    } else if (match$1 !== undefined) {
-      match$1.apply(async url => {
-        let queue = {
-          id: url,
-          name: "",
-          arn: ""
-        };
-        let publishHeartbeat = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(queue, "SQS_FIFO");
-        let message_id = hbConfig.pluginId;
-        let message_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, "DeployHeartbeat", undefined, undefined, undefined, undefined, undefined);
-        let message_commandJson = S.reverseConvertToJsonOrThrow({
-          TAG: "RedetectPlugin",
-          _0: hbConfig.heartbeatTimeout
-        }, PluginExtensionPointSpec$ReventlessInfra.commandSchema);
-        let message = {
-          id: message_id,
-          meta: message_meta,
-          commandJson: message_commandJson
-        };
-        try {
-          return await publishHeartbeat([message]);
-        } catch (exn) {
-          return log.warn("Platform:deployPlugin", undefined, `synthetic heartbeat failed for ` + hbConfig.pluginId + ` (handover falls back to the next natural heartbeat)`);
-        }
-      });
-    } else {
-      log.warn("Platform:deployPlugin", undefined, "synthetic heartbeat skipped: no EP queue URL in heartbeat config");
-    }
+    pluginOutputs.heartbeat.apply(param => {
+      let hbConfig = PluginRuntime_Builder$ReventlessAws.heartbeatConfigRef.contents;
+      let match = IndexJs.isDryRun();
+      let match$1 = hbConfig.epQueueUrl;
+      if (match) {
+        return;
+      } else if (match$1 !== undefined) {
+        match$1.apply(async url => {
+          let queue = {
+            id: url,
+            name: "",
+            arn: ""
+          };
+          let publishHeartbeat = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(queue, "SQS_FIFO");
+          let message_id = hbConfig.pluginId;
+          let message_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, "DeployHeartbeat", undefined, undefined, undefined, undefined, undefined);
+          let message_commandJson = S.reverseConvertToJsonOrThrow({
+            TAG: "RedetectPlugin",
+            _0: hbConfig.heartbeatTimeout
+          }, PluginExtensionPointSpec$ReventlessInfra.commandSchema);
+          let message = {
+            id: message_id,
+            meta: message_meta,
+            commandJson: message_commandJson
+          };
+          try {
+            await publishHeartbeat([message]);
+            return log.info("Platform:deployPlugin", undefined, `synthetic re-detect published for ` + hbConfig.pluginId);
+          } catch (exn) {
+            return log.warn("Platform:deployPlugin", undefined, `synthetic heartbeat failed for ` + hbConfig.pluginId + ` (handover falls back to the next natural heartbeat)`);
+          }
+        });
+        return;
+      } else {
+        return log.warn("Platform:deployPlugin", undefined, "synthetic heartbeat skipped: no EP queue URL in heartbeat config");
+      }
+    });
     return Pulumi$Pulumi.getOutputs();
   };
   return {
@@ -2544,39 +2548,43 @@ function Make($star) {
     if (sel !== undefined) {
       PgQueryResolver_Builder$ReventlessAws.provision(domainApi, sel, {});
     }
-    let hbConfig = PluginRuntime_Builder$ReventlessAws.heartbeatConfigRef.contents;
-    let match = IndexJs.isDryRun();
-    let match$1 = hbConfig.epQueueUrl;
-    if (match) {
-      
-    } else if (match$1 !== undefined) {
-      match$1.apply(async url => {
-        let queue = {
-          id: url,
-          name: "",
-          arn: ""
-        };
-        let publishHeartbeat = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(queue, "SQS_FIFO");
-        let message_id = hbConfig.pluginId;
-        let message_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, "DeployHeartbeat", undefined, undefined, undefined, undefined, undefined);
-        let message_commandJson = S.reverseConvertToJsonOrThrow({
-          TAG: "RedetectPlugin",
-          _0: hbConfig.heartbeatTimeout
-        }, PluginExtensionPointSpec$ReventlessInfra.commandSchema);
-        let message = {
-          id: message_id,
-          meta: message_meta,
-          commandJson: message_commandJson
-        };
-        try {
-          return await publishHeartbeat([message]);
-        } catch (exn) {
-          return log.warn("Platform:deployPlugin", undefined, `synthetic heartbeat failed for ` + hbConfig.pluginId + ` (handover falls back to the next natural heartbeat)`);
-        }
-      });
-    } else {
-      log.warn("Platform:deployPlugin", undefined, "synthetic heartbeat skipped: no EP queue URL in heartbeat config");
-    }
+    pluginOutputs.heartbeat.apply(param => {
+      let hbConfig = PluginRuntime_Builder$ReventlessAws.heartbeatConfigRef.contents;
+      let match = IndexJs.isDryRun();
+      let match$1 = hbConfig.epQueueUrl;
+      if (match) {
+        return;
+      } else if (match$1 !== undefined) {
+        match$1.apply(async url => {
+          let queue = {
+            id: url,
+            name: "",
+            arn: ""
+          };
+          let publishHeartbeat = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(queue, "SQS_FIFO");
+          let message_id = hbConfig.pluginId;
+          let message_meta = Message$ReventlessCore.generateMeta(PluginExtensionPointSpec$ReventlessInfra.name, undefined, "DeployHeartbeat", undefined, undefined, undefined, undefined, undefined);
+          let message_commandJson = S.reverseConvertToJsonOrThrow({
+            TAG: "RedetectPlugin",
+            _0: hbConfig.heartbeatTimeout
+          }, PluginExtensionPointSpec$ReventlessInfra.commandSchema);
+          let message = {
+            id: message_id,
+            meta: message_meta,
+            commandJson: message_commandJson
+          };
+          try {
+            await publishHeartbeat([message]);
+            return log.info("Platform:deployPlugin", undefined, `synthetic re-detect published for ` + hbConfig.pluginId);
+          } catch (exn) {
+            return log.warn("Platform:deployPlugin", undefined, `synthetic heartbeat failed for ` + hbConfig.pluginId + ` (handover falls back to the next natural heartbeat)`);
+          }
+        });
+        return;
+      } else {
+        return log.warn("Platform:deployPlugin", undefined, "synthetic heartbeat skipped: no EP queue URL in heartbeat config");
+      }
+    });
     return Pulumi$Pulumi.getOutputs();
   };
   let StateViewSlice = {
