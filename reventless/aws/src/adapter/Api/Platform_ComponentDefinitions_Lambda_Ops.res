@@ -16,6 +16,96 @@
 let str = (item: dict<JSON.t>, key: string): option<string> =>
   item->Dict.get(key)->Option.flatMap(JSON.Decode.string)
 
+// Which list fields each entry collection's members must carry to satisfy the
+// `[T!]!` shape the admin SDL declares, plus the nested member lists one level
+// down (`references` on a command / event / error).
+//
+// This handler serves the persisted structure as raw JSON — nothing on the read
+// path decodes it through `pluginStructureSchema` — so a component written by a
+// deploy that predates one of these fields simply has no key for it. Absent
+// resolves to null against a non-null list, GraphQL propagates that null up the
+// unbroken non-null chain to the root, and the whole query answers `data: null`:
+// ONE plugin still carrying an older structure blackholes every other plugin's
+// components. A plugin whose version never changes (a private, unpublished stack)
+// stays on its old structure indefinitely, so this is not a transient window.
+//
+// `[]` is what an absent array already means on every one of these fields — the
+// structure is re-derived on every build, so it never encodes "cannot say" — which
+// makes filling it in the honest read rather than a guess.
+type healSpec = {lists: array<string>, nested: array<(string, array<string>)>}
+
+let refLists = ["references"]
+
+let writeSideHeal = {
+  lists: ["commands", "linkedViews", "producedEventTypes", "consumedEventTypes", "events", "errors"],
+  nested: [("commands", refLists), ("events", refLists), ("errors", refLists)],
+}
+
+let readSideHeal = {
+  lists: ["consumedEventTypes", "linkedWriteSide", "searchableFields"],
+  nested: [],
+}
+
+let healByCollection: array<(string, healSpec)> = [
+  ("readModels", readSideHeal),
+  ("stateViewSlices", readSideHeal),
+  ("stateChangeSlices", writeSideHeal),
+  ("aggregates", writeSideHeal),
+  ("automationSlices", {lists: ["consumedEventTypes", "producedCommandTypes"], nested: []}),
+  (
+    "outboundTranslationSlices",
+    {lists: ["consumedEventTypes", "inboundCommandTypes"], nested: []},
+  ),
+  ("inboundTranslationSlices", {lists: ["commandTypes"], nested: []}),
+  ("extensions", {lists: ["delegateNames", "eventTypes", "commandTypes"], nested: []}),
+]
+
+// Anything that is not already an array — missing, null, or a scalar written by a
+// structure this handler cannot make sense of — becomes `[]`.
+let fillLists = (obj: dict<JSON.t>, keys: array<string>): unit =>
+  keys->Array.forEach(k =>
+    switch obj->Dict.get(k) {
+    | Some(JSON.Array(_)) => ()
+    | _ => obj->Dict.set(k, JSON.Encode.array([]))
+    }
+  )
+
+let mapMembers = (obj: dict<JSON.t>, key: string, f: dict<JSON.t> => unit): unit =>
+  switch obj->Dict.get(key)->Option.flatMap(JSON.Decode.array) {
+  | None => ()
+  | Some(members) =>
+    obj->Dict.set(
+      key,
+      members
+      ->Array.map(m =>
+        switch m->JSON.Decode.object {
+        | None => m
+        | Some(mo) =>
+          let out = Dict.fromArray(mo->Dict.toArray)
+          f(out)
+          JSON.Encode.object(out)
+        }
+      )
+      ->JSON.Encode.array,
+    )
+  }
+
+let healStructure = (structure: dict<JSON.t>): dict<JSON.t> => {
+  let out = Dict.fromArray(structure->Dict.toArray)
+  // The collections themselves are `[T!]!` too, so an absent one is the same
+  // failure a scale smaller.
+  out->fillLists(healByCollection->Array.map(((collection, _)) => collection))
+  healByCollection->Array.forEach(((collection, spec)) =>
+    out->mapMembers(collection, component => {
+      component->fillLists(spec.lists)
+      spec.nested->Array.forEach(((key, keys)) =>
+        component->mapMembers(key, member => member->fillLists(keys))
+      )
+    })
+  )
+  out
+}
+
 // Mirror ReventlessCore.Platform_ComponentDefinitionsApi.isPublicQueryable on
 // the read path: a component is public unless its visibility is "Internal".
 let isPublicQueryable = (q: JSON.t): bool =>
@@ -26,22 +116,19 @@ let isPublicQueryable = (q: JSON.t): bool =>
 
 // Drop Internal ReadModels / StateViewSlices from a persisted structure. A
 // missing/non-array field defaults to `[]` (mirrors the JS `?? []`).
-let filterStructure = (structure: JSON.t): option<dict<JSON.t>> =>
-  switch structure->JSON.Decode.object {
-  | None => None
-  | Some(obj) =>
-    let out = Dict.fromArray(obj->Dict.toArray)
-    let filterArr = key =>
-      out
-      ->Dict.get(key)
-      ->Option.flatMap(JSON.Decode.array)
-      ->Option.getOr([])
-      ->Array.filter(isPublicQueryable)
-      ->JSON.Encode.array
-    out->Dict.set("readModels", filterArr("readModels"))
-    out->Dict.set("stateViewSlices", filterArr("stateViewSlices"))
-    Some(out)
-  }
+let filterStructure = (structure: dict<JSON.t>): dict<JSON.t> => {
+  let out = Dict.fromArray(structure->Dict.toArray)
+  let filterArr = key =>
+    out
+    ->Dict.get(key)
+    ->Option.flatMap(JSON.Decode.array)
+    ->Option.getOr([])
+    ->Array.filter(isPublicQueryable)
+    ->JSON.Encode.array
+  out->Dict.set("readModels", filterArr("readModels"))
+  out->Dict.set("stateViewSlices", filterArr("stateViewSlices"))
+  out
+}
 
 // `{pluginId: name, ...structure}` — pluginId first so the structure's fields win
 // on the (never-expected) key collision, matching the JS spread. Drops a row with
@@ -51,12 +138,15 @@ let filterStructure = (structure: JSON.t): option<dict<JSON.t>> =>
 // (`Platform_ComponentDefinitions`) gets the public-queryable subset, developer
 // tooling (`Platform_PluginStructures`) gets the structure exactly as persisted,
 // including Internal components and the producer-side `extensionPoints` that the
-// AutoUI entry type does not declare.
+// AutoUI entry type does not declare. Both are healed first — the SDL's non-null
+// lists are the same on either field, so an unhealed structure breaks both.
 let toEntryWith = (~filter: bool, item: dict<JSON.t>, ~name: string): option<JSON.t> => {
   let structure =
     item
     ->Dict.get("structure")
-    ->Option.flatMap(s => filter ? filterStructure(s) : s->JSON.Decode.object)
+    ->Option.flatMap(JSON.Decode.object)
+    ->Option.map(healStructure)
+    ->Option.map(s => filter ? filterStructure(s) : s)
   switch structure {
   | None => None
   | Some(structureObj) =>

@@ -12,6 +12,149 @@ function str(item, key) {
   return Stdlib_Option.flatMap(item[key], Stdlib_JSON.Decode.string);
 }
 
+let refLists = ["references"];
+
+let writeSideHeal_lists = [
+  "commands",
+  "linkedViews",
+  "producedEventTypes",
+  "consumedEventTypes",
+  "events",
+  "errors"
+];
+
+let writeSideHeal_nested = [
+  [
+    "commands",
+    refLists
+  ],
+  [
+    "events",
+    refLists
+  ],
+  [
+    "errors",
+    refLists
+  ]
+];
+
+let writeSideHeal = {
+  lists: writeSideHeal_lists,
+  nested: writeSideHeal_nested
+};
+
+let readSideHeal_lists = [
+  "consumedEventTypes",
+  "linkedWriteSide",
+  "searchableFields"
+];
+
+let readSideHeal_nested = [];
+
+let readSideHeal = {
+  lists: readSideHeal_lists,
+  nested: readSideHeal_nested
+};
+
+let healByCollection = [
+  [
+    "readModels",
+    readSideHeal
+  ],
+  [
+    "stateViewSlices",
+    readSideHeal
+  ],
+  [
+    "stateChangeSlices",
+    writeSideHeal
+  ],
+  [
+    "aggregates",
+    writeSideHeal
+  ],
+  [
+    "automationSlices",
+    {
+      lists: [
+        "consumedEventTypes",
+        "producedCommandTypes"
+      ],
+      nested: []
+    }
+  ],
+  [
+    "outboundTranslationSlices",
+    {
+      lists: [
+        "consumedEventTypes",
+        "inboundCommandTypes"
+      ],
+      nested: []
+    }
+  ],
+  [
+    "inboundTranslationSlices",
+    {
+      lists: ["commandTypes"],
+      nested: []
+    }
+  ],
+  [
+    "extensions",
+    {
+      lists: [
+        "delegateNames",
+        "eventTypes",
+        "commandTypes"
+      ],
+      nested: []
+    }
+  ]
+];
+
+function fillLists(obj, keys) {
+  keys.forEach(k => {
+    let match = obj[k];
+    if (Array.isArray(match)) {
+      return;
+    }
+    obj[k] = [];
+  });
+}
+
+function mapMembers(obj, key, f) {
+  let members = Stdlib_Option.flatMap(obj[key], Stdlib_JSON.Decode.array);
+  if (members !== undefined) {
+    obj[key] = members.map(m => {
+      let mo = Stdlib_JSON.Decode.object(m);
+      if (mo === undefined) {
+        return m;
+      }
+      let out = Object.fromEntries(Object.entries(mo));
+      f(out);
+      return out;
+    });
+    return;
+  }
+}
+
+function healStructure(structure) {
+  let out = Object.fromEntries(Object.entries(structure));
+  fillLists(out, healByCollection.map(param => param[0]));
+  healByCollection.forEach(param => {
+    let spec = param[1];
+    mapMembers(out, param[0], component => {
+      fillLists(component, spec.lists);
+      spec.nested.forEach(param => {
+        let keys = param[1];
+        mapMembers(component, param[0], member => fillLists(member, keys));
+      });
+    });
+  });
+  return out;
+}
+
 function isPublicQueryable(q) {
   let match = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(q), o => o["visibility"]), Stdlib_JSON.Decode.string);
   if (match !== undefined) {
@@ -22,11 +165,7 @@ function isPublicQueryable(q) {
 }
 
 function filterStructure(structure) {
-  let obj = Stdlib_JSON.Decode.object(structure);
-  if (obj === undefined) {
-    return;
-  }
-  let out = Object.fromEntries(Object.entries(obj));
+  let out = Object.fromEntries(Object.entries(structure));
   let filterArr = key => Stdlib_Option.getOr(Stdlib_Option.flatMap(out[key], Stdlib_JSON.Decode.array), []).filter(isPublicQueryable);
   out["readModels"] = filterArr("readModels");
   out["stateViewSlices"] = filterArr("stateViewSlices");
@@ -34,11 +173,11 @@ function filterStructure(structure) {
 }
 
 function toEntryWith(filter, item, name) {
-  let structure = Stdlib_Option.flatMap(item["structure"], s => {
+  let structure = Stdlib_Option.map(Stdlib_Option.map(Stdlib_Option.flatMap(item["structure"], Stdlib_JSON.Decode.object), healStructure), s => {
     if (filter) {
       return filterStructure(s);
     } else {
-      return Stdlib_JSON.Decode.object(s);
+      return s;
     }
   });
   if (structure === undefined) {
@@ -111,6 +250,13 @@ async function handler(event) {
 
 export {
   str,
+  refLists,
+  writeSideHeal,
+  readSideHeal,
+  healByCollection,
+  fillLists,
+  mapMembers,
+  healStructure,
   isPublicQueryable,
   filterStructure,
   toEntryWith,

@@ -314,16 +314,23 @@ type writableDef = {
   consumedEventTypes: array<string>,
   linkedViews: array<string>,
   consistencyRead: @s.matches(stringOptionSchema) option<string>,
-  /** Emitted-event field schemas (Phase 6.3). Required like the other write-side
-  arrays; `[]` when there are none. The structure is re-derived on every build/
-  deploy, so no persisted-data back-compat shim is needed. */
+  /** Emitted-event field schemas. Required like the other write-side arrays; `[]`
+  when there are none. */
   events: array<eventDef>,
   /** Declared-error field schemas — what this component can refuse a command with.
-  Required, on the same reasoning as `events`: a structure is re-derived on every
-  build and re-registered on every deploy, and the persisted copy is never decoded
+  Required, on the same reasoning as `events`: the persisted copy is never decoded
   through this schema (the event log carries it as an offload reference, and the
   serving path reads it as raw JSON), so `[]` honestly means "declares no errors"
-  rather than "an older deploy could not say". */
+  rather than "an older deploy could not say".
+
+  Being required does NOT make it safe to add such a field without a read-path
+  shim. A structure is re-derived on every build, but it is only RE-REGISTERED
+  when a plugin re-runs the connect handshake — which a plugin whose version never
+  changes may not do for a long time. Until then the serving path reads a
+  persisted structure that has no key for the new field, and against a `[T!]!` SDL
+  field that null propagates to the root and answers the whole query with `data:
+  null`. Both admin resolvers therefore heal absent required lists to `[]` on
+  read; a new one has to be added to that list too. */
   errors: array<errorDef>,
   /** Chapter grouping band — see `queryableDef.chapter`. */
   chapter: @s.matches(stringOptionSchema) option<string>,
