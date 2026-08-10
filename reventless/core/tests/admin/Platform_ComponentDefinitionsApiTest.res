@@ -106,6 +106,7 @@ describe("encodePluginStructureEntry", () => {
       "automationSlices",
       "extensions",
       "inboundTranslationSlices",
+      "internalQueryables",
       "outboundTranslationSlices",
       "pluginId",
       "readModels",
@@ -252,21 +253,68 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
     visibility: Some("Internal"),
     chapter: None,
   }
+  // A distinct name per source array: the complement has to be fed by both, and
+  // reusing one def would hide a version that only walks `readModels`.
+  let internalSlice: queryableDef = {
+    ...internalQbl,
+    name: "PendingShipments",
+    queryField: "Ordering_PendingShipments",
+  }
   let mixed: pluginStructure = {
     ...structure,
     readModels: [qbl, internalQbl],
-    stateViewSlices: [internalQbl],
+    stateViewSlices: [internalSlice],
   }
-  let mixedJson =
-    Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId="Ordering", mixed)->JSON.stringify
+  let mixedEntry =
+    Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId="Ordering", mixed)
 
-  testSync("excludes an Internal queryableDef from the encoded read-side", () =>
-    expect(mixedJson->String.includes("AvailableProducts"))->toEqual(false)
-  )
+  // Names under one key of the encoded entry. `String.includes` over the whole
+  // JSON can no longer answer this: an Internal view is legitimately present
+  // under `internalQueryables`, so a whole-document search cannot tell "kept out
+  // of the surfaces" from "dropped entirely" — which is the distinction the
+  // feature is.
+  let namesAt = (entry: JSON.t, key: string): array<string> =>
+    entry
+    ->JSON.Decode.object
+    ->Option.flatMap(o => o->Dict.get(key))
+    ->Option.flatMap(JSON.Decode.array)
+    ->Option.getOr([])
+    ->Array.filterMap(c =>
+      c->JSON.Decode.object->Option.flatMap(o => o->Dict.get("name"))->Option.flatMap(JSON.Decode.string)
+    )
+
+  testSync("excludes an Internal queryableDef from the encoded read-side", () => {
+    expect(mixedEntry->namesAt("readModels"))->toEqual(["Products"])
+    expect(mixedEntry->namesAt("stateViewSlices"))->toEqual([])
+  })
 
   testSync("keeps a Public queryableDef", () =>
-    expect(mixedJson->String.includes("\"name\":\"Products\""))->toEqual(true)
+    expect(mixedEntry->namesAt("readModels")->Array.includes("Products"))->toEqual(true)
   )
+
+  // Both directions, deliberately: a change that also leaked Internal views back
+  // into the surface lists would pass a presence-only assertion.
+  testSync("carries what the filter removed on internalQueryables", () =>
+    expect(mixedEntry->namesAt("internalQueryables"))->toEqual([
+      "AvailableProducts",
+      "PendingShipments",
+    ])
+  )
+
+  testSync("encodes internalQueryables as [] for an all-Public entry, not a missing key", () => {
+    let entry = Platform_ComponentDefinitionsApi.encodePluginStructureEntry(
+      ~pluginId="Ordering",
+      {...structure, readModels: [qbl], stateViewSlices: []},
+    )
+    expect(
+      entry->JSON.Decode.object->Option.flatMap(o => o->Dict.get("internalQueryables")),
+    )->toEqual(Some(JSON.Encode.array([])))
+  })
+
+  testSync("declares internalQueryables on the entry type in the SDL", () => {
+    let sdl = Platform_ComponentDefinitionsApi.sdlTypes->Array.join("\n")
+    expect(sdl->String.includes("internalQueryables: [Platform_ReadSideDef!]!"))->toEqual(true)
+  })
 })
 
 describe("allowedStates + statusField populated", () => {

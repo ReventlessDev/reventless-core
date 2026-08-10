@@ -1,6 +1,7 @@
 # Plan: Internal views stay referenceable
 
-**Status.** Proposed — 2026-08-10. Written after a `@ref` at an
+**Status.** Landed (in-memory + AWS handler) — 2026-08-10. The deployed-stack
+half of §6 is outstanding; see the note there. Written after a `@ref` at an
 `@@reventless.visibility(Internal)` view was found to silently degrade to a
 free-text input in the generated form, for every caller including admins.
 
@@ -159,3 +160,23 @@ entry appears anywhere in the nav.
 
 Repeat against a deployed stack before calling the AWS half done; §3 is the
 reason the local result does not imply it.
+
+### What verification actually showed
+
+Run against `platform-local` (memory backend) on 2026-08-10:
+
+- The `Ordering` entry reports `stateViewSlices: ["Orders"]` and
+  `internalQueryables: ["AvailableProducts"]`, carrying `queryField`,
+  `labelField` and `searchableFields` — the split this plan is.
+- The ref registry built from that payload contains `AvailableProducts`, and no
+  page or panel does.
+- **The `PlaceOrder` picker was *not* the assertion it looked like.** This
+  example's `@ref("AvailableProducts")` sits on `productIds: array<string>`, and
+  an array-typed `@ref` never reaches `commandDef.references` at all — a separate
+  defect, filed as `docs/plans/backlog/ref-annotation-dropped-on-array-fields.md`.
+  The field resolves by naming heuristic to `Catalog.Products` instead, so the
+  form does render a picker, just not via this plan's path. Nothing in
+  `online-shop-hybrid` currently exercises an explicit `@ref` at an Internal
+  view; the ui side is covered by unit tests over a fixture instead.
+
+The deployed-stack repeat is still outstanding.

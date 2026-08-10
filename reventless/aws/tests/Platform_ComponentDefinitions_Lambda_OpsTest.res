@@ -112,3 +112,67 @@ describe("toEntryWith heals a structure persisted before a required list existed
     expect(names)->toEqual(["Products"])
   })
 })
+
+// The persisted structure is pre-filter, so this handler is a twin of the
+// in-memory `encodePluginStructureEntry` rather than a consequence of it. A shell
+// reading `internalQueryables` against a platform that emits it on only one
+// transport gets working pickers locally and silent text inputs when deployed —
+// which is why the split is asserted here as well as in core.
+describe("toEntryWith carries Internal queryables on the filtered field", () => {
+  let mixed = Dict.fromArray([
+    (
+      "readModels",
+      JSON.Encode.array([
+        JSON.parseOrThrow(`{"name": "AvailableProducts", "visibility": "Internal"}`),
+        JSON.parseOrThrow(`{"name": "Products"}`),
+      ]),
+    ),
+    (
+      "stateViewSlices",
+      JSON.Encode.array([
+        JSON.parseOrThrow(`{"name": "PendingShipments", "visibility": "Internal"}`),
+      ]),
+    ),
+  ])->JSON.Encode.object
+
+  let namesAt = (~filter, collection) =>
+    entry(~filter, mixed)
+    ->Option.map(members(_, collection))
+    ->Option.getOr([])
+    ->Array.filterMap(m => m->Dict.get("name")->Option.flatMap(JSON.Decode.string))
+
+  testSync("emits the complement of the filter, fed by both source arrays", () =>
+    expect(namesAt(~filter=true, "internalQueryables"))->toEqual([
+      "AvailableProducts",
+      "PendingShipments",
+    ])
+  )
+
+  testSync("keeps the surface lists public-only", () => {
+    expect(namesAt(~filter=true, "readModels"))->toEqual(["Products"])
+    expect(namesAt(~filter=true, "stateViewSlices"))->toEqual([])
+  })
+
+  // Platform_PluginStructures serves Internal components inline; a duplicate list
+  // there would be a second answer to a question that already has one.
+  testSync("adds nothing to the complete field", () =>
+    expect(
+      entry(~filter=false, mixed)->Option.flatMap(o => o->Dict.get("internalQueryables")),
+    )->toEqual(None)
+  )
+
+  // A structure persisted before the field existed has no key for it, and must not
+  // grow one from its own contents — the complement is always recomputed.
+  testSync("computes the complement rather than reading it off the structure", () => {
+    let stale = Dict.fromArray([
+      ("internalQueryables", JSON.parseOrThrow(`[{"name": "Stale"}]`)),
+      ("readModels", JSON.parseOrThrow(`[{"name": "Products"}]`)),
+    ])->JSON.Encode.object
+    let names =
+      entry(~filter=true, stale)
+      ->Option.map(members(_, "internalQueryables"))
+      ->Option.getOr([])
+      ->Array.filterMap(m => m->Dict.get("name")->Option.flatMap(JSON.Decode.string))
+    expect(names)->toEqual([])
+  })
+})

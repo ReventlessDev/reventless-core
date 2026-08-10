@@ -166,9 +166,12 @@ function isPublicQueryable(q) {
 
 function filterStructure(structure) {
   let out = Object.fromEntries(Object.entries(structure));
-  let filterArr = key => Stdlib_Option.getOr(Stdlib_Option.flatMap(out[key], Stdlib_JSON.Decode.array), []).filter(isPublicQueryable);
-  out["readModels"] = filterArr("readModels");
-  out["stateViewSlices"] = filterArr("stateViewSlices");
+  let arrAt = key => Stdlib_Option.getOr(Stdlib_Option.flatMap(out[key], Stdlib_JSON.Decode.array), []);
+  let readModels = arrAt("readModels");
+  let stateViewSlices = arrAt("stateViewSlices");
+  out["readModels"] = readModels.filter(isPublicQueryable);
+  out["stateViewSlices"] = stateViewSlices.filter(isPublicQueryable);
+  out["internalQueryables"] = readModels.concat(stateViewSlices).filter(q => !isPublicQueryable(q));
   return out;
 }
 

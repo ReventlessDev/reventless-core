@@ -114,19 +114,33 @@ let isPublicQueryable = (q: JSON.t): bool =>
   | _ => true
   }
 
-// Drop Internal ReadModels / StateViewSlices from a persisted structure. A
-// missing/non-array field defaults to `[]` (mirrors the JS `?? []`).
+// Drop Internal ReadModels / StateViewSlices from a persisted structure, and
+// carry what was dropped on `internalQueryables` — the complement, so a client
+// can resolve a reference to an Internal view without any enumeration site
+// being able to see it. A missing/non-array field defaults to `[]` (mirrors the
+// JS `?? []`), which also covers a structure persisted before this field
+// existed: the complement is recomputed here, never read off the structure.
+//
+// The `~filter=false` path (Platform_PluginStructures) deliberately does not go
+// through here — it serves Internal components inline and must not grow a
+// duplicate list.
 let filterStructure = (structure: dict<JSON.t>): dict<JSON.t> => {
   let out = Dict.fromArray(structure->Dict.toArray)
-  let filterArr = key =>
-    out
-    ->Dict.get(key)
-    ->Option.flatMap(JSON.Decode.array)
-    ->Option.getOr([])
-    ->Array.filter(isPublicQueryable)
-    ->JSON.Encode.array
-  out->Dict.set("readModels", filterArr("readModels"))
-  out->Dict.set("stateViewSlices", filterArr("stateViewSlices"))
+  let arrAt = key =>
+    out->Dict.get(key)->Option.flatMap(JSON.Decode.array)->Option.getOr([])
+  let readModels = arrAt("readModels")
+  let stateViewSlices = arrAt("stateViewSlices")
+  out->Dict.set("readModels", readModels->Array.filter(isPublicQueryable)->JSON.Encode.array)
+  out->Dict.set(
+    "stateViewSlices",
+    stateViewSlices->Array.filter(isPublicQueryable)->JSON.Encode.array,
+  )
+  out->Dict.set(
+    "internalQueryables",
+    Array.concat(readModels, stateViewSlices)
+    ->Array.filter(q => !isPublicQueryable(q))
+    ->JSON.Encode.array,
+  )
   out
 }
 

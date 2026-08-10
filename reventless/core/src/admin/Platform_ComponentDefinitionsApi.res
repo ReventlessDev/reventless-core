@@ -30,7 +30,14 @@ let sdlTypes: array<string> = [
   `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
   `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
   `type Platform_ExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
-  `type Platform_ComponentDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n}`,
+  // `internalQueryables` is the complement of the `readModels` / `stateViewSlices`
+  // filter, not an addition to either: it carries exactly the components the
+  // filter removed. A consumer enumerating surfaces reads the two filtered lists
+  // and is structurally unable to turn an Internal view into a page; a consumer
+  // resolving a reference target reads all three. Keeping it a separate field is
+  // what makes that separation structural rather than a filter every enumeration
+  // site has to remember.
+  `type Platform_ComponentDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  internalQueryables: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n}`,
 ]
 
 let sdlQueryField: string = `  Platform_ComponentDefinitions: [Platform_ComponentDefinitionEntry!]!`
@@ -75,6 +82,13 @@ let encodeCommandDef = (c: commandDef): JSON.t =>
 // Internal ReadModels / StateViewSlices are carried in pluginStructure for developer
 // tooling but must stay out of the deployed AutoUI — the menu, drill-down pages and
 // queryable defs are all derived from this response, so filter them here.
+//
+// Hidden from the menu is not the same question as denied as a reference target: a
+// denormalised lookup view is precisely the thing an author wants referenceable but
+// not navigable. The filtered lists answer the first question, `internalQueryables`
+// (below) answers the second. Neither is a security boundary — an Internal view
+// keeps its resolver and stays queryable, so naming it here publishes a fact the
+// caller is already entitled to.
 let isPublicQueryable = (q: queryableDef): bool => q.visibility != Some("Internal")
 
 let encodeQueryableDef = (r: queryableDef): JSON.t =>
@@ -187,6 +201,13 @@ let encodePluginStructureEntry = (~pluginId: string, def: pluginStructure): JSON
       "stateViewSlices",
       def.stateViewSlices
       ->Array.filter(isPublicQueryable)
+      ->Array.map(encodeQueryableDef)
+      ->JSON.Encode.array,
+    ),
+    (
+      "internalQueryables",
+      Array.concat(def.readModels, def.stateViewSlices)
+      ->Array.filter(q => !isPublicQueryable(q))
       ->Array.map(encodeQueryableDef)
       ->JSON.Encode.array,
     ),
