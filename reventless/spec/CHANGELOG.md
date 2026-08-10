@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.107 (2026-08-10)
+
+### Bug Fixes
+
+* **core:** collect [@ref](https://github.com/ref) declared on an array field ([6f9e2fe](https://github.com/ReventlessDev/reventless-core/commit/6f9e2fef2568ad57a8bf2efbaa9cd4830a947f26))
+
+
 # 3.0.0-alpha.106 (2026-08-09)
 
 ### Features

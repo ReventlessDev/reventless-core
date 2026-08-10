@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.281 (2026-08-10)
+
+### Features
+
+* **admin:** carry Internal queryables on their own manifest field ([f5aa03d](https://github.com/ReventlessDev/reventless-core/commit/f5aa03d60b0b2554d116fe9b3784d30f2c4ef356))
+
+
 # 3.0.0-alpha.280 (2026-08-10)
 
 ### Bug Fixes
