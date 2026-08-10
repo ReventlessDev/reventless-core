@@ -2,8 +2,12 @@
 
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as QueryDb_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Callback.res.mjs";
+import * as RuntimeExtensionsReadyMjs from "../Runtime/RuntimeExtensionsReady.mjs";
+
+let runtimeExtensionsReady = RuntimeExtensionsReadyMjs.runtimeExtensionsReady;
 
 async function handler(event, _context) {
+  await runtimeExtensionsReady;
   let interceptor = QueryDb_Callback$ReventlessCore.queryInterceptorHook.contents;
   if (interceptor === undefined) {
     return true;
@@ -17,6 +21,7 @@ async function handler(event, _context) {
 }
 
 export {
+  runtimeExtensionsReady,
   handler,
 }
-/* No side effect */
+/* runtimeExtensionsReady Not a pure module */
