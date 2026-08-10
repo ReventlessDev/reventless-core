@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-ppx-darwin-x64",
-  "version": "1.0.0-alpha.63",
+  "version": "1.0.0-alpha.64",
   "description": "Prebuilt reventless-ppx native binary for macOS x64 (Intel). Sunsetting CI target — see plan.",
   "license": "Apache-2.0",
   "os": [

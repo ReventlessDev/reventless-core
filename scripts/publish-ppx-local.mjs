@@ -20,7 +20,7 @@
 //   node scripts/publish-ppx-local.mjs --dry-run  # build + stage, skip publish
 
 import { execSync } from 'node:child_process'
-import { existsSync, copyFileSync, chmodSync, readFileSync } from 'node:fs'
+import { existsSync, copyFileSync, chmodSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -51,19 +51,19 @@ if (!DRY_RUN && !process.env.GITHUB_TOKEN) {
 const pkgDir = join(PPX, 'npm', target)
 if (!existsSync(pkgDir)) fail(`Missing per-platform package dir: ${pkgDir}`)
 
-// Version sanity: per-platform packages must stay in lockstep.
-const versions = VALID.filter((t) => existsSync(join(PPX, 'npm', t, 'package.json'))).map(
-  (t) => [t, JSON.parse(readFileSync(join(PPX, 'npm', t, 'package.json'), 'utf8')).version],
-)
-const thisVersion = versions.find(([t]) => t === target)[1]
-const mismatch = versions.filter(([, v]) => v !== thisVersion)
-if (mismatch.length) {
-  console.warn(
-    `⚠ Version skew across per-platform packages — publishing ${target}@${thisVersion}, but:\n` +
-      mismatch.map(([t, v]) => `    ${t}@${v}`).join('\n') +
-      `\n  Per the publish runbook these should match. Continuing anyway.`,
-  )
+// main's version is the single source of truth — generate the scaffold's version
+// from it before publish so the two can never disagree (lerna bumps only main;
+// npm/* is not a workspace member). This is the local-publish twin of the CI
+// "Sync per-platform version from main" step in publish-ppx.yml.
+const mainVersion = JSON.parse(readFileSync(join(PPX, 'package.json'), 'utf8')).version
+const scaffoldPath = join(pkgDir, 'package.json')
+const scaffold = JSON.parse(readFileSync(scaffoldPath, 'utf8'))
+if (scaffold.version !== mainVersion) {
+  scaffold.version = mainVersion
+  writeFileSync(scaffoldPath, JSON.stringify(scaffold, null, 2) + '\n')
+  console.log(`▶ Set npm/${target} version → ${mainVersion} (from main)`)
 }
+const thisVersion = mainVersion
 
 console.log(`▶ Building PPX from source for ${target}…`)
 execSync('opam exec -- dune build', { cwd: join(PPX, 'src'), stdio: 'inherit' })
@@ -86,8 +86,9 @@ try {
 } catch {
   console.warn(
     `⚠ Publish failed — most likely ${thisVersion} already exists in the registry ` +
-      `(publishing an existing version is a no-op). Bump the version in lockstep if you ` +
-      `intend a new release.`,
+      `(publishing an existing version is a no-op). Bump main's version ` +
+      `(packages/reventless-ppx/package.json) if you intend a new release — the ` +
+      `scaffold version is generated from it.`,
   )
   process.exit(1)
 }

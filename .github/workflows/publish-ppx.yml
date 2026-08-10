@@ -25,11 +25,18 @@ name: Publish Reventless PPX
 # Any platform without a prebuilt falls back to the launcher's local build
 # (`pnpm run setup` / `pnpm build:ppx`).
 #
-# PREREQUISITE before a publish run: the per-platform package.json files AND the
-# main package.json must already carry the SAME (lockstep) version, and the main
-# package.json must declare the optionalDependencies (see the cutover runbook in
-# docs/plans/prebuilt-binaries-out-of-repo.md). Publishing an existing version is
-# a no-op (the registry rejects it), so bump deliberately.
+# Versioning: main's version is the single source of truth. The `preflight` job
+# fails a push whose main version is already published (a forgotten bump), and the
+# per-platform scaffolds' versions are generated from main at publish time, so the
+# two can never desync (see the cutover runbook in
+# docs/plans/prebuilt-binaries-out-of-repo.md). Bump only the main package.
+#
+# The main package's optionalDependencies pin is what lets EXTERNAL consumers
+# install the new binary. It is NOT a prerequisite for keeping this repo green:
+# CI, Release, and the example deploys build the PPX from source (via
+# .github/actions/setup-ppx) and never resolve the published binary, so a PPX
+# source change ships in one commit. The `pin` job automates the pin bump +
+# relock after publishing. See docs/plans/ppx-republish-single-commit.md.
 
 on:
   push:
@@ -56,7 +63,43 @@ permissions:
   packages: write
 
 jobs:
+  # Fail fast on a forgotten version bump. main's version is the single source of
+  # truth (the per-platform scaffolds are generated from it below), so on a src
+  # push it MUST be new: if it already exists on the registry the publishes would
+  # each silently no-op and the run would report success while shipping nothing.
+  # Manual re-dispatch is exempt — an idempotent re-run of an existing version
+  # (e.g. after a partial failure) is legitimate.
+  preflight:
+    runs-on: ubuntu-latest
+    name: Preflight (version is new)
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read main package version
+        id: v
+        run: |
+          VERSION=$(node -p "require('./packages/reventless-ppx/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "reventless-ppx main version: $VERSION"
+
+      - name: Assert version is new (push only)
+        if: github.event_name == 'push'
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          # `npm view` exits non-zero when the version is absent — the state we want.
+          if npm view "@reventlessdev/reventless-ppx@${VERSION}" version \
+               --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+            echo "::error::@reventlessdev/reventless-ppx@${VERSION} is already published — a src change reached publish-ppx without a version bump. Bump packages/reventless-ppx/package.json (main) in the same commit and re-push; the per-platform scaffolds follow automatically."
+            exit 1
+          fi
+          echo "Version ${VERSION} is not yet on the registry — OK to publish."
+
   build:
+    needs: preflight
     strategy:
       fail-fast: false
       matrix:
@@ -112,6 +155,19 @@ jobs:
         with:
           node-version: "22.17.1"
           registry-url: "https://registry.npmjs.org"
+
+      - name: Sync per-platform version from main
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          # Generate the scaffold's version from main immediately before publish
+          # so the two can never disagree. lerna bumps only the main package
+          # (npm/* is not a workspace member — packages/* is one level deep), so
+          # without this the scaffolds drift a version behind after every release.
+          cd "packages/reventless-ppx/npm/${{ matrix.target }}"
+          npm pkg set version="$VERSION"
+          echo "Set ${{ matrix.target }} version to $VERSION"
 
       - name: Publish per-platform package
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
