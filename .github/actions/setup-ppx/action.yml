@@ -1,0 +1,57 @@
+name: Setup reventless-ppx (from source)
+description: >
+  Build the native reventless-ppx binary from source and stage it at the
+  local-fallback path that packages/reventless-ppx/bin resolves BEFORE the
+  published per-platform package. With .npmrc's node-linker=hoisted the installed
+  per-platform package lands at the workspace root, which the bin resolver only
+  reaches on its final ancestor-directory walk — so a from-source binary at this
+  path outranks it in every in-repo build. That makes a PPX source change ship in
+  a single commit: the tree compiles the new PPX without waiting for the
+  per-platform republish + optionalDependencies pin. Idempotent and cheap on a
+  warm dune-cache. Linux runners only (the workflows that use it all run on
+  ubuntu-latest).
+
+inputs:
+  ocaml-compiler:
+    description: OCaml compiler version to build the PPX with.
+    required: false
+    default: "5.2.x"
+  source-dir:
+    description: Directory holding the PPX dune project (the build's working directory).
+    required: false
+    default: packages/reventless-ppx/src
+  output-path:
+    description: >
+      Repository-relative path to stage the compiled binary at. Must be the
+      Linux local-fallback name the bin resolver looks for (ppx-linux.exe).
+    required: false
+    default: packages/reventless-ppx/ppx-linux.exe
+
+runs:
+  using: composite
+  steps:
+    - name: Setup OCaml
+      uses: ocaml/setup-ocaml@v3
+      with:
+        ocaml-compiler: ${{ inputs.ocaml-compiler }}
+        dune-cache: true
+
+    - name: Build reventless-ppx from source
+      shell: bash
+      working-directory: ${{ inputs.source-dir }}
+      run: |
+        opam install . --deps-only --yes
+        opam exec -- dune build
+
+    - name: Stage binary at the local-fallback path
+      shell: bash
+      env:
+        SOURCE_DIR: ${{ inputs.source-dir }}
+        OUTPUT_PATH: ${{ inputs.output-path }}
+      run: |
+        # Absolute paths so this is correct regardless of the caller's cwd. The
+        # staged .exe matches *.exe in .gitignore, so it survives the release
+        # workflow's `git reset --hard` / `git clean -fd` and reaches the build.
+        cp "$SOURCE_DIR/_build/default/bin/bin.exe" "$GITHUB_WORKSPACE/$OUTPUT_PATH"
+        chmod +x "$GITHUB_WORKSPACE/$OUTPUT_PATH"
+        echo "Staged from-source PPX at $OUTPUT_PATH"

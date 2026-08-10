@@ -41,12 +41,12 @@ jobs:
       changelog-root: packages
       doc-changelog-file: packages/doc/CHANGELOG.md
       doc-changelog-source: packages/doc/**
-      # The PPX is consumed from the published per-platform package
-      # @reventlessdev/reventless-ppx-linux-x64 (an optionalDependency resolved
-      # by packages/reventless-ppx/bin). It is compiled here only when that
-      # binary is absent — see publish-ppx.yml.
+      # The release build compiles the PPX from source and stages it as the bin
+      # resolver's local fallback, so it never depends on the published
+      # per-platform binary (or its optionalDependencies pin) being current. A
+      # PPX source change therefore releases in a single commit — see
+      # docs/plans/ppx-republish-single-commit.md and publish-ppx.yml.
       ppx-fallback: true
-      ppx-binary-paths: node_modules/@reventlessdev/reventless-ppx-linux-x64/ppx.exe packages/reventless-ppx/ppx-linux.exe
       ppx-source-dir: packages/reventless-ppx/src
       ppx-output-path: packages/reventless-ppx/ppx-linux.exe
     secrets:

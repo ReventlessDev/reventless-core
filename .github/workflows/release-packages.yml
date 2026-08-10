@@ -102,12 +102,12 @@ on:
         type: string
         default: ""
       ppx-fallback:
-        description: "Build a native OCaml PPX from source when no prebuilt binary is present after install. Only reventless-core needs this."
+        description: "Build the native OCaml PPX from source and stage it at ppx-output-path before the release build, so the build compiles with the from-source PPX rather than the published per-platform binary. This decouples a PPX source change from its optionalDependencies pin (one commit, never red). Only reventless-core needs this."
         required: false
         type: boolean
         default: false
       ppx-binary-paths:
-        description: "Space-separated paths that each count as an available prebuilt PPX binary. When none exists, the from-source fallback runs."
+        description: "DEPRECATED / unused. The PPX is now always built from source when ppx-fallback is set (it no longer probes for an existing binary), so this input has no effect. Kept declared so external callers that still pass it do not error."
         required: false
         type: string
         default: ""
@@ -180,45 +180,22 @@ jobs:
           export "${TOKEN_ENV_VAR}=${RELEASE_TOKEN}"
           pnpm install --frozen-lockfile
 
-      - name: Check if PPX Linux binary is available
+      # Build the PPX from source and stage it as the bin resolver's local
+      # fallback, so the "Build release artifacts" step below compiles with the
+      # from-source PPX rather than the published (possibly stale) per-platform
+      # binary. This is what lets a PPX source change release in one commit,
+      # without the optionalDependencies pin having been bumped first — the
+      # previous "is the binary already present?" check found the freshly
+      # installed (stale) binary and skipped this build, which is exactly how a
+      # stale pin used to reach Release red. The staged .exe is gitignored, so it
+      # survives the "Clean uncommitted changes" reset/clean below and reaches
+      # the build. Only reventless-core sets ppx-fallback: true.
+      - name: Setup reventless-ppx (from source)
         if: inputs.ppx-fallback
-        id: ppx_check
-        env:
-          PPX_BINARY_PATHS: ${{ inputs.ppx-binary-paths }}
-        run: |
-          # The native PPX is consumed from a published per-platform package
-          # installed as an optionalDependency. Build from source ONLY when that
-          # binary is absent — i.e. the optionalDep was silently skipped
-          # (missing/unpublished) — which is the documented "no binary found"
-          # failure mode. A committed local .exe also counts. In the healthy case
-          # we skip the OCaml build entirely.
-          for candidate in $PPX_BINARY_PATHS; do
-            if [ -x "$candidate" ] || [ -f "$candidate" ]; then
-              echo "Prebuilt PPX binary present ($candidate) — skipping from-source build"
-              echo "present=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-          done
-          echo "Prebuilt PPX binary missing (optionalDependency skipped?) — building from source"
-          echo "present=false" >> "$GITHUB_OUTPUT"
-
-      - name: Setup OCaml (fallback — prebuilt PPX binary missing)
-        if: inputs.ppx-fallback && steps.ppx_check.outputs.present == 'false'
-        uses: ocaml/setup-ocaml@v3
+        uses: ./.github/actions/setup-ppx
         with:
-          ocaml-compiler: "5.2.x"
-          dune-cache: true
-
-      - name: Build PPX for Linux (fallback)
-        if: inputs.ppx-fallback && steps.ppx_check.outputs.present == 'false'
-        env:
-          PPX_OUTPUT_PATH: ${{ inputs.ppx-output-path }}
-        run: |
-          opam install . --deps-only --yes
-          opam exec -- dune build
-          cp _build/default/bin/bin.exe "$GITHUB_WORKSPACE/$PPX_OUTPUT_PATH"
-          chmod +x "$GITHUB_WORKSPACE/$PPX_OUTPUT_PATH"
-        working-directory: ${{ inputs.ppx-source-dir }}
+          source-dir: ${{ inputs.ppx-source-dir }}
+          output-path: ${{ inputs.ppx-output-path }}
 
       - name: Check for releasable changes
         id: changes

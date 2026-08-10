@@ -119,42 +119,18 @@ jobs:
             echo "projects=$PROJECTS" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Check if PPX Linux binary is available
+      # Build the PPX from source and stage it as the bin resolver's local
+      # fallback, so every in-repo ReScript build compiles with the from-source
+      # PPX rather than the published (possibly stale) per-platform binary. This
+      # is what lets a PPX source change ship in one commit — the build no longer
+      # depends on the optionalDependencies pin having been bumped first. The
+      # OCaml build is ~1 min on a warm dune-cache. (This job structurally always
+      # built the PPX anyway — its old "is the binary present?" check ran before
+      # install, so it never saw one; the composite action just makes that
+      # deliberate and shares it with release + deploy.)
+      - name: Setup reventless-ppx (from source)
         if: steps.affected.outputs.select != 'none'
-        id: ppx_check
-        run: |
-          # The native PPX is consumed from the published per-platform package
-          # @reventlessdev/reventless-ppx-linux-x64 (installed as an
-          # optionalDependency, resolved by packages/reventless-ppx/bin). Build
-          # from source ONLY when that binary is absent — i.e. the optionalDep
-          # was silently skipped (missing/unpublished) — which is the documented
-          # "no binary found" failure mode. A committed local .exe also counts.
-          # In the healthy case we skip the OCaml build entirely (the PPX is
-          # never compiled by a normal framework build — see publish-ppx.yml).
-          PKG_BIN="node_modules/@reventlessdev/reventless-ppx-linux-x64/ppx.exe"
-          if [ -x "$PKG_BIN" ] || [ -f packages/reventless-ppx/ppx-linux.exe ]; then
-            echo "Prebuilt PPX binary present ($PKG_BIN) — skipping from-source build"
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "Prebuilt PPX binary missing (optionalDependency skipped?) — building from source"
-            echo "present=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Setup OCaml (fallback — prebuilt PPX binary missing)
-        if: steps.affected.outputs.select != 'none' && steps.ppx_check.outputs.present == 'false'
-        uses: ocaml/setup-ocaml@v3
-        with:
-          ocaml-compiler: "5.2.x"
-          dune-cache: true
-
-      - name: Build reventless-ppx for Linux (fallback)
-        if: steps.affected.outputs.select != 'none' && steps.ppx_check.outputs.present == 'false'
-        run: |
-          opam install . --deps-only --yes
-          opam exec -- dune build
-          cp _build/default/bin/bin.exe ../ppx-linux.exe
-          chmod +x ../ppx-linux.exe
-        working-directory: packages/reventless-ppx/src
+        uses: ./.github/actions/setup-ppx
 
       - name: Setup pnpm
         if: steps.affected.outputs.select != 'none'

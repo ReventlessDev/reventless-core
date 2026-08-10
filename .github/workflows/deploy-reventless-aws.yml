@@ -57,6 +57,11 @@ on:
         required: false
         type: boolean
         default: false
+      build-ppx-from-source:
+        description: "Build the reventless-ppx binary from source (via .github/actions/setup-ppx) before the deploy build, so annotated spec sources compile with the from-source PPX instead of the published per-platform binary. Only reventless-core's own example deploys set this — their checkout contains packages/reventless-ppx/src. External callers deploying their own platform must leave it false (they have no PPX source and consume the published binary)."
+        required: false
+        type: boolean
+        default: false
     secrets:
       PULUMI_ACCESS_TOKEN:
         required: true
@@ -341,6 +346,16 @@ jobs:
         # npmjs — anonymous install, no auth token needed.
         run: pnpm install --frozen-lockfile
 
+      # Build the PPX from source and stage it as the bin resolver's local
+      # fallback, so the deploy compiles annotated spec sources with the
+      # from-source PPX rather than the published (possibly stale) per-platform
+      # binary. Without this a PPX source change that added a required field
+      # deployed red until the per-platform republish + pin landed (observed on
+      # the 2026-08-09 @live republish). Gitignored .exe, ~1 min on a warm cache.
+      - name: Setup reventless-ppx (from source)
+        if: inputs.build-ppx-from-source
+        uses: ./.github/actions/setup-ppx
+
       - name: Build
         run: pnpm run build
 
@@ -514,6 +529,16 @@ jobs:
         # All @reventlessdev/* deps (and the host-shell tarball) are public on
         # npmjs — anonymous install, no auth token needed.
         run: pnpm install --frozen-lockfile
+
+      # Build the PPX from source and stage it as the bin resolver's local
+      # fallback, so the deploy compiles annotated spec sources with the
+      # from-source PPX rather than the published (possibly stale) per-platform
+      # binary. Without this a PPX source change that added a required field
+      # deployed red until the per-platform republish + pin landed (observed on
+      # the 2026-08-09 @live republish). Gitignored .exe, ~1 min on a warm cache.
+      - name: Setup reventless-ppx (from source)
+        if: inputs.build-ppx-from-source
+        uses: ./.github/actions/setup-ppx
 
       - name: Build
         run: pnpm run build

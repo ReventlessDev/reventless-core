@@ -56,6 +56,11 @@ jobs:
     uses: ./.github/workflows/deploy-reventless-aws.yml
     with:
       manifest: examples/online-shop-aggregates/deploy-manifest.yaml
+      # Compile the PPX from source so a PPX change deploys in one commit,
+      # without waiting for the per-platform republish + pin (see
+      # docs/plans/ppx-republish-single-commit.md). This repo's checkout
+      # has packages/reventless-ppx/src, so the from-source build is available.
+      build-ppx-from-source: true
       # The host-ui-* inputs hybrid passes are omitted because they configure the
       # ACM cert + Route53 alias for a host-shell distribution and this platform
       # deploys no shell — the framework only reads them inside the hostUiBundle

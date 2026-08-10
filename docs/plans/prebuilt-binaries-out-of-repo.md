@@ -40,6 +40,22 @@ per-platform scaffolds / publish workflow rewrite / lerna exclusion of
 lockfile cleanup. Renaming `build-ppx.yml` → `publish-ppx.yml` (2026-05-26)
 bypassed a GitHub-side flag that returned HTTP 500 on dispatch.
 
+**Update (2026-08-09) — a PPX source change is now a single commit.** The
+two-commit "publish, then bump `optionalDependencies` + relock" dance is no
+longer required to keep the tree green. Every in-repo build that compiles
+annotated sources — CI, `Release` (via `release-packages.yml`), and the example
+deploys (via `deploy-reventless-aws.yml`) — now builds the PPX from source with
+the shared composite action `.github/actions/setup-ppx` and stages it at the bin
+resolver's local-fallback path (`packages/reventless-ppx/ppx-linux.exe`), which
+outranks the published per-platform binary. So none of those workflows depend on
+the `optionalDependencies` pin being current, and a PPX source change ships in
+one commit with the tree green throughout. The pin bump is still needed so
+**external** consumers (who install the published binary) receive the new
+version, but it is now lazy housekeeping rather than a gate on this repo's
+CI/Release/deploy. See `docs/plans/ppx-republish-single-commit.md` for the
+root-cause analysis (why the old check/fallback ordering neutered the fallback
+in Release/deploy while CI stayed green by accident).
+
 ## Incident — alpha.22 (2026-05-25)
 
 Thinning the main `files` list **before** the per-platform packages existed, while

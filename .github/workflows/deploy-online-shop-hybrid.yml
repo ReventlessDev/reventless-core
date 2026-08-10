@@ -68,6 +68,11 @@ jobs:
     uses: ./.github/workflows/deploy-reventless-aws.yml
     with:
       manifest: examples/online-shop-hybrid/deploy-manifest.yaml
+      # Compile the PPX from source so a PPX change deploys in one commit,
+      # without waiting for the per-platform republish + pin (see
+      # docs/plans/ppx-republish-single-commit.md). This repo's checkout
+      # has packages/reventless-ppx/src, so the from-source build is available.
+      build-ppx-from-source: true
       # Optional repo VARIABLES (not secrets — none are sensitive). When both
       # base domain and hosted-zone ID are set the framework provisions an
       # ACM cert (us-east-1) + Route53 alias for the host-UI shell and serves
