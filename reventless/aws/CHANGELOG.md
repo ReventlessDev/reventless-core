@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.282 (2026-08-10)
+
+### Bug Fixes
+
+* **aws:** load query-interceptor extensions in init, and let it log ([c93612b](https://github.com/ReventlessDev/reventless-core/commit/c93612b3d2208cdc3f1c4b4dbef615b974c5e74a))
+
+
 # 3.0.0-alpha.281 (2026-08-10)
 
 ### Features
