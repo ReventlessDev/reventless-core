@@ -71,15 +71,21 @@ function buildInterceptor(api, opts) {
 
 function dataSourceName(api, opts) {
   if (!QueryInterception$ReventlessCore.isEnabled()) {
-    return;
+    return "Off";
   }
   let existing = byApi.get(api);
   if (existing !== undefined) {
-    return existing;
+    return {
+      TAG: "On",
+      _0: existing
+    };
   }
   let created = buildInterceptor(api, opts);
   byApi.set(api, created);
-  return created;
+  return {
+    TAG: "On",
+    _0: created
+  };
 }
 
 export {

@@ -138,18 +138,34 @@ let buildInterceptor = (~api: Types.AppSync.api, ~opts) => {
   dataSource.name->Pulumi.Output.asInput
 }
 
-/** The data source a Query resolver should put in front of its DynamoDB read, or
-    `None` when interception is off — in which case the caller builds the unit
-    resolver it always did and nothing here is provisioned. */
-let dataSourceName = (~api: Types.AppSync.api, ~opts): option<Pulumi.Input.t<string>> =>
+/** Whether a Query resolver fronts its DynamoDB read with the interceptor, and
+    the data source to front it with. `Off` means interception is switched off —
+    the caller builds the unit resolver it always did and nothing here is
+    provisioned.
+
+    A variant rather than an `option`, and that is load-bearing. The payload is a
+    Pulumi `Output`, which is a JS `Proxy` answering *every* property read with a
+    derived `Output`. The generic option runtime unwraps by probing the payload
+    for `BS_PRIVATE_NESTED_SOME_NONE`; on a `Proxy` that probe never reads
+    `undefined`, so it takes the nested-option branch and yields a wrapper object
+    where a data-source name belongs. AppSync then rejects the resource with
+    "Attribute must be a single value, not a map" — at deploy time, naming a
+    field the source never mentions. A variant keeps that runtime off the path
+    entirely, so no caller can reintroduce the fault by reaching for
+    `Option.map`. */
+type t =
+  | Off
+  | On(Pulumi.Input.t<string>)
+
+let dataSourceName = (~api: Types.AppSync.api, ~opts): t =>
   if !ReventlessCore.QueryInterception.isEnabled() {
-    None
+    Off
   } else {
     switch byApi->Map.get(api) {
-    | Some(existing) => Some(existing)
+    | Some(existing) => On(existing)
     | None =>
       let created = buildInterceptor(~api, ~opts)
       byApi->Map.set(api, created)
-      Some(created)
+      On(created)
     }
   }

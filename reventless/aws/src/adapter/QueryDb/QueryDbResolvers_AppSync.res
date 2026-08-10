@@ -109,15 +109,19 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   // totals because one is queried through an index. A partial pipeline here would
   // make that skew invisible rather than absent.
   let interceptorFunction = (~resolverName) =>
-    QueryInterceptor_Provisioning.dataSourceName(~api, ~opts)->Option.map(interceptorDsName =>
-      Function.makeJs(
-        ~name=resolverName ++ "Interceptor",
-        ~api,
-        ~dataSource=interceptorDsName,
-        ~code=interceptorCode(name),
-        ~opts,
+    switch QueryInterceptor_Provisioning.dataSourceName(~api, ~opts) {
+    | Off => None
+    | On(interceptorDsName) =>
+      Some(
+        Function.makeJs(
+          ~name=resolverName ++ "Interceptor",
+          ~api,
+          ~dataSource=interceptorDsName,
+          ~code=interceptorCode(name),
+          ~opts,
+        ),
       )
-    )
+    }
 
   // Creates either a unit resolver (no interceptor) or a pipeline resolver
   // (interceptor Lambda → DynamoDB query), for the Query fields that have no

@@ -66,7 +66,14 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
   let fieldNameForSingle = registryEntry !== undefined ? registryEntry.singleFieldName : AppSync_Resolver_Functions$PulumiAws.uncapitalize(name$1);
   let includeIdParam = registryEntry !== undefined ? registryEntry.includeIdParam : true;
   let connectionSpec = registryEntry !== undefined ? registryEntry.connectionSpec : true;
-  let interceptorFunction = resolverName => Stdlib_Option.map(QueryInterceptor_Provisioning$ReventlessAws.dataSourceName(api, opts), interceptorDsName => AppSync_Function$PulumiAws.makeJs(resolverName + "Interceptor", api, interceptorDsName, interceptorCode(name$1), opts));
+  let interceptorFunction = resolverName => {
+    let interceptorDsName = QueryInterceptor_Provisioning$ReventlessAws.dataSourceName(api, opts);
+    if (typeof interceptorDsName !== "object") {
+      return;
+    } else {
+      return AppSync_Function$PulumiAws.makeJs(resolverName + "Interceptor", api, interceptorDsName._0, interceptorCode(name$1), opts);
+    }
+  };
   let makeQueryResolver = (resolverName, field, code) => {
     let interceptorFn = interceptorFunction(resolverName);
     if (interceptorFn === undefined) {
