@@ -164,20 +164,29 @@ let labelFieldsFromStateSchema = (
 // because its components never pass through `make` — has to derive its defs the
 // same way, and a second copy of this walk would be free to drift from this one.
 
+// A variant's declared cross-entity references. Shared by the command and event
+// walks because the two ask the identical question of identical field dicts, and
+// the question is `getFieldTarget` rather than `getTarget`: a reference declared
+// on an `array<string>` field sits on the element schema. Collecting it in one
+// place is what stops one walk from being taught that and the other not.
+let extractReferences = (properties: dict<S.t<unknown>>): array<
+  Reventless.Plugin.fieldReference,
+> =>
+  properties
+  ->Dict.toArray
+  ->Array.filterMap(((fieldName, fieldSchema)) =>
+    Reventless.Reference.getFieldTarget(fieldSchema)->Option.map(target => (
+      {
+        Reventless.Plugin.fieldName,
+        entity: target.entity,
+        plugin: target.plugin,
+      }: Reventless.Plugin.fieldReference
+    ))
+  )
+
 let toEventDef = (v: S.t<unknown>): option<Reventless.Plugin.eventDef> => {
   let mkDef = (~variantName, ~properties) => {
-    let references =
-      properties
-      ->Dict.toArray
-      ->Array.filterMap(((fieldName, fieldSchema)) =>
-        Reventless.Reference.getTarget(fieldSchema)->Option.map(target => (
-          {
-            Reventless.Plugin.fieldName,
-            entity: target.entity,
-            plugin: target.plugin,
-          }: Reventless.Plugin.fieldReference
-        ))
-      )
+    let references = extractReferences(properties)
     ({
       Reventless.Plugin.name: variantName,
       // Derived for the same reason as `commandDef.schema`: an event's field
@@ -301,18 +310,7 @@ let make = (
     // `S.literal("Archive")` string rather than an `{TAG, ...}` object.
     let mkDef = (~variantName, ~properties) => {
       let (level, aggregateIdField) = commandLevelAndId(~isAggregate, ~variantName, properties)
-      let references =
-        properties
-        ->Dict.toArray
-        ->Array.filterMap(((fieldName, fieldSchema)) =>
-          Reventless.Reference.getTarget(fieldSchema)->Option.map(target => (
-            {
-              Reventless.Plugin.fieldName,
-              entity: target.entity,
-              plugin: target.plugin,
-            }: Reventless.Plugin.fieldReference
-          ))
-        )
+      let references = extractReferences(properties)
       // Per-variant `allowedStates` lives on the *parent* command schema
       // (the PPX attaches a single dict<variantName, [|states|]> via
       // markAllowedStates). Look it up by variant name; back-compat

@@ -47,6 +47,35 @@ let getTarget = (schema: S.t<unknown>): option<target> =>
   }
 
 /**
+The entity a *field* references, wherever inside the field's type the marker sits.
+
+`to_` returns an element schema — a `S.t<string>` — so on `@ref("E") ids:
+array<string>` the ppx annotates the `string` *inside* the array and the field's
+own schema carries nothing. `getTarget` answers `None` there, which is not the
+same as the field declaring no reference: a consumer that finds no declared
+reference falls back to a naming heuristic and resolves the field to whatever
+entity the name suggests, so a dropped `@ref` is a *different* resolution rather
+than a missing one. Any walk collecting a command's or event's references must
+ask this question, not `getTarget`.
+
+Only wrappers around the field's own value are followed — the optional union and
+the array element, to any depth. Object properties are not: a reference declared
+on a nested record's field belongs to that field, and attributing it to the
+enclosing one would name the wrong field.
+*/
+let rec getFieldTarget = (schema: S.t<unknown>): option<target> =>
+  switch getTarget(schema) {
+  | Some(_) as found => found
+  | None =>
+    // `getTarget` already reads through the optional wrapper; the *shape* inside
+    // it still has to be unwrapped here to reach an optional array's element.
+    switch schema->Semantic.unwrapOptional->Option.getOr(schema) {
+    | Array({additionalItems: Schema(item)}) => getFieldTarget(item)
+    | _ => None
+    }
+  }
+
+/**
 Like `to_` but does not imply DCB tag semantics.
 Use with `@ref("Entity") @noDcbTag` when the field references another entity
 but should not participate in content-based event routing.

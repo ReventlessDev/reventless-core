@@ -121,6 +121,20 @@ module PsChangePhotoSlice: ReventlessInfra.StateChangeSlice.T = {
   let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
 
+module PsReserveStockSlice: ReventlessInfra.StateChangeSlice.T = {
+  module Spec = PsReserveStock
+  module Behavior = {
+    type state = PsReserveStock.state
+    let initialState = PsReserveStock.initialState
+    let evolve = PsReserveStock.evolve
+    let decide = PsReserveStock.decide
+    let moduleUrl = PsReserveStock.moduleUrl
+  }
+  let isAsync = false
+  type component = scsComponent
+  let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~crossPartitionTagKeys as _=?, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
+}
+
 let structure = Plugin_Structure.make(
   ~name="TestPlugin",
   ~stateChangeSlices=[module(PsPlaceOrderSlice), module(PsShipOrderSlice)],
@@ -958,6 +972,61 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
           Capability_Inference.nameMatches,
         ),
       )->toEqual([true, true, true, false, false])
+    })
+  })
+
+  // A plural reference is declared exactly like a singular one, and the ppx puts
+  // the marker where `Reference.to_` returns it: on the element schema, one level
+  // inside the array. Reading the field's own schema therefore answers "no
+  // reference" for every `@ref` array — and the consuming side treats a missing
+  // declaration as licence to guess, so the field resolves to whatever its name
+  // suggests instead of what the author wrote.
+  describe("plural references reach the manifest", () => {
+    let withPluralRefs = Plugin_Structure.make(
+      ~name="TestPlugin",
+      ~stateChangeSlices=[module(PsReserveStockSlice)],
+    )
+    let slice = withPluralRefs.stateChangeSlices->Array.getUnsafe(0)
+    let referencesOf = refs =>
+      refs->Array.map(({Reventless.Plugin.fieldName: f, entity}) => (f, entity))
+
+    // Scalar and plural in one command: the plural forms are the regression, the
+    // scalar one is here so a fix that reaches them by breaking it cannot pass.
+    testSync("a command collects its array refs alongside its scalar one", () => {
+      let cmd = slice.commands->Array.getUnsafe(0)
+      expect(cmd.references->referencesOf)->toEqual([
+        ("customerId", "Customers"),
+        ("productIds", "AvailableProducts"),
+        ("warehouseIds", "Warehouses"),
+      ])
+    })
+
+    // Optionality is a statement about presence. An optional array puts the
+    // element two wrappers down, which is the shape most likely to be missed by
+    // an unwrap that only handles one.
+    testSync("an optional array ref is collected under the field's own name", () => {
+      let cmd = slice.commands->Array.getUnsafe(0)
+      expect(
+        cmd.references->Array.find(({fieldName}) => fieldName == "warehouseIds"),
+      )->toEqual(Some({Reventless.Plugin.fieldName: "warehouseIds", entity: "Warehouses", plugin: None}))
+    })
+
+    // The event walk is a separate function over the same field dicts. Left to
+    // itself it would be fixed by accident or not at all.
+    testSync("an event collects its array ref too", () => {
+      let evt = slice.events->Array.getUnsafe(0)
+      expect(evt.references->referencesOf)->toEqual([("productIds", "AvailableProducts")])
+    })
+
+    // The declared entity, not the one `productIds` reads like. Before the
+    // element unwrap this field resolved by heuristic to `Products`.
+    testSync("the declared entity wins over the one the field name suggests", () => {
+      let cmd = slice.commands->Array.getUnsafe(0)
+      expect(
+        cmd.references
+        ->Array.find(({fieldName}) => fieldName == "productIds")
+        ->Option.map(({entity}) => entity),
+      )->toEqual(Some("AvailableProducts"))
     })
   })
 })

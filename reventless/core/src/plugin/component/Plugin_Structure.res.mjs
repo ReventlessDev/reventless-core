@@ -140,16 +140,20 @@ function labelFieldsFromStateSchema(entityName, stateSchema) {
   };
 }
 
+function extractReferences(properties) {
+  return Stdlib_Array.filterMap(Object.entries(properties), param => {
+    let fieldName = param[0];
+    return Stdlib_Option.map(Reference$Reventless.getFieldTarget(param[1]), target => ({
+      fieldName: fieldName,
+      entity: target.entity,
+      plugin: target.plugin
+    }));
+  });
+}
+
 function toEventDef(v) {
   let mkDef = (variantName, properties) => {
-    let references = Stdlib_Array.filterMap(Object.entries(properties), param => {
-      let fieldName = param[0];
-      return Stdlib_Option.map(Reference$Reventless.getTarget(param[1]), target => ({
-        fieldName: fieldName,
-        entity: target.entity,
-        plugin: target.plugin
-      }));
-    });
+    let references = extractReferences(properties);
     return {
       name: variantName,
       schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(v)),
@@ -267,14 +271,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   let toCommandDef = (isAggregate, mutationFieldFor, parentSchema, v) => {
     let mkDef = (variantName, properties) => {
       let match = commandLevelAndId(isAggregate, variantName, properties);
-      let references = Stdlib_Array.filterMap(Object.entries(properties), param => {
-        let fieldName = param[0];
-        return Stdlib_Option.map(Reference$Reventless.getTarget(param[1]), target => ({
-          fieldName: fieldName,
-          entity: target.entity,
-          plugin: target.plugin
-        }));
-      });
+      let references = extractReferences(properties);
       let allowedStates = ApiAllowedStatesHelpers$ReventlessCore.getAllowedStates(parentSchema, variantName);
       let targetState = ApiTargetStateHelpers$ReventlessCore.getTargetState(parentSchema, variantName);
       let apiExposed = false;
@@ -653,6 +650,7 @@ export {
   statusFieldFromStateSchema,
   labelFieldSourceToString,
   labelFieldsFromStateSchema,
+  extractReferences,
   toEventDef,
   extractEventDefs,
   extractErrorDefs,
