@@ -41,11 +41,12 @@ let backoffMs = [
   4000,
   8000,
   16000,
-  30000
+  30000,
+  60000
 ];
 
 async function withRetry(label, maxAttemptsOpt, fn) {
-  let maxAttempts = maxAttemptsOpt !== undefined ? maxAttemptsOpt : 8;
+  let maxAttempts = maxAttemptsOpt !== undefined ? maxAttemptsOpt : 10;
   let go = async attempt => {
     try {
       return await fn();

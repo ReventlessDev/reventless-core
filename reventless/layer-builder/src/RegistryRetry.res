@@ -37,10 +37,14 @@ let sleep = async ms =>
     let _ = setTimeout(() => resolve(), ms)
   })
 
-// Exponential backoff, capped at 30s — ~2.5 min of headroom across 8 attempts.
-let backoffMs = [2000, 4000, 8000, 16000, 30000]
+// Exponential backoff, capped at 60s — ~5 min of headroom across 10 attempts.
+// The window covers packument skew as well as tarball lag: a multi-package
+// upstream release (e.g. the @aws-sdk/* fan-out, where lib-dynamodb pins a peer
+// on the same-version client-dynamodb) can leave one package resolvable and its
+// sibling missing for minutes, surfacing as ETARGET.
+let backoffMs = [2000, 4000, 8000, 16000, 30000, 60000]
 
-let withRetry = async (~label, ~maxAttempts=8, fn) => {
+let withRetry = async (~label, ~maxAttempts=10, fn) => {
   let rec go = async attempt =>
     try {
       await fn()

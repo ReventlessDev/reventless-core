@@ -40,7 +40,19 @@ let build = async (config: DependencyBundler_Config.t) => {
   let spinner = Ora.make()
   let _ = spinner->Ora.start("configure")
 
-  let opts = Pacote.makeConfig(registryOpts)
+  // npm serves packuments with `cache-control: max-age=300`, so a retry inside
+  // that window is answered from the local cache and sees the exact version list
+  // that just failed — no amount of backoff converges. `preferOnline` revalidates
+  // on every request, which is what lets a publish-skew failure (a freshly
+  // published package pinning a sibling version that hasn't propagated yet)
+  // recover on retry.
+  let registryEntries =
+    registryOpts
+    ->Dict.toArray
+    ->Array.map(((k, v)) => (k, JSON.String(v)))
+    ->Array.concat([("preferOnline", JSON.Boolean(true))])
+
+  let opts = Pacote.makeConfig(Dict.fromArray(registryEntries))
 
   let rootPath = NodePath.resolve([pathToSavedDependencies, sourcePackageName])
   let sourcePackageVersionStr = if sourcePackageVersion !== "" {
@@ -78,8 +90,8 @@ let build = async (config: DependencyBundler_Config.t) => {
   let _ = spinner->Ora.start("build dependency tree")
   let arboristConfig = Arborist.makeConfig(
     Dict.fromArray([
-      ...registryOpts->Dict.toArray,
-      ("path", rootPath),
+      ...registryEntries,
+      ("path", JSON.String(rootPath)),
     ]),
   )
   let tree = await RegistryRetry.withRetry(~label="build dependency tree", () =>
@@ -112,8 +124,8 @@ let build = async (config: DependencyBundler_Config.t) => {
         if DependencyBundler_Filter.predIsNecessary(~excludeScopes, ~excludeModules, ~includeModules, ~includeScopes, node) {
           let extractOpts = Pacote.makeConfig(
             Dict.fromArray([
-              ...registryOpts->Dict.toArray,
-              ("resolved", node->Arborist.resolved),
+              ...registryEntries,
+              ("resolved", JSON.String(node->Arborist.resolved)),
             ]),
           )
           let dest = NodePath.resolve([pathToSavedDependencies, node->Arborist.packageName])

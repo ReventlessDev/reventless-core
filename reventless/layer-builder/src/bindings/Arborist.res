@@ -32,7 +32,8 @@ type edge
 type t
 
 type config
-external makeConfig: dict<string> => config = "%identity"
+// JSON.t values, not plain strings: npm config carries booleans too (preferOnline).
+external makeConfig: dict<JSON.t> => config = "%identity"
 
 @new @module("@npmcli/arborist")
 external make: config => t = "default"

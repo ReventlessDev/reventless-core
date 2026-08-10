@@ -38,7 +38,6 @@ async function doPostProcessing(node, pathToSavedDependencies, fn, spinner) {
 async function build(config) {
   let rootPostProcess = config.rootPostProcess;
   let postProcess = config.postProcess;
-  let registryOpts = config.registryOpts;
   let excludeModules = config.excludeModules;
   let excludeScopes = config.excludeScopes;
   let pathToSavedDependencies = config.pathToSavedDependencies;
@@ -49,6 +48,14 @@ async function build(config) {
   let includeScopes = Stdlib_Option.getOr(config.includeScopes, []);
   let spinner = Ora();
   spinner.start("configure");
+  let registryEntries = Object.entries(config.registryOpts).map(param => [
+    param[0],
+    param[1]
+  ]).concat([[
+      "preferOnline",
+      true
+    ]]);
+  let opts = Object.fromEntries(registryEntries);
   let rootPath = Nodepath.resolve(pathToSavedDependencies, sourcePackageName);
   let sourcePackageVersionStr = sourcePackageVersion !== "" ? sourcePackageVersion : "latest";
   let sourcePackageSpec = sourcePackageName + "@" + sourcePackageVersionStr;
@@ -57,7 +64,7 @@ async function build(config) {
   await Rimraf.rimraf(pathToLayerData);
   spinner.succeed(undefined);
   spinner.start("extract source package");
-  await RegistryRetry.withRetry("extract " + sourcePackageSpec, undefined, () => Pacote.default.extract(sourcePackageSpec, rootPath, registryOpts));
+  await RegistryRetry.withRetry("extract " + sourcePackageSpec, undefined, () => Pacote.default.extract(sourcePackageSpec, rootPath, opts));
   spinner.succeed(undefined);
   if (rootPostProcess !== undefined) {
     spinner.start("postprocess source package");
@@ -67,7 +74,7 @@ async function build(config) {
   }
   spinner.start("build dependency tree");
   let arboristConfig = Object.fromEntries(Belt_Array.concatMany([
-    Object.entries(registryOpts),
+    registryEntries,
     [[
         "path",
         rootPath
@@ -102,7 +109,7 @@ async function build(config) {
         return;
       }
       let extractOpts = Object.fromEntries(Belt_Array.concatMany([
-        Object.entries(registryOpts),
+        registryEntries,
         [[
             "resolved",
             node.resolved
