@@ -52,7 +52,7 @@ on:
         type: string
         default: "pnpm run clean && pnpm run build"
       ignore-changes:
-        description: "Space-separated package names passed to `lerna version` as `--ignore-changes <name>` — changes to these do not by themselves cause a version bump."
+        description: "Space-separated package directory names. Each is expanded to a `**/<name>/**` glob and passed to `lerna version` as `--ignore-changes` — changes under those directories do not by themselves cause a version bump. Pass names, not globs; the expansion happens in the workflow."
         required: false
         type: string
         default: ""
@@ -266,9 +266,16 @@ jobs:
           # Disable git hooks to prevent hanging in CI
           git config core.hooksPath /dev/null
 
+          # lerna's --ignore-changes takes minimatch GLOBS matched against changed
+          # file paths, not package names — and it matches with matchBase, so a
+          # slash-less pattern is compared against the basename only. Passing a
+          # bare package name therefore matches nothing and the flag silently does
+          # nothing. Wrap each name into a path glob here (quoted, so the shell
+          # does not expand it against the working tree) instead of asking every
+          # caller to spell the glob correctly.
           IGNORE_ARGS=()
           for pkg in $IGNORE_CHANGES; do
-            IGNORE_ARGS+=(--ignore-changes "$pkg")
+            IGNORE_ARGS+=(--ignore-changes "**/$pkg/**")
           done
 
           if [ "$IS_PRERELEASE" = "true" ]; then

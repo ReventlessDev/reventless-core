@@ -34,9 +34,13 @@ jobs:
       node-version: "22.17.1"
       workspace-setup: node scripts/workspace-setup.mjs
       build-command: pnpm run clean && pnpm run build
-      # doc and reventless-layer-builder are private; reventless-ppx is released
-      # by its own workflow (publish-ppx.yml).
-      ignore-changes: doc reventless-layer-builder reventless-ppx
+      # Directory names, not package names — each becomes a `**/<name>/**` glob.
+      # (`reventless-layer-builder` lives in reventless/layer-builder.)
+      # doc and layer-builder are private; reventless-ppx is released by its own
+      # workflow (publish-ppx.yml), which owns its version — so a release must not
+      # bump it, or the next PPX source push fails preflight against a version
+      # lerna already published.
+      ignore-changes: doc layer-builder reventless-ppx
       private-packages: doc reventless-layer-builder
       changelog-root: packages
       doc-changelog-file: packages/doc/CHANGELOG.md
