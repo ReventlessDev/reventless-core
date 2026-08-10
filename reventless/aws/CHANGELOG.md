@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.280 (2026-08-10)
+
+### Bug Fixes
+
+* **aws:** keep the interceptor data source out of an option ([d908126](https://github.com/ReventlessDev/reventless-core/commit/d90812626d64b5c408c8185ac58a63db448e4082))
+
+
 # 3.0.0-alpha.279 (2026-08-10)
 
 ### Bug Fixes
