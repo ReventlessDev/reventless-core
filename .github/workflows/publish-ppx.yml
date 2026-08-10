@@ -273,3 +273,105 @@ jobs:
               exit $code
             fi
           fi
+
+  # Automate the previously-manual second commit. Once the new per-platform
+  # binaries and the main package are on the registry, bump main's
+  # optionalDependencies pin to the new version and relock, so EXTERNAL consumers
+  # (who install the published binary) resolve the fresh one. In-repo builds no
+  # longer need this — they build the PPX from source (see
+  # docs/plans/ppx-republish-single-commit.md) — so this is pure housekeeping;
+  # automating it removes the leftover human step that used to trail every PPX
+  # source change (e.g. commit 2e8d076fd, done by hand).
+  #
+  # Loop-safe: the commit touches only packages/reventless-ppx/package.json +
+  # pnpm-lock.yaml (never src/**, so it cannot re-trigger this workflow) and
+  # carries [skip ci]; a GITHUB_TOKEN push does not trigger workflows anyway.
+  pin:
+    name: Pin optionalDependencies to the published version
+    needs: [preflight, build, publish-main]
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.17.1"
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Setup workspace (pnpm-workspace.yaml)
+        run: node scripts/workspace-setup.mjs
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump optionalDependencies pin and relock
+        id: bump
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+          # Must be NPM_TOKEN (not NODE_AUTH_TOKEN): the project .npmrc expands
+          # ${NPM_TOKEN}; when it is undefined pnpm discards the whole .npmrc and
+          # drops node-linker=hoisted, changing lockfile resolution.
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # Rewrite every @reventlessdev/reventless-ppx-* optionalDependency to
+          # ^$VERSION (only those already listed — darwin-x64 is intentionally
+          # absent while its CI publish is suspended).
+          node -e '
+            const fs = require("fs");
+            const p = "packages/reventless-ppx/package.json";
+            const j = JSON.parse(fs.readFileSync(p, "utf8"));
+            const want = "^" + process.env.VERSION;
+            for (const k of Object.keys(j.optionalDependencies || {})) {
+              if (k.startsWith("@reventlessdev/reventless-ppx-")) j.optionalDependencies[k] = want;
+            }
+            fs.writeFileSync(p, JSON.stringify(j, null, 2) + "\n");
+          '
+          # Relock so --frozen-lockfile consumers resolve the new pin. Retry to
+          # ride out registry propagation of the just-published packages.
+          ok=false
+          for i in 1 2 3 4 5; do
+            if pnpm install --lockfile-only --no-frozen-lockfile; then ok=true; break; fi
+            echo "relock attempt $i failed (registry may still be propagating) — retrying in 15s"
+            sleep 15
+          done
+          if [ "$ok" != true ]; then echo "::error::relock failed after retries"; exit 1; fi
+
+          if git diff --quiet -- packages/reventless-ppx/package.json pnpm-lock.yaml; then
+            echo "Pin already at ^$VERSION — nothing to commit"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push the pin
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          SHORT="${VERSION#*-}"   # 1.0.0-alpha.64 -> alpha.64
+          git add packages/reventless-ppx/package.json pnpm-lock.yaml
+          git commit -m "chore(ppx): pin the ${SHORT} binaries now that they are published" -m "[skip ci]"
+          # Rebase-retry in case another [skip ci] commit (e.g. lerna version) landed.
+          for i in 1 2 3; do
+            git pull --rebase origin "$BRANCH" && git push origin "HEAD:$BRANCH" && exit 0
+            echo "push attempt $i failed, retrying…"
+            sleep 5
+          done
+          echo "::error::failed to push the pin commit"
+          exit 1
