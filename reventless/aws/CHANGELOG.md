@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.279 (2026-08-10)
+
+### Bug Fixes
+
+* **aws:** load runtime extensions in the query interceptor, not just in entry shells ([d686407](https://github.com/ReventlessDev/reventless-core/commit/d686407239136c7370f5200c45b462109f94fdbe))
+* **aws:** stop an unknown view table from deleting the collector's ESMs ([569e0b9](https://github.com/ReventlessDev/reventless-core/commit/569e0b9c86adca4286d82286ca58e096e62ffee5))
+### Features
+
+* **aws:** admit non-read-model tables to the state-topic relay ([9f7084f](https://github.com/ReventlessDev/reventless-core/commit/9f7084f4eb4040cafaead1c27044ae99e703dd97))
+* **aws:** route every top-level Query field through the interceptor, not only the generated ones ([db709a9](https://github.com/ReventlessDev/reventless-core/commit/db709a9bf2f665642b5d48ef4a83e18978e9d9d7))
+
+
 # 3.0.0-alpha.278 (2026-08-09)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
