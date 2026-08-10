@@ -12,7 +12,11 @@ cd "$(dirname "$0")/.."
 PASS=0
 FAIL=0
 PPX_DIR="$(pwd)"
-PPX_BIN="$PPX_DIR/bin"
+# Binary the fixtures compile through. Defaults to the launcher (which resolves
+# the installed per-platform package or a local build). Override with
+# REVENTLESS_PPX_BIN to pin a specific binary — publish-ppx.yml's drift guard sets
+# it to the just-published binary to prove it produces the same output as source.
+PPX_BIN="${REVENTLESS_PPX_BIN:-$PPX_DIR/bin}"
 REPO_ROOT="$(cd ../.. && pwd)"
 
 pass() { echo "  ✓ $1"; PASS=$((PASS + 1)); }
@@ -1200,8 +1204,13 @@ EOF
 
 # ─── Build PPX ──────────────────────────────────────────────────────
 
-echo "Building PPX..."
-(cd src && dune build 2>&1) || { echo "PPX build failed"; exit 1; }
+# Self-test that the source still compiles. Skipped when exercising an
+# externally supplied binary (REVENTLESS_PPX_SKIP_SELF_BUILD=1) — e.g. the drift
+# guard, which runs the just-published binary and needs no OCaml toolchain.
+if [ -z "${REVENTLESS_PPX_SKIP_SELF_BUILD:-}" ]; then
+  echo "Building PPX..."
+  (cd src && dune build 2>&1) || { echo "PPX build failed"; exit 1; }
+fi
 
 # ─── Compile plugin package ─────────────────────────────────────────
 

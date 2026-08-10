@@ -1,12 +1,11 @@
 # Plan: make a PPX source change a single commit
 
 **Date:** 2026-08-09<br/>
-**Status:** **Phases 1, 2, 4, 5, 6 landed (2026-08-09/10).** A PPX source change
-now ships in one commit with CI/Release/deploy green throughout; scaffold versions
-are generated from main so they can no longer desync; and `publish-ppx.yml`
-auto-commits the `optionalDependencies` pin bump after publishing. Only Phase 3
-(drift guard) remains **deferred** — it needs a careful `bsc -dsource`
-output-comparison design that can only be proven in CI, see "Outcome" below.<br/>
+**Status:** **COMPLETE — all six phases landed (2026-08-09/10).** A PPX source
+change ships in one commit with CI/Release/deploy green throughout; scaffold
+versions are generated from main so they can no longer desync; `publish-ppx.yml`
+auto-commits the `optionalDependencies` pin after publishing; and a drift-guard
+job validates the published artifact against source. See "Outcome" below.<br/>
 **Role:** Removes the two-commit republish dance that every
 `packages/reventless-ppx/src/**` change currently pays, and closes the gap that
 let a stale binary pin reach `Release` and the deploys while CI stayed green.
@@ -119,7 +118,7 @@ housekeeping commit. C is subsumed by A.
    before any build step — replacing the current check/fallback pair and the
    now-misleading `ppx-fallback` input. Verify by re-running a release on a
    deliberately stale pin: it must go green.
-3. ⏸️ **Drift guard.** Add a job to `publish-ppx.yml` that, after publishing,
+3. ✅ **Drift guard.** Add a job to `publish-ppx.yml` that, after publishing,
    reinstalls the just-published package and asserts it compiles an annotated
    fixture byte-identically to the from-source binary. This is what buys back
    the validation A gives up; without it, a packaging regression could ship
@@ -183,16 +182,37 @@ registry is current.
   version-skew warning. The three committed scaffolds were resynced from
   `alpha.63` → `alpha.64` (main's current version) as a one-time coherence fix;
   going forward the value is cosmetic since publish regenerates it.
-- `publish-ppx.yml` — new `pin` job (`needs: [preflight, build, publish-main]`,
-  `contents: write`) that, once the new binaries and main package are on the
-  registry, rewrites main's `optionalDependencies` to `^<version>`, relocks
-  (`pnpm install --lockfile-only`, retried to ride out registry propagation), and
-  commits + pushes `chore(ppx): pin the <ver> binaries now that they are
-  published [skip ci]`. This is the automated form of the previously-manual
-  second commit (e.g. `2e8d076fd`). Loop-safe: the commit touches only
-  `package.json` + `pnpm-lock.yaml` (never `src/**`) and carries `[skip ci]`, and
-  a `GITHUB_TOKEN` push does not trigger workflows regardless. Idempotent — a
-  re-dispatch where the pin is already current commits nothing.
+- `publish-ppx.yml` — new `pin` job (`needs: [preflight, build, publish-main,
+  drift-guard]`, `contents: write`) that, once the new binaries and main package
+  are on the registry and the drift guard is green, rewrites main's
+  `optionalDependencies` to `^<version>`, relocks (`pnpm install --lockfile-only`,
+  retried to ride out registry propagation), and commits + pushes
+  `chore(ppx): pin the <ver> binaries now that they are published [skip ci]`.
+  This is the automated form of the previously-manual second commit (e.g.
+  `2e8d076fd`). Loop-safe: the commit touches only `package.json` +
+  `pnpm-lock.yaml` (never `src/**`) and carries `[skip ci]`, and a `GITHUB_TOKEN`
+  push does not trigger workflows regardless. Idempotent — a re-dispatch where the
+  pin is already current commits nothing.
+- `publish-ppx.yml` — new `drift-guard` job (`needs: [preflight, build]`) that
+  `npm pack`s the just-published `linux-x64` binary (retried for registry
+  propagation) and runs the maintained PPX suite (`test/run.sh`) through it: if
+  the published artifact drifted from source, the suite's source-tracking
+  assertions fail here. This buys back the published-artifact validation that
+  building from source everywhere gave up — nothing else in-repo resolves the
+  published binary anymore. Two backward-compatible knobs were added to `run.sh`:
+  `REVENTLESS_PPX_BIN` (point the fixtures at a specific binary) and
+  `REVENTLESS_PPX_SKIP_SELF_BUILD` (skip the source dune build — the guard needs
+  no OCaml). `pin` now also `needs: drift-guard`, so a bad publish never gets
+  pinned onto consumers.
+- `publish-ppx.yml` **`test` (Test PPX) job now tests SOURCE**, via
+  `REVENTLESS_PPX_BIN` → the from-source `bin.exe`. It previously compiled the
+  current spec fixtures with the launcher-resolved *installed* (pinned, stale)
+  binary — its own `dune build` is only a self-test that is never wired to the
+  fixtures — so it went red on any PPX change that added a `run.sh` assertion,
+  gating PPX source changes behind a republish. Testing source keeps it green in
+  the same commit (the `drift-guard` job covers the published artifact
+  separately). This was the last piece of the single-commit-green story for
+  `publish-ppx.yml` that Phase 2 left unspecified.
 
 **Deliberate deviations from the written plan:**
 
@@ -218,14 +238,15 @@ registry is current.
   re-runs. Same intent ("a missed bump cannot report success"), without the
   collateral.
 
-**Deferred — Phase 3** (does not block the single-commit flow that Phases 1–2
-already deliver):
-
-- **Phase 3 (drift guard)** buys back the published-artifact validation A gives
-  up, but a mis-wired guard (accidentally exercising the from-source binary
-  instead of the just-published one) is a green rubber-stamp that validates
-  nothing — worse than absent. Wants a careful, `bsc -dsource`-based
-  output-comparison design and can only be proven by pushing to CI.
+- **Phase 3's drift guard reuses `test/run.sh`, not a bespoke `bsc -dsource`
+  diff.** The risk the plan flagged is a mis-wired guard that exercises the
+  from-source binary on both sides — a green rubber-stamp. Running the *maintained*
+  suite through the *published* binary sidesteps that: the fixtures compile with
+  the fetched published `ppx.exe` (via `REVENTLESS_PPX_BIN`) and are asserted
+  against expectations that track source, so a stale/regressed published binary
+  fails real assertions. It also inherits full feature coverage for free (every
+  PPX feature already adds `run.sh` assertions) instead of relying on one
+  hand-written fixture. Only proven in CI, as the plan notes.
 
 ## Explicitly out of scope
 

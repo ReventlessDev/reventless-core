@@ -36,7 +36,7 @@ name: Publish Reventless PPX
 # CI, Release, and the example deploys build the PPX from source (via
 # .github/actions/setup-ppx) and never resolve the published binary, so a PPX
 # source change ships in one commit. The `pin` job automates the pin bump +
-# relock after publishing. See docs/plans/ppx-republish-single-commit.md.
+# relock after publishing. See docs/plans/done/ppx-republish-single-commit.md.
 
 on:
   push:
@@ -234,8 +234,18 @@ jobs:
       - name: Run PPX tests
         # `opam exec --` puts the switch (incl. dune) on PATH for the shell
         # script invoked by `npm test` (./test/run.sh calls `dune` directly).
+        #
+        # Point the fixtures at the FROM-SOURCE binary run.sh builds, not the
+        # launcher-resolved installed (pinned, stale) one. Otherwise this job
+        # compiles the current spec fixtures with the previously published binary
+        # and goes red on any PPX change that adds a new assertion — which is how
+        # the Test PPX job used to gate PPX source changes behind a republish.
+        # Testing source keeps this job green in the same commit; the drift-guard
+        # job separately validates the published artifact.
         run: opam exec -- npm test
         working-directory: packages/reventless-ppx
+        env:
+          REVENTLESS_PPX_BIN: ${{ github.workspace }}/packages/reventless-ppx/src/_build/default/bin/bin.exe
 
   # Publish the thin main package after all per-platform builds succeed.
   # Independent of the `test` job so a flaky test doesn't strand a successful
@@ -274,12 +284,79 @@ jobs:
             fi
           fi
 
+  # Drift guard: the build job validated the SOURCE (it compiled from source);
+  # this validates the PUBLISHED artifact. In-repo builds no longer resolve the
+  # published binary (they build from source), so nothing else would notice if the
+  # tarball shipped a stale or mis-staged binary. Fetch the just-published
+  # linux-x64 package and run the maintained PPX suite through it: if it drifted
+  # from source, the suite's assertions (which track source) fail here. This is
+  # what buys back the published-artifact validation that building from source
+  # everywhere gave up.
+  drift-guard:
+    name: Drift guard (published binary matches source)
+    needs: [preflight, build]
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.17.1"
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Setup workspace (pnpm-workspace.yaml)
+        run: node scripts/workspace-setup.mjs
+
+      - name: Install dependencies
+        # run.sh's temp fixtures resolve sury / sury-ppx / reventless-spec through
+        # the (hoisted) root node_modules. NPM_TOKEN must be set or pnpm discards
+        # the .npmrc and un-hoists sury (same reason as the Test PPX job).
+        run: pnpm install --frozen-lockfile
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Fetch the just-published linux-x64 binary
+        id: fetch
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          pkg="@reventlessdev/reventless-ppx-linux-x64@${VERSION}"
+          ok=false
+          for i in 1 2 3 4 5; do
+            if npm pack "$pkg" --registry=https://registry.npmjs.org --pack-destination "$RUNNER_TEMP"; then ok=true; break; fi
+            echo "npm pack $pkg failed (registry may still be propagating) — retrying in 15s"
+            sleep 15
+          done
+          if [ "$ok" != true ]; then echo "::error::could not fetch $pkg after retries"; exit 1; fi
+          tar -xzf "$RUNNER_TEMP"/reventlessdev-reventless-ppx-linux-x64-*.tgz -C "$RUNNER_TEMP"
+          bin="$RUNNER_TEMP/package/ppx.exe"
+          chmod +x "$bin"
+          echo "bin=$bin" >> "$GITHUB_OUTPUT"
+
+      - name: Run the PPX suite against the published binary
+        # REVENTLESS_PPX_BIN points the fixtures at the published binary;
+        # REVENTLESS_PPX_SKIP_SELF_BUILD skips run.sh's source dune build (no OCaml
+        # here — we are testing the artifact, not the source).
+        env:
+          REVENTLESS_PPX_BIN: ${{ steps.fetch.outputs.bin }}
+          REVENTLESS_PPX_SKIP_SELF_BUILD: "1"
+        run: ./test/run.sh
+        working-directory: packages/reventless-ppx
+
   # Automate the previously-manual second commit. Once the new per-platform
   # binaries and the main package are on the registry, bump main's
   # optionalDependencies pin to the new version and relock, so EXTERNAL consumers
   # (who install the published binary) resolve the fresh one. In-repo builds no
   # longer need this — they build the PPX from source (see
-  # docs/plans/ppx-republish-single-commit.md) — so this is pure housekeeping;
+  # docs/plans/done/ppx-republish-single-commit.md) — so this is pure housekeeping;
   # automating it removes the leftover human step that used to trail every PPX
   # source change (e.g. commit 2e8d076fd, done by hand).
   #
@@ -288,7 +365,7 @@ jobs:
   # carries [skip ci]; a GITHUB_TOKEN push does not trigger workflows anyway.
   pin:
     name: Pin optionalDependencies to the published version
-    needs: [preflight, build, publish-main]
+    needs: [preflight, build, publish-main, drift-guard]
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
     runs-on: ubuntu-latest
     permissions:

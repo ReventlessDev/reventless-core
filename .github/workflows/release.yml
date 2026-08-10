@@ -45,7 +45,7 @@ jobs:
       # resolver's local fallback, so it never depends on the published
       # per-platform binary (or its optionalDependencies pin) being current. A
       # PPX source change therefore releases in a single commit — see
-      # docs/plans/ppx-republish-single-commit.md and publish-ppx.yml.
+      # docs/plans/done/ppx-republish-single-commit.md and publish-ppx.yml.
       ppx-fallback: true
       ppx-source-dir: packages/reventless-ppx/src
       ppx-output-path: packages/reventless-ppx/ppx-linux.exe

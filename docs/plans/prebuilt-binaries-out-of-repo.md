@@ -52,7 +52,7 @@ the `optionalDependencies` pin being current, and a PPX source change ships in
 one commit with the tree green throughout. The pin bump is still needed so
 **external** consumers (who install the published binary) receive the new
 version, but it is now lazy housekeeping rather than a gate on this repo's
-CI/Release/deploy. See `docs/plans/ppx-republish-single-commit.md` for the
+CI/Release/deploy. See `docs/plans/done/ppx-republish-single-commit.md` for the
 root-cause analysis (why the old check/fallback ordering neutered the fallback
 in Release/deploy while CI stayed green by accident).
 
