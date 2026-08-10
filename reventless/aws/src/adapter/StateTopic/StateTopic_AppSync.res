@@ -42,6 +42,47 @@
 //
 // Usage in Platform.res (once, after admin + plugins have wired):
 //   StateTopic_AppSync.finish(~eventsApi, ~opts)
+//
+// ── Tables that are not read models ──────────────────────────────────────────
+//
+// Nothing below the registration is read-model-specific: the relay routes per
+// record through STATE_TOPIC_MAP and derives the entity channel from the record's
+// own `Keys`. `makeForTable` is the front door for a component that provisions
+// its own DynamoDB table and wants the same descriptors — state that is a PRIMARY
+// record rather than a projection (a ledger accumulated by `ADD` increments,
+// say) is not a read model and must not be declared one, but its rows are exactly
+// the shape the relay expects.
+//
+//   StateTopic_AppSync.makeForTable(
+//     ~tableName=myTable.name,
+//     ~streamArn=myTable.streamArn,
+//     ~partitionKeyName=myTable.hashKey,
+//     ~topicName="Platform-UsageLedger",
+//     ~eventsApi,
+//     ~opts,
+//   )
+//
+// Three things a caller has to get right, none of which the type checker can:
+//
+//   1. TOPIC NAMING IS THE CALLER'S JOB, AND A MISMATCH IS SILENT. A read model
+//      derives its topic from the generated plural list field, so publisher and
+//      subscriber agree by construction. A self-provisioned table has no such
+//      field — the topic passed here is simply believed. Publishing to a channel
+//      nobody listens on succeeds, so a typo shows up as "live updates never
+//      arrive", not as an error. The topic belongs to whoever READS the data:
+//      change the reader and the registration together, in one commit.
+//
+//   2. THE TABLE MUST BE KEYED ON `id`. Checked at deploy time — see
+//      `StateTopic_AppSync_Helpers.checkPartitionKeyName` for why a build error
+//      beats the alternative. A sort key is fine (entity key becomes
+//      `{id}-{sortValue}`, which the reader must also know).
+//
+//   3. REGISTRATION IS OPT-IN, PER TABLE, AND NOT FREE UNDER LOAD. Never register
+//      a table just because it happens to have a stream. A stream is silent while
+//      the table is idle — which is why this beats polling for the common quiet
+//      case — but a write burst costs one relay invocation per record batch, and
+//      avoiding exactly that per-write work is often why such a table exists in
+//      the first place. Measure before enabling it on a write-hot table.
 
 open PulumiAws
 
@@ -84,12 +125,40 @@ let registry: dict<array<streamEntry>> = Dict.make()
 
 // ── Registration ──────────────────────────────────────────────────────────────
 
+/** Register any stream-enabled DynamoDB table with the relay. Read-model and
+    self-provisioned tables land in the SAME registry, so they share one `finish`,
+    one Lambda, one IAM statement and one STATE_TOPIC_MAP — see the module header
+    for the three things a self-provisioned caller has to get right. */
+let makeForTable = (
+  ~tableName: Pulumi.Output.t<string>,
+  ~streamArn: Pulumi.Output.t<string>,
+  ~partitionKeyName: Pulumi.Output.t<string>,
+  ~topicName: string,
+  ~eventsApi: AppSync_EventsApi.t,
+  ~opts as _: Pulumi.CustomResourceOptions.t,
+) => {
+  // The check rides ON the tableName that gets registered rather than sitting in
+  // an apply of its own, so it cannot rot into dead code: STATE_TOPIC_MAP is built
+  // from this Output, so the apply always runs and a violation fails the deploy.
+  let checkedTableName =
+    (tableName, partitionKeyName)
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((tableName, partitionKeyName)) => {
+      StateTopic_AppSync_Helpers.checkPartitionKeyName(~tableName, ~partitionKeyName)
+      tableName
+    })
+
+  let key = eventsApi.name
+  let entries = registry->Dict.get(key)->Option.getOr([])
+  registry->Dict.set(key, entries->Array.concat([{tableName: checkedTableName, streamArn, topicName}]))
+}
+
 let make = (
   ~readModelName: string,
   ~topicName: string,
   ~allQueryDbs: ReventlessCore.QueryDb.allOutputs,
   ~eventsApi: AppSync_EventsApi.t,
-  ~opts as _: Pulumi.CustomResourceOptions.t,
+  ~opts: Pulumi.CustomResourceOptions.t,
 ) => {
   // Look up the QueryDb resources by ReadModel Spec.name, then find the
   // DynamoDB stream resource within them. Requires QueryDbStorage_DynamoDbStream.
@@ -98,12 +167,18 @@ let make = (
     ->ReventlessCore.Util.ReadModel.queryDbStorageResources(readModelName)
     ->Util_DynamoDbStream.findResource
 
-  let streamArn = Util_DynamoDbStream.streamArnFromDynamoDbTableResource(streamResource)
-  let tableName = streamResource.name
-
-  let key = eventsApi.name
-  let entries = registry->Dict.get(key)->Option.getOr([])
-  registry->Dict.set(key, entries->Array.concat([{tableName, streamArn, topicName}]))
+  makeForTable(
+    ~tableName=streamResource.name,
+    ~streamArn=Util_DynamoDbStream.streamArnFromDynamoDbTableResource(streamResource),
+    // QueryDbStorage_DynamoDb* keys every table it provisions on `id`, so here the
+    // check restates an invariant the framework already holds. It exists for the
+    // tables the framework did NOT create, which reach the registry via
+    // `makeForTable` and can be keyed anything.
+    ~partitionKeyName=StateTopic_AppSync_Helpers.entityKeyPartitionAttribute->Pulumi.Output.make,
+    ~topicName,
+    ~eventsApi,
+    ~opts,
+  )
 }
 
 // ── Finalize: build the shared Lambda + IAM + ESMs ────────────────────────────

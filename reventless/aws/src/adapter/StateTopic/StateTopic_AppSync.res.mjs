@@ -14,20 +14,31 @@ import * as Util_ReadModel$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as AppSync_EventsApi$ReventlessAws from "../Api/AppSync_EventsApi.res.mjs";
 import * as Util_LambdaLogging$ReventlessAws from "../../util/Util_LambdaLogging.res.mjs";
 import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
+import * as StateTopic_AppSync_Helpers$ReventlessAws from "./StateTopic_AppSync_Helpers.res.mjs";
 
 let registry = {};
 
-function make(readModelName, topicName, allQueryDbs, eventsApi, param) {
-  let streamResource = Util_DynamoDbStream$ReventlessAws.findResource(Util_ReadModel$ReventlessCore.queryDbStorageResources(allQueryDbs, readModelName));
-  let streamArn = Util_DynamoDbStream$ReventlessAws.streamArnFromDynamoDbTableResource(streamResource);
-  let tableName = streamResource.name;
+function makeForTable(tableName, streamArn, partitionKeyName, topicName, eventsApi, param) {
+  let checkedTableName = Pulumi.all([
+    tableName,
+    partitionKeyName
+  ]).apply(param => {
+    let tableName = param[0];
+    StateTopic_AppSync_Helpers$ReventlessAws.checkPartitionKeyName(tableName, param[1]);
+    return tableName;
+  });
   let key = eventsApi.name;
   let entries = Stdlib_Option.getOr(registry[key], []);
   registry[key] = entries.concat([{
-      tableName: tableName,
+      tableName: checkedTableName,
       streamArn: streamArn,
       topicName: topicName
     }]);
+}
+
+function make(readModelName, topicName, allQueryDbs, eventsApi, opts) {
+  let streamResource = Util_DynamoDbStream$ReventlessAws.findResource(Util_ReadModel$ReventlessCore.queryDbStorageResources(allQueryDbs, readModelName));
+  makeForTable(streamResource.name, Util_DynamoDbStream$ReventlessAws.streamArnFromDynamoDbTableResource(streamResource), Pulumi.output(StateTopic_AppSync_Helpers$ReventlessAws.entityKeyPartitionAttribute), topicName, eventsApi, opts);
 }
 
 function finish(eventsApi, opts) {
@@ -144,6 +155,7 @@ function finish(eventsApi, opts) {
 
 export {
   registry,
+  makeForTable,
   make,
   finish,
 }
