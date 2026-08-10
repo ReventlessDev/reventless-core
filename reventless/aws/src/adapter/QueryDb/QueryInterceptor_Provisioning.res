@@ -64,22 +64,55 @@ let buildInterceptor = (~api: Types.AppSync.api, ~opts) => {
     ),
   ])
   let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
-    ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryInterceptor_Lambda.res.mjs",
+    ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/QueryInterceptorEntryPoint.mjs",
     ~packageDirs,
   )
 
-  // Sits in front of every read, so it is sized for a decision rather than for
-  // work: small memory, short timeout. A hook that needs longer than this is
-  // doing something a read path cannot afford anyway.
+  // Framework default sizing, deliberately, and it took an outage to get here.
+  //
+  // What this runtime DECIDES is trivial — consult a hook, return a verdict — and
+  // it was once sized for exactly that: 256MB and a 10-second timeout, on the
+  // reasoning that a read path cannot afford anything more. But a runtime is not
+  // sized for what it decides, it is sized for what it LOADS, and this one loads
+  // whatever module graph the registered extensions drag behind them. An
+  // accounting extension reaching a DynamoDB client is enough to put the whole
+  // cloud SDK in that graph. Lambda CPU scales with memory, so at 256MB the load
+  // ran at a fraction of a core and did not finish inside ten seconds — and
+  // because an unfinished import neither completes nor throws, the failure was a
+  // bare timeout on EVERY read, with an empty log group to explain it.
+  //
+  // The defaults are also close to cost-neutral for the thing being paid for
+  // here. Lambda bills memory×duration, so a decision that fits in single-digit
+  // milliseconds costs about the same at either size; what changes is whether the
+  // cold start fits. The entry shell spends it in init (see its own docstring),
+  // where the timeout is headroom for the retry Lambda performs when init
+  // overruns its own budget, rather than a ceiling on the read.
   let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
     ~name,
     ~unitKind=ReventlessCore.Monitoring.Other("QueryInterceptor"),
     ~componentKind=ReventlessCore.ComponentType.Plugin,
     ~code,
     ~sourceCodeHash,
-    ~memorySize=256,
-    ~timeout=10,
     ~opts=componentOpts,
+  )
+
+  // The execution role's logging grant, which `makeFromCodeAsset` does NOT give
+  // it: every runtime builder in the framework attaches this at its own call
+  // site, and this one — hand-rolled rather than grown from a builder — was the
+  // one that forgot. The result was a component sitting in front of every read on
+  // the platform whose log group never had a single stream, so the timeout above
+  // could only be found by invoking the function by hand and reading the tail of
+  // a response. Silence on the read path is not a small defect; it is the thing
+  // that decides how long the next outage lasts.
+  let _logging = IAM.RolePolicy.make(
+    ~name=name ++ "Logging",
+    ~args={
+      IAM.RolePolicy.policy: PulumiAws.Lambda.defaultLoggingPolicyDocument
+      ->PolicyDocument.toJsonString
+      ->Pulumi.Input.make,
+      role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+    },
+    ~opts,
   )
   let lambdaArn = runtime.parts.lambda->Pulumi.Output.flatMap(lambda => lambda.arn)
 

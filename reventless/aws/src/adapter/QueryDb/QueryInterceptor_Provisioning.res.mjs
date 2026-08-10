@@ -5,6 +5,7 @@ import * as IAM$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/IAM.r
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
@@ -38,11 +39,15 @@ function buildInterceptor(api, opts) {
       "@reventlessdev/reventless-aws",
       Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws")
     ]]);
-  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryInterceptor_Lambda.res.mjs", packageDirs, undefined, undefined);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/QueryInterceptorEntryPoint.mjs", packageDirs, undefined, undefined);
   let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, {
     TAG: "Other",
     _0: "QueryInterceptor"
-  }, "Plugin", match.code, match.sourceCodeHash, undefined, 256, 10, undefined, undefined, undefined, undefined, undefined, componentOpts);
+  }, "Plugin", match.code, match.sourceCodeHash, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, componentOpts);
+  new (Aws.iam.RolePolicy)(name + "Logging", {
+    policy: PolicyDocument$PulumiAws.toJsonString(Lambda$PulumiAws.defaultLoggingPolicyDocument),
+    role: runtime.parts.lambdaRole.id
+  }, opts);
   let lambdaArn = Output$Pulumi.flatMap(runtime.parts.lambda, lambda => lambda.arn);
   let dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), AWS_Tags$ReventlessAws.make(name + "DataSource", "Plugin", "Identity", "Plugin", undefined, undefined, undefined, undefined), opts);
   Pulumi.all([
