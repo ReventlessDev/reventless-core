@@ -119,10 +119,14 @@ jobs:
           # lockstep with the CI-built packages:
           #   node scripts/publish-ppx-local.mjs darwin-x64
           #   # (or: pnpm --filter @reventlessdev/reventless-ppx run publish:platform)
-          # The package IS declared in the main package's optionalDependencies, so
-          # consumers with a registry token install it like any other platform.
-          # Token-less consumers (and any platform without a prebuilt) fall back to
-          # the launcher's local build via `pnpm run setup` / `pnpm build:ppx`.
+          # The package is NOT in the main package's optionalDependencies while its
+          # CI publish is suspended — pinning a platform CI does not publish would
+          # install nothing (optional deps fail silently) and surface as
+          # "no binary found", so the `pin` job below leaves it out on purpose.
+          # Intel consumers therefore fall back to the launcher's local build, the
+          # same path as any platform without a prebuilt: `pnpm run setup` /
+          # `pnpm build:ppx`. Re-adding it to optionalDependencies is only correct
+          # together with restoring its publish.
     runs-on: ${{ matrix.os }}
     name: Build & publish (${{ matrix.target }})
     steps:

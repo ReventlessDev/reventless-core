@@ -199,13 +199,26 @@ jobs:
 
       - name: Check for releasable changes
         id: changes
+        env:
+          IGNORE_CHANGES: ${{ inputs.ignore-changes }}
         run: |
           # `lerna changed` exits non-zero when no releasable (non-private)
           # packages changed — e.g. a commit that only touches private example
           # packages or the root lockfile. That is a valid "nothing to release"
           # outcome, not an error, so tolerate the exit code and fall through to
           # the skip branch below.
-          CHANGED=$(npx lerna changed --json 2>/dev/null || true)
+          #
+          # This gate MUST use the same ignore globs as the `lerna version` step
+          # below, or the two disagree: a push touching only an ignored package
+          # reports "releasable changes" here, opens the gate, and then versions
+          # nothing — a release run that publishes no new version and reports a
+          # misleading count.
+          IGNORE_ARGS=()
+          for pkg in $IGNORE_CHANGES; do
+            IGNORE_ARGS+=(--ignore-changes "**/$pkg/**")
+          done
+
+          CHANGED=$(npx lerna changed --json "${IGNORE_ARGS[@]}" 2>/dev/null || true)
           if [[ -z "$CHANGED" ]]; then
             CHANGED='[]'
           fi
