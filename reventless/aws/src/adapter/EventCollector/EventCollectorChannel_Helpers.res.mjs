@@ -2,6 +2,7 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
@@ -77,10 +78,13 @@ function esmTags(name, esmName) {
 }
 
 function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources, opts) {
-  ResourceAttribution_Deploytime$ReventlessCore.applyAttributed(Pulumi.all([
-    toResources(eventTopics),
-    Pulumi.all(queues.map(queue => queue.arn)),
-    Adapter$ReventlessCore.resourcesToResolvedOutput(resources)
+  let eventTopicResourcesOutput = toResources(eventTopics);
+  let queueArnsOutput = Pulumi.all(queues.map(queue => queue.arn));
+  let targetResourcesOutput = Adapter$ReventlessCore.resourcesToResolvedOutput(resources);
+  let lambdaPolicyJson = Output$Pulumi.flatMap(Pulumi.all([
+    eventTopicResourcesOutput,
+    queueArnsOutput,
+    targetResourcesOutput
   ]), param => {
     let resources = param[2];
     let queueArns = param[1];
@@ -138,19 +142,20 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
           ],
           Resource: queueArns
         }]) : undefined;
-    new (Aws.iam.RolePolicy)(name, {
-      policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Stdlib_Array.keepSome([
-        Lambda$PulumiAws.defaultLoggingPolicyDocument,
-        allowLambdaReceiveSQS,
-        allowLambdaReadDynamoDbStream,
-        allowLambdaReadWriteDynamoDb,
-        allowLambdaPublishSNS,
-        allowLambdaSendSQS
-      ])),
-      role: lambdaRole.id
-    }, opts);
-    dynamoDbStreamResources.map(dynamoDbStreamResource => Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$ReventlessCore.resolvedToResource(dynamoDbStreamResource), esmTags(name, Util$ReventlessCore.baseName(dynamoDbStreamResource.name) + ("2" + name)), opts));
+    return PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Stdlib_Array.keepSome([
+      Lambda$PulumiAws.defaultLoggingPolicyDocument,
+      allowLambdaReceiveSQS,
+      allowLambdaReadDynamoDbStream,
+      allowLambdaReadWriteDynamoDb,
+      allowLambdaPublishSNS,
+      allowLambdaSendSQS
+    ]));
   });
+  new (Aws.iam.RolePolicy)(name, {
+    policy: lambdaPolicyJson,
+    role: lambdaRole.id
+  }, opts);
+  ResourceAttribution_Deploytime$ReventlessCore.applyAttributed(eventTopicResourcesOutput, eventTopicResources => Adapter_Helpers$ReventlessAws.dynamoDbStreamResources(eventTopicResources).map(dynamoDbStreamResource => Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$ReventlessCore.resolvedToResource(dynamoDbStreamResource), esmTags(name, Util$ReventlessCore.baseName(dynamoDbStreamResource.name) + ("2" + name)), opts)));
   return queues.map((queue, idx) => {
     let esmName = queues.length > 1 ? name + `Sqs` + idx.toString() : name;
     return Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, esmName, queue, undefined, esmTags(name, esmName), opts);

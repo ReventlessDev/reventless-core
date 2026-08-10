@@ -190,11 +190,11 @@ component that owns the table.
 Build: root `pnpm run build` clean, zero warnings. Tests: `reventless-aws`
 50 suites / 501 tests green.
 
-## Related defect, found while investigating — needs its own fix
+## Related defect, found while investigating — fixed separately
 
-Split out, since it is not this seam's problem and should not close with this
-plan: [Backlog/statechangeslice-stream-switch-deletes-projection-esm.md](../Backlog/statechangeslice-stream-switch-deletes-projection-esm.md).
-
-Switching a plugin's slices to the stream builder wholesale remains **unsafe**
-until the cause is understood; the preview's delete list is the check that
-catches it.
+Split out, since it was not this seam's problem:
+[stateviewslicestream-switch-deletes-projection-esm.md](stateviewslicestream-switch-deletes-projection-esm.md).
+Root cause: `connectLambda` created its role policy and every EventSourceMapping
+inside one apply shared with the slices' view tables, whose computed `streamArn`
+is unknown in the preview that enables it — so an unknown in one input deleted
+resources that never read it. Fixed and regression-tested.

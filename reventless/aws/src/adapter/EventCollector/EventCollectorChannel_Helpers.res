@@ -118,21 +118,29 @@ let connectLambda = (
   resources: array<ReventlessInfra.Adapter.resource>,
   opts: Pulumi.CustomResourceOptions.t,
 ) => {
-  let _ =
-    (
-      eventTopics->toResources,
-      queues->Array.map(queue => queue.arn)->Pulumi.Output.all,
-      resources->ReventlessCore.Adapter.resourcesToResolvedOutput,
-    )
+  // The three input sets are resolved SEPARATELY, and each resource is gated on
+  // the narrowest one it actually needs.
+  //
+  // They used to share one `Pulumi.Output.all3` apply that created the role policy
+  // and every EventSourceMapping. An apply whose inputs are unknown does not run
+  // during preview, and a resource the program never registers reads as a DELETE —
+  // so an unknown in ANY of the three deleted ALL of them, including mappings that
+  // do not depend on it. `targetResources` (the collector's own view tables) is the
+  // one that goes unknown in practice: switching a plugin's slices to the stream
+  // builder gives each view table a computed `streamArn`, which Pulumi cannot know
+  // in the preview that enables it, so the plugin's event-log mapping and role
+  // policy — neither of which reads a view table — vanished from that preview.
+  let eventTopicResourcesOutput = eventTopics->toResources
+  let queueArnsOutput = queues->Array.map(queue => queue.arn)->Pulumi.Output.all
+  let targetResourcesOutput = resources->ReventlessCore.Adapter.resourcesToResolvedOutput
+
+  // Only the policy DOCUMENT needs all three. The RolePolicy resource itself is
+  // registered at top level with the document as an Output input, so an unknown
+  // input previews as "update, value unknown" instead of removing the policy.
+  let lambdaPolicyJson =
+    (eventTopicResourcesOutput, queueArnsOutput, targetResourcesOutput)
     ->Pulumi.Output.all3
-    // Provisions the collector's role, policies and event-source mappings, so it
-    // carries the plugin's attribution across the apply — by the time this runs
-    // the builder's construct has returned and the ambient context is empty.
-    ->ReventlessCore.ResourceAttribution_Deploytime.applyAttributed(((
-      eventTopicResources,
-      queueArns,
-      resources,
-    )) => {
+    ->Pulumi.Output.flatMap(((eventTopicResources, queueArns, resources)) => {
       log.debug(
         ~comp="EventCollector",
         `connectLambda ${name}: ${eventTopicResources->Array.length->Int.toString} topic resource(s), ${resources->Array.length->Int.toString} resource(s)`,
@@ -246,27 +254,42 @@ let connectLambda = (
             )
           : None
 
-      let _lambdaPolicy = PulumiAws.IAM.RolePolicy.make(
-        ~name,
-        ~args={
-          policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
-            name ++ "LambdaPolicy",
-            [
-              Some(PulumiAws.Lambda.defaultLoggingPolicyDocument),
-              allowLambdaReceiveSQS,
-              allowLambdaReadDynamoDbStream,
-              allowLambdaReadWriteDynamoDb,
-              allowLambdaPublishSNS,
-              allowLambdaSendSQS,
-            ]->Array.keepSome,
-          )->Pulumi.Output.asInput,
-          role: lambdaRole.id->Pulumi.Output.asInput,
-        },
-        ~opts,
+      PulumiAws.PolicyDocument.mergePolicyDocuments(
+        name ++ "LambdaPolicy",
+        [
+          Some(PulumiAws.Lambda.defaultLoggingPolicyDocument),
+          allowLambdaReceiveSQS,
+          allowLambdaReadDynamoDbStream,
+          allowLambdaReadWriteDynamoDb,
+          allowLambdaPublishSNS,
+          allowLambdaSendSQS,
+        ]->Array.keepSome,
       )
+    })
 
-      let _eventSourceMappings =
-        dynamoDbStreamResources->Array.map(dynamoDbStreamResource =>
+  let _lambdaPolicy = PulumiAws.IAM.RolePolicy.make(
+    ~name,
+    ~args={
+      policy: lambdaPolicyJson->Pulumi.Output.asInput,
+      role: lambdaRole.id->Pulumi.Output.asInput,
+    },
+    ~opts,
+  )
+
+  // The mappings read nothing but the event topics, so that is all they wait for.
+  // They cannot be hoisted out of an apply the way the policy can: an ESM's Pulumi
+  // name is derived from the resolved source name, so a brand-new event log still
+  // previews without them — inherent, and no longer reachable from a view table.
+  //
+  // Attribution is captured at THIS call, not inside the callback: by the time an
+  // apply runs, the builder's construct has returned and the ambient context is
+  // empty. (The top-level policy above is created while it is still ambient.)
+  let _ =
+    eventTopicResourcesOutput->ReventlessCore.ResourceAttribution_Deploytime.applyAttributed(
+      eventTopicResources =>
+        eventTopicResources
+        ->dynamoDbStreamResources
+        ->Array.map(dynamoDbStreamResource =>
           Util_EventSourceMapping.subscribe(
             ~lambda,
             ~targetName=name,
@@ -278,8 +301,8 @@ let connectLambda = (
             ),
             ~opts,
           )
-        )
-    })
+        ),
+    )
 
   let subscriptionResources = queues->Array.mapWithIndex((queue, idx) => {
     let esmName = queues->Array.length > 1 ? `${name}Sqs${Int.toString(idx)}` : name
