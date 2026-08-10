@@ -96,13 +96,34 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   | None => true
   }
 
+  // The interceptor step for one Query resolver, or `None` when this deployment
+  // did not switch interception on. Provisioning it is the framework's job — see
+  // `QueryInterceptor_Provisioning`; the first Query resolver under a plugin
+  // creates the data source and the rest reuse it.
+  //
+  // **Every top-level Query field on this read model gets one when interception
+  // is on, whatever its access path.** The hook reports `readModelName`, so all
+  // of them resolve the SAME read model and a consumer counting resolutions must
+  // see all of them or its number is a function of which access paths a model
+  // happens to expose — two models with identical traffic would report different
+  // totals because one is queried through an index. A partial pipeline here would
+  // make that skew invisible rather than absent.
+  let interceptorFunction = (~resolverName) =>
+    QueryInterceptor_Provisioning.dataSourceName(~api, ~opts)->Option.map(interceptorDsName =>
+      Function.makeJs(
+        ~name=resolverName ++ "Interceptor",
+        ~api,
+        ~dataSource=interceptorDsName,
+        ~code=interceptorCode(name),
+        ~opts,
+      )
+    )
+
   // Creates either a unit resolver (no interceptor) or a pipeline resolver
-  // (interceptor Lambda → DynamoDB query), depending on whether an extension
-  // switched interception on for this deployment. Provisioning the interceptor
-  // is the framework's job — see `QueryInterceptor_Provisioning`; the first
-  // Query resolver under a plugin creates it and the rest reuse it.
+  // (interceptor Lambda → DynamoDB query), for the Query fields that have no
+  // second step of their own.
   let makeQueryResolver = (~resolverName, ~field, ~code) =>
-    switch QueryInterceptor_Provisioning.dataSourceName(~api, ~opts) {
+    switch interceptorFunction(~resolverName) {
     | None =>
       Resolver.makeUnitJsResolver(
         ~name=resolverName,
@@ -113,14 +134,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
         ~code,
         ~opts,
       )
-    | Some(interceptorDsName) =>
-      let interceptorFn = Function.makeJs(
-        ~name=resolverName ++ "Interceptor",
-        ~api,
-        ~dataSource=interceptorDsName,
-        ~code=interceptorCode(name),
-        ~opts,
-      )
+    | Some(interceptorFn) =>
       let queryFn = Function.makeJs(
         ~name=resolverName ++ "Query",
         ~api,
@@ -258,18 +272,14 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       let idField = indexConfig.idField->Option.getOr(index)
       switch indexConfig.authorization {
       | None =>
-        Resolver.makeUnitJsResolver(
-          ~name=resolverName,
-          ~api,
-          ~dataSourceName,
-          ~type_="Query"->Pulumi.Input.make,
+        makeQueryResolver(
+          ~resolverName,
           ~field=fieldName->Pulumi.Input.make,
           ~code=switch indexConfig.subIdField {
           | Some(sortField) =>
             Resolver.Functions.queryByIndexSortFiltered(~index, ~idField, ~sortField)
           | None => Resolver.Functions.queryByIndexFiltered(~index, ~idField)
           },
-          ~opts,
         )
       | Some({tableName, group}) =>
         let authDataSource = DataSource.makeDynamoDBDataSourceWithTableName(
@@ -297,13 +307,25 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~code=Resolver.Functions.queryByIndexFiltered(~index, ~idField),
           ~opts,
         )
+        // The interceptor leads the chain, as it does in every other Query
+        // pipeline. That position means an attempt refused by the row-level index
+        // authorization below has still been counted — the same "attempts, not
+        // outcomes" bound the hook has everywhere, since it fires before the read
+        // and never learns how it ended. Putting it after the auth step would buy
+        // outcome-accurate counts and cost the property that matters more: the
+        // interceptor is the one place a read can be REFUSED, so it has to be
+        // reachable before the pipeline spends a second table read deciding
+        // whether this caller may use the index.
         Resolver.makePipelineJsResolver(
           ~name=resolverName,
           ~api,
           ~type_="Query"->Pulumi.Input.make,
           ~field=fieldName->Pulumi.Input.make,
           ~code=Resolver.Functions.pipelinePassThrough,
-          ~functions=[authFunction, queryFunction],
+          ~functions=switch interceptorFunction(~resolverName) {
+          | None => [authFunction, queryFunction]
+          | Some(interceptorFn) => [interceptorFn, authFunction, queryFunction]
+          },
           ~opts,
         )
       }
