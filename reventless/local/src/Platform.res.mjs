@@ -31,6 +31,7 @@ import * as BackendState$ReventlessLocal from "./adapter/BackendState.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "./adapter/SqliteDriver.res.mjs";
 import * as Task_Builder$ReventlessLocal from "./components/Task_Builder.res.mjs";
+import * as BakedManifest$ReventlessLocal from "./BakedManifest.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
 import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginBehavior.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
@@ -832,6 +833,28 @@ function MakeWithConfig(Config) {
   let pluginStructuresStore = {
     contents: {}
   };
+  let bakeManifest = (pluginComponents, config) => {
+    let resolved = [];
+    let expected = pluginComponents.length;
+    pluginComponents.forEach(plugin => {
+      let outputs = Component$ReventlessCore.outputs(plugin);
+      Pulumi.all([
+        outputs.id,
+        outputs.pluginStructure
+      ]).apply(param => {
+        let ps = param[1];
+        if (ps !== undefined) {
+          resolved.push([
+            param[0],
+            ps
+          ]);
+        }
+        if (resolved.length === expected) {
+          return BakedManifest$ReventlessLocal.emit(resolved, config);
+        }
+      });
+    });
+  };
   let seedPluginStructuresStore = pluginComponents => {
     pluginComponents.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
@@ -1183,7 +1206,7 @@ function MakeWithConfig(Config) {
       }
     });
   };
-  let makePlatform = (version, plugins) => {
+  let makePlatform = (version, plugins, hostUiBundle) => {
     log.info("Platform", undefined, `v` + version);
     log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(Config.silent) + `, splitApi: ` + Stdlib_Bool.toString(Config.splitApi) + `, cloner: ` + Stdlib_Bool.toString(Config.cloner));
     let match = Config.backend;
@@ -1262,6 +1285,10 @@ function MakeWithConfig(Config) {
       adminResources: []
     });
     subscribeToPluginEvents();
+    let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
+    if (cfg !== undefined) {
+      bakeManifest(plugins$1, cfg);
+    }
     if (projectionCatchup !== undefined) {
       Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], projectionCatchup[2], () => Bus.projectionCatchupHandlers()), e => {
         console.error("[Platform] projection catch-up failed:", e);
@@ -2529,6 +2556,28 @@ function Make($star) {
   let pluginStructuresStore = {
     contents: {}
   };
+  let bakeManifest = (pluginComponents, config) => {
+    let resolved = [];
+    let expected = pluginComponents.length;
+    pluginComponents.forEach(plugin => {
+      let outputs = Component$ReventlessCore.outputs(plugin);
+      Pulumi.all([
+        outputs.id,
+        outputs.pluginStructure
+      ]).apply(param => {
+        let ps = param[1];
+        if (ps !== undefined) {
+          resolved.push([
+            param[0],
+            ps
+          ]);
+        }
+        if (resolved.length === expected) {
+          return BakedManifest$ReventlessLocal.emit(resolved, config);
+        }
+      });
+    });
+  };
   let seedPluginStructuresStore = pluginComponents => {
     pluginComponents.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
@@ -2876,7 +2925,7 @@ function Make($star) {
       }
     });
   };
-  let makePlatform = (version, plugins) => {
+  let makePlatform = (version, plugins, hostUiBundle) => {
     log.info("Platform", undefined, `v` + version);
     log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(false) + `, splitApi: ` + Stdlib_Bool.toString(true) + `, cloner: ` + Stdlib_Bool.toString(false));
     let tmp;
@@ -2954,6 +3003,10 @@ function Make($star) {
       adminResources: []
     });
     subscribeToPluginEvents();
+    let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
+    if (cfg !== undefined) {
+      bakeManifest(plugins$1, cfg);
+    }
     if (projectionCatchup !== undefined) {
       Stdlib_Promise.$$catch(ProjectionCheckpoint$ReventlessLocal.startupCatchup(projectionCatchup[0], projectionCatchup[1], projectionCatchup[2], () => Bus.projectionCatchupHandlers()), e => {
         console.error("[Platform] projection catch-up failed:", e);

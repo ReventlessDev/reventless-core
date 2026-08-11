@@ -1124,18 +1124,6 @@ module MakeWithConfig = (
 
   // In split mode, create a dedicated platform AppSync API and push the platform schema.
   // In unified mode, makePlatform is a no-op (schema stitching handled by events).
-  let makePlatform = (~version, ~plugins: array<module(PluginMaker)>) => {
-    log.info(~comp="Platform", `v${version}`)
-    let _ = plugins
-    // Retired with the merged-API cutover: on AWS the platform deploys with
-    // deployPlatform (staged) and each plugin with deployPlugin — makePlatform
-    // predates the merge path and never gained merged wiring.
-    failwith(
-      "makePlatform is not supported on AWS — deploy the platform with deployPlatform and " ++
-      "each plugin with deployPlugin (merged-API composition).",
-    )
-  }
-
   // Optional host UI shell bundle: a static SPA (e.g. reventless-ui's host-shell)
   // hosted on the platform's CloudFront-fronted S3 bucket. The platform writes a
   // `config.json` next to `index.html` so the shell discovers `apiEndpoint` and
@@ -1154,6 +1142,10 @@ module MakeWithConfig = (
     // written; the shell treats the resulting 404 as "no hints" and boots
     // unchanged. Single-mode shape: one origin-relative file per deployment.
     uiHintsFile?: string,
+    // Optional baked component manifest. Declared here so a deployment can state
+    // it once; the emission that writes the file is not wired on this platform
+    // yet, and a declaration without it writes nothing.
+    bakedManifest?: ReventlessInfra.Platform.bakedManifest,
     // Optional geocoding place index, as returned by
     // `Capability_Geocoding_AwsLocation.make`. When set, the deploy provisions the
     // capability's client door — a Cognito-authenticated `Query.geocode` resolver
@@ -1197,6 +1189,23 @@ module MakeWithConfig = (
     // A key that collides with a computed one fails the deploy naming it.
     shellConfig?: dict<JSON.t>,
   }
+
+  let makePlatform = (
+    ~version,
+    ~plugins: array<module(PluginMaker)>,
+    ~hostUiBundle as _: option<hostUiBundleConfig>=?,
+  ) => {
+    log.info(~comp="Platform", `v${version}`)
+    let _ = plugins
+    // Retired with the merged-API cutover: on AWS the platform deploys with
+    // deployPlatform (staged) and each plugin with deployPlugin — makePlatform
+    // predates the merge path and never gained merged wiring.
+    failwith(
+      "makePlatform is not supported on AWS — deploy the platform with deployPlatform and " ++
+      "each plugin with deployPlugin (merged-API composition).",
+    )
+  }
+
 
   // Merged-mode outputs of deployPlatform — the merged API(s), plus the
   // deploy-time merge gates (Outputs that resolve on MERGE_SUCCESS and fail

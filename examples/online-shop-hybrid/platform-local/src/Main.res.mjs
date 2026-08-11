@@ -4,6 +4,7 @@ import * as Plugin$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog
 import * as Plugin$OrderingPlugin from "@reventlessdev/online-shop-hybrid-ordering/src/Plugin.res.mjs";
 import * as Platform$ReventlessLocal from "@reventlessdev/reventless-local/src/Platform.res.mjs";
 import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
+import * as Storefront$OnlineShopHybridSeed from "@reventlessdev/online-shop-hybrid-seed/src/Storefront.res.mjs";
 
 let Platform = Platform$ReventlessLocal.Make({});
 
@@ -18,7 +19,9 @@ Platform.makePlatform(PackageVersion$Reventless.fromCwd(), [
   {
     make: Ordering.make
   }
-]);
+], {
+  bakedManifest: Storefront$OnlineShopHybridSeed.manifest
+});
 
 Platform.startServers();
 

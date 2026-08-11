@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-seed",
   "version": "1.0.0-alpha.46",
-  "description": "Shareable demo data set(s) for the online-shop-hybrid example, exported as reventless-seed data sets",
+  "description": "Shareable app-level definitions for the online-shop-hybrid example — demo data sets for reventless-seed, and the storefront's curated component manifest",
   "license": "Apache-2.0",
   "scripts": {
     "build": "rescript build",
@@ -14,6 +14,7 @@
     "@reventlessdev/online-shop-hybrid-catalog-spec": "workspace:*",
     "@reventlessdev/online-shop-hybrid-ordering": "workspace:*",
     "@reventlessdev/online-shop-hybrid-ordering-spec": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-seed": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "^11.0.0-alpha.4"

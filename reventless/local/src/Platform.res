@@ -874,6 +874,35 @@ module MakeWithConfig = (
   // In-memory store for plugin structures, keyed by plugin ID.
   let pluginStructuresStore: ref<dict<Reventless.Plugin.pluginStructure>> = ref(Dict.make())
 
+  // Bake the curated manifest from the plugin components directly rather than
+  // from `pluginStructuresStore`: a structure only exists once its Output
+  // resolves, so a synchronous read of that store at the end of `makePlatform`
+  // sees an empty dict. Emitting once the last plugin's structure has landed is
+  // both the earliest correct moment and the only one that cannot bake a
+  // half-registered platform.
+  let bakeManifest = (
+    ~pluginComponents: array<ReventlessCore.Plugin.component>,
+    ~config: ReventlessInfra.Platform.bakedManifest,
+  ) => {
+    let resolved: array<(string, Reventless.Plugin.pluginStructure)> = []
+    let expected = pluginComponents->Array.length
+    pluginComponents->Array.forEach(plugin => {
+      let outputs: ReventlessInfra.Plugin.outputs = plugin->ReventlessCore.Component.outputs
+      let _ =
+        (outputs.id, outputs.pluginStructure)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((id, ps)) => {
+          switch ps {
+          | Some(def) => resolved->Array.push((id, def))
+          | None => ()
+          }
+          if resolved->Array.length === expected {
+            BakedManifest.emit(~structures=resolved, ~config)
+          }
+        })
+    })
+  }
+
   // The object stores a plugin's fields declared, as `{plugin}.{store}` keys.
   let declaredStoresOf = (structure: Reventless.Plugin.pluginStructure) =>
     structure.requiredStores->Option.getOr([])
@@ -1399,7 +1428,35 @@ module MakeWithConfig = (
       }
     })
 
-  let makePlatform = (~version, ~plugins: array<module(PluginMaker)>) => {
+  // In-memory ignores most of `~hostUiBundle` — the host shell is served by
+  // `vite dev` against the running in-process GraphQL server, not from a CDN,
+  // including `uiHintsFile` (the AWS deploy writes it as a BucketObject; local
+  // dev serves `public/ui-hints.json` directly). `bakedManifest` is the
+  // exception: it is generated content, so there is no hand-authored file for
+  // local dev to serve instead.
+  type hostUiBundleConfig = {
+    assetsDir?: string,
+    bundleVersion?: string,
+    uiHintsFile?: string,
+    // Honoured here, unlike the rest: `makePlatform` writes the curated manifest
+    // where the local host-shell serves its static assets from.
+    bakedManifest?: ReventlessInfra.Platform.bakedManifest,
+    // AWS host-ui deploy knobs — carried to satisfy the shared Platform.T
+    // signature; the in-memory platform provisions no infrastructure and
+    // ignores them.
+    geocoderPlaceIndex?: ReventlessInfra.Platform.geocoderIndex,
+    uploadBucket?: ReventlessInfra.Platform.objectStore,
+    // Same terms: the AWS deploy writes these into the config.json it hosts, and
+    // local dev has no config.json of its own to write — the host-shell package
+    // serves `public/config.json`, which is where local turns a view mode on.
+    viewModes?: array<ReventlessInfra.Platform.viewMode>,
+    shellConfig?: dict<JSON.t>,
+  }
+  let makePlatform = (
+    ~version,
+    ~plugins: array<module(PluginMaker)>,
+    ~hostUiBundle: option<hostUiBundleConfig>=?,
+  ) => {
     log.info(~comp="Platform", `v${version}`)
     log.info(
       ~comp="Platform",
@@ -1548,6 +1605,14 @@ module MakeWithConfig = (
     let seedAdminStores = () => {
       connectPlugin(~pluginComponents=plugins)
       seedPluginStructuresStore(~pluginComponents=plugins)
+    }
+    // Not inside `seedAdminStores`: the bake describes what this deployment
+    // offers, which is settled at composition and owes nothing to projection
+    // catch-up. Every plugin passed to this call is connected by construction
+    // locally, so there is no status or version dedup to apply.
+    switch hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest) {
+    | None => ()
+    | Some(cfg) => bakeManifest(~pluginComponents=plugins, ~config=cfg)
     }
     switch (projectionCatchup, pgProjectionCatchup) {
     | (Some((db, upperBound, dcbUpperBound)), _) =>
@@ -2031,25 +2096,6 @@ module MakeWithConfig = (
 
   }
 
-  // In-memory ignores `~hostUiBundle` — the host shell is served by `vite dev`
-  // against the running in-process GraphQL server, not from a CDN — including
-  // `uiHintsFile` (the AWS deploy writes it as a BucketObject; local dev serves
-  // `public/ui-hints.json` directly).
-  type hostUiBundleConfig = {
-    assetsDir?: string,
-    bundleVersion?: string,
-    uiHintsFile?: string,
-    // AWS host-ui deploy knobs — carried to satisfy the shared Platform.T
-    // signature; the in-memory platform provisions no infrastructure and
-    // ignores them.
-    geocoderPlaceIndex?: ReventlessInfra.Platform.geocoderIndex,
-    uploadBucket?: ReventlessInfra.Platform.objectStore,
-    // Same terms: the AWS deploy writes these into the config.json it hosts, and
-    // local dev has no config.json of its own to write — the host-shell package
-    // serves `public/config.json`, which is where local turns a view mode on.
-    viewModes?: array<ReventlessInfra.Platform.viewMode>,
-    shellConfig?: dict<JSON.t>,
-  }
   let deployPlatform = (
     ~version,
     ~hostUiBundle as _: option<hostUiBundleConfig>=?,

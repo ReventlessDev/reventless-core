@@ -1,6 +1,8 @@
 # Plan: Baked component manifest as a static asset
 
-**Status.** Proposed — 2026-08-10.
+**Status.** In-memory half landed — 2026-08-11. The declaration, the curation and
+the in-memory emission ship; the AWS emission is the open item in §4 and stays
+unbuilt until a deployment needs it.
 
 **Sibling plan:** `reventless-ui: docs/plans/shell-static-manifest-and-end-user-mode.md`
 — the shell-side `manifestUrl` discovery path that consumes what this plan
@@ -174,3 +176,65 @@ cover the same ground without one.
 - `internalQueryables` survives the bake for a referenced Internal view.
 - Absent declaration ⇒ no file written, and the rest of the deploy's output is
   unchanged.
+
+
+---
+
+## §8 — What landed (2026-08-11)
+
+The declaration (`ReventlessInfra.Platform.bakedManifest` on `hostUiBundleConfig`),
+the curation (`ReventlessCore.Platform_BakedManifest`) and the in-memory emission
+(`ReventlessLocal.BakedManifest`, fired from `makePlatform`). Five things differ
+from the plan above, each for a reason found while implementing.
+
+**`include` became `components`.** `include` is a ReScript keyword; naming the
+field after what it holds costs nothing and reads the same at the call site.
+
+**Commands are selected by COMMAND name, views by component name.** §3 said
+"by component name" for both. A view is the surface, so its component name is
+the right handle — but a command's enclosing slice or aggregate is an
+implementation detail an author should not have to know to curate a shop, and
+one aggregate carries many commands with very different audiences (`AddProduct`
+and `PlaceOrder` are not one decision). A write side left with no selected
+command is dropped entirely: it contributes no surface.
+
+**Curation filters the `pluginStructure`, then reuses the served encoder.**
+Rather than filtering encoded JSON. This is what makes §7's anti-drift assertion
+hold by construction instead of by vigilance — an include-list naming everything
+produces the same bytes `Platform_ComponentDefinitions` returns, and
+`internalQueryables` falls out of the existing encoder because a referenced
+Internal view is simply left in the structure it was filtered from.
+
+**In-memory emits from `makePlatform`, not `deployPlatform`.** §4 named the
+latter; local's `deployPlatform` is the standalone dynamic-plugin path, and the
+platform an example actually composes goes through `makePlatform`, which is
+therefore where the declaration arrives (`~hostUiBundle`, mirroring the deploy
+signature). The write also cannot happen synchronously at the end of that call:
+a plugin's structure only exists once its Output resolves, so the bake hangs off
+those Outputs and fires when the last one lands. Reading
+`pluginStructuresStore` synchronously bakes an empty manifest — and does it
+silently, which is worse than failing.
+
+**The declaration is app data, not platform data.** The example keeps its
+include-list in a module both platform roots can import
+(`online-shop-hybrid-seed: Storefront.res`), and each root passes it in its own
+`hostUiBundle`. "What does this app offer?" is the same answer on every platform
+that hosts it; "does this stack host a shell, and where does the file go?" is the
+platform-specific half. Restating the list per root would make the AWS bake a
+copy that drifts from the local one — and the two disagreeing is precisely the
+failure a baked manifest cannot survive, since the shell has no admin API to
+check against.
+
+**The destination is the resolved host-shell `dist/`.** Locally there is no
+bucket and no deploy: `reventless-host-shell` serves its own `dist/`, which is
+where the `config.json` and `ui-hints.json` a dev sees already come from. The
+package is resolved from the running project (not from the framework), the same
+distinction `Util_Bundle.resolvePackageRoot(~fromPulumiProject)` draws on AWS.
+Rewritten on every boot, so a `pnpm install` that replaces the directory costs a
+restart rather than a debugging session.
+
+**Not done:** the AWS emission. §4's two options stand and the recommendation is
+unchanged (a post-deploy pipeline step reading the admin API with operator
+credentials and writing the `BucketObject`); `hostUiBundleConfig` carries the
+field on that platform so the declaration is stated once, and a deployment that
+sets it today writes nothing.

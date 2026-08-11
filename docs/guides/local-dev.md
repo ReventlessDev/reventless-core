@@ -192,6 +192,54 @@ pnpm run dev:full
 
 ---
 
+## Curating the surface a shell sees (`bakedManifest`)
+
+By default the host shell discovers its surfaces from the admin-gated
+`Platform_ComponentDefinitions` query, so a caller outside the elevated group
+renders nothing at all. Declaring `bakedManifest` writes the same manifest as a
+static file the shell can read instead:
+
+```rescript
+Platform.makePlatform(
+  ~version=Reventless.PackageVersion.fromCwd(),
+  ~plugins=[module(Catalog), module(Ordering)],
+  ~hostUiBundle={
+    bakedManifest: {
+      components: [
+        {plugin: "Catalog", views: ["Products", "Categories"], commands: []},
+        {plugin: "Ordering", views: ["Orders"], commands: ["PlaceOrder", "CancelOrder"]},
+      ],
+    },
+  },
+)
+```
+
+Keep the include-list in a module shared by every platform root that hosts the
+app (the online-shop-hybrid example puts it in its seed package as
+`Storefront.res`) and pass it from each root. What the app offers is the same
+answer on every platform; only where the file goes is platform-specific.
+
+The file is written to the resolved `@reventlessdev/reventless-host-shell`
+`dist/` — where the `config.json` and `ui-hints.json` you already see are served
+from — as `component-manifest.json` (override with `key`), on every boot. Point
+the shell at it by adding `"manifestUrl": "/component-manifest.json"` to that
+same `config.json`; with the key set the shell never contacts the platform API
+for discovery.
+
+`views` / `commands` unset means every public component of that kind; commands
+are named by command, not by the slice or aggregate carrying them. A name that
+matches nothing fails the boot naming it — a curated shell missing a page is a
+symptom with no other explanation.
+
+Two things this is **not**. It is not authorization: the server still decides
+what any caller may do, per query and per mutation, and a component left out of
+the file remains as callable as it was. And it is not a hiding place for
+`@@reventless.visibility(Internal)` views — those stay out of the menu but ride
+along on `internalQueryables` when an included command `@ref`s one, because a
+shell reading a baked file has no admin API to resolve a picker's targets from.
+
+Unset ⇒ no file written, and the platform behaves exactly as it did before.
+
 ## Multi-plugin local dev
 
 Multiple plugins register into the same domain server — add them all to the `plugins` array:

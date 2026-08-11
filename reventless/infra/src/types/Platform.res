@@ -114,6 +114,34 @@ type capability =
 // A provisioned geocoding place index, as returned by the framework's geocoding
 // capability helper. A record rather than a bare name so the handle can grow
 // (ARN, data source) without moving every call site.
+/** One plugin's slice of the baked manifest. `views` / `commands` unset ⇒
+    every public component of that kind; set ⇒ exactly the named ones.
+    An include-list rather than an exclude-list, so a component added later
+    has to be opted in and cannot silently widen a curated shell's surface.
+    A name that matches nothing fails the deploy naming it — a silent no-op
+    here produces a missing page no log explains. */
+type bakedManifestSelection = {
+  plugin: string,
+  views?: array<string>,
+  commands?: array<string>,
+}
+
+/** Declaration for the baked component manifest — the static JSON a shell
+    reads instead of calling the admin-gated `Platform_ComponentDefinitions`.
+    The deployment declares WHAT TO INCLUDE, not what to write: the content is
+    derived from the registered plugins' structures, which only the framework
+    knows.
+
+    Unset ⇒ no file written ⇒ a shell configured for it 404s and any existing
+    deployment is byte-identical to today. This is curation (what exists for
+    this deployment's audience), never authorization (what this caller may
+    do) — the server-side gate on every query and mutation is untouched. */
+type bakedManifest = {
+  components: array<bakedManifestSelection>,
+  /** Defaults to `component-manifest.json`, written beside `config.json`. */
+  key?: string,
+}
+
 type geocoderIndex = {indexName: Pulumi.Input.t<string>}
 
 // Options for the shell's map view mode. Written to config.json flat, beside
@@ -351,6 +379,11 @@ module type T = {
     // no file written; the shell treats the 404 as "no hints" and boots
     // unchanged. In-memory platforms ignore this.
     uiHintsFile?: string,
+    // Optional baked component manifest. When set, the curated manifest is
+    // written beside `config.json` at deploy time; the shell reads it through
+    // its `manifestUrl` config key and never calls the platform's admin API.
+    // Unset ⇒ no file written, and the deployment behaves as it does today.
+    bakedManifest?: bakedManifest,
     // Optional geocoding place index. When set, the deploy provisions the
     // capability's client door — a Cognito-authenticated `Query.geocode` resolver
     // on the platform API — and exports the index name for the unattended slice
@@ -382,10 +415,14 @@ module type T = {
   }
 
   /** Deploy a complete platform: creates the scheduler, builds each plugin,
-      creates admin components internally, and wires everything (schema stitching + stack exports). */
+      creates admin components internally, and wires everything (schema stitching + stack exports).
+      Pass `~hostUiBundle` to declare host-shell assets this path owns — in-memory
+      that is where `bakedManifest` is declared, since a local platform has no
+      deploy step to hang it off. */
   let makePlatform: (
     ~version: string,
     ~plugins: array<module(PluginMaker)>,
+    ~hostUiBundle: hostUiBundleConfig=?,
   ) => unit
 
   /** Deploy only the platform (admin components, scheduler, shared API).

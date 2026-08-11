@@ -753,7 +753,7 @@ function MakeWithConfig(Config) {
       return;
     }
   };
-  let makePlatform = (version, plugins) => {
+  let makePlatform = (version, plugins, param) => {
     log.info("Platform", undefined, `v` + version);
     return Pervasives.failwith("makePlatform is not supported on AWS — deploy the platform with deployPlatform and each plugin with deployPlugin (merged-API composition).");
   };
@@ -2009,7 +2009,7 @@ function Make($star) {
       return;
     }
   };
-  let makePlatform = (version, plugins) => {
+  let makePlatform = (version, plugins, param) => {
     log.info("Platform", undefined, `v` + version);
     return Pervasives.failwith("makePlatform is not supported on AWS — deploy the platform with deployPlatform and each plugin with deployPlugin (merged-API composition).");
   };
