@@ -9,5 +9,9 @@ type consumedEvent =
   | ProductDemandRecorded({productId: string})
   | ProductDemandRevoked({productId: string})
 
+// `@id` because this is the one view here whose key cannot be inferred: the state
+// carries two `*Id` fields, and the component name yields no matching field
+// (`ProductDemand` → `productDemandId`). Without it the generated queryable gets
+// no key filter and no order-by at all.
 @schema
-type state = {productId: string, name: string, categoryId: string, orderCount: int}
+type state = {@id productId: string, name: string, categoryId: string, orderCount: int}

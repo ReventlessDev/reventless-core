@@ -50,6 +50,7 @@ function project(param) {
         TAG: "UpdateWithDefault",
         _0: id,
         _1: {
+          customerId: id,
           email: email,
           address: address,
           location: undefined,
@@ -149,10 +150,12 @@ let CustomerMapping = Projection$Reventless.Mapping.Make({
 });
 
 function project$1(param) {
+  let customerId = param.event.customerId;
   return {
     TAG: "UpdateWithDefault",
-    _0: param.event.customerId,
+    _0: customerId,
     _1: {
+      customerId: customerId,
       email: "",
       address: "",
       location: undefined,

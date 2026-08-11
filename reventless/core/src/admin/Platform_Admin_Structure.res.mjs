@@ -149,7 +149,9 @@ let pluginReadModel = {
   statusField: pluginReadModel_statusField,
   visibility: undefined,
   chapter: undefined,
-  singleQueryField: pluginReadModel_singleQueryField
+  singleQueryField: pluginReadModel_singleQueryField,
+  idField: undefined,
+  idFieldSource: undefined
 };
 
 let structure_readModels = [pluginReadModel];

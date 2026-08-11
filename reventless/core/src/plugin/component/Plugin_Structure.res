@@ -650,6 +650,12 @@ let make = (
       let qf = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
       let stateSchema = R.Spec.stateSchema->S.castToUnknown
       let label = labelFieldsFromStateSchema(~entityName=R.Spec.name, stateSchema)
+      // The same call the capability deriver makes, so the published key and the
+      // key the generated filter/order-by is built from cannot disagree.
+      let keyField = GraphQL_FragmentGenerator.resolveKeyField(
+        ~entityName=R.Spec.name,
+        stateSchema,
+      )
       // The events this read model projects from, qualified to the plugin's event ids so
       // they match the producers' nodes in the graph. Was empty — which dropped projection
       // edges for any event reaching the read model via a DCB-log-sourced mapping (a classic
@@ -671,6 +677,8 @@ let make = (
         // place that decides how `Products`/`Categories` singularise, and the
         // point of publishing the name is that a consumer stops guessing it.
         singleQueryField: Some(qf.singleFieldName),
+        idField: keyField->Option.map(((f, _)) => f),
+        idFieldSource: keyField->Option.map(((_, rung)) => rung),
       }: Reventless.Plugin.queryableDef)
     })
 
@@ -680,6 +688,10 @@ let make = (
       let (_, consumed) = svsConsumed->Array.getUnsafe(i)
       let stateSchema = SVS.Spec.stateSchema->S.castToUnknown
       let label = labelFieldsFromStateSchema(~entityName=SVS.Spec.name, stateSchema)
+      let keyField = GraphQL_FragmentGenerator.resolveKeyField(
+        ~entityName=SVS.Spec.name,
+        stateSchema,
+      )
       ({
         Reventless.Plugin.name: SVS.Spec.name,
         queryField: qf.listFieldName,
@@ -693,6 +705,8 @@ let make = (
         visibility: visibilityTag(SVS.Spec.visibility),
         chapter: chapterOf(SVS.Spec.name),
         singleQueryField: Some(qf.singleFieldName),
+        idField: keyField->Option.map(((f, _)) => f),
+        idFieldSource: keyField->Option.map(((_, rung)) => rung),
       }: Reventless.Plugin.queryableDef)
     })
 

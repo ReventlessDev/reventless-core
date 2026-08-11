@@ -13,6 +13,7 @@ let locationStatusSchema = S.union([
 ]);
 
 let stateSchema = S.schema(s => ({
+  customerId: s.m(S.string),
   email: s.m(S.string),
   address: s.m(S.string),
   location: s.m(S.option(GeoPoint$Reventless.schema)),

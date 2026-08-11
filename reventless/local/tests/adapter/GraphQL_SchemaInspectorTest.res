@@ -77,6 +77,14 @@ type plainState = {
   name: string,
 }
 
+// No `*Id` field at all, so the key ladder has nothing to nominate — the state
+// that still produces an empty capability.
+@schema
+type keylessState = {
+  name: string,
+  note: string,
+}
+
 @schema
 type indexedState = {
   productId: @s.matches(Reventless.DcbTag.string) string,
@@ -582,7 +590,12 @@ describe("GraphQL_SchemaInspector", () => {
   // ── Phase 1: server capability — auto-derived Filter / OrderBy ─────────
 
   describe("server capability — auto-derived Filter / OrderBy", () => {
-    testPromise("read model with no annotations emits the unchanged search-only Filter", async () => {
+    // This used to assert that a state with no annotations got a search-only
+    // Filter and no OrderBy at all. It no longer does: `plainState` has exactly
+    // one `*Id` field, so the key is knowable without `@id` and the queryable now
+    // gets that key's eq filter and sort. The search-only case is the one below,
+    // where nothing identifies the row.
+    testPromise("read model with no annotations gets its inferred key's Eq + OrderBy", async () => {
       let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
         ~mutationEntries=[],
         ~queryEntries=[
@@ -599,16 +612,44 @@ describe("GraphQL_SchemaInspector", () => {
       )
       let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
       let sdl = inspection.sdlPreview
-      // Filter has only the legacy block
+      // The legacy block is untouched …
       expect(sdl->String.includes("input PlainViewFilter"))->toBe(true)
       expect(sdl->String.includes("search: String"))->toBe(true)
       expect(sdl->String.includes("searchPrefix: String"))->toBe(true)
       expect(sdl->String.includes("ids: [ID!]"))->toBe(true)
-      // No per-field eq inputs
+      // … and `productId`, the sole candidate, now narrows and sorts.
+      expect(sdl->String.includes("productIdEq: ID"))->toBe(true)
+      expect(sdl->String.includes("PlainViewOrderBy"))->toBe(true)
+      expect(sdl->String.includes("PlainViewOrderField"))->toBe(true)
+      expect(sdl->String.includes("orderBy:"))->toBe(true)
+      // Only the key — an inferred key never drags the rest of the record in.
+      expect(sdl->String.includes("nameEq:"))->toBe(false)
+    })
+
+    // The remaining empty-capability case: no `*Id` field, so nothing says which
+    // field identifies a row and the ladder declines rather than guessing.
+    testPromise("read model whose key cannot be resolved stays search-only", async () => {
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=[
+          {
+            singleFieldName: "Keyless_View",
+            listFieldName: "Keyless_Views",
+            returnTypeName: "KeylessView",
+            stateSchema: keylessStateSchema->S.castToUnknown,
+            authorization: None,
+            includeIdParam: false,
+            connectionSpec: true,
+          },
+        ],
+      )
+      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+      let sdl = inspection.sdlPreview
+      expect(sdl->String.includes("input KeylessViewFilter"))->toBe(true)
+      expect(sdl->String.includes("search: String"))->toBe(true)
       expect(sdl->String.includes("Eq:"))->toBe(false)
-      // No OrderBy / OrderField types or arg
-      expect(sdl->String.includes("PlainViewOrderBy"))->toBe(false)
-      expect(sdl->String.includes("PlainViewOrderField"))->toBe(false)
+      expect(sdl->String.includes("KeylessViewOrderBy"))->toBe(false)
+      expect(sdl->String.includes("KeylessViewOrderField"))->toBe(false)
       expect(sdl->String.includes("orderBy:"))->toBe(false)
     })
 

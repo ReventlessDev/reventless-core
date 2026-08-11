@@ -187,30 +187,93 @@ let rec scalarOfSchemaType = (st: SchemaType.schemaType): string =>
   | _ => "String"
   }
 
-let deriveServerCapability = (schema: S.t<unknown>): serverCapability => {
+// A `*Id`-suffixed field name, case-sensitively. Deliberately NOT
+// `SchemaType.isIdFieldName`, which lowercases before testing the suffix and so
+// accepts `paid` and `valid` — harmless where it is used, but here it would
+// nominate an ordinary word as a row's key.
+let isKeyFieldName = (name: string): bool =>
+  name->String.length > 2 && name->String.endsWith("Id")
+
+/**
+The field that identifies a row, and which rung answered:
+
+- `"annotation"` — the state declares `@id`. Nothing outranks it.
+- `"convention"` — a field named `<singular entity name>Id` exists
+  (`Products` → `productId`). A guess, but one that can only fire on a field
+  that is actually there.
+- `"sole"` — the state has exactly one `*Id` field, so there is nothing else it
+  could be (`AvailableProducts` → `productId`).
+
+`None` is the honest answer for a state with several `*Id` fields and no name
+match (`ProductDemand`: `productId` + `categoryId`), or with none at all — those
+need `@id`. Convention outranks sole so a view carrying one foreign key and no
+key of its own is not keyed by the foreign key.
+*/
+let resolveKeyField = (~entityName: string, schema: S.t<unknown>): option<(string, string)> => {
+  let declared = switch Reventless.StateAnnotations.getSpec(schema) {
+  | Some({ids}) => ids->Array.get(0)
+  | None => None
+  }
+  switch declared {
+  | Some(field) => Some((field, "annotation"))
+  | None =>
+    let candidates =
+      SchemaType.fromSuryObject(~typeName="", schema)
+      ->Option.getOr(Dict.make())
+      ->Dict.keysToArray
+      ->Array.filter(isKeyFieldName)
+    let singular = entityName->Api_Naming.stripViewSuffix->Api_Naming.singularize
+    let conventional =
+      singular->String.slice(~start=0, ~end=1)->String.toLowerCase ++
+      singular->String.slice(~start=1, ~end=singular->String.length) ++ "Id"
+    if candidates->Array.includes(conventional) {
+      Some((conventional, "convention"))
+    } else if candidates->Array.length == 1 {
+      Some((candidates->Array.getUnsafe(0), "sole"))
+    } else {
+      None
+    }
+  }
+}
+
+// The component name the key-field convention is read against. `specName` is the
+// read model's own `Spec.name`; without it, `returnTypeName` minus its plugin
+// prefix is the same string (`Catalog_Product` → `Product`).
+let entityNameOf = (entry: ReventlessInfra.Api.querySchemaEntry): string =>
+  switch entry.specName {
+  | Some(n) => n
+  | None =>
+    switch entry.returnTypeName->String.lastIndexOf("_") {
+    | -1 => entry.returnTypeName
+    | i =>
+      entry.returnTypeName->String.slice(~start=i + 1, ~end=entry.returnTypeName->String.length)
+    }
+  }
+
+let deriveServerCapability = (~entityName: string, schema: S.t<unknown>): serverCapability => {
+  let fieldTypes = SchemaType.fromSuryObject(~typeName="", schema)->Option.getOr(Dict.make())
+  let scalarOf = (fieldName: string): string =>
+    fieldTypes->Dict.get(fieldName)->Option.mapOr("String", scalarOfSchemaType)
+
+  let filterFields: array<filterField> = []
+  let sortFields: array<string> = []
+  let seenFilter: Set.t<string> = Set.make()
+  let seenSort: Set.t<string> = Set.make()
+
+  let pushFilter = (name, ~range) =>
+    if !(seenFilter->Set.has(name)) {
+      seenFilter->Set.add(name)
+      filterFields->Array.push({name, gqlType: scalarOf(name), range})
+    }
+  let pushSort = name =>
+    if !(seenSort->Set.has(name)) {
+      seenSort->Set.add(name)
+      sortFields->Array.push(name)
+    }
+
   switch Reventless.StateAnnotations.getSpec(schema) {
-  | None => emptyCapability
+  | None => ()
   | Some(spec) =>
-    let fieldTypes = SchemaType.fromSuryObject(~typeName="", schema)->Option.getOr(Dict.make())
-    let scalarOf = (fieldName: string): string =>
-      fieldTypes->Dict.get(fieldName)->Option.mapOr("String", scalarOfSchemaType)
-
-    let filterFields: array<filterField> = []
-    let sortFields: array<string> = []
-    let seenFilter: Set.t<string> = Set.make()
-    let seenSort: Set.t<string> = Set.make()
-
-    let pushFilter = (name, ~range) =>
-      if !(seenFilter->Set.has(name)) {
-        seenFilter->Set.add(name)
-        filterFields->Array.push({name, gqlType: scalarOf(name), range})
-      }
-    let pushSort = name =>
-      if !(seenSort->Set.has(name)) {
-        seenSort->Set.add(name)
-        sortFields->Array.push(name)
-      }
-
     spec.ids->Array.forEach(name => {
       pushFilter(name, ~range=false)
       pushSort(name)
@@ -234,9 +297,21 @@ let deriveServerCapability = (schema: S.t<unknown>): serverCapability => {
     // path is needed here.
     spec.scan->Array.forEach(name => pushFilter(name, ~range=false))
     spec.scanSort->Array.forEach(name => pushSort(name))
-
-    {filterFields, sortFields}
   }
+
+  // A state that declares nothing structural used to land here with an empty
+  // capability — no per-field filter and no order-by at all, so every narrowing
+  // a client asked for happened client-side over one page. Its key is knowable
+  // without the annotation in the common cases; take it. Pushed last, and both
+  // pushes dedupe, so a declared `@id` keeps its position and this is a no-op.
+  switch resolveKeyField(~entityName, schema) {
+  | Some((field, _rung)) =>
+    pushFilter(field, ~range=false)
+    pushSort(field)
+  | None => ()
+  }
+
+  {filterFields, sortFields}
 }
 
 // Returns one warning per `@scanSort` field that is NOT also a sort key of the
@@ -564,7 +639,7 @@ let generate = (
         deriveConnectionTypes(~singularTypeName=entry.returnTypeName)
         ->Array.forEach(t => types->Array.push(t))
       }
-      let capability = deriveServerCapability(entry.stateSchema)
+      let capability = deriveServerCapability(~entityName=entityNameOf(entry), entry.stateSchema)
       let connectionFilterTypeName = entry.returnTypeName ++ "Filter"
       if !(seenTypes->Set.has(connectionFilterTypeName)) {
         seenTypes->Set.add(connectionFilterTypeName)

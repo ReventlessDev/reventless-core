@@ -45,7 +45,8 @@ module CustomerMapping = Mapping.Make(
         UpdateWithDefault(
           id,
           {
-            Customers.email: email,
+            Customers.customerId: id,
+            email,
             address,
             location: None,
             locationStatus: Pending,
@@ -111,7 +112,8 @@ module CustomerOrdersMapping = Mapping.Make(
         UpdateWithDefault(
           customerId,
           {
-            Customers.email: "",
+            Customers.customerId: customerId,
+            email: "",
             address: "",
             location: None,
             locationStatus: Pending,

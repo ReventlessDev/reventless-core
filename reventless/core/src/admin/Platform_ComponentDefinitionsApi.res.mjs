@@ -10,7 +10,7 @@ let sdlTypes = [
   `type Platform_EventDef {\n  name: String!\n  schema: String!\n  references: [Platform_FieldReference!]!\n}`,
   `type Platform_ErrorDef {\n  name: String!\n  schema: String!\n  references: [Platform_FieldReference!]!\n}`,
   `type Platform_WriteSideDef {\n  name: String!\n  commands: [Platform_CommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n  events: [Platform_EventDef!]!\n  errors: [Platform_ErrorDef!]!\n  chapter: String\n}`,
-  `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  statusField: String\n  visibility: String\n  chapter: String\n  singleQueryField: String\n}`,
+  `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  statusField: String\n  visibility: String\n  chapter: String\n  singleQueryField: String\n  idField: String\n  idFieldSource: String\n}`,
   `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n  targetName: String\n  chapter: String\n}`,
   `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
   `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
@@ -136,6 +136,14 @@ function encodeQueryableDef(r) {
     [
       "singleQueryField",
       Stdlib_Option.mapOr(r.singleQueryField, null, prim => prim)
+    ],
+    [
+      "idField",
+      Stdlib_Option.mapOr(r.idField, null, prim => prim)
+    ],
+    [
+      "idFieldSource",
+      Stdlib_Option.mapOr(r.idFieldSource, null, prim => prim)
     ]
   ]);
 }

@@ -19,6 +19,7 @@ import * as SuryToJsonSchema$ReventlessCore from "../../components/Api/SuryToJso
 import * as Capability_Inference$ReventlessCore from "./Capability_Inference.res.mjs";
 import * as ApiTargetStateHelpers$ReventlessCore from "../../components/Api/ApiTargetStateHelpers.res.mjs";
 import * as ApiAllowedStatesHelpers$ReventlessCore from "../../components/Api/ApiAllowedStatesHelpers.res.mjs";
+import * as GraphQL_FragmentGenerator$ReventlessCore from "../../components/Api/GraphQL_FragmentGenerator.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -500,6 +501,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let qf = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(name, R.Spec.name, undefined);
     let stateSchema = R.Spec.stateSchema;
     let label = labelFieldsFromStateSchema(R.Spec.name, stateSchema);
+    let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField(R.Spec.name, stateSchema);
     let consumed = qualify(name, R.consumedEventNames);
     return {
       name: R.Spec.name,
@@ -513,7 +515,9 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       statusField: statusFieldFromStateSchema(R.Spec.name, stateSchema),
       visibility: visibilityTag(R.Spec.visibility),
       chapter: componentChapters[R.Spec.name],
-      singleQueryField: qf.singleFieldName
+      singleQueryField: qf.singleFieldName,
+      idField: Stdlib_Option.map(keyField, param => param[0]),
+      idFieldSource: Stdlib_Option.map(keyField, param => param[1])
     };
   });
   let stateViewDefs = stateViewSlices.map((SVS, i) => {
@@ -522,6 +526,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let consumed = match[1];
     let stateSchema = SVS.Spec.stateSchema;
     let label = labelFieldsFromStateSchema(SVS.Spec.name, stateSchema);
+    let keyField = GraphQL_FragmentGenerator$ReventlessCore.resolveKeyField(SVS.Spec.name, stateSchema);
     return {
       name: SVS.Spec.name,
       queryField: qf.listFieldName,
@@ -534,7 +539,9 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       statusField: statusFieldFromStateSchema(SVS.Spec.name, stateSchema),
       visibility: visibilityTag(SVS.Spec.visibility),
       chapter: componentChapters[SVS.Spec.name],
-      singleQueryField: qf.singleFieldName
+      singleQueryField: qf.singleFieldName,
+      idField: Stdlib_Option.map(keyField, param => param[0]),
+      idFieldSource: Stdlib_Option.map(keyField, param => param[1])
     };
   });
   let stateChangeDefs = stateChangeSlices.map((SCS, i) => {

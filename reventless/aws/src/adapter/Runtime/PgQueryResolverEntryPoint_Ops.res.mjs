@@ -69,7 +69,7 @@ function registerBinding(pushdowns, pgConnection, entry, spec) {
     pushdowns: pushdowns,
     indexes: indexes,
     subIdField: subIdField,
-    capability: GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(spec.stateSchema),
+    capability: GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(entry.readModelName, spec.stateSchema),
     labelField: entry.labelField,
     includeIdParam: entry.includeIdParam,
     authorization: spec.authorization

@@ -32,6 +32,8 @@ let qbl: queryableDef = {
   visibility: None,
   chapter: None,
   singleQueryField: Some("Catalog_Product"),
+  idField: Some("productId"),
+  idFieldSource: Some("convention"),
 }
 
 let wbl: writableDef = {
@@ -254,6 +256,8 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
     visibility: Some("Internal"),
     chapter: None,
     singleQueryField: Some("Ordering_AvailableProduct"),
+    idField: Some("productId"),
+    idFieldSource: Some("sole"),
   }
   // A distinct name per source array: the complement has to be fed by both, and
   // reusing one def would hide a version that only walks `readModels`.
@@ -345,6 +349,8 @@ describe("allowedStates + statusField populated", () => {
     visibility: None,
     chapter: None,
     singleQueryField: Some("Platform_Plugin"),
+    idField: None,
+    idFieldSource: None,
   }
 
   let wblWithStates: writableDef = {
@@ -422,5 +428,33 @@ describe("singleQueryField reaches the caller", () => {
     let sdl = Platform_ComponentDefinitionsApi.sdlTypes->Array.join("\n")
     expect(sdl->String.includes("singleQueryField: String\n"))->toEqual(true)
     expect(sdl->String.includes("singleQueryField: String!"))->toEqual(false)
+  })
+})
+
+// The key and its rung travel together: a consumer ranking its own guess against
+// this one needs both, so a version that carried the field and dropped the
+// provenance would be worse than useless.
+describe("idField / idFieldSource reach the caller", () => {
+  testSync("encodes the key field and the rung that produced it", () => {
+    expect(json->String.includes("\"idField\":\"productId\""))->toEqual(true)
+    expect(json->String.includes("\"idFieldSource\":\"convention\""))->toEqual(true)
+  })
+
+  // A state whose key cannot be resolved (several `*Id` fields and no name match,
+  // or none at all) has nothing to report — null, not an invented field name.
+  testSync("encodes an unresolved key as null on both fields", () => {
+    let unresolved =
+      {...structure, readModels: [{...qbl, idField: None, idFieldSource: None}]}
+      ->Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId="Catalog", _)
+      ->JSON.stringify
+    expect(unresolved->String.includes("\"idField\":null"))->toEqual(true)
+    expect(unresolved->String.includes("\"idFieldSource\":null"))->toEqual(true)
+  })
+
+  testSync("types both as nullable Strings on the read-side SDL", () => {
+    let sdl = Platform_ComponentDefinitionsApi.sdlTypes->Array.join("\n")
+    expect(sdl->String.includes("idField: String\n"))->toEqual(true)
+    expect(sdl->String.includes("idFieldSource: String\n"))->toEqual(true)
+    expect(sdl->String.includes("idField: String!"))->toEqual(false)
   })
 })

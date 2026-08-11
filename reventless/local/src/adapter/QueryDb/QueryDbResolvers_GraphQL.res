@@ -279,7 +279,7 @@ module Make = (Bus: LocalBus.T) => {
     // so the resolver derives the same serverCapability the FragmentGenerator emitted.
     let stateSchemaOpt = Plugin_Helpers.stateSchemaRegistry->Dict.get(name)
     let capability = switch stateSchemaOpt {
-    | Some(s) => GraphQL_FragmentGenerator.deriveServerCapability(s)
+    | Some(s) => GraphQL_FragmentGenerator.deriveServerCapability(~entityName=name, s)
     | None => GraphQL_FragmentGenerator.emptyCapability
     }
 

@@ -3,6 +3,7 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
+import * as Api_Naming$ReventlessCore from "./Api_Naming.res.mjs";
 import * as SchemaType$ReventlessCore from "./SchemaType.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "./GraphQL_Stitcher.res.mjs";
@@ -172,11 +173,55 @@ function scalarOfSchemaType(_st) {
   };
 }
 
-function deriveServerCapability(schema) {
-  let spec = StateAnnotations$Reventless.getSpec(schema);
-  if (spec === undefined) {
-    return emptyCapability;
+function isKeyFieldName(name) {
+  if (name.length > 2) {
+    return name.endsWith("Id");
+  } else {
+    return false;
   }
+}
+
+function resolveKeyField(entityName, schema) {
+  let match = StateAnnotations$Reventless.getSpec(schema);
+  let declared = match !== undefined ? match.ids[0] : undefined;
+  if (declared !== undefined) {
+    return [
+      declared,
+      "annotation"
+    ];
+  }
+  let candidates = Object.keys(Stdlib_Option.getOr(SchemaType$ReventlessCore.fromSuryObject("", schema), {})).filter(isKeyFieldName);
+  let singular = Api_Naming$ReventlessCore.singularize(Api_Naming$ReventlessCore.stripViewSuffix(entityName));
+  let conventional = singular.slice(0, 1).toLowerCase() + singular.slice(1, singular.length) + "Id";
+  if (candidates.includes(conventional)) {
+    return [
+      conventional,
+      "convention"
+    ];
+  } else if (candidates.length === 1) {
+    return [
+      candidates[0],
+      "sole"
+    ];
+  } else {
+    return;
+  }
+}
+
+function entityNameOf(entry) {
+  let n = entry.specName;
+  if (n !== undefined) {
+    return n;
+  }
+  let i = entry.returnTypeName.lastIndexOf("_");
+  if (i !== -1) {
+    return entry.returnTypeName.slice(i + 1 | 0, entry.returnTypeName.length);
+  } else {
+    return entry.returnTypeName;
+  }
+}
+
+function deriveServerCapability(entityName, schema) {
   let fieldTypes = Stdlib_Option.getOr(SchemaType$ReventlessCore.fromSuryObject("", schema), {});
   let scalarOf = fieldName => Stdlib_Option.mapOr(fieldTypes[fieldName], "String", scalarOfSchemaType);
   let filterFields = [];
@@ -201,26 +246,35 @@ function deriveServerCapability(schema) {
       return;
     }
   };
-  spec.ids.forEach(name => {
-    pushFilter(name, false);
-    pushSort(name);
-  });
-  spec.compositeIds.forEach(name => pushFilter(name, false));
-  spec.subIds.forEach(name => {
-    pushFilter(name, true);
-    pushSort(name);
-  });
-  spec.compositeSubIds.forEach(name => {
-    pushFilter(name, true);
-    pushSort(name);
-  });
-  spec.indexes.forEach(param => {
-    let name = param[0];
-    pushFilter(name, false);
-    pushSort(name);
-  });
-  spec.scan.forEach(name => pushFilter(name, false));
-  spec.scanSort.forEach(pushSort);
+  let spec = StateAnnotations$Reventless.getSpec(schema);
+  if (spec !== undefined) {
+    spec.ids.forEach(name => {
+      pushFilter(name, false);
+      pushSort(name);
+    });
+    spec.compositeIds.forEach(name => pushFilter(name, false));
+    spec.subIds.forEach(name => {
+      pushFilter(name, true);
+      pushSort(name);
+    });
+    spec.compositeSubIds.forEach(name => {
+      pushFilter(name, true);
+      pushSort(name);
+    });
+    spec.indexes.forEach(param => {
+      let name = param[0];
+      pushFilter(name, false);
+      pushSort(name);
+    });
+    spec.scan.forEach(name => pushFilter(name, false));
+    spec.scanSort.forEach(pushSort);
+  }
+  let match = resolveKeyField(entityName, schema);
+  if (match !== undefined) {
+    let field = match[0];
+    pushFilter(field, false);
+    pushSort(field);
+  }
   return {
     filterFields: filterFields,
     sortFields: sortFields
@@ -435,7 +489,7 @@ function generate(mutationEntries, queryEntries) {
           types.push(t);
         });
       }
-      let capability = deriveServerCapability(entry.stateSchema);
+      let capability = deriveServerCapability(entityNameOf(entry), entry.stateSchema);
       let connectionFilterTypeName = entry.returnTypeName + "Filter";
       if (!seenTypes.has(connectionFilterTypeName)) {
         seenTypes.add(connectionFilterTypeName);
@@ -491,6 +545,9 @@ export {
   deriveSubIdFilterType,
   emptyCapability,
   scalarOfSchemaType,
+  isKeyFieldName,
+  resolveKeyField,
+  entityNameOf,
   deriveServerCapability,
   validateScanSortAlignment,
   deriveConnectionFilterType,
@@ -503,4 +560,4 @@ export {
   deriveMutationFieldFromObject,
   generate,
 }
-/* SchemaType-ReventlessCore Not a pure module */
+/* Api_Naming-ReventlessCore Not a pure module */

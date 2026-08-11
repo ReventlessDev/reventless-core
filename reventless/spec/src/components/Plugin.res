@@ -287,6 +287,33 @@ type queryableDef = {
   derivation there. js_nullable for the same JSON-safety reason as `statusField`.
   */
   singleQueryField: @s.matches(stringOptionSchema) option<string>,
+  /**
+  The state field that identifies a row — the queryable's own key, as opposed to
+  a reference to some other entity. `Products` carries `productId` and
+  `categoryId`; this says which of the two the row is about.
+
+  `None` means unresolved: a state with several `*Id` fields and no name match,
+  or with none at all. Such a component gets no key-derived filter or sort until
+  its spec declares `@id`. Also `None` on defs persisted before this field
+  existed. js_nullable for the same JSON-safety reason as `statusField`.
+  */
+  idField: @s.matches(stringOptionSchema) option<string>,
+  /**
+  Which rung produced `idField`, so a consumer can tell a declaration from a
+  guess — the same reason `labelFieldSource` exists:
+
+  - `"annotation"` — the state declares `@id`. The author said which field keys
+    the row; nothing inferred outranks it.
+  - `"convention"` — a field named `<singular component name>Id` exists
+    (`Products` → `productId`). A guess, and the one guess a client can make for
+    itself.
+  - `"sole"` — the state has exactly one `*Id` field, so there is nothing else
+    the key could be (`AvailableProducts` → `productId`). A guess, and one that
+    needs the state's full field list to make.
+
+  `None` whenever `idField` is `None`, and on defs that predate the field.
+  */
+  idFieldSource: @s.matches(stringOptionSchema) option<string>,
 }
 
 /**

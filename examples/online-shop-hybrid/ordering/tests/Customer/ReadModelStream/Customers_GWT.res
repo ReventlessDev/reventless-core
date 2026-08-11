@@ -16,7 +16,8 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     CustomerGwt.givenEvents([])
     ->CustomerGwt.whenEvent(Customer.Registered({email: "alice@x.y", address: "123 Main"}))
     ->CustomerGwt.thenState({
-      Customers.email: "alice@x.y",
+      Customers.customerId: "id",
+      email: "alice@x.y",
       address: "123 Main",
       location: None,
       locationStatus: Pending,
@@ -30,7 +31,8 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
     ->CustomerGwt.whenEvent(Customer.EmailUpdated({email: "alice2@x.y"}))
     ->CustomerGwt.thenState({
-      Customers.email: "alice2@x.y",
+      Customers.customerId: "id",
+      email: "alice2@x.y",
       address: "123 Main",
       location: None,
       locationStatus: Pending,
@@ -44,7 +46,8 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
     ->CustomerGwt.whenEvent(Customer.AddressUpdated({address: "789 Pine"}))
     ->CustomerGwt.thenState({
-      Customers.email: "alice@x.y",
+      Customers.customerId: "id",
+      email: "alice@x.y",
       address: "789 Pine",
       location: None,
       locationStatus: Pending,
@@ -58,7 +61,8 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
     ->CustomerGwt.whenEvent(Customer.LocationSet({location: {lat: 51.2093, lng: 3.2247}, resolvedFrom: "123 Main"}))
     ->CustomerGwt.thenState({
-      Customers.email: "alice@x.y",
+      Customers.customerId: "id",
+      email: "alice@x.y",
       address: "123 Main",
       location: Some({lat: 51.2093, lng: 3.2247}),
       locationStatus: Located,
@@ -72,7 +76,8 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
     CustomerGwt.givenEvents([Customer.Registered({email: "alice@x.y", address: "123 Main"})])
     ->CustomerGwt.whenEvent(Customer.Deactivated)
     ->CustomerGwt.thenState({
-      Customers.email: "alice@x.y",
+      Customers.customerId: "id",
+      email: "alice@x.y",
       address: "123 Main",
       location: None,
       locationStatus: Pending,
@@ -92,7 +97,8 @@ OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {
     ->OrderGwt.thenStateWithId(
       "c1",
       {
-        Customers.email: "",
+        Customers.customerId: "c1",
+        email: "",
         address: "",
         location: None,
         locationStatus: Pending,
@@ -113,7 +119,8 @@ OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {
     ->OrderGwt.thenStateWithId(
       "c1",
       {
-        Customers.email: "",
+        Customers.customerId: "c1",
+        email: "",
         address: "",
         location: None,
         locationStatus: Pending,

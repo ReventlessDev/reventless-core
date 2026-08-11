@@ -144,6 +144,7 @@ let registerBinding = (
       indexes,
       subIdField,
       capability: ReventlessCore.GraphQL_FragmentGenerator.deriveServerCapability(
+        ~entityName=entry.readModelName,
         spec.stateSchema,
       ),
       labelField: entry.labelField,

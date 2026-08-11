@@ -156,7 +156,7 @@ function Make(Bus) {
     }
     let labelField = registryEntry !== undefined ? Stdlib_Option.getOr(registryEntry.labelField, "id") : "id";
     let stateSchemaOpt = Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name];
-    let capability = stateSchemaOpt !== undefined ? GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(stateSchemaOpt) : GraphQL_FragmentGenerator$ReventlessCore.emptyCapability;
+    let capability = stateSchemaOpt !== undefined ? GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(name, stateSchemaOpt) : GraphQL_FragmentGenerator$ReventlessCore.emptyCapability;
     let fetchAllItems = async () => {
       let makeStream = Bus.getQueryDbStream(name);
       if (makeStream !== undefined) {

@@ -25,9 +25,11 @@ let sdlTypes: array<string> = [
   // with, and the two lists must stay independently evolvable.
   `type Platform_ErrorDef {\n  name: String!\n  schema: String!\n  references: [Platform_FieldReference!]!\n}`,
   `type Platform_WriteSideDef {\n  name: String!\n  commands: [Platform_CommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n  events: [Platform_EventDef!]!\n  errors: [Platform_ErrorDef!]!\n  chapter: String\n}`,
-  // `singleQueryField` is nullable, not `String!`: structures persisted before the
-  // field existed decode as `None`, and a hand-rolled def may decline to state it.
-  `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  statusField: String\n  visibility: String\n  chapter: String\n  singleQueryField: String\n}`,
+  // `singleQueryField` / `idField` / `idFieldSource` are nullable, not `String!`:
+  // structures persisted before the fields existed decode as `None`, a hand-rolled
+  // def may decline to state them, and a state whose key cannot be resolved has no
+  // `idField` to report.
+  `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  statusField: String\n  visibility: String\n  chapter: String\n  singleQueryField: String\n  idField: String\n  idFieldSource: String\n}`,
   `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n  targetName: String\n  chapter: String\n}`,
   `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
   `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
@@ -117,6 +119,8 @@ let encodeQueryableDef = (r: queryableDef): JSON.t =>
       "singleQueryField",
       r.singleQueryField->Option.mapOr(JSON.Encode.null, JSON.Encode.string),
     ),
+    ("idField", r.idField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+    ("idFieldSource", r.idFieldSource->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
   ])->JSON.Encode.object
 
 let encodeEventDef = (e: eventDef): JSON.t =>

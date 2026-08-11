@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 let consumedEventSchema = S.union([
   S.schema(s => ({
@@ -29,6 +30,29 @@ let stateSchema = S.schema(s => ({
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
+let makeId = (state => state.productId);
+
+let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stateAnnotationsId, {
+  ids: ["productId"],
+  compositeIds: [],
+  subIds: [],
+  compositeSubIds: [],
+  indexes: [],
+  hidden: [],
+  summary: [],
+  drillTargets: [],
+  drillTargetKeys: [],
+  collapsed: [],
+  scan: [],
+  scanSort: [],
+  semantic: [],
+  metric: [],
+  status: undefined,
+  groupBy: undefined,
+  visibility: undefined,
+  live: undefined
+});
+
 let name = "ProductDemand";
 
 let Id;
@@ -45,9 +69,10 @@ export {
   name,
   Id,
   consumedEventSchema,
-  stateSchema,
   config,
   subIdConfig,
+  makeId,
+  stateSchema$1 as stateSchema,
   moduleUrl,
   authorization,
   visibility,

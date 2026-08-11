@@ -91,7 +91,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
     let resolverByIdMultiple = includeIdParam ? Stdlib_Option.map(subIdField, sortField => makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle) + "Items", fieldNameForSingle + "Items", AppSync_Resolver_Functions$PulumiAws.queryItemsWithSortConditions(sortField))) : undefined;
     let labelField = registryEntry !== undefined ? Stdlib_Option.getOr(registryEntry.labelField, "id") : "id";
     let stateSchemaOpt = Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name$1];
-    let capability = stateSchemaOpt !== undefined ? GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(stateSchemaOpt) : GraphQL_FragmentGenerator$ReventlessCore.emptyCapability;
+    let capability = stateSchemaOpt !== undefined ? GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(name$1, stateSchemaOpt) : GraphQL_FragmentGenerator$ReventlessCore.emptyCapability;
     let filterFieldNames = capability.filterFields.map(f => f.name);
     let rangeFieldNames = Stdlib_Array.filterMap(capability.filterFields, f => {
       if (f.range) {

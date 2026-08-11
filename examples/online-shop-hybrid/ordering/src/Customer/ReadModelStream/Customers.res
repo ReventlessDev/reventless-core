@@ -24,8 +24,15 @@ type locationStatus =
   | Located
   | Unresolvable
 
+// A read model states its own key. Without `customerId` the only identifier on a
+// row is the Relay global `id`, which resolves the row through `node` but cannot
+// be compared to anything: no eq filter by customer, no sort, and no way to line
+// a row up against `Orders.customerId`. Both sources below already agree on this
+// key — the aggregate's instance id and the DCB event's `customerId` — so one
+// field serves both. No `@id` needed: the name matches the component.
 @schema
 type state = {
+  customerId: string,
   @displayName email: string,
   address: string,
   location: option<Reventless.GeoPoint.t>,

@@ -125,6 +125,12 @@ let pluginReadModel: queryableDef = {
   // the read-model name, so the singular is taken from the same call
   // `PluginBaseFragment.queryNames.singleFieldName` makes — not singularised here.
   singleQueryField: Some(Api_Naming.adminField(~name="Plugin")),
+  // No key field to name: the row id is `name@version` (`Plugin.makeId`), and the
+  // state carries the two halves separately rather than the composed key. `None`
+  // is the honest answer — the same one the resolver ladder reaches for a state
+  // with no `*Id` field.
+  idField: None,
+  idFieldSource: None,
 }
 
 let structure: pluginStructure = {

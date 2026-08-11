@@ -603,6 +603,53 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     })
   })
 
+  // Which field identifies a row, and whether the author said so or this side
+  // worked it out — the same declaration-vs-guess distinction `labelFieldSource`
+  // publishes, for the field the generated filter and order-by are built from.
+  describe("idField / idFieldSource — the key and its provenance", () => {
+    let keyOf = (q: Reventless.Plugin.queryableDef) => (q.idField, q.idFieldSource)
+    let withCategories = Plugin_Structure.make(
+      ~name="TestPlugin",
+      ~stateChangeSlices=[],
+      ~stateViewSlices=[module(PsCategoriesViewSlice)],
+    )
+
+    // Orders holds `orderId` + `customerName`; the component name matches the
+    // former, so the rung is the one a client could also reach on its own.
+    testSync("a name-matching `*Id` field is a guess the consumer can also make", () =>
+      expect(keyOf(structure.stateViewSlices->Array.getUnsafe(0)))->toEqual((
+        Some("orderId"),
+        Some("convention"),
+      ))
+    )
+
+    // AvailableProducts: the name would ask for `availableProductId`, which is not
+    // a field — `productId` wins because it is the only candidate there is.
+    testSync("a sole `*Id` field is a fact only this side can see", () =>
+      expect(keyOf(structure.stateViewSlices->Array.getUnsafe(1)))->toEqual((
+        Some("productId"),
+        Some("sole"),
+      ))
+    )
+
+    testSync("an `-ies` component name singularises to its key", () =>
+      expect(keyOf(withCategories.stateViewSlices->Array.getUnsafe(0)))->toEqual((
+        Some("categoryId"),
+        Some("convention"),
+      ))
+    )
+
+    // AnnotatedView declares `@id itemId` beside an `@index` field `ownerId`, and
+    // its name matches neither — inference alone would decline here, so reporting
+    // `itemId` proves the declaration produced it.
+    testSync("a declared @id is used where inference would decline", () =>
+      expect(keyOf(structure.stateViewSlices->Array.getUnsafe(3)))->toEqual((
+        Some("itemId"),
+        Some("annotation"),
+      ))
+    )
+  })
+
   describe("statusField — the shape rule", () => {
     let statusOf = schema =>
       Plugin_Structure.statusFieldFromStateSchema(~entityName="Test", schema->S.castToUnknown)

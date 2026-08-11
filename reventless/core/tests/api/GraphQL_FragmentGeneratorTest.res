@@ -87,3 +87,95 @@ describe("GraphQL_FragmentGenerator slice TODO rows", () => {
     expect(item->String.includes("address: String!"))->toBe(true)
   })
 })
+
+// A state that declares no `@id` used to produce `emptyCapability` — no per-field
+// filter and no order-by at all, so every narrowing a client asked for happened
+// client-side over one page. The key is knowable without the annotation in the
+// common cases; these pin which cases those are, and which still need `@id`.
+describe("resolveKeyField — the ladder", () => {
+  let rungFor = (~entityName, schema) =>
+    GraphQL_FragmentGenerator.resolveKeyField(~entityName, schema->S.castToUnknown)
+
+  testSync("a lone `*Id` field is the only thing the key could be", () => {
+    let schema = S.schema(s => {"productId": s.matches(S.string), "name": s.matches(S.string)})
+    expect(rungFor(~entityName="AvailableProducts", schema))->toEqual(Some(("productId", "sole")))
+  })
+
+  testSync("several `*Id` fields are disambiguated by the component name", () => {
+    let schema = S.schema(s =>
+      {"productId": s.matches(S.string), "categoryId": s.matches(S.string)}
+    )
+    expect(rungFor(~entityName="Products", schema))->toEqual(Some(("productId", "convention")))
+  })
+
+  // The `-ies` plural the naive singulariser gets wrong, on the key side too.
+  testSync("the convention rung singularises the way Api_Naming does", () => {
+    let schema = S.schema(s =>
+      {"categoryId": s.matches(S.string), "ownerId": s.matches(S.string)}
+    )
+    expect(rungFor(~entityName="Categories", schema))->toEqual(Some(("categoryId", "convention")))
+  })
+
+  // ProductDemand: two `*Id` fields, and the name yields `productDemandId`, which
+  // is not a field. Declining is the honest answer — this is what `@id` is for.
+  testSync("several `*Id` fields with no name match declines", () => {
+    let schema = S.schema(s =>
+      {"productId": s.matches(S.string), "categoryId": s.matches(S.string)}
+    )
+    expect(rungFor(~entityName="ProductDemand", schema))->toEqual(None)
+  })
+
+  testSync("no `*Id` field at all declines", () => {
+    let schema = S.schema(s => {"email": s.matches(S.string), "address": s.matches(S.string)})
+    expect(rungFor(~entityName="Customers", schema))->toEqual(None)
+  })
+
+  // `paid` / `valid` end with a lowercase "id". SchemaType.isIdFieldName accepts
+  // them (it lowercases first, which is right for its own use); a key field must
+  // not be nominated that way.
+  testSync("a word merely ending in `id` is not a key", () => {
+    let schema = S.schema(s => {"paid": s.matches(S.string), "valid": s.matches(S.string)})
+    expect(rungFor(~entityName="Invoices", schema))->toEqual(None)
+  })
+})
+
+describe("deriveServerCapability — inferred keys reach the SDL surface", () => {
+  let capabilityFor = (~entityName, schema) =>
+    GraphQL_FragmentGenerator.deriveServerCapability(~entityName, schema->S.castToUnknown)
+
+  testSync("an inferred key yields an eq filter and a sort field", () => {
+    let schema = S.schema(s => {"orderId": s.matches(S.string), "total": s.matches(S.float)})
+    let c = capabilityFor(~entityName="Orders", schema)
+    expect(c.filterFields->Array.map(f => f.name))->toEqual(["orderId"])
+    expect(c.sortFields)->toEqual(["orderId"])
+  })
+
+  testSync("an unresolvable key still yields nothing — the old behaviour, now narrowed", () => {
+    let schema = S.schema(s => {"email": s.matches(S.string)})
+    let c = capabilityFor(~entityName="Customers", schema)
+    expect((c.filterFields->Array.length, c.sortFields->Array.length))->toEqual((0, 0))
+  })
+
+  testSync("the filter input carries the inferred key's eq field", () => {
+    let schema = S.schema(s => {"orderId": s.matches(S.string)})
+    let input = GraphQL_FragmentGenerator.deriveConnectionFilterType(
+      ~filterTypeName="Ordering_OrderFilter",
+      ~capability=capabilityFor(~entityName="Orders", schema),
+    )
+    // `ID`, not `String`: a `*Id`-named field is an EntityId in the IR, and the
+    // filter input mirrors the field's own GraphQL type.
+    expect(input->String.includes("orderIdEq: ID"))->toBe(true)
+  })
+
+  // No OrderBy type is emitted at all when nothing is sortable, so an inferred
+  // key is the difference between having the type and not having it.
+  testSync("the order-by pair exists because of the inferred key", () => {
+    let schema = S.schema(s => {"orderId": s.matches(S.string)})
+    let types = GraphQL_FragmentGenerator.deriveConnectionOrderByType(
+      ~singularTypeName="Ordering_Order",
+      ~capability=capabilityFor(~entityName="Orders", schema),
+    )
+    expect(types->Array.length)->toBe(2)
+    expect(types->Array.join("\n")->String.includes("enum Ordering_OrderOrderField"))->toBe(true)
+  })
+})
