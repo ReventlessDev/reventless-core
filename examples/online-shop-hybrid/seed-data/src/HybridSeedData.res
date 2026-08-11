@@ -7,8 +7,9 @@
 // `Seed.Runner.seed(~sets=HybridSeedData.dataSets, ~connect=…)`.
 //
 // Because every phase drives the public GraphQL command API, a run doubles as a
-// smoke test: it exercises the DCB append path, both extension points, and the
-// AutoShipOrder automation. `DemoData.res` holds *what* to seed; `DemoCommands.res`
+// smoke test: it exercises the DCB append path, a deliberate command rejection,
+// both extension points, and the AutoShipOrder automation. `DemoData.res` holds
+// *what* to seed; `DemoCommands.res`
 // maps command values onto mutations; the transport and reporting come from
 // `ReventlessSeed`.
 
@@ -109,6 +110,42 @@ let seedProducts = async (products: array<DemoData.product>, ~client: Seed.Clien
   )
   Seed.Runner.report(`products: ${(products->Array.length)->Int.toString} added`)
 }
+
+// One command the domain must refuse, sent on purpose: re-adding a productId
+// that already exists. It comes back as CommandRejected/ProductAlreadyExists and
+// appends nothing, so the run shows the rejection path next to the accepted
+// ones. Acceptance is the failure mode here — a duplicate that slipped through
+// would leave two ProductAdded events on the same id — so an accepted duplicate
+// aborts the seed instead of passing quietly.
+let seedRejectedDuplicate = async (products: array<DemoData.product>, ~client: Seed.Client.t) =>
+  switch products->Array.get(0) {
+  | Some(p) =>
+    let outcome = await client->Seed.Client.send(
+      DemoCommands.addProduct(
+        AddProduct({
+          productId: p.id,
+          name: p.name,
+          description: p.description,
+          price: p.price,
+          imageUrl: ?p.imageUrl,
+          categoryId: p.categoryId,
+        }),
+      ),
+      ~tolerate=["ProductAlreadyExists"],
+    )
+    switch outcome {
+    | Some(code) =>
+      Seed.Runner.report(`duplicate guard: re-adding ${p.id} was rejected with ${code} (expected)`)
+    | None =>
+      throw(
+        Seed.Failed(
+          `duplicate guard: re-adding product ${p.id} was accepted — AddProduct is no longer ` ++
+          `rejecting an existing productId with ProductAlreadyExists`,
+        ),
+      )
+    }
+  | None => ()
+  }
 
 let seedCatalogEdits = async (products: array<DemoData.product>, ~client: Seed.Client.t) => {
   let repriced = DemoData.repricedProducts(products)
@@ -409,6 +446,7 @@ let run = async (
 
   await seedCategories(~client)
   await seedProducts(products, ~client)
+  await seedRejectedDuplicate(products, ~client)
   await seedCatalogEdits(products, ~client)
   await seedSupplierFeed(~client)
   await seedCustomers(customers, ~client)

@@ -109,6 +109,30 @@ async function seedProducts(products, client) {
   return Seed_Runner$ReventlessSeed.report(`products: ` + products.length.toString() + ` added`);
 }
 
+async function seedRejectedDuplicate(products, client) {
+  let p = products[0];
+  if (p === undefined) {
+    return;
+  }
+  let outcome = await Seed_Client$ReventlessSeed.send(client, DemoCommands$OnlineShopHybridSeed.addProduct({
+    TAG: "AddProduct",
+    productId: p.id,
+    name: p.name,
+    description: p.description,
+    price: p.price,
+    imageUrl: p.imageUrl,
+    categoryId: p.categoryId
+  }), ["ProductAlreadyExists"]);
+  if (outcome !== undefined) {
+    return Seed_Runner$ReventlessSeed.report(`duplicate guard: re-adding ` + p.id + ` was rejected with ` + outcome + ` (expected)`);
+  }
+  throw {
+    RE_EXN_ID: Seed$ReventlessSeed.Failed,
+    _1: `duplicate guard: re-adding product ` + p.id + ` was accepted — AddProduct is no longer rejecting an existing productId with ProductAlreadyExists`,
+    Error: new Error()
+  };
+}
+
 async function seedCatalogEdits(products, client) {
   let repriced = DemoData$OnlineShopHybridSeed.repricedProducts(products);
   await Seed_Client$ReventlessSeed.sendAll(client, repriced.map(p => DemoCommands$OnlineShopHybridSeed.changeProductPrice({
@@ -290,6 +314,7 @@ async function run(connection, productCount, customerCount, orderCount) {
   let orders = DemoData$OnlineShopHybridSeed.buildOrders(products, customers, orderCount, undefined);
   await seedCategories(client);
   await seedProducts(products, client);
+  await seedRejectedDuplicate(products, client);
   await seedCatalogEdits(products, client);
   await seedSupplierFeed(client);
   await seedCustomers(customers, client);
@@ -326,6 +351,7 @@ export {
   productImageStore,
   uploadProductImages,
   seedProducts,
+  seedRejectedDuplicate,
   seedCatalogEdits,
   seedSupplierFeed,
   seedCustomers,
