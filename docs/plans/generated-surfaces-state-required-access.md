@@ -1,6 +1,9 @@
 # Plan: generated surfaces state the access they require
 
-**Status.** Proposed — 2026-08-11.
+**Status.** Core half landed — 2026-08-11. `commandDef` and `queryableDef` carry
+derived `requiredAccess`, encoded into both admin queries and inherited by the
+baked manifest. What remains is the consumer: a shell that reads the keys, and
+the policy for what it does with a denied surface (§8).
 
 **Goal.** A generated page or panel carries the access its own authorization rule
 already implies, so a shell can stop advertising surfaces the server will refuse.
@@ -118,3 +121,40 @@ reverse.
 - The baked manifest carries the same keys as the served one for the same
   component.
 - Both transports emit identical keys for one fixture structure.
+
+
+---
+
+## §8 — What landed, and what is left
+
+Landed: the derivation (`Plugin_Structure.accessKeysFor`, evaluated per command
+constructor and per view), the two new fields, the SDL and encoders shared by
+both admin queries, and five tests including the one that matters most — a
+sibling command in the same slice publishes nothing while its gated neighbour
+publishes its groups.
+
+Verified live against the hybrid example: nine catalog commands, `ShipOrder`, the
+demand view and the customer list publish `["Admin"]`; the shop's own commands
+publish null. The baked storefront manifest is all-null, which is the right
+answer for a file that only contains surfaces open to any signed-in caller.
+
+**One shape adjustment against §3.** The plan said `DenyAll` should make the
+enumerating side *omit* the surface. The derivation publishes no keys for it
+instead, because omission is a decision for whoever builds pages — a structure is
+also read by tooling that wants the whole picture, and dropping a component from
+the structure would hide it from the event graph too. The consumer still has what
+it needs: nothing in this repo currently emits `DenyAll` on a user-facing
+component, and a shell that wants to drop such a surface should read the rule,
+not a key.
+
+**Not done — the consumer.** A shell still passes no access keys into its page
+generation, so nothing gates yet. That work belongs with whoever owns the shell,
+along with the policy question this plan deliberately left open: a denied surface
+can be locked (right for a licence upsell) or absent (right for a role split),
+and the two are different products, not different opinions.
+
+**A note the golden list already records.** Adding these fields moved
+`tests/plugin/pluginDefinitionRequiredScalars.txt`. Same shape as `allowedStates`
+— a nullable array whose element is a scalar — and accepted on the same terms: an
+older persisted definition carries no array at all, so there is no element for the
+healer to invent.
