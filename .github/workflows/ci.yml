@@ -165,6 +165,15 @@ jobs:
         if: steps.build.outcome == 'success'
         run: pnpm run test:projects
 
+      # The UI shell compiles its queries against an SDL snapshot it keeps on its
+      # own side, and nothing over there notices when this repo changes the wire
+      # shape. Boot the hybrid platform and diff both served schemas against the
+      # committed goldens, so a contract change is visible in the PR that makes
+      # it rather than at runtime against a deployed backend.
+      - name: Check GraphQL contract goldens
+        if: steps.build.outcome == 'success'
+        run: pnpm run check:graphql
+
       - name: Run unit tests (all)
         if: steps.build.outcome == 'success' && steps.affected.outputs.select == 'all'
         run: pnpm run test

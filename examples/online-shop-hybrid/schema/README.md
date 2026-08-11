@@ -1,8 +1,9 @@
 # GraphQL contract goldens
 
 Committed SDL snapshots of the two GraphQL APIs the hybrid example's local
-platform serves. Regenerated and diffed by `pnpm run check:graphql`, which boots
-the platform on isolated ports, introspects both servers, and fails on any
+platform serves. Regenerated and diffed by `pnpm run check:graphql` **from the
+repo root** (or `pnpm -w run check:graphql` from anywhere), which boots the
+platform on isolated ports, introspects both servers, and fails on any
 difference. Neither file is read at build or runtime — they exist so that a
 change to a wire contract shows up as a reviewable diff.
 
