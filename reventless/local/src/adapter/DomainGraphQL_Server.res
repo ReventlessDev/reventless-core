@@ -257,26 +257,14 @@ type resolverFn = YG.resolverFn
 
 // -- Relay Global ID encoding/decoding -------------------------------------
 
-@val external btoa: string => string = "btoa"
-@val external atob: string => string = "atob"
-
+// The encoding itself lives in `ReventlessCore.Api_Ids` — one definition shared
+// with the AWS adapter and with the doors that accept either id form. Kept as
+// named bindings here because the resolver wiring below and the `relay` record
+// passed to QueryDbResolvers_GraphQL both reference them.
 let encodeGlobalId = (~typeName: string, ~localId: string): string =>
-  btoa(`${typeName}:${localId}`)
+  ReventlessCore.Api_Ids.encode(~typeName, ~localId)
 
-let decodeGlobalId = (globalId: string): option<(string, string)> =>
-  try {
-    let decoded = atob(globalId)
-    let idx = decoded->String.indexOf(":")
-    if idx > 0 {
-      let typeName = decoded->String.slice(~start=0, ~end=idx)
-      let localId = decoded->String.slice(~start=idx + 1, ~end=decoded->String.length)
-      Some((typeName, localId))
-    } else {
-      None
-    }
-  } catch {
-  | _ => None
-  }
+let decodeGlobalId = ReventlessCore.Api_Ids.decode
 
 // -- Scoped registry ---------------------------------------------------------
 // Mirrors the AWS plugin=source-API, platform=merged-API model: every

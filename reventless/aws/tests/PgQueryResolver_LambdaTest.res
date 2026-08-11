@@ -365,3 +365,93 @@ describe("PgQueryResolver_Lambda.dispatch", () => {
     expect(threw)->toBe(true)
   })
 })
+
+// A client holding a row reads its `id` and passes it back. On the local platform
+// that `id` is a Relay global id; the typed doors used to take only the storage
+// key and answered null, with no error to point at. These pin the either-form
+// rule at the door, so the same client call works whichever form it holds.
+describe("id form — the typed doors take either", () => {
+  let globalIdFor = localId => ReventlessCore.Api_Ids.encode(~typeName="Thing", ~localId)
+
+  testPromise("getById resolves a Relay global id", async () => {
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=makeBinding(),
+      ~payload=mkPayload(
+        ~kind="getById",
+        ~args=objArgs([("id", JSON.Encode.string(globalIdFor("p-2")))]),
+        (),
+      ),
+    )
+    expect(r->str("name"))->toEqual(Some("Bravo"))
+  })
+
+  // The row's `id` must come back as the storage key it was found under — echoing
+  // the argument would hand back an id nothing else accepts.
+  testPromise("getById reports the storage key it resolved to", async () => {
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=makeBinding(),
+      ~payload=mkPayload(
+        ~kind="getById",
+        ~args=objArgs([("id", JSON.Encode.string(globalIdFor("p-2")))]),
+        (),
+      ),
+    )
+    expect(r->str("id"))->toEqual(Some("p-2"))
+  })
+
+  testPromise("getById still resolves a plain storage key", async () => {
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=makeBinding(),
+      ~payload=mkPayload(~kind="getById", ~args=objArgs([("id", JSON.Encode.string("p-2"))]), ()),
+    )
+    expect(r->str("name"))->toEqual(Some("Bravo"))
+  })
+
+  testPromise("getById on a global id for a row that does not exist is still null", async () => {
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=makeBinding(),
+      ~payload=mkPayload(
+        ~kind="getById",
+        ~args=objArgs([("id", JSON.Encode.string(globalIdFor("absent")))]),
+        (),
+      ),
+    )
+    expect(r)->toBe(JSON.Encode.null)
+  })
+
+  testPromise("byIds accepts the two forms mixed in one call", async () => {
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=makeBinding(),
+      ~payload=mkPayload(
+        ~kind="byIds",
+        ~args=objArgs([
+          (
+            "ids",
+            JSON.Encode.array([
+              JSON.Encode.string("p-1"),
+              JSON.Encode.string(globalIdFor("p-3")),
+            ]),
+          ),
+        ]),
+        (),
+      ),
+    )
+    expect(r->ids)->toEqual(["p-1", "p-3"])
+  })
+
+  // The fallback lookup must not fire when the first pass already answered — an
+  // all-raw call is the common path and pays for one round trip, not two.
+  testPromise("byIds with every id found does not double-count", async () => {
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=makeBinding(),
+      ~payload=mkPayload(
+        ~kind="byIds",
+        ~args=objArgs([
+          ("ids", JSON.Encode.array(["p-1", "p-3"]->Array.map(JSON.Encode.string))),
+        ]),
+        (),
+      ),
+    )
+    expect(r->ids)->toEqual(["p-1", "p-3"])
+  })
+})

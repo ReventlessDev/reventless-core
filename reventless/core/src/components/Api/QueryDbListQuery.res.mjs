@@ -5,6 +5,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Api_Ids$ReventlessCore from "./Api_Ids.res.mjs";
 
 function encodeCursor(value) {
   return btoa(value);
@@ -47,7 +48,8 @@ function buildConnection(pageItems, hasNextPage, hasPreviousPage, cursorValueOf)
   };
 }
 
-function run(items, argsDict, capability, labelField, decodeLocalId) {
+function run(items, argsDict, capability, labelField, decodeLocalIdOpt) {
+  let decodeLocalId = decodeLocalIdOpt !== undefined ? decodeLocalIdOpt : Api_Ids$ReventlessCore.toLocalId;
   let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});
   let search = Stdlib_Option.flatMap(filterDict["search"], Stdlib_JSON.Decode.string);
   let searchPrefix = Stdlib_Option.flatMap(filterDict["searchPrefix"], Stdlib_JSON.Decode.string);
@@ -83,10 +85,10 @@ function run(items, argsDict, capability, labelField, decodeLocalId) {
       let itemId = getId(item);
       let itemLocalId = decodeLocalId(itemId);
       passIds = ids.some(i => {
-        if (i === itemId) {
+        if (i === itemId || Primitive_object.equal(itemLocalId, i)) {
           return true;
         } else {
-          return Primitive_object.equal(itemLocalId, i);
+          return Primitive_object.equal(decodeLocalId(i), itemId);
         }
       });
     } else {

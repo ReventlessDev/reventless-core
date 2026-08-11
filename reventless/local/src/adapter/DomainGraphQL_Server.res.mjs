@@ -15,6 +15,7 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as Api_Ids$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Ids.res.mjs";
 import * as LocalAuth$ReventlessLocal from "./Auth/LocalAuth.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as LocalObjectStore$ReventlessLocal from "./ObjectStore/LocalObjectStore.res.mjs";
@@ -193,27 +194,7 @@ function _dispatch(req, res, yoga, getSdl) {
   });
 }
 
-function encodeGlobalId(typeName, localId) {
-  return btoa(typeName + `:` + localId);
-}
-
-function decodeGlobalId(globalId) {
-  try {
-    let decoded = atob(globalId);
-    let idx = decoded.indexOf(":");
-    if (idx <= 0) {
-      return;
-    }
-    let typeName = decoded.slice(0, idx);
-    let localId = decoded.slice(idx + 1 | 0, decoded.length);
-    return [
-      typeName,
-      localId
-    ];
-  } catch (exn) {
-    return;
-  }
-}
+let encodeGlobalId = Api_Ids$ReventlessCore.encode;
 
 let platformScope = "platform";
 
@@ -368,7 +349,7 @@ function buildNodeResolver() {
   }
   let resolver = async (_root, args, _ctx) => {
     let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-    let match = decodeGlobalId(id);
+    let match = Api_Ids$ReventlessCore.decode(id);
     if (match === undefined) {
       return null;
     }
@@ -737,6 +718,8 @@ let asInterface = {
 let YG;
 
 let buildAuthContext = Auth_GraphqlContext$ReventlessLocal.buildAuthContext;
+
+let decodeGlobalId = Api_Ids$ReventlessCore.decode;
 
 export {
   YG,

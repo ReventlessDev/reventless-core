@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as Api_Ids$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Ids.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as QueryDbListQuery$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/QueryDbListQuery.res.mjs";
 import * as QueryDb_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Callback.res.mjs";
@@ -74,19 +75,33 @@ async function dispatch(binding, lookupBindingOpt, payload) {
     switch (other) {
       case "byIds" :
         let ids = argStrs(payload.arguments, "ids");
-        return await binding.pushdowns.byIds(rm, ids);
+        let found = await binding.pushdowns.byIds(rm, ids);
+        let missing = found.length < ids.length ? Stdlib_Array.filterMap(ids, Api_Ids$ReventlessCore.alternateKey) : [];
+        let extra = missing.length !== 0 ? await binding.pushdowns.byIds(rm, missing) : [];
+        return found.concat(extra);
       case "getById" :
         let id = Stdlib_Option.getOr(argStr(payload.arguments, "id"), "");
-        let items = await binding.ops.load(id);
-        if (items.TAG !== "Ok") {
-          return null;
-        }
-        let item = items._0[0];
-        if (item !== undefined) {
+        let loadKey = async key => {
+          let items = await binding.ops.load(key);
+          if (items.TAG === "Ok") {
+            return items._0[0];
+          }
+        };
+        let match$1 = await loadKey(id);
+        let match$2 = Api_Ids$ReventlessCore.alternateKey(id);
+        let match$3 = match$1 !== undefined || match$2 === undefined ? [
+            id,
+            match$1
+          ] : [
+            match$2,
+            await loadKey(match$2)
+          ];
+        let found$1 = match$3[1];
+        if (found$1 !== undefined) {
           if (binding.includeIdParam) {
-            return withId(item, id);
+            return withId(found$1, match$3[0]);
           } else {
-            return item;
+            return found$1;
           }
         } else {
           return null;
@@ -95,14 +110,14 @@ async function dispatch(binding, lookupBindingOpt, payload) {
         let indexName = Stdlib_Option.getOr(payload.index, "");
         let field = Stdlib_Option.getOr(Stdlib_Option.flatMap(binding.indexes.find(ic => ic.index === indexName), ic => ic.idField), indexName);
         let value = Stdlib_Option.getOr(argStr(payload.arguments, indexName), "");
-        let match$1 = payload.authGroup;
-        let match$2 = payload.authTable;
+        let match$4 = payload.authGroup;
+        let match$5 = payload.authTable;
         let authorized;
-        if (match$1 !== undefined && match$2 !== undefined && Identity$Reventless.hasGroup(payload.identity, match$1)) {
-          let authBinding = lookupBinding(match$2);
+        if (match$4 !== undefined && match$5 !== undefined && Identity$Reventless.hasGroup(payload.identity, match$4)) {
+          let authBinding = lookupBinding(match$5);
           if (authBinding !== undefined) {
-            let items$1 = await authBinding.ops.load(value);
-            authorized = items$1.TAG === "Ok" ? Stdlib_Option.mapOr(Stdlib_Option.flatMap(items$1._0[0], row => argStr(row, authIdField(match$1))), false, owner => owner === payload.identity.username) : false;
+            let items = await authBinding.ops.load(value);
+            authorized = items.TAG === "Ok" ? Stdlib_Option.mapOr(Stdlib_Option.flatMap(items._0[0], row => argStr(row, authIdField(match$4))), false, owner => owner === payload.identity.username) : false;
           } else {
             authorized = false;
           }
@@ -127,8 +142,8 @@ async function dispatch(binding, lookupBindingOpt, payload) {
         if (conn !== undefined) {
           return conn;
         }
-        let items$2 = await binding.pushdowns.scanAll(rm);
-        return QueryDbListQuery$ReventlessCore.run(items$2, argsDict, binding.capability, binding.labelField, param => {});
+        let items$1 = await binding.pushdowns.scanAll(rm);
+        return QueryDbListQuery$ReventlessCore.run(items$1, argsDict, binding.capability, binding.labelField, undefined);
       case "resolveMany" :
         let target = Stdlib_Option.getOr(payload.target, rm);
         let source = Stdlib_Option.getOr(payload.source, null);
@@ -139,30 +154,30 @@ async function dispatch(binding, lookupBindingOpt, payload) {
         let source$1 = Stdlib_Option.getOr(payload.source, null);
         let key = Stdlib_Option.getOr(argStr(source$1, Stdlib_Option.getOr(payload.sourceIdField, "")), "");
         let ix = payload.targetIndex;
-        let items$3;
+        let items$2;
         if (ix !== undefined) {
-          items$3 = await binding.pushdowns.indexLookup(target$1, Stdlib_Option.getOr(payload.targetIndexIdField, ix), key);
+          items$2 = await binding.pushdowns.indexLookup(target$1, Stdlib_Option.getOr(payload.targetIndexIdField, ix), key);
         } else {
-          let items$4 = await binding.ops.load(key);
-          items$3 = items$4.TAG === "Ok" ? items$4._0 : [];
+          let items$3 = await binding.ops.load(key);
+          items$2 = items$3.TAG === "Ok" ? items$3._0 : [];
         }
-        let match$3 = payload.sourceSubId;
-        let match$4 = binding.subIdField;
+        let match$6 = payload.sourceSubId;
+        let match$7 = binding.subIdField;
         let filtered;
-        if (match$3 !== undefined && match$4 !== undefined) {
-          let name = match$3.name;
-          let tmp = match$3.kind === "arg" ? argStr(payload.arguments, name) : argStr(source$1, name);
+        if (match$6 !== undefined && match$7 !== undefined) {
+          let name = match$6.name;
+          let tmp = match$6.kind === "arg" ? argStr(payload.arguments, name) : argStr(source$1, name);
           let subVal = Stdlib_Option.getOr(tmp, "");
-          filtered = items$3.filter(it => Stdlib_Option.getOr(argStr(it, match$4), "") === subVal);
+          filtered = items$2.filter(it => Stdlib_Option.getOr(argStr(it, match$7), "") === subVal);
         } else {
-          filtered = items$3;
+          filtered = items$2;
         }
         if (Stdlib_Option.getOr(payload.multi, false)) {
           return filtered;
         }
-        let item$1 = filtered[0];
-        if (item$1 !== undefined) {
-          return item$1;
+        let item = filtered[0];
+        if (item !== undefined) {
+          return item;
         } else {
           return null;
         }
@@ -172,8 +187,8 @@ async function dispatch(binding, lookupBindingOpt, payload) {
     }
   } else {
     let isMulti = Stdlib_Option.getOr(payload.multi, false);
-    let match$5 = payload.kind;
-    switch (match$5) {
+    let match$8 = payload.kind;
+    switch (match$8) {
       case "getById" :
         return null;
       case "items" :

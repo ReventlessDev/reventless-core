@@ -142,7 +142,7 @@ annotation there: both inference rules then resolve it.
 The wider id-form disagreement — four doors with three contracts, and the two
 providers advertising different forms on a row — is a separate defect and is
 **out of scope** here. Filed as
-[Backlog/queryable-id-contract-parity](../Backlog/queryable-id-contract-parity.md).
+[queryable-id-contract-parity](queryable-id-contract-parity.md).
 
 ---
 
@@ -247,7 +247,7 @@ sites are in this repo.
 
 ## Backlog spin-off — the id contract
 
-Filed as [Backlog/queryable-id-contract-parity](../Backlog/queryable-id-contract-parity.md):
+Filed as [queryable-id-contract-parity](queryable-id-contract-parity.md):
 the four id-accepting doors take different id forms, and the local adapter
 advertises a Relay global id on a row where the AWS adapter advertises the raw
 one — so the same client query returns a row on one provider and nothing on the

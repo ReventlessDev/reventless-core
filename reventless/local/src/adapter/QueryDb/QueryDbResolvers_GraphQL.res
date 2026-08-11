@@ -85,6 +85,13 @@ module Make = (Bus: LocalBus.T) => {
 
     // Register the Relay node resolver callback once per QueryDb (domain only).
     // Scans all QueryDb instances to resolve node(id: ID!) queries.
+    // `node` is the one door that speaks Relay global ids, on both sides: it needs
+    // the `<Type>:` prefix to know which read model to load, so a storage key alone
+    // could not be resolved here. Every other door — the list, `X(id:)`,
+    // `XsByIds`, `filter.ids` — reports the storage key, which is what a client
+    // reads off a row and passes back. Callers that hold a global id are still
+    // served by the typed doors (see `Api_Ids.alternateKey`); the reverse is not
+    // possible, which is why this door is opt-in rather than the default form.
     switch relay {
     | Some(r) =>
       r.registerNodeResolverCallback(async (~typeName, ~localId) => {
@@ -101,7 +108,10 @@ module Make = (Bus: LocalBus.T) => {
             ->Effect.runPromise
           switch items->Array.get(0) {
           | Some(item) =>
-            let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
+            // Copied: `JSON.Decode.object` hands back the stored object itself, so
+            // setting a field here would rewrite the row inside the QueryDb — the
+            // in-memory backend keeps the very object it returns.
+            let obj = item->JSON.Decode.object->Option.mapOr(Dict.make(), Dict.copy)
             obj->Dict.set("__typename", JSON.Encode.string(typeName))
             obj->Dict.set("id", r.encodeGlobalId(~typeName, ~localId)->JSON.Encode.string)
             Some(JSON.Encode.object(obj))
@@ -169,11 +179,6 @@ module Make = (Bus: LocalBus.T) => {
       }
     }
 
-    let encodeId = switch relay {
-    | Some(r) => (~typeName, ~localId) => r.encodeGlobalId(~typeName, ~localId)
-    | None => (~typeName as _, ~localId) => localId
-    }
-
     // -- Main query: getById ---------------------------------------------------
     let byIdSdl = if includeIdParam {
       switch subIdField {
@@ -191,16 +196,34 @@ module Make = (Bus: LocalBus.T) => {
           args->JSON.Decode.object->Option.flatMap(d => d->Dict.get("id"))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
         switch Bus.getQueryDb(name) {
         | Some(ops) =>
-          let items =
-            await ops.loadStream(id)
+          let load = key =>
+            ops.loadStream(key)
             ->Stream.runCollect
             ->Effect.catchAll(_ => Effect.succeed([]))
             ->Effect.runPromise
+          let firstAttempt = await load(id)
+          // The row advertises a Relay global id, so `X(id: row.id)` arrives here
+          // as one. Retried rather than decoded up front: the raw key is what this
+          // door has always taken, and a key that merely looks like base64 must
+          // keep resolving to its own row.
+          let (resolvedKey, items) = switch (
+            firstAttempt->Array.get(0),
+            Api_Ids.alternateKey(id),
+          ) {
+          | (None, Some(localId)) => (localId, await load(localId))
+          | _ => (id, firstAttempt)
+          }
           switch items->Array.get(0) {
           | Some(item) =>
             if includeIdParam {
-              let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
-              obj->Dict.set("id", encodeId(~typeName=returnTypeName, ~localId=id)->JSON.Encode.string)
+              // Copied — `JSON.Decode.object` hands back the stored object itself,
+              // so setting a field here would rewrite the row inside the QueryDb.
+              let obj = item->JSON.Decode.object->Option.mapOr(Dict.make(), Dict.copy)
+              // The storage key, which is what the list answers and what this door
+              // takes back. `resolvedKey`, not the argument: a caller who passed a
+              // Relay global id gets the raw key returned, so a round trip through
+              // this door converges on the one form instead of alternating.
+              obj->Dict.set("id", JSON.Encode.string(resolvedKey))
               JSON.Encode.object(obj)
             } else {
               item
@@ -237,21 +260,28 @@ module Make = (Bus: LocalBus.T) => {
               ->Array.filterMap(JSON.Decode.string)
             switch Bus.getQueryDb(name) {
             | Some(ops) =>
-              let loaded = await ids->Array.map(id =>
-                ops.loadStream(id)
+              let load = key =>
+                ops.loadStream(key)
                 ->Stream.runCollect
                 ->Effect.catchAll(_ => Effect.succeed([]))
                 ->Effect.runPromise
-                ->Promise.thenResolve(items => (id, items->Array.get(0)))
+              // Same either-form rule as the single-id door: raw key first, the
+              // key inside a Relay global id only on a miss.
+              let loaded = await ids->Array.map(async id =>
+                switch (await load(id))->Array.get(0) {
+                | Some(item) => (id, Some(item))
+                | None =>
+                  switch Api_Ids.alternateKey(id) {
+                  | Some(localId) => (localId, (await load(localId))->Array.get(0))
+                  | None => (id, None)
+                  }
+                }
               )->Promise.all
               loaded
               ->Array.filterMap(((id, opt)) =>
                 opt->Option.map(item => {
-                  let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
-                  obj->Dict.set(
-                    "id",
-                    encodeId(~typeName=returnTypeName, ~localId=id)->JSON.Encode.string,
-                  )
+                  let obj = item->JSON.Decode.object->Option.mapOr(Dict.make(), Dict.copy)
+                  obj->Dict.set("id", JSON.Encode.string(id))
                   JSON.Encode.object(obj)
                 })
               )

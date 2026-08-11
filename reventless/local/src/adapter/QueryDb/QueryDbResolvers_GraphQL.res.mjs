@@ -7,6 +7,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
+import * as Api_Ids$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Ids.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as SortKey_Filter$ReventlessLocal from "./SortKey_Filter.res.mjs";
@@ -63,7 +64,7 @@ function Make(Bus) {
         if (item === undefined) {
           return;
         }
-        let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
+        let obj = Stdlib_Option.mapOr(Stdlib_JSON.Decode.object(item), {}, prim => Object.assign({}, prim));
         obj["__typename"] = typeName;
         obj["id"] = relay.encodeGlobalId(typeName, localId);
         return obj;
@@ -95,7 +96,6 @@ function Make(Bus) {
     if (includeIdParam && relay !== undefined) {
       relay.registerNodeType(returnTypeName, name);
     }
-    let encodeId = relay !== undefined ? (typeName, localId) => relay.encodeGlobalId(typeName, localId) : (param, localId) => localId;
     let byIdSdl = includeIdParam ? (
         subIdField !== undefined ? `  ` + singleQueryName + `(id: ID!, ` + subIdField + `: String): ` + returnTypeName : `  ` + singleQueryName + `(id: ID!): ` + returnTypeName
       ) : `  ` + singleQueryName + `: ` + returnTypeName;
@@ -109,16 +109,26 @@ function Make(Bus) {
       if (ops === undefined) {
         return null;
       }
-      let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
-      let item = items[0];
+      let load = key => Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(key)), param => Effect.succeed([])));
+      let firstAttempt = await load(id);
+      let match$1 = firstAttempt[0];
+      let match$2 = Api_Ids$ReventlessCore.alternateKey(id);
+      let match$3 = match$1 !== undefined || match$2 === undefined ? [
+          id,
+          firstAttempt
+        ] : [
+          match$2,
+          await load(match$2)
+        ];
+      let item = match$3[1][0];
       if (item === undefined) {
         return null;
       }
       if (!includeIdParam) {
         return item;
       }
-      let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
-      obj["id"] = encodeId(returnTypeName, id);
+      let obj = Stdlib_Option.mapOr(Stdlib_JSON.Decode.object(item), {}, prim => Object.assign({}, prim));
+      obj["id"] = match$3[0];
       return obj;
     };
     let byIdsSdl = includeIdParam && subIdField === undefined ? [GraphQL_FragmentGenerator$ReventlessCore.deriveByIdsQueryField(listQueryName, returnTypeName)] : [];
@@ -134,15 +144,33 @@ function Make(Bus) {
         if (ops === undefined) {
           return [];
         }
-        let loaded = await Promise.all(ids.map(id => Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([]))).then(items => [
-          id,
-          items[0]
-        ])));
+        let load = key => Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(key)), param => Effect.succeed([])));
+        let loaded = await Promise.all(ids.map(async id => {
+          let item = (await load(id))[0];
+          if (item !== undefined) {
+            return [
+              id,
+              item
+            ];
+          }
+          let localId = Api_Ids$ReventlessCore.alternateKey(id);
+          if (localId !== undefined) {
+            return [
+              localId,
+              (await load(localId))[0]
+            ];
+          } else {
+            return [
+              id,
+              undefined
+            ];
+          }
+        }));
         return Stdlib_Array.filterMap(loaded, param => {
           let id = param[0];
           return Stdlib_Option.map(param[1], item => {
-            let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
-            obj["id"] = encodeId(returnTypeName, id);
+            let obj = Stdlib_Option.mapOr(Stdlib_JSON.Decode.object(item), {}, prim => Object.assign({}, prim));
+            obj["id"] = id;
             return obj;
           });
         });

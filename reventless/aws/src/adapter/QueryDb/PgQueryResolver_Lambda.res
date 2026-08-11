@@ -165,18 +165,39 @@ let dispatch = async (
     switch payload.kind {
     | "getById" =>
       let id = payload.arguments->argStr("id")->Option.getOr("")
-      switch await binding.ops.load(id) {
-      | Ok(items) =>
-        switch items->Array.get(0) {
-        | Some(item) => binding.includeIdParam ? withId(item, id) : item
-        | None => JSON.Encode.null
+      let loadKey = async key =>
+        switch await binding.ops.load(key) {
+        | Ok(items) => items->Array.get(0)
+        | Error(_) => None
         }
-      | Error(_) => JSON.Encode.null
+      // A caller holding a row's Relay global id must reach the row through this
+      // door too. Raw key first — it is what this door has always taken, and a
+      // key that merely looks like base64 must keep resolving to its own row.
+      let (resolvedKey, found) = switch (
+        await loadKey(id),
+        ReventlessCore.Api_Ids.alternateKey(id),
+      ) {
+      | (None, Some(localId)) => (localId, await loadKey(localId))
+      | (found, _) => (id, found)
+      }
+      switch found {
+      | Some(item) => binding.includeIdParam ? withId(item, resolvedKey) : item
+      | None => JSON.Encode.null
       }
 
     | "byIds" =>
       let ids = payload.arguments->argStrs("ids")
-      JSON.Encode.array(await binding.pushdowns.byIds(~readModelName=rm, ids))
+      let found = await binding.pushdowns.byIds(~readModelName=rm, ids)
+      // Only pay for the second lookup when the first came up short, and only for
+      // the ids that are global ones.
+      let missing =
+        found->Array.length < ids->Array.length
+          ? ids->Array.filterMap(ReventlessCore.Api_Ids.alternateKey)
+          : []
+      let extra = missing->Array.length > 0
+        ? await binding.pushdowns.byIds(~readModelName=rm, missing)
+        : []
+      JSON.Encode.array(Array.concat(found, extra))
 
     | "items" =>
       // Sub-id connection: {single}Items(id, filter, first/after/last/before).
@@ -243,16 +264,14 @@ let dispatch = async (
       | Some(conn) => conn
       | None =>
         // Shapes listPage declines (search/searchPrefix/ids/backward) → run the
-        // shared spec over the materialised model. No Relay global-id decoding
-        // in the Lambda, so `decodeLocalId` is a no-op (the `ids` filter still
-        // matches raw item ids).
+        // shared spec over the materialised model, which decodes Relay global
+        // ids the same way every other door now does.
         let items = await binding.pushdowns.scanAll(~readModelName=rm)
         ReventlessCore.QueryDbListQuery.run(
           ~items,
           ~argsDict,
           ~capability=binding.capability,
           ~labelField=binding.labelField,
-          ~decodeLocalId=_ => None,
         )
       }
 

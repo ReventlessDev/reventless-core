@@ -71,15 +71,16 @@ let buildConnection = (
 }
 
 // Compute the Relay connection response (edges + pageInfo) for `items` under the
-// GraphQL args. `decodeLocalId` maps a possibly-Relay-encoded id to its local id
-// (the resolver passes DomainGraphQL_Server.decodeGlobalId); everything else is
-// pure over the item array.
+// GraphQL args. `decodeLocalId` maps a possibly-Relay-encoded id to its local id;
+// it defaults to the shared rule so every caller applies the same one — the AWS
+// Lambda used to pass a no-op here, which silently made `filter.ids` reject a
+// global id on that provider only. Everything else is pure over the item array.
 let run = (
   ~items: array<JSON.t>,
   ~argsDict: Dict.t<JSON.t>,
   ~capability: GraphQL_FragmentGenerator.serverCapability,
   ~labelField: string,
-  ~decodeLocalId: string => option<string>,
+  ~decodeLocalId: string => option<string>=Api_Ids.toLocalId,
 ): JSON.t => {
   let filterDict =
     argsDict->Dict.get("filter")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
@@ -145,11 +146,18 @@ let run = (
       getLabel(item)->String.toLowerCase->String.startsWith(p->String.toLowerCase)
     | _ => true
     }
+    // Either id form matches, in both directions: the argument may be a Relay
+    // global id while the row carries its storage key (the normal case — every
+    // door but `node` reports the storage key), and the row may carry a global id
+    // where some caller stamped one. Decoding only the row's id, as this did,
+    // covered just the second.
     let passIds = switch ids {
     | Some(idList) if idList->Array.length > 0 =>
       let itemId = getId(item)
       let itemLocalId = decodeLocalId(itemId)
-      idList->Array.some(i => i == itemId || itemLocalId == Some(i))
+      idList->Array.some(i =>
+        i == itemId || itemLocalId == Some(i) || decodeLocalId(i) == Some(itemId)
+      )
     | _ => true
     }
     let passPerField = perFieldChecks->Array.every(check => check(item))
