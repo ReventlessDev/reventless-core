@@ -17,6 +17,7 @@ let cmd: commandDef = {
   allowedStates: None,
   targetState: None,
   apiExposed: Some(true),
+  requiredAccess: None,
 }
 
 let qbl: queryableDef = {
@@ -34,6 +35,7 @@ let qbl: queryableDef = {
   singleQueryField: Some("Catalog_Product"),
   idField: Some("productId"),
   idFieldSource: Some("convention"),
+  requiredAccess: None,
 }
 
 let wbl: writableDef = {
@@ -258,6 +260,7 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
     singleQueryField: Some("Ordering_AvailableProduct"),
     idField: Some("productId"),
     idFieldSource: Some("sole"),
+    requiredAccess: None,
   }
   // A distinct name per source array: the complement has to be fed by both, and
   // reusing one def would hide a version that only walks `readModels`.
@@ -334,6 +337,7 @@ describe("allowedStates + statusField populated", () => {
     allowedStates: Some(["Inactive"]),
     targetState: Some("Active"),
     apiExposed: Some(true),
+    requiredAccess: None,
   }
 
   let qblWithStatus: queryableDef = {
@@ -351,6 +355,7 @@ describe("allowedStates + statusField populated", () => {
     singleQueryField: Some("Platform_Plugin"),
     idField: None,
     idFieldSource: None,
+    requiredAccess: None,
   }
 
   let wblWithStates: writableDef = {

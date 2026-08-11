@@ -299,10 +299,33 @@ let make = (
       }
     }
 
+  // A rule the server enforces, expressed as the keys a client checks against
+  // `identity.groups ++ config.accessTiers`. `AllowGroups` is satisfied by ANY of
+  // its groups (`Authorization.isAllowed` is `some`, not `every`), so the array is
+  // an any-of and a client must read it that way.
+  //
+  // `AllowAuthenticated` / `AllowAnonymous` ask for nothing a client can check —
+  // anyone holding a session already satisfies them — so they publish no keys
+  // rather than a key everyone holds.
+  //
+  // `DenyAll` also publishes none, deliberately. An unsatisfiable key would render
+  // as locked-with-upsell in a tiered shell: a surface advertised as purchasable
+  // that no purchase unlocks. A component nobody may call belongs in no menu, and
+  // that is an omission for the enumerating side to make, not a key to invent here.
+  let accessKeysFor = (rule: Reventless.Authorization.permission): option<array<string>> =>
+    switch rule {
+    | AllowGroups(groups) if groups->Array.length > 0 => Some(groups)
+    | AllowGroups(_) | AllowAuthenticated | AllowAnonymous | DenyAll => None
+    }
+
   let toCommandDef = (
     ~isAggregate,
     ~mutationFieldFor: string => string,
     ~parentSchema: S.t<unknown>,
+    // The PPX-generated `command => permission`. Per VARIANT, not per component:
+    // one aggregate carries commands with very different audiences, and a
+    // component-level shortcut would gate `AddProduct` and `PlaceOrder` alike.
+    ~commandAuthorization: unknown => Reventless.Authorization.permission,
     v: S.t<unknown>,
   ): option<Reventless.Plugin.commandDef> => {
     // Build a commandDef for one variant. `properties` is the variant's field dict —
@@ -329,6 +352,14 @@ let make = (
         | Some(excluded) => !(excluded->Set.has(variantName))
         | None => true
         }
+      // Evaluated against a synthetic value per constructor, the same shape the
+      // resolver builds at call time: a payload-bearing variant compiles to
+      // `{TAG, ...}`, a payload-less one to a bare string.
+      let syntheticCommand: unknown =
+        Reventless.DcbTag.isVariantPayloadBearing(parentSchema, variantName)
+          ? {"TAG": variantName}->Obj.magic
+          : variantName->Obj.magic
+      let requiredAccess = accessKeysFor(commandAuthorization(syntheticCommand))
       ({
         Reventless.Plugin.name: variantName,
         // The derived schema, not sury's raw one: `S.toJSONSchema` carries the
@@ -355,6 +386,7 @@ let make = (
         allowedStates,
         targetState,
         apiExposed: Some(apiExposed),
+        requiredAccess,
       }: Reventless.Plugin.commandDef)
     }
     switch v {
@@ -379,17 +411,29 @@ let make = (
   let extractCommandDefs = (
     ~isAggregate,
     ~mutationFieldFor: string => string,
+    ~commandAuthorization: unknown => Reventless.Authorization.permission,
     commandSchema: S.t<unknown>,
   ): array<Reventless.Plugin.commandDef> =>
     switch commandSchema {
     | Union({anyOf}) =>
       anyOf->Array.filterMap(v =>
-        toCommandDef(~isAggregate, ~mutationFieldFor, ~parentSchema=commandSchema, v)
+        toCommandDef(
+          ~isAggregate,
+          ~mutationFieldFor,
+          ~parentSchema=commandSchema,
+          ~commandAuthorization,
+          v,
+        )
       )
     | _ =>
       // Single-variant command types compile to a bare Object schema, not a Union.
-      toCommandDef(~isAggregate, ~mutationFieldFor, ~parentSchema=commandSchema, commandSchema)
-      ->Option.mapOr([], def => [def])
+      toCommandDef(
+        ~isAggregate,
+        ~mutationFieldFor,
+        ~parentSchema=commandSchema,
+        ~commandAuthorization,
+        commandSchema,
+      )->Option.mapOr([], def => [def])
     }
 
   // ── Per-component event type extraction ────────────────────────────────────
@@ -679,6 +723,7 @@ let make = (
         singleQueryField: Some(qf.singleFieldName),
         idField: keyField->Option.map(((f, _)) => f),
         idFieldSource: keyField->Option.map(((_, rung)) => rung),
+        requiredAccess: accessKeysFor(R.Spec.authorization),
       }: Reventless.Plugin.queryableDef)
     })
 
@@ -707,6 +752,7 @@ let make = (
         singleQueryField: Some(qf.singleFieldName),
         idField: keyField->Option.map(((f, _)) => f),
         idFieldSource: keyField->Option.map(((_, rung)) => rung),
+        requiredAccess: accessKeysFor(SVS.Spec.authorization),
       }: Reventless.Plugin.queryableDef)
     })
 
@@ -727,6 +773,7 @@ let make = (
               ~commandSchema=SCS.Spec.commandSchema->S.castToUnknown,
               ~variant=variantName,
             ),
+          ~commandAuthorization=SCS.Spec.commandAuthorization->Obj.magic,
           SCS.Spec.commandSchema->S.castToUnknown,
         ),
         producedEventTypes: produced,
@@ -750,6 +797,7 @@ let make = (
         commands: extractCommandDefs(
           ~isAggregate=true,
           ~mutationFieldFor=variantName => Api_Naming.aggregateMutationField(~plugin=name, ~aggregate=A.Spec.name, ~command=variantName),
+          ~commandAuthorization=A.Spec.commandAuthorization->Obj.magic,
           A.Spec.commandSchema->S.castToUnknown,
         ),
         producedEventTypes: produced,

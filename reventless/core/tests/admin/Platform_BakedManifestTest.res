@@ -21,6 +21,7 @@ let queryable = (~name, ~visibility=?, ()): queryableDef => {
   singleQueryField: Some(`Ordering_${name}Single`),
   idField: Some("id"),
   idFieldSource: Some("convention"),
+  requiredAccess: None,
 }
 
 let command = (~name, ~references=[], ()): commandDef => {
@@ -33,6 +34,7 @@ let command = (~name, ~references=[], ()): commandDef => {
   allowedStates: None,
   targetState: None,
   apiExposed: Some(true),
+  requiredAccess: None,
 }
 
 let writable = (~name, ~commands): writableDef => {
@@ -125,8 +127,8 @@ describe("curate", () => {
     ))->toEqual((["Customers"], ["Orders"], ["PlaceOrder", "ImportOrders"]))
   })
 
-  // The point of E13's manifest field, carried into the bake: a shell reading a
-  // baked file has no admin API to recover a reference target from.
+  // A shell reading a baked file has no admin API to recover a reference target
+  // from, so an Internal view a kept command points at has to survive the bake.
   testSync("carries an Internal view referenced by an included command", () => {
     let entry =
       bake([{plugin: "Ordering", views: Some(["Orders"]), commands: Some(["PlaceOrder"])}])

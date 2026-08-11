@@ -76,6 +76,7 @@ let activateCommand: commandDef = {
   allowedStates: Some(["Inactive"]),
   targetState: None,
   apiExposed: Some(true),
+  requiredAccess: None,
 }
 
 let deactivateCommand: commandDef = {
@@ -88,6 +89,7 @@ let deactivateCommand: commandDef = {
   allowedStates: Some(["Connected", "Disconnected"]),
   targetState: None,
   apiExposed: Some(true),
+  requiredAccess: None,
 }
 
 let pluginAggregate: writableDef = {
@@ -131,6 +133,7 @@ let pluginReadModel: queryableDef = {
   // with no `*Id` field.
   idField: None,
   idFieldSource: None,
+  requiredAccess: None,
 }
 
 let structure: pluginStructure = {

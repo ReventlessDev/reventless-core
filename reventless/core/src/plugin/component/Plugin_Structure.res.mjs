@@ -269,7 +269,16 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       ];
     }
   };
-  let toCommandDef = (isAggregate, mutationFieldFor, parentSchema, v) => {
+  let accessKeysFor = rule => {
+    if (typeof rule !== "object") {
+      return;
+    }
+    let groups = rule._0;
+    if (groups.length !== 0) {
+      return groups;
+    }
+  };
+  let toCommandDef = (isAggregate, mutationFieldFor, parentSchema, commandAuthorization, v) => {
     let mkDef = (variantName, properties) => {
       let match = commandLevelAndId(isAggregate, variantName, properties);
       let references = extractReferences(properties);
@@ -280,6 +289,10 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         let excluded = ApiNoApiHelpers$ReventlessCore.getExcludedVariants(parentSchema);
         apiExposed = excluded !== undefined ? !excluded.has(variantName) : true;
       }
+      let syntheticCommand = DcbTag$Reventless.isVariantPayloadBearing(parentSchema, variantName) ? ({
+          TAG: variantName
+        }) : variantName;
+      let requiredAccess = accessKeysFor(commandAuthorization(syntheticCommand));
       return {
         name: variantName,
         schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(v)),
@@ -289,7 +302,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         references: references,
         allowedStates: allowedStates,
         targetState: targetState,
-        apiExposed: apiExposed
+        apiExposed: apiExposed,
+        requiredAccess: requiredAccess
       };
     };
     switch (v.type) {
@@ -315,11 +329,11 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         return;
     }
   };
-  let extractCommandDefs = (isAggregate, mutationFieldFor, commandSchema) => {
+  let extractCommandDefs = (isAggregate, mutationFieldFor, commandAuthorization, commandSchema) => {
     if (commandSchema.type === "union") {
-      return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, mutationFieldFor, commandSchema, v));
+      return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, v));
     } else {
-      return Stdlib_Option.mapOr(toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandSchema), [], def => [def]);
+      return Stdlib_Option.mapOr(toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandAuthorization, commandSchema), [], def => [def]);
     }
   };
   let scsProduced = stateChangeSlices.map(SCS => [
@@ -517,7 +531,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       chapter: componentChapters[R.Spec.name],
       singleQueryField: qf.singleFieldName,
       idField: Stdlib_Option.map(keyField, param => param[0]),
-      idFieldSource: Stdlib_Option.map(keyField, param => param[1])
+      idFieldSource: Stdlib_Option.map(keyField, param => param[1]),
+      requiredAccess: accessKeysFor(R.Spec.authorization)
     };
   });
   let stateViewDefs = stateViewSlices.map((SVS, i) => {
@@ -541,7 +556,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       chapter: componentChapters[SVS.Spec.name],
       singleQueryField: qf.singleFieldName,
       idField: Stdlib_Option.map(keyField, param => param[0]),
-      idFieldSource: Stdlib_Option.map(keyField, param => param[1])
+      idFieldSource: Stdlib_Option.map(keyField, param => param[1]),
+      requiredAccess: accessKeysFor(SVS.Spec.authorization)
     };
   });
   let stateChangeDefs = stateChangeSlices.map((SCS, i) => {
@@ -551,7 +567,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let consumed = match$1[1];
     return {
       name: SCS.Spec.name,
-      commands: extractCommandDefs(false, variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), SCS.Spec.commandSchema),
+      commands: extractCommandDefs(false, variantName => Api_Naming$ReventlessCore.sliceMutationFieldFor(name, SCS.Spec.name, SCS.Spec.commandSchema, variantName), SCS.Spec.commandAuthorization, SCS.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: consumed,
       linkedViews: linkedSvsFor(produced),
@@ -566,7 +582,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let produced = match[1];
     return {
       name: A.Spec.name,
-      commands: extractCommandDefs(true, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), A.Spec.commandSchema),
+      commands: extractCommandDefs(true, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), A.Spec.commandAuthorization, A.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: [],
       linkedViews: linkedSvsFor(produced).concat(linkedReadModelsFor(A.Spec.name)),

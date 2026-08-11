@@ -194,6 +194,19 @@ type commandDef = {
   (read as None) — those stores must be reset. See [[sury-optional-field-absent-vs-null]].
   */
   apiExposed: @s.matches(boolOptionSchema) option<bool>,
+  /**
+  Access keys a caller must hold — any one of them — to be *offered* this command,
+  derived from the authorization rule the server already enforces. `None` (or `[]`)
+  means the rule asks for nothing a client can check.
+
+  A hint, never a boundary: the rule in the resolver is what refuses a call, and a
+  caller who edits this list gains nothing. It exists so a client stops advertising
+  what the server would refuse — an offered command that always fails is a worse
+  answer than no command at all. Derived rather than authored, so it cannot drift
+  from the rule it describes. js_nullable, so defs written before this field
+  existed decode as None.
+  */
+  requiredAccess: @s.matches(stringArrayOptionSchema) option<array<string>>,
 }
 
 @schema
@@ -314,6 +327,17 @@ type queryableDef = {
   `None` whenever `idField` is `None`, and on defs that predate the field.
   */
   idFieldSource: @s.matches(stringOptionSchema) option<string>,
+  /**
+  Access keys a caller must hold — any one of them — to be *offered* this view,
+  derived from the component's module-level authorization rule. Same terms as
+  `commandDef.requiredAccess`: a hint that keeps a client from advertising a
+  surface the server would refuse, never the refusal itself.
+
+  Worth stating for reads in particular: a denied query does not error, it comes
+  back empty, so a client that offers a view it may not read renders a confident
+  blank table rather than a visible failure.
+  */
+  requiredAccess: @s.matches(stringArrayOptionSchema) option<array<string>>,
 }
 
 /**

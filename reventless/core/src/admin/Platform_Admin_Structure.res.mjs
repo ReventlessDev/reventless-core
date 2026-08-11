@@ -64,7 +64,8 @@ let activateCommand = {
   references: activateCommand_references,
   allowedStates: activateCommand_allowedStates,
   targetState: undefined,
-  apiExposed: activateCommand_apiExposed
+  apiExposed: activateCommand_apiExposed,
+  requiredAccess: undefined
 };
 
 let deactivateCommand_schema = encodeSchema(idArgsSchema);
@@ -91,7 +92,8 @@ let deactivateCommand = {
   references: deactivateCommand_references,
   allowedStates: deactivateCommand_allowedStates,
   targetState: undefined,
-  apiExposed: deactivateCommand_apiExposed
+  apiExposed: deactivateCommand_apiExposed,
+  requiredAccess: undefined
 };
 
 let pluginAggregate_commands = [
@@ -151,7 +153,8 @@ let pluginReadModel = {
   chapter: undefined,
   singleQueryField: pluginReadModel_singleQueryField,
   idField: undefined,
-  idFieldSource: undefined
+  idFieldSource: undefined,
+  requiredAccess: undefined
 };
 
 let structure_readModels = [pluginReadModel];

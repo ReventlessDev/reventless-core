@@ -18,7 +18,7 @@ open Reventless.Plugin
 // consumers long after they were being encoded.
 let sdlTypes: array<string> = [
   `type Platform_FieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
-  `type Platform_CommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_FieldReference!]!\n  allowedStates: [String!]\n  targetState: String\n  apiExposed: Boolean\n}`,
+  `type Platform_CommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_FieldReference!]!\n  allowedStates: [String!]\n  targetState: String\n  apiExposed: Boolean\n  requiredAccess: [String!]\n}`,
   `type Platform_EventDef {\n  name: String!\n  schema: String!\n  references: [Platform_FieldReference!]!\n}`,
   // Same fields as Platform_EventDef, kept a distinct type because a refusal is not
   // a fact: a caller selecting `errors` is asking what a command can be rejected
@@ -29,7 +29,7 @@ let sdlTypes: array<string> = [
   // structures persisted before the fields existed decode as `None`, a hand-rolled
   // def may decline to state them, and a state whose key cannot be resolved has no
   // `idField` to report.
-  `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  statusField: String\n  visibility: String\n  chapter: String\n  singleQueryField: String\n  idField: String\n  idFieldSource: String\n}`,
+  `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  statusField: String\n  visibility: String\n  chapter: String\n  singleQueryField: String\n  idField: String\n  idFieldSource: String\n  requiredAccess: [String!]\n}`,
   `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n  targetName: String\n  chapter: String\n}`,
   `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
   `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
@@ -81,6 +81,10 @@ let encodeCommandDef = (c: commandDef): JSON.t =>
     ),
     ("targetState", c.targetState->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("apiExposed", c.apiExposed->Option.mapOr(JSON.Encode.null, JSON.Encode.bool)),
+    // Null, not `[]`: a rule asking for nothing checkable and a def written
+    // before the field existed are the same answer to a client — "no key gates
+    // this" — and neither should read as "gated by an empty set".
+    ("requiredAccess", c.requiredAccess->Option.mapOr(JSON.Encode.null, encodeStrings)),
   ])->JSON.Encode.object
 
 // Internal ReadModels / StateViewSlices are carried in pluginStructure for developer
@@ -121,6 +125,7 @@ let encodeQueryableDef = (r: queryableDef): JSON.t =>
     ),
     ("idField", r.idField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     ("idFieldSource", r.idFieldSource->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+    ("requiredAccess", r.requiredAccess->Option.mapOr(JSON.Encode.null, encodeStrings)),
   ])->JSON.Encode.object
 
 let encodeEventDef = (e: eventDef): JSON.t =>

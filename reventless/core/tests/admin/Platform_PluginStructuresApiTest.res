@@ -22,6 +22,7 @@ let publicRm: queryableDef = {
   singleQueryField: Some("Catalog_Product"),
   idField: Some("productId"),
   idFieldSource: Some("convention"),
+  requiredAccess: None,
 }
 
 // The component `Platform_ComponentDefinitions` drops and this query must keep.

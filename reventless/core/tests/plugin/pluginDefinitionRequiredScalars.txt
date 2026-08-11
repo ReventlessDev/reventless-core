@@ -41,6 +41,7 @@
 .structure.aggregates[].commands[].name: string
 .structure.aggregates[].commands[].references[].entity: string
 .structure.aggregates[].commands[].references[].fieldName: string
+.structure.aggregates[].commands[].requiredAccess[]: string
 .structure.aggregates[].commands[].schema: string
 .structure.aggregates[].consumedEventTypes[]: string
 .structure.aggregates[].errors[].name: string
@@ -77,6 +78,7 @@
 .structure.readModels[].linkedWriteSide[]: string
 .structure.readModels[].name: string
 .structure.readModels[].queryField: string
+.structure.readModels[].requiredAccess[]: string
 .structure.readModels[].schema: string
 .structure.readModels[].searchableFields[]: string
 .structure.requiredStoreDeclarations[].component: string
@@ -88,6 +90,7 @@
 .structure.stateChangeSlices[].commands[].name: string
 .structure.stateChangeSlices[].commands[].references[].entity: string
 .structure.stateChangeSlices[].commands[].references[].fieldName: string
+.structure.stateChangeSlices[].commands[].requiredAccess[]: string
 .structure.stateChangeSlices[].commands[].schema: string
 .structure.stateChangeSlices[].consumedEventTypes[]: string
 .structure.stateChangeSlices[].errors[].name: string
@@ -106,6 +109,7 @@
 .structure.stateViewSlices[].linkedWriteSide[]: string
 .structure.stateViewSlices[].name: string
 .structure.stateViewSlices[].queryField: string
+.structure.stateViewSlices[].requiredAccess[]: string
 .structure.stateViewSlices[].schema: string
 .structure.stateViewSlices[].searchableFields[]: string
 .version: string

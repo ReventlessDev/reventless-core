@@ -104,7 +104,8 @@ let commandDefSchema = S.schema(s => ({
   references: s.m(S.array(fieldReferenceSchema)),
   allowedStates: s.m(stringArrayOptionSchema),
   targetState: s.m(stringOptionSchema),
-  apiExposed: s.m(boolOptionSchema)
+  apiExposed: s.m(boolOptionSchema),
+  requiredAccess: s.m(stringArrayOptionSchema)
 }));
 
 let queryableDefSchema = S.schema(s => ({
@@ -121,7 +122,8 @@ let queryableDefSchema = S.schema(s => ({
   chapter: s.m(stringOptionSchema),
   singleQueryField: s.m(stringOptionSchema),
   idField: s.m(stringOptionSchema),
-  idFieldSource: s.m(stringOptionSchema)
+  idFieldSource: s.m(stringOptionSchema),
+  requiredAccess: s.m(stringArrayOptionSchema)
 }));
 
 let eventDefSchema = S.schema(s => ({
