@@ -12,7 +12,7 @@ type consumedEvent =
   | CategoryArchived
 
 @schema
-type command = RenameCategory({categoryId: string, name: string})
+type command = @authorize(AllowGroups(["Admin"])) RenameCategory({categoryId: string, name: string})
 
 @schema
 type error =

@@ -24,8 +24,11 @@ let commandSchema = S.schema(s => ({
   categoryId: s.m(DcbTag$Reventless.string)
 }));
 
-function commandAuthorization(param) {
-  return "AllowAuthenticated";
+function commandAuthorization(command) {
+  return {
+    TAG: "AllowGroups",
+    _0: ["Admin"]
+  };
 }
 
 let name = "ImportProduct";

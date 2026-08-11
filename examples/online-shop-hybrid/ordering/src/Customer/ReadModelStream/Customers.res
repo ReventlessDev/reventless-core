@@ -6,6 +6,10 @@
 
 @@reventless.spec
 
+// Operator surface: the customer list is everyone's profile and order count, so
+// it is readable by an operator only. A shopper reads their own orders instead.
+@@reventless.authorize(AllowGroups(["Admin"]))
+
 // `location` is one declared point, so the generated read-model view offers a
 // map display that drops a pin per customer — from the declaration, not from a
 // `lat`/`lng` name guess over the numeric fields. It is fed by the Customer

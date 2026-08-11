@@ -3,6 +3,10 @@
 
 @@reventless.spec
 
+// Operator surface: aggregate demand across every customer is a merchandising
+// signal, not something a shopper is entitled to read.
+@@reventless.authorize(AllowGroups(["Admin"]))
+
 @schema
 type consumedEvent =
   | ProductAdded({productId: string, name: string, categoryId: string})

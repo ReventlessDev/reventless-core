@@ -53,6 +53,11 @@ let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stat
   live: undefined
 });
 
+let authorization = {
+  TAG: "AllowGroups",
+  _0: ["Admin"]
+};
+
 let name = "ProductDemand";
 
 let Id;
@@ -60,8 +65,6 @@ let Id;
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateViewSliceStream/ProductDemand.res.mjs";
-
-let authorization = "AllowAuthenticated";
 
 let visibility = "Public";
 

@@ -38,8 +38,11 @@ let commandSchema$2 = Api$ReventlessInfra.markTargetState(commandSchema$1, [[
     "Shipped"
   ]]);
 
-function commandAuthorization(param) {
-  return "AllowAuthenticated";
+function commandAuthorization(command) {
+  return {
+    TAG: "AllowGroups",
+    _0: ["Admin"]
+  };
 }
 
 let name = "ShipOrder";

@@ -29,8 +29,11 @@ let eventSchema = S.schema(s => ({
   price: s.m(Money$Reventless.schema)
 }));
 
-function commandAuthorization(param) {
-  return "AllowAuthenticated";
+function commandAuthorization(command) {
+  return {
+    TAG: "AllowGroups",
+    _0: ["Admin"]
+  };
 }
 
 let name = "ChangeProductPrice";

@@ -28,8 +28,11 @@ let eventSchema = S.schema(s => ({
   description: s.m(S.string)
 }));
 
-function commandAuthorization(param) {
-  return "AllowAuthenticated";
+function commandAuthorization(command) {
+  return {
+    TAG: "AllowGroups",
+    _0: ["Admin"]
+  };
 }
 
 let name = "ChangeProductDescription";

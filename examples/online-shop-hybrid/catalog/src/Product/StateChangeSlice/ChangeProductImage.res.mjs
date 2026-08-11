@@ -29,8 +29,11 @@ let eventSchema = S.schema(s => ({
   imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "productImages"))
 }));
 
-function commandAuthorization(param) {
-  return "AllowAuthenticated";
+function commandAuthorization(command) {
+  return {
+    TAG: "AllowGroups",
+    _0: ["Admin"]
+  };
 }
 
 let name = "ChangeProductImage";

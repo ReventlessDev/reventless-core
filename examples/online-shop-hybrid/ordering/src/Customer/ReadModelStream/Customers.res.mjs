@@ -52,6 +52,11 @@ let stateSchema$2 = S.Metadata.set(stateSchema$1, StateAnnotations$Reventless.st
   live: undefined
 });
 
+let authorization = {
+  TAG: "AllowGroups",
+  _0: ["Admin"]
+};
+
 let name = "Customers";
 
 let Id;
@@ -59,8 +64,6 @@ let Id;
 let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Customer/ReadModelStream/Customers.res.mjs";
-
-let authorization = "AllowAuthenticated";
 
 let visibility = "Public";
 
