@@ -32,8 +32,34 @@ let isIdsFieldName = (name: string): bool => {
   len > 3 && String.endsWith(lower, "ids")
 }
 
+/**
+The GraphQL type name a semantic **composite** is emitted under.
+
+The branded scalars are absent on purpose: they refine a `string` or a number
+without changing its shape, so each is already a `String` or a `Float` in GraphQL
+and has no definition that could be duplicated. Only the semantics that turn a
+field into an object or an enum need a name of their own — without one, the same
+type is emitted once per *field* that uses it, under the field path that reached
+it (`Catalog_AddProductPriceCurrency`, `Ordering_SyncNewProductPriceCurrency`, …
+six copies of ISO 4217 in one example schema).
+
+Naming them is what makes the definitions identical across plugins, which is the
+property merged-API composition needs: AppSync unions same-named types from
+different source APIs, and a union of identical definitions is that definition.
+The `Node` / `PageInfo` / `SortOrder` base types already rely on exactly this.
+*/
+let semanticCompositeNames = [
+  (Reventless.Semantic.Id.money, "Money"),
+  (Reventless.Semantic.Id.dateRange, "DateRange"),
+  (Reventless.Semantic.Id.geoPoint, "GeoPoint"),
+]
+
+let canonicalName = (id: string): option<string> =>
+  semanticCompositeNames
+  ->Array.find(((semanticId, _)) => semanticId == id)
+  ->Option.map(((_, name)) => name)
+
 let rec fromSury = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): schemaType => {
-  let shape = shapeOf(~parentName, ~fieldName, schema)
   // Semantics the IR already has a dedicated shape for keep it: `dateTime` and
   // `reference` are read below via `isDateTime` / `getTarget`, both of which now
   // consult the generic marker, and their `format` output is a published
@@ -42,8 +68,16 @@ let rec fromSury = (~parentName: string, ~fieldName: string, schema: S.t<unknown
   switch Reventless.Semantic.get(schema) {
   | Some({id} as sem)
     if id !== Reventless.Semantic.Id.dateTime && id !== Reventless.Semantic.Id.reference =>
+    // A composite is one type wherever it appears, so its shape is walked under
+    // its own name rather than under the field path that reached it. That
+    // renames what is nested inside it too — `Money`'s currency enum becomes
+    // `MoneyCurrency` for every field, rather than one enum per price field.
+    let shape = switch canonicalName(id) {
+    | Some(name) => shapeOf(~parentName=name, ~fieldName="", schema)
+    | None => shapeOf(~parentName, ~fieldName, schema)
+    }
     Semantic(sem, shape)
-  | _ => shape
+  | _ => shapeOf(~parentName, ~fieldName, schema)
   }
 }
 

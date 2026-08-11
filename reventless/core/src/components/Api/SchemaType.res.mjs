@@ -27,22 +27,41 @@ function isIdsFieldName(name) {
   }
 }
 
+let semanticCompositeNames = [
+  [
+    Semantic$Reventless.Id.money,
+    "Money"
+  ],
+  [
+    Semantic$Reventless.Id.dateRange,
+    "DateRange"
+  ],
+  [
+    Semantic$Reventless.Id.geoPoint,
+    "GeoPoint"
+  ]
+];
+
+function canonicalName(id) {
+  return Stdlib_Option.map(semanticCompositeNames.find(param => param[0] === id), param => param[1]);
+}
+
 function fromSury(parentName, fieldName, schema) {
-  let shape = shapeOf(parentName, fieldName, schema);
   let sem = Semantic$Reventless.get(schema);
   if (sem === undefined) {
-    return shape;
+    return shapeOf(parentName, fieldName, schema);
   }
   let id = sem.id;
-  if (id !== Semantic$Reventless.Id.dateTime && id !== Semantic$Reventless.Id.reference) {
-    return {
-      TAG: "Semantic",
-      _0: sem,
-      _1: shape
-    };
-  } else {
-    return shape;
+  if (id === Semantic$Reventless.Id.dateTime || id === Semantic$Reventless.Id.reference) {
+    return shapeOf(parentName, fieldName, schema);
   }
+  let name = canonicalName(id);
+  let shape = name !== undefined ? shapeOf(name, "", schema) : shapeOf(parentName, fieldName, schema);
+  return {
+    TAG: "Semantic",
+    _0: sem,
+    _1: shape
+  };
 }
 
 function shapeOf(parentName, fieldName, schema) {
@@ -195,6 +214,8 @@ export {
   isDateTime,
   isIdFieldName,
   isIdsFieldName,
+  semanticCompositeNames,
+  canonicalName,
   fromSury,
   shapeOf,
   optionalFieldNames,

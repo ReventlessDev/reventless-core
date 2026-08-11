@@ -6,179 +6,6 @@ type CatalogEventLogEvent {
   position: String!
 }
 
-input Catalog_AddProductPrice {
-  amount: Float!
-  currency: Catalog_AddProductPriceCurrency!
-}
-
-enum Catalog_AddProductPriceCurrency {
-  AED
-  AFN
-  ALL
-  AMD
-  AOA
-  ARS
-  AUD
-  AWG
-  AZN
-  BAM
-  BBD
-  BDT
-  BHD
-  BIF
-  BMD
-  BND
-  BOB
-  BOV
-  BRL
-  BSD
-  BTN
-  BWP
-  BYN
-  BZD
-  CAD
-  CDF
-  CHE
-  CHF
-  CHW
-  CLF
-  CLP
-  CNY
-  COP
-  COU
-  CRC
-  CUP
-  CVE
-  CZK
-  DJF
-  DKK
-  DOP
-  DZD
-  EGP
-  ERN
-  ETB
-  EUR
-  FJD
-  FKP
-  GBP
-  GEL
-  GHS
-  GIP
-  GMD
-  GNF
-  GTQ
-  GYD
-  HKD
-  HNL
-  HTG
-  HUF
-  IDR
-  ILS
-  INR
-  IQD
-  IRR
-  ISK
-  JMD
-  JOD
-  JPY
-  KES
-  KGS
-  KHR
-  KMF
-  KPW
-  KRW
-  KWD
-  KYD
-  KZT
-  LAK
-  LBP
-  LKR
-  LRD
-  LSL
-  LYD
-  MAD
-  MDL
-  MGA
-  MKD
-  MMK
-  MNT
-  MOP
-  MRU
-  MUR
-  MVR
-  MWK
-  MXN
-  MXV
-  MYR
-  MZN
-  NAD
-  NGN
-  NIO
-  NOK
-  NPR
-  NZD
-  OMR
-  PAB
-  PEN
-  PGK
-  PHP
-  PKR
-  PLN
-  PYG
-  QAR
-  RON
-  RSD
-  RUB
-  RWF
-  SAR
-  SBD
-  SCR
-  SDG
-  SEK
-  SGD
-  SHP
-  SLE
-  SOS
-  SRD
-  SSP
-  STN
-  SVC
-  SYP
-  SZL
-  THB
-  TJS
-  TMT
-  TND
-  TOP
-  TRY
-  TTD
-  TWD
-  TZS
-  UAH
-  UGX
-  USD
-  USN
-  UYI
-  UYU
-  UYW
-  UZS
-  VED
-  VES
-  VND
-  VUV
-  WST
-  XAD
-  XAF
-  XCD
-  XCG
-  XOF
-  XPF
-  YER
-  ZAR
-  ZMW
-  ZWG
-}
-
 input Catalog_CatalogEventHistoryFilter {
   entityId: ID
   eventTypes: [String!]
@@ -241,179 +68,6 @@ enum Catalog_CategoryOrderField {
   categoryId
 }
 
-input Catalog_ChangeProductPricePrice {
-  amount: Float!
-  currency: Catalog_ChangeProductPricePriceCurrency!
-}
-
-enum Catalog_ChangeProductPricePriceCurrency {
-  AED
-  AFN
-  ALL
-  AMD
-  AOA
-  ARS
-  AUD
-  AWG
-  AZN
-  BAM
-  BBD
-  BDT
-  BHD
-  BIF
-  BMD
-  BND
-  BOB
-  BOV
-  BRL
-  BSD
-  BTN
-  BWP
-  BYN
-  BZD
-  CAD
-  CDF
-  CHE
-  CHF
-  CHW
-  CLF
-  CLP
-  CNY
-  COP
-  COU
-  CRC
-  CUP
-  CVE
-  CZK
-  DJF
-  DKK
-  DOP
-  DZD
-  EGP
-  ERN
-  ETB
-  EUR
-  FJD
-  FKP
-  GBP
-  GEL
-  GHS
-  GIP
-  GMD
-  GNF
-  GTQ
-  GYD
-  HKD
-  HNL
-  HTG
-  HUF
-  IDR
-  ILS
-  INR
-  IQD
-  IRR
-  ISK
-  JMD
-  JOD
-  JPY
-  KES
-  KGS
-  KHR
-  KMF
-  KPW
-  KRW
-  KWD
-  KYD
-  KZT
-  LAK
-  LBP
-  LKR
-  LRD
-  LSL
-  LYD
-  MAD
-  MDL
-  MGA
-  MKD
-  MMK
-  MNT
-  MOP
-  MRU
-  MUR
-  MVR
-  MWK
-  MXN
-  MXV
-  MYR
-  MZN
-  NAD
-  NGN
-  NIO
-  NOK
-  NPR
-  NZD
-  OMR
-  PAB
-  PEN
-  PGK
-  PHP
-  PKR
-  PLN
-  PYG
-  QAR
-  RON
-  RSD
-  RUB
-  RWF
-  SAR
-  SBD
-  SCR
-  SDG
-  SEK
-  SGD
-  SHP
-  SLE
-  SOS
-  SRD
-  SSP
-  STN
-  SVC
-  SYP
-  SZL
-  THB
-  TJS
-  TMT
-  TND
-  TOP
-  TRY
-  TTD
-  TWD
-  TZS
-  UAH
-  UGX
-  USD
-  USN
-  UYI
-  UYU
-  UYW
-  UZS
-  VED
-  VES
-  VND
-  VUV
-  WST
-  XAD
-  XAF
-  XCD
-  XCG
-  XOF
-  XPF
-  YER
-  ZAR
-  ZMW
-  ZWG
-}
-
 type Catalog_ImportProductAudit implements Node {
   commandCount: Float
   error: String
@@ -451,7 +105,7 @@ type Catalog_Product implements Node {
   id: ID!
   imageUrl: String
   name: String!
-  price: Catalog_ProductPrice!
+  price: Money!
   productId: ID!
 }
 
@@ -515,12 +169,77 @@ enum Catalog_ProductOrderField {
   productId
 }
 
-type Catalog_ProductPrice {
-  amount: Float!
-  currency: Catalog_ProductPriceCurrency!
+type CommandAccepted {
+  entityId: ID
+  eventCount: Int!
+  msgId: ID!
 }
 
-enum Catalog_ProductPriceCurrency {
+type CommandPending {
+  msgId: ID!
+}
+
+type CommandRejected {
+  errorCode: String!
+  errorDetail: String
+  msgId: ID!
+}
+
+union CommandResult = CommandAccepted | CommandPending | CommandRejected
+
+type CustomerEventLogEvent {
+  eventType: String!
+  payload: AWSJSON!
+  position: String!
+}
+
+type DateRange {
+  end: String!
+  start: String!
+}
+
+input DateRangeInput {
+  end: String!
+  start: String!
+}
+
+type EventMeta {
+  causationId: String
+  correlationId: String!
+  msgId: String!
+  service: String!
+  time: String!
+  user: String
+}
+
+type EventTag {
+  key: String!
+  value: String!
+}
+
+type GeoPoint {
+  lat: Float!
+  lng: Float!
+}
+
+input GeoPointInput {
+  lat: Float!
+  lng: Float!
+}
+
+type GeocodeCandidate {
+  label: String!
+  lat: Float!
+  lng: Float!
+  relevance: Float
+}
+
+type Money {
+  amount: Float!
+  currency: MoneyCurrency!
+}
+
+enum MoneyCurrency {
   AED
   AFN
   ALL
@@ -688,71 +407,31 @@ enum Catalog_ProductPriceCurrency {
   ZWG
 }
 
-type CommandAccepted {
-  entityId: ID
-  eventCount: Int!
-  msgId: ID!
-}
-
-type CommandPending {
-  msgId: ID!
-}
-
-type CommandRejected {
-  errorCode: String!
-  errorDetail: String
-  msgId: ID!
-}
-
-union CommandResult = CommandAccepted | CommandPending | CommandRejected
-
-type CustomerEventLogEvent {
-  eventType: String!
-  payload: AWSJSON!
-  position: String!
-}
-
-type EventMeta {
-  causationId: String
-  correlationId: String!
-  msgId: String!
-  service: String!
-  time: String!
-  user: String
-}
-
-type EventTag {
-  key: String!
-  value: String!
-}
-
-type GeocodeCandidate {
-  label: String!
-  lat: Float!
-  lng: Float!
-  relevance: Float
+input MoneyInput {
+  amount: Float!
+  currency: MoneyCurrency!
 }
 
 type Mutation {
   Catalog_AddCategory(categoryId: ID!, name: String!): CommandResult!
-  Catalog_AddProduct(categoryId: ID!, description: String!, imageUrl: String, name: String!, price: Catalog_AddProductPrice!, productId: ID!): CommandResult!
+  Catalog_AddProduct(categoryId: ID!, description: String!, imageUrl: String, name: String!, price: MoneyInput!, productId: ID!): CommandResult!
   Catalog_ArchiveCategory(categoryId: ID!): CommandResult!
   Catalog_ChangeProductDescription(description: String!, productId: ID!): CommandResult!
   Catalog_ChangeProductImage(imageUrl: String!, productId: ID!): CommandResult!
   Catalog_ChangeProductName(name: String!, productId: ID!): CommandResult!
-  Catalog_ChangeProductPrice(price: Catalog_ChangeProductPricePrice!, productId: ID!): CommandResult!
+  Catalog_ChangeProductPrice(price: MoneyInput!, productId: ID!): CommandResult!
   Catalog_ImportProduct(category: String!, currency: String!, desc: String!, sku: String!, title: String!, unitPrice: Float!): CommandResult!
   Catalog_RenameCategory(categoryId: ID!, name: String!): CommandResult!
   Ordering_CancelOrder(orderId: ID!): CommandResult!
-  Ordering_ChangeSyncedPrice(price: Ordering_ChangeSyncedPricePrice!, productId: ID!): CommandResult!
+  Ordering_ChangeSyncedPrice(price: MoneyInput!, productId: ID!): CommandResult!
   Ordering_Customer_Deactivate(id: ID!): CommandResult!
   Ordering_Customer_Register(address: String!, email: String!, id: ID!): CommandResult!
-  Ordering_Customer_SetAddressLocation(address: String!, id: ID!, location: Ordering_Customer_SetAddressLocationLocation!): CommandResult!
+  Ordering_Customer_SetAddressLocation(address: String!, id: ID!, location: GeoPointInput!): CommandResult!
   Ordering_Customer_UpdateAddress(address: String!, id: ID!): CommandResult!
   Ordering_Customer_UpdateEmail(email: String!, id: ID!): CommandResult!
-  Ordering_PlaceOrder(customerId: ID!, deliveryWindow: Ordering_PlaceOrderDeliveryWindow, orderId: ID!, productIds: [ID!]!, shippingMethod: Ordering_PlaceOrderShippingMethod!): CommandResult!
+  Ordering_PlaceOrder(customerId: ID!, deliveryWindow: DateRangeInput, orderId: ID!, productIds: [ID!]!, shippingMethod: Ordering_PlaceOrderShippingMethod!): CommandResult!
   Ordering_ShipOrder(orderId: ID!): CommandResult!
-  Ordering_SyncNewProduct(name: String!, price: Ordering_SyncNewProductPrice!, productId: ID!): CommandResult!
+  Ordering_SyncNewProduct(name: String!, price: MoneyInput!, productId: ID!): CommandResult!
   Platform_Plugin_Activate(_0: String!, id: ID!): CommandResult!
   Platform_Plugin_Deactivate(_0: String!, id: ID!): CommandResult!
   Platform_Plugin_Retire(_0: String!, id: ID!): CommandResult!
@@ -810,7 +489,7 @@ enum Ordering_AutoShipOrderTodoStatus {
 type Ordering_AvailableProduct implements Node {
   id: ID!
   name: String!
-  price: Ordering_AvailableProductPrice!
+  price: Money!
   productId: ID!
 }
 
@@ -840,352 +519,6 @@ enum Ordering_AvailableProductOrderField {
   productId
 }
 
-type Ordering_AvailableProductPrice {
-  amount: Float!
-  currency: Ordering_AvailableProductPriceCurrency!
-}
-
-enum Ordering_AvailableProductPriceCurrency {
-  AED
-  AFN
-  ALL
-  AMD
-  AOA
-  ARS
-  AUD
-  AWG
-  AZN
-  BAM
-  BBD
-  BDT
-  BHD
-  BIF
-  BMD
-  BND
-  BOB
-  BOV
-  BRL
-  BSD
-  BTN
-  BWP
-  BYN
-  BZD
-  CAD
-  CDF
-  CHE
-  CHF
-  CHW
-  CLF
-  CLP
-  CNY
-  COP
-  COU
-  CRC
-  CUP
-  CVE
-  CZK
-  DJF
-  DKK
-  DOP
-  DZD
-  EGP
-  ERN
-  ETB
-  EUR
-  FJD
-  FKP
-  GBP
-  GEL
-  GHS
-  GIP
-  GMD
-  GNF
-  GTQ
-  GYD
-  HKD
-  HNL
-  HTG
-  HUF
-  IDR
-  ILS
-  INR
-  IQD
-  IRR
-  ISK
-  JMD
-  JOD
-  JPY
-  KES
-  KGS
-  KHR
-  KMF
-  KPW
-  KRW
-  KWD
-  KYD
-  KZT
-  LAK
-  LBP
-  LKR
-  LRD
-  LSL
-  LYD
-  MAD
-  MDL
-  MGA
-  MKD
-  MMK
-  MNT
-  MOP
-  MRU
-  MUR
-  MVR
-  MWK
-  MXN
-  MXV
-  MYR
-  MZN
-  NAD
-  NGN
-  NIO
-  NOK
-  NPR
-  NZD
-  OMR
-  PAB
-  PEN
-  PGK
-  PHP
-  PKR
-  PLN
-  PYG
-  QAR
-  RON
-  RSD
-  RUB
-  RWF
-  SAR
-  SBD
-  SCR
-  SDG
-  SEK
-  SGD
-  SHP
-  SLE
-  SOS
-  SRD
-  SSP
-  STN
-  SVC
-  SYP
-  SZL
-  THB
-  TJS
-  TMT
-  TND
-  TOP
-  TRY
-  TTD
-  TWD
-  TZS
-  UAH
-  UGX
-  USD
-  USN
-  UYI
-  UYU
-  UYW
-  UZS
-  VED
-  VES
-  VND
-  VUV
-  WST
-  XAD
-  XAF
-  XCD
-  XCG
-  XOF
-  XPF
-  YER
-  ZAR
-  ZMW
-  ZWG
-}
-
-input Ordering_ChangeSyncedPricePrice {
-  amount: Float!
-  currency: Ordering_ChangeSyncedPricePriceCurrency!
-}
-
-enum Ordering_ChangeSyncedPricePriceCurrency {
-  AED
-  AFN
-  ALL
-  AMD
-  AOA
-  ARS
-  AUD
-  AWG
-  AZN
-  BAM
-  BBD
-  BDT
-  BHD
-  BIF
-  BMD
-  BND
-  BOB
-  BOV
-  BRL
-  BSD
-  BTN
-  BWP
-  BYN
-  BZD
-  CAD
-  CDF
-  CHE
-  CHF
-  CHW
-  CLF
-  CLP
-  CNY
-  COP
-  COU
-  CRC
-  CUP
-  CVE
-  CZK
-  DJF
-  DKK
-  DOP
-  DZD
-  EGP
-  ERN
-  ETB
-  EUR
-  FJD
-  FKP
-  GBP
-  GEL
-  GHS
-  GIP
-  GMD
-  GNF
-  GTQ
-  GYD
-  HKD
-  HNL
-  HTG
-  HUF
-  IDR
-  ILS
-  INR
-  IQD
-  IRR
-  ISK
-  JMD
-  JOD
-  JPY
-  KES
-  KGS
-  KHR
-  KMF
-  KPW
-  KRW
-  KWD
-  KYD
-  KZT
-  LAK
-  LBP
-  LKR
-  LRD
-  LSL
-  LYD
-  MAD
-  MDL
-  MGA
-  MKD
-  MMK
-  MNT
-  MOP
-  MRU
-  MUR
-  MVR
-  MWK
-  MXN
-  MXV
-  MYR
-  MZN
-  NAD
-  NGN
-  NIO
-  NOK
-  NPR
-  NZD
-  OMR
-  PAB
-  PEN
-  PGK
-  PHP
-  PKR
-  PLN
-  PYG
-  QAR
-  RON
-  RSD
-  RUB
-  RWF
-  SAR
-  SBD
-  SCR
-  SDG
-  SEK
-  SGD
-  SHP
-  SLE
-  SOS
-  SRD
-  SSP
-  STN
-  SVC
-  SYP
-  SZL
-  THB
-  TJS
-  TMT
-  TND
-  TOP
-  TRY
-  TTD
-  TWD
-  TZS
-  UAH
-  UGX
-  USD
-  USN
-  UYI
-  UYU
-  UYW
-  UZS
-  VED
-  VES
-  VND
-  VUV
-  WST
-  XAD
-  XAF
-  XCD
-  XCG
-  XOF
-  XPF
-  YER
-  ZAR
-  ZMW
-  ZWG
-}
-
 type Ordering_Customer implements Node {
   address: String!
   customerId: ID!
@@ -1193,7 +526,7 @@ type Ordering_Customer implements Node {
   displayName: String
   email: String!
   id: ID!
-  location: Ordering_CustomerLocation
+  location: GeoPoint
   locationNote: String
   locationStatus: Ordering_CustomerLocationStatus!
   orderCount: Float!
@@ -1245,11 +578,6 @@ input Ordering_CustomerFilter {
   searchPrefix: String
 }
 
-type Ordering_CustomerLocation {
-  lat: Float!
-  lng: Float!
-}
-
 enum Ordering_CustomerLocationStatus {
   Located
   Pending
@@ -1263,11 +591,6 @@ input Ordering_CustomerOrderBy {
 
 enum Ordering_CustomerOrderField {
   customerId
-}
-
-input Ordering_Customer_SetAddressLocationLocation {
-  lat: Float!
-  lng: Float!
 }
 
 type Ordering_GeocodeCustomerAddressTodo implements Node {
@@ -1311,7 +634,7 @@ enum Ordering_GeocodeCustomerAddressTodoStatus {
 
 type Ordering_Order implements Node {
   customerId: ID!
-  deliveryWindow: Ordering_OrderDeliveryWindow
+  deliveryWindow: DateRange
   id: ID!
   orderId: ID!
   placedAt: String!
@@ -1324,11 +647,6 @@ type Ordering_Order implements Node {
 type Ordering_OrderConnection {
   edges: [Ordering_OrderEdge!]!
   pageInfo: PageInfo!
-}
-
-type Ordering_OrderDeliveryWindow {
-  end: String!
-  start: String!
 }
 
 type Ordering_OrderEdge {
@@ -1393,11 +711,6 @@ type Ordering_OrderingEventRecordEdge {
   node: Ordering_OrderingEventRecord!
 }
 
-input Ordering_PlaceOrderDeliveryWindow {
-  end: String!
-  start: String!
-}
-
 enum Ordering_PlaceOrderShippingMethod {
   Express
   Pickup
@@ -1441,179 +754,6 @@ enum Ordering_SendOrderConfirmationTodoStatus {
   Failed
   Pending
   Processing
-}
-
-input Ordering_SyncNewProductPrice {
-  amount: Float!
-  currency: Ordering_SyncNewProductPriceCurrency!
-}
-
-enum Ordering_SyncNewProductPriceCurrency {
-  AED
-  AFN
-  ALL
-  AMD
-  AOA
-  ARS
-  AUD
-  AWG
-  AZN
-  BAM
-  BBD
-  BDT
-  BHD
-  BIF
-  BMD
-  BND
-  BOB
-  BOV
-  BRL
-  BSD
-  BTN
-  BWP
-  BYN
-  BZD
-  CAD
-  CDF
-  CHE
-  CHF
-  CHW
-  CLF
-  CLP
-  CNY
-  COP
-  COU
-  CRC
-  CUP
-  CVE
-  CZK
-  DJF
-  DKK
-  DOP
-  DZD
-  EGP
-  ERN
-  ETB
-  EUR
-  FJD
-  FKP
-  GBP
-  GEL
-  GHS
-  GIP
-  GMD
-  GNF
-  GTQ
-  GYD
-  HKD
-  HNL
-  HTG
-  HUF
-  IDR
-  ILS
-  INR
-  IQD
-  IRR
-  ISK
-  JMD
-  JOD
-  JPY
-  KES
-  KGS
-  KHR
-  KMF
-  KPW
-  KRW
-  KWD
-  KYD
-  KZT
-  LAK
-  LBP
-  LKR
-  LRD
-  LSL
-  LYD
-  MAD
-  MDL
-  MGA
-  MKD
-  MMK
-  MNT
-  MOP
-  MRU
-  MUR
-  MVR
-  MWK
-  MXN
-  MXV
-  MYR
-  MZN
-  NAD
-  NGN
-  NIO
-  NOK
-  NPR
-  NZD
-  OMR
-  PAB
-  PEN
-  PGK
-  PHP
-  PKR
-  PLN
-  PYG
-  QAR
-  RON
-  RSD
-  RUB
-  RWF
-  SAR
-  SBD
-  SCR
-  SDG
-  SEK
-  SGD
-  SHP
-  SLE
-  SOS
-  SRD
-  SSP
-  STN
-  SVC
-  SYP
-  SZL
-  THB
-  TJS
-  TMT
-  TND
-  TOP
-  TRY
-  TTD
-  TWD
-  TZS
-  UAH
-  UGX
-  USD
-  USN
-  UYI
-  UYU
-  UYW
-  UZS
-  VED
-  VES
-  VND
-  VUV
-  WST
-  XAD
-  XAF
-  XCD
-  XCG
-  XOF
-  XPF
-  YER
-  ZAR
-  ZMW
-  ZWG
 }
 
 type PageInfo {

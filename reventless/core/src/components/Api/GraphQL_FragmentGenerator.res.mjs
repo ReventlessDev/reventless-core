@@ -73,7 +73,20 @@ function fromSchemaType(_required, _asInputOpt, _st, collectedTypes, seenTypes) 
           }
           return name$1 + bang;
         case "Semantic" :
-          _st = st._1;
+          let inner = st._1;
+          if (typeof inner === "object" && inner.TAG === "ObjectRef") {
+            let name$2 = inner._0;
+            if (Stdlib_Option.isSome(SchemaType$ReventlessCore.canonicalName(st._0.id))) {
+              let typeName = asInput ? name$2 + "Input" : name$2;
+              if (!seenTypes.has(typeName)) {
+                seenTypes.add(typeName);
+                let typeDef$1 = objectRefToGraphQL(asInput, typeName, inner._1, collectedTypes, seenTypes);
+                collectedTypes.push(typeDef$1);
+              }
+              return typeName + bang;
+            }
+          }
+          _st = inner;
           _asInputOpt = asInput;
           continue;
       }

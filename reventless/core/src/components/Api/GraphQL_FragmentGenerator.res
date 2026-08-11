@@ -62,10 +62,28 @@ let rec fromSchemaType = (
       collectedTypes->Array.push(`enum ${name} {\n  ${valuesStr}\n}`)
     }
     `${name}${bang}`
-  // GraphQL carries the value's shape, not its meaning: a storage ref is a
-  // String on the wire exactly as it is in the event log. The semantic reaches
-  // the UI through the field's JSON Schema, which is the channel that can
-  // express it.
+  // A semantic composite is one named type rather than one per field that uses
+  // it. The name comes from the semantic rather than the field path, so every
+  // plugin emits a byte-identical definition — which is what lets AppSync union
+  // the copies from each source API back into one, the way it already does for
+  // the `Node` / `PageInfo` / `SortOrder` base types.
+  //
+  // GraphQL forbids one name serving as both an object and an input, so the
+  // input position takes an `Input` suffix. Only these types are suffixed:
+  // positionally-named objects can't collide, since their names already carry
+  // the command or read model they belong to.
+  | Semantic({id}, ObjectRef(name, fields)) if SchemaType.canonicalName(id)->Option.isSome =>
+    let typeName = asInput ? name ++ "Input" : name
+    if !(seenTypes->Set.has(typeName)) {
+      seenTypes->Set.add(typeName)
+      let typeDef = objectRefToGraphQL(~asInput, typeName, fields, collectedTypes, seenTypes)
+      collectedTypes->Array.push(typeDef)
+    }
+    `${typeName}${bang}`
+  // Every other semantic carries the value's shape, not its meaning: a storage
+  // ref is a String on the wire exactly as it is in the event log. The semantic
+  // reaches the UI through the field's JSON Schema, which is the channel that
+  // can express it.
   | Semantic(_, inner) => fromSchemaType(~required, ~asInput, inner, collectedTypes, seenTypes)
   | Unknown => `String${bang}`
   }

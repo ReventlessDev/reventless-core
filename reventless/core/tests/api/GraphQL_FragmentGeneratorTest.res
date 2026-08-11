@@ -179,3 +179,80 @@ describe("deriveServerCapability — inferred keys reach the SDL surface", () =>
     expect(types->Array.join("\n")->String.includes("enum Ordering_OrderOrderField"))->toBe(true)
   })
 })
+
+// A semantic composite is one type wherever it appears. Named from the field
+// path that reached it, two commands taking a price produced two identical
+// `{amount, currency}` inputs and, beside each, its own copy of the 165-value
+// ISO 4217 enum — six copies of it across one example schema.
+module AddProductCmd = {
+  @schema
+  type command =
+    | AddProduct({productId: string, price: Reventless.Money.t})
+    | ArchiveProduct({productId: string})
+}
+
+module ChangePriceCmd = {
+  @schema
+  type command =
+    | ChangeProductPrice({productId: string, price: Reventless.Money.t})
+    | ClearProductPrice({productId: string})
+}
+
+describe("semantic composites are named once, not once per field", () => {
+  let countDefs = (types, keyword, name) =>
+    types->Array.filter(t => t->String.startsWith(`${keyword} ${name} {`))->Array.length
+
+  let fragmentTypes = GraphQL_Stitcher.decode(
+    GraphQL_FragmentGenerator.generate(
+      ~mutationEntries=[
+        {
+          ReventlessInfra.Api.fieldNames: ["Catalog_AddProduct"],
+          commandSchema: AddProductCmd.commandSchema->S.castToUnknown,
+          injectIdArg: false,
+        },
+        {
+          ReventlessInfra.Api.fieldNames: ["Catalog_ChangeProductPrice"],
+          commandSchema: ChangePriceCmd.commandSchema->S.castToUnknown,
+          injectIdArg: false,
+        },
+      ],
+      ~queryEntries=[],
+    ),
+  ).types
+
+  testSync("two commands taking a price share one input definition", () =>
+    expect(fragmentTypes->countDefs("input", "MoneyInput"))->toBe(1)
+  )
+
+  testSync("and one currency enum between them", () =>
+    expect(fragmentTypes->countDefs("enum", "MoneyCurrency"))->toBe(1)
+  )
+
+  // The control: these are the names the field-path naming produced, and their
+  // absence is the whole change. Without this the assertions above would pass
+  // just as well against a schema that emitted both namings.
+  testSync("nothing is named after the field path that reached it", () =>
+    expect(fragmentTypes->Array.some(t => t->String.includes("AddProductPrice")))->toBe(false)
+  )
+
+  // GraphQL forbids one name serving as both an object and an input, so the two
+  // positions differ by suffix — while sharing the enum, which has no such
+  // restriction and would otherwise be emitted twice over.
+  testSync("the output position keeps the bare name", () => {
+    let types = GraphQL_FragmentGenerator.deriveObjectTypeWithNested(
+      ~typeName="Catalog_Product",
+      ~includeIdParam=false,
+      S.schema(s =>
+        {
+          "productId": s.matches(S.string),
+          "price": s.matches(Reventless.Money.schema),
+        }
+      )->S.castToUnknown,
+    )
+    expect((
+      types->countDefs("type", "Money"),
+      types->countDefs("enum", "MoneyCurrency"),
+      types->Array.some(t => t->String.includes("price: Money!")),
+    ))->toEqual((1, 1, true))
+  })
+})
