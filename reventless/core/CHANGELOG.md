@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.224 (2026-08-11)
+
+### Bug Fixes
+
+* **api:** one id contract across the read-side query doors ([c52fac2](https://github.com/ReventlessDev/reventless-core/commit/c52fac2bee87b3dd1fa33b4970a74f3cd3866280))
+* feat(core)!: name semantic composites once instead of once per field ([09536ba](https://github.com/ReventlessDev/reventless-core/commit/09536badf338f898b24d749270acd5c7df851ddb))
+### Features
+
+* **api:** infer a queryable's key field and publish its provenance ([c835a42](https://github.com/ReventlessDev/reventless-core/commit/c835a42a0da07cdc4a3f010212e1f340a4a0ca27))
+* **plugin:** publish singleQueryField on queryableDef ([a724ab5](https://github.com/ReventlessDev/reventless-core/commit/a724ab573614792c0615d68b6486b94da14f9f82))
+
+### BREAKING CHANGES
+
+* generated GraphQL type names change. A price field is now
+`MoneyInput!` in a command and `Money!` in a read model, where it was named
+after the field that carried it (`Catalog_AddProductPriceCurrency`,
+`Ordering_SyncNewProductPriceCurrency`, …). AutoUI builds its queries at
+runtime from the component-definitions manifest and adapts on its own; a client
+naming the old types in a hand-written query does not.
+
+
+
 # 3.0.0-alpha.223 (2026-08-10)
 
 ### Bug Fixes

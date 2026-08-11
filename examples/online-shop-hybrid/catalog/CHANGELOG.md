@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.199 (2026-08-11)
+
+### Features
+
+* **api:** infer a queryable's key field and publish its provenance ([c835a42](https://github.com/ReventlessDev/reventless-core/commit/c835a42a0da07cdc4a3f010212e1f340a4a0ca27))
+
+
 # 1.0.0-alpha.198 (2026-08-10)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog

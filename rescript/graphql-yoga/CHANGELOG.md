@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.27 (2026-08-11)
+
+**Note:** Version bump only for package @reventlessdev/rescript-graphql-yoga
+
+
+
+
+
 # 1.0.0-alpha.26 (2026-07-31)
 
 **Note:** Version bump only for package @reventlessdev/rescript-graphql-yoga

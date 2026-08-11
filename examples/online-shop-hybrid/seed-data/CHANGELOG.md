@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.46 (2026-08-11)
+
+### Features
+
+* **examples:** seed a deliberate AddProduct rejection in the hybrid demo ([b690056](https://github.com/ReventlessDev/reventless-core/commit/b690056beef807d07a6451d224b966a17ccf7b1f))
+
+
 # 1.0.0-alpha.45 (2026-08-10)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-seed

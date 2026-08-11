@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.212 (2026-08-11)
+
+### Bug Fixes
+
+* **api:** one id contract across the read-side query doors ([c52fac2](https://github.com/ReventlessDev/reventless-core/commit/c52fac2bee87b3dd1fa33b4970a74f3cd3866280))
+### Features
+
+* **api:** infer a queryable's key field and publish its provenance ([c835a42](https://github.com/ReventlessDev/reventless-core/commit/c835a42a0da07cdc4a3f010212e1f340a4a0ca27))
+
+
 # 3.0.0-alpha.211 (2026-08-10)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local

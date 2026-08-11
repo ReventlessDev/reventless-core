@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.31 (2026-08-11)
+
+### Bug Fixes
+
+* **layer-builder:** make registry retries survive packument caching ([1ef5305](https://github.com/ReventlessDev/reventless-core/commit/1ef530580abd586db3dad6c8011e7a0662fd3be6))
+
+
 # 3.0.0-alpha.30 (2026-08-09)
 
 **Note:** Version bump only for package @reventlessdev/reventless-layer-builder

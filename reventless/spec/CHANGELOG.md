@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.108 (2026-08-11)
+
+### Features
+
+* **api:** infer a queryable's key field and publish its provenance ([c835a42](https://github.com/ReventlessDev/reventless-core/commit/c835a42a0da07cdc4a3f010212e1f340a4a0ca27))
+* **plugin:** publish singleQueryField on queryableDef ([a724ab5](https://github.com/ReventlessDev/reventless-core/commit/a724ab573614792c0615d68b6486b94da14f9f82))
+
+
 # 3.0.0-alpha.107 (2026-08-10)
 
 ### Bug Fixes
