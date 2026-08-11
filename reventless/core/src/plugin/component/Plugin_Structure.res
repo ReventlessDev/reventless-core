@@ -667,6 +667,10 @@ let make = (
         statusField: statusFieldFromStateSchema(~entityName=R.Spec.name, stateSchema),
         visibility: visibilityTag(R.Spec.visibility),
         chapter: chapterOf(R.Spec.name),
+        // Taken from the `qf` record, never re-derived: `Api_Naming` is the only
+        // place that decides how `Products`/`Categories` singularise, and the
+        // point of publishing the name is that a consumer stops guessing it.
+        singleQueryField: Some(qf.singleFieldName),
       }: Reventless.Plugin.queryableDef)
     })
 
@@ -688,6 +692,7 @@ let make = (
         statusField: statusFieldFromStateSchema(~entityName=SVS.Spec.name, stateSchema),
         visibility: visibilityTag(SVS.Spec.visibility),
         chapter: chapterOf(SVS.Spec.name),
+        singleQueryField: Some(qf.singleFieldName),
       }: Reventless.Plugin.queryableDef)
     })
 

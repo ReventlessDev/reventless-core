@@ -121,6 +121,10 @@ let pluginReadModel: queryableDef = {
   statusField: Some("status"),
   visibility: None,
   chapter: None,
+  // The admin fragment hand-declares its query names rather than deriving them from
+  // the read-model name, so the singular is taken from the same call
+  // `PluginBaseFragment.queryNames.singleFieldName` makes — not singularised here.
+  singleQueryField: Some(Api_Naming.adminField(~name="Plugin")),
 }
 
 let structure: pluginStructure = {

@@ -78,6 +78,15 @@ module PsAnnotatedViewSlice: ReventlessInfra.StateViewSlice.T = {
   type component = svsComponent
   let make = (~dcbEventLog as _, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
 }
+module PsCategoriesViewSlice: ReventlessInfra.StateViewSlice.T = {
+  module Spec = PsCategoriesView
+  module Projection = {
+    let project = PsCategoriesView.project
+    let moduleUrl = PsCategoriesView.moduleUrl
+  }
+  type component = svsComponent
+  let make = (~dcbEventLog as _, ~runtime as _=?, ~opts as _=?): component => Obj.magic(0)
+}
 
 module PsAttachInvoiceSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsAttachInvoice
@@ -556,6 +565,40 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
         Array.concat(structure.readModels, structure.stateViewSlices)->Array.every(q =>
           q.labelFieldSource->Option.isSome
         )
+      expect(stated)->toEqual(true)
+    })
+  })
+
+  // The singular is published because it is not derivable from the plural without
+  // re-implementing `Api_Naming.singularize` — and a consumer that guesses gets an
+  // irregular plural wrong for both the detail query and the filter input type.
+  describe("singleQueryField — the singular the schema actually serves", () => {
+    let withIrregularPlural = Plugin_Structure.make(
+      ~name="TestPlugin",
+      ~stateChangeSlices=[],
+      ~stateViewSlices=[module(PsCategoriesViewSlice)],
+    )
+    let categories = withIrregularPlural.stateViewSlices->Array.getUnsafe(0)
+
+    // "strip a trailing `s`" would publish `TestPlugin_Categorie`, a field the
+    // generated SDL does not contain.
+    testSync("an `-ies` plural publishes the `y` singular, not a truncation", () => {
+      expect((categories.queryField, categories.singleQueryField))->toEqual((
+        "TestPlugin_Categories",
+        Some("TestPlugin_Category"),
+      ))
+    })
+
+    testSync("every built def states the name Api_Naming returned", () => {
+      let stated = structure.stateViewSlices->Array.every(q =>
+        q.singleQueryField ==
+          Some(
+            Api_Naming.queryFieldNamesForStateView(
+              ~plugin="TestPlugin",
+              ~viewName=q.name,
+            ).singleFieldName,
+          )
+      )
       expect(stated)->toEqual(true)
     })
   })

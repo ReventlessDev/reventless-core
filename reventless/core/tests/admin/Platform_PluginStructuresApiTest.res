@@ -19,6 +19,7 @@ let publicRm: queryableDef = {
   statusField: None,
   visibility: None,
   chapter: Some("Inventory"),
+  singleQueryField: Some("Catalog_Product"),
 }
 
 // The component `Platform_ComponentDefinitions` drops and this query must keep.
@@ -111,6 +112,13 @@ describe("Platform_PluginStructures entry", () => {
         "\"extensionPoints\":[{\"name\":\"Catalog.Products\",\"delegateNames\":[\"onAdded\"],\"sourceEventTypes\":[\"Catalog.ProductAdded\"],\"commandTypes\":null}]",
       ),
     )->toEqual(true)
+  )
+
+  // Both read-side queries share `encodeQueryableDef`, so this asserts the singular
+  // name is not a ComponentDefinitions-only field: a developer tool building a detail
+  // query reads it from here.
+  testSync("encodes the singular query field beside the list one", () =>
+    expect(json->String.includes("\"singleQueryField\":\"Catalog_Product\""))->toEqual(true)
   )
 
   testSync("encodes required stores with their provenance", () =>

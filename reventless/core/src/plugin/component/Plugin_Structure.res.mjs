@@ -512,7 +512,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       labelFieldSource: labelFieldSourceToString(label.source),
       statusField: statusFieldFromStateSchema(R.Spec.name, stateSchema),
       visibility: visibilityTag(R.Spec.visibility),
-      chapter: componentChapters[R.Spec.name]
+      chapter: componentChapters[R.Spec.name],
+      singleQueryField: qf.singleFieldName
     };
   });
   let stateViewDefs = stateViewSlices.map((SVS, i) => {
@@ -532,7 +533,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       labelFieldSource: labelFieldSourceToString(label.source),
       statusField: statusFieldFromStateSchema(SVS.Spec.name, stateSchema),
       visibility: visibilityTag(SVS.Spec.visibility),
-      chapter: componentChapters[SVS.Spec.name]
+      chapter: componentChapters[SVS.Spec.name],
+      singleQueryField: qf.singleFieldName
     };
   });
   let stateChangeDefs = stateChangeSlices.map((SCS, i) => {

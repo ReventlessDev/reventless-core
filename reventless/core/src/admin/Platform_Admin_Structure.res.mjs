@@ -135,6 +135,8 @@ let pluginReadModel_labelFieldSource = "convention";
 
 let pluginReadModel_statusField = "status";
 
+let pluginReadModel_singleQueryField = Api_Naming$ReventlessCore.adminField("Plugin");
+
 let pluginReadModel = {
   name: "Plugins",
   queryField: pluginReadModel_queryField,
@@ -146,7 +148,8 @@ let pluginReadModel = {
   labelFieldSource: pluginReadModel_labelFieldSource,
   statusField: pluginReadModel_statusField,
   visibility: undefined,
-  chapter: undefined
+  chapter: undefined,
+  singleQueryField: pluginReadModel_singleQueryField
 };
 
 let structure_readModels = [pluginReadModel];

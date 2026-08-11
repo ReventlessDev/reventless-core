@@ -31,6 +31,7 @@ let qbl: queryableDef = {
   statusField: None,
   visibility: None,
   chapter: None,
+  singleQueryField: Some("Catalog_Product"),
 }
 
 let wbl: writableDef = {
@@ -252,6 +253,7 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
     statusField: None,
     visibility: Some("Internal"),
     chapter: None,
+    singleQueryField: Some("Ordering_AvailableProduct"),
   }
   // A distinct name per source array: the complement has to be fed by both, and
   // reusing one def would hide a version that only walks `readModels`.
@@ -342,6 +344,7 @@ describe("allowedStates + statusField populated", () => {
     statusField: Some("status"),
     visibility: None,
     chapter: None,
+    singleQueryField: Some("Platform_Plugin"),
   }
 
   let wblWithStates: writableDef = {
@@ -393,5 +396,31 @@ describe("allowedStates + statusField populated", () => {
   testSync("encodes a component with no declared errors as an empty array, not null", () => {
     expect(json->String.includes("\"errors\":[]"))->toEqual(true)
     expect(json->String.includes("\"errors\":null"))->toEqual(false)
+  })
+})
+
+// The name exists so a consumer can stop re-implementing `Api_Naming.singularize`;
+// it is only worth publishing if it reaches the caller intact, so assert the wire
+// value and the SDL that types it, not just the record field.
+describe("singleQueryField reaches the caller", () => {
+  testSync("encodes the stated singular beside the list field", () => {
+    expect(json->String.includes("\"queryField\":\"Catalog_Products\""))->toEqual(true)
+    expect(json->String.includes("\"singleQueryField\":\"Catalog_Product\""))->toEqual(true)
+  })
+
+  // Nullable on purpose: a structure persisted before the field existed, or a
+  // hand-rolled def that declines to state it, must decode rather than fail.
+  testSync("encodes an unstated singular as null", () => {
+    let unstated =
+      {...structure, readModels: [{...qbl, singleQueryField: None}]}
+      ->Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId="Catalog", _)
+      ->JSON.stringify
+    expect(unstated->String.includes("\"singleQueryField\":null"))->toEqual(true)
+  })
+
+  testSync("types it as a nullable String on the read-side SDL", () => {
+    let sdl = Platform_ComponentDefinitionsApi.sdlTypes->Array.join("\n")
+    expect(sdl->String.includes("singleQueryField: String\n"))->toEqual(true)
+    expect(sdl->String.includes("singleQueryField: String!"))->toEqual(false)
   })
 })

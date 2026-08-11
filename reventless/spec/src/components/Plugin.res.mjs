@@ -118,7 +118,8 @@ let queryableDefSchema = S.schema(s => ({
   labelFieldSource: s.m(stringOptionSchema),
   statusField: s.m(stringOptionSchema),
   visibility: s.m(stringOptionSchema),
-  chapter: s.m(stringOptionSchema)
+  chapter: s.m(stringOptionSchema),
+  singleQueryField: s.m(stringOptionSchema)
 }));
 
 let eventDefSchema = S.schema(s => ({

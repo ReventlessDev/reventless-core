@@ -269,6 +269,24 @@ type queryableDef = {
   before this field existed must be reset/re-emitted. See [[deployed-chapter-grouping]].
   */
   chapter: @s.matches(stringOptionSchema) option<string>,
+  /**
+  The singular counterpart of `queryField`: the generated single-entity query
+  (`Plugin_Order(id: ID!)` beside the list field `Plugin_Orders`), and — because
+  `Api_Naming` returns the same string for both — the prefix of the queryable's
+  generated input types (`Plugin_OrderFilter`, `Plugin_OrderOrderBy`). One field
+  rather than two, so the two uses cannot drift apart.
+
+  Published because it is not derivable from `queryField` without re-implementing
+  `Api_Naming.singularize`: a consumer that strips a trailing `s` turns
+  `Plugin_Categories` into `Plugin_Categorie`, a name the schema does not serve,
+  and fails at query time against that one view. Sourced from the naming module
+  itself, never re-derived.
+
+  `None` means not stated — defs persisted before this field existed, and
+  hand-rolled defs that decline to say; a consumer falls back to its own
+  derivation there. js_nullable for the same JSON-safety reason as `statusField`.
+  */
+  singleQueryField: @s.matches(stringOptionSchema) option<string>,
 }
 
 /**
