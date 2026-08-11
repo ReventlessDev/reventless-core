@@ -30,6 +30,10 @@
     "@reventlessdev/online-shop-hybrid-platform-aws",
     "@reventlessdev/rescript-web"
   ],
-  "sources": [],
+  "sources": [
+    {
+      "dir": "scripts"
+    }
+  ],
   "suffix": ".res.mjs"
 }

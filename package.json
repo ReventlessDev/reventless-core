@@ -51,6 +51,8 @@
     "format": "rescript format",
     "test": "NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' jest --silent",
     "test:projects": "node ./scripts/check-jest-projects.mjs",
+  "check:graphql": "node ./scripts/CheckGraphqlContract.res.mjs",
+  "check:graphql:update": "node ./scripts/CheckGraphqlContract.res.mjs --update",
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' jest --watchAll --silent",
     "test:watch:fail": "ONLY_FAILURES=1 NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' jest --watchAll --silent",
     "dev": "concurrently --names rs,jest --prefix-colors cyan,yellow \"rescript watch\" \"NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' jest --watchAll --silent\"",

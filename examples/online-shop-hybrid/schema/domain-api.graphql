@@ -1,0 +1,1832 @@
+scalar AWSJSON
+
+type CatalogEventLogEvent {
+  eventType: String!
+  payload: AWSJSON!
+  position: String!
+}
+
+input Catalog_AddProductPrice {
+  amount: Float!
+  currency: Catalog_AddProductPriceCurrency!
+}
+
+enum Catalog_AddProductPriceCurrency {
+  AED
+  AFN
+  ALL
+  AMD
+  AOA
+  ARS
+  AUD
+  AWG
+  AZN
+  BAM
+  BBD
+  BDT
+  BHD
+  BIF
+  BMD
+  BND
+  BOB
+  BOV
+  BRL
+  BSD
+  BTN
+  BWP
+  BYN
+  BZD
+  CAD
+  CDF
+  CHE
+  CHF
+  CHW
+  CLF
+  CLP
+  CNY
+  COP
+  COU
+  CRC
+  CUP
+  CVE
+  CZK
+  DJF
+  DKK
+  DOP
+  DZD
+  EGP
+  ERN
+  ETB
+  EUR
+  FJD
+  FKP
+  GBP
+  GEL
+  GHS
+  GIP
+  GMD
+  GNF
+  GTQ
+  GYD
+  HKD
+  HNL
+  HTG
+  HUF
+  IDR
+  ILS
+  INR
+  IQD
+  IRR
+  ISK
+  JMD
+  JOD
+  JPY
+  KES
+  KGS
+  KHR
+  KMF
+  KPW
+  KRW
+  KWD
+  KYD
+  KZT
+  LAK
+  LBP
+  LKR
+  LRD
+  LSL
+  LYD
+  MAD
+  MDL
+  MGA
+  MKD
+  MMK
+  MNT
+  MOP
+  MRU
+  MUR
+  MVR
+  MWK
+  MXN
+  MXV
+  MYR
+  MZN
+  NAD
+  NGN
+  NIO
+  NOK
+  NPR
+  NZD
+  OMR
+  PAB
+  PEN
+  PGK
+  PHP
+  PKR
+  PLN
+  PYG
+  QAR
+  RON
+  RSD
+  RUB
+  RWF
+  SAR
+  SBD
+  SCR
+  SDG
+  SEK
+  SGD
+  SHP
+  SLE
+  SOS
+  SRD
+  SSP
+  STN
+  SVC
+  SYP
+  SZL
+  THB
+  TJS
+  TMT
+  TND
+  TOP
+  TRY
+  TTD
+  TWD
+  TZS
+  UAH
+  UGX
+  USD
+  USN
+  UYI
+  UYU
+  UYW
+  UZS
+  VED
+  VES
+  VND
+  VUV
+  WST
+  XAD
+  XAF
+  XCD
+  XCG
+  XOF
+  XPF
+  YER
+  ZAR
+  ZMW
+  ZWG
+}
+
+input Catalog_CatalogEventHistoryFilter {
+  entityId: ID
+  eventTypes: [String!]
+  tagKey: String
+  tagValue: String
+  timeFrom: String
+  timeTo: String
+  user: String
+}
+
+type Catalog_CatalogEventRecord {
+  eventType: String!
+  meta: EventMeta!
+  payload: AWSJSON!
+  position: String!
+  recordedAt: String!
+  tags: [EventTag!]!
+}
+
+type Catalog_CatalogEventRecordConnection {
+  edges: [Catalog_CatalogEventRecordEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Catalog_CatalogEventRecordEdge {
+  cursor: String!
+  node: Catalog_CatalogEventRecord!
+}
+
+type Catalog_Category implements Node {
+  archived: Boolean!
+  categoryId: ID!
+  id: ID!
+  name: String!
+}
+
+type Catalog_CategoryConnection {
+  edges: [Catalog_CategoryEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Catalog_CategoryEdge {
+  cursor: String!
+  node: Catalog_Category!
+}
+
+input Catalog_CategoryFilter {
+  categoryIdEq: ID
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+input Catalog_CategoryOrderBy {
+  direction: SortOrder!
+  field: Catalog_CategoryOrderField!
+}
+
+enum Catalog_CategoryOrderField {
+  categoryId
+}
+
+input Catalog_ChangeProductPricePrice {
+  amount: Float!
+  currency: Catalog_ChangeProductPricePriceCurrency!
+}
+
+enum Catalog_ChangeProductPricePriceCurrency {
+  AED
+  AFN
+  ALL
+  AMD
+  AOA
+  ARS
+  AUD
+  AWG
+  AZN
+  BAM
+  BBD
+  BDT
+  BHD
+  BIF
+  BMD
+  BND
+  BOB
+  BOV
+  BRL
+  BSD
+  BTN
+  BWP
+  BYN
+  BZD
+  CAD
+  CDF
+  CHE
+  CHF
+  CHW
+  CLF
+  CLP
+  CNY
+  COP
+  COU
+  CRC
+  CUP
+  CVE
+  CZK
+  DJF
+  DKK
+  DOP
+  DZD
+  EGP
+  ERN
+  ETB
+  EUR
+  FJD
+  FKP
+  GBP
+  GEL
+  GHS
+  GIP
+  GMD
+  GNF
+  GTQ
+  GYD
+  HKD
+  HNL
+  HTG
+  HUF
+  IDR
+  ILS
+  INR
+  IQD
+  IRR
+  ISK
+  JMD
+  JOD
+  JPY
+  KES
+  KGS
+  KHR
+  KMF
+  KPW
+  KRW
+  KWD
+  KYD
+  KZT
+  LAK
+  LBP
+  LKR
+  LRD
+  LSL
+  LYD
+  MAD
+  MDL
+  MGA
+  MKD
+  MMK
+  MNT
+  MOP
+  MRU
+  MUR
+  MVR
+  MWK
+  MXN
+  MXV
+  MYR
+  MZN
+  NAD
+  NGN
+  NIO
+  NOK
+  NPR
+  NZD
+  OMR
+  PAB
+  PEN
+  PGK
+  PHP
+  PKR
+  PLN
+  PYG
+  QAR
+  RON
+  RSD
+  RUB
+  RWF
+  SAR
+  SBD
+  SCR
+  SDG
+  SEK
+  SGD
+  SHP
+  SLE
+  SOS
+  SRD
+  SSP
+  STN
+  SVC
+  SYP
+  SZL
+  THB
+  TJS
+  TMT
+  TND
+  TOP
+  TRY
+  TTD
+  TWD
+  TZS
+  UAH
+  UGX
+  USD
+  USN
+  UYI
+  UYU
+  UYW
+  UZS
+  VED
+  VES
+  VND
+  VUV
+  WST
+  XAD
+  XAF
+  XCD
+  XCG
+  XOF
+  XPF
+  YER
+  ZAR
+  ZMW
+  ZWG
+}
+
+type Catalog_ImportProductAudit implements Node {
+  commandCount: Float
+  error: String
+  id: ID!
+  input: String!
+  receivedAt: String!
+  status: Catalog_ImportProductAuditStatus!
+  targetIds: [ID!]
+}
+
+type Catalog_ImportProductAuditConnection {
+  edges: [Catalog_ImportProductAuditEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Catalog_ImportProductAuditEdge {
+  cursor: String!
+  node: Catalog_ImportProductAudit!
+}
+
+input Catalog_ImportProductAuditFilter {
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+enum Catalog_ImportProductAuditStatus {
+  Failure
+  Success
+}
+
+type Catalog_Product implements Node {
+  categoryId: ID!
+  description: String!
+  id: ID!
+  imageUrl: String
+  name: String!
+  price: Catalog_ProductPrice!
+  productId: ID!
+}
+
+type Catalog_ProductConnection {
+  edges: [Catalog_ProductEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Catalog_ProductDemand implements Node {
+  categoryId: ID!
+  id: ID!
+  name: String!
+  orderCount: Float!
+  productId: ID!
+}
+
+type Catalog_ProductDemandConnection {
+  edges: [Catalog_ProductDemandEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Catalog_ProductDemandEdge {
+  cursor: String!
+  node: Catalog_ProductDemand!
+}
+
+input Catalog_ProductDemandFilter {
+  ids: [ID!]
+  productIdEq: ID
+  search: String
+  searchPrefix: String
+}
+
+input Catalog_ProductDemandOrderBy {
+  direction: SortOrder!
+  field: Catalog_ProductDemandOrderField!
+}
+
+enum Catalog_ProductDemandOrderField {
+  productId
+}
+
+type Catalog_ProductEdge {
+  cursor: String!
+  node: Catalog_Product!
+}
+
+input Catalog_ProductFilter {
+  ids: [ID!]
+  productIdEq: ID
+  search: String
+  searchPrefix: String
+}
+
+input Catalog_ProductOrderBy {
+  direction: SortOrder!
+  field: Catalog_ProductOrderField!
+}
+
+enum Catalog_ProductOrderField {
+  productId
+}
+
+type Catalog_ProductPrice {
+  amount: Float!
+  currency: Catalog_ProductPriceCurrency!
+}
+
+enum Catalog_ProductPriceCurrency {
+  AED
+  AFN
+  ALL
+  AMD
+  AOA
+  ARS
+  AUD
+  AWG
+  AZN
+  BAM
+  BBD
+  BDT
+  BHD
+  BIF
+  BMD
+  BND
+  BOB
+  BOV
+  BRL
+  BSD
+  BTN
+  BWP
+  BYN
+  BZD
+  CAD
+  CDF
+  CHE
+  CHF
+  CHW
+  CLF
+  CLP
+  CNY
+  COP
+  COU
+  CRC
+  CUP
+  CVE
+  CZK
+  DJF
+  DKK
+  DOP
+  DZD
+  EGP
+  ERN
+  ETB
+  EUR
+  FJD
+  FKP
+  GBP
+  GEL
+  GHS
+  GIP
+  GMD
+  GNF
+  GTQ
+  GYD
+  HKD
+  HNL
+  HTG
+  HUF
+  IDR
+  ILS
+  INR
+  IQD
+  IRR
+  ISK
+  JMD
+  JOD
+  JPY
+  KES
+  KGS
+  KHR
+  KMF
+  KPW
+  KRW
+  KWD
+  KYD
+  KZT
+  LAK
+  LBP
+  LKR
+  LRD
+  LSL
+  LYD
+  MAD
+  MDL
+  MGA
+  MKD
+  MMK
+  MNT
+  MOP
+  MRU
+  MUR
+  MVR
+  MWK
+  MXN
+  MXV
+  MYR
+  MZN
+  NAD
+  NGN
+  NIO
+  NOK
+  NPR
+  NZD
+  OMR
+  PAB
+  PEN
+  PGK
+  PHP
+  PKR
+  PLN
+  PYG
+  QAR
+  RON
+  RSD
+  RUB
+  RWF
+  SAR
+  SBD
+  SCR
+  SDG
+  SEK
+  SGD
+  SHP
+  SLE
+  SOS
+  SRD
+  SSP
+  STN
+  SVC
+  SYP
+  SZL
+  THB
+  TJS
+  TMT
+  TND
+  TOP
+  TRY
+  TTD
+  TWD
+  TZS
+  UAH
+  UGX
+  USD
+  USN
+  UYI
+  UYU
+  UYW
+  UZS
+  VED
+  VES
+  VND
+  VUV
+  WST
+  XAD
+  XAF
+  XCD
+  XCG
+  XOF
+  XPF
+  YER
+  ZAR
+  ZMW
+  ZWG
+}
+
+type CommandAccepted {
+  entityId: ID
+  eventCount: Int!
+  msgId: ID!
+}
+
+type CommandPending {
+  msgId: ID!
+}
+
+type CommandRejected {
+  errorCode: String!
+  errorDetail: String
+  msgId: ID!
+}
+
+union CommandResult = CommandAccepted | CommandPending | CommandRejected
+
+type CustomerEventLogEvent {
+  eventType: String!
+  payload: AWSJSON!
+  position: String!
+}
+
+type EventMeta {
+  causationId: String
+  correlationId: String!
+  msgId: String!
+  service: String!
+  time: String!
+  user: String
+}
+
+type EventTag {
+  key: String!
+  value: String!
+}
+
+type GeocodeCandidate {
+  label: String!
+  lat: Float!
+  lng: Float!
+  relevance: Float
+}
+
+type Mutation {
+  Catalog_AddCategory(categoryId: ID!, name: String!): CommandResult!
+  Catalog_AddProduct(categoryId: ID!, description: String!, imageUrl: String, name: String!, price: Catalog_AddProductPrice!, productId: ID!): CommandResult!
+  Catalog_ArchiveCategory(categoryId: ID!): CommandResult!
+  Catalog_ChangeProductDescription(description: String!, productId: ID!): CommandResult!
+  Catalog_ChangeProductImage(imageUrl: String!, productId: ID!): CommandResult!
+  Catalog_ChangeProductName(name: String!, productId: ID!): CommandResult!
+  Catalog_ChangeProductPrice(price: Catalog_ChangeProductPricePrice!, productId: ID!): CommandResult!
+  Catalog_ImportProduct(category: String!, currency: String!, desc: String!, sku: String!, title: String!, unitPrice: Float!): CommandResult!
+  Catalog_RenameCategory(categoryId: ID!, name: String!): CommandResult!
+  Ordering_CancelOrder(orderId: ID!): CommandResult!
+  Ordering_ChangeSyncedPrice(price: Ordering_ChangeSyncedPricePrice!, productId: ID!): CommandResult!
+  Ordering_Customer_Deactivate(id: ID!): CommandResult!
+  Ordering_Customer_Register(address: String!, email: String!, id: ID!): CommandResult!
+  Ordering_Customer_SetAddressLocation(address: String!, id: ID!, location: Ordering_Customer_SetAddressLocationLocation!): CommandResult!
+  Ordering_Customer_UpdateAddress(address: String!, id: ID!): CommandResult!
+  Ordering_Customer_UpdateEmail(email: String!, id: ID!): CommandResult!
+  Ordering_PlaceOrder(customerId: ID!, deliveryWindow: Ordering_PlaceOrderDeliveryWindow, orderId: ID!, productIds: [ID!]!, shippingMethod: Ordering_PlaceOrderShippingMethod!): CommandResult!
+  Ordering_ShipOrder(orderId: ID!): CommandResult!
+  Ordering_SyncNewProduct(name: String!, price: Ordering_SyncNewProductPrice!, productId: ID!): CommandResult!
+  Platform_Plugin_Activate(_0: String!, id: ID!): CommandResult!
+  Platform_Plugin_Deactivate(_0: String!, id: ID!): CommandResult!
+  Platform_Plugin_Retire(_0: String!, id: ID!): CommandResult!
+  Upload_Presign(contentType: String, fileName: String!, store: ID!): Upload_Ticket
+  Upload_Release(storageRef: String!, store: ID!): Upload_ReleaseResult
+}
+
+interface Node {
+  id: ID!
+}
+
+type OrderingEventLogEvent {
+  eventType: String!
+  payload: AWSJSON!
+  position: String!
+}
+
+type Ordering_AutoShipOrderTodo implements Node {
+  completedAt: String
+  createdAt: String!
+  id: ID!
+  item: Ordering_AutoShipOrderTodoItem!
+  processedAt: String
+  retryCount: Float!
+  status: Ordering_AutoShipOrderTodoStatus!
+}
+
+type Ordering_AutoShipOrderTodoConnection {
+  edges: [Ordering_AutoShipOrderTodoEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_AutoShipOrderTodoEdge {
+  cursor: String!
+  node: Ordering_AutoShipOrderTodo!
+}
+
+input Ordering_AutoShipOrderTodoFilter {
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+type Ordering_AutoShipOrderTodoItem {
+  orderId: ID!
+}
+
+enum Ordering_AutoShipOrderTodoStatus {
+  Completed
+  Failed
+  Pending
+  Processing
+}
+
+type Ordering_AvailableProduct implements Node {
+  id: ID!
+  name: String!
+  price: Ordering_AvailableProductPrice!
+  productId: ID!
+}
+
+type Ordering_AvailableProductConnection {
+  edges: [Ordering_AvailableProductEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_AvailableProductEdge {
+  cursor: String!
+  node: Ordering_AvailableProduct!
+}
+
+input Ordering_AvailableProductFilter {
+  ids: [ID!]
+  productIdEq: ID
+  search: String
+  searchPrefix: String
+}
+
+input Ordering_AvailableProductOrderBy {
+  direction: SortOrder!
+  field: Ordering_AvailableProductOrderField!
+}
+
+enum Ordering_AvailableProductOrderField {
+  productId
+}
+
+type Ordering_AvailableProductPrice {
+  amount: Float!
+  currency: Ordering_AvailableProductPriceCurrency!
+}
+
+enum Ordering_AvailableProductPriceCurrency {
+  AED
+  AFN
+  ALL
+  AMD
+  AOA
+  ARS
+  AUD
+  AWG
+  AZN
+  BAM
+  BBD
+  BDT
+  BHD
+  BIF
+  BMD
+  BND
+  BOB
+  BOV
+  BRL
+  BSD
+  BTN
+  BWP
+  BYN
+  BZD
+  CAD
+  CDF
+  CHE
+  CHF
+  CHW
+  CLF
+  CLP
+  CNY
+  COP
+  COU
+  CRC
+  CUP
+  CVE
+  CZK
+  DJF
+  DKK
+  DOP
+  DZD
+  EGP
+  ERN
+  ETB
+  EUR
+  FJD
+  FKP
+  GBP
+  GEL
+  GHS
+  GIP
+  GMD
+  GNF
+  GTQ
+  GYD
+  HKD
+  HNL
+  HTG
+  HUF
+  IDR
+  ILS
+  INR
+  IQD
+  IRR
+  ISK
+  JMD
+  JOD
+  JPY
+  KES
+  KGS
+  KHR
+  KMF
+  KPW
+  KRW
+  KWD
+  KYD
+  KZT
+  LAK
+  LBP
+  LKR
+  LRD
+  LSL
+  LYD
+  MAD
+  MDL
+  MGA
+  MKD
+  MMK
+  MNT
+  MOP
+  MRU
+  MUR
+  MVR
+  MWK
+  MXN
+  MXV
+  MYR
+  MZN
+  NAD
+  NGN
+  NIO
+  NOK
+  NPR
+  NZD
+  OMR
+  PAB
+  PEN
+  PGK
+  PHP
+  PKR
+  PLN
+  PYG
+  QAR
+  RON
+  RSD
+  RUB
+  RWF
+  SAR
+  SBD
+  SCR
+  SDG
+  SEK
+  SGD
+  SHP
+  SLE
+  SOS
+  SRD
+  SSP
+  STN
+  SVC
+  SYP
+  SZL
+  THB
+  TJS
+  TMT
+  TND
+  TOP
+  TRY
+  TTD
+  TWD
+  TZS
+  UAH
+  UGX
+  USD
+  USN
+  UYI
+  UYU
+  UYW
+  UZS
+  VED
+  VES
+  VND
+  VUV
+  WST
+  XAD
+  XAF
+  XCD
+  XCG
+  XOF
+  XPF
+  YER
+  ZAR
+  ZMW
+  ZWG
+}
+
+input Ordering_ChangeSyncedPricePrice {
+  amount: Float!
+  currency: Ordering_ChangeSyncedPricePriceCurrency!
+}
+
+enum Ordering_ChangeSyncedPricePriceCurrency {
+  AED
+  AFN
+  ALL
+  AMD
+  AOA
+  ARS
+  AUD
+  AWG
+  AZN
+  BAM
+  BBD
+  BDT
+  BHD
+  BIF
+  BMD
+  BND
+  BOB
+  BOV
+  BRL
+  BSD
+  BTN
+  BWP
+  BYN
+  BZD
+  CAD
+  CDF
+  CHE
+  CHF
+  CHW
+  CLF
+  CLP
+  CNY
+  COP
+  COU
+  CRC
+  CUP
+  CVE
+  CZK
+  DJF
+  DKK
+  DOP
+  DZD
+  EGP
+  ERN
+  ETB
+  EUR
+  FJD
+  FKP
+  GBP
+  GEL
+  GHS
+  GIP
+  GMD
+  GNF
+  GTQ
+  GYD
+  HKD
+  HNL
+  HTG
+  HUF
+  IDR
+  ILS
+  INR
+  IQD
+  IRR
+  ISK
+  JMD
+  JOD
+  JPY
+  KES
+  KGS
+  KHR
+  KMF
+  KPW
+  KRW
+  KWD
+  KYD
+  KZT
+  LAK
+  LBP
+  LKR
+  LRD
+  LSL
+  LYD
+  MAD
+  MDL
+  MGA
+  MKD
+  MMK
+  MNT
+  MOP
+  MRU
+  MUR
+  MVR
+  MWK
+  MXN
+  MXV
+  MYR
+  MZN
+  NAD
+  NGN
+  NIO
+  NOK
+  NPR
+  NZD
+  OMR
+  PAB
+  PEN
+  PGK
+  PHP
+  PKR
+  PLN
+  PYG
+  QAR
+  RON
+  RSD
+  RUB
+  RWF
+  SAR
+  SBD
+  SCR
+  SDG
+  SEK
+  SGD
+  SHP
+  SLE
+  SOS
+  SRD
+  SSP
+  STN
+  SVC
+  SYP
+  SZL
+  THB
+  TJS
+  TMT
+  TND
+  TOP
+  TRY
+  TTD
+  TWD
+  TZS
+  UAH
+  UGX
+  USD
+  USN
+  UYI
+  UYU
+  UYW
+  UZS
+  VED
+  VES
+  VND
+  VUV
+  WST
+  XAD
+  XAF
+  XCD
+  XCG
+  XOF
+  XPF
+  YER
+  ZAR
+  ZMW
+  ZWG
+}
+
+type Ordering_Customer implements Node {
+  address: String!
+  customerId: ID!
+  deactivated: Boolean!
+  displayName: String
+  email: String!
+  id: ID!
+  location: Ordering_CustomerLocation
+  locationNote: String
+  locationStatus: Ordering_CustomerLocationStatus!
+  orderCount: Float!
+}
+
+type Ordering_CustomerConnection {
+  edges: [Ordering_CustomerEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_CustomerEdge {
+  cursor: String!
+  node: Ordering_Customer!
+}
+
+input Ordering_CustomerEventHistoryFilter {
+  entityId: ID
+  eventTypes: [String!]
+  tagKey: String
+  tagValue: String
+  timeFrom: String
+  timeTo: String
+  user: String
+}
+
+type Ordering_CustomerEventRecord {
+  eventType: String!
+  meta: EventMeta!
+  payload: AWSJSON!
+  position: String!
+  recordedAt: String!
+  tags: [EventTag!]!
+}
+
+type Ordering_CustomerEventRecordConnection {
+  edges: [Ordering_CustomerEventRecordEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_CustomerEventRecordEdge {
+  cursor: String!
+  node: Ordering_CustomerEventRecord!
+}
+
+input Ordering_CustomerFilter {
+  customerIdEq: ID
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+type Ordering_CustomerLocation {
+  lat: Float!
+  lng: Float!
+}
+
+enum Ordering_CustomerLocationStatus {
+  Located
+  Pending
+  Unresolvable
+}
+
+input Ordering_CustomerOrderBy {
+  direction: SortOrder!
+  field: Ordering_CustomerOrderField!
+}
+
+enum Ordering_CustomerOrderField {
+  customerId
+}
+
+input Ordering_Customer_SetAddressLocationLocation {
+  lat: Float!
+  lng: Float!
+}
+
+type Ordering_GeocodeCustomerAddressTodo implements Node {
+  completedAt: String
+  createdAt: String!
+  id: ID!
+  item: Ordering_GeocodeCustomerAddressTodoItem!
+  lastError: String
+  processedAt: String
+  retryCount: Float!
+  status: Ordering_GeocodeCustomerAddressTodoStatus!
+}
+
+type Ordering_GeocodeCustomerAddressTodoConnection {
+  edges: [Ordering_GeocodeCustomerAddressTodoEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_GeocodeCustomerAddressTodoEdge {
+  cursor: String!
+  node: Ordering_GeocodeCustomerAddressTodo!
+}
+
+input Ordering_GeocodeCustomerAddressTodoFilter {
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+type Ordering_GeocodeCustomerAddressTodoItem {
+  address: String!
+  customerId: ID!
+}
+
+enum Ordering_GeocodeCustomerAddressTodoStatus {
+  Completed
+  Failed
+  Pending
+  Processing
+}
+
+type Ordering_Order implements Node {
+  customerId: ID!
+  deliveryWindow: Ordering_OrderDeliveryWindow
+  id: ID!
+  orderId: ID!
+  placedAt: String!
+  productIds: [ID!]!
+  shippedAt: String!
+  shippingMethod: Ordering_OrderShippingMethod!
+  status: Ordering_OrderStatus!
+}
+
+type Ordering_OrderConnection {
+  edges: [Ordering_OrderEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_OrderDeliveryWindow {
+  end: String!
+  start: String!
+}
+
+type Ordering_OrderEdge {
+  cursor: String!
+  node: Ordering_Order!
+}
+
+input Ordering_OrderFilter {
+  ids: [ID!]
+  orderIdEq: ID
+  search: String
+  searchPrefix: String
+}
+
+input Ordering_OrderOrderBy {
+  direction: SortOrder!
+  field: Ordering_OrderOrderField!
+}
+
+enum Ordering_OrderOrderField {
+  orderId
+}
+
+enum Ordering_OrderShippingMethod {
+  Express
+  Pickup
+  Standard
+}
+
+enum Ordering_OrderStatus {
+  Cancelled
+  Placed
+  Shipped
+}
+
+input Ordering_OrderingEventHistoryFilter {
+  entityId: ID
+  eventTypes: [String!]
+  tagKey: String
+  tagValue: String
+  timeFrom: String
+  timeTo: String
+  user: String
+}
+
+type Ordering_OrderingEventRecord {
+  eventType: String!
+  meta: EventMeta!
+  payload: AWSJSON!
+  position: String!
+  recordedAt: String!
+  tags: [EventTag!]!
+}
+
+type Ordering_OrderingEventRecordConnection {
+  edges: [Ordering_OrderingEventRecordEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_OrderingEventRecordEdge {
+  cursor: String!
+  node: Ordering_OrderingEventRecord!
+}
+
+input Ordering_PlaceOrderDeliveryWindow {
+  end: String!
+  start: String!
+}
+
+enum Ordering_PlaceOrderShippingMethod {
+  Express
+  Pickup
+  Standard
+}
+
+type Ordering_SendOrderConfirmationTodo implements Node {
+  completedAt: String
+  createdAt: String!
+  id: ID!
+  item: Ordering_SendOrderConfirmationTodoItem!
+  lastError: String
+  processedAt: String
+  retryCount: Float!
+  status: Ordering_SendOrderConfirmationTodoStatus!
+}
+
+type Ordering_SendOrderConfirmationTodoConnection {
+  edges: [Ordering_SendOrderConfirmationTodoEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Ordering_SendOrderConfirmationTodoEdge {
+  cursor: String!
+  node: Ordering_SendOrderConfirmationTodo!
+}
+
+input Ordering_SendOrderConfirmationTodoFilter {
+  ids: [ID!]
+  search: String
+  searchPrefix: String
+}
+
+type Ordering_SendOrderConfirmationTodoItem {
+  customerId: ID!
+  orderId: ID!
+}
+
+enum Ordering_SendOrderConfirmationTodoStatus {
+  Completed
+  Failed
+  Pending
+  Processing
+}
+
+input Ordering_SyncNewProductPrice {
+  amount: Float!
+  currency: Ordering_SyncNewProductPriceCurrency!
+}
+
+enum Ordering_SyncNewProductPriceCurrency {
+  AED
+  AFN
+  ALL
+  AMD
+  AOA
+  ARS
+  AUD
+  AWG
+  AZN
+  BAM
+  BBD
+  BDT
+  BHD
+  BIF
+  BMD
+  BND
+  BOB
+  BOV
+  BRL
+  BSD
+  BTN
+  BWP
+  BYN
+  BZD
+  CAD
+  CDF
+  CHE
+  CHF
+  CHW
+  CLF
+  CLP
+  CNY
+  COP
+  COU
+  CRC
+  CUP
+  CVE
+  CZK
+  DJF
+  DKK
+  DOP
+  DZD
+  EGP
+  ERN
+  ETB
+  EUR
+  FJD
+  FKP
+  GBP
+  GEL
+  GHS
+  GIP
+  GMD
+  GNF
+  GTQ
+  GYD
+  HKD
+  HNL
+  HTG
+  HUF
+  IDR
+  ILS
+  INR
+  IQD
+  IRR
+  ISK
+  JMD
+  JOD
+  JPY
+  KES
+  KGS
+  KHR
+  KMF
+  KPW
+  KRW
+  KWD
+  KYD
+  KZT
+  LAK
+  LBP
+  LKR
+  LRD
+  LSL
+  LYD
+  MAD
+  MDL
+  MGA
+  MKD
+  MMK
+  MNT
+  MOP
+  MRU
+  MUR
+  MVR
+  MWK
+  MXN
+  MXV
+  MYR
+  MZN
+  NAD
+  NGN
+  NIO
+  NOK
+  NPR
+  NZD
+  OMR
+  PAB
+  PEN
+  PGK
+  PHP
+  PKR
+  PLN
+  PYG
+  QAR
+  RON
+  RSD
+  RUB
+  RWF
+  SAR
+  SBD
+  SCR
+  SDG
+  SEK
+  SGD
+  SHP
+  SLE
+  SOS
+  SRD
+  SSP
+  STN
+  SVC
+  SYP
+  SZL
+  THB
+  TJS
+  TMT
+  TND
+  TOP
+  TRY
+  TTD
+  TWD
+  TZS
+  UAH
+  UGX
+  USD
+  USN
+  UYI
+  UYU
+  UYW
+  UZS
+  VED
+  VES
+  VND
+  VUV
+  WST
+  XAD
+  XAF
+  XCD
+  XCG
+  XOF
+  XPF
+  YER
+  ZAR
+  ZMW
+  ZWG
+}
+
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+}
+
+type Platform_Plugin implements Node {
+  apiSchemaFragment: String
+  apiTarget: String
+  dcbEventLog: Platform_PluginDcbEventLog
+  extensionPoints: [Platform_PluginExtensionPoints!]!
+  extensions: [Platform_PluginExtensions!]!
+  id: ID!
+  kind: Platform_PluginKind
+  name: String!
+  otherConnectedVersions: [String!]!
+  status: Platform_PluginStatus!
+  statusChange: Platform_PluginStatusChange!
+  structure: String
+  version: String!
+}
+
+type Platform_PluginConnection {
+  edges: [Platform_PluginEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Platform_PluginDcbEventLog {
+  eventTopicArn: String!
+  name: String!
+}
+
+type Platform_PluginEdge {
+  cursor: String!
+  node: Platform_Plugin!
+}
+
+type Platform_PluginExtensionPoints {
+  commandTopic: String!
+  eventTopic: String!
+  name: String!
+}
+
+type Platform_PluginExtensions {
+  dcbSources: [String!]!
+  extensionPointName: String!
+  name: String!
+}
+
+input Platform_PluginFilter {
+  ids: [ID!]
+  kindEq: String
+  search: String
+  searchPrefix: String
+}
+
+enum Platform_PluginKind {
+  Commercial
+  Domain
+  Marketplace
+  PlatformInfrastructure
+}
+
+enum Platform_PluginStatus {
+  Connected
+  Disconnected
+  Inactive
+  Retired
+}
+
+type Platform_PluginStatusChange {
+  at: String!
+  by: String!
+}
+
+type Platform_UiFragment implements Node {
+  id: ID!
+  pages: [Platform_UiFragmentPages!]!
+  panels: [Platform_UiFragmentPanels!]!
+  pluginId: ID!
+  registeredAt: String!
+  remoteEntryUrl: String!
+  updatedAt: String!
+}
+
+type Platform_UiFragmentConnection {
+  edges: [Platform_UiFragmentEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Platform_UiFragmentEdge {
+  cursor: String!
+  node: Platform_UiFragment!
+}
+
+input Platform_UiFragmentFilter {
+  ids: [ID!]
+  pluginIdEq: ID
+  search: String
+  searchPrefix: String
+}
+
+input Platform_UiFragmentOrderBy {
+  direction: SortOrder!
+  field: Platform_UiFragmentOrderField!
+}
+
+enum Platform_UiFragmentOrderField {
+  pluginId
+}
+
+type Platform_UiFragmentPages {
+  fragmentId: ID!
+  menuEntry: Platform_UiFragmentPagesMenuEntry!
+  requiredAccess: String
+  title: String!
+}
+
+type Platform_UiFragmentPagesMenuEntry {
+  group: String
+  icon: String
+  label: String!
+  sortOrder: Float!
+}
+
+type Platform_UiFragmentPanels {
+  description: String!
+  fragmentId: ID!
+  positions: [String!]!
+  requiredAccess: String
+  title: String!
+}
+
+type Query {
+  Catalog_CatalogEventHistory(after: String, before: String, filter: Catalog_CatalogEventHistoryFilter, first: Int, last: Int): Catalog_CatalogEventRecordConnection!
+  Catalog_Categories(after: String, before: String, filter: Catalog_CategoryFilter, first: Int, last: Int, orderBy: Catalog_CategoryOrderBy): Catalog_CategoryConnection!
+  Catalog_CategoriesByIds(ids: [String!]!): [Catalog_Category!]!
+  Catalog_Category(id: ID!): Catalog_Category
+  Catalog_ImportProductAudit(id: ID!): Catalog_ImportProductAudit
+  Catalog_ImportProductAudits(after: String, before: String, filter: Catalog_ImportProductAuditFilter, first: Int, last: Int): Catalog_ImportProductAuditConnection!
+  Catalog_ImportProductAuditsByIds(ids: [String!]!): [Catalog_ImportProductAudit!]!
+  Catalog_Product(id: ID!): Catalog_Product
+  Catalog_ProductDemand(id: ID!): Catalog_ProductDemand
+  Catalog_ProductDemands(after: String, before: String, filter: Catalog_ProductDemandFilter, first: Int, last: Int, orderBy: Catalog_ProductDemandOrderBy): Catalog_ProductDemandConnection!
+  Catalog_ProductDemandsByIds(ids: [String!]!): [Catalog_ProductDemand!]!
+  Catalog_Products(after: String, before: String, filter: Catalog_ProductFilter, first: Int, last: Int, orderBy: Catalog_ProductOrderBy): Catalog_ProductConnection!
+  Catalog_ProductsByIds(ids: [String!]!): [Catalog_Product!]!
+  Ordering_AutoShipOrderTodo(id: ID!): Ordering_AutoShipOrderTodo
+  Ordering_AutoShipOrderTodos(after: String, before: String, filter: Ordering_AutoShipOrderTodoFilter, first: Int, last: Int): Ordering_AutoShipOrderTodoConnection!
+  Ordering_AutoShipOrderTodosByIds(ids: [String!]!): [Ordering_AutoShipOrderTodo!]!
+  Ordering_AvailableProduct(id: ID!): Ordering_AvailableProduct
+  Ordering_AvailableProducts(after: String, before: String, filter: Ordering_AvailableProductFilter, first: Int, last: Int, orderBy: Ordering_AvailableProductOrderBy): Ordering_AvailableProductConnection!
+  Ordering_AvailableProductsByIds(ids: [String!]!): [Ordering_AvailableProduct!]!
+  Ordering_Customer(id: ID!): Ordering_Customer
+  Ordering_CustomerEventHistory(after: String, before: String, filter: Ordering_CustomerEventHistoryFilter, first: Int, last: Int): Ordering_CustomerEventRecordConnection!
+  Ordering_Customers(after: String, before: String, filter: Ordering_CustomerFilter, first: Int, last: Int, orderBy: Ordering_CustomerOrderBy): Ordering_CustomerConnection!
+  Ordering_CustomersByIds(ids: [String!]!): [Ordering_Customer!]!
+  Ordering_GeocodeCustomerAddressTodo(id: ID!): Ordering_GeocodeCustomerAddressTodo
+  Ordering_GeocodeCustomerAddressTodos(after: String, before: String, filter: Ordering_GeocodeCustomerAddressTodoFilter, first: Int, last: Int): Ordering_GeocodeCustomerAddressTodoConnection!
+  Ordering_GeocodeCustomerAddressTodosByIds(ids: [String!]!): [Ordering_GeocodeCustomerAddressTodo!]!
+  Ordering_Order(id: ID!): Ordering_Order
+  Ordering_OrderingEventHistory(after: String, before: String, filter: Ordering_OrderingEventHistoryFilter, first: Int, last: Int): Ordering_OrderingEventRecordConnection!
+  Ordering_Orders(after: String, before: String, filter: Ordering_OrderFilter, first: Int, last: Int, orderBy: Ordering_OrderOrderBy): Ordering_OrderConnection!
+  Ordering_OrdersByIds(ids: [String!]!): [Ordering_Order!]!
+  Ordering_SendOrderConfirmationTodo(id: ID!): Ordering_SendOrderConfirmationTodo
+  Ordering_SendOrderConfirmationTodos(after: String, before: String, filter: Ordering_SendOrderConfirmationTodoFilter, first: Int, last: Int): Ordering_SendOrderConfirmationTodoConnection!
+  Ordering_SendOrderConfirmationTodosByIds(ids: [String!]!): [Ordering_SendOrderConfirmationTodo!]!
+  Platform_UiFragment(id: ID!): Platform_UiFragment
+  Platform_UiFragments(after: String, before: String, filter: Platform_UiFragmentFilter, first: Int, last: Int, orderBy: Platform_UiFragmentOrderBy): Platform_UiFragmentConnection!
+  Platform_UiFragmentsByIds(ids: [String!]!): [Platform_UiFragment!]!
+  geocode(text: String!): [GeocodeCandidate!]
+  node(id: ID!): Node
+}
+
+enum SortOrder {
+  ASC
+  DESC
+}
+
+type Subscription {
+  onCatalogEventLog_eventAppended: CatalogEventLogEvent
+  onCatalog_AddCategory(id: ID): CommandResult
+  onCatalog_AddProduct(id: ID): CommandResult
+  onCatalog_ArchiveCategory(id: ID): CommandResult
+  onCatalog_ChangeProductDescription(id: ID): CommandResult
+  onCatalog_ChangeProductImage(id: ID): CommandResult
+  onCatalog_ChangeProductName(id: ID): CommandResult
+  onCatalog_ChangeProductPrice(id: ID): CommandResult
+  onCatalog_ImportProduct(id: ID): CommandResult
+  onCatalog_RenameCategory(id: ID): CommandResult
+  onCustomerEventLog_eventAppended: CustomerEventLogEvent
+  onOrderingEventLog_eventAppended: OrderingEventLogEvent
+  onOrdering_CancelOrder(id: ID): CommandResult
+  onOrdering_ChangeSyncedPrice(id: ID): CommandResult
+  onOrdering_Customer_Deactivate(id: ID): CommandResult
+  onOrdering_Customer_Register(id: ID): CommandResult
+  onOrdering_Customer_SetAddressLocation(id: ID): CommandResult
+  onOrdering_Customer_UpdateAddress(id: ID): CommandResult
+  onOrdering_Customer_UpdateEmail(id: ID): CommandResult
+  onOrdering_PlaceOrder(id: ID): CommandResult
+  onOrdering_ShipOrder(id: ID): CommandResult
+  onOrdering_SyncNewProduct(id: ID): CommandResult
+}
+
+type Upload_ReleaseResult {
+  reason: String
+  released: Boolean!
+}
+
+type Upload_Ticket {
+  storageRef: String!
+  uploadUrl: String!
+}

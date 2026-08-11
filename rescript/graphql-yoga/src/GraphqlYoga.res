@@ -171,6 +171,25 @@ external close: (httpServer, unit => unit) => unit = "close"
 @module("graphql")
 external printSchema: schema => string = "printSchema"
 
+/** The reference implementation's own introspection query — every field a
+    client needs to rebuild a schema. Hand-writing one risks omitting a field
+    that `buildClientSchema` then rejects the result for. */
+@module("graphql")
+external getIntrospectionQuery: unit => string = "getIntrospectionQuery"
+
+/** Rebuild a schema object from the `data` of an introspection response. The
+    result is a client-side schema: complete for printing and validation,
+    with no resolvers behind it. */
+@module("graphql")
+external buildClientSchema: JSON.t => schema = "buildClientSchema"
+
+/** The same schema with every type, field, argument and enum value in
+    lexicographic order. Printing an unsorted schema reproduces whatever order
+    the server happened to build its type map in, so a snapshot of one diffs on
+    iteration order rather than on a real change. */
+@module("graphql")
+external lexicographicSortSchema: schema => schema = "lexicographicSortSchema"
+
 // ─── In-process execution ─────────────────────────────────────────────────
 
 /**

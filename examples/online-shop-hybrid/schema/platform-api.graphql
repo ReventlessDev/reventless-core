@@ -1,0 +1,314 @@
+type CommandAccepted {
+  entityId: ID
+  eventCount: Int!
+  msgId: ID!
+}
+
+type CommandPending {
+  msgId: ID!
+}
+
+type CommandRejected {
+  errorCode: String!
+  errorDetail: String
+  msgId: ID!
+}
+
+union CommandResult = CommandAccepted | CommandPending | CommandRejected
+
+type Mutation {
+  Platform_PluginStatusChanged(pluginId: ID!, status: PluginStatus!): PluginStatusChangeEvent
+  Platform_Plugin_Activate(_0: String!, id: ID!): CommandResult!
+  Platform_Plugin_Deactivate(_0: String!, id: ID!): CommandResult!
+  Platform_Plugin_Retire(_0: String!, id: ID!): CommandResult!
+  Platform_UIFragmentDeregistered(pluginId: ID!): UIFragmentChangeEvent
+  Platform_UIFragmentRegistered(manifest: String, pluginId: ID!): UIFragmentChangeEvent
+  Platform_UIFragmentUpdated(manifest: String, pluginId: ID!): UIFragmentChangeEvent
+}
+
+interface Node {
+  id: ID!
+}
+
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+}
+
+type Platform_AutomationSliceDef {
+  chapter: String
+  consumedEventTypes: [String!]!
+  name: String!
+  producedCommandTypes: [String!]!
+  targetName: String
+}
+
+type Platform_CommandDef {
+  aggregateIdField: String
+  allowedStates: [String!]
+  apiExposed: Boolean
+  level: String!
+  mutationField: String!
+  name: String!
+  references: [Platform_FieldReference!]!
+  schema: String!
+  targetState: String
+}
+
+type Platform_ComponentDefinitionEntry {
+  aggregates: [Platform_WriteSideDef!]!
+  automationSlices: [Platform_AutomationSliceDef!]!
+  extensions: [Platform_ExtensionDef!]!
+  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!
+  internalQueryables: [Platform_ReadSideDef!]!
+  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!
+  pluginId: String!
+  readModels: [Platform_ReadSideDef!]!
+  stateChangeSlices: [Platform_WriteSideDef!]!
+  stateViewSlices: [Platform_ReadSideDef!]!
+}
+
+type Platform_ErrorDef {
+  name: String!
+  references: [Platform_FieldReference!]!
+  schema: String!
+}
+
+type Platform_EventDef {
+  name: String!
+  references: [Platform_FieldReference!]!
+  schema: String!
+}
+
+type Platform_ExtensionDef {
+  commandTypes: [String!]!
+  delegateNames: [String!]!
+  eventTypes: [String!]!
+  name: String!
+}
+
+type Platform_ExtensionPointDef {
+  commandTypes: [String!]
+  delegateNames: [String!]!
+  name: String!
+  sourceEventTypes: [String!]!
+}
+
+type Platform_FieldReference {
+  entity: String!
+  fieldName: String!
+  plugin: String
+}
+
+type Platform_InboundTranslationSliceDef {
+  chapter: String
+  commandTypes: [String!]!
+  externalSystem: String
+  name: String!
+  targetName: String
+}
+
+type Platform_OutboundTranslationSliceDef {
+  chapter: String
+  consumedEventTypes: [String!]!
+  externalSystem: String
+  inboundCommandTypes: [String!]!
+  name: String!
+  targetName: String
+}
+
+type Platform_Plugin implements Node {
+  apiSchemaFragment: String
+  apiTarget: String
+  dcbEventLog: Platform_PluginDcbEventLog
+  extensionPoints: [Platform_PluginExtensionPoints!]!
+  extensions: [Platform_PluginExtensions!]!
+  id: ID!
+  kind: Platform_PluginKind
+  name: String!
+  otherConnectedVersions: [String!]!
+  status: Platform_PluginStatus!
+  statusChange: Platform_PluginStatusChange!
+  structure: String
+  version: String!
+}
+
+type Platform_PluginConnection {
+  edges: [Platform_PluginEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Platform_PluginDcbEventLog {
+  eventTopicArn: String!
+  name: String!
+}
+
+type Platform_PluginEdge {
+  cursor: String!
+  node: Platform_Plugin!
+}
+
+type Platform_PluginExtensionPoints {
+  commandTopic: String!
+  eventTopic: String!
+  name: String!
+}
+
+type Platform_PluginExtensions {
+  dcbSources: [String!]!
+  extensionPointName: String!
+  name: String!
+}
+
+input Platform_PluginFilter {
+  ids: [ID!]
+  kindEq: String
+  search: String
+  searchPrefix: String
+}
+
+enum Platform_PluginKind {
+  Commercial
+  Domain
+  Marketplace
+  PlatformInfrastructure
+}
+
+enum Platform_PluginStatus {
+  Connected
+  Disconnected
+  Inactive
+  Retired
+}
+
+type Platform_PluginStatusChange {
+  at: String!
+  by: String!
+}
+
+type Platform_PluginStructureEntry {
+  aggregates: [Platform_WriteSideDef!]!
+  automationSlices: [Platform_AutomationSliceDef!]!
+  extensionPoints: [Platform_ExtensionPointDef!]
+  extensions: [Platform_ExtensionDef!]!
+  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!
+  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!
+  pluginId: String!
+  readModels: [Platform_ReadSideDef!]!
+  requiredStoreDeclarations: [Platform_RequiredStoreDeclaration!]
+  requiredStores: [String!]
+  stateChangeSlices: [Platform_WriteSideDef!]!
+  stateViewSlices: [Platform_ReadSideDef!]!
+}
+
+type Platform_ReadSideDef {
+  chapter: String
+  consumedEventTypes: [String!]!
+  idField: String
+  idFieldSource: String
+  labelField: String!
+  labelFieldSource: String
+  linkedWriteSide: [String!]!
+  name: String!
+  queryField: String!
+  schema: String!
+  searchableFields: [String!]!
+  singleQueryField: String
+  statusField: String
+  visibility: String
+}
+
+type Platform_RequiredStoreDeclaration {
+  annotation: String
+  component: String!
+  field: String!
+  store: String!
+}
+
+type Platform_UIFragmentEntry {
+  pages: [Platform_UIPage!]!
+  panels: [Platform_UIPanel!]!
+  pluginId: String!
+  registeredAt: String!
+  remoteEntryUrl: String!
+  updatedAt: String!
+}
+
+type Platform_UIMenuEntry {
+  group: String
+  icon: String
+  label: String!
+  sortOrder: Int!
+}
+
+type Platform_UIPage {
+  fragmentId: String!
+  menuEntry: Platform_UIMenuEntry!
+  requiredAccess: String
+  title: String!
+}
+
+type Platform_UIPanel {
+  description: String!
+  fragmentId: String!
+  positions: [String!]!
+  requiredAccess: String
+  title: String!
+}
+
+type Platform_WriteSideDef {
+  chapter: String
+  commands: [Platform_CommandDef!]!
+  consistencyRead: String
+  consumedEventTypes: [String!]!
+  errors: [Platform_ErrorDef!]!
+  events: [Platform_EventDef!]!
+  linkedViews: [String!]!
+  name: String!
+  producedEventTypes: [String!]!
+}
+
+enum PluginStatus {
+  Connected
+  Disconnected
+  Inactive
+  Retired
+}
+
+type PluginStatusChangeEvent {
+  pluginId: ID!
+  status: PluginStatus!
+}
+
+type Query {
+  Platform_ComponentDefinitions: [Platform_ComponentDefinitionEntry!]!
+  Platform_Plugin(id: ID!): Platform_Plugin
+  Platform_PluginStructures: [Platform_PluginStructureEntry!]!
+  Platform_Plugins(after: String, before: String, filter: Platform_PluginFilter, first: Int, last: Int): Platform_PluginConnection!
+  Platform_PluginsByIds(ids: [String!]!): [Platform_Plugin!]!
+  Platform_UIFragments: [Platform_UIFragmentEntry!]!
+}
+
+enum SortOrder {
+  ASC
+  DESC
+}
+
+type Subscription {
+  onPluginStatusChange: PluginStatusChangeEvent
+  onUIFragmentChange: UIFragmentChangeEvent
+}
+
+type UIFragmentChangeEvent {
+  changeKind: UIFragmentChangeKind!
+  manifest: String
+  pluginId: ID!
+}
+
+enum UIFragmentChangeKind {
+  Deregistered
+  Registered
+  Updated
+}
