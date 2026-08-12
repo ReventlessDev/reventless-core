@@ -1,19 +1,18 @@
 /**
 Golden SDL snapshots of the two GraphQL contracts a UI shell talks to.
 
-The shell compiles its queries against a committed SDL snapshot on its own side,
-so a change to either contract here is invisible to it until someone refreshes
-that snapshot by hand. Nothing forces the refresh, which makes a wire-shape
-change look green in both repos and fail only at runtime, against a real backend.
-
 This boots the hybrid example's local platform and introspects both servers, so
 a change that alters either contract shows up as a diff in a tracked file in the
-PR that causes it. Two separate goldens, because they drift for different
-reasons and call for different follow-ups:
+PR that causes it. Two separate goldens, owned by different things and read for
+different reasons:
 
 - `platform-api.graphql` — the admin API (`Platform_*` only, plugin-independent).
-  The shell's Relay queries compile against this one, so a diff here means the
-  shell's snapshot needs regenerating or its queries no longer compile.
+  A shell's Relay queries compile against this one. It is framework-owned rather
+  than example-owned — the example is just the cheapest way to get a platform
+  serving — so it is written into the spec package and published from there, and
+  a shell takes it as a dependency instead of keeping a copy that nothing keeps
+  fresh. Lerna versions this repo off conventional commits, so the spec version a
+  shell pins is the contract version it compiles against.
 
 - `domain-api.graphql` — the per-plugin API generated from the hybrid example's
   specs. No client compiles against it (the shell builds these queries at runtime
@@ -35,7 +34,15 @@ pnpm run check:graphql:update    # rewrite the goldens
 // script.
 let repoRoot = NodeProcess.cwd()
 let platformDir = NodePath.join([repoRoot, "examples", "online-shop-hybrid", "platform-local"])
-let goldenDir = NodePath.join([repoRoot, "examples", "online-shop-hybrid", "schema"])
+
+// The two goldens live apart because they are owned by different things. The
+// platform admin API is framework-owned — every type in it is `Platform_*` or
+// framework-level, nothing from this example's plugins — so it ships from the
+// spec package, and a shell depends on it rather than keeping a copy. The
+// domain API is generated from this example's own plugin specs, so its golden
+// stays with the example that produces it.
+let platformGoldenDir = NodePath.join([repoRoot, "reventless", "spec", "schema"])
+let domainGoldenDir = NodePath.join([repoRoot, "examples", "online-shop-hybrid", "schema"])
 
 // Off the platform's defaults (4000/4001/3001/3002) so a run never fights a dev
 // server the developer already has going.
@@ -44,11 +51,15 @@ let platformPort = "4701"
 let domainMcpPort = "3700"
 let platformMcpPort = "3701"
 
-type contract = {file: string, url: string}
+type contract = {dir: string, file: string, url: string}
 
 let contracts = [
-  {file: "platform-api.graphql", url: `http://localhost:${platformPort}/graphql`},
-  {file: "domain-api.graphql", url: `http://localhost:${domainPort}/graphql`},
+  {
+    dir: platformGoldenDir,
+    file: "platform-api.graphql",
+    url: `http://localhost:${platformPort}/graphql`,
+  },
+  {dir: domainGoldenDir, file: "domain-api.graphql", url: `http://localhost:${domainPort}/graphql`},
 ]
 
 let bootTimeoutMs = 120_000.0
@@ -140,24 +151,94 @@ let rec waitForContracts = async (child, ~deadline: float): result<array<string>
 
 // ── Comparison ──────────────────────────────────────────────────────────────
 
-/** The first line where the two disagree. A full diff of a 1800-line schema
-    buries the answer; the first divergence usually is the answer. */
-let firstDiff = (~golden: string, ~actual: string): string => {
-  let goldenLines = golden->String.split("\n")
-  let actualLines = actual->String.split("\n")
-  let lineCount = Math.Int.max(Array.length(goldenLines), Array.length(actualLines))
-  let show = line => line->Option.getOr("(end of file)")
-  let rec find = i =>
-    if i >= lineCount {
-      "(the files differ only in trailing content)"
-    } else if goldenLines->Array.get(i) != actualLines->Array.get(i) {
-      `line ${(i + 1)->Int.toString}:\n` ++
-      `  golden: ${show(goldenLines->Array.get(i))}\n` ++
-      `  actual: ${show(actualLines->Array.get(i))}`
-    } else {
-      find(i + 1)
+let reportLimit = 25
+
+/** The declaration a line sits inside, for lines that open one. A field name on
+    its own is ambiguous across a 42-type schema — the same field can be added to
+    several types in one change, and three bare `ownerField: String` lines say
+    nothing about which types grew one. */
+let declarationName = (line: string): option<string> =>
+  ["type ", "input ", "enum ", "union ", "interface ", "scalar "]
+  ->Array.find(keyword => line->String.startsWith(keyword))
+  ->Option.flatMap(keyword =>
+    line
+    ->String.slice(~start=String.length(keyword), ~end=String.length(line))
+    ->String.split(" ")
+    ->Array.get(0)
+  )
+
+/** Closing braces and blank lines are punctuation: they differ in step with the
+    declarations around them and carry nothing on their own. */
+let isPunctuation = (line: string): bool =>
+  switch line->String.trim {
+  | "" | "}" => true
+  | _ => false
+  }
+
+/** The lines one side has that the other does not, each named by the declaration
+    it belongs to.
+
+    Compared as multisets rather than position by position. Both files are
+    `lexicographicSortSchema`-sorted, so this is a true diff: a rename is one
+    removal plus one addition, and — the reason for the change — an insertion
+    stays one line instead of shifting every line after it into disagreement. A
+    positional walk reported the first *shifted* line as the mismatch, so adding
+    `ownerField` to two types printed `golden: references: …` against
+    `actual: ownerField: String`: a replacement that never happened. */
+let exclusiveTo = (~from: string, ~other: string): array<string> => {
+  let remaining = Dict.make()
+  other
+  ->String.split("\n")
+  ->Array.forEach(line => remaining->Dict.set(line, remaining->Dict.get(line)->Option.getOr(0) + 1))
+
+  let found = []
+  let declaration = ref(None)
+  from
+  ->String.split("\n")
+  ->Array.forEach(line => {
+    switch declarationName(line) {
+    | Some(_) as name => declaration := name
+    | None => ()
     }
-  find(0)
+    switch remaining->Dict.get(line) {
+    // Present on both sides — spend one of the other side's copies, so a line
+    // that appears twice here and once there still reports one occurrence.
+    | Some(count) if count > 0 => remaining->Dict.set(line, count - 1)
+    | _ =>
+      if !isPunctuation(line) {
+        let body = line->String.trim
+        found->Array.push(
+          switch (declarationName(line), declaration.contents) {
+          | (Some(_), _) => body
+          | (None, Some(owner)) => `${owner}.${body}`
+          | (None, None) => body
+          },
+        )
+      }
+    }
+  })
+  found
+}
+
+let describe = (~marker: string, lines: array<string>): string =>
+  lines
+  ->Array.slice(~start=0, ~end=reportLimit)
+  ->Array.map(line => `  ${marker} ${line}`)
+  ->Array.join("\n")
+  ->(shown =>
+    Array.length(lines) > reportLimit
+      ? `${shown}\n  … and ${(Array.length(lines) - reportLimit)->Int.toString} more`
+      : shown)
+
+let driftReport = (~golden: string, ~actual: string): string => {
+  let added = exclusiveTo(~from=actual, ~other=golden)
+  let removed = exclusiveTo(~from=golden, ~other=actual)
+  switch (added, removed) {
+  | ([], []) => "  (the files differ only in blank lines or braces)"
+  | ([], removed) => describe(~marker="-", removed)
+  | (added, []) => describe(~marker="+", added)
+  | (added, removed) => `${describe(~marker="-", removed)}\n${describe(~marker="+", added)}`
+  }
 }
 
 // ── Entry point ─────────────────────────────────────────────────────────────
@@ -205,13 +286,12 @@ let main = async () => {
     Console.error(msg)
     NodeProcess.exit(1)
   | Ok(sdl) =>
-    if !(goldenDir->NodeFs.existsSync) {
-      NodeFs.mkdirSync(goldenDir, {recursive: true})
-    }
-
     let drifted = []
     contracts->Array.forEachWithIndex((contract, i) => {
-      let path = NodePath.join([goldenDir, contract.file])
+      if !(contract.dir->NodeFs.existsSync) {
+        NodeFs.mkdirSync(contract.dir, {recursive: true})
+      }
+      let path = NodePath.join([contract.dir, contract.file])
       let actual = (sdl->Array.getUnsafe(i))->String.trim ++ "\n"
       let existed = path->NodeFs.existsSync
 
@@ -224,7 +304,7 @@ let main = async () => {
           Console.log(`ok ${contract.file}`)
         } else {
           drifted->Array.push(contract.file)
-          Console.error(`\ndrift in ${contract.file}\n${firstDiff(~golden, ~actual)}`)
+          Console.error(`\ndrift in ${contract.file}\n${driftReport(~golden, ~actual)}`)
         }
       }
     })
@@ -234,8 +314,7 @@ let main = async () => {
         `\n${drifted->Array.length->Int.toString} GraphQL contract(s) changed. ` ++
         `If the change is intended, run\n` ++
         `  pnpm run check:graphql:update\n` ++
-        `and commit the goldens. A platform-api.graphql diff also means the UI\n` ++
-        `shell's own SDL snapshot has to be regenerated against this platform.`,
+        `and commit the goldens alongside the change that moved them.`,
       )
       NodeProcess.exit(1)
     }

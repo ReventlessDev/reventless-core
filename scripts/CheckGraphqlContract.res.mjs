@@ -7,7 +7,6 @@ import * as Web_Timers from "@reventlessdev/rescript-web/src/Web_Timers.res.mjs"
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Nodechild_process from "node:child_process";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -16,7 +15,9 @@ let repoRoot = process.cwd();
 
 let platformDir = Nodepath.join(repoRoot, "examples", "online-shop-hybrid", "platform-local");
 
-let goldenDir = Nodepath.join(repoRoot, "examples", "online-shop-hybrid", "schema");
+let platformGoldenDir = Nodepath.join(repoRoot, "reventless", "spec", "schema");
+
+let domainGoldenDir = Nodepath.join(repoRoot, "examples", "online-shop-hybrid", "schema");
 
 let domainPort = "4700";
 
@@ -28,10 +29,12 @@ let platformMcpPort = "3701";
 
 let contracts = [
   {
+    dir: platformGoldenDir,
     file: "platform-api.graphql",
     url: `http://localhost:` + platformPort + `/graphql`
   },
   {
+    dir: domainGoldenDir,
     file: "domain-api.graphql",
     url: `http://localhost:` + domainPort + `/graphql`
   }
@@ -142,22 +145,81 @@ async function waitForContracts(child, deadline) {
   }
 }
 
-function firstDiff(golden, actual) {
-  let goldenLines = golden.split("\n");
-  let actualLines = actual.split("\n");
-  let lineCount = Math.max(goldenLines.length, actualLines.length);
-  let _i = 0;
-  while (true) {
-    let i = _i;
-    if (i >= lineCount) {
-      return "(the files differ only in trailing content)";
-    }
-    if (Primitive_object.notequal(goldenLines[i], actualLines[i])) {
-      return `line ` + (i + 1 | 0).toString() + `:\n` + (`  golden: ` + Stdlib_Option.getOr(goldenLines[i], "(end of file)") + `\n`) + (`  actual: ` + Stdlib_Option.getOr(actualLines[i], "(end of file)"));
-    }
-    _i = i + 1 | 0;
-    continue;
+function declarationName(line) {
+  return Stdlib_Option.flatMap([
+    "type ",
+    "input ",
+    "enum ",
+    "union ",
+    "interface ",
+    "scalar "
+  ].find(keyword => line.startsWith(keyword)), keyword => line.slice(keyword.length, line.length).split(" ")[0]);
+}
+
+function isPunctuation(line) {
+  let match = line.trim();
+  switch (match) {
+    case "" :
+    case "}" :
+      return true;
+    default:
+      return false;
+  }
+}
+
+function exclusiveTo(from, other) {
+  let remaining = {};
+  other.split("\n").forEach(line => {
+    remaining[line] = Stdlib_Option.getOr(remaining[line], 0) + 1 | 0;
+  });
+  let found = [];
+  let declaration = {
+    contents: undefined
   };
+  from.split("\n").forEach(line => {
+    let name = declarationName(line);
+    if (name !== undefined) {
+      declaration.contents = name;
+    }
+    let count = remaining[line];
+    if (count !== undefined && count > 0) {
+      remaining[line] = count - 1 | 0;
+      return;
+    }
+    if (isPunctuation(line)) {
+      return;
+    }
+    let body = line.trim();
+    let match = declarationName(line);
+    let match$1 = declaration.contents;
+    found.push(match !== undefined || match$1 === undefined ? body : match$1 + `.` + body);
+  });
+  return found;
+}
+
+function describe(marker, lines) {
+  let shown = lines.slice(0, 25).map(line => `  ` + marker + ` ` + line).join("\n");
+  if (lines.length > 25) {
+    return shown + `\n  … and ` + (lines.length - 25 | 0).toString() + ` more`;
+  } else {
+    return shown;
+  }
+}
+
+function driftReport(golden, actual) {
+  let added = exclusiveTo(actual, golden);
+  let removed = exclusiveTo(golden, actual);
+  if (added.length !== 0) {
+    if (removed.length !== 0) {
+      return describe("-", removed) + `\n` + describe("+", added);
+    } else {
+      return describe("+", added);
+    }
+  } else if (removed.length !== 0) {
+    return describe("-", removed);
+  } else {
+    return "  (the files differ only in blank lines or braces)";
+  }
 }
 
 async function main() {
@@ -202,14 +264,14 @@ async function main() {
   child.kill("SIGTERM");
   if (outcome.TAG === "Ok") {
     let sdl = outcome._0;
-    if (!Nodefs.existsSync(goldenDir)) {
-      Nodefs.mkdirSync(goldenDir, {
-        recursive: true
-      });
-    }
     let drifted = [];
     contracts.forEach((contract, i) => {
-      let path = Nodepath.join(goldenDir, contract.file);
+      if (!Nodefs.existsSync(contract.dir)) {
+        Nodefs.mkdirSync(contract.dir, {
+          recursive: true
+        });
+      }
+      let path = Nodepath.join(contract.dir, contract.file);
       let actual = sdl[i].trim() + "\n";
       let existed = Nodefs.existsSync(path);
       if (update || !existed) {
@@ -224,11 +286,11 @@ async function main() {
         console.log(`ok ` + contract.file);
       } else {
         drifted.push(contract.file);
-        console.error(`\ndrift in ` + contract.file + `\n` + firstDiff(golden, actual));
+        console.error(`\ndrift in ` + contract.file + `\n` + driftReport(golden, actual));
       }
     });
     if (drifted.length !== 0) {
-      console.error(`\n` + drifted.length.toString() + ` GraphQL contract(s) changed. If the change is intended, run\n  pnpm run check:graphql:update\nand commit the goldens. A platform-api.graphql diff also means the UI\nshell's own SDL snapshot has to be regenerated against this platform.`);
+      console.error(`\n` + drifted.length.toString() + ` GraphQL contract(s) changed. If the change is intended, run\n  pnpm run check:graphql:update\nand commit the goldens alongside the change that moved them.`);
       process.exit(1);
       return;
     } else {
@@ -243,10 +305,13 @@ main();
 
 let bootTimeoutMs = 120000.0;
 
+let reportLimit = 25;
+
 export {
   repoRoot,
   platformDir,
-  goldenDir,
+  platformGoldenDir,
+  domainGoldenDir,
   domainPort,
   platformPort,
   domainMcpPort,
@@ -257,7 +322,12 @@ export {
   introspect,
   introspectAll,
   waitForContracts,
-  firstDiff,
+  reportLimit,
+  declarationName,
+  isPunctuation,
+  exclusiveTo,
+  describe,
+  driftReport,
   main,
 }
 /* repoRoot Not a pure module */
