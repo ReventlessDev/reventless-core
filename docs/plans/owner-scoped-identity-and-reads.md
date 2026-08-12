@@ -1,6 +1,14 @@
 # Plan: a row can belong to the caller, and the framework enforces it
 
-**Status.** §10 steps 1–6 landed 2026-08-12 — all four read paths and the write
+**Status.** ✅ **Verified against a running system 2026-08-12** — on the in-memory
+platform with a fresh SQLite database and 150 seeded orders, a shopper reads
+exactly their own 5 while an operator reads all 150 across 22 owners; a page of 2
+is two *owned* rows; another customer's order is `null` by id; and an order placed
+while claiming someone else's id is stored **owned by the caller**. An elevated
+caller acting on a customer's behalf keeps the id they sent. §10 steps 1–7 landed
+2026-08-12 — only the `@owner` PPX shorthand (step 8, pure ergonomics) and the
+cloud runtime's env propagation (§10 step 6's residue, wave-scoped elsewhere)
+remain. Landed — all four read paths and the write
 path enforce `@owner`, and a deployment that forgets to name its operator groups
 is now told so per view instead of silently scoping its administrators. Steps 7–8
 open. ⚠️ **No deployment has set `elevatedGroups` yet**, which is correct today
@@ -451,8 +459,24 @@ plus at least one row owned by neither.
    Until that lands, an AWS deployment configures the deploy program only, and
    its Lambdas still believe nobody is elevated. Note also that a baked value
    makes a change to the list a redeploy, not a restart.
-7. `ownerField` on `queryableDef` / `commandDef`, and the baked-manifest copy
-   check.
+7. ✅ **Done 2026-08-12.** `ownerField` on both `queryableDef` and `commandDef`,
+   derived where `statusField` and `requiredAccess` already are — from the same
+   schema, so the three cannot disagree about a component's fields. Added to the
+   `Platform_ReadSideDef` / `Platform_CommandDef` SDL and both encoders.
+
+   The command side resolves from **the issued constructor's own properties**,
+   not the union's, mirroring what the write path stamps: two commands in one
+   slice can disagree about whether they record an owner.
+
+   The baked manifest inherits it because `curate` reuses the served encoder
+   rather than writing a second one — the anti-drift property the manifest was
+   built with. There is now a test asserting the curated entry carries the field
+   for both a view and a command, which guards that property rather than a second
+   code path: a shell reading a baked manifest has no admin API to ask instead, so
+   a field curation dropped is one that view could never learn about.
+
+   `pluginDefinitionRequiredScalars.txt` did **not** move — the field is optional,
+   unlike `requiredAccess`, so the schema tripwire stayed put.
 8. The `@owner` PPX shorthand, replacing the hand-written `@s.matches` at each
    call site.
 
