@@ -52,7 +52,9 @@ type Platform_CommandDef {
   level: String!
   mutationField: String!
   name: String!
+  ownerField: String
   references: [Platform_FieldReference!]!
+  requiredAccess: [String!]
   schema: String!
   targetState: String
 }
@@ -212,7 +214,9 @@ type Platform_ReadSideDef {
   labelFieldSource: String
   linkedWriteSide: [String!]!
   name: String!
+  ownerField: String
   queryField: String!
+  requiredAccess: [String!]
   schema: String!
   searchableFields: [String!]!
   singleQueryField: String
