@@ -14,7 +14,11 @@ let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), 
   viewModes: [{
       TAG: "Map",
       _0: {}
-    }]
+    }],
+  shellConfig: Object.fromEntries([[
+      "appName",
+      "Online Shop"
+    ]])
 }, PlatformCapabilities.capabilities);
 
 export {

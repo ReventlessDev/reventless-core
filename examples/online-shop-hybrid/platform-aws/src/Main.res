@@ -31,6 +31,13 @@ let default = Platform.deployPlatform(
   // `Map({})` — the mode with its defaults. No `style`: the mode's built-in
   // demo tiles are the honest default for an example, and a real style URL is a
   // per-deployment key with an account behind it.
-  ~hostUiBundle={viewModes: [Map({})], geocoderPlaceIndex: placeIndex},
+  // `shellConfig` carries the keys the shell owns and the deploy has no way to
+  // compute. `appName` is what the host UI puts in its sidebar and browser tab;
+  // without it the shell falls back to the framework's own name.
+  ~hostUiBundle={
+    viewModes: [Map({})],
+    geocoderPlaceIndex: placeIndex,
+    shellConfig: Dict.fromArray([("appName", JSON.Encode.string("Online Shop"))]),
+  },
   ~capabilities=PlatformCapabilities.capabilities,
 )
