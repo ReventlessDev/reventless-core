@@ -5,8 +5,10 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
@@ -22,6 +24,29 @@ function registerCommandInterceptor(interceptor) {
 
 function clearCommandInterceptor() {
   commandInterceptorHook.contents = undefined;
+}
+
+function stampOwnerFields(obj, commandSchema, command, identity, serviceName) {
+  let ownerFields = Owner$Reventless.variantFieldNames(commandSchema, command);
+  if (ownerFields.length === 0) {
+    return;
+  }
+  let why = OwnerScope$Reventless.resolve(identity, undefined);
+  if (typeof why !== "object") {
+    return;
+  }
+  switch (why.TAG) {
+    case "Elevated" :
+      return;
+    case "Owned" :
+      let userId = why.userId;
+      ownerFields.forEach(field => {
+        obj[field] = userId;
+      });
+      return;
+    case "Unidentified" :
+      return Stdlib_JsError.throwWithMessage(`Forbidden: ` + serviceName + `.` + command + ` records an owner, but the caller could not be identified (` + why._0 + `)`);
+  }
 }
 
 function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, $staropt$star) {
@@ -41,7 +66,7 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
         correlationId: msgId
       };
       let obj = Stdlib_Option.flatMap(JSON.stringify(payload.arguments), jsonString => Stdlib_JSON.Decode.object(JSON.parse(jsonString)));
-      let params = obj !== undefined ? (stripIdFromParams ? Stdlib_Dict.$$delete(obj, "id") : undefined, Object.entries(obj)) : Stdlib_JsError.throwWithMessage("Couldn't decode:" + Stdlib_Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
+      let params = obj !== undefined ? (stripIdFromParams ? Stdlib_Dict.$$delete(obj, "id") : undefined, stampOwnerFields(obj, commandSchema, payload.command, payload.identity, serviceName), Object.entries(obj)) : Stdlib_JsError.throwWithMessage("Couldn't decode:" + Stdlib_Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
       let commandStr = payload.command;
       let match = params.length;
       let commandJson = match !== 0 ? Object.fromEntries([[
@@ -155,6 +180,7 @@ export {
   commandInterceptorHook,
   registerCommandInterceptor,
   clearCommandInterceptor,
+  stampOwnerFields,
   makeGenerateCommand,
   Make,
 }

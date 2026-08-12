@@ -30,6 +30,48 @@ module type T = {
   let generateCommand: CommandGenerator.commandGenerator
 }
 
+/**
+Overwrite every `@owner`-marked field of the command being issued with the
+authenticated caller's id.
+
+Deliberately here rather than in a transport's resolver. The local GraphQL
+resolver and the AppSync mutation template build the same `payload` and both
+hand it to `makeGenerateCommand`, so this is the only place a single edit is
+true on both — and a rule enforced on one transport and not the other is worse
+than no rule, because it reads as enforced.
+
+**Overwrite, not fill-if-absent.** A caller who omits the field and a caller who
+sends someone else's id must produce the same row. Filling only the absent case
+passes every test that does not forge the field, and forging it is the whole
+attack.
+
+An exempt caller — the platform's own service traffic, or an operator — is left
+alone, so acting on another principal's behalf stays possible for those who may.
+A caller that cannot be identified is refused outright, but only for commands
+that actually carry an owner: an anonymous caller invoking an `AllowAnonymous`
+command with no owner field has nothing to prove and is not this rule's business.
+*/
+let stampOwnerFields = (
+  obj: dict<JSON.t>,
+  ~commandSchema: S.t<unknown>,
+  ~command: string,
+  ~identity: Reventless.Identity.t,
+  ~serviceName: string,
+) =>
+  switch Reventless.Owner.variantFieldNames(commandSchema, ~variant=command) {
+  | [] => ()
+  | ownerFields =>
+    switch identity->Reventless.OwnerScope.resolve {
+    | System | Elevated(_) => ()
+    | Owned({userId}) =>
+      ownerFields->Array.forEach(field => obj->Dict.set(field, JSON.Encode.string(userId)))
+    | Unidentified(why) =>
+      JsError.throwWithMessage(
+        `Forbidden: ${serviceName}.${command} records an owner, but the caller could not be identified (${why})`,
+      )
+    }
+  }
+
 let makeGenerateCommand = (
   ~publishJsons: CommandGenerator.publishJsons,
   ~publishJsonsAndWait: option<CommandTopic.publishJsonsAndWait>=?,
@@ -58,6 +100,12 @@ let makeGenerateCommand = (
           if stripIdFromParams {
             obj->Dict.delete("id")
           }
+          obj->stampOwnerFields(
+            ~commandSchema,
+            ~command=payload.command,
+            ~identity=payload.identity,
+            ~serviceName,
+          )
           obj->Dict.toArray
         }
       | None =>
