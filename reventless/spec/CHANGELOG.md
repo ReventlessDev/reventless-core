@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.111 (2026-08-12)
+
+### Features
+
+* **scripts:** publish the platform SDL instead of copying it by hand ([3f28ceb](https://github.com/ReventlessDev/reventless-core/commit/3f28cebe7f9f947894105592d7ff7e5c07043d8f))
+
+
 # 3.0.0-alpha.110 (2026-08-12)
 
 ### Features
