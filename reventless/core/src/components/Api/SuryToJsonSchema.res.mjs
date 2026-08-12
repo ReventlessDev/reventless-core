@@ -106,6 +106,24 @@ function mergeAnnotations(fieldSchema, fieldName, spec) {
   return obj;
 }
 
+function isNullableType(_st) {
+  while (true) {
+    let st = _st;
+    if (typeof st !== "object") {
+      return false;
+    }
+    switch (st.TAG) {
+      case "Nullable" :
+        return true;
+      case "Semantic" :
+        _st = st._1;
+        continue;
+      default:
+        return false;
+    }
+  };
+}
+
 function fromSchemaType(st) {
   if (typeof st !== "object") {
     switch (st) {
@@ -229,8 +247,9 @@ function objectRefToJsonSchema(annotations, optionalOpt, ownersOpt, fields) {
   let props = {};
   let required = [];
   Object.entries(fields).forEach(param => {
+    let fieldType = param[1];
     let fieldName = param[0];
-    let baseSchema = fromSchemaType(param[1]);
+    let baseSchema = fromSchemaType(fieldType);
     let withAnnotations = annotations !== undefined ? mergeAnnotations(baseSchema, fieldName, annotations) : baseSchema;
     let withAnnotations$1;
     if (owners.includes(fieldName)) {
@@ -245,7 +264,7 @@ function objectRefToJsonSchema(annotations, optionalOpt, ownersOpt, fields) {
       withAnnotations$1 = withAnnotations;
     }
     props[fieldName] = withAnnotations$1;
-    if (!optional.includes(fieldName)) {
+    if (!optional.includes(fieldName) && !isNullableType(fieldType)) {
       required.push(fieldName);
       return;
     }
@@ -311,6 +330,7 @@ export {
   jsonObject,
   withOptionalPlugin,
   mergeAnnotations,
+  isNullableType,
   fromSchemaType,
   withSemantic,
   objectRefToJsonSchema,

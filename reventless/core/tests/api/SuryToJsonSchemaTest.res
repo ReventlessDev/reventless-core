@@ -921,4 +921,40 @@ describe("SuryToJsonSchema:", () => {
       ))->toEqual((Some(JSON.Encode.string("number")), Some(JSON.Encode.string("number"))))
     })
   })
+
+  // A nested record's own optional field. `optional` is computed for the schema
+  // handed to `deriveObjectSchema` and not threaded into `ObjectRef`, so a field
+  // one level in has only its nullable wrapper to say it may be absent — and the
+  // wrapper is exactly what a reader looking at `required` never sees.
+  describe("an optional field inside a nested record:", () => {
+    let inner = S.schema(s =>
+      {
+        "street": s.matches(S.string),
+        "unit": s.matches(S.option(S.string)),
+      }
+    )
+    let json = SuryToJsonSchema.deriveObjectSchema(
+      S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "address": s.matches(inner),
+        }
+      )->S.castToUnknown,
+    )
+    let nestedRequired =
+      getPropertyOf(json, "address")
+      ->Option.flatMap(a => getProperty(a, "required"))
+      ->Option.flatMap(JSON.Decode.array)
+      ->Option.getOr([])
+      ->Array.filterMap(JSON.Decode.string)
+
+    testSync("is not listed as required", () =>
+      expect(nestedRequired->Array.includes("unit"))->toBe(false)
+    )
+
+    testSync("while its non-optional sibling still is", () =>
+      expect(nestedRequired->Array.includes("street"))->toBe(true)
+    )
+  })
+
 })

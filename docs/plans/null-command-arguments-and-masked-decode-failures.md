@@ -141,9 +141,43 @@ One link is covered by inference rather than a live run: that yoga passes a
 same constructor's `Unauthorized: requires group "Admin"` is observably reaching
 clients today, which is the same path.
 
-## Not addressed
+## Follow-up: the nullable rendering, and what looking at it found
 
-`SuryToJsonSchema` still renders an optional field as `{"oneOf": [<T>,
-{"type": "null"}]}`, a published schema saying null is a value the parser will
-take. The command path no longer minds — it drops the null before the parser
-sees it — but the description is still wrong for anything else reading it.
+The open question was whether `SuryToJsonSchema` should stop rendering an
+optional field as `{"oneOf": [<T>, {"type": "null"}]}` — a published schema
+saying null is a value, describing a parser that rejects one.
+
+**It should stay.** Two reasons, both of which only became visible on inspection:
+
+- It is the truth on the read side. A GraphQL response has no way to express
+  "absent": a nullable field that has no value comes back as literal `null`. A
+  read model's JSON Schema saying the value may be null is describing what a
+  consumer will actually receive.
+- It is no longer false on the write side. The command boundary now drops a null
+  argument, so a caller who sends one *is* accepted — which is what the schema
+  was already promising.
+
+**It is also not redundant, which is where the real finding is.** The obvious
+argument for removing it — that absence from `required` already says optional —
+turns out to hold only at the top level. `optional` is computed for the schema
+handed to `deriveObjectSchema` and is not threaded into `ObjectRef`, so **every
+field of every nested record was published as required**, and the nullable
+wrapper was the only thing saying otherwise. A generated form built from such a
+schema refuses to submit without a field the domain never asked for — the exact
+failure the `optional` plumbing was introduced for (`imageUrl?` as "a picture
+every product had to have"), one level down and still live.
+
+Fixed by answering the question from both sources: a field is optional when
+`optional` names it — the only thing that can speak for a reference or a tagged
+field, which classify as `EntityId` before their wrapper is examined — **or**
+when its own IR type is nullable, read through a semantic wrapper. The second
+half is what reaches a nested record.
+
+Not fixed, and a narrower case of the same gap: a *nested* reference or tagged
+optional field is still published as required, because for those the IR has
+already collapsed the wrapper and there is no `optional` list one level in. No
+schema in the repo has one; it needs the `optional` computation to become
+recursive rather than a predicate change.
+
+Covered by `SuryToJsonSchemaTest`: a nested record's optional field is not listed
+as required, and its non-optional sibling still is.

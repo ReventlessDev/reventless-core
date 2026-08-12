@@ -116,6 +116,19 @@ let mergeAnnotations = (
 
 // ── SchemaType → JSON Schema ─────────────────────────────────────────────
 
+// Whether a field's own type says it may be absent. Read through a semantic,
+// which wraps the shape rather than replacing it — an optional storage ref is
+// `Semantic(storageRef, Nullable(string))`.
+//
+// This is the half of "is it required" that `optional` cannot answer, and vice
+// versa. See `objectRefToJsonSchema`, which uses both.
+let rec isNullableType = (st: SchemaType.schemaType): bool =>
+  switch st {
+  | Nullable(_) => true
+  | Semantic(_, inner) => isNullableType(inner)
+  | _ => false
+  }
+
 let rec fromSchemaType = (st: SchemaType.schemaType): JSON.t =>
   switch st {
   | ScalarString => jsonObject([("type", str("string"))])
@@ -222,7 +235,16 @@ and objectRefToJsonSchema = (
       withAnnotations
     }
     props->Dict.set(fieldName, withAnnotations)
-    if !(optional->Array.includes(fieldName)) {
+    // Optional two ways, because neither source answers alone. `optional` is
+    // read off the sury schema and is the only thing that can speak for a
+    // reference or a tagged field, which classify as `EntityId` before their
+    // nullable wrapper is ever examined. But it is computed for the schema
+    // handed to `deriveObjectSchema` and there is no equivalent one level in,
+    // so a nested record's own optional field had nothing saying so and came
+    // out *required* — a generated form refusing to submit without a field the
+    // domain never asked for, which is the failure the note above describes,
+    // one level down. The field's own type answers there.
+    if !(optional->Array.includes(fieldName)) && !isNullableType(fieldType) {
       required->Array.push(fieldName)
     }
   })
