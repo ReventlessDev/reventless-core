@@ -419,14 +419,38 @@ plus at least one row owned by neither.
    once. Six tests, and the file pins its own `LOG_LEVEL` because it asserts on
    emitted output.
 
-   ⚠️ **Two constraints for whoever sets it.** On AWS the list is *baked into the
-   generated resolver source*, so it must be set before resolver generation runs
-   and a change to it requires a redeploy. And the obvious home — a field on
-   either `MakeWithConfig` functor — is the wrong one: it breaks every existing
-   consumer, and on AWS each plugin is a separate Pulumi program, so the value
-   would have to be restated per stack. That is the "two lists that drift"
-   failure the baked manifest already had to design around; follow its answer (a
-   declaration module every root imports) rather than inventing a second one.
+   **The carrier is the environment, and that was not a style choice.** A cloud
+   deployment is two kinds of process. The deploy program bakes the DynamoDB
+   predicate into resolver source; stamping and the SQL-backed reads run later
+   inside separate function runtimes it never enters. A value set only in the
+   deploy program reaches the first and not the second — and what that produces
+   is a **wrong write**, not a narrow read: an operator acting on a customer's
+   behalf has the row stamped with their own id, because the runtime believes
+   nobody is elevated.
+
+   So `elevatedGroups()` resolves as *explicit `setElevatedGroups` wins, else
+   `REVENTLESS_ELEVATED_GROUPS`, else empty* — the same shape as
+   `Logger.effectiveMin()`, for the same reason. It is a function rather than a
+   readable `ref` because the answer depends on the environment as well as on
+   what was set, and freezing whichever half was consulted first is exactly the
+   bug. Seven tests, including the two precedence cases and the hand-edited-value
+   shapes (`"Admin, Support ,Ops"`, `"Admin,,  ,"`).
+
+   Two things this rules out, both worth not re-deriving. A field on either
+   `MakeWithConfig` functor breaks every consumer and, on AWS, would be restated
+   per plugin stack — the "two lists that drift" failure the baked manifest
+   already designed around. And teaching the plugin-root generator to emit a
+   `setElevatedGroups` call fixes only the deploy half, so it would look like a
+   fix while leaving the wrong-stamp bug in place.
+
+   ⚠️ **Still open, and it is wave-5 work:** the AWS runtime builder must pass the
+   variable to every Lambda. The seam exists —
+   `Util_LambdaLogging.applyLogLevelDefault` is applied to all of them from one
+   shared helper (`RuntimeEnvironment_Lambda.res:238`) precisely so bespoke
+   builders cannot diverge; an `applyElevatedGroupsDefault` belongs beside it.
+   Until that lands, an AWS deployment configures the deploy program only, and
+   its Lambdas still believe nobody is elevated. Note also that a baked value
+   makes a change to the list a redeploy, not a restart.
 7. `ownerField` on `queryableDef` / `commandDef`, and the baked-manifest copy
    check.
 8. The `@owner` PPX shorthand, replacing the hand-written `@s.matches` at each
