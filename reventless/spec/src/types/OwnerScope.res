@@ -68,13 +68,56 @@ elevation would let two views disagree about who an operator is, so a caller
 scoped on one view would be unscoped on the next — and the gap would appear one
 view at a time, as views were added.
 
-Defaults to empty, which scopes everybody including administrators. That is the
-safe default in both directions: a deployment that forgets to configure this
-shows operators too little rather than showing customers each other.
-*/
-let elevatedGroups: ref<array<string>> = ref([])
+Resolved as: an explicit `setElevatedGroups` wins, else the environment, else
+empty. The env fallback exists because a deployment is **two kinds of process**,
+not one. On a cloud provider the read predicate for a table-backed view is baked
+into resolver source by the deploy program, while stamping and the SQL-backed
+reads run later inside separate function runtimes the deploy never enters. A
+value set in the deploy program alone reaches the first and not the second — and
+the failure that produces is a *wrong write*, not a narrow read: an operator
+acting on someone's behalf gets the row stamped with their own id, because the
+runtime believes nobody is elevated. An environment variable is the only carrier
+both kinds of process share, which is the same reason the logger's level is one.
 
-let setElevatedGroups = (groups: array<string>) => elevatedGroups.contents = groups
+Empty remains the default in both directions: a deployment that configures
+nothing shows operators too little rather than showing customers each other.
+*/
+@val
+external _elevatedGroupsEnv: option<string> = "process.env.REVENTLESS_ELEVATED_GROUPS"
+
+let explicitElevatedGroups: ref<option<array<string>>> = ref(None)
+
+/** Set the list for this process. Wins over the environment — a platform root
+    that states its operator groups in code means it, and should not be silently
+    overridden by a stray variable. */
+let setElevatedGroups = (groups: array<string>) => explicitElevatedGroups := Some(groups)
+
+/** Forget an explicit setting and fall back to the environment again. */
+let clearElevatedGroups = () => explicitElevatedGroups := None
+
+let parseElevatedGroups = (raw: string): array<string> =>
+  raw
+  ->String.split(",")
+  ->Array.map(String.trim)
+  ->Array.filter(part => part->String.length > 0)
+
+/**
+The groups exempt from owner scoping, right now.
+
+A function rather than a `ref` anyone can read: the answer depends on the
+environment as well as on what was set, and it is re-read per call so a value
+appearing later in a process still takes effect. Reading a raw ref would have
+frozen whichever half happened to be consulted first.
+*/
+let elevatedGroups = (): array<string> =>
+  switch explicitElevatedGroups.contents {
+  | Some(groups) => groups
+  | None =>
+    switch _elevatedGroupsEnv {
+    | Some(raw) => parseElevatedGroups(raw)
+    | None => []
+    }
+  }
 
 // Order matters: the provider is examined before `userId`, because the IAM
 // caller fails the `userId` test for a reason that has nothing to do with being
@@ -108,7 +151,7 @@ let classify = (identity: Identity.t, ~elevated: array<string>): t => {
 Classify a caller. `~elevated` defaults to the configured list so call sites do
 not each have to remember to read it.
 */
-let resolve = (identity: Identity.t, ~elevated: array<string>=elevatedGroups.contents): t =>
+let resolve = (identity: Identity.t, ~elevated: array<string>=elevatedGroups()): t =>
   // The whole identity, not just its fields, can be missing: an internal caller
   // that builds a payload without one reaches here with `undefined`. Reading
   // through it would raise a TypeError, which surfaces as a crash rather than as
@@ -162,7 +205,7 @@ chances to decide that an unidentified caller "just sees nothing".
 let decide = (
   identity: Identity.t,
   ~ownerField: option<string>,
-  ~elevated: array<string>=elevatedGroups.contents,
+  ~elevated: array<string>=elevatedGroups(),
 ): decision =>
   switch ownerField {
   | None => Unscoped

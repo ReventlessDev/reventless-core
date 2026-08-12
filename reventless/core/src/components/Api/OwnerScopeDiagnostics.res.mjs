@@ -8,9 +8,9 @@ let log = Logger$ReventlessCore.fromEnv();
 let warned = new Set();
 
 function warnIfNoElevatedGroups(comp, view, ownerField) {
-  if (ownerField !== undefined && OwnerScope$Reventless.elevatedGroups.contents.length === 0 && !warned.has(view)) {
+  if (ownerField !== undefined && OwnerScope$Reventless.elevatedGroups().length === 0 && !warned.has(view)) {
     warned.add(view);
-    return log.warn(comp, undefined, view + `: "` + ownerField + `" is declared @owner, but no elevated groups are configured. ` + "Every caller — administrators included — will see only their own rows. Call OwnerScope.setElevatedGroups([...]) before components are built.");
+    return log.warn(comp, undefined, view + `: "` + ownerField + `" is declared @owner, but no elevated groups are configured. ` + "Every caller — administrators included — will see only their own rows. Call OwnerScope.setElevatedGroups([...]) before components are built, or set REVENTLESS_ELEVATED_GROUPS — the environment is what reaches a deployment's separate function runtimes, which a call in the deploy program does not.");
   }
 }
 

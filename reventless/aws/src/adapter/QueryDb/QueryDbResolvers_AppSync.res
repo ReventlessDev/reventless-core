@@ -282,7 +282,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~sortFields=sortFieldNames,
           ~requireAttribute?,
           ~ownerField?,
-          ~elevatedGroups=Reventless.OwnerScope.elevatedGroups.contents,
+          ~elevatedGroups=Reventless.OwnerScope.elevatedGroups(),
         )
       } else {
         Resolver.Functions.listAllItems

@@ -8,12 +8,33 @@ let isJsString = (v => typeof v === "string");
 
 let systemProviders = ["IAM"];
 
-let elevatedGroups = {
-  contents: []
+let explicitElevatedGroups = {
+  contents: undefined
 };
 
 function setElevatedGroups(groups) {
-  elevatedGroups.contents = groups;
+  explicitElevatedGroups.contents = groups;
+}
+
+function clearElevatedGroups() {
+  explicitElevatedGroups.contents = undefined;
+}
+
+function parseElevatedGroups(raw) {
+  return raw.split(",").map(prim => prim.trim()).filter(part => part.length > 0);
+}
+
+function elevatedGroups() {
+  let groups = explicitElevatedGroups.contents;
+  if (groups !== undefined) {
+    return groups;
+  }
+  let raw = process.env.REVENTLESS_ELEVATED_GROUPS;
+  if (raw !== undefined) {
+    return parseElevatedGroups(raw);
+  } else {
+    return [];
+  }
 }
 
 function classify(identity, elevated) {
@@ -68,7 +89,7 @@ function classify(identity, elevated) {
 }
 
 function resolve(identity, elevatedOpt) {
-  let elevated = elevatedOpt !== undefined ? elevatedOpt : elevatedGroups.contents;
+  let elevated = elevatedOpt !== undefined ? elevatedOpt : elevatedGroups();
   if (identity == null) {
     return {
       TAG: "Unidentified",
@@ -101,7 +122,7 @@ function isExempt(scope) {
 }
 
 function decide(identity, ownerField, elevatedOpt) {
-  let elevated = elevatedOpt !== undefined ? elevatedOpt : elevatedGroups.contents;
+  let elevated = elevatedOpt !== undefined ? elevatedOpt : elevatedGroups();
   if (ownerField === undefined) {
     return "Unscoped";
   }
@@ -137,8 +158,11 @@ function scopeOf(decision) {
 export {
   isJsString,
   systemProviders,
-  elevatedGroups,
+  explicitElevatedGroups,
   setElevatedGroups,
+  clearElevatedGroups,
+  parseElevatedGroups,
+  elevatedGroups,
   classify,
   resolve,
   ownerId,

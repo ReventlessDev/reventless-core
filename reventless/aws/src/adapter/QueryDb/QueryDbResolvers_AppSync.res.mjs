@@ -117,7 +117,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
         log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @owner field "` + ownerField + `" is not the key of any index on this table. ` + "Owner-scoped reads will Scan and filter, so pages shrink as the caller's share of the rows falls. Add an @index on that field before this read model grows.");
       }
     }
-    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, OwnerScope$Reventless.elevatedGroups.contents) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
+    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, OwnerScope$Reventless.elevatedGroups()) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
     let resolversByIndex = indexes.map(indexConfig => {
       let index = indexConfig.index;
       let stripLeadingBy = s => {

@@ -158,6 +158,77 @@ describe("OwnerScope:", () => {
     )
   })
 
+  // A deployment is two kinds of process: the one that provisions resolvers and
+  // the function runtimes that later stamp and scope. Only the environment
+  // reaches both, so a value set in code has to be the override rather than the
+  // only channel.
+  describe("the elevated list resolves from code, then the environment:", () => {
+    let withEnv = (value, fn) => {
+      OwnerScope.clearElevatedGroups()
+      switch value {
+      | Some(v) => NodeProcess.env->Dict.set("REVENTLESS_ELEVATED_GROUPS", v)
+      | None => NodeProcess.env->Dict.delete("REVENTLESS_ELEVATED_GROUPS")
+      }
+      let result = fn()
+      NodeProcess.env->Dict.delete("REVENTLESS_ELEVATED_GROUPS")
+      OwnerScope.setElevatedGroups([])
+      result
+    }
+
+    testSync("nothing set anywhere resolves to empty", () =>
+      expect(withEnv(None, () => OwnerScope.elevatedGroups()))->toEqual([])
+    )
+
+    testSync("the environment is read when no code set a list", () =>
+      expect(withEnv(Some("Admin"), () => OwnerScope.elevatedGroups()))->toEqual(["Admin"])
+    )
+
+    testSync("a comma-separated list is split and trimmed", () =>
+      expect(withEnv(Some("Admin, Support ,Ops"), () => OwnerScope.elevatedGroups()))->toEqual([
+        "Admin",
+        "Support",
+        "Ops",
+      ])
+    )
+
+    // Trailing separators and stray whitespace are what a hand-edited deploy
+    // variable actually looks like; an empty group name would match nobody and
+    // silently pad the list.
+    testSync("empty entries are dropped rather than kept as blank groups", () =>
+      expect(withEnv(Some("Admin,,  ,"), () => OwnerScope.elevatedGroups()))->toEqual(["Admin"])
+    )
+
+    testSync("an explicit call wins over the environment", () =>
+      expect(
+        withEnv(Some("Admin"), () => {
+          OwnerScope.setElevatedGroups(["Ops"])
+          OwnerScope.elevatedGroups()
+        }),
+      )->toEqual(["Ops"])
+    )
+
+    // Explicitly empty is a decision, not an absence — a root that states "no
+    // group is elevated here" must not be overridden by an inherited variable.
+    testSync("an explicit empty list wins over the environment", () =>
+      expect(
+        withEnv(Some("Admin"), () => {
+          OwnerScope.setElevatedGroups([])
+          OwnerScope.elevatedGroups()
+        }),
+      )->toEqual([])
+    )
+
+    // The end-to-end shape: with only the environment set, a caller in that
+    // group is classified exempt without anyone calling a setter.
+    testSync("classification honours an environment-only configuration", () =>
+      expect(
+        withEnv(Some("Admin"), () =>
+          cognito(~userId="ops-1", ~groups=["Admin"])->OwnerScope.resolve
+        ),
+      )->toEqual(OwnerScope.Elevated({userId: "ops-1"}))
+    )
+  })
+
   describe("the configured default is used when no list is passed:", () => {
     testSync("setElevatedGroups changes how an unqualified resolve classifies", () => {
       let identity = cognito(~userId="u-5", ~groups=["Ops"])
