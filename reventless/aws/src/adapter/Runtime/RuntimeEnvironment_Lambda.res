@@ -237,6 +237,13 @@ let makeFromCodeAsset: (
   // `Lambda.Function.make` builders apply the identical policy.
   Util_LambdaLogging.applyLogLevelDefault(variables)
 
+  // Same terms, same reason it is here rather than at each builder: the groups
+  // exempt from owner scoping are decided by the deploy program, and the runtime
+  // that stamps a command has no other way to learn them. Without it a runtime
+  // concludes nobody is elevated and stamps an operator's on-behalf write with
+  // the operator's own id.
+  Util_OwnerScopeEnv.applyElevatedGroupsDefault(variables)
+
   // ESM self-containment (Option C): every code archive built by
   // Util_Bundle.buildCodeArchive ships register-hook.mjs + layer-resolver.mjs at
   // /var/task. --import registers the resolve hook so the ESM entry point (and the

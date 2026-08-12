@@ -24,6 +24,7 @@ import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/sr
 import * as Util_DcbMetrics$ReventlessAws from "../../util/Util_DcbMetrics.res.mjs";
 import * as RuntimeExtension$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/RuntimeExtension/RuntimeExtension.res.mjs";
 import * as Util_LambdaLogging$ReventlessAws from "../../util/Util_LambdaLogging.res.mjs";
+import * as Util_OwnerScopeEnv$ReventlessAws from "../../util/Util_OwnerScopeEnv.res.mjs";
 import * as ResourceAttribution$ReventlessCore from "@reventlessdev/reventless-core/src/ResourceAttribution.res.mjs";
 
 let additionalEnvVars = {};
@@ -102,6 +103,7 @@ function makeFromCodeAsset(name, unitKind, componentKind, code, sourceCodeHash, 
     variables[key] = value;
   });
   Util_LambdaLogging$ReventlessAws.applyLogLevelDefault(variables);
+  Util_OwnerScopeEnv$ReventlessAws.applyElevatedGroupsDefault(variables);
   variables["NODE_OPTIONS"] = Util_Bundle$ReventlessAws.esmLoaderNodeOptions;
   variables["ESM_FALLBACK_DIRS"] = Util_Bundle$ReventlessAws.esmFallbackDirs;
   if (!RuntimeExtension$ReventlessCore.isEmpty()) {
