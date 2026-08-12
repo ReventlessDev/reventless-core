@@ -46,8 +46,16 @@ pnpm run dev                   # jest --watchAll
 
 ### Running a single test file
 ```bash
-cd reventless/reventless && pnpm exec jest tests/MessageTest.res.mjs
+pnpm run test:file MessageTest           # from the repo root; arg is a path pattern
+pnpm run test:file tests/message         # a directory works too
 ```
+
+**Do not reach for a bare `pnpm exec jest`.** The tests are ESM, so Jest needs
+`NODE_OPTIONS='--experimental-vm-modules'` to load them at all; every `test*`
+script sets it and `pnpm exec` does not. Without it, *every* suite fails with
+`SyntaxError: Cannot use import statement outside a module` — the run exits 1,
+so CI is safe, but it is a confusing way to lose ten minutes. `test:file` is the
+single-file form that carries the flag.
 
 ### Publishing
 ```bash
