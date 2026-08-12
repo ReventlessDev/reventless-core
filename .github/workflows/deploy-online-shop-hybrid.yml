@@ -73,6 +73,14 @@ jobs:
       # docs/plans/done/ppx-republish-single-commit.md). This repo's checkout
       # has packages/reventless-ppx/src, so the from-source build is available.
       build-ppx-from-source: true
+      # The shop's orders name their owner, so the deployment has to say which
+      # groups read across all of them. It must agree with the same list in the
+      # shop's own `Storefront.res`, which the local platform and the host UI
+      # both read — the value is small and duplicated here only because a
+      # workflow cannot import ReScript. Leave it out and the demo silently
+      # inverts: operators see nothing, and an operator ordering on a customer's
+      # behalf has the row stamped with their own id.
+      elevated-groups: "Admin"
       # Optional repo VARIABLES (not secrets — none are sensitive). When both
       # base domain and hosted-zone ID are set the framework provisions an
       # ACM cert (us-east-1) + Route53 alias for the host-UI shell and serves

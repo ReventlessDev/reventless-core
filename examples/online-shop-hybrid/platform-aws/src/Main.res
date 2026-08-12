@@ -34,10 +34,25 @@ let default = Platform.deployPlatform(
   // `shellConfig` carries the keys the shell owns and the deploy has no way to
   // compute. `appName` is what the host UI puts in its sidebar and browser tab;
   // without it the shell falls back to the framework's own name.
+  //
+  // `elevatedGroups` is the browser's mirror of the rule the server enforces: it
+  // decides whether the generated form asks for the owner field or supplies it,
+  // and whether the owner column is worth a column. It is read from the shop's
+  // own declaration rather than restated, because a mirror that disagrees with
+  // the server is the failure this key exists to avoid — and the shell treats an
+  // absent key as "unknown", so leaving it out silently stops hiding anything.
   ~hostUiBundle={
     viewModes: [Map({})],
     geocoderPlaceIndex: placeIndex,
-    shellConfig: Dict.fromArray([("appName", JSON.Encode.string("Online Shop"))]),
+    shellConfig: Dict.fromArray([
+      ("appName", JSON.Encode.string("Online Shop")),
+      (
+        "elevatedGroups",
+        OnlineShopHybridSeed.Storefront.elevatedGroups
+        ->Array.map(JSON.Encode.string)
+        ->JSON.Encode.array,
+      ),
+    ]),
   },
   ~capabilities=PlatformCapabilities.capabilities,
 )

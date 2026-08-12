@@ -3,6 +3,7 @@
 import * as PlatformCapabilities from "./PlatformCapabilities.res.mjs";
 import * as Platform$ReventlessAws from "@reventlessdev/reventless-aws/src/Platform.res.mjs";
 import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
+import * as Storefront$OnlineShopHybridSeed from "@reventlessdev/online-shop-hybrid-seed/src/Storefront.res.mjs";
 import * as Capability_Geocoding_AwsLocation$ReventlessAws from "@reventlessdev/reventless-aws/src/capability/Capability_Geocoding_AwsLocation.res.mjs";
 
 let Platform = Platform$ReventlessAws.Make({});
@@ -15,10 +16,16 @@ let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), 
       TAG: "Map",
       _0: {}
     }],
-  shellConfig: Object.fromEntries([[
+  shellConfig: Object.fromEntries([
+    [
       "appName",
       "Online Shop"
-    ]])
+    ],
+    [
+      "elevatedGroups",
+      Storefront$OnlineShopHybridSeed.elevatedGroups.map(prim => prim)
+    ]
+  ])
 }, PlatformCapabilities.capabilities);
 
 export {
