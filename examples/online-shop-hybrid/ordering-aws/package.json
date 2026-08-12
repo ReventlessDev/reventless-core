@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-ordering-aws",
   "private": true,
-  "version": "1.0.0-alpha.246",
+  "version": "1.0.0-alpha.247",
   "description": "Online Shop Hybrid — Ordering plugin AWS deployment",
   "license": "Apache-2.0",
   "scripts": {

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.228 (2026-08-12)
+
+### Features
+
+* **api:** publish each mutation argument's GraphQL type on the command schema ([9ea1a5b](https://github.com/ReventlessDev/reventless-core/commit/9ea1a5bdf1957a726f6452e122c8fcda73ae824f))
+
+
 # 3.0.0-alpha.227 (2026-08-12)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core
