@@ -44,6 +44,10 @@ function extractIdentity(ctx) {
   }
 }
 
+function makeGraphqlError(prim0, prim1) {
+  return new Graphql.GraphQLError(prim0, prim1);
+}
+
 function unauthorizedError(group) {
   return new Graphql.GraphQLError(`Unauthorized: requires group "` + group + `"`, {
     extensions: {
@@ -70,6 +74,7 @@ export {
   identityFromAuthResult,
   buildAuthContext,
   extractIdentity,
+  makeGraphqlError,
   unauthorizedError,
   requireGroup,
 }

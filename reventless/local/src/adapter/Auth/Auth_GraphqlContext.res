@@ -54,12 +54,10 @@ let extractIdentity = (ctx: JSON.t): Reventless.Identity.t =>
   | _ => Reventless.Identity.anonymous
   }
 
-// Throw a `GraphQLError` from the `graphql` package — yoga's `maskedErrors`
-// option preserves these (only opaque thrown values get masked as
-// "Unexpected error / INTERNAL_SERVER_ERROR"). Mirrors the directive-level
-// `@aws_auth` rejection that AppSync surfaces in production.
-@new @module("graphql")
-external makeGraphqlError: (string, {"extensions": {"code": string}}) => exn = "GraphQLError"
+// An unauthorized caller reads the reason: `GraphQL_CallerError` explains why a
+// resolver has to construct the error rather than throw a bare one. Mirrors the
+// directive-level `@aws_auth` rejection that AppSync surfaces in production.
+let makeGraphqlError = GraphQL_CallerError.make
 
 let unauthorizedError = (~group: string): exn =>
   makeGraphqlError(

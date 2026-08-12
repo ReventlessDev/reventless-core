@@ -198,3 +198,89 @@ describe("CommandGeneratorResolvers_GraphQL — per-constructor authorization", 
     },
   )
 })
+
+// ── Caller-fault errors reach the caller ─────────────────────────────────────
+//
+// graphql-yoga masks every thrown value that is not a `GraphQLError` as
+// "Unexpected error / INTERNAL_SERVER_ERROR". That is right for an internal
+// failure and wrong for the failures that describe the caller's own request —
+// a payload that does not decode, a caller who cannot be identified. Core marks
+// those; this is the half that acts on the mark.
+
+@get external errorExtensions: JsExn.t => option<{"code": string}> = "extensions"
+
+let failingFixture = (~namespace: string, ~failWith: unit => unit) => {
+  let server = DomainGraphQL_Server.asInterface
+  let field = `${namespace}_Add`
+  CommandGeneratorResolvers_GraphQL.register(
+    ~fields=[field],
+    ~commandSchema=commandSchema->S.castToUnknown,
+    ~commandAuthorization,
+    ~server,
+  )
+  let generateCommand: ReventlessCore.CommandGenerator.commandGenerator = _payload =>
+    Effect.promise(() => {
+      failWith()
+      Promise.resolve(ReventlessCore.CommandTopic.Accepted({msgId: "unreachable", eventCount: 0}))
+    })
+  CommandGeneratorResolvers_GraphQL.bindHandler(~field, ~generateCommand)
+  switch server.getMutationResolver(field) {
+  | Some(r) => r
+  | None => JsError.throwWithMessage("resolver not registered: " ++ field)
+  }
+}
+
+let invoke = async resolver =>
+  switch await resolver(
+    JSON.Encode.null,
+    JSON.Encode.object(Dict.fromArray([("name", JSON.Encode.string("Books"))])),
+    ctxFor(adminIdentity),
+  ) {
+  | _ => None
+  | exception e => e->JsExn.fromException
+  }
+
+describe("CommandGeneratorResolvers_GraphQL — a failure the caller may read", () => {
+  beforeEach(() => {
+    DomainGraphQL_Server.asInterface.reset()
+  })
+
+  testPromise("a caller-fault failure is rethrown as an unmasked GraphQL error", async () => {
+    let resolver = failingFixture(~namespace="Fault1", ~failWith=() =>
+      ReventlessCore.Plugin_ResolverError.throwCallerFault(
+        `Error: Couldn't decode: Expected string | undefined, received null`,
+      )
+    )
+    let caught = await invoke(resolver)
+    expect((
+      caught->Option.flatMap(JsExn.name),
+      caught->Option.flatMap(errorExtensions)->Option.map(e => e["code"]),
+    ))->toEqual((Some("GraphQLError"), Some("BAD_USER_INPUT")))
+  })
+
+  // The reason is the point: masked, the caller learns only that something
+  // went wrong on a request that is theirs to fix.
+  testPromise("and carries the reason it was given", async () => {
+    let resolver = failingFixture(~namespace="Fault2", ~failWith=() =>
+      ReventlessCore.Plugin_ResolverError.throwCallerFault(
+        "Expected string | undefined, received null",
+      )
+    )
+    let caught = await invoke(resolver)
+    expect(
+      caught
+      ->Option.flatMap(JsExn.message)
+      ->Option.mapOr(false, m => m->String.includes("received null")),
+    )->toBe(true)
+  })
+
+  // The control, and the reason the mark exists: an internal failure is not the
+  // caller's business and must keep being masked.
+  testPromise("an unmarked failure is left to be masked", async () => {
+    let resolver = failingFixture(~namespace="Fault3", ~failWith=() =>
+      JsError.throwWithMessage("connection to the event store was reset")
+    )
+    let caught = await invoke(resolver)
+    expect(caught->Option.flatMap(JsExn.name))->not_->toEqual(Some("GraphQLError"))
+  })
+})

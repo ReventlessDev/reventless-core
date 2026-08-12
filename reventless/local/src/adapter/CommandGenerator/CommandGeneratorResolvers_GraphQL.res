@@ -159,6 +159,27 @@ let deriveSdlField = (~fieldName, variantSchema: S.t<unknown>) =>
 
 let handlerRefs: dict<ref<option<CommandGenerator.commandGenerator>>> = Dict.make()
 
+// Run a command through its generator, letting a failure that describes the
+// caller's own request reach them.
+//
+// Without this every such failure arrives as "Unexpected error /
+// INTERNAL_SERVER_ERROR": yoga masks anything that is not a `GraphQLError`, so
+// a payload that does not decode and a database outage read identically from
+// outside. Only errors core marked as the caller's are unwrapped — everything
+// else propagates untouched and stays masked, which is what masking is for.
+let runCommand = async (
+  generateCommand: CommandGenerator.commandGenerator,
+  payload: CommandGenerator.payload,
+) =>
+  try await generateCommand(payload)->Effect.runPromise catch {
+  | e if ReventlessCore.Plugin_ResolverError.isCallerFault(e) =>
+    throw(
+      GraphQL_CallerError.badUserInput(
+        e->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("invalid command"),
+      ),
+    )
+  }
+
 // -- register (Phase 1 — synchronous, Aggregates) ----------------------------
 // Called by Plugin_Builder via aggregateMutationResolverHook before any
 // Output.apply chains fire. Registers SDL + resolver stubs in GraphQL_Server.
@@ -210,7 +231,7 @@ let register = (
               meta: {ip: [], user: identity.userId, info: `Mutation.${field}`},
               identity,
             }
-            let outcome = await generateCommand(payload)->Effect.runPromise
+            let outcome = await runCommand(generateCommand, payload)
             outcome->commandOutcomeToJson
           }
         }
@@ -273,7 +294,7 @@ let registerDcb = (
             meta: {ip: [], user: identity.userId, info: `Mutation.${fieldName}`},
             identity,
           }
-          let outcome = await generateCommand(payload)->Effect.runPromise
+          let outcome = await runCommand(generateCommand, payload)
           outcome->commandOutcomeToJson
         }
       }

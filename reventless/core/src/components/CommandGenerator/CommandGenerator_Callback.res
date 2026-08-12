@@ -66,11 +66,44 @@ let stampOwnerFields = (
     | Owned({userId}) =>
       ownerFields->Array.forEach(field => obj->Dict.set(field, JSON.Encode.string(userId)))
     | Unidentified(why) =>
-      JsError.throwWithMessage(
+      Plugin_ResolverError.throwCallerFault(
         `Forbidden: ${serviceName}.${command} records an owner, but the caller could not be identified (${why})`,
       )
     }
   }
+
+/**
+Drop the arguments a caller explicitly sent as null.
+
+A transport hands over exactly the arguments the caller supplied, and GraphQL
+lets a caller supply null for any nullable argument. A command cannot represent
+that: sury compiles both spellings of an optional field — `field?: t` and
+`option<t>` — to `T | undefined`, so an explicit null fails to decode where
+leaving the argument out succeeds. Two ways of saying the same thing, one of
+them accepted.
+
+Nothing is lost by collapsing them. No generated argument can *hold* a JSON
+null either — `GraphQL_FragmentGenerator` maps every schema type to a scalar, a
+generated enum, an input object or a list — so a null argument carries no
+information beyond "not supplied", which is what its absence says.
+
+Shallow on purpose. A null *inside* an input object is a malformed value rather
+than an omission, and the one payload that can legitimately carry nulls is the
+permissive `S.json` direct-invocation schema, where they are the caller's data
+and not arguments at all.
+
+Here rather than in a resolver: this is the one place every transport's payload
+passes through, for the reason `stampOwnerFields` gives just above.
+*/
+let dropNullArguments = (obj: dict<JSON.t>) =>
+  obj
+  ->Dict.keysToArray
+  ->Array.forEach(key =>
+    switch obj->Dict.get(key) {
+    | Some(JSON.Null) => obj->Dict.delete(key)
+    | _ => ()
+    }
+  )
 
 let makeGenerateCommand = (
   ~publishJsons: CommandGenerator.publishJsons,
@@ -100,6 +133,7 @@ let makeGenerateCommand = (
           if stripIdFromParams {
             obj->Dict.delete("id")
           }
+          obj->dropNullArguments
           obj->stampOwnerFields(
             ~commandSchema,
             ~command=payload.command,
@@ -216,10 +250,16 @@ let makeGenerateCommand = (
           })
         | None => ()
         }
-        JsError.throwWithMessage(
-          `Error: Couldn't decode ${commandJson->JSON.stringify}: ${err
-            ->JSON.stringifyAny
-            ->Option.getOrThrow}`,
+        // sury's own message says which field and why ("Failed parsing at
+        // [\"deliveryWindow\"]: Expected … received null"). Serialising the
+        // error object instead produced its internal representation, which is
+        // now the caller's to read and was never the more informative of the two.
+        let reason = switch err->JsExn.fromException->Option.flatMap(JsExn.message) {
+        | Some(message) => message
+        | None => err->JSON.stringifyAny->Option.getOr("unknown error")
+        }
+        Plugin_ResolverError.throwCallerFault(
+          `Error: Couldn't decode ${commandJson->JSON.stringify}: ${reason}`,
         )
       }
     })

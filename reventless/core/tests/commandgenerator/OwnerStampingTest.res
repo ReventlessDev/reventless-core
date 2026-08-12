@@ -150,6 +150,19 @@ describe("@owner stamping on the command path:", () => {
       )->toBe(true)
     )
 
+    // The refusal describes the caller's own request, so a transport is allowed
+    // to report it. Unmarked it arrives as "Unexpected error", which tells a
+    // caller who needs to authenticate nothing at all.
+    testPromise("the refusal is marked as the caller's fault", async () => {
+      let failure = switch await generate(
+        placeOrder(~customerId="cust-B", ~identity=Reventless.Identity.anonymous),
+      )->Effect.runPromise {
+      | _ => None
+      | exception e => Some(e)
+      }
+      expect(failure->Option.mapOr(false, Plugin_ResolverError.isCallerFault))->toBe(true)
+    })
+
     testPromise("nothing is published when the caller is refused", async () => {
       let _ = await refused(
         placeOrder(~customerId="cust-B", ~identity=Reventless.Identity.anonymous),

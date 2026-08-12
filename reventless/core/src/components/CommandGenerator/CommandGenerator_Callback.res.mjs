@@ -2,6 +2,7 @@
 
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
@@ -45,8 +46,17 @@ function stampOwnerFields(obj, commandSchema, command, identity, serviceName) {
       });
       return;
     case "Unidentified" :
-      return Stdlib_JsError.throwWithMessage(`Forbidden: ` + serviceName + `.` + command + ` records an owner, but the caller could not be identified (` + why._0 + `)`);
+      return Plugin_ResolverError$ReventlessCore.throwCallerFault(`Forbidden: ` + serviceName + `.` + command + ` records an owner, but the caller could not be identified (` + why._0 + `)`);
   }
+}
+
+function dropNullArguments(obj) {
+  Object.keys(obj).forEach(key => {
+    let match = obj[key];
+    if (match === null) {
+      return Stdlib_Dict.$$delete(obj, key);
+    }
+  });
 }
 
 function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, $staropt$star) {
@@ -66,7 +76,7 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
         correlationId: msgId
       };
       let obj = Stdlib_Option.flatMap(JSON.stringify(payload.arguments), jsonString => Stdlib_JSON.Decode.object(JSON.parse(jsonString)));
-      let params = obj !== undefined ? (stripIdFromParams ? Stdlib_Dict.$$delete(obj, "id") : undefined, stampOwnerFields(obj, commandSchema, payload.command, payload.identity, serviceName), Object.entries(obj)) : Stdlib_JsError.throwWithMessage("Couldn't decode:" + Stdlib_Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
+      let params = obj !== undefined ? (stripIdFromParams ? Stdlib_Dict.$$delete(obj, "id") : undefined, dropNullArguments(obj), stampOwnerFields(obj, commandSchema, payload.command, payload.identity, serviceName), Object.entries(obj)) : Stdlib_JsError.throwWithMessage("Couldn't decode:" + Stdlib_Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
       let commandStr = payload.command;
       let match = params.length;
       let commandJson = match !== 0 ? Object.fromEntries([[
@@ -123,7 +133,9 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
             timestamp: Message$ReventlessCore.nowAsISOString()
           });
         }
-        return Stdlib_JsError.throwWithMessage(`Error: Couldn't decode ` + JSON.stringify(commandJson) + `: ` + Stdlib_Option.getOrThrow(JSON.stringify(err), undefined));
+        let message = Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message);
+        let reason = message !== undefined ? message : Stdlib_Option.getOr(JSON.stringify(err), "unknown error");
+        return Plugin_ResolverError$ReventlessCore.throwCallerFault(`Error: Couldn't decode ` + JSON.stringify(commandJson) + `: ` + reason);
       }
       let interceptor = commandInterceptorHook.contents;
       let interceptEffect = interceptor !== undefined ? Effect.promise(() => interceptor(payload.identity, serviceName, componentKind, payload.command, payload.arguments)) : Effect.succeed("Allow");
@@ -181,7 +193,8 @@ export {
   registerCommandInterceptor,
   clearCommandInterceptor,
   stampOwnerFields,
+  dropNullArguments,
   makeGenerateCommand,
   Make,
 }
-/* effect/Effect Not a pure module */
+/* Stdlib_JsExn Not a pure module */

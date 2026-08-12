@@ -85,6 +85,25 @@ type compositeTagCommand =
       version: string,
     })
 
+// A command carrying an optional field beside an opaque-JSON one. The optional
+// field is what a caller can send as null; the JSON field is a value whose own
+// nulls are data and must survive.
+@schema
+type optionalFieldCommand =
+  StoreItem({
+    itemId: @s.matches(Reventless.DcbTag.string) string,
+    data: JSON.t,
+    note?: string,
+  })
+
+let optionalFieldSliceGen = CommandGenerator_Callback.makeGenerateCommand(
+  ~publishJsons=MockPublishSpec.publishJsons,
+  ~serviceName="OptionalFieldSlice",
+  ~commandSchema=optionalFieldCommandSchema->S.castToUnknown,
+  ~componentKind=CommandGenerator_Callback.StateChangeSlice,
+  ~stripIdFromParams=false,
+)
+
 let singleTagSliceGen = CommandGenerator_Callback.makeGenerateCommand(
   ~publishJsons=MockPublishSpec.publishJsons,
   ~serviceName="SingleTagSlice",
