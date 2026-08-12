@@ -6,11 +6,11 @@ import * as Plugin$ReventlessCore from "../plugin/component/Plugin.res.mjs";
 
 let sdlTypes = [
   `type Platform_FieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
-  `type Platform_CommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_FieldReference!]!\n  allowedStates: [String!]\n  targetState: String\n  apiExposed: Boolean\n  requiredAccess: [String!]\n}`,
+  `type Platform_CommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_FieldReference!]!\n  allowedStates: [String!]\n  targetState: String\n  apiExposed: Boolean\n  requiredAccess: [String!]\n  ownerField: String\n}`,
   `type Platform_EventDef {\n  name: String!\n  schema: String!\n  references: [Platform_FieldReference!]!\n}`,
   `type Platform_ErrorDef {\n  name: String!\n  schema: String!\n  references: [Platform_FieldReference!]!\n}`,
   `type Platform_WriteSideDef {\n  name: String!\n  commands: [Platform_CommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n  events: [Platform_EventDef!]!\n  errors: [Platform_ErrorDef!]!\n  chapter: String\n}`,
-  `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  statusField: String\n  visibility: String\n  chapter: String\n  singleQueryField: String\n  idField: String\n  idFieldSource: String\n  requiredAccess: [String!]\n}`,
+  `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  statusField: String\n  visibility: String\n  chapter: String\n  singleQueryField: String\n  idField: String\n  idFieldSource: String\n  requiredAccess: [String!]\n  ownerField: String\n}`,
   `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n  targetName: String\n  chapter: String\n}`,
   `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
   `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
@@ -83,6 +83,10 @@ function encodeCommandDef(c) {
     [
       "requiredAccess",
       Stdlib_Option.mapOr(c.requiredAccess, null, encodeStrings)
+    ],
+    [
+      "ownerField",
+      Stdlib_Option.mapOr(c.ownerField, null, prim => prim)
     ]
   ]);
 }
@@ -152,6 +156,10 @@ function encodeQueryableDef(r) {
     [
       "requiredAccess",
       Stdlib_Option.mapOr(r.requiredAccess, null, encodeStrings)
+    ],
+    [
+      "ownerField",
+      Stdlib_Option.mapOr(r.ownerField, null, prim => prim)
     ]
   ]);
 }

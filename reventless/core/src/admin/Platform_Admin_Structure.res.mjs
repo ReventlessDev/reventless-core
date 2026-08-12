@@ -65,7 +65,8 @@ let activateCommand = {
   allowedStates: activateCommand_allowedStates,
   targetState: undefined,
   apiExposed: activateCommand_apiExposed,
-  requiredAccess: undefined
+  requiredAccess: undefined,
+  ownerField: undefined
 };
 
 let deactivateCommand_schema = encodeSchema(idArgsSchema);
@@ -93,7 +94,8 @@ let deactivateCommand = {
   allowedStates: deactivateCommand_allowedStates,
   targetState: undefined,
   apiExposed: deactivateCommand_apiExposed,
-  requiredAccess: undefined
+  requiredAccess: undefined,
+  ownerField: undefined
 };
 
 let pluginAggregate_commands = [
@@ -149,6 +151,7 @@ let pluginReadModel = {
   searchableFields: pluginReadModel_searchableFields,
   labelFieldSource: pluginReadModel_labelFieldSource,
   statusField: pluginReadModel_statusField,
+  ownerField: undefined,
   visibility: undefined,
   chapter: undefined,
   singleQueryField: pluginReadModel_singleQueryField,

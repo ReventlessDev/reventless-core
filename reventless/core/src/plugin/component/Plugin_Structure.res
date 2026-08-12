@@ -387,6 +387,10 @@ let make = (
         targetState,
         apiExposed: Some(apiExposed),
         requiredAccess,
+        // Resolved from this constructor's own properties, not the union's: two
+        // commands in one slice can disagree about whether they record an owner,
+        // and the write path stamps per constructor for the same reason.
+        ownerField: Reventless.Owner.fieldNamesOfProperties(properties)->Array.get(0),
       }: Reventless.Plugin.commandDef)
     }
     switch v {
@@ -715,6 +719,9 @@ let make = (
         searchableFields: label.searchableFields,
         labelFieldSource: Some(labelFieldSourceToString(label.source)),
         statusField: statusFieldFromStateSchema(~entityName=R.Spec.name, stateSchema),
+        // Same schema `statusField` reads, so the two cannot disagree about which
+        // fields this view has.
+        ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
         visibility: visibilityTag(R.Spec.visibility),
         chapter: chapterOf(R.Spec.name),
         // Taken from the `qf` record, never re-derived: `Api_Naming` is the only
@@ -747,6 +754,7 @@ let make = (
         searchableFields: label.searchableFields,
         labelFieldSource: Some(labelFieldSourceToString(label.source)),
         statusField: statusFieldFromStateSchema(~entityName=SVS.Spec.name, stateSchema),
+        ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
         visibility: visibilityTag(SVS.Spec.visibility),
         chapter: chapterOf(SVS.Spec.name),
         singleQueryField: Some(qf.singleFieldName),

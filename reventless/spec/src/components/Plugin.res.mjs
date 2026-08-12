@@ -105,7 +105,8 @@ let commandDefSchema = S.schema(s => ({
   allowedStates: s.m(stringArrayOptionSchema),
   targetState: s.m(stringOptionSchema),
   apiExposed: s.m(boolOptionSchema),
-  requiredAccess: s.m(stringArrayOptionSchema)
+  requiredAccess: s.m(stringArrayOptionSchema),
+  ownerField: s.m(stringOptionSchema)
 }));
 
 let queryableDefSchema = S.schema(s => ({
@@ -118,6 +119,7 @@ let queryableDefSchema = S.schema(s => ({
   searchableFields: s.m(S.array(S.string)),
   labelFieldSource: s.m(stringOptionSchema),
   statusField: s.m(stringOptionSchema),
+  ownerField: s.m(stringOptionSchema),
   visibility: s.m(stringOptionSchema),
   chapter: s.m(stringOptionSchema),
   singleQueryField: s.m(stringOptionSchema),

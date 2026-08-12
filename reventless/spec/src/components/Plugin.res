@@ -207,6 +207,21 @@ type commandDef = {
   existed decode as None.
   */
   requiredAccess: @s.matches(stringArrayOptionSchema) option<array<string>>,
+  /**
+  Name of the command field the server stamps with the caller's own identity, when
+  the command declares one (`@owner`). A client should omit it from a generated
+  form for a caller who is not elevated: whatever it collects there is discarded
+  and replaced, so offering the field asks a question whose answer is ignored.
+
+  Derived from the annotation, never authored, so it cannot disagree with what the
+  write path actually does. js_nullable for the same JSON-safety reason as
+  `requiredAccess`.
+
+  ⚠️ A client cannot decide the *elevated* half from this alone — the manifest
+  states which field carries the owner, and the caller's own identity says whether
+  they are exempt. Both are needed, and neither is derivable from the other.
+  */
+  ownerField: @s.matches(stringOptionSchema) option<string>,
 }
 
 @schema
@@ -258,6 +273,17 @@ type queryableDef = {
   `queryableDef` set this explicitly.
   */
   statusField: @s.matches(stringOptionSchema) option<string>,
+  /**
+  Name of the state field that ties a row to the principal owning it (`@owner`),
+  when the view declares one. Two consequences for a client: reads of this view
+  are narrowed server-side to a non-elevated caller's own rows, and the column is
+  constant for such a caller and so carries no information in a list.
+
+  Derived from the annotation. As on `commandDef.ownerField`, this states which
+  field carries the owner and not whether the current caller is exempt — that is
+  the caller's own identity to answer.
+  */
+  ownerField: @s.matches(stringOptionSchema) option<string>,
   /**
   Component visibility hint (`@@reventless.visibility`). `Some("Internal")` marks a
   ReadModel / StateViewSlice that the deployed AutoUI hides from its menu, drill-down

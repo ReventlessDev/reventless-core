@@ -18,6 +18,7 @@ let cmd: commandDef = {
   targetState: None,
   apiExposed: Some(true),
   requiredAccess: None,
+  ownerField: None,
 }
 
 let qbl: queryableDef = {
@@ -36,6 +37,7 @@ let qbl: queryableDef = {
   idField: Some("productId"),
   idFieldSource: Some("convention"),
   requiredAccess: None,
+  ownerField: None,
 }
 
 let wbl: writableDef = {
@@ -261,6 +263,7 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
     idField: Some("productId"),
     idFieldSource: Some("sole"),
     requiredAccess: None,
+      ownerField: None,
   }
   // A distinct name per source array: the complement has to be fed by both, and
   // reusing one def would hide a version that only walks `readModels`.
@@ -338,6 +341,7 @@ describe("allowedStates + statusField populated", () => {
     targetState: Some("Active"),
     apiExposed: Some(true),
     requiredAccess: None,
+      ownerField: None,
   }
 
   let qblWithStatus: queryableDef = {
@@ -356,6 +360,7 @@ describe("allowedStates + statusField populated", () => {
     idField: None,
     idFieldSource: None,
     requiredAccess: None,
+      ownerField: None,
   }
 
   let wblWithStates: writableDef = {

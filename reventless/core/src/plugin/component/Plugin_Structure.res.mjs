@@ -4,6 +4,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
+import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
@@ -303,7 +304,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         allowedStates: allowedStates,
         targetState: targetState,
         apiExposed: apiExposed,
-        requiredAccess: requiredAccess
+        requiredAccess: requiredAccess,
+        ownerField: Owner$Reventless.fieldNamesOfProperties(properties)[0]
       };
     };
     switch (v.type) {
@@ -527,6 +529,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       searchableFields: label.searchableFields,
       labelFieldSource: labelFieldSourceToString(label.source),
       statusField: statusFieldFromStateSchema(R.Spec.name, stateSchema),
+      ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
       visibility: visibilityTag(R.Spec.visibility),
       chapter: componentChapters[R.Spec.name],
       singleQueryField: qf.singleFieldName,
@@ -552,6 +555,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       searchableFields: label.searchableFields,
       labelFieldSource: labelFieldSourceToString(label.source),
       statusField: statusFieldFromStateSchema(SVS.Spec.name, stateSchema),
+      ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
       visibility: visibilityTag(SVS.Spec.visibility),
       chapter: componentChapters[SVS.Spec.name],
       singleQueryField: qf.singleFieldName,

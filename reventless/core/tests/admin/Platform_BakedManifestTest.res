@@ -6,7 +6,7 @@
 open JestGlobals
 open Reventless.Plugin
 
-let queryable = (~name, ~visibility=?, ()): queryableDef => {
+let queryable = (~name, ~visibility=?, ~ownerField=?, ()): queryableDef => {
   name,
   queryField: `Ordering_${name}`,
   schema: "{}",
@@ -22,9 +22,10 @@ let queryable = (~name, ~visibility=?, ()): queryableDef => {
   idField: Some("id"),
   idFieldSource: Some("convention"),
   requiredAccess: None,
+  ownerField,
 }
 
-let command = (~name, ~references=[], ()): commandDef => {
+let command = (~name, ~references=[], ~ownerField=?, ()): commandDef => {
   name,
   schema: "{}",
   level: Collection,
@@ -35,6 +36,7 @@ let command = (~name, ~references=[], ()): commandDef => {
   targetState: None,
   apiExposed: Some(true),
   requiredAccess: None,
+  ownerField,
 }
 
 let writable = (~name, ~commands): writableDef => {
@@ -55,7 +57,7 @@ let writable = (~name, ~commands): writableDef => {
 let structure: pluginStructure = {
   readModels: [queryable(~name="Customers", ())],
   stateViewSlices: [
-    queryable(~name="Orders", ()),
+    queryable(~name="Orders", ~ownerField="customerId", ()),
     queryable(~name="AvailableProducts", ~visibility="Internal", ()),
   ],
   stateChangeSlices: [
@@ -65,6 +67,7 @@ let structure: pluginStructure = {
         command(
           ~name="PlaceOrder",
           ~references=[{fieldName: "productIds", entity: "AvailableProducts", plugin: None}],
+          ~ownerField="customerId",
           (),
         ),
       ],
@@ -197,5 +200,45 @@ describe("curate", () => {
       | Error(_) => []
       }
     expect(ids)->toEqual(["Catalog", "Ordering"])
+  })
+
+  // A shell reading a baked manifest has no admin API to ask instead, so a field
+  // the curation step forgot to copy is a field that view can never learn about.
+  // `curate` reuses the served encoder rather than writing its own, which is what
+  // makes this hold — the assertion guards that property, not a second code path.
+  testSync("a curated entry carries the owner field the served entry carries", () => {
+    let entry =
+      bake([{plugin: "Ordering", views: Some(["Orders"]), commands: Some(["PlaceOrder"])}])
+      ->firstEntry
+    let ownerOf = (key, name) =>
+      entry
+      ->JSON.Decode.object
+      ->Option.flatMap(d => d->Dict.get(key))
+      ->Option.flatMap(JSON.Decode.array)
+      ->Option.getOr([])
+      ->Array.filterMap(JSON.Decode.object)
+      ->Array.find(d =>
+        d->Dict.get("name")->Option.flatMap(JSON.Decode.string) == Some(name)
+      )
+      ->Option.flatMap(d => d->Dict.get("ownerField"))
+      ->Option.flatMap(JSON.Decode.string)
+    let commandOwner =
+      entry
+      ->JSON.Decode.object
+      ->Option.flatMap(d => d->Dict.get("stateChangeSlices"))
+      ->Option.flatMap(JSON.Decode.array)
+      ->Option.getOr([])
+      ->Array.filterMap(JSON.Decode.object)
+      ->Array.flatMap(w =>
+        w->Dict.get("commands")->Option.flatMap(JSON.Decode.array)->Option.getOr([])
+      )
+      ->Array.filterMap(JSON.Decode.object)
+      ->Array.get(0)
+      ->Option.flatMap(d => d->Dict.get("ownerField"))
+      ->Option.flatMap(JSON.Decode.string)
+    expect((ownerOf("stateViewSlices", "Orders"), commandOwner))->toEqual((
+      Some("customerId"),
+      Some("customerId"),
+    ))
   })
 })
