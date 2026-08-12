@@ -62,6 +62,19 @@ on:
         required: false
         type: boolean
         default: false
+      elevated-groups:
+        description: >
+          Comma-separated groups exempt from owner scoping, e.g. "Admin". Read by
+          the deploy program when it bakes the owner predicate into generated
+          resolvers, and copied onto every Lambda so command stamping and
+          SQL-backed reads — which run in runtimes the deploy never enters —
+          reach the same answer. Leave empty and nothing is exempt: operators see
+          only their own rows, and an operator acting on someone's behalf has the
+          row stamped with their own id. Only deployments whose domain declares an
+          owner field need it.
+        required: false
+        type: string
+        default: ""
     secrets:
       PULUMI_ACCESS_TOKEN:
         required: true
@@ -277,6 +290,12 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ needs.detect-changes.outputs.region }}
+      # The groups exempt from owner scoping. The deploy program reads it when it
+      # bakes the owner predicate into generated resolvers; the same value is
+      # copied onto every Lambda it provisions, because stamping and SQL-backed
+      # reads run in runtimes this process never enters and would otherwise
+      # conclude that nobody is elevated.
+      REVENTLESS_ELEVATED_GROUPS: ${{ inputs.elevated-groups }}
       # Defines NPM_TOKEN for every pnpm step. The repo .npmrc references
       # ${NPM_TOKEN} on its npmjs authToken line; if the var is undefined pnpm
       # fails to parse the whole file and silently drops `node-linker=hoisted`,
@@ -463,6 +482,12 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ needs.detect-changes.outputs.region }}
+      # The groups exempt from owner scoping. The deploy program reads it when it
+      # bakes the owner predicate into generated resolvers; the same value is
+      # copied onto every Lambda it provisions, because stamping and SQL-backed
+      # reads run in runtimes this process never enters and would otherwise
+      # conclude that nobody is elevated.
+      REVENTLESS_ELEVATED_GROUPS: ${{ inputs.elevated-groups }}
       # Defines NPM_TOKEN for every pnpm step. The repo .npmrc references
       # ${NPM_TOKEN} on its npmjs authToken line; if the var is undefined pnpm
       # fails to parse the whole file and silently drops `node-linker=hoisted`,
