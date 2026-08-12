@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.200 (2026-08-12)
+
+### Features
+
+* **examples:** let the hybrid shop enforce who may run what ([5f774f8](https://github.com/ReventlessDev/reventless-core/commit/5f774f88805bd801249e891c381bc1faf7116a9a))
+
+
 # 1.0.0-alpha.199 (2026-08-11)
 
 ### Features

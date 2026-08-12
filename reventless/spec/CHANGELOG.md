@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.109 (2026-08-12)
+
+### Features
+
+* **plugin:** publish the access a component's authorization rule implies ([e0d0f09](https://github.com/ReventlessDev/reventless-core/commit/e0d0f096b72fe44b185ed28dc1c133364fa841b8))
+* **plugin:** publish which field ties a component to its owner ([ca71289](https://github.com/ReventlessDev/reventless-core/commit/ca7128931ce525af0d7d3a4487b2b5c54b19bec0))
+* **spec:** let a record name the field that identifies its owner ([b69ee91](https://github.com/ReventlessDev/reventless-core/commit/b69ee9123e6beb38fcdd716519103ab9328213c6))
+* **spec:** let the environment name the groups exempt from owner scoping ([2de5c51](https://github.com/ReventlessDev/reventless-core/commit/2de5c5118347a46998f9ab603308fca09addf00b))
+
+
 # 3.0.0-alpha.108 (2026-08-11)
 
 ### Features

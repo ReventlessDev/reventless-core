@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.71 (2026-08-12)
+
+### Features
+
+* **queries:** narrow owner-bearing reads to the caller ([ba9cc3d](https://github.com/ReventlessDev/reventless-core/commit/ba9cc3d58d7914a9e4827bda90a704a74b1b82dd))
+
+
 # 2.4.0-alpha.70 (2026-08-11)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws

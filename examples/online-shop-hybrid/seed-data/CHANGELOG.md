@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.47 (2026-08-12)
+
+### Features
+
+* **examples:** tie an order to the shopper who placed it ([6d31a72](https://github.com/ReventlessDev/reventless-core/commit/6d31a724ac542ae069baed738c3efbe90591d6eb))
+* **platform:** bake a curated component manifest as a static asset ([4f30265](https://github.com/ReventlessDev/reventless-core/commit/4f30265a51fc2c59e69afd8074cf1b2534c06378))
+
+
 # 1.0.0-alpha.46 (2026-08-11)
 
 ### Features

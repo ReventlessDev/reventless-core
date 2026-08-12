@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.225 (2026-08-12)
+
+### Features
+
+* **commands:** stamp owner-marked fields from the authenticated caller ([5266655](https://github.com/ReventlessDev/reventless-core/commit/5266655b34de4d90c8148dec686cb0f336ac223d))
+* **core:** warn when an owner-scoped view exempts nobody ([cafa7a8](https://github.com/ReventlessDev/reventless-core/commit/cafa7a8b2082aeb00e53a9ed9da5bb978158db2d))
+* **platform:** bake a curated component manifest as a static asset ([4f30265](https://github.com/ReventlessDev/reventless-core/commit/4f30265a51fc2c59e69afd8074cf1b2534c06378))
+* **plugin:** publish the access a component's authorization rule implies ([e0d0f09](https://github.com/ReventlessDev/reventless-core/commit/e0d0f096b72fe44b185ed28dc1c133364fa841b8))
+* **plugin:** publish which field ties a component to its owner ([ca71289](https://github.com/ReventlessDev/reventless-core/commit/ca7128931ce525af0d7d3a4487b2b5c54b19bec0))
+* **queries:** narrow owner-bearing reads to the caller ([ba9cc3d](https://github.com/ReventlessDev/reventless-core/commit/ba9cc3d58d7914a9e4827bda90a704a74b1b82dd))
+* **spec:** let a record name the field that identifies its owner ([b69ee91](https://github.com/ReventlessDev/reventless-core/commit/b69ee9123e6beb38fcdd716519103ab9328213c6))
+* **spec:** let the environment name the groups exempt from owner scoping ([2de5c51](https://github.com/ReventlessDev/reventless-core/commit/2de5c5118347a46998f9ab603308fca09addf00b))
+
+
 # 3.0.0-alpha.224 (2026-08-11)
 
 ### Bug Fixes
