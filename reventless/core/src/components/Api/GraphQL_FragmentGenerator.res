@@ -475,6 +475,37 @@ let deriveMutationFieldFromObject = (
   | None => None
   }
 
+// The rendered GraphQL type of every argument one mutation field declares,
+// keyed by argument name — `"Ordering_PlaceOrderShippingMethod!"`,
+// `"DateRangeInput"`, `"[Ordering_PlaceOrderLineItems!]!"`.
+//
+// A client that assembles its own mutation document must declare a variable per
+// argument, and it cannot derive these from JSON Schema: an enum's type name is
+// composed from the mutation field and the property, an object's comes from a
+// semantic or the field path, and the nullability comes from whether the sury
+// schema wrapped it in an option. None of that survives the JSON-Schema
+// projection, so the name is published rather than left to be re-derived from a
+// convention that would then live in two repos shipping on different cycles.
+//
+// Deliberately the same `fromSchemaType` call `deriveMutationFieldFromObject`
+// makes: one producer, so the published string and the SDL cannot disagree.
+// The collected type *definitions* are discarded — a caller wants the reference
+// each argument renders as, and the definitions are already in the schema this
+// generator emits.
+let mutationArgTypes = (~fieldName: string, variantSchema: S.t<unknown>): option<dict<string>> =>
+  SchemaType.fromSuryObject(~typeName=fieldName, variantSchema)->Option.map(fields => {
+    let out = Dict.make()
+    fields
+    ->Dict.toArray
+    ->Array.forEach(((argName, argType)) =>
+      out->Dict.set(
+        argName,
+        fromSchemaType(~required=true, ~asInput=true, argType, [], Set.make()),
+      )
+    )
+    out
+  })
+
 // ── Main generate function ─────────────────────────────────────────────────
 
 let generate = (

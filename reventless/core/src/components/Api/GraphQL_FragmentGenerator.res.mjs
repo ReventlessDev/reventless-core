@@ -390,6 +390,16 @@ function deriveMutationFieldFromObject(fieldName, collectedTypes, seenTypes, var
   return `  ` + fieldName + argsPart + `: CommandResult!`;
 }
 
+function mutationArgTypes(fieldName, variantSchema) {
+  return Stdlib_Option.map(SchemaType$ReventlessCore.fromSuryObject(fieldName, variantSchema), fields => {
+    let out = {};
+    Object.entries(fields).forEach(param => {
+      out[param[0]] = fromSchemaType(true, true, param[1], [], new Set());
+    });
+    return out;
+  });
+}
+
 function generate(mutationEntries, queryEntries) {
   let types = [];
   let mutations = [];
@@ -571,6 +581,7 @@ export {
   deriveByIdsQueryField,
   deriveConnectionQueryField,
   deriveMutationFieldFromObject,
+  mutationArgTypes,
   generate,
 }
 /* Api_Naming-ReventlessCore Not a pure module */

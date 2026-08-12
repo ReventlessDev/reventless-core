@@ -259,6 +259,26 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       expect((shipField->String.length > 0, cancelField))->toEqual((true, ""))
     })
 
+    // A consumer that builds its own mutation document declares one variable
+    // per argument, and JSON Schema does not carry the GraphQL type those
+    // variables need — `orderId` reads as a plain string there while the server
+    // declares `ID!`. So the rendered type rides along on the property.
+    testSync("ShipOrder: the command schema publishes each argument's GraphQL type", () => {
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      let ship = shipOrder.commands->Array.find(c => c.name == "ShipOrder")->Option.getOrThrow
+      expect(ship.schema->String.includes(`"x-reventless-graphql-type":"ID!"`))->toBe(true)
+    })
+
+    // The names are composed from the mutation field, and a `@noApi` variant
+    // has none — publishing a type derived from the empty sentinel would name
+    // types no schema declares.
+    testSync("CancelShipment: a @noApi variant publishes no argument types", () => {
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      let cancel =
+        shipOrder.commands->Array.find(c => c.name == "CancelShipment")->Option.getOrThrow
+      expect(cancel.schema->String.includes("x-reventless-graphql-type"))->toBe(false)
+    })
+
     testSync("ShipOrder: payload-less event ShipmentVoided is surfaced in events", () => {
       let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
       expect(shipOrder.events->Array.map(e => e.name))->toEqual(["OrderShipped", "ShipmentVoided"])

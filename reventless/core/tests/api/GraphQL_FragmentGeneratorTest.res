@@ -256,3 +256,87 @@ describe("semantic composites are named once, not once per field", () => {
     ))->toEqual((1, 1, true))
   })
 })
+
+// `mutationArgTypes` is what a client that assembles its own mutation document
+// reads instead of guessing the variable types. Its whole value is that it
+// agrees with the SDL, so the last case here checks every published string
+// against the argument the generator emitted for the same command.
+module PlaceOrder = {
+  @schema
+  type shippingMethod = Standard | Express
+
+  // A single-payload command reaches the generator as a plain object schema —
+  // the `Object(_)` branch of `generate` — which is also the shape one variant
+  // of a union presents to `mutationArgTypes`.
+  let schema =
+    S.schema(s =>
+      {
+        "orderId": s.matches(S.string),
+        "shippingMethod": s.matches(shippingMethodSchema),
+        "total": s.matches(Reventless.Money.schema),
+        "tip": s.matches(S.option(Reventless.Money.schema)),
+        "itemCount": s.matches(S.int),
+      }
+    )->S.castToUnknown
+}
+
+describe("GraphQL_FragmentGenerator.mutationArgTypes", () => {
+  let argTypes =
+    GraphQL_FragmentGenerator.mutationArgTypes(
+      ~fieldName="Ordering_PlaceOrder",
+      PlaceOrder.schema,
+    )->Option.getOr(Dict.make())
+
+  let typeOf = (name: string) => argTypes->Dict.get(name)
+
+  // The defect this exists for: a client that fell back to `String!` here got
+  // `Variable "$shippingMethod" of type "String!" used in position expecting
+  // type "Ordering_PlaceOrderShippingMethod!"` — a 200 carrying no data. The
+  // name is composed from the mutation field, so nothing downstream of the
+  // JSON Schema can reconstruct it.
+  testSync("names an enum by the type the mutation field composes", () =>
+    expect(typeOf("shippingMethod"))->toEqual(Some("Ordering_PlaceOrderShippingMethod!"))
+  )
+
+  // A semantic composite is named after the semantic, and takes the `Input`
+  // suffix in argument position.
+  testSync("names a semantic composite by its input type", () =>
+    expect(typeOf("total"))->toEqual(Some("MoneyInput!"))
+  )
+
+  // Nullability is the other half of the answer: with the right name and an
+  // unconditional `!` appended, the declaration still would not match.
+  testSync("distinguishes an optional argument from a required one", () =>
+    expect((typeOf("tip"), typeOf("total")))->toEqual((Some("MoneyInput"), Some("MoneyInput!")))
+  )
+
+  // Both of these differ from what the JSON-Schema type alone suggests —
+  // `orderId` is a plain string there and `itemCount` an integer — which is the
+  // narrower reason a client cannot derive even the scalars itself.
+  testSync("reports the scalar the server chose, not the JSON-Schema one", () =>
+    expect((typeOf("orderId"), typeOf("itemCount")))->toEqual((Some("ID!"), Some("Float!")))
+  )
+
+  // The property that makes publishing worth more than re-deriving downstream:
+  // one producer, so what a client declares and what the server declares cannot
+  // drift apart.
+  testSync("agrees with every argument the SDL declares", () => {
+    let fragment = GraphQL_FragmentGenerator.generate(
+      ~mutationEntries=[
+        {
+          ReventlessInfra.Api.fieldNames: ["Ordering_PlaceOrder"],
+          commandSchema: PlaceOrder.schema,
+          injectIdArg: false,
+        },
+      ],
+      ~queryEntries=[],
+    )
+    let field = mutationFor(fragment, "Ordering_PlaceOrder")->Option.getOr("")
+    let mismatched =
+      argTypes
+      ->Dict.toArray
+      ->Array.filter(((arg, gqlType)) => !(field->String.includes(`${arg}: ${gqlType}`)))
+      ->Array.map(((arg, gqlType)) => `${arg}: ${gqlType}`)
+    expect((mismatched, field->String.length > 0))->toEqual(([], true))
+  })
+})

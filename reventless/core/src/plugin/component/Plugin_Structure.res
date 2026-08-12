@@ -318,6 +318,32 @@ let make = (
     | AllowGroups(_) | AllowAuthenticated | AllowAnonymous | DenyAll => None
     }
 
+  // Write each mutation argument's rendered GraphQL type onto the property it
+  // belongs to, so a consumer assembling its own mutation document declares the
+  // variable the server actually expects instead of guessing `String!`.
+  //
+  // Mutates the freshly derived schema in place — `deriveObjectSchema` has just
+  // built it and nothing else holds it yet. A property with no matching
+  // argument is left alone rather than annotated with a guess.
+  let annotateArgTypes = (schema: JSON.t, argTypes: dict<string>): JSON.t => {
+    schema
+    ->JSON.Decode.object
+    ->Option.flatMap(o => o->Dict.get("properties"))
+    ->Option.flatMap(JSON.Decode.object)
+    ->Option.forEach(props =>
+      props
+      ->Dict.toArray
+      ->Array.forEach(((key, prop)) =>
+        switch (argTypes->Dict.get(key), prop->JSON.Decode.object) {
+        | (Some(gqlType), Some(p)) =>
+          p->Dict.set("x-reventless-graphql-type", JSON.Encode.string(gqlType))
+        | _ => ()
+        }
+      )
+    )
+    schema
+  }
+
   let toCommandDef = (
     ~isAggregate,
     ~mutationFieldFor: string => string,
@@ -360,6 +386,20 @@ let make = (
           ? {"TAG": variantName}->Obj.magic
           : variantName->Obj.magic
       let requiredAccess = accessKeysFor(commandAuthorization(syntheticCommand))
+      // See the note on the record's `mutationField` for why a non-exposed
+      // variant gets the empty sentinel. It has no callable field, and the
+      // argument type names are composed *from* that field name, so there is
+      // nothing to publish for it either.
+      let mutationField = apiExposed ? mutationFieldFor(variantName) : ""
+      let jsonSchema = v->SuryToJsonSchema.deriveObjectSchema
+      let annotatedSchema = if apiExposed {
+        GraphQL_FragmentGenerator.mutationArgTypes(~fieldName=mutationField, v)->Option.mapOr(
+          jsonSchema,
+          annotateArgTypes(jsonSchema, _),
+        )
+      } else {
+        jsonSchema
+      }
       ({
         Reventless.Plugin.name: variantName,
         // The derived schema, not sury's raw one: `S.toJSONSchema` carries the
@@ -369,7 +409,10 @@ let make = (
         // matches a field against its setter — or picks the upload endpoint of
         // the store a command argument declares — then has nothing to match on.
         // `MCP_SchemaGenerator` already derives these same variant schemas.
-        schema: v->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
+        //
+        // Carries `x-reventless-graphql-type` per property — see
+        // `annotateArgTypes`.
+        schema: annotatedSchema->JSON.stringify,
         level,
         aggregateIdField,
         // A non-exposed (`@noApi`) variant has no callable mutation field. For a
@@ -381,7 +424,7 @@ let make = (
         // stays listed with `apiExposed: false` for the event-graph badge, but
         // no consumer can mistake it for a callable field. Exposed variants are
         // byte-identical.
-        mutationField: apiExposed ? mutationFieldFor(variantName) : "",
+        mutationField,
         references,
         allowedStates,
         targetState,
