@@ -188,9 +188,17 @@ and withSemantic = (fieldSchema: JSON.t, sem: Reventless.Semantic.t): JSON.t =>
 // through here: nothing validates a read schema. A command schema is the input
 // of a form, and a field listed as required is one the form refuses to submit
 // without — which turned `imageUrl?` into a picture every product had to have.
+//
+// `owners` arrives the same way `optional` does — a list of field names read off
+// the sury schema by the caller — rather than as a case in the IR. The IR is
+// shape-driven, and ownership is not a shape: it says which principal a record
+// belongs to, leaving the field a plain string either way. Threading it here
+// also keeps it available on command variants, which carry no annotation spec
+// for `mergeAnnotations` to read.
 and objectRefToJsonSchema = (
   ~annotations: option<Reventless.StateAnnotations.stateAnnotationSpec>=?,
   ~optional: array<string>=[],
+  ~owners: array<string>=[],
   fields: dict<SchemaType.schemaType>,
 ): JSON.t => {
   let props = Dict.make()
@@ -202,6 +210,16 @@ and objectRefToJsonSchema = (
     let withAnnotations = switch annotations {
     | Some(spec) => mergeAnnotations(baseSchema, fieldName, spec)
     | None => baseSchema
+    }
+    let withAnnotations = if owners->Array.includes(fieldName) {
+      switch withAnnotations->JSON.Decode.object {
+      | Some(obj) =>
+        obj->Dict.set("x-reventless-owner", JSON.Encode.bool(true))
+        JSON.Encode.object(obj)
+      | None => withAnnotations
+      }
+    } else {
+      withAnnotations
     }
     props->Dict.set(fieldName, withAnnotations)
     if !(optional->Array.includes(fieldName)) {
@@ -227,6 +245,7 @@ let deriveObjectSchema = (schema: S.t<unknown>): JSON.t =>
     let objSchema = objectRefToJsonSchema(
       ~annotations?,
       ~optional=SchemaType.optionalFieldNames(schema),
+      ~owners=Reventless.Owner.fieldNames(schema),
       fields,
     )
     // Surface component-level hints on the top-level object schema.

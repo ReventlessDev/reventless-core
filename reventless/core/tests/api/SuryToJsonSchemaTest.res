@@ -73,6 +73,51 @@ describe("SuryToJsonSchema:", () => {
     })
   })
 
+  describe("deriveObjectSchema with an owner field:", () => {
+    let ownerOf = (json, name) =>
+      getPropertyOf(json, name)->Option.flatMap(s => getProperty(s, "x-reventless-owner"))
+
+    let json = SuryToJsonSchema.deriveObjectSchema(
+      S.schema(s =>
+        {
+          "customerId": s.matches(Reventless.Owner.string),
+          "note": s.matches(S.string),
+        }
+      )->S.castToUnknown,
+    )
+
+    testSync("the marked field carries x-reventless-owner", () =>
+      expect(ownerOf(json, "customerId"))->toEqual(Some(JSON.Encode.bool(true)))
+    )
+
+    // The control: ownership is opt-in, and an unmarked string must stay one.
+    // Without this, a bug that marked every field would still pass above.
+    testSync("an unmarked string field carries nothing", () =>
+      expect(ownerOf(json, "note"))->toBe(None)
+    )
+
+    testSync("the field is still a plain string on the wire", () =>
+      expect(
+        getPropertyOf(json, "customerId")->Option.flatMap(s => getProperty(s, "type")),
+      )->toEqual(Some(JSON.Encode.string("string")))
+    )
+
+    // An optional field keeps its marker inside the union wrapper. A reader that
+    // only inspects the outer schema answers "not the owner" here — which for a
+    // predicate that scopes reads means an unscoped view, silently. This is the
+    // case `Owner.isFieldOwner` exists for.
+    testSync("an optional owner field is still recognised", () => {
+      let optJson = SuryToJsonSchema.deriveObjectSchema(
+        S.schema(s =>
+          {
+            "customerId": s.matches(S.option(Reventless.Owner.string)),
+          }
+        )->S.castToUnknown,
+      )
+      expect(ownerOf(optJson, "customerId"))->toEqual(Some(JSON.Encode.bool(true)))
+    })
+  })
+
   describe("deriveObjectSchema with stateAnnotations metadata:", () => {
     let withSpec = (schema, spec) =>
       schema->S.Metadata.set(~id=Reventless.StateAnnotations.stateAnnotationsId, spec)

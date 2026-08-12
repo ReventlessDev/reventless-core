@@ -2,6 +2,7 @@
 
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as SchemaType$ReventlessCore from "./SchemaType.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
@@ -178,7 +179,7 @@ function fromSchemaType(st) {
           ]
         ]);
       case "ObjectRef" :
-        return objectRefToJsonSchema(undefined, undefined, st._1);
+        return objectRefToJsonSchema(undefined, undefined, undefined, st._1);
       case "Enum" :
         return Object.fromEntries([
           [
@@ -222,15 +223,28 @@ function withSemantic(fieldSchema, sem) {
   return obj;
 }
 
-function objectRefToJsonSchema(annotations, optionalOpt, fields) {
+function objectRefToJsonSchema(annotations, optionalOpt, ownersOpt, fields) {
   let optional = optionalOpt !== undefined ? optionalOpt : [];
+  let owners = ownersOpt !== undefined ? ownersOpt : [];
   let props = {};
   let required = [];
   Object.entries(fields).forEach(param => {
     let fieldName = param[0];
     let baseSchema = fromSchemaType(param[1]);
     let withAnnotations = annotations !== undefined ? mergeAnnotations(baseSchema, fieldName, annotations) : baseSchema;
-    props[fieldName] = withAnnotations;
+    let withAnnotations$1;
+    if (owners.includes(fieldName)) {
+      let obj = Stdlib_JSON.Decode.object(withAnnotations);
+      if (obj !== undefined) {
+        obj["x-reventless-owner"] = true;
+        withAnnotations$1 = obj;
+      } else {
+        withAnnotations$1 = withAnnotations;
+      }
+    } else {
+      withAnnotations$1 = withAnnotations;
+    }
+    props[fieldName] = withAnnotations$1;
     if (!optional.includes(fieldName)) {
       required.push(fieldName);
       return;
@@ -264,7 +278,7 @@ function deriveObjectSchema(schema) {
       ]]);
   }
   let annotations = StateAnnotations$Reventless.getSpec(schema);
-  let objSchema = objectRefToJsonSchema(annotations, SchemaType$ReventlessCore.optionalFieldNames(schema), fields);
+  let objSchema = objectRefToJsonSchema(annotations, SchemaType$ReventlessCore.optionalFieldNames(schema), Owner$Reventless.fieldNames(schema), fields);
   if (annotations === undefined) {
     return objSchema;
   }
