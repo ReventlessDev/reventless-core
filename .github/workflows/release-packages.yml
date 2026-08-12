@@ -438,19 +438,44 @@ jobs:
           #                    `workspace:*` -> exact-version rewrite resolves.
           #   * pnpm publish -> rewrites the `workspace:*` protocol (lerna does
           #                    not understand it on its own).
-          #   * set -e + loop in the foreground -> first failed publish aborts
-          #                    the whole step (no silent partial release).
+          #   * set -e + loop in the foreground -> a publish that really failed
+          #                    aborts the whole step (no silent partial release).
           #   * already-on-registry versions are skipped (idempotent re-runs).
+          #
+          # Both registry questions below go to the registry's HTTP API rather
+          # than `npm view`. `npm view` caches 404s and collapses every failure
+          # into one non-zero exit, so "this version is not published" and "I
+          # could not find out" become the same answer — and guessing the former
+          # turns a transient read error into an attempted re-publish, which the
+          # registry refuses with a 403 that aborts the release.
+          registry_status() { # $1=name $2=version -> HTTP status
+            curl -sS -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Bearer ${RELEASE_TOKEN}" \
+              "${REGISTRY%/}/$(printf '%s' "$1" | sed 's|/|%2f|')/$2" || echo 000
+          }
           npx lerna list --toposort --json --no-private \
             | jq -r '.[] | "\(.name)\t\(.version)\t\(.location)"' \
             | while IFS=$'\t' read -r name version location; do
-                if npm view "$name@$version" version \
-                     --registry="$REGISTRY" >/dev/null 2>&1; then
-                  echo "skip    $name@$version (already on registry)"
-                  continue
-                fi
+                case "$(registry_status "$name" "$version")" in
+                  200) echo "skip    $name@$version (already on registry)"; continue ;;
+                  404) : ;; # genuinely absent — publish it
+                  *)   echo "::error::cannot determine whether $name@$version is already published; refusing to guess"
+                       exit 1 ;;
+                esac
                 echo "publish $name@$version"
-                ( cd "$location" && pnpm publish "${PUBLISH_ARGS[@]}" )
+                if ! ( cd "$location" && pnpm publish "${PUBLISH_ARGS[@]}" ); then
+                  # A publish can be accepted and still report failure: the
+                  # registry stored the tarball, the client did not see the
+                  # response and retried, and the retry is refused as a
+                  # re-publish of an existing version. The registry is the
+                  # authority on whether the release happened, not the exit code.
+                  if [ "$(registry_status "$name" "$version")" = "200" ]; then
+                    echo "note    $name@$version reported failure but is on the registry — treating as published"
+                  else
+                    echo "::error::publish failed for $name@$version"
+                    exit 1
+                  fi
+                fi
                 echo "waiting ${PUBLISH_DELAY_SECONDS}s before next publish"
                 sleep "$PUBLISH_DELAY_SECONDS"
               done
