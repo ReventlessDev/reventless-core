@@ -5,16 +5,22 @@ platform with a fresh SQLite database and 150 seeded orders, a shopper reads
 exactly their own 5 while an operator reads all 150 across 22 owners; a page of 2
 is two *owned* rows; another customer's order is `null` by id; and an order placed
 while claiming someone else's id is stored **owned by the caller**. An elevated
-caller acting on a customer's behalf keeps the id they sent. §10 steps 1–7 landed
-2026-08-12 — only the `@owner` PPX shorthand (step 8, pure ergonomics) and the
-cloud runtime's env propagation (§10 step 6's residue, wave-scoped elsewhere)
-remain. Landed — all four read paths and the write
-path enforce `@owner`, and a deployment that forgets to name its operator groups
-is now told so per view instead of silently scoping its administrators. Steps 7–8
-open. ⚠️ **No deployment has set `elevatedGroups` yet**, which is correct today
-(no component declares `@owner` outside tests) and becomes required the moment
-one does. Planned 2026-08-12 after a code survey of the write path, the four read
-paths, and both identity transports.
+caller acting on a customer's behalf keeps the id they sent. **All eight §10
+steps landed 2026-08-12** — all four read paths and the write path enforce
+`@owner`, a deployment that forgets to name its operator groups is told so per
+view instead of silently scoping its administrators, and `@owner` is now the
+authoring form rather than a hand-written `@s.matches`.
+
+Two things remain, both outside this plan's body. The AWS runtime builder must
+pass `REVENTLESS_ELEVATED_GROUPS` to every Lambda (§10 step 6's residue,
+wave-scoped elsewhere) — until it does, an AWS deployment's Lambdas still believe
+nobody is elevated, and the §9 matrix cannot be run end-to-end against a stack.
+And `reventless-ppx` needs republishing for external consumers, who would
+otherwise get `@owner` silently ignored. ⚠️ **No deployment has set
+`elevatedGroups` yet**, which is correct today (no component declares `@owner`
+outside the examples and tests) and becomes required the moment a real one does.
+Planned 2026-08-12 after a code survey of the write path, the four read paths,
+and both identity transports.
 
 **Goal.** A generated surface can state which field ties a row or a command to
 the caller who made it, and the framework then (a) stamps that field from the
@@ -102,6 +108,13 @@ When the shorthand does land it must error on **more than one `@owner` per recor
 or variant**: two owners is not a richer rule, it is an unanswered question about
 which one the read predicate uses. Until then that check lives in the structure
 walk, which is where the ambiguity would actually bite.
+
+⚠️ **It did not, and still does not.** The structure walk resolves the owner with
+`Array.get(0)` (`Plugin_Structure.res:393`, `:724`, `:757`) and has never
+rejected a second marker. Step 8 put the check in the ppx, which catches the
+authoring form every call site now uses — but a *hand-written*
+`@s.matches(Owner.string)` on two fields still resolves silently to the first.
+That is the residue of this paragraph, not a decision against it.
 
 ## §3 — Stamping happens in `makeGenerateCommand`, not in the interceptor
 
@@ -477,12 +490,43 @@ plus at least one row owned by neither.
 
    `pluginDefinitionRequiredScalars.txt` did **not** move — the field is optional,
    unlike `requiredAccess`, so the schema tripwire stayed put.
-8. The `@owner` PPX shorthand, replacing the hand-written `@s.matches` at each
-   call site.
+8. ✅ **Done 2026-08-12.** `@owner`, in `OwnerInference.ml`, replacing the
+   hand-written `@s.matches` at both call sites. Byte-identical output at each —
+   the shorthand had to be provably sugar before it was worth having.
+
+   **It runs after every DCB-tag pass and composes rather than replaces**, which
+   is the whole of the design. Owner-ness is orthogonal to what else a field
+   declares, but a field carries at most one `@s.matches` — so a pass that ran
+   beside `@ref` and `@storageRef` would inject `Owner.string` early, the
+   auto-`*Id` tagger would then skip the field (it passes over anything already
+   carrying `@s.matches`), and `@owner customerId` in a slice would silently lose
+   its DCB tag. That is a decision read that misses events, reported by nothing.
+   Running last, the pass finds whatever schema the field actually resolved to
+   and wraps it in `Owner.mark` — so the marker keeps the auto tag, a
+   `@partitionTag`, or a `@ref`, and `@noDcbTag @owner` still yields a bare
+   `Owner.string` because by then the field is bare. `Owner.mark` was added for
+   this; `Owner.string` is now defined through it.
+
+   Two refusals, both because the alternative is silence rather than a wrong
+   answer. **A second `@owner`** is rejected naming both fields — every reader
+   takes the first marked field, so the second is inert and the view scopes on
+   whatever declaration order put first. **An array field** is rejected because
+   `isFieldOwner` deliberately does not follow array elements, so the annotation
+   would mark a schema no reader ever asks about and scope nothing at all.
+
+   13 assertions in the ppx suite (246 passed, 0 failed). The one worth naming is
+   that an unmarked sibling field stays bare: a pass that marked everything
+   scopes this fixture correctly and every real view wrongly.
+
+   ⚠️ **Republish `reventless-ppx` for external consumers**, as `@offload`
+   needed. This repo builds the ppx from source, so `@owner` compiles here in one
+   commit — but an external consumer on an older published binary gets the
+   attribute *silently ignored*, and for this marker that means an unscoped view
+   and an unstamped command rather than a compile error.
 
 Steps 1–5 are all verifiable without deploying: the AppSync arm is checked by
 evaluating its generated source, which is why it could land before a stack run
 rather than after. What still needs a deployed stack is the *end-to-end* §9
-matrix — and that run is blocked on step 6, because with no elevated groups
-configured the "an elevated token sees all rows" assertion cannot pass. Step 8
-changes no behaviour and can slip.
+matrix — and that run is blocked on step 6's residue, because with no elevated
+groups reaching the Lambdas the "an elevated token sees all rows" assertion
+cannot pass.

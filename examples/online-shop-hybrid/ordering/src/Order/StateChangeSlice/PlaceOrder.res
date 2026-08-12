@@ -26,7 +26,7 @@ type command =
     // authenticated caller's id before the command is published, so what a
     // client sends here is ignored rather than trusted. An operator placing an
     // order on someone's behalf is exempt and keeps the value they sent.
-    @noDcbTag customerId: @s.matches(Reventless.Owner.string) string,
+    @noDcbTag @owner customerId: string,
     @ref("AvailableProducts") productIds: array<string>,
     shippingMethod: shippingMethod,
     // A requested delivery slot, chosen at checkout. An optional field — a

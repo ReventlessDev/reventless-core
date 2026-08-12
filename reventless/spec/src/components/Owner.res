@@ -20,25 +20,47 @@ the field goes unstamped and the view goes unscoped, silently. That is why
 why it exists at all rather than leaving each consumer to look the marker up
 itself.
 
-There is no `@owner` ppx shorthand yet — `@s.matches(Owner.string)` is the
-authoring form, not a workaround for one. The shorthand is sugar over exactly
-this, the way `@ref` is sugar over `Reference.to_`, so it can be added without
-changing what any reader here does; until it exists, prefer the explicit form
-over inventing an attribute the ppx will reject.
+`@owner` is the authoring form and is sugar over the constructors below, the way
+`@ref` is sugar over `Reference.to_`. Write `@s.matches(Owner.string)` by hand
+only where the ppx shorthand cannot reach — a file with no `@@reventless.spec`
+annotation, where the attribute would survive into the compiler as an unknown
+one.
 
 @example
 ```rescript
 @schema type command =
   PlaceOrder({
     @partitionTag orderId: string,
-    customerId: @s.matches(Owner.string) string,
+    @owner customerId: string,
   })
 ```
 */
 let ownerId: S.Metadata.Id.t<bool> = S.Metadata.Id.make(~namespace="reventless", ~name="owner")
 
+/**
+Layers the owner marker onto a schema that already says something else.
+
+Owner-ness is independent of everything else a field declares: the same field
+may be a DCB tag, a partition key, or a reference, and none of those implies or
+is implied by owning. But a field carries at most one `@s.matches`, so the
+shorthand composes by *wrapping* whatever schema the field already resolved to
+rather than replacing it — replacing would silently drop the field's DCB tag,
+and a dropped tag is a decision read that quietly misses events.
+*/
+let mark = (schema: S.t<'a>): S.t<'a> => schema->S.Metadata.set(~id=ownerId, true)
+
 /** A string field declared as the record's owner. */
-let string: S.t<string> = S.string->S.Metadata.set(~id=ownerId, true)
+let string: S.t<string> = S.string->mark
+
+/**
+An `option<string>` field declared as the record's owner.
+
+Needed because `@s.matches` on an explicitly-`option`-typed field must supply
+the whole field schema, wrapper included. The `f?: string` form needs nothing
+extra: sury wraps the annotated inner schema itself, and `isFieldOwner` looks
+through that wrapper either way.
+*/
+let optionString: S.t<option<string>> = S.option(string)
 
 /** Whether this exact schema carries the marker. Does not look through wrappers. */
 let isOwner = (schema: S.t<unknown>): bool =>

@@ -33,7 +33,7 @@ type state = {
   // The order's owner. A shopper reading this view sees only the rows whose
   // `customerId` matches their own identity; a caller in an elevated group sees
   // every row. Enforced in the resolver, not by the client asking nicely.
-  customerId: @s.matches(Reventless.Owner.string) string,
+  @owner customerId: string,
   productIds: array<string>,
   @status status: status,
   shippingMethod: shippingMethod,

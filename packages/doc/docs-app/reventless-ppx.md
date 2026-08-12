@@ -704,6 +704,39 @@ type event =
 
 **Constraints:** the field's inner type must be a plain named type (`reportBody`, `M.t`); for an `array<…>` or type-parameterised inner type, apply the schema by hand with `@s.matches(Reventless.Offload.optionSchema(~store="s", <schema>))`.
 
+### `@owner` — the field that ties a row to its caller
+
+`@owner` names the field holding the id of the principal a record belongs to. It goes on a field of a `@schema type command` variant, a `@schema type state`, or both. Place it **before the field name**, like the other field markers.
+
+Two things follow, both enforced server-side:
+
+- **On a command:** the framework **overwrites** the field with the authenticated caller's id before publishing. An absent field and a forged field therefore produce the same row — the client's value is ignored, not trusted.
+- **On a queryable's state:** reads of that view are narrowed to the caller's own rows, on every transport.
+
+```rescript
+// StateChangeSlice/PlaceOrder.res
+@schema
+type command =
+  PlaceOrder({
+    @partitionTag orderId: string,
+    @noDcbTag @owner customerId: string,
+  })
+
+// StateViewSliceStream/Orders.res
+@schema
+type state = {
+  orderId: string,
+  @owner customerId: string,
+  @status status: status,
+}
+```
+
+- **One per record or variant payload.** A second `@owner` is a compile error: every reader resolves the owner by taking the first marked field, so the second would be inert and the view would scope on whatever declaration order happened to put first.
+- **`string` or `option<string>` only.** A row has one owner, so an array field cannot be one — annotating it is a compile error rather than a marker no reader looks at. The `f?: string` form works too.
+- **It composes; it never subtracts.** The marker is applied after the DCB-tag passes and wraps whatever schema the field already resolved to, so an owner field keeps its DCB tag (`@owner customerId` in a slice), its partition key (`@partitionTag @owner`), or its reference (`@ref("Seller") @owner`). Use `@noDcbTag` when the owner field is payload rather than a query key.
+
+**Who is exempt** is deployment configuration, not part of the annotation: a caller whose group is listed in `REVENTLESS_ELEVATED_GROUPS` is neither stamped nor scoped, and an internal system caller is exempt too. A deployment that declares `@owner` and configures no elevated groups is warned per view at startup — otherwise its operators would silently see only their own rows.
+
 ---
 
 ## Examples
@@ -1023,3 +1056,4 @@ The developer only writes `let name` and the `@schema type event`. Everything el
 | `let config = config(~indexes=[...])` with manual `indexConfig` records | Use `@index`/`@indexSubId` on `@schema type state` fields |
 | Manual `idResolverConfig`/`idsResolverConfig` entries in `let config` | Use `@resolves`/`@resolvesMany` on `@schema type state` fields |
 | Hand-written `@s.matches(StorageRef.forStore(...))` / `@s.matches(Offload.optionSchema(...))` | Use `@storageRef` / `@offload` field annotations |
+| Hand-written `@s.matches(Owner.string)` on the caller-identifying field | Use the `@owner` field annotation |

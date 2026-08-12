@@ -7,7 +7,13 @@ import * as Semantic$Reventless from "../semantic/Semantic.res.mjs";
 
 let ownerId = S.Metadata.Id.make("reventless", "owner");
 
-let string = S.Metadata.set(S.string, ownerId, true);
+function mark(schema) {
+  return S.Metadata.set(schema, ownerId, true);
+}
+
+let string = mark(S.string);
+
+let optionString = S.option(string);
 
 function isOwner(schema) {
   return Stdlib_Option.getOr(S.Metadata.get(schema, ownerId), false);
@@ -86,7 +92,9 @@ function variantFieldNames(schema, variant) {
 
 export {
   ownerId,
+  mark,
   string,
+  optionString,
   isOwner,
   isFieldOwner,
   fieldNamesOfProperties,

@@ -702,6 +702,10 @@ let transform (str : structure) : structure =
     let body = DcbTagInference.transform_composite_partition_tags ~loc body in
     let body = DcbTagInference.transform_explicit_dcb_tags ~loc body in
     let body = DcbTagInference.strip_no_tag_attrs body in
+    (* After every DCB-tag pass, on purpose: [@owner] wraps whatever schema the
+       field ended up with rather than replacing it, so an owner field keeps the
+       tag it would otherwise have had. See OwnerInference's header. *)
+    let body = OwnerInference.transform_structure body in
     let body = DisplayNameInference.transform_structure body in
     let body = NoApiAnnotation.transform ~loc body in
     let body = AllowedStatesAnnotation.transform ~loc body in

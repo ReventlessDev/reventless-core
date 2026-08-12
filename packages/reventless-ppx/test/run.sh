@@ -179,6 +179,17 @@ cat > "$PLUGIN/src/ReadModel/ProductsReadModel.res" <<'EOF'
 type state = { productName: string }
 EOF
 
+# @owner on a read-model state — the explicitly-`option`-typed form, which needs
+# a whole-field schema (Owner.optionString) because @s.matches on an
+# `option<X>` field replaces the wrapper too. Outside a slice folder, so nothing
+# else claims the field and the bare constructor is what should land.
+cat > "$PLUGIN/src/ReadModel/OwnedRowsReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { @id rowId: string, @owner customerId: option<string> }
+EOF
+
 # Authorization injection — per-constructor @authorize plus file-level default
 cat > "$PLUGIN/src/Aggregate/Category.res" <<'EOF'
 @@reventless.spec
@@ -456,6 +467,30 @@ type command = Pick({
 
 @schema
 type event = Picked({@partitionTag orderId: string})
+
+@schema
+type error = unit
+EOF
+
+# @owner: names the field that ties a row or command to its caller. Runs after
+# every DCB-tag pass and *composes* rather than replaces, so each field below
+# checks a different thing the marker must not subtract:
+# - customerId  → auto-*Id tag survives      (Owner.mark(DcbTag.string))
+# - orderId     → @partitionTag survives     (Owner.mark(DcbTag.partition))
+# - sellerId    → @ref survives              (Owner.mark(Reference.to_(...)))
+# - agentId     → @noDcbTag leaves it bare   (Owner.string)
+# - onBehalfOf? → optional field             (S.option(Owner.string))
+cat > "$DCB/src/StateChangeSlice/OwnedOrder.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command =
+  | Place({@partitionTag orderId: string, @owner customerId: string})
+  | Import({@partitionTag orderId: string, @noDcbTag @owner agentId: string})
+  | Quote({@partitionTag orderId: string, @ref("Seller") @owner sellerId: string})
+
+@schema
+type event = Placed({@partitionTag orderId: string, @owner onBehalfOf?: string})
 
 @schema
 type error = unit
@@ -1280,6 +1315,16 @@ assert_js_contains "$JS" 'blobSchema'                     "@offload: inner schem
 assert_js_contains "$JS" '"blobs"'                        "@offload: store name threaded into codec"
 assert_js_contains "$JS" '4096'                           "@offload: per-field threshold threaded into codec"
 
+echo ""
+echo "=== Test: @owner on a read-model state (option<string> form) ==="
+JS="$PLUGIN/src/ReadModel/OwnedRowsReadModel.res.mjs"
+assert_js_contains "$JS" 'customerId: s.m(Owner$Reventless.optionString)' \
+  "@owner: option<string> field emits Owner.optionString"
+# The unannotated sibling must stay bare — a pass that marked every field would
+# scope correctly on this fixture and wrongly on every real one.
+assert_js_contains "$JS" 'rowId: s.m(S.string)' \
+  "@owner: unmarked sibling field left untouched"
+
 # Note: `@reventless.projections` was retired — its replacement is
 # `@@reventless.mappings` covered by the multi-source ReadModel fixture below.
 
@@ -1441,6 +1486,31 @@ assert_js_contains     "$JS" '"Customer"'           "@ref: scalar ref entity 'Cu
 assert_js_contains     "$JS" 'toWithoutDcbTag'      "@ref + @noDcbTag: toWithoutDcbTag emitted (no DCB tag)"
 assert_js_not_contains "$JS" '"warehouseId"'        "@ref + @noDcbTag: no tag key emitted for warehouseIds"
 assert_js_not_contains "$JS" 'noDcbTag'             "@ref: @noDcbTag field attr stripped"
+
+echo ""
+echo "=== Test: @owner composes with the DCB passes instead of replacing them ==="
+JS="$DCB/src/StateChangeSlice/OwnedOrder.res.mjs"
+# The whole point of running last: an owner field keeps whatever schema it would
+# otherwise have had. If this pass ran early, the auto-*Id tagger would skip the
+# field (it skips anything already carrying @s.matches) and customerId would
+# lose its tag silently — a decision read that misses events, reported by nobody.
+assert_js_contains "$JS" 'Owner$Reventless.mark(DcbTag$Reventless.string)' \
+  "@owner + auto-*Id: DCB tag survives the marker"
+assert_js_contains "$JS" 'DcbTag$Reventless.partition' \
+  "@owner sibling: @partitionTag unaffected"
+assert_js_contains "$JS" 'Owner$Reventless.mark(Reference$Reventless.to_' \
+  "@owner + @ref: reference survives the marker"
+assert_js_contains "$JS" '"Seller"' \
+  "@owner + @ref: reference target still reaches the codec"
+# agentId is @noDcbTag + @owner: nothing else claimed the field, so the bare
+# constructor lands rather than a wrap of something.
+assert_js_contains "$JS" 'agentId: s.m(Owner$Reventless.string)' \
+  "@owner + @noDcbTag: bare Owner.string emitted"
+# The optional form needs no separate constructor — sury wraps the annotated
+# inner schema itself, and Owner.isFieldOwner looks through that wrapper.
+assert_js_contains "$JS" 'onBehalfOf: s.m(S.option(Owner$Reventless.string))' \
+  "@owner on f?: string — marker lands inside the option wrapper"
+assert_js_not_contains "$JS" 'noDcbTag' "@owner: @noDcbTag field attr stripped"
 
 echo ""
 echo "=== Test: @dcbTag(\"key\") payload form — scalar and array<string> ==="
@@ -1760,6 +1830,55 @@ cat > "$ERROR/rescript.json" <<EOF
 EOF
 
 link_node_modules "$ERROR"
+
+echo ""
+echo "=== Test: PPX error — two @owner fields in one record ==="
+
+# Two owners is not a stricter rule than one, it is an unanswered question: every
+# reader downstream takes the first marked field, so the second would be inert
+# and the view would scope on whatever declaration order happened to put first.
+cat > "$ERROR/src/ReadModel/TwoOwners.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { @id rowId: string, @owner customerId: string, @owner buyerId: string }
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "two @owner fields" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@owner appears twice"; then
+    pass "two @owner fields in one record → correct compile error"
+  else
+    fail "two @owner fields" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/TwoOwners.res"
+
+echo ""
+echo "=== Test: PPX error — @owner on an array field ==="
+
+# Owner.isFieldOwner follows the optional wrapper but deliberately not array
+# elements, so an annotated array would mark a schema no reader ever asks about
+# and scope nothing. Refusing is the difference between a compile error and a
+# view that silently serves everybody's rows.
+cat > "$ERROR/src/ReadModel/ArrayOwner.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { @id rowId: string, @owner customerIds: array<string> }
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@owner on array field" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@owner only supports string and option<string> fields"; then
+    pass "@owner on array<string> → correct compile error"
+  else
+    fail "@owner on array field" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/ArrayOwner.res"
 
 echo ""
 echo "=== Test: PPX error — @subId + @compositeSubId on same type ==="
