@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-08-12
+- feat(ppx): let a field say @owner instead of spelling out its schema ([3bb0a4b](https://github.com/ReventlessDev/reventless-core/commit/3bb0a4bf3e5823fa929815fbe6f47203ba7958d7))
 ### 2026-02-12
 - feat: add GitHub Pages deployment with multi-version documentation ([3e9ccfd](https://github.com/ReventlessDev/reventless-core/commit/3e9ccfd4726ed99c518cbfa42c35aeb71e4eb53d))
 - **Breaking Change**: rename Behaviour to Behavior (British to American spelling) - all references to Behaviour module must be updated to Behavior ([6575f44](https://github.com/ReventlessDev/reventless-core/commit/6575f4415fa0fb27472f3520038f158dd624da03))
