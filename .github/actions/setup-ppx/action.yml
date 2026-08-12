@@ -30,7 +30,34 @@ inputs:
 runs:
   using: composite
   steps:
+    # Both steps below fetch from hosts nobody here controls — the OCaml
+    # toolchain from opam's repositories and GitHub releases, the dependencies
+    # from opam again — so their availability, not this repository's state,
+    # decides whether they pass. On 2026-08-12 a `dune` 503 plus apt-mirror 404s
+    # failed a release and a deploy within minutes of each other, and the release
+    # half published packages without recording their versions in git.
+    #
+    # One retry after a pause is the whole fix: it turns that class of outage
+    # into a slower job rather than a red one, and a genuine failure still fails
+    # twice and stops. Retrying here rather than at the four call sites keeps it
+    # in one place.
     - name: Setup OCaml
+      id: ocaml
+      continue-on-error: true
+      uses: ocaml/setup-ocaml@v3
+      with:
+        ocaml-compiler: ${{ inputs.ocaml-compiler }}
+        dune-cache: true
+
+    - name: Pause before retrying the OCaml toolchain
+      if: steps.ocaml.outcome == 'failure'
+      shell: bash
+      run: |
+        echo "OCaml setup failed; the usual cause is a transient upstream fetch. Retrying once."
+        sleep 45
+
+    - name: Setup OCaml (retry)
+      if: steps.ocaml.outcome == 'failure'
       uses: ocaml/setup-ocaml@v3
       with:
         ocaml-compiler: ${{ inputs.ocaml-compiler }}
@@ -40,7 +67,21 @@ runs:
       shell: bash
       working-directory: ${{ inputs.source-dir }}
       run: |
-        opam install . --deps-only --yes
+        set -euo pipefail
+        # Same reasoning as the toolchain above: the dependency solve fetches
+        # sources, so it fails on someone else's outage. The build itself is
+        # local and is not retried — a compile error is not transient.
+        for attempt in 1 2; do
+          if opam install . --deps-only --yes; then
+            break
+          fi
+          if [ "$attempt" = 2 ]; then
+            echo "::error::opam could not install the PPX dependencies after two attempts"
+            exit 1
+          fi
+          echo "opam install failed; retrying once in 45s"
+          sleep 45
+        done
         opam exec -- dune build
 
     - name: Stage binary at the local-fallback path
