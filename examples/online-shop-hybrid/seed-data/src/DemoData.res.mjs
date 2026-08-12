@@ -356,6 +356,27 @@ function discountedPrice(p) {
   return Money$Reventless.make(Math.round(p.price.amount * 0.85), p.price.currency);
 }
 
+let demoShopperId = "local-user";
+
+let demoOperatorId = "local-admin";
+
+let demoCustomers = [
+  {
+    id: demoShopperId,
+    email: "user@example.com",
+    address: "Nordbahnstrasse 36, 1020 Vienna, Austria",
+    lat: 48.2265,
+    lng: 16.3897
+  },
+  {
+    id: demoOperatorId,
+    email: "admin@example.com",
+    address: "Praterstrasse 1, 1020 Vienna, Austria",
+    lat: 48.2135,
+    lng: 16.3849
+  }
+];
+
 function buildCustomers(countOpt, param) {
   let count = countOpt !== undefined ? countOpt : 20;
   return Stdlib_Array.fromInitializer(count, i => {
@@ -419,7 +440,10 @@ function buildOrders(products, customers, countOpt, param) {
             sizeRoll < 0.9 ? 3 : 4
           )
       );
-    let customerId = Stdlib_Option.mapOr(Seed_Random$ReventlessSeed.sampleWeighted(random, customerWeights, 1)[0], "cust-01", c => c.id);
+    let demoOwner = i < 5 ? demoShopperId : (
+        i < 8 ? demoOperatorId : undefined
+      );
+    let customerId = demoOwner !== undefined ? demoOwner : Stdlib_Option.mapOr(Seed_Random$ReventlessSeed.sampleWeighted(random, customerWeights, 1)[0], "cust-01", c => c.id);
     let productIds = Seed_Random$ReventlessSeed.sampleWeighted(random, productWeights, size).map(p => p.id);
     let methodRoll = Seed_Random$ReventlessSeed.float(random);
     let shippingMethod = methodRoll < 0.35 ? "Express" : (
@@ -476,6 +500,10 @@ let renamedCategoryName = "Home & Office";
 
 let currency = "EUR";
 
+let demoShopperOrderCount = 5;
+
+let demoOperatorOrderCount = 3;
+
 export {
   random,
   productCount,
@@ -507,6 +535,11 @@ export {
   repricedProducts,
   redescribedProducts,
   discountedPrice,
+  demoShopperId,
+  demoOperatorId,
+  demoShopperOrderCount,
+  demoOperatorOrderCount,
+  demoCustomers,
   buildCustomers,
   movedCustomers,
   deactivatedCustomers,

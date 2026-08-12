@@ -310,8 +310,9 @@ async function run(connection, productCount, customerCount, orderCount) {
   let client = connection.client;
   let built = DemoData$OnlineShopHybridSeed.buildProducts(productCount, undefined);
   let products = connection.uploadsSkipped ? (Seed_Runner$ReventlessSeed.report(`product images: skipped (SEED_SKIP_UPLOADS) — imageUrl left absent`), built) : await uploadProductImages(built, client, productImageStore);
-  let customers = DemoData$OnlineShopHybridSeed.buildCustomers(customerCount, undefined);
-  let orders = DemoData$OnlineShopHybridSeed.buildOrders(products, customers, orderCount, undefined);
+  let generatedCustomers = DemoData$OnlineShopHybridSeed.buildCustomers(customerCount, undefined);
+  let customers = generatedCustomers.concat(DemoData$OnlineShopHybridSeed.demoCustomers);
+  let orders = DemoData$OnlineShopHybridSeed.buildOrders(products, generatedCustomers, orderCount, undefined);
   await seedCategories(client);
   await seedProducts(products, client);
   await seedRejectedDuplicate(products, client);

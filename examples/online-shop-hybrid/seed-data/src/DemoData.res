@@ -223,6 +223,41 @@ type customer = {
   lng: float,
 }
 
+/**
+The demo logins, as customers.
+
+An order's `customerId` is the authenticated caller's id, so a demo login can
+only have orders if a customer row exists under that exact id. These match the
+`userId` values in `users.example.yaml`; changing one without the other gives a
+shopper a working login and an empty shop.
+
+Their order counts are fixed and different on purpose. "The shopper sees no
+other orders" is satisfied equally by correct scoping and by scoping that
+matches nothing, so the check that means anything is an exact non-zero count per
+owner, with a third party holding the rest.
+*/
+let demoShopperId = "local-user"
+let demoOperatorId = "local-admin"
+let demoShopperOrderCount = 5
+let demoOperatorOrderCount = 3
+
+let demoCustomers: array<customer> = [
+  {
+    id: demoShopperId,
+    email: "user@example.com",
+    address: "Nordbahnstrasse 36, 1020 Vienna, Austria",
+    lat: 48.2265,
+    lng: 16.3897,
+  },
+  {
+    id: demoOperatorId,
+    email: "admin@example.com",
+    address: "Praterstrasse 1, 1020 Vienna, Austria",
+    lat: 48.2135,
+    lng: 16.3849,
+  },
+]
+
 let buildCustomers = (~count=customerCount, ()): array<customer> =>
   Array.fromInitializer(~length=count, i => {
     let first = firstNames->Array.get(mod(i, firstNames->Array.length))->Option.getOr("Ada")
@@ -298,10 +333,25 @@ let buildOrders = (
     } else {
       4
     }
-    let customerId =
+    // The first orders belong to the demo logins, by index rather than by the
+    // weighted draw, so their counts are exact rather than probable — an
+    // acceptance check that asserts "5 orders" cannot be written against a Zipf
+    // sample. Everything after them is distributed as before, over the generated
+    // customers only, so neither demo owner picks up extra rows.
+    let demoOwner = if i < demoShopperOrderCount {
+      Some(demoShopperId)
+    } else if i < demoShopperOrderCount + demoOperatorOrderCount {
+      Some(demoOperatorId)
+    } else {
+      None
+    }
+    let customerId = switch demoOwner {
+    | Some(id) => id
+    | None =>
       ReventlessSeed.Seed.Random.sampleWeighted(random, customerWeights, ~count=1)
       ->Array.get(0)
       ->Option.mapOr("cust-01", c => c.id)
+    }
     let productIds =
       ReventlessSeed.Seed.Random.sampleWeighted(random, productWeights, ~count=size)
       ->Array.map(p => p.id)

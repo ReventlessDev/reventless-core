@@ -441,8 +441,12 @@ let run = async (
     Seed.Runner.report(`product images: skipped (SEED_SKIP_UPLOADS) — imageUrl left absent`)
     built
   }
-  let customers = DemoData.buildCustomers(~count=customerCount, ())
-  let orders = DemoData.buildOrders(products, customers, ~count=orderCount, ())
+  let generatedCustomers = DemoData.buildCustomers(~count=customerCount, ())
+  // The demo logins are registered as customers but are deliberately NOT part of
+  // the weighted draw below: their order counts are fixed by index, and letting
+  // them also be sampled would make those counts approximate again.
+  let customers = generatedCustomers->Array.concat(DemoData.demoCustomers)
+  let orders = DemoData.buildOrders(products, generatedCustomers, ~count=orderCount, ())
 
   await seedCategories(~client)
   await seedProducts(products, ~client)

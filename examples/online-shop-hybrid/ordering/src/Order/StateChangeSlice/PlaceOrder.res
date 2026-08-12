@@ -22,7 +22,11 @@ type command =
   PlaceOrder({
     @partitionTag orderId: string,
     // customerId is payload, not a query key — @noDcbTag stops it auto-tagging.
-    @noDcbTag customerId: string,
+    // It is also the order's owner: the resolver overwrites this with the
+    // authenticated caller's id before the command is published, so what a
+    // client sends here is ignored rather than trusted. An operator placing an
+    // order on someone's behalf is exempt and keeps the value they sent.
+    @noDcbTag customerId: @s.matches(Reventless.Owner.string) string,
     @ref("AvailableProducts") productIds: array<string>,
     shippingMethod: shippingMethod,
     // A requested delivery slot, chosen at checkout. An optional field — a

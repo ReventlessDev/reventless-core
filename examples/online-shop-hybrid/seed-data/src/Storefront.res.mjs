@@ -24,7 +24,10 @@ let manifest = {
   components: manifest_components
 };
 
+let elevatedGroups = ["Admin"];
+
 export {
   manifest,
+  elevatedGroups,
 }
 /* No side effect */

@@ -22,3 +22,18 @@ let manifest: ReventlessInfra.Platform.bakedManifest = {
     {plugin: "Ordering", views: ["Orders"], commands: ["PlaceOrder", "CancelOrder"]},
   ],
 }
+
+/**
+Groups whose members read across every customer.
+
+Here for the same reason the manifest is: it is a fact about this shop, not about
+the platform hosting it, and every root that serves the shop has to agree on it.
+An operator who is elevated on one deployment and scoped on another is a bug
+nobody can reproduce.
+
+Unlike the manifest above, this one is **not** curation — it decides what the
+server does. A group named here reads every customer's orders. Leaving it empty
+would scope administrators too, which is the safe direction and also means the
+back-office order board shows an operator nothing.
+*/
+let elevatedGroups = ["Admin"]

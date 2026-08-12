@@ -1,5 +1,9 @@
 module Platform = ReventlessLocal.Platform.Make()
 
+// Before the plugins are built, because component construction is where the
+// owner-scoped resolvers read it. Set afterwards it would be set for nothing.
+Reventless.OwnerScope.setElevatedGroups(OnlineShopHybridSeed.Storefront.elevatedGroups)
+
 module Catalog = CatalogPlugin.Plugin.Make(Platform)
 module Ordering = OrderingPlugin.Plugin.Make(Platform)
 
