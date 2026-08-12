@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.229 (2026-08-12)
+
+### Bug Fixes
+
+* **command:** drop null arguments, and let a caller read why a payload was refused ([bfee0dc](https://github.com/ReventlessDev/reventless-core/commit/bfee0dc37755596ea8bcce1fe2cccdace7759f10))
+* **schema:** stop publishing a nested record's optional field as required ([44ed433](https://github.com/ReventlessDev/reventless-core/commit/44ed433fd40fc54cee41d7ab50aa7aafec851a2a))
+
+
 # 3.0.0-alpha.228 (2026-08-12)
 
 ### Features

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.288 (2026-08-12)
+
+### Bug Fixes
+
+* **aws:** carry the elevated groups into every Lambda ([ced4d92](https://github.com/ReventlessDev/reventless-core/commit/ced4d9211c3cebe70702757ab331c8a1fa773fca))
+
+
 # 3.0.0-alpha.287 (2026-08-12)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

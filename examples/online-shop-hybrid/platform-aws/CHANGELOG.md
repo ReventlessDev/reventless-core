@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.236 (2026-08-12)
+
+### Bug Fixes
+
+* **example:** tell the deployed shop who reads across customers ([6554998](https://github.com/ReventlessDev/reventless-core/commit/6554998765dc38507114e07282ab7d3cc0f3001a))
+
+
 # 1.0.0-alpha.235 (2026-08-12)
 
 ### Features

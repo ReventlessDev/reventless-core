@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.217 (2026-08-12)
+
+### Bug Fixes
+
+* **command:** drop null arguments, and let a caller read why a payload was refused ([bfee0dc](https://github.com/ReventlessDev/reventless-core/commit/bfee0dc37755596ea8bcce1fe2cccdace7759f10))
+
+
 # 3.0.0-alpha.216 (2026-08-12)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local
