@@ -183,6 +183,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     ~argsDict: dict<JSON.t>,
     ~capability: GraphQL_FragmentGenerator.serverCapability,
     ~labelField as _,
+    ~ownerScope: option<(string, string)>=?,
   ): option<JSON.t> => {
     let table = QueryDbStorage_Postgres_Ops.tableName(readModelName)
     let filterDict =
@@ -210,6 +211,15 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     } else {
       let b = {params: []}
       let whereParts = [notExpired]
+      // Into the SQL, before the LIMIT — narrowing the returned page instead
+      // would hand back fewer rows than asked for while still claiming a next
+      // page. Mirrors the SQLite push-down; the parity harness holds the two
+      // and the shared spec to the same answer.
+      switch ownerScope {
+      | Some((field, required)) =>
+        whereParts->Array.push(`${jsonTextC(field)} = ${b->param(JSON.Encode.string(required))}`)
+      | None => ()
+      }
       let valString = v =>
         switch v->JSON.Decode.string {
         | Some(s) => Some(s)
@@ -309,6 +319,7 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     ~subIdField as _: string,
     ~id: string,
     ~argsDict: dict<JSON.t>,
+    ~ownerScope: option<(string, string)>=?,
   ): JSON.t => {
     let table = QueryDbStorage_Postgres_Ops.tableName(readModelName)
     let filterDict =
@@ -324,6 +335,12 @@ module Make = (P: {let pool: PgDriver.pool}) => {
     let sk = `sub_key COLLATE "C"`
     let b = {params: []}
     let where = [`partition_key = ${b->param(JSON.Encode.string(id))}`, notExpired]
+    // Before the keyset window and the LIMIT, for the same reason as `listPage`.
+    switch ownerScope {
+    | Some((field, required)) =>
+      where->Array.push(`${jsonTextC(field)} = ${b->param(JSON.Encode.string(required))}`)
+    | None => ()
+    }
     fstr("prefix")->Option.forEach(p =>
       where->Array.push(`starts_with(sub_key, ${b->param(JSON.Encode.string(p))})`)
     )

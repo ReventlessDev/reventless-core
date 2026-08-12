@@ -21,23 +21,30 @@ let capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability = {
   sortFields: ["name", "qty", "status"],
 }
 
-let mk = (id, status, name, qty) => {
+let mk = (id, status, name, qty, owner) => {
   let o = Dict.make()
   o->Dict.set("id", JSON.Encode.string(id))
   o->Dict.set("status", JSON.Encode.string(status))
   o->Dict.set("name", JSON.Encode.string(name))
   o->Dict.set("qty", JSON.Encode.int(qty))
+  o->Dict.set("owner", JSON.Encode.string(owner))
   JSON.Encode.object(o)
 }
 
 // Names differ from id-order; status has duplicates (tiebreak); qty exercises the
-// numeric-field-as-string comparison the push-down must match.
+// numeric-field-as-string comparison the push-down must match. `owner` is split
+// so that no owner holds all the rows and none holds none — a scoped read that
+// returned everything and one that returned nothing would both stand out.
+//
+// Note `owner` is deliberately absent from `capability` below: owner scoping has
+// to work on a field the client-visible filter surface does not admit, which is
+// the normal case and the reason the predicate travels separately.
 let rows = [
-  ("p-1", "active", "Charlie", 3),
-  ("p-2", "active", "Alpha", 1),
-  ("p-3", "inactive", "Echo", 5),
-  ("p-4", "active", "Bravo", 2),
-  ("p-5", "inactive", "Delta", 4),
+  ("p-1", "active", "Charlie", 3, "u-a"),
+  ("p-2", "active", "Alpha", 1, "u-b"),
+  ("p-3", "inactive", "Echo", 5, "u-a"),
+  ("p-4", "active", "Bravo", 2, "u-c"),
+  ("p-5", "inactive", "Delta", 4, "u-a"),
 ]
 
 type setup = {
@@ -45,6 +52,7 @@ type setup = {
     ~argsDict: dict<JSON.t>,
     ~capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability,
     ~labelField: string,
+    ~ownerScope: (string, string)=?,
   ) => option<JSON.t>,
   fullScan: unit => array<JSON.t>,
 }
@@ -58,8 +66,8 @@ let build = async (): setup => {
   let s = Storage.make(~name="items", ~indexes=[], ~api=(), ~apiRole=(), ~owner=None, ~opts)
   let ops = await s.operations->TestRunner.resolve
   for i in 0 to rows->Array.length - 1 {
-    let (id, status, name, qty) = rows->Array.getUnsafe(i)
-    let _ = await ops.save(id, mk(id, status, name, qty), ReventlessCore.QueryDb.Any, None)
+    let (id, status, name, qty, owner) = rows->Array.getUnsafe(i)
+    let _ = await ops.save(id, mk(id, status, name, qty, owner), ReventlessCore.QueryDb.Any, None)
   }
   {
     listPage: TestBus.getQueryDbListPage("items")->Option.getOrThrow,
@@ -110,7 +118,7 @@ let orderBy = (f, dir) =>
 let cur = ReventlessCore.QueryDbListQuery.encodeCursor
 
 // Assert the push-down serves this shape AND matches the spec exactly.
-let checkPushed = async (~label, args) => {
+let checkPushed = async (~label, ~ownerScope=?, args) => {
   let s = await build()
   let argsDict = argsOf(args)
   let expected =
@@ -120,8 +128,9 @@ let checkPushed = async (~label, args) => {
       ~capability,
       ~labelField="name",
       ~decodeLocalId=_ => None,
+      ~ownerScope?,
     )->norm
-  switch s.listPage(~argsDict, ~capability, ~labelField="name") {
+  switch s.listPage(~argsDict, ~capability, ~labelField="name", ~ownerScope?) {
   | Some(actual) => expect(actual->norm)->toEqual(expected)
   | None => expect("push-down for " ++ label)->toBe("returned None")
   }
@@ -131,6 +140,20 @@ let checkPushed = async (~label, args) => {
 let checkFallback = async args => {
   let s = await build()
   expect(s.listPage(~argsDict=argsOf(args), ~capability, ~labelField="name")->Option.isSome)->toBe(false)
+}
+
+// The ids a scoped read actually returns, from the push-down.
+let scopedIds = async (~owner, args) => {
+  let s = await build()
+  switch s.listPage(
+    ~argsDict=argsOf(args),
+    ~capability,
+    ~labelField="name",
+    ~ownerScope=("owner", owner),
+  ) {
+  | Some(conn) => (conn->norm).edges->Array.map(e => e.id)
+  | None => []
+  }
 }
 
 describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery spec)", () => {
@@ -194,4 +217,62 @@ describe("QueryDb list push-down parity (SQLite ≡ QueryDbListQuery spec)", () 
   testPromise("backward (last/before) → fallback", () =>
     checkFallback([("last", JSON.Encode.int(2)), ("before", JSON.Encode.string(cur("p-4")))])
   )
+
+  // ── Owner scoping ─────────────────────────────────────────────────────────
+  // Parity matters more here than anywhere else in this file. The push-down is
+  // the path a deployment actually takes; the spec is the path the tests most
+  // easily reach. A predicate implemented in only one of them is a hole that
+  // every fallback-based test would still call green.
+  describe("owner scoping", () => {
+    testPromise("bare page, scoped", () =>
+      checkPushed(~label="owner-bare", ~ownerScope=("owner", "u-a"), [])
+    )
+    testPromise("scoped + orderBy", () =>
+      checkPushed(
+        ~label="owner-order",
+        ~ownerScope=("owner", "u-a"),
+        [("orderBy", orderBy("name", "DESC"))],
+      )
+    )
+    // The client's own filter must survive alongside the scope, not be replaced
+    // by it — a scoped read is still a filtered read.
+    testPromise("scoped + client filter compose", () =>
+      checkPushed(
+        ~label="owner-and-filter",
+        ~ownerScope=("owner", "u-a"),
+        [("filter", filterOf([("statusEq", JSON.Encode.string("inactive"))]))],
+      )
+    )
+
+    testPromise("a scoped read returns exactly that owner's rows", async () =>
+      expect(await scopedIds(~owner="u-a", []))->toEqual(["p-1", "p-3", "p-5"])
+    )
+
+    // The control: a different owner sees a different, also non-empty, set. An
+    // implementation that scoped to nothing would pass an "is not everything"
+    // assertion and fail this one.
+    testPromise("a second owner sees their own rows, not the first's", async () =>
+      expect(await scopedIds(~owner="u-b", []))->toEqual(["p-2"])
+    )
+
+    // The case that catches a predicate applied AFTER the page rather than
+    // inside the SQL: u-a owns 3 of 5 rows, so a LIMIT 2 taken before scoping
+    // would return p-1 alone (p-2 belongs to u-b and would be dropped), not the
+    // two rows actually asked for.
+    testPromise("paging a scoped read fills each page from owned rows only", async () =>
+      expect(await scopedIds(~owner="u-a", [("first", JSON.Encode.int(2))]))->toEqual([
+        "p-1",
+        "p-3",
+      ])
+    )
+
+    testPromise("the second page continues the scoped sequence", async () =>
+      expect(
+        await scopedIds(
+          ~owner="u-a",
+          [("first", JSON.Encode.int(2)), ("after", JSON.Encode.string(cur("p-3")))],
+        ),
+      )->toEqual(["p-5"])
+    )
+  })
 })

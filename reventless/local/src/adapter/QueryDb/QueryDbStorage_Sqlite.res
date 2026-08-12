@@ -146,6 +146,7 @@ type busCallbacks = {
       ~argsDict: dict<JSON.t>,
       ~capability: GraphQL_FragmentGenerator.serverCapability,
       ~labelField: string,
+      ~ownerScope: (string, string)=?,
     ) => option<JSON.t>,
   ) => unit,
 }
@@ -426,6 +427,7 @@ let makeStorage = (
     ~argsDict: dict<JSON.t>,
     ~capability: GraphQL_FragmentGenerator.serverCapability,
     ~labelField as _,
+    ~ownerScope: option<(string, string)>=?,
   ): option<JSON.t> => {
     let filterDict =
       argsDict->Dict.get("filter")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
@@ -440,6 +442,15 @@ let makeStorage = (
     } else {
       let whereParts = [notExpiredClause]
       let params = []
+      // Pushed into the SQL rather than applied to the returned page, because the
+      // LIMIT below is what makes a page: narrowing afterwards would return fewer
+      // rows than asked for while still reporting a next page.
+      switch ownerScope {
+      | Some((field, required)) =>
+        whereParts->Array.push(`${jsonText(field)} = ?`)
+        params->Array.push(JSON.Encode.string(required))
+      | None => ()
+      }
       let valString = v =>
         switch v->JSON.Decode.string {
         | Some(s) => Some(s)

@@ -75,12 +75,28 @@ let buildConnection = (
 // it defaults to the shared rule so every caller applies the same one — the AWS
 // Lambda used to pass a no-op here, which silently made `filter.ids` reject a
 // global id on that provider only. Everything else is pure over the item array.
+// `ownerScope` is `(fieldName, requiredValue)`, and it is deliberately NOT read
+// out of `argsDict`. Two reasons, both fatal to the obvious alternative of
+// injecting `filter.<owner>Eq`:
+//
+//   - the owner field usually is not in `capability.filterFields` at all (it is
+//     admitted only by `@id` / `@index` / `@scan` and friends), so there is no
+//     filter input to inject into; and
+//   - `filter` is the caller's own argument. A predicate that decides what the
+//     caller may see must arrive on a channel the caller cannot name or
+//     overwrite.
+//
+// It joins the same `filtered` pass as everything else, which puts it BEFORE
+// ordering and pagination. Narrowing a materialised page afterwards would return
+// short pages with valid-looking cursors — a bug that reads as "the list
+// sometimes ends early" rather than as an access-control fault.
 let run = (
   ~items: array<JSON.t>,
   ~argsDict: Dict.t<JSON.t>,
   ~capability: GraphQL_FragmentGenerator.serverCapability,
   ~labelField: string,
   ~decodeLocalId: string => option<string>=Api_Ids.toLocalId,
+  ~ownerScope: option<(string, string)>=?,
 ): JSON.t => {
   let filterDict =
     argsDict->Dict.get("filter")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
@@ -161,7 +177,15 @@ let run = (
     | _ => true
     }
     let passPerField = perFieldChecks->Array.every(check => check(item))
-    passSearch && passPrefix && passIds && passPerField
+    // A row that does not state an owner never matches a scoped read. Treating a
+    // missing field as "belongs to everyone" would expose exactly the rows that
+    // predate the annotation, which are the ones nobody remembers to check.
+    let passOwner = switch ownerScope {
+    | Some((field, required)) =>
+      getFieldString(item, field)->Option.mapOr(false, v => v == required)
+    | None => true
+    }
+    passSearch && passPrefix && passIds && passPerField && passOwner
   })
 
   let orderByDict = argsDict->Dict.get("orderBy")->Option.flatMap(JSON.Decode.object)

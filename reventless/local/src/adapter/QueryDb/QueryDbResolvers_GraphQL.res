@@ -137,6 +137,49 @@ module Make = (Bus: LocalBus.T) => {
       }
     }
 
+    // ── Owner scoping ────────────────────────────────────────────────────────
+    // What a caller may see of a view whose state declares an `@owner` field.
+    // Sits beside `runInterceptor` on purpose: these are the two questions every
+    // door has to ask, and a door that forgets one of them is a hole rather than
+    // a degradation. Answering "may they read this at all" and "which rows" in
+    // the same place is what makes the omission visible when reading a resolver.
+    // Read per request rather than captured at registration: a resolver is built
+    // before every plugin's state schema is necessarily registered, and a lookup
+    // that missed here would leave the view unscoped rather than erroring.
+    let ownerFieldOf = () =>
+      Plugin_Helpers.stateSchemaRegistry
+      ->Dict.get(name)
+      ->Option.flatMap(s => Reventless.Owner.fieldNames(s)->Array.get(0))
+
+    // An owner-scoped view with no elevated groups configured scopes EVERYONE,
+    // administrators included. That is the safe direction to be wrong in and it
+    // is still wrong, and it is invisible from outside — an operator's empty list
+    // looks exactly like an operator who owns nothing. Said once per view at
+    // registration, because the alternative is finding out from a support ticket.
+    OwnerScopeDiagnostics.warnIfNoElevatedGroups(
+      ~comp="QueryDbResolvers_GraphQL",
+      ~view=name,
+      ~ownerField=ownerFieldOf(),
+    )
+
+    let ownerDecision = (~ctx) =>
+      extractIdentity(ctx)->Reventless.OwnerScope.decide(~ownerField=ownerFieldOf())
+
+    // Post-read form, for the single-row and by-index doors where there is no
+    // page to narrow — the row is already in hand and either belongs to the
+    // caller or does not.
+    let ownerAllows = (~ctx, item: JSON.t) =>
+      switch ownerDecision(~ctx) {
+      | Unscoped => true
+      | RefuseOwned => false
+      | ScopeTo(field, required) =>
+        item
+        ->JSON.Decode.object
+        ->Option.flatMap(d => d->Dict.get(field))
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.mapOr(false, v => v == required)
+      }
+
     let cap = s => s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
 
     // Resolve query field names: check registry first, fall back to safe defaults.
@@ -214,6 +257,10 @@ module Make = (Bus: LocalBus.T) => {
           | _ => (id, firstAttempt)
           }
           switch items->Array.get(0) {
+          // A row the caller does not own answers as though it were not there.
+          // Distinguishing "not yours" from "not found" here would turn this door
+          // into an oracle for which ids exist.
+          | Some(item) if !ownerAllows(~ctx, item) => JSON.Encode.null
           | Some(item) =>
             if includeIdParam {
               // Copied — `JSON.Decode.object` hands back the stored object itself,
@@ -279,7 +326,9 @@ module Make = (Bus: LocalBus.T) => {
               )->Promise.all
               loaded
               ->Array.filterMap(((id, opt)) =>
-                opt->Option.map(item => {
+                opt
+                ->Option.filter(item => ownerAllows(~ctx, item))
+                ->Option.map(item => {
                   let obj = item->JSON.Decode.object->Option.mapOr(Dict.make(), Dict.copy)
                   obj->Dict.set("id", JSON.Encode.string(id))
                   JSON.Encode.object(obj)
@@ -345,39 +394,63 @@ module Make = (Bus: LocalBus.T) => {
           ~hasOrderBy,
         ),
       ]
+      let emptyConnection = Obj.magic({
+        "edges": [],
+        "pageInfo": {
+          "hasNextPage": false,
+          "hasPreviousPage": false,
+          "startCursor": Nullable.null,
+          "endCursor": Nullable.null,
+        },
+      })
       let resolver: ReventlessGraphqlServer.GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
         switch await runInterceptor(~ctx, ~args) {
-        | Deny(_) =>
-          Obj.magic({
-            "edges": [],
-            "pageInfo": {
-              "hasNextPage": false,
-              "hasPreviousPage": false,
-              "startCursor": Nullable.null,
-              "endCursor": Nullable.null,
-            },
-          })
+        | Deny(_) => emptyConnection
         | Allow =>
-          let argsDict = args->JSON.Decode.object->Option.getOr(Dict.make())
-          // Prefer a backend list push-down (SQLite builds json_extract predicates
-          // + ORDER BY … LIMIT so it never materialises the whole read model). When
-          // the backend can't serve this query shape it returns None and we fall
-          // back to materialising the full model and running the shared
-          // `QueryDbListQuery` spec over it (the same code the in-memory backend and
-          // the push-down are tested against).
-          let decodeLocalId = id =>
-            DomainGraphQL_Server.decodeGlobalId(id)->Option.map(((_, lid)) => lid)
-          switch Bus.getQueryDbListPage(name) {
-          | Some(listPage) =>
-            switch listPage(~argsDict, ~capability, ~labelField) {
-            | Some(conn) => conn
+          switch ownerDecision(~ctx) {
+          | RefuseOwned => emptyConnection
+          | decision =>
+            let ownerScope = Reventless.OwnerScope.scopeOf(decision)
+            let argsDict = args->JSON.Decode.object->Option.getOr(Dict.make())
+            // Prefer a backend list push-down (SQLite builds json_extract predicates
+            // + ORDER BY … LIMIT so it never materialises the whole read model). When
+            // the backend can't serve this query shape it returns None and we fall
+            // back to materialising the full model and running the shared
+            // `QueryDbListQuery` spec over it (the same code the in-memory backend and
+            // the push-down are tested against).
+            //
+            // `ownerScope` goes to BOTH arms. Passing it only to the fallback would
+            // scope the exceptional path and leave the normal one — the push-down —
+            // returning everything, which is the worst possible place for the gap
+            // because the fallback is what the tests most easily exercise.
+            let decodeLocalId = id =>
+              DomainGraphQL_Server.decodeGlobalId(id)->Option.map(((_, lid)) => lid)
+            switch Bus.getQueryDbListPage(name) {
+            | Some(listPage) =>
+              switch listPage(~argsDict, ~capability, ~labelField, ~ownerScope?) {
+              | Some(conn) => conn
+              | None =>
+                let items = await fetchAllItems()
+                QueryDbListQuery.run(
+                  ~items,
+                  ~argsDict,
+                  ~capability,
+                  ~labelField,
+                  ~decodeLocalId,
+                  ~ownerScope?,
+                )
+              }
             | None =>
               let items = await fetchAllItems()
-              QueryDbListQuery.run(~items, ~argsDict, ~capability, ~labelField, ~decodeLocalId)
+              QueryDbListQuery.run(
+                ~items,
+                ~argsDict,
+                ~capability,
+                ~labelField,
+                ~decodeLocalId,
+                ~ownerScope?,
+              )
             }
-          | None =>
-            let items = await fetchAllItems()
-            QueryDbListQuery.run(~items, ~argsDict, ~capability, ~labelField, ~decodeLocalId)
           }
         }
       }
@@ -389,7 +462,11 @@ module Make = (Bus: LocalBus.T) => {
         switch await runInterceptor(~ctx, ~args) {
         | Deny(_) => Obj.magic({"nextToken": Nullable.null, "scannedCount": 0, "items": []})
         | Allow =>
-          let items = await fetchAllItems()
+          let all = await fetchAllItems()
+          // The legacy shape has no push-down to reach, so the narrowing is a plain
+          // filter here. `scannedCount` counts what is returned, not what was read:
+          // the pre-scoping total would tell a caller how many rows they may not see.
+          let items = all->Array.filter(item => ownerAllows(~ctx, item))
           Obj.magic({"nextToken": Nullable.null, "scannedCount": items->Array.length, "items": items})
         }
       }
@@ -446,11 +523,15 @@ module Make = (Bus: LocalBus.T) => {
           switch Bus.getQueryDb(name) {
           | None => emptyConn
           | Some(ops) =>
-            let allItems =
+            let loaded =
               await ops.loadStream(id)
               ->Stream.runCollect
               ->Effect.catchAll(_ => Effect.succeed([]))
               ->Effect.runPromise
+            // Narrowed here, before the cursor window and the sort-key filter, so
+            // every page this door emits is a page of rows the caller owns. Doing
+            // it after would hand back short pages with valid cursors.
+            let allItems = loaded->Array.filter(item => ownerAllows(~ctx, item))
 
             // Cursor-keyed filtering: exclude items on the cursor side of the boundary
             let cursorFiltered = if isBackward {
@@ -539,11 +620,16 @@ module Make = (Bus: LocalBus.T) => {
           | Allow =>
             let value =
               args->JSON.Decode.object->Option.flatMap(d => d->Dict.get(index))->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+            // Applied to whichever arm answers, rather than inside one of them: the
+            // push-down and the scan are two ways to reach the same rows, and a
+            // narrowing that lives in only one is a hole that appears when a
+            // backend gains or loses an index.
+            let scoped = rows => rows->Array.filter(item => ownerAllows(~ctx, item))
             // Prefer the pushed-down equality lookup (SQLite rides the GSI index;
             // in-memory reuses its lazy snapshot). Fall back to scan+filter only
             // if no lookup is registered for this QueryDb.
             switch Bus.getQueryDbIndexLookup(name) {
-            | Some(lookup) => lookup(filterField, value)->JSON.Encode.array
+            | Some(lookup) => lookup(filterField, value)->scoped->JSON.Encode.array
             | None =>
               switch Bus.getQueryDbScan(name) {
               | Some(scanAll) =>
@@ -556,6 +642,7 @@ module Make = (Bus: LocalBus.T) => {
                   ->Option.map(v => v == value)
                   ->Option.getOr(false)
                 )
+                ->scoped
                 ->JSON.Encode.array
               | None => []->JSON.Encode.array
               }

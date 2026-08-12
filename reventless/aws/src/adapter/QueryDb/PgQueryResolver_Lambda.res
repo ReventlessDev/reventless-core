@@ -67,6 +67,7 @@ type pushdowns = {
     ~argsDict: dict<JSON.t>,
     ~capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability,
     ~labelField: string,
+    ~ownerScope: (string, string)=?,
   ) => promise<option<JSON.t>>,
   // Sub-id connection ({single}Items) — keyset over sub_key within a partition.
   itemsPage: (
@@ -74,6 +75,7 @@ type pushdowns = {
     ~subIdField: string,
     ~id: string,
     ~argsDict: dict<JSON.t>,
+    ~ownerScope: (string, string)=?,
   ) => promise<JSON.t>,
   // Full materialisation for the list fallback (shapes listPage declines).
   scanAll: (~readModelName: string) => promise<array<JSON.t>>,
@@ -89,6 +91,10 @@ type binding = {
   labelField: string,
   includeIdParam: bool,
   authorization: Reventless.Authorization.permission,
+  /** The state's `@owner` field, when it declares one. Derived at Lambda init
+      from the same schema `capability` comes from, so the two cannot disagree
+      about which fields this read model has. */
+  ownerField: option<string>,
 }
 
 // -- arg helpers -------------------------------------------------------------
@@ -162,6 +168,16 @@ let dispatch = async (
     | _ => JSON.Encode.array([])
     }
   | Allow =>
+    // Post-read narrowing for the doors that hand back rows rather than a page.
+    // Same decision as the list door takes; applied per row because there is no
+    // query to push it into.
+    let ownerAllows = (item: JSON.t) =>
+      switch payload.identity->Reventless.OwnerScope.decide(~ownerField=binding.ownerField) {
+      | Unscoped => true
+      | RefuseOwned => false
+      | ScopeTo(field, required) =>
+        item->argStr(field)->Option.mapOr(false, v => v == required)
+      }
     switch payload.kind {
     | "getById" =>
       let id = payload.arguments->argStr("id")->Option.getOr("")
@@ -181,6 +197,9 @@ let dispatch = async (
       | (found, _) => (id, found)
       }
       switch found {
+      // A row the caller does not own answers as "not found". Saying "not yours"
+      // instead would make this door an oracle for which ids exist.
+      | Some(item) if !ownerAllows(item) => JSON.Encode.null
       | Some(item) => binding.includeIdParam ? withId(item, resolvedKey) : item
       | None => JSON.Encode.null
       }
@@ -197,7 +216,7 @@ let dispatch = async (
       let extra = missing->Array.length > 0
         ? await binding.pushdowns.byIds(~readModelName=rm, missing)
         : []
-      JSON.Encode.array(Array.concat(found, extra))
+      JSON.Encode.array(Array.concat(found, extra)->Array.filter(ownerAllows))
 
     | "items" =>
       // Sub-id connection: {single}Items(id, filter, first/after/last/before).
@@ -205,12 +224,17 @@ let dispatch = async (
       switch binding.subIdField {
       | Some(subIdField) =>
         let id = payload.arguments->argStr("id")->Option.getOr("")
-        await binding.pushdowns.itemsPage(
-          ~readModelName=rm,
-          ~subIdField,
-          ~id,
-          ~argsDict=payload.arguments->argObj,
-        )
+        switch payload.identity->Reventless.OwnerScope.decide(~ownerField=binding.ownerField) {
+        | RefuseOwned => emptyConnection()
+        | decision =>
+          await binding.pushdowns.itemsPage(
+            ~readModelName=rm,
+            ~subIdField,
+            ~id,
+            ~argsDict=payload.arguments->argObj,
+            ~ownerScope=?Reventless.OwnerScope.scopeOf(decision),
+          )
+        }
       | None => emptyConnection()
       }
 
@@ -248,31 +272,42 @@ let dispatch = async (
       | _ => true
       }
       if authorized {
-        JSON.Encode.array(await binding.pushdowns.indexLookup(~readModelName=rm, field, value))
+        JSON.Encode.array(
+          (await binding.pushdowns.indexLookup(~readModelName=rm, field, value))->Array.filter(
+            ownerAllows,
+          ),
+        )
       } else {
         JSON.Encode.array([])
       }
 
     | "list" =>
       let argsDict = payload.arguments->argObj
-      switch await binding.pushdowns.listPage(
-        ~readModelName=rm,
-        ~argsDict,
-        ~capability=binding.capability,
-        ~labelField=binding.labelField,
-      ) {
-      | Some(conn) => conn
-      | None =>
-        // Shapes listPage declines (search/searchPrefix/ids/backward) → run the
-        // shared spec over the materialised model, which decodes Relay global
-        // ids the same way every other door now does.
-        let items = await binding.pushdowns.scanAll(~readModelName=rm)
-        ReventlessCore.QueryDbListQuery.run(
-          ~items,
+      switch payload.identity->Reventless.OwnerScope.decide(~ownerField=binding.ownerField) {
+      | RefuseOwned => emptyConnection()
+      | decision =>
+        let ownerScope = Reventless.OwnerScope.scopeOf(decision)
+        switch await binding.pushdowns.listPage(
+          ~readModelName=rm,
           ~argsDict,
           ~capability=binding.capability,
           ~labelField=binding.labelField,
-        )
+          ~ownerScope?,
+        ) {
+        | Some(conn) => conn
+        | None =>
+          // Shapes listPage declines (search/searchPrefix/ids/backward) → run the
+          // shared spec over the materialised model, which decodes Relay global
+          // ids the same way every other door now does.
+          let items = await binding.pushdowns.scanAll(~readModelName=rm)
+          ReventlessCore.QueryDbListQuery.run(
+            ~items,
+            ~argsDict,
+            ~capability=binding.capability,
+            ~labelField=binding.labelField,
+            ~ownerScope?,
+          )
+        }
       }
 
     // Cross-table single-ID field resolver (@resolves). `binding` is the TARGET

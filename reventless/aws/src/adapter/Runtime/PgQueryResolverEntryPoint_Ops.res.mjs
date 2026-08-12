@@ -3,6 +3,7 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as PgRuntime$ReventlessAws from "../Postgres/PgRuntime.res.mjs";
 import * as HandlerFactoryHelpersMjs from "./HandlerFactoryHelpers.mjs";
 import * as PgQueryResolver_Lambda$ReventlessAws from "../QueryDb/PgQueryResolver_Lambda.res.mjs";
@@ -72,7 +73,8 @@ function registerBinding(pushdowns, pgConnection, entry, spec) {
     capability: GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(entry.readModelName, spec.stateSchema),
     labelField: entry.labelField,
     includeIdParam: entry.includeIdParam,
-    authorization: spec.authorization
+    authorization: spec.authorization,
+    ownerField: Owner$Reventless.fieldNames(spec.stateSchema)[0]
   });
   HandlerFactoryHelpersMjs.log.debug("registered resolver binding for " + entry.readModelName, {
     comp: "PgQueryResolver"
@@ -91,4 +93,4 @@ export {
   makePushdowns,
   registerBinding,
 }
-/* PgRuntime-ReventlessAws Not a pure module */
+/* Owner-Reventless Not a pure module */

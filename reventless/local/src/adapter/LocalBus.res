@@ -132,6 +132,7 @@ module type T = {
       ~argsDict: dict<JSON.t>,
       ~capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability,
       ~labelField: string,
+      ~ownerScope: (string, string)=?,
     ) => option<JSON.t>,
   ) => unit
   let getQueryDbListPage: string => option<
@@ -139,6 +140,7 @@ module type T = {
       ~argsDict: dict<JSON.t>,
       ~capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability,
       ~labelField: string,
+      ~ownerScope: (string, string)=?,
     ) => option<JSON.t>,
   >
 
@@ -235,6 +237,7 @@ module Impl = (C: BusConfig): T => {
         ~argsDict: dict<JSON.t>,
         ~capability: ReventlessCore.GraphQL_FragmentGenerator.serverCapability,
         ~labelField: string,
+        ~ownerScope: (string, string)=?,
       ) => option<JSON.t>,
     >,
   > = ref(Dict.make())

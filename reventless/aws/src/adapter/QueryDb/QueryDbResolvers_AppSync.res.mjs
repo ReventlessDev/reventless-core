@@ -3,7 +3,9 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
+import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as AppSync_Function$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Function.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
@@ -12,6 +14,7 @@ import * as Util_QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src
 import * as AppSync_DataSource$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_DataSource.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
+import * as OwnerScopeDiagnostics$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/OwnerScopeDiagnostics.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 import * as QueryInterceptor_Provisioning$ReventlessAws from "./QueryInterceptor_Provisioning.res.mjs";
@@ -106,7 +109,15 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
       GraphQL_FragmentGenerator$ReventlessCore.validateScanSortAlignment(stateSchemaOpt, name$1, knownSortFields).forEach(msg => log.warn("QueryDbResolvers_AppSync", undefined, msg));
     }
     let requireAttribute = internalRowRequiredAttr(name$1);
-    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
+    let ownerField = stateSchemaOpt !== undefined ? Owner$Reventless.fieldNames(stateSchemaOpt)[0] : undefined;
+    OwnerScopeDiagnostics$ReventlessCore.warnIfNoElevatedGroups("QueryDbResolvers_AppSync", name$1, ownerField);
+    if (ownerField !== undefined) {
+      let indexed = indexes.some(ic => Stdlib_Option.getOr(ic.idField, ic.index) === ownerField) || Stdlib_Option.getOr(subIdField, "") === ownerField;
+      if (!indexed) {
+        log.warn("QueryDbResolvers_AppSync", undefined, name$1 + `: @owner field "` + ownerField + `" is not the key of any index on this table. ` + "Owner-scoped reads will Scan and filter, so pages shrink as the caller's share of the rows falls. Add an @index on that field before this read model grows.");
+      }
+    }
+    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection(labelField, filterFieldNames, rangeFieldNames, sortFieldNames, requireAttribute, ownerField, OwnerScope$Reventless.elevatedGroups.contents) : AppSync_Resolver_Functions$PulumiAws.listAllItems);
     let resolversByIndex = indexes.map(indexConfig => {
       let index = indexConfig.index;
       let stripLeadingBy = s => {

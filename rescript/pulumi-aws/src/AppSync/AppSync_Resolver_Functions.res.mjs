@@ -360,13 +360,37 @@ export function request(ctx) {
 ` + resultResponseCode + `
 `;
 
-function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt, requireAttribute) {
+function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt, requireAttribute, ownerField, elevatedGroupsOpt) {
   let filterFields = filterFieldsOpt !== undefined ? filterFieldsOpt : [];
   let rangeFields = rangeFieldsOpt !== undefined ? rangeFieldsOpt : [];
   let sortFields = sortFieldsOpt !== undefined ? sortFieldsOpt : [];
+  let elevatedGroups = elevatedGroupsOpt !== undefined ? elevatedGroupsOpt : [];
   let requireAttributeClause = requireAttribute !== undefined ? `
   names['#` + requireAttribute + `'] = '` + requireAttribute + `';
   parts.push('attribute_exists(#` + requireAttribute + `)');` : "";
+  let ownerClause;
+  if (ownerField !== undefined) {
+    let elevatedLiteral = elevatedGroups.map(g => `'` + g + `'`).join(", ");
+    ownerClause = `
+  // ── owner scoping (generated) ──
+  // Not read from ctx.args: a predicate deciding what the caller may see must
+  // arrive on a channel the caller cannot name, and this field is usually absent
+  // from the filter surface anyway.
+  const _id = ctx.identity;
+  const _sub = _id == null ? null : _id.sub;
+  const _groups = (_id != null && _id.claims != null && _id.claims['cognito:groups']) || [];
+  const _elevated = [` + elevatedLiteral + `];
+  // No identity at all, or an identity with no \`sub\`, is the IAM service caller
+  // the API also accepts — inside the trust boundary, and exempt.
+  const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);
+  if (!_exempt) {
+    names['#owner'] = '` + ownerField + `';
+    values[':owner'] = util.dynamodb.toDynamoDB(_sub);
+    parts.push('#owner = :owner');
+  }`;
+  } else {
+    ownerClause = "";
+  }
   let filterClauses = filterFields.map(f => `
   if (filter.` + f + `Eq !== undefined && filter.` + f + `Eq !== null && filter.` + f + `Eq !== '') {
     names['#` + f + `'] = '` + f + `';
@@ -436,7 +460,7 @@ export function request(ctx) {
       return key;
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
-  }` + filterClauses + rangeClauses + requireAttributeClause + `
+  }` + filterClauses + rangeClauses + requireAttributeClause + ownerClause + `
   // The cursor is base64(JSON({ token, index })); decode the after arg back to the raw
   // DynamoDB continuation token the response side emitted (Fix 1 round-trip).
   let after = null;

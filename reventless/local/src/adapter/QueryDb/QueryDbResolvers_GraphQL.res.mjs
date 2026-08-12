@@ -6,7 +6,9 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
+import * as Owner$Reventless from "@reventlessdev/reventless-spec/src/components/Owner.res.mjs";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Api_Ids$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Ids.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
@@ -14,6 +16,7 @@ import * as SortKey_Filter$ReventlessLocal from "./SortKey_Filter.res.mjs";
 import * as QueryDbListQuery$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/QueryDbListQuery.res.mjs";
 import * as QueryDb_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Callback.res.mjs";
 import * as DomainGraphQL_Server$ReventlessLocal from "../DomainGraphQL_Server.res.mjs";
+import * as OwnerScopeDiagnostics$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/OwnerScopeDiagnostics.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
 function encodeCursor(value) {
@@ -85,6 +88,18 @@ function Make(Bus) {
         return "Allow";
       }
     };
+    let ownerFieldOf = () => Stdlib_Option.flatMap(Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name], s => Owner$Reventless.fieldNames(s)[0]);
+    OwnerScopeDiagnostics$ReventlessCore.warnIfNoElevatedGroups("QueryDbResolvers_GraphQL", name, ownerFieldOf());
+    let ownerDecision = ctx => OwnerScope$Reventless.decide(extractIdentity(ctx), ownerFieldOf(), undefined);
+    let ownerAllows = (ctx, item) => {
+      let match = ownerDecision(ctx);
+      if (typeof match !== "object") {
+        return match === "Unscoped";
+      }
+      let required = match._1;
+      let field = match._0;
+      return Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]), Stdlib_JSON.Decode.string), false, v => v === required);
+    };
     let cap = s => s.charAt(0).toUpperCase() + s.slice(1);
     let registryEntry = Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[name];
     let singleQueryName = registryEntry !== undefined ? registryEntry.singleFieldName : name.charAt(0).toLowerCase() + name.slice(1);
@@ -122,6 +137,9 @@ function Make(Bus) {
         ];
       let item = match$3[1][0];
       if (item === undefined) {
+        return null;
+      }
+      if (!ownerAllows(ctx, item)) {
         return null;
       }
       if (!includeIdParam) {
@@ -168,7 +186,7 @@ function Make(Bus) {
         }));
         return Stdlib_Array.filterMap(loaded, param => {
           let id = param[0];
-          return Stdlib_Option.map(param[1], item => {
+          return Stdlib_Option.map(Stdlib_Option.filter(param[1], item => ownerAllows(ctx, item)), item => {
             let obj = Stdlib_Option.mapOr(Stdlib_JSON.Decode.object(item), {}, prim => Object.assign({}, prim));
             obj["id"] = id;
             return obj;
@@ -205,32 +223,38 @@ function Make(Bus) {
       let typesToRegister = [GraphQL_FragmentGenerator$ReventlessCore.deriveConnectionFilterType(filterTypeName, capability)].concat(orderByTypes);
       server.registerTypes(typesToRegister);
       let sdl = [GraphQL_FragmentGenerator$ReventlessCore.deriveConnectionQueryField(listQueryName, returnTypeName, filterTypeName, hasOrderBy)];
+      let emptyConnection = {
+        edges: [],
+        pageInfo: {
+          hasNextPage: false,
+          hasPreviousPage: false,
+          startCursor: null,
+          endCursor: null
+        }
+      };
       let resolver$1 = async (_root, args, ctx) => {
         let match = await runInterceptor(ctx, args);
         if (typeof match === "object") {
-          return {
-            edges: [],
-            pageInfo: {
-              hasNextPage: false,
-              hasPreviousPage: false,
-              startCursor: null,
-              endCursor: null
-            }
-          };
+          return emptyConnection;
         }
+        let decision = ownerDecision(ctx);
+        if (typeof decision !== "object" && decision !== "Unscoped") {
+          return emptyConnection;
+        }
+        let ownerScope = OwnerScope$Reventless.scopeOf(decision);
         let argsDict = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(args), {});
         let decodeLocalId = id => Stdlib_Option.map(DomainGraphQL_Server$ReventlessLocal.decodeGlobalId(id), param => param[1]);
         let listPage = Bus.getQueryDbListPage(name);
         if (listPage !== undefined) {
-          let conn = listPage(argsDict, capability, labelField);
+          let conn = listPage(argsDict, capability, labelField, ownerScope);
           if (conn !== undefined) {
             return conn;
           }
           let items = await fetchAllItems();
-          return QueryDbListQuery$ReventlessCore.run(items, argsDict, capability, labelField, decodeLocalId);
+          return QueryDbListQuery$ReventlessCore.run(items, argsDict, capability, labelField, decodeLocalId, ownerScope);
         }
         let items$1 = await fetchAllItems();
-        return QueryDbListQuery$ReventlessCore.run(items$1, argsDict, capability, labelField, decodeLocalId);
+        return QueryDbListQuery$ReventlessCore.run(items$1, argsDict, capability, labelField, decodeLocalId, ownerScope);
       };
       match = [
         sdl,
@@ -247,7 +271,8 @@ function Make(Bus) {
             items: []
           };
         }
-        let items = await fetchAllItems();
+        let all = await fetchAllItems();
+        let items = all.filter(item => ownerAllows(ctx, item));
         return {
           nextToken: null,
           scannedCount: items.length,
@@ -305,7 +330,8 @@ function Make(Bus) {
         if (ops === undefined) {
           return emptyConn;
         }
-        let allItems = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
+        let loaded = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
+        let allItems = loaded.filter(item => ownerAllows(ctx, item));
         let cursorFiltered;
         if (isBackward) {
           let beforeKey = Stdlib_Option.map(before, decodeCursor);
@@ -382,13 +408,14 @@ function Make(Bus) {
           return [];
         }
         let value = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d[index]), Stdlib_JSON.Decode.string), "");
+        let scoped = rows => rows.filter(item => ownerAllows(ctx, item));
         let lookup = Bus.getQueryDbIndexLookup(name);
         if (lookup !== undefined) {
-          return lookup(filterField, value);
+          return scoped(lookup(filterField, value));
         }
         let scanAll = Bus.getQueryDbScan(name);
         if (scanAll !== undefined) {
-          return scanAll().filter(item => Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[filterField]), Stdlib_JSON.Decode.string), v => v === value), false));
+          return scoped(scanAll().filter(item => Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[filterField]), Stdlib_JSON.Decode.string), v => v === value), false)));
         } else {
           return [];
         }

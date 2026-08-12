@@ -238,6 +238,39 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     // (prefix-agnostic: real plugin rows always carry `name`, internal rows never do).
     // See docs/plans/platform-plugins-admin-connection-null-rows.md.
     let requireAttribute = internalRowRequiredAttr(name)
+    // Derived from the same schema `capability` came from, so the two cannot
+    // disagree about this read model's fields.
+    let ownerField = switch stateSchemaOpt {
+    | Some(s) => Reventless.Owner.fieldNames(s)->Array.get(0)
+    | None => None
+    }
+    // A DynamoDB FilterExpression is applied AFTER the page is read, so a scoped
+    // list over a table with no index on the owner field returns short pages —
+    // correct, but pathological once a caller owns a small fraction of the rows.
+    // Warned rather than refused: the resolver does serve the query, and a
+    // deployment may legitimately accept the cost on a small table. Mirrors the
+    // `@scanSort` alignment warning above, which exists for the same class of
+    // "works, but scans" mistake.
+    ReventlessCore.OwnerScopeDiagnostics.warnIfNoElevatedGroups(
+      ~comp="QueryDbResolvers_AppSync",
+      ~view=name,
+      ~ownerField,
+    )
+    switch ownerField {
+    | Some(f) =>
+      let indexed =
+        indexes->Array.some(ic => ic.idField->Option.getOr(ic.index) == f) ||
+          subIdField->Option.getOr("") == f
+      if !indexed {
+        log.warn(
+          ~comp="QueryDbResolvers_AppSync",
+          `${name}: @owner field "${f}" is not the key of any index on this table. ` ++
+          "Owner-scoped reads will Scan and filter, so pages shrink as the caller's " ++
+          "share of the rows falls. Add an @index on that field before this read model grows.",
+        )
+      }
+    | None => ()
+    }
     let resolverAll = makeQueryResolver(
       ~resolverName=fieldNameForAll->String.capitalize,
       ~field=fieldNameForAll->Pulumi.Input.make,
@@ -248,6 +281,8 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
           ~rangeFields=rangeFieldNames,
           ~sortFields=sortFieldNames,
           ~requireAttribute?,
+          ~ownerField?,
+          ~elevatedGroups=Reventless.OwnerScope.elevatedGroups.contents,
         )
       } else {
         Resolver.Functions.listAllItems

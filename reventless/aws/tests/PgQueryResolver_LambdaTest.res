@@ -11,18 +11,19 @@ open ReventlessCore
 
 @val external btoa: string => string = "btoa"
 
-let mk = (id, status, name) => {
+let mk = (id, status, name, owner) => {
   let o = Dict.make()
   o->Dict.set("id", JSON.Encode.string(id))
   o->Dict.set("status", JSON.Encode.string(status))
   o->Dict.set("name", JSON.Encode.string(name))
+  o->Dict.set("owner", JSON.Encode.string(owner))
   JSON.Encode.object(o)
 }
 
 let store = Dict.fromArray([
-  ("p-1", mk("p-1", "active", "Alpha")),
-  ("p-2", mk("p-2", "inactive", "Bravo")),
-  ("p-3", mk("p-3", "active", "Charlie")),
+  ("p-1", mk("p-1", "active", "Alpha", "u-a")),
+  ("p-2", mk("p-2", "inactive", "Bravo", "u-b")),
+  ("p-3", mk("p-3", "active", "Charlie", "u-a")),
 ])
 let allItems = () => store->Dict.valuesToArray
 
@@ -35,6 +36,11 @@ let fieldEq = (item, field, value) =>
 
 // Records whether listPage was consulted, and what it returns (sentinel or None).
 let listPageReturn: ref<option<JSON.t>> = ref(None)
+// The `ownerScope` the dispatcher handed the push-down on the last list call.
+// The push-down's own SQL is covered by the engine's parity harness; what this
+// file has to establish is that the dispatcher computes the scope from the
+// caller and actually passes it on.
+let lastOwnerScope: ref<option<(string, string)>> = ref(None)
 
 let ops: QueryDb_Adapter.operations = {
   load: async id => Ok(store->Dict.get(id)->Option.mapOr([], i => [i])),
@@ -51,9 +57,17 @@ let pushdowns: PgQueryResolver_Lambda.pushdowns = {
     allItems()->Array.filter(i => fieldEq(i, field, value)),
   byIds: async (~readModelName as _, ids) =>
     ids->Array.filterMap(id => store->Dict.get(id)),
-  listPage: async (~readModelName as _, ~argsDict as _, ~capability as _, ~labelField as _) =>
-    listPageReturn.contents,
-  itemsPage: async (~readModelName as _, ~subIdField as _, ~id, ~argsDict as _) =>
+  listPage: async (
+    ~readModelName as _,
+    ~argsDict as _,
+    ~capability as _,
+    ~labelField as _,
+    ~ownerScope: option<(string, string)>=?,
+  ) => {
+    lastOwnerScope := ownerScope
+    listPageReturn.contents
+  },
+  itemsPage: async (~readModelName as _, ~subIdField as _, ~id, ~argsDict as _, ~ownerScope as _=?) =>
     // Sentinel echoing the requested id, so the dispatch routing is observable.
     JSON.Encode.object(Dict.fromArray([("itemsFor", JSON.Encode.string(id))])),
   scanAll: async (~readModelName as _) => allItems(),
@@ -67,6 +81,7 @@ let capability: GraphQL_FragmentGenerator.serverCapability = {
 let makeBinding = (
   ~authorization=Reventless.Authorization.AllowAnonymous,
   ~subIdField=None,
+  ~ownerField=None,
   (),
 ): PgQueryResolver_Lambda.binding => {
   ops,
@@ -80,15 +95,27 @@ let makeBinding = (
   labelField: "name",
   includeIdParam: true,
   authorization,
+  ownerField,
 }
 
-let mkPayload = (~kind, ~index=?, ~args=JSON.Encode.object(Dict.make()), ()): PgQueryResolver_Lambda.payload => {
+let mkPayload = (
+  ~kind,
+  ~index=?,
+  ~args=JSON.Encode.object(Dict.make()),
+  ~identity=Reventless.Identity.anonymous,
+  (),
+): PgQueryResolver_Lambda.payload => {
   readModelName: "Things",
   kind,
   ?index,
   arguments: args,
-  identity: Reventless.Identity.anonymous,
+  identity,
 }
+
+external asIdentity: 'a => Reventless.Identity.t = "%identity"
+
+let cognito = (~userId, ~groups): Reventless.Identity.t =>
+  asIdentity({"userId": userId, "username": userId, "groups": groups, "provider": "Cognito"})
 
 let objArgs = pairs => JSON.Encode.object(Dict.fromArray(pairs))
 let field = (j, k) => j->JSON.Decode.object->Option.flatMap(d => d->Dict.get(k))
@@ -449,6 +476,119 @@ describe("id form — the typed doors take either", () => {
         ~args=objArgs([
           ("ids", JSON.Encode.array(["p-1", "p-3"]->Array.map(JSON.Encode.string))),
         ]),
+        (),
+      ),
+    )
+    expect(r->ids)->toEqual(["p-1", "p-3"])
+  })
+})
+
+// ── Owner scoping ───────────────────────────────────────────────────────────
+// The push-down's SQL is the engine's business and is covered by its parity
+// harness. What has to hold HERE is that the dispatcher derives the scope from
+// the caller and hands it on — a push-down that supports scoping and a
+// dispatcher that never passes one produces a fully unscoped deployment while
+// every SQL test stays green.
+describe("owner scoping", () => {
+  let ownedBinding = () => makeBinding(~ownerField=Some("owner"), ())
+  let shopper = cognito(~userId="u-a", ~groups=["User"])
+
+  let listWith = async (~binding, ~identity) => {
+    lastOwnerScope := None
+    listPageReturn := Some(JSON.Encode.string("pushed"))
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding,
+      ~payload=mkPayload(~kind="list", ~identity, ()),
+    )
+    (r, lastOwnerScope.contents)
+  }
+
+  testPromise("a shopper's list is scoped to their own id", async () => {
+    let (_, scope) = await listWith(~binding=ownedBinding(), ~identity=shopper)
+    expect(scope)->toEqual(Some(("owner", "u-a")))
+  })
+
+  testPromise("an elevated caller's list is not scoped", async () => {
+    Reventless.OwnerScope.setElevatedGroups(["Admin"])
+    let (_, scope) = await listWith(
+      ~binding=ownedBinding(),
+      ~identity=cognito(~userId="ops-1", ~groups=["Admin"]),
+    )
+    Reventless.OwnerScope.setElevatedGroups([])
+    expect(scope)->toBe(None)
+  })
+
+  // The control that keeps this from being vacuous: a view with no `@owner`
+  // field must reach the push-down with no scope at all, for every caller.
+  testPromise("a view with no owner field is never scoped", async () => {
+    let (_, scope) = await listWith(~binding=makeBinding(), ~identity=shopper)
+    expect(scope)->toBe(None)
+  })
+
+  testPromise("an unidentified caller is refused before the push-down runs", async () => {
+    lastOwnerScope := None
+    listPageReturn := Some(JSON.Encode.string("pushed"))
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=ownedBinding(),
+      ~payload=mkPayload(~kind="list", ~identity=Reventless.Identity.anonymous, ()),
+    )
+    // Not the sentinel, and the push-down was never consulted — the refusal
+    // happens above it rather than by handing it a value nobody holds.
+    expect((r->field("edges"), lastOwnerScope.contents))->toEqual((
+      Some(JSON.Encode.array([])),
+      None,
+    ))
+  })
+
+  testPromise("getById hides a row the caller does not own", async () => {
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=ownedBinding(),
+      ~payload=mkPayload(
+        ~kind="getById",
+        ~args=objArgs([("id", JSON.Encode.string("p-2"))]),
+        ~identity=shopper,
+        (),
+      ),
+    )
+    expect(r)->toBe(JSON.Encode.null)
+  })
+
+  testPromise("getById still returns a row the caller does own", async () => {
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=ownedBinding(),
+      ~payload=mkPayload(
+        ~kind="getById",
+        ~args=objArgs([("id", JSON.Encode.string("p-1"))]),
+        ~identity=shopper,
+        (),
+      ),
+    )
+    expect(r->str("id"))->toEqual(Some("p-1"))
+  })
+
+  testPromise("byIds drops rows the caller does not own", async () => {
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=ownedBinding(),
+      ~payload=mkPayload(
+        ~kind="byIds",
+        ~args=objArgs([
+          ("ids", JSON.Encode.array(["p-1", "p-2", "p-3"]->Array.map(JSON.Encode.string))),
+        ]),
+        ~identity=shopper,
+        (),
+      ),
+    )
+    expect(r->ids)->toEqual(["p-1", "p-3"])
+  })
+
+  testPromise("an index query drops rows the caller does not own", async () => {
+    let r = await PgQueryResolver_Lambda.dispatch(
+      ~binding=ownedBinding(),
+      ~payload=mkPayload(
+        ~kind="index",
+        ~index="byStatus",
+        ~args=objArgs([("byStatus", JSON.Encode.string("active"))]),
+        ~identity=shopper,
         (),
       ),
     )

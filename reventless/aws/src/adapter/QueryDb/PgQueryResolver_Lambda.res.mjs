@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as OwnerScope$Reventless from "@reventlessdev/reventless-spec/src/types/OwnerScope.res.mjs";
 import * as Api_Ids$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Ids.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
 import * as QueryDbListQuery$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/QueryDbListQuery.res.mjs";
@@ -71,6 +72,14 @@ async function dispatch(binding, lookupBindingOpt, payload) {
   let rm = payload.readModelName;
   let match = await runInterceptor(binding, payload);
   if (typeof match !== "object") {
+    let ownerAllows = item => {
+      let match = OwnerScope$Reventless.decide(payload.identity, binding.ownerField, undefined);
+      if (typeof match !== "object") {
+        return match === "Unscoped";
+      }
+      let required = match._1;
+      return Stdlib_Option.mapOr(argStr(item, match._0), false, v => v === required);
+    };
     let other = payload.kind;
     switch (other) {
       case "byIds" :
@@ -78,7 +87,7 @@ async function dispatch(binding, lookupBindingOpt, payload) {
         let found = await binding.pushdowns.byIds(rm, ids);
         let missing = found.length < ids.length ? Stdlib_Array.filterMap(ids, Api_Ids$ReventlessCore.alternateKey) : [];
         let extra = missing.length !== 0 ? await binding.pushdowns.byIds(rm, missing) : [];
-        return found.concat(extra);
+        return found.concat(extra).filter(ownerAllows);
       case "getById" :
         let id = Stdlib_Option.getOr(argStr(payload.arguments, "id"), "");
         let loadKey = async key => {
@@ -97,7 +106,7 @@ async function dispatch(binding, lookupBindingOpt, payload) {
             await loadKey(match$2)
           ];
         let found$1 = match$3[1];
-        if (found$1 !== undefined) {
+        if (found$1 !== undefined && ownerAllows(found$1)) {
           if (binding.includeIdParam) {
             return withId(found$1, match$3[0]);
           } else {
@@ -125,7 +134,7 @@ async function dispatch(binding, lookupBindingOpt, payload) {
           authorized = true;
         }
         if (authorized) {
-          return await binding.pushdowns.indexLookup(rm, field, value);
+          return (await binding.pushdowns.indexLookup(rm, field, value)).filter(ownerAllows);
         } else {
           return [];
         }
@@ -135,15 +144,26 @@ async function dispatch(binding, lookupBindingOpt, payload) {
           return emptyConnection();
         }
         let id$1 = Stdlib_Option.getOr(argStr(payload.arguments, "id"), "");
-        return await binding.pushdowns.itemsPage(rm, subIdField, id$1, argObj(payload.arguments));
+        let decision = OwnerScope$Reventless.decide(payload.identity, binding.ownerField, undefined);
+        if (typeof decision !== "object" && decision !== "Unscoped") {
+          return emptyConnection();
+        }
+        return await binding.pushdowns.itemsPage(rm, subIdField, id$1, argObj(payload.arguments), OwnerScope$Reventless.scopeOf(decision));
+        break;
       case "list" :
         let argsDict = argObj(payload.arguments);
-        let conn = await binding.pushdowns.listPage(rm, argsDict, binding.capability, binding.labelField);
+        let decision$1 = OwnerScope$Reventless.decide(payload.identity, binding.ownerField, undefined);
+        if (typeof decision$1 !== "object" && decision$1 !== "Unscoped") {
+          return emptyConnection();
+        }
+        let ownerScope = OwnerScope$Reventless.scopeOf(decision$1);
+        let conn = await binding.pushdowns.listPage(rm, argsDict, binding.capability, binding.labelField, ownerScope);
         if (conn !== undefined) {
           return conn;
         }
         let items$1 = await binding.pushdowns.scanAll(rm);
-        return QueryDbListQuery$ReventlessCore.run(items$1, argsDict, binding.capability, binding.labelField, undefined);
+        return QueryDbListQuery$ReventlessCore.run(items$1, argsDict, binding.capability, binding.labelField, undefined, ownerScope);
+        break;
       case "resolveMany" :
         let target = Stdlib_Option.getOr(payload.target, rm);
         let source = Stdlib_Option.getOr(payload.source, null);

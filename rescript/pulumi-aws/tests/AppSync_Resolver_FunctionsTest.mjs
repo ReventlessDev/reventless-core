@@ -650,3 +650,96 @@ describe('authorizeIndexedAccess', () => {
     expect(response(ctx)).toEqual({ adminId: 'alice', data: 'secret' })
   })
 })
+
+// ---------------------------------------------------------------------------
+// listAllItemsConnection — @owner scoping
+// ---------------------------------------------------------------------------
+// This is the one read path with no Lambda in it: the predicate lives in
+// generated JS that AppSync runs directly, so it shares no code with the three
+// paths the ReScript suites cover. Evaluating the emitted source here is the
+// strongest check available short of a deployed stack, and the only one that
+// can catch an APPSYNC_JS-hostile construct or a mis-ordered branch.
+describe('listAllItemsConnection — owner scoping', () => {
+  // (labelField, filterFields, rangeFields, sortFields, requireAttribute,
+  //  ownerField, elevatedGroups)
+  const scoped = () =>
+    evalResolver(
+      F.listAllItemsConnection('name', ['status'], [], [], undefined, 'customerId', ['Admin']),
+    )
+
+  const asUser = (sub, groups = []) => ({
+    username: sub,
+    sub,
+    sourceIp: [],
+    claims: { 'cognito:groups': groups },
+  })
+
+  test('a plain caller is narrowed to their own rows', () => {
+    const { request } = scoped()
+    const r = request(makeCtx({ args: {}, identity: asUser('cust-a') }))
+    expect(r.filter.expression).toBe('#owner = :owner')
+    expect(r.filter.expressionNames['#owner']).toBe('customerId')
+    expect(r.filter.expressionValues[':owner']).toEqual({ S: 'cust-a' })
+  })
+
+  test('the owner clause is ANDed with a client filter, not replaced by it', () => {
+    const { request } = scoped()
+    const r = request(
+      makeCtx({ args: { filter: { statusEq: 'Placed' } }, identity: asUser('cust-a') }),
+    )
+    expect(r.filter.expression).toBe('#status = :statusEq AND #owner = :owner')
+  })
+
+  // The caller cannot address the channel the scope arrives on: naming the owner
+  // field in their own filter must not overwrite the value the resolver derived.
+  test('a client filter naming the owner field cannot displace the scope', () => {
+    const { request } = scoped()
+    const r = request(
+      makeCtx({ args: { filter: { customerIdEq: 'cust-b' } }, identity: asUser('cust-a') }),
+    )
+    expect(r.filter.expressionValues[':owner']).toEqual({ S: 'cust-a' })
+    expect(r.filter.expression).toContain('#owner = :owner')
+  })
+
+  test('a caller in an elevated group is not narrowed', () => {
+    const { request } = scoped()
+    const r = request(makeCtx({ args: {}, identity: asUser('ops-1', ['Admin']) }))
+    expect(r.filter).toBeUndefined()
+  })
+
+  // The IAM service caller: present, but with no `sub` and no groups. Ordering
+  // the group test first would classify it as non-elevated and then filter on
+  // `undefined`, so every service read would return nothing.
+  test('an IAM-shaped identity with no sub is exempt, not filtered on undefined', () => {
+    const { request } = scoped()
+    const r = request(
+      makeCtx({
+        args: {},
+        identity: { userArn: 'arn:aws:sts::1:assumed-role/Ingester', username: 'Ingester' },
+      }),
+    )
+    expect(r.filter).toBeUndefined()
+  })
+
+  test('a wholly absent identity is exempt rather than a crash', () => {
+    const { request } = scoped()
+    expect(() => request(makeCtx({ args: {}, identity: null }))).not.toThrow()
+    expect(request(makeCtx({ args: {}, identity: null })).filter).toBeUndefined()
+  })
+
+  // The control: without an owner field nothing changes for anyone, which is
+  // what keeps this from silently altering every existing read model.
+  test('a view with no owner field is never scoped', () => {
+    const { request } = evalResolver(F.listAllItemsConnection('name'))
+    const r = request(makeCtx({ args: {}, identity: asUser('cust-a') }))
+    expect(r.filter).toBeUndefined()
+  })
+
+  test('with no elevated groups configured, an Admin is still narrowed', () => {
+    const { request } = evalResolver(
+      F.listAllItemsConnection('name', [], [], [], undefined, 'customerId', []),
+    )
+    const r = request(makeCtx({ args: {}, identity: asUser('ops-1', ['Admin']) }))
+    expect(r.filter.expressionValues[':owner']).toEqual({ S: 'ops-1' })
+  })
+})

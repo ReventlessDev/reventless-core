@@ -150,6 +150,9 @@ let registerBinding = (
       labelField: entry.labelField,
       includeIdParam: entry.includeIdParam,
       authorization: spec.authorization,
+      // From the same schema `capability` is derived from, one line above, so the
+      // two cannot end up disagreeing about this read model's fields.
+      ownerField: Reventless.Owner.fieldNames(spec.stateSchema)->Array.get(0),
     },
   )
   logDebug("registered resolver binding for " ++ entry.readModelName, {comp: "PgQueryResolver"})

@@ -438,12 +438,47 @@ let listAllItemsConnection = (
   // rows would otherwise resolve `name`/`status`/`version` to null and violate the
   // non-null GraphQL connection schema, nulling the whole connection.
   ~requireAttribute: option<string>=?,
+  // The state's `@owner` field, when it declares one, plus the groups exempt from
+  // scoping. Baked into the generated source because this resolver runs inside
+  // AppSync with no Lambda in the path — there is nothing here that could read a
+  // configuration value at request time, so the deploy is the only chance to
+  // state it. Changing the elevated-group list therefore requires a redeploy,
+  // which is worth knowing and is why it is a deployment-level setting rather
+  // than a per-request one.
+  ~ownerField: option<string>=?,
+  ~elevatedGroups: array<string>=[],
 ) => {
   let requireAttributeClause = switch requireAttribute {
   | Some(attr) => `
   names['#${attr}'] = '${attr}';
   parts.push('attribute_exists(#${attr})');`
   | None => ""
+  }
+  // Mirrors `Reventless.OwnerScope.resolve`, in the one place that cannot call
+  // it. The branch ORDER is the part that has to match: provider first, because
+  // an IAM-signed service caller has no `sub` for a reason that has nothing to do
+  // with being anonymous, and must not be refused as though it did.
+  let ownerClause = switch ownerField {
+  | None => ""
+  | Some(field) =>
+    let elevatedLiteral = elevatedGroups->Array.map(g => `'${g}'`)->Array.join(", ")
+    `
+  // ── owner scoping (generated) ──
+  // Not read from ctx.args: a predicate deciding what the caller may see must
+  // arrive on a channel the caller cannot name, and this field is usually absent
+  // from the filter surface anyway.
+  const _id = ctx.identity;
+  const _sub = _id == null ? null : _id.sub;
+  const _groups = (_id != null && _id.claims != null && _id.claims['cognito:groups']) || [];
+  const _elevated = [${elevatedLiteral}];
+  // No identity at all, or an identity with no \`sub\`, is the IAM service caller
+  // the API also accepts — inside the trust boundary, and exempt.
+  const _exempt = _sub == null || _groups.some(g => _elevated.indexOf(g) >= 0);
+  if (!_exempt) {
+    names['#owner'] = '${field}';
+    values[':owner'] = util.dynamodb.toDynamoDB(_sub);
+    parts.push('#owner = :owner');
+  }`
   }
   let filterClauses =
     filterFields
@@ -534,7 +569,7 @@ export function request(ctx) {
       return key;
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
-  }${filterClauses}${rangeClauses}${requireAttributeClause}
+  }${filterClauses}${rangeClauses}${requireAttributeClause}${ownerClause}
   // The cursor is base64(JSON({ token, index })); decode the after arg back to the raw
   // DynamoDB continuation token the response side emitted (Fix 1 round-trip).
   let after = null;

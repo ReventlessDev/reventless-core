@@ -48,7 +48,7 @@ function buildConnection(pageItems, hasNextPage, hasPreviousPage, cursorValueOf)
   };
 }
 
-function run(items, argsDict, capability, labelField, decodeLocalIdOpt) {
+function run(items, argsDict, capability, labelField, decodeLocalIdOpt, ownerScope) {
   let decodeLocalId = decodeLocalIdOpt !== undefined ? decodeLocalIdOpt : Api_Ids$ReventlessCore.toLocalId;
   let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});
   let search = Stdlib_Option.flatMap(filterDict["search"], Stdlib_JSON.Decode.string);
@@ -95,8 +95,15 @@ function run(items, argsDict, capability, labelField, decodeLocalIdOpt) {
       passIds = true;
     }
     let passPerField = perFieldChecks.every(check => check(item));
-    if (passSearch && passPrefix && passIds) {
-      return passPerField;
+    let passOwner;
+    if (ownerScope !== undefined) {
+      let required = ownerScope[1];
+      passOwner = Stdlib_Option.mapOr(getFieldString(item, ownerScope[0]), false, v => v === required);
+    } else {
+      passOwner = true;
+    }
+    if (passSearch && passPrefix && passIds && passPerField) {
+      return passOwner;
     } else {
       return false;
     }
