@@ -1,7 +1,4 @@
-@val @scope(("import", "meta"))
-external importMetaUrl: string = "url"
-
-let dirname = importMetaUrl->NodeUrl.fileURLToPath->NodePath.dirname
+let dirname = NodeImportMeta.dirname
 
 let pathToLayerData = NodePath.resolve([dirname, "../builder/layer/"])
 let pathToSavedDependencies = NodePath.resolve([dirname, "../builder/layer/nodejs/node_modules"])

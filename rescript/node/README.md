@@ -34,8 +34,251 @@ Add it to your `rescript.json` dependencies:
 
 | Module | Binds |
 |---|---|
+| `NodeBuffer` | the global `Buffer` |
+| `NodeChildProcess` | `node:child_process` |
+| `NodeCrypto` | `node:crypto` |
+| `NodeFs` | `node:fs`, plus `node:fs/promises` as `NodeFs.Promises` |
+| `NodeImportMeta` | `import.meta` |
+| `NodeModule` | `node:module` |
+| `NodeOs` | `node:os` |
+| `NodePath` | `node:path` |
+| `NodeProcess` | the `process` global |
 | `NodeStreams` | `node:stream`, plus the stream-shaped parts of `node:fs` and `node:readline` |
+| `NodeUrl` | `node:url` |
 | `NodeZlib` | `node:zlib` |
+
+Every module specifier is `node:`-prefixed. Bare `"fs"` is what bundlers alias to a browser polyfill
+shim, and this repository bundles Lambda code archives; `node:fs` is unambiguous to Node and to every
+bundler.
+
+Coverage is demand-driven: these bind what the Reventless packages actually call, not the whole of
+each Node module. Where a Node API has an encoding or option argument that is only ever passed one
+way here, the binding bakes it in rather than accepting it — `NodeFs.readFileSync` is UTF-8 by
+construction, so no call site can pass `"utf-8"` and get a different, silently wrong, encoding.
+
+---
+
+## `NodeBuffer`
+
+`t` aliases `Uint8Array.t` rather than being abstract: a Node `Buffer` *is* a `Uint8Array` subclass,
+so stream chunks, `NodeFs.readFileSyncBuffer` results and `NodeFs.writeFileSyncBuffer` arguments are
+all the same values and flow between those calls without a cast.
+
+```rescript
+type t = Uint8Array.t
+
+let concat: array<t> => t              // assemble a body from its `data` chunks
+let fromStringUtf8: string => t
+let toStringUtf8: t => string
+```
+
+---
+
+## `NodeChildProcess`
+
+```rescript
+type execOptions = {cwd?: string, encoding?: string, env?: dict<string>, stdio?: array<string>, maxBuffer?: int}
+
+let execSync: (string, execOptions) => string
+let execFileSync: (string, array<string>, execOptions) => string
+
+type childProcess
+type spawnOptions = {cwd?: string, env?: dict<string>, stdio?: array<string>}
+
+let spawn: (string, array<string>, spawnOptions) => childProcess
+let exitCode: childProcess => Nullable.t<int>
+let kill: (childProcess, string) => bool
+```
+
+Prefer `execFileSync` over `execSync`: it takes the arguments as an array rather than interpolating
+them into a shell string, so an argument containing shell metacharacters stays one argument.
+
+`spawn` returns while the child is still alive, which is the reason to reach for it over
+`execFileSync`. `exitCode` is `null` until the child exits — the one honest way to ask "is it still
+alive?" without holding an event listener, so a caller polling for readiness can tell a slow start
+from a process that already died. `kill` returns whether the signal was delivered; `false` means the
+process was already gone, which is not an error.
+
+`spawnOptions.env` **replaces** the child's environment rather than extending it. Pass a copy of
+`NodeProcess.env` with the additions applied when the child still needs `PATH` and friends.
+
+---
+
+## `NodeCrypto`
+
+```rescript
+type buffer                            // abstract: only ever re-keyed or stringified
+let bufferToString: (buffer, string) => string
+
+type hash
+let createHash: string => hash
+let hashUpdate: (hash, string) => hash
+let hashUpdateBuffer: (hash, Uint8Array.t) => hash
+let hashDigest: (hash, string) => string
+let sha256Hex: string => string        // SHA-256 of a UTF-8 string, hex-encoded
+
+type hmac
+let createHmac: (string, string) => hmac
+let createHmacFromBuffer: (string, buffer) => hmac
+let hmacUpdate: (hmac, string) => hmac
+let hmacDigest: (hmac, string) => string
+let hmacDigestBuffer: hmac => buffer
+
+let randomBytes: int => buffer
+let randomUUID: unit => string
+```
+
+`sha256Hex` is the content hash content-addressed stores key their objects on (`sha256/<hash>`): the
+same bytes always yield the same digest, so an upload is idempotent and deduplicating.
+`createHmacFromBuffer` is the chained form — each round of an AWS SigV4 signing key takes the
+previous round's raw digest as its key.
+
+---
+
+## `NodeFs`
+
+```rescript
+let existsSync: string => bool
+let realpathSync: string => string
+
+let readFileSync: string => string           // UTF-8 baked in
+let readFileSyncBuffer: string => Uint8Array.t
+let writeFileSync: (string, string) => unit  // UTF-8 baked in
+let writeFileSyncBuffer: (string, Uint8Array.t) => unit
+
+type dirent
+let isDirectory: dirent => bool
+let isFile: dirent => bool
+let direntName: dirent => string
+
+type readdirOptions = {withFileTypes: bool}
+type mkdirOptions = {recursive?: bool}
+type rmOptions = {recursive?: bool, force?: bool}
+type cpOptions = {recursive?: bool}
+
+let readdirSync: (string, readdirOptions) => array<dirent>
+let mkdirSync: (string, mkdirOptions) => unit
+let mkdtempSync: string => string
+let unlinkSync: string => unit
+let rmSync: (string, rmOptions) => unit
+let cpSync: (string, string, cpOptions) => unit
+
+module Promises = {
+  let writeFile: (string, string) => promise<unit>
+  let mkdir: (string, mkdirOptions) => promise<Nullable.t<string>>
+  let rm: (string, rmOptions) => promise<unit>
+}
+```
+
+The `*Buffer` variants are the same Node calls without an encoding, which is what makes Node return
+raw bytes rather than a decoded string. `Promises` is a separate module because `node:fs/promises` is
+a separate specifier — not a wrapper this package adds over the sync calls.
+
+---
+
+## `NodeImportMeta`
+
+```rescript
+let url: string       // import.meta.url
+let dirname: string   // import.meta.dirname
+let filename: string  // import.meta.filename
+```
+
+These resolve to the location of the module that *reads* them, which is what makes binding a
+per-module value in a shared package sound at all: `@val` externals are inlined at the use site
+rather than re-exported by this one. The corollary is that there are no helpers here — a function
+defined in this module would report *this* file's location, so compute from the values at the call
+site instead.
+
+```rescript
+// The file sitting next to the module that asks for it.
+let hintsFile = NodePath.resolve([NodeImportMeta.dirname, "../ui-hints.json"])
+```
+
+`dirname` and `filename` are Node's own additions to `import.meta` and are defined only for `file:`
+URLs; a bundler that rewrites modules to CommonJS drops them. `url` is the portable form and the one
+to reach for when either could apply.
+
+---
+
+## `NodeModule`
+
+```rescript
+type require
+let createRequire: string => require
+let requireResolve: (require, string) => string
+let builtinModules: array<string>
+```
+
+`createRequire` is how an ESM module gets at CommonJS resolution, which is what `require.resolve` is
+wanted for: locating a dependency's on-disk path without importing it. `builtinModules` lists Node's
+built-ins, both bare and `node:`-only entries such as `node:test`, plus subpath forms like
+`fs/promises`.
+
+---
+
+## `NodeOs`
+
+```rescript
+let tmpdir: unit => string
+```
+
+---
+
+## `NodePath`
+
+```rescript
+let join: array<string> => string      // variadic
+let resolve: array<string> => string   // variadic
+let dirname: string => string
+let basename: string => string
+let relative: (string, string) => string
+let sep: string
+```
+
+`join` and `resolve` are variadic, a strict superset of the two-argument forms they replace, so no
+call site loses expressiveness. A two-argument `join` and a variadic one are not duplicates — they
+are different functions with the same name, and which one a call site got used to depend on which
+inline binding block it happened to sit near.
+
+---
+
+## `NodeProcess`
+
+```rescript
+let argv: array<string>
+let env: dict<string>
+let cwd: unit => string
+let chdir: string => unit
+let exit: int => unit
+
+type stream
+let stdin: stream
+let stdout: stream
+let write: (stream, string) => unit
+let pause: stream => unit
+let unref: stream => unit
+let isTTY: stream => option<bool>
+```
+
+`process` is a global rather than a module specifier, so these are `@val` bindings under
+`@scope("process")`.
+
+`isTTY` is `option<bool>`, not `bool`: Node sets it to `true` on an interactive stream and leaves it
+**undefined** otherwise — it is never `false`. A `bool`-typed binding reads that undefined as a valid
+`false`, which happens to work and is still lying about the value.
+
+---
+
+## `NodeUrl`
+
+```rescript
+let fileURLToPath: string => string
+let pathToFileURL: string => {"href": string}
+```
+
+Only the two path/URL converters. The `URL` class itself is a WHATWG global rather than a `node:`
+import, so it belongs to `rescript-web`, not here.
 
 ---
 

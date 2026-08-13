@@ -15,9 +15,11 @@
       "dir": "src",
       "subdirs": true,
       "public": [
+        "NodeBuffer",
         "NodeChildProcess",
         "NodeCrypto",
         "NodeFs",
+        "NodeImportMeta",
         "NodeModule",
         "NodeOs",
         "NodePath",

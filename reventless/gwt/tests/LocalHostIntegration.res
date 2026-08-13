@@ -18,7 +18,7 @@
 @module("node:assert/strict") external deepEqual: ('a, 'a) => unit = "deepEqual"
 @module("node:assert/strict") external ok: (bool, ~message: string=?) => unit = "ok"
 
-let here = NodePath.dirname(NodeUrl.fileURLToPath(%raw(`import.meta.url`)))
+let here = NodeImportMeta.dirname
 let repoRoot = NodePath.join([here, "..", "..", ".."]) // reventless-gwt/test → repo root
 let catalogDir = NodePath.join([repoRoot, "examples", "online-shop-aggregates", "catalog"])
 let orderingDir = NodePath.join([repoRoot, "examples", "online-shop-aggregates", "ordering"])

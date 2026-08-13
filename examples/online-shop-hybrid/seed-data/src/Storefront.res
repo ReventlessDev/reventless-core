@@ -67,9 +67,7 @@ fetches either way. Resolved from this module rather than from each root's
 working directory, which differs per platform and would make the same
 declaration two different files.
 */
-let uiHintsFile = NodeUrl.fileURLToPath(
-  %raw(`new URL("../ui-hints.json", import.meta.url).href`),
-)
+let uiHintsFile = NodePath.resolve([NodeImportMeta.dirname, "../ui-hints.json"])
 
 /**
 Groups whose members read across every customer.
