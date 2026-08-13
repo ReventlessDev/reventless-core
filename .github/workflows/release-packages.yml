@@ -1,9 +1,14 @@
 # Reusable workflow for versioning and publishing a Lerna workspace to npmjs.
 #
 # It performs, in order: install, optional PPX fallback build, `lerna changed`,
-# `lerna version` (prerelease-aware, driven by the branch name), an optional
-# documentation-CHANGELOG commit, a clean build, a throttled sequential publish
-# in topological order, a tag/commit push and one GitHub release per new tag.
+# `lerna version` (prerelease-aware, driven by the branch name), a check that no
+# version this run minted is already on the registry, an optional
+# documentation-CHANGELOG commit, a clean build, the tag/commit push, a throttled
+# sequential publish in topological order and one GitHub release per new tag.
+#
+# The push comes BEFORE the publish deliberately — see the comment on that step.
+# Publishing first means a crash loses the definition of a version while its
+# artifacts survive, which is how one number ends up naming two different trees.
 #
 # Everything repository-specific is an input: the `--ignore-changes` list, the
 # workspace-setup command, the build command, the PPX fallback and the
@@ -291,6 +296,17 @@ jobs:
             IGNORE_ARGS+=(--ignore-changes "**/$pkg/**")
           done
 
+          # Snapshot what the tree carries before versioning, so the step below
+          # can tell the numbers this run MINTS from the ones it inherited. Only
+          # a minted number is required to be absent from the registry — an
+          # inherited one is legitimately already there whenever a previous
+          # release published it.
+          snapshot() {
+            npx lerna list --json --no-private \
+              | jq -r '.[] | "\(.name)@\(.version)"' | sort
+          }
+          snapshot > "$RUNNER_TEMP/versions-before.txt"
+
           if [ "$IS_PRERELEASE" = "true" ]; then
             echo "Creating prerelease versions with identifier: $PREID"
             npx lerna version --conventional-commits --conventional-prerelease --preid "$PREID" --allow-branch "$BRANCH_NAME" "${IGNORE_ARGS[@]}" --force-git-tag --yes --no-push --message "chore(release): version packages [skip ci]"
@@ -299,7 +315,53 @@ jobs:
             npx lerna version --conventional-commits --conventional-graduate --allow-branch "$BRANCH_NAME" "${IGNORE_ARGS[@]}" --force-git-tag --yes --no-push --message "chore(release): version packages [skip ci]"
           fi
 
+          snapshot > "$RUNNER_TEMP/versions-after.txt"
+          comm -13 "$RUNNER_TEMP/versions-before.txt" "$RUNNER_TEMP/versions-after.txt" \
+            > "$RUNNER_TEMP/versions-minted.txt"
+          echo "Minted by this run:"
+          cat "$RUNNER_TEMP/versions-minted.txt"
+
           echo "Lerna version completed successfully"
+
+      - name: Verify minted versions are unpublished
+        if: steps.changes.outputs.count != '0'
+        env:
+          RELEASE_TOKEN: ${{ secrets.NPM_TOKEN }}
+          REGISTRY: ${{ inputs.registry }}
+        run: |
+          set -euo pipefail
+          # A number this run mints must not already exist on the registry. If it
+          # does, an earlier run published DIFFERENT content under it — and the
+          # publish loop below, doing exactly what it should, would skip it. The
+          # release would then complete having shipped nothing, while the tag it
+          # pushes claims the opposite.
+          #
+          # This check is only sound because the version commit is pushed BEFORE
+          # publishing (see the step order below). While it was pushed after, a
+          # crashed publish left package.json stale, the next run legitimately
+          # re-minted the same numbers, and this rule would have failed that
+          # perfectly correct resume.
+          fail=0
+          while read -r spec; do
+            # if-block, not `test && cmd`: the same `set -e` hazard the publish
+            # step below documents.
+            if [ -z "$spec" ]; then
+              continue
+            fi
+            name="${spec%@*}"
+            version="${spec##*@}"
+            status=$(curl -sS -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Bearer ${RELEASE_TOKEN}" \
+              "${REGISTRY%/}/$(printf '%s' "$name" | sed 's|/|%2f|')/$version" || echo 000)
+            case "$status" in
+              404) ;;
+              200) echo "::error::$name@$version was minted by this run but is already on the registry — an earlier run published different content under that number. Bump past it."
+                   fail=1 ;;
+              *)   echo "::error::cannot determine whether $name@$version is published (HTTP $status); refusing to guess"
+                   fail=1 ;;
+            esac
+          done < "$RUNNER_TEMP/versions-minted.txt"
+          [ "$fail" -eq 0 ]
 
       - name: Update documentation CHANGELOG
         if: steps.changes.outputs.count != '0' && inputs.doc-changelog-file != ''
@@ -402,6 +464,34 @@ jobs:
           # them before publishing, which requires a clean working tree.
           git checkout -- .
 
+      # Before publishing, not after. The version number is computed from
+      # package.json, and package.json only advances through this commit — so
+      # recording it after the artifacts ship means a crashed publish loses the
+      # DEFINITION of the version while the artifacts survive. The next run then
+      # mints the same number for different content, and the idempotent skip in
+      # the publish loop hides it: a release that ships nothing and reports
+      # success.
+      #
+      # The cost of this order, stated plainly: a tag now means "this version was
+      # minted", not "this version is on npm". A publish that crashes leaves git
+      # ahead of the registry. That is recoverable and visible — the publish loop
+      # walks EVERY package and publishes whatever the registry is missing, so
+      # the next release finishes the job — whereas the old order was
+      # unrecoverable and silent.
+      - name: Push version tags and commits
+        if: steps.changes.outputs.count != '0'
+        env:
+          BRANCH_NAME: ${{ steps.prerelease.outputs.branch }}
+        run: |
+          for i in 1 2 3; do
+            git pull --rebase origin "$BRANCH_NAME" && \
+            git push --follow-tags origin "$BRANCH_NAME" && exit 0
+            echo "Push attempt $i failed, retrying..."
+            sleep 5
+          done
+          echo "All push attempts failed"
+          exit 1
+
       - name: Publish to npmjs (throttled, sequential, stop on first error)
         if: steps.changes.outputs.count != '0'
         env:
@@ -479,20 +569,6 @@ jobs:
                 echo "waiting ${PUBLISH_DELAY_SECONDS}s before next publish"
                 sleep "$PUBLISH_DELAY_SECONDS"
               done
-
-      - name: Push version tags and commits
-        if: steps.changes.outputs.count != '0'
-        env:
-          BRANCH_NAME: ${{ steps.prerelease.outputs.branch }}
-        run: |
-          for i in 1 2 3; do
-            git pull --rebase origin "$BRANCH_NAME" && \
-            git push --follow-tags origin "$BRANCH_NAME" && exit 0
-            echo "Push attempt $i failed, retrying..."
-            sleep 5
-          done
-          echo "All push attempts failed"
-          exit 1
 
       - name: Collect released tags
         if: steps.changes.outputs.count != '0'
