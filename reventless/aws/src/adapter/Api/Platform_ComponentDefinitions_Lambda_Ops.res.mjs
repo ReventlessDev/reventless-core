@@ -10,6 +10,7 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as ClientS3 from "@aws-sdk/client-s3";
 import * as Offload$Reventless from "@reventlessdev/reventless-spec/src/semantic/Offload.res.mjs";
@@ -300,6 +301,35 @@ function bakeTargetOf(event) {
   });
 }
 
+function bakeExpectations(event) {
+  return Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(event), o => o["expect"]), Stdlib_JSON.Decode.object), {}, o => Object.fromEntries(Stdlib_Array.filterMap(Object.entries(o), param => {
+    let plugin = param[0];
+    return Stdlib_Option.map(Stdlib_JSON.Decode.string(param[1]), k => [
+      plugin,
+      k
+    ]);
+  })));
+}
+
+function structureRefKey(item) {
+  return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(item["structure"], Stdlib_JSON.Decode.object), o => o[Offload$Reventless.sentinelKey]), Stdlib_JSON.Decode.object), r => r["key"]), Stdlib_JSON.Decode.string);
+}
+
+function pendingRegistrations(items, expect) {
+  let current = Object.fromEntries(Platform_AdminScan_Ops$ReventlessAws.latestByName(items, item => str(item, "name"), (item, name) => Stdlib_Option.map(structureRefKey(item), key => [
+    name,
+    key
+  ])));
+  return Stdlib_Array.filterMap(Object.entries(expect), param => {
+    let plugin = param[0];
+    if (Primitive_object.equal(current[plugin], param[1])) {
+      return;
+    } else {
+      return plugin;
+    }
+  });
+}
+
 async function runBake(target, structures) {
   let selections = bakeSelections();
   if (selections.length === 0) {
@@ -356,12 +386,25 @@ async function handler(event) {
       ]]));
     let bucket = Stdlib_Option.getOr(process.env["OFFLOAD_BUCKET"], "");
     let fetch = Offload$Reventless.cachedFetch(key => S3$AwsSdk.GetObjectCommand.getString(bucket, key));
-    let items = await Promise.all(rawItems.map(item => resolveStructure(fetch, item)));
+    let resolveAll = () => Promise.all(rawItems.map(item => resolveStructure(fetch, item)));
     if (bakeTarget !== undefined) {
-      let structures = Platform_AdminScan_Ops$ReventlessAws.latestByName(items, item => str(item, "name"), structureOf);
+      let pending = pendingRegistrations(rawItems, bakeExpectations(event));
+      if (pending.length !== 0) {
+        return [Object.fromEntries([
+            [
+              "baked",
+              false
+            ],
+            [
+              "pending",
+              pending.map(prim => prim)
+            ]
+          ])];
+      }
+      let structures = Platform_AdminScan_Ops$ReventlessAws.latestByName(await resolveAll(), item => str(item, "name"), structureOf);
       return await runBake(bakeTarget, structures);
     }
-    let userEntries = Platform_AdminScan_Ops$ReventlessAws.latestByName(items, item => str(item, "name"), toEntry);
+    let userEntries = Platform_AdminScan_Ops$ReventlessAws.latestByName(await resolveAll(), item => str(item, "name"), toEntry);
     return admin.concat(userEntries);
   }
   console.error("Platform_ComponentDefinitions: PLUGIN_RM_TABLE env var not set");
@@ -391,6 +434,9 @@ export {
   bakeSelection,
   bakeSelections,
   bakeTargetOf,
+  bakeExpectations,
+  structureRefKey,
+  pendingRegistrations,
   runBake,
   handler,
 }

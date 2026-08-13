@@ -2296,9 +2296,20 @@ module MakeWithConfig = (
       ->Pulumi.Output.apply(o => o->Option.getOr("OFFLOAD_BUCKET_PENDING_PLATFORM_DEPLOY"))
     | None => Pulumi.Output.make("OFFLOAD_BUCKET_PENDING_PLATFORM_DEPLOY")
     }
+    // The key this deploy wrote for the plugin's structure, exported below. The
+    // Plugin read model is what the manifest bake reads and it is updated
+    // asynchronously, so the bake needs to know which structure "current" means;
+    // an equality check against the key the stack just wrote says that without
+    // timestamps, and passes immediately for a plugin whose structure did not
+    // change.
+    let structureOffloadKey = ref(None)
+
     ReventlessCore.Plugin_Helpers.registerOffload((~store, ~bytes) => {
       let hash = NodeCrypto.sha256Hex(bytes)
       let key = "sha256/" ++ hash
+      if store == "pluginStructures" {
+        structureOffloadKey := Some(key)
+      }
       // Content-addressed: the name and key are the hash, so re-deploying an
       // unchanged field writes the same object (idempotent, deduplicating).
       //
@@ -2373,6 +2384,23 @@ module MakeWithConfig = (
     // Export plugin outputs (plugin, tasks, eventMappers, extensionPoints) for cross-stack access.
     let pluginOutputs = pluginComponent->ReventlessCore.Component.outputs
     ReventlessCore.Plugin_Helpers.exportPluginOutputs(pluginOutputs)
+
+    // What the manifest bake compares the read model against. Keyed by the bare
+    // plugin name because that is how the Plugin read model keys its rows — the
+    // stack's own id carries the version, which the bake has no opinion about.
+    switch structureOffloadKey.contents {
+    | Some(key) =>
+      Pulumi.Pulumi.export(
+        "pluginStructureRef",
+        pluginOutputs.id->Pulumi.Output.apply(id =>
+          Dict.fromArray([
+            ("plugin", JSON.Encode.string(ReventlessCore.Plugin.name(id))),
+            ("key", JSON.Encode.string(key)),
+          ])->JSON.Encode.object
+        ),
+      )
+    | None => ()
+    }
 
     // ── Merged-API association (merged-api plan, Phase 4) ───────────────────
     // Associate this plugin's source API with the platform's merged API —
@@ -2552,7 +2580,20 @@ module MakeWithConfig = (
     // synchronously always saw the initial empty config, so the publish was skipped
     // on every deploy. `pluginOutputs.heartbeat` derives from that same callback's
     // output, so applying to it is the earliest point the config is populated.
-    let _ = pluginOutputs.heartbeat->Pulumi.Output.apply(_ => {
+    //
+    // The EventCollector Lambda is the other half of the gate because it is what
+    // ANSWERS the handshake: the re-detect only asks the platform to re-run it,
+    // and the definition that comes back is the one compiled into that Lambda
+    // (PluginConnectExtension_Mapping's UnknownPluginDetected branch). Published
+    // before it carries the new code, the plugin answers with the PREVIOUS
+    // deploy's definition, `Connect` sees a definition it already holds and emits
+    // nothing, and the row keeps the old structure — silently, and with no second
+    // re-detect coming to correct it. Waiting on the heartbeat alone gated on a
+    // Lambda that has no part in the answer.
+    let redetectReady =
+      (pluginOutputs.heartbeat, PluginRuntime_Builder.eventCollectorReadyRef.contents)
+      ->Pulumi.Output.all2
+    let _ = redetectReady->Pulumi.Output.apply(_ => {
       let hbConfig = PluginRuntime_Builder.heartbeatConfigRef.contents
       switch (Pulumi.Pulumi.isDryRun(), hbConfig.epQueueUrl) {
       | (true, _) => () // `pulumi preview` — no deploy-time side effects

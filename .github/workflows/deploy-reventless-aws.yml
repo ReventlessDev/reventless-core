@@ -740,6 +740,8 @@ jobs:
           echo "path=${MANIFEST_DIR}${PLATFORM_REL}" >> "$GITHUB_OUTPUT"
 
       - name: Bake
+        env:
+          ALL_PLUGINS: ${{ needs.detect-changes.outputs.all-plugins }}
         run: |
           set -euo pipefail
           BRANCH="${{ needs.detect-changes.outputs.branch }}"
@@ -762,25 +764,64 @@ jobs:
             exit 0
           fi
 
+          # The structure each plugin stack wrote during this deploy. The Plugin
+          # read model the bake scans is updated asynchronously — the stack
+          # publishes a re-detect, the plugin answers with its definition, the
+          # projection lands — so a bake invoked the moment the last stack finishes
+          # can still describe the deploy before this one, and nothing downstream
+          # can tell: it is a well-formed manifest of the wrong deployment. Each
+          # stack exports the key it wrote, and the handler bakes only once every
+          # row matches. A plugin that was not redeployed matches immediately, and
+          # a stack deployed before this output existed exports nothing and is not
+          # waited for.
+          EXPECT='{}'
+          while read -r PLUGIN_DIR; do
+            [[ -f "${PLUGIN_DIR}/Pulumi.${BRANCH}.yaml" ]] || continue
+            pulumi stack select "$BRANCH" --cwd "$PLUGIN_DIR" --non-interactive
+            REF=$(pulumi stack output --json --cwd "$PLUGIN_DIR" --non-interactive \
+              | jq -c '.pluginStructureRef // empty')
+            [[ -n "$REF" ]] || continue
+            EXPECT=$(jq -c --argjson ref "$REF" '. + {($ref.plugin): $ref.key}' <<< "$EXPECT")
+          done < <(jq -r '.[].path' <<< "$ALL_PLUGINS")
+          echo "Expecting: $EXPECT"
+
           echo "Baking ${BUCKET}/${KEY} via ${FN}"
-          PAYLOAD=$(jq -nc --arg b "$BUCKET" --arg k "$KEY" \
-            '{bake: true, bucket: $b, key: $k}')
+          PAYLOAD=$(jq -nc --arg b "$BUCKET" --arg k "$KEY" --argjson e "$EXPECT" \
+            '{bake: true, bucket: $b, key: $k, expect: $e}')
 
-          aws lambda invoke \
-            --function-name "$FN" \
-            --cli-binary-format raw-in-base64-out \
-            --payload "$PAYLOAD" \
-            --cli-read-timeout 60 \
-            response.json > invoke.json
+          # Registration lands within seconds of the stack that triggered it, so
+          # the first attempt is the normal case — the retries are for a slow
+          # projection, not a broken one, which is why running out of them is an
+          # error rather than a shrug.
+          PENDING=""
+          for attempt in $(seq 1 20); do
+            aws lambda invoke \
+              --function-name "$FN" \
+              --cli-binary-format raw-in-base64-out \
+              --payload "$PAYLOAD" \
+              --cli-read-timeout 60 \
+              response.json > invoke.json
 
-          cat response.json
+            cat response.json
 
-          # A handler that threw still returns 200 with FunctionError set, so the
-          # status code alone would report a bake that wrote nothing as success.
-          if jq -e '.FunctionError' invoke.json > /dev/null; then
-            echo "::error::Baking the component manifest failed — see the payload above."
-            exit 1
-          fi
+            # A handler that threw still returns 200 with FunctionError set, so the
+            # status code alone would report a bake that wrote nothing as success.
+            if jq -e '.FunctionError' invoke.json > /dev/null; then
+              echo "::error::Baking the component manifest failed — see the payload above."
+              exit 1
+            fi
+
+            if ! jq -e '.[0].baked == false' response.json > /dev/null; then
+              exit 0
+            fi
+
+            PENDING=$(jq -r '.[0].pending | join(", ")' response.json)
+            echo "Attempt ${attempt}: registration has not caught up yet — ${PENDING}"
+            sleep 15
+          done
+
+          echo "::error::Registration never caught up with this deploy (${PENDING}); the manifest would describe the previous one, so nothing was written."
+          exit 1
 
   # The change-detection base SHA is derived from the last successful run of the
   # caller workflow (see the "Parse manifest and detect changes" step), so no

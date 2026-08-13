@@ -241,6 +241,68 @@ describe("bakeSelection", () => {
   )
 })
 
+// The bake reads a read model the deploy updates asynchronously, so "is this the
+// deployment I was asked to bake" is a question it has to be able to answer. The
+// answer is an equality check against the key each plugin stack just wrote.
+describe("pendingRegistrations", () => {
+  let row = (~name, ~key=?, ()) => {
+    let item = Dict.fromArray([("name", JSON.Encode.string(name))])
+    key->Option.forEach(k =>
+      item->Dict.set(
+        "structure",
+        JSON.parseOrThrow(`{"$offload": {"store": "pluginStructures", "key": "${k}"}}`),
+      )
+    )
+    item
+  }
+
+  let pending = (rows, expect) =>
+    Platform_ComponentDefinitions_Lambda_Ops.pendingRegistrations(
+      rows,
+      ~expect=Dict.fromArray(expect),
+    )
+
+  testSync("nothing is pending when every row carries the key the deploy wrote", () =>
+    expect(
+      pending(
+        [row(~name="Catalog", ~key="sha256/a", ()), row(~name="Ordering", ~key="sha256/b", ())],
+        [("Catalog", "sha256/a"), ("Ordering", "sha256/b")],
+      ),
+    )->toEqual([])
+  )
+
+  // The window this exists for: the stack wrote a new structure, the row still
+  // points at the one before it.
+  testSync("names a plugin still carrying the previous structure", () =>
+    expect(
+      pending(
+        [row(~name="Catalog", ~key="sha256/a", ()), row(~name="Ordering", ~key="sha256/old", ())],
+        [("Catalog", "sha256/a"), ("Ordering", "sha256/new")],
+      ),
+    )->toEqual(["Ordering"])
+  )
+
+  // A plugin that has never registered is behind, not absent — baking without it
+  // would ship a shop missing a section.
+  testSync("names a plugin with no row at all", () =>
+    expect(pending([], [("Ordering", "sha256/new")]))->toEqual(["Ordering"])
+  )
+
+  // Deployed before the stack exported its key, or invoked by hand: bake what is
+  // current rather than wait for an expectation nobody stated.
+  testSync("waits for nothing when the caller expects nothing", () =>
+    expect(pending([row(~name="Ordering", ~key="sha256/old", ())], []))->toEqual([])
+  )
+
+  testSync("reads the expectations off the invocation payload", () =>
+    expect(
+      Platform_ComponentDefinitions_Lambda_Ops.bakeExpectations(
+        JSON.parseOrThrow(`{"bake": true, "expect": {"Ordering": "sha256/b"}}`),
+      )->Dict.get("Ordering"),
+    )->toEqual(Some("sha256/b"))
+  )
+})
+
 describe("resolveStructure", () => {
   let item = (structure: string) =>
     Dict.fromArray([

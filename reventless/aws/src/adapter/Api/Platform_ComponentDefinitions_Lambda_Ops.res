@@ -348,6 +348,58 @@ let bakeTargetOf = (event: JSON.t): option<bakeTarget> =>
     }
   )
 
+// ── Registration freshness ───────────────────────────────────────────────────
+// The read model this bake scans is updated asynchronously: the plugin stack
+// publishes a re-detect, the plugin answers with its definition, the projection
+// lands. Invoked seconds after the last stack finished, the scan can still
+// describe the deploy before it — and a manifest baked from that is wrong in the
+// one way nothing downstream can detect, because it is a perfectly well-formed
+// description of the wrong deployment.
+//
+// So the invocation carries the structure key each plugin stack just wrote. That
+// is an equality check rather than an inference from timestamps, and it costs
+// nothing for a plugin that was not redeployed: its key already matches. A caller
+// that supplies no expectations bakes whatever is current — the query paths never
+// send any, and a hand-run bake should not need to.
+let bakeExpectations = (event: JSON.t): dict<string> =>
+  event
+  ->JSON.Decode.object
+  ->Option.flatMap(o => o->Dict.get("expect"))
+  ->Option.flatMap(JSON.Decode.object)
+  ->Option.mapOr(Dict.make(), o =>
+    o
+    ->Dict.toArray
+    ->Array.filterMap(((plugin, key)) => key->JSON.Decode.string->Option.map(k => (plugin, k)))
+    ->Dict.fromArray
+  )
+
+// The offload key a scanned row carries. None for a structure held inline, which
+// on a deployed platform means the row predates offloading — it cannot match an
+// expectation, and saying so beats baking it.
+let structureRefKey = (item: dict<JSON.t>): option<string> =>
+  item
+  ->Dict.get("structure")
+  ->Option.flatMap(JSON.Decode.object)
+  ->Option.flatMap(o => o->Dict.get(Reventless.Offload.sentinelKey))
+  ->Option.flatMap(JSON.Decode.object)
+  ->Option.flatMap(r => r->Dict.get("key"))
+  ->Option.flatMap(JSON.Decode.string)
+
+// Compared against the collapsed latest version per plugin, the same view the
+// bake itself takes — an older version's row lingering on the table is not the
+// registration anyone is waiting for.
+let pendingRegistrations = (items: array<dict<JSON.t>>, ~expect: dict<string>): array<string> => {
+  let current =
+    Platform_AdminScan_Ops.latestByName(
+      items,
+      ~nameVersionOf=item => item->str("name"),
+      ~toEntry=(item, ~name) => item->structureRefKey->Option.map(key => (name, key)),
+    )->Dict.fromArray
+  expect
+  ->Dict.toArray
+  ->Array.filterMap(((plugin, key)) => current->Dict.get(plugin) == Some(key) ? None : Some(plugin))
+}
+
 // Every failure mode here is the deployment's own mistake — a name matching no
 // component, a structure too old to read, a bucket the function may not write —
 // and every one of them produces the same symptom if swallowed: a shop that
@@ -415,22 +467,36 @@ let handler = async (event: JSON.t): array<JSON.t> => {
     let fetch = Reventless.Offload.cachedFetch(key =>
       AwsSdk.S3.GetObjectCommand.getString(~bucket, ~key)
     )
-    let items = await Promise.all(rawItems->Array.map(item => resolveStructure(fetch, item)))
+    let resolveAll = () => Promise.all(rawItems->Array.map(item => resolveStructure(fetch, item)))
     switch bakeTarget {
     | Some(target) =>
-      // The built-in admin entry is deliberately absent: it never enters the
-      // Plugin read model, and the in-memory bake curates the composed plugins
-      // only. A deployment naming it gets `UnknownPlugin`, on both platforms.
-      let structures = Platform_AdminScan_Ops.latestByName(
-        items,
-        ~nameVersionOf=item => item->str("name"),
-        ~toEntry=structureOf,
-      )
-      await runBake(~target, ~structures)
+      // Checked on the raw rows: the refs are what the deploy can predict, and a
+      // row that is behind should not have its structure fetched at all.
+      switch pendingRegistrations(rawItems, ~expect=bakeExpectations(event)) {
+      | [] =>
+        // The built-in admin entry is deliberately absent: it never enters the
+        // Plugin read model, and the in-memory bake curates the composed plugins
+        // only. A deployment naming it gets `UnknownPlugin`, on both platforms.
+        let structures = Platform_AdminScan_Ops.latestByName(
+          await resolveAll(),
+          ~nameVersionOf=item => item->str("name"),
+          ~toEntry=structureOf,
+        )
+        await runBake(~target, ~structures)
+      | pending =>
+        // Not an error — the deploy just has not finished arriving. Reported so the
+        // caller can invoke again rather than bake the previous deployment.
+        [
+          Dict.fromArray([
+            ("baked", JSON.Encode.bool(false)),
+            ("pending", pending->Array.map(JSON.Encode.string)->JSON.Encode.array),
+          ])->JSON.Encode.object,
+        ]
+      }
     | None =>
       let userEntries =
         Platform_AdminScan_Ops.latestByName(
-          items,
+          await resolveAll(),
           ~nameVersionOf=item => item->str("name"),
           ~toEntry,
         )

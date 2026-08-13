@@ -186,6 +186,20 @@ let heartbeatConfigRef: ref<heartbeatConfig> = ref({
 let registerHeartbeatConfig = (~pluginId, ~heartbeatTimeout, ~epQueueUrl=?, ()) =>
   heartbeatConfigRef := {pluginId, heartbeatTimeout, epQueueUrl}
 
+// Resolves once this plugin's EventCollector Lambda exists at its new code.
+// `Platform.deployPlugin` gates the deploy-time re-detect on it: the re-detect
+// only asks the platform to re-run the connect handshake, and this is the Lambda
+// that ANSWERS it, with the `pluginDefinition` its deployed code carries. Fired
+// before this Lambda is updated, the plugin answers with the previous deploy's
+// definition, `Connect` sees a definition it already holds and emits nothing, and
+// the row keeps the old structure — with no second re-detect to correct it.
+//
+// A bare `Output<unit>` rather than an `option<Output<_>>`: an Output is a
+// JS Proxy, and wrapping one in a ReScript option produces the nested-Some
+// sentinel instead of the value. Empty until `forPluginEventCollector` runs,
+// which the gate reads only after `P.make()` has returned.
+let eventCollectorReadyRef: ref<Pulumi.Output.t<unit>> = ref(Pulumi.Output.make())
+
 // Per-flavor commandHandlerConfig override for the two DCB command-handler Lambdas
 // (`<Plugin>DcbCmdHandler` sync / `<Plugin>DcbAsyncCmdHandler` async); populated by
 // Platform.MakeWithConfig from `commandHandlerConfig.stateChanges.{sync,async}`.
@@ -623,6 +637,8 @@ module Make = (
       ~runtime,
       ~opts,
     )
+
+    eventCollectorReadyRef := runtime.parts.lambda->Pulumi.Output.apply(_ => ())
 
     // Admin-only cross-plugin SNS subscription permissions. The admin EC
     // Lambda's manageSubscriptions hook (Phase 3 Step 1) creates SNS

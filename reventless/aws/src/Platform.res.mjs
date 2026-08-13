@@ -16,6 +16,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Plugin$ReventlessAws from "./components/Plugin.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as Plugin$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin.res.mjs";
 import * as AWS_Tags$ReventlessAws from "./adapter/AWS_Tags.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as Scheduler$ReventlessAws from "./components/Scheduler.res.mjs";
@@ -1248,9 +1249,15 @@ function MakeWithConfig(Config) {
     hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApi);
     hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApiRole);
     let offloadBucketName = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("offloadBucket").apply(o => Stdlib_Option.getOr(o, "OFFLOAD_BUCKET_PENDING_PLATFORM_DEPLOY")) : Pulumi.output("OFFLOAD_BUCKET_PENDING_PLATFORM_DEPLOY");
+    let structureOffloadKey = {
+      contents: undefined
+    };
     Plugin_Helpers$ReventlessCore.registerOffload((store, bytes) => {
       let hash = NodeCrypto.sha256Hex(bytes);
       let key = "sha256/" + hash;
+      if (store === "pluginStructures") {
+        structureOffloadKey.contents = key;
+      }
       new (Aws.s3.BucketObject)("offload-" + hash, {
         bucket: offloadBucketName,
         key: key,
@@ -1275,6 +1282,19 @@ function MakeWithConfig(Config) {
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
+    let key = structureOffloadKey.contents;
+    if (key !== undefined) {
+      Pulumi$Pulumi.$$export("pluginStructureRef", pluginOutputs.id.apply(id => Object.fromEntries([
+        [
+          "plugin",
+          Plugin$ReventlessCore.name(id)
+        ],
+        [
+          "key",
+          key
+        ]
+      ])));
+    }
     if (platformStackRef !== undefined) {
       let stackRef = Primitive_option.valFromOption(platformStackRef);
       let defaultOutput = stackRef.getOutput("default");
@@ -1337,7 +1357,11 @@ function MakeWithConfig(Config) {
     if (sel !== undefined) {
       PgQueryResolver_Builder$ReventlessAws.provision(domainApi, sel, {});
     }
-    pluginOutputs.heartbeat.apply(param => {
+    let redetectReady = Pulumi.all([
+      pluginOutputs.heartbeat,
+      PluginRuntime_Builder$ReventlessAws.eventCollectorReadyRef.contents
+    ]);
+    redetectReady.apply(param => {
       let hbConfig = PluginRuntime_Builder$ReventlessAws.heartbeatConfigRef.contents;
       let match = IndexJs.isDryRun();
       let match$1 = hbConfig.epQueueUrl;
@@ -2501,9 +2525,15 @@ function Make($star) {
     hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApi);
     hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApiRole);
     let offloadBucketName = platformStackRef !== undefined ? Primitive_option.valFromOption(platformStackRef).getOutput("offloadBucket").apply(o => Stdlib_Option.getOr(o, "OFFLOAD_BUCKET_PENDING_PLATFORM_DEPLOY")) : Pulumi.output("OFFLOAD_BUCKET_PENDING_PLATFORM_DEPLOY");
+    let structureOffloadKey = {
+      contents: undefined
+    };
     Plugin_Helpers$ReventlessCore.registerOffload((store, bytes) => {
       let hash = NodeCrypto.sha256Hex(bytes);
       let key = "sha256/" + hash;
+      if (store === "pluginStructures") {
+        structureOffloadKey.contents = key;
+      }
       new (Aws.s3.BucketObject)("offload-" + hash, {
         bucket: offloadBucketName,
         key: key,
@@ -2528,6 +2558,19 @@ function Make($star) {
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
+    let key = structureOffloadKey.contents;
+    if (key !== undefined) {
+      Pulumi$Pulumi.$$export("pluginStructureRef", pluginOutputs.id.apply(id => Object.fromEntries([
+        [
+          "plugin",
+          Plugin$ReventlessCore.name(id)
+        ],
+        [
+          "key",
+          key
+        ]
+      ])));
+    }
     if (platformStackRef !== undefined) {
       let stackRef = Primitive_option.valFromOption(platformStackRef);
       let defaultOutput = stackRef.getOutput("default");
@@ -2590,7 +2633,11 @@ function Make($star) {
     if (sel !== undefined) {
       PgQueryResolver_Builder$ReventlessAws.provision(domainApi, sel, {});
     }
-    pluginOutputs.heartbeat.apply(param => {
+    let redetectReady = Pulumi.all([
+      pluginOutputs.heartbeat,
+      PluginRuntime_Builder$ReventlessAws.eventCollectorReadyRef.contents
+    ]);
+    redetectReady.apply(param => {
       let hbConfig = PluginRuntime_Builder$ReventlessAws.heartbeatConfigRef.contents;
       let match = IndexJs.isDryRun();
       let match$1 = hbConfig.epQueueUrl;

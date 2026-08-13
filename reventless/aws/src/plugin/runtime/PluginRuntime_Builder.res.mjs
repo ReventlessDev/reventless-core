@@ -149,6 +149,10 @@ function registerHeartbeatConfig(pluginId, heartbeatTimeout, epQueueUrl, param) 
   };
 }
 
+let eventCollectorReadyRef = {
+  contents: Pulumi.output()
+};
+
 let syncStateChangesConfigRef = {
   contents: {}
 };
@@ -381,6 +385,7 @@ function Make(EventCollectorChannel) {
         eventTopics: eventTopics,
         resources: resources
       }], runtime, opts);
+    eventCollectorReadyRef.contents = runtime.parts.lambda.apply(param => {});
     let isAdminEventCollector = Stdlib_Option.isNone(Plugin_Helpers$ReventlessCore.eventCollectorContextRef.contents[name]);
     if (isAdminEventCollector) {
       new (Aws.iam.RolePolicy)(name + `-snsManageSubs`, {
@@ -542,6 +547,7 @@ export {
   registerDcbTableName,
   heartbeatConfigRef,
   registerHeartbeatConfig,
+  eventCollectorReadyRef,
   syncStateChangesConfigRef,
   asyncStateChangesConfigRef,
   setStateChangesConfig,
