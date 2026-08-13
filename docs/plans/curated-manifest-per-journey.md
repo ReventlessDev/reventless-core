@@ -1,6 +1,15 @@
 # Plan: one curated manifest per audience, not per deployment
 
-**Status.** Open.
+**Status.** The local half **built 2026-08-13** (core `3be6f63e5`), with the
+shell reading it (`reventless-ui: 17e9c04`) and the hybrid example declaring a
+journey per role. The deploy still writes one file — §7 step 3 is open.
+
+Two things the build settled. The **default journey comes first and stays**, which
+is what a caller matching no declared group gets — including, locally, the
+no-bearer identity every dev session starts from. And **every file is curated
+before any is written**: a declaration naming a missing component already fails
+the boot, and failing it halfway would leave one audience's file beside a stale
+copy of another's.
 
 **Sibling plans:**
 - `docs/plans/ui-manifest-baked-emission.md` — the single-manifest bake this
