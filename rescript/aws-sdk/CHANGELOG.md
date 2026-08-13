@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.9 (2026-08-13)
+
+### Features
+
+* **aws:** narrow the token to the role a caller chose to act as ([194332f](https://github.com/ReventlessDev/reventless-core/commit/194332fa0af8e13417f72d57904e2ed469747dde))
+
+
 # 3.0.0-alpha.8 (2026-08-13)
 
 **Note:** Version bump only for package @reventlessdev/rescript-aws-sdk
