@@ -15,33 +15,70 @@ let log = ReventlessCore.Logger.fromEnv()
  package that is not installed — and both produce the same symptom if swallowed:
  a shop that renders nothing, with no line in the log saying why.
  */
+let toSelections = (
+  components: array<ReventlessInfra.Platform.bakedManifestSelection>,
+): array<ReventlessCore.Platform_BakedManifest.selection> =>
+  components->Array.map((s): ReventlessCore.Platform_BakedManifest.selection => {
+    plugin: s.plugin,
+    views: s.views,
+    commands: s.commands,
+  })
+
+/**
+ Every file this declaration produces, as (key, selections) pairs.
+
+ The default journey first, then one per declared journey. Separate from the
+ write so the whole set is reachable from a test — the same reason
+ `ShellConfig.overlay` exists apart from its write.
+ */
+let files = (
+  ~config: ReventlessInfra.Platform.bakedManifest,
+): array<(string, array<ReventlessCore.Platform_BakedManifest.selection>)> => {
+  let base = [
+    (
+      config.key->Option.getOr(ReventlessCore.Platform_BakedManifest.defaultKey),
+      toSelections(config.components),
+    ),
+  ]
+  switch config.journeys {
+  | None => base
+  | Some(journeys) =>
+    base->Array.concat(
+      journeys->Array.map(j => (
+        j.key->Option.getOr(ReventlessCore.Platform_BakedManifest.journeyKey(~group=j.group)),
+        toSelections(j.components),
+      )),
+    )
+  }
+}
+
 let emit = (
   ~structures: array<(string, Reventless.Plugin.pluginStructure)>,
   ~config: ReventlessInfra.Platform.bakedManifest,
 ) => {
-  let selections =
-    config.components->Array.map((
-      s
-    ): ReventlessCore.Platform_BakedManifest.selection => {
-      plugin: s.plugin,
-      views: s.views,
-      commands: s.commands,
-    })
-  switch ReventlessCore.Platform_BakedManifest.curate(~structures, ~selections) {
-  | Error(e) => JsError.throwWithMessage(ReventlessCore.Platform_BakedManifest.describe(e))
-  | Ok(manifest) =>
-    switch HostShellDist.dir() {
-    | None =>
-      JsError.throwWithMessage(
-        `baked manifest: cannot resolve ${HostShellDist.package} from ${NodeProcess.cwd()} — ` ++
-        `the local shell serves the file from that package's dist/, so declaring a bake ` ++
-        `without the package installed would write nothing and render an empty shell.`,
-      )
-    | Some(dir) =>
-      let key = config.key->Option.getOr(ReventlessCore.Platform_BakedManifest.defaultKey)
+  let outputs = files(~config)
+  // Every file is curated before any is written. A declaration naming a
+  // component that does not exist fails the boot, and failing it halfway would
+  // leave a shell serving one audience's file and a stale copy of another's.
+  let curated = outputs->Array.map(((key, selections)) => (
+    key,
+    switch ReventlessCore.Platform_BakedManifest.curate(~structures, ~selections) {
+    | Error(e) => JsError.throwWithMessage(ReventlessCore.Platform_BakedManifest.describe(e))
+    | Ok(manifest) => manifest
+    },
+  ))
+  switch HostShellDist.dir() {
+  | None =>
+    JsError.throwWithMessage(
+      `baked manifest: cannot resolve ${HostShellDist.package} from ${NodeProcess.cwd()} — ` ++
+      `the local shell serves the file from that package's dist/, so declaring a bake ` ++
+      `without the package installed would write nothing and render an empty shell.`,
+    )
+  | Some(dir) =>
+    curated->Array.forEach(((key, manifest)) => {
       let path = NodePath.join([dir, key])
       NodeFs.writeFileSync(path, JSON.stringify(manifest, ~space=2))
-      log.info(~comp="BakedManifest", `wrote ${key} for ${selections->Array.length->Int.toString} plugin(s): ${path}`)
-    }
+      log.info(~comp="BakedManifest", `wrote ${key}: ${path}`)
+    })
   }
 }

@@ -144,6 +144,31 @@ let defaultKey = "component-manifest.json"
 
 let urlForKey = (key: option<string>): string => "/" ++ key->Option.getOr(defaultKey)
 
+/**
+ File name for a journey that did not choose one.
+
+ Derived from the group so two journeys cannot collide by accident, and
+ lower-cased with non-alphanumerics folded to `-` because a group name is a
+ Cognito identifier and a key is part of a URL. A deployment wanting something
+ else names it.
+ */
+let journeyKey = (~group: string): string => {
+  let slug =
+    group
+    ->String.toLowerCase
+    ->String.split("")
+    ->Array.map(c =>
+      switch c {
+      | "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" => c
+      | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" => c
+      | "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" => c
+      | _ => "-"
+      }
+    )
+    ->Array.join("")
+  `component-manifest-${slug}.json`
+}
+
 // The whole file: one entry per selection, in the order the deployment declared
 // them, so the include-list also states the order a consumer reads plugins in.
 let curate = (

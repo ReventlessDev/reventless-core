@@ -20,12 +20,29 @@ function manifestUrlOf(config) {
   return Platform_BakedManifest$ReventlessCore.urlForKey(config.key);
 }
 
-let computedKeys = ["manifestUrl"];
+let journeyManifestsKey = "journeyManifestUrls";
+
+let computedKeys = [
+  "manifestUrl",
+  journeyManifestsKey
+];
 
 function overlay(bakedManifest, shellConfig) {
   let out = {};
   Stdlib_Option.forEach(bakedManifest, config => {
     out["manifestUrl"] = Platform_BakedManifest$ReventlessCore.urlForKey(config.key);
+    let journeys = config.journeys;
+    if (journeys === undefined) {
+      return;
+    }
+    if (journeys.length === 0) {
+      return;
+    }
+    let map = {};
+    journeys.forEach(j => {
+      map[j.group] = Platform_BakedManifest$ReventlessCore.urlForKey(Stdlib_Option.getOr(j.key, Platform_BakedManifest$ReventlessCore.journeyKey(j.group)));
+    });
+    out[journeyManifestsKey] = map;
   });
   Stdlib_Option.forEach(shellConfig, extra => {
     let collisions = Object.keys(extra).filter(k => computedKeys.includes(k));
@@ -88,6 +105,7 @@ export {
   fileName,
   baselineFileName,
   manifestUrlOf,
+  journeyManifestsKey,
   computedKeys,
   overlay,
   readObject,

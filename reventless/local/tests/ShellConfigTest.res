@@ -140,3 +140,82 @@ describe("ShellConfig.emit", () => {
     )->toBe(true)
   })
 })
+
+// ── Journeys ──────────────────────────────────────────────────────────────
+//
+// One curated surface per audience, beside the default one. The property under
+// test throughout is that a deployment declaring none is untouched: journeys are
+// what a shop with several audiences opts into, and every existing deployment
+// has exactly one.
+
+let withJourneys = (
+  ~journeys: array<ReventlessInfra.Platform.bakedJourney>,
+): ReventlessInfra.Platform.bakedManifest => {
+  components: [{plugin: "Catalog", views: ["Products"], commands: []}],
+  journeys,
+}
+
+let shopper: ReventlessInfra.Platform.bakedJourney = {
+  group: "Shopper",
+  components: [{plugin: "Catalog", views: ["Products"], commands: []}],
+}
+
+let fulfilment: ReventlessInfra.Platform.bakedJourney = {
+  group: "Fulfilment",
+  components: [{plugin: "Ordering", views: ["Orders"], commands: ["ShipOrder"]}],
+  key: "fulfilment.json",
+}
+
+describe("ShellConfig.overlay — journeys", () => {
+  open Expect
+
+  // The regression line. A shell that has never heard of journeys must not
+  // suddenly find a key it does not know.
+  testSync("a bake declaring no journeys writes no map", () => {
+    let out = ShellConfig.overlay(~bakedManifest=Some(manifest()), ~shellConfig=None)
+    expect(out->Dict.get("journeyManifestUrls"))->toEqual(None)
+  })
+
+  testSync("an empty journeys array is the same as none", () => {
+    let out = ShellConfig.overlay(~bakedManifest=Some(withJourneys(~journeys=[])), ~shellConfig=None)
+    expect(out->Dict.get("journeyManifestUrls"))->toEqual(None)
+  })
+
+  // The default journey keeps `manifestUrl`, so a caller matching no declared
+  // group lands where every caller landed before.
+  testSync("keeps manifestUrl as the default journey", () => {
+    let out = ShellConfig.overlay(
+      ~bakedManifest=Some(withJourneys(~journeys=[shopper])),
+      ~shellConfig=None,
+    )
+    expect(out->str("manifestUrl"))->toEqual(Some("/component-manifest.json"))
+  })
+
+  testSync("maps each declared group to its own file", () => {
+    let out = ShellConfig.overlay(
+      ~bakedManifest=Some(withJourneys(~journeys=[shopper, fulfilment])),
+      ~shellConfig=None,
+    )
+    let map =
+      out->Dict.get("journeyManifestUrls")->Option.flatMap(JSON.Decode.object)->Option.getOrThrow
+    expect((map->str("Shopper"), map->str("Fulfilment")))->toEqual((
+      // Derived from the group, lower-cased, because a key is part of a URL.
+      Some("/component-manifest-shopper.json"),
+      // Named explicitly, and the declaration wins.
+      Some("/fulfilment.json"),
+    ))
+  })
+
+  // A passthrough cannot redirect a key the platform computes — the same rule
+  // `manifestUrl` already carries, extended to the map it now writes beside it.
+  testSync("refuses a shellConfig that sets the journey map itself", () =>
+    expect(
+      threw(() =>
+        ShellConfig.overlay(
+          ~bakedManifest=Some(withJourneys(~journeys=[shopper])),
+          ~shellConfig=Some(Dict.fromArray([("journeyManifestUrls", JSON.Encode.object(Dict.make()))])),
+        )->ignore
+      ),
+    )->toBe(true)
+  )
+})

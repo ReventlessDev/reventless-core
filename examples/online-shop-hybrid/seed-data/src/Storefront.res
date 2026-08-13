@@ -21,6 +21,34 @@ let manifest: ReventlessInfra.Platform.bakedManifest = {
     {plugin: "Catalog", views: ["Products", "Categories"], commands: []},
     {plugin: "Ordering", views: ["Orders"], commands: ["PlaceOrder", "CancelOrder"]},
   ],
+  // One surface per role the shop has, beside the storefront every other caller
+  // gets. Fulfilment is the reason this exists: it works a board of orders that
+  // belong to customers, so it needs surfaces the storefront does not offer —
+  // and it needs them from a file of its own, because a role elevated by
+  // anything other than `Admin` has no admin API it may open.
+  journeys: [
+    {
+      group: "Merchandiser",
+      components: [
+        {
+          plugin: "Catalog",
+          views: ["Products", "Categories", "ProductDemand"],
+          commands: [
+            "AddProduct",
+            "ChangeProductPrice",
+            "AddCategory",
+            "RenameCategory",
+          ],
+        },
+      ],
+    },
+    {
+      group: "Fulfilment",
+      components: [
+        {plugin: "Ordering", views: ["Orders"], commands: ["ShipOrder", "CancelOrder"]},
+      ],
+    },
+  ],
 }
 
 /**

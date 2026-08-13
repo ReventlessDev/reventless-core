@@ -36,7 +36,12 @@ let baselineFileName = "config.base.json"
 let manifestUrlOf = (config: ReventlessInfra.Platform.bakedManifest): string =>
   ReventlessCore.Platform_BakedManifest.urlForKey(config.key)
 
-let computedKeys = ["manifestUrl"]
+// Where a caller acting as a given role discovers from. Beside `manifestUrl`
+// rather than replacing it: that key stays the default journey, which is what a
+// caller matching no declared group gets and what every existing deployment has.
+let journeyManifestsKey = "journeyManifestUrls"
+
+let computedKeys = ["manifestUrl", journeyManifestsKey]
 
 /**
  The overlay this platform puts on top of the shipped `config.json`.
@@ -51,9 +56,33 @@ let overlay = (
 ): dict<JSON.t> => {
   let out = Dict.make()
 
-  bakedManifest->Option.forEach(config =>
+  bakedManifest->Option.forEach(config => {
     out->Dict.set("manifestUrl", JSON.Encode.string(manifestUrlOf(config)))
-  )
+    // Omitted entirely when nothing is declared, so a single-audience deployment
+    // writes the same key set it always did and a shell that has never heard of
+    // journeys sees no new keys.
+    switch config.journeys {
+    | None => ()
+    | Some([]) => ()
+    | Some(journeys) =>
+      let map = Dict.make()
+      journeys->Array.forEach(j =>
+        map->Dict.set(
+          j.group,
+          JSON.Encode.string(
+            ReventlessCore.Platform_BakedManifest.urlForKey(
+              Some(
+                j.key->Option.getOr(
+                  ReventlessCore.Platform_BakedManifest.journeyKey(~group=j.group),
+                ),
+              ),
+            ),
+          ),
+        )
+      )
+      out->Dict.set(journeyManifestsKey, map->JSON.Encode.object)
+    }
+  })
 
   shellConfig->Option.forEach(extra => {
     let collisions = extra->Dict.keysToArray->Array.filter(k => computedKeys->Array.includes(k))

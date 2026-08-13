@@ -125,6 +125,53 @@ function urlForKey(key) {
   return "/" + Stdlib_Option.getOr(key, defaultKey);
 }
 
+function journeyKey(group) {
+  let slug = group.toLowerCase().split("").map(c => {
+    switch (c) {
+      case "0" :
+      case "1" :
+      case "2" :
+      case "3" :
+      case "4" :
+      case "5" :
+      case "6" :
+      case "7" :
+      case "8" :
+      case "9" :
+      case "a" :
+      case "b" :
+      case "c" :
+      case "d" :
+      case "e" :
+      case "f" :
+      case "g" :
+      case "h" :
+      case "i" :
+      case "j" :
+      case "k" :
+      case "l" :
+      case "m" :
+      case "n" :
+      case "o" :
+      case "p" :
+      case "q" :
+      case "r" :
+      case "s" :
+      case "t" :
+      case "u" :
+      case "v" :
+      case "w" :
+      case "x" :
+      case "y" :
+      case "z" :
+        return c;
+      default:
+        return "-";
+    }
+  }).join("");
+  return `component-manifest-` + slug + `.json`;
+}
+
 function curate(structures, selections) {
   return Stdlib_Result.map(Stdlib_Array.reduce(selections, {
     TAG: "Ok",
@@ -159,6 +206,7 @@ export {
   curateStructure,
   defaultKey,
   urlForKey,
+  journeyKey,
   curate,
 }
 /* No side effect */

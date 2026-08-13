@@ -136,10 +136,35 @@ type bakedManifestSelection = {
     deployment is byte-identical to today. This is curation (what exists for
     this deployment's audience), never authorization (what this caller may
     do) — the server-side gate on every query and mutation is untouched. */
+/** One audience's surface, selected the same way the default one is.
+
+    A deployment serving several audiences from one domain curates each of them
+    separately rather than publishing the union and leaning on server-side
+    authorization to make the extra entries merely useless. `group` is the
+    caller group this journey serves; the shell picks by the role the caller is
+    acting as. */
+type bakedJourney = {
+  group: string,
+  /** What a switcher calls this journey. Defaults to the group's own name. */
+  label?: string,
+  components: array<bakedManifestSelection>,
+  /** Defaults to a per-group file name beside `config.json`. */
+  key?: string,
+}
+
 type bakedManifest = {
+  /** The default journey — what a caller matching no declared `journeys` entry
+      gets. Not only backward compatibility: the in-memory platform's no-bearer
+      identity carries a group no deployment declares, so without a default a
+      local dev session without a login would match nothing and render an empty
+      shell. */
   components: array<bakedManifestSelection>,
   /** Defaults to `component-manifest.json`, written beside `config.json`. */
   key?: string,
+  /** Per-audience surfaces beside the default one. Unset ⇒ one file, exactly as
+      before. Curation, never authorization: leaving a component out of a journey
+      keeps it out of that role's menu and makes it no less callable. */
+  journeys?: array<bakedJourney>,
 }
 
 type geocoderIndex = {indexName: Pulumi.Input.t<string>}

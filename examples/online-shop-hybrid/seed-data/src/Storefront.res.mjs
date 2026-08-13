@@ -21,8 +21,40 @@ let manifest_components = [
   }
 ];
 
+let manifest_journeys = [
+  {
+    group: "Merchandiser",
+    components: [{
+        plugin: "Catalog",
+        views: [
+          "Products",
+          "Categories",
+          "ProductDemand"
+        ],
+        commands: [
+          "AddProduct",
+          "ChangeProductPrice",
+          "AddCategory",
+          "RenameCategory"
+        ]
+      }]
+  },
+  {
+    group: "Fulfilment",
+    components: [{
+        plugin: "Ordering",
+        views: ["Orders"],
+        commands: [
+          "ShipOrder",
+          "CancelOrder"
+        ]
+      }]
+  }
+];
+
 let manifest = {
-  components: manifest_components
+  components: manifest_components,
+  journeys: manifest_journeys
 };
 
 let uiHintsFile = Nodeurl.fileURLToPath((new URL("../ui-hints.json", import.meta.url).href));

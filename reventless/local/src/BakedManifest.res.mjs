@@ -10,28 +10,59 @@ import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventles
 
 let log = Logger$ReventlessCore.fromEnv();
 
-function emit(structures, config) {
-  let selections = config.components.map(s => ({
+function toSelections(components) {
+  return components.map(s => ({
     plugin: s.plugin,
     views: s.views,
     commands: s.commands
   }));
-  let e = Platform_BakedManifest$ReventlessCore.curate(structures, selections);
-  if (e.TAG !== "Ok") {
-    return Stdlib_JsError.throwWithMessage(Platform_BakedManifest$ReventlessCore.describe(e._0));
+}
+
+function files(config) {
+  let base = [[
+      Stdlib_Option.getOr(config.key, Platform_BakedManifest$ReventlessCore.defaultKey),
+      toSelections(config.components)
+    ]];
+  let journeys = config.journeys;
+  if (journeys !== undefined) {
+    return base.concat(journeys.map(j => [
+      Stdlib_Option.getOr(j.key, Platform_BakedManifest$ReventlessCore.journeyKey(j.group)),
+      toSelections(j.components)
+    ]));
+  } else {
+    return base;
   }
+}
+
+function emit(structures, config) {
+  let outputs = files(config);
+  let curated = outputs.map(param => {
+    let e = Platform_BakedManifest$ReventlessCore.curate(structures, param[1]);
+    let tmp;
+    tmp = e.TAG === "Ok" ? e._0 : Stdlib_JsError.throwWithMessage(Platform_BakedManifest$ReventlessCore.describe(e._0));
+    return [
+      param[0],
+      tmp
+    ];
+  });
   let dir = HostShellDist$ReventlessLocal.dir();
-  if (dir === undefined) {
+  if (dir !== undefined) {
+    curated.forEach(param => {
+      let key = param[0];
+      let path = Nodepath.join(dir, key);
+      Nodefs.writeFileSync(path, JSON.stringify(param[1], undefined, 2), "utf8");
+      log.info("BakedManifest", undefined, `wrote ` + key + `: ` + path);
+    });
+    return;
+  } else {
     return Stdlib_JsError.throwWithMessage(`baked manifest: cannot resolve ` + HostShellDist$ReventlessLocal.$$package + ` from ` + process.cwd() + ` — the local shell serves the file from that package's dist/, so declaring a bake without the package installed would write nothing and render an empty shell.`);
   }
-  let key = Stdlib_Option.getOr(config.key, Platform_BakedManifest$ReventlessCore.defaultKey);
-  let path = Nodepath.join(dir, key);
-  Nodefs.writeFileSync(path, JSON.stringify(e._0, undefined, 2), "utf8");
-  log.info("BakedManifest", undefined, `wrote ` + key + ` for ` + selections.length.toString() + ` plugin(s): ` + path);
 }
 
 export {
   log,
+  toSelections,
+  files,
   emit,
 }
 /* log Not a pure module */
