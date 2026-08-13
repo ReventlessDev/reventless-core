@@ -138,16 +138,106 @@ module Login = {
     }
   }
 
-  /** Verifies credentials and returns a signed token (or an error string). */
-  let issue = async (~username: string, ~password: string): result<string, string> =>
+  /**
+   Claim naming the role the caller chose to act as. Present only on a narrowed
+   token, so its presence *is* the answer to "am I acting as one of my roles?".
+
+   Kept apart from `groups` even though a narrowed token's groups are exactly
+   this one role, because the two say different things: `groups` is what every
+   enforcement point evaluates, and this is what the caller asked for. A client
+   reading the choice out of the group array would be depending on the current
+   shape of the narrowing rather than on the choice itself.
+   */
+  let activeRoleClaim = "activeRole"
+
+  /**
+   Claim naming the roles the caller gave up by narrowing — their full
+   membership, comma-joined as the `X-Groups` header already joins groups.
+
+   🚨 **Never read this for authorization.** It exists so a client can offer the
+   switch back, and it is by definition wider than what the caller is currently
+   permitted. Every enforcement point in the system reads `groups`; this claim is
+   the one piece of an identity that deliberately describes privilege the caller
+   does *not* currently have.
+
+   Present only on a narrowed token, which is also what keeps an ordinary login
+   byte-identical to what it minted before any of this existed: an unnarrowed
+   token's `groups` already *are* the full membership, so there is nothing to
+   remember.
+   */
+  let availableRolesClaim = "availableRoles"
+
+  /**
+   Narrow an identity to one of its own roles.
+
+   `Error` when the role is not one the caller holds. Refusing rather than
+   ignoring is the security-critical line of this feature: a request for a group
+   the user does not have is either confused or hostile, and a token that
+   silently does not match what was asked for serves neither. Because the check
+   is a subset test against actual membership, a tampering client can only ever
+   reduce its own privilege.
+   */
+  let narrow = (identity: Identity.t, ~activeRole: string): result<Identity.t, string> =>
+    if !(identity.groups->Array.includes(activeRole)) {
+      Error(`Cannot act as "${activeRole}": not a group this user holds`)
+    } else {
+      let claims = switch identity.claims {
+      | Some(existing) => Dict.fromArray(existing->Dict.toArray)
+      | None => Dict.make()
+      }
+      claims->Dict.set(activeRoleClaim, activeRole)
+      claims->Dict.set(availableRolesClaim, identity.groups->Array.join(","))
+      Ok({...identity, groups: [activeRole], claims})
+    }
+
+  /**
+   Verifies credentials and returns a signed token (or an error string).
+
+   `activeRole` narrows the minted token to one of the caller's own roles; unset
+   mints exactly what it has always minted.
+   */
+  let issue = async (
+    ~username: string,
+    ~password: string,
+    ~activeRole: option<string>=?,
+  ): result<string, string> =>
     switch store.contents->Dict.get(username) {
     | Some({password: stored, identity}) if stored === password =>
-      let json = identity->S.reverseConvertToJsonOrThrow(Identity.schema)->JSON.stringify
-      let payload = _b64urlEncode(json)
-      let sig = _sign(payload)
-      Ok(`${payload}.${sig}`)
+      switch switch activeRole {
+      | None => Ok(identity)
+      | Some(role) => identity->narrow(~activeRole=role)
+      } {
+      | Error(_) as e => e
+      | Ok(minted) =>
+        let json = minted->S.reverseConvertToJsonOrThrow(Identity.schema)->JSON.stringify
+        let payload = _b64urlEncode(json)
+        let sig = _sign(payload)
+        Ok(`${payload}.${sig}`)
+      }
     | _ => Error("Invalid credentials")
     }
+
+  /**
+   The identity a token carries, for a caller that has just been issued one.
+
+   Exists so the login response can echo the *minted* identity rather than the
+   stored one. They differ exactly when the token is narrowed, and a response
+   disagreeing with the token it accompanies would leave the client a step behind
+   the server from its very first request.
+   */
+  let mintedIdentity = (~username: string, ~activeRole: option<string>): option<Identity.t> =>
+    store.contents
+    ->Dict.get(username)
+    ->Option.flatMap(({identity, _}) =>
+      switch activeRole {
+      | None => Some(identity)
+      | Some(role) =>
+        switch identity->narrow(~activeRole=role) {
+        | Ok(narrowed) => Some(narrowed)
+        | Error(_) => None
+        }
+      }
+    )
 
   /**
    * Returns the embedded Identity if signature verifies and the payload

@@ -69,10 +69,11 @@ function handleLogin(req, res) {
     if (parsed === undefined) {
       return _loginRejected(res, "Invalid JSON body");
     }
+    let activeRole = parsed.activeRole;
     let username = parsed.username;
-    LocalAuth$ReventlessLocal.Login.issue(username, parsed.password).then(result => {
+    LocalAuth$ReventlessLocal.Login.issue(username, parsed.password, activeRole).then(result => {
       if (result.TAG === "Ok") {
-        let i = LocalAuth$ReventlessLocal.lookupUser(username);
+        let i = LocalAuth$ReventlessLocal.Login.mintedIdentity(username, activeRole);
         let identity = i !== undefined ? i : Identity$Reventless.anonymous;
         let identityJson = S.reverseConvertToJsonOrThrow(identity, Identity$Reventless.schema);
         _writeJson(res, 200, Object.fromEntries([

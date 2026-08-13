@@ -118,7 +118,29 @@ function _b64urlDecode(s) {
   }
 }
 
-async function issue(username, password) {
+let activeRoleClaim = "activeRole";
+
+let availableRolesClaim = "availableRoles";
+
+function narrow(identity, activeRole) {
+  if (!identity.groups.includes(activeRole)) {
+    return {
+      TAG: "Error",
+      _0: `Cannot act as "` + activeRole + `": not a group this user holds`
+    };
+  }
+  let existing = identity.claims;
+  let claims = existing !== undefined ? Object.fromEntries(Object.entries(existing)) : ({});
+  claims[activeRoleClaim] = activeRole;
+  claims[availableRolesClaim] = identity.groups.join(",");
+  let newrecord = {...identity};
+  return {
+    TAG: "Ok",
+    _0: (newrecord.claims = claims, newrecord.groups = [activeRole], newrecord)
+  };
+}
+
+async function issue(username, password, activeRole) {
   let match = store.contents[username];
   if (match === undefined) {
     return {
@@ -132,13 +154,34 @@ async function issue(username, password) {
       _0: "Invalid credentials"
     };
   }
-  let json = JSON.stringify(S.reverseConvertToJsonOrThrow(match.identity, Identity$Reventless.schema));
+  let identity = match.identity;
+  let e = activeRole !== undefined ? narrow(identity, activeRole) : ({
+      TAG: "Ok",
+      _0: identity
+    });
+  if (e.TAG !== "Ok") {
+    return e;
+  }
+  let json = JSON.stringify(S.reverseConvertToJsonOrThrow(e._0, Identity$Reventless.schema));
   let payload = _b64urlEncode(json);
   let sig = _sign(payload);
   return {
     TAG: "Ok",
     _0: payload + `.` + sig
   };
+}
+
+function mintedIdentity(username, activeRole) {
+  return Stdlib_Option.flatMap(store.contents[username], param => {
+    let identity = param.identity;
+    if (activeRole === undefined) {
+      return identity;
+    }
+    let narrowed = narrow(identity, activeRole);
+    if (narrowed.TAG === "Ok") {
+      return narrowed._0;
+    }
+  });
 }
 
 function verifyAndDecode(token) {
@@ -166,7 +209,11 @@ let Login = {
   _sign: _sign,
   _b64urlEncode: _b64urlEncode,
   _b64urlDecode: _b64urlDecode,
+  activeRoleClaim: activeRoleClaim,
+  availableRolesClaim: availableRolesClaim,
+  narrow: narrow,
   issue: issue,
+  mintedIdentity: mintedIdentity,
   verifyAndDecode: verifyAndDecode
 };
 

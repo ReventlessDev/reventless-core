@@ -178,3 +178,143 @@ testPromise("setCredentials mirrors identity into the X-User registry", async ()
   | _ => JsError.throwWithMessage("expected Authenticated(alice) via X-User")
   }
 })
+
+// ── Acting as one of the roles you hold ───────────────────────────────────
+//
+// The subset rule is the security-critical line of the feature: narrowing only,
+// never widening, so a client that tampers with the request can only ever reduce
+// its own privilege. The table below is the same one the Cognito minting path
+// has to satisfy — the two implementations cannot be shared across a process
+// boundary, so the cases are what keeps them from drifting.
+
+let multiRole: Reventless.Identity.t = {
+  userId: "u-carol",
+  username: "carol",
+  groups: ["Fulfilment", "Shopper"],
+  provider: InMemory,
+}
+
+let decodeOrThrow = token =>
+  switch LocalAuth.Login.verifyAndDecode(token) {
+  | Some(i) => i
+  | None => JsError.throwWithMessage("expected a verifiable token")
+  }
+
+let carolLoggedIn = () => {
+  resetAll()
+  LocalAuth.Login.setCredentials(~username="carol", ~password="carol-pw", ~identity=multiRole)
+}
+
+// The regression line. Every login that existed before this feature takes this
+// path, and it has to mint what it always minted.
+testPromise("a login naming no role mints exactly what it minted before", async () => {
+  carolLoggedIn()
+  let plain = switch await LocalAuth.Login.issue(~username="carol", ~password="carol-pw") {
+  | Ok(t) => t
+  | Error(e) => JsError.throwWithMessage(e)
+  }
+  let identity = decodeOrThrow(plain)
+  expect(identity.groups)->toEqual(["Fulfilment", "Shopper"])
+  expect(identity.claims)->toEqual(None)
+})
+
+testPromise("a login naming a held role mints that role alone", async () => {
+  carolLoggedIn()
+  let token = switch await LocalAuth.Login.issue(
+    ~username="carol",
+    ~password="carol-pw",
+    ~activeRole="Shopper",
+  ) {
+  | Ok(t) => t
+  | Error(e) => JsError.throwWithMessage(e)
+  }
+  let identity = decodeOrThrow(token)
+  // `groups` is what every enforcement point reads, so this is the assertion
+  // that the narrowing is real rather than cosmetic.
+  expect(identity.groups)->toEqual(["Shopper"])
+})
+
+testPromise("a narrowed token remembers the choice and what it gave up", async () => {
+  carolLoggedIn()
+  let token = switch await LocalAuth.Login.issue(
+    ~username="carol",
+    ~password="carol-pw",
+    ~activeRole="Shopper",
+  ) {
+  | Ok(t) => t
+  | Error(e) => JsError.throwWithMessage(e)
+  }
+  let identity = decodeOrThrow(token)
+  expect((
+    identity->Reventless.Identity.getClaim("activeRole"),
+    identity->Reventless.Identity.getClaim("availableRoles"),
+  ))->toEqual((Some("Shopper"), Some("Fulfilment,Shopper")))
+})
+
+// The line that decides whether this is a security feature or a suggestion.
+// Refused, specifically — not ignored and minted at full membership, which is
+// the failure that would hand a tampering client everything it asked for.
+testPromise("a login naming a role the user does not hold is REFUSED", async () => {
+  carolLoggedIn()
+  switch await LocalAuth.Login.issue(
+    ~username="carol",
+    ~password="carol-pw",
+    ~activeRole="Admin",
+  ) {
+  | Ok(_) => JsError.throwWithMessage("expected a request to widen to be refused")
+  | Error(msg) => expect(msg->String.includes("Admin"))->toEqual(true)
+  }
+})
+
+// Narrowing to a role you hold while *also* naming one you do not is the same
+// widening attempt wearing a disguise; there is no partial credit.
+testPromise("narrowing cannot smuggle a group in through the claims bag", async () => {
+  resetAll()
+  let withClaims: Reventless.Identity.t = {
+    ...multiRole,
+    claims: Dict.fromArray([("availableRoles", "Admin,Fulfilment,Shopper")]),
+  }
+  LocalAuth.Login.setCredentials(~username="carol", ~password="carol-pw", ~identity=withClaims)
+  switch await LocalAuth.Login.issue(
+    ~username="carol",
+    ~password="carol-pw",
+    ~activeRole="Admin",
+  ) {
+  | Ok(_) =>
+    JsError.throwWithMessage("expected membership to be judged by groups, not by a claim")
+  | Error(_) => expect(true)->toEqual(true)
+  }
+})
+
+// A narrowed token has to survive the same round trip an ordinary one does, or
+// the narrowing would hold only until the next request.
+testPromise("a narrowed token authenticates as the narrowed identity", async () => {
+  carolLoggedIn()
+  let token = switch await LocalAuth.Login.issue(
+    ~username="carol",
+    ~password="carol-pw",
+    ~activeRole="Shopper",
+  ) {
+  | Ok(t) => t
+  | Error(e) => JsError.throwWithMessage(e)
+  }
+  let result = await LocalAuth.authenticate(
+    buildContext([("authorization", "Bearer " ++ token)]),
+  )
+  switch result {
+  | Authenticated(identity) => expect(identity.groups)->toEqual(["Shopper"])
+  | _ => JsError.throwWithMessage("expected the narrowed token to authenticate")
+  }
+})
+
+// The login response echoes this, and it has to describe the token it ships
+// beside rather than the account behind it.
+testPromise("the minted identity matches the token, not the stored user", async () => {
+  carolLoggedIn()
+  let minted = LocalAuth.Login.mintedIdentity(~username="carol", ~activeRole=Some("Shopper"))
+  let stored = LocalAuth.lookupUser("carol")
+  expect((
+    minted->Option.mapOr([], i => i.groups),
+    stored->Option.mapOr([], i => i.groups),
+  ))->toEqual((["Shopper"], ["Fulfilment", "Shopper"]))
+})

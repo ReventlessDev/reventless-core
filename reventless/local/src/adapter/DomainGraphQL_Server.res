@@ -79,7 +79,9 @@ let _loginRejected = (res: nodeResponse, ~error: string): unit =>
     JSON.Encode.object(Dict.fromArray([("error", JSON.Encode.string(error))])),
   )
 
-type _loginBody = {username: string, password: string}
+// `activeRole` narrows the minted token to one of the caller's own groups. Its
+// absence is the ordinary login and mints what it always did.
+type _loginBody = {username: string, password: string, activeRole?: string}
 
 let handleLogin = (req: nodeRequest, res: nodeResponse): unit =>
   readBody(req, body => {
@@ -90,14 +92,20 @@ let handleLogin = (req: nodeRequest, res: nodeResponse): unit =>
     }
     switch parsed {
     | None => _loginRejected(res, ~error="Invalid JSON body")
-    | Some({username, password}) =>
-      let _ = LocalAuth.Login.issue(~username, ~password)->Promise.then(result => {
+    | Some({username, password, ?activeRole}) =>
+      let _ = LocalAuth.Login.issue(~username, ~password, ~activeRole?)->Promise.then(result => {
         switch result {
         | Error(msg) => _loginRejected(res, ~error=msg)
         | Ok(token) =>
           // Echo back the identity the client will see in subsequent
           // ctx.identity values, so the SPA doesn't need a second round-trip.
-          let identity = switch LocalAuth.lookupUser(username) {
+          //
+          // Read from the mint rather than the store: the two differ exactly
+          // when the token is narrowed, and a response that described the wider
+          // stored identity would put the client a step behind the server from
+          // its first request — showing a menu for groups its own token no
+          // longer carries.
+          let identity = switch LocalAuth.Login.mintedIdentity(~username, ~activeRole) {
           | Some(i) => i
           | None => Reventless.Identity.anonymous
           }
