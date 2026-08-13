@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.290 (2026-08-13)
+
+### Bug Fixes
+
+* **aws:** move past a version number that already names other content ([bffba4f](https://github.com/ReventlessDev/reventless-core/commit/bffba4f15eff4a9c30bbf2e28484bb549b865cfc))
+
+
 # 3.0.0-alpha.288 (2026-08-12)
 
 ### Bug Fixes
