@@ -1131,9 +1131,6 @@ function MakeWithConfig(Config) {
       if (index !== undefined && Config.splitApi) {
         Geocoder_AwsLocation_Resolver$ReventlessAws.make(domainApi, index.indexName, undefined, {});
       }
-      if (Config.splitApi) {
-        Auth_ActiveRoleStore$ReventlessAws.makeWriteDoor(domainApi, cognitoPool.activeRoleTable, cognitoPool.poolId, cognitoPool.poolArn, undefined, {});
-      }
       let index$1 = hostUiBundle.geocoderPlaceIndex;
       let geocoderPlaceIndexFlat = index$1 !== undefined ? index$1.indexName : Pulumi.output("");
       Pulumi$Pulumi.$$export("geocoderPlaceIndex", geocoderPlaceIndexFlat);
@@ -1233,6 +1230,10 @@ function MakeWithConfig(Config) {
         Pulumi$Pulumi.$$export("bakedManifestKey", Pulumi.output(manifestKey));
       }
       Pulumi$Pulumi.$$export("hostShellUrl", match$4.distributionUrl);
+    }
+    if (Config.splitApi) {
+      let pool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
+      Auth_ActiveRoleStore$ReventlessAws.makeWriteDoor(domainApi, pool.activeRoleTable, pool.poolId, pool.poolArn, undefined, {});
     }
     return Pulumi$Pulumi.getOutputs();
   };
@@ -2410,7 +2411,6 @@ function Make($star) {
       if (index !== undefined) {
         Geocoder_AwsLocation_Resolver$ReventlessAws.make(domainApi, index.indexName, undefined, {});
       }
-      Auth_ActiveRoleStore$ReventlessAws.makeWriteDoor(domainApi, cognitoPool.activeRoleTable, cognitoPool.poolId, cognitoPool.poolArn, undefined, {});
       let index$1 = hostUiBundle.geocoderPlaceIndex;
       let geocoderPlaceIndexFlat = index$1 !== undefined ? index$1.indexName : Pulumi.output("");
       Pulumi$Pulumi.$$export("geocoderPlaceIndex", geocoderPlaceIndexFlat);
@@ -2511,6 +2511,8 @@ function Make($star) {
       }
       Pulumi$Pulumi.$$export("hostShellUrl", match$4.distributionUrl);
     }
+    let pool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
+    Auth_ActiveRoleStore$ReventlessAws.makeWriteDoor(domainApi, pool.activeRoleTable, pool.poolId, pool.poolArn, undefined, {});
     return Pulumi$Pulumi.getOutputs();
   };
   let startServers = () => {};

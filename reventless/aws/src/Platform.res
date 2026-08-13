@@ -2107,31 +2107,6 @@ module MakeWithConfig = (
       | _ => ()
       }
 
-      // Where a caller records the role they want to act as
-      // (docs/plans/active-role-narrows-the-token.md §6). The mutation only writes
-      // a preference; the pre-token-generation trigger reads the row and re-checks
-      // it against real membership before narrowing anything, so this door grants
-      // nobody anything on its own.
-      //
-      // The table and the trigger were provisioned with the pool — they have to
-      // be, since the pool is declared carrying the trigger's ARN. Only the write
-      // door waits for the API.
-      //
-      // Split-API only, like the upload and geocode resolvers above:
-      // `Platform_SetActiveRole` lives on the domain base document, which a
-      // unified-mode deployment's single API does not carry. The table and
-      // trigger are provisioned either way — see `Platform_Stack` for why that
-      // is not gated on this flag.
-      if Config.splitApi {
-        Auth_ActiveRoleStore.makeWriteDoor(
-          ~api=domainApi,
-          ~table=cognitoPool.activeRoleTable,
-          ~cognitoUserPoolId=cognitoPool.poolId->Pulumi.Output.asInput,
-          ~cognitoUserPoolArn=cognitoPool.poolArn->Pulumi.Output.asInput,
-          ~opts={},
-        )
-      }
-
       // The place index itself, exported so the unattended slice path can reach the
       // capability: a slice's Lambda signs an SDK call directly and needs the index
       // name, not an endpoint (no proxy hop, no dependence on a public URL). The
@@ -2281,6 +2256,44 @@ module MakeWithConfig = (
       }
 
       Pulumi.Pulumi.export("hostShellUrl", distributionUrl)
+    }
+
+    // Where a caller records the role they want to act as
+    // (docs/plans/active-role-narrows-the-token.md §6). The mutation only writes
+    // a preference; the pre-token-generation trigger reads the row and re-checks
+    // it against real membership before narrowing anything, so this door grants
+    // nobody anything on its own.
+    //
+    // The table and the trigger were provisioned with the pool — they have to be,
+    // since the pool is declared carrying the trigger's ARN. Only the write door
+    // waits for the API, which is why it is here and not there.
+    //
+    // 🚨 **Outside `switch hostUiBundle`, and that is the whole point.** It was
+    // written inside it, where the pool happens to be resolved — and a platform
+    // whose shell ships from its own stack passes no bundle, so the door silently
+    // did not exist there. The table and trigger still appeared, because
+    // `resolveCognitoUserPool` is process-cached and `Auth_Cognito.make` reaches
+    // it first: the feature deployed looking complete, with the trigger attached
+    // to the pool and nothing able to write a row for it to read. Same shape as
+    // the object-store endpoints at the top of this file, which sat in this branch
+    // for the same reason and were moved out for the same one. Nothing that is not
+    // *about* the host UI belongs inside this switch.
+    //
+    // Split-API only, like the upload and geocode resolvers: `Platform_SetActiveRole`
+    // lives on the domain base document, which a unified-mode deployment's single
+    // API does not carry. The table and trigger are provisioned either way — see
+    // `Platform_Stack` for why that is not gated on this flag.
+    if Config.splitApi {
+      // Resolved here rather than reused from the branch above, which may not have
+      // run. The call is process-cached, so this is the same pool either way.
+      let pool = Platform_Stack.resolveCognitoUserPool()
+      Auth_ActiveRoleStore.makeWriteDoor(
+        ~api=domainApi,
+        ~table=pool.activeRoleTable,
+        ~cognitoUserPoolId=pool.poolId->Pulumi.Output.asInput,
+        ~cognitoUserPoolArn=pool.poolArn->Pulumi.Output.asInput,
+        ~opts={},
+      )
     }
 
     Pulumi.Pulumi.getOutputs()
