@@ -2301,6 +2301,18 @@ module MakeWithConfig = (
       let key = "sha256/" ++ hash
       // Content-addressed: the name and key are the hash, so re-deploying an
       // unchanged field writes the same object (idempotent, deduplicating).
+      //
+      // `retainOnDelete`: the only readers of these objects are the persisted
+      // refs on the Plugin read model, and that row is updated asynchronously —
+      // the deploy publishes a re-detect, the Plugin aggregate handles it, the
+      // projection lands, minutes later. A changed field means a new hash, so
+      // without this Pulumi DELETES the previous object as part of the same
+      // update, and every reference still on the read model dangles until
+      // registration catches up. S3 answers a GET for a deleted key with
+      // AccessDenied (it masks the 404 unless the caller may ListBucket), so the
+      // window shows up as an authorization failure in the manifest bake and in
+      // the AutoUI definitions query. Content-addressed objects are immutable
+      // and cost kilobytes; keeping them closes the window outright.
       let _ = PulumiAws.S3.BucketObject.make(
         ~name="offload-" ++ hash,
         ~args={
@@ -2309,6 +2321,7 @@ module MakeWithConfig = (
           content: Pulumi.Input.make(bytes),
           contentType: Pulumi.Input.make("application/json"),
         },
+        ~opts={retainOnDelete: true},
       )
       {Reventless.Offload.store, key, hash, bytes: bytes->String.length}
     })

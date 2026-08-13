@@ -1256,6 +1256,8 @@ function MakeWithConfig(Config) {
         key: key,
         content: bytes,
         contentType: "application/json"
+      }, {
+        retainOnDelete: true
       });
       return {
         store: store,
@@ -2507,6 +2509,8 @@ function Make($star) {
         key: key,
         content: bytes,
         contentType: "application/json"
+      }, {
+        retainOnDelete: true
       });
       return {
         store: store,

@@ -6,8 +6,10 @@ import * as S3$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/S3.res.mjs";
 import * as Nodepath from "node:path";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as ClientS3 from "@aws-sdk/client-s3";
 import * as Offload$Reventless from "@reventlessdev/reventless-spec/src/semantic/Offload.res.mjs";
@@ -216,7 +218,10 @@ function resolveStructure(fetch, item) {
   }
   let key = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(refJson), r => r["key"]), Stdlib_JSON.Decode.string);
   if (key !== undefined) {
-    return fetch(key).then(bytes => {
+    return Stdlib_Promise.$$catch(fetch(key), e => {
+      let plugin = Stdlib_Option.getOr(str(item, "name"), "<unnamed>");
+      return Stdlib_JsError.throwWithMessage(`offloaded structure for plugin ` + plugin + ` is unreadable at ` + key + `: ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(e), Stdlib_JsExn.message), "unknown error"));
+    }).then(bytes => {
       let resolved = Object.fromEntries(Object.entries(item));
       resolved["structure"] = JSON.parse(bytes);
       return Promise.resolve(resolved);

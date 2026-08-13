@@ -117,6 +117,16 @@ let make = (
                 actions: Actions(["s3:GetObject"]),
                 resources: Resource("arn:aws:s3:::" ++ offloadBucket ++ "/*"),
               },
+              // Read-only on the bucket itself, purely so a key that is not there
+              // says so: S3 answers GET for a missing key with AccessDenied unless
+              // the caller may list the bucket, which reports a ref the handler
+              // cannot resolve as an IAM problem it does not have.
+              {
+                sid: "AllowOffloadList",
+                effect: Allow,
+                actions: Actions(["s3:ListBucket"]),
+                resources: Resource("arn:aws:s3:::" ++ offloadBucket),
+              },
             ],
           )
           ->PolicyDocument.toJsonString

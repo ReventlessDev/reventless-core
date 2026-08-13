@@ -46,6 +46,7 @@ function make(api, pluginReadModelTableName, offloadBucketName, schemaReady, bak
     pluginReadModelTableName,
     offloadBucketName
   ]).apply(param => {
+    let offloadBucket = param[1];
     new (Aws.iam.RolePolicy)(name + "LambdaPolicy", {
       policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "LambdaPolicy", [
         {
@@ -64,7 +65,13 @@ function make(api, pluginReadModelTableName, offloadBucketName, schemaReady, bak
           Sid: "AllowOffloadGet",
           Effect: "Allow",
           Action: ["s3:GetObject"],
-          Resource: "arn:aws:s3:::" + param[1] + "/*"
+          Resource: "arn:aws:s3:::" + offloadBucket + "/*"
+        },
+        {
+          Sid: "AllowOffloadList",
+          Effect: "Allow",
+          Action: ["s3:ListBucket"],
+          Resource: "arn:aws:s3:::" + offloadBucket
         }
       ])),
       role: lambdaRole.id

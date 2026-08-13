@@ -216,7 +216,18 @@ let resolveStructure = (
     ->Option.flatMap(JSON.Decode.string) {
     | None => Promise.resolve(item)
     | Some(key) =>
-      fetch(key)->Promise.then(bytes => {
+      fetch(key)
+      // The bucket answers for the whole platform, so a failure here says which
+      // plugin's ref could not be read — otherwise the S3 error names the key
+      // and the bucket, and finding the row it came from is a table scan by hand.
+      ->Promise.catch(e => {
+        let plugin = item->str("name")->Option.getOr("<unnamed>")
+        JsError.throwWithMessage(
+          `offloaded structure for plugin ${plugin} is unreadable at ${key}: ` ++
+          e->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown error"),
+        )
+      })
+      ->Promise.then(bytes => {
         let resolved = Dict.fromArray(item->Dict.toArray)
         resolved->Dict.set("structure", JSON.parseOrThrow(bytes))
         Promise.resolve(resolved)

@@ -240,3 +240,51 @@ describe("bakeSelection", () => {
     expect(sel(`{"views": ["Orders"]}`)->Option.isNone)->toBe(true)
   )
 })
+
+describe("resolveStructure", () => {
+  let item = (structure: string) =>
+    Dict.fromArray([
+      ("name", JSON.Encode.string("Ordering")),
+      ("structure", JSON.parseOrThrow(structure)),
+    ])
+
+  let offloaded = `{"$offload": {"store": "pluginStructures", "key": "sha256/abc", "bytes": 4}}`
+
+  test("substitutes the fetched bytes for the reference", async () => {
+    let resolved = await Platform_ComponentDefinitions_Lambda_Ops.resolveStructure(
+      _ => Promise.resolve(`{"aggregates": []}`),
+      item(offloaded),
+    )
+    expect(resolved->Dict.get("structure")->Option.map(j => JSON.stringify(j)))->toEqual(
+      Some(`{"aggregates":[]}`),
+    )
+  })
+
+  // One offload bucket serves every plugin, so the S3 error names only the key —
+  // which plugin's row carries the unreadable reference is the part worth having.
+  // A missing object is the shape a deploy leaves behind while the read model
+  // still points at the previous structure.
+  test("names the plugin whose reference cannot be read", async () => {
+    let failed = await Platform_ComponentDefinitions_Lambda_Ops.resolveStructure(
+      _ => Promise.reject(JsExn.anyToExnInternal(JsError.make("AccessDenied"))),
+      item(offloaded),
+    )
+    ->Promise.thenResolve(_ => None)
+    ->Promise.catch(e =>
+      Promise.resolve(e->JsExn.fromException->Option.flatMap(JsExn.message))
+    )
+    expect(failed)->toEqual(
+      Some("offloaded structure for plugin Ordering is unreadable at sha256/abc: AccessDenied"),
+    )
+  })
+
+  test("passes an inline structure through untouched", async () => {
+    let resolved = await Platform_ComponentDefinitions_Lambda_Ops.resolveStructure(
+      _ => Promise.reject(JsExn.anyToExnInternal(JsError.make("must not fetch"))),
+      item(`{"aggregates": []}`),
+    )
+    expect(resolved->Dict.get("structure")->Option.map(j => JSON.stringify(j)))->toEqual(
+      Some(`{"aggregates":[]}`),
+    )
+  })
+})
