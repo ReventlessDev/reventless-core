@@ -356,14 +356,14 @@ function discountedPrice(p) {
   return Money$Reventless.make(Math.round(p.price.amount * 0.85), p.price.currency);
 }
 
-let demoShopperId = "local-user";
+let demoShopperId = "local-shopper";
 
 let demoOperatorId = "local-admin";
 
 let demoCustomers = [
   {
     id: demoShopperId,
-    email: "user@example.com",
+    email: "shopper@example.com",
     address: "Nordbahnstrasse 36, 1020 Vienna, Austria",
     lat: 48.2265,
     lng: 16.3897

@@ -236,7 +236,7 @@ other orders" is satisfied equally by correct scoping and by scoping that
 matches nothing, so the check that means anything is an exact non-zero count per
 owner, with a third party holding the rest.
 */
-let demoShopperId = "local-user"
+let demoShopperId = "local-shopper"
 let demoOperatorId = "local-admin"
 let demoShopperOrderCount = 5
 let demoOperatorOrderCount = 3
@@ -244,7 +244,7 @@ let demoOperatorOrderCount = 3
 let demoCustomers: array<customer> = [
   {
     id: demoShopperId,
-    email: "user@example.com",
+    email: "shopper@example.com",
     address: "Nordbahnstrasse 36, 1020 Vienna, Austria",
     lat: 48.2265,
     lng: 16.3897,
