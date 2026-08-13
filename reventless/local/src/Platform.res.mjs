@@ -18,6 +18,7 @@ import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/
 import * as Plugin$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as Backend$ReventlessLocal from "./adapter/Backend.res.mjs";
+import * as UiHints$ReventlessLocal from "./UiHints.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as LocalBus$ReventlessLocal from "./adapter/LocalBus.res.mjs";
 import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Naming.res.mjs";
@@ -1287,6 +1288,7 @@ function MakeWithConfig(Config) {
     });
     subscribeToPluginEvents();
     ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined);
+    UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), undefined);
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
     if (cfg !== undefined) {
       bakeManifest(plugins$1, cfg);
@@ -3006,6 +3008,7 @@ function Make($star) {
     });
     subscribeToPluginEvents();
     ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined);
+    UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), undefined);
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
     if (cfg !== undefined) {
       bakeManifest(plugins$1, cfg);

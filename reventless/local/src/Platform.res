@@ -1429,16 +1429,17 @@ module MakeWithConfig = (
     })
 
   // In-memory ignores the infrastructure half of `~hostUiBundle` — the host shell
-  // is served by `vite dev` against the running in-process GraphQL server, not
-  // from a CDN, including `uiHintsFile` (the AWS deploy writes it as a
-  // BucketObject; local dev serves `public/ui-hints.json` directly). What a
-  // deployment *says* is honoured: `bakedManifest` is generated content with no
-  // hand-authored file to serve instead, and `shellConfig` reaches the shell
+  // is served from the installed package's own `dist/`, not from a CDN. What a
+  // deployment *says* is honoured, in the same three files the AWS deploy writes
+  // beside each other: `bakedManifest` through `BakedManifest`, `shellConfig`
   // through `ShellConfig`, which overlays the served `config.json` the way the
-  // AWS deploy composes the one it writes.
+  // AWS deploy composes the one it writes, and `uiHintsFile` through `UiHints`,
+  // which replaces the served hints file the way the deploy uploads it.
   type hostUiBundleConfig = {
     assetsDir?: string,
     bundleVersion?: string,
+    // `makePlatform` serves the declared file in place of the host-shell
+    // package's own dev-mode fallback, which an undeclared platform keeps.
     uiHintsFile?: string,
     // `makePlatform` writes the curated manifest where the local host-shell
     // serves its static assets from, and points `config.json` at it.
@@ -1624,6 +1625,10 @@ module MakeWithConfig = (
       ~bakedManifest=hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest),
       ~shellConfig=hostUiBundle->Option.flatMap(cfg => cfg.shellConfig),
     )
+    // Unconditional for the same reason, and one file over: it is also what
+    // restores the shell package's own hints for a platform that has stopped
+    // declaring its own.
+    UiHints.emit(~uiHintsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiHintsFile))
     switch hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest) {
     | None => ()
     | Some(cfg) => bakeManifest(~pluginComponents=plugins, ~config=cfg)
