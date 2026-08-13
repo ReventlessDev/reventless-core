@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.204 (2026-08-13)
+
+### Features
+
+* **example:** give the shop four roles instead of one ([e35ccc5](https://github.com/ReventlessDev/reventless-core/commit/e35ccc57a0fcdcc2880fcbdcda6affb9bd162919))
+
+
 # 1.0.0-alpha.203 (2026-08-12)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering

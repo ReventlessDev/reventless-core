@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.217 (2026-08-13)
+
+### Bug Fixes
+
+* **example:** seed the demo shopper the login file actually ships ([033e212](https://github.com/ReventlessDev/reventless-core/commit/033e2126bca54c91e46b81dddb687eebffad96c2))
+### Features
+
+* **example:** give the shop four roles instead of one ([e35ccc5](https://github.com/ReventlessDev/reventless-core/commit/e35ccc57a0fcdcc2880fcbdcda6affb9bd162919))
+* **example:** let the shop state its own navigation and checkout action ([3d7fb90](https://github.com/ReventlessDev/reventless-core/commit/3d7fb90df5a5913a188be620583c92198ba601a0))
+* **local:** point the dev shell at the manifest it bakes ([e4d0f1c](https://github.com/ReventlessDev/reventless-core/commit/e4d0f1cef70f9a9ca6d13266d72db3f38d0cc2d9))
+
+
 # 1.0.0-alpha.216 (2026-08-13)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-local

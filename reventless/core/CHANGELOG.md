@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.230 (2026-08-13)
+
+### Features
+
+* **aws:** bake the component manifest after every plugin stack is up ([2fff09a](https://github.com/ReventlessDev/reventless-core/commit/2fff09aa32b77cc8e33a65414c58c12026ca009e))
+* **local:** bake one curated surface per audience ([3be6f63](https://github.com/ReventlessDev/reventless-core/commit/3be6f63e579cef8cd213a84b6ccded773b1abc9e))
+
+
 # 3.0.0-alpha.229 (2026-08-12)
 
 ### Bug Fixes

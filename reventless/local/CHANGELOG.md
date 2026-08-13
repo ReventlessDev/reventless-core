@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.218 (2026-08-13)
+
+### Features
+
+* **aws:** bake the component manifest after every plugin stack is up ([2fff09a](https://github.com/ReventlessDev/reventless-core/commit/2fff09aa32b77cc8e33a65414c58c12026ca009e))
+* **local:** bake one curated surface per audience ([3be6f63](https://github.com/ReventlessDev/reventless-core/commit/3be6f63e579cef8cd213a84b6ccded773b1abc9e))
+* **local:** let a login act as one of the roles it holds ([61141ac](https://github.com/ReventlessDev/reventless-core/commit/61141ac783a71dd7f043e84e6e7732c67cfb921b))
+* **local:** point the dev shell at the manifest it bakes ([e4d0f1c](https://github.com/ReventlessDev/reventless-core/commit/e4d0f1cef70f9a9ca6d13266d72db3f38d0cc2d9))
+* **local:** serve the ui-hints file a deployment declares ([8258c85](https://github.com/ReventlessDev/reventless-core/commit/8258c858155fec760a772483f9bde208ffa57f61))
+* **local:** switch role without logging in again ([4f82348](https://github.com/ReventlessDev/reventless-core/commit/4f82348f01b9117256fc1d7208355c3654875909))
+
+
 # 3.0.0-alpha.217 (2026-08-12)
 
 ### Bug Fixes

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.177 (2026-08-13)
+
+### Features
+
+* **rescript:** bind import.meta so no module reaches for %raw ([c7bd00c](https://github.com/ReventlessDev/reventless-core/commit/c7bd00c0d49ca06cb26a0891a85921219eb87b12))
+
+
 # 1.0.0-alpha.176 (2026-08-12)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt

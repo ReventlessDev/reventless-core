@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.32 (2026-08-13)
+
+### Features
+
+* **rescript:** bind import.meta so no module reaches for %raw ([c7bd00c](https://github.com/ReventlessDev/reventless-core/commit/c7bd00c0d49ca06cb26a0891a85921219eb87b12))
+
+
 # 3.0.0-alpha.31 (2026-08-11)
 
 ### Bug Fixes

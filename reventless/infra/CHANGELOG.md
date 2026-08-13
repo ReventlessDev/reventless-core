@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.138 (2026-08-13)
+
+### Features
+
+* **local:** bake one curated surface per audience ([3be6f63](https://github.com/ReventlessDev/reventless-core/commit/3be6f63e579cef8cd213a84b6ccded773b1abc9e))
+
+
 # 3.0.0-alpha.137 (2026-08-12)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra

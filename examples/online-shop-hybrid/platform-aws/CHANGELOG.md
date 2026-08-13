@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.238 (2026-08-13)
+
+### Features
+
+* **aws:** bake the component manifest after every plugin stack is up ([2fff09a](https://github.com/ReventlessDev/reventless-core/commit/2fff09aa32b77cc8e33a65414c58c12026ca009e))
+* **example:** let the shop state its own navigation and checkout action ([3d7fb90](https://github.com/ReventlessDev/reventless-core/commit/3d7fb90df5a5913a188be620583c92198ba601a0))
+
+
 # 1.0.0-alpha.237 (2026-08-13)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

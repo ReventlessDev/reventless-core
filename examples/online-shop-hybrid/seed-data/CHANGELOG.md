@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.52 (2026-08-13)
+
+### Bug Fixes
+
+* **example:** seed the demo shopper the login file actually ships ([033e212](https://github.com/ReventlessDev/reventless-core/commit/033e2126bca54c91e46b81dddb687eebffad96c2))
+### Features
+
+* **example:** give the shop four roles instead of one ([e35ccc5](https://github.com/ReventlessDev/reventless-core/commit/e35ccc57a0fcdcc2880fcbdcda6affb9bd162919))
+* **example:** let the shop state its own navigation and checkout action ([3d7fb90](https://github.com/ReventlessDev/reventless-core/commit/3d7fb90df5a5913a188be620583c92198ba601a0))
+* **local:** bake one curated surface per audience ([3be6f63](https://github.com/ReventlessDev/reventless-core/commit/3be6f63e579cef8cd213a84b6ccded773b1abc9e))
+* **rescript:** bind import.meta so no module reaches for %raw ([c7bd00c](https://github.com/ReventlessDev/reventless-core/commit/c7bd00c0d49ca06cb26a0891a85921219eb87b12))
+
+
 # 1.0.0-alpha.51 (2026-08-12)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-seed
