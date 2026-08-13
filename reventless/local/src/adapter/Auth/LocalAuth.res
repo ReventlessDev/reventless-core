@@ -257,6 +257,46 @@ module Login = {
     | _ => None
     }
   }
+
+  /**
+   Re-mint an existing session as one of the caller's roles.
+
+   A switch is not a fresh login: the client holds a token, not a password, and
+   asking for the password again to change role would make an ordinary
+   navigation a re-authentication. Possession of a token this server signed is
+   already proof of the credentials that produced it.
+
+   🚨 **Membership is re-read from the store, never from the presented token.**
+   A narrowed token carries `availableRolesClaim`, and widening back by trusting
+   it would make the record of what a caller gave up into the authority for
+   getting it back. The signature makes that claim authentic, not correct: the
+   store is where membership actually lives, and re-reading it means a role
+   revoked since the token was issued cannot be switched into.
+
+   `activeRole` unset widens back to full membership — which is not a privilege
+   escalation, because the subset being widened *to* is the one the store says
+   the caller has.
+   */
+  let reissue = (~token: string, ~activeRole: option<string>): result<string, string> =>
+    switch verifyAndDecode(token) {
+    | None => Error("Invalid token")
+    | Some(presented) =>
+      switch store.contents->Dict.get(presented.username) {
+      | None => Error("Unknown user")
+      | Some({identity, _}) =>
+        switch switch activeRole {
+        | None => Ok(identity)
+        | Some(role) => identity->narrow(~activeRole=role)
+        } {
+        | Error(_) as e => e
+        | Ok(minted) =>
+          let json = minted->S.reverseConvertToJsonOrThrow(Identity.schema)->JSON.stringify
+          let payload = _b64urlEncode(json)
+          Ok(`${payload}.${_sign(payload)}`)
+        }
+      }
+    }
+
 }
 
 // ── Provider implementation ───────────────────────────────────────────────

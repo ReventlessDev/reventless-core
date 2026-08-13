@@ -94,6 +94,48 @@ function handleLogin(req, res) {
   });
 }
 
+function handleSwitchRole(req, res) {
+  readBody(req, body => {
+    let requested;
+    let exit = 0;
+    let json;
+    try {
+      json = JSON.parse(body);
+      exit = 1;
+    } catch (exn) {
+      requested = undefined;
+    }
+    if (exit === 1) {
+      requested = json.activeRole;
+    }
+    let presented = Stdlib_Option.flatMap(req.headers["authorization"], h => {
+      if (h.startsWith("Bearer ")) {
+        return h.slice(7, h.length).trim();
+      }
+    });
+    if (presented === undefined) {
+      return _loginRejected(res, "Missing bearer token");
+    }
+    let msg = LocalAuth$ReventlessLocal.Login.reissue(presented, requested);
+    if (msg.TAG !== "Ok") {
+      return _loginRejected(res, msg._0);
+    }
+    let newToken = msg._0;
+    let i = LocalAuth$ReventlessLocal.Login.verifyAndDecode(newToken);
+    let identity = i !== undefined ? i : Identity$Reventless.anonymous;
+    _writeJson(res, 200, Object.fromEntries([
+      [
+        "token",
+        newToken
+      ],
+      [
+        "identity",
+        S.reverseConvertToJsonOrThrow(identity, Identity$Reventless.schema)
+      ]
+    ]));
+  });
+}
+
 function handleLogout(_req, res) {
   res.writeHead(204, {
     "Access-Control-Allow-Origin": "*"
@@ -163,6 +205,9 @@ function _dispatch(req, res, yoga, getSdl) {
   }
   if (path === "/__inmemory/login" && req.method === "POST") {
     return handleLogin(req, res);
+  }
+  if (path === "/__inmemory/switch-role" && req.method === "POST") {
+    return handleSwitchRole(req, res);
   }
   if (path === "/__inmemory/logout" && req.method === "POST") {
     return handleLogout(req, res);
@@ -730,6 +775,7 @@ export {
   _writeJson,
   _loginRejected,
   handleLogin,
+  handleSwitchRole,
   handleLogout,
   _corsWriteHeaders,
   handleObjectPut,

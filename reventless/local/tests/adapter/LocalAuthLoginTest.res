@@ -318,3 +318,77 @@ testPromise("the minted identity matches the token, not the stored user", async 
     stored->Option.mapOr([], i => i.groups),
   ))->toEqual((["Shopper"], ["Fulfilment", "Shopper"]))
 })
+
+// ── Switching an existing session ─────────────────────────────────────────
+//
+// A switch is not a re-authentication: the client holds a token, not a
+// password. Possession of a token this server signed is proof of the
+// credentials that produced it, so the switch re-mints from the token — and
+// re-reads membership from the store, never from the token's own record of it.
+
+testPromise("a session can be re-minted as one of its roles", async () => {
+  carolLoggedIn()
+  let wide = switch await LocalAuth.Login.issue(~username="carol", ~password="carol-pw") {
+  | Ok(t) => t
+  | Error(e) => JsError.throwWithMessage(e)
+  }
+  switch LocalAuth.Login.reissue(~token=wide, ~activeRole=Some("Shopper")) {
+  | Ok(t) => expect(decodeOrThrow(t).groups)->toEqual(["Shopper"])
+  | Error(e) => JsError.throwWithMessage(e)
+  }
+})
+
+// Switching back is the other half of a switcher, and it is not an escalation:
+// the set being widened to is the one the store says the caller holds.
+testPromise("a narrowed session can widen back to its full membership", async () => {
+  carolLoggedIn()
+  let narrow = switch await LocalAuth.Login.issue(
+    ~username="carol",
+    ~password="carol-pw",
+    ~activeRole="Shopper",
+  ) {
+  | Ok(t) => t
+  | Error(e) => JsError.throwWithMessage(e)
+  }
+  switch LocalAuth.Login.reissue(~token=narrow, ~activeRole=None) {
+  | Ok(t) =>
+    let identity = decodeOrThrow(t)
+    expect((identity.groups, identity.claims))->toEqual((["Fulfilment", "Shopper"], None))
+  | Error(e) => JsError.throwWithMessage(e)
+  }
+})
+
+// 🚨 The assertion that keeps `availableRoles` from becoming an authority. A
+// narrowed token carries the record of what it gave up; if the switch trusted
+// that record instead of the store, a token forged with a wider claim — or a
+// role revoked since issuance — would widen right back into it.
+testPromise("switching judges membership from the store, not the token's claim", async () => {
+  carolLoggedIn()
+  let narrow = switch await LocalAuth.Login.issue(
+    ~username="carol",
+    ~password="carol-pw",
+    ~activeRole="Shopper",
+  ) {
+  | Ok(t) => t
+  | Error(e) => JsError.throwWithMessage(e)
+  }
+  // The store loses the role while the token still remembers it.
+  LocalAuth.Login.setCredentials(
+    ~username="carol",
+    ~password="carol-pw",
+    ~identity={...multiRole, groups: ["Shopper"]},
+  )
+  switch LocalAuth.Login.reissue(~token=narrow, ~activeRole=Some("Fulfilment")) {
+  | Ok(_) =>
+    JsError.throwWithMessage("expected a revoked role to be unreachable via the token's claim")
+  | Error(_) => expect(true)->toEqual(true)
+  }
+})
+
+testPromise("switching refuses a token this server did not sign", async () => {
+  carolLoggedIn()
+  switch LocalAuth.Login.reissue(~token="not.a-real-token", ~activeRole=Some("Shopper")) {
+  | Ok(_) => JsError.throwWithMessage("expected an unverifiable token to be refused")
+  | Error(msg) => expect(msg)->toEqual("Invalid token")
+  }
+})

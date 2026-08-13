@@ -199,6 +199,37 @@ function verifyAndDecode(token) {
   }
 }
 
+function reissue(token, activeRole) {
+  let presented = verifyAndDecode(token);
+  if (presented === undefined) {
+    return {
+      TAG: "Error",
+      _0: "Invalid token"
+    };
+  }
+  let match = store.contents[presented.username];
+  if (match === undefined) {
+    return {
+      TAG: "Error",
+      _0: "Unknown user"
+    };
+  }
+  let identity = match.identity;
+  let e = activeRole !== undefined ? narrow(identity, activeRole) : ({
+      TAG: "Ok",
+      _0: identity
+    });
+  if (e.TAG !== "Ok") {
+    return e;
+  }
+  let json = JSON.stringify(S.reverseConvertToJsonOrThrow(e._0, Identity$Reventless.schema));
+  let payload = _b64urlEncode(json);
+  return {
+    TAG: "Ok",
+    _0: payload + `.` + _sign(payload)
+  };
+}
+
 let Login = {
   store: store,
   setCredentials: setCredentials,
@@ -214,7 +245,8 @@ let Login = {
   narrow: narrow,
   issue: issue,
   mintedIdentity: mintedIdentity,
-  verifyAndDecode: verifyAndDecode
+  verifyAndDecode: verifyAndDecode,
+  reissue: reissue
 };
 
 function _bearerToken(header) {

@@ -16,6 +16,8 @@ let _loginRejected = DomainGraphQL_Server$ReventlessLocal._loginRejected;
 
 let handleLogin = DomainGraphQL_Server$ReventlessLocal.handleLogin;
 
+let handleSwitchRole = DomainGraphQL_Server$ReventlessLocal.handleSwitchRole;
+
 let handleLogout = DomainGraphQL_Server$ReventlessLocal.handleLogout;
 
 let _corsWriteHeaders = DomainGraphQL_Server$ReventlessLocal._corsWriteHeaders;
@@ -132,6 +134,7 @@ export {
   _writeJson,
   _loginRejected,
   handleLogin,
+  handleSwitchRole,
   handleLogout,
   _corsWriteHeaders,
   handleObjectPut,

@@ -127,6 +127,59 @@ let handleLogin = (req: nodeRequest, res: nodeResponse): unit =>
     }
   })
 
+// `activeRole` absent widens back to the caller's full membership — see
+// `LocalAuth.Login.reissue` for why that is not an escalation.
+type _switchBody = {activeRole?: string}
+
+// Re-mints the presented session as one of the caller's roles.
+//
+// Separate from login because a switch is not a re-authentication: the client
+// holds a token, not a password. The bearer is already verified by the dispatch
+// rule above — every path but login rejects an unverifiable one — so reaching
+// here means the token is this server's own.
+let handleSwitchRole = (req: nodeRequest, res: nodeResponse): unit =>
+  readBody(req, body => {
+    let requested = switch body->JSON.parseOrThrow {
+    | json => (json->Obj.magic: _switchBody).activeRole
+    | exception _ => None
+    }
+    let presented =
+      req.headers
+      ->Dict.get("authorization")
+      ->Option.flatMap(h =>
+        String.startsWith(h, "Bearer ")
+          ? Some(String.slice(h, ~start=7, ~end=String.length(h))->String.trim)
+          : None
+      )
+    switch presented {
+    | None => _loginRejected(res, ~error="Missing bearer token")
+    | Some(token) =>
+      switch LocalAuth.Login.reissue(~token, ~activeRole=requested) {
+      | Error(msg) => _loginRejected(res, ~error=msg)
+      | Ok(newToken) =>
+        // Same shape as login, so the client stores the result the same way and
+        // a switch is indistinguishable from a fresh session downstream.
+        let identity = switch LocalAuth.Login.verifyAndDecode(newToken) {
+        | Some(i) => i
+        | None => Reventless.Identity.anonymous
+        }
+        _writeJson(
+          res,
+          ~status=200,
+          JSON.Encode.object(
+            Dict.fromArray([
+              ("token", JSON.Encode.string(newToken)),
+              (
+                "identity",
+                identity->S.reverseConvertToJsonOrThrow(Reventless.Identity.schema),
+              ),
+            ]),
+          ),
+        )
+      }
+    }
+  })
+
 let handleLogout = (_req: nodeRequest, res: nodeResponse): unit => {
   res->writeHead(204, {"Access-Control-Allow-Origin": "*"})
   res->endEmpty
@@ -213,6 +266,8 @@ let _dispatch = (req: nodeRequest, res: nodeResponse, yoga: YG.yoga, getSdl: uni
     res->end_(getSdl())
   } else if path == "/__inmemory/login" && req.method == "POST" {
     handleLogin(req, res)
+  } else if path == "/__inmemory/switch-role" && req.method == "POST" {
+    handleSwitchRole(req, res)
   } else if path == "/__inmemory/logout" && req.method == "POST" {
     handleLogout(req, res)
   } else if path == "/events" && req.method == "POST" {
