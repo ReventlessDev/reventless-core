@@ -23,7 +23,17 @@ Platform.makePlatform(PackageVersion$Reventless.fromCwd(), [
     make: Ordering.make
   }
 ], {
-  bakedManifest: Storefront$OnlineShopHybridSeed.manifest
+  bakedManifest: Storefront$OnlineShopHybridSeed.manifest,
+  shellConfig: Object.fromEntries([
+    [
+      "appName",
+      "Online Shop"
+    ],
+    [
+      "elevatedGroups",
+      Storefront$OnlineShopHybridSeed.elevatedGroups.map(prim => prim)
+    ]
+  ])
 });
 
 Platform.startServers();

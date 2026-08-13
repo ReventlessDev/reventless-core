@@ -2,23 +2,13 @@
 
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
-import * as Nodemodule from "node:module";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
 import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
 
-let hostShellPackage = "@reventlessdev/reventless-host-shell";
-
 let log = Logger$ReventlessCore.fromEnv();
-
-function hostShellDistDir() {
-  try {
-    return Nodepath.dirname(Nodemodule.createRequire(process.cwd() + "/index.js").resolve(hostShellPackage + "/package.json")) + "/dist";
-  } catch (exn) {
-    return;
-  }
-}
 
 let defaultKey = "component-manifest.json";
 
@@ -32,9 +22,9 @@ function emit(structures, config) {
   if (e.TAG !== "Ok") {
     return Stdlib_JsError.throwWithMessage(Platform_BakedManifest$ReventlessCore.describe(e._0));
   }
-  let dir = hostShellDistDir();
+  let dir = HostShellDist$ReventlessLocal.dir();
   if (dir === undefined) {
-    return Stdlib_JsError.throwWithMessage(`baked manifest: cannot resolve ` + hostShellPackage + ` from ` + process.cwd() + ` — the local shell serves the file from that package's dist/, so declaring a bake without the package installed would write nothing and render an empty shell.`);
+    return Stdlib_JsError.throwWithMessage(`baked manifest: cannot resolve ` + HostShellDist$ReventlessLocal.$$package + ` from ` + process.cwd() + ` — the local shell serves the file from that package's dist/, so declaring a bake without the package installed would write nothing and render an empty shell.`);
   }
   let key = Stdlib_Option.getOr(config.key, defaultKey);
   let path = Nodepath.join(dir, key);
@@ -43,9 +33,7 @@ function emit(structures, config) {
 }
 
 export {
-  hostShellPackage,
   log,
-  hostShellDistDir,
   defaultKey,
   emit,
 }

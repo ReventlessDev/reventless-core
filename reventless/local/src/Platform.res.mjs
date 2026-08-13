@@ -27,6 +27,7 @@ import * as TestRunner$ReventlessLocal from "./test/TestRunner.res.mjs";
 import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
+import * as ShellConfig$ReventlessLocal from "./ShellConfig.res.mjs";
 import * as BackendState$ReventlessLocal from "./adapter/BackendState.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "./adapter/SqliteDriver.res.mjs";
@@ -1285,6 +1286,7 @@ function MakeWithConfig(Config) {
       adminResources: []
     });
     subscribeToPluginEvents();
+    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined);
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
     if (cfg !== undefined) {
       bakeManifest(plugins$1, cfg);
@@ -3003,6 +3005,7 @@ function Make($star) {
       adminResources: []
     });
     subscribeToPluginEvents();
+    ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined);
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
     if (cfg !== undefined) {
       bakeManifest(plugins$1, cfg);

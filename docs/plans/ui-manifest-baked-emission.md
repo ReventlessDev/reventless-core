@@ -1,8 +1,9 @@
 # Plan: Baked component manifest as a static asset
 
-**Status.** In-memory half landed — 2026-08-11. The declaration, the curation and
-the in-memory emission ship; the AWS emission is the open item in §4 and stays
-unbuilt until a deployment needs it.
+**Status.** In-memory half landed — 2026-08-11, extended 2026-08-13 (§9: one
+shell, both personas). The declaration, the curation, the in-memory emission and
+the local `config.json` wiring ship; the AWS emission is the open item in §4 and
+stays unbuilt until a deployment needs it.
 
 **Sibling plan:** `reventless-ui: docs/plans/shell-static-manifest-and-end-user-mode.md`
 — the shell-side `manifestUrl` discovery path that consumes what this plan
@@ -238,3 +239,57 @@ unchanged (a post-deploy pipeline step reading the admin API with operator
 credentials and writing the `BucketObject`); `hostUiBundleConfig` carries the
 field on that platform so the declaration is stated once, and a deployment that
 sets it today writes nothing.
+
+---
+
+## §9 — One shell, both personas (2026-08-13)
+
+**What was missing.** §8 wrote the file and stopped. Nothing pointed the shell at
+it: `manifestUrl` lives in `config.json`, which local never wrote and the
+host-shell package ships without the key. So the bake was inert in dev — every
+caller still took the admin path, and a non-elevated login failed discovery with
+`Unauthorized: requires group "Admin"`, which is the exact symptom §1 exists to
+remove.
+
+**Why not just ship the key in the shipped `config.json`.** It is a per-deployment
+decision, and setting it globally breaks the platforms that declare no bake: the
+local no-bearer identity is `LocalAuth.defaultUser`, whose groups are `["User"]`,
+so the aggregates and DCB examples would send every dev to a manifest nothing
+writes. The key belongs to whoever declared the bake.
+
+**The shell's half: discovery resolved per caller, not per deployment.** §1 made
+`manifestUrl` and the admin path mutually exclusive by construction, which reads
+as a property of the deployment — one `config.json`, one persona. Right for a
+shell shipped to one audience, wrong for a dev machine, where the same bundle
+serves an operator and a shopper. The shell now decides from the two keys
+together: `manifestUrl` alone still means static-only for every caller (the
+contract a deployment that set it already depends on, and what an undeclared
+`elevatedGroups` amounts to anyway), and naming **both** sends a caller in an
+elevated group to the admin queries while everyone else reads the file.
+
+Still not the fallback §1 rejected: the path is chosen from the caller's token
+before either request is issued, never from an `UNAUTHORIZED` response, so a
+configured-but-unreachable manifest fails loudly for whoever was sent to it.
+
+What this platform owes that contract is both keys in one file — hence the rest
+of this section.
+
+**Local grew the config.json half of `Util_ShellConfig`.** `ShellConfig.emit`
+overlays the served file: `manifestUrl` computed from the bake declaration (local
+knows where it put the file), `shellConfig` passed through verbatim, a
+`shellConfig` key naming a computed one refused the same way AWS refuses it.
+`HostShellDist` now names the destination once for both writers.
+
+**The shipped file is the baseline, not the output.** First write copies
+`config.json` aside as `config.base.json`; every write since is baseline +
+overlay. Overlaying the previous output would make withdrawal impossible — drop
+`bakedManifest` and yesterday's `manifestUrl` would point the shell at a file
+nothing writes any more. Both directions are self-healing, and a `pnpm install`
+that replaces the package re-seeds the baseline from whatever it ships.
+
+**Consequence for §4.** The AWS half is now two things, not one: the emission
+(unchanged recommendation) *and* writing `manifestUrl` into the computed
+`config.json` when a bake is declared — the same key, through
+`Util_ShellConfig.fields`. `elevatedGroups` stays a `shellConfig` key on both
+platforms, author-declared, because it mirrors a server rule the platform does
+not own.

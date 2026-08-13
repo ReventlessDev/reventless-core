@@ -1428,28 +1428,32 @@ module MakeWithConfig = (
       }
     })
 
-  // In-memory ignores most of `~hostUiBundle` — the host shell is served by
-  // `vite dev` against the running in-process GraphQL server, not from a CDN,
-  // including `uiHintsFile` (the AWS deploy writes it as a BucketObject; local
-  // dev serves `public/ui-hints.json` directly). `bakedManifest` is the
-  // exception: it is generated content, so there is no hand-authored file for
-  // local dev to serve instead.
+  // In-memory ignores the infrastructure half of `~hostUiBundle` — the host shell
+  // is served by `vite dev` against the running in-process GraphQL server, not
+  // from a CDN, including `uiHintsFile` (the AWS deploy writes it as a
+  // BucketObject; local dev serves `public/ui-hints.json` directly). What a
+  // deployment *says* is honoured: `bakedManifest` is generated content with no
+  // hand-authored file to serve instead, and `shellConfig` reaches the shell
+  // through `ShellConfig`, which overlays the served `config.json` the way the
+  // AWS deploy composes the one it writes.
   type hostUiBundleConfig = {
     assetsDir?: string,
     bundleVersion?: string,
     uiHintsFile?: string,
-    // Honoured here, unlike the rest: `makePlatform` writes the curated manifest
-    // where the local host-shell serves its static assets from.
+    // `makePlatform` writes the curated manifest where the local host-shell
+    // serves its static assets from, and points `config.json` at it.
     bakedManifest?: ReventlessInfra.Platform.bakedManifest,
     // AWS host-ui deploy knobs — carried to satisfy the shared Platform.T
     // signature; the in-memory platform provisions no infrastructure and
     // ignores them.
     geocoderPlaceIndex?: ReventlessInfra.Platform.geocoderIndex,
     uploadBucket?: ReventlessInfra.Platform.objectStore,
-    // Same terms: the AWS deploy writes these into the config.json it hosts, and
-    // local dev has no config.json of its own to write — the host-shell package
-    // serves `public/config.json`, which is where local turns a view mode on.
+    // Still ignored: a mode is a shell *build* input locally, turned on in the
+    // host-shell package's own `public/config.json`, where the AWS deploy has to
+    // write it into the config.json it hosts.
     viewModes?: array<ReventlessInfra.Platform.viewMode>,
+    // Merged into the served `config.json` verbatim, as on AWS — the keys the
+    // shell owns and neither platform computes (`appName`, `elevatedGroups`, …).
     shellConfig?: dict<JSON.t>,
   }
   let makePlatform = (
@@ -1610,6 +1614,16 @@ module MakeWithConfig = (
     // offers, which is settled at composition and owes nothing to projection
     // catch-up. Every plugin passed to this call is connected by construction
     // locally, so there is no status or version dedup to apply.
+    //
+    // The config.json overlay is written first and synchronously: it depends on
+    // the *declaration* only, where the bake has to wait for every plugin's
+    // structure Output to land. Unconditional, unlike the bake, because it is
+    // also what restores the shipped file for a platform that has stopped
+    // declaring anything.
+    ShellConfig.emit(
+      ~bakedManifest=hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest),
+      ~shellConfig=hostUiBundle->Option.flatMap(cfg => cfg.shellConfig),
+    )
     switch hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest) {
     | None => ()
     | Some(cfg) => bakeManifest(~pluginComponents=plugins, ~config=cfg)
