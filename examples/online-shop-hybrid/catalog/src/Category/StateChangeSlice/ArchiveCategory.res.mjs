@@ -23,7 +23,10 @@ let eventSchema = S.schema(s => ({
 function commandAuthorization(command) {
   return {
     TAG: "AllowGroups",
-    _0: ["Admin"]
+    _0: [
+      "Admin",
+      "Merchandiser"
+    ]
   };
 }
 

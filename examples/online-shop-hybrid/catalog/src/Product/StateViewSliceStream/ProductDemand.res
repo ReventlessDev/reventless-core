@@ -5,7 +5,7 @@
 
 // Operator surface: aggregate demand across every customer is a merchandising
 // signal, not something a shopper is entitled to read.
-@@reventless.authorize(AllowGroups(["Admin"]))
+@@reventless.authorize(AllowGroups(["Admin", "Merchandiser"]))
 
 @schema
 type consumedEvent =

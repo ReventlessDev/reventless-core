@@ -9,7 +9,7 @@ type consumedEvent =
   | ProductNameChanged({name: string})
 
 @schema
-type command = @authorize(AllowGroups(["Admin"])) ChangeProductName({productId: string, name: string})
+type command = @authorize(AllowGroups(["Admin", "Merchandiser"])) ChangeProductName({productId: string, name: string})
 
 @schema
 type error = ProductNotFound

@@ -8,7 +8,7 @@ type consumedEvent =
   | CategoryArchived
 
 @schema
-type command = @authorize(AllowGroups(["Admin"])) AddCategory({categoryId: string, name: string})
+type command = @authorize(AllowGroups(["Admin", "Merchandiser"])) AddCategory({categoryId: string, name: string})
 
 @schema
 type error = CategoryAlreadyExists

@@ -55,7 +55,10 @@ let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stat
 
 let authorization = {
   TAG: "AllowGroups",
-  _0: ["Admin"]
+  _0: [
+    "Admin",
+    "Merchandiser"
+  ]
 };
 
 let name = "ProductDemand";

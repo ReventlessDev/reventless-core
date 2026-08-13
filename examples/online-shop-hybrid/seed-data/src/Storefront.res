@@ -35,5 +35,19 @@ Unlike the manifest above, this one is **not** curation — it decides what the
 server does. A group named here reads every customer's orders. Leaving it empty
 would scope administrators too, which is the safe direction and also means the
 back-office order board shows an operator nothing.
+
+`Merchandiser` is deliberately absent and always will be: maintaining the catalog
+means editing products, which record no owner and so cannot be scoped away from
+anybody. Elevating a role that does not need it buys nothing and widens what a
+stolen session reaches.
+
+`Fulfilment` is absent for a different reason, and a temporary one. Shipping an
+order means working a board of orders that belong to customers, so the role does
+need the exemption — but naming it here today breaks that account's shell.
+The host UI sends any *elevated* caller to the admin API, and the admin API is
+gated on the group `Admin` specifically, so a caller elevated by some other group
+is routed to a door it cannot open. Until a role can be exempt from owner scoping
+and still discover its surfaces from a manifest, `Fulfilment` reads its own rows
+like anybody else — incomplete, and visibly so, rather than broken.
 */
 let elevatedGroups = ["Admin"]

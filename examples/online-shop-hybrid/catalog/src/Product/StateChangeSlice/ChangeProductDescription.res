@@ -10,7 +10,7 @@ type consumedEvent =
 
 @schema
 type command =
-  @authorize(AllowGroups(["Admin"])) ChangeProductDescription({productId: string, description: string})
+  @authorize(AllowGroups(["Admin", "Merchandiser"])) ChangeProductDescription({productId: string, description: string})
 
 @schema
 type error = ProductNotFound

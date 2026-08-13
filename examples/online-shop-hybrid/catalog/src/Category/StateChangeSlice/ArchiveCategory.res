@@ -9,7 +9,7 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin"])) ArchiveCategory({categoryId: string})
+  | @authorize(AllowGroups(["Admin", "Merchandiser"])) ArchiveCategory({categoryId: string})
 
 @schema
 type error = CategoryNotFound

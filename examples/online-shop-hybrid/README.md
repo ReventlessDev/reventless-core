@@ -54,9 +54,29 @@ across restarts); use `serve:memory` / `dev:full:memory` for stateless runs or
 `LOG_LEVEL=debug` by default (set `LOG_LEVEL=info` to quieten). See
 [docs/guides/local-dev.md](../../docs/guides/local-dev.md) for the full matrix.
 
-`pnpm run build` rebuilds after source changes. Sign in as `admin` / `admin`
-(or `user` / `user`) — `setup` seeds these into `platform-local/.reventless/users.yaml`
-from the committed [`users.example.yaml`](platform-local/users.example.yaml).
+`pnpm run build` rebuilds after source changes. `setup` seeds four accounts into
+`platform-local/.reventless/users.yaml` from the committed
+[`users.example.yaml`](platform-local/users.example.yaml), one per role the shop
+distinguishes (password = username):
+
+| Account | Group | What it is for |
+| --- | --- | --- |
+| `admin` | `Admin` | Everything, including the platform's own admin surfaces |
+| `shopper` | `Shopper` | Browses the catalog, places and cancels its **own** orders |
+| `merch` | `Merchandiser` | Maintains products, categories, prices, images, demand |
+| `fulfil` | `Fulfilment` | Works the order board and ships orders |
+
+`Merchandiser` and `Fulfilment` are both operator roles, and they need different
+things: shipping orders means reading rows that belong to customers, while
+editing a product reads nothing anybody owns. Only `Admin` is listed in
+`Storefront.elevatedGroups` today — see the note there for why `Fulfilment` is
+not yet, though it should be.
+
+The server enforces all four roles; the shell does not yet offer a menu per role,
+so `merch` and `fulfil` currently reach their extra commands through the API
+rather than through the UI. Sign in as each to see how far the same UI takes
+them.
+
 Via the UI, use the LoginPage; against the backend directly:
 
 ```bash

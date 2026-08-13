@@ -20,7 +20,7 @@ type consumedEvent =
 type command =
   | @allowedStates([Orders.Placed])
   @targetState(Orders.Shipped)
-  @authorize(AllowGroups(["Admin"])) ShipOrder({orderId: string})
+  @authorize(AllowGroups(["Admin", "Fulfilment"])) ShipOrder({orderId: string})
 
 @schema
 type error =

@@ -12,7 +12,7 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin"])) AddProduct({
+  | @authorize(AllowGroups(["Admin", "Merchandiser"])) AddProduct({
       // Two *Id fields (productId + categoryId) — @partitionTag picks the storage partition.
       @partitionTag productId: string,
       name: string,

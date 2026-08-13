@@ -18,7 +18,7 @@ type externalInput = {
 }
 
 @schema
-type command = @authorize(AllowGroups(["Admin"])) AddProduct({
+type command = @authorize(AllowGroups(["Admin", "Merchandiser"])) AddProduct({
   productId: string,
   name: string,
   description: string,

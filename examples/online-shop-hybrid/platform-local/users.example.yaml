@@ -8,19 +8,46 @@
 #
 # The in-memory auth adapter loads `.reventless/users.yaml` (relative to the
 # process cwd) at startup. Each entry: username, password, groups[] (required;
-# [] = unprivileged), userId? (defaults to username). "Admin" grants
-# platform/admin access; "User" is a regular shopper. Restart the server after
+# [] = unprivileged), userId? (defaults to username). Restart the server after
 # editing.
+#
+# The shop's four roles, and what makes them different from each other:
+#
+#   Shopper       browses the catalog and places their own orders. Reads are
+#                 owner-scoped, so this account sees its own orders and nobody
+#                 else's.
+#   Merchandiser  maintains the catalog — products, categories, prices, images,
+#                 and the demand view. An operator role that needs NO elevation:
+#                 nothing it touches records an owner, so there is nothing to
+#                 scope it out of.
+#   Fulfilment    works the order board and ships orders. Elevated, because the
+#                 whole job is reading orders that belong to other people.
+#   Admin         everything, including the platform's own admin surfaces.
+#
+# Merchandiser and Fulfilment are the pair worth keeping: they show that "which
+# surfaces does this role use" and "does this role read across owners" are
+# separate questions. `Storefront.elevatedGroups` answers only the second, and
+# names Admin and Fulfilment.
 #
 # Log in via POST http://localhost:4000/__inmemory/login or the host-shell
 # LoginPage. THESE ARE THROWAWAY DEV CREDENTIALS — never reuse them anywhere real.
 
 - username: admin
   password: admin
-  groups: [Admin, User]
+  groups: [Admin, Shopper]
   userId: local-admin
 
-- username: user
-  password: user
-  groups: [User]
-  userId: local-user
+- username: shopper
+  password: shopper
+  groups: [Shopper]
+  userId: local-shopper
+
+- username: merch
+  password: merch
+  groups: [Merchandiser, Shopper]
+  userId: local-merch
+
+- username: fulfil
+  password: fulfil
+  groups: [Fulfilment, Shopper]
+  userId: local-fulfil

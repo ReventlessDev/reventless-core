@@ -41,7 +41,10 @@ let commandSchema$2 = Api$ReventlessInfra.markTargetState(commandSchema$1, [[
 function commandAuthorization(command) {
   return {
     TAG: "AllowGroups",
-    _0: ["Admin"]
+    _0: [
+      "Admin",
+      "Fulfilment"
+    ]
   };
 }
 

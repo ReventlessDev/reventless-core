@@ -9,7 +9,7 @@ type consumedEvent =
   | ProductPriceChanged({price: Reventless.Money.t})
 
 @schema
-type command = @authorize(AllowGroups(["Admin"])) ChangeProductPrice({productId: string, price: Reventless.Money.t})
+type command = @authorize(AllowGroups(["Admin", "Merchandiser"])) ChangeProductPrice({productId: string, price: Reventless.Money.t})
 
 @schema
 type error = ProductNotFound
