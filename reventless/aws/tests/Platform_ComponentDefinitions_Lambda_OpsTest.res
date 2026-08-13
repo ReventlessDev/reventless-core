@@ -176,3 +176,67 @@ describe("toEntryWith carries Internal queryables on the filtered field", () => 
     expect(names)->toEqual([])
   })
 })
+
+// ── Bake mode ────────────────────────────────────────────────────────────────
+// The same scan, written out instead of answered with. Two inputs decide what a
+// bake does and neither is checkable at deploy time: the include-list the
+// platform put in the environment, and the target its caller supplied. Both are
+// pure, so both are assertable without a Lambda.
+
+describe("bakeTargetOf", () => {
+  let target = raw => Platform_ComponentDefinitions_Lambda_Ops.bakeTargetOf(JSON.parseOrThrow(raw))
+
+  // The read paths must stay read paths: an AppSync resolver invokes with
+  // `{}` or `{complete: true}`, and neither may write an object.
+  testSync("a query invocation is not a bake", () => {
+    expect(target(`{}`)->Option.isNone)->toBe(true)
+    expect(target(`{"complete": true}`)->Option.isNone)->toBe(true)
+  })
+
+  // No bucket, no default. Guessing one would write the manifest somewhere
+  // nothing serves it, which reads as a bake that worked.
+  testSync("a bake without a target is not a bake", () =>
+    expect(target(`{"bake": true}`)->Option.isNone)->toBe(true)
+  )
+
+  testSync("defaults the key to the one the deploy tells the shell to fetch", () =>
+    expect(target(`{"bake": true, "bucket": "host-ui"}`)->Option.map(t => t.key))->toEqual(
+      Some("component-manifest.json"),
+    )
+  )
+
+  testSync("takes an explicit key", () =>
+    expect(
+      target(`{"bake": true, "bucket": "host-ui", "key": "storefront.json"}`)->Option.map(t => (
+        t.bucket,
+        t.key,
+      )),
+    )->toEqual(Some(("host-ui", "storefront.json")))
+  )
+})
+
+describe("bakeSelection", () => {
+  let sel = raw => Platform_ComponentDefinitions_Lambda_Ops.bakeSelection(JSON.parseOrThrow(raw))
+
+  // Absent is not empty. `views` absent means every public component of that
+  // plugin; `views: []` means none of them, and a decoder that collapsed the two
+  // would silently bake an empty section.
+  testSync("keeps absent and empty apart", () => {
+    expect(sel(`{"plugin": "Catalog"}`)->Option.flatMap(s => s.views))->toEqual(None)
+    expect(sel(`{"plugin": "Catalog", "views": []}`)->Option.flatMap(s => s.views))->toEqual(
+      Some([]),
+    )
+  })
+
+  testSync("reads the named components", () =>
+    expect(
+      sel(`{"plugin": "Ordering", "views": ["Orders"], "commands": ["PlaceOrder"]}`)->Option.map(
+        s => (s.plugin, s.views, s.commands),
+      ),
+    )->toEqual(Some(("Ordering", Some(["Orders"]), Some(["PlaceOrder"]))))
+  )
+
+  testSync("refuses an entry naming no plugin", () =>
+    expect(sel(`{"views": ["Orders"]}`)->Option.isNone)->toBe(true)
+  )
+})

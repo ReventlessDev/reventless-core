@@ -119,6 +119,12 @@ function curateStructure(pluginId, def, sel) {
   });
 }
 
+let defaultKey = "component-manifest.json";
+
+function urlForKey(key) {
+  return "/" + Stdlib_Option.getOr(key, defaultKey);
+}
+
 function curate(structures, selections) {
   return Stdlib_Result.map(Stdlib_Array.reduce(selections, {
     TAG: "Ok",
@@ -151,6 +157,8 @@ export {
   isSelected,
   referencedEntities,
   curateStructure,
+  defaultKey,
+  urlForKey,
   curate,
 }
 /* No side effect */

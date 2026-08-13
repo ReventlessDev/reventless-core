@@ -7,8 +7,8 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
-import * as BakedManifest$ReventlessLocal from "./BakedManifest.res.mjs";
 import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
+import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -17,7 +17,7 @@ let fileName = "config.json";
 let baselineFileName = "config.base.json";
 
 function manifestUrlOf(config) {
-  return "/" + Stdlib_Option.getOr(config.key, BakedManifest$ReventlessLocal.defaultKey);
+  return Platform_BakedManifest$ReventlessCore.urlForKey(config.key);
 }
 
 let computedKeys = ["manifestUrl"];
@@ -25,7 +25,7 @@ let computedKeys = ["manifestUrl"];
 function overlay(bakedManifest, shellConfig) {
   let out = {};
   Stdlib_Option.forEach(bakedManifest, config => {
-    out["manifestUrl"] = manifestUrlOf(config);
+    out["manifestUrl"] = Platform_BakedManifest$ReventlessCore.urlForKey(config.key);
   });
   Stdlib_Option.forEach(shellConfig, extra => {
     let collisions = Object.keys(extra).filter(k => computedKeys.includes(k));

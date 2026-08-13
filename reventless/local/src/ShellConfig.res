@@ -33,10 +33,8 @@ let fileName = "config.json"
 // to see what the overlay started from.
 let baselineFileName = "config.base.json"
 
-// The bake lands at the dist root, which is also the shell's URL root, so the
-// key and the path the browser fetches are the same string with a leading slash.
 let manifestUrlOf = (config: ReventlessInfra.Platform.bakedManifest): string =>
-  "/" ++ config.key->Option.getOr(BakedManifest.defaultKey)
+  ReventlessCore.Platform_BakedManifest.urlForKey(config.key)
 
 let computedKeys = ["manifestUrl"]
 

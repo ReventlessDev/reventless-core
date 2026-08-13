@@ -1454,17 +1454,24 @@ module MakeWithConfig = (
     // Also register the Plugin RM table with the AllAggregates Lambda runtime
     // so its in-Lambda plugin status gate can read plugin status at command
     // dispatch time (Part 2.3 of the resolver plan).
-    switch pluginReadModelTableName {
+    // Handed back so the host-UI half of this deploy can grant the bake its write
+    // into the bucket it creates, and so the function name can be exported for
+    // the post-deploy step. `None` when there is no Plugin RM to scan — there is
+    // then no function, and nothing downstream to grant.
+    let componentDefinitions = switch pluginReadModelTableName {
     | Some(tableName) =>
       AggregateRuntime_Builder_Single.setPluginReadModelTable(~name=tableName)
-      Platform_ComponentDefinitions_Lambda.make(
-        ~api=platformApi,
-        ~pluginReadModelTableName=tableName,
-        ~offloadBucketName,
-        ~schemaReady=admin.adminSchemaPushed,
-        ~opts={},
+      Some(
+        Platform_ComponentDefinitions_Lambda.make(
+          ~api=platformApi,
+          ~pluginReadModelTableName=tableName,
+          ~offloadBucketName,
+          ~schemaReady=admin.adminSchemaPushed,
+          ~bakedManifest=?hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest),
+          ~opts={},
+        ),
       )
-    | None => ()
+    | None => None
     }
 
     // Mount the Platform_UIFragments Lambda resolver — scans the UiFragments
@@ -2163,6 +2170,7 @@ module MakeWithConfig = (
           Util_ShellConfig.fields(
             ~computed=withEvents,
             ~viewModes=?cfg.viewModes,
+            ~bakedManifest=?cfg.bakedManifest,
             ~shellConfig=?cfg.shellConfig,
           )
           ->JSON.Encode.object
@@ -2200,6 +2208,50 @@ module MakeWithConfig = (
             contentType: Pulumi.Input.make("application/json"),
           },
         )
+      }
+
+      // The bake's write, granted here because here is where both facts are
+      // known: which bucket serves the shell, and that this deployment declared a
+      // manifest at all. Scoped to the one key the deploy told the shell to fetch
+      // — a function that may rewrite the bundle would be a much larger grant
+      // than "keep one generated file current".
+      //
+      // Exported alongside so the post-deploy step has the function and the
+      // target without reading either out of the deploy program.
+      switch (componentDefinitions, cfg.bakedManifest) {
+      | (Some(fn), Some(bake)) =>
+        let manifestKey = bake.key->Option.getOr(
+          ReventlessCore.Platform_BakedManifest.defaultKey,
+        )
+        let _ =
+          (fn.roleId, bucketName)
+          ->Pulumi.Output.all2
+          ->Pulumi.Output.apply(((roleId, bucket)) => {
+            open PulumiAws.PolicyDocument
+            let _ = PulumiAws.IAM.RolePolicy.make(
+              ~name="PlatformUIDefinitionsBake",
+              ~args={
+                PulumiAws.IAM.RolePolicy.policy: PulumiAws.PolicyDocument.make(
+                  ~id="PlatformUIDefinitionsBakePolicy",
+                  ~statements=[
+                    {
+                      sid: "AllowWriteBakedManifest",
+                      effect: Allow,
+                      actions: Actions(["s3:PutObject"]),
+                      resources: Resource(`arn:aws:s3:::${bucket}/${manifestKey}`),
+                    },
+                  ],
+                )
+                ->PulumiAws.PolicyDocument.toJsonString
+                ->Pulumi.Input.make,
+                role: roleId->Pulumi.Input.make,
+              },
+            )
+          })
+        Pulumi.Pulumi.export("bakedManifestFunction", fn.functionName)
+        Pulumi.Pulumi.export("bakedManifestBucket", bucketName)
+        Pulumi.Pulumi.export("bakedManifestKey", Pulumi.Output.make(manifestKey))
+      | _ => ()
       }
 
       Pulumi.Pulumi.export("hostShellUrl", distributionUrl)

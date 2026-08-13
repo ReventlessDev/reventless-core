@@ -38,7 +38,7 @@ export function response(ctx) {
 }
 `;
 
-function make(api, pluginReadModelTableName, offloadBucketName, schemaReady, opts) {
+function make(api, pluginReadModelTableName, offloadBucketName, schemaReady, bakedManifest, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let name = "PlatformUIDefinitions";
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Lambda", Pulumi.output(AWS$ReventlessAws.Lambda.principal), AWS_Tags$ReventlessAws.make(name + "Lambda", "Platform", "Identity", "Platform", undefined, undefined, undefined, undefined), opts$1);
@@ -70,6 +70,18 @@ function make(api, pluginReadModelTableName, offloadBucketName, schemaReady, opt
       role: lambdaRole.id
     }, opts$1);
   });
+  let bakeSelectionsJson = bakedManifest !== undefined ? JSON.stringify(bakedManifest.components.map(sel => {
+      let entry = Object.fromEntries([[
+          "plugin",
+          sel.plugin
+        ]]);
+      let strings = (key, value) => Stdlib_Option.forEach(value, names => {
+        entry[key] = names.map(prim => prim);
+      });
+      strings("views", sel.views);
+      strings("commands", sel.commands);
+      return entry;
+    })) : "";
   let adminEntryJson = JSON.stringify(Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(Platform_Admin_Structure$ReventlessCore.pluginId, Platform_Admin_Structure$ReventlessCore.structure));
   let packageDirs = Object.fromEntries([[
       "@reventlessdev/reventless-aws",
@@ -103,6 +115,10 @@ function make(api, pluginReadModelTableName, offloadBucketName, schemaReady, opt
         [
           "OFFLOAD_BUCKET",
           offloadBucketName
+        ],
+        [
+          "BAKE_SELECTIONS",
+          bakeSelectionsJson
         ],
         [
           "NODE_OPTIONS",
@@ -143,6 +159,10 @@ function make(api, pluginReadModelTableName, offloadBucketName, schemaReady, opt
   }, opts$1);
   AppSync_Resolver_Native$ReventlessAws.makeUnitJsResolver(name + "Resolver", api, dataSource.name, "Query", "Platform_ComponentDefinitions", resolverCode, opts$1);
   schemaReady.apply(() => AppSync_Resolver_Native$ReventlessAws.makeUnitJsResolver(name + "StructuresResolver", api, dataSource.name, "Query", "Platform_PluginStructures", completeResolverCode, opts$1));
+  return {
+    roleId: lambdaRole.id,
+    functionName: lambda.name
+  };
 }
 
 export {

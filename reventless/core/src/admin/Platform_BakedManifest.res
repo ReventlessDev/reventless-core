@@ -132,6 +132,18 @@ let curateStructure = (
     }
   })
 
+// Where the file goes when the declaration does not say, and the URL a shell
+// fetches it from.
+//
+// Both platforms write the manifest beside `config.json` at what is also the
+// shell's URL root, so the key and the path the browser asks for are one string.
+// Stated here, with the curation, because a platform that defaulted the key
+// differently from the one that wrote `manifestUrl` would put the file where
+// nothing reads it — and the symptom is an empty shop, not a missing file.
+let defaultKey = "component-manifest.json"
+
+let urlForKey = (key: option<string>): string => "/" ++ key->Option.getOr(defaultKey)
+
 // The whole file: one entry per selection, in the order the deployment declared
 // them, so the include-list also states the order a consumer reads plugins in.
 let curate = (

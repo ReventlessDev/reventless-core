@@ -4,6 +4,7 @@ import * as Pervasives from "@rescript/runtime/lib/es6/Pervasives.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Platform$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/Platform.res.mjs";
+import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
 
 function modeOptions(mode) {
   if (mode.TAG === "Map") {
@@ -28,8 +29,11 @@ function modeOptions(mode) {
   }
 }
 
-function fields(computed, viewModes, shellConfig) {
+function fields(computed, viewModes, bakedManifest, shellConfig) {
   let out = Object.fromEntries(computed);
+  Stdlib_Option.forEach(bakedManifest, bake => {
+    out["manifestUrl"] = Platform_BakedManifest$ReventlessCore.urlForKey(bake.key);
+  });
   if (viewModes !== undefined) {
     out["viewModes"] = viewModes.map(Platform$ReventlessInfra.viewModeToString);
     viewModes.forEach(m => {

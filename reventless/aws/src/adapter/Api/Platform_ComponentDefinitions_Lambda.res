@@ -37,6 +37,22 @@ export function response(ctx) {
 }
 `->Pulumi.Input.make
 
+/**
+ What the platform needs back to finish wiring the bake.
+
+ The manifest is written into the host-UI bucket, and that bucket is created in a
+ later half of the same deploy — so the grant cannot be attached here. Handing the
+ role back is what lets the caller attach it at the point both facts are known,
+ rather than widening this function's write scope to "some bucket, later".
+
+ `functionName` is exported so the post-deploy step has something to invoke
+ without guessing at a generated name.
+ */
+type t = {
+  roleId: Pulumi.Output.t<string>,
+  functionName: Pulumi.Output.t<string>,
+}
+
 let make = (
   ~api: Pulumi.Output.t<AppSync.GraphQLApi.t>,
   ~pluginReadModelTableName: Pulumi.Output.t<string>,
@@ -47,8 +63,13 @@ let make = (
   // first ships it. `Platform_ComponentDefinitions` predates the gate and is left
   // ungated so this change adds no dependency edge to an already-deployed resource.
   ~schemaReady: Pulumi.Output.t<unit>,
+  // The deployment's include-list, when it declares one. Carried into the
+  // function's environment so the bake curates what the platform program
+  // declared and not what its caller asked for — the invocation supplies only
+  // where to write.
+  ~bakedManifest: option<ReventlessInfra.Platform.bakedManifest>=?,
   ~opts: Pulumi.ComponentResource.options,
-) => {
+): t => {
   let opts = opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
   let name = "PlatformUIDefinitions"
 
@@ -105,6 +126,28 @@ let make = (
         ~opts,
       )
     })
+
+  // The include-list as the handler reads it. Encoded here rather than passed
+  // as a record so the deploy input and the runtime input are the same shape —
+  // `views`/`commands` absent means "every public component", which a record
+  // with explicit nulls would not say.
+  let bakeSelectionsJson = switch bakedManifest {
+  | None => ""
+  | Some(bake) =>
+    bake.components
+    ->Array.map(sel => {
+      let entry = Dict.fromArray([("plugin", JSON.Encode.string(sel.plugin))])
+      let strings = (key, value) =>
+        value->Option.forEach(names =>
+          entry->Dict.set(key, names->Array.map(JSON.Encode.string)->JSON.Encode.array)
+        )
+      strings("views", sel.views)
+      strings("commands", sel.commands)
+      entry->JSON.Encode.object
+    })
+    ->JSON.Encode.array
+    ->JSON.stringify
+  }
 
   let adminEntryJson =
     ReventlessCore.Platform_ComponentDefinitionsApi.encodePluginStructureEntry(
@@ -167,6 +210,11 @@ let make = (
             ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
             ("PLUGIN_RM_TABLE", pluginReadModelTableName->Pulumi.Output.asInput),
             ("OFFLOAD_BUCKET", offloadBucketName->Pulumi.Output.asInput),
+            // Absent declaration ⇒ empty string ⇒ a bake invocation fails saying
+            // this platform declares none, rather than writing an empty shop.
+            // An include-list is names only, so it stays far from the 4096-byte
+            // total the admin entry already pushed out of this dict.
+            ("BAKE_SELECTIONS", bakeSelectionsJson->Pulumi.Input.make),
             ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
             ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
             Util_LambdaLogging.logLevelEntry(),
@@ -256,4 +304,6 @@ let make = (
         ~opts,
       )
     )
+
+  {roleId: lambdaRole.id, functionName: lambda.name}
 }

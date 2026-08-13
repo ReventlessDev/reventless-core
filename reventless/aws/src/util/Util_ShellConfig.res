@@ -32,17 +32,32 @@ The config.json field set.
 
 `computed` arrives in wire order and keeps it. `viewModes` unset ⇒ no
 `viewModes` key and no per-mode key, so a deployment that wants no optional mode
-gets byte-identical output to before this input existed. `shellConfig` merges in
-last; a key it shares with one already present fails the deploy naming it,
-because silently resolving the collision either way produces an app pointed
+gets byte-identical output to before this input existed. `bakedManifest` unset ⇒
+no `manifestUrl`, and every caller keeps the admin discovery path. `shellConfig`
+merges in last; a key it shares with one already present fails the deploy naming
+it, because silently resolving the collision either way produces an app pointed
 somewhere unintended with nothing in the diff to say so.
 */
 let fields = (
   ~computed: array<(string, JSON.t)>,
   ~viewModes: option<array<Platform.viewMode>>=?,
+  ~bakedManifest: option<Platform.bakedManifest>=?,
   ~shellConfig: option<dict<JSON.t>>=?,
 ): dict<JSON.t> => {
   let out = computed->Dict.fromArray
+
+  // A declared bake is what turns the shell's non-elevated audience on: an
+  // operator keeps the admin queries, everyone else discovers from this file.
+  // Computed rather than left to `shellConfig` because the deploy is what
+  // decides where the file goes — a passthrough could point the shell at a key
+  // nothing writes, and a statically-discovered shell has no admin API behind it
+  // to notice.
+  bakedManifest->Option.forEach(bake =>
+    out->Dict.set(
+      "manifestUrl",
+      JSON.Encode.string(ReventlessCore.Platform_BakedManifest.urlForKey(bake.key)),
+    )
+  )
 
   switch viewModes {
   | Some(modes) =>

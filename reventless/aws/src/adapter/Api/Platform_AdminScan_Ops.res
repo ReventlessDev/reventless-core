@@ -108,13 +108,17 @@ let compareVersions = (a: string, b: string): int => {
 // `nameVersionOf` reads the row's `name@version` string; `toEntry` builds the
 // output entry for a surviving row (returning None drops a malformed row). The
 // name/version split mirrors ReventlessCore.Plugin.name / compareVersions.
+// Generic in what an entry is: the GraphQL fields collapse to encoded JSON, the
+// bake collapses to the decoded structure it curates. One version-collapse rule
+// either way — a second copy would be a second chance to disagree about which
+// version of a plugin is the deployed one.
 let latestByName = (
   items: array<dict<JSON.t>>,
   ~nameVersionOf: dict<JSON.t> => option<string>,
-  ~toEntry: (dict<JSON.t>, ~name: string) => option<JSON.t>,
-): array<JSON.t> => {
+  ~toEntry: (dict<JSON.t>, ~name: string) => option<'entry>,
+): array<'entry> => {
   // bare plugin name -> (version, entry); highest version wins.
-  let latest: dict<(string, JSON.t)> = Dict.make()
+  let latest: dict<(string, 'entry)> = Dict.make()
   items->Array.forEach(item =>
     switch item->nameVersionOf {
     | None => ()

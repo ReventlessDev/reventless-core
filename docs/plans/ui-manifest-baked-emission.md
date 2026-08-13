@@ -1,9 +1,8 @@
 # Plan: Baked component manifest as a static asset
 
-**Status.** In-memory half landed — 2026-08-11, extended 2026-08-13 (§9: one
-shell, both personas). The declaration, the curation, the in-memory emission and
-the local `config.json` wiring ship; the AWS emission is the open item in §4 and
-stays unbuilt until a deployment needs it.
+**Status.** Landed — in-memory 2026-08-11, AWS 2026-08-13 (§9–§10). The
+declaration, the curation and both platforms' emission ship, each pointing its
+shell at the file through `config.json`. Nothing in §4 is open.
 
 **Sibling plan:** `reventless-ui: docs/plans/shell-static-manifest-and-end-user-mode.md`
 — the shell-side `manifestUrl` discovery path that consumes what this plan
@@ -234,11 +233,7 @@ distinction `Util_Bundle.resolvePackageRoot(~fromPulumiProject)` draws on AWS.
 Rewritten on every boot, so a `pnpm install` that replaces the directory costs a
 restart rather than a debugging session.
 
-**Not done:** the AWS emission. §4's two options stand and the recommendation is
-unchanged (a post-deploy pipeline step reading the admin API with operator
-credentials and writing the `BucketObject`); `hostUiBundleConfig` carries the
-field on that platform so the declaration is stated once, and a deployment that
-sets it today writes nothing.
+**Not done at the time:** the AWS emission — since built, see §10.
 
 ---
 
@@ -293,3 +288,55 @@ that replaces the package re-seeds the baseline from whatever it ships.
 `Util_ShellConfig.fields`. `elevatedGroups` stays a `shellConfig` key on both
 platforms, author-declared, because it mirrors a server rule the platform does
 not own.
+
+---
+
+## §10 — The AWS emission (2026-08-13)
+
+§4 offered two options and recommended the second, a post-deploy step. That is
+what landed, with the *reader* placed differently than §4 imagined — and one
+option that has since become unavailable.
+
+**Not reactive.** A runtime writer reacting to plugin connect/retire would give a
+manifest that follows the deployment without a redeploy. That mechanism no longer
+exists: the reactive schema push was retired at the merged-API cutover, where
+every source API became its own single writer. Re-introducing a reactive writer
+for the manifest would undo that decision for a file that changes exactly when a
+deploy runs anyway.
+
+**The reader is the existing Lambda, not a new tool.** §4 pictured the step
+reading `Platform_ComponentDefinitions` over GraphQL with operator credentials.
+That does not work, and the reason is worth recording: the query returns
+*encoded* entries, while `curate` filters the `pluginStructure` **record** and
+re-encodes through the shared encoder — which is exactly what makes an
+include-list naming everything produce the bytes the query returns. A tool
+curating the response would be a second curation over a different representation,
+the drift §4 set out to avoid.
+
+The record is recoverable, though: the persisted `structure` is a sury-encoded
+`pluginStructure` in the offload store, and `Platform_ComponentDefinitions_Lambda`
+already scans the Plugin read model, resolves those offloads and collapses to the
+highest version per plugin. So the bake became a third mode on that function —
+same scan, written out instead of answered with — rather than a second copy of
+all three. `latestByName` became generic in what an entry is to carry it.
+
+**Heal, then decode.** The query paths serve the structure raw and heal the list
+fields an older persisted structure has no key for. Those are the same fields the
+schema requires, so the bake heals first and then decodes. A structure that still
+fails to decode fails the bake naming the plugin — skipping it would ship a shop
+silently missing a section.
+
+**The declaration is deploy input, the target is not.** `BAKE_SELECTIONS` carries
+the include-list in the function's environment, so the bake curates what the
+platform program declared rather than what its caller asked for. The bucket and
+key arrive in the invocation payload instead: the host-UI bucket is created in a
+later half of the same deploy, long after this function is built. The write grant
+is attached from there too, scoped to the single key the deploy told the shell to
+fetch, and `bakedManifestFunction` / `Bucket` / `Key` are exported so the pipeline
+step needs nothing out of the deploy program.
+
+**One job after the matrix.** The manifest describes the whole deployment, so no
+single stack's deploy is the moment it is settled — `bake-manifest` runs once
+after `deploy-plugins`, never on a PR, and never after a failure. It reads only
+stack outputs, so it needs no install and no build. A deployment that declares no
+bake has no such outputs and the job no-ops.

@@ -236,14 +236,162 @@ let isComplete = (event: JSON.t): bool =>
   ->Option.flatMap(JSON.Decode.bool)
   ->Option.getOr(false)
 
+// ── Bake mode ────────────────────────────────────────────────────────────────
+// The third thing this function does with the same scan: write the curated
+// manifest as a static object instead of answering a query with it.
+//
+// It belongs here rather than in a tool of its own for the reason the two GraphQL
+// fields already share a data source — there is one place that decides what a
+// deployed plugin's structure is, and the scan, the offload resolution and the
+// version collapse are that decision. A separate reader would be a second copy of
+// all three, free to drift about which version of a plugin is deployed.
+//
+// Invoked directly, after every plugin stack is up: the manifest describes the
+// whole deployment, and no single stack's deploy is the moment that is settled.
+
+// The persisted structure is served raw on the query paths — nothing decodes it —
+// but curation filters the RECORD and re-encodes through the shared encoder,
+// which is what makes an include-list naming everything produce the bytes the
+// query returns. So the bake decodes, and heals first: healing fills the list
+// fields an older persisted structure simply has no key for, and those are
+// exactly the fields the schema requires.
+//
+// A structure that still fails to decode fails the bake, naming the plugin. The
+// alternative — skipping it — ships a shop silently missing a section.
+let structureOf = (item: dict<JSON.t>, ~name as _: string): option<(
+  string,
+  Reventless.Plugin.pluginStructure,
+)> =>
+  switch (item->str("name"), item->Dict.get("structure")->Option.flatMap(JSON.Decode.object)) {
+  | (Some(pluginId), Some(structure)) =>
+    let healed = structure->healStructure->JSON.Encode.object
+    switch healed->S.parseJsonOrThrow(Reventless.Plugin.pluginStructureSchema) {
+    | decoded => Some((pluginId, decoded))
+    | exception _ =>
+      JsError.throwWithMessage(
+        `baked manifest: the structure persisted for "${pluginId}" cannot be decoded — ` ++
+        `it was written by a framework version this platform can no longer read. ` ++
+        `Redeploy that plugin, or drop it from the include-list.`,
+      )
+    }
+  | _ => None
+  }
+
+let bakeSelection = (json: JSON.t): option<ReventlessCore.Platform_BakedManifest.selection> => {
+  let strings = (o, key) =>
+    o
+    ->Dict.get(key)
+    ->Option.flatMap(JSON.Decode.array)
+    ->Option.map(a => a->Array.filterMap(JSON.Decode.string))
+  json
+  ->JSON.Decode.object
+  ->Option.flatMap(o =>
+    o
+    ->Dict.get("plugin")
+    ->Option.flatMap(JSON.Decode.string)
+    ->Option.map(plugin => {
+      ReventlessCore.Platform_BakedManifest.plugin,
+      views: strings(o, "views"),
+      commands: strings(o, "commands"),
+    })
+  )
+}
+
+// The declaration travels as an env var because it is deploy input — stated once
+// in the platform program, beside the bucket it is written to. The target travels
+// in the invocation payload instead: the bucket only exists inside the host-UI
+// half of the deploy, long after this function is built, and a caller that had to
+// know the include-list as well would be free to bake something the deployment
+// never declared.
+let bakeSelections = (): array<ReventlessCore.Platform_BakedManifest.selection> =>
+  switch NodeProcess.env->Dict.get("BAKE_SELECTIONS") {
+  | None | Some("") => []
+  | Some(raw) =>
+    switch raw->JSON.parseOrThrow->JSON.Decode.array {
+    | Some(entries) => entries->Array.filterMap(bakeSelection)
+    | None => []
+    | exception _ =>
+      JsError.throwWithMessage("baked manifest: BAKE_SELECTIONS is not a JSON array")
+    }
+  }
+
+type bakeTarget = {bucket: string, key: string}
+
+let bakeTargetOf = (event: JSON.t): option<bakeTarget> =>
+  event
+  ->JSON.Decode.object
+  ->Option.flatMap(o =>
+    switch (
+      o->Dict.get("bake")->Option.flatMap(JSON.Decode.bool),
+      o->Dict.get("bucket")->Option.flatMap(JSON.Decode.string),
+    ) {
+    | (Some(true), Some(bucket)) =>
+      Some({
+        bucket,
+        key: o
+        ->Dict.get("key")
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.getOr(ReventlessCore.Platform_BakedManifest.defaultKey),
+      })
+    | _ => None
+    }
+  )
+
+// Every failure mode here is the deployment's own mistake — a name matching no
+// component, a structure too old to read, a bucket the function may not write —
+// and every one of them produces the same symptom if swallowed: a shop that
+// renders nothing, with no line anywhere saying why. So the bake throws, and the
+// pipeline step that invoked it fails.
+let runBake = async (
+  ~target: bakeTarget,
+  ~structures: array<(string, Reventless.Plugin.pluginStructure)>,
+): array<JSON.t> => {
+  let selections = bakeSelections()
+  if selections->Array.length == 0 {
+    JsError.throwWithMessage(
+      "baked manifest: BAKE_SELECTIONS is empty — this platform declares no bake, " ++
+      "so there is nothing to write and a shell pointed at the file would find none.",
+    )
+  }
+  switch ReventlessCore.Platform_BakedManifest.curate(~structures, ~selections) {
+  | Error(e) =>
+    JsError.throwWithMessage(ReventlessCore.Platform_BakedManifest.describe(e))
+  | Ok(manifest) =>
+    let body = JSON.stringify(manifest, ~space=2)
+    let _ = await AwsSdk.S3.PutObjectCommand.make({
+      bucket: target.bucket,
+      key: target.key,
+      body: AwsSdk.S3.PutObjectCommand.bodyFromString(body),
+      contentType: "application/json",
+    })->AwsSdk.S3.PutObjectCommand.send
+    [
+      Dict.fromArray([
+        ("baked", JSON.Encode.bool(true)),
+        ("bucket", JSON.Encode.string(target.bucket)),
+        ("key", JSON.Encode.string(target.key)),
+        ("plugins", JSON.Encode.int(selections->Array.length)),
+        ("bytes", JSON.Encode.int(body->String.length)),
+      ])->JSON.Encode.object,
+    ]
+  }
+}
+
 let handler = async (event: JSON.t): array<JSON.t> => {
   let complete = isComplete(event)
+  let bakeTarget = bakeTargetOf(event)
   let toEntry = (item, ~name) => toEntryWith(~filter=!complete, item, ~name)
   let admin = adminEntry->Option.mapOr([], e => [e])
   switch NodeProcess.env->Dict.get("PLUGIN_RM_TABLE") {
   | None | Some("") =>
     Console.error("Platform_ComponentDefinitions: PLUGIN_RM_TABLE env var not set")
-    admin
+    switch bakeTarget {
+    | Some(_) =>
+      JsError.throwWithMessage(
+        "baked manifest: PLUGIN_RM_TABLE env var not set — the bake would write an " ++
+        "empty shop rather than fail.",
+      )
+    | None => admin
+    }
   | Some(table) =>
     let rawItems = await Platform_AdminScan_Ops.scanAll(
       ~tableName=table,
@@ -257,8 +405,25 @@ let handler = async (event: JSON.t): array<JSON.t> => {
       AwsSdk.S3.GetObjectCommand.getString(~bucket, ~key)
     )
     let items = await Promise.all(rawItems->Array.map(item => resolveStructure(fetch, item)))
-    let userEntries =
-      Platform_AdminScan_Ops.latestByName(items, ~nameVersionOf=item => item->str("name"), ~toEntry)
-    Array.concat(admin, userEntries)
+    switch bakeTarget {
+    | Some(target) =>
+      // The built-in admin entry is deliberately absent: it never enters the
+      // Plugin read model, and the in-memory bake curates the composed plugins
+      // only. A deployment naming it gets `UnknownPlugin`, on both platforms.
+      let structures = Platform_AdminScan_Ops.latestByName(
+        items,
+        ~nameVersionOf=item => item->str("name"),
+        ~toEntry=structureOf,
+      )
+      await runBake(~target, ~structures)
+    | None =>
+      let userEntries =
+        Platform_AdminScan_Ops.latestByName(
+          items,
+          ~nameVersionOf=item => item->str("name"),
+          ~toEntry,
+        )
+      Array.concat(admin, userEntries)
+    }
   }
 }

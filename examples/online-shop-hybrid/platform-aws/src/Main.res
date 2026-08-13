@@ -44,6 +44,12 @@ let default = Platform.deployPlatform(
   ~hostUiBundle={
     viewModes: [Map({})],
     geocoderPlaceIndex: placeIndex,
+    // The storefront's surface, shared with the in-memory root that hosts the
+    // same shop. Declaring it is what points the shell at a static manifest for
+    // its non-elevated audience; `elevatedGroups` below is what keeps an
+    // operator on the admin API instead. Neither is a security boundary — the
+    // server decides what a caller may do, and decides it the same either way.
+    bakedManifest: OnlineShopHybridSeed.Storefront.manifest,
     shellConfig: Dict.fromArray([
       ("appName", JSON.Encode.string("Online Shop")),
       (

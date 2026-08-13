@@ -22,6 +22,7 @@ import * as Scheduler$ReventlessAws from "./components/Scheduler.res.mjs";
 import * as Aggregate$ReventlessCore from "@reventlessdev/reventless-core/src/components/Aggregate/Aggregate.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as DcbBackend$ReventlessAws from "./adapter/DcbEventLog/DcbBackend.res.mjs";
+import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as ReadModel$ReventlessCore from "@reventlessdev/reventless-core/src/components/ReadModel/ReadModel.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as Util_Bundle$ReventlessAws from "./util/Util_Bundle.res.mjs";
@@ -70,6 +71,7 @@ import * as AutomationSlice_Builder$ReventlessAws from "./components/AutomationS
 import * as EventTopicPublisher_SNS$ReventlessAws from "./adapter/EventTopic/EventTopicPublisher_SNS.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as PgQueryResolver_Builder$ReventlessAws from "./adapter/QueryDb/PgQueryResolver_Builder.res.mjs";
+import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
 import * as UiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments_Projection.res.mjs";
 import * as Aggregate_Builder_Single$ReventlessAws from "./components/Aggregate_Builder_Single.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
@@ -859,10 +861,7 @@ function MakeWithConfig(Config) {
       restrictPublicBuckets: true
     });
     Pulumi$Pulumi.$$export("offloadBucket", offloadBucketName);
-    if (pluginReadModelTableName !== undefined) {
-      AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
-      Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, offloadBucketName, admin.adminSchemaPushed, {});
-    }
+    let componentDefinitions = pluginReadModelTableName !== undefined ? (AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName), Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, offloadBucketName, admin.adminSchemaPushed, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), {})) : undefined;
     let rm = admin.stateViewSlicesOutputs["UiFragments"];
     if (rm !== undefined) {
       let r$1 = rm.queryDb.resources[0];
@@ -1189,7 +1188,7 @@ function MakeWithConfig(Config) {
               AppSync_EventsApi$ReventlessAws.clientNamespaceName
             ]
           ]) : computed;
-        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, hostUiBundle.viewModes, hostUiBundle.shellConfig));
+        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, hostUiBundle.viewModes, hostUiBundle.bakedManifest, hostUiBundle.shellConfig));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: bucketName,
@@ -1206,6 +1205,27 @@ function MakeWithConfig(Config) {
           content: hintsContent,
           contentType: "application/json"
         });
+      }
+      let match$5 = hostUiBundle.bakedManifest;
+      if (componentDefinitions !== undefined && match$5 !== undefined) {
+        let manifestKey = Stdlib_Option.getOr(match$5.key, Platform_BakedManifest$ReventlessCore.defaultKey);
+        Pulumi.all([
+          componentDefinitions.roleId,
+          bucketName
+        ]).apply(param => {
+          new (Aws.iam.RolePolicy)("PlatformUIDefinitionsBake", {
+            policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "PlatformUIDefinitionsBakePolicy", [{
+                Sid: "AllowWriteBakedManifest",
+                Effect: "Allow",
+                Action: ["s3:PutObject"],
+                Resource: `arn:aws:s3:::` + param[1] + `/` + manifestKey
+              }])),
+            role: param[0]
+          });
+        });
+        Pulumi$Pulumi.$$export("bakedManifestFunction", componentDefinitions.functionName);
+        Pulumi$Pulumi.$$export("bakedManifestBucket", bucketName);
+        Pulumi$Pulumi.$$export("bakedManifestKey", Pulumi.output(manifestKey));
       }
       Pulumi$Pulumi.$$export("hostShellUrl", match$4.distributionUrl);
     }
@@ -2098,10 +2118,7 @@ function Make($star) {
       restrictPublicBuckets: true
     });
     Pulumi$Pulumi.$$export("offloadBucket", offloadBucketName);
-    if (pluginReadModelTableName !== undefined) {
-      AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
-      Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, offloadBucketName, admin.adminSchemaPushed, {});
-    }
+    let componentDefinitions = pluginReadModelTableName !== undefined ? (AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName), Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, offloadBucketName, admin.adminSchemaPushed, Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), {})) : undefined;
     let rm = admin.stateViewSlicesOutputs["UiFragments"];
     if (rm !== undefined) {
       let r$1 = rm.queryDb.resources[0];
@@ -2422,7 +2439,7 @@ function Make($star) {
               AppSync_EventsApi$ReventlessAws.clientNamespaceName
             ]
           ]) : computed;
-        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, hostUiBundle.viewModes, hostUiBundle.shellConfig));
+        return JSON.stringify(Util_ShellConfig$ReventlessAws.fields(withEvents, hostUiBundle.viewModes, hostUiBundle.bakedManifest, hostUiBundle.shellConfig));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: bucketName,
@@ -2439,6 +2456,27 @@ function Make($star) {
           content: hintsContent,
           contentType: "application/json"
         });
+      }
+      let match$5 = hostUiBundle.bakedManifest;
+      if (componentDefinitions !== undefined && match$5 !== undefined) {
+        let manifestKey = Stdlib_Option.getOr(match$5.key, Platform_BakedManifest$ReventlessCore.defaultKey);
+        Pulumi.all([
+          componentDefinitions.roleId,
+          bucketName
+        ]).apply(param => {
+          new (Aws.iam.RolePolicy)("PlatformUIDefinitionsBake", {
+            policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "PlatformUIDefinitionsBakePolicy", [{
+                Sid: "AllowWriteBakedManifest",
+                Effect: "Allow",
+                Action: ["s3:PutObject"],
+                Resource: `arn:aws:s3:::` + param[1] + `/` + manifestKey
+              }])),
+            role: param[0]
+          });
+        });
+        Pulumi$Pulumi.$$export("bakedManifestFunction", componentDefinitions.functionName);
+        Pulumi$Pulumi.$$export("bakedManifestBucket", bucketName);
+        Pulumi$Pulumi.$$export("bakedManifestKey", Pulumi.output(manifestKey));
       }
       Pulumi$Pulumi.$$export("hostShellUrl", match$4.distributionUrl);
     }

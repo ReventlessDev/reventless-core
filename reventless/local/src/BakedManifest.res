@@ -9,8 +9,6 @@
 
 let log = ReventlessCore.Logger.fromEnv()
 
-let defaultKey = "component-manifest.json"
-
 /**
  A declared bake writes the file or fails loudly. Both failure modes it can hit
  are the deployment's own mistake — a name that matches no component, or a shell
@@ -40,7 +38,7 @@ let emit = (
         `without the package installed would write nothing and render an empty shell.`,
       )
     | Some(dir) =>
-      let key = config.key->Option.getOr(defaultKey)
+      let key = config.key->Option.getOr(ReventlessCore.Platform_BakedManifest.defaultKey)
       let path = NodePath.join([dir, key])
       NodeFs.writeFileSync(path, JSON.stringify(manifest, ~space=2))
       log.info(~comp="BakedManifest", `wrote ${key} for ${selections->Array.length->Int.toString} plugin(s): ${path}`)

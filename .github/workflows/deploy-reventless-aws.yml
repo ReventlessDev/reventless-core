@@ -680,6 +680,108 @@ jobs:
             --stack "$BRANCH" --cwd "$DEPLOY_DIR"
           pulumi up --stack "$BRANCH" --yes --skip-preview --cwd "$DEPLOY_DIR" --non-interactive
 
+  # ---------------------------------------------------------------------------
+  # Job 4: Bake the component manifest (after every plugin stack is up)
+  # ---------------------------------------------------------------------------
+  # The manifest describes the WHOLE deployment — which plugins exist and which
+  # of their components this shop offers — so no single stack's deploy is the
+  # moment it is settled. It is baked here, once, after the matrix.
+  #
+  # It exists so a shell serving a non-elevated audience can discover its
+  # surfaces at all: `Platform_ComponentDefinitions` is Admin-gated, so a shopper
+  # fails discovery before any individual view's authorization is consulted. The
+  # platform writes `manifestUrl` into config.json when it declares a bake; this
+  # step is what puts a file at the other end of it.
+  #
+  # A deployment that declares no bake has no `bakedManifestFunction` output and
+  # this job no-ops — the same "absent is inert" contract the declaration has
+  # everywhere else.
+  bake-manifest:
+    name: Bake component manifest
+    runs-on: ubuntu-latest
+    needs: [detect-changes, deploy-platform, deploy-plugins]
+    # Runs when either half deployed (or was skipped as unchanged), never on a
+    # PR, and never after a failure — baking off a half-deployed platform would
+    # publish a shop missing whatever did not land.
+    if: |
+      always() &&
+      github.event_name != 'pull_request' &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.skip-deploy != 'true' &&
+      needs.deploy-platform.result != 'failure' &&
+      needs.deploy-plugins.result != 'failure'
+    environment: deploy-platform
+    env:
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ needs.detect-changes.outputs.region }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Pulumi CLI
+        uses: pulumi/setup-pulumi@v2
+        with:
+          pulumi-version: 3.247.0
+
+      # Only the stack's outputs are read — `pulumi stack output` queries the
+      # backend and never runs the deploy program, so this job needs no install
+      # and no build.
+      - name: Resolve platform path
+        id: platform
+        run: |
+          MANIFEST="${{ inputs.manifest }}"
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 2>/dev/null || true
+          sudo chmod +x /usr/local/bin/yq 2>/dev/null || true
+          MANIFEST_DIR=$(dirname "$MANIFEST")
+          [[ "$MANIFEST_DIR" == "." ]] && MANIFEST_DIR="" || MANIFEST_DIR="${MANIFEST_DIR}/"
+          PLATFORM_REL=$(yq '.platform.path' "$MANIFEST")
+          echo "path=${MANIFEST_DIR}${PLATFORM_REL}" >> "$GITHUB_OUTPUT"
+
+      - name: Bake
+        run: |
+          set -euo pipefail
+          BRANCH="${{ needs.detect-changes.outputs.branch }}"
+          DEPLOY_DIR="${{ steps.platform.outputs.path }}"
+
+          if [[ ! -f "${DEPLOY_DIR}/Pulumi.${BRANCH}.yaml" ]]; then
+            echo "No stack config for ${BRANCH} — nothing deployed, nothing to bake."
+            exit 0
+          fi
+
+          pulumi stack select "$BRANCH" --cwd "$DEPLOY_DIR" --non-interactive
+          OUTPUTS=$(pulumi stack output --json --cwd "$DEPLOY_DIR" --non-interactive)
+
+          FN=$(echo "$OUTPUTS" | jq -r '.bakedManifestFunction // ""')
+          BUCKET=$(echo "$OUTPUTS" | jq -r '.bakedManifestBucket // ""')
+          KEY=$(echo "$OUTPUTS" | jq -r '.bakedManifestKey // ""')
+
+          if [[ -z "$FN" || -z "$BUCKET" ]]; then
+            echo "This platform declares no baked manifest — skipping."
+            exit 0
+          fi
+
+          echo "Baking ${BUCKET}/${KEY} via ${FN}"
+          PAYLOAD=$(jq -nc --arg b "$BUCKET" --arg k "$KEY" \
+            '{bake: true, bucket: $b, key: $k}')
+
+          aws lambda invoke \
+            --function-name "$FN" \
+            --cli-binary-format raw-in-base64-out \
+            --payload "$PAYLOAD" \
+            --cli-read-timeout 60 \
+            response.json > invoke.json
+
+          cat response.json
+
+          # A handler that threw still returns 200 with FunctionError set, so the
+          # status code alone would report a bake that wrote nothing as success.
+          if jq -e '.FunctionError' invoke.json > /dev/null; then
+            echo "::error::Baking the component manifest failed — see the payload above."
+            exit 1
+          fi
+
   # The change-detection base SHA is derived from the last successful run of the
   # caller workflow (see the "Parse manifest and detect changes" step), so no
   # deploy state is committed back to the repo.

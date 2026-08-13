@@ -10,8 +10,6 @@ import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventles
 
 let log = Logger$ReventlessCore.fromEnv();
 
-let defaultKey = "component-manifest.json";
-
 function emit(structures, config) {
   let selections = config.components.map(s => ({
     plugin: s.plugin,
@@ -26,7 +24,7 @@ function emit(structures, config) {
   if (dir === undefined) {
     return Stdlib_JsError.throwWithMessage(`baked manifest: cannot resolve ` + HostShellDist$ReventlessLocal.$$package + ` from ` + process.cwd() + ` — the local shell serves the file from that package's dist/, so declaring a bake without the package installed would write nothing and render an empty shell.`);
   }
-  let key = Stdlib_Option.getOr(config.key, defaultKey);
+  let key = Stdlib_Option.getOr(config.key, Platform_BakedManifest$ReventlessCore.defaultKey);
   let path = Nodepath.join(dir, key);
   Nodefs.writeFileSync(path, JSON.stringify(e._0, undefined, 2), "utf8");
   log.info("BakedManifest", undefined, `wrote ` + key + ` for ` + selections.length.toString() + ` plugin(s): ` + path);
@@ -34,7 +32,6 @@ function emit(structures, config) {
 
 export {
   log,
-  defaultKey,
   emit,
 }
 /* log Not a pure module */
