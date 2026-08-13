@@ -86,6 +86,10 @@ let geocodeTypes = [`type GeocodeCandidate {\n  label: String!\n  lat: Float!\n 
 
 let geocodeQueryFields = [`  geocode(text: String!): [GeocodeCandidate!]`];
 
+let activeRoleTypes = [`type Platform_ActiveRole {\n  activeRole: String\n  availableRoles: [String!]!\n}`];
+
+let activeRoleMutationFields = [`  Platform_SetActiveRole(activeRole: String): Platform_ActiveRole`];
+
 function baseFragment(cloner) {
   let base = GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries(cloner), PluginBaseFragment$ReventlessCore.queryEntries);
   let parts = GraphQL_Stitcher$ReventlessCore.decode(base);
@@ -128,6 +132,8 @@ export {
   uploadMutationFields,
   geocodeTypes,
   geocodeQueryFields,
+  activeRoleTypes,
+  activeRoleMutationFields,
   baseFragment,
 }
 /* cloneArgsSchema Not a pure module */

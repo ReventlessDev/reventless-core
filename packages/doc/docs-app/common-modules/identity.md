@@ -107,6 +107,49 @@ On AWS, AppSync extracts identity from the Cognito JWT automatically. The VTL re
 
 Cognito groups are available via AppSync directives for field-level authorization.
 
+## Acting as One of Your Roles
+
+A user whose account holds several groups can choose to act as just one of them. The narrowing happens in the **token's own group claim**, so every enforcement point in the system agrees with the choice without knowing that roles exist: owner-scoped reads, command authorization, and field-level directives all read the same groups they always read.
+
+That placement is the whole design. On AWS, `@authorize(AllowGroups([...]))` compiles to `@aws_auth`, which AppSync evaluates against `cognito:groups` *before any application code runs* — so a request header naming the desired role could scope reads correctly and still leave every group-gated mutation callable. Narrowing the claim itself avoids a mode that is right about the data and wrong about the writes.
+
+### The rule
+
+**The requested role must be one the caller already holds.** Narrowing only, never widening — so a client that tampers with the request can only ever reduce its own privilege. A request for a group the user does not hold is **refused**, not ignored and quietly minted at full membership.
+
+### Asking for it
+
+| Platform | How | Result |
+|----------|-----|--------|
+| Local | `activeRole` on the login body, or `POST /__inmemory/switch-role` with a bearer token | A new token, minted immediately |
+| AWS | The `Platform_SetActiveRole` mutation, then a token refresh | The next token Cognito mints carries the narrowed claim |
+
+On AWS the choice is stored server-side and applied by a pre-token-generation trigger, because Cognito does not pass client metadata to that trigger on a refresh flow. The mutation records the preference against the authenticated caller's own subject — there is no argument naming a user, so it can only ever address the caller themselves.
+
+Passing no role (or `null`) clears the choice and widens back to full membership. That is not an escalation: the set being widened to is the one the identity provider says the caller holds, re-read at that moment rather than taken from the token.
+
+### Claims on a narrowed token
+
+| Claim | Meaning |
+|-------|---------|
+| `activeRole` | The role the caller is acting as. Its presence *is* the answer to "am I narrowed right now?" |
+| `availableRoles` | The caller's full membership, comma-joined, so a client can offer the switch back |
+| `activeRoleStale` | AWS only: a stored role the caller no longer holds. The token carries full membership instead |
+
+Both `activeRole` and `availableRoles` are absent from an unnarrowed token, so an ordinary login is unchanged by this feature.
+
+:::danger Never authorize against `availableRoles`
+It is by definition **wider** than what the caller is currently permitted — it exists so a client can render the switch back, and nothing else. Every enforcement point reads `groups`. This is the one part of an identity that deliberately describes privilege the caller does not currently have.
+:::
+
+### Safety, not a security boundary
+
+:::warning This mechanism prevents accidents, not attacks
+A token already issued stays valid until it expires. Choosing a role narrows the tokens minted *afterwards* and revokes nothing — a caller who kept an earlier token, or a request already in flight, still carries the wider claim until it lapses.
+
+So this is a mechanism for stopping an operator from acting with elevated rights **by accident**, which is a real and common failure. It is **not** a mechanism for containing one who is trying to. Containing that needs short token lifetimes and a revocation path, which this does not provide.
+:::
+
 ## What Is Persisted
 
 Only `identity.userId` is persisted, as the existing `meta.user` string field on every event. The full `Identity.t` (groups, claims, provider) is **not** stored in events.

@@ -59,6 +59,17 @@ let AdminRemoveUserFromGroupCommand = {
   send: send$2
 };
 
+let Raw$4 = {};
+
+function send$3(command) {
+  return client().send(command);
+}
+
+let AdminListGroupsForUserCommand = {
+  Raw: Raw$4,
+  send: send$3
+};
+
 export {
   Raw,
   clientInstance,
@@ -66,5 +77,6 @@ export {
   SignUpCommand,
   AdminAddUserToGroupCommand,
   AdminRemoveUserFromGroupCommand,
+  AdminListGroupsForUserCommand,
 }
 /* @smithy/node-http-handler Not a pure module */

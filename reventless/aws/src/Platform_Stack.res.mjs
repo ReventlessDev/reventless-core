@@ -6,11 +6,16 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as AWS_Tags$ReventlessAws from "./adapter/AWS_Tags.res.mjs";
 import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs";
+import * as Auth_ActiveRoleStore$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleStore.res.mjs";
+import * as Auth_ActiveRoleTrigger$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleTrigger.res.mjs";
+import * as Auth_ActiveRolePoolAttachment$ReventlessAws from "./adapter/Auth/Auth_ActiveRolePoolAttachment.res.mjs";
 
 function _resolveUncached() {
   let cfg = new Pulumi.Config("platform");
   let v = Util_LocalConfig$ReventlessAws.get("cognitoUserPoolId");
   let existingPoolId = v !== undefined ? v : cfg.get("cognitoUserPoolId");
+  let activeRoleTable = Auth_ActiveRoleStore$ReventlessAws.makeTable(undefined, {});
+  let activeRoleTrigger = Auth_ActiveRoleTrigger$ReventlessAws.make(activeRoleTable.name, activeRoleTable.arn, undefined, {});
   let result;
   if (existingPoolId !== undefined) {
     let tokenUnits_accessToken = "minutes";
@@ -37,11 +42,16 @@ function _resolveUncached() {
     let lookup = Aws.cognito.getUserPoolOutput({
       userPoolId: existingPoolId
     });
+    Auth_ActiveRolePoolAttachment$ReventlessAws.make(undefined, {
+      userPoolId: existingPoolId,
+      preTokenGenerationArn: activeRoleTrigger.functionArn
+    }, {});
     result = {
       poolId: Pulumi.output(existingPoolId),
       clientId: client.id,
       poolArn: lookup.apply(r => r.arn),
-      managed: false
+      managed: false,
+      activeRoleTable: activeRoleTable
     };
   } else {
     let adminConfig = {
@@ -58,6 +68,9 @@ function _resolveUncached() {
       requireUppercase: pwdPolicy_requireUppercase
     };
     let pool = new (Aws.cognito.UserPool)("HostUiPool", {
+      lambdaConfig: {
+        preTokenGeneration: activeRoleTrigger.functionArn
+      },
       adminCreateUserConfig: adminConfig,
       usernameAttributes: ["email"],
       passwordPolicy: pwdPolicy,
@@ -89,9 +102,11 @@ function _resolveUncached() {
       poolId: pool.id,
       clientId: client$1.id,
       poolArn: pool.arn,
-      managed: true
+      managed: true,
+      activeRoleTable: activeRoleTable
     };
   }
+  Auth_ActiveRoleTrigger$ReventlessAws.grantInvoke(activeRoleTrigger, result.poolArn, undefined, {});
   let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
   Pulumi$Pulumi.$$export("cognitoUserPoolId", result.poolId);
   Pulumi$Pulumi.$$export("cognitoUserPoolClientId", result.clientId);

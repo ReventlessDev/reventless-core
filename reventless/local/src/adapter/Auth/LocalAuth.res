@@ -139,33 +139,18 @@ module Login = {
   }
 
   /**
-   Claim naming the role the caller chose to act as. Present only on a narrowed
-   token, so its presence *is* the answer to "am I acting as one of my roles?".
+   The claim names a narrowed token carries, shared with the Cognito minting
+   path — a client must not have to know which platform signed its token to read
+   its own active role. See `ReventlessCore.Auth_ActiveRole` for what each means
+   and why `availableRoles` is never an authorization input.
 
-   Kept apart from `groups` even though a narrowed token's groups are exactly
-   this one role, because the two say different things: `groups` is what every
-   enforcement point evaluates, and this is what the caller asked for. A client
-   reading the choice out of the group array would be depending on the current
-   shape of the narrowing rather than on the choice itself.
+   Both are present only on a narrowed token, which is what keeps an ordinary
+   login byte-identical to what it minted before any of this existed: an
+   unnarrowed token's `groups` already *are* the full membership, so there is
+   nothing to remember.
    */
-  let activeRoleClaim = "activeRole"
-
-  /**
-   Claim naming the roles the caller gave up by narrowing — their full
-   membership, comma-joined as the `X-Groups` header already joins groups.
-
-   🚨 **Never read this for authorization.** It exists so a client can offer the
-   switch back, and it is by definition wider than what the caller is currently
-   permitted. Every enforcement point in the system reads `groups`; this claim is
-   the one piece of an identity that deliberately describes privilege the caller
-   does *not* currently have.
-
-   Present only on a narrowed token, which is also what keeps an ordinary login
-   byte-identical to what it minted before any of this existed: an unnarrowed
-   token's `groups` already *are* the full membership, so there is nothing to
-   remember.
-   */
-  let availableRolesClaim = "availableRoles"
+  let activeRoleClaim = ReventlessCore.Auth_ActiveRole.activeRoleClaim
+  let availableRolesClaim = ReventlessCore.Auth_ActiveRole.availableRolesClaim
 
   /**
    Narrow an identity to one of its own roles.

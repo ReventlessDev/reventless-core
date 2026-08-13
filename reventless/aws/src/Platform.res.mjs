@@ -60,6 +60,7 @@ import * as StateTopic_AppSync$ReventlessAws from "./adapter/StateTopic/StateTop
 import * as AppSync_SdlDecorate$ReventlessAws from "./components/Api/AppSync_SdlDecorate.res.mjs";
 import * as UiFragmentRegistry$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateChangeSlice/UiFragmentRegistry.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
+import * as Auth_ActiveRoleStore$ReventlessAws from "./adapter/Auth/Auth_ActiveRoleStore.res.mjs";
 import * as ClonerRunner_Fargate$ReventlessAws from "./plugin/cloner/ClonerRunner_Fargate.res.mjs";
 import * as QueryEngine_DynamoDb$ReventlessAws from "./adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs";
 import * as PluginRuntime_Builder$ReventlessAws from "./plugin/runtime/PluginRuntime_Builder.res.mjs";
@@ -192,8 +193,8 @@ function MakeWithConfig(Config) {
     }
   };
   let domainBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
-    types: Platform_AdminApi$ReventlessCore.uploadTypes.concat(Platform_AdminApi$ReventlessCore.geocodeTypes),
-    mutations: Platform_AdminApi$ReventlessCore.uploadMutationFields,
+    types: Platform_AdminApi$ReventlessCore.uploadTypes.concat(Platform_AdminApi$ReventlessCore.geocodeTypes).concat(Platform_AdminApi$ReventlessCore.activeRoleTypes),
+    mutations: Platform_AdminApi$ReventlessCore.uploadMutationFields.concat(Platform_AdminApi$ReventlessCore.activeRoleMutationFields),
     queries: ["  Platform_ping: String"].concat(Platform_AdminApi$ReventlessCore.geocodeQueryFields),
     subscriptions: [],
     subscriptionSources: []
@@ -1130,6 +1131,9 @@ function MakeWithConfig(Config) {
       if (index !== undefined && Config.splitApi) {
         Geocoder_AwsLocation_Resolver$ReventlessAws.make(domainApi, index.indexName, undefined, {});
       }
+      if (Config.splitApi) {
+        Auth_ActiveRoleStore$ReventlessAws.makeWriteDoor(domainApi, cognitoPool.activeRoleTable, cognitoPool.poolId, cognitoPool.poolArn, undefined, {});
+      }
       let index$1 = hostUiBundle.geocoderPlaceIndex;
       let geocoderPlaceIndexFlat = index$1 !== undefined ? index$1.indexName : Pulumi.output("");
       Pulumi$Pulumi.$$export("geocoderPlaceIndex", geocoderPlaceIndexFlat);
@@ -1491,8 +1495,8 @@ function Make($star) {
     }
   };
   let domainBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
-    types: Platform_AdminApi$ReventlessCore.uploadTypes.concat(Platform_AdminApi$ReventlessCore.geocodeTypes),
-    mutations: Platform_AdminApi$ReventlessCore.uploadMutationFields,
+    types: Platform_AdminApi$ReventlessCore.uploadTypes.concat(Platform_AdminApi$ReventlessCore.geocodeTypes).concat(Platform_AdminApi$ReventlessCore.activeRoleTypes),
+    mutations: Platform_AdminApi$ReventlessCore.uploadMutationFields.concat(Platform_AdminApi$ReventlessCore.activeRoleMutationFields),
     queries: ["  Platform_ping: String"].concat(Platform_AdminApi$ReventlessCore.geocodeQueryFields),
     subscriptions: [],
     subscriptionSources: []
@@ -2406,6 +2410,7 @@ function Make($star) {
       if (index !== undefined) {
         Geocoder_AwsLocation_Resolver$ReventlessAws.make(domainApi, index.indexName, undefined, {});
       }
+      Auth_ActiveRoleStore$ReventlessAws.makeWriteDoor(domainApi, cognitoPool.activeRoleTable, cognitoPool.poolId, cognitoPool.poolArn, undefined, {});
       let index$1 = hostUiBundle.geocoderPlaceIndex;
       let geocoderPlaceIndexFlat = index$1 !== undefined ? index$1.indexName : Pulumi.output("");
       Pulumi$Pulumi.$$export("geocoderPlaceIndex", geocoderPlaceIndexFlat);

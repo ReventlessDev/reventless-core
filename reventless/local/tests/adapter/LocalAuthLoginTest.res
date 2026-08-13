@@ -392,3 +392,47 @@ testPromise("switching refuses a token this server did not sign", async () => {
   | Error(msg) => expect(msg)->toEqual("Invalid token")
   }
 })
+
+// ── The shared conformance table ──────────────────────────────────────────
+//
+// The cases above were written against this path. `ReventlessCore.Auth_ActiveRole`
+// holds them in a form the Cognito path runs too — the two minting
+// implementations cannot share code across a process boundary, so a table both
+// drive is what keeps them from drifting. A case added there fails here until
+// this path satisfies it, which is the point.
+
+describe("the conformance table, minted locally", () => {
+  ReventlessCore.Auth_ActiveRole.conformanceCases->Array.forEach(({
+    label,
+    membership,
+    requested,
+    expected,
+  }) =>
+    testPromise(label, async () => {
+      resetAll()
+      LocalAuth.Login.setCredentials(
+        ~username="conformance",
+        ~password="pw",
+        ~identity={
+          userId: "u-conformance",
+          username: "conformance",
+          groups: membership,
+          provider: InMemory,
+        },
+      )
+      let minted = await LocalAuth.Login.issue(
+        ~username="conformance",
+        ~password="pw",
+        ~activeRole=?requested,
+      )
+      switch (minted, expected) {
+      | (Ok(token), Some(groups)) => expect(decodeOrThrow(token).groups)->toEqual(groups)
+      // `None` means refused — not honoured, not ignored, and not reduced to the
+      // empty set. A token minted here at all would be the vulnerability.
+      | (Ok(_), None) => JsError.throwWithMessage("expected the request to be refused")
+      | (Error(msg), Some(_)) => JsError.throwWithMessage("expected a token, got: " ++ msg)
+      | (Error(_), None) => expect(true)->toEqual(true)
+      }
+    })
+  )
+})

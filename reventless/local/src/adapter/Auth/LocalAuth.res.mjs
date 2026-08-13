@@ -5,6 +5,7 @@ import * as Nodecrypto from "node:crypto";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
+import * as Auth_ActiveRole$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Auth/Auth_ActiveRole.res.mjs";
 
 let defaultUser_groups = ["User"];
 
@@ -118,10 +119,6 @@ function _b64urlDecode(s) {
   }
 }
 
-let activeRoleClaim = "activeRole";
-
-let availableRolesClaim = "availableRoles";
-
 function narrow(identity, activeRole) {
   if (!identity.groups.includes(activeRole)) {
     return {
@@ -131,8 +128,8 @@ function narrow(identity, activeRole) {
   }
   let existing = identity.claims;
   let claims = existing !== undefined ? Object.fromEntries(Object.entries(existing)) : ({});
-  claims[activeRoleClaim] = activeRole;
-  claims[availableRolesClaim] = identity.groups.join(",");
+  claims[Auth_ActiveRole$ReventlessCore.activeRoleClaim] = activeRole;
+  claims[Auth_ActiveRole$ReventlessCore.availableRolesClaim] = identity.groups.join(",");
   let newrecord = {...identity};
   return {
     TAG: "Ok",
@@ -240,8 +237,8 @@ let Login = {
   _sign: _sign,
   _b64urlEncode: _b64urlEncode,
   _b64urlDecode: _b64urlDecode,
-  activeRoleClaim: activeRoleClaim,
-  availableRolesClaim: availableRolesClaim,
+  activeRoleClaim: Auth_ActiveRole$ReventlessCore.activeRoleClaim,
+  availableRolesClaim: Auth_ActiveRole$ReventlessCore.availableRolesClaim,
   narrow: narrow,
   issue: issue,
   mintedIdentity: mintedIdentity,

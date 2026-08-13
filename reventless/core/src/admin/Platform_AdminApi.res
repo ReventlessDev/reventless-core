@@ -119,6 +119,33 @@ let geocodeTypes = [
 
 let geocodeQueryFields = [`  geocode(text: String!): [GeocodeCandidate!]`]
 
+// Acting as one of the roles you hold (docs/plans/active-role-narrows-the-token.md).
+//
+// The write door for the caller's chosen role. Like uploads and geocoding this is
+// an ordinary authenticated-user operation, so it belongs on the **domain** base
+// (default `AllowAuthenticated`), never the Admin-gated admin base — the whole
+// point is that a non-admin can drop into a narrower role.
+//
+// There is deliberately no `sub` argument: the subject is the authorizer-verified
+// `ctx.identity.sub`, so the mutation can only ever address the caller's own row.
+// `activeRole: null` clears the choice and widens back to full membership.
+//
+// 🚨 **Mounted by the AWS platform only.** This is the Cognito path's door —
+// Cognito mints the token, so the choice has to be stored for the pre-token-
+// generation trigger to read on the next refresh. The local platform mints its own
+// tokens and therefore re-mints immediately over `POST /__inmemory/switch-role`
+// (`LocalAuth.Login.reissue`); a mutation there would be a second way to do
+// something already done, with a token the caller would still have to go and
+// fetch. The constants live here with the other platform SDL rather than in the
+// AWS package so every platform-owned field stays in one file.
+let activeRoleTypes = [
+  `type Platform_ActiveRole {\n  activeRole: String\n  availableRoles: [String!]!\n}`,
+]
+
+let activeRoleMutationFields = [
+  `  Platform_SetActiveRole(activeRole: String): Platform_ActiveRole`,
+]
+
 let baseFragment = (~cloner: bool) => {
   let base = GraphQL_FragmentGenerator.generate(
     ~mutationEntries=mutationEntries(~cloner),

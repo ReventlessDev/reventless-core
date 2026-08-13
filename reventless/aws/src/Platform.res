@@ -245,11 +245,12 @@ module MakeWithConfig = (
   // unified mode carries the admin base here instead; it declares no stores in practice,
   // so the upload resolvers below are never created there.)
   let domainBaseFragment = ReventlessCore.GraphQL_Stitcher.encode({
-    types: Array.concat(
-      ReventlessCore.Platform_AdminApi.uploadTypes,
-      ReventlessCore.Platform_AdminApi.geocodeTypes,
+    types: ReventlessCore.Platform_AdminApi.uploadTypes
+    ->Array.concat(ReventlessCore.Platform_AdminApi.geocodeTypes)
+    ->Array.concat(ReventlessCore.Platform_AdminApi.activeRoleTypes),
+    mutations: ReventlessCore.Platform_AdminApi.uploadMutationFields->Array.concat(
+      ReventlessCore.Platform_AdminApi.activeRoleMutationFields,
     ),
-    mutations: ReventlessCore.Platform_AdminApi.uploadMutationFields,
     queries: Array.concat(
       ["  Platform_ping: String"],
       ReventlessCore.Platform_AdminApi.geocodeQueryFields,
@@ -2104,6 +2105,31 @@ module MakeWithConfig = (
           ~opts={},
         )
       | _ => ()
+      }
+
+      // Where a caller records the role they want to act as
+      // (docs/plans/active-role-narrows-the-token.md §6). The mutation only writes
+      // a preference; the pre-token-generation trigger reads the row and re-checks
+      // it against real membership before narrowing anything, so this door grants
+      // nobody anything on its own.
+      //
+      // The table and the trigger were provisioned with the pool — they have to
+      // be, since the pool is declared carrying the trigger's ARN. Only the write
+      // door waits for the API.
+      //
+      // Split-API only, like the upload and geocode resolvers above:
+      // `Platform_SetActiveRole` lives on the domain base document, which a
+      // unified-mode deployment's single API does not carry. The table and
+      // trigger are provisioned either way — see `Platform_Stack` for why that
+      // is not gated on this flag.
+      if Config.splitApi {
+        Auth_ActiveRoleStore.makeWriteDoor(
+          ~api=domainApi,
+          ~table=cognitoPool.activeRoleTable,
+          ~cognitoUserPoolId=cognitoPool.poolId->Pulumi.Output.asInput,
+          ~cognitoUserPoolArn=cognitoPool.poolArn->Pulumi.Output.asInput,
+          ~opts={},
+        )
       }
 
       // The place index itself, exported so the unattended slice path can reach the
