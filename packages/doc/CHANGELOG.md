@@ -718,6 +718,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-08-13
+- feat(aws): narrow the token to the role a caller chose to act as ([194332f](https://github.com/ReventlessDev/reventless-core/commit/194332fa0af8e13417f72d57904e2ed469747dde))
 ### 2026-08-12
 - feat(ppx): let a field say @owner instead of spelling out its schema ([3bb0a4b](https://github.com/ReventlessDev/reventless-core/commit/3bb0a4bf3e5823fa929815fbe6f47203ba7958d7))
 ### 2026-02-12
