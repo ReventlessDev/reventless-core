@@ -23,11 +23,16 @@ Platform.makePlatform(PackageVersion$Reventless.fromCwd(), [
     make: Ordering.make
   }
 ], {
+  uiHintsFile: Storefront$OnlineShopHybridSeed.uiHintsFile,
   bakedManifest: Storefront$OnlineShopHybridSeed.manifest,
   shellConfig: Object.fromEntries([
     [
       "appName",
       "Online Shop"
+    ],
+    [
+      "home",
+      "/Catalog/Products"
     ],
     [
       "elevatedGroups",

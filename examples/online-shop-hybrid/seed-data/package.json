@@ -15,6 +15,7 @@
     "@reventlessdev/online-shop-hybrid-ordering": "workspace:*",
     "@reventlessdev/online-shop-hybrid-ordering-spec": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/rescript-node": "workspace:*",
     "@reventlessdev/reventless-seed": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "^11.0.0-alpha.4"

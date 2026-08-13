@@ -18,6 +18,7 @@
     "sury",
     "@reventlessdev/reventless-seed",
     "@reventlessdev/reventless-infra",
+    "@reventlessdev/rescript-node",
     "@reventlessdev/reventless-spec",
     "@reventlessdev/online-shop-hybrid-catalog",
     "@reventlessdev/online-shop-hybrid-catalog-spec",

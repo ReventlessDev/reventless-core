@@ -11,6 +11,7 @@ let Platform = Platform$ReventlessAws.Make({});
 let placeIndex = Capability_Geocoding_AwsLocation$ReventlessAws.make("online-shop-geocoder", undefined);
 
 let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), {
+  uiHintsFile: Storefront$OnlineShopHybridSeed.uiHintsFile,
   bakedManifest: Storefront$OnlineShopHybridSeed.manifest,
   geocoderPlaceIndex: placeIndex,
   viewModes: [{
@@ -21,6 +22,10 @@ let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), 
     [
       "appName",
       "Online Shop"
+    ],
+    [
+      "home",
+      "/Catalog/Products"
     ],
     [
       "elevatedGroups",

@@ -926,6 +926,9 @@ importers:
       '@reventlessdev/online-shop-hybrid-ordering-spec':
         specifier: workspace:*
         version: link:../ordering-spec
+      '@reventlessdev/rescript-node':
+        specifier: workspace:*
+        version: link:../../../rescript/node
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/infra

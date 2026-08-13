@@ -24,6 +24,26 @@ let manifest: ReventlessInfra.Platform.bakedManifest = {
 }
 
 /**
+How the storefront reads: nav labels and grouping, and the action that turns a
+product card into a started order.
+
+Beside the manifest for the reason the manifest is here — the shop's own
+surface, stated once for every root that serves it. Presentation rather than
+curation this time, and neither is a boundary: what a caller may see and do is
+the server's answer, given per query and per mutation.
+
+A path rather than a record because `uiHintsFile` takes one on both platforms —
+the AWS deploy uploads the file's bytes and the local platform writes them into
+the served bundle, so a deployment's hints reach the shell as the file it
+fetches either way. Resolved from this module rather than from each root's
+working directory, which differs per platform and would make the same
+declaration two different files.
+*/
+let uiHintsFile = NodeUrl.fileURLToPath(
+  %raw(`new URL("../ui-hints.json", import.meta.url).href`),
+)
+
+/**
 Groups whose members read across every customer.
 
 Here for the same reason the manifest is: it is a fact about this shop, not about

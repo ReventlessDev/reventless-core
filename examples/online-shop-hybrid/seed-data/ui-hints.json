@@ -1,0 +1,29 @@
+{
+  "Catalog": {
+    "views": {
+      "Products": {
+        "nav": { "label": "Shop", "group": "Shop", "order": 0 },
+        "rowActions": [
+          {
+            "label": "Order",
+            "pluginId": "Ordering",
+            "slice": "PlaceOrder",
+            "command": "PlaceOrder",
+            "field": "productIds",
+            "then": "/Ordering/Orders"
+          }
+        ]
+      },
+      "Categories": {
+        "nav": { "group": "Shop", "order": 20 }
+      }
+    }
+  },
+  "Ordering": {
+    "views": {
+      "Orders": {
+        "nav": { "label": "My Orders", "group": "Shop", "order": 10 }
+      }
+    }
+  }
+}

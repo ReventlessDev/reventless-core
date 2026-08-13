@@ -50,8 +50,13 @@ let default = Platform.deployPlatform(
     // operator on the admin API instead. Neither is a security boundary — the
     // server decides what a caller may do, and decides it the same either way.
     bakedManifest: OnlineShopHybridSeed.Storefront.manifest,
+    // The same hints file the in-memory root serves. The deploy excludes the
+    // host-shell package's own `ui-hints.json` as the dev-mode fallback it is,
+    // so a deployed shop with nothing declared here has no curated nav at all.
+    uiHintsFile: OnlineShopHybridSeed.Storefront.uiHintsFile,
     shellConfig: Dict.fromArray([
       ("appName", JSON.Encode.string("Online Shop")),
+      ("home", JSON.Encode.string("/Catalog/Products")),
       (
         "elevatedGroups",
         OnlineShopHybridSeed.Storefront.elevatedGroups

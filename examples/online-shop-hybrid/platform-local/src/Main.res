@@ -21,8 +21,16 @@ Platform.makePlatform(
   // back office would be unreachable.
   ~hostUiBundle={
     bakedManifest: OnlineShopHybridSeed.Storefront.manifest,
+    // Without this the dev shell applies whatever hints the host-shell package
+    // happens to ship, which is that repo's own demonstration file — so the
+    // storefront's nav would read right locally for a reason nothing here
+    // states, and read wrong the moment it is deployed.
+    uiHintsFile: OnlineShopHybridSeed.Storefront.uiHintsFile,
     shellConfig: Dict.fromArray([
       ("appName", JSON.Encode.string("Online Shop")),
+      // The shop opens on the shop. Per-deployment rather than a nav hint: an
+      // app has one home, and no view is entitled to claim it.
+      ("home", JSON.Encode.string("/Catalog/Products")),
       (
         "elevatedGroups",
         OnlineShopHybridSeed.Storefront.elevatedGroups
