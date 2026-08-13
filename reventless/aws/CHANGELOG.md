@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.292 (2026-08-13)
+
+### Bug Fixes
+
+* **aws:** re-detect once the Lambda that answers the handshake is up ([597e174](https://github.com/ReventlessDev/reventless-core/commit/597e174059e25461d66db35118c933d2ffce7e1f))
+* **aws:** retain offloaded plugin structures so refs cannot dangle ([120a1a7](https://github.com/ReventlessDev/reventless-core/commit/120a1a7228087dd79f8bcfdd2fddc7b6dbdaf296))
+
+
 # 3.0.0-alpha.291 (2026-08-13)
 
 ### Features

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.3.0-alpha.19 (2026-08-13)
+
+### Bug Fixes
+
+* **aws:** retain offloaded plugin structures so refs cannot dangle ([120a1a7](https://github.com/ReventlessDev/reventless-core/commit/120a1a7228087dd79f8bcfdd2fddc7b6dbdaf296))
+
+
 # 2.3.0-alpha.18 (2026-07-31)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-pulumi
