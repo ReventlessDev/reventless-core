@@ -1,6 +1,8 @@
 # Plan: a caller holding several roles can act as one of them
 
-**Status.** Open.
+**Status.** Steps 1, 2 and 2b **built 2026-08-13** on the local path (core
+`61141ac78`, `6e8f06a22`) and verified against a running example. Steps 3–4
+open.
 
 **Sibling plans:**
 - `docs/plans/curated-manifest-per-journey.md` — what each role *sees*. Independent
@@ -126,6 +128,12 @@ question that matters.
    that an unnarrowed login is byte-identical to today.
 2. A caller-visible way to read the current active role back, so the shell can
    render what it is without inferring it from the group list.
+2b. **Re-minting an existing session** — added on contact with the consumer, not
+   foreseen here. A switch cannot go through the login path: the client holds a
+   token, not a password, and re-prompting would price a navigation as a
+   re-authentication. Membership is re-read from the store rather than from the
+   presented token, so the record a narrowed token keeps of what it gave up
+   never becomes the authority for getting it back.
 3. The Cognito attribute and trigger, against the same subset table.
 4. Reference docs: §5's distinction, stated where someone reading about roles
    will meet it.
