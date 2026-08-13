@@ -142,6 +142,15 @@ jobs:
           echo "Stored /reventless/layer-arn/${{ steps.layer.outputs.stack }} = ${{ steps.publish.outputs.layer_arn }}"
 
       - name: Dispatch deploy
+        # Release-driven builds only. A push-triggered build is a change to the
+        # layer BUILDER, so it publishes a layer for the already-released
+        # reventless-aws — and a push that changes the builder almost always also
+        # releases, which dispatches its own layer build and deploy minutes later.
+        # Deploying here puts the branch through a full deploy for a layer that is
+        # superseded before it finishes. The fresh ARN is in SSM either way, so a
+        # build that releases nothing is picked up by the next deploy rather than
+        # forcing one.
+        if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
