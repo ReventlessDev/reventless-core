@@ -69,6 +69,7 @@ import * as LocalUploadResolvers$ReventlessLocal from "./adapter/LocalUploadReso
 import * as ProjectionCheckpoint$ReventlessLocal from "./adapter/ProjectionCheckpoint.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as LocalGeocodeResolvers$ReventlessLocal from "./adapter/LocalGeocodeResolvers.res.mjs";
+import * as LocalPlatformRegistry$ReventlessLocal from "./LocalPlatformRegistry.res.mjs";
 import * as UiFragments_Projection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments_Projection.res.mjs";
 import * as EventLogStorage_Sqlite$ReventlessLocal from "./adapter/EventLog/EventLogStorage_Sqlite.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessLocal from "./components/ExtensionPoint_Builder.res.mjs";
@@ -1105,6 +1106,11 @@ function MakeWithConfig(Config) {
         PlatformMCP_Server$ReventlessLocal.printDiagnostics();
       }
     }
+    let match = BackendState$ReventlessLocal.describeStore();
+    LocalPlatformRegistry$ReventlessLocal.register(domainPort, `http://localhost:` + domainPort.toString() + `/graphql`, `http://localhost:` + domainPort.toString() + `/__inmemory/login`, {
+      kind: match[0],
+      path: match[1]
+    });
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
       name: "local",
       environment: Pulumi.getStack(),
@@ -2826,6 +2832,11 @@ function Make($star) {
       PlatformGraphQL_Server$ReventlessLocal.printDiagnostics();
       PlatformMCP_Server$ReventlessLocal.printDiagnostics();
     }
+    let match = BackendState$ReventlessLocal.describeStore();
+    LocalPlatformRegistry$ReventlessLocal.register(domainPort, `http://localhost:` + domainPort.toString() + `/graphql`, `http://localhost:` + domainPort.toString() + `/__inmemory/login`, {
+      kind: match[0],
+      path: match[1]
+    });
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
       name: "local",
       environment: Pulumi.getStack(),

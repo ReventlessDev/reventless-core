@@ -58,6 +58,34 @@ function getObjectStoreRoot() {
   }
 }
 
+function describeStore() {
+  let match = current.contents;
+  if (typeof match !== "object") {
+    return [
+      "memory",
+      undefined
+    ];
+  }
+  if (match.TAG !== "Sqlite") {
+    return [
+      "postgres",
+      undefined
+    ];
+  }
+  let path = match.path;
+  if (path === ":memory:") {
+    return [
+      "memory",
+      undefined
+    ];
+  } else {
+    return [
+      "sqlite",
+      Nodepath.resolve(path)
+    ];
+  }
+}
+
 export {
   current,
   setMemory,
@@ -66,5 +94,6 @@ export {
   getSqliteDb,
   getPostgresPool,
   getObjectStoreRoot,
+  describeStore,
 }
 /* node:path Not a pure module */

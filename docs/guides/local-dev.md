@@ -116,7 +116,26 @@ pnpm run seed            # in a second shell
 
 `domain` is the default because it leaves the plugin registry intact, so a re-seed just works. `SEED_RESET_SCOPE` picks a scope non-interactively and `SEED_RESET_CONFIRM=1` skips the y/N — the deployed script's `SEED_RESET_SCOPE` and typed confirmation, minus the gates that exist because *that* target is remote and irreversible.
 
-Two things worth knowing:
+**It asks a platform which store to empty.** Both `seed` and `seed:reset` resolve their target the same way — from the platforms actually running in this directory, which each publish their endpoint and store under `.reventless/running/` at startup:
+
+```
+→ http://localhost:4000/graphql  ·  sqlite .reventless/runner.db  (online-shop-hybrid-platform-local)
+```
+
+With one platform up, that line is all you see. With several — a hand-started `pnpm run serve` beside the VS Code runner's child, say — you get a menu, and `SEED_PLATFORM` (a port, or a menu index) picks one non-interactively:
+
+```
+Platform:
+
+  1) :4000  online-shop-hybrid-platform-local  sqlite .reventless/runner.db
+  2) :4010  online-shop-hybrid-platform-local  memory
+```
+
+This matters because those two platforms serve **different databases**. Resolving the store from `REVENTLESS_LOCAL_BACKEND` instead — a variable set in your shell, describing no platform — let a reset empty a store nobody was serving while reporting success, and the `seed` after it then refused because the served store was still full.
+
+Set `REVENTLESS_LOCAL_BACKEND` explicitly and it still wins, for the one case discovery cannot serve: resetting a store whose platform is not running. `REVENTLESS_GRAPHQL_ENDPOINT` does the same for seeding. Do **not** put a default for either in a package script — a default makes the override always fire, which is the guess this replaces.
+
+Three things worth knowing:
 
 - **A plugin scope reports what it left alone.** Components that no structure claims (audit and todo read models, typically) can only be reached by `domain`, and the plan says so rather than leaving you to discover it through a failing seed.
 - **It empties, it does not delete.** Tables are cleared, never dropped, so the running platform's prepared statements stay valid. If you want the files gone entirely, that is `serve:reset` (wipes everything as the platform starts) or deleting `.reventless/` by hand — but note that deleting `local.db` while the platform runs does nothing useful: the process keeps the orphaned inode and carries on serving the old rows.
@@ -282,11 +301,14 @@ Both domain and admin queries are served at `http://localhost:4000/graphql`.
 | Variable | Effect |
 |----------|--------|
 | `LOG_LEVEL` | `silent` \| `error` \| `warn` \| `info` \| `debug`. The local platform **defaults to `debug`** (surfaces e.g. the slice/aggregate `deciding on state:` lines); set `LOG_LEVEL=info` to quieten it. Other platforms default to `info`. |
-| `REVENTLESS_LOCAL_BACKEND` | Storage backend: `memory`, `sqlite:<path>`, or `sqlite:<path>?reset` (see [Storage backend](#storage-backend-sqlite-by-default)). Defaults to `sqlite:./.reventless/local.db` via the run scripts. |
+| `REVENTLESS_LOCAL_BACKEND` | Storage backend: `memory`, `sqlite:<path>`, or `sqlite:<path>?reset` (see [Storage backend](#storage-backend-sqlite-by-default)). The `serve` scripts default it to `sqlite:./.reventless/local.db`; `seed:reset` deliberately does not — set it there only to reset a store whose platform is down. |
+| `SEED_PLATFORM` | Which running platform `seed` / `seed:reset` act on, by port (`4000`) or menu index. Only consulted when more than one is running (see [Resetting the store](#resetting-the-store-seedreset)). |
+| `REVENTLESS_GRAPHQL_ENDPOINT` | Seeds against this endpoint verbatim, skipping platform discovery. `REVENTLESS_LOGIN_ENDPOINT` overrides the login route, which otherwise follows the same host and port. |
 | `GRAPHQL_DEBUG=1` | Logs every incoming GraphQL request and response |
 | `MCP_DEBUG=1` | Logs MCP tool calls |
-| `PORT=NNNN` | Override domain server port (default 4000) |
-| `ADMIN_PORT=NNNN` | Override admin server port (default 4001) |
+| `REVENTLESS_DOMAIN_PORT=NNNN` | Override domain server port (default 4000). Also the port a platform registers itself under. |
+| `REVENTLESS_PLATFORM_PORT=NNNN` | Override admin/platform server port (default 4001) |
+| `REVENTLESS_DOMAIN_MCP_PORT` / `REVENTLESS_PLATFORM_MCP_PORT` | Override the MCP ports (defaults 3001 / 3002) |
 
 ---
 

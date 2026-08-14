@@ -476,30 +476,52 @@ let scopeOptions = (plugins: array<string>): array<(string, scope)> =>
     [("platform", Platform), ("everything", Everything)],
   )
 
-/** Runs the reset against the store the local platform would open.
+/** Runs the reset against the store the selected platform actually opened.
 
-    `dbPath` defaults to what `REVENTLESS_LOCAL_BACKEND` selects, so the tool and
-    the platform cannot disagree about which store is "the" store. A Memory or
-    Postgres backend has no local file to reset and says so rather than appearing
-    to work. */
+    Resolution order, and why it is this way round: the store used to be read off
+    `REVENTLESS_LOCAL_BACKEND` in THIS process, which describes no platform at
+    all. With a second platform up — the VS Code runner beside a hand-started one
+    — that emptied a database nobody was serving while reporting success, and the
+    `seed` that follows then refused because the served store was still full. So
+    the running platform is asked instead, and the variable is kept only for the
+    case discovery cannot serve: a store whose platform is down.
+
+    1. `~dbPath` — a programmatic caller has already decided.
+    2. `REVENTLESS_LOCAL_BACKEND` **set in this shell** — an explicit target.
+    3. the platform selected by {!LocalSeedTarget.select} — the normal path.
+
+    Note for callers wiring this into a package script: do NOT default the
+    variable there (`${REVENTLESS_LOCAL_BACKEND:-sqlite:./…}`). It would make
+    step 2 always fire, and that default is the very guess this replaces. */
 let run = (~dbPath: option<string>=?): unit => {
   let go = async () => {
-    let resolved = switch dbPath {
-    | Some(p) => Some(p)
-    | None =>
+    let fromBackendEnv = () =>
       switch Backend.fromEnv() {
-      | Backend.Sqlite({path}) if path != ":memory:" => Some(path)
+      | Backend.Sqlite({path}) if path != ":memory:" => Ok(path)
       | Backend.Sqlite(_) | Backend.Memory =>
-        Console.log(
-          "Nothing to reset — REVENTLESS_LOCAL_BACKEND selects an in-memory store, which a restart already empties.",
+        Error(
+          "REVENTLESS_LOCAL_BACKEND selects an in-memory store, which a restart already empties.",
         )
-        None
       | Backend.Postgres(_) =>
-        Console.log(
-          "Nothing to reset here — the Postgres backend keeps its event logs off this machine. Reset it against the database.",
+        Error(
+          "the Postgres backend keeps its event logs off this machine. Reset it against the database.",
         )
-        None
       }
+
+    let resolved = switch (dbPath, Seed.Prompt.envValue("REVENTLESS_LOCAL_BACKEND")) {
+    | (Some(p), _) => Ok(p)
+    | (None, Some(_)) => fromBackendEnv()
+    | (None, None) =>
+      let target = await LocalSeedTarget.select()
+      target->LocalSeedTarget.announce
+      target->LocalSeedTarget.storePath
+    }
+
+    let resolved = switch resolved {
+    | Ok(path) => Some(path)
+    | Error(reason) =>
+      Console.log(`Nothing to reset — ${reason}`)
+      None
     }
 
     switch resolved {

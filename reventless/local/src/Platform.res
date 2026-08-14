@@ -1303,6 +1303,19 @@ module MakeWithConfig = (
         PlatformMCP_Server.printDiagnostics()
       }
     }
+    // Announce this platform — endpoint AND the store it opened — so `seed` and
+    // `seed:reset` can address it instead of inferring a store from their own
+    // environment. Here rather than in makePlatform because this is the one
+    // point both API modes pass through once the servers are actually up: in
+    // split mode they start just above, in unified mode makePlatform started
+    // them and this still runs before the process serves its first request.
+    let (kind, path) = BackendState.describeStore()
+    LocalPlatformRegistry.register(
+      ~port=domainPort,
+      ~endpoint=`http://localhost:${domainPort->Int.toString}/graphql`,
+      ~loginEndpoint=`http://localhost:${domainPort->Int.toString}/__inmemory/login`,
+      ~store={kind, path},
+    )
     // Fire onPlatformDeployed after all servers are started so late-deployed
     // plugins (e.g. PlatformInspector) have their handler refs populated.
     ReventlessCore.Plugin_Helpers.firePlatformDeployedHook({

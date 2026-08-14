@@ -11,6 +11,7 @@ import * as Seed_Prompt$ReventlessSeed from "@reventlessdev/reventless-seed/src/
 import * as UiFragments$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UiFragmentRegistry/StateViewSlice/UiFragments.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "../adapter/SqliteDriver.res.mjs";
+import * as LocalSeedTarget$ReventlessLocal from "../LocalSeedTarget.res.mjs";
 import * as LocalObjectStore$ReventlessLocal from "../adapter/ObjectStore/LocalObjectStore.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsReadModelSpec.res.mjs";
 import * as ObjectStoreStorage_FileSystem$ReventlessLocal from "../adapter/ObjectStore/ObjectStoreStorage_FileSystem.res.mjs";
@@ -437,33 +438,60 @@ function scopeOptions(plugins) {
 
 function run(dbPath) {
   let go = async () => {
-    let resolved;
-    if (dbPath !== undefined) {
-      resolved = dbPath;
-    } else {
+    let fromBackendEnv = () => {
       let match = Backend$ReventlessLocal.fromEnv();
       if (typeof match !== "object") {
-        console.log("Nothing to reset — REVENTLESS_LOCAL_BACKEND selects an in-memory store, which a restart already empties.");
-        resolved = undefined;
-      } else if (match.TAG === "Sqlite") {
-        let path = match.path;
-        if (path !== ":memory:") {
-          resolved = path;
-        } else {
-          console.log("Nothing to reset — REVENTLESS_LOCAL_BACKEND selects an in-memory store, which a restart already empties.");
-          resolved = undefined;
-        }
-      } else {
-        console.log("Nothing to reset here — the Postgres backend keeps its event logs off this machine. Reset it against the database.");
-        resolved = undefined;
+        return {
+          TAG: "Error",
+          _0: "REVENTLESS_LOCAL_BACKEND selects an in-memory store, which a restart already empties."
+        };
       }
+      if (match.TAG !== "Sqlite") {
+        return {
+          TAG: "Error",
+          _0: "the Postgres backend keeps its event logs off this machine. Reset it against the database."
+        };
+      }
+      let path = match.path;
+      if (path !== ":memory:") {
+        return {
+          TAG: "Ok",
+          _0: path
+        };
+      } else {
+        return {
+          TAG: "Error",
+          _0: "REVENTLESS_LOCAL_BACKEND selects an in-memory store, which a restart already empties."
+        };
+      }
+    };
+    let match = Seed_Prompt$ReventlessSeed.envValue("REVENTLESS_LOCAL_BACKEND");
+    let resolved;
+    if (dbPath !== undefined) {
+      resolved = {
+        TAG: "Ok",
+        _0: dbPath
+      };
+    } else if (match !== undefined) {
+      resolved = fromBackendEnv();
+    } else {
+      let target = await LocalSeedTarget$ReventlessLocal.select();
+      LocalSeedTarget$ReventlessLocal.announce(target);
+      resolved = LocalSeedTarget$ReventlessLocal.storePath(target);
     }
-    if (resolved === undefined) {
+    let resolved$1;
+    if (resolved.TAG === "Ok") {
+      resolved$1 = resolved._0;
+    } else {
+      console.log(`Nothing to reset — ` + resolved._0);
+      resolved$1 = undefined;
+    }
+    if (resolved$1 === undefined) {
       return;
     }
-    if (Nodefs.existsSync(resolved)) {
-      let root = Nodepath.dirname(resolved);
-      let db = SqliteDriver$ReventlessLocal.openDb(resolved);
+    if (Nodefs.existsSync(resolved$1)) {
+      let root = Nodepath.dirname(resolved$1);
+      let db = SqliteDriver$ReventlessLocal.openDb(resolved$1);
       let plugins = readPlugins(db, root).map(p => p.plugin);
       let scope = await Seed_Prompt$ReventlessSeed.select("Reset scope:", scopeOptions(plugins), "SEED_RESET_SCOPE");
       let plan = build(db, root, scope);
@@ -500,7 +528,7 @@ function run(dbPath) {
       Seed_Prompt$ReventlessSeed.close();
       return SqliteDriver$ReventlessLocal.close(db);
     }
-    console.log(`Nothing to reset — no store at ` + resolved + `.`);
+    console.log(`Nothing to reset — no store at ` + resolved$1 + `.`);
   };
   go();
 }
