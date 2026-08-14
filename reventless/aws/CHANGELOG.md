@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.297 (2026-08-14)
+
+### Bug Fixes
+
+* **aws:** sweep undirectived fields at the schema assembly choke point ([f0ed736](https://github.com/ReventlessDev/reventless-core/commit/f0ed7369ec4dddfb697a3c93115b12f310a491b0))
+
+
 # 3.0.0-alpha.296 (2026-08-14)
 
 ### Features
