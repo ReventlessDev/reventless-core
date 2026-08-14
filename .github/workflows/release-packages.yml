@@ -273,6 +273,7 @@ jobs:
 
       - name: Version packages with Lerna
         if: steps.changes.outputs.count != '0'
+        id: version
         timeout-minutes: 10
         env:
           HUSKY: 0
@@ -322,6 +323,12 @@ jobs:
           cat "$RUNNER_TEMP/versions-minted.txt"
 
           echo "Lerna version completed successfully"
+
+          # The commit the tags point at, recorded here because this is the only
+          # moment it is reliably HEAD. Later steps commit on top of it (the
+          # documentation CHANGELOG), and reading the tags from HEAD after that
+          # finds none — see the "Collect released tags" step for what that cost.
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Verify minted versions are unpublished
         if: steps.changes.outputs.count != '0'
@@ -573,10 +580,44 @@ jobs:
       - name: Collect released tags
         if: steps.changes.outputs.count != '0'
         id: tags
+        env:
+          VERSION_SHA: ${{ steps.version.outputs.sha }}
         run: |
-          # Tag names never contain whitespace, so a space-separated list
-          # survives the trip through a job output intact.
-          echo "list=$(git tag --points-at HEAD | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+          # Read the tags from the commit `lerna version` made, NOT from HEAD.
+          #
+          # 🚨 This said `--points-at HEAD` and was wrong whenever the optional
+          # documentation-CHANGELOG commit landed, because that commit moves HEAD
+          # one past the tagged one. The query then returned nothing, this output
+          # went out empty, and every caller reading it concluded that nothing had
+          # been released — while the packages were on the registry.
+          #
+          # It failed silently and intermittently: a release with no documentation
+          # commit ends on the version commit and works, so the bug only appears on
+          # releases that happen to touch docs. Downstream that skipped a Lambda
+          # layer build, and the deploy that followed wired new function code to the
+          # previous release's layer — which took Cognito sign-in down for a whole
+          # user pool, from a pipeline reporting success at every step.
+          #
+          # Tag names never contain whitespace, so a space-separated list survives
+          # the trip through a job output intact.
+          if [ -z "$VERSION_SHA" ]; then
+            echo "::error::version step recorded no SHA, so released tags cannot be collected"
+            exit 1
+          fi
+          LIST="$(git tag --points-at "$VERSION_SHA" | tr '\n' ' ')"
+          # Empty is only legitimate when `lerna version` minted nothing. The
+          # minted list is the authority on that, so the two are checked against
+          # each other rather than trusting either alone — an empty list beside a
+          # minted version is the state this step used to report as "nothing was
+          # released", and it must be loud instead.
+          MINTED="$RUNNER_TEMP/versions-minted.txt"
+          if [ -z "${LIST// /}" ] && [ -s "$MINTED" ]; then
+            echo "::error::no tags at $VERSION_SHA, but this run minted:"
+            cat "$MINTED"
+            exit 1
+          fi
+          echo "Released tags: ${LIST:-<none>}"
+          echo "list=$LIST" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub releases
         if: steps.changes.outputs.count != '0'
