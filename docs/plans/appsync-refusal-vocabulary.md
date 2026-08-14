@@ -1,23 +1,32 @@
 # Plan: the AppSync path says which refusal it gave
 
-**Status. CLOSED 2026-08-14 — §6.1 answered badly, exactly as feared.** Step 0
-was run against the deployed alpha API. `@aws_auth` is **not enforced** on these
-multi-auth APIs: a Cognito user in no groups read every admin-gated field and
-executed a group-gated mutation. Per step 1, this plan is closed in favour of
-[appsync-group-authorization-unenforced.md](../appsync-group-authorization-unenforced.md),
-which carries the captured bodies and the fix.
+**Status. REOPENED 2026-08-14 — the premise now holds, and §2 is confirmed.**
 
-**The §2 table below is disproven, not merely unverified.** Its middle row
-predicted that an identified-but-unentitled caller meets a field error; the
-observed behaviour is that the resolver *runs*. Nothing in §4's options survives
-that: there is no refusal vocabulary to reconcile until there is a refusal.
+This plan was closed the same day it was written: step 0 found that `@aws_auth`
+was not enforced at all, so there was no refusal to give a vocabulary to. That
+was fixed and deployed (`13926388c`, see
+[appsync-group-authorization-unenforced.md](appsync-group-authorization-unenforced.md)),
+and the four rows were re-observed against the deployed API.
 
-What did survive: §1 (the local adapter's behaviour, unchanged), §3's diagnosis
-that the two adapters are unreconciled — now understood to be a far deeper
-disagreement than wording — and the three asymmetries in §3, which remain
-accurate about the AWS path's shape. Reopen this plan (`git mv` back per repo
-convention) once group gating is actually enforced; the vocabulary question is
-then worth asking from observation rather than from assumption.
+**§2's table was right.** The middle row — the one this plan could not verify
+and that was briefly marked disproven while the gate was open — is exactly what
+the deployed API now does:
+
+```json
+{"data":null,"errors":[{"path":["Platform_ComponentDefinitions"],"data":null,
+  "errorType":"Unauthorized","errorInfo":null,
+  "locations":[{"line":1,"column":9,"sourceName":null}],
+  "message":"Not Authorized to access Platform_ComponentDefinitions on type Query"}]}
+```
+
+So the question this plan asks is live again, and now rests on observation
+rather than inference: **the two adapters do give the same refusal two
+unrelated shapes.** The AWS path says HTTP 200 + `errorType: "Unauthorized"`;
+the local path says HTTP 200 + `extensions.code = FORBIDDEN`. A client cannot
+read one key and work against both.
+
+§4's recommendation (option A — publish the mapping as data, change no
+infrastructure) stands, and is now cheap: every cell of the table is observed.
 
 ---
 
@@ -65,22 +74,28 @@ The API is `AMAZON_COGNITO_USER_POOLS` primary with `AWS_IAM` additional
 request whose JWT does not verify is rejected by the service before the schema
 is reached — the request never becomes a GraphQL execution at all. A request
 whose JWT does verify, against a field carrying
-`@aws_auth(cognito_groups: ["Admin"])`, executes and is refused per-field.
+`@aws_cognito_user_pools(cognito_groups: ["Admin"])`, executes and is refused
+per-field. (This plan originally wrote that directive as `@aws_auth(...)`, which
+is precisely the bug §6.1 uncovered — that form gates nothing here.)
 
 So the split is already there. It is expressed as **transport status versus
 field error**, where the local path expresses it as **two extensions codes**:
 
-| Caller | AWS path (expected — see §6.2) | **Observed 2026-08-14** |
-| --- | --- | --- |
-| Identified, holds the group | resolver runs | ✅ resolver runs |
-| Identified, lacks the group | HTTP 200 · field error · `errorType: "Unauthorized"` | ❌ **resolver runs — no refusal at all** |
-| Credentials did not verify | HTTP 401 · no field error | ✅ HTTP 401 `UnauthorizedException` |
+| Caller | AWS path — **observed 2026-08-14, post-fix** |
+| --- | --- |
+| Identified, holds the group | resolver runs · HTTP 200 · data |
+| Identified, lacks the group | HTTP 200 · `errors[].errorType: "Unauthorized"` · `data: null` |
+| Credentials did not verify | HTTP 401 · `x-amzn-errortype: UnauthorizedException` · no field error |
 
-> **The middle row is wrong.** The paragraph below it — "a field-level
-> authorization refusal can *only* reach a caller the service already
-> authenticated" — is true but vacuous: on this configuration there is no
-> field-level refusal to reach anyone. See
-> [appsync-group-authorization-unenforced.md](../appsync-group-authorization-unenforced.md).
+> Every row above is a captured response, not a prediction. The refusal bodies
+> are recorded in
+> [appsync-group-authorization-unenforced.md](appsync-group-authorization-unenforced.md) §8.
+>
+> **Historical note.** Between this plan being written and the fix landing, the
+> middle row did not happen at all — the gate was inert and the resolver simply
+> ran for everyone. That is why this plan was briefly closed. The row was right
+> about what AppSync does *when the directive is the enforced form*; it was
+> wrong only in assuming the adapter emitted that form.
 
 Note what that second row means: on this path, a field-level authorization
 refusal can *only* reach a caller the service already authenticated. The
@@ -174,14 +189,20 @@ written against it.
 
 ## §6 — Hazards, both to answer before building
 
-### 6.1 — Is `@aws_auth` honoured on a multi-auth API at all? 🚨 **ANSWERED: NO**
+### 6.1 — Is `@aws_auth` honoured on a multi-auth API at all? 🚨 **ANSWERED: NO — and fixed**
 
 > **Observed 2026-08-14.** It is **ignored**. The third outcome below is the one
-> that happened: the admin surface is gated by nothing on the AWS path. A
+> that happened: the admin surface was gated by nothing on the AWS path. A
 > throwaway Cognito user in no groups received the full payload of every
 > admin-gated query (HTTP 200), and a group-gated mutation reached its command
 > handler. The security finding, the captured bodies and the fix are in
-> [appsync-group-authorization-unenforced.md](../appsync-group-authorization-unenforced.md).
+> [appsync-group-authorization-unenforced.md](appsync-group-authorization-unenforced.md).
+>
+> **Resolved in `13926388c`**, deployed and re-probed: the adapter now emits
+> `@aws_cognito_user_pools(cognito_groups: [...])` everywhere, and the same
+> caller is refused. This hazard is closed; it is kept here because it is the
+> reason the plan's own §2 could not be trusted until it was answered.
+>
 > Everything below this box is the original reasoning, kept as written.
 
 `@aws_auth` is the **single-mode** directive. The file's own comment
@@ -210,20 +231,22 @@ line and full JSON — for each row before writing any mapping down.
 > **Observed 2026-08-14.** The caution was warranted. The 401 row held; the
 > unentitled row did not. Recorded inline in the §2 table above, with verbatim
 > bodies in
-> [appsync-group-authorization-unenforced.md](../appsync-group-authorization-unenforced.md) §1.
+> [appsync-group-authorization-unenforced.md](appsync-group-authorization-unenforced.md) §1.
 > This is the case for step 0 existing at all: the plan would otherwise have
 > built a mapping onto a refusal that never happens.
 
 ## §7 — Steps
 
-**0. Observe.** Against a deployed API, with a Cognito user in `Admin` and one
-outside it, capture the full response for an admin query in each of: valid token
-with the group, valid token without it, malformed token, absent token. Record
-HTTP status and verbatim body. This settles §6.1 and §6.2 together, and is the
-only step that cannot be done from a checkout.
+**0. Observe.** ✅ **Done twice** — once before the fix (which is what uncovered
+§6.1) and once after, against the deployed alpha API. All four rows captured
+verbatim; the post-fix table is §2 above, the bodies are in
+[appsync-group-authorization-unenforced.md](appsync-group-authorization-unenforced.md) §8.
+Re-runnable as `scripts/probe-appsync-group-gate.mjs`.
 
-**1. Stop if 6.1 answers badly.** If the directive is not enforced, close this
-plan and open one for that.
+**1. Stop if 6.1 answers badly.** ✅ **Done** — it answered badly, this plan was
+closed, `appsync-group-authorization-unenforced.md` was opened, the fix shipped
+in `13926388c` and was verified on a deployment. This plan then reopened. The
+remaining steps are the original conformance work, now on a sound premise.
 
 **2. Write the correspondence down as data**, beside the claim-name table in
 `reventless/core/src/adapter/Auth/Auth_ActiveRole.res` or in a sibling module —
