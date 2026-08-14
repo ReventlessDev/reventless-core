@@ -460,6 +460,10 @@ let stitchStandaloneWithAwsDirectives = (
     ~baseFragment=fragment,
     ~pluginFragments=[],
   )
+  // Every AWS source-API document assembles through here, so this is the one
+  // place that can guarantee no field or type reaches a deployed schema without
+  // an auth directive — whichever path injected it.
+  let fragment = AppSync_SdlDecorate.stampUndirectivedFields(fragment)
   ReventlessCore.GraphQL_Stitcher.stitchStandalone(~fragment)
   ->AppSync_SdlDecorate.injectAwsSubscribe(~sources)
   ->stampSharedIamTypes

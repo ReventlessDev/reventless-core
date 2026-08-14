@@ -162,6 +162,37 @@ let stampSharedIamTypes = (sdl: string): string =>
     acc->String.replace(`type ${name} {`, `type ${name} @aws_cognito_user_pools @aws_iam {`)
   )
 
+// Final field sweep, run at the assembly choke point on the FRAGMENT (where each
+// element is one whole field, so "does it already carry a directive?" is a
+// reliable question — on raw SDL text a directive placed on the following line
+// would read as absent).
+//
+// `injectAwsAuth` only decorates fields it can pair with a schema entry, and
+// several surfaces never reach it at all: the domain base document
+// (`Platform_ping`), event-history queries, event-log `…_eventAppended`
+// subscriptions, the upload presign/release mutations, `Platform_SetActiveRole`,
+// and `geocode`. Those deployed with no directive — invisible under
+// `defaultAction: ALLOW`, refused under DENY. Sweeping here rather than at each
+// emission site means a future injected field cannot silently miss the net.
+//
+// Idempotent, and deliberately does not second-guess gating: it only fills in
+// "open to any authenticated Cognito caller", which is what an undirectived
+// field already means today.
+let stampUndirectivedFields = (
+  fragment: Reventless.Plugin.apiSchemaFragment,
+): Reventless.Plugin.apiSchemaFragment => {
+  let parts = ReventlessCore.GraphQL_Stitcher.decode(fragment)
+  let stamp = (field: string): string =>
+    field->String.includes("@aws_") ? field : `${field}\n    ${cognitoOpenDirective}`
+
+  ReventlessCore.GraphQL_Stitcher.encode({
+    ...parts,
+    mutations: parts.mutations->Array.map(stamp),
+    queries: parts.queries->Array.map(stamp),
+    subscriptions: parts.subscriptions->Array.map(stamp),
+  })
+}
+
 // Stamp every object `type` declaration that does not already carry an auth
 // directive with the group-less Cognito arm. Run on the ASSEMBLED SDL, AFTER
 // stampSharedIamTypes so the shared traversal types keep their `@aws_iam` arm

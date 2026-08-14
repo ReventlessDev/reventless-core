@@ -88,6 +88,24 @@ function stampSharedIamTypes(sdl) {
   return Stdlib_Array.reduce(sharedIamTypeNames, sdl, (acc, name) => acc.replace(`type ` + name + ` {`, `type ` + name + ` @aws_cognito_user_pools @aws_iam {`));
 }
 
+function stampUndirectivedFields(fragment) {
+  let parts = GraphQL_Stitcher$ReventlessCore.decode(fragment);
+  let stamp = field => {
+    if (field.includes("@aws_")) {
+      return field;
+    } else {
+      return field + `\n    ` + cognitoOpenDirective;
+    }
+  };
+  return GraphQL_Stitcher$ReventlessCore.encode({
+    types: parts.types,
+    mutations: parts.mutations.map(stamp),
+    queries: parts.queries.map(stamp),
+    subscriptions: parts.subscriptions.map(stamp),
+    subscriptionSources: parts.subscriptionSources
+  });
+}
+
 function stampAllTypesCognito(sdl) {
   return sdl.split("\n").map(line => {
     if (!(line.startsWith("type ") && !line.includes("@aws_"))) {
@@ -147,6 +165,7 @@ export {
   injectAwsAuthAll,
   sharedIamTypeNames,
   stampSharedIamTypes,
+  stampUndirectivedFields,
   stampAllTypesCognito,
   canonicalTypeNames,
   stampCanonicalTypes,

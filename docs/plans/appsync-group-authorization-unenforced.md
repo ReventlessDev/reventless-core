@@ -235,6 +235,33 @@ Establish what it does and does not cover before assuming any of it.
      **This phase is a semantic no-op under `ALLOW`** — that is the point. It
      makes a miss harmless and observable, instead of an outage.
 
+     **It found one.** Measuring the *deployed* SDL after phase 1a showed the
+     platform API at 100% and all 95 types across both APIs covered — but **11
+     domain fields still bare**:
+
+     | Kind | Fields |
+     | --- | --- |
+     | Query | `Catalog_CatalogEventHistory`, `Ordering_CustomerEventHistory`, `Ordering_OrderingEventHistory`, `Platform_ping`, `geocode` |
+     | Mutation | `Platform_SetActiveRole`, `Upload_Presign`, `Upload_Release` |
+     | Subscription | `onCatalogEventLog_eventAppended`, `onCustomerEventLog_eventAppended`, `onOrderingEventLog_eventAppended` |
+
+     Cause: `injectAwsAuth` only decorates fields it can pair with a schema
+     entry, and these arrive by paths that never reach it — the domain base
+     document (`Platform.res:284` assembles it with no field decoration at all),
+     plus event-history, event-log subscription, upload, active-role and
+     geocode injection sites.
+
+     Fixed by sweeping at the assembly choke point rather than at the six
+     emission sites: `stampUndirectivedFields` runs inside
+     `stitchStandaloneWithAwsDirectives`, which every AWS source-API document
+     passes through. It operates on the *fragment* (one element per field) so
+     "already directived?" is reliable — on raw SDL a directive on the following
+     line reads as absent. A future injected field cannot miss the net.
+
+     Had the default been flipped on the phase-1a schema, those 11 fields —
+     including every event-log subscription and the upload surface — would have
+     been refused for everyone.
+
    - ⬜ **Phase 2 — flip the default.** Only once the *deployed* SDL shows 100%
      coverage. `defaultAction: ALLOW` appears in three places
      (`Platform.res:338`, `AppSync_Adapter.res:518`,

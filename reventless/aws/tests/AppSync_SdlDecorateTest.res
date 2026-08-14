@@ -188,3 +188,64 @@ describe("AppSync_SdlDecorate.stampAllTypesCognito", () => {
     expect(AppSync_SdlDecorate.stampAllTypesCognito(once))->toBe(once)
   })
 })
+
+// ── Final field sweep ───────────────────────────────────────────────────────
+//
+// `injectAwsAuth` only decorates fields it can pair with a schema entry. Several
+// surfaces never reach it: the domain base (`Platform_ping`), event-history
+// queries, `…_eventAppended` subscriptions, upload mutations,
+// `Platform_SetActiveRole`, `geocode`. A deployed-SDL count after the first
+// sweep found 11 such fields still bare on the domain API. This pass is the net.
+
+describe("AppSync_SdlDecorate.stampUndirectivedFields", () => {
+  let frag = (~mutations=[], ~queries=[], ~subscriptions=[], ()) =>
+    ReventlessCore.GraphQL_Stitcher.encode({
+      types: [],
+      mutations,
+      queries,
+      subscriptions,
+      subscriptionSources: [],
+    })
+
+  testSync("stamps a query no schema entry ever paired with", () => {
+    let out = AppSync_SdlDecorate.stampUndirectivedFields(
+      frag(~queries=["  Platform_ping: String"], ()),
+    )
+    let q = ReventlessCore.GraphQL_Stitcher.decode(out).queries->Array.getUnsafe(0)
+    expect(q)->toContain("@aws_cognito_user_pools")
+    expect(q)->not_->toContain("cognito_groups")
+  })
+
+  testSync("stamps an event-log subscription", () => {
+    let out = AppSync_SdlDecorate.stampUndirectivedFields(
+      frag(~subscriptions=["  onFoo_eventAppended: FooEvent"], ()),
+    )
+    expect(
+      ReventlessCore.GraphQL_Stitcher.decode(out).subscriptions->Array.getUnsafe(0),
+    )->toContain("@aws_cognito_user_pools")
+  })
+
+  testSync("leaves an already-gated field untouched, group and all", () => {
+    let gated = `  Secret_Read: String\n    @aws_cognito_user_pools(cognito_groups: ["Admin"])`
+    let out = AppSync_SdlDecorate.stampUndirectivedFields(frag(~queries=[gated], ()))
+    let q = ReventlessCore.GraphQL_Stitcher.decode(out).queries->Array.getUnsafe(0)
+    expect(q)->toContain(`cognito_groups: ["Admin"]`)
+    expect(q->String.includes("@aws_cognito_user_pools @aws_cognito_user_pools"))->toBe(false)
+  })
+
+  testSync("does not strip an @aws_iam arm", () => {
+    let dual = "  Sys_Sync: String\n    @aws_cognito_user_pools @aws_iam"
+    let out = AppSync_SdlDecorate.stampUndirectivedFields(frag(~mutations=[dual], ()))
+    expect(
+      ReventlessCore.GraphQL_Stitcher.decode(out).mutations->Array.getUnsafe(0),
+    )->toContain("@aws_iam")
+  })
+
+  testSync("is idempotent", () => {
+    let once = AppSync_SdlDecorate.stampUndirectivedFields(frag(~queries=["  a: String"], ()))
+    let twice = AppSync_SdlDecorate.stampUndirectivedFields(once)
+    expect(ReventlessCore.GraphQL_Stitcher.decode(twice).queries->Array.getUnsafe(0))->toBe(
+      ReventlessCore.GraphQL_Stitcher.decode(once).queries->Array.getUnsafe(0),
+    )
+  })
+})

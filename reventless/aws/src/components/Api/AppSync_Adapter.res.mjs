@@ -264,7 +264,8 @@ function injectAwsAuthAll(fragment, group, iamFieldNamesOpt) {
 
 function stitchStandaloneWithAwsDirectives(fragment) {
   let sources = GraphQL_Stitcher$ReventlessCore.collectSubscriptionSources(fragment, []);
-  return AppSync_SdlDecorate$ReventlessAws.stampAllTypesCognito(AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes(AppSync_SdlDecorate$ReventlessAws.injectAwsSubscribe(GraphQL_Stitcher$ReventlessCore.stitchStandalone(fragment), sources)));
+  let fragment$1 = AppSync_SdlDecorate$ReventlessAws.stampUndirectivedFields(fragment);
+  return AppSync_SdlDecorate$ReventlessAws.stampAllTypesCognito(AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes(AppSync_SdlDecorate$ReventlessAws.injectAwsSubscribe(GraphQL_Stitcher$ReventlessCore.stitchStandalone(fragment$1), sources)));
 }
 
 function _makeApiResourceWith(name, schema, userPoolConfig, opts) {
