@@ -259,6 +259,39 @@ shell reading a baked file has no admin API to resolve a picker's targets from.
 
 Unset ⇒ no file written, and the platform behaves exactly as it did before.
 
+## Editing UI hints without restarting
+
+`ui-hints.json` is copied into that same `dist/` at boot, so historically a
+label change cost a platform restart and a page reload. It no longer does: the
+local platform watches the declared `uiHintsFile`, re-serves it on every save,
+and says so on the events channel the shell already holds. The menu restacks
+where it stands.
+
+```
+$ pnpm run serve
+… watching …/seed-data/ui-hints.json — edits are served without a restart
+# save the file
+… ui-hints.json changed — re-served
+```
+
+Local only, by design — on AWS the hints are an object a deploy writes once, and
+a running deployment must not follow anybody's working copy. The shell gates on
+`authMode: "local"`, which is the in-memory platform's own signature in
+`config.json`.
+
+Two behaviours worth knowing, both of which follow from what an editor actually
+does on save:
+
+- **A save is often two writes**, and the file is briefly not valid JSON. That
+  is reported and skipped, never thrown — the last good copy stays in front of
+  the browser, and the write that completes the save is itself the event that
+  re-serves it. The rule at boot is the opposite and deliberately so: a
+  declaration that does not parse fails the boot, because there is no previous
+  copy and nothing else to go on.
+- **`Storefront.res` is not this.** Editing the manifest, `derived`, or
+  `elevatedGroups` is ReScript: rebuild and restart. Only the hints file is
+  followed live.
+
 ## Multi-plugin local dev
 
 Multiple plugins register into the same domain server — add them all to the `plugins` array:

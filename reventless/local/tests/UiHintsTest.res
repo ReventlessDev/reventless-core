@@ -92,3 +92,97 @@ describe("UiHints.emit", () => {
     expect(NodeFs.existsSync(baselinePath(dir)))->toBe(false)
   })
 })
+
+// The dev loop: the platform follows the declared file so editing hints is a
+// browser refresh rather than a restart. Real `fs.watch` events rather than a
+// stubbed clock, because what is being tested IS the plumbing — a debounce over
+// a fake timer would pass with the watcher wired to nothing.
+//
+// The rule these turn on is the one place `watch` parts company with `emit`: at
+// boot a bad file is the deployment's mistake and taking the process down is the
+// point, while mid-session it is almost always an editor mid-save, and killing a
+// running dev server over a keystroke is worse than the restart this replaces.
+
+// Both exits close the watcher AND clear the deadline. A watcher is `unref`ed
+// and would not hold the run open on its own, but a live 4-second timer would —
+// and "Jest did not exit" on a suite that passed is exactly the noise that
+// teaches a reader to ignore it.
+let waitForReload = (~timeoutMs: int=4000, ~afterWatching: unit => unit, ~uiHintsFile, ~dir) =>
+  Promise.make((resolve, _) => {
+    let fired = ref(0)
+    let watcher = ref(None)
+    let deadline = ref(None)
+    // Resolves with a count rather than rejecting on the deadline: "nothing was
+    // re-served" is the expected answer in half these cases, and a rejection
+    // would make the assertion read as an infrastructure failure.
+    let finish = () => {
+      watcher.contents->Option.forEach(NodeFs.watcherClose)
+      deadline.contents->Option.forEach(clearTimeout)
+      resolve(fired.contents)
+    }
+    watcher :=
+      UiHints.watch(~uiHintsFile, ~dir, ~onReload=() => {
+        fired := fired.contents + 1
+        finish()
+      })
+    deadline := Some(setTimeout(finish, timeoutMs))
+    afterWatching()
+  })
+
+describe("UiHints.watch", () => {
+  testSync("watches nothing when the platform declares no hints file", () =>
+    expect(UiHints.watch(~uiHintsFile=None, ~onReload=() => ()))->toEqual(None)
+  )
+
+  testSync("declines to watch a path whose directory is gone, without throwing", () => {
+    let missing = NodePath.join([tmpdir("reventless-uihints-gone-"), "nowhere", "ui-hints.json"])
+    expect(UiHints.watch(~uiHintsFile=Some(missing), ~onReload=() => ()))->toEqual(None)
+  })
+
+  test("re-serves the file when it changes, and says so", async () => {
+    let dir = distWithHints()
+    let path = declaredFile(declared)
+    UiHints.emit(~uiHintsFile=Some(path), ~dir)
+    let edited = `{"Catalog": {"views": {"Products": {"nav": {"label": "Edited"}}}}}`
+    let fired = await waitForReload(
+      ~uiHintsFile=Some(path),
+      ~dir,
+      ~afterWatching=() => NodeFs.writeFileSync(path, edited),
+    )
+    expect((fired > 0, served(dir)))->toEqual((true, edited))
+  })
+
+  // The save that arrives in two writes. Serving the truncated middle would put
+  // a file the shell cannot parse in front of every caller; throwing would end
+  // the session over a keystroke. Neither: the previous copy stands.
+  test("keeps serving the last good copy when the file is momentarily not JSON", async () => {
+    let dir = distWithHints()
+    let path = declaredFile(declared)
+    UiHints.emit(~uiHintsFile=Some(path), ~dir)
+    let fired = await waitForReload(
+      ~timeoutMs=1500,
+      ~uiHintsFile=Some(path),
+      ~dir,
+      ~afterWatching=() => NodeFs.writeFileSync(path, `{"Catalog": {"views":`),
+    )
+    expect((fired, served(dir)))->toEqual((0, declared))
+  })
+
+  // …and the save completing is itself the next event, so recovery needs no
+  // second trigger. This is why a failed reload can be silent about retrying.
+  test("recovers on the write that finishes the save", async () => {
+    let dir = distWithHints()
+    let path = declaredFile(declared)
+    UiHints.emit(~uiHintsFile=Some(path), ~dir)
+    let whole = `{"Catalog": {"views": {"Products": {"nav": {"label": "Whole"}}}}}`
+    let fired = await waitForReload(
+      ~uiHintsFile=Some(path),
+      ~dir,
+      ~afterWatching=() => {
+        NodeFs.writeFileSync(path, `{"Catalog": {"views":`)
+        let _ = setTimeout(() => NodeFs.writeFileSync(path, whole), 200)
+      },
+    )
+    expect((fired > 0, served(dir)))->toEqual((true, whole))
+  })
+})

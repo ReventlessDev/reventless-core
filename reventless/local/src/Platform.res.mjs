@@ -1295,6 +1295,7 @@ function MakeWithConfig(Config) {
     subscribeToPluginEvents();
     ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined);
     UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), undefined);
+    UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), undefined, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
     if (cfg !== undefined) {
       bakeManifest(plugins$1, cfg);
@@ -3020,6 +3021,7 @@ function Make($star) {
     subscribeToPluginEvents();
     ShellConfig$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest), Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.shellConfig), undefined);
     UiHints$ReventlessLocal.emit(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), undefined);
+    UiHints$ReventlessLocal.watch(Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.uiHintsFile), undefined, LocalEvents_Server$ReventlessLocal.broadcastUiHintsChanged);
     let cfg = Stdlib_Option.flatMap(hostUiBundle, cfg => cfg.bakedManifest);
     if (cfg !== undefined) {
       bakeManifest(plugins$1, cfg);

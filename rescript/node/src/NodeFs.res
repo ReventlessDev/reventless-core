@@ -38,6 +38,34 @@ external writeFileSync: (string, string, @as("utf8") _) => unit = "writeFileSync
 @module("node:fs")
 external writeFileSyncBuffer: (string, Uint8Array.t) => unit = "writeFileSync"
 
+// ── Watching ─────────────────────────────────────────────────────────────────
+
+/** A handle from {!watch}. Held so it can be closed, and so it can be `unref`ed
+    — an active watcher keeps the event loop alive, which turns a stray watch in
+    a test into a run that never exits. */
+type watcher
+
+/** Stop watching. */
+@send external watcherClose: watcher => unit = "close"
+
+/** Take the watcher off the event loop's reference count, so it never by itself
+    keeps the process running. Returns the same watcher, as Node does. */
+@send external watcherUnref: watcher => watcher = "unref"
+
+/** [`fs.watch`](https://nodejs.org/api/fs.html#fswatchfilename-options-listener).
+
+    The listener takes the event type (`"rename"` or `"change"`) and the
+    basename, which Node may report as null on some platforms — hence
+    `Nullable.t`.
+
+    **Watch the directory, not the file**, when the file is one an editor
+    writes: a save that replaces rather than rewrites (write-temp-then-rename,
+    which is how most editors save atomically) gives the path a new inode, and a
+    watcher registered on the old one goes silent with no error. Watching the
+    containing directory and filtering on the basename survives that. */
+@module("node:fs")
+external watch: (string, (string, Nullable.t<string>) => unit) => watcher = "watch"
+
 // ── Directories ──────────────────────────────────────────────────────────────
 
 type dirent

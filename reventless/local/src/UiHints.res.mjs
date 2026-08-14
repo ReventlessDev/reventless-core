@@ -2,8 +2,11 @@
 
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
 
@@ -52,10 +55,50 @@ function emit(uiHintsFile, dir) {
   }
 }
 
+function watch(uiHintsFile, dir, onReload) {
+  return Stdlib_Option.flatMap(uiHintsFile, path => {
+    let sourceDir = Nodepath.dirname(path);
+    let base = Nodepath.basename(path);
+    if (Nodefs.existsSync(sourceDir)) {
+      let pending = {
+        contents: undefined
+      };
+      let reload = () => {
+        pending.contents = undefined;
+        let val;
+        try {
+          val = emit(uiHintsFile, dir);
+        } catch (raw_e) {
+          let e = Primitive_exceptions.internalToException(raw_e);
+          if (e.RE_EXN_ID === "JsExn") {
+            return log.warn("UiHints", undefined, base + ` changed but could not be re-served: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(e._1), "unknown error"));
+          }
+          throw e;
+        }
+        log.info("UiHints", undefined, base + ` changed — re-served`);
+        onReload();
+      };
+      let watcher = Nodefs.watch(sourceDir, (_event, filename) => {
+        if (!(filename == null) && filename === base) {
+          Stdlib_Option.forEach(pending.contents, prim => {
+            clearTimeout(prim);
+          });
+          pending.contents = Primitive_option.some(setTimeout(reload, 50));
+          return;
+        }
+      });
+      log.info("UiHints", undefined, `watching ` + path + ` — edits are served without a restart`);
+      return Primitive_option.some(watcher.unref());
+    }
+    log.warn("UiHints", undefined, `not watching ` + base + `: ` + sourceDir + ` does not exist, so changes to the declared uiHintsFile will need a restart`);
+  });
+}
+
 export {
   log,
   fileName,
   baselineFileName,
   emit,
+  watch,
 }
 /* log Not a pure module */

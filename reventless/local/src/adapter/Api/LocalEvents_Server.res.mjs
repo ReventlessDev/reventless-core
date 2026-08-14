@@ -95,6 +95,15 @@ function broadcast(channel, event) {
   });
 }
 
+let devUiHintsChannel = "/default/dev/uiHints";
+
+function broadcastUiHintsChanged() {
+  broadcast(devUiHintsChannel, frame([[
+      "kind",
+      "uiHintsChanged"
+    ]]));
+}
+
 function broadcastStateChange(name, descriptor) {
   let entityKey = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(descriptor), o => o["id"]), Stdlib_JSON.Decode.string), "");
   if (entityKey === "") {
@@ -328,6 +337,8 @@ export {
   connectionAckFrame,
   dataFrame,
   broadcast,
+  devUiHintsChannel,
+  broadcastUiHintsChanged,
   broadcastStateChange,
   decodeStringField,
   handleFrame,

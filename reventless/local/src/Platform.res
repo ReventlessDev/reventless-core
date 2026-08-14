@@ -1642,6 +1642,19 @@ module MakeWithConfig = (
     // restores the shell package's own hints for a platform that has stopped
     // declaring its own.
     UiHints.emit(~uiHintsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiHintsFile))
+    // The dev loop for the file just written. Editing hints is presentation
+    // work — you change a label, you want to see the label — and routing that
+    // through a platform restart puts fifteen seconds between the two. The
+    // watcher re-serves the file and says so on the events channel every shell
+    // already holds, so the menu restacks where it stands.
+    //
+    // Returned watcher deliberately dropped: it is unref'd and lives exactly as
+    // long as the process, like the servers above it, and holding it to close
+    // would imply a shutdown path this platform does not have.
+    let _ = UiHints.watch(
+      ~uiHintsFile=hostUiBundle->Option.flatMap(cfg => cfg.uiHintsFile),
+      ~onReload=LocalEvents_Server.broadcastUiHintsChanged,
+    )
     switch hostUiBundle->Option.flatMap(cfg => cfg.bakedManifest) {
     | None => ()
     | Some(cfg) => bakeManifest(~pluginComponents=plugins, ~config=cfg)

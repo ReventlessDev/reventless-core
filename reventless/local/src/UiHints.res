@@ -105,3 +105,85 @@ let emit = (
     }
   }
 }
+
+/**
+ Re-copy the declared hints into the served `dist/` whenever the file changes,
+ so editing it is a browser refresh rather than a platform restart.
+
+ Local only, and deliberately so: on AWS the file is an object written once by a
+ deploy, and "the running deployment follows my working copy" is not a thing a
+ deployment should be able to do. This is the dev loop, in the package that is
+ the dev loop.
+
+ **Failures here are logged, not thrown**, which is the one place this parts
+ company with `emit`. At boot a declaration that does not resolve or does not
+ parse is the deployment's mistake and taking the process down is the whole
+ point. Mid-session it is almost always an editor: a save that writes in two
+ steps is briefly a truncated file, and reading it at that instant is normal
+ rather than wrong. Killing a running dev server over a keystroke would make the
+ feature worse than the restart it replaces — so a bad read is reported and the
+ previously served copy stands until the next event, which the save itself
+ produces.
+
+ `onReload` runs only after a re-copy actually succeeded, so a subscriber cannot
+ be told to re-fetch a file that did not change.
+ */
+let watch = (
+  ~uiHintsFile: option<string>,
+  // The same seam `emit` takes, and threaded to it: a test has to be able to
+  // watch a file it wrote into a temp dir without a host-shell package on disk.
+  ~dir: option<string>=?,
+  ~onReload: unit => unit,
+): option<NodeFs.watcher> =>
+  uiHintsFile->Option.flatMap(path => {
+    // Named apart from the `~dir` above, which is where the file is SERVED. This
+    // is where it is AUTHORED, and the two are never the same place — letting
+    // one shadow the other would re-serve the hints into the source tree beside
+    // the file just edited.
+    let sourceDir = NodePath.dirname(path)
+    let base = NodePath.basename(path)
+    if !NodeFs.existsSync(sourceDir) {
+      // `emit` has already thrown on an unreadable declaration by the time this
+      // is reached, so this is the narrow case of a path whose directory went
+      // away between the two — worth a line, not worth a throw.
+      log.warn(
+        ~comp="UiHints",
+        `not watching ${base}: ${sourceDir} does not exist, so changes to the declared ` ++
+        `uiHintsFile will need a restart`,
+      )
+      None
+    } else {
+      // Editors coalesce badly: one save can raise `rename` and `change` within
+      // a millisecond of each other, and re-copying twice would publish twice
+      // and restack the menu twice. The trailing timer collapses a burst into
+      // the single reload the developer actually made.
+      let pending = ref(None)
+      let reload = () => {
+        pending := None
+        switch emit(~uiHintsFile, ~dir?) {
+        | () =>
+          log.info(~comp="UiHints", `${base} changed — re-served`)
+          onReload()
+        | exception JsExn(e) =>
+          log.warn(
+            ~comp="UiHints",
+            `${base} changed but could not be re-served: ` ++
+            e->JsExn.message->Option.getOr("unknown error"),
+          )
+        }
+      }
+      let watcher = NodeFs.watch(sourceDir, (_event, filename) =>
+        switch filename->Nullable.toOption {
+        | Some(name) if name == base =>
+          pending.contents->Option.forEach(clearTimeout)
+          pending := Some(setTimeout(reload, 50))
+        | _ => ()
+        }
+      )
+      log.info(~comp="UiHints", `watching ${path} — edits are served without a restart`)
+      // Never the reason a process stays alive. A platform booted by a test
+      // that happens to declare hints would otherwise hold the event loop open
+      // and hang the run.
+      Some(watcher->NodeFs.watcherUnref)
+    }
+  })

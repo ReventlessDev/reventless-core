@@ -100,6 +100,30 @@ let broadcast = (~channel: string, ~event: string): unit =>
     )
   )
 
+/** The channel a shell listens on to learn that this platform re-served its
+    hints file.
+
+    A fixed path rather than a derived one because it names no entity: there is
+    one hints file per deployment and one thing to say about it. Under `/dev/`
+    so it reads as what it is — a local development signal with no counterpart
+    on AWS, where the file is an object a deploy writes once.
+
+    Kept here, beside the broadcaster, because the string has to be identical on
+    both sides of a socket and a channel nothing listens to fails silently: the
+    connection stays open and the message simply lands nowhere. */
+let devUiHintsChannel = "/default/dev/uiHints"
+
+/** Tell every connected shell that `ui-hints.json` has been re-served.
+
+    The payload carries no hints. The shell re-fetches the file it already knows
+    how to fetch, which keeps this a cache-invalidation signal rather than a
+    second delivery path that could disagree with the first. */
+let broadcastUiHintsChanged = (): unit =>
+  broadcast(
+    ~channel=devUiHintsChannel,
+    ~event=frame([("kind", JSON.Encode.string("uiHintsChanged"))]),
+  )
+
 /** LocalBus bridge: a Source B change descriptor becomes a publish on the
     same channel the AWS StateTopic Lambda would use. No-op without matching
     subscribers, so wiring order against server start doesn't matter. */
