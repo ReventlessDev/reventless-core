@@ -25,19 +25,19 @@ let decodeFragment = (fragment: Reventless.Plugin.apiSchemaFragment) =>
 describe("AppSync_Adapter.injectAwsAuthAll", () => {
   let baseFragment = ReventlessCore.Platform_AdminApi.baseFragment(~cloner=true)
 
-  testSync("adds @aws_auth directive to all mutation fields", () => {
+  testSync("adds the Cognito group directive to all mutation fields", () => {
     let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
     let parts = decodeFragment(augmented)
     parts.mutations->Array.forEach(field => {
-      expect(field)->toContain(`@aws_auth(cognito_groups: ["Admin"])`)
+      expect(field)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
     })
   })
 
-  testSync("adds @aws_auth directive to all query fields", () => {
+  testSync("adds the Cognito group directive to all query fields", () => {
     let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
     let parts = decodeFragment(augmented)
     parts.queries->Array.forEach(field => {
-      expect(field)->toContain(`@aws_auth(cognito_groups: ["Admin"])`)
+      expect(field)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
     })
   })
 
@@ -61,15 +61,15 @@ describe("AppSync_Adapter.injectAwsAuthAll", () => {
   // admin base. That caused AppSync to reject the auto-generated resolver for
   // `Subscription.onPlatform_Plugin_Activate` (and Deactivate) with "Type not
   // found" at deploy time. The subscription fields must survive the round-trip
-  // and pick up the same @aws_auth group as mutations/queries.
-  testSync("preserves subscription fields with @aws_auth directive", () => {
+  // and pick up the same Cognito group directive as mutations/queries.
+  testSync("preserves subscription fields with the Cognito group directive", () => {
     let original = decodeFragment(baseFragment)
     let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
     let parts = decodeFragment(augmented)
     expect(parts.subscriptions->Array.length)->toBe(original.subscriptions->Array.length)
     expect(parts.subscriptions->Array.length)->toBeGreaterThan(0)
     parts.subscriptions->Array.forEach(field => {
-      expect(field)->toContain(`@aws_auth(cognito_groups: ["Admin"])`)
+      expect(field)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
     })
   })
 
@@ -79,6 +79,21 @@ describe("AppSync_Adapter.injectAwsAuthAll", () => {
     let joined = parts.subscriptions->Array.join("\n")
     expect(joined)->toContain("onPlatform_Plugin_Activate")
     expect(joined)->toContain("onPlatform_Plugin_Deactivate")
+  })
+
+  // Regression: the admin base was stamped with the single-mode
+  // `@aws_auth(cognito_groups: [...])`, which AppSync IGNORES on a multi-auth API
+  // — and every API this adapter provisions is multi-auth. A deployed probe found
+  // a Cognito user in no groups reading every admin field. The directive must be
+  // `@aws_cognito_user_pools(...)`, the form the service actually enforces.
+  // See docs/plans/appsync-group-authorization-unenforced.md.
+  testSync("never emits the single-mode @aws_auth form on any field", () => {
+    let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
+    let parts = decodeFragment(augmented)
+    let everyField =
+      Array.concatMany(parts.mutations, [parts.queries, parts.subscriptions])->Array.join("\n")
+    expect(everyField)->not_->toContain("@aws_auth")
+    expect(everyField)->toContain("@aws_cognito_user_pools")
   })
 })
 
@@ -97,12 +112,12 @@ describe("AppSync_Adapter.injectAwsAuth", () => {
     )
     let parts = decodeFragment(augmented)
 
-    // Query entries have authorization → should have @aws_auth
+    // Query entries have authorization → should carry the directive
     let queryWithAuth =
       queryEntries->Array.some(entry => entry.authorization->Option.isSome)
     if queryWithAuth {
       let hasAuthQuery = parts.queries->Array.some(field =>
-        field->String.includes("@aws_auth")
+        field->String.includes("@aws_cognito_user_pools")
       )
       expect(hasAuthQuery)->toBe(true)
     }
@@ -124,11 +139,11 @@ describe("AppSync_Adapter.generateFragment", () => {
   })
 })
 
-// ── Stage E2: spec-level permission → @aws_auth directive ───────────────
+// ── Stage E2: spec-level permission → Cognito group directive ───────────────
 //
 // Verifies that `injectAwsAuth` lifts the `Authorization.permission` values
 // (set by Plugin_Builder / Dcb_Builder from `@@reventless.authorize` /
-// `@authorize` PPX annotations) into `@aws_auth(cognito_groups: [...])`
+// `@authorize` PPX annotations) into `@aws_cognito_user_pools(cognito_groups: [...])`
 // directives on the corresponding SDL fields.
 
 describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => {
@@ -182,7 +197,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     )
     let parts = decodeFragment(aug)
     let m = parts.mutations->Array.getUnsafe(0)
-    expect(m)->toContain(`@aws_auth(cognito_groups: ["Admin"])`)
+    expect(m)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
   })
 
   testSync("AllowGroups multi-group emits comma-separated groups", () => {
@@ -199,7 +214,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     )
     let parts = decodeFragment(aug)
     expect(parts.mutations->Array.getUnsafe(0))->toContain(
-      `@aws_auth(cognito_groups: ["Admin", "Editor"])`,
+      `@aws_cognito_user_pools(cognito_groups: ["Admin", "Editor"])`,
     )
   })
 
@@ -216,7 +231,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
       ~queryEntries=[],
     )
     let parts = decodeFragment(aug)
-    expect(parts.mutations->Array.getUnsafe(0))->not_->toContain("@aws_auth")
+    expect(parts.mutations->Array.getUnsafe(0))->not_->toContain("@aws_cognito_user_pools")
   })
 
   testSync("DenyAll emits sentinel __deny_all__ group", () => {
@@ -258,7 +273,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     | None => JsError.throwWithMessage("missing archive field")
     }
     switch add {
-    | Some(f) => expect(f)->not_->toContain("@aws_auth")
+    | Some(f) => expect(f)->not_->toContain("@aws_cognito_user_pools")
     | None => JsError.throwWithMessage("missing add field")
     }
   })
@@ -344,7 +359,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
       ~queryEntries=[],
     )
     let parts = decodeFragment(aug)
-    expect(parts.mutations->Array.getUnsafe(0))->not_->toContain("@aws_auth")
+    expect(parts.mutations->Array.getUnsafe(0))->not_->toContain("@aws_cognito_user_pools")
   })
 })
 
@@ -397,7 +412,7 @@ describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
     expect(m)->not_->toContain("@aws_auth")
   })
 
-  testSync("a non-systemCallable sibling keeps single-mode @aws_auth (no @aws_iam)", () => {
+  testSync("a non-systemCallable sibling stays Cognito-only (no @aws_iam)", () => {
     let entry: ReventlessInfra.Api.mutationSchemaEntry = {
       fieldNames: ["p_Sync", "p_Other"],
       commandSchema: S.unknown,
@@ -420,7 +435,7 @@ describe("AppSync_Adapter.injectAwsAuth — systemCallable dual-auth", () => {
     let parts = decodeFragment(aug)
     switch parts.mutations->Array.find(f => f->String.includes("p_Other")) {
     | Some(other) =>
-      expect(other)->toContain(`@aws_auth(cognito_groups: ["Admin"])`)
+      expect(other)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
       expect(other)->not_->toContain("@aws_iam")
     | None => JsError.throwWithMessage("missing p_Other field")
     }
@@ -588,13 +603,13 @@ describe("AppSync_Adapter.injectAwsAuthAll — ~iamFieldNames", () => {
         expect(field)->toContain("@aws_iam")
         expect(field)->not_->toContain("@aws_auth")
       } else {
-        expect(field)->toContain(`@aws_auth(cognito_groups: ["Admin"])`)
+        expect(field)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
         expect(field)->not_->toContain("@aws_iam")
       }
     })
   })
 
-  testSync("default (no ~iamFieldNames) leaves every field single-mode @aws_auth", () => {
+  testSync("default (no ~iamFieldNames) leaves every field Cognito-only", () => {
     let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
     let parts = decodeFragment(augmented)
     parts.mutations->Array.forEach(field => expect(field)->not_->toContain("@aws_iam"))

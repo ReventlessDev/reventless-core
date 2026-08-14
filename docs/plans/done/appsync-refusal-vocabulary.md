@@ -1,6 +1,27 @@
 # Plan: the AppSync path says which refusal it gave
 
-**Status.** Design only — nothing built. The local adapter gained the
+**Status. CLOSED 2026-08-14 — §6.1 answered badly, exactly as feared.** Step 0
+was run against the deployed alpha API. `@aws_auth` is **not enforced** on these
+multi-auth APIs: a Cognito user in no groups read every admin-gated field and
+executed a group-gated mutation. Per step 1, this plan is closed in favour of
+[appsync-group-authorization-unenforced.md](../appsync-group-authorization-unenforced.md),
+which carries the captured bodies and the fix.
+
+**The §2 table below is disproven, not merely unverified.** Its middle row
+predicted that an identified-but-unentitled caller meets a field error; the
+observed behaviour is that the resolver *runs*. Nothing in §4's options survives
+that: there is no refusal vocabulary to reconcile until there is a refusal.
+
+What did survive: §1 (the local adapter's behaviour, unchanged), §3's diagnosis
+that the two adapters are unreconciled — now understood to be a far deeper
+disagreement than wording — and the three asymmetries in §3, which remain
+accurate about the AWS path's shape. Reopen this plan (`git mv` back per repo
+convention) once group gating is actually enforced; the vocabulary question is
+then worth asking from observation rather than from assumption.
+
+---
+
+**Original status.** Design only — nothing built. The local adapter gained the
 distinction on 2026-08-14 (`69c4fabc5`): a caller it identified who lacks the
 required group is refused with `FORBIDDEN`, and `UNAUTHORIZED` is left to the
 caller it could not identify. The AWS path still has one vocabulary for both,
@@ -49,11 +70,17 @@ whose JWT does verify, against a field carrying
 So the split is already there. It is expressed as **transport status versus
 field error**, where the local path expresses it as **two extensions codes**:
 
-| Caller | AWS path (expected — see §6.2) |
-| --- | --- |
-| Identified, holds the group | resolver runs |
-| Identified, lacks the group | HTTP 200 · field error · `errorType: "Unauthorized"` |
-| Credentials did not verify | HTTP 401 · no field error |
+| Caller | AWS path (expected — see §6.2) | **Observed 2026-08-14** |
+| --- | --- | --- |
+| Identified, holds the group | resolver runs | ✅ resolver runs |
+| Identified, lacks the group | HTTP 200 · field error · `errorType: "Unauthorized"` | ❌ **resolver runs — no refusal at all** |
+| Credentials did not verify | HTTP 401 · no field error | ✅ HTTP 401 `UnauthorizedException` |
+
+> **The middle row is wrong.** The paragraph below it — "a field-level
+> authorization refusal can *only* reach a caller the service already
+> authenticated" — is true but vacuous: on this configuration there is no
+> field-level refusal to reach anyone. See
+> [appsync-group-authorization-unenforced.md](../appsync-group-authorization-unenforced.md).
 
 Note what that second row means: on this path, a field-level authorization
 refusal can *only* reach a caller the service already authenticated. The
@@ -147,7 +174,15 @@ written against it.
 
 ## §6 — Hazards, both to answer before building
 
-### 6.1 — Is `@aws_auth` honoured on a multi-auth API at all? 🚨
+### 6.1 — Is `@aws_auth` honoured on a multi-auth API at all? 🚨 **ANSWERED: NO**
+
+> **Observed 2026-08-14.** It is **ignored**. The third outcome below is the one
+> that happened: the admin surface is gated by nothing on the AWS path. A
+> throwaway Cognito user in no groups received the full payload of every
+> admin-gated query (HTTP 200), and a group-gated mutation reached its command
+> handler. The security finding, the captured bodies and the fix are in
+> [appsync-group-authorization-unenforced.md](../appsync-group-authorization-unenforced.md).
+> Everything below this box is the original reasoning, kept as written.
 
 `@aws_auth` is the **single-mode** directive. The file's own comment
 (`AppSync_SdlDecorate.res:84-89`, restated at `AppSync_Adapter.res:193-206`)
@@ -166,11 +201,18 @@ anyway, or **ignores it**. The third would mean the admin surface is gated by
 nothing on the AWS path, which is a security finding that outranks everything
 else in this file. Answer it first, and answer it by observation.
 
-### 6.2 — The §2 table is expected behaviour, not observed
+### 6.2 — The §2 table is expected behaviour, not observed **— RESOLVED: one row was wrong**
 
 Both AWS rows are reasoned from how the service is configured, not from a
 captured response. The whole plan rests on them. Capture real bodies — status
 line and full JSON — for each row before writing any mapping down.
+
+> **Observed 2026-08-14.** The caution was warranted. The 401 row held; the
+> unentitled row did not. Recorded inline in the §2 table above, with verbatim
+> bodies in
+> [appsync-group-authorization-unenforced.md](../appsync-group-authorization-unenforced.md) §1.
+> This is the case for step 0 existing at all: the plan would otherwise have
+> built a mapping onto a refusal that never happens.
 
 ## §7 — Steps
 

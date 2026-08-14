@@ -126,22 +126,6 @@ function _permissionToCognitoGroups(permission) {
   }
 }
 
-function _formatGroupsDirective(groups) {
-  let quoted = groups.map(g => `"` + g + `"`).join(", ");
-  return `@aws_auth(cognito_groups: [` + quoted + `])`;
-}
-
-function _formatDualAuthDirective(groups) {
-  let cognito;
-  if (groups !== undefined) {
-    let quoted = groups.map(x => `"` + x + `"`).join(", ");
-    cognito = `@aws_cognito_user_pools(cognito_groups: [` + quoted + `])`;
-  } else {
-    cognito = `@aws_cognito_user_pools`;
-  }
-  return cognito + ` @aws_iam`;
-}
-
 function _typeDeclName(decl) {
   if (!decl.startsWith("type ")) {
     return;
@@ -228,9 +212,9 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
     let fieldName = GraphQL_Stitcher$ReventlessCore.extractLeadingName(field);
     let groups = mutationAuthMap[fieldName];
     if (Stdlib_Option.getOr(iamFields[fieldName], false)) {
-      return field + `\n    ` + _formatDualAuthDirective(groups);
+      return field + `\n    ` + AppSync_SdlDecorate$ReventlessAws.formatDualAuthDirective(groups);
     } else if (groups !== undefined) {
-      return field + `\n    ` + _formatGroupsDirective(groups);
+      return field + `\n    ` + AppSync_SdlDecorate$ReventlessAws.formatCognitoGroupsDirective(groups);
     } else {
       return field;
     }
@@ -240,9 +224,9 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
     let groups = queryAuthMap[fieldName];
     let isIam = Stdlib_Option.getOr(iamFields[fieldName], false) || iamQueryFieldPrefixes.some(p => fieldName.startsWith(p));
     if (isIam) {
-      return field + ` ` + _formatDualAuthDirective(groups);
+      return field + ` ` + AppSync_SdlDecorate$ReventlessAws.formatDualAuthDirective(groups);
     } else if (groups !== undefined) {
-      return field + ` ` + _formatGroupsDirective(groups);
+      return field + ` ` + AppSync_SdlDecorate$ReventlessAws.formatCognitoGroupsDirective(groups);
     } else {
       return field;
     }
@@ -345,6 +329,10 @@ function generateFragment(mutationEntries, queryEntries) {
   let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries, queryEntries);
   return injectAwsAuth(fragment, mutationEntries, queryEntries);
 }
+
+let _formatGroupsDirective = AppSync_SdlDecorate$ReventlessAws.formatCognitoGroupsDirective;
+
+let _formatDualAuthDirective = AppSync_SdlDecorate$ReventlessAws.formatDualAuthDirective;
 
 let stampSharedIamTypes = AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes;
 

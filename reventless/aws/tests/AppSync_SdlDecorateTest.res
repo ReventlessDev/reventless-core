@@ -31,7 +31,7 @@ type Mutation {
 type Subscription {
   onCatalog_AddProduct(id: ID): CommandResult
   onUIFragmentChange: UIFragmentChangeEvent
-    @aws_auth(cognito_groups: ["Admin"])
+    @aws_cognito_user_pools(cognito_groups: ["Admin"])
   onCatalogEventLog_eventAppended: CatalogEventLogEvent
 }`
 
@@ -43,13 +43,13 @@ describe("AppSync_SdlDecorate.injectAwsSubscribe", () => {
     )
   })
 
-  testSync("appends the many-mutations fan-in on a no-arg field, keeping @aws_auth", () => {
+  testSync("appends the many-mutations fan-in on a no-arg field, keeping the group directive", () => {
     let sdl = AppSync_SdlDecorate.injectAwsSubscribe(stitchedSdl, ~sources)
     expect(sdl)->toContain(
       `onUIFragmentChange: UIFragmentChangeEvent\n    @aws_subscribe(mutations: ["Platform_UIFragmentRegistered", "Platform_UIFragmentUpdated", "Platform_UIFragmentDeregistered"])`,
     )
     // The auth directive line appended by injectAwsAuthAll survives.
-    expect(sdl)->toContain(`@aws_auth(cognito_groups: ["Admin"])`)
+    expect(sdl)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
   })
 
   testSync("leaves unmapped fields (Source A) and non-Subscription blocks untouched", () => {
@@ -113,7 +113,7 @@ describe("AppSync_SdlDecorate.injectAwsAuthAll", () => {
     expect(parts.mutations->Array.getUnsafe(0))->toContain("@aws_iam")
     // A query NOT in iamFieldNames stays Cognito-only.
     let other = queryField("Other_Query")
-    expect(other)->toContain(`@aws_auth(cognito_groups: ["Admin"])`)
+    expect(other)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Admin"])`)
     expect(other->String.includes("@aws_iam"))->toBe(false)
   })
 })

@@ -67,26 +67,43 @@ let injectAwsSubscribe = (
 // the deploy path without dragging Pulumi into the runtime graph. AppSync_Adapter
 // delegates its `injectAwsAuthAll` / `stampSharedIamTypes` to these definitions.
 
+// Cognito group gate. `@aws_cognito_user_pools(cognito_groups: [...])` — NOT the
+// single-mode `@aws_auth(cognito_groups: [...])`.
+//
+// `@aws_auth` is honoured only on an API whose sole authorization mode is
+// AMAZON_COGNITO_USER_POOLS. This adapter always configures AWS_IAM as an
+// additional provider (see AppSync_Adapter's api args — the server-to-server
+// lambdas need it), so every API we provision is multi-auth and the service
+// **silently ignores** `@aws_auth`: the schema deploys, the directive shows up
+// in the deployed SDL, and it gates nothing. What is left is
+// `userPoolConfig.defaultAction: ALLOW`, which admits every authenticated
+// Cognito user — a group gate that fails open.
+//
+// Confirmed by observation against a deployed API: a user in no groups read
+// every `@aws_auth`-gated field and reached a gated mutation's handler. See
+// docs/plans/appsync-group-authorization-unenforced.md.
+let formatCognitoGroupsDirective = (groups: array<string>): string => {
+  let quoted = groups->Array.map(g => `"${g}"`)->Array.join(", ")
+  `@aws_cognito_user_pools(cognito_groups: [${quoted}])`
+}
+
 // Multi-auth directive for a field/type that must accept BOTH Cognito and IAM.
 // `groups=Some([...])` preserves Cognito group gating; `groups=None` keeps it
 // open to any authenticated Cognito user. `@aws_iam` admits the deploy-time
 // SigV4 system caller.
 let formatDualAuthDirective = (groups: option<array<string>>): string => {
   let cognito = switch groups {
-  | Some(g) =>
-    let quoted = g->Array.map(x => `"${x}"`)->Array.join(", ")
-    `@aws_cognito_user_pools(cognito_groups: [${quoted}])`
+  | Some(g) => formatCognitoGroupsDirective(g)
   | None => `@aws_cognito_user_pools`
   }
   `${cognito} @aws_iam`
 }
 
-// Injects @aws_auth with the given group on ALL mutation, query, and subscription
-// fields in a fragment. `~iamFieldNames` opts the named mutation/query fields into
-// deploy-time IAM (dual-auth): those fields emit
-// `@aws_cognito_user_pools(cognito_groups: ["<group>"]) @aws_iam` instead of the
-// single-mode `@aws_auth(...)`, keeping the same Cognito gating while also admitting
-// the SigV4 system caller. Subscriptions are never IAM-marked.
+// Injects the Cognito group gate on ALL mutation, query, and subscription fields
+// in a fragment. `~iamFieldNames` opts the named mutation/query fields into
+// deploy-time IAM as well, appending the `@aws_iam` arm. Subscriptions are never
+// IAM-marked (the deploy caller does not subscribe) but still carry the Cognito
+// gate — a subscription is a read.
 let injectAwsAuthAll = (
   fragment: Reventless.Plugin.apiSchemaFragment,
   ~group: string,
@@ -95,19 +112,18 @@ let injectAwsAuthAll = (
   let parts = ReventlessCore.GraphQL_Stitcher.decode(fragment)
   let isIam = (field: string): bool =>
     iamFieldNames->Array.includes(ReventlessCore.GraphQL_Stitcher.extractLeadingName(field))
+  let cognitoOnly = formatCognitoGroupsDirective([group])
 
   let augmentedMutations = parts.mutations->Array.map(field =>
     isIam(field)
       ? `${field}\n    ${formatDualAuthDirective(Some([group]))}`
-      : `${field}\n    @aws_auth(cognito_groups: ["${group}"])`
+      : `${field}\n    ${cognitoOnly}`
   )
   let augmentedQueries = parts.queries->Array.map(field =>
-    isIam(field)
-      ? `${field} ${formatDualAuthDirective(Some([group]))}`
-      : `${field} @aws_auth(cognito_groups: ["${group}"])`
+    isIam(field) ? `${field} ${formatDualAuthDirective(Some([group]))}` : `${field} ${cognitoOnly}`
   )
   let augmentedSubscriptions = parts.subscriptions->Array.map(field =>
-    `${field}\n    @aws_auth(cognito_groups: ["${group}"])`
+    `${field}\n    ${cognitoOnly}`
   )
 
   ReventlessCore.GraphQL_Stitcher.encode({

@@ -6,12 +6,19 @@
 // ([Auth_ActiveRoleTrigger.res] bundles it and attaches it to the user pool).
 //
 // The narrowing has to happen here rather than in our own enforcement code
-// because `@authorize(AllowGroups([...]))` compiles to `@aws_auth`, which AppSync
+// because `@authorize(AllowGroups([...]))` compiles to a field directive AppSync
 // evaluates against `cognito:groups` **before any of our code executes**. A
 // request header we invent could scope reads correctly and still leave every
 // group-gated mutation callable — right about the data, wrong about the writes.
 // Overriding the group claim is the one place every enforcement point already
 // looks.
+//
+// That premise was false for as long as the directive was emitted as the
+// single-mode `@aws_auth(...)`, which AppSync ignores on a multi-auth API — the
+// gate was open and this trigger narrowed a claim nothing read for authorization.
+// The directive is now `@aws_cognito_user_pools(...)`, which the service does
+// enforce, so the reasoning above holds again. See
+// `AppSync_SdlDecorate.formatCognitoGroupsDirective`.
 //
 // **Version 1 of the trigger, deliberately.** Group override and added ID-token
 // claims are `V1_0` capabilities; `V2_0`/`V3_0` buy access-token customisation

@@ -37,35 +37,35 @@ function injectAwsSubscribe(sdl, sources) {
   return before + decorated + after;
 }
 
+function formatCognitoGroupsDirective(groups) {
+  let quoted = groups.map(g => `"` + g + `"`).join(", ");
+  return `@aws_cognito_user_pools(cognito_groups: [` + quoted + `])`;
+}
+
 function formatDualAuthDirective(groups) {
-  let cognito;
-  if (groups !== undefined) {
-    let quoted = groups.map(x => `"` + x + `"`).join(", ");
-    cognito = `@aws_cognito_user_pools(cognito_groups: [` + quoted + `])`;
-  } else {
-    cognito = `@aws_cognito_user_pools`;
-  }
+  let cognito = groups !== undefined ? formatCognitoGroupsDirective(groups) : `@aws_cognito_user_pools`;
   return cognito + ` @aws_iam`;
 }
 
 function injectAwsAuthAll(fragment, group, iamFieldNamesOpt) {
   let iamFieldNames = iamFieldNamesOpt !== undefined ? iamFieldNamesOpt : [];
   let parts = GraphQL_Stitcher$ReventlessCore.decode(fragment);
+  let cognitoOnly = formatCognitoGroupsDirective([group]);
   let augmentedMutations = parts.mutations.map(field => {
     if (iamFieldNames.includes(GraphQL_Stitcher$ReventlessCore.extractLeadingName(field))) {
       return field + `\n    ` + formatDualAuthDirective([group]);
     } else {
-      return field + `\n    @aws_auth(cognito_groups: ["` + group + `"])`;
+      return field + `\n    ` + cognitoOnly;
     }
   });
   let augmentedQueries = parts.queries.map(field => {
     if (iamFieldNames.includes(GraphQL_Stitcher$ReventlessCore.extractLeadingName(field))) {
       return field + ` ` + formatDualAuthDirective([group]);
     } else {
-      return field + ` @aws_auth(cognito_groups: ["` + group + `"])`;
+      return field + ` ` + cognitoOnly;
     }
   });
-  let augmentedSubscriptions = parts.subscriptions.map(field => field + `\n    @aws_auth(cognito_groups: ["` + group + `"])`);
+  let augmentedSubscriptions = parts.subscriptions.map(field => field + `\n    ` + cognitoOnly);
   return GraphQL_Stitcher$ReventlessCore.encode({
     types: parts.types,
     mutations: augmentedMutations,
@@ -125,6 +125,7 @@ function stampCanonicalTypes(sdl) {
 
 export {
   injectAwsSubscribe,
+  formatCognitoGroupsDirective,
   formatDualAuthDirective,
   injectAwsAuthAll,
   sharedIamTypeNames,

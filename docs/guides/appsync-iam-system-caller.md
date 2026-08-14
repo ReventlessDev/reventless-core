@@ -14,19 +14,26 @@ profile) — i.e. it authenticates via the `AWS_IAM` provider.
 
 On a multi-auth AppSync API a field is reachable by a given auth mode **only if
 it carries that mode's directive**. By default the AWS adapter stamps every
-mutation/query with the single-mode Cognito directive:
+group-gated mutation/query with the Cognito-only directive:
 
 ```graphql
-Platform_SyncComponent(...): CommandResult @aws_auth(cognito_groups: ["Admin"])
+Platform_SyncComponent(...): CommandResult @aws_cognito_user_pools(cognito_groups: ["Admin"])
 ```
 
-`@aws_auth(...)` is the *single-default-auth* form; it does **not** admit IAM.
-No field carries `@aws_iam`, so the IAM caller is `Unauthorized` on every field:
+That admits the console UI and nothing else. No field carries `@aws_iam`, so the
+IAM caller is `Unauthorized` on every field:
 
 ```
 errorType: Unauthorized
 "Not Authorized to access <Field> on type Query|Mutation"
 ```
+
+> **Not `@aws_auth`.** The single-mode `@aws_auth(cognito_groups: [...])` form
+> admits neither IAM *nor* — on a multi-auth API — anyone at all: AppSync ignores
+> it outright, and `defaultAction: ALLOW` then opens the field to every
+> authenticated Cognito user. The adapter emitted that form until the fix in
+> `docs/plans/appsync-group-authorization-unenforced.md`; every group gate was
+> inert. If you see `@aws_auth` anywhere in a deployed SDL, it is gating nothing.
 
 ## Opting a field into dual-auth (Cognito + IAM)
 
@@ -57,8 +64,7 @@ Where the schema entry is constructed by hand (framework/internal code), set
 `systemCallable: true` on the field's schema entry
 (`ReventlessInfra.Api.mutationSchemaEntry` / `querySchemaEntry`).
 
-In both cases the AWS adapter emits the **multi-auth** directive form for that
-field instead of `@aws_auth`:
+In both cases the AWS adapter appends the **IAM arm** to that field's directive:
 
 ```graphql
 Platform_SyncComponent(...): CommandResult
@@ -75,9 +81,9 @@ For the admin **base fragment** (pushed via `AppSync_Adapter.injectAwsAuthAll`),
 pass `~iamFieldNames=[...]` to mark specific base fields dual-auth.
 
 **Opt-in per field.** Only fields a system caller actually invokes should set
-`systemCallable`. Every other field keeps the single-mode `@aws_auth` form
-unchanged. Subscriptions are never IAM-marked — the deploy caller does not
-subscribe.
+`systemCallable`. Every other field keeps its Cognito-only directive unchanged.
+Subscriptions are never IAM-marked — the deploy caller does not subscribe — but
+they do carry the Cognito group gate, since a subscription is a read.
 
 ## Security — constrain the IAM principal
 

@@ -171,9 +171,9 @@ let rec waitForMergeSuccess = async (
   }
 }
 
-// ── @aws_auth directive injection ─────────────────────────────────────────
-// Injects @aws_auth(cognito_groups: [...]) directives into SDL field strings
-// based on authorization metadata from schema entries.
+// ── Cognito group directive injection ─────────────────────────────────────
+// Injects @aws_cognito_user_pools(cognito_groups: [...]) directives into SDL
+// field strings based on authorization metadata from schema entries.
 //
 // Two sources are merged:
 //   1. The legacy `authorization?: {tableName, group}` field — single group
@@ -184,19 +184,22 @@ let rec waitForMergeSuccess = async (
 //
 // When both are present on the same field, the spec-level permission wins
 // (it is more specific). `AllowGroups([g1, g2, ...])` emits
-// `@aws_auth(cognito_groups: ["g1", "g2", ...])`. `AllowAuthenticated` /
-// `AllowAnonymous` emit no directive (with Cognito as primary auth, any
-// reaching request is already authenticated). `AllowGroups([])` and
-// `DenyAll` emit a sentinel `__deny_all__` group that no Cognito user can
+// `@aws_cognito_user_pools(cognito_groups: ["g1", "g2", ...])`.
+// `AllowAuthenticated` / `AllowAnonymous` emit no directive (with Cognito as
+// primary auth, any reaching request is already authenticated). `AllowGroups([])`
+// and `DenyAll` emit a sentinel `__deny_all__` group that no Cognito user can
 // belong to — effectively blocking the field at the API layer.
+//
+// NOT `@aws_auth(...)`: that is the single-mode form, which AppSync ignores on a
+// multi-auth API — which every API this adapter provisions is. See
+// `AppSync_SdlDecorate.formatCognitoGroupsDirective` for the full rationale and
+// the observation that established it.
 //
 // ── Dual-auth (Cognito + IAM) for deploy-time system callers ────────────────
 // A field flagged `systemCallable` (via `mutationSchemaEntry`/`querySchemaEntry`)
 // must be reachable by BOTH the console UI (Cognito) and a deploy-time system
 // caller signing SigV4 with ambient AWS credentials (`Util_AppSync_Caller`,
-// the AWS_IAM additional auth provider). `@aws_auth(...)` is the single-mode
-// directive form and does not admit IAM on a multi-auth API. For these fields
-// we emit the multi-auth form instead:
+// the AWS_IAM additional auth provider). For these fields we append the IAM arm:
 //   @aws_cognito_user_pools(cognito_groups: [...]) @aws_iam
 // The Cognito arm preserves the field's existing group gating (or, when the
 // field carries no Cognito group restriction, a bare `@aws_cognito_user_pools`
@@ -215,24 +218,17 @@ let _permissionToCognitoGroups = (
   | AllowAuthenticated | AllowAnonymous => None
   }
 
-let _formatGroupsDirective = (groups: array<string>): string => {
-  let quoted = groups->Array.map(g => `"${g}"`)->Array.join(", ")
-  `@aws_auth(cognito_groups: [${quoted}])`
-}
+// Both directive forms are defined once in the runtime-pure AppSync_SdlDecorate
+// so this deploy path and the bundled AdminEventCollector Lambda's reactive push
+// cannot drift. The Cognito-only arm carries the rationale for why it is
+// `@aws_cognito_user_pools(...)` and never `@aws_auth(...)`.
+let _formatGroupsDirective = AppSync_SdlDecorate.formatCognitoGroupsDirective
 
 // Multi-auth directive for a field that must accept BOTH Cognito and IAM.
 // `groups=Some([...])` preserves Cognito group gating; `groups=None` keeps the
 // field open to any authenticated Cognito user. `@aws_iam` admits the
 // deploy-time SigV4 system caller. See the dual-auth note above.
-let _formatDualAuthDirective = (groups: option<array<string>>): string => {
-  let cognito = switch groups {
-  | Some(g) =>
-    let quoted = g->Array.map(x => `"${x}"`)->Array.join(", ")
-    `@aws_cognito_user_pools(cognito_groups: [${quoted}])`
-  | None => `@aws_cognito_user_pools`
-  }
-  `${cognito} @aws_iam`
-}
+let _formatDualAuthDirective = AppSync_SdlDecorate.formatDualAuthDirective
 
 // ── Type-level dual-auth ─────────────────────────────────────────────────────
 // On a multi-auth API, object TYPES without auth directives are accessible only

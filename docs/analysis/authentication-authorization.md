@@ -32,7 +32,18 @@ type meta = { ip: array<string>, user: string, info: string }
 type authorization = { tableName: string, group: string }
 ```
 
-**AWS AppSync** injects `@aws_auth(cognito_groups: ["Group"])` directives into the stitched SDL. Authentication type is hardcoded to `AMAZON_COGNITO_USER_POOLS`.
+**AWS AppSync** injects Cognito group directives into the stitched SDL. Primary
+authentication type is `AMAZON_COGNITO_USER_POOLS`.
+
+> **Correction (2026-08-14).** This document was written when the adapter emitted
+> `@aws_auth(cognito_groups: [...])`, and several statements below assume AppSync
+> enforces that directive. It does not: the API also configures `AWS_IAM` as an
+> additional provider, and on a multi-auth API the single-mode `@aws_auth` form
+> is ignored outright — every group gate was open to any authenticated Cognito
+> user. The adapter now emits `@aws_cognito_user_pools(cognito_groups: [...])`,
+> which the service does enforce. Read every `@aws_auth` claim below as being
+> about that superseded form. See
+> `docs/plans/appsync-group-authorization-unenforced.md`.
 
 **In-memory GraphQL** (graphql-yoga) has no authentication — the `user` field in `CommandGenerator.meta` is hardcoded to `"local"`.
 
@@ -342,7 +353,7 @@ Client Request
 | MCP tool auth | None | Check `commandAuthorization` before tool call | Same check |
 | MCP resource auth | None | Check `authorization` before resource read | Same check |
 
-For AWS AppSync specifically, the `@aws_auth` directive injection can remain as an **optimization** — AppSync enforces it at the gateway level before Lambda is even invoked. The generalized check acts as a fallback for non-AppSync transports (Lambda Function URL for MCP, future REST API).
+For AWS AppSync specifically, the group directive injection can remain as an **optimization** — AppSync enforces `@aws_cognito_user_pools(cognito_groups: [...])` at the gateway level before Lambda is even invoked. (It does **not** enforce the single-mode `@aws_auth` form on a multi-auth API; see the correction in §1.) The generalized check acts as a fallback for non-AppSync transports (Lambda Function URL for MCP, future REST API) — and, given that this directive silently failed open for as long as it was the wrong form, as defence in depth rather than pure redundancy.
 
 ---
 
