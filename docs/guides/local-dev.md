@@ -292,6 +292,31 @@ does on save:
   `elevatedGroups` is ReScript: rebuild and restart. Only the hints file is
   followed live.
 
+## Staying logged in across restarts
+
+Local tokens are signed with an HMAC secret resolved in three steps: the
+`REVENTLESS_INMEMORY_TOKEN_SECRET` env var (≥16 chars) if set, otherwise
+`.reventless/token-secret` — minted on the first boot that finds the directory
+and reused by every boot after — and failing both, random per process.
+
+That middle step is what keeps a logged-in tab working across a restart, and it
+matters more than a manual restart suggests: `tsx watch` re-execs the process on
+every ReScript rebuild, so a per-process secret used to sign you out several
+times an hour while you worked. The directory is used but never created, so a
+unit test — which has no `.reventless/` in its working directory — still gets a
+random per-process secret and writes nothing.
+
+These tokens are local-dev only and not security-grade; AWS verifies
+Cognito-issued JWTs and never sees them. The file sits in the same gitignored
+directory as `users.yaml`, which already holds plaintext dev passwords.
+
+**If a token is refused anyway** — you cleared the file, pinned a different
+secret, or the session genuinely expired — the shell now says so rather than
+spinning. The events socket closes with 4401, which the client treats as a
+refused credential rather than a dropped connection: it stops retrying and the
+shell logs out to the login screen. Every other close code, including the 1006
+you get while a backend is restarting, still backs off and reconnects.
+
 ## Multi-plugin local dev
 
 Multiple plugins register into the same domain server — add them all to the `plugins` array:

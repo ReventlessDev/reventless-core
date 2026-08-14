@@ -436,3 +436,57 @@ describe("the conformance table, minted locally", () => {
     })
   )
 })
+
+// The secret the tokens are signed with, and the one thing that decides whether
+// a logged-in tab survives a backend restart.
+//
+// It is not the manual restart that makes this matter. `tsx watch` re-execs the
+// process on every ReScript rebuild, so a per-process secret signs the developer
+// out several times an hour, mid-task — and the symptom is a socket that will
+// not reconnect rather than anything that says "log in again".
+describe("Login token secret", () => {
+  let tmpdir = prefix => NodeFs.mkdtempSync(NodePath.join([NodeOs.tmpdir(), prefix]))
+  let secretPath = dir => NodePath.join([dir, "token-secret"])
+
+  testSync("mints one into a directory that exists, and reuses it next boot", () => {
+    let dir = tmpdir("reventless-secret-")
+    let first = LocalAuth.Login._resolveIn(~dir)
+    // A second call with no memoised value is what the next process does.
+    let second = LocalAuth.Login._resolveIn(~dir)
+    expect((first == second, NodeFs.existsSync(secretPath(dir)), String.length(first) >= 16))->toEqual((
+      true,
+      true,
+      true,
+    ))
+  })
+
+  testSync("reads a secret a previous boot left behind", () => {
+    let dir = tmpdir("reventless-secret-")
+    NodeFs.writeFileSync(secretPath(dir), "a-previous-boots-secret-value")
+    expect(LocalAuth.Login._resolveIn(~dir))->toEqual("a-previous-boots-secret-value")
+  })
+
+  // The directory is used, never created — its absence is what tells a unit test
+  // apart from a platform someone develops against, and an auth module that made
+  // directories would leave one in every test's working directory.
+  testSync("writes nothing when there is no .reventless directory", () => {
+    let dir = NodePath.join([tmpdir("reventless-secret-"), "absent"])
+    let secret = LocalAuth.Login._resolveIn(~dir)
+    expect((NodeFs.existsSync(dir), String.length(secret) >= 16))->toEqual((false, true))
+  })
+
+  testSync("gives a different secret per run when nothing is persisted", () => {
+    let dir = NodePath.join([tmpdir("reventless-secret-"), "absent"])
+    expect(LocalAuth.Login._resolveIn(~dir) == LocalAuth.Login._resolveIn(~dir))->toEqual(false)
+  })
+
+  // Ignoring a half-written file costs one login; treating it as the secret
+  // would sign tokens nothing can verify, which costs the same login and a
+  // debugging session.
+  testSync("mints over a file too short to be a secret", () => {
+    let dir = tmpdir("reventless-secret-")
+    NodeFs.writeFileSync(secretPath(dir), "short")
+    let resolved = LocalAuth.Login._resolveIn(~dir)
+    expect((resolved == "short", String.length(resolved) >= 16))->toEqual((false, true))
+  })
+})

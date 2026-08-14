@@ -89,22 +89,81 @@ module Login = {
 
   // ── HMAC secret (lazy) ──
   //
-  // Reads `REVENTLESS_INMEMORY_TOKEN_SECRET` once on first use. When the env
-  // var is set (≥16 chars) the issued tokens survive process restarts, which
-  // matches the dev loop's expectation that a logged-in tab keeps working
-  // after a backend reload. When unset, falls back to a random per-process
-  // secret — secure for ephemeral test runs but invalidates every previously
-  // issued token on every restart.
+  // Resolved once on first use, from three sources in order:
+  //
+  //   1. `REVENTLESS_INMEMORY_TOKEN_SECRET` (≥16 chars) — an explicit pin, for
+  //      a deployment or a test that wants to state the secret itself.
+  //   2. `.reventless/token-secret` beside the platform's other local state,
+  //      minted on the first boot that finds the directory and reused by every
+  //      boot after. This is what keeps a logged-in tab working across a
+  //      restart, which is not a nicety: `tsx watch` re-execs the process on
+  //      every ReScript rebuild, so a per-process secret logs the developer out
+  //      several times an hour, mid-task, with a "reconnecting" spinner as the
+  //      only explanation.
+  //   3. A random 32 bytes, per process — today's behaviour, kept for the run
+  //      that has no `.reventless/` to write to.
+  //
+  // The directory is used but never created. Its presence is what distinguishes
+  // a platform someone develops against — `pnpm run setup` puts `users.yaml`
+  // there, so anything with logins to preserve has one — from a unit test, and
+  // an auth module that made directories would leave one in every test's cwd.
+  //
+  // Local dev only, as the whole module is: these tokens are not security-grade
+  // and AWS never sees them. The file sits in a gitignored directory beside
+  // `users.yaml`, which already holds plaintext dev passwords.
+
+  let _secretFileName = "token-secret"
+  let _secretDir = (): string => NodePath.join([NodeProcess.cwd(), ".reventless"])
+
+  let _mint = (): string => NodeCrypto.randomBytes(32)->NodeCrypto.bufferToString("hex")
+
+  // A short or empty file is treated as absent rather than as an error: it is
+  // either a half-written mint or somebody's experiment, and either way the
+  // recovery — mint a new one over it — is the same and costs one login.
+  let _readPersistedAt = (path: string): option<string> =>
+    switch NodeFs.readFileSync(path) {
+    | contents if String.length(String.trim(contents)) >= 16 => Some(String.trim(contents))
+    | _ => None
+    | exception _ => None
+    }
+
+  // Failure to write is not failure to boot. A read-only checkout still gets a
+  // working platform; what it loses is the session surviving the next restart,
+  // which is exactly what it had before this existed.
+  let _persistAt = (path: string, secret: string): unit =>
+    switch NodeFs.writeFileSync(path, secret) {
+    | () => ()
+    | exception _ => ()
+    }
+
+  /** The ladder, against a stated directory. Separate from `_getSecret` so a
+      test can exercise every rung without a `.reventless/` in its own working
+      directory — which it must not have, since the rule below is precisely that
+      the directory's presence decides whether anything is written at all. */
+  let _resolveIn = (~dir: string): string =>
+    switch NodeProcess.env->Dict.get("REVENTLESS_INMEMORY_TOKEN_SECRET") {
+    | Some(envSecret) if String.length(envSecret) >= 16 => envSecret
+    | _ =>
+      if NodeFs.existsSync(dir) {
+        let path = NodePath.join([dir, _secretFileName])
+        switch _readPersistedAt(path) {
+        | Some(persisted) => persisted
+        | None =>
+          let minted = _mint()
+          _persistAt(path, minted)
+          minted
+        }
+      } else {
+        _mint()
+      }
+    }
 
   let _secret: ref<option<string>> = ref(None)
   let _getSecret = (): string =>
     switch _secret.contents {
     | Some(s) => s
     | None =>
-      let s = switch NodeProcess.env->Dict.get("REVENTLESS_INMEMORY_TOKEN_SECRET") {
-      | Some(envSecret) if String.length(envSecret) >= 16 => envSecret
-      | _ => NodeCrypto.randomBytes(32)->NodeCrypto.bufferToString("hex")
-      }
+      let s = _resolveIn(~dir=_secretDir())
       _secret := Some(s)
       s
     }
