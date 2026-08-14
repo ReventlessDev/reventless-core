@@ -9,7 +9,8 @@ let manifest_components = [
       "Products",
       "Categories"
     ],
-    commands: []
+    commands: [],
+    derived: []
   },
   {
     plugin: "Ordering",
@@ -17,7 +18,8 @@ let manifest_components = [
     commands: [
       "PlaceOrder",
       "CancelOrder"
-    ]
+    ],
+    derived: []
   }
 ];
 
@@ -36,7 +38,8 @@ let manifest_journeys = [
           "ChangeProductPrice",
           "AddCategory",
           "RenameCategory"
-        ]
+        ],
+        derived: []
       }]
   },
   {
@@ -47,6 +50,10 @@ let manifest_journeys = [
         commands: [
           "ShipOrder",
           "CancelOrder"
+        ],
+        derived: [
+          "lifecycles",
+          "canvas"
         ]
       }]
   }

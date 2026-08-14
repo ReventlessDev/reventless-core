@@ -114,16 +114,29 @@ type capability =
 // A provisioned geocoding place index, as returned by the framework's geocoding
 // capability helper. A record rather than a bare name so the handle can grow
 // (ARN, data source) without moving every call site.
-/** One plugin's slice of the baked manifest. `views` / `commands` unset ⇒
-    every public component of that kind; set ⇒ exactly the named ones.
+/** One plugin's slice of the baked manifest. `views` / `commands` / `derived`
+    unset ⇒ every public component of that kind; set ⇒ exactly the named ones.
     An include-list rather than an exclude-list, so a component added later
     has to be opted in and cannot silently widen a curated shell's surface.
     A name that matches nothing fails the deploy naming it — a silent no-op
-    here produces a missing page no log explains. */
+    here produces a missing page no log explains.
+
+    `derived` curates the pages a shell builds ACROSS a plugin's views rather
+    than from any one of them — the dashboard, the lifecycle diagrams, the
+    canvases, the schedulers. They belong here for the reason the views do:
+    they are surfaces an audience either has or does not, and a deployment that
+    curated the views a lifecycle page is drawn from and still got the page
+    would have curated nothing. Kinds rather than page names, because what a
+    canvas is CALLED is resolved in the browser from the hints and the modes
+    that deployment registered, and a server validating names it cannot know
+    would fail deploys over a spelling only the shell can check.
+
+    The vocabulary is `Platform_BakedManifest.derivedKinds`. */
 type bakedManifestSelection = {
   plugin: string,
   views?: array<string>,
   commands?: array<string>,
+  derived?: array<string>,
 }
 
 /** Declaration for the baked component manifest — the static JSON a shell

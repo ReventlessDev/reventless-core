@@ -263,7 +263,8 @@ function bakeSelection(json) {
   return Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), o => Stdlib_Option.map(Stdlib_Option.flatMap(o["plugin"], Stdlib_JSON.Decode.string), plugin => ({
     plugin: plugin,
     views: strings(o, "views"),
-    commands: strings(o, "commands")
+    commands: strings(o, "commands"),
+    derived: strings(o, "derived")
   })));
 }
 

@@ -153,6 +153,7 @@ let make = (
         )
       strings("views", sel.views)
       strings("commands", sel.commands)
+      strings("derived", sel.derived)
       entry->JSON.Encode.object
     })
     ->JSON.Encode.array

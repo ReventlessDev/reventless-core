@@ -14,7 +14,8 @@ function toSelections(components) {
   return components.map(s => ({
     plugin: s.plugin,
     views: s.views,
-    commands: s.commands
+    commands: s.commands,
+    derived: s.derived
   }));
 }
 

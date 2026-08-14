@@ -20,6 +20,22 @@ type error =
   | UnknownPlugin(string)
   | UnknownView({plugin: string, view: string})
   | UnknownCommand({plugin: string, command: string})
+  | UnknownDerived({plugin: string, kind: string})
+
+/** The pages a shell builds across a plugin's views rather than from any one of
+    them, as the vocabulary a deployment curates them by.
+
+    A closed set, and deliberately kinds rather than page names. A dashboard and
+    a lifecycle page are named by the framework, but a canvas is named by the
+    views it draws — from that deployment's hints and the view modes its shell
+    registered, neither of which this side can see. Curating by kind is the
+    question this side CAN answer, and it is also the question an author is
+    asking: "does this audience get calendars", not "does it get the one called
+    Deliveries".
+
+    Ordered as they appear in a menu (the dashboard tops the group, canvases and
+    schedulers tail it), so the vocabulary reads as the page set it curates. */
+let derivedKinds = ["dashboard", "lifecycles", "canvas", "scheduler"]
 
 let describe = (e: error): string =>
   switch e {
@@ -28,16 +44,26 @@ let describe = (e: error): string =>
     `baked manifest: plugin "${plugin}" has no view named "${view}"`
   | UnknownCommand({plugin, command}) =>
     `baked manifest: plugin "${plugin}" has no command named "${command}"`
+  | UnknownDerived({plugin, kind}) =>
+    `baked manifest: plugin "${plugin}" names derived page kind "${kind}" — ` ++
+    `known kinds: ${derivedKinds->Array.join(", ")}`
   }
 
 // Views are named by component name — a view IS the surface. Commands are named
 // by command name, not by the write-side component that carries them: the
 // command is what a user invokes, and which slice or aggregate it lives on is an
 // implementation detail the author should not have to know to curate a shop.
+//
+// `derived` is neither: it names page KINDS, for the reason `derivedKinds`
+// gives. Unlike the other two, what it selects is not filtered here — there is
+// nothing in a `pluginStructure` to filter, because the pages do not exist until
+// a shell builds them. It travels to the shell instead, which is the only place
+// that can honour it.
 type selection = {
   plugin: string,
   views: option<array<string>>,
   commands: option<array<string>>,
+  derived: option<array<string>>,
 }
 
 let publicViews = (def: pluginStructure): array<queryableDef> =>
@@ -65,7 +91,16 @@ let validate = (~def: pluginStructure, sel: selection): result<unit, error> => {
   | None =>
     switch sel.commands->known(def->commandNames) {
     | Some(command) => Error(UnknownCommand({plugin: sel.plugin, command}))
-    | None => Ok()
+    | None =>
+      // Against the vocabulary rather than against this plugin: a kind that
+      // generates no page here is a fact about the plugin's schemas, not a
+      // mistake — a shop naming `lifecycles` for a plugin whose views gain a
+      // status field next month is stating an intention, and failing it would
+      // punish the deployment for being early.
+      switch sel.derived->known(derivedKinds) {
+      | Some(kind) => Error(UnknownDerived({plugin: sel.plugin, kind}))
+      | None => Ok()
+      }
     }
   }
 }
@@ -182,7 +217,11 @@ let curate = (
       | Some((pluginId, def)) =>
         curateStructure(~pluginId, ~def, sel)->Result.map(curated => {
           entries->Array.push(
-            Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId, curated),
+            Platform_ComponentDefinitionsApi.encodePluginStructureEntry(
+              ~pluginId,
+              ~derived=?sel.derived,
+              curated,
+            ),
           )
           entries
         })

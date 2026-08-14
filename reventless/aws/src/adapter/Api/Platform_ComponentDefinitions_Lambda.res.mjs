@@ -87,9 +87,10 @@ function make(api, pluginReadModelTableName, offloadBucketName, schemaReady, bak
       });
       strings("views", sel.views);
       strings("commands", sel.commands);
+      strings("derived", sel.derived);
       return entry;
     })) : "";
-  let adminEntryJson = JSON.stringify(Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(Platform_Admin_Structure$ReventlessCore.pluginId, Platform_Admin_Structure$ReventlessCore.structure));
+  let adminEntryJson = JSON.stringify(Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(Platform_Admin_Structure$ReventlessCore.pluginId, undefined, Platform_Admin_Structure$ReventlessCore.structure));
   let packageDirs = Object.fromEntries([[
       "@reventlessdev/reventless-aws",
       Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws")

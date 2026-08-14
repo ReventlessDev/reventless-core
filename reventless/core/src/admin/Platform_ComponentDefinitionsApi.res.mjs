@@ -339,8 +339,8 @@ function encodeExtensionDef(e) {
   ]);
 }
 
-function encodePluginStructureEntry(pluginId, def) {
-  return Object.fromEntries([
+function encodePluginStructureEntry(pluginId, derived, def) {
+  let entry = Object.fromEntries([
     [
       "pluginId",
       Plugin$ReventlessCore.name(pluginId)
@@ -382,6 +382,10 @@ function encodePluginStructureEntry(pluginId, def) {
       def.extensions.map(encodeExtensionDef)
     ]
   ]);
+  Stdlib_Option.forEach(derived, kinds => {
+    entry["derivedPages"] = kinds.map(prim => prim);
+  });
+  return entry;
 }
 
 let sdlQueryField = `  Platform_ComponentDefinitions: [Platform_ComponentDefinitionEntry!]!`;

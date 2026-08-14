@@ -207,8 +207,21 @@ let encodeExtensionDef = (e: extensionDef): JSON.t =>
     ("commandTypes", encodeStrings(e.commandTypes)),
   ])->JSON.Encode.object
 
-let encodePluginStructureEntry = (~pluginId: string, def: pluginStructure): JSON.t =>
-  Dict.fromArray([
+// `derived` is curation, not structure: it says which of the pages a shell
+// builds across this plugin's views that shell may build. It therefore arrives
+// as an argument rather than off `def` — nothing in a compiled plugin decides
+// it, and the admin path, which curates nothing, passes none.
+//
+// Absent key ⇒ every kind, which is what an uncurated entry means and what
+// every manifest written before the field says. A curated entry that wants none
+// says so with `[]`, and the two are only distinguishable because the key is
+// omitted rather than nulled.
+let encodePluginStructureEntry = (
+  ~pluginId: string,
+  ~derived: option<array<string>>=?,
+  def: pluginStructure,
+): JSON.t => {
+  let entry = Dict.fromArray([
     ("pluginId", JSON.Encode.string(Plugin.name(pluginId))),
     (
       "readModels",
@@ -247,4 +260,9 @@ let encodePluginStructureEntry = (~pluginId: string, def: pluginStructure): JSON
       ->JSON.Encode.array,
     ),
     ("extensions", def.extensions->Array.map(encodeExtensionDef)->JSON.Encode.array),
-  ])->JSON.Encode.object
+  ])
+  derived->Option.forEach(kinds =>
+    entry->Dict.set("derivedPages", kinds->Array.map(JSON.Encode.string)->JSON.Encode.array)
+  )
+  entry->JSON.Encode.object
+}

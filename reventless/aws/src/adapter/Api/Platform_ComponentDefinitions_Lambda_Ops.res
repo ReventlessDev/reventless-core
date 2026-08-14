@@ -304,6 +304,7 @@ let bakeSelection = (json: JSON.t): option<ReventlessCore.Platform_BakedManifest
       ReventlessCore.Platform_BakedManifest.plugin,
       views: strings(o, "views"),
       commands: strings(o, "commands"),
+      derived: strings(o, "derived"),
     })
   )
 }

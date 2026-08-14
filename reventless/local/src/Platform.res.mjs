@@ -1437,7 +1437,7 @@ function MakeWithConfig(Config) {
       });
       return Object.values(latestByName).map(param => param[1]);
     };
-    queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => connectedLatestStructures().map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+    queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => connectedLatestStructures().map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], undefined, param[1]));
     queryResolvers["Platform_PluginStructures"] = async (_root, _args, _ctx) => connectedLatestStructures().map(param => Platform_PluginStructuresApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(UiFragments$ReventlessCore.name);
@@ -1772,7 +1772,7 @@ function MakeWithConfig(Config) {
           return Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(state);
         });
       };
-      queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+      queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], undefined, param[1]));
       registerAdminItemsAndIndexResolvers(queryResolvers, true);
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
       let mutationResolvers = {};
@@ -3162,7 +3162,7 @@ function Make($star) {
       });
       return Object.values(latestByName).map(param => param[1]);
     };
-    queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => connectedLatestStructures().map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+    queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => connectedLatestStructures().map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], undefined, param[1]));
     queryResolvers["Platform_PluginStructures"] = async (_root, _args, _ctx) => connectedLatestStructures().map(param => Platform_PluginStructuresApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(UiFragments$ReventlessCore.name);
@@ -3488,7 +3488,7 @@ function Make($star) {
           return Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(state);
         });
       };
-      queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+      queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], undefined, param[1]));
       registerAdminItemsAndIndexResolvers(queryResolvers, true);
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
       let mutationResolvers = {};

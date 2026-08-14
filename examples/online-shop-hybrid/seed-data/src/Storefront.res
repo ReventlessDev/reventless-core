@@ -16,10 +16,23 @@
 // them. `AvailableProducts` is likewise absent yet still reaches the shell:
 // `PlaceOrder` @refs it, so it rides along as a reference target for the product
 // picker while staying out of the menu.
+//
+// `derived: []` answers the other half of the same question. A shell also builds
+// pages ACROSS a plugin's views — a dashboard, a lifecycle diagram, a calendar —
+// and those are operator surfaces too: a customer reading their own orders has
+// no use for a state machine of every order status, and every one of them lands
+// in a menu group named after the plugin, which is how a shop ends up offering
+// "Ordering" beside "Shop". The storefront takes none of them; the roles that
+// work those boards take the ones their job needs, below.
 let manifest: ReventlessInfra.Platform.bakedManifest = {
   components: [
-    {plugin: "Catalog", views: ["Products", "Categories"], commands: []},
-    {plugin: "Ordering", views: ["Orders"], commands: ["PlaceOrder", "CancelOrder"]},
+    {plugin: "Catalog", views: ["Products", "Categories"], commands: [], derived: []},
+    {
+      plugin: "Ordering",
+      views: ["Orders"],
+      commands: ["PlaceOrder", "CancelOrder"],
+      derived: [],
+    },
   ],
   // One surface per role the shop has, beside the storefront every other caller
   // gets. Fulfilment is the reason this exists: it works a board of orders that
@@ -39,13 +52,29 @@ let manifest: ReventlessInfra.Platform.bakedManifest = {
             "AddCategory",
             "RenameCategory",
           ],
+          // A catalog has no lifecycle and no dated view, so nothing here is
+          // generated today. Said anyway, because the alternative is that the
+          // first `@metric` a product gains hands this role a dashboard nobody
+          // asked for — an include-list that only lists what already exists is
+          // an include-list in name.
+          derived: [],
         },
       ],
     },
     {
       group: "Fulfilment",
       components: [
-        {plugin: "Ordering", views: ["Orders"], commands: ["ShipOrder", "CancelOrder"]},
+        {
+          plugin: "Ordering",
+          views: ["Orders"],
+          commands: ["ShipOrder", "CancelOrder"],
+          // The board this role works: `Orders` carries a status and the
+          // commands that move it, so the lifecycle diagram is a picture of the
+          // job, and its delivery windows make a calendar of the same rows.
+          // Both are what the storefront declines, which is the point of the
+          // list being per-journey rather than per-deployment.
+          derived: ["lifecycles", "canvas"],
+        },
       ],
     },
   ],

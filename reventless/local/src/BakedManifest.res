@@ -22,6 +22,7 @@ let toSelections = (
     plugin: s.plugin,
     views: s.views,
     commands: s.commands,
+    derived: s.derived,
   })
 
 /**

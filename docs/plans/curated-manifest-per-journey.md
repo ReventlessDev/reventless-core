@@ -129,6 +129,41 @@ are two chances to get it wrong.
 owner scoping and an exemption does not imply a journey. They answer different
 questions and the example that motivated this plan needs one role with each.
 
+## §6b — What a journey could not curate, and now can
+
+**Built 2026-08-14.** A selection named views and commands, which is every surface
+a plugin *declares*. It is not every surface a shell *builds*: the shell also
+generates, per plugin, a dashboard, a lifecycle diagram, a canvas and a scheduler
+— pages drawn across a plugin's views rather than from any one of them.
+
+Those arrived regardless of the include-list, which made the whole declaration
+half a promise. The hybrid shop showed it exactly: the storefront names one
+Ordering view, and a customer still got a state machine of the order pipeline and
+a calendar of delivery windows, in a menu group labelled `Ordering` — because a
+page belonging to no view has no view's `nav` hint to name it, so it falls back to
+the plugin's name. A shop that curated its views down to a storefront and still
+offered "Ordering" beside "Shop" curated nothing.
+
+So a selection grows a third list, `derived`, with the same semantics as the other
+two: unset ⇒ every kind, set ⇒ exactly those. The storefront takes none;
+`Fulfilment` takes `["lifecycles", "canvas"]`, which is the board it works.
+
+**Kinds, not page names.** The vocabulary is closed — `dashboard`, `lifecycles`,
+`canvas`, `scheduler` — and validated against itself rather than against the
+plugin. Two reasons, and both are about who knows what. A canvas is *named* in the
+browser, from that deployment's hints and the view modes its shell registered, so
+a publisher validating names would fail deploys over a spelling only the shell can
+check. And whether a kind generates anything is a fact about the plugin's schemas,
+not about the declaration: a shop naming `lifecycles` before its views carry a
+status is early, not wrong, and failing it would punish the deployment for the
+order it did things in.
+
+**Absent is not empty, all the way out.** The key is omitted from the encoded
+entry when the selection says nothing, so the admin path — which curates nothing —
+emits no key, and a manifest baked before the field behaves as it always did. A
+curated entry wanting none says `[]`. Collapsing the two would take the dashboard
+away from every operator console that never asked for curation.
+
 ## §7 — Steps
 
 1. The `journeys` declaration + N-way curation, with the existing field resolving
@@ -148,3 +183,7 @@ questions and the example that motivated this plan needs one role with each.
   and makes no admin-API request — including a caller the deployment treats as
   elevated, which is §4's case.
 - A caller matching no journey gets the default.
+- A selection that names no `derived` list produces the file it produced before
+  the list existed, and a caller discovering from the admin API gets every kind.
+- A journey naming `derived: []` renders no page built across its plugin's views,
+  and no route that would reach one.

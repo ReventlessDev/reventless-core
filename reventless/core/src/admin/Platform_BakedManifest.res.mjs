@@ -6,6 +6,13 @@ import * as Stdlib_Result from "@rescript/runtime/lib/es6/Stdlib_Result.js";
 import * as Plugin$ReventlessCore from "../plugin/component/Plugin.res.mjs";
 import * as Platform_ComponentDefinitionsApi$ReventlessCore from "./Platform_ComponentDefinitionsApi.res.mjs";
 
+let derivedKinds = [
+  "dashboard",
+  "lifecycles",
+  "canvas",
+  "scheduler"
+];
+
 function describe(e) {
   switch (e.TAG) {
     case "UnknownPlugin" :
@@ -14,6 +21,8 @@ function describe(e) {
       return `baked manifest: plugin "` + e.plugin + `" has no view named "` + e.view + `"`;
     case "UnknownCommand" :
       return `baked manifest: plugin "` + e.plugin + `" has no command named "` + e.command + `"`;
+    case "UnknownDerived" :
+      return `baked manifest: plugin "` + e.plugin + `" names derived page kind "` + e.kind + `" — known kinds: ` + derivedKinds.join(", ");
   }
 }
 
@@ -50,6 +59,17 @@ function validate(def, sel) {
         TAG: "UnknownCommand",
         plugin: sel.plugin,
         command: command
+      }
+    };
+  }
+  let kind = known(sel.derived, derivedKinds);
+  if (kind !== undefined) {
+    return {
+      TAG: "Error",
+      _0: {
+        TAG: "UnknownDerived",
+        plugin: sel.plugin,
+        kind: kind
       }
     };
   } else {
@@ -189,13 +209,14 @@ function curate(structures, selections) {
     }
     let pluginId = match[0];
     return Stdlib_Result.map(curateStructure(pluginId, match[1], sel), curated => {
-      entries.push(Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(pluginId, curated));
+      entries.push(Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(pluginId, sel.derived, curated));
       return entries;
     });
   })), prim => prim);
 }
 
 export {
+  derivedKinds,
   describe,
   publicViews,
   writeSides,

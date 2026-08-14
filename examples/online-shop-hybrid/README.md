@@ -78,6 +78,14 @@ discover the surfaces their job needs — and, being elevated by something other
 than `Admin`, `fulfil` reads its board from its own journey file without ever
 approaching the admin API.
 
+That curation covers the pages a shell *builds* as well as the views a plugin
+declares. `Orders` carries a status and dated delivery windows, so the shell can
+draw a lifecycle diagram and a calendar of the same rows. `Storefront.manifest`
+gives those to `Fulfilment` (`derived: ["lifecycles", "canvas"]`) and to nobody
+else, which is why a shopper's menu is one group called Shop rather than that
+plus one called Ordering — a page built across a plugin's views belongs to no
+view, so nothing in `ui-hints.json` could have named it into place.
+
 Every account but `shopper` holds a second group on purpose: they are the logins
 where the role switcher has something to show. Acting as `Fulfilment`, `fulfil`
 reads every customer's orders and may ship them; acting as `Shopper`, the same
