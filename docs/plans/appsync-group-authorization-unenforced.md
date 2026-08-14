@@ -322,6 +322,25 @@ Establish what it does and does not cover before assuming any of it.
      invariant cannot see, e.g. a console edit), but it is no longer the only
      thing standing between a missed field and an open one.
 
+     **Verified on deployment** (`18e92793b`, deployed in `c3728e487`):
+
+     - The deploy **succeeded**, which is itself the invariant passing — an
+       ungateable schema now fails the deploy rather than shipping.
+     - Coverage: **zero** undirectived fields and types on both APIs, and
+       **zero** `@aws_auth` anywhere.
+     - `_noop` no longer appears bare; the four fields the sweep had missed all
+       carry the directive:
+       ```
+       Platform_ping: String @aws_cognito_user_pools
+       geocode(text: String!): [GeocodeCandidate!] @aws_cognito_user_pools
+       Upload_Presign(...): Upload_Ticket @aws_cognito_user_pools
+       onCatalogEventLog_eventAppended: CatalogEventLogEvent @aws_cognito_user_pools
+       ```
+     - **Negative**: all four probe rows pass, exit 0 — the no-group caller is
+       refused with `errorType: "Unauthorized"`.
+     - **Positive**: a no-group caller still reaches `Platform_ping`, `geocode`,
+       `Catalog_Products` and `Catalog_Categories`. Nothing was over-refused.
+
      What follows is the measurement that *did* pass, kept because it is the
      coverage gate and remains the thing to re-run:
 

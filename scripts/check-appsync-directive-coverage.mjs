@@ -2,21 +2,30 @@
 // Count fields and object types in a DEPLOYED AppSync schema that carry no auth
 // directive.
 //
-// This is the gate for flipping `userPoolConfig.defaultAction` to DENY. Under
-// ALLOW an undirectived field or type is reachable by any authenticated Cognito
-// caller; under DENY it is refused — for types too, since response shaping walks
-// `…Connection` → `…Edge` → node → nested state types and dies one level in.
-// So the flip is safe only when this reports zero.
+// An undirectived field or type is reachable by ANY authenticated Cognito
+// caller, and there is no backstop underneath: `userPoolConfig.defaultAction`
+// is forced to ALLOW, because AWS refuses DENY on an API that has an additional
+// auth provider ("Additional authentication providers cannot be specified when
+// setting DENY for top level user pool authentication type") and every API here
+// configures AWS_IAM. So zero is not an optimisation here — it is the whole
+// protection.
 //
-// Read the DEPLOYED schema, never a locally rendered one: the gap this script
-// exists to catch was fields injected by paths that never reach the auth
-// decoration, which local rendering of a decorated fragment does not reveal.
+// The deploy path already enforces this in-process
+// (`AppSync_SdlDecorate.assertGateable` refuses to return an ungateable schema).
+// This script is the independent check on what is actually DEPLOYED, which
+// catches what the in-process invariant cannot see: drift introduced outside our
+// deploy, and any path that reaches AppSync without passing through assembly.
+//
+// Read the DEPLOYED schema, never a locally rendered one. The gap this script
+// exists to catch is fields injected by paths that never reach the auth
+// decoration — `_noop`, added by the stitcher during assembly, was live on three
+// APIs — and local rendering of a decorated fragment does not reveal them.
 //
 // Usage:
 //   node scripts/check-appsync-directive-coverage.mjs --api-id <id> [--region eu-west-1]
 //   node scripts/check-appsync-directive-coverage.mjs --file schema.graphql
 //
-// Exit 0 = fully covered (DENY is safe), 1 = gaps listed (DENY would refuse them).
+// Exit 0 = fully covered, 1 = gaps listed (each is open to any authenticated caller).
 
 import { execFileSync } from 'node:child_process'
 import { readFileSync, mkdtempSync } from 'node:fs'
@@ -75,8 +84,8 @@ for (const [kind, xs] of Object.entries(gaps)) {
 }
 
 if (total === 0) {
-  console.log(`${label}: fully covered — defaultAction: DENY is safe here`)
+  console.log(`${label}: fully covered — every field and type carries an enforced directive`)
   process.exit(0)
 }
-console.log(`\n${label}: ${total} undirectived — DENY would refuse these`)
+console.log(`\n${label}: ${total} undirectived — each is open to ANY authenticated Cognito caller`)
 process.exit(1)
