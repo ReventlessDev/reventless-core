@@ -89,6 +89,7 @@ const sidebars = {
         },
         'aggregate-vs-dcb-decision-guide',
         'graphql-api-guide',
+        'ui-configuration',
         'dcb-usage',
         'reventless-ppx',
         'querydb-key-design-guide',
