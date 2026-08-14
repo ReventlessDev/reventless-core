@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.295 (2026-08-14)
+
+### Bug Fixes
+
+* **aws:** enforce Cognito group gates that AppSync was silently ignoring ([1392638](https://github.com/ReventlessDev/reventless-core/commit/13926388c097500606f75c387630a19ee1a3aa71))
+
+
 # 3.0.0-alpha.294 (2026-08-14)
 
 ### Bug Fixes

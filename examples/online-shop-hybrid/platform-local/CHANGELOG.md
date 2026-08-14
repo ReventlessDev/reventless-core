@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.220 (2026-08-14)
+
+### Features
+
+* **local:** let the seed tools address a platform, not a guessed file ([98862ad](https://github.com/ReventlessDev/reventless-core/commit/98862adaa4111f605553e4a78bc52a8a488a4ef3))
+
+
 # 1.0.0-alpha.219 (2026-08-13)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-local

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.221 (2026-08-14)
+
+### Features
+
+* **local:** let the seed tools address a platform, not a guessed file ([98862ad](https://github.com/ReventlessDev/reventless-core/commit/98862adaa4111f605553e4a78bc52a8a488a4ef3))
+* **local:** tell an unentitled caller apart from an unidentified one ([69c4fab](https://github.com/ReventlessDev/reventless-core/commit/69c4fabc522cff60b00cebc64c5428f5084ce82b))
+
+
 # 3.0.0-alpha.220 (2026-08-13)
 
 ### Features

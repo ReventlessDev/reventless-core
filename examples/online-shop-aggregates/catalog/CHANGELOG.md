@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.209 (2026-08-14)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog
+
+
+
+
+
 # 3.0.0-alpha.208 (2026-08-13)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog

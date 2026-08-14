@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.6 (2026-08-14)
+
+### Features
+
+* **local:** let the seed tools address a platform, not a guessed file ([98862ad](https://github.com/ReventlessDev/reventless-core/commit/98862adaa4111f605553e4a78bc52a8a488a4ef3))
+
+
 # 2.0.0-alpha.5 (2026-08-13)
 
 ### Features
