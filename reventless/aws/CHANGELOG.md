@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.294 (2026-08-14)
+
+### Bug Fixes
+
+* **aws:** provision the active-role write door outside the host-UI branch ([2ffc121](https://github.com/ReventlessDev/reventless-core/commit/2ffc12198dfedd151c298add42fbb9bb0dc95ca6))
+### Features
+
+* **aws:** prove the pre-token-generation trigger before attaching it to a pool ([6e981a4](https://github.com/ReventlessDev/reventless-core/commit/6e981a4f6b4089a140cd7dda7df00177b98d4a65))
+
+
 # 3.0.0-alpha.293 (2026-08-13)
 
 ### Features
