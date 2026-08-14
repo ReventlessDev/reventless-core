@@ -43,13 +43,15 @@ let probeViews =
 
 // ── Phases ──────────────────────────────────────────────────────────────────
 
-let seedCategories = async (~client: Seed.Client.t) => {
+let seedCategories = async (categories: array<DemoData.category>, ~client: Seed.Client.t) => {
   await client->Seed.Client.sendAll(
-    DemoData.categories->Array.map(c =>
-      DemoCommands.addCategory(AddCategory({categoryId: c.id, name: c.name}))
+    categories->Array.map(c =>
+      DemoCommands.addCategory(
+        AddCategory({categoryId: c.id, name: c.name, imageUrl: ?c.imageUrl}),
+      )
     ),
   )
-  Seed.Runner.report(`categories: ${(DemoData.categories->Array.length)->Int.toString} added`)
+  Seed.Runner.report(`categories: ${(categories->Array.length)->Int.toString} added`)
 }
 
 // The store a product image lives in: the qualified `{plugin}.{store}` the
@@ -59,6 +61,12 @@ let seedCategories = async (~client: Seed.Client.t) => {
 // resolver that just took "the" upload endpoint would upload into whichever
 // store came first, with a 2xx and a plausible-looking ref.
 let productImageStore = "Catalog.productImages"
+
+// The categories' own store. A separate store rather than a shared "images" one:
+// the two asset kinds are wiped, permissioned and prefixed independently, and a
+// store whose name describes half its contents is the kind of thing nobody
+// renames once refs are in an append-only log.
+let categoryImageStore = "Catalog.categoryImages"
 
 // Upload each product's deterministic placeholder SVG through the store's
 // upload endpoint and swap `imageUrl` for the returned served `/{prefix}/{key}`
@@ -89,6 +97,38 @@ let uploadProductImages = async (
   }
   Seed.Runner.report(
     `product images: ${(out->Array.length)->Int.toString} uploaded to the served bucket`,
+  )
+  out
+}
+
+// The category counterpart of `uploadProductImages`, and the same reason for
+// existing: the demo image travels the real upload → store → serve loop rather
+// than arriving as an external URL.
+let uploadCategoryImages = async (
+  categories: array<DemoData.category>,
+  ~client: Seed.Client.t,
+  ~store: string,
+): array<DemoData.category> => {
+  let out = []
+  for i in 0 to categories->Array.length - 1 {
+    switch categories->Array.get(i) {
+    | Some(c) =>
+      let svg = DemoData.categorySvg(~name=c.name, ~index=i)
+      switch await Seed.Upload.uploadAsset(
+        ~client,
+        ~store,
+        ~bytes=svg,
+        ~fileName=`${c.id}.svg`,
+        ~contentType="image/svg+xml",
+      ) {
+      | Ok(servedRef) => out->Array.push({...c, imageUrl: Some(servedRef)})
+      | Error(msg) => throw(Seed.Failed(`category image upload for ${c.id} failed: ${msg}`))
+      }
+    | None => ()
+    }
+  }
+  Seed.Runner.report(
+    `category images: ${(out->Array.length)->Int.toString} uploaded to the served bucket`,
   )
   out
 }
@@ -147,7 +187,14 @@ let seedRejectedDuplicate = async (products: array<DemoData.product>, ~client: S
   | None => ()
   }
 
-let seedCatalogEdits = async (products: array<DemoData.product>, ~client: Seed.Client.t) => {
+let seedCatalogEdits = async (
+  products: array<DemoData.product>,
+  categories: array<DemoData.category>,
+  ~client: Seed.Client.t,
+  // (categoryId, a freshly uploaded ref) for the one category that gets its
+  // image replaced. Empty when uploads are off.
+  ~reimage: array<(string, string)>,
+) => {
   let repriced = DemoData.repricedProducts(products)
   await client->Seed.Client.sendAll(
     repriced->Array.map(p =>
@@ -175,14 +222,25 @@ let seedCatalogEdits = async (products: array<DemoData.product>, ~client: Seed.C
       }),
     ),
   ])
-  let archived = DemoData.categories->Array.filter(c => c.archive)
+  // Re-image one live category, so the change path is exercised next to the
+  // rename. The ref must differ from the one AddCategory carried — changing to
+  // the same ref is the idempotent arm and appends nothing, which would leave
+  // this phase reporting work it did not do.
+  await client->Seed.Client.sendAll(
+    reimage->Array.map(((categoryId, imageUrl)) =>
+      DemoCommands.changeCategoryImage(ChangeCategoryImage({categoryId, imageUrl}))
+    ),
+  )
+
+  let archived = categories->Array.filter(c => c.archive)
   await client->Seed.Client.sendAll(
     archived->Array.map(c => DemoCommands.archiveCategory(ArchiveCategory({categoryId: c.id}))),
   )
   Seed.Runner.report(
     `catalog edits: ${(repriced->Array.length)->Int.toString} repriced, ${(redescribed
         ->Array.length)
-        ->Int.toString} redescribed, 1 renamed, ${(archived->Array.length)
+        ->Int.toString} redescribed, 1 renamed, ${(reimage->Array.length)
+        ->Int.toString} re-imaged, ${(archived->Array.length)
         ->Int.toString} archived`,
   )
 }
@@ -441,6 +499,32 @@ let run = async (
     Seed.Runner.report(`product images: skipped (SEED_SKIP_UPLOADS) — imageUrl left absent`)
     built
   }
+  let categories = switch connection.uploadsSkipped {
+  | false => await uploadCategoryImages(DemoData.categories, ~client, ~store=categoryImageStore)
+  | true =>
+    Seed.Runner.report(`category images: skipped (SEED_SKIP_UPLOADS) — imageUrl left absent`)
+    DemoData.categories
+  }
+  // A second, visibly different image for one live category, so the edit phase
+  // has a ref to change *to*. Uploaded here rather than in the edit phase
+  // because this is where the store and the skip flag already are.
+  let reimage = switch (
+    connection.uploadsSkipped,
+    categories->Array.filter(c => !c.archive)->Array.get(2),
+  ) {
+  | (false, Some(c)) =>
+    switch await Seed.Upload.uploadAsset(
+      ~client,
+      ~store=categoryImageStore,
+      ~bytes=DemoData.categorySvg(~name=`${c.name} (updated)`, ~index=101),
+      ~fileName=`${c.id}-v2.svg`,
+      ~contentType="image/svg+xml",
+    ) {
+    | Ok(servedRef) => [(c.id, servedRef)]
+    | Error(msg) => throw(Seed.Failed(`category re-image upload for ${c.id} failed: ${msg}`))
+    }
+  | _ => []
+  }
   let generatedCustomers = DemoData.buildCustomers(~count=customerCount, ())
   // The demo logins are registered as customers but are deliberately NOT part of
   // the weighted draw below: their order counts are fixed by index, and letting
@@ -448,10 +532,10 @@ let run = async (
   let customers = generatedCustomers->Array.concat(DemoData.demoCustomers)
   let orders = DemoData.buildOrders(products, generatedCustomers, ~count=orderCount, ())
 
-  await seedCategories(~client)
+  await seedCategories(categories, ~client)
   await seedProducts(products, ~client)
   await seedRejectedDuplicate(products, ~client)
-  await seedCatalogEdits(products, ~client)
+  await seedCatalogEdits(products, categories, ~client, ~reimage)
   await seedSupplierFeed(~client)
   await seedCustomers(customers, ~client)
 

@@ -2,6 +2,27 @@
   "capabilities": [
     {
       "kind": "ObjectStore",
+      "key": "Catalog.categoryImages",
+      "declaredBy": [
+        {
+          "component": "AddCategory",
+          "field": "imageUrl",
+          "annotation": "categoryImages"
+        },
+        {
+          "component": "Categories",
+          "field": "imageUrl",
+          "annotation": "categoryImages"
+        },
+        {
+          "component": "ChangeCategoryImage",
+          "field": "imageUrl",
+          "annotation": "categoryImages"
+        }
+      ]
+    },
+    {
+      "kind": "ObjectStore",
       "key": "Catalog.productImages",
       "declaredBy": [
         {

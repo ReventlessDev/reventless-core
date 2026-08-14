@@ -21,7 +21,8 @@ let categories = [
       "Ultrabook",
       "Workstation"
     ],
-    archive: false
+    archive: false,
+    imageUrl: undefined
   },
   {
     id: "cat-02",
@@ -32,7 +33,8 @@ let categories = [
       "Smartphone",
       "Phone"
     ],
-    archive: false
+    archive: false,
+    imageUrl: undefined
   },
   {
     id: "cat-03",
@@ -43,7 +45,8 @@ let categories = [
       "Earbuds",
       "Speaker"
     ],
-    archive: false
+    archive: false,
+    imageUrl: undefined
   },
   {
     id: "cat-04",
@@ -54,7 +57,8 @@ let categories = [
       "Lens",
       "Gimbal"
     ],
-    archive: false
+    archive: false,
+    imageUrl: undefined
   },
   {
     id: "cat-05",
@@ -65,7 +69,8 @@ let categories = [
       "Tracker",
       "Band"
     ],
-    archive: false
+    archive: false,
+    imageUrl: undefined
   },
   {
     id: "cat-06",
@@ -76,7 +81,8 @@ let categories = [
       "Monitor",
       "Keyboard"
     ],
-    archive: false
+    archive: false,
+    imageUrl: undefined
   },
   {
     id: "cat-07",
@@ -87,7 +93,8 @@ let categories = [
       "Adapter",
       "Case"
     ],
-    archive: false
+    archive: false,
+    imageUrl: undefined
   },
   {
     id: "cat-08",
@@ -97,7 +104,8 @@ let categories = [
       "Bundle",
       "Refurb Kit"
     ],
-    archive: true
+    archive: true,
+    imageUrl: undefined
   }
 ];
 
@@ -307,6 +315,13 @@ function productSvg(name, index) {
   let bg = `hsl(` + hue.toString() + `, 62%, 52%)`;
   let label = escapeXml(name);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">` + (`<rect width="400" height="300" fill="` + bg + `"/>`) + (`<text x="200" y="160" fill="#ffffff" font-family="sans-serif" font-size="22" font-weight="600" text-anchor="middle">` + label + `</text>`) + `</svg>`;
+}
+
+function categorySvg(name, index) {
+  let hue = ((index * 47 | 0) + 23 | 0) % 360;
+  let bg = `hsl(` + hue.toString() + `, 52%, 42%)`;
+  let label = escapeXml(name);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="200" viewBox="0 0 600 200">` + (`<rect width="600" height="200" fill="` + bg + `"/>`) + (`<text x="300" y="112" fill="#ffffff" font-family="sans-serif" font-size="30" font-weight="600" text-anchor="middle">` + label + `</text>`) + `</svg>`;
 }
 
 function buildProducts(countOpt, param) {
@@ -531,6 +546,7 @@ export {
   currency,
   escapeXml,
   productSvg,
+  categorySvg,
   buildProducts,
   repricedProducts,
   redescribedProducts,

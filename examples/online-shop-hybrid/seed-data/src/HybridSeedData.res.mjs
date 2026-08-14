@@ -56,16 +56,19 @@ let probeViews = Stdlib_Array.filterMap(views, v => {
   }
 });
 
-async function seedCategories(client) {
-  await Seed_Client$ReventlessSeed.sendAll(client, DemoData$OnlineShopHybridSeed.categories.map(c => DemoCommands$OnlineShopHybridSeed.addCategory({
+async function seedCategories(categories, client) {
+  await Seed_Client$ReventlessSeed.sendAll(client, categories.map(c => DemoCommands$OnlineShopHybridSeed.addCategory({
     TAG: "AddCategory",
     categoryId: c.id,
-    name: c.name
+    name: c.name,
+    imageUrl: c.imageUrl
   })));
-  return Seed_Runner$ReventlessSeed.report(`categories: ` + DemoData$OnlineShopHybridSeed.categories.length.toString() + ` added`);
+  return Seed_Runner$ReventlessSeed.report(`categories: ` + categories.length.toString() + ` added`);
 }
 
 let productImageStore = "Catalog.productImages";
+
+let categoryImageStore = "Catalog.categoryImages";
 
 async function uploadProductImages(products, client, store) {
   let out = [];
@@ -93,6 +96,35 @@ async function uploadProductImages(products, client, store) {
     }
   }
   Seed_Runner$ReventlessSeed.report(`product images: ` + out.length.toString() + ` uploaded to the served bucket`);
+  return out;
+}
+
+async function uploadCategoryImages(categories, client, store) {
+  let out = [];
+  for (let i = 0, i_finish = categories.length; i < i_finish; ++i) {
+    let c = categories[i];
+    if (c !== undefined) {
+      let svg = DemoData$OnlineShopHybridSeed.categorySvg(c.name, i);
+      let servedRef = await Seed_Upload$ReventlessSeed.uploadAsset(client, store, svg, c.id + `.svg`, "image/svg+xml");
+      if (servedRef.TAG === "Ok") {
+        out.push({
+          id: c.id,
+          name: c.name,
+          weight: c.weight,
+          nouns: c.nouns,
+          archive: c.archive,
+          imageUrl: servedRef._0
+        });
+      } else {
+        throw {
+          RE_EXN_ID: Seed$ReventlessSeed.Failed,
+          _1: `category image upload for ` + c.id + ` failed: ` + servedRef._0,
+          Error: new Error()
+        };
+      }
+    }
+  }
+  Seed_Runner$ReventlessSeed.report(`category images: ` + out.length.toString() + ` uploaded to the served bucket`);
   return out;
 }
 
@@ -133,7 +165,7 @@ async function seedRejectedDuplicate(products, client) {
   };
 }
 
-async function seedCatalogEdits(products, client) {
+async function seedCatalogEdits(products, categories, client, reimage) {
   let repriced = DemoData$OnlineShopHybridSeed.repricedProducts(products);
   await Seed_Client$ReventlessSeed.sendAll(client, repriced.map(p => DemoCommands$OnlineShopHybridSeed.changeProductPrice({
     TAG: "ChangeProductPrice",
@@ -151,12 +183,17 @@ async function seedCatalogEdits(products, client) {
       categoryId: DemoData$OnlineShopHybridSeed.renamedCategoryId,
       name: DemoData$OnlineShopHybridSeed.renamedCategoryName
     })]);
-  let archived = DemoData$OnlineShopHybridSeed.categories.filter(c => c.archive);
+  await Seed_Client$ReventlessSeed.sendAll(client, reimage.map(param => DemoCommands$OnlineShopHybridSeed.changeCategoryImage({
+    TAG: "ChangeCategoryImage",
+    categoryId: param[0],
+    imageUrl: param[1]
+  })));
+  let archived = categories.filter(c => c.archive);
   await Seed_Client$ReventlessSeed.sendAll(client, archived.map(c => DemoCommands$OnlineShopHybridSeed.archiveCategory({
     TAG: "ArchiveCategory",
     categoryId: c.id
   })));
-  return Seed_Runner$ReventlessSeed.report(`catalog edits: ` + repriced.length.toString() + ` repriced, ` + redescribed.length.toString() + ` redescribed, 1 renamed, ` + archived.length.toString() + ` archived`);
+  return Seed_Runner$ReventlessSeed.report(`catalog edits: ` + repriced.length.toString() + ` repriced, ` + redescribed.length.toString() + ` redescribed, 1 renamed, ` + reimage.length.toString() + ` re-imaged, ` + archived.length.toString() + ` archived`);
 }
 
 async function seedSupplierFeed(client) {
@@ -310,13 +347,36 @@ async function run(connection, productCount, customerCount, orderCount) {
   let client = connection.client;
   let built = DemoData$OnlineShopHybridSeed.buildProducts(productCount, undefined);
   let products = connection.uploadsSkipped ? (Seed_Runner$ReventlessSeed.report(`product images: skipped (SEED_SKIP_UPLOADS) — imageUrl left absent`), built) : await uploadProductImages(built, client, productImageStore);
+  let categories = connection.uploadsSkipped ? (Seed_Runner$ReventlessSeed.report(`category images: skipped (SEED_SKIP_UPLOADS) — imageUrl left absent`), DemoData$OnlineShopHybridSeed.categories) : await uploadCategoryImages(DemoData$OnlineShopHybridSeed.categories, client, categoryImageStore);
+  let match = connection.uploadsSkipped;
+  let match$1 = categories.filter(c => !c.archive)[2];
+  let reimage;
+  if (match) {
+    reimage = [];
+  } else if (match$1 !== undefined) {
+    let servedRef = await Seed_Upload$ReventlessSeed.uploadAsset(client, categoryImageStore, DemoData$OnlineShopHybridSeed.categorySvg(match$1.name + ` (updated)`, 101), match$1.id + `-v2.svg`, "image/svg+xml");
+    if (servedRef.TAG === "Ok") {
+      reimage = [[
+          match$1.id,
+          servedRef._0
+        ]];
+    } else {
+      throw {
+        RE_EXN_ID: Seed$ReventlessSeed.Failed,
+        _1: `category re-image upload for ` + match$1.id + ` failed: ` + servedRef._0,
+        Error: new Error()
+      };
+    }
+  } else {
+    reimage = [];
+  }
   let generatedCustomers = DemoData$OnlineShopHybridSeed.buildCustomers(customerCount, undefined);
   let customers = generatedCustomers.concat(DemoData$OnlineShopHybridSeed.demoCustomers);
   let orders = DemoData$OnlineShopHybridSeed.buildOrders(products, generatedCustomers, orderCount, undefined);
-  await seedCategories(client);
+  await seedCategories(categories, client);
   await seedProducts(products, client);
   await seedRejectedDuplicate(products, client);
-  await seedCatalogEdits(products, client);
+  await seedCatalogEdits(products, categories, client, reimage);
   await seedSupplierFeed(client);
   await seedCustomers(customers, client);
   let expected = products.map(p => p.id).concat(DemoData$OnlineShopHybridSeed.importedSkus);
@@ -350,7 +410,9 @@ export {
   probeViews,
   seedCategories,
   productImageStore,
+  categoryImageStore,
   uploadProductImages,
+  uploadCategoryImages,
   seedProducts,
   seedRejectedDuplicate,
   seedCatalogEdits,

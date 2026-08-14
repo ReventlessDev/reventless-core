@@ -2,17 +2,24 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
 
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "CategoryAdded",
     categoryId: s.m(S.string),
-    name: s.m(S.string)
+    name: s.m(S.string),
+    imageUrl: s.m(S.option(S.string))
   })),
   S.schema(s => ({
     TAG: "CategoryRenamed",
     categoryId: s.m(S.string),
     name: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "CategoryImageChanged",
+    categoryId: s.m(S.string),
+    imageUrl: s.m(S.string)
   })),
   S.schema(s => ({
     TAG: "CategoryArchived",
@@ -23,7 +30,8 @@ let consumedEventSchema = S.union([
 let stateSchema = S.schema(s => ({
   categoryId: s.m(S.string),
   name: s.m(S.string),
-  archived: s.m(S.bool)
+  archived: s.m(S.bool),
+  imageUrl: s.m(S.option(StorageRef$Reventless.forStore(undefined, "categoryImages")))
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);

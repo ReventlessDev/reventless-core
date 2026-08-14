@@ -7,6 +7,16 @@ describe("AddCategory StateChangeSlice", () => {
     ->thenEvent(CategoryAdded({categoryId: "c1", name: "Electronics"}))
   )
 
+  test("an image given at creation travels on CategoryAdded", () =>
+    givenEvents([])
+    ->whenCmd(
+      AddCategory({categoryId: "c1", name: "Electronics", imageUrl: "/uploads/cat/c1.svg"}),
+    )
+    ->thenEvent(
+      CategoryAdded({categoryId: "c1", name: "Electronics", imageUrl: "/uploads/cat/c1.svg"}),
+    )
+  )
+
   test("existing category returns CategoryAlreadyExists", () =>
     givenEvents([CategoryAdded])
     ->whenCmd(AddCategory({categoryId: "c1", name: "Electronics"}))

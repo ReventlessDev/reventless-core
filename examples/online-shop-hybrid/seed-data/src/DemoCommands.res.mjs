@@ -57,7 +57,8 @@ function dateRange(r) {
 }
 
 function addCategory(command) {
-  return Seed$ReventlessSeed.mutation(`Catalog_` + "AddCategory", [
+  let imageUrl = command.imageUrl;
+  let base = [
     [
       "categoryId",
       {
@@ -70,6 +71,33 @@ function addCategory(command) {
       {
         TAG: "String",
         _0: command.name
+      }
+    ]
+  ];
+  let image = imageUrl !== undefined ? [[
+        "imageUrl",
+        {
+          TAG: "String",
+          _0: imageUrl
+        }
+      ]] : [];
+  return Seed$ReventlessSeed.mutation(`Catalog_` + "AddCategory", base.concat(image));
+}
+
+function changeCategoryImage(command) {
+  return Seed$ReventlessSeed.mutation(`Catalog_` + "ChangeCategoryImage", [
+    [
+      "categoryId",
+      {
+        TAG: "Id",
+        _0: command.categoryId
+      }
+    ],
+    [
+      "imageUrl",
+      {
+        TAG: "String",
+        _0: command.imageUrl
       }
     ]
   ]);
@@ -432,6 +460,7 @@ export {
   money,
   dateRange,
   addCategory,
+  changeCategoryImage,
   renameCategory,
   archiveCategory,
   addProduct,

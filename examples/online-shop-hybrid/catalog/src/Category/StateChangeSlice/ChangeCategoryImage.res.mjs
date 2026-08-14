@@ -5,24 +5,32 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
 
 let consumedEventSchema = S.union([
-  S.literal("CategoryAdded"),
+  S.schema(s => ({
+    TAG: "CategoryAdded",
+    imageUrl: s.m(S.option(S.string))
+  })),
+  S.schema(s => ({
+    TAG: "CategoryImageChanged",
+    imageUrl: s.m(S.string)
+  })),
   S.literal("CategoryArchived")
 ]);
 
 let commandSchema = S.schema(s => ({
-  TAG: "AddCategory",
+  TAG: "ChangeCategoryImage",
   categoryId: s.m(DcbTag$Reventless.string),
-  name: s.m(S.string),
-  imageUrl: s.m(S.option(StorageRef$Reventless.forStore(undefined, "categoryImages")))
+  imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "categoryImages"))
 }));
 
-let errorSchema = S.literal("CategoryAlreadyExists");
+let errorSchema = S.union([
+  S.literal("CategoryNotFound"),
+  S.literal("CategoryAlreadyArchived")
+]);
 
 let eventSchema = S.schema(s => ({
-  TAG: "CategoryAdded",
+  TAG: "CategoryImageChanged",
   categoryId: s.m(DcbTag$Reventless.string),
-  name: s.m(S.string),
-  imageUrl: s.m(S.option(StorageRef$Reventless.forStore(undefined, "categoryImages")))
+  imageUrl: s.m(StorageRef$Reventless.forStore(undefined, "categoryImages"))
 }));
 
 function commandAuthorization(command) {
@@ -35,11 +43,11 @@ function commandAuthorization(command) {
   };
 }
 
-let name = "AddCategory";
+let name = "ChangeCategoryImage";
 
 let Id;
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Category/StateChangeSlice/AddCategory.res.mjs";
+let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Category/StateChangeSlice/ChangeCategoryImage.res.mjs";
 
 let readConsistency = "EscalateOnRetry";
 

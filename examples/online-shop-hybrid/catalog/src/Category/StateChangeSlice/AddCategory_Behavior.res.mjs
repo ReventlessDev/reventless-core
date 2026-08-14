@@ -27,7 +27,8 @@ function decide(state, command) {
       _0: [{
           TAG: "CategoryAdded",
           categoryId: command.categoryId,
-          name: command.name
+          name: command.name,
+          imageUrl: command.imageUrl
         }]
     };
   }

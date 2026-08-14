@@ -744,7 +744,7 @@ What each of the shop's components declares:
 | Component | Declarations |
 |---|---|
 | `Catalog/Products` | `Money.t` price; `@storageRef("productImages")` image; nav group "Shop"; a row action that starts `Ordering.PlaceOrder` |
-| `Catalog/Categories` | nav group "Shop" |
+| `Catalog/Categories` | `@storageRef("categoryImages")` image — its own store, not the products' one; nav group "Shop" |
 | `Catalog/ProductDemand` | `@@reventless.authorize(AllowGroups(["Admin", "Merchandiser"]))`; `@id productId`; only in the `Merchandiser` journey, under its own nav group |
 | `Ordering/Orders` | `@owner customerId`; `@status status`; `DateTime` timestamps; `DateRange` delivery window; nav "All Orders", or "My Orders" for a caller reading only their own |
 | `Ordering/Customers` | `@@reventless.authorize`; `@displayName email`; `@status locationStatus`; `@hidden locationNote`; `GeoPoint` location |

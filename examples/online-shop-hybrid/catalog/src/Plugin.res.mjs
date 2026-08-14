@@ -16,6 +16,7 @@ import * as ChangeProductName$CatalogPlugin from "./Product/StateChangeSlice/Cha
 import * as ChangeProductImage$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductImage.res.mjs";
 import * as ChangeProductPrice$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductPrice.res.mjs";
 import * as AddProduct_Behavior$CatalogPlugin from "./Product/StateChangeSlice/AddProduct_Behavior.res.mjs";
+import * as ChangeCategoryImage$CatalogPlugin from "./Category/StateChangeSlice/ChangeCategoryImage.res.mjs";
 import * as Products_Projection$CatalogPlugin from "./Product/StateViewSliceStream/Products_Projection.res.mjs";
 import * as RecordProductDemand$CatalogPlugin from "./ProductDemand/StateChangeSlice/RecordProductDemand.res.mjs";
 import * as AddCategory_Behavior$CatalogPlugin from "./Category/StateChangeSlice/AddCategory_Behavior.res.mjs";
@@ -30,6 +31,7 @@ import * as ImportProduct_Translation$CatalogPlugin from "./Product/InboundTrans
 import * as ChangeProductName_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductName_Behavior.res.mjs";
 import * as ChangeProductImage_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductImage_Behavior.res.mjs";
 import * as ChangeProductPrice_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductPrice_Behavior.res.mjs";
+import * as ChangeCategoryImage_Behavior$CatalogPlugin from "./Category/StateChangeSlice/ChangeCategoryImage_Behavior.res.mjs";
 import * as RecordProductDemand_Behavior$CatalogPlugin from "./ProductDemand/StateChangeSlice/RecordProductDemand_Behavior.res.mjs";
 import * as Products_ExtensionPointMapping$CatalogPlugin from "./ExtensionPoint/Products_ExtensionPointMapping.res.mjs";
 import * as ChangeProductDescription_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductDescription_Behavior.res.mjs";
@@ -82,6 +84,22 @@ function Make(Platform) {
     evolve: ArchiveCategory_Behavior$CatalogPlugin.evolve,
     decide: ArchiveCategory_Behavior$CatalogPlugin.decide,
     moduleUrl: ArchiveCategory_Behavior$CatalogPlugin.moduleUrl
+  });
+  let ChangeCategoryImageSlice = Platform.StateChangeSlice.Make({
+    name: ChangeCategoryImage$CatalogPlugin.name,
+    moduleUrl: ChangeCategoryImage$CatalogPlugin.moduleUrl,
+    Id: Id$Reventless.$$String,
+    consumedEventSchema: ChangeCategoryImage$CatalogPlugin.consumedEventSchema,
+    errorSchema: ChangeCategoryImage$CatalogPlugin.errorSchema,
+    eventSchema: ChangeCategoryImage$CatalogPlugin.eventSchema,
+    commandSchema: ChangeCategoryImage$CatalogPlugin.commandSchema,
+    commandAuthorization: ChangeCategoryImage$CatalogPlugin.commandAuthorization,
+    readConsistency: ChangeCategoryImage$CatalogPlugin.readConsistency
+  })({
+    initialState: ChangeCategoryImage_Behavior$CatalogPlugin.initialState,
+    evolve: ChangeCategoryImage_Behavior$CatalogPlugin.evolve,
+    decide: ChangeCategoryImage_Behavior$CatalogPlugin.decide,
+    moduleUrl: ChangeCategoryImage_Behavior$CatalogPlugin.moduleUrl
   });
   let ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductDescription$CatalogPlugin.name,
@@ -286,6 +304,7 @@ function Make(Platform) {
     AddCategorySlice,
     AddProductSlice,
     ArchiveCategorySlice,
+    ChangeCategoryImageSlice,
     ChangeProductDescriptionSlice,
     ChangeProductImageSlice,
     ChangeProductNameSlice,
@@ -330,6 +349,10 @@ function Make(Platform) {
       "Category"
     ],
     [
+      "ChangeCategoryImage",
+      "Category"
+    ],
+    [
       "ChangeProductDescription",
       "Product"
     ],
@@ -370,6 +393,7 @@ function Make(Platform) {
     AddCategorySlice,
     AddProductSlice,
     ArchiveCategorySlice,
+    ChangeCategoryImageSlice,
     ChangeProductDescriptionSlice,
     ChangeProductImageSlice,
     ChangeProductNameSlice,
@@ -385,6 +409,7 @@ function Make(Platform) {
     AddCategorySlice: AddCategorySlice,
     AddProductSlice: AddProductSlice,
     ArchiveCategorySlice: ArchiveCategorySlice,
+    ChangeCategoryImageSlice: ChangeCategoryImageSlice,
     ChangeProductDescriptionSlice: ChangeProductDescriptionSlice,
     ChangeProductImageSlice: ChangeProductImageSlice,
     ChangeProductNameSlice: ChangeProductNameSlice,

@@ -37,8 +37,27 @@ let dateRange = (r: Reventless.DateRange.t): Seed.value =>
 
 let addCategory = (command: CatalogPlugin.AddCategory.command): Seed.mutation =>
   switch command {
-  | AddCategory({categoryId, name}) =>
-    Seed.mutation(catalog("AddCategory"), [("categoryId", Id(categoryId)), ("name", String(name))])
+  | AddCategory({categoryId, name, imageUrl: ?imageUrl}) =>
+    // imageUrl is optional: include the (nullable) arg only when present, so an
+    // image-less category sends no image rather than an empty string.
+    let base: array<(string, Seed.value)> = [
+      ("categoryId", Id(categoryId)),
+      ("name", String(name)),
+    ]
+    let image: array<(string, Seed.value)> = switch imageUrl {
+    | Some(url) => [("imageUrl", String(url))]
+    | None => []
+    }
+    Seed.mutation(catalog("AddCategory"), Array.concat(base, image))
+  }
+
+let changeCategoryImage = (command: CatalogPlugin.ChangeCategoryImage.command): Seed.mutation =>
+  switch command {
+  | ChangeCategoryImage({categoryId, imageUrl}) =>
+    Seed.mutation(
+      catalog("ChangeCategoryImage"),
+      [("categoryId", Id(categoryId)), ("imageUrl", String(imageUrl))],
+    )
   }
 
 let renameCategory = (command: CatalogPlugin.RenameCategory.command): Seed.mutation =>

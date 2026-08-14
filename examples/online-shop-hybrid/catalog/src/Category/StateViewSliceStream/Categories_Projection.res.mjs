@@ -12,7 +12,8 @@ function project(param) {
           _1: {
             categoryId: categoryId,
             name: event.name,
-            archived: false
+            archived: false,
+            imageUrl: event.imageUrl
           }
         }];
     case "CategoryRenamed" :
@@ -20,21 +21,32 @@ function project(param) {
       return [{
           TAG: "Update",
           _0: event.categoryId,
-          _1: state => ({
-            categoryId: state.categoryId,
-            name: name,
-            archived: state.archived
-          })
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.name = name;
+            return newrecord;
+          }
+        }];
+    case "CategoryImageChanged" :
+      let imageUrl = event.imageUrl;
+      return [{
+          TAG: "Update",
+          _0: event.categoryId,
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.imageUrl = imageUrl;
+            return newrecord;
+          }
         }];
     case "CategoryArchived" :
       return [{
           TAG: "Update",
           _0: event.categoryId,
-          _1: state => ({
-            categoryId: state.categoryId,
-            name: state.name,
-            archived: true
-          })
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.archived = true;
+            return newrecord;
+          }
         }];
   }
 }

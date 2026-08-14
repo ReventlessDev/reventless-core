@@ -26,19 +26,22 @@ type category = {
   weight: int,
   nouns: array<string>,
   archive: bool,
+  // Absent until the upload phase fills it with the served `/{prefix}/{key}`
+  // ref, exactly as `product.imageUrl` is.
+  imageUrl: option<string>,
 }
 
 let categories: array<category> = [
-  {id: "cat-01", name: "Laptops", weight: 9, nouns: ["Notebook", "Ultrabook", "Workstation"], archive: false},
-  {id: "cat-02", name: "Phones", weight: 10, nouns: ["Handset", "Smartphone", "Phone"], archive: false},
-  {id: "cat-03", name: "Audio", weight: 9, nouns: ["Headphones", "Earbuds", "Speaker"], archive: false},
-  {id: "cat-04", name: "Cameras", weight: 7, nouns: ["Camera", "Lens", "Gimbal"], archive: false},
-  {id: "cat-05", name: "Wearables", weight: 7, nouns: ["Watch", "Tracker", "Band"], archive: false},
-  {id: "cat-06", name: "Home Office", weight: 8, nouns: ["Desk Lamp", "Monitor", "Keyboard"], archive: false},
-  {id: "cat-07", name: "Accessories", weight: 6, nouns: ["Cable", "Adapter", "Case"], archive: false},
+  {id: "cat-01", name: "Laptops", weight: 9, nouns: ["Notebook", "Ultrabook", "Workstation"], archive: false, imageUrl: None},
+  {id: "cat-02", name: "Phones", weight: 10, nouns: ["Handset", "Smartphone", "Phone"], archive: false, imageUrl: None},
+  {id: "cat-03", name: "Audio", weight: 9, nouns: ["Headphones", "Earbuds", "Speaker"], archive: false, imageUrl: None},
+  {id: "cat-04", name: "Cameras", weight: 7, nouns: ["Camera", "Lens", "Gimbal"], archive: false, imageUrl: None},
+  {id: "cat-05", name: "Wearables", weight: 7, nouns: ["Watch", "Tracker", "Band"], archive: false, imageUrl: None},
+  {id: "cat-06", name: "Home Office", weight: 8, nouns: ["Desk Lamp", "Monitor", "Keyboard"], archive: false, imageUrl: None},
+  {id: "cat-07", name: "Accessories", weight: 6, nouns: ["Cable", "Adapter", "Case"], archive: false, imageUrl: None},
   // Archived at the end of the catalog phase — after its products exist, since
   // AddProduct rejects an archived category with CategoryNotFound.
-  {id: "cat-08", name: "Clearance", weight: 4, nouns: ["Bundle", "Refurb Kit"], archive: true},
+  {id: "cat-08", name: "Clearance", weight: 4, nouns: ["Bundle", "Refurb Kit"], archive: true, imageUrl: None},
 ]
 
 let renamedCategoryId = "cat-06"
@@ -156,6 +159,21 @@ let productSvg = (~name: string, ~index: int): string => {
   `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">` ++
   `<rect width="400" height="300" fill="${bg}"/>` ++
   `<text x="200" y="160" fill="#ffffff" font-family="sans-serif" font-size="22" font-weight="600" text-anchor="middle">${label}</text>` ++
+  `</svg>`
+}
+
+// The same deterministic scheme for a category, in a wide banner rather than the
+// product tile's 4:3 — a category image is a section header, and two images that
+// differ only in their label are hard to tell apart on a page carrying both. The
+// hue offset keeps a category from sharing a colour with the product that
+// happens to land on its index.
+let categorySvg = (~name: string, ~index: int): string => {
+  let hue = mod(index * 47 + 23, 360)
+  let bg = `hsl(${hue->Int.toString}, 52%, 42%)`
+  let label = escapeXml(name)
+  `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="200" viewBox="0 0 600 200">` ++
+  `<rect width="600" height="200" fill="${bg}"/>` ++
+  `<text x="300" y="112" fill="#ffffff" font-family="sans-serif" font-size="30" font-weight="600" text-anchor="middle">${label}</text>` ++
   `</svg>`
 }
 
