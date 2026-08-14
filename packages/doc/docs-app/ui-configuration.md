@@ -14,7 +14,7 @@ overrides another, because each answers a different question.
 ┌─ Layer 1 ── Annotations on your spec types ──────────────────────────┐
 │  What does this field MEAN?                                          │
 │  @status, @displayName, @hidden, @metric, semantic types …           │
-│  → x-reventless-* properties on the generated JSON Schema            │
+│  → travels with the component, wherever it is rendered               │
 └──────────────────────────────────────────────────────────────────────┘
 ┌─ Layer 2 ── Baked manifest (bakedManifest) ──────────────────────────┐
 │  Which components does THIS deployment's audience see?               │
@@ -48,11 +48,9 @@ way whether or not a component appears in any manifest. Use
 
 ## 2. Layer 1 — annotations on spec types
 
-Field annotations on a `@schema type state` record are collected by the PPX into
-sury metadata, and `SuryToJsonSchema.deriveObjectSchema` stamps them onto the read
-model's JSON Schema as `x-reventless-*` extension properties. None of them changes
-the projection or the stored data — they are declarations *about* the data that
-travel with it.
+Annotations on a `@schema type state` record tell the UI what your fields *mean*.
+None of them changes your projection or the data you store — they are declarations
+*about* the data, and they travel with it.
 
 They work on **ReadModel**, **ReadModelStream**, **StateViewSlice** and
 **StateViewSliceStream** spec files (any file carrying `@@reventless.spec` with a
@@ -73,19 +71,18 @@ type state = {
 }
 ```
 
-When no annotation is present the framework guesses, and publishes which rung of
-the ladder it used as `queryableDef.labelFieldSource`:
+With no annotation the framework guesses, in this order:
 
-| Rung | Source | How the label was chosen |
-|---|---|---|
-| 1 | `annotation` | a `@displayName` spec — the author said so |
-| 2 | `convention` | a field named `name`, `title`, `label` or `displayName` (case-insensitive, exact) |
-| 3 | `position` | the first label-shaped field in declaration order |
-| 4 | `fallback` | nothing suitable — falls back to `id`, with a logged warning |
+| | How the label is chosen |
+|---|---|
+| 1 | a `@displayName` annotation — you said so |
+| 2 | a field named `name`, `title`, `label` or `displayName` (case-insensitive, exact) |
+| 3 | the first label-shaped field in declaration order |
+| 4 | nothing suitable — falls back to `id`, with a logged warning |
 
-Rung 3 is worth avoiding deliberately: a state gains a new name whenever a field is
-inserted above the old one. Adding a `placedAt` field so date views have something
-to key off would rename every order to a timestamp.
+Step 3 is worth annotating your way out of: the row name changes whenever a field
+is inserted above the old one. Adding a `placedAt` field so date views have
+something to key off would rename every order to a timestamp.
 
 ### 2.2 Lifecycle status
 
@@ -169,10 +166,10 @@ view drops a pin per row rather than hunting for a `lat`/`lng` pair among the
 numeric fields. `DateRange.t` says *one span*, so a scheduler lays out a bar
 directly instead of pairing `start*`/`end*` by name.
 
-**`@semantic("id")`** is the annotation tier for a field whose type carries no
-semantic. The id vocabulary belongs to the UI, so the PPX cannot validate it. A
-type-carried semantic always wins over an annotation, and a disagreement between
-the two is logged rather than silently resolved.
+**`@semantic("id")`** says the same thing about a field whose type cannot. Reach
+for it when you are not in a position to change the type; the vocabulary is the
+UI's, so a name it does not know is not caught at compile time. Where a field has
+both, the type wins and the disagreement is logged rather than quietly resolved.
 
 ### 2.7 References and object stores
 
@@ -225,16 +222,15 @@ type state = {@id productId: string, name: string, categoryId: string, orderCoun
 
 ### 2.9 Component-level declarations
 
-**`@@reventless.visibility(Internal)`** hides a read model or state-view slice from
-the generated UI's manifest — panels and pages. GraphQL exposure, authorization,
-resolver provisioning and `pluginStructure.queryableDef` are all unaffected: this
-is a UX hint, not a boundary. Use it for denormalised mirrors that exist as lookup
-targets rather than as surfaces.
+**`@@reventless.visibility(Internal)`** keeps a read model or state-view slice out
+of the generated UI — no page, no panel, no menu entry. It stays queryable, and
+authorization is untouched: this is a UX hint, not a boundary. Use it for
+denormalised mirrors that exist as lookup targets rather than as surfaces.
 
 **`@live(true | false)`** goes on the `@schema type state` declaration itself, not
 on a field. `false` marks an investigative or historical view where a Live control
-makes no sense; `true` marks an operational one. Absent means the consumer's own
-default applies.
+makes no sense; `true` marks an operational one. Leave it out and the UI applies
+its own default.
 
 ```rescript
 @live(false)
@@ -265,47 +261,40 @@ field or supplies it, and whether an owner column is worth showing. Who is exemp
 is deployment configuration (`elevatedGroups`), never part of the annotation —
 see §5.3.
 
-### 2.11 The wire format
-
-Everything above surfaces on the component's JSON Schema:
-
-```json
-{
-  "type": "object",
-  "x-reventless-visibility": "Internal",
-  "x-reventless-live": false,
-  "properties": {
-    "productId":  { "type": "string", "x-reventless-id": true },
-    "status":     { "type": "string", "enum": ["Placed"], "x-reventless-group-by": true },
-    "note":       { "type": "string", "x-reventless-hidden": true },
-    "orderCount": { "type": "integer", "x-reventless-metric": { "aggregate": "sum" } },
-    "price":      { "type": "object", "x-reventless-semantic": "money",
-                    "x-reventless-semantic-source": "type" },
-    "customerId": { "type": "string", "x-reventless-owner": true }
-  }
-}
-```
-
-`x-reventless-semantic-source` is the discriminator that lets a reader rank a
-type-carried semantic above an annotated one.
-
 ---
 
 ## 3. Layer 2 — the baked manifest
 
-A shell needs to know which components exist for its audience. By default it asks
-the admin-gated component-definitions API. A **baked manifest** replaces that call
-with a static JSON file written at deploy time, which is what lets a shop serve
-customers who have no admin API to open.
+The shell needs to know which components exist for its audience. By default it
+asks an admin-only API, which is fine for an operator console and no use for a
+shop: customers are not administrators. A **baked manifest** answers the question
+from a static file instead, so any audience can be served.
 
-The deployment declares **what to include**, never what to write — the content is
-derived from the registered plugins' structures, which only the framework knows.
+:::note What "baked" means
+Baked in the sense of a baked image: computed once at deploy time and frozen into
+an artifact, rather than resolved per request. The platform reads the plugin
+structures it just registered, applies your include-list, and writes the result
+beside `config.json` — through the *same* encoder the admin API uses, so a baked
+entry and a served entry cannot drift, and an include-list naming everything
+produces byte-identical output.
+
+Two consequences worth holding on to. The file is settled before anyone logs in,
+so it can say nothing about who is asking — which is why curation and
+authorization stay separate concerns ("None of this is authorization", above).
+And it changes only
+when you deploy: adding a component to a plugin does not add it to a baked
+surface until the next deploy re-bakes the file.
+:::
+
+You declare **what to include**; the framework fills in the detail from the
+plugins you registered.
 
 ```rescript
 let manifest: ReventlessInfra.Platform.bakedManifest = {
   components: [
-    {plugin: "Catalog", views: ["Products", "Categories"], commands: []},
-    {plugin: "Ordering", views: ["Orders"], commands: ["PlaceOrder", "CancelOrder"]},
+    {plugin: "Catalog", views: ["Products", "Categories"], commands: [], derived: []},
+    {plugin: "Ordering", views: ["Orders"],
+     commands: ["PlaceOrder", "CancelOrder"], derived: []},
   ],
   journeys: [
     {
@@ -313,46 +302,64 @@ let manifest: ReventlessInfra.Platform.bakedManifest = {
       components: [
         {plugin: "Catalog",
          views: ["Products", "Categories", "ProductDemand"],
-         commands: ["AddProduct", "ChangeProductPrice", "AddCategory", "RenameCategory"]},
+         commands: ["AddProduct", "ChangeProductPrice", "AddCategory", "RenameCategory"],
+         derived: []},
       ],
     },
     {
       group: "Fulfilment",
       components: [
-        {plugin: "Ordering", views: ["Orders"], commands: ["ShipOrder", "CancelOrder"]},
+        {plugin: "Ordering", views: ["Orders"],
+         commands: ["ShipOrder", "CancelOrder"], derived: ["lifecycles", "canvas"]},
       ],
     },
   ],
 }
 ```
 
-**Selection semantics.** `views` / `commands` unset means every public component of
-that kind; set means exactly the named ones. It is an include-list rather than an
-exclude-list, so a component added later has to be opted in and cannot silently
-widen a curated surface. A name that matches nothing **fails the deploy naming
-it** — a silent no-op here produces a missing page no log explains.
+**Selection semantics.** `views` / `commands` / `derived` unset means every public
+component of that kind; set means exactly the named ones. It is an include-list,
+not an exclude-list, so a component you add later has to be opted in and cannot
+quietly widen a curated surface. **A name that matches nothing fails the deploy**,
+naming it — a missing page is otherwise a symptom with no explanation.
+
+**`derived` curates the pages built _across_ a plugin's views** rather than from
+any one of them. Leave them out and your audience gets the views you named and
+nothing else; name them and that audience gets them too:
+
+| Kind | The page |
+|---|---|
+| `dashboard` | KPI cards and charts over the plugin's metrics |
+| `lifecycles` | one state machine per view with a status enum and state-scoped commands |
+| `canvas` | a calendar / timeline / map drawn across the plugin's dated or located views |
+| `scheduler` | a resource-and-events lane join |
+
+These are kinds, not page titles — you are answering "does this audience get
+calendars", not naming the one called Deliveries. Naming a kind your plugin
+generates no page for is fine: nothing appears until the views support it, so you
+can state the intention before the schema catches up.
+
+Curating `derived` is also how a menu stops showing groups named after your
+plugins. A page built across several views belongs to none of them, so no `nav`
+hint in §4 can rename or move it — the manifest is the only place to decide
+whether an audience gets it at all.
 
 **Journeys** are per-audience surfaces beside the default one. `group` is the
-caller group the journey serves; the shell picks by the role the caller is acting
-as. `label` names it in a switcher, defaulting to the group's own name; `key` names
-the file, defaulting to a per-group name derived from the group (lower-cased,
-non-alphanumerics folded to `-`, e.g. `component-manifest-fulfilment.json`).
-
-Every file is curated before any is written, so a declaration naming a missing
-component fails the boot rather than leaving one audience's file beside a stale
-copy of another's.
+caller group the journey serves, and the shell picks the journey matching the role
+the caller is acting as. `label` names it in the role switcher (defaults to the
+group name); `key` names its file (defaults to one derived from the group, e.g.
+`component-manifest-fulfilment.json`).
 
 **`components` is the default journey** — what a caller matching no declared
-journey gets. It is not only backward compatibility: a local dev session without a
-login carries a group no deployment declares, so without a default it would match
-nothing and render an empty shell.
+journey gets. Always provide one: a local dev session without a login belongs to
+no declared group, and with no default it would match nothing and render an empty
+shell.
 
 :::caution Journeys are a local-platform feature today
-The in-memory platform writes one manifest file per journey and publishes the map
-as `journeyManifestUrls` in `config.json`. **The AWS deploy still writes only the
-default manifest** — a `journeys` declaration is carried in the type and ignored
-by the deploy. Declare journeys for local development by all means; do not rely on
-them to shape a deployed app's menu yet.
+The local platform serves one manifest per journey. **The AWS deploy still serves
+only the default one** — a `journeys` declaration is accepted and not yet honoured
+there. Declare journeys for local development by all means; do not rely on them to
+shape a deployed app's menu yet.
 :::
 
 Declare the manifest in a **platform-independent module**, and pass it from each
@@ -446,22 +453,32 @@ default one; only the operator roles need their own:
 
 ```rescript
 components: [                                  // ← what Shopper gets
-  {plugin: "Catalog", views: ["Products", "Categories"], commands: []},
-  {plugin: "Ordering", views: ["Orders"], commands: ["PlaceOrder", "CancelOrder"]},
+  {plugin: "Catalog", views: ["Products", "Categories"], commands: [], derived: []},
+  {plugin: "Ordering", views: ["Orders"],
+   commands: ["PlaceOrder", "CancelOrder"], derived: []},
 ],
 journeys: [
   {group: "Merchandiser", components: [ … ]},
   {group: "Fulfilment", components: [
-    {plugin: "Ordering", views: ["Orders"], commands: ["ShipOrder", "CancelOrder"]},
+    {plugin: "Ordering", views: ["Orders"],
+     commands: ["ShipOrder", "CancelOrder"], derived: ["lifecycles", "canvas"]},
   ]},
 ],
 ```
+
+`derived` is where the two audiences differ most sharply for the least text.
+`Orders` carries a status and the commands that move it, and its delivery windows
+are dates, so the shell can build a lifecycle diagram and a calendar of the same
+rows. To `fulfil` that is a picture of the job. To a customer reading their own
+three orders it is a state machine of an order pipeline, in a menu group labelled
+`Ordering` — which is exactly the leak a curated storefront is supposed to close.
 
 The result, per role:
 
 | | `shopper` | `merch` | `fulfil` | `admin` |
 |---|---|---|---|---|
 | Menu | storefront (default) | `Merchandiser` journey | `Fulfilment` journey | default + admin API |
+| `Orders` menu label | "My Orders" (scoped) | not in menu | "All Orders" (elevated) | "All Orders" (elevated) |
 | `Ordering/Orders` | own rows only | not in menu | **every** row | every row |
 | `Catalog/Products` | browse | browse + edit | not in menu | everything |
 | `Catalog/ProductDemand` | refused by the API | readable | refused by the API | readable |
@@ -469,6 +486,7 @@ The result, per role:
 | `PlaceOrder` | ✅ own | ✅ own | ✅ own | ✅ |
 | `ShipOrder` | ❌ refused | ❌ refused | ✅ | ✅ |
 | `AddProduct` | ❌ refused | ✅ | ❌ refused | ✅ |
+| Derived pages | none | none | Lifecycles, Calendar | every kind |
 
 Read the `ProductDemand` and `Customers` rows together: `merch` and `fulfil` are
 each refused one of them. That is `@@reventless.authorize` doing the work, not the
@@ -488,63 +506,26 @@ behaviour is what refuses a shipped order, by returning `OrderAlreadyShipped`.
 
 ### 3.3 Acting as one role
 
-A caller holding several groups can narrow their token to one of them. The narrowed
-token carries the `activeRole` claim, and its group set is exactly that one role —
-so every enforcement point sees the narrowed membership without knowing the feature
-exists.
+A caller holding several groups can act as one of them, from the shell's user
+menu. While they do, they *are* that role everywhere: the menu shows that
+journey, the data narrows to what the role may read, and the server refuses what
+it may not call. Nothing in your app has to know the feature exists.
+
+What this means for how you declare roles:
 
 - A role the caller does not hold is **refused**, never widened into.
 - Group names match **exactly** — `shopper` is not `Shopper`.
-- Narrowing with no role requested mints full membership, exactly as before.
-- The roles given up are published as an `availableRoles` claim **for offering the
-  switch back only**. It is by definition wider than what the caller currently
-  holds; never read it for authorization.
+- Switching back to full membership is not an escalation; it is the membership
+  the user already had.
 
-Locally, `POST /__inmemory/switch-role` re-mints an existing session without asking
-for the password again — membership is re-read from the user store rather than from
-the current token, because a narrowed token carries one group and judging membership
-by it would make the switch one-way.
+The account to test with is one holding two roles — the hybrid shop's `fulfil`
+(`Fulfilment` + `Shopper`) is built for exactly this: acting as `Fulfilment` it
+works every customer's orders, and acting as `Shopper` it sees only its own and is
+refused `ShipOrder`.
 
-Both endpoints answer with the same `{token, identity}` shape, so a switch is
-indistinguishable from a fresh session downstream and a client stores the result the
-same way. The default port is 4000 (`REVENTLESS_DOMAIN_PORT`).
-
-```bash
-# Log in as the two-role account (or use the host shell's LoginPage).
-curl -sX POST localhost:4000/__inmemory/login \
-  -d '{"username":"fulfil","password":"fulfil"}'
-# → identity.groups: ["Fulfilment", "Shopper"]
-
-# Act as Shopper: Ordering/Orders now returns only this account's own orders,
-# and ShipOrder is refused.
-curl -sX POST localhost:4000/__inmemory/switch-role \
-  -H "Authorization: Bearer $TOKEN" -d '{"activeRole":"Shopper"}'
-# → identity.groups: ["Shopper"], claims.activeRole: "Shopper",
-#   claims.availableRoles: "Fulfilment,Shopper"
-
-# Switch back — widening to full membership is not an escalation; it is the
-# membership the user store already holds.
-curl -sX POST localhost:4000/__inmemory/switch-role \
-  -H "Authorization: Bearer $TOKEN" -d '{}'
-
-# Refused: this account does not hold Admin.
-curl -sX POST localhost:4000/__inmemory/switch-role \
-  -H "Authorization: Bearer $TOKEN" -d '{"activeRole":"Admin"}'
-# → Cannot act as "Admin": not a group this user holds
-```
-
-`/__inmemory/login` accepts an `activeRole` too, so a client can land in a chosen
-role without a second round trip.
-
-The credentials above ship in `users.example.yaml`, which `pnpm run setup` copies to
-the gitignored `.reventless/users.yaml`. They are throwaway dev credentials — never
-reuse them anywhere real.
-
-:::caution Deploy verification pending
-The local path is built and verified. The AWS path — a role-state table, a
-pre-token-generation trigger, and a `Platform_SetActiveRole` write door — is built
-and unit-tested but has **not yet met a live user pool**.
-:::
+Dev credentials ship in `users.example.yaml`, which `pnpm run setup` copies to the
+gitignored `.reventless/users.yaml`. They are throwaway — never reuse them
+anywhere real.
 
 ---
 
@@ -558,7 +539,7 @@ nav, and which cross-plugin actions a row offers. The hybrid shop's file:
   "Catalog": {
     "views": {
       "Products": {
-        "nav": { "label": "Shop", "group": "Shop", "order": 0 },
+        "nav": { "group": "Shop", "order": 0 },
         "rowActions": [
           {
             "label": "Order",
@@ -570,11 +551,19 @@ nav, and which cross-plugin actions a row offers. The hybrid shop's file:
           }
         ]
       },
-      "Categories": { "nav": { "group": "Shop", "order": 20 } }
+      "Categories": { "nav": { "group": "Shop", "order": 10 } },
+      "ProductDemand": { "nav": { "label": "Demand", "group": "Merchandising", "order": 30 } }
     }
   },
   "Ordering": {
-    "views": { "Orders": { "nav": { "label": "My Orders", "group": "Shop", "order": 10 } } }
+    "views": {
+      "Orders": {
+        "nav": {
+          "label": "All Orders", "scopedLabel": "My Orders",
+          "group": "Shop", "order": 20
+        }
+      }
+    }
   }
 }
 ```
@@ -584,25 +573,42 @@ its group and its sort order. A `rowActions` entry turns a row into the start of
 command in another plugin: the row's key is carried into the named command's
 `field`, and `then` is where the user lands afterwards.
 
-**The framework treats this file as opaque bytes.** It resolves the path, checks
-that the content parses as JSON, and writes it verbatim — on AWS as an object
-beside `config.json`, locally into the served bundle. The key vocabulary belongs to
-the host shell package (`@reventlessdev/reventless-host-shell`) and is versioned
-with it, so this guide does not enumerate it; the shell validates what it reads and
-drops malformed entries with a warning rather than failing to boot.
+**`scopedLabel` is the one key that varies per caller.** A menu label is normally
+a fact about the component, and one file can state it for everybody. "My Orders"
+is not: it is a claim about *whose* rows, and the same view answers that
+differently for a customer and for the agent working the board.
 
-Two failure modes are worth knowing, because both produce "hints that quietly do
-nothing" and both are therefore made loud instead:
+So `label` is what the entry is called when the caller reads every row, and
+`scopedLabel` when they are narrowed to their own. It applies only where the view
+declares an `@owner` field and the caller is not elevated (§5.3) — a `scopedLabel`
+on a view nothing narrows is reported as a hint that can never appear. Leave it
+out and `label` is used for everyone.
 
-- a `uiHintsFile` path that does not resolve fails the build naming the path;
-- content that is not JSON fails the same way.
+Write it against the *scope*, not against a role. That way it stays right when you
+elevate another group later, instead of needing every role to restate it.
 
-**Local behaviour.** The host shell package ships its own demonstration
-`ui-hints.json` as a dev-mode fallback. A declared file wins, and the shipped one is
-preserved as `ui-hints.base.json` so that withdrawing the declaration restores the
-original rather than leaving yesterday's hints in place with nothing in the diff to
-explain them. The AWS deploy excludes the package's own file entirely — a deployed
-app with nothing declared has no curated nav at all, rather than someone else's.
+**A view with no `nav` entry keeps the plugin's name as its group.** That is the
+usual way a plugin name turns up in a shop's menu — `ProductDemand` above is in
+the file for no other reason. When you curate a view into a journey, it is worth
+naming where it sits, or the role working it gets a menu group named after your
+plugin.
+
+**A `nav` entry cannot speak for a derived page.** A dashboard or a lifecycle
+diagram belongs to no single view, so no key here names one. Whether an audience
+gets those is curation, and it belongs in the manifest (§3); this file only
+decides how what they get is presented.
+
+The key vocabulary belongs to the host shell package
+(`@reventlessdev/reventless-host-shell`) and is versioned with it, so this guide
+does not enumerate it. The shell drops entries it cannot read, with a warning,
+rather than refusing to start. Two mistakes fail the build instead of going
+quiet: a `uiHintsFile` path that does not resolve, and content that is not JSON.
+
+**Locally, saving the file updates the running app.** No restart, no reload — the
+menu restacks where it stands, so you can name and reorder things by editing and
+saving. On AWS the hints are written once at deploy, as they should be: a running
+deployment does not follow anybody's working copy. See
+[Local development](../guides/local-dev.md).
 
 **Resolve the path from the declaring module**, not from the working directory,
 which differs per platform and would make one declaration two different files:
@@ -645,15 +651,13 @@ provisioning `geocoderPlaceIndex` gives you a map that cannot search for an
 address; provisioning the index without naming `Map` gives you a capability no
 browser reaches.
 
-`viewModes` is a closed variant rather than a list of strings on purpose: a
-misspelled mode name would type-check, deploy, and yield an app with the feature
-silently absent.
+`viewModes` takes typed constructors rather than strings, so a misspelled mode name
+is a compile error instead of an app quietly missing the feature.
 
 ### 5.2 `shellConfig`
 
-An untyped `dict<JSON.t>` passthrough for keys the shell owns and the framework has
-no opinion about. It is untyped deliberately — re-declaring the shell's schema here
-would mean a lockstep core release every time the UI adds a knob.
+A `dict<JSON.t>` passthrough for keys the shell owns and the framework has no
+opinion about — so the shell can add a knob without waiting on a core release.
 
 ```rescript
 shellConfig: Dict.fromArray([
@@ -684,15 +688,15 @@ Reventless.OwnerScope.setElevatedGroups(Storefront.elevatedGroups)
 shellConfig: Dict.fromArray([("elevatedGroups", …)])
 ```
 
-The server call decides what an owner-scoped resolver returns. The `shellConfig`
-key is the browser's mirror: it decides whether the generated form asks for the
-owner field or supplies it, and whether an owner column is worth a column. Read
-both from **one declaration** — a mirror that disagrees with the server is exactly
-the failure the key exists to avoid. The shell treats an absent key as "unknown",
-so omitting it silently stops hiding anything.
+The server call decides whose rows a query returns. The `shellConfig` key is the
+browser's mirror of the same fact: it decides whether the generated form asks for
+the owner field or fills it in, whether an owner column is worth showing, and
+which label `scopedLabel` picks (§4). Read both from **one declaration** — a
+mirror that disagrees with the server is the failure this key exists to avoid.
+Omit it and the shell assumes nothing is scoped.
 
-Set the elevated groups **before** the plugins are built: component construction is
-where the owner-scoped resolvers read them.
+Set the elevated groups **before** the plugins are built — the components read
+them as they are constructed.
 
 ---
 
@@ -739,10 +743,10 @@ What each of the shop's components declares:
 
 | Component | Declarations |
 |---|---|
-| `Catalog/Products` | `Money.t` price; `@storageRef("productImages")` image; nav label "Shop"; a row action that starts `Ordering.PlaceOrder` |
-| `Catalog/Categories` | nav group "Shop", order 20 |
-| `Catalog/ProductDemand` | `@@reventless.authorize(AllowGroups(["Admin", "Merchandiser"]))`; `@id productId`; only in the `Merchandiser` journey |
-| `Ordering/Orders` | `@owner customerId`; `@status status`; `DateTime` timestamps; `DateRange` delivery window; nav label "My Orders" |
+| `Catalog/Products` | `Money.t` price; `@storageRef("productImages")` image; nav group "Shop"; a row action that starts `Ordering.PlaceOrder` |
+| `Catalog/Categories` | nav group "Shop" |
+| `Catalog/ProductDemand` | `@@reventless.authorize(AllowGroups(["Admin", "Merchandiser"]))`; `@id productId`; only in the `Merchandiser` journey, under its own nav group |
+| `Ordering/Orders` | `@owner customerId`; `@status status`; `DateTime` timestamps; `DateRange` delivery window; nav "All Orders", or "My Orders" for a caller reading only their own |
 | `Ordering/Customers` | `@@reventless.authorize`; `@displayName email`; `@status locationStatus`; `@hidden locationNote`; `GeoPoint` location |
 | `Ordering/AvailableProducts` | `@@reventless.visibility(Internal)` — reachable only as the `@ref` target of `PlaceOrder`'s product picker |
 | `Ordering/PlaceOrder` | `@owner customerId`; `@ref("AvailableProducts") productIds`; optional `DateRange` delivery window |
