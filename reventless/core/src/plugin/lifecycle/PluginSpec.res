@@ -17,7 +17,7 @@ type command =
   | @noApi Connect(pluginDefinition)
   | @noApi Disconnect(version)
   // Admin lifecycle commands — API-exposed (auto-derived admin mutations,
-  // Cognito @aws_auth gated). `version` selects which known version to act on.
+  // Cognito group-gated). `version` selects which known version to act on.
   | Activate(version)
   | Deactivate(version)
   // Records a protocol-version incompatibility without changing connection state.

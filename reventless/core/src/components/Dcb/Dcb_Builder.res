@@ -895,7 +895,7 @@ module Make = (
         //
         // Stage E2: a DCB StateChangeSlice has a single GraphQL field but its
         // command type may declare multiple constructors with different
-        // authorization rules. The @aws_auth directive operates at field
+        // authorization rules. The Cognito group directive operates at field
         // granularity, so we read the auth for the first constructor (matching
         // the existing dcbTags convention at line 549 above). When all
         // constructors share the file-level default, this is exact; when they

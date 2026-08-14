@@ -11,8 +11,8 @@
 // Authorization: every query AND mutation resolver registered here is
 // wrapped with `Auth_GraphqlContext.requireGroup(~group="Admin")` so
 // non-Admin identities are refused before the underlying resolver runs.
-// Mirrors AppSync's `@aws_auth(cognito_groups: ["Admin"])` directive that
-// gates Platform_* fields in the AWS adapter.
+// Mirrors AppSync's `@aws_cognito_user_pools(cognito_groups: ["Admin"])`
+// directive that gates Platform_* fields in the AWS adapter.
 //
 // The refusal names which kind it is: `FORBIDDEN` for a caller the server
 // identified who does not hold the group, `UNAUTHORIZED` for one it could not

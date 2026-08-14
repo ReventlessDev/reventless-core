@@ -248,33 +248,67 @@ closed, `appsync-group-authorization-unenforced.md` was opened, the fix shipped
 in `13926388c` and was verified on a deployment. This plan then reopened. The
 remaining steps are the original conformance work, now on a sound premise.
 
-**2. Write the correspondence down as data**, beside the claim-name table in
-`reventless/core/src/adapter/Auth/Auth_ActiveRole.res` or in a sibling module —
-the two are the same kind of artifact, a fact both adapters are held to. Shape
-it so a client can ask "was this refusal about entitlement?" and get an answer
-per adapter, rather than each client re-deriving it.
+**2. Write the correspondence down as data.** ✅ **Done** —
+`reventless/core/src/adapter/Auth/Auth_RefusalVocabulary.res`, a sibling of the
+claim-name table it was modelled on. It carries the four observed signals, a
+`classify(~httpStatus, ~errorType?, ~extensionsCode?)` that answers
+entitlement-vs-identity without the caller knowing which adapter replied, and
+`warrantsReauthentication`, the one decision the distinction exists to drive.
 
-**3. Correct the comments that assert the wrong shape.** At least
-`GraphQLResponse`-style consumers have been written believing AppSync sends
-`extensions.code` — the conformance table is only half the fix if the prose
-around it still says otherwise. Grep both paths for claims about what AppSync
-returns and reconcile them against step 0's capture.
+**It is a contract, not documentation.** The local adapter now emits
+`localEntitlementCode` / `localIdentityCode` from this module rather than
+repeating `"FORBIDDEN"` / `"UNAUTHORIZED"` literals, so the table cannot drift
+from the code that produces it.
 
-**4. Cover it.** The local path's refusals are asserted in
-`reventless/local/tests/adapter/RequireGroupRefusalTest.res`. The AWS rows
-cannot be asserted without a deployment, so assert the *table* — that the
-mapping names both adapters, and that the entitlement row is distinguishable
-from the identity row in each.
+🚨 **The trap the table defuses.** On AppSync the entitlement value
+(`Unauthorized`) is a strict prefix of the identity one
+(`UnauthorizedException`). A client matching by substring — the obvious thing to
+write — collapses them *in the dangerous direction*: it reads "you lack the
+role" as "your session is dead" and signs out a caller whose session was fine,
+which is exactly the failure §1 set out to prevent. `classify` checks the
+transport status first for this reason.
+
+**3. Correct the comments that assert the wrong shape.** ✅ **Done** — eight
+claims across both paths said the AWS side emits or enforces `@aws_auth`:
+`Api.res` (×2), `PluginSpec.res`, `Dcb_Builder.res`, `local/Platform.res`,
+`PlatformGraphQL_Server.res`, `QueryDbResolvers_AppSync.res`,
+`Auth_GraphqlContext.res` (×2) and `AppSync_Adapter.res`. One was wrong in a
+more interesting way than the rest — it said "AppSync has one rejection to give
+and this has two", when AppSync has two as well; they just arrive at different
+layers. Also corrected: `AllowAuthenticated` no longer emits *no* directive, it
+emits the group-less one.
+
+**4. Cover it.** ✅ **Done** — `reventless/core/tests/adapter/RefusalVocabularyTest.res`,
+10 tests. The AWS rows still cannot be asserted from a checkout, so what is
+asserted is the *table*: that it names both adapters, that each can express both
+refusals, that within an adapter the two are actually distinguishable (a mapping
+whose rows look alike to a client would be worthless), and that `classify`
+resolves the prefix collision in both directions.
 
 ## §8 — Acceptance
 
-- A deployed AppSync admin query has been observed refusing all four callers of
-  step 0, and the captured bodies are recorded in this file.
-- §6.1 is answered in writing. If the directive is unenforced, this plan is
-  closed in favour of that finding.
-- The correspondence is expressed as data both adapters are held to, not as
-  prose in one adapter's comments.
-- A client can determine "entitlement, not identity" for a refusal from either
-  adapter without knowing which adapter it is talking to.
-- No gate admits a caller it did not admit before. Nothing in §7 changes the
-  set of permitted callers, and a diff that does has exceeded this plan.
+- ✅ A deployed AppSync admin query has been observed refusing all four callers
+  of step 0, and the captured bodies are recorded — twice, in fact: once with
+  the gate open (which is what turned this plan into a security finding) and
+  once with it closed. Bodies in
+  [appsync-group-authorization-unenforced.md](appsync-group-authorization-unenforced.md)
+  §1 and §8.
+- ✅ §6.1 is answered in writing — "no", and it did outrank this plan. Closed in
+  favour of that finding, fixed in `13926388c`, reopened once the premise held.
+- ✅ The correspondence is expressed as data both adapters are held to:
+  `Auth_RefusalVocabulary.res`, with the local adapter emitting its codes from
+  that module rather than repeating literals. Not prose in one adapter's
+  comments — and the prose that contradicted it has been corrected in eight
+  places.
+- ✅ A client can determine "entitlement, not identity" from either adapter
+  without knowing which it is talking to — `classify`, covered by 10 tests,
+  including the prefix collision that makes the naive check wrong.
+- ✅ No gate admits a caller it did not admit before. The only access change in
+  this whole line of work was gates that admitted *everyone* starting to refuse
+  the unentitled — verified in both directions on a deployment.
+
+**Remaining, and deliberately not done here:** nothing consumes `classify` yet.
+The host shell (`80ae9fc`, `3cd0139`) reads the AWS shape directly; pointing it
+at this module is the natural next step, but it lives in the UI package and is
+its own change. The contract exists and is held to on the emitting side, which
+is what stops the two adapters drifting further apart in the meantime.

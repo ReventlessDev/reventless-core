@@ -7,8 +7,8 @@
 //   - Invalid bearer is rejected at HTTP level before this runs (see
 //     `DomainGraphQL_Server._dispatch`); on the admin server there is no
 //     dispatch layer, so an invalid bearer reaches this as an `AuthError`.
-//     AppSync enforces the same `@aws_auth(cognito_groups: ["Admin"])`
-//     directive at the schema layer in production.
+//     AppSync enforces the same `@aws_cognito_user_pools(cognito_groups:
+//     ["Admin"])` directive at the schema layer in production.
 //
 // The outcome is carried onto the context beside the identity, not folded into
 // it. Whether credentials verified and whether the verified caller holds a group
@@ -97,8 +97,9 @@ let extractAuthenticated = (ctx: JSON.t): bool =>
   }
 
 // An unauthorized caller reads the reason: `GraphQL_CallerError` explains why a
-// resolver has to construct the error rather than throw a bare one. Mirrors the
-// directive-level `@aws_auth` rejection that AppSync surfaces in production.
+// resolver has to construct the error rather than throw a bare one. The AWS
+// counterpart is the field-level refusal AppSync returns for a caller who fails
+// an `@aws_cognito_user_pools(cognito_groups: [...])` gate.
 let makeGraphqlError = GraphQL_CallerError.make
 
 /**
@@ -112,7 +113,7 @@ let makeGraphqlError = GraphQL_CallerError.make
 let unauthorizedError = (~group: string): exn =>
   makeGraphqlError(
     `Unauthorized: requires group "${group}"`,
-    {"extensions": {"code": "UNAUTHORIZED"}},
+    {"extensions": {"code": ReventlessCore.Auth_RefusalVocabulary.localIdentityCode}},
   )
 
 /**
@@ -128,13 +129,15 @@ let unauthorizedError = (~group: string): exn =>
 let forbiddenError = (~group: string): exn =>
   makeGraphqlError(
     `Forbidden: requires group "${group}"`,
-    {"extensions": {"code": "FORBIDDEN"}},
+    {"extensions": {"code": ReventlessCore.Auth_RefusalVocabulary.localEntitlementCode}},
   )
 
 // Wrap a resolver so it refuses a caller whose identity lacks the required
-// group. Mirrors AppSync's `@aws_auth(cognito_groups: [...])` semantics for
-// admin fields on the in-memory adapter, save that AppSync has one rejection to
-// give and this has two. Use for fields whose corresponding read-model entry
+// group. Mirrors AppSync's `@aws_cognito_user_pools(cognito_groups: [...])`
+// semantics for admin fields on the in-memory adapter. Both paths draw the same
+// two-way distinction — AppSync as HTTP 401 versus a field error, this as two
+// `extensions.code` values — and `ReventlessCore.Auth_RefusalVocabulary` is the
+// mapping between them. Use for fields whose corresponding read-model entry
 // carries `authorization: Some({group, ...})` — pass the group string here.
 let requireGroup = (~group: string, resolver: YG.resolverFn): YG.resolverFn =>
   async (root, args, ctx) => {

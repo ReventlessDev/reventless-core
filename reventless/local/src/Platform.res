@@ -2251,7 +2251,7 @@ module MakeWithConfig = (
     // extracts identity from the bearer token, same as the Domain server.
     // Without this, Platform_* queries / mutations run as `anonymous` and
     // skip the group authorization that AppSync would enforce via
-    // `@aws_auth(cognito_groups: ["Admin"])` in production. The Domain
+    // `@aws_cognito_user_pools(cognito_groups: ["Admin"])` in production. The Domain
     // server's `asInterface.start` accepts but ignores `~contextFactory`
     // because it always wires its own internal auth context.
     adminGraphQL.start(

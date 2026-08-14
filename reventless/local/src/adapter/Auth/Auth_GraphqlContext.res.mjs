@@ -3,6 +3,7 @@
 import * as Graphql from "graphql";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as LocalAuth$ReventlessLocal from "./LocalAuth.res.mjs";
+import * as Auth_RefusalVocabulary$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Auth/Auth_RefusalVocabulary.res.mjs";
 
 function extractHeaders(headers) {
   let acc = {};
@@ -74,7 +75,7 @@ function makeGraphqlError(prim0, prim1) {
 function unauthorizedError(group) {
   return new Graphql.GraphQLError(`Unauthorized: requires group "` + group + `"`, {
     extensions: {
-      code: "UNAUTHORIZED"
+      code: Auth_RefusalVocabulary$ReventlessCore.localIdentityCode
     }
   });
 }
@@ -82,7 +83,7 @@ function unauthorizedError(group) {
 function forbiddenError(group) {
   return new Graphql.GraphQLError(`Forbidden: requires group "` + group + `"`, {
     extensions: {
-      code: "FORBIDDEN"
+      code: Auth_RefusalVocabulary$ReventlessCore.localEntitlementCode
     }
   });
 }

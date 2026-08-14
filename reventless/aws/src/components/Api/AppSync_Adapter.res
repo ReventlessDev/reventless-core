@@ -185,10 +185,13 @@ let rec waitForMergeSuccess = async (
 // When both are present on the same field, the spec-level permission wins
 // (it is more specific). `AllowGroups([g1, g2, ...])` emits
 // `@aws_cognito_user_pools(cognito_groups: ["g1", "g2", ...])`.
-// `AllowAuthenticated` / `AllowAnonymous` emit no directive (with Cognito as
-// primary auth, any reaching request is already authenticated). `AllowGroups([])`
-// and `DenyAll` emit a sentinel `__deny_all__` group that no Cognito user can
-// belong to — effectively blocking the field at the API layer.
+// `AllowAuthenticated` / `AllowAnonymous` emit the group-less
+// `@aws_cognito_user_pools` — same reachability (with Cognito as primary auth
+// any reaching request is already authenticated), but stated rather than left
+// implicit, so `assertGateable` can tell "deliberately open" from "nobody
+// stamped this". `AllowGroups([])` and `DenyAll` emit a sentinel `__deny_all__`
+// group that no Cognito user can belong to — effectively blocking the field at
+// the API layer.
 //
 // NOT `@aws_auth(...)`: that is the single-mode form, which AppSync ignores on a
 // multi-auth API — which every API this adapter provisions is. See
@@ -422,14 +425,14 @@ let injectAwsAuth = (
   })
 }
 
-// Injects @aws_auth with the given group on ALL mutation, query, and subscription
+// Injects the Cognito group directive on ALL mutation, query, and subscription
 // fields in a fragment. Used for the base fragment where all fields share the
 // same authorization group.
 //
 // `~iamFieldNames` opts the named mutation/query fields into deploy-time IAM
 // (dual-auth): those fields emit `@aws_cognito_user_pools(cognito_groups:
-// ["<group>"]) @aws_iam` instead of the single-mode `@aws_auth(...)`, keeping
-// the same Cognito group gating while also admitting the SigV4 system caller.
+// ["<group>"]) @aws_iam`, keeping the same Cognito group gating while also
+// admitting the SigV4 system caller.
 // Subscriptions are never IAM-marked (the deploy caller does not subscribe).
 // Canonical definition lives in the runtime-pure AppSync_SdlDecorate so the
 // bundled AdminEventCollector Lambda's reactive push decorates the admin base
