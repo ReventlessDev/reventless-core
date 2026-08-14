@@ -10,10 +10,15 @@
 //
 // Authorization: every query AND mutation resolver registered here is
 // wrapped with `Auth_GraphqlContext.requireGroup(~group="Admin")` so
-// non-Admin identities raise an `UNAUTHORIZED` GraphQLError before the
-// underlying resolver runs. Mirrors AppSync's
-// `@aws_auth(cognito_groups: ["Admin"])` directive that gates Platform_*
-// fields in the AWS adapter.
+// non-Admin identities are refused before the underlying resolver runs.
+// Mirrors AppSync's `@aws_auth(cognito_groups: ["Admin"])` directive that
+// gates Platform_* fields in the AWS adapter.
+//
+// The refusal names which kind it is: `FORBIDDEN` for a caller the server
+// identified who does not hold the group, `UNAUTHORIZED` for one it could not
+// identify at all. Every surface here is admin-gated, so a client discovering
+// through them meets this refusal as a matter of course rather than as a
+// failure, and cannot afford to read it as a session that has ended.
 //
 // Mutations are wrapped (in addition to their per-command
 // `commandAuthorization` rule inside `CommandGeneratorResolvers_GraphQL.register`)

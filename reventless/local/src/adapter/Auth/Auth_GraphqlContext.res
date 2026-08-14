@@ -6,9 +6,15 @@
 //   - Missing header                       → `defaultUser`
 //   - Invalid bearer is rejected at HTTP level before this runs (see
 //     `DomainGraphQL_Server._dispatch`); on the admin server there is no
-//     dispatch layer, so an invalid bearer falls through to `defaultUser`
-//     too. AppSync enforces the same `@aws_auth(cognito_groups: ["Admin"])`
+//     dispatch layer, so an invalid bearer reaches this as an `AuthError`.
+//     AppSync enforces the same `@aws_auth(cognito_groups: ["Admin"])`
 //     directive at the schema layer in production.
+//
+// The outcome is carried onto the context beside the identity, not folded into
+// it. Whether credentials verified and whether the verified caller holds a group
+// are different questions with different answers for the client — one is worth
+// retrying with new credentials, the other never is — and a group check that
+// sees only the identity cannot tell which one it is refusing.
 
 module YG = GraphqlYoga
 
@@ -32,13 +38,34 @@ let identityFromAuthResult = (result: Reventless.Identity.authResult): Reventles
   | AuthError(_) => Reventless.Identity.anonymous
   }
 
+/**
+ Whether the request presented credentials the adapter accepted.
+
+ `identityFromAuthResult` cannot answer this: it maps both `Anonymous` and
+ `AuthError` onto the same anonymous identity, so by the time a resolver holds
+ an identity, "nobody presented credentials", "the credentials did not verify"
+ and "credentials verified for someone without the group" are one shape. That
+ collapse is what made a group check unable to say which of them it was
+ refusing.
+
+ A request carrying no `Authorization` header at all counts as authenticated
+ here, because `LocalAuth.authenticate` answers it with `defaultUser` by
+ design — in-memory mode decides such a caller is somebody, and this reports
+ the decision rather than second-guessing it.
+ */
+let isAuthenticated = (result: Reventless.Identity.authResult): bool =>
+  switch result {
+  | Authenticated(_) => true
+  | Anonymous | AuthError(_) => false
+  }
+
 let buildAuthContext = async (initial: YG.initialContext): JSON.t => {
   let ctx: yogaInitialCtx = Obj.magic(initial)
   let headers = extractHeaders(ctx.request.headers)
   let requestContext: ReventlessCore.Auth_Adapter.requestContext = {headers: headers}
   let result = await LocalAuth.authenticate(requestContext)
   let identity = identityFromAuthResult(result)
-  Obj.magic({"identity": identity})
+  Obj.magic({"identity": identity, "authenticated": isAuthenticated(result)})
 }
 
 // Read the identity attached by `buildAuthContext` from the resolver context.
@@ -54,27 +81,68 @@ let extractIdentity = (ctx: JSON.t): Reventless.Identity.t =>
   | _ => Reventless.Identity.anonymous
   }
 
+// Read the authentication outcome `buildAuthContext` recorded. Falls back to
+// `false` for the same reasons `extractIdentity` falls back to anonymous, and
+// with the same conservatism: a context this cannot read is one that proves
+// nothing about the caller, and "unauthenticated" is the answer that asks them
+// to present credentials rather than telling them theirs were rejected.
+let extractAuthenticated = (ctx: JSON.t): bool =>
+  try {
+    switch (ctx->Obj.magic)["authenticated"]->Nullable.toOption {
+    | Some(authenticated) => (authenticated: bool)
+    | None => false
+    }
+  } catch {
+  | _ => false
+  }
+
 // An unauthorized caller reads the reason: `GraphQL_CallerError` explains why a
 // resolver has to construct the error rather than throw a bare one. Mirrors the
 // directive-level `@aws_auth` rejection that AppSync surfaces in production.
 let makeGraphqlError = GraphQL_CallerError.make
 
+/**
+ Nobody the server could identify asked for a gated field.
+
+ Keeps the code it has always carried. A client reading only `UNAUTHORIZED` is
+ one that treats it as "your credentials are not being honoured", and narrowing
+ the code to the case where that is true makes such a client correct rather than
+ breaking it.
+ */
 let unauthorizedError = (~group: string): exn =>
   makeGraphqlError(
     `Unauthorized: requires group "${group}"`,
     {"extensions": {"code": "UNAUTHORIZED"}},
   )
 
-// Wrap a resolver so it raises a GraphQL "Unauthorized" error when the
-// requesting identity lacks the required group. Mirrors AppSync's
-// `@aws_auth(cognito_groups: [...])` semantics for admin fields on the
-// in-memory adapter. Use for fields whose corresponding read-model entry
+/**
+ Somebody the server identified asked for a field their groups do not cover.
+
+ Separate from `unauthorizedError` because the two ask for different things and
+ a client cannot tell them apart from the refusal alone. Answering both with one
+ code left every caller to guess, and the guess that fits an expired token —
+ discard the session and ask them to sign in again — ends a working session for
+ a caller who was simply not entitled to the field. Presenting credentials again
+ cannot change this answer, which is what the distinct code says.
+ */
+let forbiddenError = (~group: string): exn =>
+  makeGraphqlError(
+    `Forbidden: requires group "${group}"`,
+    {"extensions": {"code": "FORBIDDEN"}},
+  )
+
+// Wrap a resolver so it refuses a caller whose identity lacks the required
+// group. Mirrors AppSync's `@aws_auth(cognito_groups: [...])` semantics for
+// admin fields on the in-memory adapter, save that AppSync has one rejection to
+// give and this has two. Use for fields whose corresponding read-model entry
 // carries `authorization: Some({group, ...})` — pass the group string here.
 let requireGroup = (~group: string, resolver: YG.resolverFn): YG.resolverFn =>
   async (root, args, ctx) => {
     let identity = extractIdentity(ctx)
     if identity.groups->Array.includes(group) {
       await resolver(root, args, ctx)
+    } else if extractAuthenticated(ctx) {
+      throw(forbiddenError(~group))
     } else {
       throw(unauthorizedError(~group))
     }

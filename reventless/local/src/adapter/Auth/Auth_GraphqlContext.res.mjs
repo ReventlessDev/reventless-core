@@ -20,14 +20,24 @@ function identityFromAuthResult(result) {
   }
 }
 
+function isAuthenticated(result) {
+  if (typeof result !== "object") {
+    return false;
+  } else {
+    return result.TAG === "Authenticated";
+  }
+}
+
 async function buildAuthContext(initial) {
   let headers = extractHeaders(initial.request.headers);
   let requestContext = {
     headers: headers
   };
   let result = await LocalAuth$ReventlessLocal.authenticate(requestContext);
+  let identity = identityFromAuthResult(result);
   return {
-    identity: identityFromAuthResult(result)
+    identity: identity,
+    authenticated: isAuthenticated(result)
   };
 }
 
@@ -44,6 +54,19 @@ function extractIdentity(ctx) {
   }
 }
 
+function extractAuthenticated(ctx) {
+  try {
+    let authenticated = ctx.authenticated;
+    if (authenticated == null) {
+      return false;
+    } else {
+      return authenticated;
+    }
+  } catch (exn) {
+    return false;
+  }
+}
+
 function makeGraphqlError(prim0, prim1) {
   return new Graphql.GraphQLError(prim0, prim1);
 }
@@ -56,11 +79,22 @@ function unauthorizedError(group) {
   });
 }
 
+function forbiddenError(group) {
+  return new Graphql.GraphQLError(`Forbidden: requires group "` + group + `"`, {
+    extensions: {
+      code: "FORBIDDEN"
+    }
+  });
+}
+
 function requireGroup(group, resolver) {
   return async (root, args, ctx) => {
     let identity = extractIdentity(ctx);
     if (identity.groups.includes(group)) {
       return await resolver(root, args, ctx);
+    }
+    if (extractAuthenticated(ctx)) {
+      throw forbiddenError(group);
     }
     throw unauthorizedError(group);
   };
@@ -72,10 +106,13 @@ export {
   YG,
   extractHeaders,
   identityFromAuthResult,
+  isAuthenticated,
   buildAuthContext,
   extractIdentity,
+  extractAuthenticated,
   makeGraphqlError,
   unauthorizedError,
+  forbiddenError,
   requireGroup,
 }
 /* graphql Not a pure module */
