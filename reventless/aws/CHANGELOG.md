@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.296 (2026-08-14)
+
+### Features
+
+* **aws:** give every field and type an explicit Cognito directive ([37c1063](https://github.com/ReventlessDev/reventless-core/commit/37c1063560aaa6ee200e74d58b9de4d6881441fd))
+
+
 # 3.0.0-alpha.295 (2026-08-14)
 
 ### Bug Fixes

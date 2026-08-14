@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.221 (2026-08-14)
+
+### Features
+
+* **example:** let the shop's fulfilment role read every customer's orders ([aa1017c](https://github.com/ReventlessDev/reventless-core/commit/aa1017c1fc2c1ce0434c6022004baf5669e34098))
+
+
 # 1.0.0-alpha.220 (2026-08-14)
 
 ### Features
