@@ -262,20 +262,32 @@ Establish what it does and does not cover before assuming any of it.
      including every event-log subscription and the upload surface — would have
      been refused for everyone.
 
-   - ⬜ **Phase 2 — flip the default.** Only once the *deployed* SDL shows 100%
-     coverage. `defaultAction: ALLOW` appears in three places
-     (`Platform.res:338`, `AppSync_Adapter.res:518`,
-     `AppSync_MergedApi.res:103`) and all three must move together.
+   - ✅ **Phase 2 — flip the default.** Gate met first: with the sweep deployed,
+     `scripts/check-appsync-directive-coverage.mjs` reports **zero** undirectived
+     fields and types on every API built from current code — both merged APIs,
+     `PlatformApi`, `DomainApi` and both plugin source APIs of the hybrid stack.
 
-     Gate on the deployed SDL, not on local rendering:
-     ```
-     aws appsync get-introspection-schema --api-id <id> --format SDL \
-       --include-directives /dev/stdout | grep -c '^type .*[^@]*{'   # undirectived types must be 0
-     ```
-     Then re-probe **both** directions — the unentitled caller still refused,
-     and an ordinary authenticated caller still able to reach the open fields.
-     The second half matters more here: phase 2's failure mode is refusing
-     everybody, which the group probe alone would score as a pass.
+     The gate is a script rather than the `grep` this plan first suggested,
+     because that grep miscounted; it reads the **deployed** schema, since the
+     11 fields it caught are invisible in local rendering of a decorated
+     fragment. Validated against the known-bad state (domain 11, platform 0)
+     before being trusted.
+
+     All three sites moved together: `Platform.res:338`,
+     `AppSync_Adapter.res:544`, `AppSync_MergedApi.res:103`.
+
+     **Other stacks show gaps and that is expected** — `online-shop-platform-aws`,
+     `-inspector-aws`, `-catalog-aws`, `-ordering-aws`, `-console-aws` are stale
+     deployments of pre-sweep code (CI deploys only `online-shop-hybrid`). Their
+     gaps are exactly what the sweep fixes, and they take the coverage and the
+     new default in the same deploy, so none can land half-way.
+
+     ⬜ **Still to verify on deployment.** Re-probe **both** directions: the
+     unentitled caller still refused, *and* an ordinary authenticated caller
+     still reaching the open fields — `Platform_ping`, `Upload_Presign`,
+     `geocode`, the event-log subscriptions. The second half matters more here.
+     Phase 2's failure mode is refusing everybody, which
+     `probe-appsync-group-gate.mjs` alone would score as a clean pass.
 3. **Revisit the refusal-vocabulary question**
    ([done/appsync-refusal-vocabulary.md](done/appsync-refusal-vocabulary.md)).
    Its §2 table can now be written from observation: the AWS path answers an

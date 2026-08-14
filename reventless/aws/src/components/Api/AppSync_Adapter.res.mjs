@@ -288,7 +288,7 @@ function _makeApiResourceWith(name, schema, userPoolConfig, opts) {
   };
   let userPoolConfigOut = userPoolConfig !== undefined ? userPoolConfig : Auth_Cognito$ReventlessAws.make(name + `-auth`, undefined).apply(c => ({
       userPoolId: c.userPoolId,
-      defaultAction: "ALLOW",
+      defaultAction: "DENY",
       awsRegion: c.region
     }));
   let apiArgs_schema = Stdlib_Option.map(schema, prim => prim);

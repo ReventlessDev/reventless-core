@@ -100,7 +100,7 @@ let make = (~name: string, ~opts: Pulumi.ComponentResource.options): t => {
     ): AppSync.GraphQLApi.userPoolConfig => {
       userPoolId: c.userPoolId,
       awsRegion: c.region,
-      defaultAction: AppSync.GraphQLApi.ALLOW,
+      defaultAction: AppSync.GraphQLApi.DENY,
     })
 
   let mergedApi = AppSync.GraphQLApi.make(

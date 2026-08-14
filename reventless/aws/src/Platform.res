@@ -335,7 +335,7 @@ module MakeWithConfig = (
           {
             userPoolId,
             ?awsRegion,
-            defaultAction: PulumiAws.AppSync.GraphQLApi.ALLOW,
+            defaultAction: PulumiAws.AppSync.GraphQLApi.DENY,
           }: PulumiAws.AppSync.GraphQLApi.userPoolConfig
         )
       })

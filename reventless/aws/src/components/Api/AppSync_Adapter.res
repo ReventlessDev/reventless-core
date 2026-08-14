@@ -533,6 +533,17 @@ let _makeApiResourceWith = (
   // Auth_Cognito (cached inside Platform_Stack, so calling from each API call
   // site — DomainApi, PlatformApi — is safe). A single Output yielding the
   // {userPoolId, awsRegion, defaultAction} record AppSync expects.
+  //
+  // `DENY`, not `ALLOW`: an undirectived field or type is refused rather than
+  // served to any authenticated Cognito caller. This is what makes a missing
+  // directive fail closed — under `ALLOW` the group gate that was inert for the
+  // whole of `@aws_auth`'s life produced no symptom at all, because "no
+  // effective directive" and "open to everyone" were the same thing.
+  //
+  // Safe only because every field and type now carries an explicit directive
+  // (`stampUndirectivedFields` + `stampAllTypesCognito` at the assembly choke
+  // point). Verify with `scripts/check-appsync-directive-coverage.mjs` against a
+  // DEPLOYED api — it must report zero before this value is trusted.
   let userPoolConfigOut = switch userPoolConfig {
   | Some(config) => config
   | None =>
@@ -541,7 +552,7 @@ let _makeApiResourceWith = (
         {
           userPoolId: c.userPoolId,
           awsRegion: c.region,
-          defaultAction: AppSync.GraphQLApi.ALLOW,
+          defaultAction: AppSync.GraphQLApi.DENY,
         }: AppSync.GraphQLApi.userPoolConfig
       )
     )
