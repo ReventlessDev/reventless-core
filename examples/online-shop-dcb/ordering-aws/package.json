@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-dcb-ordering-aws",
   "private": true,
-  "version": "1.0.0-alpha.153",
+  "version": "1.0.0-alpha.154",
   "description": "Online Shop DCB — Ordering plugin AWS deployment",
   "license": "Apache-2.0",
   "scripts": {

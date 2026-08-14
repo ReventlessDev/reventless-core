@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.234 (2026-08-14)
+
+### Features
+
+* **core:** one contract for which refusal a platform gave ([7705c13](https://github.com/ReventlessDev/reventless-core/commit/7705c13ec63f41a3a659bc98cfb45b880fd5b222))
+
+
 # 3.0.0-alpha.233 (2026-08-14)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core
