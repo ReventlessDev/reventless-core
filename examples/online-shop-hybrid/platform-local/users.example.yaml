@@ -21,21 +21,19 @@
 #                 nothing it touches records an owner, so there is nothing to
 #                 scope it out of.
 #   Fulfilment    works the order board and ships orders. The job is reading
-#                 orders that belong to other people, so it needs the exemption
-#                 from owner scoping — and does not have it yet; see below.
+#                 orders that belong to other people, so it holds the exemption
+#                 from owner scoping — the one non-Admin role that does.
 #   Admin         everything, including the platform's own admin surfaces.
 #
 # Merchandiser and Fulfilment are the pair worth keeping: they show that "which
 # surfaces does this role use" and "does this role read across owners" are
-# separate questions. `Storefront.elevatedGroups` answers only the second, and
-# today it names Admin alone.
+# separate questions. `Storefront.elevatedGroups` answers only the second, which
+# is why it names Fulfilment and not Merchandiser.
 #
-# Fulfilment is absent from it deliberately and temporarily. Being elevated also
-# decides where the host UI looks for its surfaces — an elevated caller is sent
-# to the admin API, which is gated on the group Admin specifically — so a role
-# elevated by any other name is routed to a door it cannot open. Until those two
-# questions come apart, this account reads its own orders like anybody else,
-# which makes the order board it is meant to work look empty.
+# The `fulfil` account below holds Fulfilment AND Shopper on purpose: it is the
+# one login where the role switch has something to show. Acting as Fulfilment it
+# reads every customer's orders and may ship them; acting as Shopper the same
+# account reads only its own and the API refuses ShipOrder outright.
 #
 # Log in via POST http://localhost:4000/__inmemory/login or the host-shell
 # LoginPage. THESE ARE THROWAWAY DEV CREDENTIALS — never reuse them anywhere real.

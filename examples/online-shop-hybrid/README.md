@@ -59,23 +59,30 @@ across restarts); use `serve:memory` / `dev:full:memory` for stateless runs or
 [`users.example.yaml`](platform-local/users.example.yaml), one per role the shop
 distinguishes (password = username):
 
-| Account | Group | What it is for |
+| Account | Groups | What it is for |
 | --- | --- | --- |
-| `admin` | `Admin` | Everything, including the platform's own admin surfaces |
+| `admin` | `Admin`, `Shopper` | Everything, including the platform's own admin surfaces |
 | `shopper` | `Shopper` | Browses the catalog, places and cancels its **own** orders |
-| `merch` | `Merchandiser` | Maintains products, categories, prices, images, demand |
-| `fulfil` | `Fulfilment` | Works the order board and ships orders |
+| `merch` | `Merchandiser`, `Shopper` | Maintains products, categories, prices, images, demand |
+| `fulfil` | `Fulfilment`, `Shopper` | Works the order board and ships orders |
 
 `Merchandiser` and `Fulfilment` are both operator roles, and they need different
 things: shipping orders means reading rows that belong to customers, while
-editing a product reads nothing anybody owns. Only `Admin` is listed in
-`Storefront.elevatedGroups` today — see the note there for why `Fulfilment` is
-not yet, though it should be.
+editing a product reads nothing anybody owns. So `Storefront.elevatedGroups`
+names `Fulfilment` and `Admin` and not `Merchandiser` — that list answers one
+question only, which of these roles reads across owners.
 
-The server enforces all four roles; the shell does not yet offer a menu per role,
-so `merch` and `fulfil` currently reach their extra commands through the API
-rather than through the UI. Sign in as each to see how far the same UI takes
-them.
+Each role also gets its own menu rather than a share of one. The shop declares a
+storefront for everybody and a journey per operator role, so `merch` and `fulfil`
+discover the surfaces their job needs — and, being elevated by something other
+than `Admin`, `fulfil` reads its board from its own journey file without ever
+approaching the admin API.
+
+Every account but `shopper` holds a second group on purpose: they are the logins
+where the role switcher has something to show. Acting as `Fulfilment`, `fulfil`
+reads every customer's orders and may ship them; acting as `Shopper`, the same
+account reads only its own and the API refuses `ShipOrder` outright — the switch
+narrows the token, so the menu, the data and what the server accepts all agree.
 
 Via the UI, use the LoginPage; against the backend directly:
 

@@ -87,13 +87,17 @@ means editing products, which record no owner and so cannot be scoped away from
 anybody. Elevating a role that does not need it buys nothing and widens what a
 stolen session reaches.
 
-`Fulfilment` is absent for a different reason, and a temporary one. Shipping an
-order means working a board of orders that belong to customers, so the role does
-need the exemption — but naming it here today breaks that account's shell.
-The host UI sends any *elevated* caller to the admin API, and the admin API is
-gated on the group `Admin` specifically, so a caller elevated by some other group
-is routed to a door it cannot open. Until a role can be exempt from owner scoping
-and still discover its surfaces from a manifest, `Fulfilment` reads its own rows
-like anybody else — incomplete, and visibly so, rather than broken.
+`Fulfilment` is here for the reason `Merchandiser` is not: shipping an order
+means working a board of orders that belong to customers, so the role reads
+across owners as its ordinary job rather than as an administrative exception.
+
+It was held back for a while, and what held it back is worth keeping in view
+because it was never about ownership. Being elevated used to decide *where the
+shell looks for its surfaces* as well — any elevated caller was sent to the admin
+API, which is gated on the group `Admin` specifically, so a role elevated by any
+other name was routed to a door it could not open. The two questions now come
+apart: the shell reads the admin gate from the group the server actually
+enforces, and a role with a journey discovers from that journey's own file. So
+naming a second group here answers only the question this list asks.
 */
-let elevatedGroups = ["Admin"]
+let elevatedGroups = ["Admin", "Fulfilment"]

@@ -59,7 +59,10 @@ let manifest = {
 
 let uiHintsFile = Nodepath.resolve(import.meta.dirname, "../ui-hints.json");
 
-let elevatedGroups = ["Admin"];
+let elevatedGroups = [
+  "Admin",
+  "Fulfilment"
+];
 
 export {
   manifest,
