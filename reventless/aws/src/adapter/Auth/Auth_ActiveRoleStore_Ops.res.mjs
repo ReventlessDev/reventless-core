@@ -33,13 +33,13 @@ function userPoolId() {
   }
 }
 
-async function membershipOf(sub, poolId) {
+async function membershipOf(username, poolId) {
   let collected = [];
   let nextToken;
   let more = true;
   while (more) {
     let page = await CognitoIdentityServiceProvider$AwsSdk.AdminListGroupsForUserCommand.send(new ClientCognitoIdentityProvider.AdminListGroupsForUserCommand({
-      Username: sub,
+      Username: username,
       UserPoolId: poolId,
       NextToken: nextToken
     }));
@@ -60,6 +60,22 @@ function mayActAs(membership, requested) {
   return membership.includes(requested);
 }
 
+function cognitoLookupName(identity) {
+  let match = identity.username;
+  if (match !== undefined) {
+    let name = Primitive_option.valFromOption(match);
+    if (name == null) {
+      name === null;
+    } else if (name.trim() !== "") {
+      return name;
+    }
+  }
+  let sub = identity.sub;
+  if (sub !== undefined && sub !== "") {
+    return sub;
+  }
+}
+
 function result(activeRole, availableRoles) {
   return Object.fromEntries([
     [
@@ -78,8 +94,10 @@ async function handler(event) {
   if (sub === "") {
     Stdlib_JsError.throwWithMessage("unauthenticated");
   }
+  let name = Stdlib_Option.flatMap(event.identity, cognitoLookupName);
+  let lookupName = name !== undefined ? name : Stdlib_JsError.throwWithMessage("unauthenticated");
   let table = tableName();
-  let membership = await membershipOf(sub, userPoolId());
+  let membership = await membershipOf(lookupName, userPoolId());
   let match = Stdlib_Option.flatMap(event.arguments, a => a.activeRole);
   let requested;
   if (match !== undefined) {
@@ -122,6 +140,7 @@ export {
   userPoolId,
   membershipOf,
   mayActAs,
+  cognitoLookupName,
   result,
   handler,
 }

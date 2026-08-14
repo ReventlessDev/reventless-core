@@ -22,7 +22,7 @@ export function request(ctx) {
     operation: 'Invoke',
     payload: {
       arguments: ctx.args,
-      identity: id != null && id.sub != null ? { sub: id.sub } : null
+      identity: id != null && id.sub != null ? { sub: id.sub, username: id.username ?? null } : null
     }
   };
 }

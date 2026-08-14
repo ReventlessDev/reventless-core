@@ -50,16 +50,25 @@ token they hold no longer mentions the role they are asking for. This is the sam
 trap the local path documents on `LocalAuth.Login.reissue`, where membership is
 re-read from the user store rather than from the token's own record of it.
 
+🚨 **Addressed by username, not by `sub`.** `AdminListGroupsForUser` takes a
+`Username`, and a `sub` is only accepted there when the pool makes it one — a
+pool with `UsernameAttributes` (email or phone sign-in), where the generated
+username *is* the subject. On a plain username pool the same call answers
+`UserNotFoundException: User does not exist.`, which fails the whole mutation
+before it reaches the subset check: not "you may not act as that role" but "you
+do not exist", for a caller who is signed in and holds the role. The row is still
+keyed on `sub` — this parameter names the user to Cognito, nothing else.
+
 Paginated deliberately: `AdminListGroupsForUser` caps a page at 60 groups, and a
 truncated read would silently refuse a role the caller genuinely holds.
 */
-let membershipOf = async (~sub: string, ~poolId: string): array<string> => {
+let membershipOf = async (~username: string, ~poolId: string): array<string> => {
   let collected = []
   let nextToken = ref(None)
   let more = ref(true)
   while more.contents {
     let page = await CognitoIdentityServiceProvider.AdminListGroupsForUserCommand.make({
-      username: sub,
+      username,
       userPoolId: poolId,
       nextToken: ?nextToken.contents,
     })->CognitoIdentityServiceProvider.AdminListGroupsForUserCommand.send
@@ -89,12 +98,32 @@ let mayActAs = (~membership: array<string>, ~requested: string): bool =>
 
 // ── AppSync resolver event / result shapes ──────────────────────────────────
 
-type identity = {sub?: string}
+type identity = {sub?: string, username?: Nullable.t<string>}
 type activeRoleArgs = {activeRole?: Nullable.t<string>}
 type appSyncEvent = {
   arguments?: activeRoleArgs,
   identity?: identity,
 }
+
+/**
+The name to address this caller by when asking Cognito what groups they are in.
+
+The username when the authorizer supplied one, the subject otherwise. The
+fallback is not a guess at a username: it is the behaviour this handler had
+before the username was forwarded, kept for the pool shapes where it is correct —
+one whose username *is* the subject — rather than turning a working deployment
+into a hard failure on an absent field. Pure so the choice can be tested without
+a pool.
+*/
+let cognitoLookupName = (~identity: identity): option<string> =>
+  switch identity.username {
+  | Some(Value(name)) if name->String.trim != "" => Some(name)
+  | _ =>
+    switch identity.sub {
+    | Some("") | None => None
+    | Some(sub) => Some(sub)
+    }
+  }
 
 let result = (~activeRole: option<string>, ~availableRoles: array<string>): JSON.t =>
   Dict.fromArray([
@@ -111,8 +140,14 @@ let handler = async (event: appSyncEvent): JSON.t => {
     // unauthenticated path from ever writing a row keyed on the empty subject.
     JsError.throwWithMessage("unauthenticated")
   }
+  // Two names for one caller, and they are not interchangeable: `sub` keys the
+  // row, the lookup name addresses Cognito. See `membershipOf`.
+  let lookupName = switch event.identity->Option.flatMap(i => cognitoLookupName(~identity=i)) {
+  | Some(name) => name
+  | None => JsError.throwWithMessage("unauthenticated")
+  }
   let table = tableName()
-  let membership = await membershipOf(~sub, ~poolId=userPoolId())
+  let membership = await membershipOf(~username=lookupName, ~poolId=userPoolId())
 
   // An absent argument and an explicit `null` mean the same thing — clear the
   // preference and go back to full membership on the next refresh. That is not an

@@ -40,6 +40,15 @@ type storeTable = {
 // JS resolver code (APPSYNC_JS runtime): forward the caller's arguments and the
 // authorizer-verified identity. `sub` is what keys the row, and it comes from
 // here — the mutation has no `sub` argument for a client to supply.
+//
+// `username` travels with it because the two answer different questions. The row
+// is keyed on `sub`, which is stable across a rename and is what the pre-token
+// trigger looks the row up by; but Cognito's admin API addresses a user by
+// *username*, and a pool with neither `UsernameAttributes` nor `AliasAttributes`
+// does not accept a `sub` there — it answers `UserNotFoundException`, which is
+// how the membership read used to fail for every caller on such a pool. Both
+// fields come from the authorizer, so forwarding the second grants nothing the
+// first did not.
 let invokeCode: Pulumi.Input.t<string> = `import { util } from '@aws-appsync/utils';
 export function request(ctx) {
   const id = ctx.identity;
@@ -47,7 +56,7 @@ export function request(ctx) {
     operation: 'Invoke',
     payload: {
       arguments: ctx.args,
-      identity: id != null && id.sub != null ? { sub: id.sub } : null
+      identity: id != null && id.sub != null ? { sub: id.sub, username: id.username ?? null } : null
     }
   };
 }
