@@ -470,6 +470,13 @@ let stitchStandaloneWithAwsDirectives = (
   // Last: every remaining undirectived type takes the group-less Cognito arm.
   // After stampSharedIamTypes so the shared traversal types keep `@aws_iam`.
   ->AppSync_SdlDecorate.stampAllTypesCognito
+  // Fields the stitcher injects during assembly (`_noop`) are invisible to the
+  // fragment sweep above, so sweep the assembled document too.
+  ->AppSync_SdlDecorate.stampUndirectivedRootFields
+  // Then refuse to hand back a schema that cannot be gated. `defaultAction: DENY`
+  // is unavailable on a multi-auth API, so this deploy-time check is the only
+  // fail-closed step there is — everything downstream trusts what it returns.
+  ->AppSync_SdlDecorate.assertGateable
 }
 
 // ── Provider implementation ────────────────────────────────────────────────
@@ -534,16 +541,21 @@ let _makeApiResourceWith = (
   // site — DomainApi, PlatformApi — is safe). A single Output yielding the
   // {userPoolId, awsRegion, defaultAction} record AppSync expects.
   //
-  // `DENY`, not `ALLOW`: an undirectived field or type is refused rather than
-  // served to any authenticated Cognito caller. This is what makes a missing
-  // directive fail closed — under `ALLOW` the group gate that was inert for the
-  // whole of `@aws_auth`'s life produced no symptom at all, because "no
-  // effective directive" and "open to everyone" were the same thing.
+  // `ALLOW` is forced, not chosen. `DENY` would make a missing directive fail
+  // closed, which is what we want — but AWS refuses the combination outright:
   //
-  // Safe only because every field and type now carries an explicit directive
-  // (`stampUndirectivedFields` + `stampAllTypesCognito` at the assembly choke
-  // point). Verify with `scripts/check-appsync-directive-coverage.mjs` against a
-  // DEPLOYED api — it must report zero before this value is trusted.
+  //   BadRequestException: Additional authentication providers cannot be
+  //   specified when setting DENY for top level user pool authentication type.
+  //
+  // Every API here configures AWS_IAM as an additional provider (the
+  // server-to-server lambdas need it), so DENY is unavailable for as long as
+  // that is true. Tried on a deploy 2026-08-14; all four APIs rejected it.
+  //
+  // The protection therefore rests entirely on every field and type carrying an
+  // explicit directive — `stampUndirectivedFields` + `stampAllTypesCognito` at
+  // the assembly choke point — with no backstop underneath. That makes
+  // `scripts/check-appsync-directive-coverage.mjs` load-bearing rather than
+  // advisory: run it against a DEPLOYED api after any change to the decoration.
   let userPoolConfigOut = switch userPoolConfig {
   | Some(config) => config
   | None =>
@@ -552,7 +564,7 @@ let _makeApiResourceWith = (
         {
           userPoolId: c.userPoolId,
           awsRegion: c.region,
-          defaultAction: AppSync.GraphQLApi.DENY,
+          defaultAction: AppSync.GraphQLApi.ALLOW,
         }: AppSync.GraphQLApi.userPoolConfig
       )
     )

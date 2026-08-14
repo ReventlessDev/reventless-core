@@ -4,7 +4,7 @@
 gate was confirmed open by observation, fixed, redeployed, and confirmed closed
 by the same probe — before and after, same command, same two callers. §8 records
 both halves. This plan supersedes
-[appsync-refusal-vocabulary.md](done/appsync-refusal-vocabulary.md), whose step 0
+[appsync-refusal-vocabulary.md](appsync-refusal-vocabulary.md), whose step 0
 produced the observation and whose step 1 required stopping if it came out this
 way. It did.
 
@@ -262,7 +262,70 @@ Establish what it does and does not cover before assuming any of it.
      including every event-log subscription and the upload surface — would have
      been refused for everyone.
 
-   - ✅ **Phase 2 — flip the default.** Gate met first: with the sweep deployed,
+   - ❌ **Phase 2 — flip the default. NOT POSSIBLE.** AWS rejects it:
+
+     ```
+     BadRequestException: Additional authentication providers cannot be
+     specified when setting DENY for top level user pool authentication type.
+     ```
+
+     `defaultAction: DENY` is mutually exclusive with additional auth providers,
+     and every API here configures `AWS_IAM` unconditionally. Attempted on a
+     deploy 2026-08-14: all four APIs returned HTTP 400 and the stack update
+     failed. Nothing was applied — the APIs kept `ALLOW` atomically, and the
+     group gate and open fields were both re-verified intact afterwards.
+
+     Reverted. `ALLOW` is now a forced value, documented as such at all three
+     sites rather than left looking like a choice someone could revisit.
+
+     Verified three ways before accepting it, since one service error is thin
+     evidence for "impossible":
+
+     | Test | Result |
+     | --- | --- |
+     | CREATE: Cognito `DENY` **+ IAM additional** | ❌ `BadRequestException` |
+     | CREATE: Cognito `DENY`, **no additional provider** | ✅ created |
+     | UPDATE: add IAM provider to that working `DENY` API | ❌ `BadRequestException` |
+
+     `DENY` works fine alone. It is specifically the combination AWS refuses, on
+     create and update alike — not our Pulumi wiring, not the update path.
+
+   - ✅ **Phase 2′ — fail closed at deploy time instead.** `DENY` enforces at
+     *request* time; the same property is available one layer earlier, in our own
+     code, where AWS cannot veto it. `AppSync_SdlDecorate.assertGateable` runs at
+     the assembly choke point and **refuses to return a schema that cannot be
+     gated**, so it is never pushed. Two conditions:
+
+     1. a root field or object type with no directive AppSync honours here;
+     2. **any `@aws_auth` at all** — inert on a multi-auth API, so its presence
+        means something believes it is gated and is not.
+
+     Condition 2 is the point. A plain "does it have a directive?" check would
+     **not** have caught the original outage: `@aws_auth(cognito_groups:
+     ["Admin"])` was present on all 18 admin fields for its entire inert life.
+     Only a check that knows *which* directive the service honours fails that
+     deploy.
+
+     **It found a real gap on its first run: `_noop`** — the placeholder mutation
+     the *stitcher* injects during assembly, downstream of the fragment sweep and
+     therefore invisible to it. It was live and undirectived on three deployed
+     APIs (`ConsoleSourceApi`, `PlatformDcbExplorerSourceApi`,
+     `PlatformObservabilitySourceApi`). Fixed by adding
+     `stampUndirectivedRootFields`, a second sweep over the *assembled* document.
+
+     That is the whole argument for the invariant in one example: the sweep was
+     believed complete, the deployed-SDL count agreed for the hybrid stack, and a
+     field still escaped — because it was injected after the sweep ran.
+
+     `scripts/check-appsync-directive-coverage.mjs` remains useful as an
+     independent check against a *deployed* API (it catches drift the in-process
+     invariant cannot see, e.g. a console edit), but it is no longer the only
+     thing standing between a missed field and an open one.
+
+     What follows is the measurement that *did* pass, kept because it is the
+     coverage gate and remains the thing to re-run:
+
+   - ✅ **Coverage gate.** With the sweep deployed,
      `scripts/check-appsync-directive-coverage.mjs` reports **zero** undirectived
      fields and types on every API built from current code — both merged APIs,
      `PlatformApi`, `DomainApi` and both plugin source APIs of the hybrid stack.
@@ -273,23 +336,20 @@ Establish what it does and does not cover before assuming any of it.
      fragment. Validated against the known-bad state (domain 11, platform 0)
      before being trusted.
 
-     All three sites moved together: `Platform.res:338`,
-     `AppSync_Adapter.res:544`, `AppSync_MergedApi.res:103`.
-
      **Other stacks show gaps and that is expected** — `online-shop-platform-aws`,
      `-inspector-aws`, `-catalog-aws`, `-ordering-aws`, `-console-aws` are stale
      deployments of pre-sweep code (CI deploys only `online-shop-hybrid`). Their
-     gaps are exactly what the sweep fixes, and they take the coverage and the
-     new default in the same deploy, so none can land half-way.
+     gaps are exactly what the sweep fixes, and they close when those stacks
+     next deploy.
 
-     ⬜ **Still to verify on deployment.** Re-probe **both** directions: the
-     unentitled caller still refused, *and* an ordinary authenticated caller
-     still reaching the open fields — `Platform_ping`, `Upload_Presign`,
-     `geocode`, the event-log subscriptions. The second half matters more here.
-     Phase 2's failure mode is refusing everybody, which
-     `probe-appsync-group-gate.mjs` alone would score as a clean pass.
+     ✅ **Both directions verified on the live stack** after the failed DENY
+     attempt: the unentitled caller is refused (`errorType: "Unauthorized"`),
+     the `Admin` caller is served, and a no-group caller still reaches
+     `Platform_ping` and `geocode`. Checking only the refusal would have been
+     insufficient — the failure mode of anything in this area is refusing
+     everybody, which `probe-appsync-group-gate.mjs` alone scores as a pass.
 3. **Revisit the refusal-vocabulary question**
-   ([done/appsync-refusal-vocabulary.md](done/appsync-refusal-vocabulary.md)).
+   ([appsync-refusal-vocabulary.md](appsync-refusal-vocabulary.md)).
    Its §2 table can now be written from observation: the AWS path answers an
    unentitled caller with HTTP 200 + `errorType: "Unauthorized"`, and an
    unidentified one with HTTP 401 — which is exactly what it predicted, and is

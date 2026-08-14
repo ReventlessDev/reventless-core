@@ -249,3 +249,58 @@ describe("AppSync_SdlDecorate.stampUndirectivedFields", () => {
     )
   })
 })
+
+// ── Deploy-time gate invariant ──────────────────────────────────────────────
+//
+// `defaultAction: DENY` — the request-time fail-closed switch — is unavailable:
+// AWS refuses it alongside an additional auth provider, and every API here has
+// AWS_IAM. So this check moves fail-closed into the deploy, where nothing can
+// veto it: a schema that cannot be gated is never pushed.
+
+describe("AppSync_SdlDecorate.assertGateable", () => {
+  let refuses = (sdl: string): bool =>
+    switch AppSync_SdlDecorate.assertGateable(sdl) {
+    | _ => false
+    | exception _ => true
+    }
+
+  // The original outage, exactly. A "does it have a directive?" check passes
+  // this — @aws_auth was present on all 18 admin fields the whole time it was
+  // inert. Only knowing WHICH directive the service honours catches it.
+  testSync("refuses @aws_auth, the directive AppSync ignores here", () => {
+    let sdl = `type Query @aws_cognito_user_pools {\n  Admin_Thing: String @aws_auth(cognito_groups: ["Admin"])\n}`
+    expect(refuses(sdl))->toBe(true)
+  })
+
+  testSync("refuses a root field carrying no enforced directive", () => {
+    expect(refuses("type Query @aws_cognito_user_pools {\n  Platform_ping: String\n}"))->toBe(true)
+  })
+
+  testSync("refuses an object type carrying no enforced directive", () => {
+    let sdl =
+      "type Query @aws_cognito_user_pools {\n  a: String @aws_cognito_user_pools\n}\ntype Product {\n  id: ID!\n}"
+    expect(refuses(sdl))->toBe(true)
+  })
+
+  // Our real emission shape puts a mutation's directive on the FOLLOWING line.
+  testSync("accepts a directive on the line after the field", () => {
+    let sdl = "type Query @aws_cognito_user_pools {\n  Platform_ping: String\n    @aws_cognito_user_pools\n}"
+    expect(refuses(sdl))->toBe(false)
+  })
+
+  testSync("accepts a group-gated field and an @aws_iam-only field", () => {
+    let sdl =
+      `type Mutation @aws_cognito_user_pools {\n  Gated: String\n    @aws_cognito_user_pools(cognito_groups: ["Admin"])\n  Sys: String\n    @aws_cognito_user_pools @aws_iam\n}`
+    expect(refuses(sdl))->toBe(false)
+  })
+
+  // The whole pipeline must satisfy its own invariant on the real admin base.
+  testSync("the assembled admin base passes", () => {
+    let decorated = AppSync_Adapter.injectAwsAuthAll(
+      ReventlessCore.Platform_AdminApi.baseFragment(~cloner=true),
+      ~group="Admin",
+    )
+    let sdl = AppSync_Adapter.stitchStandaloneWithAwsDirectives(~fragment=decorated)
+    expect(sdl->String.includes("@aws_cognito_user_pools"))->toBe(true)
+  })
+})

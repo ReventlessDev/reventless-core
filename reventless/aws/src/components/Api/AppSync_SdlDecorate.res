@@ -93,10 +93,10 @@ let formatCognitoGroupsDirective = (groups: array<string>): string => {
 //
 // Under `userPoolConfig.defaultAction: ALLOW` this is a no-op: an undirectived
 // field is already reachable by any authenticated caller, so stamping it changes
-// nothing. It exists so the default can be flipped to DENY, where "no directive"
-// stops meaning "open" and starts meaning "refused" — at which point anything
-// left unstamped breaks. Stamping first and flipping second is what keeps that
-// flip from being a guess.
+// nothing. It exists so that "carries no directive" becomes a state we can
+// detect and refuse at deploy time (`assertGateable`), rather than one that
+// silently means "open to everyone" — which is exactly how the `@aws_auth`
+// outage stayed invisible for as long as it did.
 let cognitoOpenDirective = "@aws_cognito_user_pools"
 
 // Multi-auth directive for a field/type that must accept BOTH Cognito and IAM.
@@ -171,9 +171,12 @@ let stampSharedIamTypes = (sdl: string): string =>
 // several surfaces never reach it at all: the domain base document
 // (`Platform_ping`), event-history queries, event-log `…_eventAppended`
 // subscriptions, the upload presign/release mutations, `Platform_SetActiveRole`,
-// and `geocode`. Those deployed with no directive — invisible under
-// `defaultAction: ALLOW`, refused under DENY. Sweeping here rather than at each
-// emission site means a future injected field cannot silently miss the net.
+// and `geocode`. Those deployed with no directive at all — reachable by any
+// authenticated Cognito caller, and invisible, since `defaultAction: ALLOW` makes
+// "no directive" and "open" the same thing. Sweeping here rather than at each
+// emission site means a future injected field cannot silently miss the net;
+// `assertGateable` below turns a miss into a failed deploy rather than an open
+// field.
 //
 // Idempotent, and deliberately does not second-guess gating: it only fills in
 // "open to any authenticated Cognito caller", which is what an undirectived
@@ -198,11 +201,10 @@ let stampUndirectivedFields = (
 // stampSharedIamTypes so the shared traversal types keep their `@aws_iam` arm
 // (this pass skips anything already carrying an `@aws_` directive).
 //
-// Types, not just fields: on a multi-auth API with `defaultAction: DENY`,
-// AppSync refuses an undirectived TYPE even when the caller passed the field's
-// own gate — response shaping walks `…Connection` → `…Edge` → node → nested
-// state types and dies one level in. Entry gating stays on the fields; a type
-// stamp only restores the accessibility an undirectived type has today.
+// Types, not just fields: response shaping walks `…Connection` → `…Edge` → node
+// → nested state types, so a type that cannot be traversed fails a request that
+// passed the field's own gate. Entry gating stays on the fields; a type stamp
+// only restores the accessibility an undirectived type has today.
 //
 // Only `type` declarations take auth directives — `input`, `enum`, `union` and
 // `interface` do not, and stamping them is a schema error.
@@ -224,6 +226,202 @@ let stampAllTypesCognito = (sdl: string): string =>
     }
   )
   ->Array.join("\n")
+
+// ── Deploy-time gate invariant ──────────────────────────────────────────────
+//
+// Refuse to push a schema that cannot be gated. This is the fail-closed
+// property `userPoolConfig.defaultAction: DENY` would have provided at REQUEST
+// time — AWS rejects DENY alongside an additional auth provider
+// ("Additional authentication providers cannot be specified when setting DENY
+// for top level user pool authentication type", reproduced on create and
+// update alike), and every API here configures AWS_IAM unconditionally. So the
+// check moves one layer earlier, into our own deploy, where nothing can veto it.
+//
+// Two conditions, and the second is the one that matters:
+//
+//   1. A root field or object type carrying NO directive AppSync honours here
+//      is reachable by any authenticated Cognito caller under `ALLOW`.
+//   2. ANY `@aws_auth` at all. It is the single-mode form, silently ignored on
+//      a multi-auth API — so its presence means something believes it is gated
+//      and is not.
+//
+// Condition 2 is why this is not merely "does it have a directive?". The
+// original outage had `@aws_auth(cognito_groups: ["Admin"])` present on all 18
+// admin fields for its entire life; a presence check would have passed it every
+// single time. Only a check that knows WHICH directive the service honours
+// would have failed that deploy.
+let enforcedDirectives = ["@aws_cognito_user_pools", "@aws_iam"]
+
+let hasEnforcedDirective = (s: string): bool =>
+  enforcedDirectives->Array.some(d => s->String.includes(d))
+
+let rootOperationTypes = ["Query", "Mutation", "Subscription"]
+
+let typeDeclNameOf = (line: string): option<string> =>
+  if line->String.startsWith("type ") {
+    let rest = line->String.slice(~start=5, ~end=line->String.length)
+    switch rest->String.search(%re("/[\s{]/")) {
+    | -1 => Some(rest)
+    | i => Some(rest->String.slice(~start=0, ~end=i))
+    }
+  } else {
+    None
+  }
+
+// A root-operation field line: exactly two spaces of indent then a name. Deeper
+// indents are directive continuations of the field above.
+let fieldNameOf = (line: string): option<string> =>
+  switch line->String.match(%re("/^ {2}(\w+)/")) {
+  | Some(groups) => groups->Array.get(1)->Option.flatMap(x => x)
+  | None => None
+  }
+
+// Field sweep on the ASSEMBLED SDL, for fields the fragment sweep cannot see
+// because the stitcher injects them during assembly — `_noop`, the placeholder
+// mutation added to keep a mutation-less schema valid, is the standing example
+// and was live on three deployed APIs.
+//
+// Groups continuation lines into field entries the way `assertGateable` does, so
+// a directive already sitting on the following line counts as present.
+let stampUndirectivedRootFields = (sdl: string): string => {
+  let out = []
+  let currentRoot = ref(None)
+  let buffer = ref([])
+
+  let flush = () => {
+    let entry = buffer.contents
+    if entry->Array.length > 0 {
+      entry->Array.forEach(l => out->Array.push(l))
+      if !hasEnforcedDirective(entry->Array.join("\n")) {
+        out->Array.push(`    ${cognitoOpenDirective}`)
+      }
+      buffer.contents = []
+    }
+  }
+
+  sdl
+  ->String.split("\n")
+  ->Array.forEach(line =>
+    switch typeDeclNameOf(line) {
+    | Some(name) =>
+      flush()
+      currentRoot.contents = rootOperationTypes->Array.includes(name) ? Some(name) : None
+      out->Array.push(line)
+    | None =>
+      if line->String.startsWith("}") {
+        flush()
+        currentRoot.contents = None
+        out->Array.push(line)
+      } else if currentRoot.contents->Option.isSome {
+        switch fieldNameOf(line) {
+        | Some(_) =>
+          flush()
+          buffer.contents = [line]
+        | None =>
+          if buffer.contents->Array.length > 0 {
+            buffer.contents = buffer.contents->Array.concat([line])
+          } else {
+            out->Array.push(line)
+          }
+        }
+      } else {
+        out->Array.push(line)
+      }
+    }
+  )
+  flush()
+  out->Array.join("\n")
+}
+
+let assertGateable = (sdl: string): string => {
+  let bareFields = []
+  let bareTypes = []
+  let inertDirectives = []
+
+  let currentRoot = ref(None)
+  // (fieldName, accumulated text incl. continuation lines)
+  let pending = ref(None)
+
+  let flush = () =>
+    switch pending.contents {
+    | Some((name, text)) =>
+      if !hasEnforcedDirective(text) {
+        bareFields->Array.push(name)
+      }
+      pending.contents = None
+    | None => ()
+    }
+
+  sdl
+  ->String.split("\n")
+  ->Array.forEach(line => {
+    if line->String.includes("@aws_auth") {
+      inertDirectives->Array.push(line->String.trim)
+    }
+    switch typeDeclNameOf(line) {
+    | Some(name) =>
+      flush()
+      if !hasEnforcedDirective(line) {
+        bareTypes->Array.push(name)
+      }
+      currentRoot.contents = rootOperationTypes->Array.includes(name) ? Some(name) : None
+    | None =>
+      if line->String.startsWith("}") {
+        flush()
+        currentRoot.contents = None
+      } else if currentRoot.contents->Option.isSome {
+        switch fieldNameOf(line) {
+        | Some(fieldName) =>
+          flush()
+          pending.contents = Some((fieldName, line))
+        | None =>
+          switch pending.contents {
+          | Some((n, text)) => pending.contents = Some((n, text ++ "\n" ++ line))
+          | None => ()
+          }
+        }
+      }
+    }
+  })
+  flush()
+
+  let problems = []
+  if inertDirectives->Array.length > 0 {
+    problems->Array.push(
+      `  ${inertDirectives->Array.length->Int.toString} field(s) carry @aws_auth, which AppSync IGNORES on a\n` ++
+      `  multi-auth API (this adapter always adds AWS_IAM as an additional provider).\n` ++
+      `  They are gated by nothing. Emit @aws_cognito_user_pools(cognito_groups: [...])\n` ++
+      `  instead — see AppSync_SdlDecorate.formatCognitoGroupsDirective.\n` ++
+      `    ${inertDirectives->Array.slice(~start=0, ~end=8)->Array.join("\n    ")}`,
+    )
+  }
+  if bareFields->Array.length > 0 {
+    problems->Array.push(
+      `  ${bareFields->Array.length->Int.toString} root field(s) carry no enforced auth directive, so they are\n` ++
+      `  reachable by ANY authenticated Cognito caller:\n` ++
+      `    ${bareFields->Array.join(", ")}`,
+    )
+  }
+  if bareTypes->Array.length > 0 {
+    problems->Array.push(
+      `  ${bareTypes->Array.length->Int.toString} object type(s) carry no enforced auth directive:\n` ++
+      `    ${bareTypes->Array.join(", ")}`,
+    )
+  }
+
+  if problems->Array.length > 0 {
+    JsError.throwWithMessage(
+      `Refusing to push an AppSync schema that cannot be gated.\n\n` ++
+      problems->Array.join("\n\n") ++
+      `\n\nEvery field and type must carry @aws_cognito_user_pools (optionally with\n` ++
+      `cognito_groups) and/or @aws_iam. The sweep in stampUndirectivedFields /\n` ++
+      `stampAllTypesCognito should have covered this — a failure here means a schema\n` ++
+      `reached assembly by a path that bypasses them.\n` ++
+      `See docs/plans/appsync-group-authorization-unenforced.md.`,
+    )
+  }
+  sdl
+}
 
 // ── Merged-API canonical stamping ─────────────────────────────────────────────
 // Under AppSync Merged APIs the admin source API owns the shared traversal

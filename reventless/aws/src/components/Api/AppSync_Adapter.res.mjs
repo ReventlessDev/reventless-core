@@ -265,7 +265,7 @@ function injectAwsAuthAll(fragment, group, iamFieldNamesOpt) {
 function stitchStandaloneWithAwsDirectives(fragment) {
   let sources = GraphQL_Stitcher$ReventlessCore.collectSubscriptionSources(fragment, []);
   let fragment$1 = AppSync_SdlDecorate$ReventlessAws.stampUndirectivedFields(fragment);
-  return AppSync_SdlDecorate$ReventlessAws.stampAllTypesCognito(AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes(AppSync_SdlDecorate$ReventlessAws.injectAwsSubscribe(GraphQL_Stitcher$ReventlessCore.stitchStandalone(fragment$1), sources)));
+  return AppSync_SdlDecorate$ReventlessAws.assertGateable(AppSync_SdlDecorate$ReventlessAws.stampUndirectivedRootFields(AppSync_SdlDecorate$ReventlessAws.stampAllTypesCognito(AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes(AppSync_SdlDecorate$ReventlessAws.injectAwsSubscribe(GraphQL_Stitcher$ReventlessCore.stitchStandalone(fragment$1), sources)))));
 }
 
 function _makeApiResourceWith(name, schema, userPoolConfig, opts) {
@@ -288,7 +288,7 @@ function _makeApiResourceWith(name, schema, userPoolConfig, opts) {
   };
   let userPoolConfigOut = userPoolConfig !== undefined ? userPoolConfig : Auth_Cognito$ReventlessAws.make(name + `-auth`, undefined).apply(c => ({
       userPoolId: c.userPoolId,
-      defaultAction: "DENY",
+      defaultAction: "ALLOW",
       awsRegion: c.region
     }));
   let apiArgs_schema = Stdlib_Option.map(schema, prim => prim);

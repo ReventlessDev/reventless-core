@@ -220,7 +220,7 @@ function MakeWithConfig(Config) {
       let awsRegion = Stdlib_Option.orElse(param[1], getFromDefault("cognitoRegion"));
       return {
         userPoolId: userPoolId,
-        defaultAction: "DENY",
+        defaultAction: "ALLOW",
         awsRegion: awsRegion
       };
     });
@@ -1523,7 +1523,7 @@ function Make($star) {
       let awsRegion = Stdlib_Option.orElse(param[1], getFromDefault("cognitoRegion"));
       return {
         userPoolId: userPoolId,
-        defaultAction: "DENY",
+        defaultAction: "ALLOW",
         awsRegion: awsRegion
       };
     });
