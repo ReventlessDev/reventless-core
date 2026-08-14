@@ -159,6 +159,54 @@ let getClient = async (): cognitoClient =>
     c
   }
 
+// ── Lambda bindings, for proving the trigger before attaching it ─────────────
+
+type lambdaClient
+type invokeCmd
+
+type lambdaSdkModule = {
+  @as("LambdaClient") clientCtor: unit => lambdaClient,
+  @as("InvokeCommand") invokeCtor: dict<JSON.t> => invokeCmd,
+}
+
+type invokeResult = {
+  @as("FunctionError") functionError?: string,
+  @as("Payload") payload?: JSON.t,
+}
+
+@send external sendInvoke: (lambdaClient, invokeCmd) => promise<invokeResult> = "send"
+@val external dynImportLambda: string => promise<lambdaSdkModule> = "import"
+
+let _lambdaSdk: ref<option<lambdaSdkModule>> = ref(None)
+let _lambdaClient: ref<option<lambdaClient>> = ref(None)
+
+let getLambdaSdk = async (): lambdaSdkModule =>
+  switch _lambdaSdk.contents {
+  | Some(m) => m
+  | None =>
+    let m = await dynImportLambda("@aws-sdk/client-lambda")
+    _lambdaSdk.contents = Some(m)
+    m
+  }
+
+let getLambdaClient = async (): lambdaClient =>
+  switch _lambdaClient.contents {
+  | Some(c) => c
+  | None =>
+    let sdk = await getLambdaSdk()
+    let c = newOf0(sdk.clientCtor)
+    _lambdaClient.contents = Some(c)
+    c
+  }
+
+/** Decodes the SDK's `Payload`, which arrives as a byte array rather than a
+    string. */
+let decodePayload: JSON.t => string = %raw(`(p) => {
+  if (p == null) return "";
+  if (typeof p === "string") return p;
+  try { return new TextDecoder().decode(p); } catch { return String(p); }
+}`)
+
 @get @return(nullable) external exnName: JsExn.t => option<string> = "name"
 
 let isPoolGoneError = (jsErr: JsExn.t): bool =>
@@ -167,6 +215,129 @@ let isPoolGoneError = (jsErr: JsExn.t): bool =>
   | (_, Some(msg)) => msg->String.includes("ResourceNotFoundException")
   | _ => false
   }
+
+// ── Prove the trigger before attaching it ────────────────────────────────────
+
+/** The subject the probe presents. It is not a real user and must never match
+    one: the handler looks the id up in the role table, and a probe that
+    collided with a real row would exercise a different branch than the one it
+    is here to check. */
+let probeSubject = "reventless-attachment-probe"
+
+/** A minimal `V1_0` pre-token-generation event.
+
+    Empty membership on purpose — with no groups and no stored role there is
+    nothing to narrow, so a healthy handler returns the event unchanged. The
+    probe is checking that the function *runs*, not what it decides; what it
+    decides has unit tests, and they do not need a deployed pool. */
+let probeEvent = (~userPoolId: string): JSON.t => {
+  let groupConfiguration = Dict.make()
+  groupConfiguration->Dict.set("groupsToOverride", JSON.Encode.array([]))
+  groupConfiguration->Dict.set("iamRolesToOverride", JSON.Encode.array([]))
+
+  let userAttributes = Dict.make()
+  userAttributes->Dict.set("sub", JSON.Encode.string(probeSubject))
+
+  let request = Dict.make()
+  request->Dict.set("userAttributes", JSON.Encode.object(userAttributes))
+  request->Dict.set("groupConfiguration", JSON.Encode.object(groupConfiguration))
+
+  let event = Dict.make()
+  event->Dict.set("version", JSON.Encode.string("1"))
+  event->Dict.set("triggerSource", JSON.Encode.string("TokenGeneration_Authentication"))
+  event->Dict.set("userPoolId", JSON.Encode.string(userPoolId))
+  event->Dict.set("userName", JSON.Encode.string(probeSubject))
+  event->Dict.set("request", JSON.Encode.object(request))
+  event->Dict.set("response", JSON.Encode.object(Dict.make()))
+  JSON.Encode.object(event)
+}
+
+/** What one probe invocation proved.
+
+    A variant rather than a bool so the two failures stay distinguishable: they
+    have different causes and want different sentences. */
+type probeVerdict =
+  | Healthy
+  | Crashed(string)
+  | NotAnEvent
+
+/** The verdict for a given invoke result.
+
+    Pure and total, so every branch is checkable without a deployed function —
+    the same reason [mergedUpdateInput] is. A payload that is not JSON at all
+    counts as not an event rather than throwing: the point here is to produce a
+    verdict, and a parse error escaping would fail the deploy with a message
+    about JSON instead of about the trigger. */
+let probeVerdict = (~functionError: option<string>, ~payload: string): probeVerdict =>
+  switch functionError {
+  | Some(kind) => Crashed(kind)
+  | None =>
+    // A trigger must hand the event back for Cognito to mint anything from. A
+    // function that returns 200 with something else shaped is as fatal as one
+    // that throws, and rather harder to notice.
+    let hasRequest = try {
+      payload
+      ->JSON.parseOrThrow
+      ->JSON.Decode.object
+      ->Option.flatMap(o => o->Dict.get("request"))
+      ->Option.isSome
+    } catch {
+    | _ => false
+    }
+    hasRequest ? Healthy : NotAnEvent
+  }
+
+/**
+ Invoke the trigger once and refuse to attach it if it cannot answer.
+
+ 🚨 **This is the check that keeps a broken trigger off a live pool.** Cognito
+ runs this function on every token it mints, and a function that throws fails the
+ sign-in — so a trigger that cannot start does not degrade the feature, it takes
+ authentication away from every user of the pool. Nothing downstream notices: the
+ deploy reports success, and the first report is a person unable to log in.
+
+ A trigger cannot make itself fail open. It dies at module load, before any
+ handler code runs, so no `try` inside the handler can catch it. The only place
+ that can refuse a broken function is the thing about to point a pool at it, and
+ that is here.
+
+ So: broken function → this throws → the deploy fails with the function's own
+ error → **the pool is never touched**. That is the same trade [readOnlyKeys]
+ already makes deliberately, where a loud failure beats a quiet reset.
+
+ Needs `lambda:InvokeFunction` on the deploying principal.
+ */
+let verifyTrigger = async (~userPoolId: string, ~preTokenGenerationArn: string): unit => {
+  let sdk = await getLambdaSdk()
+  let client = await getLambdaClient()
+
+  let input = Dict.make()
+  input->Dict.set("FunctionName", JSON.Encode.string(preTokenGenerationArn))
+  input->Dict.set("InvocationType", JSON.Encode.string("RequestResponse"))
+  input->Dict.set("Payload", JSON.Encode.string(probeEvent(~userPoolId)->JSON.stringify))
+
+  let result = await client->sendInvoke(newOf1(sdk.invokeCtor, input))
+  let payload = result.payload->Option.mapOr("", decodePayload)
+
+  // The payload carries the runtime's own error — module-resolution failures, a
+  // missing environment variable, an unhandled throw. Surfaced verbatim because
+  // it is the most useful sentence anyone debugging this will read.
+  switch probeVerdict(~functionError=result.functionError, ~payload) {
+  | Crashed(kind) =>
+    JsError.throwWithMessage(
+      `active-role trigger ${preTokenGenerationArn} failed its pre-attach check (${kind}) and was NOT attached to user pool ${userPoolId}. Attaching it would have failed every sign-in on that pool. The function reported: ${payload}`,
+    )
+  | NotAnEvent =>
+    JsError.throwWithMessage(
+      `active-role trigger ${preTokenGenerationArn} answered its pre-attach check with something that is not a pre-token-generation event, so it was NOT attached to user pool ${userPoolId}. Cognito would have failed every sign-in. It returned: ${payload}`,
+    )
+  | Healthy =>
+    log.info(
+      ~comp="Auth_ActiveRolePoolAttachment",
+      `trigger ${preTokenGenerationArn} answered the pre-attach check; attaching to ${userPoolId}`,
+    )
+  }
+}
 
 // ── Describe → merge → update ────────────────────────────────────────────────
 
@@ -200,11 +371,20 @@ let applyTrigger = async (~userPoolId: string, ~preTokenGenerationArn: option<st
 type providerInputs = {
   userPoolId: string,
   preTokenGenerationArn: string,
+  /** The deployed function's code hash.
+
+      Carried purely so a code change reaches this resource. The function ARN is
+      stable across deploys, so without this the attachment sees identical inputs
+      every time and never runs again — meaning [verifyTrigger] would prove the
+      function once, on the deploy that created it, and never for any version
+      shipped afterwards. A check that only ever runs once is not a check. */
+  codeHash: string,
 }
 
 type createOuts = {
   userPoolId: string,
   preTokenGenerationArn: string,
+  codeHash: string,
 }
 
 type createResult = {id: string, outs: createOuts}
@@ -213,22 +393,43 @@ type diffResult = {changes: bool, replaces: array<string>, deleteBeforeReplace: 
 type readResult = {id?: string, props?: createOuts}
 
 let create = async (inputs: providerInputs): createResult => {
+  await verifyTrigger(
+    ~userPoolId=inputs.userPoolId,
+    ~preTokenGenerationArn=inputs.preTokenGenerationArn,
+  )
   await applyTrigger(
     ~userPoolId=inputs.userPoolId,
     ~preTokenGenerationArn=Some(inputs.preTokenGenerationArn),
   )
   {
     id: inputs.userPoolId,
-    outs: {userPoolId: inputs.userPoolId, preTokenGenerationArn: inputs.preTokenGenerationArn},
+    outs: {
+      userPoolId: inputs.userPoolId,
+      preTokenGenerationArn: inputs.preTokenGenerationArn,
+      codeHash: inputs.codeHash,
+    },
   }
 }
 
 let update = async (_id: string, _olds: createOuts, news: providerInputs): updateResult => {
+  // Re-proved on every update, not only on create: the usual reason this runs is
+  // that the function's code changed, which is exactly when it might have stopped
+  // working. The pool keeps the trigger it already has until this succeeds.
+  await verifyTrigger(
+    ~userPoolId=news.userPoolId,
+    ~preTokenGenerationArn=news.preTokenGenerationArn,
+  )
   await applyTrigger(
     ~userPoolId=news.userPoolId,
     ~preTokenGenerationArn=Some(news.preTokenGenerationArn),
   )
-  {outs: {userPoolId: news.userPoolId, preTokenGenerationArn: news.preTokenGenerationArn}}
+  {
+    outs: {
+      userPoolId: news.userPoolId,
+      preTokenGenerationArn: news.preTokenGenerationArn,
+      codeHash: news.codeHash,
+    },
+  }
 }
 
 /** Detaching on destroy is not optional. The Lambda is torn down with the rest
@@ -253,7 +454,9 @@ let delete_ = async (_id: string, props: createOuts): unit =>
 let diff_ = (_id: string, olds: createOuts, news: providerInputs): diffResult => {
   let poolChanged = olds.userPoolId != news.userPoolId
   {
-    changes: poolChanged || olds.preTokenGenerationArn != news.preTokenGenerationArn,
+    changes: poolChanged ||
+    olds.preTokenGenerationArn != news.preTokenGenerationArn ||
+    olds.codeHash != news.codeHash,
     replaces: poolChanged ? ["userPoolId"] : [],
     deleteBeforeReplace: true,
   }
@@ -271,6 +474,10 @@ let read_ = async (id: string, props: createOuts): readResult =>
         props: {
           userPoolId: props.userPoolId,
           preTokenGenerationArn: attachedTrigger(~described)->Option.getOr(""),
+          // The pool cannot report what code the function is running, so the
+          // recorded hash is carried through unchanged. Refresh answers "is the
+          // right function attached", which is what the pool actually knows.
+          codeHash: props.codeHash,
         },
       }
     }
@@ -295,6 +502,7 @@ type t = {id: Pulumi.Output.t<string>}
 type constructorProps = {
   userPoolId: Pulumi.Input.t<string>,
   preTokenGenerationArn: Pulumi.Input.t<string>,
+  codeHash: Pulumi.Input.t<string>,
 }
 
 // Explicit /index.js path because @pulumi/pulumi/dynamic is a directory import

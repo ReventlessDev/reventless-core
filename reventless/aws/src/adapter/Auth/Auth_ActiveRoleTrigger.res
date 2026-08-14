@@ -20,6 +20,11 @@ open PulumiAws
 type triggerOutputs = {
   functionArn: Pulumi.Output.t<string>,
   functionName: Pulumi.Output.t<string>,
+  /** The archive's hash, exposed so whoever attaches this trigger to a pool can
+      tell that the code changed. The function ARN does not move when the code
+      does, so without this an attachment sees identical inputs across deploys
+      and never re-checks a function it proved once. */
+  sourceCodeHash: string,
 }
 
 let make = (
@@ -150,7 +155,7 @@ let make = (
     ~opts,
   )
 
-  {functionArn: lambda.arn, functionName: lambda.name}
+  {functionArn: lambda.arn, functionName: lambda.name, sourceCodeHash}
 }
 
 /** Let Cognito invoke the trigger — scoped to one pool, so a function attached

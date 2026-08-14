@@ -44,6 +44,7 @@ function make(activeRoleTableName, activeRoleTableArn, nameOpt, opts) {
       Util_Bundle$ReventlessAws.resolvePackageRoot(undefined, "@reventlessdev/reventless-aws")
     ]]);
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Auth/Auth_ActiveRoleTrigger_Ops.res.mjs", packageDirs, undefined, false);
+  let sourceCodeHash = match.sourceCodeHash;
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
   let logGroup = Util_LambdaLogging$ReventlessAws.makeManagedLogGroup(name, undefined, AWS_Tags$ReventlessAws.make(name + "LogGroup", "Platform", "Logs", "Platform", undefined, undefined, undefined, undefined), opts$1, undefined);
   let lambda = new (Aws.lambda.Function)(name, {
@@ -76,12 +77,13 @@ function make(activeRoleTableName, activeRoleTableArn, nameOpt, opts) {
         Util_LambdaLogging$ReventlessAws.logLevelEntry()
       ])
     },
-    sourceCodeHash: match.sourceCodeHash,
+    sourceCodeHash: sourceCodeHash,
     loggingConfig: Util_LambdaLogging$ReventlessAws.loggingConfigFor(logGroup)
   }, opts$1);
   return {
     functionArn: lambda.arn,
-    functionName: lambda.name
+    functionName: lambda.name,
+    sourceCodeHash: sourceCodeHash
   };
 }
 

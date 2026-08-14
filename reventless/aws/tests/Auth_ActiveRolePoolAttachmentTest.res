@@ -209,3 +209,77 @@ describe("Auth_ActiveRolePoolAttachment.attachedTrigger", () => {
     )
   )
 })
+
+// The pre-attach check. Its whole job is to keep a trigger that cannot run off a
+// live pool, because a pre-token-generation trigger that throws does not degrade
+// the feature — it fails every sign-in for every user of that pool.
+describe("Auth_ActiveRolePoolAttachment.probeVerdict", () => {
+  // The real payload from the outage this check exists to prevent: the function
+  // could not resolve a package at module load, so it died during init and never
+  // reached its handler. Nothing inside the handler could have caught this.
+  let initFailurePayload = `{"errorType":"Error","errorMessage":"Cannot find package '@reventlessdev/reventless-core' imported from /var/task/node_modules/@reventlessdev/reventless-aws/src/adapter/Auth/Auth_ActiveRoleTrigger_Ops.res.mjs","code":"ERR_MODULE_NOT_FOUND"}`
+
+  testSync("refuses a function that died before reaching its handler", () =>
+    expect(
+      Attachment.probeVerdict(~functionError=Some("Unhandled"), ~payload=initFailurePayload),
+    )->toEqual(Attachment.Crashed("Unhandled"))
+  )
+
+  testSync("accepts a function that hands the event back", () =>
+    expect(
+      Attachment.probeVerdict(
+        ~functionError=None,
+        ~payload=`{"request":{"groupConfiguration":{"groupsToOverride":[]}},"response":{}}`,
+      ),
+    )->toEqual(Attachment.Healthy)
+  )
+
+  // A 200 carrying the wrong shape is as fatal to sign-in as a throw, and far
+  // easier to mistake for success.
+  testSync("refuses a successful call that returns something else", () =>
+    expect(Attachment.probeVerdict(~functionError=None, ~payload=`{"ok":true}`))->toEqual(
+      Attachment.NotAnEvent,
+    )
+  )
+
+  // Produces a verdict rather than escaping: a parse error here would fail the
+  // deploy with a message about JSON instead of about the trigger.
+  testSync("treats an unparseable payload as not an event", () =>
+    expect(Attachment.probeVerdict(~functionError=None, ~payload="<html>502</html>"))->toEqual(
+      Attachment.NotAnEvent,
+    )
+  )
+
+  testSync("treats an empty payload as not an event", () =>
+    expect(Attachment.probeVerdict(~functionError=None, ~payload=""))->toEqual(
+      Attachment.NotAnEvent,
+    )
+  )
+})
+
+describe("Auth_ActiveRolePoolAttachment.probeEvent", () => {
+  let event = Attachment.probeEvent(~userPoolId="eu-west-1_Example")->JSON.Decode.object
+
+  testSync("is shaped like the V1_0 event Cognito sends", () =>
+    expect(
+      event
+      ->Option.flatMap(o => o->Dict.get("request"))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.isSome,
+    )->toBe(true)
+  )
+
+  // Empty membership and a subject that cannot exist: the probe checks that the
+  // function runs, not what it decides, and must not collide with a real row.
+  testSync("presents no groups to narrow", () =>
+    expect(
+      event
+      ->Option.flatMap(o => o->Dict.get("request"))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(r => r->Dict.get("groupConfiguration"))
+      ->Option.flatMap(JSON.Decode.object)
+      ->Option.flatMap(g => g->Dict.get("groupsToOverride"))
+      ->Option.flatMap(JSON.Decode.array),
+    )->toEqual(Some([]))
+  )
+})

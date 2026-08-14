@@ -44,7 +44,8 @@ function _resolveUncached() {
     });
     Auth_ActiveRolePoolAttachment$ReventlessAws.make(undefined, {
       userPoolId: existingPoolId,
-      preTokenGenerationArn: activeRoleTrigger.functionArn
+      preTokenGenerationArn: activeRoleTrigger.functionArn,
+      codeHash: activeRoleTrigger.sourceCodeHash
     }, {});
     result = {
       poolId: Pulumi.output(existingPoolId),

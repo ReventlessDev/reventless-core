@@ -109,10 +109,14 @@ let _resolveUncached = (): cognitoUserPool => {
     // resource that describes the pool, merges into what it finds, and sends the
     // result back whole. Never a hand-run command: that would leave the
     // deployment's behaviour depending on an act no source describes.
+    // The code hash is an input so a new build of the trigger reaches this
+    // resource: the function ARN is stable, so it alone would let a broken
+    // version onto the pool unchecked after the first deploy.
     let _attachment = Auth_ActiveRolePoolAttachment.make(
       ~props={
         userPoolId: Pulumi.Input.make(poolId),
         preTokenGenerationArn: activeRoleTrigger.functionArn->Pulumi.Output.asInput,
+        codeHash: Pulumi.Input.make(activeRoleTrigger.sourceCodeHash),
       },
       ~opts={},
     )

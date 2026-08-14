@@ -89,6 +89,41 @@ async function getClient() {
   return c$1;
 }
 
+let _lambdaSdk = {
+  contents: undefined
+};
+
+let _lambdaClient = {
+  contents: undefined
+};
+
+async function getLambdaSdk() {
+  let m = _lambdaSdk.contents;
+  if (m !== undefined) {
+    return m;
+  }
+  let m$1 = await import("@aws-sdk/client-lambda");
+  _lambdaSdk.contents = m$1;
+  return m$1;
+}
+
+async function getLambdaClient() {
+  let c = _lambdaClient.contents;
+  if (c !== undefined) {
+    return Primitive_option.valFromOption(c);
+  }
+  let sdk = await getLambdaSdk();
+  let c$1 = newOf0(sdk.LambdaClient);
+  _lambdaClient.contents = Primitive_option.some(c$1);
+  return c$1;
+}
+
+let decodePayload = ((p) => {
+  if (p == null) return "";
+  if (typeof p === "string") return p;
+  try { return new TextDecoder().decode(p); } catch { return String(p); }
+});
+
 function isPoolGoneError(jsErr) {
   let match = jsErr.name;
   let match$1 = Stdlib_JsExn.message(jsErr);
@@ -104,6 +139,68 @@ function isPoolGoneError(jsErr) {
     return match$1.includes("ResourceNotFoundException");
   } else {
     return false;
+  }
+}
+
+let probeSubject = "reventless-attachment-probe";
+
+function probeEvent(userPoolId) {
+  let groupConfiguration = {};
+  groupConfiguration["groupsToOverride"] = [];
+  groupConfiguration["iamRolesToOverride"] = [];
+  let userAttributes = {};
+  userAttributes["sub"] = probeSubject;
+  let request = {};
+  request["userAttributes"] = userAttributes;
+  request["groupConfiguration"] = groupConfiguration;
+  let event = {};
+  event["version"] = "1";
+  event["triggerSource"] = "TokenGeneration_Authentication";
+  event["userPoolId"] = userPoolId;
+  event["userName"] = probeSubject;
+  event["request"] = request;
+  event["response"] = {};
+  return event;
+}
+
+function probeVerdict(functionError, payload) {
+  if (functionError !== undefined) {
+    return {
+      TAG: "Crashed",
+      _0: functionError
+    };
+  }
+  let hasRequest;
+  try {
+    hasRequest = Stdlib_Option.isSome(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(JSON.parse(payload)), o => o["request"]));
+  } catch (exn) {
+    hasRequest = false;
+  }
+  if (hasRequest) {
+    return "Healthy";
+  } else {
+    return "NotAnEvent";
+  }
+}
+
+async function verifyTrigger(userPoolId, preTokenGenerationArn) {
+  let sdk = await getLambdaSdk();
+  let client = await getLambdaClient();
+  let input = {};
+  input["FunctionName"] = preTokenGenerationArn;
+  input["InvocationType"] = "RequestResponse";
+  input["Payload"] = JSON.stringify(probeEvent(userPoolId));
+  let result = await client.send(newOf1(sdk.InvokeCommand, input));
+  let payload = Stdlib_Option.mapOr(result.Payload, "", decodePayload);
+  let kind = probeVerdict(result.FunctionError, payload);
+  if (typeof kind !== "object") {
+    if (kind === "Healthy") {
+      return log.info("Auth_ActiveRolePoolAttachment", undefined, `trigger ` + preTokenGenerationArn + ` answered the pre-attach check; attaching to ` + userPoolId);
+    } else {
+      return Stdlib_JsError.throwWithMessage(`active-role trigger ` + preTokenGenerationArn + ` answered its pre-attach check with something that is not a pre-token-generation event, so it was NOT attached to user pool ` + userPoolId + `. Cognito would have failed every sign-in. It returned: ` + payload);
+    }
+  } else {
+    return Stdlib_JsError.throwWithMessage(`active-role trigger ` + preTokenGenerationArn + ` failed its pre-attach check (` + kind._0 + `) and was NOT attached to user pool ` + userPoolId + `. Attaching it would have failed every sign-in on that pool. The function reported: ` + payload);
   }
 }
 
@@ -128,22 +225,26 @@ async function applyTrigger(userPoolId, preTokenGenerationArn) {
 }
 
 async function create(inputs) {
+  await verifyTrigger(inputs.userPoolId, inputs.preTokenGenerationArn);
   await applyTrigger(inputs.userPoolId, inputs.preTokenGenerationArn);
   return {
     id: inputs.userPoolId,
     outs: {
       userPoolId: inputs.userPoolId,
-      preTokenGenerationArn: inputs.preTokenGenerationArn
+      preTokenGenerationArn: inputs.preTokenGenerationArn,
+      codeHash: inputs.codeHash
     }
   };
 }
 
 async function update(_id, _olds, news) {
+  await verifyTrigger(news.userPoolId, news.preTokenGenerationArn);
   await applyTrigger(news.userPoolId, news.preTokenGenerationArn);
   return {
     outs: {
       userPoolId: news.userPoolId,
-      preTokenGenerationArn: news.preTokenGenerationArn
+      preTokenGenerationArn: news.preTokenGenerationArn,
+      codeHash: news.codeHash
     }
   };
 }
@@ -163,7 +264,7 @@ async function delete_(_id, props) {
 function diff_(_id, olds, news) {
   let poolChanged = olds.userPoolId !== news.userPoolId;
   return {
-    changes: poolChanged || olds.preTokenGenerationArn !== news.preTokenGenerationArn,
+    changes: poolChanged || olds.preTokenGenerationArn !== news.preTokenGenerationArn || olds.codeHash !== news.codeHash,
     replaces: poolChanged ? ["userPoolId"] : [],
     deleteBeforeReplace: true
   };
@@ -177,7 +278,8 @@ async function read_(id, props) {
         id: id,
         props: {
           userPoolId: props.userPoolId,
-          preTokenGenerationArn: Stdlib_Option.getOr(attachedTrigger(described), "")
+          preTokenGenerationArn: Stdlib_Option.getOr(attachedTrigger(described), ""),
+          codeHash: props.codeHash
         }
       };
     } else {
@@ -216,7 +318,16 @@ export {
   _client,
   getSdk,
   getClient,
+  _lambdaSdk,
+  _lambdaClient,
+  getLambdaSdk,
+  getLambdaClient,
+  decodePayload,
   isPoolGoneError,
+  probeSubject,
+  probeEvent,
+  probeVerdict,
+  verifyTrigger,
   describePool,
   applyTrigger,
   create,
