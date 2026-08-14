@@ -87,6 +87,18 @@ let formatCognitoGroupsDirective = (groups: array<string>): string => {
   `@aws_cognito_user_pools(cognito_groups: [${quoted}])`
 }
 
+// The group-less Cognito directive: reachable by any authenticated Cognito
+// caller. Emitted where a field or type is deliberately open — `AllowAuthenticated`,
+// `AllowAnonymous`, a field carrying no permission at all, and every object type.
+//
+// Under `userPoolConfig.defaultAction: ALLOW` this is a no-op: an undirectived
+// field is already reachable by any authenticated caller, so stamping it changes
+// nothing. It exists so the default can be flipped to DENY, where "no directive"
+// stops meaning "open" and starts meaning "refused" — at which point anything
+// left unstamped breaks. Stamping first and flipping second is what keeps that
+// flip from being a guess.
+let cognitoOpenDirective = "@aws_cognito_user_pools"
+
 // Multi-auth directive for a field/type that must accept BOTH Cognito and IAM.
 // `groups=Some([...])` preserves Cognito group gating; `groups=None` keeps it
 // open to any authenticated Cognito user. `@aws_iam` admits the deploy-time
@@ -94,7 +106,7 @@ let formatCognitoGroupsDirective = (groups: array<string>): string => {
 let formatDualAuthDirective = (groups: option<array<string>>): string => {
   let cognito = switch groups {
   | Some(g) => formatCognitoGroupsDirective(g)
-  | None => `@aws_cognito_user_pools`
+  | None => cognitoOpenDirective
   }
   `${cognito} @aws_iam`
 }
@@ -149,6 +161,38 @@ let stampSharedIamTypes = (sdl: string): string =>
   sharedIamTypeNames->Array.reduce(sdl, (acc, name) =>
     acc->String.replace(`type ${name} {`, `type ${name} @aws_cognito_user_pools @aws_iam {`)
   )
+
+// Stamp every object `type` declaration that does not already carry an auth
+// directive with the group-less Cognito arm. Run on the ASSEMBLED SDL, AFTER
+// stampSharedIamTypes so the shared traversal types keep their `@aws_iam` arm
+// (this pass skips anything already carrying an `@aws_` directive).
+//
+// Types, not just fields: on a multi-auth API with `defaultAction: DENY`,
+// AppSync refuses an undirectived TYPE even when the caller passed the field's
+// own gate — response shaping walks `…Connection` → `…Edge` → node → nested
+// state types and dies one level in. Entry gating stays on the fields; a type
+// stamp only restores the accessibility an undirectived type has today.
+//
+// Only `type` declarations take auth directives — `input`, `enum`, `union` and
+// `interface` do not, and stamping them is a schema error.
+let stampAllTypesCognito = (sdl: string): string =>
+  sdl
+  ->String.split("\n")
+  ->Array.map(line =>
+    if line->String.startsWith("type ") && !(line->String.includes("@aws_")) {
+      switch line->String.indexOfOpt("{") {
+      | Some(i) =>
+        line->String.slice(~start=0, ~end=i) ++
+        cognitoOpenDirective ++
+        " " ++
+        line->String.slice(~start=i, ~end=line->String.length)
+      | None => line
+      }
+    } else {
+      line
+    }
+  )
+  ->Array.join("\n")
 
 // ── Merged-API canonical stamping ─────────────────────────────────────────────
 // Under AppSync Merged APIs the admin source API owns the shared traversal

@@ -355,6 +355,12 @@ let injectAwsAuth = (
     }
   })
 
+  // A field with no group restriction gets the group-less Cognito directive
+  // rather than no directive at all. Same reachability under `defaultAction:
+  // ALLOW`; the difference only shows once the default is DENY, where an
+  // unstamped field is refused. See AppSync_SdlDecorate.cognitoOpenDirective.
+  let openDirective = AppSync_SdlDecorate.cognitoOpenDirective
+
   let augmentedMutations = parts.mutations->Array.map(field => {
     let fieldName = ReventlessCore.GraphQL_Stitcher.extractLeadingName(field)
     let groups = mutationAuthMap->Dict.get(fieldName)
@@ -363,7 +369,7 @@ let injectAwsAuth = (
     } else {
       switch groups {
       | Some(groups) => `${field}\n    ${_formatGroupsDirective(groups)}`
-      | None => field
+      | None => `${field}\n    ${openDirective}`
       }
     }
   })
@@ -379,8 +385,20 @@ let injectAwsAuth = (
     } else {
       switch groups {
       | Some(groups) => `${field} ${_formatGroupsDirective(groups)}`
-      | None => field
+      | None => `${field} ${openDirective}`
       }
+    }
+  })
+
+  // Subscriptions carried no directive at all on this path — they are reads and
+  // need one for the same reason queries do. A subscription is never IAM-marked
+  // (the deploy caller does not subscribe), so it takes the Cognito arm only:
+  // the mutation's groups where the subscribed field has them, otherwise open.
+  let augmentedSubscriptions = parts.subscriptions->Array.map(field => {
+    let fieldName = ReventlessCore.GraphQL_Stitcher.extractLeadingName(field)
+    switch mutationAuthMap->Dict.get(fieldName) {
+    | Some(groups) => `${field}\n    ${_formatGroupsDirective(groups)}`
+    | None => `${field}\n    ${openDirective}`
     }
   })
 
@@ -400,6 +418,7 @@ let injectAwsAuth = (
     types: augmentedTypes,
     mutations: augmentedMutations,
     queries: augmentedQueries,
+    subscriptions: augmentedSubscriptions,
   })
 }
 
@@ -444,6 +463,9 @@ let stitchStandaloneWithAwsDirectives = (
   ReventlessCore.GraphQL_Stitcher.stitchStandalone(~fragment)
   ->AppSync_SdlDecorate.injectAwsSubscribe(~sources)
   ->stampSharedIamTypes
+  // Last: every remaining undirectived type takes the group-less Cognito arm.
+  // After stampSharedIamTypes so the shared traversal types keep `@aws_iam`.
+  ->AppSync_SdlDecorate.stampAllTypesCognito
 }
 
 // ── Provider implementation ────────────────────────────────────────────────

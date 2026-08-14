@@ -218,7 +218,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     )
   })
 
-  testSync("AllowAuthenticated emits no directive", () => {
+  testSync("AllowAuthenticated emits the group-less Cognito directive", () => {
     let fp = Dict.fromArray([(
       "p_Add",
       Reventless.Authorization.AllowAuthenticated,
@@ -231,7 +231,11 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
       ~queryEntries=[],
     )
     let parts = decodeFragment(aug)
-    expect(parts.mutations->Array.getUnsafe(0))->not_->toContain("@aws_cognito_user_pools")
+    // Open, not ungated: the field carries the group-less directive so it stays
+    // reachable once defaultAction flips to DENY, but names no group.
+    let m = parts.mutations->Array.getUnsafe(0)
+    expect(m)->toContain("@aws_cognito_user_pools")
+    expect(m)->not_->toContain("cognito_groups")
   })
 
   testSync("DenyAll emits sentinel __deny_all__ group", () => {
@@ -273,7 +277,9 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     | None => JsError.throwWithMessage("missing archive field")
     }
     switch add {
-    | Some(f) => expect(f)->not_->toContain("@aws_cognito_user_pools")
+    | Some(f) =>
+      expect(f)->toContain("@aws_cognito_user_pools")
+      expect(f)->not_->toContain("cognito_groups")
     | None => JsError.throwWithMessage("missing add field")
     }
   })
@@ -338,7 +344,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     expect(m)->not_->toContain(`"Admin"`)
   })
 
-  testSync("AllowAuthenticated on a field overrides the legacy authorization (removes directive)", () => {
+  testSync("AllowAuthenticated on a field overrides the legacy authorization (drops the group)", () => {
     let fp = Dict.fromArray([(
       "p_X",
       Reventless.Authorization.AllowAuthenticated,
@@ -359,7 +365,11 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
       ~queryEntries=[],
     )
     let parts = decodeFragment(aug)
-    expect(parts.mutations->Array.getUnsafe(0))->not_->toContain("@aws_cognito_user_pools")
+    // The spec-level AllowAuthenticated wins over the legacy `authorization.group`:
+    // the field keeps a directive, but no longer names a group.
+    let m = parts.mutations->Array.getUnsafe(0)
+    expect(m)->toContain("@aws_cognito_user_pools")
+    expect(m)->not_->toContain("cognito_groups")
   })
 })
 
@@ -849,5 +859,58 @@ describe("AppSync_Adapter.waitForMergeSuccess", () => {
     }
     expect(message.contents)->toContain("timed out")
     expect(message.contents)->toContain("MERGE_IN_PROGRESS")
+  })
+})
+
+// ── Subscription stamping ───────────────────────────────────────────────────
+//
+// `injectAwsAuth` re-encoded `subscriptions` untouched, so every plugin
+// subscription reached the deployed SDL with no auth directive at all — 22 of
+// them on the hybrid domain API. Harmless under `defaultAction: ALLOW`, refused
+// under DENY. A subscription is a read and takes the Cognito arm; it is never
+// IAM-marked, because the deploy-time caller does not subscribe.
+
+describe("AppSync_Adapter.injectAwsAuth — subscriptions", () => {
+  let makeFragment = subscriptionFields =>
+    ReventlessCore.GraphQL_Stitcher.encode({
+      types: [],
+      mutations: ["p_Ship(id: ID!): CommandResult!"],
+      queries: [],
+      subscriptions: subscriptionFields,
+      subscriptionSources: [],
+    })
+
+  let entry = (~fieldNames, ~fieldPermissions): ReventlessInfra.Api.mutationSchemaEntry => {
+    fieldNames,
+    commandSchema: S.unknown,
+    fieldPermissions,
+  }
+
+  testSync("an unannotated subscription gets the group-less Cognito directive", () => {
+    let frag = makeFragment(["onSomething: CommandResult"])
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[], ~queryEntries=[])
+    let s = decodeFragment(aug).subscriptions->Array.getUnsafe(0)
+    expect(s)->toContain("@aws_cognito_user_pools")
+    expect(s)->not_->toContain("cognito_groups")
+    expect(s)->not_->toContain("@aws_iam")
+  })
+
+  testSync("a subscription named like a gated mutation inherits its groups", () => {
+    let fp = Dict.fromArray([("p_Ship", Reventless.Authorization.AllowGroups(["Fulfilment"]))])
+    let frag = makeFragment(["p_Ship: CommandResult"])
+    let aug = AppSync_Adapter.injectAwsAuth(
+      frag,
+      ~mutationEntries=[entry(~fieldNames=["p_Ship"], ~fieldPermissions=fp)],
+      ~queryEntries=[],
+    )
+    let s = decodeFragment(aug).subscriptions->Array.getUnsafe(0)
+    expect(s)->toContain(`@aws_cognito_user_pools(cognito_groups: ["Fulfilment"])`)
+    expect(s)->not_->toContain("@aws_iam")
+  })
+
+  testSync("subscription fields survive the round-trip", () => {
+    let frag = makeFragment(["onA: CommandResult", "onB: CommandResult"])
+    let aug = AppSync_Adapter.injectAwsAuth(frag, ~mutationEntries=[], ~queryEntries=[])
+    expect(decodeFragment(aug).subscriptions->Array.length)->toBe(2)
   })
 })

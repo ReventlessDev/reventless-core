@@ -216,7 +216,7 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
     } else if (groups !== undefined) {
       return field + `\n    ` + AppSync_SdlDecorate$ReventlessAws.formatCognitoGroupsDirective(groups);
     } else {
-      return field;
+      return field + `\n    ` + AppSync_SdlDecorate$ReventlessAws.cognitoOpenDirective;
     }
   });
   let augmentedQueries = parts.queries.map(field => {
@@ -228,7 +228,16 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
     } else if (groups !== undefined) {
       return field + ` ` + AppSync_SdlDecorate$ReventlessAws.formatCognitoGroupsDirective(groups);
     } else {
-      return field;
+      return field + ` ` + AppSync_SdlDecorate$ReventlessAws.cognitoOpenDirective;
+    }
+  });
+  let augmentedSubscriptions = parts.subscriptions.map(field => {
+    let fieldName = GraphQL_Stitcher$ReventlessCore.extractLeadingName(field);
+    let groups = mutationAuthMap[fieldName];
+    if (groups !== undefined) {
+      return field + `\n    ` + AppSync_SdlDecorate$ReventlessAws.formatCognitoGroupsDirective(groups);
+    } else {
+      return field + `\n    ` + AppSync_SdlDecorate$ReventlessAws.cognitoOpenDirective;
     }
   });
   let augmentedTypes = parts.types.map(decl => {
@@ -243,7 +252,7 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
     types: augmentedTypes,
     mutations: augmentedMutations,
     queries: augmentedQueries,
-    subscriptions: parts.subscriptions,
+    subscriptions: augmentedSubscriptions,
     subscriptionSources: parts.subscriptionSources
   });
 }
@@ -255,7 +264,7 @@ function injectAwsAuthAll(fragment, group, iamFieldNamesOpt) {
 
 function stitchStandaloneWithAwsDirectives(fragment) {
   let sources = GraphQL_Stitcher$ReventlessCore.collectSubscriptionSources(fragment, []);
-  return AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes(AppSync_SdlDecorate$ReventlessAws.injectAwsSubscribe(GraphQL_Stitcher$ReventlessCore.stitchStandalone(fragment), sources));
+  return AppSync_SdlDecorate$ReventlessAws.stampAllTypesCognito(AppSync_SdlDecorate$ReventlessAws.stampSharedIamTypes(AppSync_SdlDecorate$ReventlessAws.injectAwsSubscribe(GraphQL_Stitcher$ReventlessCore.stitchStandalone(fragment), sources)));
 }
 
 function _makeApiResourceWith(name, schema, userPoolConfig, opts) {

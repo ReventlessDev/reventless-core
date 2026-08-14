@@ -152,3 +152,39 @@ describe("AppSync_SdlDecorate.stampCanonicalTypes", () => {
     expect(AppSync_SdlDecorate.stampCanonicalTypes(once))->toBe(once)
   })
 })
+
+// ── Type-level Cognito stamping (defaultAction: DENY groundwork) ─────────────
+//
+// With `defaultAction: ALLOW` an undirectived type is reachable by any
+// authenticated Cognito caller, so this pass changes nothing observable. It
+// exists so the default can be flipped to DENY, where an undirectived type is
+// refused mid-traversal even for a caller who passed the field's own gate.
+
+describe("AppSync_SdlDecorate.stampAllTypesCognito", () => {
+  testSync("stamps an undirectived object type", () => {
+    let sdl = AppSync_SdlDecorate.stampAllTypesCognito("type Product {\n  id: ID!\n}")
+    expect(sdl)->toContain("type Product @aws_cognito_user_pools {")
+  })
+
+  testSync("leaves an already-directived type alone, keeping its @aws_iam arm", () => {
+    let sdl =
+      AppSync_SdlDecorate.stampSharedIamTypes(
+        "type PageInfo {\n  hasNextPage: Boolean!\n}",
+      )->AppSync_SdlDecorate.stampAllTypesCognito
+    expect(sdl)->toContain("type PageInfo @aws_cognito_user_pools @aws_iam {")
+    // Not double-stamped.
+    expect(sdl->String.includes("@aws_cognito_user_pools @aws_cognito_user_pools"))->toBe(false)
+  })
+
+  testSync("does not stamp input, enum, union or interface declarations", () => {
+    let sdl = AppSync_SdlDecorate.stampAllTypesCognito(
+      "input ProductFilter {\n  id: ID\n}\n\nenum Status {\n  Active\n}\n\nunion CommandResult = CommandAccepted | CommandRejected\n\ninterface Node {\n  id: ID!\n}",
+    )
+    expect(sdl->String.includes("@aws_cognito_user_pools"))->toBe(false)
+  })
+
+  testSync("is idempotent", () => {
+    let once = AppSync_SdlDecorate.stampAllTypesCognito("type Product {\n  id: ID!\n}")
+    expect(AppSync_SdlDecorate.stampAllTypesCognito(once))->toBe(once)
+  })
+})

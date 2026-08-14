@@ -42,8 +42,10 @@ function formatCognitoGroupsDirective(groups) {
   return `@aws_cognito_user_pools(cognito_groups: [` + quoted + `])`;
 }
 
+let cognitoOpenDirective = "@aws_cognito_user_pools";
+
 function formatDualAuthDirective(groups) {
-  let cognito = groups !== undefined ? formatCognitoGroupsDirective(groups) : `@aws_cognito_user_pools`;
+  let cognito = groups !== undefined ? formatCognitoGroupsDirective(groups) : cognitoOpenDirective;
   return cognito + ` @aws_iam`;
 }
 
@@ -86,6 +88,20 @@ function stampSharedIamTypes(sdl) {
   return Stdlib_Array.reduce(sharedIamTypeNames, sdl, (acc, name) => acc.replace(`type ` + name + ` {`, `type ` + name + ` @aws_cognito_user_pools @aws_iam {`));
 }
 
+function stampAllTypesCognito(sdl) {
+  return sdl.split("\n").map(line => {
+    if (!(line.startsWith("type ") && !line.includes("@aws_"))) {
+      return line;
+    }
+    let i = Stdlib_String.indexOfOpt(line, "{");
+    if (i !== undefined) {
+      return line.slice(0, i) + cognitoOpenDirective + " " + line.slice(i, line.length);
+    } else {
+      return line;
+    }
+  }).join("\n");
+}
+
 let canonicalTypeNames = [
   "PageInfo",
   "CommandAccepted",
@@ -126,10 +142,12 @@ function stampCanonicalTypes(sdl) {
 export {
   injectAwsSubscribe,
   formatCognitoGroupsDirective,
+  cognitoOpenDirective,
   formatDualAuthDirective,
   injectAwsAuthAll,
   sharedIamTypeNames,
   stampSharedIamTypes,
+  stampAllTypesCognito,
   canonicalTypeNames,
   stampCanonicalTypes,
 }

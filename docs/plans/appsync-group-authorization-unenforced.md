@@ -200,10 +200,55 @@ Establish what it does and does not cover before assuming any of it.
 
 **Remaining, as separate work:**
 
-2. **`defaultAction: DENY`** — still `ALLOW` on every API. The gate is correct
-   now, but a future field whose directive goes missing still fails open. This
-   is the change that makes the *class* of mistake impossible rather than this
-   one instance of it.
+2. **`defaultAction: DENY`** — the change that makes the *class* of mistake
+   impossible rather than this one instance of it. Done in two phases, because
+   flipping it blind would have taken the whole app down.
+
+   **Why phased.** Under `DENY`, "no directive" stops meaning *open* and starts
+   meaning *refused* — for types as well as fields, since response shaping walks
+   `…Connection` → `…Edge` → node → nested state types and dies one level in on
+   an undirectived type. Measured against the deployed alpha SDL before touching
+   anything:
+
+   | Surface | Carried a directive | Total |
+   | --- | --- | --- |
+   | Domain `Query` | 4 | 35 |
+   | Domain `Mutation` | 10 | 22 |
+   | Domain `Subscription` | **0** | 22 |
+   | Domain types | 4 | 61 |
+   | Platform types | 4 | 34 |
+
+   Flipping first would have refused roughly 65 fields and 87 types — nearly
+   the entire application — for every caller.
+
+   - ✅ **Phase 1 — stamp everything explicitly, default still `ALLOW`.** Every
+     field with no group restriction (`AllowAuthenticated`, `AllowAnonymous`, or
+     no permission at all) now emits the group-less
+     `@aws_cognito_user_pools`; every object type does too, via
+     `stampAllTypesCognito` on the assembled SDL (after `stampSharedIamTypes`,
+     so shared traversal types keep their `@aws_iam` arm). Subscriptions were
+     the worst gap — `injectAwsAuth` re-encoded them untouched, so all 22 domain
+     subscriptions reached the deployed SDL with no directive; they now take the
+     Cognito arm, inheriting the groups of a like-named gated mutation, and are
+     never IAM-marked.
+
+     **This phase is a semantic no-op under `ALLOW`** — that is the point. It
+     makes a miss harmless and observable, instead of an outage.
+
+   - ⬜ **Phase 2 — flip the default.** Only once the *deployed* SDL shows 100%
+     coverage. `defaultAction: ALLOW` appears in three places
+     (`Platform.res:338`, `AppSync_Adapter.res:518`,
+     `AppSync_MergedApi.res:103`) and all three must move together.
+
+     Gate on the deployed SDL, not on local rendering:
+     ```
+     aws appsync get-introspection-schema --api-id <id> --format SDL \
+       --include-directives /dev/stdout | grep -c '^type .*[^@]*{'   # undirectived types must be 0
+     ```
+     Then re-probe **both** directions — the unentitled caller still refused,
+     and an ordinary authenticated caller still able to reach the open fields.
+     The second half matters more here: phase 2's failure mode is refusing
+     everybody, which the group probe alone would score as a pass.
 3. **Revisit the refusal-vocabulary question**
    ([done/appsync-refusal-vocabulary.md](done/appsync-refusal-vocabulary.md)).
    Its §2 table can now be written from observation: the AWS path answers an
