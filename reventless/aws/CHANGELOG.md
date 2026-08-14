@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.299 (2026-08-14)
+
+### Features
+
+* **aws:** refuse to push an AppSync schema that cannot be gated ([18e9279](https://github.com/ReventlessDev/reventless-core/commit/18e92793b1b42b4b94dc61e9e285918c67e62e8a))
+
+
 # 3.0.0-alpha.298 (2026-08-14)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
