@@ -78,6 +78,13 @@ discover the surfaces their job needs — and, being elevated by something other
 than `Admin`, `fulfil` reads its board from its own journey file without ever
 approaching the admin API.
 
+The menu says whose rows it is showing, too. `Orders` carries an `@owner` field,
+so `ui-hints.json` states both phrasings — `label: "All Orders"` and
+`scopedLabel: "My Orders"` — and the shell picks by the scope it already
+resolved: `shopper` reads its own rows and sees "My Orders", `fulfil` reads every
+customer's and sees "All Orders". Keyed on the scope rather than the role, so it
+stays right for whatever `Storefront.elevatedGroups` names next.
+
 That curation covers the pages a shell *builds* as well as the views a plugin
 declares. `Orders` carries a status and dated delivery windows, so the shell can
 draw a lifecycle diagram and a calendar of the same rows. `Storefront.manifest`

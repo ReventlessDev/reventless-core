@@ -2,7 +2,10 @@
   "Catalog": {
     "views": {
       "Products": {
-        "nav": { "label": "Shop", "group": "Shop", "order": 0 },
+        "nav": {
+          "group": "Shop",
+          "order": 0
+        },
         "rowActions": [
           {
             "label": "Order",
@@ -15,14 +18,29 @@
         ]
       },
       "Categories": {
-        "nav": { "group": "Shop", "order": 20 }
+        "nav": {
+          "group": "Shop",
+          "order": 10
+        }
+      },
+      "ProductDemand": {
+        "nav": {
+          "label": "Demand",
+          "group": "Merchandising",
+          "order": 30
+        }
       }
     }
   },
   "Ordering": {
     "views": {
       "Orders": {
-        "nav": { "label": "My Orders", "group": "Shop", "order": 10 }
+        "nav": {
+          "group": "Shop",
+          "label": "All Orders",
+          "scopedLabel": "My Orders",
+          "order": 20
+        }
       }
     }
   }
