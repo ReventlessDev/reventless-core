@@ -1,7 +1,9 @@
 # Plan: group authorization is not enforced on the AWS path
 
-**Status.** Finding confirmed by observation against the deployed alpha API on
-2026-08-14. Not yet fixed. This plan supersedes
+**Status. FIXED AND VERIFIED 2026-08-14** (`13926388c`, deployed to alpha). The
+gate was confirmed open by observation, fixed, redeployed, and confirmed closed
+by the same probe — before and after, same command, same two callers. §8 records
+both halves. This plan supersedes
 [appsync-refusal-vocabulary.md](done/appsync-refusal-vocabulary.md), whose step 0
 produced the observation and whose step 1 required stopping if it came out this
 way. It did.
@@ -163,7 +165,7 @@ Establish what it does and does not cover before assuming any of it.
 
 ## §5 — Steps
 
-**Done (2026-08-14), not yet deployed:**
+**Done (2026-08-14), shipped in `13926388c` and deployed to alpha:**
 
 - ✅ **2. Both emission sites now emit `@aws_cognito_user_pools(...)`**, routed
   through one canonical `AppSync_SdlDecorate.formatCognitoGroupsDirective`.
@@ -194,31 +196,36 @@ Establish what it does and does not cover before assuming any of it.
   "enforced" when the no-group caller is not supplied: the unauthenticated rows
   passed throughout the whole outage and prove nothing about the gate.
 
-**Remaining — needs a deploy, which is user-triggered:**
+- ✅ **1. Deployed and re-probed** — see §8.
 
-1. **Deploy and re-probe all four rows** against the redeployed alpha stack:
-   ```
-   node scripts/probe-appsync-group-gate.mjs \
-     --endpoint <merged api url> --client-id <cognito app client> \
-     --query 'query { Platform_ComponentDefinitions { pluginId } }' \
-     --in-group-user … --in-group-pass … --no-group-user … --no-group-pass …
-   ```
-   Record the bodies here. Until this runs, the fix is reasoned, not observed —
-   the same standard that closed the predecessor plan.
-2. **Then** consider `defaultAction: DENY` as a separate change.
-3. **Only after the above**, revisit the refusal-vocabulary question. Its §2
-   table was reasoned from the assumption that AppSync refuses the unentitled
-   caller; once that is actually true, the table can be written from observation.
+**Remaining, as separate work:**
+
+2. **`defaultAction: DENY`** — still `ALLOW` on every API. The gate is correct
+   now, but a future field whose directive goes missing still fails open. This
+   is the change that makes the *class* of mistake impossible rather than this
+   one instance of it.
+3. **Revisit the refusal-vocabulary question**
+   ([done/appsync-refusal-vocabulary.md](done/appsync-refusal-vocabulary.md)).
+   Its §2 table can now be written from observation: the AWS path answers an
+   unentitled caller with HTTP 200 + `errorType: "Unauthorized"`, and an
+   unidentified one with HTTP 401 — which is exactly what it predicted, and is
+   still a different shape from the local adapter's `extensions.code`.
 
 ## §6 — Acceptance
 
-- A Cognito user in no groups is refused by every group-gated field on a
-  deployed API, with the refusal captured verbatim here.
-- A user holding the required group still succeeds on the same fields (no gate
-  admits fewer callers than intended, and none admits more).
-- `DenyAll` and `AllowGroups([])` are observed to refuse everyone.
-- The GraphQL goldens reflect the new directive form.
-- No comment in the tree still asserts that `@aws_auth` is enforced here.
+- ✅ A Cognito user in no groups is refused by every group-gated field on a
+  deployed API, with the refusal captured verbatim here (§8).
+- ✅ A user holding the required group still succeeds on the same fields (§8).
+- ⬜ `DenyAll` and `AllowGroups([])` are observed to refuse everyone. **Not
+  observed** — no `DenyAll` field is deployed in the examples, so there was
+  nothing to point a caller at. It rides the same `_formatGroupsDirective` path
+  that is now verified, but that is inference, not observation. Worth an
+  explicit probe the first time a `DenyAll` field ships.
+- ➖ The GraphQL goldens reflect the new directive form. **Not applicable** —
+  the goldens capture contract shape and contain no auth directives at all
+  (§4). Verified instead against the deployed SDL: 0 `@aws_auth`, 18
+  `@aws_cognito_user_pools`.
+- ✅ No comment in the tree still asserts that `@aws_auth` is enforced here.
 
 ## §7 — Reproduction
 
@@ -228,3 +235,60 @@ observation (`refusal-probe-admin`, `refusal-probe-plain`) were deleted
 immediately afterwards; the `examples-dev` pool
 (`eu-west-1_CQTwafSeX`) is back to its six standing users. Recreate throwaways
 rather than reusing `admin`/`shopper`, whose credentials CI depends on.
+
+## §8 — Verification (2026-08-14)
+
+Same command, same two throwaway callers, against the alpha merged Platform API
+— once before the deploy and once after. Users created for the probe and deleted
+immediately after; the `examples-dev` pool is back to its six standing users.
+
+```
+node scripts/probe-appsync-group-gate.mjs \
+  --endpoint https://lhe7fojedjgqhhdtvxgbzt2xyi.appsync-api.eu-west-1.amazonaws.com/graphql \
+  --client-id <host-ui client> --region eu-west-1 \
+  --query 'query { Platform_ComponentDefinitions { pluginId } }' \
+  --in-group-user <in Admin> --no-group-user <in no groups>
+```
+
+| Caller | Before (`f698ff8a4`) | After (`13926388c`) |
+| --- | --- | --- |
+| no token | 401 `UnauthorizedException` | 401 `UnauthorizedException` |
+| malformed token | 401 `UnauthorizedException` | 401 `UnauthorizedException` |
+| valid token, in `Admin` | 200, data | 200, data |
+| valid token, **no groups** | **200, full data** | **200, `errorType: "Unauthorized"`, `data: null`** |
+
+Probe exit code went 1 → 0.
+
+The refusal body the unentitled caller now receives:
+
+```json
+{"data":null,"errors":[{"path":["Platform_ComponentDefinitions"],"data":null,
+  "errorType":"Unauthorized","errorInfo":null,
+  "locations":[{"line":1,"column":9,"sourceName":null}],
+  "message":"Not Authorized to access Platform_ComponentDefinitions on type Query"}]}
+```
+
+**Deployed SDL** — the merged Platform API now carries `@aws_auth` on **0**
+fields and `@aws_cognito_user_pools(cognito_groups: [...])` on all **18**.
+
+**Every field found open in §1 is now closed**, on both APIs, for the no-group
+caller:
+
+| Field | Before | After |
+| --- | --- | --- |
+| `Platform_ComponentDefinitions` | data | `Unauthorized` |
+| `Platform_Plugins` | data | `Unauthorized` |
+| `Ordering_Customers` | data | `Unauthorized` |
+| `Catalog_ProductDemands` | data | `Unauthorized` |
+| `Ordering_ShipOrder` (mutation) | reached handler → `OrderNotFound` | `Unauthorized` |
+
+The mutation row is the sharpest: it previously got past the gate and into the
+command handler, and is now refused at the gate.
+
+**No gate admits fewer callers than intended.** The `Admin` caller still reads
+`Ordering_Customers`, `Catalog_ProductDemands` and `Platform_Plugins`. The
+deploy-time IAM system caller is exercised by the deploy itself, which succeeded
+— `systemCallable` fields kept their `@aws_iam` arm.
+
+CI, Repo hygiene, Release and Deploy Online Shop Hybrid all succeeded on
+`627ec0825`.
