@@ -205,6 +205,13 @@ offer:
 | `@scanSort` | opt-in sort on a field with no backing sort key |
 | `@resolves`, `@resolvesMany` | cross-table resolvers — linked entities in the detail view |
 
+An `@index` on a field that *names another entity* is worth calling out, because it
+buys more than a filter box. `@index categoryId` on a product is what lets a shell
+offer the category's own page a list of its products: the filter it needs
+(`categoryIdEq`) exists, and the annotation reaches the client as
+`x-reventless-index` on the field's JSON Schema, so the shell can discover that the
+server will answer rather than fetching a page and narrowing it locally.
+
 `@scan` and `@scanSort` are free on the local platform and cost `O(n)` on
 DynamoDB-backed adapters. The annotation *is* the signal that the read model is
 small enough, or that the cost is accepted. See
@@ -743,7 +750,7 @@ What each of the shop's components declares:
 
 | Component | Declarations |
 |---|---|
-| `Catalog/Products` | `Money.t` price; `@storageRef("productImages")` image; nav group "Shop"; a row action that starts `Ordering.PlaceOrder` |
+| `Catalog/Products` | `Money.t` price; `@storageRef("productImages")` image; `@index categoryId`, so a category's products can be asked for by category; nav group "Shop"; a row action that starts `Ordering.PlaceOrder` |
 | `Catalog/Categories` | `@storageRef("categoryImages")` image — its own store, not the products' one; nav group "Shop" |
 | `Catalog/ProductDemand` | `@@reventless.authorize(AllowGroups(["Admin", "Merchandiser"]))`; `@id productId`; only in the `Merchandiser` journey, under its own nav group |
 | `Ordering/Orders` | `@owner customerId`; `@status status`; `DateTime` timestamps; `DateRange` delivery window; nav "All Orders", or "My Orders" for a caller reading only their own |

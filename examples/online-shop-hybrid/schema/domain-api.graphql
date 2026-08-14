@@ -155,6 +155,7 @@ type Catalog_ProductEdge {
 }
 
 input Catalog_ProductFilter {
+  categoryIdEq: ID
   ids: [ID!]
   productIdEq: ID
   search: String
@@ -167,6 +168,7 @@ input Catalog_ProductOrderBy {
 }
 
 enum Catalog_ProductOrderField {
+  categoryId
   productId
 }
 
@@ -901,6 +903,7 @@ type Query {
   Catalog_ImportProductAudits(after: String, before: String, filter: Catalog_ImportProductAuditFilter, first: Int, last: Int): Catalog_ImportProductAuditConnection!
   Catalog_ImportProductAuditsByIds(ids: [String!]!): [Catalog_ImportProductAudit!]!
   Catalog_Product(id: ID!): Catalog_Product
+  Catalog_ProductByCategoryId(categoryId: String!): [String]
   Catalog_ProductDemand(id: ID!): Catalog_ProductDemand
   Catalog_ProductDemands(after: String, before: String, filter: Catalog_ProductDemandFilter, first: Int, last: Int, orderBy: Catalog_ProductDemandOrderBy): Catalog_ProductDemandConnection!
   Catalog_ProductDemandsByIds(ids: [String!]!): [Catalog_ProductDemand!]!

@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Money$Reventless from "@reventlessdev/reventless-spec/src/semantic/Money.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 let consumedEventSchema = S.union([
   S.schema(s => ({
@@ -46,7 +47,35 @@ let stateSchema = S.schema(s => ({
   categoryId: s.m(S.string)
 }));
 
-let config = ReadModel$Reventless.config(undefined, undefined, undefined);
+let config = ReadModel$Reventless.config(undefined, undefined, [{
+    index: "categoryId",
+    type_: "S",
+    projectionType: "ALL"
+  }]);
+
+let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stateAnnotationsId, {
+  ids: [],
+  compositeIds: [],
+  subIds: [],
+  compositeSubIds: [],
+  indexes: [[
+      "categoryId",
+      ""
+    ]],
+  hidden: [],
+  summary: [],
+  drillTargets: [],
+  drillTargetKeys: [],
+  collapsed: [],
+  scan: [],
+  scanSort: [],
+  semantic: [],
+  metric: [],
+  status: undefined,
+  groupBy: undefined,
+  visibility: undefined,
+  live: undefined
+});
 
 let name = "Products";
 
@@ -64,9 +93,9 @@ export {
   name,
   Id,
   consumedEventSchema,
-  stateSchema,
   config,
   subIdConfig,
+  stateSchema$1 as stateSchema,
   moduleUrl,
   authorization,
   visibility,

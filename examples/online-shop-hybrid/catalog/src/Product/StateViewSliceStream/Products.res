@@ -18,5 +18,8 @@ type state = {
   description: string,
   price: Reventless.Money.t,
   @storageRef("productImages") imageUrl?: string,
-  categoryId: string,
+  // Indexed so the server can answer "the products in this category" — a
+  // `categoryIdEq` filter on the connection, rather than a client narrowing one
+  // loaded page.
+  @index categoryId: string,
 }
