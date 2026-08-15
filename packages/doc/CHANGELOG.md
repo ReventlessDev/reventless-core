@@ -718,6 +718,13 @@ This file tracks changes to the documentation. Since the doc package is not vers
 
 ## Changes
 
+### 2026-08-15
+- feat(examples): make products queryable by category ([2a132e0](https://github.com/ReventlessDev/reventless-core/commit/2a132e0b88e6bd310c81749c1c452e469dc78b2a))
+- feat(examples): give a category an image ([ad1b741](https://github.com/ReventlessDev/reventless-core/commit/ad1b7416ea6a4392dada097bc45f707e24bdbd2a))
+- docs(app): write the UI configuration guide for app developers ([01b0151](https://github.com/ReventlessDev/reventless-core/commit/01b01516e868db688458870abd6648e08a703a0e))
+
+### 2026-08-14
+- docs(app): document how to configure the generated UI ([235a034](https://github.com/ReventlessDev/reventless-core/commit/235a034a0b3c64cbdc8a341453aa03d2d977c859))
 ### 2026-08-13
 - feat(aws): narrow the token to the role a caller chose to act as ([194332f](https://github.com/ReventlessDev/reventless-core/commit/194332fa0af8e13417f72d57904e2ed469747dde))
 ### 2026-08-12
