@@ -229,6 +229,58 @@ describe("OwnerScope:", () => {
     )
   })
 
+  // `@retired` narrows on the same classification `@owner` does, and the two
+  // must not be able to disagree about who an operator is. These pin the ways
+  // the retirement rule deliberately differs.
+  describe("retirement narrowing:", () => {
+    let retiredOf = (identity, ~asked=false) =>
+      identity
+      ->OwnerScope.decideRetired(~retiredField=Some("archived"), ~asked, ~elevated=["Admin"])
+      ->OwnerScope.retiredScopeOf
+
+    testSync("a view that declares no retirement flag narrows nothing", () =>
+      expect(
+        cognito(~userId="u-1", ~groups=[])
+        ->OwnerScope.decideRetired(~retiredField=None, ~elevated=["Admin"])
+        ->OwnerScope.retiredScopeOf,
+      )->toEqual(None)
+    )
+
+    testSync("an ordinary caller never sees retired rows", () =>
+      expect(retiredOf(cognito(~userId="u-1", ~groups=["User"])))->toEqual(Some("archived"))
+    )
+
+    // Elevation buys the ability to ask, not a standing exemption — otherwise
+    // the archive is always underfoot for the people who manage it.
+    testSync("an elevated caller is excluded too until they ask", () =>
+      expect(retiredOf(cognito(~userId="ops-1", ~groups=["Admin"])))->toEqual(Some("archived"))
+    )
+
+    testSync("an elevated caller who asks gets them", () =>
+      expect(retiredOf(cognito(~userId="ops-1", ~groups=["Admin"]), ~asked=true))->toEqual(None)
+    )
+
+    // The request is a request, not the decision. Reading it before classifying
+    // would make the argument the whole rule.
+    testSync("an ordinary caller asking is ignored, not obeyed", () =>
+      expect(retiredOf(cognito(~userId="u-1", ~groups=["User"]), ~asked=true))->toEqual(
+        Some("archived"),
+      )
+    )
+
+    testSync("a system caller may ask", () =>
+      expect((retiredOf(iam), retiredOf(iam, ~asked=true)))->toEqual((Some("archived"), None))
+    )
+
+    // Where this parts company with `decide`: an owner-scoped read of an
+    // unidentified caller is refused because there is no value to match, but
+    // retirement has the same predicate for every non-exempt caller, so the
+    // fail-closed action is simply the narrow read.
+    testSync("an unidentified caller is excluded rather than refused", () =>
+      expect(retiredOf(rawIdentity({"provider": "Cognito"})))->toEqual(Some("archived"))
+    )
+  })
+
   describe("the configured default is used when no list is passed:", () => {
     testSync("setElevatedGroups changes how an unqualified resolve classifies", () => {
       let identity = cognito(~userId="u-5", ~groups=["Ops"])

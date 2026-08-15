@@ -225,3 +225,63 @@ let scopeOf = (decision: decision): option<(string, string)> =>
   | ScopeTo(field, required) => Some((field, required))
   | Unscoped | RefuseOwned => None
   }
+
+/**
+What `@retired` does to one read of one view.
+
+Deliberately in this module rather than beside the annotation. Owner scoping and
+retirement narrowing are two rules over the same question — which rows does this
+caller get — and they resolve the caller with the same `resolve`, against the
+same deployment-wide `elevatedGroups`. Written apart, they could disagree about
+who an operator is, and the disagreement would be invisible until a caller
+elevated for one rule turned out to be scoped by the other.
+
+`ExcludeRetired` carries the field rather than a `(field, value)` pair like
+`ScopeTo`: the excluded value is always `true`, and a parameter that can only
+hold one value is a parameter a call site can pass wrongly.
+*/
+type retiredDecision =
+  | RetiredVisible
+  | ExcludeRetired(string)
+
+/**
+Combine a view's declared retirement flag with the caller behind the request.
+
+`~asked` is the caller's `includeRetired` request, honoured only where the
+caller was going to see those rows anyway. Reading it before classifying would
+make the argument the decision rather than a request.
+
+`Unidentified` excludes rather than refuses, which is where this parts company
+with `decide`. An owner-scoped read of an unidentified caller has no value to
+match, so scoping it would be indistinguishable from an empty view and a refusal
+says more. Retirement has no such value — the predicate is the same for every
+non-exempt caller — so the fail-closed action is simply the narrow read.
+*/
+let decideRetired = (
+  identity: Identity.t,
+  ~retiredField: option<string>,
+  ~asked: bool=false,
+  ~elevated: array<string>=elevatedGroups(),
+): retiredDecision =>
+  switch retiredField {
+  | None => RetiredVisible
+  | Some(field) =>
+    switch resolve(identity, ~elevated) {
+    | System | Elevated(_) => asked ? RetiredVisible : ExcludeRetired(field)
+    | Owned(_) | Unidentified(_) => ExcludeRetired(field)
+    }
+  }
+
+/**
+The field a read excludes on, or `None` when it excludes nothing.
+
+Note that an exempt caller who did not ask still gets `Some`: retired rows are
+withheld from everyone by default, and elevation buys the ability to ask for
+them rather than a standing exemption. An archive that is always underfoot is
+not an archive.
+*/
+let retiredScopeOf = (decision: retiredDecision): option<string> =>
+  switch decision {
+  | ExcludeRetired(field) => Some(field)
+  | RetiredVisible => None
+  }

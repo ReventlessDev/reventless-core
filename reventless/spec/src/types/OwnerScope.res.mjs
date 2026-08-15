@@ -155,6 +155,50 @@ function scopeOf(decision) {
   }
 }
 
+function decideRetired(identity, retiredField, askedOpt, elevatedOpt) {
+  let asked = askedOpt !== undefined ? askedOpt : false;
+  let elevated = elevatedOpt !== undefined ? elevatedOpt : elevatedGroups();
+  if (retiredField === undefined) {
+    return "RetiredVisible";
+  }
+  let match = resolve(identity, elevated);
+  if (typeof match !== "object") {
+    if (asked) {
+      return "RetiredVisible";
+    } else {
+      return {
+        TAG: "ExcludeRetired",
+        _0: retiredField
+      };
+    }
+  }
+  switch (match.TAG) {
+    case "Elevated" :
+      if (asked) {
+        return "RetiredVisible";
+      } else {
+        return {
+          TAG: "ExcludeRetired",
+          _0: retiredField
+        };
+      }
+    case "Owned" :
+    case "Unidentified" :
+      return {
+        TAG: "ExcludeRetired",
+        _0: retiredField
+      };
+  }
+}
+
+function retiredScopeOf(decision) {
+  if (typeof decision !== "object") {
+    return;
+  } else {
+    return decision._0;
+  }
+}
+
 export {
   isJsString,
   systemProviders,
@@ -169,5 +213,7 @@ export {
   isExempt,
   decide,
   scopeOf,
+  decideRetired,
+  retiredScopeOf,
 }
 /* Identity-Reventless Not a pure module */
