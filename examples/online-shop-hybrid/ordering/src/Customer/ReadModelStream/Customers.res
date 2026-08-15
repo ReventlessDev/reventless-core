@@ -20,13 +20,29 @@
 // Whether this customer's address has been turned into a point yet, and if not,
 // why not. `location: option<GeoPoint.t>` alone cannot say: `None` would mean
 // both "the geocoder has not run" and "the geocoder ran and failed", and an
-// operator cannot act on a state that means two things. Marked `@lifecycle` so
-// the generated view sections and badges rows by it without further configuration.
+// operator cannot act on a state that means two things.
+//
+// Not the record's `@lifecycle`, despite the name: no command branches on it and
+// no lifecycle passes through it. It is the geocoder's progress, which is a fact
+// about a background job rather than about where this customer is in their life.
+// That is a distinction the annotation's old name (`@status`) made easy to miss.
 @schema
 type locationStatus =
   | Pending
   | Located
   | Unresolvable
+
+// Where a customer is in their life with the shop. `Deactivated` is a state
+// rather than a flag beside one, which is what lets a command say where it
+// belongs: `@allowedStates([Deactivated])` on `Reactivate` is the whole of
+// "offer the way back on a deactivated customer and nowhere else".
+//
+// The alternative — an `accountStatus` enum AND a `deactivated: bool` — is the
+// same fact twice, with nothing keeping the two in step.
+@schema
+type accountStatus =
+  | Active
+  | Deactivated
 
 // A read model states its own key. Without `customerId` the only identifier on a
 // row is the Relay global `id`, which resolves the row through `node` but cannot
@@ -40,20 +56,19 @@ type state = {
   @displayName email: string,
   address: string,
   location: option<Reventless.GeoPoint.t>,
-  // Annotated rather than renamed: the field is honestly called `locationStatus`,
-  // and calling it `lifecycle` would assert something false about it. This is the
-  // case the annotation rung exists for — the convention rung only serves a record
-  // whose lifecycle field can carry the name.
-  @lifecycle locationStatus: locationStatus,
+  locationStatus: locationStatus,
   // Why the geocoder gave up, for the rows sitting in `Unresolvable`. Absent
   // otherwise; hidden from list views because it is only meaningful on a row a
   // human is already looking into.
   @hidden locationNote: option<string>,
   // A deactivated customer is withdrawn from ordinary use rather than deleted:
   // their orders still reference them, and an operator still needs to find them.
-  // `@retired` is what makes the platform say so — ordinary reads exclude these
-  // rows, and a consumer renders the fact as a state of the record instead of as
-  // a column reading `false` on nearly every row.
-  @retired deactivated: bool,
+  // `@retired(Deactivated)` is what makes the platform say so — ordinary reads
+  // exclude these rows — and `@lifecycle` is what makes the same field the one a
+  // command's `@allowedStates` is written in terms of.
+  //
+  // Annotated rather than named `lifecycle`: the field is honestly called
+  // `accountStatus`, which is what the annotation rung exists for.
+  @retired(Deactivated) @lifecycle accountStatus: accountStatus,
   orderCount: int,
 }

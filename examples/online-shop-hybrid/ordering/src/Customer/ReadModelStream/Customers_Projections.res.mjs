@@ -38,7 +38,7 @@ function project(param) {
         _0: id,
         _1: state => {
           let newrecord = {...state};
-          newrecord.deactivated = true;
+          newrecord.accountStatus = "Deactivated";
           return newrecord;
         }
       };
@@ -48,7 +48,7 @@ function project(param) {
         _0: id,
         _1: state => {
           let newrecord = {...state};
-          newrecord.deactivated = false;
+          newrecord.accountStatus = "Active";
           return newrecord;
         }
       };
@@ -68,12 +68,12 @@ function project(param) {
           location: undefined,
           locationStatus: "Pending",
           locationNote: undefined,
-          deactivated: false,
+          accountStatus: "Active",
           orderCount: 0
         },
         _2: state => {
           let newrecord = {...state};
-          newrecord.deactivated = false;
+          newrecord.accountStatus = "Active";
           newrecord.address = address;
           newrecord.email = email;
           return newrecord;
@@ -173,7 +173,7 @@ function project$1(param) {
       location: undefined,
       locationStatus: "Pending",
       locationNote: undefined,
-      deactivated: false,
+      accountStatus: "Active",
       orderCount: 1
     },
     _2: state => {

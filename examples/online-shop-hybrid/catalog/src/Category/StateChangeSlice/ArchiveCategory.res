@@ -13,7 +13,13 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"])) ArchiveCategory({categoryId: string})
+  // Meaningful only on a category still on the shelf. `@allowedStates` names a
+  // state of the view's lifecycle, which is the same field `@retired` marks —
+  // one vocabulary, so a menu offers this and `UnarchiveCategory` on opposite
+  // sides of the same fact.
+  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  @allowedStates([Categories.Listed])
+  ArchiveCategory({categoryId: string})
 
 @schema
 type error = CategoryNotFound

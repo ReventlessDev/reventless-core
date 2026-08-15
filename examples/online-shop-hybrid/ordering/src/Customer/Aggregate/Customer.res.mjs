@@ -81,6 +81,17 @@ let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
   "MarkAddressUnresolvable"
 ]);
 
+let commandSchema$2 = Api$ReventlessInfra.markAllowedStates(commandSchema$1, [
+  [
+    "Deactivate",
+    ["Active"]
+  ],
+  [
+    "Reactivate",
+    ["Deactivated"]
+  ]
+]);
+
 function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
@@ -96,7 +107,7 @@ export {
   Id,
   eventSchema,
   errorSchema,
-  commandSchema$1 as commandSchema,
+  commandSchema$2 as commandSchema,
   moduleUrl,
   commandAuthorization,
 }

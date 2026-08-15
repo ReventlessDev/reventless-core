@@ -18,7 +18,9 @@ type consumedEvent =
 
 @schema
 type command =
-  | @authorize(AllowGroups(["Admin", "Merchandiser"])) UnarchiveCategory({categoryId: string})
+  | @authorize(AllowGroups(["Admin", "Merchandiser"]))
+  @allowedStates([Categories.Archived])
+  UnarchiveCategory({categoryId: string})
 
 @schema
 type error = CategoryNotFound

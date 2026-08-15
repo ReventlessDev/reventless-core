@@ -22,7 +22,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       location: None,
       locationStatus: Pending,
       locationNote: None,
-      deactivated: false,
+      accountStatus: Active,
       orderCount: 0,
     })
   )
@@ -37,7 +37,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       location: None,
       locationStatus: Pending,
       locationNote: None,
-      deactivated: false,
+      accountStatus: Active,
       orderCount: 0,
     })
   )
@@ -52,7 +52,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       location: None,
       locationStatus: Pending,
       locationNote: None,
-      deactivated: false,
+      accountStatus: Active,
       orderCount: 0,
     })
   )
@@ -67,7 +67,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       location: Some({lat: 51.2093, lng: 3.2247}),
       locationStatus: Located,
       locationNote: None,
-      deactivated: false,
+      accountStatus: Active,
       orderCount: 0,
     })
   )
@@ -82,7 +82,7 @@ CustomerGwt.describe("Customers ReadModel ← Customer aggregate", () => {
       location: None,
       locationStatus: Pending,
       locationNote: None,
-      deactivated: true,
+      accountStatus: Deactivated,
       orderCount: 0,
     })
   )
@@ -103,7 +103,7 @@ OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {
         location: None,
         locationStatus: Pending,
         locationNote: None,
-        deactivated: false,
+        accountStatus: Active,
         orderCount: 1,
       },
     )
@@ -125,7 +125,7 @@ OrderGwt.describe("Customers ReadModel ← Ordering DCB log", () => {
         location: None,
         locationStatus: Pending,
         locationNote: None,
-        deactivated: false,
+        accountStatus: Active,
         orderCount: 2,
       },
     )

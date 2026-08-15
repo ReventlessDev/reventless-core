@@ -36,11 +36,11 @@ type Catalog_CatalogEventRecordEdge {
 }
 
 type Catalog_Category implements Node {
-  archived: Boolean!
   categoryId: ID!
   id: ID!
   imageUrl: String
   name: String!
+  shelfStatus: Catalog_CategoryShelfStatus!
 }
 
 type Catalog_CategoryConnection {
@@ -67,6 +67,11 @@ input Catalog_CategoryOrderBy {
 
 enum Catalog_CategoryOrderField {
   categoryId
+}
+
+enum Catalog_CategoryShelfStatus {
+  Archived
+  Listed
 }
 
 type Catalog_ImportProductAudit implements Node {
@@ -526,9 +531,9 @@ enum Ordering_AvailableProductOrderField {
 }
 
 type Ordering_Customer implements Node {
+  accountStatus: Ordering_CustomerAccountStatus!
   address: String!
   customerId: ID!
-  deactivated: Boolean!
   displayName: String
   email: String!
   id: ID!
@@ -536,6 +541,11 @@ type Ordering_Customer implements Node {
   locationNote: String
   locationStatus: Ordering_CustomerLocationStatus!
   orderCount: Float!
+}
+
+enum Ordering_CustomerAccountStatus {
+  Active
+  Deactivated
 }
 
 type Ordering_CustomerConnection {

@@ -1,6 +1,6 @@
 // Customer projection mappings — a single read model fed by TWO sources:
 //
-//   1. the **Customer aggregate** (profile: email, address, deactivated), and
+//   1. the **Customer aggregate** (profile: email, address, accountStatus), and
 //   2. the **Ordering DCB EventLog** (`orderCount`, from `OrderPlaced` events).
 //
 // This is the canonical mixed **aggregate + DCB** read model: an aggregate's
@@ -51,10 +51,10 @@ module CustomerMapping = Mapping.Make(
             location: None,
             locationStatus: Pending,
             locationNote: None,
-            deactivated: false,
+            accountStatus: Active,
             orderCount: 0,
           },
-          state => {...state, email, address, deactivated: false},
+          state => {...state, email, address, accountStatus: Active},
         )
       | EmailUpdated({email}) => Update(id, state => {...state, email})
       // A new address invalidates the pin: back to Pending until the geocoding
@@ -92,10 +92,10 @@ module CustomerMapping = Mapping.Make(
           locationStatus: Unresolvable,
           locationNote: Some(reason),
         })
-      | Deactivated => Update(id, state => {...state, deactivated: true})
+      | Deactivated => Update(id, state => {...state, accountStatus: Deactivated})
       // The row comes back to ordinary reads with the profile it left with —
       // the aggregate held it throughout, so nothing here has to be rebuilt.
-      | Reactivated => Update(id, state => {...state, deactivated: false})
+      | Reactivated => Update(id, state => {...state, accountStatus: Active})
       }
   },
 )
@@ -121,7 +121,7 @@ module CustomerOrdersMapping = Mapping.Make(
             location: None,
             locationStatus: Pending,
             locationNote: None,
-            deactivated: false,
+            accountStatus: Active,
             orderCount: 1,
           },
           state => {...state, orderCount: state.orderCount + 1},

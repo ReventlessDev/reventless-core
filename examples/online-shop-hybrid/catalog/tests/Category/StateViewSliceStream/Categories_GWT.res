@@ -4,7 +4,7 @@ describe("Categories StateViewSliceStream", () => {
   test("CategoryAdded creates a row", () =>
     givenEvents([])
     ->whenEvent(CategoryAdded({categoryId: "c1", name: "Electronics"}))
-    ->thenStateWithId("c1", {categoryId: "c1", name: "Electronics", archived: false})
+    ->thenStateWithId("c1", {categoryId: "c1", name: "Electronics", shelfStatus: Listed})
   )
 
   test("CategoryAdded carries an image onto the row", () =>
@@ -17,7 +17,7 @@ describe("Categories StateViewSliceStream", () => {
       {
         categoryId: "c1",
         name: "Electronics",
-        archived: false,
+        shelfStatus: Listed,
         imageUrl: "/uploads/cat/c1.svg",
       },
     )
@@ -33,7 +33,7 @@ describe("Categories StateViewSliceStream", () => {
       {
         categoryId: "c1",
         name: "Electronics",
-        archived: false,
+        shelfStatus: Listed,
         imageUrl: "/uploads/cat/new.svg",
       },
     )
@@ -42,12 +42,12 @@ describe("Categories StateViewSliceStream", () => {
   test("CategoryRenamed updates the name", () =>
     givenEvents([CategoryAdded({categoryId: "c1", name: "Electronics"})])
     ->whenEvent(CategoryRenamed({categoryId: "c1", name: "Consumer Electronics"}))
-    ->thenStateWithId("c1", {categoryId: "c1", name: "Consumer Electronics", archived: false})
+    ->thenStateWithId("c1", {categoryId: "c1", name: "Consumer Electronics", shelfStatus: Listed})
   )
 
   test("CategoryArchived sets archived flag", () =>
     givenEvents([CategoryAdded({categoryId: "c1", name: "Electronics"})])
     ->whenEvent(CategoryArchived({categoryId: "c1"}))
-    ->thenStateWithId("c1", {categoryId: "c1", name: "Electronics", archived: true})
+    ->thenStateWithId("c1", {categoryId: "c1", name: "Electronics", shelfStatus: Archived})
   )
 })

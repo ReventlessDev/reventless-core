@@ -32,10 +32,15 @@ let consumedEventSchema = S.union([
   }))
 ]);
 
+let shelfStatusSchema = S.union([
+  S.literal("Listed"),
+  S.literal("Archived")
+]);
+
 let stateSchema = S.schema(s => ({
   categoryId: s.m(S.string),
   name: s.m(S.string),
-  archived: s.m(S.bool),
+  shelfStatus: s.m(shelfStatusSchema),
   imageUrl: s.m(S.option(StorageRef$Reventless.forStore(undefined, "categoryImages")))
 }));
 
@@ -56,15 +61,15 @@ let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stat
   scanSort: [],
   semantic: [],
   metric: [],
-  lifecycle: undefined,
+  lifecycle: "shelfStatus",
   groupBy: undefined,
   visibility: undefined,
   live: undefined,
   retired: {
-    field: "archived",
+    field: "shelfStatus",
     label: "",
     showWhenFalse: false,
-    value: undefined
+    value: "Archived"
   }
 });
 
@@ -84,6 +89,7 @@ export {
   name,
   Id,
   consumedEventSchema,
+  shelfStatusSchema,
   config,
   subIdConfig,
   stateSchema$1 as stateSchema,

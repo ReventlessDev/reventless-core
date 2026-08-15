@@ -12,7 +12,7 @@ function project(param) {
           _1: {
             categoryId: categoryId,
             name: event.name,
-            archived: false,
+            shelfStatus: "Listed",
             imageUrl: event.imageUrl
           }
         }];
@@ -44,7 +44,7 @@ function project(param) {
           _0: event.categoryId,
           _1: state => {
             let newrecord = {...state};
-            newrecord.archived = true;
+            newrecord.shelfStatus = "Archived";
             return newrecord;
           }
         }];
@@ -54,7 +54,7 @@ function project(param) {
           _0: event.categoryId,
           _1: state => {
             let newrecord = {...state};
-            newrecord.archived = false;
+            newrecord.shelfStatus = "Listed";
             return newrecord;
           }
         }];

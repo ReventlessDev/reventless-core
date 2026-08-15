@@ -37,16 +37,19 @@ type command =
   // address that has since changed is dropped rather than applied.
   | @noApi SetLocation({location: Reventless.GeoPoint.t, resolvedFrom: string})
   | @noApi MarkAddressUnresolvable({address: string, reason: string})
-  | Deactivate
+  | @allowedStates([Customers.Active]) Deactivate
   // The way back. Deactivation withdraws a customer from ordinary use; it does
   // not erase them, so restoring one needs no payload — the profile is still in
   // the state, and asking a caller to re-supply an email they never changed
   // would be a second chance to get it wrong.
   //
-  // Meaningful only on a deactivated customer, and idempotent on an active one.
-  // A generated surface offers it on every row regardless: a command cannot yet
-  // declare which side of a retirement it belongs on.
-  | Reactivate
+  // `@allowedStates([Deactivated])` is the whole of "offer this on a deactivated
+  // customer and nowhere else". It works because the view's retirement IS a state
+  // of its lifecycle rather than a boolean beside one, so the states a command
+  // names and the states a row can be in are the same vocabulary. The refusal
+  // still lives in `decide`; this only stops a menu offering what the write side
+  // would reject.
+  | @allowedStates([Customers.Deactivated]) Reactivate
 
 @schema
 type event =

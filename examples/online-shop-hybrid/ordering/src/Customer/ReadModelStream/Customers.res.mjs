@@ -12,6 +12,11 @@ let locationStatusSchema = S.union([
   S.literal("Unresolvable")
 ]);
 
+let accountStatusSchema = S.union([
+  S.literal("Active"),
+  S.literal("Deactivated")
+]);
+
 let stateSchema = S.schema(s => ({
   customerId: s.m(S.string),
   email: s.m(S.string),
@@ -19,7 +24,7 @@ let stateSchema = S.schema(s => ({
   location: s.m(S.option(GeoPoint$Reventless.schema)),
   locationStatus: s.m(locationStatusSchema),
   locationNote: s.m(S.option(S.string)),
-  deactivated: s.m(S.bool),
+  accountStatus: s.m(accountStatusSchema),
   orderCount: s.m(S.int),
   displayName: s.m(S.option(S.string))
 }));
@@ -46,15 +51,15 @@ let stateSchema$2 = S.Metadata.set(stateSchema$1, StateAnnotations$Reventless.st
   scanSort: [],
   semantic: [],
   metric: [],
-  lifecycle: "locationStatus",
+  lifecycle: "accountStatus",
   groupBy: undefined,
   visibility: undefined,
   live: undefined,
   retired: {
-    field: "deactivated",
+    field: "accountStatus",
     label: "",
     showWhenFalse: false,
-    value: undefined
+    value: "Deactivated"
   }
 });
 
@@ -80,6 +85,7 @@ export {
   name,
   Id,
   locationStatusSchema,
+  accountStatusSchema,
   config,
   subIdConfig,
   stateSchema$2 as stateSchema,
