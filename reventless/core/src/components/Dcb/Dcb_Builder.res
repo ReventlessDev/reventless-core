@@ -21,6 +21,52 @@ let toRelativePath: string => string = %raw(`function toRelativePath(moduleUrl) 
   }
 }`)
 
+// The tag of one compiled variant arm: `{TAG: "<Name>", …}` for a payload-bearing
+// constructor, a bare string const for a payload-less one.
+let variantTag = (variant: S.t<unknown>) =>
+  switch variant {
+  | S.Object({properties}) =>
+    switch properties->Dict.get("TAG") {
+    | Some(String({const: ?Some(tag)})) => Some(tag)
+    | _ => None
+    }
+  | S.String({const: ?Some(tag)}) => Some(tag)
+  | _ => None
+  }
+
+/**
+The event schema of a DCB event log: one union over every event its slices produce.
+
+Flattened, not nested. Every reader of an `eventLogSchemaEntry` walks exactly one
+level — `Union` → per-variant `Object` with a `TAG` const — so a union OF unions
+would present each slice as an arm with no tag and read as a log carrying no
+event types at all. Arms are deduped by tag because two slices producing the same
+event would otherwise hand sury two arms with one discriminant.
+*/
+let mergedEventSchema = (schemas: array<S.t<unknown>>) =>
+  switch schemas {
+  | [single] => single
+  | many =>
+    let seen = Set.make()
+    many
+    ->Array.flatMap(schema =>
+      switch schema {
+      | S.Union({anyOf}) => anyOf
+      | other => [other]
+      }
+    )
+    ->Array.filter(arm =>
+      switch arm->variantTag {
+      | Some(tag) if seen->Set.has(tag) => false
+      | Some(tag) =>
+        seen->Set.add(tag)
+        true
+      | None => true
+      }
+    )
+    ->S.union
+  }
+
 type dcbResult = {
   dcbEventLogOutputs: option<DcbEventLog.outputs>,
   stateChangeSlicesOutputs: dict<StateChangeSlice.outputs>,
@@ -1047,7 +1093,11 @@ module Make = (
           }
         })
 
-        // Collect all event schemas from produced events for eventLogEntries
+        // Every event this plugin's slices produce lands in the one DCB event log,
+        // so the log's schema entry is the union of all of them. Taking the first
+        // slice's schema as representative left the readers of that entry — the
+        // upload claimer's `CLAIM_REF_FIELDS`, MCP's event-history resource —
+        // describing one slice and silently blind to the rest.
         let allProducedSchemas =
           stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) =>
             Sc.Spec.eventSchema->S.castToUnknown
@@ -1102,12 +1152,11 @@ module Make = (
             ->Array.concat(outboundEntries)
             ->Array.concat(inboundEntries),
           eventLogEntries: if allProducedSchemas->Array.length > 0 {
-            // Use the first produced event schema as representative for the event log
             [
               {
                 ReventlessInfra.Api.busKey: name ++ "DcbEventLog",
                 displayName: name,
-                eventSchema: allProducedSchemas->Array.getUnsafe(0),
+                eventSchema: allProducedSchemas->mergedEventSchema,
               },
             ]
           } else {

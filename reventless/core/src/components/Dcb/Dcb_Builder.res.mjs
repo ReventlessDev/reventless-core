@@ -48,6 +48,60 @@ let toRelativePath = (function toRelativePath(moduleUrl) {
   }
 });
 
+function variantTag(variant) {
+  switch (variant.type) {
+    case "string" :
+      let tag = variant.const;
+      if (tag !== undefined) {
+        return tag;
+      } else {
+        return;
+      }
+    case "object" :
+      let match = variant.properties["TAG"];
+      if (match === undefined) {
+        return;
+      }
+      if (match.type !== "string") {
+        return;
+      }
+      let tag$1 = match.const;
+      if (tag$1 !== undefined) {
+        return tag$1;
+      } else {
+        return;
+      }
+    default:
+      return;
+  }
+}
+
+function mergedEventSchema(schemas) {
+  if (schemas.length === 1) {
+    return schemas[0];
+  }
+  let seen = new Set();
+  return S.union(schemas.flatMap(schema => {
+    if (schema.type === "union") {
+      return schema.anyOf;
+    } else {
+      return [schema];
+    }
+  }).filter(arm => {
+    let tag = variantTag(arm);
+    if (tag !== undefined) {
+      if (seen.has(tag)) {
+        return false;
+      } else {
+        seen.add(tag);
+        return true;
+      }
+    } else {
+      return true;
+    }
+  }));
+}
+
 let emptyResult_stateChangeSlicesOutputs = {};
 
 let emptyResult_stateViewSlicesOutputs = {};
@@ -583,7 +637,7 @@ function Make(DcbEventLogStorage) {
         eventLogEntries: allProducedSchemas.length !== 0 ? [{
               busKey: name + "DcbEventLog",
               displayName: name,
-              eventSchema: allProducedSchemas[0]
+              eventSchema: mergedEventSchema(allProducedSchemas)
             }] : []
       };
     };
@@ -596,6 +650,8 @@ function Make(DcbEventLogStorage) {
 export {
   log,
   toRelativePath,
+  variantTag,
+  mergedEventSchema,
   emptyResult,
   Make,
 }
