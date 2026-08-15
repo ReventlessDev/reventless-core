@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.0.0-alpha.7 (2026-08-15)
+
+### Features
+
+* **local:** serve ui-hints.json edits without restarting the platform ([b29b104](https://github.com/ReventlessDev/reventless-core/commit/b29b1044f31f620071423c618486daef9692c614))
+
+
 # 2.0.0-alpha.6 (2026-08-14)
 
 ### Features

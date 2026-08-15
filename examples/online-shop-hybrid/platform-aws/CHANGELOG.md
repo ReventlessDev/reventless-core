@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.248 (2026-08-15)
+
+### Features
+
+* **examples:** give a category an image ([ad1b741](https://github.com/ReventlessDev/reventless-core/commit/ad1b7416ea6a4392dada097bc45f707e24bdbd2a))
+
+
 # 1.0.0-alpha.247 (2026-08-14)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.235 (2026-08-15)
+
+### Features
+
+* **core:** curate the pages a shell builds across a plugin's views ([589835a](https://github.com/ReventlessDev/reventless-core/commit/589835a1ad428c5e2dea8bf6e4c64e49d2f67e0d))
+
+
 # 3.0.0-alpha.234 (2026-08-14)
 
 ### Features

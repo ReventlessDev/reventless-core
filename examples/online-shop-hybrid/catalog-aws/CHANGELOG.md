@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.261 (2026-08-15)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog-aws
+
+
+
+
+
 # 1.0.0-alpha.260 (2026-08-14)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog-aws

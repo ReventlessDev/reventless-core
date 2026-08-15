@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.301 (2026-08-15)
+
+### Bug Fixes
+
+* **aws:** ask Cognito about a caller by the name it knows them by ([265f436](https://github.com/ReventlessDev/reventless-core/commit/265f4361f9695a12d1dcc055b256ec72174d428e))
+### Features
+
+* **core:** curate the pages a shell builds across a plugin's views ([589835a](https://github.com/ReventlessDev/reventless-core/commit/589835a1ad428c5e2dea8bf6e4c64e49d2f67e0d))
+
+
 # 3.0.0-alpha.300 (2026-08-14)
 
 ### Features

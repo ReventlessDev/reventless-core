@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.58 (2026-08-15)
+
+### Features
+
+* **core:** curate the pages a shell builds across a plugin's views ([589835a](https://github.com/ReventlessDev/reventless-core/commit/589835a1ad428c5e2dea8bf6e4c64e49d2f67e0d))
+* **examples:** give a category an image ([ad1b741](https://github.com/ReventlessDev/reventless-core/commit/ad1b7416ea6a4392dada097bc45f707e24bdbd2a))
+* **examples:** label the order list for whose rows it shows ([dddff13](https://github.com/ReventlessDev/reventless-core/commit/dddff13485f28c9529f21247345b756b3075c44e))
+
+
 # 1.0.0-alpha.57 (2026-08-14)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-seed

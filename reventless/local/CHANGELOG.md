@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.223 (2026-08-15)
+
+### Bug Fixes
+
+* **local:** keep a dev session alive across a platform restart ([9f08206](https://github.com/ReventlessDev/reventless-core/commit/9f082060d73664720c77bb323a112a494bb68507))
+### Features
+
+* **core:** curate the pages a shell builds across a plugin's views ([589835a](https://github.com/ReventlessDev/reventless-core/commit/589835a1ad428c5e2dea8bf6e4c64e49d2f67e0d))
+* **local:** serve ui-hints.json edits without restarting the platform ([b29b104](https://github.com/ReventlessDev/reventless-core/commit/b29b1044f31f620071423c618486daef9692c614))
+
+
 # 3.0.0-alpha.222 (2026-08-14)
 
 ### Features
