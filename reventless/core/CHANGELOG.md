@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.236 (2026-08-15)
+
+### Bug Fixes
+
+* **core:** describe a DCB event log by every event it carries ([047bc0b](https://github.com/ReventlessDev/reventless-core/commit/047bc0beb9be1468410fde37a7f787a3d68f92d2))
+### Features
+
+* **aws:** serve one baked manifest per journey ([16d6307](https://github.com/ReventlessDev/reventless-core/commit/16d63071f059cf1fc7025f9be9206dda51f71053))
+
+
 # 3.0.0-alpha.235 (2026-08-15)
 
 ### Features

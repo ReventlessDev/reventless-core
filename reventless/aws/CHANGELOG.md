@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.302 (2026-08-15)
+
+### Bug Fixes
+
+* **aws:** let a stream resource answer for its own stream ([4617773](https://github.com/ReventlessDev/reventless-core/commit/461777349f10ebc83085d59907bac5b5537429ed))
+### Features
+
+* **aws:** serve one baked manifest per journey ([16d6307](https://github.com/ReventlessDev/reventless-core/commit/16d63071f059cf1fc7025f9be9206dda51f71053))
+
+
 # 3.0.0-alpha.301 (2026-08-15)
 
 ### Bug Fixes
