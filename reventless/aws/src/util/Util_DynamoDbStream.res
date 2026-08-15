@@ -1,13 +1,17 @@
 let toResourceInfo = (table: PulumiAws.DynamoDb.Table.t) =>
   table.streamArn->Pulumi.Output.apply(streamArn => ReventlessInfra.Adapter.StreamSource({sourceUrn: streamArn}))
 
+// The table name rides IN the apply rather than being read with `Output.get` on
+// the failure arm: `get` throws "Cannot call '.get' during update or preview" on
+// every deploy, so the arm meant to name the offending table replaced its own
+// message with that one and hid which resource was missing a stream.
 let streamArnFromDynamoDbTableResource = (resource: ReventlessInfra.Adapter.resource) =>
-  resource.resourceInfo->Pulumi.Output.apply(resourceInfo =>
+  (resource.resourceInfo, resource.name)
+  ->Pulumi.Output.all2
+  ->Pulumi.Output.apply(((resourceInfo, tableName)) =>
     switch resourceInfo {
     | StreamSource({sourceUrn}) => sourceUrn
-    | _ =>
-      let tableName = resource.name->Pulumi.Output.get
-      JsError.throwWithMessage("No streamArn field given for table " ++ tableName)
+    | _ => JsError.throwWithMessage("No streamArn field given for table " ++ tableName)
     }
   )
 
@@ -30,6 +34,13 @@ let toStreamResource = (table: ReventlessInfra.Adapter.resource): ReventlessInfr
     ~id=streamArn,
     ~urn=streamArn,
     ~service=table.name->Pulumi.Output.apply(_ => AWS.DynamoDbStream.service),
+    // Carries the same StreamSource the table resource carries, so asking a
+    // stream resource for its ARN answers instead of throwing. The event-topic
+    // resources a publisher exports are these, and `Upload_Claim_S3` asks
+    // exactly that of resources[0].
+    ~resourceInfo=streamArn->Pulumi.Output.apply(sourceUrn => ReventlessInfra.Adapter.StreamSource({
+      sourceUrn: sourceUrn,
+    })),
     ~resourceType="aws:dynamodb:Stream"->Pulumi.Output.make,
   )
 }
