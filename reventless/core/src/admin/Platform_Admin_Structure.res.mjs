@@ -152,6 +152,7 @@ let pluginReadModel = {
   labelFieldSource: pluginReadModel_labelFieldSource,
   statusField: pluginReadModel_statusField,
   ownerField: undefined,
+  retiredField: undefined,
   visibility: undefined,
   chapter: undefined,
   singleQueryField: pluginReadModel_singleQueryField,

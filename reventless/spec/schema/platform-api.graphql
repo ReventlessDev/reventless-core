@@ -217,6 +217,7 @@ type Platform_ReadSideDef {
   ownerField: String
   queryField: String!
   requiredAccess: [String!]
+  retiredField: String
   schema: String!
   searchableFields: [String!]!
   singleQueryField: String

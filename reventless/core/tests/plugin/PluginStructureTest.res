@@ -700,6 +700,61 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     })
   })
 
+  describe("retiredField — annotation and nothing else", () => {
+    let retiredOf = schema =>
+      Plugin_Structure.retiredFieldFromStateSchema(schema->S.castToUnknown)
+
+    let withRetired = (schema, ~field) =>
+      schema->S.castToUnknown->S.Metadata.set(
+        ~id=Reventless.StateAnnotations.stateAnnotationsId,
+        {
+          ids: [],
+          compositeIds: [],
+          subIds: [],
+          compositeSubIds: [],
+          indexes: [],
+          hidden: [],
+          summary: [],
+          drillTargets: [],
+          drillTargetKeys: [],
+          collapsed: [],
+          scan: [],
+          scanSort: [],
+          semantic: [],
+          metric: [],
+          status: None,
+          groupBy: None,
+          visibility: None,
+          live: None,
+          retired: Some({field, label: "", showWhenFalse: false}),
+        },
+      )
+
+    testSync("names the annotated field", () => {
+      let schema = S.schema(s => {"archived": s.matches(S.bool)})
+      expect(retiredOf(schema->withRetired(~field="archived")))->toEqual(Some("archived"))
+    })
+
+    // The whole reason this has no convention rung. `statusField` may guess at a
+    // field named `status` because guessing wrong makes a command menu filter
+    // oddly; guessing wrong here makes rows disappear for every caller who is not
+    // elevated, so an unannotated boolean stays as visible as it was.
+    testSync("declines a conventionally-named boolean nobody annotated", () => {
+      let schema = S.schema(s =>
+        {
+          "archived": s.matches(S.bool),
+          "deactivated": s.matches(S.bool),
+        }
+      )
+      expect(retiredOf(schema))->toEqual(None)
+    })
+
+    testSync("declines a schema carrying no annotation spec at all", () => {
+      let schema = S.schema(s => {"id": s.matches(S.string)})
+      expect(retiredOf(schema))->toEqual(None)
+    })
+  })
+
   // Shared by the read-side and write-side schema cases below, which ask the
   // same question of the same emitter.
   let getProperty = (json: JSON.t, key: string): option<JSON.t> =>

@@ -73,6 +73,18 @@ let statusFieldFromStateSchema = (
   }
 }
 
+// The field whose truth withdraws a row from ordinary reads. Annotation-only:
+// there is no convention rung here, and its absence is the point. `statusField`
+// may fall back to a field literally named "status" because guessing wrong makes
+// a command menu filter oddly; guessing wrong here makes rows vanish for every
+// caller who is not elevated, so a boolean named `archived` that nobody annotated
+// stays exactly as visible as it was.
+let retiredFieldFromStateSchema = (stateSchema: S.t<unknown>): option<string> =>
+  switch Reventless.StateAnnotations.getSpec(stateSchema) {
+  | Some(spec) => spec.retired->Option.map(r => r.field)
+  | None => None
+  }
+
 // Which rung of the ladder below produced the label. Published on `queryableDef`
 // as `labelFieldSource`, because the four rungs are not equally believable and a
 // consumer with a name rule of its own has to rank the declaration against it:
@@ -765,6 +777,7 @@ let make = (
         // Same schema `statusField` reads, so the two cannot disagree about which
         // fields this view has.
         ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
+        retiredField: retiredFieldFromStateSchema(stateSchema),
         visibility: visibilityTag(R.Spec.visibility),
         chapter: chapterOf(R.Spec.name),
         // Taken from the `qf` record, never re-derived: `Api_Naming` is the only
@@ -798,6 +811,7 @@ let make = (
         labelFieldSource: Some(labelFieldSourceToString(label.source)),
         statusField: statusFieldFromStateSchema(~entityName=SVS.Spec.name, stateSchema),
         ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
+        retiredField: retiredFieldFromStateSchema(stateSchema),
         visibility: visibilityTag(SVS.Spec.visibility),
         chapter: chapterOf(SVS.Spec.name),
         singleQueryField: Some(qf.singleFieldName),

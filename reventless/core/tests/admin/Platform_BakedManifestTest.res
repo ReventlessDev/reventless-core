@@ -23,6 +23,7 @@ let queryable = (~name, ~visibility=?, ~ownerField=?, ()): queryableDef => {
   idFieldSource: Some("convention"),
   requiredAccess: None,
   ownerField,
+  retiredField: None,
 }
 
 let command = (~name, ~references=[], ~ownerField=?, ()): commandDef => {

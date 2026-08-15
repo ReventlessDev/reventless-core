@@ -285,6 +285,24 @@ type queryableDef = {
   */
   ownerField: @s.matches(stringOptionSchema) option<string>,
   /**
+  Name of the boolean state field that withdraws a row from ordinary reads
+  (`@retired`), when the view declares one. Reads of this view exclude rows whose
+  flag is true for callers outside `OwnerScope.elevatedGroups`, on the list door
+  and the single-entity door alike; an exempt caller reaches them by asking for
+  them.
+
+  Derived from the annotation and from nothing else — deliberately no fallback to
+  a conventionally-named boolean, unlike `statusField`. A field named `archived`
+  that nobody annotated must not start hiding rows the day this ships, and the
+  cost of guessing wrong here is data disappearing rather than a menu filtering
+  oddly.
+
+  The label the flag reads as is not here. It travels on the state schema, which
+  every consumer of this def already holds, and a second copy is a second thing
+  to keep in step.
+  */
+  retiredField: @s.matches(stringOptionSchema) option<string>,
+  /**
   Component visibility hint (`@@reventless.visibility`). `Some("Internal")` marks a
   ReadModel / StateViewSlice that the deployed AutoUI hides from its menu, drill-down
   pages, web event graph and cross-plugin edges. `None` (absent) means Public. Internal

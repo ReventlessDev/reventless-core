@@ -24,6 +24,7 @@ let publicRm: queryableDef = {
   idFieldSource: Some("convention"),
   requiredAccess: None,
   ownerField: None,
+  retiredField: None,
 }
 
 // The component `Platform_ComponentDefinitions` drops and this query must keep.

@@ -86,6 +86,13 @@ function statusFieldFromStateSchema(entityName, stateSchema) {
   }
 }
 
+function retiredFieldFromStateSchema(stateSchema) {
+  let spec = StateAnnotations$Reventless.getSpec(stateSchema);
+  if (spec !== undefined) {
+    return Stdlib_Option.map(spec.retired, r => r.field);
+  }
+}
+
 function labelFieldSourceToString(s) {
   switch (s) {
     case "Annotation" :
@@ -546,6 +553,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       labelFieldSource: labelFieldSourceToString(label.source),
       statusField: statusFieldFromStateSchema(R.Spec.name, stateSchema),
       ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
+      retiredField: retiredFieldFromStateSchema(stateSchema),
       visibility: visibilityTag(R.Spec.visibility),
       chapter: componentChapters[R.Spec.name],
       singleQueryField: qf.singleFieldName,
@@ -572,6 +580,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       labelFieldSource: labelFieldSourceToString(label.source),
       statusField: statusFieldFromStateSchema(SVS.Spec.name, stateSchema),
       ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
+      retiredField: retiredFieldFromStateSchema(stateSchema),
       visibility: visibilityTag(SVS.Spec.visibility),
       chapter: componentChapters[SVS.Spec.name],
       singleQueryField: qf.singleFieldName,
@@ -693,6 +702,7 @@ export {
   conventionalLabelNames,
   shapeOfItem,
   statusFieldFromStateSchema,
+  retiredFieldFromStateSchema,
   labelFieldSourceToString,
   labelFieldsFromStateSchema,
   extractReferences,

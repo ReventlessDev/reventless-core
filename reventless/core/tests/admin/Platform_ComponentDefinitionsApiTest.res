@@ -38,6 +38,7 @@ let qbl: queryableDef = {
   idFieldSource: Some("convention"),
   requiredAccess: None,
   ownerField: None,
+  retiredField: None,
 }
 
 let wbl: writableDef = {
@@ -264,6 +265,7 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
     idFieldSource: Some("sole"),
     requiredAccess: None,
       ownerField: None,
+      retiredField: None,
   }
   // A distinct name per source array: the complement has to be fed by both, and
   // reusing one def would hide a version that only walks `readModels`.
@@ -361,6 +363,7 @@ describe("allowedStates + statusField populated", () => {
     idFieldSource: None,
     requiredAccess: None,
       ownerField: None,
+      retiredField: None,
   }
 
   let wblWithStates: writableDef = {
