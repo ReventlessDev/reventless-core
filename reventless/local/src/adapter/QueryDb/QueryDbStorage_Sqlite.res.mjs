@@ -194,7 +194,7 @@ function makeStorage(db, bus, name, indexes, subIdField) {
   };
   let publishSaved = (changeKind, id, state) => {
     let subKey = computeSubKey(state, subIdField);
-    let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make(changeKind, entityKeyFor(id, subKey), state, LocalStateChangeDescriptor$ReventlessLocal.nextSequence());
+    let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make(changeKind, entityKeyFor(id, subKey), state, LocalStateChangeDescriptor$ReventlessLocal.nextSequence(), LocalStateChangeDescriptor$ReventlessLocal.retiredFieldFor(name));
     bus.publishStateChange(name, descriptor);
   };
   let saveKind = (id, state) => {
@@ -209,7 +209,7 @@ function makeStorage(db, bus, name, indexes, subIdField) {
     }
   };
   let publishRemoved = (id, subKey) => {
-    let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make("Removed", entityKeyFor(id, subKey), undefined, LocalStateChangeDescriptor$ReventlessLocal.nextSequence());
+    let descriptor = LocalStateChangeDescriptor$ReventlessLocal.make("Removed", entityKeyFor(id, subKey), undefined, LocalStateChangeDescriptor$ReventlessLocal.nextSequence(), undefined);
     bus.publishStateChange(name, descriptor);
   };
   let rowKeysForPartition = id => SqliteDriver$ReventlessLocal.all(selectByPartitionStmt, [id]).map(row => {

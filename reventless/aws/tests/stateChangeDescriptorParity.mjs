@@ -49,6 +49,26 @@ const CASES = [
     entityKey: "p3",
     state: { id: "p3", blob: "x".repeat(70 * 1024), updatedAt: "2026-05-19T12:00:00Z" },
   },
+  // Retirement: the row is withdrawn, so every implementation must publish the
+  // metadata-only shape — no state, and no sortKeyValue either, even though this
+  // row carries an updatedAt that the same row would publish while live.
+  {
+    name: "retired row degrades to metadata only",
+    changeKind: "Updated",
+    entityKey: "p4",
+    state: { id: "p4", name: "Widget", archived: true, updatedAt: "2026-05-19T12:00:00Z" },
+    retiredField: "archived",
+  },
+  // The control: same field declared, flag false, so nothing changes. Without
+  // this, an implementation that dropped the payload unconditionally whenever a
+  // retiredField was configured would still pass the case above.
+  {
+    name: "live row with a retirement flag carries the row",
+    changeKind: "Updated",
+    entityKey: "p5",
+    state: { id: "p5", name: "Widget", archived: false, updatedAt: "2026-05-19T12:00:00Z" },
+    retiredField: "archived",
+  },
   {
     name: "delete carries no row",
     changeKind: "Removed",
@@ -79,10 +99,16 @@ export async function buildAll() {
     return { ...descriptor, seq: "<seq>" };
   };
 
-  return CASES.map(({ name, changeKind, entityKey, state }) => ({
+  return CASES.map(({ name, changeKind, entityKey, state, retiredField }) => ({
     name,
     local: normalise(
-      local.make(changeKind, entityKey, state === undefined ? undefined : state, local.nextSequence()),
+      local.make(
+        changeKind,
+        entityKey,
+        state === undefined ? undefined : state,
+        local.nextSequence(),
+        retiredField,
+      ),
     ),
     relay: normalise(
       relay.makeDescriptor(
@@ -93,10 +119,17 @@ export async function buildAll() {
         // OldImage, which makeDescriptor then drops.
         state === undefined ? { id: entityKey } : state,
         "49590300000000016818000000",
+        retiredField,
       ),
     ),
     postgres: normalise(
-      postgres.makeDescriptor({ changeKind, entityKey, state, seq: postgres.nextSequence() }),
+      postgres.makeDescriptor({
+        changeKind,
+        entityKey,
+        state,
+        seq: postgres.nextSequence(),
+        retiredField,
+      }),
     ),
   }));
 }

@@ -264,6 +264,7 @@ let makeStorage = (
       ~id=entityKeyFor(id, subKey),
       ~state=Some(state),
       ~seq=LocalStateChangeDescriptor.nextSequence(),
+      ~retiredField=?LocalStateChangeDescriptor.retiredFieldFor(name),
     )
     bus.publishStateChange(~name, ~descriptor)
   }

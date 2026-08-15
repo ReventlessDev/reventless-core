@@ -98,14 +98,30 @@ export function nextSequence() {
 // implementations. Over the size cap the state is dropped and the downgrade logged:
 // a metadata-only descriptor still tells the client to refetch, where a publish
 // rejected for size would tell it nothing.
-export function makeDescriptor({ changeKind, entityKey, state, seq }) {
+//
+// `retiredField` names the row's `@retired` flag, when the read model declares
+// one. A row whose flag is true publishes as metadata only — no state, and no
+// sortKeyValue either, since that is a timestamp off a row the subscriber may
+// not read. The channel is shared by every subscriber of the view and cannot be
+// scoped per caller, so a payload here would hand the row to exactly the callers
+// the resolvers refuse it to. `Updated` with no state is the shape an oversized
+// row already takes, and it asks the client to do the one thing that enforces
+// the rule: refetch, and let the query layer answer.
+export function makeDescriptor({ changeKind, entityKey, state, seq, retiredField }) {
   const descriptor = { changeKind, id: entityKey };
-  if (state !== undefined) {
+  const retired =
+    retiredField !== undefined &&
+    retiredField !== null &&
+    state !== undefined &&
+    state !== null &&
+    typeof state === "object" &&
+    state[retiredField] === true;
+  if (state !== undefined && !retired) {
     const sortKeyValue = pickSortKeyValue(state);
     if (sortKeyValue !== undefined) descriptor.sortKeyValue = sortKeyValue;
   }
   descriptor.seq = seq;
-  if (state !== undefined) {
+  if (state !== undefined && !retired) {
     const encoded = JSON.stringify(state);
     if (encoded.length <= MAX_STATE_CHARS) {
       descriptor.state = state;
@@ -126,12 +142,14 @@ export function makeDescriptor({ changeKind, entityKey, state, seq }) {
 // - changeKind: "Updated" (save) | "Removed" (delete).
 // - state:      the full new row for a save; omitted for a delete.
 // - dedupeId:   AppSync publish `id` (idempotency hint).
-export async function publishStateChange({ endpoint, region, topicName, entityKey, changeKind, state, dedupeId }) {
+// - retiredField: the row's `@retired` flag name, when the read model declares
+//                 one; a row whose flag is true publishes metadata-only.
+export async function publishStateChange({ endpoint, region, topicName, entityKey, changeKind, state, dedupeId, retiredField }) {
   if (!endpoint || !topicName) return; // not live-enabled — no-op
   try {
     const url = new URL(endpoint);
     const channel = "/default/" + pathSegment(topicName) + "/" + pathSegment(entityKey);
-    const descriptor = makeDescriptor({ changeKind, entityKey, state, seq: nextSequence() });
+    const descriptor = makeDescriptor({ changeKind, entityKey, state, seq: nextSequence(), retiredField });
     const body = JSON.stringify({
       id: dedupeId || (topicName + ":" + entityKey + ":" + changeKind),
       channel,

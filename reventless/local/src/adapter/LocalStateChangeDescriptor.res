@@ -27,6 +27,20 @@
     tell it nothing. */
 let maxStateChars = 60 * 1024
 
+/** The `@retired` field of a registered read model, or `None`.
+
+    Looked up by view name rather than passed down from the storage's
+    construction, for the reason the resolvers look it up per request: a storage
+    is built before every plugin's state schema is necessarily registered, and a
+    lookup that missed at construction would publish payloads for the rest of
+    the process. */
+let retiredFieldFor = (name: string): option<string> =>
+  ReventlessCore.Plugin_Helpers.stateSchemaRegistry
+  ->Dict.get(name)
+  ->Option.flatMap(Reventless.StateAnnotations.getSpec)
+  ->Option.flatMap(spec => spec.retired)
+  ->Option.map(r => r.field)
+
 let pickSortKeyValue = (state: JSON.t): option<string> =>
   switch state->JSON.Decode.object {
   | Some(obj) =>
@@ -68,16 +82,46 @@ let nextSequence = (): string => {
     - `state`: the resulting row for save(); `None` for delete(), which has no new
       row — the descriptor then omits both `state` and `sortKeyValue`.
     - `seq`: monotonic ordering token, from `nextSequence`. */
-let make = (~changeKind: string, ~id: string, ~state: option<JSON.t>, ~seq: string): JSON.t => {
+let make = (
+  ~changeKind: string,
+  ~id: string,
+  ~state: option<JSON.t>,
+  ~seq: string,
+  ~retiredField: option<string>=?,
+): JSON.t => {
   let descriptor = Dict.make()
   descriptor->Dict.set("changeKind", JSON.Encode.string(changeKind))
   descriptor->Dict.set("id", JSON.Encode.string(id))
-  switch state->Option.flatMap(pickSortKeyValue) {
+  // Whether the row this descriptor announces has been withdrawn from ordinary
+  // reads. A publish cannot be scoped per subscriber — the channel is keyed by
+  // list field and entity, and everyone watching the view receives it — so a
+  // payload here would hand the row to exactly the callers the resolvers just
+  // refused it to.
+  let isRetired = switch (retiredField, state) {
+  | (Some(field), Some(s)) =>
+    s
+    ->JSON.Decode.object
+    ->Option.flatMap(d => d->Dict.get(field))
+    ->Option.flatMap(JSON.Decode.bool)
+    ->Option.getOr(false)
+  | _ => false
+  }
+  // Dropped along with the payload, not just the payload: the sort value is a
+  // timestamp off a row the subscriber may not read, and a subscriber without
+  // one is conservative rather than wrong — it refetches instead of deciding
+  // which page the row belongs on.
+  switch isRetired ? None : state->Option.flatMap(pickSortKeyValue) {
   | Some(v) => descriptor->Dict.set("sortKeyValue", JSON.Encode.string(v))
   | None => ()
   }
   descriptor->Dict.set("seq", JSON.Encode.string(seq))
   switch state {
+  // `Updated` with no payload is the shape this already emits for an oversized
+  // row, and it means the same thing to a client: refetch and let the query
+  // layer answer. Deliberately not `Removed` — the row is not gone, and saying
+  // so would be false for an elevated subscriber reading with `includeRetired`
+  // and false again the moment the row is restored.
+  | Some(_) if isRetired => ()
   | Some(s) =>
     let encoded = s->JSON.stringify
     if encoded->String.length <= maxStateChars {

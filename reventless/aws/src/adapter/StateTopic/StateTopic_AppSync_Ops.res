@@ -53,6 +53,33 @@ type event = {@as("Records") records: array<record>}
 
 // ── Per-record derivations (ports of the former inline JS helpers) ───────────
 
+// STATE_RETIRED_MAP: `{ <tableName>: <retiredFieldName> }`, injected at deploy
+// time beside STATE_TOPIC_MAP. This handler runs with no plugin registry in
+// process — there is nothing here that could read a state schema — so the field
+// name has to arrive the same way the topic routing does. A table absent from
+// the map declares no retirement flag, which is every table until one does.
+let retiredMap: dict<string> =
+  switch NodeProcess.env
+  ->Dict.get("STATE_RETIRED_MAP")
+  ->Option.getOr("{}")
+  ->JSON.parseOrThrow
+  ->JSON.Decode.object {
+  | Some(d) =>
+    let out = Dict.make()
+    d->Dict.forEachWithKey((v, k) => v->JSON.Decode.string->Option.forEach(sv => out->Dict.set(k, sv)))
+    out
+  | None => Dict.make()
+  }
+
+let tableNameFromEventSourceArn = (arn: string): option<string> => {
+  let parts = arn->String.split("/")
+  switch (parts->Array.get(0), parts->Array.get(1), parts->Array.get(2)) {
+  | (Some(prefix), Some(tableName), Some("stream")) if prefix->String.endsWith(":table") =>
+    Some(tableName)
+  | _ => None
+  }
+}
+
 // Map record.eventSourceARN → topicRoot via STATE_TOPIC_MAP. Stream ARNs look
 // like arn:aws:dynamodb:<region>:<acct>:table/<TableName>/stream/<ts>; split on
 // "/" gives [ "...:table", "<TableName>", "stream", "<ts>" ].
@@ -131,18 +158,29 @@ let makeDescriptor = (
   ~entityKey: string,
   ~image: dict<JSON.t>,
   ~seq: option<string>,
+  ~retiredField: option<string>=?,
 ): JSON.t => {
   let removed = changeKind == "Removed"
+  // A retired row publishes as metadata only, for the reason the other two
+  // implementations do it: this channel reaches every subscriber of the view,
+  // and a payload would deliver the row to the callers the resolvers refuse it
+  // to. `Updated` with no state is the shape an oversized row already takes.
+  let retired = switch retiredField {
+  | Some(field) =>
+    !removed &&
+    image->Dict.get(field)->Option.flatMap(JSON.Decode.bool)->Option.getOr(false)
+  | None => false
+  }
   let descriptor = Dict.make()
   descriptor->Dict.set("changeKind", JSON.Encode.string(changeKind))
   descriptor->Dict.set("id", JSON.Encode.string(entityKey))
-  if !removed {
+  if !removed && !retired {
     pickSortKeyValue(image)->Option.forEach(v =>
       descriptor->Dict.set("sortKeyValue", JSON.Encode.string(v))
     )
   }
   seq->Option.forEach(s => descriptor->Dict.set("seq", JSON.Encode.string(s)))
-  if !removed {
+  if !removed && !retired {
     let state = image->JSON.Encode.object
     let encoded = state->JSON.stringify
     if encoded->String.length <= maxStateChars {
@@ -191,6 +229,9 @@ let processRecord = async (
           ~entityKey,
           ~image=unmarshalled,
           ~seq=dynamodb.sequenceNumber,
+          ~retiredField=?tableNameFromEventSourceArn(record.eventSourceARN)->Option.flatMap(t =>
+            retiredMap->Dict.get(t)
+          ),
         )
         let body =
           Dict.fromArray([

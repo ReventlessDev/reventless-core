@@ -198,6 +198,7 @@ module Make = (Bus: LocalBus.T) => {
         ~id=entityKeyFor(id, subKey),
         ~state=Some(state),
         ~seq=LocalStateChangeDescriptor.nextSequence(),
+        ~retiredField=?LocalStateChangeDescriptor.retiredFieldFor(name),
       )
       Bus.publishStateChange(~name, ~descriptor)
     }

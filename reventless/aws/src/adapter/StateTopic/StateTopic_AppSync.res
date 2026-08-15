@@ -92,6 +92,9 @@ type streamEntry = {
   tableName: Pulumi.Output.t<string>,
   streamArn: Pulumi.Output.t<string>,
   topicName: string,
+  // The read model's `@retired` field, resolved at deploy time because the relay
+  // Lambda has no plugin registry in process to resolve it at request time.
+  retiredField: option<string>,
 }
 
 // One registry per events API, keyed by `eventsApi.name` (the static Pulumi
@@ -134,6 +137,7 @@ let makeForTable = (
   ~streamArn: Pulumi.Output.t<string>,
   ~partitionKeyName: Pulumi.Output.t<string>,
   ~topicName: string,
+  ~retiredField: option<string>=?,
   ~eventsApi: AppSync_EventsApi.t,
   ~opts as _: Pulumi.CustomResourceOptions.t,
 ) => {
@@ -150,7 +154,10 @@ let makeForTable = (
 
   let key = eventsApi.name
   let entries = registry->Dict.get(key)->Option.getOr([])
-  registry->Dict.set(key, entries->Array.concat([{tableName: checkedTableName, streamArn, topicName}]))
+  registry->Dict.set(
+    key,
+    entries->Array.concat([{tableName: checkedTableName, streamArn, topicName, retiredField}]),
+  )
 }
 
 let make = (
@@ -176,6 +183,13 @@ let make = (
     // `makeForTable` and can be keyed anything.
     ~partitionKeyName=StateTopic_AppSync_Helpers.entityKeyPartitionAttribute->Pulumi.Output.make,
     ~topicName,
+    // Resolved here, where the read model's name is known and its spec is
+    // registered in this process. The relay Lambda has neither.
+    ~retiredField=?ReventlessCore.Plugin_Helpers.stateSchemaRegistry
+    ->Dict.get(readModelName)
+    ->Option.flatMap(Reventless.StateAnnotations.getSpec)
+    ->Option.flatMap(spec => spec.retired)
+    ->Option.map(r => r.field),
     ~eventsApi,
     ~opts,
   )
@@ -270,6 +284,23 @@ let finish = (
         dict->JSON.Encode.object->JSON.stringify
       })
 
+    // STATE_RETIRED_MAP env var — `{ <tableName>: <retiredField> }`, carrying
+    // only the tables that declare one. Built from the same awaited table names
+    // as the topic map so the two cannot describe different sets of tables.
+    let retiredMapJson =
+      entries
+      ->Array.map(e => e.tableName)
+      ->Pulumi.Output.all
+      ->Pulumi.Output.apply(tableNames => {
+        let dict = Dict.make()
+        tableNames->Array.forEachWithIndex((tableName, i) => {
+          (entries->Array.getUnsafe(i)).retiredField->Option.forEach(f =>
+            dict->Dict.set(tableName, f->JSON.Encode.string)
+          )
+        })
+        dict->JSON.Encode.object->JSON.stringify
+      })
+
     // Shared Lambda — the compiled `_Ops` handler is identical for every
     // stream-enabled RM; routing is per-record via STATE_TOPIC_MAP env var.
     // Bundle reventless-aws (the handler + its node:crypto signer + the
@@ -325,6 +356,7 @@ let finish = (
               ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
               ("APPSYNC_ENDPOINT", appsyncEndpoint->Pulumi.Output.asInput),
               ("STATE_TOPIC_MAP", topicMapJson->Pulumi.Output.asInput),
+              ("STATE_RETIRED_MAP", retiredMapJson->Pulumi.Output.asInput),
               ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
               ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
               Util_LambdaLogging.logLevelEntry(),
