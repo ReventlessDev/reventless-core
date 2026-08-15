@@ -291,7 +291,7 @@ type Query {
   Platform_ComponentDefinitions: [Platform_ComponentDefinitionEntry!]!
   Platform_Plugin(id: ID!): Platform_Plugin
   Platform_PluginStructures: [Platform_PluginStructureEntry!]!
-  Platform_Plugins(after: String, before: String, filter: Platform_PluginFilter, first: Int, last: Int): Platform_PluginConnection!
+  Platform_Plugins(after: String, before: String, filter: Platform_PluginFilter, first: Int, includeRetired: Boolean, last: Int): Platform_PluginConnection!
   Platform_PluginsByIds(ids: [String!]!): [Platform_Plugin!]!
   Platform_UIFragments: [Platform_UIFragmentEntry!]!
 }

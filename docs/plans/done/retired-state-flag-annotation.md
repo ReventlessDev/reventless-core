@@ -1,6 +1,27 @@
 # Plan: `@retired` — a boolean field that withdraws its row from ordinary reads
 
-**Status.** PLAN 2026-08-15. Framework capability: one new state-field annotation
+**Status.** DONE 2026-08-15. All nine steps landed; `pnpm run check:graphql` and
+the seven affected suites are green. Three things came out differently from the
+plan below, each deliberate:
+
+- **Elevation is not a standing exemption** (step 6). `decideRetired` excludes
+  retired rows from an `Elevated` or `System` caller too until they pass
+  `includeRetired` — an archive that is always underfoot is not an archive. The
+  plan had `retiredScopeOf` returning `None` for those two; Acceptance already
+  described the shipped behaviour ("an elevated caller reaches them by passing
+  `includeRetired`").
+- **`retiredScopeOf` returns `option<string>`**, not the planned
+  `option<(string, bool)>`. The excluded value is always `true`, and a parameter
+  that can hold only one value is one a call site can pass wrongly.
+- **Postgres was in scope after all** (step 7). `QueryEnginePostgres` and
+  `PgQueryResolver_Lambda` narrow in the push-down, comparing as jsonb so a
+  string `"true"` is not a boolean `true`. Every backend reads absent as not
+  retired, so the view does not empty the day the annotation lands.
+
+The `reventless-ppx` lockfile pin follows the alpha.67 publish; in-repo consumers
+resolve through `workspace:*` and are unaffected.
+
+Framework capability: one new state-field annotation
 with a presentation half (carried on the schema, consumed downstream) and an
 enforcement half (applied in the query resolvers). The enforcement half is the
 reason this cannot be a schema-only change like `@groupBy` was.

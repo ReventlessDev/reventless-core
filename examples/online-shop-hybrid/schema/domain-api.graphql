@@ -896,41 +896,41 @@ type Platform_UiFragmentPanels {
 
 type Query {
   Catalog_CatalogEventHistory(after: String, before: String, filter: Catalog_CatalogEventHistoryFilter, first: Int, last: Int): Catalog_CatalogEventRecordConnection!
-  Catalog_Categories(after: String, before: String, filter: Catalog_CategoryFilter, first: Int, last: Int, orderBy: Catalog_CategoryOrderBy): Catalog_CategoryConnection!
+  Catalog_Categories(after: String, before: String, filter: Catalog_CategoryFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Catalog_CategoryOrderBy): Catalog_CategoryConnection!
   Catalog_CategoriesByIds(ids: [String!]!): [Catalog_Category!]!
   Catalog_Category(id: ID!): Catalog_Category
   Catalog_ImportProductAudit(id: ID!): Catalog_ImportProductAudit
-  Catalog_ImportProductAudits(after: String, before: String, filter: Catalog_ImportProductAuditFilter, first: Int, last: Int): Catalog_ImportProductAuditConnection!
+  Catalog_ImportProductAudits(after: String, before: String, filter: Catalog_ImportProductAuditFilter, first: Int, includeRetired: Boolean, last: Int): Catalog_ImportProductAuditConnection!
   Catalog_ImportProductAuditsByIds(ids: [String!]!): [Catalog_ImportProductAudit!]!
   Catalog_Product(id: ID!): Catalog_Product
   Catalog_ProductByCategoryId(categoryId: String!): [String]
   Catalog_ProductDemand(id: ID!): Catalog_ProductDemand
-  Catalog_ProductDemands(after: String, before: String, filter: Catalog_ProductDemandFilter, first: Int, last: Int, orderBy: Catalog_ProductDemandOrderBy): Catalog_ProductDemandConnection!
+  Catalog_ProductDemands(after: String, before: String, filter: Catalog_ProductDemandFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Catalog_ProductDemandOrderBy): Catalog_ProductDemandConnection!
   Catalog_ProductDemandsByIds(ids: [String!]!): [Catalog_ProductDemand!]!
-  Catalog_Products(after: String, before: String, filter: Catalog_ProductFilter, first: Int, last: Int, orderBy: Catalog_ProductOrderBy): Catalog_ProductConnection!
+  Catalog_Products(after: String, before: String, filter: Catalog_ProductFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Catalog_ProductOrderBy): Catalog_ProductConnection!
   Catalog_ProductsByIds(ids: [String!]!): [Catalog_Product!]!
   Ordering_AutoShipOrderTodo(id: ID!): Ordering_AutoShipOrderTodo
-  Ordering_AutoShipOrderTodos(after: String, before: String, filter: Ordering_AutoShipOrderTodoFilter, first: Int, last: Int): Ordering_AutoShipOrderTodoConnection!
+  Ordering_AutoShipOrderTodos(after: String, before: String, filter: Ordering_AutoShipOrderTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_AutoShipOrderTodoConnection!
   Ordering_AutoShipOrderTodosByIds(ids: [String!]!): [Ordering_AutoShipOrderTodo!]!
   Ordering_AvailableProduct(id: ID!): Ordering_AvailableProduct
-  Ordering_AvailableProducts(after: String, before: String, filter: Ordering_AvailableProductFilter, first: Int, last: Int, orderBy: Ordering_AvailableProductOrderBy): Ordering_AvailableProductConnection!
+  Ordering_AvailableProducts(after: String, before: String, filter: Ordering_AvailableProductFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Ordering_AvailableProductOrderBy): Ordering_AvailableProductConnection!
   Ordering_AvailableProductsByIds(ids: [String!]!): [Ordering_AvailableProduct!]!
   Ordering_Customer(id: ID!): Ordering_Customer
   Ordering_CustomerEventHistory(after: String, before: String, filter: Ordering_CustomerEventHistoryFilter, first: Int, last: Int): Ordering_CustomerEventRecordConnection!
-  Ordering_Customers(after: String, before: String, filter: Ordering_CustomerFilter, first: Int, last: Int, orderBy: Ordering_CustomerOrderBy): Ordering_CustomerConnection!
+  Ordering_Customers(after: String, before: String, filter: Ordering_CustomerFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Ordering_CustomerOrderBy): Ordering_CustomerConnection!
   Ordering_CustomersByIds(ids: [String!]!): [Ordering_Customer!]!
   Ordering_GeocodeCustomerAddressTodo(id: ID!): Ordering_GeocodeCustomerAddressTodo
-  Ordering_GeocodeCustomerAddressTodos(after: String, before: String, filter: Ordering_GeocodeCustomerAddressTodoFilter, first: Int, last: Int): Ordering_GeocodeCustomerAddressTodoConnection!
+  Ordering_GeocodeCustomerAddressTodos(after: String, before: String, filter: Ordering_GeocodeCustomerAddressTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_GeocodeCustomerAddressTodoConnection!
   Ordering_GeocodeCustomerAddressTodosByIds(ids: [String!]!): [Ordering_GeocodeCustomerAddressTodo!]!
   Ordering_Order(id: ID!): Ordering_Order
   Ordering_OrderingEventHistory(after: String, before: String, filter: Ordering_OrderingEventHistoryFilter, first: Int, last: Int): Ordering_OrderingEventRecordConnection!
-  Ordering_Orders(after: String, before: String, filter: Ordering_OrderFilter, first: Int, last: Int, orderBy: Ordering_OrderOrderBy): Ordering_OrderConnection!
+  Ordering_Orders(after: String, before: String, filter: Ordering_OrderFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Ordering_OrderOrderBy): Ordering_OrderConnection!
   Ordering_OrdersByIds(ids: [String!]!): [Ordering_Order!]!
   Ordering_SendOrderConfirmationTodo(id: ID!): Ordering_SendOrderConfirmationTodo
-  Ordering_SendOrderConfirmationTodos(after: String, before: String, filter: Ordering_SendOrderConfirmationTodoFilter, first: Int, last: Int): Ordering_SendOrderConfirmationTodoConnection!
+  Ordering_SendOrderConfirmationTodos(after: String, before: String, filter: Ordering_SendOrderConfirmationTodoFilter, first: Int, includeRetired: Boolean, last: Int): Ordering_SendOrderConfirmationTodoConnection!
   Ordering_SendOrderConfirmationTodosByIds(ids: [String!]!): [Ordering_SendOrderConfirmationTodo!]!
   Platform_UiFragment(id: ID!): Platform_UiFragment
-  Platform_UiFragments(after: String, before: String, filter: Platform_UiFragmentFilter, first: Int, last: Int, orderBy: Platform_UiFragmentOrderBy): Platform_UiFragmentConnection!
+  Platform_UiFragments(after: String, before: String, filter: Platform_UiFragmentFilter, first: Int, includeRetired: Boolean, last: Int, orderBy: Platform_UiFragmentOrderBy): Platform_UiFragmentConnection!
   Platform_UiFragmentsByIds(ids: [String!]!): [Platform_UiFragment!]!
   geocode(text: String!): [GeocodeCandidate!]
   node(id: ID!): Node

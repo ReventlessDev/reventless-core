@@ -268,6 +268,47 @@ field or supplies it, and whether an owner column is worth showing. Who is exemp
 is deployment configuration (`elevatedGroups`), never part of the annotation —
 see §5.3.
 
+### 2.11 Retirement
+
+**`@retired`** names the boolean whose truth means the row is withdrawn from
+ordinary use — a deactivated customer, an archived category.
+
+```rescript
+@schema
+type state = {
+  @id customerId: string,
+  displayName: string,
+  @retired deactivated: bool,
+}
+
+// or, naming the state and asking for it in the negative too
+@retired({label: "Archived", showWhenFalse: true}) archived: bool,
+```
+
+For the UI this says: render retirement as a *state of the row* — a badge, a
+dimmed row, a filter toggle — rather than as one more boolean column. The
+annotation emits `x-reventless-retired: {label?, showWhenFalse}` on the field's
+JSON Schema. An absent label means "not stated": derive one from the field name.
+`showWhenFalse` asks for the marker in the negative state too; by default the
+flag is worth showing only when it is true.
+
+The rest is not a hint. Rows whose flag is true are **withheld server-side** from
+callers who are not exempt — from the list query, the single-entity query, and
+the payload of a live change frame, which downgrades to metadata-only so every
+subscriber refetches and the query layer answers per caller. The UI cannot show
+what the server does not return, and does not have to filter anything itself.
+
+An exempt caller reaches the archive by passing `includeRetired: true` on the
+list query — a top-level argument beside the paging ones, not a filter field.
+Elevation alone does not lift the restriction; the caller has to ask. A
+non-exempt caller passing it is ignored rather than refused. Who is exempt is
+the same `elevatedGroups` that governs ownership (§5.3) — one declaration, so
+two views cannot disagree about who an operator is.
+
+At most one `@retired` per record, on a `bool` or `option<bool>` field; anything
+else is a compile error. There is no fallback by field name — a boolean called
+`archived` that nobody annotated hides nothing.
+
 ---
 
 ## 3. Layer 2 — the baked manifest
@@ -701,8 +742,14 @@ which label `scopedLabel` picks (§4). Read both from **one declaration** — a
 mirror that disagrees with the server is the failure this key exists to avoid.
 Omit it and the shell assumes nothing is scoped.
 
-The declaration answers **exactly one question** — who reads across owners — and
-must not be read as naming operators. A group listed here is not thereby an
+The declaration answers **exactly one question** — who reads past the narrowing
+the framework applies to ordinary callers. That covers both rules that narrow a
+read: `@owner`, whose rows a query returns (§2.10), and `@retired`, who may ask
+for the archive with `includeRetired` (§2.11). One list for both, deliberately —
+two would eventually disagree about who an operator is, and the gap would surface
+one view at a time.
+
+It must not be read as naming operators. A group listed here is not thereby an
 administrator, gets no admin API, and gets no journey: an elevated role with a
 curated surface of its own declares it under `journeys` like any other.
 

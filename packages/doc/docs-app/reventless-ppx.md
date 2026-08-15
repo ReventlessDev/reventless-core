@@ -739,6 +739,51 @@ type state = {
 
 ---
 
+### `@retired` — the boolean that withdraws a row from ordinary reads
+
+`@retired` names the boolean state field whose truth means *this row is retired from ordinary use* — a deactivated customer, an archived category. Place it **before the field name**, on a `@schema type state` field of a ReadModel or StateViewSlice spec.
+
+```rescript
+@schema
+type state = {
+  @id customerId: string,
+  displayName: string,
+  @retired deactivated: bool,
+}
+```
+
+Two things follow from the one annotation, and the second is why this is not a presentation hint like `@groupBy`:
+
+- **On the schema:** `SuryToJsonSchema.deriveObjectSchema` stamps `x-reventless-retired: {label?, showWhenFalse}` on the named property, so a consumer renders retirement as a *state of the row* rather than as one more data column.
+- **On every read:** rows whose flag is true are withheld from callers who are not exempt — the list query, the single-entity query, the by-ids and by-index doors, and the payload of a live change frame. Codegen carries the field name as `queryableDef.retiredField`, and the predicate is pushed into SQL and into the DynamoDB `FilterExpression` rather than applied to the returned page, so `first: 2` yields two live rows.
+
+**Payload forms.** Bare, a string label, or a record:
+
+```rescript
+@retired deactivated: bool,
+@retired("Archived") archived: bool,
+@retired({label: "Archived", showWhenFalse: true}) archived: bool,
+```
+
+The label defaults to empty, which the schema emitter omits so a consumer can tell "not stated" from "stated as empty" and derive one from the field name. `showWhenFalse` defaults to `false` and always travels: it asks a consumer to surface the flag in its negative state too, and since a non-exempt caller never receives a retired row, a default-on marker would appear on every row they can read and carry no information.
+
+- **One per state record.** A second `@retired` is a compile error. Two retirement flags do not narrow the read further, they leave it undecided — the query layer tests a single field.
+- **`bool` or `option<bool>` only** (the `f?: bool` form works too). Anything else is a compile error: the annotation names a predicate the query layer evaluates, and on a non-boolean there is nothing to evaluate, so the rows would stay visible to everyone while the field looked as though it restricted them.
+- **Absent means not retired**, on all four backends. A row written before the annotation existed carries no flag, and excluding those would empty the view the day someone adds `@retired`.
+- **Annotation or nothing.** Unlike `@status`, there is no conventional fallback: a boolean named `archived` that nobody annotated stays exactly as visible as it was. Guessing wrong here makes rows disappear.
+
+**Reaching the archive.** A list query gains an `includeRetired: Boolean` argument, honoured **only** for a caller who was going to be allowed those rows anyway; a scoped caller passing it is ignored rather than refused. Note that elevation alone does not lift the restriction — an exempt caller is excluded until they ask, because an archive that is always underfoot is not an archive.
+
+**Who is exempt** is the same deployment-wide `REVENTLESS_ELEVATED_GROUPS` that `@owner` uses, and deliberately so: two views must not disagree about who an operator is. There is no per-annotation elevation list.
+
+**`@retired` neither needs nor implies `@scan`.** `@scan` widens the *client's* filter surface; this predicate is the resolver's, derived from who the caller is. A `<field>Eq` on the filter input would only ever return an empty page for the callers who could pass it.
+
+**Cost.** The framework warns at deploy time when the annotated field keys no index, mirroring the `@owner` warning and for the same pathology: a `FilterExpression` is applied after the page is read, so pages shrink as the archive's share of the table grows. It warns rather than refuses — a small table may legitimately accept the cost. `@scan` deliberately does not silence it: it adds no index and removes no read unit.
+
+**Live updates.** The state-change channel is keyed by view and entity and shared by every subscriber, so a publish cannot be scoped per caller. A save that leaves the row retired therefore publishes **metadata only** — `Updated` with no `state` — which asks every subscriber to refetch and lets the query layer answer for each of them. Un-retiring publishes full state as before. A subscriber still learns that *an entity with a given id changed*; removing that residual would need per-caller channels.
+
+---
+
 ## Examples
 
 ### Aggregate spec
