@@ -241,6 +241,52 @@ describe("bakeSelection", () => {
   )
 })
 
+// A journey travels from the deploy in the function's environment, exactly as the
+// default include-list does, carrying the key the deploy resolved. Deriving the
+// key a second time here would be a file written where `config.json` does not
+// send anybody, so the handler only reads it.
+describe("bakeJourney", () => {
+  let journey = raw => Platform_ComponentDefinitions_Lambda_Ops.bakeJourney(JSON.parseOrThrow(raw))
+
+  testSync("reads the group, the key and the include-list the deploy encoded", () => {
+    let decoded = journey(`{
+      "group": "Fulfilment",
+      "key": "component-manifest-fulfilment.json",
+      "components": [{"plugin": "Ordering", "views": ["Orders"], "derived": ["lifecycles"]}]
+    }`)
+    expect(decoded->Option.map(j => (j.group, j.key, j.selections->Array.map(s => s.plugin))))->toEqual(
+      Some(("Fulfilment", "component-manifest-fulfilment.json", ["Ordering"])),
+    )
+    expect(
+      decoded->Option.flatMap(j => j.selections->Array.get(0))->Option.flatMap(s => s.derived),
+    )->toEqual(Some(["lifecycles"]))
+  })
+
+  // Absent is not empty here either: a journey whose selection names no `views`
+  // takes every public view of that plugin.
+  testSync("keeps a selection's absent lists absent", () => {
+    let decoded = journey(`{"group": "Shopper", "key": "s.json", "components": [{"plugin": "Catalog"}]}`)
+    expect(
+      decoded->Option.flatMap(j => j.selections->Array.get(0))->Option.flatMap(s => s.views),
+    )->toEqual(None)
+  })
+
+  // Both are what the write needs. A journey missing either would be baked to a
+  // key nobody granted or reported as belonging to no audience.
+  testSync("refuses an entry naming no group or no key", () => {
+    expect(journey(`{"key": "s.json", "components": []}`)->Option.isNone)->toBe(true)
+    expect(journey(`{"group": "Shopper", "components": []}`)->Option.isNone)->toBe(true)
+  })
+
+  // A journey that curates nothing is still a journey — it writes an empty file
+  // rather than falling back to the default one.
+  testSync("a journey with no components decodes to an empty include-list", () =>
+    expect(
+      journey(`{"group": "Shopper", "key": "s.json"}`)->Option.map(j => j.selections->Array.length),
+    )->toEqual(Some(0))
+  )
+})
+
 // The bake reads a read model the deploy updates asynchronously, so "is this the
 // deployment I was asked to bake" is a question it has to be able to answer. The
 // answer is an equality check against the key each plugin stack just wrote.

@@ -81,6 +81,113 @@ describe("Util_ShellConfig.fields — bakedManifest", () => {
   })
 })
 
+// ── Journeys ──────────────────────────────────────────────────────────────
+//
+// One curated surface per audience, beside the default one. The property under
+// test throughout is that a deployment declaring none is untouched: every
+// deployment that predates journeys has exactly one audience, and its
+// config.json must not grow a key for a feature it does not use.
+describe("Util_ShellConfig.fields — journeys", () => {
+  let withJourneys = (
+    ~journeys: array<ReventlessInfra.Platform.bakedJourney>,
+  ): ReventlessInfra.Platform.bakedManifest => {
+    components: [{plugin: "Catalog", views: ["Products"], commands: []}],
+    journeys,
+  }
+
+  let shopper: ReventlessInfra.Platform.bakedJourney = {
+    group: "Shopper",
+    components: [{plugin: "Catalog", views: ["Products"], commands: []}],
+  }
+
+  let fulfilment: ReventlessInfra.Platform.bakedJourney = {
+    group: "Fulfilment",
+    components: [{plugin: "Ordering", views: ["Orders"], commands: ["ShipOrder"]}],
+    key: "fulfilment.json",
+  }
+
+  testSync("a bake declaring no journeys writes no map", () => {
+    let out = Util_ShellConfig.fields(
+      ~computed,
+      ~bakedManifest={components: [{plugin: "Catalog", views: ["Products"], commands: []}]},
+    )
+    expect(out->Dict.get("journeyManifestUrls")->Option.isNone)->toBe(true)
+  })
+
+  testSync("an empty journeys array is the same as none", () => {
+    let out = Util_ShellConfig.fields(~computed, ~bakedManifest=withJourneys(~journeys=[]))
+    expect(out->Dict.get("journeyManifestUrls")->Option.isNone)->toBe(true)
+  })
+
+  // The default journey keeps `manifestUrl`, so a caller matching no declared
+  // group lands where every caller landed before.
+  testSync("keeps manifestUrl as the default journey", () => {
+    let out = Util_ShellConfig.fields(~computed, ~bakedManifest=withJourneys(~journeys=[shopper]))
+    expect(out->get("manifestUrl"))->toEqual(JSON.Encode.string("/component-manifest.json"))
+  })
+
+  testSync("maps each declared group to its own file", () => {
+    let out = Util_ShellConfig.fields(
+      ~computed,
+      ~bakedManifest=withJourneys(~journeys=[shopper, fulfilment]),
+    )
+    expect(out->get("journeyManifestUrls"))->toEqual(
+      JSON.Encode.object(
+        Dict.fromArray([
+          // Derived from the group, lower-cased, because a key is part of a URL.
+          ("Shopper", JSON.Encode.string("/component-manifest-shopper.json")),
+          // Named explicitly, and the declaration wins.
+          ("Fulfilment", JSON.Encode.string("/fulfilment.json")),
+        ]),
+      ),
+    )
+  })
+
+  // The URL a shell fetches and the key the bake writes are one string, derived
+  // once — a second derivation is a file written where nothing looks for it. So
+  // every key the bake writes is published, and the default one is published as
+  // `manifestUrl` rather than in the map.
+  testSync("publishes the URL of every key the bake writes, exactly once", () => {
+    let bake = withJourneys(~journeys=[shopper, fulfilment])
+    let out = Util_ShellConfig.fields(~computed, ~bakedManifest=bake)
+    let published = Array.concat(
+      out->get("manifestUrl")->JSON.Decode.string->Option.mapOr([], url => [url]),
+      out
+      ->get("journeyManifestUrls")
+      ->JSON.Decode.object
+      ->Option.getOr(Dict.make())
+      ->Dict.valuesToArray
+      ->Array.filterMap(JSON.Decode.string),
+    )
+    expect(published)->toEqual(
+      ReventlessCore.Platform_BakedManifest.files(~config=bake)->Array.map(((key, _)) =>
+        "/" ++ key
+      ),
+    )
+  })
+
+  // A passthrough cannot redirect a key the deploy computes — the same rule
+  // `manifestUrl` already carries, extended to the map beside it.
+  testSync("a shellConfig journey map fails the deploy rather than redirecting it", () => {
+    let failure = try {
+      let _ = Util_ShellConfig.fields(
+        ~computed,
+        ~bakedManifest=withJourneys(~journeys=[shopper]),
+        ~shellConfig=Dict.fromArray([
+          ("journeyManifestUrls", JSON.Encode.object(Dict.make())),
+        ]),
+      )
+      None
+    } catch {
+    | Failure(message) => Some(message)
+    }
+    switch failure {
+    | Some(message) => expect(message->String.includes("journeyManifestUrls"))->toBe(true)
+    | None => fail("a shellConfig key redirecting the computed journey map must fail the deploy")
+    }
+  })
+})
+
 describe("Util_ShellConfig.fields — shellConfig passthrough", () => {
   testSync("shell-owned keys land verbatim, under the computed ones", () => {
     let out = Util_ShellConfig.fields(

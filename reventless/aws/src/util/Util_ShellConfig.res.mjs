@@ -6,6 +6,8 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Platform$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/Platform.res.mjs";
 import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
 
+let journeyManifestsKey = "journeyManifestUrls";
+
 function modeOptions(mode) {
   if (mode.TAG === "Map") {
     let style = mode._0.style;
@@ -33,6 +35,14 @@ function fields(computed, viewModes, bakedManifest, shellConfig) {
   let out = Object.fromEntries(computed);
   Stdlib_Option.forEach(bakedManifest, bake => {
     out["manifestUrl"] = Platform_BakedManifest$ReventlessCore.urlForKey(bake.key);
+    let urls = Platform_BakedManifest$ReventlessCore.journeyUrls(bake);
+    if (urls.length !== 0) {
+      out[journeyManifestsKey] = Object.fromEntries(urls.map(param => [
+        param[0],
+        param[1]
+      ]));
+      return;
+    }
   });
   if (viewModes !== undefined) {
     out["viewModes"] = viewModes.map(Platform$ReventlessInfra.viewModeToString);
@@ -58,6 +68,7 @@ let Platform;
 
 export {
   Platform,
+  journeyManifestsKey,
   modeOptions,
   fields,
 }

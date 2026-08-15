@@ -2,7 +2,6 @@
 
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
-import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as HostShellDist$ReventlessLocal from "./HostShellDist.res.mjs";
@@ -10,33 +9,10 @@ import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventles
 
 let log = Logger$ReventlessCore.fromEnv();
 
-function toSelections(components) {
-  return components.map(s => ({
-    plugin: s.plugin,
-    views: s.views,
-    commands: s.commands,
-    derived: s.derived
-  }));
-}
-
-function files(config) {
-  let base = [[
-      Stdlib_Option.getOr(config.key, Platform_BakedManifest$ReventlessCore.defaultKey),
-      toSelections(config.components)
-    ]];
-  let journeys = config.journeys;
-  if (journeys !== undefined) {
-    return base.concat(journeys.map(j => [
-      Stdlib_Option.getOr(j.key, Platform_BakedManifest$ReventlessCore.journeyKey(j.group)),
-      toSelections(j.components)
-    ]));
-  } else {
-    return base;
-  }
-}
+let files = Platform_BakedManifest$ReventlessCore.files;
 
 function emit(structures, config) {
-  let outputs = files(config);
+  let outputs = Platform_BakedManifest$ReventlessCore.files(config);
   let curated = outputs.map(param => {
     let e = Platform_BakedManifest$ReventlessCore.curate(structures, param[1]);
     let tmp;
@@ -62,7 +38,6 @@ function emit(structures, config) {
 
 export {
   log,
-  toSelections,
   files,
   emit,
 }

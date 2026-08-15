@@ -61,26 +61,16 @@ let overlay = (
     // Omitted entirely when nothing is declared, so a single-audience deployment
     // writes the same key set it always did and a shell that has never heard of
     // journeys sees no new keys.
-    switch config.journeys {
-    | None => ()
-    | Some([]) => ()
-    | Some(journeys) =>
-      let map = Dict.make()
-      journeys->Array.forEach(j =>
-        map->Dict.set(
-          j.group,
-          JSON.Encode.string(
-            ReventlessCore.Platform_BakedManifest.urlForKey(
-              Some(
-                j.key->Option.getOr(
-                  ReventlessCore.Platform_BakedManifest.journeyKey(~group=j.group),
-                ),
-              ),
-            ),
-          ),
-        )
+    switch ReventlessCore.Platform_BakedManifest.journeyUrls(~config) {
+    | [] => ()
+    | urls =>
+      out->Dict.set(
+        journeyManifestsKey,
+        urls
+        ->Array.map(((group, url)) => (group, JSON.Encode.string(url)))
+        ->Dict.fromArray
+        ->JSON.Encode.object,
       )
-      out->Dict.set(journeyManifestsKey, map->JSON.Encode.object)
     }
   })
 

@@ -10,49 +10,23 @@
 let log = ReventlessCore.Logger.fromEnv()
 
 /**
- A declared bake writes the file or fails loudly. Both failure modes it can hit
+ Every file this declaration produces, as (key, selections) pairs.
+
+ The resolution itself is `Platform_BakedManifest.files`, shared with the deploy
+ for the reason the curation is: the key a file is written under and the URL a
+ shell fetches it from have to be the same string on either platform.
+ */
+let files = (
+  ~config: ReventlessInfra.Platform.bakedManifest,
+): array<(string, array<ReventlessCore.Platform_BakedManifest.selection>)> =>
+  ReventlessCore.Platform_BakedManifest.files(~config)
+
+/**
+ A declared bake writes the files or fails loudly. Both failure modes it can hit
  are the deployment's own mistake — a name that matches no component, or a shell
  package that is not installed — and both produce the same symptom if swallowed:
  a shop that renders nothing, with no line in the log saying why.
  */
-let toSelections = (
-  components: array<ReventlessInfra.Platform.bakedManifestSelection>,
-): array<ReventlessCore.Platform_BakedManifest.selection> =>
-  components->Array.map((s): ReventlessCore.Platform_BakedManifest.selection => {
-    plugin: s.plugin,
-    views: s.views,
-    commands: s.commands,
-    derived: s.derived,
-  })
-
-/**
- Every file this declaration produces, as (key, selections) pairs.
-
- The default journey first, then one per declared journey. Separate from the
- write so the whole set is reachable from a test — the same reason
- `ShellConfig.overlay` exists apart from its write.
- */
-let files = (
-  ~config: ReventlessInfra.Platform.bakedManifest,
-): array<(string, array<ReventlessCore.Platform_BakedManifest.selection>)> => {
-  let base = [
-    (
-      config.key->Option.getOr(ReventlessCore.Platform_BakedManifest.defaultKey),
-      toSelections(config.components),
-    ),
-  ]
-  switch config.journeys {
-  | None => base
-  | Some(journeys) =>
-    base->Array.concat(
-      journeys->Array.map(j => (
-        j.key->Option.getOr(ReventlessCore.Platform_BakedManifest.journeyKey(~group=j.group)),
-        toSelections(j.components),
-      )),
-    )
-  }
-}
-
 let emit = (
   ~structures: array<(string, Reventless.Plugin.pluginStructure)>,
   ~config: ReventlessInfra.Platform.bakedManifest,

@@ -31,18 +31,14 @@ function overlay(bakedManifest, shellConfig) {
   let out = {};
   Stdlib_Option.forEach(bakedManifest, config => {
     out["manifestUrl"] = Platform_BakedManifest$ReventlessCore.urlForKey(config.key);
-    let journeys = config.journeys;
-    if (journeys === undefined) {
+    let urls = Platform_BakedManifest$ReventlessCore.journeyUrls(config);
+    if (urls.length !== 0) {
+      out[journeyManifestsKey] = Object.fromEntries(urls.map(param => [
+        param[0],
+        param[1]
+      ]));
       return;
     }
-    if (journeys.length === 0) {
-      return;
-    }
-    let map = {};
-    journeys.forEach(j => {
-      map[j.group] = Platform_BakedManifest$ReventlessCore.urlForKey(Stdlib_Option.getOr(j.key, Platform_BakedManifest$ReventlessCore.journeyKey(j.group)));
-    });
-    out[journeyManifestsKey] = map;
   });
   Stdlib_Option.forEach(shellConfig, extra => {
     let collisions = Object.keys(extra).filter(k => computedKeys.includes(k));

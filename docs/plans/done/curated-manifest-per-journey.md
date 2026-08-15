@@ -1,8 +1,12 @@
 # Plan: one curated manifest per audience, not per deployment
 
-**Status.** The local half **built 2026-08-13** (core `3be6f63e5`), with the
-shell reading it (`reventless-ui: 17e9c04`) and the hybrid example declaring a
-journey per role. The deploy still writes one file — §7 step 3 is open.
+**Status.** **Built.** The local half landed 2026-08-13 (core `3be6f63e5`), with
+the shell reading it (`reventless-ui: 17e9c04`) and the hybrid example declaring a
+journey per role; the deploy half landed 2026-08-15 and writes the same file set
+on AWS. Both platforms now resolve their keys through one function
+(`Platform_BakedManifest.files`), which is what keeps the object the bake writes,
+the IAM grant that permits it and the URL `config.json` publishes from being three
+derivations of the same name.
 
 Two things the build settled. The **default journey comes first and stays**, which
 is what a caller matching no declared group gets — including, locally, the
@@ -166,12 +170,18 @@ away from every operator console that never asked for curation.
 
 ## §7 — Steps
 
-1. The `journeys` declaration + N-way curation, with the existing field resolving
-   as the default. Tests: a deployment declaring only `components` produces a
-   byte-identical file.
-2. The local writer: N files, and the group→url map into the served config.
-3. The deploy's write grant and upload, same declaration.
-4. Reference docs: §3's distinction and §4's rule.
+1. ✅ The `journeys` declaration + N-way curation, with the existing field
+   resolving as the default. Tests: a deployment declaring only `components`
+   produces a byte-identical file.
+2. ✅ The local writer: N files, and the group→url map into the served config.
+3. ✅ The deploy's write grant and upload, same declaration. The keys travel to
+   the bake in its environment beside the include-list, resolved at deploy time:
+   the invocation still supplies only the bucket and the default key, so a caller
+   can neither bake something the deployment never declared nor write it under a
+   name the grant does not cover. A single declared key stays a bare `Resource`
+   string, so a deployment with no journey sees no policy change at all.
+4. ✅ Reference docs: §3's distinction and §4's rule
+   (`packages/doc/docs-app/ui-configuration.md` §3, §5.3).
 
 ## §8 — Acceptance
 

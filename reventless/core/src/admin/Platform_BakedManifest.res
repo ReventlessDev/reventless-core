@@ -204,6 +204,58 @@ let journeyKey = (~group: string): string => {
   `component-manifest-${slug}.json`
 }
 
+let toSelection = (s: ReventlessInfra.Platform.bakedManifestSelection): selection => {
+  plugin: s.plugin,
+  views: s.views,
+  commands: s.commands,
+  derived: s.derived,
+}
+
+/** One declared journey, with everything a platform needs to serve it: the group
+    it serves, the file it is written to, and the include-list that decides the
+    file's contents. */
+type journeyFile = {group: string, key: string, selections: array<selection>}
+
+/**
+ The declared journeys, in declaration order, with their keys resolved.
+
+ The default journey is deliberately not among them: it is the file
+ `manifestUrl` points at, which is what a caller matching no declared group reads
+ and what every deployment had before journeys existed.
+ */
+let journeyFiles = (~config: ReventlessInfra.Platform.bakedManifest): array<journeyFile> =>
+  config.journeys
+  ->Option.getOr([])
+  ->Array.map(j => {
+    group: j.group,
+    key: j.key->Option.getOr(journeyKey(~group=j.group)),
+    selections: j.components->Array.map(toSelection),
+  })
+
+/**
+ Every file a bake declaration produces, as (key, selections) pairs.
+
+ The default journey first and always — it is what a caller matching no declared
+ group gets, which includes the no-bearer identity a local dev session starts
+ from — then one per declared journey.
+
+ Here rather than on either platform because several separate things have to
+ agree about this set on a deploy: the objects the bake writes, the IAM grant
+ that lets it write them, and the URLs `config.json` sends a caller to. A key
+ derived twice is a shop whose file is written where nothing fetches it, and the
+ symptom is an empty menu rather than a missing file.
+ */
+let files = (
+  ~config: ReventlessInfra.Platform.bakedManifest,
+): array<(string, array<selection>)> =>
+  [
+    (config.key->Option.getOr(defaultKey), config.components->Array.map(toSelection)),
+  ]->Array.concat(journeyFiles(~config)->Array.map(j => (j.key, j.selections)))
+
+/** Each declared journey's group and the URL a shell fetches its file from. */
+let journeyUrls = (~config: ReventlessInfra.Platform.bakedManifest): array<(string, string)> =>
+  journeyFiles(~config)->Array.map(j => (j.group, urlForKey(Some(j.key))))
+
 // The whole file: one entry per selection, in the order the deployment declared
 // them, so the include-list also states the order a consumer reads plugins in.
 let curate = (

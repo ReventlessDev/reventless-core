@@ -2221,9 +2221,14 @@ module MakeWithConfig = (
       // target without reading either out of the deploy program.
       switch (componentDefinitions, cfg.bakedManifest) {
       | (Some(fn), Some(bake)) =>
-        let manifestKey = bake.key->Option.getOr(
-          ReventlessCore.Platform_BakedManifest.defaultKey,
-        )
+        // Every file the declaration produces: the default journey's, which is
+        // what the shell's `manifestUrl` points at, and one per declared journey.
+        // Resolved through the same function the bake and `config.json` use, so
+        // a grant cannot be scoped to a key nothing writes.
+        let manifestKeys =
+          ReventlessCore.Platform_BakedManifest.files(~config=bake)->Array.map(((key, _)) => key)
+        let manifestKey =
+          manifestKeys->Array.get(0)->Option.getOr(ReventlessCore.Platform_BakedManifest.defaultKey)
         let _ =
           (fn.roleId, bucketName)
           ->Pulumi.Output.all2
@@ -2239,7 +2244,16 @@ module MakeWithConfig = (
                       sid: "AllowWriteBakedManifest",
                       effect: Allow,
                       actions: Actions(["s3:PutObject"]),
-                      resources: Resource(`arn:aws:s3:::${bucket}/${manifestKey}`),
+                      // A single key stays a bare `Resource` string: the two
+                      // forms mean the same thing to IAM, and a deployment that
+                      // declares no journey should not see its policy rewritten
+                      // for a field it does not use.
+                      resources: switch manifestKeys->Array.map(key =>
+                        `arn:aws:s3:::${bucket}/${key}`
+                      ) {
+                      | [only] => Resource(only)
+                      | arns => Resources(arns)
+                      },
                     },
                   ],
                 )

@@ -362,12 +362,11 @@ journey gets. Always provide one: a local dev session without a login belongs to
 no declared group, and with no default it would match nothing and render an empty
 shell.
 
-:::caution Journeys are a local-platform feature today
-The local platform serves one manifest per journey. **The AWS deploy still serves
-only the default one** — a `journeys` declaration is accepted and not yet honoured
-there. Declare journeys for local development by all means; do not rely on them to
-shape a deployed app's menu yet.
-:::
+Both platforms honour the same declaration. Locally the files are written into the
+shell's served directory at boot; on AWS the deploy grants the bake a write for
+every key the declaration produces and the post-deploy bake writes them beside
+`config.json`, which carries a group→url map (`journeyManifestUrls`) next to the
+default `manifestUrl`.
 
 Declare the manifest in a **platform-independent module**, and pass it from each
 root. It answers "what does this app offer?", which is a fact about the app and is
@@ -701,6 +700,11 @@ the owner field or fills it in, whether an owner column is worth showing, and
 which label `scopedLabel` picks (§4). Read both from **one declaration** — a
 mirror that disagrees with the server is the failure this key exists to avoid.
 Omit it and the shell assumes nothing is scoped.
+
+The declaration answers **exactly one question** — who reads across owners — and
+must not be read as naming operators. A group listed here is not thereby an
+administrator, gets no admin API, and gets no journey: an elevated role with a
+curated surface of its own declares it under `journeys` like any other.
 
 Set the elevated groups **before** the plugins are built — the components read
 them as they are constructed.

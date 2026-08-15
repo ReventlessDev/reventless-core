@@ -13,6 +13,7 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_LambdaLogging$ReventlessAws from "../../util/Util_LambdaLogging.res.mjs";
 import * as AppSync_Resolver_Native$ReventlessAws from "./AppSync_Resolver_Native.res.mjs";
+import * as Platform_BakedManifest$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_BakedManifest.res.mjs";
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
 import * as Platform_ComponentDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_ComponentDefinitionsApi.res.mjs";
 
@@ -77,19 +78,35 @@ function make(api, pluginReadModelTableName, offloadBucketName, schemaReady, bak
       role: lambdaRole.id
     }, opts$1);
   });
-  let bakeSelectionsJson = bakedManifest !== undefined ? JSON.stringify(bakedManifest.components.map(sel => {
-      let entry = Object.fromEntries([[
-          "plugin",
-          sel.plugin
-        ]]);
-      let strings = (key, value) => Stdlib_Option.forEach(value, names => {
-        entry[key] = names.map(prim => prim);
-      });
-      strings("views", sel.views);
-      strings("commands", sel.commands);
-      strings("derived", sel.derived);
-      return entry;
-    })) : "";
+  let encodeSelections = components => components.map(sel => {
+    let entry = Object.fromEntries([[
+        "plugin",
+        sel.plugin
+      ]]);
+    let strings = (key, value) => Stdlib_Option.forEach(value, names => {
+      entry[key] = names.map(prim => prim);
+    });
+    strings("views", sel.views);
+    strings("commands", sel.commands);
+    strings("derived", sel.derived);
+    return entry;
+  });
+  let bakeSelectionsJson = bakedManifest !== undefined ? JSON.stringify(encodeSelections(bakedManifest.components.map(Platform_BakedManifest$ReventlessCore.toSelection))) : "";
+  let journeys = Stdlib_Option.mapOr(bakedManifest, [], Platform_BakedManifest$ReventlessCore.journeyFiles);
+  let bakeJourneysJson = journeys.length !== 0 ? JSON.stringify(journeys.map(j => Object.fromEntries([
+      [
+        "group",
+        j.group
+      ],
+      [
+        "key",
+        j.key
+      ],
+      [
+        "components",
+        encodeSelections(j.selections)
+      ]
+    ]))) : "";
   let adminEntryJson = JSON.stringify(Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(Platform_Admin_Structure$ReventlessCore.pluginId, undefined, Platform_Admin_Structure$ReventlessCore.structure));
   let packageDirs = Object.fromEntries([[
       "@reventlessdev/reventless-aws",
@@ -127,6 +144,10 @@ function make(api, pluginReadModelTableName, offloadBucketName, schemaReady, bak
         [
           "BAKE_SELECTIONS",
           bakeSelectionsJson
+        ],
+        [
+          "BAKE_JOURNEYS",
+          bakeJourneysJson
         ],
         [
           "NODE_OPTIONS",

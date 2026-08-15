@@ -268,8 +268,43 @@ function bakeSelection(json) {
   })));
 }
 
+function decodeSelections(json) {
+  return Stdlib_Array.filterMap(Stdlib_Option.getOr(Stdlib_JSON.Decode.array(json), []), bakeSelection);
+}
+
 function bakeSelections() {
   let raw = process.env["BAKE_SELECTIONS"];
+  if (raw === undefined) {
+    return [];
+  }
+  if (raw === "") {
+    return [];
+  }
+  let json;
+  try {
+    json = JSON.parse(raw);
+  } catch (exn) {
+    return Stdlib_JsError.throwWithMessage("baked manifest: BAKE_SELECTIONS is not a JSON array");
+  }
+  return decodeSelections(json);
+}
+
+function bakeJourney(json) {
+  return Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), o => {
+    let match = Stdlib_Option.flatMap(o["group"], Stdlib_JSON.Decode.string);
+    let match$1 = Stdlib_Option.flatMap(o["key"], Stdlib_JSON.Decode.string);
+    if (match !== undefined && match$1 !== undefined) {
+      return {
+        group: match,
+        key: match$1,
+        selections: Stdlib_Option.mapOr(o["components"], [], decodeSelections)
+      };
+    }
+  });
+}
+
+function bakeJourneys() {
+  let raw = process.env["BAKE_JOURNEYS"];
   if (raw === undefined) {
     return [];
   }
@@ -280,10 +315,10 @@ function bakeSelections() {
   try {
     entries = Stdlib_JSON.Decode.array(JSON.parse(raw));
   } catch (exn) {
-    return Stdlib_JsError.throwWithMessage("baked manifest: BAKE_SELECTIONS is not a JSON array");
+    return Stdlib_JsError.throwWithMessage("baked manifest: BAKE_JOURNEYS is not a JSON array");
   }
   if (entries !== undefined) {
-    return Stdlib_Array.filterMap(entries, bakeSelection);
+    return Stdlib_Array.filterMap(entries, bakeJourney);
   } else {
     return [];
   }
@@ -336,18 +371,37 @@ async function runBake(target, structures) {
   if (selections.length === 0) {
     Stdlib_JsError.throwWithMessage("baked manifest: BAKE_SELECTIONS is empty — this platform declares no bake, so there is nothing to write and a shell pointed at the file would find none.");
   }
-  let e = Platform_BakedManifest$ReventlessCore.curate(structures, selections);
-  if (e.TAG !== "Ok") {
-    return Stdlib_JsError.throwWithMessage(Platform_BakedManifest$ReventlessCore.describe(e._0));
-  }
-  let body = JSON.stringify(e._0, undefined, 2);
-  await S3$AwsSdk.PutObjectCommand.send(new ClientS3.PutObjectCommand({
-    Bucket: target.bucket,
-    Key: target.key,
-    Body: body,
-    ContentType: "application/json"
-  }));
-  return [Object.fromEntries([
+  let files = [[
+      undefined,
+      target.key,
+      selections
+    ]].concat(bakeJourneys().map(j => [
+    j.group,
+    j.key,
+    j.selections
+  ]));
+  let curated = files.map(param => {
+    let selections = param[2];
+    let e = Platform_BakedManifest$ReventlessCore.curate(structures, selections);
+    let tmp;
+    tmp = e.TAG === "Ok" ? JSON.stringify(e._0, undefined, 2) : Stdlib_JsError.throwWithMessage(Platform_BakedManifest$ReventlessCore.describe(e._0));
+    return [
+      param[0],
+      param[1],
+      selections,
+      tmp
+    ];
+  });
+  return await Promise.all(curated.map(async param => {
+    let body = param[3];
+    let key = param[1];
+    await S3$AwsSdk.PutObjectCommand.send(new ClientS3.PutObjectCommand({
+      Bucket: target.bucket,
+      Key: key,
+      Body: body,
+      ContentType: "application/json"
+    }));
+    let report = Object.fromEntries([
       [
         "baked",
         true
@@ -358,17 +412,22 @@ async function runBake(target, structures) {
       ],
       [
         "key",
-        target.key
+        key
       ],
       [
         "plugins",
-        selections.length
+        param[2].length
       ],
       [
         "bytes",
         body.length
       ]
-    ])];
+    ]);
+    Stdlib_Option.forEach(param[0], g => {
+      report["group"] = g;
+    });
+    return report;
+  }));
 }
 
 async function handler(event) {
@@ -433,7 +492,10 @@ export {
   isComplete,
   structureOf,
   bakeSelection,
+  decodeSelections,
   bakeSelections,
+  bakeJourney,
+  bakeJourneys,
   bakeTargetOf,
   bakeExpectations,
   structureRefKey,

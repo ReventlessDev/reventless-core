@@ -785,6 +785,11 @@ jobs:
           done < <(jq -r '.[].path' <<< "$ALL_PLUGINS")
           echo "Expecting: $EXPECT"
 
+          # The key travels because it is where the deploy told the shell to look;
+          # a deployment curating a surface per audience writes one file per
+          # declared journey beside it, under keys the platform resolved and put
+          # in the function's environment. So the payload names the default one
+          # and the response reports every file that was written.
           echo "Baking ${BUCKET}/${KEY} via ${FN}"
           PAYLOAD=$(jq -nc --arg b "$BUCKET" --arg k "$KEY" --argjson e "$EXPECT" \
             '{bake: true, bucket: $b, key: $k, expect: $e}')

@@ -9,6 +9,10 @@
 
 module Platform = ReventlessInfra.Platform
 
+// Where a caller acting as a given role discovers from — a group→url map. Named
+// here as the shell reads it, the same way `manifestUrl` is.
+let journeyManifestsKey = "journeyManifestUrls"
+
 // A mode's options, flattened to the wire shape. They are payloads of their arm
 // on the deploy side (so `mapStyle` with the map off cannot be expressed) and
 // flat siblings of `viewModes` on the wire (because that is where the released
@@ -52,12 +56,28 @@ let fields = (
   // decides where the file goes — a passthrough could point the shell at a key
   // nothing writes, and a statically-discovered shell has no admin API behind it
   // to notice.
-  bakedManifest->Option.forEach(bake =>
+  bakedManifest->Option.forEach(bake => {
     out->Dict.set(
       "manifestUrl",
       JSON.Encode.string(ReventlessCore.Platform_BakedManifest.urlForKey(bake.key)),
     )
-  )
+    // Where a caller acting as a given role discovers from, beside the default
+    // rather than instead of it: `manifestUrl` stays the default journey, which
+    // is what a caller matching no declared group gets. Omitted entirely when
+    // nothing is declared, so a single-audience deployment writes the key set it
+    // always did and a shell that has never heard of journeys sees no new key.
+    switch ReventlessCore.Platform_BakedManifest.journeyUrls(~config=bake) {
+    | [] => ()
+    | urls =>
+      out->Dict.set(
+        journeyManifestsKey,
+        urls
+        ->Array.map(((group, url)) => (group, JSON.Encode.string(url)))
+        ->Dict.fromArray
+        ->JSON.Encode.object,
+      )
+    }
+  })
 
   switch viewModes {
   | Some(modes) =>

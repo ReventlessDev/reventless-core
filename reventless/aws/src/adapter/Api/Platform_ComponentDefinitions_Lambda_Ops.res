@@ -288,6 +288,18 @@ let structureOf = (item: dict<JSON.t>, ~name as _: string): option<(
   | _ => None
   }
 
+// One curated surface per audience, beside the default one. Only what the write
+// needs travels: the file's key, resolved by the deploy so that the grant, the
+// URL in `config.json` and the object written here are one string, and the
+// include-list that decides its contents. The group the journey serves is
+// carried too, purely so the invocation's report names the audience a file was
+// written for.
+type journey = {
+  group: string,
+  key: string,
+  selections: array<ReventlessCore.Platform_BakedManifest.selection>,
+}
+
 let bakeSelection = (json: JSON.t): option<ReventlessCore.Platform_BakedManifest.selection> => {
   let strings = (o, key) =>
     o
@@ -309,6 +321,9 @@ let bakeSelection = (json: JSON.t): option<ReventlessCore.Platform_BakedManifest
   )
 }
 
+let decodeSelections = (json: JSON.t): array<ReventlessCore.Platform_BakedManifest.selection> =>
+  json->JSON.Decode.array->Option.getOr([])->Array.filterMap(bakeSelection)
+
 // The declaration travels as an env var because it is deploy input — stated once
 // in the platform program, beside the bucket it is written to. The target travels
 // in the invocation payload instead: the bucket only exists inside the host-UI
@@ -319,11 +334,41 @@ let bakeSelections = (): array<ReventlessCore.Platform_BakedManifest.selection> 
   switch NodeProcess.env->Dict.get("BAKE_SELECTIONS") {
   | None | Some("") => []
   | Some(raw) =>
-    switch raw->JSON.parseOrThrow->JSON.Decode.array {
-    | Some(entries) => entries->Array.filterMap(bakeSelection)
-    | None => []
+    switch raw->JSON.parseOrThrow {
+    | json => json->decodeSelections
     | exception _ =>
       JsError.throwWithMessage("baked manifest: BAKE_SELECTIONS is not a JSON array")
+    }
+  }
+
+let bakeJourney = (json: JSON.t): option<journey> =>
+  json
+  ->JSON.Decode.object
+  ->Option.flatMap(o =>
+    switch (
+      o->Dict.get("group")->Option.flatMap(JSON.Decode.string),
+      o->Dict.get("key")->Option.flatMap(JSON.Decode.string),
+    ) {
+    | (Some(group), Some(key)) =>
+      Some({
+        group,
+        key,
+        selections: o->Dict.get("components")->Option.mapOr([], decodeSelections),
+      })
+    | _ => None
+    }
+  )
+
+// Absent for every deployment that declares one audience, which is what the
+// declaration meant before journeys existed and what it still means.
+let bakeJourneys = (): array<journey> =>
+  switch NodeProcess.env->Dict.get("BAKE_JOURNEYS") {
+  | None | Some("") => []
+  | Some(raw) =>
+    switch raw->JSON.parseOrThrow->JSON.Decode.array {
+    | Some(entries) => entries->Array.filterMap(bakeJourney)
+    | None => []
+    | exception _ => JsError.throwWithMessage("baked manifest: BAKE_JOURNEYS is not a JSON array")
     }
   }
 
@@ -417,27 +462,49 @@ let runBake = async (
       "so there is nothing to write and a shell pointed at the file would find none.",
     )
   }
-  switch ReventlessCore.Platform_BakedManifest.curate(~structures, ~selections) {
-  | Error(e) =>
-    JsError.throwWithMessage(ReventlessCore.Platform_BakedManifest.describe(e))
-  | Ok(manifest) =>
-    let body = JSON.stringify(manifest, ~space=2)
-    let _ = await AwsSdk.S3.PutObjectCommand.make({
-      bucket: target.bucket,
-      key: target.key,
-      body: AwsSdk.S3.PutObjectCommand.bodyFromString(body),
-      contentType: "application/json",
-    })->AwsSdk.S3.PutObjectCommand.send
-    [
-      Dict.fromArray([
+  // The default journey first and always — the caller supplies its key, because
+  // the caller is what knows where the shell it configured fetches from — then
+  // one file per declared journey, under the key the deploy resolved.
+  let files = Array.concat(
+    [(None, target.key, selections)],
+    bakeJourneys()->Array.map(j => (Some(j.group), j.key, j.selections)),
+  )
+
+  // Every file is curated before any is written, for the reason the in-memory
+  // platform curates before it writes: a declaration naming a component that
+  // does not exist fails the bake, and failing it halfway would leave the bucket
+  // serving one audience's file beside a stale copy of another's.
+  let curated = files->Array.map(((group, key, selections)) => (
+    group,
+    key,
+    selections,
+    switch ReventlessCore.Platform_BakedManifest.curate(~structures, ~selections) {
+    | Error(e) => JsError.throwWithMessage(ReventlessCore.Platform_BakedManifest.describe(e))
+    | Ok(manifest) => JSON.stringify(manifest, ~space=2)
+    },
+  ))
+
+  await Promise.all(
+    curated->Array.map(async ((group, key, selections, body)) => {
+      let _ = await AwsSdk.S3.PutObjectCommand.make({
+        bucket: target.bucket,
+        key,
+        body: AwsSdk.S3.PutObjectCommand.bodyFromString(body),
+        contentType: "application/json",
+      })->AwsSdk.S3.PutObjectCommand.send
+      let report = Dict.fromArray([
         ("baked", JSON.Encode.bool(true)),
         ("bucket", JSON.Encode.string(target.bucket)),
-        ("key", JSON.Encode.string(target.key)),
+        ("key", JSON.Encode.string(key)),
         ("plugins", JSON.Encode.int(selections->Array.length)),
         ("bytes", JSON.Encode.int(body->String.length)),
-      ])->JSON.Encode.object,
-    ]
-  }
+      ])
+      // Only a journey's entry carries the audience it was written for, so the
+      // default one reports exactly what it reported before journeys existed.
+      group->Option.forEach(g => report->Dict.set("group", JSON.Encode.string(g)))
+      report->JSON.Encode.object
+    }),
+  )
 }
 
 let handler = async (event: JSON.t): array<JSON.t> => {

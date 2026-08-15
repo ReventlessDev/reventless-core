@@ -1210,17 +1210,27 @@ function MakeWithConfig(Config) {
       }
       let match$5 = hostUiBundle.bakedManifest;
       if (componentDefinitions !== undefined && match$5 !== undefined) {
-        let manifestKey = Stdlib_Option.getOr(match$5.key, Platform_BakedManifest$ReventlessCore.defaultKey);
+        let manifestKeys = Platform_BakedManifest$ReventlessCore.files(match$5).map(param => param[0]);
+        let manifestKey = Stdlib_Option.getOr(manifestKeys[0], Platform_BakedManifest$ReventlessCore.defaultKey);
         Pulumi.all([
           componentDefinitions.roleId,
           bucketName
         ]).apply(param => {
+          let bucket = param[1];
+          let arns = manifestKeys.map(key => `arn:aws:s3:::` + bucket + `/` + key);
+          let tmp;
+          if (arns.length !== 1) {
+            tmp = arns;
+          } else {
+            let only = arns[0];
+            tmp = only;
+          }
           new (Aws.iam.RolePolicy)("PlatformUIDefinitionsBake", {
             policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "PlatformUIDefinitionsBakePolicy", [{
                 Sid: "AllowWriteBakedManifest",
                 Effect: "Allow",
                 Action: ["s3:PutObject"],
-                Resource: `arn:aws:s3:::` + param[1] + `/` + manifestKey
+                Resource: tmp
               }])),
             role: param[0]
           });
@@ -2490,17 +2500,27 @@ function Make($star) {
       }
       let match$5 = hostUiBundle.bakedManifest;
       if (componentDefinitions !== undefined && match$5 !== undefined) {
-        let manifestKey = Stdlib_Option.getOr(match$5.key, Platform_BakedManifest$ReventlessCore.defaultKey);
+        let manifestKeys = Platform_BakedManifest$ReventlessCore.files(match$5).map(param => param[0]);
+        let manifestKey = Stdlib_Option.getOr(manifestKeys[0], Platform_BakedManifest$ReventlessCore.defaultKey);
         Pulumi.all([
           componentDefinitions.roleId,
           bucketName
         ]).apply(param => {
+          let bucket = param[1];
+          let arns = manifestKeys.map(key => `arn:aws:s3:::` + bucket + `/` + key);
+          let tmp;
+          if (arns.length !== 1) {
+            tmp = arns;
+          } else {
+            let only = arns[0];
+            tmp = only;
+          }
           new (Aws.iam.RolePolicy)("PlatformUIDefinitionsBake", {
             policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "PlatformUIDefinitionsBakePolicy", [{
                 Sid: "AllowWriteBakedManifest",
                 Effect: "Allow",
                 Action: ["s3:PutObject"],
-                Resource: `arn:aws:s3:::` + param[1] + `/` + manifestKey
+                Resource: tmp
               }])),
             role: param[0]
           });

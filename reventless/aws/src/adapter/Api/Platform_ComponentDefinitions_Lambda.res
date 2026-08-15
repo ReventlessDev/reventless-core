@@ -141,10 +141,8 @@ let make = (
   // as a record so the deploy input and the runtime input are the same shape —
   // `views`/`commands` absent means "every public component", which a record
   // with explicit nulls would not say.
-  let bakeSelectionsJson = switch bakedManifest {
-  | None => ""
-  | Some(bake) =>
-    bake.components
+  let encodeSelections = (components: array<ReventlessCore.Platform_BakedManifest.selection>) =>
+    components
     ->Array.map(sel => {
       let entry = Dict.fromArray([("plugin", JSON.Encode.string(sel.plugin))])
       let strings = (key, value) =>
@@ -156,6 +154,39 @@ let make = (
       strings("derived", sel.derived)
       entry->JSON.Encode.object
     })
+    ->JSON.Encode.array
+
+  let bakeSelectionsJson = switch bakedManifest {
+  | None => ""
+  | Some(bake) =>
+    bake.components
+    ->Array.map(ReventlessCore.Platform_BakedManifest.toSelection)
+    ->encodeSelections
+    ->JSON.stringify
+  }
+
+  // The journeys, in a variable of their own rather than folded into the one
+  // above: a deployment that declares none then puts the same string in the same
+  // place it always did, and its function is not replaced for a field it does
+  // not use.
+  //
+  // Each carries the key the DECLARATION resolves to, taken from the function
+  // that also decides the IAM grant and the URL `config.json` publishes. A key
+  // the handler derived for itself would be a fourth derivation of one name, and
+  // the way it fails is a file written where nothing fetches it.
+  let bakeJourneysJson = switch bakedManifest->Option.mapOr([], config =>
+    ReventlessCore.Platform_BakedManifest.journeyFiles(~config)
+  ) {
+  | [] => ""
+  | journeys =>
+    journeys
+    ->Array.map(j =>
+      Dict.fromArray([
+        ("group", JSON.Encode.string(j.group)),
+        ("key", JSON.Encode.string(j.key)),
+        ("components", j.selections->encodeSelections),
+      ])->JSON.Encode.object
+    )
     ->JSON.Encode.array
     ->JSON.stringify
   }
@@ -226,6 +257,10 @@ let make = (
             // An include-list is names only, so it stays far from the 4096-byte
             // total the admin entry already pushed out of this dict.
             ("BAKE_SELECTIONS", bakeSelectionsJson->Pulumi.Input.make),
+            // One curated surface per audience beside the default one. Empty for
+            // a deployment that declares none, which is every deployment that
+            // predates journeys.
+            ("BAKE_JOURNEYS", bakeJourneysJson->Pulumi.Input.make),
             ("NODE_OPTIONS", Util_Bundle.esmLoaderNodeOptions->Pulumi.Input.make),
             ("ESM_FALLBACK_DIRS", Util_Bundle.esmFallbackDirs->Pulumi.Input.make),
             Util_LambdaLogging.logLevelEntry(),

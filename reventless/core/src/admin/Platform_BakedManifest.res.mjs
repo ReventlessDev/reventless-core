@@ -192,6 +192,40 @@ function journeyKey(group) {
   return `component-manifest-` + slug + `.json`;
 }
 
+function toSelection(s) {
+  return {
+    plugin: s.plugin,
+    views: s.views,
+    commands: s.commands,
+    derived: s.derived
+  };
+}
+
+function journeyFiles(config) {
+  return Stdlib_Option.getOr(config.journeys, []).map(j => ({
+    group: j.group,
+    key: Stdlib_Option.getOr(j.key, journeyKey(j.group)),
+    selections: j.components.map(toSelection)
+  }));
+}
+
+function files(config) {
+  return [[
+      Stdlib_Option.getOr(config.key, defaultKey),
+      config.components.map(toSelection)
+    ]].concat(journeyFiles(config).map(j => [
+    j.key,
+    j.selections
+  ]));
+}
+
+function journeyUrls(config) {
+  return journeyFiles(config).map(j => [
+    j.group,
+    urlForKey(j.key)
+  ]);
+}
+
 function curate(structures, selections) {
   return Stdlib_Result.map(Stdlib_Array.reduce(selections, {
     TAG: "Ok",
@@ -228,6 +262,10 @@ export {
   defaultKey,
   urlForKey,
   journeyKey,
+  toSelection,
+  journeyFiles,
+  files,
+  journeyUrls,
   curate,
 }
 /* No side effect */
