@@ -202,6 +202,7 @@ let customer = (~id: string, command: OrderingPlugin.Customer.command): Seed.mut
       ],
     )
   | Deactivate => Seed.mutation(ordering("Customer_Deactivate"), [("id", Id(id))])
+  | Reactivate => Seed.mutation(ordering("Customer_Reactivate"), [("id", Id(id))])
   // `@noApi` — the geocoding slice publishes these onto the command topic
   // directly; they are not mutations, so the seed cannot send them. Failing
   // loudly beats mapping to a field name the schema does not have.

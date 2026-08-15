@@ -297,8 +297,8 @@ async function seedDeactivations(customers, client) {
 }
 
 async function summarise(client, counts) {
-  let orders = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Ordering_Orders", "status shippingMethod");
-  let statuses = [
+  let orders = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Ordering_Orders", "lifecycle shippingMethod");
+  let lifecycles = [
     "Placed",
     "Shipped",
     "Cancelled"
@@ -308,14 +308,14 @@ async function summarise(client, counts) {
     "Express",
     "Pickup"
   ];
-  let countCell = (status, method) => orders.filter(o => {
-    if (Primitive_object.equal(Seed_Client$ReventlessSeed.nodeString(o, "status"), status)) {
+  let countCell = (lifecycle, method) => orders.filter(o => {
+    if (Primitive_object.equal(Seed_Client$ReventlessSeed.nodeString(o, "lifecycle"), lifecycle)) {
       return Primitive_object.equal(Seed_Client$ReventlessSeed.nodeString(o, "shippingMethod"), method);
     } else {
       return false;
     }
   }).length;
-  let countStatus = status => orders.filter(o => Primitive_object.equal(Seed_Client$ReventlessSeed.nodeString(o, "status"), status)).length;
+  let countLifecycle = lifecycle => orders.filter(o => Primitive_object.equal(Seed_Client$ReventlessSeed.nodeString(o, "lifecycle"), lifecycle)).length;
   let demand = await Seed_Client$ReventlessSeed.queryAllNodes(client, "Catalog_ProductDemands", "name orderCount");
   let orderCountOf = node => {
     let match = Seed_Client$ReventlessSeed.field(node, "orderCount");
@@ -329,17 +329,17 @@ async function summarise(client, counts) {
   let withDemand = ranked.filter(n => orderCountOf(n) > 0);
   let head = ranked.slice(0, 3).map(n => Stdlib_Option.getOr(Seed_Client$ReventlessSeed.nodeString(n, "name"), "?") + ` (` + orderCountOf(n).toString() + `)`).join(", ");
   Seed_Runner$ReventlessSeed.heading("Seeded:");
-  console.log(`  order status:  ` + statuses.map(s => s + ` ` + countStatus(s).toString()).join(", "));
+  console.log(`  order lifecycle: ` + lifecycles.map(s => s + ` ` + countLifecycle(s).toString()).join(", "));
   console.log(`  demand head:   ` + head);
   console.log(`  demand spread: ` + withDemand.length.toString() + `/` + ranked.length.toString() + ` products ordered, tail min ` + Stdlib_Option.mapOr(Stdlib_Array.last(withDemand), 0, orderCountOf).toString());
   console.log("");
-  console.log("  status × shippingMethod:");
+  console.log("  lifecycle × shippingMethod:");
   console.log(`    ` + " ".padEnd(10, " ") + methods.map(m => m.padStart(10, " ")).join(""));
-  statuses.forEach(status => {
-    console.log(`    ` + status.padEnd(10, " ") + methods.map(m => countCell(status, m).toString().padStart(10, " ")).join(""));
+  lifecycles.forEach(lifecycle => {
+    console.log(`    ` + lifecycle.padEnd(10, " ") + methods.map(m => countCell(lifecycle, m).toString().padStart(10, " ")).join(""));
   });
-  let observedStatuses = statuses.filter(s => countStatus(s) > 0);
-  let spreadWarning = observedStatuses.length < 3 ? [`the board shows only ` + observedStatuses.length.toString() + ` of the 3 order statuses (` + observedStatuses.join(", ") + `) — the shipping-method mix or the batch-dispatch share needs adjusting.`] : [];
+  let observedLifecycles = lifecycles.filter(s => countLifecycle(s) > 0);
+  let spreadWarning = observedLifecycles.length < 3 ? [`the board shows only ` + observedLifecycles.length.toString() + ` of the 3 order lifecycle states (` + observedLifecycles.join(", ") + `) — the shipping-method mix or the batch-dispatch share needs adjusting.`] : [];
   return Seed_Runner$ReventlessSeed.warn(spreadWarning.concat(Seed_Runner$ReventlessSeed.unfillableWarnings(views, counts)));
 }
 

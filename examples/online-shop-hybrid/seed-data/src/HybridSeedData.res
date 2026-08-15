@@ -400,21 +400,27 @@ let seedDeactivations = async (customers: array<DemoData.customer>, ~client: See
 // ── Summary ─────────────────────────────────────────────────────────────────
 
 let summarise = async (~client: Seed.Client.t, ~counts: dict<int>) => {
+  // `lifecycle`, not `status`: the Orders view names its lifecycle field by the
+  // convention rather than annotating it. The audit view above still reads
+  // `status`, because a framework-generated row's field name is a published wire
+  // name and stays as it is.
   let orders = await client->Seed.Client.queryAllNodes(
     ~field="Ordering_Orders",
-    ~selection="status shippingMethod",
+    ~selection="lifecycle shippingMethod",
   )
-  let statuses = ["Placed", "Shipped", "Cancelled"]
+  let lifecycles = ["Placed", "Shipped", "Cancelled"]
   let methods = ["Standard", "Express", "Pickup"]
-  let countCell = (status, method) =>
+  let countCell = (lifecycle, method) =>
     orders
     ->Array.filter(o =>
-      o->Seed.Client.nodeString("status") == Some(status) &&
+      o->Seed.Client.nodeString("lifecycle") == Some(lifecycle) &&
         o->Seed.Client.nodeString("shippingMethod") == Some(method)
     )
     ->Array.length
-  let countStatus = status =>
-    orders->Array.filter(o => o->Seed.Client.nodeString("status") == Some(status))->Array.length
+  let countLifecycle = lifecycle =>
+    orders
+    ->Array.filter(o => o->Seed.Client.nodeString("lifecycle") == Some(lifecycle))
+    ->Array.length
 
   let demand = await client->Seed.Client.queryAllNodes(
     ~field="Catalog_ProductDemands",
@@ -437,8 +443,8 @@ let summarise = async (~client: Seed.Client.t, ~counts: dict<int>) => {
 
   Seed.Runner.heading("Seeded:")
   Console.log(
-    `  order status:  ${statuses
-      ->Array.map(s => `${s} ${countStatus(s)->Int.toString}`)
+    `  order lifecycle: ${lifecycles
+      ->Array.map(s => `${s} ${countLifecycle(s)->Int.toString}`)
       ->Array.join(", ")}`,
   )
   Console.log(`  demand head:   ${head}`)
@@ -451,25 +457,25 @@ let summarise = async (~client: Seed.Client.t, ~counts: dict<int>) => {
   )
 
   Console.log("")
-  Console.log("  status × shippingMethod:")
+  Console.log("  lifecycle × shippingMethod:")
   Console.log(
     `    ${" "->String.padEnd(10, " ")}${methods
       ->Array.map(m => m->String.padStart(10, " "))
       ->Array.join("")}`,
   )
-  statuses->Array.forEach(status =>
+  lifecycles->Array.forEach(lifecycle =>
     Console.log(
-      `    ${status->String.padEnd(10, " ")}${methods
-        ->Array.map(m => countCell(status, m)->Int.toString->String.padStart(10, " "))
+      `    ${lifecycle->String.padEnd(10, " ")}${methods
+        ->Array.map(m => countCell(lifecycle, m)->Int.toString->String.padStart(10, " "))
         ->Array.join("")}`,
     )
   )
 
-  let observedStatuses = statuses->Array.filter(s => countStatus(s) > 0)
-  let spreadWarning = if observedStatuses->Array.length < 3 {
+  let observedLifecycles = lifecycles->Array.filter(s => countLifecycle(s) > 0)
+  let spreadWarning = if observedLifecycles->Array.length < 3 {
     [
-      `the board shows only ${(observedStatuses->Array.length)
-          ->Int.toString} of the 3 order statuses (${observedStatuses->Array.join(
+      `the board shows only ${(observedLifecycles->Array.length)
+          ->Int.toString} of the 3 order lifecycle states (${observedLifecycles->Array.join(
           ", ",
         )}) — the shipping-method mix or the batch-dispatch share needs adjusting.`,
     ]

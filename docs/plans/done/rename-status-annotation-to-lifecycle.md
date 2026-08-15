@@ -213,8 +213,17 @@ and its siblings. Refresh the goldens in this commit — the schema diff is the
 review artifact for a field rename, and a golden refreshed later is a diff nobody
 reads. `pnpm run check:graphql` is the gate.
 
-Consumers selecting `status` on an Orders query move with it. Nothing in this repo
-does outside the goldens; a consuming repo's own plan owns its half.
+Consumers selecting `status` on an Orders query move with it; a consuming repo's
+own plan owns its half.
+
+**Corrected after the fact — this repo had one, and the plan missed it.** The seed
+harness selects the field (`HybridSeedData.summarise`, `~selection="status
+shippingMethod"`), so the first `pnpm run seed` after the rename aborted on
+`Cannot query field "status" on type "Ordering_Order"` — and aborted *after* the
+writes, leaving a half-seeded store. The goldens are not the only place a
+published field name is spelled out: **anything that writes a GraphQL document by
+hand is a consumer**, and in this repo that means the seed harness. Grep the query
+strings, not just the schema, before calling a field rename complete.
 
 ### 8. Docs
 
