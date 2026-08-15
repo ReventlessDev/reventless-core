@@ -29,7 +29,8 @@ let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stat
   status: undefined,
   groupBy: undefined,
   visibility: "Internal",
-  live: undefined
+  live: undefined,
+  retired: undefined
 });
 
 let name = "AvailableProducts";

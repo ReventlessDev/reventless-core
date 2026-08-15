@@ -101,6 +101,19 @@ let mergeAnnotations = (
       }
     | None => ()
     }
+    switch spec.retired {
+    | Some(r) if r.field === fieldName =>
+      // `x-reventless-retired: {label?, showWhenFalse}`. The label is omitted
+      // when empty, the way `x-reventless-metric` omits its own, so a consumer
+      // deriving one from the field name can tell "not stated" from "stated as
+      // empty". `showWhenFalse` always travels: it is a decision the annotation
+      // author made either way, and its default is not the consumer's to pick.
+      let entries = [("showWhenFalse", JSON.Encode.bool(r.showWhenFalse))]
+      let entries =
+        r.label === "" ? entries : Array.concat([("label", JSON.Encode.string(r.label))], entries)
+      obj->Dict.set("x-reventless-retired", JSON.Encode.object(Dict.fromArray(entries)))
+    | _ => ()
+    }
     switch spec.metric->Array.find(((field, _)) => field === fieldName) {
     | Some((_, m)) =>
       // `x-reventless-metric: {aggregate, label}`. Omit an empty label so the

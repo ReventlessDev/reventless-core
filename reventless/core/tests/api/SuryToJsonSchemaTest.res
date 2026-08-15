@@ -35,6 +35,7 @@ let emptySpec: Reventless.StateAnnotations.stateAnnotationSpec = {
   groupBy: None,
   visibility: None,
   live: None,
+  retired: None,
 }
 
 describe("SuryToJsonSchema:", () => {
@@ -418,6 +419,59 @@ describe("SuryToJsonSchema:", () => {
         metricObj->Option.flatMap(m => getProperty(m, "aggregate"))->Option.flatMap(JSON.Decode.string),
         metricObj->Option.flatMap(m => getProperty(m, "label")),
       ))->toEqual((Some("sum"), None))
+    })
+
+    testSync("emits x-reventless-retired {label,showWhenFalse} on the retired field", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "archived": s.matches(S.bool),
+        }
+      )->S.castToUnknown
+      let schema' =
+        schema->withSpec({
+          ...emptySpec,
+          retired: Some({field: "archived", label: "Archived", showWhenFalse: true}),
+        })
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let retiredObj =
+        getPropertyOf(json, "archived")->Option.flatMap(s => getProperty(s, "x-reventless-retired"))
+      expect((
+        retiredObj->Option.flatMap(r => getProperty(r, "label"))->Option.flatMap(JSON.Decode.string),
+        retiredObj
+        ->Option.flatMap(r => getProperty(r, "showWhenFalse"))
+        ->Option.flatMap(JSON.Decode.bool),
+        // Only the named field carries it.
+        getPropertyOf(json, "id")->Option.flatMap(s => getProperty(s, "x-reventless-retired")),
+      ))->toEqual((Some("Archived"), Some(true), None))
+    })
+
+    testSync("omits the retired label when empty but always states showWhenFalse", () => {
+      let schema = S.schema(s => {"deactivated": s.matches(S.bool)})->S.castToUnknown
+      let schema' =
+        schema->withSpec({
+          ...emptySpec,
+          retired: Some({field: "deactivated", label: "", showWhenFalse: false}),
+        })
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let retiredObj =
+        getPropertyOf(json, "deactivated")->Option.flatMap(s =>
+          getProperty(s, "x-reventless-retired")
+        )
+      expect((
+        retiredObj->Option.flatMap(r => getProperty(r, "label")),
+        retiredObj
+        ->Option.flatMap(r => getProperty(r, "showWhenFalse"))
+        ->Option.flatMap(JSON.Decode.bool),
+      ))->toEqual((None, Some(false)))
+    })
+
+    testSync("emits nothing for a schema with no retired annotation", () => {
+      let schema = S.schema(s => {"archived": s.matches(S.bool)})->S.castToUnknown
+      let json = SuryToJsonSchema.deriveObjectSchema(schema->withSpec(emptySpec))
+      expect(
+        getPropertyOf(json, "archived")->Option.flatMap(s => getProperty(s, "x-reventless-retired")),
+      )->toBe(None)
     })
 
     testSync("emits x-reventless-group-by on the field named by groupBy", () => {

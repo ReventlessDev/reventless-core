@@ -98,6 +98,32 @@ let strip_group_by_field_attr (attrs : attributes) =
     not (String.equal attr.attr_name.txt "groupBy")
   ) attrs
 
+(* ── @retired attribute helpers ──
+   Marks the boolean field whose truth withdraws the row from ordinary use — a
+   deactivated customer, an archived category. Two consequences downstream: the
+   field is published as a state of the record rather than as another data
+   column, and the query layer narrows reads for callers that are not exempt.
+   At most one `@retired` per record; duplicates are reported in
+   [make_state_annotations_binding]. *)
+
+let find_retired_attr (attrs : attributes) =
+  List.find_opt (fun (a : attribute) -> String.equal a.attr_name.txt "retired") attrs
+
+let strip_retired_field_attr (attrs : attributes) =
+  List.filter (fun (attr : attribute) ->
+    not (String.equal attr.attr_name.txt "retired")
+  ) attrs
+
+let is_bool_type (ct : core_type) =
+  match ct.ptyp_desc with
+  | Ptyp_constr ({ txt = Lident "bool"; _ }, []) -> true
+  | _ -> false
+
+let is_option_bool_type (ct : core_type) =
+  match ct.ptyp_desc with
+  | Ptyp_constr ({ txt = Lident "option"; _ }, [ inner ]) -> is_bool_type inner
+  | _ -> false
+
 let is_string_type (ct : core_type) =
   match ct.ptyp_desc with
   | Ptyp_constr ({ txt = Lident "string"; _ }, []) -> true
@@ -1137,6 +1163,78 @@ let get_metric_value ~loc (attr : attribute) : (string * string) =
     Location.raise_errorf ~loc
       "@metric expects \"sum\" or {aggregate: \"sum\", label: \"Revenue\"}"
 
+(** Find a record field holding a bool literal — the `showWhenFalse` sibling of
+    [find_record_str]. *)
+let find_record_bool key fields =
+  match List.find_opt (fun (lid, _) ->
+    match lid.txt with Lident k -> String.equal k key | _ -> false
+  ) fields with
+  | Some (_, { pexp_desc = Pexp_construct ({ txt = Lident "true"; _ }, None); _ }) -> Some true
+  | Some (_, { pexp_desc = Pexp_construct ({ txt = Lident "false"; _ }, None); _ }) -> Some false
+  | _ -> None
+
+(** Extract `(label, show_when_false)` from `@retired`, `@retired("Archived")`
+    or `@retired({label: "Archived", showWhenFalse: true})`.
+
+    The label defaults to `""`, which the schema emitter reads as "not stated"
+    and omits — leaving a consumer to derive one from the field name.
+    `show_when_false` defaults to false: a caller who is not exempt from the
+    narrowing never receives a retired row, so a default-on negative marker
+    would appear on every record they can read and carry no information. *)
+let get_retired_value ~loc (attr : attribute) : (string * bool) =
+  match attr.attr_payload with
+  | PStr [] -> ("", false)
+  | PStr [{ pstr_desc = Pstr_eval ({pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _}, _); _ }] ->
+    (s, false)
+  | PStr [{ pstr_desc = Pstr_eval ({pexp_desc = Pexp_record (fields, _); _}, _); _ }] ->
+    let label = (match find_record_str "label" fields with Some s -> s | None -> "") in
+    let show = (match find_record_bool "showWhenFalse" fields with Some b -> b | None -> false) in
+    (label, show)
+  | _ ->
+    Location.raise_errorf ~loc
+      "@retired expects no payload, \"Archived\", or {label: \"Archived\", showWhenFalse: true}"
+
+(** Reject `@retired` on a field that cannot carry the flag.
+
+    The annotation names a predicate the query layer evaluates to decide who may
+    see the row. On anything but a boolean there is no predicate to evaluate, so
+    the annotation would ride the schema, render as a marker, and narrow nothing
+    — a row visible to everyone that looks as though it were restricted. A
+    compile error is the difference between that and a build that stops. *)
+let check_retired_field_type (ld : label_declaration) : unit =
+  match find_retired_attr ld.pld_attributes with
+  | None -> ()
+  | Some _ ->
+    let ty = ld.pld_type in
+    if not (is_bool_type ty || is_option_bool_type ty) then
+      Location.raise_errorf ~loc:ld.pld_loc
+        "@retired only supports bool and option<bool> fields. It marks the row \
+         as withdrawn, and the query layer narrows reads on that field — a \
+         non-boolean gives it nothing to test, so the rows would stay visible \
+         to everyone while the field looked as though it restricted them."
+
+(** Strip @retired attributes from @schema type state record fields. Mirrors
+    [strip_status_attrs]. *)
+let strip_retired_attrs (str : structure) : structure =
+  List.map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (rf, decls) ->
+      let new_decls = List.map (fun (td : type_declaration) ->
+        if not (String.equal td.ptype_name.txt "state"
+                && Util.has_attr "schema" td.ptype_attributes) then td
+        else
+          match td.ptype_kind with
+          | Ptype_record fields ->
+            let new_fields = List.map (fun (ld : label_declaration) ->
+              { ld with pld_attributes = strip_retired_field_attr ld.pld_attributes }
+            ) fields in
+            { td with ptype_kind = Ptype_record new_fields }
+          | _ -> td
+      ) decls in
+      { item with pstr_desc = Pstr_type (rf, new_decls) }
+    | _ -> item
+  ) str
+
 let strip_semantic_metric_field_attrs (attrs : attributes) =
   List.filter (fun (attr : attribute) ->
     not (String.equal attr.attr_name.txt "semantic"
@@ -1366,11 +1464,27 @@ let make_state_annotations_binding ~loc ~visibility ~live fields : structure_ite
       Location.raise_errorf ~loc:loc2
         "duplicate @groupBy annotation; only one field per state record may carry @groupBy"
   in
+  let retired_fields = List.filter_map (fun (ld : label_declaration) ->
+    check_retired_field_type ld;
+    match find_retired_attr ld.pld_attributes with
+    | Some attr -> Some (ld.pld_name.txt, get_retired_value ~loc:ld.pld_loc attr, ld.pld_loc)
+    | None -> None
+  ) fields in
+  let retired =
+    match retired_fields with
+    | [] -> None
+    | [(name, value, _)] -> Some (name, value)
+    | (_, _, _) :: (_, _, loc2) :: _ ->
+      Location.raise_errorf ~loc:loc2
+        "duplicate @retired annotation; only one field per state record may \
+         carry @retired. Two retirement flags do not narrow the read further, \
+         they leave it undecided — the query layer tests a single field."
+  in
   if ids = [] && composite_ids = [] && sub_ids = [] && composite_sub_ids = []
      && indexes = [] && hidden = [] && summary = []
      && drill_targets = [] && drill_target_keys = [] && collapsed = []
      && scan = [] && scan_sort = [] && semantic = [] && metric = []
-     && status = None && group_by = None
+     && status = None && group_by = None && retired = None
      && visibility = None && live = None then None
   else
     let ident lid =
@@ -1405,6 +1519,27 @@ let make_state_annotations_binding ~loc ~visibility ~live fields : structure_ite
           { pexp_desc = Pexp_constant (Pconst_string (name, loc, None));
             pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
         { pexp_desc = Pexp_construct ({ txt = Lident "Some"; loc }, Some str_lit);
+          pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
+    (* `retired: option<retiredSpec>` — the record carries the field name so the
+       consumer has one value to read rather than a name here and a shape there. *)
+    let retired_value =
+      match retired with
+      | None ->
+        { pexp_desc = Pexp_construct ({ txt = Lident "None"; loc }, None);
+          pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
+      | Some (name, (label, show_when_false)) ->
+        let estr = Ast_builder.Default.estring ~loc in
+        let ebool b =
+          { pexp_desc = Pexp_construct ({ txt = Lident (if b then "true" else "false"); loc }, None);
+            pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
+        let rec_expr =
+          { pexp_desc = Pexp_record (
+              [ ({ Location.txt = Lident "field"; loc }, estr name);
+                ({ txt = Lident "label"; loc }, estr label);
+                ({ txt = Lident "showWhenFalse"; loc }, ebool show_when_false) ],
+              None);
+            pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
+        { pexp_desc = Pexp_construct ({ txt = Lident "Some"; loc }, Some rec_expr);
           pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
     let visibility_value =
       match visibility with
@@ -1447,7 +1582,8 @@ let make_state_annotations_binding ~loc ~visibility ~live fields : structure_ite
             ({ txt = Lident "status"; loc }, status_value);
             ({ txt = Lident "groupBy"; loc }, group_by_value);
             ({ txt = Lident "visibility"; loc }, visibility_value);
-            ({ txt = Lident "live"; loc }, live_value) ],
+            ({ txt = Lident "live"; loc }, live_value);
+            ({ txt = Lident "retired"; loc }, retired_value) ],
           None);
         pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
     let apply_expr =

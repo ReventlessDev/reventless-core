@@ -41,6 +41,7 @@ let rowStateSchemaWithAnnotations =
       groupBy: None,
       visibility: None,
       live: None,
+      retired: None,
     },
   )
 

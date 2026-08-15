@@ -90,18 +90,30 @@ function mergeAnnotations(fieldSchema, fieldName, spec) {
       obj["x-reventless-semantic"] = semanticId;
     }
   }
+  let r = spec.retired;
+  if (r !== undefined && r.field === fieldName) {
+    let entries = [[
+        "showWhenFalse",
+        r.showWhenFalse
+      ]];
+    let entries$1 = r.label === "" ? entries : [[
+          "label",
+          r.label
+        ]].concat(entries);
+    obj["x-reventless-retired"] = Object.fromEntries(entries$1);
+  }
   let match$4 = spec.metric.find(param => param[0] === fieldName);
   if (match$4 !== undefined) {
     let m = match$4[1];
-    let entries = [[
+    let entries$2 = [[
         "aggregate",
         m.aggregate
       ]];
-    let entries$1 = m.label === "" ? entries : entries.concat([[
+    let entries$3 = m.label === "" ? entries$2 : entries$2.concat([[
           "label",
           m.label
         ]]);
-    obj["x-reventless-metric"] = Object.fromEntries(entries$1);
+    obj["x-reventless-metric"] = Object.fromEntries(entries$3);
   }
   return obj;
 }

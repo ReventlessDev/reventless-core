@@ -34,6 +34,23 @@ KPI label, or `""` to let the UI derive one from the field name.
 */
 type metricSpec = {aggregate: string, label: string}
 
+/**
+The boolean field declared `@retired`, and how a consumer should title it.
+
+`field` names the boolean whose truth withdraws the row from ordinary use — a
+deactivated customer, an archived category. `label` is what that state is called
+("Archived"), or `""` to let a consumer derive one from the field name.
+`showWhenFalse` asks a consumer to surface the flag in its negative state too;
+the default is false, because a caller who is not exempt from the narrowing never
+receives a retired row and would otherwise see the same negative marker on every
+record they can read.
+
+The narrowing itself is not described here. This spec carries what the field
+*means*; who still sees a retired row is one deployment-wide rule
+(`OwnerScope.elevatedGroups`), resolved where the query is answered.
+*/
+type retiredSpec = {field: string, label: string, showWhenFalse: bool}
+
 type stateAnnotationSpec = {
   ids: array<string>,
   compositeIds: array<string>,
@@ -96,6 +113,18 @@ type stateAnnotationSpec = {
   control is offered (`true`) or hidden (`false`) for the view.
   */
   live: option<bool>,
+  /**
+  Field annotated `@retired` on the state record (PPX-emitted). `Some(spec)` when
+  one such annotation exists; the PPX errors on duplicates and on a non-boolean
+  field. `SuryToJsonSchema.deriveObjectSchema` emits `x-reventless-retired:
+  {label?, showWhenFalse}` on the named field.
+
+  `option<retiredSpec>` rather than an array: at most one per record. Two
+  retirement flags are not a stricter rule but an unanswered one — the read
+  predicate would have to guess whether they conjoin or disjoin, and the query
+  layer narrows on a single field.
+  */
+  retired: option<retiredSpec>,
 }
 
 /** Sury metadata ID used to attach a `stateAnnotationSpec` to a state schema. */

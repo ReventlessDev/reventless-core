@@ -894,6 +894,32 @@ type state = {
 }
 EOF
 
+# ─── Fixture: @retired (row withdrawn from ordinary reads) ────────
+
+cat > "$PLUGIN/src/ReadModel/RetiredReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @id id: string,
+  name: string,
+  @retired deactivated: bool,
+}
+EOF
+
+# The record payload form, on an option<bool> field — both variations at once,
+# since they are independent of each other and of the bare form above.
+cat > "$PLUGIN/src/ReadModel/RetiredLabelledReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @id id: string,
+  name: string,
+  @retired({label: "Archived", showWhenFalse: true}) archived: option<bool>,
+}
+EOF
+
 # ─── Fixture: @drillTarget + @collapsed (hierarchical rendering hints) ────
 
 cat > "$PLUGIN/src/ReadModel/DrillReadModel.res" <<'EOF'
@@ -1725,6 +1751,19 @@ assert_js_contains "$JS" 'groupBy: "kind"'           "@groupBy: 'kind' recorded 
 assert_js_not_contains "$JS" '@groupBy'              "@groupBy: annotation stripped from output"
 
 echo ""
+echo "=== Test: @retired → metadata field populated ==="
+JS="$PLUGIN/src/ReadModel/RetiredReadModel.res.mjs"
+assert_js_contains "$JS" 'stateAnnotationsId'        "@retired: stateAnnotations metadata emitted"
+assert_js_contains "$JS" 'field: "deactivated"'      "@retired: 'deactivated' recorded as the retired field"
+assert_js_contains "$JS" 'showWhenFalse: false'      "@retired: showWhenFalse defaults to false"
+assert_js_not_contains "$JS" '@retired'              "@retired: annotation stripped from output"
+
+JS="$PLUGIN/src/ReadModel/RetiredLabelledReadModel.res.mjs"
+assert_js_contains "$JS" 'field: "archived"'         "@retired: record payload names the field"
+assert_js_contains "$JS" 'label: "Archived"'         "@retired: record payload carries the label"
+assert_js_contains "$JS" 'showWhenFalse: true'       "@retired: record payload carries showWhenFalse"
+
+echo ""
 echo "=== Test: @drillTarget + @collapsed → metadata fields populated ==="
 JS="$PLUGIN/src/ReadModel/DrillReadModel.res.mjs"
 assert_js_contains "$JS" 'stateAnnotationsId'              "@drillTarget/@collapsed: stateAnnotations metadata emitted"
@@ -2082,6 +2121,55 @@ else
   fi
 fi
 rm -f "$ERROR/src/ReadModel/GroupByConflictReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — duplicate @retired on same record ==="
+
+cat > "$ERROR/src/ReadModel/RetiredConflictReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @id id: string,
+  @retired deactivated: bool,
+  @retired archived: bool,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "duplicate @retired" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "duplicate @retired annotation"; then
+    pass "duplicate @retired on same record → correct compile error"
+  else
+    fail "duplicate @retired" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/RetiredConflictReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — @retired on a non-boolean field ==="
+
+cat > "$ERROR/src/ReadModel/RetiredTypeReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @id id: string,
+  @retired status: string,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@retired on non-bool" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@retired only supports bool"; then
+    pass "@retired on a non-boolean field → correct compile error"
+  else
+    fail "@retired on non-bool" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/RetiredTypeReadModel.res"
 
 echo ""
 echo "=== Test: PPX error — @live with a non-bool payload ==="
