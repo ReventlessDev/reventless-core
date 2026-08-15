@@ -378,29 +378,52 @@ The `@noApi` annotation is stripped from the compiled output by the PPX. Filteri
 
 ---
 
-### `@status` — mark the lifecycle status field
+### `@lifecycle` — mark the field a record's lifecycle lives in
 
-Use on a single `@schema type state` field in a ReadModel or StateViewSlice spec to mark the field whose value identifies the entity's lifecycle status. AutoUI's command-menu filter reads the marked field per row and matches it against each command's `@allowedStates` set.
+The field whose value identifies where the record is in its life: the enum a command's `@allowedStates` is written in terms of, the one a board draws its columns from, a progress tracker walks and a state diagram renders. AutoUI's command-menu filter reads it per row and matches it against each command's `@allowedStates` set.
+
+There are two ways to declare it, and a record uses whichever fits.
+
+**Name the field `lifecycle` and write nothing.** The name is the declaration:
 
 ```rescript
 @@reventless.spec
 
 @schema
-type status = Placed | Shipped | Cancelled
+type lifecycle = Placed | Shipped | Cancelled
 
 @schema
 type state = {
   orderId: string,
   customerId: string,
-  @status status: status,
+  lifecycle: lifecycle,
 }
 ```
 
-The PPX emits the field name into `stateAnnotationSpec.status` (sury metadata attached to the state schema). Codegen reads it when building `queryableDef.statusField`.
+**Or annotate whatever the field is called**, for a record whose lifecycle field has an honest name of its own:
 
-**Resolution order** (codegen, `Plugin_Structure.statusFieldFromStateSchema`): (1) field annotated `@status`; (2) field literally named `"status"` (conventional fallback — mirrors how `@displayName`/`labelField` falls back to a conventionally-named string field); (3) `None`. The convention is convenience only — an explicit `@status` on any other field shadows the implicit `status`-by-name match.
+```rescript
+@schema
+type locationStatus = Pending | Located | Unresolvable
 
-**Constraint:** at most one `@status` per state record. The PPX errors on duplicate annotations within the same record.
+@schema
+type state = {
+  customerId: string,
+  @lifecycle locationStatus: locationStatus,
+}
+```
+
+The PPX emits the annotated field name into `stateAnnotationSpec.lifecycle` (sury metadata attached to the state schema). Codegen reads it when building `queryableDef.lifecycleField`.
+
+**Resolution order** (codegen, `Plugin_Structure.lifecycleFieldFromStateSchema`): (1) field annotated `@lifecycle`; (2) field literally named `"lifecycle"` whose shape is an enum (a free-text `lifecycle: string` does not count — `@allowedStates` filtering needs states to compare against); (3) `None`, and the per-row filter is inert.
+
+**Why the convention is keyed on `lifecycle` and not `status`.** `status` is a promiscuous name — geocoding progress, todo-queue progress, translation audit outcome and plugin connection state all wear it — so a convention keyed on it genuinely guesses, and guesses often. `lifecycle` is a deliberate word nobody types by accident, so matching it is close to reading a declaration written in the field name.
+
+**A framework-generated row declares rather than following the convention.** Its field name is chosen by the framework and read by every client, so it is the wrong thing to make load-bearing: the platform's own Plugins read model keeps its published `status` field and annotates it.
+
+**Constraint:** at most one `@lifecycle` per state record. The PPX errors on duplicate annotations within the same record.
+
+**Renamed from `@status`.** The old spelling is a compile error naming this one; there is no alias, because a silently-accepted old name is exactly the ambiguity the rename removes.
 
 ---
 
@@ -468,7 +491,7 @@ type command =
 
 | Annotation | Placed on | Effect |
 |---|---|---|
-| `@allowedStates([…])` | A single command variant | Variant is shown only on rows where the row's `statusField` value is in the set |
+| `@allowedStates([…])` | A single command variant | Variant is shown only on rows where the row's `lifecycleField` value is in the set |
 | (no annotation) | A single command variant | Variant is always shown (back-compat default) |
 | `@allowedStates([])` | A single command variant | Variant is never shown (defensive "never available" form) |
 
@@ -727,7 +750,7 @@ type command =
 type state = {
   orderId: string,
   @owner customerId: string,
-  @status status: status,
+  lifecycle: lifecycle,
 }
 ```
 
@@ -770,7 +793,7 @@ The label defaults to empty, which the schema emitter omits so a consumer can te
 - **One per state record.** A second `@retired` is a compile error. Two retirement flags do not narrow the read further, they leave it undecided — the query layer tests a single field.
 - **`bool` or `option<bool>` only** (the `f?: bool` form works too). Anything else is a compile error: the annotation names a predicate the query layer evaluates, and on a non-boolean there is nothing to evaluate, so the rows would stay visible to everyone while the field looked as though it restricted them.
 - **Absent means not retired**, on all four backends. A row written before the annotation existed carries no flag, and excluding those would empty the view the day someone adds `@retired`.
-- **Annotation or nothing.** Unlike `@status`, there is no conventional fallback: a boolean named `archived` that nobody annotated stays exactly as visible as it was. Guessing wrong here makes rows disappear.
+- **Annotation or nothing.** Unlike `@lifecycle`, there is no conventional fallback: a boolean named `archived` that nobody annotated stays exactly as visible as it was. Guessing wrong here makes rows disappear.
 
 **Reaching the archive.** A list query gains an `includeRetired: Boolean` argument, honoured **only** for a caller who was going to be allowed those rows anyway; a scoped caller passing it is ignored rather than refused. Note that elevation alone does not lift the restriction — an exempt caller is excluded until they ask, because an archive that is always underfoot is not an archive.
 

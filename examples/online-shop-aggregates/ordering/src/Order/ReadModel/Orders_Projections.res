@@ -15,15 +15,15 @@ module OrderMapping = Mapping.Make(
           {
             Orders.customerId: customerId,
             productIds,
-            status: (Placed: Orders.status),
+            lifecycle: (Placed: Orders.lifecycle),
           },
         )
       | Shipped =>
-        Update(id, state => {...state, status: (Shipped: Orders.status)})
+        Update(id, state => {...state, lifecycle: (Shipped: Orders.lifecycle)})
       | Cancelled(_) =>
-        Update(id, state => {...state, status: (Cancelled: Orders.status)})
+        Update(id, state => {...state, lifecycle: (Cancelled: Orders.lifecycle)})
       | Refunded(_) =>
-        Update(id, state => {...state, status: (Refunded: Orders.status)})
+        Update(id, state => {...state, lifecycle: (Refunded: Orders.lifecycle)})
       }
   },
 )

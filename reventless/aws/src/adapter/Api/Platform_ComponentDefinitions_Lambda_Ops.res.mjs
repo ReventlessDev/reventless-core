@@ -148,6 +148,23 @@ function mapMembers(obj, key, f) {
   }
 }
 
+function fillLifecycleField(component) {
+  let match = component["lifecycleField"];
+  let match$1 = component["statusField"];
+  if (match !== undefined && match !== null) {
+    return;
+  }
+  if (match$1 !== undefined) {
+    component["lifecycleField"] = match$1;
+    return;
+  }
+}
+
+let readSideCollections = [
+  "readModels",
+  "stateViewSlices"
+];
+
 function healStructure(structure) {
   let out = Object.fromEntries(Object.entries(structure));
   fillLists(out, healByCollection.map(param => param[0]));
@@ -161,6 +178,7 @@ function healStructure(structure) {
       });
     });
   });
+  readSideCollections.forEach(collection => mapMembers(out, collection, fillLifecycleField));
   return out;
 }
 
@@ -483,6 +501,8 @@ export {
   healByCollection,
   fillLists,
   mapMembers,
+  fillLifecycleField,
+  readSideCollections,
   healStructure,
   isPublicQueryable,
   filterStructure,

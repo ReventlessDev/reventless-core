@@ -26,13 +26,13 @@ let rec isLabelShape = (t: SchemaType.schemaType): bool =>
   | _ => false
   }
 
-// Whether a field can hold a lifecycle status: a closed set of values, or an
-// optional one. A free-text `status: string` is not a lifecycle — filtering a
-// command menu against `allowedStates` needs states to compare with.
-let rec isStatusShape = (t: SchemaType.schemaType): bool =>
+// Whether a field can hold a lifecycle: a closed set of values, or an optional
+// one. A free-text `lifecycle: string` is not a lifecycle — filtering a command
+// menu against `allowedStates` needs states to compare with.
+let rec isLifecycleShape = (t: SchemaType.schemaType): bool =>
   switch t {
   | Enum(_, _) => true
-  | Nullable(inner) => isStatusShape(inner)
+  | Nullable(inner) => isLifecycleShape(inner)
   | _ => false
   }
 
@@ -44,18 +44,25 @@ let conventionalLabelNames = ["name", "title", "label", "displayname"]
 let shapeOfItem = (~entityName: string, item: S.item): SchemaType.schemaType =>
   SchemaType.fromSury(~parentName=entityName, ~fieldName=item.location, item.schema)
 
-// Resolve the field that holds the entity's lifecycle status, used to filter a
-// per-row command menu against each command's `allowedStates`. Resolution order:
-//   1. Field annotated `@status` (PPX-emitted; see StateAnnotations).
-//   2. Field literally named `"status"` whose IR shape is an enum (convention;
+// Resolve the field that holds the entity's lifecycle, used to filter a per-row
+// command menu against each command's `allowedStates`. Resolution order:
+//   1. Field annotated `@lifecycle` (PPX-emitted; see StateAnnotations).
+//   2. Field literally named `"lifecycle"` whose IR shape is an enum (convention;
 //      mirrors how labelField falls back to a conventionally-named field).
 //   3. None — filter is inert for this read model.
-let statusFieldFromStateSchema = (
+//
+// The convention rung is keyed on `lifecycle` rather than `status` deliberately:
+// `status` is a promiscuous name — geocoding progress, todo-queue progress and
+// translation audit outcome all wear it — so a convention keyed on it guesses,
+// and guesses often. `lifecycle` is a word nobody types by accident, so matching
+// it is closer to a declaration written in the field name. A record whose field
+// is honestly called something else annotates instead.
+let lifecycleFieldFromStateSchema = (
   ~entityName: string,
   stateSchema: S.t<unknown>,
 ): option<string> => {
   let annotated = switch Reventless.StateAnnotations.getSpec(stateSchema) {
-  | Some(spec) => spec.status
+  | Some(spec) => spec.lifecycle
   | None => None
   }
   switch annotated {
@@ -65,7 +72,7 @@ let statusFieldFromStateSchema = (
     | Object({items}) =>
       items
       ->Array.find(item =>
-        item.location == "status" && isStatusShape(shapeOfItem(~entityName, item))
+        item.location == "lifecycle" && isLifecycleShape(shapeOfItem(~entityName, item))
       )
       ->Option.map(item => item.location)
     | _ => None
@@ -74,8 +81,8 @@ let statusFieldFromStateSchema = (
 }
 
 // The field whose truth withdraws a row from ordinary reads. Annotation-only:
-// there is no convention rung here, and its absence is the point. `statusField`
-// may fall back to a field literally named "status" because guessing wrong makes
+// there is no convention rung here, and its absence is the point. `lifecycleField`
+// may fall back to a field literally named "lifecycle" because guessing wrong makes
 // a command menu filter oddly; guessing wrong here makes rows vanish for every
 // caller who is not elevated, so a boolean named `archived` that nobody annotated
 // stays exactly as visible as it was.
@@ -773,8 +780,8 @@ let make = (
         labelField: label.field,
         searchableFields: label.searchableFields,
         labelFieldSource: Some(labelFieldSourceToString(label.source)),
-        statusField: statusFieldFromStateSchema(~entityName=R.Spec.name, stateSchema),
-        // Same schema `statusField` reads, so the two cannot disagree about which
+        lifecycleField: lifecycleFieldFromStateSchema(~entityName=R.Spec.name, stateSchema),
+        // Same schema `lifecycleField` reads, so the two cannot disagree about which
         // fields this view has.
         ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
         retiredField: retiredFieldFromStateSchema(stateSchema),
@@ -809,7 +816,7 @@ let make = (
         labelField: label.field,
         searchableFields: label.searchableFields,
         labelFieldSource: Some(labelFieldSourceToString(label.source)),
-        statusField: statusFieldFromStateSchema(~entityName=SVS.Spec.name, stateSchema),
+        lifecycleField: lifecycleFieldFromStateSchema(~entityName=SVS.Spec.name, stateSchema),
         ownerField: Reventless.Owner.fieldNames(stateSchema)->Array.get(0),
         retiredField: retiredFieldFromStateSchema(stateSchema),
         visibility: visibilityTag(SVS.Spec.visibility),

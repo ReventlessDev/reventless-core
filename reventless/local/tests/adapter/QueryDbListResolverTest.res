@@ -37,7 +37,7 @@ let rowStateSchemaWithAnnotations =
       scanSort: ["name"],
       semantic: [],
       metric: [],
-      status: None,
+      lifecycle: None,
       groupBy: None,
       visibility: None,
       live: None,

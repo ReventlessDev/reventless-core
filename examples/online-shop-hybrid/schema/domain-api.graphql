@@ -426,9 +426,11 @@ type Mutation {
   Catalog_ChangeProductPrice(price: MoneyInput!, productId: ID!): CommandResult!
   Catalog_ImportProduct(category: String!, currency: String!, desc: String!, sku: String!, title: String!, unitPrice: Float!): CommandResult!
   Catalog_RenameCategory(categoryId: ID!, name: String!): CommandResult!
+  Catalog_UnarchiveCategory(categoryId: ID!): CommandResult!
   Ordering_CancelOrder(orderId: ID!): CommandResult!
   Ordering_ChangeSyncedPrice(price: MoneyInput!, productId: ID!): CommandResult!
   Ordering_Customer_Deactivate(id: ID!): CommandResult!
+  Ordering_Customer_Reactivate(id: ID!): CommandResult!
   Ordering_Customer_Register(address: String!, email: String!, id: ID!): CommandResult!
   Ordering_Customer_SetAddressLocation(address: String!, id: ID!, location: GeoPointInput!): CommandResult!
   Ordering_Customer_UpdateAddress(address: String!, id: ID!): CommandResult!
@@ -640,12 +642,12 @@ type Ordering_Order implements Node {
   customerId: ID!
   deliveryWindow: DateRange
   id: ID!
+  lifecycle: Ordering_OrderLifecycle!
   orderId: ID!
   placedAt: String!
   productIds: [ID!]!
   shippedAt: String!
   shippingMethod: Ordering_OrderShippingMethod!
-  status: Ordering_OrderStatus!
 }
 
 type Ordering_OrderConnection {
@@ -665,6 +667,12 @@ input Ordering_OrderFilter {
   searchPrefix: String
 }
 
+enum Ordering_OrderLifecycle {
+  Cancelled
+  Placed
+  Shipped
+}
+
 input Ordering_OrderOrderBy {
   direction: SortOrder!
   field: Ordering_OrderOrderField!
@@ -678,12 +686,6 @@ enum Ordering_OrderShippingMethod {
   Express
   Pickup
   Standard
-}
-
-enum Ordering_OrderStatus {
-  Cancelled
-  Placed
-  Shipped
 }
 
 input Ordering_OrderingEventHistoryFilter {
@@ -953,11 +955,13 @@ type Subscription {
   onCatalog_ChangeProductPrice(id: ID): CommandResult
   onCatalog_ImportProduct(id: ID): CommandResult
   onCatalog_RenameCategory(id: ID): CommandResult
+  onCatalog_UnarchiveCategory(id: ID): CommandResult
   onCustomerEventLog_eventAppended: CustomerEventLogEvent
   onOrderingEventLog_eventAppended: OrderingEventLogEvent
   onOrdering_CancelOrder(id: ID): CommandResult
   onOrdering_ChangeSyncedPrice(id: ID): CommandResult
   onOrdering_Customer_Deactivate(id: ID): CommandResult
+  onOrdering_Customer_Reactivate(id: ID): CommandResult
   onOrdering_Customer_Register(id: ID): CommandResult
   onOrdering_Customer_SetAddressLocation(id: ID): CommandResult
   onOrdering_Customer_UpdateAddress(id: ID): CommandResult

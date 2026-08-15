@@ -13,7 +13,7 @@ function project(param) {
             orderId: orderId,
             customerId: event.customerId,
             productIds: event.productIds,
-            status: "Placed"
+            lifecycle: "Placed"
           }
         }];
     case "OrderShipped" :
@@ -24,7 +24,7 @@ function project(param) {
             orderId: state.orderId,
             customerId: state.customerId,
             productIds: state.productIds,
-            status: "Shipped"
+            lifecycle: "Shipped"
           })
         }];
     case "OrderCancelled" :
@@ -35,7 +35,7 @@ function project(param) {
             orderId: state.orderId,
             customerId: state.customerId,
             productIds: state.productIds,
-            status: "Cancelled"
+            lifecycle: "Cancelled"
           })
         }];
   }

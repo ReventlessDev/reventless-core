@@ -22,7 +22,7 @@ type consumedEvent =
   | OrderCancelled({orderId: string})
 
 @schema
-type status =
+type lifecycle =
   | Placed
   | Shipped
   | Cancelled
@@ -35,7 +35,9 @@ type state = {
   // every row. Enforced in the resolver, not by the client asking nicely.
   @owner customerId: string,
   productIds: array<string>,
-  @status status: status,
+  // No annotation: the field name is the declaration. `@lifecycle` exists for
+  // records whose lifecycle field is honestly called something else.
+  lifecycle: lifecycle,
   shippingMethod: shippingMethod,
   // Producer timestamps taken from the event envelope's `meta.time` — no need to
   // carry the time in the event payload. The `DateTime` marker surfaces

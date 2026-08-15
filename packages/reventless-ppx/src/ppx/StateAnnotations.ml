@@ -66,21 +66,41 @@ let strip_composite_subid_field_attr (attrs : attributes) =
     not (String.equal attr.attr_name.txt "compositeSubId")
   ) attrs
 
-(* ── @status attribute helpers ──
-   Marks the lifecycle status field on a state record. AutoUI's command-menu
-   filter reads the marked field per row and matches it against each command's
-   `allowedStates` set. At most one `@status` per record; duplicates are
-   reported in [make_state_annotations_binding]. *)
+(* ── @lifecycle attribute helpers ──
+   Marks the field a record's lifecycle lives in — the enum a command's
+   `allowedStates` is written in terms of, a board draws its columns from and a
+   state diagram renders. AutoUI's command-menu filter reads the marked field
+   per row and matches it against each command's `allowedStates` set. At most
+   one `@lifecycle` per record; duplicates are reported in
+   [make_state_annotations_binding].
 
-let has_status_field_attr (attrs : attributes) =
+   A field literally named `lifecycle` whose shape is an enum is picked up
+   without an annotation; see [Plugin_Structure]. *)
+
+let has_lifecycle_field_attr (attrs : attributes) =
   List.exists (fun (attr : attribute) ->
-    String.equal attr.attr_name.txt "status"
+    String.equal attr.attr_name.txt "lifecycle"
   ) attrs
 
-let strip_status_field_attr (attrs : attributes) =
+let strip_lifecycle_field_attr (attrs : attributes) =
   List.filter (fun (attr : attribute) ->
-    not (String.equal attr.attr_name.txt "status")
+    not (String.equal attr.attr_name.txt "lifecycle")
   ) attrs
+
+(** Reject the pre-rename `@status` spelling. Nothing consumes it any more, so
+    without this the annotation would be dropped silently and the record would
+    publish no lifecycle at all. *)
+let check_no_legacy_status_attr (ld : label_declaration) : unit =
+  match List.find_opt (fun (a : attribute) ->
+    String.equal a.attr_name.txt "status"
+  ) ld.pld_attributes with
+  | None -> ()
+  | Some attr ->
+    Location.raise_errorf ~loc:attr.attr_loc
+      "@status was renamed to @lifecycle. Write `@lifecycle %s: ...` — the \
+       annotation names the field a record's lifecycle lives in, which is what \
+       @allowedStates and @targetState are written in terms of."
+      ld.pld_name.txt
 
 (* ── @groupBy attribute helpers ──
    Marks the field a list view should section its rows by. AutoUI's list view
@@ -307,11 +327,11 @@ let generate_sub_id_config ~loc (str : structure) : structure_item list =
     else
       [[%stri let subIdConfig = None]]
 
-(* ── @status: structure-level strip ── *)
+(* ── @lifecycle: structure-level strip ── *)
 
-(** Strip @status attributes from @schema type state record fields. Mirrors
+(** Strip @lifecycle attributes from @schema type state record fields. Mirrors
     [strip_id_attrs] / [strip_subid_attrs]. *)
-let strip_status_attrs (str : structure) : structure =
+let strip_lifecycle_attrs (str : structure) : structure =
   List.map (fun (item : structure_item) ->
     match item.pstr_desc with
     | Pstr_type (rf, decls) ->
@@ -322,7 +342,7 @@ let strip_status_attrs (str : structure) : structure =
           match td.ptype_kind with
           | Ptype_record fields ->
             let new_fields = List.map (fun (ld : label_declaration) ->
-              { ld with pld_attributes = strip_status_field_attr ld.pld_attributes }
+              { ld with pld_attributes = strip_lifecycle_field_attr ld.pld_attributes }
             ) fields in
             { td with ptype_kind = Ptype_record new_fields }
           | _ -> td
@@ -334,7 +354,7 @@ let strip_status_attrs (str : structure) : structure =
 (* ── @groupBy: structure-level strip ── *)
 
 (** Strip @groupBy attributes from @schema type state record fields. Mirrors
-    [strip_status_attrs]. *)
+    [strip_lifecycle_attrs]. *)
 let strip_group_by_attrs (str : structure) : structure =
   List.map (fun (item : structure_item) ->
     match item.pstr_desc with
@@ -1214,7 +1234,7 @@ let check_retired_field_type (ld : label_declaration) : unit =
          to everyone while the field looked as though it restricted them."
 
 (** Strip @retired attributes from @schema type state record fields. Mirrors
-    [strip_status_attrs]. *)
+    [strip_lifecycle_attrs]. *)
 let strip_retired_attrs (str : structure) : structure =
   List.map (fun (item : structure_item) ->
     match item.pstr_desc with
@@ -1442,16 +1462,17 @@ let make_state_annotations_binding ~loc ~visibility ~live fields : structure_ite
     | Some attr -> Some (ld.pld_name.txt, get_metric_value ~loc:ld.pld_loc attr)
     | None -> None
   ) fields in
-  let status_fields = List.filter_map (fun (ld : label_declaration) ->
-    if has_status_field_attr ld.pld_attributes then Some (ld.pld_name.txt, ld.pld_loc) else None
+  let lifecycle_fields = List.filter_map (fun (ld : label_declaration) ->
+    check_no_legacy_status_attr ld;
+    if has_lifecycle_field_attr ld.pld_attributes then Some (ld.pld_name.txt, ld.pld_loc) else None
   ) fields in
-  let status =
-    match status_fields with
+  let lifecycle =
+    match lifecycle_fields with
     | [] -> None
     | [(name, _)] -> Some name
     | (_, _) :: (_, loc2) :: _ ->
       Location.raise_errorf ~loc:loc2
-        "duplicate @status annotation; only one field per state record may carry @status"
+        "duplicate @lifecycle annotation; only one field per state record may carry @lifecycle"
   in
   let group_by_fields = List.filter_map (fun (ld : label_declaration) ->
     if has_group_by_field_attr ld.pld_attributes then Some (ld.pld_name.txt, ld.pld_loc) else None
@@ -1484,7 +1505,7 @@ let make_state_annotations_binding ~loc ~visibility ~live fields : structure_ite
      && indexes = [] && hidden = [] && summary = []
      && drill_targets = [] && drill_target_keys = [] && collapsed = []
      && scan = [] && scan_sort = [] && semantic = [] && metric = []
-     && status = None && group_by = None && retired = None
+     && lifecycle = None && group_by = None && retired = None
      && visibility = None && live = None then None
   else
     let ident lid =
@@ -1494,12 +1515,12 @@ let make_state_annotations_binding ~loc ~visibility ~live fields : structure_ite
     let metadata_set_expr = ident (Ldot (Ldot (Lident "S", "Metadata"), "set")) in
     let annotations_id_expr =
       ident (Ldot (Ldot (Lident "Reventless", "StateAnnotations"), "stateAnnotationsId")) in
-    (* `status: option<string>` is always emitted (None when no @status
+    (* `lifecycle: option<string>` is always emitted (None when no @lifecycle
        annotation is present). Wrapping in Some/None keeps the AST simple
        and avoids the @res.optional attribute gymnastics that an optional
        (?:) field would require. *)
-    let status_value =
-      match status with
+    let lifecycle_value =
+      match lifecycle with
       | None ->
         { pexp_desc = Pexp_construct ({ txt = Lident "None"; loc }, None);
           pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
@@ -1579,7 +1600,7 @@ let make_state_annotations_binding ~loc ~visibility ~live fields : structure_ite
             ({ txt = Lident "scanSort"; loc }, estr_array ~loc scan_sort);
             ({ txt = Lident "semantic"; loc }, str_tuple_array ~loc semantic);
             ({ txt = Lident "metric"; loc }, metric_tuple_array ~loc metric);
-            ({ txt = Lident "status"; loc }, status_value);
+            ({ txt = Lident "lifecycle"; loc }, lifecycle_value);
             ({ txt = Lident "groupBy"; loc }, group_by_value);
             ({ txt = Lident "visibility"; loc }, visibility_value);
             ({ txt = Lident "live"; loc }, live_value);

@@ -15,7 +15,7 @@ let queryable = (~name, ~visibility=?, ~ownerField=?, ()): queryableDef => {
   labelField: "displayName",
   searchableFields: ["displayName"],
   labelFieldSource: None,
-  statusField: None,
+  lifecycleField: None,
   visibility,
   chapter: None,
   singleQueryField: Some(`Ordering_${name}Single`),

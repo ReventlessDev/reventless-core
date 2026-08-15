@@ -16,7 +16,7 @@ let publicRm: queryableDef = {
   labelField: "displayName",
   searchableFields: ["displayName"],
   labelFieldSource: Some("annotation"),
-  statusField: None,
+  lifecycleField: None,
   visibility: None,
   chapter: Some("Inventory"),
   singleQueryField: Some("Catalog_Product"),

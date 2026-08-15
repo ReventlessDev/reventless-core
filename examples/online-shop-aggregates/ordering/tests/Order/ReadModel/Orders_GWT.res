@@ -7,7 +7,7 @@ describe("Orders ReadModel ← Order", () => {
     ->thenState({
       Orders.customerId: "cust-1",
       productIds: ["prod-1", "prod-2"],
-      status: Placed,
+      lifecycle: Placed,
     })
   )
 
@@ -17,7 +17,7 @@ describe("Orders ReadModel ← Order", () => {
     ->thenState({
       Orders.customerId: "cust-1",
       productIds: ["prod-1"],
-      status: Shipped,
+      lifecycle: Shipped,
     })
   )
 
@@ -27,7 +27,7 @@ describe("Orders ReadModel ← Order", () => {
     ->thenState({
       Orders.customerId: "cust-1",
       productIds: ["prod-1"],
-      status: Cancelled,
+      lifecycle: Cancelled,
     })
   )
 
@@ -40,7 +40,7 @@ describe("Orders ReadModel ← Order", () => {
     ->thenState({
       Orders.customerId: "cust-1",
       productIds: ["prod-1"],
-      status: Refunded,
+      lifecycle: Refunded,
     })
   )
 })

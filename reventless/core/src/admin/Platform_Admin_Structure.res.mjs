@@ -137,7 +137,7 @@ let pluginReadModel_searchableFields = ["name"];
 
 let pluginReadModel_labelFieldSource = "convention";
 
-let pluginReadModel_statusField = "status";
+let pluginReadModel_lifecycleField = "status";
 
 let pluginReadModel_singleQueryField = Api_Naming$ReventlessCore.adminField("Plugin");
 
@@ -150,7 +150,7 @@ let pluginReadModel = {
   labelField: "name",
   searchableFields: pluginReadModel_searchableFields,
   labelFieldSource: pluginReadModel_labelFieldSource,
-  statusField: pluginReadModel_statusField,
+  lifecycleField: pluginReadModel_lifecycleField,
   ownerField: undefined,
   retiredField: undefined,
   visibility: undefined,

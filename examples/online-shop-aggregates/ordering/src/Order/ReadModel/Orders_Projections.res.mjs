@@ -22,7 +22,7 @@ function project(param) {
       _1: state => ({
         customerId: state.customerId,
         productIds: state.productIds,
-        status: "Shipped"
+        lifecycle: "Shipped"
       })
     };
   }
@@ -34,7 +34,7 @@ function project(param) {
         _1: {
           customerId: event.customerId,
           productIds: event.productIds,
-          status: "Placed"
+          lifecycle: "Placed"
         }
       };
     case "Cancelled" :
@@ -44,7 +44,7 @@ function project(param) {
         _1: state => ({
           customerId: state.customerId,
           productIds: state.productIds,
-          status: "Cancelled"
+          lifecycle: "Cancelled"
         })
       };
     case "Refunded" :
@@ -54,7 +54,7 @@ function project(param) {
         _1: state => ({
           customerId: state.customerId,
           productIds: state.productIds,
-          status: "Refunded"
+          lifecycle: "Refunded"
         })
       };
   }

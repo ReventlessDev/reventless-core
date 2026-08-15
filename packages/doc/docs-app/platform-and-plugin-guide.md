@@ -1704,8 +1704,8 @@ A handful of PPX annotations on aggregate / read-model / state-view spec files s
 | `@displayName` | One or more `string` fields on a `@schema type state` | Picks the row label for list views and search results. Falls back to a non-`id` string field, then to `"id"`. (No canonical entry in the PPX guide yet.) |
 | [`@id`](reventless-ppx.md#id-compositeid--partition-key-derivation) | A `string` field on a `@schema type state` | Marks the entity primary key. Used by the auto-generated query and by AutoUI's row-id wiring on per-row command forms. |
 | [`@subId`](reventless-ppx.md#subid-compositesubid--sort-key-derivation) | A `string` field on a `@schema type state` | Adds a sort-key dimension to the entity's query field, so list views can drill into a specific sort key. |
-| [`@status`](reventless-ppx.md#status--mark-the-lifecycle-status-field) | One field on a `@schema type state` | Names the lifecycle status field. AutoUI compares this field per row against each command's `@allowedStates` to decide whether to show the command. Falls back to a field literally named `"status"` if absent. |
-| [`@allowedStates([…])`](reventless-ppx.md#allowedstates--per-variant-command-state-guard) | A single command variant on a `@schema type command` | Hides the command on rows whose `@status` field value isn't in the set. `[]` is "never show"; absent is "always show" (back-compat). |
+| [`@lifecycle`](reventless-ppx.md#lifecycle--mark-the-field-a-records-lifecycle-lives-in) | One field on a `@schema type state` | Names the field a record's lifecycle lives in. AutoUI compares this field per row against each command's `@allowedStates` to decide whether to show the command. Unnecessary when the field is already named `lifecycle` — the name declares it. |
+| [`@allowedStates([…])`](reventless-ppx.md#allowedstates--per-variant-command-state-guard) | A single command variant on a `@schema type command` | Hides the command on rows whose lifecycle field value isn't in the set. `[]` is "never show"; absent is "always show" (back-compat). |
 | [`@dcbTag`](reventless-ppx.md#partitiontag-nodcbtag-dcbtag--field-level-dcb-tag-control) and family | Field-level inside command / event variants | Drives DCB tag inference. Affects which arg becomes `id: ID!` on the auto-generated GraphQL mutation. |
 | [`@noApi`](reventless-ppx.md#noapi--exclude-commands-from-graphqlmcp-exposure) | Whole `@schema type command` or single variants | Excludes the command from the GraphQL surface entirely — AutoUI never sees it, so it never renders a button for it. |
 
@@ -1721,7 +1721,7 @@ type status = Placed | Shipped | Cancelled
 type state = {
   @id orderId: string,
   @displayName customerId: string,    // list-view label
-  @status status: status,             // gates per-row commands
+  lifecycle: lifecycle,               // gates per-row commands
 }
 
 @schema

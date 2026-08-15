@@ -170,14 +170,15 @@ type commandDef = {
   mutationField: string,
   references: array<fieldReference>,
   /**
-  Status values under which this command is meaningful. `None` means the command
+  Lifecycle states under which this command is meaningful. `None` means the command
   is always available (back-compat default). `Some([…])` lets AutoUI hide the
-  command on rows whose status field is not in the set — see `queryableDef.statusField`
-  for how the row's status is located. `Some([])` is the defensive "never show" form.
+  command on rows whose lifecycle field is not in the set — see
+  `queryableDef.lifecycleField` for how the row's state is located. `Some([])` is
+  the defensive "never show" form.
   */
   allowedStates: @s.matches(stringArrayOptionSchema) option<array<string>>,
   /**
-  The single status value this command's handler writes — the command's *to*
+  The single lifecycle state this command's handler writes — the command's *to*
   state, sibling of `allowedStates`' *from* set. Source: the
   `@targetState("Shipped")` command-variant annotation. `None` (absent
   annotation) is the back-compat default: AutoUI's board resolver then falls
@@ -262,17 +263,17 @@ type queryableDef = {
   `None` means not stated — defs persisted before this field existed, and
   hand-rolled defs that decline to say. Distinct from `Some("fallback")`, which
   is this side stating that it looked. js_nullable for the same JSON-safety
-  reason as `statusField`.
+  reason as `lifecycleField`.
   */
   labelFieldSource: @s.matches(stringOptionSchema) option<string>,
   /**
-  Name of the state field whose value identifies the row's lifecycle status, used
-  by AutoUI together with `commandDef.allowedStates` to filter the per-row command
-  menu. Resolution order (codegen): (1) field annotated `@status`; (2) a field
-  literally named `"status"`; (3) `None`. Spec authors that hand-roll a
-  `queryableDef` set this explicitly.
+  Name of the state field whose value identifies the row's lifecycle, used by
+  AutoUI together with `commandDef.allowedStates` to filter the per-row command
+  menu. Resolution order (codegen): (1) field annotated `@lifecycle`; (2) a field
+  literally named `"lifecycle"` whose shape is an enum; (3) `None`. Spec authors
+  that hand-roll a `queryableDef` set this explicitly.
   */
-  statusField: @s.matches(stringOptionSchema) option<string>,
+  lifecycleField: @s.matches(stringOptionSchema) option<string>,
   /**
   Name of the state field that ties a row to the principal owning it (`@owner`),
   when the view declares one. Two consequences for a client: reads of this view
@@ -292,7 +293,7 @@ type queryableDef = {
   them.
 
   Derived from the annotation and from nothing else — deliberately no fallback to
-  a conventionally-named boolean, unlike `statusField`. A field named `archived`
+  a conventionally-named boolean, unlike `lifecycleField`. A field named `archived`
   that nobody annotated must not start hiding rows the day this ships, and the
   cost of guessing wrong here is data disappearing rather than a menu filtering
   oddly.
@@ -341,7 +342,7 @@ type queryableDef = {
 
   `None` means not stated — defs persisted before this field existed, and
   hand-rolled defs that decline to say; a consumer falls back to its own
-  derivation there. js_nullable for the same JSON-safety reason as `statusField`.
+  derivation there. js_nullable for the same JSON-safety reason as `lifecycleField`.
   */
   singleQueryField: @s.matches(stringOptionSchema) option<string>,
   /**
@@ -352,7 +353,7 @@ type queryableDef = {
   `None` means unresolved: a state with several `*Id` fields and no name match,
   or with none at all. Such a component gets no key-derived filter or sort until
   its spec declares `@id`. Also `None` on defs persisted before this field
-  existed. js_nullable for the same JSON-safety reason as `statusField`.
+  existed. js_nullable for the same JSON-safety reason as `lifecycleField`.
   */
   idField: @s.matches(stringOptionSchema) option<string>,
   /**

@@ -5,7 +5,7 @@ Spec describing the structural annotations declared on the fields of an
 `@compositeId`, `@subId`, `@compositeSubId`, `@index`), a visibility
 annotation (`@hidden`, `@summary`), a hierarchical-rendering annotation
 (`@drillTarget`, `@collapsed`), a server-query opt-in annotation
-(`@scan`, `@scanSort`), a UI-list annotation (`@status`, `@groupBy`), or a
+(`@scan`, `@scanSort`), a UI-list annotation (`@lifecycle`, `@groupBy`), or a
 type-level live-updates annotation (`@live` on the `state` declaration).
 Downstream consumers (UI, MCP, codegen) read the
 spec to surface field roles in JSON Schema as `x-reventless-*` extension
@@ -81,13 +81,16 @@ type stateAnnotationSpec = {
   */
   metric: array<(string, metricSpec)>,
   /**
-  Field annotated `@status` on the state record (PPX-emitted). `Some(name)`
-  when one such annotation exists; the PPX errors on duplicate `@status`
-  annotations within the same record. Codegen consumes this to populate
-  `queryableDef.statusField` (with a fallback to a field literally named
-  `"status"` when this annotation is absent).
+  Field annotated `@lifecycle` on the state record (PPX-emitted) — the enum a
+  command's `@allowedStates` is written in terms of, a board draws its columns
+  from and a state diagram renders. `Some(name)` when one such annotation
+  exists; the PPX errors on duplicate `@lifecycle` annotations within the same
+  record. Codegen consumes this to populate `queryableDef.lifecycleField`, and
+  falls back to a field literally named `"lifecycle"` whose shape is an enum
+  when this annotation is absent — so a record whose field can honestly be
+  called `lifecycle` declares one without ceremony.
   */
-  status: option<string>,
+  lifecycle: option<string>,
   /**
   Field annotated `@groupBy` on the state record (PPX-emitted). `Some(name)`
   when one such annotation exists; the PPX errors on duplicate `@groupBy`

@@ -39,7 +39,7 @@ function isLabelShape(_t) {
   };
 }
 
-function isStatusShape(_t) {
+function isLifecycleShape(_t) {
   while (true) {
     let t = _t;
     if (typeof t !== "object") {
@@ -68,15 +68,15 @@ function shapeOfItem(entityName, item) {
   return SchemaType$ReventlessCore.fromSury(entityName, item.location, item.schema);
 }
 
-function statusFieldFromStateSchema(entityName, stateSchema) {
+function lifecycleFieldFromStateSchema(entityName, stateSchema) {
   let spec = StateAnnotations$Reventless.getSpec(stateSchema);
-  let annotated = spec !== undefined ? spec.status : undefined;
+  let annotated = spec !== undefined ? spec.lifecycle : undefined;
   if (annotated !== undefined) {
     return annotated;
   } else if (stateSchema.type === "object") {
     return Stdlib_Option.map(stateSchema.items.find(item => {
-      if (item.location === "status") {
-        return isStatusShape(shapeOfItem(entityName, item));
+      if (item.location === "lifecycle") {
+        return isLifecycleShape(shapeOfItem(entityName, item));
       } else {
         return false;
       }
@@ -551,7 +551,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       labelField: label.field,
       searchableFields: label.searchableFields,
       labelFieldSource: labelFieldSourceToString(label.source),
-      statusField: statusFieldFromStateSchema(R.Spec.name, stateSchema),
+      lifecycleField: lifecycleFieldFromStateSchema(R.Spec.name, stateSchema),
       ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
       retiredField: retiredFieldFromStateSchema(stateSchema),
       visibility: visibilityTag(R.Spec.visibility),
@@ -578,7 +578,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       labelField: label.field,
       searchableFields: label.searchableFields,
       labelFieldSource: labelFieldSourceToString(label.source),
-      statusField: statusFieldFromStateSchema(SVS.Spec.name, stateSchema),
+      lifecycleField: lifecycleFieldFromStateSchema(SVS.Spec.name, stateSchema),
       ownerField: Owner$Reventless.fieldNames(stateSchema)[0],
       retiredField: retiredFieldFromStateSchema(stateSchema),
       visibility: visibilityTag(SVS.Spec.visibility),
@@ -698,10 +698,10 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
 export {
   log,
   isLabelShape,
-  isStatusShape,
+  isLifecycleShape,
   conventionalLabelNames,
   shapeOfItem,
-  statusFieldFromStateSchema,
+  lifecycleFieldFromStateSchema,
   retiredFieldFromStateSchema,
   labelFieldSourceToString,
   labelFieldsFromStateSchema,

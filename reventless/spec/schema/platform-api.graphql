@@ -212,6 +212,7 @@ type Platform_ReadSideDef {
   idFieldSource: String
   labelField: String!
   labelFieldSource: String
+  lifecycleField: String
   linkedWriteSide: [String!]!
   name: String!
   ownerField: String
@@ -221,7 +222,6 @@ type Platform_ReadSideDef {
   schema: String!
   searchableFields: [String!]!
   singleQueryField: String
-  statusField: String
   visibility: String
 }
 

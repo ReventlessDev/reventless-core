@@ -8,7 +8,7 @@ describe("Orders StateViewSlice", () => {
     )
     ->thenStateWithId(
       "o1",
-      {orderId: "o1", customerId: "c1", productIds: ["p1", "p2"], status: Placed},
+      {orderId: "o1", customerId: "c1", productIds: ["p1", "p2"], lifecycle: Placed},
     )
   )
 
@@ -19,7 +19,7 @@ describe("Orders StateViewSlice", () => {
     ->whenEvent(OrderShipped({orderId: "o1"}))
     ->thenStateWithId(
       "o1",
-      {orderId: "o1", customerId: "c1", productIds: ["p1"], status: Shipped},
+      {orderId: "o1", customerId: "c1", productIds: ["p1"], lifecycle: Shipped},
     )
   )
 
@@ -30,7 +30,7 @@ describe("Orders StateViewSlice", () => {
     ->whenEvent(OrderCancelled({orderId: "o1"}))
     ->thenStateWithId(
       "o1",
-      {orderId: "o1", customerId: "c1", productIds: ["p1"], status: Cancelled},
+      {orderId: "o1", customerId: "c1", productIds: ["p1"], lifecycle: Cancelled},
     )
   )
 })

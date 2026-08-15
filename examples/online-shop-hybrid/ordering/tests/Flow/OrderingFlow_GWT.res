@@ -88,7 +88,7 @@ describe("Ordering flow — place → auto-ship → confirm", () => {
         Orders.orderId: "o1",
         customerId: "c1",
         productIds: ["p1"],
-        status: Shipped,
+        lifecycle: Shipped,
         shippingMethod: Express,
         placedAt: "time",
         shippedAt: "time",

@@ -20,8 +20,8 @@
 // Whether this customer's address has been turned into a point yet, and if not,
 // why not. `location: option<GeoPoint.t>` alone cannot say: `None` would mean
 // both "the geocoder has not run" and "the geocoder ran and failed", and an
-// operator cannot act on a state that means two things. Marked `@status` so the
-// generated view sections and badges rows by it without further configuration.
+// operator cannot act on a state that means two things. Marked `@lifecycle` so
+// the generated view sections and badges rows by it without further configuration.
 @schema
 type locationStatus =
   | Pending
@@ -40,7 +40,11 @@ type state = {
   @displayName email: string,
   address: string,
   location: option<Reventless.GeoPoint.t>,
-  @status locationStatus: locationStatus,
+  // Annotated rather than renamed: the field is honestly called `locationStatus`,
+  // and calling it `lifecycle` would assert something false about it. This is the
+  // case the annotation rung exists for — the convention rung only serves a record
+  // whose lifecycle field can carry the name.
+  @lifecycle locationStatus: locationStatus,
   // Why the geocoder gave up, for the rows sitting in `Unresolvable`. Absent
   // otherwise; hidden from list views because it is only meaningful on a row a
   // human is already looking into.

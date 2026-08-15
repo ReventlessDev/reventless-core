@@ -670,33 +670,84 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     )
   })
 
-  describe("statusField — the shape rule", () => {
-    let statusOf = schema =>
-      Plugin_Structure.statusFieldFromStateSchema(~entityName="Test", schema->S.castToUnknown)
+  describe("lifecycleField — the name rule and the shape rule", () => {
+    let lifecycleOf = schema =>
+      Plugin_Structure.lifecycleFieldFromStateSchema(~entityName="Test", schema->S.castToUnknown)
 
-    testSync("a `status` field holding a closed set of values is the lifecycle field", () => {
+    let withLifecycle = (schema, ~field) =>
+      schema->S.castToUnknown->S.Metadata.set(
+        ~id=Reventless.StateAnnotations.stateAnnotationsId,
+        {
+          ids: [],
+          compositeIds: [],
+          subIds: [],
+          compositeSubIds: [],
+          indexes: [],
+          hidden: [],
+          summary: [],
+          drillTargets: [],
+          drillTargetKeys: [],
+          collapsed: [],
+          scan: [],
+          scanSort: [],
+          semantic: [],
+          metric: [],
+          lifecycle: Some(field),
+          groupBy: None,
+          visibility: None,
+          live: None,
+          retired: None,
+        },
+      )
+
+    testSync("a `lifecycle` field holding a closed set of values is the lifecycle field", () => {
       let schema = S.schema(s =>
         {
-          "status": s.matches(S.union([S.literal("Placed"), S.literal("Shipped")])),
+          "lifecycle": s.matches(S.union([S.literal("Placed"), S.literal("Shipped")])),
         }
       )
-      expect(statusOf(schema))->toEqual(Some("status"))
+      expect(lifecycleOf(schema))->toEqual(Some("lifecycle"))
     })
 
     testSync("an optional one counts too", () => {
       let schema = S.schema(s =>
         {
-          "status": s.matches(S.option(S.union([S.literal("Placed"), S.literal("Shipped")]))),
+          "lifecycle": s.matches(S.option(S.union([S.literal("Placed"), S.literal("Shipped")]))),
         }
       )
-      expect(statusOf(schema))->toEqual(Some("status"))
+      expect(lifecycleOf(schema))->toEqual(Some("lifecycle"))
     })
 
-    testSync("free text named `status` is not a lifecycle", () => {
+    testSync("free text named `lifecycle` is not a lifecycle", () => {
       // `allowedStates` filtering needs states to compare against; a string
-      // field named `status` gives a command menu nothing to match.
-      let schema = S.schema(s => {"status": s.matches(S.string)})
-      expect(statusOf(schema))->toEqual(None)
+      // field named `lifecycle` gives a command menu nothing to match.
+      let schema = S.schema(s => {"lifecycle": s.matches(S.string)})
+      expect(lifecycleOf(schema))->toEqual(None)
+    })
+
+    // The one behaviour the rename deliberately changes, so it is asserted rather
+    // than assumed. `status` is a promiscuous name — geocoding progress, todo-queue
+    // progress, translation audit outcome — and a convention keyed on it guessed
+    // often. A record whose lifecycle really does live in a field called `status`
+    // says so with `@lifecycle`.
+    testSync("an unannotated field named `status` resolves to None", () => {
+      let schema = S.schema(s =>
+        {
+          "status": s.matches(S.union([S.literal("Placed"), S.literal("Shipped")])),
+        }
+      )
+      expect(lifecycleOf(schema))->toEqual(None)
+    })
+
+    testSync("the annotation names a field the convention would never reach", () => {
+      let schema = S.schema(s =>
+        {
+          "locationStatus": s.matches(S.union([S.literal("Pending"), S.literal("Located")])),
+        }
+      )
+      expect(lifecycleOf(schema->withLifecycle(~field="locationStatus")))->toEqual(
+        Some("locationStatus"),
+      )
     })
   })
 
@@ -722,7 +773,7 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
           scanSort: [],
           semantic: [],
           metric: [],
-          status: None,
+          lifecycle: None,
           groupBy: None,
           visibility: None,
           live: None,
@@ -735,9 +786,9 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       expect(retiredOf(schema->withRetired(~field="archived")))->toEqual(Some("archived"))
     })
 
-    // The whole reason this has no convention rung. `statusField` may guess at a
-    // field named `status` because guessing wrong makes a command menu filter
-    // oddly; guessing wrong here makes rows disappear for every caller who is not
+    // The whole reason this has no convention rung. `lifecycleField` may still fall
+    // back to a field literally named `lifecycle` because guessing wrong there makes
+    // a command menu filter oddly; guessing wrong here makes rows disappear for every caller who is not
     // elevated, so an unannotated boolean stays as visible as it was.
     testSync("declines a conventionally-named boolean nobody annotated", () => {
       let schema = S.schema(s =>

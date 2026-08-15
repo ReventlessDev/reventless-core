@@ -777,7 +777,7 @@ let transform (str : structure) : structure =
                       |> StateAnnotations.strip_drill_collapsed_attrs
                       |> StateAnnotations.strip_scan_attrs
                       |> StateAnnotations.strip_semantic_metric_attrs
-                      |> StateAnnotations.strip_status_attrs
+                      |> StateAnnotations.strip_lifecycle_attrs
                       |> StateAnnotations.strip_group_by_attrs
                       |> StateAnnotations.strip_retired_attrs
                       |> StateAnnotations.strip_live_attrs

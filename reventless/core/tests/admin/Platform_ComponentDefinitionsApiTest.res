@@ -30,7 +30,7 @@ let qbl: queryableDef = {
   labelField: "displayName",
   searchableFields: ["displayName"],
   labelFieldSource: Some("annotation"),
-  statusField: None,
+  lifecycleField: None,
   visibility: None,
   chapter: None,
   singleQueryField: Some("Catalog_Product"),
@@ -163,8 +163,8 @@ describe("encodePluginStructureEntry", () => {
     expect(json->String.includes("\"apiExposed\":true"))->toEqual(true)
   )
 
-  testSync("encodes None statusField as null", () =>
-    expect(json->String.includes("\"statusField\":null"))->toEqual(true)
+  testSync("encodes None lifecycleField as null", () =>
+    expect(json->String.includes("\"lifecycleField\":null"))->toEqual(true)
   )
 
   // Phase 6.3: write-side emitted-event field schemas.
@@ -257,7 +257,7 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
     labelField: "name",
     searchableFields: ["name"],
     labelFieldSource: Some("convention"),
-    statusField: None,
+    lifecycleField: None,
     visibility: Some("Internal"),
     chapter: None,
     singleQueryField: Some("Ordering_AvailableProduct"),
@@ -331,7 +331,7 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
   })
 })
 
-describe("allowedStates + statusField populated", () => {
+describe("allowedStates + lifecycleField populated", () => {
   let cmdWithStates: commandDef = {
     name: "Activate",
     schema: "{}",
@@ -355,7 +355,7 @@ describe("allowedStates + statusField populated", () => {
     labelField: "name",
     searchableFields: ["name"],
     labelFieldSource: Some("convention"),
-    statusField: Some("status"),
+    lifecycleField: Some("status"),
     visibility: None,
     chapter: None,
     singleQueryField: Some("Platform_Plugin"),
@@ -405,8 +405,8 @@ describe("allowedStates + statusField populated", () => {
     expect(json->String.includes("\"targetState\":\"Active\""))->toEqual(true)
   )
 
-  testSync("encodes populated statusField as the field name string", () =>
-    expect(json->String.includes("\"statusField\":\"status\""))->toEqual(true)
+  testSync("encodes populated lifecycleField as the field name string", () =>
+    expect(json->String.includes("\"lifecycleField\":\"status\""))->toEqual(true)
   )
 
   // "declares no errors" is an empty list, never null — the SDL types `errors` as

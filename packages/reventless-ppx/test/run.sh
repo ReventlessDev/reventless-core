@@ -894,6 +894,24 @@ type state = {
 }
 EOF
 
+# ─── Fixture: @lifecycle (the enum commands branch on) ────────────
+
+cat > "$PLUGIN/src/ReadModel/LifecycleReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type phase =
+  | Open
+  | Closed
+
+@schema
+type state = {
+  @id id: string,
+  @lifecycle phase: phase,
+  name: string,
+}
+EOF
+
 # ─── Fixture: @retired (row withdrawn from ordinary reads) ────────
 
 cat > "$PLUGIN/src/ReadModel/RetiredReadModel.res" <<'EOF'
@@ -1751,6 +1769,13 @@ assert_js_contains "$JS" 'groupBy: "kind"'           "@groupBy: 'kind' recorded 
 assert_js_not_contains "$JS" '@groupBy'              "@groupBy: annotation stripped from output"
 
 echo ""
+echo "=== Test: @lifecycle → metadata field populated ==="
+JS="$PLUGIN/src/ReadModel/LifecycleReadModel.res.mjs"
+assert_js_contains "$JS" 'stateAnnotationsId'        "@lifecycle: stateAnnotations metadata emitted"
+assert_js_contains "$JS" 'lifecycle: "phase"'        "@lifecycle: 'phase' recorded in lifecycle field"
+assert_js_not_contains "$JS" '@lifecycle'            "@lifecycle: annotation stripped from output"
+
+echo ""
 echo "=== Test: @retired → metadata field populated ==="
 JS="$PLUGIN/src/ReadModel/RetiredReadModel.res.mjs"
 assert_js_contains "$JS" 'stateAnnotationsId'        "@retired: stateAnnotations metadata emitted"
@@ -2121,6 +2146,61 @@ else
   fi
 fi
 rm -f "$ERROR/src/ReadModel/GroupByConflictReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — duplicate @lifecycle on same record ==="
+
+cat > "$ERROR/src/ReadModel/LifecycleConflictReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type phase = Open | Closed
+
+@schema
+type state = {
+  @id id: string,
+  @lifecycle phase: phase,
+  @lifecycle otherPhase: phase,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "duplicate @lifecycle" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "duplicate @lifecycle annotation"; then
+    pass "duplicate @lifecycle on same record → correct compile error"
+  else
+    fail "duplicate @lifecycle" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/LifecycleConflictReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — @status (old name) names @lifecycle ==="
+
+cat > "$ERROR/src/ReadModel/LegacyStatusReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type phase = Open | Closed
+
+@schema
+type state = {
+  @id id: string,
+  @status phase: phase,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@status (old name)" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@status was renamed to @lifecycle"; then
+    pass "@status (old name) → correct rename error"
+  else
+    fail "@status (old name)" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/LegacyStatusReadModel.res"
 
 echo ""
 echo "=== Test: PPX error — duplicate @retired on same record ==="

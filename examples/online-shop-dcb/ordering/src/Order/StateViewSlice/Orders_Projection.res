@@ -3,8 +3,8 @@
 let project = ({event}) =>
   switch event {
   | OrderPlaced({orderId, customerId, productIds}) => [
-      Set(orderId, {orderId, customerId, productIds, status: Placed}),
+      Set(orderId, {orderId, customerId, productIds, lifecycle: Placed}),
     ]
-  | OrderShipped({orderId}) => [Update(orderId, state => {...state, status: Shipped})]
-  | OrderCancelled({orderId}) => [Update(orderId, state => {...state, status: Cancelled})]
+  | OrderShipped({orderId}) => [Update(orderId, state => {...state, lifecycle: Shipped})]
+  | OrderCancelled({orderId}) => [Update(orderId, state => {...state, lifecycle: Cancelled})]
   }

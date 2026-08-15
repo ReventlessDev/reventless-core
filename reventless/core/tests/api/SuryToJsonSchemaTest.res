@@ -31,7 +31,7 @@ let emptySpec: Reventless.StateAnnotations.stateAnnotationSpec = {
   scanSort: [],
   semantic: [],
   metric: [],
-  status: None,
+  lifecycle: None,
   groupBy: None,
   visibility: None,
   live: None,

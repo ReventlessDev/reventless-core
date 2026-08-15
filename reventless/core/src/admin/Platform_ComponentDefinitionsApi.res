@@ -29,7 +29,7 @@ let sdlTypes: array<string> = [
   // structures persisted before the fields existed decode as `None`, a hand-rolled
   // def may decline to state them, and a state whose key cannot be resolved has no
   // `idField` to report.
-  `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  statusField: String\n  visibility: String\n  chapter: String\n  singleQueryField: String\n  idField: String\n  idFieldSource: String\n  requiredAccess: [String!]\n  ownerField: String\n  retiredField: String\n}`,
+  `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  labelFieldSource: String\n  lifecycleField: String\n  visibility: String\n  chapter: String\n  singleQueryField: String\n  idField: String\n  idFieldSource: String\n  requiredAccess: [String!]\n  ownerField: String\n  retiredField: String\n}`,
   `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n  targetName: String\n  chapter: String\n}`,
   `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
   `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n  targetName: String\n  externalSystem: String\n  chapter: String\n}`,
@@ -113,7 +113,7 @@ let encodeQueryableDef = (r: queryableDef): JSON.t =>
       "labelFieldSource",
       r.labelFieldSource->Option.mapOr(JSON.Encode.null, JSON.Encode.string),
     ),
-    ("statusField", r.statusField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+    ("lifecycleField", r.lifecycleField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
     // Carried rather than only filtered on: a tooling consumer reading the
     // unfiltered structure needs to know WHICH components are Internal, and a
     // consumer of the filtered query reads null here because nothing Internal

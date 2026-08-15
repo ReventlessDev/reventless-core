@@ -3,9 +3,8 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
-import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
-let statusSchema = S.union([
+let lifecycleSchema = S.union([
   S.literal("Placed"),
   S.literal("Shipped"),
   S.literal("Cancelled")
@@ -15,7 +14,7 @@ let stateSchema = S.schema(s => ({
   orderId: s.m(S.string),
   customerId: s.m(S.string),
   productIds: s.m(S.array(S.string)),
-  status: s.m(statusSchema)
+  lifecycle: s.m(lifecycleSchema)
 }));
 
 let consumedEventSchema = S.union([
@@ -37,28 +36,6 @@ let consumedEventSchema = S.union([
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
-let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stateAnnotationsId, {
-  ids: [],
-  compositeIds: [],
-  subIds: [],
-  compositeSubIds: [],
-  indexes: [],
-  hidden: [],
-  summary: [],
-  drillTargets: [],
-  drillTargetKeys: [],
-  collapsed: [],
-  scan: [],
-  scanSort: [],
-  semantic: [],
-  metric: [],
-  status: "status",
-  groupBy: undefined,
-  visibility: undefined,
-  live: undefined,
-  retired: undefined
-});
-
 let name = "Orders";
 
 let Id;
@@ -74,13 +51,13 @@ let visibility = "Public";
 export {
   name,
   Id,
-  statusSchema,
+  lifecycleSchema,
+  stateSchema,
   consumedEventSchema,
   config,
   subIdConfig,
-  stateSchema$1 as stateSchema,
   moduleUrl,
   authorization,
   visibility,
 }
-/* statusSchema Not a pure module */
+/* lifecycleSchema Not a pure module */

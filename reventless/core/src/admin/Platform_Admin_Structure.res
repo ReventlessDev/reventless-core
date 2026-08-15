@@ -122,7 +122,9 @@ let pluginReadModel: queryableDef = {
   // Hand-rolled rather than resolved, but the rung is the same one
   // `labelFieldsFromStateSchema` would report for a field literally named `name`.
   labelFieldSource: Some("convention"),
-  statusField: Some("status"),
+  // The published wire name stays `status` — it is what the SDL declares and what
+  // stored rows carry. Only the key naming it moved.
+  lifecycleField: Some("status"),
   visibility: None,
   chapter: None,
   // The admin fragment hand-declares its query names rather than deriving them from

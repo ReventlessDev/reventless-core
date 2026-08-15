@@ -3,7 +3,7 @@
 @@reventless.spec
 
 @schema
-type status =
+type lifecycle =
   | Placed
   | Shipped
   | Cancelled
@@ -13,7 +13,9 @@ type state = {
   orderId: string,
   customerId: string,
   productIds: array<string>,
-  @status status: status,
+  // No annotation: the field name is the declaration. `@lifecycle` exists for
+  // records whose lifecycle field is honestly called something else.
+  lifecycle: lifecycle,
 }
 
 @schema

@@ -13,7 +13,7 @@ overrides another, because each answers a different question.
 ```
 ┌─ Layer 1 ── Annotations on your spec types ──────────────────────────┐
 │  What does this field MEAN?                                          │
-│  @status, @displayName, @hidden, @metric, semantic types …           │
+│  @lifecycle, @displayName, @hidden, @metric, semantic types …        │
 │  → travels with the component, wherever it is rendered               │
 └──────────────────────────────────────────────────────────────────────┘
 ┌─ Layer 2 ── Baked manifest (bakedManifest) ──────────────────────────┐
@@ -84,25 +84,40 @@ Step 3 is worth annotating your way out of: the row name changes whenever a fiel
 is inserted above the old one. Adding a `placedAt` field so date views have
 something to key off would rename every order to a timestamp.
 
-### 2.2 Lifecycle status
+### 2.2 Lifecycle
 
-**`@status`** marks the field holding the entity's lifecycle state. The generated
-view sections and badges rows by it, and it drives the per-row command menu — each
-command's `@allowedStates` is filtered against the row's current status.
+The field holding the entity's lifecycle state. The generated view sections and
+badges rows by it, and it drives the per-row command menu — each command's
+`@allowedStates` is filtered against the row's current state.
+
+Name the field `lifecycle` and the name is the declaration:
 
 ```rescript
-@schema type status = Placed | Shipped | Cancelled
+@schema type lifecycle = Placed | Shipped | Cancelled
 
 @schema
 type state = {
   orderId: string,
-  @status status: status,
+  lifecycle: lifecycle,
 }
 ```
 
-Resolution order: (1) the annotated field; (2) a field literally named `status`
+**`@lifecycle`** declares it for a record whose field is honestly called something
+else, and calling it `lifecycle` would assert something false:
+
+```rescript
+@schema type locationStatus = Pending | Located | Unresolvable
+
+@schema
+type state = {
+  customerId: string,
+  @lifecycle locationStatus: locationStatus,
+}
+```
+
+Resolution order: (1) the annotated field; (2) a field literally named `lifecycle`
 whose shape is an enum; (3) none, and the per-row filter is inert. At most one
-`@status` per record — a duplicate is a compile error.
+`@lifecycle` per record — a duplicate is a compile error.
 
 ### 2.3 List and summary presentation
 
@@ -548,7 +563,7 @@ refuses `ShipOrder` outright.
 
 **A note on `@allowedStates`.** `CancelOrder` carries
 `@allowedStates([Orders.Placed])`, which is a **menu filter**: the command is
-offered only on rows whose `@status` field is `Placed`. It is UX, not a gate — the
+offered only on rows whose lifecycle field is `Placed`. It is UX, not a gate — the
 behaviour is what refuses a shipped order, by returning `OrderAlreadyShipped`.
 
 ### 3.3 Acting as one role
@@ -804,8 +819,8 @@ What each of the shop's components declares:
 | `Catalog/Products` | `Money.t` price; `@storageRef("productImages")` image; `@index categoryId`, so a category's products can be asked for by category; nav group "Shop"; a row action that starts `Ordering.PlaceOrder` |
 | `Catalog/Categories` | `@storageRef("categoryImages")` image — its own store, not the products' one; nav group "Shop" |
 | `Catalog/ProductDemand` | `@@reventless.authorize(AllowGroups(["Admin", "Merchandiser"]))`; `@id productId`; only in the `Merchandiser` journey, under its own nav group |
-| `Ordering/Orders` | `@owner customerId`; `@status status`; `DateTime` timestamps; `DateRange` delivery window; nav "All Orders", or "My Orders" for a caller reading only their own |
-| `Ordering/Customers` | `@@reventless.authorize`; `@displayName email`; `@status locationStatus`; `@hidden locationNote`; `GeoPoint` location |
+| `Ordering/Orders` | `@owner customerId`; `lifecycle` by name; `DateTime` timestamps; `DateRange` delivery window; nav "All Orders", or "My Orders" for a caller reading only their own |
+| `Ordering/Customers` | `@@reventless.authorize`; `@displayName email`; `@lifecycle locationStatus`; `@hidden locationNote`; `GeoPoint` location |
 | `Ordering/AvailableProducts` | `@@reventless.visibility(Internal)` — reachable only as the `@ref` target of `PlaceOrder`'s product picker |
 | `Ordering/PlaceOrder` | `@owner customerId`; `@ref("AvailableProducts") productIds`; optional `DateRange` delivery window |
 

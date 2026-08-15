@@ -90,6 +90,24 @@ let mapMembers = (obj: dict<JSON.t>, key: string, f: dict<JSON.t> => unit): unit
     )
   }
 
+// Read-path shim for the `statusField` → `lifecycleField` rename. A structure
+// persisted before the rename carries only the old key, and this handler serves
+// raw JSON, so the resolver would find no `lifecycleField` and answer null until
+// the plugin re-registers. That is not a crash — the SDL declares a nullable
+// `String`, not a `[T!]!` that would null-propagate to the root — but it is a
+// silent degradation: command-menu filtering, board columns, group sections,
+// progress trackers and state diagrams go quiet while lists keep rendering.
+//
+// Delete a release later, once no structure predating the rename can be reached.
+// It closes a window; it does not support two names.
+let fillLifecycleField = (component: dict<JSON.t>): unit =>
+  switch (component->Dict.get("lifecycleField"), component->Dict.get("statusField")) {
+  | (None | Some(JSON.Null), Some(legacy)) => component->Dict.set("lifecycleField", legacy)
+  | _ => ()
+  }
+
+let readSideCollections = ["readModels", "stateViewSlices"]
+
 let healStructure = (structure: dict<JSON.t>): dict<JSON.t> => {
   let out = Dict.fromArray(structure->Dict.toArray)
   // The collections themselves are `[T!]!` too, so an absent one is the same
@@ -102,6 +120,9 @@ let healStructure = (structure: dict<JSON.t>): dict<JSON.t> => {
         component->mapMembers(key, member => member->fillLists(keys))
       )
     })
+  )
+  readSideCollections->Array.forEach(collection =>
+    out->mapMembers(collection, fillLifecycleField)
   )
   out
 }

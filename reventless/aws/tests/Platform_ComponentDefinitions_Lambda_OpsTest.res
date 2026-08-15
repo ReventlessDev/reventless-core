@@ -113,6 +113,71 @@ describe("toEntryWith heals a structure persisted before a required list existed
   })
 })
 
+// The `statusField` → `lifecycleField` rename has the same shape of problem one
+// severity down: the SDL field is a nullable `String`, so an absent key answers
+// null rather than blackholing the query. That is worse to find, not better —
+// lists keep rendering while command-menu filtering, board columns, group
+// sections, progress trackers and state diagrams all go quiet. Asserted because
+// the shim is the one part of the rename with nothing to fail at compile time.
+describe("toEntryWith reads a pre-rename structure's lifecycle field", () => {
+  let legacyStructure = Dict.fromArray([
+    (
+      "readModels",
+      JSON.Encode.array([
+        JSON.parseOrThrow(`{"name": "Customers", "statusField": "locationStatus"}`),
+      ]),
+    ),
+    (
+      "stateViewSlices",
+      JSON.Encode.array([JSON.parseOrThrow(`{"name": "Orders", "statusField": "status"}`)]),
+    ),
+  ])->JSON.Encode.object
+
+  let fieldOf = (~collection) =>
+    entry(~filter=false, legacyStructure)
+    ->Option.map(members(_, collection))
+    ->Option.flatMap(Array.get(_, 0))
+    ->Option.flatMap(c => c->Dict.get("lifecycleField"))
+
+  testSync("a read model's legacy key answers on the new name", () =>
+    expect(fieldOf(~collection="readModels"))->toEqual(
+      Some(JSON.Encode.string("locationStatus")),
+    )
+  )
+
+  testSync("so does a state view slice's", () =>
+    expect(fieldOf(~collection="stateViewSlices"))->toEqual(Some(JSON.Encode.string("status")))
+  )
+
+  testSync("a post-rename structure is left alone", () => {
+    let current = Dict.fromArray([
+      (
+        "readModels",
+        JSON.Encode.array([
+          JSON.parseOrThrow(`{"name": "Orders", "lifecycleField": "lifecycle", "statusField": "stale"}`),
+        ]),
+      ),
+    ])->JSON.Encode.object
+    let field =
+      entry(~filter=false, current)
+      ->Option.map(members(_, "readModels"))
+      ->Option.flatMap(Array.get(_, 0))
+      ->Option.flatMap(c => c->Dict.get("lifecycleField"))
+    expect(field)->toEqual(Some(JSON.Encode.string("lifecycle")))
+  })
+
+  testSync("a structure declaring neither still answers nothing", () => {
+    let neither = Dict.fromArray([
+      ("readModels", JSON.Encode.array([JSON.parseOrThrow(`{"name": "Products"}`)])),
+    ])->JSON.Encode.object
+    let component =
+      entry(~filter=false, neither)
+      ->Option.map(members(_, "readModels"))
+      ->Option.flatMap(Array.get(_, 0))
+    expect(component->Option.flatMap(c => c->Dict.get("lifecycleField")))->toEqual(None)
+  })
+})
+
 // The persisted structure is pre-filter, so this handler is a twin of the
 // in-memory `encodePluginStructureEntry` rather than a consequence of it. A shell
 // reading `internalQueryables` against a platform that emits it on only one

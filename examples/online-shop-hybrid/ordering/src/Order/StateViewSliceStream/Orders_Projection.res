@@ -9,7 +9,7 @@ let project = ({event, meta}) =>
           orderId,
           customerId,
           productIds,
-          status: Placed,
+          lifecycle: Placed,
           shippingMethod,
           placedAt: meta.time,
           shippedAt: "",
@@ -18,7 +18,7 @@ let project = ({event, meta}) =>
       ),
     ]
   | OrderShipped({orderId}) => [
-      Update(orderId, state => {...state, status: Shipped, shippedAt: meta.time}),
+      Update(orderId, state => {...state, lifecycle: Shipped, shippedAt: meta.time}),
     ]
-  | OrderCancelled({orderId}) => [Update(orderId, state => {...state, status: Cancelled})]
+  | OrderCancelled({orderId}) => [Update(orderId, state => {...state, lifecycle: Cancelled})]
   }
