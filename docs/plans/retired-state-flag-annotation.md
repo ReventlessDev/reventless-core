@@ -46,16 +46,28 @@ Surface:
 type state = {
   @id customerId: string,
   displayName: string,
-  @scan @retired deactivated: bool,
+  @retired deactivated: bool,
 }
 ```
 
 ```rescript
-@scan @retired({label: "Archived", showWhenFalse: true}) archived: bool
+@retired({label: "Archived", showWhenFalse: true}) archived: bool
 ```
 
 Bare form takes the label from the field name. The record form follows `@metric`,
 which already accepts either a bare payload or a record of options.
+
+**`@retired` neither implies nor wants `@scan`.** `@scan` widens the *client's*
+filter surface — it puts `<field>Eq` on the `Filter` input for a field with no
+backing index. Nothing here is a client filter: the predicate is the resolver's,
+derived from who the caller is, and it is threaded as its own parameter exactly
+the way `@owner` already is, beside `filterFields` rather than through it. `@owner`
+is the proof — it narrows every read on every adapter and carries no `@scan`.
+
+Adding one would publish `deactivatedEq` to callers who cannot use it: a scoped
+caller passing it can only ever get an empty page, because the resolver excluded
+those rows before the filter was consulted. The elevated caller's route to the
+archive is `includeRetired` (step 7), and one door is enough.
 
 ---
 
@@ -225,10 +237,53 @@ argument means something, and there is nothing to gain by saying so. Without thi
 argument an elevated caller can never reach the archive at all, so it ships with
 this plan rather than after it.
 
-**Cost.** On a table-backed adapter a boolean predicate with no index is a Scan
-plus FilterExpression, which is exactly the cost `@scan` exists to make explicit.
-`@retired` on a field that carries neither `@index` nor `@scan` should emit a
-build-time warning naming the cost, not silently buy it.
+**Cost, and what does and does not fix it.** The list-all field on DynamoDB is
+already a Scan; the retirement predicate does not create one. What it buys is the
+pathology `@owner` is already warned about in `QueryDbResolvers_AppSync.res`
+(~line 247): a FilterExpression is applied *after* the page is read, so pages
+shrink as the retired share of the table grows — correct, but pathological on a
+table that is mostly archive.
+
+The warning therefore fires on `@retired` **without `@index`**, and `@scan` does
+not satisfy it. `@scan` adds no index and removes no read unit; letting it silence
+the warning would make the warning dismissible by an annotation that changes
+nothing. Word it as the `@owner` warning is worded, and for the same reason: it
+warns rather than refuses, because a small table may legitimately accept the cost.
+
+**Open — the index-shaped answer, undecided.** Three options, and the choice is
+not obvious enough to make here:
+
+1. `@index` on the flag. Simple, but a GSI keyed on a two-value boolean is a
+   hot-partition antipattern: every live row lands in one partition.
+2. A **sparse index over live rows** — an index key attribute present only while
+   the row is live, so the scoped list becomes a Query rather than a
+   Scan-and-filter. Idiomatic, and used deliberately already in
+   `DcbEventLogStorage_DynamoDb_Runtime.res` (~line 122).
+
+   **Checked, and it does not fall out of the annotation.** The QueryDb writer
+   puts the projected state JSON wholesale (`saveBatch` /`putWithRetries`), so an
+   attribute is present exactly when the encoded state carries it — and
+   `deactivated: bool` carries it in *both* states. A boolean field can therefore
+   never index sparsely. It needs a **derived** attribute, written when the row is
+   live and omitted when it is retired.
+
+   That is mechanically available: `Util_DynamoDb_Runtime.injectId`
+   (`reventless/aws/src/util/Util_DynamoDb_Runtime.res:15`) already injects an
+   attribute that is not part of the state record, on both write paths. A
+   conditional `injectLiveMarker` is the same move. But it is framework-injected
+   plumbing on the AWS writer plus a GSI in the table config — a real piece of
+   work, not a annotation-level freebie, and it has no analogue to pay for on the
+   in-memory and SQLite backends.
+3. Accept the filter cost with the warning, as the `@owner` path does today.
+
+**Decision: option 3 for this plan.** The list read already Scans, the predicate
+adds no new access pattern, and `@owner` has lived with exactly this profile. The
+degradation is proportional to the archived share, so it is fine until a table is
+mostly archive — and the deploy-time warning is what says so out loud.
+
+Option 1 is available to an author today and needs nothing from this plan. Option
+2 is the answer when a table really is mostly archive; it is additive, changes no
+surface, and is a follow-up plan rather than a step here.
 
 ### 8. Publisher — withhold the payload of a retired row
 
@@ -286,7 +341,11 @@ configuration already does.
 
 - A `@retired`-annotated boolean emits `x-reventless-retired: {label, showWhenFalse}`
   on its property; duplicates and non-boolean fields are compile errors; a field
-  with neither `@index` nor `@scan` warns about the read cost.
+  with no `@index` warns about the read cost, and `@scan` does not silence that
+  warning — it adds no index and removes no read unit.
+- `@retired` does not require, imply, or interact with `@scan`: the predicate is
+  the resolver's, threaded as its own parameter beside `ownerScope`, and the field
+  gains no `<field>Eq` on the `Filter` input.
 - `queryableDef.retiredField` is populated from the annotation only, never from a
   conventionally-named boolean.
 - A caller not in `elevatedGroups` cannot reach a retired row through the list
