@@ -13,6 +13,7 @@ let evolve = (state, event) =>
     }
   | CategoryImageChanged({imageUrl}) => {...state, currentImageUrl: Some(imageUrl)}
   | CategoryArchived => {...state, archived: true}
+  | CategoryUnarchived => {...state, archived: false}
   }
 
 let decide = (state, command) =>

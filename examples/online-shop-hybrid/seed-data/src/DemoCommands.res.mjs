@@ -341,116 +341,128 @@ function cancelOrder(command) {
 
 function customer(id, command) {
   if (typeof command !== "object") {
-    return Seed$ReventlessSeed.mutation(`Ordering_` + "Customer_Deactivate", [[
-        "id",
-        {
-          TAG: "Id",
-          _0: id
-        }
-      ]]);
-  }
-  switch (command.TAG) {
-    case "Register" :
-      return Seed$ReventlessSeed.mutation(`Ordering_` + "Customer_Register", [
-        [
+    if (command === "Deactivate") {
+      return Seed$ReventlessSeed.mutation(`Ordering_` + "Customer_Deactivate", [[
           "id",
           {
             TAG: "Id",
             _0: id
           }
-        ],
-        [
-          "email",
-          {
-            TAG: "String",
-            _0: command.email
-          }
-        ],
-        [
-          "address",
-          {
-            TAG: "String",
-            _0: command.address
-          }
-        ]
-      ]);
-    case "UpdateEmail" :
-      return Seed$ReventlessSeed.mutation(`Ordering_` + "Customer_UpdateEmail", [
-        [
-          "id",
-          {
-            TAG: "Id",
-            _0: id
-          }
-        ],
-        [
-          "email",
-          {
-            TAG: "String",
-            _0: command.email
-          }
-        ]
-      ]);
-    case "UpdateAddress" :
-      return Seed$ReventlessSeed.mutation(`Ordering_` + "Customer_UpdateAddress", [
-        [
-          "id",
-          {
-            TAG: "Id",
-            _0: id
-          }
-        ],
-        [
-          "address",
-          {
-            TAG: "String",
-            _0: command.address
-          }
-        ]
-      ]);
-    case "SetAddressLocation" :
-      let location = command.location;
-      return Seed$ReventlessSeed.mutation(`Ordering_` + "Customer_SetAddressLocation", [
-        [
-          "id",
-          {
-            TAG: "Id",
-            _0: id
-          }
-        ],
-        [
-          "address",
-          {
-            TAG: "String",
-            _0: command.address
-          }
-        ],
-        [
-          "location",
-          {
-            TAG: "Object",
-            _0: [
-              [
-                "lat",
-                {
-                  TAG: "Float",
-                  _0: location.lat
-                }
-              ],
-              [
-                "lng",
-                {
-                  TAG: "Float",
-                  _0: location.lng
-                }
+        ]]);
+    }
+    throw {
+      RE_EXN_ID: "Match_failure",
+      _1: [
+        "DemoCommands.res",
+        179,
+        2
+      ],
+      Error: new Error()
+    };
+  } else {
+    switch (command.TAG) {
+      case "Register" :
+        return Seed$ReventlessSeed.mutation(`Ordering_` + "Customer_Register", [
+          [
+            "id",
+            {
+              TAG: "Id",
+              _0: id
+            }
+          ],
+          [
+            "email",
+            {
+              TAG: "String",
+              _0: command.email
+            }
+          ],
+          [
+            "address",
+            {
+              TAG: "String",
+              _0: command.address
+            }
+          ]
+        ]);
+      case "UpdateEmail" :
+        return Seed$ReventlessSeed.mutation(`Ordering_` + "Customer_UpdateEmail", [
+          [
+            "id",
+            {
+              TAG: "Id",
+              _0: id
+            }
+          ],
+          [
+            "email",
+            {
+              TAG: "String",
+              _0: command.email
+            }
+          ]
+        ]);
+      case "UpdateAddress" :
+        return Seed$ReventlessSeed.mutation(`Ordering_` + "Customer_UpdateAddress", [
+          [
+            "id",
+            {
+              TAG: "Id",
+              _0: id
+            }
+          ],
+          [
+            "address",
+            {
+              TAG: "String",
+              _0: command.address
+            }
+          ]
+        ]);
+      case "SetAddressLocation" :
+        let location = command.location;
+        return Seed$ReventlessSeed.mutation(`Ordering_` + "Customer_SetAddressLocation", [
+          [
+            "id",
+            {
+              TAG: "Id",
+              _0: id
+            }
+          ],
+          [
+            "address",
+            {
+              TAG: "String",
+              _0: command.address
+            }
+          ],
+          [
+            "location",
+            {
+              TAG: "Object",
+              _0: [
+                [
+                  "lat",
+                  {
+                    TAG: "Float",
+                    _0: location.lat
+                  }
+                ],
+                [
+                  "lng",
+                  {
+                    TAG: "Float",
+                    _0: location.lng
+                  }
+                ]
               ]
-            ]
-          }
-        ]
-      ]);
-    case "SetLocation" :
-    case "MarkAddressUnresolvable" :
-      return Pervasives.failwith("Customer.SetLocation / MarkAddressUnresolvable are internal (@noApi) — seed a located customer with SetAddressLocation instead.");
+            }
+          ]
+        ]);
+      case "SetLocation" :
+      case "MarkAddressUnresolvable" :
+        return Pervasives.failwith("Customer.SetLocation / MarkAddressUnresolvable are internal (@noApi) — seed a located customer with SetAddressLocation instead.");
+    }
   }
 }
 

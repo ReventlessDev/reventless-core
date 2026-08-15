@@ -93,6 +93,9 @@ module CustomerMapping = Mapping.Make(
           locationNote: Some(reason),
         })
       | Deactivated => Update(id, state => {...state, deactivated: true})
+      // The row comes back to ordinary reads with the profile it left with —
+      // the aggregate held it throughout, so nothing here has to be rebuilt.
+      | Reactivated => Update(id, state => {...state, deactivated: false})
       }
   },
 )

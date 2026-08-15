@@ -9,6 +9,7 @@ let evolve = (state, event: consumedEvent) =>
   | CategoryAdded({name}) => {exists: true, archived: false, name}
   | CategoryRenamed({name}) => {...state, name}
   | CategoryArchived => {...state, archived: true}
+  | CategoryUnarchived => {...state, archived: false}
   }
 
 let decide = (state, command) =>

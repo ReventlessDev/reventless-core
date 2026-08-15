@@ -10,4 +10,7 @@ let project = ({event}) =>
       Update(categoryId, state => {...state, imageUrl}),
     ]
   | CategoryArchived({categoryId}) => [Update(categoryId, state => {...state, archived: true})]
+  | CategoryUnarchived({categoryId}) => [
+      Update(categoryId, state => {...state, archived: false}),
+    ]
   }

@@ -13,12 +13,20 @@ let stateSchema = S.union([
     location: s.m(S.option(GeoPoint$Reventless.schema)),
     locationResolvedFrom: s.m(S.option(S.string))
   })),
-  S.literal("Deactivated")
+  S.schema(s => ({
+    TAG: "Deactivated",
+    email: s.m(S.string),
+    address: s.m(S.string),
+    location: s.m(S.option(GeoPoint$Reventless.schema)),
+    locationResolvedFrom: s.m(S.option(S.string))
+  }))
 ]);
 
 function evolve(state, event) {
   if (typeof state !== "object") {
-    if (state === "NotCreated" && typeof event === "object" && event.TAG === "Registered") {
+    if (typeof event !== "object" || event.TAG !== "Registered") {
+      return state;
+    } else {
       return {
         TAG: "Active",
         email: event.email,
@@ -26,12 +34,33 @@ function evolve(state, event) {
         location: undefined,
         locationResolvedFrom: undefined
       };
+    }
+  }
+  if (state.TAG !== "Active") {
+    if (typeof event !== "object" && event === "Reactivated") {
+      return {
+        TAG: "Active",
+        email: state.email,
+        address: state.address,
+        location: state.location,
+        locationResolvedFrom: state.locationResolvedFrom
+      };
     } else {
       return state;
     }
   }
   if (typeof event !== "object") {
-    return "Deactivated";
+    if (event === "Deactivated") {
+      return {
+        TAG: "Deactivated",
+        email: state.email,
+        address: state.address,
+        location: state.location,
+        locationResolvedFrom: state.locationResolvedFrom
+      };
+    } else {
+      return state;
+    }
   }
   switch (event.TAG) {
     case "Registered" :
@@ -88,48 +117,35 @@ function evolve(state, event) {
 
 function decide(state, command) {
   if (typeof state !== "object") {
-    if (state === "NotCreated") {
-      if (typeof command !== "object" || command.TAG !== "Register") {
+    if (typeof command !== "object" || command.TAG !== "Register") {
+      return {
+        TAG: "Error",
+        _0: "CustomerNotFound"
+      };
+    } else {
+      return {
+        TAG: "Ok",
+        _0: [{
+            TAG: "Registered",
+            email: command.email,
+            address: command.address
+          }]
+      };
+    }
+  }
+  if (state.TAG === "Active") {
+    if (typeof command !== "object") {
+      if (command === "Deactivate") {
         return {
-          TAG: "Error",
-          _0: "CustomerNotFound"
+          TAG: "Ok",
+          _0: ["Deactivated"]
         };
       } else {
         return {
           TAG: "Ok",
-          _0: [{
-              TAG: "Registered",
-              email: command.email,
-              address: command.address
-            }]
-        };
-      }
-    }
-    if (typeof command !== "object") {
-      return {
-        TAG: "Ok",
-        _0: []
-      };
-    }
-    switch (command.TAG) {
-      case "SetLocation" :
-      case "MarkAddressUnresolvable" :
-        return {
-          TAG: "Ok",
           _0: []
         };
-      default:
-        return {
-          TAG: "Error",
-          _0: "CustomerAlreadyDeactivated"
-        };
-    }
-  } else {
-    if (typeof command !== "object") {
-      return {
-        TAG: "Ok",
-        _0: ["Deactivated"]
-      };
+      }
     }
     switch (command.TAG) {
       case "Register" :
@@ -233,6 +249,33 @@ function decide(state, command) {
               }]
           };
         }
+    }
+  } else {
+    if (typeof command !== "object") {
+      if (command === "Deactivate") {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: ["Reactivated"]
+        };
+      }
+    }
+    switch (command.TAG) {
+      case "SetLocation" :
+      case "MarkAddressUnresolvable" :
+        return {
+          TAG: "Ok",
+          _0: []
+        };
+      default:
+        return {
+          TAG: "Error",
+          _0: "CustomerAlreadyDeactivated"
+        };
     }
   }
 }

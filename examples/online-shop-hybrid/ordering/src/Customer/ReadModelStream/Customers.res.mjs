@@ -50,7 +50,11 @@ let stateSchema$2 = S.Metadata.set(stateSchema$1, StateAnnotations$Reventless.st
   groupBy: undefined,
   visibility: undefined,
   live: undefined,
-  retired: undefined
+  retired: {
+    field: "deactivated",
+    label: "",
+    showWhenFalse: false
+  }
 });
 
 let authorization = {

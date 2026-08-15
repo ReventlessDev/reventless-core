@@ -32,15 +32,27 @@ function project(param) {
   let event = param.event;
   let id = param.id;
   if (typeof event !== "object") {
-    return {
-      TAG: "Update",
-      _0: id,
-      _1: state => {
-        let newrecord = {...state};
-        newrecord.deactivated = true;
-        return newrecord;
-      }
-    };
+    if (event === "Deactivated") {
+      return {
+        TAG: "Update",
+        _0: id,
+        _1: state => {
+          let newrecord = {...state};
+          newrecord.deactivated = true;
+          return newrecord;
+        }
+      };
+    } else {
+      return {
+        TAG: "Update",
+        _0: id,
+        _1: state => {
+          let newrecord = {...state};
+          newrecord.deactivated = false;
+          return newrecord;
+        }
+      };
+    }
   }
   switch (event.TAG) {
     case "Registered" :

@@ -38,6 +38,15 @@ type command =
   | @noApi SetLocation({location: Reventless.GeoPoint.t, resolvedFrom: string})
   | @noApi MarkAddressUnresolvable({address: string, reason: string})
   | Deactivate
+  // The way back. Deactivation withdraws a customer from ordinary use; it does
+  // not erase them, so restoring one needs no payload — the profile is still in
+  // the state, and asking a caller to re-supply an email they never changed
+  // would be a second chance to get it wrong.
+  //
+  // Meaningful only on a deactivated customer, and idempotent on an active one.
+  // A generated surface offers it on every row regardless: a command cannot yet
+  // declare which side of a retirement it belongs on.
+  | Reactivate
 
 @schema
 type event =
@@ -60,6 +69,7 @@ type event =
   // two things is one nobody can act on.
   | AddressUnresolvable({address: string, reason: string})
   | Deactivated
+  | Reactivated
 
 @schema
 type error =

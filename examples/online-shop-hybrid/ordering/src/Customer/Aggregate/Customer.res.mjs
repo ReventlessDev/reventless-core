@@ -33,7 +33,8 @@ let commandSchema = S.union([
     address: s.m(S.string),
     reason: s.m(S.string)
   })),
-  S.literal("Deactivate")
+  S.literal("Deactivate"),
+  S.literal("Reactivate")
 ]);
 
 let eventSchema = S.union([
@@ -65,7 +66,8 @@ let eventSchema = S.union([
     address: s.m(S.string),
     reason: s.m(S.string)
   })),
-  S.literal("Deactivated")
+  S.literal("Deactivated"),
+  S.literal("Reactivated")
 ]);
 
 let errorSchema = S.union([

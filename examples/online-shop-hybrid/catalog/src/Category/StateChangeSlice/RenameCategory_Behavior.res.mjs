@@ -3,11 +3,19 @@
 
 function evolve(state, event) {
   if (typeof event !== "object") {
-    return {
-      exists: state.exists,
-      archived: true,
-      name: state.name
-    };
+    if (event === "CategoryArchived") {
+      return {
+        exists: state.exists,
+        archived: true,
+        name: state.name
+      };
+    } else {
+      return {
+        exists: state.exists,
+        archived: false,
+        name: state.name
+      };
+    }
   } else if (event.TAG === "CategoryAdded") {
     return {
       exists: true,

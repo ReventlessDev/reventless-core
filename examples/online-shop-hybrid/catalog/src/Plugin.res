@@ -14,6 +14,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(ChangeProductPrice, ChangeProductPrice_Behavior)
   module RecordProductDemandSlice = Platform.StateChangeSlice.Make(RecordProductDemand, RecordProductDemand_Behavior)
   module RenameCategorySlice = Platform.StateChangeSlice.Make(RenameCategory, RenameCategory_Behavior)
+  module UnarchiveCategorySlice = Platform.StateChangeSlice.Make(UnarchiveCategory, UnarchiveCategory_Behavior)
 
   // StateViewSliceStreams
   module CategoriesStreamSlice = Platform.StateViewSliceStream.Make(Categories, Categories_Projection)
@@ -35,11 +36,11 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Catalog",
     ~stateViewSlices=[module(CategoriesStreamSlice), module(ProductDemandStreamSlice), module(ProductsStreamSlice)],
-    ~stateChangeSlices=[module(AddCategorySlice), module(AddProductSlice), module(ArchiveCategorySlice), module(ChangeCategoryImageSlice), module(ChangeProductDescriptionSlice), module(ChangeProductImageSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice), module(RenameCategorySlice)],
+    ~stateChangeSlices=[module(AddCategorySlice), module(AddProductSlice), module(ArchiveCategorySlice), module(ChangeCategoryImageSlice), module(ChangeProductDescriptionSlice), module(ChangeProductImageSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice), module(RenameCategorySlice), module(UnarchiveCategorySlice)],
     ~inboundTranslationSlices=[module(ImportProductSlice)],
     ~extensions=[module(Orders_Extension)],
     ~extensionPoints=[module(Products_ExtensionPointMapping)],
-    ~componentChapters=Dict.fromArray([("AddCategory", "Category"), ("AddProduct", "Product"), ("ArchiveCategory", "Category"), ("Categories", "Category"), ("ChangeCategoryImage", "Category"), ("ChangeProductDescription", "Product"), ("ChangeProductImage", "Product"), ("ChangeProductName", "Product"), ("ChangeProductPrice", "Product"), ("ImportProduct", "Product"), ("ProductDemand", "Product"), ("Products", "Product"), ("RecordProductDemand", "ProductDemand"), ("RenameCategory", "Category")]),
+    ~componentChapters=Dict.fromArray([("AddCategory", "Category"), ("AddProduct", "Product"), ("ArchiveCategory", "Category"), ("Categories", "Category"), ("ChangeCategoryImage", "Category"), ("ChangeProductDescription", "Product"), ("ChangeProductImage", "Product"), ("ChangeProductName", "Product"), ("ChangeProductPrice", "Product"), ("ImportProduct", "Product"), ("ProductDemand", "Product"), ("Products", "Product"), ("RecordProductDemand", "ProductDemand"), ("RenameCategory", "Category"), ("UnarchiveCategory", "Category")]),
   )
 
   let make = () =>
@@ -49,7 +50,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~extensionPoints=[module(Products_ExtensionPoint)],
       ~extensions=[module(Orders_Extension)],
       ~tasks=[module(ImportProductsTask)],
-      ~stateChangeSlices=[module(AddCategorySlice), module(AddProductSlice), module(ArchiveCategorySlice), module(ChangeCategoryImageSlice), module(ChangeProductDescriptionSlice), module(ChangeProductImageSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice), module(RenameCategorySlice)],
+      ~stateChangeSlices=[module(AddCategorySlice), module(AddProductSlice), module(ArchiveCategorySlice), module(ChangeCategoryImageSlice), module(ChangeProductDescriptionSlice), module(ChangeProductImageSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice), module(RenameCategorySlice), module(UnarchiveCategorySlice)],
       ~stateViewSlices=[module(CategoriesStreamSlice), module(ProductDemandStreamSlice), module(ProductsStreamSlice)],
       ~inboundTranslationSlices=[module(ImportProductSlice)],
       ~pluginStructure=pluginStructure,

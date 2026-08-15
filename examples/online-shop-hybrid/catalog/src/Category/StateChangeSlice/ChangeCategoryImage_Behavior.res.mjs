@@ -4,11 +4,19 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 
 function evolve(state, event) {
   if (typeof event !== "object") {
-    return {
-      exists: state.exists,
-      archived: true,
-      currentImageUrl: state.currentImageUrl
-    };
+    if (event === "CategoryArchived") {
+      return {
+        exists: state.exists,
+        archived: true,
+        currentImageUrl: state.currentImageUrl
+      };
+    } else {
+      return {
+        exists: state.exists,
+        archived: false,
+        currentImageUrl: state.currentImageUrl
+      };
+    }
   } else if (event.TAG === "CategoryAdded") {
     return {
       exists: true,

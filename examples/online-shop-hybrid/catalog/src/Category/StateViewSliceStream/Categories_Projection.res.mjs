@@ -48,6 +48,16 @@ function project(param) {
             return newrecord;
           }
         }];
+    case "CategoryUnarchived" :
+      return [{
+          TAG: "Update",
+          _0: event.categoryId,
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.archived = false;
+            return newrecord;
+          }
+        }];
   }
 }
 

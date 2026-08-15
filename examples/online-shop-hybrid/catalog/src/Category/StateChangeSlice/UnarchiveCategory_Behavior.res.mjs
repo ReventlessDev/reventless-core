@@ -26,15 +26,15 @@ function decide(state, command) {
     if (state.archived) {
       return {
         TAG: "Ok",
-        _0: []
+        _0: [{
+            TAG: "CategoryUnarchived",
+            categoryId: command.categoryId
+          }]
       };
     } else {
       return {
         TAG: "Ok",
-        _0: [{
-            TAG: "CategoryArchived",
-            categoryId: command.categoryId
-          }]
+        _0: []
       };
     }
   } else {
@@ -52,7 +52,7 @@ let initialState = {
   archived: false
 };
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Category/StateChangeSlice/ArchiveCategory_Behavior.res.mjs";
+let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Category/StateChangeSlice/UnarchiveCategory_Behavior.res.mjs";
 
 export {
   Spec,

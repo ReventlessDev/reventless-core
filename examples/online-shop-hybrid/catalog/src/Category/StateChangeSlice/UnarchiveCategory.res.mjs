@@ -10,14 +10,14 @@ let consumedEventSchema = S.union([
 ]);
 
 let commandSchema = S.schema(s => ({
-  TAG: "ArchiveCategory",
+  TAG: "UnarchiveCategory",
   categoryId: s.m(DcbTag$Reventless.string)
 }));
 
 let errorSchema = S.literal("CategoryNotFound");
 
 let eventSchema = S.schema(s => ({
-  TAG: "CategoryArchived",
+  TAG: "CategoryUnarchived",
   categoryId: s.m(DcbTag$Reventless.string)
 }));
 
@@ -31,11 +31,11 @@ function commandAuthorization(command) {
   };
 }
 
-let name = "ArchiveCategory";
+let name = "UnarchiveCategory";
 
 let Id;
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Category/StateChangeSlice/ArchiveCategory.res.mjs";
+let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Category/StateChangeSlice/UnarchiveCategory.res.mjs";
 
 let readConsistency = "EscalateOnRetry";
 

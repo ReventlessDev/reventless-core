@@ -45,6 +45,11 @@ type state = {
   // otherwise; hidden from list views because it is only meaningful on a row a
   // human is already looking into.
   @hidden locationNote: option<string>,
-  deactivated: bool,
+  // A deactivated customer is withdrawn from ordinary use rather than deleted:
+  // their orders still reference them, and an operator still needs to find them.
+  // `@retired` is what makes the platform say so — ordinary reads exclude these
+  // rows, and a consumer renders the fact as a state of the record instead of as
+  // a column reading `false` on nearly every row.
+  @retired deactivated: bool,
   orderCount: int,
 }

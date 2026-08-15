@@ -13,7 +13,8 @@ let consumedEventSchema = S.union([
     TAG: "CategoryImageChanged",
     imageUrl: s.m(S.string)
   })),
-  S.literal("CategoryArchived")
+  S.literal("CategoryArchived"),
+  S.literal("CategoryUnarchived")
 ]);
 
 let commandSchema = S.schema(s => ({

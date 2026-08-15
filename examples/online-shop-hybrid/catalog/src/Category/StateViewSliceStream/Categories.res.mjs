@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as StorageRef$Reventless from "@reventlessdev/reventless-spec/src/semantic/StorageRef.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 let consumedEventSchema = S.union([
   S.schema(s => ({
@@ -24,6 +25,10 @@ let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "CategoryArchived",
     categoryId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "CategoryUnarchived",
+    categoryId: s.m(S.string)
   }))
 ]);
 
@@ -35,6 +40,32 @@ let stateSchema = S.schema(s => ({
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
+
+let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stateAnnotationsId, {
+  ids: [],
+  compositeIds: [],
+  subIds: [],
+  compositeSubIds: [],
+  indexes: [],
+  hidden: [],
+  summary: [],
+  drillTargets: [],
+  drillTargetKeys: [],
+  collapsed: [],
+  scan: [],
+  scanSort: [],
+  semantic: [],
+  metric: [],
+  status: undefined,
+  groupBy: undefined,
+  visibility: undefined,
+  live: undefined,
+  retired: {
+    field: "archived",
+    label: "",
+    showWhenFalse: false
+  }
+});
 
 let name = "Categories";
 
@@ -52,9 +83,9 @@ export {
   name,
   Id,
   consumedEventSchema,
-  stateSchema,
   config,
   subIdConfig,
+  stateSchema$1 as stateSchema,
   moduleUrl,
   authorization,
   visibility,

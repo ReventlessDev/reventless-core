@@ -10,6 +10,9 @@ type consumedEvent =
   | CategoryAdded({name: string})
   | CategoryRenamed({name: string})
   | CategoryArchived
+  // A category back in the catalog can be renamed again; without this the slice
+  // keeps refusing on a flag that is no longer true.
+  | CategoryUnarchived
 
 @schema
 type command = @authorize(AllowGroups(["Admin", "Merchandiser"])) RenameCategory({categoryId: string, name: string})

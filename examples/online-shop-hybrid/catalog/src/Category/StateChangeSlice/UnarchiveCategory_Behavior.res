@@ -13,12 +13,12 @@ let evolve = (state, event) =>
 
 let decide = (state, command) =>
   switch command {
-  | ArchiveCategory({categoryId: theId}) =>
+  | UnarchiveCategory({categoryId: theId}) =>
     if !state.exists {
       Error(CategoryNotFound)
-    } else if state.archived {
-      Ok([]) // idempotent — already archived
+    } else if !state.archived {
+      Ok([]) // idempotent — already in the catalog
     } else {
-      Ok([CategoryArchived({categoryId: theId})])
+      Ok([CategoryUnarchived({categoryId: theId})])
     }
   }

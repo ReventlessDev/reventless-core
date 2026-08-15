@@ -20,7 +20,17 @@ type state =
       location: option<Reventless.GeoPoint.t>,
       locationResolvedFrom: option<string>,
     })
-  | Deactivated
+  // Carries the profile it was holding when it was withdrawn. Deactivation is
+  // not deletion — the orders still name this customer — so the state that comes
+  // back on reactivation has to be the state that went in. A payloadless
+  // `Deactivated` would make `Reactivate` either impossible or a second
+  // registration, and a second registration is a different fact.
+  | Deactivated({
+      email: string,
+      address: string,
+      location: option<Reventless.GeoPoint.t>,
+      locationResolvedFrom: option<string>,
+    })
 
 let initialState = NotCreated
 
@@ -44,8 +54,12 @@ let evolve = (state, event) =>
   // handing it back for another round.
   | (Active(s), AddressUnresolvable({address})) =>
     Active({...s, location: None, locationResolvedFrom: Some(address)})
-  | (Active(_), Customer.Deactivated) => Deactivated
-  | (Deactivated, _) => state
+  | (Active({email, address, location, locationResolvedFrom}), Customer.Deactivated) =>
+    Deactivated({email, address, location, locationResolvedFrom})
+  | (Deactivated({email, address, location, locationResolvedFrom}), Reactivated) =>
+    Active({email, address, location, locationResolvedFrom})
+  | (Deactivated(_), _) => state
+  | (Active(_), Reactivated) => state
   | (NotCreated, _) => state
   }
 
@@ -58,6 +72,7 @@ let decide = (state, command) =>
   | (NotCreated, SetLocation(_)) => Error(CustomerNotFound)
   | (NotCreated, MarkAddressUnresolvable(_)) => Error(CustomerNotFound)
   | (NotCreated, Deactivate) => Error(CustomerNotFound)
+  | (NotCreated, Reactivate) => Error(CustomerNotFound)
 
   | (Active(_), Register(_)) => Error(CustomerAlreadyRegistered)
   | (Active(s), UpdateEmail({email})) if email == s.email => Ok([])
@@ -94,15 +109,19 @@ let decide = (state, command) =>
     Ok([AddressUnresolvable({address, reason})])
 
   | (Active(_), Deactivate) => Ok([Customer.Deactivated])
+  // Already where the caller is asking it to be.
+  | (Active(_), Reactivate) => Ok([])
 
-  | (Deactivated, Register(_)) => Error(CustomerAlreadyDeactivated)
-  | (Deactivated, UpdateEmail(_)) => Error(CustomerAlreadyDeactivated)
-  | (Deactivated, UpdateAddress(_)) => Error(CustomerAlreadyDeactivated)
-  | (Deactivated, SetAddressLocation(_)) => Error(CustomerAlreadyDeactivated)
+  | (Deactivated(_), Register(_)) => Error(CustomerAlreadyDeactivated)
+  | (Deactivated(_), UpdateEmail(_)) => Error(CustomerAlreadyDeactivated)
+  | (Deactivated(_), UpdateAddress(_)) => Error(CustomerAlreadyDeactivated)
+  | (Deactivated(_), SetAddressLocation(_)) => Error(CustomerAlreadyDeactivated)
   // A deactivated customer has no location work owing — swallow rather than
   // error, so an in-flight geocode landing after deactivation does not park a
   // TODO row in Failed forever.
-  | (Deactivated, SetLocation(_)) => Ok([])
-  | (Deactivated, MarkAddressUnresolvable(_)) => Ok([])
-  | (Deactivated, Deactivate) => Ok([]) // idempotent
+  | (Deactivated(_), SetLocation(_)) => Ok([])
+  | (Deactivated(_), MarkAddressUnresolvable(_)) => Ok([])
+  | (Deactivated(_), Deactivate) => Ok([]) // idempotent
+  // The one command this state exists to accept.
+  | (Deactivated(_), Reactivate) => Ok([Reactivated])
   }
