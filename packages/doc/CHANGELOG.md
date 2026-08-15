@@ -719,6 +719,8 @@ This file tracks changes to the documentation. Since the doc package is not vers
 ## Changes
 
 ### 2026-08-15
+- feat(aws): serve one baked manifest per journey ([16d6307](https://github.com/ReventlessDev/reventless-core/commit/16d63071f059cf1fc7025f9be9206dda51f71053))
+### 2026-08-15
 - feat(examples): make products queryable by category ([2a132e0](https://github.com/ReventlessDev/reventless-core/commit/2a132e0b88e6bd310c81749c1c452e469dc78b2a))
 - feat(examples): give a category an image ([ad1b741](https://github.com/ReventlessDev/reventless-core/commit/ad1b7416ea6a4392dada097bc45f707e24bdbd2a))
 - docs(app): write the UI configuration guide for app developers ([01b0151](https://github.com/ReventlessDev/reventless-core/commit/01b01516e868db688458870abd6648e08a703a0e))
